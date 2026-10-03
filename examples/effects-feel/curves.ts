@@ -292,6 +292,14 @@ export function pulse(curve: Curve, span: number, glow: ColorRgba, z: number): L
   return { touch: light(glow), field };
 }
 
+/**
+ * How many columns a passing light or gust crosses in its period: its pace.
+ * Wind and sunlight move at a speed, not in a time set by how long the row is,
+ * so a wider element is crossed for longer, never faster, and no cell's colour
+ * changes quicker on it from one frame to the next.
+ */
+const STRIDE = 80;
+
 /** A soft, compact bump: 1 at `d = 0`, 0 from `|d| ≥ 1`, smooth throughout. */
 const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
 
@@ -299,7 +307,7 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
  * Shimmer, as sunlight moving across water. Swing: how far into `light` the
  * brightest glint goes, 0–1. A soft band of light, `width` columns either
  * side of its centre, crosses columns 0 to `span`, entering and leaving
- * fully off the row, a little over once a period on average. Its passes
+ * fully off the row, `STRIDE` columns in about three quarters of a period. Its passes
  * come the way light comes and goes on water as clouds move: while the sun
  * is out they are bright and follow close on one another, one sometimes
  * catching the last; under cloud they thin to faint ones with the row still
@@ -321,12 +329,12 @@ export function shimmer(curve: Curve, span: number, width: number, glow: ColorRg
   // How lit pass `j` is at `col` and `t`: its band's light, 0 once it is off
   // the row and before it sets off. It sets off somewhere in the first
   // `SETS_OFF` of its slot and takes `LEAST` to `LEAST + SPREAD` periods to
-  // cross, so no pass sweeps faster than three quarters of a period, and every
-  // one is off the row `UP` slots after its own began.
+  // carry its centre `STRIDE` columns, so no band moves faster than that, and
+  // every one is off the row `UP` slots after its own began.
   const SETS_OFF = 0.7;
-  const LEAST = 0.75;
-  const SPREAD = 0.58;
-  const UP = SETS_OFF + ((LEAST + SPREAD) * P) / SLOT;
+  const LEAST = 0.51;
+  const SPREAD = 0.4;
+  const UP = SETS_OFF + ((LEAST + SPREAD) * P * across) / STRIDE / SLOT;
   const pass = (j: number, col: number, t: number): number => {
     const clear = sky(j);
     // Even under cloud about one slot in three holds a pass, a faint one, so a
@@ -334,11 +342,11 @@ export function shimmer(curve: Curve, span: number, width: number, glow: ColorRg
     // never long enough to read as the light gone out.
     const present = hash(j, 7.5 + z) < 0.35 + 0.6 * clear ? 1 : 0;
     const strength = present * (0.3 + 0.7 * clear * (0.6 + 0.4 * hash(j, 8.5 + z)));
-    const crossing = P * (LEAST + SPREAD * hash(j, 5.5 + z));
+    const crossing = ((P * across) / STRIDE) * (LEAST + SPREAD * hash(j, 5.5 + z));
     const q = clamp01((t - (j + SETS_OFF * hash(j, 6.5 + z)) * SLOT) / crossing);
     // It drifts ahead and behind on slow noise, by nothing at either edge of
     // the row and never enough to turn it back.
-    const centre = q * across - width + 0.06 * across * Math.sin(Math.PI * q) * noise(t / P, 2.7, j + z);
+    const centre = q * across - width + 0.06 * across * Math.sin(Math.PI * q) * noise(q, 2.7, j + z);
     return strength * bump((col - centre) / width);
   };
   // Where two passes overlap the brighter wins, so light never doubles up;
@@ -371,7 +379,7 @@ const SILVER = { lightness: 0.08, chroma: 0.3 } as const;
 /**
  * Drift, as wind crossing a field. Swing: degrees of hue at a gust's
  * strongest. Gusts are patches of noise carried along the row from column 0
- * toward `span`, crossing it once a period and changing shape as they go.
+ * toward its end, `STRIDE` columns a period, changing shape as they go.
  * The air they ride is itself turbulent — the field is warped by slower
  * noise, so a gust bends, stretches and catches up with another rather than
  * sliding by in a straight line — and gusts come in sets, the wind rising
@@ -379,8 +387,8 @@ const SILVER = { lightness: 0.08, chroma: 0.3 } as const;
  * silvers — lighter and greyer, by how strong the gust is whatever the
  * swing — the way grass shows the pale side of its blades.
  */
-export function drift(curve: Curve, span: number, z: number): Loop {
-  const speed = span / curve.seconds;
+export function drift(curve: Curve, z: number): Loop {
+  const speed = STRIDE / curve.seconds;
   const field: Field = (cell, t) => {
     const row = cell.row + z;
     const warp = 1.2 * noise(cell.col * 0.03, row * 0.2 + 3.3, t * 0.02);
@@ -412,7 +420,7 @@ export function drift(curve: Curve, span: number, z: number): Loop {
 export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
   const count = Math.max(3, Math.round(span / 8));
   const HALO = 5;
-  // How far from home a flash may begin, and how far it drifts while lit.
+  // How far from home a flash may begin, and how far the brightest drifts while lit.
   const HOP = 5;
   const GLIDE = 5;
   const TURN = curve.seconds;
@@ -443,12 +451,13 @@ export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number):
           const s = u / TURN - n - at;
           // While it glows it drifts a few cells one way or the other, as
           // fast as it is bright: quickest at its height, slowing as it
-          // fades — the lit stroke a firefly draws on the dusk.
+          // fades — the lit stroke a firefly draws on the dusk. A brighter
+          // flash lasts longer and draws a longer stroke at the same pace.
           return {
             x:
               fly.home +
               HOP * (2 * hash(n, fly.z + 4) - 1) +
-              GLIDE * (2 * hash(n, fly.z + 5) - 1) * given(FLASH, s, k) +
+              GLIDE * k * (2 * hash(n, fly.z + 5) - 1) * given(FLASH, s, k) +
               1.5 * noise(fly.z, 0.1, t * 0.035),
             y: 0.6 * noise(fly.z, 2.2, t * 0.035),
             glow: lit * swell(FLASH, s, k),

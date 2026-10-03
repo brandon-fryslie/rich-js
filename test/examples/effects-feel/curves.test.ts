@@ -180,14 +180,14 @@ describe("the loops move", () => {
   });
 
   it("drift shifts hue along the row", () => {
-    const moved = at(onColors(new Map([[ground.hex, 1]]), drift(curve(8, 40), 40, 0)), 0).map((c) => c.bg.hex);
+    const moved = at(onColors(new Map([[ground.hex, 1]]), drift(curve(8, 40), 0)), 0).map((c) => c.bg.hex);
     expect(new Set(moved).size).toBeGreaterThan(1);
   });
 
   it("drift silvers by how strong a gust is, not by how far its hue turns", () => {
     // A wide swing turns the hue further; it does not wash the colour out.
     const blue = new ColorRgba(137, 180, 250);
-    const wide = drift(curve(30, 120), 104, 0);
+    const wide = drift(curve(30, 120), 0);
     let palest = 0;
     for (let t = 0; t < 300; t += 3) for (const cell of cells) palest = Math.max(palest, Oklch.fromRgba(under(wide, blue, cell, t)).l);
     expect(palest).toBeLessThan(Oklch.fromRgba(blue).l + 0.09);
@@ -312,10 +312,6 @@ describe("the loops never jump", () => {
   // A frame-to-frame move under two just-noticeable differences (dE_OK
   // ~0.02 each) reads as drift, not as a tick.
   const STEP = 0.04;
-  // About the demo strip's width: a sweep crosses its span once a period, so
-  // the wider the element the faster the band, and the strip is the widest.
-  const SPAN = 104;
-  const strip: EffectCell[] = Array.from({ length: 2 * SPAN }, (_, i) => ({ row: i % 2, col: Math.floor(i / 2), seed: 0 }));
   // Fills and ink the strip draws, each at its whole share: the most any moves.
   // Near black is left out: there 8-bit steps are large in OKLab's lightness
   // and a display's black level shows none of them.
@@ -323,27 +319,30 @@ describe("the loops never jump", () => {
   // The curves as the demo runs them with no flags.
   const { curves } = parseSettings([])!;
   const loops = {
-    pulse: (z: number) => pulse(curves.pulse, SPAN, sun, z),
-    shimmer: (z: number) => shimmer(curves.shimmer, SPAN, SHIMMER_WIDTH, sun, z),
-    drift: (z: number) => drift(curves.drift, SPAN, z),
-    sparkle: (z: number) => sparkle(curves.sparkle, SPAN, LIGHTS.firefly, z),
+    pulse: (span: number, z: number) => pulse(curves.pulse, span, sun, z),
+    shimmer: (span: number, z: number) => shimmer(curves.shimmer, span, SHIMMER_WIDTH, sun, z),
+    drift: (_span: number, z: number) => drift(curves.drift, z),
+    sparkle: (span: number, z: number) => sparkle(curves.sparkle, span, LIGHTS.firefly, z),
   };
   // No loop repeats, so any watch is a sample of the moves it makes: five
   // minutes passed loops that jumped later on. Half an hour is a status
   // line's sitting, and every one of its seconds is a frame checked, on two
-  // elements, the second's frames falling between the first's. A sample
-  // still under-reads the worst step: an hour of four elements, at both
-  // offsets and at 40 columns as well, took pulse and shimmer to 0.039. Any
-  // change that brightens or narrows either is measured over that hour first.
+  // elements two rows deep, the second's frames falling between the first's:
+  // one the demo strip's width, one a wide terminal's, since a light or a
+  // gust keeps its pace however wide the row. A sample still under-reads the
+  // worst step: an hour of five elements, from 40 to 240 columns, took pulse
+  // to 0.039. Any change that brightens or narrows a loop is measured over
+  // that hour first.
   const WATCHED = 1800;
   const ELEMENTS = [
-    { z: 0, offset: 0 },
-    { z: 22.6, offset: 0.5 },
+    { span: 104, z: 0, offset: 0 },
+    { span: 240, z: 22.6, offset: 0.5 },
   ];
   it.each(Object.entries(loops))("%s moves no cell more than the bar between frames at 1 fps", (_, loop) => {
     let worst = 0;
-    for (const { z, offset } of ELEMENTS) for (const color of fills) {
-      const move = loop(z);
+    for (const { span, z, offset } of ELEMENTS) for (const color of fills) {
+      const move = loop(span, z);
+      const strip: EffectCell[] = Array.from({ length: 2 * span }, (_, i) => ({ row: i % 2, col: Math.floor(i / 2), seed: 0 }));
       // A frame at a time, as a screen draws them.
       const frame = (t: number): ColorRgba[] => strip.map((cell) => under(move, color, cell, t));
       let last = frame(offset);

@@ -164,7 +164,7 @@ describe("every loop keeps the words readable", () => {
   const made = {
     shimmer: (span: number, z: number) => shimmer({ ...curves.shimmer, swing: 1 }, span, SHIMMER_WIDTH, LIGHTS.sun, z),
     pulse: (span: number, z: number) => pulse({ ...curves.pulse, swing: 1 }, span, LIGHTS.sun, z),
-    drift: (span: number, z: number) => drift(curves.drift, span, z),
+    drift: (_span: number, z: number) => drift(curves.drift, z),
     sparkle: (span: number, z: number) => sparkle({ ...curves.sparkle, swing: 1 }, span, LIGHTS.firefly, z),
   };
   const grounds = [["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const;
