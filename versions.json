@@ -4,15 +4,22 @@
     {
       "version": "pr-309",
       "ref": "refs/pull/309/merge",
-      "sha": "c934ffedfa2e5d508831ebaaf27f511fb72ce0ea",
-      "timestamp": "2026-10-03T10:13:44.043Z",
+      "sha": "e5fb05100e01158f112133855e02a3695e9ff64c",
+      "timestamp": "2026-10-03T10:26:22.905Z",
       "commits": [
         {
-          "sha": "c934ffedfa2e5d508831ebaaf27f511fb72ce0ea",
+          "sha": "e5fb05100e01158f112133855e02a3695e9ff64c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:12:33-06:00",
-          "message": "Merge f638d2490045724ffac97580c84c7ba0eb386550 into 17281741baad2e8e1bfed97153c67a4d94c32c5a\n"
+          "timestamp": "2026-10-03T10:25:00Z",
+          "message": "Merge 8a9efecec2dda3ca2afc30eec6626f9ffbde035a into 17281741baad2e8e1bfed97153c67a4d94c32c5a\n"
+        },
+        {
+          "sha": "8a9efecec2dda3ca2afc30eec6626f9ffbde035a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T04:24:56-06:00",
+          "message": "test(highlighter): generate the Rich golden at print's defaults, as the port prints it (rich-highlighter-nct1)\n"
         },
         {
           "sha": "f638d2490045724ffac97580c84c7ba0eb386550",
