@@ -4,15 +4,22 @@
     {
       "version": "pr-328",
       "ref": "refs/pull/328/merge",
-      "sha": "eb14621cceed7afda932aa75ce474d72c2c5342b",
-      "timestamp": "2026-10-03T14:56:05.189Z",
+      "sha": "a4b5e1e0f6ddbf7188659814d0a3fa4fb6a28bae",
+      "timestamp": "2026-10-03T14:58:03.606Z",
       "commits": [
         {
-          "sha": "eb14621cceed7afda932aa75ce474d72c2c5342b",
+          "sha": "a4b5e1e0f6ddbf7188659814d0a3fa4fb6a28bae",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T14:54:52Z",
-          "message": "Merge 37673e59753d5fd67553c99e0a7a7c925e79e040 into 16af325f6dfad880dd1b4e79e6e56de541ec508f\n"
+          "timestamp": "2026-10-03T14:56:46Z",
+          "message": "Merge 5ed8ae0d9b297a94175e896bb2111f51bbb704b8 into 16af325f6dfad880dd1b4e79e6e56de541ec508f\n"
+        },
+        {
+          "sha": "5ed8ae0d9b297a94175e896bb2111f51bbb704b8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:56:42-06:00",
+          "message": "docs(claude): strip stays in core tier 4; it no longer imports measure (rich-strip-hbbu)\n"
         },
         {
           "sha": "37673e59753d5fd67553c99e0a7a7c925e79e040",
