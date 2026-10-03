@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-309",
-      "ref": "refs/pull/309/merge",
-      "sha": "e5fb05100e01158f112133855e02a3695e9ff64c",
-      "timestamp": "2026-10-03T10:26:22.905Z",
-      "commits": [
-        {
-          "sha": "e5fb05100e01158f112133855e02a3695e9ff64c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T10:25:00Z",
-          "message": "Merge 8a9efecec2dda3ca2afc30eec6626f9ffbde035a into 17281741baad2e8e1bfed97153c67a4d94c32c5a\n"
-        },
-        {
-          "sha": "8a9efecec2dda3ca2afc30eec6626f9ffbde035a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:24:56-06:00",
-          "message": "test(highlighter): generate the Rich golden at print's defaults, as the port prints it (rich-highlighter-nct1)\n"
-        },
-        {
-          "sha": "f638d2490045724ffac97580c84c7ba0eb386550",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:12:28-06:00",
-          "message": "fix(highlighter): ReprHighlighter and the repr.* styles draw what Rich draws (rich-highlighter-nct1)\n\nReprHighlighter now carries Rich 15.0.0's patterns, compiled for the u flag\nwith Python's Unicode \\w, \\b and \\d spelled out, and DEFAULT_STYLES carries\nRich's repr.* table. RegexHighlighter places each group by its match index\n(the d flag) instead of searching the match for the group's text, which found\nthe first copy rather than the captured one.\n\ntest/core/repr-highlight.golden.json is Rich's own spans and truecolor bytes\nfor every string in Rich's highlight_tests plus the ticket's repro; its test\nheader carries the command that regenerates it. Kept divergence: JavaScript's\ntrue/false/null/undefined are styled like True/False/None, for Pretty.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "17281741baad2e8e1bfed97153c67a4d94c32c5a",
-      "timestamp": "2026-10-03T10:06:44.579Z",
+      "sha": "528a1bd5bec59d5b62db4b21b4f9c3137e241cfe",
+      "timestamp": "2026-10-03T10:31:03.134Z",
       "commits": [
         {
-          "sha": "17281741baad2e8e1bfed97153c67a4d94c32c5a",
+          "sha": "528a1bd5bec59d5b62db4b21b4f9c3137e241cfe",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:05:43-06:00",
-          "message": "feat(template-bindings): style functions layer over a theme-name base style (rich-template-bindings-jtfa) (#308)\n\n* feat(template-bindings): a style function layers over a fragment whose style is a theme name (rich-template-bindings-jtfa)\n\nA RichText's stored style gains a third form, LayeredStyle: a Style added\nover a name or definition the render has yet to resolve. applyStyleToFragment\nlays the piped style over a string base instead of parsing it, so\n`{{ .t | underline }}` on `new RichText(\"hi\", {style: \"my.heading\"})` draws\nthe name from the render's theme with the pipe on top, and an undefined name\nreaches onStyleError at render as a span name does.\n\nRichText.style is now `TextStyle` (string | Style | LayeredStyle), which\nmakes a RichText no longer structurally assignable to PanelOptions; the\ngroup.md example that relied on that to show a silent drop now says\nTypeScript refuses the call.\n\n* fix(template-bindings): review — Theme.resolve resolves a layered style; markup tag spans typed as strings; empty base takes the pipe (rich-template-bindings-jtfa)\n\n* docs(template-bindings): link's byte-equivalence claim names the lifted-string case it holds for (rich-template-bindings-jtfa)"
+          "timestamp": "2026-10-03T04:30:11-06:00",
+          "message": "fix(highlighter)!: ReprHighlighter and the repr.* styles draw what Rich draws (rich-highlighter-nct1) (#309)\n\n* fix(highlighter): ReprHighlighter and the repr.* styles draw what Rich draws (rich-highlighter-nct1)\n\nReprHighlighter now carries Rich 15.0.0's patterns, compiled for the u flag\nwith Python's Unicode \\w, \\b and \\d spelled out, and DEFAULT_STYLES carries\nRich's repr.* table. RegexHighlighter places each group by its match index\n(the d flag) instead of searching the match for the group's text, which found\nthe first copy rather than the captured one.\n\ntest/core/repr-highlight.golden.json is Rich's own spans and truecolor bytes\nfor every string in Rich's highlight_tests plus the ticket's repro; its test\nheader carries the command that regenerates it. Kept divergence: JavaScript's\ntrue/false/null/undefined are styled like True/False/None, for Pretty.\n\n* test(highlighter): generate the Rich golden at print's defaults, as the port prints it (rich-highlighter-nct1)"
         }
       ]
     }
