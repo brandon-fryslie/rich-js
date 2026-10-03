@@ -95,8 +95,10 @@ const task = progress.addTask("Queued...", { total: 500, start: false });
 progress.startTask(task);
 ```
 
-Until then `TimeElapsedColumn` and `TimeRemainingColumn` both show `-:--:--`. Use this for a queue of tasks you want on screen from the beginning but
-timed only while each one runs.
+Until then `TimeElapsedColumn` and `TimeRemainingColumn` both show `-:--:--`. Use
+this for a queue of tasks you want on screen from the beginning but timed only while
+each one runs. Calling `startTask()` on a task already running leaves its start where
+it was.
 
 There is no indeterminate mode, and omitting `total` is not a substitute for one. The
 two columns then disagree: `TaskProgressColumn` shows nothing, while `BarColumn` falls
@@ -118,6 +120,10 @@ The default refresh rate is 10 times per second. Tune it:
 ```typescript silent
 const progress = new Progress({ refreshPerSecond: 2 });
 ```
+
+Tasks are timed, and frames drawn, on `clock` — `systemClock()` unless you pass a
+[`Clock`](/app#animating-at-a-frame-rate) of your own, which is how a test moves a
+task's time by hand.
 
 Disable auto-refresh and call manually:
 

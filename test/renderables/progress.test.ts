@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   BarColumn,
   Progress,
@@ -15,6 +15,7 @@ import { Theme } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
+import { fakeClock } from "../core/fake-clock.js";
 
 const OPTS: RenderOptions = {
   maxWidth: 80,
@@ -27,7 +28,6 @@ const fakeTask = (description: string): Task => ({
   description,
   total: 100,
   completed: 0,
-  started: true,
   visible: true,
   startTime: 0,
   elapsed: 0,
@@ -266,18 +266,12 @@ describe("Progress.finished (rich-progress-qjm9)", () => {
 });
 
 describe("TimeElapsedColumn and TimeRemainingColumn (rich-progress-jj5r)", () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(0);
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  // Python Rich 9d8f9a3 with `get_time` driven by hand: task `a` is added at
-  // 0s, reaches its total at 5.7s and is drawn at 100s; task `q` is added with
-  // `start=False` and never started. Each cell is the column's text and style.
-  const cells = (): string[][] => {
+  // Python Rich 9d8f9a3 with `get_time` driven by hand, every task added at
+  // 0s: `a` is started again at 3s, which keeps its first start, and reaches
+  // its total at 5.7s; `q` is added with `start=False` and never started; `r`
+  // is at 2 of 10 at 10s and 4 of 10 at 20s; `n` has no total. All are drawn
+  // at 20s. Each cell is the column's text and style.
+  it("holds a finished task's clock at its finish, estimates a running one's, and shows none for one never started, as Rich does", () => {
     const columns = [
       new TimeElapsedColumn(),
       new TimeRemainingColumn(),
@@ -295,20 +289,27 @@ describe("TimeElapsedColumn and TimeRemainingColumn (rich-progress-jj5r)", () =>
         return new RichText("");
       },
     };
-    const progress = new Progress(recorder, { console: new Console({ file: { write: () => {} } }) });
+    const clock = fakeClock();
+    const progress = new Progress(recorder, { console: new Console({ file: { write: () => {} } }), clock });
     const a = progress.addTask("a", { total: 10 });
     progress.addTask("q", { total: 10, start: false });
-    vi.setSystemTime(5700);
+    const r = progress.addTask("r", { total: 10 });
+    progress.addTask("n");
+    clock.advance(3);
+    progress.startTask(a);
+    clock.advance(2.7);
     progress.updateTask(a, { completed: 10 });
-    vi.setSystemTime(100_000);
+    clock.advance(4.3);
+    progress.updateTask(r, { completed: 2 });
+    clock.advance(10);
+    progress.updateTask(r, { completed: 4 });
     [...progress.render(OPTS)];
-    return rows;
-  };
 
-  it("holds a finished task's clock at its finish and shows no clock for one never started, as Rich does", () => {
-    expect(cells()).toEqual([
+    expect(rows).toEqual([
       ["0:00:05 progress.elapsed", "0:00:00 progress.remaining", "0:00:05 progress.elapsed"],
       ["-:--:-- progress.elapsed", "-:--:-- progress.remaining", "-:--:-- progress.remaining"],
+      ["0:00:20 progress.elapsed", "0:00:30 progress.remaining", "0:00:30 progress.remaining"],
+      ["0:00:20 progress.elapsed", " progress.remaining", " progress.remaining"],
     ]);
   });
 });

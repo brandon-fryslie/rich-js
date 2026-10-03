@@ -10,6 +10,7 @@ import type { Style } from "../core/style.js";
 import { ProgressBar } from "./progressBar.js";
 import { Spinner } from "./spinner.js";
 import { Live } from "./live.js";
+import { systemClock, type Clock } from "../core/clock.js";
 import { Table, type ColumnOptions } from "./table.js";
 import type { Renderable, RenderOptions } from "../core/protocol.js";
 
@@ -34,20 +35,28 @@ export interface Task {
   description: string;
   total: number | undefined;
   completed: number;
-  started: boolean;
   visible: boolean;
-  startTime: number;
-  elapsed: number;
+  /** When the task started, in seconds on its `Progress`'s clock; undefined until it has. */
+  startTime: number | undefined;
   /**
-   * Rich's `Task.finished_time`: set the first time an update finds a started
-   * task at its total, and kept from then on, so a finished task stays
-   * finished however its count moves after.
+   * Rich's `Task.elapsed`: seconds since the task started, as of the frame
+   * being drawn — `Progress` reads its clock once a frame and hands columns
+   * the result, so no column reads a clock. Undefined until the task starts.
+   */
+  elapsed: number | undefined;
+  /**
+   * Rich's `Task.finished_time`: the elapsed time the first time an update
+   * finds a started task at its total, kept from then on, so a finished task
+   * stays finished however its count moves after.
    */
   finishedTime: number | undefined;
 }
 
+/** What `Progress` keeps of a task between frames: everything but the frame's `elapsed`. */
+type TaskState = Omit<Task, "elapsed">;
+
 /** Rich's `Task.finished`. [LAW:one-source-of-truth] The one predicate every reader of "finished" asks. */
-function finished(task: Task): boolean {
+function finished<T extends TaskState>(task: T): task is T & { finishedTime: number } {
   return task.finishedTime !== undefined;
 }
 
@@ -161,20 +170,24 @@ export class TimeRemainingColumn implements ProgressColumn {
   }
 
   render(task: Task): RichText {
-    if (this.elapsedWhenFinished && task.finishedTime !== undefined) {
-      return new RichText(formatTime(task.finishedTime), { style: "progress.elapsed" });
-    }
-    // Rich's `Task.time_remaining`: nothing is left once the task is finished,
-    // however long ago that was.
-    if (finished(task)) return new RichText(formatTime(0), { style: "progress.remaining" });
-    if (!task.total || !task.started || task.completed <= 0) {
-      return new RichText("-:--:--", { style: "progress.remaining" });
-    }
-    const elapsed = (Date.now() - task.startTime) / 1000;
-    const rate = task.completed / elapsed;
-    const remaining = (task.total - task.completed) / rate;
-    return new RichText(formatTime(remaining), { style: "progress.remaining" });
+    const took = this.elapsedWhenFinished && finished(task) ? task.finishedTime : undefined;
+    const time = took ?? timeRemaining(task);
+    const style = took === undefined ? "progress.remaining" : "progress.elapsed";
+    // A task with no total has no time to estimate, and Rich draws its cell empty.
+    return new RichText(task.total === undefined ? "" : clockFace(time), { style });
   }
+}
+
+/**
+ * Rich's `Task.time_remaining`: nothing left once the task is finished,
+ * however long ago that was, and unknown until it has started and made
+ * progress against a total.
+ */
+function timeRemaining(task: Task): number | undefined {
+  if (finished(task)) return 0;
+  if (!task.total || task.elapsed === undefined || task.completed <= 0) return undefined;
+  const rate = task.completed / task.elapsed;
+  return (task.total - task.completed) / rate;
 }
 
 export class TimeElapsedColumn implements ProgressColumn {
@@ -183,12 +196,14 @@ export class TimeElapsedColumn implements ProgressColumn {
   render(task: Task): RichText {
     // Rich's `finished_time if finished else elapsed`: a finished task's clock
     // holds where it stopped, and one never started has no time to show.
-    const elapsed =
-      task.finishedTime ?? (task.started ? (Date.now() - task.startTime) / 1000 : undefined);
-    return new RichText(elapsed === undefined ? "-:--:--" : formatTime(Math.max(0, elapsed)), {
-      style: "progress.elapsed",
-    });
+    const time = finished(task) ? task.finishedTime : task.elapsed;
+    return new RichText(clockFace(time), { style: "progress.elapsed" });
   }
+}
+
+/** A time as the time columns draw it, `-:--:--` when there is none to draw. */
+function clockFace(seconds: number | undefined): string {
+  return seconds === undefined ? "-:--:--" : formatTime(seconds);
 }
 
 export interface SpinnerColumnOptions {
@@ -244,14 +259,20 @@ export interface ProgressOptions {
   transient?: boolean;
   expand?: boolean;
   console?: Console;
+  /**
+   * What tasks are timed by and frames are drawn on, Rich's `get_time`;
+   * defaults to the platform's monotonic clock. Handed on to the `Live`.
+   */
+  clock?: Clock;
 }
 
 export class Progress implements Renderable {
   private _columns: ProgressColumn[];
-  private _tasks: Map<number, Task>;
+  private _tasks: Map<number, TaskState>;
   private _nextId: number;
   private _live: Live;
   private _console: Console;
+  private readonly _clock: Clock;
   readonly expand: boolean;
 
   constructor(...columns: (ProgressColumn | ProgressOptions)[]) {
@@ -281,8 +302,10 @@ export class Progress implements Renderable {
     this._nextId = 1;
     this._console = opts.console ?? new Console();
     this.expand = opts.expand ?? false;
+    this._clock = opts.clock ?? systemClock();
     this._live = new Live(this, {
       console: this._console,
+      clock: this._clock,
       refreshPerSecond: opts.refreshPerSecond ?? 10,
       autoRefresh: opts.autoRefresh,
       transient: opts.transient,
@@ -309,15 +332,13 @@ export class Progress implements Renderable {
 
   addTask(description: string, options?: TaskOptions): number {
     const id = this._nextId++;
-    const task: Task = {
+    const task: TaskState = {
       id,
       description,
       total: options?.total,
       completed: 0,
-      started: options?.start !== false,
       visible: options?.visible !== false,
-      startTime: Date.now(),
-      elapsed: 0,
+      startTime: options?.start === false ? undefined : this._clock.now(),
       finishedTime: undefined,
     };
     this._tasks.set(id, task);
@@ -333,12 +354,12 @@ export class Progress implements Renderable {
     if (options.description !== undefined) task.description = options.description;
     if (options.visible !== undefined) task.visible = options.visible;
     if (
-      task.finishedTime === undefined &&
-      task.started &&
+      !finished(task) &&
+      task.startTime !== undefined &&
       task.total !== undefined &&
       task.completed >= task.total
     ) {
-      task.finishedTime = (Date.now() - task.startTime) / 1000;
+      task.finishedTime = this._clock.now() - task.startTime;
     }
 
     if (options.refresh) {
@@ -348,10 +369,8 @@ export class Progress implements Renderable {
 
   startTask(taskId: number): void {
     const task = this._tasks.get(taskId);
-    if (task) {
-      task.started = true;
-      task.startTime = Date.now();
-    }
+    // Rich's `start_task`: a task already running keeps the time it started.
+    if (task) task.startTime ??= this._clock.now();
   }
 
   start(): void {
@@ -373,8 +392,13 @@ export class Progress implements Renderable {
       table.addColumn(undefined, col.tableColumn);
     }
 
-    for (const task of this._tasks.values()) {
-      if (!task.visible) continue;
+    // [LAW:effects-at-boundaries] One read of the clock a frame, handed to
+    // every column as the task's `elapsed`.
+    const now = this._clock.now();
+    for (const state of this._tasks.values()) {
+      if (!state.visible) continue;
+      const elapsed = state.startTime === undefined ? undefined : now - state.startTime;
+      const task: Task = { ...state, elapsed };
       table.addRow(...this._columns.map((col) => col.render(task)));
     }
 
