@@ -2,32 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "3224768b601461edefebf592375a32d3b3c49621",
-      "timestamp": "2026-10-03T15:03:29.156Z",
-      "commits": [
-        {
-          "sha": "3224768b601461edefebf592375a32d3b3c49621",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T09:02:05-06:00",
-          "message": "fix(strip): Strip measures as the row it draws (rich-strip-hbbu) (#328)\n\n* fix(strip): Strip measures as the row it draws (rich-strip-hbbu)\n\nStrip implemented Renderable only, so Measurement.get answered (0, maxWidth)\nfor it and every container measuring one got the whole offer. It now sums its\nitems' measurements and the cells its joins draw; render and measure read one\nlist of joins. effects-feel's drawn-row workaround is replaced by Measurement.get.\n\n* fix(strip): a strip's width is both its bounds, and its row takes no justify (rich-strip-hbbu)\n\nReview of #328: summing the items' minimums promised a narrower strip\nthe walk never draws, so a Table squeezed the column and cropped the\nlast items. measure now reads the drawn row; the row clears the justify\nits container hands it, which padded the first item over the rest.\n\n* docs(claude): strip stays in core tier 4; it no longer imports measure (rich-strip-hbbu)"
-        }
-      ]
-    },
-    {
       "version": "pr-326",
       "ref": "refs/pull/326/merge",
-      "sha": "d37e649ea246edbed12ec37ea6fe83bcaf4ad965",
-      "timestamp": "2026-10-03T14:53:06.668Z",
+      "sha": "f6a11953339845d3c2d57f962534e4ef016bc342",
+      "timestamp": "2026-10-03T15:07:25.063Z",
       "commits": [
         {
-          "sha": "d37e649ea246edbed12ec37ea6fe83bcaf4ad965",
+          "sha": "f6a11953339845d3c2d57f962534e4ef016bc342",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T14:51:53Z",
-          "message": "Merge 32317743513cd2f0e20704dc3b853e9e6716a6ef into 16af325f6dfad880dd1b4e79e6e56de541ec508f\n"
+          "timestamp": "2026-10-03T15:06:05Z",
+          "message": "Merge 6e46929c2719f6eff232ba4cbed1ba057173100d into 3224768b601461edefebf592375a32d3b3c49621\n"
+        },
+        {
+          "sha": "6e46929c2719f6eff232ba4cbed1ba057173100d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T09:06:01-06:00",
+          "message": "effects-feel: one swell, softer ink, shimmer passes worked out once a frame (rich-effects-fxiy.b6i)\n\nReview (high, escalation): given() integrates swell() itself rather than a\nhand copy of its shape; order() back to three octaves, the fourth sat near\nper-cell and speckled the fade's tendrils; shimmer's passes are computed once\nper moment, not once per cell. Stale once-a-period docs and test name fixed;\nthe step-gate comment says what run measured 0.0395.\n"
         },
         {
           "sha": "32317743513cd2f0e20704dc3b853e9e6716a6ef",
@@ -49,6 +41,21 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T08:26:03-06:00",
           "message": "effects-feel: breath blooms then rests, glints read as passes, fireflies draw a lit stroke, transitions linger in tendrils (rich-effects-fxiy.b6i)\n\nPulse turn 43 s with the breath's seconds unchanged, so the bloom from the\nheart can visibly spread (REACH 0.3) and the element rests between breaths.\nShimmer band 24 columns either side, so each pass reads as a pass. Fireflies\ndrift up to 5 cells while lit. Fade 20 s, dissolve 30 s, ordered by\ndomain-warped noise. Every loop still under the 1 fps step gate over an hour\n(worst: pulse 0.039, shimmer 0.036, drift 0.035, sparkle 0.032).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "3224768b601461edefebf592375a32d3b3c49621",
+      "timestamp": "2026-10-03T15:03:29.156Z",
+      "commits": [
+        {
+          "sha": "3224768b601461edefebf592375a32d3b3c49621",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T09:02:05-06:00",
+          "message": "fix(strip): Strip measures as the row it draws (rich-strip-hbbu) (#328)\n\n* fix(strip): Strip measures as the row it draws (rich-strip-hbbu)\n\nStrip implemented Renderable only, so Measurement.get answered (0, maxWidth)\nfor it and every container measuring one got the whole offer. It now sums its\nitems' measurements and the cells its joins draw; render and measure read one\nlist of joins. effects-feel's drawn-row workaround is replaced by Measurement.get.\n\n* fix(strip): a strip's width is both its bounds, and its row takes no justify (rich-strip-hbbu)\n\nReview of #328: summing the items' minimums promised a narrower strip\nthe walk never draws, so a Table squeezed the column and cropped the\nlast items. measure now reads the drawn row; the row clears the justify\nits container hands it, which padded the first item over the rest.\n\n* docs(claude): strip stays in core tier 4; it no longer imports measure (rich-strip-hbbu)"
         }
       ]
     }
