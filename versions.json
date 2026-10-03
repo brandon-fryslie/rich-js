@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-323",
+      "ref": "refs/pull/323/merge",
+      "sha": "63f831bec82fbf6a5ad7ed0a198ba50348d997b8",
+      "timestamp": "2026-10-03T13:42:04.223Z",
+      "commits": [
+        {
+          "sha": "63f831bec82fbf6a5ad7ed0a198ba50348d997b8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T07:40:26-06:00",
+          "message": "Merge 9e3ee7cdbb0a0a7118ed34bde382286b3186ca83 into f893d6e1571c6d2709625a7eaf7c95a0b045600e\n"
+        },
+        {
+          "sha": "9e3ee7cdbb0a0a7118ed34bde382286b3186ca83",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T07:40:22-06:00",
+          "message": "fix(highlighter): JSONHighlighter reads \\w, \\b, \\d and . as Rich's Python does (rich-highlighter-xwqv)\n\nRich compiles its JSON patterns on a str, where \\w, \\b and \\d are Unicode\nand . stops only at \\n. JSONHighlighter used JavaScript's ASCII classes,\nso `étrue` gained a bool and `é\"x\"` a string Rich never lays. It now\nuses the Python-class consts ReprHighlighter already spells, under `u`.\n\ntest/core/json-highlight.test.ts pins spans and printed bytes against a\ngolden generated from Rich 15.0.0 alone, and absorbs the four\nhand-copied Rich expectations that sat in highlighter.test.ts.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-322",
       "ref": "refs/pull/322/merge",
       "sha": "3589e43149d955ebb091ff486e6fa6cb2595ffcc",
