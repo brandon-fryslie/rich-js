@@ -43,6 +43,25 @@ function* words(text: string): Iterable<string> {
 }
 
 /**
+ * The cells a word needs on a line: all of it but its trailing whitespace,
+ * which may hang past the edge for the caller to crop. Its leading whitespace
+ * counts — that is a line's indent, and it is not a place to break.
+ */
+function widthOf(word: string): number {
+  return cellLen(word.trimEnd());
+}
+
+/**
+ * The widest word of `text` — the narrowest width `divideLine` can wrap it to
+ * without cutting a word. `0` for text with no word in it.
+ */
+export function widestWord(text: string): number {
+  let widest = 0;
+  for (const word of words(text)) widest = Math.max(widest, widthOf(word));
+  return widest;
+}
+
+/**
  * A word chopped into pieces of at most `width` cells, as the reference chops
  * it.
  *
@@ -101,9 +120,7 @@ export function divideLine(
   let wordStart = 0; // absolute cell offset where the current word begins
 
   for (const word of words(text)) {
-    // Measured without its trailing whitespace: a word is allowed to end the
-    // line with its spaces hanging past the edge, and the caller crops them.
-    const wordWidth = cellLen(word.trimEnd());
+    const wordWidth = widthOf(word);
 
     if (width - used >= wordWidth) {
       used += cellLen(word);

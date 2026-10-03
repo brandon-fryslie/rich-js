@@ -16,7 +16,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { fitHeight, getStyle, insetHeight, isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { fitHeight, getStyle, insetHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 /**
  * A lazily-resolved border accessory. Strings render inline in the
@@ -313,23 +313,15 @@ export class Panel implements Renderable, Measurable {
     const geometry = layoutPanel(options.maxWidth, this.padding);
     const overhead = frameOverhead(geometry);
 
-    if (isMeasurable(this.renderable)) {
-      const innerOptions: RenderOptions = {
-        ...options,
-        maxWidth: geometry.contentWidth,
-      };
-      const measurement = Measurement.get(innerOptions, this.renderable);
-      const maximum = Math.min(options.maxWidth, measurement.maximum + overhead);
-      return {
-        minimum: Math.min(measurement.minimum + overhead, maximum),
-        maximum,
-      };
-    }
-
-    // Content that cannot measure itself leaves the panel with nothing to want,
-    // so it wants the offer — unbounded included, which `withBoundedWidth`
-    // reports rather than turning into a number nobody can defend.
-    return { minimum: Math.min(overhead, options.maxWidth), maximum: options.maxWidth };
+    const measurement = Measurement.get(
+      { ...options, maxWidth: geometry.contentWidth },
+      this.renderable,
+    );
+    const maximum = Math.min(options.maxWidth, measurement.maximum + overhead);
+    return {
+      minimum: Math.min(measurement.minimum + overhead, maximum),
+      maximum,
+    };
   }
 
   /**

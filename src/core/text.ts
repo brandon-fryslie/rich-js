@@ -2,8 +2,8 @@
  * RichText — styled text with spans. The primary text type for the library.
  */
 
-import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, type CellCol } from "./cells.js";
-import { divideLine } from "./wrap.js";
+import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, expandTabs, type CellCol, type TabExpansion } from "./cells.js";
+import { divideLine, widestWord } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
 import { stripOscTerminators } from "./osc8.js";
@@ -780,9 +780,10 @@ export class RichText implements Renderable, Measurable {
   // --- Renderable ---
 
   *render(options: RenderOptions): Iterable<Segment> {
-    const text = this._expandTabs(this._text);
+    const expanded = expandTabs(this._text, this._tabSize);
+    const text = expanded.text;
     const base = this.resolvedStyle(options);
-    const allSegments = this._buildSegments(text, base, options);
+    const allSegments = this._buildSegments(expanded, base, options);
     const logicalLines = Segment.splitLines(allSegments);
     // [LAW:single-enforcer] The one crossing for this renderable's width, and
     // the call every other renderable already makes. A bare `cellCount` stood
@@ -854,23 +855,19 @@ export class RichText implements Renderable, Measurable {
   // --- Measurable ---
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    const text = this._expandTabs(this._text);
-    const lines = text.split("\n");
+    const lines = expandTabs(this._text, this._tabSize).text.split("\n");
 
     let maxLineWidth = 0;
     let maxWordWidth = 0;
 
     for (const line of lines) {
-      const lineWidth = cellLen(line);
-      maxLineWidth = Math.max(maxLineWidth, lineWidth);
-
-      // Minimum is the longest word
-      const words = line.split(/\s+/);
-      for (const word of words) {
-        if (word.length > 0) {
-          maxWordWidth = Math.max(maxWordWidth, cellLen(word));
-        }
-      }
+      maxLineWidth = Math.max(maxLineWidth, cellLen(line));
+      // [LAW:one-source-of-truth] The minimum is the widest piece the wrapper
+      // never breaks, asked of the wrapper — so a line's indent, which wraps
+      // with its first word, counts toward it. Rich splits on whitespace here
+      // and drops the indent, then wraps with it kept: a container sized by
+      // that minimum cuts the word it was meant to hold whole.
+      maxWordWidth = Math.max(maxWordWidth, widestWord(line));
     }
 
     // Parsed for the same reason `render` parses it: an unparsed NaN ceiling
@@ -884,11 +881,6 @@ export class RichText implements Renderable, Measurable {
   }
 
   // --- Internal ---
-
-  private _expandTabs(text: string): string {
-    if (!text.includes("\t")) return text;
-    return text.replace(/\t/g, " ".repeat(this._tabSize));
-  }
 
   /**
    * The rendered text cut at every span edge, each piece carrying the base
@@ -915,9 +907,15 @@ export class RichText implements Renderable, Measurable {
    * always did, and then folds into no piece at all: its range comes out empty
    * and no case handles it.
    */
-  private _buildSegments(text: string, base: Style, options: RenderOptions): Segment[] {
+  private _buildSegments(
+    { text, offsetOf }: TabExpansion,
+    base: Style,
+    options: RenderOptions,
+  ): Segment[] {
+    // A span is written against the text as given; `offsetOf` moves its edges
+    // past every tab that widened before them.
     const clamp = (offset: number): number =>
-      Math.max(0, Math.min(offset, text.length));
+      Math.max(0, Math.min(offsetOf(offset), text.length));
 
     const positions = new Set<number>([0, text.length]);
     for (const span of this._spans) {

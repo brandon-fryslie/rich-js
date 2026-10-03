@@ -170,6 +170,10 @@ describe("Syntax", () => {
     expect(collectLines(s, { maxWidth: 80 })).toEqual(["  indented"]);
   });
 
+  it("expands a mid-line tab to the next tab stop", () => {
+    expect(collectLines(new Syntax("a\tb", "text", { tabSize: 4 }), { maxWidth: 80 })).toEqual(["a   b"]);
+  });
+
   it("uses default tab size of 4", () => {
     const s = new Syntax("\tindented", "text");
     expect(collectLines(s, { maxWidth: 80 })).toEqual(["    indented"]);

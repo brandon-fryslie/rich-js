@@ -41,7 +41,6 @@ import {
   drawable,
   fitHeight,
   getStyle,
-  isMeasurable,
   regionRows,
   withBoundedWidth,
   withCellWidth,
@@ -225,9 +224,7 @@ export class Viewport implements Renderable, Measurable, Scrollable {
     const options = withCellWidth(rawOptions);
     const gutter = gutterWidth(this.scrollbar);
     const inner = { ...options, maxWidth: this.contentWidth(options.maxWidth) };
-    const content = isMeasurable(this.content)
-      ? Measurement.get(inner, this.content)
-      : new Measurement(Math.min(1, inner.maxWidth), inner.maxWidth);
+    const content = Measurement.get(inner, this.content);
     return new Measurement(content.minimum + gutter, content.maximum + gutter).withMaximum(options.maxWidth);
   }
 }

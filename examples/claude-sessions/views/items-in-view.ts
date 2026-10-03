@@ -16,17 +16,11 @@
 
 import {
   Segment,
-  isMeasurable,
   measureRenderables,
   withBoundedWidth,
   withCellWidth,
 } from "../../../src/index.js";
 import type { Measurable, Renderable, RenderOptions, Viewport } from "../../../src/index.js";
-
-/** What an item that cannot measure itself wants: the whole offer. */
-const WHOLE_OFFER: Measurable = {
-  measure: ({ maxWidth }) => ({ minimum: Math.min(1, maxWidth), maximum: maxWidth }),
-};
 
 export class ItemsInView implements Renderable, Measurable {
   constructor(
@@ -61,6 +55,6 @@ export class ItemsInView implements Renderable, Measurable {
     // Stacked, the items are as wide as the widest of them. `withCellWidth`
     // and not `withBoundedWidth`: the bounded parse asks this very method.
     const options = withCellWidth(rawOptions);
-    return measureRenderables(options, this.items.map((item) => (isMeasurable(item) ? item : WHOLE_OFFER)));
+    return measureRenderables(options, this.items);
   }
 }

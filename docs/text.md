@@ -88,7 +88,7 @@ const heading = new RichText("Right-aligned heading", {
   justify:  "right",    // override default justify for this object
   overflow: "ellipsis", // override default overflow
   noWrap:   true,       // one line per line; a line too wide is cut by `overflow`
-  tabSize:  4,          // expand tab characters to this many spaces
+  tabSize:  4,          // a tab reaches the next multiple of this many cells
 });
 
 console.print(new Panel(heading, { borderStyle: "blue" }));
