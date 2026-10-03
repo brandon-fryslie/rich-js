@@ -182,6 +182,9 @@ export class App {
     if (this.refreshQueued) return;
     this.refreshQueued = true;
     setTimeout(() => {
+      // A frame painted since it was asked for — a tick — drew every change
+      // made before it, so there is nothing left to paint.
+      if (!this.refreshQueued) return;
       this.refreshQueued = false;
       // [LAW:types-are-the-program] Only a running app holds the terminal; a
       // suspended one repaints when it resumes, and a stopped one never does.
@@ -193,12 +196,15 @@ export class App {
    * Paint at the app's `rate` until the returned function is called: what an
    * effect sampled at the frame's time asks for while it moves. The app ticks
    * while anything is animating and it holds the terminal, and stops when
-   * nothing is, so a still app paints only when asked.
+   * nothing is, so a still app paints only when asked. The animation's first
+   * frame does not wait out an interval: at one frame every two seconds, that
+   * would hold its start off screen for two.
    */
   animate(): Unsubscribe {
     const animation = {};
     this.animations.add(animation);
     this.tick();
+    this.refresh();
     return () => {
       this.animations.delete(animation);
       this.tick();
@@ -302,6 +308,8 @@ export class App {
   }
 
   private draw(): void {
+    // This frame draws every change made before it, a queued refresh's included.
+    this.refreshQueued = false;
     const options = this.console.options;
     const height = this.painter.height(options.height.rows);
     // [LAW:no-ambient-temporal-coupling] The frame owner reads the clock,

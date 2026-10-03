@@ -414,6 +414,33 @@ describe("App frame clock", () => {
     expect(times).toEqual([100, 102, 104, 106]);
   });
 
+  it("paints an animation's first frame without waiting out an interval", async () => {
+    const clock = fakeClock();
+    const { target, times } = clocked(0.5, clock);
+    void target.run();
+    clock.advance(1);
+
+    target.animate();
+    await tick();
+
+    expect(times).toEqual([0, 1]);
+  });
+
+  it("paints one frame, not two, for a refresh asked for before a tick", async () => {
+    const clock = fakeClock();
+    const { target, times } = clocked(10, clock);
+    void target.run();
+    target.animate();
+    await tick();
+
+    target.refresh();
+    clock.advance(0.1);
+    await tick();
+
+    // The first frame, the animation's first, then the tick that drew the refresh.
+    expect(times).toHaveLength(3);
+  });
+
   it("does not tick while nothing animates, and stops when the last animation ends", () => {
     const clock = fakeClock();
     const { target, times } = clocked(10, clock);

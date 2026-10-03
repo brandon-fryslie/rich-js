@@ -3,10 +3,11 @@
  * frame rate it ticks at.
  *
  * [LAW:no-ambient-temporal-coupling] Frame rate belongs to whoever draws the
- * frames — an `App`, a `Live` — never to what is drawn. Each of them reads
- * the time through the `Clock` it was given and hands it to what it draws as
- * data, so nothing rendered reads a clock, and an effect sampled thirty times
- * a second or once every two seconds runs the same code.
+ * frames — an `App`, a `Live` — never to what is drawn, and each ticks on the
+ * `Clock` it was given. An `App` reads the frame's time through that clock and
+ * hands it to its view as data, so nothing rendered reads a clock, and an
+ * effect sampled thirty times a second or once every two seconds runs the
+ * same code.
  *
  * [LAW:effects-at-boundaries] The clock is a capability passed in, like the
  * `TerminalHost`: a test hands over a clock whose time it moves by hand and
@@ -34,10 +35,21 @@ export interface FrameRate {
   readonly [parsed]: true;
 }
 
-/** `perSecond` as a `FrameRate`; anything but a positive, finite number throws. */
+// The longest delay a platform timer holds, in seconds: setInterval clamps a
+// longer one to a millisecond, which would turn the slowest rate into the
+// fastest.
+const LONGEST_INTERVAL = (2 ** 31 - 1) / 1000;
+
+/**
+ * `perSecond` as a `FrameRate`; anything but a positive, finite number throws,
+ * and so does a rate whose frames are further apart than a timer can wait —
+ * about 24.8 days.
+ */
 export function frameRate(perSecond: number): FrameRate {
-  if (!(Number.isFinite(perSecond) && perSecond > 0)) {
-    throw new RangeError(`a frame rate is a positive, finite number of frames a second, not ${perSecond}`);
+  if (!(Number.isFinite(perSecond) && perSecond > 0 && 1 / perSecond <= LONGEST_INTERVAL)) {
+    throw new RangeError(
+      `a frame rate is a positive, finite number of frames a second, at most ${LONGEST_INTERVAL} s apart, not ${perSecond}`,
+    );
   }
   return { perSecond, interval: 1 / perSecond } as FrameRate;
 }

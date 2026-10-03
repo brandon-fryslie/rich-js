@@ -8,7 +8,13 @@ describe("frameRate", () => {
     expect(rate.interval).toBe(1 / perSecond);
   });
 
-  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])("refuses %s", (perSecond) => {
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, 1e-7, Number.MIN_VALUE])("refuses %s", (perSecond) => {
     expect(() => frameRate(perSecond)).toThrow(RangeError);
+  });
+
+  it("takes the slowest rate a platform timer can wait out, and nothing slower", () => {
+    const longest = (2 ** 31 - 1) / 1000;
+    expect(frameRate(1.001 / longest).interval).toBeCloseTo(longest / 1.001);
+    expect(() => frameRate(1 / (longest * 1.01))).toThrow(RangeError);
   });
 });
