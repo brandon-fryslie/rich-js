@@ -211,20 +211,19 @@ describe("the loops move", () => {
     // strictly within `band` of its centre, so one alone, its centre between
     // two columns, lights 2·band, and that is the run seen most often. The row
     // is never lit end to end.
-    const runs = Array.from({ length: 400 }, (_, i) =>
-      cells
-        .map((cell) => (loop.field(cell, i * 0.1) > 0 ? "x" : " "))
-        .join("")
+    const rows = Array.from({ length: 400 }, (_, i) => cells.map((cell) => (loop.field(cell, i * 0.1) > 0 ? "x" : " ")).join(""));
+    const runs = rows.flatMap((row) =>
+      row
         .slice(1, -1)
         .split(" ")
         .slice(1, -1)
         .filter((run) => run.length > 0)
         .map((run) => run.length),
-    ).flat();
+    );
     const seen = new Map<number, number>();
     for (const n of runs) seen.set(n, (seen.get(n) ?? 0) + 1);
     expect([...seen].sort((a, b) => b[1] - a[1])[0]?.[0]).toBe(2 * band);
-    expect(Math.max(...runs)).toBeLessThan(cells.length - 2);
+    expect(rows.some((row) => !row.includes(" "))).toBe(false);
   });
 
   it("shimmer's passes come unevenly, as the sun goes in and out", () => {
