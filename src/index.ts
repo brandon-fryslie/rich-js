@@ -122,7 +122,7 @@ export {
   NULL_STYLE,
   DEFAULT_STYLES,
 } from "./core/style.js";
-export type { StyleOptions } from "./core/style.js";
+export type { StyleOptions, TextStyle, LayeredStyle } from "./core/style.js";
 
 export {
   Segment,

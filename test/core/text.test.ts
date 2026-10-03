@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Span, RichText } from "../../src/core/text.js";
+import { Span, RichText, resolveStyle } from "../../src/core/text.js";
 import { Style, NULL_STYLE } from "../../src/core/style.js";
 import { Segment } from "../../src/core/segment.js";
 import { cellLen } from "../../src/core/cells.js";
@@ -699,8 +699,7 @@ describe("RichText.truncate()", () => {
     expect(t.plain).toBe("\u2026world");
     // The "world" span should still cover "world" in the new text (chars 1..6).
     const redSpan = t.spans.find(
-      (s) => (typeof s.style === "string" ? s.style : s.style.toString()).includes("red") ||
-             (typeof s.style !== "string" && s.style.color?.name === "red"),
+      (s) => resolveStyle({ maxWidth: 80 }, s.style).color?.name === "red",
     );
     expect(redSpan).toBeDefined();
     expect(redSpan!.start).toBe(1);

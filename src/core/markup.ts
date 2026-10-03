@@ -20,7 +20,7 @@
 
 import { cellLen } from "./cells.js";
 import { Style, StyleSyntaxError } from "./style.js";
-import { RichText, Span, stripControlChars } from "./text.js";
+import { RichText, stripControlChars } from "./text.js";
 import { emojiReplace } from "./emoji.js";
 import type { RenderOptions as DrawOptions } from "./protocol.js";
 
@@ -568,9 +568,16 @@ export function renderStr(
 interface Frame {
   readonly plain: string;
   /** Style tags, in the order they closed. */
-  readonly spans: readonly Span[];
+  readonly spans: readonly TagSpan[];
   /** Handlers' output, in the order it was written. */
   readonly spliced: readonly Splice[];
+}
+
+/** A closed style tag: the definition or name it opened with, over the text it enclosed. */
+interface TagSpan {
+  readonly start: number;
+  readonly end: number;
+  readonly style: string;
 }
 
 interface Splice {
@@ -585,7 +592,7 @@ interface Splice {
 interface Output {
   readonly chunks: string[];
   length: number;
-  readonly spans: Span[];
+  readonly spans: TagSpan[];
   readonly spliced: Splice[];
 }
 
@@ -611,7 +618,7 @@ function takeFrom(out: Output, mark: Mark): Frame {
   out.length = mark.at;
   return {
     plain: out.chunks.splice(mark.chunks).join(""),
-    spans: out.spans.splice(mark.spans).map((span) => new Span(span.start - mark.at, span.end - mark.at, span.style)),
+    spans: out.spans.splice(mark.spans).map(({ start, end, style }) => ({ start: start - mark.at, end: end - mark.at, style })),
     spliced: out.spliced.splice(mark.spliced).map(({ at, text }) => ({ at: at - mark.at, text })),
   };
 }
@@ -718,7 +725,7 @@ function walk(tokens: readonly MarkupToken[], source: string, registry: MarkupRe
   // plugin tag closed this way never paired.
   const settle = (tag: Opened, at: number | undefined, byPair: OpenedPlugin | undefined): void => {
     tag.closed = at === undefined ? undefined : { at, byPair };
-    out.spans.push(new Span(tag.mark.at, out.length, openTagStyle(tag.tag)));
+    out.spans.push({ start: tag.mark.at, end: out.length, style: openTagStyle(tag.tag) });
   };
 
   for (const token of tokens) {
@@ -810,14 +817,13 @@ function compose(frame: Frame, baseStyle?: string | Style): RichText {
   if (baseStyle) result.stylize(baseStyle);
 
   // Apply link parameters as link styles
-  for (const span of spans) {
-    const style = typeof span.style === "string" ? span.style : span.style.toString();
+  for (const { start, end, style } of spans) {
     // Check if this is a link tag (name=url pattern was parsed)
     const linkMatch = /^link\s+(.+)$/.exec(style);
     if (linkMatch) {
-      result.stylize(new Style({ link: linkMatch[1] }), span.start, span.end);
+      result.stylize(new Style({ link: linkMatch[1] }), start, end);
     } else {
-      result.stylize(style, span.start, span.end);
+      result.stylize(style, start, end);
     }
   }
 

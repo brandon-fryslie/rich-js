@@ -133,11 +133,13 @@ const styleSpecFunc: TemplateFunc = {
 // `link` is the cell-splitter for the multi-cell consumer contract.
 // Implementation-wise it is the same shape as any other style function:
 // it sets the `link` slot of `Style` exactly as the existing string-form
-// `link URL` does, so a template-built fragment is byte-equivalent to
+// `link URL` does, so `{{ link "u" "x" }}` is byte-equivalent to
 // `RichText("x", { style: Style.parse("link u") })`.
 //
 // The cell-boundary signal that consumers (cc-candybar et al.) walk is
-// `fragment.style.link` being truthy. `Style.add` propagates `link`
+// `theme.resolve(fragment.style).link` being truthy: a fragment whose base
+// style is a string keeps the link in a `LayeredStyle` until a theme says
+// what the string stands for. `Style.add` propagates `link`
 // through any outer wrapping call, so `{{ fg "red" (link "u" "x") }}` and
 // `{{ link "u" "x" }}` produce shapes that both qualify as cells from
 // the consumer's perspective. Outer-wins on nested links comes for free

@@ -298,14 +298,8 @@ describe("render non-strict nesting", () => {
     // bold covers 0..21 ("Bold bold and italic ")
     // italic covers 4..27 (" bold and italic italic")
     const t = renderBuiltin("[bold]Bold[italic] bold and italic [/bold]italic[/italic]");
-    const boldSpan = t.spans.find((s) => {
-      const style = typeof s.style === "string" ? s.style : s.style.toString();
-      return style === "bold";
-    });
-    const italicSpan = t.spans.find((s) => {
-      const style = typeof s.style === "string" ? s.style : s.style.toString();
-      return style === "italic";
-    });
+    const boldSpan = t.spans.find((s) => s.style === "bold");
+    const italicSpan = t.spans.find((s) => s.style === "italic");
     expect(boldSpan).toBeDefined();
     expect(italicSpan).toBeDefined();
     // Bold starts at beginning and ends before "italic"-only section

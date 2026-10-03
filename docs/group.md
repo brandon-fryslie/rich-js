@@ -2,7 +2,7 @@
 
 Many renderables — `Panel`, `Layout`, and others — accept only a **single** renderable as their content. `Group` solves this: it combines multiple renderables into one unit.
 
-## The problem
+## Several renderables in one Panel
 
 ```typescript
 import { Console, Group, Panel, RichText } from "@promptctl/rich-js";
@@ -11,13 +11,10 @@ const console = new Console();
 const first = new RichText("First line", { style: "bold orchid" });
 const second = new RichText("Second line", { style: "italic deep_sky_blue3" });
 
-// ✗ Panel's second parameter is its options object, not more content.
-//   This compiles and runs — it just silently drops `second`.
-console.print(new Panel(first, second));
-
-// ✓ Wrap them in a Group
 console.print(new Panel(new Group(first, second), { borderStyle: "spring_green3" }));
 ```
+
+`new Panel(first, second)` does not do this: `Panel`'s second parameter is its options object, not more content.
 
 ## Group items must be renderables
 

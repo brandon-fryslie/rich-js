@@ -7,7 +7,7 @@ import {
 } from "../../src/template-bindings/index.js";
 import {
   Style,
-  StyleSyntaxError,
+  Theme,
   ATTRIBUTE_NAMES,
   ATTRIBUTE_SHORT_ALIASES,
 } from "../../src/core/style.js";
@@ -386,32 +386,26 @@ describe("error surface", () => {
     expect(() => engine.parse(`{{ bold 5 }}`).evaluate({})).toThrowError();
   });
 
-  it.each([
-    ["a name", "repr.number"],
-    ["a malformed definition", "not"],
-  ])("a scope fragment whose base style is %s cannot be styled, and keeps the parser's reason", (_, style) => {
-    // A name has no `Style` until a render resolves it against a theme, and a
-    // template runs before any render, so only a definition gives it one.
-    let thrown: unknown;
-    try {
-      engine.parse(`{{ bold .n }}`).evaluate({ n: new RichText("42", { style }) });
-    } catch (err) {
-      thrown = err;
-    }
-    // The engine reports the body's error at the call site, as Go does, and
-    // keeps it as the cause.
-    expect(thrown).toMatchObject({
-      message: expect.stringContaining(`base style "${style}" is not a style definition`),
-      cause: expect.objectContaining({ cause: expect.any(StyleSyntaxError) }),
-    });
-    expect((thrown as Error).cause).toBeInstanceOf(TypeError);
-  });
-
   it("a scope fragment whose base style is a definition is styled over it", () => {
     const defined = new RichText("42", { style: "italic" });
     const out = engine.parse(`{{ bold .n }}`).evaluate({ n: defined });
+    const drawn = out[0]!.resolvedStyle({ maxWidth: 80 });
+    expect(drawn.bold).toBe(true);
+    expect(drawn.italic).toBe(true);
+  });
+
+  it("a link over a fragment whose base style is a name is a link once a theme resolves it", () => {
+    const named = new RichText("42", { style: "my.heading" });
+    const out = engine.parse(`{{ link "https://u.test" .n }}`).evaluate({ n: named });
+    const theme = new Theme({ "my.heading": "bold" });
+    const resolved = theme.resolve(out[0]!.style);
+    expect(resolved.link).toBe("https://u.test");
+    expect(resolved.bold).toBe(true);
+  });
+
+  it("a fragment whose base style is the empty definition takes the pipe as its whole style", () => {
+    const out = engine.parse(`{{ bold .n }}`).evaluate({ n: new RichText("42", { style: "" }) });
     expect(baseStyleOf(out[0]!).bold).toBe(true);
-    expect(baseStyleOf(out[0]!).italic).toBe(true);
   });
 
   it("an unknown function name is a FuncNotFoundError", () => {
