@@ -4,15 +4,22 @@
     {
       "version": "pr-297",
       "ref": "refs/pull/297/merge",
-      "sha": "604a1e5f1403d172e5b9524554f594021d1daea2",
-      "timestamp": "2026-10-03T05:39:38.899Z",
+      "sha": "d1a125474f3e04777e8865a0d4e75816f7644744",
+      "timestamp": "2026-10-03T05:43:56.267Z",
       "commits": [
         {
-          "sha": "604a1e5f1403d172e5b9524554f594021d1daea2",
+          "sha": "d1a125474f3e04777e8865a0d4e75816f7644744",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T05:38:23Z",
-          "message": "Merge 271708a3677049d32d24fa097aa77bdce3cd2d2e into eb23c375bcca60a5dff382d4c53034ce6d78d786\n"
+          "timestamp": "2026-10-03T05:42:43Z",
+          "message": "Merge f8b5e5aaba2bd1f2edd9c322bc51d2987e194e91 into eb23c375bcca60a5dff382d4c53034ce6d78d786\n"
+        },
+        {
+          "sha": "f8b5e5aaba2bd1f2edd9c322bc51d2987e194e91",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T23:42:38-06:00",
+          "message": "fix(markdown): a lazy continuation line is only ever paragraph text (rich-markdown-ht8e)\n"
         },
         {
           "sha": "271708a3677049d32d24fa097aa77bdce3cd2d2e",
