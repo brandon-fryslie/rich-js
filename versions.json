@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "9f660772dc5a3e63ce82bd15ba6d8d02e59ba2e6",
+      "timestamp": "2026-10-03T11:29:11.989Z",
+      "commits": [
+        {
+          "sha": "9f660772dc5a3e63ce82bd15ba6d8d02e59ba2e6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T05:28:09-06:00",
+          "message": "fix(progress): TimeElapsedColumn and TimeRemainingColumn stop at a task's finish, as Rich's do (rich-progress-jj5r) (#313)\n\n* fix(progress): TimeElapsedColumn and TimeRemainingColumn stop at a task's finish, as Rich's do (rich-progress-jj5r)\n\nA finished task's elapsed clock holds at Task.finishedTime instead of\nreading Date.now(); TimeRemainingColumn shows 0:00:00 once finished and\ntakes elapsedWhenFinished, Rich's elapsed_when_finished. A task never\nstarted shows -:--:-- in the elapsed column, as Rich's does, not 0:00:00.\n\n* fix(progress)!: Progress times tasks on a Clock it is handed, Rich's get_time (rich-progress-jj5r)\n\nTask.started is gone: startTime is undefined until a task starts, and\nelapsed is computed once a frame from the clock and handed to every\ncolumn, so no column reads a clock. startTask keeps a running task's\nstart, and TimeRemainingColumn draws a task with no total empty, both as\nRich 9d8f9a3 does.\n\n* fix(progress): TimeRemainingColumn estimates no time until a task has a speed, and rounds up, as Rich does (rich-progress-jj5r)"
+        }
+      ]
+    },
+    {
       "version": "pr-314",
       "ref": "refs/pull/314/merge",
       "sha": "69b22568ef5a7be10ebd7664e139ca8631b9fd29",
@@ -20,50 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T05:25:55-06:00",
           "message": "feat(examples): effects-feel light catches a strip's lettering too, so a glint on a dark fill reads as light (rich-effects-fxiy.b6i)\n\nOn the strip's muted fills a glint could only deepen the fill to amber (light\ntext sits on them), which read as a passing shadow. A subject's lit colours\nare now every colour its text cells set, each catching the side of a light\naway from its partner (`catches`, `Side`): the lettering glints pale while the\nfill glows amber, the way sunlight catches a sign. Label contrast holds at\nrest under shimmer, pulse and sparkle; drift on dark improves 4.58 -> 4.90.\n\n`Subject.slot` is gone: what a subject lights is what its text cells set. At\n16 colours the theme's white is both a pale fill and lettering on a paler one,\nso it has no side away from both and catches no light (an ANSI slot cannot\nmove anyway).\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-313",
-      "ref": "refs/pull/313/merge",
-      "sha": "7496904d82ee86e1a259c8e861fd2bc552086878",
-      "timestamp": "2026-10-03T11:26:50.704Z",
-      "commits": [
-        {
-          "sha": "7496904d82ee86e1a259c8e861fd2bc552086878",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T11:25:27Z",
-          "message": "Merge 1af18b1b39d703f9fd878452c85b6874edcf53d1 into 5ea7133dd91b8a775424c8d3791cb35e97848e58\n"
-        },
-        {
-          "sha": "1af18b1b39d703f9fd878452c85b6874edcf53d1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T05:25:23-06:00",
-          "message": "fix(progress)!: Progress times tasks on a Clock it is handed, Rich's get_time (rich-progress-jj5r)\n\nTask.started is gone: startTime is undefined until a task starts, and\nelapsed is computed once a frame from the clock and handed to every\ncolumn, so no column reads a clock. startTask keeps a running task's\nstart, and TimeRemainingColumn draws a task with no total empty, both as\nRich 9d8f9a3 does.\n"
-        },
-        {
-          "sha": "b7a2941e593b7e557a13443075b5273588dc16af",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T05:18:46-06:00",
-          "message": "fix(progress): TimeElapsedColumn and TimeRemainingColumn stop at a task's finish, as Rich's do (rich-progress-jj5r)\n\nA finished task's elapsed clock holds at Task.finishedTime instead of\nreading Date.now(); TimeRemainingColumn shows 0:00:00 once finished and\ntakes elapsedWhenFinished, Rich's elapsed_when_finished. A task never\nstarted shows -:--:-- in the elapsed column, as Rich's does, not 0:00:00.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "5ea7133dd91b8a775424c8d3791cb35e97848e58",
-      "timestamp": "2026-10-03T11:22:37.813Z",
-      "commits": [
-        {
-          "sha": "5ea7133dd91b8a775424c8d3791cb35e97848e58",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T05:20:32-06:00",
-          "message": "feat(examples): effects-feel as breath, sunlight on water, wind, fireflies (rich-effects-fxiy.b6i) (#311)\n\n* feat(examples): effects-feel curves rebuilt as breath, sunlight on water, wind, fireflies (rich-effects-fxiy.b6i)\n\nBrandon's first verdict on b6i: the defaults were jerky and choppy. The loops\nare now smooth noise and smooth waveforms, light mixes in OKLab instead of\nround the hue circle, and the demo runs at 30 fps by default. A test bars any\nloop from moving a cell more than dE_OK 0.06 between frames at 1 fps.\n\n* feat(examples): effects-feel curves turbulent, drifting and wider; strip span read off its drawn row (rich-effects-fxiy.b6i)\n\nDrift rides a domain-warped field with gust sets; fireflies are wandering\npoints with soft halos; shimmer's caustics ride a current inside a wider\nband (48 s, half-width 16); transitions bloom over a wider order.\n\nA Strip is not Measurable, so drawnSubject measured the strip at\nMAX_SAFE_INTEGER columns: shimmer never reached it and drift moved at an\nabsurd speed. The 1 fps no-jump gate now runs at the strip's real width.\n\n* fix(examples): effects-feel light keeps text legible, loops glide at 1 fps (rich-effects-fxiy.b6i)\n\nReview (high) fixes:\n- A colour catches the light that reads against its own ink (Light: pale/deep),\n  not the page ground's. A glint on a muted strip fill took label contrast to\n  1.29:1; it now holds rest contrast (5.05 vs 5.06 on Mocha).\n- The no-jump gate is 0.04 dE_OK at 1 fps over 300 s on both rows, as its\n  comment says, against the demo's real defaults. Caustic crests are rounded,\n  firefly halos wider and lazier, sparkle swing 0.42.\n- drift silvers by gust strength, not by degrees, so a wide swing turns hue\n  instead of washing out.\n- Each subject sits at its own z in the noise; nothing read the seeds.\n- Worst contrast is read over 8 periods and says so.\n- Firefly state per moment and transition order per cell are computed once.\n- LIGHTS and SHIMMER_WIDTH are exported; tests import them.\n\n* fix(examples): shimmer's caustic crest is a Gaussian ridge, in (0, 1] for any noise (rich-effects-fxiy.b6i)\n\nReview (medium): Perlin noise reaches 0.9997 (row 15, col 59, t 114.5), where\n1 - hypot(noise, 0.12) went negative, its 2.5th power was NaN, and blend threw\nmid-render. The crest is exp(-(n/0.8)^2) instead, bounded by construction; the\nglint's share of the band is 0.4 so the 1 fps step stays under 0.04."
         }
       ]
     }
