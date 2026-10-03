@@ -4,15 +4,22 @@
     {
       "version": "pr-302",
       "ref": "refs/pull/302/merge",
-      "sha": "221a0caaf3b0643a5accd89b904e5b43a846909e",
-      "timestamp": "2026-10-03T07:25:32.357Z",
+      "sha": "104264a295d1a3e609dd8ecdc5e19d2e6cf56701",
+      "timestamp": "2026-10-03T07:33:41.269Z",
       "commits": [
         {
-          "sha": "221a0caaf3b0643a5accd89b904e5b43a846909e",
+          "sha": "104264a295d1a3e609dd8ecdc5e19d2e6cf56701",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T01:24:29-06:00",
-          "message": "Merge 70f4a3cf043b22c731d42e87a379055b311b30a3 into f4717aef50592ede5ab6e101732340794e9829f6\n"
+          "timestamp": "2026-10-03T07:32:23Z",
+          "message": "Merge 6db69289ba591ef9b60ec02b9e34effd160faabe into f4717aef50592ede5ab6e101732340794e9829f6\n"
+        },
+        {
+          "sha": "6db69289ba591ef9b60ec02b9e34effd160faabe",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T01:32:18-06:00",
+          "message": "fix(console,pretty): a failed log leaves the last time alone; any tagged, keyless object prints its name (rich-console-4i40)\n\nReview of #302: log() remembered its stamp before drawing, so a throwing\nlog hid the next row's time. The opaque form is now Symbol.toStringTag on\nan object with no keys — covering WeakRef, ArrayBuffer, generators and\nsubclasses (Task [Promise]) without a list — and sits below the\nself-describing arm so a subclass's own toString wins.\n"
         },
         {
           "sha": "70f4a3cf043b22c731d42e87a379055b311b30a3",
