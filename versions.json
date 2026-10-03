@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-304",
+      "ref": "refs/pull/304/merge",
+      "sha": "b5d1b9672fece12275637b0cdfce5761fb605642",
+      "timestamp": "2026-10-03T08:10:30.514Z",
+      "commits": [
+        {
+          "sha": "b5d1b9672fece12275637b0cdfce5761fb605642",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T02:09:17-06:00",
+          "message": "Merge 876110e48d9a77b7603441237495f12daea5adc4 into b1b2221759a1265c84443b2b59fd362954f253d6\n"
+        },
+        {
+          "sha": "876110e48d9a77b7603441237495f12daea5adc4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T02:09:13-06:00",
+          "message": "fix(panel): Panel and empty content are byte-identical to Rich (rich-panel-blxr)\n\nEmpty text is one empty line, as Rich's Text.render yields Segment(\"\") for\nit: a panel's empty body and an empty table cell now draw Rich's content\nline. Table title/caption keep Rich's `if self.title` skip; the traceback\nframe block is one entry per frame, so a frameless report adds no row.\n\nPanel cuts its segments where Rich does: an unlabelled border row is one\nrun; a title or subtitle sits between corner-and-rule and rule-and-corner\nruns, centred in width-4 and dropped at width <= 4; the content line is\npadded to its canvas before the right padding's own run; a vertical padding\nrow is one blank run. A fitted panel widens to hold its title.\n\nPinned against Rich 9d8f9a3 in panel.test.ts \"Panel as Rich draws it\"; the\ntable.test.ts footer divergence is replaced by the reference bytes.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b1b2221759a1265c84443b2b59fd362954f253d6",
