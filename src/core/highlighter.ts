@@ -61,17 +61,22 @@ export class RegexHighlighter extends Highlighter {
   }
 }
 
-// --- ReprHighlighter ---
+// --- Python's regex classes ---
 
-// Rich 15.0.0's patterns, compiled for the `u` flag. Python's `\w`, `\b` and
-// `\d` are Unicode-aware on a `str`; JavaScript's are ASCII even under `u`, so
-// `café=1` would lose its attribute name. Each is spelled out below. `.` is
-// `[^\n]` because Python's dot stops only at `\n`, JavaScript's at `\r` too.
+// Rich compiles its patterns on a `str`, where Python's `\w`, `\b` and `\d` are
+// Unicode-aware; JavaScript's are ASCII even under `u`, so `café=1` would lose
+// its attribute name and `étrue` would gain a `true`. These spell Python's for
+// the `u` flag for ReprHighlighter and JSONHighlighter. `.` is spelled `[^\n]`
+// because Python's dot stops only at `\n`, JavaScript's at `\r`, U+2028 and
+// U+2029 too.
 const W = String.raw`\p{L}\p{N}_`;
 const WB = String.raw`(?:(?<=[${W}])(?![${W}])|(?<![${W}])(?=[${W}]))`;
 const NWB = String.raw`(?:(?<=[${W}])(?=[${W}])|(?<![${W}])(?![${W}]))`;
 const D = String.raw`\p{Nd}`;
 
+// --- ReprHighlighter ---
+
+// Rich 15.0.0's patterns.
 // [LAW:one-type-per-behavior] All repr patterns use the same RegexHighlighter mechanism
 export class ReprHighlighter extends RegexHighlighter {
   static override baseStyle = "repr.";
@@ -106,10 +111,10 @@ export class ReprHighlighter extends RegexHighlighter {
 
 // --- JSONHighlighter ---
 
-// A JSON string as Python Rich 9d8f9a3 matches one, `b` bytes prefix included:
-// an opening quote with no backslash or word character before it, through the
+// A JSON string as Rich 15.0.0 matches one, `b` bytes prefix included: an
+// opening quote with no backslash or word character before it, through the
 // first quote with no backslash before it, so an escaped quote stays inside.
-const JSON_STR = String.raw`(?<![\\\w])(?<str>b?".*?(?<!\\)")`;
+const JSON_STR = String.raw`(?<![\\${W}])(?<str>b?"[^\n]*?(?<!\\)")`;
 
 export class JSONHighlighter extends RegexHighlighter {
   static override baseStyle = "json.";
@@ -117,12 +122,15 @@ export class JSONHighlighter extends RegexHighlighter {
   // `_combine_regex` joins it. A token claims its characters where the scan
   // meets it, so the `true` and `12` inside `"true 12"` belong to the string.
   static override highlights = [
-    [
-      String.raw`(?<brace>[\{\[\(\)\]\}])`,
-      String.raw`\b(?<bool_true>true)\b|\b(?<bool_false>false)\b|\b(?<null>null)\b`,
-      String.raw`(?<number>(?<!\w)\-?[0-9]+\.?[0-9]*(e[\-\+]?\d+?)?\b|0x[0-9a-fA-F]*)`,
-      JSON_STR,
-    ].join("|"),
+    new RegExp(
+      [
+        String.raw`(?<brace>[\{\[\(\)\]\}])`,
+        String.raw`${WB}(?<bool_true>true)${WB}|${WB}(?<bool_false>false)${WB}|${WB}(?<null>null)${WB}`,
+        String.raw`(?<number>(?<![${W}])-?[0-9]+\.?[0-9]*(e[\-+]?${D}+?)?${WB}|0x[0-9a-fA-F]*)`,
+        JSON_STR,
+      ].join("|"),
+      "u",
+    ),
   ];
 
   // A string followed by a colon is also a key. Its `json.key` span comes after
@@ -133,7 +141,7 @@ export class JSONHighlighter extends RegexHighlighter {
   override highlight(text: RichText): void {
     super.highlight(text);
     const colon = /[ \n\r\t]*:/y;
-    for (const { index, 0: str } of text.plain.matchAll(new RegExp(JSON_STR, "g"))) {
+    for (const { index, 0: str } of text.plain.matchAll(new RegExp(JSON_STR, "gu"))) {
       const end = index + str.length;
       colon.lastIndex = end;
       if (colon.test(text.plain)) text.stylize("json.key", index, end);
