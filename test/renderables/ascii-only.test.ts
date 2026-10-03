@@ -26,8 +26,8 @@ import {
   BarColumn,
   CapsuleJoiner,
   Columns,
-  ColorRgba,
   Constrain,
+  DEFAULT_TERMINAL_THEME,
   Effected,
   FlexStrip,
   GradientJoiner,
@@ -95,7 +95,7 @@ const ROWS: Record<string, Row> = {
       new Effected(panel(), (c) => c, {
         t: 0,
         key: "panel",
-        defaults: { fg: new ColorRgba(255, 255, 255), bg: new ColorRgba(0, 0, 0) },
+        theme: DEFAULT_TERMINAL_THEME,
       }),
   },
   Align: { draws: "glyphs", make: () => new Align(panel()) },

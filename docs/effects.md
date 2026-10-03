@@ -11,7 +11,7 @@ type Effect = (colors: CellColors, cell: EffectCell, t: number) => CellColors;
 `Effected` wraps any renderable and draws it with its cells' colours passed through an effect at one moment:
 
 ```typescript
-import { ColorRgba, ColorRamp, EASES, Effected, Phase, RichText, type Effect } from "@promptctl/rich-js";
+import { ColorRgba, ColorRamp, DEFAULT_TERMINAL_THEME, EASES, Effected, Phase, RichText, type Effect } from "@promptctl/rich-js";
 
 const highlight = new ColorRgba(255, 214, 102);
 const sweep = Phase.loop(1.5);
@@ -27,9 +27,8 @@ const shimmer: Effect = (colors, cell, t) => {
   return { fg: toward.at(weight), bg: colors.bg };
 };
 
-const defaults = { fg: new ColorRgba(204, 204, 204), bg: new ColorRgba(24, 24, 24) };
 for (const t of [0, 0.5, 1]) {
-  console.print(new Effected(new RichText(label), shimmer, { t, key: "thinking", defaults }));
+  console.print(new Effected(new RichText(label), shimmer, { t, key: "thinking", theme: DEFAULT_TERMINAL_THEME }));
 }
 ```
 
@@ -41,7 +40,7 @@ Nothing in an effect reads a clock. Whoever draws frames builds the view for eac
 
 - `row` and `col` count from the top-left of what the wrapped renderable drew, so a sweep crosses the element, not the screen. A wide glyph is one cell to the effect, at the column of its first half, and is never cut.
 - `seed` is a number in `[0, 1)` that stays the same for that cell on every frame, for effects that vary cell by cell. It is derived from the `key` option and the cell's position, so two elements showing the same text under different keys do not move in lockstep.
-- A cell that sets no colour of its own is handed the `defaults` colours. The terminal's real foreground and background are never queried, so the caller supplies them.
+- `colors` are what the screen shows: the glyph's colour and the colour behind it, so under `reverse` they are the style's two colours swapped. A cell that sets no colour of its own, or names one of the sixteen ANSI colours, is handed that colour from the `theme` option, a `TerminalTheme`. The terminal's real palette is never queried, so the caller supplies it.
 
 ## What an effect cannot change
 
@@ -49,4 +48,4 @@ An effect changes how cells look, never which cells exist or who drew them. Text
 
 With no colour output at all, an effect has nothing to change, and the wrapped renderable draws as it would without it.
 
-Effects stack by nesting: `new Effected(new Effected(child, a, options), b, options)` draws what applying `a` and then `b` to each cell draws.
+Effects stack by nesting: `new Effected(new Effected(child, a, options), b, options)` draws each cell in the colours that applying `a` and then `b` gives it. The bytes can differ from one effect that calls `a` then `b`: the outer layer sees the inner layer's output, so a colour the inner layer changed stays written as an RGB value even where the outer one moves it back.

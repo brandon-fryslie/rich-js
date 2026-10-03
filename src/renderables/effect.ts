@@ -34,14 +34,18 @@
  */
 
 import { cellLen, graphemes } from "../core/cells.js";
-import { ColorSpec, type ColorRgba } from "../core/color.js";
+import { ColorSpec, type ColorRgba, type TerminalTheme } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 
-/** A cell's foreground and background, as the colours an effect moves. */
+/**
+ * A cell's foreground and background as they appear on screen — the glyph's
+ * colour and the colour behind it — which are the colours an effect moves.
+ * Under `reverse` they are the style's two colours swapped.
+ */
 export interface CellColors {
   readonly fg: ColorRgba;
   readonly bg: ColorRgba;
@@ -70,17 +74,17 @@ export interface EffectedOptions {
    */
   readonly key: string;
   /**
-   * The colours a cell that sets none is drawn in. The terminal's own
-   * foreground and background are never queried, so the caller says what they
-   * are.
+   * The terminal the frame is drawn on: the colours a cell that sets none is
+   * drawn in, and the sixteen an ANSI colour names. The terminal's own palette
+   * is never queried, so the caller says what it is.
    */
-  readonly defaults: CellColors;
+  readonly theme: TerminalTheme;
 }
 
 export class Effected implements Renderable, Measurable {
   readonly t: number;
   readonly key: string;
-  readonly defaults: CellColors;
+  readonly theme: TerminalTheme;
 
   constructor(
     readonly renderable: Renderable,
@@ -92,7 +96,7 @@ export class Effected implements Renderable, Measurable {
     }
     this.t = options.t;
     this.key = options.key;
-    this.defaults = options.defaults;
+    this.theme = options.theme;
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
@@ -109,10 +113,12 @@ export class Effected implements Renderable, Measurable {
         continue;
       }
       const base = segment.style ?? Style.null();
-      const from: CellColors = {
-        fg: drawn(base.color, this.defaults.fg, true),
-        bg: drawn(base.bgcolor, this.defaults.bg, false),
-      };
+      // [LAW:single-enforcer] `drawnColors` is what the wire writes; the theme
+      // resolves what it leaves to the terminal.
+      const wire = base.drawnColors();
+      const ink = (wire.color ?? DEFAULT).getTruecolor(this.theme, true);
+      const paper = (wire.bgcolor ?? DEFAULT).getTruecolor(this.theme, false);
+      const from = onScreen({ fg: ink, bg: paper }, base);
       // Each grapheme's colours, merged into runs of equal colours as they
       // come; `undefined` is a run left as the segment drew it.
       const runs: { text: string; cells: number; colors: CellColors | undefined }[] = [];
@@ -141,15 +147,12 @@ export class Effected implements Renderable, Measurable {
       let offset = 0;
       for (const run of runs) {
         const shifted = base.shiftedBy(offset);
+        // Back from the screen to the style's slots: the same swap undoes itself.
+        const slots = run.colors === undefined ? undefined : onScreen(run.colors, base);
         const style =
-          run.colors === undefined
+          slots === undefined
             ? shifted
-            : shifted.add(
-                Style.fromColor(
-                  respec(base.color, from.fg, run.colors.fg),
-                  respec(base.bgcolor, from.bg, run.colors.bg),
-                ),
-              );
+            : shifted.add(Style.fromColor(respec(base.color, ink, slots.fg), respec(base.bgcolor, paper, slots.bg)));
         yield new Segment(run.text, style);
         offset += run.cells;
       }
@@ -166,9 +169,14 @@ export class Effected implements Renderable, Measurable {
   }
 }
 
-/** The colour a cell's spec draws, or `fallback` when it sets none. */
-function drawn(spec: ColorSpec | undefined, fallback: ColorRgba, foreground: boolean): ColorRgba {
-  return spec === undefined || spec.isDefault ? fallback : spec.getTruecolor(undefined, foreground);
+const DEFAULT = ColorSpec.default();
+
+/**
+ * A style's colour slots as the screen shows them, or the reverse: `reverse`
+ * swaps glyph and ground, and swapping twice is where you started.
+ */
+function onScreen(colors: CellColors, style: Style): CellColors {
+  return style.reverse === true ? { fg: colors.bg, bg: colors.fg } : colors;
 }
 
 /** The spec to draw `to` with: the original one where the effect left it. */

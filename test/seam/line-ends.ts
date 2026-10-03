@@ -34,7 +34,7 @@ import { Pretty } from "../../src/core/pretty.js";
 import { PlainJoiner, Strip } from "../../src/core/strip.js";
 import { Align } from "../../src/renderables/align.js";
 import { Columns } from "../../src/renderables/columns.js";
-import { ColorRgba } from "../../src/core/color.js";
+import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 import { Constrain } from "../../src/renderables/constrain.js";
 import { Effected } from "../../src/renderables/effect.js";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
@@ -96,7 +96,7 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
       new Effected(content, (c) => c, {
         t: 0,
         key: "content",
-        defaults: { fg: new ColorRgba(255, 255, 255), bg: new ColorRgba(0, 0, 0) },
+        theme: DEFAULT_TERMINAL_THEME,
       }),
     why: "recolours its content's cells and adds none, so its last line is its content's",
   },

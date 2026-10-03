@@ -761,9 +761,10 @@ export function runDemo(
     // band's centre is `loop(t)` of the way across. Three frames, frozen.
     const highlight = resolveColorRef(palette, "primary");
     const sweep = Phase.loop(1.5);
+    const indent = "      ";
     const label = "  thinking about colour  ";
     const shimmer: Effect = (colors, cell, t) => {
-      const centre = sweep(t) * label.length;
+      const centre = indent.length + sweep(t) * label.length;
       const weight = Math.max(0, 1 - Math.abs(cell.col - centre) / 4);
       const toward = new ColorRamp(EASES.linear, [
         { at: 0, color: colors.fg },
@@ -774,7 +775,7 @@ export function runDemo(
     out.print(bold("    Effected — a per-cell effect sampled at t = 0, 0.5, 1 s:"));
     for (const t of [0, 0.5, 1]) {
       out.print(
-        new Effected(new RichText(`      ${label}`), shimmer, { t, key: "studio-shimmer", defaults: { fg, bg } }),
+        new Effected(new RichText(`${indent}${label}`), shimmer, { t, key: "studio-shimmer", theme: GRUVBOX }),
       );
     }
     out.print(blank());

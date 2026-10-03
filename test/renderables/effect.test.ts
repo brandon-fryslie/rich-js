@@ -14,8 +14,10 @@ import { Panel } from "../../src/renderables/panel.js";
 import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { Button } from "../../src/widgets/button.js";
 import { WidgetApp } from "../../src/widgets/widget-app.js";
+import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 
-const DEFAULTS: CellColors = { fg: new ColorRgba(200, 200, 200), bg: new ColorRgba(10, 10, 10) };
+const THEME = DEFAULT_TERMINAL_THEME;
+const DEFAULTS: CellColors = { fg: THEME.foregroundColor, bg: THEME.backgroundColor };
 const RED = new ColorRgba(255, 0, 0);
 const BLUE = new ColorRgba(0, 0, 255);
 
@@ -24,7 +26,7 @@ const identity: Effect = (colors) => colors;
 const perColumn: Effect = (colors, cell) => ({ fg: new ColorRgba((cell.col * 37) % 256, 0, 0), bg: colors.bg });
 
 function effected(child: Renderable, effect: Effect, t = 0, key = "k"): Effected {
-  return new Effected(child, effect, { t, key, defaults: DEFAULTS });
+  return new Effected(child, effect, { t, key, theme: THEME });
 }
 
 /** A renderable yielding fixed segments, so nothing but the effect parses or builds a style. */
@@ -49,6 +51,24 @@ describe("Effected — the identity effect", () => {
     expect(seen).toEqual([DEFAULTS, DEFAULTS]);
     expect(segments).toHaveLength(1);
     expect(segments[0]!.style).toBeUndefined();
+  });
+
+  it("hands a cell the colours on screen: an ANSI colour from the theme, swapped under reverse", () => {
+    const seen: CellColors[] = [];
+    const record: Effect = (c) => (seen.push(c), c);
+    const red = THEME.ansiColors.get(1);
+    [...effected(fixed(new Segment("a", Style.parse("red")), new Segment("b", Style.parse("reverse red"))), record).render({ maxWidth: 10 })];
+    expect(seen).toEqual([
+      { fg: red, bg: THEME.backgroundColor },
+      { fg: THEME.backgroundColor, bg: red },
+    ]);
+  });
+
+  it("writes a reversed cell's new glyph colour into the slot the screen draws the glyph from", () => {
+    const glyphBlue: Effect = (c) => ({ fg: BLUE, bg: c.bg });
+    const [segment] = [...effected(fixed(new Segment("a", Style.parse("reverse red"))), glyphBlue).render({ maxWidth: 10 })];
+    expect(segment!.style?.bgcolor?.getTruecolor()).toEqual(BLUE);
+    expect(segment!.style?.color?.name).toBe("red");
   });
 });
 
