@@ -143,10 +143,30 @@ function roundHalfEven(x: number): number {
   return up - x === 0.5 && up % 2 !== 0 ? up - 1 : up;
 }
 
+export interface TimeRemainingColumnOptions {
+  /**
+   * Once the task is finished, draw the time it took, styled
+   * `progress.elapsed`, in place of the zero left to go: Rich's
+   * `elapsed_when_finished`. Defaults to false.
+   */
+  elapsedWhenFinished?: boolean;
+}
+
 export class TimeRemainingColumn implements ProgressColumn {
   readonly tableColumn: ColumnOptions = {};
+  readonly elapsedWhenFinished: boolean;
+
+  constructor(options?: TimeRemainingColumnOptions) {
+    this.elapsedWhenFinished = options?.elapsedWhenFinished ?? false;
+  }
 
   render(task: Task): RichText {
+    if (this.elapsedWhenFinished && task.finishedTime !== undefined) {
+      return new RichText(formatTime(task.finishedTime), { style: "progress.elapsed" });
+    }
+    // Rich's `Task.time_remaining`: nothing is left once the task is finished,
+    // however long ago that was.
+    if (finished(task)) return new RichText(formatTime(0), { style: "progress.remaining" });
     if (!task.total || !task.started || task.completed <= 0) {
       return new RichText("-:--:--", { style: "progress.remaining" });
     }
@@ -161,8 +181,13 @@ export class TimeElapsedColumn implements ProgressColumn {
   readonly tableColumn: ColumnOptions = {};
 
   render(task: Task): RichText {
-    const elapsed = task.started ? (Date.now() - task.startTime) / 1000 : 0;
-    return new RichText(formatTime(elapsed), { style: "progress.elapsed" });
+    // Rich's `finished_time if finished else elapsed`: a finished task's clock
+    // holds where it stopped, and one never started has no time to show.
+    const elapsed =
+      task.finishedTime ?? (task.started ? (Date.now() - task.startTime) / 1000 : undefined);
+    return new RichText(elapsed === undefined ? "-:--:--" : formatTime(Math.max(0, elapsed)), {
+      style: "progress.elapsed",
+    });
   }
 }
 

@@ -95,8 +95,7 @@ const task = progress.addTask("Queued...", { total: 500, start: false });
 progress.startTask(task);
 ```
 
-Until then `TimeElapsedColumn` holds at `0:00:00` and `TimeRemainingColumn` at
-`-:--:--`. Use this for a queue of tasks you want on screen from the beginning but
+Until then `TimeElapsedColumn` and `TimeRemainingColumn` both show `-:--:--`. Use this for a queue of tasks you want on screen from the beginning but
 timed only while each one runs.
 
 There is no indeterminate mode, and omitting `total` is not a substitute for one. The
@@ -176,8 +175,8 @@ progress.stop();
 | `BarColumn` | The progress bar |
 | `TextColumn` | A format string (see below) |
 | `TaskProgressColumn` | Percentage complete, right-aligned in four cells so the row holds still |
-| `TimeElapsedColumn` | Elapsed time |
-| `TimeRemainingColumn` | Estimated time remaining |
+| `TimeElapsedColumn` | Elapsed time, held where it stopped once the task is finished |
+| `TimeRemainingColumn` | Estimated time remaining; `{ elapsedWhenFinished: true }` shows the time the task took once it is finished |
 | `MofNCompleteColumn` | `completed/total` count |
 | `SpinnerColumn` | Animated spinner, styled `progress.spinner`; a space once the task is finished |
 

@@ -1,10 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import {
   BarColumn,
   Progress,
   SpinnerColumn,
   TaskProgressColumn,
   TextColumn,
+  TimeElapsedColumn,
+  TimeRemainingColumn,
   type ProgressColumn,
   type Task,
 } from "../../src/renderables/progress.js";
@@ -260,5 +262,53 @@ describe("SpinnerColumn (rich-progress-sy9s)", () => {
 describe("Progress.finished (rich-progress-qjm9)", () => {
   it("is true with no tasks, as Rich's `all` over none is", () => {
     expect(new Progress({ console: new Console({ file: { write: () => {} } }) }).finished).toBe(true);
+  });
+});
+
+describe("TimeElapsedColumn and TimeRemainingColumn (rich-progress-jj5r)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(0);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // Python Rich 9d8f9a3 with `get_time` driven by hand: task `a` is added at
+  // 0s, reaches its total at 5.7s and is drawn at 100s; task `q` is added with
+  // `start=False` and never started. Each cell is the column's text and style.
+  const cells = (): string[][] => {
+    const columns = [
+      new TimeElapsedColumn(),
+      new TimeRemainingColumn(),
+      new TimeRemainingColumn({ elapsedWhenFinished: true }),
+    ];
+    // Draws each cell as Progress hands it, keeping the text and its style.
+    const rows: string[][] = [];
+    const recorder: ProgressColumn = {
+      tableColumn: {},
+      render: (task) => {
+        rows.push(columns.map((column) => {
+          const text = column.render(task);
+          return `${text.plain} ${String(text.style)}`;
+        }));
+        return new RichText("");
+      },
+    };
+    const progress = new Progress(recorder, { console: new Console({ file: { write: () => {} } }) });
+    const a = progress.addTask("a", { total: 10 });
+    progress.addTask("q", { total: 10, start: false });
+    vi.setSystemTime(5700);
+    progress.updateTask(a, { completed: 10 });
+    vi.setSystemTime(100_000);
+    [...progress.render(OPTS)];
+    return rows;
+  };
+
+  it("holds a finished task's clock at its finish and shows no clock for one never started, as Rich does", () => {
+    expect(cells()).toEqual([
+      ["0:00:05 progress.elapsed", "0:00:00 progress.remaining", "0:00:05 progress.elapsed"],
+      ["-:--:-- progress.elapsed", "-:--:-- progress.remaining", "-:--:-- progress.remaining"],
+    ]);
   });
 });
