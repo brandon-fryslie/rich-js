@@ -137,11 +137,6 @@ describe("Spinner", () => {
     it("wraps a long label with its frame when drawn as a line of its own", () => {
       expect(collectText(new Spinner("dots", "a very long label"), { maxWidth: 10 })).toBe("⠋ a very \nlong label\n");
     });
-
-    it("leaves its fragment unwrapped for the caller composing it to cut", () => {
-      const fragment = [...new Spinner("dots", "a very long label").drawFrame({ maxWidth: 10 })];
-      expect(fragment.map((seg) => seg.text).join("")).toBe("⠋ a very long label");
-    });
   });
 
   describe("measurement", () => {

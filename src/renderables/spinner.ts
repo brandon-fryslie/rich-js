@@ -82,19 +82,9 @@ export class Spinner implements Renderable, Measurable {
   }
 
   /**
-   * The spinner's current frame and its text as a fragment a caller composes
-   * inside a line of its own, a `Progress` cell: no line end, and at its
-   * natural width, because the caller does the cutting, as with `drawLabel`.
-   */
-  *drawFrame(options: RenderOptions): Iterable<Segment> {
-    const line = this._currentLine(options);
-    line.overflow = "ignore";
-    yield* line.render(options);
-  }
-
-  /**
-   * The same line wrapped to the width and ended, because a `Spinner` printed
-   * or stacked in a `Group` is a line of its own, as the reference's `Text` is.
+   * The current frame and its label as one line wrapped to the width and
+   * ended, as the reference's `Text` is — printed, stacked in a `Group`, or
+   * laid out in a `Progress` cell alike.
    */
   *render(options: RenderOptions): Iterable<Segment> {
     yield* this._currentLine(options).render(options);
