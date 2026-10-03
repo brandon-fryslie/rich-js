@@ -95,9 +95,10 @@ const task = progress.addTask("Queued...", { total: 500, start: false });
 progress.startTask(task);
 ```
 
-Until then `TimeElapsedColumn` holds at `0:00:00` and `TimeRemainingColumn` at
-`-:--:--`. Use this for a queue of tasks you want on screen from the beginning but
-timed only while each one runs.
+Until then `TimeElapsedColumn` and `TimeRemainingColumn` both show `-:--:--`. Use
+this for a queue of tasks you want on screen from the beginning but timed only while
+each one runs. Calling `startTask()` on a task already running leaves its start where
+it was.
 
 There is no indeterminate mode, and omitting `total` is not a substitute for one. The
 two columns then disagree: `TaskProgressColumn` shows nothing, while `BarColumn` falls
@@ -119,6 +120,10 @@ The default refresh rate is 10 times per second. Tune it:
 ```typescript silent
 const progress = new Progress({ refreshPerSecond: 2 });
 ```
+
+Tasks are timed, and frames drawn, on `clock` — `systemClock()` unless you pass a
+[`Clock`](/app#animating-at-a-frame-rate) of your own, which is how a test moves a
+task's time by hand.
 
 Disable auto-refresh and call manually:
 
@@ -176,8 +181,8 @@ progress.stop();
 | `BarColumn` | The progress bar |
 | `TextColumn` | A format string (see below) |
 | `TaskProgressColumn` | Percentage complete, right-aligned in four cells so the row holds still |
-| `TimeElapsedColumn` | Elapsed time |
-| `TimeRemainingColumn` | Estimated time remaining |
+| `TimeElapsedColumn` | Elapsed time, held where it stopped once the task is finished |
+| `TimeRemainingColumn` | Estimated time remaining; `{ elapsedWhenFinished: true }` shows the time the task took once it is finished |
 | `MofNCompleteColumn` | `completed/total` count |
 | `SpinnerColumn` | Animated spinner, styled `progress.spinner`; a space once the task is finished |
 

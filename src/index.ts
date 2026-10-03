@@ -319,6 +319,7 @@ export type {
   Task,
   TaskOptions,
   TaskUpdateOptions,
+  TimeRemainingColumnOptions,
 } from "./renderables/progress.js";
 export { Prompt, IntPrompt, FloatPrompt, Confirm } from "./renderables/prompt.js";
 export type { ConfirmOptions, PromptInput, PromptOptions } from "./renderables/prompt.js";

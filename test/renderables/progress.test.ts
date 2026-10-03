@@ -5,6 +5,8 @@ import {
   SpinnerColumn,
   TaskProgressColumn,
   TextColumn,
+  TimeElapsedColumn,
+  TimeRemainingColumn,
   type ProgressColumn,
   type Task,
 } from "../../src/renderables/progress.js";
@@ -13,6 +15,7 @@ import { Theme } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
+import { fakeClock } from "../core/fake-clock.js";
 
 const OPTS: RenderOptions = {
   maxWidth: 80,
@@ -25,7 +28,6 @@ const fakeTask = (description: string): Task => ({
   description,
   total: 100,
   completed: 0,
-  started: true,
   visible: true,
   startTime: 0,
   elapsed: 0,
@@ -260,5 +262,57 @@ describe("SpinnerColumn (rich-progress-sy9s)", () => {
 describe("Progress.finished (rich-progress-qjm9)", () => {
   it("is true with no tasks, as Rich's `all` over none is", () => {
     expect(new Progress({ console: new Console({ file: { write: () => {} } }) }).finished).toBe(true);
+  });
+});
+
+describe("TimeElapsedColumn and TimeRemainingColumn (rich-progress-jj5r)", () => {
+  // Python Rich 9d8f9a3 with `get_time` driven by hand, every task added at
+  // 0s: `a` is started again at 3s, which keeps its first start, and reaches
+  // its total at 5.7s; `q` is added with `start=False` and never started; `r`
+  // is at 3 of 10 at 10s and 6 of 10 at 20s, 13.3s left; `n` has no total;
+  // `z` is added at 20s already halfway, with no time to have a speed. All are
+  // drawn at 20s. Each cell is the column's text and style.
+  it("holds a finished task's clock at its finish, estimates a running one's in whole seconds up, and shows none for one never started, as Rich does", () => {
+    const columns = [
+      new TimeElapsedColumn(),
+      new TimeRemainingColumn(),
+      new TimeRemainingColumn({ elapsedWhenFinished: true }),
+    ];
+    // Draws each cell as Progress hands it, keeping the text and its style.
+    const rows: string[][] = [];
+    const recorder: ProgressColumn = {
+      tableColumn: {},
+      render: (task) => {
+        rows.push(columns.map((column) => {
+          const text = column.render(task);
+          return `${text.plain} ${String(text.style)}`;
+        }));
+        return new RichText("");
+      },
+    };
+    const clock = fakeClock();
+    const progress = new Progress(recorder, { console: new Console({ file: { write: () => {} } }), clock });
+    const a = progress.addTask("a", { total: 10 });
+    progress.addTask("q", { total: 10, start: false });
+    const r = progress.addTask("r", { total: 10 });
+    progress.addTask("n");
+    clock.advance(3);
+    progress.startTask(a);
+    clock.advance(2.7);
+    progress.updateTask(a, { completed: 10 });
+    clock.advance(4.3);
+    progress.updateTask(r, { completed: 3 });
+    clock.advance(10);
+    progress.updateTask(r, { completed: 6 });
+    progress.updateTask(progress.addTask("z", { total: 10 }), { completed: 5 });
+    [...progress.render(OPTS)];
+
+    expect(rows).toEqual([
+      ["0:00:05 progress.elapsed", "0:00:00 progress.remaining", "0:00:05 progress.elapsed"],
+      ["-:--:-- progress.elapsed", "-:--:-- progress.remaining", "-:--:-- progress.remaining"],
+      ["0:00:20 progress.elapsed", "0:00:14 progress.remaining", "0:00:14 progress.remaining"],
+      ["0:00:20 progress.elapsed", " progress.remaining", " progress.remaining"],
+      ["0:00:00 progress.elapsed", "-:--:-- progress.remaining", "-:--:-- progress.remaining"],
+    ]);
   });
 });
