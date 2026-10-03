@@ -83,7 +83,7 @@ non-interactive program needs from the terminal without any of the above
 Build order within `src/core/`. Each tier imports only from tiers above it, but for `protocol`'s type-only import of `Highlighter`, whose comment owns why:
 
 ```
-0   anchor · cells · color · env · fnv1a · subscription
+0   anchor · cells · color · easing · env · fnv1a · subscription
 1   oklch · osc8 · style · wrap
 2   segment
 3   box · protocol · export-lines
@@ -116,6 +116,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
   this one answers word structure; separate from `text` because the pieces it
   finds are what every renderable showing a string is cut into, and its output
   is pinned against the reference in `test/core/text-wrap.golden.txt`.
+- **easing** — progress in [0, 1]: `Ease` (CSS's `cubicBezier`/`steps` and their named curves in `EASES`, `parseEase` for a spelled name) and `Phase` (`once`/`loop`/`pingPong`, seconds in, no clock read). The one curve vocabulary `ColorRamp` and every effect share.
 - **oklch** — perceptually-uniform polar colour space. sRGB ↔ OKLab ↔ OKLCH, reversible but for the final 0–255 quantization. This is where equal numeric deltas mean equal perceptual deltas, which is what transposition needs.
 - **style** — immutable `Style` descriptors (colours + text attributes + links). `Style.parse` (cached), `Style.add`. Includes `StyleStack`, `Theme`, `DEFAULT_STYLES`.
 - **segment** — atomic render unit `(text, style?, control?)`. Static methods (`applyStyle`, `splitLines`, `adjustLineLength`, `simplify`, `divide`) operate on `Segment[]` / `Segment[][]`.

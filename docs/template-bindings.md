@@ -142,7 +142,7 @@ A color that can be held is a color that can be composed. `color` names one, the
 | `scaleChroma c f` | multiply chroma (0 → gray, 1 → identity) |
 | `scaleLightness c f` | multiply lightness (1 → identity, -1 → invert) |
 | `shiftLightness c d` | add to lightness, after any scale |
-| `ramp v easing p₀ c₀ p₁ c₁ …` | the color at `v` along stops `cᵢ` at positions `pᵢ`, interpolated in OKLCH (`"linear"`) or held until the next stop (`"step"`) |
+| `ramp v ease p₀ c₀ p₁ c₁ …` | the color at `v` along stops `cᵢ` at positions `pᵢ`, interpolated in OKLCH through the named ease (`"linear"`, `"ease-in-out"`, …) or held until the next stop (`"step"`) |
 
 A color crosses the template seam as a `#RRGGBB` string, not an opaque object, and that carrier earns its keep three ways. The engine's `string` slot is its strictest — it refuses fragments outright, so a color slot can never quietly swallow styled text. The value flows through the language for free: `$muted := mix $fg $bg 60` holds it, `printf` prints it, `eq` compares it. And misuse is visible, because a color that lands in text position renders as the literal `#7aa2f7` rather than vanishing as a dropped style.
 
@@ -186,7 +186,7 @@ const meter = `{{- define "cell" -}}
 console.print(RichText.fromFragments(engine.compile(meter)({})));
 ```
 
-The `"step"` easing holds each stop's color until the next position, which is a threshold cascade — `≥ 50 warning, ≥ 80 error, else calm` — written as data instead of a chain of `if`s. It is the same function: a gradient and a cascade differ by one word. Positions are required, never spread evenly by default, because the positions *are* the decision — where warning begins is the whole content of a threshold, and a ramp that guessed them would be deciding it silently.
+The ease is any name in `EASES` ([Easing & Phases](/easing) lists them) and it shapes the way between each pair of stops. The `"step"` ease holds each stop's color until the next position, which is a threshold cascade — `≥ 50 warning, ≥ 80 error, else calm` — written as data instead of a chain of `if`s. It is the same function: a gradient and a cascade differ by one word. Positions are required, never spread evenly by default, because the positions *are* the decision — where warning begins is the whole content of a threshold, and a ramp that guessed them would be deciding it silently.
 
 Stops are color references, resolved through the same path as `color` (see below), so a ramp over palette names — `ramp .pct "step" 0 "surface" 50 "warning" 80 "error"` — recolors with the theme like every other color in the template, and a hex literal in a stop works because that resolver passes literals through.
 

@@ -9,60 +9,30 @@
  * can no longer transpose with the palette it was meant to belong to. A ramp
  * is the one function whose input is a number, so the decision stays inside.
  *
- * A threshold cascade is a ramp too: the same stops with a `step` easing hold
+ * A threshold cascade is a ramp too: the same stops with the `step` ease hold
  * each color until the next position, which is exactly `≥ threshold → hotter`
  * written as data. [LAW:one-type-per-behavior] One primitive; the easing is a
- * value, so a gradient and a cascade differ by one word, not by which function
- * was called.
+ * value — any `Ease` from `core/easing`, the vocabulary every effect shares —
+ * so a gradient and a cascade differ by one word, not by which function was
+ * called. [LAW:dataflow-not-control-flow] `at` applies it unconditionally.
  *
  * Interpolation is in OKLCH (`Oklch.mix`), so a `linear` ramp between two
  * theme colors passes through perceptually even steps rather than the muddy
  * midpoints of an sRGB blend.
  *
- * [LAW:one-way-deps] Imports `core/color` and `core/oklch` only; nothing here
- * knows what a palette is. Resolving stop *names* is the template binding's
+ * [LAW:one-way-deps] Imports `core/color`, `core/easing` and `core/oklch`
+ * only; nothing here knows what a palette is. Resolving stop *names* is the template binding's
  * job (`paletteFuncs`), which hands this module resolved colors.
  */
 
 import type { ColorRgba } from "../core/color.js";
+import type { Ease } from "../core/easing.js";
 import { Oklch } from "../core/oklch.js";
 
 /** One stop: the color the ramp is exactly `color` at position `at`. */
 export interface ColorStop {
   readonly at: number;
   readonly color: ColorRgba;
-}
-
-/**
- * How a value between two stops maps to progress along them. Each easing is
- * a function on segment progress `t ∈ [0, 1)` — `linear` keeps it, `step`
- * holds the left stop for the whole segment.
- *
- * [LAW:dataflow-not-control-flow] The easing is looked up by name and applied
- * unconditionally; `at` runs the same code for a gradient and a cascade.
- */
-export const RAMP_EASINGS = {
-  linear: (t: number): number => t,
-  step: (): number => 0,
-} as const;
-
-export type RampEasing = keyof typeof RAMP_EASINGS;
-
-export const RAMP_EASING_NAMES = Object.keys(RAMP_EASINGS) as readonly RampEasing[];
-
-/**
- * The gate a spelled easing crosses. [LAW:parse-dont-validate] — returns the
- * narrowed name, so `ColorRamp` never re-checks. Unknown names throw naming
- * every legal one. [LAW:no-silent-failure]
- */
-export function parseRampEasing(name: string): RampEasing {
-  if (!Object.hasOwn(RAMP_EASINGS, name)) {
-    throw new RangeError(
-      `unknown ramp easing ${JSON.stringify(name)}; expected one of ` +
-        RAMP_EASING_NAMES.map((n) => JSON.stringify(n)).join(", "),
-    );
-  }
-  return name as RampEasing;
 }
 
 /**
@@ -82,7 +52,7 @@ export function parseRampEasing(name: string): RampEasing {
  */
 export class ColorRamp {
   constructor(
-    readonly easing: RampEasing,
+    readonly ease: Ease,
     readonly stops: readonly ColorStop[],
   ) {
     if (stops.length === 0) {
@@ -104,14 +74,19 @@ export class ColorRamp {
 
   /**
    * The color at `value`. Below the first stop it is the first color; at or
-   * above the last stop it is the last; between two stops it is `easing`
-   * of the way from the lower to the upper, so a value exactly on a stop is
-   * that stop's color, byte for byte.
+   * above the last stop it is the last; between two stops the raw progress
+   * from the lower to the upper goes through `ease`, and the eased progress
+   * says how far to mix.
    *
-   * The two endpoint returns are the exactness contract, not a shortcut:
-   * the sRGB → OKLCH → sRGB round-trip can land a channel one unit off, and a
-   * ramp that does not hit its own stops exactly would make a `step` ramp
-   * paint a color the author never wrote.
+   * Eased progress 0 is the lower stop's color and 1 the upper's, byte for
+   * byte — the exactness contract, not a shortcut: the sRGB → OKLCH → sRGB
+   * round-trip can land a channel one unit off, and a ramp that did not hit
+   * its own stops exactly would make a `step` ramp paint a color the author
+   * never wrote. So a value on a stop is that stop's color whenever the ease
+   * starts at 0, as every built-in does but `step-start` and the
+   * `jump-start`/`jump-both` steps, which jump at the start of the interval as
+   * CSS defines them. An ease that overshoots [0, 1] holds the end colors
+   * where it does: a ramp never paints outside its stops.
    */
   at(value: number): ColorRgba {
     if (!Number.isFinite(value)) {
@@ -125,9 +100,9 @@ export class ColorRamp {
     const from = stops[lower] as ColorStop;
     if (lower === stops.length - 1) return from.color;
     // `to.at > value >= from.at` by construction of `lower`, so the segment
-    // has positive width and `t ∈ [0, 1)`.
+    // has positive width and raw progress is in [0, 1).
     const to = stops[lower + 1] as ColorStop;
-    const t = RAMP_EASINGS[this.easing]((value - from.at) / (to.at - from.at));
+    const t = this.ease((value - from.at) / (to.at - from.at));
     if (t <= 0) return from.color;
     if (t >= 1) return to.color;
     return Oklch.fromRgba(from.color).mix(Oklch.fromRgba(to.color), t).toRgba();

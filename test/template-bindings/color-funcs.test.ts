@@ -12,6 +12,7 @@ import {
 } from "../../src/themes/colorMath.js";
 import { parseHexColor } from "../../src/themes/colorRef.js";
 import { GRUVBOX, DRACULA } from "../../src/themes/terminalThemes.js";
+import { EASES } from "../../src/core/easing.js";
 import { ColorRamp } from "../../src/themes/ramp.js";
 import { baseStyleOf } from "../core/base-style.js";
 
@@ -282,7 +283,7 @@ describe("ramp — a number becomes a color inside the theme", () => {
     const byHex =
       `{{ ramp 65 "linear" 0 "${palette.get("surface")!.hex}" ` +
       `50 "${palette.get("warning")!.hex}" 80 "${palette.get("error")!.hex}" }}`;
-    const expected = new ColorRamp("linear", stops(palette)).at(65).hex;
+    const expected = new ColorRamp(EASES.linear, stops(palette)).at(65).hex;
     expect(colorText(byName)).toBe(expected);
     expect(colorText(byHex)).toBe(expected);
   });
@@ -304,9 +305,9 @@ describe("ramp — a number becomes a color inside the theme", () => {
     const swapping = engineFor(() => live);
     const tpl = swapping.parse(`{{ ramp 65 "linear" 0 "surface" 50 "warning" 80 "error" }}`);
     const text = () => tpl.evaluate({}).map((f) => f.plain).join("");
-    expect(text()).toBe(new ColorRamp("linear", stops(GRUVBOX.palette)).at(65).hex);
+    expect(text()).toBe(new ColorRamp(EASES.linear, stops(GRUVBOX.palette)).at(65).hex);
     live = DRACULA.palette;
-    expect(text()).toBe(new ColorRamp("linear", stops(DRACULA.palette)).at(65).hex);
+    expect(text()).toBe(new ColorRamp(EASES.linear, stops(DRACULA.palette)).at(65).hex);
   });
 
   it("composes: the result is a color `bg`/`fg` paint and `mix` transforms", () => {
@@ -328,7 +329,7 @@ describe("ramp — a number becomes a color inside the theme", () => {
       /last stop \(position 50\) has no color/,
     );
     expect(() => colorText(`{{ ramp 65 "smooth" 0 "surface" }}`)).toThrow(
-      /unknown ramp easing "smooth"/,
+      /unknown ease "smooth"/,
     );
     expect(() => colorText(`{{ ramp 65 "step" 0 "nope" }}`)).toThrow(/no such variable/);
     expect(() => colorText(`{{ ramp 65 "step" 80 "error" 50 "warning" }}`)).toThrow(

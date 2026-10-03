@@ -73,6 +73,7 @@ export const guideSidebar: SidebarGroup[] = [
     items: [
       { text: 'Progress Bars', link: '/progress' },
       { text: 'Live Display', link: '/live' },
+      { text: 'Easing & Phases', link: '/easing' },
       { text: 'Layout', link: '/layout' },
     ],
   },
