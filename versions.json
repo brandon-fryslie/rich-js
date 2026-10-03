@@ -4,15 +4,22 @@
     {
       "version": "pr-323",
       "ref": "refs/pull/323/merge",
-      "sha": "8e886bcd2b1fa105f912ece26e1b10552f02920d",
-      "timestamp": "2026-10-03T13:47:02.253Z",
+      "sha": "4029cd24fbf53eabf3c4152503fd1e9f1bf75844",
+      "timestamp": "2026-10-03T13:48:50.318Z",
       "commits": [
         {
-          "sha": "8e886bcd2b1fa105f912ece26e1b10552f02920d",
+          "sha": "4029cd24fbf53eabf3c4152503fd1e9f1bf75844",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T13:46:10Z",
-          "message": "Merge b916103ca5309f25a51d2f03efac93136c5f08b2 into f893d6e1571c6d2709625a7eaf7c95a0b045600e\n"
+          "timestamp": "2026-10-03T13:47:33Z",
+          "message": "Merge 466565d6bddb69aabfefafac423dba144f0009a8 into f893d6e1571c6d2709625a7eaf7c95a0b045600e\n"
+        },
+        {
+          "sha": "466565d6bddb69aabfefafac423dba144f0009a8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T07:47:29-06:00",
+          "message": "test(highlighter): compare Rich's code-point span offsets as UTF-16, pin a token after an astral character (rich-highlighter-xwqv)\n"
         },
         {
           "sha": "b916103ca5309f25a51d2f03efac93136c5f08b2",
