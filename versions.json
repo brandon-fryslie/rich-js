@@ -4,15 +4,22 @@
     {
       "version": "pr-306",
       "ref": "refs/pull/306/merge",
-      "sha": "17e7b584beec303ef8d7df1a5bcb7057f8b2f2d2",
-      "timestamp": "2026-10-03T09:08:49.709Z",
+      "sha": "bf0ffcddf8d6936d1feca394c2ef34f6d3865f82",
+      "timestamp": "2026-10-03T09:20:18.044Z",
       "commits": [
         {
-          "sha": "17e7b584beec303ef8d7df1a5bcb7057f8b2f2d2",
+          "sha": "bf0ffcddf8d6936d1feca394c2ef34f6d3865f82",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T03:07:33-06:00",
-          "message": "Merge f22ca4ec0d20658666c3fa1a6edea1218663841d into 97ae7e2cc96473d2a839b810587d60c6f667f808\n"
+          "timestamp": "2026-10-03T09:19:03Z",
+          "message": "Merge d5876088e7b3fec09ec49c1a8f91a71bdd47e0b5 into 97ae7e2cc96473d2a839b810587d60c6f667f808\n"
+        },
+        {
+          "sha": "d5876088e7b3fec09ec49c1a8f91a71bdd47e0b5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T03:18:58-06:00",
+          "message": "fix(demos): live rows land on the page's line height at any device pixel ratio; the status bar measures itself and never wraps (rich-demos-z4hd)\n\nxterm measures a character in whole CSS pixels (offsetHeight) and makes a row\nthat rounded up to whole device pixels, so a whole-pixel line height only\nmatches at dpr 1. custom.css now measures xterm at --rich-fragment-line and\nderives the page's line height from it the way xterm does, with the ratio\ntracked on :root; the measure rule moves into loadXterm so every LiveTerminal\nhas it. The status bar reads its width off its own markup and is drawn\nno-wrap with an ellipsis, so it is one row at every width.\n"
         },
         {
           "sha": "f22ca4ec0d20658666c3fa1a6edea1218663841d",
