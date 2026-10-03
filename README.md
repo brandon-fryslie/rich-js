@@ -387,6 +387,7 @@ npm run demo
 | `npm run template-bindings` | rich-template-bindings | Type a template on the left and watch it render on the right. |
 | `npm run themes-and-color-studio` | themes-and-color-studio | A printed tour of colours, palettes, bundled themes, and contrast. Prints once and exits; set any of `EXPORT_HTML=out.html`, `EXPORT_SVG=out.svg` and `EXPORT_TEXT=out.txt` to also save it to each file named. |
 | `npm run strip` | rich-strip | Every built-in `Joiner`, printed side by side. Prints once and exits. |
+| `npm run effects-feel` | effects-feel | Shimmer, pulse, drift, sparkle, fade-in and dissolve-out on a powerline strip and a run of text, at a frame rate, colour depth and ground you choose. A demo for agreeing how the effects feel; `npm run effects-feel -- --help` lists the flags. |
 | `npm run markup-plugins` | rich-markup-plugins | Custom markup tags registered through `MarkupRegistry`. Prints once and exits. |
 | `npm run viewport` | rich-viewport | A cursor walking a list taller than its window, kept in view by `Viewport.ensureVisible`. |
 
