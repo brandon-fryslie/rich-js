@@ -24,42 +24,6 @@
       ]
     },
     {
-      "version": "pr-311",
-      "ref": "refs/pull/311/merge",
-      "sha": "36951aaf13cb7bc4e84709621d764c90f7224d03",
-      "timestamp": "2026-10-03T11:15:27.989Z",
-      "commits": [
-        {
-          "sha": "36951aaf13cb7bc4e84709621d764c90f7224d03",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T11:13:53Z",
-          "message": "Merge 1b766ccb9dbe22377fbbf90189ac39cf817817b5 into b808387a254349d73d156465df76fbcbbd5b07dc\n"
-        },
-        {
-          "sha": "1b766ccb9dbe22377fbbf90189ac39cf817817b5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T05:13:49-06:00",
-          "message": "fix(examples): effects-feel light keeps text legible, loops glide at 1 fps (rich-effects-fxiy.b6i)\n\nReview (high) fixes:\n- A colour catches the light that reads against its own ink (Light: pale/deep),\n  not the page ground's. A glint on a muted strip fill took label contrast to\n  1.29:1; it now holds rest contrast (5.05 vs 5.06 on Mocha).\n- The no-jump gate is 0.04 dE_OK at 1 fps over 300 s on both rows, as its\n  comment says, against the demo's real defaults. Caustic crests are rounded,\n  firefly halos wider and lazier, sparkle swing 0.42.\n- drift silvers by gust strength, not by degrees, so a wide swing turns hue\n  instead of washing out.\n- Each subject sits at its own z in the noise; nothing read the seeds.\n- Worst contrast is read over 8 periods and says so.\n- Firefly state per moment and transition order per cell are computed once.\n- LIGHTS and SHIMMER_WIDTH are exported; tests import them.\n"
-        },
-        {
-          "sha": "8ca3236e7ecbf42c541eac31dd6e86c627c260e6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:56:21-06:00",
-          "message": "feat(examples): effects-feel curves turbulent, drifting and wider; strip span read off its drawn row (rich-effects-fxiy.b6i)\n\nDrift rides a domain-warped field with gust sets; fireflies are wandering\npoints with soft halos; shimmer's caustics ride a current inside a wider\nband (48 s, half-width 16); transitions bloom over a wider order.\n\nA Strip is not Measurable, so drawnSubject measured the strip at\nMAX_SAFE_INTEGER columns: shimmer never reached it and drift moved at an\nabsurd speed. The 1 fps no-jump gate now runs at the strip's real width.\n"
-        },
-        {
-          "sha": "3f8a6ff13583686b7ccc20e1c573dd94ca30a294",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:47:20-06:00",
-          "message": "feat(examples): effects-feel curves rebuilt as breath, sunlight on water, wind, fireflies (rich-effects-fxiy.b6i)\n\nBrandon's first verdict on b6i: the defaults were jerky and choppy. The loops\nare now smooth noise and smooth waveforms, light mixes in OKLab instead of\nround the hue circle, and the demo runs at 30 fps by default. A test bars any\nloop from moving a cell more than dE_OK 0.06 between frames at 1 fps.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b808387a254349d73d156465df76fbcbbd5b07dc",
