@@ -19,25 +19,34 @@ import type { CellCol } from "../core/cells.js";
 
 /**
  * Rich's `ratio_distribute`: each part the ceiling of its share of what the
- * parts before it left, so the parts sum to the total and the rounding lands on
- * the leftmost parts. `BigInt` refuses a ratio that is not whole with a
- * RangeError, and the reference takes only whole ones.
+ * parts before it left, and never below its minimum, so the rounding lands on
+ * the leftmost parts. The parts sum to the total whenever the minimums leave
+ * room; a minimum that does not fit is paid anyway, as the reference pays it,
+ * and the parts then overrun the total. The ratios are weights in one exact
+ * proportion (`exactWeights`), so a fractional one divides as it reads, where
+ * the reference takes only whole ones.
  */
-export function ratioDistribute(total: number, ratios: readonly number[]): number[] {
-  const whole = ratios.map((ratio) => BigInt(ratio));
-  let totalRatio = whole.reduce((sum, ratio) => sum + ratio, 0n);
+export function ratioDistribute(
+  total: number,
+  ratios: readonly number[],
+  minimums: readonly number[] = ratios.map(() => 0),
+): number[] {
+  const weights = exactWeights(ratios);
+  let totalRatio = weights.reduce((sum, ratio) => sum + ratio, 0n);
   let remaining = BigInt(total);
-  return whole.map((ratio) => {
+  return weights.map((ratio, index) => {
     // A zero ratio sum is the reference's `else` arm: whatever is left goes to
     // the part at hand, so the total is still handed out in full.
-    const part = totalRatio > 0n ? ceilDiv(ratio * remaining, totalRatio) : remaining;
+    const share = totalRatio > 0n ? ceilDiv(ratio * remaining, totalRatio) : remaining;
+    const minimum = BigInt(minimums[index]!);
+    const part = share > minimum ? share : minimum;
     totalRatio -= ratio;
     remaining -= part;
     return Number(part);
   });
 }
 
-/** Python's `ceil(a / b)` for a positive `b`: `BigInt` division truncates toward zero. */
+/** Python's `ceil(a / b)` for a positive `b`: `BigInt` division truncates toward zero, which is the ceiling for a negative `a`. */
 function ceilDiv(a: bigint, b: bigint): bigint {
   const quotient = a / b;
   return a % b > 0n ? quotient + 1n : quotient;

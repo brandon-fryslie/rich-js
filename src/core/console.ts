@@ -11,7 +11,7 @@ import type { TerminalTheme } from "./color.js";
 import { encodeHtml } from "./export-html.js";
 import { encodeSvg } from "./export-svg.js";
 import { RichText } from "./text.js";
-import { renderStr } from "./markup.js";
+import { activeHighlighter, renderStr } from "./markup.js";
 import { Pretty, UNSEEN_DATA_BOUNDS, isExpandable } from "./pretty.js";
 import { JSONRenderable, type JSONOptions } from "./json.js";
 import { ReprHighlighter, NullHighlighter } from "./highlighter.js";
@@ -491,7 +491,8 @@ export class Console {
       onStyleError: this._onStyleError,
       colorSystem: this._destination.colorSystem,
       markup: this._markup,
-      highlighter: this._highlight ? this._highlighter : undefined,
+      highlight: this._highlight,
+      highlighter: this._highlighter,
     };
   }
 
@@ -532,9 +533,10 @@ export class Console {
     // What a string is read as, wherever in this print it lands: an argument,
     // or a cell or label inside a renderable argument. `print`'s own flags
     // outrank the console's, as Rich's `options.update` has them.
-    const strings: Pick<RenderOptions, "markup" | "highlighter"> = {
+    const strings: Pick<RenderOptions, "markup" | "highlight" | "highlighter"> = {
       markup: opts.markup ?? this._markup,
-      highlighter: (opts.highlight ?? this._highlight) ? this._highlighter : undefined,
+      highlight: opts.highlight ?? this._highlight,
+      highlighter: this._highlighter,
     };
     const sep = opts.sep ?? " ";
     const end = opts.end ?? "\n";
@@ -586,7 +588,7 @@ export class Console {
         // the disabled case is an identity highlighter, not a skipped call.
         const pretty = new Pretty(item, {
           ...UNSEEN_DATA_BOUNDS,
-          highlighter: strings.highlighter ?? NO_HIGHLIGHT,
+          highlighter: activeHighlighter(strings) ?? NO_HIGHLIGHT,
         });
         // A scalar spells the same at every width, so it joins its run as the
         // one text it is.

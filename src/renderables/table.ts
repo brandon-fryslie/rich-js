@@ -104,8 +104,7 @@ const blank = (n: number): Segment[] => (n > 0 ? [new Segment(" ".repeat(n))] : 
  * than an optimization: handing cells out one at a time made the iteration
  * count the width itself, which stalled on a very wide table and — since
  * `Infinity - 1 === Infinity` — never terminated at all for a `maxWidth` of
- * `Infinity` held open by a ratio column. Capping by want reaches that case in
- * one round.
+ * `Infinity`. Capping by want reaches that case in one round.
  *
  * The arithmetic is exact. A share's fraction is what decides who gets a
  * leftover cell, and in floating point two fractions that are equal — 6/14 and
@@ -322,11 +321,31 @@ function layoutTable(
       weight: demand.fill > 0 ? 1 : 0,
     })),
   );
-  // Then to the ratio columns, in proportion.
-  const shared = distribute(
-    budget - spent(wanted) - spent(filled),
-    seatedDemands.map((demand) => ({ want: UNBOUNDED, weight: demand.ratio })),
+  // Then to the ratio columns, by the reference's flexible split:
+  // `ratio_distribute(max_width - fixed_widths, ratios, flex_minimum)`. What
+  // is split is every cell the bounded columns leave, the cells the ratio
+  // columns already hold and their padding included, because Rich's widths
+  // are padded widths; each is held to at least its padding and its floor.
+  // The floor reads `minWidth`, where the reference's `column.width or 1`
+  // reads none and draws a `min_width=12` ratio column five cells wide.
+  // A ratio column is paid the rest of its part out of the budget, in column
+  // order, so a part the minimums push past what is left is cut there rather
+  // than drawn past the width.
+  const afterFill = holding(wanted, filled);
+  const flexible = seatedDemands.flatMap((demand, index) => (demand.ratio > 0 ? [index] : []));
+  const padded = (index: number, content: number): number => padLeft[index]! + content + padRight[index]!;
+  // `UNBOUNDED` holds an unbounded offer, as it does for the stretch below.
+  let unshared = Math.min(budget - spent(wanted) - spent(filled), UNBOUNDED);
+  const parts = ratioDistribute(
+    unshared + flexible.reduce((sum, index) => sum + padded(index, afterFill[index]!), 0),
+    flexible.map((index) => seatedDemands[index]!.ratio),
+    flexible.map((index) => padded(index, seatedDemands[index]!.want)),
   );
+  const shared = seatedDemands.map(() => 0);
+  flexible.forEach((index, slot) => {
+    shared[index] = Math.min(Math.max(0, parts[slot]! - padded(index, afterFill[index]!)), unshared);
+    unshared -= shared[index]!;
+  });
   // What the shares leave goes to the columns that stretch, by the width each
   // already holds with its padding: its natural width, since nothing is left
   // over while any column is short, or the cap a fill stopped at. The split is
@@ -391,6 +410,12 @@ export interface ColumnOptions {
   ratio?: number;
   noWrap?: boolean;
   overflow?: OverflowMethod;
+  /**
+   * Whether the column's string cells — its header and footer among them — are
+   * drawn with the console's highlighter, as Rich's `Column(highlight=)`.
+   * `false` for a `Column` built alone; `addColumn` takes the table's.
+   */
+  highlight?: boolean;
 }
 
 /**
@@ -421,6 +446,7 @@ export class Column {
   ratio: number | undefined;
   noWrap: boolean;
   overflow: OverflowMethod;
+  highlight: boolean;
   private _cells: Renderable[];
 
   constructor(options?: ColumnOptions) {
@@ -436,6 +462,7 @@ export class Column {
     this.ratio = options?.ratio;
     this.noWrap = options?.noWrap ?? false;
     this.overflow = options?.overflow ?? "ellipsis";
+    this.highlight = options?.highlight ?? false;
     this._cells = [];
   }
 
@@ -495,6 +522,7 @@ export class Column {
       ratio: this.ratio,
       noWrap: this.noWrap,
       overflow: this.overflow,
+      highlight: this.highlight,
     });
     col.headerStyle = this.headerStyle;
     col.footerStyle = this.footerStyle;
@@ -532,6 +560,8 @@ export interface TableOptions {
   width?: number;
   minWidth?: number;
   rowStyles?: string[];
+  /** The `highlight` every column `addColumn` makes takes unless told otherwise (default: `false`). */
+  highlight?: boolean;
 }
 
 export class Table implements Renderable, Measurable {
@@ -559,6 +589,7 @@ export class Table implements Renderable, Measurable {
   readonly tableWidth: number | undefined;
   readonly minWidth: number | undefined;
   readonly rowStyles: string[];
+  readonly highlight: boolean;
 
   get title(): (Renderable & Measurable) | undefined {
     return this._title;
@@ -598,6 +629,7 @@ export class Table implements Renderable, Measurable {
     this.tableWidth = options?.width;
     this.minWidth = options?.minWidth;
     this.rowStyles = options?.rowStyles ?? [];
+    this.highlight = options?.highlight ?? false;
   }
 
   get columns(): Column[] {
@@ -609,7 +641,7 @@ export class Table implements Renderable, Measurable {
   }
 
   addColumn(header?: ColumnOptions["header"], options?: ColumnOptions): this {
-    const col = new Column({ ...options, header: header ?? options?.header });
+    const col = new Column({ ...options, header: header ?? options?.header, highlight: options?.highlight ?? this.highlight });
     this._columns.push(col);
     return this;
   }
@@ -1075,11 +1107,10 @@ export class Table implements Renderable, Measurable {
       // table stacks its cells, so each is handed the table's rows as a
       // ceiling, never a region to fill — the `Height` contract's
       // `stackedHeight`, where the reference hands a cell `height=None`.
-      // No highlighter: a cell's string is drawn plain, as Rich's column
-      // `highlight=False` draws it.
+      // Highlighted as its column says, Rich's `highlight=column.highlight`.
       const segs = [...cell.render({
         ...options,
-        highlighter: undefined,
+        highlight: col.highlight,
         maxWidth: cellWidth,
         justify: col.justify,
         overflow: col.overflow,
@@ -1154,7 +1185,7 @@ export class Table implements Renderable, Measurable {
     //
     // Never highlighted, and markup as the console says: Rich draws a title
     // and caption through `render_str(highlight=False)`.
-    const source = text.text({ ...options, highlighter: undefined });
+    const source = text.text({ ...options, highlight: false });
     source.justify = undefined;
     if (source.overflow === "ignore") source.overflow = undefined;
 

@@ -217,7 +217,7 @@ export class Tree implements Renderable, Measurable {
     // that ignores the width it is handed cannot push the row past the offer the
     // guides were fitted into. No highlighter: a label is drawn plain, as
     // Rich's `Tree` hands its labels `highlight=False`.
-    const labelOptions = { ...options, highlighter: undefined, maxWidth: width, height: stackedHeight(options.height) };
+    const labelOptions = { ...options, highlight: false, maxWidth: width, height: stackedHeight(options.height) };
     const lines = Segment.splitLines(Segment.applyStyle(Segment.cropLines(row.label.render(labelOptions), width), style));
     if (lines.length === 0) lines.push([]);
     for (let i = 0; i < lines.length; i++) {

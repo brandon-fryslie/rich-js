@@ -143,7 +143,7 @@ function frameOverhead(geometry: PanelGeometry): number {
  * title with `Text.from_markup` rather than through the console.
  */
 function borderLabel(options: RenderOptions): RenderOptions {
-  return { ...options, markup: true, highlighter: undefined };
+  return { ...options, markup: true, highlight: false };
 }
 
 /**
@@ -244,7 +244,7 @@ export class Panel implements Renderable, Measurable {
     const height = insetHeight(options.height, 2 + padTop + padBottom);
     // No highlighter: what the panel holds is drawn plain, as Rich's `Panel`
     // hands its body `highlight=False`.
-    const innerOptions: RenderOptions = { ...options, highlighter: undefined, maxWidth: contentWidth, height };
+    const innerOptions: RenderOptions = { ...options, highlight: false, maxWidth: contentWidth, height };
     const lines = fitHeight(
       Segment.splitLines([...Segment.applyStyle(this.renderable.render(innerOptions), style)]),
       height,

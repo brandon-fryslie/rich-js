@@ -205,6 +205,57 @@ describe("a console's markup and highlight settings, in content embedded in a re
     });
   }
 
+  // Rich's `Table(highlight=)` and `Column(highlight=)`: the column's setting
+  // is the cell's `options.update(highlight=column.highlight)`, so it decides
+  // over the console's `highlight` and print's, with the console's highlighter.
+  function highlightTable(slot: "cell" | "header" | "footer", own: "table" | "column") {
+    return (content: string): Renderable => {
+      const t = new Table({ showFooter: slot === "footer", highlight: own === "table" });
+      t.addColumn(slot === "header" ? content : "a header wider than any content", {
+        ...(slot === "footer" ? { footer: content } : {}),
+        ...(own === "column" ? { highlight: true } : {}),
+      });
+      t.addRow(slot === "cell" ? content : "x");
+      return t;
+    };
+  }
+  const highlightedTable: [string, (content: string) => Renderable][] = [
+    ["a highlight table's cell", highlightTable("cell", "table")],
+    ["a highlight table's header", highlightTable("header", "table")],
+    ["a highlight table's footer", highlightTable("footer", "table")],
+    ["a highlight column's cell", highlightTable("cell", "column")],
+    ["a highlight column's header", highlightTable("header", "column")],
+    ["a highlight column's footer", highlightTable("footer", "column")],
+  ];
+
+  for (const [site, build] of highlightedTable) {
+    it(`highlights ${site} with the console's highlighter`, () => {
+      expect(printed(build("Hello"), { highlighter: new Underliner() })).toContain(UNDERLINE);
+    });
+
+    it(`highlights ${site} under a console with highlight off, as Rich's column setting outranks it`, () => {
+      expect(printed(build("Hello"), { highlighter: new Underliner(), highlight: false })).toContain(UNDERLINE);
+    });
+
+    it(`highlights ${site} printed with highlight off`, () => {
+      expect(printed(build("Hello"), { highlighter: new Underliner() }, { highlight: false })).toContain(UNDERLINE);
+    });
+  }
+
+  it("draws a highlight table's highlight: false column, title and caption plain", () => {
+    const t = new Table({ highlight: true, title: "Hello", caption: "Hello" });
+    t.addColumn("Hello", { highlight: false });
+    t.addRow("Hello");
+    expect(printed(t, { highlighter: new Underliner() })).not.toContain(UNDERLINE);
+  });
+
+  it("leaves a RichText cell in a highlight column as it was styled, as Rich highlights only strings", () => {
+    const t = new Table({ highlight: true, showHeader: false });
+    t.addColumn();
+    t.addRow(new RichText("Hello"));
+    expect(printed(t, { highlighter: new Underliner() })).not.toContain(UNDERLINE);
+  });
+
   it("repr-highlights column items under a default console, as print does", () => {
     const cyan = "\x1b[36m1";
     expect(printed(new Columns(["1", "True"]))).toContain(cyan);

@@ -662,6 +662,15 @@ describe("Column", () => {
     const col = new Column();
     expect(col.justify).toBe("left");
     expect(col.noWrap).toBe(false);
+    expect(col.highlight).toBe(false);
+  });
+
+  it("takes its table's highlight unless told otherwise, as Rich's add_column does", () => {
+    const t = new Table({ highlight: true });
+    t.addColumn("a");
+    t.addColumn("b", { highlight: false });
+    t.addRow("x", "y", "z");
+    expect(t.columns.map((c) => c.highlight)).toEqual([true, false, true]);
   });
 
   it("flexible when ratio is set", () => {
@@ -679,9 +688,10 @@ describe("Column", () => {
   });
 
   it("copy creates independent instance", () => {
-    const col = new Column({ header: "Test", justify: "right" });
+    const col = new Column({ header: "Test", justify: "right", highlight: true });
     const copy = col.copy();
     expect(copy.justify).toBe("right");
+    expect(copy.highlight).toBe(true);
 
     // Reassigning the original's header leaves the copy's alone.
     col.header = "Other";
@@ -1170,22 +1180,20 @@ describe("Table stays inside the width it is given", () => {
     expect(new Set(lines.map(cellLen))).toEqual(new Set([20]));
   });
 
-  // 16 cells over 1 : 3 : 10 leave the last two columns an exact 6/14 each,
-  // which floating point reads as 0.4285714285714284 against …288 — so the
-  // spare cell went right, against the stated rule, and could move between two
-  // tables differing only in the scale of their ratios.
+  // Shares compared in floating point came out 0.4285714285714284 against
+  // …288 for one exact 6/14, so a spare cell could move between two tables
+  // differing only in the scale of their ratios.
   it.each([
     [1, 3, 10],
     [0.5, 1.5, 5],
     [0.1, 0.3, 1],
-  ])("gives a tied spare cell to the leftmost column, over ratios %s : %s : %s", (...ratios) => {
+  ])("splits the same at any scale of its ratios, %s : %s : %s", (...ratios) => {
     const t = Table.grid({ padding: 0 });
     for (const ratio of ratios) t.addColumn(undefined, { ratio });
     t.addRow("a", "b", "c");
-    // Each column is seated on one cell and the ratios share the other 16:
-    // 1 + 2/14, 3 + 6/14 and 11 + 6/14, so the one spare cell goes to the middle.
+    // Python Rich 9d8f9a3: ratio_distribute(19, [1, 3, 10], [1, 1, 1]) == [2, 4, 13].
     expect(collectLines(t, { maxWidth: 19 })).toEqual([
-      "a" + " ".repeat(1) + "b" + " ".repeat(4) + "c" + " ".repeat(11),
+      "a" + " ".repeat(1) + "b" + " ".repeat(3) + "c" + " ".repeat(12),
     ]);
   });
 
@@ -1704,6 +1712,77 @@ describe("Table sizes and pads cells as Rich does", () => {
       "┏━━━┓", "┃   ┃", "┃ H ┃", "┃   ┃", "┡━━━┩",
       "│   │", "│ a │", "│   │", "│   │", "│ b │", "│   │", "└───┘",
     ]);
+  });
+
+  it("draws a row's stripe across its padding above and below, padEdge dropping the outer rows' (rich-table-7m57)", () => {
+    const ansi = (t: Table): string => renderToString(t, { width: 20 });
+    const B = (s: string): string => `\x1b[44m${s}\x1b[0m`;
+    const R = (s: string): string => `\x1b[41m${s}\x1b[0m`;
+    const H = (s: string): string => `\x1b[1m${s}\x1b[0m`;
+
+    const one = new Table({ padding: [1, 1], rowStyles: ["on blue"], showHeader: false });
+    one.addColumn();
+    one.addRow("a");
+    expect(ansi(one)).toBe(`┌───┐\n│${B("   ")}│\n│${B(" ")}${B("a")}${B(" ")}│\n│${B("   ")}│\n└───┘\n`);
+
+    const collapsed = new Table({ padding: [1, 1], rowStyles: ["on blue", "on red"], collapsePadding: true, showHeader: false });
+    collapsed.addColumn();
+    collapsed.addRow("a");
+    collapsed.addRow("b");
+    expect(ansi(collapsed)).toBe(
+      `┌───┐\n│${B("   ")}│\n│${B(" ")}${B("a")}${B(" ")}│\n│${R("   ")}│\n│${R(" ")}${R("b")}${R(" ")}│\n│${R("   ")}│\n└───┘\n`,
+    );
+
+    const edgeless = new Table({ padding: [2, 1, 1, 1], padEdge: false, rowStyles: ["on blue"] });
+    edgeless.addColumn("H");
+    edgeless.addColumn("I");
+    edgeless.addRow("a", "b");
+    edgeless.addRow("c", "d");
+    const blank = `│${B("  ")}│${B("  ")}│\n`;
+    expect(ansi(edgeless)).toBe(
+      `┏━━┳━━┓\n┃${H("H")}${H(" ")}┃${H(" ")}${H("I")}┃\n┃${H("  ")}┃${H("  ")}┃\n┡━━╇━━┩\n` +
+        `${blank}${blank}│${B("a")}${B(" ")}│${B(" ")}${B("b")}│\n${blank}` +
+        `${blank}${blank}│${B("c")}${B(" ")}│${B(" ")}${B("d")}│\n└──┴──┘\n`,
+    );
+  });
+
+  it("splits an expanding table's ratio columns as Rich's ratio_distribute does (rich-table-7m57)", () => {
+    const flex = (width: number, padding: PaddingDimensions, columns: ColumnOptions[], ...cells: string[]): string[] => {
+      const g = Table.grid({ expand: true, padding });
+      for (const column of columns) g.addColumn(undefined, column);
+      g.addRow(...cells);
+      return lines(g, width);
+    };
+    expect(flex(17, 0, [{ ratio: 2 }, { ratio: 1 }], "a", "b")).toEqual(["a           b    "]);
+    expect(flex(30, [0, 1, 0, 0], [{}, { ratio: 1 }, { ratio: 3 }], "fixed", "x", "y")).toEqual([
+      "fixed x     y                 ",
+    ]);
+    expect(flex(23, [0, 1], [{ ratio: 1 }, { ratio: 1 }, { ratio: 1 }], "a", "b", "c")).toEqual(["a       b       c      "]);
+    expect(flex(10, 0, [{ ratio: 1 }, { ratio: 1 }], "abcdefgh", "ijklmnop")).toEqual(["abcd…ijkl…"]);
+
+    const boxed = new Table({ expand: true });
+    boxed.addColumn("A", { ratio: 1 });
+    boxed.addColumn("Bee", { ratio: 2 });
+    boxed.addColumn("fixed col");
+    boxed.addRow("1", "2", "3");
+    expect(lines(boxed, 40)).toEqual([
+      "┏━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┓",
+      "┃ A       ┃ Bee            ┃ fixed col ┃",
+      "┡━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━┩",
+      "│ 1       │ 2              │ 3         │",
+      "└─────────┴────────────────┴───────────┘",
+    ]);
+  });
+
+  it("holds a ratio column to its minWidth in the split, where Rich reads no minWidth there", () => {
+    // Rich's flexible minimum is `column.width or 1` and draws this `a` five
+    // cells wide: `ratio_distribute(20, [1, 3], [1, 1])`. Here it is
+    // `ratio_distribute(20, [1, 3], [12, 1])`.
+    const g = Table.grid({ expand: true, padding: 0 });
+    g.addColumn(undefined, { ratio: 1, minWidth: 12 });
+    g.addColumn(undefined, { ratio: 3 });
+    g.addRow("a", "b");
+    expect(lines(g, 20)).toEqual(["a           b       "]);
   });
 
   it("collapsePadding merges a row's bottom padding into the next row's top", () => {

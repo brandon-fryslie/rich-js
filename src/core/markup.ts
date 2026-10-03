@@ -536,14 +536,29 @@ export function readStr(source: string, markup: boolean): RichText {
 }
 
 /**
- * A string as the text it draws, the way Rich's `render_str` makes one: read
- * by `readStr` under `markup`, then highlighted by `highlighter` if there is
- * one. `print` and every renderable that is handed a string both draw it this
- * way, so a console's settings mean the same thing wherever the string lands.
+ * The highlighter a string is drawn with under `settings`: its `highlighter`
+ * while `highlight` is not false — Rich's `render_str`, which highlights with
+ * `console.highlighter` when `highlight` is true or left to the console.
+ * [LAW:single-enforcer]
  */
-export function renderStr(source: string, settings: Pick<DrawOptions, "markup" | "highlighter">): RichText {
+export function activeHighlighter(
+  settings: Pick<DrawOptions, "highlight" | "highlighter">,
+): DrawOptions["highlighter"] {
+  return settings.highlight === false ? undefined : settings.highlighter;
+}
+
+/**
+ * A string as the text it draws, the way Rich's `render_str` makes one: read
+ * by `readStr` under `markup`, then highlighted by `activeHighlighter`.
+ * `print` and every renderable that is handed a string both draw it this way,
+ * so a console's settings mean the same thing wherever the string lands.
+ */
+export function renderStr(
+  source: string,
+  settings: Pick<DrawOptions, "markup" | "highlight" | "highlighter">,
+): RichText {
   const text = readStr(source, settings.markup !== false);
-  settings.highlighter?.highlight(text);
+  activeHighlighter(settings)?.highlight(text);
   return text;
 }
 
