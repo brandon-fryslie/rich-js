@@ -4,15 +4,22 @@
     {
       "version": "pr-292",
       "ref": "refs/pull/292/merge",
-      "sha": "1ee1384e575059b1a01d0abdcbab153402e864c9",
-      "timestamp": "2026-10-03T03:18:28.833Z",
+      "sha": "f8e7d3836c38a949e602a7beeffbe1ab42848638",
+      "timestamp": "2026-10-03T03:27:15.969Z",
       "commits": [
         {
-          "sha": "1ee1384e575059b1a01d0abdcbab153402e864c9",
+          "sha": "f8e7d3836c38a949e602a7beeffbe1ab42848638",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T21:17:16-06:00",
-          "message": "Merge e4ab84429cca6e6d3c466015b449134c3686c55b into c9100314a5973d48bd49e5a3c75fc56ccbffc8f6\n"
+          "timestamp": "2026-10-03T03:26:05Z",
+          "message": "Merge b1278dd74c8c43e8948f248ea793ca34c9c6a394 into c9100314a5973d48bd49e5a3c75fc56ccbffc8f6\n"
+        },
+        {
+          "sha": "b1278dd74c8c43e8948f248ea793ca34c9c6a394",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T21:26:01-06:00",
+          "message": "fix(live): off a terminal, Live draws one frame and prints it through the console (rich-live-9rdn)\n\nHigh review on #292:\n- Live, Progress and Status made their default console with forceTerminal,\n  so piped output still painted every frame. They now take `new Console()`,\n  which detects, as Rich's get_console() does.\n- Console.isInteractive excludes TERM=dumb/unknown (Rich's is_interactive);\n  `isDumbTerminal` is the one check colour detection also uses.\n- Painter.paint/around take a FrameSource. FinalFramePainter keeps the last\n  one and draws it only at handBack, so ticks and prints render nothing off\n  a terminal and a throwing tick cannot write a stale \"final\" frame.\n- The final frame is a console.print, so record and capture hold it.\n\nNot changed: the final frame stays cropped to console height, and text\nprinted with end:\"\" runs into it — both as Rich's LiveRender does.\n"
         },
         {
           "sha": "e4ab84429cca6e6d3c466015b449134c3686c55b",
