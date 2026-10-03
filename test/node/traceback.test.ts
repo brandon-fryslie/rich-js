@@ -155,7 +155,7 @@ describe("installTraceback", () => {
     expect(output).toContain("raw string boom");
   });
 
-  it("reports a native error whose message is not a string as the payload it is", () => {
+  it("reports a native error whose message is not a string under its own name", () => {
     installTraceback();
     const error = new Error("replaced");
     (error as { message: unknown }).message = undefined;
@@ -163,7 +163,7 @@ describe("installTraceback", () => {
     process.emit("uncaughtException", error, "uncaughtException");
 
     const output = reported();
-    expect(output).toContain("NonError");
+    expect(output.startsWith("Error: undefined\n")).toBe(true);
     // Its frames are salvaged and parsed, not lost with the handler.
     expect(output).toMatch(/^  \S*traceback\.test\.ts:\d+$/m);
   });

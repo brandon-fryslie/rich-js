@@ -70,6 +70,25 @@ export interface PrettyOptions {
 const reprHighlighter = new ReprHighlighter();
 
 /**
+ * What a value is bounded by when whoever formats it has not seen it:
+ * `Console.print`'s data arguments, and a thrown value `Traceback` reports.
+ *
+ * Such a caller has to assume nothing about the value's size, in any of the
+ * three ways a value can be large. Unbounded, a buffer emits a line per byte, a
+ * deeply nested object descends until the stack gives out, and a single
+ * response body assigned to a field arrives in full — each of them a line that
+ * costs megabytes or hangs the terminal. All three bounds announce themselves
+ * in the output (`... +N`, `{...}`, `+N` after the closing quote), so this
+ * truncates visibly and never silently. [LAW:no-silent-failure]
+ *
+ * A caller constructing a `Pretty` has seen their data and gets no defaults;
+ * these belong to the paths that format what they were handed, not to the
+ * formatter.
+ */
+export const UNSEEN_DATA_BOUNDS = { maxLength: 100, maxDepth: 16, maxString: 1000 } as const;
+
+
+/**
  * Where a laying-out traversal is: the column its line starts at (`inset`),
  * how deep in the data we are (`level`), and how much of the current line is
  * already spoken for (`column`).

@@ -162,10 +162,165 @@ describe("Traceback", () => {
     { frame: "at async (/a.ts:5:29)", shown: "async /a.ts:5" },
     { frame: "at async async (/a.ts:5:29)", shown: "async /a.ts:5" },
     { frame: "at new Foo (/a.ts:3:1)", shown: "new Foo /a.ts:3" },
+    { frame: "at async Promise.all (index 0)", shown: "Promise.all index 0" },
+    { frame: "at async Promise.allSettled (index 2)", shown: "Promise.allSettled index 2" },
+    { frame: "at Array.map (<anonymous>)", shown: "Array.map <anonymous>" },
+    { frame: "at new Promise (<anonymous>)", shown: "new Promise <anonymous>" },
+    { frame: "at fn (native)", shown: "fn native" },
+    { frame: "at <anonymous>", shown: "<anonymous>" },
+    { frame: "at eval (eval at f (file:///app/s.mjs:8:22), <anonymous>:1:1)", shown: "eval file:///app/s.mjs:8" },
+    {
+      frame: "at eval (eval at g (eval at f (file:///app/s.mjs:8:22), <anonymous>:3:4), <anonymous>:1:1)",
+      shown: "eval file:///app/s.mjs:8",
+    },
+    { frame: "at /dir (copy)/a.js:4:2", shown: "/dir (copy)/a.js:4" },
   ])("renders `$frame` as `$shown`", ({ frame, shown }) => {
     const error = new Error("x");
     error.stack = `Error: x\n    ${frame}`;
     expect(collectText(new Traceback(error), { maxWidth: 80 })).toBe(`Error: x\n\n  ${shown}\n`);
+  });
+
+  it("places a real eval frame at the file that ran it, where suppress finds it", () => {
+    let caught: unknown;
+    try {
+      eval("throw new Error('from eval')");
+    } catch (error) {
+      caught = error;
+    }
+    const text = collectText(new Traceback(caught), { maxWidth: 200 });
+    expect(text).toMatch(/^ {2}eval \S*traceback\.test\.ts:\d+$/m);
+    const suppressed = collectText(new Traceback(caught, { suppress: ["traceback.test.ts"] }), { maxWidth: 200 });
+    expect(suppressed).not.toMatch(/^ {2}eval /m);
+  });
+
+  it("keeps the frames V8 writes with no line: Promise.all, new Promise, Array.map", async () => {
+    const report = async (run: () => Promise<unknown>): Promise<string> => {
+      try {
+        await run();
+      } catch (error) {
+        return collectText(new Traceback(error), { maxWidth: 200 });
+      }
+      throw new Error("run did not throw");
+    };
+    const rejectLater = async (): Promise<never> => {
+      await null;
+      throw new Error("inside");
+    };
+    expect(await report(() => Promise.all([rejectLater()]))).toMatch(/^ {2}Promise\.all index 0$/m);
+    expect(await report(() => new Promise(() => { throw new Error("executor"); }))).toMatch(/^ {2}new Promise <anonymous>$/m);
+    expect(await report(async () => [1].map(() => { throw new Error("mapper"); }))).toMatch(/^ {2}Array\.map <anonymous>$/m);
+  });
+
+  it("never reads a line of the message as a frame", () => {
+    const error = new Error("compile failed\nat /src/a.ts:3:1");
+    const text = collectText(new Traceback(error), { maxWidth: 200 });
+    expect(text).toContain("Error: compile failed\nat /src/a.ts:3:1\n\n");
+    expect(text).not.toMatch(/^ {2}\/src\/a\.ts:3$/m);
+    expect(text).toMatch(/^ {2}\S*traceback\.test\.ts:\d+$/m);
+  });
+
+  it("drops a stale header when the message changed after the throw", () => {
+    const error = new Error("first\nsecond line");
+    error.message = "replaced";
+    const text = collectText(new Traceback(error), { maxWidth: 200 });
+    expect(text.startsWith("Error: replaced\n\n")).toBe(true);
+    expect(text).not.toContain("first");
+    expect(text).not.toContain("second line");
+  });
+
+  it("reads a SpiderMonkey or JavaScriptCore stack, which has no header", () => {
+    const error = new Error("x");
+    error.stack = [
+      "inner@file:///app/a.js:3:5",
+      "async*outer@file:///app/a.js:9:1",
+      "@file:///app/a.js:12:1",
+      "run@file:///app/a.js line 8 > eval:1:1",
+    ].join("\n");
+    expect(collectText(new Traceback(error), { maxWidth: 80 })).toBe([
+      "Error: x",
+      "",
+      "  inner file:///app/a.js:3",
+      "  outer file:///app/a.js:9",
+      "  file:///app/a.js:12",
+      "  run file:///app/a.js:8",
+      "",
+    ].join("\n"));
+  });
+
+  it("shows a stack line it cannot read as written, not as no frame at all", () => {
+    const error = new Error("x");
+    error.stack = "Error: x\n    some engine's frame #1\n    another";
+    expect(collectText(new Traceback(error), { maxWidth: 80 })).toBe(
+      "Error: x\n\n  some engine's frame #1\n  another\n",
+    );
+  });
+
+  // --- Caught values of any shape ---
+
+  it.each([
+    { value: "boom", shown: 'NonError: "boom"' },
+    { value: 42, shown: "NonError: 42" },
+    { value: null, shown: "NonError: null" },
+    { value: undefined, shown: "NonError: undefined" },
+    { value: { code: 42 }, shown: "NonError: { code: 42 }" },
+  ])("renders a thrown $value as the value it is", ({ value, shown }) => {
+    expect(collectText(new Traceback(value), { maxWidth: 80 })).toBe(`${shown}\n\n`);
+  });
+
+  it("reports a thrower shaped like an error as the error it presents", () => {
+    const thrown = { name: "HttpError", message: "404", stack: "HttpError: 404\n    at get (/app/http.ts:7:3)" };
+    expect(collectText(new Traceback(thrown), { maxWidth: 80 })).toBe("HttpError: 404\n\n  get /app/http.ts:7\n");
+  });
+
+  it("salvages the frames of a value that carries a stack but is not an error", () => {
+    const thrown = { name: "Odd", stack: "    at doWork (/app/w.ts:99:1)" };
+    const text = collectText(new Traceback(thrown), { maxWidth: 200 });
+    expect(text.startsWith("NonError: ")).toBe(true);
+    expect(text).toMatch(/^ {2}doWork \/app\/w\.ts:99$/m);
+  });
+
+  it("renders an error whose message was replaced with a non-string under its own name, frames and all", () => {
+    const error = new RangeError("replaced");
+    (error as { message: unknown }).message = { a: 1 };
+    const text = collectText(new Traceback(error), { maxWidth: 200 });
+    expect(text.startsWith("RangeError: { a: 1 }\n\n")).toBe(true);
+    expect(text).toMatch(/^ {2}\S*traceback\.test\.ts:\d+$/m);
+  });
+
+  it.each([
+    { label: "a Proxy whose trap throws", value: new Proxy({}, { get() { throw new Error("trap"); } }), shown: "NonError: [Threw: trap]" },
+    { label: "an object whose name getter throws", value: { get name(): string { throw new Error("getter"); } }, shown: "NonError: { name: [Threw: getter] }" },
+  ])("reports $label instead of throwing, with the read that threw", ({ value, shown }) => {
+    expect(collectText(new Traceback(value), { maxWidth: 80 })).toBe(`${shown}\n\n`);
+  });
+
+  it("lays a NonError value out in the width left after its name", () => {
+    const value = { alpha: "a".repeat(15), beta: "b".repeat(15) };
+    expect(collectText(new Traceback(value), { maxWidth: 60 })).toBe(
+      `NonError: {\n    alpha: "${"a".repeat(15)}",\n    beta: "${"b".repeat(15)}"\n}\n\n`,
+    );
+  });
+
+  it("shows no frame for a stale header when V8 recorded none", () => {
+    const error = new Error("x");
+    error.message = "y";
+    error.stack = "Error: x";
+    expect(collectText(new Traceback(error), { maxWidth: 80 })).toBe("Error: y\n\n");
+  });
+
+  it("shows no frame for a stale header when the name changed and V8 recorded none", () => {
+    const error = new Error("a");
+    error.stack = "Error: a";
+    error.name = "Custom";
+    expect(collectText(new Traceback(error), { maxWidth: 80 })).toBe("Custom: a\n\n");
+  });
+
+  it("takes node's coded header off whole, so no line of its message reads as a frame", () => {
+    const error = new RangeError("bad value\n    at step 3 of migration");
+    error.stack = "RangeError [ERR_OUT_OF_RANGE]: bad value\n    at step 3 of migration\n    at check (/app/c.ts:4:2)";
+    expect(collectText(new Traceback(error), { maxWidth: 80 })).toBe(
+      "RangeError: bad value\n    at step 3 of migration\n\n  check /app/c.ts:4\n",
+    );
   });
 
   // Installing Traceback as the process-wide crash handler is a node
