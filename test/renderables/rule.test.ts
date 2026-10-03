@@ -31,36 +31,29 @@ describe("Rule", () => {
     expect(collectLines(new Rule("[b][/b]"), { maxWidth: 20 })).toEqual(["─────────  ─────────"]);
   });
 
-  it("renders with title centered by default", () => {
-    const rule = new Rule("Title");
-    const lines = collectLines(rule, { maxWidth: 20 });
-    const line = lines[0]!;
-    expect(line).toContain(" Title ");
-    expect(line.length).toBe(20);
-    // Centered: title should have rule chars on both sides
-    const titleIdx = line.indexOf(" Title ");
-    expect(titleIdx).toBeGreaterThan(0);
-    expect(titleIdx + " Title ".length).toBeLessThan(20);
-  });
-
-  it("renders with title left-aligned", () => {
-    const rule = new Rule("Title", { align: "left" });
-    const lines = collectLines(rule, { maxWidth: 20 });
-    const line = lines[0]!;
-    expect(line).toContain(" Title ");
-    expect(line.length).toBe(20);
-    // Left-aligned: title appears at the left
-    expect(line.indexOf(" Title ")).toBe(0);
-  });
-
-  it("renders with title right-aligned", () => {
-    const rule = new Rule("Title", { align: "right" });
-    const lines = collectLines(rule, { maxWidth: 20 });
-    const line = lines[0]!;
-    expect(line).toContain(" Title ");
-    expect(line.length).toBe(20);
-    // Right-aligned: title appears at the right
-    expect(line.endsWith(" Title ")).toBe(true);
+  // Rich 9d8f9a3's bytes. A title wider than its room is cut with an ellipsis
+  // and keeps a rule cell either side; an aligned title has no space on its
+  // closed side; at a width with no room past the rule cells and gaps
+  // (4 centred, 2 aligned) the rule is bare.
+  it.each([
+    ["center", 20, "Title", "────── Title ───────"],
+    ["center", 10, "aaa bbb ccc ddd eee", "─ aaa b… ─"],
+    ["center", 6, "Title", "─ T… ─"],
+    ["center", 6, "a", "─ a ──"],
+    ["center", 5, "Title", "─ … ─"],
+    ["center", 4, "Title", "────"],
+    ["center", 1, "Title", "─"],
+    ["left", 20, "Title", "Title ──────────────"],
+    ["left", 10, "aaa bbb ccc ddd eee", "aaa bbb… ─"],
+    ["left", 3, "Title", "… ─"],
+    ["left", 3, "a", "a ─"],
+    ["left", 2, "Title", "──"],
+    ["right", 20, "Title", "────────────── Title"],
+    ["right", 10, "aaa bbb ccc ddd eee", "─ aaa bbb…"],
+    ["right", 4, "Title", "─ T…"],
+    ["right", 2, "Title", "──"],
+  ] as const)("%s at width %i draws %j as Rich does", (align, width, title, expected) => {
+    expect(collectLines(new Rule(title, { align }), { maxWidth: width })).toEqual([expected]);
   });
 
   it("uses custom characters", () => {

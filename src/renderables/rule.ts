@@ -12,7 +12,7 @@ import type {
   RenderOptions,
 } from "../core/protocol.js";
 import { drawable, getStyle } from "../core/protocol.js";
-import { drawLabel, inlineLabel, type InlineLabel } from "./embed.js";
+import { cutLabel, drawLabel, inlineLabel, type InlineLabel } from "./embed.js";
 
 export type RuleAlign = "left" | "center" | "right";
 
@@ -56,43 +56,45 @@ export class Rule implements Renderable, Measurable {
     const ruleChar = drawable(options, this.characters, ASCII_RULE_CHAR);
     const style = getStyle(options, this.style);
     const ruleStyle = style.isNull ? undefined : style;
+    const line = (width: number) => new Segment(repeatToWidth(ruleChar, width), ruleStyle);
 
-    const label = this._label?.text(options);
-
-    if (label === undefined) {
-      // No title — just a line of repeated characters
-      yield new Segment(repeatToWidth(ruleChar, maxWidth), ruleStyle);
+    // Rich's `required_space`: a centred title keeps a rule cell and a space
+    // either side of it, an aligned one a space and a rule cell on its open
+    // side. A rule with no room past that draws no title, as one without a title.
+    const room = Math.max(0, maxWidth - (this.align === "center" ? 4 : 2));
+    if (this._label === undefined || room === 0) {
+      yield line(maxWidth);
       yield Segment.line();
       return;
     }
 
-    const title = drawLabel(label, options, ruleStyle);
+    const text = this._label.text(options);
+    cutLabel(text, room, drawable(options, "\u2026", "."));
+    const title = drawLabel(text, options, ruleStyle);
     const titleWidth = Segment.getLineLength(title);
 
-    if (titleWidth >= maxWidth) {
-      // Title fills the whole width; adjustLineLength cuts by cells, not code units.
-      yield* Segment.adjustLineLength(title, maxWidth, ruleStyle);
-      yield Segment.line();
-      return;
-    }
-
-    const remaining = maxWidth - titleWidth;
-
-    // [LAW:dataflow-not-control-flow] Always compute both sides; alignment determines distribution
-    const leftWidth =
-      this.align === "right"
-        ? remaining
-        : this.align === "center"
-          ? Math.floor(remaining / 2)
-          : 0;
-    const rightWidth = remaining - leftWidth;
-
-    if (leftWidth > 0) {
-      yield new Segment(repeatToWidth(ruleChar, leftWidth), ruleStyle);
-    }
-    yield* title;
-    if (rightWidth > 0) {
-      yield new Segment(repeatToWidth(ruleChar, rightWidth), ruleStyle);
+    // As Rich lays the line out: the gaps of a centred title are the rule's,
+    // styled with it; an aligned title's one gap is unstyled.
+    switch (this.align) {
+      case "center": {
+        const left = Math.floor((maxWidth - titleWidth) / 2) - 1;
+        yield line(left);
+        yield new Segment(" ", ruleStyle);
+        yield* title;
+        yield new Segment(" ", ruleStyle);
+        yield line(maxWidth - left - titleWidth - 2);
+        break;
+      }
+      case "left":
+        yield* title;
+        yield new Segment(" ");
+        yield line(maxWidth - titleWidth - 1);
+        break;
+      case "right":
+        yield line(maxWidth - titleWidth - 1);
+        yield new Segment(" ");
+        yield* title;
+        break;
     }
     yield Segment.line();
   }

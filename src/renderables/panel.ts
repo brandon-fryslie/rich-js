@@ -9,7 +9,7 @@ import { Box, ROUNDED } from "../core/box.js";
 import type { EdgeChars } from "../core/box.js";
 import { Measurement } from "../core/measure.js";
 import { RichText } from "../core/text.js";
-import { drawLabel, embed, inlineLabel, type InlineLabel } from "./embed.js";
+import { cutLabel, drawLabel, embed, inlineLabel, type InlineLabel } from "./embed.js";
 import type { PaddingDimensions } from "./padding.js";
 import { normalizePadding } from "./padding.js";
 import type {
@@ -147,6 +147,11 @@ function borderLabel(options: RenderOptions): RenderOptions {
   return { ...options, markup: true, highlight: false };
 }
 
+/** A title or subtitle as Rich's `Panel._title` sets it: read as a border reads it, a space either side. */
+function borderTitle(label: InlineLabel, options: RenderOptions): RichText {
+  return label.text(borderLabel(options)).pad(1);
+}
+
 /**
  * The style of text set into a border — title, subtitle and accessory alike:
  * its own laid over the border's, the one rule for "what colour is the title
@@ -186,19 +191,9 @@ function borderRow(
     return [new Segment(corner + edge.horizontal.repeat(span) + close, border)];
   }
   const canvas = span - 2;
-  const labelOptions = borderLabel(options);
-  const text = label.text(labelOptions);
-  if (text.cellLength > canvas) {
-    // As Rich's `Text.truncate` cuts: to the canvas less a marker for an
-    // ellipsis label, padded back to it, so a wide character the cut splits
-    // leaves a space in its cell rather than a cell of rule.
-    const marker = text.overflow === "ellipsis" ? drawable(options, "\u2026", ".") : "";
-    const room = canvas - cellLen(marker);
-    text.truncate(room, { marker: "" });
-    text.padRight(room - text.cellLength);
-    text.append(marker);
-  }
-  const fitted = drawLabel(text, labelOptions, labelStyle);
+  const text = borderTitle(label, options);
+  cutLabel(text, canvas, text.overflow === "ellipsis" ? drawable(options, "\u2026", ".") : "");
+  const fitted = drawLabel(text, borderLabel(options), labelStyle);
   const excess = canvas - Segment.getLineLength(fitted);
   const before = Math.floor(excess / 2);
   return [
@@ -384,7 +379,7 @@ export class Panel implements Renderable, Measurable {
 
   /** The cells the title's label takes, its padding included; none without a title. */
   private _labelWidth(options: RenderOptions): number {
-    return this._titleLabel?.text(borderLabel(options)).cellLength ?? 0;
+    return this._titleLabel === undefined ? 0 : borderTitle(this._titleLabel, options).cellLength;
   }
 
   /**
