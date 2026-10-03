@@ -4,15 +4,22 @@
     {
       "version": "pr-308",
       "ref": "refs/pull/308/merge",
-      "sha": "82bfe295fbe1f54008eb766fe0aab106095583ad",
-      "timestamp": "2026-10-03T09:50:54.356Z",
+      "sha": "a0d038a82c0f9fffe53d768b7ab9279d17d8fa6e",
+      "timestamp": "2026-10-03T09:57:34.222Z",
       "commits": [
         {
-          "sha": "82bfe295fbe1f54008eb766fe0aab106095583ad",
+          "sha": "a0d038a82c0f9fffe53d768b7ab9279d17d8fa6e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T03:49:46-06:00",
-          "message": "Merge a751b2a27f420a91cb9f401e815dafee15c95bb7 into bd3ffe766538b801fe8f561f8617b33316f01fdd\n"
+          "timestamp": "2026-10-03T09:56:23Z",
+          "message": "Merge a1f490cb3a2a9784db70353554b40df794a96d99 into bd3ffe766538b801fe8f561f8617b33316f01fdd\n"
+        },
+        {
+          "sha": "a1f490cb3a2a9784db70353554b40df794a96d99",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T03:56:18-06:00",
+          "message": "fix(template-bindings): review — Theme.resolve resolves a layered style; markup tag spans typed as strings; empty base takes the pipe (rich-template-bindings-jtfa)\n"
         },
         {
           "sha": "a751b2a27f420a91cb9f401e815dafee15c95bb7",
