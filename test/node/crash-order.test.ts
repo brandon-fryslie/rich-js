@@ -38,7 +38,7 @@ interface Running {
   readonly pid: number;
   readonly dir: string;
   readonly ended: Promise<Ended>;
-  /** Kill the fixture's whole group, wait for its end, and remove its directory. */
+  /** Kill the fixture's group if it is still running, wait for its end, and remove its directory. Once. */
   readonly stop: () => Promise<void>;
 }
 
@@ -53,8 +53,9 @@ function killGroup(pid: number): void {
 
 /**
  * Start the fixture. `drive` is called with the output so far every few
- * milliseconds and may signal the child; it returns once it has nothing left
- * to do.
+ * milliseconds until the fixture exits and may signal the child; it returns
+ * once it has nothing left to do. However the test ends — passed, failed, or
+ * past its timeout — the fixture is stopped.
  */
 function launch(args: string[], drive: (output: string, child: { pid: number }) => boolean = () => true): Running {
   const dir = mkdtempSync(join(tmpdir(), "rich-app-"));
@@ -77,31 +78,26 @@ function launch(args: string[], drive: (output: string, child: { pid: number }) 
   }, 10);
   const ended = new Promise<Ended>((done, fail) => {
     child.on("error", fail);
-    child.on("exit", (code, signal) => done({ code, signal, output: read() }));
-  });
-  return {
-    pid,
-    dir,
-    ended,
-    stop: async () => {
+    child.on("exit", (code, signal) => {
       clearInterval(timer);
-      killGroup(pid);
+      done({ code, signal, output: read() });
+    });
+  });
+  let stopped: Promise<void> | undefined;
+  const stop = (): Promise<void> =>
+    (stopped ??= (async () => {
+      clearInterval(timer);
+      // The fixture starts no children, so its group is its leader alone: once
+      // the leader has exited the group is gone and `pid` is free for the
+      // system to hand to someone else's group.
+      if (child.exitCode === null && child.signalCode === null) killGroup(pid);
       // The end is the test's to report; this waits for it, so the directory
       // goes only once nothing in the group can write to it.
       await Promise.allSettled([ended]);
       rmSync(dir, { recursive: true });
-    },
-  };
-}
-
-/**
- * Run the fixture to its end. However the test ends — passed, failed, or past
- * its timeout — the fixture's group is killed and its directory removed.
- */
-function runApp(args: string[], drive?: (output: string, child: { pid: number }) => boolean): Promise<Ended> {
-  const app = launch(args, drive);
-  onTestFinished(app.stop);
-  return app.ended;
+    })());
+  onTestFinished(stop);
+  return { pid, dir, ended, stop };
 }
 
 const count = (haystack: string, needle: string): number => haystack.split(needle).length - 1;
@@ -121,7 +117,7 @@ describe("App in a real node process", () => {
     ["reject", "", "rejected after the first frame"],
     ["reject", "traceback", "rejected after the first frame"],
   ])("a crash (%s, reporter %j) leaves the alternate screen before the report prints", async (ending, reporter, message) => {
-    const { code, output } = await runApp([ending, reporter]);
+    const { code, output } = await launch([ending, reporter]).ended;
 
     expect(code).toBe(1);
     expectFrameThenRestore(output);
@@ -130,7 +126,7 @@ describe("App in a real node process", () => {
   });
 
   it("the rich reporter reports a rejection in Traceback's shape", async () => {
-    const { output } = await runApp(["reject", "traceback"]);
+    const { output } = await launch(["reject", "traceback"]).ended;
     const report = output.slice(output.indexOf(ALT_OFF));
 
     // The location is as long as the checkout's path, so it may fold across
@@ -142,11 +138,11 @@ describe("App in a real node process", () => {
   });
 
   it("a terminating signal hands the terminal back and still terminates", async () => {
-    const { code, signal, output } = await runApp(["signal"], (sofar, child) => {
+    const { code, signal, output } = await launch(["signal"], (sofar, child) => {
       if (!sofar.includes("FRAME")) return false;
       process.kill(child.pid, "SIGTERM");
       return true;
-    });
+    }).ended;
 
     expect(signal).toBe("SIGTERM");
     expect(code).toBeNull();
@@ -154,14 +150,14 @@ describe("App in a real node process", () => {
   });
 
   it("process.exit hands the terminal back and keeps its code", async () => {
-    const { code, output } = await runApp(["exit"]);
+    const { code, output } = await launch(["exit"]).ended;
 
     expect(code).toBe(3);
     expectFrameThenRestore(output);
   });
 
   it("stopping hands the terminal back and lets the program end", async () => {
-    const { code, output } = await runApp(["stop"]);
+    const { code, output } = await launch(["stop"]).ended;
 
     expect(code).toBe(0);
     expectFrameThenRestore(output);
@@ -172,7 +168,7 @@ describe("App in a real node process", () => {
   // goes on at once. Being stopped and continued is the same return from
   // `kill`, later, and is checked by hand under a pty.
   it("suspending hands the terminal back, then takes it back and repaints", async () => {
-    const { code, output } = await runApp(["suspend"]);
+    const { code, output } = await launch(["suspend"]).ended;
 
     expect(code).toBe(0);
     const phases = output.split(ALT_OFF);
