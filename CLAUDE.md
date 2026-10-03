@@ -84,7 +84,7 @@ Build order within `src/core/`. Each tier imports only from tiers above it, but 
 
 ```
 0   anchor · cells · color · easing · env · fnv1a · subscription
-1   oklch · osc8 · style · wrap
+1   clock · oklch · osc8 · style · wrap
 2   segment
 3   box · protocol · export-lines
 4   measure · emoji · text · strip · render · export-html · export-svg
@@ -124,6 +124,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **osc8** — the OSC 8 hyperlink wire grammar, one home: the terminator bytes a URL may not carry (`stripOscTerminators`, used by RichText at its data-model boundary), the producer every link is written through (`osc8Open` — sanitize + a URL-derived `id=` so a split link hovers as one — and `OSC8_CLOSE`), and the reader: `osc8Sequences` (typed scan of rendered bytes) over the `OSC8` pattern (exported for composing into a larger regex).
 - **env** — `Env`, the environment map every public signature names instead of `NodeJS.ProcessEnv`, which a project without `@types/node` cannot resolve. `test/seam/browser-types.test.ts` type-checks every non-`node/` entry's emitted declarations with no Node types loaded, the type-level twin of the browser-safe gate below.
 - **subscription** — `Unsubscribe`, the return type of every `on…()` in the library. It sits this low because `host/` and `widgets/` both need it and neither may depend on the other.
+- **clock** — `Clock` (`now()` in seconds, `every(rate, tick)`), the capability whoever draws frames — `App`, `Live` — is handed, and `FrameRate`, which only `frameRate` makes: the one place a rate is checked. `systemClock` is the platform's, read only when called.
 - **anchor** — `Anchor`: a cell's row and column in the output of whatever drew it, carried on the cell's `Style` so every container passes it through untouched. `Segment.anchorLines` stamps an owner's output, `Segment.splitCells` keeps a cut half's anchor true, and `Segment.anchorAt` reads any cell of a composed frame. Its module header owns why a position travels up on the frame rather than down the render options.
 - **box** — box-drawing character sets. One `Box` type, many pre-built instances (ASCII, SQUARE, ROUNDED, HEAVY, DOUBLE, …).
 - **protocol** — `Renderable` and `Measurable` interfaces. `Renderable.render(options) → Iterable<Segment>`. `Measurable.measure(options) → {minimum, maximum}`. Single authority for the rendering contract.

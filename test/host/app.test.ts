@@ -21,6 +21,8 @@ import { getStyle, type Renderable, type RenderOptions } from "../../src/core/pr
 import { Segment } from "../../src/core/segment.js";
 import { Style, Theme } from "../../src/core/style.js";
 import { NullHighlighter } from "../../src/core/highlighter.js";
+import { frameRate } from "../../src/core/clock.js";
+import { fakeClock, type FakeClock } from "../core/fake-clock.js";
 
 // Pointer reporting belongs to the alternate surface: it is switched on with
 // the buffer and off before it, so no exit path leaves one without the other.
@@ -368,6 +370,167 @@ describe("App paint listeners", () => {
 
     await expect(target.run()).rejects.toThrow("listener broke");
     expect(host.raw()).toBe(false);
+  });
+});
+
+describe("App frame clock", () => {
+  /** An app on `clock` at `perSecond`, and the time of every frame its view was asked for. */
+  function clocked(perSecond: number, clock: FakeClock): { target: App; times: number[] } {
+    const times: number[] = [];
+    const target = new App({
+      host: scriptedHost(),
+      surface: "alternate",
+      clock,
+      rate: frameRate(perSecond),
+      view: (t) => {
+        times.push(t);
+        return text(`t=${t}`);
+      },
+    });
+    return { target, times };
+  }
+
+  it("paints 30 frames a second at 30 fps while something animates", () => {
+    const clock = fakeClock();
+    const { target, times } = clocked(30, clock);
+    void target.run();
+    target.animate();
+
+    clock.advance(1);
+
+    // The first frame, then one a tick.
+    expect(times).toHaveLength(1 + 30);
+  });
+
+  it("paints one frame every two seconds at 0.5 fps, each handed its time on the clock", () => {
+    const clock = fakeClock(100);
+    const { target, times } = clocked(0.5, clock);
+    void target.run();
+    target.animate();
+
+    clock.advance(1.9);
+    expect(times).toEqual([100]);
+    clock.advance(4.1);
+    expect(times).toEqual([100, 102, 104, 106]);
+  });
+
+  it("paints an animation's first frame without waiting out an interval", async () => {
+    const clock = fakeClock();
+    const { target, times } = clocked(0.5, clock);
+    void target.run();
+    clock.advance(1);
+
+    target.animate();
+    await tick();
+
+    expect(times).toEqual([0, 1]);
+  });
+
+  it("paints one frame, not two, for a refresh asked for before a tick", async () => {
+    const clock = fakeClock();
+    const { target, times } = clocked(10, clock);
+    void target.run();
+    target.animate();
+    await tick();
+
+    target.refresh();
+    clock.advance(0.1);
+    await tick();
+
+    // The first frame, the animation's first, then the tick that drew the refresh.
+    expect(times).toHaveLength(3);
+  });
+
+  it("does not tick while nothing animates, and stops when the last animation ends", () => {
+    const clock = fakeClock();
+    const { target, times } = clocked(10, clock);
+    void target.run();
+
+    clock.advance(1);
+    expect(times).toHaveLength(1);
+    expect(clock.timers()).toBe(0);
+
+    const first = target.animate();
+    const second = target.animate();
+    first();
+    clock.advance(1);
+    expect(times).toHaveLength(1 + 10);
+
+    second();
+    second();
+    clock.advance(1);
+    expect(times).toHaveLength(1 + 10);
+    expect(clock.timers()).toBe(0);
+  });
+
+  it("starts ticking when it runs for an animation begun before, and leaves no timer once stopped", async () => {
+    const clock = fakeClock();
+    const { target, times } = clocked(10, clock);
+    target.animate();
+    expect(clock.timers()).toBe(0);
+
+    const running = target.run();
+    clock.advance(0.5);
+    expect(times).toHaveLength(1 + 5);
+
+    target.stop();
+    await running;
+    expect(clock.timers()).toBe(0);
+    clock.advance(1);
+    expect(times).toHaveLength(1 + 5);
+  });
+
+  it("does not tick while suspended, and ticks again on resume", async () => {
+    const clock = fakeClock();
+    const host = scriptedHost();
+    const times: number[] = [];
+    const target = new App({
+      host,
+      surface: "alternate",
+      clock,
+      rate: frameRate(10),
+      view: (t) => {
+        times.push(t);
+        return text("x");
+      },
+    });
+    void target.run();
+    target.animate();
+
+    const suspended = target.suspend();
+    expect(clock.timers()).toBe(0);
+    clock.advance(1);
+    expect(times).toHaveLength(1);
+
+    host.resume();
+    await suspended;
+    clock.advance(1);
+    // The repaint on resume, then a tick each tenth of a second.
+    expect(times).toHaveLength(2 + 10);
+  });
+
+  it("ends the app, with no timer left, when a ticked frame throws", async () => {
+    const clock = fakeClock();
+    let frames = 0;
+    const target = new App({
+      host: scriptedHost(),
+      surface: "alternate",
+      clock,
+      rate: frameRate(10),
+      view: () => {
+        frames += 1;
+        if (frames > 2) throw new Error("frame broke");
+        return text("x");
+      },
+    });
+    const running = target.run();
+    target.animate();
+
+    clock.advance(1);
+
+    await expect(running).rejects.toThrow("frame broke");
+    expect(frames).toBe(3);
+    expect(clock.timers()).toBe(0);
   });
 });
 

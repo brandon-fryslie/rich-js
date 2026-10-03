@@ -113,6 +113,10 @@ export type { ColorStop } from "./themes/ramp.js";
 // vocabulary for ramps and time-based effects alike, CSS's names throughout.
 export { EASES, Phase, cubicBezier, parseEase, steps } from "./core/easing.js";
 export type { Ease, StepPosition } from "./core/easing.js";
+// The time source and timer whoever draws frames is handed, and the one
+// parser of the rate it ticks at.
+export { frameRate, systemClock } from "./core/clock.js";
+export type { Clock, FrameRate } from "./core/clock.js";
 
 export {
   Style,

@@ -133,7 +133,7 @@ console.print(`[bold green]:check_mark: ${jobs.length} jobs done[/]`);
 
 ## Auto-refresh
 
-The default refresh rate is 4 times per second. Tune it with `refreshPerSecond`, or turn auto-refresh off and draw each frame yourself with `refresh()` — or with `update(newRenderable, { refresh: true })`. A frame is drawn only between `start()` and `stop()`; outside them `refresh()` draws nothing, because the screen is no longer `Live`'s:
+The default refresh rate is 4 times per second. Tune it with `refreshPerSecond` — any positive, finite number, so `0.5` refreshes once every two seconds; anything else throws when the `Live` is constructed. `clock` is what the refresh ticks on, `systemClock()` unless you pass a [`Clock`](/app#animating-at-a-frame-rate) of your own. Or turn auto-refresh off and draw each frame yourself with `refresh()` — or with `update(newRenderable, { refresh: true })`. A frame is drawn only between `start()` and `stop()`; outside them `refresh()` draws nothing, because the screen is no longer `Live`'s:
 
 ```typescript live
 const counter = new Panel("", { expand: false, borderStyle: "magenta" });
