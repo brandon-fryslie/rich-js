@@ -65,7 +65,7 @@ const TEXT = "Thinking about how a band of light should cross these words at one
 const STATUS_CONTRAST = 7;
 
 /** How far a shimmer's light reaches either side of its centre, in columns. */
-export const SHIMMER_WIDTH = 32;
+export const SHIMMER_WIDTH = 24;
 
 /** Columns a subject is offered when its own width is read: wider than any subject here. */
 const DRAW_BUDGET = 1024;

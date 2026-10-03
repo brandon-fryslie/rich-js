@@ -260,9 +260,11 @@ describe("the loops move", () => {
   });
 
   it("onColors leaves a colour not in its set alone", () => {
-    const moved = onColors(new Map([[ground.hex, 1]]), pulse(curve(3, 0.2), 40, sun, 0))(colors, cells[0]!, 1.5);
-    expect(moved.fg).toBe(ink);
-    expect(sameColor(moved.bg, ground)).toBe(false);
+    // A breath rests for part of its turn, so the turn is watched whole.
+    const effect = onColors(new Map([[ground.hex, 1]]), pulse(curve(3, 0.2), 40, sun, 0));
+    const turn = Array.from({ length: 30 }, (_, i) => effect(colors, cells[0]!, i / 10));
+    expect(turn.every((moved) => moved.fg === ink)).toBe(true);
+    expect(turn.some((moved) => !sameColor(moved.bg, ground))).toBe(true);
   });
 });
 
