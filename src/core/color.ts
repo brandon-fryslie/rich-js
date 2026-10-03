@@ -668,6 +668,35 @@ export class ColorSpec {
   }
 
   /**
+   * The spec that draws `value` nearest to it at `depth` on a terminal known
+   * to show `theme`, as the colour of the glyph (`foreground`) or of the
+   * ground. Where `downgrade` knows no terminal, and so rounds only against
+   * colours every terminal fixes (or, at sixteen colours, the stock
+   * sixteen), this rounds against every colour the depth can write whose
+   * look `theme` fixes: the default colour, the theme's sixteen, and at 256
+   * colours the cube and grey ramp too. A colour read off any of those and
+   * moved a little is drawn as the colour it came from — or, where the theme
+   * gives two slots one colour, as the lower slot, which looks the same.
+   *
+   * `value` is opaque: a translucent colour has no one look until it is laid
+   * on a ground (`flattenAlpha`).
+   */
+  static matchOn(value: ColorRgba, depth: ColorDepth, theme: TerminalTheme, foreground: boolean): ColorSpec {
+    if (value.alpha < 1) throw new RangeError(`matchOn rounds an opaque colour; got alpha ${value.alpha}`);
+    if (depth === ColorDepth.TRUECOLOR) return ColorSpec.fromRgba(value);
+    if (depth === ColorDepth.DEFAULT) return ColorSpec.default();
+    const slot = theme.ansiColors.match(value);
+    // [LAW:dataflow-not-control-flow] Every candidate is scored; the depth
+    // only decides whether the cube is among them. Ties go to the earlier.
+    const candidates: [ColorSpec, ColorRgba][] = [
+      [ColorSpec.default(), foreground ? theme.foregroundColor : theme.backgroundColor],
+      [new ColorSpec(`color(${slot})`, depth === ColorDepth.WINDOWS ? depth : ColorDepth.STANDARD, slot), theme.ansiColors.get(slot)],
+      ...(depth === ColorDepth.EIGHT_BIT ? [cubeCandidate(value)] : []),
+    ];
+    return candidates.reduce((best, next) => (rgbDistance(next[1], value) < rgbDistance(best[1], value) ? next : best))[0];
+  }
+
+  /**
    * Parse a color string. Memoized (`Memo`): a string parsed again while
    * remembered returns the same instance.
    */
@@ -698,6 +727,12 @@ export class ColorSpec {
         return ColorSpec.default();
     }
   }
+}
+
+/** The cube or grey-ramp entry nearest `value`, and its colour. */
+function cubeCandidate(value: ColorRgba): [ColorSpec, ColorRgba] {
+  const index = EIGHT_BIT_DOWNGRADE_TABLE.match(value);
+  return [ColorSpec.fromAnsi(index), EIGHT_BIT_DOWNGRADE_TABLE.get(index)];
 }
 
 function mix(from: ColorSpec, to: ColorSpec, t: number, theme?: TerminalTheme): ColorRgba {

@@ -18,6 +18,7 @@ import {
   MONOKAI,
   ATOM_ONE_DARK,
   ATOM_ONE_LIGHT,
+  CATPPUCCIN_MOCHA,
   SVG_EXPORT_THEME,
 } from "../../src/themes/terminalThemes.js";
 import { buildPalette } from "../../src/themes/buildPalette.js";
@@ -610,6 +611,39 @@ describe("ColorSpec.downgrade()", () => {
     expect(cube.number).toBe(WINDOWS_TABLE.match(EIGHT_BIT_TABLE.get(196)));
     const slot = new ColorSpec("color(3)", ColorDepth.EIGHT_BIT, 3).downgrade(ColorDepth.WINDOWS);
     expect([slot.type, slot.number]).toEqual([ColorDepth.WINDOWS, 3]);
+  });
+});
+
+describe("ColorSpec.matchOn()", () => {
+  const codes = (value: ColorRgba, depth: ColorDepth, foreground: boolean): string[] =>
+    ColorSpec.matchOn(value, depth, CATPPUCCIN_MOCHA, foreground).getAnsiCodes(foreground);
+
+  it("draws each of the theme's sixteen as its own slot, at sixteen colours and at 256", () => {
+    for (const depth of [ColorDepth.STANDARD, ColorDepth.WINDOWS, ColorDepth.EIGHT_BIT]) {
+      for (let n = 0; n < 16; n++) {
+        expect(ColorSpec.matchOn(CATPPUCCIN_MOCHA.ansiColors.get(n), depth, CATPPUCCIN_MOCHA, true).number).toBe(n);
+      }
+    }
+    // Mocha's red is a slot of its own under the theme, and some other slot under the stock sixteen.
+    expect(ColorSpec.fromRgba(CATPPUCCIN_MOCHA.ansiColors.get(1)).downgrade(ColorDepth.STANDARD).number).not.toBe(1);
+  });
+
+  it("draws the theme's default colours as the default, glyph and ground each its own", () => {
+    for (const depth of [ColorDepth.STANDARD, ColorDepth.EIGHT_BIT]) {
+      expect(codes(CATPPUCCIN_MOCHA.foregroundColor, depth, true)).toEqual(["39"]);
+      expect(codes(CATPPUCCIN_MOCHA.backgroundColor, depth, false)).toEqual(["49"]);
+    }
+  });
+
+  it("reaches into the cube at 256 colours only when a cube colour is nearer", () => {
+    expect(codes(new ColorRgba(255, 0, 0), ColorDepth.EIGHT_BIT, true)).toEqual(["38", "5", "196"]);
+    expect(codes(new ColorRgba(255, 0, 0), ColorDepth.STANDARD, true)).toEqual(["31"]);
+  });
+
+  it("writes truecolor as the value itself, and refuses a translucent one", () => {
+    const v = new ColorRgba(1, 2, 3);
+    expect(ColorSpec.matchOn(v, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA, true).value).toEqual(v);
+    expect(() => ColorSpec.matchOn(new ColorRgba(1, 2, 3, 0.5), ColorDepth.STANDARD, CATPPUCCIN_MOCHA, true)).toThrow(RangeError);
   });
 });
 

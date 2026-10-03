@@ -14,7 +14,8 @@ import { Panel } from "../../src/renderables/panel.js";
 import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { Button } from "../../src/widgets/button.js";
 import { WidgetApp } from "../../src/widgets/widget-app.js";
-import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
+import { CATPPUCCIN_MOCHA, DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
+import { Oklch } from "../../src/core/oklch.js";
 
 const THEME = DEFAULT_TERMINAL_THEME;
 const DEFAULTS: CellColors = { fg: THEME.foregroundColor, bg: THEME.backgroundColor };
@@ -180,6 +181,65 @@ describe("Effected — what it may not change", () => {
     const options: RenderOptions = { maxWidth: 40 };
     const panel = new Panel("measured");
     expect(Measurement.get(options, effected(panel, perColumn))).toEqual(Measurement.get(options, panel));
+  });
+});
+
+describe("Effected — below truecolor", () => {
+  /** OKLCH lightness up by `dl`: the smallest move a pulse makes as it leaves 0. */
+  const lighter = (c: ColorRgba, dl: number): ColorRgba => {
+    const o = Oklch.fromRgba(c);
+    return new Oklch(o.l + dl, o.c, o.h, o.alpha).toRgba();
+  };
+  const nudge: Effect = (c) => ({ fg: lighter(c.fg, 0.01), bg: lighter(c.bg, 0.01) });
+  const nudgeGround: Effect = (c) => ({ fg: c.fg, bg: lighter(c.bg, 0.01) });
+  const onMocha = (child: Renderable, effect: Effect): Effected =>
+    new Effected(child, effect, { t: 0, key: "k", theme: CATPPUCCIN_MOCHA });
+  const ansi = { width: 10, colorSystem: "ansi" } as const;
+
+  it("draws a slightly moved ANSI colour in the slot it came from", () => {
+    const text = new RichText("x", { style: "on blue" });
+    const drawn = renderToString(onMocha(text, nudgeGround), ansi);
+    expect(drawn).toContain("\x1b[44m");
+    expect(drawn).toBe(renderToString(text, ansi));
+  });
+
+  it("keeps every one of the theme's sixteen in its own slot under a small move", () => {
+    for (let n = 0; n < 16; n++) {
+      const child = fixed(new Segment("x", new Style({ color: ColorSpec.fromAnsi(n), bgcolor: ColorSpec.fromAnsi(n) })));
+      expect(renderToString(onMocha(child, nudge), ansi)).toBe(renderToString(child, ansi));
+    }
+  });
+
+  it("keeps a slightly moved theme slot in its slot at 256 colours, not the nearest cube colour to it", () => {
+    const text = new RichText("x", { style: "on blue" });
+    const at256 = { width: 10, colorSystem: "256" } as const;
+    expect(renderToString(onMocha(text, nudgeGround), at256)).toBe(renderToString(text, at256));
+  });
+
+  it("keeps a cell with no colours of its own in the terminal's defaults under a small move", () => {
+    const plain = fixed(new Segment("x"));
+    for (const colorSystem of ["ansi", "256"] as const) {
+      const drawn = renderToString(onMocha(plain, nudge), { width: 10, colorSystem });
+      expect(drawn).toContain("\x1b[39;49m");
+    }
+  });
+
+  it("lays a translucent colour on its ground before rounding it", () => {
+    // White at a tenth over Mocha's near-black ground is still near-black: the default ground, not a bright slot.
+    const veil: Effect = (c) => ({ fg: new ColorRgba(255, 255, 255, 0.1), bg: c.bg });
+    expect(renderToString(onMocha(fixed(new Segment("x")), veil), ansi)).toMatch(/\x1b\[(30|90|39)m/);
+  });
+
+  it("lays a translucent ground where the writer lays one, so one colour draws one way", () => {
+    const half = new ColorRgba(255, 0, 0, 0.5);
+    const truecolor = { width: 10, colorSystem: "truecolor" } as const;
+    const tinted = renderToString(onMocha(fixed(new Segment("x")), (c) => ({ fg: c.fg, bg: half })), truecolor);
+    expect(tinted).toBe(renderToString(fixed(new Segment("x", new Style({ bgcolor: ColorSpec.fromRgba(half) }))), truecolor));
+  });
+
+  it("draws a moved colour in the slot whose colour under the theme is nearest", () => {
+    const toMochaRed: Effect = (c) => ({ fg: CATPPUCCIN_MOCHA.ansiColors.get(1), bg: c.bg });
+    expect(renderToString(onMocha(fixed(new Segment("x")), toMochaRed), ansi)).toContain("\x1b[31m");
   });
 });
 
