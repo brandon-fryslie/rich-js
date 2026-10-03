@@ -139,7 +139,7 @@ console.print("[my.warning]Caution![/my.warning]");
 
 Theme names must be lowercase, start with a letter, and contain only letters, digits, dots, dashes, or underscores.
 
-A name is looked up when it is printed, in the theme of the console doing the printing. A `RichText` built once and printed by two consoles takes each console's colors, and a name the theme does not define prints plain.
+A name is looked up when it is printed, in the theme of the console doing the printing. A `RichText` built once and printed by two consoles takes each console's colors, and a name the theme does not define prints plain. Rendering without a console works the same way: `renderToString` and `renderTemplate` take a `theme` option and look names up in it, and without one they use the built-in styles.
 
 ### Customizing defaults
 
@@ -200,7 +200,7 @@ always throws. That error is a `MarkupSyntaxError`, described under
 ### Reporting dropped styles
 
 Pass `onStyleError` to the `Console` to hear about each style it drops.
-`renderToString` takes the same option. The handler receives the
+`renderToString` and `renderTemplate` take the same option. The handler receives the
 `StyleSyntaxError` and the whole style string that failed:
 
 ```typescript
@@ -240,6 +240,8 @@ const console = new Console({
 console.print("[bold rd]typo color[/]"); // throws StyleSyntaxError
 ```
 
-The error leaves `console.print`, or `renderToString`, instead of being dropped. There is no separate
-strict option, because this handler is the strict mode. Use it in tests and in
-development, so a typo fails at the line that printed it.
+The error leaves `console.print`, `renderToString` or `renderTemplate` instead
+of being dropped. `renderTemplate` does not turn it into an `[error: …]` line,
+because that line reports a template that failed, not a style. There is no
+separate strict option, because this handler is the strict mode. Use it in tests
+and in development, so a typo fails at the line that printed it.

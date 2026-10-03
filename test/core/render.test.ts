@@ -8,7 +8,8 @@ import { Strip, PowerlineJoiner } from "../../src/core/strip.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { renderMarkup } from "../../src/core/markup.js";
 import { OSC8_CLOSE, osc8Open, osc8Sequences } from "../../src/core/osc8.js";
-import { StyleSyntaxError } from "../../src/core/style.js";
+import { StyleSyntaxError, Theme } from "../../src/core/style.js";
+import { Console } from "../../src/core/console.js";
 
 // Every OSC 8 open in `out` as `{ params, uri }` (a close has an empty uri).
 function osc8Opens(out: string): { params: string; uri: string }[] {
@@ -117,6 +118,20 @@ describe("renderToString", () => {
     expect(() => renderToString(new RichText("x", { style: "rd" }), { onStyleError: strict })).toThrow(
       StyleSyntaxError,
     );
+  });
+
+  it("draws a theme's names as a Console carrying that theme draws them, so strict mode holds for themed content", () => {
+    const theme = new Theme({ "my.heading": "bold #ff0066" });
+    const strict = (error: StyleSyntaxError): never => {
+      throw error;
+    };
+    const content = () => new Panel(new RichText("x", { style: "my.heading" }));
+    let written = "";
+    const file = { write: (s: string) => void (written += s) };
+    new Console({ file, width: 40, colorSystem: "truecolor", theme }).print(content());
+    const out = renderToString(content(), { width: 40, theme, onStyleError: strict });
+    expect(out).toMatch(/\x1b\[1;38;2;255;0;102mx/);
+    expect(out).toBe(written);
   });
 });
 

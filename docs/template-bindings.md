@@ -244,7 +244,7 @@ Passing a palette name where a color belongs is the other common slip, and it na
 
 ## Rendering to segments
 
-`renderTemplate` is the shortcut for the live-render case — a preview pane, a status line, anything that recompiles a template the user is currently editing. It compiles, flattens the fragments, renders to a `Segment[]`, and wraps the whole flow so a broken template degrades instead of throwing:
+`renderTemplate` is the shortcut for the live-render case — a preview pane, a status line, anything that recompiles a template the user is currently editing. It compiles, flattens the fragments, renders to a `Segment[]`, and a template that fails to parse or evaluate degrades instead of throwing:
 
 ```typescript
 import { segmentsToString, resolveDestination } from "@promptctl/rich-js";
@@ -261,6 +261,8 @@ process.stdout.write(segmentsToString(segments, resolveDestination("auto")) + "\
 :::
 
 On a parse or evaluation failure it returns a single segment reading `[error: …]`, dim red unless `errorStyle` says otherwise — one line, drawn to the same `maxWidth` as a successful render and ending in `…` where the message had to be cut — which a caller can drop into their layout unchanged. Even a malformed `errorStyle` cannot break that promise — an unparseable spec falls back to the built-in style rather than propagating the failure it was supposed to report.
+
+The render itself draws the way a `Console` does. Pass `theme` to resolve style names a fragment carries, and `onStyleError` to hear about each style the render drops. A handler that rethrows makes `renderTemplate` throw, as described in [Failing on invalid styles](./style#failing-on-invalid-styles).
 
 ```typescript
 import { segmentsToString, resolveDestination } from "@promptctl/rich-js";
