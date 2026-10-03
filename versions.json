@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-329",
+      "ref": "refs/pull/329/merge",
+      "sha": "bfc713c1b08a7ff8fd9d3389bedfba95f48309b3",
+      "timestamp": "2026-10-03T15:10:05.650Z",
+      "commits": [
+        {
+          "sha": "bfc713c1b08a7ff8fd9d3389bedfba95f48309b3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T09:08:35-06:00",
+          "message": "Merge 4e4eb6d2c000730d65c14f0a104b96dd21eb7cb2 into 618ab5fef0e33826e668c85ba0a692040fdced8a\n"
+        },
+        {
+          "sha": "4e4eb6d2c000730d65c14f0a104b96dd21eb7cb2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T09:08:30-06:00",
+          "message": "fix(table): minimums that do not fit are cut as Rich cuts widths (rich-table-frxv)\n\nWhen every column's minimum cannot fit, the wrapable columns are narrowed\nfirst, widest first (Rich's _collapse_widths), then the excess is taken from\nevery column evenly (ratio_reduce), instead of granting minimums in\nproportion to natural width. A noWrap label beside a long noWrap column, and\na Progress description beside a fixed-width bar, now lay out as Rich 9d8f9a3.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "618ab5fef0e33826e668c85ba0a692040fdced8a",
