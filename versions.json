@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-286",
+      "ref": "refs/pull/286/merge",
+      "sha": "b013a7c64285e5f480f6bde4b12ad8d1a7d5bb68",
+      "timestamp": "2026-10-03T00:17:15.561Z",
+      "commits": [
+        {
+          "sha": "b013a7c64285e5f480f6bde4b12ad8d1a7d5bb68",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T18:16:08-06:00",
+          "message": "Merge b46488d4fe1a2d4080acd71cf900b39ab7890f5d into 7f994999fee0195cf9c8738fac04ee420d5f62b9\n"
+        },
+        {
+          "sha": "b46488d4fe1a2d4080acd71cf900b39ab7890f5d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T18:16:04-06:00",
+          "message": "feat(effects): Effected — a per-cell colour effect over a renderable's finished cells (rich-effects-fxiy.3t3)\n\nsrc/renderables/effect.ts: Effect (cell colours, row/col/seed, t → colours)\nand Effected, a Renderable that measures as its child. Segments are cut\nonly where colours change; unchanged cells keep their ColorSpec, so the\nidentity effect is byte-identical. Anchors shift per run, wide glyphs stay\nwhole, colours are built with ColorSpec.fromRgba. Seeds are FNV-1a of a\ncaller key and the cell position. docs/effects.md; demo in the colour\nstudio.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "7f994999fee0195cf9c8738fac04ee420d5f62b9",

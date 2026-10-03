@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as n,ag as t}from"./chunks/framework.DcHMsR_P.js";const c=JSON.parse('{"title":"Effects","description":"","frontmatter":{},"headers":[],"relativePath":"effects.md","filePath":"effects.md"}'),l={name:"effects.md"};function h(e,s,p,k,r,d){return a(),n("div",null,[...s[0]||(s[0]=[t("",13)])])}const B=i(l,[["render",h]]);export{c as __pageData,B as default};
