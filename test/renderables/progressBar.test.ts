@@ -105,5 +105,19 @@ describe("ProgressBar", () => {
       const m = bar.measure({ maxWidth: 80 });
       expect(m.minimum).toBeGreaterThanOrEqual(0);
     });
+
+    // Python Rich 9d8f9a3's `__rich_measure__` and `min(self.width or max_width, max_width)`.
+    it("measures a given width exactly, and draws no wider than it is offered", () => {
+      const bar = new ProgressBar({ total: 10, completed: 10, width: 40 });
+      expect(bar.measure({ maxWidth: 80 })).toEqual({ minimum: 40, maximum: 40 });
+      expect(collectText(bar, { maxWidth: 10 })).toBe("━".repeat(10));
+    });
+
+    // Python Rich 9d8f9a3: `ProgressBar(total=10, completed=10)` at width 50 draws 50 cells.
+    it("fills the width it is offered when it is given none", () => {
+      const bar = new ProgressBar({ total: 10, completed: 10 });
+      expect(bar.measure({ maxWidth: 50 })).toEqual({ minimum: 4, maximum: 50 });
+      expect(collectText(bar, { maxWidth: 50 })).toBe("━".repeat(50));
+    });
   });
 });

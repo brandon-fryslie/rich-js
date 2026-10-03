@@ -194,6 +194,27 @@ That is the default `TextColumn`. No other task field is substituted; `{task.com
 and `{task.total}` would render as literal braces. For the counts use
 `MofNCompleteColumn` or `TaskProgressColumn`.
 
+### Custom columns
+
+A column is anything with a `render(task)` that returns the cell's content and a
+`tableColumn` that says how the progress grid lays that cell out — the same
+options as a `Table` column. `TextColumn` and `TaskProgressColumn` are `noWrap`,
+so they are cut rather than wrapped; the others take a plain column, as Rich's
+do. A column that names a plain one wraps when the row runs out of room:
+
+```typescript
+import { Progress, TextColumn, RichText, type ProgressColumn } from "@promptctl/rich-js";
+
+const status: ProgressColumn = {
+  tableColumn: {},
+  render: (task) => new RichText(task.completed === 0 ? "waiting for the mirror to answer" : "fetching"),
+};
+
+const progress = new Progress(new TextColumn(), status, { console });
+progress.addTask("a long task description that leaves the status little room", { total: 10 });
+console.print(progress);
+```
+
 ## Print and log during progress
 
 Output printed to the progress's internal console appears above the progress bars without disrupting them:

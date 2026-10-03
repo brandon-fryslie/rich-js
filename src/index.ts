@@ -313,8 +313,10 @@ export {
   track,
 } from "./renderables/progress.js";
 export type {
+  ProgressColumn,
   ProgressOptions,
   SpinnerColumnOptions,
+  Task,
   TaskOptions,
   TaskUpdateOptions,
 } from "./renderables/progress.js";

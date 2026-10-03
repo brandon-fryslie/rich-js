@@ -5,6 +5,8 @@ import {
   SpinnerColumn,
   TaskProgressColumn,
   TextColumn,
+  type ProgressColumn,
+  type Task,
 } from "../../src/renderables/progress.js";
 import { Console } from "../../src/core/console.js";
 import { Theme } from "../../src/core/style.js";
@@ -18,7 +20,7 @@ const OPTS: RenderOptions = {
   asciiOnly: false,
 };
 
-const fakeTask = (description: string) => ({
+const fakeTask = (description: string): Task => ({
   id: 1,
   description,
   total: 100,
@@ -27,11 +29,11 @@ const fakeTask = (description: string) => ({
   visible: true,
   startTime: 0,
   elapsed: 0,
+  finishedTime: undefined,
 });
 
 function joined(col: TextColumn, description: string): string {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const segs = [...col.render(OPTS, fakeTask(description) as any)];
+  const segs = [...col.render(fakeTask(description)).render(OPTS)];
   return segs.map((s) => s.text).join("");
 }
 
@@ -45,8 +47,7 @@ describe("TextColumn markup parsing (rich-core-y80)", () => {
 
   it("applies a style span for the markup tag", () => {
     const col = new TextColumn("[bold]{task.description}[/]");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const segs = [...col.render(OPTS, fakeTask("hello") as any)];
+    const segs = [...col.render(fakeTask("hello")).render(OPTS)];
     const styled = segs.find((s) => s.text === "hello" && s.style);
     expect(styled).toBeDefined();
     expect(styled!.style!.bold).toBe(true);
@@ -111,6 +112,20 @@ describe("Progress expand (rich-justify-0cr.3)", () => {
     expect(line).toHaveLength(45);
     expect(line.startsWith("compiling ")).toBe(true);
     expect(barCells(line)).toBe(20);
+  });
+});
+
+describe("ProgressColumn.tableColumn (rich-progress-j4lb)", () => {
+  // Python Rich 9d8f9a3: a `ProgressColumn` subclass returning
+  // `Text("alpha beta gamma")` beside `TextColumn("task")` at width 14. Its
+  // default `Column()` may wrap, where a `TextColumn`'s is `no_wrap`.
+  it("lays a column out in the grid column it names, so a plain one wraps as Rich's does", () => {
+    const message: ProgressColumn = { tableColumn: {}, render: () => new RichText("alpha beta gamma") };
+    const console = new Console({ width: 14, colorSystem: null, record: true, file: { write: () => {} } });
+    const progress = new Progress(new TextColumn("task"), message, { console });
+    progress.addTask("a", { total: 10 });
+    console.print(progress);
+    expect(console.exportText()).toBe("task alpha    \n     beta     \n     gamma    \n");
   });
 });
 
@@ -209,6 +224,29 @@ describe("SpinnerColumn (rich-progress-sy9s)", () => {
   it("draws a justified finished text in its cell, not across the console", () => {
     const column = new SpinnerColumn("dots", { finishedText: new RichText("done", { justify: "center" }) });
     expect(draw(column, 10)).toBe("done end\n");
+  });
+
+  // Python Rich 9d8f9a3: `SpinnerColumn("bouncingBar", finished_text=Text("ok",
+  // justify=...))` and `TextColumn("end")` at width 30, one task running and one
+  // finished. The running frame sets the column's width, and the finished text
+  // is justified within it.
+  it.each([
+    ["right", "\x1b[32m[    ]\x1b[0m end\n    ok end\n"],
+    ["center", "\x1b[32m[    ]\x1b[0m end\n  ok   end\n"],
+  ] as const)("justifies its finished text %s within a column its frame widens, as Rich does", (justify, expected) => {
+    const chunks: string[] = [];
+    const console = new Console({
+      file: { write: (data: string) => chunks.push(data) },
+      width: 30,
+      colorSystem: "256",
+      forceTerminal: true,
+    });
+    const column = new SpinnerColumn("bouncingBar", { finishedText: new RichText("ok", { justify }) });
+    const progress = new Progress(column, new TextColumn("end"), { console });
+    progress.addTask("a", { total: 10 });
+    progress.updateTask(progress.addTask("b", { total: 10 }), { completed: 10 });
+    console.print(progress);
+    expect(chunks.join("")).toBe(expected);
   });
 
   it("keeps its own copy of a finished text the caller goes on to change", () => {
