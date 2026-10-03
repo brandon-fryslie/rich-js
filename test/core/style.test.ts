@@ -937,8 +937,9 @@ describe("DEFAULT_STYLES", () => {
 
   // An entry that paints its own ground has fixed one half of the pair, so the
   // other half must not be left to the terminal theme: WCAG's 4.5 for body text,
-  // on every bundled theme. Measured at full depth; at 16 colours both halves
-  // are the terminal's own slots and this says nothing.
+  // on every bundled theme. Measured at full depth; at 16 colours what is drawn
+  // is the renderable's business, and test/renderables/grounded-defaults.test.ts
+  // measures it there.
   const grounded = Object.entries(DEFAULT_STYLES).filter(([, style]) => style.bgcolor);
   const terminals = Object.entries(terminalThemes).filter(
     (entry): entry is [string, TerminalTheme] => entry[1] instanceof TerminalTheme,

@@ -95,7 +95,7 @@ function isEmptyStyle(style: string | Style): boolean {
  * A parsed string can carry a link, so the result is sanitized on the way out
  * as well.
  */
-function resolveStyle(options: RenderOptions, style: string | Style): Style {
+export function resolveStyle(options: RenderOptions, style: string | Style): Style {
   return sanitizeStyleLink(style instanceof Style ? style : resolveDefinition(options, style));
 }
 

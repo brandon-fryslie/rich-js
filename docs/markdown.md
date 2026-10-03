@@ -48,8 +48,10 @@ An image is drawn as Rich draws it: a picture glyph, then its alt text, linked t
 
 ## Code blocks
 
-A fenced code block is drawn line for line in the `markdown.code` style, cyan on a dark
-background, with its indentation kept. The language tag after the opening fence is read
+A fenced code block is drawn line for line in the `markdown.code` style, bold cyan on a
+dark background, with its indentation kept. At sixteen colours code is drawn bold in the
+terminal's own colours instead, since no fixed background reads in every terminal theme
+there. The language tag after the opening fence is read
 but not used: `Markdown` does no per-language highlighting. For highlighted code, render
 it with [`Syntax`](./syntax) instead.
 

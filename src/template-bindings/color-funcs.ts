@@ -57,7 +57,7 @@
  */
 
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
-import { blendRgb, ColorDepth, ColorParseError, parseHexColor, type ColorRgba } from "../core/color.js";
+import { blendRgb, ColorDepth, ColorParseError, parseHexColor, type ColorRgba, type TerminalTheme } from "../core/color.js";
 import { Oklch, IDENTITY } from "../core/oklch.js";
 import type { ThemeKey } from "../core/oklch.js";
 import { darken, contrastFor, ensureContrast } from "../themes/colorMath.js";
@@ -187,21 +187,41 @@ const contrastOnFunc = colorFunc(["string"], ((bgHex: string) =>
   contrastFor(asColor(bgHex, "contrastOn")).hex) as TemplateFunc["fn"]);
 
 /**
- * The `readableOn` binding, measuring at the depth `drawnAt` names when it is
- * evaluated — a consumer that renders at a per-call depth registers its own.
+ * Where `readableOn`'s text will be drawn: the depth the output is encoded at,
+ * and the terminal that draws it when that is known. At sixteen colours a
+ * terminal paints each slot in its own theme's colour, so the floor is measured
+ * in `terminal`'s sixteen; without one, in the VGA defaults (the Windows
+ * console's at `WINDOWS`). Both are facts about the one place the text lands,
+ * so they arrive together.
  */
-export const readableOnFunc = (drawnAt: () => ColorDepth): TemplateFunc =>
+export interface DrawnAt {
+  readonly depth: ColorDepth;
+  readonly terminal?: TerminalTheme;
+}
+
+const TRUECOLOR: DrawnAt = { depth: ColorDepth.TRUECOLOR };
+
+/**
+ * The `readableOn` binding, measuring where `drawnAt` says the text lands when
+ * it is evaluated — a consumer that renders to a per-call destination
+ * registers its own.
+ */
+export const readableOnFunc = (drawnAt: () => DrawnAt): TemplateFunc =>
   colorFunc(["string", "string", "float"], ((
     fgHex: string,
     bgHex: string,
     ratio: number,
-  ) =>
-    ensureContrast(
+  ) => {
+    const { depth, terminal } = drawnAt();
+    return ensureContrast(
       asColor(fgHex, "readableOn"),
       asColor(bgHex, "readableOn"),
       asAmount(ratio, "readableOn", "ratio", RATIO_RANGE),
-      drawnAt(),
-    ).hex) as TemplateFunc["fn"]);
+      depth,
+      undefined,
+      terminal,
+    ).hex;
+  }) as TemplateFunc["fn"]);
 
 // --- OKLCH axes ---
 //
@@ -256,13 +276,11 @@ function oklchAxisFuncs(): FuncMap {
  * Pair with `paletteFuncs()` to name colors from a theme, and with
  * `richTextStyleFuncs()`'s `fg`/`bg` to paint them onto text.
  *
- * @param drawnAt the depth the terminal will draw at, read on every
- *   `readableOn` evaluation so a host that learns its depth per render passes
- *   one getter; defaults to truecolor.
+ * @param drawnAt where the text will be drawn — the depth, and the terminal
+ *   when known — read on every `readableOn` evaluation so a host that learns
+ *   its destination per render passes one getter; defaults to truecolor.
  */
-export function colorFuncs(
-  drawnAt: () => ColorDepth = () => ColorDepth.TRUECOLOR,
-): FuncMap {
+export function colorFuncs(drawnAt: () => DrawnAt = () => TRUECOLOR): FuncMap {
   return {
     darken: darkenFunc,
     lighten: lightenFunc,

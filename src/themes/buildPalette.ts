@@ -1,5 +1,5 @@
 import { ColorRgba, blendRgb } from "../core/color.js";
-import { alphaBlend, contrastFor } from "./colorMath.js";
+import { alphaBlend, contrastFor, ensureContrastToward } from "./colorMath.js";
 import { Palette, drawnOn } from "./palette.js";
 
 /**
@@ -20,10 +20,12 @@ export interface BaseColors {
 const MUTED_BLEND = 0.7;
 const TEXT_ALPHA = 0.66;
 const SURFACE_LIFT = 0.05;
+// WCAG AA for body text: `text-*` is the label drawn on `*-muted`.
+const TEXT_ON_MUTED = 4.5;
 
 type AccentKey = "primary" | "secondary" | "accent" | "success" | "warning" | "error";
 
-const ACCENT_KEYS: AccentKey[] = ["primary", "secondary", "accent", "success", "warning", "error"];
+export const ACCENT_KEYS: readonly AccentKey[] = ["primary", "secondary", "accent", "success", "warning", "error"];
 
 /**
  * Build a full semantic palette from base colors.
@@ -36,8 +38,9 @@ const ACCENT_KEYS: AccentKey[] = ["primary", "secondary", "accent", "success", "
  *              de-emphasizing body/structural text reaches for
  *              `foreground-muted` the same way it reaches for
  *              `primary-muted` to de-emphasize an accent.
- * - `text-*`  = contrast text tinted 66% with the accent color (use as
- *              foreground in muted/background-tinted contexts)
+ * - `text-*`  = contrast text tinted 66% with the accent color, then held
+ *              to WCAG AA (4.5:1) on `*-muted` — the foreground for a
+ *              `*-muted` ground
  * - `on-*`    = WCAG-correct contrast colour (black or white) for use as
  *              foreground when the FULL accent is the background. Picked
  *              by relative luminance — single source of truth so widgets
@@ -87,10 +90,27 @@ export function buildPalette(name: string, dark: boolean, given: BaseColors): Pa
   const contrastText = contrastFor(base.background);
   for (const key of ACCENT_KEYS) {
     const color = base[key];
-    vars.set(`${key}-muted`, blendRgb(color, base.background, MUTED_BLEND));
-    vars.set(`text-${key}`, alphaBlend(color, contrastText, TEXT_ALPHA));
+    const muted = blendRgb(color, base.background, MUTED_BLEND);
+    vars.set(`${key}-muted`, muted);
+    vars.set(`text-${key}`, accentText(alphaBlend(color, contrastText, TEXT_ALPHA), muted, base.background));
     vars.set(`on-${key}`, contrastFor(color));
   }
 
   return new Palette(name, dark, vars);
+}
+
+/**
+ * A palette's `text-*`: its tint held to WCAG AA on `*-muted`, moved toward
+ * the palette's own text side so it also reads on `background`, where widgets
+ * draw it too. The muted floor is the promise: where no lightness on the text
+ * side clears it, the colour that does is on the other side, and the
+ * background pair is the one given up. Every bundled palette clears both
+ * (test/themes/text-on-muted.test.ts).
+ *
+ * [LAW:single-enforcer] The one rule for the pair, for the palettes derived
+ * here and the authored ones the registry hydrates: the tint is the theme's,
+ * whether it reads is decided here.
+ */
+export function accentText(tint: ColorRgba, muted: ColorRgba, background: ColorRgba): ColorRgba {
+  return ensureContrastToward(tint, muted, TEXT_ON_MUTED, contrastFor(background));
 }

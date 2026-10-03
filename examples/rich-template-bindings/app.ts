@@ -119,8 +119,8 @@ function makeCalculatorEngine(theme: TerminalTheme): Engine<RichText> {
 // DRAW, so text that would lose its floor once the terminal rounds text and
 // background independently is replaced by the nearest 256-colour entry that
 // clears it. An engine drawn at one depth throughout passes it once —
-// `richTextFuncs(() => depth)`. This one shows the other shape: `readableOnFunc`
-// registered over the key alone, for a host whose depth is not the engine's
+// `richTextFuncs(() => ({ depth, terminal }))`. This one shows the other shape: `readableOnFunc`
+// registered over the key alone, for a host whose destination is not the engine's
 // (cc-candybar swaps it per segment).
 function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<RichText> {
   return createEngine<RichText>({
@@ -129,7 +129,7 @@ function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<Rich
     funcs: {
       ...richTextFuncs(),
       ...paletteFuncs(() => theme.palette),
-      readableOn: readableOnFunc(() => depth),
+      readableOn: readableOnFunc(() => ({ depth, terminal: theme })),
     },
   });
 }

@@ -6,7 +6,7 @@
 import type { Segment } from "./segment.js";
 import { cellCount } from "./cells.js";
 import { DEFAULT_THEME, type Style, type StyleSyntaxError, type Theme } from "./style.js";
-import type { ColorDepth } from "./color.js";
+import { ColorDepth, type ColorSpec } from "./color.js";
 // [LAW:one-way-deps] exception: the one upward edge between core's tiers, and
 // type-only. A render option that highlights the text being rendered, when
 // `RichText` is itself rendered under these options, is a recursion in the
@@ -234,6 +234,28 @@ export type StyleErrorHandler = (error: StyleSyntaxError, style: string) => void
  */
 export function getStyle(options: RenderOptions, style: string | Style): Style {
   return (options.theme ?? DEFAULT_THEME).resolve(style);
+}
+
+/**
+ * `style` as the depth the render is encoded at can draw it. A style that
+ * paints its own ground in fixed colours chose its ink and ground as a pair;
+ * at sixteen colours the writer rounds a fixed colour to an ANSI slot, which
+ * the terminal paints in its own theme's colour, and no pair of slots reads in
+ * every bundled theme. So where the depth would turn a fixed colour of the
+ * pair into a slot, the pair is dropped and the run is drawn on the
+ * terminal's own foreground and background, which its theme does make
+ * readable; its attributes still set it apart. A style whose colours are
+ * slots already (`white on blue`), or that paints no ground (`bold magenta`),
+ * was written for the terminal's own colours and is drawn as written. Rich
+ * draws a highlighted line number the same way below 256 colours
+ * (`Syntax._get_number_styles`).
+ */
+export function groundedStyle(options: RenderOptions, style: Style): Style {
+  const drawn = style.drawnColors(options.colorSystem ?? undefined);
+  const lost = (written: ColorSpec | undefined, shown: ColorSpec | undefined): boolean =>
+    written?.fixedValue !== undefined && shown?.fixedValue === undefined;
+  const pairLost = style.bgcolor !== undefined && (lost(style.color, drawn.color) || lost(style.bgcolor, drawn.bgcolor));
+  return pairLost ? style.withoutColor : style;
 }
 
 /**

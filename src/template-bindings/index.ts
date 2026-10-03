@@ -38,13 +38,12 @@ import { createEngine, type Engine, type FuncMap } from "@promptctl/go-template-
 import { RichText } from "../core/text.js";
 import { Style } from "../core/style.js";
 import { Segment } from "../core/segment.js";
-import { ColorDepth } from "../core/color.js";
 import type { RenderOptions } from "../core/protocol.js";
 import { richTextStyleFuncs } from "./style-funcs.js";
-import { colorFuncs } from "./color-funcs.js";
+import { colorFuncs, type DrawnAt } from "./color-funcs.js";
 
 export { paletteFuncs } from "./palette-funcs.js";
-export { colorFuncs, readableOnFunc } from "./color-funcs.js";
+export { colorFuncs, readableOnFunc, type DrawnAt } from "./color-funcs.js";
 
 /**
  * Funcs registered by the rich-js binding — the colour sinks, the palette-free
@@ -66,7 +65,7 @@ export { colorFuncs, readableOnFunc } from "./color-funcs.js";
  */
 // [LAW:one-source-of-truth] The truecolor default lives on `colorFuncs` alone;
 // an omitted `drawnAt` is forwarded as omitted.
-export function richTextFuncs(drawnAt?: () => ColorDepth): FuncMap {
+export function richTextFuncs(drawnAt?: () => DrawnAt): FuncMap {
   return { ...richTextStyleFuncs(), ...colorFuncs(drawnAt) };
 }
 

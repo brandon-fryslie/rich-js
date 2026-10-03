@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { Markdown, type MarkdownOptions } from "../../src/renderables/markdown.js";
 import { Segment } from "../../src/core/segment.js";
-import { Style } from "../../src/core/style.js";
+import { DEFAULT_THEME, Style } from "../../src/core/style.js";
+import { ColorDepth } from "../../src/core/color.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -338,6 +339,37 @@ describe("Markdown", () => {
   it("draws inline code in inlineCodeStyle, given as a Style", () => {
     const style = Style.parse("bold green");
     expect(segment("Use `code` here", "code", { inlineCodeStyle: style }).style).toEqual(style);
+  });
+
+  it("draws code on the terminal's own colours at 16 colours, where a fixed ground cannot be promised", () => {
+    const code = DEFAULT_THEME.resolve("markdown.code");
+    const drawn = (colorSystem: ColorDepth) =>
+      collectSegments(new Markdown("Use `code` here\n\n```\nblock\n```"), { maxWidth: 80, colorSystem })
+        .filter((s) => s.text === "code" || s.text === "block")
+        .map((s) => s.style);
+    // Bold, as Rich's own `markdown.code` is, so code stays set apart once its colours go.
+    expect(code.bold).toBe(true);
+    expect(drawn(ColorDepth.STANDARD)).toEqual([code.withoutColor, code.withoutColor]);
+    expect(drawn(ColorDepth.EIGHT_BIT)).toEqual([code, code]);
+  });
+
+  it("draws an inline code style written in the terminal's own colours as written at 16 colours", () => {
+    const drawn = (inlineCodeStyle: string) =>
+      collectSegments(new Markdown("Use `code` here", { inlineCodeStyle }), { maxWidth: 80, colorSystem: ColorDepth.STANDARD })
+        .find((s) => s.text === "code")!.style;
+    expect(drawn("bold magenta")).toEqual(Style.parse("bold magenta"));
+    expect(drawn("white on blue")).toEqual(Style.parse("white on blue"));
+  });
+
+  it("reports a bad inline code style to onStyleError and draws the code unstyled", () => {
+    const heard: string[] = [];
+    const segments = collectSegments(new Markdown("a `b` c", { inlineCodeStyle: "bold rd" }), {
+      maxWidth: 80,
+      onStyleError: (_error, style) => heard.push(style),
+    });
+    expect(heard).toEqual(["bold rd"]);
+    expect(segments.map((s) => s.text).join("")).toContain("a b c");
+    expect(segments.some((s) => s.style?.bold)).toBe(false);
   });
 
   it("makes a link's text the link by default", () => {

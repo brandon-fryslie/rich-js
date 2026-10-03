@@ -1,5 +1,6 @@
 import { ColorParseError, ColorRgba, ColorTable, parseHexColor } from "../core/color.js";
 import { Palette, drawnOn } from "./palette.js";
+import { ACCENT_KEYS, accentText } from "./buildPalette.js";
 import { THEMES, type ThemeName, type ThemePaletteData } from "./data/index.js";
 import { ANSI_SLOTS } from "./data/types.js";
 
@@ -112,6 +113,12 @@ function hydrate(data: ThemePaletteData): Palette {
   const map = new Map<string, ColorRgba>();
   for (const [k, v] of Object.entries(data.vars)) {
     map.set(k, parseHex(v, data.name, `var ${k}`));
+  }
+  // The data is Textual's as authored; its `text-*` is held to the pair this
+  // library promises by the same rule `buildPalette` derives it with.
+  for (const key of ACCENT_KEYS) {
+    const text = requireBaseVar(data, `text-${key}`);
+    map.set(`text-${key}`, accentText(text, requireBaseVar(data, `${key}-muted`), requireBaseVar(data, "background")));
   }
   return new Palette(data.name, data.dark, map);
 }
