@@ -4,15 +4,22 @@
     {
       "version": "pr-288",
       "ref": "refs/pull/288/merge",
-      "sha": "e6189cc16789dd34c60b10b871c2687b1c0eab7e",
-      "timestamp": "2026-10-03T01:19:41.762Z",
+      "sha": "6770e61c7307ebc51096ff02e760c28485e662b2",
+      "timestamp": "2026-10-03T01:27:07.730Z",
       "commits": [
         {
-          "sha": "e6189cc16789dd34c60b10b871c2687b1c0eab7e",
+          "sha": "6770e61c7307ebc51096ff02e760c28485e662b2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T19:18:45-06:00",
-          "message": "Merge e68fcc3915ba6ab9774f74d33c86cf2376c92f4d into 45a4d6e6fd8dfb5b949115c3dd8e80b9a98baa1d\n"
+          "timestamp": "2026-10-03T01:26:09Z",
+          "message": "Merge ffdd5bc0c7e9cf0d4b44c1a30d0662a08d39b952 into 45a4d6e6fd8dfb5b949115c3dd8e80b9a98baa1d\n"
+        },
+        {
+          "sha": "ffdd5bc0c7e9cf0d4b44c1a30d0662a08d39b952",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T19:26:04-06:00",
+          "message": "fix(host): animate paints its first frame now, a tick satisfies a queued refresh, frameRate refuses rates a timer cannot wait out (rich-effects-fxiy.b40)\n\nReview (high) on #288.\n"
         },
         {
           "sha": "e68fcc3915ba6ab9774f74d33c86cf2376c92f4d",
