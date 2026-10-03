@@ -85,9 +85,9 @@ export interface ConsoleEnvironment {
 
 export interface ConsoleOptions {
   /**
-   * Color encoding. Accepts a string spec (`"auto"`, `"truecolor"`, `"256"`,
-   * `"ansi"`, `"none"`), a `ColorDepth` enum value (use this for `WINDOWS`,
-   * which has no string spec), or `null` for no color. Default `"auto"`.
+   * Color encoding. Accepts a `ColorSystemName` (`"auto"`, `"truecolor"`,
+   * `"256"`, `"ansi"`, `"none"`), a `ColorDepth` enum value (use this for
+   * `WINDOWS`, which has no name), or `null` for no color. Default `"auto"`.
    * Colour only: an explicit depth, `null` included, keeps hyperlinks.
    */
   colorSystem?: ColorSystemName | ColorDepth | null;

@@ -618,20 +618,33 @@ export function runDemo(
     // drift. A malformed literal is a ColorParseError naming the input.
     // [LAW:single-enforcer]
     out.print(dim("    parseHexColor — the one hex grammar, asked directly:"));
-    const hexVerdict = (probe: string): RichText => {
+    // Each probe says which way it should go, so a malformed literal that
+    // parsed shows as the regression it is rather than as one more swatch.
+    const hexVerdict = (probe: string, parses: boolean): RichText => {
       try {
         const color = parseHexColor(probe);
-        return new RichText("").append(`  ${color.hex}  `, bgFgStyle(color, fg, bg));
+        return parses
+          ? new RichText("").append(`  ${color.hex}  `, bgFgStyle(color, fg, bg))
+          : new RichText(`WRONG: parsed as ${color.hex}`, { style: "bold red" });
       } catch (err) {
-        return err instanceof ColorParseError
-          ? new RichText(err.message, { style: "green" })
-          : new RichText(`WRONG error type (${err instanceof Error ? err.name : typeof err})`, { style: "bold red" });
+        if (!(err instanceof ColorParseError)) {
+          return new RichText(`WRONG error type (${err instanceof Error ? err.name : typeof err})`, { style: "bold red" });
+        }
+        return parses
+          ? new RichText(`WRONG: refused — ${err.message}`, { style: "bold red" })
+          : new RichText(err.message, { style: "green" });
       }
     };
-    for (const probe of ["#7aa2f7", "#7aa2f780", "#7aa2f", "7aa2f7", "#7ag2f7"]) {
+    for (const [probe, parses] of [
+      ["#7aa2f7", true],
+      ["#7aa2f780", true],
+      ["#7aa2f", false],
+      ["7aa2f7", false],
+      ["#7ag2f7", false],
+    ] as const) {
       out.print(
         new RichText(`      parseHexColor("${probe}")${" ".repeat(Math.max(0, 12 - probe.length))} → `).append(
-          hexVerdict(probe),
+          hexVerdict(probe, parses),
         ),
       );
     }

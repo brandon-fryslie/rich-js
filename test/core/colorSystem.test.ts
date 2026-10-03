@@ -79,6 +79,21 @@ describe("ColorSystemName (the colour-system vocabulary)", () => {
   });
 });
 
+describe("detectColorSystem reads the environment's vocabulary, not ColorSystemName", () => {
+  it("takes a colour system name in FORCE_COLOR or TERM as an unknown value", () => {
+    expect(detectColorSystem({ env: { FORCE_COLOR: "none" }, isTTY: true })).toBe(ColorDepth.STANDARD);
+    expect(detectColorSystem({ env: { FORCE_COLOR: "truecolor" }, isTTY: true })).toBe(ColorDepth.STANDARD);
+    expect(detectColorSystem({ env: { TERM: "none" }, isTTY: true })).toBe(ColorDepth.STANDARD);
+    expect(detectColorSystem({ env: { TERM: "truecolor" }, isTTY: true })).toBe(ColorDepth.STANDARD);
+  });
+
+  it("takes a value naming an Object.prototype member as an unknown value", () => {
+    expect(detectColorSystem({ env: { FORCE_COLOR: "constructor" }, isTTY: true })).toBe(ColorDepth.STANDARD);
+    expect(detectColorSystem({ env: { TERM: "toString" }, isTTY: true })).toBe(ColorDepth.STANDARD);
+    expect(detectColorSystem({ env: { TERM_PROGRAM: "hasOwnProperty" }, isTTY: true })).toBe(ColorDepth.STANDARD);
+  });
+});
+
 describe("detectColorSystem (env + TTY → ColorDepth)", () => {
   it("NO_COLOR with any non-empty value disables color", () => {
     expect(detectColorSystem({ env: { NO_COLOR: "1" }, isTTY: true })).toBe(

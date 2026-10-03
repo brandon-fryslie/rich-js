@@ -55,8 +55,8 @@ export interface RenderToStringOptions extends Pick<RenderOptions, "asciiOnly" |
   /** Cell width to render into. Default 80. */
   width?: number;
   /**
-   * Color encoding to emit. Accepts a string spec (`"auto"`, `"truecolor"`,
-   * `"256"`, `"ansi"`, `"none"`), a `ColorDepth` enum value, or `null` to
+   * Color encoding to emit. Accepts a `ColorSystemName` (`"auto"`,
+   * `"truecolor"`, `"256"`, `"ansi"`, `"none"`), a `ColorDepth` enum value, or `null` to
    * strip SGR colors/attributes. Hyperlinks are `hyperlinks`' concern. Default
    * truecolor.
    */
