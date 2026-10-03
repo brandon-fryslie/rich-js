@@ -4,15 +4,22 @@
     {
       "version": "pr-286",
       "ref": "refs/pull/286/merge",
-      "sha": "b013a7c64285e5f480f6bde4b12ad8d1a7d5bb68",
-      "timestamp": "2026-10-03T00:17:15.561Z",
+      "sha": "20e69c5c581c8bfc6ebf5dc9a0631700c0f4c4b4",
+      "timestamp": "2026-10-03T00:24:15.502Z",
       "commits": [
         {
-          "sha": "b013a7c64285e5f480f6bde4b12ad8d1a7d5bb68",
+          "sha": "20e69c5c581c8bfc6ebf5dc9a0631700c0f4c4b4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T18:16:08-06:00",
-          "message": "Merge b46488d4fe1a2d4080acd71cf900b39ab7890f5d into 7f994999fee0195cf9c8738fac04ee420d5f62b9\n"
+          "timestamp": "2026-10-03T00:23:01Z",
+          "message": "Merge 4c5cae4845b0823744a5b685b450eea5f6e1d957 into 7f994999fee0195cf9c8738fac04ee420d5f62b9\n"
+        },
+        {
+          "sha": "4c5cae4845b0823744a5b685b450eea5f6e1d957",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T18:22:56-06:00",
+          "message": "fix(effects): an effect sees the colours on screen — reverse swapped, ANSI and default resolved through a TerminalTheme (rich-effects-fxiy.3t3)\n\nEffected's `defaults: CellColors` becomes `theme: TerminalTheme`, the type\nthat already says what a terminal draws, so an ANSI-slot cell is moved from\nthe caller's red rather than the built-in table's. Colours are read through\nStyle.drawnColors, the one account of what a style writes, so alpha is\nflattened as the wire flattens it. Under reverse the two slots are swapped\nin and swapped back out. The studio's sweep counts its indent, and the docs\nstate the nesting law at the level it holds: colours, not bytes.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "b46488d4fe1a2d4080acd71cf900b39ab7890f5d",
