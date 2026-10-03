@@ -56,7 +56,7 @@ Key properties:
 
 - **Already passing?** The (flattened) foreground is returned as-is, opaque. An opaque `fg` that already clears the ratio comes back unchanged.
 - **Minimal change.** It bisects for the lightness *nearest the original* that clears the floor — the smallest perceptual adjustment that achieves accessibility, the way professional tone systems (Radix, Material) do it.
-- **Translucent input is flattened.** A hand-written `#FFFFFF60` is composited over `bg` first (a palette's colours are opaque already, drawn on its own background), so the guarantee reflects what the eye actually sees; the result is opaque.
+- **Translucent input is flattened.** A hand-written `#FFFFFF60` is composited over `bg` first (a palette's translucent colours are drawn on its own background already), so the guarantee reflects what the eye actually sees; the result is opaque.
 - **Honest fallback.** Against a mid-toned background where *no* lightness of that hue can reach the target (e.g. asking for `7:1` over mid-grey, which tops out around `5.3:1`), it falls back to `contrastFor`'s pure black/white — the true maximum.
 
 ```typescript

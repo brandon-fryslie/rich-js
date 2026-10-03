@@ -3,7 +3,7 @@ import { ColorDepth, ColorRgba, ColorSpec } from "../../src/core/color.js";
 import { resolveLook } from "../../src/core/export-lines.js";
 import { Style } from "../../src/core/style.js";
 import { Palette } from "../../src/themes/palette.js";
-import { CATPPUCCIN_LATTE } from "../../src/themes/terminalThemes.js";
+import { CATPPUCCIN_LATTE, GRUVBOX } from "../../src/themes/terminalThemes.js";
 import {
   getThemeBaseColors,
   getThemePalette,
@@ -137,13 +137,14 @@ describe("getThemeBaseColors", () => {
 
 // [LAW:behavior-not-structure] A theme's translucent variable is a tint meant
 // for that theme's background. Whatever a palette hands out is drawn there
-// already, so the terminal and an export paint the same colour for it.
-describe("every palette colour is opaque", () => {
+// already, so the terminal and an export paint the same colour for it. A fully
+// transparent one draws nothing anywhere, so it is handed out as nothing.
+describe("every palette colour is opaque or draws nothing", () => {
   it("holds for every bundled palette and its base colours", () => {
     const translucent: string[] = [];
     for (const name of ALL_NAMES) {
       for (const [key, colour] of getThemePalette(name).vars) {
-        if (colour.alpha !== 1) translucent.push(`${name}.${key} ${colour.hex}`);
+        if (colour.alpha !== 1 && colour.alpha !== 0) translucent.push(`${name}.${key} ${colour.hex}`);
       }
       const base = getThemeBaseColors(name);
       for (const key of ["bg", "fg", "primary", "secondary", "accent", "success", "warning", "error"] as const) {
@@ -160,5 +161,16 @@ describe("every palette colour is opaque", () => {
     const style = new Style({ bgcolor: ColorSpec.fromRgba(hover) });
     expect(style.toSgrCodes(ColorDepth.TRUECOLOR)).toBe("48;2;216;217;221");
     expect(resolveLook(style, CATPPUCCIN_LATTE).background).toEqual(new ColorRgba(216, 217, 221));
+  });
+
+  it("gruvbox's link-background on a surface row leaves the surface in the SGR bytes and in an export", () => {
+    // #00000000 in the theme data: Textual's "no background". Drawn onto the
+    // palette background it would cut a #282828 box into the #3c3836 row.
+    const palette = getThemePalette("gruvbox");
+    const row = new Style({ bgcolor: ColorSpec.fromRgba(palette.get("surface")!) });
+    const link = new Style({ bgcolor: ColorSpec.parse(palette.get("link-background")!.hex) });
+    const style = row.add(link);
+    expect(style.toSgrCodes(ColorDepth.TRUECOLOR)).toBe(row.toSgrCodes(ColorDepth.TRUECOLOR));
+    expect(resolveLook(style, GRUVBOX).background).toEqual(resolveLook(row, GRUVBOX).background);
   });
 });

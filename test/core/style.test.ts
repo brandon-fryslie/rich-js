@@ -52,6 +52,14 @@ describe("Style construction", () => {
     expect(s.bgcolor!.name).toBe("green");
   });
 
+  it("has no background when the one it is given is fully transparent", () => {
+    // It draws nothing over whatever is under it, so a style it is added to keeps its own.
+    expect(new Style({ bgcolor: "#28282800" }).bgcolor).toBeUndefined();
+    expect(Style.parse("on #28282800").bgcolor).toBeUndefined();
+    expect(Style.parse("on red").add(Style.parse("on #28282800")).bgcolor!.name).toBe("red");
+    expect(new Style({ color: "#28282800" }).color!.value!.alpha).toBe(0);
+  });
+
   it("constructs with attributes", () => {
     const s = new Style({ bold: true, italic: true, underline: false });
     expect(s.bold).toBe(true);

@@ -21,9 +21,12 @@ import type { ColorRgba } from "../core/color.js";
  * So it is drawn onto `background` here, once, and the writer, the exporters
  * and the contrast choosers all read the colour it has there. On any other
  * surface it keeps that colour: the tint does not follow what is under it.
+ * The exception is a fully transparent colour, Textual's "no background": it
+ * draws nothing on any surface, so it needs none and is handed out as it is,
+ * and a `Style` reads it as no background at all.
  *
  * @throws RangeError when `background` is translucent, or when a colour is
- * translucent and there is no `background` to draw it on.
+ * partly transparent and there is no `background` to draw it on.
  */
 export class Palette {
   readonly name: string;
@@ -44,7 +47,7 @@ export class Palette {
     const background = vars.get("background");
     const draw: (colour: ColorRgba, key: string) => ColorRgba =
       background === undefined ? opaqueOnly(name) : drawnOn(name, background);
-    this.vars = new Map([...vars].map(([key, colour]) => [key, draw(colour, key)]));
+    this.vars = new Map([...vars].map(([key, colour]) => [key, colour.alpha === 0 ? colour : draw(colour, key)]));
   }
 
   get(key: string): ColorRgba | undefined {

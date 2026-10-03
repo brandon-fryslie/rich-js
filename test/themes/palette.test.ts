@@ -48,6 +48,12 @@ describe("Palette", () => {
     expect(() => new Palette("t", false, new Map([["hover", tint]]))).toThrow(/hover is translucent/);
   });
 
+  it("hands out a fully transparent var as itself, with or without a background", () => {
+    const nothing = new ColorRgba(0, 0, 0, 0);
+    expect(new Palette("t", false, new Map([["background", new ColorRgba(200, 200, 200)], ["link-background", nothing]])).get("link-background")).toEqual(nothing);
+    expect(new Palette("t", false, new Map([["link-background", nothing]])).get("link-background")).toEqual(nothing);
+  });
+
   it("refuses a translucent background", () => {
     const background = new ColorRgba(200, 200, 200, 0.5);
     expect(() => new Palette("t", false, new Map([["background", background]]))).toThrow(/must be opaque/);
