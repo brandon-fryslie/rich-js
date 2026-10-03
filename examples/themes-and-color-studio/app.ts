@@ -45,7 +45,6 @@ import {
   resolveColorRef,
   parseHexColor,
   ColorRefError,
-  HEX_COLOR_RE,
   buildPalette,
   // Section 6 — Pre-built TerminalTheme constants
   TerminalTheme,
@@ -107,6 +106,7 @@ import {
 import { hostEnvironment, type TerminalHost } from "../../src/host/index.js";
 
 import type {
+  ColorSystemName,
   DetectColorOptions,
   ThemeName,
   BaseColors,
@@ -453,10 +453,11 @@ export function runDemo(
     }
     out.print(blank());
 
-    // resolveColorSystem: same enum from a spec string. "auto" falls through
-    // to detection; everything else is a direct table lookup.
+    // resolveColorSystem: same enum from a ColorSystemName. "auto" falls
+    // through to detection; every other name is a fixed depth.
     out.print(dim("    resolveColorSystem(spec):"));
-    for (const spec of ["truecolor", "256", "ansi", "none", "auto"]) {
+    const names: readonly ColorSystemName[] = ["truecolor", "256", "ansi", "none", "auto"];
+    for (const spec of names) {
       const depth = resolveColorSystem(spec, cases[1]!.opts);
       const label = depth === null ? "null" : ColorDepth[depth];
       out.print(new RichText(`      "${spec.padEnd(9)}"  →  ${label}`));
@@ -612,16 +613,39 @@ export function runDemo(
     );
     out.print(blank());
 
-    // HEX_COLOR_RE is exported so a caller gates on the *same* pattern the
-    // parser consults — one regex, never a second private copy that drifts.
-    // [LAW:one-source-of-truth]
-    out.print(dim("    HEX_COLOR_RE — the literal-shape gate the parser itself uses:"));
-    for (const probe of ["#7aa2f7", "#7aa2f780", "primary", "#7aa2f", "7aa2f7"]) {
-      const isLiteral = HEX_COLOR_RE.test(probe);
+    // The hex grammar has one home: a caller asks parseHexColor rather than
+    // keeping a pattern of its own beside it, so there is no second copy to
+    // drift. A malformed literal is a ColorParseError naming the input.
+    // [LAW:single-enforcer]
+    out.print(dim("    parseHexColor — the one hex grammar, asked directly:"));
+    // Each probe says which way it should go, so a malformed literal that
+    // parsed shows as the regression it is rather than as one more swatch.
+    const hexVerdict = (probe: string, parses: boolean): RichText => {
+      try {
+        const color = parseHexColor(probe);
+        return parses
+          ? new RichText("").append(`  ${color.hex}  `, bgFgStyle(color, fg, bg))
+          : new RichText(`WRONG: parsed as ${color.hex}`, { style: "bold red" });
+      } catch (err) {
+        if (!(err instanceof ColorParseError)) {
+          return new RichText(`WRONG error type (${err instanceof Error ? err.name : typeof err})`, { style: "bold red" });
+        }
+        return parses
+          ? new RichText(`WRONG: refused — ${err.message}`, { style: "bold red" })
+          : new RichText(err.message, { style: "green" });
+      }
+    };
+    for (const [probe, parses] of [
+      ["#7aa2f7", true],
+      ["#7aa2f780", true],
+      ["#7aa2f", false],
+      ["7aa2f7", false],
+      ["#7ag2f7", false],
+    ] as const) {
       out.print(
-        new RichText(
-          `      HEX_COLOR_RE.test("${probe}")${" ".repeat(Math.max(0, 12 - probe.length))} → ${isLiteral}`,
-        ).append(dim(isLiteral ? "   (hex arm)" : "   (palette-name arm)")),
+        new RichText(`      parseHexColor("${probe}")${" ".repeat(Math.max(0, 12 - probe.length))} → `).append(
+          hexVerdict(probe, parses),
+        ),
       );
     }
     out.print(blank());

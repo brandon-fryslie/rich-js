@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   ColorDepth,
+  ColorParseError,
+  type ColorSystemName,
   resolveColorSystem,
   detectColorSystem,
   resolveDestination,
@@ -8,6 +10,7 @@ import {
 import type { Env } from "../../src/core/env.js";
 import { renderToString } from "../../src/core/render.js";
 import { RichText } from "../../src/core/text.js";
+import { Console } from "../../src/core/console.js";
 
 const EMPTY: Env = {};
 
@@ -47,6 +50,47 @@ describe("resolveColorSystem (string spec → ColorDepth)", () => {
     expect(resolveColorSystem("truecolor", { env, isTTY: true })).toBe(
       ColorDepth.TRUECOLOR,
     );
+  });
+});
+
+describe("ColorSystemName (the colour-system vocabulary)", () => {
+  it("types every colorSystem parameter, so a name outside it is a compile error", () => {
+    // @ts-expect-error "16" is not a colour system name
+    expect(() => resolveColorSystem("16")).toThrow(ColorParseError);
+    // @ts-expect-error a FORCE_COLOR value is not a colour system name
+    expect(() => resolveColorSystem("1")).toThrow(ColorParseError);
+    // @ts-expect-error
+    expect(() => resolveDestination("16")).toThrow(ColorParseError);
+    // @ts-expect-error
+    expect(() => renderToString(new RichText("x"), { colorSystem: "16" })).toThrow(ColorParseError);
+    // @ts-expect-error
+    expect(() => new Console({ colorSystem: "16" })).toThrow(ColorParseError);
+  });
+
+  it("is the set a consumer's own vocabulary can be checked against", () => {
+    const names = ["auto", "truecolor", "256", "ansi", "none"] as const satisfies readonly ColorSystemName[];
+    expect(names.map((name) => resolveColorSystem(name, { env: EMPTY, isTTY: true }))).toEqual([
+      ColorDepth.STANDARD,
+      ColorDepth.TRUECOLOR,
+      ColorDepth.EIGHT_BIT,
+      ColorDepth.STANDARD,
+      null,
+    ]);
+  });
+});
+
+describe("detectColorSystem reads the environment's vocabulary, not ColorSystemName", () => {
+  it("takes a colour system name in FORCE_COLOR or TERM as an unknown value", () => {
+    expect(detectColorSystem({ env: { FORCE_COLOR: "none" }, isTTY: true })).toBe(ColorDepth.STANDARD);
+    expect(detectColorSystem({ env: { FORCE_COLOR: "truecolor" }, isTTY: true })).toBe(ColorDepth.STANDARD);
+    expect(detectColorSystem({ env: { TERM: "none" }, isTTY: true })).toBe(ColorDepth.STANDARD);
+    expect(detectColorSystem({ env: { TERM: "truecolor" }, isTTY: true })).toBe(ColorDepth.STANDARD);
+  });
+
+  it("takes a value naming an Object.prototype member as an unknown value", () => {
+    expect(detectColorSystem({ env: { FORCE_COLOR: "constructor" }, isTTY: true })).toBe(ColorDepth.STANDARD);
+    expect(detectColorSystem({ env: { TERM: "toString" }, isTTY: true })).toBe(ColorDepth.STANDARD);
+    expect(detectColorSystem({ env: { TERM_PROGRAM: "hasOwnProperty" }, isTTY: true })).toBe(ColorDepth.STANDARD);
   });
 });
 

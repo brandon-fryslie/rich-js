@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  resolveColorRef,
-  parseHexColor,
-  ColorRefError,
-} from "../../src/themes/colorRef.js";
+import { resolveColorRef, ColorRefError } from "../../src/themes/colorRef.js";
 import { GRUVBOX } from "../../src/themes/terminalThemes.js";
 
 // [LAW:behavior-not-structure] The contract under test is "a color reference
@@ -70,31 +66,15 @@ describe("resolveColorRef", () => {
     // A `#`-leading string is committed to the hex arm. Reporting "no such
     // palette variable '#12345'" would send the author looking in the wrong
     // place entirely. [LAW:no-silent-failure]
-    expect(() => resolveColorRef(palette, "#12345")).toThrow(/#RRGGBB/);
-    expect(() => resolveColorRef(palette, "#nothex")).toThrow(/#RRGGBB/);
+    for (const bad of ["#12345", "#nothex"]) {
+      expect(() => resolveColorRef(palette, bad)).toThrow(ColorRefError);
+      expect(() => resolveColorRef(palette, bad)).toThrow(/#RRGGBB/);
+    }
   });
 
   it("never answers with a substituted default", () => {
     // The failure mode this rules out: an unknown name silently becoming
     // black or transparent, so a broken config merely renders wrong.
     expect(() => resolveColorRef(palette, "")).toThrow(ColorRefError);
-  });
-});
-
-describe("parseHexColor", () => {
-  it("parses the two literal forms and round-trips through .hex", () => {
-    expect(parseHexColor("#123456").hex).toBe("#123456");
-    expect(parseHexColor("#12345680").hex).toBe("#12345680");
-  });
-
-  it("splits the alpha byte into the 0..1 channel", () => {
-    expect(parseHexColor("#000000ff").alpha).toBe(1);
-    expect(parseHexColor("#00000000").alpha).toBe(0);
-  });
-
-  it("rejects every non-literal shape, including palette names", () => {
-    for (const bad of ["primary", "red", "af00ff", "#abc", "#gggggg", ""]) {
-      expect(() => parseHexColor(bad)).toThrow(ColorRefError);
-    }
   });
 });

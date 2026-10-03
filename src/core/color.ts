@@ -297,41 +297,53 @@ export interface DetectColorOptions {
   isTTY?: boolean;
 }
 
-// [LAW:one-source-of-truth] One table covers every recognized string form
-// that resolves to a ColorDepth: user-facing CLI/config specs, FORCE_COLOR
-// values (the chalk/supports-color convention), TERM_PROGRAM identifiers,
-// and exact TERM names whose color capability is known. Keys are disjoint
-// across these sources, so one table is honest. `null` means "no color".
-// "auto" is intentionally absent — it routes to env detection.
-const STRING_TO_DEPTH: Record<string, ColorDepth | null> = {
-  // CLI/config specs
+// The depths a colour system is named for. Its keys and "auto" are the whole
+// vocabulary: `ColorSystemName` is derived from them, so the type and the
+// table cannot disagree. [LAW:one-source-of-truth]
+const COLOR_SYSTEM_DEPTHS = {
   truecolor: ColorDepth.TRUECOLOR,
   "256": ColorDepth.EIGHT_BIT,
   ansi: ColorDepth.STANDARD,
   none: null,
+} as const;
 
+/**
+ * A colour system by name: `"auto"` detects it from the environment, and each
+ * other name is a fixed depth — `"none"` no colour. `ColorDepth.WINDOWS` has
+ * no name; pass the enum value where a `ColorDepth` is accepted.
+ */
+export type ColorSystemName = "auto" | keyof typeof COLOR_SYSTEM_DEPTHS;
+
+// [LAW:one-source-of-truth] What the environment says about colour, by the
+// value it says it with: FORCE_COLOR values (the chalk/supports-color
+// convention), TERM_PROGRAM identifiers, and exact TERM names whose colour
+// capability is known. A different vocabulary from `ColorSystemName`, so a
+// different table: `FORCE_COLOR=none` is not a request for no colour. A `Map`,
+// so a value naming an `Object.prototype` member is unknown, not a function.
+// `null` means "no color".
+const ENV_DEPTHS: ReadonlyMap<string, ColorDepth | null> = new Map([
   // FORCE_COLOR values
-  "0": null,
-  false: null,
-  "1": ColorDepth.STANDARD,
-  true: ColorDepth.STANDARD,
-  "2": ColorDepth.EIGHT_BIT,
-  "3": ColorDepth.TRUECOLOR,
+  ["0", null],
+  ["false", null],
+  ["1", ColorDepth.STANDARD],
+  ["true", ColorDepth.STANDARD],
+  ["2", ColorDepth.EIGHT_BIT],
+  ["3", ColorDepth.TRUECOLOR],
 
   // TERM_PROGRAM identifiers
-  "iTerm.app": ColorDepth.TRUECOLOR,
-  Apple_Terminal: ColorDepth.EIGHT_BIT,
-  vscode: ColorDepth.TRUECOLOR,
-  Tabby: ColorDepth.TRUECOLOR,
+  ["iTerm.app", ColorDepth.TRUECOLOR],
+  ["Apple_Terminal", ColorDepth.EIGHT_BIT],
+  ["vscode", ColorDepth.TRUECOLOR],
+  ["Tabby", ColorDepth.TRUECOLOR],
 
   // Known truecolor TERM names
-  "xterm-kitty": ColorDepth.TRUECOLOR,
-  "xterm-ghostty": ColorDepth.TRUECOLOR,
-  wezterm: ColorDepth.TRUECOLOR,
-  alacritty: ColorDepth.TRUECOLOR,
-  foot: ColorDepth.TRUECOLOR,
-  contour: ColorDepth.TRUECOLOR,
-};
+  ["xterm-kitty", ColorDepth.TRUECOLOR],
+  ["xterm-ghostty", ColorDepth.TRUECOLOR],
+  ["wezterm", ColorDepth.TRUECOLOR],
+  ["alacritty", ColorDepth.TRUECOLOR],
+  ["foot", ColorDepth.TRUECOLOR],
+  ["contour", ColorDepth.TRUECOLOR],
+]);
 
 /**
  * Detect the terminal's color capability from env + TTY state.
@@ -360,7 +372,7 @@ export function detectColorSystem(
 function forcedColorSystem(env: Env): ColorDepth | null | undefined {
   const force = env["FORCE_COLOR"];
   if (force === undefined || force === "") return undefined;
-  const mapped = STRING_TO_DEPTH[force];
+  const mapped = ENV_DEPTHS.get(force);
   return mapped !== undefined ? mapped : ColorDepth.STANDARD;
 }
 
@@ -397,12 +409,12 @@ function terminalColorSystem(options: DetectColorOptions): ColorDepth | null {
     return ColorDepth.TRUECOLOR;
   }
 
-  const termDepth = STRING_TO_DEPTH[term];
+  const termDepth = ENV_DEPTHS.get(term);
   if (termDepth !== undefined) return termDepth;
 
   const termProgram = env["TERM_PROGRAM"];
   if (termProgram !== undefined) {
-    const mapped = STRING_TO_DEPTH[termProgram];
+    const mapped = ENV_DEPTHS.get(termProgram);
     if (mapped !== undefined) return mapped;
   }
 
@@ -440,7 +452,7 @@ export interface Destination {
  * declares the destination takes escapes, so it keeps links on a pipe too.
  */
 export function resolveDestination(
-  spec: string | ColorDepth | null,
+  spec: ColorSystemName | ColorDepth | null,
   options?: DetectColorOptions,
 ): Destination {
   if (spec !== "auto") {
@@ -458,22 +470,22 @@ export function resolveDestination(
 }
 
 /**
- * Resolve a string spec into a `ColorDepth` (or `null` for no color).
+ * Resolve a colour system name into a `ColorDepth` (or `null` for no color).
  *
- * `"auto"` triggers env-based detection; all other recognized specs are
- * direct table lookups against `STRING_TO_DEPTH`. Throws on unknown specs
- * — silent fallback would mask user typos.
+ * `"auto"` triggers env-based detection; every other name is a fixed depth.
+ * A name outside the vocabulary — reachable only from untyped JavaScript —
+ * throws: silent fallback would mask a typo.
  *
- * [LAW:single-enforcer] All string→ColorDepth resolution flows through here.
+ * [LAW:single-enforcer] All name→ColorDepth resolution flows through here.
  */
 export function resolveColorSystem(
-  spec: string,
+  spec: ColorSystemName,
   options?: DetectColorOptions,
 ): ColorDepth | null {
   if (spec === "auto") return detectColorSystem(options);
-  if (Object.hasOwn(STRING_TO_DEPTH, spec)) return STRING_TO_DEPTH[spec]!;
+  if (Object.hasOwn(COLOR_SYSTEM_DEPTHS, spec)) return COLOR_SYSTEM_DEPTHS[spec];
   throw new ColorParseError(
-    `Unknown color depth spec: ${JSON.stringify(spec)} (expected "auto", "truecolor", "256", "ansi", or "none")`,
+    `Unknown color system name: ${JSON.stringify(spec)} (expected "auto", "truecolor", "256", "ansi", or "none")`,
   );
 }
 
@@ -780,8 +792,6 @@ class ColorBlend extends ColorSpec {
 
 // --- Parsing internals ---
 
-const HEX_RE = /^#([0-9a-f]{6})$/;
-const HEX_RGBA_RE = /^#([0-9a-f]{8})$/;
 const RGB_RE = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/;
 const COLOR_NUMBER_RE = /^color\((\d+)\)$/;
 const BLEND_RE = /^blend\((.*)\)$/;
@@ -800,15 +810,8 @@ function parseSingle(key: string): ColorSpec {
     return new ColorSpec(key, type, namedIndex);
   }
 
-  // Hex (8-char with alpha takes precedence over 6-char to avoid the 6-char
-  // regex matching a prefix of an 8-char string).
-  const hexRgbaMatch = HEX_RGBA_RE.exec(key);
-  if (hexRgbaMatch) {
-    return new ColorSpec(key, ColorDepth.TRUECOLOR, undefined, parseRgbaHex(hexRgbaMatch[1]!));
-  }
-  const hexMatch = HEX_RE.exec(key);
-  if (hexMatch) {
-    return new ColorSpec(key, ColorDepth.TRUECOLOR, undefined, parseRgbHex(hexMatch[1]!));
+  if (key.startsWith("#")) {
+    return new ColorSpec(key, ColorDepth.TRUECOLOR, undefined, parseHexColor(key));
   }
 
   // rgb()
@@ -874,19 +877,42 @@ function parseByte(key: string, digits: string, field: "red" | "green" | "blue" 
 
 // --- Utility functions ---
 
-export function parseRgbHex(hex: string): ColorRgba {
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  return new ColorRgba(r, g, b);
+// [LAW:single-enforcer] The hex colour grammar, checked here and nowhere else:
+// every string spelling a colour in hex — a ColorSpec, a theme's data, a colour
+// reference, a template argument — becomes one through the three parsers below,
+// and each is this check at the lengths it admits. Each digit pair is a byte, so
+// the grammar holding is what keeps `ColorRgba`'s channels in range.
+const HEX_DIGITS_RE = /^[0-9a-fA-F]+$/;
+
+// Each admitted digit count, by the grammar it spells: the message a failure
+// carries is read off the lengths a parser admits, so the two cannot disagree.
+const HEX_GRAMMARS = { 6: "RRGGBB", 8: "RRGGBBAA" } as const;
+
+function hexColor(input: string, lead: "" | "#", digits: string, lengths: readonly (keyof typeof HEX_GRAMMARS)[]): ColorRgba {
+  if (!(lengths as readonly number[]).includes(digits.length) || !HEX_DIGITS_RE.test(digits)) {
+    const expected = lengths.map((n) => lead + HEX_GRAMMARS[n]).join(" or ");
+    throw new ColorParseError(`Invalid hex colour ${JSON.stringify(input)} (expected ${expected})`);
+  }
+  const byte = (at: number): number => parseInt(digits.slice(at, at + 2), 16);
+  return new ColorRgba(byte(0), byte(2), byte(4), digits.length === 8 ? byte(6) / 255 : 1);
 }
 
+/** Six hex digits, no `#`, as an opaque colour. @throws {ColorParseError} on anything else. */
+export function parseRgbHex(hex: string): ColorRgba {
+  return hexColor(hex, "", hex, [6]);
+}
+
+/** Eight hex digits, no `#`, the last pair alpha. @throws {ColorParseError} on anything else. */
 export function parseRgbaHex(hex: string): ColorRgba {
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  const a = parseInt(hex.slice(6, 8), 16) / 255;
-  return new ColorRgba(r, g, b, a);
+  return hexColor(hex, "", hex, [8]);
+}
+
+/**
+ * A `#RRGGBB` or `#RRGGBBAA` literal, exactly — no surrounding whitespace.
+ * @throws {ColorParseError} on anything else.
+ */
+export function parseHexColor(literal: string): ColorRgba {
+  return hexColor(literal, "#", literal.startsWith("#") ? literal.slice(1) : "", [6, 8]);
 }
 
 export function blendRgb(

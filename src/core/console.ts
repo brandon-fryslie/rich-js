@@ -5,7 +5,7 @@
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, Theme, DEFAULT_THEME } from "./style.js";
 import { ColorDepth, isDumbTerminal, resolveDestination } from "./color.js";
-import type { Destination } from "./color.js";
+import type { ColorSystemName, Destination } from "./color.js";
 import type { Env } from "./env.js";
 import type { TerminalTheme } from "./color.js";
 import { encodeHtml } from "./export-html.js";
@@ -85,12 +85,12 @@ export interface ConsoleEnvironment {
 
 export interface ConsoleOptions {
   /**
-   * Color encoding. Accepts a string spec (`"auto"`, `"truecolor"`, `"256"`,
-   * `"ansi"`, `"none"`), a `ColorDepth` enum value (use this for `WINDOWS`,
-   * which has no string spec), or `null` for no color. Default `"auto"`.
+   * Color encoding. Accepts a `ColorSystemName` (`"auto"`, `"truecolor"`,
+   * `"256"`, `"ansi"`, `"none"`), a `ColorDepth` enum value (use this for
+   * `WINDOWS`, which has no name), or `null` for no color. Default `"auto"`.
    * Colour only: an explicit depth, `null` included, keeps hyperlinks.
    */
-  colorSystem?: string | ColorDepth | null;
+  colorSystem?: ColorSystemName | ColorDepth | null;
   /**
    * Whether OSC 8 hyperlinks are emitted. Default: what the destination takes
    * — true for an explicit `colorSystem`, detected under `"auto"` (no TTY or

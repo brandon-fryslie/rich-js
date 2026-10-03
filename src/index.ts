@@ -19,6 +19,7 @@ export {
   TerminalTheme,
   parseRgbHex,
   parseRgbaHex,
+  parseHexColor,
   blendRgb,
   resolveColorSystem,
   detectColorSystem,
@@ -28,7 +29,7 @@ export {
   WINDOWS_TABLE,
   ANSI_COLOR_NAMES,
 } from "./core/color.js";
-export type { DetectColorOptions, Destination } from "./core/color.js";
+export type { ColorSystemName, DetectColorOptions, Destination } from "./core/color.js";
 
 // Perceptually-uniform color space (manipulation, transposition).
 export {
@@ -43,12 +44,7 @@ export type { ThemeKey, OklchWeights } from "./core/oklch.js";
 export { Palette } from "./themes/palette.js";
 // The one checkpoint turning an author-written colour string — a palette
 // variable name or a `#RRGGBB` literal — into a colour. [LAW:parse-dont-validate]
-export {
-  resolveColorRef,
-  parseHexColor,
-  ColorRefError,
-  HEX_COLOR_RE,
-} from "./themes/colorRef.js";
+export { resolveColorRef, ColorRefError } from "./themes/colorRef.js";
 export { buildPalette } from "./themes/buildPalette.js";
 export type { BaseColors } from "./themes/buildPalette.js";
 export {
