@@ -198,22 +198,32 @@ function breathAt(p: number): number {
 
 /**
  * Pulse, as breathing. Swing: how far into `light` the colour goes at the
- * top of a full breath, 0–1. The whole element breathes together, warming
- * into the light on the inhale and settling back on the exhale — warmth,
- * not only lightness, so text already near white still visibly breathes. No
- * two breaths are the same: the rhythm drifts a little early or late and the
- * depth varies, both on slow noise. Every cell breathes the same breath, so
- * a fill drawn across many cells — a powerline seam and the cell it points
- * out of — stays one colour. A breath starts in its rest, so `t = 0` draws
- * the cell untouched.
+ * top of a full breath, 0–1. The element warms into the light on the inhale
+ * and settles back on the exhale — warmth, not only lightness, so text
+ * already near white still visibly breathes. No two breaths are the same:
+ * the rhythm drifts a little early or late and the depth varies, both on
+ * slow noise. A breath is not a dimmer: it rises first at a heart that
+ * wanders slowly along the element and spreads outward from it at one pace
+ * whatever the element's width, and it fills some stretches more deeply
+ * than others — warmth moving through a body, not a lamp turned up. At
+ * truecolour neighbouring cells stay within a just-noticeable difference,
+ * so a fill drawn across them — a powerline seam and the cell it points out
+ * of — reads as one colour; at 256 colours or fewer a fill can step to the
+ * next palette colour between them, as under every loop that varies along
+ * the row. A breath starts in its rest, so `t = 0` draws the cell untouched.
  */
-export function pulse(curve: Curve, glow: ColorRgba): Loop {
+export function pulse(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
   const P = curve.seconds;
-  const field: Field = (_cell, t) => {
-    // The rhythm's drift is slow enough that phase only ever moves forward.
-    const phase = t / P - 0.06 + 0.03 * noise(t / (3 * P), 0.5, 0.5);
-    const depth = 0.8 + 0.2 * noise(t / (4 * P), 3.5, 0.5);
-    return curve.swing * curve.ease(breathAt(phase - Math.floor(phase)) * depth);
+  // Of a breath, how far behind the heart each column further out starts.
+  const SPREAD = 0.0012;
+  const field: Field = (cell, t) => {
+    const heart = span * (0.5 + 0.45 * noise(t / (5 * P), 6.1, z));
+    const lag = SPREAD * Math.abs(cell.col - heart);
+    // The rhythm's drift and the heart's wandering are slow enough that
+    // phase only ever moves forward. A cell starts in its rest whatever its lag.
+    const phase = Math.max(0, t / P - 0.06 - lag + 0.03 * noise(t / (3 * P), 0.5, 0.5 + z));
+    const depth = 0.8 + 0.2 * noise(t / (4 * P), 3.5, 0.5 + z) - 0.15 * (1 + noise(cell.col * 0.04, 1.9, t / (6 * P) + z)) / 2;
+    return curve.swing * curve.ease(clamp01(breathAt(phase - Math.floor(phase)) * depth));
   };
   return { touch: light(glow), field };
 }
@@ -224,14 +234,21 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
 /**
  * Shimmer, as sunlight moving across water. Swing: how far into `light` the
  * brightest glint goes, 0–1. A soft band of light crosses columns 0 to
- * `span` once a period, `width` columns either side of its centre, entering
+ * `span` once a period on average, its pace rising and falling, `width` columns either side of its centre, entering
  * and leaving fully off the row. Inside it the light is a soft glow broken
  * into caustics — bright filaments where two ripples cross — carried on a
  * slow current and re-forming as they go, so the glints dance while the band
  * glides. Before the band enters, the row is untouched.
  */
 export function shimmer(curve: Curve, span: number, width: number, glow: ColorRgba, z: number): Loop {
-  const phase = Phase.loop(curve.seconds);
+  // The band rides a current that quickens and slackens on slow noise, never
+  // reversing — the slope of the noise term stays under the steady one — so
+  // no two passes cross at the same pace. The current is still at `t = 0`, so
+  // the first pass starts off the row.
+  const loop = Phase.loop(curve.seconds);
+  const pace = (t: number): number => noise(t / curve.seconds, 2.7, 5.5 + z);
+  const still = pace(0);
+  const phase = (t: number): number => loop(t + 0.12 * curve.seconds * (pace(t) - still));
   // A ripple's crest: a Gaussian ridge, 1 where the field crosses zero and in
   // (0, 1] for any noise, smooth throughout, so a crest sliding through a cell
   // lights it smoothly.
@@ -320,20 +337,27 @@ export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number):
 }
 
 /**
- * How much of a cell's ink shows at `t`: 1 is the ink as drawn, 0 is ink the
- * colour of the ground. Read per cell, so cells can arrive or leave apart.
+ * How much of a cell shows at `t`: 1 is the cell as drawn, 0 is the cell gone
+ * to the terminal's ground. Read per cell, so cells can arrive or leave apart.
  */
 export type Visibility = (cell: EffectCell, t: number) => number;
 
 /**
- * The ink mixed toward the ground by how hidden the cell is: invisible is ink
- * equal to ground. `swing` scales the hiding — 1 reaches fully invisible.
+ * A cell mixed toward the terminal's `ground` by how hidden it is: its fill
+ * toward the ground, and its ink toward that fill, so an element with fills
+ * of its own — a powerline strip — arrives and leaves whole, fill and words
+ * together, never as bare coloured blocks. Invisible is ink and fill equal
+ * to the ground. `swing` scales the hiding — 1 reaches fully invisible. A
+ * cell wholly shown is returned as it was.
  */
-export function veiled(visibility: Visibility, swing: number): Effect {
-  return (colors: CellColors, cell, t) => ({
-    fg: blend(Oklch.fromRgba(colors.fg), Oklch.fromRgba(colors.bg), swing * (1 - visibility(cell, t))).toRgba(),
-    bg: colors.bg,
-  });
+export function veiled(visibility: Visibility, swing: number, ground: ColorRgba): Effect {
+  const to = Oklch.fromRgba(ground);
+  return (colors: CellColors, cell, t) => {
+    const hidden = swing * (1 - visibility(cell, t));
+    if (hidden === 0) return colors;
+    const bg = blend(Oklch.fromRgba(colors.bg), to, hidden);
+    return { fg: blend(Oklch.fromRgba(colors.fg), bg, hidden).toRgba(), bg: bg.toRgba() };
+  };
 }
 
 /**
@@ -361,10 +385,10 @@ const OWN = 0.45;
  * rising smoothly over its own part of the duration. Whole at
  * `start + seconds`.
  */
-export function fadeIn(curve: Curve, start: number, z: number): Effect {
+export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba): Effect {
   const own = curve.seconds * OWN;
   const place = order(1.7 + z);
-  return veiled((cell, t) => curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t)), curve.swing);
+  return veiled((cell, t) => curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t)), curve.swing, ground);
 }
 
 /**
@@ -372,10 +396,10 @@ export function fadeIn(curve: Curve, start: number, z: number): Effect {
  * drifting patches, each cell fading smoothly over its own part of the
  * duration, until nothing is left at `start + seconds`.
  */
-export function dissolveOut(curve: Curve, start: number, z: number): Effect {
+export function dissolveOut(curve: Curve, start: number, z: number, ground: ColorRgba): Effect {
   const own = curve.seconds * OWN;
   const place = order(4.2 + z);
-  return veiled((cell, t) => 1 - curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t)), curve.swing);
+  return veiled((cell, t) => 1 - curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t)), curve.swing, ground);
 }
 
 /** The moment a transition starting at `start` has finished. */

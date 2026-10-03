@@ -67,7 +67,7 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
   const untouched = bytes(subject);
 
   it("pulse at the start of its period", () => {
-    expect(drawn(onColors(inkOn, pulse(curve(3, 0.2), sun)), 0)).toBe(untouched);
+    expect(drawn(onColors(inkOn, pulse(curve(3, 0.2), 40, sun, 0)), 0)).toBe(untouched);
   });
 
   it("shimmer before its band enters the row", () => {
@@ -76,20 +76,22 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
 
   it("fade-in once it has settled", () => {
     const fade = curve(2, 1);
-    expect(drawn(fadeIn(fade, 5, 0), settledAt(fade, 5))).toBe(untouched);
+    expect(drawn(fadeIn(fade, 5, 0, ground), settledAt(fade, 5))).toBe(untouched);
   });
 
   it("dissolve-out before it starts", () => {
-    expect(drawn(dissolveOut(curve(3, 1), 5, 0), 5)).toBe(untouched);
+    expect(drawn(dissolveOut(curve(3, 1), 5, 0, ground), 5)).toBe(untouched);
   });
 });
 
 describe("the loops move", () => {
   it("pulse warms toward its light on the inhale and settles back after the exhale", () => {
-    const breath = pulse(curve(8, 0.4), sun);
+    const breath = pulse(curve(8, 0.4), 40, sun, 0);
     const top = under(breath, ink, cells[0]!, 3.4); // the inhale ends near 0.36 of a breath
     expect(distance(top, sun)).toBeLessThan(distance(ink, sun) - 0.02);
-    expect(sameColor(under(breath, ink, cells[0]!, 7.6), ink)).toBe(true); // the rest before the next
+    // The rest before the next, reached by every cell wherever the heart is:
+    // the farthest cell's lag and the rhythm's drift still land it past the exhale.
+    expect(cells.every((cell) => sameColor(under(breath, ink, cell, 8.1), ink))).toBe(true);
   });
 
   it("light never darkens a colour, white included", () => {
@@ -137,7 +139,8 @@ describe("the loops move", () => {
 
   it("shimmer lights only the columns under its band", () => {
     const band = 8;
-    // Halfway through a 2 s loop the band's centre is at the middle of span + 2·band.
+    // Halfway through a 2 s loop the band's centre is near the middle of
+    // span + 2·band, its current carrying it a few columns either way.
     const lit = at(onColors(inkOn, shimmer(curve(2, 0.7), 40, band, sun, 0)), 1)
       .map((c, col) => (sameColor(c.fg, ink) ? -1 : col))
       .filter((col) => col >= 0);
@@ -155,7 +158,7 @@ describe("the loops move", () => {
   });
 
   it("onColors leaves a colour not in its set alone", () => {
-    const moved = onColors(new Map([[ground.hex, 1]]), pulse(curve(3, 0.2), sun))(colors, cells[0]!, 1.5);
+    const moved = onColors(new Map([[ground.hex, 1]]), pulse(curve(3, 0.2), 40, sun, 0))(colors, cells[0]!, 1.5);
     expect(moved.fg).toBe(ink);
     expect(sameColor(moved.bg, ground)).toBe(false);
   });
@@ -163,28 +166,38 @@ describe("the loops move", () => {
 
 describe("the transitions run start to end", () => {
   it("a fade-in starts with every cell's ink on its ground", () => {
-    expect(at(fadeIn(curve(2, 1), 4, 0), 4).every((c) => sameColor(c.fg, c.bg))).toBe(true);
+    expect(at(fadeIn(curve(2, 1), 4, 0, ground), 4).every((c) => sameColor(c.fg, c.bg))).toBe(true);
   });
 
   it("a fade-in arrives cell by cell", () => {
-    const halfway = at(fadeIn(curve(2, 1), 0, 0), 1).map((c) => c.fg.hex);
+    const halfway = at(fadeIn(curve(2, 1), 0, 0, ground), 1).map((c) => c.fg.hex);
     expect(new Set(halfway).size).toBeGreaterThan(1);
   });
 
   it("a dissolve-out leaves every cell's ink on its ground", () => {
     const dissolve = curve(3, 1);
-    expect(at(dissolveOut(dissolve, 4, 0), settledAt(dissolve, 4)).every((c) => sameColor(c.fg, c.bg))).toBe(true);
+    expect(at(dissolveOut(dissolve, 4, 0, ground), settledAt(dissolve, 4)).every((c) => sameColor(c.fg, c.bg))).toBe(true);
   });
 
   it("a dissolve-out thins cells gradually, some gone while others are still whole", () => {
-    const midway = at(dissolveOut(curve(8, 1), 0, 0), 2.5).map((c) => c.fg);
+    const midway = at(dissolveOut(curve(8, 1), 0, 0, ground), 2.5).map((c) => c.fg);
     const thinning = midway.filter((fg) => !sameColor(fg, ink) && !sameColor(fg, ground));
     expect(thinning.length).toBeGreaterThan(0);
     expect(midway.some((fg) => sameColor(fg, ink))).toBe(true);
   });
 
+  it("a cell with a fill of its own arrives from the terminal's ground, fill and ink together", () => {
+    const fill = new ColorRgba(137, 180, 250);
+    const filled = (effect: Effect, t: number) => effect({ fg: ink, bg: fill }, cells[0]!, t);
+    const fade = curve(2, 1);
+    const start = filled(fadeIn(fade, 0, 0, ground), 0);
+    expect([start.fg.hex, start.bg.hex]).toEqual([ground.hex, ground.hex]);
+    const end = filled(fadeIn(fade, 0, 0, ground), settledAt(fade, 0));
+    expect([end.fg.hex, end.bg.hex]).toEqual([ink.hex, fill.hex]);
+  });
+
   it("swing below 1 stops short of invisible", () => {
-    expect(at(fadeIn(curve(2, 0.5), 0, 0), 0).some((c) => sameColor(c.fg, c.bg))).toBe(false);
+    expect(at(fadeIn(curve(2, 0.5), 0, 0, ground), 0).some((c) => sameColor(c.fg, c.bg))).toBe(false);
   });
 });
 
@@ -204,7 +217,7 @@ describe("the loops never jump", () => {
   // The curves as the demo runs them with no flags.
   const { curves } = parseSettings([])!;
   const loops = {
-    pulse: pulse(curves.pulse, sun),
+    pulse: pulse(curves.pulse, SPAN, sun, 0),
     shimmer: shimmer(curves.shimmer, SPAN, SHIMMER_WIDTH, sun, 0),
     drift: drift(curves.drift, SPAN, 0),
     sparkle: sparkle(curves.sparkle, SPAN, LIGHTS.firefly, 0),

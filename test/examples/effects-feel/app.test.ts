@@ -7,9 +7,11 @@ import {
   CATPPUCCIN_LATTE,
   CATPPUCCIN_MOCHA,
   ColorDepth,
+  ColorSpec,
   Console,
   EASES,
   Effected,
+  Oklch,
   Style,
   contrastRatio,
   type Renderable,
@@ -105,28 +107,49 @@ describe("a strip under a pulse", () => {
   });
 
   it.each([["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const)(
-    "on a %s ground moves each colour the strip sets to one colour, in every cell that shows it, and leaves the terminal's alone",
+    "on a %s ground moves each colour the strip sets, alike in neighbouring cells, and leaves the terminal's alone",
     (_, theme) => {
       const strip = drawnSubject(stripSubject(theme), options, theme);
-      const loop = pulse({ seconds: 2, ease: EASES.linear, swing: 1 }, LIGHTS.sun);
+      const loop = pulse({ seconds: 2, ease: EASES.linear, swing: 1 }, 104, LIGHTS.sun, 0);
       const lit = subjectUnder(strip, loop, theme);
       const share = shares(strip.pairs, strip.colors, loop.touch);
       const before = colorsByCell(strip.renderable, theme);
       const after = colorsByCell(new Effected(strip.renderable, lit, { t: 1, key: "strip", theme }), theme);
       expect(after).toHaveLength(before.length);
 
-      // Each colour drawn before, to every colour it is drawn as after: an
-      // arrow's ink moves with the fill it carries, and lettering with its
-      // fill, so each is one colour; the terminal's own ground does not move,
-      // and nor does a colour whose cells have no contrast to spare.
-      const becomes = new Map<string, Set<string>>();
-      before.forEach((pair, i) =>
-        pair.forEach((was, slot) => becomes.set(was, (becomes.get(was) ?? new Set()).add(after[i]![slot]!))),
-      );
+      // Every colour the strip sets moves, but for one whose cells have no
+      // contrast to spare; the terminal's own ground does not.
       const rgba = new Map(strip.pairs.flat().map((c) => [c.hex, c]));
       const still = new Set(["ground", ...[...share].filter(([hex, s]) => loop.touch(rgba.get(hex)!, s).hex === hex).map(([hex]) => hex)]);
-      for (const [was, now] of becomes) {
-        expect([was, [...now]]).toEqual([was, [still.has(was) ? was : expect.not.stringMatching(was)]]);
+      before.forEach((pair, i) => pair.forEach((was, slot) => expect([was, after[i]![slot] === was]).toEqual([was, still.has(was)])));
+
+    },
+  );
+
+  it.each([["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const)(
+    "on a %s ground keeps a fill one colour across neighbouring cells through a whole breath, at truecolour",
+    (_, theme) => {
+      // A breath spreads, so cells far apart differ; neighbours that showed
+      // one colour — an arrow's ink and the fill of the cell it points out
+      // of, lettering and its fill — still show one as far as the eye can
+      // tell (dE_OK 0.02), on the inhale and the exhale where the breath is
+      // steepest as well as at its top. Near black an 8-bit step is large in
+      // OKLab's lightness, and a display shows none of it.
+      const pulseCurve = parseSettings([])!.curves.pulse;
+      const strip = drawnSubject(stripSubject(theme), options, theme);
+      const lit = subjectUnder(strip, pulse(pulseCurve, strip.span, LIGHTS.sun, strip.z), theme);
+      const before = colorsByCell(strip.renderable, theme);
+      const oklch = (hex: string) => Oklch.fromRgba(ColorSpec.parse(hex).getTruecolor());
+      const seen = (a: string, b: string) => (Math.max(oklch(a).l, oklch(b).l) < 0.2 ? 0 : oklch(a).deltaE(oklch(b)));
+      for (let t = 0; t < pulseCurve.seconds; t += 0.5) {
+        const after = colorsByCell(new Effected(strip.renderable, lit, { t, key: "strip", theme }), theme);
+        before.slice(1).forEach((pair, i) =>
+          pair.forEach((was, slot) =>
+            before[i]!.forEach((left, leftSlot) => {
+              if (left === was && was !== "ground") expect(seen(after[i]![leftSlot]!, after[i + 1]![slot]!), `${was} at ${t}`).toBeLessThan(0.02);
+            }),
+          ),
+        );
       }
     },
   );
@@ -137,7 +160,7 @@ describe("every loop keeps the words readable", () => {
   const { curves } = parseSettings([])!;
   const made = {
     shimmer: (span: number, z: number) => shimmer({ ...curves.shimmer, swing: 1 }, span, SHIMMER_WIDTH, LIGHTS.sun, z),
-    pulse: () => pulse({ ...curves.pulse, swing: 1 }, LIGHTS.sun),
+    pulse: (span: number, z: number) => pulse({ ...curves.pulse, swing: 1 }, span, LIGHTS.sun, z),
     drift: (span: number, z: number) => drift(curves.drift, span, z),
     sparkle: (span: number, z: number) => sparkle({ ...curves.sparkle, swing: 1 }, span, LIGHTS.firefly, z),
   };
