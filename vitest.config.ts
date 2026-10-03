@@ -20,7 +20,8 @@ import { tscTransform } from "./scripts/tsc-transform.js";
 // that chased them missed each new file until it flaked. A hang still fails, at
 // 30s. A test whose work is a different size by nature — a whole docs page run
 // through the examples plugin, a complexity guard that must finish in 2s —
-// states its own budget beside it.
+// states its own budget beside it. A test that runs out its time says, on its
+// failure, whether it was waiting or the machine was slow: test/suite/timeout-report.ts.
 const HANG_MS = 30_000;
 
 export default defineConfig({
@@ -30,5 +31,6 @@ export default defineConfig({
     exclude: ["node_modules", "dist", "dist-demo", "e2e"],
     testTimeout: HANG_MS,
     hookTimeout: HANG_MS,
+    setupFiles: ["test/suite/timeout-report.ts"],
   },
 });

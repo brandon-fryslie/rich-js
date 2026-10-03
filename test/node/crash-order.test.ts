@@ -16,11 +16,11 @@
  */
 
 import { spawn } from "node:child_process";
-import { mkdtempSync, openSync, closeSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, openSync, closeSync, existsSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, onTestFinished } from "vitest";
 import { decodeAnsi } from "../../src/core/ansi.js";
 
 const FIXTURES = resolve(import.meta.dirname, "fixtures");
@@ -33,12 +33,30 @@ interface Ended {
   readonly output: string;
 }
 
+/** A running fixture: its group, its directory, how it ended, and how to end it. */
+interface Running {
+  readonly pid: number;
+  readonly dir: string;
+  readonly ended: Promise<Ended>;
+  /** Kill the fixture's whole group, wait for its end, and remove its directory. */
+  readonly stop: () => Promise<void>;
+}
+
+/** Kill every process in the group `pid` leads. An empty group is already the goal. */
+function killGroup(pid: number): void {
+  try {
+    process.kill(-pid, "SIGKILL");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+  }
+}
+
 /**
- * Run the fixture to its end. `drive` is called with the output so far every
- * few milliseconds and may signal the child; it returns once it has nothing
- * left to do.
+ * Start the fixture. `drive` is called with the output so far every few
+ * milliseconds and may signal the child; it returns once it has nothing left
+ * to do.
  */
-function runApp(args: string[], drive: (output: string, child: { pid: number }) => boolean = () => true): Promise<Ended> {
+function launch(args: string[], drive: (output: string, child: { pid: number }) => boolean = () => true): Running {
   const dir = mkdtempSync(join(tmpdir(), "rich-app-"));
   const file = join(dir, "terminal");
   const fd = openSync(file, "w");
@@ -46,24 +64,44 @@ function runApp(args: string[], drive: (output: string, child: { pid: number }) 
     process.execPath,
     ["--import", join(FIXTURES, "ts-hooks.mjs"), join(FIXTURES, "app-ending.ts"), ...args],
     // Its own process group: `suspend` stops the whole group, which would
-    // otherwise be the test runner's.
+    // otherwise be the test runner's. Being outside the runner's group is also
+    // why nothing but `stop` ends it when a test fails before it exits.
     { stdio: ["ignore", fd, fd], detached: true },
   );
   closeSync(fd);
+  const pid = child.pid!;
   const read = (): string => readFileSync(file, "utf8");
   let driving = true;
   const timer = setInterval(() => {
-    if (driving) driving = !drive(read(), { pid: child.pid! });
+    if (driving) driving = !drive(read(), { pid });
   }, 10);
-  return new Promise((done, fail) => {
+  const ended = new Promise<Ended>((done, fail) => {
     child.on("error", fail);
-    child.on("exit", (code, signal) => {
-      clearInterval(timer);
-      const output = read();
-      rmSync(dir, { recursive: true });
-      done({ code, signal, output });
-    });
+    child.on("exit", (code, signal) => done({ code, signal, output: read() }));
   });
+  return {
+    pid,
+    dir,
+    ended,
+    stop: async () => {
+      clearInterval(timer);
+      killGroup(pid);
+      // The end is the test's to report; this waits for it, so the directory
+      // goes only once nothing in the group can write to it.
+      await Promise.allSettled([ended]);
+      rmSync(dir, { recursive: true });
+    },
+  };
+}
+
+/**
+ * Run the fixture to its end. However the test ends — passed, failed, or past
+ * its timeout — the fixture's group is killed and its directory removed.
+ */
+function runApp(args: string[], drive?: (output: string, child: { pid: number }) => boolean): Promise<Ended> {
+  const app = launch(args, drive);
+  onTestFinished(app.stop);
+  return app.ended;
 }
 
 const count = (haystack: string, needle: string): number => haystack.split(needle).length - 1;
@@ -143,5 +181,22 @@ describe("App in a real node process", () => {
     expect(phases[0]).toContain("FRAME");
     expect(phases[1]).toContain(ALT_ON);
     expect(phases[1]).toContain("FRAME");
+  });
+
+  it("a fixture still running when its test ends leaves no process and no directory", async () => {
+    let framed!: () => void;
+    const painted = new Promise<void>((resolve) => (framed = resolve));
+    const app = launch(["signal"], (sofar) => {
+      if (!sofar.includes("FRAME")) return false;
+      framed();
+      return true;
+    });
+    await painted;
+
+    await app.stop();
+
+    expect((await app.ended).signal).toBe("SIGKILL");
+    expect(() => process.kill(-app.pid, 0)).toThrow(expect.objectContaining({ code: "ESRCH" }));
+    expect(existsSync(app.dir)).toBe(false);
   });
 });
