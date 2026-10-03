@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-285",
-      "ref": "refs/pull/285/merge",
-      "sha": "ac44d188b02385093ea641bd411daa8f566c1d21",
-      "timestamp": "2026-10-03T00:05:20.230Z",
-      "commits": [
-        {
-          "sha": "ac44d188b02385093ea641bd411daa8f566c1d21",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T18:04:24-06:00",
-          "message": "Merge ce6e4d2a5cded42705094502aac6064d655d0544 into b38c6b91569ddf12897b387b599cef1f5be67440\n"
-        },
-        {
-          "sha": "ce6e4d2a5cded42705094502aac6064d655d0544",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T18:04:19-06:00",
-          "message": "fix(core): ramp exactness contract, one step-end, an easing docs page (rich-effects-fxiy.87k)\n\nReview round (high): ColorRamp's contract now says what it does —\neased 0/1 are the stops exactly, step-start jumps as CSS defines it,\novershoot holds the end colors — and a test pins it over every EASES\nentry. ColorRamp.easing is now .ease, the binding's argument too, and\nparseEase's error reads \"unknown ease\". step and step-end are one\nvalue. docs/easing.md is the page for the vocabulary; the ramp section\nlinks to it instead of copying the name list.\n"
-        },
-        {
-          "sha": "187e9165b56013b34147187b9e26ee361cb9931f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T17:58:28-06:00",
-          "message": "feat(core): one easing vocabulary — CSS eases and time phases, replacing RAMP_EASINGS (rich-effects-fxiy.87k)\n\nsrc/core/easing.ts: Ease (cubicBezier, steps, EASES by CSS name plus\nsine and the legacy step), parseEase, and Phase (once/loop/pingPong,\nseconds in, no clock read). ColorRamp and the template ramp take an\nEase; RAMP_EASINGS, RAMP_EASING_NAMES, parseRampEasing and RampEasing\nare gone. step keeps its exact behaviour, so every template renders\nunchanged; an unknown name now reads \"unknown easing\".\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "b38c6b91569ddf12897b387b599cef1f5be67440",
-      "timestamp": "2026-09-30T23:17:04.228Z",
+      "sha": "7f994999fee0195cf9c8738fac04ee420d5f62b9",
+      "timestamp": "2026-10-03T00:09:08.464Z",
       "commits": [
         {
-          "sha": "b38c6b91569ddf12897b387b599cef1f5be67440",
+          "sha": "7f994999fee0195cf9c8738fac04ee420d5f62b9",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T17:15:56-06:00",
-          "message": "fix(host): App takes a Theme, so its frames resolve the names it adds (rich-host-qvji) (#284)\n\n* fix(host): App takes a Theme, so its frames resolve the names it adds (rich-host-qvji)\n\nAppOptions had no theme, so the Console App builds always fell back to the\nbuilt-in names: a user's theme name drew plain in a RichText and threw from\ngetStyle under App and WidgetApp.\n\n* fix(host): App takes the console's drawing options as the console declares them (rich-host-qvji)\n\nAppOptions picked asciiOnly and theme from ConsoleOptions by hand, one field\nat a time; onStyleError, markup, highlight and highlighter never reached a\nframe. It now extends a Pick of ConsoleOptions and forwards by spread.\n\nReview (high): tests no longer pass on a missing segment; WidgetApp's frames\nare covered; docs separate the style-name Theme from a widget's palette.\n\n* fix(host): App copies only the drawing options it names to its console (rich-host-qvji)\n\nA rest spread passed any extra property of the options object — width,\ngetSize, colorSystem, file — to the console, overriding what the host\ndecides. One key list is now both the type and what is copied."
+          "timestamp": "2026-10-02T18:07:59-06:00",
+          "message": "feat(core)!: one easing vocabulary — CSS eases and time phases, replacing RAMP_EASINGS (rich-effects-fxiy.87k) (#285)\n\n* feat(core): one easing vocabulary — CSS eases and time phases, replacing RAMP_EASINGS (rich-effects-fxiy.87k)\n\nsrc/core/easing.ts: Ease (cubicBezier, steps, EASES by CSS name plus\nsine and the legacy step), parseEase, and Phase (once/loop/pingPong,\nseconds in, no clock read). ColorRamp and the template ramp take an\nEase; RAMP_EASINGS, RAMP_EASING_NAMES, parseRampEasing and RampEasing\nare gone. step keeps its exact behaviour, so every template renders\nunchanged; an unknown name now reads \"unknown easing\".\n\n* fix(core): ramp exactness contract, one step-end, an easing docs page (rich-effects-fxiy.87k)\n\nReview round (high): ColorRamp's contract now says what it does —\neased 0/1 are the stops exactly, step-start jumps as CSS defines it,\novershoot holds the end colors — and a test pins it over every EASES\nentry. ColorRamp.easing is now .ease, the binding's argument too, and\nparseEase's error reads \"unknown ease\". step and step-end are one\nvalue. docs/easing.md is the page for the vocabulary; the ramp section\nlinks to it instead of copying the name list."
         }
       ]
     }
