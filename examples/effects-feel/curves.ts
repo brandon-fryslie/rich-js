@@ -283,42 +283,62 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
 /**
  * Shimmer, as sunlight moving across water. Swing: how far into `light` the
  * brightest glint goes, 0–1. A soft band of light, `width` columns either
- * side of its centre, crosses columns 0 to `span` about once a period,
- * entering and leaving fully off the row. Its passes come the way light
- * comes and goes on water as clouds move: each at its own unhurried pace,
- * drifting a little ahead and behind as it goes, some following close on
- * the last and some after a still spell. Inside the band the light is a
- * faint glow broken into a glitter path — bright filaments where two
- * ripples cross — carried on a slow current and re-forming as they go, so
- * the glints dance while the band glides. Before the band enters, the row
- * is untouched.
+ * side of its centre, crosses columns 0 to `span`, entering and leaving
+ * fully off the row, about once a period on average. Its passes come the
+ * way light comes and goes on water as clouds move: while the sun is out
+ * they follow close on one another, one sometimes catching the last; under
+ * cloud the row lies still for periods on end; under thin cloud a pass is
+ * fainter. Each crosses at its own unhurried pace, drifting a little ahead
+ * and behind as it goes. Inside a band the light is a faint glow broken
+ * into a glitter path — bright filaments where two ripples cross — carried
+ * on a slow current and re-forming as they go, so the glints dance while
+ * the band glides. Before the first pass enters, the row is untouched.
  */
 export function shimmer(curve: Curve, span: number, width: number, glow: ColorRgba, z: number): Loop {
   const P = curve.seconds;
   const across = span + 2 * width;
-  // Pass `n` is one event, in turn `n` of the period: how long it takes to
-  // cross and when in its turn it sets off are its own. No pass is quicker
-  // than three quarters of a period, so none sweeps faster than that.
-  const centreAt = (t: number): number => {
-    const n = Math.floor(t / P);
-    const crossing = P * (0.75 + 0.25 * hash(n, 5.5 + z));
-    const q = clamp01((t - n * P - hash(n, 6.5 + z) * (P - crossing)) / crossing);
+  // Passes are events on slots of half a period. Whether slot `j` holds one,
+  // and how bright, is the sky's: slow noise over the slots, so sunny and
+  // cloudy spells each last several periods, and a pass is likelier and
+  // brighter the clearer the sky.
+  const SLOT = P / 2;
+  const sky = (j: number): number => smoothstep(-0.4, 0.4, noise(j / 10, 3.3, 5.5 + z));
+  // How lit pass `j` is at `col` and `t`: its band's light, 0 once it is off
+  // the row and before it sets off. It sets off somewhere in the first 70% of
+  // its slot and takes three quarters of a period to a period and a third to
+  // cross, so no pass sweeps faster than three quarters of a period, and
+  // none is still up four slots after its own.
+  const pass = (j: number, col: number, t: number): number => {
+    const clear = sky(j);
+    const present = hash(j, 7.5 + z) < 0.08 + 0.87 * clear ? 1 : 0;
+    const strength = present * (0.55 + 0.45 * clear * hash(j, 8.5 + z));
+    const crossing = P * (0.75 + 0.58 * hash(j, 5.5 + z));
+    const q = clamp01((t - (j + 0.7 * hash(j, 6.5 + z)) * SLOT) / crossing);
     // It drifts ahead and behind on slow noise, by nothing at either edge of
     // the row and never enough to turn it back.
-    return q * across - width + 0.06 * across * Math.sin(Math.PI * q) * noise(t / P, 2.7, 5.5 + z);
+    const centre = q * across - width + 0.06 * across * Math.sin(Math.PI * q) * noise(t / P, 2.7, j + z);
+    return strength * bump((col - centre) / width);
+  };
+  // Where two passes overlap the brighter wins, so light never doubles up;
+  // the first slot is 0, so before it nothing is lit.
+  const band = (col: number, t: number): number => {
+    const last = Math.floor(t / SLOT);
+    let lit = 0;
+    for (let j = Math.max(0, last - 3); j <= last; j++) lit = Math.max(lit, pass(j, col, t));
+    return lit;
   };
   // A ripple's crest: a Gaussian ridge, 1 where the field crosses zero and in
   // (0, 1] for any noise, smooth throughout, so a crest sliding through a cell
   // lights it smoothly.
   const ripple = (a: number, b: number, c: number): number => Math.exp(-((noise(a, b, c) / 0.8) ** 2));
   const field: Field = (cell, t) => {
-    const band = bump((cell.col - centreAt(t)) / width);
+    const lit = band(cell.col, t);
     const row = cell.row + z;
     const current = 0.8 * noise(cell.col * 0.05, row * 0.3 + 1.3, t * 0.02);
     const caustic =
       (ripple(cell.col * 0.21 + current, row * 0.9, t * 0.022) * ripple(cell.col * 0.33 + 9.1 - current, row * 0.7, t * 0.018 + 4.2)) **
       2;
-    return curve.swing * curve.ease(band * (0.1 + 0.6 * caustic));
+    return curve.swing * curve.ease(lit * (0.1 + 0.6 * caustic));
   };
   return { touch: light(glow), field };
 }

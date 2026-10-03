@@ -204,14 +204,35 @@ describe("the loops move", () => {
 
   it("shimmer lights only the columns under its band", () => {
     const band = 8;
-    // Halfway through a 2 s loop the band's centre is near the middle of
-    // span + 2·band, its current carrying it a few columns either way.
-    const lit = at(onColors(inkOn, shimmer(curve(2, 0.7), 40, band, sun, 0)), 1)
-      .map((c, col) => (sameColor(c.fg, ink) ? -1 : col))
-      .filter((col) => col >= 0);
-    expect(lit.length).toBeGreaterThan(0);
-    expect(lit.length).toBeLessThan(2 * band);
-    expect(lit).toContain(20);
+    const P = 2;
+    const loop = shimmer(curve(P, 0.7), 40, band, sun, 0);
+    // A moment a single band stands on the row: the lit columns are those
+    // within `band` of its centre, never the whole row.
+    const lit = Array.from({ length: 400 }, (_, i) => cells.filter((cell) => loop.field(cell, i * 0.1) > 0).length);
+    expect(lit.some((n) => n > 0 && n < 2 * band)).toBe(true);
+    expect(Math.max(...lit)).toBeLessThan(cells.length);
+  });
+
+  it("shimmer's passes come unevenly, as the sun goes in and out", () => {
+    const P = 10;
+    const loop = shimmer(curve(P, 0.7), 40, 8, sun, 0);
+    // Whether any light is on the row, second by second, over sixty periods.
+    const on = Array.from({ length: 60 * P }, (_, t) => cells.some((cell) => loop.field(cell, t) > 0));
+    // The lengths of the unbroken runs where the light is `want`.
+    const spells = (want: boolean): number[] =>
+      on
+        .map((now) => (now === want ? "x" : " "))
+        .join("")
+        .split(" ")
+        .filter((run) => run.length > 0)
+        .map((run) => run.length);
+    const still = spells(false);
+    const lit = spells(true);
+    // Under cloud the row lies still for periods on end; in sun, passes
+    // follow close enough that the light hardly leaves it.
+    expect(Math.max(...still)).toBeGreaterThan(2 * P);
+    expect(Math.min(...still)).toBeLessThan(P / 2);
+    expect(Math.max(...lit)).toBeGreaterThan(2 * P);
   });
 
   it("shimmer draws a colour wherever the noise peaks", () => {
