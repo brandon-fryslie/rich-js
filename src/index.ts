@@ -313,6 +313,7 @@ export {
   track,
 } from "./renderables/progress.js";
 export type {
+  MofNCompleteColumnOptions,
   ProgressColumn,
   ProgressOptions,
   SpinnerColumnOptions,

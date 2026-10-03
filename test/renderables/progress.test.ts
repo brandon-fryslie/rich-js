@@ -353,6 +353,8 @@ describe("MofNCompleteColumn (rich-progress-adjo)", () => {
       [12, undefined, "12/?"],
       [0, 7, "0/7"],
       [-3, 100, " -3/100"],
+      [-0.5, 10, " 0/10"],
+      [1e21, undefined, "1000000000000000000000/?"],
     ];
     const column = new MofNCompleteColumn();
     const drawn = cases.map(([completed, total]) => {
@@ -360,5 +362,20 @@ describe("MofNCompleteColumn (rich-progress-adjo)", () => {
       return `${text.plain}|${String(text.style)}`;
     });
     expect(drawn).toEqual(cases.map(([, , plain]) => `${plain}|progress.download`));
+  });
+
+  it("draws its separator between the counts, as Rich's separator does", () => {
+    const text = new MofNCompleteColumn({ separator: " of " }).render({ ...fakeTask("x"), completed: 5, total: 100 });
+    expect(text.plain).toBe("  5 of 100");
+  });
+});
+
+describe("Progress counts", () => {
+  it("refuses a count that is not finite where it enters, naming the field", () => {
+    const progress = new Progress();
+    expect(() => progress.addTask("x", { total: Infinity })).toThrow(/total must be a finite number, got Infinity/);
+    const id = progress.addTask("x", { total: 10 });
+    expect(() => progress.updateTask(id, { completed: NaN })).toThrow(/completed must be a finite number, got NaN/);
+    expect(() => progress.updateTask(id, { advance: -Infinity })).toThrow(/advance must be a finite number, got -Infinity/);
   });
 });
