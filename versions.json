@@ -4,15 +4,22 @@
     {
       "version": "pr-295",
       "ref": "refs/pull/295/merge",
-      "sha": "f9eeab22c33f6b8e7a6ab406bda2b73befba008d",
-      "timestamp": "2026-10-03T04:48:53.260Z",
+      "sha": "2a1738a19f8fa63e73d1fa45d4d0e6319498c4cc",
+      "timestamp": "2026-10-03T04:51:41.069Z",
       "commits": [
         {
-          "sha": "f9eeab22c33f6b8e7a6ab406bda2b73befba008d",
+          "sha": "2a1738a19f8fa63e73d1fa45d4d0e6319498c4cc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:47:39Z",
-          "message": "Merge 140795604512017686e276d6afff61b3dafd7e40 into d2f5674f2dd3ce5ca4d77008774be807f12aa2a0\n"
+          "timestamp": "2026-10-03T04:50:15Z",
+          "message": "Merge da9fb36ae9591e1f370bd8cbaf5b6590a9d2aa54 into d2f5674f2dd3ce5ca4d77008774be807f12aa2a0\n"
+        },
+        {
+          "sha": "da9fb36ae9591e1f370bd8cbaf5b6590a9d2aa54",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T22:50:10-06:00",
+          "message": "fix(test): the nested vitest prints through one reporter wherever it runs (rich-test-suite-czqk)\n\nUnder GITHUB_ACTIONS vitest adds the github-actions reporter, which prints each\nfailure a second time, so CI counted four reports where there are two.\n"
         },
         {
           "sha": "140795604512017686e276d6afff61b3dafd7e40",
