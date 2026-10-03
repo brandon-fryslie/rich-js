@@ -2,6 +2,7 @@
  * ProgressBar — a visual progress bar rendered with block characters.
  */
 
+import { cellCount } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import type {
@@ -47,7 +48,8 @@ export class ProgressBar implements Renderable, Measurable {
 
   *render(options: RenderOptions): Iterable<Segment> {
     // Never wider than offered, as Rich's `min(self.width or max_width, max_width)`.
-    const width = Math.min(this.width || options.maxWidth, options.maxWidth);
+    // [LAW:parse-dont-validate] parsed as a cell count, so a negative width draws nothing, as Python's `"━" * -2` is "".
+    const width = cellCount(Math.min(this.width || options.maxWidth, options.maxWidth));
     // Rich 9d8f9a3 `__rich_console__`: the fill is counted in half cells, and
     // a total of zero is a bar already full.
     const completed = Math.min(this.total, Math.max(0, this.completed));

@@ -136,6 +136,11 @@ describe("ProgressBar", () => {
       expect(texts(bar, { maxWidth: 6 })).toEqual(["━━━━━━"]);
     });
 
+    it("draws nothing at a negative width, as Rich's `\"━\" * -2` is empty", () => {
+      expect(texts(new ProgressBar({ total: 10, completed: 5, width: -4 }), { maxWidth: 80 })).toEqual([]);
+      expect(texts(new ProgressBar({ total: 10, completed: 5 }), { maxWidth: -4 })).toEqual([]);
+    });
+
     it("draws a total of zero as a finished bar", () => {
       const bar = new ProgressBar({ total: 0, width: 10 });
       const segments = collectSegments(bar, { maxWidth: 80 });
