@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-300",
+      "ref": "refs/pull/300/merge",
+      "sha": "49f02df702d56458800843d9d55b8d07dc307d45",
+      "timestamp": "2026-10-03T06:39:54.654Z",
+      "commits": [
+        {
+          "sha": "49f02df702d56458800843d9d55b8d07dc307d45",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T00:38:40-06:00",
+          "message": "Merge 20725611d81f7a6ab832df8946e796831e99cb7a into dffa02362a6fa499c2aa2ff86b83370f805ebda7\n"
+        },
+        {
+          "sha": "20725611d81f7a6ab832df8946e796831e99cb7a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T00:38:36-06:00",
+          "message": "fix(prompt)!: answers parse as Rich's do, refused answers print Rich's messages, and a prompt takes the app's Console (rich-prompt-2dqq)\n\n- IntPrompt/FloatPrompt read answers with Python's int()/float() grammar:\n  \"+5\", \"007\", \"-0\", \"1_000\" are integers; \"1abc\", \"3.2.1\", \"0.5 volts\" are\n  refused. An integer a number cannot hold exactly is refused, not rounded.\n- IntPrompt/FloatPrompt draw and enforce `choices`.\n- Confirm draws \"[y/n] (y)\" as Rich does, honours showChoices/showDefault and\n  a [yes, no] `choices` pair, and takes only y/n (any case), as Rich does.\n- A refused answer prints Rich's message in prompt.invalid /\n  prompt.invalid.choice, both new in DEFAULT_STYLES.\n- PromptOptions.console is Rich's console=. PromptInput receives the console;\n  nodeAsk encodes with it and asks on its target instead of a fresh stdout\n  Console, so an app's theme and colorSystem reach the prompt.\n\nBREAKING CHANGE: PromptInput is (prompt, console) => Promise<string>;\nConfirm no longer accepts \"yes\"/\"no\" or caseSensitive.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "dffa02362a6fa499c2aa2ff86b83370f805ebda7",
