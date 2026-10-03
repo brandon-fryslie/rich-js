@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-301",
-      "ref": "refs/pull/301/merge",
-      "sha": "4f4fc21ebd18f2173eb18560b9c554fd16aba259",
-      "timestamp": "2026-10-03T07:14:21.114Z",
-      "commits": [
-        {
-          "sha": "4f4fc21ebd18f2173eb18560b9c554fd16aba259",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T07:13:02Z",
-          "message": "Merge e2a08acefbdcc767faaa30a1ac0de0cb15dbb9a3 into a2fba38a21cf785a4077b39a6ca78fce22132048\n"
-        },
-        {
-          "sha": "e2a08acefbdcc767faaa30a1ac0de0cb15dbb9a3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T01:12:57-06:00",
-          "message": "fix(contrast): one text-* rule for derived and authored palettes, grounded pairs dropped only when a depth repaints them (rich-contrast-sqqq)\n\nReview findings on PR #301:\n- text-* is held by accentText, toward the palette's own text side, in\n  buildPalette and in registry hydration; the 18 hand-tuned data files are\n  Textual's values again. textual-ansi's text-* had gone near-black (1.09:1\n  on its background) because its *-muted sits at the 0.179 cutoff.\n- groundedStyle drops a style's colours only when it paints a fixed ground\n  and the depth turns a fixed colour of the pair into a terminal slot, so a\n  user's 'bold magenta' or 'white on blue' is drawn as written. The 16-slot\n  depth switch is gone.\n- Markdown inline code resolves through RichText's resolveStyle again, so a\n  bad inlineCodeStyle reaches onStyleError instead of throwing.\n- The 16-colour sweep renders each grounded default through its drawer.\n"
-        },
-        {
-          "sha": "25ba66141b34118812498ee754d98d842bdaecb8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T01:01:18-06:00",
-          "message": "fix(contrast)!: text-* reads on *-muted, grounded defaults read at 16 colours, readableOn measures in a named terminal (rich-contrast-sqqq)\n\n- buildPalette holds text-* to 4.5 on *-muted through ensureContrast; the\n  authored registry palettes' text-* values are corrected to clear it. The\n  widget contrast floor is now 4.5.\n- getGroundedStyle: below 256 colours Syntax's highlighted line number and\n  Markdown's code are drawn without their fixed pair, as Rich's\n  Syntax._get_number_styles does — no pair of ANSI slots reads in every\n  bundled theme. markdown.code is bold, as Rich's is, so code stays distinct.\n- BREAKING: colorFuncs / richTextFuncs / readableOnFunc take\n  () => DrawnAt ({ depth, terminal? }) instead of () => ColorDepth.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a2fba38a21cf785a4077b39a6ca78fce22132048",
