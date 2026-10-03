@@ -80,8 +80,9 @@
  * quietly changing the other. `trailing-newline` is the one text whose last
  * line is blank: Rich splits with `allow_blank`, so that line is placed like
  * any other and a justified one comes out padded to the canvas — the port
- * once dropped it and left the row bare (rich-text-vj2a). `wide` makes the gap odd more often than not, so
- * a centre that splits it the wrong way shows up. `short` is the degenerate
+ * once dropped it and left the row bare (rich-text-vj2a). `wide` makes the
+ * gap odd more often than not, so a centre that splits it the wrong way
+ * shows up. `short` is the degenerate
  * case where the gap dwarfs the content.
  *
  * WIDTHS. 8 forces a wrap on every text, 12 wraps some and not others, 20
@@ -258,12 +259,23 @@ describe("RichText justification", () => {
 
   /*
    * The fixture strips the trailing line breaks, so it cannot tell a blank
-   * last line from the row `end` adds. With no `end` there is no such row:
-   * the padded blank line is the text's own, as in Rich 9d8f9a3's
-   * `Text("ab\n", justify="left", end="")` at width 5.
+   * last line from the row `end` adds, nor whether one is there at all. With
+   * no `end` there is no such row, so every mode is pinned here against Rich
+   * 9d8f9a3's `Text("ab\n", justify=…, end="")` at width 5: the blank line is
+   * always drawn, padded where the mode pads and bare where it does not.
    */
   it("draws a trailing blank line that no end follows", () => {
-    const rendered = [...new RichText("ab\n", { justify: "left", end: "" }).render({ maxWidth: 5 })];
-    expect(rendered.map((segment) => segment.text).join("")).toBe("ab   \n     ");
+    const expected = {
+      default: "ab\n",
+      left: "ab   \n     ",
+      center: " ab  \n     ",
+      right: "   ab\n     ",
+      full: "ab\n",
+    } as const;
+    for (const justify of [undefined, "left", "center", "right", "full"] as const) {
+      const rendered = [...new RichText("ab\n", { justify, end: "" }).render({ maxWidth: 5 })];
+      expect(rendered.map((segment) => segment.text).join(""), `justify=${justify ?? "default"}`)
+        .toBe(expected[justify ?? "default"]);
+    }
   });
 });

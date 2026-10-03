@@ -833,7 +833,8 @@ export class RichText implements Renderable, Measurable {
     // `Segment.split_lines`, which drops a trailing empty line, so the text is
     // handed to it closed by one more break — the dropped line is then always
     // that one, and every line the text has comes back.
-    const logicalLines = Segment.splitLines([...allSegments, Segment.line()]);
+    allSegments.push(Segment.line());
+    const logicalLines = Segment.splitLines(allSegments);
     // [LAW:single-enforcer] The one crossing for this renderable's width, and
     // the call every other renderable already makes. A bare `cellCount` stood
     // here doing half of it: it caught a NaN width, which had made every
