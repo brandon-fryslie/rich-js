@@ -4,7 +4,9 @@ import {
   RegexHighlighter,
   ReprHighlighter,
   JSONHighlighter,
+  ISO8601Highlighter,
 } from "../../src/core/highlighter.js";
+import { DEFAULT_STYLES } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -19,6 +21,20 @@ function matchedTexts(text: RichText, styleName: string): string[] {
     .filter((s) => s.style === styleName)
     .map((s) => text.plain.slice(s.start, s.end));
 }
+
+// --- The default theme ---
+
+// A name the default theme lacks reaches the render's `onStyleError`, which a
+// strict handler rethrows, so every style a built-in can lay must be named.
+describe("built-in highlighters under the default theme", () => {
+  it.each([ReprHighlighter, JSONHighlighter, ISO8601Highlighter])("%o lays only names the theme defines", (ctor) => {
+    const groups = ctor.highlights.flatMap((p) => [
+      ...(p instanceof RegExp ? p.source : p).matchAll(/\(\?<([A-Za-z_]\w*)>/g),
+    ]);
+    const missing = [...new Set(groups.map((m) => `${ctor.baseStyle}${m[1]}`))].filter((name) => !(name in DEFAULT_STYLES));
+    expect(missing).toEqual([]);
+  });
+});
 
 // --- NullHighlighter ---
 

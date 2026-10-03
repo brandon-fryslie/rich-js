@@ -158,6 +158,9 @@ const WEEK = String.raw`(?<week>5[0-3]|[1-4][0-9]|0[1-9])`;
 const TZ_HOUR = String.raw`[+-](?:2[0-3]|[01][0-9])`;
 const XSD_DATE = String.raw`(?<date>(?<year>-?(?:[1-9][0-9]*)?[0-9]{4})-${MONTH}-${DAY})`;
 const XSD_TZ = String.raw`(?<timezone>Z|${TZ_HOUR}:[0-5][0-9])?`;
+// The cookbook's designator, whose minutes and their colon are both optional.
+const TZ = String.raw`(?<timezone>Z|${TZ_HOUR}(?::?(?:[0-5][0-9]))?)`;
+const COMPACT_TIME = `(?<time>${HOUR}${MINUTE}${SECOND})`;
 
 export class ISO8601Highlighter extends RegexHighlighter {
   static override baseStyle = "iso8601.";
@@ -171,15 +174,15 @@ export class ISO8601Highlighter extends RegexHighlighter {
     `^(?<date>${YEAR}-?W${WEEK}-?(?<day>[1-7]))${END}`,
     // Times
     `^(?<time>${HOUR}:?${MINUTE})${END}`,
-    `^(?<time>${HOUR}${MINUTE}${SECOND})${END}`,
-    `^(?<timezone>(Z|${TZ_HOUR}(?::?(?:[0-5][0-9]))?))${END}`,
-    `^(?<time>${HOUR}${MINUTE}${SECOND})(?<timezone>Z|${TZ_HOUR}(?::?(?:[0-5][0-9]))?)${END}`,
+    `^${COMPACT_TIME}${END}`,
+    `^${TZ}${END}`,
+    `^${COMPACT_TIME}${TZ}${END}`,
     // Date and time. Rich writes this as one pattern whose `-` and `:`
     // separators are all present or all absent, keyed on a Python conditional
     // group JavaScript lacks; it is the two spellings here, adjacent, so the
     // one that matches lays its spans where Rich's single pattern would.
     `^(?<date>${YEAR}(?<hyphen>-)${MONTH}-${DAY}) (?<time>${HOUR}:${MINUTE}:${SECOND})${END}`,
-    `^(?<date>${YEAR}${MONTH}${DAY}) (?<time>${HOUR}${MINUTE}${SECOND})${END}`,
+    `^(?<date>${YEAR}${MONTH}${DAY}) ${COMPACT_TIME}${END}`,
     // XML Schema date, time and dateTime
     `^${XSD_DATE}${XSD_TZ}${END}`,
     String.raw`^(?<time>${HOUR}:${MINUTE}:${SECOND}(?<frac>\.[0-9]+)?)${XSD_TZ}${END}`,
