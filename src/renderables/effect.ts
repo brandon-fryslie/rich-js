@@ -154,15 +154,7 @@ export class Effected implements Renderable, Measurable {
         const shifted = base.shiftedBy(offset);
         // Back from the screen to the style's slots: the same swap undoes itself.
         const slots = run.colors === undefined ? undefined : onScreen(run.colors, base);
-        const style =
-          slots === undefined
-            ? shifted
-            : shifted.add(
-                Style.fromColor(
-                  respec(wire.color, ink, slots.fg, depth, this.theme),
-                  respec(wire.bgcolor, paper, slots.bg, depth, this.theme),
-                ),
-              );
+        const style = slots === undefined ? shifted : shifted.add(this.respec(wire, { fg: ink, bg: paper }, slots, depth));
         yield new Segment(run.text, style);
         offset += run.cells;
       }
@@ -171,6 +163,23 @@ export class Effected implements Renderable, Measurable {
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
     return Measurement.get(options, this.renderable);
+  }
+
+  /**
+   * The style that draws a run's slot colours `to` where the segment drew
+   * `from` with `wire`: a slot the effect left alone keeps its written spec,
+   * and a moved one is laid on what is beneath it — the ground on the
+   * terminal's background, the glyph on that ground, as the writer does
+   * (`Style.drawnColors`) — then drawn in the colour nearest it at `depth`
+   * that the terminal shows (`ColorSpec.matchOn`), so a colour moved a little
+   * off a theme slot or the default colour is still drawn as that one.
+   */
+  private respec(wire: ReturnType<Style["drawnColors"]>, from: CellColors, to: CellColors, depth: ColorDepth): Style {
+    const ground = to.bg.compositeOver(this.theme.backgroundColor);
+    const glyph = to.fg.compositeOver(ground);
+    const drawn = (spec: ColorSpec | undefined, was: ColorRgba, now: ColorRgba, foreground: boolean) =>
+      sameColor(was, now) ? spec : ColorSpec.matchOn(now, depth, this.theme, foreground);
+    return Style.fromColor(drawn(wire.color, from.fg, glyph, true), drawn(wire.bgcolor, from.bg, ground, false));
   }
 
   /** A cell's seed: FNV-1a of the key and the position, scaled into [0, 1). */
@@ -187,22 +196,6 @@ const DEFAULT = ColorSpec.default();
  */
 function onScreen(colors: CellColors, style: Style): CellColors {
   return style.reverse === true ? { fg: colors.bg, bg: colors.fg } : colors;
-}
-
-/**
- * The spec to draw `to` with: the original one where the effect left it, and
- * otherwise `to` at the run's depth on the terminal the effect read its
- * colours from — at sixteen colours, the slot whose theme colour is nearest,
- * so a colour moved a little off a slot is still drawn in it.
- */
-function respec(
-  spec: ColorSpec | undefined,
-  from: ColorRgba,
-  to: ColorRgba,
-  depth: ColorDepth,
-  theme: TerminalTheme,
-): ColorSpec | undefined {
-  return sameColor(from, to) ? spec : ColorSpec.fromRgba(to).downgradeUnder(depth, theme);
 }
 
 function sameColor(a: ColorRgba, b: ColorRgba): boolean {

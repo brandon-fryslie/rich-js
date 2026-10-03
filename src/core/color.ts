@@ -593,25 +593,15 @@ export class ColorSpec {
    * Downgrade to a lower-fidelity color depth. Cached.
    */
   downgrade(targetSystem: ColorDepth): ColorSpec {
-    if (!this.lowersTo(targetSystem)) return this;
+    if (this.type === ColorDepth.DEFAULT) return this;
+    if (this.type === targetSystem || fidelity(this.type) < fidelity(targetSystem)) return this;
 
     const cached = this.downgradeCache.get(targetSystem);
     if (cached) return cached;
 
-    const result = this.performDowngrade(targetSystem, resolveTerminal(undefined, targetSystem));
+    const result = this.performDowngrade(targetSystem);
     this.downgradeCache.set(targetSystem, result);
     return result;
-  }
-
-  /**
-   * `downgrade` on a terminal known to show `theme`: at sixteen colours a
-   * fixed colour lands in the slot whose colour under `theme` is nearest,
-   * where `downgrade` can only round against the depth's stock sixteen. A
-   * colour read off a theme slot and moved a little stays in that slot.
-   * Uncached: its callers build a fresh colour per frame.
-   */
-  downgradeUnder(targetSystem: ColorDepth, theme: TerminalTheme): ColorSpec {
-    return this.lowersTo(targetSystem) ? this.performDowngrade(targetSystem, theme) : this;
   }
 
   /**
@@ -678,6 +668,35 @@ export class ColorSpec {
   }
 
   /**
+   * The spec that draws `value` nearest to it at `depth` on a terminal known
+   * to show `theme`, as the colour of the glyph (`foreground`) or of the
+   * ground. Where `downgrade` knows no terminal, and so rounds only against
+   * colours every terminal fixes (or, at sixteen colours, the stock
+   * sixteen), this rounds against every colour the depth can write whose
+   * look `theme` fixes: the default colour, the theme's sixteen, and at 256
+   * colours the cube and grey ramp too. A colour read off any of those and
+   * moved a little is drawn as the colour it came from — or, where the theme
+   * gives two slots one colour, as the lower slot, which looks the same.
+   *
+   * `value` is opaque: a translucent colour has no one look until it is laid
+   * on a ground (`flattenAlpha`).
+   */
+  static matchOn(value: ColorRgba, depth: ColorDepth, theme: TerminalTheme, foreground: boolean): ColorSpec {
+    if (value.alpha < 1) throw new RangeError(`matchOn rounds an opaque colour; got alpha ${value.alpha}`);
+    if (depth === ColorDepth.TRUECOLOR) return ColorSpec.fromRgba(value);
+    if (depth === ColorDepth.DEFAULT) return ColorSpec.default();
+    const slot = theme.ansiColors.match(value);
+    // [LAW:dataflow-not-control-flow] Every candidate is scored; the depth
+    // only decides whether the cube is among them. Ties go to the earlier.
+    const candidates: [ColorSpec, ColorRgba][] = [
+      [ColorSpec.default(), foreground ? theme.foregroundColor : theme.backgroundColor],
+      [new ColorSpec(`color(${slot})`, depth === ColorDepth.WINDOWS ? depth : ColorDepth.STANDARD, slot), theme.ansiColors.get(slot)],
+      ...(depth === ColorDepth.EIGHT_BIT ? [cubeCandidate(value)] : []),
+    ];
+    return candidates.reduce((best, next) => (rgbDistance(next[1], value) < rgbDistance(best[1], value) ? next : best))[0];
+  }
+
+  /**
    * Parse a color string. Memoized (`Memo`): a string parsed again while
    * remembered returns the same instance.
    */
@@ -687,15 +706,10 @@ export class ColorSpec {
 
   // --- private ---
 
-  /** Whether `targetSystem` names fewer colours than this spec is written in. */
-  private lowersTo(targetSystem: ColorDepth): boolean {
-    return this.type !== ColorDepth.DEFAULT && this.type !== targetSystem && fidelity(this.type) >= fidelity(targetSystem);
-  }
-
-  private performDowngrade(targetSystem: ColorDepth, terminal: TerminalTheme): ColorSpec {
-    // The colour as `terminal` draws it: a blend's named ends are the Windows
-    // console's own at WINDOWS when no theme is known.
-    const triplet = this.getTruecolor(terminal);
+  private performDowngrade(targetSystem: ColorDepth): ColorSpec {
+    // The colour as the terminal this depth assumes draws it: a blend's named
+    // ends are the Windows console's own at WINDOWS.
+    const triplet = this.getTruecolor(resolveTerminal(undefined, targetSystem));
 
     switch (targetSystem) {
       case ColorDepth.EIGHT_BIT:
@@ -703,9 +717,8 @@ export class ColorSpec {
       case ColorDepth.STANDARD:
       case ColorDepth.WINDOWS: {
         // An ANSI slot is already one of the sixteen either depth writes; only
-        // a fixed colour is matched, against the sixteen `terminal` draws —
-        // the depth's own table when no theme is known, as Rich does.
-        const index = this.number !== undefined && this.number < 16 ? this.number : terminal.ansiColors.match(triplet);
+        // a fixed colour is matched against the depth's table, as Rich does.
+        const index = this.number !== undefined && this.number < 16 ? this.number : downgradeTable(targetSystem).match(triplet);
         return new ColorSpec(`color(${index})`, targetSystem, index);
       }
       case ColorDepth.TRUECOLOR:
@@ -714,6 +727,12 @@ export class ColorSpec {
         return ColorSpec.default();
     }
   }
+}
+
+/** The cube or grey-ramp entry nearest `value`, and its colour. */
+function cubeCandidate(value: ColorRgba): [ColorSpec, ColorRgba] {
+  const index = EIGHT_BIT_DOWNGRADE_TABLE.match(value);
+  return [ColorSpec.fromAnsi(index), EIGHT_BIT_DOWNGRADE_TABLE.get(index)];
 }
 
 function mix(from: ColorSpec, to: ColorSpec, t: number, theme?: TerminalTheme): ColorRgba {
@@ -1040,10 +1059,9 @@ export function downgradeTable(depth: ColorDepth.EIGHT_BIT | ColorDepth.STANDARD
     case ColorDepth.EIGHT_BIT:
       return EIGHT_BIT_DOWNGRADE_TABLE;
     case ColorDepth.STANDARD:
+      return STANDARD_TABLE;
     case ColorDepth.WINDOWS:
-      // The sixteen of the terminal the depth assumes, which a downgrade with
-      // no theme rounds against.
-      return resolveTerminal(undefined, depth).ansiColors;
+      return WINDOWS_TABLE;
   }
 }
 

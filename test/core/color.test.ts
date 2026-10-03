@@ -18,6 +18,7 @@ import {
   MONOKAI,
   ATOM_ONE_DARK,
   ATOM_ONE_LIGHT,
+  CATPPUCCIN_MOCHA,
   SVG_EXPORT_THEME,
 } from "../../src/themes/terminalThemes.js";
 import { buildPalette } from "../../src/themes/buildPalette.js";
@@ -613,35 +614,36 @@ describe("ColorSpec.downgrade()", () => {
   });
 });
 
-describe("ColorSpec.downgradeUnder()", () => {
-  it("rounds to the sixteen the theme draws, not the depth's stock ones", () => {
-    for (const depth of [ColorDepth.STANDARD, ColorDepth.WINDOWS]) {
+describe("ColorSpec.matchOn()", () => {
+  const codes = (value: ColorRgba, depth: ColorDepth, foreground: boolean): string[] =>
+    ColorSpec.matchOn(value, depth, CATPPUCCIN_MOCHA, foreground).getAnsiCodes(foreground);
+
+  it("draws each of the theme's sixteen as its own slot, at sixteen colours and at 256", () => {
+    for (const depth of [ColorDepth.STANDARD, ColorDepth.WINDOWS, ColorDepth.EIGHT_BIT]) {
       for (let n = 0; n < 16; n++) {
-        const shade = ColorSpec.fromRgba(ATOM_ONE_DARK.ansiColors.get(n));
-        expect(shade.downgradeUnder(depth, ATOM_ONE_DARK).number).toBe(ATOM_ONE_DARK.ansiColors.match(shade.value!));
+        expect(ColorSpec.matchOn(CATPPUCCIN_MOCHA.ansiColors.get(n), depth, CATPPUCCIN_MOCHA, true).number).toBe(n);
       }
     }
-    // Atom One Dark's red rounds to its own slot under the theme, and away from it under the VGA sixteen.
-    const red = ColorSpec.fromRgba(ATOM_ONE_DARK.ansiColors.get(1));
-    expect(red.downgradeUnder(ColorDepth.STANDARD, ATOM_ONE_DARK).number).toBe(1);
-    expect(red.downgrade(ColorDepth.STANDARD).number).not.toBe(1);
+    // Mocha's red is a slot of its own under the theme, and some other slot under the stock sixteen.
+    expect(ColorSpec.fromRgba(CATPPUCCIN_MOCHA.ansiColors.get(1)).downgrade(ColorDepth.STANDARD).number).not.toBe(1);
   });
 
-  it("is `downgrade` on a theme whose sixteen are the depth's own", () => {
-    const vga = new TerminalTheme(STANDARD_TABLE.get(0), STANDARD_TABLE.get(7), STANDARD_TABLE, new Palette("vga", true, new Map()));
-    for (let v = 0; v < 256; v += 15) {
-      const c = ColorSpec.fromRgb(v, 255 - v, (v * 7) % 256);
-      expect(c.downgradeUnder(ColorDepth.STANDARD, vga).number).toBe(c.downgrade(ColorDepth.STANDARD).number);
-      expect(c.downgradeUnder(ColorDepth.EIGHT_BIT, vga).number).toBe(c.downgrade(ColorDepth.EIGHT_BIT).number);
+  it("draws the theme's default colours as the default, glyph and ground each its own", () => {
+    for (const depth of [ColorDepth.STANDARD, ColorDepth.EIGHT_BIT]) {
+      expect(codes(CATPPUCCIN_MOCHA.foregroundColor, depth, true)).toEqual(["39"]);
+      expect(codes(CATPPUCCIN_MOCHA.backgroundColor, depth, false)).toEqual(["49"]);
     }
   });
 
-  it("leaves a spec the depth does not lower as it is", () => {
-    const slot = ColorSpec.fromAnsi(4);
-    expect(slot.downgradeUnder(ColorDepth.STANDARD, ATOM_ONE_DARK)).toBe(slot);
-    expect(slot.downgradeUnder(ColorDepth.TRUECOLOR, ATOM_ONE_DARK)).toBe(slot);
-    const rgb = ColorSpec.fromRgb(1, 2, 3);
-    expect(rgb.downgradeUnder(ColorDepth.TRUECOLOR, ATOM_ONE_DARK)).toBe(rgb);
+  it("reaches into the cube at 256 colours only when a cube colour is nearer", () => {
+    expect(codes(new ColorRgba(255, 0, 0), ColorDepth.EIGHT_BIT, true)).toEqual(["38", "5", "196"]);
+    expect(codes(new ColorRgba(255, 0, 0), ColorDepth.STANDARD, true)).toEqual(["31"]);
+  });
+
+  it("writes truecolor as the value itself, and refuses a translucent one", () => {
+    const v = new ColorRgba(1, 2, 3);
+    expect(ColorSpec.matchOn(v, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA, true).value).toEqual(v);
+    expect(() => ColorSpec.matchOn(new ColorRgba(1, 2, 3, 0.5), ColorDepth.STANDARD, CATPPUCCIN_MOCHA, true)).toThrow(RangeError);
   });
 });
 

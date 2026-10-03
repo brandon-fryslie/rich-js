@@ -184,20 +184,20 @@ describe("Effected — what it may not change", () => {
   });
 });
 
-describe("Effected — at sixteen colours", () => {
+describe("Effected — below truecolor", () => {
   /** OKLCH lightness up by `dl`: the smallest move a pulse makes as it leaves 0. */
   const lighter = (c: ColorRgba, dl: number): ColorRgba => {
     const o = Oklch.fromRgba(c);
     return new Oklch(o.l + dl, o.c, o.h, o.alpha).toRgba();
   };
   const nudge: Effect = (c) => ({ fg: lighter(c.fg, 0.01), bg: lighter(c.bg, 0.01) });
+  const nudgeGround: Effect = (c) => ({ fg: c.fg, bg: lighter(c.bg, 0.01) });
   const onMocha = (child: Renderable, effect: Effect): Effected =>
     new Effected(child, effect, { t: 0, key: "k", theme: CATPPUCCIN_MOCHA });
   const ansi = { width: 10, colorSystem: "ansi" } as const;
 
   it("draws a slightly moved ANSI colour in the slot it came from", () => {
     const text = new RichText("x", { style: "on blue" });
-    const nudgeGround: Effect = (c) => ({ fg: c.fg, bg: lighter(c.bg, 0.01) });
     const drawn = renderToString(onMocha(text, nudgeGround), ansi);
     expect(drawn).toContain("\x1b[44m");
     expect(drawn).toBe(renderToString(text, ansi));
@@ -208,6 +208,26 @@ describe("Effected — at sixteen colours", () => {
       const child = fixed(new Segment("x", new Style({ color: ColorSpec.fromAnsi(n), bgcolor: ColorSpec.fromAnsi(n) })));
       expect(renderToString(onMocha(child, nudge), ansi)).toBe(renderToString(child, ansi));
     }
+  });
+
+  it("keeps a slightly moved theme slot in its slot at 256 colours, not the nearest cube colour to it", () => {
+    const text = new RichText("x", { style: "on blue" });
+    const at256 = { width: 10, colorSystem: "256" } as const;
+    expect(renderToString(onMocha(text, nudgeGround), at256)).toBe(renderToString(text, at256));
+  });
+
+  it("keeps a cell with no colours of its own in the terminal's defaults under a small move", () => {
+    const plain = fixed(new Segment("x"));
+    for (const colorSystem of ["ansi", "256"] as const) {
+      const drawn = renderToString(onMocha(plain, nudge), { width: 10, colorSystem });
+      expect(drawn).toContain("\x1b[39;49m");
+    }
+  });
+
+  it("lays a translucent colour on its ground before rounding it", () => {
+    // White at a tenth over Mocha's near-black ground is still near-black: the default ground, not a bright slot.
+    const veil: Effect = (c) => ({ fg: new ColorRgba(255, 255, 255, 0.1), bg: c.bg });
+    expect(renderToString(onMocha(fixed(new Segment("x")), veil), ansi)).toMatch(/\x1b\[(30|90|39)m/);
   });
 
   it("draws a moved colour in the slot whose colour under the theme is nearest", () => {
