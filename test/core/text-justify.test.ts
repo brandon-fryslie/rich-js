@@ -29,6 +29,7 @@
  *              ("unbreakable", "aaaaaaaaaaaaaaaaaaaa"),
  *              ("multiline", "one\ntwo three four five"),
  *              ("trailing-space", "words then space   "),
+ *              ("trailing-newline", "hi\n"),
  *              ("wide", "日本語のテキストです"),
  *              ("short", "hi")]
  *     WIDTHS = [8, 12, 20]
@@ -76,7 +77,10 @@
  * reused. `trailing-space` is the control for `hanging-space`: whitespace the
  * *author* wrote, not the wrap, and Rich treats the two the same on the line
  * that ends a paragraph — pinning that keeps a future fix for one from
- * quietly changing the other. `wide` makes the gap odd more often than not, so
+ * quietly changing the other. `trailing-newline` is the one text whose last
+ * line is blank: Rich splits with `allow_blank`, so that line is placed like
+ * any other and a justified one comes out padded to the canvas — the port
+ * once dropped it and left the row bare (rich-text-vj2a). `wide` makes the gap odd more often than not, so
  * a centre that splits it the wrong way shows up. `short` is the degenerate
  * case where the gap dwarfs the content.
  *
@@ -111,6 +115,7 @@ const TEXTS: readonly (readonly [string, string])[] = [
   ["unbreakable", "aaaaaaaaaaaaaaaaaaaa"],
   ["multiline", "one\ntwo three four five"],
   ["trailing-space", "words then space   "],
+  ["trailing-newline", "hi\n"],
   ["wide", "日本語のテキストです"],
   ["short", "hi"],
 ];
@@ -249,5 +254,16 @@ describe("RichText justification", () => {
       const width = Math.max(...Segment.splitLines(rendered).map(Segment.getLineLength));
       expect(width, `justify=${justify ?? "default"}`).toBe(9);
     }
+  });
+
+  /*
+   * The fixture strips the trailing line breaks, so it cannot tell a blank
+   * last line from the row `end` adds. With no `end` there is no such row:
+   * the padded blank line is the text's own, as in Rich 9d8f9a3's
+   * `Text("ab\n", justify="left", end="")` at width 5.
+   */
+  it("draws a trailing blank line that no end follows", () => {
+    const rendered = [...new RichText("ab\n", { justify: "left", end: "" }).render({ maxWidth: 5 })];
+    expect(rendered.map((segment) => segment.text).join("")).toBe("ab   \n     ");
   });
 });

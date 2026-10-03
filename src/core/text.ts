@@ -825,10 +825,15 @@ export class RichText implements Renderable, Measurable {
 
   *render(options: RenderOptions): Iterable<Segment> {
     const expanded = expandTabs(this._text, this._tabSize);
-    const text = expanded.text;
     const base = this.resolvedStyle(options);
     const allSegments = this._buildSegments(expanded, base, options);
-    const logicalLines = Segment.splitLines(allSegments);
+    // Rich wraps the lines of `split(allow_blank=True)`: n line breaks make
+    // n + 1 lines, the last one blank when the text ends in a break, and that
+    // blank line is justified like any other. `Segment.splitLines` is Rich's
+    // `Segment.split_lines`, which drops a trailing empty line, so the text is
+    // handed to it closed by one more break — the dropped line is then always
+    // that one, and every line the text has comes back.
+    const logicalLines = Segment.splitLines([...allSegments, Segment.line()]);
     // [LAW:single-enforcer] The one crossing for this renderable's width, and
     // the call every other renderable already makes. A bare `cellCount` stood
     // here doing half of it: it caught a NaN width, which had made every
@@ -859,11 +864,10 @@ export class RichText implements Renderable, Measurable {
     const justify = overflow === "ignore" ? undefined : this._justify ?? options.justify;
     // One cell either way, so the marker's stand-in leaves the cut where it was.
     const ellipsis = drawable(options, "\u2026", ".");
-    const endsWithNewline = text.endsWith("\n");
 
     for (let index = 0; index < logicalLines.length; index += 1) {
       const line = logicalLines[index]!;
-      const terminateLine = index < logicalLines.length - 1 || endsWithNewline;
+      const terminateLine = index < logicalLines.length - 1;
 
       // Wrap first, overflow last — the reference's order, and the reason a
       // long sentence grows a table row while an unbreakable word in the same
