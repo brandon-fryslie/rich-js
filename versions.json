@@ -4,15 +4,22 @@
     {
       "version": "pr-323",
       "ref": "refs/pull/323/merge",
-      "sha": "63f831bec82fbf6a5ad7ed0a198ba50348d997b8",
-      "timestamp": "2026-10-03T13:42:04.223Z",
+      "sha": "8e886bcd2b1fa105f912ece26e1b10552f02920d",
+      "timestamp": "2026-10-03T13:47:02.253Z",
       "commits": [
         {
-          "sha": "63f831bec82fbf6a5ad7ed0a198ba50348d997b8",
+          "sha": "8e886bcd2b1fa105f912ece26e1b10552f02920d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T07:40:26-06:00",
-          "message": "Merge 9e3ee7cdbb0a0a7118ed34bde382286b3186ca83 into f893d6e1571c6d2709625a7eaf7c95a0b045600e\n"
+          "timestamp": "2026-10-03T13:46:10Z",
+          "message": "Merge b916103ca5309f25a51d2f03efac93136c5f08b2 into f893d6e1571c6d2709625a7eaf7c95a0b045600e\n"
+        },
+        {
+          "sha": "b916103ca5309f25a51d2f03efac93136c5f08b2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T07:46:06-06:00",
+          "message": "test(highlighter): pin U+2029 and an astral word character against Rich; scope the Python-class comment (rich-highlighter-xwqv)\n"
         },
         {
           "sha": "9e3ee7cdbb0a0a7118ed34bde382286b3186ca83",
