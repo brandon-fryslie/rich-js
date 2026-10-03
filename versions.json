@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-316",
-      "ref": "refs/pull/316/merge",
-      "sha": "de3f30a6473fb9c7de9b23826d373a0a543120a4",
-      "timestamp": "2026-10-03T12:36:34.983Z",
-      "commits": [
-        {
-          "sha": "de3f30a6473fb9c7de9b23826d373a0a543120a4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T12:35:20Z",
-          "message": "Merge 937f138f6503366ddae2fd67e85086b83e0a644e into dec3042a31706fc2b224cfa3fa745d2b9169d48c\n"
-        },
-        {
-          "sha": "937f138f6503366ddae2fd67e85086b83e0a644e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:34:05-06:00",
-          "message": "effects-feel: pulse spreads at one pace whatever the width; neighbour check runs through a whole breath (rich-effects-fxiy.b6i)\n"
-        },
-        {
-          "sha": "fb7136fa21ca06388837a3cdb1e2bc622add3d41",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:26:23-06:00",
-          "message": "feat(examples): effects-feel breath spreads from a wandering heart, shimmer rides an uneven current, pulse slower and deeper (rich-effects-fxiy.b6i)\n\nPulse peaked at 0.06 dE_OK and read as nothing. The 1 fps step gate, not\nthe contrast shares, was what held it: a deeper move has to be a slower\none. Pulse is now 30 s at swing 0.55, peaking at 0.24 on the strip and\n0.10 on text, inside the gate.\n\nA light that tints at constant lightness was tried to get past the shares\nand dropped: on the dark ground it changed nothing, and on Latte a tint\nalone breaks a fill's contrast floor.\n"
-        },
-        {
-          "sha": "7f4ae6e1b62703c5045f704ecebca6d17212dbf1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:12:22-06:00",
-          "message": "feat(examples): effects-feel fade and dissolve carry a strip's fills with its words, from and to the terminal's ground (rich-effects-fxiy.b6i)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "dec3042a31706fc2b224cfa3fa745d2b9169d48c",
-      "timestamp": "2026-10-03T12:32:55.877Z",
+      "sha": "effccf96ff9abee5ec3a61820ea001260b1a4c45",
+      "timestamp": "2026-10-03T12:38:26.942Z",
       "commits": [
         {
-          "sha": "dec3042a31706fc2b224cfa3fa745d2b9169d48c",
+          "sha": "effccf96ff9abee5ec3a61820ea001260b1a4c45",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:26:23-06:00",
-          "message": "fix(embed)!: a body keeps its own end, as Rich's does (rich-embed-1r2m) (#315)\n\n* fix(embed)!: a body keeps its own end, as Rich's does (rich-embed-1r2m)\n\nA string reads with Rich's default end, as `render_str` gives it, and a\nRichText keeps the end it was given. So `RichText(\"foo\\n\")` or \"foo\\n\" in\na table cell, a column, a panel body, a tree label or a layout pane draws\nthe blank row its newline makes. The sites that set text into a line\nclear the end there: print's run and an inline label (panel and rule\ntitles).\n\nA Layout leaf is now shaped to its region as Rich's `render_lines` shapes\nit: each line cropped and padded to the width, and held to the region's\nrows.\n\nExpected output is Python Rich 9d8f9a3's, pinned in each renderable's tests.\n\n* fix(table): a title's end runs on as the text emits it, as Rich's does (rich-embed-1r2m)\n\nReview pass (high): a title or caption with a non-newline end widened its\nown row past the table. It is now yielded as the text renders it, the title\nstyle set as the text's base. Pins Rich 9d8f9a3 bytes for that, a progress\ndescription's trailing newline, a standalone leaf's width padding, and\nRichText.append leaving the appended text's end behind.\n\n* fix(text): justify pads in the text's base style, as Rich's does (rich-embed-1r2m)\n\nReview pass (medium): setting the table title style as the text's base left\nits justify padding unstyled, because RichText padded outside the base.\nRich's Lines.justify pads inside the Text. Markdown's element style moves to\na span under the inline spans, as Rich's is, so a heading's padding stays\nplain.\n\n* refactor(console): print leaves each part's end to append, as Rich's join does (rich-embed-1r2m)\n\nReview pass (high, escalation): the end-clearing in print was dead —\nTextRun joins with RichText.append, which already drops it. Comments on the\ntitle style and the standalone Layout test now say what Rich does.\n\n* test(console): print leaves a caller's RichText unchanged (rich-embed-1r2m)"
+          "timestamp": "2026-10-03T06:37:13-06:00",
+          "message": "effects-feel: fade and dissolve carry a strip's fills with its words (rich-effects-fxiy.b6i) (#316)\n\n* feat(examples): effects-feel fade and dissolve carry a strip's fills with its words, from and to the terminal's ground (rich-effects-fxiy.b6i)\n\n* feat(examples): effects-feel breath spreads from a wandering heart, shimmer rides an uneven current, pulse slower and deeper (rich-effects-fxiy.b6i)\n\nPulse peaked at 0.06 dE_OK and read as nothing. The 1 fps step gate, not\nthe contrast shares, was what held it: a deeper move has to be a slower\none. Pulse is now 30 s at swing 0.55, peaking at 0.24 on the strip and\n0.10 on text, inside the gate.\n\nA light that tints at constant lightness was tried to get past the shares\nand dropped: on the dark ground it changed nothing, and on Latte a tint\nalone breaks a fill's contrast floor.\n\n* effects-feel: pulse spreads at one pace whatever the width; neighbour check runs through a whole breath (rich-effects-fxiy.b6i)"
         }
       ]
     }
