@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as n,ag as l}from"./chunks/framework.DcHMsR_P.js";const c=JSON.parse('{"title":"Tree","description":"","frontmatter":{},"headers":[],"relativePath":"tree.md","filePath":"tree.md"}'),t={name:"tree.md"};function e(p,s,h,k,r,o){return a(),n("div",null,[...s[0]||(s[0]=[l("",17)])])}const y=i(t,[["render",e]]);export{c as __pageData,y as default};

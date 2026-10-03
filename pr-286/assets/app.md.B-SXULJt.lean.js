@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as e,ag as t}from"./chunks/framework.DcHMsR_P.js";const c=JSON.parse('{"title":"Terminal Apps","description":"","frontmatter":{},"headers":[],"relativePath":"app.md","filePath":"app.md"}'),h={name:"app.md"};function n(p,s,l,k,r,d){return a(),e("div",null,[...s[0]||(s[0]=[t("",27)])])}const A=i(h,[["render",n]]);export{c as __pageData,A as default};
