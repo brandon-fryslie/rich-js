@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { Spinner } from "../../src/renderables/spinner.js";
 import { Segment } from "../../src/core/segment.js";
 import { Group } from "../../src/renderables/group.js";
@@ -164,5 +164,20 @@ describe("Spinner", () => {
       const widest = Math.max(...s.frames.map((frame) => [...frame].length));
       expect(s.measure({ maxWidth: 80 }).minimum).toBe(widest);
     });
+  });
+});
+
+describe("Spinner speed", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("steps backwards at a negative speed, wrapping to the last frame as Rich's does", () => {
+    vi.useFakeTimers({ now: 0 });
+    const spinner = new Spinner("dots", "", { speed: -1 });
+    const frame = () => collectText(spinner, { maxWidth: 80 }).trim();
+    expect(frame()).toBe(spinner.frames[0]);
+    vi.setSystemTime(spinner.interval);
+    expect(frame()).toBe(spinner.frames[spinner.frames.length - 1]);
+    vi.setSystemTime(spinner.interval * 2);
+    expect(frame()).toBe(spinner.frames[spinner.frames.length - 2]);
   });
 });

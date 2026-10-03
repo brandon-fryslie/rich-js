@@ -312,7 +312,12 @@ export {
   MofNCompleteColumn,
   track,
 } from "./renderables/progress.js";
-export type { ProgressOptions, TaskOptions, TaskUpdateOptions } from "./renderables/progress.js";
+export type {
+  ProgressOptions,
+  SpinnerColumnOptions,
+  TaskOptions,
+  TaskUpdateOptions,
+} from "./renderables/progress.js";
 export { Prompt, IntPrompt, FloatPrompt, Confirm } from "./renderables/prompt.js";
 export type { ConfirmOptions, PromptInput, PromptOptions } from "./renderables/prompt.js";
 export { Traceback } from "./renderables/traceback.js";

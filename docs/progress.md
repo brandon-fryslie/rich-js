@@ -100,7 +100,7 @@ Until then `TimeElapsedColumn` holds at `0:00:00` and `TimeRemainingColumn` at
 timed only while each one runs.
 
 There is no indeterminate mode, and omitting `total` is not a substitute for one. The
-two columns then disagree: `TaskProgressColumn` freezes at 0%, while `BarColumn` falls
+two columns then disagree: `TaskProgressColumn` shows nothing, while `BarColumn` falls
 back to an assumed total of 100, so the bar fills as `completed` advances and turns
 "finished" at 100 — against a number you never set. Give every task a real `total`.
 
@@ -175,11 +175,11 @@ progress.stop();
 |---|---|
 | `BarColumn` | The progress bar |
 | `TextColumn` | A format string (see below) |
-| `TaskProgressColumn` | Percentage complete |
+| `TaskProgressColumn` | Percentage complete, right-aligned in four cells so the row holds still |
 | `TimeElapsedColumn` | Elapsed time |
 | `TimeRemainingColumn` | Estimated time remaining |
 | `MofNCompleteColumn` | `completed/total` count |
-| `SpinnerColumn` | Animated spinner |
+| `SpinnerColumn` | Animated spinner, styled `progress.spinner`; a space once the task is finished |
 
 ### Format string columns
 
