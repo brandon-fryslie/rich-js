@@ -4,15 +4,22 @@
     {
       "version": "pr-290",
       "ref": "refs/pull/290/merge",
-      "sha": "4d13fa38332dd84a39825a4ef25abf6df2fc66b0",
-      "timestamp": "2026-10-03T01:50:14.100Z",
+      "sha": "66bb05f4921f448d873554e067cc4663ffeb425b",
+      "timestamp": "2026-10-03T01:58:35.306Z",
       "commits": [
         {
-          "sha": "4d13fa38332dd84a39825a4ef25abf6df2fc66b0",
+          "sha": "66bb05f4921f448d873554e067cc4663ffeb425b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T19:49:20-06:00",
-          "message": "Merge 659f214c17d1535578010e2698d00e10b6771093 into f94f990ac99490da46b9b61bb1e3129cb5204271\n"
+          "timestamp": "2026-10-03T01:57:35Z",
+          "message": "Merge 26a940affb622ff815959c3282f6d1bfe2303bd8 into f94f990ac99490da46b9b61bb1e3129cb5204271\n"
+        },
+        {
+          "sha": "26a940affb622ff815959c3282f6d1bfe2303bd8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T19:57:30-06:00",
+          "message": "fix(effects): a moved colour rounds to the nearest the theme terminal draws, after its alpha is flattened (rich-effects-fxiy.knj)\n\nReview of #290: ColorSpec.matchOn replaces downgradeUnder. Candidates are the\ndefault colour, the theme's sixteen and, at 256 colours, the cube; ColorSpec.downgrade\nis back to master's stock rounding.\n"
         },
         {
           "sha": "659f214c17d1535578010e2698d00e10b6771093",
