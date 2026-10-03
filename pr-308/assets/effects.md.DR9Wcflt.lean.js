@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as t,ag as e}from"./chunks/framework.Dh0w88sl.js";const c=JSON.parse('{"title":"Effects","description":"","frontmatter":{},"headers":[],"relativePath":"effects.md","filePath":"effects.md"}'),n={name:"effects.md"};function l(h,s,p,k,r,o){return a(),t("div",null,[...s[0]||(s[0]=[e("",14)])])}const B=i(n,[["render",l]]);export{c as __pageData,B as default};
