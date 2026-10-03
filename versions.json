@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "f14cde4d6a0aa23b7683bccba8e67f5eb5a7b872",
-      "timestamp": "2026-10-03T05:47:20.291Z",
+      "sha": "328fe3812c957cadebfc264633efefde18ca08ca",
+      "timestamp": "2026-10-03T06:08:19.871Z",
       "commits": [
         {
-          "sha": "f14cde4d6a0aa23b7683bccba8e67f5eb5a7b872",
+          "sha": "328fe3812c957cadebfc264633efefde18ca08ca",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T23:46:07-06:00",
-          "message": "fix(markdown): list items hold blocks, h1 is centred, inline links parse fully (rich-markdown-ht8e) (#297)\n\n* fix(markdown): list items hold blocks, h1 is centred, inline links parse fully (rich-markdown-ht8e)\n\nA list item is now a container, tokenized as Markdown of its own under its\ncontent column, the way a quote already was: fences, quotes and nested lists\ninside an item survive, nesting is drawn from the parent's text column, a\nnumber short of the content column is a sibling, numbering counts on from the\nfirst item, and a marker four columns in is indented code.\n\nLazy continuation is one rule for quotes and items. Outside a container no\nparagraph is open, so any list item ends it: \"> a\\n2024. b\" now opens a list,\nas CommonMark and Rich read it.\n\nh1 centres per row and h2+ stay left; the heading style is the text's own,\nso centring pads beside it. Inline text is parsed rather than matched: link\nURLs keep balanced parentheses, link text is inline Markdown, and an image\ndraws as Rich's ImageItem does.\n\n* fix(markdown): lines keep their source columns inside containers; link text styles win; linear reading (rich-markdown-ht8e)\n\nA container's lines now carry their container's content column instead of\nbeing cut, so tabs reach their source stops at any depth and a fence, quote\nor heading may sit up to three columns into an item. A thematic break wins\nover a list item; `===` alone is text. Code tabs are expanded at Syntax's 8.\nA link's text styles sit over the link's own. Lazy continuation reads its\ncontainer once per run, and inline brackets pair in one pass.\n\n* fix(markdown): a lazy continuation line is only ever paragraph text (rich-markdown-ht8e)"
+          "timestamp": "2026-10-03T00:06:56-06:00",
+          "message": "feat(diagnostics): renderToString and renderTemplate render theme names and report bad styles (rich-diagnostics-t782) (#298)\n\n* feat(diagnostics): renderToString and renderTemplate render theme names and report bad styles the way Console does (rich-diagnostics-t782)\n\nrenderToString takes a theme, so strict onStyleError holds for themed\ncontent. renderTemplate takes theme and onStyleError; only compile and\nevaluate sit inside its try, so a rethrown style error leaves the call\ninstead of becoming an [error: ...] segment.\n\n* fix(diagnostics): renderTemplate keeps its doc, takes RenderOptions' fields so a wrapping renderable forwards them whole, and its docs say what a theme reaches (rich-diagnostics-t782)\n\n* fix(template-bindings): flattening a template's output stays inside renderTemplate's try, so an unflattenable scope value is an [error: …] line again (rich-diagnostics-t782)\n\n* fix(template-bindings): renderTemplate takes RenderOptions whole, so a wrapping renderable's justify, overflow and the rest reach the render (rich-diagnostics-t782)"
         }
       ]
     }
