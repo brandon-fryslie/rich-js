@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-305",
-      "ref": "refs/pull/305/merge",
-      "sha": "ccdf22047fa3a253756c39ab9e8f948d9c819d4d",
-      "timestamp": "2026-10-03T08:56:25.164Z",
-      "commits": [
-        {
-          "sha": "ccdf22047fa3a253756c39ab9e8f948d9c819d4d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:55:15Z",
-          "message": "Merge f727b6b73cd53133835bed04596afa37893930bc into d6ee38000079e4a6668b7fefdd179d03ae5c6598\n"
-        },
-        {
-          "sha": "f727b6b73cd53133835bed04596afa37893930bc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T02:55:10-06:00",
-          "message": "fix(palette): no-colour stays out of colour math; one rule for every producer (rich-palette-ufxd)\n\nReview of #305: a #00000000 palette var reached darken, mix, contrastOn, ramp\nand the rest, which composited it over black. They now refuse it at the one gate\nevery colour argument crosses, naming the fix. drawnOn and opaqueOnly own the\nalpha-0 rule, so buildPalette and getThemeBaseColors agree with Palette; ink\nrefuses a transparent key; the rich-config palette chips show it on the\nbackground it lets through.\n"
-        },
-        {
-          "sha": "f1ee23401cf911c9cdd6d932df790d8f93959a2f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T02:44:51-06:00",
-          "message": "fix(palette): a fully transparent palette variable draws no background (rich-palette-ufxd)\n\nA theme's #00000000 (link-background, markdown-h*-background, footer-*-background\nin 22 bundled themes) is Textual's \"no background\". The palette drew it onto\nits own background like any tint, so bg (color \"link-background\") cut a\nbackground-coloured box into a surface or panel row.\n\nA Palette now hands an alpha-0 colour out unchanged, and a Style reads a fully\ntransparent bgcolor as no bgcolor, so a style added over another keeps that\none's background in both the SGR bytes and resolveLook.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d6ee38000079e4a6668b7fefdd179d03ae5c6598",
