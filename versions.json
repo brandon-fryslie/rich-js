@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-318",
+      "ref": "refs/pull/318/merge",
+      "sha": "5bbebb7101caebe24d5e220df38aed7e5324e7a5",
+      "timestamp": "2026-10-03T12:58:33.777Z",
+      "commits": [
+        {
+          "sha": "5bbebb7101caebe24d5e220df38aed7e5324e7a5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T06:56:41-06:00",
+          "message": "Merge 41bff492de9875915f7bd5b232abc174567b56b8 into 066057a3c6982edc862de25d6ea7a986a988bb5d\n"
+        },
+        {
+          "sha": "41bff492de9875915f7bd5b232abc174567b56b8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T06:56:30-06:00",
+          "message": "effects-feel: breaths, flashes and passes of light are events of their own; the step gate watches half an hour (rich-effects-fxiy.b6i)\n\nPulse: most breaths shallow and quick, about one in six a deep sigh, each\nstarting early or late in its turn. Sparkle: a firefly flashes, hovers,\nfades, and flashes again a few cells off. Shimmer: a glitter path, each\npass at its own pace after a still spell of its own. A weaker event is a\nshorter one (swell), so variety costs no smoothness.\n\nThe 1 fps step gate sampled 300 s; over 600 s drift and sparkle already\nbroke it. It now checks every second of 1800 s.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "066057a3c6982edc862de25d6ea7a986a988bb5d",
