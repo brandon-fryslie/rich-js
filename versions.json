@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-294",
-      "ref": "refs/pull/294/merge",
-      "sha": "9330495ef56851ab2fb75cf7fb96270c61dc7b8a",
-      "timestamp": "2026-10-03T04:19:25.470Z",
-      "commits": [
-        {
-          "sha": "9330495ef56851ab2fb75cf7fb96270c61dc7b8a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:18:15Z",
-          "message": "Merge 613dfdb5b6921235a8b999b4edde9cb1767e7868 into 6093b3620bc8f78d526dc3dd76521f272484f8f3\n"
-        },
-        {
-          "sha": "613dfdb5b6921235a8b999b4edde9cb1767e7868",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T22:18:10-06:00",
-          "message": "fix(text): tab size is parsed where it is given (rich-text-z3ln)\n\nA TabSize brand, made only by parseTabSize, is what expandTabs takes;\nRichText and Syntax parse at construction, so a bad tabSize fails at the\nconstructor rather than at the first render, tab or no tab.\n"
-        },
-        {
-          "sha": "ecdf01743ae363cf6a1034021c720fa32fd77041",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T22:10:25-06:00",
-          "message": "fix(text): review — tab size is checked, Constrain/Align measure as Rich does, whitespace keeps its width (rich-text-z3ln)\n\nexpandTabs refuses a tabSize that is not a positive integer (it silently\ndropped spans at 0) and measures a piece only when a tab follows it.\nConstrain measures its content at the constrained width; Align returns the\ncontent's measurement unchanged. Whitespace-only text takes its width as\nits minimum, as in Rich.\n"
-        },
-        {
-          "sha": "1e55b9374cdc73cfb950cd99487b21acc2f0dc4f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T22:01:18-06:00",
-          "message": "fix(text): measurement agrees with what is drawn (rich-text-z3ln)\n\n- RichText.measure takes its minimum from wrap's `widestWord`, the same word\n  `divideLine` never breaks, so a line's indent counts. Deliberate divergence\n  from Rich, whose measure drops the indent its wrapper keeps.\n- One `expandTabs` in cells.ts, called by RichText and Syntax: a tab reaches the\n  next tab stop (Rich's `Text.expand_tabs`). It also maps offsets, so a span\n  after a tab now styles the characters it named instead of landing short.\n- No site outside `Measurement.get` decides the fallback for a renderable that\n  cannot measure itself. Viewport and Constrain floored that minimum at 1;\n  it is now Rich's 0.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "6093b3620bc8f78d526dc3dd76521f272484f8f3",
-      "timestamp": "2026-10-03T03:54:45.164Z",
+      "sha": "d2f5674f2dd3ce5ca4d77008774be807f12aa2a0",
+      "timestamp": "2026-10-03T04:26:22.907Z",
       "commits": [
         {
-          "sha": "6093b3620bc8f78d526dc3dd76521f272484f8f3",
+          "sha": "d2f5674f2dd3ce5ca4d77008774be807f12aa2a0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T21:53:39-06:00",
-          "message": "fix(traceback)!: render any caught value and every V8 frame shape (rich-traceback-9vcb) (#293)\n\n* fix(traceback): render any caught value and every V8 frame shape (rich-traceback-9vcb)\n\nTraceback takes unknown and reads a caught value by shape in browser-safe\ncode (string name + message is an error; anything else is NonError,\nformatted by Pretty), replacing installTraceback's node:util toError.\n\nFrames: the stack's own header is stripped before frames are read, so a\nmessage line is never a frame; frames with no line (Promise.all index,\n<anonymous>, native) keep their location; eval frames show the eval\nsite's file; SpiderMonkey/JSC stacks are read; an unreadable line shows\nverbatim. The data bounds print uses move to pretty.ts as\nUNSEEN_DATA_BOUNDS so Traceback shares them.\n\n* fix(traceback): survive throwing reads, keep an error's name, read node's coded header (rich-traceback-9vcb)\n\nHigh-review fixes: a value whose name/message/stack read throws is reported\nunder NonError where Pretty marks the throw, instead of throwing out of the\ncrash handler; a non-string message is formatted by Pretty under the error's\nown name; node's `Name [ERR_X]: message` header comes off whole; a stale\nheader with no V8 frame shows no frame; a NonError value is laid out in the\nwidth left after its name.\n\n* fix(traceback): a stale header is read by its shape, not the error's current name (rich-traceback-9vcb)"
+          "timestamp": "2026-10-02T22:25:10-06:00",
+          "message": "fix(text): measurement agrees with what is drawn (rich-text-z3ln) (#294)\n\n* fix(text): measurement agrees with what is drawn (rich-text-z3ln)\n\n- RichText.measure takes its minimum from wrap's `widestWord`, the same word\n  `divideLine` never breaks, so a line's indent counts. Deliberate divergence\n  from Rich, whose measure drops the indent its wrapper keeps.\n- One `expandTabs` in cells.ts, called by RichText and Syntax: a tab reaches the\n  next tab stop (Rich's `Text.expand_tabs`). It also maps offsets, so a span\n  after a tab now styles the characters it named instead of landing short.\n- No site outside `Measurement.get` decides the fallback for a renderable that\n  cannot measure itself. Viewport and Constrain floored that minimum at 1;\n  it is now Rich's 0.\n\n* fix(text): review — tab size is checked, Constrain/Align measure as Rich does, whitespace keeps its width (rich-text-z3ln)\n\nexpandTabs refuses a tabSize that is not a positive integer (it silently\ndropped spans at 0) and measures a piece only when a tab follows it.\nConstrain measures its content at the constrained width; Align returns the\ncontent's measurement unchanged. Whitespace-only text takes its width as\nits minimum, as in Rich.\n\n* fix(text): tab size is parsed where it is given (rich-text-z3ln)\n\nA TabSize brand, made only by parseTabSize, is what expandTabs takes;\nRichText and Syntax parse at construction, so a bad tabSize fails at the\nconstructor rather than at the first render, tab or no tab."
         }
       ]
     }
