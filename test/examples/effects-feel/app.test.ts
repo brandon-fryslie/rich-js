@@ -94,8 +94,20 @@ describe("a strip under a pulse", () => {
     expect(strip.span).toBe(Math.max(...rows.map(cellLen)));
   });
 
+  it("lights the lettering on a muted fill pale and the fill deep, each away from the other", () => {
+    const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), options, CATPPUCCIN_MOCHA);
+    expect(strip.colors.get(CATPPUCCIN_MOCHA.palette.get("foreground")!.hex)).toBe("pale");
+    expect(strip.colors.get(CATPPUCCIN_MOCHA.palette.get("secondary-muted")!.hex)).toBe("deep");
+  });
+
+  it("at 16 colours leaves unlit a colour that is lighter than its partner in one cell and darker in another", () => {
+    const ansi = new Console({ width: 200, colorSystem: "ansi" }).options;
+    const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), ansi, CATPPUCCIN_MOCHA);
+    expect(strip.colors.has("#bac2de")).toBe(false); // the theme's white: pale fills, and lettering on paler ones
+  });
+
   it.each([["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const)(
-    "on a %s ground moves each fill to one colour, in every cell that shows it, and nothing else",
+    "on a %s ground moves each colour the strip sets to one colour, in every cell that shows it, and leaves the terminal's alone",
     (_, theme) => {
       const strip = drawnSubject(stripSubject(theme), options, theme);
       const lit = onColors(strip.colors, pulse({ seconds: 2, ease: EASES.linear, swing: 0.3 }, LIGHTS.sun));
@@ -104,14 +116,14 @@ describe("a strip under a pulse", () => {
       expect(after).toHaveLength(before.length);
 
       // Each colour drawn before, to every colour it is drawn as after: an
-      // arrow's ink moves with the fill it carries, so each is one colour.
+      // arrow's ink moves with the fill it carries, and lettering with its
+      // fill, so each is one colour; the terminal's own ground does not move.
       const becomes = new Map<string, Set<string>>();
       before.forEach((pair, i) =>
         pair.forEach((was, slot) => becomes.set(was, (becomes.get(was) ?? new Set()).add(after[i]![slot]!))),
       );
-      const fills = new Set(before.map(([, bg]) => bg).filter((bg) => bg !== "ground"));
       for (const [was, now] of becomes) {
-        expect([was, [...now]]).toEqual([was, [fills.has(was) ? expect.not.stringMatching(was) : was]]);
+        expect([was, [...now]]).toEqual([was, [was === "ground" ? "ground" : expect.not.stringMatching(was)]]);
       }
     },
   );

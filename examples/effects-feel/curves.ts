@@ -19,10 +19,11 @@
  * - Neighbours move together. Variation is spatially coherent — patches,
  *   filaments, fronts — never per-cell static.
  * - Moves are small. The swing is a touch of light, not a colour change.
- * - Light keeps text legible. A colour catches the light that reads against
- *   the colour it is read against — a pale light where its ink is dark, a
- *   deep amber where its ink is light, as light through coloured glass — so a
- *   glint warms it without washing it toward its ink.
+ * - Light keeps text legible. Ink and the fill under it both catch the
+ *   light, each the side of it away from the other — a pale light where the
+ *   other is darker, a deep amber where it is lighter — so a glint lights a
+ *   powerline cell's lettering while its fill glows, and never washes one
+ *   into the other.
  * - Elements are apart. Each sits at its own `z` in the noise, so two
  *   elements under one effect do not move in lockstep.
  *
@@ -48,23 +49,23 @@ import {
 import { fbm, noise, smoothstep } from "./noise.js";
 
 /**
- * A move of one colour: the colour, the colour its text is read against, the
+ * A move of one colour: the colour, which side of a light it catches, the
  * cell, the time, to the new colour.
  */
-export type ColorMove = (color: ColorRgba, against: ColorRgba, cell: EffectCell, t: number) => ColorRgba;
+export type ColorMove = (color: ColorRgba, side: Side, cell: EffectCell, t: number) => ColorRgba;
 
 /**
  * A one-colour move as an `Effect` on a subject's own colours, by hex,
- * wherever a cell shows them, each read against the colour `colors` pairs it
- * with. A powerline strip's fill is the ground of its cells and the ink of the
- * seam glyphs between them, so the arrow moves with the cell it points out
- * of; the terminal ground behind its caps is no colour of the strip's, and
- * stays put.
+ * wherever a cell shows them, each catching the side of a light `colors`
+ * names. A powerline strip's fill is the ground of its cells and the ink of
+ * the seam glyphs between them, so the arrow moves with the cell it points
+ * out of; the terminal ground behind its caps is no colour of the strip's,
+ * and stays put.
  */
-export function onColors(colors: ReadonlyMap<string, ColorRgba>, move: ColorMove): Effect {
+export function onColors(colors: ReadonlyMap<string, Side>, move: ColorMove): Effect {
   const moved = (color: ColorRgba, cell: EffectCell, t: number): ColorRgba => {
-    const against = colors.get(color.hex);
-    return against === undefined ? color : move(color, against, cell, t);
+    const side = colors.get(color.hex);
+    return side === undefined ? color : move(color, side, cell, t);
   };
   return ({ fg, bg }, cell, t) => ({ fg: moved(fg, cell, t), bg: moved(bg, cell, t) });
 }
@@ -76,6 +77,18 @@ export function onColors(colors: ReadonlyMap<string, ColorRgba>, move: ColorMove
 export interface Light {
   readonly pale: ColorRgba;
   readonly deep: ColorRgba;
+}
+
+/** Which side of a light a colour catches. */
+export type Side = keyof Light;
+
+/**
+ * The side of a light `color` catches where it is read against `against`:
+ * the side away from it, so light moves a colour away from what it is read
+ * against and never toward it.
+ */
+export function catches(color: ColorRgba, against: ColorRgba): Side {
+  return Oklch.fromRgba(against).l < Oklch.fromRgba(color).l ? "pale" : "deep";
 }
 
 /** How the curves below are tuned: one period (or duration), ease and swing. */
@@ -104,16 +117,12 @@ function blend(from: Oklch, to: Oklch, w: number): Oklch {
   return new Oklch((1 - w) * from.l + w * to.l, Math.hypot(a, b), Math.atan2(b, a) / rad, from.alpha);
 }
 
-/**
- * `color`, `w` of the way into `light` as it reads against `against`: the
- * one way every light here falls on a colour.
- */
-function lit(color: ColorRgba, against: ColorRgba, light: { pale: Oklch; deep: Oklch }, w: number): ColorRgba {
-  const from = Oklch.fromRgba(color);
-  return blend(from, Oklch.fromRgba(against).l < from.l ? light.pale : light.deep, w).toRgba();
+/** `color`, `w` of the way into the `side` of `light` it catches: the one way every light here falls. */
+function lit(color: ColorRgba, side: Side, light: Record<Side, Oklch>, w: number): ColorRgba {
+  return blend(Oklch.fromRgba(color), light[side], w).toRgba();
 }
 
-const lightOf = (light: Light): { pale: Oklch; deep: Oklch } => ({
+const lightOf = (light: Light): Record<Side, Oklch> => ({
   pale: Oklch.fromRgba(light.pale),
   deep: Oklch.fromRgba(light.deep),
 });
@@ -145,11 +154,11 @@ function breathAt(p: number): number {
 export function pulse(curve: Curve, light: Light): ColorMove {
   const P = curve.seconds;
   const glow = lightOf(light);
-  return (color, against, _cell, t) => {
+  return (color, side, _cell, t) => {
     // The rhythm's drift is slow enough that phase only ever moves forward.
     const phase = t / P - 0.06 + 0.03 * noise(t / (3 * P), 0.5, 0.5);
     const depth = 0.8 + 0.2 * noise(t / (4 * P), 3.5, 0.5);
-    return lit(color, against, glow, curve.swing * curve.ease(breathAt(phase - Math.floor(phase)) * depth));
+    return lit(color, side, glow, curve.swing * curve.ease(breathAt(phase - Math.floor(phase)) * depth));
   };
 }
 
@@ -172,7 +181,7 @@ export function shimmer(curve: Curve, span: number, width: number, light: Light,
   // (0, 1] for any noise, smooth throughout, so a crest sliding through a cell
   // lights it smoothly.
   const ripple = (a: number, b: number, c: number): number => Math.exp(-((noise(a, b, c) / 0.8) ** 2));
-  return (color, against, cell, t) => {
+  return (color, side, cell, t) => {
     const centre = phase(t) * (span + 2 * width) - width;
     const band = bump((cell.col - centre) / width);
     const row = cell.row + z;
@@ -180,7 +189,7 @@ export function shimmer(curve: Curve, span: number, width: number, light: Light,
     const caustic =
       (ripple(cell.col * 0.21 + current, row * 0.9, t * 0.07) * ripple(cell.col * 0.33 + 9.1 - current, row * 0.7, t * 0.055 + 4.2)) **
       2.5;
-    return lit(color, against, glow, curve.swing * curve.ease(band * (0.3 + 0.4 * caustic)));
+    return lit(color, side, glow, curve.swing * curve.ease(band * (0.3 + 0.4 * caustic)));
   };
 }
 
@@ -200,7 +209,7 @@ const SILVER = { lightness: 0.035, chroma: 0.17 } as const;
  */
 export function drift(curve: Curve, span: number, z: number): ColorMove {
   const speed = span / curve.seconds;
-  return (color, _against, cell, t) => {
+  return (color, _side, cell, t) => {
     const row = cell.row + z;
     const warp = 1.2 * noise(cell.col * 0.03, row * 0.2 + 3.3, t * 0.02);
     const air = fbm((cell.col - speed * t) * 0.045 + warp, row * 0.3, t * 0.05, 3);
@@ -250,10 +259,10 @@ export function sparkle(curve: Curve, span: number, light: Light, z: number): Co
     }
     return flown.flies;
   };
-  return (color, against, cell, t) => {
+  return (color, side, cell, t) => {
     let shine = 0;
     for (const fly of fliesAt(t)) shine += fly.glow * bump(Math.hypot(cell.col - fly.x, 2 * (cell.row - fly.y)) / HALO);
-    return lit(color, against, glow, curve.swing * curve.ease(clamp01(shine)));
+    return lit(color, side, glow, curve.swing * curve.ease(clamp01(shine)));
   };
 }
 

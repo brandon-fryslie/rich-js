@@ -42,7 +42,7 @@ import {
 } from "../../src/index.js";
 import { graphemes } from "../../src/core/cells.js";
 import { App, hostEnvironment, type TerminalHost } from "../../src/host/index.js";
-import { dissolveOut, drift, fadeIn, onColors, pulse, settledAt, shimmer, sparkle, type Light } from "./curves.js";
+import { catches, dissolveOut, drift, fadeIn, onColors, pulse, settledAt, shimmer, sparkle, type Light, type Side } from "./curves.js";
 import type { EffectName, NamedCurve, Settings } from "./settings.js";
 
 /** The bundled theme each ground is drawn in: one family, so only the ground differs. */
@@ -82,13 +82,12 @@ export const LIGHTS = {
 } as const satisfies Record<string, Light>;
 
 /**
- * A thing the effects are tried on, and the slot it shows its colour in: a
- * powerline strip in the ground of its cells, a run of text in its ink.
+ * A thing the effects are tried on: a powerline strip, which sets its cells'
+ * fill and lettering, or a run of text, which sets only its ink.
  */
 export interface Subject {
   readonly name: string;
   readonly renderable: Renderable;
-  readonly slot: "fg" | "bg";
   /** Where it sits in the noise, so two subjects under one effect never move in lockstep. */
   readonly z: number;
 }
@@ -103,10 +102,10 @@ export interface DrawnSubject extends Subject {
   /** Its width in columns, which a sweep crosses once a period. */
   readonly span: number;
   /**
-   * The colours it sets its slot to, by hex, as the screen shows them, each
-   * with the colour its text is read against there.
+   * The colours it sets in the cells it draws text in, by hex, as the screen
+   * shows them, each with the side of a light it catches there.
    */
-  readonly colors: ReadonlyMap<string, ColorRgba>;
+  readonly colors: ReadonlyMap<string, Side>;
   /** `row:col` of every cell it draws text in. */
   readonly text: ReadonlySet<string>;
 }
@@ -158,7 +157,6 @@ export function drawnSubject(subject: Subject, drawnWith: RenderOptions, theme: 
   // and an unmeasurable renderable measures as the whole budget it is offered.
   const span = Math.max(...Segment.splitLines(subject.renderable.render({ ...drawnWith, maxWidth: DRAW_BUDGET })).map(Segment.getLineLength));
   const options = { ...drawnWith, maxWidth: span };
-  const foreground = subject.slot === "fg";
   // A seam sits in the same cell whichever glyph a joiner draws it with, so
   // the cells are read where the glyphs are the ones `SEAM_GLYPHS` names.
   const text = new Set(
@@ -166,22 +164,24 @@ export function drawnSubject(subject: Subject, drawnWith: RenderOptions, theme: 
       .filter((cell) => cell.glyph.trim() !== "" && !SEAM_GLYPHS.has(cell.glyph))
       .map((cell) => cell.at),
   );
-  // Each colour the subject sets its slot to, against the other colour of a
-  // cell it draws text in. A cell that sets none is drawn in the terminal's
-  // own colour, which is no colour of the subject's.
-  const pairs = cellsOf(subject.renderable.render(options))
+  // Each colour a cell it draws text in sets, with the side of a light it
+  // catches against the cell's other colour. A colour the cell leaves to the
+  // terminal is no colour of the subject's.
+  const sides = cellsOf(subject.renderable.render(options))
     .filter((cell) => text.has(cell.at))
-    .flatMap((cell): [ColorRgba, ColorRgba][] => {
+    .flatMap((cell): [string, Side][] => {
       const drawn = cell.style.drawnColors(options.colorSystem ?? undefined);
       const { fg, bg } = shown(cell, options, theme);
-      return (foreground ? drawn.color : drawn.bgcolor) === undefined ? [] : [foreground ? [fg, bg] : [bg, fg]];
+      return [
+        ...(drawn.color === undefined ? [] : [[fg.hex, catches(fg, bg)] as [string, Side]]),
+        ...(drawn.bgcolor === undefined ? [] : [[bg.hex, catches(bg, fg)] as [string, Side]]),
+      ];
     });
-  const colors = new Map(pairs.map(([mine, against]) => [mine.hex, against]));
-  // One colour, one thing it is read against: which light it catches is decided per colour.
-  for (const [mine, against] of pairs) {
-    const known = colors.get(mine.hex)!;
-    if (known.hex !== against.hex) throw new Error(`${subject.name}: ${mine.hex} is read against both ${known.hex} and ${against.hex}`);
-  }
+  // A colour shown lighter than its partner in one cell and darker in another
+  // — at 16 colours the theme's white is both a pale fill and lettering on a
+  // paler one — has no side away from both, so it catches no light.
+  const both = new Set(sides.filter(([hex, side]) => sides.some(([other, s]) => other === hex && s !== side)).map(([hex]) => hex));
+  const colors = new Map(sides.filter(([hex]) => !both.has(hex)));
   return { ...subject, options, span, colors, text };
 }
 
@@ -205,12 +205,12 @@ export function stripSubject(theme: TerminalTheme): Subject {
       : Style.fromColor(color("foreground"), color(`${key}-muted`));
     return new RichText(` ${label} `, { style, end: "", noWrap: true });
   });
-  return { name: "strip", renderable: new Strip(cells, new PowerlineJoiner()), slot: "bg", z: 0 };
+  return { name: "strip", renderable: new Strip(cells, new PowerlineJoiner()), z: 0 };
 }
 
 function textSubject(theme: TerminalTheme): Subject {
   const style = Style.fromColor(ColorSpec.fromRgba(theme.foregroundColor));
-  return { name: "text", renderable: new RichText(TEXT, { style, noWrap: true }), slot: "fg", z: 11.3 };
+  return { name: "text", renderable: new RichText(TEXT, { style, noWrap: true }), z: 11.3 };
 }
 
 /** An element's name for `Effected`. No curve here reads a cell's seed: a subject's `z` keeps it apart. */

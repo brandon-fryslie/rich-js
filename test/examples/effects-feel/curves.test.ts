@@ -19,6 +19,7 @@ import {
 } from "../../../src/index.js";
 import { CATPPUCCIN_MOCHA } from "../../../src/index.js";
 import {
+  catches,
   dissolveOut,
   drift,
   fadeIn,
@@ -43,7 +44,7 @@ const sameColor = (a: ColorRgba, b: ColorRgba): boolean => a.red === b.red && a.
 const distance = (a: ColorRgba, b: ColorRgba): number => Oklch.fromRgba(a).deltaE(Oklch.fromRgba(b));
 const sun = LIGHTS.sun;
 /** The ink, read against the ground: the subject every curve here is tried on. */
-const inkOn = new Map([[ink.hex, ground]]);
+const inkOn = new Map([[ink.hex, catches(ink, ground)]]);
 const at = (effect: Effect, t: number): CellColors[] => cells.map((cell) => effect(colors, cell, t));
 
 function bytes(renderable: Renderable): string {
@@ -81,9 +82,9 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
 describe("the loops move", () => {
   it("pulse warms toward its light on the inhale and settles back after the exhale", () => {
     const breath = pulse(curve(8, 0.4), sun);
-    const top = breath(ink, ground, cells[0]!, 3.4); // the inhale ends near 0.36 of a breath
+    const top = breath(ink, catches(ink, ground), cells[0]!, 3.4); // the inhale ends near 0.36 of a breath
     expect(distance(top, sun.pale)).toBeLessThan(distance(ink, sun.pale) - 0.02);
-    expect(sameColor(breath(ink, ground, cells[0]!, 7.6), ink)).toBe(true); // the rest before the next
+    expect(sameColor(breath(ink, catches(ink, ground), cells[0]!, 7.6), ink)).toBe(true); // the rest before the next
   });
 
   it.each(["primary", "secondary", "accent", "success", "warning", "error"])(
@@ -91,13 +92,13 @@ describe("the loops move", () => {
     (key) => {
       // Swing 1 at the top of a breath: as far into the light as any glint goes.
       const fill = CATPPUCCIN_MOCHA.palette.get(`${key}-muted`)!;
-      const top = pulse(curve(8, 1), sun)(fill, ink, cells[0]!, 3.4);
+      const top = pulse(curve(8, 1), sun)(fill, catches(fill, ink), cells[0]!, 3.4);
       expect(contrastRatio(ink, top)).toBeGreaterThan(0.97 * contrastRatio(ink, fill));
     },
   );
 
   it("a glint lifts light ink away from a dark ground", () => {
-    const top = pulse(curve(8, 1), sun)(ink, ground, cells[0]!, 3.4);
+    const top = pulse(curve(8, 1), sun)(ink, catches(ink, ground), cells[0]!, 3.4);
     expect(contrastRatio(ground, top)).toBeGreaterThan(contrastRatio(ground, ink));
   });
 
@@ -115,7 +116,7 @@ describe("the loops move", () => {
   });
 
   it("drift shifts hue along the row", () => {
-    const moved = at(onColors(new Map([[ground.hex, ink]]), drift(curve(8, 40), 40, 0)), 0).map((c) => c.bg.hex);
+    const moved = at(onColors(new Map([[ground.hex, catches(ground, ink)]]), drift(curve(8, 40), 40, 0)), 0).map((c) => c.bg.hex);
     expect(new Set(moved).size).toBeGreaterThan(1);
   });
 
@@ -124,12 +125,12 @@ describe("the loops move", () => {
     const blue = new ColorRgba(137, 180, 250);
     const wide = drift(curve(30, 120), 104, 0);
     let palest = 0;
-    for (let t = 0; t < 300; t += 3) for (const cell of cells) palest = Math.max(palest, Oklch.fromRgba(wide(blue, ground, cell, t)).l);
+    for (let t = 0; t < 300; t += 3) for (const cell of cells) palest = Math.max(palest, Oklch.fromRgba(wide(blue, catches(blue, ground), cell, t)).l);
     expect(palest).toBeLessThan(Oklch.fromRgba(blue).l + 0.05);
   });
 
   it("two elements under one effect do not move in lockstep", () => {
-    const at = (z: number) => cells.map((cell) => sparkle(curve(22, 0.5), 40, LIGHTS.firefly, z)(ink, ground, cell, 30).hex).join();
+    const at = (z: number) => cells.map((cell) => sparkle(curve(22, 0.5), 40, LIGHTS.firefly, z)(ink, catches(ink, ground), cell, 30).hex).join();
     expect(at(0)).not.toBe(at(11.3));
   });
 
@@ -149,11 +150,11 @@ describe("the loops move", () => {
     // 59, t 114.5, where a crest of 1 − hypot(noise, 0.12) went below zero and
     // its power was NaN.
     const glint = shimmer(curve(48, 1), 400, 400, sun, 0);
-    expect(() => glint(ink, ground, { row: 15, col: 59, seed: 0 }, 114.5)).not.toThrow();
+    expect(() => glint(ink, catches(ink, ground), { row: 15, col: 59, seed: 0 }, 114.5)).not.toThrow();
   });
 
   it("onColors leaves a colour not in its set alone", () => {
-    const moved = onColors(new Map([[ground.hex, ink]]), pulse(curve(3, 0.2), sun))(colors, cells[0]!, 1.5);
+    const moved = onColors(new Map([[ground.hex, catches(ground, ink)]]), pulse(curve(3, 0.2), sun))(colors, cells[0]!, 1.5);
     expect(moved.fg).toBe(ink);
     expect(sameColor(moved.bg, ground)).toBe(false);
   });
@@ -214,7 +215,7 @@ describe("the loops never jump", () => {
     let worst = 0;
     for (const [color, against] of fills) {
       for (let t = 1; t < 300; t++) {
-        for (const cell of strip) worst = Math.max(worst, distance(move(color, against, cell, t - 1), move(color, against, cell, t)));
+        for (const cell of strip) worst = Math.max(worst, distance(move(color, catches(color, against), cell, t - 1), move(color, catches(color, against), cell, t)));
       }
     }
     expect(worst).toBeLessThan(STEP);
