@@ -370,10 +370,84 @@ function fitOneLine(text: string, budget: number): string | null {
  */
 function indexedElements(value: object): ArrayLike<unknown> | null {
   if (Array.isArray(value)) return value as unknown[];
-  if (ArrayBuffer.isView(value) && !(value instanceof DataView)) {
-    return value as unknown as ArrayLike<unknown>;
-  }
+  if (typedArrayName(value) !== undefined) return value as unknown as ArrayLike<unknown>;
   return null;
+}
+
+/*
+ * Brand checks: what a value *is*, asked of the internal slot that makes it
+ * one rather than of its prototype chain.
+ *
+ * `Pretty` reflects on values it did not create, and some were created in
+ * another realm — a `vm` context, an iframe — whose `Map`, `DataView` and
+ * `Object.prototype` are not this realm's. `instanceof` and prototype identity
+ * answer "no" to every one of them, so a `Map` printed `[object Map]` and a
+ * `DataView` printed as an empty array. Every built-in method reads its
+ * receiver's slot and not its prototype, which is what makes these
+ * realm-independent: the platform's own brand check, borrowed from this realm
+ * and applied to a value from any.
+ */
+
+// %TypedArray%.prototype[Symbol.toStringTag]: a typed array's name, and
+// `undefined` for every other receiver, `DataView` included — the spec's brand
+// check for the family, and the one that never throws.
+const typedArrayTag = Object.getOwnPropertyDescriptor(
+  Object.getPrototypeOf(Uint8Array.prototype) as object,
+  Symbol.toStringTag,
+)?.get;
+
+function typedArrayName(value: object): string | undefined {
+  return typedArrayTag?.call(value) as string | undefined;
+}
+
+/**
+ * Is `value` a `Map` (or a `Set`), from this realm or any other?
+ *
+ * Three kinds of evidence, each the only one that sees some collection.
+ * `instanceof` sees this realm's, a `Proxy` around one included. The
+ * platform's `Symbol.toStringTag` names the kind in every realm and passes
+ * through a `Proxy` — a reactive store made in an iframe — that has neither
+ * this realm's prototype nor the slot; if such a proxy will not hand over its
+ * entries, reading them throws and prints as `[Threw: …]`, never as an empty
+ * collection. The slot sees a subclass from another realm that renamed its
+ * tag: `has` throws on any receiver without one. A plain object has no tag at
+ * all, so it is never asked — a throw costs a stack trace, too dear to pay for
+ * every object printed.
+ */
+function isCollection(value: object, kind: MapConstructor | SetConstructor): boolean {
+  if (value instanceof kind) return true;
+  const tag = (value as { [Symbol.toStringTag]?: unknown })[Symbol.toStringTag];
+  if (typeof tag !== "string") return false;
+  if (tag === kind.name) return true;
+  try {
+    (kind.prototype.has as (this: unknown, key: unknown) => boolean).call(value, undefined);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isMap(value: object): value is Map<unknown, unknown> {
+  return isCollection(value, Map);
+}
+
+function isSet(value: object): value is Set<unknown> {
+  return isCollection(value, Set);
+}
+
+/**
+ * Is `fn` the default `toString` of the realm that made it? A function's
+ * prototype is its realm's `Function.prototype`, whose own prototype is that
+ * realm's `Object.prototype` — two fixed steps from the function to the
+ * default it is compared with, so no chain is walked and no identity with this
+ * realm's is asked for.
+ */
+function isRealmDefaultToString(fn: object): boolean {
+  const realmFunctionPrototype = Object.getPrototypeOf(fn) as object | null;
+  return (
+    realmFunctionPrototype !== null &&
+    (Object.getPrototypeOf(realmFunctionPrototype) as { toString?: unknown } | null)?.toString === fn
+  );
 }
 
 /**
@@ -406,7 +480,9 @@ function take<T>(source: Iterable<T>, limit: number): T[] {
  * lazily-computed field is unusable on the objects it is most wanted for.
  */
 function threw(error: unknown): string {
-  return `[Threw: ${error instanceof Error ? error.message : String(error)}]`;
+  // An `Error` from any realm carries its `message` as a string.
+  const message = (error as { message?: unknown } | null)?.message;
+  return `[Threw: ${typeof message === "string" ? message : String(error)}]`;
 }
 
 /**
@@ -421,14 +497,17 @@ function threw(error: unknown): string {
  *
  * Both clauses are load-bearing. The identity check separates the two
  * populations; the `typeof` check is what makes `Object.create(null)` — which
- * has no `toString` at all — reflect rather than throw.
+ * has no `toString` at all — reflect rather than throw. The default is the one
+ * of the realm that made the `toString`, not this one's: an object from a `vm`
+ * context inherits a `toString` that is a different function and the same
+ * non-answer.
  */
 function describesItself(value: object): boolean {
   const asRecord = value as { toString?: unknown; [Symbol.toPrimitive]?: unknown };
   return (
     typeof asRecord[Symbol.toPrimitive] === "function" ||
     (typeof asRecord.toString === "function" &&
-      asRecord.toString !== Object.prototype.toString)
+      !isRealmDefaultToString(asRecord.toString))
   );
 }
 
@@ -467,8 +546,8 @@ type Form =
 function formOf(value: object): Form {
   const elements = indexedElements(value);
   if (elements !== null) return { kind: "indexed", elements };
-  if (value instanceof Map) return { kind: "map", map: value };
-  if (value instanceof Set) return { kind: "set", set: value };
+  if (isMap(value)) return { kind: "map", map: value };
+  if (isSet(value)) return { kind: "set", set: value };
   // Below the Array/Map/Set arms deliberately: an array also overrides
   // `toString`, but "1,2,3" is a poorer answer than the structural form.
   if (describesItself(value)) return { kind: "self" };
