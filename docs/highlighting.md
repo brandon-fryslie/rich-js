@@ -15,7 +15,7 @@ The default highlighter is `ReprHighlighter`, and it finds what Rich's does, sty
 
 It departs from Rich in two places. JavaScript's `true`, `false`, `null` and `undefined` are styled like `True`, `False` and `None`, because [`Pretty`](./pretty) draws JavaScript values through this highlighter. Rich leaves those words plain.
 
-And a call name is styled only where it starts a word. Rich also styles one that starts where another match ends partway through a word, the `foo` of `aa-bb-cc-dd-ee-fffoo(` after its MAC address. Finding that `foo` means looking for a `(` again from each letter of a word, so a long word with no `(` after it took seconds to highlight. Without it, highlighting takes one pass over the text.
+And a call name is styled only where it starts a word. Rich also styles one that starts where another match ends partway through a word, the `foo` of `aa-bb-cc-dd-ee-fffoo(` after its MAC address. Here such a name is left plain, or drawn in another pattern's style where one matches it, as `true` is a `repr.bool_true` in `-1.true(`. Finding that `foo` means looking for a `(` again from each letter of a word, so a long word with no `(` after it took seconds to highlight. Without it, highlighting takes one pass over the text.
 
 ## Enabling and disabling
 

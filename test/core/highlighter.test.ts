@@ -232,6 +232,12 @@ describe("ReprHighlighter departs from Rich on a call name that starts mid-word"
     expect(matchedTexts(text, "repr.call")).toEqual([]);
   });
 
+  it("gives such a name to a later pattern that matches it, where Rich styles it a call", () => {
+    const text = new ReprHighlighter().call("-1.true(");
+    expect(matchedTexts(text, "repr.bool_true")).toEqual(["true"]);
+    expect(matchedTexts(text, "repr.call")).toEqual([]);
+  });
+
   it("still styles a call name that starts its word", () => {
     expect(matchedTexts(new ReprHighlighter().call("x aa.bb(1)"), "repr.call")).toEqual(["aa.bb"]);
   });

@@ -108,7 +108,8 @@ export class ReprHighlighter extends RegexHighlighter {
         // Departs from Rich: a call name starts a word, so the run is scanned
         // for its `(` once, not again from each of its characters. Rich also
         // styles a name that starts where another match ended mid-word, the
-        // `foo` of `aa-bb-cc-dd-ee-fffoo(`; this does not.
+        // `foo` of `aa-bb-cc-dd-ee-fffoo(`; this leaves it to the patterns
+        // after this one, so it is plain or, as `true` in `-1.true(`, theirs.
         String.raw`(?<call>(?<![${W}.])[${W}.]*?)\(`,
         // JavaScript's `true`, `false`, `null` and `undefined` beside Python's
         // names: `Pretty` draws JavaScript values through this highlighter.
