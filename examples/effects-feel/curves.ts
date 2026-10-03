@@ -284,11 +284,11 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
  * Shimmer, as sunlight moving across water. Swing: how far into `light` the
  * brightest glint goes, 0–1. A soft band of light, `width` columns either
  * side of its centre, crosses columns 0 to `span`, entering and leaving
- * fully off the row, about once a period on average. Its passes come the
- * way light comes and goes on water as clouds move: while the sun is out
- * they follow close on one another, one sometimes catching the last; under
- * cloud the row lies still for periods on end; under thin cloud a pass is
- * fainter. Each crosses at its own unhurried pace, drifting a little ahead
+ * fully off the row, a little over once a period on average. Its passes
+ * come the way light comes and goes on water as clouds move: while the sun
+ * is out they are bright and follow close on one another, one sometimes
+ * catching the last; under cloud they thin to faint ones with the row still
+ * for a while between, and the light is never gone for long. Each crosses at its own unhurried pace, drifting a little ahead
  * and behind as it goes. Inside a band the light is a faint glow broken
  * into a glitter path — bright filaments where two ripples cross — carried
  * on a slow current and re-forming as they go, so the glints dance while
@@ -299,21 +299,28 @@ export function shimmer(curve: Curve, span: number, width: number, glow: ColorRg
   const across = span + 2 * width;
   // Passes are events on slots of half a period. Whether slot `j` holds one,
   // and how bright, is the sky's: slow noise over the slots, so sunny and
-  // cloudy spells each last several periods, and a pass is likelier and
+  // cloudy spells each last a few periods, and a pass is likelier and
   // brighter the clearer the sky.
   const SLOT = P / 2;
-  const sky = (j: number): number => smoothstep(-0.4, 0.4, noise(j / 10, 3.3, 5.5 + z));
+  const sky = (j: number): number => smoothstep(-0.4, 0.4, noise(j / 7, 3.3, 5.5 + z));
   // How lit pass `j` is at `col` and `t`: its band's light, 0 once it is off
-  // the row and before it sets off. It sets off somewhere in the first 70% of
-  // its slot and takes three quarters of a period to a period and a third to
-  // cross, so no pass sweeps faster than three quarters of a period, and
-  // none is still up four slots after its own.
+  // the row and before it sets off. It sets off somewhere in the first
+  // `SETS_OFF` of its slot and takes `LEAST` to `LEAST + SPREAD` periods to
+  // cross, so no pass sweeps faster than three quarters of a period, and every
+  // one is off the row `UP` slots after its own began.
+  const SETS_OFF = 0.7;
+  const LEAST = 0.75;
+  const SPREAD = 0.58;
+  const UP = SETS_OFF + ((LEAST + SPREAD) * P) / SLOT;
   const pass = (j: number, col: number, t: number): number => {
     const clear = sky(j);
-    const present = hash(j, 7.5 + z) < 0.08 + 0.87 * clear ? 1 : 0;
-    const strength = present * (0.55 + 0.45 * clear * hash(j, 8.5 + z));
-    const crossing = P * (0.75 + 0.58 * hash(j, 5.5 + z));
-    const q = clamp01((t - (j + 0.7 * hash(j, 6.5 + z)) * SLOT) / crossing);
+    // Even under cloud about one slot in three holds a pass, a faint one, so a
+    // still spell lasts a period or so, the way a cloud's shadow does, and
+    // never long enough to read as the light gone out.
+    const present = hash(j, 7.5 + z) < 0.35 + 0.6 * clear ? 1 : 0;
+    const strength = present * (0.3 + 0.7 * clear * (0.6 + 0.4 * hash(j, 8.5 + z)));
+    const crossing = P * (LEAST + SPREAD * hash(j, 5.5 + z));
+    const q = clamp01((t - (j + SETS_OFF * hash(j, 6.5 + z)) * SLOT) / crossing);
     // It drifts ahead and behind on slow noise, by nothing at either edge of
     // the row and never enough to turn it back.
     const centre = q * across - width + 0.06 * across * Math.sin(Math.PI * q) * noise(t / P, 2.7, j + z);
@@ -324,7 +331,7 @@ export function shimmer(curve: Curve, span: number, width: number, glow: ColorRg
   const band = (col: number, t: number): number => {
     const last = Math.floor(t / SLOT);
     let lit = 0;
-    for (let j = Math.max(0, last - 3); j <= last; j++) lit = Math.max(lit, pass(j, col, t));
+    for (let j = Math.max(0, Math.ceil(last - UP)); j <= last; j++) lit = Math.max(lit, pass(j, col, t));
     return lit;
   };
   // A ripple's crest: a Gaussian ridge, 1 where the field crosses zero and in

@@ -206,11 +206,25 @@ describe("the loops move", () => {
     const band = 8;
     const P = 2;
     const loop = shimmer(curve(P, 0.7), 40, band, sun, 0);
-    // A moment a single band stands on the row: the lit columns are those
-    // within `band` of its centre, never the whole row.
-    const lit = Array.from({ length: 400 }, (_, i) => cells.filter((cell) => loop.field(cell, i * 0.1) > 0).length);
-    expect(lit.some((n) => n > 0 && n < 2 * band)).toBe(true);
-    expect(Math.max(...lit)).toBeLessThan(cells.length);
+    // Each unbroken run of lit columns clear of both ends of the row is a band
+    // standing wholly on it, or two overlapping: a band lights the columns
+    // strictly within `band` of its centre, so one alone, its centre between
+    // two columns, lights 2·band, and that is the run seen most often. The row
+    // is never lit end to end.
+    const runs = Array.from({ length: 400 }, (_, i) =>
+      cells
+        .map((cell) => (loop.field(cell, i * 0.1) > 0 ? "x" : " "))
+        .join("")
+        .slice(1, -1)
+        .split(" ")
+        .slice(1, -1)
+        .filter((run) => run.length > 0)
+        .map((run) => run.length),
+    ).flat();
+    const seen = new Map<number, number>();
+    for (const n of runs) seen.set(n, (seen.get(n) ?? 0) + 1);
+    expect([...seen].sort((a, b) => b[1] - a[1])[0]?.[0]).toBe(2 * band);
+    expect(Math.max(...runs)).toBeLessThan(cells.length - 2);
   });
 
   it("shimmer's passes come unevenly, as the sun goes in and out", () => {
@@ -226,11 +240,14 @@ describe("the loops move", () => {
         .split(" ")
         .filter((run) => run.length > 0)
         .map((run) => run.length);
-    const still = spells(false);
-    const lit = spells(true);
-    // Under cloud the row lies still for periods on end; in sun, passes
-    // follow close enough that the light hardly leaves it.
-    expect(Math.max(...still)).toBeGreaterThan(2 * P);
+    // The first and last runs are cut by the window, so they measure it, not
+    // the sky.
+    const still = spells(false).slice(1, -1);
+    const lit = spells(true).slice(1, -1);
+    // Under cloud the row lies still for over a period, but never for long;
+    // in sun, passes follow close enough that the light hardly leaves it.
+    expect(Math.max(...still)).toBeGreaterThan(P);
+    expect(Math.max(...still)).toBeLessThan(4 * P);
     expect(Math.min(...still)).toBeLessThan(P / 2);
     expect(Math.max(...lit)).toBeGreaterThan(2 * P);
   });
