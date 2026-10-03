@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-314",
+      "ref": "refs/pull/314/merge",
+      "sha": "359ce4dd36f5d4086a970e3a47e905616f008cf9",
+      "timestamp": "2026-10-03T11:39:52.228Z",
+      "commits": [
+        {
+          "sha": "359ce4dd36f5d4086a970e3a47e905616f008cf9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T11:38:33Z",
+          "message": "Merge 06a64c2f1bc9f13aa9a94981468b8d8a16b39945 into 9f660772dc5a3e63ce82bd15ba6d8d02e59ba2e6\n"
+        },
+        {
+          "sha": "06a64c2f1bc9f13aa9a94981468b8d8a16b39945",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T05:38:28-06:00",
+          "message": "feat(examples): effects-feel light only ever lights, so a glint on a dark fill reads as sun, not shadow (rich-effects-fxiy.b6i)\n\nA darker colour was pulled toward a deep amber, which at a muted fill's\nlightness is brown: a glint crossing the dark half of the strip read as a\nshadow. Each light is now one colour; both colours of a cell move toward\nit and never below their own lightness, the darker only 0.15 of the way,\nso the fill warms a little while its lettering lifts to cream and the\nworst contrast stays within 93% of rest. The status line is drawn at the\ndimmest ink that still reads at 7:1, which leaves light room to lift it.\n"
+        },
+        {
+          "sha": "5c95eb323e9f407158a7f38a3ad2d2fae66a02b0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T05:25:55-06:00",
+          "message": "feat(examples): effects-feel light catches a strip's lettering too, so a glint on a dark fill reads as light (rich-effects-fxiy.b6i)\n\nOn the strip's muted fills a glint could only deepen the fill to amber (light\ntext sits on them), which read as a passing shadow. A subject's lit colours\nare now every colour its text cells set, each catching the side of a light\naway from its partner (`catches`, `Side`): the lettering glints pale while the\nfill glows amber, the way sunlight catches a sign. Label contrast holds at\nrest under shimmer, pulse and sparkle; drift on dark improves 4.58 -> 4.90.\n\n`Subject.slot` is gone: what a subject lights is what its text cells set. At\n16 colours the theme's white is both a pale fill and lettering on a paler one,\nso it has no side away from both and catches no light (an ANSI slot cannot\nmove anyway).\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "9f660772dc5a3e63ce82bd15ba6d8d02e59ba2e6",
@@ -13,28 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T05:28:09-06:00",
           "message": "fix(progress): TimeElapsedColumn and TimeRemainingColumn stop at a task's finish, as Rich's do (rich-progress-jj5r) (#313)\n\n* fix(progress): TimeElapsedColumn and TimeRemainingColumn stop at a task's finish, as Rich's do (rich-progress-jj5r)\n\nA finished task's elapsed clock holds at Task.finishedTime instead of\nreading Date.now(); TimeRemainingColumn shows 0:00:00 once finished and\ntakes elapsedWhenFinished, Rich's elapsed_when_finished. A task never\nstarted shows -:--:-- in the elapsed column, as Rich's does, not 0:00:00.\n\n* fix(progress)!: Progress times tasks on a Clock it is handed, Rich's get_time (rich-progress-jj5r)\n\nTask.started is gone: startTime is undefined until a task starts, and\nelapsed is computed once a frame from the clock and handed to every\ncolumn, so no column reads a clock. startTask keeps a running task's\nstart, and TimeRemainingColumn draws a task with no total empty, both as\nRich 9d8f9a3 does.\n\n* fix(progress): TimeRemainingColumn estimates no time until a task has a speed, and rounds up, as Rich does (rich-progress-jj5r)"
-        }
-      ]
-    },
-    {
-      "version": "pr-314",
-      "ref": "refs/pull/314/merge",
-      "sha": "69b22568ef5a7be10ebd7664e139ca8631b9fd29",
-      "timestamp": "2026-10-03T11:28:09.676Z",
-      "commits": [
-        {
-          "sha": "69b22568ef5a7be10ebd7664e139ca8631b9fd29",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T05:26:07-06:00",
-          "message": "Merge 5c95eb323e9f407158a7f38a3ad2d2fae66a02b0 into 5ea7133dd91b8a775424c8d3791cb35e97848e58\n"
-        },
-        {
-          "sha": "5c95eb323e9f407158a7f38a3ad2d2fae66a02b0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T05:25:55-06:00",
-          "message": "feat(examples): effects-feel light catches a strip's lettering too, so a glint on a dark fill reads as light (rich-effects-fxiy.b6i)\n\nOn the strip's muted fills a glint could only deepen the fill to amber (light\ntext sits on them), which read as a passing shadow. A subject's lit colours\nare now every colour its text cells set, each catching the side of a light\naway from its partner (`catches`, `Side`): the lettering glints pale while the\nfill glows amber, the way sunlight catches a sign. Label contrast holds at\nrest under shimmer, pulse and sparkle; drift on dark improves 4.58 -> 4.90.\n\n`Subject.slot` is gone: what a subject lights is what its text cells set. At\n16 colours the theme's white is both a pale fill and lettering on a paler one,\nso it has no side away from both and catches no light (an ANSI slot cannot\nmove anyway).\n"
         }
       ]
     }
