@@ -76,11 +76,11 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
 
   it("fade-in once it has settled", () => {
     const fade = curve(2, 1);
-    expect(drawn(fadeIn(fade, 5, 0), settledAt(fade, 5))).toBe(untouched);
+    expect(drawn(fadeIn(fade, 5, 0, ground), settledAt(fade, 5))).toBe(untouched);
   });
 
   it("dissolve-out before it starts", () => {
-    expect(drawn(dissolveOut(curve(3, 1), 5, 0), 5)).toBe(untouched);
+    expect(drawn(dissolveOut(curve(3, 1), 5, 0, ground), 5)).toBe(untouched);
   });
 });
 
@@ -163,28 +163,38 @@ describe("the loops move", () => {
 
 describe("the transitions run start to end", () => {
   it("a fade-in starts with every cell's ink on its ground", () => {
-    expect(at(fadeIn(curve(2, 1), 4, 0), 4).every((c) => sameColor(c.fg, c.bg))).toBe(true);
+    expect(at(fadeIn(curve(2, 1), 4, 0, ground), 4).every((c) => sameColor(c.fg, c.bg))).toBe(true);
   });
 
   it("a fade-in arrives cell by cell", () => {
-    const halfway = at(fadeIn(curve(2, 1), 0, 0), 1).map((c) => c.fg.hex);
+    const halfway = at(fadeIn(curve(2, 1), 0, 0, ground), 1).map((c) => c.fg.hex);
     expect(new Set(halfway).size).toBeGreaterThan(1);
   });
 
   it("a dissolve-out leaves every cell's ink on its ground", () => {
     const dissolve = curve(3, 1);
-    expect(at(dissolveOut(dissolve, 4, 0), settledAt(dissolve, 4)).every((c) => sameColor(c.fg, c.bg))).toBe(true);
+    expect(at(dissolveOut(dissolve, 4, 0, ground), settledAt(dissolve, 4)).every((c) => sameColor(c.fg, c.bg))).toBe(true);
   });
 
   it("a dissolve-out thins cells gradually, some gone while others are still whole", () => {
-    const midway = at(dissolveOut(curve(8, 1), 0, 0), 2.5).map((c) => c.fg);
+    const midway = at(dissolveOut(curve(8, 1), 0, 0, ground), 2.5).map((c) => c.fg);
     const thinning = midway.filter((fg) => !sameColor(fg, ink) && !sameColor(fg, ground));
     expect(thinning.length).toBeGreaterThan(0);
     expect(midway.some((fg) => sameColor(fg, ink))).toBe(true);
   });
 
+  it("a cell with a fill of its own arrives from the terminal's ground, fill and ink together", () => {
+    const fill = new ColorRgba(137, 180, 250);
+    const filled = (effect: Effect, t: number) => effect({ fg: ink, bg: fill }, cells[0]!, t);
+    const fade = curve(2, 1);
+    const start = filled(fadeIn(fade, 0, 0, ground), 0);
+    expect([start.fg.hex, start.bg.hex]).toEqual([ground.hex, ground.hex]);
+    const end = filled(fadeIn(fade, 0, 0, ground), settledAt(fade, 0));
+    expect([end.fg.hex, end.bg.hex]).toEqual([ink.hex, fill.hex]);
+  });
+
   it("swing below 1 stops short of invisible", () => {
-    expect(at(fadeIn(curve(2, 0.5), 0, 0), 0).some((c) => sameColor(c.fg, c.bg))).toBe(false);
+    expect(at(fadeIn(curve(2, 0.5), 0, 0, ground), 0).some((c) => sameColor(c.fg, c.bg))).toBe(false);
   });
 });
 

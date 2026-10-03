@@ -320,20 +320,27 @@ export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number):
 }
 
 /**
- * How much of a cell's ink shows at `t`: 1 is the ink as drawn, 0 is ink the
- * colour of the ground. Read per cell, so cells can arrive or leave apart.
+ * How much of a cell shows at `t`: 1 is the cell as drawn, 0 is the cell gone
+ * to the terminal's ground. Read per cell, so cells can arrive or leave apart.
  */
 export type Visibility = (cell: EffectCell, t: number) => number;
 
 /**
- * The ink mixed toward the ground by how hidden the cell is: invisible is ink
- * equal to ground. `swing` scales the hiding — 1 reaches fully invisible.
+ * A cell mixed toward the terminal's `ground` by how hidden it is: its fill
+ * toward the ground, and its ink toward that fill, so an element with fills
+ * of its own — a powerline strip — arrives and leaves whole, fill and words
+ * together, never as bare coloured blocks. Invisible is ink and fill equal
+ * to the ground. `swing` scales the hiding — 1 reaches fully invisible. A
+ * cell wholly shown is returned as it was.
  */
-export function veiled(visibility: Visibility, swing: number): Effect {
-  return (colors: CellColors, cell, t) => ({
-    fg: blend(Oklch.fromRgba(colors.fg), Oklch.fromRgba(colors.bg), swing * (1 - visibility(cell, t))).toRgba(),
-    bg: colors.bg,
-  });
+export function veiled(visibility: Visibility, swing: number, ground: ColorRgba): Effect {
+  const to = Oklch.fromRgba(ground);
+  return (colors: CellColors, cell, t) => {
+    const hidden = swing * (1 - visibility(cell, t));
+    if (hidden === 0) return colors;
+    const bg = blend(Oklch.fromRgba(colors.bg), to, hidden);
+    return { fg: blend(Oklch.fromRgba(colors.fg), bg, hidden).toRgba(), bg: bg.toRgba() };
+  };
 }
 
 /**
@@ -361,10 +368,10 @@ const OWN = 0.45;
  * rising smoothly over its own part of the duration. Whole at
  * `start + seconds`.
  */
-export function fadeIn(curve: Curve, start: number, z: number): Effect {
+export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba): Effect {
   const own = curve.seconds * OWN;
   const place = order(1.7 + z);
-  return veiled((cell, t) => curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t)), curve.swing);
+  return veiled((cell, t) => curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t)), curve.swing, ground);
 }
 
 /**
@@ -372,10 +379,10 @@ export function fadeIn(curve: Curve, start: number, z: number): Effect {
  * drifting patches, each cell fading smoothly over its own part of the
  * duration, until nothing is left at `start + seconds`.
  */
-export function dissolveOut(curve: Curve, start: number, z: number): Effect {
+export function dissolveOut(curve: Curve, start: number, z: number, ground: ColorRgba): Effect {
   const own = curve.seconds * OWN;
   const place = order(4.2 + z);
-  return veiled((cell, t) => 1 - curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t)), curve.swing);
+  return veiled((cell, t) => 1 - curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t)), curve.swing, ground);
 }
 
 /** The moment a transition starting at `start` has finished. */
