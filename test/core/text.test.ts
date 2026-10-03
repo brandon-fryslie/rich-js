@@ -1221,3 +1221,13 @@ describe("OSC-terminator stripping at the RichText trust boundary", () => {
     expect(linkSegment!.style!.link).toBe(clean);
   });
 });
+
+describe("RichText.expandTabs()", () => {
+  it("widens each tab to its stop and moves spans with the characters they style", () => {
+    const text = new RichText("a\tb");
+    text.stylize("bold", 2, 3);
+    text.expandTabs();
+    expect(text.plain).toBe("a       b");
+    expect(text.spans.map((s) => [s.start, s.end])).toEqual([[8, 9]]);
+  });
+});

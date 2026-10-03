@@ -539,6 +539,20 @@ export class RichText implements Renderable, Measurable {
     return this;
   }
 
+  /**
+   * Each tab widened to the next tab stop, in place, as Rich's
+   * `Text.expand_tabs` widens it: spans move with the characters they style, so
+   * the text measures what it will draw.
+   */
+  expandTabs(): this {
+    const expanded = expandTabs(this._text, this._tabSize);
+    this._spans = this._spans.map(
+      (s) => new Span(expanded.offsetOf(s.start), expanded.offsetOf(s.end), s.style),
+    );
+    this._text = expanded.text;
+    return this;
+  }
+
   padLeft(count: number, char?: string): this {
     const c = char ?? " ";
     this._spans = this._spans.map((s) => s.move(count));

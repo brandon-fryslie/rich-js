@@ -92,8 +92,8 @@ export function embed(content: unknown): Renderable & Partial<Measurable> {
 /**
  * Caller content set into a line it shares with other drawing — a panel's
  * title or subtitle in its border, a rule's title — read as Rich's `_title`
- * reads it: newlines become spaces, so the label stays on its line, and it is
- * set off by a space either side.
+ * reads it: newlines become spaces, so the label stays on its line, tabs are
+ * widened to their stops, and it is set off by a space either side.
  *
  * Held once by the renderable that owns it, so a string's markup is read once
  * and every measure and render after reuses that reading.
@@ -109,7 +109,9 @@ export class InlineLabel {
   text(options: RenderOptions): RichText {
     const text = this._content.text(options);
     text.plain = text.plain.replaceAll("\n", " ");
-    return text.pad(1);
+    // Tabs widened before anything measures it, so a cut to the border and
+    // the width a title asks for count the cells the label will draw.
+    return text.expandTabs().pad(1);
   }
 }
 

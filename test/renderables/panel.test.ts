@@ -571,6 +571,16 @@ describe("Panel as Rich draws it", () => {
     );
   });
 
+  it("widens the tabs in a title before cutting or fitting to it", () => {
+    expect(draw(new Panel("hi", { title: "a\tb" }), 10)).toBe("╭─ a    ─╮\n│ hi     │\n╰────────╯\n");
+    expect(draw(Panel.fit("hi", { title: "a\tb\tc" }), 30)).toBe(
+      "╭─ a       b       c ─╮\n│ hi                  │\n╰─────────────────────╯\n",
+    );
+    expect(draw(new Panel("hi", { subtitle: "a\tb\tcdefgh" }), 12)).toBe(
+      "╭──────────╮\n│ hi       │\n╰─ a      ─╯\n",
+    );
+  });
+
   it("widens past a declared width to hold its title, and measures what it draws", () => {
     const panel = new Panel("hi", { title: "a long title", width: 10 });
     expect(draw(panel, 30)).toBe("╭─ a long title ─╮\n│ hi             │\n╰────────────────╯\n");
