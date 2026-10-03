@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-334",
-      "ref": "refs/pull/334/merge",
-      "sha": "615fef04dd2da7beb91d904c3d662eb04caeb403",
-      "timestamp": "2026-10-03T16:25:30.119Z",
-      "commits": [
-        {
-          "sha": "615fef04dd2da7beb91d904c3d662eb04caeb403",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T16:24:14Z",
-          "message": "Merge 15842fdf8bfd350c46bf9f501f99713726945868 into af858560988127167b8534ebf8daf8eaac83689e\n"
-        },
-        {
-          "sha": "15842fdf8bfd350c46bf9f501f99713726945868",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T10:24:09-06:00",
-          "message": "test(text): empty justified text is one padded blank line, as in Rich (rich-text-vj2a)\n"
-        },
-        {
-          "sha": "abc3ba934e673f4407de45c1e0bbff83cdf4862b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T10:18:14-06:00",
-          "message": "fix(text): review — trailing-blank pinned across every justify mode, Tree's row comment made true, no copy per render (rich-text-vj2a)\n"
-        },
-        {
-          "sha": "cf66e94942b12139699feaeead7a1912d1c258f6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T10:12:31-06:00",
-          "message": "fix(text): a RichText ending in a newline keeps its trailing blank line through wrap, as Rich does (rich-text-vj2a)\n\nRichText.render took its lines from Segment.splitLines, Rich's split_lines,\nwhich drops a trailing empty line, and patched the break back in. Rich wraps\nsplit(allow_blank=True), so that line is justified like any other. The\nsplitter is now handed the text closed by one more break, so every line the\ntext has comes back and the patch is gone.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "af858560988127167b8534ebf8daf8eaac83689e",
-      "timestamp": "2026-10-03T16:09:28.935Z",
+      "sha": "09db77c36082d202e269ed0c62e304032e7b6051",
+      "timestamp": "2026-10-03T16:31:58.122Z",
       "commits": [
         {
-          "sha": "af858560988127167b8534ebf8daf8eaac83689e",
+          "sha": "09db77c36082d202e269ed0c62e304032e7b6051",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T10:08:04-06:00",
-          "message": "fix(progress): TimeRemainingColumn estimates speed from the last 30 seconds of updates, as Rich does (rich-progress-jj5r.ef9) (#333)\n\n* fix(progress): TimeRemainingColumn estimates speed from the last 30 seconds of updates, as Rich does (rich-progress-jj5r.ef9)\n\nProgress keeps Rich's ProgressSample window per task and derives Task.speed\nonce a frame beside elapsed; timeRemaining reads it instead of\ncompleted / elapsed over the task's whole life.\n\n* fix(progress): samples kept in place, negative estimates drawn as Rich's floor divmod draws them, speed window documented from the latest update (rich-progress-jj5r.ef9)"
+          "timestamp": "2026-10-03T10:30:42-06:00",
+          "message": "fix(text): keep a RichText's trailing blank line through wrap, as Rich does (rich-text-vj2a) (#334)\n\n* fix(text): a RichText ending in a newline keeps its trailing blank line through wrap, as Rich does (rich-text-vj2a)\n\nRichText.render took its lines from Segment.splitLines, Rich's split_lines,\nwhich drops a trailing empty line, and patched the break back in. Rich wraps\nsplit(allow_blank=True), so that line is justified like any other. The\nsplitter is now handed the text closed by one more break, so every line the\ntext has comes back and the patch is gone.\n\n* fix(text): review — trailing-blank pinned across every justify mode, Tree's row comment made true, no copy per render (rich-text-vj2a)\n\n* test(text): empty justified text is one padded blank line, as in Rich (rich-text-vj2a)"
         }
       ]
     },
