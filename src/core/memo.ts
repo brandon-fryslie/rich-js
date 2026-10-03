@@ -27,8 +27,9 @@ export class Memo<V extends NonNullable<unknown>> {
   get(key: string, compute: (key: string) => V): V {
     const remembered = this.entries.get(key);
     if (remembered !== undefined) return remembered;
-    if (this.entries.size >= MEMO_MAX) this.entries.clear();
+    // Computed before the clear, so a compute that throws costs no entries.
     const value = compute(key);
+    if (this.entries.size >= MEMO_MAX) this.entries.clear();
     this.entries.set(key, value);
     return value;
   }

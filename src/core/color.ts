@@ -477,8 +477,7 @@ export class ColorParseError extends Error {
 }
 
 // [LAW:one-source-of-truth] The single source for parsed ColorSpec instances.
-// Exported for the test that holds it to its bound; not part of the barrel.
-export const colorSpecParseMemo = new Memo<ColorSpec>();
+const colorSpecParseMemo = new Memo<ColorSpec>();
 
 export class ColorSpec {
   readonly name: string;

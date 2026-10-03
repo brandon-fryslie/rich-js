@@ -106,8 +106,7 @@ export class StyleSyntaxError extends Error {
 }
 
 // [LAW:one-source-of-truth] The single source for parsed Style instances.
-// Exported for the test that holds it to its bound; not part of the barrel.
-export const styleParseMemo = new Memo<Style>();
+const styleParseMemo = new Memo<Style>();
 
 // --- Style ---
 
