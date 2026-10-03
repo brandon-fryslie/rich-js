@@ -43,7 +43,7 @@
  */
 
 import { ColorDepth, resolveDestination } from "./color.js";
-import type { DetectColorOptions, Destination } from "./color.js";
+import type { ColorSystemName, DetectColorOptions, Destination } from "./color.js";
 import type { Env } from "./env.js";
 import type { Segment } from "./segment.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
@@ -60,7 +60,7 @@ export interface RenderToStringOptions extends Pick<RenderOptions, "asciiOnly" |
    * strip SGR colors/attributes. Hyperlinks are `hyperlinks`' concern. Default
    * truecolor.
    */
-  colorSystem?: string | ColorDepth | null;
+  colorSystem?: ColorSystemName | ColorDepth | null;
   /**
    * Environment to consult when `colorSystem` is `"auto"`. Defaults to
    * `process.env`. Pass an explicit value to keep rendering deterministic.

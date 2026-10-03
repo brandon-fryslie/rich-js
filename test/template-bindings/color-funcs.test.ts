@@ -10,7 +10,7 @@ import {
   ensureContrast,
   contrastRatio,
 } from "../../src/themes/colorMath.js";
-import { parseHexColor } from "../../src/themes/colorRef.js";
+import { parseHexColor } from "../../src/core/color.js";
 import { GRUVBOX, DRACULA } from "../../src/themes/terminalThemes.js";
 import { EASES } from "../../src/core/easing.js";
 import { ColorRamp } from "../../src/themes/ramp.js";

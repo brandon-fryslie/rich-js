@@ -1,4 +1,4 @@
-import { ColorRgba, parseRgbHex, parseRgbaHex } from "../core/color.js";
+import { ColorParseError, type ColorRgba, parseHexColor } from "../core/color.js";
 import type { Palette } from "./palette.js";
 
 /**
@@ -21,8 +21,9 @@ export class ColorRefError extends Error {
   constructor(
     readonly ref: string,
     detail: string,
+    options?: ErrorOptions,
   ) {
-    super(`color reference ${JSON.stringify(ref)} did not resolve — ${detail}`);
+    super(`color reference ${JSON.stringify(ref)} did not resolve — ${detail}`, options);
     this.name = "ColorRefError";
   }
 }
@@ -34,35 +35,6 @@ export class ColorRefError extends Error {
 // palette lookup that would report a confusing "unknown name" instead of
 // "malformed hex".
 const HEX_LEAD = "#";
-
-/**
- * The literal-color shape, exported so the template bindings gate on the same
- * pattern this module parses. [LAW:one-source-of-truth] — one regex, one
- * parser body; the bindings add only their own error wording.
- */
-export const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/;
-
-const OPAQUE_HEX_LENGTH = 7; // "#RRGGBB"
-
-/**
- * Parse a `#RRGGBB` / `#RRGGBBAA` literal. The hex arm of
- * {@link resolveColorRef}, separated so callers that accept *only* literal
- * colors (color math, which cannot meaningfully operate on a palette name)
- * share the one implementation instead of re-deriving it.
- *
- * @throws {ColorRefError} when `hex` is not a well-formed literal.
- */
-export function parseHexColor(hex: string): ColorRgba {
-  const trimmed = hex.trim();
-  if (!HEX_COLOR_RE.test(trimmed)) {
-    throw new ColorRefError(hex, "expected #RRGGBB or #RRGGBBAA");
-  }
-  // Both parsers take the digits without the leading `#`.
-  const digits = trimmed.slice(1);
-  return trimmed.length > OPAQUE_HEX_LENGTH
-    ? parseRgbaHex(digits)
-    : parseRgbHex(digits);
-}
 
 // Cap the "did you mean" list. Palettes carry ~150 variables; dumping all of
 // them buries the message. Nearby names are what a mistyped reference needs.
@@ -84,7 +56,14 @@ const SUGGESTION_LIMIT = 8;
 export function resolveColorRef(palette: Palette, ref: string): ColorRgba {
   const trimmed = ref.trim();
 
-  if (trimmed.startsWith(HEX_LEAD)) return parseHexColor(trimmed);
+  if (trimmed.startsWith(HEX_LEAD)) {
+    try {
+      return parseHexColor(trimmed);
+    } catch (cause) {
+      if (!(cause instanceof ColorParseError)) throw cause;
+      throw new ColorRefError(ref, cause.message, { cause });
+    }
+  }
 
   const hit = palette.get(trimmed);
   if (hit === undefined) {

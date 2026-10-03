@@ -6,6 +6,8 @@ import {
   ColorDepth,
   ColorParseError,
   parseRgbHex,
+  parseRgbaHex,
+  parseHexColor,
   blendRgb,
   TerminalTheme,
   STANDARD_TABLE,
@@ -796,6 +798,37 @@ describe("parseRgbHex", () => {
   it('parses "ff8040" into ColorRgba(255, 128, 64)', () => {
     const t = parseRgbHex("ff8040");
     expect(t).toEqual(new ColorRgba(255, 128, 64));
+  });
+});
+
+// [LAW:single-enforcer] One hex grammar behind three entry points: each admits
+// only its own lengths, and everything else is a ColorParseError naming the
+// input — never a colour read from a valid prefix, never ColorRgba's RangeError.
+describe("hex parsers", () => {
+  it("parseRgbaHex splits the alpha byte into the 0..1 channel", () => {
+    expect(parseRgbaHex("3b82f680")).toEqual(new ColorRgba(59, 130, 246, 128 / 255));
+  });
+
+  it("parseHexColor parses both literal forms and round-trips through .hex", () => {
+    expect(parseHexColor("#123456").hex).toBe("#123456");
+    expect(parseHexColor("#12345680").hex).toBe("#12345680");
+    expect(parseHexColor("#00000000").alpha).toBe(0);
+  });
+
+  const rejected: Array<[string, (hex: string) => ColorRgba, string[]]> = [
+    ["parseRgbHex", parseRgbHex, ["1g0000", "zz0000", "ff000", "ff00000", "#ff0000", "ff0000ff", ""]],
+    ["parseRgbaHex", parseRgbaHex, ["ff0000zz", "ff0000", "#ff0000ff", " ff0000ff", ""]],
+    ["parseHexColor", parseHexColor, ["#1g0000", "ff0000", "#ff00", "#abc", "primary", " #ff0000", "#ff0000 ", ""]],
+  ];
+  it.each(rejected)("%s throws ColorParseError naming each malformed input", (_, parse, inputs) => {
+    for (const input of inputs) {
+      expect(() => parse(input)).toThrow(ColorParseError);
+      expect(() => parse(input)).toThrow(JSON.stringify(input));
+    }
+  });
+
+  it("ColorSpec.parse reports a malformed #-literal as malformed hex", () => {
+    expect(() => ColorSpec.parse("#1g0000")).toThrow(/Invalid hex colour "#1g0000"/);
   });
 });
 

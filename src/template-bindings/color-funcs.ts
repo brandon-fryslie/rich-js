@@ -57,10 +57,9 @@
  */
 
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
-import { blendRgb, ColorDepth, type ColorRgba } from "../core/color.js";
+import { blendRgb, ColorDepth, ColorParseError, parseHexColor, type ColorRgba } from "../core/color.js";
 import { Oklch, IDENTITY } from "../core/oklch.js";
 import type { ThemeKey } from "../core/oklch.js";
-import { HEX_COLOR_RE, parseHexColor } from "../themes/colorRef.js";
 import { darken, contrastFor, ensureContrast } from "../themes/colorMath.js";
 
 /**
@@ -75,13 +74,16 @@ import { darken, contrastFor, ensureContrast } from "../themes/colorMath.js";
  * [LAW:no-silent-failure]
  */
 function asColor(value: string, func: string): ColorRgba {
-  if (!HEX_COLOR_RE.test(value.trim())) {
+  try {
+    return parseHexColor(value.trim());
+  } catch (cause) {
+    if (!(cause instanceof ColorParseError)) throw cause;
     throw new TypeError(
       `${func} expected a color (#RRGGBB or #RRGGBBAA), got ${JSON.stringify(value)}` +
         ` — to use a palette name here, wrap it: ${func} (color ${JSON.stringify(value)}) …`,
+      { cause },
     );
   }
-  return parseHexColor(value);
 }
 
 // [LAW:single-enforcer] Every colour function is fixed-arity, so the engine's

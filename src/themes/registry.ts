@@ -1,4 +1,4 @@
-import { ColorRgba, ColorTable, parseRgbHex, parseRgbaHex } from "../core/color.js";
+import { ColorParseError, ColorRgba, ColorTable, parseHexColor } from "../core/color.js";
 import { Palette, drawnOn } from "./palette.js";
 import { THEMES, type ThemeName, type ThemePaletteData } from "./data/index.js";
 import { ANSI_SLOTS } from "./data/types.js";
@@ -111,36 +111,30 @@ function requireBaseVar(data: ThemePaletteData, key: string): ColorRgba {
 function hydrate(data: ThemePaletteData): Palette {
   const map = new Map<string, ColorRgba>();
   for (const [k, v] of Object.entries(data.vars)) {
-    map.set(k, parseHex(v, data.name, k));
+    map.set(k, parseHex(v, data.name, `var ${k}`));
   }
   return new Palette(data.name, data.dark, map);
 }
 
-// [LAW:single-enforcer] This is the loud-failure boundary for theme hex
-// data. `parseRgbHex`/`parseRgbaHex` in core/color.ts trust their input
-// shape (they assume the caller validated); here we are the caller from
-// the untrusted side (authored data files) and the place that has to
-// reject `"0G"`, `""`, `"#GGGGGG"`, etc.
-const HEX_RE = /^[0-9a-fA-F]+$/;
+// Theme data is authored, so a malformed colour names the theme and the key it
+// sits under; the grammar itself is `parseHexColor`'s.
+function parseHex(value: string, theme: string, key: string): ColorRgba {
+  try {
+    return parseHexColor(value);
+  } catch (cause) {
+    if (!(cause instanceof ColorParseError)) throw cause;
+    throw new Error(`Theme ${theme}: ${key}: ${cause.message}`, { cause });
+  }
+}
 
 /**
  * An ANSI slot is a colour a terminal paints, never a blend, so it takes no
  * alpha: `flattenAlpha` leaves a STANDARD spec alone and would pass one through.
  */
 function parseOpaqueHex(value: string, theme: string, key: string): ColorRgba {
-  if (!/^#[0-9A-Fa-f]{6}$/.test(value)) {
-    throw new Error(`Theme ${theme}: ${key} has invalid hex ${JSON.stringify(value)} (expected #RRGGBB)`);
+  const color = parseHex(value, theme, key);
+  if (color.alpha !== 1) {
+    throw new Error(`Theme ${theme}: ${key} has alpha in ${JSON.stringify(value)} (expected #RRGGBB)`);
   }
-  return parseRgbHex(value.slice(1));
-}
-
-function parseHex(value: string, theme: string, key: string): ColorRgba {
-  const hex = value.startsWith("#") ? value.slice(1) : value;
-  if ((hex.length !== 6 && hex.length !== 8) || !HEX_RE.test(hex)) {
-    throw new Error(
-      `Theme ${theme}: var ${key} has invalid hex ${JSON.stringify(value)} ` +
-        `(expected #RRGGBB or #RRGGBBAA)`,
-    );
-  }
-  return hex.length === 6 ? parseRgbHex(hex) : parseRgbaHex(hex);
+  return color;
 }

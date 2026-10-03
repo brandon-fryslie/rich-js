@@ -64,9 +64,10 @@ console.print(detected);
 
 ## Color systems
 
-The `colorSystem` option takes one of five spec strings, and `"auto"` is the default:
+The `colorSystem` option takes one of five names, the `ColorSystemName` type,
+and `"auto"` is the default:
 
-| Spec | Colors | Notes |
+| Name | Colors | Notes |
 |---|---|---|
 | `"auto"` | — | Detect from the environment (default) |
 | `"truecolor"` | 16.7 million | Full RGB |
@@ -74,18 +75,11 @@ The `colorSystem` option takes one of five spec strings, and `"auto"` is the def
 | `"ansi"` | 16 | 8 colors + bright variants |
 | `"none"` | 0 | No color output |
 
-`null` is accepted too and means the same as `"none"`. An unrecognized string
-throws, and the message names those five.
+`null` is accepted too and means the same as `"none"`. Any other string is a
+compile error; from plain JavaScript it throws a `ColorParseError` naming the
+five.
 
-A handful of strings outside the table are nonetheless accepted, because
-detection and configuration share one lookup: the `FORCE_COLOR` values
-(`"0"`–`"3"`, `"true"`, `"false"`) and the terminal identifiers detection knows
-(`"vscode"`, `"iTerm.app"`, `"xterm-kitty"`, `"alacritty"`, and others) all
-resolve to a depth rather than throwing. `{ colorSystem: "vscode" }` quietly
-means truecolor. Treat those as an artifact of the shared table rather than
-supported spellings — use the five above.
-
-A sixth depth exists with no spec string: the Windows console's sixteen colors.
+A sixth depth exists with no name: the Windows console's sixteen colors.
 It writes the same sixteen ANSI slots `"ansi"` does, but picks each slot by the
 color the console draws there — its default Campbell scheme, `WINDOWS_TABLE` —
 rather than the xterm defaults. Nothing detects it — `"auto"` never returns it, and there is no
