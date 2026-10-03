@@ -96,7 +96,7 @@ for (const terminal of [undefined, ROSE_PINE_DAWN]) {
 
 Both lines are drawn as a Rosé Pine Dawn terminal draws them. Measured in VGA, navy on white clears the floor and stands, and that terminal draws it teal on dusk; measured in the terminal's own colours it is replaced.
 
-In templates, `readableOn` measures at the depth `richTextFuncs(drawnAt)` / `colorFuncs(drawnAt)` were given, and at `STANDARD` in the VGA colours: it takes no terminal — see [Template Bindings](/template-bindings).
+In templates, `readableOn` measures where `richTextFuncs(drawnAt)` / `colorFuncs(drawnAt)` say the text lands: `drawnAt` returns a `DrawnAt`, `{ depth, terminal? }`, and at `STANDARD` the pair is measured in that `terminal`'s sixteen colours, or the VGA colours when it names none — see [Template Bindings](/template-bindings).
 
 ### A floor that is not text — `ensureDrawn`
 
@@ -122,6 +122,12 @@ if (panelOk !== undefined) {
 ```
 
 Rounded to the 256-colour palette, the dark blue lands too close to the outer panel's colour, so the nearest entry that stands apart from it comes back instead.
+
+## Where the library holds the floor itself
+
+A palette's `text-*` is its foreground for a `*-muted` ground, and every bundled theme holds that pair to 4.5:1 — the palette `buildPalette` derives for each terminal theme runs its tinted text through `ensureContrast` against the muted colour, and the authored palettes `getThemePalette` returns carry values that clear it. The variant Buttons and Toggles draw their labels in exactly this pair.
+
+The built-in styles that paint their own ground — `syntax.line_number.highlight` and `markdown.code` — clear 4.5:1 on every bundled theme at full depth. At sixteen colours they cannot: each colour becomes an ANSI slot the terminal paints in its own theme's colour, and no pair of slots reads in every theme. So there `Syntax` and `Markdown` draw them without their colours, on the terminal's own foreground and background, as Rich does for a highlighted line number below 256 colours. Their attributes, bold for both, still set them apart.
 
 ## How transposition uses it
 

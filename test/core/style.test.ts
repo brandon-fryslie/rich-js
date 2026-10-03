@@ -11,6 +11,7 @@ import { ColorSpec, ColorDepth, ColorParseError, TerminalTheme, contrastRatio } 
 import { Segment } from "../../src/core/segment.js";
 import { segmentToString } from "../../src/core/render.js";
 import { exportCanvas, resolveLook } from "../../src/core/export-lines.js";
+import { getGroundedStyle } from "../../src/core/protocol.js";
 import * as terminalThemes from "../../src/themes/terminalThemes.js";
 
 // The bytes `style` draws `text` as, through the one encoder.
@@ -937,8 +938,7 @@ describe("DEFAULT_STYLES", () => {
 
   // An entry that paints its own ground has fixed one half of the pair, so the
   // other half must not be left to the terminal theme: WCAG's 4.5 for body text,
-  // on every bundled theme. Measured at full depth; at 16 colours both halves
-  // are the terminal's own slots and this says nothing.
+  // on every bundled theme, at full depth and at 16 colours.
   const grounded = Object.entries(DEFAULT_STYLES).filter(([, style]) => style.bgcolor);
   const terminals = Object.entries(terminalThemes).filter(
     (entry): entry is [string, TerminalTheme] => entry[1] instanceof TerminalTheme,
@@ -949,6 +949,19 @@ describe("DEFAULT_STYLES", () => {
       const look = resolveLook(style, terminal);
       const ground = look.background === "canvas" ? exportCanvas(terminal).background : look.background;
       expect(contrastRatio(look.foreground, ground)).toBeGreaterThanOrEqual(4.5);
+    },
+  );
+
+  // At 16 colours each half is a slot the terminal paints in its own theme, so
+  // the pair measured is the one `getGroundedStyle` hands a renderable there,
+  // in that theme's colours.
+  it.each(grounded.flatMap(([name]) => terminals.map(([theme, terminal]) => ({ name, theme, terminal }))))(
+    "$name is readable at 16 colours under $theme",
+    ({ name, terminal }) => {
+      const drawn = getGroundedStyle({ maxWidth: 1, colorSystem: ColorDepth.STANDARD }, name).drawnColors(ColorDepth.STANDARD);
+      const ink = drawn.color?.getTruecolor(terminal, true) ?? terminal.foregroundColor;
+      const ground = drawn.bgcolor?.getTruecolor(terminal, false) ?? terminal.backgroundColor;
+      expect(contrastRatio(ink, ground)).toBeGreaterThanOrEqual(4.5);
     },
   );
 });

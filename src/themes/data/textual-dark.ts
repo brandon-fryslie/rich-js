@@ -146,7 +146,7 @@ const theme: ThemePaletteData = {
     "text-error": "#D17E92",
     "text-muted": "#FFFFFF99",
     "text-primary": "#57A5E2",
-    "text-secondary": "#5684A5",
+    "text-secondary": "#5C8BAC",
     "text-success": "#8AD4A1",
     "text-warning": "#FFC473",
     "warning": "#FEA62B",

@@ -734,7 +734,8 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "syntax.comment": Style.parse("dim italic"),
   "syntax.line_number": Style.parse("dim"),
   // Ink and ground both from the fixed 256-colour greys: the terminal theme's
-  // own foreground is dark on a light theme and would vanish on grey27.
+  // own foreground is dark on a light theme and would vanish on grey27. At 16
+  // colours `Syntax` draws it without the pair (`getGroundedStyle`).
   "syntax.line_number.highlight": Style.parse("bold grey93 on grey27"),
 
   // Markdown
@@ -743,8 +744,9 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "markdown.h3": Style.parse("bold dim"),
   "markdown.h4": Style.parse("bold dim italic"),
   // A fixed cyan, not the theme's: `cyan` is dark enough on some themes to
-  // sink into grey11.
-  "markdown.code": Style.parse("dark_turquoise on grey11"),
+  // sink into grey11. Bold, as Rich's is: at 16 colours a renderable draws it
+  // without its pair (`getGroundedStyle`), and bold is what still marks code.
+  "markdown.code": Style.parse("bold dark_turquoise on grey11"),
   "markdown.hr": Style.parse("yellow"),
   "markdown.link": Style.parse("bright_blue"),
   "markdown.link_url": Style.parse("blue"),

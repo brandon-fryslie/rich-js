@@ -19,7 +19,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawable, getStyle, stackedHeight } from "../core/protocol.js";
+import { drawable, getGroundedStyle, getStyle, stackedHeight } from "../core/protocol.js";
 
 export interface MarkdownOptions {
   /** The style of `inline code`: a theme name or a style definition. Default `markdown.code`. */
@@ -542,7 +542,7 @@ function appendInline(result: RichText, text: string, settings: InlineSettings, 
     result.append(text.slice(plain, i));
     switch (found.kind) {
       case "code":
-        result.append(found.code, settings.inlineCodeStyle);
+        result.append(found.code, getGroundedStyle(options, settings.inlineCodeStyle));
         break;
       case "literal":
         result.append(found.text);
@@ -647,7 +647,7 @@ function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, setti
       }
 
       case "code_block": {
-        const codeStyle = getStyle(options, "markdown.code");
+        const codeStyle = getGroundedStyle(options, "markdown.code");
         // Tabs expanded here, as `Syntax` expands them, since a terminal would
         // count a raw one from its own column 0 and not the code's.
         for (const line of expandTabs(token.code, CODE_TAB_SIZE).text.split("\n")) {

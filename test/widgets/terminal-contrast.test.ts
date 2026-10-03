@@ -30,12 +30,8 @@ import { Toggle, type ToggleVariant } from "../../src/widgets/toggle.js";
 
 const RENDER: RenderOptions = { maxWidth: 40 };
 
-// WCAG's floor for large text and for the parts of a control that identify it,
-// not the 4.5 it sets for body text. The variant Buttons and Toggles draw their
-// labels in the palette's `text-*` on `*-muted`, and `buildPalette` does not
-// hold that pair to 4.5: the default theme's `text-error` on `error-muted` is
-// 3.91. Every other glyph a default-themed widget draws clears 4.5.
-const FLOOR = 3;
+// WCAG AA for body text.
+const FLOOR = 4.5;
 
 const TERMINALS: ReadonlyArray<readonly [string, TerminalTheme]> = [
   ["default (dark)", DEFAULT_TERMINAL_THEME],

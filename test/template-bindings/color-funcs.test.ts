@@ -3,7 +3,7 @@ import { createEngine, type Engine } from "@promptctl/go-template-js";
 import { RichText } from "../../src/core/text.js";
 import { blendRgb, ColorDepth, ColorSpec } from "../../src/core/color.js";
 import { Oklch, IDENTITY } from "../../src/core/oklch.js";
-import { richTextFuncs, paletteFuncs } from "../../src/template-bindings/index.js";
+import { richTextFuncs, paletteFuncs, readableOnFunc, type DrawnAt } from "../../src/template-bindings/index.js";
 import {
   darken,
   contrastFor,
@@ -11,7 +11,7 @@ import {
   contrastRatio,
 } from "../../src/themes/colorMath.js";
 import { parseHexColor } from "../../src/core/color.js";
-import { GRUVBOX, DRACULA } from "../../src/themes/terminalThemes.js";
+import { GRUVBOX, DRACULA, ROSE_PINE_DAWN } from "../../src/themes/terminalThemes.js";
 import { EASES } from "../../src/core/easing.js";
 import { ColorRamp } from "../../src/themes/ramp.js";
 import { baseStyleOf } from "../core/base-style.js";
@@ -173,7 +173,7 @@ describe("color math matches the underlying functions", () => {
     const drawnEngine = createEngine<RichText>({
       fromString: (s) => new RichText(s),
       toString: (rt) => rt.plain,
-      funcs: richTextFuncs(() => depth),
+      funcs: richTextFuncs(() => ({ depth })),
     });
     const [fg, bg] = ["#e72abb", "#2e082f"];
     const tpl = drawnEngine.parse(`{{ readableOn "${fg}" "${bg}" 4.5 }}`);
@@ -188,6 +188,24 @@ describe("color math matches the underlying functions", () => {
     const drawn = (hex: string) =>
       ColorSpec.parse(hex).downgrade(ColorDepth.EIGHT_BIT).getTruecolor();
     expect(contrastRatio(drawn(run()), drawn(bg))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("readableOn measures at 16 colours in the terminal the getter names", () => {
+    // Rosé Pine Dawn draws navy's slot at about 2:1 on white's; the VGA table
+    // calls the same pair readable.
+    const engineFor = (drawnAt: DrawnAt) => createEngine<RichText>({
+      fromString: (s) => new RichText(s),
+      toString: (rt) => rt.plain,
+      funcs: { readableOn: readableOnFunc(() => drawnAt) },
+    });
+    const run = (drawnAt: DrawnAt): string =>
+      engineFor(drawnAt).parse(`{{ readableOn "#000080" "#FFFFFF" 4.5 }}`).evaluate({}).map((f) => f.plain).join("");
+    const shown = (hex: string) => ColorSpec.parse(hex).downgrade(ColorDepth.STANDARD).getTruecolor(ROSE_PINE_DAWN);
+
+    expect(run({ depth: ColorDepth.STANDARD })).toBe("#000080");
+    expect(contrastRatio(shown("#000080"), shown("#FFFFFF"))).toBeLessThan(4.5);
+    const inDawn = run({ depth: ColorDepth.STANDARD, terminal: ROSE_PINE_DAWN });
+    expect(contrastRatio(shown(inDawn), shown("#FFFFFF"))).toBeGreaterThanOrEqual(4.5);
   });
 
   it("registers one function per OKLCH ThemeKey axis, each matching applyKey", () => {

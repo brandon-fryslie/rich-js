@@ -6,7 +6,7 @@
 import type { Segment } from "./segment.js";
 import { cellCount } from "./cells.js";
 import { DEFAULT_THEME, type Style, type StyleSyntaxError, type Theme } from "./style.js";
-import type { ColorDepth } from "./color.js";
+import { ColorDepth } from "./color.js";
 // [LAW:one-way-deps] exception: the one upward edge between core's tiers, and
 // type-only. A render option that highlights the text being rendered, when
 // `RichText` is itself rendered under these options, is a recursion in the
@@ -234,6 +234,38 @@ export type StyleErrorHandler = (error: StyleSyntaxError, style: string) => void
  */
 export function getStyle(options: RenderOptions, style: string | Style): Style {
   return (options.theme ?? DEFAULT_THEME).resolve(style);
+}
+
+/**
+ * A style that paints its own ground, resolved as `getStyle` does and then
+ * drawn as the depth the render is encoded at can draw it. Its ink and ground
+ * are fixed colours chosen as a pair. At sixteen colours the writer rounds each
+ * to an ANSI slot, and the terminal paints a slot in its own theme's colour: no
+ * pair of slots reads in every bundled theme, so there the pair is dropped and
+ * the run is drawn on the terminal's own foreground and background, which its
+ * theme does make readable. Its attributes still set it apart. Rich draws a
+ * highlighted line number the same way below 256 colours
+ * (`Syntax._get_number_styles`).
+ */
+export function getGroundedStyle(options: RenderOptions, style: string | Style): Style {
+  const resolved = getStyle(options, style);
+  return drawsInTerminalSlots(options.colorSystem) ? resolved.withoutColor : resolved;
+}
+
+// [LAW:types-are-the-program] Exhaustive over the depth, so a new one has to
+// say which side it is on.
+function drawsInTerminalSlots(depth: ColorDepth | null | undefined): boolean {
+  switch (depth) {
+    case ColorDepth.STANDARD:
+    case ColorDepth.WINDOWS:
+      return true;
+    case ColorDepth.DEFAULT:
+    case ColorDepth.EIGHT_BIT:
+    case ColorDepth.TRUECOLOR:
+    case null:
+    case undefined:
+      return false;
+  }
 }
 
 /**

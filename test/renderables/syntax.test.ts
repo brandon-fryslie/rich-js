@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Syntax, type SyntaxLanguage, type SyntaxOptions } from "../../src/renderables/syntax.js";
 import { Segment } from "../../src/core/segment.js";
 import { DEFAULT_THEME, Theme } from "../../src/core/style.js";
+import { ColorDepth } from "../../src/core/color.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -161,6 +162,18 @@ describe("Syntax", () => {
       ["2", false],
       ["3", true],
     ]);
+  });
+
+  it("draws a highlighted line's number on the terminal's own colours at 16 colours, as Rich does", () => {
+    // Rich drops the line-number background below 256 colours; a fixed ground
+    // rounded to a slot is drawn in whatever colour the terminal's theme gives it.
+    const s = new Syntax("a\nb", "text", { lineNumbers: true, highlightLines: new Set([2]) });
+    const number = (colorSystem: ColorDepth) =>
+      [...s.render({ maxWidth: 80, colorSystem })].find((seg) => seg.text.trim() === "2")!.style!;
+    const highlight = DEFAULT_THEME.resolve("syntax.line_number.highlight");
+    expect(number(ColorDepth.STANDARD)).toEqual(highlight.withoutColor);
+    expect(number(ColorDepth.WINDOWS)).toEqual(highlight.withoutColor);
+    expect(number(ColorDepth.EIGHT_BIT)).toEqual(highlight);
   });
 
   // --- Tab Size ---

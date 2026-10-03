@@ -1,5 +1,5 @@
 import { ColorRgba, blendRgb } from "../core/color.js";
-import { alphaBlend, contrastFor } from "./colorMath.js";
+import { alphaBlend, contrastFor, ensureContrast } from "./colorMath.js";
 import { Palette, drawnOn } from "./palette.js";
 
 /**
@@ -20,6 +20,8 @@ export interface BaseColors {
 const MUTED_BLEND = 0.7;
 const TEXT_ALPHA = 0.66;
 const SURFACE_LIFT = 0.05;
+// WCAG AA for body text: `text-*` is the label drawn on `*-muted`.
+const TEXT_ON_MUTED = 4.5;
 
 type AccentKey = "primary" | "secondary" | "accent" | "success" | "warning" | "error";
 
@@ -36,8 +38,9 @@ const ACCENT_KEYS: AccentKey[] = ["primary", "secondary", "accent", "success", "
  *              de-emphasizing body/structural text reaches for
  *              `foreground-muted` the same way it reaches for
  *              `primary-muted` to de-emphasize an accent.
- * - `text-*`  = contrast text tinted 66% with the accent color (use as
- *              foreground in muted/background-tinted contexts)
+ * - `text-*`  = contrast text tinted 66% with the accent color, then held
+ *              to WCAG AA (4.5:1) on `*-muted` — the foreground for a
+ *              `*-muted` ground
  * - `on-*`    = WCAG-correct contrast colour (black or white) for use as
  *              foreground when the FULL accent is the background. Picked
  *              by relative luminance — single source of truth so widgets
@@ -87,8 +90,12 @@ export function buildPalette(name: string, dark: boolean, given: BaseColors): Pa
   const contrastText = contrastFor(base.background);
   for (const key of ACCENT_KEYS) {
     const color = base[key];
-    vars.set(`${key}-muted`, blendRgb(color, base.background, MUTED_BLEND));
-    vars.set(`text-${key}`, alphaBlend(color, contrastText, TEXT_ALPHA));
+    const muted = blendRgb(color, base.background, MUTED_BLEND);
+    vars.set(`${key}-muted`, muted);
+    // [LAW:single-enforcer] The tint is Textual's; whether it reads on its
+    // ground is ensureContrast's to decide, so the pair this palette promises
+    // holds on every theme rather than on the ones whose accent happens to.
+    vars.set(`text-${key}`, ensureContrast(alphaBlend(color, contrastText, TEXT_ALPHA), muted, TEXT_ON_MUTED));
     vars.set(`on-${key}`, contrastFor(color));
   }
 
