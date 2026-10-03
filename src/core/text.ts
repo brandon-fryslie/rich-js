@@ -915,12 +915,19 @@ export class RichText implements Renderable, Measurable {
     const clamp = (offset: number): number =>
       Math.max(0, Math.min(offsetOf(offset), text.length));
 
-    const positions = new Set<number>([0, text.length]);
+    // The text's own start and end are always the outer boundaries, even when
+    // they are one offset: empty text is one empty piece, as Rich's
+    // `Text.render` yields `Segment("")` for it. That piece writes no bytes,
+    // and it is what makes empty text one line to everything that splits a
+    // render into lines — a panel's body, a table cell — where Rich draws one.
+    const inner = new Set<number>();
     for (const span of this._spans) {
-      positions.add(clamp(span.start));
-      positions.add(clamp(span.end));
+      inner.add(clamp(span.start));
+      inner.add(clamp(span.end));
     }
-    const boundaries = [...positions].sort((a, b) => a - b);
+    inner.delete(0);
+    inner.delete(text.length);
+    const boundaries = [0, ...[...inner].sort((a, b) => a - b), text.length];
 
     // Every span edge is a boundary, so where a span's range opens is a lookup
     // rather than a search.

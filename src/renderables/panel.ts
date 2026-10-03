@@ -6,6 +6,7 @@ import { cellLen, setCellSize, asCellCol, cellCount } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, ROUNDED } from "../core/box.js";
+import type { EdgeChars } from "../core/box.js";
 import { Measurement } from "../core/measure.js";
 import { RichText } from "../core/text.js";
 import { embed, inlineLabel } from "./embed.js";
@@ -157,6 +158,44 @@ function borderTextStyle(border: Style | undefined, own: Style): Style | undefin
   return own.isNull ? border : (border ?? NULL_STYLE).add(own);
 }
 
+/**
+ * A border row: the opening corner, the rule across `span` cells with `label`
+ * centred in it, and `close` — the closing corner, or nothing when the caller
+ * sets something between the rule and its corner.
+ *
+ * Cut as Rich cuts it. An unlabelled rule is one run, corners included. A
+ * label is set into the `span - 2` cells between one rule cell either side,
+ * cropped to them and centred with the rule filling the rest, so the row
+ * leaves as corner-and-rule, rule, label, rule, rule-and-corner. Rich draws no
+ * label in a span of two cells or fewer (`width <= 4`), where it would sit on
+ * the corners.
+ */
+function borderRow(
+  edge: EdgeChars,
+  geometry: PanelGeometry,
+  span: number,
+  label: readonly Segment[],
+  border: Style | undefined,
+  close: string,
+): Segment[] {
+  const corner = edge.left.repeat(geometry.left);
+  const labelWidth = Segment.getLineLength([...label]);
+  if (labelWidth === 0 || span <= 2) {
+    return [new Segment(corner + edge.horizontal.repeat(span) + close, border)];
+  }
+  const canvas = span - 2;
+  const fitted = Segment.adjustLineLength([...label], Math.min(labelWidth, canvas), undefined, false);
+  const excess = canvas - Segment.getLineLength(fitted);
+  const before = Math.floor(excess / 2);
+  return [
+    new Segment(corner + edge.horizontal, border),
+    new Segment(edge.horizontal.repeat(before), border),
+    ...fitted,
+    new Segment(edge.horizontal.repeat(excess - before), border),
+    new Segment(edge.horizontal + close, border),
+  ];
+}
+
 export class Panel implements Renderable, Measurable {
   readonly renderable: Renderable;
   readonly box: Box;
@@ -206,12 +245,10 @@ export class Panel implements Renderable, Measurable {
 
     const contentLines = this._renderContent(options, geometry.contentWidth, contentStyle);
 
-    // Top border (with optional title)
     yield* this._renderTopBorder(options, box, geometry, border);
 
-    // Top padding — a padding row is a content row whose content is nothing.
     for (let i = 0; i < padTop; i++) {
-      yield* this._renderRow(box, geometry, [], border, contentStyle);
+      yield* this._renderPaddingRow(box, geometry, border, contentStyle);
     }
 
     for (const line of contentLines) {
@@ -219,10 +256,9 @@ export class Panel implements Renderable, Measurable {
     }
 
     for (let i = 0; i < padBottom; i++) {
-      yield* this._renderRow(box, geometry, [], border, contentStyle);
+      yield* this._renderPaddingRow(box, geometry, border, contentStyle);
     }
 
-    // Bottom border (with optional subtitle)
     yield* this._renderBottomBorder(options, box, geometry, border);
   }
 
@@ -253,15 +289,14 @@ export class Panel implements Renderable, Measurable {
   }
 
   /**
-   * One row of the panel body: frame column, span, frame column.
+   * One row of the panel body, cut where Rich cuts it: frame column, left
+   * padding, the content line made exactly `contentWidth` wide, right padding,
+   * frame column — each its own segment, so each its own SGR run.
    *
-   * [LAW:single-enforcer] `adjustLineLength` is the one place a width is
-   * decided here, and it runs twice against two different widths. The first
-   * pass crops content that rendered wider than the canvas it was handed (a
-   * `Table` at its natural width, say) back to the canvas, so an oversized
-   * child is trimmed rather than allowed to eat the right-hand padding. The
-   * second fills the rest of the span, which is the trailing padding and any
-   * shortfall in one stroke.
+   * [LAW:single-enforcer] `adjustLineLength` is the one place the content's
+   * width is decided: content that rendered wider than its canvas (a `Table`
+   * at its natural width, say) is cropped back to it, and a short line is
+   * filled out to it, so the right padding always starts at the same column.
    */
   private *_renderRow(
     box: Box,
@@ -272,9 +307,26 @@ export class Panel implements Renderable, Measurable {
   ): Iterable<Segment> {
     const frame = box.getContentChars("row");
     yield new Segment(frame.left.repeat(geometry.left), border);
-    const content = Segment.adjustLineLength(line, geometry.contentWidth, contentStyle, false);
-    const span = [new Segment(" ".repeat(geometry.padLeft), contentStyle), ...content];
-    yield* Segment.adjustLineLength(span, geometry.spanWidth, contentStyle);
+    yield new Segment(" ".repeat(geometry.padLeft), contentStyle);
+    yield* Segment.adjustLineLength(line, geometry.contentWidth, contentStyle);
+    yield new Segment(" ".repeat(geometry.padRight), contentStyle);
+    yield new Segment(frame.right.repeat(geometry.right), border);
+    yield Segment.line();
+  }
+
+  /**
+   * A row of vertical padding: one blank run across the whole span, as Rich's
+   * `Padding` draws its blank lines, not a content row with nothing in it.
+   */
+  private *_renderPaddingRow(
+    box: Box,
+    geometry: PanelGeometry,
+    border: Style | undefined,
+    contentStyle: Style | undefined,
+  ): Iterable<Segment> {
+    const frame = box.getContentChars("row");
+    yield new Segment(frame.left.repeat(geometry.left), border);
+    yield new Segment(" ".repeat(geometry.spanWidth), contentStyle);
     yield new Segment(frame.right.repeat(geometry.right), border);
     yield Segment.line();
   }
@@ -317,7 +369,11 @@ export class Panel implements Renderable, Measurable {
       { ...options, maxWidth: geometry.contentWidth },
       this.renderable,
     );
-    const maximum = Math.min(options.maxWidth, measurement.maximum + overhead);
+    // A title widens the panel to hold it whole between one rule cell either
+    // side, as Rich's fitted panel does; untitled, the content alone decides.
+    const titleWidth = Segment.getLineLength(inlineLabel(this.title, borderLabel(options), undefined));
+    const titleFloor = titleWidth === 0 ? 0 : titleWidth + 4;
+    const maximum = Math.min(options.maxWidth, Math.max(measurement.maximum + overhead, titleFloor));
     return {
       minimum: Math.min(measurement.minimum + overhead, maximum),
       maximum,
@@ -350,37 +406,9 @@ export class Panel implements Renderable, Measurable {
     geometry: PanelGeometry,
     border: Style | undefined,
   ): Iterable<Segment> {
-    const innerBorderWidth = geometry.spanWidth;
-    const titleSeg = borderTextStyle(border, getStyle(options, this.titleStyle ?? NULL_STYLE));
-    const title = inlineLabel(this.title, borderLabel(options), titleSeg);
-    const titleWidth = Segment.getLineLength(title);
-
-    if (titleWidth === 0) {
-      yield new Segment(box.top.left.repeat(geometry.left), border);
-      yield new Segment(box.top.horizontal.repeat(innerBorderWidth), border);
-      yield new Segment(box.top.right.repeat(geometry.right), border);
-      yield Segment.line();
-      return;
-    }
-
-    yield new Segment(box.top.left.repeat(geometry.left), border);
-
-    if (titleWidth >= innerBorderWidth) {
-      // Title fills the border. [LAW:one-source-of-truth] adjustLineLength is
-      // cell-aware — a plain .slice would miscount wide chars and break border
-      // alignment.
-      yield* Segment.adjustLineLength(title, innerBorderWidth, titleSeg);
-    } else {
-      // Center the title in the top border
-      const leftRuleWidth = Math.floor((innerBorderWidth - titleWidth) / 2);
-      const rightRuleWidth = innerBorderWidth - titleWidth - leftRuleWidth;
-
-      if (leftRuleWidth > 0) yield new Segment(box.top.horizontal.repeat(leftRuleWidth), border);
-      yield* title;
-      if (rightRuleWidth > 0) yield new Segment(box.top.horizontal.repeat(rightRuleWidth), border);
-    }
-
-    yield new Segment(box.top.right.repeat(geometry.right), border);
+    const titleStyle = borderTextStyle(border, getStyle(options, this.titleStyle ?? NULL_STYLE));
+    const title = inlineLabel(this.title, borderLabel(options), titleStyle);
+    yield* borderRow(box.top, geometry, geometry.spanWidth, title, border, box.top.right.repeat(geometry.right));
     yield Segment.line();
   }
 
@@ -390,8 +418,6 @@ export class Panel implements Renderable, Measurable {
     geometry: PanelGeometry,
     border: Style | undefined,
   ): Iterable<Segment> {
-    const innerBorderWidth = geometry.spanWidth;
-
     // Resolve the right accessory *now*. Function form evaluates after
     // content has been rendered (Panel.render collects content segments
     // before yielding any borders), so the thunk sees fresh widget state.
@@ -401,46 +427,20 @@ export class Panel implements Renderable, Measurable {
       : typeof accessory === "string"
         ? ` ${accessory} `
         : ` ${accessory.plain} `;
-    const accessoryWidth = cellLen(accessoryDisplay);
+    // Cell-aware clip: the accessory never claims more than the span.
+    const accessoryText = setCellSize(accessoryDisplay, asCellCol(Math.min(cellLen(accessoryDisplay), geometry.spanWidth)));
     const accessoryOwn = accessory instanceof RichText ? accessory.resolvedStyle(options) : NULL_STYLE;
-    const accessoryStyle = borderTextStyle(border, accessoryOwn);
 
-    yield new Segment(box.bottom.left.repeat(geometry.left), border);
-
-    // Space available for the centered subtitle / rule fill — the accessory
-    // (if any) hugs the right edge and the subtitle treats the remainder
-    // as its centering canvas.
-    const centerWidth = Math.max(0, innerBorderWidth - accessoryWidth);
-
-    const subtitleSeg = borderTextStyle(border, getStyle(options, this.subtitleStyle ?? NULL_STYLE));
-    const subtitle = inlineLabel(this.subtitle, borderLabel(options), subtitleSeg);
-    const subtitleWidth = Segment.getLineLength(subtitle);
-
-    if (subtitleWidth === 0) {
-      if (centerWidth > 0) yield new Segment(box.bottom.horizontal.repeat(centerWidth), border);
-    } else {
-
-      if (subtitleWidth >= centerWidth) {
-        // Cell-aware clip — see _renderTopBorder.
-        yield* Segment.adjustLineLength(subtitle, centerWidth, subtitleSeg);
-      } else {
-        const leftRuleWidth = Math.floor((centerWidth - subtitleWidth) / 2);
-        const rightRuleWidth = centerWidth - subtitleWidth - leftRuleWidth;
-        if (leftRuleWidth > 0) yield new Segment(box.bottom.horizontal.repeat(leftRuleWidth), border);
-        yield* subtitle;
-        if (rightRuleWidth > 0) yield new Segment(box.bottom.horizontal.repeat(rightRuleWidth), border);
-      }
-    }
-
-    if (accessoryWidth > 0) {
-      // Cell-aware clip — see _renderTopBorder.
-      const fit = accessoryWidth > innerBorderWidth
-        ? setCellSize(accessoryDisplay, asCellCol(innerBorderWidth))
-        : accessoryDisplay;
-      yield new Segment(fit, accessoryStyle);
-    }
-
-    yield new Segment(box.bottom.right.repeat(geometry.right), border);
+    const subtitleStyle = borderTextStyle(border, getStyle(options, this.subtitleStyle ?? NULL_STYLE));
+    const subtitle = inlineLabel(this.subtitle, borderLabel(options), subtitleStyle);
+    // The accessory hugs the bottom-right corner; the rule and subtitle are
+    // laid out, as Rich lays them, across the span it leaves. With no
+    // accessory the corner closes the rule's last run, as Rich's does.
+    const corner = box.bottom.right.repeat(geometry.right);
+    const [close, afterAccessory] = accessoryText === "" ? [corner, ""] : ["", corner];
+    yield* borderRow(box.bottom, geometry, geometry.spanWidth - cellLen(accessoryText), subtitle, border, close);
+    yield new Segment(accessoryText, borderTextStyle(border, accessoryOwn));
+    yield new Segment(afterAccessory, border);
     yield Segment.line();
   }
 

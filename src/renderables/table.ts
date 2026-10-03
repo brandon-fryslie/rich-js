@@ -1223,8 +1223,11 @@ export class Table implements Renderable, Measurable {
 
     // Every line the text has, because that is what the reference renders — a
     // title of "one\ntwo" occupies two lines there. Taking only the first
-    // dropped the rest with no truncation mark.
-    for (const line of Segment.splitLines(rendered)) {
+    // dropped the rest with no truncation mark. A title with no text has none:
+    // the reference asks `if self.title`, and an empty `Text` is falsy, where
+    // the one empty line it renders would be a blank row over the table.
+    const lines = source.plain === "" ? [] : Segment.splitLines(rendered);
+    for (const line of lines) {
       yield* Segment.applyStyle(line, titleStyle);
       yield Segment.line();
     }

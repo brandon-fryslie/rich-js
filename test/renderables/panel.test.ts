@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { cellLen } from "../../src/core/cells.js";
 import type { PaddingDimensions } from "../../src/renderables/padding.js";
 import { Panel } from "../../src/renderables/panel.js";
+import { renderToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { Style } from "../../src/core/style.js";
@@ -485,5 +486,85 @@ describe("Panel", () => {
       expect(measured.minimum).toBeGreaterThanOrEqual(0);
       expect(measured.maximum).toBeGreaterThanOrEqual(measured.minimum);
     });
+  });
+});
+
+// Every expected literal here is what Python Rich 9d8f9a3 prints for the same
+// panel at the given width, truecolor, verbatim. Since every segment is its own
+// SGR run, where a panel cuts its segments is part of what is pinned.
+// `bottomRightAccessory` is the port's own and has no reference.
+describe("Panel as Rich draws it", () => {
+  const draw = (p: Panel, width: number): string => renderToString(p, { width });
+
+  it("draws the frame as one run per border row and the right padding as its own run", () => {
+    expect(draw(new Panel("hi", { style: "on blue", borderStyle: "red" }), 20)).toBe(
+      "\x1b[31;44m╭──────────────────╮\x1b[0m\n\x1b[31;44m│\x1b[0m\x1b[44m \x1b[0m\x1b[44mhi\x1b[0m\x1b[44m              \x1b[0m\x1b[44m \x1b[0m\x1b[31;44m│\x1b[0m\n\x1b[31;44m╰──────────────────╯\x1b[0m\n",
+    );
+  });
+
+  it("sets a title between corner-and-rule and rule-and-corner runs", () => {
+    expect(draw(new Panel("hi", { title: "T", style: "on blue", borderStyle: "red" }), 20)).toBe(
+      "\x1b[31;44m╭─\x1b[0m\x1b[31;44m──────\x1b[0m\x1b[31;44m T \x1b[0m\x1b[31;44m───────\x1b[0m\x1b[31;44m─╮\x1b[0m\n\x1b[31;44m│\x1b[0m\x1b[44m \x1b[0m\x1b[44mhi\x1b[0m\x1b[44m              \x1b[0m\x1b[44m \x1b[0m\x1b[31;44m│\x1b[0m\n\x1b[31;44m╰──────────────────╯\x1b[0m\n",
+    );
+  });
+
+  it("sets a subtitle into the bottom border the same way", () => {
+    expect(draw(new Panel("hi", { subtitle: "S", style: "on blue", borderStyle: "red" }), 20)).toBe(
+      "\x1b[31;44m╭──────────────────╮\x1b[0m\n\x1b[31;44m│\x1b[0m\x1b[44m \x1b[0m\x1b[44mhi\x1b[0m\x1b[44m              \x1b[0m\x1b[44m \x1b[0m\x1b[31;44m│\x1b[0m\n\x1b[31;44m╰─\x1b[0m\x1b[31;44m──────\x1b[0m\x1b[31;44m S \x1b[0m\x1b[31;44m───────\x1b[0m\x1b[31;44m─╯\x1b[0m\n",
+    );
+  });
+
+  it("lays a title's own style over the border's, run by run", () => {
+    expect(draw(new Panel("hi", { title: "[bold]T[/]", subtitle: "S", borderStyle: "red" }), 20)).toBe(
+      "\x1b[31m╭─\x1b[0m\x1b[31m──────\x1b[0m\x1b[31m \x1b[0m\x1b[1;31mT\x1b[0m\x1b[31m \x1b[0m\x1b[31m───────\x1b[0m\x1b[31m─╮\x1b[0m\n\x1b[31m│\x1b[0m hi               \x1b[31m│\x1b[0m\n\x1b[31m╰─\x1b[0m\x1b[31m──────\x1b[0m\x1b[31m S \x1b[0m\x1b[31m───────\x1b[0m\x1b[31m─╯\x1b[0m\n",
+    );
+  });
+
+  it("draws vertical padding as one blank run and horizontal padding as runs of their own", () => {
+    expect(draw(new Panel("hi", { padding: [1, 2], style: "on blue", borderStyle: "red" }), 20)).toBe(
+      "\x1b[31;44m╭──────────────────╮\x1b[0m\n\x1b[31;44m│\x1b[0m\x1b[44m                  \x1b[0m\x1b[31;44m│\x1b[0m\n\x1b[31;44m│\x1b[0m\x1b[44m  \x1b[0m\x1b[44mhi\x1b[0m\x1b[44m            \x1b[0m\x1b[44m  \x1b[0m\x1b[31;44m│\x1b[0m\n\x1b[31;44m│\x1b[0m\x1b[44m                  \x1b[0m\x1b[31;44m│\x1b[0m\n\x1b[31;44m╰──────────────────╯\x1b[0m\n",
+    );
+  });
+
+  it("pads every content line to the canvas before the right padding", () => {
+    expect(draw(new Panel("hi\nthere", { style: "on blue" }), 20)).toBe(
+      "\x1b[44m╭──────────────────╮\x1b[0m\n\x1b[44m│\x1b[0m\x1b[44m \x1b[0m\x1b[44mhi\x1b[0m\x1b[44m              \x1b[0m\x1b[44m \x1b[0m\x1b[44m│\x1b[0m\n\x1b[44m│\x1b[0m\x1b[44m \x1b[0m\x1b[44mthere\x1b[0m\x1b[44m           \x1b[0m\x1b[44m \x1b[0m\x1b[44m│\x1b[0m\n\x1b[44m╰──────────────────╯\x1b[0m\n",
+    );
+  });
+
+  it("draws empty content as one blank content line", () => {
+    expect(draw(new Panel("", { style: "on blue", borderStyle: "red" }), 20)).toBe(
+      "\x1b[31;44m╭──────────────────╮\x1b[0m\n\x1b[31;44m│\x1b[0m\x1b[44m \x1b[0m\x1b[44m                \x1b[0m\x1b[44m \x1b[0m\x1b[31;44m│\x1b[0m\n\x1b[31;44m╰──────────────────╯\x1b[0m\n",
+    );
+  });
+
+  it("draws an empty RichText with no end as one blank content line too", () => {
+    expect(draw(new Panel(new RichText("", { end: "" })), 8)).toBe(
+      "╭──────╮\n│      │\n╰──────╯\n",
+    );
+  });
+
+  it("fits its frame to its content", () => {
+    expect(draw(Panel.fit("hi", { style: "on blue" }), 20)).toBe(
+      "\x1b[44m╭────╮\x1b[0m\n\x1b[44m│\x1b[0m\x1b[44m \x1b[0m\x1b[44mhi\x1b[0m\x1b[44m \x1b[0m\x1b[44m│\x1b[0m\n\x1b[44m╰────╯\x1b[0m\n",
+    );
+  });
+
+  it("widens a fitted panel to hold its title whole", () => {
+    expect(draw(Panel.fit("hi", { title: "a long title" }), 30)).toBe(
+      "╭─ a long title ─╮\n│ hi             │\n╰────────────────╯\n",
+    );
+  });
+
+  it("crops a title to the cells between one rule cell either side", () => {
+    expect(draw(new Panel("hi", { title: "a very long title indeed" }), 12)).toBe(
+      "╭─ a very ─╮\n│ hi       │\n╰──────────╯\n",
+    );
+  });
+
+  it("keeps a title off the corners of a five-cell panel", () => {
+    expect(draw(new Panel("hi", { title: "T" }), 5)).toBe(
+      "╭─ ─╮\n│ h │\n│ i │\n╰───╯\n",
+    );
   });
 });

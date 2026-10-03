@@ -929,11 +929,12 @@ describe("RichText.render()", () => {
     expect(text).toContain("\u2026");
   });
 
-  it("renders empty text with just end segment", () => {
+  it("renders empty text as one empty segment and its end, as Rich does", () => {
+    // Rich 9d8f9a3: `[s.text for s in console.render(Text(""))] == ["", "\n"]`.
+    // The empty segment writes nothing; it is what makes empty text one line.
     const t = new RichText("", { end: "\n" });
-    const segments = collect(t.render({ maxWidth: 80 }));
-    expect(segments).toHaveLength(1);
-    expect(segments[0]!.text).toBe("\n");
+    expect(collect(t.render({ maxWidth: 80 })).map((s) => s.text)).toEqual(["", "\n"]);
+    expect(Segment.splitLines(t.render({ maxWidth: 80 }))).toHaveLength(1);
   });
 
   // rich-text-5ai: `end` used to mean two different things depending on
@@ -957,12 +958,12 @@ describe("RichText.render()", () => {
       expect(segmentTexts(new RichText("a", { end: "<<" }))).toEqual(["a", "<<"]);
     });
 
-    it("empty text, default end: just the default terminator", () => {
-      expect(segmentTexts(new RichText(""))).toEqual(["\n"]);
+    it("empty text, default end: its one empty piece and the default terminator", () => {
+      expect(segmentTexts(new RichText(""))).toEqual(["", "\n"]);
     });
 
-    it("empty text, end \"\": nothing at all", () => {
-      expect(segmentTexts(new RichText("", { end: "" }))).toEqual([]);
+    it("empty text, end \"\": its one empty piece, which writes nothing", () => {
+      expect(segmentTexts(new RichText("", { end: "" }))).toEqual([""]);
     });
 
     // Flagged independently by two code-review passes on rich-text-5ai as a

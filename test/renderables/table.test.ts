@@ -1574,15 +1574,9 @@ describe("Table and Column styles", () => {
     t.addColumn("A", { style: "on green", headerStyle: "italic", footerStyle: "underline", footer: "f" });
     t.addColumn("B");
     t.addRow("x", "y");
-    const reference =
-      "┏━━━┳━━━┓\n┃\x1b[1;3m \x1b[0m\x1b[1;3mA\x1b[0m\x1b[1;3m \x1b[0m┃\x1b[1m \x1b[0m\x1b[1mB\x1b[0m\x1b[1m \x1b[0m┃\n┡━━━╇━━━┩\n│\x1b[42m \x1b[0m\x1b[42mx\x1b[0m\x1b[42m \x1b[0m│ y │\n├───┼───┤\n│\x1b[1;4m \x1b[0m\x1b[1;4mf\x1b[0m\x1b[1;4m \x1b[0m│\x1b[1m \x1b[0m\x1b[1m \x1b[0m\x1b[1m \x1b[0m│\n└───┴───┘\n";
-    // Known divergence, rich-text-nucl: column B's empty footer is no line
-    // here, so the row fills it with one blank where the reference draws a
-    // content line of pad, blank and pad. Same cells; this goes red when it
-    // is fixed, and the substitution goes with it.
-    const divergent = "\x1b[1m \x1b[0m\x1b[1m \x1b[0m\x1b[1m \x1b[0m│\n└";
-    expect(reference).toContain(divergent);
-    expect(draw(t)).toBe(reference.replace(divergent, "\x1b[1m   \x1b[0m│\n└"));
+    expect(draw(t)).toBe(
+      "┏━━━┳━━━┓\n┃\x1b[1;3m \x1b[0m\x1b[1;3mA\x1b[0m\x1b[1;3m \x1b[0m┃\x1b[1m \x1b[0m\x1b[1mB\x1b[0m\x1b[1m \x1b[0m┃\n┡━━━╇━━━┩\n│\x1b[42m \x1b[0m\x1b[42mx\x1b[0m\x1b[42m \x1b[0m│ y │\n├───┼───┤\n│\x1b[1;4m \x1b[0m\x1b[1;4mf\x1b[0m\x1b[1;4m \x1b[0m│\x1b[1m \x1b[0m\x1b[1m \x1b[0m\x1b[1m \x1b[0m│\n└───┴───┘\n",
+    );
   });
 
   it("layers a row style over the column's cell style, padding included", () => {
