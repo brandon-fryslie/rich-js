@@ -138,9 +138,9 @@ export interface ExportCanvas {
 /**
  * The ground every export is drawn on under `theme`.
  *
- * An exporter paints its page or window with this; `resolveLook` flattens
- * every run over the same `background`, so a run showing the canvas and the
- * page around it cannot come out different colours.
+ * An exporter paints its page or window with this, and a run with no
+ * background of its own resolves to `"canvas"` rather than a colour, so a run
+ * showing the canvas and the page around it cannot come out different colours.
  */
 export function exportCanvas(theme?: TerminalTheme): ExportCanvas {
   return {
@@ -152,29 +152,31 @@ export function exportCanvas(theme?: TerminalTheme): ExportCanvas {
 /**
  * A `Style` as it appears on screen under `theme`.
  *
- * The order is the terminal's: colours resolve through the theme and lose
- * their alpha — paper over the canvas, ink over the paper, as `toSgrCodes`
- * flattens them — `reverse` swaps them, `dim` fades the glyph toward whatever
- * background it ended up on, and `conceal` finally paints the glyph in that
- * background. Every step after flattening works on opaque colour, so no
- * exporter ever draws a translucent one. Text under `conceal` is still
- * present, and still selectable, in both formats.
+ * The order is the terminal's: the colours are `Style.drawnColors`, the ones
+ * `toSgrCodes` writes, resolved through the theme — `reverse` swaps them,
+ * `dim` fades the glyph toward whatever background it ended up on, and
+ * `conceal` finally paints the glyph in that background. Every step works on
+ * opaque colour, so no exporter ever draws a translucent one. Text under
+ * `conceal` is still present, and still selectable, in both formats.
  *
- * The one difference from `toSgrCodes` is the substrate: a terminal cannot
- * know what lies under its cells and assumes black, while an export draws its
- * own canvas and flattens over that.
+ * A translucent colour is flattened where the writer flattens it, over
+ * `SURFACE_BLACK`, not over this export's canvas. The writer's truecolor
+ * bytes are absolute — no terminal theme retints them — so a terminal under
+ * `theme` shows that colour, and an export that flattened over its own canvas
+ * would picture a colour no terminal draws.
  *
  * `theme` omitted is `ColorSpec.getTruecolor`'s own fallback — black canvas,
  * white ink, the standard ANSI table. Choosing it there rather than naming a
  * preset here is what keeps `core/` from a third upward edge into `themes/`.
  */
 export function resolveLook(style: Style, theme?: TerminalTheme): ExportLook {
-  const inkSpec = style.color ?? DEFAULT_COLOR;
-  const paperSpec = style.bgcolor ?? DEFAULT_COLOR;
-  const canvas = exportCanvas(theme).background;
-  // [LAW:single-enforcer] `flattenAlpha` is the one place alpha is composited.
-  const paper = paperSpec.flattenAlpha(canvas).getTruecolor(theme, false);
-  const ink = inkSpec.flattenAlpha(paper).getTruecolor(theme, true);
+  // [LAW:one-source-of-truth] `drawnColors` is the one account of what a style
+  // puts on screen; the export reads it rather than flattening a second way.
+  const drawn = style.drawnColors();
+  const inkSpec = drawn.color ?? DEFAULT_COLOR;
+  const paperSpec = drawn.bgcolor ?? DEFAULT_COLOR;
+  const paper = paperSpec.getTruecolor(theme, false);
+  const ink = inkSpec.getTruecolor(theme, true);
 
   // A reversed run always paints: its background is the ink, which is never
   // the canvas, even when the ink is the theme's default foreground.
