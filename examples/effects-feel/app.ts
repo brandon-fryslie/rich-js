@@ -101,7 +101,7 @@ export interface Subject {
  */
 export interface DrawnSubject extends Subject {
   readonly options: RenderOptions;
-  /** Its width in columns, which a sweep crosses once a period. */
+  /** Its width in columns. */
   readonly span: number;
   /** The colours it sets in the cells it draws text in, by hex, as the screen shows them. */
   readonly colors: ReadonlySet<string>;

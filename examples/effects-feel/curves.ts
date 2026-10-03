@@ -209,18 +209,19 @@ function swell(shape: SwellShape, s: number, k: number): number {
 }
 
 /**
- * How much of a swell's light has been given by `s`, in [0, 1]: its running
- * integral over its whole. Paced by it, a motion is quickest at the swell's
- * height and still at both its ends. `k` is above 0.
+ * How much of a swell's light has been given by `s`, in [0, 1]: `swell`'s own
+ * running integral over its whole, by the midpoint rule, so the two cannot
+ * disagree. Paced by it, a motion is quickest at the swell's height and still
+ * at both its ends. `k` is above 0.
  */
 function given(shape: SwellShape, s: number, k: number): number {
-  const p = Math.min(Math.max(s / k, 0), shape.rise + shape.fall);
-  const q = p - shape.rise;
-  const area =
-    q < 0
-      ? p - (shape.rise / Math.PI) * Math.sin((Math.PI * p) / shape.rise)
-      : shape.rise + q + (shape.fall / Math.PI) * Math.sin((Math.PI * q) / shape.fall);
-  return area / (shape.rise + shape.fall);
+  const whole = k * (shape.rise + shape.fall);
+  const area = (to: number): number => {
+    let sum = 0;
+    for (let i = 0; i < 24; i++) sum += swell(shape, ((i + 0.5) / 24) * to, k);
+    return sum * to;
+  };
+  return area(Math.min(Math.max(s, 0), whole)) / area(whole);
 }
 
 /**
@@ -326,16 +327,16 @@ export function shimmer(curve: Curve, span: number, width: number, glow: ColorRg
   // brighter the clearer the sky.
   const SLOT = P / 2;
   const sky = (j: number): number => smoothstep(-0.4, 0.4, noise(j / 7, 3.3, 5.5 + z));
-  // How lit pass `j` is at `col` and `t`: its band's light, 0 once it is off
-  // the row and before it sets off. It sets off somewhere in the first
-  // `SETS_OFF` of its slot and takes `LEAST` to `LEAST + SPREAD` periods to
-  // carry its centre `STRIDE` columns, so no band moves faster than that, and
-  // every one is off the row `UP` slots after its own began.
+  // Pass `j` at `t`: how bright its band is and where its centre stands, off
+  // the row before it sets off and once it is done. It sets off somewhere in
+  // the first `SETS_OFF` of its slot and carries its centre `STRIDE` columns
+  // in `LEAST` to `LEAST + SPREAD` periods, give or take its drift, and every
+  // one is off the row `UP` slots after its own began.
   const SETS_OFF = 0.7;
   const LEAST = 0.51;
   const SPREAD = 0.4;
   const UP = SETS_OFF + ((LEAST + SPREAD) * P * across) / STRIDE / SLOT;
-  const pass = (j: number, col: number, t: number): number => {
+  const pass = (j: number, t: number): { strength: number; centre: number } => {
     const clear = sky(j);
     // Even under cloud about one slot in three holds a pass, a faint one, so a
     // still spell lasts a period or so, the way a cloud's shadow does, and
@@ -347,14 +348,22 @@ export function shimmer(curve: Curve, span: number, width: number, glow: ColorRg
     // It drifts ahead and behind on slow noise, by nothing at either edge of
     // the row and never enough to turn it back.
     const centre = q * across - width + 0.06 * across * Math.sin(Math.PI * q) * noise(q, 2.7, j + z);
-    return strength * bump((col - centre) / width);
+    return { strength, centre };
   };
+  // The passes on the row at one moment: a frame asks for the same moment
+  // once per cell, so they are worked out once per moment.
+  let passing = { t: Number.NaN, passes: [] as { strength: number; centre: number }[] };
   // Where two passes overlap the brighter wins, so light never doubles up;
   // the first slot is 0, so before it nothing is lit.
   const band = (col: number, t: number): number => {
-    const last = Math.floor(t / SLOT);
+    if (passing.t !== t) {
+      const last = Math.floor(t / SLOT);
+      const passes = [];
+      for (let j = Math.max(0, Math.ceil(last - UP)); j <= last; j++) passes.push(pass(j, t));
+      passing = { t, passes };
+    }
     let lit = 0;
-    for (let j = Math.max(0, Math.ceil(last - UP)); j <= last; j++) lit = Math.max(lit, pass(j, col, t));
+    for (const { strength, centre } of passing.passes) lit = Math.max(lit, strength * bump((col - centre) / width));
     return lit;
   };
   // A ripple's crest: a Gaussian ridge, 1 where the field crosses zero and in
@@ -405,7 +414,7 @@ export function drift(curve: Curve, z: number): Loop {
 
 /**
  * Sparkle, as fireflies. Swing: how far into the firefly's `light` a glow
- * goes at its brightest, 0–1. About one firefly to every seven columns of
+ * goes at its brightest, 0–1. About one firefly to every eight columns of
  * `span`, each keeping near a home of its own. A firefly flashes — kindles,
  * drifts a few cells glowing, slowing as it fades — then flies on in the
  * dark and flashes again somewhere a few cells off, the way fireflies at
@@ -513,7 +522,7 @@ function order(z: number): (cell: EffectCell) => number {
     // curling tendrils rather than sitting as round blots.
     const place =
       places.get(at) ??
-      clamp01(0.5 + 1.1 * fbm(cell.col * 0.09 + 1.4 * noise(cell.col * 0.035, cell.row * 0.2 + 2.6, z + 0.5), cell.row * 0.45, z, 4));
+      clamp01(0.5 + 1.1 * fbm(cell.col * 0.09 + 1.4 * noise(cell.col * 0.035, cell.row * 0.2 + 2.6, z + 0.5), cell.row * 0.45, z, 3));
     places.set(at, place);
     return place;
   };

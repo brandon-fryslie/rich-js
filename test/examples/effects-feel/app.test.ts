@@ -92,7 +92,7 @@ describe("a strip under a pulse", () => {
     });
   }
 
-  it("spans the columns it draws, so a sweep crosses it once a period", () => {
+  it("spans the columns it draws", () => {
     const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), options, CATPPUCCIN_MOCHA);
     const rows = [...strip.renderable.render(options)].map((segment) => segment.text).join("").split("\n");
     expect(strip.span).toBe(Math.max(...rows.map(cellLen)));

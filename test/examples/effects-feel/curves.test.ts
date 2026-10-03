@@ -330,8 +330,9 @@ describe("the loops never jump", () => {
   // elements two rows deep, the second's frames falling between the first's:
   // one the demo strip's width, one a wide terminal's, since a light or a
   // gust keeps its pace however wide the row. A sample still under-reads the
-  // worst step: an hour of five elements, from 40 to 240 columns, took pulse
-  // to 0.039. Any change that brightens or narrows a loop is measured over
+  // worst step: an hour of these fills at 40, 104 and 240 columns, at z 0,
+  // 1.7, 9.9, 22.6 and 47.2, takes pulse to 0.0395. That is the loop with
+  // least room; any change that brightens or narrows one is measured over
   // that hour first.
   const WATCHED = 1800;
   const ELEMENTS = [
@@ -340,16 +341,18 @@ describe("the loops never jump", () => {
   ];
   it.each(Object.entries(loops))("%s moves no cell more than the bar between frames at 1 fps", (_, loop) => {
     let worst = 0;
-    for (const { span, z, offset } of ELEMENTS) for (const color of fills) {
-      const move = loop(span, z);
+    for (const { span, z, offset } of ELEMENTS) {
       const strip: EffectCell[] = Array.from({ length: 2 * span }, (_, i) => ({ row: i % 2, col: Math.floor(i / 2), seed: 0 }));
-      // A frame at a time, as a screen draws them.
-      const frame = (t: number): ColorRgba[] => strip.map((cell) => under(move, color, cell, t));
-      let last = frame(offset);
-      for (let t = 1 + offset; t < WATCHED; t++) {
-        const next = frame(t);
-        next.forEach((now, i) => (worst = Math.max(worst, distance(last[i]!, now))));
-        last = next;
+      for (const color of fills) {
+        const move = loop(span, z);
+        // A frame at a time, as a screen draws them.
+        const frame = (t: number): ColorRgba[] => strip.map((cell) => under(move, color, cell, t));
+        let last = frame(offset);
+        for (let t = 1 + offset; t < WATCHED; t++) {
+          const next = frame(t);
+          next.forEach((now, i) => (worst = Math.max(worst, distance(last[i]!, now))));
+          last = next;
+        }
       }
     }
     expect(worst).toBeLessThan(STEP);
