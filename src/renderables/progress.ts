@@ -387,8 +387,10 @@ export class Progress implements Renderable {
     const task = this._tasks.get(taskId);
     if (!task) return;
 
-    if (options.completed !== undefined) task.completed = finiteCount("completed", options.completed);
-    if (options.advance !== undefined) task.completed += finiteCount("advance", options.advance);
+    // Rich's order, `completed` then `advance`, checked whole before any field
+    // is written, so a refused update leaves the task as it was.
+    const advance = finiteCount("advance", options.advance ?? 0);
+    task.completed = finiteCount("completed", (options.completed ?? task.completed) + advance);
     if (options.description !== undefined) task.description = options.description;
     if (options.visible !== undefined) task.visible = options.visible;
     if (

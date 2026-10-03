@@ -378,4 +378,14 @@ describe("Progress counts", () => {
     expect(() => progress.updateTask(id, { completed: NaN })).toThrow(/completed must be a finite number, got NaN/);
     expect(() => progress.updateTask(id, { advance: -Infinity })).toThrow(/advance must be a finite number, got -Infinity/);
   });
+
+  it("leaves a task as it was when an update is refused, the sum of two finite counts included", () => {
+    const progress = new Progress(new TextColumn("{task.description}"), new MofNCompleteColumn());
+    const id = progress.addTask("x", { total: 10 });
+    progress.updateTask(id, { completed: 3 });
+    expect(() => progress.updateTask(id, { completed: 5, advance: NaN, description: "y" })).toThrow(/advance/);
+    expect(() => progress.updateTask(id, { completed: 1e308, advance: 1e308 })).toThrow(/completed must be a finite number, got Infinity/);
+    const line = Segment.splitLines([...progress.render(OPTS)])[0]!.map((segment) => segment.text).join("");
+    expect(line.trimEnd()).toBe("x  3/10");
+  });
 });
