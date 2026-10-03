@@ -1835,3 +1835,19 @@ describe("Console theme resolution", () => {
     }
   });
 });
+
+// rich-embed-1r2m review: `print` runs a caller's `RichText` without copying
+// it, so nothing on the way to the wire may change it.
+describe("print leaves a printed RichText as the caller made it", () => {
+  it("prints the same text the same way twice and leaves it unchanged", () => {
+    const { console: c } = makeConsole({ record: true, width: 20 });
+    const text = new RichText("42 apples", { style: "bold", end: "!!" });
+    text.stylize("red", 0, 2);
+    const before = { plain: text.plain, end: text.end, spans: text.spans.length, justify: text.justify };
+    c.print(text, "x", { justify: "center", style: "italic" });
+    const first = c.exportText();
+    c.print(text, "x", { justify: "center", style: "italic" });
+    expect(c.exportText()).toBe(first);
+    expect({ plain: text.plain, end: text.end, spans: text.spans.length, justify: text.justify }).toEqual(before);
+  });
+});
