@@ -5,11 +5,11 @@
  * THIS IS A DEMO, built so the feel of each effect can be agreed before any
  * curve lands in `src/`. See `curves.ts`.
  *
- * [LAW:no-ambient-temporal-coupling] This file is the frame owner, and the
- * only reader of the clock: a timer reads it once a frame and stores the
- * frame's `t`, and the view is a pure function of that `t` and the two
- * transition start times. Every effect below is sampled at whatever `t` it is
- * handed, so 30 frames a second and one every two seconds run the same code.
+ * [LAW:no-ambient-temporal-coupling] The `App` is the frame owner: it ticks
+ * at the run's rate and hands each frame its `t`, and the view is a pure
+ * function of that `t` and the two transition start times. Every effect below
+ * is sampled at whatever `t` it is handed, so 30 frames a second and one every
+ * two seconds run the same code.
  *
  * [LAW:dataflow-not-control-flow] The host is a value: the demo never asks
  * which terminal it is on, and the colour depth it is judged at arrives as
@@ -33,6 +33,8 @@ import {
   Strip,
   Style,
   contrastRatio,
+  frameRate,
+  systemClock,
   type Effect,
   type Renderable,
   type RenderOptions,
@@ -255,55 +257,51 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     LOOPS.map((loop) => [loop, drawnWith.colorSystem === null ? "no colour drawn" : measured(loop)]),
   ) as Record<Loop, string>;
 
-  // [LAW:no-ambient-temporal-coupling] The clock, read here and nowhere else.
-  const origin = performance.now();
-  const clock = (): number => (performance.now() - origin) / 1000;
-  let t = 0;
-  let fadeStart = 0;
-  let dissolveStart = 0;
+  // [LAW:no-ambient-temporal-coupling] The app owns the frames and hands each
+  // its time; a replay starts at the time on that same clock.
+  const clock = systemClock();
+  const origin = clock.now();
+  let fadeStart = origin;
+  let dissolveStart = origin;
 
   const describe = (name: EffectName, curve: NamedCurve): string =>
     `${name.padEnd(9)} ${curve.seconds}s · ${curve.easeName} · swing ${curve.swing}`;
 
-  const transitionStatus = (curve: NamedCurve, start: number, key: string): string =>
+  const transitionStatus = (t: number, curve: NamedCurve, start: number, key: string): string =>
     t >= settledAt(curve, start) ? `done — ${key} replays` : "running";
 
-  const row = (name: EffectName, status: string, effect: (subject: DrawnSubject) => Effect): Renderable[] => [
+  const row = (t: number, name: EffectName, status: string, effect: (subject: DrawnSubject) => Effect): Renderable[] => [
     new RichText(`${describe(name, curves[name])}   ${status}`, { style: quiet, noWrap: true }),
     ...subjects.map((s) => new Effected(s.renderable, effect(s), { t, key: seedKey(name, s), theme })),
     new RichText(""),
   ];
 
-  const view = (): Renderable =>
+  const view = (t: number): Renderable =>
     new Padding(
       new Group(
         new RichText(
-          `effects feel · ${settings.fps} fps · ${settings.depth} · ${settings.ground} (${theme.palette.name}) · t=${t.toFixed(1)}s`,
+          `effects feel · ${settings.fps} fps · ${settings.depth} · ${settings.ground} (${theme.palette.name}) · t=${(t - origin).toFixed(1)}s`,
           { style: heading, noWrap: true },
         ),
         new RichText("f replays the fade-in · d replays the dissolve · q quits", { style: quiet, noWrap: true }),
         new RichText(""),
-        ...LOOPS.flatMap((loop) => row(loop, contrast[loop], loops[loop])),
-        ...row("fade", transitionStatus(curves.fade, fadeStart, "f"), () => fadeIn(curves.fade, fadeStart)),
-        ...row("dissolve", transitionStatus(curves.dissolve, dissolveStart, "d"), () => dissolveOut(curves.dissolve, dissolveStart)),
+        ...LOOPS.flatMap((loop) => row(t, loop, contrast[loop], loops[loop])),
+        ...row(t, "fade", transitionStatus(t, curves.fade, fadeStart, "f"), () => fadeIn(curves.fade, fadeStart)),
+        ...row(t, "dissolve", transitionStatus(t, curves.dissolve, dissolveStart, "d"), () => dissolveOut(curves.dissolve, dissolveStart)),
       ),
       [1, 2],
       { style: Style.fromColor(ink, paper) },
     );
 
-  const app = new App({ host, surface: "alternate", view });
-
-  const tick = setInterval(() => {
-    t = clock();
-    app.refresh();
-  }, 1000 / settings.fps);
+  const app = new App({ host, surface: "alternate", view, clock, rate: frameRate(settings.fps) });
+  // The loops never settle, so the demo animates for as long as it runs.
+  app.animate();
 
   // [LAW:dataflow-not-control-flow] Each key is a row in this table; a key
   // not in it does nothing, so a mouse report repaints nothing.
   const replay = (): number => {
-    t = clock();
     app.refresh();
-    return t;
+    return clock.now();
   };
   const keys: Record<string, () => void> = {
     f: () => (fadeStart = replay()),
@@ -321,9 +319,6 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     }
   });
 
-  const done = app.run().finally(() => {
-    clearInterval(tick);
-    unsubscribe();
-  });
+  const done = app.run().finally(unsubscribe);
   return { done };
 }

@@ -25,6 +25,7 @@
  * runs in node and in a browser with no path of its own for either.
  */
 
+import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { Console, type ConsoleOptions } from "../core/console.js";
 import { Segment } from "../core/segment.js";
 import { Painter, type Surface } from "../core/paint.js";
@@ -65,10 +66,18 @@ export interface AppOptions extends DrawOptions {
   readonly surface: Surface;
   /**
    * The app's root renderable, asked for once per frame, so a view of the
-   * app's state is drawn from the state as it is at that frame.
+   * app's state is drawn from the state as it is at that frame. `t` is the
+   * frame's time in seconds on the app's `clock`, which is what an effect is
+   * sampled at.
    */
-  readonly view: () => Renderable;
+  readonly view: (t: number) => Renderable;
+  /** What the app reads the time from and ticks on. The platform's, unless given. */
+  readonly clock?: Clock;
+  /** How often the app paints while something is animating. 30 frames a second, unless given. */
+  readonly rate?: FrameRate;
 }
+
+const DEFAULT_RATE = frameRate(30);
 
 // Button presses, motion and the wheel, in the SGR encoding: coordinates as
 // decimal numbers, so a terminal wider than 223 columns still reports them.
@@ -83,7 +92,12 @@ const POINTER: Record<Surface, { readonly on: string; readonly off: string }> = 
 export class App {
   private readonly host: TerminalHost;
   private readonly surface: Surface;
-  private readonly view: () => Renderable;
+  private readonly view: (t: number) => Renderable;
+  private readonly clock: Clock;
+  private readonly rate: FrameRate;
+  // What is animating now: one token per `animate()` not yet released.
+  private readonly animations = new Set<object>();
+  private stopTicking: Unsubscribe | null = null;
   // [LAW:one-source-of-truth] The host is the console's whole environment:
   // its size, its colours, where bytes go. Every frame renders with this
   // console's options and is encoded for its destination.
@@ -102,6 +116,8 @@ export class App {
     this.surface = options.surface;
     this.painter = new Painter(options.surface, (bytes) => this.host.write(bytes));
     this.view = options.view;
+    this.clock = options.clock ?? systemClock();
+    this.rate = options.rate ?? DEFAULT_RATE;
     this.console = new Console({ ...drawOptions(options), environment: hostEnvironment(options.host) });
   }
 
@@ -149,6 +165,7 @@ export class App {
       ];
       this.enter();
       this.paint();
+      this.tick();
     });
   }
 
@@ -173,6 +190,22 @@ export class App {
   }
 
   /**
+   * Paint at the app's `rate` until the returned function is called: what an
+   * effect sampled at the frame's time asks for while it moves. The app ticks
+   * while anything is animating and it holds the terminal, and stops when
+   * nothing is, so a still app paints only when asked.
+   */
+  animate(): Unsubscribe {
+    const animation = {};
+    this.animations.add(animation);
+    this.tick();
+    return () => {
+      this.animations.delete(animation);
+      this.tick();
+    };
+  }
+
+  /**
    * Hand the terminal to whatever launched the program, and take it back and
    * repaint when that resumes it. What sends the app here is the app's own —
    * in raw mode Ctrl+Z arrives as a key.
@@ -180,6 +213,7 @@ export class App {
   async suspend(): Promise<void> {
     if (this._phase !== "running") return;
     this._phase = "suspended";
+    this.tick();
     this.leave();
     await this.host.suspend();
     // Stopped while suspended — by a signal, say: the terminal is already
@@ -188,6 +222,7 @@ export class App {
     this._phase = "running";
     this.enter();
     this.paint();
+    this.tick();
   }
 
   /**
@@ -232,12 +267,28 @@ export class App {
     const phase = this._phase;
     if (phase === "idle" || phase === "stopped") return;
     this._phase = "stopped";
+    this.tick();
     for (const unsubscribe of this.subscriptions) unsubscribe();
     this.subscriptions = [];
     // A suspended app handed the terminal back when it suspended.
     if (phase === "running") this.leave();
     this.host.stop();
     this.settle(outcome);
+  }
+
+  // [LAW:single-enforcer] Whether the clock is ticking follows from the
+  // phase and what is animating, and is brought in line with them here
+  // alone, after every change to either — so a timer runs exactly while a
+  // running app has something animating, and none outlives the app.
+  private tick(): void {
+    const wanted = this._phase === "running" && this.animations.size > 0;
+    const ticking = this.stopTicking;
+    if (ticking === null) {
+      if (wanted) this.stopTicking = this.clock.every(this.rate, () => this.paint());
+    } else if (!wanted) {
+      ticking();
+      this.stopTicking = null;
+    }
   }
 
   // [LAW:no-silent-failure] A frame that throws ends the app with that
@@ -253,7 +304,9 @@ export class App {
   private draw(): void {
     const options = this.console.options;
     const height = this.painter.height(options.height.rows);
-    const lines = Segment.splitLines(this.view().render({ ...options, height }));
+    // [LAW:no-ambient-temporal-coupling] The frame owner reads the clock,
+    // once a frame; the view is handed the time as data.
+    const lines = Segment.splitLines(this.view(this.clock.now()).render({ ...options, height }));
     // The app set the budget, so the app shapes what comes back: no deeper
     // than the terminal — a taller frame would scroll the rows the painter
     // goes back over — and, as a region, exactly that deep.

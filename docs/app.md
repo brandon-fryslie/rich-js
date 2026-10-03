@@ -50,6 +50,31 @@ const app = new App({
 
 The root renders at the terminal's width, with the terminal's rows as its [height](/protocol). On the alternate screen those rows are a region, so a [`Layout`](/layout) fills the whole screen. No row is drawn wider than the terminal or below its last row.
 
+## Animating at a frame rate
+
+`view` is handed the frame's time, `t`, in seconds on the app's `clock`. An app paints at its `rate` while something is animating: `animate()` starts that, and the function it returns ends it. Once nothing is animating the app stops ticking and paints only when asked again, and a stopped or suspended app never ticks.
+
+```ts silent
+import { RichText, frameRate, systemClock } from "@promptctl/rich-js";
+import { App } from "@promptctl/rich-js/host";
+import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
+
+const clock = systemClock();
+const start = clock.now();
+const app = new App({
+  host: new NodeTerminalHost(),
+  surface: "inline",
+  clock,
+  rate: frameRate(0.5),
+  view: (t) => new RichText(`${Math.floor(t - start)} s since start`),
+});
+const stopAnimating = app.animate();
+```
+
+`frameRate` takes any positive, finite number of frames a second, so `frameRate(0.5)` paints once every two seconds; anything else throws. The rate is 30 frames a second unless you give one. Nothing the view draws reads a clock: an [effect](/effects) is sampled at the `t` it is handed, so the same view runs at 30 frames a second and at one every two seconds.
+
+`clock` is what the app reads the time from and ticks on. `systemClock()` — the platform's monotonic clock and interval timer — is the default. Pass your own `Clock` in a test, with a `now()` and an `every(rate, tick)` whose time you move by hand, to count frames with no real timer.
+
 ## Two surfaces
 
 `surface: "alternate"` paints on the alternate screen buffer, the whole terminal, and the terminal reports the pointer — presses, motion and the wheel — as input. When the app stops, the terminal shows what it showed before the app started.

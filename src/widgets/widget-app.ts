@@ -54,8 +54,10 @@ export class WidgetApp implements FrameSource {
   constructor(options: AppOptions) {
     const { view } = options;
     this.reaction = new Reaction("WidgetApp", () => this.app.refresh());
-    const root: Renderable = { render: (renderOptions) => this.compose(view, renderOptions) };
-    this.app = new App({ ...options, view: () => root });
+    this.app = new App({
+      ...options,
+      view: (t) => ({ render: (renderOptions) => this.compose(() => view(t), renderOptions) }),
+    });
     this.focus = new DefaultFocusManager(() => {
       const owners = ownersOn(this.app.frame);
       return this.drawn.filter((widget) => owners.has(widget));
@@ -118,6 +120,11 @@ export class WidgetApp implements FrameSource {
 
   suspend(): Promise<void> {
     return this.app.suspend();
+  }
+
+  /** Paint at the app's rate until the returned function is called, as `App.animate` does. */
+  animate(): Unsubscribe {
+    return this.app.animate();
   }
 
   /**

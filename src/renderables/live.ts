@@ -10,6 +10,7 @@
  *   frame's region, so a `Layout` fills it. Good for full-screen TUI apps.
  */
 
+import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
 import { Painter, type Screen } from "../core/paint.js";
@@ -17,7 +18,10 @@ import { fitHeight, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 
 export interface LiveOptions {
+  /** Frames a second while auto-refreshing: positive and finite, fractional included. */
   refreshPerSecond?: number;
+  /** What the auto-refresh ticks on. The platform's, unless given. */
+  clock?: Clock;
   autoRefresh?: boolean;
   transient?: boolean;
   console?: Console;
@@ -31,12 +35,13 @@ export interface LiveOptions {
 export class Live {
   private _renderable: Renderable | undefined;
   private _console: Console;
-  private _refreshPerSecond: number;
+  private readonly _rate: FrameRate;
+  private readonly _clock: Clock;
   private _autoRefresh: boolean;
   private _transient: boolean;
   private _verticalOverflow: "crop" | "ellipsis" | "visible";
   private readonly _painter: Painter;
-  private _timer: ReturnType<typeof setInterval> | undefined;
+  private _stopTicking: Unsubscribe | undefined;
   // [LAW:one-source-of-truth] The console's live region, held from `start()`
   // to the hand-back — which is what "started" means, so there is no separate
   // flag to disagree with it.
@@ -45,7 +50,10 @@ export class Live {
   constructor(renderable?: Renderable, options?: LiveOptions) {
     this._renderable = renderable;
     this._console = options?.console ?? new Console({ forceTerminal: true });
-    this._refreshPerSecond = options?.refreshPerSecond ?? 4;
+    // [LAW:parse-dont-validate] Parsed whether or not it auto-refreshes, so a
+    // rate that could never tick is refused where it is given.
+    this._rate = frameRate(options?.refreshPerSecond ?? 4);
+    this._clock = options?.clock ?? systemClock();
     this._autoRefresh = options?.autoRefresh !== false;
     this._transient = options?.transient ?? false;
     this._verticalOverflow = options?.verticalOverflow ?? "ellipsis";
@@ -76,19 +84,18 @@ export class Live {
     this._painter.take();
 
     if (this._autoRefresh) {
-      const interval = Math.floor(1000 / this._refreshPerSecond);
       // No caller is on the stack to run `stop()` for a frame that throws
       // here, and in Node the throw ends the process — so the terminal is
       // handed back first, and the error then goes on to wherever an uncaught
       // one goes.
-      this._timer = setInterval(() => {
+      this._stopTicking = this._clock.every(this._rate, () => {
         try {
           this.refresh();
         } catch (error) {
           this._release(held);
           throw error;
         }
-      }, interval);
+      });
     }
   }
 
@@ -175,8 +182,8 @@ export class Live {
   private _release(held: Unsubscribe): void {
     held();
     this._held = null;
-    clearInterval(this._timer);
-    this._timer = undefined;
+    this._stopTicking?.();
+    this._stopTicking = undefined;
     this._painter.handBack();
   }
 }

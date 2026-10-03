@@ -6,6 +6,7 @@ import { Segment } from "../../src/core/segment.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { Live, type LiveOptions } from "../../src/renderables/live.js";
 import { Panel } from "../../src/renderables/panel.js";
+import { fakeClock } from "../core/fake-clock.js";
 
 const SHOW_CURSOR = "\x1b[0m\x1b[?25h";
 const EXIT_ALT_SCREEN = "\x1b[?1049l";
@@ -370,5 +371,27 @@ describe("Printing through live.console", () => {
     release();
     expect(() => new Live(panel(), { console: term.console, autoRefresh: false }).start()).toThrow(/already/);
     display.stop();
+  });
+});
+
+describe("Live refresh rate", () => {
+  it.each([0, -4, Number.NaN, Number.POSITIVE_INFINITY])("refuses %s frames a second where it is constructed", (refreshPerSecond) => {
+    expect(() => live({ refreshPerSecond })).toThrow(RangeError);
+    expect(() => live({ refreshPerSecond, autoRefresh: false })).toThrow(RangeError);
+  });
+
+  it("paints a frame every two seconds at 0.5, on the clock it is given, and leaves no timer once stopped", () => {
+    const clock = fakeClock();
+    const { live: display, out } = live({ refreshPerSecond: 0.5, clock });
+    display.start();
+    const frames = (): number => out().split("good").length - 1;
+
+    clock.advance(1.9);
+    expect(frames()).toBe(0);
+    clock.advance(4.1);
+    expect(frames()).toBe(3);
+
+    display.stop();
+    expect(clock.timers()).toBe(0);
   });
 });
