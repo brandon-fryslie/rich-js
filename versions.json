@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-328",
+      "ref": "refs/pull/328/merge",
+      "sha": "df1c95524d3e1bbc32ea64e1a7d7605cf292ef2a",
+      "timestamp": "2026-10-03T14:46:14.652Z",
+      "commits": [
+        {
+          "sha": "df1c95524d3e1bbc32ea64e1a7d7605cf292ef2a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:45:01-06:00",
+          "message": "Merge dde2be75208d76355e20dcc9802e0d051b444c78 into 16af325f6dfad880dd1b4e79e6e56de541ec508f\n"
+        },
+        {
+          "sha": "dde2be75208d76355e20dcc9802e0d051b444c78",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:44:57-06:00",
+          "message": "fix(strip): Strip measures as the row it draws (rich-strip-hbbu)\n\nStrip implemented Renderable only, so Measurement.get answered (0, maxWidth)\nfor it and every container measuring one got the whole offer. It now sums its\nitems' measurements and the cells its joins draw; render and measure read one\nlist of joins. effects-feel's drawn-row workaround is replaced by Measurement.get.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "16af325f6dfad880dd1b4e79e6e56de541ec508f",
