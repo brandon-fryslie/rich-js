@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-333",
+      "ref": "refs/pull/333/merge",
+      "sha": "8e0949d212ad965af25f18719115297589fc6105",
+      "timestamp": "2026-10-03T16:00:48.188Z",
+      "commits": [
+        {
+          "sha": "8e0949d212ad965af25f18719115297589fc6105",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T09:59:58-06:00",
+          "message": "Merge 5762807a37315039e7b98076a3b21672bded8925 into a420e29e75cb36dc59c12858fad2c13fad03dc31\n"
+        },
+        {
+          "sha": "5762807a37315039e7b98076a3b21672bded8925",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T09:59:53-06:00",
+          "message": "fix(progress): TimeRemainingColumn estimates speed from the last 30 seconds of updates, as Rich does (rich-progress-jj5r.ef9)\n\nProgress keeps Rich's ProgressSample window per task and derives Task.speed\nonce a frame beside elapsed; timeRemaining reads it instead of\ncompleted / elapsed over the task's whole life.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a420e29e75cb36dc59c12858fad2c13fad03dc31",
