@@ -87,8 +87,7 @@ describe("Progress expand (rich-justify-0cr.3)", () => {
     expect(lines).toHaveLength(1);
     return lines[0]!.map((segment) => segment.text).join("");
   };
-  // Filled and empty cells share one glyph and differ only in style.
-  const barCells = (line: string): number => [...line].filter((ch) => ch === "━").length;
+  const barCells = (line: string): number => [...line].filter((ch) => "━╸╺".includes(ch)).length;
 
   it("keeps its natural width when it does not expand, whatever it is offered", () => {
     expect(row(false, 120)).toBe(row(false, 45));
@@ -97,15 +96,12 @@ describe("Progress expand (rich-justify-0cr.3)", () => {
 
   // Python Rich 9d8f9a3's `make_tasks_table` for the same columns at width 45.
   // Its grid pads no edge, so the row ends at the last column's text, or at
-  // the cell `expand` stretched it to — never on a pad cell. Every bar glyph
-  // reads as one: the reference draws a half cell at 42% where this port does
-  // not, and what is pinned here is where the columns sit.
+  // the cell `expand` stretched it to — never on a pad cell.
   it.each([
     [false, "compiling ━━━━━━━━╺━━━━━━━━━━━ done"],
     [true, "compiling    ━━━━━━━━╺━━━━━━━━━━━       done "],
   ])("lays its row out as Rich does (expand: %s)", (expand, reference) => {
-    const cells = (line: string): string => line.replace(/[━╸╺]/g, "#");
-    expect(cells(row(expand, 45))).toBe(cells(reference));
+    expect(row(expand, 45)).toBe(reference);
   });
 
   it("fills the offer when it expands and leaves the bar at its own width", () => {
@@ -120,8 +116,7 @@ describe("A squeezed row narrows its bar before its description (rich-table-frxv
   // Python Rich 9d8f9a3: `TextColumn("{task.description}")` beside
   // `BarColumn(40)` at width 30. The bar's column may wrap and the
   // description's may not, so the bar alone gives up the nine cells:
-  // "download" whole and a bar of 21. Only where the columns sit is pinned;
-  // the bar's own glyphs differ from the reference on a colourless console.
+  // "download" whole and a bar of 21, as the reference draws it in colour.
   it("keeps the description whole and draws the bar 21 cells wide", () => {
     const progress = new Progress(new TextColumn("{task.description}"), new BarColumn(40));
     progress.addTask("download", { total: 10 });

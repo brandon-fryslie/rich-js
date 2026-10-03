@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { ProgressBar } from "../../src/renderables/progressBar.js";
 import { Segment } from "../../src/core/segment.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import { getStyle } from "../../src/core/protocol.js";
+import { ColorDepth } from "../../src/core/color.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -95,6 +97,42 @@ describe("ProgressBar", () => {
       const styles0 = segs0.map((s) => s.style);
       const styles100 = segs100.map((s) => s.style);
       expect(styles0).not.toEqual(styles100);
+    });
+  });
+
+  // Python Rich 9d8f9a3 `ProgressBar.__rich_console__`, each case its output there.
+  describe("as Rich draws it", () => {
+    const texts = (r: Renderable, opts: RenderOptions): string[] => collectSegments(r, opts).map((s) => s.text);
+
+    it("leaves the empty part blank on a colourless console", () => {
+      const bar = new ProgressBar({ total: 10, completed: 5, width: 10 });
+      expect(texts(bar, { maxWidth: 80, colorSystem: null })).toEqual(["━━━━━"]);
+    });
+
+    it("draws the empty part on a colour console, opened by a left half cell", () => {
+      const half = new ProgressBar({ total: 10, completed: 5, width: 10 });
+      expect(texts(half, { maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR })).toEqual(["━━━━━", "╺", "━━━━"]);
+      const none = new ProgressBar({ total: 10, completed: 0, width: 10 });
+      expect(texts(none, { maxWidth: 80 })).toEqual(["━━━━━━━━━━"]);
+    });
+
+    it("draws half a cell when the fill lands on a half", () => {
+      // `BarColumn(40)` at 50% offered 21 cells.
+      const bar = new ProgressBar({ total: 100, completed: 50, width: 40 });
+      expect(texts(bar, { maxWidth: 21, colorSystem: null })).toEqual(["━━━━━━━━━━", "╸"]);
+      expect(texts(bar, { maxWidth: 21 })).toEqual(["━━━━━━━━━━", "╸", "━━━━━━━━━━"]);
+    });
+
+    it("draws the half cells as spaces on an ASCII-only console", () => {
+      const bar = new ProgressBar({ total: 100, completed: 50, width: 21 });
+      expect(texts(bar, { maxWidth: 80, asciiOnly: true })).toEqual(["----------", " ", "----------"]);
+    });
+
+    it("draws a total of zero as a finished bar", () => {
+      const bar = new ProgressBar({ total: 0, width: 10 });
+      const segments = collectSegments(bar, { maxWidth: 80 });
+      expect(segments.map((s) => s.text)).toEqual(["━━━━━━━━━━"]);
+      expect(segments[0]?.style).toEqual(getStyle({ maxWidth: 80 }, bar.finishedStyle));
     });
   });
 
