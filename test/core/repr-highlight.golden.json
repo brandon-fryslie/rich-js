@@ -1,0 +1,908 @@
+[
+ {
+  "text": "",
+  "spans": [],
+  "ansi": "\n"
+ },
+ {
+  "text": " ",
+  "spans": [],
+  "ansi": " \n"
+ },
+ {
+  "text": "<foo>",
+  "spans": [
+   [
+    0,
+    1,
+    "repr.tag_start"
+   ],
+   [
+    1,
+    4,
+    "repr.tag_name"
+   ],
+   [
+    4,
+    5,
+    "repr.tag_end"
+   ]
+  ],
+  "ansi": "\u001b[1m<\u001b[0m\u001b[1;95mfoo\u001b[0m\u001b[1m>\u001b[0m\n"
+ },
+ {
+  "text": "<foo: 23>",
+  "spans": [
+   [
+    0,
+    1,
+    "repr.tag_start"
+   ],
+   [
+    1,
+    5,
+    "repr.tag_name"
+   ],
+   [
+    5,
+    8,
+    "repr.tag_contents"
+   ],
+   [
+    8,
+    9,
+    "repr.tag_end"
+   ],
+   [
+    6,
+    8,
+    "repr.number"
+   ]
+  ],
+  "ansi": "\u001b[1m<\u001b[0m\u001b[1;95mfoo:\u001b[0m\u001b[39m \u001b[0m\u001b[1;36m23\u001b[0m\u001b[1m>\u001b[0m\n"
+ },
+ {
+  "text": "<foo: <bar: 23>>",
+  "spans": [
+   [
+    0,
+    1,
+    "repr.tag_start"
+   ],
+   [
+    1,
+    5,
+    "repr.tag_name"
+   ],
+   [
+    5,
+    15,
+    "repr.tag_contents"
+   ],
+   [
+    15,
+    16,
+    "repr.tag_end"
+   ],
+   [
+    12,
+    14,
+    "repr.number"
+   ]
+  ],
+  "ansi": "\u001b[1m<\u001b[0m\u001b[1;95mfoo:\u001b[0m\u001b[39m <bar: \u001b[0m\u001b[1;36m23\u001b[0m\u001b[39m>\u001b[0m\u001b[1m>\u001b[0m\n"
+ },
+ {
+  "text": "False True None",
+  "spans": [
+   [
+    0,
+    5,
+    "repr.bool_false"
+   ],
+   [
+    6,
+    10,
+    "repr.bool_true"
+   ],
+   [
+    11,
+    15,
+    "repr.none"
+   ]
+  ],
+  "ansi": "\u001b[3;91mFalse\u001b[0m \u001b[3;92mTrue\u001b[0m \u001b[3;35mNone\u001b[0m\n"
+ },
+ {
+  "text": "foo=bar",
+  "spans": [
+   [
+    0,
+    3,
+    "repr.attrib_name"
+   ],
+   [
+    4,
+    7,
+    "repr.attrib_value"
+   ]
+  ],
+  "ansi": "\u001b[33mfoo\u001b[0m=\u001b[35mbar\u001b[0m\n"
+ },
+ {
+  "text": "foo=\"bar\"",
+  "spans": [
+   [
+    0,
+    3,
+    "repr.attrib_name"
+   ],
+   [
+    4,
+    9,
+    "repr.attrib_value"
+   ],
+   [
+    4,
+    9,
+    "repr.str"
+   ]
+  ],
+  "ansi": "\u001b[33mfoo\u001b[0m=\u001b[32m\"bar\"\u001b[0m\n"
+ },
+ {
+  "text": "<Permission.WRITE|READ: 3>",
+  "spans": [
+   [
+    0,
+    1,
+    "repr.tag_start"
+   ],
+   [
+    1,
+    23,
+    "repr.tag_name"
+   ],
+   [
+    23,
+    25,
+    "repr.tag_contents"
+   ],
+   [
+    25,
+    26,
+    "repr.tag_end"
+   ],
+   [
+    24,
+    25,
+    "repr.number"
+   ]
+  ],
+  "ansi": "\u001b[1m<\u001b[0m\u001b[1;95mPermission.WRITE|READ:\u001b[0m\u001b[39m \u001b[0m\u001b[1;36m3\u001b[0m\u001b[1m>\u001b[0m\n"
+ },
+ {
+  "text": "( )",
+  "spans": [
+   [
+    0,
+    1,
+    "repr.brace"
+   ],
+   [
+    2,
+    3,
+    "repr.brace"
+   ]
+  ],
+  "ansi": "\u001b[1m(\u001b[0m \u001b[1m)\u001b[0m\n"
+ },
+ {
+  "text": "[ ]",
+  "spans": [
+   [
+    0,
+    1,
+    "repr.brace"
+   ],
+   [
+    2,
+    3,
+    "repr.brace"
+   ]
+  ],
+  "ansi": "\u001b[1m[\u001b[0m \u001b[1m]\u001b[0m\n"
+ },
+ {
+  "text": "{ }",
+  "spans": [
+   [
+    0,
+    1,
+    "repr.brace"
+   ],
+   [
+    2,
+    3,
+    "repr.brace"
+   ]
+  ],
+  "ansi": "\u001b[1m{\u001b[0m \u001b[1m}\u001b[0m\n"
+ },
+ {
+  "text": " 1 ",
+  "spans": [
+   [
+    1,
+    2,
+    "repr.number"
+   ]
+  ],
+  "ansi": " \u001b[1;36m1\u001b[0m \n"
+ },
+ {
+  "text": " 1.2 ",
+  "spans": [
+   [
+    1,
+    4,
+    "repr.number"
+   ]
+  ],
+  "ansi": " \u001b[1;36m1.2\u001b[0m \n"
+ },
+ {
+  "text": " 0xff ",
+  "spans": [
+   [
+    1,
+    5,
+    "repr.number"
+   ]
+  ],
+  "ansi": " \u001b[1;36m0xff\u001b[0m \n"
+ },
+ {
+  "text": " 1e10 ",
+  "spans": [
+   [
+    1,
+    5,
+    "repr.number"
+   ]
+  ],
+  "ansi": " \u001b[1;36m1e10\u001b[0m \n"
+ },
+ {
+  "text": " 1j ",
+  "spans": [
+   [
+    1,
+    3,
+    "repr.number_complex"
+   ]
+  ],
+  "ansi": " \u001b[1;36m1j\u001b[0m \n"
+ },
+ {
+  "text": " 3.14j ",
+  "spans": [
+   [
+    1,
+    6,
+    "repr.number_complex"
+   ]
+  ],
+  "ansi": " \u001b[1;36m3.14j\u001b[0m \n"
+ },
+ {
+  "text": " (3.14+2.06j) ",
+  "spans": [
+   [
+    1,
+    2,
+    "repr.brace"
+   ],
+   [
+    12,
+    13,
+    "repr.brace"
+   ],
+   [
+    2,
+    12,
+    "repr.number_complex"
+   ]
+  ],
+  "ansi": " \u001b[1m(\u001b[0m\u001b[1;36m3.14+2.06j\u001b[0m\u001b[1m)\u001b[0m \n"
+ },
+ {
+  "text": " (3+2j) ",
+  "spans": [
+   [
+    1,
+    2,
+    "repr.brace"
+   ],
+   [
+    6,
+    7,
+    "repr.brace"
+   ],
+   [
+    2,
+    6,
+    "repr.number_complex"
+   ]
+  ],
+  "ansi": " \u001b[1m(\u001b[0m\u001b[1;36m3+2j\u001b[0m\u001b[1m)\u001b[0m \n"
+ },
+ {
+  "text": " (123456.4321-1234.5678j) ",
+  "spans": [
+   [
+    1,
+    2,
+    "repr.brace"
+   ],
+   [
+    24,
+    25,
+    "repr.brace"
+   ],
+   [
+    2,
+    24,
+    "repr.number_complex"
+   ]
+  ],
+  "ansi": " \u001b[1m(\u001b[0m\u001b[1;36m123456.4321-1234.5678j\u001b[0m\u001b[1m)\u001b[0m \n"
+ },
+ {
+  "text": " (-123123-2.1312342342423422e+25j) ",
+  "spans": [
+   [
+    1,
+    2,
+    "repr.brace"
+   ],
+   [
+    33,
+    34,
+    "repr.brace"
+   ],
+   [
+    2,
+    33,
+    "repr.number_complex"
+   ]
+  ],
+  "ansi": " \u001b[1m(\u001b[0m\u001b[1;36m-123123-2.1312342342423422e+25j\u001b[0m\u001b[1m)\u001b[0m \n"
+ },
+ {
+  "text": " /foo ",
+  "spans": [
+   [
+    1,
+    2,
+    "repr.path"
+   ],
+   [
+    2,
+    5,
+    "repr.filename"
+   ]
+  ],
+  "ansi": " \u001b[35m/\u001b[0m\u001b[95mfoo\u001b[0m \n"
+ },
+ {
+  "text": " /foo/bar.html ",
+  "spans": [
+   [
+    1,
+    6,
+    "repr.path"
+   ],
+   [
+    6,
+    14,
+    "repr.filename"
+   ]
+  ],
+  "ansi": " \u001b[35m/foo/\u001b[0m\u001b[95mbar.html\u001b[0m \n"
+ },
+ {
+  "text": "01-23-45-67-89-AB",
+  "spans": [
+   [
+    0,
+    17,
+    "repr.eui48"
+   ]
+  ],
+  "ansi": "\u001b[1;92m01-23-45-67-89-AB\u001b[0m\n"
+ },
+ {
+  "text": "01-23-45-FF-FE-67-89-AB",
+  "spans": [
+   [
+    0,
+    23,
+    "repr.eui64"
+   ]
+  ],
+  "ansi": "\u001b[1;92m01-23-45-FF-FE-67-89-AB\u001b[0m\n"
+ },
+ {
+  "text": "01:23:45:67:89:AB",
+  "spans": [
+   [
+    0,
+    17,
+    "repr.ipv6"
+   ]
+  ],
+  "ansi": "\u001b[1;92m01:23:45:67:89:AB\u001b[0m\n"
+ },
+ {
+  "text": "01:23:45:FF:FE:67:89:AB",
+  "spans": [
+   [
+    0,
+    23,
+    "repr.ipv6"
+   ]
+  ],
+  "ansi": "\u001b[1;92m01:23:45:FF:FE:67:89:AB\u001b[0m\n"
+ },
+ {
+  "text": "0123.4567.89AB",
+  "spans": [
+   [
+    0,
+    14,
+    "repr.eui48"
+   ]
+  ],
+  "ansi": "\u001b[1;92m0123.4567.89AB\u001b[0m\n"
+ },
+ {
+  "text": "0123.45FF.FE67.89AB",
+  "spans": [
+   [
+    0,
+    19,
+    "repr.eui64"
+   ]
+  ],
+  "ansi": "\u001b[1;92m0123.45FF.FE67.89AB\u001b[0m\n"
+ },
+ {
+  "text": "ed-ed-ed-ed-ed-ed",
+  "spans": [
+   [
+    0,
+    17,
+    "repr.eui48"
+   ]
+  ],
+  "ansi": "\u001b[1;92med-ed-ed-ed-ed-ed\u001b[0m\n"
+ },
+ {
+  "text": "ED-ED-ED-ED-ED-ED",
+  "spans": [
+   [
+    0,
+    17,
+    "repr.eui48"
+   ]
+  ],
+  "ansi": "\u001b[1;92mED-ED-ED-ED-ED-ED\u001b[0m\n"
+ },
+ {
+  "text": "Ed-Ed-Ed-Ed-Ed-Ed",
+  "spans": [
+   [
+    0,
+    17,
+    "repr.eui48"
+   ]
+  ],
+  "ansi": "\u001b[1;92mEd-Ed-Ed-Ed-Ed-Ed\u001b[0m\n"
+ },
+ {
+  "text": "0-00-1-01-2-02",
+  "spans": [
+   [
+    0,
+    14,
+    "repr.eui48"
+   ]
+  ],
+  "ansi": "\u001b[1;92m0-00-1-01-2-02\u001b[0m\n"
+ },
+ {
+  "text": " https://example.org ",
+  "spans": [
+   [
+    1,
+    20,
+    "repr.url"
+   ]
+  ],
+  "ansi": " \u001b[4;94mhttps://example.org\u001b[0m \n"
+ },
+ {
+  "text": " http://example.org ",
+  "spans": [
+   [
+    1,
+    19,
+    "repr.url"
+   ]
+  ],
+  "ansi": " \u001b[4;94mhttp://example.org\u001b[0m \n"
+ },
+ {
+  "text": " http://example.org/index.html ",
+  "spans": [
+   [
+    1,
+    30,
+    "repr.url"
+   ]
+  ],
+  "ansi": " \u001b[4;94mhttp://example.org/index.html\u001b[0m \n"
+ },
+ {
+  "text": " http://example.org/index.html#anchor ",
+  "spans": [
+   [
+    1,
+    37,
+    "repr.url"
+   ]
+  ],
+  "ansi": " \u001b[4;94mhttp://example.org/index.html#anchor\u001b[0m \n"
+ },
+ {
+  "text": "https://www.youtube.com/@LinusTechTips",
+  "spans": [
+   [
+    0,
+    38,
+    "repr.url"
+   ]
+  ],
+  "ansi": "\u001b[4;94mhttps://www.youtube.com/@LinusTechTips\u001b[0m\n"
+ },
+ {
+  "text": " http://example.org/index.html?param1=value1 ",
+  "spans": [
+   [
+    31,
+    37,
+    "repr.attrib_name"
+   ],
+   [
+    38,
+    44,
+    "repr.attrib_value"
+   ],
+   [
+    1,
+    44,
+    "repr.url"
+   ]
+  ],
+  "ansi": " \u001b[4;94mhttp://example.org/index.html?\u001b[0m\u001b[4;94mparam1\u001b[0m\u001b[4;94m=\u001b[0m\u001b[4;94mvalue1\u001b[0m \n"
+ },
+ {
+  "text": " http://example.org/~folder ",
+  "spans": [
+   [
+    1,
+    27,
+    "repr.url"
+   ]
+  ],
+  "ansi": " \u001b[4;94mhttp://example.org/~folder\u001b[0m \n"
+ },
+ {
+  "text": "No place like 127.0.0.1",
+  "spans": [
+   [
+    14,
+    23,
+    "repr.ipv4"
+   ]
+  ],
+  "ansi": "No place like \u001b[1;92m127.0.0.1\u001b[0m\n"
+ },
+ {
+  "text": "''",
+  "spans": [
+   [
+    0,
+    2,
+    "repr.str"
+   ]
+  ],
+  "ansi": "\u001b[32m''\u001b[0m\n"
+ },
+ {
+  "text": "'hello'",
+  "spans": [
+   [
+    0,
+    7,
+    "repr.str"
+   ]
+  ],
+  "ansi": "\u001b[32m'hello'\u001b[0m\n"
+ },
+ {
+  "text": "'''hello'''",
+  "spans": [
+   [
+    0,
+    11,
+    "repr.str"
+   ]
+  ],
+  "ansi": "\u001b[32m'''hello'''\u001b[0m\n"
+ },
+ {
+  "text": "\"\"",
+  "spans": [
+   [
+    0,
+    2,
+    "repr.str"
+   ]
+  ],
+  "ansi": "\u001b[32m\"\"\u001b[0m\n"
+ },
+ {
+  "text": "\"hello\"",
+  "spans": [
+   [
+    0,
+    7,
+    "repr.str"
+   ]
+  ],
+  "ansi": "\u001b[32m\"hello\"\u001b[0m\n"
+ },
+ {
+  "text": "\"\"\"hello\"\"\"",
+  "spans": [
+   [
+    0,
+    11,
+    "repr.str"
+   ]
+  ],
+  "ansi": "\u001b[32m\"\"\"hello\"\"\"\u001b[0m\n"
+ },
+ {
+  "text": "\\'foo'",
+  "spans": [],
+  "ansi": "\\'foo'\n"
+ },
+ {
+  "text": "it's no 'string'",
+  "spans": [
+   [
+    8,
+    16,
+    "repr.str"
+   ]
+  ],
+  "ansi": "it's no \u001b[32m'string'\u001b[0m\n"
+ },
+ {
+  "text": "78351748-9b32-4e08-ad3e-7e9ff124d541",
+  "spans": [
+   [
+    0,
+    36,
+    "repr.uuid"
+   ]
+  ],
+  "ansi": "\u001b[93m78351748-9b32-4e08-ad3e-7e9ff124d541\u001b[0m\n"
+ },
+ {
+  "text": "x=12 True foo(a=1)",
+  "spans": [
+   [
+    0,
+    1,
+    "repr.attrib_name"
+   ],
+   [
+    2,
+    4,
+    "repr.attrib_value"
+   ],
+   [
+    14,
+    15,
+    "repr.attrib_name"
+   ],
+   [
+    16,
+    17,
+    "repr.attrib_value"
+   ],
+   [
+    13,
+    14,
+    "repr.brace"
+   ],
+   [
+    17,
+    18,
+    "repr.brace"
+   ],
+   [
+    2,
+    4,
+    "repr.number"
+   ],
+   [
+    5,
+    9,
+    "repr.bool_true"
+   ],
+   [
+    10,
+    13,
+    "repr.call"
+   ],
+   [
+    16,
+    17,
+    "repr.number"
+   ]
+  ],
+  "ansi": "\u001b[33mx\u001b[0m=\u001b[1;36m12\u001b[0m \u001b[3;92mTrue\u001b[0m \u001b[1;35mfoo\u001b[0m\u001b[1m(\u001b[0m\u001b[33ma\u001b[0m=\u001b[1;36m1\u001b[0m\u001b[1m)\u001b[0m\n"
+ },
+ {
+  "text": "café=1 naïve=True ünï(1)",
+  "spans": [
+   [
+    0,
+    4,
+    "repr.attrib_name"
+   ],
+   [
+    5,
+    6,
+    "repr.attrib_value"
+   ],
+   [
+    7,
+    12,
+    "repr.attrib_name"
+   ],
+   [
+    13,
+    17,
+    "repr.attrib_value"
+   ],
+   [
+    21,
+    22,
+    "repr.brace"
+   ],
+   [
+    23,
+    24,
+    "repr.brace"
+   ],
+   [
+    5,
+    6,
+    "repr.number"
+   ],
+   [
+    13,
+    17,
+    "repr.bool_true"
+   ],
+   [
+    18,
+    21,
+    "repr.call"
+   ],
+   [
+    22,
+    23,
+    "repr.number"
+   ]
+  ],
+  "ansi": "\u001b[33mcafé\u001b[0m=\u001b[1;36m1\u001b[0m \u001b[33mnaïve\u001b[0m=\u001b[3;92mTrue\u001b[0m \u001b[1;35münï\u001b[0m\u001b[1m(\u001b[0m\u001b[1;36m1\u001b[0m\u001b[1m)\u001b[0m\n"
+ },
+ {
+  "text": "Foo(bar=None, baz=[1, 2.5, -3e4], ok=False)",
+  "spans": [
+   [
+    4,
+    7,
+    "repr.attrib_name"
+   ],
+   [
+    8,
+    12,
+    "repr.attrib_value"
+   ],
+   [
+    14,
+    17,
+    "repr.attrib_name"
+   ],
+   [
+    34,
+    36,
+    "repr.attrib_name"
+   ],
+   [
+    37,
+    42,
+    "repr.attrib_value"
+   ],
+   [
+    3,
+    4,
+    "repr.brace"
+   ],
+   [
+    18,
+    19,
+    "repr.brace"
+   ],
+   [
+    31,
+    32,
+    "repr.brace"
+   ],
+   [
+    42,
+    43,
+    "repr.brace"
+   ],
+   [
+    0,
+    3,
+    "repr.call"
+   ],
+   [
+    8,
+    12,
+    "repr.none"
+   ],
+   [
+    19,
+    20,
+    "repr.number"
+   ],
+   [
+    22,
+    25,
+    "repr.number"
+   ],
+   [
+    27,
+    31,
+    "repr.number"
+   ],
+   [
+    37,
+    42,
+    "repr.bool_false"
+   ]
+  ],
+  "ansi": "\u001b[1;35mFoo\u001b[0m\u001b[1m(\u001b[0m\u001b[33mbar\u001b[0m=\u001b[3;35mNone\u001b[0m, \u001b[33mbaz\u001b[0m=\u001b[1m[\u001b[0m\u001b[1;36m1\u001b[0m, \u001b[1;36m2.5\u001b[0m, \u001b[1;36m-3e4\u001b[0m\u001b[1m]\u001b[0m, \u001b[33mok\u001b[0m=\u001b[3;91mFalse\u001b[0m\u001b[1m)\u001b[0m\n"
+ }
+]

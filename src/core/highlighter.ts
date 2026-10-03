@@ -42,33 +42,19 @@ export class RegexHighlighter extends Highlighter {
     const isNamespace = baseStyle.endsWith(".");
 
     for (const pattern of ctor.highlights) {
-      const re =
-        pattern instanceof RegExp
-          ? new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : pattern.flags + "g")
-          : new RegExp(pattern, "g");
-
-      let match: RegExpExecArray | null;
-      while ((match = re.exec(text.plain)) !== null) {
-        if (match[0].length === 0) {
-          re.lastIndex++;
-          continue;
-        }
-
-        if (match.groups) {
-          let searchFrom = 0;
-          for (const [groupName, groupValue] of Object.entries(match.groups)) {
-            if (groupValue !== undefined) {
-              const posInMatch = match[0].indexOf(groupValue, searchFrom);
-              if (posInMatch >= 0) {
-                const start = match.index + posInMatch;
-                const style = isNamespace
-                  ? `${baseStyle}${groupName}`
-                  : baseStyle || groupName;
-                text.stylize(style, start, start + groupValue.length);
-                searchFrom = posInMatch + groupValue.length;
-              }
-            }
-          }
+      // `d` reports where each group matched, as Python's `match.span(name)`
+      // does; searching the match for the group's text finds the first copy
+      // of it, which is not always the one the group captured.
+      const source = pattern instanceof RegExp ? pattern.source : pattern;
+      const flags = new Set([...(pattern instanceof RegExp ? pattern.flags : ""), "g", "d"]);
+      for (const match of text.plain.matchAll(new RegExp(source, [...flags].join("")))) {
+        if (match.indices === undefined) throw new Error("a match of a `d`-flag pattern carries indices");
+        // Group definition order, as Rich's `groupdict()`: a later group's span
+        // lands on top of an earlier one's.
+        for (const [groupName, span] of Object.entries(match.indices.groups ?? {})) {
+          if (span === undefined || span[1] <= span[0]) continue;
+          const style = isNamespace ? `${baseStyle}${groupName}` : baseStyle || groupName;
+          text.stylize(style, span[0], span[1]);
         }
       }
     }
@@ -77,22 +63,44 @@ export class RegexHighlighter extends Highlighter {
 
 // --- ReprHighlighter ---
 
+// Rich 15.0.0's patterns, compiled for the `u` flag. Python's `\w`, `\b` and
+// `\d` are Unicode-aware on a `str`; JavaScript's are ASCII even under `u`, so
+// `café=1` would lose its attribute name. Each is spelled out below. `.` is
+// `[^\n]` because Python's dot stops only at `\n`, JavaScript's at `\r` too.
+const W = String.raw`\p{L}\p{N}_`;
+const WB = String.raw`(?:(?<=[${W}])(?![${W}])|(?<![${W}])(?=[${W}]))`;
+const NWB = String.raw`(?:(?<=[${W}])(?=[${W}])|(?<![${W}])(?![${W}]))`;
+const D = String.raw`\p{Nd}`;
+
 // [LAW:one-type-per-behavior] All repr patterns use the same RegexHighlighter mechanism
 export class ReprHighlighter extends RegexHighlighter {
   static override baseStyle = "repr.";
   static override highlights = [
-    // URLs
-    /(?<url>https?:\/\/[^\s<>"']+)/g,
-    // UUIDs
-    /(?<uuid>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gi,
-    // Quoted strings
-    /(?<str>'[^']*'|"[^"]*")/g,
-    // Booleans
-    /(?<bool>\btrue\b|\bfalse\b)/g,
-    // None/null/undefined
-    /(?<none>\bnull\b|\bundefined\b|\bNone\b)/g,
-    // Numbers (integers and floats)
-    /(?<number>(?<!\w)-?(?:0x[0-9a-f]+|\d+(?:\.\d+)?(?:e[+-]?\d+)?)(?!\w))/gi,
+    new RegExp(String.raw`(?<tag_start><)(?<tag_name>[\-${W}.:|]*)(?<tag_contents>[^]*)(?<tag_end>>)`, "u"),
+    new RegExp(String.raw`(?<attrib_name>[${W}]{1,50})=(?<attrib_value>"?[${W}]+"?)?`, "u"),
+    new RegExp(String.raw`(?<brace>[\][{}()])`, "u"),
+    // [LAW:dataflow-not-control-flow] One alternation, scanned once, as Rich's
+    // `_combine_regex` joins it: where two could match, the earlier claims it.
+    new RegExp(
+      [
+        String.raw`(?<ipv4>[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})`,
+        String.raw`(?<ipv6>([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4})`,
+        String.raw`(?<eui64>(?:[0-9A-Fa-f]{1,2}-){7}[0-9A-Fa-f]{1,2}|(?:[0-9A-Fa-f]{1,2}:){7}[0-9A-Fa-f]{1,2}|(?:[0-9A-Fa-f]{4}\.){3}[0-9A-Fa-f]{4})`,
+        String.raw`(?<eui48>(?:[0-9A-Fa-f]{1,2}-){5}[0-9A-Fa-f]{1,2}|(?:[0-9A-Fa-f]{1,2}:){5}[0-9A-Fa-f]{1,2}|(?:[0-9A-Fa-f]{4}\.){2}[0-9A-Fa-f]{4})`,
+        String.raw`(?<uuid>[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})`,
+        String.raw`(?<call>[${W}.]*?)\(`,
+        // JavaScript's `true`, `false`, `null` and `undefined` beside Python's
+        // names: `Pretty` draws JavaScript values through this highlighter.
+        String.raw`${WB}(?<bool_true>True|true)${WB}|${WB}(?<bool_false>False|false)${WB}|${WB}(?<none>None|null|undefined)${WB}`,
+        String.raw`(?<ellipsis>\.\.\.)`,
+        String.raw`(?<number_complex>(?<![${W}])(?:-?[0-9]+\.?[0-9]*(?:e[\-+]?${D}+?)?)(?:[\-+](?:[0-9]+\.?[0-9]*(?:e[\-+]?${D}+)?))?j)`,
+        String.raw`(?<number>(?<![${W}])-?[0-9]+\.?[0-9]*(e[\-+]?${D}+?)?${WB}|0x[0-9a-fA-F]*)`,
+        String.raw`(?<path>${NWB}(\/[\-${W}._+]+)*\/)(?<filename>[\-${W}._+]*)?`,
+        String.raw`(?<![\\${W}])(?<str>b?'''[^\n]*?(?<!\\)'''|b?'[^\n]*?(?<!\\)'|b?"""[^\n]*?(?<!\\)"""|b?"[^\n]*?(?<!\\)")`,
+        String.raw`(?<url>(file|https|http|ws|wss):\/\/[\-0-9a-zA-Z$_+!\x60(),.?\/;:&=%#~@]*)`,
+      ].join("|"),
+      "u",
+    ),
   ];
 }
 

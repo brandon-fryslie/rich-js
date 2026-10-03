@@ -136,6 +136,12 @@ describe("a console's markup and highlight settings, in content embedded in a re
     return chunks.join("");
   }
 
+  // What a reader sees: the tags these tests look for are repr-highlighted as
+  // braces on a site that highlights, as Rich's are.
+  function seen(renderable: Renderable, settings: ConsoleOptions = {}, ...print: [PrintOptions?]): string {
+    return printed(renderable, settings, ...print).replace(/\x1b\[[0-9;]*m/g, "");
+  }
+
   function table(slot: "cell" | "header" | "footer" | "title" | "caption") {
     return (content: string): Renderable => {
       const t = new Table({
@@ -171,11 +177,11 @@ describe("a console's markup and highlight settings, in content embedded in a re
 
   for (const [site, build] of [...highlighted, ...plain]) {
     it(`draws the tags in ${site} under a console with markup off`, () => {
-      expect(printed(build("[bold]Hello[/bold]"), { markup: false })).toContain("[bold]Hello[/bold]");
+      expect(seen(build("[bold]Hello[/bold]"), { markup: false })).toContain("[bold]Hello[/bold]");
     });
 
     it(`draws the tags in ${site} printed with markup off`, () => {
-      expect(printed(build("[bold]Hello[/bold]"), {}, { markup: false })).toContain("[bold]Hello[/bold]");
+      expect(seen(build("[bold]Hello[/bold]"), {}, { markup: false })).toContain("[bold]Hello[/bold]");
     });
   }
 
@@ -267,13 +273,13 @@ describe("a console's markup and highlight settings, in content embedded in a re
   });
 
   it("repr-highlights column items under a default console, as print does", () => {
-    const cyan = "\x1b[36m1";
-    expect(printed(new Columns(["1", "True"]))).toContain(cyan);
+    const number = "\x1b[1;36m1";
+    expect(printed(new Columns(["1", "True"]))).toContain(number);
   });
 
   for (const [site, build] of [...highlighted, ...plain]) {
     it(`replaces emoji codes in ${site} under a console with markup off, as Rich's render_str does`, () => {
-      expect(printed(build("[b]:smile:"), { markup: false })).toContain("[b]😄");
+      expect(seen(build("[b]:smile:"), { markup: false })).toContain("[b]😄");
     });
   }
 

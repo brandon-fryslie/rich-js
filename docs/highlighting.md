@@ -11,7 +11,9 @@ console.print('name="api", count=42, ok=true, owner=null');
 console.print("id=a3f2c1d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d docs=https://example.com/api");
 ```
 
-The patterns are numbers, quoted strings, `true`/`false`, `null`/`undefined`/`None`, URLs, and UUIDs.
+The default highlighter is `ReprHighlighter`, and it finds what Rich's does, styled the way Rich styles it: numbers (complex ones too), quoted strings, `True`/`False`/`None`, `name=value` attributes, calls like `foo(`, brackets, `...`, `<tag>` reprs, file paths, URLs, UUIDs, IPv4 and IPv6 addresses, and MAC addresses. Each is drawn with a `repr.*` style — `repr.number`, `repr.bool_true`, `repr.call` and so on — that a [theme](./style#style-themes) can redefine.
+
+It departs from Rich in one place: JavaScript's `true`, `false`, `null` and `undefined` are styled like `True`, `False` and `None`, because [`Pretty`](./pretty) draws JavaScript values through this highlighter. Rich leaves those words plain.
 
 ## Enabling and disabling
 
@@ -117,7 +119,7 @@ console.print("Hello, World!");
 
 | Class | What it highlights |
 |---|---|
-| `ReprHighlighter` | Default. Numbers, quoted strings, booleans, null, URLs, UUIDs |
+| `ReprHighlighter` | Default. Rich's repr patterns — numbers, strings, booleans, attributes, calls, paths, URLs, addresses |
 | `JSONHighlighter` | JSON-formatted strings — keys, values, brackets |
 | `ISO8601Highlighter` | ISO 8601 date/time strings |
 
