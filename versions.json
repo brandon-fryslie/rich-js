@@ -4,15 +4,22 @@
     {
       "version": "pr-295",
       "ref": "refs/pull/295/merge",
-      "sha": "1320e052e536136ef3f09b6ec39841cf09b67eec",
-      "timestamp": "2026-10-03T04:45:03.710Z",
+      "sha": "f9eeab22c33f6b8e7a6ab406bda2b73befba008d",
+      "timestamp": "2026-10-03T04:48:53.260Z",
       "commits": [
         {
-          "sha": "1320e052e536136ef3f09b6ec39841cf09b67eec",
+          "sha": "f9eeab22c33f6b8e7a6ab406bda2b73befba008d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:43:47Z",
-          "message": "Merge d9c463687120f877ed6fa85f496b9b3c88aeb4ee into d2f5674f2dd3ce5ca4d77008774be807f12aa2a0\n"
+          "timestamp": "2026-10-03T04:47:39Z",
+          "message": "Merge 140795604512017686e276d6afff61b3dafd7e40 into d2f5674f2dd3ce5ca4d77008774be807f12aa2a0\n"
+        },
+        {
+          "sha": "140795604512017686e276d6afff61b3dafd7e40",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T22:47:34-06:00",
+          "message": "fix(test): the timeout report reads the budget's end, not the failure's report; the cleanup test fails at once on a fixture that never paints (rich-test-suite-czqk)\n\nReview (medium) of PR #295: readings are taken by a timer at the budget's end,\nso after-hooks and the abandoned body do not count; a retry's report lands on\nits own timeout error, the last; a fixture ending before FRAME fails the\ncleanup test with its output instead of hanging to the timeout.\n"
         },
         {
           "sha": "d9c463687120f877ed6fa85f496b9b3c88aeb4ee",
