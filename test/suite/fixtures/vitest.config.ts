@@ -7,5 +7,6 @@ import suite from "../../../vitest.config.js";
 export default defineConfig({
   ...suite,
   root: REPO_ROOT,
-  test: { ...suite.test, include: ["test/suite/fixtures/times-out.fixture.ts"], testTimeout: 1_000 },
+  // One reporter wherever it runs: under CI vitest adds GitHub annotations, which print each failure again.
+  test: { ...suite.test, include: ["test/suite/fixtures/times-out.fixture.ts"], testTimeout: 1_000, reporters: ["default"] },
 });
