@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-325",
+      "ref": "refs/pull/325/merge",
+      "sha": "a5ec6da63fa855ad943e951e68d7227e289dfa70",
+      "timestamp": "2026-10-03T14:03:35.372Z",
+      "commits": [
+        {
+          "sha": "a5ec6da63fa855ad943e951e68d7227e289dfa70",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:02:21-06:00",
+          "message": "Merge 6cff6c3ffc98d399b3bcb9eae52570be89710a6a into 1c3580c5a2146be7cd66c6dc081f6ded7664d1f7\n"
+        },
+        {
+          "sha": "6cff6c3ffc98d399b3bcb9eae52570be89710a6a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:02:16-06:00",
+          "message": "fix(highlighter)!: highlighting takes one pass over a long run (rich-highlighter-058y)\n\nThree of Rich's patterns rescan a run from each of its characters, so a\n100k-cell run took 5s (letters, `<`) to 75s (digits) to highlight:\n\n- `call` looked for a `(` from every letter of a word. It now starts only\n  where a word does. A name glued to the end of another match mid-word\n  (`foo` in `aa-bb-cc-dd-ee-fffoo(`) is no longer styled as a call; this\n  is the one change in output, documented in docs/highlighting.md.\n- the number patterns' `[0-9]+\\.?[0-9]*` could split a digit run any way.\n  `[0-9]+(?:\\.[0-9]*)?` matches the same strings in the same order.\n- `tag` can only open at the text's first `<`; a lookbehind starts it there.\n\nA 600k-input differential fuzz against the old patterns found no\ndifference in JSONHighlighter and, in ReprHighlighter, only glued calls.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-324",
       "ref": "refs/pull/324/merge",
       "sha": "e6cbcea2f43430acab4097233a348d07aa101107",
