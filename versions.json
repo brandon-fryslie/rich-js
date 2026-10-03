@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-288",
-      "ref": "refs/pull/288/merge",
-      "sha": "6770e61c7307ebc51096ff02e760c28485e662b2",
-      "timestamp": "2026-10-03T01:27:07.730Z",
-      "commits": [
-        {
-          "sha": "6770e61c7307ebc51096ff02e760c28485e662b2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T01:26:09Z",
-          "message": "Merge ffdd5bc0c7e9cf0d4b44c1a30d0662a08d39b952 into 45a4d6e6fd8dfb5b949115c3dd8e80b9a98baa1d\n"
-        },
-        {
-          "sha": "ffdd5bc0c7e9cf0d4b44c1a30d0662a08d39b952",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T19:26:04-06:00",
-          "message": "fix(host): animate paints its first frame now, a tick satisfies a queued refresh, frameRate refuses rates a timer cannot wait out (rich-effects-fxiy.b40)\n\nReview (high) on #288.\n"
-        },
-        {
-          "sha": "e68fcc3915ba6ab9774f74d33c86cf2376c92f4d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T19:18:35-06:00",
-          "message": "feat(host): frame clock — App and Live tick at a caller-chosen rate on an injected Clock (rich-effects-fxiy.b40)\n\nframeRate is the one parser of a rate: positive, finite, fractional (0.5 is a\nframe every two seconds). App takes a rate and a clock, hands each frame's t\nto its view, and ticks only while animate() holds and it is running; Live\nparses refreshPerSecond through the same parser and ticks on its clock. The\neffects-feel demo drops its own timer for App's.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "45a4d6e6fd8dfb5b949115c3dd8e80b9a98baa1d",
-      "timestamp": "2026-10-03T01:09:39.674Z",
+      "sha": "0d6ef018fa01d417f237de8e5214486818e882b4",
+      "timestamp": "2026-10-03T01:29:34.727Z",
       "commits": [
         {
-          "sha": "45a4d6e6fd8dfb5b949115c3dd8e80b9a98baa1d",
+          "sha": "0d6ef018fa01d417f237de8e5214486818e882b4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T19:08:45-06:00",
-          "message": "feat(examples): effects-feel demo (rich-shimmer-ufj7) (#287)\n\n* feat(examples): effects-feel — the feel demo for shimmer, pulse, drift, sparkle, fade-in and dissolve-out (rich-shimmer-ufj7)\n\nA demo, not a start on src/: the curves live in examples/effects-feel/curves.ts\non top of Effected and the easing vocabulary, and move to src/ only after\nBrandon's sign-off (rich-effects-fxiy.b6i).\n\nA powerline strip of a dozen palette cells and a run of text under each\neffect, drawn by App at --fps 0.5–30, at --depth truecolor/256/16/none (as the\nhost's FORCE_COLOR/NO_COLOR), on a --ground dark/light Catppuccin theme, with\nper-effect seconds, ease and swing. f and d replay the fade-in and dissolve;\nq and Ctrl-C hand the terminal back. Each loop shows the worst text-on-ground\ncontrast over a full period, read at the run's depth.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(examples): effects-feel moves a strip's fill wherever it shows (rich-shimmer-ufj7)\n\nHigh review on #287:\n- A move applies to the subject's own colours, by hex, in either slot, so a\n  powerline arrow moves with the fill it carries and the terminal ground\n  behind a cap never gains one (onColors replaces onSlot).\n- Subjects are measured at the width they are drawn, inside the padding, and\n  re-measured on resize; at-rest contrast is one identity sample, not 1,920.\n- A key outside the table repaints nothing, so mouse reports cost no frame.\n- The cell walk is graphemes(), the one Effected keys by; parseEase is the one\n  ease gate; an empty or non-decimal number flag is refused.\n- Tests wait on what the screen shows instead of wall-clock sleeps.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(examples): effects-feel measures each subject whole, once (rich-shimmer-ufj7)\n\nMedium review on #287: measuring per terminal width blocked the event loop\n~0.4 s for every width a resize passed through, and compared a per-width\nworst contrast against a startup-width rest. A sweep crosses the element,\nnot the screen, so span and contrast are the element's at its own width:\nmeasured once at startup, the cache and the resize work gone.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(examples): effects-feel reads contrast off the cells it draws (rich-shimmer-ufj7)\n\nEscalation high review on #287:\n- Contrast is read from the segments Effected yields, through the wire's own\n  drawnColors, so a slot an effect leaves on its ANSI spec is measured as that\n  slot; at --depth 16 the old second downgrade measured another colour.\n- A DrawnSubject carries its span, its own colours and its text cells,\n  measured once; frames no longer re-render or re-measure a subject.\n- Text cells are read with the Nerd Font glyphs, so an ASCII seam is not text.\n- Each effect row seeds its cells by its own key; the curves use IDENTITY.\n- The strip test pulses each ground in the direction the demo does.\n\nNot taken: the ~0.5 s contrast pass at startup is paid once, before the first\nframe. The 16-colour slot snap in Effected itself is rich-effects-fxiy.knj.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-10-02T19:28:31-06:00",
+          "message": "feat(host)!: frame clock, App and Live tick at a caller-chosen rate (rich-effects-fxiy.b40) (#288)\n\n* feat(host): frame clock — App and Live tick at a caller-chosen rate on an injected Clock (rich-effects-fxiy.b40)\n\nframeRate is the one parser of a rate: positive, finite, fractional (0.5 is a\nframe every two seconds). App takes a rate and a clock, hands each frame's t\nto its view, and ticks only while animate() holds and it is running; Live\nparses refreshPerSecond through the same parser and ticks on its clock. The\neffects-feel demo drops its own timer for App's.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(host): animate paints its first frame now, a tick satisfies a queued refresh, frameRate refuses rates a timer cannot wait out (rich-effects-fxiy.b40)\n\nReview (high) on #288.\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
