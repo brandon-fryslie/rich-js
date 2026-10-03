@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-295",
-      "ref": "refs/pull/295/merge",
-      "sha": "2a1738a19f8fa63e73d1fa45d4d0e6319498c4cc",
-      "timestamp": "2026-10-03T04:51:41.069Z",
-      "commits": [
-        {
-          "sha": "2a1738a19f8fa63e73d1fa45d4d0e6319498c4cc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:50:15Z",
-          "message": "Merge da9fb36ae9591e1f370bd8cbaf5b6590a9d2aa54 into d2f5674f2dd3ce5ca4d77008774be807f12aa2a0\n"
-        },
-        {
-          "sha": "da9fb36ae9591e1f370bd8cbaf5b6590a9d2aa54",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T22:50:10-06:00",
-          "message": "fix(test): the nested vitest prints through one reporter wherever it runs (rich-test-suite-czqk)\n\nUnder GITHUB_ACTIONS vitest adds the github-actions reporter, which prints each\nfailure a second time, so CI counted four reports where there are two.\n"
-        },
-        {
-          "sha": "140795604512017686e276d6afff61b3dafd7e40",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T22:47:34-06:00",
-          "message": "fix(test): the timeout report reads the budget's end, not the failure's report; the cleanup test fails at once on a fixture that never paints (rich-test-suite-czqk)\n\nReview (medium) of PR #295: readings are taken by a timer at the budget's end,\nso after-hooks and the abandoned body do not count; a retry's report lands on\nits own timeout error, the last; a fixture ending before FRAME fails the\ncleanup test with its output instead of hanging to the timeout.\n"
-        },
-        {
-          "sha": "d9c463687120f877ed6fa85f496b9b3c88aeb4ee",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T22:43:42-06:00",
-          "message": "fix(test): the timeout report rides vitest's own timeout error and reads its numbers right; a fixture is stopped once, by launch, and only while it runs (rich-test-suite-czqk)\n\nReview (high) of PR #295:\n- A timeout is the runner's timeout error, not elapsed >= budget: hook and\n  cleanup time no longer turn a plain failure into a 'timeout', and the report\n  lands on the timeout error, not errors[0].\n- CPU near elapsed means computing, not a slow machine; the report says the\n  worker's CPU leaves out its children.\n- launch registers stop itself; stop runs once, kills only a live leader (its\n  pid is free once it exits), and polling ends with the fixture.\n- The nested vitest is bounded and its spawn error asserted; the fixture config\n  roots at REPO_ROOT.\n"
-        },
-        {
-          "sha": "3aab8a2b37628fc99588ee4fe770ff8c35533114",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T22:38:36-06:00",
-          "message": "fix(test): a timeout says whether the test waited or the machine was slow; crash-order kills its fixture however the test ends (rich-test-suite-czqk)\n\nA timed-out test's failure now carries the worker's CPU over the test's\ntime and the machine's load average (test/suite/timeout-report.ts, wired\nin vitest.config.ts beside the one hang budget), so a red run tells a\nhang from a loaded machine without a rerun. The example-runner timeouts\nthe ticket saw did not reproduce here: 36 busy loops on 12 cores slowed\nthe file 2.6x (84 s) with no test near 30 s.\n\ncrash-order's fixture runs in its own process group, outside the runner's,\nso a test that failed or timed out before it exited left it running with\nits rich-app-* directory. runApp now registers stop() with onTestFinished:\nkill the group, wait for its end, remove the directory. Scripted repro (a\n2 s-timeout test over the `signal` ending): the old file leaves the process\nand directory, the new one neither.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "d2f5674f2dd3ce5ca4d77008774be807f12aa2a0",
-      "timestamp": "2026-10-03T04:26:22.907Z",
+      "sha": "ba78f52479c51e5e011c343dc3119ff8f6866ddf",
+      "timestamp": "2026-10-03T04:56:24.065Z",
       "commits": [
         {
-          "sha": "d2f5674f2dd3ce5ca4d77008774be807f12aa2a0",
+          "sha": "ba78f52479c51e5e011c343dc3119ff8f6866ddf",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T22:25:10-06:00",
-          "message": "fix(text): measurement agrees with what is drawn (rich-text-z3ln) (#294)\n\n* fix(text): measurement agrees with what is drawn (rich-text-z3ln)\n\n- RichText.measure takes its minimum from wrap's `widestWord`, the same word\n  `divideLine` never breaks, so a line's indent counts. Deliberate divergence\n  from Rich, whose measure drops the indent its wrapper keeps.\n- One `expandTabs` in cells.ts, called by RichText and Syntax: a tab reaches the\n  next tab stop (Rich's `Text.expand_tabs`). It also maps offsets, so a span\n  after a tab now styles the characters it named instead of landing short.\n- No site outside `Measurement.get` decides the fallback for a renderable that\n  cannot measure itself. Viewport and Constrain floored that minimum at 1;\n  it is now Rich's 0.\n\n* fix(text): review — tab size is checked, Constrain/Align measure as Rich does, whitespace keeps its width (rich-text-z3ln)\n\nexpandTabs refuses a tabSize that is not a positive integer (it silently\ndropped spans at 0) and measures a piece only when a tab follows it.\nConstrain measures its content at the constrained width; Align returns the\ncontent's measurement unchanged. Whitespace-only text takes its width as\nits minimum, as in Rich.\n\n* fix(text): tab size is parsed where it is given (rich-text-z3ln)\n\nA TabSize brand, made only by parseTabSize, is what expandTabs takes;\nRichText and Syntax parse at construction, so a bad tabSize fails at the\nconstructor rather than at the first render, tab or no tab."
+          "timestamp": "2026-10-02T22:55:35-06:00",
+          "message": "fix(test): a timeout says whether the test waited or the machine was slow; crash-order kills its fixture however the test ends (rich-test-suite-czqk) (#295)\n\n* fix(test): a timeout says whether the test waited or the machine was slow; crash-order kills its fixture however the test ends (rich-test-suite-czqk)\n\nA timed-out test's failure now carries the worker's CPU over the test's\ntime and the machine's load average (test/suite/timeout-report.ts, wired\nin vitest.config.ts beside the one hang budget), so a red run tells a\nhang from a loaded machine without a rerun. The example-runner timeouts\nthe ticket saw did not reproduce here: 36 busy loops on 12 cores slowed\nthe file 2.6x (84 s) with no test near 30 s.\n\ncrash-order's fixture runs in its own process group, outside the runner's,\nso a test that failed or timed out before it exited left it running with\nits rich-app-* directory. runApp now registers stop() with onTestFinished:\nkill the group, wait for its end, remove the directory. Scripted repro (a\n2 s-timeout test over the `signal` ending): the old file leaves the process\nand directory, the new one neither.\n\n* fix(test): the timeout report rides vitest's own timeout error and reads its numbers right; a fixture is stopped once, by launch, and only while it runs (rich-test-suite-czqk)\n\nReview (high) of PR #295:\n- A timeout is the runner's timeout error, not elapsed >= budget: hook and\n  cleanup time no longer turn a plain failure into a 'timeout', and the report\n  lands on the timeout error, not errors[0].\n- CPU near elapsed means computing, not a slow machine; the report says the\n  worker's CPU leaves out its children.\n- launch registers stop itself; stop runs once, kills only a live leader (its\n  pid is free once it exits), and polling ends with the fixture.\n- The nested vitest is bounded and its spawn error asserted; the fixture config\n  roots at REPO_ROOT.\n\n* fix(test): the timeout report reads the budget's end, not the failure's report; the cleanup test fails at once on a fixture that never paints (rich-test-suite-czqk)\n\nReview (medium) of PR #295: readings are taken by a timer at the budget's end,\nso after-hooks and the abandoned body do not count; a retry's report lands on\nits own timeout error, the last; a fixture ending before FRAME fails the\ncleanup test with its output instead of hanging to the timeout.\n\n* fix(test): the nested vitest prints through one reporter wherever it runs (rich-test-suite-czqk)\n\nUnder GITHUB_ACTIONS vitest adds the github-actions reporter, which prints each\nfailure a second time, so CI counted four reports where there are two."
         }
       ]
     }
