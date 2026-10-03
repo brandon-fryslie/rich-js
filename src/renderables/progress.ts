@@ -180,14 +180,15 @@ export class TimeRemainingColumn implements ProgressColumn {
 
 /**
  * Rich's `Task.time_remaining`: nothing left once the task is finished,
- * however long ago that was, and unknown until it has started and made
- * progress against a total.
+ * however long ago that was, unknown until it has a speed against a total,
+ * and otherwise whole seconds, rounded up.
  */
 function timeRemaining(task: Task): number | undefined {
   if (finished(task)) return 0;
-  if (!task.total || task.elapsed === undefined || task.completed <= 0) return undefined;
-  const rate = task.completed / task.elapsed;
-  return (task.total - task.completed) / rate;
+  // Rich's `if not speed`: no time elapsed or nothing done is no speed yet.
+  if (!task.total || !task.elapsed || task.completed <= 0) return undefined;
+  const speed = task.completed / task.elapsed;
+  return Math.ceil((task.total - task.completed) / speed);
 }
 
 export class TimeElapsedColumn implements ProgressColumn {

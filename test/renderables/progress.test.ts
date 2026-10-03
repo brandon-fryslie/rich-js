@@ -269,9 +269,10 @@ describe("TimeElapsedColumn and TimeRemainingColumn (rich-progress-jj5r)", () =>
   // Python Rich 9d8f9a3 with `get_time` driven by hand, every task added at
   // 0s: `a` is started again at 3s, which keeps its first start, and reaches
   // its total at 5.7s; `q` is added with `start=False` and never started; `r`
-  // is at 2 of 10 at 10s and 4 of 10 at 20s; `n` has no total. All are drawn
-  // at 20s. Each cell is the column's text and style.
-  it("holds a finished task's clock at its finish, estimates a running one's, and shows none for one never started, as Rich does", () => {
+  // is at 3 of 10 at 10s and 6 of 10 at 20s, 13.3s left; `n` has no total;
+  // `z` is added at 20s already halfway, with no time to have a speed. All are
+  // drawn at 20s. Each cell is the column's text and style.
+  it("holds a finished task's clock at its finish, estimates a running one's in whole seconds up, and shows none for one never started, as Rich does", () => {
     const columns = [
       new TimeElapsedColumn(),
       new TimeRemainingColumn(),
@@ -300,16 +301,18 @@ describe("TimeElapsedColumn and TimeRemainingColumn (rich-progress-jj5r)", () =>
     clock.advance(2.7);
     progress.updateTask(a, { completed: 10 });
     clock.advance(4.3);
-    progress.updateTask(r, { completed: 2 });
+    progress.updateTask(r, { completed: 3 });
     clock.advance(10);
-    progress.updateTask(r, { completed: 4 });
+    progress.updateTask(r, { completed: 6 });
+    progress.updateTask(progress.addTask("z", { total: 10 }), { completed: 5 });
     [...progress.render(OPTS)];
 
     expect(rows).toEqual([
       ["0:00:05 progress.elapsed", "0:00:00 progress.remaining", "0:00:05 progress.elapsed"],
       ["-:--:-- progress.elapsed", "-:--:-- progress.remaining", "-:--:-- progress.remaining"],
-      ["0:00:20 progress.elapsed", "0:00:30 progress.remaining", "0:00:30 progress.remaining"],
+      ["0:00:20 progress.elapsed", "0:00:14 progress.remaining", "0:00:14 progress.remaining"],
       ["0:00:20 progress.elapsed", " progress.remaining", " progress.remaining"],
+      ["0:00:00 progress.elapsed", "-:--:-- progress.remaining", "-:--:-- progress.remaining"],
     ]);
   });
 });
