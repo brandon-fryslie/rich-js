@@ -136,6 +136,23 @@ describe("the loops move", () => {
     }
   });
 
+  it.each([0, 11.3, 22.6])("a sigh's inhale catches once and draws in again, at z %s", (z) => {
+    // Somewhere in twenty minutes a cell's rise slows nearly to a stop
+    // partway up and then climbs again before its peak; a plain breath's
+    // rise only quickens and then eases into its peak.
+    const breath = pulse(parseSettings([])!.curves.pulse, 82, sun, z);
+    const cell = { row: 0, col: 41, seed: 0 };
+    const w = Array.from({ length: 4800 }, (_, i) => breath.field(cell, i / 4));
+    const caught = w.some((_, i) => {
+      if (i < 8 || i + 8 >= w.length) return false;
+      const rate = (j: number): number => w[j + 1]! - w[j]!;
+      const before = Math.max(...[1, 2, 3, 4, 5, 6, 7, 8].map((d) => rate(i - d)));
+      const after = Math.max(...[1, 2, 3, 4, 5, 6, 7, 8].map((d) => rate(i + d)));
+      return w[i]! > 0 && rate(i) >= 0 && rate(i) < 0.25 * Math.min(before, after);
+    });
+    expect(caught).toBe(true);
+  });
+
   it.each([40, 104, 1024])("a breath swells once and ebbs once in every cell, %s columns wide", (span) => {
     // However far the heart wanders, a cell's breath only ever moves on: it
     // never turns back partway up the inhale or down the exhale.
