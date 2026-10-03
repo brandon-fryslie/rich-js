@@ -314,7 +314,7 @@ export {
 } from "./renderables/progress.js";
 export type { ProgressOptions, TaskOptions, TaskUpdateOptions } from "./renderables/progress.js";
 export { Prompt, IntPrompt, FloatPrompt, Confirm } from "./renderables/prompt.js";
-export type { PromptInput, PromptOptions } from "./renderables/prompt.js";
+export type { ConfirmOptions, PromptInput, PromptOptions } from "./renderables/prompt.js";
 export { Traceback } from "./renderables/traceback.js";
 export type { TracebackOptions } from "./renderables/traceback.js";
 export { Syntax } from "./renderables/syntax.js";

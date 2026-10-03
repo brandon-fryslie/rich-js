@@ -13,12 +13,18 @@
  *     // or with options:
  *     const choice = await Prompt.ask("Pick one", nodeAsk, { choices: ["a", "b"] });
  *
- * The prompt is drawn by a `Console` on stdout, so it is coloured exactly as
- * that console's own output would be — the same detection, the same theme —
- * and handed to readline already encoded, so readline's line editing knows
- * where the answer starts. It goes as one logical line, never broken at the
- * console's width: the terminal wraps it at whatever width it has when readline
- * draws it, and a break baked in at capture would land mid-row after a resize.
+ * The prompt is printed by the `Console` it was asked on — the app's, when it
+ * passed one as `console`, a new default one otherwise — and then a line is
+ * read, as Rich's `Console.input` prints its prompt and calls `input()`. So
+ * the prompt is coloured exactly as that console's own output would be and
+ * goes to its target: a console on stderr asks on stderr, beside the
+ * invalid-answer messages it prints. It goes as one logical line, never broken
+ * at the console's width: the terminal wraps it at whatever width it has.
+ *
+ * readline reads in non-terminal mode, the terminal's own cooked line
+ * discipline, as Python's `input()` does without its readline module: in
+ * terminal mode readline redraws the line itself, prompt included, and needs a
+ * whole `tty.WriteStream` to draw on, which a console's target need not be.
  *
  * [LAW:single-enforcer] One readline interface per `nodeAsk` call —
  * created, asked, closed. No shared `rl` across prompts, no listener-leak
@@ -26,20 +32,21 @@
  */
 
 import * as readline from "node:readline";
-import { Console } from "../core/console.js";
 import type { PromptInput } from "../renderables/prompt.js";
 
-export const nodeAsk: PromptInput = (prompt) => {
-  const stdout = new Console();
-  stdout.beginCapture();
-  stdout.print(prompt, { end: "", softWrap: true });
-  const query = stdout.endCapture();
+export const nodeAsk: PromptInput = (prompt, console) => {
+  console.print(prompt, { end: "", softWrap: true });
   return new Promise<string>((resolve) => {
     const rl = readline.createInterface({
       input: process.stdin,
-      output: process.stdout,
+      // [LAW:types-are-the-program] exception: readline types its output as a
+      // whole `NodeJS.WritableStream`, and a console's target is only a
+      // `ConsoleSink`. With `terminal: false` readline only ever calls its
+      // `write`, whatever its `isTTY` says.
+      output: console.file as NodeJS.WritableStream,
+      terminal: false,
     });
-    rl.question(query, (answer) => {
+    rl.question("", (answer) => {
       rl.close();
       resolve(answer);
     });

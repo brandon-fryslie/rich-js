@@ -11,8 +11,7 @@ exampleContext: |
 render loop, and writes the bytes. Most of this library is reached through one.
 
 It is not the only way out, though. [`renderToString`](./protocol) renders any
-`Renderable` to a string of ANSI in one shot with no `Console` involved, and
-`Prompt` reads input without one. Reach for `Console` when you want terminal
+`Renderable` to a string of ANSI in one shot with no `Console` involved. Reach for `Console` when you want terminal
 detection, wrapping, recording and a stream to write to — which is nearly
 always.
 
@@ -525,8 +524,9 @@ import { nodeAsk } from "@promptctl/rich-js/node/prompt";
 const name = await Prompt.ask("What is your name?", nodeAsk);
 ```
 
-See [Prompts](./prompt) for defaults, constrained choices, typed prompts, and
-supplying your own input source.
+A prompt draws itself with a `Console` — yours, passed as `console`, or a
+default one. See [Prompts](./prompt) for defaults, constrained choices, typed
+prompts, your app's console, and supplying your own input source.
 
 ## Exporting
 

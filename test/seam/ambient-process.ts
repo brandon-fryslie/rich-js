@@ -122,11 +122,12 @@ export const HOST_ACCESS: readonly HostAccess[] = [
   },
   {
     file: "src/node/prompt.ts",
-    surface: [member("stdin"), member("stdout")],
+    surface: [member("stdin")],
     why:
-      "The readline interface `nodeAsk` opens per call. A `Prompt` takes its " +
-      "`PromptInput` as an argument, so this is the node implementation of " +
-      "that capability rather than a reach from inside the renderable.",
+      "The keyboard the readline interface `nodeAsk` opens per call reads. A " +
+      "`Prompt` takes its `PromptInput` as an argument, so this is the node " +
+      "implementation of that capability rather than a reach from inside the " +
+      "renderable; it writes through the prompt's `Console`, never `stdout`.",
   },
   {
     file: "src/node/traceback.ts",
