@@ -196,7 +196,11 @@ describe("every loop keeps the words readable", () => {
           return out;
         };
         const rest = contrasts(undefined);
-        for (let t = 0; t < 3 * curves[loop as keyof typeof made].seconds; t += 0.75) {
+        // Twelve periods, 36 moments a period: a sky can keep a subject's
+        // shimmer under cloud for periods together, and a shorter window
+        // never sees its brightest passes.
+        const P = curves[loop as keyof typeof made].seconds;
+        for (let t = 0; t < 12 * P; t += P / 36) {
           // 8-bit rounding of a colour the shares settled exactly can cost a hair.
           contrasts(t).forEach((now, i) => expect(now).toBeGreaterThanOrEqual(Math.min(rest[i]!, AA) - 0.05));
         }

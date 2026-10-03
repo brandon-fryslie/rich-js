@@ -204,14 +204,51 @@ describe("the loops move", () => {
 
   it("shimmer lights only the columns under its band", () => {
     const band = 8;
-    // Halfway through a 2 s loop the band's centre is near the middle of
-    // span + 2·band, its current carrying it a few columns either way.
-    const lit = at(onColors(inkOn, shimmer(curve(2, 0.7), 40, band, sun, 0)), 1)
-      .map((c, col) => (sameColor(c.fg, ink) ? -1 : col))
-      .filter((col) => col >= 0);
-    expect(lit.length).toBeGreaterThan(0);
-    expect(lit.length).toBeLessThan(2 * band);
-    expect(lit).toContain(20);
+    const P = 2;
+    const loop = shimmer(curve(P, 0.7), 40, band, sun, 0);
+    // Each unbroken run of lit columns clear of both ends of the row is a band
+    // standing wholly on it, or two overlapping: a band lights the columns
+    // strictly within `band` of its centre, so one alone, its centre between
+    // two columns, lights 2·band, and that is the run seen most often. The row
+    // is never lit end to end.
+    const rows = Array.from({ length: 400 }, (_, i) => cells.map((cell) => (loop.field(cell, i * 0.1) > 0 ? "x" : " ")).join(""));
+    const runs = rows.flatMap((row) =>
+      row
+        .slice(1, -1)
+        .split(" ")
+        .slice(1, -1)
+        .filter((run) => run.length > 0)
+        .map((run) => run.length),
+    );
+    const seen = new Map<number, number>();
+    for (const n of runs) seen.set(n, (seen.get(n) ?? 0) + 1);
+    expect([...seen].sort((a, b) => b[1] - a[1])[0]?.[0]).toBe(2 * band);
+    expect(rows.some((row) => !row.includes(" "))).toBe(false);
+  });
+
+  it("shimmer's passes come unevenly, as the sun goes in and out", () => {
+    const P = 10;
+    const loop = shimmer(curve(P, 0.7), 40, 8, sun, 0);
+    // Whether any light is on the row, second by second, over sixty periods.
+    const on = Array.from({ length: 60 * P }, (_, t) => cells.some((cell) => loop.field(cell, t) > 0));
+    // The lengths of the unbroken runs where the light is `want`.
+    const spells = (want: boolean): number[] =>
+      on
+        .map((now) => (now === want ? "x" : " "))
+        .join("")
+        .split(" ")
+        .filter((run) => run.length > 0)
+        .map((run) => run.length);
+    // The first and last runs are cut by the window, so they measure it, not
+    // the sky.
+    const still = spells(false).slice(1, -1);
+    const lit = spells(true).slice(1, -1);
+    // Under cloud the row lies still for over a period, but never for long;
+    // in sun, passes follow close enough that the light hardly leaves it.
+    expect(Math.max(...still)).toBeGreaterThan(P);
+    expect(Math.max(...still)).toBeLessThan(4 * P);
+    expect(Math.min(...still)).toBeLessThan(P / 2);
+    expect(Math.max(...lit)).toBeGreaterThan(2 * P);
   });
 
   it("shimmer draws a colour wherever the noise peaks", () => {
