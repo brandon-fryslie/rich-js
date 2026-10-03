@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-307",
-      "ref": "refs/pull/307/merge",
-      "sha": "568ca2592dd8a2135d9f163327bb8493676a5db9",
-      "timestamp": "2026-10-03T09:38:47.011Z",
-      "commits": [
-        {
-          "sha": "568ca2592dd8a2135d9f163327bb8493676a5db9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T09:37:54Z",
-          "message": "Merge 5057726738dfd04509a13ec4ab1293c562efa5cf into ad9101b538d897b042583466f4512620f66b0a7d\n"
-        },
-        {
-          "sha": "5057726738dfd04509a13ec4ab1293c562efa5cf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T03:37:49-06:00",
-          "message": "fix(text): truncate and align leave a text they do not change untouched; cellLength says what it measures (rich-text-d0gz)\n\nReview (high): expanding tabs before the early return rewrote a text that fit,\nfixing its stops at its own column 0 so it drew wrong after a prefix. Expansion\nnow happens only on the path that cuts or pads. errorLine's tab rationale\nrestated for the reason that survives the fix.\n"
-        },
-        {
-          "sha": "92fc1ea5f331413da57ea877ada967e2951bcc80",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T03:30:22-06:00",
-          "message": "fix(text): cellLength, truncate and align count a tab as the cells render draws (rich-text-d0gz)\n\ncellLength measured the raw string, so a tab was 0 cells while render widened\nit to its stop: truncate(6) left \"ab\\tcd\" (10 cells drawn) untouched, and\nalign padded to the wrong width. cellLength now measures the expanded text,\nand truncate and align widen tabs first, so the width they size to is the\nwidth drawn. A deliberate departure from Rich's Text.cell_len.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "ad9101b538d897b042583466f4512620f66b0a7d",
-      "timestamp": "2026-10-03T09:24:56.615Z",
+      "sha": "bd3ffe766538b801fe8f561f8617b33316f01fdd",
+      "timestamp": "2026-10-03T09:42:20.095Z",
       "commits": [
         {
-          "sha": "ad9101b538d897b042583466f4512620f66b0a7d",
+          "sha": "bd3ffe766538b801fe8f561f8617b33316f01fdd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T03:22:56-06:00",
-          "message": "fix(demos): live-terminal rows at the page's line height; claude-sessions footer fits 80 columns (rich-demos-z4hd) (#306)\n\n* fix(demos): live-terminal rows sit at the page's line height; the claude-sessions footer fits 80 columns (rich-demos-z4hd)\n\nxterm makes a row its measured character height times its lineHeight option,\nrounded to device pixels, so the factor live-terminal.ts handed it never landed\non the page's line height: rows were 20px against a 17.5px line, and the landing\nshowcase grew 483px -> 543px on its first frame. xterm now measures its\ncharacter at the page's line height (custom.css) with the option left at 1,\nand that line height is rounded to a whole pixel so static output and live\nrows share it.\n\nThe claude-sessions footer is one Layout row and wrapped when narrower than\nits hints, cutting \"q quit\" at 80 columns with no sign. It now draws the\nleading hints that fit and counts the rest (\"+8 more\"); the lists lead with\nmoving, focus and quit.\n\n* fix(demos): live rows land on the page's line height at any device pixel ratio; the status bar measures itself and never wraps (rich-demos-z4hd)\n\nxterm measures a character in whole CSS pixels (offsetHeight) and makes a row\nthat rounded up to whole device pixels, so a whole-pixel line height only\nmatches at dpr 1. custom.css now measures xterm at --rich-fragment-line and\nderives the page's line height from it the way xterm does, with the ratio\ntracked on :root; the measure rule moves into loadXterm so every LiveTerminal\nhas it. The status bar reads its width off its own markup and is drawn\nno-wrap with an ellipsis, so it is one row at every width.\n\n* fix(docs): a browser without CSS round() keeps the fragment font, at the 1.25 line height (rich-demos-z4hd)\n\nThe line height is one custom property shared by every place output is\ndrawn, and the only one that needs round(); @supports not swaps it for 1.25,\nso the font shorthand never goes invalid where it is used."
+          "timestamp": "2026-10-03T03:41:25-06:00",
+          "message": "fix(text): cellLength, truncate and align count a tab as the cells render draws (rich-text-d0gz) (#307)\n\n* fix(text): cellLength, truncate and align count a tab as the cells render draws (rich-text-d0gz)\n\ncellLength measured the raw string, so a tab was 0 cells while render widened\nit to its stop: truncate(6) left \"ab\\tcd\" (10 cells drawn) untouched, and\nalign padded to the wrong width. cellLength now measures the expanded text,\nand truncate and align widen tabs first, so the width they size to is the\nwidth drawn. A deliberate departure from Rich's Text.cell_len.\n\n* fix(text): truncate and align leave a text they do not change untouched; cellLength says what it measures (rich-text-d0gz)\n\nReview (high): expanding tabs before the early return rewrote a text that fit,\nfixing its stops at its own column 0 so it drew wrong after a prefix. Expansion\nnow happens only on the path that cuts or pads. errorLine's tab rationale\nrestated for the reason that survives the fix."
         }
       ]
     }
