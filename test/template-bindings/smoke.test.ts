@@ -125,6 +125,12 @@ describe("template-bindings — bootstrap smoke", () => {
     expect(segs.map((s) => s.text).join("")).toBe("hi");
   });
 
+  it("renderTemplate reports a template that evaluates to something it cannot flatten as an [error: …] line", () => {
+    const segs = renderTemplate(createRichTextEngine(), `{{ .v }}`, { v: { a: 1 } });
+    expect(segs).toHaveLength(1);
+    expect(segs[0]!.text.startsWith("[error:")).toBe(true);
+  });
+
   it("renderTemplate lets a rethrown style error leave instead of folding it into an [error: …] line", () => {
     const title = renderMarkup("[bold rd]hi[/]");
     expect(() => renderTemplate(createRichTextEngine(), `{{ .title }}`, { title }, { onStyleError: strict })).toThrow(StyleSyntaxError);

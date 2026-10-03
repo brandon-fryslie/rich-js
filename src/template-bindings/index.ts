@@ -114,7 +114,7 @@ export interface RenderTemplateOptions
  *   can drop into their layout. No bespoke fallback wiring required at every
  *   call site.
  *
- * Only compile and evaluate are inside the `try`: the error line reports a
+ * Only compile, evaluate and flatten are inside the `try`: the error line reports a
  * template that failed, nothing else. Whatever the render throws — a style
  * error an `onStyleError` handler rethrew, or a fault in the render itself —
  * leaves this function rather than being folded into an `[error: …]` line.
@@ -144,14 +144,16 @@ export function renderTemplate(
   options?: RenderTemplateOptions,
 ): Segment[] {
   const maxWidth = options?.maxWidth ?? 400;
-  let frags: RichText[];
+  // Flattening belongs to the template: a scope value the engine passes
+  // through unlifted fails here, and that is a template that failed.
+  let text: RichText;
   try {
-    frags = engine.compile(source)(scope);
+    text = RichText.fromFragments(engine.compile(source)(scope));
   } catch (e) {
     return [new Segment(errorLine(e, maxWidth), safeErrorStyle(options?.errorStyle))];
   }
   return Array.from(
-    RichText.fromFragments(frags).render({
+    text.render({
       maxWidth,
       isTerminal: true,
       theme: options?.theme,
