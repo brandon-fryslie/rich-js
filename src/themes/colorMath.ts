@@ -314,7 +314,8 @@ function drawnTable(drawnAt: ColorDepth, terminal: TerminalTheme | undefined): D
  * itself contrasts with; a colour that already has a side (a palette's
  * `text-*` is its text, tinted) passes that side, since on a ground near the
  * 0.179 cutoff both poles clear and only one also reads on everything else
- * the colour is drawn on.
+ * the colour is drawn on. Where `toward` cannot clear `minRatio` on `bg`,
+ * the floor wins over the side: the answer is `contrastFor(bg)`.
  */
 export function ensureContrastToward(
   fg: ColorRgba,

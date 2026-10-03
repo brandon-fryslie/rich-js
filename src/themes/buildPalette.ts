@@ -101,8 +101,11 @@ export function buildPalette(name: string, dark: boolean, given: BaseColors): Pa
 
 /**
  * A palette's `text-*`: its tint held to WCAG AA on `*-muted`, moved toward
- * the palette's own text side so it still reads on `background`, where
- * widgets draw it too.
+ * the palette's own text side so it also reads on `background`, where widgets
+ * draw it too. The muted floor is the promise: where no lightness on the text
+ * side clears it, the colour that does is on the other side, and the
+ * background pair is the one given up. Every bundled palette clears both
+ * (test/themes/text-on-muted.test.ts).
  *
  * [LAW:single-enforcer] The one rule for the pair, for the palettes derived
  * here and the authored ones the registry hydrates: the tint is the theme's,
