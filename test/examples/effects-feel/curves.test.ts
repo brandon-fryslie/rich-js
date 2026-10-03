@@ -87,8 +87,9 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
 describe("the loops move", () => {
   it("pulse warms toward its light on the inhale and settles back after the exhale", () => {
     const breath = pulse(curve(8, 0.4), 40, sun, 0);
-    const top = under(breath, ink, cells[0]!, 3.4); // the inhale ends near 0.36 of a breath
-    expect(distance(top, sun)).toBeLessThan(distance(ink, sun) - 0.02);
+    // The warmest moment of the first breath, wherever in its turn it comes.
+    const nearest = Math.min(...Array.from({ length: 80 }, (_, i) => distance(under(breath, ink, cells[0]!, i / 10), sun)));
+    expect(nearest).toBeLessThan(distance(ink, sun) - 0.02);
     // The rest before the next, reached by every cell wherever the heart is:
     // the farthest cell's lag and the rhythm's drift still land it past the exhale.
     expect(cells.every((cell) => sameColor(under(breath, ink, cell, 8.1), ink))).toBe(true);
@@ -107,10 +108,12 @@ describe("the loops move", () => {
 
   it("sparkle lights a few cells at a time, each at its own strength", () => {
     const fireflies = onColors(inkOn, sparkle(curve(22, 0.5), 40, LIGHTS.firefly, 0));
+    // Lit as an eye sees it: more than a just-noticeable difference from the
+    // ink. A halo's faint edge changes a byte without lighting the cell.
     const moments = Array.from({ length: 60 }, (_, t) =>
       at(fireflies, t)
         .map((c) => c.fg)
-        .filter((fg) => !sameColor(fg, ink)),
+        .filter((fg) => distance(fg, ink) > 0.02),
     );
     expect(moments.some((lit) => lit.length > 0)).toBe(true);
     expect(moments.every((lit) => lit.length < cells.length / 2)).toBe(true);
@@ -133,14 +136,14 @@ describe("the loops move", () => {
   });
 
   it("two elements under one effect do not move in lockstep", () => {
-    // Over two minutes: fireflies are dark more than lit, so at any one
-    // moment two elements can both be dark.
+    // Over two minutes, and lit within them: two dark elements draw alike
+    // whatever their fireflies would have done.
     const at = (z: number) => {
       const loop = sparkle(curve(22, 0.5), 40, LIGHTS.firefly, z);
-      return Array.from({ length: 120 }, (_, t) => cells.map((cell) => loop.field(cell, t)).join()).join(";");
+      return Array.from({ length: 120 }, (_, t) => cells.map((cell) => loop.field(cell, t))).flat();
     };
-    expect(at(0)).toMatch(/[1-9]/);
-    expect(at(0)).not.toBe(at(11.3));
+    expect(Math.max(...at(0))).toBeGreaterThan(0.25);
+    expect(at(0)).not.toEqual(at(11.3));
   });
 
   it("shimmer lights only the columns under its band", () => {
@@ -223,22 +226,31 @@ describe("the loops never jump", () => {
   // The curves as the demo runs them with no flags.
   const { curves } = parseSettings([])!;
   const loops = {
-    pulse: pulse(curves.pulse, SPAN, sun, 0),
-    shimmer: shimmer(curves.shimmer, SPAN, SHIMMER_WIDTH, sun, 0),
-    drift: drift(curves.drift, SPAN, 0),
-    sparkle: sparkle(curves.sparkle, SPAN, LIGHTS.firefly, 0),
+    pulse: (z: number) => pulse(curves.pulse, SPAN, sun, z),
+    shimmer: (z: number) => shimmer(curves.shimmer, SPAN, SHIMMER_WIDTH, sun, z),
+    drift: (z: number) => drift(curves.drift, SPAN, z),
+    sparkle: (z: number) => sparkle(curves.sparkle, SPAN, LIGHTS.firefly, z),
   };
-  // No loop repeats, so its first minutes are only a slice of the moves it
-  // makes: five minutes passed loops that jumped later on. Half an hour is a
-  // status line's sitting, and every one of its seconds is a frame checked.
+  // No loop repeats, so any watch is a sample of the moves it makes: five
+  // minutes passed loops that jumped later on. Half an hour is a status
+  // line's sitting, and every one of its seconds is a frame checked, on two
+  // elements, the second's frames falling between the first's. A sample
+  // still under-reads the worst step, so the loops are tuned well under the
+  // bar: an hour of four elements, at both offsets and at 40 columns as well,
+  // took none past 0.037.
   const WATCHED = 1800;
-  it.each(Object.entries(loops))("%s moves no cell more than the bar between frames at 1 fps", (_, move) => {
+  const ELEMENTS = [
+    { z: 0, offset: 0 },
+    { z: 22.6, offset: 0.5 },
+  ];
+  it.each(Object.entries(loops))("%s moves no cell more than the bar between frames at 1 fps", (_, loop) => {
     let worst = 0;
-    for (const color of fills) {
+    for (const { z, offset } of ELEMENTS) for (const color of fills) {
+      const move = loop(z);
       // A frame at a time, as a screen draws them.
       const frame = (t: number): ColorRgba[] => strip.map((cell) => under(move, color, cell, t));
-      let last = frame(0);
-      for (let t = 1; t < WATCHED; t++) {
+      let last = frame(offset);
+      for (let t = 1 + offset; t < WATCHED; t++) {
         const next = frame(t);
         next.forEach((now, i) => (worst = Math.max(worst, distance(last[i]!, now))));
         last = next;

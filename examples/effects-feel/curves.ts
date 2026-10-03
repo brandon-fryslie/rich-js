@@ -186,7 +186,7 @@ export function light(glow: ColorRgba): Touch {
   };
 }
 
-/** How a swell rises and falls: the rise and the fall of the strongest one, in its own unit of time. */
+/** How a swell rises and falls: the rise and the fall of the strongest one, in turns of its cycle. */
 interface SwellShape {
   readonly rise: number;
   readonly fall: number;
@@ -198,24 +198,25 @@ interface SwellShape {
  * and after, zero slope at every joint. A weaker swell is a shorter one in
  * proportion, so it climbs no more steeply than the strongest: however
  * strong, its steepest moment is the same, and only the strongest need be
- * checked against the step a frame may take.
+ * checked against the step a frame may take. A swell of strength 0 is no
+ * swell at all: 0 throughout, its own start included.
  */
 function swell(shape: SwellShape, s: number, k: number): number {
   const p = s / k;
-  if (p <= 0 || p >= shape.rise + shape.fall) return 0;
+  if (!(p > 0 && p < shape.rise + shape.fall)) return 0;
   if (p < shape.rise) return (k * (1 - Math.cos((Math.PI * p) / shape.rise))) / 2;
   return (k * (1 + Math.cos((Math.PI * (p - shape.rise)) / shape.fall))) / 2;
 }
 
 /**
- * A sleeper's breath, in turns of the breath's cycle: a quicker inhale, a
- * longer exhale, then stillness for the rest of the turn — the shape that
- * makes a pulse read as calm rather than as a warning.
+ * A sleeper's breath: a quicker inhale, a longer exhale, then stillness for
+ * the rest of the turn — the shape that makes a pulse read as calm rather
+ * than as a warning.
  */
 const BREATH: SwellShape = { rise: 0.36, fall: 0.5 };
 
-/** A firefly's flash, in its glow's `seconds`: it kindles quicker than it fades. */
-const FLASH: SwellShape = { rise: 0.4, fall: 0.6 };
+/** A firefly's brightest flash: it kindles quicker than it fades, and is dark for the other half of its turn. */
+const FLASH: SwellShape = { rise: 0.24, fall: 0.36 };
 
 /** About one breath in this many is a sigh. */
 const SIGH_EVERY = 6;
@@ -226,8 +227,8 @@ const SIGH_EVERY = 6;
  * on the inhale and settles back on the exhale — warmth, not only
  * lightness, so text already near white still visibly breathes. No two
  * breaths are the same, the way a sleeper's are not: most are shallow and
- * quick, about one in `SIGH_EVERY` is a long, deep sigh, and each starts a
- * little early or late in its turn, so the rhythm is calm but never a
+ * quick, about one in `SIGH_EVERY` is a long, deep sigh, and each comes at
+ * its own moment in its turn, so the rhythm is calm but never a
  * metronome. A breath is not a dimmer: it rises first at a heart that
  * wanders slowly along the element and spreads outward from it at one pace
  * whatever the element's width, and it fills some stretches more deeply
@@ -252,9 +253,9 @@ export function pulse(curve: Curve, span: number, glow: ColorRgba, z: number): L
     // moment in its turn are the same in every cell.
     const n = Math.floor(phase);
     const k = hash(n, 1 + z) < 1 / SIGH_EVERY ? 1 : 0.5 + 0.25 * hash(n, 2 + z);
-    const early = hash(n, 3 + z) * (1 - k) * (BREATH.rise + BREATH.fall);
+    const start = hash(n, 3 + z) * (1 - k) * (BREATH.rise + BREATH.fall);
     const depth = 1 - 0.15 * (1 + noise(cell.col * 0.04, 1.9, t / (6 * P) + z)) / 2;
-    return curve.swing * curve.ease(clamp01(swell(BREATH, phase - n - early, k) * depth));
+    return curve.swing * curve.ease(clamp01(swell(BREATH, phase - n - start, k) * depth));
   };
   return { touch: light(glow), field };
 }
@@ -324,9 +325,9 @@ export function drift(curve: Curve, span: number, z: number): Loop {
   const field: Field = (cell, t) => {
     const row = cell.row + z;
     const warp = 1.2 * noise(cell.col * 0.03, row * 0.2 + 3.3, t * 0.02);
-    const air = fbm((cell.col - speed * t) * 0.045 + warp, row * 0.3, t * 0.035, 3);
+    const air = fbm((cell.col - speed * t) * 0.045 + warp, row * 0.3, t * 0.03, 3);
     const swell = 0.6 + 0.4 * noise(t / (1.7 * curve.seconds) + 0.4, cell.col * 0.012, 9.1 + z);
-    return curve.ease(swell * smoothstep(-0.1, 0.45, air));
+    return curve.ease(swell * smoothstep(-0.15, 0.55, air));
   };
   const touch: Touch = (color, w) =>
     Oklch.fromRgba(color)
@@ -337,22 +338,22 @@ export function drift(curve: Curve, span: number, z: number): Loop {
 
 /**
  * Sparkle, as fireflies. Swing: how far into the firefly's `light` a glow
- * goes at its brightest, 0–1. About one firefly to every nine columns of
+ * goes at its brightest, 0–1. About one firefly to every seven columns of
  * `span`, each keeping near a home of its own. A firefly flashes — kindles,
  * hovers glowing, fades — then flies on in the dark and flashes again
  * somewhere a few cells off, the way fireflies at dusk are seen: never
  * moving while lit so much as appearing, each time a little elsewhere. Each
- * keeps its own irregular time, sometimes letting a turn pass dark, so at
- * any moment a few are lit, at different brightnesses. Its light is a soft
- * halo several cells wide, brightest where it is, so as it hovers the glow
- * slides between cells rather than hopping. `seconds` is how long the
- * brightest flash takes, rise and fall; a dimmer one is briefer.
+ * keeps its own irregular time, now and then letting a turn pass dark, so
+ * most moments a few are lit, at different brightnesses. Its light is a
+ * soft halo several cells wide, brightest where it is, so as it hovers the
+ * glow slides between cells rather than hopping. `seconds` is a firefly's
+ * turn: its brightest flash, rise and fall, takes half of it, and a dimmer
+ * one less.
  */
 export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
-  const count = Math.max(2, Math.round(span / 9));
+  const count = Math.max(3, Math.round(span / 8));
   const HALO = 5;
-  // A firefly's turn: its brightest flash, and the dark after it.
-  const TURN = 3 * curve.seconds;
+  const TURN = curve.seconds;
   const homes = Array.from({ length: count }, (_, i) => ({
     home: (i + 0.5 + 0.7 * noise(i * 1.7 + 0.2, 0.3, 0.5 + z)) * (span / count),
     z: i * 4.9 + 0.3 + z,
@@ -372,12 +373,12 @@ export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number):
           // is dark, so where it moves to is never seen moving.
           const u = t + fly.offset;
           const n = Math.floor(u / TURN);
-          const k = hash(n, fly.z + 1) < 0.35 ? 0 : 0.5 + 0.5 * hash(n, fly.z + 2);
-          const at = hash(n, fly.z + 3) * (TURN - k * curve.seconds);
+          const k = hash(n, fly.z + 1) < 0.15 ? 0 : 0.5 + 0.5 * hash(n, fly.z + 2);
+          const at = hash(n, fly.z + 3) * (1 - k * (FLASH.rise + FLASH.fall));
           return {
             x: fly.home + 5 * (2 * hash(n, fly.z + 4) - 1) + 1.5 * noise(fly.z, 0.1, t * 0.035),
             y: 0.6 * noise(fly.z, 2.2, t * 0.035),
-            glow: k === 0 ? 0 : swell(FLASH, (u - n * TURN - at) / curve.seconds, k),
+            glow: swell(FLASH, u / TURN - n - at, k),
           };
         }),
       };
