@@ -133,7 +133,7 @@ const styleSpecFunc: TemplateFunc = {
 // `link` is the cell-splitter for the multi-cell consumer contract.
 // Implementation-wise it is the same shape as any other style function:
 // it sets the `link` slot of `Style` exactly as the existing string-form
-// `link URL` does, so a template-built fragment is byte-equivalent to
+// `link URL` does, so `{{ link "u" "x" }}` is byte-equivalent to
 // `RichText("x", { style: Style.parse("link u") })`.
 //
 // The cell-boundary signal that consumers (cc-candybar et al.) walk is
