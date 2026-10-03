@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-317",
-      "ref": "refs/pull/317/merge",
-      "sha": "42dfcbe2fdaa0faedd4321aa59daec79944bfb9e",
-      "timestamp": "2026-10-03T12:51:32.459Z",
-      "commits": [
-        {
-          "sha": "42dfcbe2fdaa0faedd4321aa59daec79944bfb9e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T12:50:29Z",
-          "message": "Merge bac10cc75633d28a5641d631bc471d9e2e0fad5f into effccf96ff9abee5ec3a61820ea001260b1a4c45\n"
-        },
-        {
-          "sha": "bac10cc75633d28a5641d631bc471d9e2e0fad5f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:50:24-06:00",
-          "message": "fix(embed): a cut label's ellipsis and split-cell pad keep the label's spans, as Rich's Text.truncate does (rich-rule-thri)\n"
-        },
-        {
-          "sha": "c878709c1fae041adf25a87f47c7ab31a1b5b6b3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:38:52-06:00",
-          "message": "fix(rule)!: a title wider than the rule is cut with an ellipsis between rule cells, as Rich's is (rich-rule-thri)\n\nRule now lays its line out as Rich's __rich_console__ does: the title is cut\nto the width less Rich's required_space (4 centred, 2 aligned) with an\nellipsis, a rule cell stays either side, and a rule with no room past that\nis bare. A left- or right-aligned title no longer carries a space on its\nclosed side.\n\nThe ellipsis cut Panel already ported from Rich's Text.truncate is now\ncutLabel in embed.ts, shared by both; the space either side of a label is\nPanel's _title padding and moves to Panel.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "effccf96ff9abee5ec3a61820ea001260b1a4c45",
-      "timestamp": "2026-10-03T12:38:26.942Z",
+      "sha": "066057a3c6982edc862de25d6ea7a986a988bb5d",
+      "timestamp": "2026-10-03T12:57:15.378Z",
       "commits": [
         {
-          "sha": "effccf96ff9abee5ec3a61820ea001260b1a4c45",
+          "sha": "066057a3c6982edc862de25d6ea7a986a988bb5d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:37:13-06:00",
-          "message": "effects-feel: fade and dissolve carry a strip's fills with its words (rich-effects-fxiy.b6i) (#316)\n\n* feat(examples): effects-feel fade and dissolve carry a strip's fills with its words, from and to the terminal's ground (rich-effects-fxiy.b6i)\n\n* feat(examples): effects-feel breath spreads from a wandering heart, shimmer rides an uneven current, pulse slower and deeper (rich-effects-fxiy.b6i)\n\nPulse peaked at 0.06 dE_OK and read as nothing. The 1 fps step gate, not\nthe contrast shares, was what held it: a deeper move has to be a slower\none. Pulse is now 30 s at swing 0.55, peaking at 0.24 on the strip and\n0.10 on text, inside the gate.\n\nA light that tints at constant lightness was tried to get past the shares\nand dropped: on the dark ground it changed nothing, and on Latte a tint\nalone breaks a fill's contrast floor.\n\n* effects-feel: pulse spreads at one pace whatever the width; neighbour check runs through a whole breath (rich-effects-fxiy.b6i)"
+          "timestamp": "2026-10-03T06:56:00-06:00",
+          "message": "fix(rule)!: a title wider than the rule is cut with an ellipsis, as Rich's is (rich-rule-thri) (#317)\n\n* fix(rule)!: a title wider than the rule is cut with an ellipsis between rule cells, as Rich's is (rich-rule-thri)\n\nRule now lays its line out as Rich's __rich_console__ does: the title is cut\nto the width less Rich's required_space (4 centred, 2 aligned) with an\nellipsis, a rule cell stays either side, and a rule with no room past that\nis bare. A left- or right-aligned title no longer carries a space on its\nclosed side.\n\nThe ellipsis cut Panel already ported from Rich's Text.truncate is now\ncutLabel in embed.ts, shared by both; the space either side of a label is\nPanel's _title padding and moves to Panel.\n\n* fix(embed): a cut label's ellipsis and split-cell pad keep the label's spans, as Rich's Text.truncate does (rich-rule-thri)"
         }
       ]
     }
