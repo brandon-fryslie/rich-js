@@ -90,6 +90,16 @@ export function fbm(x: number, y: number, z: number, octaves: number): number {
   return sum / total;
 }
 
+/**
+ * A pseudo-random number in [0, 1) for the `n`th of something — a breath, a
+ * gust — uncorrelated with the `n ± 1`th, where `noise` would make
+ * neighbours alike. The classic shader hash: the fraction of a large sine.
+ */
+export function hash(n: number, z: number): number {
+  const x = Math.sin(n * 12.9898 + z * 78.233) * 43758.5453;
+  return x - Math.floor(x);
+}
+
 /** Hermite smoothstep from `a` to `b`, clamped to [0, 1]. */
 export function smoothstep(a: number, b: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));

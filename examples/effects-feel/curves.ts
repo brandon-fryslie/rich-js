@@ -14,8 +14,11 @@
  * - Nothing jumps. Every curve is continuous in time, built from smooth
  *   noise (`noise.ts`) and smooth waveforms, so at one frame a second a cell
  *   moves a little and at thirty it glides.
- * - Nothing repeats exactly. Rhythms are perturbed by slow noise, the way a
- *   breath or a gust never quite repeats.
+ * - Nothing repeats exactly. Rhythms are perturbed by slow noise, and each
+ *   breath, firefly's flash and pass of light is an event of its own, with
+ *   its own strength and moment, the way no breath or gust is the last one
+ *   again. A weaker event is a shorter one, so its strength costs nothing
+ *   in smoothness.
  * - Neighbours move together. Variation is spatially coherent — patches,
  *   filaments, fronts — never per-cell static.
  * - Light only ever lights, and never takes the words away. Ink and the
@@ -46,7 +49,7 @@ import {
   type Effect,
   type EffectCell,
 } from "../../src/index.js";
-import { fbm, noise, smoothstep } from "./noise.js";
+import { fbm, hash, noise, smoothstep } from "./noise.js";
 
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
@@ -183,26 +186,49 @@ export function light(glow: ColorRgba): Touch {
   };
 }
 
-/**
- * One breath at phase `p` in [0, 1): a quicker inhale, a longer exhale, then
- * a rest — the shape of a sleeper's breathing, which is what makes a pulse
- * read as calm rather than as a warning. Each joint has zero slope.
- */
-function breathAt(p: number): number {
-  const INHALE = 0.36;
-  const EXHALE = 0.5;
-  if (p < INHALE) return (1 - Math.cos((Math.PI * p) / INHALE)) / 2;
-  if (p < INHALE + EXHALE) return (1 + Math.cos((Math.PI * (p - INHALE)) / EXHALE)) / 2;
-  return 0;
+/** How a swell rises and falls: the rise and the fall of the strongest one, in its own unit of time. */
+interface SwellShape {
+  readonly rise: number;
+  readonly fall: number;
 }
 
 /**
+ * A swell — a breath, a firefly's glow — `k` strong, in [0, 1], `s` after it
+ * began: a raised cosine up over its rise and down over its fall, 0 before
+ * and after, zero slope at every joint. A weaker swell is a shorter one in
+ * proportion, so it climbs no more steeply than the strongest: however
+ * strong, its steepest moment is the same, and only the strongest need be
+ * checked against the step a frame may take.
+ */
+function swell(shape: SwellShape, s: number, k: number): number {
+  const p = s / k;
+  if (p <= 0 || p >= shape.rise + shape.fall) return 0;
+  if (p < shape.rise) return (k * (1 - Math.cos((Math.PI * p) / shape.rise))) / 2;
+  return (k * (1 + Math.cos((Math.PI * (p - shape.rise)) / shape.fall))) / 2;
+}
+
+/**
+ * A sleeper's breath, in turns of the breath's cycle: a quicker inhale, a
+ * longer exhale, then stillness for the rest of the turn — the shape that
+ * makes a pulse read as calm rather than as a warning.
+ */
+const BREATH: SwellShape = { rise: 0.36, fall: 0.5 };
+
+/** A firefly's flash, in its glow's `seconds`: it kindles quicker than it fades. */
+const FLASH: SwellShape = { rise: 0.4, fall: 0.6 };
+
+/** About one breath in this many is a sigh. */
+const SIGH_EVERY = 6;
+
+/**
  * Pulse, as breathing. Swing: how far into `light` the colour goes at the
- * top of a full breath, 0–1. The element warms into the light on the inhale
- * and settles back on the exhale — warmth, not only lightness, so text
- * already near white still visibly breathes. No two breaths are the same:
- * the rhythm drifts a little early or late and the depth varies, both on
- * slow noise. A breath is not a dimmer: it rises first at a heart that
+ * top of the deepest breath, a sigh, 0–1. The element warms into the light
+ * on the inhale and settles back on the exhale — warmth, not only
+ * lightness, so text already near white still visibly breathes. No two
+ * breaths are the same, the way a sleeper's are not: most are shallow and
+ * quick, about one in `SIGH_EVERY` is a long, deep sigh, and each starts a
+ * little early or late in its turn, so the rhythm is calm but never a
+ * metronome. A breath is not a dimmer: it rises first at a heart that
  * wanders slowly along the element and spreads outward from it at one pace
  * whatever the element's width, and it fills some stretches more deeply
  * than others — warmth moving through a body, not a lamp turned up. At
@@ -222,8 +248,13 @@ export function pulse(curve: Curve, span: number, glow: ColorRgba, z: number): L
     // The rhythm's drift and the heart's wandering are slow enough that
     // phase only ever moves forward. A cell starts in its rest whatever its lag.
     const phase = Math.max(0, t / P - 0.06 - lag + 0.03 * noise(t / (3 * P), 0.5, 0.5 + z));
-    const depth = 0.8 + 0.2 * noise(t / (4 * P), 3.5, 0.5 + z) - 0.15 * (1 + noise(cell.col * 0.04, 1.9, t / (6 * P) + z)) / 2;
-    return curve.swing * curve.ease(clamp01(breathAt(phase - Math.floor(phase)) * depth));
+    // Breath `n` is one event across the whole element: its depth and its
+    // moment in its turn are the same in every cell.
+    const n = Math.floor(phase);
+    const k = hash(n, 1 + z) < 1 / SIGH_EVERY ? 1 : 0.5 + 0.25 * hash(n, 2 + z);
+    const early = hash(n, 3 + z) * (1 - k) * (BREATH.rise + BREATH.fall);
+    const depth = 1 - 0.15 * (1 + noise(cell.col * 0.04, 1.9, t / (6 * P) + z)) / 2;
+    return curve.swing * curve.ease(clamp01(swell(BREATH, phase - n - early, k) * depth));
   };
   return { touch: light(glow), field };
 }
@@ -233,35 +264,43 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
 
 /**
  * Shimmer, as sunlight moving across water. Swing: how far into `light` the
- * brightest glint goes, 0–1. A soft band of light crosses columns 0 to
- * `span` once a period on average, its pace rising and falling, `width` columns either side of its centre, entering
- * and leaving fully off the row. Inside it the light is a soft glow broken
- * into caustics — bright filaments where two ripples cross — carried on a
- * slow current and re-forming as they go, so the glints dance while the band
- * glides. Before the band enters, the row is untouched.
+ * brightest glint goes, 0–1. A soft band of light, `width` columns either
+ * side of its centre, crosses columns 0 to `span` about once a period,
+ * entering and leaving fully off the row. Its passes come the way light
+ * comes and goes on water as clouds move: each at its own unhurried pace,
+ * drifting a little ahead and behind as it goes, some following close on
+ * the last and some after a still spell. Inside the band the light is a
+ * faint glow broken into a glitter path — bright filaments where two
+ * ripples cross — carried on a slow current and re-forming as they go, so
+ * the glints dance while the band glides. Before the band enters, the row
+ * is untouched.
  */
 export function shimmer(curve: Curve, span: number, width: number, glow: ColorRgba, z: number): Loop {
-  // The band rides a current that quickens and slackens on slow noise, never
-  // reversing — the slope of the noise term stays under the steady one — so
-  // no two passes cross at the same pace. The current is still at `t = 0`, so
-  // the first pass starts off the row.
-  const loop = Phase.loop(curve.seconds);
-  const pace = (t: number): number => noise(t / curve.seconds, 2.7, 5.5 + z);
-  const still = pace(0);
-  const phase = (t: number): number => loop(t + 0.12 * curve.seconds * (pace(t) - still));
+  const P = curve.seconds;
+  const across = span + 2 * width;
+  // Pass `n` is one event, in turn `n` of the period: how long it takes to
+  // cross and when in its turn it sets off are its own. No pass is quicker
+  // than three quarters of a period, so none sweeps faster than that.
+  const centreAt = (t: number): number => {
+    const n = Math.floor(t / P);
+    const crossing = P * (0.75 + 0.25 * hash(n, 5.5 + z));
+    const q = clamp01((t - n * P - hash(n, 6.5 + z) * (P - crossing)) / crossing);
+    // It drifts ahead and behind on slow noise, by nothing at either edge of
+    // the row and never enough to turn it back.
+    return q * across - width + 0.06 * across * Math.sin(Math.PI * q) * noise(t / P, 2.7, 5.5 + z);
+  };
   // A ripple's crest: a Gaussian ridge, 1 where the field crosses zero and in
   // (0, 1] for any noise, smooth throughout, so a crest sliding through a cell
   // lights it smoothly.
   const ripple = (a: number, b: number, c: number): number => Math.exp(-((noise(a, b, c) / 0.8) ** 2));
   const field: Field = (cell, t) => {
-    const centre = phase(t) * (span + 2 * width) - width;
-    const band = bump((cell.col - centre) / width);
+    const band = bump((cell.col - centreAt(t)) / width);
     const row = cell.row + z;
-    const current = 0.8 * noise(cell.col * 0.05, row * 0.3 + 1.3, t * 0.03);
+    const current = 0.8 * noise(cell.col * 0.05, row * 0.3 + 1.3, t * 0.02);
     const caustic =
-      (ripple(cell.col * 0.21 + current, row * 0.9, t * 0.035) * ripple(cell.col * 0.33 + 9.1 - current, row * 0.7, t * 0.028 + 4.2)) **
+      (ripple(cell.col * 0.21 + current, row * 0.9, t * 0.022) * ripple(cell.col * 0.33 + 9.1 - current, row * 0.7, t * 0.018 + 4.2)) **
       2;
-    return curve.swing * curve.ease(band * (0.3 + 0.4 * caustic));
+    return curve.swing * curve.ease(band * (0.1 + 0.6 * caustic));
   };
   return { touch: light(glow), field };
 }
@@ -285,7 +324,7 @@ export function drift(curve: Curve, span: number, z: number): Loop {
   const field: Field = (cell, t) => {
     const row = cell.row + z;
     const warp = 1.2 * noise(cell.col * 0.03, row * 0.2 + 3.3, t * 0.02);
-    const air = fbm((cell.col - speed * t) * 0.045 + warp, row * 0.3, t * 0.05, 3);
+    const air = fbm((cell.col - speed * t) * 0.045 + warp, row * 0.3, t * 0.035, 3);
     const swell = 0.6 + 0.4 * noise(t / (1.7 * curve.seconds) + 0.4, cell.col * 0.012, 9.1 + z);
     return curve.ease(swell * smoothstep(-0.1, 0.45, air));
   };
@@ -299,18 +338,26 @@ export function drift(curve: Curve, span: number, z: number): Loop {
 /**
  * Sparkle, as fireflies. Swing: how far into the firefly's `light` a glow
  * goes at its brightest, 0–1. About one firefly to every nine columns of
- * `span`, each with a home it wanders lazily around. Each glows and goes
- * dark on its own slow noise, out of step with every other, so at any moment
- * a few are lit; its light is a soft halo a few cells wide, brightest where
- * it is, so as it drifts the glow slides between cells rather than hopping.
- * `seconds` is how long a glow takes, rise and fall.
+ * `span`, each keeping near a home of its own. A firefly flashes — kindles,
+ * hovers glowing, fades — then flies on in the dark and flashes again
+ * somewhere a few cells off, the way fireflies at dusk are seen: never
+ * moving while lit so much as appearing, each time a little elsewhere. Each
+ * keeps its own irregular time, sometimes letting a turn pass dark, so at
+ * any moment a few are lit, at different brightnesses. Its light is a soft
+ * halo several cells wide, brightest where it is, so as it hovers the glow
+ * slides between cells rather than hopping. `seconds` is how long the
+ * brightest flash takes, rise and fall; a dimmer one is briefer.
  */
 export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
   const count = Math.max(2, Math.round(span / 9));
-  const HALO = 6;
+  const HALO = 5;
+  // A firefly's turn: its brightest flash, and the dark after it.
+  const TURN = 3 * curve.seconds;
   const homes = Array.from({ length: count }, (_, i) => ({
     home: (i + 0.5 + 0.7 * noise(i * 1.7 + 0.2, 0.3, 0.5 + z)) * (span / count),
     z: i * 4.9 + 0.3 + z,
+    // Out of step with every other firefly from the first moment.
+    offset: hash(i, 0.7 + z) * TURN,
   }));
   // Where every firefly is and how bright at one moment: a frame asks for
   // the same moment once per cell, so it is worked out once per moment.
@@ -319,11 +366,20 @@ export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number):
     if (flown.t !== t) {
       flown = {
         t,
-        flies: homes.map((fly) => ({
-          x: fly.home + 7 * noise(fly.z, 0.1, t * 0.035),
-          y: 0.6 * noise(fly.z, 2.2, t * 0.035),
-          glow: smoothstep(0, 0.6, noise(fly.z, 7.7, t / curve.seconds)) ** 2,
-        })),
+        flies: homes.map((fly) => {
+          // Flash `n` is one event: whether it comes, how bright, when in
+          // its turn and where are its own. Between flashes the firefly
+          // is dark, so where it moves to is never seen moving.
+          const u = t + fly.offset;
+          const n = Math.floor(u / TURN);
+          const k = hash(n, fly.z + 1) < 0.35 ? 0 : 0.5 + 0.5 * hash(n, fly.z + 2);
+          const at = hash(n, fly.z + 3) * (TURN - k * curve.seconds);
+          return {
+            x: fly.home + 5 * (2 * hash(n, fly.z + 4) - 1) + 1.5 * noise(fly.z, 0.1, t * 0.035),
+            y: 0.6 * noise(fly.z, 2.2, t * 0.035),
+            glow: k === 0 ? 0 : swell(FLASH, (u - n * TURN - at) / curve.seconds, k),
+          };
+        }),
       };
     }
     return flown.flies;

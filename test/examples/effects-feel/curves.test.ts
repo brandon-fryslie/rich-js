@@ -133,7 +133,13 @@ describe("the loops move", () => {
   });
 
   it("two elements under one effect do not move in lockstep", () => {
-    const at = (z: number) => cells.map((cell) => sparkle(curve(22, 0.5), 40, LIGHTS.firefly, z).field(cell, 30)).join();
+    // Over two minutes: fireflies are dark more than lit, so at any one
+    // moment two elements can both be dark.
+    const at = (z: number) => {
+      const loop = sparkle(curve(22, 0.5), 40, LIGHTS.firefly, z);
+      return Array.from({ length: 120 }, (_, t) => cells.map((cell) => loop.field(cell, t)).join()).join(";");
+    };
+    expect(at(0)).toMatch(/[1-9]/);
     expect(at(0)).not.toBe(at(11.3));
   });
 
@@ -222,11 +228,20 @@ describe("the loops never jump", () => {
     drift: drift(curves.drift, SPAN, 0),
     sparkle: sparkle(curves.sparkle, SPAN, LIGHTS.firefly, 0),
   };
+  // No loop repeats, so its first minutes are only a slice of the moves it
+  // makes: five minutes passed loops that jumped later on. Half an hour is a
+  // status line's sitting, and every one of its seconds is a frame checked.
+  const WATCHED = 1800;
   it.each(Object.entries(loops))("%s moves no cell more than the bar between frames at 1 fps", (_, move) => {
     let worst = 0;
     for (const color of fills) {
-      for (let t = 1; t < 300; t++) {
-        for (const cell of strip) worst = Math.max(worst, distance(under(move, color, cell, t - 1), under(move, color, cell, t)));
+      // A frame at a time, as a screen draws them.
+      const frame = (t: number): ColorRgba[] => strip.map((cell) => under(move, color, cell, t));
+      let last = frame(0);
+      for (let t = 1; t < WATCHED; t++) {
+        const next = frame(t);
+        next.forEach((now, i) => (worst = Math.max(worst, distance(last[i]!, now))));
+        last = next;
       }
     }
     expect(worst).toBeLessThan(STEP);
