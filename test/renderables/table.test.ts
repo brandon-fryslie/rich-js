@@ -1661,10 +1661,19 @@ describe("Table and Column styles", () => {
     expect(draw(t)).toBe(expected);
   });
 
-  it("pads a left-justified title inside its own last run, as Rich does", () => {
-    const t = new Table({ title: "[red]T[/] x", titleStyle: "on blue", titleJustify: "left" });
+  // Rich pads inside the text and cuts at span edges: a pad joins the run
+  // beside it only when no span covers that run, whatever its style draws as.
+  it.each([
+    ["[red]T[/] x", "left", "\x1b[31;44mT\x1b[0m\x1b[44m x       \x1b[0m"],
+    ["[on blue]T[/] x", "left", "\x1b[44mT\x1b[0m\x1b[44m x       \x1b[0m"],
+    ["x [on blue]T[/]", "right", "\x1b[44m       x \x1b[0m\x1b[44mT\x1b[0m"],
+    ["[on blue]T[/] x", "center", "\x1b[44m   \x1b[0m\x1b[44mT\x1b[0m\x1b[44m x    \x1b[0m"],
+    [new RichText("ab", { style: "red" }).stylize("red"), "left", "\x1b[31mab\x1b[0m\x1b[31m        \x1b[0m"],
+    [new RichText("ab", { style: "red" }).stylize("red"), "right", "\x1b[31m        \x1b[0m\x1b[31mab\x1b[0m"],
+  ] as const)("pads the title %o, justified %s, where Rich does", (title, titleJustify, expected) => {
+    const t = new Table({ title, titleStyle: "on blue", titleJustify });
     t.addColumn("header");
-    expect(draw(t).split("\n")[0]).toBe("\x1b[31;44mT\x1b[0m\x1b[44m x       \x1b[0m");
+    expect(draw(t).split("\n")[0]).toBe(expected);
   });
 
   it("draws a table's style on its frame when it names no border style", () => {

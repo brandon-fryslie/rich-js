@@ -1260,7 +1260,8 @@ export class Table implements Renderable, Measurable {
     // over, as `render_str(style=)` sets it: a `[red]` title inside an italic
     // table title arrives as italic-red, and the line breaks and the `end` the
     // text emits stay unstyled. A `RichText` title takes none of it, because
-    // the reference hands a `Text` over as it is (rich-table-qj6i).
+    // the reference renders a `Text` title without the title style
+    // (rich-table-qj6i).
     const source = text.text({ ...options, highlight: false }, getStyle(options, ownStyle));
     source.justify = undefined;
     if (source.overflow === "ignore") source.overflow = undefined;
