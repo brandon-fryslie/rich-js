@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-301",
+      "ref": "refs/pull/301/merge",
+      "sha": "1ee026e3a842f89e1209510f49c98de2fa4d1b99",
+      "timestamp": "2026-10-03T07:02:40.154Z",
+      "commits": [
+        {
+          "sha": "1ee026e3a842f89e1209510f49c98de2fa4d1b99",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T01:01:23-06:00",
+          "message": "Merge 25ba66141b34118812498ee754d98d842bdaecb8 into a2fba38a21cf785a4077b39a6ca78fce22132048\n"
+        },
+        {
+          "sha": "25ba66141b34118812498ee754d98d842bdaecb8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T01:01:18-06:00",
+          "message": "fix(contrast)!: text-* reads on *-muted, grounded defaults read at 16 colours, readableOn measures in a named terminal (rich-contrast-sqqq)\n\n- buildPalette holds text-* to 4.5 on *-muted through ensureContrast; the\n  authored registry palettes' text-* values are corrected to clear it. The\n  widget contrast floor is now 4.5.\n- getGroundedStyle: below 256 colours Syntax's highlighted line number and\n  Markdown's code are drawn without their fixed pair, as Rich's\n  Syntax._get_number_styles does — no pair of ANSI slots reads in every\n  bundled theme. markdown.code is bold, as Rich's is, so code stays distinct.\n- BREAKING: colorFuncs / richTextFuncs / readableOnFunc take\n  () => DrawnAt ({ depth, terminal? }) instead of () => ColorDepth.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a2fba38a21cf785a4077b39a6ca78fce22132048",
