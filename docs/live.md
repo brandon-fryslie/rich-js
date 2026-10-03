@@ -210,7 +210,7 @@ const myConsole = new Console();
 const live = new Live(renderable, { console: myConsole });
 ```
 
-`Live` never checks whether that console is a terminal, so pointing one at a file writes every frame it draws — four a second by default — with the cursor and erase-line escape sequences in between as literal bytes.
+On a console that is not interactive — a file, a pipe, a CI log — `Live` draws nothing while it runs. What you print through `live.console` is written as plain lines, and the frame is written once, when `stop()` is called; a `transient` display writes no frame at all. The alternate screen is not entered there either, and the frame is printed through the console like anything else, so a recording or a capture holds it. A console is interactive when it writes to a terminal whose `TERM` is not `dumb` or `unknown`, unless `forceInteractive` says otherwise — and the console a `Live` makes when you pass none detects this, so a program piped to a file writes plain output without being told.
 
 ## One Live owns the terminal
 

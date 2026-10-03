@@ -136,10 +136,15 @@ describe("Console construction", () => {
     expect(c.isTerminal).toBe(true);
   });
 
-  it("accepts forceInteractive option", () => {
-    const c = new Console({ forceInteractive: true, width: 80 });
-    // forceInteractive controls isInteractive behavior
-    expect(c).toBeDefined();
+  it("is interactive on a terminal unless TERM says it is dumb, and as forceInteractive says", () => {
+    const on = (env: Env, forceInteractive?: boolean): boolean =>
+      new Console({ forceTerminal: true, forceInteractive, environment: { env } }).isInteractive;
+    expect(on({ TERM: "xterm" })).toBe(true);
+    expect(on({ TERM: "dumb" })).toBe(false);
+    expect(on({ TERM: "unknown" })).toBe(false);
+    expect(on({ TERM: "dumb" }, true)).toBe(true);
+    expect(on({ TERM: "xterm" }, false)).toBe(false);
+    expect(new Console({ environment: { env: { TERM: "xterm" } } }).isInteractive).toBe(false);
   });
 
   it("accepts record option", () => {
@@ -1765,7 +1770,7 @@ describe("Console theme resolution", () => {
 
   it("Status takes its style name from its console's theme", () => {
     for (const [hex, sgr] of COLORS) {
-      const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", theme: new Theme({ "my.status": hex }) });
+      const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", forceTerminal: true, theme: new Theme({ "my.status": hex }) });
       const status = new Status("working", { console: c, spinnerStyle: "my.status" });
       status.start();
       status.update("working-message");

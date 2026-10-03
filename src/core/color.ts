@@ -368,6 +368,16 @@ function envOf(options: DetectColorOptions): Env {
   return options.env ?? (typeof process !== "undefined" ? process.env : {});
 }
 
+/**
+ * A terminal that says it cannot be drawn on: `TERM` is `dumb` or `unknown`,
+ * as Emacs' shell mode sets it. It takes no colour and nothing that moves the
+ * cursor.
+ */
+export function isDumbTerminal(env: Env): boolean {
+  const term = env["TERM"];
+  return term === "dumb" || term === "unknown";
+}
+
 // What the destination can draw, preferences aside: TTY presence,
 // TERM=dumb/unknown, COLORTERM, known terminal names, TERM patterns. `null`
 // here means the destination takes no escapes at all.
@@ -379,8 +389,8 @@ function terminalColorSystem(options: DetectColorOptions): ColorDepth | null {
 
   if (!isTTY) return null;
 
+  if (isDumbTerminal(env)) return null;
   const term = env["TERM"] ?? "";
-  if (term === "dumb" || term === "unknown") return null;
 
   const colorterm = env["COLORTERM"];
   if (colorterm === "truecolor" || colorterm === "24bit") {

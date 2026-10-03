@@ -193,7 +193,7 @@ export class Progress implements Renderable {
     this._columns = cols;
     this._tasks = new Map();
     this._nextId = 1;
-    this._console = opts.console ?? new Console({ forceTerminal: true });
+    this._console = opts.console ?? new Console();
     this.expand = opts.expand ?? false;
     this._live = new Live(this, {
       console: this._console,

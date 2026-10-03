@@ -28,7 +28,7 @@
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { Console, type ConsoleOptions } from "../core/console.js";
 import { Segment } from "../core/segment.js";
-import { Painter, type Surface } from "../core/paint.js";
+import { SurfacePainter, type Surface } from "../core/paint.js";
 import { fitHeight, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { hostEnvironment } from "./host-environment.js";
@@ -105,7 +105,7 @@ export class App {
 
   private _phase: AppPhase = "idle";
   private _frame: readonly (readonly Segment[])[] = [];
-  private readonly painter: Painter;
+  private readonly painter: SurfacePainter;
   private refreshQueued = false;
   private subscriptions: Unsubscribe[] = [];
   private readonly paintHandlers = new Set<(frame: readonly (readonly Segment[])[]) => void>();
@@ -114,7 +114,7 @@ export class App {
   constructor(options: AppOptions) {
     this.host = options.host;
     this.surface = options.surface;
-    this.painter = new Painter(options.surface, (bytes) => this.host.write(bytes));
+    this.painter = new SurfacePainter(options.surface, (bytes) => this.host.write(bytes));
     this.view = options.view;
     this.clock = options.clock ?? systemClock();
     this.rate = options.rate ?? DEFAULT_RATE;
@@ -319,7 +319,7 @@ export class App {
     // than the terminal — a taller frame would scroll the rows the painter
     // goes back over — and, as a region, exactly that deep.
     const frame = this.painter.paint(
-      fitHeight(lines.slice(0, height.rows), height),
+      () => fitHeight(lines.slice(0, height.rows), height),
       { rows: height.rows, cols: options.maxWidth },
       this.console.destination,
     );

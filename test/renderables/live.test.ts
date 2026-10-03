@@ -6,6 +6,8 @@ import { Segment } from "../../src/core/segment.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { Live, type LiveOptions } from "../../src/renderables/live.js";
 import { Panel } from "../../src/renderables/panel.js";
+import { Progress } from "../../src/renderables/progress.js";
+import { Status } from "../../src/renderables/status.js";
 import { fakeClock } from "../core/fake-clock.js";
 
 const SHOW_CURSOR = "\x1b[0m\x1b[?25h";
@@ -26,6 +28,7 @@ function live(options: LiveOptions): { live: Live; out: () => string } {
     width: 20,
     height: 5,
     colorSystem: null,
+    forceTerminal: true,
     hyperlinks: false,
     file: { write: (s: string) => void chunks.push(s) },
   });
@@ -61,6 +64,20 @@ describe("Live when a frame's render throws", () => {
     display.update(new RichText("good"));
     display.refresh();
     expect(await term.rows()).toEqual(["good"]);
+  });
+
+  it("a print whose frame fails leaves the next frame painting over the last", async () => {
+    const term = terminal(20, 5);
+    const display = new Live(new RichText("a\nb\nc"), { console: term.console, autoRefresh: false });
+    display.start();
+    display.refresh();
+
+    display.update(broken);
+    expect(() => display.console.print("hi")).toThrow(RenderFailed);
+    display.update(new RichText("a\nb\nc"));
+    display.refresh();
+
+    expect(await term.rows()).toEqual(["a", "b", "c"]);
   });
 
   // What each mode writes to hand the terminal back with a frame on it: inline,
@@ -145,7 +162,7 @@ function terminal(cols: number, rows: number): { console: Console; rows: () => P
   const write = (data: string): void => {
     written = written.then(() => new Promise<void>((resolve) => term.write(data, resolve)));
   };
-  const console = new Console({ width: cols, height: rows, colorSystem: null, hyperlinks: false, file: { write } });
+  const console = new Console({ width: cols, height: rows, colorSystem: null, hyperlinks: false, forceTerminal: true, file: { write } });
   // Every line of scrollback and screen, to the last one written.
   const lines = async (): Promise<string[]> => {
     await written;
@@ -279,6 +296,7 @@ describe("Printing through live.console", () => {
         width: 30,
         height: 10,
         colorSystem: null,
+        forceTerminal: true,
         hyperlinks: false,
         file: term.console.file,
         getDatetime: () => new Date(2026, 8, 30, 12, 0, 0),
@@ -315,6 +333,7 @@ describe("Printing through live.console", () => {
       width: 20,
       height: 5,
       colorSystem: null,
+      forceTerminal: true,
       hyperlinks: false,
       file: { write: (s: string) => void chunks.push(s) },
     });
@@ -393,5 +412,117 @@ describe("Live refresh rate", () => {
 
     display.stop();
     expect(clock.timers()).toBe(0);
+  });
+});
+
+// A file, a pipe, a CI log: what Rich's Live writes there is what was printed,
+// plain, and the frame once at stop — never a frame per refresh with the
+// escape sequences that move over it.
+describe("Live on a console that is not interactive", () => {
+  const consoles = [
+    ["a file", {}],
+    ["a terminal told it is not interactive", { forceTerminal: true, forceInteractive: false }],
+    ["a dumb terminal", { forceTerminal: true, environment: { env: { TERM: "dumb" } } }],
+  ] as const;
+
+  function plain(console: object, options: LiveOptions): { live: Live; out: () => string; clock: ReturnType<typeof fakeClock> } {
+    const chunks: string[] = [];
+    const clock = fakeClock();
+    const target = new Console({
+      width: 20,
+      height: 5,
+      colorSystem: null,
+      hyperlinks: false,
+      file: { write: (s: string) => void chunks.push(s) },
+      ...console,
+    });
+    const display = new Live(new RichText("frame\nlast row"), { console: target, clock, ...options });
+    return { live: display, out: () => chunks.join(""), clock };
+  }
+
+  it.each(consoles)("on %s, writes printed lines plain and the frame once at stop", (_name, console) => {
+    for (const altScreen of [false, true]) {
+      const { live: display, out, clock } = plain(console, { altScreen });
+      display.start();
+      clock.advance(1);
+      display.console.print("one");
+      display.refresh();
+      display.console.print("two");
+      clock.advance(1);
+      display.stop();
+
+      expect(out()).toBe("one\ntwo\nframe\nlast row\n");
+    }
+  });
+
+  it.each(consoles)("on %s, a transient display writes only what was printed", (_name, console) => {
+    const { live: display, out, clock } = plain(console, { transient: true });
+    display.start();
+    display.console.print("one");
+    clock.advance(1);
+    display.stop();
+
+    expect(out()).toBe("one\n");
+  });
+
+  // Rich draws no frame off a terminal until the last, so a refresh or a
+  // print costs no render there; the one render is the frame left at stop.
+  it("draws the frame once, at stop, however often it refreshes or prints", () => {
+    const chunks: string[] = [];
+    const clock = fakeClock();
+    let renders = 0;
+    const counted: Renderable = {
+      render() {
+        renders += 1;
+        return [new Segment("frame")];
+      },
+    };
+    const target = new Console({ width: 20, height: 5, colorSystem: null, file: { write: (s: string) => void chunks.push(s) } });
+    const display = new Live(counted, { console: target, clock });
+    display.start();
+    clock.advance(3);
+    display.refresh();
+    display.console.print("one");
+    expect(renders).toBe(0);
+
+    display.stop();
+
+    expect(renders).toBe(1);
+    expect(chunks.join("")).toBe("one\nframe\n");
+  });
+
+  it("prints the frame through the console, so a recording and a capture hold it", () => {
+    const chunks: string[] = [];
+    const target = new Console({ width: 20, height: 5, colorSystem: null, record: true, file: { write: (s: string) => void chunks.push(s) } });
+    const recorded = new Live(new RichText("frame"), { console: target, autoRefresh: false });
+    recorded.start();
+    recorded.console.print("one");
+    recorded.stop();
+    expect(target.exportText()).toBe("one\nframe\n");
+
+    target.beginCapture();
+    const captured = new Live(new RichText("again"), { console: target, autoRefresh: false });
+    captured.start();
+    captured.stop();
+    expect(target.endCapture()).toBe("again\n");
+    expect(chunks.join("")).toBe("one\nframe\n");
+  });
+});
+
+// Rich's Live, Progress and Status take the console `get_console()` gives,
+// which detects the terminal — so piped, none of them paints.
+describe("The console a display makes for itself", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("is interactive exactly when a console made with no options is", () => {
+    for (const term of ["xterm-256color", "dumb"]) {
+      vi.stubEnv("TERM", term);
+      const detected = new Console().isInteractive;
+      expect(new Live().console.isInteractive).toBe(detected);
+      expect(new Progress().console.isInteractive).toBe(detected);
+      expect(new Status("working").console.isInteractive).toBe(detected);
+    }
   });
 });
