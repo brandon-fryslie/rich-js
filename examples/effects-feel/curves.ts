@@ -104,8 +104,10 @@ function breathAt(p: number): number {
  * toward the light on the inhale and settling back on the exhale — warmth,
  * not only lightness, so text already near white still visibly breathes. No
  * two breaths are the same: the rhythm drifts a little early or late and the
- * depth varies, both on slow noise. A breath starts in its rest, so `t = 0`
- * draws the cell untouched.
+ * depth varies, both on slow noise. Every cell breathes the same breath, so
+ * a fill drawn across many cells — a powerline seam and the cell it points
+ * out of — stays one colour. A breath starts in its rest, so `t = 0` draws
+ * the cell untouched.
  */
 export function pulse(curve: Curve, light: ColorRgba): ColorMove {
   const P = curve.seconds;
@@ -126,20 +128,24 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
  * Shimmer, as sunlight moving across water. Swing: how far toward
  * `highlight` the brightest glint goes, 0–1. A soft band of light crosses
  * columns 0 to `span` once a period, `width` columns either side of its
- * centre, entering and leaving fully off the row; inside it the light is
- * broken into caustics — bright filaments where two slow ripples cross —
- * that wander as the band passes. Before the band enters, the row is
- * untouched.
+ * centre, entering and leaving fully off the row. Inside it the light is a
+ * soft glow broken into caustics — bright filaments where two ripples cross
+ * — carried on a slow current and re-forming as they go, so the glints
+ * dance while the band glides. Before the band enters, the row is untouched.
  */
 export function shimmer(curve: Curve, span: number, width: number, highlight: ColorRgba): ColorMove {
   const phase = Phase.loop(curve.seconds);
   const toward = Oklch.fromRgba(highlight);
+  const ripple = (a: number, b: number, z: number): number => 1 - Math.abs(noise(a, b, z));
   return (color, cell, t) => {
     const centre = phase(t) * (span + 2 * width) - width;
     const band = bump((cell.col - centre) / width);
-    const ripple = (a: number, b: number, z: number): number => 1 - Math.abs(noise(a, b, z));
-    const caustic = (ripple(cell.col * 0.23, cell.row * 0.9, t * 0.05) * ripple(cell.col * 0.37 + 9.1, cell.row * 0.7, t * 0.035 + 4.2)) ** 3;
-    const amount = curve.ease(band * (0.5 + 0.5 * caustic));
+    const current = 0.8 * noise(cell.col * 0.05, cell.row * 0.3 + 1.3, t * 0.06);
+    const caustic =
+      (ripple(cell.col * 0.21 + current, cell.row * 0.9, t * 0.07) *
+        ripple(cell.col * 0.33 + 9.1 - current, cell.row * 0.7, t * 0.055 + 4.2)) **
+      2.5;
+    const amount = curve.ease(band * (0.3 + 0.7 * caustic));
     return blend(Oklch.fromRgba(color), toward, curve.swing * amount).toRgba();
   };
 }
@@ -147,35 +153,54 @@ export function shimmer(curve: Curve, span: number, width: number, highlight: Co
 /**
  * Drift, as wind crossing a field. Swing: degrees of hue at a gust's
  * strongest. Gusts are patches of noise carried along the row from column 0
- * toward `span`, crossing it once a period and changing shape as they go;
- * where one passes, the colour turns a few degrees and silvers — a touch
- * lighter and greyer — the way grass shows the pale side of its blades.
+ * toward `span`, crossing it once a period and changing shape as they go.
+ * The air they ride is itself turbulent — the field is warped by slower
+ * noise, so a gust bends, stretches and catches up with another rather than
+ * sliding by in a straight line — and gusts come in sets, the wind rising
+ * and easing over a longer swell. Where one passes, the colour turns a few
+ * degrees and silvers — lighter and greyer — the way grass shows the pale
+ * side of its blades.
  */
 export function drift(curve: Curve, span: number): ColorMove {
   const speed = span / curve.seconds;
   return (color, cell, t) => {
-    const air = fbm((cell.col - speed * t) * 0.045, cell.row * 0.3, t * 0.025, 2);
-    const amount = curve.ease(smoothstep(-0.15, 0.45, air));
+    const warp = 1.2 * noise(cell.col * 0.03, cell.row * 0.2 + 3.3, t * 0.02);
+    const air = fbm((cell.col - speed * t) * 0.045 + warp, cell.row * 0.3, t * 0.05, 3);
+    const swell = 0.6 + 0.4 * noise(t / (1.7 * curve.seconds) + 0.4, cell.col * 0.012, 9.1);
+    const amount = curve.ease(swell * smoothstep(-0.1, 0.45, air));
     const gust = curve.swing * amount;
     return Oklch.fromRgba(color)
-      .applyKey({ ...IDENTITY, hueShift: gust, lightnessShift: 0.0012 * Math.abs(gust), chromaScale: 1 - 0.006 * Math.abs(gust) })
+      .applyKey({ ...IDENTITY, hueShift: gust, lightnessShift: 0.0025 * Math.abs(gust), chromaScale: 1 - 0.012 * Math.abs(gust) })
       .toRgba();
   };
 }
 
 /**
  * Sparkle, as fireflies. Swing: how far toward the firefly's colour a glow
- * goes at its brightest, 0–1. Each cell has its own slow noise, set apart by
- * its seed; a cell glows only where that noise rises past a high threshold,
- * so at any moment a few cells are lit, each brightening and fading over a
- * few seconds, out of step with every other. `seconds` is how long a glow
- * takes, rise and fall.
+ * goes at its brightest, 0–1. About one firefly to every nine columns of
+ * `span`, each with a home it wanders lazily around. Each glows and goes
+ * dark on its own slow noise, out of step with every other, so at any moment
+ * a few are lit; its light is a soft halo a few cells wide, brightest where
+ * it is, so as it drifts the glow slides between cells rather than hopping.
+ * `seconds` is how long a glow takes, rise and fall.
  */
-export function sparkle(curve: Curve, darkGround: boolean, firefly: ColorRgba): ColorMove {
+export function sparkle(curve: Curve, span: number, darkGround: boolean, firefly: ColorRgba): ColorMove {
   const toward = Oklch.fromRgba(firefly);
+  const count = Math.max(2, Math.round(span / 9));
+  const HALO = 3;
+  const flies = Array.from({ length: count }, (_, i) => ({
+    home: (i + 0.5 + 0.7 * noise(i * 1.7 + 0.2, 0.3, 0.5)) * (span / count),
+    z: i * 4.9 + 0.3,
+  }));
   return (color, cell, t) => {
-    const glow = smoothstep(0.12, 0.62, noise(cell.col * 0.5 + 0.31, cell.row * 0.8 + 0.5, t / curve.seconds)) ** 2;
-    const amount = curve.ease(glow);
+    let light = 0;
+    for (const fly of flies) {
+      const x = fly.home + 7 * noise(fly.z, 0.1, t * 0.07);
+      const y = 0.6 * noise(fly.z, 2.2, t * 0.07);
+      const near = bump(Math.hypot(cell.col - x, 2 * (cell.row - y)) / HALO);
+      light += near * smoothstep(0.02, 0.45, noise(fly.z, 7.7, t / curve.seconds)) ** 2;
+    }
+    const amount = curve.ease(clamp01(light));
     return blend(Oklch.fromRgba(color), toward, curve.swing * amount)
       .applyKey({ ...IDENTITY, lightnessShift: away(darkGround) * 0.08 * curve.swing * amount })
       .toRgba();
@@ -205,7 +230,7 @@ export function veiled(visibility: Visibility, swing: number): Effect {
  * with soft edges, as ink spreads or mist thins. `z` keeps the two orders
  * apart.
  */
-const order = (cell: EffectCell, z: number): number => clamp01(0.5 + 0.8 * fbm(cell.col * 0.11, cell.row * 0.45, z, 2));
+const order = (cell: EffectCell, z: number): number => clamp01(0.5 + 1.1 * fbm(cell.col * 0.09, cell.row * 0.45, z, 3));
 
 /** Of a transition's `seconds`, how long each cell's own change takes. */
 const OWN = 0.45;

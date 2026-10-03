@@ -24,7 +24,6 @@ import {
   Console,
   Effected,
   Group,
-  Measurement,
   Padding,
   POWERLINE_JOINER_GLYPHS,
   PowerlineJoiner,
@@ -38,7 +37,7 @@ import {
   type Effect,
   type Renderable,
   type RenderOptions,
-  type Segment,
+  Segment,
   type TerminalTheme,
 } from "../../src/index.js";
 import { graphemes } from "../../src/core/cells.js";
@@ -61,7 +60,10 @@ const STRIP_KEYS = ["primary", "secondary", "accent", "success", "warning", "err
 const TEXT = "Thinking about how a band of light should cross these words at one frame a second…";
 
 /** How far a shimmer's light reaches either side of its centre, in columns. */
-const SHIMMER_WIDTH = 12;
+const SHIMMER_WIDTH = 16;
+
+/** Columns a subject is offered when its own width is read: wider than any subject here. */
+const DRAW_BUDGET = 1024;
 
 /** Samples per period when measuring a looping effect's worst contrast. */
 const CONTRAST_SAMPLES = 240;
@@ -134,7 +136,9 @@ function shown(cell: Cell, options: RenderOptions, theme: TerminalTheme): { fg: 
 const SEAM_GLYPHS: ReadonlySet<string> = new Set(Object.values(POWERLINE_JOINER_GLYPHS));
 
 export function drawnSubject(subject: Subject, drawnWith: RenderOptions, theme: TerminalTheme): DrawnSubject {
-  const span = Measurement.get({ ...drawnWith, maxWidth: Number.MAX_SAFE_INTEGER }, subject.renderable).maximum;
+  // Read off what it draws, not `Measurement`: a `Strip` is not `Measurable`,
+  // and an unmeasurable renderable measures as the whole budget it is offered.
+  const span = Math.max(...Segment.splitLines(subject.renderable.render({ ...drawnWith, maxWidth: DRAW_BUDGET })).map(Segment.getLineLength));
   const options = { ...drawnWith, maxWidth: span };
   const foreground = subject.slot === "fg";
   const colors = new Set(
@@ -243,7 +247,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     shimmer: (s) => onColors(s.colors, shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, highlight)),
     pulse: (s) => onColors(s.colors, pulse(curves.pulse, highlight)),
     drift: (s) => onColors(s.colors, drift(curves.drift, s.span)),
-    sparkle: (s) => onColors(s.colors, sparkle(curves.sparkle, dark, firefly)),
+    sparkle: (s) => onColors(s.colors, sparkle(curves.sparkle, s.span, dark, firefly)),
   };
 
   // With no colour drawn there is no contrast to read: every effect is the

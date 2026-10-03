@@ -14,7 +14,7 @@ import {
   type Renderable,
   type TerminalTheme,
 } from "../../../src/index.js";
-import { graphemes } from "../../../src/core/cells.js";
+import { cellLen, graphemes } from "../../../src/core/cells.js";
 import { drawnSubject, runDemo, stripSubject } from "../../../examples/effects-feel/app.js";
 import { onColors, pulse } from "../../../examples/effects-feel/curves.js";
 import { envAtDepth, parseSettings } from "../../../examples/effects-feel/settings.js";
@@ -88,6 +88,12 @@ describe("a strip under a pulse", () => {
       return graphemes(segment.text).map((): [string, string] => [fg, bg]);
     });
   }
+
+  it("spans the columns it draws, so a sweep crosses it once a period", () => {
+    const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), options, CATPPUCCIN_MOCHA);
+    const rows = [...strip.renderable.render(options)].map((segment) => segment.text).join("").split("\n");
+    expect(strip.span).toBe(Math.max(...rows.map(cellLen)));
+  });
 
   it.each([["dark", CATPPUCCIN_MOCHA, new ColorRgba(255, 228, 176)], ["light", CATPPUCCIN_LATTE, new ColorRgba(92, 58, 12)]] as const)(
     "on a %s ground moves each fill to one colour, in every cell that shows it, and nothing else",

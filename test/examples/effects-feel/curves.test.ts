@@ -83,12 +83,16 @@ describe("the loops move", () => {
   });
 
   it("sparkle lights a few cells at a time, each at its own strength", () => {
-    const lit = at(onColors(new Set([ink.hex]), sparkle(curve(22, 0.5), true, firefly)), 9)
-      .map((c) => c.fg)
-      .filter((fg) => !sameColor(fg, ink));
-    expect(lit.length).toBeGreaterThan(0);
-    expect(lit.length).toBeLessThan(cells.length / 2);
-    expect(new Set(lit.map((fg) => fg.hex)).size).toBeGreaterThan(1);
+    const fireflies = onColors(new Set([ink.hex]), sparkle(curve(22, 0.5), 40, true, firefly));
+    const moments = Array.from({ length: 60 }, (_, t) =>
+      at(fireflies, t)
+        .map((c) => c.fg)
+        .filter((fg) => !sameColor(fg, ink)),
+    );
+    expect(moments.some((lit) => lit.length > 0)).toBe(true);
+    expect(moments.every((lit) => lit.length < cells.length / 2)).toBe(true);
+    // A glow is a halo, brightest where the firefly is: one moment's lit cells differ.
+    expect(moments.some((lit) => new Set(lit.map((fg) => fg.hex)).size > 1)).toBe(true);
   });
 
   it("drift shifts hue along the row", () => {
@@ -146,12 +150,15 @@ describe("the loops never jump", () => {
   // A frame-to-frame move under about two just-noticeable differences
   // (dE_OK ~0.02 each) reads as drift, not as a tick.
   const STEP = 0.06;
+  // About the demo strip's width: a sweep crosses its span once a period, so
+  // the wider the element the faster the band, and the strip is the widest.
+  const SPAN = 104;
   const fills = [new ColorRgba(137, 180, 250), new ColorRgba(166, 227, 161), new ColorRgba(243, 139, 168), ink];
   const loops = {
     pulse: pulse(curve(8, 0.35), warm),
-    shimmer: shimmer(curve(60, 0.75), 40, 12, warm),
-    drift: drift(curve(30, 14), 40),
-    sparkle: sparkle(curve(22, 0.5), true, firefly),
+    shimmer: shimmer(curve(48, 0.75), SPAN, 16, warm),
+    drift: drift(curve(30, 14), SPAN),
+    sparkle: sparkle(curve(22, 0.5), SPAN, true, firefly),
   };
   it.each(Object.entries(loops))("%s moves no cell more than the bar between frames at 1 fps", (_, move) => {
     let worst = 0;
