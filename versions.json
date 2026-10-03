@@ -4,15 +4,22 @@
     {
       "version": "pr-294",
       "ref": "refs/pull/294/merge",
-      "sha": "693b8c80e6cab2ffbab48289cb1fb64af2f45767",
-      "timestamp": "2026-10-03T04:11:41.761Z",
+      "sha": "9330495ef56851ab2fb75cf7fb96270c61dc7b8a",
+      "timestamp": "2026-10-03T04:19:25.470Z",
       "commits": [
         {
-          "sha": "693b8c80e6cab2ffbab48289cb1fb64af2f45767",
+          "sha": "9330495ef56851ab2fb75cf7fb96270c61dc7b8a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:10:31Z",
-          "message": "Merge ecdf01743ae363cf6a1034021c720fa32fd77041 into 6093b3620bc8f78d526dc3dd76521f272484f8f3\n"
+          "timestamp": "2026-10-03T04:18:15Z",
+          "message": "Merge 613dfdb5b6921235a8b999b4edde9cb1767e7868 into 6093b3620bc8f78d526dc3dd76521f272484f8f3\n"
+        },
+        {
+          "sha": "613dfdb5b6921235a8b999b4edde9cb1767e7868",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T22:18:10-06:00",
+          "message": "fix(text): tab size is parsed where it is given (rich-text-z3ln)\n\nA TabSize brand, made only by parseTabSize, is what expandTabs takes;\nRichText and Syntax parse at construction, so a bad tabSize fails at the\nconstructor rather than at the first render, tab or no tab.\n"
         },
         {
           "sha": "ecdf01743ae363cf6a1034021c720fa32fd77041",
