@@ -247,8 +247,8 @@ describe("a translucent background is measured as the terminal draws it", () => 
     expect(() => contrastFor(bg, parseRgbaHex("ffffff80"))).toThrow(RangeError);
   });
 
-  it("an export's canvas is the surface its caller names", () => {
-    // The same half-alpha #c0c0c0 on a white export canvas draws as #dfdfdf,
+  it("a surface other than black is the one its caller names", () => {
+    // The same half-alpha #c0c0c0 composited onto white draws as #dfdfdf,
     // which is light and wants black — and text chosen for it clears there.
     const white = new ColorRgba(255, 255, 255);
     const bg = parseRgbaHex("c0c0c080");
