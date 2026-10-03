@@ -39,7 +39,7 @@ const DEFAULTS: Record<EffectName, { seconds: number; ease: EaseName; swing: num
   shimmer: { seconds: 48, ease: "linear", swing: 0.75, unit: "mix toward the light at the brightest glint, 0–1" },
   pulse: { seconds: 8, ease: "linear", swing: 0.35, unit: "mix toward the light at the top of a breath, 0–1" },
   drift: { seconds: 30, ease: "linear", swing: 14, unit: "degrees of hue at a gust's strongest" },
-  sparkle: { seconds: 22, ease: "linear", swing: 0.5, unit: "mix toward the firefly's colour at its brightest, 0–1" },
+  sparkle: { seconds: 22, ease: "linear", swing: 0.42, unit: "mix toward the firefly's colour at its brightest, 0–1" },
   fade: { seconds: 6, ease: "ease-in-out", swing: 1, unit: "how hidden at the start, 0–1" },
   dissolve: { seconds: 8, ease: "ease-in-out", swing: 1, unit: "how hidden once gone, 0–1" },
 };

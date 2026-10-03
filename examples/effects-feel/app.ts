@@ -42,7 +42,7 @@ import {
 } from "../../src/index.js";
 import { graphemes } from "../../src/core/cells.js";
 import { App, hostEnvironment, type TerminalHost } from "../../src/host/index.js";
-import { dissolveOut, drift, fadeIn, onColors, pulse, settledAt, shimmer, sparkle } from "./curves.js";
+import { dissolveOut, drift, fadeIn, onColors, pulse, settledAt, shimmer, sparkle, type Light } from "./curves.js";
 import type { EffectName, NamedCurve, Settings } from "./settings.js";
 
 /** The bundled theme each ground is drawn in: one family, so only the ground differs. */
@@ -60,13 +60,26 @@ const STRIP_KEYS = ["primary", "secondary", "accent", "success", "warning", "err
 const TEXT = "Thinking about how a band of light should cross these words at one frame a second…";
 
 /** How far a shimmer's light reaches either side of its centre, in columns. */
-const SHIMMER_WIDTH = 16;
+export const SHIMMER_WIDTH = 24;
 
 /** Columns a subject is offered when its own width is read: wider than any subject here. */
 const DRAW_BUDGET = 1024;
 
-/** Samples per period when measuring a looping effect's worst contrast. */
-const CONTRAST_SAMPLES = 240;
+/**
+ * How a looping effect's worst contrast is measured: over this many of its
+ * periods — no loop repeats exactly, so one period is only a slice of the
+ * states it reaches — at this many samples each.
+ */
+const CONTRAST = { periods: 8, samples: 60 } as const;
+
+/**
+ * The lights the loops cast, warm as sunlight, breath and fireflies are. Each
+ * colour catches the one that reads against its ink (see `Light`).
+ */
+export const LIGHTS = {
+  sun: { pale: new ColorRgba(255, 228, 176), deep: new ColorRgba(102, 57, 0) },
+  firefly: { pale: new ColorRgba(222, 245, 140), deep: new ColorRgba(66, 88, 0) },
+} as const satisfies Record<string, Light>;
 
 /**
  * A thing the effects are tried on, and the slot it shows its colour in: a
@@ -76,6 +89,8 @@ export interface Subject {
   readonly name: string;
   readonly renderable: Renderable;
   readonly slot: "fg" | "bg";
+  /** Where it sits in the noise, so two subjects under one effect never move in lockstep. */
+  readonly z: number;
 }
 
 /**
@@ -87,8 +102,11 @@ export interface DrawnSubject extends Subject {
   readonly options: RenderOptions;
   /** Its width in columns, which a sweep crosses once a period. */
   readonly span: number;
-  /** The colours it sets its slot to, by hex, as the screen shows them. */
-  readonly colors: ReadonlySet<string>;
+  /**
+   * The colours it sets its slot to, by hex, as the screen shows them, each
+   * with the colour its text is read against there.
+   */
+  readonly colors: ReadonlyMap<string, ColorRgba>;
   /** `row:col` of every cell it draws text in. */
   readonly text: ReadonlySet<string>;
 }
@@ -141,15 +159,6 @@ export function drawnSubject(subject: Subject, drawnWith: RenderOptions, theme: 
   const span = Math.max(...Segment.splitLines(subject.renderable.render({ ...drawnWith, maxWidth: DRAW_BUDGET })).map(Segment.getLineLength));
   const options = { ...drawnWith, maxWidth: span };
   const foreground = subject.slot === "fg";
-  const colors = new Set(
-    cellsOf(subject.renderable.render(options)).flatMap((cell) => {
-      const drawn = cell.style.drawnColors(options.colorSystem ?? undefined);
-      const spec = foreground ? drawn.color : drawn.bgcolor;
-      // A cell that sets none is drawn in the terminal's own colour, which is
-      // no colour of the subject's.
-      return spec === undefined ? [] : [spec.getTruecolor(theme, foreground).hex];
-    }),
-  );
   // A seam sits in the same cell whichever glyph a joiner draws it with, so
   // the cells are read where the glyphs are the ones `SEAM_GLYPHS` names.
   const text = new Set(
@@ -157,6 +166,22 @@ export function drawnSubject(subject: Subject, drawnWith: RenderOptions, theme: 
       .filter((cell) => cell.glyph.trim() !== "" && !SEAM_GLYPHS.has(cell.glyph))
       .map((cell) => cell.at),
   );
+  // Each colour the subject sets its slot to, against the other colour of a
+  // cell it draws text in. A cell that sets none is drawn in the terminal's
+  // own colour, which is no colour of the subject's.
+  const pairs = cellsOf(subject.renderable.render(options))
+    .filter((cell) => text.has(cell.at))
+    .flatMap((cell): [ColorRgba, ColorRgba][] => {
+      const drawn = cell.style.drawnColors(options.colorSystem ?? undefined);
+      const { fg, bg } = shown(cell, options, theme);
+      return (foreground ? drawn.color : drawn.bgcolor) === undefined ? [] : [foreground ? [fg, bg] : [bg, fg]];
+    });
+  const colors = new Map(pairs.map(([mine, against]) => [mine.hex, against]));
+  // One colour, one thing it is read against: which light it catches is decided per colour.
+  for (const [mine, against] of pairs) {
+    const known = colors.get(mine.hex)!;
+    if (known.hex !== against.hex) throw new Error(`${subject.name}: ${mine.hex} is read against both ${known.hex} and ${against.hex}`);
+  }
   return { ...subject, options, span, colors, text };
 }
 
@@ -180,20 +205,20 @@ export function stripSubject(theme: TerminalTheme): Subject {
       : Style.fromColor(color("foreground"), color(`${key}-muted`));
     return new RichText(` ${label} `, { style, end: "", noWrap: true });
   });
-  return { name: "strip", renderable: new Strip(cells, new PowerlineJoiner()), slot: "bg" };
+  return { name: "strip", renderable: new Strip(cells, new PowerlineJoiner()), slot: "bg", z: 0 };
 }
 
 function textSubject(theme: TerminalTheme): Subject {
   const style = Style.fromColor(ColorSpec.fromRgba(theme.foregroundColor));
-  return { name: "text", renderable: new RichText(TEXT, { style, noWrap: true }), slot: "fg" };
+  return { name: "text", renderable: new RichText(TEXT, { style, noWrap: true }), slot: "fg", z: 11.3 };
 }
 
-/** An effect's row on screen and the seeds its cells draw: one per effect, so rows twinkle apart. */
+/** An element's name for `Effected`. No curve here reads a cell's seed: a subject's `z` keeps it apart. */
 const seedKey = (effect: EffectName, subject: Subject): string => `${effect}:${subject.name}`;
 
-/** `count` moments evenly across one period of `seconds`. */
-function sampled(seconds: number, count: number): number[] {
-  return Array.from({ length: count }, (_, i) => (i / count) * seconds);
+/** `CONTRAST.samples` moments a period, evenly across `CONTRAST.periods` periods of `seconds`. */
+function sampled(seconds: number): number[] {
+  return Array.from({ length: CONTRAST.periods * CONTRAST.samples }, (_, i) => (i / CONTRAST.samples) * seconds);
 }
 
 /**
@@ -228,7 +253,6 @@ export interface DemoHandle {
 
 export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   const theme = THEMES[settings.ground];
-  const dark = settings.ground === "dark";
   const ink = ColorSpec.fromRgba(theme.foregroundColor);
   const paper = ColorSpec.fromRgba(theme.backgroundColor);
   const quiet = Style.fromColor(paletteColor(theme, "foreground-muted"));
@@ -237,17 +261,13 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   // What the frames are drawn with, asked of the host the app paints on.
   const drawnWith = new Console({ environment: hostEnvironment(host) }).options;
   const subjects = [stripSubject(theme), textSubject(theme)].map((s) => drawnSubject(s, drawnWith, theme));
-  // Warm light, as sunlight, breath and fireflies are: pale gold on a dark ground,
-  // its deep counterpart on a light one, so the light still reads against it.
-  const highlight = dark ? new ColorRgba(255, 228, 176) : new ColorRgba(92, 58, 12);
-  const firefly = dark ? new ColorRgba(222, 245, 140) : new ColorRgba(98, 122, 0);
   const { curves } = settings;
 
   const loops: Record<Loop, (subject: DrawnSubject) => Effect> = {
-    shimmer: (s) => onColors(s.colors, shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, highlight)),
-    pulse: (s) => onColors(s.colors, pulse(curves.pulse, highlight)),
-    drift: (s) => onColors(s.colors, drift(curves.drift, s.span)),
-    sparkle: (s) => onColors(s.colors, sparkle(curves.sparkle, s.span, dark, firefly)),
+    shimmer: (s) => onColors(s.colors, shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, LIGHTS.sun, s.z)),
+    pulse: (s) => onColors(s.colors, pulse(curves.pulse, LIGHTS.sun)),
+    drift: (s) => onColors(s.colors, drift(curves.drift, s.span, s.z)),
+    sparkle: (s) => onColors(s.colors, sparkle(curves.sparkle, s.span, LIGHTS.firefly, s.z)),
   };
 
   // With no colour drawn there is no contrast to read: every effect is the
@@ -257,8 +277,8 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   const measured = (loop: Loop): string => {
     const under = (s: DrawnSubject, at: number) =>
       new Effected(s.renderable, loops[loop](s), { t: at, key: seedKey(loop, s), theme }).render(s.options);
-    const worst = worstContrast(subjects, under, sampled(curves[loop].seconds, CONTRAST_SAMPLES), theme);
-    return `worst contrast ${ratio(worst)} (at rest ${rest})`;
+    const worst = worstContrast(subjects, under, sampled(curves[loop].seconds), theme);
+    return `worst contrast ${ratio(worst)} over ${CONTRAST.periods * curves[loop].seconds}s (at rest ${rest})`;
   };
   const contrast = Object.fromEntries(
     LOOPS.map((loop) => [loop, drawnWith.colorSystem === null ? "no colour drawn" : measured(loop)]),
@@ -293,8 +313,8 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
         new RichText("f replays the fade-in · d replays the dissolve · q quits", { style: quiet, noWrap: true }),
         new RichText(""),
         ...LOOPS.flatMap((loop) => row(t, loop, contrast[loop], loops[loop])),
-        ...row(t, "fade", transitionStatus(t, curves.fade, fadeStart, "f"), () => fadeIn(curves.fade, fadeStart)),
-        ...row(t, "dissolve", transitionStatus(t, curves.dissolve, dissolveStart, "d"), () => dissolveOut(curves.dissolve, dissolveStart)),
+        ...row(t, "fade", transitionStatus(t, curves.fade, fadeStart, "f"), (s) => fadeIn(curves.fade, fadeStart, s.z)),
+        ...row(t, "dissolve", transitionStatus(t, curves.dissolve, dissolveStart, "d"), (s) => dissolveOut(curves.dissolve, dissolveStart, s.z)),
       ),
       [1, 2],
       { style: Style.fromColor(ink, paper) },

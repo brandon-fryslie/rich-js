@@ -10,6 +10,7 @@ import {
   Oklch,
   RichText,
   Style,
+  contrastRatio,
   renderToString,
   type CellColors,
   type Effect,
@@ -28,6 +29,8 @@ import {
   sparkle,
   type Curve,
 } from "../../../examples/effects-feel/curves.js";
+import { LIGHTS, SHIMMER_WIDTH } from "../../../examples/effects-feel/app.js";
+import { parseSettings } from "../../../examples/effects-feel/settings.js";
 
 const curve = (seconds: number, swing: number): Curve => ({ seconds, ease: EASES.linear, swing });
 
@@ -38,8 +41,9 @@ const cells: EffectCell[] = Array.from({ length: 40 }, (_, col) => ({ row: 0, co
 
 const sameColor = (a: ColorRgba, b: ColorRgba): boolean => a.red === b.red && a.green === b.green && a.blue === b.blue;
 const distance = (a: ColorRgba, b: ColorRgba): number => Oklch.fromRgba(a).deltaE(Oklch.fromRgba(b));
-const warm = new ColorRgba(255, 228, 176);
-const firefly = new ColorRgba(222, 245, 140);
+const sun = LIGHTS.sun;
+/** The ink, read against the ground: the subject every curve here is tried on. */
+const inkOn = new Map([[ink.hex, ground]]);
 const at = (effect: Effect, t: number): CellColors[] => cells.map((cell) => effect(colors, cell, t));
 
 function bytes(renderable: Renderable): string {
@@ -57,33 +61,48 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
   const untouched = bytes(subject);
 
   it("pulse at the start of its period", () => {
-    expect(drawn(onColors(new Set([ink.hex]), pulse(curve(3, 0.2), warm)), 0)).toBe(untouched);
+    expect(drawn(onColors(inkOn, pulse(curve(3, 0.2), sun)), 0)).toBe(untouched);
   });
 
   it("shimmer before its band enters the row", () => {
-    expect(drawn(onColors(new Set([ink.hex]), shimmer(curve(2, 0.7), 30, 8, new ColorRgba(255, 255, 255))), 0)).toBe(untouched);
+    expect(drawn(onColors(inkOn, shimmer(curve(2, 0.7), 30, 8, sun, 0)), 0)).toBe(untouched);
   });
 
   it("fade-in once it has settled", () => {
     const fade = curve(2, 1);
-    expect(drawn(fadeIn(fade, 5), settledAt(fade, 5))).toBe(untouched);
+    expect(drawn(fadeIn(fade, 5, 0), settledAt(fade, 5))).toBe(untouched);
   });
 
   it("dissolve-out before it starts", () => {
-    expect(drawn(dissolveOut(curve(3, 1), 5), 5)).toBe(untouched);
+    expect(drawn(dissolveOut(curve(3, 1), 5, 0), 5)).toBe(untouched);
   });
 });
 
 describe("the loops move", () => {
   it("pulse warms toward its light on the inhale and settles back after the exhale", () => {
-    const breath = pulse(curve(8, 0.4), warm);
-    const top = breath(ink, cells[0]!, 3.4); // the inhale ends near 0.36 of a breath
-    expect(distance(top, warm)).toBeLessThan(distance(ink, warm) - 0.02);
-    expect(sameColor(breath(ink, cells[0]!, 7.6), ink)).toBe(true); // the rest before the next
+    const breath = pulse(curve(8, 0.4), sun);
+    const top = breath(ink, ground, cells[0]!, 3.4); // the inhale ends near 0.36 of a breath
+    expect(distance(top, sun.pale)).toBeLessThan(distance(ink, sun.pale) - 0.02);
+    expect(sameColor(breath(ink, ground, cells[0]!, 7.6), ink)).toBe(true); // the rest before the next
+  });
+
+  it.each(["primary", "secondary", "accent", "success", "warning", "error"])(
+    "a glint keeps light ink legible on the %s-muted fill",
+    (key) => {
+      // Swing 1 at the top of a breath: as far into the light as any glint goes.
+      const fill = CATPPUCCIN_MOCHA.palette.get(`${key}-muted`)!;
+      const top = pulse(curve(8, 1), sun)(fill, ink, cells[0]!, 3.4);
+      expect(contrastRatio(ink, top)).toBeGreaterThan(0.97 * contrastRatio(ink, fill));
+    },
+  );
+
+  it("a glint lifts light ink away from a dark ground", () => {
+    const top = pulse(curve(8, 1), sun)(ink, ground, cells[0]!, 3.4);
+    expect(contrastRatio(ground, top)).toBeGreaterThan(contrastRatio(ground, ink));
   });
 
   it("sparkle lights a few cells at a time, each at its own strength", () => {
-    const fireflies = onColors(new Set([ink.hex]), sparkle(curve(22, 0.5), 40, true, firefly));
+    const fireflies = onColors(inkOn, sparkle(curve(22, 0.5), 40, LIGHTS.firefly, 0));
     const moments = Array.from({ length: 60 }, (_, t) =>
       at(fireflies, t)
         .map((c) => c.fg)
@@ -96,14 +115,28 @@ describe("the loops move", () => {
   });
 
   it("drift shifts hue along the row", () => {
-    const moved = at(onColors(new Set([ground.hex]), drift(curve(8, 40), 40)), 0).map((c) => c.bg.hex);
+    const moved = at(onColors(new Map([[ground.hex, ink]]), drift(curve(8, 40), 40, 0)), 0).map((c) => c.bg.hex);
     expect(new Set(moved).size).toBeGreaterThan(1);
+  });
+
+  it("drift silvers by how strong a gust is, not by how far its hue turns", () => {
+    // A wide swing turns the hue further; it does not wash the colour out.
+    const blue = new ColorRgba(137, 180, 250);
+    const wide = drift(curve(30, 120), 104, 0);
+    let palest = 0;
+    for (let t = 0; t < 300; t += 3) for (const cell of cells) palest = Math.max(palest, Oklch.fromRgba(wide(blue, ground, cell, t)).l);
+    expect(palest).toBeLessThan(Oklch.fromRgba(blue).l + 0.05);
+  });
+
+  it("two elements under one effect do not move in lockstep", () => {
+    const at = (z: number) => cells.map((cell) => sparkle(curve(22, 0.5), 40, LIGHTS.firefly, z)(ink, ground, cell, 30).hex).join();
+    expect(at(0)).not.toBe(at(11.3));
   });
 
   it("shimmer lights only the columns under its band", () => {
     const band = 8;
     // Halfway through a 2 s loop the band's centre is at the middle of span + 2·band.
-    const lit = at(onColors(new Set([ink.hex]), shimmer(curve(2, 0.7), 40, band, new ColorRgba(255, 255, 255))), 1)
+    const lit = at(onColors(inkOn, shimmer(curve(2, 0.7), 40, band, sun, 0)), 1)
       .map((c, col) => (sameColor(c.fg, ink) ? -1 : col))
       .filter((col) => col >= 0);
     expect(lit.length).toBeGreaterThan(0);
@@ -112,7 +145,7 @@ describe("the loops move", () => {
   });
 
   it("onColors leaves a colour not in its set alone", () => {
-    const moved = onColors(new Set([ground.hex]), pulse(curve(3, 0.2), warm))(colors, cells[0]!, 1.5);
+    const moved = onColors(new Map([[ground.hex, ink]]), pulse(curve(3, 0.2), sun))(colors, cells[0]!, 1.5);
     expect(moved.fg).toBe(ink);
     expect(sameColor(moved.bg, ground)).toBe(false);
   });
@@ -120,51 +153,60 @@ describe("the loops move", () => {
 
 describe("the transitions run start to end", () => {
   it("a fade-in starts with every cell's ink on its ground", () => {
-    expect(at(fadeIn(curve(2, 1), 4), 4).every((c) => sameColor(c.fg, c.bg))).toBe(true);
+    expect(at(fadeIn(curve(2, 1), 4, 0), 4).every((c) => sameColor(c.fg, c.bg))).toBe(true);
   });
 
   it("a fade-in arrives cell by cell", () => {
-    const halfway = at(fadeIn(curve(2, 1), 0), 1).map((c) => c.fg.hex);
+    const halfway = at(fadeIn(curve(2, 1), 0, 0), 1).map((c) => c.fg.hex);
     expect(new Set(halfway).size).toBeGreaterThan(1);
   });
 
   it("a dissolve-out leaves every cell's ink on its ground", () => {
     const dissolve = curve(3, 1);
-    expect(at(dissolveOut(dissolve, 4), settledAt(dissolve, 4)).every((c) => sameColor(c.fg, c.bg))).toBe(true);
+    expect(at(dissolveOut(dissolve, 4, 0), settledAt(dissolve, 4)).every((c) => sameColor(c.fg, c.bg))).toBe(true);
   });
 
   it("a dissolve-out thins cells gradually, some gone while others are still whole", () => {
-    const midway = at(dissolveOut(curve(8, 1), 0), 2.5).map((c) => c.fg);
+    const midway = at(dissolveOut(curve(8, 1), 0, 0), 2.5).map((c) => c.fg);
     const thinning = midway.filter((fg) => !sameColor(fg, ink) && !sameColor(fg, ground));
     expect(thinning.length).toBeGreaterThan(0);
     expect(midway.some((fg) => sameColor(fg, ink))).toBe(true);
   });
 
   it("swing below 1 stops short of invisible", () => {
-    expect(at(fadeIn(curve(2, 0.5), 0), 0).some((c) => sameColor(c.fg, c.bg))).toBe(false);
+    expect(at(fadeIn(curve(2, 0.5), 0, 0), 0).some((c) => sameColor(c.fg, c.bg))).toBe(false);
   });
 });
 
 describe("the loops never jump", () => {
   // Claude Code redraws once a second, so that is where a step is largest.
-  // A frame-to-frame move under about two just-noticeable differences
-  // (dE_OK ~0.02 each) reads as drift, not as a tick.
-  const STEP = 0.06;
+  // A frame-to-frame move under two just-noticeable differences (dE_OK
+  // ~0.02 each) reads as drift, not as a tick.
+  const STEP = 0.04;
   // About the demo strip's width: a sweep crosses its span once a period, so
   // the wider the element the faster the band, and the strip is the widest.
   const SPAN = 104;
-  const fills = [new ColorRgba(137, 180, 250), new ColorRgba(166, 227, 161), new ColorRgba(243, 139, 168), ink];
+  const strip: EffectCell[] = Array.from({ length: 2 * SPAN }, (_, i) => ({ row: i % 2, col: Math.floor(i / 2), seed: 0 }));
+  // Each fill the strip draws, with the ink it is read against.
+  const fills: [ColorRgba, ColorRgba][] = [
+    [new ColorRgba(137, 180, 250), ground],
+    [new ColorRgba(166, 227, 161), ground],
+    [new ColorRgba(69, 71, 90), ink],
+    [ink, ground],
+  ];
+  // The curves as the demo runs them with no flags.
+  const { curves } = parseSettings([])!;
   const loops = {
-    pulse: pulse(curve(8, 0.35), warm),
-    shimmer: shimmer(curve(48, 0.75), SPAN, 16, warm),
-    drift: drift(curve(30, 14), SPAN),
-    sparkle: sparkle(curve(22, 0.5), SPAN, true, firefly),
+    pulse: pulse(curves.pulse, sun),
+    shimmer: shimmer(curves.shimmer, SPAN, SHIMMER_WIDTH, sun, 0),
+    drift: drift(curves.drift, SPAN, 0),
+    sparkle: sparkle(curves.sparkle, SPAN, LIGHTS.firefly, 0),
   };
   it.each(Object.entries(loops))("%s moves no cell more than the bar between frames at 1 fps", (_, move) => {
     let worst = 0;
-    for (const color of fills) {
-      for (const cell of cells) {
-        for (let t = 1; t < 120; t++) worst = Math.max(worst, distance(move(color, cell, t - 1), move(color, cell, t)));
+    for (const [color, against] of fills) {
+      for (let t = 1; t < 300; t++) {
+        for (const cell of strip) worst = Math.max(worst, distance(move(color, against, cell, t - 1), move(color, against, cell, t)));
       }
     }
     expect(worst).toBeLessThan(STEP);
