@@ -23,7 +23,7 @@
  *     for text in [t for t, _ in highlight_tests] + EXTRA:
  *         hl = ReprHighlighter()(text)
  *         out = io.StringIO()
- *         Console(file=out, color_system="truecolor", force_terminal=True, width=200, legacy_windows=False).print(text, markup=False, emoji=False)
+ *         Console(file=out, color_system="truecolor", force_terminal=True, width=200, legacy_windows=False).print(text, markup=False)
  *         cases.append({"text": text, "spans": [[s.start, s.end, s.style] for s in hl.spans], "ansi": out.getvalue()})
  *     json.dump(cases, sys.stdout, indent=1, ensure_ascii=False)
  *     sys.stdout.write("\n")
