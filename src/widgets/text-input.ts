@@ -254,6 +254,11 @@ const PRINTABLE = /^[^\x00-\x1f\x7f]+$/u;
 const WORD_CHAR_RE = /[A-Za-z0-9_]/;
 const WHITESPACE_RE = /\s/;
 
+/** CRLF and lone CR as LF, the line break `value` holds. */
+function toLf(text: string): string {
+  return text.replace(/\r\n?/g, "\n");
+}
+
 function isWordChar(c: string | undefined): boolean {
   return c !== undefined && WORD_CHAR_RE.test(c);
 }
@@ -272,11 +277,13 @@ export class TextInput extends ThemedWidget {
   // [LAW:single-enforcer] Every write to either half of the pair passes
   // `graphemeBoundary`, so the cursor is a cluster boundary inside `value`
   // whoever set it last — a caller replacing `value`, a click, an insert that
-  // grew the cluster before it.
+  // grew the cluster before it. A line break is `\n`, as in an HTML
+  // textarea's value: `\r\n` is one cluster, and a cursor could not rest at
+  // its line's end.
   get value(): string { return this._value; }
   set value(v: string) {
-    this._value = v;
-    this._cursor = graphemeBoundary(v, this._cursor);
+    this._value = toLf(v);
+    this._cursor = graphemeBoundary(this._value, this._cursor);
   }
   get cursorPosition(): CodePoint { return this._cursor; }
   set cursorPosition(p: number) { this._cursor = graphemeBoundary(this._value, p); }
@@ -340,7 +347,7 @@ export class TextInput extends ThemedWidget {
   constructor(options: TextInputOptions = {}) {
     super(options.theme);
     this.id = options.id ?? `text-input-${Math.random().toString(36).slice(2, 8)}`;
-    this._value = options.value ?? "";
+    this._value = toLf(options.value ?? "");
     this.placeholder = options.placeholder ?? "";
     // [LAW:dataflow-not-control-flow] Initial cursor position is data, not
     // a render-time branch. Single-line inputs follow the pre-filled-form
@@ -798,11 +805,14 @@ export class TextInput extends ThemedWidget {
       }
       toInsert = toInsert.slice(0, fit);
     }
+    // The end is taken before the write: the value setter has already moved
+    // the cursor past a cluster the insert grew.
+    const end = this.cursorPosition + toInsert.length;
     this.value =
       this.value.slice(0, this.cursorPosition) +
       toInsert +
       this.value.slice(this.cursorPosition);
-    this.cursorPosition += toInsert.length;
+    this.cursorPosition = end;
     this._preferredColumn = null;
     this.emitChange();
   }

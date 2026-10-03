@@ -1218,6 +1218,23 @@ describe("TextInput", () => {
       expect(t.value).toBe("");
     });
 
+    it("a key that joins the glyph before the cursor leaves the cursor just after it", () => {
+      const t = new TextInput({ value: "👍x" });
+      t.cursorPosition = asCodePoint(2);
+      t.handleKey(printable("🏽"));
+      expect(t.value).toBe("👍🏽x");
+      expect(t.value.slice(t.cursorPosition)).toBe("x");
+    });
+
+    it("holds line breaks as \\n, so End stays on its line", () => {
+      const t = new TextInput({ value: "a\r\nb\rc", multiline: true });
+      expect(t.value).toBe("a\nb\nc");
+      t.handleKey(endEvent());
+      expect(t.cursorPosition).toBe(1);
+      t.value = "x\r\ny";
+      expect(t.value).toBe("x\ny");
+    });
+
     it("maxLength cuts between glyphs, never inside one", () => {
       const t = new TextInput({ value: "abcd", maxLength: 5 });
       t.handleKey(printable("😀"));

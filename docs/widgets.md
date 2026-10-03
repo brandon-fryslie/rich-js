@@ -175,7 +175,7 @@ Same gestures as `Checkbox`, over an `on` boolean. Renders `[ON]  label` or `[OF
 
 `new TextInput({ value?, placeholder?, maxLength?, password?, multiline?, ... })`
 
-An editable field with a full readline-style key map: arrows and Home/End for character and line motion, Ctrl+A/E/B/F for the same, Alt+B/F and Ctrl+Left/Right for word motion, Ctrl+W/U/K for deletion, Ctrl+Y to yank back, Ctrl+T to transpose. Read the current text from `value`.
+An editable field with a full readline-style key map: arrows and Home/End for character and line motion, Ctrl+A/E/B/F for the same, Alt+B/F and Ctrl+Left/Right for word motion, Ctrl+W/U/K for deletion, Ctrl+Y to yank back, Ctrl+T to transpose. Every motion and deletion steps over a whole glyph, so `👍🏽` or `👨‍👩‍👧` is one step. Read the current text from `value`; as in an HTML textarea, its line breaks are `\n`, whatever was set.
 
 In single-line mode, Enter emits `onSubmit` and Up/Down do nothing. Set `multiline: true` and Enter inserts a newline instead, while Up/Down (and Ctrl+P/N) move between *visual* rows.
 
