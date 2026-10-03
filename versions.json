@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-289",
+      "ref": "refs/pull/289/merge",
+      "sha": "d0ba6a8bdcd99999c27956245dae9744a326492b",
+      "timestamp": "2026-10-03T01:33:32.486Z",
+      "commits": [
+        {
+          "sha": "d0ba6a8bdcd99999c27956245dae9744a326492b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T19:32:26-06:00",
+          "message": "Merge bedc715a681427c7ff7c95241d5e6197a6641341 into 0d6ef018fa01d417f237de8e5214486818e882b4\n"
+        },
+        {
+          "sha": "bedc715a681427c7ff7c95241d5e6197a6641341",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T19:32:13-06:00",
+          "message": "fix(core): one bounded Memo for every string-keyed cache — Style.parse and ColorSpec.parse stop growing without end (rich-effects-fxiy.zyc)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "0d6ef018fa01d417f237de8e5214486818e882b4",
