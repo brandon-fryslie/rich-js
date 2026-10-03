@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-289",
-      "ref": "refs/pull/289/merge",
-      "sha": "393b30a48a4491ba815d83044b45b7240e6a65c6",
-      "timestamp": "2026-10-03T01:38:03.797Z",
-      "commits": [
-        {
-          "sha": "393b30a48a4491ba815d83044b45b7240e6a65c6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T01:36:42Z",
-          "message": "Merge 4d272f3cf0e39df49d0d67e5d87af0ef98266588 into 0d6ef018fa01d417f237de8e5214486818e882b4\n"
-        },
-        {
-          "sha": "4d272f3cf0e39df49d0d67e5d87af0ef98266588",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T19:36:37-06:00",
-          "message": "fix(core): Memo computes before it clears; parse memos private, tested by behavior (rich-effects-fxiy.zyc)\n"
-        },
-        {
-          "sha": "bedc715a681427c7ff7c95241d5e6197a6641341",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T19:32:13-06:00",
-          "message": "fix(core): one bounded Memo for every string-keyed cache — Style.parse and ColorSpec.parse stop growing without end (rich-effects-fxiy.zyc)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "0d6ef018fa01d417f237de8e5214486818e882b4",
-      "timestamp": "2026-10-03T01:29:34.727Z",
+      "sha": "f94f990ac99490da46b9b61bb1e3129cb5204271",
+      "timestamp": "2026-10-03T01:42:31.236Z",
       "commits": [
         {
-          "sha": "0d6ef018fa01d417f237de8e5214486818e882b4",
+          "sha": "f94f990ac99490da46b9b61bb1e3129cb5204271",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T19:28:31-06:00",
-          "message": "feat(host)!: frame clock, App and Live tick at a caller-chosen rate (rich-effects-fxiy.b40) (#288)\n\n* feat(host): frame clock — App and Live tick at a caller-chosen rate on an injected Clock (rich-effects-fxiy.b40)\n\nframeRate is the one parser of a rate: positive, finite, fractional (0.5 is a\nframe every two seconds). App takes a rate and a clock, hands each frame's t\nto its view, and ticks only while animate() holds and it is running; Live\nparses refreshPerSecond through the same parser and ticks on its clock. The\neffects-feel demo drops its own timer for App's.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(host): animate paints its first frame now, a tick satisfies a queued refresh, frameRate refuses rates a timer cannot wait out (rich-effects-fxiy.b40)\n\nReview (high) on #288.\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-10-02T19:41:28-06:00",
+          "message": "fix(core): one bounded Memo — Style.parse and ColorSpec.parse caches stop growing (rich-effects-fxiy.zyc) (#289)\n\n* fix(core): one bounded Memo for every string-keyed cache — Style.parse and ColorSpec.parse stop growing without end (rich-effects-fxiy.zyc)\n\n* fix(core): Memo computes before it clears; parse memos private, tested by behavior (rich-effects-fxiy.zyc)"
         }
       ]
     }
