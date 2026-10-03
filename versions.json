@@ -2,42 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-304",
-      "ref": "refs/pull/304/merge",
-      "sha": "fd675d364ffe801b76cde92eaac2dd815150ed6b",
-      "timestamp": "2026-10-03T08:29:25.349Z",
-      "commits": [
-        {
-          "sha": "fd675d364ffe801b76cde92eaac2dd815150ed6b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:28:22Z",
-          "message": "Merge 4cea3c414fc1ebed97aba61d409ba8ddef57f5c7 into b1b2221759a1265c84443b2b59fd362954f253d6\n"
-        },
-        {
-          "sha": "4cea3c414fc1ebed97aba61d409ba8ddef57f5c7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T02:28:17-06:00",
-          "message": "fix(panel): widen a label's tabs before it is cut or fitted to (rich-panel-blxr review)\n\nA tab in a panel title or subtitle was measured unexpanded and drawn expanded,\nso the border's excess went negative and String.repeat threw. InlineLabel now\nexpands tabs as Rich's _title does, through a new RichText.expandTabs that\nmoves spans with their characters.\n"
-        },
-        {
-          "sha": "4b54793c8fd7f848c1a9fbc8982aa1977e18ca20",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T02:23:49-06:00",
-          "message": "fix(panel): labels, declared widths and empty titles follow Rich (rich-panel-blxr review)\n\nHigh-pass findings, each confirmed against Rich 9d8f9a3:\n- a newline in a panel/rule title reads as a space (Rich's _title)\n- a declared width is a ceiling: expand=False fits inside it, and a title\n  widens past it up to maxWidth; measure reports the width drawn\n- presence is Rich's `if self.title` on the content as given: markup that\n  styles nothing is a two-space label in Panel/Rule and a blank row in Table\n- a cut label is marked only when its own overflow is ellipsis\n- labels are read once per renderable (InlineLabel), not per measure\n- RichText's piece lookup names empty text's one piece; stale end comment fixed\n- docs/panel.md covers width, title widening and label cutting\n"
-        },
-        {
-          "sha": "876110e48d9a77b7603441237495f12daea5adc4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T02:09:13-06:00",
-          "message": "fix(panel): Panel and empty content are byte-identical to Rich (rich-panel-blxr)\n\nEmpty text is one empty line, as Rich's Text.render yields Segment(\"\") for\nit: a panel's empty body and an empty table cell now draw Rich's content\nline. Table title/caption keep Rich's `if self.title` skip; the traceback\nframe block is one entry per frame, so a frameless report adds no row.\n\nPanel cuts its segments where Rich does: an unlabelled border row is one\nrun; a title or subtitle sits between corner-and-rule and rule-and-corner\nruns, centred in width-4 and dropped at width <= 4; the content line is\npadded to its canvas before the right padding's own run; a vertical padding\nrow is one blank run. A fitted panel widens to hold its title.\n\nPinned against Rich 9d8f9a3 in panel.test.ts \"Panel as Rich draws it\"; the\ntable.test.ts footer divergence is replaced by the reference bytes.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b1b2221759a1265c84443b2b59fd362954f253d6",
