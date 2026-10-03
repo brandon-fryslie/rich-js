@@ -46,6 +46,8 @@ const cells: EffectCell[] = Array.from({ length: 40 }, (_, col) => ({ row: 0, co
 const sameColor = (a: ColorRgba, b: ColorRgba): boolean => a.red === b.red && a.green === b.green && a.blue === b.blue;
 const distance = (a: ColorRgba, b: ColorRgba): number => Oklch.fromRgba(a).deltaE(Oklch.fromRgba(b));
 const sun = LIGHTS.sun;
+/** A breath's turn as the demo runs it with no flags. */
+const BREATH_SECONDS = parseSettings([])!.curves.pulse.seconds;
 /** The ink at its whole share: the subject every curve here is tried on. */
 const inkOn = new Map([[ink.hex, 1]]);
 /** `color` under `loop` at a cell and moment, at its whole share. */
@@ -111,7 +113,7 @@ describe("the loops move", () => {
     const continuous = (["linear", "ease", "ease-in", "ease-out", "ease-in-out", "sine"] as const).map((name) => EASES[name]);
     let worst = 0;
     for (const ease of continuous) for (const z of [0, 11.3, 22.6]) {
-      const breath = pulse({ seconds: 33, ease, swing: 1 }, span, sun, z);
+      const breath = pulse({ seconds: BREATH_SECONDS, ease, swing: 1 }, span, sun, z);
       for (let t = 0; t < 1200; t += 0.5) {
         const drawn = row.map((cell) => under(breath, fill, cell, t));
         drawn.slice(1).forEach((color, i) => (worst = Math.max(worst, distance(drawn[i]!, color))));
@@ -125,10 +127,10 @@ describe("the loops move", () => {
     // breath begins, so each turn has a moment where nothing is lit.
     const row = Array.from({ length: span }, (_, col) => ({ row: 0, col, seed: 0 }));
     for (const z of [0, 11.3, 22.6]) {
-      const breath = pulse(curve(33, 0.5), span, sun, z);
+      const breath = pulse(curve(BREATH_SECONDS, 0.5), span, sun, z);
       const still = (t: number): boolean => row.every((cell) => breath.field(cell, t) === 0);
       for (let turn = 0; turn < 20; turn++) {
-        const moments = Array.from({ length: 330 }, (_, i) => turn * 33 + i / 10);
+        const moments = Array.from({ length: Math.round(BREATH_SECONDS * 10) }, (_, i) => turn * BREATH_SECONDS + i / 10);
         expect(moments.some(still), `z ${z}, turn ${turn}`).toBe(true);
       }
     }
@@ -178,14 +180,14 @@ describe("the loops move", () => {
   });
 
   it("drift shifts hue along the row", () => {
-    const moved = at(onColors(new Map([[ground.hex, 1]]), drift(curve(8, 40), 40, 0)), 0).map((c) => c.bg.hex);
+    const moved = at(onColors(new Map([[ground.hex, 1]]), drift(curve(8, 40), 0)), 0).map((c) => c.bg.hex);
     expect(new Set(moved).size).toBeGreaterThan(1);
   });
 
   it("drift silvers by how strong a gust is, not by how far its hue turns", () => {
     // A wide swing turns the hue further; it does not wash the colour out.
     const blue = new ColorRgba(137, 180, 250);
-    const wide = drift(curve(30, 120), 104, 0);
+    const wide = drift(curve(30, 120), 0);
     let palest = 0;
     for (let t = 0; t < 300; t += 3) for (const cell of cells) palest = Math.max(palest, Oklch.fromRgba(under(wide, blue, cell, t)).l);
     expect(palest).toBeLessThan(Oklch.fromRgba(blue).l + 0.09);
@@ -260,9 +262,11 @@ describe("the loops move", () => {
   });
 
   it("onColors leaves a colour not in its set alone", () => {
-    const moved = onColors(new Map([[ground.hex, 1]]), pulse(curve(3, 0.2), 40, sun, 0))(colors, cells[0]!, 1.5);
-    expect(moved.fg).toBe(ink);
-    expect(sameColor(moved.bg, ground)).toBe(false);
+    // A breath rests for part of its turn, so the turn is watched whole.
+    const effect = onColors(new Map([[ground.hex, 1]]), pulse(curve(3, 0.2), 40, sun, 0));
+    const turn = Array.from({ length: 30 }, (_, i) => effect(colors, cells[0]!, i / 10));
+    expect(turn.every((moved) => moved.fg === ink)).toBe(true);
+    expect(turn.some((moved) => !sameColor(moved.bg, ground))).toBe(true);
   });
 });
 
@@ -308,10 +312,6 @@ describe("the loops never jump", () => {
   // A frame-to-frame move under two just-noticeable differences (dE_OK
   // ~0.02 each) reads as drift, not as a tick.
   const STEP = 0.04;
-  // About the demo strip's width: a sweep crosses its span once a period, so
-  // the wider the element the faster the band, and the strip is the widest.
-  const SPAN = 104;
-  const strip: EffectCell[] = Array.from({ length: 2 * SPAN }, (_, i) => ({ row: i % 2, col: Math.floor(i / 2), seed: 0 }));
   // Fills and ink the strip draws, each at its whole share: the most any moves.
   // Near black is left out: there 8-bit steps are large in OKLab's lightness
   // and a display's black level shows none of them.
@@ -319,34 +319,40 @@ describe("the loops never jump", () => {
   // The curves as the demo runs them with no flags.
   const { curves } = parseSettings([])!;
   const loops = {
-    pulse: (z: number) => pulse(curves.pulse, SPAN, sun, z),
-    shimmer: (z: number) => shimmer(curves.shimmer, SPAN, SHIMMER_WIDTH, sun, z),
-    drift: (z: number) => drift(curves.drift, SPAN, z),
-    sparkle: (z: number) => sparkle(curves.sparkle, SPAN, LIGHTS.firefly, z),
+    pulse: (span: number, z: number) => pulse(curves.pulse, span, sun, z),
+    shimmer: (span: number, z: number) => shimmer(curves.shimmer, span, SHIMMER_WIDTH, sun, z),
+    drift: (_span: number, z: number) => drift(curves.drift, z),
+    sparkle: (span: number, z: number) => sparkle(curves.sparkle, span, LIGHTS.firefly, z),
   };
   // No loop repeats, so any watch is a sample of the moves it makes: five
   // minutes passed loops that jumped later on. Half an hour is a status
   // line's sitting, and every one of its seconds is a frame checked, on two
-  // elements, the second's frames falling between the first's. A sample
-  // still under-reads the worst step, so the loops are tuned well under the
-  // bar: an hour of four elements, at both offsets and at 40 columns as well,
-  // took none past 0.037.
+  // elements two rows deep, the second's frames falling between the first's:
+  // one the demo strip's width, one a wide terminal's, since a light or a
+  // gust keeps its pace however wide the row. A sample still under-reads the
+  // worst step: an hour of these fills at 40, 104 and 240 columns, at z 0,
+  // 1.7, 9.9, 22.6 and 47.2, takes pulse to 0.0395. That is the loop with
+  // least room; any change that brightens or narrows one is measured over
+  // that hour first.
   const WATCHED = 1800;
   const ELEMENTS = [
-    { z: 0, offset: 0 },
-    { z: 22.6, offset: 0.5 },
+    { span: 104, z: 0, offset: 0 },
+    { span: 240, z: 22.6, offset: 0.5 },
   ];
   it.each(Object.entries(loops))("%s moves no cell more than the bar between frames at 1 fps", (_, loop) => {
     let worst = 0;
-    for (const { z, offset } of ELEMENTS) for (const color of fills) {
-      const move = loop(z);
-      // A frame at a time, as a screen draws them.
-      const frame = (t: number): ColorRgba[] => strip.map((cell) => under(move, color, cell, t));
-      let last = frame(offset);
-      for (let t = 1 + offset; t < WATCHED; t++) {
-        const next = frame(t);
-        next.forEach((now, i) => (worst = Math.max(worst, distance(last[i]!, now))));
-        last = next;
+    for (const { span, z, offset } of ELEMENTS) {
+      const strip: EffectCell[] = Array.from({ length: 2 * span }, (_, i) => ({ row: i % 2, col: Math.floor(i / 2), seed: 0 }));
+      for (const color of fills) {
+        const move = loop(span, z);
+        // A frame at a time, as a screen draws them.
+        const frame = (t: number): ColorRgba[] => strip.map((cell) => under(move, color, cell, t));
+        let last = frame(offset);
+        for (let t = 1 + offset; t < WATCHED; t++) {
+          const next = frame(t);
+          next.forEach((now, i) => (worst = Math.max(worst, distance(last[i]!, now))));
+          last = next;
+        }
       }
     }
     expect(worst).toBeLessThan(STEP);

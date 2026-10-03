@@ -67,7 +67,7 @@ const TEXT = "Thinking about how a band of light should cross these words at one
 const STATUS_CONTRAST = 7;
 
 /** How far a shimmer's light reaches either side of its centre, in columns. */
-export const SHIMMER_WIDTH = 32;
+export const SHIMMER_WIDTH = 24;
 
 /**
  * How a looping effect's worst contrast is measured: over this many of its
@@ -100,7 +100,7 @@ export interface Subject {
  */
 export interface DrawnSubject extends Subject {
   readonly options: RenderOptions;
-  /** Its width in columns, which a sweep crosses once a period. */
+  /** Its width in columns. */
   readonly span: number;
   /** The colours it sets in the cells it draws text in, by hex, as the screen shows them. */
   readonly colors: ReadonlySet<string>;
@@ -277,7 +277,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   const made: Record<LoopName, (subject: DrawnSubject) => Loop> = {
     shimmer: (s) => shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, LIGHTS.sun, s.z),
     pulse: (s) => pulse(curves.pulse, s.span, LIGHTS.sun, s.z),
-    drift: (s) => drift(curves.drift, s.span, s.z),
+    drift: (s) => drift(curves.drift, s.z),
     sparkle: (s) => sparkle(curves.sparkle, s.span, LIGHTS.firefly, s.z),
   };
   // A subject's shares under a loop never change during a run, and settling

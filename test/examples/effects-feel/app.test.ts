@@ -92,7 +92,7 @@ describe("a strip under a pulse", () => {
     });
   }
 
-  it("spans the columns it draws, so a sweep crosses it once a period", () => {
+  it("spans the columns it draws", () => {
     const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), options, CATPPUCCIN_MOCHA);
     const rows = [...strip.renderable.render(options)].map((segment) => segment.text).join("").split("\n");
     expect(strip.span).toBe(Math.max(...rows.map(cellLen)));
@@ -164,7 +164,7 @@ describe("every loop keeps the words readable", () => {
   const made = {
     shimmer: (span: number, z: number) => shimmer({ ...curves.shimmer, swing: 1 }, span, SHIMMER_WIDTH, LIGHTS.sun, z),
     pulse: (span: number, z: number) => pulse({ ...curves.pulse, swing: 1 }, span, LIGHTS.sun, z),
-    drift: (span: number, z: number) => drift(curves.drift, span, z),
+    drift: (_span: number, z: number) => drift(curves.drift, z),
     sparkle: (span: number, z: number) => sparkle({ ...curves.sparkle, swing: 1 }, span, LIGHTS.firefly, z),
   };
   const grounds = [["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const;
