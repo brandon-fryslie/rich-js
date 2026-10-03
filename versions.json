@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-294",
+      "ref": "refs/pull/294/merge",
+      "sha": "9f11e0646c6f5397a37620a40e1f5734af52b227",
+      "timestamp": "2026-10-03T04:02:46.611Z",
+      "commits": [
+        {
+          "sha": "9f11e0646c6f5397a37620a40e1f5734af52b227",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T22:01:23-06:00",
+          "message": "Merge 1e55b9374cdc73cfb950cd99487b21acc2f0dc4f into 6093b3620bc8f78d526dc3dd76521f272484f8f3\n"
+        },
+        {
+          "sha": "1e55b9374cdc73cfb950cd99487b21acc2f0dc4f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T22:01:18-06:00",
+          "message": "fix(text): measurement agrees with what is drawn (rich-text-z3ln)\n\n- RichText.measure takes its minimum from wrap's `widestWord`, the same word\n  `divideLine` never breaks, so a line's indent counts. Deliberate divergence\n  from Rich, whose measure drops the indent its wrapper keeps.\n- One `expandTabs` in cells.ts, called by RichText and Syntax: a tab reaches the\n  next tab stop (Rich's `Text.expand_tabs`). It also maps offsets, so a span\n  after a tab now styles the characters it named instead of landing short.\n- No site outside `Measurement.get` decides the fallback for a renderable that\n  cannot measure itself. Viewport and Constrain floored that minimum at 1;\n  it is now Rich's 0.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "6093b3620bc8f78d526dc3dd76521f272484f8f3",
