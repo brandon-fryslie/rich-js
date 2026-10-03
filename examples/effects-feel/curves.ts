@@ -202,18 +202,27 @@ function breathAt(p: number): number {
  * into the light on the inhale and settling back on the exhale — warmth,
  * not only lightness, so text already near white still visibly breathes. No
  * two breaths are the same: the rhythm drifts a little early or late and the
- * depth varies, both on slow noise. Every cell breathes the same breath, so
- * a fill drawn across many cells — a powerline seam and the cell it points
- * out of — stays one colour. A breath starts in its rest, so `t = 0` draws
- * the cell untouched.
+ * depth varies, both on slow noise. A breath is not a dimmer: it rises first
+ * at a heart that wanders slowly along the element and spreads outward from
+ * it, the far ends a moment behind, and it fills some stretches more deeply
+ * than others — warmth moving through a body, not a lamp turned up. Across
+ * one column the lag and the depth barely differ, so a fill drawn across
+ * neighbouring cells — a powerline seam and the cell it points out of —
+ * stays one colour. A breath starts in its rest, so `t = 0` draws the cell
+ * untouched.
  */
-export function pulse(curve: Curve, glow: ColorRgba): Loop {
+export function pulse(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
   const P = curve.seconds;
-  const field: Field = (_cell, t) => {
-    // The rhythm's drift is slow enough that phase only ever moves forward.
-    const phase = t / P - 0.06 + 0.03 * noise(t / (3 * P), 0.5, 0.5);
-    const depth = 0.8 + 0.2 * noise(t / (4 * P), 3.5, 0.5);
-    return curve.swing * curve.ease(breathAt(phase - Math.floor(phase)) * depth);
+  // Of a breath, how far behind the heart its farthest cell starts.
+  const SPREAD = 0.12;
+  const field: Field = (cell, t) => {
+    const heart = span * (0.5 + 0.45 * noise(t / (5 * P), 6.1, z));
+    const lag = (SPREAD * Math.abs(cell.col - heart)) / span;
+    // The rhythm's drift and the heart's wandering are slow enough that
+    // phase only ever moves forward. A cell starts in its rest whatever its lag.
+    const phase = Math.max(0, t / P - 0.06 - lag + 0.03 * noise(t / (3 * P), 0.5, 0.5 + z));
+    const depth = 0.8 + 0.2 * noise(t / (4 * P), 3.5, 0.5 + z) - 0.15 * (1 + noise(cell.col * 0.04, 1.9, t / (6 * P) + z)) / 2;
+    return curve.swing * curve.ease(clamp01(breathAt(phase - Math.floor(phase)) * depth));
   };
   return { touch: light(glow), field };
 }
@@ -231,7 +240,13 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
  * glides. Before the band enters, the row is untouched.
  */
 export function shimmer(curve: Curve, span: number, width: number, glow: ColorRgba, z: number): Loop {
-  const phase = Phase.loop(curve.seconds);
+  // The band rides a current that quickens and slackens on slow noise, never
+  // reversing — the slope of the noise term stays under the steady one — so
+  // no two passes cross at the same pace. The current is still at `t = 0`, so
+  // the first pass starts off the row.
+  const loop = Phase.loop(curve.seconds);
+  const pace = (t: number): number => noise(t / curve.seconds, 2.7, 5.5 + z);
+  const phase = (t: number): number => loop(t + 0.12 * curve.seconds * (pace(t) - pace(0)));
   // A ripple's crest: a Gaussian ridge, 1 where the field crosses zero and in
   // (0, 1] for any noise, smooth throughout, so a crest sliding through a cell
   // lights it smoothly.

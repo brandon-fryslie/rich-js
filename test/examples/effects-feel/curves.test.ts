@@ -67,7 +67,7 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
   const untouched = bytes(subject);
 
   it("pulse at the start of its period", () => {
-    expect(drawn(onColors(inkOn, pulse(curve(3, 0.2), sun)), 0)).toBe(untouched);
+    expect(drawn(onColors(inkOn, pulse(curve(3, 0.2), 40, sun, 0)), 0)).toBe(untouched);
   });
 
   it("shimmer before its band enters the row", () => {
@@ -86,7 +86,7 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
 
 describe("the loops move", () => {
   it("pulse warms toward its light on the inhale and settles back after the exhale", () => {
-    const breath = pulse(curve(8, 0.4), sun);
+    const breath = pulse(curve(8, 0.4), 40, sun, 0);
     const top = under(breath, ink, cells[0]!, 3.4); // the inhale ends near 0.36 of a breath
     expect(distance(top, sun)).toBeLessThan(distance(ink, sun) - 0.02);
     expect(sameColor(under(breath, ink, cells[0]!, 7.6), ink)).toBe(true); // the rest before the next
@@ -155,7 +155,7 @@ describe("the loops move", () => {
   });
 
   it("onColors leaves a colour not in its set alone", () => {
-    const moved = onColors(new Map([[ground.hex, 1]]), pulse(curve(3, 0.2), sun))(colors, cells[0]!, 1.5);
+    const moved = onColors(new Map([[ground.hex, 1]]), pulse(curve(3, 0.2), 40, sun, 0))(colors, cells[0]!, 1.5);
     expect(moved.fg).toBe(ink);
     expect(sameColor(moved.bg, ground)).toBe(false);
   });
@@ -214,7 +214,7 @@ describe("the loops never jump", () => {
   // The curves as the demo runs them with no flags.
   const { curves } = parseSettings([])!;
   const loops = {
-    pulse: pulse(curves.pulse, sun),
+    pulse: pulse(curves.pulse, SPAN, sun, 0),
     shimmer: shimmer(curves.shimmer, SPAN, SHIMMER_WIDTH, sun, 0),
     drift: drift(curves.drift, SPAN, 0),
     sparkle: sparkle(curves.sparkle, SPAN, LIGHTS.firefly, 0),

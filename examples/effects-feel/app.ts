@@ -279,7 +279,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
 
   const made: Record<LoopName, (subject: DrawnSubject) => Loop> = {
     shimmer: (s) => shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, LIGHTS.sun, s.z),
-    pulse: () => pulse(curves.pulse, LIGHTS.sun),
+    pulse: (s) => pulse(curves.pulse, s.span, LIGHTS.sun, s.z),
     drift: (s) => drift(curves.drift, s.span, s.z),
     sparkle: (s) => sparkle(curves.sparkle, s.span, LIGHTS.firefly, s.z),
   };
