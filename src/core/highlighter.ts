@@ -90,8 +90,10 @@ export class ReprHighlighter extends RegexHighlighter {
   static override highlights = [
     // `tag_contents` runs to the text's last `>`, so only the text's first `<`
     // can open a tag; the lookbehind starts the match there and nowhere else,
-    // where Rich retries every later `<` and rescans to the end each time.
-    new RegExp(String.raw`(?<tag_start><)(?<=^[^<]*<)(?<tag_name>[\-${W}.:|]*)(?<tag_contents>[^]*)(?<tag_end>>)`, "u"),
+    // where Rich retries every later `<` and rescans to the end each time. The
+    // lookahead asks once whether any `>` follows; without it, a `<` before a
+    // long name with no `>` rescans to the end for every length of the name.
+    new RegExp(String.raw`(?<tag_start><)(?<=^[^<]*<)(?=[^]*>)(?<tag_name>[\-${W}.:|]*)(?<tag_contents>[^]*)(?<tag_end>>)`, "u"),
     new RegExp(String.raw`(?<attrib_name>[${W}]{1,50})=(?<attrib_value>"?[${W}]+"?)?`, "u"),
     new RegExp(String.raw`(?<brace>[\][{}()])`, "u"),
     // [LAW:dataflow-not-control-flow] One alternation, scanned once, as Rich's

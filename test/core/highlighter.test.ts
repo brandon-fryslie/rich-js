@@ -215,6 +215,7 @@ describe("highlighting a long run takes one pass over it", () => {
     ["a negative number's digits", "-" + "1".repeat(N)],
     ["dots", ".".repeat(N)],
     ["< with no > after it", "<".repeat(N)],
+    ["a < before a name with no > after it", "<" + "a".repeat(N)],
   ])("%s", (_name, input) => {
     for (const ctor of [ReprHighlighter, JSONHighlighter]) {
       const started = performance.now();
