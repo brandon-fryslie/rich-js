@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-306",
-      "ref": "refs/pull/306/merge",
-      "sha": "bf0ffcddf8d6936d1feca394c2ef34f6d3865f82",
-      "timestamp": "2026-10-03T09:20:18.044Z",
-      "commits": [
-        {
-          "sha": "bf0ffcddf8d6936d1feca394c2ef34f6d3865f82",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T09:19:03Z",
-          "message": "Merge d5876088e7b3fec09ec49c1a8f91a71bdd47e0b5 into 97ae7e2cc96473d2a839b810587d60c6f667f808\n"
-        },
-        {
-          "sha": "d5876088e7b3fec09ec49c1a8f91a71bdd47e0b5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T03:18:58-06:00",
-          "message": "fix(demos): live rows land on the page's line height at any device pixel ratio; the status bar measures itself and never wraps (rich-demos-z4hd)\n\nxterm measures a character in whole CSS pixels (offsetHeight) and makes a row\nthat rounded up to whole device pixels, so a whole-pixel line height only\nmatches at dpr 1. custom.css now measures xterm at --rich-fragment-line and\nderives the page's line height from it the way xterm does, with the ratio\ntracked on :root; the measure rule moves into loadXterm so every LiveTerminal\nhas it. The status bar reads its width off its own markup and is drawn\nno-wrap with an ellipsis, so it is one row at every width.\n"
-        },
-        {
-          "sha": "f22ca4ec0d20658666c3fa1a6edea1218663841d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T03:07:28-06:00",
-          "message": "fix(demos): live-terminal rows sit at the page's line height; the claude-sessions footer fits 80 columns (rich-demos-z4hd)\n\nxterm makes a row its measured character height times its lineHeight option,\nrounded to device pixels, so the factor live-terminal.ts handed it never landed\non the page's line height: rows were 20px against a 17.5px line, and the landing\nshowcase grew 483px -> 543px on its first frame. xterm now measures its\ncharacter at the page's line height (custom.css) with the option left at 1,\nand that line height is rounded to a whole pixel so static output and live\nrows share it.\n\nThe claude-sessions footer is one Layout row and wrapped when narrower than\nits hints, cutting \"q quit\" at 80 columns with no sign. It now draws the\nleading hints that fit and counts the rest (\"+8 more\"); the lists lead with\nmoving, focus and quit.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "97ae7e2cc96473d2a839b810587d60c6f667f808",
