@@ -97,18 +97,24 @@ export interface LiveTerminalOptions {
   readonly runtime: string;
   readonly terminal: TerminalSpec;
   readonly theme: TerminalTheme;
-  readonly font: { readonly family: string; readonly size: number; readonly lineHeight: number };
+  readonly font: { readonly family: string; readonly size: number };
 }
 
 /**
  * The font static output is drawn in, as `LiveTerminalOptions` takes it:
  * custom.css gives a live terminal's element `--rich-fragment-font`, and xterm
  * takes it as numbers.
+ *
+ * [LAW:one-source-of-truth] The line height is not among them. xterm makes a
+ * row its measured character height times its `lineHeight` option, rounded to
+ * device pixels, so no factor handed in from here lands on the element's line
+ * height. `loadXterm` instead has xterm measure its character at the line
+ * custom.css derives that line height from, and the option stays 1: a row is
+ * then the element's line height.
  */
 export function elementFont(element: HTMLElement): LiveTerminalOptions["font"] {
   const style = getComputedStyle(element);
-  const size = parseFloat(style.fontSize);
-  return { family: style.fontFamily, size, lineHeight: parseFloat(style.lineHeight) / size };
+  return { family: style.fontFamily, size: parseFloat(style.fontSize) };
 }
 
 /** xterm's colour options, from the theme a program's output is drawn in everywhere else. */
@@ -135,7 +141,7 @@ interface Xterm extends XtermTerminal {
   reset(): void;
   dispose(): void;
   onWriteParsed(handler: () => void): XtermDisposable;
-  options: { theme: Record<string, string>; fontFamily: string; fontSize: number; lineHeight: number };
+  options: { theme: Record<string, string>; fontFamily: string; fontSize: number };
 }
 
 type XtermConstructor = new (options: Record<string, unknown>) => Xterm;
@@ -146,16 +152,25 @@ let xterm: Promise<XtermConstructor> | undefined;
 function loadXterm(): Promise<XtermConstructor> {
   xterm ??= new Promise<XtermConstructor>((resolve, reject) => {
     const link = Object.assign(document.createElement("link"), { rel: "stylesheet", crossOrigin: "anonymous", ...XTERM.stylesheet });
+    // xterm makes a row the height it measures a character at, in whole CSS
+    // pixels rounded up to whole device pixels, and measures it at
+    // line-height: normal. Measured at the element's --rich-fragment-line, a
+    // whole CSS pixel, a row is the line height custom.css derives from it the
+    // same way (`elementFont`).
+    const measure = Object.assign(document.createElement("style"), {
+      textContent: ".xterm .xterm-char-measure-element { line-height: var(--rich-fragment-line, normal); }",
+    });
     const script = Object.assign(document.createElement("script"), { crossOrigin: "anonymous", ...XTERM.script });
     script.onload = () => resolve((globalThis as unknown as { Terminal: XtermConstructor }).Terminal);
     script.onerror = () => {
       // Forgotten, so the next terminal made tries again rather than reusing a failure.
       xterm = undefined;
       link.remove();
+      measure.remove();
       script.remove();
       reject(new Error(`xterm.js did not load from ${XTERM.script.src}`));
     };
-    document.head.append(link, script);
+    document.head.append(link, measure, script);
   });
   return xterm;
 }
@@ -244,7 +259,6 @@ export class LiveTerminal {
       rows: options.terminal.rows,
       fontFamily: options.font.family,
       fontSize: options.font.size,
-      lineHeight: options.font.lineHeight,
       // Nothing scrolls back: the page scrolls, not the terminal under the pointer.
       scrollback: 0,
       // A program that picks its own colours picks them for a background it
@@ -354,8 +368,8 @@ export class LiveTerminal {
   /** Draw in `font` from now on, as when the page resizes the element the font is read from. */
   setFont(font: LiveTerminalOptions["font"]): void {
     const { options } = this.screen;
-    if (options.fontFamily === font.family && options.fontSize === font.size && options.lineHeight === font.lineHeight) return;
-    Object.assign(options, { fontFamily: font.family, fontSize: font.size, lineHeight: font.lineHeight });
+    if (options.fontFamily === font.family && options.fontSize === font.size) return;
+    Object.assign(options, { fontFamily: font.family, fontSize: font.size });
     this.fit();
   }
 

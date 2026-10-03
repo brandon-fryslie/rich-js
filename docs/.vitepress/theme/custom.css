@@ -118,8 +118,34 @@
    * shrinking and the output scrolls. A live terminal reads the same font
    * (theme/RichLive.ts refits it when the card is resized). */
   container-type: inline-size;
-  --rich-fragment-font: clamp(10px, 100cqw / (var(--rich-example-columns) * 0.62 + 2), var(--vp-code-font-size))
-    / 1.25 var(--rich-code-font-family);
+  --rich-fragment-size: clamp(10px, 100cqw / (var(--rich-example-columns) * 0.62 + 2), var(--vp-code-font-size));
+}
+
+/* Static and live output, in every place either is drawn, share one line
+ * height, and it is where a live terminal's rows can land, so they sit on the
+ * rows of the static output beside them. xterm measures a character's height
+ * in whole CSS pixels and makes a row that height rounded up to whole device
+ * pixels; it measures at --rich-fragment-line (live-terminal.ts, `loadXterm`),
+ * 1.25em rounded down so the rows never loosen past it, and the line height is
+ * that rounded up the same way, in the same arithmetic
+ * (theme/device-pixel-ratio.ts). */
+.vp-doc .rich-example-output,
+.rich-playground-output,
+.rich-showcase {
+  --rich-fragment-line: round(down, 1.25em, 1px);
+  --rich-fragment-line-height: calc(round(up, var(--rich-fragment-line) * var(--rich-device-pixel-ratio, 1), 1px) / var(--rich-device-pixel-ratio, 1));
+  --rich-fragment-font: var(--rich-fragment-size) / var(--rich-fragment-line-height) var(--rich-code-font-family);
+}
+
+/* A browser without CSS round() would find the whole font shorthand invalid
+ * where it is used, and draw output in the page's font. It gets the 1.25 line
+ * height instead, and live rows that sit a little off the static ones. */
+@supports not (line-height: round(1px, 1px)) {
+  .vp-doc .rich-example-output,
+  .rich-playground-output,
+  .rich-showcase {
+    --rich-fragment-line-height: 1.25;
+  }
 }
 
 .vp-doc .rich-example-label {
@@ -227,8 +253,8 @@
  * would leave it scrolling sideways at phone width. Its screen is as wide as
  * its terminal from the start, a cell being one `ch` of the face xterm
  * measures, so the card does not widen when the program first draws. It
- * reserves the terminal's rows at the page's line height, which xterm's rows
- * are still taller than (lit rich-live-terminal-t0rs). Its edge is a ring, not
+ * reserves the terminal's rows at the page's line height, xterm's row height,
+ * so it does not grow when the program first draws either. Its edge is a ring, not
  * a border, so the card is exactly its screen's width, the width the font was
  * fitted to. */
 .rich-showcase {
@@ -237,8 +263,7 @@
   max-width: calc(1152px + 2 * 24px);
   margin: 0 auto;
   padding: 0 24px 48px;
-  --rich-fragment-font: min(100cqw / (var(--rich-example-columns) * 0.62 + 2), var(--vp-code-font-size)) / 1.25
-    var(--rich-code-font-family);
+  --rich-fragment-size: min(100cqw / (var(--rich-example-columns) * 0.62 + 2), var(--vp-code-font-size));
 }
 
 .rich-showcase .rich-live {
