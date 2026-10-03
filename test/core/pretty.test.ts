@@ -461,6 +461,12 @@ describe("Pretty", () => {
       expect(text.plain).toBe(["[", "│   top", "│   ", "│       bottom", "]"].join("\n"));
     });
 
+    it("keeps each guide on its glyphs past a control character the text drops", () => {
+      const text = guided({ "k\rx": 1, b: { c: 1 } }, 80, { expandAll: true });
+      expect(text.plain).toBe(["{", "│   kx: 1,", "│   b: {", "│   │   c: 1", "│   }", "}"].join("\n"));
+      expect(guideRuns(text)).toEqual(["│   ", "│   ", "│   │   ", "│   "]);
+    });
+
     it("draws none on an ASCII-only console, as the reference does", () => {
       const text = new Pretty({ a: 1 }, { expandAll: true, indentGuides: true }).toText({ maxWidth: 80, asciiOnly: true });
       expect(text.plain).toBe("{\n    a: 1\n}");

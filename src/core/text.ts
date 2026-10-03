@@ -10,9 +10,12 @@ import { stripOscTerminators } from "./osc8.js";
 import { drawable, getStyle, withBoundedWidth } from "./protocol.js";
 import type { Renderable, Measurable, OverflowMethod, RenderOptions } from "./protocol.js";
 
-// Strip control characters except \t and \n
+// Every C0 control and DEL except \t and \n. Rich's `Text` strips only
+// `STRIP_CONTROL_CODES` (BEL, BS, VT, FF, CR); the rest of the set is the
+// port's extension, so no C0 byte of content can start an escape sequence or
+// move the cursor on the wire. C1 controls (U+0080–U+009F) pass, as in Rich.
 // [LAW:single-enforcer] Single place where control chars are sanitized
-const CONTROL_CHARS_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
+const CONTROL_CHARS_RE = /[\x00-\x08\x0B-\x1F\x7F]/g;
 
 export function stripControlChars(text: string): string {
   return text.replace(CONTROL_CHARS_RE, "");

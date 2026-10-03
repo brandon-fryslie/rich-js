@@ -113,6 +113,14 @@ describe("Panel", () => {
     expect(lines[0]).toContain("Title");
   });
 
+  // A CR would reach the wire inside the border row and send the cursor
+  // back over the corner; Rich's Text strips it and draws `a b`.
+  it("draws a title holding a carriage return on one row, as Rich does", () => {
+    const out = renderToString(new Panel("x", { title: "a\r\nb" }), { width: 12, colorSystem: null });
+    expect(out).not.toContain("\r");
+    expect(out.split("\n")[0]).toBe("╭── a b ───╮");
+  });
+
   // Spec: Subtitle appears in the bottom border
 
   it("renders subtitle in bottom border", () => {

@@ -20,7 +20,7 @@
 import { asCellCol, cellColToCodeUnitOffset, cellLen, graphemes, splitAtCells } from "./cells.js";
 import { divideLine } from "./wrap.js";
 import { Segment } from "./segment.js";
-import { RichText } from "./text.js";
+import { RichText, stripControlChars } from "./text.js";
 import { ReprHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
 import { drawable } from "./protocol.js";
@@ -260,9 +260,14 @@ function follow(out: Lines, laid: Lines, tail: string): Lines {
  * the reference's `with_indent_guides` draws it, blank lines included, so the
  * rule runs unbroken. [LAW:dataflow-not-control-flow] no guide is `null`, and
  * the same pass runs either way.
+ *
+ * The guide offsets are counted over the text `RichText` will hold, which has
+ * its control characters stripped; counted over the raw text, every guide past
+ * a `\r` in a key or a `toString` would land one cell right. A margin is only
+ * ever spaces, so stripping cannot move one.
  */
 function drawMargins(lines: Lines, indent: number, guide: string | null): { plain: string; guides: Array<[number, number]> } {
-  const [first, ...rest] = lines.text.split("\n");
+  const [first, ...rest] = stripControlChars(lines.text).split("\n");
   const guides: Array<[number, number]> = [];
   let offset = first!.length;
   const rows = rest.map((line, i) => {

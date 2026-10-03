@@ -145,6 +145,26 @@ describe("RichText construction", () => {
     expect(t.plain).toBe("helloworld\t\n");
   });
 
+  it("strips Rich's STRIP_CONTROL_CODES, and every other C0 control and DEL as the port's extension", () => {
+    // rich/control.py: BEL, BS, VT, FF, CR.
+    const RICH_STRIPS = [7, 8, 11, 12, 13];
+    // Port extension: the rest of C0 (ESC among them) and DEL, so content
+    // cannot write an escape sequence.
+    const PORT_STRIPS = [0, 1, 2, 3, 4, 5, 6, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 127];
+    const stripped = new Set([...RICH_STRIPS, ...PORT_STRIPS]);
+    const codes = Array.from({ length: 128 }, (_, code) => code);
+    const kept = (code: number): boolean => new RichText(`a${String.fromCharCode(code)}b`).plain.length === 3;
+    expect(codes.filter((code) => !kept(code))).toEqual(codes.filter((code) => stripped.has(code)));
+  });
+
+  it("drops a carriage return from content set by the constructor, the plain setter and append, as Rich's Text does", () => {
+    expect(new RichText("a\r\nb").plain).toBe("a\nb");
+    expect(new RichText().append("a\r\nb").plain).toBe("a\nb");
+    const t = new RichText();
+    t.plain = "a\r\nb";
+    expect(t.plain).toBe("a\nb");
+  });
+
   it("accepts options", () => {
     const t = new RichText("test", {
       style: "bold",
