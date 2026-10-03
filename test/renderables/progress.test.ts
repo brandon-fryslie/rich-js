@@ -33,6 +33,7 @@ const fakeTask = (description: string): Task => ({
   startTime: 0,
   elapsed: 0,
   finishedTime: undefined,
+  speed: undefined,
 });
 
 function joined(col: TextColumn, description: string): string {
@@ -338,6 +339,56 @@ describe("TimeElapsedColumn and TimeRemainingColumn (rich-progress-jj5r)", () =>
       ["0:00:20 progress.elapsed", "0:00:14 progress.remaining", "0:00:14 progress.remaining"],
       ["0:00:20 progress.elapsed", " progress.remaining", " progress.remaining"],
       ["0:00:00 progress.elapsed", "-:--:-- progress.remaining", "-:--:-- progress.remaining"],
+    ]);
+  });
+});
+
+describe("TimeRemainingColumn's speed (rich-progress-jj5r.ef9)", () => {
+  // Python Rich 9d8f9a3 with `get_time` driven by hand. `a` (total 100) moves
+  // 1/s, then 40 in 5s, stalls, and is updated again after its samples have
+  // aged out of the 30s period; `q` (total 10, added unstarted) is updated
+  // twice before it is started. Drawn after each moment's updates.
+  it("estimates from the updates of the last 30 seconds, as of the last one, as Rich does", () => {
+    const column = new TimeRemainingColumn();
+    let frame: string[] = [];
+    const recorder: ProgressColumn = {
+      tableColumn: {},
+      render: (task) => {
+        frame.push(column.render(task).plain);
+        return new RichText("");
+      },
+    };
+    const clock = fakeClock();
+    const progress = new Progress(recorder, { console: new Console({ file: { write: () => {} } }), clock });
+    const a = progress.addTask("a", { total: 100 });
+    const q = progress.addTask("q", { total: 10, start: false });
+    const moments: [number, () => void][] = [
+      [10, () => { progress.updateTask(a, { completed: 10 }); progress.updateTask(q, { completed: 2 }); }],
+      [20, () => { progress.updateTask(a, { completed: 20 }); progress.updateTask(q, { completed: 4 }); }],
+      [20, () => progress.startTask(q)],
+      [25, () => progress.updateTask(a, { advance: 40 })],
+      [40, () => {}],
+      [70, () => progress.updateTask(a, { completed: 70 })],
+      [80, () => progress.updateTask(a, { completed: 90 })],
+      [105, () => progress.updateTask(a, { completed: 90 })],
+    ];
+    const frames = moments.map(([at, update]) => {
+      clock.advance(at - clock.now());
+      update();
+      frame = [];
+      [...progress.render(OPTS)];
+      return frame;
+    });
+
+    expect(frames).toEqual([
+      ["-:--:--", "-:--:--"],
+      ["0:01:20", "-:--:--"],
+      ["0:01:20", "0:00:30"],
+      ["0:00:12", "0:00:30"],
+      ["0:00:12", "0:00:30"],
+      ["-:--:--", "0:00:30"],
+      ["0:00:05", "0:00:30"],
+      ["-:--:--", "0:00:30"],
     ]);
   });
 });
