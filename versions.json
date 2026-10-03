@@ -4,15 +4,22 @@
     {
       "version": "pr-285",
       "ref": "refs/pull/285/merge",
-      "sha": "da132dca7fd3039c3318f50f283872adf9311fef",
-      "timestamp": "2026-10-02T23:59:47.008Z",
+      "sha": "ac44d188b02385093ea641bd411daa8f566c1d21",
+      "timestamp": "2026-10-03T00:05:20.230Z",
       "commits": [
         {
-          "sha": "da132dca7fd3039c3318f50f283872adf9311fef",
+          "sha": "ac44d188b02385093ea641bd411daa8f566c1d21",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T17:58:38-06:00",
-          "message": "Merge 187e9165b56013b34147187b9e26ee361cb9931f into b38c6b91569ddf12897b387b599cef1f5be67440\n"
+          "timestamp": "2026-10-02T18:04:24-06:00",
+          "message": "Merge ce6e4d2a5cded42705094502aac6064d655d0544 into b38c6b91569ddf12897b387b599cef1f5be67440\n"
+        },
+        {
+          "sha": "ce6e4d2a5cded42705094502aac6064d655d0544",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T18:04:19-06:00",
+          "message": "fix(core): ramp exactness contract, one step-end, an easing docs page (rich-effects-fxiy.87k)\n\nReview round (high): ColorRamp's contract now says what it does —\neased 0/1 are the stops exactly, step-start jumps as CSS defines it,\novershoot holds the end colors — and a test pins it over every EASES\nentry. ColorRamp.easing is now .ease, the binding's argument too, and\nparseEase's error reads \"unknown ease\". step and step-end are one\nvalue. docs/easing.md is the page for the vocabulary; the ramp section\nlinks to it instead of copying the name list.\n"
         },
         {
           "sha": "187e9165b56013b34147187b9e26ee361cb9931f",
