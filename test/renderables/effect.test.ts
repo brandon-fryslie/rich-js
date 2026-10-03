@@ -230,6 +230,13 @@ describe("Effected — below truecolor", () => {
     expect(renderToString(onMocha(fixed(new Segment("x")), veil), ansi)).toMatch(/\x1b\[(30|90|39)m/);
   });
 
+  it("lays a translucent ground where the writer lays one, so one colour draws one way", () => {
+    const half = new ColorRgba(255, 0, 0, 0.5);
+    const truecolor = { width: 10, colorSystem: "truecolor" } as const;
+    const tinted = renderToString(onMocha(fixed(new Segment("x")), (c) => ({ fg: c.fg, bg: half })), truecolor);
+    expect(tinted).toBe(renderToString(fixed(new Segment("x", new Style({ bgcolor: ColorSpec.fromRgba(half) }))), truecolor));
+  });
+
   it("draws a moved colour in the slot whose colour under the theme is nearest", () => {
     const toMochaRed: Effect = (c) => ({ fg: CATPPUCCIN_MOCHA.ansiColors.get(1), bg: c.bg });
     expect(renderToString(onMocha(fixed(new Segment("x")), toMochaRed), ansi)).toContain("\x1b[31m");

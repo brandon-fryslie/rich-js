@@ -34,7 +34,7 @@
  */
 
 import { cellLen, graphemes } from "../core/cells.js";
-import { ColorDepth, ColorSpec, type ColorRgba, type TerminalTheme } from "../core/color.js";
+import { ColorDepth, ColorSpec, SURFACE_BLACK, type ColorRgba, type TerminalTheme } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
@@ -168,14 +168,15 @@ export class Effected implements Renderable, Measurable {
   /**
    * The style that draws a run's slot colours `to` where the segment drew
    * `from` with `wire`: a slot the effect left alone keeps its written spec,
-   * and a moved one is laid on what is beneath it — the ground on the
-   * terminal's background, the glyph on that ground, as the writer does
-   * (`Style.drawnColors`) — then drawn in the colour nearest it at `depth`
+   * and a moved one is laid on what is beneath it — the ground on
+   * `SURFACE_BLACK`, the glyph on that ground, as the writer lays any
+   * translucent colour (`Style.drawnColors`) — then drawn in the colour nearest it at `depth`
    * that the terminal shows (`ColorSpec.matchOn`), so a colour moved a little
    * off a theme slot or the default colour is still drawn as that one.
    */
   private respec(wire: ReturnType<Style["drawnColors"]>, from: CellColors, to: CellColors, depth: ColorDepth): Style {
-    const ground = to.bg.compositeOver(this.theme.backgroundColor);
+    // [LAW:one-source-of-truth] The writer's surface, so one translucent colour draws one way in a frame.
+    const ground = to.bg.compositeOver(SURFACE_BLACK);
     const glyph = to.fg.compositeOver(ground);
     const drawn = (spec: ColorSpec | undefined, was: ColorRgba, now: ColorRgba, foreground: boolean) =>
       sameColor(was, now) ? spec : ColorSpec.matchOn(now, depth, this.theme, foreground);
