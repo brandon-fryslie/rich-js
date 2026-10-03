@@ -4,15 +4,22 @@
     {
       "version": "pr-322",
       "ref": "refs/pull/322/merge",
-      "sha": "0df5bd7f7a9fc92b6b1f948283f6de40e8725fb5",
-      "timestamp": "2026-10-03T13:36:34.325Z",
+      "sha": "3589e43149d955ebb091ff486e6fa6cb2595ffcc",
+      "timestamp": "2026-10-03T13:40:46.782Z",
       "commits": [
         {
-          "sha": "0df5bd7f7a9fc92b6b1f948283f6de40e8725fb5",
+          "sha": "3589e43149d955ebb091ff486e6fa6cb2595ffcc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T13:35:43Z",
-          "message": "Merge 9b1a1538a53e5707da246f96b42ef86b6d1f4e58 into f893d6e1571c6d2709625a7eaf7c95a0b045600e\n"
+          "timestamp": "2026-10-03T13:39:33Z",
+          "message": "Merge 1f1621c18cd186114e786983199dc958b274d5f9 into f893d6e1571c6d2709625a7eaf7c95a0b045600e\n"
+        },
+        {
+          "sha": "1f1621c18cd186114e786983199dc958b274d5f9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T07:39:27-06:00",
+          "message": "effects-feel: a breath spreads a column at a time on a narrow element (rich-effects-fxiy.b6i)\n\nReview medium on #322: lag as a share of span stepped neighbours past a\njust-noticeable difference on badges of 12 columns or fewer (0.046 at 6).\nThe rate per column is now min(SPREAD, REACH / span): bounded per column\nfor neighbours, bounded across the width for forward phase. Test: adjacent\ncells under 0.02 at 6, 12, 40 and 1024 columns (red at 6 and 12 before).\n"
         },
         {
           "sha": "9b1a1538a53e5707da246f96b42ef86b6d1f4e58",
