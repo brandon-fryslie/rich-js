@@ -79,9 +79,11 @@ describe("content embedded in a renderable", () => {
     }
   }
 
-  it("draws the plain line for a title with no text, however it is spelled", () => {
+  // Markup that styles nothing is a label of two spaces, as Rich's is — pinned
+  // in panel.test.ts and rule.test.ts against the reference.
+  it("draws the plain line for an empty title, string or RichText", () => {
     const plain = (r: Renderable) => renderToString(r, { width: 12 }).replace(/\x1b\[[0-9;]*m/g, "");
-    for (const empty of ["", new RichText(""), "[bold][/bold]"]) {
+    for (const empty of ["", new RichText("")]) {
       expect(plain(new Rule(empty))).toBe(plain(new Rule()));
       expect(plain(new Panel("x", { title: empty, subtitle: empty }))).toBe(plain(new Panel("x")));
     }

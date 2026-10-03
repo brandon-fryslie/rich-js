@@ -8,7 +8,7 @@ import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, HEAVY_HEAD } from "../core/box.js";
 import type { RowLevel } from "../core/box.js";
 import { RichText } from "../core/text.js";
-import { EmbeddedText, embed } from "./embed.js";
+import { EmbeddedText, embed, present } from "./embed.js";
 import type { PaddingDimensions } from "./padding.js";
 import { normalizePadding } from "./padding.js";
 import { exactWeights, ratioDistribute } from "./ratio.js";
@@ -606,10 +606,12 @@ export class Table implements Renderable, Measurable {
     this._columns = [];
     this._rows = [];
     this.box = options?.box !== undefined ? options.box : HEAVY_HEAD;
+    // An empty title draws no row, as the reference's `if self.title` draws
+    // none; markup that styles nothing is a title, and draws a blank one.
     const titleVal = options?.title;
-    this._title = titleVal !== undefined ? new EmbeddedText(titleVal) : undefined;
+    this._title = present(titleVal) ? new EmbeddedText(titleVal) : undefined;
     const captionVal = options?.caption;
-    this._caption = captionVal !== undefined ? new EmbeddedText(captionVal) : undefined;
+    this._caption = present(captionVal) ? new EmbeddedText(captionVal) : undefined;
     // A declared width is the table's size, not a ceiling on it: the
     // reference's `expand` is `self._expand or self.width is not None`, and a
     // port that sized to content inside it drew Rich code narrower than Rich.

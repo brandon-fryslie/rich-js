@@ -30,6 +30,12 @@ The `Panel.fit()` alternative constructor is equivalent:
 console.print(Panel.fit("[spring_green3]Short content[/spring_green3]"));
 ```
 
+A `width` caps the panel: it fills that width when it expands and fits its content inside it when it does not. A title widens the panel to hold the title whole, even past `width`, up to the width the panel is given:
+
+```typescript
+console.print(Panel.fit("hi", { title: "[bold orchid]a long title[/bold orchid]" }));
+```
+
 ### Narrow widths
 
 A Panel never emits a line wider than the width it is given, however narrow that
@@ -69,7 +75,7 @@ console.print(new Panel(
 ));
 ```
 
-Both `title` and `subtitle` support markup.
+Both `title` and `subtitle` support markup. A newline in either reads as a space, so the border stays one row. A label too long for its border is cut, and marked with `…` only when it is a `RichText` whose `overflow` is `"ellipsis"`.
 
 ## Border style
 

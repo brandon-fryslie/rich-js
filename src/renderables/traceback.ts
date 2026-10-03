@@ -278,18 +278,23 @@ export class Traceback implements Renderable {
       this.suppress.some((s) => frame.location.includes(s)) ? { ...frame, function: undefined } : frame,
     );
 
-    const list = new RichText("", { end: "" });
+    // One entry per row of the frame block, so a report with no frames has no
+    // rows: empty text is one line, as in Rich, and a block built as one text
+    // drew a blank indented row under every frameless report.
+    let entries: RichText[];
     if (this.maxFrames > 0 && frames.length > this.maxFrames) {
       // Spend the budget exactly: the tail takes `maxFrames - head` rather than
       // a second `head`, so an odd budget shows every frame it counts, and it
       // slices from an index because `slice(-0)` is the whole array.
       const head = Math.floor(this.maxFrames / 2);
       const omitted = frames.length - this.maxFrames;
-      for (const frame of frames.slice(0, head)) appendFrame(list, frame);
-      list.append(`... ${omitted} frames omitted ...\n`, "traceback.text");
-      for (const frame of frames.slice(frames.length - (this.maxFrames - head))) appendFrame(list, frame);
+      entries = [
+        ...frames.slice(0, head).map(frameEntry),
+        new RichText(`... ${omitted} frames omitted ...`, { style: "traceback.text", end: "" }),
+        ...frames.slice(frames.length - (this.maxFrames - head)).map(frameEntry),
+      ];
     } else {
-      for (const frame of frames) appendFrame(list, frame);
+      entries = frames.map(frameEntry);
     }
 
     // The frames are one block set in from the report's edge, so a frame that
@@ -299,23 +304,26 @@ export class Traceback implements Renderable {
     // blanks on every line of a crash report are bytes nobody asked for.
     const { left, contentWidth } = layoutPadding(options.maxWidth, 2, 0);
     const indent = new Segment(" ".repeat(left));
-    for (const line of Segment.splitLines(list.render({ ...options, maxWidth: contentWidth }))) {
-      yield indent;
-      yield* line;
-      yield Segment.line();
+    for (const entry of entries) {
+      for (const line of Segment.splitLines(entry.render({ ...options, maxWidth: contentWidth }))) {
+        yield indent;
+        yield* line;
+        yield Segment.line();
+      }
     }
   }
 }
 
-function appendFrame(list: RichText, frame: StackFrame): void {
+function frameEntry(frame: StackFrame): RichText {
+  const entry = new RichText("", { end: "" });
   if (frame.function) {
-    list.append(frame.function, "bold");
-    list.append(" ");
+    entry.append(frame.function, "bold");
+    entry.append(" ");
   }
-  list.append(frame.location, "dim");
+  entry.append(frame.location, "dim");
   if (frame.line !== undefined) {
-    list.append(":");
-    list.append(String(frame.line), "traceback.offset");
+    entry.append(":");
+    entry.append(String(frame.line), "traceback.offset");
   }
-  list.append("\n");
+  return entry;
 }

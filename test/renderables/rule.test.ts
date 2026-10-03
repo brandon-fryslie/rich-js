@@ -25,6 +25,12 @@ describe("Rule", () => {
     expect(collectLines(new Rule("a\tbcd"), { maxWidth: 30 })[0]).toContain("bcd");
   });
 
+  // Rich's bytes for the same rules at width 20.
+  it("reads a newline in its title as a space, and markup that styles nothing as a gap", () => {
+    expect(collectLines(new Rule("a\nb"), { maxWidth: 20 })).toEqual(["─────── a b ────────"]);
+    expect(collectLines(new Rule("[b][/b]"), { maxWidth: 20 })).toEqual(["─────────  ─────────"]);
+  });
+
   it("renders with title centered by default", () => {
     const rule = new Rule("Title");
     const lines = collectLines(rule, { maxWidth: 20 });
