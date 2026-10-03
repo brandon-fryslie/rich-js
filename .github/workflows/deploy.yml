@@ -20,11 +20,22 @@ on:
     branches: [master]
   pull_request:
 
-# Serialize all deploys against the shared gh-pages branch — concurrent
-# pushes would force the multiplexer's rebase-retry path. One queue,
-# no cancel-on-supersede (we want every event to actually deploy).
+# One concurrency group per deploy slot, not one for the whole site.
+# GitHub keeps at most ONE pending run per group: a newly queued run
+# cancels the group's pending one whatever `cancel-in-progress` says —
+# that setting only spares the run already executing. With a single
+# shared group, a PR run queued behind a running deploy cancelled the
+# pending master deploy, and merged docs never shipped (rich-workflows-ui0d).
+#
+# Keyed per slot, the only run that can cancel a pending deploy is a
+# newer one for the same slot — the same master or the same PR at a later
+# commit — so each slot always ends at its newest commit. Runs for
+# different slots may push to gh-pages at once; the multiplexer's
+# fetch-rebase-push retry is what makes that safe. The key is the
+# identity the slot step below names (PR number, else branch), not the
+# slot string itself: a concurrency group cannot read a step output.
 concurrency:
-  group: pages-deploy
+  group: pages-deploy-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
