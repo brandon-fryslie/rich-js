@@ -2,42 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-298",
-      "ref": "refs/pull/298/merge",
-      "sha": "75f38e7398f10aa260252b3c5dbeb20647da7485",
-      "timestamp": "2026-10-03T06:02:02.258Z",
-      "commits": [
-        {
-          "sha": "75f38e7398f10aa260252b3c5dbeb20647da7485",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:01:02Z",
-          "message": "Merge c1e4539b94a53febfb5a26ee3c75c0c23ebc6077 into f14cde4d6a0aa23b7683bccba8e67f5eb5a7b872\n"
-        },
-        {
-          "sha": "c1e4539b94a53febfb5a26ee3c75c0c23ebc6077",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T00:00:57-06:00",
-          "message": "fix(template-bindings): flattening a template's output stays inside renderTemplate's try, so an unflattenable scope value is an [error: …] line again (rich-diagnostics-t782)\n"
-        },
-        {
-          "sha": "54bc6027b770acbc4d5c60ef124ae13f2b537e28",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T23:57:28-06:00",
-          "message": "fix(diagnostics): renderTemplate keeps its doc, takes RenderOptions' fields so a wrapping renderable forwards them whole, and its docs say what a theme reaches (rich-diagnostics-t782)\n"
-        },
-        {
-          "sha": "d735bcd8b9cdde857a543cdc90b43657689e26d5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T23:52:24-06:00",
-          "message": "feat(diagnostics): renderToString and renderTemplate render theme names and report bad styles the way Console does (rich-diagnostics-t782)\n\nrenderToString takes a theme, so strict onStyleError holds for themed\ncontent. renderTemplate takes theme and onStyleError; only compile and\nevaluate sit inside its try, so a rethrown style error leaves the call\ninstead of becoming an [error: ...] segment.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f14cde4d6a0aa23b7683bccba8e67f5eb5a7b872",
