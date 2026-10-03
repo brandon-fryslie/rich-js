@@ -12,7 +12,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawable, getStyle, isMeasurable, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { drawable, getStyle, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
 
 /**
@@ -88,13 +88,8 @@ interface TreeRow {
   readonly styles: ReadonlyArray<string | Style>;
 }
 
-/**
- * How wide a label wants to be. A label with no `measure` cannot say, and the
- * offer is the honest stand-in — including when the offer is unbounded, which
- * is where `withBoundedWidth` reports it rather than guessing a number.
- */
+/** How wide a label wants to be. */
 function labelWidth(options: RenderOptions, label: Renderable): number {
-  if (!isMeasurable(label)) return options.maxWidth;
   return Measurement.get(options, label).maximum;
 }
 

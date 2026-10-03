@@ -51,6 +51,21 @@ describe("Constrain", () => {
     expect(m.maximum).toBeLessThanOrEqual(5);
   });
 
+  // Rich measures the content at the constrained width (`update_width`), so
+  // content whose range depends on its offer is asked at the width it gets.
+  it("measures the content at the constrained width", () => {
+    const offers: number[] = [];
+    const inner: Renderable & Measurable = {
+      *render() {},
+      measure(options) {
+        offers.push(options.maxWidth);
+        return { minimum: 12, maximum: 12 };
+      },
+    };
+    expect(new Constrain(inner, 5).measure({ maxWidth: 40 })).toEqual({ minimum: 5, maximum: 5 });
+    expect(offers).toEqual([5]);
+  });
+
   // Spec: Measurement — width: undefined: Passes through inner measurable's measurement
   it("measurement without width passes through", () => {
     const inner = makeRenderable("Hello World");

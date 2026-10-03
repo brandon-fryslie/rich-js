@@ -12,7 +12,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { fitHeight, getStyle, insetHeight, isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { fitHeight, getStyle, insetHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { embed } from "./embed.js";
 
 export type PaddingDimensions =
@@ -179,21 +179,18 @@ export class Padding implements Renderable, Measurable {
     const geometry = layoutPadding(options.maxWidth, this.left, this.right);
     const overhead = geometry.left + geometry.right;
 
-    if (isMeasurable(this.renderable)) {
-      const measurement = Measurement.get(
-        { ...options, maxWidth: geometry.contentWidth },
-        this.renderable,
-      );
-      // The ceiling is what was offered, and it wins over what the child asks
-      // for: a range whose floor sits above its own ceiling — this returned
-      // {8, 8} for three cells of padding inside a two-cell offer — is one no
-      // parent layout can divide.
-      const maximum = Math.min(options.maxWidth, measurement.maximum + overhead);
-      return {
-        minimum: Math.min(measurement.minimum + overhead, maximum),
-        maximum,
-      };
-    }
-    return { minimum: overhead, maximum: options.maxWidth };
+    const measurement = Measurement.get(
+      { ...options, maxWidth: geometry.contentWidth },
+      this.renderable,
+    );
+    // The ceiling is what was offered, and it wins over what the child asks
+    // for: a range whose floor sits above its own ceiling — this returned
+    // {8, 8} for three cells of padding inside a two-cell offer — is one no
+    // parent layout can divide.
+    const maximum = Math.min(options.maxWidth, measurement.maximum + overhead);
+    return {
+      minimum: Math.min(measurement.minimum + overhead, maximum),
+      maximum,
+    };
   }
 }

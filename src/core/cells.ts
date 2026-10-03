@@ -326,3 +326,79 @@ export function graphemeBoundary(s: string, cu: CodeUnit): CodePoint {
   const cluster = segmentsOf(s).containing(at);
   return asCodePoint(cluster === undefined || cluster.index === at ? at : cluster.index + cluster.segment.length);
 }
+
+declare const _tabSize: unique symbol;
+/** Cells between tab stops: a positive integer, so every stop is a column. */
+export type TabSize = number & { readonly [_tabSize]: true };
+
+/**
+ * `n` as a `TabSize`, or a `RangeError` naming it. Rich divides by the tab
+ * size and raises on 0; here the value is refused where it is given, not at
+ * the first tab it meets.
+ */
+export function parseTabSize(n: number): TabSize {
+  if (!Number.isInteger(n) || n < 1) {
+    throw new RangeError(`tabSize must be a positive integer, got ${n}`);
+  }
+  return n as TabSize;
+}
+
+/** Text with its tabs expanded, and where each offset into the original went. */
+export interface TabExpansion {
+  readonly text: string;
+  offsetOf(offset: number): number;
+}
+
+/**
+ * `text` with each tab widened to the next tab stop — a multiple of `tabSize`
+ * cells from the start of its line — as Rich's `Text.expand_tabs` widens it, and
+ * `offsetOf`, where each code-unit offset into `text` lands in the result.
+ *
+ * A tab is a column position, not a run of spaces: one that already sits a
+ * cell short of a stop widens to a single space. `offsetOf` is there because a
+ * caller that annotates the text by offset — a `RichText`'s spans — has to move
+ * its offsets with the characters, or every annotation after a tab lands short
+ * of what it styled.
+ */
+export function expandTabs(text: string, tabSize: TabSize): TabExpansion {
+  const [head, ...rest] = text.split("\t");
+  const tabAt: number[] = []; // offset of each tab in `text`
+  const grownBy: number[] = []; // code units added by this tab and every one before it
+  const columnAfter = (piece: string, column: number): number => {
+    const newline = piece.lastIndexOf("\n");
+    return (newline < 0 ? column : 0) + cellLen(piece.slice(newline + 1));
+  };
+
+  // A piece's column is read only when a tab follows it, so text with no tab
+  // costs one `split` and no measuring.
+  let expanded = head!;
+  let before = head!; // the piece the next tab follows
+  let column = 0; // the column `before` starts at
+  let offset = head!.length;
+  let grown = 0;
+  for (const piece of rest) {
+    column = columnAfter(before, column);
+    const spaces = tabSize - (column % tabSize);
+    grown += spaces - 1;
+    tabAt.push(offset);
+    grownBy.push(grown);
+    expanded += " ".repeat(spaces) + piece;
+    column += spaces;
+    before = piece;
+    offset += 1 + piece.length;
+  }
+
+  // An offset moves by what every tab before it grew: the count of tabs at
+  // offsets below it, found by bisection since `tabAt` ascends.
+  const offsetOf = (at: number): number => {
+    let low = 0;
+    let high = tabAt.length;
+    while (low < high) {
+      const mid = (low + high) >> 1;
+      if (tabAt[mid]! < at) low = mid + 1;
+      else high = mid;
+    }
+    return at + (low === 0 ? 0 : grownBy[low - 1]!);
+  };
+  return { text: expanded, offsetOf };
+}

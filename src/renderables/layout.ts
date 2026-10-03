@@ -11,7 +11,6 @@ import type {
 } from "../core/protocol.js";
 import {
   fitHeight,
-  isMeasurable,
   regionRows,
   stackedHeight,
   withBoundedWidth,
@@ -236,12 +235,7 @@ export class Layout implements Renderable, Measurable {
 
     if (this._isLeaf) {
       if (this._renderable === undefined) return 0;
-      // A leaf whose content cannot measure itself has no width of its own to
-      // report, so it reports the offer — unbounded included, which is where
-      // `withBoundedWidth` says so rather than inventing a number.
-      return isMeasurable(this._renderable)
-        ? Measurement.get(options, this._renderable).maximum
-        : options.maxWidth;
+      return Measurement.get(options, this._renderable).maximum;
     }
 
     const visible = this._children.filter((c) => c.visible);

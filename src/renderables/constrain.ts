@@ -9,7 +9,6 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable } from "../core/protocol.js";
 
 export class Constrain implements Renderable, Measurable {
   readonly renderable: Renderable;
@@ -36,17 +35,12 @@ export class Constrain implements Renderable, Measurable {
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    if (isMeasurable(this.renderable)) {
-      const measurement = Measurement.get(options, this.renderable);
-      const maxWidth =
-        this.width !== undefined
-          ? Math.min(this.width, options.maxWidth)
-          : options.maxWidth;
-      return {
-        minimum: measurement.minimum,
-        maximum: Math.min(measurement.maximum, maxWidth),
-      };
-    }
-    return { minimum: 1, maximum: options.maxWidth };
+    // Measured at the width it will be drawn at, as Rich's `update_width` does;
+    // `Measurement.get` then holds the answer inside that offer.
+    const maxWidth =
+      this.width !== undefined
+        ? Math.min(this.width, options.maxWidth)
+        : options.maxWidth;
+    return Measurement.get({ ...options, maxWidth }, this.renderable);
   }
 }

@@ -9,7 +9,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable, withBoundedWidth } from "../core/protocol.js";
+import { withBoundedWidth } from "../core/protocol.js";
 import { placeBlock, type Alignment } from "../core/place.js";
 
 export class Align implements Renderable, Measurable {
@@ -31,13 +31,6 @@ export class Align implements Renderable, Measurable {
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    if (isMeasurable(this.renderable)) {
-      const measurement = Measurement.get(options, this.renderable);
-      return {
-        minimum: Math.max(1, measurement.minimum),
-        maximum: measurement.maximum,
-      };
-    }
-    return { minimum: 1, maximum: options.maxWidth };
+    return Measurement.get(options, this.renderable);
   }
 }

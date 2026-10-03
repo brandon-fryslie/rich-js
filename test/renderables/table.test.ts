@@ -747,6 +747,18 @@ describe("A column's header and footer are stamped on assignment, not just at co
   });
 });
 
+// The figure's indent wraps with it, so the column's minimum carries the
+// indent too; measured without it, the column was paid three cells short and
+// the figure ellipsized while the title column still had room to wrap.
+describe("An indented cell is measured as it is wrapped", () => {
+  it("keeps the figure whole", () => {
+    const grid = Table.grid({ padding: [0, 1, 0, 0], padEdge: false });
+    grid.addRow("Star Wars Ep. VIII: The Last Jedi", "   $1,332,539,889");
+    const first = renderToString(grid, { width: 26 }).split("\n")[0]!;
+    expect(first.endsWith("   $1,332,539,889")).toBe(true);
+  });
+});
+
 describe("Table stays inside the width it is given", () => {
   // A table wide enough to be squeezed hard, in the three frame shapes that
   // divide a width differently: a full box, a box without its outer edge, and

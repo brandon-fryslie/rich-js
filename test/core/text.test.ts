@@ -1030,20 +1030,22 @@ describe("RichText.render()", () => {
     });
   });
 
-  it("expands tabs using tabSize", () => {
-    const t = new RichText("a\tb", { tabSize: 4 });
-    const segments = collect(t.render({ maxWidth: 80 }));
-    const text = segText(segments);
-    // Tab should be expanded to spaces (4 spaces for tabSize=4)
-    expect(text).toContain("a" + " ".repeat(4) + "b");
+  // Rich's `Text.expand_tabs`: a tab reaches the next multiple of tabSize.
+  it("expands a mid-line tab to the next tab stop", () => {
+    const render = (text: string, tabSize?: number): string =>
+      segText(collect(new RichText(text, { tabSize, end: "" }).render({ maxWidth: 80 })));
+    expect(render("a\tb", 4)).toBe("a   b");
+    expect(render("abc\tb", 4)).toBe("abc b");
+    expect(render("abcd\tb", 4)).toBe("abcd    b");
+    expect(render("a\tb")).toBe("a" + " ".repeat(7) + "b");
+    expect(render("ab\tc\nx\ty", 4)).toBe("ab  c\nx   y");
   });
 
-  it("default tabSize is 8", () => {
-    const t = new RichText("a\tb");
-    expect(t.render).toBeDefined();
-    const segments = collect(t.render({ maxWidth: 80 }));
-    const text = segText(segments);
-    expect(text).toContain("a" + " ".repeat(8) + "b");
+  it("keeps a span after a tab on the characters it styled", () => {
+    const t = new RichText("\tab", { tabSize: 4, end: "" });
+    t.stylize("bold", 2, 3);
+    const bold = collect(t.render({ maxWidth: 80 })).filter((s) => s.style?.bold);
+    expect(bold.map((s) => s.text)).toEqual(["b"]);
   });
 });
 
@@ -1093,6 +1095,14 @@ describe("RichText.render() cost tracks the number of spans, not its square", ()
 // Measurable
 // =========================================================
 
+describe("RichText tabSize", () => {
+  // Refused where it is given, not at the first render that meets a tab — the
+  // text need not hold one for the value to be wrong.
+  it.each([0, -1, 2.5, Number.NaN])("refuses a tabSize of %s at construction", (tabSize) => {
+    expect(() => new RichText("no tabs here", { tabSize })).toThrow(RangeError);
+  });
+});
+
 describe("RichText.measure()", () => {
   it("returns reasonable min/max", () => {
     const t = new RichText("Hello World");
@@ -1106,6 +1116,18 @@ describe("RichText.measure()", () => {
     const t = new RichText("hi there");
     const m = t.measure({ maxWidth: 80 });
     expect(m.minimum).toBe(5); // "there"
+  });
+
+  // The wrapper keeps a line's indent on its first word, so the minimum does
+  // too — a container paying less would cut the word (Rich drops the indent).
+  it("counts a line's indent toward the minimum", () => {
+    expect(new RichText("   $1,332,539,889").measure({ maxWidth: 80 }).minimum).toBe(17);
+  });
+
+  // Rich: with no word to keep whole, the whitespace is the content, and its
+  // width is the minimum — a spacer cell is not squeezed to nothing.
+  it("takes the whole width of whitespace-only text as its minimum", () => {
+    expect(new RichText("    ").measure({ maxWidth: 80 })).toEqual({ minimum: 4, maximum: 4 });
   });
 
   it("handles multiline text", () => {

@@ -20,7 +20,7 @@
 
 import { Segment } from "./segment.js";
 import { Measurement } from "./measure.js";
-import { isMeasurable, type Renderable, type RenderOptions } from "./protocol.js";
+import type { Renderable, RenderOptions } from "./protocol.js";
 
 export type Alignment = "left" | "center" | "right";
 
@@ -45,11 +45,10 @@ export function placeBlock(
   align: Alignment,
   options: RenderOptions,
 ): Segment[][] {
-  // A renderable that cannot say how wide it wants to be is offered all of it,
-  // and the block is then only as wide as what it actually drew.
-  const width = isMeasurable(renderable)
-    ? Measurement.get(options, renderable).maximum
-    : options.maxWidth;
+  // A renderable that cannot say how wide it wants to be is offered all of it
+  // (`Measurement.get` answers for it), and the block is then only as wide as
+  // what it actually drew.
+  const width = Measurement.get(options, renderable).maximum;
   const drawn = Segment.splitLines(
     renderable.render({ ...options, maxWidth: width, height: undefined }),
   );
