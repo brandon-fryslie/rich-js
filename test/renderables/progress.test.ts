@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   BarColumn,
+  MofNCompleteColumn,
   Progress,
   SpinnerColumn,
   TaskProgressColumn,
@@ -338,5 +339,26 @@ describe("TimeElapsedColumn and TimeRemainingColumn (rich-progress-jj5r)", () =>
       ["0:00:20 progress.elapsed", " progress.remaining", " progress.remaining"],
       ["0:00:00 progress.elapsed", "-:--:-- progress.remaining", "-:--:-- progress.remaining"],
     ]);
+  });
+});
+
+describe("MofNCompleteColumn (rich-progress-adjo)", () => {
+  // Python Rich 9d8f9a3: `MofNCompleteColumn().render(task)` for a task at each
+  // count, its text and style.
+  it("draws both counts whole, the completed one padded to the total's width, styled progress.download, as Rich does", () => {
+    const cases: [number, number | undefined, string][] = [
+      [5, 1000, "   5/1000"],
+      [1000, 1000, "1000/1000"],
+      [5.7, 10.9, " 5/10"],
+      [12, undefined, "12/?"],
+      [0, 7, "0/7"],
+      [-3, 100, " -3/100"],
+    ];
+    const column = new MofNCompleteColumn();
+    const drawn = cases.map(([completed, total]) => {
+      const text = column.render({ ...fakeTask("x"), completed, total });
+      return `${text.plain}|${String(text.style)}`;
+    });
+    expect(drawn).toEqual(cases.map(([, , plain]) => `${plain}|progress.download`));
   });
 });

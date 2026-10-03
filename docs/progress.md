@@ -183,7 +183,7 @@ progress.stop();
 | `TaskProgressColumn` | Percentage complete, right-aligned in four cells so the row holds still |
 | `TimeElapsedColumn` | Elapsed time, held where it stopped once the task is finished |
 | `TimeRemainingColumn` | Estimated time remaining; `{ elapsedWhenFinished: true }` shows the time the task took once it is finished |
-| `MofNCompleteColumn` | `completed/total` count |
+| `MofNCompleteColumn` | `completed/total` in whole numbers, styled `progress.download`; the count is padded to the total's width so the row holds still |
 | `SpinnerColumn` | Animated spinner, styled `progress.spinner`; a space once the task is finished |
 
 ### Format string columns

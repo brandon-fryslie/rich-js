@@ -237,12 +237,27 @@ export class SpinnerColumn implements ProgressColumn {
   }
 }
 
+/**
+ * Rich's `MofNCompleteColumn`: both counts as whole numbers, the completed one
+ * padded to the total's width so the column holds still as it counts past a
+ * power of ten, styled `progress.download`.
+ */
 export class MofNCompleteColumn implements ProgressColumn {
   readonly tableColumn: ColumnOptions = {};
 
   render(task: Task): RichText {
-    return new RichText(`${task.completed}/${task.total ?? "?"}`);
+    const total = task.total === undefined ? "?" : wholeNumber(task.total);
+    const completed = wholeNumber(task.completed).padStart(total.length);
+    return new RichText(`${completed}/${total}`, { style: "progress.download" });
   }
+}
+
+/**
+ * Python's `str(int(x))`: truncated toward zero and written out in full,
+ * never in exponent form; a count that is not finite throws, as `int` raises.
+ */
+function wholeNumber(x: number): string {
+  return BigInt(Math.trunc(x)).toString();
 }
 
 function formatTime(seconds: number): string {
