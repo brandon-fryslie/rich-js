@@ -19,11 +19,10 @@
  * - Neighbours move together. Variation is spatially coherent — patches,
  *   filaments, fronts — never per-cell static.
  * - Moves are small. The swing is a touch of light, not a colour change.
- * - Light keeps text legible. Ink and the fill under it both catch the
- *   light, each the side of it away from the other — a pale light where the
- *   other is darker, a deep amber where it is lighter — so a glint lights a
- *   powerline cell's lettering while its fill glows, and never washes one
- *   into the other.
+ * - Light only ever lights. Ink and the fill under it both move toward the
+ *   light and never darken, the darker of the two only part way, so a glint
+ *   lifts a powerline cell's fill a little and its lettering a lot, and
+ *   never washes one into the other.
  * - Elements are apart. Each sits at its own `z` in the noise, so two
  *   elements under one effect do not move in lockstep.
  *
@@ -49,18 +48,18 @@ import {
 import { fbm, noise, smoothstep } from "./noise.js";
 
 /**
- * A move of one colour: the colour, which side of a light it catches, the
- * cell, the time, to the new colour.
+ * A move of one colour: the colour, which side of its cell it is, the cell,
+ * the time, to the new colour.
  */
 export type ColorMove = (color: ColorRgba, side: Side, cell: EffectCell, t: number) => ColorRgba;
 
 /**
  * A one-colour move as an `Effect` on a subject's own colours, by hex,
- * wherever a cell shows them, each catching the side of a light `colors`
- * names. A powerline strip's fill is the ground of its cells and the ink of
- * the seam glyphs between them, so the arrow moves with the cell it points
- * out of; the terminal ground behind its caps is no colour of the strip's,
- * and stays put.
+ * wherever a cell shows them, each as the side of its cell `colors` names.
+ * A powerline strip's fill is the ground of its cells and the ink of the
+ * seam glyphs between them, so the arrow moves with the cell it points out
+ * of; the terminal ground behind its caps is no colour of the strip's, and
+ * stays put.
  */
 export function onColors(colors: ReadonlyMap<string, Side>, move: ColorMove): Effect {
   const moved = (color: ColorRgba, cell: EffectCell, t: number): ColorRgba => {
@@ -70,25 +69,20 @@ export function onColors(colors: ReadonlyMap<string, Side>, move: ColorMove): Ef
   return ({ fg, bg }, cell, t) => ({ fg: moved(fg, cell, t), bg: moved(bg, cell, t) });
 }
 
-/**
- * A light as each colour catches it: `pale` by a colour read against
- * something darker, `deep` by one read against something lighter.
- */
-export interface Light {
-  readonly pale: ColorRgba;
-  readonly deep: ColorRgba;
-}
-
-/** Which side of a light a colour catches. */
-export type Side = keyof Light;
+/** Which of a cell's two colours a colour is: the lighter, or the darker. */
+export type Side = "lighter" | "darker";
 
 /**
- * The side of a light `color` catches where it is read against `against`:
- * the side away from it, so light moves a colour away from what it is read
- * against and never toward it.
+ * How far into a light each side goes, as a share of the move. A darker
+ * surface gives back less of the light falling on it than a lighter one, so
+ * a glint lifts a dark fill a little and its pale lettering a lot, and the
+ * two never close on each other.
  */
+const SHARE: Record<Side, number> = { lighter: 1, darker: 0.15 };
+
+/** Which side of its cell `color` is, read against the cell's other colour `against`. */
 export function catches(color: ColorRgba, against: ColorRgba): Side {
-  return Oklch.fromRgba(against).l < Oklch.fromRgba(color).l ? "pale" : "deep";
+  return Oklch.fromRgba(against).l < Oklch.fromRgba(color).l ? "lighter" : "darker";
 }
 
 /** How the curves below are tuned: one period (or duration), ease and swing. */
@@ -117,15 +111,17 @@ function blend(from: Oklch, to: Oklch, w: number): Oklch {
   return new Oklch((1 - w) * from.l + w * to.l, Math.hypot(a, b), Math.atan2(b, a) / rad, from.alpha);
 }
 
-/** `color`, `w` of the way into the `side` of `light` it catches: the one way every light here falls. */
-function lit(color: ColorRgba, side: Side, light: Record<Side, Oklch>, w: number): ColorRgba {
-  return blend(Oklch.fromRgba(color), light[side], w).toRgba();
+/**
+ * `color` under `light` at strength `w`: the one way every light here falls.
+ * It moves toward the light's colour by its side's share, and never below
+ * its own lightness — light can warm a colour and lift it, never darken it,
+ * so white lettering under a cream light turns warm white, not grey.
+ */
+function lit(color: ColorRgba, side: Side, light: Oklch, w: number): ColorRgba {
+  const from = Oklch.fromRgba(color);
+  const to = new Oklch(Math.max(from.l, light.l), light.c, light.h, light.alpha);
+  return blend(from, to, w * SHARE[side]).toRgba();
 }
-
-const lightOf = (light: Light): Record<Side, Oklch> => ({
-  pale: Oklch.fromRgba(light.pale),
-  deep: Oklch.fromRgba(light.deep),
-});
 
 /**
  * One breath at phase `p` in [0, 1): a quicker inhale, a longer exhale, then
@@ -151,9 +147,9 @@ function breathAt(p: number): number {
  * out of — stays one colour. A breath starts in its rest, so `t = 0` draws
  * the cell untouched.
  */
-export function pulse(curve: Curve, light: Light): ColorMove {
+export function pulse(curve: Curve, light: ColorRgba): ColorMove {
   const P = curve.seconds;
-  const glow = lightOf(light);
+  const glow = Oklch.fromRgba(light);
   return (color, side, _cell, t) => {
     // The rhythm's drift is slow enough that phase only ever moves forward.
     const phase = t / P - 0.06 + 0.03 * noise(t / (3 * P), 0.5, 0.5);
@@ -174,9 +170,9 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
  * slow current and re-forming as they go, so the glints dance while the band
  * glides. Before the band enters, the row is untouched.
  */
-export function shimmer(curve: Curve, span: number, width: number, light: Light, z: number): ColorMove {
+export function shimmer(curve: Curve, span: number, width: number, light: ColorRgba, z: number): ColorMove {
   const phase = Phase.loop(curve.seconds);
-  const glow = lightOf(light);
+  const glow = Oklch.fromRgba(light);
   // A ripple's crest: a Gaussian ridge, 1 where the field crosses zero and in
   // (0, 1] for any noise, smooth throughout, so a crest sliding through a cell
   // lights it smoothly.
@@ -235,8 +231,8 @@ export function drift(curve: Curve, span: number, z: number): ColorMove {
  * it is, so as it drifts the glow slides between cells rather than hopping.
  * `seconds` is how long a glow takes, rise and fall.
  */
-export function sparkle(curve: Curve, span: number, light: Light, z: number): ColorMove {
-  const glow = lightOf(light);
+export function sparkle(curve: Curve, span: number, light: ColorRgba, z: number): ColorMove {
+  const glow = Oklch.fromRgba(light);
   const count = Math.max(2, Math.round(span / 9));
   const HALO = 4;
   const homes = Array.from({ length: count }, (_, i) => ({

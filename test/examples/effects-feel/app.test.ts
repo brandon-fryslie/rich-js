@@ -94,36 +94,38 @@ describe("a strip under a pulse", () => {
     expect(strip.span).toBe(Math.max(...rows.map(cellLen)));
   });
 
-  it("lights the lettering on a muted fill pale and the fill deep, each away from the other", () => {
+  it("reads the lettering on a muted fill as the lighter of its cell and the fill as the darker", () => {
     const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), options, CATPPUCCIN_MOCHA);
-    expect(strip.colors.get(CATPPUCCIN_MOCHA.palette.get("foreground")!.hex)).toBe("pale");
-    expect(strip.colors.get(CATPPUCCIN_MOCHA.palette.get("secondary-muted")!.hex)).toBe("deep");
+    expect(strip.colors.get(CATPPUCCIN_MOCHA.palette.get("foreground")!.hex)).toBe("lighter");
+    expect(strip.colors.get(CATPPUCCIN_MOCHA.palette.get("secondary-muted")!.hex)).toBe("darker");
   });
 
-  it("at 16 colours leaves unlit a colour that is lighter than its partner in one cell and darker in another", () => {
+  it("at 16 colours reads a colour that is lighter than its partner in one cell and darker in another as the darker", () => {
     const ansi = new Console({ width: 200, colorSystem: "ansi" }).options;
     const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), ansi, CATPPUCCIN_MOCHA);
-    expect(strip.colors.has("#bac2de")).toBe(false); // the theme's white: pale fills, and lettering on paler ones
+    expect(strip.colors.get("#bac2de")).toBe("darker"); // the theme's white: pale fills, and lettering on paler ones
   });
 
   it.each([["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const)(
     "on a %s ground moves each colour the strip sets to one colour, in every cell that shows it, and leaves the terminal's alone",
     (_, theme) => {
       const strip = drawnSubject(stripSubject(theme), options, theme);
-      const lit = onColors(strip.colors, pulse({ seconds: 2, ease: EASES.linear, swing: 0.3 }, LIGHTS.sun));
+      const lit = onColors(strip.colors, pulse({ seconds: 2, ease: EASES.linear, swing: 1 }, LIGHTS.sun));
       const before = colorsByCell(strip.renderable, theme);
       const after = colorsByCell(new Effected(strip.renderable, lit, { t: 1, key: "strip", theme }), theme);
       expect(after).toHaveLength(before.length);
 
       // Each colour drawn before, to every colour it is drawn as after: an
       // arrow's ink moves with the fill it carries, and lettering with its
-      // fill, so each is one colour; the terminal's own ground does not move.
+      // fill, so each is one colour; the terminal's own ground does not move,
+      // and nor does white, which is as lit as a colour gets.
       const becomes = new Map<string, Set<string>>();
       before.forEach((pair, i) =>
         pair.forEach((was, slot) => becomes.set(was, (becomes.get(was) ?? new Set()).add(after[i]![slot]!))),
       );
+      const still = new Set(["ground", "#ffffff"]);
       for (const [was, now] of becomes) {
-        expect([was, [...now]]).toEqual([was, [was === "ground" ? "ground" : expect.not.stringMatching(was)]]);
+        expect([was, [...now]]).toEqual([was, [still.has(was) ? was : expect.not.stringMatching(was)]]);
       }
     },
   );

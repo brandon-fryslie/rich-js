@@ -83,19 +83,30 @@ describe("the loops move", () => {
   it("pulse warms toward its light on the inhale and settles back after the exhale", () => {
     const breath = pulse(curve(8, 0.4), sun);
     const top = breath(ink, catches(ink, ground), cells[0]!, 3.4); // the inhale ends near 0.36 of a breath
-    expect(distance(top, sun.pale)).toBeLessThan(distance(ink, sun.pale) - 0.02);
+    expect(distance(top, sun)).toBeLessThan(distance(ink, sun) - 0.02);
     expect(sameColor(breath(ink, catches(ink, ground), cells[0]!, 7.6), ink)).toBe(true); // the rest before the next
   });
 
   it.each(["primary", "secondary", "accent", "success", "warning", "error"])(
-    "a glint keeps light ink legible on the %s-muted fill",
+    "a glint lifts the %s-muted fill and its lettering together, the fill less, so the lettering stays legible",
     (key) => {
       // Swing 1 at the top of a breath: as far into the light as any glint goes.
       const fill = CATPPUCCIN_MOCHA.palette.get(`${key}-muted`)!;
-      const top = pulse(curve(8, 1), sun)(fill, catches(fill, ink), cells[0]!, 3.4);
-      expect(contrastRatio(ink, top)).toBeGreaterThan(0.97 * contrastRatio(ink, fill));
+      const breath = pulse(curve(8, 1), sun);
+      const litFill = breath(fill, catches(fill, ink), cells[0]!, 3.4);
+      const litInk = breath(ink, catches(ink, fill), cells[0]!, 3.4);
+      expect(Oklch.fromRgba(litFill).l).toBeGreaterThan(Oklch.fromRgba(fill).l);
+      expect(contrastRatio(litInk, litFill)).toBeGreaterThan(0.8 * contrastRatio(ink, fill));
     },
   );
+
+  it("light never darkens a colour, white included", () => {
+    const white = new ColorRgba(255, 255, 255);
+    const breath = pulse(curve(8, 1), sun);
+    for (const [color, against] of [[white, ground], [ground, white], [ink, ground]] as const) {
+      expect(Oklch.fromRgba(breath(color, catches(color, against), cells[0]!, 3.4)).l).toBeGreaterThanOrEqual(Oklch.fromRgba(color).l - 1e-3);
+    }
+  });
 
   it("a glint lifts light ink away from a dark ground", () => {
     const top = pulse(curve(8, 1), sun)(ink, catches(ink, ground), cells[0]!, 3.4);

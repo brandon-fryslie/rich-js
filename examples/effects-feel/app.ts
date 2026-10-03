@@ -21,6 +21,7 @@ import {
   CATPPUCCIN_MOCHA,
   ColorRgba,
   ColorSpec,
+  blendRgb,
   Console,
   Effected,
   Group,
@@ -42,7 +43,7 @@ import {
 } from "../../src/index.js";
 import { graphemes } from "../../src/core/cells.js";
 import { App, hostEnvironment, type TerminalHost } from "../../src/host/index.js";
-import { catches, dissolveOut, drift, fadeIn, onColors, pulse, settledAt, shimmer, sparkle, type Light, type Side } from "./curves.js";
+import { catches, dissolveOut, drift, fadeIn, onColors, pulse, settledAt, shimmer, sparkle, type Side } from "./curves.js";
 import type { EffectName, NamedCurve, Settings } from "./settings.js";
 
 /** The bundled theme each ground is drawn in: one family, so only the ground differs. */
@@ -59,6 +60,9 @@ const STRIP_KEYS = ["primary", "secondary", "accent", "success", "warning", "err
 
 const TEXT = "Thinking about how a band of light should cross these words at one frame a second…";
 
+/** The status line's contrast against the ground: WCAG's AAA for body text. */
+const STATUS_CONTRAST = 7;
+
 /** How far a shimmer's light reaches either side of its centre, in columns. */
 export const SHIMMER_WIDTH = 24;
 
@@ -72,14 +76,11 @@ const DRAW_BUDGET = 1024;
  */
 const CONTRAST = { periods: 8, samples: 60 } as const;
 
-/**
- * The lights the loops cast, warm as sunlight, breath and fireflies are. Each
- * colour catches the one that reads against its ink (see `Light`).
- */
+/** The lights the loops cast, warm as sunlight, breath and fireflies are. */
 export const LIGHTS = {
-  sun: { pale: new ColorRgba(255, 228, 176), deep: new ColorRgba(102, 57, 0) },
-  firefly: { pale: new ColorRgba(222, 245, 140), deep: new ColorRgba(66, 88, 0) },
-} as const satisfies Record<string, Light>;
+  sun: new ColorRgba(255, 228, 176),
+  firefly: new ColorRgba(222, 245, 140),
+} as const satisfies Record<string, ColorRgba>;
 
 /**
  * A thing the effects are tried on: a powerline strip, which sets its cells'
@@ -103,7 +104,7 @@ export interface DrawnSubject extends Subject {
   readonly span: number;
   /**
    * The colours it sets in the cells it draws text in, by hex, as the screen
-   * shows them, each with the side of a light it catches there.
+   * shows them, each with which side of its cells it is.
    */
   readonly colors: ReadonlyMap<string, Side>;
   /** `row:col` of every cell it draws text in. */
@@ -164,9 +165,9 @@ export function drawnSubject(subject: Subject, drawnWith: RenderOptions, theme: 
       .filter((cell) => cell.glyph.trim() !== "" && !SEAM_GLYPHS.has(cell.glyph))
       .map((cell) => cell.at),
   );
-  // Each colour a cell it draws text in sets, with the side of a light it
-  // catches against the cell's other colour. A colour the cell leaves to the
-  // terminal is no colour of the subject's.
+  // Each colour a cell it draws text in sets, with which side of that cell it
+  // is. A colour the cell leaves to the terminal is no colour of the
+  // subject's.
   const sides = cellsOf(subject.renderable.render(options))
     .filter((cell) => text.has(cell.at))
     .flatMap((cell): [string, Side][] => {
@@ -179,22 +180,23 @@ export function drawnSubject(subject: Subject, drawnWith: RenderOptions, theme: 
     });
   // A colour shown lighter than its partner in one cell and darker in another
   // — at 16 colours the theme's white is both a pale fill and lettering on a
-  // paler one — has no side away from both, so it catches no light.
-  const both = new Set(sides.filter(([hex, side]) => sides.some(([other, s]) => other === hex && s !== side)).map(([hex]) => hex));
-  const colors = new Map(sides.filter(([hex]) => !both.has(hex)));
+  // paler one — is the darker wherever it is darker, so it takes the darker's
+  // share everywhere and closes on neither partner.
+  const darker = new Set(sides.filter(([, side]) => side === "darker").map(([hex]) => hex));
+  const colors = new Map(sides.map(([hex, side]): [string, Side] => [hex, darker.has(hex) ? "darker" : side]));
   return { ...subject, options, span, colors, text };
 }
 
 /** A colour of the theme's palette by its name; a name the palette lacks is a bug here. */
-function paletteColor(theme: TerminalTheme, key: string): ColorSpec {
+function paletteRgba(theme: TerminalTheme, key: string): ColorRgba {
   const rgba = theme.palette.get(key);
   if (rgba === undefined) throw new Error(`theme ${theme.palette.name} has no palette colour ${key}`);
-  return ColorSpec.fromRgba(rgba);
+  return rgba;
 }
 
 /** A powerline strip of a dozen cells over the theme's palette. */
 export function stripSubject(theme: TerminalTheme): Subject {
-  const color = (key: string): ColorSpec => paletteColor(theme, key);
+  const color = (key: string): ColorSpec => ColorSpec.fromRgba(paletteRgba(theme, key));
   const cells = STRIP_LABELS.map((label, i) => {
     const key = STRIP_KEYS[i % STRIP_KEYS.length]!;
     // The second lap round the palette takes each colour's muted shade, so a
@@ -208,8 +210,21 @@ export function stripSubject(theme: TerminalTheme): Subject {
   return { name: "strip", renderable: new Strip(cells, new PowerlineJoiner()), z: 0 };
 }
 
-function textSubject(theme: TerminalTheme): Subject {
-  const style = Style.fromColor(ColorSpec.fromRgba(theme.foregroundColor));
+/**
+ * A status line, drawn dim as a "thinking" line is — the theme's ink eased
+ * toward its muted ink as far as it can go and still read at `STATUS_CONTRAST`
+ * — which on a dark ground leaves the light room to lift it.
+ */
+export function textSubject(theme: TerminalTheme): Subject {
+  const muted = paletteRgba(theme, "foreground-muted");
+  const at = (w: number): ColorRgba => blendRgb(theme.foregroundColor, muted, w);
+  // Bisection on how far toward the muted ink: contrast falls as it goes.
+  let [lo, hi] = [0, 1];
+  for (let i = 0; i < 20; i++) {
+    const mid = (lo + hi) / 2;
+    [lo, hi] = contrastRatio(at(mid), theme.backgroundColor) >= STATUS_CONTRAST ? [mid, hi] : [lo, mid];
+  }
+  const style = Style.fromColor(ColorSpec.fromRgba(at(lo)));
   return { name: "text", renderable: new RichText(TEXT, { style, noWrap: true }), z: 11.3 };
 }
 
@@ -255,7 +270,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   const theme = THEMES[settings.ground];
   const ink = ColorSpec.fromRgba(theme.foregroundColor);
   const paper = ColorSpec.fromRgba(theme.backgroundColor);
-  const quiet = Style.fromColor(paletteColor(theme, "foreground-muted"));
+  const quiet = Style.fromColor(ColorSpec.fromRgba(paletteRgba(theme, "foreground-muted")));
   const heading = Style.fromColor(ink).add(Style.parse("bold"));
 
   // What the frames are drawn with, asked of the host the app paints on.
