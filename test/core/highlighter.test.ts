@@ -134,9 +134,8 @@ describe("ReprHighlighter", () => {
     const h = new ReprHighlighter();
     const text = new RichText("flag is true and false");
     h.highlight(text);
-    const matched = matchedTexts(text, "repr.bool");
-    expect(matched).toContain("true");
-    expect(matched).toContain("false");
+    expect(matchedTexts(text, "repr.bool_true")).toEqual(["true"]);
+    expect(matchedTexts(text, "repr.bool_false")).toEqual(["false"]);
   });
 
   it("highlights null", () => {

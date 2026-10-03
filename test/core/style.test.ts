@@ -899,7 +899,7 @@ describe("DEFAULT_STYLES", () => {
   it("contains repr styles", () => {
     expect(DEFAULT_STYLES["repr.str"]).toBeDefined();
     expect(DEFAULT_STYLES["repr.number"]).toBeDefined();
-    expect(DEFAULT_STYLES["repr.bool"]).toBeDefined();
+    expect(DEFAULT_STYLES["repr.bool_true"]).toBeDefined();
   });
 
   it("contains log styles", () => {
