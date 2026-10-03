@@ -2,8 +2,8 @@
 // every bad one refused by name.
 
 import { describe, expect, it } from "vitest";
-import { EASES } from "../../../src/index.js";
-import { EFFECTS, envAtDepth, parseSettings } from "../../../examples/effects-feel/settings.js";
+import { EASES, detectColorSystem } from "../../../src/index.js";
+import { DEPTHS, EFFECTS, depthDrawn, envAtDepth, parseSettings } from "../../../examples/effects-feel/settings.js";
 
 describe("parseSettings", () => {
   it("is a run at 30 fps, truecolor, on a dark ground with no flags", () => {
@@ -46,12 +46,17 @@ describe("parseSettings", () => {
 });
 
 describe("envAtDepth", () => {
-  it("forces the depth a run asks for, over what the terminal says", () => {
-    expect(envAtDepth({ TERM: "xterm", NO_COLOR: "1" }, "256")).toEqual({ TERM: "xterm", FORCE_COLOR: "256" });
-    expect(envAtDepth({ COLORTERM: "truecolor" }, "16")).toEqual({ COLORTERM: "truecolor", FORCE_COLOR: "ansi" });
+  // Asserted through the detection that reads it, not the strings it writes:
+  // the first version of this test pinned `FORCE_COLOR: "256"`, a value the
+  // library does not read, and every run drew at 16 colours while it passed.
+  it.each(DEPTHS)("resolves to the depth a run asks for, %s, over what the terminal says", (depth) => {
+    for (const env of [{ TERM: "xterm", NO_COLOR: "1" }, { COLORTERM: "truecolor" }, { FORCE_COLOR: "3" }, {}]) {
+      expect(detectColorSystem({ env: envAtDepth(env, depth), isTTY: true })).toBe(depthDrawn(depth));
+    }
   });
 
-  it("turns colour off for none, whatever FORCE_COLOR says", () => {
+  it("keeps the rest of the environment", () => {
+    expect(envAtDepth({ TERM: "xterm", NO_COLOR: "1" }, "256")).toMatchObject({ TERM: "xterm" });
     expect(envAtDepth({ FORCE_COLOR: "3" }, "none")).toEqual({ NO_COLOR: "1" });
   });
 });

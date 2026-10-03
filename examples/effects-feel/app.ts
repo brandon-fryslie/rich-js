@@ -47,7 +47,7 @@ import {
 import { graphemes } from "../../src/core/cells.js";
 import { App, hostEnvironment, type TerminalHost } from "../../src/host/index.js";
 import { dissolveOut, drift, fadeIn, onColors, pulse, settledAt, shares, shimmer, sparkle, type Loop, type Pair } from "./curves.js";
-import type { EffectName, NamedCurve, Settings } from "./settings.js";
+import { depthDrawn, type EffectName, type NamedCurve, type Settings } from "./settings.js";
 
 /** The bundled theme each ground is drawn in: one family, so only the ground differs. */
 const THEMES: Record<Settings["ground"], TerminalTheme> = {
@@ -270,6 +270,14 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
 
   // What the frames are drawn with, asked of the host the app paints on.
   const drawnWith = new Console({ environment: hostEnvironment(host) }).options;
+  // [LAW:no-silent-failure] A run judged at one depth and drawn at another is
+  // a run judged on nothing; the heading names `settings.depth` because this
+  // is what makes it true. (The first sign-off ran at 16 colours this way.)
+  const resolved = drawnWith.colorSystem;
+  if (resolved !== depthDrawn(settings.depth)) {
+    const name = resolved === null ? "none" : resolved === undefined ? "nothing" : ColorDepth[resolved];
+    throw new Error(`asked for ${settings.depth} but the terminal resolved ${name}`);
+  }
   const depth = drawnWith.colorSystem ?? ColorDepth.TRUECOLOR;
   const subjects = [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, drawnWith, theme));
   const { curves } = settings;
