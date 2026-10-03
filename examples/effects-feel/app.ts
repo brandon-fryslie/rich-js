@@ -67,9 +67,6 @@ const STRIP_KEYS = ["primary", "secondary", "accent", "success", "warning", "err
 
 const TEXT = "Thinking about how a band of light should cross these words at one frame a second…";
 
-/** The view's padding either side, in columns. */
-const PAD_X = 2;
-
 /** How wide a shimmer's band is, in columns. */
 const SHIMMER_WIDTH = 8;
 
@@ -177,16 +174,17 @@ function worstContrast(
   subjects: readonly Subject[],
   effect: (subject: Subject) => Effect,
   times: readonly number[],
-  options: RenderOptions,
+  optionsFor: (subject: Subject) => RenderOptions,
   theme: TerminalTheme,
 ): number | undefined {
-  const depth = options.colorSystem;
-  const shown = (color: ColorRgba, foreground: boolean): ColorRgba =>
-    depth === null || depth === undefined
-      ? color
-      : ColorSpec.fromRgba(color).downgrade(depth).getTruecolor(theme, foreground);
   let worst = Number.POSITIVE_INFINITY;
   for (const subject of subjects) {
+    const options = optionsFor(subject);
+    const depth = options.colorSystem;
+    const shown = (color: ColorRgba, foreground: boolean): ColorRgba =>
+      depth === null || depth === undefined
+        ? color
+        : ColorSpec.fromRgba(color).downgrade(depth).getTruecolor(theme, foreground);
     const inner = effect(subject);
     const text = textCells(subject, options);
     const recorded: Effect = (colors, cell, t) => {
@@ -220,44 +218,35 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   const heading = Style.fromColor(ink).add(Style.parse("bold"));
   const subjects = [stripSubject(theme), textSubject(theme)];
 
-  // What the frames are drawn with, asked of the host the app paints on. The
-  // subjects sit inside the view's padding, so they are drawn that much
-  // narrower than the terminal.
+  // What the frames are drawn with, asked of the host the app paints on.
   const drawnWith = new Console({ environment: hostEnvironment(host) }).options;
-  const optionsAt = (cols: number): RenderOptions => ({ ...drawnWith, maxWidth: Math.max(1, cols - 2 * PAD_X) });
+  // Each subject whole, at its own width, whatever the terminal's: a sweep
+  // crosses the element, not the screen, so neither its span nor the contrast
+  // it reaches depends on how much of it a terminal shows, and nothing here is
+  // measured again on a resize.
+  const span = (subject: Subject): number =>
+    Measurement.get({ ...drawnWith, maxWidth: Number.MAX_SAFE_INTEGER }, subject.renderable).maximum;
+  const whole = (subject: Subject): RenderOptions => ({ ...drawnWith, maxWidth: span(subject) });
   const highlight = dark ? new ColorRgba(255, 255, 255) : new ColorRgba(0, 0, 0);
   const { curves } = settings;
+
+  const on = (subject: Subject, move: ColorMove): Effect => onSubject(subject, move, drawnWith, theme);
+  const loops: Record<Loop, (subject: Subject) => Effect> = {
+    shimmer: (s) => on(s, shimmer(curves.shimmer, span(s), SHIMMER_WIDTH, highlight)),
+    pulse: (s) => on(s, pulse(curves.pulse, dark)),
+    drift: (s) => on(s, drift(curves.drift, span(s))),
+    sparkle: (s) => on(s, sparkle(curves.sparkle, dark)),
+  };
+
   const ratio = (r: number | undefined): string => (r === undefined ? "—" : `${r.toFixed(2)}:1`);
   // Identity contrast: what the cells read at before any effect moves them.
-  const rest = ratio(worstContrast(subjects, () => (colors) => colors, [0], optionsAt(host.size().cols), theme));
-
-  /**
-   * Each loop as it runs at a width, and the worst contrast it reaches there
-   * over one period: a sweep crosses the subject as drawn, so both follow the
-   * terminal when it is resized. Measured once per width.
-   */
-  const atWidth = new Map<number, { loops: Record<Loop, (subject: Subject) => Effect>; contrast: Record<Loop, string> }>();
-  const measuredAt = (options: RenderOptions) => {
-    const known = atWidth.get(options.maxWidth);
-    if (known !== undefined) return known;
-    const span = (subject: Subject): number => Measurement.get(options, subject.renderable).maximum;
-    const on = (subject: Subject, move: ColorMove): Effect => onSubject(subject, move, options, theme);
-    const loops: Record<Loop, (subject: Subject) => Effect> = {
-      shimmer: (s) => on(s, shimmer(curves.shimmer, span(s), SHIMMER_WIDTH, highlight)),
-      pulse: (s) => on(s, pulse(curves.pulse, dark)),
-      drift: (s) => on(s, drift(curves.drift, span(s))),
-      sparkle: (s) => on(s, sparkle(curves.sparkle, dark)),
-    };
-    const contrast = Object.fromEntries(
-      LOOPS.map((loop) => {
-        const worst = worstContrast(subjects, loops[loop], sampled(curves[loop].seconds, CONTRAST_SAMPLES), options, theme);
-        return [loop, worst === undefined ? "no colour drawn" : `worst contrast ${ratio(worst)} (at rest ${rest})`];
-      }),
-    ) as Record<Loop, string>;
-    const measured = { loops, contrast };
-    atWidth.set(options.maxWidth, measured);
-    return measured;
-  };
+  const rest = ratio(worstContrast(subjects, () => (colors) => colors, [0], whole, theme));
+  const contrast = Object.fromEntries(
+    LOOPS.map((loop) => {
+      const worst = worstContrast(subjects, loops[loop], sampled(curves[loop].seconds, CONTRAST_SAMPLES), whole, theme);
+      return [loop, worst === undefined ? "no colour drawn" : `worst contrast ${ratio(worst)} (at rest ${rest})`];
+    }),
+  ) as Record<Loop, string>;
 
   // [LAW:no-ambient-temporal-coupling] The clock, read here and nowhere else.
   const origin = performance.now();
@@ -278,9 +267,8 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     new RichText(""),
   ];
 
-  const view = (): Renderable => {
-    const { loops, contrast } = measuredAt(optionsAt(host.size().cols));
-    return new Padding(
+  const view = (): Renderable =>
+    new Padding(
       new Group(
         new RichText(
           `effects feel · ${settings.fps} fps · ${settings.depth} · ${settings.ground} (${theme.palette.name}) · t=${t.toFixed(1)}s`,
@@ -298,10 +286,9 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
           () => dissolveOut(curves.dissolve, dissolveStart),
         ),
       ),
-      [1, PAD_X],
+      [1, 2],
       { style: Style.fromColor(ink, paper) },
     );
-  };
 
   const app = new App({ host, surface: "alternate", view });
 
