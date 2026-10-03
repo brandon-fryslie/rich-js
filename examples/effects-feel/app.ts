@@ -84,14 +84,15 @@ const THEMES: readonly TerminalTheme[] = [
 const FPS_STEPS = [0.5, 1, 2, 5, 10, 15, 30] as const;
 
 /**
- * How much of a loop's designed time one frame moves it at rate ×1. The
- * curves are tuned so that one designed second steps a colour by at most the
- * one-frame-a-second bar, and a frame that steps the whole bar reads as a
- * step; a quarter of it reads as motion. So the pace is set a frame at a
- * time — what a frame rate then sets is how fast those frames come — and the
- * rate keys scale it, ×2 a press, within `RATE_RANGE`.
+ * How much of a loop's designed time one frame moves it at rate ×1. A frame
+ * is the unit of change: every frame moves every loop by this, whatever the
+ * frame rate, which only sets how often a frame comes. The curves are tuned
+ * so that one designed second steps a colour by at most the one-frame-a-
+ * second bar, and a frame that steps the whole bar reads as a step; a
+ * quarter of it reads as motion. The rate keys scale it, ×2 a press, within
+ * `RATE_RANGE`.
  */
-const SECONDS_A_FRAME = 0.25;
+const STEP = 0.25;
 const RATE_RANGE = [1 / 8, 16] as const;
 
 /** How long a slice of contrast measuring may hold the event loop, in seconds: well inside a frame at 30 fps. */
@@ -374,42 +375,63 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
 }
 
 /**
- * The demo's own time: the clock's, from the last reset, at `perSecond`
- * demo seconds a clock second — so a change of pace bends the time from
- * that moment and never jumps it — and starting over once a `cycle` has run,
- * so what is seen is one full pass of every loop, then the same again, at
- * whatever pace.
+ * A clock that counts frames: `now()` is how many ticks have fired, so a
+ * view handed it is handed its frame number, and a repaint between ticks —
+ * a key's — is handed the same one again. The ticks come from `clock`.
+ */
+function frameClock(clock: Clock): Clock {
+  let frames = 0;
+  return {
+    now: () => frames,
+    every: (rate, tick) =>
+      clock.every(rate, () => {
+        frames += 1;
+        tick();
+      }),
+  };
+}
+
+/**
+ * The demo's own time: `step` designed seconds a frame from the last reset
+ * — so a change of step bends the time from that frame and never jumps it —
+ * and starting over once a `cycle` of it has run, so what is seen is one
+ * full pass of every loop, then the same again, at whatever step.
  */
 class Pace {
-  private perSecond: number;
-  // The demo time at the last change of pace, and the clock time then.
+  private step: number;
+  // The demo time at the last change of step, and the frame then.
   private base = 0;
   private mark: number;
 
-  constructor(clockNow: number, perSecond: number, private readonly cycle: number) {
-    this.mark = clockNow;
-    this.perSecond = perSecond;
+  constructor(frame: number, step: number, private readonly cycle: number) {
+    this.mark = frame;
+    this.step = step;
   }
 
-  /** The demo time at `clockNow`, and whether it just started over. */
-  at(clockNow: number): { t: number; reset: boolean } {
-    const t = this.base + (clockNow - this.mark) * this.perSecond;
+  /** The demo time at `frame`, and whether it just started over. */
+  at(frame: number): { t: number; reset: boolean } {
+    const t = this.base + (frame - this.mark) * this.step;
     if (t < this.cycle) return { t, reset: false };
     this.base = 0;
-    this.mark = clockNow;
+    this.mark = frame;
     return { t: 0, reset: true };
   }
 
-  /** `at(clockNow)` as a bare time. */
-  now(clockNow: number): number {
-    return this.at(clockNow).t;
+  /** `at(frame)` as a bare time. */
+  now(frame: number): number {
+    return this.at(frame).t;
   }
 
-  /** From `clockNow` on, demo time runs at `perSecond` demo seconds a clock second. */
-  set(clockNow: number, perSecond: number): void {
-    this.base = this.now(clockNow);
-    this.mark = clockNow;
-    this.perSecond = perSecond;
+  /** How many frames one cycle takes at the current step. */
+  get frames(): number {
+    return Math.ceil(this.cycle / this.step);
+  }
+
+  /** From `frame` on, each frame moves demo time by `step`. */
+  set(frame: number, step: number): void {
+    this.base = this.now(frame);
+    this.mark = frame;
+    this.step = step;
   }
 }
 
@@ -432,10 +454,13 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   const { curves } = settings;
 
   // [LAW:no-ambient-temporal-coupling] The app owns the frames and hands each
-  // its time; the pace turns it into the demo's, and a replay starts at the
-  // demo time it was asked at. One cycle is the longest loop's period: by then
-  // every loop has shown a full pass and both transitions have settled.
+  // its number; the pace turns it into the demo's time, and a replay starts
+  // at the demo time it was asked at. One cycle is the longest loop's period:
+  // by then every loop has shown a full pass and both transitions have
+  // settled. The system clock is read for one thing only: how long a slice
+  // of contrast measuring has held the event loop.
   const clock = systemClock();
+  const frames = frameClock(clock);
 
   // The scene on show, its contrast measured between the frames: a frame is
   // never held for it, and a theme chosen while the last one was still being
@@ -452,8 +477,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   const cycle = Math.max(...LOOPS.map((loop) => curves[loop].seconds), settledAt(curves.fade, 0), settledAt(curves.dissolve, 0));
   let rate = 1;
   let fps: FrameRate = frameRate(settings.fps);
-  const secondsAFrame = (): number => SECONDS_A_FRAME * rate;
-  const pace = new Pace(clock.now(), secondsAFrame() * fps.perSecond, cycle);
+  const pace = new Pace(frames.now(), STEP * rate, cycle);
   let fadeStart = 0;
   let dissolveStart = 0;
 
@@ -469,14 +493,14 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     new RichText(""),
   ];
 
-  const view = (clockNow: number): Renderable => {
-    const { t, reset } = pace.at(clockNow);
+  const view = (frame: number): Renderable => {
+    const { t, reset } = pace.at(frame);
     if (reset) fadeStart = dissolveStart = 0;
     const { theme, loops, contrast } = shown;
     return new Padding(
       new Group(
         new RichText(
-          `effects feel · ${fps.perSecond} fps · rate ×${rate} (${secondsAFrame()}s a frame) · ${settings.depth} · ${theme.palette.name} (${theme.palette.dark ? "dark" : "light"}) · t=${t.toFixed(1)}s of ${cycle}s`,
+          `effects feel · ${fps.perSecond} fps · rate ×${rate} · ${settings.depth} · ${theme.palette.name} (${theme.palette.dark ? "dark" : "light"}) · frame ${Math.round(t / (STEP * rate))} of ${pace.frames}`,
           { style: shown.heading, noWrap: true },
         ),
         new RichText("f fade-in · d dissolve · n/p theme · </> fps · -/+ rate · q quits", { style: shown.quiet, noWrap: true }),
@@ -490,7 +514,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     );
   };
 
-  const app = new App({ host, surface: "alternate", view, clock, rate: fps });
+  const app = new App({ host, surface: "alternate", view, clock: frames, rate: fps });
   // The loops never settle, so the demo animates for as long as it runs.
   app.animate();
 
@@ -498,7 +522,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   // not in it does nothing, so a mouse report repaints nothing.
   const replay = (): number => {
     app.refresh();
-    return pace.now(clock.now());
+    return pace.now(frames.now());
   };
   const theme = (step: number): void => {
     at = (at + step + THEMES.length) % THEMES.length;
@@ -510,12 +534,11 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     const i = Math.min(Math.max((near === -1 ? FPS_STEPS.length - 1 : near) + step, 0), FPS_STEPS.length - 1);
     fps = frameRate(FPS_STEPS[i]!);
     app.rate = fps;
-    pace.set(clock.now(), secondsAFrame() * fps.perSecond);
     app.refresh();
   };
   const scaleRate = (by: number): void => {
     rate = Math.min(Math.max(rate * by, RATE_RANGE[0]), RATE_RANGE[1]);
-    pace.set(clock.now(), secondsAFrame() * fps.perSecond);
+    pace.set(frames.now(), STEP * rate);
     app.refresh();
   };
   const keys: Record<string, () => void> = {

@@ -99,8 +99,8 @@ export const USAGE = [
   "",
   "  keys: f replays the fade-in, d replays the dissolve, n/p the next/previous theme,",
   "        < and > step the frame rate, - and + halve and double the rate, q or Ctrl-C quits",
-  "  rate ×1 moves each loop a quarter of a designed second a frame, whatever the frame rate;",
-  "  the demo starts over after one cycle, the longest loop's period, at that pace",
+  "  a frame is the unit of change: every frame moves every loop the same amount, whatever the",
+  "  frame rate, and the rate scales that amount; the demo starts over after one cycle of frames",
 ].join("\n");
 
 /** `undefined` is `--help`; anything else is a run's settings. */

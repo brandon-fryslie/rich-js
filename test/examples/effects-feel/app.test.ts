@@ -91,7 +91,8 @@ describe("effects-feel", () => {
     const before = host.output().length;
     // The transitions ran again on their own: the cycle came round.
     await vi.waitFor(() => expect(host.output().slice(before)).toMatch(/fade\s.*running/), { timeout: 5000, interval: 10 });
-    expect(host.output()).toContain("of 0.5s");
+    // Half a designed second at a quarter a frame: two frames a cycle.
+    expect(host.output()).toContain("frame 0 of 2");
     host.type("q");
     await demo.done;
   });
@@ -117,9 +118,9 @@ describe("effects-feel", () => {
     host.type("<<");
     await shown(host, "2 fps · rate ×1");
     host.type("+");
-    await shown(host, "2 fps · rate ×2 (0.5s a frame)");
+    await shown(host, "2 fps · rate ×2 ·");
     host.type("---");
-    await shown(host, "2 fps · rate ×0.25 (0.0625s a frame)");
+    await shown(host, "2 fps · rate ×0.25 ·");
     host.type("q");
     await demo.done;
   });
