@@ -230,10 +230,11 @@ const SIGH_EVERY = 6;
  * quick, about one in `SIGH_EVERY` is a long, deep sigh, and each comes at
  * its own moment in its turn, so the rhythm is calm but never a
  * metronome. A breath is not a dimmer: it rises first at a heart that
- * wanders slowly along the element and spreads outward from it, reaching
- * the edges in the same share of its turn whatever the element's width, and
- * it fills some stretches to the whole swing and others to less — warmth moving through a body, not a lamp turned up. At
- * truecolour neighbouring cells stay within a just-noticeable difference,
+ * wanders slowly along the element and spreads outward from it, column by
+ * column on a narrow element and reaching a wide one's edges in the same
+ * share of its turn however wide, and it fills some stretches to the whole
+ * swing and others to less — warmth moving through a body, not a lamp
+ * turned up. At truecolour neighbouring cells stay within a just-noticeable difference,
  * so a fill drawn across them — a powerline seam and the cell it points out
  * of — reads as one colour; at 256 colours or fewer a fill can step to the
  * next palette colour between them, as under every loop that varies along
@@ -241,21 +242,24 @@ const SIGH_EVERY = 6;
  */
 export function pulse(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
   const P = curve.seconds;
-  // Of a breath, how far behind the heart a cell the element's whole width
-  // away starts: the breath reaches the edges in the same share of its turn
-  // at any width, the way it reaches the fingertips of a small body and a
-  // large one alike.
+  // Of a breath, how far behind the heart each column further out starts:
+  // `SPREAD` a column at most, so neighbours stay one colour to the eye, and
+  // never more than `REACH` across the whole width, so a wide element's
+  // edges are reached in the same share of a turn as a strip's.
+  const SPREAD = 0.005;
   const REACH = 0.5;
+  const perColumn = Math.min(SPREAD, REACH / span);
   // How far, in turns, the rhythm drifts ahead and behind its metronome.
   const DRIFT = 0.1;
   const drift = (t: number): number => DRIFT * noise(t / (3 * P), 0.5, 0.5 + z);
   const field: Field = (cell, t) => {
     const heart = span * (0.5 + 0.45 * noise(t / (5 * P), 6.1, z));
-    const lag = (REACH * Math.abs(cell.col - heart)) / span;
-    // The heart moves at most 0.45 of the width per 5 turns of noise and the
-    // drift 0.1 of a turn per 3, both under a turn a turn whatever the width:
-    // phase only ever moves forward. The drift is measured from where it
-    // stood at t = 0 and lag is never negative, so every cell starts at rest.
+    const lag = perColumn * Math.abs(cell.col - heart);
+    // Lag spans at most `REACH` of a turn, so the heart's wander — 0.45 of
+    // the width per 5 turns of noise — and the drift's 0.1 of a turn per 3
+    // move phase far under a turn a turn whatever the width: it only ever
+    // moves forward. The drift is measured from where it stood at t = 0 and
+    // lag is never negative, so every cell starts at rest.
     const phase = Math.max(0, t / P - 0.06 - lag + drift(t) - drift(0));
     // Breath `n` is one event across the whole element: its depth and its
     // moment in its turn are the same in every cell.

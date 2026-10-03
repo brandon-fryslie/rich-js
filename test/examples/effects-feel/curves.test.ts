@@ -102,6 +102,22 @@ describe("the loops move", () => {
     }
   });
 
+  it.each([6, 12, 40, 1024])("a breath keeps neighbouring cells one colour to the eye, %s columns wide", (span) => {
+    // A fill drawn across two cells — a powerline seam and the cell it points
+    // out of — reads as one colour (dE_OK 0.02) however narrow the element.
+    const fill = new ColorRgba(137, 180, 250);
+    const row = Array.from({ length: Math.min(span, 64) }, (_, col) => ({ row: 0, col, seed: 0 }));
+    let worst = 0;
+    for (const z of [0, 11.3, 22.6]) {
+      const breath = pulse(parseSettings([])!.curves.pulse, span, sun, z);
+      for (let t = 0; t < 1800; t += 0.5) {
+        const drawn = row.map((cell) => under(breath, fill, cell, t));
+        drawn.slice(1).forEach((color, i) => (worst = Math.max(worst, distance(drawn[i]!, color))));
+      }
+    }
+    expect(worst).toBeLessThan(0.02);
+  });
+
   it.each([40, 104, 1024])("a breath swells once and ebbs once in every cell, %s columns wide", (span) => {
     // However far the heart wanders, a cell's breath only ever moves on: it
     // never turns back partway up the inhale or down the exhale.
