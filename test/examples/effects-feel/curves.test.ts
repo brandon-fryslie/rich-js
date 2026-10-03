@@ -66,8 +66,10 @@ const drawn = (effect: Effect, t: number): string =>
 describe("each curve at rest draws the cells as they were, byte for byte", () => {
   const untouched = bytes(subject);
 
-  it("pulse at the start of its period", () => {
-    expect(drawn(onColors(inkOn, pulse(curve(3, 0.2), 40, sun, 0)), 0)).toBe(untouched);
+  it.each([0, 11.3, 22.6, 82.14])("pulse at the start of its period, at z %s", (z) => {
+    const breath = pulse(curve(3, 0.2), 40, sun, z);
+    expect(cells.map((cell) => breath.field(cell, 0))).toEqual(cells.map(() => 0));
+    expect(drawn(onColors(inkOn, breath), 0)).toBe(untouched);
   });
 
   it("shimmer before its band enters the row", () => {
@@ -85,14 +87,36 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
 });
 
 describe("the loops move", () => {
-  it("pulse warms toward its light on the inhale and settles back after the exhale", () => {
-    const breath = pulse(curve(8, 0.4), 40, sun, 0);
-    // The warmest moment of the first breath, wherever in its turn it comes.
-    const nearest = Math.min(...Array.from({ length: 80 }, (_, i) => distance(under(breath, ink, cells[0]!, i / 10), sun)));
-    expect(nearest).toBeLessThan(distance(ink, sun) - 0.02);
-    // The rest before the next, reached by every cell wherever the heart is:
-    // the farthest cell's lag and the rhythm's drift still land it past the exhale.
-    expect(cells.every((cell) => sameColor(under(breath, ink, cell, 8.1), ink))).toBe(true);
+  it.each([0, 11.3, 22.6])("pulse warms toward its light on the inhale and settles back after the exhale, at z %s", (z) => {
+    const breath = pulse(curve(8, 0.4), 40, sun, z);
+    // Ten breaths: a shallow stretch can sit out a few shallow ones.
+    const moments = Array.from({ length: 800 }, (_, i) => i / 10);
+    for (const cell of cells) {
+      // The warmest moment, wherever in its turn it comes.
+      // Found in the first eight, so the rest after it falls inside the watch.
+      const away = moments.map((t) => distance(under(breath, ink, cell, t), sun));
+      const warmest = away.indexOf(Math.min(...away.slice(0, 640)));
+      expect(away[warmest]).toBeLessThan(distance(ink, sun) - 0.02);
+      // Every breath ends before the next begins, so after it each cell rests.
+      expect(moments.slice(warmest).some((t) => sameColor(under(breath, ink, cell, t), ink))).toBe(true);
+    }
+  });
+
+  it.each([40, 104, 1024])("a breath swells once and ebbs once in every cell, %s columns wide", (span) => {
+    // However far the heart wanders, a cell's breath only ever moves on: it
+    // never turns back partway up the inhale or down the exhale.
+    const breath = pulse(parseSettings([])!.curves.pulse, span, sun, 11.3);
+    for (let col = 0; col < span; col += span / 16) {
+      const cell = { row: 0, col, seed: 0 };
+      let [last, ebbing] = [0, false];
+      for (let t = 0; t < 3600; t += 0.5) {
+        const w = breath.field(cell, t);
+        if (w === 0) ebbing = false;
+        else if (w < last - 1e-4) ebbing = true;
+        else if (w > last + 1e-4) expect(ebbing, `col ${col} at ${t}`).toBe(false);
+        last = w;
+      }
+    }
   });
 
   it("light never darkens a colour, white included", () => {
