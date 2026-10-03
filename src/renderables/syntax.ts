@@ -13,7 +13,7 @@ import { Segment } from "../core/segment.js";
 import { RichText } from "../core/text.js";
 import {
   drawable,
-  getGroundedStyle,
+  groundedStyle,
   getStyle,
   withBoundedWidth,
   withCellWidth,
@@ -155,7 +155,7 @@ export class Syntax implements Renderable, Measurable {
   private *_rows(options: RenderOptions): Iterable<Segment> {
     const { first, from, to } = this._shown();
     const numberStyle = getStyle(options, "syntax.line_number");
-    const highlightStyle = getGroundedStyle(options, "syntax.line_number.highlight");
+    const highlightStyle = groundedStyle(options, getStyle(options, "syntax.line_number.highlight"));
     const rule = drawable(options, "│ ", "| ");
 
     // Tokenized whole and then sliced, so a block comment or a triple-quoted

@@ -176,6 +176,13 @@ describe("Syntax", () => {
     expect(number(ColorDepth.EIGHT_BIT)).toEqual(highlight);
   });
 
+  it("draws a theme's slot-coloured line-number highlight as written at 16 colours", () => {
+    const s = new Syntax("a\nb", "text", { lineNumbers: true, highlightLines: new Set([2]) });
+    const theme = new Theme({ "syntax.line_number.highlight": "bold yellow" });
+    const number = [...s.render({ maxWidth: 80, colorSystem: ColorDepth.STANDARD, theme })].find((seg) => seg.text.trim() === "2")!;
+    expect(number.style).toEqual(theme.resolve("syntax.line_number.highlight"));
+  });
+
   // --- Tab Size ---
 
   it("expands tabs to specified tab size", () => {

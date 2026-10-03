@@ -160,7 +160,7 @@ const theme: ThemePaletteData = {
     "text": "#FFFFFFDD",
     "text-accent": "#8FCED6",
     "text-disabled": "#FFFFFF60",
-    "text-error": "#E49598",
+    "text-error": "#DD8E92",
     "text-muted": "#FFFFFF99",
     "text-primary": "#96CAF4",
     "text-secondary": "#D9A5E8",

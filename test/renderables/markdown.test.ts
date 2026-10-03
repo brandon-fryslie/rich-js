@@ -353,6 +353,25 @@ describe("Markdown", () => {
     expect(drawn(ColorDepth.EIGHT_BIT)).toEqual([code, code]);
   });
 
+  it("draws an inline code style written in the terminal's own colours as written at 16 colours", () => {
+    const drawn = (inlineCodeStyle: string) =>
+      collectSegments(new Markdown("Use `code` here", { inlineCodeStyle }), { maxWidth: 80, colorSystem: ColorDepth.STANDARD })
+        .find((s) => s.text === "code")!.style;
+    expect(drawn("bold magenta")).toEqual(Style.parse("bold magenta"));
+    expect(drawn("white on blue")).toEqual(Style.parse("white on blue"));
+  });
+
+  it("reports a bad inline code style to onStyleError and draws the code unstyled", () => {
+    const heard: string[] = [];
+    const segments = collectSegments(new Markdown("a `b` c", { inlineCodeStyle: "bold rd" }), {
+      maxWidth: 80,
+      onStyleError: (_error, style) => heard.push(style),
+    });
+    expect(heard).toEqual(["bold rd"]);
+    expect(segments.map((s) => s.text).join("")).toContain("a b c");
+    expect(segments.some((s) => s.style?.bold)).toBe(false);
+  });
+
   it("makes a link's text the link by default", () => {
     expect(rows("[link](https://example.com)", 80)).toEqual(["link", ""]);
     expect(segment("[link](https://example.com)", "link").style?.link).toBe("https://example.com");

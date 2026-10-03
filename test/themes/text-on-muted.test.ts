@@ -1,6 +1,7 @@
 /**
- * A palette's `text-*` is the foreground it offers for a `*-muted` ground, so
- * that pair reads at WCAG AA (4.5:1) in every bundled theme — both the
+ * A palette's `text-*` is the foreground it offers for a `*-muted` ground, and
+ * widgets draw it on `background` too, so it reads at WCAG AA (4.5:1) on both
+ * in every bundled theme — both the
  * palette `buildPalette` derives for each `TerminalTheme` and the authored
  * one the registry hands out under the same name.
  */
@@ -24,6 +25,15 @@ describe("text-* on *-muted", () => {
     "text-$accent reads on $accent-muted in $source",
     ({ palette, accent }) => {
       expect(contrastRatio(palette.get(`text-${accent}`)!, palette.get(`${accent}-muted`)!)).toBeGreaterThanOrEqual(4.5);
+    },
+  );
+});
+
+describe("text-* on background", () => {
+  it.each(palettes.flatMap(([source, palette]) => ACCENTS.map((accent) => ({ source, palette, accent }))))(
+    "text-$accent reads on background in $source",
+    ({ palette, accent }) => {
+      expect(contrastRatio(palette.get(`text-${accent}`)!, palette.get("background")!)).toBeGreaterThanOrEqual(4.5);
     },
   );
 });

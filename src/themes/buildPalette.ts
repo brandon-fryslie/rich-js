@@ -1,5 +1,5 @@
 import { ColorRgba, blendRgb } from "../core/color.js";
-import { alphaBlend, contrastFor, ensureContrast } from "./colorMath.js";
+import { alphaBlend, contrastFor, ensureContrastToward } from "./colorMath.js";
 import { Palette, drawnOn } from "./palette.js";
 
 /**
@@ -25,7 +25,7 @@ const TEXT_ON_MUTED = 4.5;
 
 type AccentKey = "primary" | "secondary" | "accent" | "success" | "warning" | "error";
 
-const ACCENT_KEYS: AccentKey[] = ["primary", "secondary", "accent", "success", "warning", "error"];
+export const ACCENT_KEYS: readonly AccentKey[] = ["primary", "secondary", "accent", "success", "warning", "error"];
 
 /**
  * Build a full semantic palette from base colors.
@@ -92,12 +92,22 @@ export function buildPalette(name: string, dark: boolean, given: BaseColors): Pa
     const color = base[key];
     const muted = blendRgb(color, base.background, MUTED_BLEND);
     vars.set(`${key}-muted`, muted);
-    // [LAW:single-enforcer] The tint is Textual's; whether it reads on its
-    // ground is ensureContrast's to decide, so the pair this palette promises
-    // holds on every theme rather than on the ones whose accent happens to.
-    vars.set(`text-${key}`, ensureContrast(alphaBlend(color, contrastText, TEXT_ALPHA), muted, TEXT_ON_MUTED));
+    vars.set(`text-${key}`, accentText(alphaBlend(color, contrastText, TEXT_ALPHA), muted, base.background));
     vars.set(`on-${key}`, contrastFor(color));
   }
 
   return new Palette(name, dark, vars);
+}
+
+/**
+ * A palette's `text-*`: its tint held to WCAG AA on `*-muted`, moved toward
+ * the palette's own text side so it still reads on `background`, where
+ * widgets draw it too.
+ *
+ * [LAW:single-enforcer] The one rule for the pair, for the palettes derived
+ * here and the authored ones the registry hydrates: the tint is the theme's,
+ * whether it reads is decided here.
+ */
+export function accentText(tint: ColorRgba, muted: ColorRgba, background: ColorRgba): ColorRgba {
+  return ensureContrastToward(tint, muted, TEXT_ON_MUTED, contrastFor(background));
 }

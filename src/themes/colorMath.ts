@@ -177,7 +177,7 @@ export function ensureContrast(
   terminal?: TerminalTheme,
 ): ColorRgba {
   const ground = drawnBackground(bg, substrate);
-  const chosen = ensureTruecolorContrast(fg, ground, minRatio);
+  const chosen = ensureContrastToward(fg, ground, minRatio, contrastFor(ground));
   // [LAW:dataflow-not-control-flow] The depth names the table the terminal
   // draws from; every table is measured the same way.
   const table = drawnTable(drawnAt, terminal);
@@ -308,10 +308,19 @@ function drawnTable(drawnAt: ColorDepth, terminal: TerminalTheme | undefined): D
   }
 }
 
-function ensureTruecolorContrast(
+/**
+ * `fg` held to `minRatio` on `bg` in truecolor, moving in lightness toward
+ * `toward` (black or white). `ensureContrast` moves toward the pole `bg`
+ * itself contrasts with; a colour that already has a side (a palette's
+ * `text-*` is its text, tinted) passes that side, since on a ground near the
+ * 0.179 cutoff both poles clear and only one also reads on everything else
+ * the colour is drawn on.
+ */
+export function ensureContrastToward(
   fg: ColorRgba,
   bg: ColorRgba,
   minRatio: number,
+  toward: ColorRgba,
 ): ColorRgba {
   // Flatten translucency so the guarantee holds for the displayed color, not
   // the raw bytes (e.g. a hand-written "#FFFFFF60" over a light surface).
@@ -319,9 +328,8 @@ function ensureTruecolorContrast(
   if (contrastRatio(opaqueFg, bg) >= minRatio) return opaqueFg;
 
   const lab = Oklch.fromRgba(opaqueFg);
-  // The pole that increases contrast: lighten toward white on a dark bg, darken
-  // toward black on a light one. `contrastFor`'s 0.179 cutoff names it.
-  const poleL = relativeLuminance(bg) > 0.179 ? 0 : 1;
+  // `toward` is black or white, the pole the lightness moves to.
+  const poleL = relativeLuminance(toward) > 0.179 ? 1 : 0;
 
   // If even the pole of this hue can't reach the ratio, the hue physically
   // can't — return the true maximum-contrast pick (pure black/white from
