@@ -4,15 +4,22 @@
     {
       "version": "pr-293",
       "ref": "refs/pull/293/merge",
-      "sha": "26fb4f772986140f95799033b084d5b4469f12d0",
-      "timestamp": "2026-10-03T03:36:46.454Z",
+      "sha": "07b6af5c56494cdb95ca4fa89c723abec77057ff",
+      "timestamp": "2026-10-03T03:45:29.329Z",
       "commits": [
         {
-          "sha": "26fb4f772986140f95799033b084d5b4469f12d0",
+          "sha": "07b6af5c56494cdb95ca4fa89c723abec77057ff",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T21:35:29-06:00",
-          "message": "Merge a6125f183c8ec6619dc5bf229cbc5cc8c4e573cb into 58c1436afdc6f477693098cb1671352f822a5666\n"
+          "timestamp": "2026-10-02T21:44:32-06:00",
+          "message": "Merge 9367d0655b1d354f48890e45edec5a4f4590d869 into 58c1436afdc6f477693098cb1671352f822a5666\n"
+        },
+        {
+          "sha": "9367d0655b1d354f48890e45edec5a4f4590d869",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T21:44:29-06:00",
+          "message": "fix(traceback): survive throwing reads, keep an error's name, read node's coded header (rich-traceback-9vcb)\n\nHigh-review fixes: a value whose name/message/stack read throws is reported\nunder NonError where Pretty marks the throw, instead of throwing out of the\ncrash handler; a non-string message is formatted by Pretty under the error's\nown name; node's `Name [ERR_X]: message` header comes off whole; a stale\nheader with no V8 frame shows no frame; a NonError value is laid out in the\nwidth left after its name.\n"
         },
         {
           "sha": "a6125f183c8ec6619dc5bf229cbc5cc8c4e573cb",
