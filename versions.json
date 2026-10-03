@@ -4,15 +4,22 @@
     {
       "version": "pr-320",
       "ref": "refs/pull/320/merge",
-      "sha": "d78b612251d071d6b31b221b4da7941034912edc",
-      "timestamp": "2026-10-03T13:13:40.142Z",
+      "sha": "b7ce9188a3bba473242a7a45cd0183e05dcc412b",
+      "timestamp": "2026-10-03T13:17:16.032Z",
       "commits": [
         {
-          "sha": "d78b612251d071d6b31b221b4da7941034912edc",
+          "sha": "b7ce9188a3bba473242a7a45cd0183e05dcc412b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T07:12:35-06:00",
-          "message": "Merge b665e998bfcb0ab1d07625cc64579dede3802898 into 3d7756ac5a041b157ba4ef985b01e802f666855f\n"
+          "timestamp": "2026-10-03T13:16:00Z",
+          "message": "Merge 2ecb56c5f8091003c575efc3748e114fd0a67bd6 into 3d7756ac5a041b157ba4ef985b01e802f666855f\n"
+        },
+        {
+          "sha": "2ecb56c5f8091003c575efc3748e114fd0a67bd6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T07:15:54-06:00",
+          "message": "docs(color): no surface but black is left that an export flattens over (rich-style-wl27)\n\nReview: three comments and one test name still described an export\ncompositing over its canvas, and colorMath steered callers to pass\nexportCanvas(theme).background as the contrast substrate — which now\npicks text against a colour the export never draws.\n"
         },
         {
           "sha": "b665e998bfcb0ab1d07625cc64579dede3802898",
