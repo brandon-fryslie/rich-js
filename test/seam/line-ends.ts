@@ -34,7 +34,9 @@ import { Pretty } from "../../src/core/pretty.js";
 import { PlainJoiner, Strip } from "../../src/core/strip.js";
 import { Align } from "../../src/renderables/align.js";
 import { Columns } from "../../src/renderables/columns.js";
+import { ColorRgba } from "../../src/core/color.js";
 import { Constrain } from "../../src/renderables/constrain.js";
+import { Effected } from "../../src/renderables/effect.js";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { Group } from "../../src/renderables/group.js";
 import { Layout } from "../../src/renderables/layout.js";
@@ -88,6 +90,16 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
   Checkbox: { ends: "own-line", build: () => new Checkbox({ label: "Agree" }) },
   Columns: { ends: "own-line", build: () => new Columns(["a", "b"]) },
   Constrain: { ends: "content", build: (content) => new Constrain(content, 10), why: "renders its content and nothing after it, as the reference's does: its last line is its content's" },
+  Effected: {
+    ends: "content",
+    build: (content) =>
+      new Effected(content, (c) => c, {
+        t: 0,
+        key: "content",
+        defaults: { fg: new ColorRgba(255, 255, 255), bg: new ColorRgba(0, 0, 0) },
+      }),
+    why: "recolours its content's cells and adds none, so its last line is its content's",
+  },
   Dropdown: { ends: "own-line", build: () => new Dropdown({ options: ["a", "b"] }) },
   Emoji: {
     ends: "open",
