@@ -130,6 +130,20 @@ describe("ProgressColumn.tableColumn (rich-progress-j4lb)", () => {
   });
 });
 
+describe("A task description keeps its own end (rich-embed-1r2m)", () => {
+  // Python Rich 9d8f9a3: `TextColumn("{task.description}")` beside
+  // `TextColumn("end")` at width 30, tasks "foo\n" and "bar". The
+  // description's trailing newline draws a blank row under its task.
+  it("draws the blank row a description's trailing newline makes, as Rich does", () => {
+    const console = new Console({ width: 30, colorSystem: null, record: true, file: { write: () => {} } });
+    const progress = new Progress(new TextColumn("{task.description}"), new TextColumn("end"), { console });
+    progress.addTask("foo\n", { total: 10 });
+    progress.addTask("bar", { total: 10 });
+    console.print(progress);
+    expect(console.exportText()).toBe("foo end\n       \nbar end\n");
+  });
+});
+
 describe("TaskProgressColumn (rich-progress-sy9s)", () => {
   const row = (expand: boolean, total: number | undefined, completed: number): string => {
     const progress = new Progress(

@@ -1181,9 +1181,6 @@ export class Table implements Renderable, Measurable {
     ownStyle: string | Style,
     justify: "left" | "center" | "right" | "full",
   ): Iterable<Segment> {
-    const style = getStyle(options, ownStyle);
-    const titleStyle = style.isNull ? undefined : style;
-
     // The table owns the canvas; the caller's text still says how it meets the
     // edge. A `RichText`'s own `justify` and `overflow` outrank the options
     // `render` is handed, so `titleJustify` would lose to a property the caller
@@ -1203,6 +1200,9 @@ export class Table implements Renderable, Measurable {
     // title arrives as italic-red, not one or the other. Rendering `text.plain`
     // here read the characters and dropped every span attached to them, so a
     // styled title lost its styling and parsed markup silently did nothing.
+    // Set as the text's base, as `render_str(style=)` sets it, so the line
+    // breaks and the `end` the text emits stay unstyled.
+    source.style = getStyle(options, ownStyle).add(source.resolvedStyle(options));
     //
     // Rendered at the table's own width with nothing suppressed, because that
     // is what the reference hands its title: an annotation too wide for the
@@ -1214,22 +1214,20 @@ export class Table implements Renderable, Measurable {
     // rules — that a wrap's trailing whitespace is not content to centre
     // around, that `left` fills the canvas and an unset justify does not — and
     // a second copy of those is a second answer waiting to disagree.
-    const rendered = [...source.render({
+    //
+    // Yielded as the text emits it, every line and its own `end` included, as
+    // the reference's `console.render` yields it: a title of "one\ntwo" is two
+    // lines, and `end="!!"` runs on into the top border there too. Splitting
+    // and re-ending each line moved a non-newline `end` onto the title's own
+    // row, wider than the table.
+    yield* source.render({
       ...options,
       maxWidth: tableWidth,
       justify,
       overflow: undefined,
       noWrap: false,
       height: undefined,
-    })];
-
-    // Every line the text has, because that is what the reference renders — a
-    // title of "one\ntwo" occupies two lines there. Taking only the first
-    // dropped the rest with no truncation mark.
-    for (const line of Segment.splitLines(rendered)) {
-      yield* Segment.applyStyle(line, titleStyle);
-      yield Segment.line();
-    }
+    });
   }
 
 }

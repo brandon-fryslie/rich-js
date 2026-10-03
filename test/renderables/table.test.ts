@@ -1509,6 +1509,20 @@ describe("Table cells wrap before the overflow method sees them", () => {
   // rich-embed-1r2m: a cell keeps its own `end`, so a trailing newline draws
   // the blank row it makes. Python Rich 9d8f9a3 prints this frame at width 40
   // for a `Text` and a string alike.
+  // rich-embed-1r2m review: a title and caption are yielded as the text emits
+  // them, so an `end` that is not a newline runs on into the next line rather
+  // than widening the title's own row. Python Rich 9d8f9a3 prints these bytes
+  // at width 30.
+  it.each([
+    ["!!", "    T     !!┏━━━━━━━━┓\n┃ abcdef ┃\n┡━━━━━━━━┩\n└────────┘\n    C     !!"],
+    ["", "    T     ┏━━━━━━━━┓\n┃ abcdef ┃\n┡━━━━━━━━┩\n└────────┘\n    C     "],
+    ["\n\n", "    T     \n\n┏━━━━━━━━┓\n┃ abcdef ┃\n┡━━━━━━━━┩\n└────────┘\n    C     \n\n"],
+  ])("draws a title and caption with end %j as Rich does", (end, expected) => {
+    const table = new Table({ title: new RichText("T", { end }), caption: new RichText("C", { end }) });
+    table.addColumn("abcdef");
+    expect([...table.render({ maxWidth: 30 })].map((s) => s.text).join("")).toBe(expected);
+  });
+
   it.each([new RichText("foo\n"), "foo\n"])("draws the blank row a cell's trailing newline makes, as Rich does", (cell) => {
     const table = new Table();
     table.addColumn("a");

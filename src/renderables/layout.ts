@@ -159,6 +159,8 @@ export class Layout implements Renderable, Measurable {
     if (this._isLeaf) {
       // Shaped to its region, as Rich's `render_lines` shapes a pane: every
       // line cropped and padded to the width, and held to the region's rows.
+      // The leaf sets its content's region, so it shapes what comes back, as
+      // `paneLines` shapes a pane for the split that set the pane's.
       // Cropped rather than forwarded because content is free to ignore its
       // offer, and a pane wider than its region is the one thing a layout may
       // never emit — in a row split it overwrites the pane beside it. Held to

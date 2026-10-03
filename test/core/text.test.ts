@@ -272,6 +272,16 @@ describe("RichText.append()", () => {
     ]);
   });
 
+  // Rich's `Text.append` takes the other text's characters and spans and
+  // leaves its `end` behind, which is what lets a label keep its own end and
+  // still sit inside a line, as `Spinner` sets one (rich-embed-1r2m).
+  it("keeps its own end and drops the appended RichText's", () => {
+    const a = new RichText("Hello", { end: "" });
+    a.append(new RichText(" World", { end: "!!" }));
+    expect(a.end).toBe("");
+    expect([...a.render({ maxWidth: 40 })].map((s) => s.text).join("")).toBe("Hello World");
+  });
+
   it("throws when appending RichText with style argument", () => {
     const a = new RichText("Hello");
     const b = new RichText(" World");

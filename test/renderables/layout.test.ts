@@ -307,6 +307,13 @@ describe("Layout", () => {
     expect(text.split("\n")[0]).toBe("日本語日 ");
   });
 
+  // rich-embed-1r2m review: a leaf pads every line to its width wherever it
+  // stands. Python Rich 9d8f9a3 prints `Layout("hi")` at width 12 as
+  // "hi" and ten spaces.
+  it("pads a leaf printed on its own to the width, as Rich does", () => {
+    expect(collectText(new Layout("hi"), { maxWidth: 12 })).toBe("hi          \n");
+  });
+
   // rich-embed-1r2m: a leaf's content keeps its own `end`, so
   // `RichText("status: ok\n")` is two lines, and a leaf is shaped to its
   // region. Python Rich 9d8f9a3 prints these for `Layout(Text("status: ok\n"))`
