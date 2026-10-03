@@ -262,8 +262,6 @@ process.stdout.write(segmentsToString(segments, resolveDestination("auto")) + "\
 
 On a parse or evaluation failure it returns a single segment reading `[error: …]`, dim red unless `errorStyle` says otherwise — one line, drawn to the same `maxWidth` as a successful render and ending in `…` where the message had to be cut — which a caller can drop into their layout unchanged. Even a malformed `errorStyle` cannot break that promise — an unparseable spec falls back to the built-in style rather than propagating the failure it was supposed to report.
 
-The render itself draws the way a `Console` does. Pass `theme` to resolve style names a fragment carries, and `onStyleError` to hear about each style the render drops. A handler that rethrows makes `renderTemplate` throw, as described in [Failing on invalid styles](./style#failing-on-invalid-styles).
-
 ```typescript
 import { segmentsToString, resolveDestination } from "@promptctl/rich-js";
 import { createRichTextEngine, renderTemplate } from "@promptctl/rich-js/template-bindings";
@@ -277,6 +275,8 @@ const broken = renderTemplate(engine, `{{ darken "primary" 2 }}`, {}, {
 
 process.stdout.write(segmentsToString(broken, resolveDestination("auto")) + "\n");
 ```
+
+Pass `theme` and the render looks up, in that theme, the style names carried by fragments that arrive through `scope` — a `RichText` built from `[my.heading]` markup, say. The template functions themselves take style definitions, not names: a template runs before any render, so there is no theme for `style "my.heading"` to look in, and it fails as the template's `[error: …]` line. Pass `onStyleError` to hear about each style the render drops. A handler that rethrows makes `renderTemplate` throw, as described in [Failing on invalid styles](./style#failing-on-invalid-styles); so does any other error the render raises, because the `[error: …]` line reports a template that failed and nothing else. All three of `maxWidth`, `theme` and `onStyleError` are `RenderOptions` fields, so a renderable that wraps a template passes the options it was given straight through.
 
 `maxWidth` defaults to 400 — wide enough that the downstream line-splitting decides the real width, matching the usual "render wide, fit on output" pipeline. The error line is fitted to that same width, so pass the width you draw at if a cut error should end in `…` rather than be cropped by whatever draws it.
 

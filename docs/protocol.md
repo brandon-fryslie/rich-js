@@ -71,7 +71,7 @@ This bypasses higher-level layout and is only needed for precise character-level
 
 ### Drawing with theme names
 
-`options.theme` is the `Theme` of the console doing the printing. It is absent when nothing supplied one, as in `renderToString`, and then the built-in names apply. A `Segment` takes a `Style` that is already resolved, so to draw with a name — a built-in like `repr.number`, or one the user's theme adds — resolve it with `getStyle`, passing it the options you were given. The options are how the name reaches the theme:
+`options.theme` is the `Theme` of the console doing the printing. It is absent when nothing supplied one — a `renderToString` call given no `theme`, say — and then the built-in names apply. A `Segment` takes a `Style` that is already resolved, so to draw with a name — a built-in like `repr.number`, or one the user's theme adds — resolve it with `getStyle`, passing it the options you were given. The options are how the name reaches the theme:
 
 ```typescript
 import type { Renderable, RenderOptions } from "@promptctl/rich-js";

@@ -4,7 +4,6 @@ import { RichText } from "../../src/core/text.js";
 import { StyleSyntaxError, Theme } from "../../src/core/style.js";
 import { renderMarkup } from "../../src/core/markup.js";
 
-const engine = createRichTextEngine;
 const strict = (error: StyleSyntaxError): never => {
   throw error;
 };
@@ -111,7 +110,7 @@ describe("template-bindings — bootstrap smoke", () => {
   it("renderTemplate draws a style name against the theme it is given", () => {
     const theme = new Theme({ "my.heading": "bold red" });
     const title = renderMarkup("[my.heading]hi[/]");
-    const segs = renderTemplate(engine(), `{{ .title }}`, { title }, { theme, onStyleError: strict });
+    const segs = renderTemplate(createRichTextEngine(), `{{ .title }}`, { title }, { theme, onStyleError: strict });
     const hi = segs.find((s) => s.text === "hi");
     expect(hi?.style?.bold).toBe(true);
     expect(hi?.style?.color?.name).toBe("red");
@@ -119,7 +118,7 @@ describe("template-bindings — bootstrap smoke", () => {
 
   it("renderTemplate reports each style it drops to onStyleError and still renders the text", () => {
     const heard: string[] = [];
-    const segs = renderTemplate(engine(), `{{ .title }}`, { title: renderMarkup("[bold rd]hi[/]") }, {
+    const segs = renderTemplate(createRichTextEngine(), `{{ .title }}`, { title: renderMarkup("[bold rd]hi[/]") }, {
       onStyleError: (_error, style) => void heard.push(style),
     });
     expect(heard).toEqual(["bold rd"]);
@@ -128,7 +127,7 @@ describe("template-bindings — bootstrap smoke", () => {
 
   it("renderTemplate lets a rethrown style error leave instead of folding it into an [error: …] line", () => {
     const title = renderMarkup("[bold rd]hi[/]");
-    expect(() => renderTemplate(engine(), `{{ .title }}`, { title }, { onStyleError: strict })).toThrow(StyleSyntaxError);
+    expect(() => renderTemplate(createRichTextEngine(), `{{ .title }}`, { title }, { onStyleError: strict })).toThrow(StyleSyntaxError);
   });
 
   it("the theme-free engine covers the whole colour vocabulary via hex literals", () => {

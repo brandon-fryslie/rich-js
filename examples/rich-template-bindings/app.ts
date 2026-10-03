@@ -308,7 +308,7 @@ function buildRowSegments(
   options: RenderOptions,
 ): Segment[] {
   const outputRenderable: Renderable = {
-    render: (opts) => renderTemplate(engine, input.value, {}, { maxWidth: opts.maxWidth }),
+    render: (opts) => renderTemplate(engine, input.value, {}, opts),
   };
   const borderStyle = input.focused ? cyanStyle : dimStyle;
 
@@ -410,7 +410,7 @@ const pushPanelItem = new StaticItem({
   id: uid("push-panel"),
   render: (opts) => {
     const tmpl = pushRow.input.value;  // MobX subscription
-    const bodyRenderable = { render: () => renderTemplate(tokyoEngine, tmpl) };
+    const bodyRenderable: Renderable = { render: (o) => renderTemplate(tokyoEngine, tmpl, {}, o) };
     const title = new RichText(" git push ", { style: cyanBoldStyle, end: "" });
     return new Panel(bodyRenderable, { borderStyle: cyanBoldStyle, title, padding: [1, 2] }).render(opts);
   },

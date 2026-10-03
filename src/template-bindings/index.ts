@@ -90,6 +90,14 @@ export function createRichTextEngine(): Engine<RichText> {
   });
 }
 
+// [LAW:one-source-of-truth] The render fields are `RenderOptions`' own, handed
+// to the render unchanged, so a renderable wrapping a template forwards the
+// options it was given whole instead of re-threading them field by field.
+export interface RenderTemplateOptions
+  extends Partial<Pick<RenderOptions, "maxWidth" | "theme" | "onStyleError">> {
+  errorStyle?: string;
+}
+
 /**
  * Compile a template source against `engine` and render the result to a
  * flat `Segment[]`. The 90%-case convenience over chaining `engine.compile`,
@@ -98,17 +106,17 @@ export function createRichTextEngine(): Engine<RichText> {
  * - Runs `engine.compile(source)(scope)` to get the engine's `RichText[]`.
  * - Flattens that fragment list into a single styled `RichText` via
  *   `RichText.fromFragments` so every fragment's wrapping style survives.
- * - Renders to a `Segment[]` at the requested `maxWidth`, drawing style names
- *   against `theme` and reporting each dropped style to `onStyleError`, as a
- *   `Console` carrying both would.
+ * - Renders to a `Segment[]` at the requested `maxWidth`, looking up the style
+ *   names fragments from `scope` carry in `theme` and reporting each dropped
+ *   style to `onStyleError`.
  * - On a parse/evaluate failure, emits a single dim styled
  *   `[error: <message>]` segment, one line fitted to `maxWidth`, the caller
  *   can drop into their layout. No bespoke fallback wiring required at every
  *   call site.
  *
- * Only compile and evaluate are inside the `try`. A template that failed is
- * what the error line reports; a style the render drops is `onStyleError`'s,
- * and a handler that throws has asked for the render to fail, so its error
+ * Only compile and evaluate are inside the `try`: the error line reports a
+ * template that failed, nothing else. Whatever the render throws — a style
+ * error an `onStyleError` handler rethrew, or a fault in the render itself —
  * leaves this function rather than being folded into an `[error: …]` line.
  *
  * [LAW:single-enforcer] One place owns "render a template to segments,
@@ -129,13 +137,6 @@ export function createRichTextEngine(): Engine<RichText> {
  * `…` rather than be cropped by whatever draws it.
  * @param errorStyle is a `Style.parse` spec (default `"red dim"`).
  */
-// [LAW:one-source-of-truth] Handed to the render unchanged, so their contract is
-// `RenderOptions`' and is not restated here.
-export interface RenderTemplateOptions extends Pick<RenderOptions, "theme" | "onStyleError"> {
-  maxWidth?: number;
-  errorStyle?: string;
-}
-
 export function renderTemplate(
   engine: Engine<RichText>,
   source: string,
