@@ -4,15 +4,22 @@
     {
       "version": "pr-287",
       "ref": "refs/pull/287/merge",
-      "sha": "2e28ad845a90d4040df4a2a9929541f9f5a2bb53",
-      "timestamp": "2026-10-03T00:53:04.344Z",
+      "sha": "546ad480a09a532a11f571d16262cd4f3eb94bd1",
+      "timestamp": "2026-10-03T00:56:32.382Z",
       "commits": [
         {
-          "sha": "2e28ad845a90d4040df4a2a9929541f9f5a2bb53",
+          "sha": "546ad480a09a532a11f571d16262cd4f3eb94bd1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T00:51:56Z",
-          "message": "Merge 9f6d949606165004cea30f5c3d68dfa37e3a8305 into 6eb4218ac6ce9a64b502659ee054926bf0cbc1b9\n"
+          "timestamp": "2026-10-03T00:55:43Z",
+          "message": "Merge 176982c1b09673f5cbb77f68c22c3d02265bbb36 into 6eb4218ac6ce9a64b502659ee054926bf0cbc1b9\n"
+        },
+        {
+          "sha": "176982c1b09673f5cbb77f68c22c3d02265bbb36",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T18:55:39-06:00",
+          "message": "fix(examples): effects-feel measures each subject whole, once (rich-shimmer-ufj7)\n\nMedium review on #287: measuring per terminal width blocked the event loop\n~0.4 s for every width a resize passed through, and compared a per-width\nworst contrast against a startup-width rest. A sweep crosses the element,\nnot the screen, so span and contrast are the element's at its own width:\nmeasured once at startup, the cache and the resize work gone.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "9f6d949606165004cea30f5c3d68dfa37e3a8305",
