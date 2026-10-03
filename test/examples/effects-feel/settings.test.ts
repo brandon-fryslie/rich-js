@@ -6,9 +6,9 @@ import { EASES } from "../../../src/index.js";
 import { EFFECTS, envAtDepth, parseSettings } from "../../../examples/effects-feel/settings.js";
 
 describe("parseSettings", () => {
-  it("is a run at 1 fps, truecolor, on a dark ground with no flags", () => {
+  it("is a run at 30 fps, truecolor, on a dark ground with no flags", () => {
     const settings = parseSettings([])!;
-    expect(settings).toMatchObject({ fps: 1, depth: "truecolor", ground: "dark" });
+    expect(settings).toMatchObject({ fps: 30, depth: "truecolor", ground: "dark" });
     expect(Object.keys(settings.curves)).toEqual([...EFFECTS]);
   });
 

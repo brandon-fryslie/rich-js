@@ -7,6 +7,7 @@ import {
   CATPPUCCIN_LATTE,
   CATPPUCCIN_MOCHA,
   Console,
+  ColorRgba,
   EASES,
   Effected,
   Style,
@@ -88,11 +89,11 @@ describe("a strip under a pulse", () => {
     });
   }
 
-  it.each([["dark", CATPPUCCIN_MOCHA, true], ["light", CATPPUCCIN_LATTE, false]] as const)(
+  it.each([["dark", CATPPUCCIN_MOCHA, new ColorRgba(255, 228, 176)], ["light", CATPPUCCIN_LATTE, new ColorRgba(92, 58, 12)]] as const)(
     "on a %s ground moves each fill to one colour, in every cell that shows it, and nothing else",
-    (_, theme, darkGround) => {
+    (_, theme, light) => {
       const strip = drawnSubject(stripSubject(theme), options, theme);
-      const lit = onColors(strip.colors, pulse({ seconds: 2, ease: EASES.linear, swing: 0.3 }, darkGround));
+      const lit = onColors(strip.colors, pulse({ seconds: 2, ease: EASES.linear, swing: 0.3 }, light));
       const before = colorsByCell(strip.renderable, theme);
       const after = colorsByCell(new Effected(strip.renderable, lit, { t: 1, key: "strip", theme }), theme);
       expect(after).toHaveLength(before.length);

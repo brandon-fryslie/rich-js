@@ -60,8 +60,8 @@ const STRIP_KEYS = ["primary", "secondary", "accent", "success", "warning", "err
 
 const TEXT = "Thinking about how a band of light should cross these words at one frame a second…";
 
-/** How wide a shimmer's band is, in columns. */
-const SHIMMER_WIDTH = 8;
+/** How far a shimmer's light reaches either side of its centre, in columns. */
+const SHIMMER_WIDTH = 12;
 
 /** Samples per period when measuring a looping effect's worst contrast. */
 const CONTRAST_SAMPLES = 240;
@@ -233,14 +233,17 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   // What the frames are drawn with, asked of the host the app paints on.
   const drawnWith = new Console({ environment: hostEnvironment(host) }).options;
   const subjects = [stripSubject(theme), textSubject(theme)].map((s) => drawnSubject(s, drawnWith, theme));
-  const highlight = dark ? new ColorRgba(255, 255, 255) : new ColorRgba(0, 0, 0);
+  // Warm light, as sunlight, breath and fireflies are: pale gold on a dark ground,
+  // its deep counterpart on a light one, so the light still reads against it.
+  const highlight = dark ? new ColorRgba(255, 228, 176) : new ColorRgba(92, 58, 12);
+  const firefly = dark ? new ColorRgba(222, 245, 140) : new ColorRgba(98, 122, 0);
   const { curves } = settings;
 
   const loops: Record<Loop, (subject: DrawnSubject) => Effect> = {
     shimmer: (s) => onColors(s.colors, shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, highlight)),
-    pulse: (s) => onColors(s.colors, pulse(curves.pulse, dark)),
+    pulse: (s) => onColors(s.colors, pulse(curves.pulse, highlight)),
     drift: (s) => onColors(s.colors, drift(curves.drift, s.span)),
-    sparkle: (s) => onColors(s.colors, sparkle(curves.sparkle, dark)),
+    sparkle: (s) => onColors(s.colors, sparkle(curves.sparkle, dark, firefly)),
   };
 
   // With no colour drawn there is no contrast to read: every effect is the

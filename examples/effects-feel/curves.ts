@@ -2,20 +2,28 @@
  * effects-feel — the effect curves under judgement.
  *
  * THIS IS A DEMO. It exists so the feel of each effect is agreed before any
- * curve lands in `src/`; the project learns from its mistakes rather than
- * building on it. What survives the sign-off is promoted to `src/` and this
- * file is not its starting point — the sign-off notes are.
+ * curve lands in `src/`; what survives the sign-off is promoted from the
+ * sign-off notes, not from this file.
  *
- * Every curve is an `Effect` from `src/renderables/effect.ts`, built from the
- * `Phase` and `Ease` vocabulary in `src/core/easing.ts`: how far a move has
- * gone is `ease(phase(t + offset))`, and the move is a colour transform in
- * OKLCH, where equal steps look equal.
+ * Each effect is something a first-time observer already knows from life —
+ * a breath, sunlight moving on water, wind crossing a field, fireflies, ink
+ * blooming in water, mist lifting — because a motion the eye recognises
+ * reads as calm and alive, where a motion it has to learn reads as a widget.
+ * What makes those motions familiar is what every curve here keeps:
  *
- * [LAW:one-type-per-behavior] Pulse, sparkle and drift are one curve — a
- * `ThemeKey` scaled by progress — differing in the per-cell offset and in which
- * axis the key moves. Fade-in and dissolve-out are one curve — the ink mixed
- * toward the ground by a visibility — differing in how visibility is read off
- * time. Shimmer is its own: a mix toward a highlight, weighted by a band.
+ * - Nothing jumps. Every curve is continuous in time, built from smooth
+ *   noise (`noise.ts`) and smooth waveforms, so at one frame a second a cell
+ *   moves a little and at thirty it glides.
+ * - Nothing repeats exactly. Rhythms are perturbed by slow noise, the way a
+ *   breath or a gust never quite repeats.
+ * - Neighbours move together. Variation is spatially coherent — patches,
+ *   filaments, fronts — never per-cell static.
+ * - Moves are small. The swing is a touch of light, not a colour change.
+ *
+ * Every curve is an `Effect` from `src/renderables/effect.ts`; colour moves
+ * are in OKLCH, where equal steps look equal. A curve's `ease` maps its
+ * intensity in [0, 1] — how strongly the effect acts on a cell at a moment —
+ * onto its swing, for the loops and the transitions alike.
  *
  * [LAW:no-ambient-temporal-coupling] No curve reads a clock; `t` is the
  * effect's argument, so the frame owner decides when to sample.
@@ -30,8 +38,8 @@ import {
   type Ease,
   type Effect,
   type EffectCell,
-  type ThemeKey,
 } from "../../src/index.js";
+import { fbm, noise, smoothstep } from "./noise.js";
 
 /** A move of one colour: the colour, the cell, the time, to the new colour. */
 export type ColorMove = (color: ColorRgba, cell: EffectCell, t: number) => ColorRgba;
@@ -53,65 +61,124 @@ export function onColors(colors: ReadonlySet<string>, move: ColorMove): Effect {
 export interface Curve {
   /** Seconds: a looping effect's period, a transition's duration. */
   readonly seconds: number;
+  /** Intensity in [0, 1] to the fraction of `swing` applied. */
   readonly ease: Ease;
-  /** How far the move goes at full progress; its unit is the effect's. */
+  /** How far the move goes at full intensity; its unit is the effect's. */
   readonly swing: number;
 }
 
+const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
+
 /**
- * A `ThemeKey` whose size follows progress — `key(1)` at the peak — with each
- * cell's progress shifted in time by `offset(cell)` seconds. At progress 0
- * the key is the identity, and an sRGB colour survives the trip through OKLCH
- * unchanged, so the curve's rest is the untouched cell, byte for byte.
+ * `w` of the way from `from` to `to` along a straight line in OKLab. Light
+ * falling on a colour, or a colour thinning into its ground, moves straight
+ * toward the other colour; `Oklch.mix` goes round the hue circle instead, so
+ * blue lit by gold would pass through cyan on the way.
  */
-function keyed(curve: Curve, key: (amount: number) => ThemeKey, offset: (cell: EffectCell) => number): ColorMove {
-  const phase = Phase.pingPong(curve.seconds);
-  return (color, cell, t) => Oklch.fromRgba(color).applyKey(key(curve.ease(phase(t + offset(cell))))).toRgba();
+function blend(from: Oklch, to: Oklch, w: number): Oklch {
+  const rad = Math.PI / 180;
+  const a = (1 - w) * from.c * Math.cos(from.h * rad) + w * to.c * Math.cos(to.h * rad);
+  const b = (1 - w) * from.c * Math.sin(from.h * rad) + w * to.c * Math.sin(to.h * rad);
+  return new Oklch((1 - w) * from.l + w * to.l, Math.hypot(a, b), Math.atan2(b, a) / rad, from.alpha);
 }
 
+/** Lightness away from the ground: up on a dark ground, down on a light one. */
+const away = (darkGround: boolean): number => (darkGround ? 1 : -1);
+
 /**
- * Lightness away from the ground: up on a dark ground, down on a light one,
- * so the moving colour gains contrast with what is behind it.
+ * One breath at phase `p` in [0, 1): a quicker inhale, a longer exhale, then
+ * a rest — the shape of a sleeper's breathing, which is what makes a pulse
+ * read as calm rather than as a warning. Each joint has zero slope.
  */
-function lighten(swing: number, darkGround: boolean): (amount: number) => ThemeKey {
-  const toward = darkGround ? 1 : -1;
-  return (amount) => ({ ...IDENTITY, lightnessShift: toward * swing * amount });
-}
-
-/** Swing: OKLCH lightness at the peak, 0–1. The whole element breathes together. */
-export function pulse(curve: Curve, darkGround: boolean): ColorMove {
-  return keyed(curve, lighten(curve.swing, darkGround), () => 0);
-}
-
-/** Swing: OKLCH lightness at the peak, 0–1. Each cell breathes on its own clock. */
-export function sparkle(curve: Curve, darkGround: boolean): ColorMove {
-  return keyed(curve, lighten(curve.swing, darkGround), (cell) => cell.seed * curve.seconds);
+function breathAt(p: number): number {
+  const INHALE = 0.36;
+  const EXHALE = 0.5;
+  if (p < INHALE) return (1 - Math.cos((Math.PI * p) / INHALE)) / 2;
+  if (p < INHALE + EXHALE) return (1 + Math.cos((Math.PI * (p - INHALE)) / EXHALE)) / 2;
+  return 0;
 }
 
 /**
- * Swing: degrees of hue at the peak. The shift travels along the row, one
- * period from the first column to column `span`.
+ * Pulse, as breathing. Swing: how far toward `light` the colour goes at the
+ * top of a full breath, 0–1. The whole element breathes together, warming
+ * toward the light on the inhale and settling back on the exhale — warmth,
+ * not only lightness, so text already near white still visibly breathes. No
+ * two breaths are the same: the rhythm drifts a little early or late and the
+ * depth varies, both on slow noise. A breath starts in its rest, so `t = 0`
+ * draws the cell untouched.
  */
-export function drift(curve: Curve, span: number): ColorMove {
-  return keyed(
-    curve,
-    (amount) => ({ ...IDENTITY, hueShift: curve.swing * amount }),
-    (cell) => (cell.col / span) * curve.seconds,
-  );
+export function pulse(curve: Curve, light: ColorRgba): ColorMove {
+  const P = curve.seconds;
+  const toward = Oklch.fromRgba(light);
+  return (color, _cell, t) => {
+    // The rhythm's drift is slow enough that phase only ever moves forward.
+    const phase = t / P - 0.06 + 0.03 * noise(t / (3 * P), 0.5, 0.5);
+    const depth = 0.8 + 0.2 * noise(t / (4 * P), 3.5, 0.5);
+    const amount = curve.ease(breathAt(phase - Math.floor(phase)) * depth);
+    return blend(Oklch.fromRgba(color), toward, curve.swing * amount).toRgba();
+  };
 }
 
+/** A soft, compact bump: 1 at `d = 0`, 0 from `|d| ≥ 1`, smooth throughout. */
+const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
+
 /**
- * Swing: how far toward `highlight` the band's centre goes, 0–1. A band
- * `width` columns wide crosses columns 0 to `span` once a period, entering
- * and leaving fully off the row so the sweep has a rest between passes.
+ * Shimmer, as sunlight moving across water. Swing: how far toward
+ * `highlight` the brightest glint goes, 0–1. A soft band of light crosses
+ * columns 0 to `span` once a period, `width` columns either side of its
+ * centre, entering and leaving fully off the row; inside it the light is
+ * broken into caustics — bright filaments where two slow ripples cross —
+ * that wander as the band passes. Before the band enters, the row is
+ * untouched.
  */
 export function shimmer(curve: Curve, span: number, width: number, highlight: ColorRgba): ColorMove {
   const phase = Phase.loop(curve.seconds);
   const toward = Oklch.fromRgba(highlight);
   return (color, cell, t) => {
     const centre = phase(t) * (span + 2 * width) - width;
-    const nearness = Math.max(0, 1 - Math.abs(cell.col - centre) / width);
-    return Oklch.fromRgba(color).mix(toward, curve.swing * curve.ease(nearness)).toRgba();
+    const band = bump((cell.col - centre) / width);
+    const ripple = (a: number, b: number, z: number): number => 1 - Math.abs(noise(a, b, z));
+    const caustic = (ripple(cell.col * 0.23, cell.row * 0.9, t * 0.05) * ripple(cell.col * 0.37 + 9.1, cell.row * 0.7, t * 0.035 + 4.2)) ** 3;
+    const amount = curve.ease(band * (0.5 + 0.5 * caustic));
+    return blend(Oklch.fromRgba(color), toward, curve.swing * amount).toRgba();
+  };
+}
+
+/**
+ * Drift, as wind crossing a field. Swing: degrees of hue at a gust's
+ * strongest. Gusts are patches of noise carried along the row from column 0
+ * toward `span`, crossing it once a period and changing shape as they go;
+ * where one passes, the colour turns a few degrees and silvers — a touch
+ * lighter and greyer — the way grass shows the pale side of its blades.
+ */
+export function drift(curve: Curve, span: number): ColorMove {
+  const speed = span / curve.seconds;
+  return (color, cell, t) => {
+    const air = fbm((cell.col - speed * t) * 0.045, cell.row * 0.3, t * 0.025, 2);
+    const amount = curve.ease(smoothstep(-0.15, 0.45, air));
+    const gust = curve.swing * amount;
+    return Oklch.fromRgba(color)
+      .applyKey({ ...IDENTITY, hueShift: gust, lightnessShift: 0.0012 * Math.abs(gust), chromaScale: 1 - 0.006 * Math.abs(gust) })
+      .toRgba();
+  };
+}
+
+/**
+ * Sparkle, as fireflies. Swing: how far toward the firefly's colour a glow
+ * goes at its brightest, 0–1. Each cell has its own slow noise, set apart by
+ * its seed; a cell glows only where that noise rises past a high threshold,
+ * so at any moment a few cells are lit, each brightening and fading over a
+ * few seconds, out of step with every other. `seconds` is how long a glow
+ * takes, rise and fall.
+ */
+export function sparkle(curve: Curve, darkGround: boolean, firefly: ColorRgba): ColorMove {
+  const toward = Oklch.fromRgba(firefly);
+  return (color, cell, t) => {
+    const glow = smoothstep(0.12, 0.62, noise(cell.col * 0.5 + 0.31, cell.row * 0.8 + 0.5, t / curve.seconds)) ** 2;
+    const amount = curve.ease(glow);
+    return blend(Oklch.fromRgba(color), toward, curve.swing * amount)
+      .applyKey({ ...IDENTITY, lightnessShift: away(darkGround) * 0.08 * curve.swing * amount })
+      .toRgba();
   };
 }
 
@@ -127,35 +194,41 @@ export type Visibility = (cell: EffectCell, t: number) => number;
  */
 export function veiled(visibility: Visibility, swing: number): Effect {
   return (colors: CellColors, cell, t) => ({
-    fg: Oklch.fromRgba(colors.fg).mix(Oklch.fromRgba(colors.bg), swing * (1 - visibility(cell, t))).toRgba(),
+    fg: blend(Oklch.fromRgba(colors.fg), Oklch.fromRgba(colors.bg), swing * (1 - visibility(cell, t))).toRgba(),
     bg: colors.bg,
   });
 }
 
-/** Of a transition's `seconds`, how much each cell's start may lag by its seed. */
-const FADE_SPREAD = 0.5;
+/**
+ * Where a cell falls in a transition's order, in [0, 1]: smooth noise over
+ * the element, so neighbouring cells arrive or leave together, in patches
+ * with soft edges, as ink spreads or mist thins. `z` keeps the two orders
+ * apart.
+ */
+const order = (cell: EffectCell, z: number): number => clamp01(0.5 + 0.8 * fbm(cell.col * 0.11, cell.row * 0.45, z, 2));
+
+/** Of a transition's `seconds`, how long each cell's own change takes. */
+const OWN = 0.45;
 
 /**
- * Fade-in starting at `start`: each cell rises over the first half of the
- * duration, its start lagged by up to the other half by its seed, so the
- * element arrives with per-cell variation and is whole at `start + seconds`.
+ * Fade-in starting at `start`, as ink blooming in water: patches of the
+ * element surface first and the rest follows outward from them, each cell
+ * rising smoothly over its own part of the duration. Whole at
+ * `start + seconds`.
  */
 export function fadeIn(curve: Curve, start: number): Effect {
-  const rise = curve.seconds * (1 - FADE_SPREAD);
-  return veiled((cell, t) => {
-    const lag = cell.seed * curve.seconds * FADE_SPREAD;
-    return curve.ease(Phase.once(start + lag, rise)(t));
-  }, curve.swing);
+  const own = curve.seconds * OWN;
+  return veiled((cell, t) => curve.ease(Phase.once(start + order(cell, 1.7) * (curve.seconds - own), own)(t)), curve.swing);
 }
 
 /**
- * Dissolve-out starting at `start`: each cell vanishes at once at its own
- * seeded moment. `ease` shapes how many have gone by when — eased progress
- * past a cell's seed hides it — and every cell is gone at `start + seconds`.
+ * Dissolve-out starting at `start`, as mist lifting: the element thins in
+ * drifting patches, each cell fading smoothly over its own part of the
+ * duration, until nothing is left at `start + seconds`.
  */
 export function dissolveOut(curve: Curve, start: number): Effect {
-  const phase = Phase.once(start, curve.seconds);
-  return veiled((cell, t) => (curve.ease(phase(t)) > cell.seed ? 0 : 1), curve.swing);
+  const own = curve.seconds * OWN;
+  return veiled((cell, t) => 1 - curve.ease(Phase.once(start + order(cell, 4.2) * (curve.seconds - own), own)(t)), curve.swing);
 }
 
 /** The moment a transition starting at `start` has finished. */
