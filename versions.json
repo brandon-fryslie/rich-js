@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "7d278db33f563b3ca40b34dd336cee7e956e692e",
+      "timestamp": "2026-10-03T15:43:13.874Z",
+      "commits": [
+        {
+          "sha": "7d278db33f563b3ca40b34dd336cee7e956e692e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T09:41:15-06:00",
+          "message": "fix(progress): ProgressBar draws half cells and no back without colour, as Rich does (rich-progress-mn24) (#331)\n\n* fix(progress): ProgressBar counts half cells and leaves its back blank without colour, as Rich does (rich-progress-mn24)\n\nRich 9d8f9a3 counts the fill in half cells, drawing ╸ on a half and opening\nthe back with ╺, and draws the back only when the console has colour. A\ntotal of zero is a full, finished bar there, and now here.\n\n* fix(progress): drop the unused percentComplete, treat width 0 as none, document the colourless bar (rich-progress-mn24)\n\n* fix(progress): a negative bar width draws nothing rather than throwing (rich-progress-mn24)"
+        }
+      ]
+    },
+    {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
       "sha": "717d23bd2c217f459edad1dd919c3b51019f13f8",
@@ -27,21 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T09:18:40-06:00",
           "message": "effects-feel: a sigh catches once on the way in and draws in again (rich-effects-fxiy.b6i)\n\nA swell is now a list of knots joined by raised cosines; breath and\nfirefly flash keep their shapes, and the sigh gains its double inhale.\nEach part of the sigh's inhale climbs less steeply than a breath, so the\n1 fps worst step over an hour stays 0.0395. REACH 0.3 -> 0.27 keeps a\nwhole-element rest between breaths now a sigh lasts 0.70 of its turn.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "ca201caaeb0c815b1f3743f0061848a42d377030",
-      "timestamp": "2026-10-03T15:24:19.498Z",
-      "commits": [
-        {
-          "sha": "ca201caaeb0c815b1f3743f0061848a42d377030",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T09:22:28-06:00",
-          "message": "fix(table): minimums that do not fit are cut as Rich cuts widths (rich-table-frxv) (#329)\n\n* fix(table): minimums that do not fit are cut as Rich cuts widths (rich-table-frxv)\n\nWhen every column's minimum cannot fit, the wrapable columns are narrowed\nfirst, widest first (Rich's _collapse_widths), then the excess is taken from\nevery column evenly (ratio_reduce), instead of granting minimums in\nproportion to natural width. A noWrap label beside a long noWrap column, and\na Progress description beside a fixed-width bar, now lay out as Rich 9d8f9a3.\n\n* fix(table): the minimum-led cut is named a divergence, and its rounds are pinned (rich-table-frxv)\n\nReview (high) of PR #329: the cut that runs when minimums do not fit picks\nits widest column by minimum, where Rich collapses natural widths. The\nheader and docs now say so. reduceToFit computes each round's widths once,\nand tests pin the multi-round collapse (against Rich) and the repeated\neven cut. ratio.ts's bigint rounding is renamed roundDiv, beside ceilDiv,\nso it no longer shares a name with progress.ts's float roundHalfEven."
         }
       ]
     }
