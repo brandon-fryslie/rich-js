@@ -27,6 +27,8 @@ import {
   CapsuleJoiner,
   Columns,
   Constrain,
+  DEFAULT_TERMINAL_THEME,
+  Effected,
   FlexStrip,
   GradientJoiner,
   Group,
@@ -87,6 +89,15 @@ const ROWS: Record<string, Row> = {
   Pretty: { draws: "text", make: () => new Pretty({ a: [1, "two"] }), why: "draws the value it is handed" },
   JSONRenderable: { draws: "text", make: () => JSONRenderable.fromData({ a: 1 }), why: "draws the value it is handed" },
   Constrain: { draws: "glyphs", make: () => new Constrain(panel(), 20) },
+  Effected: {
+    draws: "glyphs",
+    make: () =>
+      new Effected(panel(), (c) => c, {
+        t: 0,
+        key: "panel",
+        theme: DEFAULT_TERMINAL_THEME,
+      }),
+  },
   Align: { draws: "glyphs", make: () => new Align(panel()) },
   Padding: { draws: "glyphs", make: () => new Padding(panel(), 1) },
   Viewport: { draws: "glyphs", make: () => new Viewport(new RichText("a\nb\nc\nd"), { rows: 2, scrollbar: SCROLLBAR }) },

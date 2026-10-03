@@ -93,6 +93,8 @@ import {
   // Section 5 — a number → a colour over ordered stops
   ColorRamp,
   EASES,
+  Effected,
+  type Effect,
   Phase,
   cubicBezier,
   parseEase,
@@ -751,6 +753,31 @@ export function runDemo(
     }
     out.print(bold("    Phase — seconds → progress; t = 0 … 2 s in quarter seconds:"));
     out.print(pulseRow);
+    out.print(blank());
+
+    // Effected — the same phase driving a per-cell effect over a finished
+    // renderable: a highlight band sweeping through the text, the shimmer
+    // shape. The effect sees each cell's colours, its column and `t`, and the
+    // band's centre is `loop(t)` of the way across. Three frames, frozen.
+    const highlight = resolveColorRef(palette, "primary");
+    const sweep = Phase.loop(1.5);
+    const indent = "      ";
+    const label = "  thinking about colour  ";
+    const shimmer: Effect = (colors, cell, t) => {
+      const centre = indent.length + sweep(t) * label.length;
+      const weight = Math.max(0, 1 - Math.abs(cell.col - centre) / 4);
+      const toward = new ColorRamp(EASES.linear, [
+        { at: 0, color: colors.fg },
+        { at: 1, color: highlight },
+      ]);
+      return { fg: toward.at(weight), bg: colors.bg };
+    };
+    out.print(bold("    Effected — a per-cell effect sampled at t = 0, 0.5, 1 s:"));
+    for (const t of [0, 0.5, 1]) {
+      out.print(
+        new Effected(new RichText(`${indent}${label}`), shimmer, { t, key: "studio-shimmer", theme: GRUVBOX }),
+      );
+    }
     out.print(blank());
 
     // buildPalette directly — construct a BaseColors bundle and watch the
