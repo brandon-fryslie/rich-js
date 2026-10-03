@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Span, RichText } from "../../src/core/text.js";
 import { Style, NULL_STYLE } from "../../src/core/style.js";
 import { Segment } from "../../src/core/segment.js";
+import { cellLen } from "../../src/core/cells.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import { baseStyleOf } from "./base-style.js";
 
@@ -1219,6 +1220,60 @@ describe("OSC-terminator stripping at the RichText trust boundary", () => {
     const linkSegment = segments.find((s) => s.style?.link !== undefined);
     expect(linkSegment).toBeDefined();
     expect(linkSegment!.style!.link).toBe(clean);
+  });
+});
+
+// Rich measures a tab as no cells while drawing it to its stop; here every
+// width a text is sized by is the width it draws (rich-text-d0gz).
+describe("RichText widths count a tab as the cells it draws", () => {
+  const drawn = (text: RichText): string => segText(collect(text.render({ maxWidth: 80 })));
+  const tabbed = (): RichText => new RichText("ab\tcd", { tabSize: 8, end: "" });
+
+  it("measures cellLength as render draws it", () => {
+    const text = tabbed();
+    expect(text.cellLength).toBe(10);
+    expect(text.cellLength).toBe(cellLen(drawn(text)));
+    expect(text.cellLength).toBe(text.measure({ maxWidth: 80 }).maximum);
+  });
+
+  it("truncates to the width it draws", () => {
+    const text = tabbed();
+    text.stylize("bold", 3, 5);
+    text.truncate(6);
+    expect(drawn(text)).toBe("ab   \u2026");
+    expect(text.cellLength).toBe(6);
+    const wide = tabbed();
+    wide.stylize("bold", 3, 5);
+    wide.truncate(9, { marker: "" });
+    const bold = collect(wide.render({ maxWidth: 80 })).filter((s) => s.style?.bold);
+    expect(bold.map((s) => s.text).join("")).toBe("c");
+  });
+
+  it("cuts from the left and the middle at the width it draws", () => {
+    const left = tabbed();
+    left.stylize("bold", 0, 2);
+    left.stylize("italic", 3, 5);
+    left.truncate(6, { mode: "left" });
+    expect(drawn(left)).toBe("…   cd");
+    expect(left.spans.map((s) => [left.plain.slice(s.start, s.end), s.style])).toEqual([["cd", "italic"]]);
+    const middle = tabbed();
+    middle.stylize("italic", 3, 5);
+    middle.truncate(6, { mode: "middle" });
+    expect(drawn(middle)).toBe("ab… cd");
+    expect(middle.spans.map((s) => middle.plain.slice(s.start, s.end))).toEqual(["cd"]);
+  });
+
+  it("leaves a text it does not change with its tabs, free to be set after a prefix", () => {
+    expect(tabbed().truncate(10).plain).toBe("ab\tcd");
+    expect(tabbed().align("left", 10).plain).toBe("ab\tcd");
+    const line = new RichText("xyz", { end: "" }).append(tabbed().truncate(80));
+    expect(drawn(line)).toBe("xyzab   cd");
+  });
+
+  it("aligns to the width it draws, its tab stops where they were measured", () => {
+    const right = tabbed().align("right", 12);
+    expect(drawn(right)).toBe("  ab      cd");
+    expect(drawn(tabbed().align("center", 10))).toBe("ab      cd");
   });
 });
 

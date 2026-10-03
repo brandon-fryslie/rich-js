@@ -164,8 +164,8 @@ export function renderTemplate(
  * error's `message` — `String(e)` on an engine error appends a multi-line code
  * frame — and even a `message` can carry the character it is complaining about
  * (`bad escape sequence \⏎`). Any whitespace that is not a plain space — a line
- * break, a tab the terminal would draw wider than the one cell it is counted
- * as — folds, with the spaces around it, to one space.
+ * break, or a tab, whose stop depends on the column the line is set at and so
+ * cannot be measured here — folds, with the spaces around it, to one space.
  *
  * [LAW:one-source-of-truth] The line fits the same `maxWidth` the success path
  * draws at, not a width of its own, and a cut ends in an ellipsis so it never
