@@ -154,6 +154,12 @@ describe("Confirm", () => {
     expect(value).toBe(false);
   });
 
+  it("matches choices spelled with a capital, which Rich's Confirm never can", async () => {
+    const { value, unused } = await answered((input, console) => Confirm.ask("Ok?", input, { console, choices: ["Y", "N"] }), "y");
+    expect(value).toBe(true);
+    expect(unused).toEqual([]);
+  });
+
   it.each([["Y", true], [" n ", false]])("reads %j in any case", async (answer, expected) => {
     const { value } = await answered((input, console) => Confirm.ask("Ok?", input, { console }), answer);
     expect(value).toBe(expected);
@@ -172,6 +178,20 @@ describe("Prompt answers", () => {
       Prompt.ask("Env", input, { console, choices: ["dev", "prod"] }), "test", "prod");
     expect(value).toBe("prod");
     expect(printed).toBe(draw("[red]Please select one of the available options[/]") + "\n");
+  });
+
+  it("draws no hint for an empty list of choices, as Rich's `self.choices` test does", async () => {
+    const { prompts } = await answered((input, console) => Prompt.ask("Name", input, { console, choices: [], default: "x" }), "");
+    expect(prompts[0]!.plain).toBe("Name (x): ");
+  });
+
+  it("prints its message as markup on a console that reads none", async () => {
+    const chunks: string[] = [];
+    const file = { write: (data: string) => (chunks.push(data), true) };
+    const console = new Console({ file, width: 80, colorSystem: "256", forceTerminal: true, highlight: false, markup: false });
+    const answers = ["x", "1"];
+    await IntPrompt.ask("N", async () => answers.shift()!, { console });
+    expect(chunks.join("")).toBe(draw("[red]Please enter a valid integer number[/]") + "\n");
   });
 
   it("answers a case-insensitive match with the choice as written", async () => {

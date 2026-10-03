@@ -114,7 +114,7 @@ console.print(ok && sure ? "[green]continuing[/]" : "[red]stopped[/]");
 
 ## Your app's Console
 
-A prompt is drawn with a `Console`, and its refused-answer messages are printed on it. Pass your app's as `console` — Rich's `console=` — and the prompt takes its theme, its colour system and the stream it writes to. Without one, each `ask` makes a default `Console`.
+A prompt is drawn with a `Console`, and its refused-answer messages are printed on it. Pass your app's as `console` — Rich's `console=` — and the prompt takes its theme, its colour system and the stream it writes to. Without one, each `ask` makes a default `Console` — which in a browser has no stream to print on, so pass one there.
 
 ```typescript live
 import { Console, Prompt, Theme } from "@promptctl/rich-js";
@@ -127,7 +127,7 @@ const env = await Prompt.ask("Environment", nodeAsk, { choices: ["dev", "prod"],
 app.print(`[bold]${env}[/]`);
 ```
 
-`nodeAsk` asks on the console's own target: a `Console({ stderr: true })` prompts on stderr, coloured for stderr, with its messages beside it. `colorSystem: null` draws the prompt in plain text.
+`nodeAsk` prints the prompt as any `print` on that console goes — above a running `Live`, into a capture you have open — then reads the line in the terminal's own line editing, as Rich's `input()` does. It asks on the console's own target: a `Console({ stderr: true })` prompts on stderr, coloured for stderr, with its messages beside it. `colorSystem: null` draws the prompt in plain text.
 
 ## Custom input sources
 

@@ -57,8 +57,9 @@ export interface PromptOptions<T> {
 
 /**
  * Confirm's options. Its two choices are the yes answer and the no answer, in
- * that order, and it matches an answer against them lowercased whatever the
- * case of the choices — Rich's `Confirm`, which takes no `case_sensitive`.
+ * that order, and an answer matches one in any letter case — Rich's `Confirm`,
+ * which takes no `case_sensitive`, but where Rich lowercases only the answer
+ * and so can never match a choice spelled with a capital.
  */
 export interface ConfirmOptions extends Omit<PromptOptions<boolean>, "choices" | "caseSensitive"> {
   choices?: readonly [yes: string, no: string];
@@ -94,7 +95,8 @@ interface PromptKind<T> {
 // not parsed as a tag — then the suffix.
 function makePrompt<T>(promptText: string, kind: PromptKind<T>, options: AskOptions<T>): RichText {
   const prompt = new RichText("", { style: "prompt", end: "" }).append(renderMarkup(promptText));
-  if (options.showChoices !== false && kind.choices !== undefined) {
+  // Rich's `if self.show_choices and self.choices`: an empty list draws no hint.
+  if (options.showChoices !== false && kind.choices !== undefined && kind.choices.length > 0) {
     prompt.append(" ").append(`[${kind.choices.join("/")}]`, "prompt.choices");
   }
   if (options.showDefault !== false && options.default !== undefined) {
@@ -128,7 +130,9 @@ async function run<T>(promptText: string, input: PromptInput, kind: PromptKind<T
     if (answer === "" && options.default !== undefined) return options.default;
     const value = kind.process(answer);
     if (!(value instanceof InvalidResponse)) return value;
-    console.print(value.message);
+    // The message is this module's markup, read as markup whatever the
+    // console's own `markup` setting.
+    console.print(renderMarkup(value.message));
   }
 }
 
@@ -222,7 +226,8 @@ export class Confirm {
       renderDefault: (value) => (value ? yes : no),
       process(answer) {
         const value = answer.trim().toLowerCase();
-        return value === yes || value === no ? value === yes : CONFIRM_INVALID;
+        if (value === yes.toLowerCase()) return true;
+        return value === no.toLowerCase() ? false : CONFIRM_INVALID;
       },
     };
     return run(promptText, input, kind, options);
