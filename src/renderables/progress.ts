@@ -50,10 +50,59 @@ export interface Task {
    * stays finished however its count moves after.
    */
   finishedTime: number | undefined;
+  /**
+   * Rich's `Task.speed`: steps a second over the updates that moved the task
+   * in the `SPEED_ESTIMATE_PERIOD` before its latest update — measured back from
+   * that update, not from now, so a task that stops being updated keeps the
+   * speed it had. Undefined until the task has started and two such updates lie
+   * apart in time.
+   */
+  speed: number | undefined;
 }
 
-/** What `Progress` keeps of a task between frames: everything but the frame's `elapsed`. */
-type TaskState = Omit<Task, "elapsed">;
+/** Rich's `ProgressSample`: how far one update moved a task, and when. */
+interface ProgressSample {
+  readonly timestamp: number;
+  readonly completed: number;
+}
+
+/**
+ * Rich's defaults for `speed_estimate_period` and its sample deque's
+ * `maxlen`: an update forgets samples older than the period, and the newest
+ * thousand are all a task keeps.
+ */
+const SPEED_ESTIMATE_PERIOD = 30;
+const MAX_SAMPLES = 1000;
+
+/**
+ * What `Progress` keeps of a task between frames: everything but what a frame
+ * derives — `elapsed` from the clock, `speed` from the samples.
+ */
+type TaskState = Omit<Task, "elapsed" | "speed"> & { readonly samples: ProgressSample[] };
+
+/**
+ * Rich's `Progress.update` bookkeeping on its sample deque, in place: drop the
+ * samples older than the period as of `now`, then add this update's if it
+ * moved the task forward, keeping the newest `MAX_SAMPLES`. The samples are in
+ * time order, so the stale ones are a prefix.
+ */
+function recordSample(samples: ProgressSample[], now: number, moved: number): void {
+  const firstFresh = samples.findIndex((sample) => sample.timestamp >= now - SPEED_ESTIMATE_PERIOD);
+  samples.splice(0, firstFresh === -1 ? samples.length : firstFresh);
+  if (moved > 0) samples.push({ timestamp: now, completed: moved });
+  samples.splice(0, samples.length - MAX_SAMPLES);
+}
+
+/**
+ * Rich's `Task.speed` over a started task's samples: everything moved after
+ * the first sample, over the time from the first to the last. No samples, or
+ * none apart in time, is no speed.
+ */
+function sampleSpeed(samples: readonly ProgressSample[]): number | undefined {
+  const span = (samples.at(-1)?.timestamp ?? 0) - (samples[0]?.timestamp ?? 0);
+  if (span === 0) return undefined;
+  return samples.slice(1).reduce((sum, sample) => sum + sample.completed, 0) / span;
+}
 
 /**
  * A count as a task takes it in. [LAW:single-enforcer] `addTask` and
@@ -67,7 +116,7 @@ function finiteCount(field: "total" | "completed" | "advance", value: number): n
 }
 
 /** Rich's `Task.finished`. [LAW:one-source-of-truth] The one predicate every reader of "finished" asks. */
-function finished<T extends TaskState>(task: T): task is T & { finishedTime: number } {
+function finished<T extends Pick<TaskState, "finishedTime">>(task: T): task is T & { finishedTime: number } {
   return task.finishedTime !== undefined;
 }
 
@@ -196,10 +245,8 @@ export class TimeRemainingColumn implements ProgressColumn {
  */
 function timeRemaining(task: Task): number | undefined {
   if (finished(task)) return 0;
-  // Rich's `if not speed`: no time elapsed or nothing done is no speed yet.
-  if (!task.total || !task.elapsed || task.completed <= 0) return undefined;
-  const speed = task.completed / task.elapsed;
-  return Math.ceil((task.total - task.completed) / speed);
+  if (!task.speed || task.total === undefined) return undefined;
+  return Math.ceil((task.total - task.completed) / task.speed);
 }
 
 export class TimeElapsedColumn implements ProgressColumn {
@@ -282,10 +329,17 @@ function wholeNumber(x: number): string {
   return BigInt(Math.trunc(x)).toString();
 }
 
+/**
+ * Rich's clock face: `int()` the seconds, then Python's floor `divmod` by 60
+ * twice, so a negative estimate — a task past its total — reads as Rich's
+ * does, `-3` as `-1:59:57`.
+ */
 function formatTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
+  const whole = Math.trunc(seconds);
+  const minutes = Math.floor(whole / 60);
+  const h = Math.floor(minutes / 60);
+  const m = minutes - h * 60;
+  const s = whole - minutes * 60;
   return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
@@ -378,6 +432,7 @@ export class Progress implements Renderable {
       visible: options?.visible !== false,
       startTime: options?.start === false ? undefined : this._clock.now(),
       finishedTime: undefined,
+      samples: [],
     };
     this._tasks.set(id, task);
     return id;
@@ -390,7 +445,10 @@ export class Progress implements Renderable {
     // Rich's order, `completed` then `advance`, checked whole before any field
     // is written, so a refused update leaves the task as it was.
     const advance = finiteCount("advance", options.advance ?? 0);
-    task.completed = finiteCount("completed", (options.completed ?? task.completed) + advance);
+    const completed = finiteCount("completed", (options.completed ?? task.completed) + advance);
+    const now = this._clock.now();
+    recordSample(task.samples, now, completed - task.completed);
+    task.completed = completed;
     if (options.description !== undefined) task.description = options.description;
     if (options.visible !== undefined) task.visible = options.visible;
     if (
@@ -399,7 +457,7 @@ export class Progress implements Renderable {
       task.total !== undefined &&
       task.completed >= task.total
     ) {
-      task.finishedTime = this._clock.now() - task.startTime;
+      task.finishedTime = now - task.startTime;
     }
 
     if (options.refresh) {
@@ -435,10 +493,15 @@ export class Progress implements Renderable {
     // [LAW:effects-at-boundaries] One read of the clock a frame, handed to
     // every column as the task's `elapsed`.
     const now = this._clock.now();
-    for (const state of this._tasks.values()) {
+    for (const { samples, ...state } of this._tasks.values()) {
       if (!state.visible) continue;
-      const elapsed = state.startTime === undefined ? undefined : now - state.startTime;
-      const task: Task = { ...state, elapsed };
+      const { startTime } = state;
+      const started = startTime !== undefined;
+      const task: Task = {
+        ...state,
+        elapsed: started ? now - startTime : undefined,
+        speed: started ? sampleSpeed(samples) : undefined,
+      };
       table.addRow(...this._columns.map((col) => col.render(task)));
     }
 
