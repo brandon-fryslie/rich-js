@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "3444f9d2ddbd2f334e41092679e972cc17b70403",
-      "timestamp": "2026-10-03T17:35:21.104Z",
+      "sha": "5f0b12b14f2ce4cb9217999a69c54c58026fcba2",
+      "timestamp": "2026-10-03T17:49:55.672Z",
       "commits": [
         {
-          "sha": "3444f9d2ddbd2f334e41092679e972cc17b70403",
+          "sha": "5f0b12b14f2ce4cb9217999a69c54c58026fcba2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T17:34:15Z",
-          "message": "Merge fccc25f0d41bd57ef964235338b4adf46ed66324 into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+          "timestamp": "2026-10-03T17:48:42Z",
+          "message": "Merge 91d07ab060b723e1a8165baf4e7ee0c2a5da4c90 into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+        },
+        {
+          "sha": "91d07ab060b723e1a8165baf4e7ee0c2a5da4c90",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T11:48:36-06:00",
+          "message": "effects-feel: keys for theme, frame rate and pace; starts over each cycle; frames painted whole (rich-effects-fxiy.b6i)\n\n- SurfacePainter wraps every paint in DEC 2026 synchronized output, so a\n  terminal that has it shows each frame whole: no row seen erased and not\n  yet redrawn, which at 30 full-screen repaints a second read as flicker.\n- App.rate is readable and settable; an animation goes on at the new rate\n  from its next frame (tick() restarts the timer when the rate changes).\n- The demo: n/p walk the bundled themes, </> step the frame rate, -/+ halve\n  and double the demo's own pace, and the demo starts over after one cycle,\n  the longest loop's period at that pace. Each loop's contrast is measured\n  between the frames in 8 ms slices, so the first frame and a theme switch\n  take ~50 ms instead of ~1.5 s.\n"
         },
         {
           "sha": "fccc25f0d41bd57ef964235338b4adf46ed66324",
