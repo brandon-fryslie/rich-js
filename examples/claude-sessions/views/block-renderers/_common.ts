@@ -16,8 +16,10 @@ import { renderMarkup } from "../../../../src/core/markup.js";
 const iso8601 = new ISO8601Highlighter();
 
 /**
- * Render a timestamp as a highlighted RichText. Exercises ISO8601Highlighter:
- * date components, time components, and separators get distinct styles.
+ * Render a timestamp's `HH:MM:SS` — or, for a string too short to hold one,
+ * its first 19 characters — as a highlighted RichText. Exercises
+ * ISO8601Highlighter, which colours a string only when the whole of it is one
+ * ISO 8601 value.
  */
 export function styledTimestamp(iso: string): RichText {
   if (!iso) return new RichText("", { end: "" });

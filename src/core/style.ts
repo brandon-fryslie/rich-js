@@ -865,9 +865,22 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "pretty": NULL_STYLE,
 
   // ISO8601
-  "iso8601.date": Style.parse("cyan"),
-  "iso8601.time": Style.parse("cyan"),
-  "iso8601.timezone": Style.parse("bright_blue"),
+  "iso8601.date": Style.parse("blue"),
+  "iso8601.time": Style.parse("magenta"),
+  "iso8601.timezone": Style.parse("yellow"),
+  // The parts ISO8601Highlighter lays inside a date or time. Rich's theme names
+  // none of them, so they draw nothing; they are here so a theme can set them
+  // and so none reaches `onStyleError` as an unknown name.
+  "iso8601.year": NULL_STYLE,
+  "iso8601.month": NULL_STYLE,
+  "iso8601.day": NULL_STYLE,
+  "iso8601.week": NULL_STYLE,
+  "iso8601.hour": NULL_STYLE,
+  "iso8601.minute": NULL_STYLE,
+  "iso8601.second": NULL_STYLE,
+  "iso8601.frac": NULL_STYLE,
+  "iso8601.ms": NULL_STYLE,
+  "iso8601.hyphen": NULL_STYLE,
 };
 
 /**

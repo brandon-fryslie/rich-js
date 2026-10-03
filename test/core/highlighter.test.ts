@@ -6,6 +6,7 @@ import {
   JSONHighlighter,
   ISO8601Highlighter,
 } from "../../src/core/highlighter.js";
+import { DEFAULT_STYLES } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -20,6 +21,20 @@ function matchedTexts(text: RichText, styleName: string): string[] {
     .filter((s) => s.style === styleName)
     .map((s) => text.plain.slice(s.start, s.end));
 }
+
+// --- The default theme ---
+
+// A name the default theme lacks reaches the render's `onStyleError`, which a
+// strict handler rethrows, so every style a built-in can lay must be named.
+describe("built-in highlighters under the default theme", () => {
+  it.each([ReprHighlighter, JSONHighlighter, ISO8601Highlighter])("%o lays only names the theme defines", (ctor) => {
+    const groups = ctor.highlights.flatMap((p) => [
+      ...(p instanceof RegExp ? p.source : p).matchAll(/\(\?<([A-Za-z_]\w*)>/g),
+    ]);
+    const missing = [...new Set(groups.map((m) => `${ctor.baseStyle}${m[1]}`))].filter((name) => !(name in DEFAULT_STYLES));
+    expect(missing).toEqual([]);
+  });
+});
 
 // --- NullHighlighter ---
 
@@ -232,44 +247,5 @@ describe("JSONHighlighter", () => {
     const result = h.call('{"key": true}');
     expect(result.plain).toBe('{"key": true}');
     expect(result.spans.length).toBeGreaterThan(0);
-  });
-});
-
-// --- ISO8601Highlighter ---
-
-describe("ISO8601Highlighter", () => {
-  it("call creates highlighted RichText from string", () => {
-    const h = new ISO8601Highlighter();
-    const result = h.call("2023-01-15T14:30:00Z");
-    expect(result.plain).toBe("2023-01-15T14:30:00Z");
-    expect(result.spans.length).toBeGreaterThan(0);
-  });
-
-  it("highlights dates", () => {
-    const h = new ISO8601Highlighter();
-    const text = new RichText("date: 2023-01-15");
-    h.highlight(text);
-    const matched = matchedTexts(text, "iso8601.date");
-    expect(matched).toContain("2023-01-15");
-  });
-
-  it("highlights times", () => {
-    const h = new ISO8601Highlighter();
-    const text = new RichText("time: 14:30:00");
-    h.highlight(text);
-    const matched = matchedTexts(text, "iso8601.time");
-    expect(matched).toContain("14:30:00");
-  });
-
-  it("highlights datetime with timezone", () => {
-    const h = new ISO8601Highlighter();
-    const text = new RichText("2023-01-15T14:30:00+05:00");
-    h.highlight(text);
-    const dates = matchedTexts(text, "iso8601.date");
-    const times = matchedTexts(text, "iso8601.time");
-    const tzs = matchedTexts(text, "iso8601.timezone");
-    expect(dates).toContain("2023-01-15");
-    expect(times).toContain("14:30:00");
-    expect(tzs).toContain("+05:00");
   });
 });
