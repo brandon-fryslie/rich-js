@@ -4,15 +4,22 @@
     {
       "version": "pr-316",
       "ref": "refs/pull/316/merge",
-      "sha": "9f56a3a918d08004aa355c8312b721513c80129f",
-      "timestamp": "2026-10-03T12:13:42.849Z",
+      "sha": "1d1c86e9a88f7861fe420940bc4ac9fc8ef73434",
+      "timestamp": "2026-10-03T12:28:44.715Z",
       "commits": [
         {
-          "sha": "9f56a3a918d08004aa355c8312b721513c80129f",
+          "sha": "1d1c86e9a88f7861fe420940bc4ac9fc8ef73434",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:12:34-06:00",
-          "message": "Merge a83a8868bc9176eb60c8307b578a35923bddac79 into 1f43fdb736d7b6f07ea1098af5579afd881725b2\n"
+          "timestamp": "2026-10-03T12:26:29Z",
+          "message": "Merge 104c5681d0e536e34772abaf6039fc1d2ef3982d into dec3042a31706fc2b224cfa3fa745d2b9169d48c\n"
+        },
+        {
+          "sha": "104c5681d0e536e34772abaf6039fc1d2ef3982d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T06:26:23-06:00",
+          "message": "feat(examples): effects-feel breath spreads from a wandering heart, shimmer rides an uneven current, pulse slower and deeper (rich-effects-fxiy.b6i)\n\nPulse peaked at 0.06 dE_OK and read as nothing. The 1 fps step gate, not\nthe contrast shares, was what held it: a deeper move has to be a slower\none. Pulse is now 30 s at swing 0.55, peaking at 0.24 on the strip and\n0.10 on text, inside the gate.\n\nA light that tints at constant lightness was tried to get past the shares\nand dropped: on the dark ground it changed nothing, and on Latte a tint\nalone breaks a fill's contrast floor.\n"
         },
         {
           "sha": "a83a8868bc9176eb60c8307b578a35923bddac79",
