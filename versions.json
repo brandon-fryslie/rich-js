@@ -4,15 +4,22 @@
     {
       "version": "pr-304",
       "ref": "refs/pull/304/merge",
-      "sha": "b5d1b9672fece12275637b0cdfce5761fb605642",
-      "timestamp": "2026-10-03T08:10:30.514Z",
+      "sha": "3091575ad1843aed7fc1c00be1fa2cfc2af40b03",
+      "timestamp": "2026-10-03T08:24:56.700Z",
       "commits": [
         {
-          "sha": "b5d1b9672fece12275637b0cdfce5761fb605642",
+          "sha": "3091575ad1843aed7fc1c00be1fa2cfc2af40b03",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T02:09:17-06:00",
-          "message": "Merge 876110e48d9a77b7603441237495f12daea5adc4 into b1b2221759a1265c84443b2b59fd362954f253d6\n"
+          "timestamp": "2026-10-03T08:23:55Z",
+          "message": "Merge 4b54793c8fd7f848c1a9fbc8982aa1977e18ca20 into b1b2221759a1265c84443b2b59fd362954f253d6\n"
+        },
+        {
+          "sha": "4b54793c8fd7f848c1a9fbc8982aa1977e18ca20",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T02:23:49-06:00",
+          "message": "fix(panel): labels, declared widths and empty titles follow Rich (rich-panel-blxr review)\n\nHigh-pass findings, each confirmed against Rich 9d8f9a3:\n- a newline in a panel/rule title reads as a space (Rich's _title)\n- a declared width is a ceiling: expand=False fits inside it, and a title\n  widens past it up to maxWidth; measure reports the width drawn\n- presence is Rich's `if self.title` on the content as given: markup that\n  styles nothing is a two-space label in Panel/Rule and a blank row in Table\n- a cut label is marked only when its own overflow is ellipsis\n- labels are read once per renderable (InlineLabel), not per measure\n- RichText's piece lookup names empty text's one piece; stale end comment fixed\n- docs/panel.md covers width, title widening and label cutting\n"
         },
         {
           "sha": "876110e48d9a77b7603441237495f12daea5adc4",
