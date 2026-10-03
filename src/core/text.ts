@@ -1272,8 +1272,10 @@ function* padded(
   // A line with no cells has no run to join; the pads alone are its one piece.
   if (width === 0) return yield new Segment(pad(left + right), style);
   const last = line.length - 1;
-  const head = left > 0 && free(0);
-  const tail = right > 0 && free(width - 1);
+  // A zero-width segment has no cell of its own to ask about, so it never
+  // joins: merged on its neighbour's answer it would lose its own style.
+  const head = left > 0 && line[0]!.cellLength > 0 && free(0);
+  const tail = right > 0 && line[last]!.cellLength > 0 && free(width - 1);
   const from = head ? 1 : 0;
   const to = tail ? last : last + 1;
   // One run joined on both sides: the pads and it are one piece.

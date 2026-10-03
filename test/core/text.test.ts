@@ -919,6 +919,17 @@ describe("RichText.fromFragments()", () => {
 // =========================================================
 
 describe("RichText.render()", () => {
+  it("keeps a zero-width character at a justified edge out of the pad, style and all", () => {
+    const t = new RichText("\u200bab", { style: "on blue", justify: "right" });
+    t.stylize("red", 0, 1);
+    const segments = collect(t.render({ maxWidth: 6 })).filter((s) => s.text !== "\n");
+    expect(segments.map((s) => [s.text, s.style?.toString()])).toEqual([
+      ["    ", "on blue"],
+      ["\u200b", "red on blue"],
+      ["ab", "on blue"],
+    ]);
+  });
+
   it("produces segments with correct text", () => {
     const t = new RichText("Hello World");
     const segments = collect(t.render({ maxWidth: 80 }));
