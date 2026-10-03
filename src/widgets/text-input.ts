@@ -22,9 +22,14 @@
  * [LAW:types-are-the-program] Three integer spaces coexist: `CellCol` (terminal
  * cell columns), `CodeUnit` (JS UTF-16 indices), and `CodePoint` (code-unit
  * offsets that are additionally on a Unicode code-point boundary — a subtype of
- * `CodeUnit`). `cursorPosition` is `CodePoint`; it is never inside a surrogate
- * pair by construction. Visual positions are `CellCol`. The three are never
+ * `CodeUnit`). `cursorPosition` is `CodePoint`, and stronger: its setter
+ * parses any offset to a grapheme-cluster boundary. Visual positions are `CellCol`. The three are never
  * interchangeable — the type system enforces this at every crossing point.
+ *
+ * [LAW:one-source-of-truth] The cursor moves, deletes and draws one grapheme
+ * cluster at a time (`nextGrapheme` / `prevGrapheme`) — the unit `cellLen`
+ * measures — so `👍🏽` is one step and one cursor cell, never a glyph and a
+ * stray skin-tone swatch.
  *
  * Keymap (readline / emacs compatible):
  *
@@ -56,7 +61,7 @@
  * or invoke them programmatically.
  */
 
-import { observable, action, observableRef } from "mobx";
+import { observable, action, observableRef, runInAction } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import {
@@ -67,10 +72,14 @@ import {
   cellColToCodeUnitOffset,
   asCellCol,
   asCodePoint,
-  nextCodePoint,
-  prevCodePoint,
+  asCodeUnit,
+  graphemeBoundary,
+  graphemes,
+  nextGrapheme,
+  prevGrapheme,
   type CellCol,
   type CodePoint,
+  type CodeUnit,
 } from "../core/cells.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
@@ -238,11 +247,20 @@ const ASCII_NEWLINE_GLYPH = "~";
 const MASK_GLYPH = "•";
 const ASCII_MASK_GLYPH = "*";
 
+// Text a key may insert: anything but the C0 controls, DEL and the C1
+// controls, which a terminal reads as escape sequences (U+009B is CSI).
+const PRINTABLE = /^[^\x00-\x1f\x7f-\x9f]+$/u;
+
 // Word-character regex used by Alt+B/F and Ctrl+Left/Right. Matches the
 // readline default (alphanumeric + underscore), which is what users typing
 // shell commands or code identifiers expect.
 const WORD_CHAR_RE = /[A-Za-z0-9_]/;
 const WHITESPACE_RE = /\s/;
+
+/** CRLF and lone CR as LF, the line break `value` holds. */
+function toLf(text: string): string {
+  return text.replace(/\r\n?/g, "\n");
+}
 
 function isWordChar(c: string | undefined): boolean {
   return c !== undefined && WORD_CHAR_RE.test(c);
@@ -256,8 +274,24 @@ export class TextInput extends ThemedWidget {
   readonly id: string;
   readonly focusable = true;
 
-  @observable accessor value: string;
-  @observable accessor cursorPosition: CodePoint;
+  @observable private accessor _value: string;
+  @observable private accessor _cursor: CodePoint;
+
+  // [LAW:single-enforcer] Every write to either half of the pair passes
+  // `graphemeBoundary`, so the cursor is a cluster boundary inside `value`
+  // whoever set it last — a caller replacing `value`, a click, an insert that
+  // grew the cluster before it. A line break is `\n`, as in an HTML
+  // textarea's value: `\r\n` is one cluster, and a cursor could not rest at
+  // its line's end.
+  get value(): string { return this._value; }
+  set value(v: string) {
+    runInAction(() => {
+      this._value = toLf(v);
+      this._cursor = graphemeBoundary(this._value, this._cursor);
+    });
+  }
+  get cursorPosition(): CodePoint { return this._cursor; }
+  set cursorPosition(p: CodeUnit) { this._cursor = graphemeBoundary(this._value, p); }
   @observableRef accessor placeholder: string;
 
   private readonly _maxLength: number | undefined;
@@ -312,13 +346,14 @@ export class TextInput extends ThemedWidget {
   // single-line renderer. Captured by _renderSingleLine and read by
   // handleMouse so the hit-test uses the same visual origin the user sees.
   private _singleLineViewportStart: CellCol = asCellCol(0);
+  private _singleLineAsciiOnly = false;
 
   readonly multiline: boolean;
 
   constructor(options: TextInputOptions = {}) {
     super(options.theme);
     this.id = options.id ?? `text-input-${Math.random().toString(36).slice(2, 8)}`;
-    this.value = options.value ?? "";
+    this._value = toLf(options.value ?? "");
     this.placeholder = options.placeholder ?? "";
     // [LAW:dataflow-not-control-flow] Initial cursor position is data, not
     // a render-time branch. Single-line inputs follow the pre-filled-form
@@ -326,7 +361,7 @@ export class TextInput extends ThemedWidget {
     // inputs follow the textarea convention (cursor at start — pre-loaded
     // content is read top-to-bottom, and the viewport's "scroll into view"
     // logic does nothing because row 0 is already inside the initial window).
-    this.cursorPosition = (options.multiline ?? false) ? asCodePoint(0) : asCodePoint(this.value.length);
+    this._cursor = graphemeBoundary(this._value, asCodeUnit((options.multiline ?? false) ? 0 : this._value.length));
     this.disabled = options.disabled ?? false;
     this._maxLength = options.maxLength;
     this._password = options.password ?? false;
@@ -418,16 +453,12 @@ export class TextInput extends ThemedWidget {
     }
 
     // ─── printable insertion ───
-    // A single-char `event.character` with no command modifiers is text to
+    // A non-control `event.character` with no command modifiers is text to
     // insert. Ctrl/meta-modified keys produce empty `character` from the
-    // router (see event-router.ts) so they never reach this branch.
-    if (
-      event.character.length === 1 &&
-      !event.ctrl &&
-      !event.meta &&
-      event.character >= " " &&
-      event.character !== "\x7f"
-    ) {
+    // router (see event-router.ts) so they never reach this branch. The router
+    // sends one code point per key, so `👍🏽` arrives as `👍` then `🏽`, and an
+    // astral code point is two UTF-16 units — a `.length === 1` test drops it.
+    if (PRINTABLE.test(event.character) && !event.ctrl && !event.meta) {
       this._insertText(event.character);
       event.stop();
     }
@@ -446,7 +477,7 @@ export class TextInput extends ThemedWidget {
       const rawRowIdx = this._scrollStart + event.y;
       // Clicks on minRows-padded empty rows (beyond the last real row) snap to end.
       if (rawRowIdx >= rows.length) {
-        this.cursorPosition = asCodePoint(this.value.length);
+        this.cursorPosition = asCodeUnit(this.value.length);
         this._preferredColumn = null;
         return;
       }
@@ -455,37 +486,25 @@ export class TextInput extends ThemedWidget {
       // Continuation rows start after the marker; non-continuation rows start at column 0.
       const contentXOff = asCellCol(row.isContinuation ? this._markerWidth : 0);
       const relX = asCellCol(Math.max(0, event.x - contentXOff));
-      const pos = cellColToCodeUnitOffset(row.content, relX);
-      const absPos = row.valueStart + pos;
-      const chu = absPos < this.value.length ? this.value.charCodeAt(absPos) : 0;
-      const prevChu = absPos > 0 ? this.value.charCodeAt(absPos - 1) : 0;
-      this.cursorPosition = asCodePoint(
-        chu >= 0xDC00 && chu <= 0xDFFF && prevChu >= 0xD800 && prevChu <= 0xDBFF
-          ? absPos + 1
-          : absPos,
-      );
+      this.cursorPosition = asCodeUnit(row.valueStart + cellColToCodeUnitOffset(row.content, relX));
     } else {
       // [LAW:types-are-the-program] relX is a cell-column offset into the full
       // display string. Add _singleLineViewportStart (the scroll offset captured
       // by _renderSingleLine) so a click on a scrolled viewport maps to the
       // correct code-unit in the underlying value.
       const relX = asCellCol(Math.max(0, event.x - 1) + this._singleLineViewportStart);
-      const displayForHitTest = this._password
-        ? MASK_GLYPH.repeat(this.value.length)
-        : this.value.indexOf("\n") >= 0
-          ? this.value.replace(/\n/g, NEWLINE_GLYPH)
-          : this.value;
-      const pos = cellColToCodeUnitOffset(displayForHitTest, relX);
-      // Snap forward only when pos lands on a valid surrogate pair, never on a
-      // lone low surrogate (malformed string). Verify the preceding code unit is
-      // the high-surrogate half before advancing.
-      const chu = pos < this.value.length ? this.value.charCodeAt(pos) : 0;
-      const prevChu = pos > 0 ? this.value.charCodeAt(pos - 1) : 0;
-      this.cursorPosition = asCodePoint(
-        chu >= 0xDC00 && chu <= 0xDFFF && prevChu >= 0xD800 && prevChu <= 0xDBFF
-          ? pos + 1
-          : pos,
-      );
+      // The glyphs of `value` whose shown cells lie wholly left of the click,
+      // shown as the last render showed them.
+      const drawn = { asciiOnly: this._singleLineAsciiOnly };
+      let at = 0;
+      let col = 0;
+      for (const g of graphemes(this.value)) {
+        const w = cellLen(this._shown(g, drawn));
+        if (col + w > relX) break;
+        col += w;
+        at += g.length;
+      }
+      this.cursorPosition = asCodeUnit(at);
     }
     this._preferredColumn = null;
   }
@@ -498,12 +517,12 @@ export class TextInput extends ThemedWidget {
   // ─── Public motion primitives ───────────────────────────────────────────
 
   @action moveCharLeft(): void {
-    this.cursorPosition = prevCodePoint(this.value, this.cursorPosition);
+    this.cursorPosition = prevGrapheme(this.value, this.cursorPosition);
     this._preferredColumn = null;
   }
 
   @action moveCharRight(): void {
-    this.cursorPosition = nextCodePoint(this.value, this.cursorPosition);
+    this.cursorPosition = nextGrapheme(this.value, this.cursorPosition);
     this._preferredColumn = null;
   }
 
@@ -517,7 +536,7 @@ export class TextInput extends ThemedWidget {
       if (rowIdx === 0) return;
       const col = this._preferredColumn ?? this._cursorVisualCol();
       const target = this._visualRows[rowIdx - 1]!;
-      this.cursorPosition = asCodePoint(target.valueStart + this._clampColForRow(col, rowIdx - 1));
+      this.cursorPosition = asCodeUnit(target.valueStart + this._clampColForRow(col, rowIdx - 1));
       this._preferredColumn = col;
       return;
     }
@@ -529,7 +548,7 @@ export class TextInput extends ThemedWidget {
     let prevLineStart: number = prevLineEnd;
     while (prevLineStart > 0 && this.value[prevLineStart - 1] !== "\n") prevLineStart--;
     const prevLineContent = this.value.slice(prevLineStart, prevLineEnd);
-    this.cursorPosition = asCodePoint(prevLineStart + cellColToCodeUnitOffset(prevLineContent, asCellCol(Math.min(col, cellLen(prevLineContent)))));
+    this.cursorPosition = asCodeUnit(prevLineStart + cellColToCodeUnitOffset(prevLineContent, asCellCol(Math.min(col, cellLen(prevLineContent)))));
     this._preferredColumn = col;
   }
 
@@ -538,7 +557,7 @@ export class TextInput extends ThemedWidget {
       const rowIdx = this._cursorVisualRow();
       if (rowIdx === this._visualRows.length - 1) return;
       const col = this._preferredColumn ?? this._cursorVisualCol();
-      this.cursorPosition = asCodePoint(this._visualRows[rowIdx + 1]!.valueStart + this._clampColForRow(col, rowIdx + 1));
+      this.cursorPosition = asCodeUnit(this._visualRows[rowIdx + 1]!.valueStart + this._clampColForRow(col, rowIdx + 1));
       this._preferredColumn = col;
       return;
     }
@@ -551,15 +570,15 @@ export class TextInput extends ThemedWidget {
     let nextLineEnd: number = nextLineStart;
     while (nextLineEnd < this.value.length && this.value[nextLineEnd] !== "\n") nextLineEnd++;
     const nextLineContent = this.value.slice(nextLineStart, nextLineEnd);
-    this.cursorPosition = asCodePoint(nextLineStart + cellColToCodeUnitOffset(nextLineContent, asCellCol(Math.min(col, cellLen(nextLineContent)))));
+    this.cursorPosition = asCodeUnit(nextLineStart + cellColToCodeUnitOffset(nextLineContent, asCellCol(Math.min(col, cellLen(nextLineContent)))));
     this._preferredColumn = col;
   }
 
   // Clamp `col` (a cell column) to the target visual row's content, returning
   // the code-unit offset within that row. When the row IS followed by a
   // continuation of the same logical line, we clamp to the last valid
-  // code-point boundary strictly inside the row (which may be more than
-  // one cell before the visual end when the last code point is wide) so the
+  // cluster boundary strictly inside the row (which may be more than
+  // one cell before the visual end when the last glyph is wide) so the
   // cursor stays strictly inside the target row — landing at the boundary
   // would cause `_cursorVisualRow` to resolve to the *later* row, making
   // every subsequent Up/Down stick at the boundary.
@@ -608,24 +627,24 @@ export class TextInput extends ThemedWidget {
   }
 
   @action moveDocStart(): void {
-    this.cursorPosition = asCodePoint(0);
+    this.cursorPosition = asCodeUnit(0);
     this._preferredColumn = null;
   }
 
   @action moveDocEnd(): void {
-    this.cursorPosition = asCodePoint(this.value.length);
+    this.cursorPosition = asCodeUnit(this.value.length);
     this._preferredColumn = null;
   }
 
   @action moveWordLeft(): void {
     let p: CodePoint = this.cursorPosition;
     while (p > 0) {
-      const prev = prevCodePoint(this.value, p);
+      const prev = prevGrapheme(this.value, p);
       if (isWordChar(this.value.slice(prev, p))) break;
       p = prev;
     }
     while (p > 0) {
-      const prev = prevCodePoint(this.value, p);
+      const prev = prevGrapheme(this.value, p);
       if (!isWordChar(this.value.slice(prev, p))) break;
       p = prev;
     }
@@ -636,12 +655,12 @@ export class TextInput extends ThemedWidget {
   @action moveWordRight(): void {
     let p: CodePoint = this.cursorPosition;
     while (p < this.value.length) {
-      const next = nextCodePoint(this.value, p);
+      const next = nextGrapheme(this.value, p);
       if (isWordChar(this.value.slice(p, next))) break;
       p = next;
     }
     while (p < this.value.length) {
-      const next = nextCodePoint(this.value, p);
+      const next = nextGrapheme(this.value, p);
       if (!isWordChar(this.value.slice(p, next))) break;
       p = next;
     }
@@ -653,7 +672,7 @@ export class TextInput extends ThemedWidget {
 
   @action deleteCharBack(): void {
     if (this.cursorPosition === 0) return;
-    const newPos = prevCodePoint(this.value, this.cursorPosition);
+    const newPos = prevGrapheme(this.value, this.cursorPosition);
     this.value = this.value.slice(0, newPos) + this.value.slice(this.cursorPosition);
     this.cursorPosition = newPos;
     this._preferredColumn = null;
@@ -662,7 +681,7 @@ export class TextInput extends ThemedWidget {
 
   @action deleteCharForward(): void {
     if (this.cursorPosition >= this.value.length) return;
-    const nextPos = nextCodePoint(this.value, this.cursorPosition);
+    const nextPos = nextGrapheme(this.value, this.cursorPosition);
     this.value = this.value.slice(0, this.cursorPosition) + this.value.slice(nextPos);
     this._preferredColumn = null;
     this.emitChange();
@@ -674,12 +693,12 @@ export class TextInput extends ThemedWidget {
     // → "foo |" → "|" rather than getting stuck on the trailing space.
     let p: CodePoint = this.cursorPosition;
     while (p > 0) {
-      const prev = prevCodePoint(this.value, p);
+      const prev = prevGrapheme(this.value, p);
       if (!isWhitespace(this.value.slice(prev, p))) break;
       p = prev;
     }
     while (p > 0) {
-      const prev = prevCodePoint(this.value, p);
+      const prev = prevGrapheme(this.value, p);
       if (isWhitespace(this.value.slice(prev, p))) break;
       p = prev;
     }
@@ -694,12 +713,12 @@ export class TextInput extends ThemedWidget {
   @action deleteWordForward(): void {
     let p: CodePoint = this.cursorPosition;
     while (p < this.value.length) {
-      const next = nextCodePoint(this.value, p);
+      const next = nextGrapheme(this.value, p);
       if (isWordChar(this.value.slice(p, next))) break;
       p = next;
     }
     while (p < this.value.length) {
-      const next = nextCodePoint(this.value, p);
+      const next = nextGrapheme(this.value, p);
       if (!isWordChar(this.value.slice(p, next))) break;
       p = next;
     }
@@ -747,25 +766,26 @@ export class TextInput extends ThemedWidget {
     // Readline `transpose-chars`: swap the char before the cursor with the
     // char at the cursor and advance. At end-of-value, swap the trailing
     // two chars without advancing. At position 0, no-op.
-    const len = this.value.length;
-    if (len < 2 || this.cursorPosition === 0) return;
+    if (this.cursorPosition === 0) return;
     const p = this.cursorPosition;
-    if (p === len) {
-      // End-of-value: swap the trailing two code points; cursor stays.
-      const cp2 = prevCodePoint(this.value, p);
-      const cp1 = prevCodePoint(this.value, cp2);
+    if (p === this.value.length) {
+      // End-of-value: swap the trailing two glyphs; cursor stays. One glyph
+      // has nothing to swap with.
+      const cp2 = prevGrapheme(this.value, p);
+      if (cp2 === 0) return;
+      const cp1 = prevGrapheme(this.value, cp2);
       this.value = this.value.slice(0, cp1) + this.value.slice(cp2) + this.value.slice(cp1, cp2);
       this._preferredColumn = null;
       this.emitChange();
       return;
     }
-    // Normal case: find full code-point substrings for the char before and at cursor.
-    const cpBefore = prevCodePoint(this.value, p);
-    const cpAfter = nextCodePoint(this.value, p);
+    // Normal case: the whole glyphs before and at the cursor.
+    const cpBefore = prevGrapheme(this.value, p);
+    const cpAfter = nextGrapheme(this.value, p);
     const charBefore = this.value.slice(cpBefore, p);
     const charAt = this.value.slice(p, cpAfter);
     this.value = this.value.slice(0, cpBefore) + charAt + charBefore + this.value.slice(cpAfter);
-    this.cursorPosition = asCodePoint(cpAfter);
+    this.cursorPosition = cpAfter;
     this._preferredColumn = null;
     this.emitChange();
   }
@@ -789,14 +809,23 @@ export class TextInput extends ThemedWidget {
     let toInsert = text;
     if (this._maxLength !== undefined) {
       const room = this._maxLength - this.value.length;
-      if (room <= 0) return;
-      if (toInsert.length > room) toInsert = toInsert.slice(0, room);
+      // Cut between glyphs: the longest run of whole clusters within `room`.
+      let fit = 0;
+      for (const g of graphemes(toInsert)) {
+        if (fit + g.length > room) break;
+        fit += g.length;
+      }
+      toInsert = toInsert.slice(0, fit);
     }
+    if (toInsert.length === 0) return;
+    // The end is taken before the write: the value setter has already moved
+    // the cursor past a cluster the insert grew.
+    const end = asCodeUnit(this.cursorPosition + toInsert.length);
     this.value =
       this.value.slice(0, this.cursorPosition) +
       toInsert +
       this.value.slice(this.cursorPosition);
-    this.cursorPosition = asCodePoint(this.cursorPosition + toInsert.length);
+    this.cursorPosition = end;
     this._preferredColumn = null;
     this.emitChange();
   }
@@ -816,25 +845,26 @@ export class TextInput extends ThemedWidget {
     return this._renderSingleLine(options);
   }
 
+  // [LAW:dataflow-not-control-flow] How a stretch of `value` is shown in one
+  // line derives from mode: one mask cell per glyph, or `\n` as a visible
+  // glyph. The render and the click hit-test both read it.
+  private _shown(text: string, options: { readonly asciiOnly?: boolean }): string {
+    return this._password
+      ? drawable(options, MASK_GLYPH, ASCII_MASK_GLYPH).repeat(graphemes(text).length)
+      : text.replace(/\n/g, drawable(options, NEWLINE_GLYPH, ASCII_NEWLINE_GLYPH));
+  }
+
   private _renderSingleLine(options: RenderOptions): Segment[] {
     const showPlaceholder = this.focused && this.value.length === 0 && this.placeholder.length > 0;
 
-    // [LAW:dataflow-not-control-flow] Single rawDisplay value derives from
-    // mode (password / placeholder / plain). NEWLINE_GLYPH substitution maps
-    // every code unit in value 1:1 to rawDisplay so cursorPosition (a code-
-    // unit index) is a valid index into rawDisplay regardless of mode.
-    const rawDisplay = showPlaceholder
-      ? this.placeholder
-      : this._password
-        ? drawable(options, MASK_GLYPH, ASCII_MASK_GLYPH).repeat(this.value.length)
-        : this.value.indexOf("\n") >= 0
-          ? this.value.replace(/\n/g, drawable(options, NEWLINE_GLYPH, ASCII_NEWLINE_GLYPH))
-          : this.value;
+    // The cursor's column is the width of the shown text before it, whatever
+    // the mode — a placeholder is shown only over an empty value.
+    this._singleLineAsciiOnly = options.asciiOnly ?? false;
+    const shown = (text: string): string => this._shown(text, options);
+    const rawDisplay = showPlaceholder ? this.placeholder : shown(this.value);
 
-    // Measure in cell space — cursorPosition is a code-unit index; convert to
-    // cell column for all viewport arithmetic.
     const rawCellWidth = asCellCol(cellLen(rawDisplay));
-    const cursorCellCol = asCellCol(cellLen(rawDisplay.slice(0, this.cursorPosition)));
+    const cursorCellCol = asCellCol(cellLen(shown(this.value.slice(0, this.cursorPosition))));
     const maxAvailable = asCellCol(Math.max(MIN_CONTENT_WIDTH, options.maxWidth - 2));
     const desiredWidth = asCellCol(Math.max(MIN_CONTENT_WIDTH, rawCellWidth, cursorCellCol + 1));
     const contentWidth = asCellCol(Math.min(maxAvailable, desiredWidth));
@@ -864,8 +894,7 @@ export class TextInput extends ThemedWidget {
 
     if (this.focused && !this.disabled && cursorDisplayCellCol >= 0 && cursorDisplayCellCol < contentWidth) {
       const [before, rest] = splitText(display, cursorDisplayCellCol);
-      let firstCh = "";
-      for (const ch of rest) { firstCh = ch; break; }
+      const firstCh = rest.slice(0, nextGrapheme(rest, asCodePoint(0)));
       const at = firstCh || " ";
       const after = rest.slice(firstCh.length);
       if (before.length > 0) segments.push(new Segment(before, contentStyle));
@@ -1000,7 +1029,7 @@ export class TextInput extends ThemedWidget {
         return;
       }
       const before = content.slice(0, cursorCol);
-      const nextCp = nextCodePoint(content, asCodePoint(cursorCol));
+      const nextCp = nextGrapheme(content, asCodePoint(cursorCol));
       const at = content.slice(cursorCol, nextCp) || " ";
       const after = content.slice(nextCp);
       if (before.length > 0) out.push(new Segment(before, contentStyle));
@@ -1026,8 +1055,7 @@ export class TextInput extends ThemedWidget {
 
     if (cursorCellColInRow >= 0 && cursorCellColInRow < contentCellWidth) {
       const [before, rest] = splitText(paddedContent, asCellCol(cursorCellColInRow));
-      let firstCh = "";
-      for (const ch of rest) { firstCh = ch; break; }
+      const firstCh = rest.slice(0, nextGrapheme(rest, asCodePoint(0)));
       const at = firstCh || " ";
       const after = rest.slice(firstCh.length);
       if (before.length > 0) out.push(new Segment(before, contentStyle));

@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { autorun } from "mobx";
 import { TextInput, charGreedyWrap, type WrapStrategy, type WrapRow } from "../../src/widgets/text-input.js";
 import { asCodePoint, asCellCol, type CodePoint } from "../../src/core/cells.js";
 import { KeyEvent } from "../../src/widgets/types.js";
@@ -1138,6 +1139,161 @@ describe("TextInput", () => {
       const rows = charGreedyWrap("あ", { firstWidth: asCellCol(1), continuationWidth: asCellCol(1) });
       expect(rows).toHaveLength(1);
       expect(rows[0]!.content).toBe("あ");
+    });
+  });
+
+  describe("a glyph of several code points is one cursor step", () => {
+    const CURSOR = new Style({ reverse: true });
+    // The text of the cell drawn in the cursor style, on every row.
+    const cursorCells = (t: TextInput, options: RenderOptions = RENDER): string[] =>
+      [...t.render(options)].filter((s) => s.style?.reverse).map((s) => s.text);
+
+    for (const multiline of [false, true]) {
+      describe(multiline ? "multi-line" : "single-line", () => {
+        it("Right steps over a whole glyph, and Home, Right, Right lands before the next", () => {
+          const t = new TextInput({ multiline, cursorStyle: CURSOR });
+          t.focus();
+          // One key per code point, as the router sends them.
+          for (const ch of "a👍🏽b") t.handleKey(printable(ch));
+          expect(t.value).toBe("a👍🏽b");
+          t.handleKey(homeEvent());
+          t.handleKey(rightEvent());
+          t.handleKey(rightEvent());
+          expect(t.value.slice(t.cursorPosition)).toBe("b");
+          expect(cursorCells(t)).toEqual(["b"]);
+        });
+
+        it("draws the cursor on a whole glyph, and inserts after it", () => {
+          const t = new TextInput({ value: "👍🏽x", multiline, cursorStyle: CURSOR });
+          t.focus();
+          t.handleKey(homeEvent());
+          expect(cursorCells(t)).toEqual(["👍🏽"]);
+          t.handleKey(rightEvent());
+          expect(cursorCells(t)).toEqual(["x"]);
+          t.handleKey(printable("y"));
+          expect(t.value).toBe("👍🏽yx");
+        });
+
+        it("Backspace and Delete take the whole glyph", () => {
+          for (const glyph of ["👍🏽", "❤️", "👨‍👩‍👧", "🇺🇸", "e\u0301"]) {
+            const t = new TextInput({ value: `a${glyph}b`, multiline });
+            t.cursorPosition = asCodePoint(1 + glyph.length);
+            t.handleKey(backspaceEvent());
+            expect(t.value).toBe("ab");
+            t.value = `a${glyph}b`;
+            t.cursorPosition = asCodePoint(1);
+            t.handleKey(deleteEvent());
+            expect(t.value).toBe("ab");
+          }
+        });
+
+        it("Left steps back over a whole glyph", () => {
+          const t = new TextInput({ value: "a👨‍👩‍👧", multiline });
+          t.cursorPosition = asCodePoint(t.value.length);
+          t.handleKey(leftEvent());
+          expect(t.cursorPosition).toBe(1);
+        });
+      });
+    }
+
+    it("a cursor set from outside comes to rest on a glyph boundary inside the value", () => {
+      const t = new TextInput({ value: "hello" });
+      t.value = "";
+      expect(t.cursorPosition).toBe(0);
+      t.handleKey(leftEvent());
+      t.handleKey(backspaceEvent());
+      expect(t.cursorPosition).toBe(0);
+      t.value = "a👍🏽";
+      t.cursorPosition = asCodePoint(3);
+      expect(t.cursorPosition).toBe(5);
+      t.cursorPosition = asCodePoint(99);
+      expect(t.cursorPosition).toBe(5);
+    });
+
+    it("typing a base before a modifier leaves the cursor after the glyph they form", () => {
+      const t = new TextInput({ value: "🏽" });
+      t.handleKey(homeEvent());
+      t.handleKey(printable("a"));
+      expect(t.cursorPosition).toBe(t.value.length);
+      t.handleKey(backspaceEvent());
+      expect(t.value).toBe("");
+    });
+
+    it("a key that joins the glyph before the cursor leaves the cursor just after it", () => {
+      const t = new TextInput({ value: "👍x" });
+      t.cursorPosition = asCodePoint(2);
+      t.handleKey(printable("🏽"));
+      expect(t.value).toBe("👍🏽x");
+      expect(t.value.slice(t.cursorPosition)).toBe("x");
+    });
+
+    it("holds line breaks as \\n, so End stays on its line", () => {
+      const t = new TextInput({ value: "a\r\nb\rc", multiline: true });
+      expect(t.value).toBe("a\nb\nc");
+      t.handleKey(endEvent());
+      expect(t.cursorPosition).toBe(1);
+      t.value = "x\r\ny";
+      expect(t.value).toBe("x\ny");
+    });
+
+    it("maxLength cuts between glyphs, never inside one", () => {
+      const t = new TextInput({ value: "abcd", maxLength: 5 });
+      t.handleKey(printable("😀"));
+      expect(t.value).toBe("abcd");
+      t.value = "abc";
+      t.cursorPosition = asCodePoint(3);
+      t.handleKey(printable("😀"));
+      expect(t.value).toBe("abc😀");
+    });
+
+    it("a password mask is one cell per glyph, and a click lands between glyphs", () => {
+      const t = new TextInput({ value: "a👍🏽b", password: true, cursorStyle: CURSOR });
+      t.focus();
+      const drawn = [...t.render(RENDER)].map((seg) => seg.text).join("");
+      expect([...drawn].filter((c) => c === "•")).toHaveLength(3);
+      t.handleMouse(mouseDownAt(3));
+      expect(t.value.slice(t.cursorPosition)).toBe("b");
+      t.handleKey(backspaceEvent());
+      expect(t.value).toBe("ab");
+    });
+
+    it("Ctrl+T on a single glyph changes nothing and emits nothing", () => {
+      const t = new TextInput({ value: "👍🏽" });
+      const changes: unknown[] = [];
+      t.onChange((w) => changes.push(w));
+      t.transposeChars();
+      expect(t.value).toBe("👍🏽");
+      expect(changes).toEqual([]);
+    });
+
+    it("a glyph too long for maxLength is refused without a change event", () => {
+      const t = new TextInput({ value: "abcd", maxLength: 5 });
+      const changes: unknown[] = [];
+      t.onChange((w) => changes.push(w));
+      t.handleKey(printable("😀"));
+      expect(changes).toEqual([]);
+    });
+
+    it("refuses C1 controls, which a terminal reads as escape sequences", () => {
+      const t = new TextInput({ value: "" });
+      t.handleKey(printable("\u009b"));
+      expect(t.value).toBe("");
+    });
+
+    it("an observer of value and cursorPosition never sees the cursor past the value", () => {
+      const t = new TextInput({ value: "hello" });
+      const seen: number[] = [];
+      const stop = autorun(() => { seen.push(t.cursorPosition - t.value.length); });
+      t.value = "";
+      stop();
+      expect(seen.every((over) => over <= 0)).toBe(true);
+    });
+
+    it("transposes whole glyphs", () => {
+      const t = new TextInput({ value: "a👍🏽" });
+      t.cursorPosition = asCodePoint(t.value.length);
+      t.transposeChars();
+      expect(t.value).toBe("👍🏽a");
     });
   });
 

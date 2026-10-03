@@ -2,7 +2,7 @@
  * Rule — a horizontal divider line, optionally with a centered title.
  */
 
-import { cellLen } from "../core/cells.js";
+import { asCellCol, cellLen, setCellSize } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import type { RichText } from "../core/text.js";
 import { Style, NULL_STYLE } from "../core/style.js";
@@ -33,8 +33,10 @@ export class Rule implements Renderable, Measurable {
 
   constructor(title?: string | RichText, options?: RuleOptions) {
     const chars = options?.characters ?? DEFAULT_RULE_CHAR;
-    if (chars.length === 0) {
-      throw new Error("Rule characters must not be empty");
+    // [LAW:parse-dont-validate] Rich's rule: a rule drawn from zero-width
+    // characters would advance no cells, so `repeatToWidth` never meets one.
+    if (cellLen(chars) < 1) {
+      throw new Error("Rule characters must have a cell width of at least 1");
     }
     const align = options?.align;
     if (align !== undefined && align !== "left" && align !== "center" && align !== "right") {
@@ -96,22 +98,8 @@ export class Rule implements Renderable, Measurable {
   }
 }
 
+// [LAW:one-source-of-truth] `setCellSize` crops between the grapheme clusters
+// `cellLen` measures, so `❤️` or `👨‍👩‍👧` is never cut in half or over-counted.
 function repeatToWidth(char: string, width: number): string {
-  const charWidth = cellLen(char);
-  if (charWidth === 0) return " ".repeat(width);
-  const repeats = Math.ceil(width / charWidth);
-  const full = char.repeat(repeats);
-  // Trim to exact width
-  let w = 0;
-  let i = 0;
-  for (const c of full) {
-    const cw = cellLen(c);
-    if (w + cw > width) break;
-    w += cw;
-    i += c.length;
-  }
-  const result = full.slice(0, i);
-  // Pad if needed (wide char couldn't fill exact width)
-  const gap = width - w;
-  return gap > 0 ? result + " ".repeat(gap) : result;
+  return setCellSize(char.repeat(Math.ceil(width / cellLen(char))), asCellCol(width));
 }

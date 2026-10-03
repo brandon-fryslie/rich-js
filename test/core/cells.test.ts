@@ -12,6 +12,10 @@ import {
   asCodePoint,
   splitAtCells,
   cellColToCodeUnitOffset,
+  graphemeBoundary,
+  nextGrapheme,
+  prevGrapheme,
+  asCodeUnit,
 } from "../../src/core/cells.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts (widths, invariants), not implementation details (caching, slicing)
@@ -204,27 +208,15 @@ describe("splitText", () => {
   });
 });
 
-describe("cellFit / cellFitEnd", () => {
-  // Each of these is one glyph built from several code points, and a sum of
-  // per-code-point widths disagrees with cellLen on every one of them.
-  const clusters = ["❤️", "👨‍👩‍👧", "🇺🇸", "é"];
+// Each of these is one glyph built from several code points, and a sum of
+// per-code-point widths disagrees with cellLen on every one of them.
+const GLYPHS = ["❤️", "👨‍👩‍👧", "🇺🇸", "e\u0301"];
 
+describe("cellFit / cellFitEnd", () => {
   it("keeps a cluster that fits whole", () => {
-    for (const c of clusters) {
+    for (const c of GLYPHS) {
       expect(cellFit(`${c}ab`, asCellCol(cellLen(c)))).toBe(c);
       expect(cellFitEnd(`ab${c}`, asCellCol(cellLen(c)))).toBe(c);
-    }
-  });
-
-  it("never cuts inside a cluster, and is never wider than the cap", () => {
-    const text = `a${clusters.join("b")}c`;
-    for (let cap = 0; cap <= cellLen(text); cap++) {
-      for (const fit of [cellFit(text, asCellCol(cap)), cellFitEnd(text, asCellCol(cap))]) {
-        expect(cellLen(fit), `${cap} ${JSON.stringify(fit)}`).toBeLessThanOrEqual(cap);
-        const whole = graphemes(text);
-        const n = graphemes(fit).length;
-        expect([whole.slice(0, n).join(""), whole.slice(whole.length - n).join("")]).toContain(fit);
-      }
     }
   });
 });
@@ -366,5 +358,98 @@ describe("cellColToCodeUnitOffset", () => {
   it("never lands inside a glyph of several code points", () => {
     expect(cellColToCodeUnitOffset("👍🏽a", asCellCol(1))).toBe(0);
     expect(cellColToCodeUnitOffset("👍🏽a", asCellCol(2))).toBe("👍🏽".length);
+  });
+});
+
+describe("every width walk cuts between grapheme clusters", () => {
+  const text = `a${GLYPHS.join("b")}c`;
+  const width = cellLen(text);
+  // The code-unit offsets that fall between clusters, each with the cells
+  // before it: the only places any walk may cut.
+  const cuts = new Map<number, number>([[0, 0]]);
+  let offset = 0;
+  let cells = 0;
+  for (const cluster of graphemes(text)) {
+    offset += cluster.length;
+    cells += cellLen(cluster);
+    cuts.set(offset, cells);
+  }
+  const caps = Array.from({ length: width + 2 }, (_, cap) => asCellCol(cap));
+  /** The cells before `at`, failing when `at` falls inside a cluster. */
+  const cellsBefore = (at: number): number => {
+    expect(cuts.has(at), `offset ${at} is inside a cluster`).toBe(true);
+    return cuts.get(at)!;
+  };
+
+  it("cellFit and cellFitEnd take whole clusters within the cap", () => {
+    for (const cap of caps) {
+      const head = cellFit(text, cap);
+      expect(cellsBefore(head.length)).toBeLessThanOrEqual(cap);
+      const tail = cellFitEnd(text, cap);
+      expect(width - cellsBefore(text.length - tail.length)).toBeLessThanOrEqual(cap);
+    }
+  });
+
+  it("splitText and setCellSize cut between clusters and pad to exactly the cap", () => {
+    for (const cap of caps.filter((c) => c <= width)) {
+      const [left, right] = splitText(text, cap);
+      const at = text.length - right.length;
+      expect(cellsBefore(at)).toBeLessThanOrEqual(cap);
+      expect(left).toBe(text.slice(0, at) + " ".repeat(cap - cellsBefore(at)));
+      expect(setCellSize(text, cap)).toBe(left);
+    }
+  });
+
+  it("cellFitFrom's callers stop between clusters, over the cap only to force-take one", () => {
+    for (const [start, startCells] of cuts) {
+      for (const cap of caps) {
+        const end = cellStepFrom(text, asCodePoint(start), cap);
+        const taken = cellsBefore(end) - startCells;
+        const oneCluster = graphemes(text.slice(start, end)).length === 1;
+        expect(taken <= cap || oneCluster, `${start}+${cap} took ${taken}`).toBe(true);
+      }
+    }
+    for (const cap of caps) {
+      expect(cellsBefore(cellColToCodeUnitOffset(text, cap))).toBeLessThanOrEqual(cap);
+    }
+    for (const cap of caps.filter((c) => c > 0)) {
+      const lines = chopCells(text, cap);
+      expect(lines.join("")).toBe(text);
+      let at = 0;
+      for (const line of lines) {
+        const before = cellsBefore(at);
+        at += line.length;
+        expect(cellsBefore(at) - before <= cap || graphemes(line).length === 1).toBe(true);
+      }
+    }
+  });
+
+  it("splitAtCells cuts at the first cluster boundary at or past each cut", () => {
+    for (const cap of caps) {
+      const pieces = splitAtCells(text, [cap]);
+      expect(pieces.join("")).toBe(text);
+      const at = pieces[0]!.length;
+      const first = [...cuts].find(([, c]) => c >= cap)?.[0] ?? text.length;
+      expect(at).toBe(first);
+    }
+  });
+});
+
+describe("graphemeBoundary", () => {
+  it("keeps a boundary, moves an offset inside a glyph to its end, and stops at the string's end", () => {
+    const s = "a👍🏽b";
+    expect([0, 1, 2, 3, 4, 5, 6, 40].map((cu) => graphemeBoundary(s, asCodeUnit(cu)))).toEqual([0, 1, 5, 5, 5, 5, 6, 6]);
+  });
+});
+
+describe("nextGrapheme / prevGrapheme", () => {
+  it("step over each whole glyph, and stop at either end", () => {
+    for (const glyph of ["❤️", "👨‍👩‍👧", "🇺🇸", "e\u0301"]) {
+      const s = `a${glyph}b`;
+      expect(nextGrapheme(s, asCodePoint(1))).toBe(1 + glyph.length);
+      expect(prevGrapheme(s, asCodePoint(1 + glyph.length))).toBe(1);
+      expect(nextGrapheme(s, asCodePoint(s.length))).toBe(s.length);
+      expect(prevGrapheme(s, asCodePoint(0))).toBe(0);
+    }
   });
 });
