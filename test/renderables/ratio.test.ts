@@ -21,8 +21,24 @@ describe("ratioDistribute", () => {
     expect(parts.reduce((sum, part) => sum + part, 0)).toBe(total);
   });
 
-  it("refuses a ratio that is not a whole number, which the reference never takes", () => {
-    expect(() => ratioDistribute(10, [1.5, 1])).toThrow(RangeError);
+  it("divides by a fractional ratio in exact proportion, where the reference takes only whole ones", () => {
+    expect(ratioDistribute(9, [0.5, 1])).toEqual(ratioDistribute(9, [1, 2]));
+    expect(ratioDistribute(10, [0.1, 0.3, 1])).toEqual(ratioDistribute(10, [1, 3, 10]));
+  });
+
+  it("holds each part to its minimum, as Rich's ratio_distribute does", () => {
+    // Python Rich 9d8f9a3: ratio_distribute(20, [1, 3], [12, 1]) == [12, 8],
+    // ratio_distribute(10, [9, 1], [1, 5]) == [9, 5], overrunning the total
+    // when a minimum does not fit.
+    expect(ratioDistribute(20, [1, 3], [12, 1])).toEqual([12, 8]);
+    expect(ratioDistribute(10, [9, 1], [1, 5])).toEqual([9, 5]);
+  });
+
+  it("gives a part whose minimum is 0 no share, as Rich zeroes its ratio", () => {
+    // Python Rich 15.0.0: ratio_distribute(10, [1, 1], [0, 1]) == [0, 10],
+    // ratio_distribute(10, [2, 1], [3, 0]) == [10, 0].
+    expect(ratioDistribute(10, [1, 1], [0, 1])).toEqual([0, 10]);
+    expect(ratioDistribute(10, [2, 1], [3, 0])).toEqual([10, 0]);
   });
 });
 

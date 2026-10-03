@@ -33,7 +33,7 @@ console.print("42 and /usr/bin");
 console.print("42 and /usr/bin", { highlight: true });
 ```
 
-A string handed to a `Columns`, a `Layout` pane or a `Rule` title is highlighted the same way, with the console's highlighter and under the same settings. A `Panel`, a `Table` or a `Tree` draws everything inside it unhighlighted — its own strings, as Rich does, and a `Columns` or `Rule` nested in it too, where Rich would still highlight theirs.
+A string handed to a `Columns`, a `Layout` pane or a `Rule` title is highlighted the same way, with the console's highlighter and under the same settings. A `Panel`, a `Table` or a `Tree` draws everything inside it unhighlighted — its own strings, as Rich does, and a `Columns` or `Rule` nested in it too, where Rich would still highlight theirs. A table column built with `highlight: true`, or in a table built with it, is the exception: everything in its cells is drawn as if `highlight` were on — its strings, and a `Columns` or `Rule` nested there — with the console's highlighter even when the console's own `highlight` is off, as Rich's are.
 
 ## Custom highlighters
 

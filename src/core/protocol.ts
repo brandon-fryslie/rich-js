@@ -57,11 +57,21 @@ export interface RenderOptions {
    */
   markup?: boolean;
   /**
-   * What highlights a string handed to a renderable when it is drawn. Absent,
-   * nothing does. A `Console` passes its highlighter while its `highlight` is
-   * on; a renderable that draws its strings plain, as Rich's `Panel`, `Table`
-   * and `Tree` do by default, clears it for what it renders — Rich's
-   * `options.update(highlight=False)`.
+   * Whether a string handed to a renderable is highlighted when it is drawn,
+   * by `highlighter`. Absent, it is, as a `Console`'s is unless told
+   * otherwise. A `Console` passes its own setting, and `print`'s; a renderable
+   * that draws its strings plain, as Rich's `Panel`, `Table` and `Tree` do by
+   * default, sets it false for what it renders — Rich's
+   * `options.update(highlight=False)` — and a table column's `highlight` sets
+   * it either way. `activeHighlighter` is the one reading of the pair.
+   */
+  highlight?: boolean;
+  /**
+   * What highlights a string handed to a renderable, while `highlight` says
+   * to. A `Console` passes its highlighter whether or not its own `highlight`
+   * is on, as Rich's `render_str` reaches `console.highlighter`, so content
+   * that turns highlighting on finds the console's highlighter there. Absent,
+   * nothing highlights.
    */
   highlighter?: Highlighter;
   /**

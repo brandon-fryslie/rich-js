@@ -32,9 +32,9 @@ import { Measurement } from "../core/measure.js";
  * A declared `width` is a reservation rather than a bid — it is paid before
  * anyone competes, because a column told to be four cells wide is not asking
  * for a proportional share of four. A plain column reserves nothing and both
- * wants and weighs its natural content width. A ratio column wants only its
- * seat and takes its `ratio` of what the bounded columns leave: a pass of its
- * own, because a ratio is a proportion and a `weight` is a count of cells, and
+ * wants and weighs its natural content width. A ratio column wants its floor —
+ * its `width`, else its `minWidth`, else one cell — and takes its `ratio` of
+ * what the bounded columns leave: a pass of its own, because a ratio is a proportion and a `weight` is a count of cells, and
  * weighing one against the other let `ratio: 100` truncate a neighbour the
  * table had room for. A column with no cell to measure wants one cell and
  * `fill`s up to its cap before any share is taken. `stretch` is false unless
@@ -104,8 +104,7 @@ const blank = (n: number): Segment[] => (n > 0 ? [new Segment(" ".repeat(n))] : 
  * than an optimization: handing cells out one at a time made the iteration
  * count the width itself, which stalled on a very wide table and — since
  * `Infinity - 1 === Infinity` — never terminated at all for a `maxWidth` of
- * `Infinity` held open by a ratio column. Capping by want reaches that case in
- * one round.
+ * `Infinity`. Capping by want reaches that case in one round.
  *
  * The arithmetic is exact. A share's fraction is what decides who gets a
  * leftover cell, and in floating point two fractions that are equal — 6/14 and
@@ -322,11 +321,34 @@ function layoutTable(
       weight: demand.fill > 0 ? 1 : 0,
     })),
   );
-  // Then to the ratio columns, in proportion.
-  const shared = distribute(
-    budget - spent(wanted) - spent(filled),
-    seatedDemands.map((demand) => ({ want: UNBOUNDED, weight: demand.ratio })),
+  // Then to the ratio columns, by the reference's flexible split:
+  // `ratio_distribute(max_width - fixed_widths, ratios, flex_minimum)`. What
+  // is split is every cell the bounded columns leave, the cells the ratio
+  // columns already hold and their padding included, because Rich's widths
+  // are padded widths; each is held to at least its padding and its floor.
+  // The floor is the reference's `column.width or 1`, reading `minWidth`
+  // where there is no `width`, where the reference reads none and draws a
+  // `min_width=12` ratio column five cells wide.
+  // A ratio column is paid the rest of its part out of the budget, in column
+  // order, so a part the minimums push past what is left is cut there rather
+  // than drawn past the width.
+  const afterFill = holding(wanted, filled);
+  const flexible = seatedDemands.flatMap((demand, index) => (demand.ratio > 0 ? [index] : []));
+  const padded = (index: number, content: number): number => padLeft[index]! + content + padRight[index]!;
+  // `UNBOUNDED` holds an unbounded offer, as it does for the stretch below;
+  // it caps the whole split, so the total stays an integer a double holds.
+  const pool = budget - spent(wanted) - spent(filled);
+  let unshared = Math.min(pool, UNBOUNDED);
+  const parts = ratioDistribute(
+    Math.min(pool + flexible.reduce((sum, index) => sum + padded(index, afterFill[index]!), 0), UNBOUNDED),
+    flexible.map((index) => seatedDemands[index]!.ratio),
+    flexible.map((index) => padded(index, seatedDemands[index]!.want)),
   );
+  const shared = seatedDemands.map(() => 0);
+  flexible.forEach((index, slot) => {
+    shared[index] = Math.min(Math.max(0, parts[slot]! - padded(index, afterFill[index]!)), unshared);
+    unshared -= shared[index]!;
+  });
   // What the shares leave goes to the columns that stretch, by the width each
   // already holds with its padding: its natural width, since nothing is left
   // over while any column is short, or the cap a fill stopped at. The split is
@@ -342,7 +364,7 @@ function layoutTable(
     // An unbounded offer is held to `UNBOUNDED`, this model's own infinity, as
     // `demandCells` holds a want: `Infinity` is not an integer to split.
     Math.min(budget - spent(wanted) - spent(filled) - spent(shared), UNBOUNDED),
-    stretchers.map((index) => padLeft[index]! + held[index]! + padRight[index]!),
+    stretchers.map((index) => padded(index, held[index]!)),
   );
   // A table that does not fit gives back each column's `floor`: Rich
   // re-measures a collapsed table's columns at the widths it gave them, and a
@@ -359,7 +381,7 @@ function layoutTable(
   stretchers.forEach((index, slot) => {
     columns[index]! += stretches[slot]!;
   });
-  const cellWidths = columns.map((width, index) => padLeft[index]! + width + padRight[index]!);
+  const cellWidths = columns.map((width, index) => padded(index, width));
 
   return {
     edge,
@@ -391,6 +413,12 @@ export interface ColumnOptions {
   ratio?: number;
   noWrap?: boolean;
   overflow?: OverflowMethod;
+  /**
+   * Whether the column's string cells — its header and footer among them — are
+   * drawn with the console's highlighter, as Rich's `Column(highlight=)`.
+   * `false` for a `Column` built alone; `addColumn` takes the table's.
+   */
+  highlight?: boolean;
 }
 
 /**
@@ -421,6 +449,7 @@ export class Column {
   ratio: number | undefined;
   noWrap: boolean;
   overflow: OverflowMethod;
+  highlight: boolean;
   private _cells: Renderable[];
 
   constructor(options?: ColumnOptions) {
@@ -436,6 +465,7 @@ export class Column {
     this.ratio = options?.ratio;
     this.noWrap = options?.noWrap ?? false;
     this.overflow = options?.overflow ?? "ellipsis";
+    this.highlight = options?.highlight ?? false;
     this._cells = [];
   }
 
@@ -495,6 +525,7 @@ export class Column {
       ratio: this.ratio,
       noWrap: this.noWrap,
       overflow: this.overflow,
+      highlight: this.highlight,
     });
     col.headerStyle = this.headerStyle;
     col.footerStyle = this.footerStyle;
@@ -532,6 +563,8 @@ export interface TableOptions {
   width?: number;
   minWidth?: number;
   rowStyles?: string[];
+  /** The `highlight` every column `addColumn` makes takes unless told otherwise (default: `false`). */
+  highlight?: boolean;
 }
 
 export class Table implements Renderable, Measurable {
@@ -559,6 +592,7 @@ export class Table implements Renderable, Measurable {
   readonly tableWidth: number | undefined;
   readonly minWidth: number | undefined;
   readonly rowStyles: string[];
+  readonly highlight: boolean;
 
   get title(): (Renderable & Measurable) | undefined {
     return this._title;
@@ -598,6 +632,7 @@ export class Table implements Renderable, Measurable {
     this.tableWidth = options?.width;
     this.minWidth = options?.minWidth;
     this.rowStyles = options?.rowStyles ?? [];
+    this.highlight = options?.highlight ?? false;
   }
 
   get columns(): Column[] {
@@ -609,7 +644,7 @@ export class Table implements Renderable, Measurable {
   }
 
   addColumn(header?: ColumnOptions["header"], options?: ColumnOptions): this {
-    const col = new Column({ ...options, header: header ?? options?.header });
+    const col = new Column({ ...options, header: header ?? options?.header, highlight: options?.highlight ?? this.highlight });
     this._columns.push(col);
     return this;
   }
@@ -899,24 +934,28 @@ export class Table implements Renderable, Measurable {
     index: number,
     options: RenderOptions,
   ): Omit<ColumnDemand, "pad" | "floor"> {
-    if (col.width !== undefined) {
-      // [LAW:single-enforcer] floored where it is parsed, the same rule
-      // `normalizePadding` applies to a negative padding side.
-      const declared = demandCells(col.width);
-      return { reserved: declared, minimum: declared, want: declared, weight: 0, fill: 0, ratio: 0, stretch: false };
-    }
     // A flexible column takes its share of whatever the bounded columns
     // leave; every other column asks for its natural width, whether or not a
     // neighbour is flexible. The split is the reference's —
     // `fixed_widths = [0 if column.flexible else _range.maximum ...]` — with
     // one divergence: Rich splits by ratio only when the table expands, and
     // here a ratio is honoured either way. Its bounded part is its floor —
-    // the reference's `column.min_width or 1` — bid for in cells like any
-    // content column, so a squeezed table still pays a declared `minWidth`.
+    // the reference's `column.width or 1`, reading `minWidth` where there is
+    // no `width` — bid for in cells like any content column, so a squeezed
+    // table still pays it. A `width` beside a `ratio` is that floor, not a
+    // reservation, as the reference's `flex_minimum` reads it.
+    // [LAW:one-source-of-truth] `columnShare` decides first, so a column that
+    // `Column.flexible` calls elastic is one the division shares out.
     const share = columnShare(col);
     if (share > 0) {
-      const floor = Math.max(1, demandCells(col.minWidth ?? 0));
+      const floor = Math.max(1, demandCells(col.width ?? col.minWidth ?? 0));
       return { reserved: 0, minimum: floor, want: floor, weight: floor, fill: 0, ratio: share, stretch: false };
+    }
+    if (col.width !== undefined) {
+      // [LAW:single-enforcer] floored where it is parsed, the same rule
+      // `normalizePadding` applies to a negative padding side.
+      const declared = demandCells(col.width);
+      return { reserved: declared, minimum: declared, want: declared, weight: 0, fill: 0, ratio: 0, stretch: false };
     }
     const range = this._cellRange(col, index, options);
     const natural = demandCells(this._bounded(col, range?.maximum ?? 1));
@@ -1075,11 +1114,10 @@ export class Table implements Renderable, Measurable {
       // table stacks its cells, so each is handed the table's rows as a
       // ceiling, never a region to fill — the `Height` contract's
       // `stackedHeight`, where the reference hands a cell `height=None`.
-      // No highlighter: a cell's string is drawn plain, as Rich's column
-      // `highlight=False` draws it.
+      // Highlighted as its column says, Rich's `highlight=column.highlight`.
       const segs = [...cell.render({
         ...options,
-        highlighter: undefined,
+        highlight: col.highlight,
         maxWidth: cellWidth,
         justify: col.justify,
         overflow: col.overflow,
@@ -1154,7 +1192,7 @@ export class Table implements Renderable, Measurable {
     //
     // Never highlighted, and markup as the console says: Rich draws a title
     // and caption through `render_str(highlight=False)`.
-    const source = text.text({ ...options, highlighter: undefined });
+    const source = text.text({ ...options, highlight: false });
     source.justify = undefined;
     if (source.overflow === "ignore") source.overflow = undefined;
 

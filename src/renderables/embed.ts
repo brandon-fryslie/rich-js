@@ -20,7 +20,7 @@
  * text drawn from it is a copy again, since the drawing site may change it.
  */
 
-import { readStr } from "../core/markup.js";
+import { activeHighlighter, readStr } from "../core/markup.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import type { Style } from "../core/style.js";
@@ -59,7 +59,7 @@ export class EmbeddedText implements Renderable, Measurable {
     const reading = this._readings.get(markup) ?? readStr(this._source, markup);
     this._readings.set(markup, reading);
     const text = reading.copy();
-    options.highlighter?.highlight(text);
+    activeHighlighter(options)?.highlight(text);
     return text;
   }
 
@@ -74,7 +74,7 @@ export class EmbeddedText implements Renderable, Measurable {
    * measures, and no highlighter runs just to be thrown away.
    */
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return this.text({ ...options, highlighter: undefined }).measure(options);
+    return this.text({ ...options, highlight: false }).measure(options);
   }
 }
 

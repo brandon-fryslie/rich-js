@@ -114,7 +114,7 @@ export class Spinner implements Renderable, Measurable {
   private _line(frame: string, options: RenderOptions): RichText {
     const line = new RichText("", { end: "" }).append(frame, this.style);
     // Unhighlighted: Rich's label is a `Text` from the moment it is handed over, and a `Text` is never highlighted.
-    const label = new EmbeddedText(this.text).text({ ...options, highlighter: undefined });
+    const label = new EmbeddedText(this.text).text({ ...options, highlight: false });
     if (label.plain !== "") line.append(" ").append(label);
     return line;
   }
