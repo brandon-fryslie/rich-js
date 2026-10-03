@@ -4,27 +4,18 @@
  */
 
 import stringWidth from "string-width";
+import { Memo } from "./memo.js";
 
 // [LAW:one-source-of-truth] string-width is the single authority for cell width
-const cellLenCache = new Map<string, number>();
-const CACHE_MAX = 4096;
+const cellLenMemo = new Memo<number>();
 
 /**
  * Returns the terminal cell width of a string.
  */
 export function cellLen(text: string): number {
   if (text.length === 0) return 0;
-  // Fast path for pure ASCII
-  if (text.length <= 64) {
-    const cached = cellLenCache.get(text);
-    if (cached !== undefined) return cached;
-  }
-  const width = stringWidth(text);
-  if (text.length <= 64) {
-    if (cellLenCache.size >= CACHE_MAX) cellLenCache.clear();
-    cellLenCache.set(text, width);
-  }
-  return width;
+  // Short strings recur (words, cells, labels); a long one is rarely measured twice.
+  return text.length <= 64 ? cellLenMemo.get(text, stringWidth) : stringWidth(text);
 }
 
 // ── Branded number spaces ────────────────────────────────────────────────────
