@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-330",
+      "ref": "refs/pull/330/merge",
+      "sha": "3444f9d2ddbd2f334e41092679e972cc17b70403",
+      "timestamp": "2026-10-03T17:35:21.104Z",
+      "commits": [
+        {
+          "sha": "3444f9d2ddbd2f334e41092679e972cc17b70403",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T17:34:15Z",
+          "message": "Merge fccc25f0d41bd57ef964235338b4adf46ed66324 into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+        },
+        {
+          "sha": "fccc25f0d41bd57ef964235338b4adf46ed66324",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T11:34:10-06:00",
+          "message": "effects-feel: --depth forces the depth it names; the run refuses any other (rich-effects-fxiy.b6i)\n\nFORCE_COLOR was set to truecolor/256/ansi, values the library's detection\ndoes not read, so every depth resolved to 16 colours while the heading said\ntruecolor. Now the chalk values 3/2/1, the table records the depth each\npromises, runDemo throws if the console resolved another, and the test\nasserts through detectColorSystem rather than pinning the strings.\n"
+        },
+        {
+          "sha": "45b5de2f64e5d81c85b573f3dc0f7f67e15f61aa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T09:30:57-06:00",
+          "message": "effects-feel: breaths come in spells and rest after a sigh, wind gathers and slackens, halos never add (rich-effects-fxiy.b6i)\n\nBreath depth follows slow noise over the breaths, and the breath after a\nsigh is quieter (x0.8) and late. Drift's advance surges between 0.33x and\n1.15x STRIDE on noise over two periods. Overlapping firefly halos take\nthe brighter, as shimmer's passes do.\n\nWorst 1 fps step over an hour: pulse 0.0395 (unchanged), drift\n0.0286 -> 0.0256, sparkle 0.0324 -> 0.0236. A loose answering wave\nbetween fireflies was tried and dropped: it bunched every turn's flashes\ninto one burst with long dark gaps.\n"
+        },
+        {
+          "sha": "34a16e80ea1665e2f47c4de0e690e3cba4a27426",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T09:18:40-06:00",
+          "message": "effects-feel: a sigh catches once on the way in and draws in again (rich-effects-fxiy.b6i)\n\nA swell is now a list of knots joined by raised cosines; breath and\nfirefly flash keep their shapes, and the sigh gains its double inhale.\nEach part of the sigh's inhale climbs less steeply than a breath, so the\n1 fps worst step over an hour stays 0.0395. REACH 0.3 -> 0.27 keeps a\nwhole-element rest between breaths now a sigh lasts 0.70 of its turn.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-336",
       "ref": "refs/pull/336/merge",
       "sha": "593eac5d3357ad6674b4bd5ffc39b0b3caed5b45",
@@ -35,35 +71,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T10:54:13-06:00",
           "message": "fix(table): a RichText title or caption keeps its own style, and justify pads inside the text's run, as Rich does (rich-table-qj6i) (#335)\n\n* fix(table): a RichText title or caption keeps its own style, and justify pads inside the text's run, as Rich does (rich-table-qj6i)\n\n* fix(text): a justify pad joins the run beside it only when no span covers that run, as Rich does (rich-table-qj6i)\n\nReview: the join was decided by style equality, which merged a pad into a\nspan whose style equals the base. _buildSegments now reports which pieces a\nspan covers, and padded joins on that.\n\n* fix(text): a zero-width segment at a justified edge keeps its own style (rich-table-qj6i)"
-        }
-      ]
-    },
-    {
-      "version": "pr-330",
-      "ref": "refs/pull/330/merge",
-      "sha": "717d23bd2c217f459edad1dd919c3b51019f13f8",
-      "timestamp": "2026-10-03T15:32:17.648Z",
-      "commits": [
-        {
-          "sha": "717d23bd2c217f459edad1dd919c3b51019f13f8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T15:31:01Z",
-          "message": "Merge 45b5de2f64e5d81c85b573f3dc0f7f67e15f61aa into ca201caaeb0c815b1f3743f0061848a42d377030\n"
-        },
-        {
-          "sha": "45b5de2f64e5d81c85b573f3dc0f7f67e15f61aa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T09:30:57-06:00",
-          "message": "effects-feel: breaths come in spells and rest after a sigh, wind gathers and slackens, halos never add (rich-effects-fxiy.b6i)\n\nBreath depth follows slow noise over the breaths, and the breath after a\nsigh is quieter (x0.8) and late. Drift's advance surges between 0.33x and\n1.15x STRIDE on noise over two periods. Overlapping firefly halos take\nthe brighter, as shimmer's passes do.\n\nWorst 1 fps step over an hour: pulse 0.0395 (unchanged), drift\n0.0286 -> 0.0256, sparkle 0.0324 -> 0.0236. A loose answering wave\nbetween fireflies was tried and dropped: it bunched every turn's flashes\ninto one burst with long dark gaps.\n"
-        },
-        {
-          "sha": "34a16e80ea1665e2f47c4de0e690e3cba4a27426",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T09:18:40-06:00",
-          "message": "effects-feel: a sigh catches once on the way in and draws in again (rich-effects-fxiy.b6i)\n\nA swell is now a list of knots joined by raised cosines; breath and\nfirefly flash keep their shapes, and the sigh gains its double inhale.\nEach part of the sigh's inhale climbs less steeply than a breath, so the\n1 fps worst step over an hour stays 0.0395. REACH 0.3 -> 0.27 keeps a\nwhole-element rest between breaths now a sigh lasts 0.70 of its turn.\n"
         }
       ]
     }
