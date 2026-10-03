@@ -1774,6 +1774,29 @@ describe("Table sizes and pads cells as Rich does", () => {
     ]);
   });
 
+  it("shares out a ratio column with a width, the width its floor, as Rich's flex_minimum reads it", () => {
+    const t = new Table({ expand: true });
+    t.addColumn("A", { width: 12, ratio: 1 });
+    t.addColumn("B", { ratio: 1 });
+    t.addRow("a", "b");
+    expect(t.columns[0]!.flexible).toBe(true);
+    // Python Rich 15.0.0, Console(width=60).
+    expect(lines(t, 60)).toEqual([
+      "┏" + "━".repeat(29) + "┳" + "━".repeat(28) + "┓",
+      "┃ A" + " ".repeat(27) + "┃ B" + " ".repeat(26) + "┃",
+      "┡" + "━".repeat(29) + "╇" + "━".repeat(28) + "┩",
+      "│ a" + " ".repeat(27) + "│ b" + " ".repeat(26) + "│",
+      "└" + "─".repeat(29) + "┴" + "─".repeat(28) + "┘",
+    ]);
+    // Rich 15.0.0 at width 40, ratio 1 : 3: the share of 10 falls short of the
+    // padded floor of 14, so A is drawn 12 wide.
+    const floored = new Table({ expand: true });
+    floored.addColumn("A", { width: 12, ratio: 1 });
+    floored.addColumn("B", { ratio: 3 });
+    floored.addRow("a", "b");
+    expect(lines(floored, 40)[1]).toBe("┃ A" + " ".repeat(12) + "┃ B" + " ".repeat(21) + "┃");
+  });
+
   it("holds a ratio column to its minWidth in the split, where Rich reads no minWidth there", () => {
     // Rich's flexible minimum is `column.width or 1` and draws this `a` five
     // cells wide: `ratio_distribute(20, [1, 3], [1, 1])`. Here it is

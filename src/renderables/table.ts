@@ -32,9 +32,9 @@ import { Measurement } from "../core/measure.js";
  * A declared `width` is a reservation rather than a bid — it is paid before
  * anyone competes, because a column told to be four cells wide is not asking
  * for a proportional share of four. A plain column reserves nothing and both
- * wants and weighs its natural content width. A ratio column wants only its
- * seat and takes its `ratio` of what the bounded columns leave: a pass of its
- * own, because a ratio is a proportion and a `weight` is a count of cells, and
+ * wants and weighs its natural content width. A ratio column wants its floor —
+ * its `width`, else its `minWidth`, else one cell — and takes its `ratio` of
+ * what the bounded columns leave: a pass of its own, because a ratio is a proportion and a `weight` is a count of cells, and
  * weighing one against the other let `ratio: 100` truncate a neighbour the
  * table had room for. A column with no cell to measure wants one cell and
  * `fill`s up to its cap before any share is taken. `stretch` is false unless
@@ -326,18 +326,21 @@ function layoutTable(
   // is split is every cell the bounded columns leave, the cells the ratio
   // columns already hold and their padding included, because Rich's widths
   // are padded widths; each is held to at least its padding and its floor.
-  // The floor reads `minWidth`, where the reference's `column.width or 1`
-  // reads none and draws a `min_width=12` ratio column five cells wide.
+  // The floor is the reference's `column.width or 1`, reading `minWidth`
+  // where there is no `width`, where the reference reads none and draws a
+  // `min_width=12` ratio column five cells wide.
   // A ratio column is paid the rest of its part out of the budget, in column
   // order, so a part the minimums push past what is left is cut there rather
   // than drawn past the width.
   const afterFill = holding(wanted, filled);
   const flexible = seatedDemands.flatMap((demand, index) => (demand.ratio > 0 ? [index] : []));
   const padded = (index: number, content: number): number => padLeft[index]! + content + padRight[index]!;
-  // `UNBOUNDED` holds an unbounded offer, as it does for the stretch below.
-  let unshared = Math.min(budget - spent(wanted) - spent(filled), UNBOUNDED);
+  // `UNBOUNDED` holds an unbounded offer, as it does for the stretch below;
+  // it caps the whole split, so the total stays an integer a double holds.
+  const pool = budget - spent(wanted) - spent(filled);
+  let unshared = Math.min(pool, UNBOUNDED);
   const parts = ratioDistribute(
-    unshared + flexible.reduce((sum, index) => sum + padded(index, afterFill[index]!), 0),
+    Math.min(pool + flexible.reduce((sum, index) => sum + padded(index, afterFill[index]!), 0), UNBOUNDED),
     flexible.map((index) => seatedDemands[index]!.ratio),
     flexible.map((index) => padded(index, seatedDemands[index]!.want)),
   );
@@ -361,7 +364,7 @@ function layoutTable(
     // An unbounded offer is held to `UNBOUNDED`, this model's own infinity, as
     // `demandCells` holds a want: `Infinity` is not an integer to split.
     Math.min(budget - spent(wanted) - spent(filled) - spent(shared), UNBOUNDED),
-    stretchers.map((index) => padLeft[index]! + held[index]! + padRight[index]!),
+    stretchers.map((index) => padded(index, held[index]!)),
   );
   // A table that does not fit gives back each column's `floor`: Rich
   // re-measures a collapsed table's columns at the widths it gave them, and a
@@ -378,7 +381,7 @@ function layoutTable(
   stretchers.forEach((index, slot) => {
     columns[index]! += stretches[slot]!;
   });
-  const cellWidths = columns.map((width, index) => padLeft[index]! + width + padRight[index]!);
+  const cellWidths = columns.map((width, index) => padded(index, width));
 
   return {
     edge,
@@ -931,24 +934,28 @@ export class Table implements Renderable, Measurable {
     index: number,
     options: RenderOptions,
   ): Omit<ColumnDemand, "pad" | "floor"> {
-    if (col.width !== undefined) {
-      // [LAW:single-enforcer] floored where it is parsed, the same rule
-      // `normalizePadding` applies to a negative padding side.
-      const declared = demandCells(col.width);
-      return { reserved: declared, minimum: declared, want: declared, weight: 0, fill: 0, ratio: 0, stretch: false };
-    }
     // A flexible column takes its share of whatever the bounded columns
     // leave; every other column asks for its natural width, whether or not a
     // neighbour is flexible. The split is the reference's —
     // `fixed_widths = [0 if column.flexible else _range.maximum ...]` — with
     // one divergence: Rich splits by ratio only when the table expands, and
     // here a ratio is honoured either way. Its bounded part is its floor —
-    // the reference's `column.min_width or 1` — bid for in cells like any
-    // content column, so a squeezed table still pays a declared `minWidth`.
+    // the reference's `column.width or 1`, reading `minWidth` where there is
+    // no `width` — bid for in cells like any content column, so a squeezed
+    // table still pays it. A `width` beside a `ratio` is that floor, not a
+    // reservation, as the reference's `flex_minimum` reads it.
+    // [LAW:one-source-of-truth] `columnShare` decides first, so a column that
+    // `Column.flexible` calls elastic is one the division shares out.
     const share = columnShare(col);
     if (share > 0) {
-      const floor = Math.max(1, demandCells(col.minWidth ?? 0));
+      const floor = Math.max(1, demandCells(col.width ?? col.minWidth ?? 0));
       return { reserved: 0, minimum: floor, want: floor, weight: floor, fill: 0, ratio: share, stretch: false };
+    }
+    if (col.width !== undefined) {
+      // [LAW:single-enforcer] floored where it is parsed, the same rule
+      // `normalizePadding` applies to a negative padding side.
+      const declared = demandCells(col.width);
+      return { reserved: declared, minimum: declared, want: declared, weight: 0, fill: 0, ratio: 0, stretch: false };
     }
     const range = this._cellRange(col, index, options);
     const natural = demandCells(this._bounded(col, range?.maximum ?? 1));

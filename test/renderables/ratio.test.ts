@@ -33,6 +33,13 @@ describe("ratioDistribute", () => {
     expect(ratioDistribute(20, [1, 3], [12, 1])).toEqual([12, 8]);
     expect(ratioDistribute(10, [9, 1], [1, 5])).toEqual([9, 5]);
   });
+
+  it("gives a part whose minimum is 0 no share, as Rich zeroes its ratio", () => {
+    // Python Rich 15.0.0: ratio_distribute(10, [1, 1], [0, 1]) == [0, 10],
+    // ratio_distribute(10, [2, 1], [3, 0]) == [10, 0].
+    expect(ratioDistribute(10, [1, 1], [0, 1])).toEqual([0, 10]);
+    expect(ratioDistribute(10, [2, 1], [3, 0])).toEqual([10, 0]);
+  });
 });
 
 const edge = ({ size, ratio = 1, minimumSize = 1 }: { size?: number; ratio?: number; minimumSize?: number } = {}): Edge =>

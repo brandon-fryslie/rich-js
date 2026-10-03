@@ -51,7 +51,8 @@ import { OSC8_CLOSE, osc8Open } from "./osc8.js";
 
 // [LAW:one-source-of-truth] Handed to the render unchanged, so their contract is
 // `RenderOptions`' and is not restated here.
-export interface RenderToStringOptions extends Pick<RenderOptions, "asciiOnly" | "theme" | "onStyleError"> {
+export interface RenderToStringOptions
+  extends Pick<RenderOptions, "asciiOnly" | "theme" | "onStyleError" | "highlight" | "highlighter"> {
   /** Cell width to render into. Default 80. */
   width?: number;
   /**
@@ -139,6 +140,8 @@ export function renderToString(
     asciiOnly: options?.asciiOnly ?? false,
     theme: options?.theme,
     onStyleError: options?.onStyleError,
+    highlight: options?.highlight,
+    highlighter: options?.highlighter,
     // [LAW:one-source-of-truth] The depth the segments below are encoded at,
     // so a renderable measures what this very call will draw.
     colorSystem: destination.colorSystem,

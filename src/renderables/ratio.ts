@@ -20,25 +20,28 @@ import type { CellCol } from "../core/cells.js";
 /**
  * Rich's `ratio_distribute`: each part the ceiling of its share of what the
  * parts before it left, and never below its minimum, so the rounding lands on
- * the leftmost parts. The parts sum to the total whenever the minimums leave
- * room; a minimum that does not fit is paid anyway, as the reference pays it,
- * and the parts then overrun the total. The ratios are weights in one exact
- * proportion (`exactWeights`), so a fractional one divides as it reads, where
- * the reference takes only whole ones.
+ * the leftmost parts. Given `minimums`, a part whose minimum is 0 takes no
+ * share, as the reference zeroes its ratio first. The parts sum to the total
+ * whenever the minimums leave room; a minimum that does not fit is paid anyway,
+ * as the reference pays it, and the parts then overrun the total. The ratios
+ * are weights in one exact proportion (`exactWeights`), so a fractional one
+ * divides as it reads, where the reference takes only whole ones.
  */
 export function ratioDistribute(
   total: number,
   ratios: readonly number[],
-  minimums: readonly number[] = ratios.map(() => 0),
+  minimums?: readonly number[],
 ): number[] {
-  const weights = exactWeights(ratios);
+  const weights = exactWeights(
+    minimums === undefined ? ratios : ratios.map((ratio, index) => (minimums[index]! > 0 ? ratio : 0)),
+  );
   let totalRatio = weights.reduce((sum, ratio) => sum + ratio, 0n);
   let remaining = BigInt(total);
   return weights.map((ratio, index) => {
     // A zero ratio sum is the reference's `else` arm: whatever is left goes to
     // the part at hand, so the total is still handed out in full.
     const share = totalRatio > 0n ? ceilDiv(ratio * remaining, totalRatio) : remaining;
-    const minimum = BigInt(minimums[index]!);
+    const minimum = BigInt(minimums?.[index] ?? 0);
     const part = share > minimum ? share : minimum;
     totalRatio -= ratio;
     remaining -= part;

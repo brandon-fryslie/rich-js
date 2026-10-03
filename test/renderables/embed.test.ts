@@ -242,6 +242,14 @@ describe("a console's markup and highlight settings, in content embedded in a re
     });
   }
 
+  it("highlights a highlight column under renderToString with the highlighter it is handed, and plain strings stay plain", () => {
+    const t = new Table({ highlight: true, showHeader: false });
+    t.addColumn();
+    t.addRow("Hello");
+    expect(renderToString(t, { highlighter: new Underliner() })).toContain(UNDERLINE);
+    expect(renderToString(new Columns(["Hello"]), { highlighter: new Underliner(), highlight: false })).not.toContain(UNDERLINE);
+  });
+
   it("draws a highlight table's highlight: false column, title and caption plain", () => {
     const t = new Table({ highlight: true, title: "Hello", caption: "Hello" });
     t.addColumn("Hello", { highlight: false });

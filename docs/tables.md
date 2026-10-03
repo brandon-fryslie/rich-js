@@ -87,7 +87,7 @@ The padding above and below a cell is blank lines in that cell, so it stands bet
 | `borderStyle` | Style for border characters |
 | `titleStyle`, `captionStyle` | Styles for title/caption text |
 | `titleJustify`, `captionJustify` | Alignment of title/caption |
-| `highlight` | Draw the string cells of every column `addColumn` makes with the console's highlighter, unless the column says otherwise (default: `false`) |
+| `highlight` | Draw the string cells of every column `addColumn` makes with the console's highlighter — under `renderToString`, the `highlighter` it is handed — unless the column says otherwise (default: `false`) |
 
 A cell's style covers the whole cell, its padding on every side included, so a
 background fills the column rather than sitting behind the text; on a box whose
@@ -158,16 +158,18 @@ two ladders spends cells on padding while its columns are still truncated. Wide
 columns are cropped by their own `overflow` mode, so a column squeezed to a
 single cell shows only what that mode can fit in one cell.
 
-A column with an explicit `width` is a reservation rather than a bid: it is paid
+A column with an explicit `width` and no `ratio` is a reservation rather than a bid: it is paid
 ahead of the elastic share, so its neighbours give up their width first. It comes
 out of what the frame, the seats and the padding leave, so a width too small to
 cover every reservation shrinks reserved columns too, in column order. Columns
 with a `ratio` sit at the other end — they take whatever the bounded columns
 leave, split by Rich's rule: each ratio column's share, padding included,
-rounded up, so the spare cells go to the leftmost. Two differences: a table that
-does not expand splits by ratio too, where Rich sizes those columns to their
-content, and a ratio column is never narrower than its `minWidth`, which Rich
-ignores for a ratio column in an expanding table.
+rounded up, so the spare cells go to the leftmost, and never below the column's
+floor: its `width`, else its `minWidth`, else one cell. A table too narrow for
+every floor still squeezes ratio columns below them. Two differences: a table
+that does not expand splits by ratio too, where Rich sizes those columns to
+their content, and a ratio column with no `width` floors at its `minWidth`,
+which Rich ignores for a ratio column in an expanding table.
 
 ## Column options
 
@@ -184,7 +186,7 @@ Configure columns individually:
 | `footer` | Footer cell content — drawn only when the table sets `showFooter` |
 | `headerStyle`, `footerStyle` | Per-column header/footer style, layered over the table's |
 | `style` | Per-column cell style, under the row's `rowStyles` entry |
-| `highlight` | Draw the column's string cells, header and footer included, with the console's highlighter, whatever the console's own `highlight` says (default: the table's `highlight`; a `Column` built alone: `false`) |
+| `highlight` | Draw the column's string cells, header and footer included, with the console's highlighter, whatever the console's own `highlight` says; under `renderToString`, with the `highlighter` it is handed (default: the table's `highlight`; a `Column` built alone: `false`) |
 
 ## Adding columns
 
