@@ -301,8 +301,8 @@ export function cellColToCodeUnitOffset(content: string, cellCol: CellCol): Code
 /**
  * The offset just past the grapheme cluster at `cu`: one step of a cursor, a
  * Delete, a transposition, so `👍🏽` or `👨‍👩‍👧` moves and goes as the one
- * glyph `cellLen` measures, never a code point at a time. `s.length` at or
- * past the end.
+ * glyph `cellLen` measures, never a code point at a time. `cu` is a cluster
+ * boundary in `s` (see `graphemeBoundary`); `s.length` gives `s.length`.
  */
 export function nextGrapheme(s: string, cu: CodePoint): CodePoint {
   const [cluster = ""] = clustersFrom(s, cu);
@@ -313,4 +313,16 @@ export function nextGrapheme(s: string, cu: CodePoint): CodePoint {
 export function prevGrapheme(s: string, cu: CodePoint): CodePoint {
   if (cu <= 0) return asCodePoint(0);
   return asCodePoint(segmentsOf(s).containing(cu - 1)!.index);
+}
+
+/**
+ * Where an offset into `s` comes to rest as a cursor: itself when it is a
+ * cluster boundary, else the end of the cluster it falls inside, clamped to
+ * `0…s.length`. The one parse from any number to the boundaries
+ * `nextGrapheme` and `prevGrapheme` step between.
+ */
+export function graphemeBoundary(s: string, cu: number): CodePoint {
+  const at = Math.min(Math.max(cu, 0), s.length);
+  const cluster = segmentsOf(s).containing(at);
+  return asCodePoint(cluster === undefined || cluster.index === at ? at : cluster.index + cluster.segment.length);
 }

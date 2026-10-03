@@ -1195,6 +1195,59 @@ describe("TextInput", () => {
       });
     }
 
+    it("a cursor set from outside comes to rest on a glyph boundary inside the value", () => {
+      const t = new TextInput({ value: "hello" });
+      t.value = "";
+      expect(t.cursorPosition).toBe(0);
+      t.handleKey(leftEvent());
+      t.handleKey(backspaceEvent());
+      expect(t.cursorPosition).toBe(0);
+      t.value = "a👍🏽";
+      t.cursorPosition = asCodePoint(3);
+      expect(t.cursorPosition).toBe(5);
+      t.cursorPosition = asCodePoint(99);
+      expect(t.cursorPosition).toBe(5);
+    });
+
+    it("typing a base before a modifier leaves the cursor after the glyph they form", () => {
+      const t = new TextInput({ value: "🏽" });
+      t.handleKey(homeEvent());
+      t.handleKey(printable("a"));
+      expect(t.cursorPosition).toBe(t.value.length);
+      t.handleKey(backspaceEvent());
+      expect(t.value).toBe("");
+    });
+
+    it("maxLength cuts between glyphs, never inside one", () => {
+      const t = new TextInput({ value: "abcd", maxLength: 5 });
+      t.handleKey(printable("😀"));
+      expect(t.value).toBe("abcd");
+      t.value = "abc";
+      t.cursorPosition = asCodePoint(3);
+      t.handleKey(printable("😀"));
+      expect(t.value).toBe("abc😀");
+    });
+
+    it("a password mask is one cell per glyph, and a click lands between glyphs", () => {
+      const t = new TextInput({ value: "a👍🏽b", password: true, cursorStyle: CURSOR });
+      t.focus();
+      const drawn = [...t.render(RENDER)].map((seg) => seg.text).join("");
+      expect([...drawn].filter((c) => c === "•")).toHaveLength(3);
+      t.handleMouse(mouseDownAt(3));
+      expect(t.value.slice(t.cursorPosition)).toBe("b");
+      t.handleKey(backspaceEvent());
+      expect(t.value).toBe("ab");
+    });
+
+    it("Ctrl+T on a single glyph changes nothing and emits nothing", () => {
+      const t = new TextInput({ value: "👍🏽" });
+      const changes: unknown[] = [];
+      t.onChange((w) => changes.push(w));
+      t.transposeChars();
+      expect(t.value).toBe("👍🏽");
+      expect(changes).toEqual([]);
+    });
+
     it("transposes whole glyphs", () => {
       const t = new TextInput({ value: "a👍🏽" });
       t.cursorPosition = asCodePoint(t.value.length);

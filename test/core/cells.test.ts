@@ -12,6 +12,7 @@ import {
   asCodePoint,
   splitAtCells,
   cellColToCodeUnitOffset,
+  graphemeBoundary,
 } from "../../src/core/cells.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts (widths, invariants), not implementation details (caching, slicing)
@@ -428,5 +429,14 @@ describe("every width walk cuts between grapheme clusters", () => {
       const first = [...cuts].find(([, c]) => c >= cap)?.[0] ?? text.length;
       expect(at).toBe(first);
     }
+  });
+});
+
+describe("graphemeBoundary", () => {
+  it("keeps a boundary, moves an offset inside a glyph to its end, and clamps to the string", () => {
+    const s = "a👍🏽b";
+    expect([0, 1, 2, 3, 4, 5, 6].map((cu) => graphemeBoundary(s, cu))).toEqual([0, 1, 5, 5, 5, 5, 6]);
+    expect(graphemeBoundary(s, -3)).toBe(0);
+    expect(graphemeBoundary(s, 40)).toBe(6);
   });
 });
