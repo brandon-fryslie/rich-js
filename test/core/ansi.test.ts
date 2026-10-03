@@ -5,7 +5,7 @@ import { Console } from "../../src/core/console.js";
 import { exportLines } from "../../src/core/export-lines.js";
 import { renderToString } from "../../src/core/render.js";
 import { Style } from "../../src/core/style.js";
-import { RichText } from "../../src/core/text.js";
+import { RichText, resolveStyle } from "../../src/core/text.js";
 import type { Segment } from "../../src/core/segment.js";
 import { Table } from "../../src/renderables/table.js";
 import { Palette } from "../../src/themes/palette.js";
@@ -18,7 +18,7 @@ function styleAt(text: RichText, index: number): Style {
   return Style.combine(
     text.spans
       .filter((span) => span.start <= index && index < span.end)
-      .map((span) => (typeof span.style === "string" ? Style.parse(span.style) : span.style)),
+      .map((span) => resolveStyle({ maxWidth: 80 }, span.style)),
   );
 }
 

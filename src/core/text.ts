@@ -68,35 +68,69 @@ function sanitizeStyleLink(style: Style): Style {
 }
 
 /**
+ * A `Style` added over a style name or definition the render has yet to
+ * resolve. The name cannot be resolved until a render's theme says what it
+ * stands for, so the addition waits for that render: it draws as `under`
+ * resolved, with `over` added on top.
+ */
+export interface LayeredStyle {
+  readonly under: string;
+  readonly over: Style;
+}
+
+/** A style as a RichText stores it, base or span: resolved when it is drawn. */
+export type TextStyle = string | Style | LayeredStyle;
+
+/**
+ * `over` added to `base`, the outer style winning as `Style.add` has it. A
+ * `Style` base takes the addition now; a string base keeps it as a
+ * `LayeredStyle` for the render that resolves the string.
+ */
+export function layerStyle(base: TextStyle, over: Style): TextStyle {
+  if (base instanceof Style) return base.add(over);
+  if (typeof base === "string") return { under: base, over };
+  return { under: base.under, over: base.over.add(over) };
+}
+
+/**
  * A style as a RichText keeps it: as given. A name stays a name because what
  * it stands for depends on the theme of the render that draws it, which no
  * RichText knows when the name arrives — the reference stores span styles the
- * same way. A string holds no link until it is parsed, so only a `Style` has
- * one to sanitize here.
+ * same way. A string holds no link until it is parsed, so only a `Style` —
+ * alone or laid over a name — has one to sanitize here.
  *
  * [LAW:single-enforcer] Nor does a RichText keep an anchor (`./anchor.ts`). It
  * lays its text out anew, so a stamp naming where a cell sat in the output it
  * came from would name the wrong cell once it wraps, slices or overlaps; the
  * owner that renders the RichText is the one that stamps its cells.
  */
-function admitStyle(style: string | Style): string | Style {
-  if (!(style instanceof Style)) return style;
+function admitStyle(style: TextStyle): TextStyle {
+  if (typeof style === "string") return style;
+  if (style instanceof Style) return admitDefined(style);
+  return { under: style.under, over: admitDefined(style.over) };
+}
+
+function admitDefined(style: Style): Style {
   return sanitizeStyleLink(style.anchor ? style.withAnchor(undefined) : style);
 }
 
 /** A style that adds nothing: the empty definition, or a null `Style`. */
-function isEmptyStyle(style: string | Style): boolean {
+function isEmptyStyle(style: TextStyle): boolean {
   return style instanceof Style ? style.isNull : style === "";
 }
 
 /**
- * The style a stored `string | Style` stands for in this render.
+ * The style a stored `TextStyle` stands for in this render.
  *
  * A parsed string can carry a link, so the result is sanitized on the way out
  * as well.
  */
-export function resolveStyle(options: RenderOptions, style: string | Style): Style {
-  return sanitizeStyleLink(style instanceof Style ? style : resolveDefinition(options, style));
+export function resolveStyle(options: RenderOptions, style: TextStyle): Style {
+  const resolved =
+    style instanceof Style ? style
+    : typeof style === "string" ? resolveDefinition(options, style)
+    : resolveDefinition(options, style.under).add(style.over);
+  return sanitizeStyleLink(resolved);
 }
 
 /**
@@ -122,9 +156,9 @@ function resolveDefinition(options: RenderOptions, style: string): Style {
 export class Span {
   readonly start: number;
   readonly end: number;
-  readonly style: string | Style;
+  readonly style: TextStyle;
 
-  constructor(start: number, end: number, style: string | Style) {
+  constructor(start: number, end: number, style: TextStyle) {
     this.start = start;
     this.end = end;
     this.style = style;
@@ -163,7 +197,7 @@ export class Span {
 // --- RichText ---
 
 export interface RichTextOptions {
-  style?: string | Style;
+  style?: TextStyle;
   justify?: "left" | "center" | "right" | "full";
   overflow?: OverflowMethod;
   end?: string;
@@ -174,7 +208,7 @@ export interface RichTextOptions {
 export class RichText implements Renderable, Measurable {
   private _text: string;
   private _spans: Span[];
-  private _style: string | Style;
+  private _style: TextStyle;
   private _justify: "left" | "center" | "right" | "full" | undefined;
   private _overflow: OverflowMethod | undefined;
   private _end: string;
@@ -231,11 +265,11 @@ export class RichText implements Renderable, Measurable {
   }
 
   /** The base style every span layers over: a `Style`, or a name resolved at render. */
-  get style(): string | Style {
+  get style(): TextStyle {
     return this._style;
   }
 
-  set style(value: string | Style) {
+  set style(value: TextStyle) {
     this._style = admitStyle(value);
   }
 
@@ -387,13 +421,13 @@ export class RichText implements Renderable, Measurable {
    * adds nothing, as the reference's `if style:` has it, and every other style
    * is admitted as given.
    */
-  private _addSpan(start: number, end: number, style: string | Style): void {
+  private _addSpan(start: number, end: number, style: TextStyle): void {
     const admitted = admitStyle(style);
     if (isEmptyStyle(admitted)) return;
     this._spans.push(new Span(start, end, admitted));
   }
 
-  stylize(style: string | Style, start?: number, end?: number): this {
+  stylize(style: TextStyle, start?: number, end?: number): this {
     const len = this._text.length;
     const s = start !== undefined ? (start < 0 ? len + start : start) : 0;
     const e = end !== undefined ? (end < 0 ? len + end : end) : len;

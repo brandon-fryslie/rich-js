@@ -116,6 +116,36 @@ describe("template-bindings — bootstrap smoke", () => {
     expect(hi?.style?.color?.name).toBe("red");
   });
 
+  it("renderTemplate draws a piped fragment whose whole style is a name as the name, with the pipe over it", () => {
+    const theme = new Theme({ "my.heading": "bold red on blue" });
+    const title = new RichText("hi", { style: "my.heading" });
+    const segs = renderTemplate(createRichTextEngine(), `{{ .title | underline | fg "green" }}`, { title }, { theme, onStyleError: strict });
+    const hi = segs.find((s) => s.text === "hi");
+    expect(hi?.style?.bold).toBe(true);
+    expect(hi?.style?.underline).toBe(true);
+    expect(hi?.style?.bgcolor?.name).toBe("blue");
+    // The outer style wins, as `Style.add` has it — the last pipe outermost.
+    expect(hi?.style?.color?.name).toBe("green");
+  });
+
+  it("renderTemplate draws a fragment's name the same whether its base style or a span carries it", () => {
+    const theme = new Theme({ "my.heading": "bold red" });
+    const render = (title: RichText) =>
+      renderTemplate(createRichTextEngine(), `{{ .title | italic }}`, { title }, { theme, onStyleError: strict })
+        .find((s) => s.text === "hi")?.style;
+    expect(render(new RichText("hi", { style: "my.heading" }))).toEqual(render(renderMarkup("[my.heading]hi[/]")));
+  });
+
+  it("renderTemplate reports a piped fragment's undefined name to onStyleError at render and still draws the pipe", () => {
+    const heard: string[] = [];
+    const title = new RichText("hi", { style: "my.missing" });
+    const segs = renderTemplate(createRichTextEngine(), `{{ .title | bold }}`, { title }, {
+      onStyleError: (_error, style) => void heard.push(style),
+    });
+    expect(heard).toEqual(["my.missing"]);
+    expect(segs.find((s) => s.text === "hi")?.style?.bold).toBe(true);
+  });
+
   it("renderTemplate reports each style it drops to onStyleError and still renders the text", () => {
     const heard: string[] = [];
     const segs = renderTemplate(createRichTextEngine(), `{{ .title }}`, { title: renderMarkup("[bold rd]hi[/]") }, {
