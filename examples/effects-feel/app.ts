@@ -19,10 +19,11 @@
 import {
   CATPPUCCIN_LATTE,
   CATPPUCCIN_MOCHA,
+  ColorDepth,
   ColorRgba,
   ColorSpec,
-  blendRgb,
   Console,
+  ensureContrast,
   Effected,
   Group,
   Padding,
@@ -43,7 +44,7 @@ import {
 } from "../../src/index.js";
 import { graphemes } from "../../src/core/cells.js";
 import { App, hostEnvironment, type TerminalHost } from "../../src/host/index.js";
-import { catches, dissolveOut, drift, fadeIn, onColors, pulse, settledAt, shimmer, sparkle, type Side } from "./curves.js";
+import { dissolveOut, drift, fadeIn, onColors, pulse, settledAt, shares, shimmer, sparkle, type Loop, type Pair } from "./curves.js";
 import type { EffectName, NamedCurve, Settings } from "./settings.js";
 
 /** The bundled theme each ground is drawn in: one family, so only the ground differs. */
@@ -64,7 +65,7 @@ const TEXT = "Thinking about how a band of light should cross these words at one
 const STATUS_CONTRAST = 7;
 
 /** How far a shimmer's light reaches either side of its centre, in columns. */
-export const SHIMMER_WIDTH = 24;
+export const SHIMMER_WIDTH = 32;
 
 /** Columns a subject is offered when its own width is read: wider than any subject here. */
 const DRAW_BUDGET = 1024;
@@ -102,11 +103,10 @@ export interface DrawnSubject extends Subject {
   readonly options: RenderOptions;
   /** Its width in columns, which a sweep crosses once a period. */
   readonly span: number;
-  /**
-   * The colours it sets in the cells it draws text in, by hex, as the screen
-   * shows them, each with which side of its cells it is.
-   */
-  readonly colors: ReadonlyMap<string, Side>;
+  /** The colours it sets in the cells it draws text in, by hex, as the screen shows them. */
+  readonly colors: ReadonlySet<string>;
+  /** Every distinct ink and ground of a cell it draws text in, as the screen shows them. */
+  readonly pairs: readonly Pair[];
   /** `row:col` of every cell it draws text in. */
   readonly text: ReadonlySet<string>;
 }
@@ -144,10 +144,15 @@ function cellsOf(segments: Iterable<Segment>): Cell[] {
 
 const DEFAULT = ColorSpec.default();
 
-/** A cell's ink and ground as the wire draws them at `options`' depth, the theme resolving the rest. */
-function shown(cell: Cell, options: RenderOptions, theme: TerminalTheme): { fg: ColorRgba; bg: ColorRgba } {
+/**
+ * A cell's ink and ground as the wire draws them at `options`' depth, the
+ * theme resolving the rest, and which of the two the cell itself sets.
+ */
+function shown(cell: Cell, options: RenderOptions, theme: TerminalTheme): { fg: ColorRgba; bg: ColorRgba; set: ColorRgba[] } {
   const drawn = cell.style.drawnColors(options.colorSystem ?? undefined);
-  return { fg: (drawn.color ?? DEFAULT).getTruecolor(theme, true), bg: (drawn.bgcolor ?? DEFAULT).getTruecolor(theme, false) };
+  const fg = (drawn.color ?? DEFAULT).getTruecolor(theme, true);
+  const bg = (drawn.bgcolor ?? DEFAULT).getTruecolor(theme, false);
+  return { fg, bg, set: [...(drawn.color === undefined ? [] : [fg]), ...(drawn.bgcolor === undefined ? [] : [bg])] };
 }
 
 /** The glyphs a joiner draws between cells: colour seams, not text. */
@@ -165,26 +170,13 @@ export function drawnSubject(subject: Subject, drawnWith: RenderOptions, theme: 
       .filter((cell) => cell.glyph.trim() !== "" && !SEAM_GLYPHS.has(cell.glyph))
       .map((cell) => cell.at),
   );
-  // Each colour a cell it draws text in sets, with which side of that cell it
-  // is. A colour the cell leaves to the terminal is no colour of the
-  // subject's.
-  const sides = cellsOf(subject.renderable.render(options))
+  // A colour the cell leaves to the terminal is no colour of the subject's.
+  const drawn = cellsOf(subject.renderable.render(options))
     .filter((cell) => text.has(cell.at))
-    .flatMap((cell): [string, Side][] => {
-      const drawn = cell.style.drawnColors(options.colorSystem ?? undefined);
-      const { fg, bg } = shown(cell, options, theme);
-      return [
-        ...(drawn.color === undefined ? [] : [[fg.hex, catches(fg, bg)] as [string, Side]]),
-        ...(drawn.bgcolor === undefined ? [] : [[bg.hex, catches(bg, fg)] as [string, Side]]),
-      ];
-    });
-  // A colour shown lighter than its partner in one cell and darker in another
-  // — at 16 colours the theme's white is both a pale fill and lettering on a
-  // paler one — is the darker wherever it is darker, so it takes the darker's
-  // share everywhere and closes on neither partner.
-  const darker = new Set(sides.filter(([, side]) => side === "darker").map(([hex]) => hex));
-  const colors = new Map(sides.map(([hex, side]): [string, Side] => [hex, darker.has(hex) ? "darker" : side]));
-  return { ...subject, options, span, colors, text };
+    .map((cell) => shown(cell, options, theme));
+  const colors = new Set(drawn.flatMap(({ set }) => set.map((color) => color.hex)));
+  const pairs = [...new Map(drawn.map(({ fg, bg }): [string, Pair] => [`${fg.hex}/${bg.hex}`, [fg, bg]])).values()];
+  return { ...subject, options, span, colors, pairs, text };
 }
 
 /** A colour of the theme's palette by its name; a name the palette lacks is a bug here. */
@@ -211,20 +203,13 @@ export function stripSubject(theme: TerminalTheme): Subject {
 }
 
 /**
- * A status line, drawn dim as a "thinking" line is — the theme's ink eased
- * toward its muted ink as far as it can go and still read at `STATUS_CONTRAST`
- * — which on a dark ground leaves the light room to lift it.
+ * A status line, drawn dim as a "thinking" line is — the theme's muted ink,
+ * lifted only as far as it must to read at `STATUS_CONTRAST` at `depth` —
+ * which on a dark ground leaves the light room to lift it.
  */
-export function textSubject(theme: TerminalTheme): Subject {
-  const muted = paletteRgba(theme, "foreground-muted");
-  const at = (w: number): ColorRgba => blendRgb(theme.foregroundColor, muted, w);
-  // Bisection on how far toward the muted ink: contrast falls as it goes.
-  let [lo, hi] = [0, 1];
-  for (let i = 0; i < 20; i++) {
-    const mid = (lo + hi) / 2;
-    [lo, hi] = contrastRatio(at(mid), theme.backgroundColor) >= STATUS_CONTRAST ? [mid, hi] : [lo, mid];
-  }
-  const style = Style.fromColor(ColorSpec.fromRgba(at(lo)));
+export function textSubject(theme: TerminalTheme, depth: ColorDepth): Subject {
+  const ink = ensureContrast(paletteRgba(theme, "foreground-muted"), theme.backgroundColor, STATUS_CONTRAST, depth, undefined, theme);
+  const style = Style.fromColor(ColorSpec.fromRgba(ink));
   return { name: "text", renderable: new RichText(TEXT, { style, noWrap: true }), z: 11.3 };
 }
 
@@ -259,7 +244,20 @@ function worstContrast(
 }
 
 const LOOPS = ["shimmer", "pulse", "drift", "sparkle"] as const;
-type Loop = (typeof LOOPS)[number];
+type LoopName = (typeof LOOPS)[number];
+
+/**
+ * `loop` on `subject`'s own colours, each at the share of it its cells can
+ * spare. Shares are settled on the colours as the run's depth draws them:
+ * at 256 colours a touched colour lands on the cube, and the contrast it
+ * spends is the cube colour's.
+ */
+export function subjectUnder(subject: DrawnSubject, loop: Loop, theme: TerminalTheme): Effect {
+  const depth = subject.options.colorSystem ?? ColorDepth.TRUECOLOR;
+  const asDrawn = (color: ColorRgba, w: number): ColorRgba =>
+    ColorSpec.fromRgba(loop.touch(color, w)).downgrade(depth).getTruecolor(theme);
+  return onColors(shares(subject.pairs, subject.colors, asDrawn), loop);
+}
 
 export interface DemoHandle {
   /** Resolves once the demo has stopped and handed the terminal back. */
@@ -275,21 +273,25 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
 
   // What the frames are drawn with, asked of the host the app paints on.
   const drawnWith = new Console({ environment: hostEnvironment(host) }).options;
-  const subjects = [stripSubject(theme), textSubject(theme)].map((s) => drawnSubject(s, drawnWith, theme));
+  const depth = drawnWith.colorSystem ?? ColorDepth.TRUECOLOR;
+  const subjects = [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, drawnWith, theme));
   const { curves } = settings;
 
-  const loops: Record<Loop, (subject: DrawnSubject) => Effect> = {
-    shimmer: (s) => onColors(s.colors, shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, LIGHTS.sun, s.z)),
-    pulse: (s) => onColors(s.colors, pulse(curves.pulse, LIGHTS.sun)),
-    drift: (s) => onColors(s.colors, drift(curves.drift, s.span, s.z)),
-    sparkle: (s) => onColors(s.colors, sparkle(curves.sparkle, s.span, LIGHTS.firefly, s.z)),
+  const made: Record<LoopName, (subject: DrawnSubject) => Loop> = {
+    shimmer: (s) => shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, LIGHTS.sun, s.z),
+    pulse: () => pulse(curves.pulse, LIGHTS.sun),
+    drift: (s) => drift(curves.drift, s.span, s.z),
+    sparkle: (s) => sparkle(curves.sparkle, s.span, LIGHTS.firefly, s.z),
   };
+  const loops = Object.fromEntries(
+    LOOPS.map((name) => [name, (s: DrawnSubject) => subjectUnder(s, made[name](s), theme)]),
+  ) as Record<LoopName, (subject: DrawnSubject) => Effect>;
 
   // With no colour drawn there is no contrast to read: every effect is the
   // identity, and every cell is the terminal's own ink on its own ground.
   const ratio = (r: number): string => `${r.toFixed(2)}:1`;
   const rest = ratio(worstContrast(subjects, (s) => s.renderable.render(s.options), [0], theme));
-  const measured = (loop: Loop): string => {
+  const measured = (loop: LoopName): string => {
     const under = (s: DrawnSubject, at: number) =>
       new Effected(s.renderable, loops[loop](s), { t: at, key: seedKey(loop, s), theme }).render(s.options);
     const worst = worstContrast(subjects, under, sampled(curves[loop].seconds), theme);
@@ -297,7 +299,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   };
   const contrast = Object.fromEntries(
     LOOPS.map((loop) => [loop, drawnWith.colorSystem === null ? "no colour drawn" : measured(loop)]),
-  ) as Record<Loop, string>;
+  ) as Record<LoopName, string>;
 
   // [LAW:no-ambient-temporal-coupling] The app owns the frames and hands each
   // its time; a replay starts at the time on that same clock.

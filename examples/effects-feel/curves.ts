@@ -18,11 +18,11 @@
  *   breath or a gust never quite repeats.
  * - Neighbours move together. Variation is spatially coherent — patches,
  *   filaments, fronts — never per-cell static.
- * - Moves are small. The swing is a touch of light, not a colour change.
- * - Light only ever lights. Ink and the fill under it both move toward the
- *   light and never darken, the darker of the two only part way, so a glint
- *   lifts a powerline cell's fill a little and its lettering a lot, and
- *   never washes one into the other.
+ * - Light only ever lights, and never takes the words away. Ink and the
+ *   fill under it both move toward the light and never darken, each by its
+ *   own share: the share a colour can take while every cell it is drawn in
+ *   still reads at its resting contrast or WCAG AA, whichever is lower. A
+ *   cell with contrast to spare glows brightly; one with none barely moves.
  * - Elements are apart. Each sits at its own `z` in the noise, so two
  *   elements under one effect do not move in lockstep.
  *
@@ -39,6 +39,7 @@ import {
   IDENTITY,
   Oklch,
   Phase,
+  contrastRatio,
   type CellColors,
   type ColorRgba,
   type Ease,
@@ -47,42 +48,98 @@ import {
 } from "../../src/index.js";
 import { fbm, noise, smoothstep } from "./noise.js";
 
-/**
- * A move of one colour: the colour, which side of its cell it is, the cell,
- * the time, to the new colour.
- */
-export type ColorMove = (color: ColorRgba, side: Side, cell: EffectCell, t: number) => ColorRgba;
+/** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
+export type Touch = (color: ColorRgba, w: number) => ColorRgba;
 
-/**
- * A one-colour move as an `Effect` on a subject's own colours, by hex,
- * wherever a cell shows them, each as the side of its cell `colors` names.
- * A powerline strip's fill is the ground of its cells and the ink of the
- * seam glyphs between them, so the arrow moves with the cell it points out
- * of; the terminal ground behind its caps is no colour of the strip's, and
- * stays put.
- */
-export function onColors(colors: ReadonlyMap<string, Side>, move: ColorMove): Effect {
-  const moved = (color: ColorRgba, cell: EffectCell, t: number): ColorRgba => {
-    const side = colors.get(color.hex);
-    return side === undefined ? color : move(color, side, cell, t);
-  };
-  return ({ fg, bg }, cell, t) => ({ fg: moved(fg, cell, t), bg: moved(bg, cell, t) });
+/** How strongly a loop acts on a cell at a moment, in [0, 1]. */
+export type Field = (cell: EffectCell, t: number) => number;
+
+/** A looping effect: what it does to a colour, and where and when, how strongly. */
+export interface Loop {
+  readonly touch: Touch;
+  readonly field: Field;
 }
 
-/** Which of a cell's two colours a colour is: the lighter, or the darker. */
-export type Side = "lighter" | "darker";
+/** A cell's ink and ground, as the screen shows them. */
+export type Pair = readonly [ColorRgba, ColorRgba];
+
+/** The contrast no touch takes a cell below, unless it rested below it: WCAG AA for body text. */
+const LEGIBLE = 4.5;
 
 /**
- * How far into a light each side goes, as a share of the move. A darker
- * surface gives back less of the light falling on it than a lighter one, so
- * a glint lifts a dark fill a little and its pale lettering a lot, and the
- * two never close on each other.
+ * The strengths a cell is drawn at: a field is snapped to one of these, and
+ * a share is checked at every one, so every strength drawn was checked. A
+ * 256-colour cube colour changes in jumps between strengths, and no check of
+ * a continuous strength between two of them could see every jump. A step is
+ * a 48th of a swing, well under a just-noticeable difference.
  */
-const SHARE: Record<Side, number> = { lighter: 1, darker: 0.15 };
+const LEVELS = 48;
+const STRENGTHS = Array.from({ length: LEVELS }, (_, i) => (i + 1) / LEVELS);
 
-/** Which side of its cell `color` is, read against the cell's other colour `against`. */
-export function catches(color: ColorRgba, against: ColorRgba): Side {
-  return Oklch.fromRgba(against).l < Oklch.fromRgba(color).l ? "lighter" : "darker";
+/** What 8-bit rounding of an OKLCH round trip can cost a contrast ratio. */
+const ROUNDING = 0.01;
+
+/**
+ * How much of `touch` each of `colors` (hex) can take: the largest share in
+ * [0, 1] at which every pair in `pairs` that shows it, touched at the same
+ * strength, still reads at its resting contrast or `LEGIBLE`, whichever is
+ * lower. A colour in no pair's `colors` is the terminal's, and takes none.
+ *
+ * Colours are settled lightest first, each against every partner: one
+ * already settled at its share, one not yet settled as it is. So the lighter
+ * colour of a cell takes the light first and its darker partner spends
+ * whatever contrast is left — pale lettering lifting off a dark fill gives
+ * the fill room to glow — and a darker colour left as it is always holds,
+ * because its lighter partner was settled against exactly that.
+ */
+export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touch: Touch): Map<string, number> {
+  const rgba = new Map(pairs.flat().map((color): [string, ColorRgba] => [color.hex, color]));
+  const lightness = (hex: string): number => Oklch.fromRgba(rgba.get(hex)!).l;
+  const settled = new Map<string, number>();
+  for (const hex of [...colors].sort((a, b) => lightness(b) - lightness(a))) {
+    const partners = pairs.flatMap(([fg, bg]): [ColorRgba, number][] => {
+      const partner = fg.hex === hex ? bg : bg.hex === hex ? fg : undefined;
+      return partner === undefined ? [] : [[partner, settled.get(partner.hex) ?? 0]];
+    });
+    const color = rgba.get(hex)!;
+    const holds = (share: number): boolean =>
+      partners.every(([partner, theirs]) => {
+        const floor = Math.min(contrastRatio(color, partner), LEGIBLE);
+        return STRENGTHS.every(
+          (w) => contrastRatio(touchedAt(touch, color, share * w), touchedAt(touch, partner, theirs * w)) >= floor - ROUNDING,
+        );
+      });
+    let [lo, hi] = holds(1) ? [1, 1] : [0, 1];
+    for (let i = 0; i < 20 && hi - lo > 1e-3; i++) {
+      const mid = (lo + hi) / 2;
+      [lo, hi] = holds(mid) ? [mid, hi] : [lo, mid];
+    }
+    settled.set(hex, lo);
+  }
+  return settled;
+}
+
+/**
+ * A loop as an `Effect` on a subject's own colours, by hex, wherever a cell
+ * shows them, each touched at its share of the cell's strength. A powerline
+ * strip's fill is the ground of its cells and the ink of the seam glyphs
+ * between them, so the arrow moves with the cell it points out of.
+ */
+export function onColors(share: ReadonlyMap<string, number>, loop: Loop): Effect {
+  return ({ fg, bg }, cell, t) => {
+    const w = Math.round(loop.field(cell, t) * LEVELS) / LEVELS;
+    const moved = (color: ColorRgba): ColorRgba => touchedAt(loop.touch, color, (share.get(color.hex) ?? 0) * w);
+    return { fg: moved(fg), bg: moved(bg) };
+  };
+}
+
+/**
+ * `color` under `touch` at strength `w`, and at strength 0 the colour itself,
+ * exactly: an OKLCH round trip can land a step off, and at 16 colours a step
+ * off is another slot.
+ */
+function touchedAt(touch: Touch, color: ColorRgba, w: number): ColorRgba {
+  return w === 0 ? color : touch(color, w);
 }
 
 /** How the curves below are tuned: one period (or duration), ease and swing. */
@@ -112,15 +169,18 @@ function blend(from: Oklch, to: Oklch, w: number): Oklch {
 }
 
 /**
- * `color` under `light` at strength `w`: the one way every light here falls.
- * It moves toward the light's colour by its side's share, and never below
- * its own lightness — light can warm a colour and lift it, never darken it,
- * so white lettering under a cream light turns warm white, not grey.
+ * A colour under `glow`: the one way every light here falls. It moves `w` of
+ * the way toward the light's colour, and never below its own lightness —
+ * light can warm a colour and lift it, never darken it. A colour already
+ * lighter than the light only warms, and white, which has no warmer shade at
+ * its lightness, stays white.
  */
-function lit(color: ColorRgba, side: Side, light: Oklch, w: number): ColorRgba {
-  const from = Oklch.fromRgba(color);
-  const to = new Oklch(Math.max(from.l, light.l), light.c, light.h, light.alpha);
-  return blend(from, to, w * SHARE[side]).toRgba();
+export function light(glow: ColorRgba): Touch {
+  const to = Oklch.fromRgba(glow);
+  return (color, w) => {
+    const from = Oklch.fromRgba(color);
+    return blend(from, new Oklch(Math.max(from.l, to.l), to.c, to.h, to.alpha), w).toRgba();
+  };
 }
 
 /**
@@ -147,15 +207,15 @@ function breathAt(p: number): number {
  * out of — stays one colour. A breath starts in its rest, so `t = 0` draws
  * the cell untouched.
  */
-export function pulse(curve: Curve, light: ColorRgba): ColorMove {
+export function pulse(curve: Curve, glow: ColorRgba): Loop {
   const P = curve.seconds;
-  const glow = Oklch.fromRgba(light);
-  return (color, side, _cell, t) => {
+  const field: Field = (_cell, t) => {
     // The rhythm's drift is slow enough that phase only ever moves forward.
     const phase = t / P - 0.06 + 0.03 * noise(t / (3 * P), 0.5, 0.5);
     const depth = 0.8 + 0.2 * noise(t / (4 * P), 3.5, 0.5);
-    return lit(color, side, glow, curve.swing * curve.ease(breathAt(phase - Math.floor(phase)) * depth));
+    return curve.swing * curve.ease(breathAt(phase - Math.floor(phase)) * depth);
   };
+  return { touch: light(glow), field };
 }
 
 /** A soft, compact bump: 1 at `d = 0`, 0 from `|d| ≥ 1`, smooth throughout. */
@@ -170,27 +230,27 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
  * slow current and re-forming as they go, so the glints dance while the band
  * glides. Before the band enters, the row is untouched.
  */
-export function shimmer(curve: Curve, span: number, width: number, light: ColorRgba, z: number): ColorMove {
+export function shimmer(curve: Curve, span: number, width: number, glow: ColorRgba, z: number): Loop {
   const phase = Phase.loop(curve.seconds);
-  const glow = Oklch.fromRgba(light);
   // A ripple's crest: a Gaussian ridge, 1 where the field crosses zero and in
   // (0, 1] for any noise, smooth throughout, so a crest sliding through a cell
   // lights it smoothly.
   const ripple = (a: number, b: number, c: number): number => Math.exp(-((noise(a, b, c) / 0.8) ** 2));
-  return (color, side, cell, t) => {
+  const field: Field = (cell, t) => {
     const centre = phase(t) * (span + 2 * width) - width;
     const band = bump((cell.col - centre) / width);
     const row = cell.row + z;
-    const current = 0.8 * noise(cell.col * 0.05, row * 0.3 + 1.3, t * 0.06);
+    const current = 0.8 * noise(cell.col * 0.05, row * 0.3 + 1.3, t * 0.03);
     const caustic =
-      (ripple(cell.col * 0.21 + current, row * 0.9, t * 0.07) * ripple(cell.col * 0.33 + 9.1 - current, row * 0.7, t * 0.055 + 4.2)) **
-      2.5;
-    return lit(color, side, glow, curve.swing * curve.ease(band * (0.3 + 0.4 * caustic)));
+      (ripple(cell.col * 0.21 + current, row * 0.9, t * 0.035) * ripple(cell.col * 0.33 + 9.1 - current, row * 0.7, t * 0.028 + 4.2)) **
+      2;
+    return curve.swing * curve.ease(band * (0.3 + 0.4 * caustic));
   };
+  return { touch: light(glow), field };
 }
 
 /** How far a gust at its strongest silvers a colour: lighter and greyer. */
-const SILVER = { lightness: 0.035, chroma: 0.17 } as const;
+const SILVER = { lightness: 0.08, chroma: 0.3 } as const;
 
 /**
  * Drift, as wind crossing a field. Swing: degrees of hue at a gust's
@@ -203,23 +263,20 @@ const SILVER = { lightness: 0.035, chroma: 0.17 } as const;
  * silvers — lighter and greyer, by how strong the gust is whatever the
  * swing — the way grass shows the pale side of its blades.
  */
-export function drift(curve: Curve, span: number, z: number): ColorMove {
+export function drift(curve: Curve, span: number, z: number): Loop {
   const speed = span / curve.seconds;
-  return (color, _side, cell, t) => {
+  const field: Field = (cell, t) => {
     const row = cell.row + z;
     const warp = 1.2 * noise(cell.col * 0.03, row * 0.2 + 3.3, t * 0.02);
     const air = fbm((cell.col - speed * t) * 0.045 + warp, row * 0.3, t * 0.05, 3);
     const swell = 0.6 + 0.4 * noise(t / (1.7 * curve.seconds) + 0.4, cell.col * 0.012, 9.1 + z);
-    const amount = curve.ease(swell * smoothstep(-0.1, 0.45, air));
-    return Oklch.fromRgba(color)
-      .applyKey({
-        ...IDENTITY,
-        hueShift: curve.swing * amount,
-        lightnessShift: SILVER.lightness * amount,
-        chromaScale: 1 - SILVER.chroma * amount,
-      })
-      .toRgba();
+    return curve.ease(swell * smoothstep(-0.1, 0.45, air));
   };
+  const touch: Touch = (color, w) =>
+    Oklch.fromRgba(color)
+      .applyKey({ ...IDENTITY, hueShift: curve.swing * w, lightnessShift: SILVER.lightness * w, chromaScale: 1 - SILVER.chroma * w })
+      .toRgba();
+  return { touch, field };
 }
 
 /**
@@ -231,10 +288,9 @@ export function drift(curve: Curve, span: number, z: number): ColorMove {
  * it is, so as it drifts the glow slides between cells rather than hopping.
  * `seconds` is how long a glow takes, rise and fall.
  */
-export function sparkle(curve: Curve, span: number, light: ColorRgba, z: number): ColorMove {
-  const glow = Oklch.fromRgba(light);
+export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
   const count = Math.max(2, Math.round(span / 9));
-  const HALO = 4;
+  const HALO = 6;
   const homes = Array.from({ length: count }, (_, i) => ({
     home: (i + 0.5 + 0.7 * noise(i * 1.7 + 0.2, 0.3, 0.5 + z)) * (span / count),
     z: i * 4.9 + 0.3 + z,
@@ -255,11 +311,12 @@ export function sparkle(curve: Curve, span: number, light: ColorRgba, z: number)
     }
     return flown.flies;
   };
-  return (color, side, cell, t) => {
+  const field: Field = (cell, t) => {
     let shine = 0;
     for (const fly of fliesAt(t)) shine += fly.glow * bump(Math.hypot(cell.col - fly.x, 2 * (cell.row - fly.y)) / HALO);
-    return lit(color, side, glow, curve.swing * curve.ease(clamp01(shine)));
+    return curve.swing * curve.ease(clamp01(shine));
   };
+  return { touch: light(glow), field };
 }
 
 /**

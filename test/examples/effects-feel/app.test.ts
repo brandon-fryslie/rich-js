@@ -6,16 +6,18 @@ import { describe, expect, it, vi } from "vitest";
 import {
   CATPPUCCIN_LATTE,
   CATPPUCCIN_MOCHA,
+  ColorDepth,
   Console,
   EASES,
   Effected,
   Style,
+  contrastRatio,
   type Renderable,
   type TerminalTheme,
 } from "../../../src/index.js";
 import { cellLen, graphemes } from "../../../src/core/cells.js";
-import { LIGHTS, drawnSubject, runDemo, stripSubject } from "../../../examples/effects-feel/app.js";
-import { onColors, pulse } from "../../../examples/effects-feel/curves.js";
+import { LIGHTS, SHIMMER_WIDTH, drawnSubject, runDemo, stripSubject, subjectUnder, textSubject } from "../../../examples/effects-feel/app.js";
+import { drift, pulse, shares, shimmer, sparkle } from "../../../examples/effects-feel/curves.js";
 import { envAtDepth, parseSettings } from "../../../examples/effects-feel/settings.js";
 import { scriptedHost } from "../../host/scripted-host.js";
 
@@ -94,23 +96,21 @@ describe("a strip under a pulse", () => {
     expect(strip.span).toBe(Math.max(...rows.map(cellLen)));
   });
 
-  it("reads the lettering on a muted fill as the lighter of its cell and the fill as the darker", () => {
+  it("reads the colours it sets in the cells it letters, and none of the terminal's", () => {
     const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), options, CATPPUCCIN_MOCHA);
-    expect(strip.colors.get(CATPPUCCIN_MOCHA.palette.get("foreground")!.hex)).toBe("lighter");
-    expect(strip.colors.get(CATPPUCCIN_MOCHA.palette.get("secondary-muted")!.hex)).toBe("darker");
-  });
-
-  it("at 16 colours reads a colour that is lighter than its partner in one cell and darker in another as the darker", () => {
-    const ansi = new Console({ width: 200, colorSystem: "ansi" }).options;
-    const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), ansi, CATPPUCCIN_MOCHA);
-    expect(strip.colors.get("#bac2de")).toBe("darker"); // the theme's white: pale fills, and lettering on paler ones
+    expect(strip.colors.has(CATPPUCCIN_MOCHA.palette.get("foreground")!.hex)).toBe(true);
+    expect(strip.colors.has(CATPPUCCIN_MOCHA.palette.get("secondary-muted")!.hex)).toBe(true);
+    const text = drawnSubject(textSubject(CATPPUCCIN_MOCHA, ColorDepth.TRUECOLOR), options, CATPPUCCIN_MOCHA);
+    expect(text.colors.has(CATPPUCCIN_MOCHA.backgroundColor.hex)).toBe(false);
   });
 
   it.each([["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const)(
     "on a %s ground moves each colour the strip sets to one colour, in every cell that shows it, and leaves the terminal's alone",
     (_, theme) => {
       const strip = drawnSubject(stripSubject(theme), options, theme);
-      const lit = onColors(strip.colors, pulse({ seconds: 2, ease: EASES.linear, swing: 1 }, LIGHTS.sun));
+      const loop = pulse({ seconds: 2, ease: EASES.linear, swing: 1 }, LIGHTS.sun);
+      const lit = subjectUnder(strip, loop, theme);
+      const share = shares(strip.pairs, strip.colors, loop.touch);
       const before = colorsByCell(strip.renderable, theme);
       const after = colorsByCell(new Effected(strip.renderable, lit, { t: 1, key: "strip", theme }), theme);
       expect(after).toHaveLength(before.length);
@@ -118,14 +118,62 @@ describe("a strip under a pulse", () => {
       // Each colour drawn before, to every colour it is drawn as after: an
       // arrow's ink moves with the fill it carries, and lettering with its
       // fill, so each is one colour; the terminal's own ground does not move,
-      // and nor does white, which is as lit as a colour gets.
+      // and nor does a colour whose cells have no contrast to spare.
       const becomes = new Map<string, Set<string>>();
       before.forEach((pair, i) =>
         pair.forEach((was, slot) => becomes.set(was, (becomes.get(was) ?? new Set()).add(after[i]![slot]!))),
       );
-      const still = new Set(["ground", "#ffffff"]);
+      const rgba = new Map(strip.pairs.flat().map((c) => [c.hex, c]));
+      const still = new Set(["ground", ...[...share].filter(([hex, s]) => loop.touch(rgba.get(hex)!, s).hex === hex).map(([hex]) => hex)]);
       for (const [was, now] of becomes) {
         expect([was, [...now]]).toEqual([was, [still.has(was) ? was : expect.not.stringMatching(was)]]);
+      }
+    },
+  );
+});
+
+describe("every loop keeps the words readable", () => {
+  const AA = 4.5;
+  const { curves } = parseSettings([])!;
+  const made = {
+    shimmer: (span: number, z: number) => shimmer({ ...curves.shimmer, swing: 1 }, span, SHIMMER_WIDTH, LIGHTS.sun, z),
+    pulse: () => pulse({ ...curves.pulse, swing: 1 }, LIGHTS.sun),
+    drift: (span: number, z: number) => drift(curves.drift, span, z),
+    sparkle: (span: number, z: number) => sparkle({ ...curves.sparkle, swing: 1 }, span, LIGHTS.firefly, z),
+  };
+  const grounds = [["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const;
+  const depths = [["truecolor", ColorDepth.TRUECOLOR], ["256", ColorDepth.EIGHT_BIT]] as const;
+
+  it.each(grounds.flatMap(([g, theme]) => depths.flatMap(([d, depth]) => Object.keys(made).map((loop) => [loop, g, d, theme, depth] as const))))(
+    "%s on a %s ground at %s colours: no lettered cell falls below its resting contrast or AA",
+    (loop, _g, _d, theme, depth) => {
+      const at = new Console({ width: 200, colorSystem: depth === ColorDepth.TRUECOLOR ? "truecolor" : "256" }).options;
+      for (const subject of [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, at, theme))) {
+        const effect = subjectUnder(subject, made[loop as keyof typeof made](subject.span, subject.z), theme);
+        const contrasts = (t: number | undefined): number[] => {
+          const drawn = t === undefined ? subject.renderable.render(subject.options) : new Effected(subject.renderable, effect, { t, key: loop, theme }).render(subject.options);
+          const out: number[] = [];
+          let [row, col] = [0, 0];
+          for (const segment of drawn) {
+            if (segment.isControl) continue;
+            const colors = (segment.style ?? Style.null()).drawnColors(at.colorSystem ?? undefined);
+            const fg = colors.color?.getTruecolor(theme, true) ?? theme.foregroundColor;
+            const bg = colors.bgcolor?.getTruecolor(theme, false) ?? theme.backgroundColor;
+            for (const glyph of graphemes(segment.text)) {
+              if (glyph === "\n") [row, col] = [row + 1, 0];
+              else {
+                out.push(subject.text.has(`${row}:${col}`) ? contrastRatio(fg, bg) : Number.POSITIVE_INFINITY);
+                col += cellLen(glyph);
+              }
+            }
+          }
+          return out;
+        };
+        const rest = contrasts(undefined);
+        for (let t = 0; t < 3 * curves[loop as keyof typeof made].seconds; t += 0.75) {
+          // 8-bit rounding of a colour the shares settled exactly can cost a hair.
+          contrasts(t).forEach((now, i) => expect(now).toBeGreaterThanOrEqual(Math.min(rest[i]!, AA) - 0.05));
+        }
       }
     },
   );
