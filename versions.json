@@ -4,15 +4,22 @@
     {
       "version": "pr-327",
       "ref": "refs/pull/327/merge",
-      "sha": "ff691d7a1d1bbaecaa8b6fd1e071f667c8f25481",
-      "timestamp": "2026-10-03T14:30:22.020Z",
+      "sha": "47aaf7ad299067da6552a8fdb9522d8af20248f0",
+      "timestamp": "2026-10-03T14:37:13.993Z",
       "commits": [
         {
-          "sha": "ff691d7a1d1bbaecaa8b6fd1e071f667c8f25481",
+          "sha": "47aaf7ad299067da6552a8fdb9522d8af20248f0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:29:30-06:00",
-          "message": "Merge 5c5b06e2ac6137bd020080ca4735b4a81abdacaa into d80fbf0331b9de3f5144e3462f9db2d8f618bc3e\n"
+          "timestamp": "2026-10-03T14:36:20Z",
+          "message": "Merge de2f24e72210dadcd4558eecd6cee17ab5fc5e3f into d80fbf0331b9de3f5144e3462f9db2d8f618bc3e\n"
+        },
+        {
+          "sha": "de2f24e72210dadcd4558eecd6cee17ab5fc5e3f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:36:16-06:00",
+          "message": "review(pretty): arrow offset read off its text, guide typed as one code unit, docs name the arrow reading (rich-pretty-h1uu)\n\nThe Map arrow's > offset was a literal beside the text it indexed; it is now\nderived. The indent guide is typed as GUIDE, so drawMargins' assumption that a\nguide replaces one space with one code unit holds by construction. docs/pretty.md\nno longer says a custom highlighter reads exactly the printed string, and a test\npins what any highlighter reads; the expanded-arrow test now also runs asciiOnly.\n"
         },
         {
           "sha": "5c5b06e2ac6137bd020080ca4735b4a81abdacaa",
