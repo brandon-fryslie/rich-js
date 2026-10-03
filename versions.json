@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-326",
+      "ref": "refs/pull/326/merge",
+      "sha": "d37e649ea246edbed12ec37ea6fe83bcaf4ad965",
+      "timestamp": "2026-10-03T14:53:06.668Z",
+      "commits": [
+        {
+          "sha": "d37e649ea246edbed12ec37ea6fe83bcaf4ad965",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T14:51:53Z",
+          "message": "Merge 32317743513cd2f0e20704dc3b853e9e6716a6ef into 16af325f6dfad880dd1b4e79e6e56de541ec508f\n"
+        },
+        {
+          "sha": "32317743513cd2f0e20704dc3b853e9e6716a6ef",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:51:49-06:00",
+          "message": "effects-feel: light and wind keep their pace however wide the row (rich-effects-fxiy.b6i)\n\nReview (medium): shimmer and drift crossed the whole span once a period, so a\nwider row moved faster — shimmer 0.046 and drift 0.056 per frame at 160-240\ncolumns, over the 0.04 bar. Both now move STRIDE (80) columns a period: the\ntext line's old pace, the strip slower. Worst hourly step is width-independent\n(shimmer 0.031, drift 0.029). drift no longer takes span. A firefly's stroke\nscales with its brightness, so dim flashes no longer streak fastest. The step\ngate now watches a 240-column element too.\n"
+        },
+        {
+          "sha": "495a128df404760afeb1a187830b104fa50a0b97",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:36:49-06:00",
+          "message": "effects-feel: a firefly drifts as fast as it is bright; tests run the demo's breath (rich-effects-fxiy.b6i)\n\nReview (high): a dark turn divided by zero in the glide; it now keeps its\nlength and gives no light. HOP named beside GLIDE; order() builds no closure\nper cell; the step-gate comment states the measured 0.039.\n"
+        },
+        {
+          "sha": "a3e3c3df42d6e94fd324d06fa72c86cee7b4fd40",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:26:03-06:00",
+          "message": "effects-feel: breath blooms then rests, glints read as passes, fireflies draw a lit stroke, transitions linger in tendrils (rich-effects-fxiy.b6i)\n\nPulse turn 43 s with the breath's seconds unchanged, so the bloom from the\nheart can visibly spread (REACH 0.3) and the element rests between breaths.\nShimmer band 24 columns either side, so each pass reads as a pass. Fireflies\ndrift up to 5 cells while lit. Fade 20 s, dissolve 30 s, ordered by\ndomain-warped noise. Every loop still under the 1 fps step gate over an hour\n(worst: pulse 0.039, shimmer 0.036, drift 0.035, sparkle 0.032).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-328",
       "ref": "refs/pull/328/merge",
       "sha": "df1c95524d3e1bbc32ea64e1a7d7605cf292ef2a",
@@ -35,35 +71,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T08:40:22-06:00",
           "message": "fix(pretty): a Map's => arrow no longer closes a repr tag (rich-pretty-h1uu) (#327)\n\n* fix(pretty): a Map's => arrow no longer closes a repr tag (rich-pretty-h1uu)\n\nReprHighlighter's tag pattern runs from the first < to the last >, as\nRich's does. A Python repr has no =>, so in Rich only the data's own >\ncan close a tag; in Pretty's Map output every entry's arrow did, and a <\nin any key or value tagged everything up to the last arrow.\n\nPretty now records where each arrow's > lands through both layouts and\ndrawMargins, and the highlighter reads the text with those > as spaces.\nA > the data wrote still closes a tag, across an arrow, as Rich's does\nacross a dict's colon.\n\n* review(pretty): arrow offset read off its text, guide typed as one code unit, docs name the arrow reading (rich-pretty-h1uu)\n\nThe Map arrow's > offset was a literal beside the text it indexed; it is now\nderived. The indent guide is typed as GUIDE, so drawMargins' assumption that a\nguide replaces one space with one code unit holds by construction. docs/pretty.md\nno longer says a custom highlighter reads exactly the printed string, and a test\npins what any highlighter reads; the expanded-arrow test now also runs asciiOnly."
-        }
-      ]
-    },
-    {
-      "version": "pr-326",
-      "ref": "refs/pull/326/merge",
-      "sha": "0867547fe5ab01dd098e0b6d6d24848b1833586b",
-      "timestamp": "2026-10-03T14:38:32.761Z",
-      "commits": [
-        {
-          "sha": "0867547fe5ab01dd098e0b6d6d24848b1833586b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T14:36:54Z",
-          "message": "Merge 495a128df404760afeb1a187830b104fa50a0b97 into d80fbf0331b9de3f5144e3462f9db2d8f618bc3e\n"
-        },
-        {
-          "sha": "495a128df404760afeb1a187830b104fa50a0b97",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:36:49-06:00",
-          "message": "effects-feel: a firefly drifts as fast as it is bright; tests run the demo's breath (rich-effects-fxiy.b6i)\n\nReview (high): a dark turn divided by zero in the glide; it now keeps its\nlength and gives no light. HOP named beside GLIDE; order() builds no closure\nper cell; the step-gate comment states the measured 0.039.\n"
-        },
-        {
-          "sha": "a3e3c3df42d6e94fd324d06fa72c86cee7b4fd40",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:26:03-06:00",
-          "message": "effects-feel: breath blooms then rests, glints read as passes, fireflies draw a lit stroke, transitions linger in tendrils (rich-effects-fxiy.b6i)\n\nPulse turn 43 s with the breath's seconds unchanged, so the bloom from the\nheart can visibly spread (REACH 0.3) and the element rests between breaths.\nShimmer band 24 columns either side, so each pass reads as a pass. Fireflies\ndrift up to 5 cells while lit. Fade 20 s, dissolve 30 s, ordered by\ndomain-warped noise. Every loop still under the 1 fps step gate over an hour\n(worst: pulse 0.039, shimmer 0.036, drift 0.035, sparkle 0.032).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         }
       ]
     }
