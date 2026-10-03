@@ -8,7 +8,7 @@
  * inline, so the corpus repeats those three, then adds ours: escaped quotes,
  * every scalar, a value string followed by a key, tokens inside a string, word
  * characters outside ASCII — where Python's `\w`, `\b` and `\d` on a `str`
- * differ from JavaScript's, one of them astral — and line and paragraph
+ * differ from JavaScript's, astral ones included — and line and paragraph
  * separators (U+2028, U+2029) inside a string, which Python's `.` matches and
  * JavaScript's does not. This is the command the
  * committed fixture came out of; run it from the repository root:
@@ -23,7 +23,7 @@
  *         '{"k": ["a", "b \\"q\\" c"]}', '{"n": 1.5, "t": true, "f": false, "z": null}',
  *         '{"a": "b", "c": 1}', '{"s": "true 12 [x]"}',
  *         'é"x"', 'étrue', 'trueé', 'é12', '12é', '1e٣', '{"café": "naïve", "n": -3.5e2}',
- *         '\U0001D400true', '"a\u2028b": 1', '"a\u2029b": 1',
+ *         '\U0001D400true', '\U0001D400 true', '"a\u2028b": 1', '"a\u2029b": 1',
  *     ]
  *     cases = []
  *     for text in TEXTS:
@@ -36,7 +36,9 @@
  *     PY
  *
  * Span order is asserted, not just the set: a later span lands on top, so
- * order is part of what Rich draws.
+ * order is part of what Rich draws. Rich counts span offsets in code points
+ * and RichText in UTF-16 units, so the golden's are translated before the
+ * comparison.
  */
 
 import { readFileSync } from "node:fs";
@@ -54,6 +56,11 @@ const CASES = JSON.parse(
   readFileSync(new URL("./json-highlight.golden.json", import.meta.url), "utf8"),
 ) as Case[];
 
+// A code-point offset into `text` as the UTF-16 offset of the same position.
+function utf16(text: string, codePoint: number): number {
+  return Array.from(text).slice(0, codePoint).join("").length;
+}
+
 function printed(text: string): string {
   const chunks: string[] = [];
   const console = new Console({
@@ -70,7 +77,9 @@ function printed(text: string): string {
 describe("JSONHighlighter against Python Rich", () => {
   it.each(CASES)("lays Rich's spans on $text", ({ text, spans }) => {
     const highlighted = new JSONHighlighter().call(text);
-    expect(highlighted.spans.map((s) => [s.start, s.end, s.style])).toEqual(spans);
+    expect(highlighted.spans.map((s) => [s.start, s.end, s.style])).toEqual(
+      spans.map(([start, end, style]) => [utf16(text, start), utf16(text, end), style]),
+    );
   });
 
   it.each(CASES)("prints Rich's bytes for $text", ({ text, ansi }) => {

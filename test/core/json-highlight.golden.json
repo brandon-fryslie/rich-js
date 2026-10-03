@@ -354,6 +354,17 @@
   "ansi": "𝐀true\n"
  },
  {
+  "text": "𝐀 true",
+  "spans": [
+   [
+    2,
+    6,
+    "json.bool_true"
+   ]
+  ],
+  "ansi": "𝐀 \u001b[3;92mtrue\u001b[0m\n"
+ },
+ {
   "text": "\"a b\": 1",
   "spans": [
    [
