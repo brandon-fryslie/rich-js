@@ -4,15 +4,22 @@
     {
       "version": "pr-291",
       "ref": "refs/pull/291/merge",
-      "sha": "41f64b7d45351113fd3d0e5242f6adb4c737671d",
-      "timestamp": "2026-10-03T02:49:48.435Z",
+      "sha": "fd2e3a7f2d9a6249693bebd76cdc7e5b3948b311",
+      "timestamp": "2026-10-03T02:57:08.953Z",
       "commits": [
         {
-          "sha": "41f64b7d45351113fd3d0e5242f6adb4c737671d",
+          "sha": "fd2e3a7f2d9a6249693bebd76cdc7e5b3948b311",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T20:48:33-06:00",
-          "message": "Merge dd2f4f378c921b2f3cf75ae836bd7e6365486d71 into 9d5a227033f360d4e595c85fe80fa65eba23182d\n"
+          "timestamp": "2026-10-02T20:55:57-06:00",
+          "message": "Merge 4f2654b28a1bcededd5df11a842d4e28a39e0d50 into 9d5a227033f360d4e595c85fe80fa65eba23182d\n"
+        },
+        {
+          "sha": "4f2654b28a1bcededd5df11a842d4e28a39e0d50",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T20:55:53-06:00",
+          "message": "fix(widgets): TextInput's cursor is a grapheme boundary whoever sets it (rich-cells-1y9d)\n\nvalue and cursorPosition write through graphemeBoundary, so a replaced\nvalue, a click, or an insert that grows the cluster before the cursor\ncannot leave it inside a glyph or past the end. maxLength cuts between\nglyphs; the password mask is one cell per glyph; Ctrl+T on one glyph is\na no-op.\n"
         },
         {
           "sha": "dd2f4f378c921b2f3cf75ae836bd7e6365486d71",
