@@ -26,6 +26,7 @@ import {
   ensureContrast,
   Effected,
   Group,
+  Measurement,
   Padding,
   POWERLINE_JOINER_GLYPHS,
   PowerlineJoiner,
@@ -37,6 +38,7 @@ import {
   frameRate,
   systemClock,
   type Effect,
+  type Measurable,
   type Renderable,
   type RenderOptions,
   Segment,
@@ -67,9 +69,6 @@ const STATUS_CONTRAST = 7;
 /** How far a shimmer's light reaches either side of its centre, in columns. */
 export const SHIMMER_WIDTH = 32;
 
-/** Columns a subject is offered when its own width is read: wider than any subject here. */
-const DRAW_BUDGET = 1024;
-
 /**
  * How a looping effect's worst contrast is measured: over this many of its
  * periods — no loop repeats exactly, so one period is only a slice of the
@@ -89,7 +88,7 @@ export const LIGHTS = {
  */
 export interface Subject {
   readonly name: string;
-  readonly renderable: Renderable;
+  readonly renderable: Renderable & Measurable;
   /** Where it sits in the noise, so two subjects under one effect never move in lockstep. */
   readonly z: number;
 }
@@ -159,9 +158,7 @@ function shown(cell: Cell, options: RenderOptions, theme: TerminalTheme): { fg: 
 const SEAM_GLYPHS: ReadonlySet<string> = new Set(Object.values(POWERLINE_JOINER_GLYPHS));
 
 export function drawnSubject(subject: Subject, drawnWith: RenderOptions, theme: TerminalTheme): DrawnSubject {
-  // Read off what it draws, not `Measurement`: a `Strip` is not `Measurable`,
-  // and an unmeasurable renderable measures as the whole budget it is offered.
-  const span = Math.max(...Segment.splitLines(subject.renderable.render({ ...drawnWith, maxWidth: DRAW_BUDGET })).map(Segment.getLineLength));
+  const span = Measurement.get({ ...drawnWith, maxWidth: Number.MAX_SAFE_INTEGER }, subject.renderable).maximum;
   const options = { ...drawnWith, maxWidth: span };
   // A seam sits in the same cell whichever glyph a joiner draws it with, so
   // the cells are read where the glyphs are the ones `SEAM_GLYPHS` names.

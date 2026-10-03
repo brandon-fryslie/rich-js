@@ -30,7 +30,8 @@ import { Segment } from "./segment.js";
 import { Style } from "./style.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK } from "./color.js";
 import { Oklch } from "./oklch.js";
-import { drawable, type Renderable, type RenderOptions } from "./protocol.js";
+import { drawable, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
+import { Measurement } from "./measure.js";
 
 // --- StyledRenderable ---
 
@@ -64,7 +65,7 @@ export interface Joiner<T extends StyledRenderable = StyledRenderable> {
 
 // --- Strip ---
 
-export class Strip<T extends StyledRenderable = StyledRenderable> implements Renderable {
+export class Strip<T extends StyledRenderable = StyledRenderable> implements Renderable, Measurable {
   readonly items: readonly T[];
   readonly joiner: Joiner<T>;
 
@@ -73,20 +74,29 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
     this.joiner = joiner;
   }
 
+  // [LAW:one-source-of-truth] The joins the walk draws, in order: one before
+  // each item and one after the last, so `render` and `measure` cannot
+  // disagree about which positions the joiner fills. No items, no joins.
+  private _joins(): Renderable[] {
+    const items = this.items;
+    return items.length === 0
+      ? []
+      : [null, ...items].map((left, i) => this.joiner.join(left, items[i] ?? null));
+  }
+
   *render(options: RenderOptions): Iterable<Segment> {
     const items = this.items;
     if (items.length === 0) return;
+    const [lead, ...joins] = this._joins();
 
     // [LAW:dataflow-not-control-flow] The walk is the same shape every render:
     // start-cap, item, mid-join, item, ..., item, end-cap. Variability lives
     // in `items` and in what the joiner emits at each position — never in
     // whether a join runs.
-    yield* this.joiner.join(null, items[0]!).render(options);
+    yield* lead!.render(options);
     for (let i = 0; i < items.length; i++) {
-      const item = items[i]!;
-      yield* item.render(options);
-      const next = i + 1 < items.length ? items[i + 1]! : null;
-      yield* this.joiner.join(item, next).render(options);
+      yield* items[i]!.render(options);
+      yield* joins[i]!.render(options);
     }
 
     // [LAW:one-source-of-truth] `Strip`'s sibling `FlexStrip` ends every line
@@ -100,6 +110,28 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
     // instead of below it. `LINE_ENDS` in test/seam/line-ends.ts is the list
     // of which renderables end their own line and which are fragments.
     yield Segment.line();
+  }
+
+  /**
+   * One row: each item's measurement, summed, plus the cells every join
+   * draws. A join is a few glyphs that never wrap, so its width is what it
+   * draws at these options; an item answers for itself through
+   * `Measurement.get`, which is also what an item that cannot measure itself
+   * asks for — the whole offer.
+   */
+  measure(options: RenderOptions): { minimum: number; maximum: number } {
+    let joined = 0;
+    for (const join of this._joins()) {
+      for (const segment of join.render(options)) joined += segment.cellLength;
+    }
+    let minimum = joined;
+    let maximum = joined;
+    for (const item of this.items) {
+      const m = Measurement.get(options, item);
+      minimum += m.minimum;
+      maximum += m.maximum;
+    }
+    return { minimum, maximum };
   }
 }
 

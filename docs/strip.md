@@ -53,6 +53,8 @@ The arrow between two cells takes its fg from the left cell's right-edge backgro
 
 The strip itself ends its own line, the same way [`Group`](./group)'s other children — `Panel`, `Rule`, `Table` — already do: a `Strip` printed twice, or placed before another renderable in a `Group`, does not run into what follows it.
 
+It measures as the one row it draws: each item's own measurement, summed, plus the cells its joins draw. A `Table` cell, an `Align` or a `Columns` holding a strip sizes it to that row, not to all the width it was offered.
+
 ## Built-in joiners
 
 ### `PowerlineJoiner`
