@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-299",
-      "ref": "refs/pull/299/merge",
-      "sha": "3dd7a39906b1601361bf800295a7f19e938636af",
-      "timestamp": "2026-10-03T06:27:29.277Z",
-      "commits": [
-        {
-          "sha": "3dd7a39906b1601361bf800295a7f19e938636af",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:26:16Z",
-          "message": "Merge 3f22a172f1d878fbb6e6fb77a0fa7f16c4fee716 into 328fe3812c957cadebfc264633efefde18ca08ca\n"
-        },
-        {
-          "sha": "3f22a172f1d878fbb6e6fb77a0fa7f16c4fee716",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T00:26:12-06:00",
-          "message": "fix(table)!: a ratio column's width is its floor in the split; renderToString takes the highlight pair (rich-table-7m57)\n\nReview fixes: a width+ratio column now joins Rich's flexible split with\nits width as the flex minimum, so Column.flexible and the division agree;\nratioDistribute zeroes the ratio of a part whose minimum is 0, as Rich's\ndoes; the split total is capped at UNBOUNDED so it stays exact; the\npadded-width formula has one helper; docs corrected.\n\nBREAKING CHANGE: RenderOptions.highlighter is now the console's\nhighlighter whether or not highlighting is on; RenderOptions.highlight\nsays whether strings are highlighted. A custom renderable must read the\npair (activeHighlighter) rather than treat a present highlighter as on.\n"
-        },
-        {
-          "sha": "95c54d9624972226db1813bcf1ba030c0e2a5b57",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T00:16:28-06:00",
-          "message": "fix(table): expanding ratio columns split by Rich's ratio_distribute, and Table/Column take highlight (rich-table-7m57)\n\nRatio columns are sized by ratio_distribute(flexible width, ratios,\nminimums) over padded widths, as Rich's _calculate_column_widths does:\n17 cells at 2:1 are 12 + 5, not 11 + 6. ratioDistribute takes Rich's\nminimums and reads fractional ratios through exactWeights. A ratio\ncolumn's minWidth is its minimum, where Rich reads column.width or 1.\n\nRenderOptions splits highlighting into highlight (whether) and\nhighlighter (which, always the console's), as Rich's ConsoleOptions and\nrender_str do, so a highlight: true column draws with the console's\nhighlighter even when the console's own highlight is off.\nactiveHighlighter is the one reading of the pair.\n\nVertical cell padding already matched Rich (#232); its striped,\ncollapsed and padEdge cases are now pinned to Rich's bytes.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "328fe3812c957cadebfc264633efefde18ca08ca",
-      "timestamp": "2026-10-03T06:08:19.871Z",
+      "sha": "dffa02362a6fa499c2aa2ff86b83370f805ebda7",
+      "timestamp": "2026-10-03T06:31:34.179Z",
       "commits": [
         {
-          "sha": "328fe3812c957cadebfc264633efefde18ca08ca",
+          "sha": "dffa02362a6fa499c2aa2ff86b83370f805ebda7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T00:06:56-06:00",
-          "message": "feat(diagnostics): renderToString and renderTemplate render theme names and report bad styles (rich-diagnostics-t782) (#298)\n\n* feat(diagnostics): renderToString and renderTemplate render theme names and report bad styles the way Console does (rich-diagnostics-t782)\n\nrenderToString takes a theme, so strict onStyleError holds for themed\ncontent. renderTemplate takes theme and onStyleError; only compile and\nevaluate sit inside its try, so a rethrown style error leaves the call\ninstead of becoming an [error: ...] segment.\n\n* fix(diagnostics): renderTemplate keeps its doc, takes RenderOptions' fields so a wrapping renderable forwards them whole, and its docs say what a theme reaches (rich-diagnostics-t782)\n\n* fix(template-bindings): flattening a template's output stays inside renderTemplate's try, so an unflattenable scope value is an [error: …] line again (rich-diagnostics-t782)\n\n* fix(template-bindings): renderTemplate takes RenderOptions whole, so a wrapping renderable's justify, overflow and the rest reach the render (rich-diagnostics-t782)"
+          "timestamp": "2026-10-03T00:30:10-06:00",
+          "message": "fix(table)!: Rich's ratio split for expanding tables, and the highlight option (rich-table-7m57) (#299)\n\n* fix(table): expanding ratio columns split by Rich's ratio_distribute, and Table/Column take highlight (rich-table-7m57)\n\nRatio columns are sized by ratio_distribute(flexible width, ratios,\nminimums) over padded widths, as Rich's _calculate_column_widths does:\n17 cells at 2:1 are 12 + 5, not 11 + 6. ratioDistribute takes Rich's\nminimums and reads fractional ratios through exactWeights. A ratio\ncolumn's minWidth is its minimum, where Rich reads column.width or 1.\n\nRenderOptions splits highlighting into highlight (whether) and\nhighlighter (which, always the console's), as Rich's ConsoleOptions and\nrender_str do, so a highlight: true column draws with the console's\nhighlighter even when the console's own highlight is off.\nactiveHighlighter is the one reading of the pair.\n\nVertical cell padding already matched Rich (#232); its striped,\ncollapsed and padEdge cases are now pinned to Rich's bytes.\n\n* fix(table)!: a ratio column's width is its floor in the split; renderToString takes the highlight pair (rich-table-7m57)\n\nReview fixes: a width+ratio column now joins Rich's flexible split with\nits width as the flex minimum, so Column.flexible and the division agree;\nratioDistribute zeroes the ratio of a part whose minimum is 0, as Rich's\ndoes; the split total is capped at UNBOUNDED so it stays exact; the\npadded-width formula has one helper; docs corrected.\n\nBREAKING CHANGE: RenderOptions.highlighter is now the console's\nhighlighter whether or not highlighting is on; RenderOptions.highlight\nsays whether strings are highlighted. A custom renderable must read the\npair (activeHighlighter) rather than treat a present highlighter as on."
         }
       ]
     }
