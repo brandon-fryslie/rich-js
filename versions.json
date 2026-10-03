@@ -2,46 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-324",
-      "ref": "refs/pull/324/merge",
-      "sha": "c70c0c64fbbb3e38a5cef429b10ea961593a2b11",
-      "timestamp": "2026-10-03T14:12:32.827Z",
-      "commits": [
-        {
-          "sha": "c70c0c64fbbb3e38a5cef429b10ea961593a2b11",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T14:11:39Z",
-          "message": "Merge 1a61bccb8c49df9c04a62da5ea1d26e4685fb9c3 into 1c3580c5a2146be7cd66c6dc081f6ded7664d1f7\n"
-        },
-        {
-          "sha": "1a61bccb8c49df9c04a62da5ea1d26e4685fb9c3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:11:35-06:00",
-          "message": "effects-feel: under cloud the shimmer thins to faint passes, never gone for long (rich-effects-fxiy.b6i)\n\nReview high on #324: dark spells reached 876 s at the default period; the\nsky now has a presence floor and cloudy passes are faint, so the longest\nspell over four hours is ~5 min. The lookback is derived from the timing\nconstants it depends on. Shimmer tests now check band width and interior\nstill spells; the readability window covers twelve periods.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "ac0ff2d69f70696e24bfcaf8eb30b62be3a58edf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T07:58:30-06:00",
-          "message": "effects-feel: shimmer passes come and go like sun through moving cloud (rich-effects-fxiy.b6i)\n\nPasses are events on half-period slots; slow sky noise decides whether a\nslot holds one and how bright it is, so sunny spells bring passes close\ntogether (sometimes overlapping, brighter wins) and cloudy ones leave the\nrow still for periods on end. Each pass crosses at its own pace.\n"
-        }
-      ]
-    },
-    {
       "version": "pr-325",
       "ref": "refs/pull/325/merge",
-      "sha": "111e7556046fdf4fd4d86da549d3a558f33d6d63",
-      "timestamp": "2026-10-03T14:11:10.917Z",
+      "sha": "07607a5328f714129022d8287862eddecaa991ec",
+      "timestamp": "2026-10-03T14:15:33.354Z",
       "commits": [
         {
-          "sha": "111e7556046fdf4fd4d86da549d3a558f33d6d63",
+          "sha": "07607a5328f714129022d8287862eddecaa991ec",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T14:10:04Z",
-          "message": "Merge 68b23b5ab56e556393ad24c1613784b9299a8288 into 1c3580c5a2146be7cd66c6dc081f6ded7664d1f7\n"
+          "timestamp": "2026-10-03T14:14:17Z",
+          "message": "Merge 578b65c3bb2711e1a3baa36a6ccf1e5c1914da61 into 1c3580c5a2146be7cd66c6dc081f6ded7664d1f7\n"
+        },
+        {
+          "sha": "578b65c3bb2711e1a3baa36a6ccf1e5c1914da61",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:14:12-06:00",
+          "message": "docs(highlighter): a declined call name can take a later pattern's style (rich-highlighter-058y)\n"
         },
         {
           "sha": "68b23b5ab56e556393ad24c1613784b9299a8288",
