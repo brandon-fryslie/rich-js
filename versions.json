@@ -24,28 +24,6 @@
       ]
     },
     {
-      "version": "pr-329",
-      "ref": "refs/pull/329/merge",
-      "sha": "cbcf6425b747ee2893f54d3a172b24a92b0a778f",
-      "timestamp": "2026-10-03T15:11:28.066Z",
-      "commits": [
-        {
-          "sha": "cbcf6425b747ee2893f54d3a172b24a92b0a778f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T15:09:19Z",
-          "message": "Merge 5925f411212d72da591d81db86ff19708a3315d5 into 618ab5fef0e33826e668c85ba0a692040fdced8a\n"
-        },
-        {
-          "sha": "5925f411212d72da591d81db86ff19708a3315d5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T09:08:30-06:00",
-          "message": "fix(table): minimums that do not fit are cut as Rich cuts widths (rich-table-frxv)\n\nWhen every column's minimum cannot fit, the wrapable columns are narrowed\nfirst, widest first (Rich's _collapse_widths), then the excess is taken from\nevery column evenly (ratio_reduce), instead of granting minimums in\nproportion to natural width. A noWrap label beside a long noWrap column, and\na Progress description beside a fixed-width bar, now lay out as Rich 9d8f9a3.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "618ab5fef0e33826e668c85ba0a692040fdced8a",
