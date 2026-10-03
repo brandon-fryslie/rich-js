@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-287",
+      "ref": "refs/pull/287/merge",
+      "sha": "317e1fbb6f0676f3aaa0b0238a7bc6c04300da3a",
+      "timestamp": "2026-10-03T00:42:36.992Z",
+      "commits": [
+        {
+          "sha": "317e1fbb6f0676f3aaa0b0238a7bc6c04300da3a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T18:41:23-06:00",
+          "message": "Merge 5bb60706b1f991b306a684959c1ad18d6bba5f50 into 6eb4218ac6ce9a64b502659ee054926bf0cbc1b9\n"
+        },
+        {
+          "sha": "5bb60706b1f991b306a684959c1ad18d6bba5f50",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T18:41:12-06:00",
+          "message": "feat(examples): effects-feel — the feel demo for shimmer, pulse, drift, sparkle, fade-in and dissolve-out (rich-shimmer-ufj7)\n\nA demo, not a start on src/: the curves live in examples/effects-feel/curves.ts\non top of Effected and the easing vocabulary, and move to src/ only after\nBrandon's sign-off (rich-effects-fxiy.b6i).\n\nA powerline strip of a dozen palette cells and a run of text under each\neffect, drawn by App at --fps 0.5–30, at --depth truecolor/256/16/none (as the\nhost's FORCE_COLOR/NO_COLOR), on a --ground dark/light Catppuccin theme, with\nper-effect seconds, ease and swing. f and d replay the fade-in and dissolve;\nq and Ctrl-C hand the terminal back. Each loop shows the worst text-on-ground\ncontrast over a full period, read at the run's depth.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "6eb4218ac6ce9a64b502659ee054926bf0cbc1b9",
