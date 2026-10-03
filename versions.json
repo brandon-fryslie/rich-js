@@ -4,51 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "5b52b1b534b47d6fc26a439009e4ba768d36764a",
-      "timestamp": "2026-10-03T14:16:51.284Z",
+      "sha": "d80fbf0331b9de3f5144e3462f9db2d8f618bc3e",
+      "timestamp": "2026-10-03T14:21:18.181Z",
       "commits": [
         {
-          "sha": "5b52b1b534b47d6fc26a439009e4ba768d36764a",
+          "sha": "d80fbf0331b9de3f5144e3462f9db2d8f618bc3e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:15:12-06:00",
-          "message": "effects-feel: shimmer passes come and go like sun through moving cloud (#324)\n\n* effects-feel: shimmer passes come and go like sun through moving cloud (rich-effects-fxiy.b6i)\n\nPasses are events on half-period slots; slow sky noise decides whether a\nslot holds one and how bright it is, so sunny spells bring passes close\ntogether (sometimes overlapping, brighter wins) and cloudy ones leave the\nrow still for periods on end. Each pass crosses at its own pace.\n\n* effects-feel: under cloud the shimmer thins to faint passes, never gone for long (rich-effects-fxiy.b6i)\n\nReview high on #324: dark spells reached 876 s at the default period; the\nsky now has a presence floor and cloudy passes are faint, so the longest\nspell over four hours is ~5 min. The lookback is derived from the timing\nconstants it depends on. Shimmer tests now check band width and interior\nstill spells; the readability window covers twelve periods.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(effects-feel): the shimmer row-never-fully-lit check reads the whole row (rich-effects-fxiy.b6i)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
-        }
-      ]
-    },
-    {
-      "version": "pr-325",
-      "ref": "refs/pull/325/merge",
-      "sha": "07607a5328f714129022d8287862eddecaa991ec",
-      "timestamp": "2026-10-03T14:15:33.354Z",
-      "commits": [
-        {
-          "sha": "07607a5328f714129022d8287862eddecaa991ec",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T14:14:17Z",
-          "message": "Merge 578b65c3bb2711e1a3baa36a6ccf1e5c1914da61 into 1c3580c5a2146be7cd66c6dc081f6ded7664d1f7\n"
-        },
-        {
-          "sha": "578b65c3bb2711e1a3baa36a6ccf1e5c1914da61",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:14:12-06:00",
-          "message": "docs(highlighter): a declined call name can take a later pattern's style (rich-highlighter-058y)\n"
-        },
-        {
-          "sha": "68b23b5ab56e556393ad24c1613784b9299a8288",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:10:00-06:00",
-          "message": "fix(highlighter): a < before a long name with no > takes one pass (rich-highlighter-058y)\n"
-        },
-        {
-          "sha": "6cff6c3ffc98d399b3bcb9eae52570be89710a6a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:02:16-06:00",
-          "message": "fix(highlighter)!: highlighting takes one pass over a long run (rich-highlighter-058y)\n\nThree of Rich's patterns rescan a run from each of its characters, so a\n100k-cell run took 5s (letters, `<`) to 75s (digits) to highlight:\n\n- `call` looked for a `(` from every letter of a word. It now starts only\n  where a word does. A name glued to the end of another match mid-word\n  (`foo` in `aa-bb-cc-dd-ee-fffoo(`) is no longer styled as a call; this\n  is the one change in output, documented in docs/highlighting.md.\n- the number patterns' `[0-9]+\\.?[0-9]*` could split a digit run any way.\n  `[0-9]+(?:\\.[0-9]*)?` matches the same strings in the same order.\n- `tag` can only open at the text's first `<`; a lookbehind starts it there.\n\nA 600k-input differential fuzz against the old patterns found no\ndifference in JSONHighlighter and, in ReprHighlighter, only glued calls.\n"
+          "timestamp": "2026-10-03T08:20:03-06:00",
+          "message": "fix(highlighter)!: highlighting takes one pass over a long run (rich-highlighter-058y) (#325)\n\n* fix(highlighter)!: highlighting takes one pass over a long run (rich-highlighter-058y)\n\nThree of Rich's patterns rescan a run from each of its characters, so a\n100k-cell run took 5s (letters, `<`) to 75s (digits) to highlight:\n\n- `call` looked for a `(` from every letter of a word. It now starts only\n  where a word does. A name glued to the end of another match mid-word\n  (`foo` in `aa-bb-cc-dd-ee-fffoo(`) is no longer styled as a call; this\n  is the one change in output, documented in docs/highlighting.md.\n- the number patterns' `[0-9]+\\.?[0-9]*` could split a digit run any way.\n  `[0-9]+(?:\\.[0-9]*)?` matches the same strings in the same order.\n- `tag` can only open at the text's first `<`; a lookbehind starts it there.\n\nA 600k-input differential fuzz against the old patterns found no\ndifference in JSONHighlighter and, in ReprHighlighter, only glued calls.\n\n* fix(highlighter): a < before a long name with no > takes one pass (rich-highlighter-058y)\n\n* docs(highlighter): a declined call name can take a later pattern's style (rich-highlighter-058y)"
         }
       ]
     }
