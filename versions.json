@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "16af325f6dfad880dd1b4e79e6e56de541ec508f",
+      "timestamp": "2026-10-03T14:42:18.225Z",
+      "commits": [
+        {
+          "sha": "16af325f6dfad880dd1b4e79e6e56de541ec508f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:40:22-06:00",
+          "message": "fix(pretty): a Map's => arrow no longer closes a repr tag (rich-pretty-h1uu) (#327)\n\n* fix(pretty): a Map's => arrow no longer closes a repr tag (rich-pretty-h1uu)\n\nReprHighlighter's tag pattern runs from the first < to the last >, as\nRich's does. A Python repr has no =>, so in Rich only the data's own >\ncan close a tag; in Pretty's Map output every entry's arrow did, and a <\nin any key or value tagged everything up to the last arrow.\n\nPretty now records where each arrow's > lands through both layouts and\ndrawMargins, and the highlighter reads the text with those > as spaces.\nA > the data wrote still closes a tag, across an arrow, as Rich's does\nacross a dict's colon.\n\n* review(pretty): arrow offset read off its text, guide typed as one code unit, docs name the arrow reading (rich-pretty-h1uu)\n\nThe Map arrow's > offset was a literal beside the text it indexed; it is now\nderived. The indent guide is typed as GUIDE, so drawMargins' assumption that a\nguide replaces one space with one code unit holds by construction. docs/pretty.md\nno longer says a custom highlighter reads exactly the printed string, and a test\npins what any highlighter reads; the expanded-arrow test now also runs asciiOnly."
+        }
+      ]
+    },
+    {
       "version": "pr-326",
       "ref": "refs/pull/326/merge",
       "sha": "0867547fe5ab01dd098e0b6d6d24848b1833586b",
@@ -27,50 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T08:26:03-06:00",
           "message": "effects-feel: breath blooms then rests, glints read as passes, fireflies draw a lit stroke, transitions linger in tendrils (rich-effects-fxiy.b6i)\n\nPulse turn 43 s with the breath's seconds unchanged, so the bloom from the\nheart can visibly spread (REACH 0.3) and the element rests between breaths.\nShimmer band 24 columns either side, so each pass reads as a pass. Fireflies\ndrift up to 5 cells while lit. Fade 20 s, dissolve 30 s, ordered by\ndomain-warped noise. Every loop still under the 1 fps step gate over an hour\n(worst: pulse 0.039, shimmer 0.036, drift 0.035, sparkle 0.032).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-327",
-      "ref": "refs/pull/327/merge",
-      "sha": "47aaf7ad299067da6552a8fdb9522d8af20248f0",
-      "timestamp": "2026-10-03T14:37:13.993Z",
-      "commits": [
-        {
-          "sha": "47aaf7ad299067da6552a8fdb9522d8af20248f0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T14:36:20Z",
-          "message": "Merge de2f24e72210dadcd4558eecd6cee17ab5fc5e3f into d80fbf0331b9de3f5144e3462f9db2d8f618bc3e\n"
-        },
-        {
-          "sha": "de2f24e72210dadcd4558eecd6cee17ab5fc5e3f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:36:16-06:00",
-          "message": "review(pretty): arrow offset read off its text, guide typed as one code unit, docs name the arrow reading (rich-pretty-h1uu)\n\nThe Map arrow's > offset was a literal beside the text it indexed; it is now\nderived. The indent guide is typed as GUIDE, so drawMargins' assumption that a\nguide replaces one space with one code unit holds by construction. docs/pretty.md\nno longer says a custom highlighter reads exactly the printed string, and a test\npins what any highlighter reads; the expanded-arrow test now also runs asciiOnly.\n"
-        },
-        {
-          "sha": "5c5b06e2ac6137bd020080ca4735b4a81abdacaa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:29:25-06:00",
-          "message": "fix(pretty): a Map's => arrow no longer closes a repr tag (rich-pretty-h1uu)\n\nReprHighlighter's tag pattern runs from the first < to the last >, as\nRich's does. A Python repr has no =>, so in Rich only the data's own >\ncan close a tag; in Pretty's Map output every entry's arrow did, and a <\nin any key or value tagged everything up to the last arrow.\n\nPretty now records where each arrow's > lands through both layouts and\ndrawMargins, and the highlighter reads the text with those > as spaces.\nA > the data wrote still closes a tag, across an arrow, as Rich's does\nacross a dict's colon.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "d80fbf0331b9de3f5144e3462f9db2d8f618bc3e",
-      "timestamp": "2026-10-03T14:21:18.181Z",
-      "commits": [
-        {
-          "sha": "d80fbf0331b9de3f5144e3462f9db2d8f618bc3e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:20:03-06:00",
-          "message": "fix(highlighter)!: highlighting takes one pass over a long run (rich-highlighter-058y) (#325)\n\n* fix(highlighter)!: highlighting takes one pass over a long run (rich-highlighter-058y)\n\nThree of Rich's patterns rescan a run from each of its characters, so a\n100k-cell run took 5s (letters, `<`) to 75s (digits) to highlight:\n\n- `call` looked for a `(` from every letter of a word. It now starts only\n  where a word does. A name glued to the end of another match mid-word\n  (`foo` in `aa-bb-cc-dd-ee-fffoo(`) is no longer styled as a call; this\n  is the one change in output, documented in docs/highlighting.md.\n- the number patterns' `[0-9]+\\.?[0-9]*` could split a digit run any way.\n  `[0-9]+(?:\\.[0-9]*)?` matches the same strings in the same order.\n- `tag` can only open at the text's first `<`; a lookbehind starts it there.\n\nA 600k-input differential fuzz against the old patterns found no\ndifference in JSONHighlighter and, in ReprHighlighter, only glued calls.\n\n* fix(highlighter): a < before a long name with no > takes one pass (rich-highlighter-058y)\n\n* docs(highlighter): a declined call name can take a later pattern's style (rich-highlighter-058y)"
         }
       ]
     }
