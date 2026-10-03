@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-335",
+      "ref": "refs/pull/335/merge",
+      "sha": "7c245d79468fbcf120c26a98e0aabcaf8688d696",
+      "timestamp": "2026-10-03T16:38:45.168Z",
+      "commits": [
+        {
+          "sha": "7c245d79468fbcf120c26a98e0aabcaf8688d696",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T10:37:29-06:00",
+          "message": "Merge 7711bf22b5f3e9a1d02468538642be40c25a5dfb into 09db77c36082d202e269ed0c62e304032e7b6051\n"
+        },
+        {
+          "sha": "7711bf22b5f3e9a1d02468538642be40c25a5dfb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T10:37:25-06:00",
+          "message": "fix(table): a RichText title or caption keeps its own style, and justify pads inside the text's run, as Rich does (rich-table-qj6i)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "09db77c36082d202e269ed0c62e304032e7b6051",
