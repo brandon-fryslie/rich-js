@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-332",
+      "ref": "refs/pull/332/merge",
+      "sha": "4239a6cc034200c186713e4d7d74c7e4789e250a",
+      "timestamp": "2026-10-03T15:45:50.145Z",
+      "commits": [
+        {
+          "sha": "4239a6cc034200c186713e4d7d74c7e4789e250a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T09:44:52-06:00",
+          "message": "Merge ae14dbbe55e38ad1eedebac9fbd3d2936857eff5 into 7d278db33f563b3ca40b34dd336cee7e956e692e\n"
+        },
+        {
+          "sha": "ae14dbbe55e38ad1eedebac9fbd3d2936857eff5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T09:44:47-06:00",
+          "message": "fix(progress): MofNCompleteColumn pads the count to the total's width, whole and styled, as Rich does (rich-progress-adjo)\n\nRich 9d8f9a3 draws f\"{int(completed):{len(str(total))}d}/{int(total)}\" in\nprogress.download; this drew the raw numbers unpadded and unstyled, so the\ncolumn widened as it counted. The ticket's TimeElapsed/TimeRemaining cases\nwere already fixed by #313 (rich-progress-jj5r) and are pinned there.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "7d278db33f563b3ca40b34dd336cee7e956e692e",
