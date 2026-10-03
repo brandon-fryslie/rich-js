@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-308",
+      "ref": "refs/pull/308/merge",
+      "sha": "82bfe295fbe1f54008eb766fe0aab106095583ad",
+      "timestamp": "2026-10-03T09:50:54.356Z",
+      "commits": [
+        {
+          "sha": "82bfe295fbe1f54008eb766fe0aab106095583ad",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T03:49:46-06:00",
+          "message": "Merge a751b2a27f420a91cb9f401e815dafee15c95bb7 into bd3ffe766538b801fe8f561f8617b33316f01fdd\n"
+        },
+        {
+          "sha": "a751b2a27f420a91cb9f401e815dafee15c95bb7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T03:49:41-06:00",
+          "message": "feat(template-bindings): a style function layers over a fragment whose style is a theme name (rich-template-bindings-jtfa)\n\nA RichText's stored style gains a third form, LayeredStyle: a Style added\nover a name or definition the render has yet to resolve. applyStyleToFragment\nlays the piped style over a string base instead of parsing it, so\n`{{ .t | underline }}` on `new RichText(\"hi\", {style: \"my.heading\"})` draws\nthe name from the render's theme with the pipe on top, and an undefined name\nreaches onStyleError at render as a span name does.\n\nRichText.style is now `TextStyle` (string | Style | LayeredStyle), which\nmakes a RichText no longer structurally assignable to PanelOptions; the\ngroup.md example that relied on that to show a silent drop now says\nTypeScript refuses the call.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "bd3ffe766538b801fe8f561f8617b33316f01fdd",
