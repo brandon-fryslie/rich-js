@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-326",
+      "ref": "refs/pull/326/merge",
+      "sha": "7e158008c740e907a427c90cbdcfe01ff556a90b",
+      "timestamp": "2026-10-03T14:27:22.370Z",
+      "commits": [
+        {
+          "sha": "7e158008c740e907a427c90cbdcfe01ff556a90b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:26:08-06:00",
+          "message": "Merge a3e3c3df42d6e94fd324d06fa72c86cee7b4fd40 into d80fbf0331b9de3f5144e3462f9db2d8f618bc3e\n"
+        },
+        {
+          "sha": "a3e3c3df42d6e94fd324d06fa72c86cee7b4fd40",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:26:03-06:00",
+          "message": "effects-feel: breath blooms then rests, glints read as passes, fireflies draw a lit stroke, transitions linger in tendrils (rich-effects-fxiy.b6i)\n\nPulse turn 43 s with the breath's seconds unchanged, so the bloom from the\nheart can visibly spread (REACH 0.3) and the element rests between breaths.\nShimmer band 24 columns either side, so each pass reads as a pass. Fireflies\ndrift up to 5 cells while lit. Fade 20 s, dissolve 30 s, ordered by\ndomain-warped noise. Every loop still under the 1 fps step gate over an hour\n(worst: pulse 0.039, shimmer 0.036, drift 0.035, sparkle 0.032).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d80fbf0331b9de3f5144e3462f9db2d8f618bc3e",
