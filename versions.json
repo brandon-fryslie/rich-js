@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-316",
+      "ref": "refs/pull/316/merge",
+      "sha": "9f56a3a918d08004aa355c8312b721513c80129f",
+      "timestamp": "2026-10-03T12:13:42.849Z",
+      "commits": [
+        {
+          "sha": "9f56a3a918d08004aa355c8312b721513c80129f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T06:12:34-06:00",
+          "message": "Merge a83a8868bc9176eb60c8307b578a35923bddac79 into 1f43fdb736d7b6f07ea1098af5579afd881725b2\n"
+        },
+        {
+          "sha": "a83a8868bc9176eb60c8307b578a35923bddac79",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T06:12:22-06:00",
+          "message": "feat(examples): effects-feel fade and dissolve carry a strip's fills with its words, from and to the terminal's ground (rich-effects-fxiy.b6i)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "1f43fdb736d7b6f07ea1098af5579afd881725b2",
