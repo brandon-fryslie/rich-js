@@ -55,6 +55,17 @@ export interface Task {
 /** What `Progress` keeps of a task between frames: everything but the frame's `elapsed`. */
 type TaskState = Omit<Task, "elapsed">;
 
+/**
+ * A count as a task takes it in. [LAW:single-enforcer] `addTask` and
+ * `updateTask` are where counts enter, so a NaN or an Infinity is refused there,
+ * with the caller's stack, rather than drawn as `NaN%` by one column and thrown
+ * on a refresh tick by another.
+ */
+function finiteCount(field: "total" | "completed" | "advance", value: number): number {
+  if (!Number.isFinite(value)) throw new RangeError(`progress task ${field} must be a finite number, got ${value}`);
+  return value;
+}
+
 /** Rich's `Task.finished`. [LAW:one-source-of-truth] The one predicate every reader of "finished" asks. */
 function finished<T extends TaskState>(task: T): task is T & { finishedTime: number } {
   return task.finishedTime !== undefined;
@@ -237,12 +248,38 @@ export class SpinnerColumn implements ProgressColumn {
   }
 }
 
+export interface MofNCompleteColumnOptions {
+  /** Drawn between the two counts: Rich's `separator`. Defaults to `"/"`. */
+  separator?: string;
+}
+
+/**
+ * Rich's `MofNCompleteColumn`: both counts as whole numbers, the completed one
+ * padded to the total's width so the column holds still as it counts up to its
+ * total, styled `progress.download`.
+ */
 export class MofNCompleteColumn implements ProgressColumn {
   readonly tableColumn: ColumnOptions = {};
+  readonly separator: string;
+
+  constructor(options?: MofNCompleteColumnOptions) {
+    this.separator = options?.separator ?? "/";
+  }
 
   render(task: Task): RichText {
-    return new RichText(`${task.completed}/${task.total ?? "?"}`);
+    const total = task.total === undefined ? "?" : wholeNumber(task.total);
+    const completed = wholeNumber(task.completed).padStart(total.length);
+    return new RichText(`${completed}${this.separator}${total}`, { style: "progress.download" });
   }
+}
+
+/**
+ * Python's `str(int(x))`: truncated toward zero and written out in full,
+ * never in exponent form. `Progress` admits only finite counts, so `BigInt`
+ * has nothing here to refuse.
+ */
+function wholeNumber(x: number): string {
+  return BigInt(Math.trunc(x)).toString();
 }
 
 function formatTime(seconds: number): string {
@@ -336,7 +373,7 @@ export class Progress implements Renderable {
     const task: TaskState = {
       id,
       description,
-      total: options?.total,
+      total: options?.total === undefined ? undefined : finiteCount("total", options.total),
       completed: 0,
       visible: options?.visible !== false,
       startTime: options?.start === false ? undefined : this._clock.now(),
@@ -350,8 +387,10 @@ export class Progress implements Renderable {
     const task = this._tasks.get(taskId);
     if (!task) return;
 
-    if (options.completed !== undefined) task.completed = options.completed;
-    if (options.advance !== undefined) task.completed += options.advance;
+    // Rich's order, `completed` then `advance`, checked whole before any field
+    // is written, so a refused update leaves the task as it was.
+    const advance = finiteCount("advance", options.advance ?? 0);
+    task.completed = finiteCount("completed", (options.completed ?? task.completed) + advance);
     if (options.description !== undefined) task.description = options.description;
     if (options.visible !== undefined) task.visible = options.visible;
     if (

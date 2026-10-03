@@ -74,7 +74,7 @@ progress.updateTask(task1, { completed: 512 });
 progress.updateTask(task1, { description: "Downloading (retry)..." });
 ```
 
-`updateTask` accepts `completed`, `advance`, `description`, `visible`, and `refresh` — nothing else. A task's `total` is fixed at `addTask()`, and there is no store for custom per-task data.
+`updateTask` accepts `completed`, `advance`, `description`, `visible`, and `refresh` — nothing else. A task's `total` is fixed at `addTask()`, and there is no store for custom per-task data. A `total`, `completed` or `advance` that is `NaN` or infinite throws a `RangeError` from the call that passed it.
 
 ### Hiding tasks
 
@@ -183,7 +183,7 @@ progress.stop();
 | `TaskProgressColumn` | Percentage complete, right-aligned in four cells so the row holds still |
 | `TimeElapsedColumn` | Elapsed time, held where it stopped once the task is finished |
 | `TimeRemainingColumn` | Estimated time remaining; `{ elapsedWhenFinished: true }` shows the time the task took once it is finished |
-| `MofNCompleteColumn` | `completed/total` count |
+| `MofNCompleteColumn` | `completed/total` in whole numbers, styled `progress.download`; the count is padded to the total's width so the row holds still as it counts up to its total. `{ separator }` replaces the `/` |
 | `SpinnerColumn` | Animated spinner, styled `progress.spinner`; a space once the task is finished |
 
 ### Format string columns
