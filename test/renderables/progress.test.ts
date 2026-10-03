@@ -391,6 +391,49 @@ describe("TimeRemainingColumn's speed (rich-progress-jj5r.ef9)", () => {
       ["-:--:--", "0:00:30"],
     ]);
   });
+
+  // Python Rich 9d8f9a3, same harness: the column's text for the one task a
+  // scenario drives, drawn once after it.
+  function remainingAfter(scenario: (progress: Progress, clock: ReturnType<typeof fakeClock>) => void): string {
+    const column = new TimeRemainingColumn();
+    let text = "";
+    const recorder: ProgressColumn = {
+      tableColumn: {},
+      render: (task) => {
+        text = column.render(task).plain;
+        return new RichText("");
+      },
+    };
+    const clock = fakeClock();
+    const progress = new Progress(recorder, { console: new Console({ file: { write: () => {} } }), clock });
+    scenario(progress, clock);
+    [...progress.render(OPTS)];
+    return text;
+  }
+
+  it("draws a task started past its total as Rich's floor divmod does", () => {
+    const text = remainingAfter((progress, clock) => {
+      const q = progress.addTask("q", { total: 10, start: false });
+      progress.updateTask(q, { completed: 6 });
+      clock.advance(10);
+      progress.updateTask(q, { completed: 12 });
+      progress.startTask(q);
+    });
+    expect(text).toBe("-1:59:57");
+  });
+
+  it("keeps only the newest thousand samples, as Rich's deque does", () => {
+    // 500 updates of 10 then 1000 of 1, 10ms apart: with every sample kept
+    // the estimate would be 0:03:56.
+    const text = remainingAfter((progress, clock) => {
+      const c = progress.addTask("c", { total: 100000 });
+      for (let i = 0; i < 1500; i++) {
+        clock.advance(i * 0.01 - clock.now());
+        progress.updateTask(c, { advance: i < 500 ? 10 : 1 });
+      }
+    });
+    expect(text).toBe("0:15:40");
+  });
 });
 
 describe("MofNCompleteColumn (rich-progress-adjo)", () => {

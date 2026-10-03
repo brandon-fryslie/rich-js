@@ -51,9 +51,11 @@ export interface Task {
    */
   finishedTime: number | undefined;
   /**
-   * Rich's `Task.speed`: steps a second over the task's recent updates, as of
-   * the last one. Undefined until the task has started and two updates that
-   * moved it lie apart in time within the last `SPEED_ESTIMATE_PERIOD`.
+   * Rich's `Task.speed`: steps a second over the updates that moved the task
+   * in the `SPEED_ESTIMATE_PERIOD` before its latest update — measured back from
+   * that update, not from now, so a task that stops being updated keeps the
+   * speed it had. Undefined until the task has started and two such updates lie
+   * apart in time.
    */
   speed: number | undefined;
 }
@@ -76,16 +78,19 @@ const MAX_SAMPLES = 1000;
  * What `Progress` keeps of a task between frames: everything but what a frame
  * derives — `elapsed` from the clock, `speed` from the samples.
  */
-type TaskState = Omit<Task, "elapsed" | "speed"> & { samples: readonly ProgressSample[] };
+type TaskState = Omit<Task, "elapsed" | "speed"> & { readonly samples: ProgressSample[] };
 
 /**
- * Rich's `Progress.update` bookkeeping: the samples still inside the period
- * as of `now`, plus this update's if it moved the task forward.
+ * Rich's `Progress.update` bookkeeping on its sample deque, in place: drop the
+ * samples older than the period as of `now`, then add this update's if it
+ * moved the task forward, keeping the newest `MAX_SAMPLES`. The samples are in
+ * time order, so the stale ones are a prefix.
  */
-function recordSample(samples: readonly ProgressSample[], now: number, moved: number): ProgressSample[] {
-  const fresh = samples.filter((sample) => sample.timestamp >= now - SPEED_ESTIMATE_PERIOD);
-  const added = moved > 0 ? [{ timestamp: now, completed: moved }] : [];
-  return [...fresh, ...added].slice(-MAX_SAMPLES);
+function recordSample(samples: ProgressSample[], now: number, moved: number): void {
+  const firstFresh = samples.findIndex((sample) => sample.timestamp >= now - SPEED_ESTIMATE_PERIOD);
+  samples.splice(0, firstFresh === -1 ? samples.length : firstFresh);
+  if (moved > 0) samples.push({ timestamp: now, completed: moved });
+  samples.splice(0, samples.length - MAX_SAMPLES);
 }
 
 /**
@@ -324,10 +329,17 @@ function wholeNumber(x: number): string {
   return BigInt(Math.trunc(x)).toString();
 }
 
+/**
+ * Rich's clock face: `int()` the seconds, then Python's floor `divmod` by 60
+ * twice, so a negative estimate — a task past its total — reads as Rich's
+ * does, `-3` as `-1:59:57`.
+ */
 function formatTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
+  const whole = Math.trunc(seconds);
+  const minutes = Math.floor(whole / 60);
+  const h = Math.floor(minutes / 60);
+  const m = minutes - h * 60;
+  const s = whole - minutes * 60;
   return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
@@ -435,7 +447,7 @@ export class Progress implements Renderable {
     const advance = finiteCount("advance", options.advance ?? 0);
     const completed = finiteCount("completed", (options.completed ?? task.completed) + advance);
     const now = this._clock.now();
-    task.samples = recordSample(task.samples, now, completed - task.completed);
+    recordSample(task.samples, now, completed - task.completed);
     task.completed = completed;
     if (options.description !== undefined) task.description = options.description;
     if (options.visible !== undefined) task.visible = options.visible;
