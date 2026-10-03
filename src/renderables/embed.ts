@@ -22,6 +22,7 @@
  * the drawing site may change it.
  */
 
+import { cellCount, cellLen, setCellSize } from "../core/cells.js";
 import { activeHighlighter, readStr } from "../core/markup.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
@@ -93,8 +94,9 @@ export function embed(content: unknown): Renderable & Partial<Measurable> {
 /**
  * Caller content set into a line it shares with other drawing — a panel's
  * title or subtitle in its border, a rule's title — read as Rich's `_title`
- * reads it: newlines become spaces, so the label stays on its line, tabs are
- * widened to their stops, and it is set off by a space either side.
+ * reads it: newlines become spaces, so the label stays on its line, and tabs
+ * are widened to their stops. Whatever sets it off from the line around it —
+ * a panel's space either side, a rule's gaps — is the embedding site's.
  *
  * Held once by the renderable that owns it, so a string's markup is read once
  * and every measure and render after reuses that reading.
@@ -106,7 +108,7 @@ export class InlineLabel {
     this._content = new EmbeddedText(content);
   }
 
-  /** The label drawn under `options`: one line, padded, its own overflow kept for the caller's cut. */
+  /** The label drawn under `options`: one line, its own overflow kept for the caller's cut. */
   text(options: RenderOptions): RichText {
     const text = this._content.text(options);
     // A fragment of the line, so its own end is not drawn, as Rich's `_title` clears it.
@@ -114,8 +116,21 @@ export class InlineLabel {
     text.plain = text.plain.replaceAll("\n", " ");
     // Tabs widened before anything measures it, so a cut to the border and
     // the width a title asks for count the cells the label will draw.
-    return text.expandTabs().pad(1);
+    return text.expandTabs();
   }
+}
+
+/**
+ * A label cut to `width` cells as Rich's `Text.truncate` cuts one: its plain
+ * text set to the width less `marker` — a wide character the cut splits leaves
+ * a space in its cell rather than a cell of the line around it — then the
+ * marker, with every span that ran past the cut trimmed to the new end, so the
+ * pad and the marker take the styling of what they replace. A label that fits
+ * is left as it is.
+ */
+export function cutLabel(text: RichText, width: number, marker: string): void {
+  if (text.cellLength <= width) return;
+  text.plain = setCellSize(text.plain, cellCount(width - cellLen(marker))) + marker;
 }
 
 /**
@@ -143,8 +158,8 @@ export function drawLabel(text: RichText, options: RenderOptions, base: Style | 
 
 /**
  * Caller content as a label, or no label at all: content that is not
- * `present` draws the plain rule, and markup that styles nothing is a label of
- * two spaces, a gap in the rule, as Rich's is.
+ * `present` draws the plain rule, and markup that styles nothing is an empty
+ * label, which still opens a gap in the rule, as Rich's does.
  */
 export function inlineLabel(content: string | RichText | undefined): InlineLabel | undefined {
   return present(content) ? new InlineLabel(content) : undefined;
