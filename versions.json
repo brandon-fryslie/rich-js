@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-306",
+      "ref": "refs/pull/306/merge",
+      "sha": "17e7b584beec303ef8d7df1a5bcb7057f8b2f2d2",
+      "timestamp": "2026-10-03T09:08:49.709Z",
+      "commits": [
+        {
+          "sha": "17e7b584beec303ef8d7df1a5bcb7057f8b2f2d2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T03:07:33-06:00",
+          "message": "Merge f22ca4ec0d20658666c3fa1a6edea1218663841d into 97ae7e2cc96473d2a839b810587d60c6f667f808\n"
+        },
+        {
+          "sha": "f22ca4ec0d20658666c3fa1a6edea1218663841d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T03:07:28-06:00",
+          "message": "fix(demos): live-terminal rows sit at the page's line height; the claude-sessions footer fits 80 columns (rich-demos-z4hd)\n\nxterm makes a row its measured character height times its lineHeight option,\nrounded to device pixels, so the factor live-terminal.ts handed it never landed\non the page's line height: rows were 20px against a 17.5px line, and the landing\nshowcase grew 483px -> 543px on its first frame. xterm now measures its\ncharacter at the page's line height (custom.css) with the option left at 1,\nand that line height is rounded to a whole pixel so static output and live\nrows share it.\n\nThe claude-sessions footer is one Layout row and wrapped when narrower than\nits hints, cutting \"q quit\" at 80 columns with no sign. It now draws the\nleading hints that fit and counts the rest (\"+8 more\"); the lists lead with\nmoving, focus and quit.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "97ae7e2cc96473d2a839b810587d60c6f667f808",
