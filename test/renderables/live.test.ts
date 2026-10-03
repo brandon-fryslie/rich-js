@@ -66,6 +66,20 @@ describe("Live when a frame's render throws", () => {
     expect(await term.rows()).toEqual(["good"]);
   });
 
+  it("a print whose frame fails leaves the next frame painting over the last", async () => {
+    const term = terminal(20, 5);
+    const display = new Live(new RichText("a\nb\nc"), { console: term.console, autoRefresh: false });
+    display.start();
+    display.refresh();
+
+    display.update(broken);
+    expect(() => display.console.print("hi")).toThrow(RenderFailed);
+    display.update(new RichText("a\nb\nc"));
+    display.refresh();
+
+    expect(await term.rows()).toEqual(["a", "b", "c"]);
+  });
+
   // What each mode writes to hand the terminal back with a frame on it: inline,
   // the line under the frame, where the program's next output belongs.
   const modes = [

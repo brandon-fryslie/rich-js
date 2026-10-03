@@ -161,9 +161,12 @@ export class SurfacePainter implements Painter {
    * frame fills whole lines, so text that stops mid-line is ended before it.
    */
   around(text: string, frame: FrameSource, screen: Screen, destination: Destination): string {
+    // Drawn before `over` moves the row count, so a frame that throws leaves
+    // the painter matching the terminal it left untouched.
+    const rows = fitRows(frame(), screen);
     const erase = this.over([], screen, destination);
     const ended = text.endsWith("\n") ? text : `${text}\n`;
-    return erase + ended + this.over(fitRows(frame(), screen), screen, destination);
+    return erase + ended + this.over(rows, screen, destination);
   }
 
   // The bytes that paint `rows` over the last frame. They go out in one
