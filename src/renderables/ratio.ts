@@ -49,6 +49,42 @@ export function ratioDistribute(
   });
 }
 
+/**
+ * Rich's `ratio_reduce`: `total` taken back from `values` by ratio, each part
+ * giving up at most its `maximum`, and a part whose maximum is 0 giving up
+ * nothing, as the reference zeroes its ratio first. Each part gives up its
+ * share of what the parts before it left, rounded half to even as Python's
+ * `round` is, so 9 at 1:1 is 4 + 5. A part held to its maximum leaves the rest
+ * to the parts after it; when they cannot take it all, less than `total` is
+ * taken back, as in the reference.
+ */
+export function ratioReduce(
+  total: number,
+  ratios: readonly number[],
+  maximums: readonly number[],
+  values: readonly number[],
+): number[] {
+  const weights = exactWeights(ratios.map((ratio, index) => (maximums[index]! > 0 ? ratio : 0)));
+  let totalRatio = weights.reduce((sum, ratio) => sum + ratio, 0n);
+  let remaining = BigInt(total);
+  return weights.map((ratio, index) => {
+    if (ratio === 0n) return values[index]!;
+    const share = roundHalfEven(ratio * remaining, totalRatio);
+    const maximum = BigInt(maximums[index]!);
+    const given = share < maximum ? share : maximum;
+    remaining -= given;
+    totalRatio -= ratio;
+    return values[index]! - Number(given);
+  });
+}
+
+/** Python's `round(a / b)` for a positive `b`: the nearest integer, a tie to the even one. */
+function roundHalfEven(a: bigint, b: bigint): bigint {
+  const floor = a / b - (a % b < 0n ? 1n : 0n);
+  const twice = 2n * (a - floor * b);
+  return twice > b || (twice === b && floor % 2n !== 0n) ? floor + 1n : floor;
+}
+
 /** Python's `ceil(a / b)` for a positive `b`: `BigInt` division truncates toward zero, which is the ceiling for a negative `a`. */
 function ceilDiv(a: bigint, b: bigint): bigint {
   const quotient = a / b;

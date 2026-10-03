@@ -1579,6 +1579,19 @@ describe("Table cells wrap before the overflow method sees them", () => {
     ]);
   });
 
+  // rich-table-frxv: Python Rich 9d8f9a3,
+  // `Table.grid(Column(no_wrap=True), Column(no_wrap=True), padding=(0, 1))` at
+  // width 30. No column may wrap, so the excess is taken from each evenly —
+  // `ratio_reduce(9, [1, 1], [9, 30], [9, 30])` — rather than in proportion
+  // to their widths, which cut `download` to `downlo…`.
+  it("cuts columns that may not wrap evenly when they do not fit, as Rich does", () => {
+    const g = Table.grid({ padding: [0, 1] });
+    g.addColumn("", { noWrap: true });
+    g.addColumn("", { noWrap: true });
+    g.addRow("download", "x".repeat(40));
+    expect(collectLines(g, { maxWidth: 30 })).toEqual(["dow… xxxxxxxxxxxxxxxxxxxxxxxx…"]);
+  });
+
   it("reports its column minimums to a parent that squeezes it", () => {
     const inner = pair(["Star Wars Ep. VIII: The Last Jedi", false], ["$1,332,539,889", false]);
     // The reference's measure: the sum of each column's longest word and padding.

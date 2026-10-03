@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ratioBudget, ratioDistribute, ratioResolve, shareWeight } from "../../src/renderables/ratio.js";
+import { ratioBudget, ratioDistribute, ratioReduce, ratioResolve, shareWeight } from "../../src/renderables/ratio.js";
 import type { Edge } from "../../src/renderables/ratio.js";
 import { cellCount } from "../../src/core/cells.js";
 
@@ -44,6 +44,22 @@ describe("ratioDistribute", () => {
 
 const edge = ({ size, ratio = 1, minimumSize = 1 }: { size?: number; ratio?: number; minimumSize?: number } = {}): Edge =>
   ({ size: size === undefined ? undefined : cellCount(size), ratio: shareWeight(ratio), minimumSize: cellCount(minimumSize) });
+
+describe("ratioReduce", () => {
+  // Python Rich 9d8f9a3's `ratio_reduce` for the same arguments: shares round
+  // half to even, a zero maximum takes no share, and a part held to its
+  // maximum leaves the rest to the parts after it — or untaken, at the end.
+  it.each([
+    [9, [1, 1], [9, 30], [9, 30], [5, 25]],
+    [9, [0, 1], [9, 9], [9, 30], [9, 21]],
+    [19, [1, 1], [9, 40], [9, 40], [0, 30]],
+    [5, [1, 1, 1], [0, 4, 4], [3, 4, 4], [3, 2, 1]],
+    [7, [2, 1], [10, 10], [10, 10], [5, 8]],
+    [6, [1, 1], [10, 1], [10, 1], [7, 0]],
+  ])("ratio_reduce(%d, %j, %j, %j) is %j, as in Rich", (total, ratios, maximums, values, expected) => {
+    expect(ratioReduce(total, ratios, maximums, values)).toEqual(expected);
+  });
+});
 
 describe("ratioResolve", () => {
   // Every expectation below is what Python Rich fc41075a's

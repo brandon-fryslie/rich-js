@@ -11,7 +11,7 @@ import { RichText } from "../core/text.js";
 import { EmbeddedText, embed, present } from "./embed.js";
 import type { PaddingDimensions } from "./padding.js";
 import { normalizePadding } from "./padding.js";
-import { exactWeights, ratioDistribute } from "./ratio.js";
+import { exactWeights, ratioDistribute, ratioReduce } from "./ratio.js";
 import type {
   Renderable,
   Measurable,
@@ -49,7 +49,9 @@ import { Measurement } from "../core/measure.js";
  * One deliberate divergence: the reference's `_collapse_widths` narrows the
  * widest wrappable column first and reads no minimum, so once the widest has
  * narrowed to the next it cuts both alike — a 14-cell figure beside a long
- * title is truncated there with room to spare in the title's wrap.
+ * title is truncated there with room to spare in the title's wrap. When the
+ * minimums themselves do not fit, they are cut as the reference cuts widths
+ * (`reduceToFit`): the `wrapable` columns first, then every column evenly.
  *
  * `pad` is the padding the column draws either side of its content, already
  * reduced by `collapsePadding` and `padEdge`. `floor` is the part of `want`
@@ -66,6 +68,8 @@ interface ColumnDemand {
   readonly fill: number;
   readonly ratio: number;
   readonly stretch: boolean;
+  /** The reference's `column.width is None and not column.no_wrap`: a column narrowed first when the minimums do not fit. */
+  readonly wrapable: boolean;
   readonly pad: readonly [left: number, right: number];
   readonly floor: number;
 }
@@ -168,6 +172,43 @@ function distribute(total: number, demands: readonly Bid[]): number[] {
   }
 
   return granted;
+}
+
+/**
+ * `wants` cut back until they sum to `budget`, as the reference narrows a table
+ * wider than its width in `Table._calculate_column_widths`: first the widest
+ * `wrapable` columns, each round down to the next widest (`_collapse_widths`),
+ * and then, the last resort, the excess taken from every column evenly
+ * (`ratio_reduce(excess, [1] * n, widths, widths)`). Wants that fit come back
+ * as they are.
+ *
+ * `widths` are the padded widths the reference compares; a column gives up at
+ * most its want, never the seat or padding the table paid it first. One
+ * divergence: the reference's even cut runs once, and where a column too
+ * narrow to give its share leaves cells over, the table draws past its width.
+ * Here the cut repeats over the columns with cells left, so the table fits.
+ * Each round either fits or empties a column, so it ends.
+ */
+function reduceToFit(budget: number, demands: readonly { want: number; width: number; wrapable: boolean }[]): number[] {
+  let wants = demands.map(({ want }) => want);
+  const excess = (): number => wants.reduce((sum, want) => sum + want, 0) - budget;
+  const width = (index: number): number => demands[index]!.width - demands[index]!.want + wants[index]!;
+  for (let over = excess(); over > 0; over = excess()) {
+    const open = wants.flatMap((want, index) => (demands[index]!.wrapable && want > 0 ? [index] : []));
+    if (open.length === 0) break;
+    const widest = Math.max(...open.map(width));
+    const next = Math.max(0, ...open.map((index) => (width(index) === widest ? 0 : width(index))));
+    wants = ratioReduce(
+      over,
+      wants.map((_, index) => (open.includes(index) && width(index) === widest ? 1 : 0)),
+      wants.map((want) => Math.min(over, widest - next, want)),
+      wants,
+    );
+  }
+  for (let over = excess(); over > 0; over = excess()) {
+    wants = ratioReduce(over, wants.map(() => 1), wants, wants);
+  }
+  return wants;
 }
 
 /**
@@ -294,12 +335,12 @@ function layoutTable(
   const base = seatedDemands.map((_, index) => seats[index]! + reserved[index]!);
   const holding = (...passes: ReadonlyArray<readonly number[]>): number[] =>
     base.map((start, index) => passes.reduce((sum, granted) => sum + granted[index]!, start));
-  const needed = distribute(
+  const needed = reduceToFit(
     budget,
-    seatedDemands.map((demand, index) => ({
-      want: Math.max(0, demand.minimum - base[index]!),
-      weight: demand.weight,
-    })),
+    seatedDemands.map((demand, index) => {
+      const want = Math.max(0, demand.minimum - base[index]!);
+      return { want, width: padLeft[index]! + base[index]! + want + padRight[index]!, wrapable: demand.wrapable };
+    }),
   );
   const afterNeeded = holding(needed);
   const beyond = distribute(
@@ -951,13 +992,31 @@ export class Table implements Renderable, Measurable {
     const share = columnShare(col);
     if (share > 0) {
       const floor = Math.max(1, demandCells(col.width ?? col.minWidth ?? 0));
-      return { reserved: 0, minimum: floor, want: floor, weight: floor, fill: 0, ratio: share, stretch: false };
+      return {
+        reserved: 0,
+        minimum: floor,
+        want: floor,
+        weight: floor,
+        fill: 0,
+        ratio: share,
+        stretch: false,
+        wrapable: col.width === undefined && !col.noWrap,
+      };
     }
     if (col.width !== undefined) {
       // [LAW:single-enforcer] floored where it is parsed, the same rule
       // `normalizePadding` applies to a negative padding side.
       const declared = demandCells(col.width);
-      return { reserved: declared, minimum: declared, want: declared, weight: 0, fill: 0, ratio: 0, stretch: false };
+      return {
+        reserved: declared,
+        minimum: declared,
+        want: declared,
+        weight: 0,
+        fill: 0,
+        ratio: 0,
+        stretch: false,
+        wrapable: false,
+      };
     }
     const range = this._cellRange(col, index, options);
     const natural = demandCells(this._bounded(col, range?.maximum ?? 1));
@@ -993,6 +1052,7 @@ export class Table implements Renderable, Measurable {
       fill: range === undefined ? demandCells(this._bounded(col, UNBOUNDED)) : 0,
       ratio: 0,
       stretch: this.expand,
+      wrapable: !col.noWrap,
     };
   }
 
