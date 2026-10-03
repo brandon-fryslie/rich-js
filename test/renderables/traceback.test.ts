@@ -279,12 +279,41 @@ describe("Traceback", () => {
     expect(text).toMatch(/^ {2}doWork \/app\/w\.ts:99$/m);
   });
 
-  it("renders an error whose message was replaced with a non-string, frames and all", () => {
-    const error = new Error("replaced");
-    (error as { message: unknown }).message = 42;
+  it("renders an error whose message was replaced with a non-string under its own name, frames and all", () => {
+    const error = new RangeError("replaced");
+    (error as { message: unknown }).message = { a: 1 };
     const text = collectText(new Traceback(error), { maxWidth: 200 });
-    expect(text.startsWith("NonError: ")).toBe(true);
+    expect(text.startsWith("RangeError: { a: 1 }\n\n")).toBe(true);
     expect(text).toMatch(/^ {2}\S*traceback\.test\.ts:\d+$/m);
+  });
+
+  it.each([
+    { label: "a Proxy whose trap throws", value: new Proxy({}, { get() { throw new Error("trap"); } }), shown: "NonError: [Threw: trap]" },
+    { label: "an object whose name getter throws", value: { get name(): string { throw new Error("getter"); } }, shown: "NonError: { name: [Threw: getter] }" },
+  ])("reports $label instead of throwing, with the read that threw", ({ value, shown }) => {
+    expect(collectText(new Traceback(value), { maxWidth: 80 })).toBe(`${shown}\n\n`);
+  });
+
+  it("lays a NonError value out in the width left after its name", () => {
+    const value = { alpha: "a".repeat(15), beta: "b".repeat(15) };
+    expect(collectText(new Traceback(value), { maxWidth: 60 })).toBe(
+      `NonError: {\n    alpha: "${"a".repeat(15)}",\n    beta: "${"b".repeat(15)}"\n}\n\n`,
+    );
+  });
+
+  it("shows no frame for a stale header when V8 recorded none", () => {
+    const error = new Error("x");
+    error.message = "y";
+    error.stack = "Error: x";
+    expect(collectText(new Traceback(error), { maxWidth: 80 })).toBe("Error: y\n\n");
+  });
+
+  it("takes node's coded header off whole, so no line of its message reads as a frame", () => {
+    const error = new RangeError("bad value\n    at step 3 of migration");
+    error.stack = "RangeError [ERR_OUT_OF_RANGE]: bad value\n    at step 3 of migration\n    at check (/app/c.ts:4:2)";
+    expect(collectText(new Traceback(error), { maxWidth: 80 })).toBe(
+      "RangeError: bad value\n    at step 3 of migration\n\n  check /app/c.ts:4\n",
+    );
   });
 
   // Installing Traceback as the process-wide crash handler is a node

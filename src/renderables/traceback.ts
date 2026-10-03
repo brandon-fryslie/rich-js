@@ -1,7 +1,7 @@
 /**
  * Traceback — renders error tracebacks with formatting.
  *
- * [LAW:effects-at-boundaries] Pure rendering: an `Error` in, `Segment`s out.
+ * [LAW:effects-at-boundaries] Pure rendering: a caught value in, `Segment`s out.
  * Installing this as the process-wide crash handler touches `process.on` and
  * `process.exit`, so that lives behind the node seam as `installTraceback` in
  * `src/node/traceback.ts` — which is what keeps this module, and therefore the
@@ -49,7 +49,10 @@ interface StackFrame {
  */
 interface Caught {
   name: string;
-  /** The program's message, or the thrown value itself when it is not an error. */
+  /**
+   * The program's message, or the thrown value itself when it is not an error,
+   * laid out at the width left after the name.
+   */
   message: (options: RenderOptions) => RichText;
   frames: StackFrame[];
 }
@@ -57,36 +60,64 @@ interface Caught {
 /**
  * [LAW:parse-dont-validate] The checkpoint between whatever a `catch` caught —
  * JavaScript lets a program throw any value — and the report. Anything with a
- * string `name` and `message` is reported as the error it presents itself as:
- * that is every native error from any realm, which `instanceof Error` would
- * refuse for one from a `node:vm` context or an iframe, and any thrower shaped
- * like one. Anything else is reported as the value it is, under `NonError`,
- * formatted by `Pretty` so it reads the same in a browser as in node — with the
- * frames of a stack it carries, when it carries one.
- *
- * A native error whose `message` was later assigned a non-string is the second
- * case, which is how it renders rather than throwing out of `console.print`
- * when the report reads it.
+ * string `name` and a `message` is reported as the error it presents itself
+ * as: that is every native error from any realm, which `instanceof Error`
+ * would refuse for one from a `node:vm` context or an iframe, and any thrower
+ * shaped like one. A message that is not a string — a native error's, assigned
+ * after construction — is formatted by `Pretty` under the error's own name.
+ * Anything else is reported as the value it is, under `NonError`, formatted by
+ * `Pretty` so it reads the same in a browser as in node — with the frames of a
+ * stack it carries, when it carries one.
  */
 function readCaught(value: unknown): Caught {
-  const stack = stringField(value, "stack");
-  const name = stringField(value, "name");
-  const message = stringField(value, "message");
-  if (name !== undefined && message !== undefined) {
+  const fields = readFields(value);
+  if (fields !== undefined && typeof fields.name === "string" && fields.hasMessage) {
+    const { name, message } = fields;
+    const text = typeof message === "string" ? message : undefined;
     return {
       name: name || "Error",
-      message: () => new RichText(message, { style: "traceback.text", end: "" }),
-      frames: parseStack(stack ?? "", header(name, message)),
+      message: text === undefined
+        ? prettyMessage(message)
+        : () => new RichText(text, { style: "traceback.text", end: "" }),
+      frames: parseStack(fields.stack, name, text),
     };
   }
-  const pretty = new Pretty(value, UNSEEN_DATA_BOUNDS);
-  return { name: "NonError", message: (options) => pretty.toText(options), frames: parseStack(stack ?? "", "") };
+  return { name: "NonError", message: prettyMessage(value), frames: parseStack(fields?.stack ?? "", undefined, undefined) };
 }
 
-function stringField(value: unknown, key: "name" | "message" | "stack"): string | undefined {
+interface Fields {
+  name: unknown;
+  hasMessage: boolean;
+  message: unknown;
+  stack: string;
+}
+
+/**
+ * The fields the report reads off a caught object, or `undefined` when it is
+ * not an object or reading them throws — a getter that throws, a `Proxy` whose
+ * trap does. Such a value is reported under `NonError`, where `Pretty` reads
+ * it again and marks the read that threw as `[Threw: …]`, so the fault stays
+ * in the report instead of taking the crash handler down with it.
+ */
+function readFields(value: unknown): Fields | undefined {
   if (typeof value !== "object" || value === null) return undefined;
-  const field: unknown = (value as Record<string, unknown>)[key];
-  return typeof field === "string" ? field : undefined;
+  try {
+    const record = value as { name?: unknown; message?: unknown; stack?: unknown };
+    const stack = record.stack;
+    return {
+      name: record.name,
+      hasMessage: "message" in record,
+      message: record.message,
+      stack: typeof stack === "string" ? stack : "",
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function prettyMessage(value: unknown): (options: RenderOptions) => RichText {
+  const pretty = new Pretty(value, UNSEEN_DATA_BOUNDS);
+  return (options) => pretty.toText(options);
 }
 
 /** The first line V8 writes into an error's stack: `String(error)` at the throw. */
@@ -97,23 +128,48 @@ function header(name: string, message: string): string {
 }
 
 /**
+ * Where the header that opens an error's stack ends, or `undefined` when the
+ * stack does not open with the header the error now has.
+ *
+ * V8 writes `String(error)`; node writes its own errors' code into the name
+ * there (`RangeError [ERR_X]: message`), so after the name may come one line of
+ * anything before `: ` and the message.
+ */
+function headerEnd(stack: string, name: string, message: string): number | undefined {
+  const endsLine = (at: number): boolean => at === stack.length || stack[at] === "\n";
+  const plain = header(name, message);
+  if (stack.startsWith(plain) && endsLine(plain.length)) return plain.length;
+  if (!name || !stack.startsWith(name)) return undefined;
+  const tail = `: ${message}`;
+  const at = stack.indexOf(tail, name.length);
+  if (at < 0 || stack.slice(name.length, at).includes("\n")) return undefined;
+  return endsLine(at + tail.length) ? at + tail.length : undefined;
+}
+
+/** Whether a stack's first line is a V8 header for an error of this name. */
+function opensWithName(line: string, name: string): boolean {
+  return line === name || line.startsWith(`${name}:`) || line.startsWith(`${name} [`);
+}
+
+/**
  * The frames of a stack, in order.
  *
  * V8 opens a stack with the error's header, and a message can span lines that
  * look like frames, so the header comes off first, as the exact text it is.
- * When it does not open the stack — the message was reassigned after the
- * throw, or SpiderMonkey and JavaScriptCore wrote the stack, which carry no
- * header — what precedes the first V8 frame is that stale header, and a stack
- * with no V8 frame is all frames. A value that is not an error opens with no
- * header, the empty one.
+ * When it does not open the stack, the message was reassigned after the throw
+ * and what precedes the first V8 frame is that stale header — all of it, when
+ * V8 recorded no frame, as under `Error.stackTraceLimit = 0`. SpiderMonkey and
+ * JavaScriptCore write no header, so a stack that does not open with the name
+ * is all frames. A value that is not an error has no name, so its stack is
+ * read from its first V8 frame, or whole when it has none.
  */
-function parseStack(stack: string, opening: string): StackFrame[] {
-  const body = stack === opening || stack.startsWith(`${opening}\n`)
-    ? stack.slice(opening.length)
-    : stack;
-  const lines = body.split("\n").map((line) => line.trim()).filter((line) => line !== "");
+function parseStack(stack: string, name: string | undefined, message: string | undefined): StackFrame[] {
+  const end = name !== undefined && message !== undefined ? headerEnd(stack, name, message) : undefined;
+  const lines = stack.slice(end ?? 0).split("\n").map((line) => line.trim()).filter((line) => line !== "");
+  if (end !== undefined) return lines.map(parseFrame);
   const firstV8 = lines.findIndex((line) => V8_FRAME.test(line));
-  return lines.slice(Math.max(firstV8, 0)).map(parseFrame);
+  if (firstV8 >= 0) return lines.slice(firstV8).map(parseFrame);
+  return name && lines[0] !== undefined && opensWithName(lines[0], name) ? [] : lines.map(parseFrame);
 }
 
 /**
@@ -204,7 +260,9 @@ export class Traceback implements Renderable {
     const { name, message } = this.caught;
     header.append(name, "traceback.exc_type");
     header.append(": ");
-    header.append(message(options));
+    // The message starts after the name, so a value `Pretty` lays out fits the
+    // width that is left on that line rather than overrunning it.
+    header.append(message({ ...options, maxWidth: Math.max(1, options.maxWidth - header.cellLength) }));
     header.append("\n\n");
     yield* header.render(options);
 

@@ -46,7 +46,7 @@ try {
 }
 ```
 
-`Traceback` takes whatever was caught, so no cast is needed. JavaScript lets a program throw any value: anything with a string `name` and `message` is reported as the error it presents itself as, whichever realm or library it came from, and anything else — `throw "boom"`, `Promise.reject(42)` — renders under the name `NonError`, with the value formatted as `console.print` would format it and the frames of its `stack`, if it carries one.
+`Traceback` takes whatever was caught, so no cast is needed. JavaScript lets a program throw any value: anything with a string `name` and `message` is reported as the error it presents itself as, whichever realm or library it came from, and anything else — `throw "boom"`, `Promise.reject(42)` — renders under the name `NonError`, with the value formatted by `Pretty` — a string quoted, an object laid out by its keys — and the frames of its `stack`, if it carries one. An error whose `message` is not a string keeps its own name, with the message formatted the same way.
 
 A traceback shows only what the error's stack records. It cannot show source lines or local variables: an `Error` carries the location of each frame, not the code or the values that were in scope there. A frame with no line — `Promise.all (index 0)`, a builtin such as `Array.map` — shows the location the engine recorded in its place; a frame inside `eval` or `new Function` shows the file and line of the call that ran the code; and a stack written by Firefox or Safari is read as well as one written by V8. A stack line in no shape the traceback knows is shown as written rather than dropped.
 
