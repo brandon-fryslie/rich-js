@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-300",
-      "ref": "refs/pull/300/merge",
-      "sha": "e0273ad33c1837a7e48e0036c55fec12403c19f4",
-      "timestamp": "2026-10-03T06:46:25.588Z",
-      "commits": [
-        {
-          "sha": "e0273ad33c1837a7e48e0036c55fec12403c19f4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:45:13Z",
-          "message": "Merge 710f98979572b947a30fb0f5dbb23f088920ae31 into dffa02362a6fa499c2aa2ff86b83370f805ebda7\n"
-        },
-        {
-          "sha": "710f98979572b947a30fb0f5dbb23f088920ae31",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T00:45:08-06:00",
-          "message": "fix(prompt): nodeAsk prints the prompt through its console and reads in cooked mode; Confirm matches capitalised choices (rich-prompt-2dqq)\n\nnodeAsk now does what Rich's Console.input does: print, then read a line.\nHanding readline the console's target in terminal mode crashed on a\nhostEnvironment console (isTTY without .on), and capturing the prompt on the\napp's console wiped a capture the app had open and skipped a running Live.\n\nRefused-answer messages are read as markup whatever the console's markup\nflag; an empty choices list draws no hint, as in Rich.\n"
-        },
-        {
-          "sha": "20725611d81f7a6ab832df8946e796831e99cb7a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T00:38:36-06:00",
-          "message": "fix(prompt)!: answers parse as Rich's do, refused answers print Rich's messages, and a prompt takes the app's Console (rich-prompt-2dqq)\n\n- IntPrompt/FloatPrompt read answers with Python's int()/float() grammar:\n  \"+5\", \"007\", \"-0\", \"1_000\" are integers; \"1abc\", \"3.2.1\", \"0.5 volts\" are\n  refused. An integer a number cannot hold exactly is refused, not rounded.\n- IntPrompt/FloatPrompt draw and enforce `choices`.\n- Confirm draws \"[y/n] (y)\" as Rich does, honours showChoices/showDefault and\n  a [yes, no] `choices` pair, and takes only y/n (any case), as Rich does.\n- A refused answer prints Rich's message in prompt.invalid /\n  prompt.invalid.choice, both new in DEFAULT_STYLES.\n- PromptOptions.console is Rich's console=. PromptInput receives the console;\n  nodeAsk encodes with it and asks on its target instead of a fresh stdout\n  Console, so an app's theme and colorSystem reach the prompt.\n\nBREAKING CHANGE: PromptInput is (prompt, console) => Promise<string>;\nConfirm no longer accepts \"yes\"/\"no\" or caseSensitive.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "dffa02362a6fa499c2aa2ff86b83370f805ebda7",
