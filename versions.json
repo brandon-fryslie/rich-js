@@ -4,15 +4,22 @@
     {
       "version": "pr-293",
       "ref": "refs/pull/293/merge",
-      "sha": "07b6af5c56494cdb95ca4fa89c723abec77057ff",
-      "timestamp": "2026-10-03T03:45:29.329Z",
+      "sha": "e5a9714dfaced75d5f3715264ffc951e87f4d77c",
+      "timestamp": "2026-10-03T03:49:44.687Z",
       "commits": [
         {
-          "sha": "07b6af5c56494cdb95ca4fa89c723abec77057ff",
+          "sha": "e5a9714dfaced75d5f3715264ffc951e87f4d77c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T21:44:32-06:00",
-          "message": "Merge 9367d0655b1d354f48890e45edec5a4f4590d869 into 58c1436afdc6f477693098cb1671352f822a5666\n"
+          "timestamp": "2026-10-03T03:48:27Z",
+          "message": "Merge 496449bc4c2c0edf61633ada4577cf727dd5dfe6 into 58c1436afdc6f477693098cb1671352f822a5666\n"
+        },
+        {
+          "sha": "496449bc4c2c0edf61633ada4577cf727dd5dfe6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T21:48:22-06:00",
+          "message": "fix(traceback): a stale header is read by its shape, not the error's current name (rich-traceback-9vcb)\n"
         },
         {
           "sha": "9367d0655b1d354f48890e45edec5a4f4590d869",
