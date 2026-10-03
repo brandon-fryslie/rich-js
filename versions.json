@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-314",
+      "ref": "refs/pull/314/merge",
+      "sha": "69b22568ef5a7be10ebd7664e139ca8631b9fd29",
+      "timestamp": "2026-10-03T11:28:09.676Z",
+      "commits": [
+        {
+          "sha": "69b22568ef5a7be10ebd7664e139ca8631b9fd29",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T05:26:07-06:00",
+          "message": "Merge 5c95eb323e9f407158a7f38a3ad2d2fae66a02b0 into 5ea7133dd91b8a775424c8d3791cb35e97848e58\n"
+        },
+        {
+          "sha": "5c95eb323e9f407158a7f38a3ad2d2fae66a02b0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T05:25:55-06:00",
+          "message": "feat(examples): effects-feel light catches a strip's lettering too, so a glint on a dark fill reads as light (rich-effects-fxiy.b6i)\n\nOn the strip's muted fills a glint could only deepen the fill to amber (light\ntext sits on them), which read as a passing shadow. A subject's lit colours\nare now every colour its text cells set, each catching the side of a light\naway from its partner (`catches`, `Side`): the lettering glints pale while the\nfill glows amber, the way sunlight catches a sign. Label contrast holds at\nrest under shimmer, pulse and sparkle; drift on dark improves 4.58 -> 4.90.\n\n`Subject.slot` is gone: what a subject lights is what its text cells set. At\n16 colours the theme's white is both a pale fill and lettering on a paler one,\nso it has no side away from both and catches no light (an ANSI slot cannot\nmove anyway).\n"
+        }
+      ]
+    },
+    {
       "version": "pr-313",
       "ref": "refs/pull/313/merge",
       "sha": "7496904d82ee86e1a259c8e861fd2bc552086878",
