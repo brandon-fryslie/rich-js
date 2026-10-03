@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-328",
+      "ref": "refs/pull/328/merge",
+      "sha": "eb14621cceed7afda932aa75ce474d72c2c5342b",
+      "timestamp": "2026-10-03T14:56:05.189Z",
+      "commits": [
+        {
+          "sha": "eb14621cceed7afda932aa75ce474d72c2c5342b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T14:54:52Z",
+          "message": "Merge 37673e59753d5fd67553c99e0a7a7c925e79e040 into 16af325f6dfad880dd1b4e79e6e56de541ec508f\n"
+        },
+        {
+          "sha": "37673e59753d5fd67553c99e0a7a7c925e79e040",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:54:48-06:00",
+          "message": "fix(strip): a strip's width is both its bounds, and its row takes no justify (rich-strip-hbbu)\n\nReview of #328: summing the items' minimums promised a narrower strip\nthe walk never draws, so a Table squeezed the column and cropped the\nlast items. measure now reads the drawn row; the row clears the justify\nits container hands it, which padded the first item over the rest.\n"
+        },
+        {
+          "sha": "dde2be75208d76355e20dcc9802e0d051b444c78",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:44:57-06:00",
+          "message": "fix(strip): Strip measures as the row it draws (rich-strip-hbbu)\n\nStrip implemented Renderable only, so Measurement.get answered (0, maxWidth)\nfor it and every container measuring one got the whole offer. It now sums its\nitems' measurements and the cells its joins draw; render and measure read one\nlist of joins. effects-feel's drawn-row workaround is replaced by Measurement.get.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-326",
       "ref": "refs/pull/326/merge",
       "sha": "d37e649ea246edbed12ec37ea6fe83bcaf4ad965",
@@ -34,28 +63,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T08:26:03-06:00",
           "message": "effects-feel: breath blooms then rests, glints read as passes, fireflies draw a lit stroke, transitions linger in tendrils (rich-effects-fxiy.b6i)\n\nPulse turn 43 s with the breath's seconds unchanged, so the bloom from the\nheart can visibly spread (REACH 0.3) and the element rests between breaths.\nShimmer band 24 columns either side, so each pass reads as a pass. Fireflies\ndrift up to 5 cells while lit. Fade 20 s, dissolve 30 s, ordered by\ndomain-warped noise. Every loop still under the 1 fps step gate over an hour\n(worst: pulse 0.039, shimmer 0.036, drift 0.035, sparkle 0.032).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-328",
-      "ref": "refs/pull/328/merge",
-      "sha": "df1c95524d3e1bbc32ea64e1a7d7605cf292ef2a",
-      "timestamp": "2026-10-03T14:46:14.652Z",
-      "commits": [
-        {
-          "sha": "df1c95524d3e1bbc32ea64e1a7d7605cf292ef2a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:45:01-06:00",
-          "message": "Merge dde2be75208d76355e20dcc9802e0d051b444c78 into 16af325f6dfad880dd1b4e79e6e56de541ec508f\n"
-        },
-        {
-          "sha": "dde2be75208d76355e20dcc9802e0d051b444c78",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:44:57-06:00",
-          "message": "fix(strip): Strip measures as the row it draws (rich-strip-hbbu)\n\nStrip implemented Renderable only, so Measurement.get answered (0, maxWidth)\nfor it and every container measuring one got the whole offer. It now sums its\nitems' measurements and the cells its joins draw; render and measure read one\nlist of joins. effects-feel's drawn-row workaround is replaced by Measurement.get.\n"
         }
       ]
     },
