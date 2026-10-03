@@ -120,8 +120,11 @@ describe("Markdown", () => {
     ]);
   });
 
-  it("indents a nested list item under its parent", () => {
-    expect(rows("- parent\n  - child", 80)).toEqual(["  • parent", "    • child", ""]);
+  it("draws a nested list under its parent's text, however far the source indents it", () => {
+    for (const md of ["- parent\n  - child", "- parent\n    - child"]) {
+      expect(rows(md, 80)).toEqual(["  • parent", "      • child", ""]);
+    }
+    expect(rows("- parent\n  1. child", 80)).toEqual(["  • parent", "    1. child", ""]);
   });
 
   it("draws a quote's bar down every row it wraps to, with its lines joined", () => {
@@ -141,7 +144,7 @@ describe("Markdown", () => {
   });
 
   it("reads a paragraph underlined with = or - as a heading, not a rule", () => {
-    expect(rows("Title\n===\nSub\n---\nbody", 80)).toEqual(["Title", "Sub", "body", ""]);
+    expect(rows("Title\n===\nSub\n---\nbody", 11)).toEqual(["   Title", "Sub", "body", ""]);
   });
 
   it("keeps a hard line break, from two trailing spaces or a backslash", () => {
@@ -168,7 +171,9 @@ describe("Markdown", () => {
 
   it("ends a quote at an unmarked line after a bare >, and lazily continues its open paragraph", () => {
     expect(rows("> quoted\n>\nNot quoted", 80)).toEqual(["▎ quoted", "▎", "Not quoted", ""]);
-    expect(rows("> the total was\n2024. That year", 80)).toEqual(["▎ the total was 2024. That year", ""]);
+    expect(rows("> the total was\nthat year", 80)).toEqual(["▎ the total was that year", ""]);
+    // Outside the quote no paragraph is open, so an item opens whatever it counts from.
+    expect(rows("> the total was\n2024. That year", 80)).toEqual(["▎ the total was", "2024. That year", ""]);
   });
 
   it("leaves a list item's wrapped line that starts with a number other than 1 in the item", () => {
@@ -184,7 +189,7 @@ describe("Markdown", () => {
   });
 
   it("reads CRLF line endings as line endings", () => {
-    expect(rows("# Title\r\n- item\r\n- next", 80)).toEqual(["Title", "  • item", "  • next", ""]);
+    expect(rows("## Title\r\n- item\r\n- next", 80)).toEqual(["Title", "  • item", "  • next", ""]);
   });
 
   it("indents a tab-nested item by the columns the tab spans, never a raw tab", () => {
@@ -192,8 +197,130 @@ describe("Markdown", () => {
     expect(out).toEqual(["  • parent", "      • child text", ""]);
   });
 
+  it("counts a tab inside an item from the source's column 0, not the item's", () => {
+    expect(rows("- a\n\n  \tb", 20)).toEqual(["  • a", "", "    b", ""]);
+    expect(rows("- parent\n  \t- child", 20)).toEqual(["  • parent", "      • child", ""]);
+  });
+
+  it("reads a tab after a quote's marker as the space it may take, then indentation", () => {
+    expect(rows(">\tfoo", 20)).toEqual(["▎ foo", ""]);
+    expect(rows(">\t\tfoo", 20)).toEqual(["▎   foo", ""]);
+  });
+
+  it("draws a tab in code as spaces to the code's own stops, never a raw tab", () => {
+    expect(rows("- a\n\n  ```\n  \tx\n  ```", 20)).toEqual(["  • a", "", "            x", ""]);
+    expect(rows("    \tx", 20)).toEqual(["        x", ""]);
+  });
+
+  it("opens a fence or a quote indented up to three columns inside an item", () => {
+    expect(rows("- step\n\n    ```\n    npm i\n    ```", 20)).toEqual(["  • step", "", "    npm i", ""]);
+    expect(rows("- a\n   > q", 20)).toEqual(["  • a", "    ▎ q", ""]);
+  });
+
+  it("continues a parent's text with a marker indented four columns past it, as CommonMark does", () => {
+    expect(rows("- parent\n      - child", 40)).toEqual(["  • parent - child", ""]);
+  });
+
+  it("reads a line of the list's own bullets as a thematic break, not an item", () => {
+    const out = rows("* a\n* * *\n* b", 10);
+    expect(out[0]).toBe("  • a");
+    expect(out[1]).toMatch(/^─+$/);
+    expect(out[2]).toBe("  • b");
+    expect(rows("_ _ _", 5)[0]).toMatch(/^─+$/);
+  });
+
+  it("reads a lazy line of `=` as paragraph text, never as an underline, and a lazy indented marker as text", () => {
+    expect(rows("> foo\n===", 20)).toEqual(["▎ foo ===", ""]);
+    expect(rows("- foo\n===", 20)).toEqual(["  • foo ===", ""]);
+    expect(rows("> foo\n    - bar", 20)).toEqual(["▎ foo - bar", ""]);
+  });
+
+  it("reads a line of `=` on its own as text", () => {
+    expect(rows("para\n\n===", 20)).toEqual(["para", "", "===", ""]);
+  });
+
+  it("reads long lazy and deeply nested hard-wrapped text in time linear in its length", () => {
+    const wrapped = Array.from({ length: 2000 }, (_, n) => `word${n}`).join("\n");
+    const started = performance.now();
+    rows(`> ${wrapped}`, 80);
+    rows(`- - - ${wrapped}`, 80);
+    rows(`text ${"[1, ".repeat(5000)}`, 80);
+    // The quadratic reader took over a second for a tenth of this input; linear takes milliseconds.
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
   it("keeps an item's text when its gutter is as wide as the width", () => {
     expect(rows("- hi", 3)).toEqual(["  • h", "    i", ""]);
+  });
+
+  // --- Lists hold blocks, as CommonMark reads them ---
+
+  it("keeps a fence inside a list item, line for line under its hang", () => {
+    expect(rows("- step:\n  ```sh\n  npm i\n  npm test\n  ```", 80)).toEqual([
+      "  • step:",
+      "    npm i",
+      "    npm test",
+      "",
+    ]);
+  });
+
+  it("draws a quote inside a list item under its hang", () => {
+    expect(rows("- item\n  > quoted", 80)).toEqual(["  • item", "    ▎ quoted", ""]);
+  });
+
+  it("makes a number short of the content column a sibling, numbered on from the first", () => {
+    expect(rows("1. a\n  5. b", 80)).toEqual(["1. a", "2. b", ""]);
+    expect(rows("1. a\n1. b\n1. c", 80)).toEqual(["1. a", "2. b", "3. c", ""]);
+  });
+
+  it("right-aligns a list's numbers so every item hangs at one column", () => {
+    expect(rows("9. a\n10. b\n    more", 80)).toEqual([" 9. a", "10. b more", ""]);
+  });
+
+  it("reads a marker four columns in as indented code, not a list", () => {
+    expect(rows("    - not a list", 80)).toEqual(["- not a list", ""]);
+  });
+
+  it("reads an empty item as an item", () => {
+    expect(rows("- \n- x", 80)).toEqual(["  •", "  • x", ""]);
+  });
+
+  it("keeps a loose item's later paragraphs in the item", () => {
+    expect(rows("- one\n\n  two\n\n- three", 80)).toEqual(["  • one", "", "    two", "", "  • three", ""]);
+  });
+
+  it("ends a list item at an unindented line once no paragraph is open", () => {
+    expect(rows("- a\n\nafter", 80)).toEqual(["  • a", "", "after", ""]);
+    expect(rows("- ```\n  code\nafter", 80)).toEqual(["  • code", "after", ""]);
+  });
+
+  // --- Inline links and images, as Rich draws them ---
+
+  it("keeps parentheses that balance inside a link's URL", () => {
+    const md = "[wiki](https://en.wikipedia.org/wiki/Foo_(bar))";
+    expect(rows(md, 80)).toEqual(["wiki", ""]);
+    expect(segment(md, "wiki").style?.link).toBe("https://en.wikipedia.org/wiki/Foo_(bar)");
+    expect(rows(md, 80, { hyperlinks: false })).toEqual(["wiki (https://en.wikipedia.org/wiki/Foo_(bar))", ""]);
+  });
+
+  it("parses a link's text as inline Markdown", () => {
+    const md = "[**bold** docs](https://x)";
+    expect(rows(md, 80)).toEqual(["bold docs", ""]);
+    expect(rows(md, 80, { hyperlinks: false })).toEqual(["bold docs (https://x)", ""]);
+    const bold = segment(md, "bold").style;
+    expect(bold?.bold).toBe(true);
+    expect(bold?.link).toBe("https://x");
+  });
+
+  it("draws an image as Rich does: a picture, then its alt text linked to the image", () => {
+    expect(rows("![logo](a.png)", 80)).toEqual(["🌆 logo", ""]);
+    expect(segment("![logo](a.png)", "logo").style?.link).toBe("a.png");
+    expect(rows("![logo](a.png)", 80, { hyperlinks: false })).toEqual(["🌆 logo", ""]);
+    expect(rows("![](img/a.png)", 80)).toEqual(["🌆 a.png", ""]);
+  });
+
+  it("leaves brackets that are not a link as they are", () => {
+    expect(rows("[a] (b) and [c](d", 80)).toEqual(["[a] (b) and [c](d", ""]);
   });
 
   // --- Options ---
@@ -218,6 +345,12 @@ describe("Markdown", () => {
     expect(segment("[link](https://example.com)", "link").style?.link).toBe("https://example.com");
   });
 
+  it("draws a style inside a link's text over the link's own, as Rich does", () => {
+    const code = segment("[`foo()`](https://x)", "foo()");
+    expect(code.style?.link).toBe("https://x");
+    expect(code.style?.color).toEqual(segment("`foo()`", "foo()").style?.color);
+  });
+
   it("writes a link's URL after its text when hyperlinks is false", () => {
     const md = "[link](https://example.com) here";
     expect(rows(md, 80, { hyperlinks: false })).toEqual(["link (https://example.com) here", ""]);
@@ -226,7 +359,7 @@ describe("Markdown", () => {
   });
 
   it("places paragraphs, list items and quotes by justify, and leaves headings where they are", () => {
-    const md = "# Head\n\nbody\n\n- item\n\n> quote";
+    const md = "## Head\n\nbody\n\n- item\n\n> quote";
     expect(rows(md, 12, { justify: "right" })).toEqual([
       "Head",
       "",
@@ -240,16 +373,27 @@ describe("Markdown", () => {
   });
 
   it("places body text left when no justify is given, whatever it is rendered with", () => {
-    const md = new Markdown("# Head\n\nbody");
+    const md = new Markdown("## Head\n\nbody");
     const text = collectText(md, { maxWidth: 12, justify: "right" });
     expect(text.split("\n")).toEqual(["Head", "", "body        ", ""]);
   });
 
-  it("draws a heading at its natural width, so its style stops where its text does", () => {
-    for (const justify of [undefined, "left", "full"] as const) {
-      const heading = collectText(new Markdown("# Head\n\nbody", { justify }), { maxWidth: 20, justify }).split("\n")[0];
-      expect(heading).toBe("Head");
+  it("centres an h1 and leaves h2 and below left, whatever justify says", () => {
+    for (const justify of [undefined, "left", "right", "full"] as const) {
+      const out = collectText(new Markdown("# Title\n## Sub\n###### Six", { justify }), { maxWidth: 20, justify });
+      expect(out.split("\n")).toEqual(["       Title        ", "Sub", "Six", ""]);
     }
+  });
+
+  it("centres each row of a wrapped h1", () => {
+    expect(rows("# one two three", 9)).toEqual([" one two", "  three", ""]);
+  });
+
+  it("styles a heading's text and not the padding that centres it", () => {
+    const segs = collectSegments(new Markdown("# Title"), { maxWidth: 20 }).filter((s) => s.text.trim() === "" && s.text !== "\n");
+    expect(segs.length).toBeGreaterThan(0);
+    expect(segs.every((s) => !s.style?.underline && !s.style?.bold)).toBe(true);
+    expect(segment("# Title", "Title").style?.bold).toBe(true);
   });
 
   it("spans a link over exactly its text when the source carries a control character", () => {
