@@ -157,7 +157,7 @@ describe("RichText construction", () => {
     expect(codes.filter((code) => !kept(code))).toEqual(codes.filter((code) => stripped.has(code)));
   });
 
-  it("drops a carriage return on every way text enters, as Rich's Text does", () => {
+  it("drops a carriage return from content set by the constructor, the plain setter and append, as Rich's Text does", () => {
     expect(new RichText("a\r\nb").plain).toBe("a\nb");
     expect(new RichText().append("a\r\nb").plain).toBe("a\nb");
     const t = new RichText();
