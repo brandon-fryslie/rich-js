@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-327",
+      "ref": "refs/pull/327/merge",
+      "sha": "ff691d7a1d1bbaecaa8b6fd1e071f667c8f25481",
+      "timestamp": "2026-10-03T14:30:22.020Z",
+      "commits": [
+        {
+          "sha": "ff691d7a1d1bbaecaa8b6fd1e071f667c8f25481",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:29:30-06:00",
+          "message": "Merge 5c5b06e2ac6137bd020080ca4735b4a81abdacaa into d80fbf0331b9de3f5144e3462f9db2d8f618bc3e\n"
+        },
+        {
+          "sha": "5c5b06e2ac6137bd020080ca4735b4a81abdacaa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:29:25-06:00",
+          "message": "fix(pretty): a Map's => arrow no longer closes a repr tag (rich-pretty-h1uu)\n\nReprHighlighter's tag pattern runs from the first < to the last >, as\nRich's does. A Python repr has no =>, so in Rich only the data's own >\ncan close a tag; in Pretty's Map output every entry's arrow did, and a <\nin any key or value tagged everything up to the last arrow.\n\nPretty now records where each arrow's > lands through both layouts and\ndrawMargins, and the highlighter reads the text with those > as spaces.\nA > the data wrote still closes a tag, across an arrow, as Rich's does\nacross a dict's colon.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-326",
       "ref": "refs/pull/326/merge",
       "sha": "7e158008c740e907a427c90cbdcfe01ff556a90b",
