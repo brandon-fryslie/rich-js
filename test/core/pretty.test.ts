@@ -614,6 +614,10 @@ describe("Pretty", () => {
       ["new Error('x')", new Error("x")],
       ["new (class Foo { constructor() { this.b = 2; } })()", { b: 2 }],
       ["({ get x() { throw new Error('boom'); } })", { get x(): never { throw new Error("boom"); } }],
+      [
+        "new (class M extends Map { get [Symbol.toStringTag]() { return 'M'; } })([[1, 2]])",
+        new (class M extends Map<number, number> { override get [Symbol.toStringTag](): string { return "M"; } })([[1, 2]]),
+      ],
     ])("%s", (source, local) => {
       expect(text(foreign(source))).toBe(text(local));
     });
@@ -628,6 +632,12 @@ describe("Pretty", () => {
       });
       expect(text(reactive(new Map([[1, 2]])))).toBe(text(new Map([[1, 2]])));
       expect(text(reactive(new Set([1])))).toBe(text(new Set([1])));
+    });
+
+    // No prototype of ours and no slot: only the tag says what it is, and a
+    // collection it will not open is a failure to read it, not an empty one.
+    it("never prints a foreign proxied collection as empty", () => {
+      expect(text(foreign("new Proxy(new Map([[1, 2]]), {})"))).toMatch(/^\[Threw: /);
     });
 
     it("rejects Object.prototype.toString however the chain reaches it", () => {

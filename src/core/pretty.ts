@@ -403,16 +403,22 @@ function typedArrayName(value: object): string | undefined {
 /**
  * Is `value` a `Map` (or a `Set`), from this realm or any other?
  *
- * `instanceof` answers for this realm, and it is the only check that sees a
- * `Proxy` around a collection — a reactive store's `Map` — which has the
- * prototype but not the slot. A collection from another realm fails it and is
- * asked the slot instead: `has` throws on any receiver without one. A throw
- * costs a stack trace, too dear to pay for every plain object printed, so only
- * a value whose `Symbol.toStringTag` already names the kind is asked.
+ * Three kinds of evidence, each the only one that sees some collection.
+ * `instanceof` sees this realm's, a `Proxy` around one included. The
+ * platform's `Symbol.toStringTag` names the kind in every realm and passes
+ * through a `Proxy` — a reactive store made in an iframe — that has neither
+ * this realm's prototype nor the slot; if such a proxy will not hand over its
+ * entries, reading them throws and prints as `[Threw: …]`, never as an empty
+ * collection. The slot sees a subclass from another realm that renamed its
+ * tag: `has` throws on any receiver without one. A plain object has no tag at
+ * all, so it is never asked — a throw costs a stack trace, too dear to pay for
+ * every object printed.
  */
 function isCollection(value: object, kind: MapConstructor | SetConstructor): boolean {
   if (value instanceof kind) return true;
-  if ((value as { [Symbol.toStringTag]?: unknown })[Symbol.toStringTag] !== kind.name) return false;
+  const tag = (value as { [Symbol.toStringTag]?: unknown })[Symbol.toStringTag];
+  if (typeof tag !== "string") return false;
+  if (tag === kind.name) return true;
   try {
     (kind.prototype.has as (this: unknown, key: unknown) => boolean).call(value, undefined);
     return true;
