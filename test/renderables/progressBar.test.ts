@@ -107,6 +107,9 @@ describe("ProgressBar", () => {
     it("leaves the empty part blank on a colourless console", () => {
       const bar = new ProgressBar({ total: 10, completed: 5, width: 10 });
       expect(texts(bar, { maxWidth: 80, colorSystem: null })).toEqual(["━━━━━"]);
+      expect(texts(new ProgressBar({ total: 10, width: 10 }), { maxWidth: 80, colorSystem: null })).toEqual([]);
+      expect(texts(new ProgressBar({ total: 10, completed: 10, width: 10 }), { maxWidth: 80, colorSystem: null })).toEqual(["━━━━━━━━━━"]);
+      expect(texts(new ProgressBar({ total: 100, completed: 50, width: 21 }), { maxWidth: 80, colorSystem: null, asciiOnly: true })).toEqual(["----------", " "]);
     });
 
     it("draws the empty part on a colour console, opened by a left half cell", () => {
@@ -126,6 +129,11 @@ describe("ProgressBar", () => {
     it("draws the half cells as spaces on an ASCII-only console", () => {
       const bar = new ProgressBar({ total: 100, completed: 50, width: 21 });
       expect(texts(bar, { maxWidth: 80, asciiOnly: true })).toEqual(["----------", " ", "----------"]);
+    });
+
+    it("treats a width of zero as none given, as Rich's `self.width or max_width` does", () => {
+      const bar = new ProgressBar({ total: 10, completed: 10, width: 0 });
+      expect(texts(bar, { maxWidth: 6 })).toEqual(["━━━━━━"]);
     });
 
     it("draws a total of zero as a finished bar", () => {

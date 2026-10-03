@@ -45,14 +45,9 @@ export class ProgressBar implements Renderable, Measurable {
     this.finishedStyle = options?.finishedStyle ?? "bar.finished";
   }
 
-  get percentComplete(): number {
-    if (this.total <= 0) return 0;
-    return Math.min(1, Math.max(0, this.completed / this.total));
-  }
-
   *render(options: RenderOptions): Iterable<Segment> {
     // Never wider than offered, as Rich's `min(self.width or max_width, max_width)`.
-    const width = Math.min(this.width ?? options.maxWidth, options.maxWidth);
+    const width = Math.min(this.width || options.maxWidth, options.maxWidth);
     // Rich 9d8f9a3 `__rich_console__`: the fill is counted in half cells, and
     // a total of zero is a bar already full.
     const completed = Math.min(this.total, Math.max(0, this.completed));
