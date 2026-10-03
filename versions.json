@@ -4,15 +4,22 @@
     {
       "version": "pr-307",
       "ref": "refs/pull/307/merge",
-      "sha": "b2860ff0ef14abc53df6aeb9ed5df8b4c37d6dc5",
-      "timestamp": "2026-10-03T09:31:30.209Z",
+      "sha": "568ca2592dd8a2135d9f163327bb8493676a5db9",
+      "timestamp": "2026-10-03T09:38:47.011Z",
       "commits": [
         {
-          "sha": "b2860ff0ef14abc53df6aeb9ed5df8b4c37d6dc5",
+          "sha": "568ca2592dd8a2135d9f163327bb8493676a5db9",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T03:30:27-06:00",
-          "message": "Merge 92fc1ea5f331413da57ea877ada967e2951bcc80 into ad9101b538d897b042583466f4512620f66b0a7d\n"
+          "timestamp": "2026-10-03T09:37:54Z",
+          "message": "Merge 5057726738dfd04509a13ec4ab1293c562efa5cf into ad9101b538d897b042583466f4512620f66b0a7d\n"
+        },
+        {
+          "sha": "5057726738dfd04509a13ec4ab1293c562efa5cf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T03:37:49-06:00",
+          "message": "fix(text): truncate and align leave a text they do not change untouched; cellLength says what it measures (rich-text-d0gz)\n\nReview (high): expanding tabs before the early return rewrote a text that fit,\nfixing its stops at its own column 0 so it drew wrong after a prefix. Expansion\nnow happens only on the path that cuts or pads. errorLine's tab rationale\nrestated for the reason that survives the fix.\n"
         },
         {
           "sha": "92fc1ea5f331413da57ea877ada967e2951bcc80",
