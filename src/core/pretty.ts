@@ -237,7 +237,12 @@ const flat = (text: string): Lines => ({ text, margins: [], arrows: [] });
 const newline = (margin: number): Lines => ({ text: "\n" + " ".repeat(margin), margins: [margin], arrows: [] });
 
 /** What follows a Map entry's key. */
-const ARROW: Lines = { text: " => ", margins: [], arrows: [2] };
+const ARROW_TEXT = " => ";
+// [LAW:one-source-of-truth] the arrow's offset is read off its text, never kept beside it.
+const ARROW: Lines = { text: ARROW_TEXT, margins: [], arrows: [ARROW_TEXT.indexOf(">")] };
+
+/** An indent guide: one code unit, as the space it stands over is. */
+const GUIDE = "│";
 
 const placed = (lines: Lines, inset: number): Laid => ({ ...lines, inset });
 
@@ -292,12 +297,13 @@ function follow(out: Lines, laid: Lines, tail: Lines): Lines {
  * ever spaces, so stripping cannot move one. An arrow is moved by the
  * stripping of what precedes it, and by the blank lines dropped before it;
  * never inside its own line, whose row is the line itself or the same line
- * with guides over its margin.
+ * with guides over its margin. [LAW:types-are-the-program] that holds because
+ * the only guide is `GUIDE`, one code unit over one space.
  */
 function drawMargins(
   lines: Lines,
   indent: number,
-  guide: string | null,
+  guide: typeof GUIDE | null,
 ): { plain: string; guides: Array<[number, number]>; arrows: number[] } {
   let raw = 0;
   let kept = 0;
@@ -751,7 +757,7 @@ export class Pretty implements Renderable, Measurable {
     const laid = this._format(this.data, rootFrame(options.maxWidth));
     // The reference draws no guide at all on an ASCII-only console, so there is
     // no ASCII glyph to fall back to: `null` is none.
-    const guide = this.indentGuides ? drawable<string | null>(options, "│", null, (g) => g ?? "") : null;
+    const guide = this.indentGuides ? drawable<typeof GUIDE | null>(options, GUIDE, null, (g) => g ?? "") : null;
     const { plain, guides, arrows } = drawMargins(laid, this.indent, guide);
     // The highlighter reads the text with each arrow's `>` a space — of the
     // repr patterns only the tag's reads a `>` — and the text then shows it

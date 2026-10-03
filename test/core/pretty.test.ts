@@ -67,8 +67,8 @@ describe("Pretty", () => {
   });
 
   describe("a Map's arrows are not the data's > (rich-pretty-h1uu)", () => {
-    const tags = (value: unknown, options?: PrettyOptions, maxWidth = 80): string[] => {
-      const text = new Pretty(value, options).toText({ maxWidth });
+    const tags = (value: unknown, options?: PrettyOptions, render: Partial<RenderOptions> = {}): string[] => {
+      const text = new Pretty(value, options).toText({ maxWidth: 80, ...render });
       return text.spans
         .filter((s) => String(s.style).startsWith("repr.tag"))
         .map((s) => `${String(s.style)} ${text.plain.slice(s.start, s.end)}`);
@@ -98,11 +98,27 @@ describe("Pretty", () => {
         ["e", new Map([["f", [1, 2, 3, 4, 5, 6]]])],
       ]);
       for (const indentGuides of [false, true]) {
-        const text = new Pretty(map, { indentGuides }).toText({ maxWidth: 16 });
-        expect(text.plain.split("\n").length).toBeGreaterThan(4);
-        expect(text.plain.match(/ => /g)).toHaveLength(4);
-        expect(tags(map, { indentGuides }, 16)).toEqual([]);
+        for (const asciiOnly of [false, true]) {
+          const render = { maxWidth: 16, asciiOnly };
+          const text = new Pretty(map, { indentGuides }).toText(render);
+          expect(text.plain.split("\n").length).toBeGreaterThan(4);
+          expect(text.plain.match(/ => /g)).toHaveLength(4);
+          expect(tags(map, { indentGuides }, render)).toEqual([]);
+        }
       }
+    });
+
+    it("any highlighter reads the shown text with each arrow's > a space, and nothing else changed", () => {
+      const read: string[] = [];
+      const highlighter = new (class extends Highlighter {
+        highlight(text: RichText): void {
+          read.push(text.plain);
+        }
+      })();
+      const map = new Map<unknown, unknown>([["a>b", "=>"], ["c", new Map([["d", 1]])]]);
+      const shown = new Pretty(map, { highlighter }).toText({ maxWidth: 80 }).plain;
+      expect(shown).toBe('Map { "a>b" => "=>", "c" => Map { "d" => 1 } }');
+      expect(read).toEqual(['Map { "a>b" =  "=>", "c" =  Map { "d" =  1 } }']);
     });
   });
 

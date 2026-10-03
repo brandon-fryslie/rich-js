@@ -15,7 +15,7 @@ const data = { name: "Alice", scores: [98, 87, 95], active: true, manager: null 
 console.print(new Pretty(data));
 ```
 
-Keys are printed unquoted and strings in double quotes. Each value is coloured by type — `Pretty` runs `ReprHighlighter` over its output by default, so numbers, strings, booleans and `null` are visually distinct. Pass `highlighter` to substitute your own, or a `NullHighlighter` for none. `print()` passes the console's, so a console-wide `highlight: false` or a custom `highlighter` reaches formatted values exactly as it reaches printed strings.
+Keys are printed unquoted and strings in double quotes. Each value is coloured by type — `Pretty` runs `ReprHighlighter` over its output by default, so numbers, strings, booleans and `null` are visually distinct. Pass `highlighter` to substitute your own, or a `NullHighlighter` for none. `print()` passes the console's, so a console-wide `highlight: false` or a custom `highlighter` reaches formatted values as it reaches printed strings. One difference: a highlighter reads each `Map` entry's `=>` as `= `. The arrow is `Pretty`'s punctuation, not the data's, and its `>` would otherwise close a tag `ReprHighlighter` opened at any `<` before it.
 
 A class instance is formatted as a plain object, from its own enumerable properties. The class name does not appear:
 
