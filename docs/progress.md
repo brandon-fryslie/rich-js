@@ -178,7 +178,7 @@ progress.stop();
 
 | Column | What it shows |
 |---|---|
-| `BarColumn` | The progress bar |
+| `BarColumn` | The progress bar, filled in half cells; on an output with no colour only the filled part is drawn, as Rich does |
 | `TextColumn` | A format string (see below) |
 | `TaskProgressColumn` | Percentage complete, right-aligned in four cells so the row holds still |
 | `TimeElapsedColumn` | Elapsed time, held where it stopped once the task is finished |

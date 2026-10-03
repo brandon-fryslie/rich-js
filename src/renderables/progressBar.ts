@@ -2,6 +2,7 @@
  * ProgressBar — a visual progress bar rendered with block characters.
  */
 
+import { cellCount } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import type {
@@ -13,6 +14,8 @@ import { drawable, getStyle } from "../core/protocol.js";
 
 const BAR = "━";
 const ASCII_BAR = "-";
+const HALF_BAR_RIGHT = "╸";
+const HALF_BAR_LEFT = "╺";
 
 export interface ProgressBarOptions {
   total?: number;
@@ -43,31 +46,35 @@ export class ProgressBar implements Renderable, Measurable {
     this.finishedStyle = options?.finishedStyle ?? "bar.finished";
   }
 
-  get percentComplete(): number {
-    if (this.total <= 0) return 0;
-    return Math.min(1, Math.max(0, this.completed / this.total));
-  }
-
   *render(options: RenderOptions): Iterable<Segment> {
     // Never wider than offered, as Rich's `min(self.width or max_width, max_width)`.
-    const barWidth = Math.min(this.width ?? options.maxWidth, options.maxWidth);
-    const percent = this.percentComplete;
-    const isFinished = percent >= 1;
-    const filledWidth = Math.round(barWidth * percent);
-    const emptyWidth = barWidth - filledWidth;
+    // [LAW:parse-dont-validate] parsed as a cell count, so a negative width draws nothing, as Python's `"━" * -2` is "".
+    const width = cellCount(Math.min(this.width || options.maxWidth, options.maxWidth));
+    // Rich 9d8f9a3 `__rich_console__`: the fill is counted in half cells, and
+    // a total of zero is a bar already full.
+    const completed = Math.min(this.total, Math.max(0, this.completed));
+    const completeHalves = this.total ? Math.trunc((width * 2 * completed) / this.total) : width * 2;
+    const barCount = Math.floor(completeHalves / 2);
+    const halfBarCount = completeHalves % 2;
+    const isFinished = this.completed >= this.total;
 
     const fill = getStyle(options, isFinished ? this.finishedStyle : this.completeStyle);
     const back = getStyle(options, this.style);
     const fillStyle = fill.isNull ? undefined : fill;
-    const bgStyle = back.isNull ? undefined : back;
+    const backStyle = back.isNull ? undefined : back;
     const bar = drawable(options, BAR, ASCII_BAR);
 
-    if (filledWidth > 0) {
-      yield new Segment(bar.repeat(filledWidth), fillStyle);
+    if (barCount) yield new Segment(bar.repeat(barCount), fillStyle);
+    if (halfBarCount) yield new Segment(drawable(options, HALF_BAR_RIGHT, " "), fillStyle);
+
+    // The back is drawn in colour alone, so an output with none leaves it blank.
+    if (options.colorSystem === null) return;
+    let remaining = width - barCount - halfBarCount;
+    if (remaining && !halfBarCount && barCount) {
+      yield new Segment(drawable(options, HALF_BAR_LEFT, " "), backStyle);
+      remaining -= 1;
     }
-    if (emptyWidth > 0) {
-      yield new Segment(bar.repeat(emptyWidth), bgStyle);
-    }
+    if (remaining) yield new Segment(bar.repeat(remaining), backStyle);
   }
 
   /** A width given is the bar's exact width, as Rich measures it; one left open fills what it is offered, down to 4. */
