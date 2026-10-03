@@ -29,6 +29,7 @@
  *              ("unbreakable", "aaaaaaaaaaaaaaaaaaaa"),
  *              ("multiline", "one\ntwo three four five"),
  *              ("trailing-space", "words then space   "),
+ *              ("trailing-newline", "hi\n"),
  *              ("wide", "日本語のテキストです"),
  *              ("short", "hi")]
  *     WIDTHS = [8, 12, 20]
@@ -76,8 +77,12 @@
  * reused. `trailing-space` is the control for `hanging-space`: whitespace the
  * *author* wrote, not the wrap, and Rich treats the two the same on the line
  * that ends a paragraph — pinning that keeps a future fix for one from
- * quietly changing the other. `wide` makes the gap odd more often than not, so
- * a centre that splits it the wrong way shows up. `short` is the degenerate
+ * quietly changing the other. `trailing-newline` is the one text whose last
+ * line is blank: Rich splits with `allow_blank`, so that line is placed like
+ * any other and a justified one comes out padded to the canvas — the port
+ * once dropped it and left the row bare (rich-text-vj2a). `wide` makes the
+ * gap odd more often than not, so a centre that splits it the wrong way
+ * shows up. `short` is the degenerate
  * case where the gap dwarfs the content.
  *
  * WIDTHS. 8 forces a wrap on every text, 12 wraps some and not others, 20
@@ -111,6 +116,7 @@ const TEXTS: readonly (readonly [string, string])[] = [
   ["unbreakable", "aaaaaaaaaaaaaaaaaaaa"],
   ["multiline", "one\ntwo three four five"],
   ["trailing-space", "words then space   "],
+  ["trailing-newline", "hi\n"],
   ["wide", "日本語のテキストです"],
   ["short", "hi"],
 ];
@@ -248,6 +254,29 @@ describe("RichText justification", () => {
       const rendered = [...new RichText("aaaa bbbb").render({ maxWidth: Infinity, justify })];
       const width = Math.max(...Segment.splitLines(rendered).map(Segment.getLineLength));
       expect(width, `justify=${justify ?? "default"}`).toBe(9);
+    }
+  });
+
+  /*
+   * The fixture strips the trailing line breaks, so it cannot tell a blank
+   * last line from the row `end` adds, nor whether one is there at all. With
+   * no `end` there is no such row, so every mode is pinned here against Rich
+   * 9d8f9a3's `Text(text, justify=…, end="")` at width 5: the blank line is
+   * always drawn, padded where the mode pads and bare where it does not. Empty
+   * text is that same blank line with nothing before it — Rich's `split` makes
+   * it one line, not none.
+   */
+  it("draws a trailing blank line that no end follows", () => {
+    const expected = {
+      "ab\n": { default: "ab\n", left: "ab   \n     ", center: " ab  \n     ", right: "   ab\n     ", full: "ab\n" },
+      "": { default: "", left: "     ", center: "     ", right: "     ", full: "" },
+    } as const;
+    for (const [text, byMode] of Object.entries(expected)) {
+      for (const justify of [undefined, "left", "center", "right", "full"] as const) {
+        const rendered = [...new RichText(text, { justify, end: "" }).render({ maxWidth: 5 })];
+        expect(rendered.map((segment) => segment.text).join(""), `${JSON.stringify(text)} justify=${justify ?? "default"}`)
+          .toBe(byMode[justify ?? "default"]);
+      }
     }
   });
 });

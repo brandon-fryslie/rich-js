@@ -378,6 +378,60 @@ trailing-space w20 right
 trailing-space w20 full
 words then space   
 
+trailing-newline w8 default
+hi
+
+trailing-newline w8 left
+hi      
+        
+
+trailing-newline w8 center
+   hi   
+        
+
+trailing-newline w8 right
+      hi
+        
+
+trailing-newline w8 full
+hi
+
+trailing-newline w12 default
+hi
+
+trailing-newline w12 left
+hi          
+            
+
+trailing-newline w12 center
+     hi     
+            
+
+trailing-newline w12 right
+          hi
+            
+
+trailing-newline w12 full
+hi
+
+trailing-newline w20 default
+hi
+
+trailing-newline w20 left
+hi                  
+                    
+
+trailing-newline w20 center
+         hi         
+                    
+
+trailing-newline w20 right
+                  hi
+                    
+
+trailing-newline w20 full
+hi
+
 wide w8 default
 日本語の
 テキスト

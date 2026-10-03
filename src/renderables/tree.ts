@@ -191,7 +191,8 @@ export class Tree implements Renderable, Measurable {
    * depending on label renderables to invent trailing newlines: the label's
    * output is cut into lines and every line ends where Tree ends it. A label
    * that emits nothing still holds its row, and one that ends in a newline of
-   * its own does not add a blank one.
+   * its own gets the blank row that line is, as in Rich — padded to the label's
+   * width when the label is justified.
    *
    * The node's style sits under the label's own, as Rich's `Styled` puts it, so
    * markup in the label still wins; its background alone reaches under the
