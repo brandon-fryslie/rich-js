@@ -363,6 +363,11 @@ export class Console {
   // through `_getSize()` — no second path, no second source to drift.
   private _getSize: () => { width: number; height: number };
   private readonly _getDatetime: () => Date;
+  // The stamp the last `log` row was given, which the next row's stamp is
+  // compared with: the reference's `LogRender._last_time`, one per console.
+  // [LAW:no-ambient-temporal-coupling] "same as the previous row" is a fact
+  // about an earlier call, so it is state this console owns, not order luck.
+  private _lastLogTime: string | null = null;
   private _style: Style;
   private _isTerminal: boolean;
   private readonly _interactive: boolean;
@@ -678,9 +683,13 @@ export class Console {
   // inside its cell. The time gives up cells before the content does, so a
   // console narrower than the time still shows every argument. The time takes
   // the console's style alone, as the reference styles only the renderables.
+  // A time that reads as the previous row's is left blank at its width, the
+  // reference's `omit_repeated_times`, so a burst of rows carries one stamp.
   log(...args: unknown[]): void {
     const options = this.options;
-    const time = new RichText(logTime(this._getDatetime()), { end: "" });
+    const stamped = logTime(this._getDatetime());
+    const repeated = stamped === this._lastLogTime;
+    const time = new RichText(stamped, { end: "" });
     time.stylize("log.time");
     const width = Math.min(time.cellLength, options.maxWidth - 1);
     const { rows, cropWidth } = this._draw(args, { ...options, maxWidth: options.maxWidth - width });
@@ -688,12 +697,16 @@ export class Console {
     const styled = (cell: Segment[]): Segment[] => [...Segment.applyStyle(cell, this._style)];
     const stamp = styled(Segment.adjustLineLength(stampLine, width));
     const blank = styled([new Segment(" ".repeat(width))]);
+    const head = repeated ? blank : stamp;
     const grid = Array.from({ length: Math.max(1, rows.length) }, (_, index) => [
-      ...(index === 0 ? stamp : blank),
+      ...(index === 0 ? head : blank),
       ...(rows[index] ?? []),
     ]);
     // The row is the column wider than its cell; an uncropped cell stays so.
     this._writeSegments(emit({ rows: grid, closed: true, cropWidth: cropWidth + width }));
+    // Remembered only once the row is written: a log that threw printed no
+    // stamp, so the next row's must show.
+    this._lastLogTime = stamped;
   }
 
   // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of

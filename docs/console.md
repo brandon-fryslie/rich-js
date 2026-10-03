@@ -166,7 +166,8 @@ for by name.
 ### Line ends
 
 `sep` and `end` belong to text. Adjacent strings, `RichText` values and scalar
-data (numbers, booleans, `null`, an object that describes itself) are joined
+data (numbers, booleans, `null`, an object that describes itself, an object
+whose state is out of reach, such as a `Promise`) are joined
 with `sep`, a space by default, and the line they make is ended with `end`, a
 line break by default. Any other renderable takes whole lines of its own: text
 before it ends its line first, text after it starts on a new one, and neither
@@ -187,13 +188,22 @@ carries on along it. A line break at the end of a string is text, so
 
 Data that is a container takes whole lines of its own too, as it does in Python
 Rich: an array or typed array, a `Map`, a `Set`, or any other object that does
-not describe itself, even an empty one. An object describes itself when it has a
+not describe itself and is not out of reach, even an empty one. An object describes itself when it has a
 `Symbol.toPrimitive` method or a `toString` method other than
 `Object.prototype.toString`. `Pretty` formats it and may spread it
 across several lines, so it is not joined into a line of text:
 
 ```typescript
 console.print("x =", [1, 2], "y =", 99);
+```
+
+An object whose state JavaScript keeps out of reach is not a container, because
+nothing in it can be read: one with a `Symbol.toStringTag` and no keys of its
+own, such as a `Promise`, a `WeakMap` or a `WeakRef`. It prints as that kind,
+inside the line, the way Python Rich prints an object's repr:
+
+```typescript
+console.print("waiting on", new Promise(() => {}), "done");
 ```
 
 ### Style argument
@@ -386,15 +396,21 @@ when `end` would leave a printed line open. Options such as `style` and
 
 The timestamp is local time as `HH:MM:SS` on a 24-hour clock, whatever the
 machine's locale. It is read from the console's `getDatetime` option, which is
-the wall clock unless you pass one. A fixed clock makes logged output
-repeatable. The console below is given one, and every `log()` example on this
-page runs through it, so each prints the same time on every build:
+the wall clock unless you pass one. A row whose time reads the same as the
+previous row's leaves the column blank, as Python Rich does, so a burst of rows
+within one second carries one timestamp. A fixed clock makes logged output
+repeatable. The console below is given one that always reads 09:30:00, so its
+first row prints the time and its second leaves the column blank:
 
 ```typescript
-const console = new Console({ getDatetime: () => new Date(2026, 8, 30, 9, 30, 0) });
+const at930 = () => new Date(2026, 8, 30, 9, 30, 0);
+const console = new Console({ getDatetime: at930 });
 console.log("Server started on port [bold cyan]3000[/]");
 console.log("user", 42, "signed in");
 ```
+
+The column remembers the console's last row, so each `log()` example below
+starts a console of its own on the same clock.
 
 That is the whole method: no location column, and no options parameter of its
 own. What happens to a trailing object depends on its keys, because `log()`
@@ -405,7 +421,8 @@ reads its arguments as `print()` does, and `print()` decides by sniffing for the
 An object carrying none of them is a value to print, and is formatted:
 
 ```typescript
-console.log({ userId: 42, action: "login" });
+const audit = new Console({ getDatetime: at930 });
+audit.log({ userId: 42, action: "login" });
 ```
 
 An object carrying any of them is taken as options instead — and since one of
@@ -413,8 +430,9 @@ the nine is `end`, a field name as ordinary as that will mangle the line rather
 than print:
 
 ```typescript
-console.log("range", { end: "2024" });
-console.log("the next line");
+const logger = new Console({ getDatetime: at930 });
+logger.log("range", { end: "2024" });
+logger.log("the next line");
 ```
 
 The object is never printed: `"2024"` became the line terminator, so the row

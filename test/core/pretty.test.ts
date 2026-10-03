@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Pretty } from "../../src/core/pretty.js";
+import { Pretty, isExpandable } from "../../src/core/pretty.js";
 import type { PrettyOptions } from "../../src/core/pretty.js";
 import { cellLen } from "../../src/core/cells.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
@@ -557,6 +557,43 @@ describe("Pretty", () => {
       // Array.prototype.toString would answer "1,2,3" — self-description is
       // only consulted after the arms that know a richer form.
       expect(collectText(new Pretty([1, 2, 3]), { maxWidth: 80 })).toContain("[1, 2, 3]");
+    });
+  });
+
+  // Reflection finds no keys on these, and `{}` would read as an empty object.
+  describe("an object the platform names but reflection cannot read prints its name", () => {
+    const text = (value: unknown) => collectText(new Pretty(value), { maxWidth: 80 });
+
+    it("names each by its toStringTag, with no list of built-ins", () => {
+      expect(text(Promise.resolve(1))).toBe("Promise {}\n");
+      expect(text(new WeakMap([[{}, 1]]))).toBe("WeakMap {}\n");
+      expect(text(new WeakSet())).toBe("WeakSet {}\n");
+      expect(text(new WeakRef({}))).toBe("WeakRef {}\n");
+      expect(text(new ArrayBuffer(4))).toBe("ArrayBuffer {}\n");
+      expect(text((function* () {})())).toBe("Generator {}\n");
+    });
+
+    it("names a subclass beside the kind it extends, and lets one that spells itself keep it", () => {
+      class Task extends Promise<number> {}
+      expect(text(new Task(() => {}))).toBe("Task [Promise] {}\n");
+      class Spelled extends Promise<number> {
+        override toString() { return "Task#7"; }
+      }
+      expect(text(new Spelled(() => {}))).toBe("Task#7\n");
+    });
+
+    it("shows the keys instead when there are keys to show", () => {
+      expect(text(Object.assign(Promise.resolve(1), { id: 7 }))).toBe("{ id: 7 }\n");
+    });
+
+    it("is not a container, so it does not expand", () => {
+      expect(isExpandable(new Promise(() => {}))).toBe(false);
+      expect(isExpandable(new WeakMap())).toBe(false);
+      expect(isExpandable(new WeakRef({}))).toBe(false);
+    });
+
+    it("keeps its form inside a container", () => {
+      expect(text({ p: new WeakSet() })).toBe("{ p: WeakSet {} }\n");
     });
   });
 
