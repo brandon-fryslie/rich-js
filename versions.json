@@ -2,31 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-312",
-      "ref": "refs/pull/312/merge",
-      "sha": "5ee769281c403fd23ddd774e160d025a31f56c68",
-      "timestamp": "2026-10-03T11:11:41.015Z",
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "b808387a254349d73d156465df76fbcbbd5b07dc",
+      "timestamp": "2026-10-03T11:14:30.571Z",
       "commits": [
         {
-          "sha": "5ee769281c403fd23ddd774e160d025a31f56c68",
+          "sha": "b808387a254349d73d156465df76fbcbbd5b07dc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T11:10:22Z",
-          "message": "Merge 7c384c5ac7b33afe03f47b8c22c9373930aef892 into dd692fc4f5f83b7f632f6012a04975a59f37d855\n"
-        },
-        {
-          "sha": "7c384c5ac7b33afe03f47b8c22c9373930aef892",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T05:10:17-06:00",
-          "message": "fix(progress)!: each column names the grid column it is laid out in, as Rich's get_table_column (rich-progress-j4lb)\n\nTextColumn and TaskProgressColumn are noWrap; the rest take a plain column,\nso a column that may wrap gives up width before one that may not. Task and\nProgressColumn are exported so a custom column can be written against them.\nProgressBar given no width fills the width it is offered, as Rich's does.\n"
-        },
-        {
-          "sha": "9ea19950692f5be85a72108c9dbe68fbac2943e1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:59:47-06:00",
-          "message": "fix(progress)!: columns return a renderable the grid lays out, as Rich's do (rich-progress-j4lb)\n\nProgressColumn.render(task) now returns the cell's content instead of\nsegments drawn at the console's width, and Progress lays every column out\nas Rich's make_tasks_table does: a grid of Column(no_wrap=True). Width,\nwrapping and justify are decided once, in the cell, so a justified\nSpinnerColumn finishedText justifies within its column, pinned against\nRich 9d8f9a3.\n\nSpinner.drawFrame and SpinnerColumn's overflow 'ignore' existed only to\ndodge the double layout and are gone. ProgressBar measures a given width\nexactly and never draws wider than it is offered, as Rich's does, so the\ngrid sizes the bar instead of overflowing it.\n\nBREAKING CHANGE: ProgressColumn.render takes only the task and returns a\nRenderable.\n"
+          "timestamp": "2026-10-03T05:13:10-06:00",
+          "message": "fix(progress)!: columns return a renderable the grid lays out, as Rich's do (rich-progress-j4lb) (#312)\n\n* fix(progress)!: columns return a renderable the grid lays out, as Rich's do (rich-progress-j4lb)\n\nProgressColumn.render(task) now returns the cell's content instead of\nsegments drawn at the console's width, and Progress lays every column out\nas Rich's make_tasks_table does: a grid of Column(no_wrap=True). Width,\nwrapping and justify are decided once, in the cell, so a justified\nSpinnerColumn finishedText justifies within its column, pinned against\nRich 9d8f9a3.\n\nSpinner.drawFrame and SpinnerColumn's overflow 'ignore' existed only to\ndodge the double layout and are gone. ProgressBar measures a given width\nexactly and never draws wider than it is offered, as Rich's does, so the\ngrid sizes the bar instead of overflowing it.\n\nBREAKING CHANGE: ProgressColumn.render takes only the task and returns a\nRenderable.\n\n* fix(progress)!: each column names the grid column it is laid out in, as Rich's get_table_column (rich-progress-j4lb)\n\nTextColumn and TaskProgressColumn are noWrap; the rest take a plain column,\nso a column that may wrap gives up width before one that may not. Task and\nProgressColumn are exported so a custom column can be written against them.\nProgressBar given no width fills the width it is offered, as Rich's does."
         }
       ]
     },
@@ -56,21 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T04:47:20-06:00",
           "message": "feat(examples): effects-feel curves rebuilt as breath, sunlight on water, wind, fireflies (rich-effects-fxiy.b6i)\n\nBrandon's first verdict on b6i: the defaults were jerky and choppy. The loops\nare now smooth noise and smooth waveforms, light mixes in OKLab instead of\nround the hue circle, and the demo runs at 30 fps by default. A test bars any\nloop from moving a cell more than dE_OK 0.06 between frames at 1 fps.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "dd692fc4f5f83b7f632f6012a04975a59f37d855",
-      "timestamp": "2026-10-03T10:53:18.565Z",
-      "commits": [
-        {
-          "sha": "dd692fc4f5f83b7f632f6012a04975a59f37d855",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:52:24-06:00",
-          "message": "fix(pretty): a value from another realm prints as the same value made here (rich-pretty-dzzp) (#310)\n\n* fix(pretty): a value from another realm prints as the same value made here (rich-pretty-dzzp)\n\ndescribesItself compared toString against this realm's Object.prototype.toString,\nand formOf/indexedElements classified Map, Set and DataView with instanceof, so\na vm-context or iframe object printed [object Object], [object Map], or (for a\nDataView) an empty array. Every classification now asks the value's internal\nslot through a borrowed built-in brand check, and the default-toString test\ncompares against the Object.prototype of the value's own realm.\n\nThe Map/Set bound tests faked a collection by grafting Set.prototype onto a\nplain object; they now use real subclasses, which the brand check accepts.\n\n* fix(pretty): brand checks see a proxied collection, take two steps not a chain walk, and cost a plain object nothing (rich-pretty-dzzp)\n\nReview pass high on PR #310:\n- isMap/isSet: instanceof first (a Proxy around a collection has the\n  prototype, not the slot); the throwing slot probe only for a value whose\n  toStringTag already names the kind. One isCollection helper.\n- describesItself: the default toString is found from the function itself\n  (its realm's Function.prototype, then Object.prototype) — no unbounded\n  prototype walk, which spun forever on a self-referential Proxy, and a\n  borrowed Object.prototype.toString is still a non-answer.\n- threw(): reads a string message, so a foreign Error prints as one made here.\n- typed-array tag getter computed once; redundant ArrayBuffer.isView dropped.\n\n* fix(pretty): a collection the tag names is a collection, and a foreign one is never printed empty (rich-pretty-dzzp)\n\nReview pass medium on PR #310:\n- A Proxy around another realm's Map has neither our prototype nor the slot;\n  the tag now admits it, and a proxy that will not open prints [Threw: …]\n  instead of the answer-shaped 'Map {}'.\n- A foreign subclass that renamed its tag is found by its slot; only a value\n  carrying a string tag is probed, so plain objects never throw.\n- Rejected: a Symbol.toStringTag getter that throws printing [Threw] — the\n  value's own getter failed when asked what it is; carrying that is the\n  no-silent-failure contract, and opaqueName read the same getter on master."
         }
       ]
     }
