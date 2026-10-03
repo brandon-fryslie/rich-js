@@ -565,10 +565,10 @@ export class Console {
     // nothing to print is one empty text run, so it still ends the line.
     const blocks: PrintBlock[] = items.length === 0 ? [{ kind: "text", items: [] }] : [];
     for (const item of items) {
-      // Four arms, and they are the whole domain. A `RichText` is already text;
-      // it runs as a copy. Whatever text an arm makes has its own `end` cleared
-      // as it joins the run, because the line end of a run is the print's, as
-      // Rich's `Text(sep).join` drops each part's. Any other renderable draws itself,
+      // Four arms, and they are the whole domain. A `RichText` is already text.
+      // No arm's own `end` reaches the line: `TextRun` joins the run with
+      // `append`, which leaves each part's behind, as Rich's `Text(sep).join`
+      // does, because the line end of a run is the print's. Any other renderable draws itself,
       // as a block. A string is the only kind of argument that can *contain*
       // markup, so it is the only kind the markup dialect is applied to.
       // Everything else is data — a block when it is a container, text when it
@@ -578,7 +578,7 @@ export class Console {
       // parser eat it. [LAW:one-source-of-truth]
       let text: RichText;
       if (item instanceof RichText) {
-        text = item.copy();
+        text = item;
       } else if (isRenderable(item)) {
         blocks.push({ kind: "lines", renderable: item });
         continue;
@@ -602,9 +602,8 @@ export class Console {
         }
         text = pretty.toText(options);
       }
-      text.end = "";
       const run = blocks.at(-1);
-      if (run?.kind === "text") run.items.push(new RichText(sep, { end: "" }), text);
+      if (run?.kind === "text") run.items.push(new RichText(sep), text);
       else blocks.push({ kind: "text", items: [text] });
     }
 

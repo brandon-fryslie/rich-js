@@ -308,8 +308,9 @@ describe("Layout", () => {
   });
 
   // rich-embed-1r2m review: a leaf pads every line to its width wherever it
-  // stands. Python Rich 9d8f9a3 prints `Layout("hi")` at width 12 as
-  // "hi" and ten spaces.
+  // stands. Python Rich 9d8f9a3 prints `Layout("hi")` at width 12 with "hi"
+  // and ten spaces as its first row; it then fills the console's height,
+  // where a leaf here with no region keeps its natural height.
   it("pads a leaf printed on its own to the width, as Rich does", () => {
     expect(collectText(new Layout("hi"), { maxWidth: 12 })).toBe("hi          \n");
   });

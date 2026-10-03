@@ -1200,8 +1200,8 @@ export class Table implements Renderable, Measurable {
     // title arrives as italic-red, not one or the other. Rendering `text.plain`
     // here read the characters and dropped every span attached to them, so a
     // styled title lost its styling and parsed markup silently did nothing.
-    // Set as the text's base, as `render_str(style=)` sets it, so the line
-    // breaks and the `end` the text emits stay unstyled.
+    // Set as the text's base, as `render_str(style=)` sets a string title's,
+    // so the line breaks and the `end` the text emits stay unstyled.
     source.style = getStyle(options, ownStyle).add(source.resolvedStyle(options));
     //
     // Rendered at the table's own width with nothing suppressed, because that
