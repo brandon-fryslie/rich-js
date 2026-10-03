@@ -114,14 +114,17 @@ describe("a strip under a pulse", () => {
       const lit = subjectUnder(strip, loop, theme);
       const share = shares(strip.pairs, strip.colors, loop.touch);
       const before = colorsByCell(strip.renderable, theme);
-      const after = colorsByCell(new Effected(strip.renderable, lit, { t: 1, key: "strip", theme }), theme);
-      expect(after).toHaveLength(before.length);
+      // Two breaths, a frame each tenth of a second: a cell can be resting at any one moment.
+      const frames = Array.from({ length: 40 }, (_, i) => colorsByCell(new Effected(strip.renderable, lit, { t: i / 10, key: "strip", theme }), theme));
+      frames.forEach((after) => expect(after).toHaveLength(before.length));
 
       // Every colour the strip sets moves, but for one whose cells have no
       // contrast to spare; the terminal's own ground does not.
       const rgba = new Map(strip.pairs.flat().map((c) => [c.hex, c]));
       const still = new Set(["ground", ...[...share].filter(([hex, s]) => loop.touch(rgba.get(hex)!, s).hex === hex).map(([hex]) => hex)]);
-      before.forEach((pair, i) => pair.forEach((was, slot) => expect([was, after[i]![slot] === was]).toEqual([was, still.has(was)])));
+      before.forEach((pair, i) =>
+        pair.forEach((was, slot) => expect([was, frames.every((after) => after[i]![slot] === was)]).toEqual([was, still.has(was)])),
+      );
 
     },
   );

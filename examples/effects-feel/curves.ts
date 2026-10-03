@@ -234,41 +234,45 @@ const SIGH_EVERY = 6;
  * column on a narrow element and reaching a wide one's edges in the same
  * share of its turn however wide, and it fills some stretches to the whole
  * swing and others to less — warmth moving through a body, not a lamp
- * turned up. At truecolour neighbouring cells stay within a just-noticeable difference,
- * so a fill drawn across them — a powerline seam and the cell it points out
- * of — reads as one colour; at 256 colours or fewer a fill can step to the
- * next palette colour between them, as under every loop that varies along
- * the row. A breath starts in its rest, so `t = 0` draws the cell untouched.
+ * turned up. At truecolour, under any continuous ease, neighbouring cells
+ * stay within a just-noticeable difference, so a fill drawn across them —
+ * a powerline seam and the cell it points out of — reads as one colour; at
+ * 256 colours or fewer a fill can step to the next palette colour between
+ * them, as under every loop that varies along the row. A breath starts in its rest, so `t = 0` draws the cell untouched.
  */
 export function pulse(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
   const P = curve.seconds;
   // Of a breath, how far behind the heart each column further out starts:
   // `SPREAD` a column at most, so neighbours stay one colour to the eye, and
-  // never more than `REACH` across the whole width, so a wide element's
-  // edges are reached in the same share of a turn as a strip's.
-  const SPREAD = 0.005;
-  const REACH = 0.5;
+  // `REACH` across the whole width at most, so even a sigh, done 0.86 of the
+  // way through its turn at the heart, is done everywhere before the turn
+  // ends and the whole element rests between breaths.
+  const SPREAD = 0.003;
+  const REACH = 0.12;
   const perColumn = Math.min(SPREAD, REACH / span);
-  // How far, in turns, the rhythm drifts ahead and behind its metronome.
+  // How far, in turns, the rhythm drifts ahead and behind its metronome,
+  // measured from where it stood at t = 0.
   const DRIFT = 0.1;
   const drift = (t: number): number => DRIFT * noise(t / (3 * P), 0.5, 0.5 + z);
+  const drift0 = drift(0);
   const field: Field = (cell, t) => {
     const heart = span * (0.5 + 0.45 * noise(t / (5 * P), 6.1, z));
     const lag = perColumn * Math.abs(cell.col - heart);
-    // Lag spans at most `REACH` of a turn, so the heart's wander — 0.45 of
-    // the width per 5 turns of noise — and the drift's 0.1 of a turn per 3
-    // move phase far under a turn a turn whatever the width: it only ever
-    // moves forward. The drift is measured from where it stood at t = 0 and
+    // Phase only ever moves forward: lag spans at most `REACH` of a turn and
+    // the heart crosses at most 0.9 of the width per 5 turns of noise, and
+    // the drift moves 0.1 of a turn per 3, so together they slow phase by
+    // far less than its own turn a turn. At t = 0 the drift term is 0 and
     // lag is never negative, so every cell starts at rest.
-    const phase = Math.max(0, t / P - 0.06 - lag + drift(t) - drift(0));
-    // Breath `n` is one event across the whole element: its depth and its
+    const phase = Math.max(0, t / P - lag + drift(t) - drift0);
+    // Breath `n` is one event across the whole element: its strength and its
     // moment in its turn are the same in every cell.
     const n = Math.floor(phase);
     const k = hash(n, 1 + z) < 1 / SIGH_EVERY ? 1 : 0.5 + 0.25 * hash(n, 2 + z);
     const start = hash(n, 3 + z) * (1 - k) * (BREATH.rise + BREATH.fall);
-    // Some stretches fill to the whole swing, some to 60% of it.
-    const depth = 1 - 0.4 * smoothstep(-0.35, 0.35, noise(cell.col * 0.04, 1.9, t / (6 * P) + z));
-    return curve.swing * curve.ease(clamp01(swell(BREATH, phase - n - start, k) * depth));
+    // How fully this stretch of the element takes it: some stretches to the
+    // whole swing, some to 60% of it.
+    const fill = 1 - 0.4 * smoothstep(-0.5, 0.5, noise(cell.col * 0.025, 1.9, t / (6 * P) + z));
+    return curve.swing * curve.ease(clamp01(swell(BREATH, phase - n - start, k) * fill));
   };
   return { touch: light(glow), field };
 }
