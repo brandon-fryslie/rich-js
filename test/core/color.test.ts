@@ -613,6 +613,38 @@ describe("ColorSpec.downgrade()", () => {
   });
 });
 
+describe("ColorSpec.downgradeUnder()", () => {
+  it("rounds to the sixteen the theme draws, not the depth's stock ones", () => {
+    for (const depth of [ColorDepth.STANDARD, ColorDepth.WINDOWS]) {
+      for (let n = 0; n < 16; n++) {
+        const shade = ColorSpec.fromRgba(ATOM_ONE_DARK.ansiColors.get(n));
+        expect(shade.downgradeUnder(depth, ATOM_ONE_DARK).number).toBe(ATOM_ONE_DARK.ansiColors.match(shade.value!));
+      }
+    }
+    // Atom One Dark's red rounds to its own slot under the theme, and away from it under the VGA sixteen.
+    const red = ColorSpec.fromRgba(ATOM_ONE_DARK.ansiColors.get(1));
+    expect(red.downgradeUnder(ColorDepth.STANDARD, ATOM_ONE_DARK).number).toBe(1);
+    expect(red.downgrade(ColorDepth.STANDARD).number).not.toBe(1);
+  });
+
+  it("is `downgrade` on a theme whose sixteen are the depth's own", () => {
+    const vga = new TerminalTheme(STANDARD_TABLE.get(0), STANDARD_TABLE.get(7), STANDARD_TABLE, new Palette("vga", true, new Map()));
+    for (let v = 0; v < 256; v += 15) {
+      const c = ColorSpec.fromRgb(v, 255 - v, (v * 7) % 256);
+      expect(c.downgradeUnder(ColorDepth.STANDARD, vga).number).toBe(c.downgrade(ColorDepth.STANDARD).number);
+      expect(c.downgradeUnder(ColorDepth.EIGHT_BIT, vga).number).toBe(c.downgrade(ColorDepth.EIGHT_BIT).number);
+    }
+  });
+
+  it("leaves a spec the depth does not lower as it is", () => {
+    const slot = ColorSpec.fromAnsi(4);
+    expect(slot.downgradeUnder(ColorDepth.STANDARD, ATOM_ONE_DARK)).toBe(slot);
+    expect(slot.downgradeUnder(ColorDepth.TRUECOLOR, ATOM_ONE_DARK)).toBe(slot);
+    const rgb = ColorSpec.fromRgb(1, 2, 3);
+    expect(rgb.downgradeUnder(ColorDepth.TRUECOLOR, ATOM_ONE_DARK)).toBe(rgb);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // ColorSpec.getTruecolor()
 // ---------------------------------------------------------------------------

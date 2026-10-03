@@ -593,15 +593,25 @@ export class ColorSpec {
    * Downgrade to a lower-fidelity color depth. Cached.
    */
   downgrade(targetSystem: ColorDepth): ColorSpec {
-    if (this.type === ColorDepth.DEFAULT) return this;
-    if (this.type === targetSystem || fidelity(this.type) < fidelity(targetSystem)) return this;
+    if (!this.lowersTo(targetSystem)) return this;
 
     const cached = this.downgradeCache.get(targetSystem);
     if (cached) return cached;
 
-    const result = this.performDowngrade(targetSystem);
+    const result = this.performDowngrade(targetSystem, resolveTerminal(undefined, targetSystem));
     this.downgradeCache.set(targetSystem, result);
     return result;
+  }
+
+  /**
+   * `downgrade` on a terminal known to show `theme`: at sixteen colours a
+   * fixed colour lands in the slot whose colour under `theme` is nearest,
+   * where `downgrade` can only round against the depth's stock sixteen. A
+   * colour read off a theme slot and moved a little stays in that slot.
+   * Uncached: its callers build a fresh colour per frame.
+   */
+  downgradeUnder(targetSystem: ColorDepth, theme: TerminalTheme): ColorSpec {
+    return this.lowersTo(targetSystem) ? this.performDowngrade(targetSystem, theme) : this;
   }
 
   /**
@@ -677,10 +687,15 @@ export class ColorSpec {
 
   // --- private ---
 
-  private performDowngrade(targetSystem: ColorDepth): ColorSpec {
-    // The colour as the terminal this depth assumes draws it: a blend's named
-    // ends are the Windows console's own at WINDOWS.
-    const triplet = this.getTruecolor(resolveTerminal(undefined, targetSystem));
+  /** Whether `targetSystem` names fewer colours than this spec is written in. */
+  private lowersTo(targetSystem: ColorDepth): boolean {
+    return this.type !== ColorDepth.DEFAULT && this.type !== targetSystem && fidelity(this.type) >= fidelity(targetSystem);
+  }
+
+  private performDowngrade(targetSystem: ColorDepth, terminal: TerminalTheme): ColorSpec {
+    // The colour as `terminal` draws it: a blend's named ends are the Windows
+    // console's own at WINDOWS when no theme is known.
+    const triplet = this.getTruecolor(terminal);
 
     switch (targetSystem) {
       case ColorDepth.EIGHT_BIT:
@@ -688,8 +703,9 @@ export class ColorSpec {
       case ColorDepth.STANDARD:
       case ColorDepth.WINDOWS: {
         // An ANSI slot is already one of the sixteen either depth writes; only
-        // a fixed colour is matched against the depth's table, as Rich does.
-        const index = this.number !== undefined && this.number < 16 ? this.number : downgradeTable(targetSystem).match(triplet);
+        // a fixed colour is matched, against the sixteen `terminal` draws —
+        // the depth's own table when no theme is known, as Rich does.
+        const index = this.number !== undefined && this.number < 16 ? this.number : terminal.ansiColors.match(triplet);
         return new ColorSpec(`color(${index})`, targetSystem, index);
       }
       case ColorDepth.TRUECOLOR:
@@ -1024,9 +1040,10 @@ export function downgradeTable(depth: ColorDepth.EIGHT_BIT | ColorDepth.STANDARD
     case ColorDepth.EIGHT_BIT:
       return EIGHT_BIT_DOWNGRADE_TABLE;
     case ColorDepth.STANDARD:
-      return STANDARD_TABLE;
     case ColorDepth.WINDOWS:
-      return WINDOWS_TABLE;
+      // The sixteen of the terminal the depth assumes, which a downgrade with
+      // no theme rounds against.
+      return resolveTerminal(undefined, depth).ansiColors;
   }
 }
 

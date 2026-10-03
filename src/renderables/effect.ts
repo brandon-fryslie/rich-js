@@ -34,7 +34,7 @@
  */
 
 import { cellLen, graphemes } from "../core/cells.js";
-import { ColorSpec, type ColorRgba, type TerminalTheme } from "../core/color.js";
+import { ColorDepth, ColorSpec, type ColorRgba, type TerminalTheme } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
@@ -105,6 +105,8 @@ export class Effected implements Renderable, Measurable {
       yield* segments;
       return;
     }
+    // No depth named is no downgrade, as `drawnColors` reads it.
+    const depth = options.colorSystem ?? ColorDepth.TRUECOLOR;
     let row = 0;
     let col = 0;
     for (const segment of segments) {
@@ -155,7 +157,12 @@ export class Effected implements Renderable, Measurable {
         const style =
           slots === undefined
             ? shifted
-            : shifted.add(Style.fromColor(respec(wire.color, ink, slots.fg), respec(wire.bgcolor, paper, slots.bg)));
+            : shifted.add(
+                Style.fromColor(
+                  respec(wire.color, ink, slots.fg, depth, this.theme),
+                  respec(wire.bgcolor, paper, slots.bg, depth, this.theme),
+                ),
+              );
         yield new Segment(run.text, style);
         offset += run.cells;
       }
@@ -182,9 +189,20 @@ function onScreen(colors: CellColors, style: Style): CellColors {
   return style.reverse === true ? { fg: colors.bg, bg: colors.fg } : colors;
 }
 
-/** The spec to draw `to` with: the original one where the effect left it. */
-function respec(spec: ColorSpec | undefined, from: ColorRgba, to: ColorRgba): ColorSpec | undefined {
-  return sameColor(from, to) ? spec : ColorSpec.fromRgba(to);
+/**
+ * The spec to draw `to` with: the original one where the effect left it, and
+ * otherwise `to` at the run's depth on the terminal the effect read its
+ * colours from — at sixteen colours, the slot whose theme colour is nearest,
+ * so a colour moved a little off a slot is still drawn in it.
+ */
+function respec(
+  spec: ColorSpec | undefined,
+  from: ColorRgba,
+  to: ColorRgba,
+  depth: ColorDepth,
+  theme: TerminalTheme,
+): ColorSpec | undefined {
+  return sameColor(from, to) ? spec : ColorSpec.fromRgba(to).downgradeUnder(depth, theme);
 }
 
 function sameColor(a: ColorRgba, b: ColorRgba): boolean {
