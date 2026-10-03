@@ -17,6 +17,9 @@ import { exportLines } from "../../src/core/export-lines.js";
 import { ATOM_ONE_DARK } from "../../src/themes/terminalThemes.js";
 import { Oklch } from "../../src/core/oklch.js";
 import { renderToString } from "../../src/core/render.js";
+import { Measurement } from "../../src/core/measure.js";
+import { cellLen } from "../../src/core/cells.js";
+import { Table } from "../../src/renderables/table.js";
 
 // [LAW:behavior-not-structure] Tests assert what consumers observe — segment
 // text, fg/bg pairs, ordering — not the internal walk.
@@ -538,5 +541,51 @@ describe("edge styles resolved against the render's theme", () => {
     const mid = render(strip, THEMED).find((s) => s.text === ">")!;
     expect(mid.style?.color?.name).toBe("red");
     expect(mid.style?.bgcolor?.name).toBe("blue");
+  });
+});
+
+describe("Strip measure", () => {
+  const UNBOUNDED: RenderOptions = { maxWidth: Number.MAX_SAFE_INTEGER };
+  const drawnWidth = (strip: Strip, options: RenderOptions): number =>
+    cellLen(render(strip, options).map((s) => s.text).join(""));
+
+  it.each([
+    ["PowerlineJoiner", new PowerlineJoiner()],
+    ["CapsuleJoiner", new CapsuleJoiner()],
+    ["PlainJoiner", new PlainJoiner()],
+    ["GradientJoiner", new GradientJoiner({ steps: 3 })],
+  ])("measures at the width it draws, not the width offered, with a %s", (_name, joiner) => {
+    const strip = new Strip([RED, BLUE, GREEN], joiner);
+    const { maximum } = Measurement.get(UNBOUNDED, strip);
+    expect(maximum).toBe(drawnWidth(strip, UNBOUNDED));
+    expect(maximum).toBeLessThan(40);
+  });
+
+  it("measures the joins it draws at the options it is measured with", () => {
+    // An ASCII-only output draws the powerline set flat at the start, so the
+    // lead cell is gone from the measurement too.
+    const strip = new Strip([RED, BLUE], new PowerlineJoiner());
+    const ascii: RenderOptions = { ...UNBOUNDED, asciiOnly: true };
+    expect(Measurement.get(ascii, strip).maximum).toBe(drawnWidth(strip, ascii));
+    expect(Measurement.get(ascii, strip).maximum).toBe(Measurement.get(UNBOUNDED, strip).maximum - 1);
+  });
+
+  it("measures one width as both bounds, since its row never narrows", () => {
+    const strip = new Strip([cell("one two", "on red"), cell("three", "on blue")], new PlainJoiner({ separator: "|" }));
+    expect(Measurement.get(UNBOUNDED, strip)).toEqual(new Measurement(7 + 1 + 5, 7 + 1 + 5));
+  });
+
+  it("keeps every item when a Table squeezes the column it sits in", () => {
+    const strip = new Strip(
+      [new RichText(" alpha beta ", { style: "on red", end: "", noWrap: true }),
+        new RichText(" gamma delta ", { style: "on blue", end: "", noWrap: true })],
+      new PowerlineJoiner(),
+    );
+    const table = new Table({ showHeader: false }).addRow(strip, "a long neighbour that would gladly take every column it is offered");
+    expect(renderToString(table, { colorSystem: null, width: 50 })).toContain(" gamma delta ");
+  });
+
+  it("measures an empty strip as no cells, as it draws none", () => {
+    expect(Measurement.get(UNBOUNDED, new Strip([], new PowerlineJoiner()))).toEqual(new Measurement(0, 0));
   });
 });

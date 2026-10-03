@@ -30,7 +30,7 @@ import { Segment } from "./segment.js";
 import { Style } from "./style.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK } from "./color.js";
 import { Oklch } from "./oklch.js";
-import { drawable, type Renderable, type RenderOptions } from "./protocol.js";
+import { drawable, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
 
 // --- StyledRenderable ---
 
@@ -64,7 +64,7 @@ export interface Joiner<T extends StyledRenderable = StyledRenderable> {
 
 // --- Strip ---
 
-export class Strip<T extends StyledRenderable = StyledRenderable> implements Renderable {
+export class Strip<T extends StyledRenderable = StyledRenderable> implements Renderable, Measurable {
   readonly items: readonly T[];
   readonly joiner: Joiner<T>;
 
@@ -81,12 +81,17 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
     // start-cap, item, mid-join, item, ..., item, end-cap. Variability lives
     // in `items` and in what the joiner emits at each position — never in
     // whether a join runs.
-    yield* this.joiner.join(null, items[0]!).render(options);
+    //
+    // The row sits its items side by side, so none is handed a justify: a
+    // `left` fills the canvas, and the first item would pad over the rest of
+    // the row. Where the row sits in the width is its container's to say.
+    const row: RenderOptions = { ...options, justify: undefined };
+    yield* this.joiner.join(null, items[0]!).render(row);
     for (let i = 0; i < items.length; i++) {
       const item = items[i]!;
-      yield* item.render(options);
+      yield* item.render(row);
       const next = i + 1 < items.length ? items[i + 1]! : null;
-      yield* this.joiner.join(item, next).render(options);
+      yield* this.joiner.join(item, next).render(row);
     }
 
     // [LAW:one-source-of-truth] `Strip`'s sibling `FlexStrip` ends every line
@@ -100,6 +105,19 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
     // instead of below it. `LINE_ENDS` in test/seam/line-ends.ts is the list
     // of which renderables end their own line and which are fragments.
     yield Segment.line();
+  }
+
+  /**
+   * [LAW:one-source-of-truth] The width of the one row it draws, and that is
+   * both bounds: the row never wraps and no item is offered less than the whole
+   * width, so there is no narrower strip to report as a minimum. Read off the
+   * drawing rather than summed from the items' measurements, which describe
+   * how an item could be drawn, not how the walk draws it.
+   */
+  measure(options: RenderOptions): { minimum: number; maximum: number } {
+    let width = 0;
+    for (const segment of this.render(options)) width += segment.cellLength;
+    return { minimum: width, maximum: width };
   }
 }
 
