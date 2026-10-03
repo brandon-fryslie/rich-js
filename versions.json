@@ -4,15 +4,22 @@
     {
       "version": "pr-291",
       "ref": "refs/pull/291/merge",
-      "sha": "66f67a0c0e4964f5ea3b40e72b8f69cd1ba235d8",
-      "timestamp": "2026-10-03T03:00:35.879Z",
+      "sha": "fc3096a89a25e4c4a5e9d2cca6ac44e5abf74f2d",
+      "timestamp": "2026-10-03T03:06:36.340Z",
       "commits": [
         {
-          "sha": "66f67a0c0e4964f5ea3b40e72b8f69cd1ba235d8",
+          "sha": "fc3096a89a25e4c4a5e9d2cca6ac44e5abf74f2d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T02:59:20Z",
-          "message": "Merge 5ff2c4ef7850de848093a4d71fad5201b2d7c237 into 9d5a227033f360d4e595c85fe80fa65eba23182d\n"
+          "timestamp": "2026-10-03T03:05:49Z",
+          "message": "Merge 5e754fc58ff0370d9700a276355cac23bb2b843c into 9d5a227033f360d4e595c85fe80fa65eba23182d\n"
+        },
+        {
+          "sha": "5e754fc58ff0370d9700a276355cac23bb2b843c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T21:05:44-06:00",
+          "message": "fix(widgets): TextInput's cursor setter takes a CodeUnit; value writes are one action (rich-cells-1y9d)\n\nAn insert maxLength refuses whole emits nothing. C1 controls are not\ntext. The click hit-test reads the render's per-glyph projection\ninstead of a second copy of it.\n"
         },
         {
           "sha": "5ff2c4ef7850de848093a4d71fad5201b2d7c237",
