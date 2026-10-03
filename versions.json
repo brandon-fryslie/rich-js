@@ -4,15 +4,22 @@
     {
       "version": "pr-289",
       "ref": "refs/pull/289/merge",
-      "sha": "d0ba6a8bdcd99999c27956245dae9744a326492b",
-      "timestamp": "2026-10-03T01:33:32.486Z",
+      "sha": "393b30a48a4491ba815d83044b45b7240e6a65c6",
+      "timestamp": "2026-10-03T01:38:03.797Z",
       "commits": [
         {
-          "sha": "d0ba6a8bdcd99999c27956245dae9744a326492b",
+          "sha": "393b30a48a4491ba815d83044b45b7240e6a65c6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T19:32:26-06:00",
-          "message": "Merge bedc715a681427c7ff7c95241d5e6197a6641341 into 0d6ef018fa01d417f237de8e5214486818e882b4\n"
+          "timestamp": "2026-10-03T01:36:42Z",
+          "message": "Merge 4d272f3cf0e39df49d0d67e5d87af0ef98266588 into 0d6ef018fa01d417f237de8e5214486818e882b4\n"
+        },
+        {
+          "sha": "4d272f3cf0e39df49d0d67e5d87af0ef98266588",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T19:36:37-06:00",
+          "message": "fix(core): Memo computes before it clears; parse memos private, tested by behavior (rich-effects-fxiy.zyc)\n"
         },
         {
           "sha": "bedc715a681427c7ff7c95241d5e6197a6641341",
