@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "6d1a01c23c8ee393555530706f4549fe1e4bb5c7",
-      "timestamp": "2026-10-03T13:20:24.766Z",
+      "sha": "31ca70ee636d0281f5f29836b59a07099b2f87e5",
+      "timestamp": "2026-10-03T13:21:42.641Z",
       "commits": [
         {
-          "sha": "6d1a01c23c8ee393555530706f4549fe1e4bb5c7",
+          "sha": "31ca70ee636d0281f5f29836b59a07099b2f87e5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T07:18:17-06:00",
-          "message": "fix(export)!: a translucent colour exports as the colour the terminal is sent (rich-style-wl27) (#320)\n\n* fix(export)!: a translucent colour exports as the colour the terminal is sent (rich-style-wl27)\n\nresolveLook flattened alpha over the export canvas while Style.drawnColors\n(what toSgrCodes writes) flattens over SURFACE_BLACK. Truecolor SGR bytes are\nabsolute, so under any non-black theme the export pictured a colour no\nterminal draws: #ff000000 sent 38;2;0;0;0 and exported as the canvas.\n\nresolveLook now reads Style.drawnColors, so there is one flatten and the two\ncannot disagree. Translucent backgrounds change too: they diverged the same way.\n\n* docs(color): no surface but black is left that an export flattens over (rich-style-wl27)\n\nReview: three comments and one test name still described an export\ncompositing over its canvas, and colorMath steered callers to pass\nexportCanvas(theme).background as the contrast substrate — which now\npicks text against a colour the export never draws."
+          "timestamp": "2026-10-03T07:19:49-06:00",
+          "message": "effects-feel: breaths, flashes and passes of light are events of their own (rich-effects-fxiy.b6i) (#318)\n\n* effects-feel: breaths, flashes and passes of light are events of their own; the step gate watches half an hour (rich-effects-fxiy.b6i)\n\nPulse: most breaths shallow and quick, about one in six a deep sigh, each\nstarting early or late in its turn. Sparkle: a firefly flashes, hovers,\nfades, and flashes again a few cells off. Shimmer: a glitter path, each\npass at its own pace after a still spell of its own. A weaker event is a\nshorter one (swell), so variety costs no smoothness.\n\nThe 1 fps step gate sampled 300 s; over 600 s drift and sparkle already\nbroke it. It now checks every second of 1800 s.\n\n* effects-feel: a firefly's period is its turn, and every loop clears the step bar with room (rich-effects-fxiy.b6i)\n\nReview high on #318:\n- sparkle: `seconds` is the firefly's turn (default 140; the brightest\n  flash still ~84 s), dark turns 15%, one firefly per eight columns. A\n  text-sized element is dark 2-5% of the time, not 30%, and never for minutes.\n- swell of strength 0 is 0 everywhere, so sparkle's k===0 special case goes.\n- pulse 33 s, drift's gusts softer-edged and slower to churn: over an hour,\n  four elements, two frame offsets and two widths, no loop steps past 0.037.\n- the step gate watches two elements, the second between the first's frames.\n- tests: pulse's inhale is found, not assumed at t=3.4; sparkle counts cells\n  lit to the eye, not cells a byte changed.\n\n* effects-feel: the flash's share of a turn is said where it is set (rich-effects-fxiy.b6i)"
         }
       ]
     }
