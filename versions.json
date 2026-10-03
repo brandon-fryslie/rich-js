@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "f94f990ac99490da46b9b61bb1e3129cb5204271",
-      "timestamp": "2026-10-03T01:42:31.236Z",
+      "sha": "9d5a227033f360d4e595c85fe80fa65eba23182d",
+      "timestamp": "2026-10-03T02:02:33.201Z",
       "commits": [
         {
-          "sha": "f94f990ac99490da46b9b61bb1e3129cb5204271",
+          "sha": "9d5a227033f360d4e595c85fe80fa65eba23182d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T19:41:28-06:00",
-          "message": "fix(core): one bounded Memo — Style.parse and ColorSpec.parse caches stop growing (rich-effects-fxiy.zyc) (#289)\n\n* fix(core): one bounded Memo for every string-keyed cache — Style.parse and ColorSpec.parse stop growing without end (rich-effects-fxiy.zyc)\n\n* fix(core): Memo computes before it clears; parse memos private, tested by behavior (rich-effects-fxiy.zyc)"
+          "timestamp": "2026-10-02T20:00:49-06:00",
+          "message": "fix(effects): a moved colour at 16 colours rounds to the theme's sixteen (rich-effects-fxiy.knj) (#290)\n\n* fix(effects): a moved colour at 16 colours rounds to the theme's sixteen (rich-effects-fxiy.knj)\n\nEffected read an ANSI slot's colour off its theme, moved it, and handed the\nresult to a downgrade that rounds against the VGA sixteen, so under Catppuccin\nMocha a 0.01 lightness nudge on 'on blue' drew \\x1b[47m instead of \\x1b[44m.\n\nColorSpec.downgradeUnder(depth, theme) is downgrade on a terminal known to show\ntheme; both share performDowngrade, which now takes the terminal. Effected\ndowngrades each moved colour under its own theme.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(effects): a moved colour rounds to the nearest the theme terminal draws, after its alpha is flattened (rich-effects-fxiy.knj)\n\nReview of #290: ColorSpec.matchOn replaces downgradeUnder. Candidates are the\ndefault colour, the theme's sixteen and, at 256 colours, the cube; ColorSpec.downgrade\nis back to master's stock rounding.\n\n* fix(effects): a moved translucent colour is laid on SURFACE_BLACK, as the writer lays one (rich-effects-fxiy.knj)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
