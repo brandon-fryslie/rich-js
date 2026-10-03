@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as e,ag as t}from"./chunks/framework.DM8JR04_.js";const c=JSON.parse('{"title":"Terminal Apps","description":"","frontmatter":{},"headers":[],"relativePath":"app.md","filePath":"app.md"}'),n={name:"app.md"};function h(p,s,l,k,r,d){return a(),e("div",null,[...s[0]||(s[0]=[t("",32)])])}const A=i(n,[["render",h]]);export{c as __pageData,A as default};

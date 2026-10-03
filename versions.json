@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-297",
+      "ref": "refs/pull/297/merge",
+      "sha": "dc7d735e4e76ebfdf21052966fd259321a5a4a6e",
+      "timestamp": "2026-10-03T05:23:20.278Z",
+      "commits": [
+        {
+          "sha": "dc7d735e4e76ebfdf21052966fd259321a5a4a6e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T23:22:00-06:00",
+          "message": "Merge 4495c653e075f3ff2639cee82488757548353eb9 into eb23c375bcca60a5dff382d4c53034ce6d78d786\n"
+        },
+        {
+          "sha": "4495c653e075f3ff2639cee82488757548353eb9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T23:21:56-06:00",
+          "message": "fix(markdown): list items hold blocks, h1 is centred, inline links parse fully (rich-markdown-ht8e)\n\nA list item is now a container, tokenized as Markdown of its own under its\ncontent column, the way a quote already was: fences, quotes and nested lists\ninside an item survive, nesting is drawn from the parent's text column, a\nnumber short of the content column is a sibling, numbering counts on from the\nfirst item, and a marker four columns in is indented code.\n\nLazy continuation is one rule for quotes and items. Outside a container no\nparagraph is open, so any list item ends it: \"> a\\n2024. b\" now opens a list,\nas CommonMark and Rich read it.\n\nh1 centres per row and h2+ stay left; the heading style is the text's own,\nso centring pads beside it. Inline text is parsed rather than matched: link\nURLs keep balanced parentheses, link text is inline Markdown, and an image\ndraws as Rich's ImageItem does.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "eb23c375bcca60a5dff382d4c53034ce6d78d786",
