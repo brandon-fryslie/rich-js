@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-290",
-      "ref": "refs/pull/290/merge",
-      "sha": "66bb05f4921f448d873554e067cc4663ffeb425b",
-      "timestamp": "2026-10-03T01:58:35.306Z",
-      "commits": [
-        {
-          "sha": "66bb05f4921f448d873554e067cc4663ffeb425b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T01:57:35Z",
-          "message": "Merge 26a940affb622ff815959c3282f6d1bfe2303bd8 into f94f990ac99490da46b9b61bb1e3129cb5204271\n"
-        },
-        {
-          "sha": "26a940affb622ff815959c3282f6d1bfe2303bd8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T19:57:30-06:00",
-          "message": "fix(effects): a moved colour rounds to the nearest the theme terminal draws, after its alpha is flattened (rich-effects-fxiy.knj)\n\nReview of #290: ColorSpec.matchOn replaces downgradeUnder. Candidates are the\ndefault colour, the theme's sixteen and, at 256 colours, the cube; ColorSpec.downgrade\nis back to master's stock rounding.\n"
-        },
-        {
-          "sha": "659f214c17d1535578010e2698d00e10b6771093",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T19:49:07-06:00",
-          "message": "fix(effects): a moved colour at 16 colours rounds to the theme's sixteen (rich-effects-fxiy.knj)\n\nEffected read an ANSI slot's colour off its theme, moved it, and handed the\nresult to a downgrade that rounds against the VGA sixteen, so under Catppuccin\nMocha a 0.01 lightness nudge on 'on blue' drew \\x1b[47m instead of \\x1b[44m.\n\nColorSpec.downgradeUnder(depth, theme) is downgrade on a terminal known to show\ntheme; both share performDowngrade, which now takes the terminal. Effected\ndowngrades each moved colour under its own theme.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f94f990ac99490da46b9b61bb1e3129cb5204271",
