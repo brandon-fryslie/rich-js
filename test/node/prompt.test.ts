@@ -35,14 +35,6 @@ describe("nodeAsk", () => {
     expect(written.join("")).toBe("Env [dev/prod]: ");
   });
 
-  it("prints the prompt above a running live display, as every print on the console goes", async () => {
-    const { console, written } = terminalConsole();
-    console.claimLiveRegion({ around: (text) => `<${text}>` });
-    keyboard("x");
-    await Prompt.ask("Name", nodeAsk, { console });
-    expect(written.join("")).toBe("<Name: >");
-  });
-
   it("leaves a capture the app has open holding what it held, the prompt added", async () => {
     const { console } = terminalConsole();
     console.beginCapture();

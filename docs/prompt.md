@@ -127,7 +127,7 @@ const env = await Prompt.ask("Environment", nodeAsk, { choices: ["dev", "prod"],
 app.print(`[bold]${env}[/]`);
 ```
 
-`nodeAsk` prints the prompt as any `print` on that console goes — above a running `Live`, into a capture you have open — then reads the line in the terminal's own line editing, as Rich's `input()` does. It asks on the console's own target: a `Console({ stderr: true })` prompts on stderr, coloured for stderr, with its messages beside it. `colorSystem: null` draws the prompt in plain text.
+`nodeAsk` prints the prompt as any `print` on that console goes — into a capture you have open, too — then reads the line in the terminal's own line editing, as Rich's `input()` does. It asks on the console's own target: a `Console({ stderr: true })` prompts on stderr, coloured for stderr, with its messages beside it. `colorSystem: null` draws the prompt in plain text.
 
 ## Custom input sources
 

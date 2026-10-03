@@ -16,11 +16,10 @@
  * The prompt is printed by the `Console` it was asked on — the app's, when it
  * passed one as `console`, a new default one otherwise — and then a line is
  * read, as Rich's `Console.input` prints its prompt and calls `input()`. So
- * the prompt is coloured exactly as that console's own output would be, goes
- * to its target — a console on stderr asks on stderr, beside the
- * invalid-answer messages it prints — and steps around a running `Live` the
- * way every other print does. It goes as one logical line, never broken at the
- * console's width: the terminal wraps it at whatever width it has.
+ * the prompt is coloured exactly as that console's own output would be and
+ * goes to its target: a console on stderr asks on stderr, beside the
+ * invalid-answer messages it prints. It goes as one logical line, never broken
+ * at the console's width: the terminal wraps it at whatever width it has.
  *
  * readline reads in non-terminal mode, the terminal's own cooked line
  * discipline, as Python's `input()` does without its readline module: in
