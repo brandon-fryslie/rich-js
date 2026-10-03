@@ -42,11 +42,13 @@ import { Traceback } from "@promptctl/rich-js";
 try {
   processUser(user);
 } catch (error) {
-  console.print(new Traceback(error as Error));
+  console.print(new Traceback(error));
 }
 ```
 
-A traceback shows only what the error's stack records. It cannot show source lines or local variables: an `Error` carries the location of each frame, not the code or the values that were in scope there.
+`Traceback` takes whatever was caught, so no cast is needed. JavaScript lets a program throw any value: anything with a string `name` and `message` is reported as the error it presents itself as, whichever realm or library it came from, and anything else — `throw "boom"`, `Promise.reject(42)` — renders under the name `NonError`, with the value formatted as `console.print` would format it and the frames of its `stack`, if it carries one.
+
+A traceback shows only what the error's stack records. It cannot show source lines or local variables: an `Error` carries the location of each frame, not the code or the values that were in scope there. A frame with no line — `Promise.all (index 0)`, a builtin such as `Array.map` — shows the location the engine recorded in its place; a frame inside `eval` or `new Function` shows the file and line of the call that ran the code; and a stack written by Firefox or Safari is read as well as one written by V8. A stack line in no shape the traceback knows is shown as written rather than dropped.
 
 ## Installing as the global handler
 
@@ -60,8 +62,6 @@ installTraceback();
 ```
 
 Calling it again replaces the handler rather than adding a second one, so a process always has exactly one rich crash renderer and the last call's options are the ones in force.
-
-A crash payload that is not an `Error` — `Promise.reject("nope")`, or `throw 42`, both of which JavaScript permits — renders under the name `NonError`, with the value inspected.
 
 `installTraceback` lives on the `node/traceback` subpath because it calls `process.on` and `process.exit`; the `Traceback` renderable itself is pure rendering and stays in the main barrel, which remains browser-safe.
 
@@ -89,7 +89,7 @@ Framework and library frames are noise when debugging your own code. `suppress` 
 try {
   processUser(user);
 } catch (error) {
-  console.print(new Traceback(error as Error, { suppress: ["node_modules/express"] }));
+  console.print(new Traceback(error, { suppress: ["node_modules/express"] }));
 }
 ```
 
@@ -105,7 +105,7 @@ A traceback can only show the frames the error recorded, and V8 records 10 by de
 try {
   walk(250);
 } catch (error) {
-  console.print(new Traceback(error as Error, { maxFrames: 4 }));
+  console.print(new Traceback(error, { maxFrames: 4 }));
 }
 ```
 

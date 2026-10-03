@@ -15,7 +15,8 @@
  * payload is trusted to be an `Error`: `@types/node` annotates
  * `uncaughtException` with `Error`, but `throw "boom"` delivers the raw
  * string, so the annotation is a claim about the common case rather than a
- * guarantee. `report` takes `unknown`.
+ * guarantee. `report` takes `unknown` and hands it to `Traceback` as it came,
+ * which reads a caught value of any shape.
  *
  * [LAW:no-ambient-temporal-coupling] The one channel is also what puts the
  * report after the terminal is handed back. A program holding the alternate
@@ -27,54 +28,9 @@
  * `installTraceback` and a host happened to add their listeners.
  */
 
-import { inspect, types } from "node:util";
-
 import { Console } from "../core/console.js";
 import { Traceback } from "../renderables/traceback.js";
 import type { TracebackOptions } from "../renderables/traceback.js";
-
-/** A payload's own stack, when it carries one, or `""` when it does not. */
-function stackOf(reason: unknown): string {
-  if (typeof reason !== "object" || reason === null) return "";
-  if (!("stack" in reason)) return "";
-  return typeof reason.stack === "string" ? reason.stack : "";
-}
-
-/**
- * [LAW:parse-dont-validate] The checkpoint between a crash payload, which node
- * allows to be any value at all, and `Traceback`, which renders an `Error`.
- * The return type is the proof: nothing downstream re-asks whether the payload
- * was throwable, and no raw value can reach the renderable to have `.name` and
- * `.message` read off it as `undefined`.
- *
- * The gate is `isNativeError`, not `instanceof Error`. An error thrown inside a
- * `node:vm` context is a real error with real frames, but its prototype comes
- * from that realm, so `instanceof` answers false and the frames would be
- * discarded by the one component that exists to show them. `isNativeError`
- * reads V8's internal error slot and is realm-independent.
- *
- * The gate also reads `name` and `message`, because the type promises strings
- * there and nothing stops a program assigning anything else to them after
- * construction. A native error that breaks that promise is reported as the
- * payload it is, through `inspect`, rather than handed to a renderable that
- * would throw reading it — inside the handler, losing the crash it was for.
- *
- * Whatever survives that gate is not an error, so it has no call site of its
- * own; `stackOf` salvages a stack from a duck-typed thrower and otherwise
- * leaves it empty rather than reporting the frames of this function, which
- * point into rich-js and describe nothing about the fault. `inspect` renders
- * every payload shape, including circular objects, where `String(reason)`
- * would collapse them to `[object Object]`.
- */
-function toError(reason: unknown): Error {
-  if (types.isNativeError(reason) && typeof reason.name === "string" && typeof reason.message === "string") {
-    return reason;
-  }
-  const error = new Error(inspect(reason));
-  error.name = "NonError";
-  error.stack = stackOf(reason);
-  return error;
-}
 
 /**
  * The handler currently registered, or a no-op standing in for "none yet".
@@ -130,7 +86,7 @@ export function installTraceback(options?: TracebackOptions): void {
     // sink would report `isTTY === false` and silently strip colour.
     const out = new Console({ stderr: true });
     out.beginCapture();
-    out.print(new Traceback(toError(reason), options));
+    out.print(new Traceback(reason, options));
 
     // [LAW:no-silent-failure] Exit only once the bytes have drained. When
     // stderr is a pipe (CI logs, `2>&1 | tee`), writes are asynchronous and
