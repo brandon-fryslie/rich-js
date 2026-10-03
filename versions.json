@@ -4,15 +4,22 @@
     {
       "version": "pr-287",
       "ref": "refs/pull/287/merge",
-      "sha": "317e1fbb6f0676f3aaa0b0238a7bc6c04300da3a",
-      "timestamp": "2026-10-03T00:42:36.992Z",
+      "sha": "2e28ad845a90d4040df4a2a9929541f9f5a2bb53",
+      "timestamp": "2026-10-03T00:53:04.344Z",
       "commits": [
         {
-          "sha": "317e1fbb6f0676f3aaa0b0238a7bc6c04300da3a",
+          "sha": "2e28ad845a90d4040df4a2a9929541f9f5a2bb53",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T18:41:23-06:00",
-          "message": "Merge 5bb60706b1f991b306a684959c1ad18d6bba5f50 into 6eb4218ac6ce9a64b502659ee054926bf0cbc1b9\n"
+          "timestamp": "2026-10-03T00:51:56Z",
+          "message": "Merge 9f6d949606165004cea30f5c3d68dfa37e3a8305 into 6eb4218ac6ce9a64b502659ee054926bf0cbc1b9\n"
+        },
+        {
+          "sha": "9f6d949606165004cea30f5c3d68dfa37e3a8305",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T18:51:51-06:00",
+          "message": "fix(examples): effects-feel moves a strip's fill wherever it shows (rich-shimmer-ufj7)\n\nHigh review on #287:\n- A move applies to the subject's own colours, by hex, in either slot, so a\n  powerline arrow moves with the fill it carries and the terminal ground\n  behind a cap never gains one (onColors replaces onSlot).\n- Subjects are measured at the width they are drawn, inside the padding, and\n  re-measured on resize; at-rest contrast is one identity sample, not 1,920.\n- A key outside the table repaints nothing, so mouse reports cost no frame.\n- The cell walk is graphemes(), the one Effected keys by; parseEase is the one\n  ease gate; an empty or non-decimal number flag is refused.\n- Tests wait on what the screen shows instead of wall-clock sleeps.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "5bb60706b1f991b306a684959c1ad18d6bba5f50",
