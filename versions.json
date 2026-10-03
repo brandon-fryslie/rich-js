@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-321",
+      "ref": "refs/pull/321/merge",
+      "sha": "39ae79373678848e8da165eb277805280dd116f1",
+      "timestamp": "2026-10-03T13:30:59.073Z",
+      "commits": [
+        {
+          "sha": "39ae79373678848e8da165eb277805280dd116f1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T13:29:52Z",
+          "message": "Merge e95f39ebd5f61840cbf6362d3f3c2641db95f553 into 31ca70ee636d0281f5f29836b59a07099b2f87e5\n"
+        },
+        {
+          "sha": "e95f39ebd5f61840cbf6362d3f3c2641db95f553",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T07:29:47-06:00",
+          "message": "fix(highlighter): the default theme names every part ISO8601Highlighter lays (rich-highlighter-6cj4)\n\nThe year, month, day, week, hour, minute, second, frac, ms and hyphen\ngroups reached onStyleError as unknown names, so a strict handler threw on\nevery timestamp. They are NULL_STYLE, as Rich draws them, and a test now\nrequires every built-in's group names in DEFAULT_STYLES.\n\nAlso: one TZ and COMPACT_TIME fragment each, the docs row names the\ndate-time forms and the per-part keys, and styledTimestamp's comment says\nwhat it draws for a short string.\n"
+        },
+        {
+          "sha": "98fb9b7b1ad14b286dbda4923f6e3a20af3bdd62",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T07:22:56-06:00",
+          "message": "fix(highlighter)!: ISO8601Highlighter lays Rich's spans in Rich's colours (rich-highlighter-6cj4)\n\nISO8601Highlighter now carries Rich 15.0.0's patterns: each matches a whole\nstring that is one ISO 8601 value and lays year/month/day/week/hour/minute/\nsecond/frac/ms/hyphen spans under date/time/timezone. iso8601.date is blue,\niso8601.time magenta, iso8601.timezone yellow, as in rich.default_styles.\n\nBREAKING CHANGE: a date or time inside other text (\"date: 2023-01-15\") is no\nlonger highlighted; Rich's patterns are anchored to the whole string.\n\ntest/core/iso8601-highlight.golden.json is Rich's own output for its\niso8601_highlight_tests corpus plus three edge cases.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-322",
       "ref": "refs/pull/322/merge",
       "sha": "91ef1616c27b99c8ca839af9bfb7084b9e983409",
@@ -20,28 +49,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T07:26:32-06:00",
           "message": "effects-feel: a breath blooms from its heart and fills the row unevenly (rich-effects-fxiy.b6i)\n\nSpread 0.0012 -> 0.005 of a breath per column, so warmth visibly rolls out\nfrom the wandering heart; depth varies 40% along the row, not 15%; breath\nlengths drift 0.1 of a turn, not 0.03. Worst 1 fps step 0.0368 over 3600 s\nx 4 z x 2 offsets x spans {40,104} (bar 0.04).\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-321",
-      "ref": "refs/pull/321/merge",
-      "sha": "5327537d1686de244fbf1195355bc2bb31fbc25e",
-      "timestamp": "2026-10-03T13:24:19.389Z",
-      "commits": [
-        {
-          "sha": "5327537d1686de244fbf1195355bc2bb31fbc25e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T07:23:01-06:00",
-          "message": "Merge 98fb9b7b1ad14b286dbda4923f6e3a20af3bdd62 into 31ca70ee636d0281f5f29836b59a07099b2f87e5\n"
-        },
-        {
-          "sha": "98fb9b7b1ad14b286dbda4923f6e3a20af3bdd62",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T07:22:56-06:00",
-          "message": "fix(highlighter)!: ISO8601Highlighter lays Rich's spans in Rich's colours (rich-highlighter-6cj4)\n\nISO8601Highlighter now carries Rich 15.0.0's patterns: each matches a whole\nstring that is one ISO 8601 value and lays year/month/day/week/hour/minute/\nsecond/frac/ms/hyphen spans under date/time/timezone. iso8601.date is blue,\niso8601.time magenta, iso8601.timezone yellow, as in rich.default_styles.\n\nBREAKING CHANGE: a date or time inside other text (\"date: 2023-01-15\") is no\nlonger highlighted; Rich's patterns are anchored to the whole string.\n\ntest/core/iso8601-highlight.golden.json is Rich's own output for its\niso8601_highlight_tests corpus plus three edge cases.\n"
         }
       ]
     },
