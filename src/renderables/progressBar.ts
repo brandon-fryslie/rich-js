@@ -50,7 +50,7 @@ export class ProgressBar implements Renderable, Measurable {
 
   *render(options: RenderOptions): Iterable<Segment> {
     // Never wider than offered, as Rich's `min(self.width or max_width, max_width)`.
-    const barWidth = Math.min(this.width ?? 40, options.maxWidth);
+    const barWidth = Math.min(this.width ?? options.maxWidth, options.maxWidth);
     const percent = this.percentComplete;
     const isFinished = percent >= 1;
     const filledWidth = Math.round(barWidth * percent);
@@ -70,8 +70,8 @@ export class ProgressBar implements Renderable, Measurable {
     }
   }
 
-  /** A width given is the bar's exact width, as Rich measures it; one left open may shrink to 4. */
-  measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    return this.width === undefined ? { minimum: 4, maximum: 40 } : { minimum: this.width, maximum: this.width };
+  /** A width given is the bar's exact width, as Rich measures it; one left open fills what it is offered, down to 4. */
+  measure(options: RenderOptions): { minimum: number; maximum: number } {
+    return this.width === undefined ? { minimum: 4, maximum: options.maxWidth } : { minimum: this.width, maximum: this.width };
   }
 }

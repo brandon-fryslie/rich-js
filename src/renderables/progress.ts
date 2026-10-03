@@ -10,7 +10,7 @@ import type { Style } from "../core/style.js";
 import { ProgressBar } from "./progressBar.js";
 import { Spinner } from "./spinner.js";
 import { Live } from "./live.js";
-import { Table } from "./table.js";
+import { Table, type ColumnOptions } from "./table.js";
 import type { Renderable, RenderOptions } from "../core/protocol.js";
 
 // --- Task ---
@@ -29,7 +29,7 @@ export interface TaskUpdateOptions {
   refresh?: boolean;
 }
 
-interface Task {
+export interface Task {
   id: number;
   description: string;
   total: number | undefined;
@@ -62,11 +62,18 @@ function finished(task: Task): boolean {
  * `make_tasks_table` decides them. [LAW:single-enforcer]
  */
 export interface ProgressColumn {
+  /**
+   * The grid column this one is laid out in, Rich's `get_table_column()`:
+   * whether its cell may wrap, how it justifies, its share of the width.
+   */
+  readonly tableColumn: ColumnOptions;
   render(task: Task): Renderable;
 }
 
 export class TextColumn implements ProgressColumn {
   readonly format: string;
+  /** Text is cut, never wrapped, as Rich's `TextColumn` defaults to `Column(no_wrap=True)`. */
+  readonly tableColumn: ColumnOptions = { noWrap: true };
 
   constructor(format?: string) {
     this.format = format ?? "{task.description}";
@@ -89,6 +96,7 @@ export class TextColumn implements ProgressColumn {
 
 export class BarColumn implements ProgressColumn {
   readonly barWidth: number;
+  readonly tableColumn: ColumnOptions = {};
 
   constructor(barWidth?: number) {
     this.barWidth = barWidth ?? 40;
@@ -110,6 +118,9 @@ export class BarColumn implements ProgressColumn {
  * `text_format_no_percentage`.
  */
 export class TaskProgressColumn implements ProgressColumn {
+  /** A `TextColumn` in Rich, and laid out as one. */
+  readonly tableColumn: ColumnOptions = { noWrap: true };
+
   render(task: Task): RichText {
     const text =
       task.total === undefined ? "" : `${String(roundHalfEven(percentage(task))).padStart(3)}%`;
@@ -133,6 +144,8 @@ function roundHalfEven(x: number): number {
 }
 
 export class TimeRemainingColumn implements ProgressColumn {
+  readonly tableColumn: ColumnOptions = {};
+
   render(task: Task): RichText {
     if (!task.total || !task.started || task.completed <= 0) {
       return new RichText("-:--:--", { style: "progress.remaining" });
@@ -145,6 +158,8 @@ export class TimeRemainingColumn implements ProgressColumn {
 }
 
 export class TimeElapsedColumn implements ProgressColumn {
+  readonly tableColumn: ColumnOptions = {};
+
   render(task: Task): RichText {
     const elapsed = task.started ? (Date.now() - task.startTime) / 1000 : 0;
     return new RichText(formatTime(elapsed), { style: "progress.elapsed" });
@@ -161,6 +176,7 @@ export interface SpinnerColumnOptions {
 }
 
 export class SpinnerColumn implements ProgressColumn {
+  readonly tableColumn: ColumnOptions = {};
   private _spinner: Spinner;
   private _finishedText: RichText;
 
@@ -181,6 +197,8 @@ export class SpinnerColumn implements ProgressColumn {
 }
 
 export class MofNCompleteColumn implements ProgressColumn {
+  readonly tableColumn: ColumnOptions = {};
+
   render(task: Task): RichText {
     return new RichText(`${task.completed}/${task.total ?? "?"}`);
   }
@@ -324,10 +342,10 @@ export class Progress implements Renderable {
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    // Rich's `make_tasks_table`: every column a `Column(no_wrap=True)`.
+    // Rich's `make_tasks_table`: each column laid out as it says.
     const table = Table.grid({ expand: this.expand });
-    for (const _col of this._columns) {
-      table.addColumn(undefined, { noWrap: true });
+    for (const col of this._columns) {
+      table.addColumn(undefined, col.tableColumn);
     }
 
     for (const task of this._tasks.values()) {
