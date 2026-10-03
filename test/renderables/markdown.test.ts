@@ -197,6 +197,52 @@ describe("Markdown", () => {
     expect(out).toEqual(["  • parent", "      • child text", ""]);
   });
 
+  it("counts a tab inside an item from the source's column 0, not the item's", () => {
+    expect(rows("- a\n\n  \tb", 20)).toEqual(["  • a", "", "    b", ""]);
+    expect(rows("- parent\n  \t- child", 20)).toEqual(["  • parent", "      • child", ""]);
+  });
+
+  it("reads a tab after a quote's marker as the space it may take, then indentation", () => {
+    expect(rows(">\tfoo", 20)).toEqual(["▎ foo", ""]);
+    expect(rows(">\t\tfoo", 20)).toEqual(["▎   foo", ""]);
+  });
+
+  it("draws a tab in code as spaces to the code's own stops, never a raw tab", () => {
+    expect(rows("- a\n\n  ```\n  \tx\n  ```", 20)).toEqual(["  • a", "", "            x", ""]);
+    expect(rows("    \tx", 20)).toEqual(["        x", ""]);
+  });
+
+  it("opens a fence or a quote indented up to three columns inside an item", () => {
+    expect(rows("- step\n\n    ```\n    npm i\n    ```", 20)).toEqual(["  • step", "", "    npm i", ""]);
+    expect(rows("- a\n   > q", 20)).toEqual(["  • a", "    ▎ q", ""]);
+  });
+
+  it("continues a parent's text with a marker indented four columns past it, as CommonMark does", () => {
+    expect(rows("- parent\n      - child", 40)).toEqual(["  • parent - child", ""]);
+  });
+
+  it("reads a line of the list's own bullets as a thematic break, not an item", () => {
+    const out = rows("* a\n* * *\n* b", 10);
+    expect(out[0]).toBe("  • a");
+    expect(out[1]).toMatch(/^─+$/);
+    expect(out[2]).toBe("  • b");
+    expect(rows("_ _ _", 5)[0]).toMatch(/^─+$/);
+  });
+
+  it("reads a line of `=` on its own as text", () => {
+    expect(rows("para\n\n===", 20)).toEqual(["para", "", "===", ""]);
+  });
+
+  it("reads long lazy and deeply nested hard-wrapped text in time linear in its length", () => {
+    const wrapped = Array.from({ length: 2000 }, (_, n) => `word${n}`).join("\n");
+    const started = performance.now();
+    rows(`> ${wrapped}`, 80);
+    rows(`- - - ${wrapped}`, 80);
+    rows(`text ${"[1, ".repeat(5000)}`, 80);
+    // The quadratic reader took over a second for a tenth of this input; linear takes milliseconds.
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
   it("keeps an item's text when its gutter is as wide as the width", () => {
     expect(rows("- hi", 3)).toEqual(["  • h", "    i", ""]);
   });
@@ -291,6 +337,12 @@ describe("Markdown", () => {
   it("makes a link's text the link by default", () => {
     expect(rows("[link](https://example.com)", 80)).toEqual(["link", ""]);
     expect(segment("[link](https://example.com)", "link").style?.link).toBe("https://example.com");
+  });
+
+  it("draws a style inside a link's text over the link's own, as Rich does", () => {
+    const code = segment("[`foo()`](https://x)", "foo()");
+    expect(code.style?.link).toBe("https://x");
+    expect(code.style?.color).toEqual(segment("`foo()`", "foo()").style?.color);
   });
 
   it("writes a link's URL after its text when hyperlinks is false", () => {

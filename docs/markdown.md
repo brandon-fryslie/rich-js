@@ -38,10 +38,11 @@ console.print(md);
 
 Blocks are read as [CommonMark](https://spec.commonmark.org/) reads them. A list item, like a
 quote, holds blocks of its own — paragraphs, fenced code, quotes, nested lists — indented to
-the column its text starts at, and draws them under its hang. A nested list sits under its
-parent's text however far the source indents it, and a numbered list counts on from its first
-number, right-aligned so every item hangs at one column. A line indented four columns or more
-that does not continue a paragraph is indented code.
+the column its text starts at, and draws them under its hang. A nested list's marker sits at
+its parent's text column or up to three columns past it; four or more past it, and the marker
+is text — continuing the parent's paragraph, or indented code after a blank line. A numbered
+list counts on from its first number, right-aligned so every item hangs at one column. Tabs in
+the indentation reach the stops of 4 they reach in the source, however deep the line is nested.
 
 An image is drawn as Rich draws it: a picture glyph, then its alt text, linked to the image.
 

@@ -9,7 +9,7 @@
  * leaves the drawing open, Rich's is followed.
  */
 
-import { cellLen } from "../core/cells.js";
+import { cellLen, expandTabs, parseTabSize } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { RichText } from "../core/text.js";
@@ -58,73 +58,113 @@ type MdToken =
   | { type: "blockquote"; children: MdToken[] }
   | { type: "blank" };
 
+/**
+ * A source line inside the container that holds it: the line as written, with
+ * every container marker it sat behind blanked to spaces so its columns are
+ * still the source's, and `margin`, the column its container's content starts
+ * at. Columns are counted from the source's column 0, so a tab reaches the
+ * stop it reaches in the source however deep the line is nested.
+ */
+interface Line {
+  readonly text: string;
+  readonly margin: number;
+}
+
 const HEADING = /^(#{1,6})\s+(.+)$/;
-const RULE = /^(?:---+|===+|\*\*\*+)$/;
-const SETEXT = /^ {0,3}(=+|-+)[ \t]*$/;
+/** A thematic break: three or more of one of `*`, `-` or `_`, spaces and tabs between them allowed. */
+const RULE = /^(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/;
+const SETEXT = /^(=+|-+)[ \t]*$/;
 const FENCE = /^```(\w*)/;
-const QUOTE = /^> ?/;
-const LIST_MARKER = /^([ \t]*)([*+-]|(\d{1,9})\.)([ \t]*)(.*)$/;
+const QUOTE = /^>/;
+const ITEM_MARKER = /^(?:[*+-]|(\d{1,9})\.)/;
+const LEAD = /^[ \t]*/;
 const HARD_BREAK = /(?: {2,}|\\)$/;
-const BLOCK_STARTS = [HEADING, FENCE, QUOTE];
+const BLOCK_STARTS = [HEADING, FENCE, QUOTE, RULE];
 /** Indentation that makes a line indented code when it opens a block, as CommonMark counts it. */
 const CODE_INDENT = 4;
+/** The tab stop code is drawn with, as Rich's `Syntax` draws it. */
+const CODE_TAB_SIZE = parseTabSize(8);
+const BLANK_LINE: Line = { text: "", margin: 0 };
 
 /** The column `ws` ends at when it starts at column `from`, a tab reaching the next stop of 4 as CommonMark counts it. */
 function advance(from: number, ws: string): number {
   return [...ws].reduce((col, ch) => (ch === "\t" ? col + 4 - (col % 4) : col + 1), from);
 }
 
-/** The columns `line`'s leading whitespace spans. */
-function indentOf(line: string): number {
-  return advance(0, /^[ \t]*/.exec(line)![0]);
+/** The column `line`'s leading whitespace ends at. */
+function leadEnd(line: Line): number {
+  return advance(0, LEAD.exec(line.text)![0]);
+}
+
+/** How far `line` is indented inside its container. */
+function indentOf(line: Line): number {
+  return Math.max(0, leadEnd(line) - line.margin);
+}
+
+/** `line` from its first character that is not leading whitespace. */
+function body(line: Line): string {
+  return line.text.slice(LEAD.exec(line.text)![0].length);
+}
+
+function isBlank(line: Line): boolean {
+  return line.text.trim() === "";
+}
+
+/** Whether `line` sits less than a code indent into its container and its text matches `re`. */
+function startsWith(line: Line, re: RegExp): boolean {
+  return indentOf(line) < CODE_INDENT && re.test(body(line));
 }
 
 /**
- * `line` with its first `n` columns of leading whitespace cut off — a
- * container's indentation removed so its content is read as Markdown of its
- * own. A tab straddling column `n` leaves the columns past `n` as spaces.
+ * `line` from `n` columns into its container on: a block's own indentation
+ * cut off, the rest as written. A tab straddling the cut leaves the columns
+ * past it as spaces.
  */
-function dropColumns(line: string, n: number): string {
+function dropColumns(line: Line, n: number): string {
+  const to = line.margin + n;
   let col = 0;
   let i = 0;
-  for (; i < line.length && col < n && (line[i] === " " || line[i] === "\t"); i++) {
-    const next = advance(col, line[i]!);
-    if (next > n) return " ".repeat(next - n) + line.slice(i + 1);
+  for (; i < line.text.length && col < to && (line.text[i] === " " || line.text[i] === "\t"); i++) {
+    const next = advance(col, line.text[i]!);
+    if (next > to) return " ".repeat(next - to) + line.text.slice(i + 1);
     col = next;
   }
-  return line.slice(i);
+  return line.text.slice(i);
 }
 
 /**
  * A list item's opening line, read as CommonMark reads it: a bullet or a
- * number at most three columns in. `content` is the item's content column —
- * where its text starts, and how far every line of the item is indented —
- * and `first` is the text of the marker line from that column on. An item
- * opening with a blank line, or with indented code, has its content column
- * one space past the marker.
+ * number at most three columns in, not a thematic break. `content` is the
+ * item's content column — where its text starts, and how far every line of
+ * the item is indented — and `first` is the marker line as a line of the
+ * item, absent when the item opens with a blank line. An item opening with a
+ * blank line, or with indented code, has its content column one space past
+ * the marker.
  */
 interface ItemStart {
   readonly bullet: string | undefined;
   readonly start: number;
   readonly content: number;
-  readonly first: string;
+  readonly first: Line | undefined;
 }
 
-function itemStart(line: string): ItemStart | undefined {
-  const m = LIST_MARKER.exec(line);
-  if (!m) return undefined;
-  const indent = advance(0, m[1]!);
-  const spacing = m[4]!;
-  const rest = m[5]!;
-  if (indent >= CODE_INDENT || (spacing === "" && rest !== "")) return undefined;
-  const markerEnd = indent + m[2]!.length;
+function itemStart(line: Line): ItemStart | undefined {
+  const text = body(line);
+  const m = ITEM_MARKER.exec(text);
+  if (!m || indentOf(line) >= CODE_INDENT || RULE.test(text)) return undefined;
+  const after = text.slice(m[0].length);
+  const spacing = LEAD.exec(after)![0];
+  const rest = after.slice(spacing.length);
+  if (spacing === "" && rest !== "") return undefined;
+  const markerEnd = leadEnd(line) + m[0].length;
   const spaced = advance(markerEnd, spacing) - markerEnd;
-  const opensCode = spaced > CODE_INDENT;
+  const content = rest === "" || spaced > CODE_INDENT ? markerEnd + 1 : markerEnd + spaced;
+  const lead = line.text.slice(0, line.text.length - text.length);
   return {
-    bullet: m[3] === undefined ? m[2] : undefined,
-    start: m[3] === undefined ? 0 : parseInt(m[3], 10),
-    content: rest === "" || opensCode ? markerEnd + 1 : markerEnd + spaced,
-    first: opensCode ? " ".repeat(spaced - 1) + rest : rest,
+    bullet: m[1] === undefined ? m[0] : undefined,
+    start: m[1] === undefined ? 0 : parseInt(m[1], 10),
+    content,
+    first: rest === "" ? undefined : { text: lead + " ".repeat(m[0].length) + after, margin: content },
   };
 }
 
@@ -134,24 +174,36 @@ function sameList(a: ItemStart, b: ItemStart): boolean {
 }
 
 /**
+ * A `>` line as a line of its quote: the marker blanked, and the quote's
+ * content starting past it and the one column of space that may follow it —
+ * one column of a tab, when a tab follows it.
+ */
+function quoted(line: Line): Line {
+  const at = line.text.length - body(line).length;
+  const spaced = /[ \t]/.test(line.text[at + 1] ?? "");
+  return { text: `${line.text.slice(0, at)} ${line.text.slice(at + 1)}`, margin: leadEnd(line) + 1 + (spaced ? 1 : 0) };
+}
+
+/**
  * Whether `line` opens a block of its own — a heading, a fence, a quote, a
  * rule or a list item. A line that does not is text, and under an open
  * paragraph it continues that paragraph.
  */
-function opensBlock(line: string): boolean {
-  return BLOCK_STARTS.some((re) => re.test(line)) || RULE.test(line.trim()) || itemStart(line) !== undefined;
+function opensBlock(line: Line): boolean {
+  return BLOCK_STARTS.some((re) => startsWith(line, re)) || itemStart(line) !== undefined;
 }
 
 /**
  * Whether `line` ends a paragraph: `opensBlock`, read as CommonMark reads it
- * under a paragraph. A list item interrupts one only when it has text and,
- * numbered, counts from 1, so prose wrapped onto "2024. That year" stays
- * prose; and a line of `=` or `-` is the paragraph's heading underline.
+ * under a paragraph. Indented code cannot interrupt one; a list item does only
+ * when it has text and, numbered, counts from 1, so prose wrapped onto "2024.
+ * That year" stays prose; and a line of `=` or `-` is the paragraph's heading
+ * underline.
  */
-function endsParagraph(line: string): boolean {
-  if (SETEXT.test(line)) return true;
+function endsParagraph(line: Line): boolean {
+  if (startsWith(line, SETEXT)) return true;
   const item = itemStart(line);
-  return item ? item.first !== "" && (item.bullet !== undefined || item.start === 1) : opensBlock(line);
+  return item ? item.first !== undefined && (item.bullet !== undefined || item.start === 1) : opensBlock(line);
 }
 
 /** Whether the last block of `tokens`, followed into the containers it closes, is a paragraph still open. */
@@ -174,10 +226,13 @@ function endsInParagraph(tokens: readonly MdToken[]): boolean {
  * text, which continues the paragraph open at the end of the container's
  * `inner` lines and opens no block of its own. Outside the container a line
  * is read without the paragraph under it, so any list item — whatever it
- * counts from — ends the container rather than continuing it.
+ * counts from — ends the container rather than continuing it. A line after a
+ * lazy continuation finds that paragraph still open, so `afterLazy` answers
+ * without reading `inner` again: a container's lazy lines cost one read of
+ * it, not one each.
  */
-function continuesLazily(inner: readonly string[], line: string): boolean {
-  return line.trim() !== "" && !opensBlock(line) && endsInParagraph(tokenize(inner));
+function continuesLazily(inner: readonly Line[], line: Line, afterLazy: boolean): boolean {
+  return !isBlank(line) && !opensBlock(line) && (afterLazy || endsInParagraph(tokenize(inner)));
 }
 
 /**
@@ -187,10 +242,10 @@ function continuesLazily(inner: readonly string[], line: string): boolean {
  * reflows them, with their own indentation dropped; a line ending in two
  * spaces or a backslash breaks hard, and its break is kept.
  */
-function continuation(lines: readonly string[], start: number): { text: string; next: number } {
-  const parts = [lines[start]!];
+function continuation(lines: readonly Line[], start: number): { text: string; next: number } {
+  const parts = [lines[start]!.text];
   let i = start + 1;
-  for (; i < lines.length && lines[i]!.trim() !== "" && !endsParagraph(lines[i]!); i++) parts.push(lines[i]!);
+  for (; i < lines.length && !isBlank(lines[i]!) && !endsParagraph(lines[i]!); i++) parts.push(lines[i]!.text);
   const text = parts
     .map((part, n) => {
       const words = (n === parts.length - 1 ? part : part.replace(HARD_BREAK, "")).trim();
@@ -201,25 +256,26 @@ function continuation(lines: readonly string[], start: number): { text: string; 
 }
 
 /**
- * The lines of the list item opened at `start` with its content column cut
- * off — every line after it that is blank, indented to the content column, or
- * a lazy continuation — and the index of the line that ended it. Blank lines
- * trailing the item are left to whatever follows it, and an item that opens
- * with a blank line ends at the next one: it is empty.
+ * The lines of the list item opened at `start` — every line after it that is
+ * blank, indented to the content column, or a lazy continuation — and the
+ * index of the line that ended it. Blank lines trailing the item are left to
+ * whatever follows it, and an item that opens with a blank line ends at the
+ * next one: it is empty.
  */
-function itemLines(item: ItemStart, lines: readonly string[], start: number): { inner: string[]; next: number } {
-  const inner = item.first === "" ? [] : [item.first];
+function itemLines(item: ItemStart, lines: readonly Line[], start: number): { inner: Line[]; next: number } {
+  const inner = item.first === undefined ? [] : [item.first];
+  let lazy = false;
   let i = start + 1;
   for (; i < lines.length; i++) {
     const line = lines[i]!;
-    if (line.trim() === "") {
-      if (inner.length === 0) break;
-      inner.push("");
-    } else if (indentOf(line) >= item.content) inner.push(dropColumns(line, item.content));
-    else if (continuesLazily(inner, line)) inner.push(line);
-    else break;
+    const blank = isBlank(line);
+    if (blank && inner.length === 0) break;
+    const held = blank || leadEnd(line) >= item.content;
+    lazy = !held && continuesLazily(inner, line, lazy);
+    if (!held && !lazy) break;
+    inner.push(held ? { text: line.text, margin: item.content } : line);
   }
-  for (; inner[inner.length - 1] === ""; i--) inner.pop();
+  for (; inner.length > 0 && isBlank(inner[inner.length - 1]!); i--) inner.pop();
   return { inner, next: i };
 }
 
@@ -229,15 +285,19 @@ function itemLines(item: ItemStart, lines: readonly string[], start: number): { 
  * count on from the first item's, as Rich draws them, right-aligned to the
  * widest so every item hangs at one column.
  */
-function list(first: ItemStart, lines: readonly string[], start: number): { tokens: MdToken[]; next: number } {
+function list(first: ItemStart, lines: readonly Line[], start: number): { tokens: MdToken[]; next: number } {
   const items: { gap: number; children: MdToken[] }[] = [];
   let i = start;
   let gap = 0;
-  for (let item: ItemStart | undefined = first; item && sameList(first, item); item = itemStart(lines[i] ?? "")) {
+  for (
+    let item: ItemStart | undefined = first;
+    item && sameList(first, item);
+    item = i < lines.length ? itemStart(lines[i]!) : undefined
+  ) {
     const { inner, next } = itemLines(item, lines, i);
-    items.push({ gap, children: tokenize(inner.length === 0 ? [""] : inner) });
+    items.push({ gap, children: tokenize(inner.length === 0 ? [BLANK_LINE] : inner) });
     let after = next;
-    while (after < lines.length && lines[after]!.trim() === "") after++;
+    while (after < lines.length && isBlank(lines[after]!)) after++;
     gap = after - next;
     i = after;
   }
@@ -255,7 +315,7 @@ function list(first: ItemStart, lines: readonly string[], start: number): { toke
   return { tokens, next };
 }
 
-function tokenize(lines: readonly string[]): MdToken[] {
+function tokenize(lines: readonly Line[]): MdToken[] {
   const tokens: MdToken[] = [];
   let i = 0;
 
@@ -263,7 +323,7 @@ function tokenize(lines: readonly string[]): MdToken[] {
     const line = lines[i]!;
 
     // Blank line
-    if (line.trim() === "") {
+    if (isBlank(line)) {
       tokens.push({ type: "blank" });
       i++;
       continue;
@@ -272,7 +332,7 @@ function tokenize(lines: readonly string[]): MdToken[] {
     // Indented code: its lines, and the blank lines between them, with the indent cut off
     if (indentOf(line) >= CODE_INDENT) {
       const code: string[] = [];
-      for (; i < lines.length && (lines[i]!.trim() === "" || indentOf(lines[i]!) >= CODE_INDENT); i++) {
+      for (; i < lines.length && (isBlank(lines[i]!) || indentOf(lines[i]!) >= CODE_INDENT); i++) {
         code.push(dropColumns(lines[i]!, CODE_INDENT));
       }
       for (; code[code.length - 1]!.trim() === ""; i--) code.pop();
@@ -281,7 +341,7 @@ function tokenize(lines: readonly string[]): MdToken[] {
     }
 
     // Heading
-    const headingMatch = HEADING.exec(line);
+    const headingMatch = HEADING.exec(body(line));
     if (headingMatch) {
       tokens.push({ type: "heading", level: headingMatch[1]!.length, text: headingMatch[2]! });
       i++;
@@ -289,34 +349,33 @@ function tokenize(lines: readonly string[]): MdToken[] {
     }
 
     // Horizontal rule
-    if (RULE.test(line.trim())) {
+    if (startsWith(line, RULE)) {
       tokens.push({ type: "hr" });
       i++;
       continue;
     }
 
-    // Fenced code block
-    if (FENCE.test(line)) {
+    // Fenced code block: its lines with the fence's own indentation cut off
+    if (startsWith(line, FENCE)) {
+      const indent = indentOf(line);
       const codeLines: string[] = [];
-      i++;
-      while (i < lines.length && !lines[i]!.startsWith("```")) {
-        codeLines.push(lines[i]!);
-        i++;
-      }
+      for (i++; i < lines.length && !startsWith(lines[i]!, FENCE); i++) codeLines.push(dropColumns(lines[i]!, indent));
       i++; // skip closing ```
       tokens.push({ type: "code_block", code: codeLines.join("\n") });
       continue;
     }
 
-    // Blockquote: Markdown of its own — its `>` lines with the marker cut off,
+    // Blockquote: Markdown of its own — its `>` lines with the marker blanked,
     // and any unmarked line lazily continuing the paragraph open inside it
-    if (QUOTE.test(line)) {
-      const inner: string[] = [];
+    if (startsWith(line, QUOTE)) {
+      const inner: Line[] = [];
+      let lazy = false;
       for (; i < lines.length; i++) {
         const next = lines[i]!;
-        const marked = QUOTE.test(next);
-        if (!marked && !continuesLazily(inner, next)) break;
-        inner.push(next.replace(QUOTE, ""));
+        const marked = startsWith(next, QUOTE);
+        lazy = !marked && continuesLazily(inner, next, lazy);
+        if (!marked && !lazy) break;
+        inner.push(marked ? quoted(next) : next);
       }
       tokens.push({ type: "blockquote", children: tokenize(inner) });
       continue;
@@ -333,7 +392,7 @@ function tokenize(lines: readonly string[]): MdToken[] {
 
     // Paragraph, or a setext heading when a line of `=` or `-` underlines it
     const { text, next } = continuation(lines, i);
-    const underline = SETEXT.exec(lines[next] ?? "");
+    const underline = next < lines.length && indentOf(lines[next]!) < CODE_INDENT ? SETEXT.exec(body(lines[next]!)) : null;
     tokens.push(
       underline
         ? { type: "heading", level: underline[1]!.startsWith("=") ? 1 : 2, text }
@@ -353,15 +412,32 @@ type Inline =
   | { kind: "image"; alt: string; src: string; end: number }
   | { kind: "literal"; text: string; end: number };
 
-/** The index of the `]` closing the `[` at `open`, counting nested brackets, or -1. */
-function closingBracket(text: string, open: number): number {
-  let depth = 0;
-  for (let i = open; i < text.length; i++) {
+const TICKS = /`+/y;
+const STRONG = /\*\*(.+?)\*\*/y;
+const EMPHASIS = /\*(.+?)\*/y;
+const ANGLED_DESTINATION = /\(\s*<([^<>\n]*)>/y;
+const LINK_TAIL = /\s*(?:"[^"]*"|'[^']*'|\([^()]*\))?\s*\)/y;
+
+/** `re`, a sticky pattern, matched exactly at `i` in `text`. */
+function matchAt(re: RegExp, text: string, i: number): RegExpExecArray | null {
+  re.lastIndex = i;
+  return re.exec(text);
+}
+
+/**
+ * Each `[` in `text` that a `]` closes, to the index of that `]`: brackets
+ * nest, and a backslash escapes the character after it. One pass, so a run of
+ * text full of brackets that close nothing costs no more than one without.
+ */
+function bracketPairs(text: string): ReadonlyMap<number, number> {
+  const pairs = new Map<number, number>();
+  const open: number[] = [];
+  for (let i = 0; i < text.length; i++) {
     if (text[i] === "\\") i++;
-    else if (text[i] === "[") depth++;
-    else if (text[i] === "]" && --depth === 0) return i;
+    else if (text[i] === "[") open.push(i);
+    else if (text[i] === "]" && open.length > 0) pairs.set(open.pop()!, i);
   }
-  return -1;
+  return pairs;
 }
 
 /**
@@ -372,7 +448,7 @@ function closingBracket(text: string, open: number): number {
  */
 function linkDestination(text: string, open: number): { url: string; end: number } | undefined {
   if (text[open] !== "(") return undefined;
-  const angled = /^\(\s*<([^<>\n]*)>/.exec(text.slice(open));
+  const angled = matchAt(ANGLED_DESTINATION, text, open);
   let i: number;
   let url: string;
   if (angled) {
@@ -389,59 +465,72 @@ function linkDestination(text: string, open: number): { url: string; end: number
     }
     url = text.slice(from, i);
   }
-  const tail = /^\s*(?:"[^"]*"|'[^']*'|\([^()]*\))?\s*\)/.exec(text.slice(i));
+  const tail = matchAt(LINK_TAIL, text, i);
   return tail ? { url, end: i + tail[0].length } : undefined;
 }
 
-/** The characters an inline construct can open with. */
-const INLINE_OPENERS = new Set(["`", "*", "!", "["]);
+/** The inline construct opening at `i` in `text`, if one does; `brackets` is `text`'s `bracketPairs`. */
+function inlineAt(text: string, i: number, brackets: ReadonlyMap<number, number>): Inline | undefined {
+  switch (text[i]) {
+    case "`": {
+      const ticks = matchAt(TICKS, text, i)![0];
+      const close = new RegExp(`(?<!\`)${ticks}(?!\`)`, "g");
+      close.lastIndex = i + ticks.length;
+      const found = close.exec(text);
+      return found
+        ? { kind: "code", code: text.slice(i + ticks.length, found.index), end: found.index + ticks.length }
+        : { kind: "literal", text: ticks, end: i + ticks.length };
+    }
+    case "*": {
+      const strong = matchAt(STRONG, text, i);
+      const emphasis = strong ?? matchAt(EMPHASIS, text, i);
+      return emphasis
+        ? { kind: "emphasis", style: strong ? "bold" : "italic", inner: emphasis[1]!, end: i + emphasis[0].length }
+        : undefined;
+    }
+    case "!":
+    case "[": {
+      const image = text[i] === "!";
+      const open = image ? i + 1 : i;
+      const close = brackets.get(open);
+      const destination = close === undefined ? undefined : linkDestination(text, close + 1);
+      if (!destination) return undefined;
+      const label = text.slice(open + 1, close);
+      return image
+        ? { kind: "image", alt: label, src: destination.url, end: destination.end }
+        : { kind: "link", inner: label, url: destination.url, end: destination.end };
+    }
+    default:
+      return undefined;
+  }
+}
 
-/** The inline construct opening at `i` in `text`, if one does. */
-function inlineAt(text: string, i: number): Inline | undefined {
-  if (!INLINE_OPENERS.has(text[i]!)) return undefined;
-  const rest = text.slice(i);
-  const ticks = /^`+/.exec(rest)?.[0];
-  if (ticks) {
-    const close = new RegExp(`(?<!\`)${ticks}(?!\`)`).exec(text.slice(i + ticks.length));
-    const end = close ? i + ticks.length + close.index + ticks.length : i + ticks.length;
-    return close
-      ? { kind: "code", code: text.slice(i + ticks.length, end - ticks.length), end }
-      : { kind: "literal", text: ticks, end };
-  }
-  const emphasis = /^\*\*(.+?)\*\*/.exec(rest) ?? /^\*(.+?)\*/.exec(rest);
-  if (emphasis) {
-    const style = emphasis[0].startsWith("**") ? "bold" : "italic";
-    return { kind: "emphasis", style, inner: emphasis[1]!, end: i + emphasis[0].length };
-  }
-  const image = rest.startsWith("![");
-  if (!image && !rest.startsWith("[")) return undefined;
-  const open = image ? i + 1 : i;
-  const close = closingBracket(text, open);
-  const destination = close < 0 ? undefined : linkDestination(text, close + 1);
-  if (!destination) return undefined;
-  const label = text.slice(open + 1, close);
-  return image
-    ? { kind: "image", alt: label, src: destination.url, end: destination.end }
-    : { kind: "link", inner: label, url: destination.url, end: destination.end };
+/**
+ * `text` as inline Markdown in `style`: a text of its own whose style sits
+ * under every style inside it, so appended where it goes it draws as Rich
+ * draws a nested construct — the inner style on top.
+ */
+function styled(text: string, style: string | Style, settings: InlineSettings, options: RenderOptions): RichText {
+  const result = new RichText("", { style });
+  appendInline(result, text, settings, options);
+  return result;
 }
 
 /**
  * `text` as inline Markdown appended to `result`: code spans, emphasis, links
  * and images, the text inside emphasis, links and images parsed the same way,
- * and everything else as it is. Each construct's style spans from where its
- * text starts in `result`, which `append` may have shortened by stripping
- * control characters.
+ * and everything else as it is.
  */
 function appendInline(result: RichText, text: string, settings: InlineSettings, options: RenderOptions): void {
+  const brackets = bracketPairs(text);
   let plain = 0;
   for (let i = 0; i < text.length; ) {
-    const found = inlineAt(text, i);
+    const found = inlineAt(text, i, brackets);
     if (!found) {
       i++;
       continue;
     }
     result.append(text.slice(plain, i));
-    const start = result.length;
     switch (found.kind) {
       case "code":
         result.append(found.code, settings.inlineCodeStyle);
@@ -450,31 +539,29 @@ function appendInline(result: RichText, text: string, settings: InlineSettings, 
         result.append(found.text);
         break;
       case "emphasis":
-        appendInline(result, found.inner, settings, options);
-        result.stylize(found.style, start);
+        result.append(styled(found.inner, found.style, settings, options));
         break;
       case "link": {
         // As Rich draws it: without hyperlinks the URL is written out, and it
         // is still the link, for a terminal that can click it.
-        const link = new Style({ link: found.url });
-        appendInline(result, found.inner, settings, options);
+        const link = new RichText("", { style: new Style({ link: found.url }) });
         if (settings.hyperlinks) {
-          result.stylize("markdown.link_url", start).stylize(link, start);
+          result.append(link.append(styled(found.inner, "markdown.link_url", settings, options)));
         } else {
-          result.stylize("markdown.link", start).append(" (");
-          const url = result.length;
-          result.append(found.url, "markdown.link_url").stylize(link, url).append(")");
+          result
+            .append(styled(found.inner, "markdown.link", settings, options))
+            .append(" (")
+            .append(link.append(found.url, "markdown.link_url"))
+            .append(")");
         }
         break;
       }
       case "image": {
         // Rich's ImageItem: a picture glyph, then the alt text — or, with
         // none, the image's file name — linked to the image, then a space.
-        result.append(drawable(options, "🌆 ", ""));
-        const title = result.length;
-        appendInline(result, found.alt || (found.src.replace(/\/+$/, "").split("/").pop() ?? ""), settings, options);
-        if (settings.hyperlinks) result.stylize(new Style({ link: found.src }), title);
-        result.append(" ");
+        const title = found.alt || (found.src.replace(/\/+$/, "").split("/").pop() ?? "");
+        const link = settings.hyperlinks ? new Style({ link: found.src }) : "";
+        result.append(drawable(options, "🌆 ", "")).append(styled(title, link, settings, options)).append(" ");
         break;
       }
     }
@@ -552,8 +639,9 @@ function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, setti
 
       case "code_block": {
         const codeStyle = getStyle(options, "markdown.code");
-        const lines = token.code.split("\n");
-        for (const line of lines) {
+        // Tabs expanded here, as `Syntax` expands them, since a terminal would
+        // count a raw one from its own column 0 and not the code's.
+        for (const line of expandTabs(token.code, CODE_TAB_SIZE).text.split("\n")) {
           yield new Segment(line, codeStyle);
           yield Segment.line();
         }
@@ -604,7 +692,8 @@ export class Markdown implements Renderable, Measurable {
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     // Every block below is one of a stack.
     const options = { ...rawOptions, height: stackedHeight(rawOptions.height) };
-    yield* renderTokens(tokenize(this.markdown.split(/\r?\n/)), options, this);
+    const lines = this.markdown.split(/\r?\n/).map((text): Line => ({ text, margin: 0 }));
+    yield* renderTokens(tokenize(lines), options, this);
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
