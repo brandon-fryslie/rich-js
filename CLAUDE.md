@@ -87,8 +87,8 @@ Build order within `src/core/`. Each tier imports only from tiers above it, but 
 1   clock · oklch · osc8 · style · wrap
 2   segment
 3   box · protocol · export-lines
-4   measure · emoji · text · render · export-html · export-svg
-5   markup · highlighter · ansi · place · paint · strip
+4   measure · emoji · text · strip · render · export-html · export-svg
+5   markup · highlighter · ansi · place · paint
 6   pretty · json
 7   console                           (orchestrator)
 ```
