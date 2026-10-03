@@ -4,15 +4,22 @@
     {
       "version": "pr-295",
       "ref": "refs/pull/295/merge",
-      "sha": "c3fcbf5f493ec3919e2eeaeda09382f3cda46a37",
-      "timestamp": "2026-10-03T04:39:36.933Z",
+      "sha": "1320e052e536136ef3f09b6ec39841cf09b67eec",
+      "timestamp": "2026-10-03T04:45:03.710Z",
       "commits": [
         {
-          "sha": "c3fcbf5f493ec3919e2eeaeda09382f3cda46a37",
+          "sha": "1320e052e536136ef3f09b6ec39841cf09b67eec",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T22:38:41-06:00",
-          "message": "Merge 3aab8a2b37628fc99588ee4fe770ff8c35533114 into d2f5674f2dd3ce5ca4d77008774be807f12aa2a0\n"
+          "timestamp": "2026-10-03T04:43:47Z",
+          "message": "Merge d9c463687120f877ed6fa85f496b9b3c88aeb4ee into d2f5674f2dd3ce5ca4d77008774be807f12aa2a0\n"
+        },
+        {
+          "sha": "d9c463687120f877ed6fa85f496b9b3c88aeb4ee",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T22:43:42-06:00",
+          "message": "fix(test): the timeout report rides vitest's own timeout error and reads its numbers right; a fixture is stopped once, by launch, and only while it runs (rich-test-suite-czqk)\n\nReview (high) of PR #295:\n- A timeout is the runner's timeout error, not elapsed >= budget: hook and\n  cleanup time no longer turn a plain failure into a 'timeout', and the report\n  lands on the timeout error, not errors[0].\n- CPU near elapsed means computing, not a slow machine; the report says the\n  worker's CPU leaves out its children.\n- launch registers stop itself; stop runs once, kills only a live leader (its\n  pid is free once it exits), and polling ends with the fixture.\n- The nested vitest is bounded and its spawn error asserted; the fixture config\n  roots at REPO_ROOT.\n"
         },
         {
           "sha": "3aab8a2b37628fc99588ee4fe770ff8c35533114",
