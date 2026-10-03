@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "5ea7133dd91b8a775424c8d3791cb35e97848e58",
+      "timestamp": "2026-10-03T11:22:37.813Z",
+      "commits": [
+        {
+          "sha": "5ea7133dd91b8a775424c8d3791cb35e97848e58",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T05:20:32-06:00",
+          "message": "feat(examples): effects-feel as breath, sunlight on water, wind, fireflies (rich-effects-fxiy.b6i) (#311)\n\n* feat(examples): effects-feel curves rebuilt as breath, sunlight on water, wind, fireflies (rich-effects-fxiy.b6i)\n\nBrandon's first verdict on b6i: the defaults were jerky and choppy. The loops\nare now smooth noise and smooth waveforms, light mixes in OKLab instead of\nround the hue circle, and the demo runs at 30 fps by default. A test bars any\nloop from moving a cell more than dE_OK 0.06 between frames at 1 fps.\n\n* feat(examples): effects-feel curves turbulent, drifting and wider; strip span read off its drawn row (rich-effects-fxiy.b6i)\n\nDrift rides a domain-warped field with gust sets; fireflies are wandering\npoints with soft halos; shimmer's caustics ride a current inside a wider\nband (48 s, half-width 16); transitions bloom over a wider order.\n\nA Strip is not Measurable, so drawnSubject measured the strip at\nMAX_SAFE_INTEGER columns: shimmer never reached it and drift moved at an\nabsurd speed. The 1 fps no-jump gate now runs at the strip's real width.\n\n* fix(examples): effects-feel light keeps text legible, loops glide at 1 fps (rich-effects-fxiy.b6i)\n\nReview (high) fixes:\n- A colour catches the light that reads against its own ink (Light: pale/deep),\n  not the page ground's. A glint on a muted strip fill took label contrast to\n  1.29:1; it now holds rest contrast (5.05 vs 5.06 on Mocha).\n- The no-jump gate is 0.04 dE_OK at 1 fps over 300 s on both rows, as its\n  comment says, against the demo's real defaults. Caustic crests are rounded,\n  firefly halos wider and lazier, sparkle swing 0.42.\n- drift silvers by gust strength, not by degrees, so a wide swing turns hue\n  instead of washing out.\n- Each subject sits at its own z in the noise; nothing read the seeds.\n- Worst contrast is read over 8 periods and says so.\n- Firefly state per moment and transition order per cell are computed once.\n- LIGHTS and SHIMMER_WIDTH are exported; tests import them.\n\n* fix(examples): shimmer's caustic crest is a Gaussian ridge, in (0, 1] for any noise (rich-effects-fxiy.b6i)\n\nReview (medium): Perlin noise reaches 0.9997 (row 15, col 59, t 114.5), where\n1 - hypot(noise, 0.12) went negative, its 2.5th power was NaN, and blend threw\nmid-render. The crest is exp(-(n/0.8)^2) instead, bounded by construction; the\nglint's share of the band is 0.4 so the 1 fps step stays under 0.04."
+        }
+      ]
+    },
+    {
       "version": "pr-313",
       "ref": "refs/pull/313/merge",
       "sha": "8d146dfa736f89e51c4ab118dcbe72c6fa4010d4",
@@ -20,21 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T05:18:46-06:00",
           "message": "fix(progress): TimeElapsedColumn and TimeRemainingColumn stop at a task's finish, as Rich's do (rich-progress-jj5r)\n\nA finished task's elapsed clock holds at Task.finishedTime instead of\nreading Date.now(); TimeRemainingColumn shows 0:00:00 once finished and\ntakes elapsedWhenFinished, Rich's elapsed_when_finished. A task never\nstarted shows -:--:-- in the elapsed column, as Rich's does, not 0:00:00.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "b808387a254349d73d156465df76fbcbbd5b07dc",
-      "timestamp": "2026-10-03T11:14:30.571Z",
-      "commits": [
-        {
-          "sha": "b808387a254349d73d156465df76fbcbbd5b07dc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T05:13:10-06:00",
-          "message": "fix(progress)!: columns return a renderable the grid lays out, as Rich's do (rich-progress-j4lb) (#312)\n\n* fix(progress)!: columns return a renderable the grid lays out, as Rich's do (rich-progress-j4lb)\n\nProgressColumn.render(task) now returns the cell's content instead of\nsegments drawn at the console's width, and Progress lays every column out\nas Rich's make_tasks_table does: a grid of Column(no_wrap=True). Width,\nwrapping and justify are decided once, in the cell, so a justified\nSpinnerColumn finishedText justifies within its column, pinned against\nRich 9d8f9a3.\n\nSpinner.drawFrame and SpinnerColumn's overflow 'ignore' existed only to\ndodge the double layout and are gone. ProgressBar measures a given width\nexactly and never draws wider than it is offered, as Rich's does, so the\ngrid sizes the bar instead of overflowing it.\n\nBREAKING CHANGE: ProgressColumn.render takes only the task and returns a\nRenderable.\n\n* fix(progress)!: each column names the grid column it is laid out in, as Rich's get_table_column (rich-progress-j4lb)\n\nTextColumn and TaskProgressColumn are noWrap; the rest take a plain column,\nso a column that may wrap gives up width before one that may not. Task and\nProgressColumn are exported so a custom column can be written against them.\nProgressBar given no width fills the width it is offered, as Rich's does."
         }
       ]
     }
