@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "7d278db33f563b3ca40b34dd336cee7e956e692e",
-      "timestamp": "2026-10-03T15:43:13.874Z",
+      "sha": "a420e29e75cb36dc59c12858fad2c13fad03dc31",
+      "timestamp": "2026-10-03T15:52:40.438Z",
       "commits": [
         {
-          "sha": "7d278db33f563b3ca40b34dd336cee7e956e692e",
+          "sha": "a420e29e75cb36dc59c12858fad2c13fad03dc31",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T09:41:15-06:00",
-          "message": "fix(progress): ProgressBar draws half cells and no back without colour, as Rich does (rich-progress-mn24) (#331)\n\n* fix(progress): ProgressBar counts half cells and leaves its back blank without colour, as Rich does (rich-progress-mn24)\n\nRich 9d8f9a3 counts the fill in half cells, drawing ╸ on a half and opening\nthe back with ╺, and draws the back only when the console has colour. A\ntotal of zero is a full, finished bar there, and now here.\n\n* fix(progress): drop the unused percentComplete, treat width 0 as none, document the colourless bar (rich-progress-mn24)\n\n* fix(progress): a negative bar width draws nothing rather than throwing (rich-progress-mn24)"
+          "timestamp": "2026-10-03T09:51:02-06:00",
+          "message": "fix(progress): MofNCompleteColumn pads the count to the total's width, whole and styled, as Rich does (rich-progress-adjo) (#332)\n\n* fix(progress): MofNCompleteColumn pads the count to the total's width, whole and styled, as Rich does (rich-progress-adjo)\n\nRich 9d8f9a3 draws f\"{int(completed):{len(str(total))}d}/{int(total)}\" in\nprogress.download; this drew the raw numbers unpadded and unstyled, so the\ncolumn widened as it counted. The ticket's TimeElapsed/TimeRemaining cases\nwere already fixed by #313 (rich-progress-jj5r) and are pinned there.\n\n* fix(progress): counts are refused at addTask/updateTask when not finite; MofNCompleteColumn takes Rich's separator (rich-progress-adjo)\n\n* fix(progress): updateTask checks the count it would write before writing any field (rich-progress-adjo)"
         }
       ]
     },
