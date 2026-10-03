@@ -613,8 +613,35 @@ describe("Pretty", () => {
       ["new Uint8Array([1, 2])", new Uint8Array([1, 2])],
       ["new Error('x')", new Error("x")],
       ["new (class Foo { constructor() { this.b = 2; } })()", { b: 2 }],
+      ["({ get x() { throw new Error('boom'); } })", { get x(): never { throw new Error("boom"); } }],
     ])("%s", (source, local) => {
       expect(text(foreign(source))).toBe(text(local));
+    });
+
+    // A reactive store's collection: the prototype, a get trap that binds, no slot.
+    it("still lays out a Proxy around a collection made here", () => {
+      const reactive = <T extends object>(target: T): T => new Proxy(target, {
+        get: (t, key) => {
+          const got = Reflect.get(t, key, t) as unknown;
+          return typeof got === "function" ? (got as (...args: unknown[]) => unknown).bind(t) : got;
+        },
+      });
+      expect(text(reactive(new Map([[1, 2]])))).toBe(text(new Map([[1, 2]])));
+      expect(text(reactive(new Set([1])))).toBe(text(new Set([1])));
+    });
+
+    it("rejects Object.prototype.toString however the chain reaches it", () => {
+      const borrowed = Object.create(
+        Object.create(null, { toString: { value: Object.prototype.toString } }) as object,
+      ) as { a?: number };
+      borrowed.a = 1;
+      expect(text(borrowed)).toBe(text({ a: 1 }));
+    });
+
+    it("terminates on a prototype chain that never ends", () => {
+      const endless: object = new Proxy({}, { getPrototypeOf: () => endless });
+      expect(() => isExpandable(endless)).not.toThrow();
+      expect(() => text({ endless })).not.toThrow();
     });
 
     it("still spells a foreign object whose own toString answers", () => {
