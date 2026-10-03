@@ -14,10 +14,12 @@
  * unmatched closing tag threw from a constructor rather than from the render
  * that would draw it, where Rich's does (rich-markup-3sw).
  *
- * `end` is cleared because embedded text is a fragment rather than a printed
- * line; left at the default `"\n"` it draws a trailing blank row. A `RichText`
- * is copied when it is handed over, since the caller still holds it, and every
- * text drawn from it is a copy again, since the drawing site may change it.
+ * Text keeps its own `end`, as a body does in Rich: `RichText("foo\n")` draws
+ * the blank row its default `"\n"` end makes, and a string reads with that
+ * default end as `render_str` gives it. Only a label, set into a line it
+ * shares, clears it. A `RichText` is copied when it is handed over, since the
+ * caller still holds it, and every text drawn from it is a copy again, since
+ * the drawing site may change it.
  */
 
 import { activeHighlighter, readStr } from "../core/markup.js";
@@ -46,13 +48,11 @@ export class EmbeddedText implements Renderable, Measurable {
     if (typeof content === "string") {
       this._source = content;
     } else {
-      const text = content instanceof RichText ? content.copy() : new RichText(String(content ?? ""));
-      text.end = "";
-      this._source = text;
+      this._source = content instanceof RichText ? content.copy() : new RichText(String(content ?? ""));
     }
   }
 
-  /** The text this content draws under `options`, `end` cleared. */
+  /** The text this content draws under `options`. */
   text(options: RenderOptions): RichText {
     if (typeof this._source !== "string") return this._source.copy();
     const markup = options.markup !== false;
@@ -80,8 +80,8 @@ export class EmbeddedText implements Renderable, Measurable {
 
 /**
  * Caller content as something an embedding site can render. A non-text
- * `Renderable` (a nested `Panel` or `Table`) passes through: it carries no
- * `end` to clear and no markup to parse. Everything else is `EmbeddedText`.
+ * `Renderable` (a nested `Panel` or `Table`) passes through: it has no markup
+ * to parse. Everything else is `EmbeddedText`.
  */
 export function embed(content: unknown): Renderable & Partial<Measurable> {
   if (!(content instanceof RichText) && typeof content === "object" && content !== null && "render" in content) {
@@ -109,6 +109,8 @@ export class InlineLabel {
   /** The label drawn under `options`: one line, padded, its own overflow kept for the caller's cut. */
   text(options: RenderOptions): RichText {
     const text = this._content.text(options);
+    // A fragment of the line, so its own end is not drawn, as Rich's `_title` clears it.
+    text.end = "";
     text.plain = text.plain.replaceAll("\n", " ");
     // Tabs widened before anything measures it, so a cut to the border and
     // the width a title asks for count the cells the label will draw.

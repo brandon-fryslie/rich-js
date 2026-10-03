@@ -1015,7 +1015,7 @@ export class RichText implements Renderable, Measurable {
     justify?: "left" | "center" | "right" | "full",
   ): Segment[][] {
     if (justify !== "full") {
-      return lines.map((line) => [...this._justifyLine(line, maxWidth, justify)]);
+      return lines.map((line) => [...this._justifyLine(line, maxWidth, base, justify)]);
     }
     return lines.map((line, index) =>
       index === lines.length - 1 ? line : this._fillLine(line, maxWidth, base),
@@ -1035,16 +1035,21 @@ export class RichText implements Renderable, Measurable {
    * `undefined` is not `"left"`: it is Rich's `"default"`, which places the
    * line without padding it at all. That distinction is what lets a soft-wrapped
    * `Console.print` leave its lines at their natural width.
+   *
+   * The padding is drawn in the text's base style, as the reference pads
+   * inside the `Text` it justifies: a title "on red" fills its row in red.
    */
   private *_justifyLine(
     line: Segment[],
     maxWidth: number,
+    base: Style,
     // [LAW:types-are-the-program] `full` is absent rather than ignored: it
     // needs the lines either side of this one, so the type refuses it here
     // instead of a branch quietly rendering it as `left`, which is the bug
     // this signature replaces (rich-justify-0cr.1).
     justify?: "left" | "center" | "right",
   ): Iterable<Segment> {
+    const padStyle = base.isNull ? undefined : base;
     switch (justify) {
       case "center":
       case "right": {
@@ -1056,14 +1061,14 @@ export class RichText implements Renderable, Measurable {
         );
         const gap = Math.max(maxWidth - Segment.getLineLength(body), 0);
         const leftPad = justify === "center" ? Math.floor(gap / 2) : gap;
-        if (leftPad > 0) yield new Segment(" ".repeat(leftPad));
+        if (leftPad > 0) yield new Segment(" ".repeat(leftPad), padStyle);
         yield* body;
         const rightPad = gap - leftPad;
-        if (rightPad > 0) yield new Segment(" ".repeat(rightPad));
+        if (rightPad > 0) yield new Segment(" ".repeat(rightPad), padStyle);
         break;
       }
       case "left":
-        yield* Segment.adjustLineLength(line, Math.max(maxWidth, Segment.getLineLength(line)));
+        yield* Segment.adjustLineLength(line, Math.max(maxWidth, Segment.getLineLength(line)), padStyle);
         break;
       default:
         yield* line;

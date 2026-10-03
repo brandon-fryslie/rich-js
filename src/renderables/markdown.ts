@@ -606,8 +606,9 @@ function* guttered(
 
 /**
  * `text` as inline Markdown, placed by `justify` in `style`, wrapped, with
- * every row ended. `style` is the text's own, so placement pads beside it
- * rather than in it.
+ * every row ended. `style` is a span under the inline spans, as Rich's
+ * element style is, not the text's base: placement pads in the base style,
+ * and a heading's padding is not underlined.
  */
 function inline(
   text: string,
@@ -616,9 +617,10 @@ function inline(
   style?: Style,
 ): (options: RenderOptions) => Iterable<Segment> {
   return function* (options) {
-    const result = new RichText("", { end: "", justify, style });
-    appendInline(result, text, settings, options);
-    yield* result.render(options);
+    const body = new RichText("", { end: "", style });
+    appendInline(body, text, settings, options);
+    // `append` lays the body's base style down as the first span.
+    yield* new RichText("", { end: "", justify }).append(body).render(options);
     yield Segment.line();
   };
 }

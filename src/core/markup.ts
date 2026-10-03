@@ -526,13 +526,11 @@ export function renderMarkup(
 /**
  * A string as the text it draws, before any highlighting: read as markup
  * unless `markup` is false, its emoji codes replaced either way, as Rich's
- * `render_str` reads one. The text is a fragment, so its `end` is empty.
+ * `render_str` reads one, its `end` the default line end Rich's leaves it.
  * [LAW:single-enforcer]
  */
 export function readStr(source: string, markup: boolean): RichText {
-  const text = markup ? renderMarkup(source) : new RichText(emojiReplace(source));
-  text.end = "";
-  return text;
+  return markup ? renderMarkup(source) : new RichText(emojiReplace(source));
 }
 
 /**

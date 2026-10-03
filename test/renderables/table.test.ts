@@ -696,7 +696,7 @@ describe("Column", () => {
     // Reassigning the original's header leaves the copy's alone.
     col.header = "Other";
     const drawn = [...copy.header.render({ maxWidth: 10 })].map((s) => s.text).join("");
-    expect(drawn).toBe("Test");
+    expect(drawn).toBe("Test\n");
   });
 });
 
@@ -736,10 +736,18 @@ describe("A column's header and footer are stamped on assignment, not just at co
     },
   );
 
-  it.each(positions)("clears the `end` of a RichText assigned to %s", (position) => {
-    const t = tableWithSlack();
+  // rich-embed-1r2m: the text keeps its `end`, and the cell's padding to its
+  // width is what crops it. Python Rich 9d8f9a3 prints these frames at width 30.
+  const endCropped = {
+    header: ["┏━━━━━━━━━━┓", "┃ Mine     ┃", "┡━━━━━━━━━━┩", "│ xxxxxxxx │", "├──────────┤", "│          │", "└──────────┘"],
+    footer: ["┏━━━━━━━━━━┓", "┃          ┃", "┡━━━━━━━━━━┩", "│ xxxxxxxx │", "├──────────┤", "│ Mine     │", "└──────────┘"],
+  };
+  it.each(positions)("draws a RichText assigned to %s with its own end cropped by the cell, as Rich does", (position) => {
+    const t = new Table({ showFooter: true });
+    t.addColumn("");
+    t.addRow("xxxxxxxx");
     t.columns[0]![position] = new RichText("Mine", { end: "!!" });
-    expect([...t.columns[0]![position].render({ maxWidth: 30 })].map((s) => s.text).join("")).toBe("Mine");
+    expect(collectLines(t, { maxWidth: 30 })).toEqual(endCropped[position]);
   });
 
   it.each(positions)("parses the markup of a string assigned to %s", (position) => {
@@ -753,7 +761,9 @@ describe("A column's header and footer are stamped on assignment, not just at co
   it.each(positions)("reads an undefined assigned to %s as the empty cell", (position) => {
     const t = tableWithSlack();
     t.columns[0]![position] = undefined;
-    expect([...t.columns[0]![position].render({ maxWidth: 30 })].map((s) => s.text).join("")).toBe("");
+    const drawn = collectLines(t, { maxWidth: 30 });
+    t.columns[0]![position] = "";
+    expect(drawn).toEqual(collectLines(t, { maxWidth: 30 }));
   });
 });
 
@@ -1496,21 +1506,45 @@ describe("Table cells wrap before the overflow method sees them", () => {
     ]);
   });
 
-  // rich-text-5ai code review: a `RichText` cell reached the wire through
-  // the embedding crossing's passthrough arm (it implements `render`), which
-  // skipped `EmbeddedText`'s `end` clearing — its default `end: "\n"` then drew a
-  // genuine extra blank row under the real one, once `RichText.render`
-  // started honoring `end` for non-empty text.
-  it("does not draw a blank row for a RichText cell with an embedded trailing newline", () => {
+  // rich-embed-1r2m: a cell keeps its own `end`, so a trailing newline draws
+  // the blank row it makes. Python Rich 9d8f9a3 prints this frame at width 40
+  // for a `Text` and a string alike.
+  // rich-embed-1r2m review: a title and caption are yielded as the text emits
+  // them, so an `end` that is not a newline runs on into the next line rather
+  // than widening the title's own row. Python Rich 9d8f9a3 prints these bytes
+  // at width 30.
+  it.each([
+    ["!!", "    T     !!┏━━━━━━━━┓\n┃ abcdef ┃\n┡━━━━━━━━┩\n└────────┘\n    C     !!"],
+    ["", "    T     ┏━━━━━━━━┓\n┃ abcdef ┃\n┡━━━━━━━━┩\n└────────┘\n    C     "],
+    ["\n\n", "    T     \n\n┏━━━━━━━━┓\n┃ abcdef ┃\n┡━━━━━━━━┩\n└────────┘\n    C     \n\n"],
+  ])("draws a title and caption with end %j as Rich does", (end, expected) => {
+    const table = new Table({ title: new RichText("T", { end }), caption: new RichText("C", { end }) });
+    table.addColumn("abcdef");
+    expect([...table.render({ maxWidth: 30 })].map((s) => s.text).join("")).toBe(expected);
+  });
+
+  // The title style fills the row its justify pads: Python Rich 9d8f9a3 draws
+  // `Table(title="T", title_style="on red")` over a "header" column as one
+  // "on red" run of ten cells.
+  it("draws a title's justify padding in the title style, as Rich does", () => {
+    const table = new Table({ title: "T", titleStyle: "on red" });
+    table.addColumn("header");
+    const titleRow = Segment.splitLines(table.render({ maxWidth: 30 }))[0]!;
+    expect(titleRow.map((s) => s.text).join("")).toBe("    T     ");
+    expect(titleRow.every((s) => String(s.style) === "on red")).toBe(true);
+  });
+
+  it.each([new RichText("foo\n"), "foo\n"])("draws the blank row a cell's trailing newline makes, as Rich does", (cell) => {
     const table = new Table();
     table.addColumn("a");
     table.addColumn("b");
-    table.addRow(new RichText("foo\n"), "bar");
+    table.addRow(cell, "bar");
     expect(collectLines(table, { maxWidth: 40 })).toEqual([
       "┏━━━━━┳━━━━━┓",
       "┃ a   ┃ b   ┃",
       "┡━━━━━╇━━━━━┩",
       "│ foo │ bar │",
+      "│     │     │",
       "└─────┴─────┘",
     ]);
   });

@@ -157,17 +157,21 @@ export class Layout implements Renderable, Measurable {
     const options = withBoundedWidth(rawOptions, this);
 
     if (this._isLeaf) {
-      // Cropped rather than forwarded: a leaf hands its content the offer and
-      // content is free to ignore it, and a pane wider than the region it was
-      // given is the one thing a layout may never emit — in a row split it
-      // overwrites the pane beside it. The row path already crops each share,
-      // so this is the same rule at the one place that skipped it.
-      // Every line ended, as the split paths below end theirs: embedding
-      // cleared the content's own `end`, and a leaf stacked in a `Group` is
-      // still a region of lines.
+      // Shaped to its region, as Rich's `render_lines` shapes a pane: every
+      // line cropped and padded to the width, and held to the region's rows.
+      // The leaf sets its content's region, so it shapes what comes back, as
+      // `paneLines` shapes a pane for the split that set the pane's.
+      // Cropped rather than forwarded because content is free to ignore its
+      // offer, and a pane wider than its region is the one thing a layout may
+      // never emit — in a row split it overwrites the pane beside it. Held to
+      // the rows because content keeps its own `end`: `RichText("status:
+      // ok\n")` is two lines, and a one-row region cuts the second. Every line
+      // ended, as the split paths below end theirs: a leaf stacked in a
+      // `Group` is still a region of lines.
       if (this._renderable) {
-        for (const line of Segment.splitLines(Segment.cropLines(this._renderable.render(options), options.maxWidth))) {
-          yield* line;
+        const lines = fitHeight(Segment.splitLines(this._renderable.render(options)), options.height);
+        for (const line of lines) {
+          yield* Segment.adjustLineLength(line, options.maxWidth);
           yield Segment.line();
         }
       }

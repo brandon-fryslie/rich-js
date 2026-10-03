@@ -312,4 +312,13 @@ describe("Tree", () => {
       expect(named.measure({ maxWidth: 40 })).toEqual(plain.measure({ maxWidth: 40 }));
     });
   });
+
+  // rich-embed-1r2m: a label keeps its own end, so a trailing newline draws its
+  // blank row under the label. Python Rich 9d8f9a3 at width 40.
+  it("draws the blank row a label's trailing newline makes, as Rich does", () => {
+    expect(collectLines(new Tree(new RichText("foo\n")), { maxWidth: 40 })).toEqual(["foo", ""]);
+    const tree = new Tree("root");
+    tree.add(new RichText("kid\n"));
+    expect(collectLines(tree, { maxWidth: 40 })).toEqual(["root", "└── kid", "    "]);
+  });
 });

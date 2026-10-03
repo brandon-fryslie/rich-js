@@ -307,17 +307,26 @@ describe("Layout", () => {
     expect(text.split("\n")[0]).toBe("日本語日 ");
   });
 
-  // rich-text-5ai code review: only the constructor's string branch built its
-  // `RichText` with `end: ""`; a `RichText` passed directly kept its default
-  // `end: "\n"`, which `Segment.cropLines` (unlike `splitAndCropLines`, which
-  // Table uses) does not normalize away — a real extra blank row in a
-  // fixed-size pane. Covers both the constructor and `update()`.
-  it("does not draw a blank row for a RichText leaf with an embedded trailing newline", () => {
+  // rich-embed-1r2m review: a leaf pads every line to its width wherever it
+  // stands. Python Rich 9d8f9a3 prints `Layout("hi")` at width 12 with "hi"
+  // and ten spaces as its first row; it then fills the console's height,
+  // where a leaf here with no region keeps its natural height.
+  it("pads a leaf printed on its own to the width, as Rich does", () => {
+    expect(collectText(new Layout("hi"), { maxWidth: 12 })).toBe("hi          \n");
+  });
+
+  // rich-embed-1r2m: a leaf's content keeps its own `end`, so
+  // `RichText("status: ok\n")` is two lines, and a leaf is shaped to its
+  // region. Python Rich 9d8f9a3 prints these for `Layout(Text("status: ok\n"))`
+  // at width 12, height 1 and height 3.
+  const shaped = { 1: "status: ok  \n", 3: "status: ok  \n            \n            \n" };
+  it.each([1, 3] as const)("shapes a leaf whose text ends in a newline to a region of %i rows, as Rich does", (rows) => {
+    const expected = shaped[rows];
     const layout = new Layout(new RichText("status: ok\n"));
-    expect(collectText(layout, { maxWidth: 40 })).toBe("status: ok\n");
+    expect(collectText(layout, { maxWidth: 12, height: { rows, exact: true } })).toBe(expected);
 
     const updated = new Layout("placeholder");
     updated.update(new RichText("status: ok\n"));
-    expect(collectText(updated, { maxWidth: 40 })).toBe("status: ok\n");
+    expect(collectText(updated, { maxWidth: 12, height: { rows, exact: true } })).toBe(expected);
   });
 });

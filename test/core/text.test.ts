@@ -272,6 +272,16 @@ describe("RichText.append()", () => {
     ]);
   });
 
+  // Rich's `Text.append` takes the other text's characters and spans and
+  // leaves its `end` behind, which is what lets a label keep its own end and
+  // still sit inside a line, as `Spinner` sets one (rich-embed-1r2m).
+  it("keeps its own end and drops the appended RichText's", () => {
+    const a = new RichText("Hello", { end: "" });
+    a.append(new RichText(" World", { end: "!!" }));
+    expect(a.end).toBe("");
+    expect([...a.render({ maxWidth: 40 })].map((s) => s.text).join("")).toBe("Hello World");
+  });
+
   it("throws when appending RichText with style argument", () => {
     const a = new RichText("Hello");
     const b = new RichText(" World");
@@ -1283,5 +1293,17 @@ describe("RichText.expandTabs()", () => {
     text.expandTabs();
     expect(text.plain).toBe("a       b");
     expect(text.spans.map((s) => [s.start, s.end])).toEqual([[8, 9]]);
+  });
+});
+
+// rich-embed-1r2m review: Rich's `Lines.justify` pads inside the `Text`, so the
+// padding carries the base style. Python Rich 9d8f9a3 renders
+// `Text("T", style="on red", justify=j)` at width 10 as one "on red" run of
+// ten cells for each of these.
+describe("RichText justify pads in its base style", () => {
+  it.each([["center"], ["left"], ["right"]] as const)("%s", (justify) => {
+    const segs = [...new RichText("T", { style: "on red", justify, end: "" }).render({ maxWidth: 10 })];
+    expect(segs.map((s) => s.text).join("")).toHaveLength(10);
+    expect(segs.every((s) => String(s.style) === "on red")).toBe(true);
   });
 });
