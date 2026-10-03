@@ -91,3 +91,33 @@ test("at phone width, the showcase fits the page whole", async ({ page }) => {
   expect(fit).toEqual({ page: 0, screen: 0 });
   expect(errors).toEqual([]);
 });
+
+// The card reserves its terminal's rows at the page's line height before xterm
+// has loaded; xterm's rows are that line height, so the card keeps its height
+// when the program first draws (rich-demos-z4hd).
+for (const width of [1440, 390]) {
+  test(`at ${width}px, the showcase's rows are the page's line height and its card keeps its height`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route(XTERM.script.src, async (route) => {
+      await held;
+      await route.continue();
+    });
+    const errors = await open(page);
+    const card = showcase(page).locator(".rich-live");
+    await expect(card).toBeVisible();
+    await expect(showcase(page).locator(".xterm")).toHaveCount(0);
+    const before = await card.evaluate((element) => element.getBoundingClientRect().height);
+
+    release();
+    await expect.poll(() => rows(page), { timeout: 15_000 }).toContain("Services");
+    const after = await card.evaluate((element) => element.getBoundingClientRect().height);
+    const { row, line } = await showcase(page).evaluate((element) => ({
+      row: element.querySelector<HTMLElement>(".xterm-rows > div")!.getBoundingClientRect().height,
+      line: parseFloat(getComputedStyle(element.querySelector(".rich-live-screen")!).lineHeight),
+    }));
+    expect({ row, after }).toEqual({ row: line, after: before });
+    expect(errors).toEqual([]);
+  });
+}

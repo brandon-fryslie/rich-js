@@ -97,18 +97,24 @@ export interface LiveTerminalOptions {
   readonly runtime: string;
   readonly terminal: TerminalSpec;
   readonly theme: TerminalTheme;
-  readonly font: { readonly family: string; readonly size: number; readonly lineHeight: number };
+  readonly font: { readonly family: string; readonly size: number };
 }
 
 /**
  * The font static output is drawn in, as `LiveTerminalOptions` takes it:
  * custom.css gives a live terminal's element `--rich-fragment-font`, and xterm
  * takes it as numbers.
+ *
+ * [LAW:one-source-of-truth] The line height is not among them. xterm makes a
+ * row its measured character height times its `lineHeight` option, rounded to
+ * device pixels, so no factor handed in from here lands on the page's line
+ * height. custom.css instead has xterm measure its character at that line
+ * height, and the option stays 1: a row is then the page's line height,
+ * whatever the font and the zoom.
  */
 export function elementFont(element: HTMLElement): LiveTerminalOptions["font"] {
   const style = getComputedStyle(element);
-  const size = parseFloat(style.fontSize);
-  return { family: style.fontFamily, size, lineHeight: parseFloat(style.lineHeight) / size };
+  return { family: style.fontFamily, size: parseFloat(style.fontSize) };
 }
 
 /** xterm's colour options, from the theme a program's output is drawn in everywhere else. */
@@ -135,7 +141,7 @@ interface Xterm extends XtermTerminal {
   reset(): void;
   dispose(): void;
   onWriteParsed(handler: () => void): XtermDisposable;
-  options: { theme: Record<string, string>; fontFamily: string; fontSize: number; lineHeight: number };
+  options: { theme: Record<string, string>; fontFamily: string; fontSize: number };
 }
 
 type XtermConstructor = new (options: Record<string, unknown>) => Xterm;
@@ -244,7 +250,6 @@ export class LiveTerminal {
       rows: options.terminal.rows,
       fontFamily: options.font.family,
       fontSize: options.font.size,
-      lineHeight: options.font.lineHeight,
       // Nothing scrolls back: the page scrolls, not the terminal under the pointer.
       scrollback: 0,
       // A program that picks its own colours picks them for a background it
@@ -354,8 +359,8 @@ export class LiveTerminal {
   /** Draw in `font` from now on, as when the page resizes the element the font is read from. */
   setFont(font: LiveTerminalOptions["font"]): void {
     const { options } = this.screen;
-    if (options.fontFamily === font.family && options.fontSize === font.size && options.lineHeight === font.lineHeight) return;
-    Object.assign(options, { fontFamily: font.family, fontSize: font.size, lineHeight: font.lineHeight });
+    if (options.fontFamily === font.family && options.fontSize === font.size) return;
+    Object.assign(options, { fontFamily: font.family, fontSize: font.size });
     this.fit();
   }
 

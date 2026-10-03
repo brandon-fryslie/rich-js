@@ -30,7 +30,7 @@ globalThis.start = async (runtime, library) => {
     runtime,
     terminal: EXAMPLE_TERMINAL,
     theme: EXAMPLE_THEMES.dark,
-    font: { family: "monospace", size: 14, lineHeight: 1.2 },
+    font: { family: "monospace", size: 14 },
   });
   live.onState((state) => (element.dataset.state = state.kind));
   globalThis.play = (source) => live.run(playgroundScript(source, library), "live");

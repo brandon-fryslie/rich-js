@@ -116,10 +116,14 @@
    * cell is budgeted at 0.62em, the widest face in the stack (SF Mono,
    * 0.618em; Menlo and DejaVu Sans Mono are 0.602em). Below 10px it stops
    * shrinking and the output scrolls. A live terminal reads the same font
-   * (theme/RichLive.ts refits it when the card is resized). */
+   * (theme/RichLive.ts refits it when the card is resized).
+   *
+   * The line height is a whole pixel, because a live terminal's rows are:
+   * xterm sizes a row in device pixels, so a fractional line height would
+   * leave its rows off the rows of the static output beside it. */
   container-type: inline-size;
   --rich-fragment-font: clamp(10px, 100cqw / (var(--rich-example-columns) * 0.62 + 2), var(--vp-code-font-size))
-    / 1.25 var(--rich-code-font-family);
+    / round(1.25em, 1px) var(--rich-code-font-family);
 }
 
 .vp-doc .rich-example-label {
@@ -185,6 +189,13 @@
   overflow-x: auto;
 }
 
+/* xterm makes a row the height it measures a character at, and measures it
+ * at line-height: normal. Measured at the page's line height instead, its rows
+ * are the rows static output is drawn on (live-terminal.ts, `elementFont`). */
+.rich-live-screen .xterm-char-measure-element {
+  line-height: inherit;
+}
+
 .rich-live-bar {
   display: flex;
   justify-content: flex-end;
@@ -227,8 +238,8 @@
  * would leave it scrolling sideways at phone width. Its screen is as wide as
  * its terminal from the start, a cell being one `ch` of the face xterm
  * measures, so the card does not widen when the program first draws. It
- * reserves the terminal's rows at the page's line height, which xterm's rows
- * are still taller than (lit rich-live-terminal-t0rs). Its edge is a ring, not
+ * reserves the terminal's rows at the page's line height, xterm's row height,
+ * so it does not grow when the program first draws either. Its edge is a ring, not
  * a border, so the card is exactly its screen's width, the width the font was
  * fitted to. */
 .rich-showcase {
@@ -237,8 +248,8 @@
   max-width: calc(1152px + 2 * 24px);
   margin: 0 auto;
   padding: 0 24px 48px;
-  --rich-fragment-font: min(100cqw / (var(--rich-example-columns) * 0.62 + 2), var(--vp-code-font-size)) / 1.25
-    var(--rich-code-font-family);
+  --rich-fragment-font: min(100cqw / (var(--rich-example-columns) * 0.62 + 2), var(--vp-code-font-size))
+    / round(1.25em, 1px) var(--rich-code-font-family);
 }
 
 .rich-showcase .rich-live {
