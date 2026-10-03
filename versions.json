@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "f4717aef50592ede5ab6e101732340794e9829f6",
-      "timestamp": "2026-10-03T07:19:54.302Z",
+      "sha": "f3d54ff962452585ef714bffd3e7f22036739721",
+      "timestamp": "2026-10-03T07:36:36.145Z",
       "commits": [
         {
-          "sha": "f4717aef50592ede5ab6e101732340794e9829f6",
+          "sha": "f3d54ff962452585ef714bffd3e7f22036739721",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T01:18:09-06:00",
-          "message": "fix(contrast)!: contrast holds where it is promised (rich-contrast-sqqq) (#301)\n\n* fix(contrast)!: text-* reads on *-muted, grounded defaults read at 16 colours, readableOn measures in a named terminal (rich-contrast-sqqq)\n\n- buildPalette holds text-* to 4.5 on *-muted through ensureContrast; the\n  authored registry palettes' text-* values are corrected to clear it. The\n  widget contrast floor is now 4.5.\n- getGroundedStyle: below 256 colours Syntax's highlighted line number and\n  Markdown's code are drawn without their fixed pair, as Rich's\n  Syntax._get_number_styles does — no pair of ANSI slots reads in every\n  bundled theme. markdown.code is bold, as Rich's is, so code stays distinct.\n- BREAKING: colorFuncs / richTextFuncs / readableOnFunc take\n  () => DrawnAt ({ depth, terminal? }) instead of () => ColorDepth.\n\n* fix(contrast): one text-* rule for derived and authored palettes, grounded pairs dropped only when a depth repaints them (rich-contrast-sqqq)\n\nReview findings on PR #301:\n- text-* is held by accentText, toward the palette's own text side, in\n  buildPalette and in registry hydration; the 18 hand-tuned data files are\n  Textual's values again. textual-ansi's text-* had gone near-black (1.09:1\n  on its background) because its *-muted sits at the 0.179 cutoff.\n- groundedStyle drops a style's colours only when it paints a fixed ground\n  and the depth turns a fixed colour of the pair into a terminal slot, so a\n  user's 'bold magenta' or 'white on blue' is drawn as written. The 16-slot\n  depth switch is gone.\n- Markdown inline code resolves through RichText's resolveStyle again, so a\n  bad inlineCodeStyle reaches onStyleError instead of throwing.\n- The 16-colour sweep renders each grounded default through its drawer.\n\n* docs(contrast): text-* holds the muted floor first; the background pair yields where both cannot hold (rich-contrast-sqqq)"
+          "timestamp": "2026-10-03T01:34:42-06:00",
+          "message": "fix(console): log blanks a repeated time; opaque objects print their kind inline (rich-console-4i40) (#302)\n\n* fix(console): log blanks a repeated time; Promise, WeakMap and WeakSet print their kind inline (rich-console-4i40)\n\nConsole.log leaves the time column blank when a row's stamp formats as the\nprevious row's, Rich's omit_repeated_times; the last stamp is state the\nconsole owns.\n\nPretty gains an `opaque` form for the built-ins whose contents JavaScript\nhides. They print as `Promise { <state unknown> }` and\n`WeakMap/WeakSet { <items unknown> }` instead of `{}`, and are not\nexpandable, so print keeps them in the line. isExpandable reads an\nexhaustive table over Form kinds, so a new form must declare which it is.\n\ndocs/console.md: each log example after the first uses its own console,\nbecause the shared one now carries the previous row's stamp and the\n\"Try it\" standalone run would otherwise differ from the page.\n\n* fix(console,pretty): a failed log leaves the last time alone; any tagged, keyless object prints its name (rich-console-4i40)\n\nReview of #302: log() remembered its stamp before drawing, so a throwing\nlog hid the next row's time. The opaque form is now Symbol.toStringTag on\nan object with no keys — covering WeakRef, ArrayBuffer, generators and\nsubclasses (Task [Promise]) without a list — and sits below the\nself-describing arm so a subclass's own toString wins.\n\n* docs(pretty): opaqueName's comment claims Node's shape, not Node's names (rich-console-4i40)"
         }
       ]
     }
