@@ -74,8 +74,8 @@ describe("App on the alternate screen", () => {
 
     void target.run();
 
-    // Each half of the split is half the screen's rows.
-    expect(rows(target)).toEqual(["top", "", "bottom", ""]);
+    // Each half of the split is half the screen's rows, every one the screen's width.
+    expect(rows(target)).toEqual(["top       ", "          ", "bottom    ", "          "]);
   });
 
   it("paints every change made before a frame into that one frame", async () => {

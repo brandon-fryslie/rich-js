@@ -35,8 +35,7 @@ const fakeTask = (description: string): Task => ({
 });
 
 function joined(col: TextColumn, description: string): string {
-  const segs = [...col.render(fakeTask(description)).render(OPTS)];
-  return segs.map((s) => s.text).join("");
+  return col.render(fakeTask(description)).plain;
 }
 
 describe("TextColumn markup parsing (rich-core-y80)", () => {

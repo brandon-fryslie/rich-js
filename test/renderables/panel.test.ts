@@ -647,4 +647,19 @@ describe("Panel as Rich draws it", () => {
       "╭─ ─╮\n│ h │\n│ i │\n╰───╯\n",
     );
   });
+
+  // rich-embed-1r2m: a body keeps its own end, so a trailing newline draws its
+  // blank row; a title is a fragment of the border line, so its end is dropped
+  // and its newline read as a space. Python Rich 9d8f9a3 at width 40, no colour.
+  it.each([new RichText("foo\n"), "foo\n"])("draws the blank row a body's trailing newline makes", (body) => {
+    expect(draw(new Panel(body), 40)).toBe(
+      "╭──────────────────────────────────────╮\n│ foo                                  │\n│                                      │\n╰──────────────────────────────────────╯\n",
+    );
+  });
+
+  it("draws a title's own text without its end", () => {
+    expect(draw(new Panel("x", { title: new RichText("T\n", { end: "!!" }) }), 40)).toBe(
+      "╭───────────────── T  ─────────────────╮\n│ x                                    │\n╰──────────────────────────────────────╯\n",
+    );
+  });
 });

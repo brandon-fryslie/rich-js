@@ -182,14 +182,11 @@ describe("Columns", () => {
     expect(m.minimum).toBeGreaterThan(0);
   });
 
-  // rich-text-5ai: same gap the code review found in table cells — a
-  // `RichText` item implements `render`, so it left
-  // through the passthrough arm untouched, keeping its default `end: "\n"`
-  // and drawing a stray extra row once `RichText.render` started honoring
-  // `end` for non-empty text.
-  it("does not draw a blank row for a RichText item with an embedded trailing newline", () => {
-    const cols = new Columns([new RichText("foo\n"), "bar"]);
-    expect(collectLines(cols, { maxWidth: 40 })).toHaveLength(1);
+  // rich-embed-1r2m: an item keeps its own `end`, so a trailing newline draws
+  // the blank row it makes. Python Rich 9d8f9a3 prints "foo bar\n       \n"
+  // for both, at width 40.
+  it.each([new RichText("foo\n"), "foo\n"])("draws the blank row an item's trailing newline makes, as Rich does", (item) => {
+    expect(collectLines(new Columns([item, "bar"]), { maxWidth: 40 })).toEqual(["foo bar", "       "]);
   });
 
   // --- The reference's layout (rich-columns-awe, rich-columns-sf4) ---
