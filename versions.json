@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-299",
+      "ref": "refs/pull/299/merge",
+      "sha": "095a55c5df71df2182887cef24182a717e060eff",
+      "timestamp": "2026-10-03T06:17:38.480Z",
+      "commits": [
+        {
+          "sha": "095a55c5df71df2182887cef24182a717e060eff",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T00:16:33-06:00",
+          "message": "Merge 95c54d9624972226db1813bcf1ba030c0e2a5b57 into 328fe3812c957cadebfc264633efefde18ca08ca\n"
+        },
+        {
+          "sha": "95c54d9624972226db1813bcf1ba030c0e2a5b57",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T00:16:28-06:00",
+          "message": "fix(table): expanding ratio columns split by Rich's ratio_distribute, and Table/Column take highlight (rich-table-7m57)\n\nRatio columns are sized by ratio_distribute(flexible width, ratios,\nminimums) over padded widths, as Rich's _calculate_column_widths does:\n17 cells at 2:1 are 12 + 5, not 11 + 6. ratioDistribute takes Rich's\nminimums and reads fractional ratios through exactWeights. A ratio\ncolumn's minWidth is its minimum, where Rich reads column.width or 1.\n\nRenderOptions splits highlighting into highlight (whether) and\nhighlighter (which, always the console's), as Rich's ConsoleOptions and\nrender_str do, so a highlight: true column draws with the console's\nhighlighter even when the console's own highlight is off.\nactiveHighlighter is the one reading of the pair.\n\nVertical cell padding already matched Rich (#232); its striped,\ncollapsed and padEdge cases are now pinned to Rich's bytes.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "328fe3812c957cadebfc264633efefde18ca08ca",
