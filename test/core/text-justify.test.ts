@@ -261,21 +261,22 @@ describe("RichText justification", () => {
    * The fixture strips the trailing line breaks, so it cannot tell a blank
    * last line from the row `end` adds, nor whether one is there at all. With
    * no `end` there is no such row, so every mode is pinned here against Rich
-   * 9d8f9a3's `Text("ab\n", justify=…, end="")` at width 5: the blank line is
-   * always drawn, padded where the mode pads and bare where it does not.
+   * 9d8f9a3's `Text(text, justify=…, end="")` at width 5: the blank line is
+   * always drawn, padded where the mode pads and bare where it does not. Empty
+   * text is that same blank line with nothing before it — Rich's `split` makes
+   * it one line, not none.
    */
   it("draws a trailing blank line that no end follows", () => {
     const expected = {
-      default: "ab\n",
-      left: "ab   \n     ",
-      center: " ab  \n     ",
-      right: "   ab\n     ",
-      full: "ab\n",
+      "ab\n": { default: "ab\n", left: "ab   \n     ", center: " ab  \n     ", right: "   ab\n     ", full: "ab\n" },
+      "": { default: "", left: "     ", center: "     ", right: "     ", full: "" },
     } as const;
-    for (const justify of [undefined, "left", "center", "right", "full"] as const) {
-      const rendered = [...new RichText("ab\n", { justify, end: "" }).render({ maxWidth: 5 })];
-      expect(rendered.map((segment) => segment.text).join(""), `justify=${justify ?? "default"}`)
-        .toBe(expected[justify ?? "default"]);
+    for (const [text, byMode] of Object.entries(expected)) {
+      for (const justify of [undefined, "left", "center", "right", "full"] as const) {
+        const rendered = [...new RichText(text, { justify, end: "" }).render({ maxWidth: 5 })];
+        expect(rendered.map((segment) => segment.text).join(""), `${JSON.stringify(text)} justify=${justify ?? "default"}`)
+          .toBe(byMode[justify ?? "default"]);
+      }
     }
   });
 });
