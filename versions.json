@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-336",
+      "ref": "refs/pull/336/merge",
+      "sha": "593eac5d3357ad6674b4bd5ffc39b0b3caed5b45",
+      "timestamp": "2026-10-03T17:01:24.694Z",
+      "commits": [
+        {
+          "sha": "593eac5d3357ad6674b4bd5ffc39b0b3caed5b45",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T11:00:08-06:00",
+          "message": "Merge 55b07c4540d69ccf64ebd4192ec1e9cb2dea331a into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+        },
+        {
+          "sha": "55b07c4540d69ccf64ebd4192ec1e9cb2dea331a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T11:00:03-06:00",
+          "message": "fix(deploy): one concurrency group per docs slot, so a PR run cannot cancel a pending master deploy (rich-workflows-ui0d)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "dec2facc8b0d76a04a34f10462f118357b141ffd",
