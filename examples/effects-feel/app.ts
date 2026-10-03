@@ -283,8 +283,14 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     drift: (s) => drift(curves.drift, s.span, s.z),
     sparkle: (s) => sparkle(curves.sparkle, s.span, LIGHTS.firefly, s.z),
   };
+  // A subject's shares under a loop never change during a run, and settling
+  // them is the costliest thing here, so each effect is built once, not per
+  // frame or per contrast sample.
   const loops = Object.fromEntries(
-    LOOPS.map((name) => [name, (s: DrawnSubject) => subjectUnder(s, made[name](s), theme)]),
+    LOOPS.map((name) => {
+      const built = new Map(subjects.map((s) => [s, subjectUnder(s, made[name](s), theme)]));
+      return [name, (s: DrawnSubject) => built.get(s)!];
+    }),
   ) as Record<LoopName, (subject: DrawnSubject) => Effect>;
 
   // With no colour drawn there is no contrast to read: every effect is the
