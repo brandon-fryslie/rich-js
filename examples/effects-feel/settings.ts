@@ -36,12 +36,12 @@ export interface Settings {
 
 /** Each effect's defaults: the starting point for the sign-off, nothing more. */
 const DEFAULTS: Record<EffectName, { seconds: number; ease: EaseName; swing: number; unit: string }> = {
-  shimmer: { seconds: 2.5, ease: "sine", swing: 0.5, unit: "mix toward the highlight, 0–1" },
-  pulse: { seconds: 3, ease: "sine", swing: 0.12, unit: "OKLCH lightness at the peak, 0–1" },
-  drift: { seconds: 8, ease: "sine", swing: 40, unit: "degrees of hue at the peak" },
-  sparkle: { seconds: 2, ease: "ease-in", swing: 0.2, unit: "OKLCH lightness at the peak, 0–1" },
-  fade: { seconds: 2, ease: "ease-out", swing: 1, unit: "how hidden at the start, 0–1" },
-  dissolve: { seconds: 3, ease: "linear", swing: 1, unit: "how hidden once gone, 0–1" },
+  shimmer: { seconds: 48, ease: "linear", swing: 0.75, unit: "mix toward the light at the brightest glint, 0–1" },
+  pulse: { seconds: 8, ease: "linear", swing: 0.35, unit: "mix toward the light at the top of a breath, 0–1" },
+  drift: { seconds: 30, ease: "linear", swing: 14, unit: "degrees of hue at a gust's strongest" },
+  sparkle: { seconds: 22, ease: "linear", swing: 0.42, unit: "mix toward the firefly's colour at its brightest, 0–1" },
+  fade: { seconds: 6, ease: "ease-in-out", swing: 1, unit: "how hidden at the start, 0–1" },
+  dissolve: { seconds: 8, ease: "ease-in-out", swing: 1, unit: "how hidden once gone, 0–1" },
 };
 
 const FPS_RANGE = [0.5, 30] as const;
@@ -73,7 +73,7 @@ function secondsWord(effect: EffectName): "period" | "duration" {
 export const USAGE = [
   "npm run effects-feel -- [flags]",
   "",
-  `  --fps <n>`.padEnd(29) + `frames a second, ${FPS_RANGE[0]}–${FPS_RANGE[1]} (default 1)`,
+  `  --fps <n>`.padEnd(29) + `frames a second, ${FPS_RANGE[0]}–${FPS_RANGE[1]} (default 30; Claude Code draws at 1)`,
   `  --depth <d>`.padEnd(29) + `${DEPTHS.join(" | ")} (default truecolor)`,
   `  --ground <g>`.padEnd(29) + `${GROUNDS.join(" | ")} (default dark)`,
   "",
@@ -120,7 +120,7 @@ export function parseSettings(argv: readonly string[]): Settings | undefined {
   ) as Record<EffectName, NamedCurve>;
 
   return {
-    fps: number("--fps", flag("fps"), 1, FPS_RANGE),
+    fps: number("--fps", flag("fps"), 30, FPS_RANGE),
     depth: oneOf("--depth", flag("depth") ?? "truecolor", DEPTHS),
     ground: oneOf("--ground", flag("ground") ?? "dark", GROUNDS),
     curves,

@@ -13,8 +13,8 @@ import {
   type Renderable,
   type TerminalTheme,
 } from "../../../src/index.js";
-import { graphemes } from "../../../src/core/cells.js";
-import { drawnSubject, runDemo, stripSubject } from "../../../examples/effects-feel/app.js";
+import { cellLen, graphemes } from "../../../src/core/cells.js";
+import { LIGHTS, drawnSubject, runDemo, stripSubject } from "../../../examples/effects-feel/app.js";
 import { onColors, pulse } from "../../../examples/effects-feel/curves.js";
 import { envAtDepth, parseSettings } from "../../../examples/effects-feel/settings.js";
 import { scriptedHost } from "../../host/scripted-host.js";
@@ -51,7 +51,7 @@ describe("effects-feel", () => {
     await demo.done;
     const out = host.output();
     for (const name of ["shimmer", "pulse", "drift", "sparkle", "fade", "dissolve"]) expect(out).toContain(name);
-    expect(out.match(/worst contrast \d+\.\d\d:1 \(at rest \d+\.\d\d:1\)/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(out.match(/worst contrast \d+\.\d\d:1 over \d+s \(at rest \d+\.\d\d:1\)/g)?.length).toBeGreaterThanOrEqual(4);
   });
 
   it("says no colour is drawn when there is none to measure", async () => {
@@ -88,11 +88,17 @@ describe("a strip under a pulse", () => {
     });
   }
 
-  it.each([["dark", CATPPUCCIN_MOCHA, true], ["light", CATPPUCCIN_LATTE, false]] as const)(
+  it("spans the columns it draws, so a sweep crosses it once a period", () => {
+    const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), options, CATPPUCCIN_MOCHA);
+    const rows = [...strip.renderable.render(options)].map((segment) => segment.text).join("").split("\n");
+    expect(strip.span).toBe(Math.max(...rows.map(cellLen)));
+  });
+
+  it.each([["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const)(
     "on a %s ground moves each fill to one colour, in every cell that shows it, and nothing else",
-    (_, theme, darkGround) => {
+    (_, theme) => {
       const strip = drawnSubject(stripSubject(theme), options, theme);
-      const lit = onColors(strip.colors, pulse({ seconds: 2, ease: EASES.linear, swing: 0.3 }, darkGround));
+      const lit = onColors(strip.colors, pulse({ seconds: 2, ease: EASES.linear, swing: 0.3 }, LIGHTS.sun));
       const before = colorsByCell(strip.renderable, theme);
       const after = colorsByCell(new Effected(strip.renderable, lit, { t: 1, key: "strip", theme }), theme);
       expect(after).toHaveLength(before.length);
