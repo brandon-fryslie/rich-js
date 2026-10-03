@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-291",
+      "ref": "refs/pull/291/merge",
+      "sha": "41f64b7d45351113fd3d0e5242f6adb4c737671d",
+      "timestamp": "2026-10-03T02:49:48.435Z",
+      "commits": [
+        {
+          "sha": "41f64b7d45351113fd3d0e5242f6adb4c737671d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T20:48:33-06:00",
+          "message": "Merge dd2f4f378c921b2f3cf75ae836bd7e6365486d71 into 9d5a227033f360d4e595c85fe80fa65eba23182d\n"
+        },
+        {
+          "sha": "dd2f4f378c921b2f3cf75ae836bd7e6365486d71",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T20:48:28-06:00",
+          "message": "fix(cells): text is walked and edited one grapheme cluster at a time (rich-cells-1y9d)\n\nRule repeats its characters through setCellSize, so a glyph of several code\npoints is cropped whole, and refuses characters that take no cells.\n\nTextInput moves, deletes, transposes and draws its cursor by grapheme cluster:\nnextGrapheme/prevGrapheme replace the code-point steppers it was their only\ncaller of. Its printable gate measured UTF-16 length, so every astral code\npoint the router sends was dropped and no emoji could be typed at all.\n\nA sweep test pushes ❤️, 👨‍👩‍👧, 🇺🇸 and a combining mark through every width walk\nin cells.ts.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "9d5a227033f360d4e595c85fe80fa65eba23182d",
