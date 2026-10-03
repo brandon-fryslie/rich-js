@@ -280,6 +280,35 @@ describe("runInTerminal", () => {
     );
   });
 
+  it("draws a nodeAsk prompt with the app's Console, and prints a refused answer's message beside it", async () => {
+    const term = terminal(75);
+    const prompt = JSON.stringify(resolve(REPO_ROOT, "src/node/prompt.ts"));
+    const run = runInTerminal(
+      await bundleExample(`
+        import { Console, Prompt, Theme } from ${LIBRARY};
+        import { nodeAsk } from ${prompt};
+        const console = new Console({ colorSystem: "256", theme: new Theme({ "prompt.choices": "green" }) });
+        await Prompt.ask("Env", nodeAsk, { choices: ["dev", "prod"], console });
+      `),
+      term,
+    );
+    await vi.waitFor(() => expect(stripAnsi(term.output.join(""))).toContain("Env [dev/prod]: "));
+    term.type("test\r");
+    await vi.waitFor(() => expect(stripAnsi(term.output.join(""))).toMatch(/options\n.*Env \[dev\/prod\]: $/s));
+    term.type("dev\r");
+    await run;
+    const draw = (markup: string): string => {
+      const chunks: string[] = [];
+      const file = { write: (data: string) => (chunks.push(data), true) };
+      new Console({ file, width: 75, colorSystem: "256", forceTerminal: true, highlight: false }).print(markup, { end: "" });
+      return chunks.join("");
+    };
+    const asked = draw("Env [green]\\[dev/prod][/]: ");
+    expect(term.output.join("")).toBe(
+      `${asked}test\r\n${draw("[red]Please select one of the available options[/]")}\n${asked}dev\r\n`,
+    );
+  });
+
   it("hands process.exit to the terminal", async () => {
     const term = terminal(75);
     await runInTerminal(await bundleExample("process.exit(3);"), term);
