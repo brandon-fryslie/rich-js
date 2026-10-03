@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-291",
-      "ref": "refs/pull/291/merge",
-      "sha": "fc3096a89a25e4c4a5e9d2cca6ac44e5abf74f2d",
-      "timestamp": "2026-10-03T03:06:36.340Z",
-      "commits": [
-        {
-          "sha": "fc3096a89a25e4c4a5e9d2cca6ac44e5abf74f2d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T03:05:49Z",
-          "message": "Merge 5e754fc58ff0370d9700a276355cac23bb2b843c into 9d5a227033f360d4e595c85fe80fa65eba23182d\n"
-        },
-        {
-          "sha": "5e754fc58ff0370d9700a276355cac23bb2b843c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T21:05:44-06:00",
-          "message": "fix(widgets): TextInput's cursor setter takes a CodeUnit; value writes are one action (rich-cells-1y9d)\n\nAn insert maxLength refuses whole emits nothing. C1 controls are not\ntext. The click hit-test reads the render's per-glyph projection\ninstead of a second copy of it.\n"
-        },
-        {
-          "sha": "5ff2c4ef7850de848093a4d71fad5201b2d7c237",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T20:59:15-06:00",
-          "message": "fix(widgets): an insert lands the cursor at its end; value holds line breaks as \\n (rich-cells-1y9d)\n\nThe value setter had already moved the cursor past a cluster the insert\ngrew, so adding the insert's length on top overshot. CRLF and CR become\nLF on write, as an HTML textarea's value does: \\r\\n is one cluster, and\na cursor could not rest at its line's end.\n"
-        },
-        {
-          "sha": "4f2654b28a1bcededd5df11a842d4e28a39e0d50",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T20:55:53-06:00",
-          "message": "fix(widgets): TextInput's cursor is a grapheme boundary whoever sets it (rich-cells-1y9d)\n\nvalue and cursorPosition write through graphemeBoundary, so a replaced\nvalue, a click, or an insert that grows the cluster before the cursor\ncannot leave it inside a glyph or past the end. maxLength cuts between\nglyphs; the password mask is one cell per glyph; Ctrl+T on one glyph is\na no-op.\n"
-        },
-        {
-          "sha": "dd2f4f378c921b2f3cf75ae836bd7e6365486d71",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T20:48:28-06:00",
-          "message": "fix(cells): text is walked and edited one grapheme cluster at a time (rich-cells-1y9d)\n\nRule repeats its characters through setCellSize, so a glyph of several code\npoints is cropped whole, and refuses characters that take no cells.\n\nTextInput moves, deletes, transposes and draws its cursor by grapheme cluster:\nnextGrapheme/prevGrapheme replace the code-point steppers it was their only\ncaller of. Its printable gate measured UTF-16 length, so every astral code\npoint the router sends was dropped and no emoji could be typed at all.\n\nA sweep test pushes ❤️, 👨‍👩‍👧, 🇺🇸 and a combining mark through every width walk\nin cells.ts.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "9d5a227033f360d4e595c85fe80fa65eba23182d",
-      "timestamp": "2026-10-03T02:02:33.201Z",
+      "sha": "c9100314a5973d48bd49e5a3c75fc56ccbffc8f6",
+      "timestamp": "2026-10-03T03:12:05.586Z",
       "commits": [
         {
-          "sha": "9d5a227033f360d4e595c85fe80fa65eba23182d",
+          "sha": "c9100314a5973d48bd49e5a3c75fc56ccbffc8f6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T20:00:49-06:00",
-          "message": "fix(effects): a moved colour at 16 colours rounds to the theme's sixteen (rich-effects-fxiy.knj) (#290)\n\n* fix(effects): a moved colour at 16 colours rounds to the theme's sixteen (rich-effects-fxiy.knj)\n\nEffected read an ANSI slot's colour off its theme, moved it, and handed the\nresult to a downgrade that rounds against the VGA sixteen, so under Catppuccin\nMocha a 0.01 lightness nudge on 'on blue' drew \\x1b[47m instead of \\x1b[44m.\n\nColorSpec.downgradeUnder(depth, theme) is downgrade on a terminal known to show\ntheme; both share performDowngrade, which now takes the terminal. Effected\ndowngrades each moved colour under its own theme.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(effects): a moved colour rounds to the nearest the theme terminal draws, after its alpha is flattened (rich-effects-fxiy.knj)\n\nReview of #290: ColorSpec.matchOn replaces downgradeUnder. Candidates are the\ndefault colour, the theme's sixteen and, at 256 colours, the cube; ColorSpec.downgrade\nis back to master's stock rounding.\n\n* fix(effects): a moved translucent colour is laid on SURFACE_BLACK, as the writer lays one (rich-effects-fxiy.knj)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-10-02T21:10:47-06:00",
+          "message": "fix(cells)!: text is walked and edited one grapheme cluster at a time (rich-cells-1y9d) (#291)\n\n* fix(cells): text is walked and edited one grapheme cluster at a time (rich-cells-1y9d)\n\nRule repeats its characters through setCellSize, so a glyph of several code\npoints is cropped whole, and refuses characters that take no cells.\n\nTextInput moves, deletes, transposes and draws its cursor by grapheme cluster:\nnextGrapheme/prevGrapheme replace the code-point steppers it was their only\ncaller of. Its printable gate measured UTF-16 length, so every astral code\npoint the router sends was dropped and no emoji could be typed at all.\n\nA sweep test pushes ❤️, 👨‍👩‍👧, 🇺🇸 and a combining mark through every width walk\nin cells.ts.\n\n* fix(widgets): TextInput's cursor is a grapheme boundary whoever sets it (rich-cells-1y9d)\n\nvalue and cursorPosition write through graphemeBoundary, so a replaced\nvalue, a click, or an insert that grows the cluster before the cursor\ncannot leave it inside a glyph or past the end. maxLength cuts between\nglyphs; the password mask is one cell per glyph; Ctrl+T on one glyph is\na no-op.\n\n* fix(widgets): an insert lands the cursor at its end; value holds line breaks as \\n (rich-cells-1y9d)\n\nThe value setter had already moved the cursor past a cluster the insert\ngrew, so adding the insert's length on top overshot. CRLF and CR become\nLF on write, as an HTML textarea's value does: \\r\\n is one cluster, and\na cursor could not rest at its line's end.\n\n* fix(widgets): TextInput's cursor setter takes a CodeUnit; value writes are one action (rich-cells-1y9d)\n\nAn insert maxLength refuses whole emits nothing. C1 controls are not\ntext. The click hit-test reads the render's per-glyph projection\ninstead of a second copy of it."
         }
       ]
     }

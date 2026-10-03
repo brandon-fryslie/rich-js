@@ -1,1 +1,0 @@
-import{V as e,i as t}from"./console-CIVXICyB.js";var n=class{renderables;constructor(...e){this.renderables=e}*render(t){let n={...t,height:e(t.height)};for(let e of this.renderables)yield*e.render(n)}measure(e){return t(e,this.renderables)}};export{n as t};
