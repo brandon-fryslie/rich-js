@@ -4,15 +4,22 @@
     {
       "version": "pr-310",
       "ref": "refs/pull/310/merge",
-      "sha": "af3eea41b8a51266a0af062b6545d76800aa27b8",
-      "timestamp": "2026-10-03T10:45:12.830Z",
+      "sha": "74bd0686965de88eeb88e6240917e5e9f458550c",
+      "timestamp": "2026-10-03T10:48:11.386Z",
       "commits": [
         {
-          "sha": "af3eea41b8a51266a0af062b6545d76800aa27b8",
+          "sha": "74bd0686965de88eeb88e6240917e5e9f458550c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T10:43:52Z",
-          "message": "Merge 5352ab3ce3952e98a9da97ded33e79ef243857e0 into 528a1bd5bec59d5b62db4b21b4f9c3137e241cfe\n"
+          "timestamp": "2026-10-03T10:46:59Z",
+          "message": "Merge cecf0dc44279fc43323e35a685a105fd00d0bf78 into 528a1bd5bec59d5b62db4b21b4f9c3137e241cfe\n"
+        },
+        {
+          "sha": "cecf0dc44279fc43323e35a685a105fd00d0bf78",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T04:46:55-06:00",
+          "message": "fix(pretty): a collection the tag names is a collection, and a foreign one is never printed empty (rich-pretty-dzzp)\n\nReview pass medium on PR #310:\n- A Proxy around another realm's Map has neither our prototype nor the slot;\n  the tag now admits it, and a proxy that will not open prints [Threw: …]\n  instead of the answer-shaped 'Map {}'.\n- A foreign subclass that renamed its tag is found by its slot; only a value\n  carrying a string tag is probed, so plain objects never throw.\n- Rejected: a Symbol.toStringTag getter that throws printing [Threw] — the\n  value's own getter failed when asked what it is; carrying that is the\n  no-silent-failure contract, and opaqueName read the same getter on master.\n"
         },
         {
           "sha": "5352ab3ce3952e98a9da97ded33e79ef243857e0",
