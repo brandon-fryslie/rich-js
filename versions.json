@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-295",
+      "ref": "refs/pull/295/merge",
+      "sha": "c3fcbf5f493ec3919e2eeaeda09382f3cda46a37",
+      "timestamp": "2026-10-03T04:39:36.933Z",
+      "commits": [
+        {
+          "sha": "c3fcbf5f493ec3919e2eeaeda09382f3cda46a37",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T22:38:41-06:00",
+          "message": "Merge 3aab8a2b37628fc99588ee4fe770ff8c35533114 into d2f5674f2dd3ce5ca4d77008774be807f12aa2a0\n"
+        },
+        {
+          "sha": "3aab8a2b37628fc99588ee4fe770ff8c35533114",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T22:38:36-06:00",
+          "message": "fix(test): a timeout says whether the test waited or the machine was slow; crash-order kills its fixture however the test ends (rich-test-suite-czqk)\n\nA timed-out test's failure now carries the worker's CPU over the test's\ntime and the machine's load average (test/suite/timeout-report.ts, wired\nin vitest.config.ts beside the one hang budget), so a red run tells a\nhang from a loaded machine without a rerun. The example-runner timeouts\nthe ticket saw did not reproduce here: 36 busy loops on 12 cores slowed\nthe file 2.6x (84 s) with no test near 30 s.\n\ncrash-order's fixture runs in its own process group, outside the runner's,\nso a test that failed or timed out before it exited left it running with\nits rich-app-* directory. runApp now registers stop() with onTestFinished:\nkill the group, wait for its end, remove the directory. Scripted repro (a\n2 s-timeout test over the `signal` ending): the old file leaves the process\nand directory, the new one neither.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d2f5674f2dd3ce5ca4d77008774be807f12aa2a0",
