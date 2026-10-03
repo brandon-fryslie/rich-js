@@ -88,7 +88,7 @@ The padding above and below a cell is blank lines in that cell, so it stands bet
 | `headerStyle` | Default style for header cells |
 | `footerStyle` | Default style for footer cells |
 | `borderStyle` | Style for border characters |
-| `titleStyle`, `captionStyle` | Styles for title/caption text |
+| `titleStyle`, `captionStyle` | Styles for a string title/caption; a `RichText` one keeps its own |
 | `titleJustify`, `captionJustify` | Alignment of title/caption |
 | `highlight` | Draw the string cells of every column `addColumn` makes with the console's highlighter — under `renderToString`, the `highlighter` it is handed — unless the column says otherwise (default: `false`) |
 

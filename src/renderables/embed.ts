@@ -53,13 +53,19 @@ export class EmbeddedText implements Renderable, Measurable {
     }
   }
 
-  /** The text this content draws under `options`. */
-  text(options: RenderOptions): RichText {
+  /**
+   * The text this content draws under `options`. A string reads with `base` as
+   * its style, as Rich's `render_str(style=)` gives one; text handed over
+   * keeps its own, since the caller already said how it looks — so a table's
+   * `Text` title draws without the title style, as Rich's does.
+   */
+  text(options: RenderOptions, base?: Style): RichText {
     if (typeof this._source !== "string") return this._source.copy();
     const markup = options.markup !== false;
     const reading = this._readings.get(markup) ?? readStr(this._source, markup);
     this._readings.set(markup, reading);
     const text = reading.copy();
+    if (base) text.style = base;
     activeHighlighter(options)?.highlight(text);
     return text;
   }

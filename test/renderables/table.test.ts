@@ -3,7 +3,7 @@ import { Table, Column, type ColumnOptions, type TableOptions } from "../../src/
 import { Panel } from "../../src/renderables/panel.js";
 import { Group } from "../../src/renderables/group.js";
 import { RichText } from "../../src/core/text.js";
-import { MarkupError } from "../../src/core/markup.js";
+import { MarkupError, renderMarkup } from "../../src/core/markup.js";
 import { Segment } from "../../src/core/segment.js";
 import { ASCII, ASCII_DOUBLE_HEAD, MARKDOWN, HEAVY_HEAD, SIMPLE, SQUARE, Box } from "../../src/core/box.js";
 import { cellLen } from "../../src/core/cells.js";
@@ -1641,6 +1641,30 @@ describe("Table and Column styles", () => {
     expect(draw(t)).toBe(
       "\x1b[31;44m┏━━━┓\x1b[0m\n\x1b[31;44m┃\x1b[0m\x1b[1m \x1b[0m\x1b[1mA\x1b[0m\x1b[1m \x1b[0m\x1b[31;44m┃\x1b[0m\n\x1b[31;44m┡━━━┩\x1b[0m\n\x1b[31;44m│\x1b[0m x \x1b[31;44m│\x1b[0m\n\x1b[31;44m└───┘\x1b[0m\n",
     );
+  });
+
+  // rich-table-qj6i: Rich hands a `Text` title or caption over as it is, and
+  // only a string reads with the title or caption style as its base.
+  const FRAME = "┏━━━━━━━━┓\n┃\x1b[1m \x1b[0m\x1b[1mheader\x1b[0m\x1b[1m \x1b[0m┃\n┡━━━━━━━━┩\n└────────┘\n";
+  it.each([
+    ["plain RichText", new RichText("T"), new RichText("C"), `    T     \n${FRAME}    C     \n`],
+    [
+      "styled RichText",
+      new RichText("T", { style: "bold" }),
+      renderMarkup("[red]C[/] x"),
+      `\x1b[1m    T     \x1b[0m\n${FRAME}   \x1b[31mC\x1b[0m x    \n`,
+    ],
+    ["string", "T", "C", `\x1b[44m    T     \x1b[0m\n${FRAME}\x1b[42m    C     \x1b[0m\n`],
+  ])("draws a %s title and caption in the styles Rich does", (_, title, caption, expected) => {
+    const t = new Table({ title, titleStyle: "on blue", caption, captionStyle: "on green" });
+    t.addColumn("header");
+    expect(draw(t)).toBe(expected);
+  });
+
+  it("pads a left-justified title inside its own last run, as Rich does", () => {
+    const t = new Table({ title: "[red]T[/] x", titleStyle: "on blue", titleJustify: "left" });
+    t.addColumn("header");
+    expect(draw(t).split("\n")[0]).toBe("\x1b[31;44mT\x1b[0m\x1b[44m x       \x1b[0m");
   });
 
   it("draws a table's style on its frame when it names no border style", () => {

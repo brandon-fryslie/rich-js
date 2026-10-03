@@ -1069,14 +1069,11 @@ export class RichText implements Renderable, Measurable {
         );
         const gap = Math.max(maxWidth - Segment.getLineLength(body), 0);
         const leftPad = justify === "center" ? Math.floor(gap / 2) : gap;
-        if (leftPad > 0) yield new Segment(" ".repeat(leftPad), padStyle);
-        yield* body;
-        const rightPad = gap - leftPad;
-        if (rightPad > 0) yield new Segment(" ".repeat(rightPad), padStyle);
+        yield* padded(body, leftPad, gap - leftPad, padStyle);
         break;
       }
       case "left":
-        yield* Segment.adjustLineLength(line, Math.max(maxWidth, Segment.getLineLength(line)), padStyle);
+        yield* padded(line, 0, Math.max(maxWidth - Segment.getLineLength(line), 0), padStyle);
         break;
       default:
         yield* line;
@@ -1203,4 +1200,33 @@ export class RichText implements Renderable, Measurable {
     yield* Segment.adjustLineLength(line, maxWidth, undefined, false);
   }
 
+}
+
+/**
+ * A line with `left` and `right` cells of padding in `style` either side.
+ * The reference pads inside the `Text` it justifies, so a pad and an edge of
+ * the line drawn in that style alone are one run, and Rich emits them as one
+ * segment; a separate pad segment drew the same cells in different bytes
+ * (rich-table-qj6i).
+ */
+function* padded(line: readonly Segment[], left: number, right: number, style: Style | undefined): Iterable<Segment> {
+  const joins = (segment: Segment | undefined): boolean =>
+    segment !== undefined && !segment.isControl && sameStyle(segment.style, style);
+  const inner = [...line];
+  const head = " ".repeat(left) + (joins(inner[0]) ? inner.shift()!.text : "");
+  const tail = (joins(inner.at(-1)) ? inner.pop()!.text : "") + " ".repeat(right);
+  if (inner.length === 0) {
+    if (head + tail !== "") yield new Segment(head + tail, style);
+    return;
+  }
+  if (head !== "") yield new Segment(head, style);
+  yield* inner;
+  if (tail !== "") yield new Segment(tail, style);
+}
+
+/** Whether two segment styles draw the same, an absent and a null style alike. */
+function sameStyle(a: Style | undefined, b: Style | undefined): boolean {
+  const x = a?.isNull ? undefined : a;
+  const y = b?.isNull ? undefined : b;
+  return x === y || (x !== undefined && y !== undefined && x.equals(y));
 }
