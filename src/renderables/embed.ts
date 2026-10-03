@@ -23,6 +23,7 @@
 import { activeHighlighter, readStr } from "../core/markup.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
+import type { Style } from "../core/style.js";
 import { RichText } from "../core/text.js";
 
 /**
@@ -122,7 +123,20 @@ export class InlineLabel {
  * but the string that holds it is not empty.
  */
 export function present(content: string | RichText | undefined): content is string | RichText {
-  return content instanceof RichText ? content.plain !== "" : content !== undefined && content !== "";
+  // Asked of what the content is rather than of what it is not, so a `null`
+  // from untyped JS is no content, as Rich's `None` is.
+  return typeof content === "string" ? content !== "" : content instanceof RichText && content.plain !== "";
+}
+
+/**
+ * A label's text as one line of segments at its natural width, its own styles
+ * laid over `base`. The caller has already cut it to its room, so it leaves as
+ * it stands: `"ignore"` also leaves it unjustified, its spaces where `pad` put
+ * them.
+ */
+export function drawLabel(text: RichText, options: RenderOptions, base: Style | undefined): Segment[] {
+  text.overflow = "ignore";
+  return [...Segment.applyStyle(text.render(options), base)];
 }
 
 /**

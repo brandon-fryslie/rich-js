@@ -9,7 +9,7 @@ import { Box, ROUNDED } from "../core/box.js";
 import type { EdgeChars } from "../core/box.js";
 import { Measurement } from "../core/measure.js";
 import { RichText } from "../core/text.js";
-import { embed, inlineLabel, type InlineLabel } from "./embed.js";
+import { drawLabel, embed, inlineLabel, type InlineLabel } from "./embed.js";
 import type { PaddingDimensions } from "./padding.js";
 import { normalizePadding } from "./padding.js";
 import type {
@@ -17,7 +17,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { fitHeight, getStyle, insetHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { drawable, fitHeight, getStyle, insetHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 /**
  * A lazily-resolved border accessory. Strings render inline in the
@@ -188,11 +188,17 @@ function borderRow(
   const canvas = span - 2;
   const labelOptions = borderLabel(options);
   const text = label.text(labelOptions);
-  text.truncate(canvas, text.overflow === "ellipsis" ? undefined : { marker: "" });
-  // Already cut to the canvas, so it leaves as it stands: `"ignore"` also
-  // leaves it unjustified, its spaces where `pad` put them.
-  text.overflow = "ignore";
-  const fitted = [...Segment.applyStyle(text.render(labelOptions), labelStyle)];
+  if (text.cellLength > canvas) {
+    // As Rich's `Text.truncate` cuts: to the canvas less a marker for an
+    // ellipsis label, padded back to it, so a wide character the cut splits
+    // leaves a space in its cell rather than a cell of rule.
+    const marker = text.overflow === "ellipsis" ? drawable(options, "\u2026", ".") : "";
+    const room = canvas - cellLen(marker);
+    text.truncate(room, { marker: "" });
+    text.padRight(room - text.cellLength);
+    text.append(marker);
+  }
+  const fitted = drawLabel(text, labelOptions, labelStyle);
   const excess = canvas - Segment.getLineLength(fitted);
   const before = Math.floor(excess / 2);
   return [
@@ -346,31 +352,19 @@ export class Panel implements Renderable, Measurable {
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
     const options = withCellWidth(rawOptions);
 
-    if (this._declaredWidth !== undefined) {
-      // A declared width draws one width whatever the parent offers below it,
-      // so that width is both ends of the range: `_getPanelWidth`'s answer,
-      // not a content-derived floor. Reported with one, `{width: 20}` around
-      // "hi" offered 100 cells answered 6..20 and then drew 20 every time, and
-      // a parent dividing space from the floor under-provisioned it.
-      const width = this._getPanelWidth(options);
+    // Rich's `__rich_measure__`, which is not its render's arithmetic: a
+    // declared width is the measurement whatever the panel then draws inside
+    // it, and a title counts as content beside the body, with the padding and
+    // frame around it, where the render holds it between one rule cell either
+    // side. A parent sizing from it sizes as Rich's parent does.
+    const declared = this._declaredWidth;
+    if (declared !== undefined) {
+      const width = Math.min(options.maxWidth, declared);
       return { minimum: width, maximum: width };
     }
-
-    return this._fitRange(options);
-  }
-
-  /**
-   * The width this panel wants when nothing declared one for it: its content
-   * and frame, widened for its title.
-   *
-   * [LAW:one-source-of-truth] `measure` and `_getPanelWidth` ask this same
-   * question, so both read `_contentRange` and `_titled` rather than each
-   * working the overhead and the title out itself — two copies is all it takes
-   * to put `measure` and `render` back into disagreement.
-   */
-  private _fitRange(options: RenderOptions): { minimum: number; maximum: number } {
     const content = this._contentRange(options);
-    const maximum = this._titled(options, content.maximum);
+    const overhead = frameOverhead(layoutPanel(options.maxWidth, this.padding));
+    const maximum = Math.min(options.maxWidth, Math.max(content.maximum, this._labelWidth(options) + overhead));
     return { minimum: Math.min(content.minimum, maximum), maximum };
   }
 
@@ -388,15 +382,9 @@ export class Panel implements Renderable, Measurable {
     };
   }
 
-  /**
-   * `width` widened to hold the title whole between one rule cell either
-   * side, as Rich's panel widens it — past a declared width too, up to the
-   * width the panel was offered.
-   */
-  private _titled(options: RenderOptions, width: number): number {
-    const label = this._titleLabel?.text(borderLabel(options));
-    const floor = label === undefined ? 0 : label.cellLength + 4;
-    return Math.min(options.maxWidth, Math.max(width, floor));
+  /** The cells the title's label takes, its padding included; none without a title. */
+  private _labelWidth(options: RenderOptions): number {
+    return this._titleLabel?.text(borderLabel(options)).cellLength ?? 0;
   }
 
   /**
@@ -417,7 +405,10 @@ export class Panel implements Renderable, Measurable {
   private _getPanelWidth(options: RenderOptions): number {
     const ceiling = Math.min(options.maxWidth, this._declaredWidth ?? options.maxWidth);
     const body = this.expand ? ceiling : this._contentRange({ ...options, maxWidth: ceiling }).maximum;
-    return this._titled(options, body);
+    // The title holds its label whole between one rule cell either side —
+    // past a declared width too, up to the width the panel was offered.
+    const floor = this._titleLabel === undefined ? 0 : this._labelWidth(options) + 4;
+    return Math.min(options.maxWidth, Math.max(body, floor));
   }
 
   private *_renderTopBorder(

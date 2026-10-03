@@ -12,7 +12,7 @@ import type {
   RenderOptions,
 } from "../core/protocol.js";
 import { drawable, getStyle } from "../core/protocol.js";
-import { inlineLabel, type InlineLabel } from "./embed.js";
+import { drawLabel, inlineLabel, type InlineLabel } from "./embed.js";
 
 export type RuleAlign = "left" | "center" | "right";
 
@@ -66,10 +66,7 @@ export class Rule implements Renderable, Measurable {
       return;
     }
 
-    // The caller does the cutting, so the label leaves at its natural width,
-    // unjustified, its spaces where `pad` put them.
-    label.overflow = "ignore";
-    const title = [...Segment.applyStyle(label.render(options), ruleStyle)];
+    const title = drawLabel(label, options, ruleStyle);
     const titleWidth = Segment.getLineLength(title);
 
     if (titleWidth >= maxWidth) {

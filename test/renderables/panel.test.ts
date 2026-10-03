@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { cellLen } from "../../src/core/cells.js";
 import type { PaddingDimensions } from "../../src/renderables/padding.js";
 import { Panel } from "../../src/renderables/panel.js";
+import { Table } from "../../src/renderables/table.js";
 import { renderToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
@@ -581,10 +582,43 @@ describe("Panel as Rich draws it", () => {
     );
   });
 
-  it("widens past a declared width to hold its title, and measures what it draws", () => {
+  // Rich measures a declared width as itself, whatever it then draws.
+  it("widens past a declared width to hold its title, and measures the width declared", () => {
     const panel = new Panel("hi", { title: "a long title", width: 10 });
     expect(draw(panel, 30)).toBe("╭─ a long title ─╮\n│ hi             │\n╰────────────────╯\n");
-    expect(panel.measure({ maxWidth: 30 })).toEqual({ minimum: 18, maximum: 18 });
+    expect(panel.measure({ maxWidth: 30 })).toEqual({ minimum: 10, maximum: 10 });
+  });
+
+  it("sizes a table column as Rich's measure does, declared width and title alike", () => {
+    const text = (t: Table, width: number) => renderToString(t, { width }).replace(/\x1b\[[0-9;]*m/g, "");
+    const declared = new Table();
+    declared.addColumn("A");
+    declared.addRow(Panel.fit("hi", { width: 20 }));
+    expect(text(declared, 40)).toBe(
+      "┏━━━━━━━━━━━━━━━━━━━━━━┓\n┃ A                    ┃\n┡━━━━━━━━━━━━━━━━━━━━━━┩\n│ ╭────╮               │\n│ │ hi │               │\n│ ╰────╯               │\n└──────────────────────┘\n",
+    );
+    const titled = new Table();
+    titled.addColumn("A");
+    titled.addRow(Panel.fit("hi", { title: "abc", padding: 0 }));
+    expect(text(titled, 30)).toBe(
+      "┏━━━━━━━━━┓\n┃ A       ┃\n┡━━━━━━━━━┩\n│ ╭─ ab─╮ │\n│ │hi   │ │\n│ ╰─────╯ │\n└─────────┘\n",
+    );
+  });
+
+  it("leaves a space where the cut splits a wide character", () => {
+    expect(draw(new Panel("x", { title: "中文字" }), 8)).toBe("╭─ 中 ─╮\n│ x    │\n╰──────╯\n");
+    const title = new RichText("中文字中文字", { overflow: "ellipsis" });
+    expect(draw(new Panel("x", { title }), 8)).toBe("╭─ 中…─╮\n│ x    │\n╰──────╯\n");
+  });
+
+  it("marks a cut title with an ASCII ellipsis on an ASCII-only console", () => {
+    const title = new RichText("a very long title here ok", { overflow: "ellipsis" });
+    expect(renderToString(new Panel("x", { title }), { width: 12, asciiOnly: true }).split("\n")[0]).toBe("+- a very.-+");
+  });
+
+  it("draws no label for a null title from untyped JS, as Rich draws none for None", () => {
+    const untyped = null as unknown as string;
+    expect(draw(new Panel("x", { title: untyped, subtitle: untyped }), 14)).toBe(draw(new Panel("x"), 14));
   });
 
   it("fits its content inside a declared width when it does not expand", () => {

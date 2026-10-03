@@ -84,7 +84,7 @@ export class Spinner implements Renderable, Measurable {
   /**
    * The spinner's current frame and its text as a fragment a caller composes
    * inside a line of its own, a `Progress` cell: no line end, and at its
-   * natural width, because the caller does the cutting, as with `inlineLabel`.
+   * natural width, because the caller does the cutting, as with `drawLabel`.
    */
   *drawFrame(options: RenderOptions): Iterable<Segment> {
     const line = this._currentLine(options);
