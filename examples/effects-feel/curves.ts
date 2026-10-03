@@ -209,6 +209,21 @@ function swell(shape: SwellShape, s: number, k: number): number {
 }
 
 /**
+ * How much of a swell's light has been given by `s`, in [0, 1]: its running
+ * integral over its whole. Paced by it, a motion is quickest at the swell's
+ * height and still at both its ends. `k` is above 0.
+ */
+function given(shape: SwellShape, s: number, k: number): number {
+  const p = Math.min(Math.max(s / k, 0), shape.rise + shape.fall);
+  const q = p - shape.rise;
+  const area =
+    q < 0
+      ? p - (shape.rise / Math.PI) * Math.sin((Math.PI * p) / shape.rise)
+      : shape.rise + q + (shape.fall / Math.PI) * Math.sin((Math.PI * q) / shape.fall);
+  return area / (shape.rise + shape.fall);
+}
+
+/**
  * A sleeper's breath: a quicker inhale, a longer exhale, then stillness for
  * the rest of the turn — the shape that makes a pulse read as calm rather
  * than as a warning.
@@ -397,6 +412,8 @@ export function drift(curve: Curve, span: number, z: number): Loop {
 export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
   const count = Math.max(3, Math.round(span / 8));
   const HALO = 5;
+  // How far from home a flash may begin, and how far it drifts while lit.
+  const HOP = 5;
   const GLIDE = 5;
   const TURN = curve.seconds;
   const homes = Array.from({ length: count }, (_, i) => ({
@@ -418,20 +435,23 @@ export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number):
           // is dark, so where it moves to is never seen moving.
           const u = t + fly.offset;
           const n = Math.floor(u / TURN);
-          const k = hash(n, fly.z + 1) < 0.15 ? 0 : 0.5 + 0.5 * hash(n, fly.z + 2);
+          // A dark turn is a flash with no light: it keeps its length, so
+          // every flash is timed alike.
+          const lit = hash(n, fly.z + 1) < 0.15 ? 0 : 1;
+          const k = 0.5 + 0.5 * hash(n, fly.z + 2);
           const at = hash(n, fly.z + 3) * (1 - k * (FLASH.rise + FLASH.fall));
           const s = u / TURN - n - at;
-          // While it glows it drifts, slowing as it goes, a few cells one way
-          // or the other: the lit stroke a firefly draws on the dusk.
-          const along = smoothstep(0, k * (FLASH.rise + FLASH.fall), s);
+          // While it glows it drifts a few cells one way or the other, as
+          // fast as it is bright: quickest at its height, slowing as it
+          // fades — the lit stroke a firefly draws on the dusk.
           return {
             x:
               fly.home +
-              5 * (2 * hash(n, fly.z + 4) - 1) +
-              GLIDE * (2 * hash(n, fly.z + 5) - 1) * along +
+              HOP * (2 * hash(n, fly.z + 4) - 1) +
+              GLIDE * (2 * hash(n, fly.z + 5) - 1) * given(FLASH, s, k) +
               1.5 * noise(fly.z, 0.1, t * 0.035),
             y: 0.6 * noise(fly.z, 2.2, t * 0.035),
-            glow: swell(FLASH, s, k),
+            glow: lit * swell(FLASH, s, k),
           };
         }),
       };
@@ -482,8 +502,9 @@ function order(z: number): (cell: EffectCell) => number {
     const at = `${cell.row}:${cell.col}`;
     // The noise is read through slower noise, so the patches reach out in
     // curling tendrils rather than sitting as round blots.
-    const warped = (): number => cell.col * 0.09 + 1.4 * noise(cell.col * 0.035, cell.row * 0.2 + 2.6, z + 0.5);
-    const place = places.get(at) ?? clamp01(0.5 + 1.1 * fbm(warped(), cell.row * 0.45, z, 4));
+    const place =
+      places.get(at) ??
+      clamp01(0.5 + 1.1 * fbm(cell.col * 0.09 + 1.4 * noise(cell.col * 0.035, cell.row * 0.2 + 2.6, z + 0.5), cell.row * 0.45, z, 4));
     places.set(at, place);
     return place;
   };

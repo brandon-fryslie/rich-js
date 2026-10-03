@@ -46,6 +46,8 @@ const cells: EffectCell[] = Array.from({ length: 40 }, (_, col) => ({ row: 0, co
 const sameColor = (a: ColorRgba, b: ColorRgba): boolean => a.red === b.red && a.green === b.green && a.blue === b.blue;
 const distance = (a: ColorRgba, b: ColorRgba): number => Oklch.fromRgba(a).deltaE(Oklch.fromRgba(b));
 const sun = LIGHTS.sun;
+/** A breath's turn as the demo runs it with no flags. */
+const BREATH_SECONDS = parseSettings([])!.curves.pulse.seconds;
 /** The ink at its whole share: the subject every curve here is tried on. */
 const inkOn = new Map([[ink.hex, 1]]);
 /** `color` under `loop` at a cell and moment, at its whole share. */
@@ -111,7 +113,7 @@ describe("the loops move", () => {
     const continuous = (["linear", "ease", "ease-in", "ease-out", "ease-in-out", "sine"] as const).map((name) => EASES[name]);
     let worst = 0;
     for (const ease of continuous) for (const z of [0, 11.3, 22.6]) {
-      const breath = pulse({ seconds: 33, ease, swing: 1 }, span, sun, z);
+      const breath = pulse({ seconds: BREATH_SECONDS, ease, swing: 1 }, span, sun, z);
       for (let t = 0; t < 1200; t += 0.5) {
         const drawn = row.map((cell) => under(breath, fill, cell, t));
         drawn.slice(1).forEach((color, i) => (worst = Math.max(worst, distance(drawn[i]!, color))));
@@ -125,10 +127,10 @@ describe("the loops move", () => {
     // breath begins, so each turn has a moment where nothing is lit.
     const row = Array.from({ length: span }, (_, col) => ({ row: 0, col, seed: 0 }));
     for (const z of [0, 11.3, 22.6]) {
-      const breath = pulse(curve(33, 0.5), span, sun, z);
+      const breath = pulse(curve(BREATH_SECONDS, 0.5), span, sun, z);
       const still = (t: number): boolean => row.every((cell) => breath.field(cell, t) === 0);
       for (let turn = 0; turn < 20; turn++) {
-        const moments = Array.from({ length: 330 }, (_, i) => turn * 33 + i / 10);
+        const moments = Array.from({ length: Math.round(BREATH_SECONDS * 10) }, (_, i) => turn * BREATH_SECONDS + i / 10);
         expect(moments.some(still), `z ${z}, turn ${turn}`).toBe(true);
       }
     }
@@ -330,9 +332,9 @@ describe("the loops never jump", () => {
   // minutes passed loops that jumped later on. Half an hour is a status
   // line's sitting, and every one of its seconds is a frame checked, on two
   // elements, the second's frames falling between the first's. A sample
-  // still under-reads the worst step, so the loops are tuned well under the
-  // bar: an hour of four elements, at both offsets and at 40 columns as well,
-  // took none past 0.037.
+  // still under-reads the worst step: an hour of four elements, at both
+  // offsets and at 40 columns as well, took pulse and shimmer to 0.039. Any
+  // change that brightens or narrows either is measured over that hour first.
   const WATCHED = 1800;
   const ELEMENTS = [
     { z: 0, offset: 0 },
