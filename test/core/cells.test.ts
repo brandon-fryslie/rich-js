@@ -17,6 +17,7 @@ import {
   prevGrapheme,
   asCodeUnit,
   expandTabs,
+  parseTabSize,
 } from "../../src/core/cells.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts (widths, invariants), not implementation details (caching, slicing)
@@ -457,23 +458,17 @@ describe("nextGrapheme / prevGrapheme", () => {
 
 describe("expandTabs", () => {
   it("counts the column in cells, so a wide glyph moves the stop", () => {
-    expect(expandTabs("日\tx", 4).text).toBe("日  x");
+    expect(expandTabs("日\tx", parseTabSize(4)).text).toBe("日  x");
   });
 
   it("moves each offset past every tab that widened before it", () => {
-    const { text, offsetOf } = expandTabs("a\tb\tc", 4);
+    const { text, offsetOf } = expandTabs("a\tb\tc", parseTabSize(4));
     expect(text).toBe("a   b   c");
     expect([0, 1, 2, 3, 4, 5].map(offsetOf)).toEqual([0, 1, 4, 5, 8, 9]);
   });
 
-  // Rich divides by the tab size and raises on 0; a stop between cells has no
-  // column to land in.
-  it.each([0, -1, 2.5, Number.NaN])("refuses a tabSize of %s", (tabSize) => {
-    expect(() => expandTabs("a\tb", tabSize)).toThrow(RangeError);
-  });
-
   it("leaves text without a tab as it is", () => {
-    const { text, offsetOf } = expandTabs("plain", 8);
+    const { text, offsetOf } = expandTabs("plain", parseTabSize(8));
     expect(text).toBe("plain");
     expect(offsetOf(3)).toBe(3);
   });

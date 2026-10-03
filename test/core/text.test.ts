@@ -1095,6 +1095,14 @@ describe("RichText.render() cost tracks the number of spans, not its square", ()
 // Measurable
 // =========================================================
 
+describe("RichText tabSize", () => {
+  // Refused where it is given, not at the first render that meets a tab — the
+  // text need not hold one for the value to be wrong.
+  it.each([0, -1, 2.5, Number.NaN])("refuses a tabSize of %s at construction", (tabSize) => {
+    expect(() => new RichText("no tabs here", { tabSize })).toThrow(RangeError);
+  });
+});
+
 describe("RichText.measure()", () => {
   it("returns reasonable min/max", () => {
     const t = new RichText("Hello World");

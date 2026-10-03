@@ -327,6 +327,22 @@ export function graphemeBoundary(s: string, cu: CodeUnit): CodePoint {
   return asCodePoint(cluster === undefined || cluster.index === at ? at : cluster.index + cluster.segment.length);
 }
 
+declare const _tabSize: unique symbol;
+/** Cells between tab stops: a positive integer, so every stop is a column. */
+export type TabSize = number & { readonly [_tabSize]: true };
+
+/**
+ * `n` as a `TabSize`, or a `RangeError` naming it. Rich divides by the tab
+ * size and raises on 0; here the value is refused where it is given, not at
+ * the first tab it meets.
+ */
+export function parseTabSize(n: number): TabSize {
+  if (!Number.isInteger(n) || n < 1) {
+    throw new RangeError(`tabSize must be a positive integer, got ${n}`);
+  }
+  return n as TabSize;
+}
+
 /** Text with its tabs expanded, and where each offset into the original went. */
 export interface TabExpansion {
   readonly text: string;
@@ -343,14 +359,8 @@ export interface TabExpansion {
  * caller that annotates the text by offset — a `RichText`'s spans — has to move
  * its offsets with the characters, or every annotation after a tab lands short
  * of what it styled.
- *
- * A stop is a whole number of cells, so `tabSize` must be a positive integer;
- * anything else throws, where Rich divides by it and raises.
  */
-export function expandTabs(text: string, tabSize: number): TabExpansion {
-  if (!Number.isInteger(tabSize) || tabSize < 1) {
-    throw new RangeError(`tabSize must be a positive integer, got ${tabSize}`);
-  }
+export function expandTabs(text: string, tabSize: TabSize): TabExpansion {
   const [head, ...rest] = text.split("\t");
   const tabAt: number[] = []; // offset of each tab in `text`
   const grownBy: number[] = []; // code units added by this tab and every one before it

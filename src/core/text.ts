@@ -2,7 +2,7 @@
  * RichText — styled text with spans. The primary text type for the library.
  */
 
-import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, expandTabs, type CellCol, type TabExpansion } from "./cells.js";
+import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, expandTabs, parseTabSize, type CellCol, type TabExpansion, type TabSize } from "./cells.js";
 import { divideLine, wordWidths } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
@@ -178,7 +178,7 @@ export class RichText implements Renderable, Measurable {
   private _justify: "left" | "center" | "right" | "full" | undefined;
   private _overflow: OverflowMethod | undefined;
   private _end: string;
-  private _tabSize: number;
+  private _tabSize: TabSize;
   private _noWrap: boolean;
 
   constructor(text?: string, options?: RichTextOptions) {
@@ -190,7 +190,7 @@ export class RichText implements Renderable, Measurable {
     this._justify = options?.justify;
     this._overflow = options?.overflow;
     this._end = options?.end ?? "\n";
-    this._tabSize = options?.tabSize ?? 8;
+    this._tabSize = parseTabSize(options?.tabSize ?? 8);
     this._noWrap = options?.noWrap ?? false;
   }
 

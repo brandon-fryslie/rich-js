@@ -8,7 +8,7 @@
  * one class would be a second answer to "what colour is a keyword".
  */
 
-import { cellLen, expandTabs } from "../core/cells.js";
+import { cellLen, expandTabs, parseTabSize } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { RichText } from "../core/text.js";
 import {
@@ -121,8 +121,9 @@ export class Syntax implements Renderable, Measurable {
     this.lineRange = options?.lineRange;
     this.highlightLines = options?.highlightLines ?? new Set();
     this.wordWrap = options?.wordWrap ?? false;
-    this.tabSize = options?.tabSize ?? 4;
-    this._lines = expandTabs(code, this.tabSize).text.split("\n");
+    const tabSize = parseTabSize(options?.tabSize ?? 4);
+    this.tabSize = tabSize;
+    this._lines = expandTabs(code, tabSize).text.split("\n");
   }
 
   /**
