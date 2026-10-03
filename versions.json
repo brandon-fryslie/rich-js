@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-311",
+      "ref": "refs/pull/311/merge",
+      "sha": "f1f3904da50abe7eaebd6d84a17269e71c4c21ca",
+      "timestamp": "2026-10-03T10:57:42.276Z",
+      "commits": [
+        {
+          "sha": "f1f3904da50abe7eaebd6d84a17269e71c4c21ca",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T10:56:25Z",
+          "message": "Merge 8ca3236e7ecbf42c541eac31dd6e86c627c260e6 into dd692fc4f5f83b7f632f6012a04975a59f37d855\n"
+        },
+        {
+          "sha": "8ca3236e7ecbf42c541eac31dd6e86c627c260e6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T04:56:21-06:00",
+          "message": "feat(examples): effects-feel curves turbulent, drifting and wider; strip span read off its drawn row (rich-effects-fxiy.b6i)\n\nDrift rides a domain-warped field with gust sets; fireflies are wandering\npoints with soft halos; shimmer's caustics ride a current inside a wider\nband (48 s, half-width 16); transitions bloom over a wider order.\n\nA Strip is not Measurable, so drawnSubject measured the strip at\nMAX_SAFE_INTEGER columns: shimmer never reached it and drift moved at an\nabsurd speed. The 1 fps no-jump gate now runs at the strip's real width.\n"
+        },
+        {
+          "sha": "3f8a6ff13583686b7ccc20e1c573dd94ca30a294",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T04:47:20-06:00",
+          "message": "feat(examples): effects-feel curves rebuilt as breath, sunlight on water, wind, fireflies (rich-effects-fxiy.b6i)\n\nBrandon's first verdict on b6i: the defaults were jerky and choppy. The loops\nare now smooth noise and smooth waveforms, light mixes in OKLab instead of\nround the hue circle, and the demo runs at 30 fps by default. A test bars any\nloop from moving a cell more than dE_OK 0.06 between frames at 1 fps.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "dd692fc4f5f83b7f632f6012a04975a59f37d855",
@@ -13,28 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T04:52:24-06:00",
           "message": "fix(pretty): a value from another realm prints as the same value made here (rich-pretty-dzzp) (#310)\n\n* fix(pretty): a value from another realm prints as the same value made here (rich-pretty-dzzp)\n\ndescribesItself compared toString against this realm's Object.prototype.toString,\nand formOf/indexedElements classified Map, Set and DataView with instanceof, so\na vm-context or iframe object printed [object Object], [object Map], or (for a\nDataView) an empty array. Every classification now asks the value's internal\nslot through a borrowed built-in brand check, and the default-toString test\ncompares against the Object.prototype of the value's own realm.\n\nThe Map/Set bound tests faked a collection by grafting Set.prototype onto a\nplain object; they now use real subclasses, which the brand check accepts.\n\n* fix(pretty): brand checks see a proxied collection, take two steps not a chain walk, and cost a plain object nothing (rich-pretty-dzzp)\n\nReview pass high on PR #310:\n- isMap/isSet: instanceof first (a Proxy around a collection has the\n  prototype, not the slot); the throwing slot probe only for a value whose\n  toStringTag already names the kind. One isCollection helper.\n- describesItself: the default toString is found from the function itself\n  (its realm's Function.prototype, then Object.prototype) — no unbounded\n  prototype walk, which spun forever on a self-referential Proxy, and a\n  borrowed Object.prototype.toString is still a non-answer.\n- threw(): reads a string message, so a foreign Error prints as one made here.\n- typed-array tag getter computed once; redundant ArrayBuffer.isView dropped.\n\n* fix(pretty): a collection the tag names is a collection, and a foreign one is never printed empty (rich-pretty-dzzp)\n\nReview pass medium on PR #310:\n- A Proxy around another realm's Map has neither our prototype nor the slot;\n  the tag now admits it, and a proxy that will not open prints [Threw: …]\n  instead of the answer-shaped 'Map {}'.\n- A foreign subclass that renamed its tag is found by its slot; only a value\n  carrying a string tag is probed, so plain objects never throw.\n- Rejected: a Symbol.toStringTag getter that throws printing [Threw] — the\n  value's own getter failed when asked what it is; carrying that is the\n  no-silent-failure contract, and opaqueName read the same getter on master."
-        }
-      ]
-    },
-    {
-      "version": "pr-311",
-      "ref": "refs/pull/311/merge",
-      "sha": "b41cb742aeff6e75fa34de5b92fee0decbffd348",
-      "timestamp": "2026-10-03T10:49:12.724Z",
-      "commits": [
-        {
-          "sha": "b41cb742aeff6e75fa34de5b92fee0decbffd348",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:47:35-06:00",
-          "message": "Merge 3f8a6ff13583686b7ccc20e1c573dd94ca30a294 into 528a1bd5bec59d5b62db4b21b4f9c3137e241cfe\n"
-        },
-        {
-          "sha": "3f8a6ff13583686b7ccc20e1c573dd94ca30a294",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:47:20-06:00",
-          "message": "feat(examples): effects-feel curves rebuilt as breath, sunlight on water, wind, fireflies (rich-effects-fxiy.b6i)\n\nBrandon's first verdict on b6i: the defaults were jerky and choppy. The loops\nare now smooth noise and smooth waveforms, light mixes in OKLab instead of\nround the hue circle, and the demo runs at 30 fps by default. A test bars any\nloop from moving a cell more than dE_OK 0.06 between frames at 1 fps.\n"
         }
       ]
     }
