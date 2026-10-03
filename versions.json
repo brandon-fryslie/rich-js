@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-303",
+      "ref": "refs/pull/303/merge",
+      "sha": "8d5cee71b9840a3bcbb0a209ff93822ba404368d",
+      "timestamp": "2026-10-03T07:44:20.790Z",
+      "commits": [
+        {
+          "sha": "8d5cee71b9840a3bcbb0a209ff93822ba404368d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T01:43:04-06:00",
+          "message": "Merge 4d7ea7dba520d02f4075ce90455e35867b1bf1df into f3d54ff962452585ef714bffd3e7f22036739721\n"
+        },
+        {
+          "sha": "4d7ea7dba520d02f4075ce90455e35867b1bf1df",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T01:43:00-06:00",
+          "message": "fix(progress): TaskProgressColumn is four cells wide and rounds as Python; SpinnerColumn takes progress.spinner (rich-progress-sy9s)\n\nTaskProgressColumn right-aligns Rich's clamped percentage in three cells,\nrounds a tie to even as Python's .0f does, and shows nothing for a task\nwith no total. SpinnerColumn takes style (default progress.spinner),\nspeed and finishedText, as Rich's does.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f3d54ff962452585ef714bffd3e7f22036739721",
