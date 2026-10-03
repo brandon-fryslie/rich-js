@@ -70,7 +70,7 @@ function makeReactiveOutput(input: TextInput, engine: Engine<RichText>): StaticI
   return new StaticItem({
     id: "out",
     render: (opts: RenderOptions) => {
-      const segs = renderTemplate(engine, input.value, {}, { maxWidth: opts.maxWidth });
+      const segs = renderTemplate(engine, input.value, {}, opts);
       return segs;
     },
   });

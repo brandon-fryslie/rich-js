@@ -131,6 +131,13 @@ describe("template-bindings — bootstrap smoke", () => {
     expect(segs[0]!.text.startsWith("[error:")).toBe(true);
   });
 
+  it("renderTemplate hands the render every option it is given, as a renderable wrapping it forwards them", () => {
+    const rows = (segs: ReturnType<typeof renderTemplate>) =>
+      segs.map((s) => s.text).join("").split("\n");
+    const opts = { maxWidth: 12, overflow: "ellipsis", noWrap: true } as const;
+    expect(rows(renderTemplate(createRichTextEngine(), "aaaa bbbb cccc", {}, opts))).toEqual(["aaaa bbbb c…"]);
+  });
+
   it("renderTemplate lets a rethrown style error leave instead of folding it into an [error: …] line", () => {
     const title = renderMarkup("[bold rd]hi[/]");
     expect(() => renderTemplate(createRichTextEngine(), `{{ .title }}`, { title }, { onStyleError: strict })).toThrow(StyleSyntaxError);

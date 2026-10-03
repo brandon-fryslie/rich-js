@@ -452,9 +452,9 @@ const themeGridItem = new StaticItem({
     for (let i = 0; i < GALLERY_THEMES.length; i++) {
       const [name, engine] = GALLERY_THEMES[i]!;
       segs.push(new Segment(`  ${name.padEnd(22)}`, dimStyle));
-      segs.push(...Segment.adjustLineLength(renderTemplate(engine, swatchTmpl), 14));
+      segs.push(...Segment.adjustLineLength(renderTemplate(engine, swatchTmpl, {}, { ...opts, maxWidth: 14 }), 14));
       segs.push(new Segment("  "));
-      segs.push(...Segment.adjustLineLength(renderTemplate(engine, tmpl), opts.maxWidth - 42));
+      segs.push(...Segment.adjustLineLength(renderTemplate(engine, tmpl, {}, { ...opts, maxWidth: opts.maxWidth - 42 }), opts.maxWidth - 42));
       if (i < GALLERY_THEMES.length - 1) segs.push(new Segment("\n"));
     }
     return segs;
