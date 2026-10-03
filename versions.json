@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "5f0b12b14f2ce4cb9217999a69c54c58026fcba2",
-      "timestamp": "2026-10-03T17:49:55.672Z",
+      "sha": "a352154b9c1dcca6f393a749a1ef298627ebdac7",
+      "timestamp": "2026-10-03T18:45:35.843Z",
       "commits": [
         {
-          "sha": "5f0b12b14f2ce4cb9217999a69c54c58026fcba2",
+          "sha": "a352154b9c1dcca6f393a749a1ef298627ebdac7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T17:48:42Z",
-          "message": "Merge 91d07ab060b723e1a8165baf4e7ee0c2a5da4c90 into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+          "timestamp": "2026-10-03T18:44:18Z",
+          "message": "Merge b123ad597d29ec44fa1cf6866bd90739488c00db into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+        },
+        {
+          "sha": "b123ad597d29ec44fa1cf6866bd90739488c00db",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T12:44:13-06:00",
+          "message": "effects-feel: the pace is set a frame at a time, so one frame a second at ×1 is motion, not steps (rich-effects-fxiy.b6i)\n\nRate ×1 moves each loop a quarter of a designed second a frame, whatever\nthe frame rate: a frame that steps the whole one-fps bar reads as a step,\na quarter of it as motion. The frame rate then sets how fast those frames\ncome. Rate keys still halve and double, ×1/8 to ×16.\n"
         },
         {
           "sha": "91d07ab060b723e1a8165baf4e7ee0c2a5da4c90",
