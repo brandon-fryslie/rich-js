@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-307",
+      "ref": "refs/pull/307/merge",
+      "sha": "b2860ff0ef14abc53df6aeb9ed5df8b4c37d6dc5",
+      "timestamp": "2026-10-03T09:31:30.209Z",
+      "commits": [
+        {
+          "sha": "b2860ff0ef14abc53df6aeb9ed5df8b4c37d6dc5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T03:30:27-06:00",
+          "message": "Merge 92fc1ea5f331413da57ea877ada967e2951bcc80 into ad9101b538d897b042583466f4512620f66b0a7d\n"
+        },
+        {
+          "sha": "92fc1ea5f331413da57ea877ada967e2951bcc80",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T03:30:22-06:00",
+          "message": "fix(text): cellLength, truncate and align count a tab as the cells render draws (rich-text-d0gz)\n\ncellLength measured the raw string, so a tab was 0 cells while render widened\nit to its stop: truncate(6) left \"ab\\tcd\" (10 cells drawn) untouched, and\nalign padded to the wrong width. cellLength now measures the expanded text,\nand truncate and align widen tabs first, so the width they size to is the\nwidth drawn. A deliberate departure from Rich's Text.cell_len.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ad9101b538d897b042583466f4512620f66b0a7d",
