@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-320",
+      "ref": "refs/pull/320/merge",
+      "sha": "d78b612251d071d6b31b221b4da7941034912edc",
+      "timestamp": "2026-10-03T13:13:40.142Z",
+      "commits": [
+        {
+          "sha": "d78b612251d071d6b31b221b4da7941034912edc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T07:12:35-06:00",
+          "message": "Merge b665e998bfcb0ab1d07625cc64579dede3802898 into 3d7756ac5a041b157ba4ef985b01e802f666855f\n"
+        },
+        {
+          "sha": "b665e998bfcb0ab1d07625cc64579dede3802898",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T07:12:30-06:00",
+          "message": "fix(export)!: a translucent colour exports as the colour the terminal is sent (rich-style-wl27)\n\nresolveLook flattened alpha over the export canvas while Style.drawnColors\n(what toSgrCodes writes) flattens over SURFACE_BLACK. Truecolor SGR bytes are\nabsolute, so under any non-black theme the export pictured a colour no\nterminal draws: #ff000000 sent 38;2;0;0;0 and exported as the canvas.\n\nresolveLook now reads Style.drawnColors, so there is one flatten and the two\ncannot disagree. Translucent backgrounds change too: they diverged the same way.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "3d7756ac5a041b157ba4ef985b01e802f666855f",
