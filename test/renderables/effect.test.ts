@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { PassThrough, Writable } from "stream";
 import { cellLen } from "../../src/core/cells.js";
-import { ColorRgba, ColorSpec } from "../../src/core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec } from "../../src/core/color.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import { renderToString } from "../../src/core/render.js";
 import { Measurement } from "../../src/core/measure.js";
@@ -69,6 +69,24 @@ describe("Effected — the identity effect", () => {
     const [segment] = [...effected(fixed(new Segment("a", Style.parse("reverse red"))), glyphBlue).render({ maxWidth: 10 })];
     expect(segment!.style?.bgcolor?.getTruecolor()).toEqual(BLUE);
     expect(segment!.style?.color?.name).toBe("red");
+  });
+
+  it("keeps a translucent glyph the colour it showed when only the ground moves", () => {
+    const seen: CellColors[] = [];
+    const groundGreen: Effect = (c) => (seen.push(c), { fg: c.fg, bg: new ColorRgba(0, 255, 0) });
+    const [segment] = [
+      ...effected(fixed(new Segment("a", Style.parse("#ff000080 on blue"))), groundGreen).render({ maxWidth: 10 }),
+    ];
+    expect(segment!.style?.drawnColors().color?.getTruecolor()).toEqual(seen[0]!.fg);
+  });
+
+  it("hands a cell the colour its depth writes, not the one it names", () => {
+    const seen: CellColors[] = [];
+    const record: Effect = (c) => (seen.push(c), c);
+    const style = Style.parse("#ff8800");
+    [...effected(fixed(new Segment("a", style)), record).render({ maxWidth: 10, colorSystem: ColorDepth.STANDARD })];
+    expect(seen[0]!.fg).toEqual(style.drawnColors(ColorDepth.STANDARD).color!.getTruecolor(THEME, true));
+    expect(seen[0]!.fg).not.toEqual(new ColorRgba(255, 136, 0));
   });
 });
 

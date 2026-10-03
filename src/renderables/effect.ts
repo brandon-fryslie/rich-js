@@ -113,9 +113,12 @@ export class Effected implements Renderable, Measurable {
         continue;
       }
       const base = segment.style ?? Style.null();
-      // [LAW:single-enforcer] `drawnColors` is what the wire writes; the theme
-      // resolves what it leaves to the terminal.
-      const wire = base.drawnColors();
+      // [LAW:single-enforcer] `drawnColors` is what the wire writes at this
+      // depth — alpha flattened, downgraded — and the theme resolves what it
+      // leaves to the terminal. A slot the effect leaves alone keeps the
+      // written spec, so it stays what the screen showed whatever moves
+      // beside it.
+      const wire = base.drawnColors(options.colorSystem ?? undefined);
       const ink = (wire.color ?? DEFAULT).getTruecolor(this.theme, true);
       const paper = (wire.bgcolor ?? DEFAULT).getTruecolor(this.theme, false);
       const from = onScreen({ fg: ink, bg: paper }, base);
@@ -152,7 +155,7 @@ export class Effected implements Renderable, Measurable {
         const style =
           slots === undefined
             ? shifted
-            : shifted.add(Style.fromColor(respec(base.color, ink, slots.fg), respec(base.bgcolor, paper, slots.bg)));
+            : shifted.add(Style.fromColor(respec(wire.color, ink, slots.fg), respec(wire.bgcolor, paper, slots.bg)));
         yield new Segment(run.text, style);
         offset += run.cells;
       }
