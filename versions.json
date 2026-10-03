@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-305",
+      "ref": "refs/pull/305/merge",
+      "sha": "453e43d7ad4f0272d5b40e4d469d133af3ea5dc8",
+      "timestamp": "2026-10-03T08:45:55.650Z",
+      "commits": [
+        {
+          "sha": "453e43d7ad4f0272d5b40e4d469d133af3ea5dc8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T02:44:56-06:00",
+          "message": "Merge f1ee23401cf911c9cdd6d932df790d8f93959a2f into d6ee38000079e4a6668b7fefdd179d03ae5c6598\n"
+        },
+        {
+          "sha": "f1ee23401cf911c9cdd6d932df790d8f93959a2f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T02:44:51-06:00",
+          "message": "fix(palette): a fully transparent palette variable draws no background (rich-palette-ufxd)\n\nA theme's #00000000 (link-background, markdown-h*-background, footer-*-background\nin 22 bundled themes) is Textual's \"no background\". The palette drew it onto\nits own background like any tint, so bg (color \"link-background\") cut a\nbackground-coloured box into a surface or panel row.\n\nA Palette now hands an alpha-0 colour out unchanged, and a Style reads a fully\ntransparent bgcolor as no bgcolor, so a style added over another keeps that\none's background in both the SGR bytes and resolveLook.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d6ee38000079e4a6668b7fefdd179d03ae5c6598",
