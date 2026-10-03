@@ -1141,6 +1141,68 @@ describe("TextInput", () => {
     });
   });
 
+  describe("a glyph of several code points is one cursor step", () => {
+    const CURSOR = new Style({ reverse: true });
+    // The text of the cell drawn in the cursor style, on every row.
+    const cursorCells = (t: TextInput, options: RenderOptions = RENDER): string[] =>
+      [...t.render(options)].filter((s) => s.style?.reverse).map((s) => s.text);
+
+    for (const multiline of [false, true]) {
+      describe(multiline ? "multi-line" : "single-line", () => {
+        it("Right steps over a whole glyph, and Home, Right, Right lands before the next", () => {
+          const t = new TextInput({ multiline, cursorStyle: CURSOR });
+          t.focus();
+          // One key per code point, as the router sends them.
+          for (const ch of "a👍🏽b") t.handleKey(printable(ch));
+          expect(t.value).toBe("a👍🏽b");
+          t.handleKey(homeEvent());
+          t.handleKey(rightEvent());
+          t.handleKey(rightEvent());
+          expect(t.value.slice(t.cursorPosition)).toBe("b");
+          expect(cursorCells(t)).toEqual(["b"]);
+        });
+
+        it("draws the cursor on a whole glyph, and inserts after it", () => {
+          const t = new TextInput({ value: "👍🏽x", multiline, cursorStyle: CURSOR });
+          t.focus();
+          t.handleKey(homeEvent());
+          expect(cursorCells(t)).toEqual(["👍🏽"]);
+          t.handleKey(rightEvent());
+          expect(cursorCells(t)).toEqual(["x"]);
+          t.handleKey(printable("y"));
+          expect(t.value).toBe("👍🏽yx");
+        });
+
+        it("Backspace and Delete take the whole glyph", () => {
+          for (const glyph of ["👍🏽", "❤️", "👨‍👩‍👧", "🇺🇸", "e\u0301"]) {
+            const t = new TextInput({ value: `a${glyph}b`, multiline });
+            t.cursorPosition = asCodePoint(1 + glyph.length);
+            t.handleKey(backspaceEvent());
+            expect(t.value).toBe("ab");
+            t.value = `a${glyph}b`;
+            t.cursorPosition = asCodePoint(1);
+            t.handleKey(deleteEvent());
+            expect(t.value).toBe("ab");
+          }
+        });
+
+        it("Left steps back over a whole glyph", () => {
+          const t = new TextInput({ value: "a👨‍👩‍👧", multiline });
+          t.cursorPosition = asCodePoint(t.value.length);
+          t.handleKey(leftEvent());
+          expect(t.cursorPosition).toBe(1);
+        });
+      });
+    }
+
+    it("transposes whole glyphs", () => {
+      const t = new TextInput({ value: "a👍🏽" });
+      t.cursorPosition = asCodePoint(t.value.length);
+      t.transposeChars();
+      expect(t.value).toBe("👍🏽a");
+    });
+  });
+
   describe("wide-char rendering and navigation", () => {
     const RENDER = { maxWidth: 20 };
 

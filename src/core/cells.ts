@@ -189,11 +189,20 @@ export function splitAtCells(line: string, cuts: readonly CellCol[]): string[] {
   return [...pieces, line.slice(start)];
 }
 
-// [LAW:no-shared-mutable-globals] Private memos, written only by `clustersFrom`:
+// [LAW:no-shared-mutable-globals] Private memos, written only by `segmentsOf`:
 // the segmenter, and the segmentation of the last string walked, so a caller
 // stepping along one string does not re-segment the whole of it every step.
 let segmenter: Intl.Segmenter | undefined;
 let lastSegmented: { text: string; segments: Intl.Segments } | undefined;
+
+/** The grapheme segmentation of `text`, reusing the last one when it is the same string. */
+function segmentsOf(text: string): Intl.Segments {
+  if (lastSegmented?.text !== text) {
+    segmenter ??= new Intl.Segmenter(undefined, { granularity: "grapheme" });
+    lastSegmented = { text, segments: segmenter.segment(text) };
+  }
+  return lastSegmented.segments;
+}
 
 /**
  * The grapheme clusters of `text`, in order: the unit `string-width` measures,
@@ -211,11 +220,7 @@ export function graphemes(text: string): string[] {
  * stops early pays only for the clusters it reads.
  */
 function* clustersFrom(text: string, start: CodePoint): Generator<string> {
-  if (lastSegmented?.text !== text) {
-    segmenter ??= new Intl.Segmenter(undefined, { granularity: "grapheme" });
-    lastSegmented = { text, segments: segmenter.segment(text) };
-  }
-  const { segments } = lastSegmented;
+  const segments = segmentsOf(text);
   for (let at = start, s = segments.containing(at); s; s = segments.containing(at)) {
     const end = s.index + s.segment.length;
     yield text.slice(at, end);
@@ -294,36 +299,18 @@ export function cellColToCodeUnitOffset(content: string, cellCol: CellCol): Code
 }
 
 /**
- * Advance one full Unicode code point from `cu`, returning the code-unit
- * offset of the start of the *next* code point. Returns `s.length` when
- * already at or past the end.
- *
- * Handles surrogate pairs: when the code point at `cu` is a supplementary
- * character (U+10000…U+10FFFF) it occupies 2 UTF-16 code units, so the
- * returned offset advances by 2.
+ * The offset just past the grapheme cluster at `cu`: one step of a cursor, a
+ * Delete, a transposition, so `👍🏽` or `👨‍👩‍👧` moves and goes as the one
+ * glyph `cellLen` measures, never a code point at a time. `s.length` at or
+ * past the end.
  */
-export function nextCodePoint(s: string, cu: CodeUnit): CodePoint {
-  if (cu >= s.length) return asCodePoint(s.length);
-  const cp = s.codePointAt(cu)!;
-  return asCodePoint(cu + (cp > 0xFFFF ? 2 : 1));
+export function nextGrapheme(s: string, cu: CodePoint): CodePoint {
+  const [cluster = ""] = clustersFrom(s, cu);
+  return asCodePoint(cu + cluster.length);
 }
 
-/**
- * Step back one full Unicode code point from `cu`, returning the code-unit
- * offset of the start of the *previous* code point. Returns 0 when already
- * at the start.
- *
- * Handles surrogate pairs: when the code unit at `cu - 1` is a low surrogate
- * AND the code unit at `cu - 2` is a high surrogate, steps back 2 code units.
- * Unpaired surrogates are treated as 1-CU characters.
- */
-export function prevCodePoint(s: string, cu: CodeUnit): CodePoint {
+/** `nextGrapheme` backwards: the start of the cluster ending at `cu`; 0 at the start. */
+export function prevGrapheme(s: string, cu: CodePoint): CodePoint {
   if (cu <= 0) return asCodePoint(0);
-  const low = s.charCodeAt(cu - 1);
-  if (low >= 0xDC00 && low <= 0xDFFF && cu >= 2) {
-    const high = s.charCodeAt(cu - 2);
-    if (high >= 0xD800 && high <= 0xDBFF) return asCodePoint(cu - 2);
-  }
-  return asCodePoint(cu - 1);
+  return asCodePoint(segmentsOf(s).containing(cu - 1)!.index);
 }
-

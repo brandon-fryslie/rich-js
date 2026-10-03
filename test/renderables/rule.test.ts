@@ -63,8 +63,16 @@ describe("Rule", () => {
     expect(lines[0]).toBe("*****");
   });
 
-  it("throws for empty characters", () => {
+  it("throws for characters that take no cells", () => {
     expect(() => new Rule(undefined, { characters: "" })).toThrow();
+    expect(() => new Rule(undefined, { characters: "\u0301" })).toThrow();
+  });
+
+  it("repeats a glyph of several code points whole, padding the cell it cannot fill", () => {
+    for (const glyph of ["❤️", "👨‍👩‍👧", "🇺🇸"]) {
+      expect(collectLines(new Rule(undefined, { characters: glyph }), { maxWidth: 5 })[0]).toBe(`${glyph}${glyph} `);
+    }
+    expect(collectLines(new Rule(undefined, { characters: "e\u0301" }), { maxWidth: 3 })[0]).toBe("e\u0301".repeat(3));
   });
 
   it("throws for invalid align value", () => {
