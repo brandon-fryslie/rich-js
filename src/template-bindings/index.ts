@@ -39,6 +39,7 @@ import { RichText } from "../core/text.js";
 import { Style } from "../core/style.js";
 import { Segment } from "../core/segment.js";
 import { ColorDepth } from "../core/color.js";
+import type { RenderOptions } from "../core/protocol.js";
 import { richTextStyleFuncs } from "./style-funcs.js";
 import { colorFuncs } from "./color-funcs.js";
 
@@ -89,6 +90,23 @@ export function createRichTextEngine(): Engine<RichText> {
   });
 }
 
+// [LAW:one-source-of-truth] Every field but `errorStyle` is `RenderOptions`'
+// own and reaches the render as given, so a renderable wrapping a template
+// forwards the options it was handed whole and there is no second list of
+// which ones get through.
+export interface RenderTemplateOptions extends Partial<RenderOptions> {
+  /**
+   * Defaults to 400 — large enough that downstream `splitLines` /
+   * `adjustLineLength` clipping decides actual width, matching the typical
+   * "render wide, fit on output" pipeline. The error line is fitted to it too,
+   * so only a caller that passes the width it draws at sees a cut error end in
+   * `…` rather than be cropped by whatever draws it.
+   */
+  maxWidth?: number;
+  /** The error line's style, a `Style.parse` spec (default `"red dim"`). */
+  errorStyle?: string;
+}
+
 /**
  * Compile a template source against `engine` and render the result to a
  * flat `Segment[]`. The 90%-case convenience over chaining `engine.compile`,
@@ -97,14 +115,20 @@ export function createRichTextEngine(): Engine<RichText> {
  * - Runs `engine.compile(source)(scope)` to get the engine's `RichText[]`.
  * - Flattens that fragment list into a single styled `RichText` via
  *   `RichText.fromFragments` so every fragment's wrapping style survives.
- * - Renders to a `Segment[]` at the requested `maxWidth`.
- * - Wraps the whole flow in a try/catch — on parse/evaluate failure,
- *   emits a single dim styled `[error: <message>]` segment, one line fitted
- *   to `maxWidth`, the caller can drop into their layout. No bespoke
- *   fallback wiring required at every call site.
+ * - Renders to a `Segment[]` with the given render options — `maxWidth`,
+ *   `theme`, `onStyleError` and the rest — as a terminal unless they say not.
+ * - On a parse/evaluate failure, emits a single dim styled
+ *   `[error: <message>]` segment, one line fitted to `maxWidth`, the caller
+ *   can drop into their layout. No bespoke fallback wiring required at every
+ *   call site.
+ *
+ * Only compile, evaluate and flatten are inside the `try`: the error line reports a
+ * template that failed, nothing else. Whatever the render throws — a style
+ * error an `onStyleError` handler rethrew, or a fault in the render itself —
+ * leaves this function rather than being folded into an `[error: …]` line.
  *
  * [LAW:single-enforcer] One place owns "render a template to segments,
- * degrade gracefully on errors" — every consumer that wants this exact
+ * degrade gracefully when the template fails" — every consumer that wants this exact
  * shape reads from here rather than re-implementing the same try/catch +
  * error-formatting glue.
  *
@@ -113,28 +137,27 @@ export function createRichTextEngine(): Engine<RichText> {
  * and use `RichText.fromFragments` to flatten. This helper is sugar for
  * the live-render case (e.g. a preview pane), not a replacement for the
  * compile-once-evaluate-many pattern.
- *
- * @param maxWidth defaults to 400 — large enough that downstream `splitLines`
- * / `adjustLineLength` clipping decides actual width, matching the typical
- * "render wide, fit on output" pipeline. The error line is fitted to it too,
- * so only a caller that passes the width it draws at sees a cut error end in
- * `…` rather than be cropped by whatever draws it.
- * @param errorStyle is a `Style.parse` spec (default `"red dim"`).
+
  */
 export function renderTemplate(
   engine: Engine<RichText>,
   source: string,
   scope: unknown = {},
-  options?: { maxWidth?: number; errorStyle?: string },
+  options?: RenderTemplateOptions,
 ): Segment[] {
-  const maxWidth = options?.maxWidth ?? 400;
+  const { errorStyle, ...renderOptions } = options ?? {};
+  const maxWidth = renderOptions.maxWidth ?? 400;
+  // Flattening belongs to the template: a scope value the engine passes
+  // through unlifted fails here, and that is a template that failed.
+  let text: RichText;
   try {
-    const frags = engine.compile(source)(scope);
-    const rt = RichText.fromFragments(frags);
-    return Array.from(rt.render({ maxWidth, isTerminal: true }));
+    text = RichText.fromFragments(engine.compile(source)(scope));
   } catch (e) {
-    return [new Segment(errorLine(e, maxWidth), safeErrorStyle(options?.errorStyle))];
+    return [new Segment(errorLine(e, maxWidth), safeErrorStyle(errorStyle))];
   }
+  return Array.from(
+    text.render({ isTerminal: true, ...renderOptions, maxWidth }),
+  );
 }
 
 /**

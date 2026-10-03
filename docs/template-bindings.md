@@ -244,7 +244,7 @@ Passing a palette name where a color belongs is the other common slip, and it na
 
 ## Rendering to segments
 
-`renderTemplate` is the shortcut for the live-render case — a preview pane, a status line, anything that recompiles a template the user is currently editing. It compiles, flattens the fragments, renders to a `Segment[]`, and wraps the whole flow so a broken template degrades instead of throwing:
+`renderTemplate` is the shortcut for the live-render case — a preview pane, a status line, anything that recompiles a template the user is currently editing. It compiles, flattens the fragments, renders to a `Segment[]`, and a template that fails to parse or evaluate degrades instead of throwing:
 
 ```typescript
 import { segmentsToString, resolveDestination } from "@promptctl/rich-js";
@@ -275,6 +275,8 @@ const broken = renderTemplate(engine, `{{ darken "primary" 2 }}`, {}, {
 
 process.stdout.write(segmentsToString(broken, resolveDestination("auto")) + "\n");
 ```
+
+The fourth argument takes any `RenderOptions` besides `errorStyle`, and the render receives them as given, so a renderable that wraps a template passes along the options it was handed. Among them, `theme` looks up the style names carried by fragments that arrive through `scope` — a `RichText` built from `[my.heading]` markup, say. The template functions themselves take style definitions, not names: a template runs before any render, so `style "my.heading"`, or piping a fragment whose whole style is a name, fails as the template's `[error: …]` line. `onStyleError` hears about each style the render drops. A handler that rethrows makes `renderTemplate` throw, as described in [Failing on invalid styles](./style#failing-on-invalid-styles); so does any other error the render raises, because the `[error: …]` line reports a template that failed and nothing else.
 
 `maxWidth` defaults to 400 — wide enough that the downstream line-splitting decides the real width, matching the usual "render wide, fit on output" pipeline. The error line is fitted to that same width, so pass the width you draw at if a cut error should end in `…` rather than be cropped by whatever draws it.
 

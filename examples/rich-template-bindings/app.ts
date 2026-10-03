@@ -308,7 +308,7 @@ function buildRowSegments(
   options: RenderOptions,
 ): Segment[] {
   const outputRenderable: Renderable = {
-    render: (opts) => renderTemplate(engine, input.value, {}, { maxWidth: opts.maxWidth }),
+    render: (opts) => renderTemplate(engine, input.value, {}, opts),
   };
   const borderStyle = input.focused ? cyanStyle : dimStyle;
 
@@ -410,7 +410,7 @@ const pushPanelItem = new StaticItem({
   id: uid("push-panel"),
   render: (opts) => {
     const tmpl = pushRow.input.value;  // MobX subscription
-    const bodyRenderable = { render: () => renderTemplate(tokyoEngine, tmpl) };
+    const bodyRenderable: Renderable = { render: (o) => renderTemplate(tokyoEngine, tmpl, {}, o) };
     const title = new RichText(" git push ", { style: cyanBoldStyle, end: "" });
     return new Panel(bodyRenderable, { borderStyle: cyanBoldStyle, title, padding: [1, 2] }).render(opts);
   },
@@ -452,9 +452,9 @@ const themeGridItem = new StaticItem({
     for (let i = 0; i < GALLERY_THEMES.length; i++) {
       const [name, engine] = GALLERY_THEMES[i]!;
       segs.push(new Segment(`  ${name.padEnd(22)}`, dimStyle));
-      segs.push(...Segment.adjustLineLength(renderTemplate(engine, swatchTmpl), 14));
+      segs.push(...Segment.adjustLineLength(renderTemplate(engine, swatchTmpl, {}, { ...opts, maxWidth: 14 }), 14));
       segs.push(new Segment("  "));
-      segs.push(...Segment.adjustLineLength(renderTemplate(engine, tmpl), opts.maxWidth - 42));
+      segs.push(...Segment.adjustLineLength(renderTemplate(engine, tmpl, {}, { ...opts, maxWidth: opts.maxWidth - 42 }), opts.maxWidth - 42));
       if (i < GALLERY_THEMES.length - 1) segs.push(new Segment("\n"));
     }
     return segs;
