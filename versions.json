@@ -4,15 +4,22 @@
     {
       "version": "pr-332",
       "ref": "refs/pull/332/merge",
-      "sha": "4239a6cc034200c186713e4d7d74c7e4789e250a",
-      "timestamp": "2026-10-03T15:45:50.145Z",
+      "sha": "9d25687217818032c9e9624e030f3e9f98252cc3",
+      "timestamp": "2026-10-03T15:49:55.065Z",
       "commits": [
         {
-          "sha": "4239a6cc034200c186713e4d7d74c7e4789e250a",
+          "sha": "9d25687217818032c9e9624e030f3e9f98252cc3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T09:44:52-06:00",
-          "message": "Merge ae14dbbe55e38ad1eedebac9fbd3d2936857eff5 into 7d278db33f563b3ca40b34dd336cee7e956e692e\n"
+          "timestamp": "2026-10-03T15:49:01Z",
+          "message": "Merge 36b7afc2e9ac3850f5b1278089a3392710e6eded into 7d278db33f563b3ca40b34dd336cee7e956e692e\n"
+        },
+        {
+          "sha": "36b7afc2e9ac3850f5b1278089a3392710e6eded",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T09:48:56-06:00",
+          "message": "fix(progress): counts are refused at addTask/updateTask when not finite; MofNCompleteColumn takes Rich's separator (rich-progress-adjo)\n"
         },
         {
           "sha": "ae14dbbe55e38ad1eedebac9fbd3d2936857eff5",
