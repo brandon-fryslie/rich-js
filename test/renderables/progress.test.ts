@@ -2,8 +2,13 @@ import { describe, it, expect } from "vitest";
 import {
   BarColumn,
   Progress,
+  SpinnerColumn,
+  TaskProgressColumn,
   TextColumn,
 } from "../../src/renderables/progress.js";
+import { Console } from "../../src/core/console.js";
+import { Theme } from "../../src/core/style.js";
+import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 
@@ -106,5 +111,78 @@ describe("Progress expand (rich-justify-0cr.3)", () => {
     expect(line).toHaveLength(45);
     expect(line.startsWith("compiling ")).toBe(true);
     expect(barCells(line)).toBe(20);
+  });
+});
+
+describe("TaskProgressColumn (rich-progress-sy9s)", () => {
+  const row = (expand: boolean, total: number | undefined, completed: number): string => {
+    const progress = new Progress(
+      new TextColumn("{task.description}"),
+      new TaskProgressColumn(),
+      new TextColumn("end"),
+      { expand },
+    );
+    const id = progress.addTask("compiling", { total });
+    progress.updateTask(id, { completed });
+    const lines = Segment.splitLines([...progress.render({ ...OPTS, maxWidth: 30 })]);
+    return lines[0]!.map((segment) => segment.text).join("");
+  };
+
+  // Python Rich 9d8f9a3's `make_tasks_table` for the same columns at width 30.
+  // 42.5 rounds half to even, as Python's `.0f` does; 150 clamps to 100; a
+  // task with no total shows nothing.
+  it.each([
+    [false, 100, 42, "compiling  42% end"],
+    [false, 100, 42.5, "compiling  42% end"],
+    [false, 100, 0.5, "compiling   0% end"],
+    [false, 100, 2.5, "compiling   2% end"],
+    [false, 100, 100, "compiling 100% end"],
+    [false, 100, 150, "compiling 100% end"],
+    [false, 0, 0, "compiling   0% end"],
+    [false, undefined, 7, "compiling  end"],
+    [true, 100, 42, "compiling         42%     end "],
+    [true, 100, 42.5, "compiling         42%     end "],
+    [true, 100, 0.5, "compiling          0%     end "],
+    [true, 100, 2.5, "compiling          2%     end "],
+    [true, 100, 100, "compiling        100%     end "],
+    [true, 100, 150, "compiling        100%     end "],
+    [true, 0, 0, "compiling          0%     end "],
+    [true, undefined, 7, "compiling               end   "],
+  ])("lays out as Rich does (expand: %s, total: %s, completed: %s)", (expand, total, completed, reference) => {
+    expect(row(expand, total, completed)).toBe(reference);
+  });
+});
+
+describe("SpinnerColumn (rich-progress-sy9s)", () => {
+  const draw = (column: SpinnerColumn, completed: number, theme?: Theme): string => {
+    const chunks: string[] = [];
+    const console = new Console({
+      file: { write: (data: string) => chunks.push(data) },
+      width: 30,
+      colorSystem: "256",
+      forceTerminal: true,
+      theme,
+    });
+    const progress = new Progress(column, new TextColumn("end"), { console });
+    const id = progress.addTask("x", { total: 10 });
+    progress.updateTask(id, { completed });
+    console.print(progress);
+    return chunks.join("");
+  };
+
+  it("styles its frame with its console's progress.spinner", () => {
+    expect(draw(new SpinnerColumn(), 0)).toMatch(/^\x1b\[32m\S+\x1b\[0m end\n$/);
+    const themed = draw(new SpinnerColumn(), 0, new Theme({ "progress.spinner": "magenta" }));
+    expect(themed).toMatch(/^\x1b\[35m\S+\x1b\[0m end\n$/);
+  });
+
+  it("takes a style of its own", () => {
+    expect(draw(new SpinnerColumn("dots", { style: "blue" }), 0)).toMatch(/^\x1b\[34m\S+\x1b\[0m end\n$/);
+  });
+
+  it("draws its finished text once the task reaches its total", () => {
+    expect(draw(new SpinnerColumn(), 10)).toBe("  end\n");
+    expect(draw(new SpinnerColumn("dots", { finishedText: "[green]ok[/]" }), 10)).toBe("\x1b[32mok\x1b[0m end\n");
+    expect(draw(new SpinnerColumn("dots", { finishedText: new RichText("done") }), 10)).toBe("done end\n");
   });
 });

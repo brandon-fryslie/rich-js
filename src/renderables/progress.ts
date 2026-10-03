@@ -5,7 +5,8 @@
 import { Segment } from "../core/segment.js";
 import { RichText } from "../core/text.js";
 import { Console } from "../core/console.js";
-import { escape as escapeMarkup, renderStr } from "../core/markup.js";
+import { escape as escapeMarkup, readStr, renderStr } from "../core/markup.js";
+import type { Style } from "../core/style.js";
 import { ProgressBar } from "./progressBar.js";
 import { Spinner } from "./spinner.js";
 import { Live } from "./live.js";
@@ -90,13 +91,33 @@ export class BarColumn implements ProgressColumn {
   }
 }
 
+/**
+ * Rich's `{task.percentage:>3.0f}%`: the percentage right-aligned in three
+ * cells, so the column is four wide from 0% to 100% and the row does not
+ * shift as it counts. A task with no total shows nothing, Rich's
+ * `text_format_no_percentage`.
+ */
 export class TaskProgressColumn implements ProgressColumn {
   *render(options: RenderOptions, task: Task): Iterable<Segment> {
-    const percent = task.total
-      ? Math.min(100, Math.round((task.completed / task.total) * 100))
-      : 0;
-    yield new Segment(`${percent}%`, getStyle(options, "progress.percentage"));
+    const text =
+      task.total === undefined ? "" : `${String(roundHalfEven(percentage(task))).padStart(3)}%`;
+    yield new Segment(text, getStyle(options, "progress.percentage"));
   }
+}
+
+/** Rich's `Task.percentage`: 0 without a total, and clamped to [0, 100]. */
+function percentage(task: Task): number {
+  return task.total ? Math.min(100, Math.max(0, (task.completed / task.total) * 100)) : 0;
+}
+
+/**
+ * Python's `format(x, ".0f")`: the nearest integer to the double's exact
+ * value, a tie going to the even one. `Math.round` is exact too but sends a
+ * tie up, so only a tie is corrected.
+ */
+function roundHalfEven(x: number): number {
+  const up = Math.round(x);
+  return up - x === 0.5 && up % 2 !== 0 ? up - 1 : up;
 }
 
 export class TimeRemainingColumn implements ProgressColumn {
@@ -125,15 +146,36 @@ export class TimeElapsedColumn implements ProgressColumn {
   }
 }
 
+export interface SpinnerColumnOptions {
+  /** The frame's style. Defaults to `progress.spinner`, a name its console's theme resolves. */
+  style?: string | Style;
+  /** Multiplies the spinner's frame rate. Defaults to 1. */
+  speed?: number;
+  /** Drawn in place of the frame once the task reaches its total; a string is markup. Defaults to `" "`. */
+  finishedText?: string | RichText;
+}
+
 export class SpinnerColumn implements ProgressColumn {
   private _spinner: Spinner;
+  private _finishedText: RichText;
 
-  constructor(spinnerName?: string) {
-    this._spinner = new Spinner(spinnerName);
+  constructor(spinnerName?: string, options?: SpinnerColumnOptions) {
+    this._spinner = new Spinner(spinnerName, "", {
+      style: options?.style ?? "progress.spinner",
+      speed: options?.speed,
+    });
+    const finishedText = options?.finishedText ?? " ";
+    this._finishedText =
+      typeof finishedText === "string" ? readStr(finishedText, true) : finishedText;
   }
 
-  *render(options: RenderOptions, _task: Task): Iterable<Segment> {
-    yield* this._spinner.drawFrame(options);
+  *render(options: RenderOptions, task: Task): Iterable<Segment> {
+    // Rich's `Task.finished`: a task with no total never finishes.
+    if (task.total !== undefined && task.completed >= task.total) {
+      yield* this._finishedText.render(options);
+    } else {
+      yield* this._spinner.drawFrame(options);
+    }
   }
 }
 
