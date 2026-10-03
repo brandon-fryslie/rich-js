@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-310",
+      "ref": "refs/pull/310/merge",
+      "sha": "37844131e046ed47d2aa3b48b7685364fd99ff27",
+      "timestamp": "2026-10-03T10:36:43.632Z",
+      "commits": [
+        {
+          "sha": "37844131e046ed47d2aa3b48b7685364fd99ff27",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T04:35:29-06:00",
+          "message": "Merge d10aafb4ef3ce5d98c2b4e799df24dd5ef327463 into 528a1bd5bec59d5b62db4b21b4f9c3137e241cfe\n"
+        },
+        {
+          "sha": "d10aafb4ef3ce5d98c2b4e799df24dd5ef327463",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T04:35:24-06:00",
+          "message": "fix(pretty): a value from another realm prints as the same value made here (rich-pretty-dzzp)\n\ndescribesItself compared toString against this realm's Object.prototype.toString,\nand formOf/indexedElements classified Map, Set and DataView with instanceof, so\na vm-context or iframe object printed [object Object], [object Map], or (for a\nDataView) an empty array. Every classification now asks the value's internal\nslot through a borrowed built-in brand check, and the default-toString test\ncompares against the Object.prototype of the value's own realm.\n\nThe Map/Set bound tests faked a collection by grafting Set.prototype onto a\nplain object; they now use real subclasses, which the brand check accepts.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "528a1bd5bec59d5b62db4b21b4f9c3137e241cfe",
