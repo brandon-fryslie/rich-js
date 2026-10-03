@@ -679,7 +679,8 @@ function resolveColor(c: string | ColorSpec | undefined): ColorSpec | undefined 
 // A fully transparent background draws nothing over whatever lies beneath it,
 // so it is no background: a style added on top of another keeps that one's,
 // which is what Textual's `#00000000` means. A transparent foreground is not
-// the same, it draws its glyph in the background colour, so it stays a colour.
+// the same, it draws its glyph in whatever lies beneath it — the background,
+// or `SURFACE_BLACK` when there is none — so it stays a colour.
 function resolveBackground(c: string | ColorSpec | undefined): ColorSpec | undefined {
   const spec = resolveColor(c);
   return spec?.value?.alpha === 0 ? undefined : spec;

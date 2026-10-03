@@ -17,7 +17,8 @@ import type { ColorRgba } from "../core/color.js";
  * (Textual's `boost`, a hover overlay) is a tint meant for that theme's own
  * background, and a colour leaving the palette no longer knows which
  * background that was: the SGR writer would composite it over the terminal's
- * black, an export over its canvas, and the two would draw different colours.
+ * black, which is not the theme's background, and draw a tint the theme never
+ * meant.
  * So it is drawn onto `background` here, once, and the writer, the exporters
  * and the contrast choosers all read the colour it has there. On any other
  * surface it keeps that colour: the tint does not follow what is under it.

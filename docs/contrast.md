@@ -76,7 +76,7 @@ console.print(`[${drawn.hex} on ${panel.hex}] link, for 256 colours  [/]  ${draw
 
 Here the truecolor answer still clears 4.5:1 once both colours are rounded to the 256-colour palette, so it comes back unchanged.
 
-A translucent background is measured as drawn, composited over the surface beneath it: a fifth argument, `substrate`, defaulting to black, which is what the terminal writer composites over. A caller choosing text for another surface (an export flattens over its canvas, `exportCanvas(theme).background`) passes that surface; it must be opaque. `contrastFor(bg, substrate)` takes the same surface.
+A translucent background is measured as drawn, composited over the surface beneath it: a fifth argument, `substrate`, defaulting to black, which is what the terminal writer composites over. A caller choosing text for another surface passes that surface; it must be opaque. `contrastFor(bg, substrate)` takes the same surface.
 
 The sixth argument, `terminal`, is the `TerminalTheme` whose sixteen `ansiColors` the terminal draws at `STANDARD`. Themes disagree about more than hue: Rosé Pine Dawn's black is `#F2E9E1` and its white `#575279`, so the side of a background that text belongs on flips. With no `terminal` named, the pair is measured in the VGA colours `DEFAULT_TERMINAL_THEME` draws. `fg` and `bg` are still the colours you write — a cell styled `on black` is passed as nominal black, `#000000` — and the terminal's own shades are only what they are measured in.
 

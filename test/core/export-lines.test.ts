@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { exportCanvas, exportLines, parseHref, resolveLook } from "../../src/core/export-lines.js";
-import { ColorRgba, ColorTable, STANDARD_TABLE, TerminalTheme } from "../../src/core/color.js";
+import { ColorDepth, ColorRgba, ColorTable, STANDARD_TABLE, TerminalTheme } from "../../src/core/color.js";
 import { Style } from "../../src/core/style.js";
 import { Segment } from "../../src/core/segment.js";
 import { Palette } from "../../src/themes/palette.js";
@@ -59,13 +59,32 @@ describe("resolveLook colours", () => {
     expect(look("conceal").foreground).toEqual(PAPER);
   });
 
-  it("flattens alpha — paper over the canvas, ink over the paper — before reverse, dim and conceal", () => {
+  it("flattens alpha — paper over the terminal's black, ink over the paper — before reverse, dim and conceal", () => {
     // ink #ff000080 over paper #0000ff, then swapped: an opaque background
     expect(look("reverse #ff000080 on #0000ff").background).toEqual(new ColorRgba(128, 0, 127));
-    // paper #0000ff80 over the theme canvas (16, 32, 48), and the glyph hidden in it
+    // paper #0000ff80 over black, not the theme canvas (16, 32, 48), and the glyph hidden in it
     const concealed = look("conceal on #0000ff80");
-    expect(concealed.background).toEqual(new ColorRgba(8, 16, 152));
-    expect(concealed.foreground).toEqual(new ColorRgba(8, 16, 152));
+    expect(concealed.background).toEqual(new ColorRgba(0, 0, 128));
+    expect(concealed.foreground).toEqual(new ColorRgba(0, 0, 128));
+  });
+
+  it("draws a translucent colour as the colour the terminal is sent, whatever the canvas", () => {
+    // The truecolor SGR bytes are absolute, so a terminal under THEME shows
+    // exactly them; the export must too. THEME's canvas is not black, so a
+    // second substrate would show here.
+    const sent = (markup: string, slot: "38" | "48"): ColorRgba => {
+      const m = new RegExp(`(?:^|;)${slot};2;(\\d+);(\\d+);(\\d+)`).exec(Style.parse(markup).toSgrCodes(ColorDepth.TRUECOLOR));
+      if (m === null) throw new Error(`${markup} sends no truecolor ${slot}`);
+      return new ColorRgba(Number(m[1]), Number(m[2]), Number(m[3]));
+    };
+    for (const markup of ["#ff000000", "#ff000080", "#ff000080 on #0000ff80", "#ff000080 on red"]) {
+      expect(look(markup).foreground, markup).toEqual(sent(markup, "38"));
+    }
+    for (const markup of ["on #0000ff80", "#ff000080 on #0000ff80"]) {
+      expect(look(markup).background, markup).toEqual(sent(markup, "48"));
+    }
+    // The ticket's repro: a fully transparent ink with no paper is black, not the canvas.
+    expect(look("#ff000000").foreground).toEqual(new ColorRgba(0, 0, 0));
   });
 
   it("falls back to black canvas and white ink without a theme", () => {

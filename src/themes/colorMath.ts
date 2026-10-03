@@ -251,9 +251,9 @@ function shownAs(table: DrawnTable | undefined, opaque: ColorRgba): ColorRgba {
 /**
  * A background as it is drawn: composited over the surface beneath it. That
  * surface is a fact about where the pair is drawn, so it arrives as a value:
- * the SGR writer (`Style.toSgrCodes`) composites over `SURFACE_BLACK`, the
- * default here; a caller choosing text for a different surface — an export's
- * canvas, `exportCanvas(theme).background` — names that one.
+ * the SGR writer (`Style.toSgrCodes`) and the exports that picture its output
+ * composite over `SURFACE_BLACK`, the default here; a caller that composites
+ * its colours onto a different surface itself names that one.
  * [LAW:no-silent-failure] A surface has nothing under it, so a translucent one
  * has no drawn colour to offer; `compositeOver` would read its raw RGB as if
  * it were opaque, so it is refused here rather than measured wrong.
