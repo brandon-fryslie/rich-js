@@ -146,9 +146,15 @@ function headerEnd(stack: string, name: string, message: string): number | undef
   return endsLine(at + tail.length) ? at + tail.length : undefined;
 }
 
-/** Whether a stack's first line is a V8 header for an error of this name. */
-function opensWithName(line: string, name: string): boolean {
-  return line === name || line.startsWith(`${name}:`) || line.startsWith(`${name} [`);
+/**
+ * Whether a stack line is shaped as V8's header — a name, then `:` or nothing —
+ * rather than as a SpiderMonkey or JavaScriptCore frame, whose `@` comes before
+ * the first `:` of its location. Read by shape, not by the error's name,
+ * because the name may have been reassigned after V8 wrote the header too.
+ */
+function isHeaderShaped(line: string): boolean {
+  const colon = line.indexOf(":");
+  return !(colon < 0 ? line : line.slice(0, colon)).includes("@");
 }
 
 /**
@@ -159,8 +165,8 @@ function opensWithName(line: string, name: string): boolean {
  * When it does not open the stack, the message was reassigned after the throw
  * and what precedes the first V8 frame is that stale header — all of it, when
  * V8 recorded no frame, as under `Error.stackTraceLimit = 0`. SpiderMonkey and
- * JavaScriptCore write no header, so a stack that does not open with the name
- * is all frames. A value that is not an error has no name, so its stack is
+ * JavaScriptCore write no header, so a stack that opens with one of their
+ * frames is all frames. A value that is not an error has no name, so its stack is
  * read from its first V8 frame, or whole when it has none.
  */
 function parseStack(stack: string, name: string | undefined, message: string | undefined): StackFrame[] {
@@ -169,7 +175,7 @@ function parseStack(stack: string, name: string | undefined, message: string | u
   if (end !== undefined) return lines.map(parseFrame);
   const firstV8 = lines.findIndex((line) => V8_FRAME.test(line));
   if (firstV8 >= 0) return lines.slice(firstV8).map(parseFrame);
-  return name && lines[0] !== undefined && opensWithName(lines[0], name) ? [] : lines.map(parseFrame);
+  return name !== undefined && lines[0] !== undefined && isHeaderShaped(lines[0]) ? [] : lines.map(parseFrame);
 }
 
 /**

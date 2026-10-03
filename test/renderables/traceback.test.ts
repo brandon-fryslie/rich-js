@@ -308,6 +308,13 @@ describe("Traceback", () => {
     expect(collectText(new Traceback(error), { maxWidth: 80 })).toBe("Error: y\n\n");
   });
 
+  it("shows no frame for a stale header when the name changed and V8 recorded none", () => {
+    const error = new Error("a");
+    error.stack = "Error: a";
+    error.name = "Custom";
+    expect(collectText(new Traceback(error), { maxWidth: 80 })).toBe("Custom: a\n\n");
+  });
+
   it("takes node's coded header off whole, so no line of its message reads as a frame", () => {
     const error = new RangeError("bad value\n    at step 3 of migration");
     error.stack = "RangeError [ERR_OUT_OF_RANGE]: bad value\n    at step 3 of migration\n    at check (/app/c.ts:4:2)";
