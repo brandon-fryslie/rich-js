@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-296",
+      "ref": "refs/pull/296/merge",
+      "sha": "c24c5e14b5c6fa632ebd495ddd32a1e7d4070687",
+      "timestamp": "2026-10-03T05:03:51.129Z",
+      "commits": [
+        {
+          "sha": "c24c5e14b5c6fa632ebd495ddd32a1e7d4070687",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T23:02:43-06:00",
+          "message": "Merge 186098ce5da5d52c2525b9efb2d92bf044e43510 into ba78f52479c51e5e011c343dc3119ff8f6866ddf\n"
+        },
+        {
+          "sha": "186098ce5da5d52c2525b9efb2d92bf044e43510",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T23:02:39-06:00",
+          "message": "fix(color): one hex grammar behind every hex parser, and a ColorSystemName union for every colorSystem (rich-color-2qev)\n\nparseRgbHex/parseRgbaHex validated nothing: parseRgbHex(\"1g0000\") returned red=1.\nThey, and parseHexColor (moved to core/color.ts beside them), are now one\nprivate grammar check at the lengths each admits, throwing ColorParseError\nnaming the input. ColorSpec.parse, theme data, resolveColorRef and the template\ncolour functions route through them; their own regexes and the exported\nHEX_COLOR_RE are gone. resolveColorRef still throws ColorRefError, wrapping.\n\nColorSystemName is derived from the depth table it names. resolveColorSystem\nno longer accepts FORCE_COLOR values or TERM names (\"1\", \"vscode\") through the\nenv table it shared.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ba78f52479c51e5e011c343dc3119ff8f6866ddf",
