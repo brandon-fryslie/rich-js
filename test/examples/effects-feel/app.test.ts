@@ -117,9 +117,9 @@ describe("effects-feel", () => {
     host.type("<<");
     await shown(host, "2 fps · rate ×1");
     host.type("+");
-    await shown(host, "2 fps · rate ×2");
+    await shown(host, "2 fps · rate ×2 (0.5s a frame)");
     host.type("---");
-    await shown(host, "2 fps · rate ×0.25");
+    await shown(host, "2 fps · rate ×0.25 (0.0625s a frame)");
     host.type("q");
     await demo.done;
   });
@@ -129,7 +129,7 @@ describe("effects-feel", () => {
     await shown(host, FIRST_FRAME);
     host.type(">>>");
     host.type("++++++");
-    await shown(host, "30 fps · rate ×8");
+    await shown(host, "30 fps · rate ×16");
     host.type("<<<<<<<<<<");
     host.type("------------");
     await shown(host, "0.5 fps · rate ×0.125");

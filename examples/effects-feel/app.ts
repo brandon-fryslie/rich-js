@@ -83,8 +83,16 @@ const THEMES: readonly TerminalTheme[] = [
 /** The frame rates the fps keys step through, slowest first. */
 const FPS_STEPS = [0.5, 1, 2, 5, 10, 15, 30] as const;
 
-/** How far the rate keys take the demo's time from the clock's: ×2 a press, within these. */
-const RATE_RANGE = [1 / 8, 8] as const;
+/**
+ * How much of a loop's designed time one frame moves it at rate ×1. The
+ * curves are tuned so that one designed second steps a colour by at most the
+ * one-frame-a-second bar, and a frame that steps the whole bar reads as a
+ * step; a quarter of it reads as motion. So the pace is set a frame at a
+ * time — what a frame rate then sets is how fast those frames come — and the
+ * rate keys scale it, ×2 a press, within `RATE_RANGE`.
+ */
+const SECONDS_A_FRAME = 0.25;
+const RATE_RANGE = [1 / 8, 16] as const;
 
 /** How long a slice of contrast measuring may hold the event loop, in seconds: well inside a frame at 30 fps. */
 const MEASURE_SLICE = 0.008;
@@ -366,24 +374,26 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
 }
 
 /**
- * The demo's own time: the clock's, from the last reset, at `rate` — so a
- * rate change bends the time from that moment and never jumps it — and
- * starting over once a `cycle` has run, so what is seen is one full pass of
- * every loop, then the same again, at whatever rate.
+ * The demo's own time: the clock's, from the last reset, at `perSecond`
+ * demo seconds a clock second — so a change of pace bends the time from
+ * that moment and never jumps it — and starting over once a `cycle` has run,
+ * so what is seen is one full pass of every loop, then the same again, at
+ * whatever pace.
  */
 class Pace {
-  private rate = 1;
-  // The demo time at the last change of rate, and the clock time then.
+  private perSecond: number;
+  // The demo time at the last change of pace, and the clock time then.
   private base = 0;
   private mark: number;
 
-  constructor(clockNow: number, private readonly cycle: number) {
+  constructor(clockNow: number, perSecond: number, private readonly cycle: number) {
     this.mark = clockNow;
+    this.perSecond = perSecond;
   }
 
   /** The demo time at `clockNow`, and whether it just started over. */
   at(clockNow: number): { t: number; reset: boolean } {
-    const t = this.base + (clockNow - this.mark) * this.rate;
+    const t = this.base + (clockNow - this.mark) * this.perSecond;
     if (t < this.cycle) return { t, reset: false };
     this.base = 0;
     this.mark = clockNow;
@@ -395,15 +405,11 @@ class Pace {
     return this.at(clockNow).t;
   }
 
-  get speed(): number {
-    return this.rate;
-  }
-
-  /** From `clockNow` on, demo time runs at `rate` times the clock's. */
-  setRate(clockNow: number, rate: number): void {
+  /** From `clockNow` on, demo time runs at `perSecond` demo seconds a clock second. */
+  set(clockNow: number, perSecond: number): void {
     this.base = this.now(clockNow);
     this.mark = clockNow;
-    this.rate = rate;
+    this.perSecond = perSecond;
   }
 }
 
@@ -444,10 +450,12 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   };
   show(THEMES[at]!);
   const cycle = Math.max(...LOOPS.map((loop) => curves[loop].seconds), settledAt(curves.fade, 0), settledAt(curves.dissolve, 0));
-  const pace = new Pace(clock.now(), cycle);
+  let rate = 1;
+  let fps: FrameRate = frameRate(settings.fps);
+  const secondsAFrame = (): number => SECONDS_A_FRAME * rate;
+  const pace = new Pace(clock.now(), secondsAFrame() * fps.perSecond, cycle);
   let fadeStart = 0;
   let dissolveStart = 0;
-  let fps: FrameRate = frameRate(settings.fps);
 
   const describe = (name: EffectName, curve: NamedCurve): string =>
     `${name.padEnd(9)} ${curve.seconds}s · ${curve.easeName} · swing ${curve.swing}`;
@@ -468,7 +476,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     return new Padding(
       new Group(
         new RichText(
-          `effects feel · ${fps.perSecond} fps · rate ×${pace.speed} · ${settings.depth} · ${theme.palette.name} (${theme.palette.dark ? "dark" : "light"}) · t=${t.toFixed(1)}s of ${cycle}s`,
+          `effects feel · ${fps.perSecond} fps · rate ×${rate} (${secondsAFrame()}s a frame) · ${settings.depth} · ${theme.palette.name} (${theme.palette.dark ? "dark" : "light"}) · t=${t.toFixed(1)}s of ${cycle}s`,
           { style: shown.heading, noWrap: true },
         ),
         new RichText("f fade-in · d dissolve · n/p theme · </> fps · -/+ rate · q quits", { style: shown.quiet, noWrap: true }),
@@ -502,10 +510,12 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     const i = Math.min(Math.max((near === -1 ? FPS_STEPS.length - 1 : near) + step, 0), FPS_STEPS.length - 1);
     fps = frameRate(FPS_STEPS[i]!);
     app.rate = fps;
+    pace.set(clock.now(), secondsAFrame() * fps.perSecond);
     app.refresh();
   };
   const scaleRate = (by: number): void => {
-    pace.setRate(clock.now(), Math.min(Math.max(pace.speed * by, RATE_RANGE[0]), RATE_RANGE[1]));
+    rate = Math.min(Math.max(rate * by, RATE_RANGE[0]), RATE_RANGE[1]);
+    pace.set(clock.now(), secondsAFrame() * fps.perSecond);
     app.refresh();
   };
   const keys: Record<string, () => void> = {
