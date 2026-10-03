@@ -39,6 +39,17 @@ interface Task {
   visible: boolean;
   startTime: number;
   elapsed: number;
+  /**
+   * Rich's `Task.finished_time`: set the first time an update finds a started
+   * task at its total, and kept from then on, so a finished task stays
+   * finished however its count moves after.
+   */
+  finishedTime: number | undefined;
+}
+
+/** Rich's `Task.finished`. [LAW:one-source-of-truth] The one predicate every reader of "finished" asks. */
+function finished(task: Task): boolean {
+  return task.finishedTime !== undefined;
 }
 
 // --- Progress Columns ---
@@ -164,14 +175,20 @@ export class SpinnerColumn implements ProgressColumn {
       style: options?.style ?? "progress.spinner",
       speed: options?.speed,
     });
+    // Markup whatever the console says, as Rich's `Text.from_markup`. A
+    // `RichText` is copied, since the caller still holds it, and drawn as a
+    // fragment at its natural width like the frame, since the table does the
+    // cutting: `"ignore"` leaves it unjustified rather than padded to the
+    // console's width.
     const finishedText = options?.finishedText ?? " ";
-    this._finishedText =
-      typeof finishedText === "string" ? readStr(finishedText, true) : finishedText;
+    const text = typeof finishedText === "string" ? readStr(finishedText, true) : finishedText.copy();
+    text.end = "";
+    text.overflow = "ignore";
+    this._finishedText = text;
   }
 
   *render(options: RenderOptions, task: Task): Iterable<Segment> {
-    // Rich's `Task.finished`: a task with no total never finishes.
-    if (task.total !== undefined && task.completed >= task.total) {
+    if (finished(task)) {
       yield* this._finishedText.render(options);
     } else {
       yield* this._spinner.drawFrame(options);
@@ -249,13 +266,9 @@ export class Progress implements Renderable {
     return this._console;
   }
 
+  /** Rich's `Progress.finished`: every task finished, and so true with none. */
   get finished(): boolean {
-    for (const task of this._tasks.values()) {
-      if (!task.started || (task.total !== undefined && task.completed < task.total)) {
-        return false;
-      }
-    }
-    return this._tasks.size > 0;
+    return [...this._tasks.values()].every(finished);
   }
 
   static getDefaultColumns(): ProgressColumn[] {
@@ -278,6 +291,7 @@ export class Progress implements Renderable {
       visible: options?.visible !== false,
       startTime: Date.now(),
       elapsed: 0,
+      finishedTime: undefined,
     };
     this._tasks.set(id, task);
     return id;
@@ -291,6 +305,14 @@ export class Progress implements Renderable {
     if (options.advance !== undefined) task.completed += options.advance;
     if (options.description !== undefined) task.description = options.description;
     if (options.visible !== undefined) task.visible = options.visible;
+    if (
+      task.finishedTime === undefined &&
+      task.started &&
+      task.total !== undefined &&
+      task.completed >= task.total
+    ) {
+      task.finishedTime = (Date.now() - task.startTime) / 1000;
+    }
 
     if (options.refresh) {
       this._live.update(this, { refresh: true });

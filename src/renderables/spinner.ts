@@ -65,11 +65,12 @@ export class Spinner implements Renderable, Measurable {
   /** Advance the frame count by the time elapsed, and return it. */
   private _advance(): number {
     const now = Date.now();
-    const elapsed = now - this._lastUpdate;
-    const effectiveInterval = this.interval / this.speed;
-    if (elapsed >= effectiveInterval) {
-      const steps = Math.floor(elapsed / effectiveInterval);
-      this._frameIndex = (this._frameIndex + steps) % this._data.frames.length;
+    // Whole frames passed at this speed; a negative speed steps backwards, as
+    // Rich's does, so the index wraps with a modulo that is never negative.
+    const steps = Math.trunc(((now - this._lastUpdate) * this.speed) / this.interval);
+    if (steps !== 0) {
+      const count = this._data.frames.length;
+      this._frameIndex = (((this._frameIndex + steps) % count) + count) % count;
       this._lastUpdate = now;
     }
     return this._frameIndex;

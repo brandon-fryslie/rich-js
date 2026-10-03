@@ -154,7 +154,15 @@ describe("TaskProgressColumn (rich-progress-sy9s)", () => {
 });
 
 describe("SpinnerColumn (rich-progress-sy9s)", () => {
-  const draw = (column: SpinnerColumn, completed: number, theme?: Theme): string => {
+  const draw = (column: SpinnerColumn, completed: number, theme?: Theme): string =>
+    drawTask(column, { total: 10 }, [completed], theme).output;
+
+  const drawTask = (
+    column: SpinnerColumn,
+    task: { total?: number; start?: boolean },
+    updates: number[],
+    theme?: Theme,
+  ): { output: string; finished: boolean } => {
     const chunks: string[] = [];
     const console = new Console({
       file: { write: (data: string) => chunks.push(data) },
@@ -164,10 +172,10 @@ describe("SpinnerColumn (rich-progress-sy9s)", () => {
       theme,
     });
     const progress = new Progress(column, new TextColumn("end"), { console });
-    const id = progress.addTask("x", { total: 10 });
-    progress.updateTask(id, { completed });
+    const id = progress.addTask("x", task);
+    for (const completed of updates) progress.updateTask(id, { completed });
     console.print(progress);
-    return chunks.join("");
+    return { output: chunks.join(""), finished: progress.finished };
   };
 
   it("styles its frame with its console's progress.spinner", () => {
@@ -184,5 +192,35 @@ describe("SpinnerColumn (rich-progress-sy9s)", () => {
     expect(draw(new SpinnerColumn(), 10)).toBe("  end\n");
     expect(draw(new SpinnerColumn("dots", { finishedText: "[green]ok[/]" }), 10)).toBe("\x1b[32mok\x1b[0m end\n");
     expect(draw(new SpinnerColumn("dots", { finishedText: new RichText("done") }), 10)).toBe("done end\n");
+  });
+  // Python Rich 9d8f9a3, the same columns at width 30 (its frame in progress.spinner's
+  // green), with `Progress.finished`:
+  // a task finishes only when an update finds it started and at its total, and
+  // stays finished; one with no total never does.
+  it.each([
+    ["an unstarted task at its total", { total: 10, start: false }, [10], "\x1b[32m⠋\x1b[0m end\n", false],
+    ["a finished task counted back", { total: 10 }, [10, 0], "ok end\n", true],
+    ["a task with no total", {}, [10], "\x1b[32m⠋\x1b[0m end\n", false],
+  ])("finishes as Rich does: %s", (_case, task, updates, output, finished) => {
+    const drawn = drawTask(new SpinnerColumn("dots", { finishedText: "ok" }), task, updates);
+    expect(drawn).toEqual({ output, finished });
+  });
+
+  it("draws a justified finished text in its cell, not across the console", () => {
+    const column = new SpinnerColumn("dots", { finishedText: new RichText("done", { justify: "center" }) });
+    expect(draw(column, 10)).toBe("done end\n");
+  });
+
+  it("keeps its own copy of a finished text the caller goes on to change", () => {
+    const text = new RichText("done");
+    const column = new SpinnerColumn("dots", { finishedText: text });
+    text.append("!");
+    expect(draw(column, 10)).toBe("done end\n");
+  });
+});
+
+describe("Progress.finished (rich-progress-qjm9)", () => {
+  it("is true with no tasks, as Rich's `all` over none is", () => {
+    expect(new Progress({ console: new Console({ file: { write: () => {} } }) }).finished).toBe(true);
   });
 });
