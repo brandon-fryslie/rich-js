@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "5b52b1b534b47d6fc26a439009e4ba768d36764a",
+      "timestamp": "2026-10-03T14:16:51.284Z",
+      "commits": [
+        {
+          "sha": "5b52b1b534b47d6fc26a439009e4ba768d36764a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T08:15:12-06:00",
+          "message": "effects-feel: shimmer passes come and go like sun through moving cloud (#324)\n\n* effects-feel: shimmer passes come and go like sun through moving cloud (rich-effects-fxiy.b6i)\n\nPasses are events on half-period slots; slow sky noise decides whether a\nslot holds one and how bright it is, so sunny spells bring passes close\ntogether (sometimes overlapping, brighter wins) and cloudy ones leave the\nrow still for periods on end. Each pass crosses at its own pace.\n\n* effects-feel: under cloud the shimmer thins to faint passes, never gone for long (rich-effects-fxiy.b6i)\n\nReview high on #324: dark spells reached 876 s at the default period; the\nsky now has a presence floor and cloudy passes are faint, so the longest\nspell over four hours is ~5 min. The lookback is derived from the timing\nconstants it depends on. Shimmer tests now check band width and interior\nstill spells; the readability window covers twelve periods.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(effects-feel): the shimmer row-never-fully-lit check reads the whole row (rich-effects-fxiy.b6i)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+        }
+      ]
+    },
+    {
       "version": "pr-325",
       "ref": "refs/pull/325/merge",
       "sha": "07607a5328f714129022d8287862eddecaa991ec",
@@ -34,21 +49,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T08:02:16-06:00",
           "message": "fix(highlighter)!: highlighting takes one pass over a long run (rich-highlighter-058y)\n\nThree of Rich's patterns rescan a run from each of its characters, so a\n100k-cell run took 5s (letters, `<`) to 75s (digits) to highlight:\n\n- `call` looked for a `(` from every letter of a word. It now starts only\n  where a word does. A name glued to the end of another match mid-word\n  (`foo` in `aa-bb-cc-dd-ee-fffoo(`) is no longer styled as a call; this\n  is the one change in output, documented in docs/highlighting.md.\n- the number patterns' `[0-9]+\\.?[0-9]*` could split a digit run any way.\n  `[0-9]+(?:\\.[0-9]*)?` matches the same strings in the same order.\n- `tag` can only open at the text's first `<`; a lookbehind starts it there.\n\nA 600k-input differential fuzz against the old patterns found no\ndifference in JSONHighlighter and, in ReprHighlighter, only glued calls.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "1c3580c5a2146be7cd66c6dc081f6ded7664d1f7",
-      "timestamp": "2026-10-03T13:55:37.797Z",
-      "commits": [
-        {
-          "sha": "1c3580c5a2146be7cd66c6dc081f6ded7664d1f7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T07:54:03-06:00",
-          "message": "effects-feel: a breath blooms from its heart and fills the row unevenly (#322)\n\n* effects-feel: a breath blooms from its heart and fills the row unevenly (rich-effects-fxiy.b6i)\n\nSpread 0.0012 -> 0.005 of a breath per column, so warmth visibly rolls out\nfrom the wandering heart; depth varies 40% along the row, not 15%; breath\nlengths drift 0.1 of a turn, not 0.03. Worst 1 fps step 0.0368 over 3600 s\nx 4 z x 2 offsets x spans {40,104} (bar 0.04).\n\n* effects-feel: a breath reaches the edges in one share of its turn at any width (rich-effects-fxiy.b6i)\n\nReview high on #322: SPREAD per column let the heart's wander drag phase\nbackward on wide elements, the 0.1 drift could start a cell off rest at\nt=0 for some z, and 40% depth meant no sigh reached its swing.\n\n- lag is REACH (0.5 turn) times distance over span, so the forward-phase\n  bound no longer depends on width\n- drift is measured from t=0, so every cell starts at rest at any z\n- depth goes through a smoothstep: deep stretches fill to the whole swing\n- tests sweep z, check the field is exactly 0 at t=0 (red before at\n  z=82.14), and that every cell swells once and ebbs once per breath at\n  40, 104 and 1024 columns\n\n* effects-feel: a breath spreads a column at a time on a narrow element (rich-effects-fxiy.b6i)\n\nReview medium on #322: lag as a share of span stepped neighbours past a\njust-noticeable difference on badges of 12 columns or fewer (0.046 at 6).\nThe rate per column is now min(SPREAD, REACH / span): bounded per column\nfor neighbours, bounded across the width for forward phase. Test: adjacent\ncells under 0.02 at 6, 12, 40 and 1024 columns (red at 6 and 12 before).\n\n* effects-feel: the whole element rests between breaths, and neighbours hold at any swing (rich-effects-fxiy.b6i)\n\nReview high (escalation) on #322:\n- REACH 0.5 -> 0.12: a sigh is done 0.86 into its turn at the heart, so\n  with half a turn of lag the edges were still exhaling when the next\n  breath began, and the element never rested. Now every turn has a\n  moment where nothing is lit, at 40, 104 and 1024 columns.\n- SPREAD 0.005 -> 0.003 and the fill term gentler along the row (noise\n  at 0.025 a column, smoothstep over -0.5..0.5): neighbours under 0.02\n  at swing 1 under every continuous ease, not only the defaults. Step\n  eases jump by design; the docstring now says \"continuous\".\n- The 0.06 offset had no job once drift is measured from t=0; gone.\n  drift(0) is computed once. The per-cell `depth` is `fill`, so it no\n  longer shares a word with a breath's strength.\n- Tests sample real columns at three z; the app test watches two breaths\n  rather than one instant a cell may be resting at."
         }
       ]
     }
