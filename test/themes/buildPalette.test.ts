@@ -39,6 +39,12 @@ describe("buildPalette", () => {
     expect(p.get("on-primary")).toEqual(new ColorRgba(0, 0, 0));
   });
 
+  it("refuses a fully transparent base colour: there is no colour to derive on-*, *-muted or text-* from", () => {
+    const white = new ColorRgba(255, 255, 255);
+    expect(() => buildPalette("light", false, { ...TEST_BASE, background: white, primary: new ColorRgba(0, 0, 0, 0) }))
+      .toThrow(/primary is fully transparent/);
+  });
+
   it("includes background and foreground", () => {
     const p = buildPalette("test", true, TEST_BASE);
     expect(p.get("background")).toEqual(TEST_BASE.background);

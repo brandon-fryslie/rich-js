@@ -12,7 +12,8 @@
  * [LAW:types-are-the-program] There is no call that takes a foreground alone,
  * so a widget cannot draw half a pair.
  * [LAW:single-enforcer] Every widget resolves palette keys here, and this is
- * where a key the palette lacks is reported.
+ * where a key the palette lacks, or one that draws no colour (a theme's
+ * fully transparent "no background"), is reported.
  */
 
 import { ColorSpec, type TerminalTheme } from "../core/color.js";
@@ -29,6 +30,9 @@ function paletteColor(theme: TerminalTheme, key: string): ColorSpec {
   const rgba = theme.palette.get(key);
   if (rgba === undefined) {
     throw new RangeError(`palette ${JSON.stringify(theme.palette.name)} has no ${JSON.stringify(key)}`);
+  }
+  if (rgba.alpha === 0) {
+    throw new RangeError(`palette ${JSON.stringify(theme.palette.name)}: ${JSON.stringify(key)} is fully transparent, so it cannot be half of a widget's colour pair`);
   }
   return ColorSpec.fromRgba(rgba);
 }

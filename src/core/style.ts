@@ -137,7 +137,7 @@ export class Style {
 
   constructor(options: StyleOptions = {}) {
     this.color = resolveColor(options.color);
-    this.bgcolor = resolveColor(options.bgcolor);
+    this.bgcolor = resolveBackground(options.bgcolor);
     this.bold = options.bold;
     this.dim = options.dim;
     this.italic = options.italic;
@@ -644,6 +644,15 @@ function resolveColor(c: string | ColorSpec | undefined): ColorSpec | undefined 
   if (c === undefined) return undefined;
   if (c instanceof ColorSpec) return c;
   return ColorSpec.parse(c);
+}
+
+// A fully transparent background draws nothing over whatever lies beneath it,
+// so it is no background: a style added on top of another keeps that one's,
+// which is what Textual's `#00000000` means. A transparent foreground is not
+// the same, it draws its glyph in the background colour, so it stays a colour.
+function resolveBackground(c: string | ColorSpec | undefined): ColorSpec | undefined {
+  const spec = resolveColor(c);
+  return spec?.value?.alpha === 0 ? undefined : spec;
 }
 
 // --- DEFAULT_STYLES ---

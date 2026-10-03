@@ -213,7 +213,7 @@ Each OKLCH axis function round-trips sRGB → OKLCH → sRGB, so chaining three 
 
 ## Naming theme colors
 
-`color "name-or-hex"` resolves a palette variable to a color, and passes an already-literal color straight through. That second half is not a convenience — it makes `color` idempotent, so a program can apply it unconditionally to any author-written color string without first asking whether it is a name or already a color. A palette color is always opaque: a theme's translucent variable, such as a hover tint, arrives already drawn on that theme's own background.
+`color "name-or-hex"` resolves a palette variable to a color, and passes an already-literal color straight through. That second half is not a convenience — it makes `color` idempotent, so a program can apply it unconditionally to any author-written color string without first asking whether it is a name or already a color. A palette color is opaque or fully transparent. A theme's translucent variable, such as a hover tint, arrives already drawn on that theme's own background; a fully transparent one, such as `link-background` in most bundled themes, is Textual's "no background" and stays transparent, so `bg (color "link-background")` leaves the background under it in place. It has no colour of its own to compute with, so the colour functions and `ramp` refuse it; use the colour of the surface it sits on instead.
 
 ```typescript
 import { createEngine } from "@promptctl/go-template-js";

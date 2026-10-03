@@ -13,6 +13,7 @@ import {
 import { parseHexColor } from "../../src/core/color.js";
 import { GRUVBOX, DRACULA, ROSE_PINE_DAWN } from "../../src/themes/terminalThemes.js";
 import { EASES } from "../../src/core/easing.js";
+import { getThemePalette } from "../../src/themes/registry.js";
 import { ColorRamp } from "../../src/themes/ramp.js";
 import { baseStyleOf } from "../core/base-style.js";
 
@@ -253,6 +254,28 @@ describe("loud failure", () => {
     // are mutually exclusive by type rather than by convention.
     // [LAW:types-are-the-program]
     expect(() => colorText(`{{ darken (bold "x") 2 }}`)).toThrow();
+  });
+
+  it("a fully transparent colour is refused by every colour function and ramp stop", () => {
+    // gruvbox's link-background is #00000000, a theme's "no background". What
+    // shows through it is whatever surface it lands on, so math on it would
+    // answer for a surface nobody named: composited over black, contrastOn
+    // picked white text for a light theme.
+    const registry = getThemePalette("gruvbox");
+    const run = (source: string): string =>
+      engineFor(() => registry).parse(source).evaluate({}).map((f) => f.plain).join("");
+    expect(run(`{{ color "link-background" }}`)).toBe("#00000000");
+    for (const call of [
+      `darken (color "link-background") 1`,
+      `lighten (color "link-background") 1`,
+      `mix (color "link-background") (color "primary") 50`,
+      `contrastOn (color "link-background")`,
+      `readableOn (color "primary") (color "link-background") 4.5`,
+      `shiftHue (color "link-background") 30`,
+      `ramp 0.5 "linear" 0 "link-background" 1 "primary"`,
+    ]) {
+      expect(() => run(`{{ ${call} }}`), call).toThrow(/fully transparent.*\(color "background"\)/);
+    }
   });
 });
 

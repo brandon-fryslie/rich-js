@@ -68,6 +68,7 @@ import type { Palette } from "../themes/palette.js";
 import { resolveColorRef } from "../themes/colorRef.js";
 import { parseEase } from "../core/easing.js";
 import { ColorRamp, type ColorStop } from "../themes/ramp.js";
+import { computable } from "./color-funcs.js";
 
 /**
  * The `(position, color-ref)` pairs a `ramp` call's tail spells, as stops.
@@ -92,7 +93,7 @@ function colorStops(tail: readonly unknown[], palette: Palette): ColorStop[] {
   for (let i = 0; i < tail.length; i += 2) {
     stops.push({
       at: tail[i] as number,
-      color: resolveColorRef(palette, tail[i + 1] as string),
+      color: computable(resolveColorRef(palette, tail[i + 1] as string), "ramp", JSON.stringify(tail[i + 1])),
     });
   }
   return stops;
@@ -101,7 +102,9 @@ function colorStops(tail: readonly unknown[], palette: Palette): ColorStop[] {
 /**
  * Register `color "name-or-hex"` against a live palette.
  *
- * `color` resolves a palette variable name to a `#RRGGBB` string, and passes
+ * `color` resolves a palette variable name to its hex string — `#RRGGBB`, or
+ * `#00000000` for a theme's "no background", which `bg` paints as no
+ * background and the colour functions refuse — and passes
  * an already-literal color through unchanged. That second half is not a
  * convenience — it makes `color` **idempotent**, which is what lets consumers
  * apply it unconditionally to any author-written color string without first

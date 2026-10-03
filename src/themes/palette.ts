@@ -13,7 +13,7 @@ import type { ColorRgba } from "../core/color.js";
  * is `resolveColorRef`'s job in `colorRef.ts`, so a Palette never has to
  * know about the syntax callers write.
  *
- * Every colour a Palette hands out is opaque. A theme's translucent variable
+ * Every colour a Palette hands out is opaque or fully transparent. A theme's translucent variable
  * (Textual's `boost`, a hover overlay) is a tint meant for that theme's own
  * background, and a colour leaving the palette no longer knows which
  * background that was: the SGR writer would composite it over the terminal's
@@ -21,9 +21,12 @@ import type { ColorRgba } from "../core/color.js";
  * So it is drawn onto `background` here, once, and the writer, the exporters
  * and the contrast choosers all read the colour it has there. On any other
  * surface it keeps that colour: the tint does not follow what is under it.
+ * The exception is a fully transparent colour, Textual's "no background": it
+ * draws nothing on any surface, so it needs none and is handed out as it is,
+ * and a `Style` reads it as no background at all.
  *
  * @throws RangeError when `background` is translucent, or when a colour is
- * translucent and there is no `background` to draw it on.
+ * partly transparent and there is no `background` to draw it on.
  */
 export class Palette {
   readonly name: string;
@@ -38,7 +41,7 @@ export class Palette {
     this.name = name;
     this.dark = dark;
     // [LAW:single-enforcer] Every palette is built through here, so this is
-    // where "a palette colour is opaque" holds. The fresh map is also the
+    // where "a palette colour is opaque or draws nothing" holds. The fresh map is also the
     // defensive copy: ReadonlyMap is a compile-time aliasing constraint, not a
     // runtime one.
     const background = vars.get("background");
@@ -65,13 +68,14 @@ export function drawnOn(name: string, background: ColorRgba): (colour: ColorRgba
       `palette ${JSON.stringify(name)}: background is the surface its translucent colours are drawn on, so it must be opaque; got ${background.hex}`,
     );
   }
-  return (colour) => colour.compositeOver(background);
+  // A fully transparent colour is not a tint: it draws nothing on any surface.
+  return (colour) => (colour.alpha === 0 ? colour : colour.compositeOver(background));
 }
 
 // A palette with no background has nothing to draw a translucent colour on.
 function opaqueOnly(name: string): (colour: ColorRgba, key: string) => ColorRgba {
   return (colour, key) => {
-    if (colour.alpha !== 1) {
+    if (colour.alpha !== 1 && colour.alpha !== 0) {
       throw new RangeError(
         `palette ${JSON.stringify(name)}: ${key} is translucent (${colour.hex}) but the palette has no "background" to draw it on`,
       );

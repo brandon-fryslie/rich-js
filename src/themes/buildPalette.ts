@@ -52,16 +52,28 @@ export const ACCENT_KEYS: readonly AccentKey[] = ["primary", "secondary", "accen
  * as and every derived entry is opaque.
  */
 export function buildPalette(name: string, dark: boolean, given: BaseColors): Palette {
-  const draw = drawnOn(name, given.background);
+  const drawn = drawnOn(name, given.background);
+  // Every base colour is derived from, and a fully transparent one draws no
+  // colour of its own to derive a muted shade or a contrast from.
+  // [LAW:no-silent-failure]
+  const draw = (key: keyof BaseColors): ColorRgba => {
+    const colour = given[key];
+    if (colour.alpha === 0) {
+      throw new RangeError(
+        `palette ${JSON.stringify(name)}: ${key} is fully transparent (${colour.hex}), so there is no colour to derive the palette from`,
+      );
+    }
+    return drawn(colour);
+  };
   const base: BaseColors = {
-    primary: draw(given.primary),
-    secondary: draw(given.secondary),
-    accent: draw(given.accent),
-    success: draw(given.success),
-    warning: draw(given.warning),
-    error: draw(given.error),
+    primary: draw("primary"),
+    secondary: draw("secondary"),
+    accent: draw("accent"),
+    success: draw("success"),
+    warning: draw("warning"),
+    error: draw("error"),
     background: given.background,
-    foreground: draw(given.foreground),
+    foreground: draw("foreground"),
   };
   const vars = new Map<string, ColorRgba>();
 

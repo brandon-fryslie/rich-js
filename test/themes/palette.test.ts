@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ColorRgba } from "../../src/core/color.js";
-import { Palette } from "../../src/themes/palette.js";
+import { Palette, drawnOn } from "../../src/themes/palette.js";
 
 describe("Palette", () => {
   const primary = new ColorRgba(133, 165, 152);
@@ -46,6 +46,20 @@ describe("Palette", () => {
   it("refuses a translucent var when there is no background to draw it on", () => {
     const tint = new ColorRgba(0, 0, 0, 0.5);
     expect(() => new Palette("t", false, new Map([["hover", tint]]))).toThrow(/hover is translucent/);
+  });
+
+  it("hands out a fully transparent var as itself, with or without a background", () => {
+    const nothing = new ColorRgba(0, 0, 0, 0);
+    expect(new Palette("t", false, new Map([["background", new ColorRgba(200, 200, 200)], ["link-background", nothing]])).get("link-background")).toEqual(nothing);
+    expect(new Palette("t", false, new Map([["link-background", nothing]])).get("link-background")).toEqual(nothing);
+  });
+
+  it("draws a tint onto the background, and a fully transparent colour as itself", () => {
+    // drawnOn is what buildPalette and getThemeBaseColors draw through too, so
+    // every producer of palette colours reads #00000000 the same way.
+    const draw = drawnOn("t", new ColorRgba(200, 200, 200));
+    expect(draw(new ColorRgba(0, 0, 0, 0))).toEqual(new ColorRgba(0, 0, 0, 0));
+    expect(draw(new ColorRgba(0, 0, 0, 0.5))).toEqual(new ColorRgba(100, 100, 100));
   });
 
   it("refuses a translucent background", () => {
