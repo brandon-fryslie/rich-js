@@ -214,8 +214,15 @@ export class RichText implements Renderable, Measurable {
     return this._text.length;
   }
 
+  /**
+   * The cells this text draws, tabs widened to their stops as `render` widens
+   * them. A deliberate departure from Rich, whose `Text.cell_len` measures the
+   * raw string and counts a tab as no cells, so everything sized by it — a
+   * truncation, an alignment, a header's remaining width — decided on a width
+   * the text does not draw.
+   */
   get cellLength(): number {
-    return cellLen(this._text);
+    return cellLen(expandTabs(this._text, this._tabSize).text);
   }
 
   get hasContent(): boolean {
@@ -607,6 +614,9 @@ export class RichText implements Renderable, Measurable {
    * styling; the marker (if any) is inserted as plain text with no span.
    * Use `stylize(...)` on the result to color the marker if needed.
    *
+   * Tabs are widened to their stops first, as `expandTabs` widens them, so the
+   * width cut to is the width drawn.
+   *
    * [LAW:dataflow-not-control-flow] mode/marker/width all flow as values;
    * the walk is the same shape regardless. No "if truncated then rebuild"
    * branch \u2014 the unchanged path just early-returns when content fits.
@@ -618,6 +628,9 @@ export class RichText implements Renderable, Measurable {
       marker?: string;
     },
   ): this {
+    // [LAW:one-source-of-truth] Cut what is drawn: once a tab is spaces, a cell
+    // of the plain text is a cell of the output, so the cut lands where it looks.
+    this.expandTabs();
     if (this.cellLength <= width) return this;
 
     const mode = options?.mode ?? "right";
@@ -699,6 +712,9 @@ export class RichText implements Renderable, Measurable {
   // --- Alignment ---
 
   align(justify: "left" | "center" | "right", width: number): this {
+    // A tab is a column, and left padding would move every stop after it:
+    // widened first, the text keeps the width it was measured at.
+    this.expandTabs();
     const currentWidth = this.cellLength;
     if (currentWidth >= width) return this;
 
