@@ -1,1 +1,0 @@
-import{_ as a,o as i,c as n,ag as l}from"./chunks/framework.DfAB2TJQ.js";const c=JSON.parse('{"title":"Padding","description":"","frontmatter":{},"headers":[],"relativePath":"padding.md","filePath":"padding.md"}'),e={name:"padding.md"};function t(p,s,o,h,r,k){return i(),n("div",null,[...s[0]||(s[0]=[l("",16)])])}const g=a(e,[["render",t]]);export{c as __pageData,g as default};

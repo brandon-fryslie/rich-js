@@ -2,31 +2,31 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-320",
-      "ref": "refs/pull/320/merge",
-      "sha": "b7ce9188a3bba473242a7a45cd0183e05dcc412b",
-      "timestamp": "2026-10-03T13:17:16.032Z",
+      "version": "pr-318",
+      "ref": "refs/pull/318/merge",
+      "sha": "7f87a5731c224db985ba65b6087ac7d2e5584aaa",
+      "timestamp": "2026-10-03T13:18:58.289Z",
       "commits": [
         {
-          "sha": "b7ce9188a3bba473242a7a45cd0183e05dcc412b",
+          "sha": "7f87a5731c224db985ba65b6087ac7d2e5584aaa",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T13:16:00Z",
-          "message": "Merge 2ecb56c5f8091003c575efc3748e114fd0a67bd6 into 3d7756ac5a041b157ba4ef985b01e802f666855f\n"
+          "timestamp": "2026-10-03T13:18:06Z",
+          "message": "Merge e8f972333d321fd4ec70d9773b94418698957c61 into 3d7756ac5a041b157ba4ef985b01e802f666855f\n"
         },
         {
-          "sha": "2ecb56c5f8091003c575efc3748e114fd0a67bd6",
+          "sha": "e8f972333d321fd4ec70d9773b94418698957c61",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T07:15:54-06:00",
-          "message": "docs(color): no surface but black is left that an export flattens over (rich-style-wl27)\n\nReview: three comments and one test name still described an export\ncompositing over its canvas, and colorMath steered callers to pass\nexportCanvas(theme).background as the contrast substrate — which now\npicks text against a colour the export never draws.\n"
+          "timestamp": "2026-10-03T07:18:02-06:00",
+          "message": "effects-feel: a firefly's period is its turn, and every loop clears the step bar with room (rich-effects-fxiy.b6i)\n\nReview high on #318:\n- sparkle: `seconds` is the firefly's turn (default 140; the brightest\n  flash still ~84 s), dark turns 15%, one firefly per eight columns. A\n  text-sized element is dark 2-5% of the time, not 30%, and never for minutes.\n- swell of strength 0 is 0 everywhere, so sparkle's k===0 special case goes.\n- pulse 33 s, drift's gusts softer-edged and slower to churn: over an hour,\n  four elements, two frame offsets and two widths, no loop steps past 0.037.\n- the step gate watches two elements, the second between the first's frames.\n- tests: pulse's inhale is found, not assumed at t=3.4; sparkle counts cells\n  lit to the eye, not cells a byte changed.\n"
         },
         {
-          "sha": "b665e998bfcb0ab1d07625cc64579dede3802898",
+          "sha": "41bff492de9875915f7bd5b232abc174567b56b8",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T07:12:30-06:00",
-          "message": "fix(export)!: a translucent colour exports as the colour the terminal is sent (rich-style-wl27)\n\nresolveLook flattened alpha over the export canvas while Style.drawnColors\n(what toSgrCodes writes) flattens over SURFACE_BLACK. Truecolor SGR bytes are\nabsolute, so under any non-black theme the export pictured a colour no\nterminal draws: #ff000000 sent 38;2;0;0;0 and exported as the canvas.\n\nresolveLook now reads Style.drawnColors, so there is one flatten and the two\ncannot disagree. Translucent backgrounds change too: they diverged the same way.\n"
+          "timestamp": "2026-10-03T06:56:30-06:00",
+          "message": "effects-feel: breaths, flashes and passes of light are events of their own; the step gate watches half an hour (rich-effects-fxiy.b6i)\n\nPulse: most breaths shallow and quick, about one in six a deep sigh, each\nstarting early or late in its turn. Sparkle: a firefly flashes, hovers,\nfades, and flashes again a few cells off. Shimmer: a glitter path, each\npass at its own pace after a still spell of its own. A weaker event is a\nshorter one (swell), so variety costs no smoothness.\n\nThe 1 fps step gate sampled 300 s; over 600 s drift and sparkle already\nbroke it. It now checks every second of 1800 s.\n"
         }
       ]
     },
@@ -42,28 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T07:06:20-06:00",
           "message": "fix(text): RichText strips carriage returns, as Rich's Text does (rich-text-svdg) (#319)\n\n* fix(text): RichText strips carriage returns, as Rich's Text does (rich-text-svdg)\n\nA CR in a panel title reached the wire inside the border row and sent the\ncursor back over the corner; Rich draws `a b`. The stripped set is now every\nC0 control and DEL but tab and newline: Rich's STRIP_CONTROL_CODES plus the\nport's extension, pinned code by code in test/core/text.test.ts.\n\n* fix(pretty): indent guides count their offsets over the text RichText holds (rich-text-svdg)\n\nStripping CR moved every guide after a key or toString holding one a cell\nright, onto the content. drawMargins now strips before it counts."
-        }
-      ]
-    },
-    {
-      "version": "pr-318",
-      "ref": "refs/pull/318/merge",
-      "sha": "5bbebb7101caebe24d5e220df38aed7e5324e7a5",
-      "timestamp": "2026-10-03T12:58:33.777Z",
-      "commits": [
-        {
-          "sha": "5bbebb7101caebe24d5e220df38aed7e5324e7a5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:56:41-06:00",
-          "message": "Merge 41bff492de9875915f7bd5b232abc174567b56b8 into 066057a3c6982edc862de25d6ea7a986a988bb5d\n"
-        },
-        {
-          "sha": "41bff492de9875915f7bd5b232abc174567b56b8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:56:30-06:00",
-          "message": "effects-feel: breaths, flashes and passes of light are events of their own; the step gate watches half an hour (rich-effects-fxiy.b6i)\n\nPulse: most breaths shallow and quick, about one in six a deep sigh, each\nstarting early or late in its turn. Sparkle: a firefly flashes, hovers,\nfades, and flashes again a few cells off. Shimmer: a glitter path, each\npass at its own pace after a still spell of its own. A weaker event is a\nshorter one (swell), so variety costs no smoothness.\n\nThe 1 fps step gate sampled 300 s; over 600 s drift and sparkle already\nbroke it. It now checks every second of 1800 s.\n"
         }
       ]
     }
