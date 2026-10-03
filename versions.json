@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "dec3042a31706fc2b224cfa3fa745d2b9169d48c",
+      "timestamp": "2026-10-03T12:32:55.877Z",
+      "commits": [
+        {
+          "sha": "dec3042a31706fc2b224cfa3fa745d2b9169d48c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T06:26:23-06:00",
+          "message": "fix(embed)!: a body keeps its own end, as Rich's does (rich-embed-1r2m) (#315)\n\n* fix(embed)!: a body keeps its own end, as Rich's does (rich-embed-1r2m)\n\nA string reads with Rich's default end, as `render_str` gives it, and a\nRichText keeps the end it was given. So `RichText(\"foo\\n\")` or \"foo\\n\" in\na table cell, a column, a panel body, a tree label or a layout pane draws\nthe blank row its newline makes. The sites that set text into a line\nclear the end there: print's run and an inline label (panel and rule\ntitles).\n\nA Layout leaf is now shaped to its region as Rich's `render_lines` shapes\nit: each line cropped and padded to the width, and held to the region's\nrows.\n\nExpected output is Python Rich 9d8f9a3's, pinned in each renderable's tests.\n\n* fix(table): a title's end runs on as the text emits it, as Rich's does (rich-embed-1r2m)\n\nReview pass (high): a title or caption with a non-newline end widened its\nown row past the table. It is now yielded as the text renders it, the title\nstyle set as the text's base. Pins Rich 9d8f9a3 bytes for that, a progress\ndescription's trailing newline, a standalone leaf's width padding, and\nRichText.append leaving the appended text's end behind.\n\n* fix(text): justify pads in the text's base style, as Rich's does (rich-embed-1r2m)\n\nReview pass (medium): setting the table title style as the text's base left\nits justify padding unstyled, because RichText padded outside the base.\nRich's Lines.justify pads inside the Text. Markdown's element style moves to\na span under the inline spans, as Rich's is, so a heading's padding stays\nplain.\n\n* refactor(console): print leaves each part's end to append, as Rich's join does (rich-embed-1r2m)\n\nReview pass (high, escalation): the end-clearing in print was dead —\nTextRun joins with RichText.append, which already drops it. Comments on the\ntitle style and the standalone Layout test now say what Rich does.\n\n* test(console): print leaves a caller's RichText unchanged (rich-embed-1r2m)"
+        }
+      ]
+    },
+    {
       "version": "pr-316",
       "ref": "refs/pull/316/merge",
       "sha": "1d1c86e9a88f7861fe420940bc4ac9fc8ef73434",
@@ -27,21 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T06:12:22-06:00",
           "message": "feat(examples): effects-feel fade and dissolve carry a strip's fills with its words, from and to the terminal's ground (rich-effects-fxiy.b6i)\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "1f43fdb736d7b6f07ea1098af5579afd881725b2",
-      "timestamp": "2026-10-03T12:11:50.588Z",
-      "commits": [
-        {
-          "sha": "1f43fdb736d7b6f07ea1098af5579afd881725b2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:10:11-06:00",
-          "message": "effects-feel: light only ever lights, so a glint on a dark fill reads as sun, not shadow (rich-effects-fxiy.b6i) (#314)\n\n* feat(examples): effects-feel light catches a strip's lettering too, so a glint on a dark fill reads as light (rich-effects-fxiy.b6i)\n\nOn the strip's muted fills a glint could only deepen the fill to amber (light\ntext sits on them), which read as a passing shadow. A subject's lit colours\nare now every colour its text cells set, each catching the side of a light\naway from its partner (`catches`, `Side`): the lettering glints pale while the\nfill glows amber, the way sunlight catches a sign. Label contrast holds at\nrest under shimmer, pulse and sparkle; drift on dark improves 4.58 -> 4.90.\n\n`Subject.slot` is gone: what a subject lights is what its text cells set. At\n16 colours the theme's white is both a pale fill and lettering on a paler one,\nso it has no side away from both and catches no light (an ANSI slot cannot\nmove anyway).\n\n* feat(examples): effects-feel light only ever lights, so a glint on a dark fill reads as sun, not shadow (rich-effects-fxiy.b6i)\n\nA darker colour was pulled toward a deep amber, which at a muted fill's\nlightness is brown: a glint crossing the dark half of the strip read as a\nshadow. Each light is now one colour; both colours of a cell move toward\nit and never below their own lightness, the darker only 0.15 of the way,\nso the fill warms a little while its lettering lifts to cream and the\nworst contrast stays within 93% of rest. The status line is drawn at the\ndimmest ink that still reads at 7:1, which leaves light room to lift it.\n\n* feat(examples): effects-feel light takes each colour's share of what its cells can spare, so effects show (rich-effects-fxiy.b6i)\n\nThe loops sat at the threshold of seeing (pulse ~0.03 ΔE, drift 0.028)\nbecause a fixed per-side share was the only thing keeping a glint from\nclosing a cell, and it closed some anyway: Latte's white-lettered fills fell\nbelow AA, and its status line fell 7 -> 5.4.\n\nA loop is now a Touch (what it does to a colour at a strength) and a Field\n(how strongly, where and when). `shares` settles each colour, lightest first,\nat the largest share every cell it is drawn in can take while still reading at\nits resting contrast or WCAG AA, whichever is lower — measured on the colours\nthe run's depth draws, with strengths snapped to the levels checked. That\nreplaces Side/SHARE/catches and the \"darker wins\" fold.\n\nDefaults retuned for visibility inside the 1 fps no-jump gate: shimmer 90 s\nacross a 32-column band, pulse 16 s at 0.29, drift 50 s at 24 degrees with a\nstronger silver, sparkle 36 s at 0.6 with 6-column halos.\n\nThe status line's ink is `ensureContrast` of the muted ink at the run's depth\ninstead of a hand-rolled bisection.\n\n* perf(examples): effects-feel builds each loop's effect once per subject, not per frame (rich-effects-fxiy.b6i)"
         }
       ]
     }
