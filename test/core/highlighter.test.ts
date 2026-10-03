@@ -200,3 +200,45 @@ describe("ReprHighlighter", () => {
     expect(result.spans.length).toBeGreaterThan(0);
   });
 });
+
+// --- Cost on long runs ---
+
+// Each text is one long run that no pattern can match whole. A pattern that
+// rescans the run from each of its characters costs seconds here (100k cells:
+// ~5s for the letters, ~70s for the digits); one pass costs milliseconds, so
+// the bound only separates linear from quadratic.
+describe("highlighting a long run takes one pass over it", () => {
+  const N = 100_000;
+  it.each([
+    ["letters with no ( after them", "a".repeat(N)],
+    ["digits ending in a letter", "1".repeat(N) + "a"],
+    ["a negative number's digits", "-" + "1".repeat(N)],
+    ["dots", ".".repeat(N)],
+    ["< with no > after it", "<".repeat(N)],
+    ["a < before a name with no > after it", "<" + "a".repeat(N)],
+  ])("%s", (_name, input) => {
+    for (const ctor of [ReprHighlighter, JSONHighlighter]) {
+      const started = performance.now();
+      new ctor().call(input);
+      expect(performance.now() - started, ctor.name).toBeLessThan(1000);
+    }
+  });
+});
+
+describe("ReprHighlighter departs from Rich on a call name that starts mid-word", () => {
+  it("leaves unstyled a name glued to the end of another match, which Rich styles", () => {
+    const text = new ReprHighlighter().call("aa-bb-cc-dd-ee-fffoo(");
+    expect(matchedTexts(text, "repr.eui48")).toEqual(["aa-bb-cc-dd-ee-ff"]);
+    expect(matchedTexts(text, "repr.call")).toEqual([]);
+  });
+
+  it("gives such a name to a later pattern that matches it, where Rich styles it a call", () => {
+    const text = new ReprHighlighter().call("-1.true(");
+    expect(matchedTexts(text, "repr.bool_true")).toEqual(["true"]);
+    expect(matchedTexts(text, "repr.call")).toEqual([]);
+  });
+
+  it("still styles a call name that starts its word", () => {
+    expect(matchedTexts(new ReprHighlighter().call("x aa.bb(1)"), "repr.call")).toEqual(["aa.bb"]);
+  });
+});

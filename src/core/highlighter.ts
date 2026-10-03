@@ -74,6 +74,13 @@ const WB = String.raw`(?:(?<=[${W}])(?![${W}])|(?<![${W}])(?=[${W}]))`;
 const NWB = String.raw`(?:(?<=[${W}])(?=[${W}])|(?<![${W}])(?![${W}]))`;
 const D = String.raw`\p{Nd}`;
 
+// Rich's `[0-9]+\.?[0-9]*`, the digits of a number with an optional fraction,
+// spelled so a digit run has one way to split. Rich's spelling can hand any
+// prefix of a run to `[0-9]+` and the rest to `[0-9]*`, and a run that fails
+// the boundary after it is retried at every split: quadratic in its length.
+// Both spellings match the same strings and try them in the same order.
+const DECIMAL = String.raw`[0-9]+(?:\.[0-9]*)?`;
+
 // --- ReprHighlighter ---
 
 // Rich 15.0.0's patterns.
@@ -81,7 +88,12 @@ const D = String.raw`\p{Nd}`;
 export class ReprHighlighter extends RegexHighlighter {
   static override baseStyle = "repr.";
   static override highlights = [
-    new RegExp(String.raw`(?<tag_start><)(?<tag_name>[\-${W}.:|]*)(?<tag_contents>[^]*)(?<tag_end>>)`, "u"),
+    // `tag_contents` runs to the text's last `>`, so only the text's first `<`
+    // can open a tag; the lookbehind starts the match there and nowhere else,
+    // where Rich retries every later `<` and rescans to the end each time. The
+    // lookahead asks once whether any `>` follows; without it, a `<` before a
+    // long name with no `>` rescans to the end for every length of the name.
+    new RegExp(String.raw`(?<tag_start><)(?<=^[^<]*<)(?=[^]*>)(?<tag_name>[\-${W}.:|]*)(?<tag_contents>[^]*)(?<tag_end>>)`, "u"),
     new RegExp(String.raw`(?<attrib_name>[${W}]{1,50})=(?<attrib_value>"?[${W}]+"?)?`, "u"),
     new RegExp(String.raw`(?<brace>[\][{}()])`, "u"),
     // [LAW:dataflow-not-control-flow] One alternation, scanned once, as Rich's
@@ -93,13 +105,18 @@ export class ReprHighlighter extends RegexHighlighter {
         String.raw`(?<eui64>(?:[0-9A-Fa-f]{1,2}-){7}[0-9A-Fa-f]{1,2}|(?:[0-9A-Fa-f]{1,2}:){7}[0-9A-Fa-f]{1,2}|(?:[0-9A-Fa-f]{4}\.){3}[0-9A-Fa-f]{4})`,
         String.raw`(?<eui48>(?:[0-9A-Fa-f]{1,2}-){5}[0-9A-Fa-f]{1,2}|(?:[0-9A-Fa-f]{1,2}:){5}[0-9A-Fa-f]{1,2}|(?:[0-9A-Fa-f]{4}\.){2}[0-9A-Fa-f]{4})`,
         String.raw`(?<uuid>[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})`,
-        String.raw`(?<call>[${W}.]*?)\(`,
+        // Departs from Rich: a call name starts a word, so the run is scanned
+        // for its `(` once, not again from each of its characters. Rich also
+        // styles a name that starts where another match ended mid-word, the
+        // `foo` of `aa-bb-cc-dd-ee-fffoo(`; this leaves it to the patterns
+        // after this one, so it is plain or, as `true` in `-1.true(`, theirs.
+        String.raw`(?<call>(?<![${W}.])[${W}.]*?)\(`,
         // JavaScript's `true`, `false`, `null` and `undefined` beside Python's
         // names: `Pretty` draws JavaScript values through this highlighter.
         String.raw`${WB}(?<bool_true>True|true)${WB}|${WB}(?<bool_false>False|false)${WB}|${WB}(?<none>None|null|undefined)${WB}`,
         String.raw`(?<ellipsis>\.\.\.)`,
-        String.raw`(?<number_complex>(?<![${W}])(?:-?[0-9]+\.?[0-9]*(?:e[\-+]?${D}+?)?)(?:[\-+](?:[0-9]+\.?[0-9]*(?:e[\-+]?${D}+)?))?j)`,
-        String.raw`(?<number>(?<![${W}])-?[0-9]+\.?[0-9]*(e[\-+]?${D}+?)?${WB}|0x[0-9a-fA-F]*)`,
+        String.raw`(?<number_complex>(?<![${W}])(?:-?${DECIMAL}(?:e[\-+]?${D}+?)?)(?:[\-+](?:${DECIMAL}(?:e[\-+]?${D}+)?))?j)`,
+        String.raw`(?<number>(?<![${W}])-?${DECIMAL}(e[\-+]?${D}+?)?${WB}|0x[0-9a-fA-F]*)`,
         String.raw`(?<path>${NWB}(\/[\-${W}._+]+)*\/)(?<filename>[\-${W}._+]*)?`,
         String.raw`(?<![\\${W}])(?<str>b?'''[^\n]*?(?<!\\)'''|b?'[^\n]*?(?<!\\)'|b?"""[^\n]*?(?<!\\)"""|b?"[^\n]*?(?<!\\)")`,
         String.raw`(?<url>(file|https|http|ws|wss):\/\/[\-0-9a-zA-Z$_+!\x60(),.?\/;:&=%#~@]*)`,
@@ -126,7 +143,7 @@ export class JSONHighlighter extends RegexHighlighter {
       [
         String.raw`(?<brace>[\{\[\(\)\]\}])`,
         String.raw`${WB}(?<bool_true>true)${WB}|${WB}(?<bool_false>false)${WB}|${WB}(?<null>null)${WB}`,
-        String.raw`(?<number>(?<![${W}])-?[0-9]+\.?[0-9]*(e[\-+]?${D}+?)?${WB}|0x[0-9a-fA-F]*)`,
+        String.raw`(?<number>(?<![${W}])-?${DECIMAL}(e[\-+]?${D}+?)?${WB}|0x[0-9a-fA-F]*)`,
         JSON_STR,
       ].join("|"),
       "u",
