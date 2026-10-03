@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-293",
+      "ref": "refs/pull/293/merge",
+      "sha": "26fb4f772986140f95799033b084d5b4469f12d0",
+      "timestamp": "2026-10-03T03:36:46.454Z",
+      "commits": [
+        {
+          "sha": "26fb4f772986140f95799033b084d5b4469f12d0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T21:35:29-06:00",
+          "message": "Merge a6125f183c8ec6619dc5bf229cbc5cc8c4e573cb into 58c1436afdc6f477693098cb1671352f822a5666\n"
+        },
+        {
+          "sha": "a6125f183c8ec6619dc5bf229cbc5cc8c4e573cb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T21:35:25-06:00",
+          "message": "fix(traceback): render any caught value and every V8 frame shape (rich-traceback-9vcb)\n\nTraceback takes unknown and reads a caught value by shape in browser-safe\ncode (string name + message is an error; anything else is NonError,\nformatted by Pretty), replacing installTraceback's node:util toError.\n\nFrames: the stack's own header is stripped before frames are read, so a\nmessage line is never a frame; frames with no line (Promise.all index,\n<anonymous>, native) keep their location; eval frames show the eval\nsite's file; SpiderMonkey/JSC stacks are read; an unreadable line shows\nverbatim. The data bounds print uses move to pretty.ts as\nUNSEEN_DATA_BOUNDS so Traceback shares them.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "58c1436afdc6f477693098cb1671352f822a5666",
