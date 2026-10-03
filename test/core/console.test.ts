@@ -1765,7 +1765,7 @@ describe("Console theme resolution", () => {
 
   it("Status takes its style name from its console's theme", () => {
     for (const [hex, sgr] of COLORS) {
-      const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", theme: new Theme({ "my.status": hex }) });
+      const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", forceTerminal: true, theme: new Theme({ "my.status": hex }) });
       const status = new Status("working", { console: c, spinnerStyle: "my.status" });
       status.start();
       status.update("working-message");

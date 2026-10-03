@@ -26,6 +26,7 @@ function live(options: LiveOptions): { live: Live; out: () => string } {
     width: 20,
     height: 5,
     colorSystem: null,
+    forceTerminal: true,
     hyperlinks: false,
     file: { write: (s: string) => void chunks.push(s) },
   });
@@ -145,7 +146,7 @@ function terminal(cols: number, rows: number): { console: Console; rows: () => P
   const write = (data: string): void => {
     written = written.then(() => new Promise<void>((resolve) => term.write(data, resolve)));
   };
-  const console = new Console({ width: cols, height: rows, colorSystem: null, hyperlinks: false, file: { write } });
+  const console = new Console({ width: cols, height: rows, colorSystem: null, hyperlinks: false, forceTerminal: true, file: { write } });
   // Every line of scrollback and screen, to the last one written.
   const lines = async (): Promise<string[]> => {
     await written;
@@ -279,6 +280,7 @@ describe("Printing through live.console", () => {
         width: 30,
         height: 10,
         colorSystem: null,
+        forceTerminal: true,
         hyperlinks: false,
         file: term.console.file,
         getDatetime: () => new Date(2026, 8, 30, 12, 0, 0),
@@ -315,6 +317,7 @@ describe("Printing through live.console", () => {
       width: 20,
       height: 5,
       colorSystem: null,
+      forceTerminal: true,
       hyperlinks: false,
       file: { write: (s: string) => void chunks.push(s) },
     });
@@ -393,5 +396,55 @@ describe("Live refresh rate", () => {
 
     display.stop();
     expect(clock.timers()).toBe(0);
+  });
+});
+
+// A file, a pipe, a CI log: what Rich's Live writes there is what was printed,
+// plain, and the frame once at stop — never a frame per refresh with the
+// escape sequences that move over it.
+describe("Live on a console that is not interactive", () => {
+  const consoles = [
+    ["a file", {}],
+    ["a terminal told it is not interactive", { forceTerminal: true, forceInteractive: false }],
+  ] as const;
+
+  function plain(console: object, options: LiveOptions): { live: Live; out: () => string; clock: ReturnType<typeof fakeClock> } {
+    const chunks: string[] = [];
+    const clock = fakeClock();
+    const target = new Console({
+      width: 20,
+      height: 5,
+      colorSystem: null,
+      hyperlinks: false,
+      file: { write: (s: string) => void chunks.push(s) },
+      ...console,
+    });
+    const display = new Live(new RichText("frame\nlast row"), { console: target, clock, ...options });
+    return { live: display, out: () => chunks.join(""), clock };
+  }
+
+  it.each(consoles)("on %s, writes printed lines plain and the frame once at stop", (_name, console) => {
+    for (const altScreen of [false, true]) {
+      const { live: display, out, clock } = plain(console, { altScreen });
+      display.start();
+      clock.advance(1);
+      display.console.print("one");
+      display.refresh();
+      display.console.print("two");
+      clock.advance(1);
+      display.stop();
+
+      expect(out()).toBe("one\ntwo\nframe\nlast row\n");
+    }
+  });
+
+  it.each(consoles)("on %s, a transient display writes only what was printed", (_name, console) => {
+    const { live: display, out, clock } = plain(console, { transient: true });
+    display.start();
+    display.console.print("one");
+    clock.advance(1);
+    display.stop();
+
+    expect(out()).toBe("one\n");
   });
 });

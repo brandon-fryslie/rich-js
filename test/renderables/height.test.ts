@@ -25,6 +25,7 @@ function sized(height: number): { console: Console; out: () => string } {
     width: 20,
     height,
     colorSystem: null,
+    forceTerminal: true,
     hyperlinks: false,
     file: { write: (s: string) => void chunks.push(s) },
   });
@@ -106,6 +107,7 @@ describe("alt-screen Live frames", () => {
       width: Infinity,
       height: 2,
       colorSystem: null,
+      forceTerminal: true,
       file: { write: (s: string) => void chunks.push(s) },
     });
     const live = new Live(new RichText("hi", { end: "" }), { console, autoRefresh: false, altScreen: true });

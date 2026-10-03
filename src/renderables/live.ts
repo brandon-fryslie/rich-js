@@ -8,12 +8,27 @@
  * - **Alt-screen** (`altScreen: true`): enters the alternate screen buffer
  *   on start and restores the original buffer on stop. The screen is the
  *   frame's region, so a `Layout` fills it. Good for full-screen TUI apps.
+ *
+ * On a console that is not interactive — a file, a pipe, a CI log — neither
+ * mode paints: what is printed goes out plain, and the frame is written once,
+ * when the display stops, as Rich's `Live` does.
+ *
+ * Live is not built on `App`, though both take a terminal, paint a frame over
+ * the last and hand the terminal back. That much is the `Painter`'s, and both
+ * hold one. The rest differs in who owns what. An `App` owns its terminal: it
+ * starts and stops a `TerminalHost`, sets raw mode, reads keys and pointers,
+ * suspends, and builds its own `Console` from the host. A `Live` owns none of
+ * that. It draws into a `Console` its caller owns and goes on writing
+ * through — a sink that may be a file, whose every other write has to step
+ * around the frame (`Console.claimLiveRegion`) — and it reads no input. An
+ * `App` over that console would need a host that cannot start, stop, read or
+ * suspend, and a second owner of the console's writes.
  */
 
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
-import { Painter, type Screen } from "../core/paint.js";
+import { FinalFramePainter, SurfacePainter, type Painter, type Screen } from "../core/paint.js";
 import { fitHeight, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 
@@ -57,9 +72,12 @@ export class Live {
     this._autoRefresh = options?.autoRefresh !== false;
     this._transient = options?.transient ?? false;
     this._verticalOverflow = options?.verticalOverflow ?? "ellipsis";
-    this._painter = new Painter(options?.altScreen ? "alternate" : "inline", (bytes) =>
-      this._console.file.write(bytes),
-    );
+    const write = (bytes: string): void => void this._console.file.write(bytes);
+    // [LAW:dataflow-not-control-flow] What the console is decides which
+    // painter Live holds; every frame then takes the same path through it.
+    this._painter = this._console.isInteractive
+      ? new SurfacePainter(options?.altScreen ? "alternate" : "inline", write)
+      : new FinalFramePainter(write);
     this._held = null;
   }
 

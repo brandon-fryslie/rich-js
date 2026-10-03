@@ -28,7 +28,7 @@
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { Console, type ConsoleOptions } from "../core/console.js";
 import { Segment } from "../core/segment.js";
-import { Painter, type Surface } from "../core/paint.js";
+import { SurfacePainter, type Painter, type Surface } from "../core/paint.js";
 import { fitHeight, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { hostEnvironment } from "./host-environment.js";
@@ -114,7 +114,7 @@ export class App {
   constructor(options: AppOptions) {
     this.host = options.host;
     this.surface = options.surface;
-    this.painter = new Painter(options.surface, (bytes) => this.host.write(bytes));
+    this.painter = new SurfacePainter(options.surface, (bytes) => this.host.write(bytes));
     this.view = options.view;
     this.clock = options.clock ?? systemClock();
     this.rate = options.rate ?? DEFAULT_RATE;

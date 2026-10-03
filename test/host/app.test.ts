@@ -548,6 +548,17 @@ describe("App inline", () => {
     expect(host.output()).not.toContain(POINTER_ON);
   });
 
+  it("hands the terminal back with style reset before the cursor is shown, on the line under the frame", async () => {
+    const host = scriptedHost({ cols: 10, rows: 5 });
+    const target = app(host, () => text("one\ntwo"), "inline");
+    const running = target.run();
+
+    target.stop();
+
+    await expect(running).resolves.toBeUndefined();
+    expect(host.output().endsWith("\x1b[0m" + CURSOR_ON + "\n")).toBe(true);
+  });
+
   it("crops a frame taller than the terminal to the terminal", () => {
     const host = scriptedHost({ cols: 10, rows: 2 });
     const target = app(host, () => text("a\nb\nc\nd"), "inline");
