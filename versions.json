@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-297",
-      "ref": "refs/pull/297/merge",
-      "sha": "d1a125474f3e04777e8865a0d4e75816f7644744",
-      "timestamp": "2026-10-03T05:43:56.267Z",
-      "commits": [
-        {
-          "sha": "d1a125474f3e04777e8865a0d4e75816f7644744",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T05:42:43Z",
-          "message": "Merge f8b5e5aaba2bd1f2edd9c322bc51d2987e194e91 into eb23c375bcca60a5dff382d4c53034ce6d78d786\n"
-        },
-        {
-          "sha": "f8b5e5aaba2bd1f2edd9c322bc51d2987e194e91",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T23:42:38-06:00",
-          "message": "fix(markdown): a lazy continuation line is only ever paragraph text (rich-markdown-ht8e)\n"
-        },
-        {
-          "sha": "271708a3677049d32d24fa097aa77bdce3cd2d2e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T23:38:19-06:00",
-          "message": "fix(markdown): lines keep their source columns inside containers; link text styles win; linear reading (rich-markdown-ht8e)\n\nA container's lines now carry their container's content column instead of\nbeing cut, so tabs reach their source stops at any depth and a fence, quote\nor heading may sit up to three columns into an item. A thematic break wins\nover a list item; `===` alone is text. Code tabs are expanded at Syntax's 8.\nA link's text styles sit over the link's own. Lazy continuation reads its\ncontainer once per run, and inline brackets pair in one pass.\n"
-        },
-        {
-          "sha": "4495c653e075f3ff2639cee82488757548353eb9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T23:21:56-06:00",
-          "message": "fix(markdown): list items hold blocks, h1 is centred, inline links parse fully (rich-markdown-ht8e)\n\nA list item is now a container, tokenized as Markdown of its own under its\ncontent column, the way a quote already was: fences, quotes and nested lists\ninside an item survive, nesting is drawn from the parent's text column, a\nnumber short of the content column is a sibling, numbering counts on from the\nfirst item, and a marker four columns in is indented code.\n\nLazy continuation is one rule for quotes and items. Outside a container no\nparagraph is open, so any list item ends it: \"> a\\n2024. b\" now opens a list,\nas CommonMark and Rich read it.\n\nh1 centres per row and h2+ stay left; the heading style is the text's own,\nso centring pads beside it. Inline text is parsed rather than matched: link\nURLs keep balanced parentheses, link text is inline Markdown, and an image\ndraws as Rich's ImageItem does.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "eb23c375bcca60a5dff382d4c53034ce6d78d786",
-      "timestamp": "2026-10-03T05:13:48.092Z",
+      "sha": "f14cde4d6a0aa23b7683bccba8e67f5eb5a7b872",
+      "timestamp": "2026-10-03T05:47:20.291Z",
       "commits": [
         {
-          "sha": "eb23c375bcca60a5dff382d4c53034ce6d78d786",
+          "sha": "f14cde4d6a0aa23b7683bccba8e67f5eb5a7b872",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T23:12:33-06:00",
-          "message": "fix(color)!: one hex grammar behind every hex parser, and a ColorSystemName union (rich-color-2qev) (#296)\n\n* fix(color): one hex grammar behind every hex parser, and a ColorSystemName union for every colorSystem (rich-color-2qev)\n\nparseRgbHex/parseRgbaHex validated nothing: parseRgbHex(\"1g0000\") returned red=1.\nThey, and parseHexColor (moved to core/color.ts beside them), are now one\nprivate grammar check at the lengths each admits, throwing ColorParseError\nnaming the input. ColorSpec.parse, theme data, resolveColorRef and the template\ncolour functions route through them; their own regexes and the exported\nHEX_COLOR_RE are gone. resolveColorRef still throws ColorRefError, wrapping.\n\nColorSystemName is derived from the depth table it names. resolveColorSystem\nno longer accepts FORCE_COLOR values or TERM names (\"1\", \"vscode\") through the\nenv table it shared.\n\n* fix(color): the environment's colour vocabulary is its own Map; hex grammar text read off the admitted lengths (rich-color-2qev)\n\nENV_DEPTHS no longer spreads the ColorSystemName table, so FORCE_COLOR=none or\nTERM=truecolor is an unknown env value, and as a Map a value naming an\nObject.prototype member (FORCE_COLOR=constructor) is unknown rather than a\nfunction returned as a depth."
+          "timestamp": "2026-10-02T23:46:07-06:00",
+          "message": "fix(markdown): list items hold blocks, h1 is centred, inline links parse fully (rich-markdown-ht8e) (#297)\n\n* fix(markdown): list items hold blocks, h1 is centred, inline links parse fully (rich-markdown-ht8e)\n\nA list item is now a container, tokenized as Markdown of its own under its\ncontent column, the way a quote already was: fences, quotes and nested lists\ninside an item survive, nesting is drawn from the parent's text column, a\nnumber short of the content column is a sibling, numbering counts on from the\nfirst item, and a marker four columns in is indented code.\n\nLazy continuation is one rule for quotes and items. Outside a container no\nparagraph is open, so any list item ends it: \"> a\\n2024. b\" now opens a list,\nas CommonMark and Rich read it.\n\nh1 centres per row and h2+ stay left; the heading style is the text's own,\nso centring pads beside it. Inline text is parsed rather than matched: link\nURLs keep balanced parentheses, link text is inline Markdown, and an image\ndraws as Rich's ImageItem does.\n\n* fix(markdown): lines keep their source columns inside containers; link text styles win; linear reading (rich-markdown-ht8e)\n\nA container's lines now carry their container's content column instead of\nbeing cut, so tabs reach their source stops at any depth and a fence, quote\nor heading may sit up to three columns into an item. A thematic break wins\nover a list item; `===` alone is text. Code tabs are expanded at Syntax's 8.\nA link's text styles sit over the link's own. Lazy continuation reads its\ncontainer once per run, and inline brackets pair in one pass.\n\n* fix(markdown): a lazy continuation line is only ever paragraph text (rich-markdown-ht8e)"
         }
       ]
     }
