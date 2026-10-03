@@ -4,15 +4,22 @@
     {
       "version": "pr-333",
       "ref": "refs/pull/333/merge",
-      "sha": "8e0949d212ad965af25f18719115297589fc6105",
-      "timestamp": "2026-10-03T16:00:48.188Z",
+      "sha": "225f8315e2864d366020937564befb4a4192e4e7",
+      "timestamp": "2026-10-03T16:07:28.436Z",
       "commits": [
         {
-          "sha": "8e0949d212ad965af25f18719115297589fc6105",
+          "sha": "225f8315e2864d366020937564befb4a4192e4e7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T09:59:58-06:00",
-          "message": "Merge 5762807a37315039e7b98076a3b21672bded8925 into a420e29e75cb36dc59c12858fad2c13fad03dc31\n"
+          "timestamp": "2026-10-03T16:06:35Z",
+          "message": "Merge 471f3897923b2899c4b4aba08f5136de74607ada into a420e29e75cb36dc59c12858fad2c13fad03dc31\n"
+        },
+        {
+          "sha": "471f3897923b2899c4b4aba08f5136de74607ada",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T10:06:30-06:00",
+          "message": "fix(progress): samples kept in place, negative estimates drawn as Rich's floor divmod draws them, speed window documented from the latest update (rich-progress-jj5r.ef9)\n"
         },
         {
           "sha": "5762807a37315039e7b98076a3b21672bded8925",
