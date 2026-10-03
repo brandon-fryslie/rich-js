@@ -36,10 +36,10 @@ export interface Settings {
 
 /** Each effect's defaults: the starting point for the sign-off, nothing more. */
 const DEFAULTS: Record<EffectName, { seconds: number; ease: EaseName; swing: number; unit: string }> = {
-  shimmer: { seconds: 48, ease: "linear", swing: 0.75, unit: "mix toward the light at the brightest glint, 0–1" },
-  pulse: { seconds: 8, ease: "linear", swing: 0.35, unit: "mix toward the light at the top of a breath, 0–1" },
-  drift: { seconds: 30, ease: "linear", swing: 14, unit: "degrees of hue at a gust's strongest" },
-  sparkle: { seconds: 22, ease: "linear", swing: 0.42, unit: "mix toward the firefly's colour at its brightest, 0–1" },
+  shimmer: { seconds: 90, ease: "linear", swing: 0.75, unit: "mix toward the light at the brightest glint, 0–1" },
+  pulse: { seconds: 16, ease: "linear", swing: 0.29, unit: "mix toward the light at the top of a breath, 0–1" },
+  drift: { seconds: 50, ease: "linear", swing: 24, unit: "degrees of hue at a gust's strongest" },
+  sparkle: { seconds: 36, ease: "linear", swing: 0.6, unit: "mix toward the firefly's colour at its brightest, 0–1" },
   fade: { seconds: 6, ease: "ease-in-out", swing: 1, unit: "how hidden at the start, 0–1" },
   dissolve: { seconds: 8, ease: "ease-in-out", swing: 1, unit: "how hidden once gone, 0–1" },
 };
