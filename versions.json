@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-309",
+      "ref": "refs/pull/309/merge",
+      "sha": "c934ffedfa2e5d508831ebaaf27f511fb72ce0ea",
+      "timestamp": "2026-10-03T10:13:44.043Z",
+      "commits": [
+        {
+          "sha": "c934ffedfa2e5d508831ebaaf27f511fb72ce0ea",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T04:12:33-06:00",
+          "message": "Merge f638d2490045724ffac97580c84c7ba0eb386550 into 17281741baad2e8e1bfed97153c67a4d94c32c5a\n"
+        },
+        {
+          "sha": "f638d2490045724ffac97580c84c7ba0eb386550",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T04:12:28-06:00",
+          "message": "fix(highlighter): ReprHighlighter and the repr.* styles draw what Rich draws (rich-highlighter-nct1)\n\nReprHighlighter now carries Rich 15.0.0's patterns, compiled for the u flag\nwith Python's Unicode \\w, \\b and \\d spelled out, and DEFAULT_STYLES carries\nRich's repr.* table. RegexHighlighter places each group by its match index\n(the d flag) instead of searching the match for the group's text, which found\nthe first copy rather than the captured one.\n\ntest/core/repr-highlight.golden.json is Rich's own spans and truecolor bytes\nfor every string in Rich's highlight_tests plus the ticket's repro; its test\nheader carries the command that regenerates it. Kept divergence: JavaScript's\ntrue/false/null/undefined are styled like True/False/None, for Pretty.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "17281741baad2e8e1bfed97153c67a4d94c32c5a",
