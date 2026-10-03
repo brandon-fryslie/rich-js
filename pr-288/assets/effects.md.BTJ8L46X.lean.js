@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as t,ag as n}from"./chunks/framework.0Cf65WV8.js";const c=JSON.parse('{"title":"Effects","description":"","frontmatter":{},"headers":[],"relativePath":"effects.md","filePath":"effects.md"}'),e={name:"effects.md"};function l(h,s,p,k,r,o){return a(),t("div",null,[...s[0]||(s[0]=[n("",13)])])}const B=i(e,[["render",l]]);export{c as __pageData,B as default};

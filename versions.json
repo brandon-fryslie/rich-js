@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-288",
+      "ref": "refs/pull/288/merge",
+      "sha": "e6189cc16789dd34c60b10b871c2687b1c0eab7e",
+      "timestamp": "2026-10-03T01:19:41.762Z",
+      "commits": [
+        {
+          "sha": "e6189cc16789dd34c60b10b871c2687b1c0eab7e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T19:18:45-06:00",
+          "message": "Merge e68fcc3915ba6ab9774f74d33c86cf2376c92f4d into 45a4d6e6fd8dfb5b949115c3dd8e80b9a98baa1d\n"
+        },
+        {
+          "sha": "e68fcc3915ba6ab9774f74d33c86cf2376c92f4d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T19:18:35-06:00",
+          "message": "feat(host): frame clock — App and Live tick at a caller-chosen rate on an injected Clock (rich-effects-fxiy.b40)\n\nframeRate is the one parser of a rate: positive, finite, fractional (0.5 is a\nframe every two seconds). App takes a rate and a clock, hands each frame's t\nto its view, and ticks only while animate() holds and it is running; Live\nparses refreshPerSecond through the same parser and ticks on its clock. The\neffects-feel demo drops its own timer for App's.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "45a4d6e6fd8dfb5b949115c3dd8e80b9a98baa1d",
