@@ -4,15 +4,22 @@
     {
       "version": "pr-317",
       "ref": "refs/pull/317/merge",
-      "sha": "fc19f0b0e6e9d4b620207d55a3a8556d5187b9c2",
-      "timestamp": "2026-10-03T12:40:03.323Z",
+      "sha": "42dfcbe2fdaa0faedd4321aa59daec79944bfb9e",
+      "timestamp": "2026-10-03T12:51:32.459Z",
       "commits": [
         {
-          "sha": "fc19f0b0e6e9d4b620207d55a3a8556d5187b9c2",
+          "sha": "42dfcbe2fdaa0faedd4321aa59daec79944bfb9e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:38:57-06:00",
-          "message": "Merge c878709c1fae041adf25a87f47c7ab31a1b5b6b3 into effccf96ff9abee5ec3a61820ea001260b1a4c45\n"
+          "timestamp": "2026-10-03T12:50:29Z",
+          "message": "Merge bac10cc75633d28a5641d631bc471d9e2e0fad5f into effccf96ff9abee5ec3a61820ea001260b1a4c45\n"
+        },
+        {
+          "sha": "bac10cc75633d28a5641d631bc471d9e2e0fad5f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T06:50:24-06:00",
+          "message": "fix(embed): a cut label's ellipsis and split-cell pad keep the label's spans, as Rich's Text.truncate does (rich-rule-thri)\n"
         },
         {
           "sha": "c878709c1fae041adf25a87f47c7ab31a1b5b6b3",
