@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "a352154b9c1dcca6f393a749a1ef298627ebdac7",
-      "timestamp": "2026-10-03T18:45:35.843Z",
+      "sha": "18cb2d19f954c958de75909608af8540f61f1a25",
+      "timestamp": "2026-10-03T18:50:01.911Z",
       "commits": [
         {
-          "sha": "a352154b9c1dcca6f393a749a1ef298627ebdac7",
+          "sha": "18cb2d19f954c958de75909608af8540f61f1a25",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T18:44:18Z",
-          "message": "Merge b123ad597d29ec44fa1cf6866bd90739488c00db into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+          "timestamp": "2026-10-03T18:48:41Z",
+          "message": "Merge 9123e192442963db2401e51fcf8e172d71654ca6 into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+        },
+        {
+          "sha": "9123e192442963db2401e51fcf8e172d71654ca6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T12:48:36-06:00",
+          "message": "effects-feel: a frame is the unit of change, whatever the frame rate (rich-effects-fxiy.b6i)\n\nThe app runs on a clock that counts frames, so each tick moves every loop\nby one step times the rate and the frame rate only sets how often a tick\ncomes. The heading counts frames of a cycle instead of seconds.\n"
         },
         {
           "sha": "b123ad597d29ec44fa1cf6866bd90739488c00db",
