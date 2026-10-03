@@ -215,11 +215,12 @@ export class RichText implements Renderable, Measurable {
   }
 
   /**
-   * The cells this text draws, tabs widened to their stops as `render` widens
-   * them. A deliberate departure from Rich, whose `Text.cell_len` measures the
-   * raw string and counts a tab as no cells, so everything sized by it — a
+   * The cells of the plain text with each tab widened to its stop counted from
+   * this text's own column 0, as `render` widens it — so it is the drawn width
+   * of a one-line text set at a stop. A deliberate departure from Rich, whose
+   * `Text.cell_len` counts a tab as no cells, so everything sized by it — a
    * truncation, an alignment, a header's remaining width — decided on a width
-   * the text does not draw.
+   * no render draws.
    */
   get cellLength(): number {
     return cellLen(expandTabs(this._text, this._tabSize).text);
@@ -614,8 +615,9 @@ export class RichText implements Renderable, Measurable {
    * styling; the marker (if any) is inserted as plain text with no span.
    * Use `stylize(...)` on the result to color the marker if needed.
    *
-   * Tabs are widened to their stops first, as `expandTabs` widens them, so the
-   * width cut to is the width drawn.
+   * Text that fits comes back untouched. Text that is cut has its tabs widened
+   * to their stops first, as `expandTabs` widens them, so the width cut to is
+   * the width drawn.
    *
    * [LAW:dataflow-not-control-flow] mode/marker/width all flow as values;
    * the walk is the same shape regardless. No "if truncated then rebuild"
@@ -628,10 +630,10 @@ export class RichText implements Renderable, Measurable {
       marker?: string;
     },
   ): this {
+    if (this.cellLength <= width) return this;
     // [LAW:one-source-of-truth] Cut what is drawn: once a tab is spaces, a cell
     // of the plain text is a cell of the output, so the cut lands where it looks.
     this.expandTabs();
-    if (this.cellLength <= width) return this;
 
     const mode = options?.mode ?? "right";
     // [LAW:dataflow-not-control-flow] the marker is fitted to the width as a
@@ -712,11 +714,11 @@ export class RichText implements Renderable, Measurable {
   // --- Alignment ---
 
   align(justify: "left" | "center" | "right", width: number): this {
-    // A tab is a column, and left padding would move every stop after it:
-    // widened first, the text keeps the width it was measured at.
-    this.expandTabs();
     const currentWidth = this.cellLength;
     if (currentWidth >= width) return this;
+    // Padded to `width`, the text claims that width only while its tab stops
+    // hold: widened now, padding on either side cannot move them.
+    this.expandTabs();
 
     const gap = width - currentWidth;
     switch (justify) {

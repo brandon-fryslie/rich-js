@@ -1249,6 +1249,27 @@ describe("RichText widths count a tab as the cells it draws", () => {
     expect(bold.map((s) => s.text).join("")).toBe("c");
   });
 
+  it("cuts from the left and the middle at the width it draws", () => {
+    const left = tabbed();
+    left.stylize("bold", 0, 2);
+    left.stylize("italic", 3, 5);
+    left.truncate(6, { mode: "left" });
+    expect(drawn(left)).toBe("…   cd");
+    expect(left.spans.map((s) => [left.plain.slice(s.start, s.end), s.style])).toEqual([["cd", "italic"]]);
+    const middle = tabbed();
+    middle.stylize("italic", 3, 5);
+    middle.truncate(6, { mode: "middle" });
+    expect(drawn(middle)).toBe("ab… cd");
+    expect(middle.spans.map((s) => middle.plain.slice(s.start, s.end))).toEqual(["cd"]);
+  });
+
+  it("leaves a text it does not change with its tabs, free to be set after a prefix", () => {
+    expect(tabbed().truncate(10).plain).toBe("ab\tcd");
+    expect(tabbed().align("left", 10).plain).toBe("ab\tcd");
+    const line = new RichText("xyz", { end: "" }).append(tabbed().truncate(80));
+    expect(drawn(line)).toBe("xyzab   cd");
+  });
+
   it("aligns to the width it draws, its tab stops where they were measured", () => {
     const right = tabbed().align("right", 12);
     expect(drawn(right)).toBe("  ab      cd");
