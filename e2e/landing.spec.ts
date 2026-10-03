@@ -94,30 +94,39 @@ test("at phone width, the showcase fits the page whole", async ({ page }) => {
 
 // The card reserves its terminal's rows at the page's line height before xterm
 // has loaded; xterm's rows are that line height, so the card keeps its height
-// when the program first draws (rich-demos-z4hd).
-for (const width of [1440, 390]) {
-  test(`at ${width}px, the showcase's rows are the page's line height and its card keeps its height`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 });
-    let release!: () => void;
-    const held = new Promise<void>((resolve) => (release = resolve));
-    await page.route(XTERM.script.src, async (route) => {
-      await held;
-      await route.continue();
-    });
-    const errors = await open(page);
-    const card = showcase(page).locator(".rich-live");
-    await expect(card).toBeVisible();
-    await expect(showcase(page).locator(".xterm")).toHaveCount(0);
-    const before = await card.evaluate((element) => element.getBoundingClientRect().height);
+// when the program first draws (rich-demos-z4hd). At a fractional device pixel
+// ratio — a zoomed page, a 125%-scaled screen — xterm still sizes a row in
+// whole device pixels, and layout snaps the line height to 1/64px, so there the
+// two agree to a fraction of a pixel rather than exactly.
+for (const deviceScaleFactor of [1, 1.25, 1.5]) {
+  test.describe(`at a device pixel ratio of ${deviceScaleFactor}`, () => {
+    test.use({ deviceScaleFactor });
+    for (const width of [1440, 390]) {
+      test(`at ${width}px, the showcase's rows are the page's line height and its card keeps its height`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        let release!: () => void;
+        const held = new Promise<void>((resolve) => (release = resolve));
+        await page.route(XTERM.script.src, async (route) => {
+          await held;
+          await route.continue();
+        });
+        const errors = await open(page);
+        const card = showcase(page).locator(".rich-live");
+        await expect(card).toBeVisible();
+        await expect(showcase(page).locator(".xterm")).toHaveCount(0);
+        const before = await card.evaluate((element) => element.getBoundingClientRect().height);
 
-    release();
-    await expect.poll(() => rows(page), { timeout: 15_000 }).toContain("Services");
-    const after = await card.evaluate((element) => element.getBoundingClientRect().height);
-    const { row, line } = await showcase(page).evaluate((element) => ({
-      row: element.querySelector<HTMLElement>(".xterm-rows > div")!.getBoundingClientRect().height,
-      line: parseFloat(getComputedStyle(element.querySelector(".rich-live-screen")!).lineHeight),
-    }));
-    expect({ row, after }).toEqual({ row: line, after: before });
-    expect(errors).toEqual([]);
+        release();
+        await expect.poll(() => rows(page), { timeout: 15_000 }).toContain("Services");
+        const after = await card.evaluate((element) => element.getBoundingClientRect().height);
+        const { row, line } = await showcase(page).evaluate((element) => ({
+          row: element.querySelector<HTMLElement>(".xterm-rows > div")!.getBoundingClientRect().height,
+          line: parseFloat(getComputedStyle(element.querySelector(".rich-live-screen")!).lineHeight),
+        }));
+        expect(Math.abs(row - line)).toBeLessThan(0.05);
+        expect(Math.abs(after - before)).toBeLessThan(1);
+        expect(errors).toEqual([]);
+      });
+    }
   });
 }

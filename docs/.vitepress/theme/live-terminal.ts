@@ -107,10 +107,10 @@ export interface LiveTerminalOptions {
  *
  * [LAW:one-source-of-truth] The line height is not among them. xterm makes a
  * row its measured character height times its `lineHeight` option, rounded to
- * device pixels, so no factor handed in from here lands on the page's line
- * height. custom.css instead has xterm measure its character at that line
- * height, and the option stays 1: a row is then the page's line height,
- * whatever the font and the zoom.
+ * device pixels, so no factor handed in from here lands on the element's line
+ * height. `loadXterm` instead has xterm measure its character at the line
+ * custom.css derives that line height from, and the option stays 1: a row is
+ * then the element's line height.
  */
 export function elementFont(element: HTMLElement): LiveTerminalOptions["font"] {
   const style = getComputedStyle(element);
@@ -152,16 +152,25 @@ let xterm: Promise<XtermConstructor> | undefined;
 function loadXterm(): Promise<XtermConstructor> {
   xterm ??= new Promise<XtermConstructor>((resolve, reject) => {
     const link = Object.assign(document.createElement("link"), { rel: "stylesheet", crossOrigin: "anonymous", ...XTERM.stylesheet });
+    // xterm makes a row the height it measures a character at, in whole CSS
+    // pixels rounded up to whole device pixels, and measures it at
+    // line-height: normal. Measured at the element's --rich-fragment-line, a
+    // whole CSS pixel, a row is the line height custom.css derives from it the
+    // same way (`elementFont`).
+    const measure = Object.assign(document.createElement("style"), {
+      textContent: ".xterm .xterm-char-measure-element { line-height: var(--rich-fragment-line, normal); }",
+    });
     const script = Object.assign(document.createElement("script"), { crossOrigin: "anonymous", ...XTERM.script });
     script.onload = () => resolve((globalThis as unknown as { Terminal: XtermConstructor }).Terminal);
     script.onerror = () => {
       // Forgotten, so the next terminal made tries again rather than reusing a failure.
       xterm = undefined;
       link.remove();
+      measure.remove();
       script.remove();
       reject(new Error(`xterm.js did not load from ${XTERM.script.src}`));
     };
-    document.head.append(link, script);
+    document.head.append(link, measure, script);
   });
   return xterm;
 }

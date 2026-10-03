@@ -52,6 +52,10 @@ describe("claude-sessions status bar", () => {
     );
   });
 
+  it("keeps to one row, cut with an ellipsis, where not even the count fits", () => {
+    expect(footer({ ...base, focus: "viewer" }, 8)).toBe(" +14 mo…");
+  });
+
   it("shows every hint, with no count, where they all fit", () => {
     expect(footer({ ...base, search: { ...base.search, mode: "results-global" } }, 37)).toBe(
       " ↑↓/jk hit  ⏎ open  esc exit  q quit",
