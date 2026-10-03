@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-302",
-      "ref": "refs/pull/302/merge",
-      "sha": "104264a295d1a3e609dd8ecdc5e19d2e6cf56701",
-      "timestamp": "2026-10-03T07:33:41.269Z",
-      "commits": [
-        {
-          "sha": "104264a295d1a3e609dd8ecdc5e19d2e6cf56701",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T07:32:23Z",
-          "message": "Merge 6db69289ba591ef9b60ec02b9e34effd160faabe into f4717aef50592ede5ab6e101732340794e9829f6\n"
-        },
-        {
-          "sha": "6db69289ba591ef9b60ec02b9e34effd160faabe",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T01:32:18-06:00",
-          "message": "fix(console,pretty): a failed log leaves the last time alone; any tagged, keyless object prints its name (rich-console-4i40)\n\nReview of #302: log() remembered its stamp before drawing, so a throwing\nlog hid the next row's time. The opaque form is now Symbol.toStringTag on\nan object with no keys — covering WeakRef, ArrayBuffer, generators and\nsubclasses (Task [Promise]) without a list — and sits below the\nself-describing arm so a subclass's own toString wins.\n"
-        },
-        {
-          "sha": "70f4a3cf043b22c731d42e87a379055b311b30a3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T01:24:25-06:00",
-          "message": "fix(console): log blanks a repeated time; Promise, WeakMap and WeakSet print their kind inline (rich-console-4i40)\n\nConsole.log leaves the time column blank when a row's stamp formats as the\nprevious row's, Rich's omit_repeated_times; the last stamp is state the\nconsole owns.\n\nPretty gains an `opaque` form for the built-ins whose contents JavaScript\nhides. They print as `Promise { <state unknown> }` and\n`WeakMap/WeakSet { <items unknown> }` instead of `{}`, and are not\nexpandable, so print keeps them in the line. isExpandable reads an\nexhaustive table over Form kinds, so a new form must declare which it is.\n\ndocs/console.md: each log example after the first uses its own console,\nbecause the shared one now carries the previous row's stamp and the\n\"Try it\" standalone run would otherwise differ from the page.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f4717aef50592ede5ab6e101732340794e9829f6",
