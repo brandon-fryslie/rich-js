@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-324",
+      "ref": "refs/pull/324/merge",
+      "sha": "e6cbcea2f43430acab4097233a348d07aa101107",
+      "timestamp": "2026-10-03T13:59:29.909Z",
+      "commits": [
+        {
+          "sha": "e6cbcea2f43430acab4097233a348d07aa101107",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T07:58:35-06:00",
+          "message": "Merge ac0ff2d69f70696e24bfcaf8eb30b62be3a58edf into 1c3580c5a2146be7cd66c6dc081f6ded7664d1f7\n"
+        },
+        {
+          "sha": "ac0ff2d69f70696e24bfcaf8eb30b62be3a58edf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T07:58:30-06:00",
+          "message": "effects-feel: shimmer passes come and go like sun through moving cloud (rich-effects-fxiy.b6i)\n\nPasses are events on half-period slots; slow sky noise decides whether a\nslot holds one and how bright it is, so sunny spells bring passes close\ntogether (sometimes overlapping, brighter wins) and cloudy ones leave the\nrow still for periods on end. Each pass crosses at its own pace.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "1c3580c5a2146be7cd66c6dc081f6ded7664d1f7",
