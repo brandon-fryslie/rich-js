@@ -1,1 +1,0 @@
-import{_ as a,o as i,c as n,ag as e}from"./chunks/framework.tLrs5hex.js";const c=JSON.parse('{"title":"Render Groups","description":"","frontmatter":{},"headers":[],"relativePath":"group.md","filePath":"group.md"}'),l={name:"group.md"};function t(p,s,h,o,r,k){return i(),n("div",null,[...s[0]||(s[0]=[e("",14)])])}const y=a(l,[["render",t]]);export{c as __pageData,y as default};
