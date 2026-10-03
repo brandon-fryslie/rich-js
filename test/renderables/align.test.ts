@@ -90,12 +90,14 @@ describe("Align", () => {
     }
   });
 
-  // Spec: Implements Measurable. minimum > 0.
-  it("measurement minimum > 0", () => {
-    const inner = simpleRenderable("Hi");
-    const aligned = new Align(inner, "center");
-    const m = aligned.measure({ maxWidth: 40 });
-    expect(m.minimum).toBeGreaterThan(0);
+  // Rich's `Align.__rich_measure__` is the content's measurement, unchanged:
+  // aligning a thing does not change how wide it can be.
+  it("measures as its content measures", () => {
+    const inner: Renderable & Measurable = {
+      *render() {},
+      measure: () => ({ minimum: 0, maximum: 4 }),
+    };
+    expect(new Align(inner, "center").measure({ maxWidth: 40 })).toEqual({ minimum: 0, maximum: 4 });
   });
 
   // Spec: constructor is new Align(renderable, align?) — align is optional

@@ -31,10 +31,6 @@ export class Align implements Renderable, Measurable {
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    const measurement = Measurement.get(options, this.renderable);
-    return {
-      minimum: Math.max(1, measurement.minimum),
-      maximum: measurement.maximum,
-    };
+    return Measurement.get(options, this.renderable);
   }
 }

@@ -343,8 +343,14 @@ export interface TabExpansion {
  * caller that annotates the text by offset — a `RichText`'s spans — has to move
  * its offsets with the characters, or every annotation after a tab lands short
  * of what it styled.
+ *
+ * A stop is a whole number of cells, so `tabSize` must be a positive integer;
+ * anything else throws, where Rich divides by it and raises.
  */
 export function expandTabs(text: string, tabSize: number): TabExpansion {
+  if (!Number.isInteger(tabSize) || tabSize < 1) {
+    throw new RangeError(`tabSize must be a positive integer, got ${tabSize}`);
+  }
   const [head, ...rest] = text.split("\t");
   const tabAt: number[] = []; // offset of each tab in `text`
   const grownBy: number[] = []; // code units added by this tab and every one before it
@@ -353,17 +359,22 @@ export function expandTabs(text: string, tabSize: number): TabExpansion {
     return (newline < 0 ? column : 0) + cellLen(piece.slice(newline + 1));
   };
 
+  // A piece's column is read only when a tab follows it, so text with no tab
+  // costs one `split` and no measuring.
   let expanded = head!;
-  let column = columnAfter(head!, 0);
+  let before = head!; // the piece the next tab follows
+  let column = 0; // the column `before` starts at
   let offset = head!.length;
   let grown = 0;
   for (const piece of rest) {
+    column = columnAfter(before, column);
     const spaces = tabSize - (column % tabSize);
     grown += spaces - 1;
     tabAt.push(offset);
     grownBy.push(grown);
     expanded += " ".repeat(spaces) + piece;
-    column = columnAfter(piece, column + spaces);
+    column += spaces;
+    before = piece;
     offset += 1 + piece.length;
   }
 

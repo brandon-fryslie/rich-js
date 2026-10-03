@@ -52,13 +52,11 @@ function widthOf(word: string): number {
 }
 
 /**
- * The widest word of `text` — the narrowest width `divideLine` can wrap it to
- * without cutting a word. `0` for text with no word in it.
+ * The cells each word of `text` needs, in order — the widest is the narrowest
+ * width `divideLine` can wrap it to without cutting a word.
  */
-export function widestWord(text: string): number {
-  let widest = 0;
-  for (const word of words(text)) widest = Math.max(widest, widthOf(word));
-  return widest;
+export function wordWidths(text: string): number[] {
+  return Array.from(words(text), widthOf);
 }
 
 /**

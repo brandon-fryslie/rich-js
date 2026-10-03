@@ -3,7 +3,7 @@
  */
 
 import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, expandTabs, type CellCol, type TabExpansion } from "./cells.js";
-import { divideLine, widestWord } from "./wrap.js";
+import { divideLine, wordWidths } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
 import { stripOscTerminators } from "./osc8.js";
@@ -857,18 +857,16 @@ export class RichText implements Renderable, Measurable {
   measure(options: RenderOptions): { minimum: number; maximum: number } {
     const lines = expandTabs(this._text, this._tabSize).text.split("\n");
 
-    let maxLineWidth = 0;
-    let maxWordWidth = 0;
-
-    for (const line of lines) {
-      maxLineWidth = Math.max(maxLineWidth, cellLen(line));
-      // [LAW:one-source-of-truth] The minimum is the widest piece the wrapper
-      // never breaks, asked of the wrapper — so a line's indent, which wraps
-      // with its first word, counts toward it. Rich splits on whitespace here
-      // and drops the indent, then wraps with it kept: a container sized by
-      // that minimum cuts the word it was meant to hold whole.
-      maxWordWidth = Math.max(maxWordWidth, widestWord(line));
-    }
+    const maxLineWidth = lines.reduce((widest, line) => Math.max(widest, cellLen(line)), 0);
+    // [LAW:one-source-of-truth] The minimum is the widest piece the wrapper
+    // never breaks, asked of the wrapper — so a line's indent, which wraps
+    // with its first word, counts toward it. Rich splits on whitespace here
+    // and drops the indent, then wraps with it kept: a container sized by
+    // that minimum cuts the word it was meant to hold whole. Text with no word
+    // at all is all whitespace, and as in Rich its whole width is the minimum.
+    const widths = lines.flatMap(wordWidths);
+    const maxWordWidth =
+      widths.length > 0 ? widths.reduce((widest, w) => Math.max(widest, w), 0) : maxLineWidth;
 
     // Parsed for the same reason `render` parses it: an unparsed NaN ceiling
     // makes both `Math.min` calls NaN, and a range of NaN..NaN is one no parent

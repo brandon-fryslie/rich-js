@@ -1116,6 +1116,12 @@ describe("RichText.measure()", () => {
     expect(new RichText("   $1,332,539,889").measure({ maxWidth: 80 }).minimum).toBe(17);
   });
 
+  // Rich: with no word to keep whole, the whitespace is the content, and its
+  // width is the minimum — a spacer cell is not squeezed to nothing.
+  it("takes the whole width of whitespace-only text as its minimum", () => {
+    expect(new RichText("    ").measure({ maxWidth: 80 })).toEqual({ minimum: 4, maximum: 4 });
+  });
+
   it("handles multiline text", () => {
     const t = new RichText("short\na longer line");
     const m = t.measure({ maxWidth: 80 });

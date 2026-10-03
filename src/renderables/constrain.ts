@@ -35,14 +35,12 @@ export class Constrain implements Renderable, Measurable {
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    const measurement = Measurement.get(options, this.renderable);
+    // Measured at the width it will be drawn at, as Rich's `update_width` does;
+    // `Measurement.get` then holds the answer inside that offer.
     const maxWidth =
       this.width !== undefined
         ? Math.min(this.width, options.maxWidth)
         : options.maxWidth;
-    return {
-      minimum: measurement.minimum,
-      maximum: Math.min(measurement.maximum, maxWidth),
-    };
+    return Measurement.get({ ...options, maxWidth }, this.renderable);
   }
 }

@@ -466,6 +466,12 @@ describe("expandTabs", () => {
     expect([0, 1, 2, 3, 4, 5].map(offsetOf)).toEqual([0, 1, 4, 5, 8, 9]);
   });
 
+  // Rich divides by the tab size and raises on 0; a stop between cells has no
+  // column to land in.
+  it.each([0, -1, 2.5, Number.NaN])("refuses a tabSize of %s", (tabSize) => {
+    expect(() => expandTabs("a\tb", tabSize)).toThrow(RangeError);
+  });
+
   it("leaves text without a tab as it is", () => {
     const { text, offsetOf } = expandTabs("plain", 8);
     expect(text).toBe("plain");
