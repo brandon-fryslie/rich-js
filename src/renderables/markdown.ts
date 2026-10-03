@@ -63,11 +63,14 @@ type MdToken =
  * every container marker it sat behind blanked to spaces so its columns are
  * still the source's, and `margin`, the column its container's content starts
  * at. Columns are counted from the source's column 0, so a tab reaches the
- * stop it reaches in the source however deep the line is nested.
+ * stop it reaches in the source however deep the line is nested. A `lazy`
+ * line was taken in short of its container's marker or indentation, as
+ * CommonMark's paragraph continuation text, and is only ever that.
  */
 interface Line {
   readonly text: string;
   readonly margin: number;
+  readonly lazy: boolean;
 }
 
 const HEADING = /^(#{1,6})\s+(.+)$/;
@@ -84,7 +87,7 @@ const BLOCK_STARTS = [HEADING, FENCE, QUOTE, RULE];
 const CODE_INDENT = 4;
 /** The tab stop code is drawn with, as Rich's `Syntax` draws it. */
 const CODE_TAB_SIZE = parseTabSize(8);
-const BLANK_LINE: Line = { text: "", margin: 0 };
+const BLANK_LINE: Line = { text: "", margin: 0, lazy: false };
 
 /** The column `ws` ends at when it starts at column `from`, a tab reaching the next stop of 4 as CommonMark counts it. */
 function advance(from: number, ws: string): number {
@@ -164,7 +167,7 @@ function itemStart(line: Line): ItemStart | undefined {
     bullet: m[1] === undefined ? m[0] : undefined,
     start: m[1] === undefined ? 0 : parseInt(m[1], 10),
     content,
-    first: rest === "" ? undefined : { text: lead + " ".repeat(m[0].length) + after, margin: content },
+    first: rest === "" ? undefined : { text: lead + " ".repeat(m[0].length) + after, margin: content, lazy: false },
   };
 }
 
@@ -181,7 +184,7 @@ function sameList(a: ItemStart, b: ItemStart): boolean {
 function quoted(line: Line): Line {
   const at = line.text.length - body(line).length;
   const spaced = /[ \t]/.test(line.text[at + 1] ?? "");
-  return { text: `${line.text.slice(0, at)} ${line.text.slice(at + 1)}`, margin: leadEnd(line) + 1 + (spaced ? 1 : 0) };
+  return { text: `${line.text.slice(0, at)} ${line.text.slice(at + 1)}`, margin: leadEnd(line) + 1 + (spaced ? 1 : 0), lazy: false };
 }
 
 /**
@@ -201,9 +204,15 @@ function opensBlock(line: Line): boolean {
  * underline.
  */
 function endsParagraph(line: Line): boolean {
-  if (startsWith(line, SETEXT)) return true;
+  if (line.lazy) return false;
+  if (underline(line)) return true;
   const item = itemStart(line);
   return item ? item.first !== undefined && (item.bullet !== undefined || item.start === 1) : opensBlock(line);
+}
+
+/** The setext underline `line` is — a line of `=` or `-` under a paragraph — if it is one. A lazy line never is. */
+function underline(line: Line | undefined): RegExpExecArray | null {
+  return line && !line.lazy && indentOf(line) < CODE_INDENT ? SETEXT.exec(body(line)) : null;
 }
 
 /** Whether the last block of `tokens`, followed into the containers it closes, is a paragraph still open. */
@@ -273,7 +282,7 @@ function itemLines(item: ItemStart, lines: readonly Line[], start: number): { in
     const held = blank || leadEnd(line) >= item.content;
     lazy = !held && continuesLazily(inner, line, lazy);
     if (!held && !lazy) break;
-    inner.push(held ? { text: line.text, margin: item.content } : line);
+    inner.push(held ? { text: line.text, margin: item.content, lazy: false } : { ...line, lazy: true });
   }
   for (; inner.length > 0 && isBlank(inner[inner.length - 1]!); i--) inner.pop();
   return { inner, next: i };
@@ -375,7 +384,7 @@ function tokenize(lines: readonly Line[]): MdToken[] {
         const marked = startsWith(next, QUOTE);
         lazy = !marked && continuesLazily(inner, next, lazy);
         if (!marked && !lazy) break;
-        inner.push(marked ? quoted(next) : next);
+        inner.push(marked ? quoted(next) : { ...next, lazy: true });
       }
       tokens.push({ type: "blockquote", children: tokenize(inner) });
       continue;
@@ -392,13 +401,13 @@ function tokenize(lines: readonly Line[]): MdToken[] {
 
     // Paragraph, or a setext heading when a line of `=` or `-` underlines it
     const { text, next } = continuation(lines, i);
-    const underline = next < lines.length && indentOf(lines[next]!) < CODE_INDENT ? SETEXT.exec(body(lines[next]!)) : null;
+    const setext = underline(lines[next]);
     tokens.push(
-      underline
-        ? { type: "heading", level: underline[1]!.startsWith("=") ? 1 : 2, text }
+      setext
+        ? { type: "heading", level: setext[1]!.startsWith("=") ? 1 : 2, text }
         : { type: "paragraph", text },
     );
-    i = underline ? next + 1 : next;
+    i = setext ? next + 1 : next;
   }
 
   return tokens;
@@ -692,7 +701,7 @@ export class Markdown implements Renderable, Measurable {
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     // Every block below is one of a stack.
     const options = { ...rawOptions, height: stackedHeight(rawOptions.height) };
-    const lines = this.markdown.split(/\r?\n/).map((text): Line => ({ text, margin: 0 }));
+    const lines = this.markdown.split(/\r?\n/).map((text): Line => ({ text, margin: 0, lazy: false }));
     yield* renderTokens(tokenize(lines), options, this);
   }
 

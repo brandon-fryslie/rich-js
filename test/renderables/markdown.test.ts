@@ -229,6 +229,12 @@ describe("Markdown", () => {
     expect(rows("_ _ _", 5)[0]).toMatch(/^─+$/);
   });
 
+  it("reads a lazy line of `=` as paragraph text, never as an underline, and a lazy indented marker as text", () => {
+    expect(rows("> foo\n===", 20)).toEqual(["▎ foo ===", ""]);
+    expect(rows("- foo\n===", 20)).toEqual(["  • foo ===", ""]);
+    expect(rows("> foo\n    - bar", 20)).toEqual(["▎ foo - bar", ""]);
+  });
+
   it("reads a line of `=` on its own as text", () => {
     expect(rows("para\n\n===", 20)).toEqual(["para", "", "===", ""]);
   });
