@@ -242,19 +242,19 @@ const SIGH_EVERY = 6;
 export function pulse(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
   const P = curve.seconds;
   // Of a breath, how far behind the heart each column further out starts.
-  const SPREAD = 0.0012;
+  const SPREAD = 0.005;
   const field: Field = (cell, t) => {
     const heart = span * (0.5 + 0.45 * noise(t / (5 * P), 6.1, z));
     const lag = SPREAD * Math.abs(cell.col - heart);
     // The rhythm's drift and the heart's wandering are slow enough that
     // phase only ever moves forward. A cell starts in its rest whatever its lag.
-    const phase = Math.max(0, t / P - 0.06 - lag + 0.03 * noise(t / (3 * P), 0.5, 0.5 + z));
+    const phase = Math.max(0, t / P - 0.06 - lag + 0.1 * noise(t / (3 * P), 0.5, 0.5 + z));
     // Breath `n` is one event across the whole element: its depth and its
     // moment in its turn are the same in every cell.
     const n = Math.floor(phase);
     const k = hash(n, 1 + z) < 1 / SIGH_EVERY ? 1 : 0.5 + 0.25 * hash(n, 2 + z);
     const start = hash(n, 3 + z) * (1 - k) * (BREATH.rise + BREATH.fall);
-    const depth = 1 - 0.15 * (1 + noise(cell.col * 0.04, 1.9, t / (6 * P) + z)) / 2;
+    const depth = 1 - 0.4 * (1 + noise(cell.col * 0.04, 1.9, t / (6 * P) + z)) / 2;
     return curve.swing * curve.ease(clamp01(swell(BREATH, phase - n - start, k) * depth));
   };
   return { touch: light(glow), field };
