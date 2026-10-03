@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-312",
+      "ref": "refs/pull/312/merge",
+      "sha": "6bd43b75dedff38c55da2df9abda7470139e5c43",
+      "timestamp": "2026-10-03T11:01:16.743Z",
+      "commits": [
+        {
+          "sha": "6bd43b75dedff38c55da2df9abda7470139e5c43",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T04:59:58-06:00",
+          "message": "Merge 9ea19950692f5be85a72108c9dbe68fbac2943e1 into dd692fc4f5f83b7f632f6012a04975a59f37d855\n"
+        },
+        {
+          "sha": "9ea19950692f5be85a72108c9dbe68fbac2943e1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T04:59:47-06:00",
+          "message": "fix(progress)!: columns return a renderable the grid lays out, as Rich's do (rich-progress-j4lb)\n\nProgressColumn.render(task) now returns the cell's content instead of\nsegments drawn at the console's width, and Progress lays every column out\nas Rich's make_tasks_table does: a grid of Column(no_wrap=True). Width,\nwrapping and justify are decided once, in the cell, so a justified\nSpinnerColumn finishedText justifies within its column, pinned against\nRich 9d8f9a3.\n\nSpinner.drawFrame and SpinnerColumn's overflow 'ignore' existed only to\ndodge the double layout and are gone. ProgressBar measures a given width\nexactly and never draws wider than it is offered, as Rich's does, so the\ngrid sizes the bar instead of overflowing it.\n\nBREAKING CHANGE: ProgressColumn.render takes only the task and returns a\nRenderable.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-311",
       "ref": "refs/pull/311/merge",
       "sha": "f1f3904da50abe7eaebd6d84a17269e71c4c21ca",
