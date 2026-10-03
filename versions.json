@@ -4,15 +4,22 @@
     {
       "version": "pr-335",
       "ref": "refs/pull/335/merge",
-      "sha": "7c245d79468fbcf120c26a98e0aabcaf8688d696",
-      "timestamp": "2026-10-03T16:38:45.168Z",
+      "sha": "64a54fe08eea6fde32fa72becefc1afa9b72bbe6",
+      "timestamp": "2026-10-03T16:50:46.763Z",
       "commits": [
         {
-          "sha": "7c245d79468fbcf120c26a98e0aabcaf8688d696",
+          "sha": "64a54fe08eea6fde32fa72becefc1afa9b72bbe6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T10:37:29-06:00",
-          "message": "Merge 7711bf22b5f3e9a1d02468538642be40c25a5dfb into 09db77c36082d202e269ed0c62e304032e7b6051\n"
+          "timestamp": "2026-10-03T16:49:29Z",
+          "message": "Merge d6cf07e98c6ba034c235fef587932b04dca1d804 into 09db77c36082d202e269ed0c62e304032e7b6051\n"
+        },
+        {
+          "sha": "d6cf07e98c6ba034c235fef587932b04dca1d804",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T10:49:25-06:00",
+          "message": "fix(text): a justify pad joins the run beside it only when no span covers that run, as Rich does (rich-table-qj6i)\n\nReview: the join was decided by style equality, which merged a pad into a\nspan whose style equals the base. _buildSegments now reports which pieces a\nspan covers, and padded joins on that.\n"
         },
         {
           "sha": "7711bf22b5f3e9a1d02468538642be40c25a5dfb",
