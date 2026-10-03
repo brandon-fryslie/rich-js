@@ -4,15 +4,22 @@
     {
       "version": "pr-287",
       "ref": "refs/pull/287/merge",
-      "sha": "546ad480a09a532a11f571d16262cd4f3eb94bd1",
-      "timestamp": "2026-10-03T00:56:32.382Z",
+      "sha": "e91ddb96d1b30ef9d9b1246ee72c82c047a5c0ee",
+      "timestamp": "2026-10-03T01:05:06.510Z",
       "commits": [
         {
-          "sha": "546ad480a09a532a11f571d16262cd4f3eb94bd1",
+          "sha": "e91ddb96d1b30ef9d9b1246ee72c82c047a5c0ee",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T00:55:43Z",
-          "message": "Merge 176982c1b09673f5cbb77f68c22c3d02265bbb36 into 6eb4218ac6ce9a64b502659ee054926bf0cbc1b9\n"
+          "timestamp": "2026-10-03T01:03:54Z",
+          "message": "Merge 2d0f718bb0f5cd24dff28442fd42e358235904fa into 6eb4218ac6ce9a64b502659ee054926bf0cbc1b9\n"
+        },
+        {
+          "sha": "2d0f718bb0f5cd24dff28442fd42e358235904fa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T19:03:49-06:00",
+          "message": "fix(examples): effects-feel reads contrast off the cells it draws (rich-shimmer-ufj7)\n\nEscalation high review on #287:\n- Contrast is read from the segments Effected yields, through the wire's own\n  drawnColors, so a slot an effect leaves on its ANSI spec is measured as that\n  slot; at --depth 16 the old second downgrade measured another colour.\n- A DrawnSubject carries its span, its own colours and its text cells,\n  measured once; frames no longer re-render or re-measure a subject.\n- Text cells are read with the Nerd Font glyphs, so an ASCII seam is not text.\n- Each effect row seeds its cells by its own key; the curves use IDENTITY.\n- The strip test pulses each ground in the direction the demo does.\n\nNot taken: the ~0.5 s contrast pass at startup is paid once, before the first\nframe. The 16-colour slot snap in Effected itself is rich-effects-fxiy.knj.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "176982c1b09673f5cbb77f68c22c3d02265bbb36",
