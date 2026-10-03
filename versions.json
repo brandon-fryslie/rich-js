@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-319",
+      "ref": "refs/pull/319/merge",
+      "sha": "a8ea0cdcb5819071c706fb552db45cd36a112a8a",
+      "timestamp": "2026-10-03T13:00:19.621Z",
+      "commits": [
+        {
+          "sha": "a8ea0cdcb5819071c706fb552db45cd36a112a8a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T06:59:27-06:00",
+          "message": "Merge 522c41b8417aa5c9fe552c54761a7d4bd2c4ce44 into 066057a3c6982edc862de25d6ea7a986a988bb5d\n"
+        },
+        {
+          "sha": "522c41b8417aa5c9fe552c54761a7d4bd2c4ce44",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T06:59:22-06:00",
+          "message": "fix(text): RichText strips carriage returns, as Rich's Text does (rich-text-svdg)\n\nA CR in a panel title reached the wire inside the border row and sent the\ncursor back over the corner; Rich draws `a b`. The stripped set is now every\nC0 control and DEL but tab and newline: Rich's STRIP_CONTROL_CODES plus the\nport's extension, pinned code by code in test/core/text.test.ts.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-318",
       "ref": "refs/pull/318/merge",
       "sha": "5bbebb7101caebe24d5e220df38aed7e5324e7a5",
