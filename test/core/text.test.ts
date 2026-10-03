@@ -1295,3 +1295,15 @@ describe("RichText.expandTabs()", () => {
     expect(text.spans.map((s) => [s.start, s.end])).toEqual([[8, 9]]);
   });
 });
+
+// rich-embed-1r2m review: Rich's `Lines.justify` pads inside the `Text`, so the
+// padding carries the base style. Python Rich 9d8f9a3 renders
+// `Text("T", style="on red", justify=j)` at width 10 as one "on red" run of
+// ten cells for each of these.
+describe("RichText justify pads in its base style", () => {
+  it.each([["center"], ["left"], ["right"]] as const)("%s", (justify) => {
+    const segs = [...new RichText("T", { style: "on red", justify, end: "" }).render({ maxWidth: 10 })];
+    expect(segs.map((s) => s.text).join("")).toHaveLength(10);
+    expect(segs.every((s) => String(s.style) === "on red")).toBe(true);
+  });
+});

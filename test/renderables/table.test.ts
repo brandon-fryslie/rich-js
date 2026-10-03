@@ -1523,6 +1523,17 @@ describe("Table cells wrap before the overflow method sees them", () => {
     expect([...table.render({ maxWidth: 30 })].map((s) => s.text).join("")).toBe(expected);
   });
 
+  // The title style fills the row its justify pads: Python Rich 9d8f9a3 draws
+  // `Table(title="T", title_style="on red")` over a "header" column as one
+  // "on red" run of ten cells.
+  it("draws a title's justify padding in the title style, as Rich does", () => {
+    const table = new Table({ title: "T", titleStyle: "on red" });
+    table.addColumn("header");
+    const titleRow = Segment.splitLines(table.render({ maxWidth: 30 }))[0]!;
+    expect(titleRow.map((s) => s.text).join("")).toBe("    T     ");
+    expect(titleRow.every((s) => String(s.style) === "on red")).toBe(true);
+  });
+
   it.each([new RichText("foo\n"), "foo\n"])("draws the blank row a cell's trailing newline makes, as Rich does", (cell) => {
     const table = new Table();
     table.addColumn("a");
