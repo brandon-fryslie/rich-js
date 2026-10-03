@@ -14,8 +14,8 @@ import {
   type TerminalTheme,
 } from "../../../src/index.js";
 import { graphemes } from "../../../src/core/cells.js";
-import { onSubject, runDemo, stripSubject } from "../../../examples/effects-feel/app.js";
-import { pulse } from "../../../examples/effects-feel/curves.js";
+import { drawnSubject, runDemo, stripSubject } from "../../../examples/effects-feel/app.js";
+import { onColors, pulse } from "../../../examples/effects-feel/curves.js";
 import { envAtDepth, parseSettings } from "../../../examples/effects-feel/settings.js";
 import { scriptedHost } from "../../host/scripted-host.js";
 
@@ -88,11 +88,11 @@ describe("a strip under a pulse", () => {
     });
   }
 
-  it.each([["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const)(
+  it.each([["dark", CATPPUCCIN_MOCHA, true], ["light", CATPPUCCIN_LATTE, false]] as const)(
     "on a %s ground moves each fill to one colour, in every cell that shows it, and nothing else",
-    (_, theme) => {
-      const strip = stripSubject(theme);
-      const lit = onSubject(strip, pulse({ seconds: 2, ease: EASES.linear, swing: 0.3 }, true), options, theme);
+    (_, theme, darkGround) => {
+      const strip = drawnSubject(stripSubject(theme), options, theme);
+      const lit = onColors(strip.colors, pulse({ seconds: 2, ease: EASES.linear, swing: 0.3 }, darkGround));
       const before = colorsByCell(strip.renderable, theme);
       const after = colorsByCell(new Effected(strip.renderable, lit, { t: 1, key: "strip", theme }), theme);
       expect(after).toHaveLength(before.length);

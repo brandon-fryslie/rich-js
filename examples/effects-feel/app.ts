@@ -36,21 +36,12 @@ import {
   type Effect,
   type Renderable,
   type RenderOptions,
+  type Segment,
   type TerminalTheme,
 } from "../../src/index.js";
 import { graphemes } from "../../src/core/cells.js";
 import { App, hostEnvironment, type TerminalHost } from "../../src/host/index.js";
-import {
-  dissolveOut,
-  drift,
-  fadeIn,
-  onColors,
-  pulse,
-  settledAt,
-  shimmer,
-  sparkle,
-  type ColorMove,
-} from "./curves.js";
+import { dissolveOut, drift, fadeIn, onColors, pulse, settledAt, shimmer, sparkle } from "./curves.js";
 import type { EffectName, NamedCurve, Settings } from "./settings.js";
 
 /** The bundled theme each ground is drawn in: one family, so only the ground differs. */
@@ -84,24 +75,83 @@ export interface Subject {
 }
 
 /**
- * The colours `subject` sets its slot to, by hex, as the screen shows them at
- * the run's depth. A cell that sets none is drawn in the terminal's own
- * colour, which is no colour of the subject's.
+ * A subject as a run draws it, measured once at startup and read by every
+ * frame: whole, at its own width whatever the terminal's — a sweep crosses
+ * the element, not the screen — and at the run's depth.
  */
-function colorsOf(subject: Subject, options: RenderOptions, theme: TerminalTheme): ReadonlySet<string> {
+export interface DrawnSubject extends Subject {
+  readonly options: RenderOptions;
+  /** Its width in columns, which a sweep crosses once a period. */
+  readonly span: number;
+  /** The colours it sets its slot to, by hex, as the screen shows them. */
+  readonly colors: ReadonlySet<string>;
+  /** `row:col` of every cell it draws text in. */
+  readonly text: ReadonlySet<string>;
+}
+
+/** A cell of finished output: where it is, its glyph, and the style it is drawn with. */
+interface Cell {
+  readonly at: string;
+  readonly glyph: string;
+  readonly style: Style;
+}
+
+/**
+ * Finished output cell by cell. [LAW:one-source-of-truth] It walks graphemes
+ * by `graphemes()`, as `Effected` does, so a position here is the one an
+ * effect was handed.
+ */
+function cellsOf(segments: Iterable<Segment>): Cell[] {
+  const cells: Cell[] = [];
+  let row = 0;
+  let col = 0;
+  for (const segment of segments) {
+    if (segment.isControl) continue;
+    for (const glyph of graphemes(segment.text)) {
+      if (glyph === "\n") {
+        row++;
+        col = 0;
+        continue;
+      }
+      cells.push({ at: `${row}:${col}`, glyph, style: segment.style ?? Style.null() });
+      col += cellLen(glyph);
+    }
+  }
+  return cells;
+}
+
+const DEFAULT = ColorSpec.default();
+
+/** A cell's ink and ground as the wire draws them at `options`' depth, the theme resolving the rest. */
+function shown(cell: Cell, options: RenderOptions, theme: TerminalTheme): { fg: ColorRgba; bg: ColorRgba } {
+  const drawn = cell.style.drawnColors(options.colorSystem ?? undefined);
+  return { fg: (drawn.color ?? DEFAULT).getTruecolor(theme, true), bg: (drawn.bgcolor ?? DEFAULT).getTruecolor(theme, false) };
+}
+
+/** The glyphs a joiner draws between cells: colour seams, not text. */
+const SEAM_GLYPHS: ReadonlySet<string> = new Set(Object.values(POWERLINE_JOINER_GLYPHS));
+
+export function drawnSubject(subject: Subject, drawnWith: RenderOptions, theme: TerminalTheme): DrawnSubject {
+  const span = Measurement.get({ ...drawnWith, maxWidth: Number.MAX_SAFE_INTEGER }, subject.renderable).maximum;
+  const options = { ...drawnWith, maxWidth: span };
   const foreground = subject.slot === "fg";
-  return new Set(
-    [...subject.renderable.render(options)].flatMap((segment) => {
-      const drawn = (segment.style ?? Style.null()).drawnColors(options.colorSystem ?? undefined);
+  const colors = new Set(
+    cellsOf(subject.renderable.render(options)).flatMap((cell) => {
+      const drawn = cell.style.drawnColors(options.colorSystem ?? undefined);
       const spec = foreground ? drawn.color : drawn.bgcolor;
+      // A cell that sets none is drawn in the terminal's own colour, which is
+      // no colour of the subject's.
       return spec === undefined ? [] : [spec.getTruecolor(theme, foreground).hex];
     }),
   );
-}
-
-/** `move` on whatever cells show `subject`'s colour. */
-export function onSubject(subject: Subject, move: ColorMove, options: RenderOptions, theme: TerminalTheme): Effect {
-  return onColors(colorsOf(subject, options, theme), move);
+  // A seam sits in the same cell whichever glyph a joiner draws it with, so
+  // the cells are read where the glyphs are the ones `SEAM_GLYPHS` names.
+  const text = new Set(
+    cellsOf(subject.renderable.render({ ...options, asciiOnly: false }))
+      .filter((cell) => cell.glyph.trim() !== "" && !SEAM_GLYPHS.has(cell.glyph))
+      .map((cell) => cell.at),
+  );
+  return { ...subject, options, span, colors, text };
 }
 
 /** A colour of the theme's palette by its name; a name the palette lacks is a bug here. */
@@ -132,33 +182,8 @@ function textSubject(theme: TerminalTheme): Subject {
   return { name: "text", renderable: new RichText(TEXT, { style, noWrap: true }), slot: "fg" };
 }
 
-/** The glyphs a joiner draws between cells: colour seams, not text. */
-const SEAM_GLYPHS: ReadonlySet<string> = new Set(Object.values(POWERLINE_JOINER_GLYPHS));
-
-/**
- * Where a subject draws text — `row:col` of every glyph that is neither a
- * space nor a joiner's seam — which are the cells whose ink must be read
- * against their ground.
- */
-function textCells(subject: Subject, options: RenderOptions): ReadonlySet<string> {
-  const cells = new Set<string>();
-  let row = 0;
-  let col = 0;
-  for (const segment of subject.renderable.render(options)) {
-    if (segment.isControl) continue;
-    // [LAW:one-source-of-truth] The walk `Effected` keys its cells by.
-    for (const glyph of graphemes(segment.text)) {
-      if (glyph === "\n") {
-        row++;
-        col = 0;
-        continue;
-      }
-      if (glyph.trim() !== "" && !SEAM_GLYPHS.has(glyph)) cells.add(`${row}:${col}`);
-      col += cellLen(glyph);
-    }
-  }
-  return cells;
-}
+/** An effect's row on screen and the seeds its cells draw: one per effect, so rows twinkle apart. */
+const seedKey = (effect: EffectName, subject: Subject): string => `${effect}:${subject.name}`;
 
 /** `count` moments evenly across one period of `seconds`. */
 function sampled(seconds: number, count: number): number[] {
@@ -166,39 +191,25 @@ function sampled(seconds: number, count: number): number[] {
 }
 
 /**
- * The worst contrast between text and its ground at each of `times` under
- * `effect`, as the screen shows it at the run's depth; `undefined` when
- * nothing is drawn in colour, which is when no effect runs at all.
+ * The worst contrast between text and its ground over every frame `draw`
+ * makes at each of `times`, read off the drawn cells as the wire writes them.
  */
 function worstContrast(
-  subjects: readonly Subject[],
-  effect: (subject: Subject) => Effect,
+  subjects: readonly DrawnSubject[],
+  draw: (subject: DrawnSubject, t: number) => Iterable<Segment>,
   times: readonly number[],
-  optionsFor: (subject: Subject) => RenderOptions,
   theme: TerminalTheme,
-): number | undefined {
+): number {
   let worst = Number.POSITIVE_INFINITY;
   for (const subject of subjects) {
-    const options = optionsFor(subject);
-    const depth = options.colorSystem;
-    const shown = (color: ColorRgba, foreground: boolean): ColorRgba =>
-      depth === null || depth === undefined
-        ? color
-        : ColorSpec.fromRgba(color).downgrade(depth).getTruecolor(theme, foreground);
-    const inner = effect(subject);
-    const text = textCells(subject, options);
-    const recorded: Effect = (colors, cell, t) => {
-      const out = inner(colors, cell, t);
-      if (text.has(`${cell.row}:${cell.col}`)) {
-        worst = Math.min(worst, contrastRatio(shown(out.fg, true), shown(out.bg, false)));
-      }
-      return out;
-    };
     for (const t of times) {
-      [...new Effected(subject.renderable, recorded, { t, key: subject.name, theme }).render(options)];
+      for (const cell of cellsOf(draw(subject, t))) {
+        const { fg, bg } = shown(cell, subject.options, theme);
+        worst = subject.text.has(cell.at) ? Math.min(worst, contrastRatio(fg, bg)) : worst;
+      }
     }
   }
-  return Number.isFinite(worst) ? worst : undefined;
+  return worst;
 }
 
 const LOOPS = ["shimmer", "pulse", "drift", "sparkle"] as const;
@@ -216,36 +227,32 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   const paper = ColorSpec.fromRgba(theme.backgroundColor);
   const quiet = Style.fromColor(paletteColor(theme, "foreground-muted"));
   const heading = Style.fromColor(ink).add(Style.parse("bold"));
-  const subjects = [stripSubject(theme), textSubject(theme)];
 
   // What the frames are drawn with, asked of the host the app paints on.
   const drawnWith = new Console({ environment: hostEnvironment(host) }).options;
-  // Each subject whole, at its own width, whatever the terminal's: a sweep
-  // crosses the element, not the screen, so neither its span nor the contrast
-  // it reaches depends on how much of it a terminal shows, and nothing here is
-  // measured again on a resize.
-  const span = (subject: Subject): number =>
-    Measurement.get({ ...drawnWith, maxWidth: Number.MAX_SAFE_INTEGER }, subject.renderable).maximum;
-  const whole = (subject: Subject): RenderOptions => ({ ...drawnWith, maxWidth: span(subject) });
+  const subjects = [stripSubject(theme), textSubject(theme)].map((s) => drawnSubject(s, drawnWith, theme));
   const highlight = dark ? new ColorRgba(255, 255, 255) : new ColorRgba(0, 0, 0);
   const { curves } = settings;
 
-  const on = (subject: Subject, move: ColorMove): Effect => onSubject(subject, move, drawnWith, theme);
-  const loops: Record<Loop, (subject: Subject) => Effect> = {
-    shimmer: (s) => on(s, shimmer(curves.shimmer, span(s), SHIMMER_WIDTH, highlight)),
-    pulse: (s) => on(s, pulse(curves.pulse, dark)),
-    drift: (s) => on(s, drift(curves.drift, span(s))),
-    sparkle: (s) => on(s, sparkle(curves.sparkle, dark)),
+  const loops: Record<Loop, (subject: DrawnSubject) => Effect> = {
+    shimmer: (s) => onColors(s.colors, shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, highlight)),
+    pulse: (s) => onColors(s.colors, pulse(curves.pulse, dark)),
+    drift: (s) => onColors(s.colors, drift(curves.drift, s.span)),
+    sparkle: (s) => onColors(s.colors, sparkle(curves.sparkle, dark)),
   };
 
-  const ratio = (r: number | undefined): string => (r === undefined ? "—" : `${r.toFixed(2)}:1`);
-  // Identity contrast: what the cells read at before any effect moves them.
-  const rest = ratio(worstContrast(subjects, () => (colors) => colors, [0], whole, theme));
+  // With no colour drawn there is no contrast to read: every effect is the
+  // identity, and every cell is the terminal's own ink on its own ground.
+  const ratio = (r: number): string => `${r.toFixed(2)}:1`;
+  const rest = ratio(worstContrast(subjects, (s) => s.renderable.render(s.options), [0], theme));
+  const measured = (loop: Loop): string => {
+    const under = (s: DrawnSubject, at: number) =>
+      new Effected(s.renderable, loops[loop](s), { t: at, key: seedKey(loop, s), theme }).render(s.options);
+    const worst = worstContrast(subjects, under, sampled(curves[loop].seconds, CONTRAST_SAMPLES), theme);
+    return `worst contrast ${ratio(worst)} (at rest ${rest})`;
+  };
   const contrast = Object.fromEntries(
-    LOOPS.map((loop) => {
-      const worst = worstContrast(subjects, loops[loop], sampled(curves[loop].seconds, CONTRAST_SAMPLES), whole, theme);
-      return [loop, worst === undefined ? "no colour drawn" : `worst contrast ${ratio(worst)} (at rest ${rest})`];
-    }),
+    LOOPS.map((loop) => [loop, drawnWith.colorSystem === null ? "no colour drawn" : measured(loop)]),
   ) as Record<Loop, string>;
 
   // [LAW:no-ambient-temporal-coupling] The clock, read here and nowhere else.
@@ -261,9 +268,9 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   const transitionStatus = (curve: NamedCurve, start: number, key: string): string =>
     t >= settledAt(curve, start) ? `done — ${key} replays` : "running";
 
-  const row = (label: string, effect: (subject: Subject) => Effect): Renderable[] => [
-    new RichText(label, { style: quiet, noWrap: true }),
-    ...subjects.map((s) => new Effected(s.renderable, effect(s), { t, key: s.name, theme })),
+  const row = (name: EffectName, status: string, effect: (subject: DrawnSubject) => Effect): Renderable[] => [
+    new RichText(`${describe(name, curves[name])}   ${status}`, { style: quiet, noWrap: true }),
+    ...subjects.map((s) => new Effected(s.renderable, effect(s), { t, key: seedKey(name, s), theme })),
     new RichText(""),
   ];
 
@@ -276,15 +283,9 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
         ),
         new RichText("f replays the fade-in · d replays the dissolve · q quits", { style: quiet, noWrap: true }),
         new RichText(""),
-        ...LOOPS.flatMap((loop) => row(`${describe(loop, curves[loop])}   ${contrast[loop]}`, loops[loop])),
-        ...row(
-          `${describe("fade", curves.fade)}   ${transitionStatus(curves.fade, fadeStart, "f")}`,
-          () => fadeIn(curves.fade, fadeStart),
-        ),
-        ...row(
-          `${describe("dissolve", curves.dissolve)}   ${transitionStatus(curves.dissolve, dissolveStart, "d")}`,
-          () => dissolveOut(curves.dissolve, dissolveStart),
-        ),
+        ...LOOPS.flatMap((loop) => row(loop, contrast[loop], loops[loop])),
+        ...row("fade", transitionStatus(curves.fade, fadeStart, "f"), () => fadeIn(curves.fade, fadeStart)),
+        ...row("dissolve", transitionStatus(curves.dissolve, dissolveStart, "d"), () => dissolveOut(curves.dissolve, dissolveStart)),
       ),
       [1, 2],
       { style: Style.fromColor(ink, paper) },

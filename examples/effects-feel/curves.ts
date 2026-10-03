@@ -22,6 +22,7 @@
  */
 
 import {
+  IDENTITY,
   Oklch,
   Phase,
   type CellColors,
@@ -57,8 +58,6 @@ export interface Curve {
   readonly swing: number;
 }
 
-const ZERO_KEY: ThemeKey = { hueShift: 0, chromaScale: 1, lightnessScale: 1, lightnessShift: 0 };
-
 /**
  * A `ThemeKey` whose size follows progress — `key(1)` at the peak — with each
  * cell's progress shifted in time by `offset(cell)` seconds. At progress 0
@@ -76,7 +75,7 @@ function keyed(curve: Curve, key: (amount: number) => ThemeKey, offset: (cell: E
  */
 function lighten(swing: number, darkGround: boolean): (amount: number) => ThemeKey {
   const toward = darkGround ? 1 : -1;
-  return (amount) => ({ ...ZERO_KEY, lightnessShift: toward * swing * amount });
+  return (amount) => ({ ...IDENTITY, lightnessShift: toward * swing * amount });
 }
 
 /** Swing: OKLCH lightness at the peak, 0–1. The whole element breathes together. */
@@ -96,7 +95,7 @@ export function sparkle(curve: Curve, darkGround: boolean): ColorMove {
 export function drift(curve: Curve, span: number): ColorMove {
   return keyed(
     curve,
-    (amount) => ({ ...ZERO_KEY, hueShift: curve.swing * amount }),
+    (amount) => ({ ...IDENTITY, hueShift: curve.swing * amount }),
     (cell) => (cell.col / span) * curve.seconds,
   );
 }
