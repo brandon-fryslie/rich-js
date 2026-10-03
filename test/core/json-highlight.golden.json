@@ -349,6 +349,11 @@
   "ansi": "\u001b[1m{\u001b[0m\u001b[1;34m\"café\"\u001b[0m: \u001b[32m\"naïve\"\u001b[0m, \u001b[1;34m\"n\"\u001b[0m: \u001b[1;36m-3.5e2\u001b[0m\u001b[1m}\u001b[0m\n"
  },
  {
+  "text": "𝐀true",
+  "spans": [],
+  "ansi": "𝐀true\n"
+ },
+ {
   "text": "\"a b\": 1",
   "spans": [
    [
@@ -368,5 +373,26 @@
    ]
   ],
   "ansi": "\u001b[1;34m\"a b\"\u001b[0m: \u001b[1;36m1\u001b[0m\n"
+ },
+ {
+  "text": "\"a b\": 1",
+  "spans": [
+   [
+    0,
+    5,
+    "json.str"
+   ],
+   [
+    7,
+    8,
+    "json.number"
+   ],
+   [
+    0,
+    5,
+    "json.key"
+   ]
+  ],
+  "ansi": "\u001b[1;34m\"a b\"\u001b[0m: \u001b[1;36m1\u001b[0m\n"
  }
 ]

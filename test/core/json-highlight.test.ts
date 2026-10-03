@@ -8,8 +8,9 @@
  * inline, so the corpus repeats those three, then adds ours: escaped quotes,
  * every scalar, a value string followed by a key, tokens inside a string, word
  * characters outside ASCII — where Python's `\w`, `\b` and `\d` on a `str`
- * differ from JavaScript's — and a line separator (U+2028) inside a string,
- * which Python's `.` matches and JavaScript's does not. This is the command the
+ * differ from JavaScript's, one of them astral — and line and paragraph
+ * separators (U+2028, U+2029) inside a string, which Python's `.` matches and
+ * JavaScript's does not. This is the command the
  * committed fixture came out of; run it from the repository root:
  *
  *     git clone -q --depth 1 --branch v15.0.0 https://github.com/Textualize/rich /tmp/rich-src
@@ -22,7 +23,7 @@
  *         '{"k": ["a", "b \\"q\\" c"]}', '{"n": 1.5, "t": true, "f": false, "z": null}',
  *         '{"a": "b", "c": 1}', '{"s": "true 12 [x]"}',
  *         'é"x"', 'étrue', 'trueé', 'é12', '12é', '1e٣', '{"café": "naïve", "n": -3.5e2}',
- *         '"a\u2028b": 1',
+ *         '\U0001D400true', '"a\u2028b": 1', '"a\u2029b": 1',
  *     ]
  *     cases = []
  *     for text in TEXTS:

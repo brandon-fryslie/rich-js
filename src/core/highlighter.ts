@@ -66,7 +66,7 @@ export class RegexHighlighter extends Highlighter {
 // Rich compiles its patterns on a `str`, where Python's `\w`, `\b` and `\d` are
 // Unicode-aware; JavaScript's are ASCII even under `u`, so `café=1` would lose
 // its attribute name and `étrue` would gain a `true`. These spell Python's for
-// the `u` flag, and every highlighter below uses them. `.` is spelled `[^\n]`
+// the `u` flag for ReprHighlighter and JSONHighlighter. `.` is spelled `[^\n]`
 // because Python's dot stops only at `\n`, JavaScript's at `\r`, U+2028 and
 // U+2029 too.
 const W = String.raw`\p{L}\p{N}_`;
