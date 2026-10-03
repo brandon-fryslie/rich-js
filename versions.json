@@ -4,15 +4,22 @@
     {
       "version": "pr-296",
       "ref": "refs/pull/296/merge",
-      "sha": "c24c5e14b5c6fa632ebd495ddd32a1e7d4070687",
-      "timestamp": "2026-10-03T05:03:51.129Z",
+      "sha": "eb6191962303a862518e3513eb8edd3cd7d5f676",
+      "timestamp": "2026-10-03T05:10:24.255Z",
       "commits": [
         {
-          "sha": "c24c5e14b5c6fa632ebd495ddd32a1e7d4070687",
+          "sha": "eb6191962303a862518e3513eb8edd3cd7d5f676",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T23:02:43-06:00",
-          "message": "Merge 186098ce5da5d52c2525b9efb2d92bf044e43510 into ba78f52479c51e5e011c343dc3119ff8f6866ddf\n"
+          "timestamp": "2026-10-02T23:09:16-06:00",
+          "message": "Merge 853936514c94d8ba5d9f09bbf63127f837351d44 into ba78f52479c51e5e011c343dc3119ff8f6866ddf\n"
+        },
+        {
+          "sha": "853936514c94d8ba5d9f09bbf63127f837351d44",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T23:09:12-06:00",
+          "message": "fix(color): the environment's colour vocabulary is its own Map; hex grammar text read off the admitted lengths (rich-color-2qev)\n\nENV_DEPTHS no longer spreads the ColorSystemName table, so FORCE_COLOR=none or\nTERM=truecolor is an unknown env value, and as a Map a value naming an\nObject.prototype member (FORCE_COLOR=constructor) is unknown rather than a\nfunction returned as a depth.\n"
         },
         {
           "sha": "186098ce5da5d52c2525b9efb2d92bf044e43510",
