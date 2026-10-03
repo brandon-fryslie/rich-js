@@ -4,15 +4,22 @@
     {
       "version": "pr-304",
       "ref": "refs/pull/304/merge",
-      "sha": "3091575ad1843aed7fc1c00be1fa2cfc2af40b03",
-      "timestamp": "2026-10-03T08:24:56.700Z",
+      "sha": "fd675d364ffe801b76cde92eaac2dd815150ed6b",
+      "timestamp": "2026-10-03T08:29:25.349Z",
       "commits": [
         {
-          "sha": "3091575ad1843aed7fc1c00be1fa2cfc2af40b03",
+          "sha": "fd675d364ffe801b76cde92eaac2dd815150ed6b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T08:23:55Z",
-          "message": "Merge 4b54793c8fd7f848c1a9fbc8982aa1977e18ca20 into b1b2221759a1265c84443b2b59fd362954f253d6\n"
+          "timestamp": "2026-10-03T08:28:22Z",
+          "message": "Merge 4cea3c414fc1ebed97aba61d409ba8ddef57f5c7 into b1b2221759a1265c84443b2b59fd362954f253d6\n"
+        },
+        {
+          "sha": "4cea3c414fc1ebed97aba61d409ba8ddef57f5c7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T02:28:17-06:00",
+          "message": "fix(panel): widen a label's tabs before it is cut or fitted to (rich-panel-blxr review)\n\nA tab in a panel title or subtitle was measured unexpanded and drawn expanded,\nso the border's excess went negative and String.repeat threw. InlineLabel now\nexpands tabs as Rich's _title does, through a new RichText.expandTabs that\nmoves spans with their characters.\n"
         },
         {
           "sha": "4b54793c8fd7f848c1a9fbc8982aa1977e18ca20",
