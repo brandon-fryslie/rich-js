@@ -198,26 +198,27 @@ function breathAt(p: number): number {
 
 /**
  * Pulse, as breathing. Swing: how far into `light` the colour goes at the
- * top of a full breath, 0–1. The whole element breathes together, warming
- * into the light on the inhale and settling back on the exhale — warmth,
- * not only lightness, so text already near white still visibly breathes. No
- * two breaths are the same: the rhythm drifts a little early or late and the
- * depth varies, both on slow noise. A breath is not a dimmer: it rises first
- * at a heart that wanders slowly along the element and spreads outward from
- * it, the far ends a moment behind, and it fills some stretches more deeply
- * than others — warmth moving through a body, not a lamp turned up. Across
- * one column the lag and the depth barely differ, so a fill drawn across
- * neighbouring cells — a powerline seam and the cell it points out of —
- * stays one colour. A breath starts in its rest, so `t = 0` draws the cell
- * untouched.
+ * top of a full breath, 0–1. The element warms into the light on the inhale
+ * and settles back on the exhale — warmth, not only lightness, so text
+ * already near white still visibly breathes. No two breaths are the same:
+ * the rhythm drifts a little early or late and the depth varies, both on
+ * slow noise. A breath is not a dimmer: it rises first at a heart that
+ * wanders slowly along the element and spreads outward from it at one pace
+ * whatever the element's width, and it fills some stretches more deeply
+ * than others — warmth moving through a body, not a lamp turned up. At
+ * truecolour neighbouring cells stay within a just-noticeable difference,
+ * so a fill drawn across them — a powerline seam and the cell it points out
+ * of — reads as one colour; at 256 colours or fewer a fill can step to the
+ * next palette colour between them, as under every loop that varies along
+ * the row. A breath starts in its rest, so `t = 0` draws the cell untouched.
  */
 export function pulse(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
   const P = curve.seconds;
-  // Of a breath, how far behind the heart its farthest cell starts.
-  const SPREAD = 0.12;
+  // Of a breath, how far behind the heart each column further out starts.
+  const SPREAD = 0.0012;
   const field: Field = (cell, t) => {
     const heart = span * (0.5 + 0.45 * noise(t / (5 * P), 6.1, z));
-    const lag = (SPREAD * Math.abs(cell.col - heart)) / span;
+    const lag = SPREAD * Math.abs(cell.col - heart);
     // The rhythm's drift and the heart's wandering are slow enough that
     // phase only ever moves forward. A cell starts in its rest whatever its lag.
     const phase = Math.max(0, t / P - 0.06 - lag + 0.03 * noise(t / (3 * P), 0.5, 0.5 + z));
@@ -233,7 +234,7 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
 /**
  * Shimmer, as sunlight moving across water. Swing: how far into `light` the
  * brightest glint goes, 0–1. A soft band of light crosses columns 0 to
- * `span` once a period, `width` columns either side of its centre, entering
+ * `span` once a period on average, its pace rising and falling, `width` columns either side of its centre, entering
  * and leaving fully off the row. Inside it the light is a soft glow broken
  * into caustics — bright filaments where two ripples cross — carried on a
  * slow current and re-forming as they go, so the glints dance while the band
@@ -246,7 +247,8 @@ export function shimmer(curve: Curve, span: number, width: number, glow: ColorRg
   // the first pass starts off the row.
   const loop = Phase.loop(curve.seconds);
   const pace = (t: number): number => noise(t / curve.seconds, 2.7, 5.5 + z);
-  const phase = (t: number): number => loop(t + 0.12 * curve.seconds * (pace(t) - pace(0)));
+  const still = pace(0);
+  const phase = (t: number): number => loop(t + 0.12 * curve.seconds * (pace(t) - still));
   // A ripple's crest: a Gaussian ridge, 1 where the field crosses zero and in
   // (0, 1] for any noise, smooth throughout, so a crest sliding through a cell
   // lights it smoothly.

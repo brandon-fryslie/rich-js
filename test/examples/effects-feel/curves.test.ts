@@ -89,7 +89,9 @@ describe("the loops move", () => {
     const breath = pulse(curve(8, 0.4), 40, sun, 0);
     const top = under(breath, ink, cells[0]!, 3.4); // the inhale ends near 0.36 of a breath
     expect(distance(top, sun)).toBeLessThan(distance(ink, sun) - 0.02);
-    expect(sameColor(under(breath, ink, cells[0]!, 7.6), ink)).toBe(true); // the rest before the next
+    // The rest before the next, reached by every cell wherever the heart is:
+    // the farthest cell's lag and the rhythm's drift still land it past the exhale.
+    expect(cells.every((cell) => sameColor(under(breath, ink, cell, 8.1), ink))).toBe(true);
   });
 
   it("light never darkens a colour, white included", () => {
@@ -137,7 +139,8 @@ describe("the loops move", () => {
 
   it("shimmer lights only the columns under its band", () => {
     const band = 8;
-    // Halfway through a 2 s loop the band's centre is at the middle of span + 2·band.
+    // Halfway through a 2 s loop the band's centre is near the middle of
+    // span + 2·band, its current carrying it a few columns either way.
     const lit = at(onColors(inkOn, shimmer(curve(2, 0.7), 40, band, sun, 0)), 1)
       .map((c, col) => (sameColor(c.fg, ink) ? -1 : col))
       .filter((col) => col >= 0);

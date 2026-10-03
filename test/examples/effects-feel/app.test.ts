@@ -7,7 +7,7 @@ import {
   CATPPUCCIN_LATTE,
   CATPPUCCIN_MOCHA,
   ColorDepth,
-  ColorRgba,
+  ColorSpec,
   Console,
   EASES,
   Effected,
@@ -123,20 +123,34 @@ describe("a strip under a pulse", () => {
       const still = new Set(["ground", ...[...share].filter(([hex, s]) => loop.touch(rgba.get(hex)!, s).hex === hex).map(([hex]) => hex)]);
       before.forEach((pair, i) => pair.forEach((was, slot) => expect([was, after[i]![slot] === was]).toEqual([was, still.has(was)])));
 
+    },
+  );
+
+  it.each([["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const)(
+    "on a %s ground keeps a fill one colour across neighbouring cells through a whole breath, at truecolour",
+    (_, theme) => {
       // A breath spreads, so cells far apart differ; neighbours that showed
       // one colour — an arrow's ink and the fill of the cell it points out
       // of, lettering and its fill — still show one as far as the eye can
-      // tell (dE_OK 0.02). Near black an 8-bit step is large in OKLab's
-      // lightness, and a display shows none of it.
-      const oklch = (hex: string) => Oklch.fromRgba(new ColorRgba(...[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number]));
+      // tell (dE_OK 0.02), on the inhale and the exhale where the breath is
+      // steepest as well as at its top. Near black an 8-bit step is large in
+      // OKLab's lightness, and a display shows none of it.
+      const pulseCurve = parseSettings([])!.curves.pulse;
+      const strip = drawnSubject(stripSubject(theme), options, theme);
+      const lit = subjectUnder(strip, pulse(pulseCurve, strip.span, LIGHTS.sun, strip.z), theme);
+      const before = colorsByCell(strip.renderable, theme);
+      const oklch = (hex: string) => Oklch.fromRgba(ColorSpec.parse(hex).getTruecolor());
       const seen = (a: string, b: string) => (Math.max(oklch(a).l, oklch(b).l) < 0.2 ? 0 : oklch(a).deltaE(oklch(b)));
-      before.slice(1).forEach((pair, i) =>
-        pair.forEach((was, slot) =>
-          before[i]!.forEach((left, leftSlot) => {
-            if (left === was && was !== "ground") expect(seen(after[i]![leftSlot]!, after[i + 1]![slot]!), was).toBeLessThan(0.02);
-          }),
-        ),
-      );
+      for (let t = 0; t < pulseCurve.seconds; t += 0.5) {
+        const after = colorsByCell(new Effected(strip.renderable, lit, { t, key: "strip", theme }), theme);
+        before.slice(1).forEach((pair, i) =>
+          pair.forEach((was, slot) =>
+            before[i]!.forEach((left, leftSlot) => {
+              if (left === was && was !== "ground") expect(seen(after[i]![leftSlot]!, after[i + 1]![slot]!), `${was} at ${t}`).toBeLessThan(0.02);
+            }),
+          ),
+        );
+      }
     },
   );
 });
