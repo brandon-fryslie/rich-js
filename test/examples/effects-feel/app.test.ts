@@ -125,6 +125,24 @@ describe("effects-feel", () => {
     await demo.done;
   });
 
+  it("scales every loop's swing on ] and [, a mix stopping at the light", async () => {
+    const { host, demo } = started(["--pulse-swing", "0.5", "--drift-swing", "24"]);
+    await shown(host, "magnitude ×1 ·");
+    host.type("]]");
+    await shown(host, "magnitude ×1.5 ·");
+    expect(host.output()).toMatch(/pulse .*swing 0\.75/);
+    expect(host.output()).toMatch(/drift .*swing 36/);
+    host.type("]]]]");
+    await shown(host, "magnitude ×2.5 ·");
+    expect(host.output()).toMatch(/pulse .*swing 1 /);
+    expect(host.output()).toMatch(/drift .*swing 60/);
+    host.type("[".repeat(12));
+    await shown(host, "magnitude ×0.25 ·");
+    expect(host.output()).toMatch(/pulse .*swing 0\.125/);
+    host.type("q");
+    await demo.done;
+  });
+
   it("holds the frame rate and the pace at their ends", async () => {
     const { host, demo } = started(["--fps", "30"]);
     await shown(host, FIRST_FRAME);

@@ -80,6 +80,9 @@ const THEMES: readonly TerminalTheme[] = [
   SOLARIZED_DARK, SOLARIZED_LIGHT, ATOM_ONE_DARK, ATOM_ONE_LIGHT, FLEXOKI, CYBERPUNK,
 ];
 
+const LOOPS = ["shimmer", "pulse", "drift", "sparkle"] as const;
+type LoopName = (typeof LOOPS)[number];
+
 /** The frame rates the fps keys step through, slowest first. */
 const FPS_STEPS = [0.5, 1, 2, 5, 10, 15, 30] as const;
 
@@ -94,6 +97,20 @@ const FPS_STEPS = [0.5, 1, 2, 5, 10, 15, 30] as const;
  */
 const STEP = 0.25;
 const RATE_RANGE = [1 / 8, 16] as const;
+
+/**
+ * How far the magnitude keys scale every loop's swing — the flags' swing is
+ * ×1 — a quarter a press, within these. A swing that is a mix toward a light
+ * stops at 1, the light itself; drift's, in degrees, does not.
+ */
+const MAGNITUDE = { step: 0.25, range: [0.25, 4] } as const;
+
+/** `curves` with every loop's swing at `magnitude` times the flags'. */
+function magnified(curves: Settings["curves"], magnitude: number): Settings["curves"] {
+  const swing = (loop: LoopName): number =>
+    loop === "drift" ? curves[loop].swing * magnitude : Math.min(1, curves[loop].swing * magnitude);
+  return { ...curves, ...Object.fromEntries(LOOPS.map((loop) => [loop, { ...curves[loop], swing: swing(loop) }])) };
+}
 
 /** How long a slice of contrast measuring may hold the event loop, in seconds: well inside a frame at 30 fps. */
 const MEASURE_SLICE = 0.008;
@@ -298,9 +315,6 @@ function spread(steps: Generator<void>, clock: Clock, budget: number): Unsubscri
   return () => clearTimeout(timer);
 }
 
-const LOOPS = ["shimmer", "pulse", "drift", "sparkle"] as const;
-type LoopName = (typeof LOOPS)[number];
-
 /**
  * `loop` on `subject`'s own colours, each at the share of it its cells can
  * spare. Shares are settled on the colours as the run's depth draws them:
@@ -333,6 +347,8 @@ interface Scene {
   readonly loops: Record<LoopName, (subject: DrawnSubject) => Effect>;
   readonly contrast: Record<LoopName, string>;
   readonly measure: () => Generator<void>;
+  /** The curves it was built with: the flags', at the magnitude on show. */
+  readonly curves: Settings["curves"];
 }
 
 function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings["curves"]): Scene {
@@ -371,7 +387,7 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
       contrast[loop] = `worst contrast ${ratio(worst)} over ${CONTRAST.periods * curves[loop].seconds}s (at rest ${rest})`;
     }
   }
-  return { theme, ink, paper, quiet, heading, subjects, loops, contrast, measure };
+  return { theme, ink, paper, quiet, heading, subjects, loops, contrast, measure, curves };
 }
 
 /**
@@ -462,18 +478,20 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   const clock = systemClock();
   const frames = frameClock(clock);
 
-  // The scene on show, its contrast measured between the frames: a frame is
-  // never held for it, and a theme chosen while the last one was still being
-  // measured stops that measurement where it was.
+  // The scene on show — a theme at a magnitude — its contrast measured
+  // between the frames: a frame is never held for it, and a scene chosen
+  // while the last one was still being measured stops that measurement
+  // where it was.
   let at = THEMES.findIndex((theme) => theme.palette.dark === (settings.ground === "dark"));
+  let magnitude = 1;
   let shown: Scene;
   let stopMeasuring: Unsubscribe = () => {};
-  const show = (theme: TerminalTheme): void => {
+  const show = (): void => {
     stopMeasuring();
-    shown = scene(theme, drawnWith, curves);
+    shown = scene(THEMES[at]!, drawnWith, magnified(curves, magnitude));
     stopMeasuring = spread(shown.measure(), clock, MEASURE_SLICE);
   };
-  show(THEMES[at]!);
+  show();
   const cycle = Math.max(...LOOPS.map((loop) => curves[loop].seconds), settledAt(curves.fade, 0), settledAt(curves.dissolve, 0));
   let rate = 1;
   let fps: FrameRate = frameRate(settings.fps);
@@ -488,7 +506,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     t >= settledAt(curve, start) ? `done — ${key} replays` : "running";
 
   const row = (t: number, name: EffectName, status: string, effect: (subject: DrawnSubject) => Effect): Renderable[] => [
-    new RichText(`${describe(name, curves[name])}   ${status}`, { style: shown.quiet, noWrap: true }),
+    new RichText(`${describe(name, shown.curves[name])}   ${status}`, { style: shown.quiet, noWrap: true }),
     ...shown.subjects.map((s) => new Effected(s.renderable, effect(s), { t, key: seedKey(name, s), theme: shown.theme })),
     new RichText(""),
   ];
@@ -500,10 +518,10 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     return new Padding(
       new Group(
         new RichText(
-          `effects feel · ${fps.perSecond} fps · rate ×${rate} · ${settings.depth} · ${theme.palette.name} (${theme.palette.dark ? "dark" : "light"}) · frame ${Math.round(t / (STEP * rate))} of ${pace.frames}`,
+          `effects feel · ${fps.perSecond} fps · rate ×${rate} · magnitude ×${magnitude} · ${settings.depth} · ${theme.palette.name} (${theme.palette.dark ? "dark" : "light"}) · frame ${Math.round(t / (STEP * rate))} of ${pace.frames}`,
           { style: shown.heading, noWrap: true },
         ),
-        new RichText("f fade-in · d dissolve · n/p theme · </> fps · -/+ rate · q quits", { style: shown.quiet, noWrap: true }),
+        new RichText("f fade-in · d dissolve · n/p theme · </> fps · -/+ rate · [/] magnitude · q quits", { style: shown.quiet, noWrap: true }),
         new RichText(""),
         ...LOOPS.flatMap((loop) => row(t, loop, contrast[loop], loops[loop])),
         ...row(t, "fade", transitionStatus(t, curves.fade, fadeStart, "f"), (s) => fadeIn(curves.fade, fadeStart, s.z, theme.backgroundColor)),
@@ -526,7 +544,12 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   };
   const theme = (step: number): void => {
     at = (at + step + THEMES.length) % THEMES.length;
-    show(THEMES[at]!);
+    show();
+    app.refresh();
+  };
+  const magnify = (step: number): void => {
+    magnitude = Math.min(Math.max(magnitude + step * MAGNITUDE.step, MAGNITUDE.range[0]), MAGNITUDE.range[1]);
+    show();
     app.refresh();
   };
   const stepFps = (step: number): void => {
@@ -553,6 +576,8 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     "+": () => scaleRate(2),
     "=": () => scaleRate(2),
     "-": () => scaleRate(0.5),
+    "]": () => magnify(1),
+    "[": () => magnify(-1),
     q: () => app.stop(),
     "\x03": () => app.stop(),
   };
