@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "5c30d4d4f9cb18ddca7dd43c3d6dc06275d3cbb3",
-      "timestamp": "2026-10-04T12:58:54.804Z",
+      "sha": "e97bac08ee94abe60e7d6da642a3807505d1f831",
+      "timestamp": "2026-10-04T13:01:06.203Z",
       "commits": [
         {
-          "sha": "5c30d4d4f9cb18ddca7dd43c3d6dc06275d3cbb3",
+          "sha": "e97bac08ee94abe60e7d6da642a3807505d1f831",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-04T12:57:34Z",
-          "message": "Merge 5861feda543300e99f6c3e21ec705aea600e2662 into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+          "timestamp": "2026-10-04T12:59:47Z",
+          "message": "Merge b77c39688d6ef6447968b4fc081e2aac4f293a04 into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+        },
+        {
+          "sha": "b77c39688d6ef6447968b4fc081e2aac4f293a04",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-04T06:59:43-06:00",
+          "message": "effects-feel: the frame counter counts frames since the cycle began, across rate changes (rich-effects-fxiy.b6i)\n"
         },
         {
           "sha": "5861feda543300e99f6c3e21ec705aea600e2662",
