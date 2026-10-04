@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "ec7e8bd9567b246cffac9bf6b7f70c41b396c8d6",
-      "timestamp": "2026-10-04T12:51:10.350Z",
+      "sha": "5c30d4d4f9cb18ddca7dd43c3d6dc06275d3cbb3",
+      "timestamp": "2026-10-04T12:58:54.804Z",
       "commits": [
         {
-          "sha": "ec7e8bd9567b246cffac9bf6b7f70c41b396c8d6",
+          "sha": "5c30d4d4f9cb18ddca7dd43c3d6dc06275d3cbb3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-04T12:49:58Z",
-          "message": "Merge 0d3a3c1b768cd10cee847f69adb3148ebb45946d into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+          "timestamp": "2026-10-04T12:57:34Z",
+          "message": "Merge 5861feda543300e99f6c3e21ec705aea600e2662 into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+        },
+        {
+          "sha": "5861feda543300e99f6c3e21ec705aea600e2662",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-04T06:57:30-06:00",
+          "message": "effects-feel: one sync block around a printed line's erase, text and repaint; a same-rate set keeps the timer; wheel stray is not eased; fps steps reach off-grid neighbours (rich-effects-fxiy.b6i)\n"
         },
         {
           "sha": "0d3a3c1b768cd10cee847f69adb3148ebb45946d",
