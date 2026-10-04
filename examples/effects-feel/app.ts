@@ -367,7 +367,7 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
     pulse: (s) => lit(s, pulse(curves.pulse, s.span, LIGHTS.sun, s.z)),
     drift: (s) => lit(s, drift(curves.drift, s.z)),
     sparkle: (s) => lit(s, sparkle(curves.sparkle, s.span, LIGHTS.firefly, s.z)),
-    wheel: (s) => wheel(curves.wheel, s.colors, s.z),
+    wheel: (s) => wheel(curves.wheel, s.colors, new Set(s.pairs.map(([, bg]) => bg.hex).filter((hex) => s.colors.has(hex))), s.z),
   };
   const loops = Object.fromEntries(
     LOOPS.map((name) => {

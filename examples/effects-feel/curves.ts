@@ -604,29 +604,36 @@ const STRAY = 180;
  * way round once a period — far too slowly to be seen moving, so a glance
  * sees a steady palette and an hour's absence a different one — each
  * segment of the element at its own pace. Swing: how far the segments stray
- * from one another, 0–1, 1 being half a turn apart. A segment is what shares
- * a colour of the element's own: a powerline cell's fill, so the cell turns
- * as one, ink and fill together; a run of text's ink. Its stray is slow
- * noise of its own, at `STRAY_PERIODS`, so no two segments keep step, and
- * the row never shows one spread of hues twice. Lightness and chroma are
- * kept, so the words read as they did; the turn only happens to colours of
- * the element's own, never the terminal's.
+ * from one another, 0–1, 1 being half a turn apart. A segment is a fill of
+ * the element's own — one of `fills`, the colours it draws as a ground — and
+ * it turns at its own pace wherever it is drawn: as the ground of its cells,
+ * and as the ink of the seam glyph pointing out of it into the next, so a
+ * powerline cap keeps the colour of the cell it caps. An ink that is no fill
+ * turns with the ground it sits on, so a cell's words and fill turn
+ * together; on the terminal's ground, a run of text's ink is a segment of
+ * its own. A segment's stray is slow noise of its own, at `STRAY_PERIODS`,
+ * so no two keep step, and the row never shows one spread of hues twice.
+ * Lightness and chroma are kept, so the words read as they did; the turn
+ * only happens to `colors`, the element's own, never the terminal's.
  */
-export function wheel(curve: Curve, colors: ReadonlySet<string>, z: number): Effect {
+export function wheel(curve: Curve, colors: ReadonlySet<string>, fills: ReadonlySet<string>, z: number): Effect {
   const P = curve.seconds;
-  // A segment's seed, from the colour it is: the same colour anywhere in the
-  // element is the same segment.
+  // A segment's seed, from the colour it is.
   const seed = (hex: string): number => hash(Number.parseInt(hex.slice(1), 16) * 1e-4, 17.3 + z);
-  const own = ({ fg, bg }: CellColors): string | undefined =>
-    colors.has(bg.hex) ? bg.hex : colors.has(fg.hex) ? fg.hex : undefined;
-  return (drawn, _cell, t) => {
-    const key = own(drawn);
-    if (key === undefined || t === 0) return drawn;
-    const s = seed(key);
+  const turned = (hex: string, t: number): number => {
+    const s = seed(hex);
     const stray = noise(t / STRAY_PERIODS[0], 5.9 + 97 * s, z) + 0.5 * noise(t / STRAY_PERIODS[1], 2.3 + 89 * s, z + 7.1);
-    const angle = (360 * t) / P + curve.ease(curve.swing) * STRAY * (stray / 1.5);
-    const turn = (color: ColorRgba): ColorRgba =>
-      colors.has(color.hex) ? Oklch.fromRgba(color).applyKey({ ...IDENTITY, hueShift: angle }).toRgba() : color;
-    return { fg: turn(drawn.fg), bg: turn(drawn.bg) };
+    return (360 * t) / P + curve.ease(curve.swing) * STRAY * (stray / 1.5);
+  };
+  // The segment a colour turns with, drawn beside `other` in one cell.
+  const segment = (color: ColorRgba, other: ColorRgba): string | undefined =>
+    !colors.has(color.hex) ? undefined : fills.has(color.hex) || !colors.has(other.hex) ? color.hex : other.hex;
+  return (drawn, _cell, t) => {
+    if (t === 0) return drawn;
+    const turn = (color: ColorRgba, other: ColorRgba): ColorRgba => {
+      const key = segment(color, other);
+      return key === undefined ? color : Oklch.fromRgba(color).applyKey({ ...IDENTITY, hueShift: turned(key, t) }).toRgba();
+    };
+    return { fg: turn(drawn.fg, drawn.bg), bg: turn(drawn.bg, drawn.fg) };
   };
 }
