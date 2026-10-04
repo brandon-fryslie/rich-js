@@ -556,7 +556,7 @@ export function wheel(curve: Curve, colors: ReadonlySet<string>, fills: Readonly
   const turned = (hex: string, t: number): number => {
     const s = seed(hex);
     const stray = noise(t / STRAY_PERIODS[0], 5.9 + 97 * s, z) + 0.5 * noise(t / STRAY_PERIODS[1], 2.3 + 89 * s, z + 7.1);
-    return (360 * t) / P + curve.ease(curve.swing) * STRAY * (stray / 1.5);
+    return (360 * t) / P + curve.swing * STRAY * (stray / 1.5);
   };
   // The segment a colour turns with, drawn beside `other` in one cell.
   const segment = (color: ColorRgba, other: ColorRgba): string | undefined =>

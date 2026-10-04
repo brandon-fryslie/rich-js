@@ -304,7 +304,7 @@ export class App {
   // the app has now, and none outlives the app.
   private tick(): void {
     const wanted = this._phase === "running" && this.animations.size > 0;
-    if (this.ticking !== null && (!wanted || this.ticking.rate !== this._rate)) {
+    if (this.ticking !== null && (!wanted || this.ticking.rate.perSecond !== this._rate.perSecond)) {
       this.ticking.stop();
       this.ticking = null;
     }

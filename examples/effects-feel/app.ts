@@ -569,13 +569,18 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     app.refresh();
   };
   const magnify = (step: number): void => {
-    magnitude = Math.min(Math.max(magnitude + step * MAGNITUDE.step, MAGNITUDE.range[0]), MAGNITUDE.range[1]);
+    const next = Math.min(Math.max(magnitude + step * MAGNITUDE.step, MAGNITUDE.range[0]), MAGNITUDE.range[1]);
+    if (next === magnitude) return;
+    magnitude = next;
     show();
     app.refresh();
   };
   const stepFps = (step: number): void => {
-    const near = FPS_STEPS.findIndex((f) => f >= fps.perSecond);
-    const i = Math.min(Math.max((near === -1 ? FPS_STEPS.length - 1 : near) + step, 0), FPS_STEPS.length - 1);
+    // The next step beyond the current rate in the direction pressed, so a
+    // rate between two steps reaches both of its neighbours.
+    const beyond = step > 0 ? FPS_STEPS.find((f) => f > fps.perSecond) : [...FPS_STEPS].reverse().find((f) => f < fps.perSecond);
+    if (beyond === undefined) return;
+    const i = FPS_STEPS.indexOf(beyond);
     fps = frameRate(FPS_STEPS[i]!);
     app.rate = fps;
     app.refresh();

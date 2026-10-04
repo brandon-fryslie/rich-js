@@ -160,7 +160,7 @@ export class SurfacePainter implements Painter {
    */
   paint(frame: FrameSource, screen: Screen, destination: Destination): Segment[][] {
     const rows = fitRows(frame(), screen);
-    this.write(this.over(rows, screen, destination));
+    this.write(SYNC_START + this.over(rows, screen, destination) + SYNC_END);
     return rows;
   }
 
@@ -175,7 +175,9 @@ export class SurfacePainter implements Painter {
     const rows = fitRows(frame(), screen);
     const erase = this.over([], screen, destination);
     const ended = text.endsWith("\n") ? text : `${text}\n`;
-    return erase + ended + this.over(rows, screen, destination);
+    // One synchronized block around all three, so the terminal is released
+    // only once the frame is back.
+    return SYNC_START + erase + ended + this.over(rows, screen, destination) + SYNC_END;
   }
 
   // The bytes that paint `rows` over the last frame. They go out in one
@@ -191,7 +193,7 @@ export class SurfacePainter implements Painter {
     // from the frame's own height.
     const blanked = painted - Math.max(rows.length, 1);
     const back = blanked > 0 ? `\x1b[${blanked}A` : "";
-    const bytes = SYNC_START + this.geometry.home(this.rows) + body + back + SYNC_END;
+    const bytes = this.geometry.home(this.rows) + body + back;
     this.rows = rows.length;
     return bytes;
   }
