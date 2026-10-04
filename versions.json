@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "8fb38e68eb2cf4479bd5623ad90ad23ea82910d2",
-      "timestamp": "2026-10-04T00:19:04.397Z",
+      "sha": "0c2939d2c832d3b15797b0401934c689fa0a0ee6",
+      "timestamp": "2026-10-04T12:40:30.838Z",
       "commits": [
         {
-          "sha": "8fb38e68eb2cf4479bd5623ad90ad23ea82910d2",
+          "sha": "0c2939d2c832d3b15797b0401934c689fa0a0ee6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-04T00:17:46Z",
-          "message": "Merge 24532e9be588f60af0677eb3af5a4c9e4602c9a6 into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+          "timestamp": "2026-10-04T08:38:25-04:00",
+          "message": "Merge 034b5e22314a37b1270f9d72cc4067e28d629c6f into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+        },
+        {
+          "sha": "034b5e22314a37b1270f9d72cc4067e28d629c6f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-04T06:37:52-06:00",
+          "message": "effects-feel: a hue wheel, every segment at its own pace; prime periods; time runs on across cycles (rich-effects-fxiy.b6i)\n\nA fifth loop: every hue turning the whole way round once a period, 907\ndesigned seconds — too slow to see moving, plain after an hour away.\nEach segment (a colour of the element's own) strays from the shared turn\non slow noise of its own at 211 and 337 seconds; the swing is how far,\n1 being half a turn apart. Lightness and chroma are kept.\n\nEvery loop's default period is prime (109, 43, 79, 139, 907), so no two\ncome back into step within a sitting. Demo time no longer winds back at\na cycle, since that would jump a wheel mid-turn: it runs on, cycles are\ncounted, and only the transitions replay at each.\n"
         },
         {
           "sha": "24532e9be588f60af0677eb3af5a4c9e4602c9a6",
