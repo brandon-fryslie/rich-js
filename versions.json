@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "18cb2d19f954c958de75909608af8540f61f1a25",
-      "timestamp": "2026-10-03T18:50:01.911Z",
+      "sha": "8fb38e68eb2cf4479bd5623ad90ad23ea82910d2",
+      "timestamp": "2026-10-04T00:19:04.397Z",
       "commits": [
         {
-          "sha": "18cb2d19f954c958de75909608af8540f61f1a25",
+          "sha": "8fb38e68eb2cf4479bd5623ad90ad23ea82910d2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T18:48:41Z",
-          "message": "Merge 9123e192442963db2401e51fcf8e172d71654ca6 into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+          "timestamp": "2026-10-04T00:17:46Z",
+          "message": "Merge 24532e9be588f60af0677eb3af5a4c9e4602c9a6 into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+        },
+        {
+          "sha": "24532e9be588f60af0677eb3af5a4c9e4602c9a6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T18:17:41-06:00",
+          "message": "effects-feel: [ and ] scale every loop's swing (rich-effects-fxiy.b6i)\n\nA magnitude, ×1 the flags' swings, a quarter a press from ×0.25 to ×4; a\nmix toward a light stops at the light, drift's degrees do not. The scene is\nrebuilt at the new swings, its contrast measured again between the frames.\n"
         },
         {
           "sha": "9123e192442963db2401e51fcf8e172d71654ca6",
