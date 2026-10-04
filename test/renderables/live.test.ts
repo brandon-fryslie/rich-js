@@ -343,7 +343,7 @@ describe("Printing through live.console", () => {
     const before = chunks.length;
     display.console.print("printed");
 
-    expect(chunks.slice(before)).toEqual([expect.stringMatching(/printed\n.*good$/s)]);
+    expect(chunks.slice(before)).toEqual([expect.stringMatching(/printed\n.*good\x1b\[\?2026l$/s)]);
     display.stop();
   });
 

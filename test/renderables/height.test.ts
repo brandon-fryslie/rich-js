@@ -32,16 +32,20 @@ function sized(height: number): { console: Console; out: () => string } {
   return { console, out: () => chunks.join("") };
 }
 
-// What a first refresh wrote, after the move to the frame's first row: home
-// on the alternate screen, and no move inline, where it is the cursor's line.
+// What a first refresh wrote, inside the synchronized-output pair every
+// paint is wrapped in, after the move to the frame's first row: home on the
+// alternate screen, and no move inline, where it is the cursor's line.
 function frame(renderable: Renderable, height: number, options: LiveOptions): string {
   const { console, out } = sized(height);
   const live = new Live(renderable, { console, autoRefresh: false, ...options });
   live.start();
   const before = out().length;
   live.refresh();
-  return out().slice(before).replace(/^\x1b\[H/, "");
+  return painted(out().slice(before));
 }
+
+/** A paint's rows: what is between its synchronized-output pair, after any move home. */
+const painted = (bytes: string): string => bytes.replace(/^\x1b\[\?2026h(?:\x1b\[H)?/, "").replace(/\x1b\[\?2026l$/, "");
 
 // Each row starts from its first cell and is erased before it is drawn.
 const ROW_START = "\r\x1b[2K";
@@ -97,7 +101,7 @@ describe("alt-screen Live frames", () => {
     live.refresh();
     const before = out().length;
     live.update(new Probe(1), { refresh: true });
-    const rows = out().slice(before).replace(/^\x1b\[H/, "").split("\n");
+    const rows = painted(out().slice(before)).split("\n");
     expect(rows).toEqual(["line 0", "", "", ""].map(erased));
   });
 
@@ -114,7 +118,7 @@ describe("alt-screen Live frames", () => {
     live.start();
     const before = chunks.join("").length;
     live.refresh();
-    expect(chunks.join("").slice(before).replace(/^\x1b\[H/, "").split("\n")).toEqual(["hi", ""].map(erased));
+    expect(painted(chunks.join("").slice(before)).split("\n")).toEqual(["hi", ""].map(erased));
   });
 
   it("a transient stop leaves the buffer and erases nothing inside it", () => {

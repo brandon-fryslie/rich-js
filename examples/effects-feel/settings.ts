@@ -7,7 +7,7 @@
  */
 
 import { parseArgs, type ParseArgsConfig } from "node:util";
-import { EASES, parseEase, type Env } from "../../src/index.js";
+import { ColorDepth, EASES, parseEase, type Env } from "../../src/index.js";
 import type { EaseName } from "../../src/core/easing.js";
 import type { Curve } from "./curves.js";
 
@@ -48,20 +48,28 @@ const FPS_RANGE = [0.5, 30] as const;
 
 /**
  * How a terminal says it draws each depth, as the environment colour
- * detection reads: `FORCE_COLOR` names a depth and beats the terminal's own
- * answer; `NO_COLOR` turns colour off and beats `FORCE_COLOR`.
+ * detection reads: `FORCE_COLOR` names a depth in the chalk convention —
+ * `1`, `2`, `3`; the names a `colorSystem` option takes are not read here —
+ * and beats the terminal's own answer; `NO_COLOR` turns colour off and beats
+ * `FORCE_COLOR`. `draws` is the depth that environment resolves to, so the
+ * run can check it was given what it asked for. [LAW:one-source-of-truth]
  */
-const DEPTH_ENV: Record<Depth, { readonly set: Env; readonly drop: readonly string[] }> = {
-  truecolor: { set: { FORCE_COLOR: "truecolor" }, drop: ["NO_COLOR"] },
-  "256": { set: { FORCE_COLOR: "256" }, drop: ["NO_COLOR"] },
-  "16": { set: { FORCE_COLOR: "ansi" }, drop: ["NO_COLOR"] },
-  none: { set: { NO_COLOR: "1" }, drop: ["FORCE_COLOR"] },
+const DEPTH_ENV: Record<Depth, { readonly set: Env; readonly drop: readonly string[]; readonly draws: ColorDepth | null }> = {
+  truecolor: { set: { FORCE_COLOR: "3" }, drop: ["NO_COLOR"], draws: ColorDepth.TRUECOLOR },
+  "256": { set: { FORCE_COLOR: "2" }, drop: ["NO_COLOR"], draws: ColorDepth.EIGHT_BIT },
+  "16": { set: { FORCE_COLOR: "1" }, drop: ["NO_COLOR"], draws: ColorDepth.STANDARD },
+  none: { set: { NO_COLOR: "1" }, drop: ["FORCE_COLOR"], draws: null },
 };
 
 /** `env` as a terminal drawing at `depth` would present it. */
 export function envAtDepth(env: Env, depth: Depth): Env {
   const { set, drop } = DEPTH_ENV[depth];
   return { ...Object.fromEntries(Object.entries(env).filter(([key]) => !drop.includes(key))), ...set };
+}
+
+/** The colour depth a console on `envAtDepth(env, depth)` draws at. */
+export function depthDrawn(depth: Depth): ColorDepth | null {
+  return DEPTH_ENV[depth].draws;
 }
 
 const curveFlags = EFFECTS.flatMap((effect) => [`${effect}-${secondsWord(effect)}`, `${effect}-ease`, `${effect}-swing`]);
@@ -89,7 +97,11 @@ export const USAGE = [
   "",
   `  eases: ${Object.keys(EASES).join(", ")}`,
   "",
-  "  keys: f replays the fade-in, d replays the dissolve, q or Ctrl-C quits",
+  "  keys: f replays the fade-in, d replays the dissolve, n/p the next/previous theme,",
+  "        < and > step the frame rate, - and + halve and double the rate,",
+  "        [ and ] take a quarter off and add a quarter to the magnitude, every loop's swing, q or Ctrl-C quits",
+  "  a frame is the unit of change: every frame moves every loop the same amount, whatever the",
+  "  frame rate, and the rate scales that amount; the demo starts over after one cycle of frames",
 ].join("\n");
 
 /** `undefined` is `--help`; anything else is a run's settings. */

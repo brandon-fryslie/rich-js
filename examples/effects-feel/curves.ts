@@ -186,26 +186,32 @@ export function light(glow: ColorRgba): Touch {
   };
 }
 
-/** How a swell rises and falls: the rise and the fall of the strongest one, in turns of its cycle. */
-interface SwellShape {
-  readonly rise: number;
-  readonly fall: number;
-}
+/**
+ * How a swell rises and falls: the levels the strongest one passes through,
+ * each at its moment in turns of its cycle, from 0 at the start of its turn
+ * and back to 0 at its last knot.
+ */
+type SwellShape = readonly (readonly [turn: number, level: number])[];
+
+/** How long a swell `k` strong lasts, in turns. */
+const lasts = (shape: SwellShape, k: number): number => k * shape[shape.length - 1]![0];
 
 /**
  * A swell — a breath, a firefly's glow — `k` strong, in [0, 1], `s` after it
- * began: a raised cosine up over its rise and down over its fall, 0 before
- * and after, zero slope at every joint. A weaker swell is a shorter one in
- * proportion, so it climbs no more steeply than the strongest: however
- * strong, its steepest moment is the same, and only the strongest need be
- * checked against the step a frame may take. A swell of strength 0 is no
- * swell at all: 0 throughout, its own start included.
+ * began: a raised cosine from each knot to the next, 0 before and after, zero
+ * slope at every knot. A weaker swell is a shorter one in proportion, so it
+ * climbs no more steeply than the strongest: however strong, its steepest
+ * moment is the same, and only the strongest need be checked against the
+ * step a frame may take. A swell of strength 0 is no swell at all: 0
+ * throughout, its own start included.
  */
 function swell(shape: SwellShape, s: number, k: number): number {
   const p = s / k;
-  if (!(p > 0 && p < shape.rise + shape.fall)) return 0;
-  if (p < shape.rise) return (k * (1 - Math.cos((Math.PI * p) / shape.rise))) / 2;
-  return (k * (1 + Math.cos((Math.PI * (p - shape.rise)) / shape.fall))) / 2;
+  const to = shape.findIndex(([turn]) => p < turn);
+  if (!(p > 0) || to < 0) return 0;
+  const [t0, l0] = to === 0 ? [0, 0] : shape[to - 1]!;
+  const [t1, l1] = shape[to]!;
+  return k * (l0 + ((l1 - l0) * (1 - Math.cos((Math.PI * (p - t0)) / (t1 - t0)))) / 2);
 }
 
 /**
@@ -215,7 +221,7 @@ function swell(shape: SwellShape, s: number, k: number): number {
  * at both its ends. `k` is above 0.
  */
 function given(shape: SwellShape, s: number, k: number): number {
-  const whole = k * (shape.rise + shape.fall);
+  const whole = lasts(shape, k);
   const area = (to: number): number => {
     let sum = 0;
     for (let i = 0; i < 24; i++) sum += swell(shape, ((i + 0.5) / 24) * to, k);
@@ -229,10 +235,17 @@ function given(shape: SwellShape, s: number, k: number): number {
  * the rest of the turn — the shape that makes a pulse read as calm rather
  * than as a warning.
  */
-const BREATH: SwellShape = { rise: 0.28, fall: 0.39 };
+const BREATH: SwellShape = [[0.28, 1], [0.67, 0]];
+
+/**
+ * A sigh: the inhale catches partway and draws in again, then lets go in one
+ * long exhale — the double breath everyone knows from a sleeper, or from
+ * themselves. Each part of its inhale climbs less steeply than a breath's.
+ */
+const SIGH: SwellShape = [[0.19, 0.62], [0.31, 1], [0.7, 0]];
 
 /** A firefly's brightest flash, in turns: it kindles quicker than it fades, and the rest of its turn is dark. */
-const FLASH: SwellShape = { rise: 0.24, fall: 0.36 };
+const FLASH: SwellShape = [[0.24, 1], [0.6, 0]];
 
 /** About one breath in this many is a sigh. */
 const SIGH_EVERY = 6;
@@ -243,7 +256,8 @@ const SIGH_EVERY = 6;
  * on the inhale and settles back on the exhale — warmth, not only
  * lightness, so text already near white still visibly breathes. No two
  * breaths are the same, the way a sleeper's are not: most are shallow and
- * quick, about one in `SIGH_EVERY` is a long, deep sigh, and each comes at
+ * quick, about one in `SIGH_EVERY` is a long, deep sigh that catches once
+ * on the way in, and each comes at
  * its own moment in its turn, so the rhythm is calm but never a
  * metronome. A breath is not a dimmer: it rises first at a heart that
  * wanders slowly along the element and spreads outward from it, column by
@@ -260,11 +274,11 @@ export function pulse(curve: Curve, span: number, glow: ColorRgba, z: number): L
   const P = curve.seconds;
   // Of a breath, how far behind the heart each column further out starts:
   // `SPREAD` a column at most, so neighbours stay one colour to the eye, and
-  // `REACH` across the whole width at most, so even a sigh, done 0.67 of the
+  // `REACH` across the whole width at most, so even a sigh, done 0.7 of the
   // way through its turn at the heart, is done everywhere before the turn
   // ends and the whole element rests between breaths.
   const SPREAD = 0.0055;
-  const REACH = 0.3;
+  const REACH = 0.27;
   const perColumn = Math.min(SPREAD, REACH / span);
   // How far, in turns, the rhythm drifts ahead and behind its metronome,
   // measured from where it stood at t = 0.
@@ -281,14 +295,19 @@ export function pulse(curve: Curve, span: number, glow: ColorRgba, z: number): L
     // lag is never negative, so every cell starts at rest.
     const phase = Math.max(0, t / P - lag + drift(t) - drift0);
     // Breath `n` is one event across the whole element: its strength and its
-    // moment in its turn are the same in every cell.
+    // moment in its turn are the same in every cell. Depth runs in spells —
+    // a few deeper breaths, then a few shallower — on slow noise over the
+    // breaths, and the breath after a sigh is a quieter one that comes late.
     const n = Math.floor(phase);
-    const k = hash(n, 1 + z) < 1 / SIGH_EVERY ? 1 : 0.5 + 0.25 * hash(n, 2 + z);
-    const start = hash(n, 3 + z) * (1 - k) * (BREATH.rise + BREATH.fall);
+    const sigh = (m: number): boolean => hash(m, 1 + z) < 1 / SIGH_EVERY;
+    const after = sigh(n - 1) ? 1 : 0;
+    const depth = (0.5 + 0.25 * smoothstep(-0.5, 0.5, noise(n * 0.31, 2.5, z))) * (1 - 0.2 * after);
+    const [shape, k] = sigh(n) ? [SIGH, 1] : [BREATH, depth];
+    const start = Math.max(hash(n, 3 + z), 0.9 * after) * (lasts(SIGH, 1) - lasts(shape, k));
     // How fully this stretch of the element takes it: some stretches to the
     // whole swing, some to 45% of it.
     const fill = 1 - 0.55 * smoothstep(-0.5, 0.5, noise(cell.col * 0.025, 1.9, t / (6 * P) + z));
-    return curve.swing * curve.ease(clamp01(swell(BREATH, phase - n - start, k) * fill));
+    return curve.swing * curve.ease(clamp01(swell(shape, phase - n - start, k) * fill));
   };
   return { touch: light(glow), field };
 }
@@ -388,7 +407,8 @@ const SILVER = { lightness: 0.08, chroma: 0.3 } as const;
 /**
  * Drift, as wind crossing a field. Swing: degrees of hue at a gust's
  * strongest. Gusts are patches of noise carried along the row from column 0
- * toward its end, `STRIDE` columns a period, changing shape as they go.
+ * toward its end, about `STRIDE` columns a period, changing shape as they
+ * go, on a wind that gathers and slackens rather than running at one speed.
  * The air they ride is itself turbulent — the field is warped by slower
  * noise, so a gust bends, stretches and catches up with another rather than
  * sliding by in a straight line — and gusts come in sets, the wind rising
@@ -397,11 +417,18 @@ const SILVER = { lightness: 0.08, chroma: 0.3 } as const;
  * swing — the way grass shows the pale side of its blades.
  */
 export function drift(curve: Curve, z: number): Loop {
-  const speed = STRIDE / curve.seconds;
+  const P = curve.seconds;
+  // How far the air has blown by `t`: the wind gathers and slackens over a
+  // couple of periods, between a third of `STRIDE` a period and a little over
+  // it, and never turns back — noise's slope stays within ±2.3, so the pace,
+  // `GUST.mean * (1 + GUST.surge * slope)` of `STRIDE`, stays above 0.
+  const GUST = { mean: 0.73, surge: 0.25, over: 2 } as const;
+  const blown = (t: number): number =>
+    (GUST.mean * STRIDE * (t + GUST.surge * GUST.over * P * noise(t / (GUST.over * P), 7.7, z))) / P;
   const field: Field = (cell, t) => {
     const row = cell.row + z;
     const warp = 1.2 * noise(cell.col * 0.03, row * 0.2 + 3.3, t * 0.02);
-    const air = fbm((cell.col - speed * t) * 0.045 + warp, row * 0.3, t * 0.03, 3);
+    const air = fbm((cell.col - blown(t)) * 0.045 + warp, row * 0.3, t * 0.03, 3);
     const swell = 0.6 + 0.4 * noise(t / (1.7 * curve.seconds) + 0.4, cell.col * 0.012, 9.1 + z);
     return curve.ease(swell * smoothstep(-0.15, 0.55, air));
   };
@@ -456,7 +483,7 @@ export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number):
           // every flash is timed alike.
           const lit = hash(n, fly.z + 1) < 0.15 ? 0 : 1;
           const k = 0.5 + 0.5 * hash(n, fly.z + 2);
-          const at = hash(n, fly.z + 3) * (1 - k * (FLASH.rise + FLASH.fall));
+          const at = hash(n, fly.z + 3) * (1 - lasts(FLASH, k));
           const s = u / TURN - n - at;
           // While it glows it drifts a few cells one way or the other, as
           // fast as it is bright: quickest at its height, slowing as it
@@ -477,9 +504,10 @@ export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number):
     return flown.flies;
   };
   const field: Field = (cell, t) => {
+    // Where two halos overlap the brighter wins, so light never doubles up.
     let shine = 0;
-    for (const fly of fliesAt(t)) shine += fly.glow * bump(Math.hypot(cell.col - fly.x, 2 * (cell.row - fly.y)) / HALO);
-    return curve.swing * curve.ease(clamp01(shine));
+    for (const fly of fliesAt(t)) shine = Math.max(shine, fly.glow * bump(Math.hypot(cell.col - fly.x, 2 * (cell.row - fly.y)) / HALO));
+    return curve.swing * curve.ease(shine);
   };
   return { touch: light(glow), field };
 }
