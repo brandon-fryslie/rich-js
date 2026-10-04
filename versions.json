@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "0c2939d2c832d3b15797b0401934c689fa0a0ee6",
-      "timestamp": "2026-10-04T12:40:30.838Z",
+      "sha": "d64a020f09554c0c73ce307f755bacb2a362d7fc",
+      "timestamp": "2026-10-04T12:46:38.286Z",
       "commits": [
         {
-          "sha": "0c2939d2c832d3b15797b0401934c689fa0a0ee6",
+          "sha": "d64a020f09554c0c73ce307f755bacb2a362d7fc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-04T08:38:25-04:00",
-          "message": "Merge 034b5e22314a37b1270f9d72cc4067e28d629c6f into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+          "timestamp": "2026-10-04T12:45:32Z",
+          "message": "Merge 4bb748b625c03f37497cd418c7ab21dcf8486b73 into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+        },
+        {
+          "sha": "4bb748b625c03f37497cd418c7ab21dcf8486b73",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-04T06:45:27-06:00",
+          "message": "effects-feel: the wheel turns a powerline cap with the cell it caps (rich-effects-fxiy.b6i)\n"
         },
         {
           "sha": "034b5e22314a37b1270f9d72cc4067e28d629c6f",
