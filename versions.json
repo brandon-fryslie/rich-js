@@ -2,24 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-337",
-      "ref": "refs/pull/337/merge",
-      "sha": "03a238e75006351397022e323f1d0f7ab8e6f638",
-      "timestamp": "2026-10-04T21:07:28.700Z",
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "187446e996c21fe2bc395c27b0adcbeca49eafec",
+      "timestamp": "2026-10-04T21:12:09.668Z",
       "commits": [
         {
-          "sha": "03a238e75006351397022e323f1d0f7ab8e6f638",
+          "sha": "187446e996c21fe2bc395c27b0adcbeca49eafec",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-04T15:06:31-06:00",
-          "message": "Merge c055106f70b3f442b4ddf4a206e2fd0be5331514 into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
-        },
-        {
-          "sha": "c055106f70b3f442b4ddf4a206e2fd0be5331514",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-04T15:06:26-06:00",
-          "message": "chore(release): 0.19.0\n"
+          "timestamp": "2026-10-04T15:10:52-06:00",
+          "message": "chore(release): 0.19.0 (#337)"
         }
       ]
     },
@@ -148,21 +141,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T11:00:03-06:00",
           "message": "fix(deploy): one concurrency group per docs slot, so a PR run cannot cancel a pending master deploy (rich-workflows-ui0d)\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "dec2facc8b0d76a04a34f10462f118357b141ffd",
-      "timestamp": "2026-10-03T16:56:01.994Z",
-      "commits": [
-        {
-          "sha": "dec2facc8b0d76a04a34f10462f118357b141ffd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T10:54:13-06:00",
-          "message": "fix(table): a RichText title or caption keeps its own style, and justify pads inside the text's run, as Rich does (rich-table-qj6i) (#335)\n\n* fix(table): a RichText title or caption keeps its own style, and justify pads inside the text's run, as Rich does (rich-table-qj6i)\n\n* fix(text): a justify pad joins the run beside it only when no span covers that run, as Rich does (rich-table-qj6i)\n\nReview: the join was decided by style equality, which merged a pad into a\nspan whose style equals the base. _buildSegments now reports which pieces a\nspan covers, and padded joins on that.\n\n* fix(text): a zero-width segment at a justified edge keeps its own style (rich-table-qj6i)"
         }
       ]
     }
