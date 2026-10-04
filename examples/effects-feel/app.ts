@@ -439,10 +439,21 @@ class Pace {
   // The demo time at the last change of step, and the frame then.
   private base = 0;
   private mark: number;
+  // Every step the pace has had, so the frame a cycle began on is known even
+  // when the step has changed since.
+  private readonly past: { base: number; mark: number; step: number }[] = [];
 
   constructor(frame: number, step: number, private readonly cycle: number) {
     this.mark = frame;
     this.step = step;
+  }
+
+  /** The frames since the cycle `at(frame)` is in began, whatever steps it was run at. */
+  framesIn(frame: number): number {
+    const { began } = this.at(frame);
+    const segments = [...this.past, { base: this.base, mark: this.mark, step: this.step }];
+    const into = [...segments].reverse().find((s) => s.base <= began) ?? segments[0]!;
+    return frame - Math.round(into.mark + (began - into.base) / into.step);
   }
 
   /** The demo time at `frame`, which cycle it is in (from 0), and when that cycle began. */
@@ -464,6 +475,7 @@ class Pace {
 
   /** From `frame` on, each frame moves demo time by `step`. */
   set(frame: number, step: number): void {
+    this.past.push({ base: this.base, mark: this.mark, step: this.step });
     this.base = this.now(frame);
     this.mark = frame;
     this.step = step;
@@ -539,7 +551,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     return new Padding(
       new Group(
         new RichText(
-          `effects feel · ${fps.perSecond} fps · rate ×${rate} · magnitude ×${magnitude} · ${settings.depth} · ${theme.palette.name} (${theme.palette.dark ? "dark" : "light"}) · cycle ${nth + 1} · frame ${Math.round((t - began) / (STEP * rate))} of ${pace.frames}`,
+          `effects feel · ${fps.perSecond} fps · rate ×${rate} · magnitude ×${magnitude} · ${settings.depth} · ${theme.palette.name} (${theme.palette.dark ? "dark" : "light"}) · cycle ${nth + 1} · frame ${pace.framesIn(frame)} of ${pace.frames}`,
           { style: shown.heading, noWrap: true },
         ),
         new RichText("f fade-in · d dissolve · n/p theme · </> fps · -/+ rate · [/] magnitude · q quits", { style: shown.quiet, noWrap: true }),
