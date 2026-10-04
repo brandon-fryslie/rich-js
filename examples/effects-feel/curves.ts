@@ -482,18 +482,33 @@ const OWN = 0.45;
  * rising smoothly over its own part of the duration. Whole at
  * `start + seconds`.
  */
-export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba): Effect {
-  const own = curve.seconds * OWN;
+export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba, ownShare: number = OWN): Effect {
+  const own = curve.seconds * ownShare;
   const place = order(1.7 + z);
   return veiled((cell, t) => curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t)), curve.swing, ground);
 }
 
 /**
- * How far some of a dissolving element comes back before it goes: the most,
- * as a share of whole, a cell rises again, and where in its own fade, as a
- * share of it gone, the rising begins and is done.
+ * The shape of a dissolve, every constant that makes it feel as it does.
+ * `own`: of the duration, the share each cell's own fade takes. The rebound —
+ * patches of what is left rising back before they go — is `depth` (the most,
+ * as a share of whole, a cell rises again), `from` and `to` (where in its own
+ * fade, as a share of it gone, the rising begins and is done), `maskFrom` and
+ * `maskTo` (which cells rebound: those whose eddy noise is past `maskFrom`,
+ * all of them past `maskTo`) and `late` (how much likelier the later a cell
+ * goes: 0 is no more likely, 1 is nothing for the first to go).
  */
-const REBOUND = { depth: 0.4, from: 0.5, to: 0.95 } as const;
+export interface DissolveShape {
+  readonly own: number;
+  readonly depth: number;
+  readonly from: number;
+  readonly to: number;
+  readonly maskFrom: number;
+  readonly maskTo: number;
+  readonly late: number;
+}
+
+export const DISSOLVE_SHAPE: DissolveShape = { own: OWN, depth: 0.85, from: 0.25, to: 0.97, maskFrom: 0.3, maskTo: 0.55, late: 0.5 };
 
 /**
  * Dissolve-out starting at `start`, as mist lifting: the element thins in
@@ -503,14 +518,14 @@ const REBOUND = { depth: 0.4, from: 0.5, to: 0.95 } as const;
  * goes, the likelier — rise back part way, as the last of it eddies, before
  * they thin away for good.
  */
-export function dissolveOut(curve: Curve, start: number, z: number, ground: ColorRgba): Effect {
-  const own = curve.seconds * OWN;
+export function dissolveOut(curve: Curve, start: number, z: number, ground: ColorRgba, shape: DissolveShape = DISSOLVE_SHAPE): Effect {
+  const own = curve.seconds * shape.own;
   const place = order(4.2 + z);
   const eddy = order(9.3 + z);
   return veiled((cell, t) => {
     const gone = curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t));
-    const q = clamp01((gone - REBOUND.from) / (REBOUND.to - REBOUND.from));
-    const back = REBOUND.depth * smoothstep(0.35, 0.75, eddy(cell)) * (0.4 + 0.6 * place(cell)) * Math.sin(Math.PI * q) ** 2;
+    const q = clamp01((gone - shape.from) / (shape.to - shape.from));
+    const back = shape.depth * smoothstep(shape.maskFrom, shape.maskTo, eddy(cell)) * (1 - shape.late + shape.late * place(cell)) * Math.sin(Math.PI * q) ** 2;
     return clamp01(1 - gone + back);
   }, curve.swing, ground);
 }

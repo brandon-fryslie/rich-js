@@ -20,7 +20,8 @@ import {
 import { cellLen, graphemes } from "../../../src/core/cells.js";
 import { LIGHTS, SHIMMER_WIDTH, drawnSubject, runDemo, stripSubject, subjectUnder, textSubject } from "../../../examples/effects-feel/app.js";
 import { pulse, shares, shimmer, sparkle } from "../../../examples/effects-feel/curves.js";
-import { envAtDepth, parseSettings } from "../../../examples/effects-feel/settings.js";
+import { parseSettings } from "../../../examples/effects-feel/settings.js";
+import { envAtDepth } from "../../../examples/effects-feel/vocabulary.js";
 import { scriptedHost } from "../../host/scripted-host.js";
 
 const HAND_BACK = "\x1b[?1049l";

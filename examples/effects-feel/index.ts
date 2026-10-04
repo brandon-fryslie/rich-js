@@ -8,7 +8,8 @@
 
 import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { runDemo } from "./app.js";
-import { USAGE, envAtDepth, parseSettings } from "./settings.js";
+import { USAGE, parseSettings } from "./settings.js";
+import { envAtDepth } from "./vocabulary.js";
 
 // A command line the demo cannot run is the user's to fix: say what was wrong
 // and how to spell it, and exit 2, the usage-error code. Nothing has taken the

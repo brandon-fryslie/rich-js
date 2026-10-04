@@ -3,7 +3,8 @@
 
 import { describe, expect, it } from "vitest";
 import { EASES, detectColorSystem } from "../../../src/index.js";
-import { DEPTHS, EFFECTS, depthDrawn, envAtDepth, parseSettings } from "../../../examples/effects-feel/settings.js";
+import { DEPTHS, EFFECTS, depthDrawn, envAtDepth } from "../../../examples/effects-feel/vocabulary.js";
+import { parseSettings } from "../../../examples/effects-feel/settings.js";
 
 describe("parseSettings", () => {
   it("is a run at 30 fps, truecolor, on a dark ground with no flags", () => {

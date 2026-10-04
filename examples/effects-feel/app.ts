@@ -67,14 +67,15 @@ import {
 } from "../../src/index.js";
 import { graphemes } from "../../src/core/cells.js";
 import { App, hostEnvironment, type TerminalHost } from "../../src/host/index.js";
-import { dissolveOut, fadeIn, onColors, pulse, settledAt, shares, shimmer, sparkle, wheel, type Loop, type Pair } from "./curves.js";
-import { depthDrawn, type EffectName, type NamedCurve, type Settings } from "./settings.js";
+import { dissolveOut, fadeIn, onColors, pulse, settledAt, shares, shimmer, sparkle, wheel, type Curve, type Loop, type Pair } from "./curves.js";
+import { depthDrawn, type EffectName } from "./vocabulary.js";
+import type { NamedCurve, Settings } from "./settings.js";
 
 /**
  * The bundled themes a run can be drawn in, in the order the theme keys walk
  * them. A run starts on the first of its ground.
  */
-const THEMES: readonly TerminalTheme[] = [
+export const THEMES: readonly TerminalTheme[] = [
   CATPPUCCIN_MOCHA, CATPPUCCIN_LATTE, CATPPUCCIN_MACCHIATO, CATPPUCCIN_FRAPPE,
   TOKYO_NIGHT, NORD, DRACULA, GRUVBOX, MONOKAI, ROSE_PINE, ROSE_PINE_MOON, ROSE_PINE_DAWN,
   SOLARIZED_DARK, SOLARIZED_LIGHT, ATOM_ONE_DARK, ATOM_ONE_LIGHT, FLEXOKI, CYBERPUNK,
@@ -337,6 +338,19 @@ export function subjectUnder(subject: DrawnSubject, loop: Loop, theme: TerminalT
 }
 
 /**
+ * The pulse breathing the elements chosen for `subject` (`PULSED`), each at a
+ * time of its own, on the fill the screen draws them with; a subject with
+ * none chosen is left be.
+ */
+export function pulsedOn(subject: DrawnSubject, curve: Curve, theme: TerminalTheme): Effect {
+  const effects = (PULSED[subject.name] ?? []).map((label, n) => {
+    const fill = stripStyle(theme, STRIP_LABELS.indexOf(label)).drawnColors(subject.options.colorSystem ?? undefined).bgcolor!;
+    return subjectUnder(subject, pulse(curve, LIGHTS.sun, subject.z + 3.7 * (n + 1)), theme, new Set([fill.getTruecolor(theme, false).hex]));
+  });
+  return (colors, cell, t) => effects.reduce((moved, effect) => effect(moved, cell, t), colors);
+}
+
+/**
  * Everything a theme decides: the subjects drawn in it, each loop settled on
  * their colours, the contrast each loop was measured at, and the styles of
  * the lines around them. Built once per theme, since settling the shares is
@@ -370,18 +384,9 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
   // A loop that lights is settled on the subject's colours at the share each
   // can spare; the wheel keeps lightness and chroma, so it is tried as it is.
   const lit = (s: DrawnSubject, loop: Loop): Effect => subjectUnder(s, loop, theme);
-  // The pulse breathes the chosen elements, each at a time of its own, on the
-  // fill the screen draws them with; a subject with none chosen is left be.
-  const pulsed = (s: DrawnSubject): Effect => {
-    const effects = (PULSED[s.name] ?? []).map((label, n) => {
-      const fill = stripStyle(theme, STRIP_LABELS.indexOf(label)).drawnColors(s.options.colorSystem ?? undefined).bgcolor!;
-      return subjectUnder(s, pulse(curves.pulse, LIGHTS.sun, s.z + 3.7 * (n + 1)), theme, new Set([fill.getTruecolor(theme, false).hex]));
-    });
-    return (colors, cell, t) => effects.reduce((moved, effect) => effect(moved, cell, t), colors);
-  };
   const made: Record<LoopName, (subject: DrawnSubject) => Effect> = {
     shimmer: (s) => lit(s, shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, LIGHTS.sun, s.z)),
-    pulse: (s) => pulsed(s),
+    pulse: (s) => pulsedOn(s, curves.pulse, theme),
     sparkle: (s) => lit(s, sparkle(curves.sparkle, s.span, LIGHTS.firefly, s.z)),
     wheel: (s) => wheel(curves.wheel, s.colors, new Set(s.pairs.map(([, bg]) => bg.hex).filter((hex) => s.colors.has(hex))), s.z),
   };
