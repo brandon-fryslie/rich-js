@@ -586,3 +586,47 @@ export function dissolveOut(curve: Curve, start: number, z: number, ground: Colo
 export function settledAt(curve: Curve, start: number): number {
   return start + curve.seconds;
 }
+
+/**
+ * The periods, in seconds, of the two noises a segment's stray from the
+ * wheel's shared turn rides on. Primes, as every loop's default period is,
+ * and none a multiple of another's: a session's loops never come back round
+ * to a state they have shown, within any sitting — the first return of the
+ * wheel alone is after the product of its three periods.
+ */
+const STRAY_PERIODS = [211, 337] as const;
+
+/** How far a segment may stray from the shared turn at swing 1, in degrees: half a turn — fully apart. */
+const STRAY = 180;
+
+/**
+ * Wheel, as the colour of daylight going round: every hue turning the whole
+ * way round once a period — far too slowly to be seen moving, so a glance
+ * sees a steady palette and an hour's absence a different one — each
+ * segment of the element at its own pace. Swing: how far the segments stray
+ * from one another, 0–1, 1 being half a turn apart. A segment is what shares
+ * a colour of the element's own: a powerline cell's fill, so the cell turns
+ * as one, ink and fill together; a run of text's ink. Its stray is slow
+ * noise of its own, at `STRAY_PERIODS`, so no two segments keep step, and
+ * the row never shows one spread of hues twice. Lightness and chroma are
+ * kept, so the words read as they did; the turn only happens to colours of
+ * the element's own, never the terminal's.
+ */
+export function wheel(curve: Curve, colors: ReadonlySet<string>, z: number): Effect {
+  const P = curve.seconds;
+  // A segment's seed, from the colour it is: the same colour anywhere in the
+  // element is the same segment.
+  const seed = (hex: string): number => hash(Number.parseInt(hex.slice(1), 16) * 1e-4, 17.3 + z);
+  const own = ({ fg, bg }: CellColors): string | undefined =>
+    colors.has(bg.hex) ? bg.hex : colors.has(fg.hex) ? fg.hex : undefined;
+  return (drawn, _cell, t) => {
+    const key = own(drawn);
+    if (key === undefined || t === 0) return drawn;
+    const s = seed(key);
+    const stray = noise(t / STRAY_PERIODS[0], 5.9 + 97 * s, z) + 0.5 * noise(t / STRAY_PERIODS[1], 2.3 + 89 * s, z + 7.1);
+    const angle = (360 * t) / P + curve.ease(curve.swing) * STRAY * (stray / 1.5);
+    const turn = (color: ColorRgba): ColorRgba =>
+      colors.has(color.hex) ? Oklch.fromRgba(color).applyKey({ ...IDENTITY, hueShift: angle }).toRgba() : color;
+    return { fg: turn(drawn.fg), bg: turn(drawn.bg) };
+  };
+}

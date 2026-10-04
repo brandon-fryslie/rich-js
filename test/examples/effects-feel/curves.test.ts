@@ -29,6 +29,7 @@ import {
   shares,
   shimmer,
   sparkle,
+  wheel,
   type Curve,
   type Loop,
   type Pair,
@@ -85,6 +86,73 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
 
   it("dissolve-out before it starts", () => {
     expect(drawn(dissolveOut(curve(3, 1), 5, 0, ground), 5)).toBe(untouched);
+  });
+
+  it("the wheel at the start of its turn", () => {
+    expect(drawn(wheel(curve(907, 0.25), new Set([ink.hex]), 0), 0)).toBe(untouched);
+  });
+});
+
+describe("the wheel", () => {
+  // Three fills a strip might draw, each a segment of its own, and the ink on them.
+  const fills = [new ColorRgba(137, 180, 250), new ColorRgba(166, 227, 161), new ColorRgba(243, 139, 168)];
+  const own = new Set([...fills.map((c) => c.hex), ink.hex]);
+  const hue = (c: ColorRgba): number => Oklch.fromRgba(c).h;
+  const turned = (from: ColorRgba, to: ColorRgba): number => (((hue(to) - hue(from)) % 360) + 360) % 360;
+  const cell: EffectCell = { row: 0, col: 3, seed: 0 };
+
+  it("turns every hue the whole way round once a period, lightness and chroma kept", () => {
+    const P = 907;
+    const round = wheel(curve(P, 0), own, 0);
+    for (const fill of fills) {
+      const at = (t: number) => round({ fg: ink, bg: fill }, cell, t).bg;
+      // A quarter of the way round, a quarter turn; at the end, back.
+      // To a degree or so: the sRGB round trip lands a step off.
+      expect(Math.abs(turned(fill, at(P / 4)) - 90)).toBeLessThan(2);
+      expect(Math.abs(turned(fill, at(P / 2)) - 180)).toBeLessThan(2);
+      expect(Math.min(turned(fill, at(P)), 360 - turned(fill, at(P)))).toBeLessThan(1);
+      const was = Oklch.fromRgba(fill);
+      const is = Oklch.fromRgba(at(P / 3));
+      expect(is.l).toBeCloseTo(was.l, 1);
+      expect(is.c).toBeCloseTo(was.c, 1);
+    }
+  });
+
+  it("turns a cell's ink and fill together, and leaves the terminal's colour alone", () => {
+    const round = wheel(curve(907, 0.25), own, 0);
+    const { fg, bg } = round({ fg: ink, bg: fills[0]! }, cell, 300);
+    expect(turned(ink, fg)).toBeCloseTo(turned(fills[0]!, bg), 0);
+    const text = round({ fg: ink, bg: ground }, cell, 300);
+    expect(text.bg).toBe(ground);
+    expect(turned(ink, text.fg)).toBeGreaterThan(0);
+  });
+
+  it("lets each segment stray from the shared turn by its own amount, within the swing", () => {
+    const P = 907;
+    const swing = 0.25;
+    const round = wheel(curve(P, swing), own, 0);
+    const strays = fills.map((fill) => {
+      const got = turned(fill, round({ fg: ink, bg: fill }, cell, P / 2).bg);
+      return ((got - 180 + 540) % 360) - 180;
+    });
+    // Apart from one another, and none past half a turn times the swing.
+    expect(new Set(strays.map((s) => s.toFixed(0))).size).toBe(fills.length);
+    for (const stray of strays) expect(Math.abs(stray)).toBeLessThanOrEqual(180 * swing + 1);
+    expect(Math.max(...strays.map(Math.abs))).toBeGreaterThan(3);
+  });
+
+  it("moves no cell more than the bar between frames at 1 fps, at every magnitude", () => {
+    const round = wheel(curve(907, 1), own, 0);
+    let worst = 0;
+    for (const fill of fills) {
+      let last = round({ fg: ink, bg: fill }, cell, 0.5);
+      for (let t = 1.5; t < 1800; t++) {
+        const next = round({ fg: ink, bg: fill }, cell, t);
+        worst = Math.max(worst, Oklch.fromRgba(last.bg).deltaE(Oklch.fromRgba(next.bg)), Oklch.fromRgba(last.fg).deltaE(Oklch.fromRgba(next.fg)));
+        last = next;
+      }
+    }
+    expect(worst).toBeLessThan(0.04);
   });
 });
 

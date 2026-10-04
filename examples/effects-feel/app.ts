@@ -67,7 +67,7 @@ import {
 } from "../../src/index.js";
 import { graphemes } from "../../src/core/cells.js";
 import { App, hostEnvironment, type TerminalHost } from "../../src/host/index.js";
-import { dissolveOut, drift, fadeIn, onColors, pulse, settledAt, shares, shimmer, sparkle, type Loop, type Pair } from "./curves.js";
+import { dissolveOut, drift, fadeIn, onColors, pulse, settledAt, shares, shimmer, sparkle, wheel, type Loop, type Pair } from "./curves.js";
 import { depthDrawn, type EffectName, type NamedCurve, type Settings } from "./settings.js";
 
 /**
@@ -80,7 +80,7 @@ const THEMES: readonly TerminalTheme[] = [
   SOLARIZED_DARK, SOLARIZED_LIGHT, ATOM_ONE_DARK, ATOM_ONE_LIGHT, FLEXOKI, CYBERPUNK,
 ];
 
-const LOOPS = ["shimmer", "pulse", "drift", "sparkle"] as const;
+const LOOPS = ["shimmer", "pulse", "drift", "sparkle", "wheel"] as const;
 type LoopName = (typeof LOOPS)[number];
 
 /** The frame rates the fps keys step through, slowest first. */
@@ -359,15 +359,19 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
   const depth = drawnWith.colorSystem ?? ColorDepth.TRUECOLOR;
   const subjects = [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, drawnWith, theme));
 
-  const made: Record<LoopName, (subject: DrawnSubject) => Loop> = {
-    shimmer: (s) => shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, LIGHTS.sun, s.z),
-    pulse: (s) => pulse(curves.pulse, s.span, LIGHTS.sun, s.z),
-    drift: (s) => drift(curves.drift, s.z),
-    sparkle: (s) => sparkle(curves.sparkle, s.span, LIGHTS.firefly, s.z),
+  // A loop that lights is settled on the subject's colours at the share each
+  // can spare; the wheel keeps lightness and chroma, so it is tried as it is.
+  const lit = (s: DrawnSubject, loop: Loop): Effect => subjectUnder(s, loop, theme);
+  const made: Record<LoopName, (subject: DrawnSubject) => Effect> = {
+    shimmer: (s) => lit(s, shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, LIGHTS.sun, s.z)),
+    pulse: (s) => lit(s, pulse(curves.pulse, s.span, LIGHTS.sun, s.z)),
+    drift: (s) => lit(s, drift(curves.drift, s.z)),
+    sparkle: (s) => lit(s, sparkle(curves.sparkle, s.span, LIGHTS.firefly, s.z)),
+    wheel: (s) => wheel(curves.wheel, s.colors, s.z),
   };
   const loops = Object.fromEntries(
     LOOPS.map((name) => {
-      const built = new Map(subjects.map((s) => [s, subjectUnder(s, made[name](s), theme)]));
+      const built = new Map(subjects.map((s) => [s, made[name](s)]));
       return [name, (s: DrawnSubject) => built.get(s)!];
     }),
   ) as Record<LoopName, (subject: DrawnSubject) => Effect>;
@@ -408,10 +412,11 @@ function frameClock(clock: Clock): Clock {
 }
 
 /**
- * The demo's own time: `step` designed seconds a frame from the last reset
- * — so a change of step bends the time from that frame and never jumps it —
- * and starting over once a `cycle` of it has run, so what is seen is one
- * full pass of every loop, then the same again, at whatever step.
+ * The demo's own time: `step` designed seconds a frame — so a change of
+ * step bends the time from that frame and never jumps it — running on
+ * without end, since no loop ever comes back round and a time wound back
+ * would jump every one of them. What comes round is the `cycle`: one full
+ * pass of every loop, counted so the transitions can replay at each.
  */
 class Pace {
   private step: number;
@@ -424,13 +429,11 @@ class Pace {
     this.step = step;
   }
 
-  /** The demo time at `frame`, and whether it just started over. */
-  at(frame: number): { t: number; reset: boolean } {
+  /** The demo time at `frame`, which cycle it is in (from 0), and when that cycle began. */
+  at(frame: number): { t: number; cycle: number; began: number } {
     const t = this.base + (frame - this.mark) * this.step;
-    if (t < this.cycle) return { t, reset: false };
-    this.base = 0;
-    this.mark = frame;
-    return { t: 0, reset: true };
+    const cycle = Math.floor(t / this.cycle);
+    return { t, cycle, began: cycle * this.cycle };
   }
 
   /** `at(frame)` as a bare time. */
@@ -511,14 +514,16 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     new RichText(""),
   ];
 
+  let replayed = 0;
   const view = (frame: number): Renderable => {
-    const { t, reset } = pace.at(frame);
-    if (reset) fadeStart = dissolveStart = 0;
+    const { t, cycle: nth, began } = pace.at(frame);
+    // A new cycle: both transitions run again from its start.
+    if (began > replayed) fadeStart = dissolveStart = replayed = began;
     const { theme, loops, contrast } = shown;
     return new Padding(
       new Group(
         new RichText(
-          `effects feel · ${fps.perSecond} fps · rate ×${rate} · magnitude ×${magnitude} · ${settings.depth} · ${theme.palette.name} (${theme.palette.dark ? "dark" : "light"}) · frame ${Math.round(t / (STEP * rate))} of ${pace.frames}`,
+          `effects feel · ${fps.perSecond} fps · rate ×${rate} · magnitude ×${magnitude} · ${settings.depth} · ${theme.palette.name} (${theme.palette.dark ? "dark" : "light"}) · cycle ${nth + 1} · frame ${Math.round((t - began) / (STEP * rate))} of ${pace.frames}`,
           { style: shown.heading, noWrap: true },
         ),
         new RichText("f fade-in · d dissolve · n/p theme · </> fps · -/+ rate · [/] magnitude · q quits", { style: shown.quiet, noWrap: true }),

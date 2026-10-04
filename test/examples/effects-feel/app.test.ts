@@ -56,12 +56,12 @@ describe("effects-feel", () => {
     // the demo is not allowed to do.
     expect(host.output()).toContain("measuring contrast…");
     // Measuring every loop is a second or two of work spread between the frames; more under a loaded suite.
-    await vi.waitFor(() => expect(host.output()).toMatch(/sparkle .*worst contrast \d+\.\d\d:1 over \d+s \(at rest \d+\.\d\d:1\)/), { timeout: 30_000, interval: 50 });
+    await vi.waitFor(() => expect(host.output()).toMatch(/wheel .*worst contrast \d+\.\d\d:1 over \d+s \(at rest \d+\.\d\d:1\)/), { timeout: 30_000, interval: 50 });
     host.type("q");
     await demo.done;
     const out = host.output();
-    for (const name of ["shimmer", "pulse", "drift", "sparkle", "fade", "dissolve"]) expect(out).toContain(name);
-    expect(out.match(/worst contrast \d+\.\d\d:1 over \d+s \(at rest \d+\.\d\d:1\)/g)?.length).toBeGreaterThanOrEqual(4);
+    for (const name of ["shimmer", "pulse", "drift", "sparkle", "wheel", "fade", "dissolve"]) expect(out).toContain(name);
+    expect(out.match(/worst contrast \d+\.\d\d:1 over \d+s \(at rest \d+\.\d\d:1\)/g)?.length).toBeGreaterThanOrEqual(5);
   });
 
   it("says no colour is drawn when there is none to measure", async () => {
@@ -84,15 +84,15 @@ describe("effects-feel", () => {
     await demo.done;
   });
 
-  it("starts over after one cycle, the longest loop's period, without a key", async () => {
-    const periods = ["shimmer", "pulse", "drift", "sparkle"].flatMap((loop) => [`--${loop}-period`, "0.5"]);
+  it("replays the transitions each cycle, the longest loop's period, without a key", async () => {
+    const periods = ["shimmer", "pulse", "drift", "sparkle", "wheel"].flatMap((loop) => [`--${loop}-period`, "0.5"]);
     const { host, demo } = started([...periods, "--fade-duration", "0.1", "--dissolve-duration", "0.1"]);
     await shown(host, "done — f replays");
     const before = host.output().length;
     // The transitions ran again on their own: the cycle came round.
     await vi.waitFor(() => expect(host.output().slice(before)).toMatch(/fade\s.*running/), { timeout: 5000, interval: 10 });
-    // Half a designed second at a quarter a frame: two frames a cycle.
-    expect(host.output()).toContain("frame 0 of 2");
+    // Half a designed second at a quarter a frame: two frames a cycle, and the cycle counted up.
+    expect(host.output()).toContain("cycle 2 · frame 0");
     host.type("q");
     await demo.done;
   });
