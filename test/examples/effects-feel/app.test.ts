@@ -19,7 +19,7 @@ import {
 } from "../../../src/index.js";
 import { cellLen, graphemes } from "../../../src/core/cells.js";
 import { LIGHTS, SHIMMER_WIDTH, drawnSubject, runDemo, stripSubject, subjectUnder, textSubject } from "../../../examples/effects-feel/app.js";
-import { drift, pulse, shares, shimmer, sparkle } from "../../../examples/effects-feel/curves.js";
+import { pulse, shares, shimmer, sparkle } from "../../../examples/effects-feel/curves.js";
 import { envAtDepth, parseSettings } from "../../../examples/effects-feel/settings.js";
 import { scriptedHost } from "../../host/scripted-host.js";
 
@@ -60,7 +60,7 @@ describe("effects-feel", () => {
     host.type("q");
     await demo.done;
     const out = host.output();
-    for (const name of ["shimmer", "pulse", "drift", "sparkle", "wheel", "fade", "dissolve"]) expect(out).toContain(name);
+    for (const name of ["shimmer", "pulse", "sparkle", "wheel", "fade", "dissolve"]) expect(out).toContain(name);
     expect(out.match(/worst contrast \d+\.\d\d:1 over \d+s \(at rest \d+\.\d\d:1\)/g)?.length).toBeGreaterThanOrEqual(5);
   });
 
@@ -85,7 +85,7 @@ describe("effects-feel", () => {
   });
 
   it("replays the transitions each cycle, the longest loop's period, without a key", async () => {
-    const periods = ["shimmer", "pulse", "drift", "sparkle", "wheel"].flatMap((loop) => [`--${loop}-period`, "0.5"]);
+    const periods = ["shimmer", "pulse", "sparkle", "wheel"].flatMap((loop) => [`--${loop}-period`, "0.5"]);
     const { host, demo } = started([...periods, "--fade-duration", "0.1", "--dissolve-duration", "0.1"]);
     await shown(host, "done — f replays");
     const before = host.output().length;
@@ -126,16 +126,14 @@ describe("effects-feel", () => {
   });
 
   it("scales every loop's swing on ] and [, a mix stopping at the light", async () => {
-    const { host, demo } = started(["--pulse-swing", "0.5", "--drift-swing", "24"]);
+    const { host, demo } = started(["--pulse-swing", "0.5"]);
     await shown(host, "magnitude ×1 ·");
     host.type("]]");
     await shown(host, "magnitude ×1.5 ·");
     expect(host.output()).toMatch(/pulse .*swing 0\.75/);
-    expect(host.output()).toMatch(/drift .*swing 36/);
     host.type("]]]]");
     await shown(host, "magnitude ×2.5 ·");
     expect(host.output()).toMatch(/pulse .*swing 1 /);
-    expect(host.output()).toMatch(/drift .*swing 60/);
     host.type("[".repeat(12));
     await shown(host, "magnitude ×0.25 ·");
     expect(host.output()).toMatch(/pulse .*swing 0\.125/);
@@ -188,7 +186,7 @@ describe("a strip under a pulse", () => {
     "on a %s ground moves each colour the strip sets, alike in neighbouring cells, and leaves the terminal's alone",
     (_, theme) => {
       const strip = drawnSubject(stripSubject(theme), options, theme);
-      const loop = pulse({ seconds: 2, ease: EASES.linear, swing: 1 }, 104, LIGHTS.sun, 0);
+      const loop = pulse({ seconds: 2, ease: EASES.linear, swing: 1 }, LIGHTS.sun, 0);
       const lit = subjectUnder(strip, loop, theme);
       const share = shares(strip.pairs, strip.colors, loop.touch);
       const before = colorsByCell(strip.renderable, theme);
@@ -218,7 +216,7 @@ describe("a strip under a pulse", () => {
       // OKLab's lightness, and a display shows none of it.
       const pulseCurve = parseSettings([])!.curves.pulse;
       const strip = drawnSubject(stripSubject(theme), options, theme);
-      const lit = subjectUnder(strip, pulse(pulseCurve, strip.span, LIGHTS.sun, strip.z), theme);
+      const lit = subjectUnder(strip, pulse(pulseCurve, LIGHTS.sun, strip.z), theme);
       const before = colorsByCell(strip.renderable, theme);
       const oklch = (hex: string) => Oklch.fromRgba(ColorSpec.parse(hex).getTruecolor());
       const seen = (a: string, b: string) => (Math.max(oklch(a).l, oklch(b).l) < 0.2 ? 0 : oklch(a).deltaE(oklch(b)));
@@ -241,8 +239,7 @@ describe("every loop keeps the words readable", () => {
   const { curves } = parseSettings([])!;
   const made = {
     shimmer: (span: number, z: number) => shimmer({ ...curves.shimmer, swing: 1 }, span, SHIMMER_WIDTH, LIGHTS.sun, z),
-    pulse: (span: number, z: number) => pulse({ ...curves.pulse, swing: 1 }, span, LIGHTS.sun, z),
-    drift: (_span: number, z: number) => drift(curves.drift, z),
+    pulse: (_span: number, z: number) => pulse({ ...curves.pulse, swing: 1 }, LIGHTS.sun, z),
     sparkle: (span: number, z: number) => sparkle({ ...curves.sparkle, swing: 1 }, span, LIGHTS.firefly, z),
   };
   const grounds = [["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const;

@@ -16,13 +16,13 @@ describe("parseSettings", () => {
     const settings = parseSettings([
       "--fps", "0.5", "--depth", "256", "--ground", "light",
       "--pulse-period", "4", "--pulse-ease", "ease-in-out", "--pulse-swing", "0.3",
-      "--fade-duration", "1.5", "--drift-swing=-90",
+      "--fade-duration", "1.5", "--wheel-swing=0.9",
     ])!;
     expect(settings).toMatchObject({ fps: 0.5, depth: "256", ground: "light" });
     expect(settings.curves.pulse).toMatchObject({ seconds: 4, easeName: "ease-in-out", swing: 0.3 });
     expect(settings.curves.pulse.ease).toBe(EASES["ease-in-out"]);
     expect(settings.curves.fade.seconds).toBe(1.5);
-    expect(settings.curves.drift.swing).toBe(-90);
+    expect(settings.curves.wheel.swing).toBe(0.9);
   });
 
   it("is undefined for --help", () => {

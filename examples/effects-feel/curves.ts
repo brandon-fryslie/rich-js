@@ -6,7 +6,7 @@
  * sign-off notes, not from this file.
  *
  * Each effect is something a first-time observer already knows from life —
- * a breath, sunlight moving on water, wind crossing a field, fireflies, ink
+ * a slow glow, sunlight moving on water, the colours of daylight, fireflies, ink
  * blooming in water, mist lifting — because a motion the eye recognises
  * reads as calm and alive, where a motion it has to learn reads as a widget.
  * What makes those motions familiar is what every curve here keeps:
@@ -230,91 +230,46 @@ function given(shape: SwellShape, s: number, k: number): number {
   return area(Math.min(Math.max(s, 0), whole)) / area(whole);
 }
 
-/**
- * A sleeper's breath: a quicker inhale, a longer exhale, then stillness for
- * the rest of the turn — the shape that makes a pulse read as calm rather
- * than as a warning.
- */
-const BREATH: SwellShape = [[0.28, 1], [0.67, 0]];
-
-/**
- * A sigh: the inhale catches partway and draws in again, then lets go in one
- * long exhale — the double breath everyone knows from a sleeper, or from
- * themselves. Each part of its inhale climbs less steeply than a breath's.
- */
-const SIGH: SwellShape = [[0.19, 0.62], [0.31, 1], [0.7, 0]];
-
 /** A firefly's brightest flash, in turns: it kindles quicker than it fades, and the rest of its turn is dark. */
 const FLASH: SwellShape = [[0.24, 1], [0.6, 0]];
 
-/** About one breath in this many is a sigh. */
-const SIGH_EVERY = 6;
-
 /**
- * Pulse, as breathing. Swing: how far into `light` the colour goes at the
- * top of the deepest breath, a sigh, 0–1. The element warms into the light
- * on the inhale and settles back on the exhale — warmth, not only
- * lightness, so text already near white still visibly breathes. No two
- * breaths are the same, the way a sleeper's are not: most are shallow and
- * quick, about one in `SIGH_EVERY` is a long, deep sigh that catches once
- * on the way in, and each comes at
- * its own moment in its turn, so the rhythm is calm but never a
- * metronome. A breath is not a dimmer: it rises first at a heart that
- * wanders slowly along the element and spreads outward from it, column by
- * column on a narrow element and reaching a wide one's edges in the same
- * share of its turn however wide, and it fills some stretches to the whole
- * swing and others to less — warmth moving through a body, not a lamp
- * turned up. At truecolour, under any continuous ease, neighbouring cells
- * stay within a just-noticeable difference, so a fill drawn across them —
- * a powerline seam and the cell it points out of — reads as one colour; at
- * 256 colours or fewer a fill can step to the next palette colour between
- * them, as under every loop that varies along the row. A breath starts in its rest, so `t = 0` draws the cell untouched.
+ * Pulse, as a gentle glow on one element of a screen: the colours handed to
+ * it, an element's own, warm into `light` and settle back, over and over, the
+ * way an indicator breathes while something is waiting. Swing: how far into
+ * the light it goes at the top of a beat, 0–1. The element glows as one —
+ * every cell it is drawn in at once — and the colours not handed to it, the
+ * rest of the screen, stay as they are, so what pulses is what was chosen.
+ * Each element keeps a time of its own, a little quicker or slower than
+ * another's by `z`, and no beat is quite the last: the rhythm wanders ahead
+ * and behind its metronome and each beat goes a little deeper or shallower
+ * than the one before. A beat starts and ends in rest, so `t = 0` draws the
+ * element untouched.
  */
-export function pulse(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
-  const P = curve.seconds;
-  // Of a breath, how far behind the heart each column further out starts:
-  // `SPREAD` a column at most, so neighbours stay one colour to the eye, and
-  // `REACH` across the whole width at most, so even a sigh, done 0.7 of the
-  // way through its turn at the heart, is done everywhere before the turn
-  // ends and the whole element rests between breaths.
-  const SPREAD = 0.0055;
-  const REACH = 0.27;
-  const perColumn = Math.min(SPREAD, REACH / span);
-  // How far, in turns, the rhythm drifts ahead and behind its metronome,
-  // measured from where it stood at t = 0.
-  const DRIFT = 0.1;
-  const drift = (t: number): number => DRIFT * noise(t / (3 * P), 0.5, 0.5 + z);
-  const drift0 = drift(0);
-  const field: Field = (cell, t) => {
-    const heart = span * (0.5 + 0.45 * noise(t / (5 * P), 6.1, z));
-    const lag = perColumn * Math.abs(cell.col - heart);
-    // Phase only ever moves forward: lag spans at most `REACH` of a turn and
-    // the heart crosses at most 0.9 of the width per 5 turns of noise, and
-    // the drift moves 0.1 of a turn per 3, so together they slow phase by
-    // far less than its own turn a turn. At t = 0 the drift term is 0 and
-    // lag is never negative, so every cell starts at rest.
-    const phase = Math.max(0, t / P - lag + drift(t) - drift0);
-    // Breath `n` is one event across the whole element: its strength and its
-    // moment in its turn are the same in every cell. Depth runs in spells —
-    // a few deeper breaths, then a few shallower — on slow noise over the
-    // breaths, and the breath after a sigh is a quieter one that comes late.
-    const n = Math.floor(phase);
-    const sigh = (m: number): boolean => hash(m, 1 + z) < 1 / SIGH_EVERY;
-    const after = sigh(n - 1) ? 1 : 0;
-    const depth = (0.5 + 0.25 * smoothstep(-0.5, 0.5, noise(n * 0.31, 2.5, z))) * (1 - 0.2 * after);
-    const [shape, k] = sigh(n) ? [SIGH, 1] : [BREATH, depth];
-    const start = Math.max(hash(n, 3 + z), 0.9 * after) * (lasts(SIGH, 1) - lasts(shape, k));
-    // How fully this stretch of the element takes it: some stretches to the
-    // whole swing, some to 45% of it.
-    const fill = 1 - 0.55 * smoothstep(-0.5, 0.5, noise(cell.col * 0.025, 1.9, t / (6 * P) + z));
-    return curve.swing * curve.ease(clamp01(swell(shape, phase - n - start, k) * fill));
+export function pulse(curve: Curve, glow: ColorRgba, z: number): Loop {
+  // How much quicker or slower than `curve.seconds` this element beats.
+  const rate = 0.9 + 0.2 * hash(z, 3.1);
+  // How far, in beats, the rhythm wanders ahead and behind its metronome. Noise's
+  // slope stays within ±2.3 over its 3-beat length, so the wander never turns
+  // the beat back.
+  const WANDER = 0.1;
+  const wander = (t: number): number => WANDER * noise(t / (3 * curve.seconds), 0.5, 0.5 + z);
+  const start = wander(0);
+  const field: Field = (_cell, t) => {
+    const beats = (rate * t) / curve.seconds + wander(t) - start;
+    const n = Math.floor(beats);
+    // Each beat's own depth, 70% to the whole of the swing; it changes where
+    // the beat is at rest, so nothing jumps.
+    const depth = 0.7 + 0.3 * smoothstep(-0.5, 0.5, noise(n * 0.37, 2.1, z));
+    const beat = 0.5 - 0.5 * Math.cos(2 * Math.PI * (beats - n));
+    return curve.swing * curve.ease(depth * beat);
   };
   return { touch: light(glow), field };
 }
 
 /**
- * How many columns a passing light or gust crosses in its period: its pace.
- * Wind and sunlight move at a speed, not in a time set by how long the row is,
+ * How many columns a passing light crosses in its period: its pace.
+ * Sunlight moves at a speed, not in a time set by how long the row is,
  * so a wider element is crossed for longer, never faster, and no cell's colour
  * changes quicker on it from one frame to the next.
  */
@@ -399,44 +354,6 @@ export function shimmer(curve: Curve, span: number, width: number, glow: ColorRg
     return curve.swing * curve.ease(lit * (0.1 + 0.6 * caustic));
   };
   return { touch: light(glow), field };
-}
-
-/** How far a gust at its strongest silvers a colour: lighter and greyer. */
-const SILVER = { lightness: 0.08, chroma: 0.3 } as const;
-
-/**
- * Drift, as wind crossing a field. Swing: degrees of hue at a gust's
- * strongest. Gusts are patches of noise carried along the row from column 0
- * toward its end, about `STRIDE` columns a period, changing shape as they
- * go, on a wind that gathers and slackens rather than running at one speed.
- * The air they ride is itself turbulent — the field is warped by slower
- * noise, so a gust bends, stretches and catches up with another rather than
- * sliding by in a straight line — and gusts come in sets, the wind rising
- * and easing over a longer swell. Where one passes, the colour turns and
- * silvers — lighter and greyer, by how strong the gust is whatever the
- * swing — the way grass shows the pale side of its blades.
- */
-export function drift(curve: Curve, z: number): Loop {
-  const P = curve.seconds;
-  // How far the air has blown by `t`: the wind gathers and slackens over a
-  // couple of periods, between a third of `STRIDE` a period and a little over
-  // it, and never turns back — noise's slope stays within ±2.3, so the pace,
-  // `GUST.mean * (1 + GUST.surge * slope)` of `STRIDE`, stays above 0.
-  const GUST = { mean: 0.73, surge: 0.25, over: 2 } as const;
-  const blown = (t: number): number =>
-    (GUST.mean * STRIDE * (t + GUST.surge * GUST.over * P * noise(t / (GUST.over * P), 7.7, z))) / P;
-  const field: Field = (cell, t) => {
-    const row = cell.row + z;
-    const warp = 1.2 * noise(cell.col * 0.03, row * 0.2 + 3.3, t * 0.02);
-    const air = fbm((cell.col - blown(t)) * 0.045 + warp, row * 0.3, t * 0.03, 3);
-    const swell = 0.6 + 0.4 * noise(t / (1.7 * curve.seconds) + 0.4, cell.col * 0.012, 9.1 + z);
-    return curve.ease(swell * smoothstep(-0.15, 0.55, air));
-  };
-  const touch: Touch = (color, w) =>
-    Oklch.fromRgba(color)
-      .applyKey({ ...IDENTITY, hueShift: curve.swing * w, lightnessShift: SILVER.lightness * w, chromaScale: 1 - SILVER.chroma * w })
-      .toRgba();
-  return { touch, field };
 }
 
 /**
@@ -572,14 +489,30 @@ export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba
 }
 
 /**
+ * How far some of a dissolving element comes back before it goes: the most,
+ * as a share of whole, a cell rises again, and where in its own fade, as a
+ * share of it gone, the rising begins and is done.
+ */
+const REBOUND = { depth: 0.4, from: 0.5, to: 0.95 } as const;
+
+/**
  * Dissolve-out starting at `start`, as mist lifting: the element thins in
  * drifting patches, each cell fading smoothly over its own part of the
- * duration, until nothing is left at `start + seconds`.
+ * duration, until nothing is left at `start + seconds`. Mist does not lift
+ * in one breath: towards the end, patches of what is left — the later a cell
+ * goes, the likelier — rise back part way, as the last of it eddies, before
+ * they thin away for good.
  */
 export function dissolveOut(curve: Curve, start: number, z: number, ground: ColorRgba): Effect {
   const own = curve.seconds * OWN;
   const place = order(4.2 + z);
-  return veiled((cell, t) => 1 - curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t)), curve.swing, ground);
+  const eddy = order(9.3 + z);
+  return veiled((cell, t) => {
+    const gone = curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t));
+    const q = clamp01((gone - REBOUND.from) / (REBOUND.to - REBOUND.from));
+    const back = REBOUND.depth * smoothstep(0.35, 0.75, eddy(cell)) * (0.4 + 0.6 * place(cell)) * Math.sin(Math.PI * q) ** 2;
+    return clamp01(1 - gone + back);
+  }, curve.swing, ground);
 }
 
 /** The moment a transition starting at `start` has finished. */

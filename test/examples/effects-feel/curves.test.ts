@@ -20,7 +20,6 @@ import {
 import { CATPPUCCIN_LATTE, CATPPUCCIN_MOCHA } from "../../../src/index.js";
 import {
   dissolveOut,
-  drift,
   fadeIn,
   light,
   onColors,
@@ -47,8 +46,6 @@ const cells: EffectCell[] = Array.from({ length: 40 }, (_, col) => ({ row: 0, co
 const sameColor = (a: ColorRgba, b: ColorRgba): boolean => a.red === b.red && a.green === b.green && a.blue === b.blue;
 const distance = (a: ColorRgba, b: ColorRgba): number => Oklch.fromRgba(a).deltaE(Oklch.fromRgba(b));
 const sun = LIGHTS.sun;
-/** A breath's turn as the demo runs it with no flags. */
-const BREATH_SECONDS = parseSettings([])!.curves.pulse.seconds;
 /** The ink at its whole share: the subject every curve here is tried on. */
 const inkOn = new Map([[ink.hex, 1]]);
 /** `color` under `loop` at a cell and moment, at its whole share. */
@@ -70,7 +67,7 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
   const untouched = bytes(subject);
 
   it.each([0, 11.3, 22.6, 82.14])("pulse at the start of its period, at z %s", (z) => {
-    const breath = pulse(curve(3, 0.2), 40, sun, z);
+    const breath = pulse(curve(3, 0.2), sun, z);
     expect(cells.map((cell) => breath.field(cell, 0))).toEqual(cells.map(() => 0));
     expect(drawn(onColors(inkOn, breath), 0)).toBe(untouched);
   });
@@ -171,109 +168,30 @@ describe("the wheel", () => {
 });
 
 describe("the loops move", () => {
-  it.each([0, 11.3, 22.6])("pulse warms toward its light on the inhale and settles back after the exhale, at z %s", (z) => {
-    const breath = pulse(curve(8, 0.4), 40, sun, z);
-    // Ten breaths: a shallow stretch can sit out a few shallow ones.
-    const moments = Array.from({ length: 800 }, (_, i) => i / 10);
-    for (const cell of cells) {
-      // The warmest moment, wherever in its turn it comes.
-      // Found in the first eight, so the rest after it falls inside the watch.
-      const away = moments.map((t) => distance(under(breath, ink, cell, t), sun));
-      const warmest = away.indexOf(Math.min(...away.slice(0, 640)));
-      expect(away[warmest]).toBeLessThan(distance(ink, sun) - 0.02);
-      // Every breath ends before the next begins, so after it each cell rests.
-      expect(moments.slice(warmest).some((t) => sameColor(under(breath, ink, cell, t), ink))).toBe(true);
-    }
+  it.each([0, 11.3, 22.6])("pulse warms toward its light and settles back to rest, over and over, at z %s", (z) => {
+    const beat = pulse(curve(8, 0.4), sun, z);
+    const series = Array.from({ length: 1200 }, (_, i) => beat.field(cells[0]!, i / 4));
+    expect(Math.max(...series)).toBeGreaterThan(0.4 * 0.7 * 0.9);
+    expect(Math.max(...series)).toBeLessThanOrEqual(0.4);
+    // Back at rest between beats, again and again: a run of rest after each.
+    const rests = series.filter((w, i) => w < 1e-3 && (series[i - 1] ?? 0) >= 1e-3).length;
+    expect(rests).toBeGreaterThan(20);
+    // The colour it reaches is warmer toward the light, and rests as it was.
+    expect(distance(under(beat, ink, cells[0]!, 0), ink)).toBe(0);
   });
 
-  it.each([6, 12, 40, 104])("a breath keeps neighbouring cells one colour to the eye, %s columns wide", (span) => {
-    // A fill drawn across two cells — a powerline seam and the cell it points
-    // out of — reads as one colour (dE_OK 0.02) however narrow the element,
-    // at the deepest swing and under every ease that does not step.
-    const fill = new ColorRgba(137, 180, 250);
-    const row = Array.from({ length: span }, (_, col) => ({ row: 0, col, seed: 0 }));
-    const continuous = (["linear", "ease", "ease-in", "ease-out", "ease-in-out", "sine"] as const).map((name) => EASES[name]);
-    let worst = 0;
-    for (const ease of continuous) for (const z of [0, 11.3, 22.6]) {
-      const breath = pulse({ seconds: BREATH_SECONDS, ease, swing: 1 }, span, sun, z);
-      for (let t = 0; t < 1200; t += 0.5) {
-        const drawn = row.map((cell) => under(breath, fill, cell, t));
-        drawn.slice(1).forEach((color, i) => (worst = Math.max(worst, distance(drawn[i]!, color))));
-      }
-    }
-    expect(worst).toBeLessThan(0.02);
+  it("the element glows as one: every cell at once", () => {
+    const beat = pulse(curve(8, 0.4), sun, 0);
+    for (const t of [3, 17.5, 90]) expect(new Set(cells.map((cell) => beat.field(cell, t))).size).toBe(1);
   });
 
-  it.each([40, 104, 1024])("between breaths the whole element rests, %s columns wide", (span) => {
-    // Even a sigh is done at the farthest cell before the heart's next
-    // breath begins, so each turn has a moment where nothing is lit.
-    const row = Array.from({ length: span }, (_, col) => ({ row: 0, col, seed: 0 }));
-    for (const z of [0, 11.3, 22.6]) {
-      const breath = pulse(curve(BREATH_SECONDS, 0.5), span, sun, z);
-      const still = (t: number): boolean => row.every((cell) => breath.field(cell, t) === 0);
-      for (let turn = 0; turn < 20; turn++) {
-        const moments = Array.from({ length: Math.round(BREATH_SECONDS * 10) }, (_, i) => turn * BREATH_SECONDS + i / 10);
-        expect(moments.some(still), `z ${z}, turn ${turn}`).toBe(true);
-      }
-    }
-  });
-
-  it.each([0, 11.3, 22.6])("a sigh's inhale catches once and draws in again, at z %s", (z) => {
-    // Somewhere in twenty minutes a cell's rise slows nearly to a stop
-    // partway up and then climbs again before its peak; a plain breath's
-    // rise only quickens and then eases into its peak.
-    const breath = pulse(parseSettings([])!.curves.pulse, 82, sun, z);
-    const cell = { row: 0, col: 41, seed: 0 };
-    const w = Array.from({ length: 4800 }, (_, i) => breath.field(cell, i / 4));
-    const caught = w.some((_, i) => {
-      if (i < 8 || i + 8 >= w.length) return false;
-      const rate = (j: number): number => w[j + 1]! - w[j]!;
-      const before = Math.max(...[1, 2, 3, 4, 5, 6, 7, 8].map((d) => rate(i - d)));
-      const after = Math.max(...[1, 2, 3, 4, 5, 6, 7, 8].map((d) => rate(i + d)));
-      return w[i]! > 0 && rate(i) >= 0 && rate(i) < 0.25 * Math.min(before, after);
-    });
-    expect(caught).toBe(true);
-  });
-
-  it("the breath after a sigh is a quiet one", () => {
-    // A breath's height is the brightest any cell takes it to; a sigh is the
-    // longest kind of breath, so the breaths are told apart by how long the
-    // element is lit. Shallow breaths come in spells too, so the claim is
-    // about the breaths after sighs taken together.
-    const span = 82;
-    const row = Array.from({ length: span }, (_, col) => ({ row: 0, col, seed: 0 }));
-    const ratios = [0, 11.3, 22.6].flatMap((z) => {
-      const breath = pulse(curve(BREATH_SECONDS, 1), span, sun, z);
-      const breaths: { lit: number; peak: number }[] = [];
-      let current: { lit: number; peak: number } | undefined;
-      for (let t = 0; t < 40 * BREATH_SECONDS; t += 0.5) {
-        const peak = Math.max(...row.map((cell) => breath.field(cell, t)));
-        if (peak === 0) current = undefined;
-        else if (current === undefined) breaths.push((current = { lit: 0.5, peak }));
-        else [current.lit, current.peak] = [current.lit + 0.5, Math.max(current.peak, peak)];
-      }
-      const sigh = 0.9 * Math.max(...breaths.map((b) => b.lit));
-      return breaths.slice(0, -1).flatMap((b, i) => (b.lit > sigh && breaths[i + 1]!.lit < sigh ? [breaths[i + 1]!.peak / b.peak] : []));
-    });
-    expect(ratios.length).toBeGreaterThan(5);
-    expect(ratios.reduce((sum, r) => sum + r, 0) / ratios.length).toBeLessThan(0.6);
-  });
-
-  it.each([40, 104, 1024])("a breath swells once and ebbs once in every cell, %s columns wide", (span) => {
-    // However far the heart wanders, a cell's breath only ever moves on: it
-    // never turns back partway up the inhale or down the exhale.
-    for (const z of [0, 11.3, 22.6]) for (let col = 0; col < span; col += Math.floor(span / 16)) {
-      const breath = pulse(parseSettings([])!.curves.pulse, span, sun, z);
-      const cell = { row: 0, col, seed: 0 };
-      let [last, ebbing] = [0, false];
-      for (let t = 0; t < 3600; t += 0.5) {
-        const w = breath.field(cell, t);
-        if (w === 0) ebbing = false;
-        else if (w < last - 1e-4) ebbing = true;
-        else if (w > last + 1e-4) expect(ebbing, `z ${z}, col ${col} at ${t}`).toBe(false);
-        last = w;
-      }
-    }
+  it("each element keeps a time of its own, and no beat is the last again", () => {
+    const [a, b] = [pulse(curve(43, 0.5), sun, 3.7), pulse(curve(43, 0.5), sun, 7.4)];
+    const apart = Array.from({ length: 400 }, (_, i) => Math.abs(a.field(cells[0]!, i * 2) - b.field(cells[0]!, i * 2)));
+    expect(Math.max(...apart)).toBeGreaterThan(0.2);
+    // Beats differ in depth: the tops of the first dozen are not one height.
+    const tops = Array.from({ length: 12 }, (_, n) => Math.max(...Array.from({ length: 80 }, (_, i) => a.field(cells[0]!, ((n + i / 80) * 43) / 0.9))));
+    expect(Math.max(...tops) - Math.min(...tops)).toBeGreaterThan(0.01);
   });
 
   it("light never darkens a colour, white included", () => {
@@ -285,28 +203,6 @@ describe("the loops move", () => {
 
   it("a glint lifts light ink away from a dark ground", () => {
     expect(contrastRatio(ground, light(sun)(ink, 1))).toBeGreaterThan(contrastRatio(ground, ink));
-  });
-
-  it("drift's wind gathers and slackens rather than running at one speed", () => {
-    // The wind's pace at `t`, in columns a second: the shift, to a tenth of
-    // a column, that best lines the row up with itself `GAP` seconds later.
-    // Turbulence alone makes a steady wind's pace wander from one reading to
-    // the next, so paces are averaged over half a minute, and the swing
-    // between the stillest and the gustiest half-minute is what is read.
-    const GAP = 3;
-    const cols = Array.from({ length: 360 }, (_, i) => i + 20);
-    const swings = [0, 11.3, 22.6].map((z) => {
-      const gusts = drift(parseSettings([])!.curves.drift, z);
-      const pace = (t: number): number => {
-        const misfit = (d: number): number =>
-          cols.reduce((sum, col) => sum + (gusts.field({ row: 0, col, seed: 0 }, t) - gusts.field({ row: 0, col: col + d, seed: 0 }, t + GAP)) ** 2, 0);
-        const shifts = Array.from({ length: 61 }, (_, i) => i / 10);
-        return shifts.reduce((best, d) => (misfit(d) < misfit(best) ? d : best), 0) / GAP;
-      };
-      const spells = Array.from({ length: 16 }, (_, i) => Array.from({ length: 8 }, (_, j) => pace(i * 75 + j * 4)).reduce((sum, p) => sum + p, 0) / 8);
-      return Math.max(...spells) / Math.min(...spells);
-    });
-    expect(swings.reduce((sum, s) => sum + s, 0) / swings.length).toBeGreaterThan(2.5);
   });
 
   it("sparkle lights a few cells at a time, each at its own strength", () => {
@@ -322,20 +218,6 @@ describe("the loops move", () => {
     expect(moments.every((lit) => lit.length < cells.length / 2)).toBe(true);
     // A glow is a halo, brightest where the firefly is: one moment's lit cells differ.
     expect(moments.some((lit) => new Set(lit.map((fg) => fg.hex)).size > 1)).toBe(true);
-  });
-
-  it("drift shifts hue along the row", () => {
-    const moved = at(onColors(new Map([[ground.hex, 1]]), drift(curve(8, 40), 0)), 0).map((c) => c.bg.hex);
-    expect(new Set(moved).size).toBeGreaterThan(1);
-  });
-
-  it("drift silvers by how strong a gust is, not by how far its hue turns", () => {
-    // A wide swing turns the hue further; it does not wash the colour out.
-    const blue = new ColorRgba(137, 180, 250);
-    const wide = drift(curve(30, 120), 0);
-    let palest = 0;
-    for (let t = 0; t < 300; t += 3) for (const cell of cells) palest = Math.max(palest, Oklch.fromRgba(under(wide, blue, cell, t)).l);
-    expect(palest).toBeLessThan(Oklch.fromRgba(blue).l + 0.09);
   });
 
   it("two elements under one effect do not move in lockstep", () => {
@@ -407,8 +289,8 @@ describe("the loops move", () => {
   });
 
   it("onColors leaves a colour not in its set alone", () => {
-    // A breath rests for part of its turn, so the turn is watched whole.
-    const effect = onColors(new Map([[ground.hex, 1]]), pulse(curve(3, 0.2), 40, sun, 0));
+    // A beat starts at rest, so the turn is watched whole.
+    const effect = onColors(new Map([[ground.hex, 1]]), pulse(curve(3, 0.2), sun, 0));
     const turn = Array.from({ length: 30 }, (_, i) => effect(colors, cells[0]!, i / 10));
     expect(turn.every((moved) => moved.fg === ink)).toBe(true);
     expect(turn.some((moved) => !sameColor(moved.bg, ground))).toBe(true);
@@ -447,6 +329,23 @@ describe("the transitions run start to end", () => {
     expect([end.fg.hex, end.bg.hex]).toEqual([ink.hex, fill.hex]);
   });
 
+  it("a dissolve-out lets some of what is left come back before it goes, and ends gone", () => {
+    const dissolve = curve(30, 1);
+    const effect = dissolveOut(dissolve, 0, 0, ground);
+    const wide: EffectCell[] = Array.from({ length: 120 }, (_, col) => ({ row: 0, col, seed: 0 }));
+    const shown = (cell: EffectCell, t: number): number => distance(effect(colors, cell, t).fg, ground);
+    const risen = wide.filter((cell) => {
+      const series = Array.from({ length: 600 }, (_, i) => shown(cell, i * 0.05));
+      return series.some((v, i) => i > 0 && v - series[i - 1]! > 0.002);
+    });
+    // Some cells rise again; most are still only thinning.
+    expect(risen.length).toBeGreaterThan(5);
+    expect(risen.length).toBeLessThan(wide.length * 0.8);
+    // Every cell rises from the first, whole, to the last, gone.
+    for (const cell of wide) expect(sameColor(effect(colors, cell, settledAt(dissolve, 0)).fg, ground)).toBe(true);
+    for (const cell of wide) expect(sameColor(effect(colors, cell, 0).fg, ink)).toBe(true);
+  });
+
   it("swing below 1 stops short of invisible", () => {
     expect(at(fadeIn(curve(2, 0.5), 0, 0, ground), 0).some((c) => sameColor(c.fg, c.bg))).toBe(false);
   });
@@ -464,21 +363,19 @@ describe("the loops never jump", () => {
   // The curves as the demo runs them with no flags.
   const { curves } = parseSettings([])!;
   const loops = {
-    pulse: (span: number, z: number) => pulse(curves.pulse, span, sun, z),
+    pulse: (_span: number, z: number) => pulse(curves.pulse, sun, z),
     shimmer: (span: number, z: number) => shimmer(curves.shimmer, span, SHIMMER_WIDTH, sun, z),
-    drift: (_span: number, z: number) => drift(curves.drift, z),
     sparkle: (span: number, z: number) => sparkle(curves.sparkle, span, LIGHTS.firefly, z),
   };
   // No loop repeats, so any watch is a sample of the moves it makes: five
   // minutes passed loops that jumped later on. Half an hour is a status
   // line's sitting, and every one of its seconds is a frame checked, on two
   // elements two rows deep, the second's frames falling between the first's:
-  // one the demo strip's width, one a wide terminal's, since a light or a
-  // gust keeps its pace however wide the row. A sample still under-reads the
-  // worst step: an hour of these fills at 40, 104 and 240 columns, at z 0,
-  // 1.7, 9.9, 22.6 and 47.2, takes pulse to 0.0395. That is the loop with
-  // least room; any change that brightens or narrows one is measured over
-  // that hour first.
+  // one the demo strip's width, one a wide terminal's, since a light keeps
+  // its pace however wide the row. A sample still under-reads the worst
+  // step, so any change that brightens or narrows a loop is measured over an
+  // hour of these fills at 40, 104 and 240 columns, at z 0, 1.7, 9.9, 22.6
+  // and 47.2, first.
   const WATCHED = 1800;
   const ELEMENTS = [
     { span: 104, z: 0, offset: 0 },

@@ -19,7 +19,7 @@ export const GROUNDS = ["dark", "light"] as const;
 export type Ground = (typeof GROUNDS)[number];
 
 /** The effects a run shows, in the order it shows them. */
-export const EFFECTS = ["shimmer", "pulse", "drift", "sparkle", "wheel", "fade", "dissolve"] as const;
+export const EFFECTS = ["shimmer", "pulse", "sparkle", "wheel", "fade", "dissolve"] as const;
 export type EffectName = (typeof EFFECTS)[number];
 
 /** A curve as the flags spelled it, so the screen can say what is running. */
@@ -41,8 +41,7 @@ export interface Settings {
  */
 const DEFAULTS: Record<EffectName, { seconds: number; ease: EaseName; swing: number; unit: string }> = {
   shimmer: { seconds: 109, ease: "linear", swing: 0.75, unit: "mix toward the light at the brightest glint, 0–1" },
-  pulse: { seconds: 43, ease: "linear", swing: 0.5, unit: "mix toward the light at the top of a sigh, the deepest breath, 0–1" },
-  drift: { seconds: 79, ease: "linear", swing: 24, unit: "degrees of hue at a gust's strongest" },
+  pulse: { seconds: 43, ease: "linear", swing: 0.5, unit: "mix toward the light at the top of a beat on a chosen element, 0–1" },
   sparkle: { seconds: 139, ease: "linear", swing: 0.6, unit: "mix toward the firefly's colour at its brightest flash, 0–1" },
   wheel: { seconds: 907, ease: "linear", swing: 0.25, unit: "how far the segments stray from one another, 0–1 (1 is half a turn apart)" },
   fade: { seconds: 20, ease: "ease-in-out", swing: 1, unit: "how hidden at the start, 0–1" },
@@ -130,7 +129,7 @@ export function parseSettings(argv: readonly string[]): Settings | undefined {
         seconds: number(`--${effect}-${secondsWord(effect)}`, flag(`${effect}-${secondsWord(effect)}`), d.seconds, [0.05, 3600]),
         ease: named(`--${effect}-ease`, parseEase, easeName),
         easeName,
-        swing: number(`--${effect}-swing`, flag(`${effect}-swing`), d.swing, effect === "drift" ? [-360, 360] : [0, 1]),
+        swing: number(`--${effect}-swing`, flag(`${effect}-swing`), d.swing, [0, 1]),
       };
       return [effect, curve];
     }),

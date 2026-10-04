@@ -67,7 +67,7 @@ import {
 } from "../../src/index.js";
 import { graphemes } from "../../src/core/cells.js";
 import { App, hostEnvironment, type TerminalHost } from "../../src/host/index.js";
-import { dissolveOut, drift, fadeIn, onColors, pulse, settledAt, shares, shimmer, sparkle, wheel, type Loop, type Pair } from "./curves.js";
+import { dissolveOut, fadeIn, onColors, pulse, settledAt, shares, shimmer, sparkle, wheel, type Loop, type Pair } from "./curves.js";
 import { depthDrawn, type EffectName, type NamedCurve, type Settings } from "./settings.js";
 
 /**
@@ -80,7 +80,7 @@ const THEMES: readonly TerminalTheme[] = [
   SOLARIZED_DARK, SOLARIZED_LIGHT, ATOM_ONE_DARK, ATOM_ONE_LIGHT, FLEXOKI, CYBERPUNK,
 ];
 
-const LOOPS = ["shimmer", "pulse", "drift", "sparkle", "wheel"] as const;
+const LOOPS = ["shimmer", "pulse", "sparkle", "wheel"] as const;
 type LoopName = (typeof LOOPS)[number];
 
 /** The frame rates the fps keys step through, slowest first. */
@@ -101,14 +101,13 @@ const RATE_RANGE = [1 / 8, 16] as const;
 /**
  * How far the magnitude keys scale every loop's swing — the flags' swing is
  * ×1 — a quarter a press, within these. A swing that is a mix toward a light
- * stops at 1, the light itself; drift's, in degrees, does not.
+ * stops at 1, the light itself.
  */
 const MAGNITUDE = { step: 0.25, range: [0.25, 4] } as const;
 
 /** `curves` with every loop's swing at `magnitude` times the flags'. */
 function magnified(curves: Settings["curves"], magnitude: number): Settings["curves"] {
-  const swing = (loop: LoopName): number =>
-    loop === "drift" ? curves[loop].swing * magnitude : Math.min(1, curves[loop].swing * magnitude);
+  const swing = (loop: LoopName): number => Math.min(1, curves[loop].swing * magnitude);
   return { ...curves, ...Object.fromEntries(LOOPS.map((loop) => [loop, { ...curves[loop], swing: swing(loop) }])) };
 }
 
@@ -243,19 +242,27 @@ function paletteRgba(theme: TerminalTheme, key: string): ColorRgba {
   return rgba;
 }
 
+/**
+ * The style of the strip's `i`th cell. The second lap round the palette takes
+ * each colour's muted shade, so a dozen neighbours are a dozen colours.
+ */
+function stripStyle(theme: TerminalTheme, i: number): Style {
+  const color = (key: string): ColorSpec => ColorSpec.fromRgba(paletteRgba(theme, key));
+  const key = STRIP_KEYS[i % STRIP_KEYS.length]!;
+  return Math.floor(i / STRIP_KEYS.length) === 0
+    ? Style.fromColor(color(`on-${key}`), color(key))
+    : Style.fromColor(color("foreground"), color(`${key}-muted`));
+}
+
+/**
+ * The elements the pulse is for, by the subject they are in and the labels of
+ * the cells they are: the rest of the screen does not breathe.
+ */
+const PULSED: Readonly<Record<string, readonly string[]>> = { strip: ["ctx 61%", "ok"] };
+
 /** A powerline strip of a dozen cells over the theme's palette. */
 export function stripSubject(theme: TerminalTheme): Subject {
-  const color = (key: string): ColorSpec => ColorSpec.fromRgba(paletteRgba(theme, key));
-  const cells = STRIP_LABELS.map((label, i) => {
-    const key = STRIP_KEYS[i % STRIP_KEYS.length]!;
-    // The second lap round the palette takes each colour's muted shade, so a
-    // dozen neighbours are a dozen colours.
-    const lap = Math.floor(i / STRIP_KEYS.length);
-    const style = lap === 0
-      ? Style.fromColor(color(`on-${key}`), color(key))
-      : Style.fromColor(color("foreground"), color(`${key}-muted`));
-    return new RichText(` ${label} `, { style, end: "", noWrap: true });
-  });
+  const cells = STRIP_LABELS.map((label, i) => new RichText(` ${label} `, { style: stripStyle(theme, i), end: "", noWrap: true }));
   return { name: "strip", renderable: new Strip(cells, new PowerlineJoiner()), z: 0 };
 }
 
@@ -319,13 +326,14 @@ function spread(steps: Generator<void>, clock: Clock, budget: number): Unsubscri
  * `loop` on `subject`'s own colours, each at the share of it its cells can
  * spare. Shares are settled on the colours as the run's depth draws them:
  * at 256 colours a touched colour lands on the cube, and the contrast it
- * spends is the cube colour's.
+ * spends is the cube colour's. Only `colors` — the subject's own, unless an
+ * element of it is chosen — are touched.
  */
-export function subjectUnder(subject: DrawnSubject, loop: Loop, theme: TerminalTheme): Effect {
+export function subjectUnder(subject: DrawnSubject, loop: Loop, theme: TerminalTheme, colors: ReadonlySet<string> = subject.colors): Effect {
   const depth = subject.options.colorSystem ?? ColorDepth.TRUECOLOR;
   const asDrawn = (color: ColorRgba, w: number): ColorRgba =>
     ColorSpec.fromRgba(loop.touch(color, w)).downgrade(depth).getTruecolor(theme);
-  return onColors(shares(subject.pairs, subject.colors, asDrawn), loop);
+  return onColors(shares(subject.pairs, colors, asDrawn), loop);
 }
 
 /**
@@ -362,10 +370,18 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
   // A loop that lights is settled on the subject's colours at the share each
   // can spare; the wheel keeps lightness and chroma, so it is tried as it is.
   const lit = (s: DrawnSubject, loop: Loop): Effect => subjectUnder(s, loop, theme);
+  // The pulse breathes the chosen elements, each at a time of its own, on the
+  // fill the screen draws them with; a subject with none chosen is left be.
+  const pulsed = (s: DrawnSubject): Effect => {
+    const effects = (PULSED[s.name] ?? []).map((label, n) => {
+      const fill = stripStyle(theme, STRIP_LABELS.indexOf(label)).drawnColors(s.options.colorSystem ?? undefined).bgcolor!;
+      return subjectUnder(s, pulse(curves.pulse, LIGHTS.sun, s.z + 3.7 * (n + 1)), theme, new Set([fill.getTruecolor(theme, false).hex]));
+    });
+    return (colors, cell, t) => effects.reduce((moved, effect) => effect(moved, cell, t), colors);
+  };
   const made: Record<LoopName, (subject: DrawnSubject) => Effect> = {
     shimmer: (s) => lit(s, shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, LIGHTS.sun, s.z)),
-    pulse: (s) => lit(s, pulse(curves.pulse, s.span, LIGHTS.sun, s.z)),
-    drift: (s) => lit(s, drift(curves.drift, s.z)),
+    pulse: (s) => pulsed(s),
     sparkle: (s) => lit(s, sparkle(curves.sparkle, s.span, LIGHTS.firefly, s.z)),
     wheel: (s) => wheel(curves.wheel, s.colors, new Set(s.pairs.map(([, bg]) => bg.hex).filter((hex) => s.colors.has(hex))), s.z),
   };
