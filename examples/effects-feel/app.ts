@@ -63,11 +63,11 @@ import {
   type Renderable,
   type RenderOptions,
   Segment,
+  graphemes,
   type TerminalTheme,
 } from "../../src/index.js";
-import { graphemes } from "../../src/core/cells.js";
 import { App, hostEnvironment, type TerminalHost } from "../../src/host/index.js";
-import { dissolveOut, fadeIn, onColors, pulse, settledAt, shares, shimmer, sparkle, wheel, type Curve, type Loop, type Pair } from "./curves.js";
+import { dissolveOut, fadeIn, onColors, pulse, settledAt, shares, shimmer, sparkle, wheel, type Loop, type Pair } from "./curves.js";
 import { depthDrawn, type EffectName } from "./vocabulary.js";
 import type { NamedCurve, Settings } from "./settings.js";
 
@@ -83,7 +83,6 @@ export const THEMES: readonly TerminalTheme[] = [
 
 const LOOPS = ["shimmer", "pulse", "sparkle", "wheel"] as const;
 type LoopName = (typeof LOOPS)[number];
-const isLoop = (name: EffectName): name is LoopName => (LOOPS as readonly string[]).includes(name);
 
 /** The frame rates the fps keys step through, slowest first. */
 const FPS_STEPS = [0.5, 1, 2, 5, 10, 15, 30] as const;
@@ -97,7 +96,7 @@ const FPS_STEPS = [0.5, 1, 2, 5, 10, 15, 30] as const;
  * quarter of it reads as motion. The rate keys scale it, ×2 a press, within
  * `RATE_RANGE`.
  */
-const STEP = 0.25;
+export const STEP = 0.25;
 const RATE_RANGE = [1 / 8, 16] as const;
 
 /**
@@ -338,15 +337,20 @@ export function subjectUnder(subject: DrawnSubject, loop: Loop, theme: TerminalT
   return onColors(shares(subject.pairs, colors, asDrawn), loop);
 }
 
+/** The fills of `subject`: the colours it sets that are the ground of a cell it draws text in. */
+export function fills(subject: DrawnSubject): ReadonlySet<string> {
+  return new Set(subject.pairs.map(([, bg]) => bg.hex).filter((hex) => subject.colors.has(hex)));
+}
+
 /**
- * The pulse breathing the elements chosen for `subject` (`PULSED`), each at a
- * time of its own, on the fill the screen draws them with; a subject with
- * none chosen is left be.
+ * A pulse breathing the elements chosen for `subject` (`PULSED`), each its
+ * own `pulseAt(z)`, at a `z` of its own so each keeps a time of its own, on
+ * the fill the screen draws them with; a subject with none chosen is left be.
  */
-export function pulsedOn(subject: DrawnSubject, curve: Curve, theme: TerminalTheme): Effect {
+export function pulsedOn(subject: DrawnSubject, pulseAt: (z: number) => Loop, theme: TerminalTheme): Effect {
   const effects = (PULSED[subject.name] ?? []).map((label, n) => {
     const fill = stripStyle(theme, STRIP_LABELS.indexOf(label)).drawnColors(subject.options.colorSystem ?? undefined).bgcolor!;
-    return subjectUnder(subject, pulse(curve, LIGHTS.sun, subject.z + 3.7 * (n + 1)), theme, new Set([fill.getTruecolor(theme, false).hex]));
+    return subjectUnder(subject, pulseAt(subject.z + 3.7 * (n + 1)), theme, new Set([fill.getTruecolor(theme, false).hex]));
   });
   return (colors, cell, t) => effects.reduce((moved, effect) => effect(moved, cell, t), colors);
 }
@@ -369,13 +373,12 @@ interface Scene {
   readonly subjects: readonly DrawnSubject[];
   readonly loops: Record<LoopName, (subject: DrawnSubject) => Effect>;
   readonly contrast: Record<LoopName, string>;
-  /** Measures the contrast of the loops on show, and no others. */
   readonly measure: () => Generator<void>;
   /** The curves it was built with: the flags', at the magnitude on show. */
   readonly curves: Settings["curves"];
 }
 
-function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings["curves"], measured: readonly LoopName[]): Scene {
+function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings["curves"]): Scene {
   const ink = ColorSpec.fromRgba(theme.foregroundColor);
   const paper = ColorSpec.fromRgba(theme.backgroundColor);
   const quiet = Style.fromColor(ColorSpec.fromRgba(paletteRgba(theme, "foreground-muted")));
@@ -388,9 +391,9 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
   const lit = (s: DrawnSubject, loop: Loop): Effect => subjectUnder(s, loop, theme);
   const made: Record<LoopName, (subject: DrawnSubject) => Effect> = {
     shimmer: (s) => lit(s, shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, LIGHTS.sun, s.z)),
-    pulse: (s) => pulsedOn(s, curves.pulse, theme),
+    pulse: (s) => pulsedOn(s, (z) => pulse(curves.pulse, LIGHTS.sun, z), theme),
     sparkle: (s) => lit(s, sparkle(curves.sparkle, s.span, LIGHTS.firefly, s.z)),
-    wheel: (s) => wheel(curves.wheel, s.colors, new Set(s.pairs.map(([, bg]) => bg.hex).filter((hex) => s.colors.has(hex))), s.z),
+    wheel: (s) => wheel(curves.wheel, s.colors, fills(s), s.z),
   };
   const loops = Object.fromEntries(
     LOOPS.map((name) => {
@@ -407,7 +410,7 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
   function* measure(): Generator<void> {
     if (none) return;
     const rest = ratio(yield* worstContrast(subjects, (s) => s.renderable.render(s.options), [0], theme));
-    for (const loop of measured) {
+    for (const loop of LOOPS) {
       const under = (s: DrawnSubject, at: number) =>
         new Effected(s.renderable, loops[loop](s), { t: at, key: seedKey(loop, s), theme }).render(s.options);
       const worst = yield* worstContrast(subjects, under, sampled(curves[loop].seconds), theme);
@@ -492,8 +495,6 @@ class Pace {
 export interface DemoHandle {
   /** Resolves once the demo has stopped and handed the terminal back. */
   readonly done: Promise<void>;
-  /** Stops the demo, as its quit key does. */
-  stop(): void;
 }
 
 export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
@@ -507,8 +508,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     const name = resolved === null ? "none" : resolved === undefined ? "nothing" : ColorDepth[resolved];
     throw new Error(`asked for ${settings.depth} but the terminal resolved ${name}`);
   }
-  const { curves, shapes } = settings;
-  const loopsShown = settings.effects.filter(isLoop);
+  const { curves } = settings;
 
   // [LAW:no-ambient-temporal-coupling] The app owns the frames and hands each
   // its number; the pace turns it into the demo's time, and a replay starts
@@ -529,12 +529,11 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   let stopMeasuring: Unsubscribe = () => {};
   const show = (): void => {
     stopMeasuring();
-    shown = scene(THEMES[at]!, drawnWith, magnified(curves, magnitude), loopsShown);
+    shown = scene(THEMES[at]!, drawnWith, magnified(curves, magnitude));
     stopMeasuring = spread(shown.measure(), clock, MEASURE_SLICE);
   };
   show();
-  // One cycle is the longest of the effects on show: a loop's period, a transition's settling.
-  const cycle = Math.max(...settings.effects.map((name) => (isLoop(name) ? curves[name].seconds : settledAt(curves[name], 0))));
+  const cycle = Math.max(...LOOPS.map((loop) => curves[loop].seconds), settledAt(curves.fade, 0), settledAt(curves.dissolve, 0));
   let rate = 1;
   let fps: FrameRate = frameRate(settings.fps);
   const pace = new Pace(frames.now(), STEP * rate, cycle);
@@ -559,15 +558,6 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     // A new cycle: both transitions run again from its start.
     if (began > replayed) fadeStart = dissolveStart = replayed = began;
     const { theme, loops, contrast } = shown;
-    const rows: Record<EffectName, () => Renderable[]> = {
-      shimmer: () => row(t, "shimmer", contrast.shimmer, loops.shimmer),
-      pulse: () => row(t, "pulse", contrast.pulse, loops.pulse),
-      sparkle: () => row(t, "sparkle", contrast.sparkle, loops.sparkle),
-      wheel: () => row(t, "wheel", contrast.wheel, loops.wheel),
-      fade: () => row(t, "fade", transitionStatus(t, curves.fade, fadeStart, "f"), (s) => fadeIn(curves.fade, fadeStart, s.z, theme.backgroundColor, shapes.fade)),
-      dissolve: () =>
-        row(t, "dissolve", transitionStatus(t, curves.dissolve, dissolveStart, "d"), (s) => dissolveOut(curves.dissolve, dissolveStart, s.z, theme.backgroundColor, shapes.dissolve)),
-    };
     return new Padding(
       new Group(
         new RichText(
@@ -576,7 +566,9 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
         ),
         new RichText("f fade-in · d dissolve · n/p theme · </> fps · -/+ rate · [/] magnitude · q quits", { style: shown.quiet, noWrap: true }),
         new RichText(""),
-        ...settings.effects.flatMap((name) => rows[name]()),
+        ...LOOPS.flatMap((loop) => row(t, loop, contrast[loop], loops[loop])),
+        ...row(t, "fade", transitionStatus(t, curves.fade, fadeStart, "f"), (s) => fadeIn(curves.fade, fadeStart, s.z, theme.backgroundColor)),
+        ...row(t, "dissolve", transitionStatus(t, curves.dissolve, dissolveStart, "d"), (s) => dissolveOut(curves.dissolve, dissolveStart, s.z, theme.backgroundColor)),
       ),
       [1, 2],
       { style: Style.fromColor(shown.ink, shown.paper) },
@@ -651,5 +643,5 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     unsubscribe();
     stopMeasuring();
   });
-  return { done, stop: () => app.stop() };
+  return { done };
 }

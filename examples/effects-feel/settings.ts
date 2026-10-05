@@ -8,7 +8,7 @@
 
 import { parseArgs, type ParseArgsConfig } from "node:util";
 import { EASES, parseEase } from "../../src/index.js";
-import { DISSOLVE_SHAPE, FADE_SHAPE, type Curve, type DissolveShape, type FadeShape } from "./curves.js";
+import type { Curve } from "./curves.js";
 import { DEPTHS, EFFECTS, EFFECT_DEFAULTS, GROUNDS, RUN_DEFAULTS, type Depth, type EffectName, type Ground } from "./vocabulary.js";
 
 /** A curve as the flags spelled it, so the screen can say what is running. */
@@ -21,10 +21,6 @@ export interface Settings {
   readonly depth: Depth;
   readonly ground: Ground;
   readonly curves: Readonly<Record<EffectName, NamedCurve>>;
-  /** The effects a run shows, in the order it shows them. */
-  readonly effects: readonly EffectName[];
-  /** How each transition moves cell by cell, beyond its curve. */
-  readonly shapes: { readonly fade: FadeShape; readonly dissolve: DissolveShape };
 }
 
 const FPS_RANGE = [0.5, 30] as const;
@@ -93,8 +89,6 @@ export function parseSettings(argv: readonly string[]): Settings | undefined {
     depth: oneOf("--depth", flag("depth") ?? RUN_DEFAULTS.depth, DEPTHS),
     ground: oneOf("--ground", flag("ground") ?? RUN_DEFAULTS.ground, GROUNDS),
     curves,
-    effects: EFFECTS,
-    shapes: { fade: FADE_SHAPE, dissolve: DISSOLVE_SHAPE },
   };
 }
 

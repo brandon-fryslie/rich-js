@@ -9,5 +9,5 @@
     "sourceMap": true
   },
   "include": ["src/**/*.ts", "examples/**/*.ts"],
-  "exclude": ["node_modules", "dist", "dist-demo", "test"]
+  "exclude": ["node_modules", "dist", "dist-demo", "test", "examples/effects-playground/main.ts", "examples/effects-playground/virtual.d.ts"]
 }
