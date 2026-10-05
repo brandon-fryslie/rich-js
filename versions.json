@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "95074dfa87ebbee3e2e9cfb523238d37bbe3a2b6",
-      "timestamp": "2026-10-05T05:53:43.878Z",
+      "sha": "577999989345e43f95586fe03b8e30ab831fed32",
+      "timestamp": "2026-10-05T06:19:03.639Z",
       "commits": [
         {
-          "sha": "95074dfa87ebbee3e2e9cfb523238d37bbe3a2b6",
+          "sha": "577999989345e43f95586fe03b8e30ab831fed32",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-05T05:52:33Z",
-          "message": "Merge 342949779f73308c41da6610dcf7e3f824cc4661 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+          "timestamp": "2026-10-05T06:17:42Z",
+          "message": "Merge c00599410af27d4397ae5cbee8df1033d1eed6f6 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+        },
+        {
+          "sha": "c00599410af27d4397ae5cbee8df1033d1eed6f6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-05T00:17:38-06:00",
+          "message": "effects-playground: its own vite config, answering on every interface to any host name (rich-effects-fxiy.b6i)\n"
         },
         {
           "sha": "342949779f73308c41da6610dcf7e3f824cc4661",
