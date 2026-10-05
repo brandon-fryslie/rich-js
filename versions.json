@@ -2,32 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "187446e996c21fe2bc395c27b0adcbeca49eafec",
-      "timestamp": "2026-10-04T21:12:09.668Z",
-      "commits": [
-        {
-          "sha": "187446e996c21fe2bc395c27b0adcbeca49eafec",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-04T15:10:52-06:00",
-          "message": "chore(release): 0.19.0 (#337)"
-        }
-      ]
-    },
-    {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "ef8b448a1985da2c63f9a5f9e7f31cd77dcecf87",
-      "timestamp": "2026-10-04T19:34:57.801Z",
+      "sha": "855a7cfaf6a875b0f8a9514e519311cf35f0c9dd",
+      "timestamp": "2026-10-05T05:46:38.314Z",
       "commits": [
         {
-          "sha": "ef8b448a1985da2c63f9a5f9e7f31cd77dcecf87",
+          "sha": "855a7cfaf6a875b0f8a9514e519311cf35f0c9dd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-04T19:33:36Z",
-          "message": "Merge 237e761d6822429d0657ab6739435a0c074e3f1c into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
+          "timestamp": "2026-10-05T05:45:21Z",
+          "message": "Merge 1329d516e47d7d95974da924657aad0a97a966c2 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+        },
+        {
+          "sha": "1329d516e47d7d95974da924657aad0a97a966c2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-04T23:45:15-06:00",
+          "message": "effects-playground: font controls (WIP; playground rejected, to be rebuilt on the docs terminal) (rich-effects-fxiy.b6i)\n"
         },
         {
           "sha": "237e761d6822429d0657ab6739435a0c074e3f1c",
@@ -119,6 +111,21 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-03T09:18:40-06:00",
           "message": "effects-feel: a sigh catches once on the way in and draws in again (rich-effects-fxiy.b6i)\n\nA swell is now a list of knots joined by raised cosines; breath and\nfirefly flash keep their shapes, and the sigh gains its double inhale.\nEach part of the sigh's inhale climbs less steeply than a breath, so the\n1 fps worst step over an hour stays 0.0395. REACH 0.3 -> 0.27 keeps a\nwhole-element rest between breaths now a sigh lasts 0.70 of its turn.\n"
+        }
+      ]
+    },
+    {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "187446e996c21fe2bc395c27b0adcbeca49eafec",
+      "timestamp": "2026-10-04T21:12:09.668Z",
+      "commits": [
+        {
+          "sha": "187446e996c21fe2bc395c27b0adcbeca49eafec",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-04T15:10:52-06:00",
+          "message": "chore(release): 0.19.0 (#337)"
         }
       ]
     },
