@@ -237,6 +237,39 @@ function show(next: TerminalTheme): void {
   live.forEach((p) => (rebuild(p), paint(p)));
 }
 
+/**
+ * A Nerd Font for the strip's glyphs: a family installed on the viewing
+ * device, or a font file loaded by URL, tried before the page's own stack.
+ * Remembered per browser, so a reload keeps it.
+ */
+function wireFont(): void {
+  const family = document.getElementById("font-family") as HTMLInputElement;
+  const url = document.getElementById("font-url") as HTMLInputElement;
+  const style = el("style");
+  document.head.append(style);
+  const saved = (key: string): string => {
+    try {
+      return localStorage.getItem(key) ?? "";
+    } catch {
+      return "";
+    }
+  };
+  const apply = (): void => {
+    try {
+      localStorage.setItem("effects-playground:family", family.value);
+      localStorage.setItem("effects-playground:url", url.value);
+    } catch {}
+    const loaded = url.value.trim() === "" ? "" : `@font-face{font-family:"Playground Font";src:url(${JSON.stringify(url.value.trim())})}`;
+    const names = [url.value.trim() === "" ? "" : '"Playground Font"', family.value.trim() === "" ? "" : JSON.stringify(family.value.trim())].filter(Boolean);
+    style.textContent = `${loaded}:root{--rich-code-font-family:${[...names, "'Rich Powerline'", "'JetBrains Mono'", "ui-monospace", "Menlo", "monospace"].join(",")}}`;
+  };
+  family.value = saved("effects-playground:family");
+  url.value = saved("effects-playground:url");
+  family.addEventListener("change", apply);
+  url.addEventListener("change", apply);
+  apply();
+}
+
 function start(): void {
   subjects = [stripSubject(theme), textSubject(theme, drawnWith.colorSystem!)].map((s) => drawnSubject(s, drawnWith, theme));
   for (const panel of PANELS) live.push(mount(panel));
@@ -245,6 +278,7 @@ function start(): void {
   picker.addEventListener("change", () => show(THEMES[Number(picker.value)]!));
   (document.getElementById("paused") as HTMLInputElement).addEventListener("change", (e) => (paused = (e.target as HTMLInputElement).checked));
   show(theme);
+  wireFont();
 
   let last = performance.now();
   const frame = (now: number): void => {
