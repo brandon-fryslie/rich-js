@@ -17,15 +17,6 @@ import { CURVES_FILE, KIT_FILE, KIT_MODULE, effectPrograms } from "./examples/ef
 
 const PLAYGROUND_MODULE = "virtual:effects-playground";
 
-/**
- * `text` as an expression of a module this plugin serves. A bundled script
- * carries rolldown's `\0rolldown/runtime.js` in it, and vite's import
- * analysis, reading the module served in dev, takes that for an import it
- * cannot resolve even inside a string literal; base64 hides the text from it.
- */
-const literal = (text: string): string =>
-  `new TextDecoder().decode(Uint8Array.from(atob(${JSON.stringify(Buffer.from(text).toString("base64"))}), (c) => c.charCodeAt(0)))`;
-
 function effectsPlayground(): Plugin {
   return {
     name: "rich-effects-playground",
@@ -34,14 +25,14 @@ function effectsPlayground(): Plugin {
       if (id === `\0${LIVE_RUNTIME_MODULE}`) {
         const runtime = await bundleLiveRuntime();
         runtime.modules.forEach((file) => this.addWatchFile(file));
-        return `export default ${literal(runtime.code)};`;
+        return `export default ${JSON.stringify(runtime.code)};`;
       }
       if (id === `\0${PLAYGROUND_MODULE}`) {
         // Made afresh each load: the watches below are what ask for one, an
         // edit to curves.ts or to anything the kit is built from.
         const [shared, kit] = await Promise.all([liveLibraryOnce()(), libraryModule(KIT_MODULE, KIT_FILE)]);
         [CURVES_FILE, ...kit.modules].forEach((file) => this.addWatchFile(file));
-        return `export const library = ${literal(shared.script + kit.code)};\nexport const programs = ${JSON.stringify(effectPrograms())};`;
+        return `export const library = ${JSON.stringify(shared.script + kit.code)};\nexport const programs = ${JSON.stringify(effectPrograms())};`;
       }
       return null;
     },

@@ -258,7 +258,7 @@ async function libraryImport<Resolved extends { readonly id: string }>(
   return resolved;
 }
 
-/** A bundle's one chunk, and every module that went into it besides the source it was given. */
+/** A bundle's one chunk, and every file that went into it besides the source it was given. */
 interface Bundled {
   readonly code: string;
   readonly modules: readonly string[];
@@ -307,7 +307,10 @@ async function bundle(entry: Entry, shape: BundleShape): Promise<Bundled> {
   if (!("output" in result)) throw new Error("bundle: vite returned no single build output");
   const chunks = result.output.filter((file) => file.type === "chunk");
   if (chunks.length !== 1) throw new Error(`bundle: expected one chunk, vite produced ${chunks.length}`);
-  return { code: chunks[0]!.code, modules: chunks[0]!.moduleIds.filter((id) => id !== entry.file) };
+  // A `\0` id is a module the bundler made up, rolldown's own runtime among
+  // them: there is no file to watch, and vite, handed one by `addWatchFile`,
+  // fails resolving it as an import of the module that watched it.
+  return { code: chunks[0]!.code, modules: chunks[0]!.moduleIds.filter((id) => id !== entry.file && !id.startsWith("\0")) };
 }
 
 /**
