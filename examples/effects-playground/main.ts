@@ -1,301 +1,299 @@
 /// <reference lib="dom" />
 /**
- * effects-playground — one page, one playground per effect, every constant
- * that shapes the effect a control beside it.
+ * effects-playground — one page, one playground per effect. Each playground
+ * is the terminal demo itself: `runDemo` from `../effects-feel/app.ts`,
+ * showing that one effect, on an xterm.js terminal through
+ * `BrowserTerminalHost` — the renderer, the pacing and the keys are the
+ * demo's, so what moves here is what moves in your terminal.
  *
  * THIS IS A DEMO for tuning how the effects feel; run it with
- * `npm run effects-playground`. It draws the real curves of
- * `../effects-feel/curves.ts` through `Effected` and the library's own HTML
- * encoder, so what moves here is what the terminal demo moves — there is no
- * port of any curve in this file.
+ * `npm run effects-playground`.
  *
- * [LAW:one-source-of-truth] `PANELS` below is the whole of what a playground
- * is: its constants, with their defaults and ranges, and how they build the
- * effect. A control is generated from a constant; adding one is one row.
- * The defaults are the terminal demo's own (`parseSettings([])`, `DISSOLVE_SHAPE`).
+ * [LAW:one-source-of-truth] `KNOBS` below is the one place a playground's
+ * constants are listed; every default is read from where the demo reads it
+ * (`EFFECT_DEFAULTS`, `RUN_DEFAULTS`, `FADE_SHAPE`, `DISSOLVE_SHAPE`), never
+ * restated here. A change restarts that playground's run with the new
+ * values, and the box under it is those values as the source spells them.
  */
 
-import { Console, EASES, Effected, type Effect, type TerminalTheme } from "../../src/index.js";
-import { encodeHtmlFragment } from "../../src/core/export-html.js";
-import { THEMES, LIGHTS, drawnSubject, pulsedOn, stripSubject, subjectUnder, textSubject, type DrawnSubject } from "../effects-feel/app.js";
-import { DISSOLVE_SHAPE, dissolveOut, fadeIn, shimmer, sparkle, wheel, type Curve } from "../effects-feel/curves.js";
-import { EFFECT_DEFAULTS } from "../effects-feel/vocabulary.js";
-
-const DEFAULTS = Object.fromEntries(Object.entries(EFFECT_DEFAULTS).map(([name, d]) => [name, { seconds: d.seconds, swing: d.swing, easeName: d.ease }])) as Record<keyof typeof EFFECT_DEFAULTS, { seconds: number; swing: number; easeName: string }>;
+import { EASES, type TerminalTheme } from "../../src/index.js";
+import type { EaseName } from "../../src/core/easing.js";
+import { BrowserTerminalHost, type XtermTerminal } from "../../src/host/terminal-host.js";
+import { XTERM } from "../_browser-shell/xterm.js";
+import { THEMES, runDemo, type DemoHandle } from "../effects-feel/app.js";
+import { DISSOLVE_SHAPE, FADE_SHAPE, type DissolveShape, type FadeShape } from "../effects-feel/curves.js";
+import type { NamedCurve, Settings } from "../effects-feel/settings.js";
+import { EFFECTS, EFFECT_DEFAULTS, GROUNDS, RUN_DEFAULTS, type EffectName, type Ground } from "../effects-feel/vocabulary.js";
 
 // ─── The constants ────────────────────────────────────────────────
 
-type EaseName = keyof typeof EASES;
-
-/** One constant: a number in a range, or one of the named eases. */
-type Param =
-  | { readonly kind: "number"; readonly key: string; readonly label: string; readonly min: number; readonly max: number; readonly step: number; readonly value: number }
-  | { readonly kind: "ease"; readonly key: string; readonly label: string; readonly value: EaseName };
-
-type Values = Record<string, number | string>;
-
-const n = (v: Values, key: string): number => v[key] as number;
-
-const num = (key: string, label: string, value: number, min: number, max: number, step: number): Param => ({ kind: "number", key, label, value, min, max, step });
-const ease = (value: string): Param => ({ kind: "ease", key: "ease", label: "ease", value: value as EaseName });
-
-/** How long a loop's period or a transition's duration is: the constant every effect has. */
-const seconds = (value: number, max: number): Param => num("seconds", "seconds", value, 1, max, 1);
-const swing = (value: number): Param => num("swing", "swing", value, 0, 1, 0.01);
-/** Designed seconds that pass in one real second: how fast the page plays the effect. */
-const speed = (value: number): Param => num("speed", "time ×", value, 0.1, 400, 0.1);
-
-interface Panel {
-  readonly name: string;
-  readonly blurb: string;
-  /** A transition plays once and replays; a loop never ends. */
-  readonly transition: boolean;
-  readonly params: readonly Param[];
-  readonly build: (v: Values, subject: DrawnSubject, theme: TerminalTheme) => Effect;
+/** A number a control sets, its range, and what it means. */
+interface Knob<K extends string> {
+  readonly key: K;
+  readonly min: number;
+  readonly max: number;
+  readonly step: number;
+  readonly means: string;
 }
 
-const curveOf = (v: Values): Curve => ({ seconds: n(v, "seconds"), ease: EASES[v["ease"] as EaseName], swing: n(v, "swing") });
+type CurveKey = "seconds" | "swing";
 
-/** A loop plays fast enough here to watch: one period in about twenty real seconds. */
-const watchable = (period: number): number => Math.max(1, Math.round(period / 20));
+/**
+ * Every constant a playground adjusts. Every effect has its curve; the
+ * transitions add their shape, cell by cell.
+ */
+const KNOBS = {
+  curve: [
+    { key: "seconds", min: 1, max: 1200, step: 1, means: "a loop's period, a transition's duration" },
+    { key: "swing", min: 0, max: 1, step: 0.01, means: "" },
+  ] satisfies Knob<CurveKey>[],
+  fade: [{ key: "own", min: 0.05, max: 1, step: 0.01, means: "of the duration, each cell's own rise" }] satisfies Knob<keyof FadeShape>[],
+  dissolve: [
+    { key: "own", min: 0.05, max: 1, step: 0.01, means: "of the duration, each cell's own fade" },
+    { key: "depth", min: 0, max: 1, step: 0.01, means: "the most a cell rises back, of whole" },
+    { key: "from", min: 0, max: 1, step: 0.01, means: "where in its fade the rising begins" },
+    { key: "to", min: 0, max: 1, step: 0.01, means: "where in its fade the rising is done" },
+    { key: "maskFrom", min: 0, max: 1, step: 0.01, means: "eddy noise past which a cell may rebound" },
+    { key: "maskTo", min: 0, max: 1, step: 0.01, means: "eddy noise past which every cell does" },
+    { key: "late", min: 0, max: 1, step: 0.01, means: "how much likelier the later a cell goes" },
+  ] satisfies Knob<keyof DissolveShape>[],
+} as const;
 
-const PANELS: readonly Panel[] = [
-  {
-    name: "shimmer",
-    blurb: "A band of light crossing the element.",
-    transition: false,
-    params: [seconds(DEFAULTS.shimmer.seconds, 600), swing(DEFAULTS.shimmer.swing), ease(DEFAULTS.shimmer.easeName), num("width", "band width (cols)", 24, 2, 120, 1), speed(watchable(DEFAULTS.shimmer.seconds))],
-    build: (v, s, theme) => subjectUnder(s, shimmer(curveOf(v), s.span, n(v, "width"), LIGHTS.sun, s.z), theme),
-  },
-  {
-    name: "pulse",
-    blurb: "A gentle glow on chosen elements (the strip's “ctx 61%” and “ok”), each on a time of its own.",
-    transition: false,
-    params: [seconds(DEFAULTS.pulse.seconds, 300), swing(DEFAULTS.pulse.swing), ease(DEFAULTS.pulse.easeName), speed(watchable(DEFAULTS.pulse.seconds))],
-    build: (v, s, theme) => pulsedOn(s, curveOf(v), theme),
-  },
-  {
-    name: "sparkle",
-    blurb: "Fireflies: single cells flashing and fading.",
-    transition: false,
-    params: [seconds(DEFAULTS.sparkle.seconds, 600), swing(DEFAULTS.sparkle.swing), ease(DEFAULTS.sparkle.easeName), speed(watchable(DEFAULTS.sparkle.seconds))],
-    build: (v, s, theme) => subjectUnder(s, sparkle(curveOf(v), s.span, LIGHTS.firefly, s.z), theme),
-  },
-  {
-    name: "wheel",
-    blurb: "Every hue turning the whole way round, each segment at its own pace.",
-    transition: false,
-    params: [seconds(DEFAULTS.wheel.seconds, 3600), swing(DEFAULTS.wheel.swing), ease(DEFAULTS.wheel.easeName), speed(watchable(DEFAULTS.wheel.seconds))],
-    build: (v, s) => wheel(curveOf(v), s.colors, new Set(s.pairs.map(([, bg]) => bg.hex).filter((hex) => s.colors.has(hex))), s.z),
-  },
-  {
-    name: "fade",
-    blurb: "Ink blooming in water: patches surface first and the rest follows.",
-    transition: true,
-    params: [seconds(DEFAULTS.fade.seconds, 120), swing(DEFAULTS.fade.swing), ease(DEFAULTS.fade.easeName), num("own", "each cell takes", 0.45, 0.05, 1, 0.01), speed(1)],
-    build: (v, s, theme) => fadeIn(curveOf(v), 0, s.z, theme.backgroundColor, n(v, "own")),
-  },
-  {
-    name: "dissolve",
-    blurb: "Mist lifting; near the end, patches of what is left rise back before they thin away for good.",
-    transition: true,
-    params: [
-      seconds(DEFAULTS.dissolve.seconds, 300),
-      swing(DEFAULTS.dissolve.swing),
-      ease(DEFAULTS.dissolve.easeName),
-      num("own", "each cell takes", DISSOLVE_SHAPE.own, 0.05, 1, 0.01),
-      num("depth", "rebound depth", DISSOLVE_SHAPE.depth, 0, 1, 0.01),
-      num("from", "rebound from", DISSOLVE_SHAPE.from, 0, 1, 0.01),
-      num("to", "rebound to", DISSOLVE_SHAPE.to, 0, 1, 0.01),
-      num("maskFrom", "rebounders: from", DISSOLVE_SHAPE.maskFrom, 0, 1, 0.01),
-      num("maskTo", "rebounders: all by", DISSOLVE_SHAPE.maskTo, 0, 1, 0.01),
-      num("late", "later = likelier", DISSOLVE_SHAPE.late, 0, 1, 0.01),
-      speed(1),
-    ],
-    build: (v, s, theme) =>
-      dissolveOut(curveOf(v), 0, s.z, theme.backgroundColor, {
-        own: n(v, "own"),
-        depth: n(v, "depth"),
-        from: n(v, "from"),
-        to: n(v, "to"),
-        maskFrom: n(v, "maskFrom"),
-        maskTo: n(v, "maskTo"),
-        late: n(v, "late"),
-      }),
-  },
-];
+const FPS_CHOICES = [0.5, 1, 2, 5, 10, 15, 30] as const;
 
-/** Real seconds a transition holds on its last frame before replaying. */
-const HOLD = 2.5;
+/** What one playground runs with: its effect's curve and, for a transition, its shape. */
+interface Values {
+  seconds: number;
+  swing: number;
+  ease: EaseName;
+  fade: FadeShape;
+  dissolve: DissolveShape;
+}
+
+const defaults = (effect: EffectName): Values => ({
+  seconds: EFFECT_DEFAULTS[effect].seconds,
+  swing: EFFECT_DEFAULTS[effect].swing,
+  ease: EFFECT_DEFAULTS[effect].ease,
+  fade: FADE_SHAPE,
+  dissolve: DISSOLVE_SHAPE,
+});
+
+const curveOf = (seconds: number, swing: number, ease: EaseName): NamedCurve => ({ seconds, swing, ease: EASES[ease], easeName: ease });
+
+/** The demo's settings with `effect` alone on show, at `values`; the rest at the demo's defaults. */
+function settingsFor(effect: EffectName, values: Values, page: Page): Settings {
+  const curves = Object.fromEntries(EFFECTS.map((e) => [e, curveOf(EFFECT_DEFAULTS[e].seconds, EFFECT_DEFAULTS[e].swing, EFFECT_DEFAULTS[e].ease)])) as Record<EffectName, NamedCurve>;
+  return {
+    fps: page.fps,
+    // xterm.js draws 24-bit colour, and `runDemo` refuses a depth its host does not draw.
+    depth: "truecolor",
+    ground: page.ground,
+    curves: { ...curves, [effect]: curveOf(values.seconds, values.swing, values.ease) },
+    effects: [effect],
+    shapes: { fade: values.fade, dissolve: values.dissolve },
+  };
+}
+
+/** `values` as the source spells them, to paste back where the defaults live. */
+function asSource(effect: EffectName, values: Values): string {
+  const curve = `${effect}: { seconds: ${values.seconds}, ease: "${values.ease}", swing: ${values.swing} }   // vocabulary.ts EFFECT_DEFAULTS`;
+  const shape =
+    effect === "fade" ? `\nFADE_SHAPE = ${JSON.stringify(values.fade)}   // curves.ts`
+    : effect === "dissolve" ? `\nDISSOLVE_SHAPE = ${JSON.stringify(values.dissolve)}   // curves.ts`
+    : "";
+  return (curve + shape).replaceAll(/"(\w+)":/g, "$1: ").replaceAll(/,(?! )/g, ", ");
+}
+
+// ─── The terminals ────────────────────────────────────────────────
+
+/** What a playground's terminal is drawn at: the whole of the demo's view of one effect. */
+const TERMINAL = { cols: 132, rows: 9 } as const;
+
+/** The part of xterm.js's `Terminal` this page uses, beyond what the host does. */
+interface Xterm extends XtermTerminal {
+  open(element: HTMLElement): void;
+  reset(): void;
+  options: { fontFamily: string; theme: Record<string, string> };
+}
+type XtermConstructor = new (options: Record<string, unknown>) => Xterm;
+
+/** xterm.js from the site's one pin. */
+function loadXterm(): Promise<XtermConstructor> {
+  return new Promise((resolve, reject) => {
+    const link = Object.assign(document.createElement("link"), { rel: "stylesheet", crossOrigin: "anonymous", ...XTERM.stylesheet });
+    const script = Object.assign(document.createElement("script"), { crossOrigin: "anonymous", ...XTERM.script });
+    script.onload = () => resolve((globalThis as unknown as { Terminal: XtermConstructor }).Terminal);
+    script.onerror = () => reject(new Error(`xterm.js did not load from ${XTERM.script.src}`));
+    document.head.append(link, script);
+  });
+}
+
+/** The theme a run on `ground` starts in, as `runDemo` picks it, so the terminal's own ground matches. */
+const startTheme = (ground: Ground): TerminalTheme => THEMES.find((theme) => theme.palette.dark === (ground === "dark"))!;
+
+const fontFamily = (): string => getComputedStyle(document.documentElement).getPropertyValue("--rich-code-font-family");
 
 // ─── The page ─────────────────────────────────────────────────────
 
-const drawnWith = new Console({ width: 200, colorSystem: "truecolor" }).options;
-
-interface Live {
-  readonly panel: Panel;
-  readonly values: Values;
-  readonly stage: HTMLElement[];
-  readonly clock: HTMLElement;
-  readonly sync: () => void;
-  /** Designed seconds this panel has played. */
-  time: number;
-  visible: boolean;
-  effects: Effect[];
-  auto: boolean;
+interface Page {
+  fps: number;
+  ground: Ground;
 }
 
-let theme: TerminalTheme = THEMES[0]!;
-let subjects: DrawnSubject[] = [];
-let paused = false;
-const live: Live[] = [];
+interface Playground {
+  readonly term: Xterm;
+  /** Starts the run over with the page's and this playground's values as they are now. */
+  restart(): void;
+}
 
-const el = <K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLElementTagNameMap[K]> = {}, ...kids: (Node | string)[]): HTMLElementTagNameMap[K] => {
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLElementTagNameMap[K]> = {}, ...children: (Node | string)[]): HTMLElementTagNameMap[K] {
   const node = Object.assign(document.createElement(tag), props);
-  node.append(...kids);
+  node.append(...children);
   return node;
+}
+
+function numberControl(label: string, knob: Knob<string>, value: number, set: (v: number) => void): HTMLElement {
+  const range = el("input", { type: "range", min: String(knob.min), max: String(knob.max), step: String(knob.step), value: String(value), title: knob.means });
+  const box = el("input", { type: "number", min: String(knob.min), max: String(knob.max), step: String(knob.step), value: String(value) });
+  range.addEventListener("input", () => (box.value = range.value));
+  range.addEventListener("change", () => set(Number(range.value)));
+  box.addEventListener("change", () => {
+    range.value = box.value;
+    set(Number(box.value));
+  });
+  return el("label", { className: "control", title: knob.means }, el("span", {}, label), range, box);
+}
+
+const BLURBS: Record<EffectName, string> = {
+  shimmer: "A band of light crossing the element.",
+  pulse: "A gentle glow on chosen elements (the strip's “ctx 61%” and “ok”), each on a time of its own.",
+  sparkle: "Fireflies: single cells flashing and fading.",
+  wheel: "Every segment's hue turning, each at its own pace.",
+  fade: "Fade-in, as ink blooming in water.",
+  dissolve: "Dissolve-out, as mist lifting; patches of what is left eddy back before they go.",
 };
 
-function rebuild(p: Live): void {
-  p.effects = subjects.map((s) => p.panel.build(p.values, s, theme));
-}
-
-function paint(p: Live): void {
-  p.stage.forEach((host, i) => {
-    const s = subjects[i]!;
-    host.innerHTML = encodeHtmlFragment(new Effected(s.renderable, p.effects[i]!, { t: p.time, key: `${p.panel.name}:${s.name}`, theme }).render(s.options), theme);
-  });
-  const cycle = p.panel.transition ? ` / ${n(p.values, "seconds")}s` : "";
-  p.clock.textContent = `t = ${p.time.toFixed(1)}s${cycle}`;
-}
-
-function mount(panel: Panel): Live {
-  const values: Values = Object.fromEntries(panel.params.map((q) => [q.key, q.value]));
-  const stage = subjects.map(() => el("div"));
-  const clock = el("span", { className: "clock" });
-  const syncs: (() => void)[] = [];
+function playground(Terminal: XtermConstructor, effect: EffectName, page: Page): { section: HTMLElement; playground: Playground } {
+  let values = defaults(effect);
+  const holder = el("div", { className: "term" });
+  const status = el("span", { className: "status" });
+  const source = el("pre", { className: "values" });
   const controls = el("div", { className: "controls" });
-  const p: Live = { panel, values, stage, clock, sync: () => syncs.forEach((f) => f()), time: 0, visible: true, effects: [], auto: true };
+  const term = new Terminal({ ...TERMINAL, fontFamily: fontFamily(), theme: { background: startTheme(page.ground).backgroundColor.hex } });
+  term.open(holder);
+  const host = new BrowserTerminalHost({ terminal: term });
 
-  for (const q of panel.params) {
-    const row = el("label", { className: "control" }, el("span", { textContent: q.label }));
-    if (q.kind === "ease") {
-      const select = el("select");
-      for (const name of Object.keys(EASES)) select.append(el("option", { value: name, textContent: name }));
-      select.addEventListener("change", () => ((values[q.key] = select.value), rebuild(p), paint(p)));
-      syncs.push(() => (select.value = String(values[q.key])));
-      row.append(select, el("span"));
-    } else {
-      const range = el("input", { type: "range", min: String(q.min), max: String(q.max), step: String(q.step) });
-      const box = el("input", { type: "number", min: String(q.min), max: String(q.max), step: String(q.step) });
-      const set = (value: number): void => {
-        values[q.key] = value;
-        range.value = box.value = String(value);
-        if (q.key !== "speed") rebuild(p);
-        paint(p);
-      };
-      range.addEventListener("input", () => set(Number(range.value)));
-      box.addEventListener("change", () => Number.isFinite(box.valueAsNumber) && set(box.valueAsNumber));
-      syncs.push(() => (range.value = box.value = String(values[q.key])));
-      row.append(range, box);
-    }
-    controls.append(row);
-  }
+  // [LAW:no-ambient-temporal-coupling] Runs are chained: a run starts only
+  // once the one before it has handed the terminal back, however fast the
+  // controls change.
+  let run: DemoHandle | undefined;
+  let chain = Promise.resolve();
+  const report = (error: unknown): void => {
+    status.textContent = `stopped: ${error instanceof Error ? error.message : String(error)}`;
+    status.className = "status err";
+    console.error(error);
+  };
+  const restart = (): void => {
+    chain = chain.then(async () => {
+      run?.stop();
+      await run?.done.catch(report);
+      term.reset();
+      term.options.theme = { background: startTheme(page.ground).backgroundColor.hex };
+      source.textContent = asSource(effect, values);
+      status.textContent = "running — click the terminal for its keys";
+      status.className = "status";
+      run = runDemo(host, settingsFor(effect, values, page));
+      run.done.catch(report);
+    }).catch(report);
+  };
+  const set = (next: Partial<Values>): void => {
+    values = { ...values, ...next };
+    restart();
+  };
 
-  const replay = el("button", { type: "button", textContent: panel.transition ? "Replay" : "Restart" });
-  replay.addEventListener("click", () => ((p.time = 0), paint(p)));
-  const reset = el("button", { type: "button", textContent: "Reset constants" });
+  const draw = (): void => {
+    const ease = el("select", {}, ...Object.keys(EASES).map((name) => el("option", { value: name, textContent: name, selected: name === values.ease })));
+    ease.addEventListener("change", () => set({ ease: ease.value as EaseName }));
+    const shape =
+      effect === "fade" ? KNOBS.fade.map((k) => numberControl(k.key, k, values.fade[k.key], (v) => set({ fade: { ...values.fade, [k.key]: v } })))
+      : effect === "dissolve" ? KNOBS.dissolve.map((k) => numberControl(k.key, k, values.dissolve[k.key], (v) => set({ dissolve: { ...values.dissolve, [k.key]: v } })))
+      : [];
+    controls.replaceChildren(
+      ...KNOBS.curve.map((k) => numberControl(k.key, { ...k, means: k.key === "swing" ? EFFECT_DEFAULTS[effect].unit : k.means }, values[k.key], (v) => set({ [k.key]: v }))),
+      el("label", { className: "control" }, el("span", {}, "ease"), ease),
+      ...shape,
+    );
+  };
+  draw();
+
+  const replay = el("button", { textContent: "Restart" });
+  replay.addEventListener("click", restart);
+  const reset = el("button", { textContent: "Demo defaults" });
   reset.addEventListener("click", () => {
-    for (const q of panel.params) values[q.key] = q.value;
-    p.sync();
-    rebuild(p);
-    p.time = 0;
-    paint(p);
+    values = defaults(effect);
+    draw();
+    restart();
   });
-  const bar = el("div", { className: "bar" }, replay, reset, clock);
-  if (panel.transition) {
-    const auto = el("input", { type: "checkbox", checked: true });
-    auto.addEventListener("change", () => (p.auto = auto.checked));
-    bar.append(el("label", { className: "check" }, auto, " replay on its own"));
-  }
 
-  const section = el("section", { id: panel.name }, el("h2", { textContent: panel.name }), el("p", { textContent: panel.blurb }), el("div", { className: "stage" }, ...stage), controls, bar);
-  document.getElementById("panels")!.append(section);
-  new IntersectionObserver((entries) => (p.visible = entries.at(-1)!.isIntersecting)).observe(section);
-  p.sync();
-  rebuild(p);
-  paint(p);
-  return p;
+  const section = el(
+    "section",
+    {},
+    el("h2", {}, effect),
+    el("p", {}, BLURBS[effect]),
+    holder,
+    controls,
+    el("div", { className: "bar" }, replay, reset, status),
+    source,
+  );
+  return { section, playground: { term, restart } };
 }
 
-/** The theme everything is drawn in: the scene rebuilt, every panel's effects settled again on it. */
-function show(next: TerminalTheme): void {
-  theme = next;
-  subjects = [stripSubject(theme), textSubject(theme, drawnWith.colorSystem!)].map((s) => drawnSubject(s, drawnWith, theme));
-  document.documentElement.style.setProperty("--page-bg", theme.backgroundColor.hex);
-  document.documentElement.style.setProperty("--page-fg", theme.foregroundColor.hex);
-  live.forEach((p) => (rebuild(p), paint(p)));
-}
-
-/**
- * A Nerd Font for the strip's glyphs: a family installed on the viewing
- * device, or a font file loaded by URL, tried before the page's own stack.
- * Remembered per browser, so a reload keeps it.
- */
-function wireFont(): void {
+/** The font controls: a family installed on this machine, or a font file by URL, ahead of the docs' stack. */
+function wireFont(playgrounds: readonly Playground[]): void {
   const family = document.getElementById("font-family") as HTMLInputElement;
   const url = document.getElementById("font-url") as HTMLInputElement;
   const style = el("style");
   document.head.append(style);
-  const saved = (key: string): string => {
-    try {
-      return localStorage.getItem(key) ?? "";
-    } catch {
-      return "";
-    }
+  const stack = getComputedStyle(document.documentElement).getPropertyValue("--rich-code-font-family");
+  const apply = async (): Promise<void> => {
+    const file = url.value.trim();
+    const named = family.value.trim();
+    const loaded = file === "" ? "" : `@font-face{font-family:"Playground Font";src:url(${JSON.stringify(file)})}`;
+    const first = [file === "" ? "" : '"Playground Font"', named === "" ? "" : JSON.stringify(named)].filter((name) => name !== "");
+    style.textContent = `${loaded}:root{--rich-code-font-family:${[...first, stack].join(",")}}`;
+    // xterm measures its cell once, from a face that has to be loaded by then.
+    await document.fonts.load(`15px ${fontFamily()}`);
+    for (const p of playgrounds) p.term.options.fontFamily = fontFamily();
   };
-  const apply = (): void => {
-    try {
-      localStorage.setItem("effects-playground:family", family.value);
-      localStorage.setItem("effects-playground:url", url.value);
-    } catch {}
-    const loaded = url.value.trim() === "" ? "" : `@font-face{font-family:"Playground Font";src:url(${JSON.stringify(url.value.trim())})}`;
-    const names = [url.value.trim() === "" ? "" : '"Playground Font"', family.value.trim() === "" ? "" : JSON.stringify(family.value.trim())].filter(Boolean);
-    style.textContent = `${loaded}:root{--rich-code-font-family:${[...names, "'Rich Powerline'", "'JetBrains Mono'", "ui-monospace", "Menlo", "monospace"].join(",")}}`;
-  };
-  family.value = saved("effects-playground:family");
-  url.value = saved("effects-playground:url");
-  family.addEventListener("change", apply);
-  url.addEventListener("change", apply);
-  apply();
+  family.addEventListener("change", () => void apply());
+  url.addEventListener("change", () => void apply());
 }
 
-function start(): void {
-  subjects = [stripSubject(theme), textSubject(theme, drawnWith.colorSystem!)].map((s) => drawnSubject(s, drawnWith, theme));
-  for (const panel of PANELS) live.push(mount(panel));
-  const picker = document.getElementById("theme") as HTMLSelectElement;
-  THEMES.forEach((t, i) => picker.append(el("option", { value: String(i), textContent: `${t.palette.name} (${t.palette.dark ? "dark" : "light"})` })));
-  picker.addEventListener("change", () => show(THEMES[Number(picker.value)]!));
-  (document.getElementById("paused") as HTMLInputElement).addEventListener("change", (e) => (paused = (e.target as HTMLInputElement).checked));
-  show(theme);
-  wireFont();
+async function start(): Promise<void> {
+  const page: Page = { fps: RUN_DEFAULTS.fps, ground: RUN_DEFAULTS.ground };
+  const Terminal = await loadXterm();
+  await document.fonts.load(`15px ${fontFamily()}`);
+  const made = EFFECTS.map((effect) => playground(Terminal, effect, page));
+  document.getElementById("panels")!.append(...made.map((m) => m.section));
+  const playgrounds = made.map((m) => m.playground);
 
-  let last = performance.now();
-  const frame = (now: number): void => {
-    const dt = (now - last) / 1000;
-    last = now;
-    if (!paused) {
-      for (const p of live) {
-        if (!p.visible) continue;
-        p.time += dt * (n(p.values, "speed"));
-        const length = (n(p.values, "seconds")) + HOLD * (n(p.values, "speed"));
-        if (p.panel.transition && p.auto && p.time > length) p.time = 0;
-        paint(p);
-      }
-    }
-    requestAnimationFrame(frame);
-  };
-  requestAnimationFrame(frame);
+  const ground = document.getElementById("ground") as HTMLSelectElement;
+  ground.append(...GROUNDS.map((g) => el("option", { value: g, textContent: g, selected: g === page.ground })));
+  ground.addEventListener("change", () => {
+    page.ground = ground.value as Ground;
+    for (const p of playgrounds) p.restart();
+  });
+  const fps = document.getElementById("fps") as HTMLSelectElement;
+  fps.append(...FPS_CHOICES.map((f) => el("option", { value: String(f), textContent: String(f), selected: f === page.fps })));
+  fps.addEventListener("change", () => {
+    page.fps = Number(fps.value);
+    for (const p of playgrounds) p.restart();
+  });
+  wireFont(playgrounds);
+  for (const p of playgrounds) p.restart();
 }
 
-start();
+start().catch((error: unknown) => {
+  document.body.prepend(el("p", { className: "status err", textContent: `the playground did not start: ${String(error)}` }));
+  console.error(error);
+});

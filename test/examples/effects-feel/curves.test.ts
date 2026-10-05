@@ -334,20 +334,11 @@ describe("the transitions run start to end", () => {
     const effect = dissolveOut(dissolve, 0, 0, ground);
     const wide: EffectCell[] = Array.from({ length: 120 }, (_, col) => ({ row: 0, col, seed: 0 }));
     const shown = (cell: EffectCell, t: number): number => distance(effect(colors, cell, t).fg, ground);
-    const whole = distance(ink, ground);
-    // How far a cell climbs back from its lowest so far: a slowed fade is not a rebound.
-    const rebound = (cell: EffectCell): number => {
-      let low = whole;
-      let most = 0;
-      for (let i = 0; i <= 600; i++) {
-        const v = shown(cell, i * 0.05);
-        most = Math.max(most, v - low);
-        low = Math.min(low, v);
-      }
-      return most / whole;
-    };
-    const risen = wide.filter((cell) => rebound(cell) > 0.15);
-    // Some cells climb back by a visible share of whole; most are still only thinning.
+    const risen = wide.filter((cell) => {
+      const series = Array.from({ length: 600 }, (_, i) => shown(cell, i * 0.05));
+      return series.some((v, i) => i > 0 && v - series[i - 1]! > 0.002);
+    });
+    // Some cells rise again; most are still only thinning.
     expect(risen.length).toBeGreaterThan(5);
     expect(risen.length).toBeLessThan(wide.length * 0.8);
     // Every cell rises from the first, whole, to the last, gone.

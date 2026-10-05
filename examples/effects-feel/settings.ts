@@ -8,13 +8,8 @@
 
 import { parseArgs, type ParseArgsConfig } from "node:util";
 import { EASES, parseEase } from "../../src/index.js";
-import type { Curve } from "./curves.js";
-import { DEPTHS, EFFECTS, EFFECT_DEFAULTS, type Depth, type EffectName } from "./vocabulary.js";
-
-export const GROUNDS = ["dark", "light"] as const;
-export type Ground = (typeof GROUNDS)[number];
-
-/** The effects a run shows, in the order it shows them. */
+import { DISSOLVE_SHAPE, FADE_SHAPE, type Curve, type DissolveShape, type FadeShape } from "./curves.js";
+import { DEPTHS, EFFECTS, EFFECT_DEFAULTS, GROUNDS, RUN_DEFAULTS, type Depth, type EffectName, type Ground } from "./vocabulary.js";
 
 /** A curve as the flags spelled it, so the screen can say what is running. */
 export interface NamedCurve extends Curve {
@@ -26,6 +21,10 @@ export interface Settings {
   readonly depth: Depth;
   readonly ground: Ground;
   readonly curves: Readonly<Record<EffectName, NamedCurve>>;
+  /** The effects a run shows, in the order it shows them. */
+  readonly effects: readonly EffectName[];
+  /** How each transition moves cell by cell, beyond its curve. */
+  readonly shapes: { readonly fade: FadeShape; readonly dissolve: DissolveShape };
 }
 
 const FPS_RANGE = [0.5, 30] as const;
@@ -39,9 +38,9 @@ function secondsWord(effect: EffectName): "period" | "duration" {
 export const USAGE = [
   "npm run effects-feel -- [flags]",
   "",
-  `  --fps <n>`.padEnd(29) + `frames a second, ${FPS_RANGE[0]}–${FPS_RANGE[1]} (default 30; Claude Code draws at 1)`,
-  `  --depth <d>`.padEnd(29) + `${DEPTHS.join(" | ")} (default truecolor)`,
-  `  --ground <g>`.padEnd(29) + `${GROUNDS.join(" | ")} (default dark)`,
+  `  --fps <n>`.padEnd(29) + `frames a second, ${FPS_RANGE[0]}–${FPS_RANGE[1]} (default ${RUN_DEFAULTS.fps}; Claude Code draws at 1)`,
+  `  --depth <d>`.padEnd(29) + `${DEPTHS.join(" | ")} (default ${RUN_DEFAULTS.depth})`,
+  `  --ground <g>`.padEnd(29) + `${GROUNDS.join(" | ")} (default ${RUN_DEFAULTS.ground})`,
   "",
   ...EFFECTS.flatMap((effect) => {
     const d = EFFECT_DEFAULTS[effect];
@@ -90,10 +89,12 @@ export function parseSettings(argv: readonly string[]): Settings | undefined {
   ) as Record<EffectName, NamedCurve>;
 
   return {
-    fps: number("--fps", flag("fps"), 30, FPS_RANGE),
-    depth: oneOf("--depth", flag("depth") ?? "truecolor", DEPTHS),
-    ground: oneOf("--ground", flag("ground") ?? "dark", GROUNDS),
+    fps: number("--fps", flag("fps"), RUN_DEFAULTS.fps, FPS_RANGE),
+    depth: oneOf("--depth", flag("depth") ?? RUN_DEFAULTS.depth, DEPTHS),
+    ground: oneOf("--ground", flag("ground") ?? RUN_DEFAULTS.ground, GROUNDS),
     curves,
+    effects: EFFECTS,
+    shapes: { fade: FADE_SHAPE, dissolve: DISSOLVE_SHAPE },
   };
 }
 

@@ -4,34 +4,31 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Effects playground</title>
+    <!-- The docs' code font stack, Powerline face included: the terminals draw in it. -->
     <link rel="stylesheet" href="../../docs/.vitepress/theme/code-font.css" />
     <style>
-      :root { --rich-fragment-font: 15px/1.25 var(--rich-code-font-family); }
-      body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: var(--page-bg, #1e1e2e); color: var(--page-fg, #cdd6f4); }
-      header { display: flex; gap: 16px; align-items: center; padding: 12px 20px; position: sticky; top: 0; background: var(--page-bg, #1e1e2e); z-index: 1; border-bottom: 1px solid #8884; }
-      header { flex-wrap: wrap; }
-      header input { font: inherit; color: inherit; background: #8882; border: 1px solid #8884; border-radius: 4px; padding: 2px 6px; }
+      body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: #181825; color: #cdd6f4; }
+      header { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; padding: 12px 20px; position: sticky; top: 0; background: #181825; z-index: 1; border-bottom: 1px solid #8884; }
       header h1 { font-size: 16px; margin: 0; }
-      main { max-width: 1000px; margin: 0 auto; padding: 8px 20px 80px; }
+      input, select, button { font: inherit; color: inherit; background: #8882; border: 1px solid #8884; border-radius: 4px; padding: 2px 6px; }
+      button { cursor: pointer; }
+      main { max-width: 1100px; margin: 0 auto; padding: 8px 20px 80px; }
       section { margin: 28px 0; padding-top: 12px; border-top: 1px solid #8884; }
       section h2 { margin: 0 0 4px; font-size: 18px; }
       section p { margin: 0 0 10px; opacity: 0.75; }
-      .stage { display: grid; gap: 6px; margin-bottom: 12px; }
-      .controls { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 6px 24px; }
-      .control { display: grid; grid-template-columns: 110px 1fr 76px; gap: 8px; align-items: center; }
-      .control span { opacity: 0.85; }
-      .control input[type="number"], .control select { width: 100%; font: inherit; color: inherit; background: #8882; border: 1px solid #8884; border-radius: 4px; padding: 2px 4px; }
+      .term { font-family: var(--rich-code-font-family); width: max-content; margin-bottom: 10px; }
+      .controls { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 6px 24px; }
+      .control { display: grid; grid-template-columns: 90px 1fr 76px; gap: 8px; align-items: center; }
       .bar { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
-      button, select, label.check { font: inherit; }
-      button { color: inherit; background: #8883; border: 1px solid #8886; border-radius: 4px; padding: 3px 10px; cursor: pointer; }
-      .clock { opacity: 0.6; font-variant-numeric: tabular-nums; }
+      .status.err { color: #f38ba8; }
+      pre.values { margin: 8px 0 0; padding: 6px 10px; background: #8881; border-radius: 4px; font: 12px/1.4 var(--rich-code-font-family); user-select: all; }
     </style>
   </head>
   <body>
     <header>
       <h1>Effects playground</h1>
-      <label>Theme <select id="theme"></select></label>
-      <label class="check"><input type="checkbox" id="paused" /> pause all</label>
+      <label>Ground <select id="ground"></select></label>
+      <label>fps <select id="fps"></select></label>
       <label>Font <input id="font-family" placeholder="installed family, e.g. JetBrainsMono Nerd Font" size="34" /></label>
       <label>or file <input id="font-url" placeholder="https://…/font.woff2" size="28" /></label>
     </header>

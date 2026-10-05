@@ -476,14 +476,21 @@ function order(z: number): (cell: EffectCell) => number {
 /** Of a transition's `seconds`, how long each cell's own change takes. */
 const OWN = 0.45;
 
+/** The shape of a fade-in: `own`, of the duration, the share each cell's own rise takes. */
+export interface FadeShape {
+  readonly own: number;
+}
+
+export const FADE_SHAPE: FadeShape = { own: OWN };
+
 /**
  * Fade-in starting at `start`, as ink blooming in water: patches of the
  * element surface first and the rest follows outward from them, each cell
  * rising smoothly over its own part of the duration. Whole at
  * `start + seconds`.
  */
-export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba, ownShare: number = OWN): Effect {
-  const own = curve.seconds * ownShare;
+export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba, shape: FadeShape = FADE_SHAPE): Effect {
+  const own = curve.seconds * shape.own;
   const place = order(1.7 + z);
   return veiled((cell, t) => curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t)), curve.swing, ground);
 }
@@ -508,7 +515,7 @@ export interface DissolveShape {
   readonly late: number;
 }
 
-export const DISSOLVE_SHAPE: DissolveShape = { own: OWN, depth: 0.85, from: 0.25, to: 0.97, maskFrom: 0.3, maskTo: 0.55, late: 0.5 };
+export const DISSOLVE_SHAPE: DissolveShape = { own: OWN, depth: 0.4, from: 0.5, to: 0.95, maskFrom: 0.35, maskTo: 0.75, late: 0.6 };
 
 /**
  * Dissolve-out starting at `start`, as mist lifting: the element thins in
