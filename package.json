@@ -71,7 +71,7 @@
     "sessions": "tsc -p tsconfig.demo.json && node dist-demo/examples/claude-sessions/index.js",
     "strip": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-strip/index.js",
     "effects-feel": "tsc -p tsconfig.demo.json && node dist-demo/examples/effects-feel/index.js",
-    "effects-playground": "vite --open /examples/effects-playground/",
+    "effects-playground": "vite --config vite.config.effects-playground.ts",
     "viewport": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-viewport/index.js",
     "markup-plugins": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-markup-plugins/index.js",
     "demo-inputs": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-config/index.js",
