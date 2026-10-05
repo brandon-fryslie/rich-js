@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "577999989345e43f95586fe03b8e30ab831fed32",
-      "timestamp": "2026-10-05T06:19:03.639Z",
+      "sha": "45e4883c9dcba5dd5e80067e01b108ff8d6c8317",
+      "timestamp": "2026-10-05T11:38:05.459Z",
       "commits": [
         {
-          "sha": "577999989345e43f95586fe03b8e30ab831fed32",
+          "sha": "45e4883c9dcba5dd5e80067e01b108ff8d6c8317",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-05T06:17:42Z",
-          "message": "Merge c00599410af27d4397ae5cbee8df1033d1eed6f6 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+          "timestamp": "2026-10-05T11:36:42Z",
+          "message": "Merge ab44351c0fe8b50c75b261323721a9318d189915 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+        },
+        {
+          "sha": "ab44351c0fe8b50c75b261323721a9318d189915",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-05T05:36:36-06:00",
+          "message": "effects-playground: each effect's code from curves.ts in an editor, sliders over its values, run in the docs' live terminal (rich-effects-fxiy.b6i)\n\nA program is the effect's function as curves.ts has it and every\ndeclaration it reaches, cut out at serve time (programs.ts), so the code\nshown is the code the demo runs. Sliders are views of literals in that\ntext (tunables.ts); a slider edits the program and every run starts from\nan edit. Programs import effects-kit, the demo's subjects and pacing,\nadded to the live library by libraryModule (example-runner.ts).\ngraphemes joins the main barrel so app.ts bundles onto the live library.\nThe runDemo effect subset and shapes the old page needed are gone.\n"
         },
         {
           "sha": "c00599410af27d4397ae5cbee8df1033d1eed6f6",
