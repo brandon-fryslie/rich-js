@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "855a7cfaf6a875b0f8a9514e519311cf35f0c9dd",
-      "timestamp": "2026-10-05T05:46:38.314Z",
+      "sha": "95074dfa87ebbee3e2e9cfb523238d37bbe3a2b6",
+      "timestamp": "2026-10-05T05:53:43.878Z",
       "commits": [
         {
-          "sha": "855a7cfaf6a875b0f8a9514e519311cf35f0c9dd",
+          "sha": "95074dfa87ebbee3e2e9cfb523238d37bbe3a2b6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-05T05:45:21Z",
-          "message": "Merge 1329d516e47d7d95974da924657aad0a97a966c2 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+          "timestamp": "2026-10-05T05:52:33Z",
+          "message": "Merge 342949779f73308c41da6610dcf7e3f824cc4661 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+        },
+        {
+          "sha": "342949779f73308c41da6610dcf7e3f824cc4661",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-04T23:52:29-06:00",
+          "message": "effects-playground: one page, one real terminal per effect running runDemo; defaults restored to the demo's (rich-effects-fxiy.b6i)\n\nEach playground mounts runDemo on BrowserTerminalHost over xterm, showing\none effect (Settings.effects), so renderer, pacing and keys are the demo's.\nTransition shapes travel on Settings.shapes. DISSOLVE_SHAPE, the dissolve\nduration and the rebound test are back to their pre-playground values.\n"
         },
         {
           "sha": "1329d516e47d7d95974da924657aad0a97a966c2",
