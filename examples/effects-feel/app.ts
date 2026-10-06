@@ -67,7 +67,7 @@ import {
   type TerminalTheme,
 } from "../../src/index.js";
 import { App, hostEnvironment, type TerminalHost } from "../../src/host/index.js";
-import { dissolveOut, fadeIn, onColors, pulse, settledAt, shares, shimmer, sparkle, wheel, type Loop, type Pair } from "./curves.js";
+import { dissolveOut, fadeIn, onColors, pulse, settledAt, shares, shimmer, sparkle, wheel, type Curve, type Loop, type Pair } from "./curves.js";
 import { depthDrawn, type EffectName } from "./vocabulary.js";
 import type { NamedCurve, Settings } from "./settings.js";
 
@@ -106,10 +106,14 @@ const RATE_RANGE = [1 / 8, 16] as const;
  */
 const MAGNITUDE = { step: 0.25, range: [0.25, 4] } as const;
 
+/** A loop's `curve` with its swing at `magnitude` times its own. */
+export function magnified<C extends Curve>(curve: C, magnitude: number): C {
+  return { ...curve, swing: Math.min(1, curve.swing * magnitude) };
+}
+
 /** `curves` with every loop's swing at `magnitude` times the flags'. */
-function magnified(curves: Settings["curves"], magnitude: number): Settings["curves"] {
-  const swing = (loop: LoopName): number => Math.min(1, curves[loop].swing * magnitude);
-  return { ...curves, ...Object.fromEntries(LOOPS.map((loop) => [loop, { ...curves[loop], swing: swing(loop) }])) };
+function magnifiedLoops(curves: Settings["curves"], magnitude: number): Settings["curves"] {
+  return { ...curves, ...Object.fromEntries(LOOPS.map((loop) => [loop, magnified(curves[loop], magnitude)])) };
 }
 
 /** How long a slice of contrast measuring may hold the event loop, in seconds: well inside a frame at 30 fps. */
@@ -529,7 +533,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   let stopMeasuring: Unsubscribe = () => {};
   const show = (): void => {
     stopMeasuring();
-    shown = scene(THEMES[at]!, drawnWith, magnified(curves, magnitude));
+    shown = scene(THEMES[at]!, drawnWith, magnifiedLoops(curves, magnitude));
     stopMeasuring = spread(shown.measure(), clock, MEASURE_SLICE);
   };
   show();

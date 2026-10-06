@@ -13,7 +13,8 @@
 
 import { defineConfig, type Plugin } from "vite";
 import { LIVE_RUNTIME_MODULE, bundleLiveRuntime, libraryModule, liveLibraryOnce } from "./docs/.vitepress/example-runner.js";
-import { CURVES_FILE, KIT_FILE, KIT_MODULE, effectPrograms } from "./examples/effects-playground/programs.js";
+import { KIT_MODULE } from "./examples/effects-playground/edits.js";
+import { CURVES_FILE, KIT_FILE, effectPrograms } from "./examples/effects-playground/programs.js";
 
 const PLAYGROUND_MODULE = "virtual:effects-playground";
 

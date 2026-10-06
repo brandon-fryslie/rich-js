@@ -32,6 +32,9 @@
       header { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; padding: 12px 20px; position: sticky; top: 0; background: #1b1b1f; z-index: 2; border-bottom: 1px solid var(--vp-c-divider); }
       header h1 { font-size: 16px; margin: 0; }
       header p { margin: 0; opacity: 0.7; }
+      .run-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+      .run-slider { display: inline-flex; gap: 6px; align-items: center; }
+      .run-slider output { min-width: 3em; font: 12px var(--rich-code-font-family); }
       input, select, button { font: inherit; color: inherit; background: #8882; border: 1px solid #8884; border-radius: 4px; padding: 2px 6px; }
       button { cursor: pointer; }
       main { max-width: 1400px; margin: 0 auto; padding: 8px 20px 80px; }
@@ -53,7 +56,8 @@
   <body>
     <header>
       <h1>Effects playground</h1>
-      <p>Each effect's code from effects-feel/curves.ts. Edit it, or move a slider: either reruns it.</p>
+      <p>Each effect's code from effects-feel/curves.ts. Edit it, move a slider, or change how it runs: each takes effect in place.</p>
+      <span id="run-controls" class="run-controls"></span>
       <label>Font <input id="font-family" placeholder="installed family, e.g. JetBrainsMono Nerd Font" size="34" /></label>
       <label>or file <input id="font-url" placeholder="https://…/font.woff2" size="28" /></label>
     </header>

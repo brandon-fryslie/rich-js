@@ -17,12 +17,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { EFFECTS, EFFECT_DEFAULTS, type EffectName } from "../effects-feel/vocabulary.js";
+import { KIT_MODULE } from "./edits.js";
 
 export const CURVES_FILE = fileURLToPath(new URL("../effects-feel/curves.ts", import.meta.url));
 export const KIT_FILE = fileURLToPath(new URL("./kit.ts", import.meta.url));
-
-/** The name a program imports the kit by. */
-export const KIT_MODULE = "effects-kit";
 
 /** What `curves.ts` imports, by the name a program imports it under instead. */
 const IMPORTED_AS: Readonly<Record<string, string>> = { "../../src/index.js": "@promptctl/rich-js", "./noise.js": KIT_MODULE };
@@ -33,10 +31,10 @@ const IMPORTED_AS: Readonly<Record<string, string>> = { "../../src/index.js": "@
  * transition starts over a quarter of its duration after it settles.
  */
 const PLAYED: Readonly<Record<EffectName, { readonly fn: string; readonly play: string }>> = {
-  shimmer: { fn: "shimmer", play: `play("shimmer", (s, { theme }) => subjectUnder(s, shimmer(CURVE, s.span, SHIMMER_WIDTH, LIGHTS.sun, s.z), theme));` },
-  pulse: { fn: "pulse", play: `play("pulse", (s, { theme }) => pulsedOn(s, (z) => pulse(CURVE, LIGHTS.sun, z), theme));` },
-  sparkle: { fn: "sparkle", play: `play("sparkle", (s, { theme }) => subjectUnder(s, sparkle(CURVE, s.span, LIGHTS.firefly, s.z), theme));` },
-  wheel: { fn: "wheel", play: `play("wheel", (s) => wheel(CURVE, s.colors, fills(s), s.z));` },
+  shimmer: { fn: "shimmer", play: `play("shimmer", (s, { theme, magnitude }) => subjectUnder(s, shimmer(magnified(CURVE, magnitude), s.span, SHIMMER_WIDTH, LIGHTS.sun, s.z), theme));` },
+  pulse: { fn: "pulse", play: `play("pulse", (s, { theme, magnitude }) => pulsedOn(s, (z) => pulse(magnified(CURVE, magnitude), LIGHTS.sun, z), theme));` },
+  sparkle: { fn: "sparkle", play: `play("sparkle", (s, { theme, magnitude }) => subjectUnder(s, sparkle(magnified(CURVE, magnitude), s.span, LIGHTS.firefly, s.z), theme));` },
+  wheel: { fn: "wheel", play: `play("wheel", (s, { magnitude }) => wheel(magnified(CURVE, magnitude), s.colors, fills(s), s.z));` },
   fade: { fn: "fadeIn", play: `play("fade", (s, { theme, start }) => fadeIn(CURVE, start, s.z, theme.backgroundColor), settledAt(CURVE, 0) * 1.25);` },
   dissolve: {
     fn: "dissolveOut",
@@ -96,7 +94,7 @@ export function effectProgram(effect: EffectName, source: string): string {
   return [
     ...imports,
     `import { EASES } from "@promptctl/rich-js";`,
-    `import { LIGHTS, SHIMMER_WIDTH, fills, play, pulsedOn, subjectUnder } from "${KIT_MODULE}";`,
+    `import { LIGHTS, SHIMMER_WIDTH, fills, magnified, play, pulsedOn, subjectUnder } from "${KIT_MODULE}";`,
     "",
     `// ${effect}: its curve, at the demo's defaults (vocabulary.ts EFFECT_DEFAULTS).`,
     `const CURVE: Curve = { seconds: ${d.seconds}, ease: EASES["${d.ease}"], swing: ${d.swing} };`,

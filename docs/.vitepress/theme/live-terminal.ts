@@ -84,6 +84,51 @@ export type RunMode = "live" | "still";
  */
 const STILL_AFTER_MS = 1000;
 
+const SYNC_BEGIN = "\x1b[?2026h";
+const SYNC_END = "\x1b[?2026l";
+
+/**
+ * `write`, honouring synchronized output (DEC mode 2026): what a program
+ * writes between a begin and an end reaches `write` as one chunk, so a
+ * frame is shown whole. xterm 5.3 ignores the mode and paints whatever it has
+ * parsed, and a frame arrives as several messages from the worker: when the
+ * page is busy between two of them, it paints a frame with its rows erased
+ * and not yet drawn again, and a repainting program flickers. A begin
+ * without its end waits for more; text that might be the start of a begin is
+ * held until it is known not to be.
+ */
+export function synchronized(write: (text: string) => void): (chunk: string | Uint8Array) => void {
+  const decoder = new TextDecoder();
+  let held = "";
+  let inFrame = false;
+  return (chunk) => {
+    held += typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
+    for (;;) {
+      if (inFrame) {
+        const end = held.indexOf(SYNC_END);
+        if (end === -1) return;
+        write(held.slice(0, end + SYNC_END.length));
+        held = held.slice(end + SYNC_END.length);
+        inFrame = false;
+        continue;
+      }
+      const begin = held.indexOf(SYNC_BEGIN);
+      if (begin !== -1) {
+        if (begin > 0) write(held.slice(0, begin));
+        held = held.slice(begin);
+        inFrame = true;
+        continue;
+      }
+      // The longest tail that could still grow into a begin waits for the next chunk.
+      let keep = Math.min(held.length, SYNC_BEGIN.length - 1);
+      while (keep > 0 && !SYNC_BEGIN.startsWith(held.slice(held.length - keep))) keep -= 1;
+      if (held.length > keep) write(held.slice(0, held.length - keep));
+      held = held.slice(held.length - keep);
+      return;
+    }
+  };
+}
+
 /** What the terminal is showing. */
 export type LiveState =
   | { readonly kind: "idle" }
@@ -328,7 +373,7 @@ export class LiveTerminal {
     // fires, which can fall between two writes of one frame.
     const show =
       mode === "live"
-        ? (chunk: string | Uint8Array) => this.host.write(chunk)
+        ? synchronized((text) => this.host.write(text))
         : (chunk: string | Uint8Array) => {
             held.push(chunk);
             this.deadline ??= setTimeout(() => this.post({ kind: "mark" }), STILL_AFTER_MS);
@@ -357,6 +402,11 @@ export class LiveTerminal {
     this.sandbox = run;
     this.post({ kind: "run", script, terminal: this.options.terminal });
     this.setState({ kind: "running" });
+  }
+
+  /** Type `chunk` at the running program, as a key typed at the terminal is; with none running, it goes nowhere. */
+  type(chunk: string | Uint8Array): void {
+    this.post({ kind: "input", chunk });
   }
 
   /** End the running program, if one runs; what it drew stays on screen. */
