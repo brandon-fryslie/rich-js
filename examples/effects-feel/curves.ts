@@ -24,8 +24,10 @@
  * - Light only ever lights, and never takes the words away. Ink and the
  *   fill under it both move toward the light and never darken, each by its
  *   own share: the share a colour can take while every cell it is drawn in
- *   still reads at its resting contrast or WCAG AA, whichever is lower. A
- *   cell with contrast to spare glows brightly; one with none barely moves.
+ *   still reads at its floor — its resting contrast or WCAG AA, whichever
+ *   is lower, less the part of it a loop's `SPEND` lets the light take at
+ *   its brightest. A cell with contrast to spare glows brightly; one with
+ *   none moves only as far as that spend lets it.
  * - Elements are apart. Each sits at its own `z` in the noise, so two
  *   elements under one effect do not move in lockstep.
  *
@@ -61,6 +63,8 @@ export type Field = (cell: EffectCell, t: number) => number;
 export interface Loop {
   readonly touch: Touch;
   readonly field: Field;
+  /** How much of a cell's legible contrast the light may take at its brightest: `legibleFloor`'s `spend`. */
+  readonly spend: number;
 }
 
 /** A cell's ink and ground, as the screen shows them. */
@@ -68,6 +72,25 @@ export type Pair = readonly [ColorRgba, ColorRgba];
 
 /** The contrast no touch takes a cell below, unless it rested below it: WCAG AA for body text. */
 const LEGIBLE = 4.5;
+
+/**
+ * How much of a cell's legible contrast a loop's light may take at its
+ * brightest, 0–1. At 0 every cell keeps its resting contrast or `LEGIBLE`;
+ * at 1 the light may take it all. Held at 0, a cell resting near AA has
+ * almost nothing to spend and its light barely shows; 0.4 lets AA text dip
+ * to about 3:1, WCAG's floor for large text, at the light's brightest.
+ */
+const SPEND = 0.4;
+
+/**
+ * The least contrast a cell resting at `resting` may be drawn at under a
+ * light allowed to `spend` (0–1) of it: `spend` of the way from the lower of
+ * `resting` and `LEGIBLE` down to 1:1, no contrast at all.
+ */
+export function legibleFloor(resting: number, spend: number): number {
+  if (!(spend >= 0 && spend <= 1)) throw new RangeError(`legibleFloor: spend must be in [0, 1]; got ${spend}`);
+  return 1 + (Math.min(resting, LEGIBLE) - 1) * (1 - spend);
+}
 
 /**
  * The strengths a cell is drawn at: a field is snapped to one of these, and
@@ -85,8 +108,8 @@ const ROUNDING = 0.01;
 /**
  * How much of `touch` each of `colors` (hex) can take: the largest share in
  * [0, 1] at which every pair in `pairs` that shows it, touched at the same
- * strength, still reads at its resting contrast or `LEGIBLE`, whichever is
- * lower. A colour in no pair's `colors` is the terminal's, and takes none.
+ * strength, still reads at its `legibleFloor` under `spend`. A colour in no pair's
+ * `colors` is the terminal's, and takes none.
  *
  * Colours are settled lightest first, each against every partner: one
  * already settled at its share, one not yet settled as it is. So the lighter
@@ -95,7 +118,7 @@ const ROUNDING = 0.01;
  * the fill room to glow — and a darker colour left as it is always holds,
  * because its lighter partner was settled against exactly that.
  */
-export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touch: Touch): Map<string, number> {
+export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touch: Touch, spend: number): Map<string, number> {
   const rgba = new Map(pairs.flat().map((color): [string, ColorRgba] => [color.hex, color]));
   const lightness = (hex: string): number => Oklch.fromRgba(rgba.get(hex)!).l;
   const settled = new Map<string, number>();
@@ -107,9 +130,9 @@ export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touc
     const color = rgba.get(hex)!;
     const holds = (share: number): boolean =>
       partners.every(([partner, theirs]) => {
-        const floor = Math.min(contrastRatio(color, partner), LEGIBLE);
+        const least = legibleFloor(contrastRatio(color, partner), spend);
         return STRENGTHS.every(
-          (w) => contrastRatio(touchedAt(touch, color, share * w), touchedAt(touch, partner, theirs * w)) >= floor - ROUNDING,
+          (w) => contrastRatio(touchedAt(touch, color, share * w), touchedAt(touch, partner, theirs * w)) >= least - ROUNDING,
         );
       });
     let [lo, hi] = holds(1) ? [1, 1] : [0, 1];
@@ -264,7 +287,7 @@ export function pulse(curve: Curve, glow: ColorRgba, z: number): Loop {
     const beat = 0.5 - 0.5 * Math.cos(2 * Math.PI * (beats - n));
     return curve.swing * curve.ease(depth * beat);
   };
-  return { touch: light(glow), field };
+  return { touch: light(glow), field, spend: SPEND };
 }
 
 /**
@@ -353,7 +376,7 @@ export function shimmer(curve: Curve, span: number, width: number, glow: ColorRg
       2;
     return curve.swing * curve.ease(lit * (0.1 + 0.6 * caustic));
   };
-  return { touch: light(glow), field };
+  return { touch: light(glow), field, spend: SPEND };
 }
 
 /**
@@ -426,7 +449,7 @@ export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number):
     for (const fly of fliesAt(t)) shine = Math.max(shine, fly.glow * bump(Math.hypot(cell.col - fly.x, 2 * (cell.row - fly.y)) / HALO));
     return curve.swing * curve.ease(shine);
   };
-  return { touch: light(glow), field };
+  return { touch: light(glow), field, spend: SPEND };
 }
 
 /**
