@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "5da66e6a6ecc1161c560ae27fddfbec269c04613",
-      "timestamp": "2026-10-06T07:18:18.240Z",
+      "sha": "4d0b5940e5b8f02a5261aa5452e6b23c338a4ae0",
+      "timestamp": "2026-10-06T10:57:25.050Z",
       "commits": [
         {
-          "sha": "5da66e6a6ecc1161c560ae27fddfbec269c04613",
+          "sha": "4d0b5940e5b8f02a5261aa5452e6b23c338a4ae0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-06T07:16:47Z",
-          "message": "Merge bce3a2df2222ab2a1dbafbfd2ceb062aa4cfd480 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+          "timestamp": "2026-10-06T10:56:19Z",
+          "message": "Merge a5267b21396715717d801a1b3283c7f4308d00dd into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+        },
+        {
+          "sha": "a5267b21396715717d801a1b3283c7f4308d00dd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-06T04:56:13-06:00",
+          "message": "effects-playground: show every colour as drawn; the docs' contrast floor is now a LiveTerminal option (rich-effects-fxiy.b6i)\n\nxterm's minimumContrastRatio 4.5 redrew any cell faded toward its ground as readable text, so fade and dissolve never showed: words and powerline glyphs stayed visible while hidden. The docs' terminals keep READABLE_CONTRAST; the playground asks for 1.\n"
         },
         {
           "sha": "bce3a2df2222ab2a1dbafbfd2ceb062aa4cfd480",
