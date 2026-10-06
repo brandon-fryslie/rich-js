@@ -21,7 +21,6 @@ import { CATPPUCCIN_LATTE, CATPPUCCIN_MOCHA } from "../../../src/index.js";
 import {
   dissolveOut,
   fadeIn,
-  legibleFloor,
   light,
   onColors,
   pulse,
@@ -403,23 +402,19 @@ describe("the loops never jump", () => {
 });
 
 describe("a cell under light still reads", () => {
+  const AA = 4.5;
   const palette = (theme: typeof CATPPUCCIN_MOCHA, key: string): ColorRgba => theme.palette.get(key)!;
   const cases: [string, Pair[], ColorRgba[]][] = [
     ["pale lettering on Mocha's muted fills", ["primary", "secondary", "accent", "success", "warning", "error"].map((k) => [palette(CATPPUCCIN_MOCHA, "foreground"), palette(CATPPUCCIN_MOCHA, `${k}-muted`)] as Pair), []],
     ["white lettering on Latte's fills", (["primary", "error"] as const).map((k) => [palette(CATPPUCCIN_LATTE, `on-${k}`), palette(CATPPUCCIN_LATTE, k)] as Pair), []],
     ["dark ink on Latte's own ground", [[palette(CATPPUCCIN_LATTE, "foreground-muted"), CATPPUCCIN_LATTE.backgroundColor]], [CATPPUCCIN_LATTE.backgroundColor]],
   ];
-  it("a floor is the resting contrast or AA, whichever is lower, less the spend of the way to 1:1", () => {
-    expect([legibleFloor(7, 0), legibleFloor(3, 0), legibleFloor(7, 1), legibleFloor(4.5, 0.4)]).toEqual([4.5, 3, 1, 3.1]);
-    expect(() => legibleFloor(4.5, 1.5)).toThrow(RangeError);
-  });
-
-  it.each(cases.flatMap(([name, pairs, terminal]) => [0, 0.4].map((spend) => [name, spend, pairs, terminal] as const)))("%s, spending %s: no strength takes a cell below its floor", (_, spend, pairs, terminal) => {
+  it.each(cases)("%s: no strength takes a cell below its resting contrast or AA", (_, pairs, terminal) => {
     const touch = light(sun);
     const colors = new Set(pairs.flat().filter((c) => !terminal.includes(c)).map((c) => c.hex));
-    const share = shares(pairs, colors, touch, spend);
+    const share = shares(pairs, colors, touch);
     for (const [fg, bg] of pairs) {
-      const floor = legibleFloor(contrastRatio(fg, bg), spend);
+      const floor = Math.min(contrastRatio(fg, bg), AA);
       for (let w = 0; w <= 1; w += 0.05) {
         const lit = (c: ColorRgba) => touch(c, (share.get(c.hex) ?? 0) * w);
         expect(contrastRatio(lit(fg), lit(bg))).toBeGreaterThanOrEqual(floor - 0.02);
@@ -430,16 +425,9 @@ describe("a cell under light still reads", () => {
   it("the lighter of a pair takes the whole light, and its darker partner what contrast is left", () => {
     const fg = palette(CATPPUCCIN_MOCHA, "foreground");
     const fill = palette(CATPPUCCIN_MOCHA, "secondary-muted");
-    const share = shares([[fg, fill]], new Set([fg.hex, fill.hex]), light(sun), 0);
+    const share = shares([[fg, fill]], new Set([fg.hex, fill.hex]), light(sun));
     expect(share.get(fg.hex)).toBe(1);
     expect(share.get(fill.hex)).toBeGreaterThan(0);
     expect(share.get(fill.hex)).toBeLessThan(1);
-  });
-
-  it("spending contrast lets the darker of a pair take more of the light", () => {
-    const fg = palette(CATPPUCCIN_MOCHA, "foreground");
-    const fill = palette(CATPPUCCIN_MOCHA, "secondary-muted");
-    const at = (spend: number): number => shares([[fg, fill]], new Set([fg.hex, fill.hex]), light(sun), spend).get(fill.hex)!;
-    expect(at(0.4)).toBeGreaterThan(at(0));
   });
 });

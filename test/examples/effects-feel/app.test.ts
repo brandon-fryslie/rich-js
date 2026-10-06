@@ -19,7 +19,7 @@ import {
 } from "../../../src/index.js";
 import { cellLen, graphemes } from "../../../src/core/cells.js";
 import { LIGHTS, SHIMMER_WIDTH, drawnSubject, runDemo, stripSubject, subjectUnder, textSubject } from "../../../examples/effects-feel/app.js";
-import { legibleFloor, pulse, shares, shimmer, sparkle } from "../../../examples/effects-feel/curves.js";
+import { pulse, shares, shimmer, sparkle } from "../../../examples/effects-feel/curves.js";
 import { parseSettings } from "../../../examples/effects-feel/settings.js";
 import { envAtDepth } from "../../../examples/effects-feel/vocabulary.js";
 import { scriptedHost } from "../../host/scripted-host.js";
@@ -189,7 +189,7 @@ describe("a strip under a pulse", () => {
       const strip = drawnSubject(stripSubject(theme), options, theme);
       const loop = pulse({ seconds: 2, ease: EASES.linear, swing: 1 }, LIGHTS.sun, 0);
       const lit = subjectUnder(strip, loop, theme);
-      const share = shares(strip.pairs, strip.colors, loop.touch, loop.spend);
+      const share = shares(strip.pairs, strip.colors, loop.touch);
       const before = colorsByCell(strip.renderable, theme);
       // Two breaths, a frame each tenth of a second: a cell can be resting at any one moment.
       const frames = Array.from({ length: 40 }, (_, i) => colorsByCell(new Effected(strip.renderable, lit, { t: i / 10, key: "strip", theme }), theme));
@@ -236,6 +236,7 @@ describe("a strip under a pulse", () => {
 });
 
 describe("every loop keeps the words readable", () => {
+  const AA = 4.5;
   const { curves } = parseSettings([])!;
   const made = {
     shimmer: (span: number, z: number) => shimmer({ ...curves.shimmer, swing: 1 }, span, SHIMMER_WIDTH, LIGHTS.sun, z),
@@ -246,12 +247,11 @@ describe("every loop keeps the words readable", () => {
   const depths = [["truecolor", ColorDepth.TRUECOLOR], ["256", ColorDepth.EIGHT_BIT]] as const;
 
   it.each(grounds.flatMap(([g, theme]) => depths.flatMap(([d, depth]) => Object.keys(made).map((loop) => [loop, g, d, theme, depth] as const))))(
-    "%s on a %s ground at %s colours: no lettered cell falls below its legible floor",
+    "%s on a %s ground at %s colours: no lettered cell falls below its resting contrast or AA",
     (loop, _g, _d, theme, depth) => {
       const at = new Console({ width: 200, colorSystem: depth === ColorDepth.TRUECOLOR ? "truecolor" : "256" }).options;
       for (const subject of [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, at, theme))) {
-        const lit = made[loop as keyof typeof made](subject.span, subject.z);
-        const effect = subjectUnder(subject, lit, theme);
+        const effect = subjectUnder(subject, made[loop as keyof typeof made](subject.span, subject.z), theme);
         const contrasts = (t: number | undefined): number[] => {
           const drawn = t === undefined ? subject.renderable.render(subject.options) : new Effected(subject.renderable, effect, { t, key: loop, theme }).render(subject.options);
           const out: number[] = [];
@@ -278,7 +278,7 @@ describe("every loop keeps the words readable", () => {
         const P = curves[loop as keyof typeof made].seconds;
         for (let t = 0; t < 12 * P; t += P / 36) {
           // 8-bit rounding of a colour the shares settled exactly can cost a hair.
-          contrasts(t).forEach((now, i) => expect(now).toBeGreaterThanOrEqual(legibleFloor(rest[i]!, lit.spend) - 0.05));
+          contrasts(t).forEach((now, i) => expect(now).toBeGreaterThanOrEqual(Math.min(rest[i]!, AA) - 0.05));
         }
       }
     },

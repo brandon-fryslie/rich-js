@@ -338,7 +338,7 @@ export function subjectUnder(subject: DrawnSubject, loop: Loop, theme: TerminalT
   const depth = subject.options.colorSystem ?? ColorDepth.TRUECOLOR;
   const asDrawn = (color: ColorRgba, w: number): ColorRgba =>
     ColorSpec.fromRgba(loop.touch(color, w)).downgrade(depth).getTruecolor(theme);
-  return onColors(shares(subject.pairs, colors, asDrawn, loop.spend), loop);
+  return onColors(shares(subject.pairs, colors, asDrawn), loop);
 }
 
 /** The fills of `subject`: the colours it sets that are the ground of a cell it draws text in. */
