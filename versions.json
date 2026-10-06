@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "4d0b5940e5b8f02a5261aa5452e6b23c338a4ae0",
-      "timestamp": "2026-10-06T10:57:25.050Z",
+      "sha": "d8572c990a988e7aff1b648ef21d55d4c2ba3ba2",
+      "timestamp": "2026-10-06T13:16:07.280Z",
       "commits": [
         {
-          "sha": "4d0b5940e5b8f02a5261aa5452e6b23c338a4ae0",
+          "sha": "d8572c990a988e7aff1b648ef21d55d4c2ba3ba2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-06T10:56:19Z",
-          "message": "Merge a5267b21396715717d801a1b3283c7f4308d00dd into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+          "timestamp": "2026-10-06T13:14:57Z",
+          "message": "Merge 261e03ac372d91d2b46b55984f518e9b2d5516aa into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+        },
+        {
+          "sha": "261e03ac372d91d2b46b55984f518e9b2d5516aa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-06T07:14:51-06:00",
+          "message": "effects-playground: play an effect in a real terminal beside the page, following every change (rich-effects-fxiy.b6i)\n\nnpm run effects-playground:terminal -- <effect> runs the panel's program in the terminal on the library the dev server builds; the page tells the server each edit, control, replay and restart over vite's socket, and the server relays them as server-sent events, state first. The kit gains an in-place restart.\n"
         },
         {
           "sha": "a5267b21396715717d801a1b3283c7f4308d00dd",
