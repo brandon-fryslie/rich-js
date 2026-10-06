@@ -57,7 +57,7 @@ describe("an effect's program", () => {
     // Ten frames at the demo's 30 a second.
     vi.advanceTimersByTime(340);
     const drawn = stripAnsi(output.join(""));
-    expect(drawn).toContain(`${effect} · 2.5s · frame 10`);
+    expect(drawn).toContain(`${effect} · frame 10 · curve time 2.50`);
     expect(drawn).toContain("claude.ai");
     expect(drawn).toContain("Thinking about how a band of light");
   });
@@ -65,7 +65,7 @@ describe("an effect's program", () => {
 
 describe("what is typed at a running program", () => {
   /** `source` started under `controls`, then `typed` typed at it after ten frames; the bytes of the ten frames after that. */
-  async function framesAfter(source: string, typed: string | undefined, controls: Controls = CONTROL_DEFAULTS): Promise<string> {
+  async function framesAfter(source: string, typed: string | undefined, controls: Controls = CONTROL_DEFAULTS, ms = 340): Promise<string> {
     const [shared, kit] = await Promise.all([library(), libraryModule(KIT_MODULE, KIT_FILE)]);
     const output: string[] = [];
     let type: (chunk: string | Uint8Array) => void = () => {};
@@ -79,10 +79,10 @@ describe("what is typed at a running program", () => {
       onInput: (deliver) => void (type = deliver),
       exit: () => {},
     });
-    await vi.advanceTimersByTimeAsync(340);
+    await vi.advanceTimersByTimeAsync(ms);
     if (typed !== undefined) type(typed);
     output.length = 0;
-    await vi.advanceTimersByTimeAsync(340);
+    await vi.advanceTimersByTimeAsync(ms);
     vi.clearAllTimers();
     return output.join("");
   }
@@ -95,7 +95,7 @@ describe("what is typed at a running program", () => {
     const kept = await framesAfter(source, edit(source));
     const changed = await framesAfter(source, edit(still));
     // The clock carried on through the edit.
-    for (const frames of [kept, changed]) expect(stripAnsi(frames)).toContain("pulse · 5.0s · frame 20");
+    for (const frames of [kept, changed]) expect(stripAnsi(frames)).toContain("pulse · frame 20 · curve time 5.00");
     // The same frames, under the edited swing, are drawn as a program begun with it draws them.
     expect(changed).not.toBe(kept);
     expect(changed).toBe(await framesAfter(still, undefined));
@@ -106,7 +106,7 @@ describe("what is typed at a running program", () => {
     const quieter = { ...CONTROL_DEFAULTS, magnitude: 0.25 };
     const kept = await framesAfter(source, undefined);
     const changed = await framesAfter(source, told({ kind: "controls", controls: quieter }));
-    expect(stripAnsi(changed)).toContain("pulse · 5.0s · frame 20 · 30 fps · rate ×1 · magnitude ×0.25");
+    expect(stripAnsi(changed)).toContain("pulse · frame 20 · curve time 5.00 · 0.7s real · 30 fps · rate ×1 · magnitude ×0.25");
     expect(changed).not.toBe(kept);
     expect(changed).toBe(await framesAfter(source, undefined, quieter));
   });
@@ -115,20 +115,34 @@ describe("what is typed at a running program", () => {
     const changed = await framesAfter(programs.pulse, told({ kind: "controls", controls: { ...CONTROL_DEFAULTS, rate: 2 } }));
     // From the frame after the change, each moves the demo's time half a second.
     const drawn = stripAnsi(changed);
-    expect(drawn).toContain("pulse · 6.8s · frame 19");
-    expect(drawn).toContain("pulse · 7.3s · frame 20");
+    expect(drawn).toContain("pulse · frame 19 · curve time 6.75");
+    expect(drawn).toContain("pulse · frame 20 · curve time 7.25");
   });
 
   it("another effect's program plays as a scene of its own, on its own clock, under the first", { timeout: 120_000 }, async () => {
     const drawn = stripAnsi(await framesAfter(programs.pulse, edit(programs.fade)));
-    expect(drawn).toContain("pulse · 5.0s · frame 20");
-    expect(drawn).toContain("fade · 2.3s · frame 9");
+    expect(drawn).toContain("pulse · frame 20 · curve time 5.00");
+    expect(drawn).toContain("fade · frame 9 · curve time 2.25");
     expect(drawn.lastIndexOf("pulse ·")).toBeLessThan(drawn.lastIndexOf("fade ·"));
+  });
+
+  it("a frame is drawn the same whatever the frame rate: the rate sets only how often one comes", { timeout: 120_000 }, async () => {
+    // Each frame's own synchronized update, its heading (which names the rate) and the padding it moves taken out.
+    const frames = (drawn: string): string[] =>
+      drawn
+        .split("\x1b[?2026h")
+        .slice(1)
+        .map((frame) => frame.replace(/pulse · frame [^\x1b]*/, "").replace(/ +/g, " "));
+    const fast = frames(await framesAfter(programs.pulse, undefined));
+    // At 2 fps, ten frames take five seconds.
+    const slow = frames(await framesAfter(programs.pulse, undefined, { ...CONTROL_DEFAULTS, fps: 2 }, 5000));
+    expect(fast).toHaveLength(10);
+    expect(slow).toEqual(fast);
   });
 
   it("a restart starts the clock over in place", { timeout: 120_000 }, async () => {
     const restarted = stripAnsi(await framesAfter(programs.pulse, told({ kind: "restart", scene: "pulse" })));
-    expect(restarted).toContain("pulse · 2.3s · frame 9");
+    expect(restarted).toContain("pulse · frame 9 · curve time 2.25");
     expect(restarted).not.toContain("frame 20");
   });
 

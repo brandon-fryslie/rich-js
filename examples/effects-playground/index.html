@@ -57,6 +57,7 @@
     <header>
       <h1>Effects playground</h1>
       <p>Each effect's code from effects-feel/curves.ts. Edit it, move a slider, or change how it runs: each takes effect in place.</p>
+      <p>A curve's <code>seconds</code> are curve time: each frame adds 0.25 × rate of it, whatever the fps, so 4 frames are one curve second. "real" is wall-clock time.</p>
       <span id="run-controls" class="run-controls"></span>
       <label>Font <input id="font-family" placeholder="installed family, e.g. JetBrainsMono Nerd Font" size="34" /></label>
       <label>or file <input id="font-url" placeholder="https://…/font.woff2" size="28" /></label>

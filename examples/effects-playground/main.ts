@@ -200,7 +200,7 @@ function wireFont(): void {
 
 /** The run controls, as the demo names them: a slider for each number (controls.ts), a list for the theme and the depth. */
 function wireControls(): void {
-  const slider = (key: keyof typeof SLIDERS, label: string): HTMLElement => {
+  const slider = (key: keyof typeof SLIDERS, label: string, title: string): HTMLElement => {
     const { min, max, step } = SLIDERS[key];
     const input = el("input", { type: "range", min: String(min), max: String(max), step: String(step), value: String(controls[key]) });
     const shown = el("output", { textContent: String(controls[key]) });
@@ -208,7 +208,7 @@ function wireControls(): void {
       shown.textContent = input.value;
       setControls({ ...controls, [key]: Number(input.value) });
     });
-    return el("label", { className: "run-slider" }, `${label} `, input, shown);
+    return el("label", { className: "run-slider", title }, `${label} `, input, shown);
   };
   const list = <K extends "theme" | "depth">(key: K, label: string, values: readonly Controls[K][]): HTMLElement => {
     const select = el("select", {}, ...values.map((value) => el("option", { value, textContent: value })));
@@ -217,9 +217,9 @@ function wireControls(): void {
     return el("label", {}, `${label} `, select);
   };
   document.getElementById("run-controls")!.replaceChildren(
-    slider("fps", "fps"),
-    slider("rate", "rate ×"),
-    slider("magnitude", "magnitude ×"),
+    slider("fps", "fps", "How many frames a second. A frame is drawn the same at any rate: this sets only how often one comes."),
+    slider("rate", "rate ×", "How far each frame moves curve time: 0.25 × this. 0 holds it still."),
+    slider("magnitude", "magnitude ×", "Multiplies each loop's CURVE.swing, capped at 1 (the light itself). Fade and dissolve ignore it."),
     list("theme", "theme", THEMES.map((t) => t.palette.name)),
     list("depth", "depth", DEPTHS),
   );

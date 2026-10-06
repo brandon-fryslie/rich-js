@@ -58,8 +58,13 @@ interface Scene {
 /** A scene on the stage: what it plays, and a clock of its own. */
 interface Playing {
   readonly scene: IObservableValue<Scene>;
-  /** Its time and frame, and where its transition was last replayed from: it starts over every `every` seconds after that. */
-  readonly clock: { t: number; frame: number; began: number };
+  /**
+   * Its frame; its curve time `t`, what a curve's `seconds` are measured in,
+   * which every frame moves by `STEP` times the rate whatever the frame rate;
+   * where its transition was last replayed from, in curve time (it starts
+   * over every `every` after that); and the real seconds its frames took.
+   */
+  readonly clock: { t: number; frame: number; began: number; real: number };
   readonly start: IObservableValue<number>;
   readonly effects: IComputedValue<readonly Effect[]>;
 }
@@ -86,7 +91,7 @@ export function hear(message: Heard): void {
   const clock = scenes.get(message.scene)?.clock;
   if (clock === undefined) return;
   if (message.kind === "replay") clock.began = clock.t;
-  else Object.assign(clock, { t: 0, frame: 0, began: 0 });
+  else Object.assign(clock, { t: 0, frame: 0, began: 0, real: 0 });
 }
 
 /**
@@ -113,7 +118,7 @@ export function play(name: string, make: Make, every: number = Number.POSITIVE_I
     () => subjects.get().map((s) => box.get().make(s, { theme: theme.get(), start: start.get(), magnitude: controls.get().magnitude })),
     { keepAlive: true },
   );
-  scenes.set(name, { scene: box, clock: { t: 0, frame: 0, began: 0 }, start, effects });
+  scenes.set(name, { scene: box, clock: { t: 0, frame: 0, began: 0, real: 0 }, start, effects });
   if (first) stage.draw();
 }
 
@@ -144,12 +149,13 @@ function begin(): Stage {
       const { every } = scene.get();
       runInAction(() => start.set(clock.began + (Number.isFinite(every) ? Math.floor((clock.t - clock.began) / every) * every : 0)));
       const heading = new RichText(
-        `${name} · ${clock.t.toFixed(1)}s · frame ${clock.frame} · ${fps} fps · rate ×${rate} · magnitude ×${magnitude} · ${depth} · ${shown.palette.name} (${shown.palette.dark ? "dark" : "light"})`,
+        `${name} · frame ${clock.frame} · curve time ${clock.t.toFixed(2)} · ${clock.real.toFixed(1)}s real · ${fps} fps · rate ×${rate} · magnitude ×${magnitude} · ${depth} · ${shown.palette.name} (${shown.palette.dark ? "dark" : "light"})`,
         { style: dim, noWrap: true },
       );
       const drawn = subjects.get().map((s, n) => new Effected(s.renderable, effects.get()[n]!, { t: clock.t, key: `${name}:${s.name}`, theme: shown }));
       clock.t += STEP * rate;
       clock.frame += 1;
+      clock.real += 1 / fps;
       return [...(i > 0 ? [new RichText("")] : []), heading, new RichText(""), ...drawn];
     });
     const paper = Style.fromColor(ink, ColorSpec.fromRgba(shown.backgroundColor));
