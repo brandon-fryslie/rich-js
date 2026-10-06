@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "db8cf4795ffa855193e307836f67e8b4bbf80580",
-      "timestamp": "2026-10-06T07:17:10.991Z",
+      "sha": "5da66e6a6ecc1161c560ae27fddfbec269c04613",
+      "timestamp": "2026-10-06T07:18:18.240Z",
       "commits": [
         {
-          "sha": "db8cf4795ffa855193e307836f67e8b4bbf80580",
+          "sha": "5da66e6a6ecc1161c560ae27fddfbec269c04613",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-06T07:15:51Z",
-          "message": "Merge 389feb12545a23f7b59fed51369eb76eca8550fc into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+          "timestamp": "2026-10-06T07:16:47Z",
+          "message": "Merge bce3a2df2222ab2a1dbafbfd2ceb062aa4cfd480 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+        },
+        {
+          "sha": "bce3a2df2222ab2a1dbafbfd2ceb062aa4cfd480",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-06T01:16:41-06:00",
+          "message": "effects-playground: magnitude slider to 100 (rich-effects-fxiy.b6i)\n"
         },
         {
           "sha": "389feb12545a23f7b59fed51369eb76eca8550fc",
