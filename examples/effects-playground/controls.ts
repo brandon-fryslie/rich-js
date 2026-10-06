@@ -16,8 +16,11 @@ export interface Controls {
   readonly depth: Depth;
 }
 
-/** What the page tells a running program: new controls, or replay its transition from now (the demo's `f` and `d`). */
-export type Heard = { readonly kind: "controls"; readonly controls: Controls } | { readonly kind: "replay" };
+/**
+ * What the page tells a running program: new controls; replay its transition
+ * from now (the demo's `f` and `d`); or restart its clock from 0.
+ */
+export type Heard = { readonly kind: "controls"; readonly controls: Controls } | { readonly kind: "replay" } | { readonly kind: "restart" };
 
 /** What the demo starts at. */
 export const CONTROL_DEFAULTS: Controls = {

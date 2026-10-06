@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 /// <reference path="../../docs/.vitepress/theme/live-runtime.d.ts" />
 /// <reference path="./virtual.d.ts" />
+/// <reference types="vite/client" />
 /**
  * effects-playground — one page, one playground per effect: the effect's
  * code in an editor, sliders over the values in it, and the docs' live
@@ -27,6 +28,7 @@ import { THEMES } from "../effects-feel/app.js";
 import { DEPTHS, EFFECTS, type EffectName } from "../effects-feel/vocabulary.js";
 import { CONTROL_DEFAULTS, SLIDERS, type Controls } from "./controls.js";
 import { edit, started, told } from "./edits.js";
+import { SAID_EVENT, type Said } from "./mirror.js";
 import { range, spelled, tunables, type Tunable } from "./tunables.js";
 
 /** The terminal a program runs in: room for the demo's strip and status line, padded, under a heading. */
@@ -81,9 +83,15 @@ const followers: ((controls: Controls) => void)[] = [];
 
 const themeNamed = (name: string): TerminalTheme => THEMES.find((t) => t.palette.name === name)!;
 
+/** Tell the dev server what the page did, for the terminals playing beside it (mirror.ts). */
+function say(said: Said): void {
+  import.meta.hot?.send(SAID_EVENT, said);
+}
+
 function setControls(next: Controls): void {
   controls = next;
   for (const follow of followers) follow(next);
+  say({ kind: "controls", controls: next });
 }
 
 /** The demo's transitions, which its `f` and `d` keys replay. */
@@ -122,7 +130,10 @@ async function playground(effect: EffectName, parent: HTMLElement): Promise<void
     live.setTheme(themeNamed(next.theme));
     live.type(told({ kind: "controls", controls: next }));
   });
-  replayButton.addEventListener("click", () => live.type(told({ kind: "replay" })));
+  replayButton.addEventListener("click", () => {
+    live.type(told({ kind: "replay" }));
+    say({ kind: "replay", effect });
+  });
 
   const shown = new Map<string, Control>();
   // [LAW:no-ambient-temporal-coupling] The editor's text is read when the
@@ -130,9 +141,16 @@ async function playground(effect: EffectName, parent: HTMLElement): Promise<void
   let pending: ReturnType<typeof setTimeout> | undefined;
   const restart = (): void => {
     clearTimeout(pending);
-    live.run(started(editor.state.doc.toString(), library, controls), "live");
+    const source = editor.state.doc.toString();
+    live.run(started(source, library, controls), "live");
+    say({ kind: "restart", effect, source });
   };
-  const apply = (): void => (running ? live.type(edit(editor.state.doc.toString())) : restart());
+  const apply = (): void => {
+    if (!running) return restart();
+    const source = editor.state.doc.toString();
+    live.type(edit(source));
+    say({ kind: "source", effect, source });
+  };
   // A slider's value is written over its literal, found afresh in the text as it is now.
   const write = (name: string, spelling: string): void => {
     const at = tunables(editor.state.doc.toString()).find((t) => t.name === name);

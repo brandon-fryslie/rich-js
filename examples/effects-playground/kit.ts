@@ -57,14 +57,14 @@ interface Scene {
 // control from the page — reaches the stage its first run began.
 /** The controls the program plays under. */
 const controls = observable.box(CONTROL_DEFAULTS, { deep: false });
-/** How many replays have been asked for. */
-const replays = observable.box(0);
+/** How many times each has been asked for. */
+const asked = observable({ replay: 0, restart: 0 });
 /** The scene playing, once `play` has begun. */
 let playing: IObservableValue<Scene> | undefined;
 
 /** Take in what the page told the program (edits.ts). */
 export function hear(message: Heard): void {
-  runInAction(() => (message.kind === "controls" ? controls.set(message.controls) : replays.set(replays.get() + 1)));
+  runInAction(() => (message.kind === "controls" ? controls.set(message.controls) : (asked[message.kind] += 1)));
 }
 
 /**
@@ -99,8 +99,12 @@ function begin(scene: IObservableValue<Scene>): void {
   // Where the transitions were last replayed from; they start over every `every` seconds after it.
   let began = 0;
   reaction(
-    () => replays.get(),
+    () => asked.replay,
     () => (began = t),
+  );
+  reaction(
+    () => asked.restart,
+    () => (t = frame = began = 0),
   );
 
   let live = new Live(undefined, { console: drawing.get(), altScreen: true, autoRefresh: false });

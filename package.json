@@ -82,7 +82,8 @@
     "harness:browser-host": "tsc -p tsconfig.demo.json && echo 'Serving harness at http://localhost:8080/examples/browser-terminal-host-harness/' && npx --yes http-server@14.1.1 -p 8080 -c-1 -s .",
     "demos:build": "tsc -p tsconfig.demo.json && vite build --config vite.config.demos.ts",
     "demos:preview": "vite preview --config vite.config.demos.ts",
-    "test:demos": "playwright test"
+    "test:demos": "playwright test",
+    "effects-playground:terminal": "tsc -p tsconfig.demo.json && node dist-demo/examples/effects-playground/terminal.js"
   },
   "keywords": [
     "terminal",

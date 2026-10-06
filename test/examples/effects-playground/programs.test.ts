@@ -119,6 +119,12 @@ describe("what is typed at a running program", () => {
     expect(drawn).toContain("pulse · 7.3s · frame 20");
   });
 
+  it("a restart starts the clock over in place", { timeout: 120_000 }, async () => {
+    const restarted = stripAnsi(await framesAfter(programs.pulse, told({ kind: "restart" })));
+    expect(restarted).toContain("pulse · 2.3s · frame 9");
+    expect(restarted).not.toContain("frame 20");
+  });
+
   it("a replay starts the transition over from now", { timeout: 120_000 }, async () => {
     const replayed = await framesAfter(programs.fade, told({ kind: "replay" }));
     expect(replayed).not.toBe(await framesAfter(programs.fade, undefined));
