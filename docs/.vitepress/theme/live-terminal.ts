@@ -113,7 +113,9 @@ export function synchronized(write: (text: string) => void): {
     inFrame = false;
   };
   const take = (chunk: string | Uint8Array): void => {
-    held += typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
+    // A string ends any character the bytes before it left unfinished, so
+    // what was written stays in the order it was written.
+    held += typeof chunk === "string" ? decoder.decode() + chunk : decoder.decode(chunk, { stream: true });
     for (;;) {
       if (inFrame) {
         const end = held.indexOf(SYNC_END);

@@ -36,6 +36,11 @@ describe("synchronized output", () => {
     expect(written([bytes.slice(0, 10), bytes.slice(10)])).toEqual([`${BEGIN}é${END}`]);
   });
 
+  it("keeps bytes and text in the order they were written", () => {
+    const bytes = new TextEncoder().encode("aé");
+    expect(written([bytes.slice(0, 2), "b"]).join("")).toBe("a\uFFFDb");
+  });
+
   it("shows what it holds when the program ends: a frame never closed, as far as it got", () => {
     expect(written(["before", `${BEGIN}half a fr`], true)).toEqual(["before", `${BEGIN}half a fr`]);
     expect(written(["tail \x1b[?"], true)).toEqual(["tail ", "\x1b[?"]);

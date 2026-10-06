@@ -49,17 +49,23 @@ let controls: Controls = CONTROL_DEFAULTS;
 const sources = new Map<EffectName, string>();
 
 /**
- * The process playing them, once it is running and listening, and the
- * program of each effect it has been given. Until it listens, what the page
- * says is only remembered, and it is given the latest once it does.
+ * The process playing them, and the program of each effect it has been
+ * given. Until it listens, what the page says is only remembered, and it is
+ * given the latest once it does; one that failed to start is none, and the
+ * next program the page says starts another.
  */
-let type: ((chunk: string) => void) | undefined;
+type Playing =
+  | { readonly kind: "none" }
+  | { readonly kind: "starting" }
+  | { readonly kind: "listening"; readonly type: (chunk: string) => void };
+let playing: Playing = { kind: "none" };
 const given = new Map<EffectName, string>();
 let givenControls: Controls | undefined;
 
 /** Give the process every program and control the page has changed since it was last given them. */
 function bringUp(): void {
-  if (type === undefined) return;
+  if (playing.kind !== "listening") return;
+  const { type } = playing;
   for (const [effect, source] of sources) {
     if (given.get(effect) === source) continue;
     given.set(effect, source);
@@ -71,8 +77,16 @@ function bringUp(): void {
   }
 }
 
+/** `error` on the last row, over whatever the programs drew there. */
+function showError(error: unknown): void {
+  const line = String(error instanceof Error ? error.message : error).split("\n")[0]!;
+  process.stdout.write(`\x1b7\x1b[${process.stdout.rows};1H\x1b[2K\x1b[31m${line}\x1b[0m\x1b8`);
+}
+
 function start(effect: EffectName, source: string): void {
   let deliver: (chunk: string) => void = () => {};
+  playing = { kind: "starting" };
+  given.clear();
   given.set(effect, source);
   givenControls = controls;
   void runInTerminal(started(source, library, controls), {
@@ -83,14 +97,20 @@ function start(effect: EffectName, source: string): void {
     write: (chunk) => void process.stdout.write(chunk),
     onInput: (to) => (deliver = to),
     exit: quit,
-  }).then(() => {
-    type = deliver;
-    bringUp();
-  });
+  }).then(
+    () => {
+      playing = { kind: "listening", type: deliver };
+      bringUp();
+    },
+    (error: unknown) => {
+      playing = { kind: "none" };
+      showError(error);
+    },
+  );
 }
 
 function hear(said: Said): void {
-  const tell = (heard: Heard): void => type?.(told(heard));
+  const tell = (heard: Heard): void => void (playing.kind === "listening" && playing.type(told(heard)));
   switch (said.kind) {
     case "controls":
       controls = said.controls;
@@ -99,9 +119,8 @@ function hear(said: Said): void {
       return tell({ kind: "replay", scene: said.effect });
     case "source":
     case "restart": {
-      const first = sources.size === 0;
       sources.set(said.effect, said.source);
-      if (first) return start(said.effect, said.source);
+      if (playing.kind === "none") return start(said.effect, said.source);
       if (said.kind === "restart") tell({ kind: "restart", scene: said.effect });
       return bringUp();
     }
@@ -110,10 +129,7 @@ function hear(said: Said): void {
 
 // A bad edit rejects where nothing awaits it; the programs play on as they
 // were, and the error is shown on the last row.
-process.on("unhandledRejection", (error) => {
-  const line = String(error instanceof Error ? error.message : error).split("\n")[0]!;
-  process.stdout.write(`\x1b7\x1b[${process.stdout.rows};1H\x1b[2K\x1b[31m${line}\x1b[0m\x1b8`);
-});
+process.on("unhandledRejection", showError);
 
 process.stdin.setRawMode?.(true);
 process.stdin.on("data", (key: Buffer) => {
