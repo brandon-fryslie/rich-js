@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "efee028b6d1b004f303f168a9826b48d22bf3921",
-      "timestamp": "2026-10-06T13:48:59.074Z",
+      "sha": "b3105134941ed4e38527e6fff0b57df027e9fe86",
+      "timestamp": "2026-10-06T13:53:44.299Z",
       "commits": [
         {
-          "sha": "efee028b6d1b004f303f168a9826b48d22bf3921",
+          "sha": "b3105134941ed4e38527e6fff0b57df027e9fe86",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-06T13:47:33Z",
-          "message": "Merge 98264d8299f680152527757a663c3f2c98443371 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+          "timestamp": "2026-10-06T13:52:18Z",
+          "message": "Merge bcc06d2cd84fe2c84e0b8b0f699301d5434b61f8 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+        },
+        {
+          "sha": "bcc06d2cd84fe2c84e0b8b0f699301d5434b61f8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-06T07:52:12-06:00",
+          "message": "effects-feel: a loop's light may spend SPEND of a cell's legible contrast at its brightest, 0.4 by default, so AA text dips to about 3:1 and the light shows; tunable in the playground (rich-effects-fxiy.b6i)\n"
         },
         {
           "sha": "98264d8299f680152527757a663c3f2c98443371",
