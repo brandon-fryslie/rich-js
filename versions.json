@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "d8572c990a988e7aff1b648ef21d55d4c2ba3ba2",
-      "timestamp": "2026-10-06T13:16:07.280Z",
+      "sha": "7bb774f9dc8cf5fb4ffd78364b45d8d459fc6db4",
+      "timestamp": "2026-10-06T13:38:34.891Z",
       "commits": [
         {
-          "sha": "d8572c990a988e7aff1b648ef21d55d4c2ba3ba2",
+          "sha": "7bb774f9dc8cf5fb4ffd78364b45d8d459fc6db4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-06T13:14:57Z",
-          "message": "Merge 261e03ac372d91d2b46b55984f518e9b2d5516aa into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+          "timestamp": "2026-10-06T13:37:13Z",
+          "message": "Merge 05847c2771f272327731837257df491d0ca4f792 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+        },
+        {
+          "sha": "05847c2771f272327731837257df491d0ca4f792",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-06T07:37:08-06:00",
+          "message": "effects-playground: the terminal plays every effect at once, stacked as the demo's screen is (rich-effects-fxiy.b6i)\n\nThe kit's stage plays each program as a named scene on its own clock, one under another; replay and restart name their scene. npm run effects-playground:terminal follows every effect unless some are named; the server address is --server=.\n"
         },
         {
           "sha": "261e03ac372d91d2b46b55984f518e9b2d5516aa",
