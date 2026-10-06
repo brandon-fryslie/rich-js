@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "0b19ca2a6afa7cde9e75d629d92cd2b0a077cd66",
-      "timestamp": "2026-10-05T15:59:10.199Z",
+      "sha": "db8cf4795ffa855193e307836f67e8b4bbf80580",
+      "timestamp": "2026-10-06T07:17:10.991Z",
       "commits": [
         {
-          "sha": "0b19ca2a6afa7cde9e75d629d92cd2b0a077cd66",
+          "sha": "db8cf4795ffa855193e307836f67e8b4bbf80580",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-05T15:58:12Z",
-          "message": "Merge 56dc873fa6adff33fc5c61cea16da7a426af090b into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+          "timestamp": "2026-10-06T07:15:51Z",
+          "message": "Merge 389feb12545a23f7b59fed51369eb76eca8550fc into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+        },
+        {
+          "sha": "389feb12545a23f7b59fed51369eb76eca8550fc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-06T01:15:45-06:00",
+          "message": "effects-playground: edits and run controls change the running program in place; live frames reach xterm whole (rich-effects-fxiy.b6i)\n\nAn edit is typed at the running program and run in its process; the kit's play swaps its scene in a mobx box, and controls (fps, rate, magnitude, theme, depth) and replay reach it the same way, so the clock and screen carry on. LiveTerminal holds DEC 2026 synchronized-output frames and writes each whole: xterm 5.3 ignores the mode and painted half-arrived frames, the flicker under slider drags. magnified() is the demo's per-curve magnitude rule, shared with the kit.\n"
         },
         {
           "sha": "56dc873fa6adff33fc5c61cea16da7a426af090b",
