@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "7bb774f9dc8cf5fb4ffd78364b45d8d459fc6db4",
-      "timestamp": "2026-10-06T13:38:34.891Z",
+      "sha": "efee028b6d1b004f303f168a9826b48d22bf3921",
+      "timestamp": "2026-10-06T13:48:59.074Z",
       "commits": [
         {
-          "sha": "7bb774f9dc8cf5fb4ffd78364b45d8d459fc6db4",
+          "sha": "efee028b6d1b004f303f168a9826b48d22bf3921",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-06T13:37:13Z",
-          "message": "Merge 05847c2771f272327731837257df491d0ca4f792 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+          "timestamp": "2026-10-06T13:47:33Z",
+          "message": "Merge 98264d8299f680152527757a663c3f2c98443371 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+        },
+        {
+          "sha": "98264d8299f680152527757a663c3f2c98443371",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-06T07:47:28-06:00",
+          "message": "effects-playground: the heading names frame, curve time and real seconds apart; the run sliders say what they do (rich-effects-fxiy.b6i)\n\nThe counter showed curve time with an 's', so it ran at fps x 0.25 and read as wrong seconds; real seconds are now counted on their own. A test pins that a frame draws identically at any fps.\n"
         },
         {
           "sha": "05847c2771f272327731837257df491d0ca4f792",
