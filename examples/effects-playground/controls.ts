@@ -17,10 +17,14 @@ export interface Controls {
 }
 
 /**
- * What the page tells a running program: new controls; replay its transition
- * from now (the demo's `f` and `d`); or restart its clock from 0.
+ * What the page tells a running program: new controls; replay the transition
+ * of the scene it names from now (the demo's `f` and `d`); or restart that
+ * scene's clock from 0.
  */
-export type Heard = { readonly kind: "controls"; readonly controls: Controls } | { readonly kind: "replay" } | { readonly kind: "restart" };
+export type Heard =
+  | { readonly kind: "controls"; readonly controls: Controls }
+  | { readonly kind: "replay"; readonly scene: string }
+  | { readonly kind: "restart"; readonly scene: string };
 
 /** What the demo starts at. */
 export const CONTROL_DEFAULTS: Controls = {

@@ -1,32 +1,36 @@
 /**
- * effects-playground in a real terminal — one effect's program, played here
- * as the page's panel plays it, beside it: every edit, slider, run control,
- * replay and restart made on the page is made here too, in place.
+ * effects-playground in a real terminal — the effects' programs, played here
+ * one under another as the page's panels play them, beside it: every edit,
+ * slider, run control, replay and restart made on the page is made here too,
+ * in place.
  *
  * THIS IS A DEMO for comparing a terminal's rendering with the page's; run it
  * while the playground's dev server is up:
  *
- *   npm run effects-playground:terminal -- <effect> [server]
+ *   npm run effects-playground:terminal -- [effect …] [--server=<url>]
  *
- * It runs the program as a panel runs it (edits.ts) — on the live library
- * the server builds, under the docs' simulated process — but writes to this
- * terminal, and follows the page through the server (mirror.ts). q or
- * Ctrl-C quits.
+ * Every effect when none is named. It runs the programs as the panels run
+ * theirs (edits.ts) — on the live library the server builds, under the docs'
+ * simulated process — but all in one process, each its own scene on the
+ * kit's one stage (kit.ts), writing to this terminal; and it follows the
+ * page through the server (mirror.ts). q or Ctrl-C quits.
  */
 import { runInTerminal } from "../../docs/.vitepress/simulated-process.js";
-import { EFFECTS } from "../effects-feel/vocabulary.js";
+import { EFFECTS, type EffectName } from "../effects-feel/vocabulary.js";
 import { CONTROL_DEFAULTS, type Controls, type Heard } from "./controls.js";
 import { edit, started, told } from "./edits.js";
 import { EVENTS_PATH, LIBRARY_PATH, type Said } from "./mirror.js";
 
-const USAGE = `npm run effects-playground:terminal -- <${EFFECTS.join(" | ")}> [server, default http://localhost:5199]`;
+const USAGE = `npm run effects-playground:terminal -- [${EFFECTS.join(" | ")} …] [--server=<url>, default http://localhost:5199]`;
 
-const effect = EFFECTS.find((e) => e === process.argv[2]);
-if (effect === undefined) {
+const args = process.argv.slice(2);
+const server = args.find((a) => a.startsWith("--server="))?.slice("--server=".length) ?? "http://localhost:5199";
+const named = args.filter((a) => !a.startsWith("--"));
+const effects = named.map((name) => EFFECTS.find((e) => e === name));
+if (effects.includes(undefined)) {
   process.stderr.write(`${USAGE}\n`);
   process.exit(2);
 }
-const server = process.argv[3] ?? "http://localhost:5199";
 
 const response = await fetch(`${server}${LIBRARY_PATH}`).catch((error: unknown) => {
   process.stderr.write(`no playground server at ${server} (${String(error)}); start it with npm run effects-playground\n`);
@@ -34,25 +38,44 @@ const response = await fetch(`${server}${LIBRARY_PATH}`).catch((error: unknown) 
 });
 const library = await response.text();
 
-/** Leave the alternate screen the program drew on, show the cursor, and end. */
+/** Leave the alternate screen the programs drew on, show the cursor, and end. */
 function quit(code: number): never {
   process.stdout.write("\x1b[?1049l\x1b[?25h");
   process.exit(code);
 }
 
-/** The latest the page has said: the run controls, and the program (none until the server has sent it). */
+/** The latest the page has said: the run controls, and each effect's program. */
 let controls: Controls = CONTROL_DEFAULTS;
-let source: string | undefined;
+const sources = new Map<EffectName, string>();
 
 /**
- * The program, once it is running and listening. Until then what the page
- * says is only remembered, and the program is told the latest once it listens.
+ * The process playing them, once it is running and listening, and the
+ * program of each effect it has been given. Until it listens, what the page
+ * says is only remembered, and it is given the latest once it does.
  */
 let type: ((chunk: string) => void) | undefined;
+const given = new Map<EffectName, string>();
+let givenControls: Controls | undefined;
 
-function start(begun: string, under: Controls): void {
+/** Give the process every program and control the page has changed since it was last given them. */
+function bringUp(): void {
+  if (type === undefined) return;
+  for (const [effect, source] of sources) {
+    if (given.get(effect) === source) continue;
+    given.set(effect, source);
+    type(edit(source));
+  }
+  if (givenControls !== controls) {
+    givenControls = controls;
+    type(told({ kind: "controls", controls }));
+  }
+}
+
+function start(effect: EffectName, source: string): void {
   let deliver: (chunk: string) => void = () => {};
-  void runInTerminal(started(begun, library, under), {
+  given.set(effect, source);
+  givenControls = controls;
+  void runInTerminal(started(source, library, controls), {
     columns: process.stdout.columns,
     rows: process.stdout.rows,
     isTTY: true,
@@ -62,9 +85,7 @@ function start(begun: string, under: Controls): void {
     exit: quit,
   }).then(() => {
     type = deliver;
-    // What the page said while the program was starting.
-    if (source !== begun) type(edit(source!));
-    if (controls !== under) type(told({ kind: "controls", controls }));
+    bringUp();
   });
 }
 
@@ -73,22 +94,22 @@ function hear(said: Said): void {
   switch (said.kind) {
     case "controls":
       controls = said.controls;
-      return tell({ kind: "controls", controls });
+      return bringUp();
     case "replay":
-      return tell({ kind: "replay" });
+      return tell({ kind: "replay", scene: said.effect });
     case "source":
     case "restart": {
-      const first = source === undefined;
-      source = said.source;
-      if (first) return start(source, controls);
-      if (said.kind === "restart") tell({ kind: "restart" });
-      return type?.(edit(source));
+      const first = sources.size === 0;
+      sources.set(said.effect, said.source);
+      if (first) return start(said.effect, said.source);
+      if (said.kind === "restart") tell({ kind: "restart", scene: said.effect });
+      return bringUp();
     }
   }
 }
 
-// A bad edit rejects where nothing awaits it; the program plays on as it was,
-// and the error is shown on the last row.
+// A bad edit rejects where nothing awaits it; the programs play on as they
+// were, and the error is shown on the last row.
 process.on("unhandledRejection", (error) => {
   const line = String(error instanceof Error ? error.message : error).split("\n")[0]!;
   process.stdout.write(`\x1b7\x1b[${process.stdout.rows};1H\x1b[2K\x1b[31m${line}\x1b[0m\x1b8`);
@@ -100,7 +121,8 @@ process.stdin.on("data", (key: Buffer) => {
   if (pressed === "q" || pressed === "\x03") quit(0);
 });
 
-const events = await fetch(`${server}${EVENTS_PATH}?effect=${effect}`);
+const query = effects.map((e) => `effect=${e}`).join("&");
+const events = await fetch(`${server}${EVENTS_PATH}${query === "" ? "" : `?${query}`}`);
 const decoder = new TextDecoder();
 let buffer = "";
 for await (const chunk of events.body!) {

@@ -72,7 +72,7 @@ describe("what is typed at a running program", () => {
     vi.useFakeTimers();
     await runInTerminal(started(source, shared.script + kit.code, controls), {
       columns: 108,
-      rows: 6,
+      rows: 20,
       isTTY: true,
       env: { TERM: "xterm-256color", COLORTERM: "truecolor" },
       write: (chunk) => void output.push(String(chunk)),
@@ -119,14 +119,21 @@ describe("what is typed at a running program", () => {
     expect(drawn).toContain("pulse · 7.3s · frame 20");
   });
 
+  it("another effect's program plays as a scene of its own, on its own clock, under the first", { timeout: 120_000 }, async () => {
+    const drawn = stripAnsi(await framesAfter(programs.pulse, edit(programs.fade)));
+    expect(drawn).toContain("pulse · 5.0s · frame 20");
+    expect(drawn).toContain("fade · 2.3s · frame 9");
+    expect(drawn.lastIndexOf("pulse ·")).toBeLessThan(drawn.lastIndexOf("fade ·"));
+  });
+
   it("a restart starts the clock over in place", { timeout: 120_000 }, async () => {
-    const restarted = stripAnsi(await framesAfter(programs.pulse, told({ kind: "restart" })));
+    const restarted = stripAnsi(await framesAfter(programs.pulse, told({ kind: "restart", scene: "pulse" })));
     expect(restarted).toContain("pulse · 2.3s · frame 9");
     expect(restarted).not.toContain("frame 20");
   });
 
   it("a replay starts the transition over from now", { timeout: 120_000 }, async () => {
-    const replayed = await framesAfter(programs.fade, told({ kind: "replay" }));
+    const replayed = await framesAfter(programs.fade, told({ kind: "replay", scene: "fade" }));
     expect(replayed).not.toBe(await framesAfter(programs.fade, undefined));
   });
 });

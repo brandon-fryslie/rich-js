@@ -131,7 +131,7 @@ async function playground(effect: EffectName, parent: HTMLElement): Promise<void
     live.type(told({ kind: "controls", controls: next }));
   });
   replayButton.addEventListener("click", () => {
-    live.type(told({ kind: "replay" }));
+    live.type(told({ kind: "replay", scene: effect }));
     say({ kind: "replay", effect });
   });
 

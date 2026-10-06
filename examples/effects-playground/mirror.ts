@@ -21,13 +21,13 @@ export type Said =
 /** The event the page sends a `Said` to the dev server under. */
 export const SAID_EVENT = "effects-playground:said";
 
-/** Where a terminal follows an effect: a stream of `Said`, as server-sent events, for `?effect=<name>`. */
+/** Where a terminal follows effects: a stream of `Said`, as server-sent events, for each `?effect=<name>`, or every effect for none. */
 export const EVENTS_PATH = "/__effects-playground/events";
 
 /** Where a terminal reads the live library with the kit added, the script a program runs on. */
 export const LIBRARY_PATH = "/__effects-playground/library";
 
-/** Whether `said` is about `effect`: run controls are about every one. */
-export function concerns(said: Said, effect: EffectName): boolean {
-  return said.kind === "controls" || said.effect === effect;
+/** Whether `said` is about one of `effects`: run controls are about every one. */
+export function concerns(said: Said, effects: readonly EffectName[]): boolean {
+  return said.kind === "controls" || effects.includes(said.effect);
 }

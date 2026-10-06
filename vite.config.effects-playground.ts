@@ -52,28 +52,30 @@ function effectsPlayground(): Plugin {
       // The latest the page has said: the run controls, and each effect's program.
       let controls = CONTROL_DEFAULTS;
       const sources: Partial<Record<EffectName, string>> = {};
-      const followers = new Set<{ readonly effect: EffectName; readonly response: ServerResponse }>();
+      const followers = new Set<{ readonly effects: readonly EffectName[]; readonly response: ServerResponse }>();
       const tell = (response: ServerResponse, said: Said): void => void response.write(`data: ${JSON.stringify(said)}\n\n`);
 
       server.ws.on(SAID_EVENT, (said: Said) => {
         if (said.kind === "controls") controls = said.controls;
         if (said.kind === "source" || said.kind === "restart") sources[said.effect] = said.source;
-        for (const follower of followers) if (concerns(said, follower.effect)) tell(follower.response, said);
+        for (const follower of followers) if (concerns(said, follower.effects)) tell(follower.response, said);
       });
 
       server.middlewares.use(EVENTS_PATH, (request, response) => {
-        const asked = new URL(request.url ?? "", "http://server").searchParams.get("effect");
-        const effect = EFFECTS.find((e) => e === asked);
-        if (effect === undefined) {
+        const asked = new URL(request.url ?? "", "http://server").searchParams.getAll("effect");
+        const unknown = asked.filter((name) => !EFFECTS.some((e) => e === name));
+        if (unknown.length > 0) {
           response.statusCode = 400;
-          response.end(`?effect= must be one of ${EFFECTS.join(", ")}; got ${JSON.stringify(asked)}`);
+          response.end(`?effect= must be one of ${EFFECTS.join(", ")}; got ${unknown.map((name) => JSON.stringify(name)).join(", ")}`);
           return;
         }
+        // In the panels' order, every effect when none is named.
+        const effects = EFFECTS.filter((e) => asked.length === 0 || asked.includes(e));
         response.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache" });
-        // The state first, so a terminal that joins late plays what the panel plays now.
+        // The state first, so a terminal that joins late plays what the panels play now.
         tell(response, { kind: "controls", controls });
-        tell(response, { kind: "source", effect, source: sources[effect] ?? effectPrograms()[effect] });
-        const follower = { effect, response };
+        for (const effect of effects) tell(response, { kind: "source", effect, source: sources[effect] ?? effectPrograms()[effect] });
+        const follower = { effects, response };
         followers.add(follower);
         request.on("close", () => followers.delete(follower));
       });
