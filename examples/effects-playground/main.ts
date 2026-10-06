@@ -111,8 +111,9 @@ async function playground(effect: EffectName, parent: HTMLElement): Promise<void
       "section",
       {},
       el("div", { className: "bar" }, el("h2", { textContent: effect }), state, ...buttons),
-      screen,
+      // The terminal under the code and its sliders, so a slider and what it moves are on screen together.
       el("div", { className: "panes" }, editorParent, sliders),
+      screen,
     ),
   );
 
