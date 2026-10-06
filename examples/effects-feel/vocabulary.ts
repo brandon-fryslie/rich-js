@@ -17,10 +17,10 @@ export type EffectName = (typeof EFFECTS)[number];
  * back into step within a sitting.
  */
 export const EFFECT_DEFAULTS: Record<EffectName, { seconds: number; ease: EaseName; swing: number; unit: string }> = {
-  shimmer: { seconds: 109, ease: "linear", swing: 0.75, unit: "mix toward the light at the brightest glint, 0–1" },
-  pulse: { seconds: 43, ease: "linear", swing: 0.5, unit: "mix toward the light at the top of a beat on a chosen element, 0–1" },
-  sparkle: { seconds: 139, ease: "linear", swing: 0.6, unit: "mix toward the firefly's colour at its brightest flash, 0–1" },
-  wheel: { seconds: 907, ease: "linear", swing: 0.25, unit: "how far the segments stray from one another, 0–1 (1 is half a turn apart)" },
+  shimmer: { seconds: 109, ease: "linear", swing: 0.9, unit: "mix toward the light at the brightest glint, 0–1" },
+  pulse: { seconds: 43, ease: "linear", swing: 0.85, unit: "mix toward the light at the top of a beat on a chosen element, 0–1" },
+  sparkle: { seconds: 139, ease: "linear", swing: 0.95, unit: "mix toward the firefly's colour at its brightest flash, 0–1" },
+  wheel: { seconds: 907, ease: "linear", swing: 1, unit: "how far the segments stray from one another, 0–1 (1 is half a turn apart)" },
   fade: { seconds: 20, ease: "ease-in-out", swing: 1, unit: "how hidden at the start, 0–1" },
   dissolve: { seconds: 30, ease: "ease-in-out", swing: 1, unit: "how hidden once gone, 0–1" },
 };
