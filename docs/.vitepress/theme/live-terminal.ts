@@ -143,7 +143,20 @@ export interface LiveTerminalOptions {
   readonly terminal: TerminalSpec;
   readonly theme: TerminalTheme;
   readonly font: { readonly family: string; readonly size: number };
+  /**
+   * The least contrast xterm lets a colour have against its background; it
+   * changes a colour to reach it. 1 shows every colour as drawn.
+   */
+  readonly minimumContrast: number;
 }
+
+/**
+ * The contrast a docs example is shown at. A program that picks its own
+ * colours picks them for a background it cannot see: `[white]` is white on
+ * white in the light theme. The terminal keeps every colour readable against
+ * its background (WCAG AA), as several desktop terminals can.
+ */
+export const READABLE_CONTRAST = 4.5;
 
 /**
  * The font static output is drawn in, as `LiveTerminalOptions` takes it:
@@ -306,11 +319,7 @@ export class LiveTerminal {
       fontSize: options.font.size,
       // Nothing scrolls back: the page scrolls, not the terminal under the pointer.
       scrollback: 0,
-      // A program that picks its own colours picks them for a background it
-      // cannot see: `[white]` is white on white in the light theme. The
-      // terminal keeps every colour readable against its background (WCAG AA),
-      // as several desktop terminals can.
-      minimumContrastRatio: 4.5,
+      minimumContrastRatio: options.minimumContrast,
       cursorBlink: false,
     });
     return new LiveTerminal(element, screen, options);

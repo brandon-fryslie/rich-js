@@ -17,7 +17,7 @@ import { defineComponent, h, onBeforeUnmount, onMounted, ref, shallowRef, watch 
 import { useData } from "vitepress";
 import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "../example-terminal.js";
 import { decodeProgram, encodeProgram } from "../playground-hash.js";
-import { LiveTerminal, elementFont, type LiveState, type RunMode } from "./live-terminal.js";
+import { LiveTerminal, READABLE_CONTRAST, elementFont, type LiveState, type RunMode } from "./live-terminal.js";
 import { playgroundScript } from "./playground-program.js";
 import { createEditor } from "./playground-editor.js";
 
@@ -70,6 +70,7 @@ export default defineComponent({
         terminal: EXAMPLE_TERMINAL,
         theme: theme(),
         font: elementFont(element),
+        minimumContrast: READABLE_CONTRAST,
       });
       live.onState((next) => (state.value = next));
       const unwatch = watch(isDark, () => live.setTheme(theme()));

@@ -108,7 +108,9 @@ async function playground(effect: EffectName, parent: HTMLElement): Promise<void
     ),
   );
 
-  const live = await LiveTerminal.create(screen, { runtime, terminal: TERMINAL, theme: themeNamed(controls.theme), font: elementFont(screen) });
+  // Every colour as the effect draws it: a cell fading into the ground is
+  // meant to lose its contrast, and the docs' floor would draw it readable.
+  const live = await LiveTerminal.create(screen, { runtime, terminal: TERMINAL, theme: themeNamed(controls.theme), font: elementFont(screen), minimumContrast: 1 });
   let running = false;
   live.onState((s) => {
     running = s.kind === "running";
