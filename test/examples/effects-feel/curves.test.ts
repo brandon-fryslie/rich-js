@@ -119,7 +119,8 @@ describe("the wheel", () => {
   it("turns a cell's ink and fill together, and leaves the terminal's colour alone", () => {
     const round = wheel(curve(907, 0.25), own, grounds, 0);
     const { fg, bg } = round({ fg: ink, bg: fills[0]! }, cell, 300);
-    expect(turned(ink, fg)).toBeCloseTo(turned(fills[0]!, bg), 0);
+    // The same turn, to a degree or so: the sRGB round trip lands a step off.
+    expect(Math.abs(turned(ink, fg) - turned(fills[0]!, bg))).toBeLessThan(2);
     const text = round({ fg: ink, bg: ground }, cell, 300);
     expect(text.bg).toBe(ground);
     expect(turned(ink, text.fg)).toBeGreaterThan(0);
@@ -156,8 +157,9 @@ describe("the wheel", () => {
     const round = wheel(curve(907, 1), own, grounds, 0);
     let worst = 0;
     for (const fill of fills) {
-      let last = round({ fg: ink, bg: fill }, cell, 0.5);
-      for (let t = 1.5; t < 1800; t++) {
+      // From the first frame: the turn starts from the palette as drawn.
+      let last = round({ fg: ink, bg: fill }, cell, 0);
+      for (let t = 1; t < 1800; t++) {
         const next = round({ fg: ink, bg: fill }, cell, t);
         worst = Math.max(worst, Oklch.fromRgba(last.bg).deltaE(Oklch.fromRgba(next.bg)), Oklch.fromRgba(last.fg).deltaE(Oklch.fromRgba(next.fg)));
         last = next;

@@ -76,7 +76,9 @@ describe("effects-feel", () => {
   });
 
   it("replays the fade-in on f: running again after it had settled", async () => {
-    const { host, demo } = started(["--fade-duration", "0.1"]);
+    // A fade four frames long: one under a frame can settle in the frame the
+    // key lands in, before any paint shows it running.
+    const { host, demo } = started(["--fade-duration", "1"]);
     await shown(host, "done — f replays");
     const before = host.output().length;
     host.type("f");

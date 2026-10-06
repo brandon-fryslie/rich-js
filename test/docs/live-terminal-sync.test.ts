@@ -9,10 +9,11 @@ import { synchronized } from "../../docs/.vitepress/theme/live-terminal.js";
 const BEGIN = "\x1b[?2026h";
 const END = "\x1b[?2026l";
 
-function written(chunks: readonly (string | Uint8Array)[]): string[] {
+function written(chunks: readonly (string | Uint8Array)[], ended = false): string[] {
   const out: string[] = [];
-  const write = synchronized((text) => out.push(text));
-  for (const chunk of chunks) write(chunk);
+  const shown = synchronized((text) => out.push(text));
+  for (const chunk of chunks) shown.write(chunk);
+  if (ended) shown.flush();
   return out;
 }
 
@@ -33,6 +34,12 @@ describe("synchronized output", () => {
   it("reads bytes as text, a character split between chunks included", () => {
     const bytes = new TextEncoder().encode(`${BEGIN}é${END}`);
     expect(written([bytes.slice(0, 10), bytes.slice(10)])).toEqual([`${BEGIN}é${END}`]);
+  });
+
+  it("shows what it holds when the program ends: a frame never closed, as far as it got", () => {
+    expect(written(["before", `${BEGIN}half a fr`], true)).toEqual(["before", `${BEGIN}half a fr`]);
+    expect(written(["tail \x1b[?"], true)).toEqual(["tail ", "\x1b[?"]);
+    expect(written([new TextEncoder().encode("é").slice(0, 1)], true)).toEqual(["\uFFFD"]);
   });
 
   it("writes each of two frames in one chunk on its own", () => {

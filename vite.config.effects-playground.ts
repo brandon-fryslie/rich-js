@@ -3,7 +3,10 @@
  * root, so the page reaches the docs' code font, the docs' live terminal and
  * `src/` by relative path. It answers on every interface and to any host
  * name, so the playground can be opened from another machine on the network
- * (by its mDNS name, say).
+ * (by its mDNS name, say). So can anyone else on it: whatever reaches this
+ * server can edit a program, and a terminal following it
+ * (`effects-playground:terminal`) runs that edit as Node code on this
+ * machine. Run that terminal only on a network you trust.
  *
  * Its plugin serves what the docs' playground is served, made the way the
  * docs build makes it (docs/.vitepress/example-runner.ts): the live
@@ -74,7 +77,8 @@ function effectsPlayground(): Plugin {
         response.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache" });
         // The state first, so a terminal that joins late plays what the panels play now.
         tell(response, { kind: "controls", controls });
-        for (const effect of effects) tell(response, { kind: "source", effect, source: sources[effect] ?? effectPrograms()[effect] });
+        const programs = effectPrograms();
+        for (const effect of effects) tell(response, { kind: "source", effect, source: sources[effect] ?? programs[effect] });
         const follower = { effects, response };
         followers.add(follower);
         request.on("close", () => followers.delete(follower));

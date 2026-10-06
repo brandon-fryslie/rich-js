@@ -575,16 +575,18 @@ export function wheel(curve: Curve, colors: ReadonlySet<string>, fills: Readonly
   const P = curve.seconds;
   // A segment's seed, from the colour it is.
   const seed = (hex: string): number => hash(Number.parseInt(hex.slice(1), 16) * 1e-4, 17.3 + z);
+  const stray = (s: number, t: number): number =>
+    noise(t / STRAY_PERIODS[0], 5.9 + 97 * s, z) + 0.5 * noise(t / STRAY_PERIODS[1], 2.3 + 89 * s, z + 7.1);
+  // Measured from where it stood at the start, as pulse's wander is, so the
+  // first frame turns nothing and the second has turned only a frame's worth.
   const turned = (hex: string, t: number): number => {
     const s = seed(hex);
-    const stray = noise(t / STRAY_PERIODS[0], 5.9 + 97 * s, z) + 0.5 * noise(t / STRAY_PERIODS[1], 2.3 + 89 * s, z + 7.1);
-    return (360 * t) / P + curve.swing * STRAY * (stray / 1.5);
+    return (360 * t) / P + curve.swing * STRAY * ((stray(s, t) - stray(s, 0)) / 1.5);
   };
   // The segment a colour turns with, drawn beside `other` in one cell.
   const segment = (color: ColorRgba, other: ColorRgba): string | undefined =>
     !colors.has(color.hex) ? undefined : fills.has(color.hex) || !colors.has(other.hex) ? color.hex : other.hex;
   return (drawn, _cell, t) => {
-    if (t === 0) return drawn;
     const turn = (color: ColorRgba, other: ColorRgba): ColorRgba => {
       const key = segment(color, other);
       return key === undefined ? color : Oklch.fromRgba(color).applyKey({ ...IDENTITY, hueShift: turned(key, t) }).toRgba();

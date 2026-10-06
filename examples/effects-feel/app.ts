@@ -606,8 +606,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     // rate between two steps reaches both of its neighbours.
     const beyond = step > 0 ? FPS_STEPS.find((f) => f > fps.perSecond) : [...FPS_STEPS].reverse().find((f) => f < fps.perSecond);
     if (beyond === undefined) return;
-    const i = FPS_STEPS.indexOf(beyond);
-    fps = frameRate(FPS_STEPS[i]!);
+    fps = frameRate(beyond);
     app.rate = fps;
     app.refresh();
   };

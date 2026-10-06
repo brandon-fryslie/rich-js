@@ -95,13 +95,24 @@ const SYNC_END = "\x1b[?2026l";
  * page is busy between two of them, it paints a frame with its rows erased
  * and not yet drawn again, and a repainting program flickers. A begin
  * without its end waits for more; text that might be the start of a begin is
- * held until it is known not to be.
+ * held until it is known not to be. `flush` writes whatever is held, as it
+ * is: the program has ended, and a frame it never closed is shown as far as
+ * it got, as a terminal shows one whose end never came.
  */
-export function synchronized(write: (text: string) => void): (chunk: string | Uint8Array) => void {
+export function synchronized(write: (text: string) => void): {
+  readonly write: (chunk: string | Uint8Array) => void;
+  readonly flush: () => void;
+} {
   const decoder = new TextDecoder();
   let held = "";
   let inFrame = false;
-  return (chunk) => {
+  const flush = (): void => {
+    held += decoder.decode();
+    if (held !== "") write(held);
+    held = "";
+    inFrame = false;
+  };
+  const take = (chunk: string | Uint8Array): void => {
     held += typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
     for (;;) {
       if (inFrame) {
@@ -127,6 +138,7 @@ export function synchronized(write: (text: string) => void): (chunk: string | Ui
       return;
     }
   };
+  return { write: take, flush };
 }
 
 /** What the terminal is showing. */
@@ -368,7 +380,12 @@ export class LiveTerminal {
     // A still frame is drawn in one write when it freezes: until then the bytes
     // wait here, so no motion reaches the screen.
     const held: (string | Uint8Array)[] = [];
-    const flush = () => held.splice(0).forEach((chunk) => this.host.write(chunk));
+    // What a live run holds: the frame on its way.
+    const live = synchronized((text) => this.host.write(text));
+    const flush = () => {
+      held.splice(0).forEach((chunk) => this.host.write(chunk));
+      live.flush();
+    };
     // A message still queued from a run that has since ended belongs to no run.
     const current = () => this.sandbox === run;
     // The cursor is hidden: the program has ended, and a frame showing one
@@ -382,7 +399,7 @@ export class LiveTerminal {
     // fires, which can fall between two writes of one frame.
     const show =
       mode === "live"
-        ? synchronized((text) => this.host.write(text))
+        ? live.write
         : (chunk: string | Uint8Array) => {
             held.push(chunk);
             this.deadline ??= setTimeout(() => this.post({ kind: "mark" }), STILL_AFTER_MS);
