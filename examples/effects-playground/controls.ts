@@ -32,5 +32,5 @@ export const CONTROL_DEFAULTS: Controls = {
 export const SLIDERS: { readonly [K in "fps" | "rate" | "magnitude"]: { readonly min: number; readonly max: number; readonly step: number } } = {
   fps: { min: 0.5, max: 60, step: 0.5 },
   rate: { min: 0, max: 16, step: 0.05 },
-  magnitude: { min: 0, max: 30, step: 0.05 },
+  magnitude: { min: 0, max: 100, step: 0.05 },
 };
