@@ -4,15 +4,22 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "b3105134941ed4e38527e6fff0b57df027e9fe86",
-      "timestamp": "2026-10-06T13:53:44.299Z",
+      "sha": "1ee8c35e640c97f276a5e19f94476fee732cb422",
+      "timestamp": "2026-10-06T13:55:20.476Z",
       "commits": [
         {
-          "sha": "b3105134941ed4e38527e6fff0b57df027e9fe86",
+          "sha": "1ee8c35e640c97f276a5e19f94476fee732cb422",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-06T13:52:18Z",
-          "message": "Merge bcc06d2cd84fe2c84e0b8b0f699301d5434b61f8 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+          "timestamp": "2026-10-06T13:54:21Z",
+          "message": "Merge 11edd2483f2ddc6b426ed9c60dc6f52582b6f61a into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+        },
+        {
+          "sha": "11edd2483f2ddc6b426ed9c60dc6f52582b6f61a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-06T07:54:16-06:00",
+          "message": "effects-playground: the terminal sits under the code and its sliders, so a slider and what it moves are on screen together (rich-effects-fxiy.b6i)\n"
         },
         {
           "sha": "bcc06d2cd84fe2c84e0b8b0f699301d5434b61f8",
