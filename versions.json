@@ -4,15 +4,29 @@
     {
       "version": "pr-330",
       "ref": "refs/pull/330/merge",
-      "sha": "1ee8c35e640c97f276a5e19f94476fee732cb422",
-      "timestamp": "2026-10-06T13:55:20.476Z",
+      "sha": "fedd2abe4c051420a285b6d5289a39908b48fadc",
+      "timestamp": "2026-10-06T15:37:52.732Z",
       "commits": [
         {
-          "sha": "1ee8c35e640c97f276a5e19f94476fee732cb422",
+          "sha": "fedd2abe4c051420a285b6d5289a39908b48fadc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-06T13:54:21Z",
-          "message": "Merge 11edd2483f2ddc6b426ed9c60dc6f52582b6f61a into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+          "timestamp": "2026-10-06T15:36:25Z",
+          "message": "Merge c0a606b7816ad5f404b293294ea26ad39482e340 into 187446e996c21fe2bc395c27b0adcbeca49eafec\n"
+        },
+        {
+          "sha": "c0a606b7816ad5f404b293294ea26ad39482e340",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-06T09:36:20-06:00",
+          "message": "effects-feel: loops default to near-full swing (shimmer 0.9, pulse 0.85, sparkle 0.95, wheel 1), each the most that stays under the 1 fps step bar over an hour at 40/104/240 columns (rich-effects-fxiy.b6i)\n"
+        },
+        {
+          "sha": "49cc57fd7a91c18f28b1f4eb27a41b4526cebe73",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-06T09:22:33-06:00",
+          "message": "Revert \"effects-feel: a loop's light may spend SPEND of a cell's legible contrast at its brightest, 0.4 by default, so AA text dips to about 3:1 and the light shows; tunable in the playground (rich-effects-fxiy.b6i)\"\n\nThis reverts commit bcc06d2cd84fe2c84e0b8b0f699301d5434b61f8.\n"
         },
         {
           "sha": "11edd2483f2ddc6b426ed9c60dc6f52582b6f61a",
