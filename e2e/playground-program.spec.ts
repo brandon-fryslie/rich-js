@@ -20,7 +20,7 @@ const from = (file: string) => JSON.stringify(resolve(REPO_ROOT, file));
 // the docs examples' terminal and dark theme. The terminal's state is on its
 // element as `data-state`.
 const HARNESS = `
-import { LiveTerminal } from ${from("docs/.vitepress/theme/live-terminal.ts")};
+import { LiveTerminal, READABLE_CONTRAST } from ${from("docs/.vitepress/theme/live-terminal.ts")};
 import { playgroundScript } from ${from("docs/.vitepress/theme/playground-program.ts")};
 import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from ${from("docs/.vitepress/example-terminal.ts")};
 globalThis.start = async (runtime, library) => {
@@ -31,6 +31,7 @@ globalThis.start = async (runtime, library) => {
     terminal: EXAMPLE_TERMINAL,
     theme: EXAMPLE_THEMES.dark,
     font: { family: "monospace", size: 14 },
+    minimumContrast: READABLE_CONTRAST,
   });
   live.onState((state) => (element.dataset.state = state.kind));
   globalThis.play = (source) => live.run(playgroundScript(source, library), "live");

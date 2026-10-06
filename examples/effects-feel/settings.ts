@@ -7,20 +7,9 @@
  */
 
 import { parseArgs, type ParseArgsConfig } from "node:util";
-import { EASES, parseEase, type Env } from "../../src/index.js";
-import type { EaseName } from "../../src/core/easing.js";
+import { EASES, parseEase } from "../../src/index.js";
 import type { Curve } from "./curves.js";
-
-/** The colour depths a run can be judged at, by the name the flag takes. */
-export const DEPTHS = ["truecolor", "256", "16", "none"] as const;
-export type Depth = (typeof DEPTHS)[number];
-
-export const GROUNDS = ["dark", "light"] as const;
-export type Ground = (typeof GROUNDS)[number];
-
-/** The effects a run shows, in the order it shows them. */
-export const EFFECTS = ["shimmer", "pulse", "drift", "sparkle", "fade", "dissolve"] as const;
-export type EffectName = (typeof EFFECTS)[number];
+import { DEPTHS, EFFECTS, EFFECT_DEFAULTS, GROUNDS, RUN_DEFAULTS, type Depth, type EffectName, type Ground } from "./vocabulary.js";
 
 /** A curve as the flags spelled it, so the screen can say what is running. */
 export interface NamedCurve extends Curve {
@@ -34,35 +23,7 @@ export interface Settings {
   readonly curves: Readonly<Record<EffectName, NamedCurve>>;
 }
 
-/** Each effect's defaults: the starting point for the sign-off, nothing more. */
-const DEFAULTS: Record<EffectName, { seconds: number; ease: EaseName; swing: number; unit: string }> = {
-  shimmer: { seconds: 110, ease: "linear", swing: 0.75, unit: "mix toward the light at the brightest glint, 0–1" },
-  pulse: { seconds: 43, ease: "linear", swing: 0.5, unit: "mix toward the light at the top of a sigh, the deepest breath, 0–1" },
-  drift: { seconds: 80, ease: "linear", swing: 24, unit: "degrees of hue at a gust's strongest" },
-  sparkle: { seconds: 140, ease: "linear", swing: 0.6, unit: "mix toward the firefly's colour at its brightest flash, 0–1" },
-  fade: { seconds: 20, ease: "ease-in-out", swing: 1, unit: "how hidden at the start, 0–1" },
-  dissolve: { seconds: 30, ease: "ease-in-out", swing: 1, unit: "how hidden once gone, 0–1" },
-};
-
 const FPS_RANGE = [0.5, 30] as const;
-
-/**
- * How a terminal says it draws each depth, as the environment colour
- * detection reads: `FORCE_COLOR` names a depth and beats the terminal's own
- * answer; `NO_COLOR` turns colour off and beats `FORCE_COLOR`.
- */
-const DEPTH_ENV: Record<Depth, { readonly set: Env; readonly drop: readonly string[] }> = {
-  truecolor: { set: { FORCE_COLOR: "truecolor" }, drop: ["NO_COLOR"] },
-  "256": { set: { FORCE_COLOR: "256" }, drop: ["NO_COLOR"] },
-  "16": { set: { FORCE_COLOR: "ansi" }, drop: ["NO_COLOR"] },
-  none: { set: { NO_COLOR: "1" }, drop: ["FORCE_COLOR"] },
-};
-
-/** `env` as a terminal drawing at `depth` would present it. */
-export function envAtDepth(env: Env, depth: Depth): Env {
-  const { set, drop } = DEPTH_ENV[depth];
-  return { ...Object.fromEntries(Object.entries(env).filter(([key]) => !drop.includes(key))), ...set };
-}
 
 const curveFlags = EFFECTS.flatMap((effect) => [`${effect}-${secondsWord(effect)}`, `${effect}-ease`, `${effect}-swing`]);
 
@@ -73,12 +34,12 @@ function secondsWord(effect: EffectName): "period" | "duration" {
 export const USAGE = [
   "npm run effects-feel -- [flags]",
   "",
-  `  --fps <n>`.padEnd(29) + `frames a second, ${FPS_RANGE[0]}–${FPS_RANGE[1]} (default 30; Claude Code draws at 1)`,
-  `  --depth <d>`.padEnd(29) + `${DEPTHS.join(" | ")} (default truecolor)`,
-  `  --ground <g>`.padEnd(29) + `${GROUNDS.join(" | ")} (default dark)`,
+  `  --fps <n>`.padEnd(29) + `frames a second, ${FPS_RANGE[0]}–${FPS_RANGE[1]} (default ${RUN_DEFAULTS.fps}; Claude Code draws at 1)`,
+  `  --depth <d>`.padEnd(29) + `${DEPTHS.join(" | ")} (default ${RUN_DEFAULTS.depth})`,
+  `  --ground <g>`.padEnd(29) + `${GROUNDS.join(" | ")} (default ${RUN_DEFAULTS.ground})`,
   "",
   ...EFFECTS.flatMap((effect) => {
-    const d = DEFAULTS[effect];
+    const d = EFFECT_DEFAULTS[effect];
     const word = secondsWord(effect);
     return [
       `  --${effect}-${word} <s>`.padEnd(29) + `seconds (default ${d.seconds})`,
@@ -89,7 +50,11 @@ export const USAGE = [
   "",
   `  eases: ${Object.keys(EASES).join(", ")}`,
   "",
-  "  keys: f replays the fade-in, d replays the dissolve, q or Ctrl-C quits",
+  "  keys: f replays the fade-in, d replays the dissolve, n/p the next/previous theme,",
+  "        < and > step the frame rate, - and + halve and double the rate,",
+  "        [ and ] take a quarter off and add a quarter to the magnitude, every loop's swing, q or Ctrl-C quits",
+  "  a frame is the unit of change: every frame moves every loop the same amount, whatever the",
+  "  frame rate, and the rate scales that amount; the demo starts over after one cycle of frames",
 ].join("\n");
 
 /** `undefined` is `--help`; anything else is a run's settings. */
@@ -107,22 +72,22 @@ export function parseSettings(argv: readonly string[]): Settings | undefined {
 
   const curves = Object.fromEntries(
     EFFECTS.map((effect) => {
-      const d = DEFAULTS[effect];
+      const d = EFFECT_DEFAULTS[effect];
       const easeName = flag(`${effect}-ease`) ?? d.ease;
       const curve: NamedCurve = {
-        seconds: number(`--${effect}-${secondsWord(effect)}`, flag(`${effect}-${secondsWord(effect)}`), d.seconds, [0.05, 600]),
+        seconds: number(`--${effect}-${secondsWord(effect)}`, flag(`${effect}-${secondsWord(effect)}`), d.seconds, [0.05, 3600]),
         ease: named(`--${effect}-ease`, parseEase, easeName),
         easeName,
-        swing: number(`--${effect}-swing`, flag(`${effect}-swing`), d.swing, effect === "drift" ? [-360, 360] : [0, 1]),
+        swing: number(`--${effect}-swing`, flag(`${effect}-swing`), d.swing, [0, 1]),
       };
       return [effect, curve];
     }),
   ) as Record<EffectName, NamedCurve>;
 
   return {
-    fps: number("--fps", flag("fps"), 30, FPS_RANGE),
-    depth: oneOf("--depth", flag("depth") ?? "truecolor", DEPTHS),
-    ground: oneOf("--ground", flag("ground") ?? "dark", GROUNDS),
+    fps: number("--fps", flag("fps"), RUN_DEFAULTS.fps, FPS_RANGE),
+    depth: oneOf("--depth", flag("depth") ?? RUN_DEFAULTS.depth, DEPTHS),
+    ground: oneOf("--ground", flag("ground") ?? RUN_DEFAULTS.ground, GROUNDS),
     curves,
   };
 }

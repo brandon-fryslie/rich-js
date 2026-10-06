@@ -258,7 +258,7 @@ async function libraryImport<Resolved extends { readonly id: string }>(
   return resolved;
 }
 
-/** A bundle's one chunk, and every module that went into it besides the source it was given. */
+/** A bundle's one chunk, and every file that went into it besides the source it was given. */
 interface Bundled {
   readonly code: string;
   readonly modules: readonly string[];
@@ -307,7 +307,10 @@ async function bundle(entry: Entry, shape: BundleShape): Promise<Bundled> {
   if (!("output" in result)) throw new Error("bundle: vite returned no single build output");
   const chunks = result.output.filter((file) => file.type === "chunk");
   if (chunks.length !== 1) throw new Error(`bundle: expected one chunk, vite produced ${chunks.length}`);
-  return { code: chunks[0]!.code, modules: chunks[0]!.moduleIds.filter((id) => id !== entry.file) };
+  // A `\0` id is a module the bundler made up, rolldown's own runtime among
+  // them: there is no file to watch, and vite, handed one by `addWatchFile`,
+  // fails resolving it as an import of the module that watched it.
+  return { code: chunks[0]!.code, modules: chunks[0]!.moduleIds.filter((id) => id !== entry.file && !id.startsWith("\0")) };
 }
 
 /**
@@ -680,6 +683,20 @@ async function bundleOnLibrary(at: string, entry: Entry): Promise<Bundled> {
     block = block.slice(0, statement.getStart(file)) + read + block.slice(statement.getEnd());
   }
   return { code: `\n${block}`, modules };
+}
+
+/**
+ * `file`, a module of this repository's own, as a script that adds it to the
+ * live library under `name`: bundled onto the library as a live program is,
+ * its exports set on `LIBRARY_BINDING` where the playground's `require` reads
+ * every module a program may import. Run after the library and before the
+ * program, it lets a program import `name` as it imports a package. Returns
+ * the script and every file it was built from.
+ */
+export async function libraryModule(name: string, file: string): Promise<Bundled> {
+  const entry = generated(`import * as module from ${JSON.stringify(file)};\n${LIBRARY_BINDING}[${JSON.stringify(name)}] = module;`);
+  const { code, modules } = await bundleOnLibrary(path.relative(REPO_ROOT, file), entry);
+  return { code, modules: [file, ...modules] };
 }
 
 async function liveProgram(page: string, fence: Fence, program: ExampleProgram, library: LibrarySource): Promise<LiveProgram> {

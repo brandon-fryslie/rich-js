@@ -5,6 +5,7 @@ export {
   splitText,
   chopCells,
   cellFit,
+  graphemes,
   asCellCol,
   asCodePoint,
 } from "./core/cells.js";

@@ -84,6 +84,65 @@ export type RunMode = "live" | "still";
  */
 const STILL_AFTER_MS = 1000;
 
+const SYNC_BEGIN = "\x1b[?2026h";
+const SYNC_END = "\x1b[?2026l";
+
+/**
+ * `write`, honouring synchronized output (DEC mode 2026): what a program
+ * writes between a begin and an end reaches `write` as one chunk, so a
+ * frame is shown whole. xterm 5.3 ignores the mode and paints whatever it has
+ * parsed, and a frame arrives as several messages from the worker: when the
+ * page is busy between two of them, it paints a frame with its rows erased
+ * and not yet drawn again, and a repainting program flickers. A begin
+ * without its end waits for more; text that might be the start of a begin is
+ * held until it is known not to be. `flush` writes whatever is held, as it
+ * is: the program has ended, and a frame it never closed is shown as far as
+ * it got, as a terminal shows one whose end never came.
+ */
+export function synchronized(write: (text: string) => void): {
+  readonly write: (chunk: string | Uint8Array) => void;
+  readonly flush: () => void;
+} {
+  const decoder = new TextDecoder();
+  let held = "";
+  let inFrame = false;
+  const flush = (): void => {
+    held += decoder.decode();
+    if (held !== "") write(held);
+    held = "";
+    inFrame = false;
+  };
+  const take = (chunk: string | Uint8Array): void => {
+    // A string ends any character the bytes before it left unfinished, so
+    // what was written stays in the order it was written.
+    held += typeof chunk === "string" ? decoder.decode() + chunk : decoder.decode(chunk, { stream: true });
+    for (;;) {
+      if (inFrame) {
+        const end = held.indexOf(SYNC_END);
+        if (end === -1) return;
+        write(held.slice(0, end + SYNC_END.length));
+        held = held.slice(end + SYNC_END.length);
+        inFrame = false;
+        continue;
+      }
+      const begin = held.indexOf(SYNC_BEGIN);
+      if (begin !== -1) {
+        if (begin > 0) write(held.slice(0, begin));
+        held = held.slice(begin);
+        inFrame = true;
+        continue;
+      }
+      // The longest tail that could still grow into a begin waits for the next chunk.
+      let keep = Math.min(held.length, SYNC_BEGIN.length - 1);
+      while (keep > 0 && !SYNC_BEGIN.startsWith(held.slice(held.length - keep))) keep -= 1;
+      if (held.length > keep) write(held.slice(0, held.length - keep));
+      held = held.slice(held.length - keep);
+      return;
+    }
+  };
+  return { write: take, flush };
+}
+
 /** What the terminal is showing. */
 export type LiveState =
   | { readonly kind: "idle" }
@@ -98,7 +157,20 @@ export interface LiveTerminalOptions {
   readonly terminal: TerminalSpec;
   readonly theme: TerminalTheme;
   readonly font: { readonly family: string; readonly size: number };
+  /**
+   * The least contrast xterm lets a colour have against its background; it
+   * changes a colour to reach it. 1 shows every colour as drawn.
+   */
+  readonly minimumContrast: number;
 }
+
+/**
+ * The contrast a docs example is shown at. A program that picks its own
+ * colours picks them for a background it cannot see: `[white]` is white on
+ * white in the light theme. The terminal keeps every colour readable against
+ * its background (WCAG AA), as several desktop terminals can.
+ */
+export const READABLE_CONTRAST = 4.5;
 
 /**
  * The font static output is drawn in, as `LiveTerminalOptions` takes it:
@@ -261,11 +333,7 @@ export class LiveTerminal {
       fontSize: options.font.size,
       // Nothing scrolls back: the page scrolls, not the terminal under the pointer.
       scrollback: 0,
-      // A program that picks its own colours picks them for a background it
-      // cannot see: `[white]` is white on white in the light theme. The
-      // terminal keeps every colour readable against its background (WCAG AA),
-      // as several desktop terminals can.
-      minimumContrastRatio: 4.5,
+      minimumContrastRatio: options.minimumContrast,
       cursorBlink: false,
     });
     return new LiveTerminal(element, screen, options);
@@ -314,7 +382,12 @@ export class LiveTerminal {
     // A still frame is drawn in one write when it freezes: until then the bytes
     // wait here, so no motion reaches the screen.
     const held: (string | Uint8Array)[] = [];
-    const flush = () => held.splice(0).forEach((chunk) => this.host.write(chunk));
+    // What a live run holds: the frame on its way.
+    const live = synchronized((text) => this.host.write(text));
+    const flush = () => {
+      held.splice(0).forEach((chunk) => this.host.write(chunk));
+      live.flush();
+    };
     // A message still queued from a run that has since ended belongs to no run.
     const current = () => this.sandbox === run;
     // The cursor is hidden: the program has ended, and a frame showing one
@@ -328,7 +401,7 @@ export class LiveTerminal {
     // fires, which can fall between two writes of one frame.
     const show =
       mode === "live"
-        ? (chunk: string | Uint8Array) => this.host.write(chunk)
+        ? live.write
         : (chunk: string | Uint8Array) => {
             held.push(chunk);
             this.deadline ??= setTimeout(() => this.post({ kind: "mark" }), STILL_AFTER_MS);
@@ -357,6 +430,11 @@ export class LiveTerminal {
     this.sandbox = run;
     this.post({ kind: "run", script, terminal: this.options.terminal });
     this.setState({ kind: "running" });
+  }
+
+  /** Type `chunk` at the running program, as a key typed at the terminal is; with none running, it goes nowhere. */
+  type(chunk: string | Uint8Array): void {
+    this.post({ kind: "input", chunk });
   }
 
   /** End the running program, if one runs; what it drew stays on screen. */

@@ -19,8 +19,9 @@ import {
 } from "../../../src/index.js";
 import { cellLen, graphemes } from "../../../src/core/cells.js";
 import { LIGHTS, SHIMMER_WIDTH, drawnSubject, runDemo, stripSubject, subjectUnder, textSubject } from "../../../examples/effects-feel/app.js";
-import { drift, pulse, shares, shimmer, sparkle } from "../../../examples/effects-feel/curves.js";
-import { envAtDepth, parseSettings } from "../../../examples/effects-feel/settings.js";
+import { pulse, shares, shimmer, sparkle } from "../../../examples/effects-feel/curves.js";
+import { parseSettings } from "../../../examples/effects-feel/settings.js";
+import { envAtDepth } from "../../../examples/effects-feel/vocabulary.js";
 import { scriptedHost } from "../../host/scripted-host.js";
 
 const HAND_BACK = "\x1b[?1049l";
@@ -48,14 +49,20 @@ describe("effects-feel", () => {
     expect(host.raw()).toBe(false);
   });
 
-  it("draws every effect, with the worst contrast of each loop", async () => {
+  it("draws every effect, with the worst contrast of each loop measured between the frames", async () => {
     const { host, demo } = started();
     await shown(host, FIRST_FRAME);
+    // The first frame is up before any loop's contrast is, since measuring
+    // one takes hundreds of frames and holding the screen for them is what
+    // the demo is not allowed to do.
+    expect(host.output()).toContain("measuring contrast…");
+    // Measuring every loop is a second or two of work spread between the frames; more under a loaded suite.
+    await vi.waitFor(() => expect(host.output()).toMatch(/wheel .*worst contrast \d+\.\d\d:1 over \d+s \(at rest \d+\.\d\d:1\)/), { timeout: 30_000, interval: 50 });
     host.type("q");
     await demo.done;
     const out = host.output();
-    for (const name of ["shimmer", "pulse", "drift", "sparkle", "fade", "dissolve"]) expect(out).toContain(name);
-    expect(out.match(/worst contrast \d+\.\d\d:1 over \d+s \(at rest \d+\.\d\d:1\)/g)?.length).toBeGreaterThanOrEqual(4);
+    for (const name of ["shimmer", "pulse", "sparkle", "wheel", "fade", "dissolve"]) expect(out).toContain(name);
+    expect(out.match(/worst contrast \d+\.\d\d:1 over \d+s \(at rest \d+\.\d\d:1\)/g)?.length).toBeGreaterThanOrEqual(5);
   });
 
   it("says no colour is drawn when there is none to measure", async () => {
@@ -69,11 +76,83 @@ describe("effects-feel", () => {
   });
 
   it("replays the fade-in on f: running again after it had settled", async () => {
-    const { host, demo } = started(["--fade-duration", "0.1"]);
+    // A fade four frames long: one under a frame can settle in the frame the
+    // key lands in, before any paint shows it running.
+    const { host, demo } = started(["--fade-duration", "1"]);
     await shown(host, "done — f replays");
     const before = host.output().length;
     host.type("f");
     await vi.waitFor(() => expect(host.output().slice(before)).toMatch(/fade\s.*running/), { timeout: 5000, interval: 10 });
+    host.type("q");
+    await demo.done;
+  });
+
+  it("replays the transitions each cycle, the longest loop's period, without a key", async () => {
+    const periods = ["shimmer", "pulse", "sparkle", "wheel"].flatMap((loop) => [`--${loop}-period`, "0.5"]);
+    const { host, demo } = started([...periods, "--fade-duration", "0.1", "--dissolve-duration", "0.1"]);
+    await shown(host, "done — f replays");
+    const before = host.output().length;
+    // The transitions ran again on their own: the cycle came round.
+    await vi.waitFor(() => expect(host.output().slice(before)).toMatch(/fade\s.*running/), { timeout: 5000, interval: 10 });
+    // Half a designed second at a quarter a frame: two frames a cycle, and the cycle counted up.
+    expect(host.output()).toContain("cycle 2 · frame 0");
+    host.type("q");
+    await demo.done;
+  });
+
+  it("walks the themes on n and p, each measured anew", async () => {
+    const { host, demo } = started();
+    await shown(host, "catppuccin-mocha (dark)");
+    host.type("n");
+    await shown(host, "catppuccin-latte (light)");
+    host.type("p");
+    await shown(host, /catppuccin-latte \(light\)[^]*catppuccin-mocha \(dark\)/);
+    host.type("p");
+    await shown(host, "cyberpunk (dark)");
+    host.type("q");
+    await demo.done;
+  });
+
+  it("steps the frame rate on < and >, and the pace of the demo's time on - and +", async () => {
+    const { host, demo } = started(["--fps", "5"]);
+    await shown(host, "5 fps · rate ×1");
+    host.type(">");
+    await shown(host, "10 fps · rate ×1");
+    host.type("<<");
+    await shown(host, "2 fps · rate ×1");
+    host.type("+");
+    await shown(host, "2 fps · rate ×2 ·");
+    host.type("---");
+    await shown(host, "2 fps · rate ×0.25 ·");
+    host.type("q");
+    await demo.done;
+  });
+
+  it("scales every loop's swing on ] and [, a mix stopping at the light", async () => {
+    const { host, demo } = started(["--pulse-swing", "0.5"]);
+    await shown(host, "magnitude ×1 ·");
+    host.type("]]");
+    await shown(host, "magnitude ×1.5 ·");
+    expect(host.output()).toMatch(/pulse .*swing 0\.75/);
+    host.type("]]]]");
+    await shown(host, "magnitude ×2.5 ·");
+    expect(host.output()).toMatch(/pulse .*swing 1 /);
+    host.type("[".repeat(12));
+    await shown(host, "magnitude ×0.25 ·");
+    expect(host.output()).toMatch(/pulse .*swing 0\.125/);
+    host.type("q");
+    await demo.done;
+  });
+
+  it("holds the frame rate and the pace at their ends", async () => {
+    const { host, demo } = started(["--fps", "30"]);
+    await shown(host, FIRST_FRAME);
+    host.type(">>>");
+    host.type("++++++");
+    await shown(host, "30 fps · rate ×16");
+    host.type("<<<<<<<<<<");
+    host.type("------------");
+    await shown(host, "0.5 fps · rate ×0.125");
     host.type("q");
     await demo.done;
   });
@@ -110,7 +189,7 @@ describe("a strip under a pulse", () => {
     "on a %s ground moves each colour the strip sets, alike in neighbouring cells, and leaves the terminal's alone",
     (_, theme) => {
       const strip = drawnSubject(stripSubject(theme), options, theme);
-      const loop = pulse({ seconds: 2, ease: EASES.linear, swing: 1 }, 104, LIGHTS.sun, 0);
+      const loop = pulse({ seconds: 2, ease: EASES.linear, swing: 1 }, LIGHTS.sun, 0);
       const lit = subjectUnder(strip, loop, theme);
       const share = shares(strip.pairs, strip.colors, loop.touch);
       const before = colorsByCell(strip.renderable, theme);
@@ -140,7 +219,7 @@ describe("a strip under a pulse", () => {
       // OKLab's lightness, and a display shows none of it.
       const pulseCurve = parseSettings([])!.curves.pulse;
       const strip = drawnSubject(stripSubject(theme), options, theme);
-      const lit = subjectUnder(strip, pulse(pulseCurve, strip.span, LIGHTS.sun, strip.z), theme);
+      const lit = subjectUnder(strip, pulse(pulseCurve, LIGHTS.sun, strip.z), theme);
       const before = colorsByCell(strip.renderable, theme);
       const oklch = (hex: string) => Oklch.fromRgba(ColorSpec.parse(hex).getTruecolor());
       const seen = (a: string, b: string) => (Math.max(oklch(a).l, oklch(b).l) < 0.2 ? 0 : oklch(a).deltaE(oklch(b)));
@@ -163,8 +242,7 @@ describe("every loop keeps the words readable", () => {
   const { curves } = parseSettings([])!;
   const made = {
     shimmer: (span: number, z: number) => shimmer({ ...curves.shimmer, swing: 1 }, span, SHIMMER_WIDTH, LIGHTS.sun, z),
-    pulse: (span: number, z: number) => pulse({ ...curves.pulse, swing: 1 }, span, LIGHTS.sun, z),
-    drift: (_span: number, z: number) => drift(curves.drift, z),
+    pulse: (_span: number, z: number) => pulse({ ...curves.pulse, swing: 1 }, LIGHTS.sun, z),
     sparkle: (span: number, z: number) => sparkle({ ...curves.sparkle, swing: 1 }, span, LIGHTS.firefly, z),
   };
   const grounds = [["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const;

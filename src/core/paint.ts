@@ -83,6 +83,15 @@ const GEOMETRY: Record<Surface, Geometry> = {
 // frames. The erase leads its row: after a row that fills the width, the
 // cursor sits on its last cell, and an erase there would take it.
 const ROW_START = "\r\x1b[2K";
+// A frame's bytes between these two are shown at once: a terminal that has
+// synchronized output (DEC private mode 2026 — iTerm2, kitty, WezTerm,
+// Ghostty, foot, Windows Terminal …) holds the screen until the frame has
+// fully arrived, so a repaint can never show a row erased and not yet
+// redrawn. Thirty full-screen repaints a second show exactly that on a
+// terminal that paints whenever bytes land, as a flicker over the whole
+// frame. A terminal without the mode ignores both sequences.
+const SYNC_START = "\x1b[?2026h";
+const SYNC_END = "\x1b[?2026l";
 const HIDE_CURSOR = "\x1b[?25l";
 const SHOW_CURSOR = "\x1b[?25h";
 const RESET_STYLE = "\x1b[0m";
@@ -151,7 +160,7 @@ export class SurfacePainter implements Painter {
    */
   paint(frame: FrameSource, screen: Screen, destination: Destination): Segment[][] {
     const rows = fitRows(frame(), screen);
-    this.write(this.over(rows, screen, destination));
+    this.write(SYNC_START + this.over(rows, screen, destination) + SYNC_END);
     return rows;
   }
 
@@ -166,7 +175,9 @@ export class SurfacePainter implements Painter {
     const rows = fitRows(frame(), screen);
     const erase = this.over([], screen, destination);
     const ended = text.endsWith("\n") ? text : `${text}\n`;
-    return erase + ended + this.over(rows, screen, destination);
+    // One synchronized block around all three, so the terminal is released
+    // only once the frame is back.
+    return SYNC_START + erase + ended + this.over(rows, screen, destination) + SYNC_END;
   }
 
   // The bytes that paint `rows` over the last frame. They go out in one
