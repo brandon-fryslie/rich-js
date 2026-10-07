@@ -6,6 +6,7 @@ import {
   ColorRgba,
   ColorSpec,
   EASES,
+  cubicBezier,
   Effected,
   Oklch,
   RichText,
@@ -368,6 +369,27 @@ describe("the transitions run start to end", () => {
     ["dissolve-out", dissolveOut],
   ])("a %s with no duration fails as it is made, not at its first frame", (_, make) => {
     expect(() => make(curve(0, 1), 0, 0, ground)).toThrow(/must be a positive number of seconds, got 0/);
+  });
+
+  it("an ease that overshoots saturates: the cells arrive whole, never past it", () => {
+    const back = cubicBezier(0.34, 1.56, 0.64, 1);
+    const fade = fadeIn({ seconds: 10, ease: back, swing: 1 }, 0, 0, ground);
+    for (let t = 0; t <= 10; t += 0.1) for (const c of at(fade.effect, t)) expect(c.fg).toBeInstanceOf(ColorRgba);
+    expect(at(fade.effect, 10)).toEqual(at(fade.effect, 1e6));
+  });
+});
+
+describe("a curve is checked when its effect is made", () => {
+  it.each([1.5, -0.1, Number.NaN])("a swing of %s, outside [0, 1], is refused", (swing) => {
+    for (const make of [() => pulse(curve(4, swing), sun, 0), () => fadeIn(curve(4, swing), 0, 0, ground), () => wheel(curve(4, swing), new Set(), new Set(), 0)]) {
+      expect(make).toThrow(/swing must be in \[0, 1\]/);
+    }
+  });
+
+  it("a loop's field past 1, from an ease that overshoots, is drawn at full strength and no further", () => {
+    const loop: Loop = { touch: light(sun), field: () => 1.3 };
+    const full: Loop = { touch: light(sun), field: () => 1 };
+    expect(onColors(inkOn, loop)(colors, cells[0]!, 0)).toEqual(onColors(inkOn, full)(colors, cells[0]!, 0));
   });
 });
 

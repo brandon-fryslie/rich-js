@@ -51,7 +51,7 @@ import type { CellColors, Effect, EffectCell } from "./effect.js";
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
 
-/** How strongly a loop acts on a cell at a moment, in [0, 1]. */
+/** How strongly a loop acts on a cell at a moment, in [0, 1]; `onColors` holds a field outside it to it. */
 export type Field = (cell: EffectCell, t: number) => number;
 
 /** A looping effect: what it does to a colour, and where and when, how strongly. */
@@ -130,7 +130,7 @@ export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touc
  */
 export function onColors(share: ReadonlyMap<string, number>, loop: Loop): Effect {
   return ({ fg, bg }, cell, t) => {
-    const w = Math.round(loop.field(cell, t) * LEVELS) / LEVELS;
+    const w = Math.round(clamp01(loop.field(cell, t)) * LEVELS) / LEVELS;
     const moved = (color: ColorRgba): ColorRgba => touchedAt(loop.touch, color, (share.get(color.hex) ?? 0) * w);
     return { fg: moved(fg), bg: moved(bg) };
   };
@@ -149,10 +149,16 @@ function touchedAt(touch: Touch, color: ColorRgba, w: number): ColorRgba {
 export interface Curve {
   /** Seconds: a looping effect's period, a transition's duration. */
   readonly seconds: number;
-  /** Intensity in [0, 1] to the fraction of `swing` applied. */
+  /** Intensity in [0, 1] to the fraction of `swing` applied. One that overshoots, as a CSS `cubic-bezier` may, saturates: an effect never acts past its swing. */
   readonly ease: Ease;
-  /** How far the move goes at full intensity; its unit is the effect's. */
+  /** How far the move goes at full intensity, in [0, 1]; what 1 means is the effect's. */
   readonly swing: number;
+}
+
+/** Throws, naming the field, unless `curve` has a positive, finite `seconds` and a `swing` in [0, 1]. */
+function requireCurve(curve: Curve): void {
+  if (!(Number.isFinite(curve.seconds) && curve.seconds > 0)) throw new RangeError(`curve: seconds must be a positive number of seconds, got ${curve.seconds}`);
+  if (!(curve.swing >= 0 && curve.swing <= 1)) throw new RangeError(`curve: swing must be in [0, 1], got ${curve.swing}`);
 }
 
 /**
@@ -271,6 +277,7 @@ const FLASH: SwellShape = [[0.24, 1], [0.6, 0]];
  * element untouched.
  */
 export function pulse(curve: Curve, glow: ColorRgba, z: number): Loop {
+  requireCurve(curve);
   // How much quicker or slower than `curve.seconds` this element beats.
   const rate = 0.9 + 0.2 * hash(z, 3.1);
   // How far, in beats, the rhythm wanders ahead and behind its metronome. Noise's
@@ -317,6 +324,7 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
  * the band glides. Before the first pass enters, the row is untouched.
  */
 export function shimmer(curve: Curve, span: number, width: number, glow: ColorRgba, z: number): Loop {
+  requireCurve(curve);
   const P = curve.seconds;
   const across = span + 2 * width;
   // Passes are events on slots of half a period. Whether slot `j` holds one,
@@ -395,6 +403,7 @@ export function shimmer(curve: Curve, span: number, width: number, glow: ColorRg
  * dimmer one less.
  */
 export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
+  requireCurve(curve);
   const count = Math.max(3, Math.round(span / 8));
   const HALO = 5;
   // How far from home a flash may begin, and how far the brightest drifts while lit.
@@ -455,7 +464,8 @@ export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number):
 
 /**
  * How much of a cell shows at `t`: 1 is the cell as drawn, 0 is the cell gone
- * to the terminal's ground. Read per cell, so cells can arrive or leave apart.
+ * to the terminal's ground. Read per cell, so cells can arrive or leave apart. One
+ * outside [0, 1] is held to it.
  */
 export type Visibility = (cell: EffectCell, t: number) => number;
 
@@ -470,7 +480,7 @@ export type Visibility = (cell: EffectCell, t: number) => number;
 export function veiled(visibility: Visibility, swing: number, ground: ColorRgba): Effect {
   const to = Oklch.fromRgba(ground);
   return (colors: CellColors, cell, t) => {
-    const hidden = swing * (1 - visibility(cell, t));
+    const hidden = swing * (1 - clamp01(visibility(cell, t)));
     if (hidden === 0) return colors;
     const bg = blend(Oklch.fromRgba(colors.bg), to, hidden);
     return { fg: blend(Oklch.fromRgba(colors.fg), bg, hidden).toRgba(), bg: bg.toRgba() };
@@ -526,7 +536,7 @@ const OWN = 0.45;
  */
 function ownChange(curve: Curve, start: number, place: (cell: EffectCell) => number): Visibility {
   const own = curve.seconds * OWN;
-  // One phase, checked as it is built, shifted per cell: a bad curve fails here, not on the first frame.
+  // One phase, shifted per cell, so no cell builds its own each frame.
   const change = Phase.once(start, own);
   return (cell, t) => change(t - place(cell) * (curve.seconds - own));
 }
@@ -538,6 +548,7 @@ function ownChange(curve: Curve, start: number, place: (cell: EffectCell) => num
  * `start + seconds`.
  */
 export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba): Transition {
+  requireCurve(curve);
   const risen = ownChange(curve, start, order(1.7 + z));
   return transition(curve, start, veiled((cell, t) => curve.ease(risen(cell, t)), curve.swing, ground));
 }
@@ -562,6 +573,7 @@ const DISSOLVE_SHAPE = { depth: 0.4, from: 0.5, to: 0.95, maskFrom: 0.35, maskTo
  * they thin away for good.
  */
 export function dissolveOut(curve: Curve, start: number, z: number, ground: ColorRgba): Transition {
+  requireCurve(curve);
   const place = order(4.2 + z);
   const eddy = order(9.3 + z);
   const faded = ownChange(curve, start, place);
@@ -573,7 +585,7 @@ export function dissolveOut(curve: Curve, start: number, z: number, ground: Colo
       const gone = curve.ease(faded(cell, t));
       const q = clamp01((gone - from) / (to - from));
       const back = depth * smoothstep(maskFrom, maskTo, eddy(cell)) * (1 - late + late * place(cell)) * Math.sin(Math.PI * q) ** 2;
-      return clamp01(1 - gone + back);
+      return 1 - gone + back;
     }, curve.swing, ground),
   );
 }
@@ -608,6 +620,7 @@ const STRAY = 180;
  * only happens to `colors`, the element's own, never the terminal's.
  */
 export function wheel(curve: Curve, colors: ReadonlySet<string>, fills: ReadonlySet<string>, z: number): Effect {
+  requireCurve(curve);
   const P = curve.seconds;
   // A segment's seed, from the colour it is.
   const seed = (hex: string): number => hash(Number.parseInt(hex.slice(1), 16) * 1e-4, 17.3 + z);
