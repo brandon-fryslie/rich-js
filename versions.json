@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-338",
+      "ref": "refs/pull/338/merge",
+      "sha": "d1d02b602bf2abc5d6d732fa52b1d4b85bc7768d",
+      "timestamp": "2026-10-07T17:57:21.439Z",
+      "commits": [
+        {
+          "sha": "d1d02b602bf2abc5d6d732fa52b1d4b85bc7768d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T11:56:10-06:00",
+          "message": "Merge e9dcd622fd23df6fcba23ab4d032af806facb315 into bce204f6a6d5a9670879f3f87f7a4d8b36c1edd7\n"
+        },
+        {
+          "sha": "e9dcd622fd23df6fcba23ab4d032af806facb315",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T11:55:59-06:00",
+          "message": "effects: promote the effect catalogue to src/ with a docs page (rich-effects-fxiy.br2)\n\nShimmer, pulse, sparkle, wheel, fade-in and dissolve-out move from the\neffects-feel demo into src/renderables/effects.ts, exported from the main\nbarrel with the signed-off curves (EFFECT_CURVES), lights (EFFECT_LIGHTS)\nand SHIMMER_WIDTH. Their noise moves to src/core/noise.ts, unexported.\n\nfadeIn and dissolveOut now return a Transition: the effect, and done(t).\n\nThe demo draws from the library and its own curve file is gone; its flag\ndefaults derive from EFFECT_CURVES. The effects playground still cuts each\nprogram from the source it plays, now src/renderables/effects.ts plus the\nnoise it reaches, since the live library admits only public entry points.\n\nVerified: the demo's output at fixed t (1632 frames: every effect, both\nsubjects, Mocha and Latte, truecolor/256/16, two magnitudes, two transition\nstarts) is byte-identical before and after the switch.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "bce204f6a6d5a9670879f3f87f7a4d8b36c1edd7",

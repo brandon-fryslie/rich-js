@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as n,ag as e}from"./chunks/framework.ByR4Box9.js";const c=JSON.parse('{"title":"Effects","description":"","frontmatter":{},"headers":[],"relativePath":"effects.md","filePath":"effects.md"}'),t={name:"effects.md"};function l(h,s,p,k,o,d){return a(),n("div",null,[...s[0]||(s[0]=[e("",31)])])}const y=i(t,[["render",l]]);export{c as __pageData,y as default};
