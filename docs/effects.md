@@ -43,7 +43,7 @@ import {
 const theme = CATPPUCCIN_MOCHA;
 const ink = theme.foregroundColor;
 const words = "Thinking about how light should cross these words";
-const line = new RichText(words, { style: Style.fromColor(ColorSpec.fromRgba(ink)) });
+const line = new RichText(words, { style: Style.fromColor(ColorSpec.fromRgba(ink), ColorSpec.fromRgba(theme.backgroundColor)) });
 
 const glint = shimmer(EFFECT_CURVES.shimmer, words.length, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, 0);
 const lit = onColors(shares([[ink, theme.backgroundColor]], new Set([ink.hex]), glint.touch), glint);

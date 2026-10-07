@@ -84,6 +84,7 @@ const ROUNDING = 0.01;
  * [0, 1] at which every pair in `pairs` that shows it, touched at the same
  * strength, still reads at its resting contrast or `LEGIBLE`, whichever is
  * lower. A colour in no pair's `colors` is the terminal's, and takes none.
+ * One of `colors` in no pair has nothing to be measured against, and throws.
  *
  * Colours are settled lightest first, each against every partner: one
  * already settled at its share, one not yet settled as it is. So the lighter
@@ -94,6 +95,8 @@ const ROUNDING = 0.01;
  */
 export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touch: Touch): Map<string, number> {
   const rgba = new Map(pairs.flat().map((color): [string, ColorRgba] => [color.hex, color]));
+  const unpaired = [...colors].filter((hex) => !rgba.has(hex));
+  if (unpaired.length > 0) throw new RangeError(`shares: ${unpaired.join(", ")} in no pair, so nothing to keep legible against`);
   const lightness = (hex: string): number => Oklch.fromRgba(rgba.get(hex)!).l;
   const settled = new Map<string, number>();
   for (const hex of [...colors].sort((a, b) => lightness(b) - lightness(a))) {
@@ -510,15 +513,23 @@ function transition(curve: Curve, start: number, effect: Effect): Transition {
   return { effect, done: (t) => t >= end };
 }
 
-/** Of a transition's `seconds`, how long each cell's own change takes. */
+/**
+ * Of a transition's `seconds`, how long each cell's own change takes. Under
+ * 1, so the last cell to start is done by the transition's end.
+ */
 const OWN = 0.45;
 
-/** The shape of a fade-in: `own`, of the duration, the share each cell's own rise takes. */
-export interface FadeShape {
-  readonly own: number;
+/**
+ * Each cell's progress through its own change in a transition starting at
+ * `start`, in [0, 1]: a cell `place` along the order starts that share of the
+ * way through the time the others leave it, and takes `OWN` of `seconds`.
+ */
+function ownChange(curve: Curve, start: number, place: (cell: EffectCell) => number): Visibility {
+  const own = curve.seconds * OWN;
+  // One phase, checked as it is built, shifted per cell: a bad curve fails here, not on the first frame.
+  const change = Phase.once(start, own);
+  return (cell, t) => change(t - place(cell) * (curve.seconds - own));
 }
-
-export const FADE_SHAPE: FadeShape = { own: OWN };
 
 /**
  * Fade-in starting at `start`, as ink blooming in water: patches of the
@@ -526,33 +537,21 @@ export const FADE_SHAPE: FadeShape = { own: OWN };
  * rising smoothly over its own part of the duration. Whole at
  * `start + seconds`.
  */
-export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba, shape: FadeShape = FADE_SHAPE): Transition {
-  const own = curve.seconds * shape.own;
-  const place = order(1.7 + z);
-  return transition(curve, start, veiled((cell, t) => curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t)), curve.swing, ground));
+export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba): Transition {
+  const risen = ownChange(curve, start, order(1.7 + z));
+  return transition(curve, start, veiled((cell, t) => curve.ease(risen(cell, t)), curve.swing, ground));
 }
 
 /**
- * The shape of a dissolve, every constant that makes it feel as it does.
- * `own`: of the duration, the share each cell's own fade takes. The rebound —
- * patches of what is left rising back before they go — is `depth` (the most,
- * as a share of whole, a cell rises again), `from` and `to` (where in its own
+ * The rebound of a dissolve, every constant that makes it feel as it does —
+ * patches of what is left rising back before they go: `depth` (the most, as a
+ * share of whole, a cell rises again), `from` and `to` (where in its own
  * fade, as a share of it gone, the rising begins and is done), `maskFrom` and
  * `maskTo` (which cells rebound: those whose eddy noise is past `maskFrom`,
  * all of them past `maskTo`) and `late` (how much likelier the later a cell
  * goes: 0 is no more likely, 1 is nothing for the first to go).
  */
-export interface DissolveShape {
-  readonly own: number;
-  readonly depth: number;
-  readonly from: number;
-  readonly to: number;
-  readonly maskFrom: number;
-  readonly maskTo: number;
-  readonly late: number;
-}
-
-export const DISSOLVE_SHAPE: DissolveShape = { own: OWN, depth: 0.4, from: 0.5, to: 0.95, maskFrom: 0.35, maskTo: 0.75, late: 0.6 };
+const DISSOLVE_SHAPE = { depth: 0.4, from: 0.5, to: 0.95, maskFrom: 0.35, maskTo: 0.75, late: 0.6 };
 
 /**
  * Dissolve-out starting at `start`, as mist lifting: the element thins in
@@ -562,17 +561,18 @@ export const DISSOLVE_SHAPE: DissolveShape = { own: OWN, depth: 0.4, from: 0.5, 
  * goes, the likelier — rise back part way, as the last of it eddies, before
  * they thin away for good.
  */
-export function dissolveOut(curve: Curve, start: number, z: number, ground: ColorRgba, shape: DissolveShape = DISSOLVE_SHAPE): Transition {
-  const own = curve.seconds * shape.own;
+export function dissolveOut(curve: Curve, start: number, z: number, ground: ColorRgba): Transition {
   const place = order(4.2 + z);
   const eddy = order(9.3 + z);
+  const faded = ownChange(curve, start, place);
+  const { depth, from, to, maskFrom, maskTo, late } = DISSOLVE_SHAPE;
   return transition(
     curve,
     start,
     veiled((cell, t) => {
-      const gone = curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t));
-      const q = clamp01((gone - shape.from) / (shape.to - shape.from));
-      const back = shape.depth * smoothstep(shape.maskFrom, shape.maskTo, eddy(cell)) * (1 - shape.late + shape.late * place(cell)) * Math.sin(Math.PI * q) ** 2;
+      const gone = curve.ease(faded(cell, t));
+      const q = clamp01((gone - from) / (to - from));
+      const back = depth * smoothstep(maskFrom, maskTo, eddy(cell)) * (1 - late + late * place(cell)) * Math.sin(Math.PI * q) ** 2;
       return clamp01(1 - gone + back);
     }, curve.swing, ground),
   );

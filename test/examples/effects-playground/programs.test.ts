@@ -34,6 +34,11 @@ describe("an effect's program", () => {
     expect(dissolve).not.toContain("noise.js");
     // Not what it does not reach.
     expect(dissolve).not.toContain("function shimmer(");
+    // Nor a file's header, which leads the first declaration it reaches there.
+    for (const file of [EFFECTS_FILE, new URL("../../../src/core/noise.ts", import.meta.url)]) {
+      const header = /^\/\*\*[\s\S]*?\*\//.exec(readFileSync(file, "utf-8"))![0];
+      expect(dissolve).not.toContain(header);
+    }
   });
 
   it("opens on the curve the demo defaults to", () => {

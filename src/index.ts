@@ -288,7 +288,7 @@ export {
   sparkle,
   wheel,
 } from "./renderables/effects.js";
-export type { Curve, DissolveShape, FadeShape, Field, Loop, Pair, Touch, Transition } from "./renderables/effects.js";
+export type { Curve, Field, Loop, Pair, Touch, Transition } from "./renderables/effects.js";
 export { Align } from "./renderables/align.js";
 export type { Alignment } from "./core/place.js";
 export { Padding } from "./renderables/padding.js";

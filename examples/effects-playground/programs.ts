@@ -76,9 +76,14 @@ function declared(statement: ts.Statement): string[] {
   return name !== undefined && ts.isIdentifier(name) ? [name.text] : [];
 }
 
-/** `statement` as the file spells it, its leading comment included and its `export` dropped. */
+/**
+ * `statement` as the file spells it, its doc comment included and its `export`
+ * dropped. From the doc comment, not the full start: a file's header leads its
+ * first statement, and is about the file, not the declaration.
+ */
 function text(file: ts.SourceFile, statement: ts.Statement): string {
-  return file.text.slice(statement.getFullStart(), statement.getEnd()).replace(/^(\s*(?:\/\*\*[\s\S]*?\*\/\s*)?)export /, "$1").trim();
+  const doc = ts.getJSDocCommentsAndTags(statement).filter(ts.isJSDoc).at(-1);
+  return file.text.slice((doc ?? statement).getStart(file), statement.getEnd()).replace(/^(\s*(?:\/\*\*[\s\S]*?\*\/\s*)?)export /, "$1").trim();
 }
 
 /** The program `effect`'s playground opens on, from `sources`, the text of `effects.ts` and of every file `CUT_FROM` names. */

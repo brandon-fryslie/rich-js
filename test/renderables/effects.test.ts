@@ -362,6 +362,13 @@ describe("the transitions run start to end", () => {
     expect(at(transition.effect, 1e6)).toEqual(at(transition.effect, 9));
     expect(at(transition.effect, 5)).not.toEqual(at(transition.effect, 9));
   });
+
+  it.each([
+    ["fade-in", fadeIn],
+    ["dissolve-out", dissolveOut],
+  ])("a %s with no duration fails as it is made, not at its first frame", (_, make) => {
+    expect(() => make(curve(0, 1), 0, 0, ground)).toThrow(/must be a positive number of seconds, got 0/);
+  });
 });
 
 describe("the loops never jump", () => {
@@ -442,5 +449,11 @@ describe("a cell under light still reads", () => {
     expect(share.get(fg.hex)).toBe(1);
     expect(share.get(fill.hex)).toBeGreaterThan(0);
     expect(share.get(fill.hex)).toBeLessThan(1);
+  });
+
+  it("a colour in no pair has nothing to stay legible against, and is refused by name", () => {
+    const fg = palette(CATPPUCCIN_MOCHA, "foreground");
+    const accent = palette(CATPPUCCIN_MOCHA, "accent");
+    expect(() => shares([[fg, CATPPUCCIN_MOCHA.backgroundColor]], new Set([fg.hex, accent.hex]), light(sun))).toThrow(accent.hex);
   });
 });
