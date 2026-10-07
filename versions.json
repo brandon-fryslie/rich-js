@@ -4,15 +4,22 @@
     {
       "version": "pr-338",
       "ref": "refs/pull/338/merge",
-      "sha": "619bc680e97f883709c75fb565c7ed5b28418e16",
-      "timestamp": "2026-10-07T18:07:52.570Z",
+      "sha": "779423a6fb42f29e6117eaa8025606dbe1419c5f",
+      "timestamp": "2026-10-07T18:13:19.191Z",
       "commits": [
         {
-          "sha": "619bc680e97f883709c75fb565c7ed5b28418e16",
+          "sha": "779423a6fb42f29e6117eaa8025606dbe1419c5f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T18:05:57Z",
-          "message": "Merge e1c2a6dd44a84c7cc59c12e53c4f39eb030cedc6 into bce204f6a6d5a9670879f3f87f7a4d8b36c1edd7\n"
+          "timestamp": "2026-10-07T18:11:58Z",
+          "message": "Merge 828127d7dc6080289c86d67d1ca0c77c976ecb7e into bce204f6a6d5a9670879f3f87f7a4d8b36c1edd7\n"
+        },
+        {
+          "sha": "828127d7dc6080289c86d67d1ca0c77c976ecb7e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T12:11:51-06:00",
+          "message": "effects: a curve's swing is checked when its effect is made; an overshooting ease saturates (rich-effects-fxiy.br2)\n\nrequireCurve, at each effect's construction, refuses a seconds that is not\npositive and a swing outside [0, 1]. A field or visibility outside [0, 1] —\nwhat a CSS cubic-bezier with overshoot yields — is held to it where strength\nis consumed (onColors, veiled), so dissolveOut's own clamp goes. In-range\nvalues are untouched.\n"
         },
         {
           "sha": "e1c2a6dd44a84c7cc59c12e53c4f39eb030cedc6",
