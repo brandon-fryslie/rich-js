@@ -7,8 +7,7 @@
  */
 
 import { parseArgs, type ParseArgsConfig } from "node:util";
-import { EASES, parseEase } from "../../src/index.js";
-import type { Curve } from "./curves.js";
+import { EASES, parseEase, type Curve } from "../../src/index.js";
 import { DEPTHS, EFFECTS, EFFECT_DEFAULTS, GROUNDS, RUN_DEFAULTS, type Depth, type EffectName, type Ground } from "./vocabulary.js";
 
 /** A curve as the flags spelled it, so the screen can say what is running. */

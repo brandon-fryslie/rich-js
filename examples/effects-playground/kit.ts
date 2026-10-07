@@ -1,11 +1,12 @@
 /**
  * effects-kit — what a program in the effects playground imports besides the
  * library: the scene an effect is tried on and the clock it is played at,
- * both the effects-feel demo's own, and the noise its curves are built from.
+ * both the effects-feel demo's own.
  *
- * The curves are not here. Each playground's program carries its effect's
- * code, cut from `../effects-feel/curves.ts` (programs.ts), so what a
- * playground runs is the demo's code and what is edited there is that code.
+ * The effects are not here. Each playground's program carries its effect's
+ * code, cut from `src/renderables/effects.ts` and the noise it is built from
+ * (programs.ts), so what a playground runs is the library's code and what is
+ * edited there is that code.
  *
  * It runs in the live terminal's worker, bundled onto the live library
  * (`libraryModule` in docs/.vitepress/example-runner.ts), so it reaches
@@ -19,8 +20,6 @@
 import { computed, observable, runInAction, reaction, type IComputedValue, type IObservableValue } from "mobx";
 import { ColorDepth, ColorSpec, Console, Effected, Group, Live, Padding, RichText, Style, type Effect, type TerminalTheme } from "../../src/index.js";
 import {
-  LIGHTS,
-  SHIMMER_WIDTH,
   STEP,
   THEMES,
   drawnSubject,
@@ -35,8 +34,7 @@ import {
 import { depthDrawn } from "../effects-feel/vocabulary.js";
 import { CONTROL_DEFAULTS, type Heard } from "./controls.js";
 
-export * from "../effects-feel/noise.js";
-export { LIGHTS, SHIMMER_WIDTH, fills, magnified, pulsedOn, subjectUnder, type DrawnSubject };
+export { fills, magnified, pulsedOn, subjectUnder, type DrawnSubject };
 
 /** The scene an effect is made for: the theme it is drawn in, when a transition starts, and how far a loop swings. */
 export interface Moment {

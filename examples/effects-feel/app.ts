@@ -2,8 +2,8 @@
  * effects-feel — the demo body: a powerline strip and a run of text under
  * each effect, redrawn at the frame rate the run was given.
  *
- * THIS IS A DEMO, built so the feel of each effect can be agreed before any
- * curve lands in `src/`. See `curves.ts`.
+ * THIS IS A DEMO: the library's effects (`src/renderables/effects.ts`) at
+ * any frame rate, colour depth and theme, for judging how they feel.
  *
  * [LAW:no-ambient-temporal-coupling] The `App` is the frame owner: it ticks
  * at the run's frame rate and hands each frame its `t`; a `Pace` turns that
@@ -65,9 +65,22 @@ import {
   Segment,
   graphemes,
   type TerminalTheme,
+  EFFECT_LIGHTS,
+  SHIMMER_WIDTH,
+  dissolveOut,
+  fadeIn,
+  onColors,
+  pulse,
+  shares,
+  shimmer,
+  sparkle,
+  wheel,
+  type Curve,
+  type Loop,
+  type Pair,
+  type Transition,
 } from "../../src/index.js";
 import { App, hostEnvironment, type TerminalHost } from "../../src/host/index.js";
-import { dissolveOut, fadeIn, onColors, pulse, settledAt, shares, shimmer, sparkle, wheel, type Curve, type Loop, type Pair } from "./curves.js";
 import { depthDrawn, type EffectName } from "./vocabulary.js";
 import type { NamedCurve, Settings } from "./settings.js";
 
@@ -130,21 +143,12 @@ const TEXT = "Thinking about how a band of light should cross these words at one
 /** The status line's contrast against the ground: WCAG's AAA for body text. */
 const STATUS_CONTRAST = 7;
 
-/** How far a shimmer's light reaches either side of its centre, in columns. */
-export const SHIMMER_WIDTH = 24;
-
 /**
  * How a looping effect's worst contrast is measured: over this many of its
  * periods — no loop repeats exactly, so one period is only a slice of the
  * states it reaches — at this many samples each.
  */
 const CONTRAST = { periods: 8, samples: 60 } as const;
-
-/** The lights the loops cast, warm as sunlight, breath and fireflies are. */
-export const LIGHTS = {
-  sun: new ColorRgba(255, 228, 176),
-  firefly: new ColorRgba(222, 245, 140),
-} as const satisfies Record<string, ColorRgba>;
 
 /**
  * A thing the effects are tried on: a powerline strip, which sets its cells'
@@ -394,9 +398,9 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
   // can spare; the wheel keeps lightness and chroma, so it is tried as it is.
   const lit = (s: DrawnSubject, loop: Loop): Effect => subjectUnder(s, loop, theme);
   const made: Record<LoopName, (subject: DrawnSubject) => Effect> = {
-    shimmer: (s) => lit(s, shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, LIGHTS.sun, s.z)),
-    pulse: (s) => pulsedOn(s, (z) => pulse(curves.pulse, LIGHTS.sun, z), theme),
-    sparkle: (s) => lit(s, sparkle(curves.sparkle, s.span, LIGHTS.firefly, s.z)),
+    shimmer: (s) => lit(s, shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, s.z)),
+    pulse: (s) => pulsedOn(s, (z) => pulse(curves.pulse, EFFECT_LIGHTS.sun, z), theme),
+    sparkle: (s) => lit(s, sparkle(curves.sparkle, s.span, EFFECT_LIGHTS.firefly, s.z)),
     wheel: (s) => wheel(curves.wheel, s.colors, fills(s), s.z),
   };
   const loops = Object.fromEntries(
@@ -537,7 +541,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     stopMeasuring = spread(shown.measure(), clock, MEASURE_SLICE);
   };
   show();
-  const cycle = Math.max(...LOOPS.map((loop) => curves[loop].seconds), settledAt(curves.fade, 0), settledAt(curves.dissolve, 0));
+  const cycle = Math.max(...LOOPS.map((loop) => curves[loop].seconds), curves.fade.seconds, curves.dissolve.seconds);
   let rate = 1;
   let fps: FrameRate = frameRate(settings.fps);
   const pace = new Pace(frames.now(), STEP * rate, cycle);
@@ -547,14 +551,18 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   const describe = (name: EffectName, curve: NamedCurve): string =>
     `${name.padEnd(9)} ${curve.seconds}s · ${curve.easeName} · swing ${curve.swing}`;
 
-  const transitionStatus = (t: number, curve: NamedCurve, start: number, key: string): string =>
-    t >= settledAt(curve, start) ? `done — ${key} replays` : "running";
-
   const row = (t: number, name: EffectName, status: string, effect: (subject: DrawnSubject) => Effect): Renderable[] => [
     new RichText(`${describe(name, shown.curves[name])}   ${status}`, { style: shown.quiet, noWrap: true }),
     ...shown.subjects.map((s) => new Effected(s.renderable, effect(s), { t, key: seedKey(name, s), theme: shown.theme })),
     new RichText(""),
   ];
+
+  /** A transition's row: each subject under its own, running until every one of them is done. */
+  const transitionRow = (t: number, name: EffectName, key: string, make: (subject: DrawnSubject) => Transition): Renderable[] => {
+    const made = new Map(shown.subjects.map((s) => [s, make(s)]));
+    const status = [...made.values()].every((transition) => transition.done(t)) ? `done — ${key} replays` : "running";
+    return row(t, name, status, (s) => made.get(s)!.effect);
+  };
 
   let replayed = 0;
   const view = (frame: number): Renderable => {
@@ -571,8 +579,8 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
         new RichText("f fade-in · d dissolve · n/p theme · </> fps · -/+ rate · [/] magnitude · q quits", { style: shown.quiet, noWrap: true }),
         new RichText(""),
         ...LOOPS.flatMap((loop) => row(t, loop, contrast[loop], loops[loop])),
-        ...row(t, "fade", transitionStatus(t, curves.fade, fadeStart, "f"), (s) => fadeIn(curves.fade, fadeStart, s.z, theme.backgroundColor)),
-        ...row(t, "dissolve", transitionStatus(t, curves.dissolve, dissolveStart, "d"), (s) => dissolveOut(curves.dissolve, dissolveStart, s.z, theme.backgroundColor)),
+        ...transitionRow(t, "fade", "f", (s) => fadeIn(curves.fade, fadeStart, s.z, theme.backgroundColor)),
+        ...transitionRow(t, "dissolve", "d", (s) => dissolveOut(curves.dissolve, dissolveStart, s.z, theme.backgroundColor)),
       ),
       [1, 2],
       { style: Style.fromColor(shown.ink, shown.paper) },

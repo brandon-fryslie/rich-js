@@ -1,9 +1,9 @@
 /**
- * effects-feel — the effect curves under judgement.
- *
- * THIS IS A DEMO. It exists so the feel of each effect is agreed before any
- * curve lands in `src/`; what survives the sign-off is promoted from the
- * sign-off notes, not from this file.
+ * The effect catalogue: shimmer, pulse, sparkle and wheel, which loop for as
+ * long as they are drawn, and fade-in and dissolve-out, which run once and
+ * are done. Each is an `Effect` for `Effected` (`./effect.ts`); the defaults
+ * in `EFFECT_CURVES` are the ones signed off by eye in the effects-feel demo
+ * (`npm run effects-feel`), at 30 fps and at one frame a second.
  *
  * Each effect is something a first-time observer already knows from life —
  * a slow glow, sunlight moving on water, the colours of daylight, fireflies, ink
@@ -12,7 +12,7 @@
  * What makes those motions familiar is what every curve here keeps:
  *
  * - Nothing jumps. Every curve is continuous in time, built from smooth
- *   noise (`noise.ts`) and smooth waveforms, so at one frame a second a cell
+ *   noise (`core/noise.ts`) and smooth waveforms, so at one frame a second a cell
  *   moves a little and at thirty it glides.
  * - Nothing repeats exactly. Rhythms are perturbed by slow noise, and each
  *   breath, firefly's flash and pass of light is an event of its own, with
@@ -29,27 +29,24 @@
  * - Elements are apart. Each sits at its own `z` in the noise, so two
  *   elements under one effect do not move in lockstep.
  *
- * Every curve is an `Effect` from `src/renderables/effect.ts`; colour moves
- * are in OKLCH, where equal steps look equal. A curve's `ease` maps its
- * intensity in [0, 1] — how strongly the effect acts on a cell at a moment —
- * onto its swing, for the loops and the transitions alike.
+ * Colour moves are in OKLCH, where equal steps look equal. A curve's `ease`
+ * maps its intensity in [0, 1] — how strongly the effect acts on a cell at a
+ * moment — onto its swing, for the loops and the transitions alike.
  *
  * [LAW:no-ambient-temporal-coupling] No curve reads a clock; `t` is the
  * effect's argument, so the frame owner decides when to sample.
+ *
+ * Every import below names something the package exports, but for `noise`,
+ * which the effects playground supplies itself: the playground runs this
+ * file's own declarations as the program a visitor edits
+ * (`examples/effects-playground/programs.ts`), on the published library.
  */
 
-import {
-  IDENTITY,
-  Oklch,
-  Phase,
-  contrastRatio,
-  type CellColors,
-  type ColorRgba,
-  type Ease,
-  type Effect,
-  type EffectCell,
-} from "../../src/index.js";
-import { fbm, hash, noise, smoothstep } from "./noise.js";
+import { ColorRgba, contrastRatio } from "../core/color.js";
+import { EASES, Phase, type Ease } from "../core/easing.js";
+import { fbm, hash, noise, smoothstep } from "../core/noise.js";
+import { IDENTITY, Oklch } from "../core/oklch.js";
+import type { CellColors, Effect, EffectCell } from "./effect.js";
 
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
@@ -154,6 +151,30 @@ export interface Curve {
   /** How far the move goes at full intensity; its unit is the effect's. */
   readonly swing: number;
 }
+
+/**
+ * Each effect's curve as it was signed off. Every loop's period is a prime
+ * number of seconds, so no two loops come back into step within a sitting.
+ * The periods are long on purpose: at one frame a second a loop's colour
+ * moves by no more than a just-noticeable step from one frame to the next.
+ */
+export const EFFECT_CURVES = {
+  shimmer: { seconds: 109, ease: EASES.linear, swing: 0.9 },
+  pulse: { seconds: 43, ease: EASES.linear, swing: 0.85 },
+  sparkle: { seconds: 139, ease: EASES.linear, swing: 0.95 },
+  wheel: { seconds: 907, ease: EASES.linear, swing: 1 },
+  fade: { seconds: 20, ease: EASES["ease-in-out"], swing: 1 },
+  dissolve: { seconds: 30, ease: EASES["ease-in-out"], swing: 1 },
+} as const satisfies Record<string, Curve>;
+
+/** The lights the loops were signed off casting, warm as sunlight and fireflies are. */
+export const EFFECT_LIGHTS = {
+  sun: new ColorRgba(255, 228, 176),
+  firefly: new ColorRgba(222, 245, 140),
+} as const satisfies Record<string, ColorRgba>;
+
+/** How far a shimmer's light reaches either side of its centre, in columns, as signed off. */
+export const SHIMMER_WIDTH = 24;
 
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 
@@ -473,6 +494,22 @@ function order(z: number): (cell: EffectCell) => number {
   };
 }
 
+/**
+ * An effect that runs once: a fade-in or a dissolve-out from its start time
+ * over its curve's `seconds`. `done(t)` is true from the moment every cell
+ * has arrived or gone, so the caller knows when to stop drawing an element
+ * that is leaving, or to drop the effect from one that has arrived.
+ */
+export interface Transition {
+  readonly effect: Effect;
+  done(t: number): boolean;
+}
+
+function transition(curve: Curve, start: number, effect: Effect): Transition {
+  const end = start + curve.seconds;
+  return { effect, done: (t) => t >= end };
+}
+
 /** Of a transition's `seconds`, how long each cell's own change takes. */
 const OWN = 0.45;
 
@@ -489,10 +526,10 @@ export const FADE_SHAPE: FadeShape = { own: OWN };
  * rising smoothly over its own part of the duration. Whole at
  * `start + seconds`.
  */
-export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba, shape: FadeShape = FADE_SHAPE): Effect {
+export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba, shape: FadeShape = FADE_SHAPE): Transition {
   const own = curve.seconds * shape.own;
   const place = order(1.7 + z);
-  return veiled((cell, t) => curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t)), curve.swing, ground);
+  return transition(curve, start, veiled((cell, t) => curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t)), curve.swing, ground));
 }
 
 /**
@@ -525,21 +562,20 @@ export const DISSOLVE_SHAPE: DissolveShape = { own: OWN, depth: 0.4, from: 0.5, 
  * goes, the likelier — rise back part way, as the last of it eddies, before
  * they thin away for good.
  */
-export function dissolveOut(curve: Curve, start: number, z: number, ground: ColorRgba, shape: DissolveShape = DISSOLVE_SHAPE): Effect {
+export function dissolveOut(curve: Curve, start: number, z: number, ground: ColorRgba, shape: DissolveShape = DISSOLVE_SHAPE): Transition {
   const own = curve.seconds * shape.own;
   const place = order(4.2 + z);
   const eddy = order(9.3 + z);
-  return veiled((cell, t) => {
-    const gone = curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t));
-    const q = clamp01((gone - shape.from) / (shape.to - shape.from));
-    const back = shape.depth * smoothstep(shape.maskFrom, shape.maskTo, eddy(cell)) * (1 - shape.late + shape.late * place(cell)) * Math.sin(Math.PI * q) ** 2;
-    return clamp01(1 - gone + back);
-  }, curve.swing, ground);
-}
-
-/** The moment a transition starting at `start` has finished. */
-export function settledAt(curve: Curve, start: number): number {
-  return start + curve.seconds;
+  return transition(
+    curve,
+    start,
+    veiled((cell, t) => {
+      const gone = curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t));
+      const q = clamp01((gone - shape.from) / (shape.to - shape.from));
+      const back = shape.depth * smoothstep(shape.maskFrom, shape.maskTo, eddy(cell)) * (1 - shape.late + shape.late * place(cell)) * Math.sin(Math.PI * q) ** 2;
+      return clamp01(1 - gone + back);
+    }, curve.swing, ground),
+  );
 }
 
 /**

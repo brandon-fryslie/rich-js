@@ -1,7 +1,6 @@
 /**
- * effects-feel — gradient noise, the texture every curve here is drawn from.
- *
- * THIS IS A DEMO. Ken Perlin's improved noise (2002): a smooth pseudo-random
+ * Gradient noise, the texture every effect in `renderables/effects` is drawn
+ * from. Ken Perlin's improved noise (2002): a smooth pseudo-random
  * field over space and time, continuous in its first and second derivatives,
  * so a cell sampled a moment later has moved a little, never jumped. Things
  * the eye knows as alive — water, wind, breath, a glow — vary like this:
@@ -10,6 +9,9 @@
  * [LAW:no-ambient-temporal-coupling] A pure function of its coordinates; time
  * is one of them. The permutation is fixed, so a moment draws the same frame
  * on every run.
+ *
+ * Tier 0 of `src/core/`: imports nothing. Not part of the package's surface;
+ * the effects playground reaches it as source.
  */
 
 /** Ken Perlin's reference permutation, doubled so a lookup never wraps. */

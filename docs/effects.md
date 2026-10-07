@@ -8,6 +8,78 @@ import type { CellColors, EffectCell } from "@promptctl/rich-js";
 type Effect = (colors: CellColors, cell: EffectCell, t: number) => CellColors;
 ```
 
+## Ready-made effects
+
+The library ships six. Four loop for as long as they are drawn, and two run once:
+
+| Effect | What it looks like |
+| --- | --- |
+| `shimmer` | sunlight moving across water: a soft band of light crosses the element, glittering where ripples cross |
+| `pulse` | a slow glow on an element, warming into the light and settling back, the way an indicator breathes |
+| `sparkle` | fireflies: short glowing strokes, each a few cells long, flashing and gone |
+| `wheel` | the colour of daylight going round: every hue turns once a period, far too slowly to see moving |
+| `fadeIn` | ink blooming in water: patches of the element surface first and the rest follows |
+| `dissolveOut` | mist lifting: the element thins in drifting patches until nothing is left |
+
+Each takes a `Curve`: `seconds` (a loop's period, or a transition's duration), an `ease`, and a `swing`, how far the move goes at full strength. `EFFECT_CURVES` holds the curves each effect was tuned to by eye, at 30 frames a second and at one. They are slow on purpose. At one frame a second, no cell's colour moves more than a barely noticeable step from one frame to the next, so the motion reads as drift rather than as ticks.
+
+Here is a status line under a shimmer, drawn at three moments:
+
+```typescript
+import {
+  CATPPUCCIN_MOCHA,
+  ColorSpec,
+  EFFECT_CURVES,
+  EFFECT_LIGHTS,
+  Effected,
+  RichText,
+  SHIMMER_WIDTH,
+  Style,
+  onColors,
+  shares,
+  shimmer,
+} from "@promptctl/rich-js";
+
+const theme = CATPPUCCIN_MOCHA;
+const ink = theme.foregroundColor;
+const words = "Thinking about how light should cross these words";
+const line = new RichText(words, { style: Style.fromColor(ColorSpec.fromRgba(ink)) });
+
+const glint = shimmer(EFFECT_CURVES.shimmer, words.length, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, 0);
+const lit = onColors(shares([[ink, theme.backgroundColor]], new Set([ink.hex]), glint.touch), glint);
+
+for (const t of [0, 60, 100]) {
+  console.print(new Effected(line, lit, { t, key: "status", theme }));
+}
+```
+
+Every effect's `z` argument (the `0` above) places the element in the noise the effect is drawn from. Give two elements different values and they do not move in lockstep.
+
+### A loop lights only the colours it is given
+
+`shimmer`, `pulse` and `sparkle` return a `Loop`: what the light does to one colour, and how strongly it acts on each cell at each moment. `onColors` turns a loop into an `Effect` over a set of colours, each at its own share of the light, so whatever else is on the screen is left alone.
+
+`shares` works those shares out so the words stay readable. Give it every ink and ground pair the element draws its text in, and the colours that should take the light. Each colour gets the largest share at which every pair it appears in still reads at its resting contrast, or at WCAG AA (4.5:1) if it rested above that. A colour with contrast to spare glows brightly; one with none barely moves.
+
+`wheel` keeps lightness and chroma and only turns hue, so it is an `Effect` already and needs no shares.
+
+### A transition says when it is done
+
+`fadeIn` and `dissolveOut` take a start time and return a `Transition`: the `effect` to draw, and `done(t)`, true from the moment every cell has arrived or gone. A caller stops drawing an element that has dissolved, or drops the effect from one that has faded in, when `done` says so:
+
+```typescript
+import { CATPPUCCIN_MOCHA, EFFECT_CURVES, dissolveOut } from "@promptctl/rich-js";
+
+const leaving = dissolveOut(EFFECT_CURVES.dissolve, 10, 0, CATPPUCCIN_MOCHA.backgroundColor);
+console.print([20, 39.9, 40].map((t) => `${t}s: ${leaving.done(t) ? "gone" : "leaving"}`).join(" · "));
+```
+
+Both blend toward the ground you give them, which should be the terminal's own background: the library never asks the terminal what that is.
+
+To watch every effect at any frame rate, colour depth and theme, run `npm run effects-feel` in a checkout of this repository.
+
+## Writing an effect
+
 `Effected` wraps any renderable and draws it with its cells' colours passed through an effect at one moment:
 
 ```typescript
