@@ -84,65 +84,6 @@ export type RunMode = "live" | "still";
  */
 const STILL_AFTER_MS = 1000;
 
-const SYNC_BEGIN = "\x1b[?2026h";
-const SYNC_END = "\x1b[?2026l";
-
-/**
- * `write`, honouring synchronized output (DEC mode 2026): what a program
- * writes between a begin and an end reaches `write` as one chunk, so a
- * frame is shown whole. xterm 5.3 ignores the mode and paints whatever it has
- * parsed, and a frame arrives as several messages from the worker: when the
- * page is busy between two of them, it paints a frame with its rows erased
- * and not yet drawn again, and a repainting program flickers. A begin
- * without its end waits for more; text that might be the start of a begin is
- * held until it is known not to be. `flush` writes whatever is held, as it
- * is: the program has ended, and a frame it never closed is shown as far as
- * it got, as a terminal shows one whose end never came.
- */
-export function synchronized(write: (text: string) => void): {
-  readonly write: (chunk: string | Uint8Array) => void;
-  readonly flush: () => void;
-} {
-  const decoder = new TextDecoder();
-  let held = "";
-  let inFrame = false;
-  const flush = (): void => {
-    held += decoder.decode();
-    if (held !== "") write(held);
-    held = "";
-    inFrame = false;
-  };
-  const take = (chunk: string | Uint8Array): void => {
-    // A string ends any character the bytes before it left unfinished, so
-    // what was written stays in the order it was written.
-    held += typeof chunk === "string" ? decoder.decode() + chunk : decoder.decode(chunk, { stream: true });
-    for (;;) {
-      if (inFrame) {
-        const end = held.indexOf(SYNC_END);
-        if (end === -1) return;
-        write(held.slice(0, end + SYNC_END.length));
-        held = held.slice(end + SYNC_END.length);
-        inFrame = false;
-        continue;
-      }
-      const begin = held.indexOf(SYNC_BEGIN);
-      if (begin !== -1) {
-        if (begin > 0) write(held.slice(0, begin));
-        held = held.slice(begin);
-        inFrame = true;
-        continue;
-      }
-      // The longest tail that could still grow into a begin waits for the next chunk.
-      let keep = Math.min(held.length, SYNC_BEGIN.length - 1);
-      while (keep > 0 && !SYNC_BEGIN.startsWith(held.slice(held.length - keep))) keep -= 1;
-      if (held.length > keep) write(held.slice(0, held.length - keep));
-      held = held.slice(held.length - keep);
-      return;
-    }
-  };
-  return { write: take, flush };
-}
-
 /** What the terminal is showing. */
 export type LiveState =
   | { readonly kind: "idle" }
@@ -225,8 +166,8 @@ function loadXterm(): Promise<XtermConstructor> {
   xterm ??= new Promise<XtermConstructor>((resolve, reject) => {
     const link = Object.assign(document.createElement("link"), { rel: "stylesheet", crossOrigin: "anonymous", ...XTERM.stylesheet });
     // xterm makes a row the height it measures a character at, in whole CSS
-    // pixels rounded up to whole device pixels, and measures it at
-    // line-height: normal. Measured at the element's --rich-fragment-line, a
+    // pixels rounded up to whole device pixels, and measures it in the page
+    // (`openMeasuringInPage`) at line-height: normal. Measured at the element's --rich-fragment-line, a
     // whole CSS pixel, a row is the line height custom.css derives from it the
     // same way (`elementFont`).
     const measure = Object.assign(document.createElement("style"), {
@@ -245,6 +186,30 @@ function loadXterm(): Promise<XtermConstructor> {
     document.head.append(link, measure, script);
   });
   return xterm;
+}
+
+/**
+ * `screen` opened in `parent`, measuring its character in the page, where
+ * the stylesheet `loadXterm` adds sets the measure's line height.
+ *
+ * xterm 6 measures on an `OffscreenCanvas` when the page has one, as the
+ * font's ascent plus its descent, which no stylesheet reaches; and a factor
+ * on that measure cannot bring a row down to the line, because the box of a
+ * face a reader may have installed is taller than 1.25em, and xterm refuses a
+ * `lineHeight` under 1. With no `OffscreenCanvas` it measures a span in the
+ * page, as 5.3 always did. It chooses once, as the terminal opens, and the
+ * canvas measure is the only thing in xterm that reads `OffscreenCanvas`, so
+ * the global is hidden for that one call and nothing else sees it gone.
+ */
+function openMeasuringInPage(screen: Xterm, parent: HTMLElement): void {
+  const canvas = Object.getOwnPropertyDescriptor(globalThis, "OffscreenCanvas");
+  if (canvas === undefined) return screen.open(parent);
+  delete (globalThis as { OffscreenCanvas?: unknown }).OffscreenCanvas;
+  try {
+    screen.open(parent);
+  } finally {
+    Object.defineProperty(globalThis, "OffscreenCanvas", canvas);
+  }
 }
 
 /** One run's frame and its worker, as the page sees them. */
@@ -350,7 +315,7 @@ export class LiveTerminal {
     // cursor is, and move the drawn rows out of sight.
     const clip = Object.assign(document.createElement("div"), { style: "overflow: clip; width: max-content" });
     element.append(clip);
-    screen.open(clip);
+    openMeasuringInPage(screen, clip);
     this.setTheme(options.theme);
     // The element shows the rows a program has reached, not all of them: a
     // one-line progress bar is not drawn above twenty-three blank rows. A row
@@ -382,12 +347,7 @@ export class LiveTerminal {
     // A still frame is drawn in one write when it freezes: until then the bytes
     // wait here, so no motion reaches the screen.
     const held: (string | Uint8Array)[] = [];
-    // What a live run holds: the frame on its way.
-    const live = synchronized((text) => this.host.write(text));
-    const flush = () => {
-      held.splice(0).forEach((chunk) => this.host.write(chunk));
-      live.flush();
-    };
+    const flush = () => held.splice(0).forEach((chunk) => this.host.write(chunk));
     // A message still queued from a run that has since ended belongs to no run.
     const current = () => this.sandbox === run;
     // The cursor is hidden: the program has ended, and a frame showing one
@@ -401,7 +361,7 @@ export class LiveTerminal {
     // fires, which can fall between two writes of one frame.
     const show =
       mode === "live"
-        ? live.write
+        ? (chunk: string | Uint8Array) => this.host.write(chunk)
         : (chunk: string | Uint8Array) => {
             held.push(chunk);
             this.deadline ??= setTimeout(() => this.post({ kind: "mark" }), STILL_AFTER_MS);
