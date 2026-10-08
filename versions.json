@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-354",
+      "ref": "refs/pull/354/merge",
+      "sha": "d2dda9e7d37c8b4a9eefeaf072fdc8c3de563f98",
+      "timestamp": "2026-10-08T17:21:07.244Z",
+      "commits": [
+        {
+          "sha": "d2dda9e7d37c8b4a9eefeaf072fdc8c3de563f98",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T11:19:54-06:00",
+          "message": "Merge 9f14c28f499be2fcbc23e62814c2b231c97cab71 into 20a5e1da88b3eaeb4f221640339eade1ae7c1222\n"
+        },
+        {
+          "sha": "9f14c28f499be2fcbc23e62814c2b231c97cab71",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T11:19:45-06:00",
+          "message": "feat(docs): silent, throws, shape and node blocks are the card; the old output markup is gone (rich-example-card-obsb.oil)\n\nEvery block the build runs is an editable card. A run that printed nothing\nshows the prints-nothing note in place of output, whatever its marker, so\nsilent needs no case of its own. A throws block's caption follows what is\ndrawn: an edit that stops the throw is captioned as a plain run. shape and\nnode blocks are the same card, read-only, with their note. The runner now\nwrites markup only for live blocks.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "20a5e1da88b3eaeb4f221640339eade1ae7c1222",
