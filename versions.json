@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-361",
+      "ref": "refs/pull/361/merge",
+      "sha": "d3f5488485caed54bdf684e965034fc3d61e307c",
+      "timestamp": "2026-10-08T22:22:46.975Z",
+      "commits": [
+        {
+          "sha": "d3f5488485caed54bdf684e965034fc3d61e307c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T16:21:41-06:00",
+          "message": "Merge c6e04ffa7444e6532bed1cf27fa6feb1b40ed108 into 4a2c5c12ad497c59b5f1c6941187c48dc658d383\n"
+        },
+        {
+          "sha": "c6e04ffa7444e6532bed1cf27fa6feb1b40ed108",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T16:21:36-06:00",
+          "message": "feat(docs): an edit reaches a running program that accepts it without a restart (rich-example-card-b5rz.auo)\n\nA program opts in through a subset of Vite's import.meta.hot (accept,\ndispose, data). The worker runs an accepted edit in the process it is\nalready running in: dispose callbacks, then every timer and process\nlistener the last version left is cleared, then the new files run with\nthe same per-file data. A program that never accepts is declined and the\npage restarts it as before. No CardOptions field: the program's accept()\nis the one switch.\n\nimport.meta is rewritten per file using Sucrase's internal tokenizer,\npinned by a test. The effects kit carries its clock through dispose.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "4a2c5c12ad497c59b5f1c6941187c48dc658d383",
