@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-342",
-      "ref": "refs/pull/342/merge",
-      "sha": "656acbe6eb6d0c8626d1b0b7b9da8856d1dc29cd",
-      "timestamp": "2026-10-08T02:18:54.567Z",
-      "commits": [
-        {
-          "sha": "656acbe6eb6d0c8626d1b0b7b9da8856d1dc29cd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T02:17:30Z",
-          "message": "Merge f30e42f7954c9d9f94045eb990c68f159ec0faad into 8a62d728942a2c4b72b3b7a19ad2b154ec432c44\n"
-        },
-        {
-          "sha": "f30e42f7954c9d9f94045eb990c68f159ec0faad",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T20:17:25-06:00",
-          "message": "fix(effects): shares settles a terminal's colour as onColors lights it, and a colourless pulse back is written black (rich-effects-fxiy.3nt)\n\nPair carries the cell's terminal flags, so a terminal ground with a\nsubject colour's hex holds still in the legibility arithmetic as it does\non screen. ProgressBar writes a back that names no colour as Rich's\nblack, so the pulse lights it rather than finding only terminal colours.\n"
-        },
-        {
-          "sha": "e3bbf2addc8eb7df5109d19d35bc3f7ba3d12afe",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T20:05:51-06:00",
-          "message": "fix(effects): a colour the terminal supplies takes no subject's share, whatever its hex (rich-effects-fxiy.3nt)\n\nEffectCell carries which on-screen colours are the terminal's (unset or\ndefault). onColors and wheel skip those, so a subject colour sharing the\ntheme ground's hex no longer lights the ground. ProgressBar's fg-only\nwrapper is deleted; a reversed back style now pulses.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "8a62d728942a2c4b72b3b7a19ad2b154ec432c44",
-      "timestamp": "2026-10-08T02:00:12.533Z",
+      "sha": "9088edbc42cb5162fecd47ea2005490c0784f44c",
+      "timestamp": "2026-10-08T02:22:28.469Z",
       "commits": [
         {
-          "sha": "8a62d728942a2c4b72b3b7a19ad2b154ec432c44",
+          "sha": "9088edbc42cb5162fecd47ea2005490c0784f44c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T19:59:08-06:00",
-          "message": "fix(effects): Effected merges cells on what the depth writes (rich-effects-fxiy.7b3) (#341)\n\n* fix(effects): Effected merges cells on what the depth writes, so colours landing on one index are one run (rich-effects-fxiy.7b3)\n\n* fix(effects): runs merge on what each slot writes, so the default colour and no colour are one run (rich-effects-fxiy.7b3)\n\nReview (high): a cell nudged off the default colour at 256/16 colours wrote 39 beside cells writing nothing, cutting a run per cell; the merge also built a Style and SGR string per cell. Runs now compare per-slot written codes, absent read as default.\n\n* fix(effects): no colour is not the default colour; a move the depth cannot show keeps the written spec (rich-effects-fxiy.7b3)\n\nReview (medium): treating an absent slot as the default merged runs whose first cell then forced 39 over a style a container lays beneath (Segment.applyStyle). Runs compare strictly again; the unshowable-move case is settled per cell in respec.\n\n* fix(effects): the written colour wins a tie with the rematch, and respec runs only where colours change (rich-effects-fxiy.7b3)\n\nReview (escalation high): wire is downgraded with the stock table while matchOn rounds on the theme, so a 1-unit nudge of #ff0000 at 256 rewrote 38;5;196 as 91 and #ffffff as 39. A slot now keeps its written spec when that is as near the moved colour as matchOn's choice (rgbDistance, the one distance). Cells merge on equal colours first, so respec and matchOn run once per change, not per cell."
+          "timestamp": "2026-10-07T20:21:24-06:00",
+          "message": "fix(effects): a colour the terminal supplies takes no subject's share (rich-effects-fxiy.3nt) (#342)\n\n* fix(effects): a colour the terminal supplies takes no subject's share, whatever its hex (rich-effects-fxiy.3nt)\n\nEffectCell carries which on-screen colours are the terminal's (unset or\ndefault). onColors and wheel skip those, so a subject colour sharing the\ntheme ground's hex no longer lights the ground. ProgressBar's fg-only\nwrapper is deleted; a reversed back style now pulses.\n\n* fix(effects): shares settles a terminal's colour as onColors lights it, and a colourless pulse back is written black (rich-effects-fxiy.3nt)\n\nPair carries the cell's terminal flags, so a terminal ground with a\nsubject colour's hex holds still in the legibility arithmetic as it does\non screen. ProgressBar writes a back that names no colour as Rich's\nblack, so the pulse lights it rather than finding only terminal colours."
         }
       ]
     }
