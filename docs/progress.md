@@ -100,10 +100,16 @@ this for a queue of tasks you want on screen from the beginning but timed only w
 each one runs. Calling `startTask()` on a task already running leaves its start where
 it was.
 
-There is no indeterminate mode, and omitting `total` is not a substitute for one. The
-two columns then disagree: `TaskProgressColumn` shows nothing, while `BarColumn` falls
-back to an assumed total of 100, so the bar fills as `completed` advances and turns
-"finished" at 100 — against a number you never set. Give every task a real `total`.
+A task not yet started has a pulsing bar, as in Rich: bands of `bar.pulse` light cross the
+empty `bar.back` track. A task with no `total` pulses for as long as it runs. It never finishes,
+and `TaskProgressColumn` and `TimeRemainingColumn` show nothing for it. The pulse is
+the library's [shimmer](./effects), so its light comes and goes the way the shimmer's
+does, and the bar can rest unlit for ten seconds or more between bands. It is drawn at the
+`Progress` clock's time on each frame: the bands cross at the same speed whatever the
+refresh rate, and a slower refresh shows them further along each frame. Below truecolor
+the light moves only in the steps the output's depth can draw: at 256 colours faintly,
+and at 16 colours not at all, as with [every effect](./effects). On an output with no
+colour the pulse cannot be drawn, so a pulsing bar is blank.
 
 ### Transient display
 
@@ -178,7 +184,7 @@ progress.stop();
 
 | Column | What it shows |
 |---|---|
-| `BarColumn` | The progress bar, filled in half cells; on an output with no colour only the filled part is drawn, as Rich does |
+| `BarColumn` | The progress bar, filled in half cells; on an output with no colour only the filled part is drawn, as Rich does. A task not yet started, or with no `total`, pulses |
 | `TextColumn` | A format string (see below) |
 | `TaskProgressColumn` | Percentage complete, right-aligned in four cells so the row holds still |
 | `TimeElapsedColumn` | Elapsed time, held where it stopped once the task is finished |

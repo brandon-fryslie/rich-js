@@ -119,6 +119,12 @@ describe("ProgressBar", () => {
       expect(texts(none, { maxWidth: 80 })).toEqual(["━━━━━━━━━━"]);
     });
 
+    it("draws the empty part in `bar.back`, Rich's default `style`", () => {
+      const opts: RenderOptions = { maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR };
+      const [, , back] = collectSegments(new ProgressBar({ total: 10, completed: 5, width: 10 }), opts);
+      expect(back?.style).toEqual(getStyle(opts, "bar.back"));
+    });
+
     it("draws half a cell when the fill lands on a half", () => {
       // `BarColumn(40)` at 50% offered 21 cells.
       const bar = new ProgressBar({ total: 100, completed: 50, width: 40 });
@@ -146,6 +152,52 @@ describe("ProgressBar", () => {
       const segments = collectSegments(bar, { maxWidth: 80 });
       expect(segments.map((s) => s.text)).toEqual(["━━━━━━━━━━"]);
       expect(segments[0]?.style).toEqual(getStyle({ maxWidth: 80 }, bar.finishedStyle));
+    });
+  });
+
+  describe("pulse", () => {
+    const TRUECOLOR: RenderOptions = { maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR };
+    /** The columns drawn in a colour other than the empty bar's. */
+    const lit = (bar: ProgressBar, opts: RenderOptions): number[] => {
+      const back = getStyle(opts, bar.style).color?.name;
+      const cols: number[] = [];
+      let col = 0;
+      for (const s of collectSegments(bar, opts)) {
+        for (let i = 0; i < s.text.length; i++, col++) if (s.style?.color?.name !== back) cols.push(col);
+      }
+      return cols;
+    };
+    const centre = (cols: number[]): number => cols.reduce((a, b) => a + b, 0) / cols.length;
+
+    it("carries its band along the bar as t moves on", () => {
+      const at = (t: number) => lit(new ProgressBar({ width: 40, pulse: { t } }), TRUECOLOR);
+      const early = at(2.5);
+      const later = at(4.5);
+      expect(early.length).toBeGreaterThan(0);
+      expect(later.length).toBeGreaterThan(0);
+      expect(centre(later)).toBeGreaterThan(centre(early) + 5);
+    });
+
+    it("draws the same bytes for the same t", () => {
+      const draw = () => collectSegments(new ProgressBar({ width: 40, pulse: { t: 3 } }), TRUECOLOR);
+      expect(draw()).toEqual(draw());
+    });
+
+    it("lights the line and never the ground, even a back the colour of the terminal's", () => {
+      const black = (t: number) => new ProgressBar({ width: 40, style: "#000000", pulse: { t } });
+      const frames = Array.from({ length: 40 }, (_, i) => i * 0.5);
+      expect(frames.some((t) => lit(black(t), TRUECOLOR).length > 0)).toBe(true);
+      for (const t of frames) for (const s of collectSegments(black(t), TRUECOLOR)) expect(s.style?.bgcolor).toBeUndefined();
+    });
+
+    it("draws nothing on an output with no colour, where the back and its light cannot be drawn", () => {
+      const NO_COLOR: RenderOptions = { maxWidth: 80, colorSystem: null };
+      for (const t of [0, 3, 30]) expect(collectSegments(new ProgressBar({ width: 40, completed: 70, pulse: { t } }), NO_COLOR)).toEqual([]);
+    });
+
+    it("is the empty bar, whatever it has completed, before the first pass enters", () => {
+      const pulsing = new ProgressBar({ width: 40, completed: 70, pulse: { t: 0 } });
+      expect(collectSegments(pulsing, TRUECOLOR)).toEqual(collectSegments(new ProgressBar({ width: 40 }), TRUECOLOR));
     });
   });
 

@@ -39,6 +39,11 @@ export interface Task {
   /** When the task started, in seconds on its `Progress`'s clock; undefined until it has. */
   startTime: number | undefined;
   /**
+   * Rich's `Task.get_time()`: the moment the frame being drawn is drawn at, in
+   * seconds on its `Progress`'s clock, so a column animates without reading one.
+   */
+  time: number;
+  /**
    * Rich's `Task.elapsed`: seconds since the task started, as of the frame
    * being drawn — `Progress` reads its clock once a frame and hands columns
    * the result, so no column reads a clock. Undefined until the task starts.
@@ -78,7 +83,7 @@ const MAX_SAMPLES = 1000;
  * What `Progress` keeps of a task between frames: everything but what a frame
  * derives — `elapsed` from the clock, `speed` from the samples.
  */
-type TaskState = Omit<Task, "elapsed" | "speed"> & { readonly samples: ProgressSample[] };
+type TaskState = Omit<Task, "time" | "elapsed" | "speed"> & { readonly samples: ProgressSample[] };
 
 /**
  * Rich's `Progress.update` bookkeeping on its sample deque, in place: drop the
@@ -171,11 +176,14 @@ export class BarColumn implements ProgressColumn {
     this.barWidth = barWidth ?? 40;
   }
 
+  /** Rich's `BarColumn`: a task not yet started, or with no total to fill toward, pulses. */
   render(task: Task): ProgressBar {
+    const pulsing = task.startTime === undefined || task.total === undefined;
     return new ProgressBar({
       total: task.total ?? 100,
       completed: task.completed,
       width: this.barWidth,
+      pulse: pulsing ? { t: task.time } : undefined,
     });
   }
 }
@@ -491,7 +499,7 @@ export class Progress implements Renderable {
     }
 
     // [LAW:effects-at-boundaries] One read of the clock a frame, handed to
-    // every column as the task's `elapsed`.
+    // every column as the task's `time` and `elapsed`.
     const now = this._clock.now();
     for (const { samples, ...state } of this._tasks.values()) {
       if (!state.visible) continue;
@@ -499,6 +507,7 @@ export class Progress implements Renderable {
       const started = startTime !== undefined;
       const task: Task = {
         ...state,
+        time: now,
         elapsed: started ? now - startTime : undefined,
         speed: started ? sampleSpeed(samples) : undefined,
       };
