@@ -77,15 +77,19 @@ export default defineComponent({
     let asked = 0;
     const start = (mode: RunMode) => {
       const mine = ++asked;
+      const current = () => mine === asked;
+      // A terminal is made, and what went wrong cleared, only for the newest ask.
       void props
         .program()
         .then(async (script) => {
+          if (!current()) return;
           const { live } = await made(screen.value!);
+          if (!current()) return;
           failure.value = null;
-          if (mine === asked) live.run(script, mode);
+          live.run(script, mode);
         })
         .catch((error: unknown) => {
-          if (mine === asked) failure.value = `The live terminal could not start: ${error instanceof Error ? error.message : String(error)}`;
+          if (current()) failure.value = `The live terminal could not start: ${error instanceof Error ? error.message : String(error)}`;
         });
     };
     const stop = () => {

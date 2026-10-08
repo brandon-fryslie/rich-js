@@ -34,8 +34,7 @@ import type { CardData } from "../../docs/.vitepress/example-card.js";
 
 const compiler = new ExampleCompiler();
 const library = liveLibraryOnce();
-const runPage = (markdown: string, page = "fixture.md") => runPageExamples(compiler, page, markdown, library);
-const run = runPage;
+const run = (markdown: string, page = "fixture.md") => runPageExamples(compiler, page, markdown, library);
 
 /** What a live program writes, run to the end of its body in the example terminal. */
 async function liveOutput(script: string): Promise<string> {
@@ -345,6 +344,17 @@ describe("a live block", () => {
   it.each(["../src/renderables/panel.js", "@promptctl/rich-js/node/save", "../src/index.js"])("refuses a block importing %s, which the library does not hold", async (specifier) => {
     const deep = `import * as m from "${specifier}";\nconsole.print(Object.keys(m));`;
     await expect(run(page("# t", fence(deep, "ts live")))).rejects.toThrow(`fixture.md:3: a live example cannot import ${specifier}; it may import`);
+  });
+
+  it("refuses a block the browser cannot run, import.meta among it", async () => {
+    await expect(run(page("# t", fence("console.print(String(import.meta.url));", "ts live")))).rejects.toThrow(
+      /fixture\.md:3: "Try it" opens this block as the program below, which the browser cannot run: .*import\.meta/,
+    );
+  });
+
+  it("runs a block importing only a type from a module the library does not hold, which Sucrase removes", async () => {
+    const typed = 'import type { Stats } from "node:fs";\nconst size = (stats: Stats) => stats.size;\nconsole.print(typeof size);';
+    expect(await liveCardOutput(liveCards(await run(page("# t", fence(typed, "ts live"))))[0]!)).toContain("function");
   });
 
   it("refuses a block importing a default export, which no module in the library has", async () => {

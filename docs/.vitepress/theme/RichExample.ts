@@ -232,10 +232,11 @@ function staticOutlet(card: Extract<CardData, { readonly run: "build" }>, root: 
  * the terminal running the last that did.
  */
 function liveOutlet(card: Extract<CardData, { readonly run: "browser" }>): Outlet {
-  const pageProgram = async () => {
+  // Made once and kept: each scroll into view and each Restart asks for it.
+  const pageProgram = loader(async () => {
     const made = await programs();
     return made.playgroundScript(cardSource(card.setup, card.code), made.library);
-  };
+  });
   const running = shallowRef<{ readonly code: string; readonly program: () => Promise<string> }>({ code: card.code, program: pageProgram });
   return {
     code: () => running.value.code,
@@ -243,9 +244,15 @@ function liveOutlet(card: Extract<CardData, { readonly run: "browser" }>): Outle
     columns: () => card.columns,
     body: () => [h(LiveScreen, { program: running.value.program })],
     async show(source, current) {
+      if (source === card.code) {
+        running.value = { code: source, program: pageProgram };
+        return SHOWN;
+      }
       const made = await programs();
       const program = made.playgroundProgram(cardSource(card.setup, source), made.library);
-      if (program.kind === "refused") return { kind: "failed", said: crashSaid(program.report, made.thrownAt), namesLine: true };
+      if (program.kind === "refused") {
+        return { kind: "failed", said: crashSaid(program.report, made.thrownAt), namesLine: made.thrownAt(program.report) !== null };
+      }
       if (current()) running.value = { code: source, program: () => Promise.resolve(program.script) };
       return SHOWN;
     },
@@ -302,7 +309,8 @@ function editableView(card: EditableCard, slots: Slots): () => VNode {
     const mine = ++turn;
     clearTimeout(pending);
     void link(source, mine);
-    pending = setTimeout(() => void show(source, mine), RUN_AFTER_MS);
+    // The page's code runs nothing new, so a reset shows the page's output at once.
+    pending = setTimeout(() => void show(source, mine), source === card.code ? 0 : RUN_AFTER_MS);
   }
 
   /** Put the editor in the fence's place, its cursor at `at` on screen, or at the start. */

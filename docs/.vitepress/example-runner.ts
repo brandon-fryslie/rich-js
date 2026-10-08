@@ -78,7 +78,7 @@ import { runInTerminal, type SimulatedTerminal } from "./simulated-process.js";
 import { LIBRARY_BINDING } from "./live-library.js";
 import { standalonePrograms, type Checked, type Standalone } from "./example-slice.js";
 import { encodeProgram } from "./playground-hash.js";
-import { playgroundScript } from "./theme/playground-program.js";
+import { playgroundProgram, playgroundScript } from "./theme/playground-program.js";
 
 const PROGRAM_FILE = path.join(REPO_ROOT, "docs", "__docs-example__.ts");
 
@@ -585,7 +585,7 @@ async function bundleLiveLibrary(): Promise<LiveLibrary> {
   return { id: hash(script), script };
 }
 
-/** Whether `node` is an `import()` or `import.meta`, which a program run as a function body cannot evaluate. */
+/** Whether `node` is an `import()` or `import.meta`, which a bundled program, run as a function body, cannot evaluate. */
 const isModuleOnly = (node: ts.Node): boolean =>
   (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) ||
   (ts.isMetaProperty(node) && node.keywordToken === ts.SyntaxKind.ImportKeyword);
@@ -595,8 +595,8 @@ const isModuleOnly = (node: ts.Node): boolean =>
  * cannot answer: of a module it does not hold, or of a default export, which
  * no module in it has.
  *
- * [LAW:single-enforcer] A bundled live program (`bundleOnLibrary`) and a live
- * card's program (`refuseOffLibraryImports`) are both held to it here.
+ * [LAW:single-enforcer] A bundled live program (`bundleOnLibrary`) and a
+ * program the browser compiles (`refuseUnrunnable`) are both held to it here.
  */
 function refuseOffLibrary(at: string, specifier: string, clause: ts.ImportClause | undefined): void {
   if (!LIVE_LIBRARY_PACKAGES.includes(specifier)) {
@@ -606,23 +606,33 @@ function refuseOffLibrary(at: string, specifier: string, clause: ts.ImportClause
 }
 
 /**
- * Refuse a live card's program, TypeScript run in the browser as the
- * playground runs it, that imports what the live library does not hold: there
- * every import is a `require` over that library (theme/playground-program.ts),
- * and nothing runs the program before a reader does.
+ * Refuse a program a live block is opened as, which the browser compiles and
+ * runs (theme/playground-program.ts) and nothing runs before a reader does:
+ * one that compile refuses, and one that requires what the live library does
+ * not hold. What it requires is read off the compiled code, where Sucrase has
+ * made each import whose bindings are read as values a `require`, `import()`
+ * included, and dropped the rest. A default import is read off the source,
+ * which is where it says so.
  */
-function refuseOffLibraryImports(at: string, source: string): void {
-  const file = ts.createSourceFile("card.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const visit = (node: ts.Node): void => {
-    if (ts.isImportDeclaration(node)) refuseOffLibrary(at, (node.moduleSpecifier as ts.StringLiteral).text, node.importClause);
-    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+function refuseUnrunnable(at: string, { by, source }: Opened, library: string): void {
+  const compiled = playgroundProgram(source, library);
+  if (compiled.kind === "refused") throw new Error(`${at}: ${OPENS[by]}, which the browser cannot run: ${compiled.message}\n${source}`);
+  const requires = (node: ts.Node): void => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "require") {
       const [specifier] = node.arguments;
       if (specifier === undefined || !ts.isStringLiteral(specifier)) throw new Error(`${at}: a live example imports a module only by its name, written out`);
       refuseOffLibrary(at, specifier.text, undefined);
     }
-    ts.forEachChild(node, visit);
+    ts.forEachChild(node, requires);
   };
-  visit(file);
+  requires(ts.createSourceFile("card.js", compiled.code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS));
+  const defaults = (node: ts.Node): void => {
+    if (ts.isImportDeclaration(node) && node.importClause?.name !== undefined && !node.importClause.isTypeOnly) {
+      refuseOffLibrary(at, (node.moduleSpecifier as ts.StringLiteral).text, node.importClause);
+    }
+    ts.forEachChild(node, defaults);
+  };
+  defaults(ts.createSourceFile("card.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS));
 }
 
 /**
@@ -790,7 +800,7 @@ export async function runPageExamples(
   }
   for (const [fence, standalone] of tried) {
     if (MARKERS[fence.marker].run === "browser") {
-      for (const { source } of openedAs(fence, standalone)) refuseOffLibraryImports(`docs/${page}:${fence.line}`, source);
+      for (const opened of openedAs(fence, standalone)) refuseUnrunnable(`docs/${page}:${fence.line}`, opened, shared.script);
     }
   }
   const playground = playgroundHref(page);

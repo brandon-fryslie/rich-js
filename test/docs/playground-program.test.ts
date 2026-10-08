@@ -10,7 +10,7 @@ import stripAnsi from "strip-ansi";
 import { liveLibraryOnce } from "../../docs/.vitepress/example-runner.js";
 import { runInTerminal } from "../../docs/.vitepress/simulated-process.js";
 import { EXAMPLE_TERMINAL } from "../../docs/.vitepress/example-terminal.js";
-import { PLAYGROUND_SOURCE, playgroundScript } from "../../docs/.vitepress/theme/playground-program.js";
+import { PLAYGROUND_SOURCE, playgroundProgram, playgroundScript } from "../../docs/.vitepress/theme/playground-program.js";
 
 const library = liveLibraryOnce();
 
@@ -63,6 +63,16 @@ describe("the playground's program", { timeout: 60_000 }, () => {
     expect(output).toBe("");
     expect(error).toBeInstanceOf(SyntaxError);
     expect(lines(error)).toEqual([2]);
+  });
+
+  it("refuses import.meta, which Sucrase passes and only a module may say, and runs nothing", async () => {
+    expect(playgroundProgram('process.stdout.write("ran");\nprocess.stdout.write(String(import.meta.url));', "")).toMatchObject({
+      kind: "refused",
+      report: expect.stringMatching(/^SyntaxError: .*import\.meta/),
+    });
+    const { output, error } = await play('process.stdout.write("ran");\nprocess.stdout.write(String(import.meta.url));');
+    expect(output).toBe("");
+    expect(error).toBeInstanceOf(SyntaxError);
   });
 
   it("reports a thrown error at the line that threw", async () => {

@@ -86,10 +86,11 @@ export function thrownAt(report: string): number | null {
 
 /**
  * A visitor's program as a live terminal takes it: the script that runs it,
- * or, for code that does not parse, the report a run of it would crash with.
+ * or, for code that does not parse, the report a run of it would crash with,
+ * naming the line when the parse that failed knows it.
  */
 export type PlaygroundProgram =
-  | { readonly kind: "runs"; readonly script: string }
+  | { readonly kind: "runs"; readonly script: string; /** The visitor's code as compiled, each import it runs a `require`. */ readonly code: string }
   | { readonly kind: "refused"; readonly message: string; readonly report: string };
 
 /**
@@ -105,6 +106,16 @@ export function playgroundProgram(source: string, library: string): PlaygroundPr
     return { kind: "refused", message, report: `SyntaxError: ${message}\n    at ${PLAYGROUND_SOURCE}:${line}:${column}` };
   }
   const evaluated = `(async () => {${compiled.code}\n})\n//# sourceURL=${PLAYGROUND_SOURCE}`;
+  // [LAW:single-enforcer] Sucrase passes what only a module may say,
+  // `import.meta`, and the eval then refuses it. The eval's own parser is asked
+  // here, running nothing, so an edit and the build (example-runner.ts) are
+  // refused the one way.
+  try {
+    new Function(evaluated);
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    return { kind: "refused", message: error.message, report: `SyntaxError: ${error.message}` };
+  }
   const script = [
     library,
     `const require = (${requireFrom})(${LIBRARY_BINDING});`,
@@ -113,7 +124,7 @@ export function playgroundProgram(source: string, library: string): PlaygroundPr
     "const exports = {};",
     `await eval(${JSON.stringify(evaluated)})();`,
   ].join("\n");
-  return { kind: "runs", script };
+  return { kind: "runs", script, code: compiled.code };
 }
 
 /**

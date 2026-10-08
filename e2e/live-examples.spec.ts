@@ -185,6 +185,12 @@ test("an edit restarts a live example on the edited code", async ({ page }) => {
   await expect.poll(() => rows(live), { timeout: 20_000 }).toContain("An edited line");
   await expect(card.locator(".rich-example-failure")).toHaveCount(0);
   await expect(card.locator(".rich-example-output")).not.toHaveClass(/rich-example-stale/);
+
+  // Reset puts the page's program back, and the terminal runs it from the start.
+  await card.locator(".rich-example-reset").click();
+  await expect(card.locator(".rich-example-edited")).toHaveCount(0);
+  await expect.poll(() => percent(live)).toBeLessThan(100);
+  expect(await rows(live)).not.toContain("An edited line");
   expect(errors).toEqual([]);
 });
 
