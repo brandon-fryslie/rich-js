@@ -4,15 +4,22 @@
     {
       "version": "pr-361",
       "ref": "refs/pull/361/merge",
-      "sha": "d3f5488485caed54bdf684e965034fc3d61e307c",
-      "timestamp": "2026-10-08T22:22:46.975Z",
+      "sha": "93bee464920ff29789f700fd3931dfafa2390a3f",
+      "timestamp": "2026-10-08T22:38:25.467Z",
       "commits": [
         {
-          "sha": "d3f5488485caed54bdf684e965034fc3d61e307c",
+          "sha": "93bee464920ff29789f700fd3931dfafa2390a3f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T16:21:41-06:00",
-          "message": "Merge c6e04ffa7444e6532bed1cf27fa6feb1b40ed108 into 4a2c5c12ad497c59b5f1c6941187c48dc658d383\n"
+          "timestamp": "2026-10-08T22:36:52Z",
+          "message": "Merge 5c8ba8da25601eace52381cd177c1926dd3bc586 into 4a2c5c12ad497c59b5f1c6941187c48dc658d383\n"
+        },
+        {
+          "sha": "5c8ba8da25601eace52381cd177c1926dd3bc586",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T16:36:48-06:00",
+          "message": "fix(docs): import.meta reads only hot, a program version has a file, one Sucrase parser on the page (rich-example-card-b5rz.auo)\n\n- Any read of import.meta but .hot is refused at its line, as a syntax\n  error is, rather than undefined in the browser and a value in Node.\n- Docs fences type-check against import.meta.hot, which every docs\n  terminal binds.\n- Version = readonly [RunFile, ...RunFile[]] at every seam; a bundled\n  script has files: null, and an edit of it restarts it.\n- The page aliases Sucrase's parser to its ES build: the playground chunk\n  carries one parser, 365 KB -> 209 KB.\n- The bundled-path refusal names the construct it refuses.\n- Hot-replacement tests stop their 1 ms timers.\n"
         },
         {
           "sha": "c6e04ffa7444e6532bed1cf27fa6feb1b40ed108",
