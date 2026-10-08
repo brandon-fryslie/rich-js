@@ -181,3 +181,18 @@ test("a card's setup is one strip while it has focus, the code does not move for
   await expect(card.locator(".rich-example-edited")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test("a click above a card's code opens it folded, and an error's line is counted in the setup it shows", async ({ page }) => {
+  const errors = await open(page, "tables.html");
+  const card = page.locator(".rich-example-card").filter({ hasText: "const scores" });
+  await expect(card).toHaveClass(/rich-example-editable/, { timeout: 10_000 });
+  // The fence's top padding, above its first line.
+  await card.locator("pre.shiki").click({ position: { x: 40, y: 5 } });
+  await expect(card.locator(".cm-content")).toBeFocused({ timeout: 10_000 });
+  await expect(card.locator(".rich-setup-strip")).toBeVisible();
+  await page.keyboard.type("throw new RangeError(\"edited\");\n");
+  // Two lines of setup, each with the blank line under it: the block's first line is the program's fifth.
+  await expect(card.locator(".rich-example-failure")).toHaveText(/RangeError: edited \(line 5\)$/, { timeout: 15_000 });
+  await expect(card.locator(".rich-setup-label")).toHaveCount(2);
+  expect(errors).toEqual([]);
+});

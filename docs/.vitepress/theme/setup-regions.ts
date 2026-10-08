@@ -29,6 +29,9 @@ export type SetupStart = "folded" | "unfolded";
 
 const unfold = StateEffect.define<null>();
 
+/** Show the setup of the card in `view`, as a click on its strip does. */
+export const unfoldSetup = (view: EditorView): void => view.dispatch({ effects: unfold.of(null) });
+
 /** The strip a folded setup is drawn as; a click on it unfolds the setup. */
 class Strip extends WidgetType {
   constructor(readonly lines: number) {
@@ -48,7 +51,7 @@ class Strip extends WidgetType {
     strip.textContent = `▸ ${this.lines} line${this.lines === 1 ? "" : "s"} of setup`;
     // A press keeps the editor's focus, so the setup unfolds in a card still being edited.
     strip.addEventListener("mousedown", (event) => event.preventDefault());
-    strip.addEventListener("click", () => view.dispatch({ effects: unfold.of(null) }));
+    strip.addEventListener("click", () => unfoldSetup(view));
     return fold;
   }
   override ignoreEvent(): boolean {

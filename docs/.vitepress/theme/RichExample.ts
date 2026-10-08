@@ -87,7 +87,7 @@ const editorModules = loader(() =>
 type Code =
   | { readonly kind: "fence"; readonly refused: string | null }
   | { readonly kind: "opening" }
-  | { readonly kind: "editor"; readonly view: EditorView }
+  | { readonly kind: "editor"; readonly view: EditorView; readonly unfoldSetup: () => void }
   | { readonly kind: "unmounted" };
 
 const message = (error: unknown): string => (error instanceof Error ? error.message : String(error));
@@ -121,7 +121,8 @@ export default defineComponent({
       switch (end.kind) {
         case "threw": {
           const at = thrownAt(end.report);
-          // The editor holds the whole program, so the program's line is the reader's.
+          // The editor holds the whole program, so the program's line is the
+          // reader's once the setup it counts is shown (`run`).
           const headline = end.report.split("\n")[0]!;
           return at === null ? headline : `${headline} (line ${at})`;
         }
@@ -155,6 +156,9 @@ export default defineComponent({
           failure.value = null;
         } else {
           failure.value = failed(end, made.thrownAt);
+          // A thrown error's line counts the setup's lines, so they are put in view.
+          const now = code.value;
+          if (end.kind === "threw" && now.kind === "editor") now.unfoldSetup();
         }
       } catch (error) {
         if (mine === turn) failure.value = `The example could not run: ${message(error)}`;
@@ -195,7 +199,7 @@ export default defineComponent({
         return null;
       });
       if (modules === null) return;
-      const [{ createEditor }, { EditorView: View }, { Prec }, { setupRegions }] = modules;
+      const [{ createEditor }, { EditorView: View }, { Prec }, { setupRegions, unfoldSetup }] = modules;
       await nextTick();
       // The card may have left the page while the editor loaded.
       if (code.value.kind !== "opening") return;
@@ -216,10 +220,14 @@ export default defineComponent({
           }),
         ),
       ]);
-      code.value = { kind: "editor", view };
+      code.value = { kind: "editor", view, unfoldSetup: () => unfoldSetup(view) };
       await nextTick();
-      const start = blockSpan(setup).before;
-      const anchor = at === null ? start : (view.posAtCoords(at) ?? start);
+      // The cursor starts in the block, where the click was or nearest it: a
+      // click in the space above the code is a click on its first line.
+      const span = blockSpan(setup);
+      const start = span.before;
+      const end = view.state.doc.length - span.after;
+      const anchor = at === null ? start : Math.min(Math.max(view.posAtCoords(at) ?? start, start), end);
       view.dispatch({ selection: { anchor } });
       view.focus();
     }
