@@ -19,7 +19,7 @@ import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "../example-terminal.js";
 import { decodeProgram, encodeProgram } from "../playground-hash.js";
 import { LiveTerminal, READABLE_CONTRAST, elementFont, type LiveState, type RunMode } from "./live-terminal.js";
 import { playgroundScript } from "./playground-program.js";
-import { createEditor } from "./playground-editor.js";
+import { PROGRAM_PANE, createEditor } from "./playground-editor.js";
 
 /**
  * How long typing must pause before the link is written. Browsers refuse
@@ -108,7 +108,7 @@ export default defineComponent({
         );
       };
       const run = (mode: RunMode) => live.run(playgroundScript(editor.state.doc.toString(), playground.library), mode);
-      const editor = createEditor(parent, source, { change: remember, run: () => run("live") });
+      const editor = createEditor(parent, source, { change: remember, run: () => run("live") }, PROGRAM_PANE);
       // A playground link opened in this tab changes only the hash: the page
       // stays, and opens the link's program as a fresh page would.
       const followed = () => {

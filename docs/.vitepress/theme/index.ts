@@ -5,6 +5,7 @@ import { defineAsyncComponent, h } from 'vue'
 import './code-font.css'
 import './custom.css'
 import { trackDevicePixelRatio } from './device-pixel-ratio.js'
+import RichExample from './RichExample.js'
 
 const RichShowcase = defineAsyncComponent(() => import('./RichShowcase.js'))
 
@@ -19,5 +20,8 @@ export default {
     // never loads the live terminal, and only the playground loads the editor.
     app.component('RichLive', defineAsyncComponent(() => import('./RichLive.js')))
     app.component('RichPlayground', defineAsyncComponent(() => import('./RichPlayground.js')))
+    // Not async: nearly every page has one, and it is the page's own card
+    // until a reader edits it. What editing needs it loads itself.
+    app.component('RichExample', RichExample)
   },
 } satisfies Theme

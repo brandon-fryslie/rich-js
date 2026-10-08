@@ -50,7 +50,8 @@ function compile(source: string): Compiled {
     // [LAW:no-silent-failure] Only a parse error is the visitor's; anything
     // else Sucrase throws is a fault here, and stays one.
     if (!isParseError(error)) throw error;
-    return { kind: "refused", message: error.message, line: error.loc.line, column: error.loc.column };
+    // Sucrase ends its message with where, which the stack says already.
+    return { kind: "refused", message: error.message.replace(/ \(\d+:\d+\)$/, ""), line: error.loc.line, column: error.loc.column };
   }
 }
 
@@ -67,6 +68,19 @@ function requireFrom(library: Readonly<Record<string, object>>): (specifier: str
     }
     return module;
   };
+}
+
+const FRAME = new RegExp(`${PLAYGROUND_SOURCE.replace(".", "\\.")}:(\\d+):\\d+`);
+
+/**
+ * The line of the visitor's code a failure's report names first: the
+ * innermost frame of the stack that is the visitor's, every engine writing a
+ * frame as the source's name, its line and its column. `null` when no frame
+ * is theirs, as for a failure raised wholly inside the library.
+ */
+export function thrownAt(report: string): number | null {
+  const frame = FRAME.exec(report);
+  return frame === null ? null : Number(frame[1]);
 }
 
 /** The script that runs `source`, a visitor's TypeScript, on `library`, the live library's script. */

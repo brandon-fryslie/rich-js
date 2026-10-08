@@ -20,8 +20,9 @@
  *   4. run it once under the simulated process, in one fixed terminal;
  *   5. cut the captured bytes into per-block output and hold each block to
  *      what its marker promised;
- *   6. decode each block's bytes (`decodeAnsi`, colours kept as emitted) and
- *      encode them twice, as a light and a dark fragment;
+ *   6. draw each block's bytes as a light and a dark fragment
+ *      (example-fragments.ts); a static block's become its editable card's
+ *      (example-card.ts), the rest are written under the fence;
  *   7. bundle each `live` block's program from step 2 on
  *      the one library every live block shares (`LiveLibrary`), which the
  *      page imports as a module when its live terminal (theme/RichLive.ts)
@@ -29,7 +30,7 @@
  *   8. cut each block that runs into a program of its own (example-slice.ts),
  *      type-check it and link it from the block's "Try it"; a block of the
  *      chain's is also run as the playground runs it and held to the block's
- *      output.
+ *      output, and a static block's card program with it.
  *
  * [LAW:no-silent-failure] Every failure throws and fails the build, naming the
  * page, and the line when one line is to blame.
@@ -43,9 +44,10 @@ import path from "node:path";
 import { ENTRY_BY_SPECIFIER, PACKAGE_MANIFEST, REPO_ROOT, listTypeScriptFiles, loadCompilerOptions } from "../../scripts/repo-facts.js";
 import { resolveAlias } from "../../scripts/resolve-alias.js";
 import { tscTransform } from "../../scripts/tsc-transform.js";
-import { Segment, decodeAnsi, osc8Sequences } from "../../src/index.js";
-import { encodeHtmlFragment } from "../../src/core/export-html.js";
-import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "./example-terminal.js";
+import { osc8Sequences } from "../../src/index.js";
+import { EXAMPLE_TERMINAL, STATIC_RUN_LIMIT_MS } from "./example-terminal.js";
+import { drawOutput } from "./example-fragments.js";
+import { cardSource, type CardData } from "./example-card.js";
 import {
   MARKERS,
   frontmatterEnd,
@@ -74,7 +76,7 @@ import {
 } from "./example-program.js";
 import { runInTerminal, type SimulatedTerminal } from "./simulated-process.js";
 import { LIBRARY_BINDING } from "./live-library.js";
-import { standalonePrograms, type Checked } from "./example-slice.js";
+import { aroundBlock, standalonePrograms, type Checked } from "./example-slice.js";
 import { encodeProgram } from "./playground-hash.js";
 import { playgroundScript } from "./theme/playground-program.js";
 
@@ -313,13 +315,6 @@ async function bundle(entry: Entry, shape: BundleShape): Promise<Bundled> {
   return { code: chunks[0]!.code, modules: chunks[0]!.moduleIds.filter((id) => id !== entry.file && !id.startsWith("\0")) };
 }
 
-/**
- * How long a static example may run. Its point is what it prints, not when;
- * one that waits on something is `live`. This catches a run that waits, not
- * one that spins: a synchronous loop never yields to the timer.
- */
-const RUN_DEADLINE_MS = 5_000;
-
 type RunEnd = { readonly kind: "finished" } | { readonly kind: "threw"; readonly error: unknown } | { readonly kind: "stalled" };
 
 /**
@@ -382,7 +377,7 @@ async function capture(script: string, world: World): Promise<{ stream: string; 
       (error: unknown): RunEnd => ({ kind: "threw", error: error ?? new Error("the example rejected with no reason") }),
     ),
     new Promise<RunEnd>((resolve) => {
-      timer = setTimeout(() => resolve({ kind: "stalled" }), RUN_DEADLINE_MS);
+      timer = setTimeout(() => resolve({ kind: "stalled" }), STATIC_RUN_LIMIT_MS);
     }),
   ]);
   clearTimeout(timer);
@@ -424,14 +419,6 @@ function stoppedAt(page: string, context: ExampleContext | null, chain: readonly
   return failed === undefined ? `docs/${page}` : `docs/${page}:${failed.line}`;
 }
 
-/** Decoded bytes, drawn once per site colour mode, and the cells their widest row takes. */
-function fragments(bytes: string): { light: string; dark: string; columns: number } {
-  const text = decodeAnsi(bytes, { noWrap: true });
-  const segments: Segment[] = [...text.render({ maxWidth: EXAMPLE_TERMINAL.columns, isTerminal: false, asciiOnly: false })];
-  const [columns] = Segment.getShape(Segment.splitLines(segments));
-  return { light: encodeHtmlFragment(segments, EXAMPLE_THEMES.light), dark: encodeHtmlFragment(segments, EXAMPLE_THEMES.dark), columns };
-}
-
 /**
  * What a block shows under its code: nothing (its note stands there), the
  * bytes it printed at build time, or a live terminal running the program the
@@ -453,7 +440,7 @@ function shownHtml(shown: Shown): { html: string; columns: number | null } {
     case "nothing":
       return { html: "", columns: null };
     case "bytes": {
-      const { light, dark, columns } = fragments(shown.bytes);
+      const { light, dark, columns } = drawOutput(shown.bytes);
       return { html: `<div class="rich-example-light" v-pre>${light}</div><div class="rich-example-dark" v-pre>${dark}</div>`, columns };
     }
     case "live":
@@ -560,6 +547,13 @@ async function bundleOrThrow(where: string, entry: Entry, shape: BundleShape = {
  */
 export const PLAYGROUND_MODULE = `${LIVE_MODULE_PREFIX}playground`;
 
+/**
+ * The module whose default export is the live library's script, for a page
+ * that runs programs on it without a live block of its own to import it
+ * through: an editable card running a reader's edit (theme/RichExample.ts).
+ */
+export const LIBRARY_MODULE = `${LIVE_MODULE_PREFIX}library`;
+
 /** The page whose first TypeScript block the playground opens on. */
 export const PLAYGROUND_START_PAGE = "introduction.md";
 
@@ -592,17 +586,30 @@ function playgroundHref(page: string): string {
 }
 
 /**
- * Hold a block's "Try it" program to what the page shows for the block: run
- * the way the playground runs it, on the live library, it writes the bytes the
- * block wrote in the page's chain and ends the way the block ended.
+ * Who runs a block as a program of its own: "Try it", which opens its program
+ * in the playground, and a static block's editable card, which runs that
+ * program around whatever its editor holds (example-card.ts).
+ */
+type Opener = { readonly by: "try it" } | { readonly by: "card"; readonly code: string };
+
+const OPENS: Record<Opener["by"], string> = {
+  "try it": `"Try it" opens this block as the program below`,
+  card: "this block's editable card runs it as the program below",
+};
+
+/**
+ * Hold a program a block is opened as to what the page shows for the block:
+ * run the way the playground runs it, on the live library, it writes the bytes
+ * the block wrote in the page's chain and ends the way the block ended.
  *
  * [LAW:verifiable-goals] The program is cut from the page by what its names
  * refer to (example-slice.ts), and that reading can miss a statement the
  * block's output depends on. A miss fails here, at the block, rather than in
  * front of a reader.
  */
-async function tryItPrints(fence: Fence, standalone: ExampleProgram, record: BlockRecord, shared: LiveLibrary, world: World): Promise<void> {
-  const { stream, end, exits } = await capture(playgroundScript(standalone.source, shared.script), world);
+async function tryItPrints(fence: Fence, opener: Opener, standalone: ExampleProgram, record: BlockRecord, shared: LiveLibrary, world: World): Promise<void> {
+  const source = opener.by === "card" ? cardSource(aroundBlock(standalone), opener.code) : standalone.source;
+  const { stream, end, exits } = await capture(playgroundScript(source, shared.script), world);
   // How each ended, a throw by the line the page shows for it.
   const ended = end.kind === "finished" ? "completed" : end.kind === "threw" ? `threw ${thrownLine(end.error)}` : end.kind;
   const expected = record.ended.kind === "threw" ? `threw ${record.ended.line}` : record.ended.kind;
@@ -610,12 +617,12 @@ async function tryItPrints(fence: Fence, standalone: ExampleProgram, record: Blo
   let from = 0;
   while (from < stream.length && stream[from] === record.output[from]) from += 1;
   throw new Error(
-    `docs/${fence.page}:${fence.line}: "Try it" opens this block as the program below, which ${ended} ` +
+    `docs/${fence.page}:${fence.line}: ${OPENS[opener.by]}, which ${ended} ` +
       `where the page's run of the block ${expected}, writing ${JSON.stringify(stream.slice(from, from + 60))} ` +
       `where the page shows ${JSON.stringify(record.output.slice(from, from + 60))}. ` +
       `The program is the block and what example-slice.ts carries from above it, so the difference is a statement above ` +
       `the block that it leaves out, one it carries that prints, or random numbers the block draws after a block above it ` +
-      `drew some, which the program draws afresh.\n${standalone.source}`,
+      `drew some, which the program draws afresh.\n${source}`,
     { cause: end.kind === "threw" ? end.error : undefined },
   );
 }
@@ -738,7 +745,7 @@ function scriptLine(page: string, markdown: string, blocks: readonly Block[]): n
   const clash = lines.findIndex(
     (line, i) => /^<script\b[^>]*\bsetup\b/.test(line) && !blocks.some((b) => b.line <= i + 1 && i + 1 <= b.closeLine),
   );
-  if (clash !== -1) throw new Error(`docs/${page}:${clash + 1}: a page with a live example cannot have its own <script setup>`);
+  if (clash !== -1) throw new Error(`docs/${page}:${clash + 1}: a page with a live example or an editable card cannot have its own <script setup>`);
   return frontmatterEnd(lines) + 1;
 }
 
@@ -758,6 +765,9 @@ function refuseCutOff(fences: readonly Fence[]): void {
     }
   }
 }
+
+/** Whether a block is an editable card (theme/RichExample.ts): for now, a static one. */
+const isCard = (fence: Fence): boolean => fence.marker === "static";
 
 /** `markdown` with each executed or exempt example's output written under its fence. */
 export async function runPageExamples(
@@ -804,7 +814,7 @@ export async function runPageExamples(
   const records = splitRecords(stream);
   if (end.kind !== "finished") {
     const where = stoppedAt(page, context, chain, records.length);
-    if (end.kind === "stalled") throw new Error(`${where}: the example did not finish within ${RUN_DEADLINE_MS / 1000} s; mark it \`live\``);
+    if (end.kind === "stalled") throw new Error(`${where}: the example did not finish within ${STATIC_RUN_LIMIT_MS / 1000} s; mark it \`live\``);
     throw new Error(`${where}: the example threw ${String(end.error)}`, { cause: end.error });
   }
   const [prelude, contextRecord, ...blocks] = records as [BlockRecord, BlockRecord, ...BlockRecord[]];
@@ -816,7 +826,10 @@ export async function runPageExamples(
   }
   const bytes = new Map<Fence, string | null>(chain.map((fence, i) => [fence, blockBytes(fence, blocks[i]!)]));
   const shared = await library();
-  for (const [i, fence] of chain.entries()) await tryItPrints(fence, tried.get(fence)!, blocks[i]!, shared, world);
+  for (const [i, fence] of chain.entries()) {
+    const openers: Opener[] = [{ by: "try it" }, ...(isCard(fence) ? [{ by: "card", code: fence.code } as const] : [])];
+    for (const opener of openers) await tryItPrints(fence, opener, tried.get(fence)!, blocks[i]!, shared, world);
+  }
   const links = new Map<Fence, string>(
     await Promise.all([...tried].map(async ([fence, standalone]) => [fence, `${playgroundHref(page)}#${await encodeProgram(standalone.source)}`] as const)),
   );
@@ -830,25 +843,44 @@ export async function runPageExamples(
     const printed = bytes.get(fence) ?? null;
     return printed === null ? { kind: "nothing" } : { kind: "bytes", bytes: printed };
   };
+  // A static block is an editable card, its data a constant of the page's
+  // script. `<` is escaped so no string in it can close the script.
+  const cards = new Map<Fence, { readonly binding: string; readonly data: CardData }>(
+    chain.filter(isCard).map((fence, i) => {
+      const { label, caption } = MARKERS[fence.marker];
+      const data: CardData = { code: fence.code, setup: aroundBlock(tried.get(fence)!), output: drawOutput(bytes.get(fence)!), label, caption, tryIt: links.get(fence)! };
+      return [fence, { binding: `__richCard_${i}`, data }];
+    }),
+  );
+  const around = (fence: Fence): { readonly open: string; readonly close: readonly string[] } => {
+    const card = cards.get(fence);
+    return card === undefined
+      ? { open: '<div class="rich-example">', close: [outputHtml(fence, shown(fence), links.get(fence) ?? null), "", "</div>"] }
+      : { open: `<RichExample :card="${card.binding}">`, close: ["</RichExample>"] };
+  };
 
   const lines = pageLines(markdown);
-  // The widget: the fence, untouched for VitePress to highlight, and its output
-  // beneath, both inside one element the theme draws as a single card. Every
-  // piece of HTML stands between blank lines, because markdown's HTML block
-  // runs to the next blank line: without them the fence would not be parsed as
-  // a fence, and prose written straight under it would be swallowed.
+  // The widget: the fence, untouched for VitePress to highlight, inside one
+  // element the theme draws as a single card: the card component, or an
+  // element with the output written beneath the fence. Every piece of HTML
+  // stands between blank lines, because markdown's HTML block runs to the next
+  // blank line: without them the fence would not be parsed as a fence, and
+  // prose written straight under it would be swallowed. A component's slot is
+  // markdown the same way.
   for (const fence of [...fences].reverse()) {
-    lines.splice(fence.closeLine, 0, "", outputHtml(fence, shown(fence), links.get(fence) ?? null), "", "</div>", "");
-    lines.splice(fence.line - 1, 0, "", '<div class="rich-example">', "");
+    const { open, close } = around(fence);
+    lines.splice(fence.closeLine, 0, "", ...close, "");
+    lines.splice(fence.line - 1, 0, "", open, "");
   }
   // Each live program is a module of its own, imported only when its terminal
   // asks for it: a reader who never scrolls to one never downloads it.
   // Two blocks with the same program share one module and one binding.
   const modules = [...new Map(programs.map((p) => [p.id, p])).values()];
-  if (modules.length > 0) {
-    const imports = modules.map((p) => `const ${binding(p)} = () => import(${JSON.stringify(LIVE_MODULE_PREFIX + p.id)});`);
-    lines.splice(scriptLine(page, markdown, scanned), 0, "", "<script setup>", ...imports, "</script>", "");
-  }
+  const pageScript = [
+    ...modules.map((p) => `const ${binding(p)} = () => import(${JSON.stringify(LIVE_MODULE_PREFIX + p.id)});`),
+    ...[...cards.values()].map(({ binding, data }) => `const ${binding} = ${JSON.stringify(data).replaceAll("<", "\\u003c")};`),
+  ];
+  if (pageScript.length > 0) lines.splice(scriptLine(page, markdown, scanned), 0, "", "<script setup>", ...pageScript, "</script>", "");
   return { markdown: lines.join("\n"), live: modules };
 }
 
@@ -945,6 +977,15 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
         // Imported from the same module the live examples import, so the site bundles the library once.
         const shared = await libraryAt(stamp())();
         return `import library from ${serveLibrary(shared)};\nexport { library };\nexport const start = ${JSON.stringify(start)};`;
+      }
+      if (id === `\0${LIBRARY_MODULE}`) {
+        // Imported by the card component, not by a page this plugin
+        // transforms, so only these watches rebuild it in `docs:dev`. It
+        // re-exports the module the live examples import, so the site
+        // bundles the library once.
+        listTypeScriptFiles("src").forEach((file) => this.addWatchFile(file));
+        const shared = await libraryAt(stamp())();
+        return `export { default } from ${serveLibrary(shared)};`;
       }
       if (id === `\0${SHOWCASE_MODULE}`) {
         // Imported by the landing page's hero, not by a page this plugin

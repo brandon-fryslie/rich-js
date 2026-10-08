@@ -79,10 +79,11 @@
 }
 
 /* ─── Example widget: code and the output it produces, one card ─────
- * docs/.vitepress/example-runner.ts writes the markup: a `.rich-example`
- * around VitePress's own code block, and under it the output panel — a label
- * strip naming where the output came from, then the output (a light and a
- * dark fragment, one shown per colour mode) or a note in its place.
+ * A `.rich-example` around VitePress's own code block, and under it the output
+ * panel — a label strip naming where the output came from, then the output (a
+ * light and a dark fragment, one shown per colour mode) or a note in its
+ * place. docs/.vitepress/example-runner.ts writes it, or for a static example
+ * the editable card component draws it (theme/RichExample.ts).
  */
 .vp-doc .rich-example {
   margin: 16px 0;
@@ -199,6 +200,59 @@
   display: block;
 }
 
+/* An editable card (theme/RichExample.ts). At rest it is the card above,
+ * and only a faint "click to edit" over the code on hover says otherwise.
+ * Once edited, one quiet line offers the page's code back; a run that failed
+ * dims the output it left and says why in red under it. */
+.vp-doc .rich-example-editable div[class*='language-']::after {
+  content: 'click to edit';
+  position: absolute;
+  right: 12px;
+  bottom: 6px;
+  z-index: 2;
+  font-size: 12px;
+  color: var(--vp-c-text-3);
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+}
+
+.vp-doc .rich-example-editable div[class*='language-']:hover::after {
+  opacity: 1;
+}
+
+.vp-doc .rich-example-edited {
+  padding: 2px 16px;
+  border-top: 1px solid var(--vp-c-divider);
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--vp-c-text-3);
+}
+
+.vp-doc .rich-example-reset {
+  color: var(--vp-c-brand-1);
+}
+
+.vp-doc .rich-example-reset:hover {
+  text-decoration: underline;
+}
+
+.vp-doc .rich-example-stale > .rich-example-light,
+.vp-doc .rich-example-stale > .rich-example-dark {
+  opacity: 0.45;
+}
+
+.vp-doc .rich-example-failure {
+  margin: 0;
+  padding: 8px 16px;
+  border-top: 1px solid var(--vp-c-divider);
+  font-family: var(--rich-code-font-family);
+  font-size: 13px;
+  line-height: 20px;
+  white-space: pre-wrap;
+  color: var(--vp-c-danger-1);
+}
+
 /* A live terminal: a live example's (theme/RichLive.ts) or the playground's. Its font is the one static
  * output is drawn in, read off this element by the component for xterm; its
  * background is set from the terminal theme, as a fragment's is. */
@@ -285,7 +339,8 @@
  * terminal, or above it where the page is too narrow for both. The editor's
  * colours are One Light and One Dark Pro, the themes the site highlights code
  * in (config.ts), so code reads the same here as on every page. */
-.rich-playground {
+.rich-playground,
+.rich-example-card {
   --rich-code-keyword: #a626a4;
   --rich-code-string: #50a14f;
   --rich-code-number: #986801;
@@ -294,13 +349,17 @@
   --rich-code-type: #c18401;
   --rich-code-property: #e45649;
   --rich-code-operator: #0184bc;
+}
+
+.rich-playground {
   box-sizing: border-box;
   max-width: var(--vp-layout-max-width);
   margin: 0 auto;
   padding: 24px;
 }
 
-.dark .rich-playground {
+.dark .rich-playground,
+.dark .rich-example-card {
   --rich-code-keyword: #c678dd;
   --rich-code-string: #98c379;
   --rich-code-number: #d19a66;

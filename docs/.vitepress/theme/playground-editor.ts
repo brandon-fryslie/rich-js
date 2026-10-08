@@ -1,15 +1,17 @@
 /// <reference lib="dom" />
 /**
- * The playground's editor: CodeMirror 6 editing TypeScript, and nothing an IDE
- * adds. CodeMirror was chosen over Monaco for its weight on the page. The
- * playground needs highlighting, undo and indentation; a type error shows up
- * when the code runs, so it needs no completion and no checker.
+ * The docs' code editor: CodeMirror 6 editing TypeScript, and nothing an IDE
+ * adds. The playground and the editable example card (RichExample.ts) each
+ * add what they show around the code. CodeMirror was chosen over Monaco for
+ * its weight on the page. Editing needs highlighting, undo and indentation; a
+ * type error shows up when the code runs, so it needs no completion and no
+ * checker.
  *
  * Every colour is a custom property custom.css sets for each colour mode, so
  * the editor follows the site's mode with nothing to reconfigure when it
  * changes.
  */
-import { EditorState } from "@codemirror/state";
+import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView, drawSelection, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { HighlightStyle, bracketMatching, indentOnInput, syntaxHighlighting } from "@codemirror/language";
@@ -41,6 +43,18 @@ const THEME = EditorView.theme({
   ".cm-matchingBracket": { backgroundColor: "var(--vp-c-default-soft)", outline: "1px solid var(--vp-c-divider)" },
 });
 
+/**
+ * What an editor that is a page's whole program shows around the code: line
+ * numbers, the line the cursor is on, and long lines wrapped, so a phone shows
+ * a whole line without scrolling sideways.
+ */
+export const PROGRAM_PANE: readonly Extension[] = [
+  lineNumbers(),
+  highlightActiveLine(),
+  EditorView.lineWrapping,
+  EditorView.contentAttributes.of({ "aria-label": "Program" }),
+];
+
 /** What the editor tells its page: the program changed, or the reader asked to run it. */
 export interface EditorEvents {
   change(source: string): void;
@@ -48,28 +62,25 @@ export interface EditorEvents {
 }
 
 /**
- * An editor in `parent` holding `source`. Mod-Enter (Ctrl, or Cmd on a Mac)
+ * An editor in `parent` holding `source`, with `shown`: what its caller
+ * draws around the code, and the label it reads as. Mod-Enter (Ctrl, or Cmd on a Mac)
  * runs; Tab indents, and Escape then Tab leaves the editor, as CodeMirror
  * documents for a keyboard user.
  */
-export function createEditor(parent: HTMLElement, source: string, events: EditorEvents): EditorView {
+export function createEditor(parent: HTMLElement, source: string, events: EditorEvents, shown: readonly Extension[]): EditorView {
   return new EditorView({
     parent,
     state: EditorState.create({
       doc: source,
       extensions: [
-        lineNumbers(),
-        highlightActiveLine(),
         drawSelection(),
         history(),
         indentOnInput(),
         bracketMatching(),
-        // Long lines wrap, so a phone shows a whole line without scrolling sideways.
-        EditorView.lineWrapping,
         javascript({ typescript: true }),
         syntaxHighlighting(HIGHLIGHT),
         THEME,
-        EditorView.contentAttributes.of({ "aria-label": "Program" }),
+        shown,
         // Ahead of the default keymap, which binds Mod-Enter to a blank line.
         keymap.of([{ key: "Mod-Enter", run: () => (events.run(), true) }, indentWithTab, ...defaultKeymap, ...historyKeymap]),
         EditorView.updateListener.of((update) => update.docChanged && events.change(update.state.doc.toString())),
