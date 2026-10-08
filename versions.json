@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-349",
+      "ref": "refs/pull/349/merge",
+      "sha": "6a6720bdf4318bc454e87280e1e23cc54ae3fb8c",
+      "timestamp": "2026-10-08T04:07:31.267Z",
+      "commits": [
+        {
+          "sha": "6a6720bdf4318bc454e87280e1e23cc54ae3fb8c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T22:06:04-06:00",
+          "message": "Merge 996efeea66dc46180bacb6ef802f5790cd59638b into a35207f2c6076cb068cd1c60cbc57dc02c07758b\n"
+        },
+        {
+          "sha": "996efeea66dc46180bacb6ef802f5790cd59638b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T22:05:58-06:00",
+          "message": "chore(xterm): site xterm.js 5.3 → @xterm/xterm 6, and the page's synchronized-output shim goes (rich-xterm-h736)\n\nxterm 6 buffers DEC mode 2026 itself, so `synchronized()` and its test are\ndeleted.\n\nxterm 6 measures a character on an OffscreenCanvas, which ignores the\n`.xterm-char-measure-element` line-height override, so rows came out 1–1.6px\ntaller than the page's line (the PR #330 revert). A `lineHeight` factor\ncannot fix that: the canvas box of a reader's installed face can be taller\nthan 1.25em, and xterm refuses a factor under 1. `openMeasuringInPage` hides\nOffscreenCanvas for the one `open()` call, so xterm picks its in-page DOM\nmeasure and the override applies again, as it did on 5.3.\n\nThe dev-only BrowserTerminalHost harness page carries its own pin and is\nbumped to match.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a35207f2c6076cb068cd1c60cbc57dc02c07758b",
