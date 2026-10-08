@@ -324,6 +324,8 @@ describe("runInTerminal", () => {
     expect(await ran("setTimeout(() => {}, 0); await Promise.resolve();")).toBe(false);
     expect(await ran("clearInterval(setInterval(() => {}, 5)); clearTimeout(setTimeout(() => {}, 5));")).toBe(false);
     expect(await ran("setTimeout(() => {}, 20);")).toBe(true);
+    // A delay under 1 ms is Node's 1 ms in any host, so a 1 ms timer runs before the question is asked.
+    expect(await ran("setTimeout(() => {}, 1); setTimeout(() => {}, 0.5);")).toBe(false);
     // An interval, ended later by a timer of the host's so the test leaves nothing running.
     expect(await ran("const id = setInterval(() => {}, 5);\nglobalThis.setTimeout(() => clearInterval(id), 30);")).toBe(true);
     // The host's own timers are not the program's.

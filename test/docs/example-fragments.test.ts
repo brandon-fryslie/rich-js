@@ -4,7 +4,7 @@
  * not yet finished is left unread until the rest of it is written.
  */
 import { describe, expect, it } from "vitest";
-import { scanEscapes } from "../../docs/.vitepress/example-fragments.js";
+import { scanEscapes, undrawnEscape } from "../../docs/.vitepress/example-fragments.js";
 import { OSC8_CLOSE, osc8Open } from "../../src/core/osc8.js";
 
 describe("scanEscapes", () => {
@@ -33,5 +33,22 @@ describe("scanEscapes", () => {
     const whole = `${first.slice(scan.unread)}${link.slice(20)}y`;
     expect(scanEscapes(whole)).toEqual({ dropped: null, unread: whole.length });
     expect(scanEscapes("\x1b[2").unread).toBe(0);
+  });
+
+  it.each([
+    ["an escape no byte can finish", "\x1b\x01"],
+    ["a string escape that is no link, unfinished", "\x1b]0;tit"],
+    ["a link with an escape inside it", "\x1b]8;;http://a\x1b[31m"],
+    ["a link still open past any a terminal takes", `\x1b]8;;http://${"a".repeat(5000)}`],
+  ])("drops %s as soon as it is written, not when it ends", (_, bytes) => {
+    expect(scanEscapes(`x${bytes}`).dropped).not.toBeNull();
+  });
+});
+
+describe("undrawnEscape", () => {
+  it("reads a program's whole output, an escape left unfinished at its end dropped", () => {
+    expect(undrawnEscape("\x1b[1mbold\x1b[0m")).toBeNull();
+    expect(undrawnEscape("done\x1b[")).toBe("\x1b[");
+    expect(undrawnEscape("a\x1b[2Jb")).toBe("\x1b[2J");
   });
 });

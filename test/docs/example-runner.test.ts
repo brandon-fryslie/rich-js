@@ -509,6 +509,7 @@ describe("a page that breaks its contract fails the build", () => {
     ["a throws block that returns", fence("const n = 1;", "ts throws"), /fixture\.md:1: marked `throws` but returned normally/],
     ["a cursor escape", fence('process.stdout.write("\\x1b[2J");'), /fixture\.md:1: writes the escape .* mark it `live`/],
     ["a cursor save, which is no CSI", fence('process.stdout.write("\\x1b7a\\x1b8");'), /fixture\.md:1: writes the escape .* mark it `live`/],
+    ["a static block that reads what is typed at it", fence('console.print("x");\nprocess.stdin.on("data", () => {});'), /fixture\.md:1: .* reads what is typed at it; mark it `live`/s],
     ["a static block that leaves a timer set", fence('console.print("x");\nsetTimeout(() => {}, 10);'), /fixture\.md:1: .* leaves a timer set after its last line .* mark it `live`/s],
     // csstype carries types and no JavaScript: it type-checks and cannot be bundled.
     ["an import that type-checks and does not bundle", fence('import * as css from "csstype";\nconsole.print(typeof css);'), /^docs\/fixture\.md: bundling failed: /],

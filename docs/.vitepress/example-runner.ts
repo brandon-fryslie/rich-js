@@ -46,7 +46,7 @@ import { ENTRY_BY_SPECIFIER, PACKAGE_MANIFEST, REPO_ROOT, listTypeScriptFiles, l
 import { resolveAlias } from "../../scripts/resolve-alias.js";
 import { tscTransform } from "../../scripts/tsc-transform.js";
 import { EXAMPLE_TERMINAL, STATIC_RUN_LIMIT_MS } from "./example-terminal.js";
-import { drawOutput, scanEscapes } from "./example-fragments.js";
+import { drawOutput, undrawnEscape } from "./example-fragments.js";
 import { cardSource, type CardData, type CardProgram } from "./example-card.js";
 import {
   MARKERS,
@@ -357,16 +357,22 @@ const Math = ((seed) => Object.create(globalThis.Math, { random: { value: () => 
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 } } }))(${world.seed});`;
 
-/** Run `script` in the example terminal, in `world`: every byte it wrote, and how the run ended. */
-async function capture(script: string, world: World): Promise<{ stream: string; end: RunEnd; exits: number[] }> {
+/**
+ * Run `script` in the example terminal, in `world`: every byte it wrote, how
+ * the run ended, and whether it listened for what is typed at it.
+ */
+async function capture(script: string, world: World): Promise<{ stream: string; end: RunEnd; exits: number[]; listened: boolean }> {
   const chunks: string[] = [];
   const exits: number[] = [];
   const decoder = new TextDecoder();
+  let listened = false;
   const terminal: SimulatedTerminal = {
     ...EXAMPLE_TERMINAL,
     write: (chunk) => chunks.push(typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true })),
-    // Nobody types at a build.
-    onInput: () => {},
+    // Nobody types at a build; that a program waits for typing is recorded, as the page's static run ends one that does.
+    onInput: () => {
+      listened = true;
+    },
     // Recorded rather than thrown: a throw the program could catch, or one
     // raised from a timer after the run, would hide the call or crash the build.
     exit: (code) => exits.push(code),
@@ -383,13 +389,7 @@ async function capture(script: string, world: World): Promise<{ stream: string; 
   ]);
   clearTimeout(timer);
   chunks.push(decoder.decode());
-  return { stream: chunks.join(""), end, exits };
-}
-
-/** The first escape in a static block's bytes that a drawing of them drops, or one they leave unfinished; null when there is neither. */
-function undrawnEscape(output: string): string | null {
-  const { dropped, unread } = scanEscapes(output);
-  return dropped ?? (unread < output.length ? output.slice(unread) : null);
+  return { stream: chunks.join(""), end, exits, listened };
 }
 
 /** The bytes a block shows, held to what its marker promised. */
@@ -520,7 +520,9 @@ const OPENS = `this block's card and "Try it" run it as the program below`;
  * front of a reader.
  */
 async function tryItPrints(fence: Fence, source: string, record: BlockRecord, shared: LiveLibrary, world: World): Promise<void> {
-  const { stream, end, exits } = await capture(playgroundScript(source, shared.script), world);
+  const { stream, end, exits, listened } = await capture(playgroundScript(source, shared.script), world);
+  // [LAW:one-source-of-truth] What the page's static run ends a program for (theme/static-run.ts), refused here, so an edit of a block the build drew can be drawn too.
+  if (listened) throw new Error(`docs/${fence.page}:${fence.line}: ${OPENS}, which reads what is typed at it; mark it \`live\`\n${source}`);
   if (end.kind === "finished" && end.runsOn) {
     throw new Error(`docs/${fence.page}:${fence.line}: ${OPENS}, which leaves a timer set after its last line and so runs on past what it printed; mark it \`live\`\n${source}`);
   }

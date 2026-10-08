@@ -15,7 +15,7 @@
  * or running on with a timer set once its body has returned (`runsOn`), is ended as soon as it does, and the run says which: nothing it
  * prints from then on is a drawing of what it does.
  */
-import { scanEscapes } from "../example-fragments.js";
+import { scanEscapes, undrawnEscape } from "../example-fragments.js";
 import { sandbox, type TerminalSpec } from "./sandbox.js";
 
 /** How a static run ended. */
@@ -81,6 +81,8 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
       resolve({ bytes: chunks.join(""), end });
     };
   });
+  // Its output is whole once it has ended, so an escape it left unfinished is one a drawing drops, as the build reads it.
+  const ended = (end: StaticEnd): void => finish(undrawnEscape(unread) === null ? end : { kind: "dropped" });
   const run = sandbox(parent, options.runtime, (message) => {
     switch (message.kind) {
       case "output": {
@@ -96,11 +98,11 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
       case "listening":
         return finish({ kind: "listening" });
       case "settled":
-        return finish(message.runsOn ? { kind: "ranOn" } : { kind: "finished" });
+        return ended(message.runsOn ? { kind: "ranOn" } : { kind: "finished" });
       case "crashed":
         return finish({ kind: "threw", report: message.report });
       case "exit":
-        return finish({ kind: "exited", code: message.code });
+        return ended({ kind: "exited", code: message.code });
       // Answers a `mark`, which a static run never sends.
       case "mark":
         return;
