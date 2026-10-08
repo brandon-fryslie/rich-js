@@ -271,18 +271,25 @@ interface Bundled {
 // `vitepress dev`: `[demo].paths.ts` bundles before the dev server resolves,
 // and a server that finds "production" there serves pages that cannot load.
 // So `bundle` hands the host back the value it found, or its absence. Bundles
-// overlap, so the one that ends last puts it back, not each.
-let bundlesInFlight = 0;
-let hostNodeEnv: string | undefined;
+// overlap, so the one that ends last puts it back, not each. The count is the
+// process's, as `process.env` is: VitePress inlines this module once into its
+// config and again into `[demo].paths.ts`, and a count per copy would let one
+// copy put back the "production" another copy's bundle wrote.
+interface HostNodeEnv {
+  inFlight: number;
+  found: string | undefined;
+}
+const HOST_NODE_ENV = Symbol.for("rich-js docs: the NODE_ENV a bundle found");
 
 async function bundle(entry: Entry, shape: BundleShape): Promise<Bundled> {
-  if (bundlesInFlight++ === 0) hostNodeEnv = process.env["NODE_ENV"];
+  const host = ((globalThis as { [HOST_NODE_ENV]?: HostNodeEnv })[HOST_NODE_ENV] ??= { inFlight: 0, found: undefined });
+  if (host.inFlight++ === 0) host.found = process.env["NODE_ENV"];
   try {
     return await bundleOnce(entry, shape);
   } finally {
-    if (--bundlesInFlight === 0) {
-      if (hostNodeEnv === undefined) delete process.env["NODE_ENV"];
-      else process.env["NODE_ENV"] = hostNodeEnv;
+    if (--host.inFlight === 0) {
+      if (host.found === undefined) delete process.env["NODE_ENV"];
+      else process.env["NODE_ENV"] = host.found;
     }
   }
 }

@@ -692,20 +692,47 @@ describe("the plugin", () => {
 // does: whatever NODE_ENV a bundle leaves is the mode that server comes up in.
 describe("a bundle leaves the host process's NODE_ENV as it found it", { timeout: 60_000 }, () => {
   const ENTRY = 'console.log("hi");';
-  const withNodeEnv = async (value: string | undefined, body: () => Promise<void>) => {
-    const outer = process.env["NODE_ENV"];
+  const setNodeEnv = (value: string | undefined) => {
     if (value === undefined) delete process.env["NODE_ENV"];
     else process.env["NODE_ENV"] = value;
+  };
+  const withNodeEnv = async (value: string | undefined, body: () => Promise<void>) => {
+    const outer = process.env["NODE_ENV"];
+    setNodeEnv(value);
     try {
       await body();
     } finally {
-      process.env["NODE_ENV"] = outer;
+      setNodeEnv(outer);
     }
   };
 
   it("unset, overlapping bundles included", () =>
     withNodeEnv(undefined, async () => {
       await Promise.all([bundleExample(ENTRY), bundleExample(ENTRY)]);
+      expect(process.env["NODE_ENV"]).toBeUndefined();
+    }));
+
+  // VitePress inlines the runner into its config and into `[demo].paths.ts`
+  // separately: the second bundle starts after the first's build has written
+  // "production", from another copy of the module.
+  it("unset, across two copies of the runner", () =>
+    withNodeEnv(undefined, async () => {
+      // A query makes the same file a module of its own, as each inlining does.
+      const asCopy = "../../docs/.vitepress/example-runner.js?copy";
+      const copy: typeof import("../../docs/.vitepress/example-runner.js") = await import(asCopy);
+      let firstDone = false;
+      const first = bundleExample(ENTRY).finally(() => (firstDone = true));
+      while (process.env["NODE_ENV"] === undefined && !firstDone) await new Promise((resolve) => setTimeout(resolve, 1));
+      expect(firstDone).toBe(false);
+      await Promise.all([first, copy.bundleExample(ENTRY)]);
+      expect(process.env["NODE_ENV"]).toBeUndefined();
+    }));
+
+  it("unset, when the bundle fails", () =>
+    withNodeEnv(undefined, async () => {
+      await expect(bundleExample("const = ;")).rejects.toThrow();
+      expect(process.env["NODE_ENV"]).toBeUndefined();
+      await bundleExample(ENTRY);
       expect(process.env["NODE_ENV"]).toBeUndefined();
     }));
 
