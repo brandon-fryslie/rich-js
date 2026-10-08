@@ -4,15 +4,22 @@
     {
       "version": "pr-341",
       "ref": "refs/pull/341/merge",
-      "sha": "fbd162fcbb03020ab89c2e22fa4a23886919ee5c",
-      "timestamp": "2026-10-08T01:44:40.240Z",
+      "sha": "c4e388092c0bfb9c03c827b01c8980cb96713327",
+      "timestamp": "2026-10-08T01:49:03.847Z",
       "commits": [
         {
-          "sha": "fbd162fcbb03020ab89c2e22fa4a23886919ee5c",
+          "sha": "c4e388092c0bfb9c03c827b01c8980cb96713327",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T01:43:43Z",
-          "message": "Merge 861e0f6757b1247979e11263e6d97cb9bd6537fa into 2d11591378efe0356595191d0cc01736782d55c9\n"
+          "timestamp": "2026-10-08T01:47:42Z",
+          "message": "Merge 8a5a17f84f6fdd25d3e384ef1283f7c326f190e8 into 2d11591378efe0356595191d0cc01736782d55c9\n"
+        },
+        {
+          "sha": "8a5a17f84f6fdd25d3e384ef1283f7c326f190e8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T19:47:37-06:00",
+          "message": "fix(effects): no colour is not the default colour; a move the depth cannot show keeps the written spec (rich-effects-fxiy.7b3)\n\nReview (medium): treating an absent slot as the default merged runs whose first cell then forced 39 over a style a container lays beneath (Segment.applyStyle). Runs compare strictly again; the unshowable-move case is settled per cell in respec.\n"
         },
         {
           "sha": "861e0f6757b1247979e11263e6d97cb9bd6537fa",
