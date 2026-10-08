@@ -25,12 +25,13 @@
  *   6. draw each block's bytes as a light and a dark fragment
  *      (example-fragments.ts) and hand them to the block's card; one that
  *      runs nowhere is a read-only card with its note;
- *   7. cut each block that runs into a program of its own (example-slice.ts),
- *      type-check it and link it from the block's "Try it"; a block of the
- *      chain's is also run as the playground runs it and held to the block's
- *      output, and its card program with it. A `live` block's programs run
- *      only in the browser, on the one library every program there shares
- *      (`LiveLibrary`), so each is held to importing only what it holds.
+ *   7. cut each block that runs into a program of its own (example-slice.ts)
+ *      and type-check it; its card holds the block in that program's setup,
+ *      and "Try it" opens that card program in the playground. A block of the
+ *      chain's card program is run as the playground runs it and held to the
+ *      block's output. A `live` block's card program runs only in the
+ *      browser, on the one library every program there shares
+ *      (`LiveLibrary`), so it is held to importing only what that holds.
  *
  * [LAW:no-silent-failure] Every failure throws and fails the build, naming the
  * page, and the line when one line is to blame.
@@ -44,10 +45,9 @@ import path from "node:path";
 import { ENTRY_BY_SPECIFIER, PACKAGE_MANIFEST, REPO_ROOT, listTypeScriptFiles, loadCompilerOptions } from "../../scripts/repo-facts.js";
 import { resolveAlias } from "../../scripts/resolve-alias.js";
 import { tscTransform } from "../../scripts/tsc-transform.js";
-import { osc8Sequences } from "../../src/index.js";
 import { EXAMPLE_TERMINAL, STATIC_RUN_LIMIT_MS } from "./example-terminal.js";
-import { drawOutput } from "./example-fragments.js";
-import { cardSource, type CardData } from "./example-card.js";
+import { drawOutput, undrawnEscape } from "./example-fragments.js";
+import { cardSource, type CardData, type CardProgram } from "./example-card.js";
 import {
   MARKERS,
   frontmatterEnd,
@@ -74,7 +74,7 @@ import {
   type ExampleContext,
   type ExampleProgram,
 } from "./example-program.js";
-import { runInTerminal, type SimulatedTerminal } from "./simulated-process.js";
+import { runInTerminal, runsOn, type SimulatedTerminal } from "./simulated-process.js";
 import { LIBRARY_BINDING } from "./live-library.js";
 import { standalonePrograms, type Checked, type Standalone } from "./example-slice.js";
 import { encodeProgram } from "./playground-hash.js";
@@ -315,7 +315,8 @@ async function bundle(entry: Entry, shape: BundleShape): Promise<Bundled> {
   return { code: chunks[0]!.code, modules: chunks[0]!.moduleIds.filter((id) => id !== entry.file && !id.startsWith("\0")) };
 }
 
-type RunEnd = { readonly kind: "finished" } | { readonly kind: "threw"; readonly error: unknown } | { readonly kind: "stalled" };
+/** How a run ended. One that finished says whether it runs on past its body (`runsOn`). */
+type RunEnd = { readonly kind: "finished"; readonly runsOn: boolean } | { readonly kind: "threw"; readonly error: unknown } | { readonly kind: "stalled" };
 
 /**
  * What a program reads that is neither its page nor `src/`: the time, and
@@ -323,7 +324,7 @@ type RunEnd = { readonly kind: "finished" } | { readonly kind: "threw"; readonly
  * same: one instant, and one sequence from one seed.
  *
  * [LAW:one-source-of-truth] A block runs twice in a page run, in the page's
- * chain and as its "Try it" program (`tryItPrints`), and the second is held to
+ * chain and as its card program (`tryItPrints`), and the second is held to
  * the first's bytes. `console.log` stamps each line with the time, and an
  * example may print a random number; read from the host, either would make two
  * runs of one block differ. A block that draws random numbers after a block
@@ -356,16 +357,22 @@ const Math = ((seed) => Object.create(globalThis.Math, { random: { value: () => 
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 } } }))(${world.seed});`;
 
-/** Run `script` in the example terminal, in `world`: every byte it wrote, and how the run ended. */
-async function capture(script: string, world: World): Promise<{ stream: string; end: RunEnd; exits: number[] }> {
+/**
+ * Run `script` in the example terminal, in `world`: every byte it wrote, how
+ * the run ended, and whether it listened for what is typed at it.
+ */
+async function capture(script: string, world: World): Promise<{ stream: string; end: RunEnd; exits: number[]; listened: boolean }> {
   const chunks: string[] = [];
   const exits: number[] = [];
   const decoder = new TextDecoder();
+  let listened = false;
   const terminal: SimulatedTerminal = {
     ...EXAMPLE_TERMINAL,
     write: (chunk) => chunks.push(typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true })),
-    // Nobody types at a build.
-    onInput: () => {},
+    // Nobody types at a build; that a program waits for typing is recorded, as the page's static run ends one that does.
+    onInput: () => {
+      listened = true;
+    },
     // Recorded rather than thrown: a throw the program could catch, or one
     // raised from a timer after the run, would hide the call or crash the build.
     exit: (code) => exits.push(code),
@@ -373,7 +380,7 @@ async function capture(script: string, world: World): Promise<{ stream: string; 
   let timer: ReturnType<typeof setTimeout> | undefined;
   const end = await Promise.race([
     runInTerminal(`${worldScript(world)}\n${script}`, terminal).then(
-      (): RunEnd => ({ kind: "finished" }),
+      async (returned): Promise<RunEnd> => ({ kind: "finished", runsOn: await runsOn(returned) }),
       (error: unknown): RunEnd => ({ kind: "threw", error: error ?? new Error("the example rejected with no reason") }),
     ),
     new Promise<RunEnd>((resolve) => {
@@ -382,17 +389,7 @@ async function capture(script: string, world: World): Promise<{ stream: string; 
   ]);
   clearTimeout(timer);
   chunks.push(decoder.decode());
-  return { stream: chunks.join(""), end, exits };
-}
-
-const SGR = /\x1b\[[0-9;]*m/g;
-
-/** The one escape a static block may not write: anything but SGR and OSC 8. */
-function disallowedEscape(output: string): string | null {
-  let rest = output;
-  for (const seq of osc8Sequences(output).reverse()) rest = rest.slice(0, seq.index) + rest.slice(seq.index + seq.length);
-  const at = rest.replace(SGR, "").indexOf("\x1b");
-  return at === -1 ? null : JSON.stringify(rest.replace(SGR, "").slice(at, at + 8));
+  return { stream: chunks.join(""), end, exits, listened };
 }
 
 /** The bytes a block shows, held to what its marker promised. */
@@ -402,8 +399,8 @@ function blockBytes(fence: Fence & { readonly marker: BuildMarker }, record: Blo
   if (outcome === "throws" && record.ended.kind === "completed") throw new Error(`${at}: marked \`throws\` but returned normally`);
   if (outcome === "silent" && record.output !== "") throw new Error(`${at}: marked \`silent\` but wrote ${JSON.stringify(record.output.slice(0, 60))}`);
   if (outcome === "prints" && record.output === "") throw new Error(`${at}: writes nothing; mark it \`silent\``);
-  const escape = disallowedEscape(record.output);
-  if (escape !== null) throw new Error(`${at}: writes the escape ${escape}, which moves the cursor or clears the screen; mark it \`live\``);
+  const escape = undrawnEscape(record.output);
+  if (escape !== null) throw new Error(`${at}: writes the escape ${JSON.stringify(escape.slice(0, 12))}, which only a terminal shows; mark it \`live\``);
   return record.ended.kind === "completed" ? record.output : `${record.output}${record.ended.line}\n`;
 }
 
@@ -466,10 +463,7 @@ async function bundleOrThrow(where: string, entry: Entry, shape: BundleShape = {
   });
 }
 
-/**
- * The module the playground page imports: `library`, the live library's
- * script, and `start`, the program it opens on (`playgroundStart`).
- */
+/** The module the playground page imports: `start`, the program it opens on with no link (`playgroundStart`). */
 export const PLAYGROUND_MODULE = `${LIVE_MODULE_PREFIX}playground`;
 
 /**
@@ -510,41 +504,28 @@ function playgroundHref(page: string): string {
 }
 
 /**
- * A program a block is run as on its own, and who runs it: "Try it", which
- * opens it in the playground, or a build block's editable card, which runs
- * the "Try it" program around whatever its editor holds (example-card.ts).
+ * What a block's card runs, and "Try it" opens in the playground: the block,
+ * in the setup its card holds it in (example-card.ts).
  */
-interface Opened {
-  readonly by: "try it" | "card";
-  readonly source: string;
-}
-
-const OPENS: Record<Opened["by"], string> = {
-  "try it": `"Try it" opens this block as the program below`,
-  card: "this block's editable card runs it as the program below",
-};
-
-/** The programs a block is opened as, each once: a card whose program is its "Try it" program is held by that one run. */
-function openedAs(fence: Fence, { program, setup }: Standalone): Opened[] {
-  const all: Opened[] = [
-    { by: "try it", source: program.source },
-    { by: "card", source: cardSource(setup, fence.code) },
-  ];
-  return all.filter((opened, i) => all.findIndex((other) => other.source === opened.source) === i);
-}
+const OPENS = `this block's card and "Try it" run it as the program below`;
 
 /**
- * Hold a program a block is opened as to what the page shows for the block:
- * run the way the playground runs it, on the live library, it writes the bytes
- * the block wrote in the page's chain and ends the way the block ended.
+ * Hold a block's card program to what the page shows for the block: run the
+ * way the playground runs it, on the live library, it writes the bytes the
+ * block wrote in the page's chain and ends the way the block ended.
  *
  * [LAW:verifiable-goals] The program is cut from the page by what its names
  * refer to (example-slice.ts), and that reading can miss a statement the
  * block's output depends on. A miss fails here, at the block, rather than in
  * front of a reader.
  */
-async function tryItPrints(fence: Fence, { by, source }: Opened, record: BlockRecord, shared: LiveLibrary, world: World): Promise<void> {
-  const { stream, end, exits } = await capture(playgroundScript(source, shared.script), world);
+async function tryItPrints(fence: Fence, source: string, record: BlockRecord, shared: LiveLibrary, world: World): Promise<void> {
+  const { stream, end, exits, listened } = await capture(playgroundScript(source, shared.script), world);
+  // [LAW:one-source-of-truth] What the page's static run ends a program for (theme/static-run.ts), refused here, so an edit of a block the build drew can be drawn too.
+  if (listened) throw new Error(`docs/${fence.page}:${fence.line}: ${OPENS}, which reads what is typed at it; mark it \`live\`\n${source}`);
+  if (end.kind === "finished" && end.runsOn) {
+    throw new Error(`docs/${fence.page}:${fence.line}: ${OPENS}, which leaves a timer set after its last line and so runs on past what it printed; mark it \`live\`\n${source}`);
+  }
   // How each ended, a throw by the line the page shows for it.
   const ended = end.kind === "finished" ? "completed" : end.kind === "threw" ? `threw ${thrownLine(end.error)}` : end.kind;
   const expected = record.ended.kind === "threw" ? `threw ${record.ended.line}` : record.ended.kind;
@@ -552,7 +533,7 @@ async function tryItPrints(fence: Fence, { by, source }: Opened, record: BlockRe
   let from = 0;
   while (from < stream.length && stream[from] === record.output[from]) from += 1;
   throw new Error(
-    `docs/${fence.page}:${fence.line}: ${OPENS[by]}, which ${ended} ` +
+    `docs/${fence.page}:${fence.line}: ${OPENS}, which ${ended} ` +
       `where the page's run of the block ${expected}, writing ${JSON.stringify(stream.slice(from, from + 60))} ` +
       `where the page shows ${JSON.stringify(record.output.slice(from, from + 60))}. ` +
       `The program is the block and what example-slice.ts carries from above it, so the difference is a statement above ` +
@@ -614,9 +595,9 @@ function refuseOffLibrary(at: string, specifier: string, clause: ts.ImportClause
  * included, and dropped the rest. A default import is read off the source,
  * which is where it says so.
  */
-function refuseUnrunnable(at: string, { by, source }: Opened, library: string): void {
+function refuseUnrunnable(at: string, source: string, library: string): void {
   const compiled = playgroundProgram(source, library);
-  if (compiled.kind === "refused") throw new Error(`${at}: ${OPENS[by]}, which the browser cannot run: ${compiled.message}\n${source}`);
+  if (compiled.kind === "refused") throw new Error(`${at}: ${OPENS}, which the browser cannot run: ${compiled.message}\n${source}`);
   const requires = (node: ts.Node): void => {
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "require") {
       const [specifier] = node.arguments;
@@ -757,7 +738,7 @@ export async function runPageExamples(
   // as a program of its own, whether it runs in the browser or nowhere: not
   // being run at build time is no licence to call something that does not exist.
   const alone = new Map<Fence, ExampleProgram>(fences.filter((f) => !runsAtBuild(f)).map((fence) => [fence, buildBlockProgram(page, context, fence, barrel)]));
-  // Each "Try it" program is cut from the program its block ran in, as the checker read it.
+  // Each block's own program is cut from the program its block ran in, as the checker read it.
   const cutAlone = new Map<Fence, Standalone>();
   for (const [fence, blockProgram] of alone) {
     const read = compiler.check(blockProgram);
@@ -771,11 +752,12 @@ export async function runPageExamples(
     try {
       compiler.check(standalone);
     } catch (error) {
-      throw new Error(`docs/${page}:${fence.line}: "Try it" opens this block as the program below, which does not compile. ${(error as Error).message}\n${standalone.source}`, {
+      throw new Error(`docs/${page}:${fence.line}: this block on its own is the program below, which does not compile. ${(error as Error).message}\n${standalone.source}`, {
         cause: error,
       });
     }
   }
+  const opened = (fence: Fence): CardProgram => ({ setup: tried.get(fence)!.setup, code: fence.code });
   const { code: script } = await bundleOrThrow(`docs/${page}`, generated(program.source));
   const world = newWorld();
   const { stream, end, exits } = await capture(script, world);
@@ -795,18 +777,16 @@ export async function runPageExamples(
   }
   const bytes = new Map<Fence, string>(chain.map((fence, i) => [fence, blockBytes(fence, blocks[i]!)]));
   const shared = await library();
-  for (const [i, fence] of chain.entries()) {
-    for (const opened of openedAs(fence, tried.get(fence)!)) await tryItPrints(fence, opened, blocks[i]!, shared, world);
-  }
-  for (const [fence, standalone] of tried) {
-    if (MARKERS[fence.marker].run === "browser") {
-      for (const opened of openedAs(fence, standalone)) refuseUnrunnable(`docs/${page}:${fence.line}`, opened, shared.script);
-    }
+  const source = (fence: Fence): string => {
+    const { setup, code } = opened(fence);
+    return cardSource(setup, code);
+  };
+  for (const [i, fence] of chain.entries()) await tryItPrints(fence, source(fence), blocks[i]!, shared, world);
+  for (const fence of tried.keys()) {
+    if (MARKERS[fence.marker].run === "browser") refuseUnrunnable(`docs/${page}:${fence.line}`, source(fence), shared.script);
   }
   const playground = playgroundHref(page);
-  const hashes = new Map<Fence, string>(
-    await Promise.all([...tried].map(async ([fence, standalone]) => [fence, await encodeProgram(standalone.program.source)] as const)),
-  );
+  const hashes = new Map<Fence, string>(await Promise.all([...tried.keys()].map(async (fence) => [fence, await encodeProgram(opened(fence))] as const)));
   // Every block is a card, its data a constant of the page's script. `<` is
   // escaped so no string in it can close the script.
   const cardData = (fence: Fence): CardData => {
@@ -928,13 +908,10 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
       if (id === `\0${PLAYGROUND_MODULE}`) {
         // Imported by the playground's component, not by a page this plugin
         // transforms, so only these watches re-run it in `docs:dev`: the start
-        // page for `start`, and `src/` for the library.
+        // page, and `src/`, which it is type-checked against.
         const startPage = path.join(docsRoot, PLAYGROUND_START_PAGE);
         [startPage, ...listTypeScriptFiles("src")].forEach((file) => this.addWatchFile(file));
-        const start = playgroundStart(compiler, readFileSync(startPage, "utf-8"));
-        // Imported from the same module the cards import, so the site bundles the library once.
-        const shared = await libraryAt(stamp())();
-        return `import library from ${serveLibrary(shared)};\nexport { library };\nexport const start = ${JSON.stringify(start)};`;
+        return `export const start = ${JSON.stringify(playgroundStart(compiler, readFileSync(startPage, "utf-8")))};`;
       }
       if (id === `\0${LIBRARY_MODULE}`) {
         // Imported by the card component, not by a page this plugin

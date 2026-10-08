@@ -9,7 +9,13 @@
  * nothing: at the time limit its worker is ended, and the run says so. What it
  * prints is bounded the same way, because the caller draws it on the page's
  * thread: past the output limit the worker is ended too.
+ *
+ * A program that does what only a terminal shows, reading what is typed at it,
+ * writing an escape a drawing drops (moving the cursor, clearing the screen),
+ * or running on with a timer set once its body has returned (`runsOn`), is ended as soon as it does, and the run says which: nothing it
+ * prints from then on is a drawing of what it does.
  */
+import { scanEscapes, undrawnEscape } from "../example-fragments.js";
 import { sandbox, type TerminalSpec } from "./sandbox.js";
 
 /** How a static run ended. */
@@ -23,6 +29,12 @@ export type StaticEnd =
   | { readonly kind: "timedOut"; readonly limitMs: number }
   /** It printed more than the output limit, and was ended there. */
   | { readonly kind: "overflowed"; readonly limitChars: number }
+  /** It began reading what is typed at its terminal, which nobody types at here, and was ended there. */
+  | { readonly kind: "listening" }
+  /** It wrote an escape a drawing of its bytes drops (`scanEscapes`), and was ended there. */
+  | { readonly kind: "dropped" }
+  /** Its body returned with a timer still set, so it runs on past what it printed, and was ended there. */
+  | { readonly kind: "ranOn" }
   /** It was ended by `stop`, before it ended on its own. */
   | { readonly kind: "stopped" };
 
@@ -55,6 +67,8 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
   const decoder = new TextDecoder();
   const chunks: string[] = [];
   let printed = 0;
+  // An escape begun in one write and ended in a later one is read whole, once it is.
+  let unread = "";
   let finish: (end: StaticEnd) => void = () => {};
   const result = new Promise<StaticResult>((resolve) => {
     // [LAW:single-enforcer] Every way a run ends comes through here, once:
@@ -67,20 +81,28 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
       resolve({ bytes: chunks.join(""), end });
     };
   });
+  // Its output is whole once it has ended, so an escape it left unfinished is one a drawing drops, as the build reads it.
+  const ended = (end: StaticEnd): void => finish(undrawnEscape(unread) === null ? end : { kind: "dropped" });
   const run = sandbox(parent, options.runtime, (message) => {
     switch (message.kind) {
       case "output": {
         const chunk = typeof message.chunk === "string" ? message.chunk : decoder.decode(message.chunk, { stream: true });
         chunks.push(chunk);
         printed += chunk.length;
+        const seen = `${unread}${chunk}`;
+        const scan = scanEscapes(seen);
+        if (scan.dropped !== null) return finish({ kind: "dropped" });
+        unread = seen.slice(scan.unread);
         return printed > options.limitChars ? finish({ kind: "overflowed", limitChars: options.limitChars }) : undefined;
       }
+      case "listening":
+        return finish({ kind: "listening" });
       case "settled":
-        return finish({ kind: "finished" });
+        return ended(message.runsOn ? { kind: "ranOn" } : { kind: "finished" });
       case "crashed":
         return finish({ kind: "threw", report: message.report });
       case "exit":
-        return finish({ kind: "exited", code: message.code });
+        return ended({ kind: "exited", code: message.code });
       // Answers a `mark`, which a static run never sends.
       case "mark":
         return;

@@ -348,7 +348,7 @@ describe("a live block", () => {
 
   it("refuses a block the browser cannot run, import.meta among it", async () => {
     await expect(run(page("# t", fence("console.print(String(import.meta.url));", "ts live")))).rejects.toThrow(
-      /fixture\.md:3: "Try it" opens this block as the program below, which the browser cannot run: .*import\.meta/,
+      /fixture\.md:3: this block.s card and "Try it" run it as the program below, which the browser cannot run: .*import\.meta/,
     );
   });
 
@@ -367,7 +367,12 @@ describe("a live block", () => {
 /** The program each "Try it" link on the page opens, in page order, and the address before its hash. */
 async function tried(markdown: string): Promise<{ href: string; program: string }[]> {
   const links = allCards(markdown).flatMap((card) => (card.run === "never" ? [] : [`${card.tryIt.playground}#${card.tryIt.program}`]));
-  return Promise.all(links.map(async (link) => ({ href: link.split("#")[0]!, program: await decodeProgram(link.split("#")[1]!) })));
+  return Promise.all(
+    links.map(async (link) => {
+      const { setup, code } = await decodeProgram(link.split("#")[1]!);
+      return { href: link.split("#")[0]!, program: cardSource(setup, code) };
+    }),
+  );
 }
 
 describe("Try it", () => {
@@ -378,6 +383,13 @@ describe("Try it", () => {
     // What the first block printed is not the second's to print again.
     expect(second!.program).toBe(['import { Console } from "@promptctl/rich-js";', "", "const console = new Console();", "", 'const title = "shared";', "", "console.print(title);"].join("\n"));
     expect(cards(result)[1]!.tryIt.playground).toBe("playground");
+  });
+
+  it("carries the block and the setup its card holds it in, so the playground locks and labels the same groups", async () => {
+    const result = await run(page(fence('const title = "shared";\nconsole.print("first");'), fence("console.print(title);")));
+    const card = cards(result)[1]!;
+    expect(await decodeProgram(card.tryIt.program)).toEqual({ setup: card.setup, code: card.code });
+    expect(card.setup.before.map((group) => group.origin)).toEqual(["imports", "assumed by every example", "from above"]);
   });
 
   it("opens docs/panel.md's blocks naming only what each uses, a block that imports keeping its own imports", async () => {
@@ -440,7 +452,7 @@ describe("Try it", () => {
   it("fails the build at a block whose program would not print what the page shows", async () => {
     // The column is added by a statement that declares, which the cut reads as only reading `table`.
     const markdown = page(fence('const table = new Table();\nconst named = table.addColumn("name");', "ts silent"), fence("console.print(table);"));
-    await expect(run(markdown)).rejects.toThrow(/fixture\.md:6: "Try it" opens this block as the program below, which completed where the page's run of the block completed/);
+    await expect(run(markdown)).rejects.toThrow(/fixture\.md:6: this block.s card and "Try it" run it as the program below, which completed where the page's run of the block completed/);
   });
 
   it("fails the build at a throws block whose program throws something else", async () => {
@@ -449,22 +461,22 @@ describe("Try it", () => {
       fence('const table = new Table();\nconst cols = [table.addColumn("a")];', "ts silent"),
       fence('if (table.columns.length === 0) throw new Error("no columns");\nthrow new RangeError("too many cells");', "ts throws"),
     );
-    await expect(run(markdown)).rejects.toThrow(/fixture\.md:6: "Try it" [^]*which threw Error: no columns where the page's run of the block threw RangeError: too many cells/);
+    await expect(run(markdown)).rejects.toThrow(/fixture\.md:6: this block.s card and "Try it" [^]*which threw Error: no columns where the page's run of the block threw RangeError: too many cells/);
   });
 
   it("names random numbers among the causes when a block draws after one above it drew", async () => {
     const markdown = page(fence("console.print(String(Math.random()));"), fence("console.print(String(Math.random()));"));
-    await expect(run(markdown)).rejects.toThrow(/fixture\.md:5: "Try it" [^]*random numbers the block draws after a block above it drew some/);
+    await expect(run(markdown)).rejects.toThrow(/fixture\.md:5: this block.s card and "Try it" [^]*random numbers the block draws after a block above it drew some/);
   });
 
-  it("fails the build at a block whose program does not compile, saying it is the \"Try it\" program", async () => {
+  it("fails the build at a block whose program does not compile, saying it is the block on its own", async () => {
     // The assertion that narrows `v` names `console`, so the cut reads it as what the block above printed.
     const markdown = page(
       fence('const v: unknown = "hi";\nfunction check(value: unknown, _to: Console): asserts value is string {}', "ts silent"),
       fence("check(v, console);", "ts silent"),
       fence("console.print(v.toUpperCase());"),
     );
-    await expect(run(markdown)).rejects.toThrow(/fixture\.md:10: "Try it" opens this block as the program below, which does not compile\. docs example does not compile:\ndocs\/fixture\.md:11: .v. is of type .unknown./);
+    await expect(run(markdown)).rejects.toThrow(/fixture\.md:10: this block on its own is the program below, which does not compile\. docs example does not compile:\ndocs\/fixture\.md:11: .v. is of type .unknown./);
   });
 });
 
@@ -473,7 +485,7 @@ describe("a page run's time and random numbers", () => {
   const text = (card: BuildCard) => card.output!.light.replace(/<[^>]*>/g, "").trim();
 
   it("are one instant and one sequence for every program the run executes", async () => {
-    // Each block is run twice, in the chain and as its "Try it" program, and the two must print the same.
+    // Each block is run twice, in the chain and as its card program, and the two must print the same.
     const made = cards(await run(page(fence("console.print(String(Date.now()), String(Math.random()));"), fence("console.print(String(Date.now()));"))));
     const [first, second] = made.map(text);
     expect(first!.split(" ")[0]).toBe(second);
@@ -496,6 +508,9 @@ describe("a page that breaks its contract fails the build", () => {
     ["a static block that writes nothing", fence("const n = 1;"), /fixture\.md:1: writes nothing; mark it `silent`/],
     ["a throws block that returns", fence("const n = 1;", "ts throws"), /fixture\.md:1: marked `throws` but returned normally/],
     ["a cursor escape", fence('process.stdout.write("\\x1b[2J");'), /fixture\.md:1: writes the escape .* mark it `live`/],
+    ["a cursor save, which is no CSI", fence('process.stdout.write("\\x1b7a\\x1b8");'), /fixture\.md:1: writes the escape .* mark it `live`/],
+    ["a static block that reads what is typed at it", fence('console.print("x");\nprocess.stdin.on("data", () => {});'), /fixture\.md:1: .* reads what is typed at it; mark it `live`/s],
+    ["a static block that leaves a timer set", fence('console.print("x");\nsetTimeout(() => {}, 10);'), /fixture\.md:1: .* leaves a timer set after its last line .* mark it `live`/s],
     // csstype carries types and no JavaScript: it type-checks and cannot be bundled.
     ["an import that type-checks and does not bundle", fence('import * as css from "csstype";\nconsole.print(typeof css);'), /^docs\/fixture\.md: bundling failed: /],
     ["an unknown marker", fence("1;", "ts loud"), /fixture\.md:1: unknown example marker "loud"/],
@@ -599,21 +614,16 @@ describe("the plugin", () => {
     expect(script).toMatch(/onmessage/);
   });
 
-  it("serves the playground the start page's first block, running on the live examples' own library", { timeout: 60_000 }, async () => {
+  it("serves the playground the start page's first block", async () => {
     const plugin = docsExamplesPlugin();
-    const context: LoadContext = { addWatchFile: () => {} };
     const watched: string[] = [];
     const module = (await plugin.load.call({ addWatchFile: (file) => watched.push(file) }, plugin.resolveId(PLAYGROUND_MODULE)!))!;
-    const [, librarySpecifier, start] = /^import library from ("[^"]+");\nexport \{ library \};\nexport const start = (".*");$/s.exec(module)!;
+    const [, start] = /^export const start = (".*");$/s.exec(module)!;
     const startPage = path.join(REPO_ROOT, "docs", PLAYGROUND_START_PAGE);
     expect(JSON.parse(start!)).toBe(scanFences(PLAYGROUND_START_PAGE, readFileSync(startPage, "utf-8"))[0]!.code);
     // The playground is no page this plugin transforms, so `docs:dev` learns it is stale only from these.
     expect(watched).toContain(startPage);
     expect(watched).toContain(path.join(REPO_ROOT, "src", "index.ts"));
-    // One library for the site: the cards import the very module the playground does.
-    const cards = (await plugin.load.call(context, plugin.resolveId(LIBRARY_MODULE)!))!;
-    expect(cards).toBe(`export { default } from ${librarySpecifier!};`);
-    expect(await plugin.load.call(context, plugin.resolveId(JSON.parse(librarySpecifier!) as string)!)).toMatch(/^export default "/);
   });
 
   it("serves the landing page's showcase, a program under examples/, running on the live examples' own library", { timeout: 60_000 }, async () => {

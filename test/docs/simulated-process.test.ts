@@ -10,7 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import stripAnsi from "strip-ansi";
 import { cellLen, Console } from "../../src/index.js";
-import { runInTerminal, type SimulatedTerminal } from "../../docs/.vitepress/simulated-process.js";
+import { runInTerminal, runsOn, type SimulatedTerminal } from "../../docs/.vitepress/simulated-process.js";
 import { bundleExample } from "../../docs/.vitepress/example-runner.js";
 import { REPO_ROOT } from "../../scripts/repo-facts.js";
 import { resolve } from "node:path";
@@ -198,6 +198,15 @@ describe("runInTerminal", () => {
       .rejects.toThrow(new RangeError("from the example"));
   });
 
+  it("hands the terminal its input once, when the program first listens on stdin, and not for one that never does", async () => {
+    const listened: number[] = [];
+    const counting = (term: TestTerminal): TestTerminal => ({ ...term, onInput: (to) => (listened.push(1), term.onInput(to)) });
+    await runInTerminal('process.stdout.write("no keys");', counting(terminal(75)));
+    expect(listened).toEqual([]);
+    await runInTerminal('process.stdin.on("data", () => {});\nprocess.stdin.prependListener("data", () => {});', counting(terminal(75)));
+    expect(listened).toEqual([1]);
+  });
+
   it("runs a NodeTerminalHost program on the terminal, typed keys arriving as stdin data", async () => {
     const term = terminal(75);
     const host = JSON.stringify(resolve(REPO_ROOT, "src/node/terminal-host.ts"));
@@ -308,6 +317,19 @@ describe("runInTerminal", () => {
     expect(term.output.join("")).toBe(
       `${asked}test\r\n${draw("[red]Please select one of the available options[/]")}\n${asked}dev\r\n`,
     );
+  });
+
+  it("says a program runs on while a timer it set is still set once its body's jobs have run", async () => {
+    const ran = async (program: string) => runsOn(await runInTerminal(program, terminal(75)));
+    expect(await ran("setTimeout(() => {}, 0); await Promise.resolve();")).toBe(false);
+    expect(await ran("clearInterval(setInterval(() => {}, 5)); clearTimeout(setTimeout(() => {}, 5));")).toBe(false);
+    expect(await ran("setTimeout(() => {}, 20);")).toBe(true);
+    // A delay under 1 ms is Node's 1 ms in any host, so a 1 ms timer runs before the question is asked.
+    expect(await ran("setTimeout(() => {}, 1); setTimeout(() => {}, 0.5);")).toBe(false);
+    // An interval, ended later by a timer of the host's so the test leaves nothing running.
+    expect(await ran("const id = setInterval(() => {}, 5);\nglobalThis.setTimeout(() => clearInterval(id), 30);")).toBe(true);
+    // The host's own timers are not the program's.
+    expect(await ran("globalThis.setTimeout(() => {}, 20);")).toBe(false);
   });
 
   it("hands process.exit to the terminal", async () => {

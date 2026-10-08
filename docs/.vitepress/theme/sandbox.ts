@@ -38,12 +38,16 @@ export type ToWorker =
 /** What the worker running a program sends the page. */
 export type FromWorker =
   | { readonly kind: "output"; readonly chunk: string | Uint8Array }
+  /** The program began reading what is typed at its terminal. */
+  | { readonly kind: "listening" }
   | { readonly kind: "exit"; readonly code: number }
   /**
-   * The program's body has returned and every job it queued has run. A
-   * program with timers or listeners still set runs on after this.
+   * The program's body has returned and every job it queued has run.
+   * `runsOn` says whether a timer it set is still set, so it runs on after
+   * this; a program with listeners set runs on too, and says so by
+   * `listening`.
    */
-  | { readonly kind: "settled" }
+  | { readonly kind: "settled"; readonly runsOn: boolean }
   /**
    * The program failed: its body threw, or something it set running did. The
    * report is what a terminal shows for it, as Node reports an uncaught error.

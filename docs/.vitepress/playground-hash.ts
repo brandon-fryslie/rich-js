@@ -1,23 +1,35 @@
 /**
  * The playground's URL hash: the program a link opens, carried in the link.
  *
- * A hash is the program's UTF-8, compressed (`deflate`) and written in
- * base64url, so a link reproduces a program with no backend and survives being
- * pasted anywhere a URL does. Compressing keeps a docs-sized example to a link
- * a chat message does not cut.
+ * A hash is a card's program (example-card.ts's `CardProgram`), its block and
+ * the setup the block runs on, as JSON, compressed (`deflate`) and written in
+ * base64url behind the format's name, `card.`. So a link reproduces a program
+ * with no backend, survives being pasted anywhere a URL does, and opens with
+ * the setup still locked and labelled where it came from. Compressing keeps a
+ * docs-sized example to a link a chat message does not cut.
+ *
+ * A hash with no `.` is the format before it: the program's source alone,
+ * compressed the same way. base64url has no `.`, so the two cannot be
+ * mistaken for each other, and an old link still opens, as a program with no
+ * setup, every line of it the reader's.
  *
  * [LAW:one-source-of-truth] This module is the format. It uses only what a
  * browser and Node both provide (`CompressionStream`, `btoa`), so anything
  * that writes or reads a playground link, on the page or at build time, does
  * it here.
  */
+import { NO_SETUP, type CardProgram, type SetupGroup } from "./example-card.js";
 
 /**
- * The longest program a link carries, in UTF-8 bytes: far past any program a
- * person writes, and far short of what a crafted hash can inflate to. A link
- * is opened on sight, so reading one must not be able to exhaust the tab.
+ * The most a link carries, in UTF-8 bytes of what it packs (the program, its
+ * setup and their JSON): far past any program a person writes, and far short
+ * of what a crafted hash can inflate to. A link is opened on sight, so reading
+ * one must not be able to exhaust the tab.
  */
 export const MAX_PROGRAM_BYTES = 1 << 20;
+
+/** The name a hash in this format starts with, before its `.`. */
+const FORMAT = "card";
 
 const tooLong = () => new Error(`a playground program is at most ${MAX_PROGRAM_BYTES} bytes`);
 
@@ -41,24 +53,70 @@ async function bounded(stream: ReadableStream<Uint8Array<ArrayBuffer>>): Promise
 const through = (bytes: Uint8Array<ArrayBuffer>, stream: CompressionStream | DecompressionStream) =>
   bounded(new Blob([bytes]).stream().pipeThrough(stream));
 
-/** The hash, without its `#`, that opens the playground on `source`. */
-export async function encodeProgram(source: string): Promise<string> {
-  const program = new TextEncoder().encode(source);
+/** `text`'s UTF-8, deflated, in base64url. */
+async function packed(text: string): Promise<string> {
+  const bytes = new TextEncoder().encode(text);
   // A link this wrote is one `decodeProgram` opens.
-  if (program.length > MAX_PROGRAM_BYTES) throw tooLong();
-  const bytes = await through(program, new CompressionStream("deflate"));
-  return btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""))
+  if (bytes.length > MAX_PROGRAM_BYTES) throw tooLong();
+  const deflated = await through(bytes, new CompressionStream("deflate"));
+  return btoa(Array.from(deflated, (byte) => String.fromCharCode(byte)).join(""))
     .replaceAll("+", "-")
     .replaceAll("/", "_")
     .replace(/=+$/, "");
+}
+
+/** The text `packed` made `payload` of. */
+async function unpacked(payload: string): Promise<string> {
+  const binary = atob(payload.replaceAll("-", "+").replaceAll("_", "/"));
+  const bytes = await through(Uint8Array.from(binary, (char) => char.charCodeAt(0)), new DecompressionStream("deflate"));
+  return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+}
+
+/** The hash, without its `#`, that opens the playground on `program`. */
+export async function encodeProgram(program: CardProgram): Promise<string> {
+  const { setup, code } = program;
+  return `${FORMAT}.${await packed(JSON.stringify({ setup, code }))}`;
+}
+
+/** The fields of `value`, each unknown until read: none of them, for a value with no fields. */
+const fields = <K extends string>(value: unknown): Partial<Record<K, unknown>> => (typeof value === "object" && value !== null ? value : {});
+
+/**
+ * A line, as the editor holds one: no line break in it. The editor turns a
+ * `\r` into a line break of its own, so one anywhere would move every offset
+ * after it.
+ */
+const isLine = (value: unknown): value is string => typeof value === "string" && !/[\r\n]/.test(value);
+
+const isLines = (value: unknown): value is string[] => Array.isArray(value) && value.every(isLine);
+
+const isGroup = (value: unknown): value is SetupGroup => {
+  const { origin, lines } = fields<"origin" | "lines">(value);
+  return typeof origin === "string" && isLines(lines);
+};
+
+/**
+ * [LAW:parse-dont-validate] What a hash's JSON says, as a `CardProgram`, or
+ * the shape it breaks: the editor locks the setup by these lines, so nothing
+ * past here may hold one of another shape.
+ */
+function cardProgram(json: unknown): CardProgram {
+  const { setup, code } = fields<"setup" | "code">(json);
+  const { before, after } = fields<"before" | "after">(setup);
+  if (typeof code !== "string" || code.includes("\r") || !Array.isArray(before) || !before.every(isGroup) || !isLines(after)) {
+    throw new Error("the link's program is not a block and the setup it runs on");
+  }
+  return { setup: { before, after }, code };
 }
 
 /**
  * The program `hash` (without its `#`) opens. A hash this did not write, cut
  * short or edited by hand, throws: nothing here guesses at what it meant.
  */
-export async function decodeProgram(hash: string): Promise<string> {
-  const binary = atob(hash.replaceAll("-", "+").replaceAll("_", "/"));
-  const bytes = await through(Uint8Array.from(binary, (char) => char.charCodeAt(0)), new DecompressionStream("deflate"));
-  return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+export async function decodeProgram(hash: string): Promise<CardProgram> {
+  const dot = hash.indexOf(".");
+  if (dot === -1) return { setup: NO_SETUP, code: await unpacked(hash) };
+  const format = hash.slice(0, dot);
+  if (format !== FORMAT) throw new Error(`a playground link in a format named "${format}", which this playground does not read`);
+  return cardProgram(JSON.parse(await unpacked(hash.slice(dot + 1))));
 }

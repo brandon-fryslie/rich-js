@@ -1,7 +1,8 @@
 /**
  * A docs block as a program of its own: the block as its page shows it, with
- * what it needs from around it written above it. That is the program "Try it"
- * opens in the playground.
+ * what it needs from around it written above it. The build type-checks it,
+ * and the block's card holds the block in the same parts (`setup`), which is
+ * the program "Try it" opens in the playground.
  *
  * A page is a running document (example-program.ts): a block sees the prelude,
  * the page's `exampleContext` and every block above it. The playground runs one
@@ -67,8 +68,9 @@ function declaredNames(statement: ts.Statement): string[] {
 const isImportBinding = (node: ts.Node): boolean => ts.isImportSpecifier(node) || ts.isNamespaceImport(node) || ts.isImportClause(node);
 
 /**
- * A block on its own: the program "Try it" opens, and the same setup around
- * the block as its editable card holds it (example-card.ts).
+ * A block on its own: the program the build type-checks it as, and the same
+ * setup around the block as its card holds it (example-card.ts), which "Try
+ * it" opens.
  */
 export interface Standalone {
   readonly program: ExampleProgram;
@@ -156,8 +158,12 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
   };
   const reading = new Map(statements.map((statement) => [statement, read(statement)]));
 
-  /** A carried statement's text, with its own comments above it, and the page line the text starts on. */
-  const carried = (statement: ts.Statement): { text: string; line: number | null } => {
+  /**
+   * A carried statement's lines, with its own comments above it, each with
+   * the page line it is. [LAW:types-are-the-program] One `Line` is one line:
+   * the card's editor locks and labels its setup line by line.
+   */
+  const carried = (statement: ts.Statement): Line[] => {
     const start = statement.getStart(file);
     // The trivia before it opens with the rest of the line before it, which
     // is that line's, and the blank lines after that are no one's.
@@ -166,7 +172,7 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
       .replace(/^[^\n]*\n?/, "")
       .replace(/^(?:[ \t]*\n)+/, "");
     const line = program.origins[file.getLineAndCharacterOfPosition(start - comments.length).line] ?? null;
-    return { text: comments + file.text.slice(start, statement.end), line };
+    return (comments + file.text.slice(start, statement.end)).split("\n").map((text, i) => ({ text, line: line === null ? null : line + i }));
   };
 
   return (target) => {
@@ -214,7 +220,7 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
     for (const statement of statements.filter((s) => needed.has(s) && !inTarget(s))) {
       if (partOf(statement) !== parts.at(-1)?.from) parts.push({ from: partOf(statement), names: [], lines: [] });
       parts.at(-1)!.names.push(...declaredNames(statement));
-      parts.at(-1)!.lines.push(carried(statement));
+      parts.at(-1)!.lines.push(...carried(statement));
     }
     const visible = new Set(bindings.map((b) => b.local));
     const opens = [...parts, { names: statements.filter(inTarget).flatMap(declaredNames) }].map(({ names }) => {
@@ -226,7 +232,7 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
     const blockOpens = opens.at(-1)!;
     const after: Line[] = opens.some((o) => o.length > 0) ? [{ text: "}".repeat(opens.filter((o) => o.length > 0).length), line: null }] : [];
 
-    // "Try it" hoists the block's imports into the program's, so the program
+    // The checked program hoists the block's imports into its own, so it
     // type-checks; the block is its lines less the blank ones left where its
     // imports were before its first line.
     const body = own.body.split("\n").map((text, i) => ({ text, line: target.line + 1 + i }));
@@ -241,7 +247,7 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
     // A card holds the block whole, its imports included, so its setup
     // imports only what the block names and does not import itself, what
     // the setup's own statements name, and the bare imports above the block.
-    // [LAW:one-source-of-truth] The parts and their scopes are the ones "Try it" carries.
+    // [LAW:one-source-of-truth] The parts and their scopes are the ones the checked program carries.
     const cardImports = imports(target.line, ordered(named.filter((n) => !n.byBlock || !blockBinds.has(n.binding.local)).map((n) => n.binding)));
     const setupText = [{ origin: "imports", lines: cardImports }, ...setup.map((part) => ({ origin: originOf(part.from), lines: part.lines }))]
       .filter((part) => part.lines.length > 0)

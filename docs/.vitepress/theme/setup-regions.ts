@@ -12,9 +12,8 @@
  * into the setup, by arrow keys, Ctrl+Home or select-all, so the keyboard
  * reaches it and the cursor is never in a line that is not drawn. The strip
  * takes no line: it stands in the space above the code, so the code does not
- * move when the editor gains or loses focus. A docs card starts folded; the
- * playground is to start unfolded (rich-example-card-obsb.cau), so where it
- * starts is the caller's.
+ * move when the editor gains or loses focus. A docs card starts folded and the
+ * playground unfolded, so where it starts is the caller's.
  *
  * [LAW:dataflow-not-control-flow] What is drawn is a function of the setup and
  * whether it is folded; focus only shows or hides the strip, in style. A block

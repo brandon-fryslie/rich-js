@@ -10,7 +10,7 @@
  * use `import.meta`. Importing this module does nothing, as package.json's
  * `"sideEffects": false` promises; a bundle of a bare import of it is empty.
  */
-import { runInTerminal } from "../simulated-process.js";
+import { runInTerminal, runsOn } from "../simulated-process.js";
 import type { FromWorker, ToWorker } from "./sandbox.js";
 
 /**
@@ -75,17 +75,15 @@ export function serve(): void {
           write: (chunk) => post({ kind: "output", chunk }),
           onInput: (to) => {
             deliver = to;
+            post({ kind: "listening" });
           },
           exit: (code) => {
             post({ kind: "exit", code });
             scope.close();
           },
-        }).then(
-          // A timer fires only once every queued job has run, so by then the
-          // program has written all it drew in response to its body.
-          () => void setTimeout(() => post({ kind: "settled" }), 0),
-          crash,
-        );
+        })
+          .then(runsOn)
+          .then((on) => post({ kind: "settled", runsOn: on }), crash);
     }
   };
 }

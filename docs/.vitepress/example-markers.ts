@@ -18,7 +18,7 @@
 
 import MarkdownIt from "markdown-it";
 import container from "markdown-it-container";
-import { RAN } from "./example-card.js";
+import { DRAWN, RAN, RUNNING } from "./example-card.js";
 
 /**
  * What happens to a block, and what the reader is told about it.
@@ -43,10 +43,10 @@ export type MarkerRule =
   | { readonly run: "never"; readonly label: string; readonly note: string };
 
 export const MARKERS = {
-  static: { run: "build", outcome: "prints", label: "Output", caption: RAN },
-  silent: { run: "build", outcome: "silent", label: "Output", caption: RAN },
-  throws: { run: "build", outcome: "throws", label: "Output", caption: `${RAN}, which throws` },
-  live: { run: "browser", label: "Live", caption: "the code above, running in your browser" },
+  static: { run: "build", outcome: "prints", ...DRAWN },
+  silent: { run: "build", outcome: "silent", ...DRAWN },
+  throws: { run: "build", outcome: "throws", label: DRAWN.label, caption: `${RAN}, which throws` },
+  live: { run: "browser", ...RUNNING },
   shape: { run: "never", label: "Not run", note: "This is a shape to implement, not a complete program." },
   node: {
     run: "never",

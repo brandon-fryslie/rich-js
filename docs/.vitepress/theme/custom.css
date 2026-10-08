@@ -101,10 +101,7 @@
   border-top: 1px solid var(--vp-c-divider);
 }
 
-/* The playground's terminal pane (theme/RichPlayground.ts) is sized the same
- * way, from the columns of the terminal it holds. */
-.vp-doc .rich-example-output,
-.rich-playground-output {
+.vp-doc .rich-example-output {
   /* The fragments' rows are drawn in the code font, tight enough that box
    * drawing joins up. `all:initial` shuts every other page rule out of them;
    * this custom property is the one way in (src/core/export-html.ts).
@@ -130,7 +127,6 @@
  * that rounded up the same way, in the same arithmetic
  * (theme/device-pixel-ratio.ts). */
 .vp-doc .rich-example-output,
-.rich-playground-output,
 .rich-showcase {
   --rich-fragment-line: round(down, 1.25em, 1px);
   --rich-fragment-line-height: calc(round(up, var(--rich-fragment-line) * var(--rich-device-pixel-ratio, 1), 1px) / var(--rich-device-pixel-ratio, 1));
@@ -142,7 +138,6 @@
  * height instead, and live rows that sit a little off the static ones. */
 @supports not (line-height: round(1px, 1px)) {
   .vp-doc .rich-example-output,
-  .rich-playground-output,
   .rich-showcase {
     --rich-fragment-line-height: 1.25;
   }
@@ -261,7 +256,7 @@
   color: var(--vp-c-danger-1);
 }
 
-/* A live terminal: a live card's (theme/LiveScreen.ts) or the playground's. Its font is the one static
+/* A live terminal: a live card's (theme/LiveScreen.ts), the playground's among them. Its font is the one static
  * output is drawn in, read off this element by the component for xterm; its
  * background is set from the terminal theme, as a fragment's is. */
 .rich-live-screen {
@@ -303,11 +298,6 @@
   color: var(--vp-c-brand-1);
 }
 
-.rich-live-button:disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
 /* The landing page's hero terminal (theme/RichShowcase.ts): a card under the
  * hero's text, as wide as its terminal and no wider than the page. Its font is
  * sized as an example's output is, from the columns the terminal has, but with
@@ -343,11 +333,9 @@
   min-height: calc(var(--rich-example-rows) * 1lh + 2em);
 }
 
-/* The playground (theme/RichPlayground.ts): a bar, then the editor beside the
- * terminal, or above it where the page is too narrow for both. The editor's
- * colours are One Light and One Dark Pro, the themes the site highlights code
- * in (config.ts), so code reads the same here as on every page. */
-.rich-playground,
+/* Code in a card is coloured in One Light and One Dark Pro, the themes the
+ * site highlights code in (config.ts), so an edited card reads the same as the
+ * fence it replaced. */
 .rich-example-card {
   --rich-code-keyword: #a626a4;
   --rich-code-string: #50a14f;
@@ -359,14 +347,6 @@
   --rich-code-operator: #0184bc;
 }
 
-.rich-playground {
-  box-sizing: border-box;
-  max-width: var(--vp-layout-max-width);
-  margin: 0 auto;
-  padding: 24px;
-}
-
-.dark .rich-playground,
 .dark .rich-example-card {
   --rich-code-keyword: #c678dd;
   --rich-code-string: #98c379;
@@ -378,58 +358,29 @@
   --rich-code-operator: #56b6c2;
 }
 
-.rich-playground-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  margin-bottom: 16px;
-}
-
-.rich-playground-title {
-  margin-right: auto;
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 32px;
-}
-
-.rich-playground-run kbd {
-  font-family: var(--vp-font-family-mono);
-  font-size: 11px;
-  color: var(--vp-c-text-2);
-}
-
-.rich-playground-panes {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.rich-playground-editor,
-.rich-playground-output {
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 10px;
-  overflow: hidden;
+/* The playground (theme/RichExample.ts, `RichPlayground`): the card at the
+ * page's full content width. */
+.rich-playground {
+  box-sizing: border-box;
+  max-width: var(--vp-layout-max-width);
+  margin: 0 auto;
+  padding: 24px;
 }
 
 /* The editor is as tall as its program, between a floor and most of the
  * screen; past that it scrolls. */
-.rich-playground-editor .cm-editor {
+.rich-playground .cm-editor {
   min-height: 16em;
   max-height: 70vh;
 }
 
-.rich-playground-editor:focus-within {
-  border-color: var(--vp-c-brand-1);
+.vp-doc .rich-playground-failure {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
 }
 
 @media (max-width: 959px) {
-  .rich-playground-panes {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .rich-playground-editor .cm-editor {
+  .rich-playground .cm-editor {
     min-height: 8em;
     max-height: 50vh;
   }
@@ -438,6 +389,11 @@
 @media (max-width: 639px) {
   .rich-playground {
     padding: 16px;
+  }
+
+  /* Edge to edge, as a docs card is, across the playground's narrower padding. */
+  .vp-doc.rich-playground .rich-example {
+    margin: 16px -16px;
   }
 }
 
