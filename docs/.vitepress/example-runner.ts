@@ -266,7 +266,28 @@ interface Bundled {
   readonly modules: readonly string[];
 }
 
+// [LAW:no-shared-mutable-globals] Vite's `build` sets `process.env["NODE_ENV"]`
+// to "production" when it finds it unset, and the process it runs in may be
+// `vitepress dev`: `[demo].paths.ts` bundles before the dev server resolves,
+// and a server that finds "production" there serves pages that cannot load.
+// So `bundle` hands the host back the value it found, or its absence. Bundles
+// overlap, so the one that ends last puts it back, not each.
+let bundlesInFlight = 0;
+let hostNodeEnv: string | undefined;
+
 async function bundle(entry: Entry, shape: BundleShape): Promise<Bundled> {
+  if (bundlesInFlight++ === 0) hostNodeEnv = process.env["NODE_ENV"];
+  try {
+    return await bundleOnce(entry, shape);
+  } finally {
+    if (--bundlesInFlight === 0) {
+      if (hostNodeEnv === undefined) delete process.env["NODE_ENV"];
+      else process.env["NODE_ENV"] = hostNodeEnv;
+    }
+  }
+}
+
+async function bundleOnce(entry: Entry, shape: BundleShape): Promise<Bundled> {
   const onLibrary = shape.format === "es" && shape.onLibrary === true;
   const result = await build({
     configFile: false,

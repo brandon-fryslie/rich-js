@@ -19,6 +19,7 @@ import {
   SHOWCASE_FILE,
   SHOWCASE_MODULE,
   type LoadContext,
+  bundleExample,
   docsExamplesPlugin,
   liveLibraryOnce,
   playgroundStart,
@@ -685,4 +686,32 @@ describe("the plugin", () => {
   it("passes a page with no TypeScript example through untouched", async () => {
     expect(await docsExamplesPlugin().transform("# Prose\n\n```sh\nnpm install\n```\n", path.join(REPO_ROOT, "docs", "fixture-prose.md"))).toBeNull();
   });
+});
+
+// `vitepress dev` bundles while it resolves its config, before its server
+// does: whatever NODE_ENV a bundle leaves is the mode that server comes up in.
+describe("a bundle leaves the host process's NODE_ENV as it found it", { timeout: 60_000 }, () => {
+  const ENTRY = 'console.log("hi");';
+  const withNodeEnv = async (value: string | undefined, body: () => Promise<void>) => {
+    const outer = process.env["NODE_ENV"];
+    if (value === undefined) delete process.env["NODE_ENV"];
+    else process.env["NODE_ENV"] = value;
+    try {
+      await body();
+    } finally {
+      process.env["NODE_ENV"] = outer;
+    }
+  };
+
+  it("unset, overlapping bundles included", () =>
+    withNodeEnv(undefined, async () => {
+      await Promise.all([bundleExample(ENTRY), bundleExample(ENTRY)]);
+      expect(process.env["NODE_ENV"]).toBeUndefined();
+    }));
+
+  it("set", () =>
+    withNodeEnv("development", async () => {
+      await bundleExample(ENTRY);
+      expect(process.env["NODE_ENV"]).toBe("development");
+    }));
 });
