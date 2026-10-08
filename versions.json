@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-358",
-      "ref": "refs/pull/358/merge",
-      "sha": "4d971ab4f178f73fcfc0c0aa26aaff1ae885ba4f",
-      "timestamp": "2026-10-08T20:39:23.630Z",
-      "commits": [
-        {
-          "sha": "4d971ab4f178f73fcfc0c0aa26aaff1ae885ba4f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T20:37:52Z",
-          "message": "Merge 0b124fed0e782c90173522f34400905e1eca39c8 into f99118dd0e378c092d3b305d3eb6504e5a24a028\n"
-        },
-        {
-          "sha": "0b124fed0e782c90173522f34400905e1eca39c8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T14:37:48-06:00",
-          "message": "fix(docs): a refused program says which file refused it, to the build and under the card (rich-example-card-b5rz.hpj)\n\nReview (medium) of #358: the build named the entry and the card named no\nfile when a non-entry file was refused. PlaygroundProgram's refused arm now\ncarries at: { file, line | null }; the eval's refusal claims no line.\n"
-        },
-        {
-          "sha": "2392d423e8b8c549caa47599b6cd81ec75357b2e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T14:30:52-06:00",
-          "message": "fix(docs): a demo is held at build to the check its card runs, and the file tabs are the ARIA tabs pattern (rich-example-card-b5rz.hpj)\n\nReview (high) of #358:\n- demoProgram runs refuseUnrunnable, now whole-program: the card's compile,\n  and every import a library package or one of the program's own files. A\n  relative import that leaves examples/ is refused naming the importer.\n- oneSource is gone; every one-file program is programFiles(oneFile(...)).\n- thrownAt reads Firefox/Safari `fn@file:line:col` frames.\n- DEMO_ENTRY lives in demo-entry.ts so vite.config.demos.ts no longer loads\n  the docs example pipeline.\n- File tabs: roving tabindex, arrow/Home/End keys, editor as labelled tabpanel.\n- package.json#devEngines asks contributors for a Node with unflagged type\n  stripping (^22.18.0 || >=23.6.0), which scripts/build-demos.ts needs;\n  engines.node, the consumer floor, is unchanged.\n"
-        },
-        {
-          "sha": "96bf13248edecc588c78b049f12ddfe211e2b5bb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T14:16:17-06:00",
-          "message": "feat(docs): rich-strip's demo page runs in the card, with file tabs (rich-example-card-b5rz.hpj)\n\nA card's program is now a set of files, the entry first. A docs block is the\none-file case and shows no tabs; a demo shows a tab per file, every one\neditable, imports between them resolved at run time, the program re-run on\nedit. Reset restores every file; the playground link (format `files.`)\ncarries them all, and `card.` and bare links still open.\n\nrich-strip is reshaped to the demo shape: `main.ts` is the entry for the card\nand `npm run strip`, imports use published names, and the tour fits the\ncard's 75x24 terminal. Published names resolve to src/ through\nPUBLISHED_PATHS in loadCompilerOptions (coverage, docs compiler) and\nscripts/build-demos.ts (Node), both derived from ENTRY_BY_SPECIFIER.\ndemos.json records card and iframe demos; e2e drives rich-strip's card.\neffects-playground's page script is renamed page.ts so main.ts means a demo.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "f99118dd0e378c092d3b305d3eb6504e5a24a028",
-      "timestamp": "2026-10-08T19:30:43.788Z",
+      "sha": "1ac1289df6b6c395f5af7b5df4e38c023f5a3c88",
+      "timestamp": "2026-10-08T20:46:08.385Z",
       "commits": [
         {
-          "sha": "f99118dd0e378c092d3b305d3eb6504e5a24a028",
+          "sha": "1ac1289df6b6c395f5af7b5df4e38c023f5a3c88",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T13:29:05-06:00",
-          "message": "feat(docs): the landing showcase is an output-only card (rich-example-card-obsb.9yd) (#357)\n\n* feat(docs): the landing showcase is an output-only card (rich-example-card-obsb.9yd)\n\nThe hero's live terminal now stands in the docs card's frame and output\npanel (OutputCard in theme/RichExample.ts), with no code; RichShowcase.ts\nkeeps only the hero's sizing frame, loaded apart so the example terminal's\nthemes stay off every other page. RichLive was already gone (2pn renamed\nit LiveScreen).\n\n* fix(docs): the hero builds its card where its terminal is loaded (rich-example-card-obsb.9yd)\n\nOutputCard in the eager RichExample.ts could only reach LiveScreen through\nits async wrapper: on client navigation the hero stood empty until that\nchunk arrived, one round trip after RichShowcase's own."
+          "timestamp": "2026-10-08T14:44:39-06:00",
+          "message": "feat(docs): rich-strip's demo page runs in the card, with file tabs (rich-example-card-b5rz.hpj) (#358)\n\n* feat(docs): rich-strip's demo page runs in the card, with file tabs (rich-example-card-b5rz.hpj)\n\nA card's program is now a set of files, the entry first. A docs block is the\none-file case and shows no tabs; a demo shows a tab per file, every one\neditable, imports between them resolved at run time, the program re-run on\nedit. Reset restores every file; the playground link (format `files.`)\ncarries them all, and `card.` and bare links still open.\n\nrich-strip is reshaped to the demo shape: `main.ts` is the entry for the card\nand `npm run strip`, imports use published names, and the tour fits the\ncard's 75x24 terminal. Published names resolve to src/ through\nPUBLISHED_PATHS in loadCompilerOptions (coverage, docs compiler) and\nscripts/build-demos.ts (Node), both derived from ENTRY_BY_SPECIFIER.\ndemos.json records card and iframe demos; e2e drives rich-strip's card.\neffects-playground's page script is renamed page.ts so main.ts means a demo.\n\n* fix(docs): a demo is held at build to the check its card runs, and the file tabs are the ARIA tabs pattern (rich-example-card-b5rz.hpj)\n\nReview (high) of #358:\n- demoProgram runs refuseUnrunnable, now whole-program: the card's compile,\n  and every import a library package or one of the program's own files. A\n  relative import that leaves examples/ is refused naming the importer.\n- oneSource is gone; every one-file program is programFiles(oneFile(...)).\n- thrownAt reads Firefox/Safari `fn@file:line:col` frames.\n- DEMO_ENTRY lives in demo-entry.ts so vite.config.demos.ts no longer loads\n  the docs example pipeline.\n- File tabs: roving tabindex, arrow/Home/End keys, editor as labelled tabpanel.\n- package.json#devEngines asks contributors for a Node with unflagged type\n  stripping (^22.18.0 || >=23.6.0), which scripts/build-demos.ts needs;\n  engines.node, the consumer floor, is unchanged.\n\n* fix(docs): a refused program says which file refused it, to the build and under the card (rich-example-card-b5rz.hpj)\n\nReview (medium) of #358: the build named the entry and the card named no\nfile when a non-entry file was refused. PlaygroundProgram's refused arm now\ncarries at: { file, line | null }; the eval's refusal claims no line."
         }
       ]
     }
