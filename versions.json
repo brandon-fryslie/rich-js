@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-360",
+      "ref": "refs/pull/360/merge",
+      "sha": "99dec3207c07fbe54d7cd4ecfb6c0d1883b1fe9c",
+      "timestamp": "2026-10-08T21:41:25.323Z",
+      "commits": [
+        {
+          "sha": "99dec3207c07fbe54d7cd4ecfb6c0d1883b1fe9c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T15:39:55-06:00",
+          "message": "Merge c17ee6a2edc076f5b18b551ed594e60310a6ed95 into ed23a5bf2319fa3a0b6806596c8dda356304b595\n"
+        },
+        {
+          "sha": "c17ee6a2edc076f5b18b551ed594e60310a6ed95",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T15:39:50-06:00",
+          "message": "feat(docs): effects-playground is a docs page on the card, with sliders over the numbers in its code (rich-example-card-b5rz.cek)\n\n/effects-playground shows one card per effect. Each card's entry is the\neffect's program, cut from src/renderables/effects.ts (programs.ts), beside\nkit.ts and the effects-feel demo's subjects (examples/effects-feel/subjects.ts),\nwhich it runs as further files. The run controls became named constants in\nthat program (FPS, STEP), so they are sliders like any other value.\n\nSliders are a card option: card.json may say \"sliders\": true, and\n\"contrast\": \"as drawn\" for a program that paints its own ground. tunables.ts\nmoved to docs/.vitepress and a slider is still an edit of its literal, made in\nthe card's editor, so reset restores both. In this slice an edit restarts the\nprogram.\n\nThe standalone page, its vite server, the terminal mirror and the in-place\nedit channel (edits.ts, controls.ts, mirror.ts, terminal.ts) are gone with\ntheir npm scripts.\n\nPublished names now resolve to src/ in the test suite (vitest alias,\ntsconfig.test.json paths), held to PUBLISHED_PATHS by\ntest/seam/test-resolution.test.ts: a card file under examples/ imports the\nlibrary by those names, and a test that reaches one ran before dist/ exists.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ed23a5bf2319fa3a0b6806596c8dda356304b595",
