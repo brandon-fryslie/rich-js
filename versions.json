@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-358",
+      "ref": "refs/pull/358/merge",
+      "sha": "d3262e0b5276be5df692765cd64f2185117d04f4",
+      "timestamp": "2026-10-08T20:18:36.204Z",
+      "commits": [
+        {
+          "sha": "d3262e0b5276be5df692765cd64f2185117d04f4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T14:16:29-06:00",
+          "message": "Merge 96bf13248edecc588c78b049f12ddfe211e2b5bb into f99118dd0e378c092d3b305d3eb6504e5a24a028\n"
+        },
+        {
+          "sha": "96bf13248edecc588c78b049f12ddfe211e2b5bb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T14:16:17-06:00",
+          "message": "feat(docs): rich-strip's demo page runs in the card, with file tabs (rich-example-card-b5rz.hpj)\n\nA card's program is now a set of files, the entry first. A docs block is the\none-file case and shows no tabs; a demo shows a tab per file, every one\neditable, imports between them resolved at run time, the program re-run on\nedit. Reset restores every file; the playground link (format `files.`)\ncarries them all, and `card.` and bare links still open.\n\nrich-strip is reshaped to the demo shape: `main.ts` is the entry for the card\nand `npm run strip`, imports use published names, and the tour fits the\ncard's 75x24 terminal. Published names resolve to src/ through\nPUBLISHED_PATHS in loadCompilerOptions (coverage, docs compiler) and\nscripts/build-demos.ts (Node), both derived from ENTRY_BY_SPECIFIER.\ndemos.json records card and iframe demos; e2e drives rich-strip's card.\neffects-playground's page script is renamed page.ts so main.ts means a demo.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f99118dd0e378c092d3b305d3eb6504e5a24a028",
