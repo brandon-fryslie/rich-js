@@ -5,7 +5,7 @@ import { defineAsyncComponent, h } from 'vue'
 import './code-font.css'
 import './custom.css'
 import { trackDevicePixelRatio } from './device-pixel-ratio.js'
-import RichExample from './RichExample.js'
+import RichExample, { RichPlayground } from './RichExample.js'
 
 const RichShowcase = defineAsyncComponent(() => import('./RichShowcase.js'))
 
@@ -16,11 +16,10 @@ export default {
   Layout: () => h(DefaultTheme.Layout, null, { 'home-hero-after': () => h(RichShowcase) }),
   enhanceApp({ app }) {
     if (inBrowser) trackDevicePixelRatio(document.documentElement)
-    // Async, so only the playground's page loads the playground, and the
-    // editor loads only there or for a reader reaching for an example card.
-    app.component('RichPlayground', defineAsyncComponent(() => import('./RichPlayground.js')))
     // Not async: nearly every page has one, and it is the page's own card
-    // until a reader edits it. What editing needs it loads itself.
+    // until a reader edits it. What editing needs it loads itself. The
+    // playground is the same card, so it comes with it.
     app.component('RichExample', RichExample)
+    app.component('RichPlayground', RichPlayground)
   },
 } satisfies Theme

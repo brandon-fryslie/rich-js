@@ -9,8 +9,17 @@
  * nothing: at the time limit its worker is ended, and the run says so. What it
  * prints is bounded the same way, because the caller draws it on the page's
  * thread: past the output limit the worker is ended too.
+ *
+ * A program that does what only a terminal shows, reading what is typed at it,
+ * redrawing what it drew, or running on with a timer set once its body has
+ * returned, is ended as soon as it does, and the run says which: nothing it
+ * prints from then on is a drawing of what it does.
  */
+import { redraws } from "../example-fragments.js";
 import { sandbox, type TerminalSpec } from "./sandbox.js";
+
+/** Longer than any control sequence a program redraws with, so one split across two writes is still seen whole. */
+const SEQUENCE_CHARS = 32;
 
 /** How a static run ended. */
 export type StaticEnd =
@@ -23,6 +32,12 @@ export type StaticEnd =
   | { readonly kind: "timedOut"; readonly limitMs: number }
   /** It printed more than the output limit, and was ended there. */
   | { readonly kind: "overflowed"; readonly limitChars: number }
+  /** It began reading what is typed at its terminal, which nobody types at here, and was ended there. */
+  | { readonly kind: "listening" }
+  /** It redrew what it drew (`redraws`), which a drawing of its bytes cannot show, and was ended there. */
+  | { readonly kind: "redrew" }
+  /** Its body returned with a timer still set, so it runs on past what it printed, and was ended there. */
+  | { readonly kind: "ranOn" }
   /** It was ended by `stop`, before it ended on its own. */
   | { readonly kind: "stopped" };
 
@@ -71,12 +86,17 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
     switch (message.kind) {
       case "output": {
         const chunk = typeof message.chunk === "string" ? message.chunk : decoder.decode(message.chunk, { stream: true });
+        // The end of the chunk before it too, for a sequence written in two writes.
+        const seen = `${chunks.at(-1)?.slice(-SEQUENCE_CHARS) ?? ""}${chunk}`;
         chunks.push(chunk);
         printed += chunk.length;
+        if (redraws(seen)) return finish({ kind: "redrew" });
         return printed > options.limitChars ? finish({ kind: "overflowed", limitChars: options.limitChars }) : undefined;
       }
+      case "listening":
+        return finish({ kind: "listening" });
       case "settled":
-        return finish({ kind: "finished" });
+        return finish(message.runsOn ? { kind: "ranOn" } : { kind: "finished" });
       case "crashed":
         return finish({ kind: "threw", report: message.report });
       case "exit":

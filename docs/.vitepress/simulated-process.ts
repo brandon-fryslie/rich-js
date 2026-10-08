@@ -61,8 +61,10 @@ export interface SimulatedTerminal extends ConsoleStream {
   /** The whole environment. Nothing from the host's own passes through. */
   readonly env: Readonly<Record<string, string>>;
   /**
-   * Called once per run with the function that delivers typed input to the
-   * program. A terminal nobody types at never calls it.
+   * Called with the function that delivers typed input to the program, once,
+   * when the program first listens on `stdin` for `data`: until then nothing
+   * reads what is typed, as on a terminal whose program is not reading yet. A
+   * terminal nobody types at never calls what it is handed.
    */
   onInput(deliver: (chunk: string | Uint8Array) => void): void;
   /** The program called `process.exit(code)`. What that ends is the terminal's to decide. */
@@ -135,8 +137,22 @@ class Output extends Events implements ConsoleStream {
  * is typed, which is what raw mode asks for.
  */
 class Input extends Events {
-  constructor(readonly isTTY: boolean) {
+  constructor(
+    readonly isTTY: boolean,
+    /** Called each time a listener for `data` is added. */
+    private readonly listening: () => void,
+  ) {
     super();
+  }
+
+  override on(event: string, listener: Listener): this {
+    if (event === "data") this.listening();
+    return super.on(event, listener);
+  }
+
+  override prependListener(event: string, listener: Listener): this {
+    if (event === "data") this.listening();
+    return super.prependListener(event, listener);
   }
 
   setRawMode(_raw: boolean): this {
@@ -228,8 +244,12 @@ export async function runInTerminal(program: string, terminal: SimulatedTerminal
   // `console` — every docs example's `const console = new Console()` — shadows
   // the parameter instead of redeclaring it, which is a SyntaxError.
   const body = new AsyncFunction("process", "console", `"use strict"; {\n${program}\n}`);
-  const stdin = new Input(terminal.isTTY);
-  terminal.onInput((chunk) => stdin.emit("data", chunk));
+  let listened = false;
+  const stdin: Input = new Input(terminal.isTTY, () => {
+    if (listened) return;
+    listened = true;
+    terminal.onInput((chunk) => stdin.emit("data", chunk));
+  });
   // [LAW:one-source-of-truth] The env is copied per run: a program that sets
   // `process.env.X` changes its own run and not the terminal it was handed.
   const process = new SimulatedProcess(terminal, { ...terminal.env }, stdin);

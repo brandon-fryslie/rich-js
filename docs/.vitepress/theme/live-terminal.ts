@@ -272,6 +272,9 @@ export class LiveTerminal {
           return this.end({ kind: "exited", code: 1 });
         case "mark":
           return freeze();
+        // What is typed reaches a program whether or not it said it would read it.
+        case "listening":
+          return;
       }
     });
     this.sandbox = run;

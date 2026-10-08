@@ -26,6 +26,18 @@ export interface Drawn {
 }
 
 /**
+ * A control sequence that moves the cursor, erases more than the rest of a
+ * line, or switches screen modes: every CSI sequence but SGR (`m`) and erase
+ * in line (`K`), the two `decodeAnsi` honours. It drops the rest, so bytes
+ * carrying one are a program redrawing what it drew, which only a terminal
+ * shows.
+ */
+const REDRAW = /\x1b\[[0-?]*[ -/]*[@-JL-ln-~]/;
+
+/** Whether `bytes` redraw what they drew, which `drawOutput` cannot show. */
+export const redraws = (bytes: string): boolean => REDRAW.test(bytes);
+
+/**
  * `bytes` drawn, or null when there are none: a program that printed nothing
  * draws as one that printed a blank line, so the bytes, not the drawing, say
  * which it was.

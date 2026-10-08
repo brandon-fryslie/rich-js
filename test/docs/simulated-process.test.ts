@@ -198,6 +198,15 @@ describe("runInTerminal", () => {
       .rejects.toThrow(new RangeError("from the example"));
   });
 
+  it("hands the terminal its input once, when the program first listens on stdin, and not for one that never does", async () => {
+    const listened: number[] = [];
+    const counting = (term: TestTerminal): TestTerminal => ({ ...term, onInput: (to) => (listened.push(1), term.onInput(to)) });
+    await runInTerminal('process.stdout.write("no keys");', counting(terminal(75)));
+    expect(listened).toEqual([]);
+    await runInTerminal('process.stdin.on("data", () => {});\nprocess.stdin.prependListener("data", () => {});', counting(terminal(75)));
+    expect(listened).toEqual([1]);
+  });
+
   it("runs a NodeTerminalHost program on the terminal, typed keys arriving as stdin data", async () => {
     const term = terminal(75);
     const host = JSON.stringify(resolve(REPO_ROOT, "src/node/terminal-host.ts"));

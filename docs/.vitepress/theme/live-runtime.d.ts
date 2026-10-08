@@ -17,11 +17,11 @@ declare module "virtual:rich-live/library" {
 }
 
 /**
- * What the playground page runs: served by the docs-examples plugin as
- * `PLAYGROUND_MODULE` (example-runner.ts), which owns what each is.
+ * The program the playground opens on with no link: served by the
+ * docs-examples plugin as `PLAYGROUND_MODULE` (example-runner.ts), which owns
+ * what it is.
  */
 declare module "virtual:rich-live/playground" {
-  export const library: string;
   export const start: string;
 }
 

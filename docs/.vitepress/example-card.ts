@@ -33,8 +33,27 @@ export interface CardSetup {
   readonly after: readonly string[];
 }
 
+/** The setup of a program that runs on nothing: every line of it is the reader's. */
+export const NO_SETUP: CardSetup = { before: [], after: [] };
+
+/**
+ * What a card edits: its block, and the setup the block runs on. "Try it"
+ * carries one to the playground (playground-hash.ts), which opens it as the
+ * card held it, the setup still locked and labelled.
+ */
+export interface CardProgram {
+  readonly setup: CardSetup;
+  readonly code: string;
+}
+
 /** The caption of output a card's code printed when it ran: an edit's, or the page's own unless its marker says more. */
 export const RAN = "produced by running the code above";
+
+/** A card's output panel's label and caption, for output drawn from what its code printed. */
+export const DRAWN = { label: "Output", caption: RAN } as const;
+
+/** A card's output panel's label and caption, for its program running in a live terminal: a `live` block's, or a playground program that animates or reads input. */
+export const RUNNING = { label: "Live", caption: "the code above, running in your browser" } as const;
 
 /** What a card says in place of output when its code printed nothing. */
 export const PRINTS_NOTHING = "This example prints nothing when it runs.";

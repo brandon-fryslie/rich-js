@@ -18,12 +18,58 @@ import type { FromWorker, ToWorker } from "./sandbox.js";
  * than through the WebWorker lib, which cannot share a program with the DOM lib
  * the rest of the theme is checked under.
  */
-interface WorkerScope {
+interface WorkerScope extends Timers {
   onmessage: ((event: MessageEvent<ToWorker>) => void) | null;
   addEventListener(type: "unhandledrejection", listener: (event: PromiseRejectionEvent) => void): void;
   addEventListener(type: "error", listener: (event: ErrorEvent) => void): void;
   postMessage(message: FromWorker): void;
   close(): void;
+}
+
+/** The timer functions a program reads off the worker's global scope. */
+interface Timers {
+  setTimeout(handler: (...args: unknown[]) => void, ms?: number, ...args: unknown[]): number;
+  setInterval(handler: (...args: unknown[]) => void, ms?: number, ...args: unknown[]): number;
+  clearTimeout(id: number | undefined): void;
+  clearInterval(id: number | undefined): void;
+}
+
+/**
+ * `scope`'s timers, replaced by ones that count which are still set, so the
+ * worker can say whether a program whose body has returned runs on. Returns
+ * the originals, which the worker's own timers use and do not count.
+ */
+function countTimers(scope: Timers): { readonly original: Timers; readonly set: () => boolean } {
+  const original: Timers = {
+    setTimeout: scope.setTimeout.bind(scope),
+    setInterval: scope.setInterval.bind(scope),
+    clearTimeout: scope.clearTimeout.bind(scope),
+    clearInterval: scope.clearInterval.bind(scope),
+  };
+  const live = new Set<number>();
+  scope.setTimeout = (handler, ms, ...args) => {
+    const id = original.setTimeout(
+      (...passed: unknown[]) => {
+        live.delete(id);
+        handler(...passed);
+      },
+      ms,
+      ...args,
+    );
+    live.add(id);
+    return id;
+  };
+  scope.setInterval = (handler, ms, ...args) => {
+    const id = original.setInterval(handler, ms, ...args);
+    live.add(id);
+    return id;
+  };
+  // A browser keeps one pool of ids for both, and clears either through either.
+  scope.clearTimeout = scope.clearInterval = (id) => {
+    if (id !== undefined) live.delete(id);
+    original.clearTimeout(id);
+  };
+  return { original, set: () => live.size > 0 };
 }
 
 /**
@@ -42,6 +88,7 @@ function describe(error: unknown): string {
 export function serve(): void {
   const scope = globalThis as unknown as WorkerScope;
   const post = (message: FromWorker): void => scope.postMessage(message);
+  const timers = countTimers(scope);
 
   // [LAW:single-enforcer] Every way a program can fail ends here: its body
   // rejecting, an error thrown from a task of its own (a key handler, a timer),
@@ -75,6 +122,7 @@ export function serve(): void {
           write: (chunk) => post({ kind: "output", chunk }),
           onInput: (to) => {
             deliver = to;
+            post({ kind: "listening" });
           },
           exit: (code) => {
             post({ kind: "exit", code });
@@ -83,7 +131,7 @@ export function serve(): void {
         }).then(
           // A timer fires only once every queued job has run, so by then the
           // program has written all it drew in response to its body.
-          () => void setTimeout(() => post({ kind: "settled" }), 0),
+          () => void timers.original.setTimeout(() => post({ kind: "settled", runsOn: timers.set() }), 0),
           crash,
         );
     }
