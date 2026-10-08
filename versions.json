@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-360",
-      "ref": "refs/pull/360/merge",
-      "sha": "2d44ac7b0227824fe0d40907847b7ff6ae4c356a",
-      "timestamp": "2026-10-08T21:55:25.609Z",
-      "commits": [
-        {
-          "sha": "2d44ac7b0227824fe0d40907847b7ff6ae4c356a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T21:53:55Z",
-          "message": "Merge 674e931599d19ce8745d7f5b21e3533d008e570e into ed23a5bf2319fa3a0b6806596c8dda356304b595\n"
-        },
-        {
-          "sha": "674e931599d19ce8745d7f5b21e3533d008e570e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T15:53:49-06:00",
-          "message": "fix(docs): effect cards carry their contrast to the playground; slider boxes keep typing and refuse non-numbers (rich-example-card-b5rz.cek)\n\nReview (high) of #360:\n- Contrast is the program's, not the card's: CardProgram carries it, the\n  playground hash encodes it (a program. link without one opens readable),\n  so \"Open in playground\" on an effect shows it as drawn.\n- A magnitude's slider starts a step above zero: FPS 0 and a 0-second curve\n  both throw in the library.\n- A slider's number box is left alone while focused, and an empty or\n  unreadable entry is put back, never written as 0 or NaN.\n- card.json is read once per demo card; the opened tunables once per slider set.\n- A test runs a transition through its restart; effectCards() is made in beforeAll.\n"
-        },
-        {
-          "sha": "c17ee6a2edc076f5b18b551ed594e60310a6ed95",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T15:39:50-06:00",
-          "message": "feat(docs): effects-playground is a docs page on the card, with sliders over the numbers in its code (rich-example-card-b5rz.cek)\n\n/effects-playground shows one card per effect. Each card's entry is the\neffect's program, cut from src/renderables/effects.ts (programs.ts), beside\nkit.ts and the effects-feel demo's subjects (examples/effects-feel/subjects.ts),\nwhich it runs as further files. The run controls became named constants in\nthat program (FPS, STEP), so they are sliders like any other value.\n\nSliders are a card option: card.json may say \"sliders\": true, and\n\"contrast\": \"as drawn\" for a program that paints its own ground. tunables.ts\nmoved to docs/.vitepress and a slider is still an edit of its literal, made in\nthe card's editor, so reset restores both. In this slice an edit restarts the\nprogram.\n\nThe standalone page, its vite server, the terminal mirror and the in-place\nedit channel (edits.ts, controls.ts, mirror.ts, terminal.ts) are gone with\ntheir npm scripts.\n\nPublished names now resolve to src/ in the test suite (vitest alias,\ntsconfig.test.json paths), held to PUBLISHED_PATHS by\ntest/seam/test-resolution.test.ts: a card file under examples/ imports the\nlibrary by those names, and a test that reaches one ran before dist/ exists.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "ed23a5bf2319fa3a0b6806596c8dda356304b595",
-      "timestamp": "2026-10-08T21:19:20.880Z",
+      "sha": "4a2c5c12ad497c59b5f1c6941187c48dc658d383",
+      "timestamp": "2026-10-08T21:59:45.725Z",
       "commits": [
         {
-          "sha": "ed23a5bf2319fa3a0b6806596c8dda356304b595",
+          "sha": "4a2c5c12ad497c59b5f1c6941187c48dc658d383",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T15:18:09-06:00",
-          "message": "feat(docs): dropdown-demo's page runs in the card, with keyboard input and its own terminal size (rich-example-card-b5rz.z0w) (#359)\n\n* feat(docs): dropdown-demo's page runs in the card, with keyboard input and its own terminal size (rich-example-card-b5rz.z0w)\n\nA live card's terminal size is now the card's (`CardData.terminal`,\n`TerminalSize`): a docs block's is EXAMPLE_TERMINAL's, a demo's is what its\n`card.json` gives, parsed once in demo-card.ts and refused at build naming\nthe file. LiveScreen takes the size as a prop; everything else about the\nterminal stays EXAMPLE_TERMINAL's.\n\nWhile a live terminal has focus every key is the program's, Tab and Escape\nincluded. A ring and a bar hint say so, and Escape then Tab leaves it, the\nsame way out as the card's editor; the Escape still reaches the program.\n\ndropdown-demo is reshaped to the demo shape: main.ts is the entry for the\ncard and `npm run demo:dropdown` (which still refuses a non-TTY), imports use\npublished names, wire.ts/index.ts are gone, and it fits its 100x30 card.\n\ne2e: the dropdown is opened, moved and selected by keyboard through its card,\nTab stays the demo's, Esc-then-Tab leaves, an edit restarts it, the bottom\nrow is in view. `shown()` no longer blocks on rows that do not exist yet, so\na poll re-scrolls a terminal the opening editor pushed off screen.\n\n* fix(docs): a card's program carries its terminal size into the playground; Esc→Tab leaves only within CodeMirror's 2 s (rich-example-card-b5rz.z0w)\n\nHigh review pass on #359:\n- CardProgram holds its terminal size; the link format is now `program.`,\n  `files.` links still open at the example size. A demo opened in the\n  playground runs at its card.json size, not 75x24.\n- terminal-size.ts is the one parser of a size (card.json and links),\n  capped so a crafted link cannot allocate a huge screen; card.json\n  errors, malformed JSON included, name the file.\n- Escape arms Tab-to-leave for 2 s, as CodeMirror's tabFocusMode does;\n  the hint text lives beside the handler (LEAVE_HINT).\n- TerminalSpec extends TerminalSize; dropdown-demo's runDemo returns its\n  promise, dropping the uncalled stop."
+          "timestamp": "2026-10-08T15:58:03-06:00",
+          "message": "feat(docs): effects-playground is a docs page on the card, with sliders (rich-example-card-b5rz.cek) (#360)\n\n* feat(docs): effects-playground is a docs page on the card, with sliders over the numbers in its code (rich-example-card-b5rz.cek)\n\n/effects-playground shows one card per effect. Each card's entry is the\neffect's program, cut from src/renderables/effects.ts (programs.ts), beside\nkit.ts and the effects-feel demo's subjects (examples/effects-feel/subjects.ts),\nwhich it runs as further files. The run controls became named constants in\nthat program (FPS, STEP), so they are sliders like any other value.\n\nSliders are a card option: card.json may say \"sliders\": true, and\n\"contrast\": \"as drawn\" for a program that paints its own ground. tunables.ts\nmoved to docs/.vitepress and a slider is still an edit of its literal, made in\nthe card's editor, so reset restores both. In this slice an edit restarts the\nprogram.\n\nThe standalone page, its vite server, the terminal mirror and the in-place\nedit channel (edits.ts, controls.ts, mirror.ts, terminal.ts) are gone with\ntheir npm scripts.\n\nPublished names now resolve to src/ in the test suite (vitest alias,\ntsconfig.test.json paths), held to PUBLISHED_PATHS by\ntest/seam/test-resolution.test.ts: a card file under examples/ imports the\nlibrary by those names, and a test that reaches one ran before dist/ exists.\n\n* fix(docs): effect cards carry their contrast to the playground; slider boxes keep typing and refuse non-numbers (rich-example-card-b5rz.cek)\n\nReview (high) of #360:\n- Contrast is the program's, not the card's: CardProgram carries it, the\n  playground hash encodes it (a program. link without one opens readable),\n  so \"Open in playground\" on an effect shows it as drawn.\n- A magnitude's slider starts a step above zero: FPS 0 and a 0-second curve\n  both throw in the library.\n- A slider's number box is left alone while focused, and an empty or\n  unreadable entry is put back, never written as 0 or NaN.\n- card.json is read once per demo card; the opened tunables once per slider set.\n- A test runs a transition through its restart; effectCards() is made in beforeAll."
         }
       ]
     }
