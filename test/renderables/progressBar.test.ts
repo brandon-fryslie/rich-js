@@ -119,6 +119,12 @@ describe("ProgressBar", () => {
       expect(texts(none, { maxWidth: 80 })).toEqual(["━━━━━━━━━━"]);
     });
 
+    it("draws the empty part in `bar.back`, Rich's default `style`", () => {
+      const opts: RenderOptions = { maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR };
+      const [, , back] = collectSegments(new ProgressBar({ total: 10, completed: 5, width: 10 }), opts);
+      expect(back?.style).toEqual(getStyle(opts, "bar.back"));
+    });
+
     it("draws half a cell when the fill lands on a half", () => {
       // `BarColumn(40)` at 50% offered 21 cells.
       const bar = new ProgressBar({ total: 100, completed: 50, width: 40 });
@@ -175,6 +181,11 @@ describe("ProgressBar", () => {
     it("draws the same bytes for the same t", () => {
       const draw = () => collectSegments(new ProgressBar({ width: 40, pulse: { t: 3 } }), TRUECOLOR);
       expect(draw()).toEqual(draw());
+    });
+
+    it("draws nothing on an output with no colour, where the back and its light cannot be drawn", () => {
+      const NO_COLOR: RenderOptions = { maxWidth: 80, colorSystem: null };
+      for (const t of [0, 3, 30]) expect(collectSegments(new ProgressBar({ width: 40, completed: 70, pulse: { t } }), NO_COLOR)).toEqual([]);
     });
 
     it("is the empty bar, whatever it has completed, before the first pass enters", () => {
