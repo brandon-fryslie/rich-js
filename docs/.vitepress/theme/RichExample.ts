@@ -16,6 +16,8 @@
  *   unfolded and line numbers on. An edit is written back to the hash once
  *   typing pauses, so the address bar is a link to what the editor holds.
  *
+ * The landing page's hero is the card with its code hidden (`OutputCard`).
+ *
  * Once typing pauses the card shows what its program (`cardSource`) does with
  * the edit, in what stands under the code, its outlet:
  *
@@ -601,6 +603,20 @@ export default defineComponent({
     const { card } = props;
     return card.run === "never" ? readOnlyView(card, slots) : editableView(card, slots);
   },
+});
+
+/**
+ * The card with its code hidden: a program running in a live terminal, as a
+ * live card's output does, and nothing to edit. `program` makes the script,
+ * as a live card's does. The landing page's hero is one (RichShowcase.ts).
+ */
+export const OutputCard = defineComponent({
+  name: "OutputCard",
+  props: {
+    program: { type: Function as PropType<() => Promise<string>>, required: true },
+  },
+  setup: (props) => () =>
+    h("div", { class: "rich-example rich-example-card" }, [h("div", { class: "rich-example-output" }, [h(LiveScreen, { program: props.program })])]),
 });
 
 /**

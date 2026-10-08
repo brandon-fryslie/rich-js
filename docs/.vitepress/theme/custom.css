@@ -298,7 +298,7 @@
   color: var(--vp-c-brand-1);
 }
 
-/* The landing page's hero terminal (theme/RichShowcase.ts): a card under the
+/* The landing page's hero (theme/RichShowcase.ts): an output-only card under the
  * hero's text, as wide as its terminal and no wider than the page. Its font is
  * sized as an example's output is, from the columns the terminal has, but with
  * no floor: a showcase is looked at whole, not read row by row, and a floor
@@ -318,7 +318,7 @@
   --rich-fragment-size: min(100cqw / (var(--rich-example-columns) * 0.62 + 2), var(--vp-code-font-size));
 }
 
-.rich-showcase .rich-live {
+.rich-showcase .rich-example {
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
