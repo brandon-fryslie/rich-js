@@ -4,15 +4,22 @@
     {
       "version": "pr-339",
       "ref": "refs/pull/339/merge",
-      "sha": "626628261b0ceb945cff14887e428d6841b51800",
-      "timestamp": "2026-10-08T00:37:24.662Z",
+      "sha": "9eed9bf33c5d9a11afa6e67a689455c34e91c6d6",
+      "timestamp": "2026-10-08T00:43:21.981Z",
       "commits": [
         {
-          "sha": "626628261b0ceb945cff14887e428d6841b51800",
+          "sha": "9eed9bf33c5d9a11afa6e67a689455c34e91c6d6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T18:36:19-06:00",
-          "message": "Merge 92cf26122c12eca11db505bf6dbc9f8146bf0a21 into eddf7b4a78e73c20dc6b1b84ea6a0add7d011883\n"
+          "timestamp": "2026-10-08T00:42:09Z",
+          "message": "Merge f73b88123f41fa71d604f8fa74b4ef50f24b2127 into eddf7b4a78e73c20dc6b1b84ea6a0add7d011883\n"
+        },
+        {
+          "sha": "f73b88123f41fa71d604f8fa74b4ef50f24b2127",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T18:42:04-06:00",
+          "message": "fix(ci): bound every job, and fail any job without a timeout-minutes (rich-workflows-1qvg)\n\nReview of #339: node-floor, publish and both deploy jobs were still on\nGitHub's 6-hour default. Each job now carries its own bound, and\ntest/seam/workflow-pins.ts reports any job without one.\n"
         },
         {
           "sha": "92cf26122c12eca11db505bf6dbc9f8146bf0a21",
