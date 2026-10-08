@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-356",
+      "ref": "refs/pull/356/merge",
+      "sha": "80b6cbe2bd21c00de5e28a9c59a19d6eed8d5bb9",
+      "timestamp": "2026-10-08T18:44:43.983Z",
+      "commits": [
+        {
+          "sha": "80b6cbe2bd21c00de5e28a9c59a19d6eed8d5bb9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T12:42:39-06:00",
+          "message": "Merge 5752928e4af46b7080191386a8aa40582e1019a4 into 56686da190b6c15bbb5960c1549f345af6d1e50b\n"
+        },
+        {
+          "sha": "5752928e4af46b7080191386a8aa40582e1019a4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T12:42:28-06:00",
+          "message": "feat(docs): /playground is the card at full width (rich-example-card-obsb.cau)\n\nThe playground is the example card: line numbers on, setup unfolded, the\nedited line always shown, the program in the hash. Try it carries the card's\nprogram, setup groups included (card.<deflated JSON>); a hash in the old\nformat opens as a program with no setup.\n\nThe card decides how to show a playground program from what it does: a\nstatic run is drawn; one that redraws, listens on stdin, leaves a timer\nrunning past its body, or is still running at the limit moves to the live\nterminal. RichPlayground.ts is deleted.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "56686da190b6c15bbb5960c1549f345af6d1e50b",
