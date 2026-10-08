@@ -4,15 +4,22 @@
     {
       "version": "pr-341",
       "ref": "refs/pull/341/merge",
-      "sha": "1b0f4077f8cf5eabe841377b8379bfa615f30f0f",
-      "timestamp": "2026-10-08T01:36:49.764Z",
+      "sha": "fbd162fcbb03020ab89c2e22fa4a23886919ee5c",
+      "timestamp": "2026-10-08T01:44:40.240Z",
       "commits": [
         {
-          "sha": "1b0f4077f8cf5eabe841377b8379bfa615f30f0f",
+          "sha": "fbd162fcbb03020ab89c2e22fa4a23886919ee5c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T19:35:26-06:00",
-          "message": "Merge e3425c5c81cdc9b17fe8ca4b985befd79f216cf1 into 2d11591378efe0356595191d0cc01736782d55c9\n"
+          "timestamp": "2026-10-08T01:43:43Z",
+          "message": "Merge 861e0f6757b1247979e11263e6d97cb9bd6537fa into 2d11591378efe0356595191d0cc01736782d55c9\n"
+        },
+        {
+          "sha": "861e0f6757b1247979e11263e6d97cb9bd6537fa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T19:43:38-06:00",
+          "message": "fix(effects): runs merge on what each slot writes, so the default colour and no colour are one run (rich-effects-fxiy.7b3)\n\nReview (high): a cell nudged off the default colour at 256/16 colours wrote 39 beside cells writing nothing, cutting a run per cell; the merge also built a Style and SGR string per cell. Runs now compare per-slot written codes, absent read as default.\n"
         },
         {
           "sha": "e3425c5c81cdc9b17fe8ca4b985befd79f216cf1",
