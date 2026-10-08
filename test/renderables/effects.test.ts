@@ -42,7 +42,9 @@ const curve = (seconds: number, swing: number): Curve => ({ seconds, ease: EASES
 const ink = new ColorRgba(205, 214, 244);
 const ground = new ColorRgba(30, 30, 46);
 const colors: CellColors = { fg: ink, bg: ground };
-const cells: EffectCell[] = Array.from({ length: 40 }, (_, col) => ({ row: 0, col, seed: (col * 0.6180339) % 1 }));
+/** Neither colour the terminal's: both are the subject's own. */
+const written = { fg: false, bg: false };
+const cells: EffectCell[] = Array.from({ length: 40 }, (_, col) => ({ row: 0, col, seed: (col * 0.6180339) % 1, terminal: written }));
 
 const sameColor = (a: ColorRgba, b: ColorRgba): boolean => a.red === b.red && a.green === b.green && a.blue === b.blue;
 const distance = (a: ColorRgba, b: ColorRgba): number => Oklch.fromRgba(a).deltaE(Oklch.fromRgba(b));
@@ -98,7 +100,7 @@ describe("the wheel", () => {
   const grounds = new Set(fills.map((c) => c.hex));
   const hue = (c: ColorRgba): number => Oklch.fromRgba(c).h;
   const turned = (from: ColorRgba, to: ColorRgba): number => (((hue(to) - hue(from)) % 360) + 360) % 360;
-  const cell: EffectCell = { row: 0, col: 3, seed: 0 };
+  const cell: EffectCell = { row: 0, col: 3, seed: 0, terminal: written };
 
   it("turns every hue the whole way round once a period, lightness and chroma kept", () => {
     const P = 907;
@@ -288,7 +290,24 @@ describe("the loops move", () => {
     // 59, t 114.5, where a crest of 1 − hypot(noise, 0.12) went below zero and
     // its power was NaN.
     const glint = shimmer(curve(48, 1), 400, 400, sun, 0);
-    expect(Number.isFinite(glint.field({ row: 15, col: 59, seed: 0 }, 114.5))).toBe(true);
+    expect(Number.isFinite(glint.field({ row: 15, col: 59, seed: 0, terminal: written }, 114.5))).toBe(true);
+  });
+
+  it("onColors and the wheel treat the terminal's colour as one outside the set, whatever its hex", () => {
+    // The ground is in the set, but here it is the terminal's: a subject colour that shares its hex.
+    const onTerminal = { fg: false, bg: true };
+    const loop = pulse(curve(3, 0.2), sun, 0);
+    const turn = curve(907, 0.25);
+    const effects: [Effect, Effect][] = [
+      [onColors(new Map([[ink.hex, 1], [ground.hex, 1]]), loop), onColors(new Map([[ink.hex, 1]]), loop)],
+      [wheel(turn, new Set([ink.hex, ground.hex]), new Set([ground.hex]), 0), wheel(turn, new Set([ink.hex]), new Set(), 0)],
+    ];
+    for (const [effect, withoutGround] of effects) {
+      const frames = cells.flatMap((cell) => Array.from({ length: 30 }, (_, i) => [cell, 100 + i / 10] as const));
+      const moved = frames.map(([cell, t]) => effect(colors, { ...cell, terminal: onTerminal }, t));
+      expect(moved).toEqual(frames.map(([cell, t]) => withoutGround(colors, cell, t)));
+      expect(moved.some(({ fg }) => !sameColor(fg, ink))).toBe(true);
+    }
   });
 
   it("onColors leaves a colour not in its set alone", () => {
@@ -335,7 +354,7 @@ describe("the transitions run start to end", () => {
   it("a dissolve-out lets some of what is left come back before it goes, and ends gone", () => {
     const dissolve = curve(30, 1);
     const effect = dissolveOut(dissolve, 0, 0, ground).effect;
-    const wide: EffectCell[] = Array.from({ length: 120 }, (_, col) => ({ row: 0, col, seed: 0 }));
+    const wide: EffectCell[] = Array.from({ length: 120 }, (_, col) => ({ row: 0, col, seed: 0, terminal: written }));
     const shown = (cell: EffectCell, t: number): number => distance(effect(colors, cell, t).fg, ground);
     const risen = wide.filter((cell) => {
       const series = Array.from({ length: 600 }, (_, i) => shown(cell, i * 0.05));
@@ -426,7 +445,7 @@ describe("the loops never jump", () => {
   it.each(Object.entries(loops))("%s moves no cell more than the bar between frames at 1 fps", (_, loop) => {
     let worst = 0;
     for (const { span, z, offset } of ELEMENTS) {
-      const strip: EffectCell[] = Array.from({ length: 2 * span }, (_, i) => ({ row: i % 2, col: Math.floor(i / 2), seed: 0 }));
+      const strip: EffectCell[] = Array.from({ length: 2 * span }, (_, i) => ({ row: i % 2, col: Math.floor(i / 2), seed: 0, terminal: written }));
       for (const color of fills) {
         const move = loop(span, z);
         // A frame at a time, as a screen draws them.
@@ -446,20 +465,28 @@ describe("the loops never jump", () => {
 describe("a cell under light still reads", () => {
   const AA = 4.5;
   const palette = (theme: typeof CATPPUCCIN_MOCHA, key: string): ColorRgba => theme.palette.get(key)!;
-  const cases: [string, Pair[], ColorRgba[]][] = [
-    ["pale lettering on Mocha's muted fills", ["primary", "secondary", "accent", "success", "warning", "error"].map((k) => [palette(CATPPUCCIN_MOCHA, "foreground"), palette(CATPPUCCIN_MOCHA, `${k}-muted`)] as Pair), []],
-    ["white lettering on Latte's fills", (["primary", "error"] as const).map((k) => [palette(CATPPUCCIN_LATTE, `on-${k}`), palette(CATPPUCCIN_LATTE, k)] as Pair), []],
-    ["dark ink on Latte's own ground", [[palette(CATPPUCCIN_LATTE, "foreground-muted"), CATPPUCCIN_LATTE.backgroundColor]], [CATPPUCCIN_LATTE.backgroundColor]],
+  const pair = (fg: ColorRgba, bg: ColorRgba, terminal = written): Pair => ({ fg, bg, terminal });
+  const onTerminalGround = { fg: false, bg: true };
+  const latteInk = palette(CATPPUCCIN_LATTE, "foreground-muted");
+  const slate = new ColorRgba(48, 48, 48);
+  const grey = new ColorRgba(160, 160, 160);
+  const cases: [string, Pair[]][] = [
+    ["pale lettering on Mocha's muted fills", ["primary", "secondary", "accent", "success", "warning", "error"].map((k) => pair(palette(CATPPUCCIN_MOCHA, "foreground"), palette(CATPPUCCIN_MOCHA, `${k}-muted`)))],
+    ["white lettering on Latte's fills", (["primary", "error"] as const).map((k) => pair(palette(CATPPUCCIN_LATTE, `on-${k}`), palette(CATPPUCCIN_LATTE, k)))],
+    ["dark ink on Latte's own ground", [pair(latteInk, CATPPUCCIN_LATTE.backgroundColor, onTerminalGround)]],
+    // The fill moves and the terminal's ground of the same hex holds still: the ink is settled against both.
+    // Settled as if that ground brightened with the fill, the ink would take light the still ground cannot spare.
+    ["dark ink on a fill with the terminal ground's hex, and on that ground", [pair(slate, grey), pair(slate, grey, onTerminalGround)]],
   ];
-  it.each(cases)("%s: no strength takes a cell below its resting contrast or AA", (_, pairs, terminal) => {
+  it.each(cases)("%s: no strength takes a cell below its resting contrast or AA", (_, pairs) => {
     const touch = light(sun);
-    const colors = new Set(pairs.flat().filter((c) => !terminal.includes(c)).map((c) => c.hex));
-    const share = shares(pairs, colors, touch);
-    for (const [fg, bg] of pairs) {
+    const colors = new Set(pairs.flatMap(({ fg, bg, terminal }) => [...(terminal.fg ? [] : [fg.hex]), ...(terminal.bg ? [] : [bg.hex])]));
+    const effect = onColors(shares(pairs, colors, touch), { touch, field: (_cell, t) => t });
+    for (const { fg, bg, terminal } of pairs) {
       const floor = Math.min(contrastRatio(fg, bg), AA);
       for (let w = 0; w <= 1; w += 0.05) {
-        const lit = (c: ColorRgba) => touch(c, (share.get(c.hex) ?? 0) * w);
-        expect(contrastRatio(lit(fg), lit(bg))).toBeGreaterThanOrEqual(floor - 0.02);
+        const lit = effect({ fg, bg }, { ...cells[0]!, terminal }, w);
+        expect(contrastRatio(lit.fg, lit.bg)).toBeGreaterThanOrEqual(floor - 0.02);
       }
     }
   });
@@ -467,15 +494,18 @@ describe("a cell under light still reads", () => {
   it("the lighter of a pair takes the whole light, and its darker partner what contrast is left", () => {
     const fg = palette(CATPPUCCIN_MOCHA, "foreground");
     const fill = palette(CATPPUCCIN_MOCHA, "secondary-muted");
-    const share = shares([[fg, fill]], new Set([fg.hex, fill.hex]), light(sun));
+    const share = shares([pair(fg, fill)], new Set([fg.hex, fill.hex]), light(sun));
     expect(share.get(fg.hex)).toBe(1);
     expect(share.get(fill.hex)).toBeGreaterThan(0);
     expect(share.get(fill.hex)).toBeLessThan(1);
   });
 
-  it("a colour in no pair has nothing to stay legible against, and is refused by name", () => {
+  it("a colour no pair writes has nothing to stay legible against, and is refused by name", () => {
     const fg = palette(CATPPUCCIN_MOCHA, "foreground");
+    const ground = CATPPUCCIN_MOCHA.backgroundColor;
     const accent = palette(CATPPUCCIN_MOCHA, "accent");
-    expect(() => shares([[fg, CATPPUCCIN_MOCHA.backgroundColor]], new Set([fg.hex, accent.hex]), light(sun))).toThrow(accent.hex);
+    expect(() => shares([pair(fg, ground, onTerminalGround)], new Set([fg.hex, accent.hex]), light(sun))).toThrow(accent.hex);
+    // The terminal's ground is in the pair, but the element never writes it.
+    expect(() => shares([pair(fg, ground, onTerminalGround)], new Set([fg.hex, ground.hex]), light(sun))).toThrow(ground.hex);
   });
 });

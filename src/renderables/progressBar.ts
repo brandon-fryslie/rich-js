@@ -3,9 +3,9 @@
  */
 
 import { cellCount } from "../core/cells.js";
-import { ColorDepth, ColorSpec, resolveTerminal, type TerminalTheme } from "../core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec, resolveTerminal, type TerminalTheme } from "../core/color.js";
 import { Segment } from "../core/segment.js";
-import type { Style } from "../core/style.js";
+import { Style } from "../core/style.js";
 import type {
   Renderable,
   Measurable,
@@ -27,6 +27,8 @@ const HALF_BAR_LEFT = "╺";
  */
 const PULSE_CURVE = { ...EFFECT_CURVES.shimmer, seconds: 5 };
 const PULSE_REACH = 10;
+/** Rich's pulse back where the back style names no colour. */
+const PULSE_BACK = ColorSpec.fromRgba(new ColorRgba(0, 0, 0));
 
 export interface ProgressBarOptions {
   total?: number;
@@ -68,17 +70,23 @@ export class ProgressBar implements Renderable, Measurable {
     // [LAW:parse-dont-validate] parsed as a cell count, so a negative width draws nothing, as Python's `"━" * -2` is "".
     const width = cellCount(Math.min(this.width || options.maxWidth, options.maxWidth));
     if (this.pulse === undefined) {
-      yield* this.track(options, width, this.completeHalves(width));
+      yield* this.track(options, width, this.completeHalves(width), getStyle(options, this.style));
       return;
     }
-    // [LAW:no-ambient-temporal-coupling] The moment is the caller's; the bar
-    // only says what it looks like then. An empty track, lit by the shimmer.
-    const track: Renderable = { render: (o) => this.track(o, width, 0) };
     const depth = options.colorSystem ?? ColorDepth.TRUECOLOR;
     // Rich's pulse resolves its colours on the terminal a depth assumes, as
     // `get_truecolor` does with no theme; so does this.
     const theme = resolveTerminal(undefined, depth);
-    yield* new Effected(track, this.pulseEffect(options, width, depth, theme), { t: this.pulse.t, key: "progress-bar", theme }).render(options);
+    // Rich writes the pulse's back as a colour of its own, black where the
+    // back style names none, so the light always has the bar's colour to fall
+    // on: one the terminal supplies takes no light.
+    const style = getStyle(options, this.style);
+    const ink = style.color?.isDefault === false ? style.color : ColorSpec.fromRgba((style.color ?? PULSE_BACK).getTruecolor(theme, true));
+    const back = style.add(Style.fromColor(ink));
+    // [LAW:no-ambient-temporal-coupling] The moment is the caller's; the bar
+    // only says what it looks like then. An empty track, lit by the shimmer.
+    const track: Renderable = { render: (o) => this.track(o, width, 0, back) };
+    yield* new Effected(track, this.pulseEffect(options, back, width, depth, theme), { t: this.pulse.t, key: "progress-bar", theme }).render(options);
   }
 
   /**
@@ -86,14 +94,11 @@ export class ProgressBar implements Renderable, Measurable {
    * `depth`, toward `bar.pulse`. A bar has no words to keep legible, so its
    * back takes the whole of the light.
    */
-  private pulseEffect(options: RenderOptions, width: number, depth: ColorDepth, theme: TerminalTheme): Effect {
-    const ink = getStyle(options, this.style).drawnColors(depth).color ?? ColorSpec.default();
+  private pulseEffect(options: RenderOptions, back: Style, width: number, depth: ColorDepth, theme: TerminalTheme): Effect {
+    const ink = back.drawnColors(depth).color ?? ColorSpec.default();
     const glow = getStyle(options, "bar.pulse").drawnColors(depth).color ?? ColorSpec.default();
     const loop = shimmer(PULSE_CURVE, width, PULSE_REACH, glow.getTruecolor(theme, true), 0);
-    const lit = onColors(new Map([[ink.getTruecolor(theme, true).hex, 1]]), loop);
-    // The light falls on the line, never the ground: a back colour equal to
-    // the terminal's would otherwise light the cell behind it too.
-    return (colors, cell, t) => ({ fg: lit(colors, cell, t).fg, bg: colors.bg });
+    return onColors(new Map([[ink.getTruecolor(theme, true).hex, 1]]), loop);
   }
 
   /** Rich 9d8f9a3 `__rich_console__`: the fill is counted in half cells, and a total of zero is a bar already full. */
@@ -102,14 +107,13 @@ export class ProgressBar implements Renderable, Measurable {
     return this.total ? Math.trunc((width * 2 * completed) / this.total) : width * 2;
   }
 
-  /** The bar `width` cells wide with `completeHalves` half cells filled. */
-  private *track(options: RenderOptions, width: number, completeHalves: number): Iterable<Segment> {
+  /** The bar `width` cells wide with `completeHalves` half cells filled, the rest in `back`. */
+  private *track(options: RenderOptions, width: number, completeHalves: number, back: Style): Iterable<Segment> {
     const barCount = Math.floor(completeHalves / 2);
     const halfBarCount = completeHalves % 2;
     const isFinished = this.completed >= this.total;
 
     const fill = getStyle(options, isFinished ? this.finishedStyle : this.completeStyle);
-    const back = getStyle(options, this.style);
     const fillStyle = fill.isNull ? undefined : fill;
     const backStyle = back.isNull ? undefined : back;
     const bar = drawable(options, BAR, ASCII_BAR);

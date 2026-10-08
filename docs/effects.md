@@ -46,7 +46,8 @@ const words = "Thinking about how light should cross these words";
 const line = new RichText(words, { style: Style.fromColor(ColorSpec.fromRgba(ink), ColorSpec.fromRgba(theme.backgroundColor)) });
 
 const glint = shimmer(EFFECT_CURVES.shimmer, words.length, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, 0);
-const lit = onColors(shares([[ink, theme.backgroundColor]], new Set([ink.hex]), glint.touch), glint);
+const pair = { fg: ink, bg: theme.backgroundColor, terminal: { fg: false, bg: false } };
+const lit = onColors(shares([pair], new Set([ink.hex]), glint.touch), glint);
 
 for (const t of [0, 60, 100]) {
   console.print(new Effected(line, lit, { t, key: "status", theme }));
@@ -57,9 +58,9 @@ Every effect's `z` argument (the `0` above) places the element in the noise the 
 
 ### A loop lights only the colours it is given
 
-`shimmer`, `pulse` and `sparkle` return a `Loop`: what the light does to one colour, and how strongly it acts on each cell at each moment. `onColors` turns a loop into an `Effect` over a set of colours, each at its own share of the light, so whatever else is on the screen is left alone.
+`shimmer`, `pulse` and `sparkle` return a `Loop`: what the light does to one colour, and how strongly it acts on each cell at each moment. `onColors` turns a loop into an `Effect` over a set of colours, each at its own share of the light, so whatever else is on the screen is left alone, the terminal's own colours included even where one has the hex of a colour in the set.
 
-`shares` works those shares out so the words stay readable. Give it every ink and ground pair the element draws its text in, and the colours that should take the light. Each colour gets the largest share at which every pair it appears in still reads at its resting contrast, or at WCAG AA (4.5:1) if it rested above that. A colour with contrast to spare glows brightly; one with none barely moves.
+`shares` works those shares out so the words stay readable. Give it every ink and ground pair the element draws its text in, each saying which of the two are the terminal's as an effect's `terminal` does, and the colours that should take the light. A terminal's colour holds still, as `onColors` holds it. Each colour gets the largest share at which every pair it appears in still reads at its resting contrast, or at WCAG AA (4.5:1) if it rested above that. A colour with contrast to spare glows brightly; one with none barely moves.
 
 `wheel` keeps lightness and chroma and only turns hue, so it is an `Effect` already and needs no shares.
 
@@ -113,6 +114,7 @@ Nothing in an effect reads a clock. Whoever draws frames builds the view for eac
 - `row` and `col` count from the top-left of what the wrapped renderable drew, so a sweep crosses the element, not the screen. A wide glyph is one cell to the effect, at the column of its first half, and is never cut.
 - `seed` is a number in `[0, 1)` that stays the same for that cell on every frame, for effects that vary cell by cell. It is derived from the `key` option and the cell's position, so two elements showing the same text under different keys do not move in lockstep.
 - `colors` are what the screen shows: the glyph's colour and the colour behind it, so under `reverse` they are the style's two colours swapped. A cell that sets no colour of its own, or names one of the sixteen ANSI colours, is handed that colour from the `theme` option, a `TerminalTheme`. The terminal's real palette is never queried, so the caller supplies it.
+- `terminal` says, for `fg` and `bg` as the screen shows them, whether that colour is the terminal's own: one the style leaves unset or sets to `default`. Resolved through the theme, it can have the same hex as a colour the element wrote; `terminal` is what tells the two apart. `onColors` and `wheel` never move a colour the terminal supplies.
 
 ## What an effect cannot change
 

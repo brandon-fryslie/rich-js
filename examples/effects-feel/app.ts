@@ -213,13 +213,15 @@ const DEFAULT = ColorSpec.default();
 
 /**
  * A cell's ink and ground as the wire draws them at `options`' depth, the
- * theme resolving the rest, and which of the two the cell itself sets.
+ * theme resolving the rest, and which of the two are the terminal's.
  */
-function shown(cell: Cell, options: RenderOptions, theme: TerminalTheme): { fg: ColorRgba; bg: ColorRgba; set: ColorRgba[] } {
+function shown(cell: Cell, options: RenderOptions, theme: TerminalTheme): Pair {
   const drawn = cell.style.drawnColors(options.colorSystem ?? undefined);
-  const fg = (drawn.color ?? DEFAULT).getTruecolor(theme, true);
-  const bg = (drawn.bgcolor ?? DEFAULT).getTruecolor(theme, false);
-  return { fg, bg, set: [...(drawn.color === undefined ? [] : [fg]), ...(drawn.bgcolor === undefined ? [] : [bg])] };
+  return {
+    fg: (drawn.color ?? DEFAULT).getTruecolor(theme, true),
+    bg: (drawn.bgcolor ?? DEFAULT).getTruecolor(theme, false),
+    terminal: { fg: drawn.color?.isDefault ?? true, bg: drawn.bgcolor?.isDefault ?? true },
+  };
 }
 
 /** The glyphs a joiner draws between cells: colour seams, not text. */
@@ -239,8 +241,8 @@ export function drawnSubject(subject: Subject, drawnWith: RenderOptions, theme: 
   const drawn = cellsOf(subject.renderable.render(options))
     .filter((cell) => text.has(cell.at))
     .map((cell) => shown(cell, options, theme));
-  const colors = new Set(drawn.flatMap(({ set }) => set.map((color) => color.hex)));
-  const pairs = [...new Map(drawn.map(({ fg, bg }): [string, Pair] => [`${fg.hex}/${bg.hex}`, [fg, bg]])).values()];
+  const colors = new Set(drawn.flatMap(({ fg, bg, terminal }) => [...(terminal.fg ? [] : [fg.hex]), ...(terminal.bg ? [] : [bg.hex])]));
+  const pairs = [...new Map(drawn.map((pair): [string, Pair] => [`${pair.fg.hex}/${pair.bg.hex}/${pair.terminal.fg}/${pair.terminal.bg}`, pair])).values()];
   return { ...subject, options, span, colors, pairs, text };
 }
 
@@ -347,7 +349,7 @@ export function subjectUnder(subject: DrawnSubject, loop: Loop, theme: TerminalT
 
 /** The fills of `subject`: the colours it sets that are the ground of a cell it draws text in. */
 export function fills(subject: DrawnSubject): ReadonlySet<string> {
-  return new Set(subject.pairs.map(([, bg]) => bg.hex).filter((hex) => subject.colors.has(hex)));
+  return new Set(subject.pairs.flatMap(({ bg, terminal }) => (terminal.bg ? [] : [bg.hex])));
 }
 
 /**

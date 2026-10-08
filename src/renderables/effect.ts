@@ -53,14 +53,22 @@ export interface CellColors {
 }
 
 /**
- * Where a cell is in the output of the renderable an effect wraps, and its
- * seed: a number in [0, 1) that is the same for that cell on every frame, for
- * an effect that varies cell by cell (a per-cell offset in time, a sparkle).
+ * Where a cell is in the output of the renderable an effect wraps, its seed:
+ * a number in [0, 1) that is the same for that cell on every frame, for an
+ * effect that varies cell by cell (a per-cell offset in time, a sparkle) —
+ * and which of its on-screen colours are the terminal's.
  */
 export interface EffectCell {
   readonly row: number;
   readonly col: number;
   readonly seed: number;
+  /**
+   * Whether the glyph's colour and the colour behind it, as the screen shows
+   * them, are the terminal's own: a slot the element's style leaves unset or
+   * sets to `default`. Such a colour is resolved through the theme, so its
+   * hex can equal one the element wrote; this is what tells them apart.
+   */
+  readonly terminal: { readonly fg: boolean; readonly bg: boolean };
 }
 
 /** A cell's colours at time `t`, in seconds. Return `colors` to leave it be. */
@@ -126,6 +134,7 @@ export class Effected implements Renderable, Measurable {
       const paper = (wire.bgcolor ?? DEFAULT).getTruecolor(this.theme, false);
       const slots = { fg: ink, bg: paper };
       const from = onScreen(slots, base);
+      const terminal = onScreen({ fg: wire.color?.isDefault ?? true, bg: wire.bgcolor?.isDefault ?? true }, base);
       // [LAW:one-source-of-truth] A run is cells the wire writes alike: each
       // cell is drawn at the output depth first and merged on the colours that
       // writes, so two truecolors landing on one index stay one run. A cell
@@ -138,7 +147,7 @@ export class Effected implements Renderable, Measurable {
           col = 0;
         } else {
           // Back from the screen to the style's slots: the same swap undoes itself.
-          colors = onScreen(this.effect(from, { row, col, seed: this.seed(row, col) }, this.t), base);
+          colors = onScreen(this.effect(from, { row, col, seed: this.seed(row, col), terminal }, this.t), base);
           col += cellLen(glyph);
         }
         const last = runs[runs.length - 1];
@@ -206,8 +215,8 @@ type DrawnColors = ReturnType<Style["drawnColors"]>;
  * A style's colour slots as the screen shows them, or the reverse: `reverse`
  * swaps glyph and ground, and swapping twice is where you started.
  */
-function onScreen(colors: CellColors, style: Style): CellColors {
-  return style.reverse === true ? { fg: colors.bg, bg: colors.fg } : colors;
+function onScreen<T>(slots: { readonly fg: T; readonly bg: T }, style: Style): { readonly fg: T; readonly bg: T } {
+  return style.reverse === true ? { fg: slots.bg, bg: slots.fg } : slots;
 }
 
 /**
