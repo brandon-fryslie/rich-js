@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-356",
-      "ref": "refs/pull/356/merge",
-      "sha": "719772b8784cf985e883c1140bf5a0faec7940fa",
-      "timestamp": "2026-10-08T19:11:58.582Z",
-      "commits": [
-        {
-          "sha": "719772b8784cf985e883c1140bf5a0faec7940fa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T19:10:35Z",
-          "message": "Merge 763f54e878030c1afdc846387cc7110eb9a70774 into 56686da190b6c15bbb5960c1549f345af6d1e50b\n"
-        },
-        {
-          "sha": "763f54e878030c1afdc846387cc7110eb9a70774",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T13:10:29-06:00",
-          "message": "fix(docs): the build and the static run agree on stdin, unfinished escapes and timer order (rich-example-card-obsb.cau)\n\nReview (medium) of #356:\n- The build refuses a static block whose card program listens on stdin, as\n  the page's static run ends one.\n- undrawnEscape moves to example-fragments.ts; the static run applies it to\n  what is left unread when a program ends, as the build does.\n- scanEscapes drops an escape as soon as it can no longer become one a\n  drawing draws, and bounds an open link at 4096 chars, so the per-write\n  re-read is bounded.\n- Program timer delays are taken as Node takes them (under 1 ms is 1 ms) and\n  runsOn waits 1 ms, so it answers alike in Node and a browser.\n"
-        },
-        {
-          "sha": "ff35be55e928cc560c13242a4e094aabf441be77",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T13:01:18-06:00",
-          "message": "fix(docs): one rule for what only a terminal shows, in the build and the browser (rich-example-card-obsb.cau)\n\nReview (high) of #356:\n- scanEscapes (example-fragments.ts) is the one reading of which escapes a\n  drawing drops; the build's disallowedEscape and the browser's CSI-only\n  redraws are gone. ESC 7/8, ESC M, ESC c and non-link OSC now end a static\n  run; erase in line, which decodeAnsi draws, passes the build too.\n- Timers are bound lexically by runInTerminal and counted there; runsOn is\n  the one 'runs on' rule. The worker no longer patches its global timers, and\n  the build refuses a static block whose card program leaves a timer set.\n- A card link's setup lines may hold no line break and its code no \\r; the\n  slicer now emits a multi-line carried statement as one Line per line.\n- Mod-Enter runs the edit at once instead of after the typing debounce.\n- e2e no-break-space helpers use an explicit \\u00a0; the redraw test now\n  exercises the escape path, with the timer path its own test.\n- Dead .rich-live-button:disabled and duplicate .rich-playground colour\n  selectors removed; MAX_PROGRAM_BYTES says it bounds the packed JSON, and a\n  test pins that boundary.\n"
-        },
-        {
-          "sha": "5752928e4af46b7080191386a8aa40582e1019a4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T12:42:28-06:00",
-          "message": "feat(docs): /playground is the card at full width (rich-example-card-obsb.cau)\n\nThe playground is the example card: line numbers on, setup unfolded, the\nedited line always shown, the program in the hash. Try it carries the card's\nprogram, setup groups included (card.<deflated JSON>); a hash in the old\nformat opens as a program with no setup.\n\nThe card decides how to show a playground program from what it does: a\nstatic run is drawn; one that redraws, listens on stdin, leaves a timer\nrunning past its body, or is still running at the limit moves to the live\nterminal. RichPlayground.ts is deleted.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "56686da190b6c15bbb5960c1549f345af6d1e50b",
-      "timestamp": "2026-10-08T18:17:58.416Z",
+      "sha": "478bc3ea1558c6dde8911316517f396d218d29ad",
+      "timestamp": "2026-10-08T19:19:23.249Z",
       "commits": [
         {
-          "sha": "56686da190b6c15bbb5960c1549f345af6d1e50b",
+          "sha": "478bc3ea1558c6dde8911316517f396d218d29ad",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T12:16:22-06:00",
-          "message": "feat(docs): live blocks are editable cards running in the live terminal (rich-example-card-obsb.2pn) (#355)\n\n* feat(docs): live blocks are editable cards running in the live terminal (rich-example-card-obsb.2pn)\n\nA live block is now RichExample's third card kind: its outlet is a live\nterminal (LiveScreen, the old RichLive taking a program instead of a\nmodule) running the card's program, made in the browser as an edit's is.\nAn edit that parses restarts the terminal on it; one that does not is said\nin red over the terminal it leaves running.\n\nThe build no longer bundles a program per live block; it checks each live\ncard's programs import only what the live library holds.\n\n* fix(docs): the build compiles a live card's program as the browser does (rich-example-card-obsb.2pn)\n\n- playgroundProgram asks the eval's parser for its compiled code, so\n  import.meta is refused for an edit and at build alike.\n- The build reads what a live program requires off Sucrase's output: an\n  import only of types is no longer refused, an elided one never was.\n- LiveScreen makes a terminal and clears a failure only for the newest ask.\n- A live card's page program is made once; reset hands that program back,\n  and the page's own code shows at once rather than after the debounce."
+          "timestamp": "2026-10-08T13:18:08-06:00",
+          "message": "feat(docs): /playground is the card at full width (rich-example-card-obsb.cau) (#356)\n\n* feat(docs): /playground is the card at full width (rich-example-card-obsb.cau)\n\nThe playground is the example card: line numbers on, setup unfolded, the\nedited line always shown, the program in the hash. Try it carries the card's\nprogram, setup groups included (card.<deflated JSON>); a hash in the old\nformat opens as a program with no setup.\n\nThe card decides how to show a playground program from what it does: a\nstatic run is drawn; one that redraws, listens on stdin, leaves a timer\nrunning past its body, or is still running at the limit moves to the live\nterminal. RichPlayground.ts is deleted.\n\n* fix(docs): one rule for what only a terminal shows, in the build and the browser (rich-example-card-obsb.cau)\n\nReview (high) of #356:\n- scanEscapes (example-fragments.ts) is the one reading of which escapes a\n  drawing drops; the build's disallowedEscape and the browser's CSI-only\n  redraws are gone. ESC 7/8, ESC M, ESC c and non-link OSC now end a static\n  run; erase in line, which decodeAnsi draws, passes the build too.\n- Timers are bound lexically by runInTerminal and counted there; runsOn is\n  the one 'runs on' rule. The worker no longer patches its global timers, and\n  the build refuses a static block whose card program leaves a timer set.\n- A card link's setup lines may hold no line break and its code no \\r; the\n  slicer now emits a multi-line carried statement as one Line per line.\n- Mod-Enter runs the edit at once instead of after the typing debounce.\n- e2e no-break-space helpers use an explicit \\u00a0; the redraw test now\n  exercises the escape path, with the timer path its own test.\n- Dead .rich-live-button:disabled and duplicate .rich-playground colour\n  selectors removed; MAX_PROGRAM_BYTES says it bounds the packed JSON, and a\n  test pins that boundary.\n\n* fix(docs): the build and the static run agree on stdin, unfinished escapes and timer order (rich-example-card-obsb.cau)\n\nReview (medium) of #356:\n- The build refuses a static block whose card program listens on stdin, as\n  the page's static run ends one.\n- undrawnEscape moves to example-fragments.ts; the static run applies it to\n  what is left unread when a program ends, as the build does.\n- scanEscapes drops an escape as soon as it can no longer become one a\n  drawing draws, and bounds an open link at 4096 chars, so the per-write\n  re-read is bounded.\n- Program timer delays are taken as Node takes them (under 1 ms is 1 ms) and\n  runsOn waits 1 ms, so it answers alike in Node and a browser."
         }
       ]
     }
