@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-343",
-      "ref": "refs/pull/343/merge",
-      "sha": "bc23f040100474059860e2ca314cec6ad7c4672d",
-      "timestamp": "2026-10-08T02:36:38.233Z",
-      "commits": [
-        {
-          "sha": "bc23f040100474059860e2ca314cec6ad7c4672d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T02:35:12Z",
-          "message": "Merge 70778f8b1a58a480c177891baac12f31ee83d0d8 into 9088edbc42cb5162fecd47ea2005490c0784f44c\n"
-        },
-        {
-          "sha": "70778f8b1a58a480c177891baac12f31ee83d0d8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T20:35:07-06:00",
-          "message": "fix(rule): resolve rule.line and rule.text as Rich does, and keep demo titles styled (rich-rule-koc0)\n\nReview (high) on #343. The line style now resolves through resolveStyle, so a\ntheme without rule.line draws unstyled where getStyle threw; rule.text goes in\nas a name and only an unhighlighted string title takes it, as Rich's\nrender_str drops the base style when it highlights. docs/console.md said the\ntitle skips markup and takes style; both were false. Demos that styled a title\nthrough style now style it through markup or a RichText.\n"
-        },
-        {
-          "sha": "0c9fb5d2c8d90aa4d4a8811a258609b6de2b3b93",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T20:25:08-06:00",
-          "message": "fix(rule): Rule draws its line in rule.line and its title in rule.text, as Rich does (rich-rule-koc0)\n\nRich 9d8f9a3 defaults Rule's style to \"rule.line\" (bright_green) and reads\na string title with render_str(style=\"rule.text\") (null), appending it to the\nline on its own. The port drew an unstyled line and laid the line's style\nunder the title; its theme had rule.line green and rule.text bold. A centred\ntitle's gaps now leave in the same run as the line beside them, as Rich's do.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "9088edbc42cb5162fecd47ea2005490c0784f44c",
-      "timestamp": "2026-10-08T02:22:28.469Z",
+      "sha": "6fe3afb5b7d68eb56269e27448533f4188eb77b1",
+      "timestamp": "2026-10-08T02:42:16.922Z",
       "commits": [
         {
-          "sha": "9088edbc42cb5162fecd47ea2005490c0784f44c",
+          "sha": "6fe3afb5b7d68eb56269e27448533f4188eb77b1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T20:21:24-06:00",
-          "message": "fix(effects): a colour the terminal supplies takes no subject's share (rich-effects-fxiy.3nt) (#342)\n\n* fix(effects): a colour the terminal supplies takes no subject's share, whatever its hex (rich-effects-fxiy.3nt)\n\nEffectCell carries which on-screen colours are the terminal's (unset or\ndefault). onColors and wheel skip those, so a subject colour sharing the\ntheme ground's hex no longer lights the ground. ProgressBar's fg-only\nwrapper is deleted; a reversed back style now pulses.\n\n* fix(effects): shares settles a terminal's colour as onColors lights it, and a colourless pulse back is written black (rich-effects-fxiy.3nt)\n\nPair carries the cell's terminal flags, so a terminal ground with a\nsubject colour's hex holds still in the legibility arithmetic as it does\non screen. ProgressBar writes a back that names no colour as Rich's\nblack, so the pulse lights it rather than finding only terminal colours."
+          "timestamp": "2026-10-07T20:40:45-06:00",
+          "message": "fix(rule): Rule's line in rule.line, its title in rule.text, as Rich (rich-rule-koc0) (#343)\n\n* fix(rule): Rule draws its line in rule.line and its title in rule.text, as Rich does (rich-rule-koc0)\n\nRich 9d8f9a3 defaults Rule's style to \"rule.line\" (bright_green) and reads\na string title with render_str(style=\"rule.text\") (null), appending it to the\nline on its own. The port drew an unstyled line and laid the line's style\nunder the title; its theme had rule.line green and rule.text bold. A centred\ntitle's gaps now leave in the same run as the line beside them, as Rich's do.\n\n* fix(rule): resolve rule.line and rule.text as Rich does, and keep demo titles styled (rich-rule-koc0)\n\nReview (high) on #343. The line style now resolves through resolveStyle, so a\ntheme without rule.line draws unstyled where getStyle threw; rule.text goes in\nas a name and only an unhighlighted string title takes it, as Rich's\nrender_str drops the base style when it highlights. docs/console.md said the\ntitle skips markup and takes style; both were false. Demos that styled a title\nthrough style now style it through markup or a RichText."
         }
       ]
     }
