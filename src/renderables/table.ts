@@ -1246,12 +1246,11 @@ export class Table implements Renderable, Measurable {
     justify: "left" | "center" | "right" | "full",
   ): Iterable<Segment> {
     // The table owns the canvas; the caller's text still says how it meets the
-    // edge. A `RichText`'s own `justify` and `overflow` outrank the options
-    // `render` is handed, so `titleJustify` would lose to a property the caller
-    // may not know it set, and an `"ignore"` title would have no edge and run
-    // straight through the frame. Every other method, and `noWrap`, cuts within
-    // the bound, so those stay theirs. `text` hands back a copy to clear them
-    // on. [LAW:one-source-of-truth]
+    // edge. A `RichText`'s own `justify` outranks `titleJustify`, as a `Text`'s
+    // does in the reference (rich-table-qj6i.kpp). Its own `overflow` does too,
+    // but for `"ignore"`: that title would have no edge and run straight
+    // through the frame. Every other method, and `noWrap`, cuts within the
+    // bound, so those stay theirs. `text` hands back a copy to clear it on.
     //
     // Never highlighted, and markup as the console says: Rich draws a title
     // and caption through `render_str(highlight=False)`.
@@ -1263,7 +1262,6 @@ export class Table implements Renderable, Measurable {
     // the reference renders a `Text` title without the title style
     // (rich-table-qj6i).
     const source = text.text({ ...options, highlight: false }, getStyle(options, ownStyle));
-    source.justify = undefined;
     if (source.overflow === "ignore") source.overflow = undefined;
     //
     // Rendered at the table's own width with nothing suppressed, because that

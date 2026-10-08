@@ -1405,18 +1405,6 @@ describe("Table markup", () => {
     expect(collectLines(captioned, { maxWidth: 20 })).toEqual(["┏━━━┓", "┃ A ┃", "┡━━━┩", "│ x │", "└───┘", "     "]);
   });
 
-  it("lets titleJustify outrank a justify carried by the title text", () => {
-    // Two owners of one alignment: a `RichText` with its own `justify` pads
-    // itself to full width inside `render`, which used to collapse the gap and
-    // silently win over the table's option.
-    const title = new RichText("T");
-    title.justify = "left";
-    const t = new Table({ title, titleJustify: "right" });
-    t.addColumn("HHHHHHHH");
-    t.addRow("x");
-    expect(collectLines(t, { maxWidth: 30 })[0]).toBe("           T");
-  });
-
   it("sizes a column holding a renderable cell to something it can hold", () => {
     // `String(panel)` is `[object Object]`, which the tag pattern swallows
     // whole — markup-parsing a non-string cell measured this column as zero.
@@ -1658,6 +1646,28 @@ describe("Table and Column styles", () => {
   ])("draws a %s title and caption in the styles Rich does", (_, title, caption, expected) => {
     const t = new Table({ title, titleStyle: "on blue", caption, captionStyle: "on green" });
     t.addColumn("header");
+    expect(draw(t)).toBe(expected);
+  });
+
+  // rich-table-qj6i.kpp: a `Text`'s own justify outranks an explicit
+  // titleJustify and captionJustify in Rich 9d8f9a3, which drew each of these
+  // bytes.
+  it.each([
+    [
+      "title",
+      { title: new RichText("T", { style: "bold", justify: "left" }), titleJustify: "right" as const },
+      "h",
+      "\x1b[1mT    \x1b[0m\n┏━━━┓\n┃\x1b[1m \x1b[0m\x1b[1mh\x1b[0m\x1b[1m \x1b[0m┃\n┡━━━┩\n└───┘\n",
+    ],
+    [
+      "caption",
+      { caption: new RichText("C", { justify: "right" }), captionJustify: "left" as const },
+      "header",
+      `${FRAME}         C\n`,
+    ],
+  ])("justifies a RichText %s by its own justify, as Rich does", (_, options, header, expected) => {
+    const t = new Table(options);
+    t.addColumn(header);
     expect(draw(t)).toBe(expected);
   });
 
