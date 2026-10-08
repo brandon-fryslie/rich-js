@@ -5,7 +5,7 @@
  * output as a docs card does; an edit, once typing pauses or by the shortcut,
  * replaces the output; the program is in the URL, so a reload or a fresh
  * browser opens it again, and a link in the format before it still opens; a
- * program that redraws, reads input or never ends moves to a live terminal,
+ * program that moves the cursor, runs on, reads input or never ends moves to a live terminal,
  * and the page stays usable; reset puts the opened program back; at phone
  * width the card fits the screen; output wears the site's colour mode.
  */
@@ -25,9 +25,9 @@ async function open(page: Page, path = "playground.html"): Promise<string[]> {
 const editor = (page: Page) => page.locator(".rich-playground .cm-content");
 const output = (page: Page) => page.locator(".rich-playground .rich-example-output");
 /** What the output shows as drawn HTML, the fragment of the colour mode in view. */
-const drawn = async (page: Page) => (await page.locator(".rich-playground .rich-example-output").innerText()).replaceAll(" ", " ");
+const drawn = async (page: Page) => (await page.locator(".rich-playground .rich-example-output").innerText()).replaceAll("\u00a0", " ");
 // xterm's DOM renderer draws some of a row's spaces as no-break spaces.
-const rows = async (page: Page) => (await page.locator(".rich-playground .xterm-rows").innerText()).replaceAll(" ", " ");
+const rows = async (page: Page) => (await page.locator(".rich-playground .xterm-rows").innerText()).replaceAll("\u00a0", " ");
 const alert = (page: Page) => page.locator(".rich-playground [role=alert]");
 const hashProgram = async (page: Page) => decodeProgram(new URL(page.url()).hash.slice(1));
 
@@ -165,10 +165,20 @@ test("the global console writes to the output, as Node's writes to stdout and st
   expect(errors).toEqual([]);
 });
 
-test("a program that redraws runs in a live terminal, and one that ends is drawn again", async ({ page }) => {
+test("a program that moves the cursor runs in a live terminal, though it sets no timer", async ({ page }) => {
   const errors = await open(page);
   await expect.poll(() => drawn(page), OPENING).toContain("Hello, World!");
-  await write(page, 'let n = 0;\nsetInterval(() => process.stdout.write(`\\x1b[2K\\rframe ${++n}\\x1b[1A\\n`), 50);');
+  // A cursor save and restore, which is no CSI, around text the next write overwrites.
+  await write(page, 'process.stdout.write("\\x1b7first\\x1b8second");');
+  await expect.poll(() => rows(page), LIVE).toContain("second");
+  await expect(output(page).locator(".rich-example-name")).toHaveText("Live");
+  expect(errors).toEqual([]);
+});
+
+test("a program that runs on with a timer set runs in a live terminal, and one that ends is drawn again", async ({ page }) => {
+  const errors = await open(page);
+  await expect.poll(() => drawn(page), OPENING).toContain("Hello, World!");
+  await write(page, 'let n = 0;\nsetInterval(() => process.stdout.write(`\\rframe ${++n}`), 50);');
   await expect.poll(() => rows(page), LIVE).toMatch(/frame \d+/);
   await expect(output(page).locator(".rich-example-name")).toHaveText("Live");
   await write(page, HELLO_AGAIN);

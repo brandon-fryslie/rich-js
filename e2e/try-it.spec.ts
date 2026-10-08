@@ -20,7 +20,7 @@ async function open(page: Page, path: string): Promise<string[]> {
 const card = (page: Page, code: string) => page.locator(".rich-example", { hasText: code });
 
 // xterm's DOM renderer draws some of a row's spaces as no-break spaces.
-const text = async (rows: Locator) => (await rows.innerText()).replaceAll(" ", " ");
+const text = async (rows: Locator) => (await rows.innerText()).replaceAll("\u00a0", " ");
 
 /** A screen's lines as a reader sees them: no trailing spaces, no blank lines at either end. */
 const lines = (screen: string) =>

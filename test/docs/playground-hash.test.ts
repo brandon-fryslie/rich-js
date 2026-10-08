@@ -51,6 +51,10 @@ describe("a playground hash", () => {
     expect(bomb.length).toBeLessThan(MAX_PROGRAM_BYTES / 100);
     await expect(decodeProgram(bomb)).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
     await expect(decodeProgram(`card.${bomb}`)).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
+    // The limit is on what is packed, the program's JSON, and a program that fills it exactly still opens.
+    const fits = "x".repeat(MAX_PROGRAM_BYTES - JSON.stringify({ setup: NO_SETUP, code: "" }).length);
+    expect(await decodeProgram(await encodeProgram({ setup: NO_SETUP, code: fits }))).toEqual({ setup: NO_SETUP, code: fits });
+    await expect(encodeProgram({ setup: NO_SETUP, code: `${fits}x` })).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
   });
 
   it("fails on a hash it did not write", async () => {
@@ -62,7 +66,11 @@ describe("a playground hash", () => {
 
   it("fails on a card whose JSON is not a block and its setup", async () => {
     const shaped = (json: unknown) => `card.${deflateSync(JSON.stringify(json)).toString("base64url")}`;
-    for (const json of [null, "code", { code: "x" }, { setup: { before: [{ origin: 1, lines: [] }], after: [] }, code: "x" }, { setup: NO_SETUP, code: 1 }]) {
+    for (const json of [null, "code", { code: "x" }, { setup: { before: [{ origin: 1, lines: [] }], after: [] }, code: "x" }, { setup: NO_SETUP, code: 1 },
+      // A line break inside a line, or a carriage return anywhere: the editor would make either a line of its own.
+      { setup: { before: [{ origin: "imports", lines: ["a\r\nb"] }], after: [] }, code: "x" },
+      { setup: { before: [], after: ["}\n"] }, code: "x" },
+      { setup: NO_SETUP, code: "a\r\nb" }]) {
       await expect(decodeProgram(shaped(json))).rejects.toThrow("not a block and the setup it runs on");
     }
   });

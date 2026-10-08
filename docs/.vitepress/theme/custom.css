@@ -298,11 +298,6 @@
   color: var(--vp-c-brand-1);
 }
 
-.rich-live-button:disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
 /* The landing page's hero terminal (theme/RichShowcase.ts): a card under the
  * hero's text, as wide as its terminal and no wider than the page. Its font is
  * sized as an example's output is, from the columns the terminal has, but with
@@ -338,11 +333,9 @@
   min-height: calc(var(--rich-example-rows) * 1lh + 2em);
 }
 
-/* The playground (theme/RichExample.ts, `RichPlayground`): the card at the
- * page's full content width. Code anywhere is coloured in One Light and One
- * Dark Pro, the themes the site highlights code in (config.ts), so an edited
- * card reads the same as the fence it replaced. */
-.rich-playground,
+/* Code in a card is coloured in One Light and One Dark Pro, the themes the
+ * site highlights code in (config.ts), so an edited card reads the same as the
+ * fence it replaced. */
 .rich-example-card {
   --rich-code-keyword: #a626a4;
   --rich-code-string: #50a14f;
@@ -354,7 +347,6 @@
   --rich-code-operator: #0184bc;
 }
 
-.dark .rich-playground,
 .dark .rich-example-card {
   --rich-code-keyword: #c678dd;
   --rich-code-string: #98c379;
@@ -366,6 +358,8 @@
   --rich-code-operator: #56b6c2;
 }
 
+/* The playground (theme/RichExample.ts, `RichPlayground`): the card at the
+ * page's full content width. */
 .rich-playground {
   box-sizing: border-box;
   max-width: var(--vp-layout-max-width);

@@ -158,8 +158,12 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
   };
   const reading = new Map(statements.map((statement) => [statement, read(statement)]));
 
-  /** A carried statement's text, with its own comments above it, and the page line the text starts on. */
-  const carried = (statement: ts.Statement): { text: string; line: number | null } => {
+  /**
+   * A carried statement's lines, with its own comments above it, each with
+   * the page line it is. [LAW:types-are-the-program] One `Line` is one line:
+   * the card's editor locks and labels its setup line by line.
+   */
+  const carried = (statement: ts.Statement): Line[] => {
     const start = statement.getStart(file);
     // The trivia before it opens with the rest of the line before it, which
     // is that line's, and the blank lines after that are no one's.
@@ -168,7 +172,7 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
       .replace(/^[^\n]*\n?/, "")
       .replace(/^(?:[ \t]*\n)+/, "");
     const line = program.origins[file.getLineAndCharacterOfPosition(start - comments.length).line] ?? null;
-    return { text: comments + file.text.slice(start, statement.end), line };
+    return (comments + file.text.slice(start, statement.end)).split("\n").map((text, i) => ({ text, line: line === null ? null : line + i }));
   };
 
   return (target) => {
@@ -216,7 +220,7 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
     for (const statement of statements.filter((s) => needed.has(s) && !inTarget(s))) {
       if (partOf(statement) !== parts.at(-1)?.from) parts.push({ from: partOf(statement), names: [], lines: [] });
       parts.at(-1)!.names.push(...declaredNames(statement));
-      parts.at(-1)!.lines.push(carried(statement));
+      parts.at(-1)!.lines.push(...carried(statement));
     }
     const visible = new Set(bindings.map((b) => b.local));
     const opens = [...parts, { names: statements.filter(inTarget).flatMap(declaredNames) }].map(({ names }) => {

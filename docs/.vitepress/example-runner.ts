@@ -45,9 +45,8 @@ import path from "node:path";
 import { ENTRY_BY_SPECIFIER, PACKAGE_MANIFEST, REPO_ROOT, listTypeScriptFiles, loadCompilerOptions } from "../../scripts/repo-facts.js";
 import { resolveAlias } from "../../scripts/resolve-alias.js";
 import { tscTransform } from "../../scripts/tsc-transform.js";
-import { osc8Sequences } from "../../src/index.js";
 import { EXAMPLE_TERMINAL, STATIC_RUN_LIMIT_MS } from "./example-terminal.js";
-import { drawOutput } from "./example-fragments.js";
+import { drawOutput, scanEscapes } from "./example-fragments.js";
 import { cardSource, type CardData, type CardProgram } from "./example-card.js";
 import {
   MARKERS,
@@ -75,7 +74,7 @@ import {
   type ExampleContext,
   type ExampleProgram,
 } from "./example-program.js";
-import { runInTerminal, type SimulatedTerminal } from "./simulated-process.js";
+import { runInTerminal, runsOn, type SimulatedTerminal } from "./simulated-process.js";
 import { LIBRARY_BINDING } from "./live-library.js";
 import { standalonePrograms, type Checked, type Standalone } from "./example-slice.js";
 import { encodeProgram } from "./playground-hash.js";
@@ -316,7 +315,8 @@ async function bundle(entry: Entry, shape: BundleShape): Promise<Bundled> {
   return { code: chunks[0]!.code, modules: chunks[0]!.moduleIds.filter((id) => id !== entry.file && !id.startsWith("\0")) };
 }
 
-type RunEnd = { readonly kind: "finished" } | { readonly kind: "threw"; readonly error: unknown } | { readonly kind: "stalled" };
+/** How a run ended. One that finished says whether it runs on past its body (`runsOn`). */
+type RunEnd = { readonly kind: "finished"; readonly runsOn: boolean } | { readonly kind: "threw"; readonly error: unknown } | { readonly kind: "stalled" };
 
 /**
  * What a program reads that is neither its page nor `src/`: the time, and
@@ -374,7 +374,7 @@ async function capture(script: string, world: World): Promise<{ stream: string; 
   let timer: ReturnType<typeof setTimeout> | undefined;
   const end = await Promise.race([
     runInTerminal(`${worldScript(world)}\n${script}`, terminal).then(
-      (): RunEnd => ({ kind: "finished" }),
+      async (returned): Promise<RunEnd> => ({ kind: "finished", runsOn: await runsOn(returned) }),
       (error: unknown): RunEnd => ({ kind: "threw", error: error ?? new Error("the example rejected with no reason") }),
     ),
     new Promise<RunEnd>((resolve) => {
@@ -386,14 +386,10 @@ async function capture(script: string, world: World): Promise<{ stream: string; 
   return { stream: chunks.join(""), end, exits };
 }
 
-const SGR = /\x1b\[[0-9;]*m/g;
-
-/** The one escape a static block may not write: anything but SGR and OSC 8. */
-function disallowedEscape(output: string): string | null {
-  let rest = output;
-  for (const seq of osc8Sequences(output).reverse()) rest = rest.slice(0, seq.index) + rest.slice(seq.index + seq.length);
-  const at = rest.replace(SGR, "").indexOf("\x1b");
-  return at === -1 ? null : JSON.stringify(rest.replace(SGR, "").slice(at, at + 8));
+/** The first escape in a static block's bytes that a drawing of them drops, or one they leave unfinished; null when there is neither. */
+function undrawnEscape(output: string): string | null {
+  const { dropped, unread } = scanEscapes(output);
+  return dropped ?? (unread < output.length ? output.slice(unread) : null);
 }
 
 /** The bytes a block shows, held to what its marker promised. */
@@ -403,8 +399,8 @@ function blockBytes(fence: Fence & { readonly marker: BuildMarker }, record: Blo
   if (outcome === "throws" && record.ended.kind === "completed") throw new Error(`${at}: marked \`throws\` but returned normally`);
   if (outcome === "silent" && record.output !== "") throw new Error(`${at}: marked \`silent\` but wrote ${JSON.stringify(record.output.slice(0, 60))}`);
   if (outcome === "prints" && record.output === "") throw new Error(`${at}: writes nothing; mark it \`silent\``);
-  const escape = disallowedEscape(record.output);
-  if (escape !== null) throw new Error(`${at}: writes the escape ${escape}, which moves the cursor or clears the screen; mark it \`live\``);
+  const escape = undrawnEscape(record.output);
+  if (escape !== null) throw new Error(`${at}: writes the escape ${JSON.stringify(escape.slice(0, 12))}, which only a terminal shows; mark it \`live\``);
   return record.ended.kind === "completed" ? record.output : `${record.output}${record.ended.line}\n`;
 }
 
@@ -525,6 +521,9 @@ const OPENS = `this block's card and "Try it" run it as the program below`;
  */
 async function tryItPrints(fence: Fence, source: string, record: BlockRecord, shared: LiveLibrary, world: World): Promise<void> {
   const { stream, end, exits } = await capture(playgroundScript(source, shared.script), world);
+  if (end.kind === "finished" && end.runsOn) {
+    throw new Error(`docs/${fence.page}:${fence.line}: ${OPENS}, which leaves a timer set after its last line and so runs on past what it printed; mark it \`live\`\n${source}`);
+  }
   // How each ended, a throw by the line the page shows for it.
   const ended = end.kind === "finished" ? "completed" : end.kind === "threw" ? `threw ${thrownLine(end.error)}` : end.kind;
   const expected = record.ended.kind === "threw" ? `threw ${record.ended.line}` : record.ended.kind;

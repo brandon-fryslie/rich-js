@@ -181,8 +181,8 @@ function staticEnded(end: Exclude<StaticEnd, { kind: "finished" | "stopped" }>, 
       return { kind: "terminal", said: `Stopped after ${end.limitMs / 1000} s: it was still running.` };
     case "listening":
       return { kind: "terminal", said: "It reads what is typed at it, which only a live terminal gives it." };
-    case "redrew":
-      return { kind: "terminal", said: "It redraws what it printed, which only a live terminal shows." };
+    case "dropped":
+      return { kind: "terminal", said: "It moves the cursor or changes the screen, which only a live terminal shows." };
     case "ranOn":
       return { kind: "terminal", said: "It runs on after its last line, a timer still set, which only a live terminal shows." };
   }
@@ -420,18 +420,21 @@ function cardCore(opened: CardProgram, outlet: Outlet, edited: (source: string, 
     }
   }
 
-  /** Show what `source` does once typing pauses; the opened code, whose output an outlet may already hold, at once. */
-  function run(source: string): number {
+  /**
+   * Show what `source` does once typing pauses, or `now` when the reader asks
+   * for it; the opened code, whose output an outlet may already hold, at once.
+   */
+  function run(source: string, when: "paused" | "now"): number {
     const mine = ++turn;
     clearTimeout(pending);
-    pending = setTimeout(() => void show(source, mine), source === opened.code ? 0 : RUN_AFTER_MS);
+    pending = setTimeout(() => void show(source, mine), when === "now" || source === opened.code ? 0 : RUN_AFTER_MS);
     return mine;
   }
 
-  /** The code changed to `source`. */
-  function changed(source: string): void {
+  /** The code changed to `source`, or the reader asked to run it. */
+  function changed(source: string, when: "paused" | "now"): void {
     text.value = source;
-    const mine = run(source);
+    const mine = run(source, when);
     edited(source, () => mine === turn);
   }
 
@@ -448,8 +451,8 @@ function cardCore(opened: CardProgram, outlet: Outlet, edited: (source: string, 
     // The card may have left the page while the editor loaded.
     if (code.value.kind !== "opening") return null;
     const { setup } = opened;
-    const changedTo = (program: string) => changed(blockOf(setup, program));
-    const view = createEditor(host(), cardSource(setup, text.value), { change: changedTo, run: () => changedTo(view.state.doc.toString()) }, [
+    const changedTo = (program: string, when: "paused" | "now") => changed(blockOf(setup, program), when);
+    const view = createEditor(host(), cardSource(setup, text.value), { change: (program) => changedTo(program, "paused"), run: () => changedTo(view.state.doc.toString(), "now") }, [
       setupRegions(setup, seat.setup),
       ...seat.shown(modules),
     ]);
@@ -616,7 +619,7 @@ const PlaygroundCard = defineComponent({
     const { program } = props;
     const core = cardCore(program, decidedOutlet(program.setup, root), (code) => props.edited({ setup: program.setup, code }));
     onMounted(() => {
-      core.run(program.code);
+      core.run(program.code, "now");
       void core.openEditor(() => host.value!, PLAYGROUND_SEAT);
     });
     return () =>

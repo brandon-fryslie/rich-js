@@ -13,7 +13,9 @@
  * global. `runInTerminal` evaluates the program as the body of a function whose
  * parameters are named `process` and `console`, so every free `process` and
  * `console` in the program — the library bundled into it included — binds to
- * the stand-in, while the globals are never read, written or replaced.
+ * the stand-in, while the globals are never read, written or replaced. Its
+ * timer functions are bound the same way, so the timers it leaves set are
+ * counted (`runsOn`).
  * Swapping the globals for the length of a run was the alternative, and it
  * loses three ways: a `Progress` example keeps running on timers after the swap
  * is undone, two live examples on one page would each overwrite the other's
@@ -75,7 +77,10 @@ export interface SimulatedTerminal extends ConsoleStream {
 // async function's prototype.
 const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor as new (
   ...parametersThenBody: string[]
-) => (process: SimulatedProcess, console: ProgramConsole) => Promise<void>;
+) => (process: SimulatedProcess, console: ProgramConsole, ...timers: unknown[]) => Promise<void>;
+
+/** The names a program's body binds to the stand-ins, in the order `runInTerminal` passes them. */
+const PARAMETERS = ["process", "console", "setTimeout", "setInterval", "clearTimeout", "clearInterval"];
 
 type Listener = (...args: never[]) => void;
 
@@ -230,20 +235,74 @@ function programConsole(process: SimulatedProcess): ProgramConsole {
   return { log: to(process.stdout), info: to(process.stdout), debug: to(process.stdout), warn: to(process.stderr), error: to(process.stderr) };
 }
 
+type Handler = (...args: unknown[]) => void;
+
+/**
+ * The program's timer functions: the host's, read at each call, with every
+ * timer still set counted. A timeout counts until it fires or is cleared, an
+ * interval until it is cleared. The host keeps one pool of ids for both and
+ * clears either through either, so one clear serves both names.
+ */
+function programTimers() {
+  const set = new Set<unknown>();
+  type Id = Parameters<typeof globalThis.clearTimeout>[0];
+  const clear = (id: Id): void => {
+    set.delete(id);
+    globalThis.clearTimeout(id);
+  };
+  return {
+    setTimeout: (handler: Handler, ms?: number, ...args: unknown[]) => {
+      const id = globalThis.setTimeout(() => {
+        set.delete(id);
+        handler(...args);
+      }, ms);
+      set.add(id);
+      return id;
+    },
+    setInterval: (handler: Handler, ms?: number, ...args: unknown[]) => {
+      const id = globalThis.setInterval(() => handler(...args), ms);
+      set.add(id);
+      return id;
+    },
+    clearTimeout: clear,
+    clearInterval: clear,
+    anySet: () => set.size > 0,
+  };
+}
+
+/** A program whose body has returned, and what it left behind. */
+export interface Returned {
+  /** Whether a timer the program set is still set. */
+  readonly timersSet: () => boolean;
+}
+
+/**
+ * [LAW:one-source-of-truth] Whether a program that `returned` runs on past
+ * its body: a timer it set is still set once every job its body queued has
+ * run. A timer fires only after the jobs queued before it, so the one this
+ * waits on fires after the program's own. The build (example-runner.ts) and
+ * the page's static run (theme/live-worker.ts) both ask this, so a block the
+ * build drew is one an edit can draw.
+ */
+export const runsOn = (returned: Returned): Promise<boolean> =>
+  new Promise((settle) => void globalThis.setTimeout(() => settle(returned.timersSet()), 0));
+
 /**
  * Run a bundled program with `process` bound to a stand-in for `terminal`.
  * Settles when the program's body does. Every failure rejects, one that stops
  * the program compiling included.
  */
-export async function runInTerminal(program: string, terminal: SimulatedTerminal): Promise<void> {
+export async function runInTerminal(program: string, terminal: SimulatedTerminal): Promise<Returned> {
   // "use strict" because the program was written as a module, and a sloppy body
   // would turn an assignment to an undeclared name into a global — a leak.
   // [LAW:no-shared-mutable-globals] `console` is bound as `process` is, so the
   // program's free `console` writes to its terminal and not the host's
-  // devtools. The body is a block so that a program declaring its own
+  // devtools; so are its timers, so they are counted without replacing the
+  // host's. The body is a block so that a program declaring its own
   // `console` — every docs example's `const console = new Console()` — shadows
   // the parameter instead of redeclaring it, which is a SyntaxError.
-  const body = new AsyncFunction("process", "console", `"use strict"; {\n${program}\n}`);
+  const body = new AsyncFunction(...PARAMETERS, `"use strict"; {\n${program}\n}`);
+  const timers = programTimers();
   let listened = false;
   const stdin: Input = new Input(terminal.isTTY, () => {
     if (listened) return;
@@ -253,5 +312,6 @@ export async function runInTerminal(program: string, terminal: SimulatedTerminal
   // [LAW:one-source-of-truth] The env is copied per run: a program that sets
   // `process.env.X` changes its own run and not the terminal it was handed.
   const process = new SimulatedProcess(terminal, { ...terminal.env }, stdin);
-  await body(process, programConsole(process));
+  await body(process, programConsole(process), timers.setTimeout, timers.setInterval, timers.clearTimeout, timers.clearInterval);
+  return { timersSet: timers.anySet };
 }

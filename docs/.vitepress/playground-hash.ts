@@ -21,9 +21,10 @@
 import { NO_SETUP, type CardProgram, type SetupGroup } from "./example-card.js";
 
 /**
- * The longest program a link carries, in UTF-8 bytes: far past any program a
- * person writes, and far short of what a crafted hash can inflate to. A link
- * is opened on sight, so reading one must not be able to exhaust the tab.
+ * The most a link carries, in UTF-8 bytes of what it packs (the program, its
+ * setup and their JSON): far past any program a person writes, and far short
+ * of what a crafted hash can inflate to. A link is opened on sight, so reading
+ * one must not be able to exhaust the tab.
  */
 export const MAX_PROGRAM_BYTES = 1 << 20;
 
@@ -80,11 +81,18 @@ export async function encodeProgram(program: CardProgram): Promise<string> {
 /** The fields of `value`, each unknown until read: none of them, for a value with no fields. */
 const fields = <K extends string>(value: unknown): Partial<Record<K, unknown>> => (typeof value === "object" && value !== null ? value : {});
 
-const isStrings = (value: unknown): value is string[] => Array.isArray(value) && value.every((item) => typeof item === "string");
+/**
+ * A line, as the editor holds one: no line break in it. The editor turns a
+ * `\r` into a line break of its own, so one anywhere would move every offset
+ * after it.
+ */
+const isLine = (value: unknown): value is string => typeof value === "string" && !/[\r\n]/.test(value);
+
+const isLines = (value: unknown): value is string[] => Array.isArray(value) && value.every(isLine);
 
 const isGroup = (value: unknown): value is SetupGroup => {
   const { origin, lines } = fields<"origin" | "lines">(value);
-  return typeof origin === "string" && isStrings(lines);
+  return typeof origin === "string" && isLines(lines);
 };
 
 /**
@@ -95,7 +103,7 @@ const isGroup = (value: unknown): value is SetupGroup => {
 function cardProgram(json: unknown): CardProgram {
   const { setup, code } = fields<"setup" | "code">(json);
   const { before, after } = fields<"before" | "after">(setup);
-  if (typeof code !== "string" || !Array.isArray(before) || !before.every(isGroup) || !isStrings(after)) {
+  if (typeof code !== "string" || code.includes("\r") || !Array.isArray(before) || !before.every(isGroup) || !isLines(after)) {
     throw new Error("the link's program is not a block and the setup it runs on");
   }
   return { setup: { before, after }, code };

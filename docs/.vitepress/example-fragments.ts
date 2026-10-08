@@ -12,6 +12,7 @@
  */
 import { Segment, decodeAnsi } from "../../src/index.js";
 import { encodeHtmlFragment } from "../../src/core/export-html.js";
+import { OSC8 } from "../../src/core/osc8.js";
 import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "./example-terminal.js";
 
 /**
@@ -26,16 +27,42 @@ export interface Drawn {
 }
 
 /**
- * A control sequence that moves the cursor, erases more than the rest of a
- * line, or switches screen modes: every CSI sequence but SGR (`m`) and erase
- * in line (`K`), the two `decodeAnsi` honours. It drops the rest, so bytes
- * carrying one are a program redrawing what it drew, which only a terminal
- * shows.
+ * Every complete escape sequence, cut as `decodeAnsi` (src/core/ansi.ts) cuts
+ * them: a CSI; a string escape (OSC, DCS, APC, PM, SOS) run to its
+ * terminator; any other escape, ECMA-48's intermediates and one final byte.
  */
-const REDRAW = /\x1b\[[0-?]*[ -/]*[@-JL-ln-~]/;
+const ESCAPE = /\x1b(?:\[[0-?]*[ -/]*[@-~]|[\]P_^X][\s\S]*?(?:\x07|\x1b\\|\x9c)|[ -/]*[0-OQ-WYZ\\`-~])/g;
 
-/** Whether `bytes` redraw what they drew, which `drawOutput` cannot show. */
-export const redraws = (bytes: string): boolean => REDRAW.test(bytes);
+/** The escapes `decodeAnsi` draws: SGR, erase in line, and an OSC 8 link. It drops every other. */
+const DRAWN = new RegExp(`^(?:\\x1b\\[[0-9;:]*m|\\x1b\\[[012]?K|${OSC8.source})$`);
+
+/** Bytes a program wrote, read for what `drawOutput` cannot show. */
+export interface EscapeScan {
+  /**
+   * The first escape `drawOutput` drops: a program moving the cursor,
+   * clearing the screen or switching modes, which only a terminal shows.
+   * Null when there is none.
+   */
+  readonly dropped: string | null;
+  /** Where an escape starts that is not yet complete, and so not yet read; the length of the bytes when none is. */
+  readonly unread: number;
+}
+
+/**
+ * [LAW:one-source-of-truth] Whether bytes are ones `drawOutput` draws whole:
+ * the build refuses a static block whose bytes are not (example-runner.ts),
+ * and the page's static run ends a program whose bytes are not
+ * (theme/static-run.ts), by this one reading.
+ */
+export function scanEscapes(bytes: string): EscapeScan {
+  let read = 0;
+  for (const match of bytes.matchAll(ESCAPE)) {
+    if (!DRAWN.test(match[0])) return { dropped: match[0], unread: match.index };
+    read = match.index + match[0].length;
+  }
+  const open = bytes.indexOf("\x1b", read);
+  return { dropped: null, unread: open === -1 ? bytes.length : open };
+}
 
 /**
  * `bytes` drawn, or null when there are none: a program that printed nothing

@@ -11,15 +11,12 @@
  * thread: past the output limit the worker is ended too.
  *
  * A program that does what only a terminal shows, reading what is typed at it,
- * redrawing what it drew, or running on with a timer set once its body has
- * returned, is ended as soon as it does, and the run says which: nothing it
+ * writing an escape a drawing drops (moving the cursor, clearing the screen),
+ * or running on with a timer set once its body has returned (`runsOn`), is ended as soon as it does, and the run says which: nothing it
  * prints from then on is a drawing of what it does.
  */
-import { redraws } from "../example-fragments.js";
+import { scanEscapes } from "../example-fragments.js";
 import { sandbox, type TerminalSpec } from "./sandbox.js";
-
-/** Longer than any control sequence a program redraws with, so one split across two writes is still seen whole. */
-const SEQUENCE_CHARS = 32;
 
 /** How a static run ended. */
 export type StaticEnd =
@@ -34,8 +31,8 @@ export type StaticEnd =
   | { readonly kind: "overflowed"; readonly limitChars: number }
   /** It began reading what is typed at its terminal, which nobody types at here, and was ended there. */
   | { readonly kind: "listening" }
-  /** It redrew what it drew (`redraws`), which a drawing of its bytes cannot show, and was ended there. */
-  | { readonly kind: "redrew" }
+  /** It wrote an escape a drawing of its bytes drops (`scanEscapes`), and was ended there. */
+  | { readonly kind: "dropped" }
   /** Its body returned with a timer still set, so it runs on past what it printed, and was ended there. */
   | { readonly kind: "ranOn" }
   /** It was ended by `stop`, before it ended on its own. */
@@ -70,6 +67,8 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
   const decoder = new TextDecoder();
   const chunks: string[] = [];
   let printed = 0;
+  // An escape begun in one write and ended in a later one is read whole, once it is.
+  let unread = "";
   let finish: (end: StaticEnd) => void = () => {};
   const result = new Promise<StaticResult>((resolve) => {
     // [LAW:single-enforcer] Every way a run ends comes through here, once:
@@ -86,11 +85,12 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
     switch (message.kind) {
       case "output": {
         const chunk = typeof message.chunk === "string" ? message.chunk : decoder.decode(message.chunk, { stream: true });
-        // The end of the chunk before it too, for a sequence written in two writes.
-        const seen = `${chunks.at(-1)?.slice(-SEQUENCE_CHARS) ?? ""}${chunk}`;
         chunks.push(chunk);
         printed += chunk.length;
-        if (redraws(seen)) return finish({ kind: "redrew" });
+        const seen = `${unread}${chunk}`;
+        const scan = scanEscapes(seen);
+        if (scan.dropped !== null) return finish({ kind: "dropped" });
+        unread = seen.slice(scan.unread);
         return printed > options.limitChars ? finish({ kind: "overflowed", limitChars: options.limitChars }) : undefined;
       }
       case "listening":
