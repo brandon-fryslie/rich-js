@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "fd2fb62af63054f953bf160b9fdfaa97fa147d67",
-      "timestamp": "2026-10-08T22:51:21.675Z",
+      "sha": "29dfa8c75ffb781b3b8b6af4468559e721c7258d",
+      "timestamp": "2026-10-08T23:25:27.142Z",
       "commits": [
         {
-          "sha": "fd2fb62af63054f953bf160b9fdfaa97fa147d67",
+          "sha": "29dfa8c75ffb781b3b8b6af4468559e721c7258d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T16:50:10-06:00",
-          "message": "feat(docs): edits reach a running program that accepts them without restarting it (rich-example-card-b5rz.auo) (#361)\n\n* feat(docs): an edit reaches a running program that accepts it without a restart (rich-example-card-b5rz.auo)\n\nA program opts in through a subset of Vite's import.meta.hot (accept,\ndispose, data). The worker runs an accepted edit in the process it is\nalready running in: dispose callbacks, then every timer and process\nlistener the last version left is cleared, then the new files run with\nthe same per-file data. A program that never accepts is declined and the\npage restarts it as before. No CardOptions field: the program's accept()\nis the one switch.\n\nimport.meta is rewritten per file using Sucrase's internal tokenizer,\npinned by a test. The effects kit carries its clock through dispose.\n\n* fix(docs): import.meta reads only hot, a program version has a file, one Sucrase parser on the page (rich-example-card-b5rz.auo)\n\n- Any read of import.meta but .hot is refused at its line, as a syntax\n  error is, rather than undefined in the browser and a value in Node.\n- Docs fences type-check against import.meta.hot, which every docs\n  terminal binds.\n- Version = readonly [RunFile, ...RunFile[]] at every seam; a bundled\n  script has files: null, and an edit of it restarts it.\n- The page aliases Sucrase's parser to its ES build: the playground chunk\n  carries one parser, 365 KB -> 209 KB.\n- The bundled-path refusal names the construct it refuses.\n- Hot-replacement tests stop their 1 ms timers.\n\n* docs(theme): liveOutlet's opened code parsed on either path, the build's or an edit's (rich-example-card-b5rz.auo)"
+          "timestamp": "2026-10-08T17:23:52-06:00",
+          "message": "fix(docs): docs:dev serves pages again — a docs bundle hands NODE_ENV back (rich-example-card-b5rz.b5s) (#362)\n\n* fix(docs): docs:dev serves pages again — a docs bundle hands NODE_ENV back (rich-example-card-b5rz.b5s)\n\nVite's in-process `build` sets NODE_ENV to \"production\" when it is unset.\n`[demo].paths.ts` bundles the live library (via `demoCard`) while VitePress\nresolves its config, before the dev server resolves its own, so `docs:dev`\ncame up with DEV false and every page threw `__VP_HASH_MAP__ is not\ndefined`. `bundle` now restores the host's value, or its absence, when the\nlast overlapping bundle ends.\n\n* fix(docs): the NODE_ENV a bundle restores is counted per process, not per module copy (rich-example-card-b5rz.b5s)\n\nVitePress inlines example-runner.ts into its config and again into\n[demo].paths.ts; a per-copy in-flight count let one copy put back the\n\"production\" another copy's bundle wrote. The test's restore no longer\nwrites the string \"undefined\", and a failing bundle and two copies are covered."
         }
       ]
     }
