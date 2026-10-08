@@ -2376,10 +2376,21 @@ function programConsole(process) {
 	};
 }
 /**
+* A timer's delay as Node takes it: one below 1 ms, past 2^31 - 1 or not a
+* number is 1 ms. A browser runs a delay of 0 at 0, so a program run there
+* would order its timers otherwise than in Node, and \`runsOn\` would answer
+* otherwise in the build than on the page.
+*/
+var nodeDelay = (ms) => {
+	const delay = Number(ms);
+	return delay >= 1 && delay <= 2 ** 31 - 1 ? delay : 1;
+};
+/**
 * The program's timer functions: the host's, read at each call, with every
-* timer still set counted. A timeout counts until it fires or is cleared, an
-* interval until it is cleared. The host keeps one pool of ids for both and
-* clears either through either, so one clear serves both names.
+* timer still set counted and every delay taken as Node takes it. A timeout
+* counts until it fires or is cleared, an interval until it is cleared. The
+* host keeps one pool of ids for both and clears either through either, so
+* one clear serves both names.
 */
 function programTimers() {
 	const set = /* @__PURE__ */ new Set();
@@ -2392,12 +2403,12 @@ function programTimers() {
 			const id = globalThis.setTimeout(() => {
 				set.delete(id);
 				handler(...args);
-			}, ms);
+			}, nodeDelay(ms));
 			set.add(id);
 			return id;
 		},
 		setInterval: (handler, ms, ...args) => {
-			const id = globalThis.setInterval(() => handler(...args), ms);
+			const id = globalThis.setInterval(() => handler(...args), nodeDelay(ms));
 			set.add(id);
 			return id;
 		},
@@ -2409,12 +2420,13 @@ function programTimers() {
 /**
 * [LAW:one-source-of-truth] Whether a program that \`returned\` runs on past
 * its body: a timer it set is still set once every job its body queued has
-* run. A timer fires only after the jobs queued before it, so the one this
-* waits on fires after the program's own. The build (example-runner.ts) and
-* the page's static run (theme/live-worker.ts) both ask this, so a block the
-* build drew is one an edit can draw.
+* run. Timers of one delay fire in the order they were set, and no program
+* delay is under 1 ms (\`nodeDelay\`), so the 1 ms timer this waits on fires
+* after every program timer of 1 ms, in Node and in a browser alike. The build
+* (example-runner.ts) and the page's static run (theme/live-worker.ts) both
+* ask this, so a block the build drew is one an edit can draw.
 */
-var runsOn = (returned) => new Promise((settle) => void globalThis.setTimeout(() => settle(returned.timersSet()), 0));
+var runsOn = (returned) => new Promise((settle) => void globalThis.setTimeout(() => settle(returned.timersSet()), 1));
 /**
 * Run a bundled program with \`process\` bound to a stand-in for \`terminal\`.
 * Settles when the program's body does. Every failure rejects, one that stops

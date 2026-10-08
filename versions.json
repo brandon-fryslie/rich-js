@@ -4,15 +4,22 @@
     {
       "version": "pr-356",
       "ref": "refs/pull/356/merge",
-      "sha": "ceba59d5c080dba09ec443c702478b112408bc8d",
-      "timestamp": "2026-10-08T19:02:50.159Z",
+      "sha": "719772b8784cf985e883c1140bf5a0faec7940fa",
+      "timestamp": "2026-10-08T19:11:58.582Z",
       "commits": [
         {
-          "sha": "ceba59d5c080dba09ec443c702478b112408bc8d",
+          "sha": "719772b8784cf985e883c1140bf5a0faec7940fa",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T19:01:25Z",
-          "message": "Merge ff35be55e928cc560c13242a4e094aabf441be77 into 56686da190b6c15bbb5960c1549f345af6d1e50b\n"
+          "timestamp": "2026-10-08T19:10:35Z",
+          "message": "Merge 763f54e878030c1afdc846387cc7110eb9a70774 into 56686da190b6c15bbb5960c1549f345af6d1e50b\n"
+        },
+        {
+          "sha": "763f54e878030c1afdc846387cc7110eb9a70774",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T13:10:29-06:00",
+          "message": "fix(docs): the build and the static run agree on stdin, unfinished escapes and timer order (rich-example-card-obsb.cau)\n\nReview (medium) of #356:\n- The build refuses a static block whose card program listens on stdin, as\n  the page's static run ends one.\n- undrawnEscape moves to example-fragments.ts; the static run applies it to\n  what is left unread when a program ends, as the build does.\n- scanEscapes drops an escape as soon as it can no longer become one a\n  drawing draws, and bounds an open link at 4096 chars, so the per-write\n  re-read is bounded.\n- Program timer delays are taken as Node takes them (under 1 ms is 1 ms) and\n  runsOn waits 1 ms, so it answers alike in Node and a browser.\n"
         },
         {
           "sha": "ff35be55e928cc560c13242a4e094aabf441be77",
