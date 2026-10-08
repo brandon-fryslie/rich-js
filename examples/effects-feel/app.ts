@@ -46,7 +46,6 @@ import {
   Group,
   Measurement,
   Padding,
-  POWERLINE_JOINER_GLYPHS,
   PowerlineJoiner,
   cellLen,
   RichText,
@@ -59,7 +58,9 @@ import {
   type FrameRate,
   type Unsubscribe,
   type Effect,
+  type Joiner,
   type Measurable,
+  type StyledRenderable,
   type Renderable,
   type RenderOptions,
   Segment,
@@ -224,23 +225,37 @@ function shown(cell: Cell, options: RenderOptions, theme: TerminalTheme): Pair {
   };
 }
 
-/** The glyphs a joiner draws between cells: colour seams, not text. */
-const SEAM_GLYPHS: ReadonlySet<string> = new Set(Object.values(POWERLINE_JOINER_GLYPHS));
+/**
+ * The owner stamped on every cell a joiner draws between a strip's cells: a
+ * colour seam, not text. A seam is told by what drew it, not by its glyph — an
+ * ASCII joiner draws other glyphs, and its lead draws none, so every cell
+ * after it sits a column left of where a glyph render has it.
+ */
+const SEAM = Object.freeze({ name: "seam" });
+
+/** `joiner`, every seam it draws stamped as `SEAM`'s. */
+function seamed<T extends StyledRenderable>(joiner: Joiner<T>): Joiner<T> {
+  return {
+    join(left, right) {
+      const seam = joiner.join(left, right);
+      return { render: (options) => Segment.anchorLines([[...seam.render(options)]], SEAM)[0]! };
+    },
+  };
+}
+
+/** Whether `owner` drew the cell, at any depth of its nesting. */
+function drawnBy(cell: Cell, owner: object): boolean {
+  for (let anchor = cell.style.anchor; anchor; anchor = anchor.inner) if (anchor.owner === owner) return true;
+  return false;
+}
 
 export function drawnSubject(subject: Subject, drawnWith: RenderOptions, theme: TerminalTheme): DrawnSubject {
   const span = Measurement.get({ ...drawnWith, maxWidth: Number.MAX_SAFE_INTEGER }, subject.renderable).maximum;
   const options = { ...drawnWith, maxWidth: span };
-  // A seam sits in the same cell whichever glyph a joiner draws it with, so
-  // the cells are read where the glyphs are the ones `SEAM_GLYPHS` names.
-  const text = new Set(
-    cellsOf(subject.renderable.render({ ...options, asciiOnly: false }))
-      .filter((cell) => cell.glyph.trim() !== "" && !SEAM_GLYPHS.has(cell.glyph))
-      .map((cell) => cell.at),
-  );
+  const lettered = cellsOf(subject.renderable.render(options)).filter((cell) => cell.glyph.trim() !== "" && !drawnBy(cell, SEAM));
+  const text = new Set(lettered.map((cell) => cell.at));
   // A colour the cell leaves to the terminal is no colour of the subject's.
-  const drawn = cellsOf(subject.renderable.render(options))
-    .filter((cell) => text.has(cell.at))
-    .map((cell) => shown(cell, options, theme));
+  const drawn = lettered.map((cell) => shown(cell, options, theme));
   const colors = new Set(drawn.flatMap(({ fg, bg, terminal }) => [...(terminal.fg ? [] : [fg.hex]), ...(terminal.bg ? [] : [bg.hex])]));
   const pairs = [...new Map(drawn.map((pair): [string, Pair] => [`${pair.fg.hex}/${pair.bg.hex}/${pair.terminal.fg}/${pair.terminal.bg}`, pair])).values()];
   return { ...subject, options, span, colors, pairs, text };
@@ -274,7 +289,7 @@ const PULSED: Readonly<Record<string, readonly string[]>> = { strip: ["ctx 61%",
 /** A powerline strip of a dozen cells over the theme's palette. */
 export function stripSubject(theme: TerminalTheme): Subject {
   const cells = STRIP_LABELS.map((label, i) => new RichText(` ${label} `, { style: stripStyle(theme, i), end: "", noWrap: true }));
-  return { name: "strip", renderable: new Strip(cells, new PowerlineJoiner()), z: 0 };
+  return { name: "strip", renderable: new Strip(cells, seamed(new PowerlineJoiner())), z: 0 };
 }
 
 /**
