@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-350",
-      "ref": "refs/pull/350/merge",
-      "sha": "e6f83bba265be8066078a06e2c635f490653150e",
-      "timestamp": "2026-10-08T04:25:41.410Z",
-      "commits": [
-        {
-          "sha": "e6f83bba265be8066078a06e2c635f490653150e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T04:24:09Z",
-          "message": "Merge b6b42f9019f153d7e7483e51ae851803b8c594ed into 8a9003923f8a0e11a816c580c2a25653c4736c0a\n"
-        },
-        {
-          "sha": "b6b42f9019f153d7e7483e51ae851803b8c594ed",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T22:24:04-06:00",
-          "message": "docs(progress): name the theme key each percentage and time column draws in (rich-progress-rihd)\n"
-        },
-        {
-          "sha": "f02861bc930122280a43e0b58f678a61bb4b5661",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T22:21:09-06:00",
-          "message": "fix(progress): progress.percentage magenta and progress.elapsed yellow, as Rich's (rich-progress-rihd)\n\nThe rest of the progress.* block already matched rich/default_styles.py.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "8a9003923f8a0e11a816c580c2a25653c4736c0a",
-      "timestamp": "2026-10-08T04:19:14.140Z",
+      "sha": "75b71956bc080e3e5a0e19e959b27dbcd9cc59be",
+      "timestamp": "2026-10-08T04:26:41.268Z",
       "commits": [
         {
-          "sha": "8a9003923f8a0e11a816c580c2a25653c4736c0a",
+          "sha": "75b71956bc080e3e5a0e19e959b27dbcd9cc59be",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T22:17:46-06:00",
-          "message": "chore(xterm): site xterm.js 5.3 → @xterm/xterm 6, and the page's synchronized-output shim goes (rich-xterm-h736) (#349)\n\n* chore(xterm): site xterm.js 5.3 → @xterm/xterm 6, and the page's synchronized-output shim goes (rich-xterm-h736)\n\nxterm 6 buffers DEC mode 2026 itself, so `synchronized()` and its test are\ndeleted.\n\nxterm 6 measures a character on an OffscreenCanvas, which ignores the\n`.xterm-char-measure-element` line-height override, so rows came out 1–1.6px\ntaller than the page's line (the PR #330 revert). A `lineHeight` factor\ncannot fix that: the canvas box of a reader's installed face can be taller\nthan 1.25em, and xterm refuses a factor under 1. `openMeasuringInPage` hides\nOffscreenCanvas for the one `open()` call, so xterm picks its in-page DOM\nmeasure and the override applies again, as it did on 5.3.\n\nThe dev-only BrowserTerminalHost harness page carries its own pin and is\nbumped to match.\n\n* review(xterm): the harness loads the site's xterm pin; comments name openMeasuringInPage and what stop leaves mid-frame (rich-xterm-h736)"
+          "timestamp": "2026-10-07T22:25:38-06:00",
+          "message": "fix(progress): progress.percentage magenta and progress.elapsed yellow, as Rich's (rich-progress-rihd) (#350)\n\n* fix(progress): progress.percentage magenta and progress.elapsed yellow, as Rich's (rich-progress-rihd)\n\nThe rest of the progress.* block already matched rich/default_styles.py.\n\n* docs(progress): name the theme key each percentage and time column draws in (rich-progress-rihd)"
         }
       ]
     }
