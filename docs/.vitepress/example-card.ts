@@ -39,25 +39,33 @@ export const RAN = "produced by running the code above";
 /** What a card says in place of output when its code printed nothing. */
 export const PRINTS_NOTHING = "This example prints nothing when it runs.";
 
+/** What every card a reader can edit carries: its code, the program around it, and the panel under it. */
+interface Editable {
+  /** The block as the page shows it. */
+  readonly code: string;
+  readonly setup: CardSetup;
+  /** The output panel's label and the caption beside it. */
+  readonly label: string;
+  readonly caption: string;
+  /** Where "Try it" goes: the playground, and the hash that opens the block's program in it. */
+  readonly tryIt: { readonly playground: string; readonly program: string };
+}
+
 /**
  * One block's card, by where its marker says the block runs
- * (example-markers.ts). A block the build runs is editable; one that runs
- * nowhere is the same card, read-only, its note in place of output.
+ * (example-markers.ts). A block the build runs is editable, its output the
+ * one the build printed until it is edited. A block that runs in the browser
+ * is editable, its output its program running in a live terminal of
+ * `columns` columns. One that runs nowhere is the same card, read-only, its
+ * note in place of output.
  */
 export type CardData =
-  | {
+  | (Editable & {
       readonly run: "build";
-      /** The block as the page shows it. */
-      readonly code: string;
-      readonly setup: CardSetup;
       /** What the block printed at build time; null if it printed nothing (`drawOutput`). */
       readonly output: Drawn | null;
-      /** The output panel's label and the caption beside it. */
-      readonly label: string;
-      readonly caption: string;
-      /** Where "Try it" goes: the playground, and the hash that opens the block's program in it. */
-      readonly tryIt: { readonly playground: string; readonly program: string };
-    }
+    })
+  | (Editable & { readonly run: "browser"; readonly columns: number })
   | { readonly run: "never"; readonly label: string; readonly note: string };
 
 /** The lines above a card's block, in order. */

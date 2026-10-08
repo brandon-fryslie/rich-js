@@ -16,10 +16,8 @@ export default {
   Layout: () => h(DefaultTheme.Layout, null, { 'home-hero-after': () => h(RichShowcase) }),
   enhanceApp({ app }) {
     if (inBrowser) trackDevicePixelRatio(document.documentElement)
-    // Async, so a page without a live example, the playground or the showcase
-    // never loads the live terminal, and the editor loads only for the
-    // playground or a reader reaching for an example card.
-    app.component('RichLive', defineAsyncComponent(() => import('./RichLive.js')))
+    // Async, so only the playground's page loads the playground, and the
+    // editor loads only there or for a reader reaching for an example card.
     app.component('RichPlayground', defineAsyncComponent(() => import('./RichPlayground.js')))
     // Not async: nearly every page has one, and it is the page's own card
     // until a reader edits it. What editing needs it loads itself.

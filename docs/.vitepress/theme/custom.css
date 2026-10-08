@@ -82,8 +82,7 @@
  * A `.rich-example` around VitePress's own code block, and under it the output
  * panel — a label strip naming where the output came from, then the output (a
  * light and a dark fragment, one shown per colour mode) or a note in its
- * place. The card component draws it (theme/RichExample.ts), or for a live
- * example docs/.vitepress/example-runner.ts writes it.
+ * place, or a live terminal. The card component draws it (theme/RichExample.ts).
  */
 .vp-doc .rich-example {
   margin: 16px 0;
@@ -117,7 +116,7 @@
    * cell is budgeted at 0.62em, the widest face in the stack (SF Mono,
    * 0.618em; Menlo and DejaVu Sans Mono are 0.602em). Below 10px it stops
    * shrinking and the output scrolls. A live terminal reads the same font
-   * (theme/RichLive.ts refits it when the card is resized). */
+   * (theme/LiveScreen.ts refits it when the card is resized). */
   container-type: inline-size;
   --rich-fragment-size: clamp(10px, 100cqw / (var(--rich-example-columns) * 0.62 + 2), var(--vp-code-font-size));
 }
@@ -206,7 +205,8 @@
  * the editor's code's is dimmed, and a run that failed says why in red under it. */
 .vp-doc .rich-example-card .rich-example-light,
 .vp-doc .rich-example-card .rich-example-dark,
-.vp-doc .rich-example-card .rich-example-note {
+.vp-doc .rich-example-card .rich-example-note,
+.vp-doc .rich-example-card .rich-live-screen {
   transition: opacity 0.2s;
 }
 
@@ -245,7 +245,8 @@
 
 .vp-doc .rich-example-stale > .rich-example-light,
 .vp-doc .rich-example-stale > .rich-example-dark,
-.vp-doc .rich-example-stale > .rich-example-note {
+.vp-doc .rich-example-stale > .rich-example-note,
+.vp-doc .rich-example-stale > .rich-live > .rich-live-screen {
   opacity: 0.45;
 }
 
@@ -260,7 +261,7 @@
   color: var(--vp-c-danger-1);
 }
 
-/* A live terminal: a live example's (theme/RichLive.ts) or the playground's. Its font is the one static
+/* A live terminal: a live card's (theme/LiveScreen.ts) or the playground's. Its font is the one static
  * output is drawn in, read off this element by the component for xterm; its
  * background is set from the terminal theme, as a fragment's is. */
 .rich-live-screen {
