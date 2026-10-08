@@ -1,0 +1,1 @@
+import{_ as a,o as i,c as n,ag as l}from"./chunks/framework.Tx0UV7y9.js";const k=JSON.parse('{"title":"Tables","description":"","frontmatter":{},"headers":[],"relativePath":"tables.md","filePath":"tables.md"}'),t={name:"tables.md"};function e(p,s,o,h,r,d){return i(),n("div",null,[...s[0]||(s[0]=[l("",57)])])}const y=a(t,[["render",e]]);export{k as __pageData,y as default};
