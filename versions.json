@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-342",
+      "ref": "refs/pull/342/merge",
+      "sha": "deae3cf49dbf69d1e5abeed139223daa36bb1d34",
+      "timestamp": "2026-10-08T02:07:28.129Z",
+      "commits": [
+        {
+          "sha": "deae3cf49dbf69d1e5abeed139223daa36bb1d34",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T20:06:00-06:00",
+          "message": "Merge e3bbf2addc8eb7df5109d19d35bc3f7ba3d12afe into 8a62d728942a2c4b72b3b7a19ad2b154ec432c44\n"
+        },
+        {
+          "sha": "e3bbf2addc8eb7df5109d19d35bc3f7ba3d12afe",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T20:05:51-06:00",
+          "message": "fix(effects): a colour the terminal supplies takes no subject's share, whatever its hex (rich-effects-fxiy.3nt)\n\nEffectCell carries which on-screen colours are the terminal's (unset or\ndefault). onColors and wheel skip those, so a subject colour sharing the\ntheme ground's hex no longer lights the ground. ProgressBar's fg-only\nwrapper is deleted; a reversed back style now pulses.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "8a62d728942a2c4b72b3b7a19ad2b154ec432c44",
