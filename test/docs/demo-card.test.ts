@@ -68,9 +68,9 @@ describe("a demo's program", { timeout: 60_000 }, () => {
     );
   });
 
-  it("is refused where the card's compile refuses it, naming the file", async () => {
+  it("is refused where the card's compile refuses it, at the file it refuses", async () => {
     const directory = demo({ [DEMO_ENTRY]: 'import "./app.js";', "app.ts": "console.log(import.meta.url);" });
-    await expect(programOf(directory)).rejects.toThrow(/demo\/main\.ts: its demo's card runs it, which the browser cannot run: SyntaxError: .*\n {4}at app\.ts/);
+    await expect(programOf(directory)).rejects.toThrow(/demo\/app\.ts: its demo's card runs it, which the browser cannot run: SyntaxError: .*\n {4}at app\.ts/);
   });
 
   it("refuses a relative import that leaves examples/, naming the file that makes it", async () => {

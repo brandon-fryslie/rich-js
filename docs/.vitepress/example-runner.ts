@@ -599,7 +599,7 @@ export function refuseUnrunnable(at: (file: string) => string, opens: string, pr
   const files = programFiles(program);
   const compiled = playgroundProgram(files, library);
   if (compiled.kind === "refused") {
-    throw new Error(`${at(files[0].name)}: ${opens}, which the browser cannot run: ${compiled.report}\n${files.map((file) => file.source).join("\n")}`);
+    throw new Error(`${at(compiled.at.file)}: ${opens}, which the browser cannot run: ${compiled.report}\n${files.map((file) => file.source).join("\n")}`);
   }
   const names = new Set(files.map((file) => file.name));
   // [LAW:single-enforcer] One rule for a specifier however it is imported: a relative one is one of the program's files, any other one the live library holds.

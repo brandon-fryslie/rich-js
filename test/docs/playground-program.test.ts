@@ -141,6 +141,11 @@ describe("a program of several files", { timeout: 60_000 }, () => {
     expect((error as Error).message).toBe("Cannot find module './missing.js' imported by main.ts. The program's files are main.ts, app.ts.");
   });
 
+  it("refuses a file the eval cannot run at that file, claiming no line it does not know", () => {
+    const files: ProgramFiles = [{ name: "main.ts", source: 'import "./app.js";' }, { name: "app.ts", source: "await Promise.resolve();" }];
+    expect(playgroundProgram(files, "")).toMatchObject({ kind: "refused", at: { file: "app.ts", line: null } });
+  });
+
   it("refuses a file that does not parse, at its own name and line, and runs nothing", async () => {
     const files: ProgramFiles = [
       { name: "main.ts", source: 'process.stdout.write("ran");\nimport "./app.js";' },

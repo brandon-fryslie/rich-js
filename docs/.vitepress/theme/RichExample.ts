@@ -193,16 +193,18 @@ type StaticOutcome = Outcome | { readonly kind: "terminal"; readonly said: strin
 const namesOf = (program: CardProgram): string[] => program.files.map((file) => file.name);
 
 /**
- * A crash's report as said under the output, its first line, and the file of
- * `names` it names first, if any. A program of one file shows no tabs, so its
- * line needs no file's name.
+ * A failure said under the output: `headline`, then where it is, if it is in
+ * one of the visitor's files, by its file and by its line where that is known.
+ * A program of one file shows no tabs, so it needs no file's name.
  */
-function crashSaid(report: string, thrownAt: ThrownAt, names: readonly string[]): Extract<Outcome, { kind: "failed" }> {
-  const at = thrownAt(report, names);
-  const headline = report.split("\n")[0]!;
+function failedAt(headline: string, at: { readonly file: string; readonly line: number | null } | null, names: readonly string[]): Extract<Outcome, { kind: "failed" }> {
   if (at === null) return { kind: "failed", said: headline, at: null };
-  return { kind: "failed", said: `${headline} (${names.length === 1 ? "" : `${at.file} `}line ${at.line})`, at: at.file };
+  const where = [...(names.length === 1 ? [] : [at.file]), ...(at.line === null ? [] : [`line ${at.line}`])].join(" ");
+  return { kind: "failed", said: where === "" ? headline : `${headline} (${where})`, at: at.file };
 }
+
+/** A crash's report as said under the output: its first line, at the file of `names` its stack names first. */
+const crashSaid = (report: string, thrownAt: ThrownAt, names: readonly string[]) => failedAt(report.split("\n")[0]!, thrownAt(report, names), names);
 
 /** How a static run that did not draw came out. */
 function staticEnded(end: Exclude<StaticEnd, { kind: "finished" | "stopped" }>, thrownAt: ThrownAt, names: readonly string[]): StaticOutcome {
@@ -348,7 +350,7 @@ function liveOutlet(program: CardProgram, look: { readonly label: string; readon
       }
       const made = await programs();
       const compiled = made.playgroundProgram(programFiles(withCodes(program, codes)), made.library);
-      if (compiled.kind === "refused") return crashSaid(compiled.report, made.thrownAt, namesOf(program));
+      if (compiled.kind === "refused") return failedAt(`SyntaxError: ${compiled.message}`, compiled.at, namesOf(program));
       if (current()) running.value = { codes, program: () => Promise.resolve(compiled.script) };
       return SHOWN;
     },

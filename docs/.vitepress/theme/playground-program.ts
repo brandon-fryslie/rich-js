@@ -157,7 +157,13 @@ export type PlaygroundProgram =
       /** Each file's code as compiled, each import it runs a `require`. */
       readonly modules: readonly { readonly name: string; readonly code: string }[];
     }
-  | { readonly kind: "refused"; readonly message: string; readonly report: string };
+  | {
+      readonly kind: "refused";
+      readonly message: string;
+      readonly report: string;
+      /** The file refused, and its line where the parse that refused it knows it. */
+      readonly at: { readonly file: string; readonly line: number | null };
+    };
 
 /** `files` compiled and wrapped, or the first that does not parse. */
 function modules(files: ProgramFiles): { readonly kind: "runs"; readonly modules: readonly (Module & { readonly code: string })[] } | Extract<PlaygroundProgram, { kind: "refused" }> {
@@ -167,7 +173,7 @@ function modules(files: ProgramFiles): { readonly kind: "runs"; readonly modules
     if (file.kind === "refused") {
       // The stack is only the visitor's line: the frames of this script would point at code they never wrote.
       const { message, line, column } = file;
-      return { kind: "refused", message, report: `SyntaxError: ${message}\n    at ${name}:${line}:${column}` };
+      return { kind: "refused", message, report: `SyntaxError: ${message}\n    at ${name}:${line}:${column}`, at: { file: name, line } };
     }
     const wrapped = `(${i === 0 ? "async " : ""}(require, exports) => {${file.code}\n})\n//# sourceURL=${name}`;
     // [LAW:single-enforcer] Sucrase passes what only a module may say,
@@ -179,7 +185,8 @@ function modules(files: ProgramFiles): { readonly kind: "runs"; readonly modules
       new Function(wrapped);
     } catch (error) {
       if (!(error instanceof SyntaxError)) throw error;
-      return { kind: "refused", message: error.message, report: `SyntaxError: ${error.message}\n    at ${name}` };
+      // The eval's parser says no line, so none is claimed.
+      return { kind: "refused", message: error.message, report: `SyntaxError: ${error.message}\n    at ${name}`, at: { file: name, line: null } };
     }
     compiled.push({ name, wrapped, code: file.code });
   }
