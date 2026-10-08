@@ -4,15 +4,22 @@
     {
       "version": "pr-336",
       "ref": "refs/pull/336/merge",
-      "sha": "3e5be9db88f7770ae18ae4c67e946b7b1517c943",
-      "timestamp": "2026-10-08T00:23:12.310Z",
+      "sha": "2ac7ac0e5a3ccd568e65c79bb3c5967c38c699fc",
+      "timestamp": "2026-10-08T00:27:42.699Z",
       "commits": [
         {
-          "sha": "3e5be9db88f7770ae18ae4c67e946b7b1517c943",
+          "sha": "2ac7ac0e5a3ccd568e65c79bb3c5967c38c699fc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T18:21:54-06:00",
-          "message": "Merge 56dade9a31129d6eb0aeb96f5746edffeb2ec0d8 into bdf8f8e48b2f051d31d9ce84272954db4055f3e5\n"
+          "timestamp": "2026-10-08T00:26:15Z",
+          "message": "Merge 99ef4c39365c595058b4cdfc5880d8535a045cdf into bdf8f8e48b2f051d31d9ce84272954db4055f3e5\n"
+        },
+        {
+          "sha": "99ef4c39365c595058b4cdfc5880d8535a045cdf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T18:26:11-06:00",
+          "message": "fix(deploy): key the concurrency group by the one computed slot, pin multiplexer v1.1.0, cancel superseded runs (rich-workflows-ui0d)\n\nReview (high): the group re-derived the slot beside the step that computed\nit; a slot job's output now feeds the group, VITEPRESS_BASE and version:.\nThe safety argument rests on v1.1.0's stale-tip rebuild, so the pin says\nv1.1.0. test/seam/deploy-slot.test.ts fails a group not keyed by version:.\n"
         },
         {
           "sha": "56dade9a31129d6eb0aeb96f5746edffeb2ec0d8",
