@@ -4,6 +4,7 @@ import { Segment } from "../../src/core/segment.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import { getStyle } from "../../src/core/protocol.js";
 import { ColorDepth } from "../../src/core/color.js";
+import { Style } from "../../src/core/style.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -123,6 +124,18 @@ describe("ProgressBar", () => {
       const opts: RenderOptions = { maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR };
       const [, , back] = collectSegments(new ProgressBar({ total: 10, completed: 5, width: 10 }), opts);
       expect(back?.style).toEqual(getStyle(opts, "bar.back"));
+    });
+
+    it("draws in Rich's colours: the fill rgb(249,38,114), the back grey23, a finished bar rgb(114,156,31)", () => {
+      const opts: RenderOptions = { maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR };
+      const half = collectSegments(new ProgressBar({ total: 10, completed: 5, width: 10 }), opts);
+      expect(half.map((s) => [s.text, s.style])).toEqual([
+        ["━━━━━", Style.parse("rgb(249,38,114)")],
+        ["╺", Style.parse("grey23")],
+        ["━━━━", Style.parse("grey23")],
+      ]);
+      const done = collectSegments(new ProgressBar({ total: 10, completed: 10, width: 10 }), opts);
+      expect(done.map((s) => [s.text, s.style])).toEqual([["━━━━━━━━━━", Style.parse("rgb(114,156,31)")]]);
     });
 
     it("draws half a cell when the fill lands on a half", () => {
