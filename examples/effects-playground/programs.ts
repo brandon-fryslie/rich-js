@@ -1,27 +1,31 @@
 /**
- * effects-playground — the program each playground opens on, made from the
- * library's own source for its effects, `src/renderables/effects.ts`.
+ * effects-playground — the program each effect's card on the docs' effects
+ * playground page opens on, made from the library's own source for its
+ * effects, `src/renderables/effects.ts`.
  *
  * [LAW:one-source-of-truth] A program is not a copy of an effect: it is the
  * effect's function as `effects.ts` has it now, and every declaration of
  * `effects.ts` that function reaches, cut out of the file and set between a
- * header (its imports and its curve, at the library's defaults) and the one
- * line that plays it. An edit to `effects.ts` is an edit to the program; what
- * a playground runs before anyone touches it is what `npm run effects-feel`
- * runs.
+ * header (its imports, its curve at the library's defaults, and its pace at
+ * the effects-feel demo's) and the one line that plays it. An edit to
+ * `effects.ts` is an edit to the program; what a card runs before anyone
+ * touches it is what `npm run effects-feel` runs. The header's numbers are
+ * named constants, so the card's sliders are over them (tunables.ts in
+ * docs/.vitepress).
  *
- * Runs in Node, where the playground's dev server makes the programs.
+ * Runs in Node, where the docs build makes the cards (docs/.vitepress/effect-cards.ts).
  */
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
-import { EFFECTS, EFFECT_DEFAULTS, type EffectName } from "../effects-feel/vocabulary.js";
-import { KIT_MODULE } from "./edits.js";
+import { EFFECTS, EFFECT_DEFAULTS, RUN_DEFAULTS, STEP, type EffectName } from "../effects-feel/vocabulary.js";
 
 export const EFFECTS_FILE = fileURLToPath(new URL("../../src/renderables/effects.ts", import.meta.url));
 export const NOISE_FILE = fileURLToPath(new URL("../../src/core/noise.ts", import.meta.url));
-export const KIT_FILE = fileURLToPath(new URL("./kit.ts", import.meta.url));
+
+/** The module a program imports the kit (kit.ts) by: a file of its card beside it. */
+const KIT_MODULE = "./kit.js";
 
 /** What `effects.ts` imports from modules whose names the package exports, by the name a program imports them under instead. */
 const IMPORTED_AS: Readonly<Record<string, string>> = {
@@ -41,21 +45,23 @@ const CUT_FROM: Readonly<Record<string, string>> = { "../core/noise.js": NOISE_F
 /** The files a program is cut from, by path: `effects.ts` and each one `CUT_FROM` names. */
 export type Sources = Readonly<Record<string, string>>;
 
+/** How a loop plays: never starting over. */
+const LOOPING = "{ fps: FPS, step: STEP, every: Infinity }";
+
+/** How a transition plays: starting over a quarter of its duration after it settles. */
+const REPLAYING = "{ fps: FPS, step: STEP, every: CURVE.seconds * 1.25 }";
+
 /**
  * Each effect's function in `effects.ts`, and the line that plays it on the
- * demo's subjects as the demo does (`scene` and `view` in app.ts). A
- * transition starts over a quarter of its duration after it settles.
+ * demo's subjects as the demo does (`scene` and `view` in app.ts).
  */
 const PLAYED: Readonly<Record<EffectName, { readonly fn: string; readonly play: string }>> = {
-  shimmer: { fn: "shimmer", play: `play("shimmer", (s, { theme, magnitude }) => subjectUnder(s, shimmer(magnified(CURVE, magnitude), s.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, s.z), theme));` },
-  pulse: { fn: "pulse", play: `play("pulse", (s, { theme, magnitude }) => pulsedOn(s, (z) => pulse(magnified(CURVE, magnitude), EFFECT_LIGHTS.sun, z), theme));` },
-  sparkle: { fn: "sparkle", play: `play("sparkle", (s, { theme, magnitude }) => subjectUnder(s, sparkle(magnified(CURVE, magnitude), s.span, EFFECT_LIGHTS.firefly, s.z), theme));` },
-  wheel: { fn: "wheel", play: `play("wheel", (s, { magnitude }) => wheel(magnified(CURVE, magnitude), s.colors, fills(s), s.z));` },
-  fade: { fn: "fadeIn", play: `play("fade", (s, { theme, start }) => fadeIn(CURVE, start, s.z, theme.backgroundColor).effect, CURVE.seconds * 1.25);` },
-  dissolve: {
-    fn: "dissolveOut",
-    play: `play("dissolve", (s, { theme, start }) => dissolveOut(CURVE, start, s.z, theme.backgroundColor).effect, CURVE.seconds * 1.25);`,
-  },
+  shimmer: { fn: "shimmer", play: `play((s) => subjectUnder(s, shimmer(CURVE, s.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, s.z), THEME), ${LOOPING});` },
+  pulse: { fn: "pulse", play: `play((s) => pulsedOn(s, (z) => pulse(CURVE, EFFECT_LIGHTS.sun, z), THEME), ${LOOPING});` },
+  sparkle: { fn: "sparkle", play: `play((s) => subjectUnder(s, sparkle(CURVE, s.span, EFFECT_LIGHTS.firefly, s.z), THEME), ${LOOPING});` },
+  wheel: { fn: "wheel", play: `play((s) => wheel(CURVE, s.colors, fills(s), s.z), ${LOOPING});` },
+  fade: { fn: "fadeIn", play: `play((s, start) => fadeIn(CURVE, start, s.z, THEME.backgroundColor).effect, ${REPLAYING});` },
+  dissolve: { fn: "dissolveOut", play: `play((s, start) => dissolveOut(CURVE, start, s.z, THEME.backgroundColor).effect, ${REPLAYING});` },
 };
 
 /** Every name a node mentions, its own declarations' included. */
@@ -125,10 +131,14 @@ export function effectProgram(effect: EffectName, sources: Sources): string {
   return [
     ...imports,
     // `EASES`, which the curve below names, comes with `effects.ts`'s own imports.
-    `import { fills, magnified, play, pulsedOn, subjectUnder } from "${KIT_MODULE}";`,
+    `import { THEME, fills, play, pulsedOn, subjectUnder } from "${KIT_MODULE}";`,
     "",
     `// ${effect}: its curve, at the library's defaults (EFFECT_CURVES).`,
     `const CURVE: Curve = { seconds: ${d.seconds}, ease: EASES["${d.ease}"], swing: ${d.swing} };`,
+    "",
+    "// How it plays: frames a second, and how far each moves curve time, what CURVE.seconds is measured in.",
+    `const FPS = ${RUN_DEFAULTS.fps};`,
+    `const STEP = ${STEP};`,
     "",
     // The function first, then what it reaches in the order the library has it.
     text(file, root),

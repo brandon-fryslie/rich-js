@@ -71,6 +71,7 @@ import type { EditorView } from "@codemirror/view";
 import {
   DRAWN,
   NO_SETUP,
+  PLAIN_CARD,
   PRINTS_NOTHING,
   RAN,
   RUNNING,
@@ -83,6 +84,7 @@ import {
   sameCodes,
   withCodes,
   type CardData,
+  type CardOptions,
   type CardProgram,
   type Codes,
 } from "../example-card.js";
@@ -144,6 +146,9 @@ type ThrownAt = Awaited<ReturnType<typeof programs>>["thrownAt"];
 
 /** A live card's terminal, loaded with the first page that has one: it brings xterm's setup and the example terminal's themes. */
 const LiveScreen = defineAsyncComponent(() => import("./LiveScreen.js"));
+
+/** A card's sliders, loaded with the first card that has them: they bring the library's curve names. */
+const CardSliders = defineAsyncComponent(() => import("./CardSliders.js"));
 
 /** The space VitePress's fence leaves above and below its code: the editor's too, and the height of the folded setup's strip, drawn in it. */
 const FENCE_PADDING = "20px";
@@ -325,12 +330,11 @@ function staticOutlet(card: Extract<CardData, { readonly run: "build" }>, root: 
 }
 
 /**
- * `program` running in a live terminal of its size. An edit that
- * parses is a new program, which the terminal restarts on; one that does not
- * leaves the terminal running the last that did.
+ * `program` running in a live terminal of its size and contrast. An edit that parses is a new program, which the terminal
+ * restarts on; one that does not leaves the terminal running the last that did.
  */
 function liveOutlet(program: CardProgram, look: { readonly label: string; readonly caption: string }): Outlet {
-  const { terminal } = program;
+  const { terminal, contrast } = program;
   const start = codesOf(program);
   // Made once and kept: each scroll into view and each Restart asks for it.
   const startProgram = loader(async () => {
@@ -343,7 +347,7 @@ function liveOutlet(program: CardProgram, look: { readonly label: string; readon
     label: () => look.label,
     caption: () => look.caption,
     columns: () => terminal.columns,
-    body: () => [h(LiveScreen, { program: running.value.program, terminal })],
+    body: () => [h(LiveScreen, { program: running.value.program, terminal, contrast })],
     async show(codes, current) {
       if (sameCodes(codes, start)) {
         running.value = { codes, program: startProgram };
@@ -430,10 +434,11 @@ const PROGRAM_SEAT: Seat = {
  * What every editable card does with its program: each of its files `opened`
  * in an editor, the one whose tab is chosen on screen, the edit shown by
  * `outlet` once typing pauses, a failure said under it, and the opened code
- * put back on reset. `edited` hears each change, with whether it is still the
- * newest.
+ * put back on reset; and, where `options` turn them on, sliders over the
+ * values in the chosen file's code, each an edit in the editor. `edited`
+ * hears each change, with whether it is still the newest.
  */
-function cardCore(opened: CardProgram, outlet: Outlet, edited: (codes: Codes, current: () => boolean) => void) {
+function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edited: (codes: Codes, current: () => boolean) => void) {
   const code = shallowRef<Code>({ kind: "fence", refused: null });
   const openedCodes = codesOf(opened);
   const texts = shallowRef<Codes>(openedCodes);
@@ -628,7 +633,25 @@ function cardCore(opened: CardProgram, outlet: Outlet, edited: (codes: Codes, cu
     );
   };
 
-  return { code, active, edited: isEdited, run, openEditor, editedLine, tabs, panel, output };
+  /**
+   * The sliders over the chosen file's values, once its editor is open: a
+   * slider is an edit of the editor's text, and before the editor there is
+   * none to make it in.
+   */
+  const sliders = () => {
+    const now = code.value;
+    if (!options.sliders || now.kind !== "editor") return null;
+    const file = active.value;
+    const { before } = blockSpan(opened.files[file]!.setup);
+    return h(CardSliders, {
+      key: file,
+      source: texts.value[file]!,
+      opened: openedCodes[file]!,
+      write: (from: number, to: number, spelling: string) => now.view.dispatch({ changes: { from: before + from, to: before + to, insert: spelling } }),
+    });
+  };
+
+  return { code, active, edited: isEdited, run, openEditor, editedLine, tabs, panel, sliders, output };
 }
 
 /**
@@ -662,7 +685,7 @@ function editableView(card: EditableCard, slots: Slots): () => VNode {
   const host = ref<HTMLElement | null>(null);
   const outlet = card.run === "build" ? staticOutlet(card, root) : liveOutlet(card.program, card);
   const tryIt = tryItLink(card.program, card.tryIt, "Try it");
-  const core = cardCore(card.program, outlet, (codes, current) => void tryIt.link(codes, current));
+  const core = cardCore(card.program, card.options, outlet, (codes, current) => void tryIt.link(codes, current));
 
   /** Put the editor in the fence's place, its cursor at `at` on screen, or at the start. */
   async function edit(at: { readonly x: number; readonly y: number } | null): Promise<void> {
@@ -718,6 +741,7 @@ function editableView(card: EditableCard, slots: Slots): () => VNode {
       [
         now.kind === "editor" ? null : slots["default"]?.(),
         now.kind === "fence" ? null : h("div", { class: "rich-example-editor", ref: host }),
+        core.sliders(),
         core.edited.value ? core.editedLine() : null,
         core.output([tryIt.view()]),
       ],
@@ -743,13 +767,14 @@ export default defineComponent({
  */
 function openCardView(
   program: CardProgram,
+  options: CardOptions,
   outlet: (root: Ref<HTMLElement | null>) => Outlet,
   edited: (codes: Codes, current: () => boolean) => void,
   beside: () => VNode[],
 ) {
   const root = ref<HTMLElement | null>(null);
   const host = ref<HTMLElement | null>(null);
-  const core = cardCore(program, outlet(root), edited);
+  const core = cardCore(program, options, outlet(root), edited);
   onMounted(() => void core.openEditor(() => host.value!, PROGRAM_SEAT));
   return {
     core,
@@ -757,6 +782,7 @@ function openCardView(
       h("div", { class: "rich-example rich-example-card", ref: root }, [
         core.tabs(),
         h("div", { class: "rich-example-editor", ref: host, ...core.panel() }),
+        core.sliders(),
         core.editedLine(),
         core.output(beside()),
       ]),
@@ -776,7 +802,7 @@ export const RichDemo = defineComponent({
     const { card } = props;
     const tryIt = tryItLink(card.program, card.tryIt, "Open in playground");
     const live = () => liveOutlet(card.program, card);
-    return openCardView(card.program, live, (codes, current) => void tryIt.link(codes, current), () => [tryIt.view()]).render;
+    return openCardView(card.program, card.options, live, (codes, current) => void tryIt.link(codes, current), () => [tryIt.view()]).render;
   },
 });
 
@@ -792,7 +818,7 @@ const PlaygroundCard = defineComponent({
   },
   setup(props) {
     const { program } = props;
-    const card = openCardView(program, (root) => decidedOutlet(program, root), (codes) => props.edited(withCodes(program, codes)), () => []);
+    const card = openCardView(program, PLAIN_CARD, (root) => decidedOutlet(program, root), (codes) => props.edited(withCodes(program, codes)), () => []);
     onMounted(() => card.core.run(codesOf(program), "now"));
     return card.render;
   },

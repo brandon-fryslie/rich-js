@@ -1,10 +1,13 @@
 /**
- * effects-playground — the values in a program a slider can set.
+ * The values in a card's code a slider can set, for a card whose options turn
+ * its sliders on (example-card.ts; theme/CardSliders.ts draws them).
  *
  * [LAW:one-source-of-truth] A slider holds no value of its own: it is a view
  * of one literal in the program's text, found here, and setting it is an edit
  * of that text. The program is the only place a value lives, so the code a
- * playground shows is always the code it runs, sliders and all.
+ * card shows is always the code it runs, sliders and all.
+ *
+ * Pure and dependency-free: the build's tests read it in Node, the card in the page.
  *
  * A tunable is a number given a name the way a constant is in `src/renderables/effects.ts`: a
  * constant spelled in capitals, `const STRIDE = 80;`, or a property of an
@@ -59,11 +62,17 @@ export function tunables(source: string): Tunable[] {
   return found.sort((a, b) => a.from - b.from);
 }
 
-/** What a slider over `value` spans: a share's 0–1, or out to four times a larger number. */
+/**
+ * What a slider over `value` spans: a share's 0–1, or out to four times a
+ * larger number. A larger positive number is a count, a duration or a rate,
+ * which nothing breaks (`frameRate(0)` throws, a curve of 0 seconds has no
+ * shape), so its slider starts a step above it.
+ */
 export function range(value: number): { readonly min: number; readonly max: number; readonly step: number } {
   if (value >= 0 && value <= 1) return { min: 0, max: 1, step: 0.01 };
   const max = 4 * Math.abs(value);
-  return Number.isInteger(value) ? { min: value < 0 ? -max : 0, max, step: 1 } : { min: value < 0 ? -max : 0, max, step: max / 400 };
+  const step = Number.isInteger(value) ? 1 : max / 400;
+  return { min: value < 0 ? -max : step, max, step };
 }
 
 /** A number as a program spells it: no more digits than it means. */

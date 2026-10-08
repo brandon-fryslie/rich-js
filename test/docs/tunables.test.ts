@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { effectPrograms } from "../../../examples/effects-playground/programs.js";
-import { range, spelled, tunables } from "../../../examples/effects-playground/tunables.js";
+import { effectPrograms } from "../../examples/effects-playground/programs.js";
+import { range, spelled, tunables } from "../../docs/.vitepress/tunables.js";
 
 describe("tunables", () => {
   it("finds a capitalised constant, an object's properties and an ease, each where its literal stands", () => {
@@ -32,9 +32,11 @@ describe("tunables", () => {
     }
   });
 
-  it("spans a share 0–1 and a larger number out to four times itself", () => {
+  it("spans a share 0–1, and a larger number from a step above nothing out to four times itself", () => {
     expect(range(0.4)).toEqual({ min: 0, max: 1, step: 0.01 });
-    expect(range(30)).toEqual({ min: 0, max: 120, step: 1 });
+    expect(range(30)).toEqual({ min: 1, max: 120, step: 1 });
+    expect(range(2.5)).toEqual({ min: 0.025, max: 10, step: 0.025 });
+    expect(range(-3)).toEqual({ min: -12, max: 12, step: 1 });
     expect(spelled(0.1 + 0.2)).toBe("0.3");
   });
 });

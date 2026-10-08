@@ -75,6 +75,7 @@ export const guideSidebar: SidebarGroup[] = [
       { text: 'Live Display', link: '/live' },
       { text: 'Easing & Phases', link: '/easing' },
       { text: 'Effects', link: '/effects' },
+      { text: 'Effects Playground', link: '/effects-playground' },
       { text: 'Layout', link: '/layout' },
     ],
   },

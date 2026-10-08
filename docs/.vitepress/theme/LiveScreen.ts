@@ -15,16 +15,17 @@
  * into view. A new `program` is a new program: it runs at once if the
  * terminal is on screen, and when it next scrolls into view if not.
  *
- * Its `terminal` is the size the card gives it (example-card.ts); everything
- * else about the terminal is `EXAMPLE_TERMINAL`'s. While it has focus every
+ * Its `terminal` and `contrast` are its program's (example-card.ts);
+ * everything else about the terminal is `EXAMPLE_TERMINAL`'s. While it has focus every
  * key is the program's, so it says so: a ring round it, and the way out
  * (`LEAVE_HINT`) in its bar.
  */
 import { defineComponent, h, onBeforeUnmount, onMounted, ref, watch, type PropType } from "vue";
 import { useData } from "vitepress";
 import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "../example-terminal.js";
+import type { Contrast } from "../example-card.js";
 import type { TerminalSize } from "../terminal-size.js";
-import { LEAVE_HINT, LiveTerminal, READABLE_CONTRAST, elementFont, type LiveState, type RunMode } from "./live-terminal.js";
+import { LEAVE_HINT, LiveTerminal, MINIMUM_CONTRAST, elementFont, type LiveState, type RunMode } from "./live-terminal.js";
 
 /** What the button does, said for each state the terminal can be in. */
 const BUTTON: Record<LiveState["kind"], string> = {
@@ -40,6 +41,7 @@ export default defineComponent({
   props: {
     program: { type: Function as PropType<() => Promise<string>>, required: true },
     terminal: { type: Object as PropType<TerminalSize>, required: true },
+    contrast: { type: String as PropType<Contrast>, required: true },
   },
   setup(props) {
     const screen = ref<HTMLElement | null>(null);
@@ -66,7 +68,7 @@ export default defineComponent({
             terminal: { ...EXAMPLE_TERMINAL, columns: props.terminal.columns, rows: props.terminal.rows },
             theme: theme(),
             font: elementFont(element),
-            minimumContrast: READABLE_CONTRAST,
+            minimumContrast: MINIMUM_CONTRAST[props.contrast],
           }),
         )
         .then(

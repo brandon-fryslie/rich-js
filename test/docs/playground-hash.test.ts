@@ -30,6 +30,7 @@ const DEMO: CardProgram = {
     { name: "../_capabilities/file-system.ts", setup: NO_SETUP, code: "export interface FileSystem {}" },
   ],
   terminal: { columns: 100, rows: 30 },
+  contrast: "as drawn",
 };
 
 /** `json`, deflated, in base64url, behind `format`. */
@@ -48,7 +49,13 @@ describe("a playground hash", () => {
 
   it("opens a link in the files format as those files at the example size", async () => {
     const { files } = DEMO;
-    expect(await decodeProgram(shaped("files", { files }))).toEqual({ files, terminal: EXAMPLE_SIZE });
+    expect(await decodeProgram(shaped("files", { files }))).toEqual({ files, terminal: EXAMPLE_SIZE, contrast: "readable" });
+  });
+
+  it("opens a program link written before programs carried a contrast as readable, and refuses one it does not know", async () => {
+    const { files, terminal } = DEMO;
+    expect(await decodeProgram(shaped("program", { files, terminal }))).toEqual({ files, terminal, contrast: "readable" });
+    await expect(decodeProgram(shaped("program", { files, terminal, contrast: "high" }))).rejects.toThrow('does not know: "high"');
   });
 
   it.each([
@@ -87,8 +94,8 @@ describe("a playground hash", () => {
     await expect(decodeProgram(`files.${bomb}`)).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
     await expect(decodeProgram(`card.${bomb}`)).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
     // The limit is on what is packed, the program's JSON, and a program that fills it exactly still opens.
-    const { files } = oneFile(NO_SETUP, "");
-    const fits = "x".repeat(MAX_PROGRAM_BYTES - JSON.stringify({ files, terminal: EXAMPLE_SIZE }).length);
+    const { files, contrast } = oneFile(NO_SETUP, "");
+    const fits = "x".repeat(MAX_PROGRAM_BYTES - JSON.stringify({ files, terminal: EXAMPLE_SIZE, contrast }).length);
     expect(await decodeProgram(await encodeProgram(oneFile(NO_SETUP, fits)))).toEqual(oneFile(NO_SETUP, fits));
     await expect(encodeProgram(oneFile(NO_SETUP, `${fits}x`))).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
   });

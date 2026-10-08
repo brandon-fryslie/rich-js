@@ -77,7 +77,7 @@ console.print([20, 39.9, 40].map((t) => `${t}s: ${leaving.done(t) ? "gone" : "le
 
 Both blend toward the ground you give them, which should be the terminal's own background: the library never asks the terminal what that is.
 
-To watch every effect at any frame rate, colour depth and theme, run `npm run effects-feel` in a checkout of this repository.
+To edit and tune each effect's code while it runs, open the [effects playground](/effects-playground). To watch every effect at any frame rate, colour depth and theme, run `npm run effects-feel` in a checkout of this repository.
 
 ## Writing an effect
 

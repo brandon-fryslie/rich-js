@@ -39,6 +39,16 @@ export const EFFECT_DEFAULTS: Record<EffectName, { seconds: number; ease: EaseNa
 export const GROUNDS = ["dark", "light"] as const;
 export type Ground = (typeof GROUNDS)[number];
 
+/**
+ * How much of a loop's designed time one frame moves it at rate ×1. A frame
+ * is the unit of change: every frame moves every loop by this, whatever the
+ * frame rate, which only sets how often a frame comes. The curves are tuned
+ * so that one designed second steps a colour by at most the one-frame-a-
+ * second bar, and a frame that steps the whole bar reads as a step; a
+ * quarter of it reads as motion. The demo's rate keys scale it (app.ts).
+ */
+export const STEP = 0.25;
+
 /** What a run is drawn at when nothing says otherwise. */
 export const RUN_DEFAULTS: { readonly fps: number; readonly depth: Depth; readonly ground: Ground } = { fps: 30, depth: "truecolor", ground: "dark" };
 

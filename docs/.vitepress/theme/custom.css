@@ -230,6 +230,51 @@
   color: var(--vp-c-text-3);
 }
 
+/* A card's sliders (theme/CardSliders.ts), between its code and its output:
+ * each value's name, its slider and a box to type it in, two to a row where
+ * the card is wide enough. */
+.vp-doc .rich-sliders {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 4px 24px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+.vp-doc .rich-sliders-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px 72px;
+  gap: 8px;
+  align-items: center;
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  line-height: 24px;
+}
+
+.vp-doc .rich-sliders-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--vp-c-text-2);
+}
+
+.vp-doc .rich-sliders-control select {
+  grid-column: span 2;
+}
+
+.vp-doc .rich-sliders-control select,
+.vp-doc .rich-sliders-control input[type='number'] {
+  padding: 0 4px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 4px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+}
+
+.vp-doc .rich-sliders-control input[type='range'] {
+  accent-color: var(--vp-c-brand-1);
+}
+
 .vp-doc .rich-example-reset {
   color: var(--vp-c-brand-1);
 }

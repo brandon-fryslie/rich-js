@@ -10,8 +10,8 @@ import path from "node:path";
 import stripAnsi from "strip-ansi";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../scripts/repo-facts.js";
-import { CARD_OPTIONS, demoCard, demoProgram, demoTerminal } from "../../docs/.vitepress/demo-card.js";
-import { programFiles } from "../../docs/.vitepress/example-card.js";
+import { CARD_OPTIONS, cardJson, demoCard, demoProgram } from "../../docs/.vitepress/demo-card.js";
+import { PLAIN_CARD, programFiles } from "../../docs/.vitepress/example-card.js";
 import { EXAMPLE_TERMINAL } from "../../docs/.vitepress/example-terminal.js";
 import { liveLibraryOnce } from "../../docs/.vitepress/example-runner.js";
 import { DEMO_ENTRY } from "../../docs/.vitepress/demo-entry.js";
@@ -33,7 +33,7 @@ function demo(files: Readonly<Record<string, string>>): string {
 }
 
 /** `demo`'s program, held to running on the live library. */
-const programOf = async (directory: string) => demoProgram(directory, (await library()).script);
+const programOf = async (directory: string) => demoProgram(directory, cardJson(directory).screen, (await library()).script);
 
 describe("a demo's program", { timeout: 60_000 }, () => {
   it("is its entry, then every file it reaches by a relative import, once each, a file beside its directory included", async () => {
@@ -70,7 +70,7 @@ describe("a demo's program", { timeout: 60_000 }, () => {
 
   it("is refused where the card's compile refuses it, at the file it refuses", async () => {
     const directory = demo({ [DEMO_ENTRY]: 'import "./app.js";', "app.ts": "console.log(import.meta.url);" });
-    await expect(programOf(directory)).rejects.toThrow(/demo\/app\.ts: its demo's card runs it, which the browser cannot run: SyntaxError: .*\n {4}at app\.ts/);
+    await expect(programOf(directory)).rejects.toThrow(/demo\/app\.ts: its card runs it, which the browser cannot run: SyntaxError: .*\n {4}at app\.ts/);
   });
 
   it("refuses a relative import that leaves examples/, naming the file that makes it", async () => {
@@ -78,9 +78,17 @@ describe("a demo's program", { timeout: 60_000 }, () => {
   });
 });
 
-describe("a demo's terminal", () => {
-  it("is the size its card.json gives", () => {
-    expect(demoTerminal(demo({ [CARD_OPTIONS]: '{ "terminal": { "columns": 90, "rows": 28 } }' }))).toEqual({ columns: 90, rows: 28 });
+describe("a demo's card.json", () => {
+  it("gives its terminal's size, readable, and the card shows its program as a docs block's card does", () => {
+    expect(cardJson(demo({ [CARD_OPTIONS]: '{ "terminal": { "columns": 90, "rows": 28 } }' }))).toEqual({
+      screen: { terminal: { columns: 90, rows: 28 }, contrast: "readable" },
+      options: PLAIN_CARD,
+    });
+  });
+
+  it("may turn on the card's sliders and show every colour as drawn", () => {
+    const json = '{ "terminal": { "columns": 90, "rows": 28 }, "sliders": true, "contrast": "as drawn" }';
+    expect(cardJson(demo({ [CARD_OPTIONS]: json }))).toMatchObject({ screen: { contrast: "as drawn" }, options: { sliders: true } });
   });
 
   it.each([
@@ -91,8 +99,11 @@ describe("a demo's terminal", () => {
     ["no terminal", "{}"],
     ["null", "null"],
     ["malformed JSON", '{ "terminal": { "columns": 90, "rows": 28, } }'],
-  ])("is refused naming its card.json when it has %s", (_, json) => {
-    expect(() => demoTerminal(demo({ [CARD_OPTIONS]: json }))).toThrow(/demo\/card\.json: must be/);
+    ["sliders that are not a boolean", '{ "terminal": { "columns": 90, "rows": 28 }, "sliders": "yes" }'],
+    ["a contrast it does not know", '{ "terminal": { "columns": 90, "rows": 28 }, "contrast": "high" }'],
+    ["a key it does not know", '{ "terminal": { "columns": 90, "rows": 28 }, "slider": true }'],
+  ])("is refused naming the file when it has %s", (_, json) => {
+    expect(() => cardJson(demo({ [CARD_OPTIONS]: json }))).toThrow(/demo\/card\.json: must be/);
   });
 });
 
@@ -132,7 +143,7 @@ describe("dropdown-demo's card", { timeout: 60_000 }, () => {
     expect(card.program.files.map(({ name, code }) => [name, code])).toEqual(
       ["main.ts", "app.ts"].map((name) => [name, readFileSync(path.join(directory, name), "utf-8")]),
     );
-    expect(card.program.terminal).toEqual(demoTerminal(directory));
+    expect(card.program).toMatchObject(cardJson(directory).screen);
     // "Open in playground" opens it at that size, not the example terminal's.
     expect(await decodeProgram(card.tryIt.program)).toEqual(card.program);
   });

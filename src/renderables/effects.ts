@@ -37,8 +37,8 @@
  * effect's argument, so the frame owner decides when to sample.
  *
  * Every import below names something the package exports, but for `noise`,
- * which the effects playground supplies itself: the playground runs this
- * file's own declarations as the program a visitor edits
+ * which the docs' effects playground page supplies itself: each of its
+ * cards runs this file's own declarations as the program a visitor edits
  * (`examples/effects-playground/programs.ts`), on the published library.
  */
 

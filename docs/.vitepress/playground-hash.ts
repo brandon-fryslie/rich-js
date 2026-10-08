@@ -2,16 +2,18 @@
  * The playground's URL hash: the program a link opens, carried in the link.
  *
  * A hash is a card's program (example-card.ts's `CardProgram`), every file of
- * it with the setup each runs on and the size of the terminal it runs in, as
- * JSON, compressed (`deflate`) and written in base64url behind the format's
+ * it with the setup each runs on and the size and contrast of the terminal it
+ * runs in, as JSON, compressed (`deflate`) and written in base64url behind the format's
  * name, `program.`. So a link reproduces a
  * program with no backend, survives being pasted anywhere a URL does, and
  * opens with each file as the card held it, a docs block's setup still locked
  * and labelled where it came from. Compressing keeps a docs-sized example to a
  * link a chat message does not cut.
  *
- * Links in the formats before it still open, at `EXAMPLE_SIZE`, the only size
- * a program ran at when they were written: `files.`, every file of a program;
+ * A `program.` link written before programs carried a contrast has none, and
+ * opens readable, the only contrast a program had then. Links in the formats
+ * before it still open, readable and at `EXAMPLE_SIZE`, the only size a
+ * program ran at when they were written: `files.`, every file of a program;
  * and as a program of one file, `card.`, a docs block and its setup, and a
  * hash with no `.`, the program's source alone, every line of it the
  * reader's. base64url has no `.`, so no two formats can be mistaken for each
@@ -22,7 +24,7 @@
  * that writes or reads a playground link, on the page or at build time, does
  * it here.
  */
-import { NO_SETUP, PLAYGROUND_SOURCE, oneFile, type CardFile, type CardProgram, type SetupGroup } from "./example-card.js";
+import { CONTRASTS, NO_SETUP, PLAYGROUND_SOURCE, oneFile, type CardFile, type CardProgram, type SetupGroup } from "./example-card.js";
 import { EXAMPLE_SIZE, terminalSize } from "./terminal-size.js";
 
 /**
@@ -87,7 +89,7 @@ async function unpacked(payload: string): Promise<string> {
 export async function encodeProgram(program: CardProgram): Promise<string> {
   const files = program.files.map(({ name, setup, code }) => ({ name, setup, code }));
   const { columns, rows } = program.terminal;
-  return `${FORMAT}.${await packed(JSON.stringify({ files, terminal: { columns, rows } }))}`;
+  return `${FORMAT}.${await packed(JSON.stringify({ files, terminal: { columns, rows }, contrast: program.contrast }))}`;
 }
 
 /** The fields of `value`, each unknown until read: none of them, for a value with no fields. */
@@ -135,7 +137,10 @@ function cardFiles(json: unknown): CardProgram["files"] {
 
 /** What a hash in this format says, as a `CardProgram`. */
 function cardProgram(json: unknown): CardProgram {
-  return { files: cardFiles(json), terminal: terminalSize(fields<"terminal">(json).terminal) };
+  const { terminal, contrast = "readable" } = fields<"terminal" | "contrast">(json);
+  const known = CONTRASTS.find((c) => c === contrast);
+  if (known === undefined) throw new Error(`the link's program shows a contrast this playground does not know: ${JSON.stringify(contrast)}`);
+  return { files: cardFiles(json), terminal: terminalSize(terminal), contrast: known };
 }
 
 /**
@@ -148,7 +153,7 @@ export async function decodeProgram(hash: string): Promise<CardProgram> {
   const format = hash.slice(0, dot);
   const json = (): Promise<unknown> => unpacked(hash.slice(dot + 1)).then((text) => JSON.parse(text) as unknown);
   if (format === FORMAT) return cardProgram(await json());
-  if (format === FILES_FORMAT) return { files: cardFiles(await json()), terminal: EXAMPLE_SIZE };
+  if (format === FILES_FORMAT) return { files: cardFiles(await json()), terminal: EXAMPLE_SIZE, contrast: "readable" };
   if (format === ONE_FILE_FORMAT) {
     const { setup, code } = cardFile(await json(), PLAYGROUND_SOURCE);
     return oneFile(setup, code);
