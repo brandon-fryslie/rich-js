@@ -72,6 +72,9 @@ const tools = loader(async () => {
 type Tools = Awaited<ReturnType<typeof tools>>;
 
 /** The editor, loaded the first time a reader's pointer or focus reaches a card, so a click has it at hand. */
+/** The space VitePress's fence leaves above and below its code: the editor's too, and the height of the folded setup's strip, drawn in it. */
+const FENCE_PADDING = "20px";
+
 const editorModules = loader(() =>
   Promise.all([import("./playground-editor.js"), import("@codemirror/view"), import("@codemirror/state"), import("./setup-regions.js")]),
 );
@@ -201,13 +204,15 @@ export default defineComponent({
       const view = createEditor(host.value!, cardSource(setup, props.card.code), { change: changedTo, run: () => changedTo(view.state.doc.toString()) }, [
         setupRegions(setup, "folded"),
         View.contentAttributes.of({ "aria-label": "Example code" }),
-        // The fence's own measures, so the code does not move when the editor takes its place.
+        // The fence's own measures, so the code does not move when the editor
+        // takes its place; the folded setup's strip stands in the space above it.
         Prec.highest(
           View.theme({
             "&": { backgroundColor: "var(--vp-code-block-bg)" },
             ".cm-scroller": { fontFamily: "var(--rich-code-font-family)", lineHeight: "var(--vp-code-line-height)" },
-            ".cm-content": { padding: "20px 0" },
+            ".cm-content": { padding: `${FENCE_PADDING} 0` },
             ".cm-line, .rich-setup-label, .rich-setup-strip": { padding: "0 24px" },
+            ".rich-setup-strip": { lineHeight: FENCE_PADDING },
           }),
         ),
       ]);

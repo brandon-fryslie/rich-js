@@ -39,7 +39,6 @@ function drawn(state: EditorState): string[] {
   return out;
 }
 
-const focus = (state: EditorState, on: boolean) => state.update({ effects: state.facet(EditorView.focusChangeEffect).map((f) => f(state, on)!) }).state;
 
 describe("a card's setup", () => {
   it("changes nothing when an edit reaches into it, typed, pasted or deleted", () => {
@@ -50,7 +49,12 @@ describe("a card's setup", () => {
     expect(edited(state, { changes: { from: before - 1, to: before } })).toBe(program);
     expect(edited(state, { changes: { from: state.doc.length - after, to: state.doc.length - after + 1 } })).toBe(program);
     expect(edited(state, { changes: { from: state.doc.length, insert: "x" } })).toBe(program);
-    expect(edited(state, { changes: { from: 0, to: state.doc.length, insert: "" } })).toBe(program);
+  });
+
+  it("lands the block's part of a change that also reaches into it, and drops the rest", () => {
+    const state = editor("folded");
+    expect(edited(state, { changes: { from: 0, to: state.doc.length, insert: "" } })).toBe(cardSource(SETUP, ""));
+    expect(edited(state, { changes: { from: 0, to: state.doc.length, insert: "pasted" } })).toBe(cardSource(SETUP, "pasted"));
   });
 
   it("lets the block be edited from its first character to its last", () => {
@@ -60,10 +64,19 @@ describe("a card's setup", () => {
     expect(blockOf(SETUP, edited(state, { changes: { from: before, to: state.doc.length - after, insert: "" } }))).toBe("");
   });
 
-  it("is hidden while folded and the editor does not have focus, and is one strip when it does", () => {
+  it("is one strip folded, and the lines closing its scopes are hidden", () => {
+    expect(drawn(editor("folded"))).toEqual(["1-5 4 lines of setup", "8-8 hidden"]);
+  });
+
+  it("unfolds when a selection reaches into it, and not while it stays in the block", () => {
     const state = editor("folded");
-    expect(drawn(state)).toEqual(["1-5 hidden", "8-8 hidden"]);
-    expect(drawn(focus(state, true))).toEqual(["1-5 4 lines of setup", "8-8 hidden"]);
+    const unfolded = drawn(editor("unfolded"));
+    expect(drawn(state.update({ selection: { anchor: before + 3 } }).state)).toEqual(drawn(state));
+    expect(drawn(state.update({ selection: { anchor: state.doc.length - after } }).state)).toEqual(drawn(state));
+    expect(drawn(state.update({ changes: { from: before, insert: "x" }, selection: { anchor: before + 1 } }).state)).toEqual(drawn(state));
+    expect(drawn(state.update({ selection: { anchor: before - 1 } }).state)).toEqual(unfolded);
+    expect(drawn(state.update({ selection: { anchor: 0, head: state.doc.length } }).state)).toEqual(unfolded);
+    expect(drawn(state.update({ selection: { anchor: state.doc.length } }).state)).toEqual(unfolded);
   });
 
   it("shows every group, labelled and locked, unfolded", () => {
@@ -81,7 +94,7 @@ describe("a card's setup", () => {
 
   it("draws nothing for a block with no setup", () => {
     const none = editor("folded", { before: [], after: [] });
-    expect(drawn(focus(none, true))).toEqual([]);
+    expect(drawn(none)).toEqual([]);
     expect(edited(none, { changes: { from: 0, insert: "// " } })).toBe(`// ${BLOCK}`);
   });
 });

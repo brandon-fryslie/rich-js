@@ -8,15 +8,19 @@
  *
  * Folded, the setup above the block is one strip, "▸ N lines of setup", shown
  * only while the editor has focus, and the lines closing its scopes below are
- * hidden; a click on the strip unfolds both. A docs card starts folded and the
- * playground unfolded: where it starts is the caller's, so this is the one
- * piece both use.
+ * hidden. A click on the strip unfolds both, and so does a selection reaching
+ * into the setup, by arrow keys, Ctrl+Home or select-all, so the keyboard
+ * reaches it and the cursor is never in a line that is not drawn. The strip
+ * takes no line: it stands in the space above the code, so the code does not
+ * move when the editor gains or loses focus. A docs card starts folded; the
+ * playground is to start unfolded (rich-example-card-obsb.cau), so where it
+ * starts is the caller's.
  *
- * [LAW:dataflow-not-control-flow] What is drawn is a function of the setup,
- * whether it is folded, and whether the editor has focus. A block with no setup
- * has no groups and no locked lines, so nothing is drawn.
+ * [LAW:dataflow-not-control-flow] What is drawn is a function of the setup and
+ * whether it is folded; focus only shows or hides the strip, in style. A block
+ * with no setup has no groups and no locked lines, so nothing is drawn.
  */
-import { EditorState, StateEffect, StateField, type Extension, type Range } from "@codemirror/state";
+import { ChangeSet, EditorSelection, EditorState, StateEffect, StateField, type Extension, type Range, type Text } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType, type DecorationSet } from "@codemirror/view";
 import { blockSpan, type CardSetup } from "../example-card.js";
 
@@ -24,7 +28,6 @@ import { blockSpan, type CardSetup } from "../example-card.js";
 export type SetupStart = "folded" | "unfolded";
 
 const unfold = StateEffect.define<null>();
-const focused = StateEffect.define<boolean>();
 
 /** The strip a folded setup is drawn as; a click on it unfolds the setup. */
 class Strip extends WidgetType {
@@ -35,14 +38,18 @@ class Strip extends WidgetType {
     return other.lines === this.lines;
   }
   toDOM(view: EditorView): HTMLElement {
-    const strip = document.createElement("button");
+    // A block of no height, so the editor's lines sit where they would without it;
+    // the strip in it is drawn above, in the space over the code.
+    const fold = document.createElement("div");
+    fold.className = "rich-setup-fold";
+    const strip = fold.appendChild(document.createElement("button"));
     strip.type = "button";
     strip.className = "rich-setup-strip";
     strip.textContent = `▸ ${this.lines} line${this.lines === 1 ? "" : "s"} of setup`;
     // A press keeps the editor's focus, so the setup unfolds in a card still being edited.
     strip.addEventListener("mousedown", (event) => event.preventDefault());
     strip.addEventListener("click", () => view.dispatch({ effects: unfold.of(null) }));
-    return strip;
+    return fold;
   }
   override ignoreEvent(): boolean {
     return true;
@@ -68,8 +75,12 @@ class Label extends WidgetType {
 const THEME = EditorView.baseTheme({
   ".rich-setup-line": { opacity: "0.5" },
   ".rich-setup-label": { opacity: "0.6", fontSize: "0.85em", fontStyle: "italic", userSelect: "none" },
+  ".rich-setup-fold": { position: "relative", height: "0" },
   ".rich-setup-strip": {
-    display: "block",
+    position: "absolute",
+    bottom: "0",
+    left: "0",
+    visibility: "hidden",
     opacity: "0.6",
     font: "inherit",
     color: "inherit",
@@ -78,6 +89,7 @@ const THEME = EditorView.baseTheme({
     padding: "0",
     cursor: "pointer",
   },
+  "&.cm-focused .rich-setup-strip": { visibility: "visible" },
 });
 
 /**
@@ -87,36 +99,49 @@ const THEME = EditorView.baseTheme({
 export function setupRegions(setup: CardSetup, starts: SetupStart): Extension {
   const span = blockSpan(setup);
   const count = [...setup.before.flatMap((group) => group.lines), ...setup.after].filter((line) => line.trim() !== "").length;
+  const block = (state: EditorState) => ({ from: span.before, to: state.doc.length - span.after });
 
   // [LAW:single-enforcer] The one rule that keeps the setup as the page wrote
-  // it: a change reaching into it, typed, pasted or deleted, changes nothing.
-  const locked = EditorState.changeFilter.of((tr) => {
-    let inside = true;
-    tr.changes.iterChangedRanges((from, to) => {
-      inside &&= from >= span.before && to <= tr.startState.doc.length - span.after;
+  // it: each change, typed, pasted or deleted, is cut to the block. One wholly
+  // in the setup is dropped; one reaching across it keeps its block part and
+  // its text, so a paste over select-all replaces the block.
+  const locked = EditorState.transactionFilter.of((tr) => {
+    const { from: start, to: end } = block(tr.startState);
+    const cut: { from: number; to: number; insert: Text }[] = [];
+    let reaches = false;
+    tr.changes.iterChanges((from, to, _fromB, _toB, insert) => {
+      reaches ||= from < start || to > end;
+      if (to >= start && from <= end) cut.push({ from: Math.max(from, start), to: Math.min(to, end), insert });
     });
-    return inside;
+    if (!reaches) return tr;
+    const kept = ChangeSet.of(cut, tr.startState.doc.length);
+    const last = cut.at(-1);
+    return {
+      changes: kept,
+      selection: last === undefined ? undefined : EditorSelection.cursor(kept.mapPos(last.to, 1)),
+      effects: tr.effects,
+      scrollIntoView: tr.scrollIntoView,
+    };
   });
 
-  const shown = StateField.define<{ readonly folded: boolean; readonly focused: boolean }>({
-    create: () => ({ folded: starts === "folded", focused: false }),
-    update: (value, tr) =>
-      tr.effects.reduce(
-        (now, effect) => (effect.is(unfold) ? { ...now, folded: false } : effect.is(focused) ? { ...now, focused: effect.value } : now),
-        value,
-      ),
+  const folded = StateField.define<boolean>({
+    create: () => starts === "folded",
+    update: (value, tr) => {
+      const { from, to } = block(tr.state);
+      const reaches = tr.selection !== undefined && tr.state.selection.ranges.some((range) => range.from < from || range.to > to);
+      return value && !reaches && !tr.effects.some((effect) => effect.is(unfold));
+    },
   });
 
   /** The decorations for the document and how the setup is shown. */
   const drawn = (state: EditorState): DecorationSet => {
-    const { folded, focused: hasFocus } = state.field(shown);
     const end = state.doc.length;
     // Whole lines: the setup's last line ends before the newline the block starts after.
     const above = span.before === 0 ? [] : [{ from: 0, to: span.before - 1 }];
     const below = span.after === 0 ? [] : [{ from: end - span.after + 1, to: end }];
-    if (folded) {
+    if (state.field(folded)) {
       return Decoration.set([
-        ...above.map(({ from, to }) => Decoration.replace({ block: true, widget: hasFocus ? new Strip(count) : undefined }).range(from, to)),
+        ...above.map(({ from, to }) => Decoration.replace({ block: true, widget: new Strip(count) }).range(from, to)),
         ...below.map(({ from, to }) => Decoration.replace({ block: true }).range(from, to)),
       ]);
     }
@@ -136,9 +161,9 @@ export function setupRegions(setup: CardSetup, starts: SetupStart): Extension {
 
   const decorations = StateField.define<DecorationSet>({
     create: drawn,
-    update: (value, tr) => (tr.docChanged || tr.startState.field(shown) !== tr.state.field(shown) ? drawn(tr.state) : value),
-    provide: (field) => [EditorView.decorations.from(field), EditorView.atomicRanges.of((v) => (v.state.field(shown).folded ? v.state.field(field) : Decoration.none))],
+    update: (value, tr) => (tr.docChanged || tr.startState.field(folded) !== tr.state.field(folded) ? drawn(tr.state) : value),
+    provide: (field) => EditorView.decorations.from(field),
   });
 
-  return [locked, shown, decorations, EditorView.focusChangeEffect.of((_, focusing) => focused.of(focusing)), THEME];
+  return [locked, folded, decorations, THEME];
 }

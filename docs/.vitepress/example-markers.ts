@@ -146,6 +146,14 @@ export const PAGE_PARSER: MarkdownIt = CONTAINERS.reduce(
   new MarkdownIt({ html: true }),
 ).use((md) => md.core.ruler.enableOnly(["normalize", "block"]));
 
+/** Reads a heading's inline markup, which `PAGE_PARSER`, block rules only, leaves as written. */
+const INLINE_PARSER = new MarkdownIt();
+
+/** A heading's text as the page shows it: its markup (`code`, emphasis, links, escapes) read as what it renders. */
+function headingText(markdown: string): string {
+  return INLINE_PARSER.parseInline(markdown, {})[0]!.children!.flatMap((child) => (child.type === "text" || child.type === "code_inline" ? [child.content] : [])).join("");
+}
+
 const ENCLOSURE: Readonly<Record<string, Enclosure>> = {
   list_item_open: "list item",
   blockquote_open: "blockquote",
@@ -190,8 +198,7 @@ export function scanBlocks(page: string, markdown: string): Block[] {
   for (const [i, token] of tokens.entries()) {
     if (token.nesting === 1) open.push(ENCLOSURE[token.type] ?? null);
     if (token.nesting === -1) open.pop();
-    // A heading's text is the inline token inside it.
-    if (token.type === "heading_open") section = tokens[i + 1]!.content;
+    if (token.type === "heading_open") section = headingText(tokens[i + 1]!.content);
     if (token.type !== "fence") continue;
     const [start, end] = token.map!;
     // markdown-it's own answer: a closed fence spans its content lines plus two fence lines.

@@ -153,6 +153,15 @@ describe("the example widget", () => {
     ]);
   });
 
+  it("leaves a block's own bare imports to the block, and labels a group by its heading as the page shows it", async () => {
+    const [first, next] = cards(
+      await run(page("## Using `track()` \\*here\\*", fence('import "@promptctl/rich-js";\nconst title = "shared";\nconsole.print(title);'), fence("console.print(title);"))),
+    );
+    expect(setupLines(first!.setup)).not.toContain('import "@promptctl/rich-js";');
+    expect(setupLines(next!.setup)).toContain('import "@promptctl/rich-js";');
+    expect(next!.setup.before.map((group) => group.origin)).toContain("from 'Using track() *here*'");
+  });
+
   it("keeps a string in a card's data from closing the page's script", async () => {
     const result = await run(fence('console.print("</script>");'));
     expect(result).not.toMatch(/^const __richCard_0 = .*<\/script>/m);

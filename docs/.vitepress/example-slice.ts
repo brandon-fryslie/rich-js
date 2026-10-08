@@ -203,9 +203,9 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
     // The names the block's own imports bind as the program binds them: not a
     // barrel value the block imports as a type, which the program imports as a value.
     const blockBinds = new Set(own.imports.flatMap((imp) => (imp.kind === "binding" && imp.typeOnly === imported.get(imp.local)!.typeOnly ? [imp.local] : [])));
-    // A bare import is run for what it does, so every one the page ran by the block's end runs here too.
-    const bareLines = [...new Set(bare.filter((b) => b.line < target.closeLine).map((b) => b.text))];
-    const imports = (bound: readonly ImportBinding[]): Line[] => [...bareLines, ...importLines(bound)].map((text) => ({ text, line: null }));
+    // A bare import is run for what it does, so every one the page ran by `end` runs here too.
+    const imports = (end: number, bound: readonly ImportBinding[]): Line[] =>
+      [...new Set(bare.filter((b) => b.line < end).map((b) => b.text)), ...importLines(bound)].map((text) => ({ text, line: null }));
 
     // The parts it carries, in page order, each with where it came from and
     // the names it declares, then the block. A part that redeclares a name
@@ -233,22 +233,28 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
     const firstLine = body.findIndex(({ text }) => text.trim() !== "");
     const out = new SourceBuilder();
     // A blank line stands between parts, as between blocks on the page.
-    [imports(bindings), ...setup.map((part) => part.lines), [...blockOpens, ...body.slice(firstLine === -1 ? body.length : firstLine)]]
+    [imports(target.closeLine, bindings), ...setup.map((part) => part.lines), [...blockOpens, ...body.slice(firstLine === -1 ? body.length : firstLine)]]
       .filter((lines) => lines.length > 0)
       .forEach((lines, i) => [...(i === 0 ? [] : [{ text: "", line: null }]), ...lines].forEach(({ text, line }) => out.add(text, line)));
     after.forEach(({ text, line }) => out.add(text, line));
 
     // A card holds the block whole, its imports included, so its setup
-    // imports only what the block names and does not import itself, and what
-    // the setup's own statements name. [LAW:one-source-of-truth] The parts and
-    // their scopes are the ones "Try it" carries.
-    const cardImports = imports(ordered(named.filter((n) => !n.byBlock || !blockBinds.has(n.binding.local)).map((n) => n.binding)));
+    // imports only what the block names and does not import itself, what
+    // the setup's own statements name, and the bare imports above the block.
+    // [LAW:one-source-of-truth] The parts and their scopes are the ones "Try it" carries.
+    const cardImports = imports(target.line, ordered(named.filter((n) => !n.byBlock || !blockBinds.has(n.binding.local)).map((n) => n.binding)));
     const setupText = [{ origin: "imports", lines: cardImports }, ...setup.map((part) => ({ origin: originOf(part.from), lines: part.lines }))]
       .filter((part) => part.lines.length > 0)
       .flatMap(({ origin, lines }) => [...lines, { text: "" }].map(({ text }) => ({ origin, text })));
     // The blank line after a part, and the brace opening the block's scope,
     // are the part's above them; neighbouring parts from one place are one group.
-    setupText.push(...blockOpens.map(({ text }) => ({ origin: setupText.at(-1)!.origin, text })));
+    if (blockOpens.length > 0) {
+      // [LAW:no-silent-failure] The block's scope is opened against a name its
+      // setup binds; a scope with no setup above it is a program this cut has no reading of.
+      const last = setupText.at(-1);
+      if (last === undefined) throw new Error(`docs/${program.page}:${target.line}: the block opens a scope its card has no setup to put above`);
+      setupText.push(...blockOpens.map(({ text }) => ({ origin: last.origin, text })));
+    }
     const before: { origin: string; lines: string[] }[] = [];
     for (const { origin, text } of setupText) {
       if (before.at(-1)?.origin !== origin) before.push({ origin, lines: [] });
