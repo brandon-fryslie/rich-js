@@ -4,15 +4,22 @@
     {
       "version": "pr-358",
       "ref": "refs/pull/358/merge",
-      "sha": "d3262e0b5276be5df692765cd64f2185117d04f4",
-      "timestamp": "2026-10-08T20:18:36.204Z",
+      "sha": "75019da0c44b7251ef2fe421c859fc97f5dd9000",
+      "timestamp": "2026-10-08T20:32:27.269Z",
       "commits": [
         {
-          "sha": "d3262e0b5276be5df692765cd64f2185117d04f4",
+          "sha": "75019da0c44b7251ef2fe421c859fc97f5dd9000",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T14:16:29-06:00",
-          "message": "Merge 96bf13248edecc588c78b049f12ddfe211e2b5bb into f99118dd0e378c092d3b305d3eb6504e5a24a028\n"
+          "timestamp": "2026-10-08T20:30:57Z",
+          "message": "Merge 2392d423e8b8c549caa47599b6cd81ec75357b2e into f99118dd0e378c092d3b305d3eb6504e5a24a028\n"
+        },
+        {
+          "sha": "2392d423e8b8c549caa47599b6cd81ec75357b2e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T14:30:52-06:00",
+          "message": "fix(docs): a demo is held at build to the check its card runs, and the file tabs are the ARIA tabs pattern (rich-example-card-b5rz.hpj)\n\nReview (high) of #358:\n- demoProgram runs refuseUnrunnable, now whole-program: the card's compile,\n  and every import a library package or one of the program's own files. A\n  relative import that leaves examples/ is refused naming the importer.\n- oneSource is gone; every one-file program is programFiles(oneFile(...)).\n- thrownAt reads Firefox/Safari `fn@file:line:col` frames.\n- DEMO_ENTRY lives in demo-entry.ts so vite.config.demos.ts no longer loads\n  the docs example pipeline.\n- File tabs: roving tabindex, arrow/Home/End keys, editor as labelled tabpanel.\n- package.json#devEngines asks contributors for a Node with unflagged type\n  stripping (^22.18.0 || >=23.6.0), which scripts/build-demos.ts needs;\n  engines.node, the consumer floor, is unchanged.\n"
         },
         {
           "sha": "96bf13248edecc588c78b049f12ddfe211e2b5bb",
