@@ -515,8 +515,19 @@ describe("Progress counts", () => {
     const id = progress.addTask("x", { total: 10 });
     progress.updateTask(id, { completed: 3 });
     expect(() => progress.updateTask(id, { completed: 5, advance: NaN, description: "y" })).toThrow(/advance/);
-    expect(() => progress.updateTask(id, { completed: 1e308, advance: 1e308 })).toThrow(/completed must be a finite number, got Infinity/);
+    const line = () => Segment.splitLines([...progress.render(OPTS)])[0]!.map((segment) => segment.text).join("").trimEnd();
+    expect(line()).toBe("x  3/10");
+    progress.updateTask(id, { completed: 1e308 });
+    const before = line();
+    expect(() => progress.updateTask(id, { advance: 1e308 })).toThrow(/completed must be a finite number, got Infinity/);
+    expect(line()).toBe(before);
+  });
+
+  it("lets a given completed win over advance, as Rich's update overwrites after adding", () => {
+    const progress = new Progress(new TextColumn("{task.description}"), new MofNCompleteColumn());
+    const id = progress.addTask("x", { total: 100 });
+    progress.updateTask(id, { completed: 10, advance: 5 });
     const line = Segment.splitLines([...progress.render(OPTS)])[0]!.map((segment) => segment.text).join("");
-    expect(line.trimEnd()).toBe("x  3/10");
+    expect(line.trimEnd()).toBe("x  10/100");
   });
 });

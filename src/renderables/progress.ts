@@ -450,10 +450,11 @@ export class Progress implements Renderable {
     const task = this._tasks.get(taskId);
     if (!task) return;
 
-    // Rich's order, `completed` then `advance`, checked whole before any field
-    // is written, so a refused update leaves the task as it was.
+    // Rich's order: `advance` is added, then a given `completed` overwrites it,
+    // so `completed` wins when both come. Checked whole before any field is
+    // written, so a refused update leaves the task as it was.
     const advance = finiteCount("advance", options.advance ?? 0);
-    const completed = finiteCount("completed", (options.completed ?? task.completed) + advance);
+    const completed = finiteCount("completed", options.completed ?? task.completed + advance);
     const now = this._clock.now();
     recordSample(task.samples, now, completed - task.completed);
     task.completed = completed;
