@@ -74,7 +74,7 @@ progress.updateTask(task1, { completed: 512 });
 progress.updateTask(task1, { description: "Downloading (retry)..." });
 ```
 
-`updateTask` accepts `completed`, `advance`, `description`, `visible`, and `refresh` — nothing else. A task's `total` is fixed at `addTask()`, and there is no store for custom per-task data. A `total`, `completed` or `advance` that is `NaN` or infinite throws a `RangeError` from the call that passed it.
+`updateTask` accepts `completed`, `advance`, `description`, `visible`, and `refresh` — nothing else. A task's `total` is fixed at `addTask()`, and there is no store for custom per-task data. A `total`, `completed` or `advance` that is `NaN` or infinite throws a `RangeError` from the call that passed it. Given both `completed` and `advance`, `completed` wins, as in Rich.
 
 ### Hiding tasks
 
