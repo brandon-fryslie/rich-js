@@ -18,6 +18,9 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    # The gate action owns this number's argument; publish.yml's gate job
+    # carries the same one.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 

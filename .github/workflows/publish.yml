@@ -54,6 +54,9 @@ jobs:
   # stand in; both halves are the same change.
   gate:
     runs-on: ubuntu-latest
+    # The gate action owns this number's argument; ci.yml's ci job carries
+    # the same one.
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
