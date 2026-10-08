@@ -3,12 +3,6 @@
   <head>
     <meta charset="utf-8" />
     <title>rich-js · BrowserTerminalHost harness</title>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@xterm/xterm@6.0.0/css/xterm.css"
-      integrity="sha384-n2n7twoohnW+d3myBKaUgl7DSiwidw6MkQy9oesGzkPpMjejKRR3XlnD+5yCdtBD"
-      crossorigin="anonymous"
-    />
     <style>
       html, body { margin: 0; padding: 0; background: #1e1e1e; color: #ddd; font-family: ui-monospace, monospace; }
       header { padding: 12px 16px; border-bottom: 1px solid #333; font-size: 13px; }
@@ -26,11 +20,6 @@
     </header>
     <div id="term"></div>
 
-    <script
-      src="https://cdn.jsdelivr.net/npm/@xterm/xterm@6.0.0/lib/xterm.js"
-      integrity="sha384-f/1U6Z9wM4D71a5eRXEZnyOTMOvjqxr2XLwh+Go1OvIl3L3tOcvUrzudnhbECwl4"
-      crossorigin="anonymous"
-    ></script>
     <script type="module">
       // Wire the compiled harness module against a real xterm.js Terminal.
       //
@@ -55,6 +44,16 @@
         const { mountHarness } = await import(
           "../../dist-demo/examples/browser-terminal-host-harness/wire.js"
         );
+        // [LAW:one-source-of-truth] The xterm this page loads is the site's
+        // pin, read from XTERM rather than copied into this file.
+        const { XTERM } = await import("../../dist-demo/examples/_browser-shell/xterm.js");
+        document.head.append(Object.assign(document.createElement("link"), { rel: "stylesheet", crossOrigin: "anonymous", ...XTERM.stylesheet }));
+        await new Promise((resolve, reject) => {
+          const script = Object.assign(document.createElement("script"), { crossOrigin: "anonymous", ...XTERM.script });
+          script.onload = resolve;
+          script.onerror = () => reject(new Error(`xterm.js did not load from ${XTERM.script.src}`));
+          document.head.append(script);
+        });
         const term = new window.Terminal({
           cols: 80,
           rows: 24,

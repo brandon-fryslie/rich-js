@@ -121,9 +121,9 @@ export const READABLE_CONTRAST = 4.5;
  * [LAW:one-source-of-truth] The line height is not among them. xterm makes a
  * row its measured character height times its `lineHeight` option, rounded to
  * device pixels, so no factor handed in from here lands on the element's line
- * height. `loadXterm` instead has xterm measure its character at the line
- * custom.css derives that line height from, and the option stays 1: a row is
- * then the element's line height.
+ * height. `loadXterm` and `openMeasuringInPage` instead have xterm measure its
+ * character at the line custom.css derives that line height from, and the
+ * option stays 1: a row is then the element's line height.
  */
 export function elementFont(element: HTMLElement): LiveTerminalOptions["font"] {
   const style = getComputedStyle(element);
@@ -167,9 +167,9 @@ function loadXterm(): Promise<XtermConstructor> {
     const link = Object.assign(document.createElement("link"), { rel: "stylesheet", crossOrigin: "anonymous", ...XTERM.stylesheet });
     // xterm makes a row the height it measures a character at, in whole CSS
     // pixels rounded up to whole device pixels, and measures it in the page
-    // (`openMeasuringInPage`) at line-height: normal. Measured at the element's --rich-fragment-line, a
-    // whole CSS pixel, a row is the line height custom.css derives from it the
-    // same way (`elementFont`).
+    // (`openMeasuringInPage`) at line-height: normal. Measured at the
+    // element's --rich-fragment-line, a whole CSS pixel, a row is the line
+    // height custom.css derives from it the same way (`elementFont`).
     const measure = Object.assign(document.createElement("style"), {
       textContent: ".xterm .xterm-char-measure-element { line-height: var(--rich-fragment-line, normal); }",
     });
@@ -397,7 +397,11 @@ export class LiveTerminal {
     this.post({ kind: "input", chunk });
   }
 
-  /** End the running program, if one runs; what it drew stays on screen. */
+  /**
+   * End the running program, if one runs; what it drew stays on screen. A
+   * frame it was part-way through is shown as far as it got, once xterm gives
+   * up waiting for its end, as a terminal shows a program killed mid-frame.
+   */
   stop(): void {
     if (this.sandbox === null) return;
     this.end({ kind: "stopped" });
