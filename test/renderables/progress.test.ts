@@ -17,6 +17,7 @@ import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import { ColorDepth } from "../../src/core/color.js";
+import { renderToString } from "../../src/core/render.js";
 import { fakeClock } from "../core/fake-clock.js";
 
 const OPTS: RenderOptions = {
@@ -377,6 +378,21 @@ describe("TimeElapsedColumn and TimeRemainingColumn (rich-progress-jj5r)", () =>
       ["0:00:20 progress.elapsed", " progress.remaining", " progress.remaining"],
       ["0:00:00 progress.elapsed", "-:--:-- progress.remaining", "-:--:-- progress.remaining"],
     ]);
+  });
+});
+
+describe("the percentage and time columns' colours (rich-progress-rihd)", () => {
+  // Python Rich 9d8f9a3's `Console(color_system="truecolor").print(column.render(task), end="")`
+  // for a task of 5 of 10 added with `start=False`: three columns, three colours.
+  const task: Task = { ...fakeTask("x"), total: 10, completed: 5, startTime: undefined, elapsed: undefined };
+  it.each([
+    ["TaskProgressColumn", new TaskProgressColumn(), "\x1b[35m 50%\x1b[0m"],
+    ["TimeElapsedColumn", new TimeElapsedColumn(), "\x1b[33m-:--:--\x1b[0m"],
+    ["TimeRemainingColumn", new TimeRemainingColumn(), "\x1b[36m-:--:--\x1b[0m"],
+  ])("%s writes Rich's bytes", (_name, column, bytes) => {
+    const text = column.render(task);
+    text.end = "";
+    expect(renderToString(text, { colorSystem: "truecolor" })).toBe(bytes);
   });
 });
 

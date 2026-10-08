@@ -805,9 +805,9 @@ export const DEFAULT_STYLES: Record<string, Style> = {
 
   // Progress
   "progress.description": NULL_STYLE,
-  "progress.percentage": Style.parse("cyan"),
+  "progress.percentage": Style.parse("magenta"),
   "progress.remaining": Style.parse("cyan"),
-  "progress.elapsed": Style.parse("cyan"),
+  "progress.elapsed": Style.parse("yellow"),
   "progress.spinner": Style.parse("green"),
   "progress.download": Style.parse("green"),
   "progress.filesize": Style.parse("green"),
