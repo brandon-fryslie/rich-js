@@ -519,7 +519,7 @@ describe("Progress counts", () => {
     expect(line()).toBe("x  3/10");
     progress.updateTask(id, { completed: 1e308 });
     const before = line();
-    expect(() => progress.updateTask(id, { advance: 1e308 })).toThrow(/completed must be a finite number, got Infinity/);
+    expect(() => progress.updateTask(id, { advance: 1e308 })).toThrow(/completed \+ advance must be a finite number, got Infinity/);
     expect(line()).toBe(before);
   });
 

@@ -115,7 +115,7 @@ function sampleSpeed(samples: readonly ProgressSample[]): number | undefined {
  * with the caller's stack, rather than drawn as `NaN%` by one column and thrown
  * on a refresh tick by another.
  */
-function finiteCount(field: "total" | "completed" | "advance", value: number): number {
+function finiteCount(field: "total" | "completed" | "advance" | "completed + advance", value: number): number {
   if (!Number.isFinite(value)) throw new RangeError(`progress task ${field} must be a finite number, got ${value}`);
   return value;
 }
@@ -454,7 +454,10 @@ export class Progress implements Renderable {
     // so `completed` wins when both come. Checked whole before any field is
     // written, so a refused update leaves the task as it was.
     const advance = finiteCount("advance", options.advance ?? 0);
-    const completed = finiteCount("completed", options.completed ?? task.completed + advance);
+    const completed =
+      options.completed === undefined
+        ? finiteCount("completed + advance", task.completed + advance)
+        : finiteCount("completed", options.completed);
     const now = this._clock.now();
     recordSample(task.samples, now, completed - task.completed);
     task.completed = completed;
