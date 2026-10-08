@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-339",
+      "ref": "refs/pull/339/merge",
+      "sha": "626628261b0ceb945cff14887e428d6841b51800",
+      "timestamp": "2026-10-08T00:37:24.662Z",
+      "commits": [
+        {
+          "sha": "626628261b0ceb945cff14887e428d6841b51800",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T18:36:19-06:00",
+          "message": "Merge 92cf26122c12eca11db505bf6dbc9f8146bf0a21 into eddf7b4a78e73c20dc6b1b84ea6a0add7d011883\n"
+        },
+        {
+          "sha": "92cf26122c12eca11db505bf6dbc9f8146bf0a21",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T18:36:11-06:00",
+          "message": "fix(ci): bound every gate-running job at 20 minutes, so a stalled apt mirror fails in minutes instead of 6 hours (rich-workflows-1qvg)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "eddf7b4a78e73c20dc6b1b84ea6a0add7d011883",
