@@ -586,16 +586,28 @@ function playgroundHref(page: string): string {
 }
 
 /**
- * Who runs a block as a program of its own: "Try it", which opens its program
- * in the playground, and a static block's editable card, which runs that
- * program around whatever its editor holds (example-card.ts).
+ * A program a block is run as on its own, and who runs it: "Try it", which
+ * opens it in the playground, or a static block's editable card, which runs
+ * the "Try it" program around whatever its editor holds (example-card.ts).
  */
-type Opener = { readonly by: "try it" } | { readonly by: "card"; readonly code: string };
+interface Opened {
+  readonly by: "try it" | "card";
+  readonly source: string;
+}
 
-const OPENS: Record<Opener["by"], string> = {
+const OPENS: Record<Opened["by"], string> = {
   "try it": `"Try it" opens this block as the program below`,
   card: "this block's editable card runs it as the program below",
 };
+
+/** The programs a block is opened as, each once: a card whose program is its "Try it" program is held by that one run. */
+function openedAs(fence: Fence, standalone: ExampleProgram): Opened[] {
+  const all: Opened[] = [
+    { by: "try it", source: standalone.source },
+    ...(isCard(fence) ? [{ by: "card", source: cardSource(aroundBlock(standalone), fence.code) } as const] : []),
+  ];
+  return all.filter((opened, i) => all.findIndex((other) => other.source === opened.source) === i);
+}
 
 /**
  * Hold a program a block is opened as to what the page shows for the block:
@@ -607,8 +619,7 @@ const OPENS: Record<Opener["by"], string> = {
  * block's output depends on. A miss fails here, at the block, rather than in
  * front of a reader.
  */
-async function tryItPrints(fence: Fence, opener: Opener, standalone: ExampleProgram, record: BlockRecord, shared: LiveLibrary, world: World): Promise<void> {
-  const source = opener.by === "card" ? cardSource(aroundBlock(standalone), opener.code) : standalone.source;
+async function tryItPrints(fence: Fence, { by, source }: Opened, record: BlockRecord, shared: LiveLibrary, world: World): Promise<void> {
   const { stream, end, exits } = await capture(playgroundScript(source, shared.script), world);
   // How each ended, a throw by the line the page shows for it.
   const ended = end.kind === "finished" ? "completed" : end.kind === "threw" ? `threw ${thrownLine(end.error)}` : end.kind;
@@ -617,7 +628,7 @@ async function tryItPrints(fence: Fence, opener: Opener, standalone: ExampleProg
   let from = 0;
   while (from < stream.length && stream[from] === record.output[from]) from += 1;
   throw new Error(
-    `docs/${fence.page}:${fence.line}: ${OPENS[opener.by]}, which ${ended} ` +
+    `docs/${fence.page}:${fence.line}: ${OPENS[by]}, which ${ended} ` +
       `where the page's run of the block ${expected}, writing ${JSON.stringify(stream.slice(from, from + 60))} ` +
       `where the page shows ${JSON.stringify(record.output.slice(from, from + 60))}. ` +
       `The program is the block and what example-slice.ts carries from above it, so the difference is a statement above ` +
@@ -827,12 +838,13 @@ export async function runPageExamples(
   const bytes = new Map<Fence, string | null>(chain.map((fence, i) => [fence, blockBytes(fence, blocks[i]!)]));
   const shared = await library();
   for (const [i, fence] of chain.entries()) {
-    const openers: Opener[] = [{ by: "try it" }, ...(isCard(fence) ? [{ by: "card", code: fence.code } as const] : [])];
-    for (const opener of openers) await tryItPrints(fence, opener, tried.get(fence)!, blocks[i]!, shared, world);
+    for (const opened of openedAs(fence, tried.get(fence)!)) await tryItPrints(fence, opened, blocks[i]!, shared, world);
   }
-  const links = new Map<Fence, string>(
-    await Promise.all([...tried].map(async ([fence, standalone]) => [fence, `${playgroundHref(page)}#${await encodeProgram(standalone.source)}`] as const)),
+  const playground = playgroundHref(page);
+  const hashes = new Map<Fence, string>(
+    await Promise.all([...tried].map(async ([fence, standalone]) => [fence, await encodeProgram(standalone.source)] as const)),
   );
+  const links = new Map<Fence, string>([...hashes].map(([fence, hash]) => [fence, `${playground}#${hash}`]));
   const liveBlocks = [...alone].filter(([fence]) => MARKERS[fence.marker].run === "browser");
   const programs = await Promise.all(liveBlocks.map(([fence, blockProgram]) => liveProgram(page, fence, blockProgram, library)));
   const live = new Map<Fence, LiveProgram>(liveBlocks.map(([fence], i) => [fence, programs[i]!]));
@@ -848,7 +860,7 @@ export async function runPageExamples(
   const cards = new Map<Fence, { readonly binding: string; readonly data: CardData }>(
     chain.filter(isCard).map((fence, i) => {
       const { label, caption } = MARKERS[fence.marker];
-      const data: CardData = { code: fence.code, setup: aroundBlock(tried.get(fence)!), output: drawOutput(bytes.get(fence)!), label, caption, tryIt: links.get(fence)! };
+      const data: CardData = { code: fence.code, setup: aroundBlock(tried.get(fence)!), output: drawOutput(bytes.get(fence)!), label, caption, tryIt: { playground, program: hashes.get(fence)! } };
       return [fence, { binding: `__richCard_${i}`, data }];
     }),
   );

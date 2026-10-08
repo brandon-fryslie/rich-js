@@ -9,9 +9,10 @@
  * or Enter on it, puts an editor in the fence's place, its cursor where the
  * click was. Once typing pauses the card runs its program on the edit
  * (`cardSource`) in a sandboxed worker (static-run.ts) and draws what it
- * printed the way the build draws it (example-fragments.ts). A program that
- * throws, exits or runs past the time limit leaves the last output it drew,
- * dimmed, with what went wrong under it in red.
+ * printed the way the build draws it (example-fragments.ts). Output drawn for
+ * code other than the editor's is dimmed: while an edit waits to run, and
+ * after one that threw, exited, or ran past the time or output limit, with
+ * what went wrong under it in red. "Try it" opens the code the card holds.
  *
  * [LAW:dataflow-not-control-flow] What the card shows is a function of the
  * code in it. The page's own code is shown with the output the build proved
@@ -23,49 +24,48 @@ import type { EditorView } from "@codemirror/view";
 import { cardSource, codeLine, type CardData } from "../example-card.js";
 import { EXAMPLE_TERMINAL, STATIC_RUN_LIMIT_MS } from "../example-terminal.js";
 import type { Drawn } from "../example-fragments.js";
+import { encodeProgram } from "../playground-hash.js";
 import type { StaticEnd, StaticRun } from "./static-run.js";
 
 /** How long typing must pause before an edit runs. */
 const RUN_AFTER_MS = 250;
 
-/** What running an edit needs, loaded once, the first time a card runs one. */
-const tools = (() => {
-  let loaded: Promise<Tools> | undefined;
-  const load = async (): Promise<Tools> => {
-    const [runtime, library, program, fragments, run] = await Promise.all([
-      import("virtual:rich-live/runtime"),
-      import("virtual:rich-live/library"),
-      import("./playground-program.js"),
-      import("../example-fragments.js"),
-      import("./static-run.js"),
-    ]);
-    return {
-      runtime: runtime.default,
-      library: library.default,
-      playgroundScript: program.playgroundScript,
-      thrownAt: program.thrownAt,
-      drawOutput: fragments.drawOutput,
-      runStatic: run.runStatic,
-    };
-  };
-  // A load that failed is forgotten, so the next edit tries again.
-  return (): Promise<Tools> => (loaded ??= load().catch((error: unknown) => ((loaded = undefined), Promise.reject(error))));
-})();
+/**
+ * How much an edit may print. The card draws it on the page's thread, so this
+ * bounds what one edit can cost the page; a docs example prints a few
+ * thousand characters.
+ */
+const OUTPUT_LIMIT_CHARS = 1 << 18;
 
-interface Tools {
-  readonly runtime: string;
-  readonly library: string;
-  readonly playgroundScript: typeof import("./playground-program.js").playgroundScript;
-  readonly thrownAt: typeof import("./playground-program.js").thrownAt;
-  readonly drawOutput: typeof import("../example-fragments.js").drawOutput;
-  readonly runStatic: typeof import("./static-run.js").runStatic;
+/** `load`, run the first time it is asked for and shared from then on; one that failed is forgotten, so the next ask tries again. */
+function loader<T>(load: () => Promise<T>): () => Promise<T> {
+  let loaded: Promise<T> | undefined;
+  return () => (loaded ??= load().catch((error: unknown) => ((loaded = undefined), Promise.reject(error))));
 }
 
-/** The editor, loaded once, as soon as a card is on the page, so a click has it at hand. */
-const editorModules = (() => {
-  let loaded: Promise<[typeof import("./playground-editor.js"), typeof import("@codemirror/view"), typeof import("@codemirror/state")]> | undefined;
-  return () => (loaded ??= Promise.all([import("./playground-editor.js"), import("@codemirror/view"), import("@codemirror/state")]));
-})();
+/** What running an edit needs, loaded the first time a card runs one. */
+const tools = loader(async () => {
+  const [runtime, library, program, fragments, run] = await Promise.all([
+    import("virtual:rich-live/runtime"),
+    import("virtual:rich-live/library"),
+    import("./playground-program.js"),
+    import("../example-fragments.js"),
+    import("./static-run.js"),
+  ]);
+  return {
+    runtime: runtime.default,
+    library: library.default,
+    playgroundScript: program.playgroundScript,
+    thrownAt: program.thrownAt,
+    drawOutput: fragments.drawOutput,
+    runStatic: run.runStatic,
+  };
+});
+
+type Tools = Awaited<ReturnType<typeof tools>>;
+
+/** The editor, loaded the first time a reader's pointer or focus reaches a card, so a click has it at hand. */
+const editorModules = loader(() => Promise.all([import("./playground-editor.js"), import("@codemirror/view"), import("@codemirror/state")]));
 
 /** Where the code stands: the page's highlighted fence, an editor on its way, or the editor. */
 type Code =
@@ -85,8 +85,11 @@ export default defineComponent({
     const host = ref<HTMLElement | null>(null);
     const code = shallowRef<Code>({ kind: "fence" });
     const text = ref(props.card.code);
-    const drawn = shallowRef<Drawn>(props.card.output);
+    /** The output shown, and the code it is the output of. */
+    const drawn = shallowRef<{ readonly code: string; readonly output: Drawn }>({ code: props.card.code, output: props.card.output });
     const failure = ref<string | null>(null);
+    /** The hash "Try it" opens the playground on: the page's program, or the card's edit. */
+    const tryIt = ref(props.card.tryIt.program);
     const edited = computed(() => text.value !== props.card.code);
 
     // [LAW:no-ambient-temporal-coupling] Each edit is a turn, and only the
@@ -109,28 +112,36 @@ export default defineComponent({
           return `It called process.exit(${end.code}).`;
         case "timedOut":
           return `Stopped after ${end.limitMs / 1000} s: it was still running.`;
+        case "overflowed":
+          return `Stopped after ${end.limitChars} characters: it was still printing.`;
       }
     };
 
+    // [LAW:no-silent-failure] Whatever fails on the way, loading, compiling,
+    // linking, running or drawing, is said under the output.
     async function run(source: string, mine: number): Promise<void> {
-      const made = await tools().catch((error: unknown) => {
+      try {
+        const whole = cardSource(props.card.setup, source);
+        const [made, hash] = await Promise.all([tools(), encodeProgram(whole)]);
+        if (mine !== turn) return;
+        tryIt.value = hash;
+        running = made.runStatic(root.value!, {
+          runtime: made.runtime,
+          script: made.playgroundScript(whole, made.library),
+          terminal: EXAMPLE_TERMINAL,
+          limitMs: STATIC_RUN_LIMIT_MS,
+          limitChars: OUTPUT_LIMIT_CHARS,
+        });
+        const { bytes, end } = await running.result;
+        if (mine !== turn || end.kind === "stopped") return;
+        if (end.kind === "finished") {
+          drawn.value = { code: source, output: made.drawOutput(bytes) };
+          failure.value = null;
+        } else {
+          failure.value = failed(end, source, made.thrownAt);
+        }
+      } catch (error) {
         if (mine === turn) failure.value = `The example could not run: ${message(error)}`;
-        return null;
-      });
-      if (made === null || mine !== turn) return;
-      running = made.runStatic(root.value!, {
-        runtime: made.runtime,
-        script: made.playgroundScript(cardSource(props.card.setup, source), made.library),
-        terminal: EXAMPLE_TERMINAL,
-        limitMs: STATIC_RUN_LIMIT_MS,
-      });
-      const { bytes, end } = await running.result;
-      if (mine !== turn || end.kind === "stopped") return;
-      if (end.kind === "finished") {
-        drawn.value = made.drawOutput(bytes);
-        failure.value = null;
-      } else {
-        failure.value = failed(end, source, made.thrownAt);
       }
     }
 
@@ -141,7 +152,8 @@ export default defineComponent({
       clearTimeout(pending);
       running?.stop();
       if (source === props.card.code) {
-        drawn.value = props.card.output;
+        drawn.value = { code: source, output: props.card.output };
+        tryIt.value = props.card.tryIt.program;
         failure.value = null;
         return;
       }
@@ -179,6 +191,9 @@ export default defineComponent({
       view.focus();
     }
 
+    // A failed fetch here is said by the click that needs the editor, which
+    // fetches it again.
+    const approached = () => void editorModules().catch(() => {});
     // A click that selected text is the reader copying, not editing; the
     // fence's own copy button is the reader copying too.
     const clicked = (event: MouseEvent) => {
@@ -202,7 +217,6 @@ export default defineComponent({
     const editable = ref(false);
     onMounted(() => {
       editable.value = true;
-      void editorModules().catch(() => {});
     });
     onBeforeUnmount(() => {
       turn += 1;
@@ -215,23 +229,35 @@ export default defineComponent({
     return () => {
       const now = code.value;
       const { card } = props;
-      return h("div", { class: ["rich-example rich-example-card", editable.value ? "rich-example-editable" : null], ref: root, onClick: clicked, onKeydown: pressed }, [
-        now.kind === "editor" ? null : slots["default"]?.(),
-        now.kind === "fence" ? null : h("div", { class: "rich-example-editor", ref: host }),
-        edited.value
-          ? h("div", { class: "rich-example-edited" }, ["● edited · ", h("button", { type: "button", class: "rich-example-reset", onClick: reset }, "reset")])
-          : null,
-        h("div", { class: ["rich-example-output", failure.value === null ? null : "rich-example-stale"], style: { "--rich-example-columns": drawn.value.columns } }, [
-          h("div", { class: "rich-example-label" }, [
-            h("span", { class: "rich-example-name" }, card.label),
-            h("span", { class: "rich-example-caption" }, card.caption),
-            h("a", { class: "rich-example-try", href: card.tryIt }, "Try it"),
+      const stale = drawn.value.code !== text.value;
+      return h(
+        "div",
+        {
+          class: ["rich-example rich-example-card", editable.value ? "rich-example-editable" : null],
+          ref: root,
+          onClick: clicked,
+          onKeydown: pressed,
+          onPointerenter: approached,
+          onFocusin: approached,
+        },
+        [
+          now.kind === "editor" ? null : slots["default"]?.(),
+          now.kind === "fence" ? null : h("div", { class: "rich-example-editor", ref: host }),
+          edited.value
+            ? h("div", { class: "rich-example-edited" }, ["● edited · ", h("button", { type: "button", class: "rich-example-reset", onClick: reset }, "reset")])
+            : null,
+          h("div", { class: ["rich-example-output", stale ? "rich-example-stale" : null], style: { "--rich-example-columns": drawn.value.output.columns } }, [
+            h("div", { class: "rich-example-label" }, [
+              h("span", { class: "rich-example-name" }, card.label),
+              h("span", { class: "rich-example-caption" }, card.caption),
+              h("a", { class: "rich-example-try", href: `${card.tryIt.playground}#${tryIt.value}` }, "Try it"),
+            ]),
+            h("div", { class: "rich-example-light", innerHTML: drawn.value.output.light }),
+            h("div", { class: "rich-example-dark", innerHTML: drawn.value.output.dark }),
+            failure.value === null ? null : h("p", { class: "rich-example-failure", role: "alert" }, failure.value),
           ]),
-          h("div", { class: "rich-example-light", innerHTML: drawn.value.light }),
-          h("div", { class: "rich-example-dark", innerHTML: drawn.value.dark }),
-          failure.value === null ? null : h("p", { class: "rich-example-failure", role: "alert" }, failure.value),
-        ]),
-      ]);
+        ],
+      );
     };
   },
 });

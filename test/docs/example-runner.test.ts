@@ -348,7 +348,7 @@ describe("a live block", () => {
 /** The program each "Try it" link on the page opens, in page order, and the address before its hash. */
 async function tried(markdown: string): Promise<{ href: string; program: string }[]> {
   const links = examples(markdown).flatMap((e) =>
-    e.kind === "card" ? [e.card.tryIt] : [...e.html.matchAll(/<a class="rich-example-try" href="([^"]*)">Try it<\/a>/g)].map((m) => m[1]!),
+    e.kind === "card" ? [`${e.card.tryIt.playground}#${e.card.tryIt.program}`] : [...e.html.matchAll(/<a class="rich-example-try" href="([^"]*)">Try it<\/a>/g)].map((m) => m[1]!),
   );
   return Promise.all(links.map(async (link) => ({ href: link.split("#")[0]!, program: await decodeProgram(link.split("#")[1]!) })));
 }
@@ -360,7 +360,7 @@ describe("Try it", () => {
     expect(first!.program).toBe(['import { Console } from "@promptctl/rich-js";', "", "const console = new Console();", "", 'const title = "shared";\nconsole.print("first");'].join("\n"));
     // What the first block printed is not the second's to print again.
     expect(second!.program).toBe(['import { Console } from "@promptctl/rich-js";', "", "const console = new Console();", "", 'const title = "shared";', "", "console.print(title);"].join("\n"));
-    expect(cards(result)[1]!.tryIt).toMatch(/^playground#/);
+    expect(cards(result)[1]!.tryIt.playground).toBe("playground");
   });
 
   it("opens docs/panel.md's blocks naming only what each uses, a block that imports keeping its own imports", async () => {

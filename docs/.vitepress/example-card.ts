@@ -7,8 +7,9 @@
  * block runs on above it, and the scopes that setup opened closed below it.
  * The editor holds the block as the page shows it, its imports included, so
  * an import lands inside the setup's scopes; the playground's script turns
- * every import into a `require` where it stands (theme/playground-program.ts),
- * which runs as well there as at the top.
+ * each module's first import into a `require` where it stands, and a later
+ * import of a module already required into a name on that one
+ * (theme/playground-program.ts), which runs as well there as at the top.
  *
  * [LAW:one-source-of-truth] The build runs this same composition of the
  * unedited block and holds it to the bytes the page shows
@@ -35,8 +36,8 @@ export interface CardData {
   /** The output panel's label and the caption beside it. */
   readonly label: string;
   readonly caption: string;
-  /** The playground address that opens the block's "Try it" program. */
-  readonly tryIt: string;
+  /** Where "Try it" goes: the playground, and the hash that opens the block's program in it. */
+  readonly tryIt: { readonly playground: string; readonly program: string };
 }
 
 /** The program a card runs: `code` in the place of its block's lines. */

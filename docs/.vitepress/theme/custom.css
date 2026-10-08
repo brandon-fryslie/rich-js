@@ -202,8 +202,13 @@
 
 /* An editable card (theme/RichExample.ts). At rest it is the card above,
  * and only a faint "click to edit" over the code on hover says otherwise.
- * Once edited, one quiet line offers the page's code back; a run that failed
- * dims the output it left and says why in red under it. */
+ * Once edited, one quiet line offers the page's code back; output that is not
+ * the editor's code's is dimmed, and a run that failed says why in red under it. */
+.vp-doc .rich-example-card .rich-example-light,
+.vp-doc .rich-example-card .rich-example-dark {
+  transition: opacity 0.2s;
+}
+
 .vp-doc .rich-example-editable div[class*='language-']::after {
   content: 'click to edit';
   position: absolute;

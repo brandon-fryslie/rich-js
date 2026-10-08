@@ -17,7 +17,8 @@ export default {
   enhanceApp({ app }) {
     if (inBrowser) trackDevicePixelRatio(document.documentElement)
     // Async, so a page without a live example, the playground or the showcase
-    // never loads the live terminal, and only the playground loads the editor.
+    // never loads the live terminal, and the editor loads only for the
+    // playground or a reader reaching for an example card.
     app.component('RichLive', defineAsyncComponent(() => import('./RichLive.js')))
     app.component('RichPlayground', defineAsyncComponent(() => import('./RichPlayground.js')))
     // Not async: nearly every page has one, and it is the page's own card

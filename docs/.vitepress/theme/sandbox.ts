@@ -116,10 +116,10 @@ function relay(): void {
         // lib.dom's `ErrorEvent` says.
         worker.onerror = (event: ErrorEvent | Event) => {
           event.preventDefault();
-          crashed(event instanceof ErrorEvent ? event.message : "The live terminal's worker did not load.");
+          crashed(event instanceof ErrorEvent ? event.message : "The worker that runs the program did not load.");
         };
       } catch (error) {
-        crashed(`The live terminal's worker did not start: ${String(error)}`);
+        crashed(`The worker that runs the program did not start: ${String(error)}`);
       }
     },
     { once: true },

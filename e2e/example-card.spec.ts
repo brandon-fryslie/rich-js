@@ -8,6 +8,7 @@
  * while the card says it was stopped.
  */
 import { test, expect, type Page } from "@playwright/test";
+import { decodeProgram } from "../docs/.vitepress/playground-hash.js";
 
 async function open(page: Page, path: string): Promise<string[]> {
   const errors: string[] = [];
@@ -56,6 +57,8 @@ test("at rest, the card is the page's highlighted code over the build's output, 
 test("editing the first table's rows re-renders it, and reset puts the page's back", async ({ page }) => {
   const errors = await open(page, "tables.html");
   const before = await shown(page);
+  const tryIt = firstCard(page).getByRole("link", { name: "Try it" });
+  const original = (await tryIt.getAttribute("href"))!;
   await edit(page);
   // The page's last line prints the table; a row added above it is in what it prints.
   await page.keyboard.press("ControlOrMeta+End");
@@ -64,9 +67,11 @@ test("editing the first table's rows re-renders it, and reset puts the page's ba
   await expect.poll(() => shown(page), { timeout: 15_000 }).toContain("An Edited Row");
   await expect(firstCard(page).locator(".rich-example-edited")).toContainText("edited");
   await expect(firstCard(page).locator(".rich-example-failure")).toHaveCount(0);
+  await expect(tryIt).not.toHaveAttribute("href", original);
 
   await firstCard(page).getByRole("button", { name: "reset" }).click();
   await expect.poll(() => shown(page)).toBe(before);
+  await expect(tryIt).toHaveAttribute("href", original);
   await expect(firstCard(page).locator(".rich-example-edited")).toHaveCount(0);
   await expect(firstCard(page).locator(".cm-content")).toContainText("Star Wars Box Office");
   expect(errors).toEqual([]);
@@ -89,6 +94,34 @@ test("a program that never ends leaves the page responsive, and the card says it
   // The last good output stays, dimmed.
   await expect(firstCard(page).locator(".rich-example-output")).toHaveClass(/rich-example-stale/);
   expect(await shown(page)).toContain("Star Wars Box Office");
+  expect(errors).toEqual([]);
+});
+
+test("a program that prints without end is stopped in its worker, and the page stays responsive", async ({ page }) => {
+  const errors = await open(page, "tables.html");
+  await edit(page);
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.press("Home");
+  await page.keyboard.type('for (;;) console.print("flood");\n');
+  await expect(firstCard(page).locator(".rich-example-failure")).toContainText("it was still printing", { timeout: 15_000 });
+  expect(await page.evaluate(() => "answered")).toBe("answered");
+  await expect(firstCard(page).locator(".rich-example-output")).toHaveClass(/rich-example-stale/);
+  expect(await shown(page)).toContain("Star Wars Box Office");
+  expect(errors).toEqual([]);
+});
+
+test("Try it opens the card's edit", async ({ page }) => {
+  const errors = await open(page, "tables.html");
+  await edit(page);
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.press("Home");
+  await page.keyboard.type('table.addRow("Oct 8, 2026", "An Edited Row", "$1", "$2");\n');
+  await expect.poll(() => shown(page), { timeout: 15_000 }).toContain("An Edited Row");
+  await firstCard(page).getByRole("link", { name: "Try it" }).click();
+  await page.waitForURL(/playground/);
+  // The editor draws only the lines in view, so the program is read from the link.
+  expect(await decodeProgram(new URL(page.url()).hash.slice(1))).toContain("An Edited Row");
+  await expect(page.locator(".rich-playground .cm-content")).toBeVisible();
   expect(errors).toEqual([]);
 });
 

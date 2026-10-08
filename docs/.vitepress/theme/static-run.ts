@@ -6,7 +6,9 @@
  *
  * It runs in a sandbox (sandbox.ts), so a program that never ends, a
  * `while (true) {}` typed half-way through an edit among them, costs the page
- * nothing: at the time limit its worker is ended, and the run says so.
+ * nothing: at the time limit its worker is ended, and the run says so. What it
+ * prints is bounded the same way, because the caller draws it on the page's
+ * thread: past the output limit the worker is ended too.
  */
 import { sandbox, type TerminalSpec } from "./sandbox.js";
 
@@ -19,6 +21,8 @@ export type StaticEnd =
   | { readonly kind: "exited"; readonly code: number }
   /** It was still running at the time limit, and was ended there. */
   | { readonly kind: "timedOut"; readonly limitMs: number }
+  /** It printed more than the output limit, and was ended there. */
+  | { readonly kind: "overflowed"; readonly limitChars: number }
   /** It was ended by `stop`, before it ended on its own. */
   | { readonly kind: "stopped" };
 
@@ -42,12 +46,15 @@ export interface StaticRunOptions {
   readonly script: string;
   readonly terminal: TerminalSpec;
   readonly limitMs: number;
+  /** How many characters it may print. */
+  readonly limitChars: number;
 }
 
 /** Run `options.script`, its hidden frame in `parent`. */
 export function runStatic(parent: HTMLElement, options: StaticRunOptions): StaticRun {
   const decoder = new TextDecoder();
   const chunks: string[] = [];
+  let printed = 0;
   let finish: (end: StaticEnd) => void = () => {};
   const result = new Promise<StaticResult>((resolve) => {
     // [LAW:single-enforcer] Every way a run ends comes through here, once:
@@ -62,8 +69,12 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
   });
   const run = sandbox(parent, options.runtime, (message) => {
     switch (message.kind) {
-      case "output":
-        return void chunks.push(typeof message.chunk === "string" ? message.chunk : decoder.decode(message.chunk, { stream: true }));
+      case "output": {
+        const chunk = typeof message.chunk === "string" ? message.chunk : decoder.decode(message.chunk, { stream: true });
+        chunks.push(chunk);
+        printed += chunk.length;
+        return printed > options.limitChars ? finish({ kind: "overflowed", limitChars: options.limitChars }) : undefined;
+      }
       case "settled":
         return finish({ kind: "finished" });
       case "crashed":

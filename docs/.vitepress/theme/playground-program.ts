@@ -10,7 +10,8 @@
  * an error name the visitor's own line.
  *
  * The visitor imports the library by its published names. Sucrase turns each
- * import into a `require` at the import's line, and `require` reads the live
+ * module's first import into a `require` at that import's line, a later import
+ * of the same module into names on it, and `require` reads the live
  * library, which holds every entry point a live program may import and the
  * optional peers they need (`LIVE_LIBRARY_PACKAGES` in example-runner.ts).
  *
