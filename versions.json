@@ -4,15 +4,22 @@
     {
       "version": "pr-342",
       "ref": "refs/pull/342/merge",
-      "sha": "deae3cf49dbf69d1e5abeed139223daa36bb1d34",
-      "timestamp": "2026-10-08T02:07:28.129Z",
+      "sha": "656acbe6eb6d0c8626d1b0b7b9da8856d1dc29cd",
+      "timestamp": "2026-10-08T02:18:54.567Z",
       "commits": [
         {
-          "sha": "deae3cf49dbf69d1e5abeed139223daa36bb1d34",
+          "sha": "656acbe6eb6d0c8626d1b0b7b9da8856d1dc29cd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T20:06:00-06:00",
-          "message": "Merge e3bbf2addc8eb7df5109d19d35bc3f7ba3d12afe into 8a62d728942a2c4b72b3b7a19ad2b154ec432c44\n"
+          "timestamp": "2026-10-08T02:17:30Z",
+          "message": "Merge f30e42f7954c9d9f94045eb990c68f159ec0faad into 8a62d728942a2c4b72b3b7a19ad2b154ec432c44\n"
+        },
+        {
+          "sha": "f30e42f7954c9d9f94045eb990c68f159ec0faad",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T20:17:25-06:00",
+          "message": "fix(effects): shares settles a terminal's colour as onColors lights it, and a colourless pulse back is written black (rich-effects-fxiy.3nt)\n\nPair carries the cell's terminal flags, so a terminal ground with a\nsubject colour's hex holds still in the legibility arithmetic as it does\non screen. ProgressBar writes a back that names no colour as Rich's\nblack, so the pulse lights it rather than finding only terminal colours.\n"
         },
         {
           "sha": "e3bbf2addc8eb7df5109d19d35bc3f7ba3d12afe",
