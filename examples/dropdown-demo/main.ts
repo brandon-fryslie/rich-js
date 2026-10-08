@@ -16,5 +16,5 @@ if (!host.isTTY) {
   process.exit(1);
 }
 
-await runDemo(host).done;
+await runDemo(host);
 host.write("\x1b[1;36mGoodbye!\x1b[0m\n");

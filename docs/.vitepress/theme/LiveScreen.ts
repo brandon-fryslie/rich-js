@@ -18,12 +18,13 @@
  * Its `terminal` is the size the card gives it (example-card.ts); everything
  * else about the terminal is `EXAMPLE_TERMINAL`'s. While it has focus every
  * key is the program's, so it says so: a ring round it, and the way out
- * (live-terminal.ts) in its bar.
+ * (`LEAVE_HINT`) in its bar.
  */
 import { defineComponent, h, onBeforeUnmount, onMounted, ref, watch, type PropType } from "vue";
 import { useData } from "vitepress";
-import { EXAMPLE_TERMINAL, EXAMPLE_THEMES, type TerminalSize } from "../example-terminal.js";
-import { LiveTerminal, READABLE_CONTRAST, elementFont, type LiveState, type RunMode } from "./live-terminal.js";
+import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "../example-terminal.js";
+import type { TerminalSize } from "../terminal-size.js";
+import { LEAVE_HINT, LiveTerminal, READABLE_CONTRAST, elementFont, type LiveState, type RunMode } from "./live-terminal.js";
 
 /** What the button does, said for each state the terminal can be in. */
 const BUTTON: Record<LiveState["kind"], string> = {
@@ -148,7 +149,7 @@ export default defineComponent({
           onFocusout: () => (focused.value = false),
         }),
         h("div", { class: "rich-live-bar" }, [
-          ...(focused.value ? [h("span", { class: "rich-live-hint" }, "Keys go to the program · Esc then Tab leaves")] : []),
+          ...(focused.value ? [h("span", { class: "rich-live-hint" }, LEAVE_HINT)] : []),
           ...(failure.value === null ? [] : [h("span", { class: "rich-live-failure", role: "alert" }, failure.value)]),
           h("button", { type: "button", class: "rich-live-button", onClick: () => start("live") }, BUTTON[state.value.kind]),
         ]),

@@ -250,7 +250,7 @@ test("a demo's card shows its files as tabs; an edit to any re-runs it, reset pu
   expect(await shown(page)).not.toContain("EDITED IN");
 
   await link.click();
-  await page.waitForURL(/playground#files\./);
+  await page.waitForURL(/playground#program\./);
   await expect(page.locator(".rich-playground").getByRole("tab")).toHaveText(["main.ts", "app.ts"], LOADED);
   await expect(page.locator(".rich-playground .cm-content")).toContainText("new NodeTerminalHost()");
   await expect.poll(async () => (await page.locator(".rich-playground .rich-example-output").innerText()).replaceAll("\u00a0", " "), LOADED).toContain("PowerlineJoiner");
@@ -298,9 +298,18 @@ test("an interactive demo's card takes keys while focused, says so, lets focus l
   await expect.poll(() => shown(page)).toContain("custom widget (focused)");
   expect(await focusedInScreen()).toBe(true);
 
-  // Escape reaches the program; the Tab after it leaves the card's terminal.
+  // A Tab long after an Escape is still the program's: the way out lasts as
+  // long as CodeMirror's (`LEAVE_WITHIN_MS`), 2 s.
   await page.keyboard.press("Escape");
-  await expect.poll(() => shown(page)).toContain("key=escape");
+  await page.waitForTimeout(2_500);
+  await page.keyboard.press("Tab");
+  await expect.poll(() => shown(page)).not.toContain("custom widget (focused)");
+  expect(await focusedInScreen()).toBe(true);
+  await page.keyboard.press("Shift+Tab");
+  await expect.poll(() => shown(page)).toContain("custom widget (focused)");
+
+  // Escape reaches the program; the Tab right after it leaves the card's terminal.
+  await page.keyboard.press("Escape");
   await page.keyboard.press("Tab");
   expect(await focusedInScreen()).toBe(false);
   await expect(hint).toHaveCount(0);

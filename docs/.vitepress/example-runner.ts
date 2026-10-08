@@ -812,7 +812,7 @@ export async function runPageExamples(
     // the card is narrower).
     return rule.run === "build"
       ? { run: "build", ...editable, output: drawOutput(bytes.get(fence)!) }
-      : { run: "browser", ...editable, terminal: { columns: EXAMPLE_TERMINAL.columns, rows: EXAMPLE_TERMINAL.rows } };
+      : { run: "browser", ...editable };
   };
   const cards = new Map<Fence, { readonly binding: string; readonly data: CardData }>(
     fences.map((fence, i) => [fence, { binding: `__richCard_${i}`, data: cardData(fence) }]),

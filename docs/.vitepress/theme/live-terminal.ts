@@ -117,6 +117,16 @@ interface Xterm extends XtermTerminal {
 /** Keys pressed only to change another: Shift between Escape and Tab still leaves. */
 const MODIFIERS: ReadonlySet<string> = new Set(["Shift", "Control", "Alt", "Meta"]);
 
+/**
+ * How long after an Escape a Tab leaves the terminal: CodeMirror's window for
+ * the same way out of its editor (`tabFocusMode` in @codemirror/view), so a
+ * Tab a program is sent well after an Escape stays the program's.
+ */
+const LEAVE_WITHIN_MS = 2000;
+
+/** The way out of a focused terminal, as the page says it beside one (LiveScreen.ts). */
+export const LEAVE_HINT = "Keys go to the program · Esc then Tab leaves";
+
 type XtermConstructor = new (options: Record<string, unknown>) => Xterm;
 
 let xterm: Promise<XtermConstructor> | undefined;
@@ -231,14 +241,15 @@ export class LiveTerminal {
     // focus; unfocused, every shortcut is the page's.
     this.host.onData((chunk) => this.post({ kind: "input", chunk }));
     // Every key is the program's, Tab and Escape too, so a keyboard needs one
-    // way out: Escape, then Tab, as it leaves the card's editor
-    // (playground-editor.ts). The Escape still reaches the program; the Tab
-    // right after it is the page's, and moves focus on, or back with Shift.
-    let escaped = false;
+    // way out (`LEAVE_HINT`): Escape, then Tab, as it leaves the card's editor
+    // (playground-editor.ts). The Escape still reaches the program; a Tab as
+    // the next key, within `LEAVE_WITHIN_MS`, is the page's, and moves focus
+    // on, or back with Shift.
+    let escapedAt = -Infinity;
     screen.attachCustomKeyEventHandler((event) => {
       if (event.type !== "keydown" || MODIFIERS.has(event.key)) return true;
-      const leaving = escaped && event.key === "Tab";
-      escaped = event.key === "Escape";
+      const leaving = event.key === "Tab" && event.timeStamp - escapedAt <= LEAVE_WITHIN_MS;
+      escapedAt = event.key === "Escape" ? event.timeStamp : -Infinity;
       return !leaving;
     });
   }

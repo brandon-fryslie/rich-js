@@ -30,6 +30,7 @@ import { decodeProgram } from "../../docs/.vitepress/playground-hash.js";
 import { NO_SETUP, PRINTS_NOTHING, cardSource, oneFile, programFiles, setupLines } from "../../docs/.vitepress/example-card.js";
 import { playgroundScript } from "../../docs/.vitepress/theme/playground-program.js";
 import { EXAMPLE_TERMINAL } from "../../docs/.vitepress/example-terminal.js";
+import { EXAMPLE_SIZE } from "../../docs/.vitepress/terminal-size.js";
 import type { CardData } from "../../docs/.vitepress/example-card.js";
 
 const compiler = new ExampleCompiler();
@@ -177,7 +178,7 @@ describe("the example widget", () => {
     const [short] = cards(await run(fence('console.print("ab\\nabcd");')));
     expect(short!.output!.columns).toBe(4);
     const [live] = liveCards(await run(`# t\n\n${fence('console.print("live");', "ts live")}`));
-    expect(live!.terminal).toEqual({ columns: EXAMPLE_TERMINAL.columns, rows: EXAMPLE_TERMINAL.rows });
+    expect(live!.program.terminal).toEqual(EXAMPLE_SIZE);
   });
 });
 

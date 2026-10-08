@@ -27,12 +27,6 @@ import {
 } from "@promptctl/rich-js/widgets";
 import type { TerminalHost } from "@promptctl/rich-js/host";
 
-export interface DemoHandle {
-  stop(): void;
-  /** Settles once the demo has stopped and handed the terminal back. */
-  readonly done: Promise<void>;
-}
-
 const SHORT_OPTIONS = ["Red", "Green", "Blue"];
 
 const LONG_OPTIONS = [
@@ -91,7 +85,8 @@ class KeyEchoWidget extends WidgetBase {
   }
 }
 
-export function runDemo(host: TerminalHost): DemoHandle {
+/** Run the demo on `host`; settles once it has stopped and handed the terminal back. */
+export function runDemo(host: TerminalHost): Promise<void> {
   const ddShort = new Dropdown({
     options: SHORT_OPTIONS,
     selectedIndex: 0,
@@ -258,8 +253,5 @@ export function runDemo(host: TerminalHost): DemoHandle {
     });
   }, 3000);
 
-  return {
-    stop: () => app.stop(),
-    done: app.run().finally(() => clearInterval(mutationTimer)),
-  };
+  return app.run().finally(() => clearInterval(mutationTimer));
 }

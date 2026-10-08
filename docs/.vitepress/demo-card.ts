@@ -36,9 +36,9 @@ import path from "node:path";
 import { REPO_ROOT } from "../../scripts/repo-facts.js";
 import { DEMO_ENTRY } from "./demo-entry.js";
 import { NO_SETUP, RUNNING, type CardData, type CardFile, type CardProgram } from "./example-card.js";
-import type { TerminalSize } from "./example-terminal.js";
 import { liveLibraryOnce, playgroundHref, refuseUnrunnable } from "./example-runner.js";
 import { encodeProgram } from "./playground-hash.js";
+import { terminalSize, type TerminalSize } from "./terminal-size.js";
 import { fileOf } from "./theme/playground-program.js";
 
 /** A demo's card: a program the browser runs in a live terminal. */
@@ -57,7 +57,8 @@ function relativeImports(name: string, source: string): string[] {
 
 /**
  * The program of the demo in `directory`: its entry and every file it reaches
- * by a relative import, in the order it reaches them, refused unless the card
+ * by a relative import, in the order it reaches them, at its card's size
+ * (`demoTerminal`), refused unless the card
  * runs it on `library`, the live library's script. A relative import may not
  * leave `examples/`, the directory `directory` is in, since a demo reaches
  * the library by its published names.
@@ -79,7 +80,7 @@ export function demoProgram(directory: string, library: string): CardProgram {
   };
   reach(DEMO_ENTRY);
   const [entry, ...rest] = files;
-  const program: CardProgram = { files: [entry!, ...rest] };
+  const program: CardProgram = { files: [entry!, ...rest], terminal: demoTerminal(directory) };
   refuseUnrunnable(at, "its demo's card runs it", program, library);
   return program;
 }
@@ -93,13 +94,12 @@ export const CARD_OPTIONS = "card.json";
  */
 export function demoTerminal(directory: string): TerminalSize {
   const file = path.join(directory, CARD_OPTIONS);
-  const options = JSON.parse(readFileSync(file, "utf-8")) as { readonly terminal?: { readonly columns?: unknown; readonly rows?: unknown } } | null;
-  const { columns, rows } = options?.terminal ?? {};
-  const cells = (value: unknown): value is number => Number.isInteger(value) && (value as number) > 0;
-  if (!cells(columns) || !cells(rows)) {
-    throw new Error(`${path.relative(REPO_ROOT, file)}: must be { "terminal": { "columns": <cells>, "rows": <cells> } }, each a whole number above 0`);
+  try {
+    const options: unknown = JSON.parse(readFileSync(file, "utf-8"));
+    return terminalSize(typeof options === "object" && options !== null ? (options as { readonly terminal?: unknown }).terminal : undefined);
+  } catch (error) {
+    throw new Error(`${path.relative(REPO_ROOT, file)}: must be { "terminal": <size> }: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
   }
-  return { columns, rows };
 }
 
 /** The live library every demo's card is held to, built once for them all. */
@@ -114,6 +114,5 @@ export async function demoCard(demo: string): Promise<DemoCard> {
     program,
     ...RUNNING,
     tryIt: { playground: playgroundHref(`demos/${demo}.md`), program: await encodeProgram(program) },
-    terminal: demoTerminal(directory),
   };
 }

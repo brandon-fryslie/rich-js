@@ -21,11 +21,11 @@ import { playgroundScript } from "../../docs/.vitepress/theme/playground-program
 
 const library = liveLibraryOnce();
 
-/** A demo directory holding `files`, by their names from it. */
+/** A demo directory holding `files`, by their names from it, and a card.json unless they have one. */
 function demo(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(path.join(tmpdir(), "demo-card-"));
   const directory = path.join(root, "demo");
-  for (const [name, code] of Object.entries(files)) {
+  for (const [name, code] of Object.entries({ [CARD_OPTIONS]: '{ "terminal": { "columns": 75, "rows": 24 } }', ...files })) {
     mkdirSync(path.dirname(path.join(directory, name)), { recursive: true });
     writeFileSync(path.join(directory, name), code);
   }
@@ -90,6 +90,7 @@ describe("a demo's terminal", () => {
     ["a string", '{ "terminal": { "columns": "90", "rows": 28 } }'],
     ["no terminal", "{}"],
     ["null", "null"],
+    ["malformed JSON", '{ "terminal": { "columns": 90, "rows": 28, } }'],
   ])("is refused naming its card.json when it has %s", (_, json) => {
     expect(() => demoTerminal(demo({ [CARD_OPTIONS]: json }))).toThrow(/demo\/card\.json: must be/);
   });
@@ -111,7 +112,7 @@ describe("rich-strip's card", { timeout: 60_000 }, () => {
     const written: string[] = [];
     await runInTerminal(playgroundScript(programFiles(program), (await library()).script), {
       ...EXAMPLE_TERMINAL,
-      ...(await demoCard("rich-strip")).terminal,
+      ...program.terminal,
       write: (chunk) => written.push(typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)),
       onInput: () => {},
       exit: () => {},
@@ -120,7 +121,7 @@ describe("rich-strip's card", { timeout: 60_000 }, () => {
     expect(rows[0]).toBe("PowerlineJoiner");
     expect(rows).toContain("FlexStrip + gap (tag cloud)");
     // Its last line ends with a line break, so the cursor stands on a row of its own: that row too must fit.
-    expect(rows.length).toBeLessThanOrEqual(EXAMPLE_TERMINAL.rows);
+    expect(rows.length).toBeLessThanOrEqual(program.terminal.rows);
   });
 });
 
@@ -131,6 +132,8 @@ describe("dropdown-demo's card", { timeout: 60_000 }, () => {
     expect(card.program.files.map(({ name, code }) => [name, code])).toEqual(
       ["main.ts", "app.ts"].map((name) => [name, readFileSync(path.join(directory, name), "utf-8")]),
     );
-    expect(card.terminal).toEqual(demoTerminal(directory));
+    expect(card.program.terminal).toEqual(demoTerminal(directory));
+    // "Open in playground" opens it at that size, not the example terminal's.
+    expect(await decodeProgram(card.tryIt.program)).toEqual(card.program);
   });
 });

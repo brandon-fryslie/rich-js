@@ -19,11 +19,10 @@
  * shows a program as it runs, and a static run (static-run.ts), which collects
  * what a program prints.
  */
+import type { TerminalSize } from "../terminal-size.js";
 
 /** The terminal a program sees: everything about it but where its bytes go. */
-export interface TerminalSpec {
-  readonly columns: number;
-  readonly rows: number;
+export interface TerminalSpec extends TerminalSize {
   readonly isTTY: boolean;
   readonly env: Readonly<Record<string, string>>;
 }
