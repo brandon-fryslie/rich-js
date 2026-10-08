@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "dcca762a594fcefda10634cafdfa88ba9121bb71",
-      "timestamp": "2026-10-08T03:31:52.804Z",
+      "sha": "c157f260073e646950f2434768acdd652b10bbbb",
+      "timestamp": "2026-10-08T03:40:59.472Z",
       "commits": [
         {
-          "sha": "dcca762a594fcefda10634cafdfa88ba9121bb71",
+          "sha": "c157f260073e646950f2434768acdd652b10bbbb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T21:30:48-06:00",
-          "message": "fix(progress): ProgressBar in Rich's rgb colours (rich-progress-p3gy) (#346)\n\n* fix(progress): bar.complete, bar.finished and bar.pulse in Rich's rgb colours (rich-progress-p3gy)\n\nRich's DEFAULT_STYLES draw the fill and pulse in rgb(249,38,114) and a\nfinished bar in rgb(114,156,31); ours named magenta and green. The back\nalready defaulted to bar.back (grey23), so that half of the ticket was\nstale.\n\n* test(progress): pin Rich's bar bytes and bar.pulse colour; docs say the 16-colour pulse flashes red (rich-progress-p3gy)"
+          "timestamp": "2026-10-07T21:39:43-06:00",
+          "message": "fix(progress): a given completed wins over advance in updateTask (rich-progress-tsna) (#347)\n\n* fix(progress): a given completed wins over advance in updateTask, as Rich's update (rich-progress-tsna)\n\n* fix(progress): an advance that overflows names the sum it refused, not completed (rich-progress-tsna)"
         }
       ]
     }
