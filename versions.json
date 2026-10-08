@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-351",
+      "ref": "refs/pull/351/merge",
+      "sha": "1136c3f2911e0986765644631d09143a8993e1f9",
+      "timestamp": "2026-10-08T15:51:02.334Z",
+      "commits": [
+        {
+          "sha": "1136c3f2911e0986765644631d09143a8993e1f9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T09:49:55-06:00",
+          "message": "Merge 3c4f20fd2723aad102fa444d501ada62b7ba9cdc into 75b71956bc080e3e5a0e19e959b27dbcd9cc59be\n"
+        },
+        {
+          "sha": "3c4f20fd2723aad102fa444d501ada62b7ba9cdc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T09:49:43-06:00",
+          "message": "feat(docs): static examples are editable cards, output re-rendered in the browser (rich-example-card-obsb.lz3)\n\nA static docs example is now a <RichExample> card. At rest it is the page's\nown card: the build's highlighted fence over the output it printed, rendered\non the server. Hydration moves nothing, and the at-rest screenshots are\nbyte-identical to the old markup in both colour modes. Clicking into the code\nswaps in CodeMirror at the fence's exact box. Once typing pauses (250 ms) the\ncard runs its setup plus the edited block in a sandboxed worker and redraws\nthe output. A throw, exit or timeout leaves the last good output dimmed, with\nthe reason in red under it.\n\n- example-fragments.ts: the one bytes -> light/dark HTML step, used by the\n  build and the card.\n- theme/sandbox.ts: frame + worker moved out of live-terminal.ts. Its second\n  consumer is theme/static-run.ts, which captures a program's bytes under\n  STATIC_RUN_LIMIT_MS and reports finished / threw / exited / timedOut /\n  stopped.\n- example-card.ts: the card's data and cardSource. The build runs the card's\n  composition of each static block and holds it to the page's bytes\n  (tryItPrints).\n- virtual:rich-live/library serves the live library to the card.\n- createEditor takes the chrome its caller shows; PROGRAM_PANE is the\n  playground's.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "75b71956bc080e3e5a0e19e959b27dbcd9cc59be",
