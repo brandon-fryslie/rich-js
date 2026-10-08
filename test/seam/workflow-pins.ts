@@ -1,7 +1,7 @@
 /*
- * The two facts about `.github/` that used to be kept consistent by hand: which
- * major of each action the workflows pin, and where a workflow names its Node
- * with a bare literal instead of reading `package.json`.
+ * The facts about `.github/` that used to be kept by hand: which major of each
+ * action the workflows pin, where a workflow names its Node with a bare literal
+ * instead of reading `package.json`, and that every job has a time limit.
  *
  * Hand-kept consistency across workflow files is how the epic this gate closes
  * (rich-workflows-0pr) began: three workflows gave three different Node
@@ -24,7 +24,17 @@
  *     would be free to drift, and drift is what this gate exists to catch;
  *   - a bare `node-version:` appears only where `NODE_VERSION_LITERALS` grants
  *     it, one grant per occurrence, and a grant whose literal has gone is
- *     reported, so the list cannot collect permissions nobody needs.
+ *     reported, so the list cannot collect permissions nobody needs;
+ *   - every job in a workflow sets `timeout-minutes`. GitHub's default is six
+ *     hours, and two PR #338 `ci` runs spent all of it stalled on an apt mirror
+ *     inside the gate action's `playwright install --with-deps`
+ *     (rich-workflows-1qvg). The bound sits on the job because a composite
+ *     action's steps cannot carry one, and it is checked here because a new
+ *     job, or a new caller of the gate action, inherits the default silently.
+ *     Each bound is about twice the slowest healthy run, rounded up to ten
+ *     minutes: on 2026-10-07 the `ci` job and publish's `gate` peaked at 10.6
+ *     and 5.3 minutes and carry 20; every other job peaked under 1.5 and
+ *     carries 10.
  *
  * [LAW:no-silent-failure] Regex over lines, not a YAML parser, and what makes
  * that sound is the catch-all. The dependency tree has no YAML parser, and
@@ -50,7 +60,8 @@
  * agree on is the right one, whether an action still behaves as the comment
  * beside it claims, or whether a workflow runs at all. It trusts a SHA pin's
  * trailer without checking that the SHA is that version, which needs the
- * network. Only a real run answers those questions. The release path has had
+ * network. It checks that every job has a time limit, not that the limit
+ * still fits the job. Only a real run answers those questions. The release path has had
  * real runs through the gate, the tag guard and provenance signing: 34924316777
  * (v0.9.0) and 34980189564 (v0.10.0), both stopped only at the registry.
  *
@@ -84,6 +95,7 @@ export interface Site {
 export type WorkflowFact =
   | { readonly kind: "pin"; readonly site: Site; readonly action: string; readonly major: number }
   | { readonly kind: "node-version"; readonly site: Site; readonly value: string }
+  | { readonly kind: "job"; readonly site: Site; readonly name: string; readonly bounded: boolean }
   | { readonly kind: "unreadable"; readonly site: Site; readonly reason: string };
 
 /**
@@ -136,7 +148,8 @@ export type WorkflowViolation =
       readonly value: string;
       readonly granted: number;
       readonly sites: readonly Site[];
-    };
+    }
+  | { readonly rule: "unbounded-job"; readonly site: Site; readonly name: string };
 
 const COMMENT_LINE = /^\s*#/;
 /**
@@ -200,8 +213,84 @@ function readPin(
       { action: remote(1).toLowerCase(), major: Number(tag(1)) };
 }
 
-/** Every fact one workflow file states, in file order. */
+const TOP_LEVEL = /^[^\s#]/;
+const JOBS_MENTION = /^["']?jobs["']?\s*:/;
+const JOBS_KEY = /^jobs:\s*(?:#.*)?$/;
+/** A line indented exactly two spaces: inside `jobs:`, nothing but a job's id. */
+const JOB_LEVEL = /^ {2}\S/;
+const JOB_HEADER = /^ {2}([\w-]+):\s*(?:#.*)?$/;
+const TIMEOUT_MENTION = /\btimeout-minutes["']?\s*:/;
+/** A job's own key: four spaces, under the job header. */
+const JOB_TIMEOUT = /^ {4}timeout-minutes:\s*\d+\s*(?:#.*)?$/;
+/** A step's key, deeper than the job's. It bounds the step, not the job. */
+const STEP_TIMEOUT = /^ {5,}timeout-minutes:\s*\d+\s*(?:#.*)?$/;
+
+/**
+ * Each job a workflow declares and whether it sets `timeout-minutes`.
+ *
+ * [LAW:no-silent-failure] Unlike the keys above, this needs to know which job a
+ * line belongs to, so it walks with state: the `jobs:` block runs from that
+ * top-level key to the next, and a job from its two-space header to the next.
+ * The net is the same. Inside `jobs:`, a two-space line that is not a plain
+ * `id:` header, a `jobs:` block with no header, and any `timeout-minutes` that
+ * is neither a job's integer nor a step's is reported as unreadable, so a job
+ * the patterns cannot see turns the gate red instead of escaping the rule. A
+ * composite action has no `jobs:`, so any `timeout-minutes` in one is
+ * unreadable too, which is the truth: GitHub ignores it there.
+ */
+function scanJobs(workflow: WorkflowText): WorkflowFact[] {
+  const facts: WorkflowFact[] = [];
+  let jobs: { site: Site; count: number } | null = null;
+  let job: { site: Site; name: string; bounded: boolean } | null = null;
+  const closeJob = () => {
+    if (job !== null) facts.push({ kind: "job", ...job });
+    job = null;
+  };
+  const closeJobs = () => {
+    closeJob();
+    if (jobs?.count === 0) {
+      facts.push({ kind: "unreadable", site: jobs.site, reason: "a jobs: block with no job id this gate can read" });
+    }
+    jobs = null;
+  };
+  workflow.text.split(/\r?\n/).forEach((raw, index) => {
+    if (COMMENT_LINE.test(raw)) return;
+    const site: Site = { file: workflow.path, line: index + 1, text: raw.trim() };
+    if (TOP_LEVEL.test(raw)) {
+      closeJobs();
+      if (JOBS_KEY.test(raw)) jobs = { site, count: 0 };
+      else if (JOBS_MENTION.test(raw)) {
+        facts.push({ kind: "unreadable", site, reason: "a jobs: key in a form this gate does not read" });
+      }
+      return;
+    }
+    if (jobs !== null && JOB_LEVEL.test(raw)) {
+      closeJob();
+      const header = groupsOf(JOB_HEADER, raw);
+      if (header === null) {
+        facts.push({ kind: "unreadable", site, reason: "a job id in a form this gate does not read" });
+      } else {
+        jobs.count += 1;
+        job = { site, name: header(1), bounded: false };
+      }
+      return;
+    }
+    if (!TIMEOUT_MENTION.test(raw)) return;
+    if (job !== null && JOB_TIMEOUT.test(raw)) job.bounded = true;
+    else if (job === null || !STEP_TIMEOUT.test(raw)) {
+      facts.push({ kind: "unreadable", site, reason: "a timeout-minutes this gate cannot place on a job or a step" });
+    }
+  });
+  closeJobs();
+  return facts;
+}
+
+/** Every fact one workflow file states: the keys in file order, then the jobs. */
 export function scanWorkflow(workflow: WorkflowText): WorkflowFact[] {
+  return [...scanKeys(workflow), ...scanJobs(workflow)];
+}
+
+function scanKeys(workflow: WorkflowText): WorkflowFact[] {
   return workflow.text.split(/\r?\n/).flatMap((raw, index): WorkflowFact[] => {
     if (COMMENT_LINE.test(raw) || !MENTION.test(raw)) return [];
     const site: Site = { file: workflow.path, line: index + 1, text: raw.trim() };
@@ -230,7 +319,7 @@ function groupBy<T>(items: readonly T[], key: (item: T) => string): Map<string, 
 /**
  * Every way `workflows` disagree with each other or with `grants`.
  *
- * [LAW:dataflow-not-control-flow] All three rules run on every call. The
+ * [LAW:dataflow-not-control-flow] Every rule runs on every call. The
  * literal rule compares a count found with a count granted for every
  * (file, value) either side names: more found than granted is an
  * unsanctioned literal, fewer is a grant that outlived its literal, and both
@@ -272,7 +361,11 @@ export function workflowViolations(
     },
   );
 
-  return [...unreadable, ...disagreeing, ...miscounted];
+  const unbounded = facts.flatMap((f): WorkflowViolation[] =>
+    f.kind === "job" && !f.bounded ? [{ rule: "unbounded-job", site: f.site, name: f.name }] : [],
+  );
+
+  return [...unreadable, ...disagreeing, ...miscounted, ...unbounded];
 }
 
 function quote(site: Site): string {
@@ -297,5 +390,7 @@ export function describeWorkflowViolation(violation: WorkflowViolation): string 
         : `  ${violation.file}: NODE_VERSION_LITERALS grants ${violation.granted} ` +
             `node-version: ${violation.value}, the workflow carries ${violation.sites.length} — ` +
             `drop the grant that outlived its literal.`;
+    case "unbounded-job":
+      return `  ${quote(violation.site)}\n      job ${violation.name} sets no timeout-minutes`;
   }
 }

@@ -18,6 +18,10 @@
 #
 # Provisioning — checkout, setup-node, `npm ci` — stays with the caller: a
 # local action cannot check out the repository it lives in.
+#
+# So does the time limit: a composite step cannot carry `timeout-minutes`, so
+# the calling job does, and test/seam/workflow-pins.ts fails any job without
+# one.
 
 name: Gate
 description: >-

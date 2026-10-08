@@ -31,6 +31,7 @@ jobs:
   # `concurrency:` can read `needs` outputs and never a step's.
   slot:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       slot: ${{ steps.slot.outputs.slot }}
     steps:
@@ -65,6 +66,7 @@ jobs:
     # PRs always deploy.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write       # push to gh-pages
       pull-requests: write  # sticky PR preview comment
