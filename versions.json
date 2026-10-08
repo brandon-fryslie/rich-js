@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-355",
-      "ref": "refs/pull/355/merge",
-      "sha": "afd3af93a968eb54395e7a1e4921a304357468ff",
-      "timestamp": "2026-10-08T18:10:32.044Z",
-      "commits": [
-        {
-          "sha": "afd3af93a968eb54395e7a1e4921a304357468ff",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T18:08:59Z",
-          "message": "Merge 157764ed01a40ceb7516d9d25c96bea408e072a3 into 37eab7c8b844269b1e2036d7550bcccad6f20d6a\n"
-        },
-        {
-          "sha": "157764ed01a40ceb7516d9d25c96bea408e072a3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T12:08:53-06:00",
-          "message": "fix(docs): the build compiles a live card's program as the browser does (rich-example-card-obsb.2pn)\n\n- playgroundProgram asks the eval's parser for its compiled code, so\n  import.meta is refused for an edit and at build alike.\n- The build reads what a live program requires off Sucrase's output: an\n  import only of types is no longer refused, an elided one never was.\n- LiveScreen makes a terminal and clears a failure only for the newest ask.\n- A live card's page program is made once; reset hands that program back,\n  and the page's own code shows at once rather than after the debounce.\n"
-        },
-        {
-          "sha": "ffd7103ebade191c3ebe34bb31f07098601ac672",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T11:52:09-06:00",
-          "message": "feat(docs): live blocks are editable cards running in the live terminal (rich-example-card-obsb.2pn)\n\nA live block is now RichExample's third card kind: its outlet is a live\nterminal (LiveScreen, the old RichLive taking a program instead of a\nmodule) running the card's program, made in the browser as an edit's is.\nAn edit that parses restarts the terminal on it; one that does not is said\nin red over the terminal it leaves running.\n\nThe build no longer bundles a program per live block; it checks each live\ncard's programs import only what the live library holds.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "37eab7c8b844269b1e2036d7550bcccad6f20d6a",
-      "timestamp": "2026-10-08T17:35:16.039Z",
+      "sha": "56686da190b6c15bbb5960c1549f345af6d1e50b",
+      "timestamp": "2026-10-08T18:17:58.416Z",
       "commits": [
         {
-          "sha": "37eab7c8b844269b1e2036d7550bcccad6f20d6a",
+          "sha": "56686da190b6c15bbb5960c1549f345af6d1e50b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T11:33:41-06:00",
-          "message": "feat(docs): silent, throws, shape and node blocks are the card (rich-example-card-obsb.oil) (#354)\n\n* feat(docs): silent, throws, shape and node blocks are the card; the old output markup is gone (rich-example-card-obsb.oil)\n\nEvery block the build runs is an editable card. A run that printed nothing\nshows the prints-nothing note in place of output, whatever its marker, so\nsilent needs no case of its own. A throws block's caption follows what is\ndrawn: an edit that stops the throw is captioned as a plain run. shape and\nnode blocks are the same card, read-only, with their note. The runner now\nwrites markup only for live blocks.\n\n* fix(docs): headers name every non-live block a card; read-only e2e waits for an editor to prove none opened (rich-example-card-obsb.oil)"
+          "timestamp": "2026-10-08T12:16:22-06:00",
+          "message": "feat(docs): live blocks are editable cards running in the live terminal (rich-example-card-obsb.2pn) (#355)\n\n* feat(docs): live blocks are editable cards running in the live terminal (rich-example-card-obsb.2pn)\n\nA live block is now RichExample's third card kind: its outlet is a live\nterminal (LiveScreen, the old RichLive taking a program instead of a\nmodule) running the card's program, made in the browser as an edit's is.\nAn edit that parses restarts the terminal on it; one that does not is said\nin red over the terminal it leaves running.\n\nThe build no longer bundles a program per live block; it checks each live\ncard's programs import only what the live library holds.\n\n* fix(docs): the build compiles a live card's program as the browser does (rich-example-card-obsb.2pn)\n\n- playgroundProgram asks the eval's parser for its compiled code, so\n  import.meta is refused for an edit and at build alike.\n- The build reads what a live program requires off Sucrase's output: an\n  import only of types is no longer refused, an elided one never was.\n- LiveScreen makes a terminal and clears a failure only for the newest ask.\n- A live card's page program is made once; reset hands that program back,\n  and the page's own code shows at once rather than after the debounce."
         }
       ]
     }
