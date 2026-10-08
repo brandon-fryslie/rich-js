@@ -182,6 +182,16 @@ describe("a strip under a pulse", () => {
     expect(strip.span).toBe(Math.max(...rows.map(cellLen)));
   });
 
+  it.each([["glyphs", false], ["ASCII", true]] as const)("reads the cells it letters where it draws them, in %s", (_, asciiOnly) => {
+    // An ASCII lead draws nothing, so every cell after it sits a column left
+    // of where a glyph render has it.
+    const at = { ...options, asciiOnly };
+    const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), at, CATPPUCCIN_MOCHA);
+    const rows = [...strip.renderable.render(strip.options)].map((segment) => segment.text).join("").split("\n");
+    const lettered = [...strip.text].map((cell) => cell.split(":").map(Number)).map(([row, col]) => [...rows[row!]!][col!]).join("");
+    expect(lettered).toBe("main+3~2claude.aiopus3.4ktok12%$0.42ctx61%rich-jseffects14:02ok");
+  });
+
   it("reads the colours it sets in the cells it letters, and none of the terminal's", () => {
     const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), options, CATPPUCCIN_MOCHA);
     expect(strip.colors.has(CATPPUCCIN_MOCHA.palette.get("foreground")!.hex)).toBe(true);
