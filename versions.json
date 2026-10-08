@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-348",
+      "ref": "refs/pull/348/merge",
+      "sha": "cb6eab170191235f95c348c2f7cebdc88d4fe4e5",
+      "timestamp": "2026-10-08T03:44:40.191Z",
+      "commits": [
+        {
+          "sha": "cb6eab170191235f95c348c2f7cebdc88d4fe4e5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T21:43:35-06:00",
+          "message": "Merge bcc2cfe70bbce56d3e27591c3284c5f99935dcb5 into c157f260073e646950f2434768acdd652b10bbbb\n"
+        },
+        {
+          "sha": "bcc2cfe70bbce56d3e27591c3284c5f99935dcb5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T21:43:30-06:00",
+          "message": "fix(table): a RichText title's own justify outranks titleJustify, as Rich's Text does (rich-table-qj6i.kpp)\n\nRich 9d8f9a3 Text.__rich_console__ takes self.justify or options.justify, so a\nText title or caption keeps its own justify. _renderTitle cleared it; it no\nlonger does. The overflow=\"ignore\" clear stays: that title would run through\nthe frame. Bytes pinned in table.test.ts from Rich 9d8f9a3.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c157f260073e646950f2434768acdd652b10bbbb",
