@@ -4,15 +4,22 @@
     {
       "version": "pr-359",
       "ref": "refs/pull/359/merge",
-      "sha": "a56bd1ad11e9c64c77fc2fae49ed1a0edd94cc5c",
-      "timestamp": "2026-10-08T20:59:22.759Z",
+      "sha": "d0602bda607ac2525f9cfe35613c4142d591a6db",
+      "timestamp": "2026-10-08T21:17:31.039Z",
       "commits": [
         {
-          "sha": "a56bd1ad11e9c64c77fc2fae49ed1a0edd94cc5c",
+          "sha": "d0602bda607ac2525f9cfe35613c4142d591a6db",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T14:57:49-06:00",
-          "message": "Merge 7cb3754a4a05aa365561ce72b620d4425730820a into 1ac1289df6b6c395f5af7b5df4e38c023f5a3c88\n"
+          "timestamp": "2026-10-08T21:16:11Z",
+          "message": "Merge 55ef731a39f5207be3e4ab42a3fd9a2edc0cded4 into 1ac1289df6b6c395f5af7b5df4e38c023f5a3c88\n"
+        },
+        {
+          "sha": "55ef731a39f5207be3e4ab42a3fd9a2edc0cded4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T15:16:05-06:00",
+          "message": "fix(docs): a card's program carries its terminal size into the playground; Esc→Tab leaves only within CodeMirror's 2 s (rich-example-card-b5rz.z0w)\n\nHigh review pass on #359:\n- CardProgram holds its terminal size; the link format is now `program.`,\n  `files.` links still open at the example size. A demo opened in the\n  playground runs at its card.json size, not 75x24.\n- terminal-size.ts is the one parser of a size (card.json and links),\n  capped so a crafted link cannot allocate a huge screen; card.json\n  errors, malformed JSON included, name the file.\n- Escape arms Tab-to-leave for 2 s, as CodeMirror's tabFocusMode does;\n  the hint text lives beside the handler (LEAVE_HINT).\n- TerminalSpec extends TerminalSize; dropdown-demo's runDemo returns its\n  promise, dropping the uncalled stop.\n"
         },
         {
           "sha": "7cb3754a4a05aa365561ce72b620d4425730820a",
