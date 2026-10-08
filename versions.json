@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-352",
-      "ref": "refs/pull/352/merge",
-      "sha": "99a14586f8ac182423c20c4800055529e2b145b5",
-      "timestamp": "2026-10-08T16:18:21.202Z",
-      "commits": [
-        {
-          "sha": "99a14586f8ac182423c20c4800055529e2b145b5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T10:16:40-06:00",
-          "message": "Merge aa20a813040acd7a60aed42132c150302669512b into 12c68b81ff5ae3610512d915dd5c06d031e1eac7\n"
-        },
-        {
-          "sha": "aa20a813040acd7a60aed42132c150302669512b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T10:16:36-06:00",
-          "message": "docs(introduction): an edited example's Try it opens the edit (rich-example-card-obsb.lz3)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "12c68b81ff5ae3610512d915dd5c06d031e1eac7",
-      "timestamp": "2026-10-08T16:17:23.264Z",
+      "sha": "f8d2b36d27626e6651f49a6ddcd6708995d65663",
+      "timestamp": "2026-10-08T16:22:58.452Z",
       "commits": [
         {
-          "sha": "12c68b81ff5ae3610512d915dd5c06d031e1eac7",
+          "sha": "f8d2b36d27626e6651f49a6ddcd6708995d65663",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T10:15:46-06:00",
-          "message": "feat(docs): static examples are editable cards, output re-rendered in the browser (rich-example-card-obsb.lz3) (#351)\n\n* feat(docs): static examples are editable cards, output re-rendered in the browser (rich-example-card-obsb.lz3)\n\nA static docs example is now a <RichExample> card. At rest it is the page's\nown card: the build's highlighted fence over the output it printed, rendered\non the server. Hydration moves nothing, and the at-rest screenshots are\nbyte-identical to the old markup in both colour modes. Clicking into the code\nswaps in CodeMirror at the fence's exact box. Once typing pauses (250 ms) the\ncard runs its setup plus the edited block in a sandboxed worker and redraws\nthe output. A throw, exit or timeout leaves the last good output dimmed, with\nthe reason in red under it.\n\n- example-fragments.ts: the one bytes -> light/dark HTML step, used by the\n  build and the card.\n- theme/sandbox.ts: frame + worker moved out of live-terminal.ts. Its second\n  consumer is theme/static-run.ts, which captures a program's bytes under\n  STATIC_RUN_LIMIT_MS and reports finished / threw / exited / timedOut /\n  stopped.\n- example-card.ts: the card's data and cardSource. The build runs the card's\n  composition of each static block and holds it to the page's bytes\n  (tryItPrints).\n- virtual:rich-live/library serves the live library to the card.\n- createEditor takes the chrome its caller shows; PROGRAM_PANE is the\n  playground's.\n\n* fix(docs): card review — failures reported, output bounded, Try it follows the edit, editor loaded on approach (rich-example-card-obsb.lz3)\n\n- A failed editor load is forgotten like a failed tools load (one loader).\n- Any failure in an edit's run is said under the output, not an unhandled rejection.\n- runStatic ends a run past an output limit, so the page thread never draws a flood.\n- Dimming is derived: output drawn for code other than the editor's.\n- An edited card's Try it opens the edit; reset restores the page's link.\n- CodeMirror loads when a pointer or focus reaches a card, not on every page.\n- The build runs a block's card program only when it differs from its Try it program.\n- Sandbox failure text names the worker, not the live terminal; import comments say what Sucrase does.\n\n* fix(docs): card — Try it follows every edit on its own, editor-load state owned by the code state, exit 0 draws (rich-example-card-obsb.lz3)\n\n- Try it is encoded on each change, independent of the run and its tools.\n- The editor's load failure lives on the fence state; the next click that opens the editor clears it.\n- A card that leaves the page while the editor loads builds no editor.\n- process.exit(0) ends a run as finished, as in Node.\n- The example terminal and its themes load with the run's tools, not in every page's entry."
+          "timestamp": "2026-10-08T10:21:33-06:00",
+          "message": "docs(introduction): an edited example's Try it opens the edit (rich-example-card-obsb.lz3) (#352)"
         }
       ]
     }
