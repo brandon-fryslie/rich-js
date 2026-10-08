@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-355",
+      "ref": "refs/pull/355/merge",
+      "sha": "4de47ded0a184d6ed1b88533d24160021e0b85f9",
+      "timestamp": "2026-10-08T17:53:35.099Z",
+      "commits": [
+        {
+          "sha": "4de47ded0a184d6ed1b88533d24160021e0b85f9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T11:52:19-06:00",
+          "message": "Merge ffd7103ebade191c3ebe34bb31f07098601ac672 into 37eab7c8b844269b1e2036d7550bcccad6f20d6a\n"
+        },
+        {
+          "sha": "ffd7103ebade191c3ebe34bb31f07098601ac672",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T11:52:09-06:00",
+          "message": "feat(docs): live blocks are editable cards running in the live terminal (rich-example-card-obsb.2pn)\n\nA live block is now RichExample's third card kind: its outlet is a live\nterminal (LiveScreen, the old RichLive taking a program instead of a\nmodule) running the card's program, made in the browser as an edit's is.\nAn edit that parses restarts the terminal on it; one that does not is said\nin red over the terminal it leaves running.\n\nThe build no longer bundles a program per live block; it checks each live\ncard's programs import only what the live library holds.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "37eab7c8b844269b1e2036d7550bcccad6f20d6a",
