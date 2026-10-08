@@ -1,6 +1,6 @@
 /**
- * The effects playground's programs: each is the demo's own code from
- * curves.ts, and each runs as the playground runs it — the docs' playground
+ * The effects playground's programs: each is the library's own code from
+ * src/renderables/effects.ts, and each runs as the playground runs it — the docs' playground
  * script on the live library with the kit added — and draws the demo's
  * subjects. The page, its terminals and its editors are not exercised here.
  */
@@ -12,11 +12,11 @@ import { runInTerminal } from "../../../docs/.vitepress/simulated-process.js";
 import { playgroundScript } from "../../../docs/.vitepress/theme/playground-program.js";
 import { CONTROL_DEFAULTS, type Controls } from "../../../examples/effects-playground/controls.js";
 import { KIT_MODULE, edit, started, told } from "../../../examples/effects-playground/edits.js";
-import { CURVES_FILE, KIT_FILE, effectPrograms } from "../../../examples/effects-playground/programs.js";
+import { EFFECTS_FILE, KIT_FILE, effectPrograms } from "../../../examples/effects-playground/programs.js";
 import { EFFECTS, EFFECT_DEFAULTS } from "../../../examples/effects-feel/vocabulary.js";
 
 const programs = effectPrograms();
-const curves = readFileSync(CURVES_FILE, "utf-8");
+const effects = readFileSync(EFFECTS_FILE, "utf-8");
 const library = liveLibraryOnce();
 
 afterEach(() => {
@@ -25,13 +25,20 @@ afterEach(() => {
 });
 
 describe("an effect's program", () => {
-  it("carries the effect's function as curves.ts spells it, and what it reaches", () => {
+  it("carries the effect's function as the library spells it, and what it reaches there, noise included", () => {
     const dissolve = programs.dissolve;
-    const fn = curves.slice(curves.indexOf("export function dissolveOut("), curves.indexOf("\n}\n", curves.indexOf("export function dissolveOut(")) + 2);
+    const fn = effects.slice(effects.indexOf("export function dissolveOut("), effects.indexOf("\n}\n", effects.indexOf("export function dissolveOut(")) + 2);
     expect(dissolve).toContain(fn.replace(/^export /, ""));
-    for (const reached of ["const DISSOLVE_SHAPE", "function order(", "function veiled(", "const OWN = 0.45;"]) expect(dissolve).toContain(reached);
+    for (const reached of ["const DISSOLVE_SHAPE", "function order(", "function veiled(", "const OWN = 0.45;", "function fbm(", "function noise("]) expect(dissolve).toContain(reached);
+    // Nothing is imported from a module the package does not export.
+    expect(dissolve).not.toContain("noise.js");
     // Not what it does not reach.
     expect(dissolve).not.toContain("function shimmer(");
+    // Nor a file's header, which leads the first declaration it reaches there.
+    for (const file of [EFFECTS_FILE, new URL("../../../src/core/noise.ts", import.meta.url)]) {
+      const header = /^\/\*\*[\s\S]*?\*\//.exec(readFileSync(file, "utf-8"))![0];
+      expect(dissolve).not.toContain(header);
+    }
   });
 
   it("opens on the curve the demo defaults to", () => {

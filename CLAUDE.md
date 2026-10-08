@@ -83,7 +83,7 @@ non-interactive program needs from the terminal without any of the above
 Build order within `src/core/`. Each tier imports only from tiers above it, but for `protocol`'s type-only import of `Highlighter`, whose comment owns why:
 
 ```
-0   anchor · cells · color · easing · env · fnv1a · memo · subscription
+0   anchor · cells · color · easing · env · fnv1a · memo · noise · subscription
 1   clock · oklch · osc8 · style · wrap
 2   segment
 3   box · protocol · export-lines
@@ -122,6 +122,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **segment** — atomic render unit `(text, style?, control?)`. Static methods (`applyStyle`, `splitLines`, `adjustLineLength`, `simplify`, `divide`) operate on `Segment[]` / `Segment[][]`.
 - **memo** — `Memo`: a string-keyed memo holding at most `MEMO_MAX` entries. Every library cache keyed by strings a long-running host derives without end — `cellLen`, `ColorTable`'s matches, `ColorSpec.parse`, `Style.parse` — is one, so the bound has one definition.
 - **fnv1a** — `fnv1a`: FNV-1a over a string's UTF-8 bytes, as hex. The one hash behind every identifier the library derives from what it names — an OSC 8 link id, an SVG export's class prefix.
+- **noise** — Perlin's improved gradient noise (`noise`, `fbm`) plus `hash` and `smoothstep`: the smooth texture the effect catalogue (`renderables/effects.ts`) is drawn from. Not exported from the package; the effects playground carries its source into each program instead (`examples/effects-playground/programs.ts`).
 - **osc8** — the OSC 8 hyperlink wire grammar, one home: the terminator bytes a URL may not carry (`stripOscTerminators`, used by RichText at its data-model boundary), the producer every link is written through (`osc8Open` — sanitize + a URL-derived `id=` so a split link hovers as one — and `OSC8_CLOSE`), and the reader: `osc8Sequences` (typed scan of rendered bytes) over the `OSC8` pattern (exported for composing into a larger regex).
 - **env** — `Env`, the environment map every public signature names instead of `NodeJS.ProcessEnv`, which a project without `@types/node` cannot resolve. `test/seam/browser-types.test.ts` type-checks every non-`node/` entry's emitted declarations with no Node types loaded, the type-level twin of the browser-safe gate below.
 - **subscription** — `Unsubscribe`, the return type of every `on…()` in the library. It sits this low because `host/` and `widgets/` both need it and neither may depend on the other.

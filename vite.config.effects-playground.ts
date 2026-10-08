@@ -21,7 +21,7 @@ import { LIVE_RUNTIME_MODULE, bundleLiveRuntime, libraryModule, liveLibraryOnce 
 import { CONTROL_DEFAULTS } from "./examples/effects-playground/controls.js";
 import { KIT_MODULE } from "./examples/effects-playground/edits.js";
 import { EVENTS_PATH, LIBRARY_PATH, SAID_EVENT, concerns, type Said } from "./examples/effects-playground/mirror.js";
-import { CURVES_FILE, KIT_FILE, effectPrograms } from "./examples/effects-playground/programs.js";
+import { EFFECTS_FILE, KIT_FILE, NOISE_FILE, effectPrograms } from "./examples/effects-playground/programs.js";
 import { EFFECTS, type EffectName } from "./examples/effects-feel/vocabulary.js";
 
 const PLAYGROUND_MODULE = "virtual:effects-playground";
@@ -44,9 +44,9 @@ function effectsPlayground(): Plugin {
       }
       if (id === `\0${PLAYGROUND_MODULE}`) {
         // Made afresh each load: the watches below are what ask for one, an
-        // edit to curves.ts or to anything the kit is built from.
+        // edit to the library's effects or to anything the kit is built from.
         const library = await playgroundLibrary();
-        [CURVES_FILE, ...library.modules].forEach((file) => this.addWatchFile(file));
+        [EFFECTS_FILE, NOISE_FILE, ...library.modules].forEach((file) => this.addWatchFile(file));
         return `export const library = ${JSON.stringify(library.script)};\nexport const programs = ${JSON.stringify(effectPrograms())};`;
       }
       return null;

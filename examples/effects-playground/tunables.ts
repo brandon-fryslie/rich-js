@@ -6,7 +6,7 @@
  * of that text. The program is the only place a value lives, so the code a
  * playground shows is always the code it runs, sliders and all.
  *
- * A tunable is a number given a name the way a constant is in `curves.ts`: a
+ * A tunable is a number given a name the way a constant is in `src/renderables/effects.ts`: a
  * constant spelled in capitals, `const STRIDE = 80;`, or a property of an
  * object literal that one holds, `const DISSOLVE_SHAPE = { depth: 0.4, … }`;
  * and an ease named in such an object, `ease: EASES["ease-in-out"]`. A

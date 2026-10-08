@@ -2,8 +2,8 @@
  * effects-feel — node bootstrap: the command line parsed, a node terminal
  * host presenting the colour depth it asked for, and the demo run on it.
  *
- * THIS IS A DEMO, built so the feel of each effect can be agreed before any
- * curve lands in `src/`. See `curves.ts`.
+ * THIS IS A DEMO: the library's effects (`src/renderables/effects.ts`), for
+ * judging how they feel. See `app.ts`.
  */
 
 import { NodeTerminalHost } from "../../src/node/terminal-host.js";

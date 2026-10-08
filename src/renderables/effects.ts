@@ -1,9 +1,9 @@
 /**
- * effects-feel — the effect curves under judgement.
- *
- * THIS IS A DEMO. It exists so the feel of each effect is agreed before any
- * curve lands in `src/`; what survives the sign-off is promoted from the
- * sign-off notes, not from this file.
+ * The effect catalogue: shimmer, pulse, sparkle and wheel, which loop for as
+ * long as they are drawn, and fade-in and dissolve-out, which run once and
+ * are done. Each is an `Effect` for `Effected` (`./effect.ts`); the defaults
+ * in `EFFECT_CURVES` are the ones signed off by eye in the effects-feel demo
+ * (`npm run effects-feel`), at 30 fps and at one frame a second.
  *
  * Each effect is something a first-time observer already knows from life —
  * a slow glow, sunlight moving on water, the colours of daylight, fireflies, ink
@@ -12,7 +12,7 @@
  * What makes those motions familiar is what every curve here keeps:
  *
  * - Nothing jumps. Every curve is continuous in time, built from smooth
- *   noise (`noise.ts`) and smooth waveforms, so at one frame a second a cell
+ *   noise (`core/noise.ts`) and smooth waveforms, so at one frame a second a cell
  *   moves a little and at thirty it glides.
  * - Nothing repeats exactly. Rhythms are perturbed by slow noise, and each
  *   breath, firefly's flash and pass of light is an event of its own, with
@@ -29,32 +29,29 @@
  * - Elements are apart. Each sits at its own `z` in the noise, so two
  *   elements under one effect do not move in lockstep.
  *
- * Every curve is an `Effect` from `src/renderables/effect.ts`; colour moves
- * are in OKLCH, where equal steps look equal. A curve's `ease` maps its
- * intensity in [0, 1] — how strongly the effect acts on a cell at a moment —
- * onto its swing, for the loops and the transitions alike.
+ * Colour moves are in OKLCH, where equal steps look equal. A curve's `ease`
+ * maps its intensity in [0, 1] — how strongly the effect acts on a cell at a
+ * moment — onto its swing, for the loops and the transitions alike.
  *
  * [LAW:no-ambient-temporal-coupling] No curve reads a clock; `t` is the
  * effect's argument, so the frame owner decides when to sample.
+ *
+ * Every import below names something the package exports, but for `noise`,
+ * which the effects playground supplies itself: the playground runs this
+ * file's own declarations as the program a visitor edits
+ * (`examples/effects-playground/programs.ts`), on the published library.
  */
 
-import {
-  IDENTITY,
-  Oklch,
-  Phase,
-  contrastRatio,
-  type CellColors,
-  type ColorRgba,
-  type Ease,
-  type Effect,
-  type EffectCell,
-} from "../../src/index.js";
-import { fbm, hash, noise, smoothstep } from "./noise.js";
+import { ColorRgba, contrastRatio } from "../core/color.js";
+import { EASES, Phase, type Ease } from "../core/easing.js";
+import { fbm, hash, noise, smoothstep } from "../core/noise.js";
+import { IDENTITY, Oklch } from "../core/oklch.js";
+import type { CellColors, Effect, EffectCell } from "./effect.js";
 
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
 
-/** How strongly a loop acts on a cell at a moment, in [0, 1]. */
+/** How strongly a loop acts on a cell at a moment, in [0, 1]; `onColors` holds a field outside it to it. */
 export type Field = (cell: EffectCell, t: number) => number;
 
 /** A looping effect: what it does to a colour, and where and when, how strongly. */
@@ -87,6 +84,7 @@ const ROUNDING = 0.01;
  * [0, 1] at which every pair in `pairs` that shows it, touched at the same
  * strength, still reads at its resting contrast or `LEGIBLE`, whichever is
  * lower. A colour in no pair's `colors` is the terminal's, and takes none.
+ * One of `colors` in no pair has nothing to be measured against, and throws.
  *
  * Colours are settled lightest first, each against every partner: one
  * already settled at its share, one not yet settled as it is. So the lighter
@@ -97,6 +95,8 @@ const ROUNDING = 0.01;
  */
 export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touch: Touch): Map<string, number> {
   const rgba = new Map(pairs.flat().map((color): [string, ColorRgba] => [color.hex, color]));
+  const unpaired = [...colors].filter((hex) => !rgba.has(hex));
+  if (unpaired.length > 0) throw new RangeError(`shares: ${unpaired.join(", ")} in no pair, so nothing to keep legible against`);
   const lightness = (hex: string): number => Oklch.fromRgba(rgba.get(hex)!).l;
   const settled = new Map<string, number>();
   for (const hex of [...colors].sort((a, b) => lightness(b) - lightness(a))) {
@@ -130,7 +130,7 @@ export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touc
  */
 export function onColors(share: ReadonlyMap<string, number>, loop: Loop): Effect {
   return ({ fg, bg }, cell, t) => {
-    const w = Math.round(loop.field(cell, t) * LEVELS) / LEVELS;
+    const w = Math.round(clamp01(loop.field(cell, t)) * LEVELS) / LEVELS;
     const moved = (color: ColorRgba): ColorRgba => touchedAt(loop.touch, color, (share.get(color.hex) ?? 0) * w);
     return { fg: moved(fg), bg: moved(bg) };
   };
@@ -149,11 +149,41 @@ function touchedAt(touch: Touch, color: ColorRgba, w: number): ColorRgba {
 export interface Curve {
   /** Seconds: a looping effect's period, a transition's duration. */
   readonly seconds: number;
-  /** Intensity in [0, 1] to the fraction of `swing` applied. */
+  /** Intensity in [0, 1] to the fraction of `swing` applied. One that overshoots, as a CSS `cubic-bezier` may, saturates: an effect never acts past its swing. */
   readonly ease: Ease;
-  /** How far the move goes at full intensity; its unit is the effect's. */
+  /** How far the move goes at full intensity, in [0, 1]; what 1 means is the effect's. */
   readonly swing: number;
 }
+
+/** Throws, naming the field, unless `curve` has a positive, finite `seconds` and a `swing` in [0, 1]. */
+function requireCurve(curve: Curve): void {
+  if (!(Number.isFinite(curve.seconds) && curve.seconds > 0)) throw new RangeError(`curve: seconds must be a positive number of seconds, got ${curve.seconds}`);
+  if (!(curve.swing >= 0 && curve.swing <= 1)) throw new RangeError(`curve: swing must be in [0, 1], got ${curve.swing}`);
+}
+
+/**
+ * Each effect's curve as it was signed off. Every loop's period is a prime
+ * number of seconds, so no two loops come back into step within a sitting.
+ * The periods are long on purpose: at one frame a second a loop's colour
+ * moves by no more than a just-noticeable step from one frame to the next.
+ */
+export const EFFECT_CURVES = {
+  shimmer: { seconds: 109, ease: EASES.linear, swing: 0.9 },
+  pulse: { seconds: 43, ease: EASES.linear, swing: 0.85 },
+  sparkle: { seconds: 139, ease: EASES.linear, swing: 0.95 },
+  wheel: { seconds: 907, ease: EASES.linear, swing: 1 },
+  fade: { seconds: 20, ease: EASES["ease-in-out"], swing: 1 },
+  dissolve: { seconds: 30, ease: EASES["ease-in-out"], swing: 1 },
+} as const satisfies Record<string, Curve>;
+
+/** The lights the loops were signed off casting, warm as sunlight and fireflies are. */
+export const EFFECT_LIGHTS = {
+  sun: new ColorRgba(255, 228, 176),
+  firefly: new ColorRgba(222, 245, 140),
+} as const satisfies Record<string, ColorRgba>;
+
+/** How far a shimmer's light reaches either side of its centre, in columns, as signed off. */
+export const SHIMMER_WIDTH = 24;
 
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 
@@ -247,6 +277,7 @@ const FLASH: SwellShape = [[0.24, 1], [0.6, 0]];
  * element untouched.
  */
 export function pulse(curve: Curve, glow: ColorRgba, z: number): Loop {
+  requireCurve(curve);
   // How much quicker or slower than `curve.seconds` this element beats.
   const rate = 0.9 + 0.2 * hash(z, 3.1);
   // How far, in beats, the rhythm wanders ahead and behind its metronome. Noise's
@@ -293,6 +324,7 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
  * the band glides. Before the first pass enters, the row is untouched.
  */
 export function shimmer(curve: Curve, span: number, width: number, glow: ColorRgba, z: number): Loop {
+  requireCurve(curve);
   const P = curve.seconds;
   const across = span + 2 * width;
   // Passes are events on slots of half a period. Whether slot `j` holds one,
@@ -371,6 +403,7 @@ export function shimmer(curve: Curve, span: number, width: number, glow: ColorRg
  * dimmer one less.
  */
 export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
+  requireCurve(curve);
   const count = Math.max(3, Math.round(span / 8));
   const HALO = 5;
   // How far from home a flash may begin, and how far the brightest drifts while lit.
@@ -431,7 +464,8 @@ export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number):
 
 /**
  * How much of a cell shows at `t`: 1 is the cell as drawn, 0 is the cell gone
- * to the terminal's ground. Read per cell, so cells can arrive or leave apart.
+ * to the terminal's ground. Read per cell, so cells can arrive or leave apart. One
+ * outside [0, 1] is held to it.
  */
 export type Visibility = (cell: EffectCell, t: number) => number;
 
@@ -446,7 +480,7 @@ export type Visibility = (cell: EffectCell, t: number) => number;
 export function veiled(visibility: Visibility, swing: number, ground: ColorRgba): Effect {
   const to = Oklch.fromRgba(ground);
   return (colors: CellColors, cell, t) => {
-    const hidden = swing * (1 - visibility(cell, t));
+    const hidden = swing * (1 - clamp01(visibility(cell, t)));
     if (hidden === 0) return colors;
     const bg = blend(Oklch.fromRgba(colors.bg), to, hidden);
     return { fg: blend(Oklch.fromRgba(colors.fg), bg, hidden).toRgba(), bg: bg.toRgba() };
@@ -473,15 +507,39 @@ function order(z: number): (cell: EffectCell) => number {
   };
 }
 
-/** Of a transition's `seconds`, how long each cell's own change takes. */
-const OWN = 0.45;
-
-/** The shape of a fade-in: `own`, of the duration, the share each cell's own rise takes. */
-export interface FadeShape {
-  readonly own: number;
+/**
+ * An effect that runs once: a fade-in or a dissolve-out from its start time
+ * over its curve's `seconds`. `done(t)` is true from the moment every cell
+ * has arrived or gone, so the caller knows when to stop drawing an element
+ * that is leaving, or to drop the effect from one that has arrived.
+ */
+export interface Transition {
+  readonly effect: Effect;
+  done(t: number): boolean;
 }
 
-export const FADE_SHAPE: FadeShape = { own: OWN };
+function transition(curve: Curve, start: number, effect: Effect): Transition {
+  const end = start + curve.seconds;
+  return { effect, done: (t) => t >= end };
+}
+
+/**
+ * Of a transition's `seconds`, how long each cell's own change takes. Under
+ * 1, so the last cell to start is done by the transition's end.
+ */
+const OWN = 0.45;
+
+/**
+ * Each cell's progress through its own change in a transition starting at
+ * `start`, in [0, 1]: a cell `place` along the order starts that share of the
+ * way through the time the others leave it, and takes `OWN` of `seconds`.
+ */
+function ownChange(curve: Curve, start: number, place: (cell: EffectCell) => number): Visibility {
+  const own = curve.seconds * OWN;
+  // One phase, shifted per cell, so no cell builds its own each frame.
+  const change = Phase.once(start, own);
+  return (cell, t) => change(t - place(cell) * (curve.seconds - own));
+}
 
 /**
  * Fade-in starting at `start`, as ink blooming in water: patches of the
@@ -489,33 +547,22 @@ export const FADE_SHAPE: FadeShape = { own: OWN };
  * rising smoothly over its own part of the duration. Whole at
  * `start + seconds`.
  */
-export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba, shape: FadeShape = FADE_SHAPE): Effect {
-  const own = curve.seconds * shape.own;
-  const place = order(1.7 + z);
-  return veiled((cell, t) => curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t)), curve.swing, ground);
+export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba): Transition {
+  requireCurve(curve);
+  const risen = ownChange(curve, start, order(1.7 + z));
+  return transition(curve, start, veiled((cell, t) => curve.ease(risen(cell, t)), curve.swing, ground));
 }
 
 /**
- * The shape of a dissolve, every constant that makes it feel as it does.
- * `own`: of the duration, the share each cell's own fade takes. The rebound —
- * patches of what is left rising back before they go — is `depth` (the most,
- * as a share of whole, a cell rises again), `from` and `to` (where in its own
+ * The rebound of a dissolve, every constant that makes it feel as it does —
+ * patches of what is left rising back before they go: `depth` (the most, as a
+ * share of whole, a cell rises again), `from` and `to` (where in its own
  * fade, as a share of it gone, the rising begins and is done), `maskFrom` and
  * `maskTo` (which cells rebound: those whose eddy noise is past `maskFrom`,
  * all of them past `maskTo`) and `late` (how much likelier the later a cell
  * goes: 0 is no more likely, 1 is nothing for the first to go).
  */
-export interface DissolveShape {
-  readonly own: number;
-  readonly depth: number;
-  readonly from: number;
-  readonly to: number;
-  readonly maskFrom: number;
-  readonly maskTo: number;
-  readonly late: number;
-}
-
-export const DISSOLVE_SHAPE: DissolveShape = { own: OWN, depth: 0.4, from: 0.5, to: 0.95, maskFrom: 0.35, maskTo: 0.75, late: 0.6 };
+const DISSOLVE_SHAPE = { depth: 0.4, from: 0.5, to: 0.95, maskFrom: 0.35, maskTo: 0.75, late: 0.6 };
 
 /**
  * Dissolve-out starting at `start`, as mist lifting: the element thins in
@@ -525,21 +572,22 @@ export const DISSOLVE_SHAPE: DissolveShape = { own: OWN, depth: 0.4, from: 0.5, 
  * goes, the likelier — rise back part way, as the last of it eddies, before
  * they thin away for good.
  */
-export function dissolveOut(curve: Curve, start: number, z: number, ground: ColorRgba, shape: DissolveShape = DISSOLVE_SHAPE): Effect {
-  const own = curve.seconds * shape.own;
+export function dissolveOut(curve: Curve, start: number, z: number, ground: ColorRgba): Transition {
+  requireCurve(curve);
   const place = order(4.2 + z);
   const eddy = order(9.3 + z);
-  return veiled((cell, t) => {
-    const gone = curve.ease(Phase.once(start + place(cell) * (curve.seconds - own), own)(t));
-    const q = clamp01((gone - shape.from) / (shape.to - shape.from));
-    const back = shape.depth * smoothstep(shape.maskFrom, shape.maskTo, eddy(cell)) * (1 - shape.late + shape.late * place(cell)) * Math.sin(Math.PI * q) ** 2;
-    return clamp01(1 - gone + back);
-  }, curve.swing, ground);
-}
-
-/** The moment a transition starting at `start` has finished. */
-export function settledAt(curve: Curve, start: number): number {
-  return start + curve.seconds;
+  const faded = ownChange(curve, start, place);
+  const { depth, from, to, maskFrom, maskTo, late } = DISSOLVE_SHAPE;
+  return transition(
+    curve,
+    start,
+    veiled((cell, t) => {
+      const gone = curve.ease(faded(cell, t));
+      const q = clamp01((gone - from) / (to - from));
+      const back = depth * smoothstep(maskFrom, maskTo, eddy(cell)) * (1 - late + late * place(cell)) * Math.sin(Math.PI * q) ** 2;
+      return 1 - gone + back;
+    }, curve.swing, ground),
+  );
 }
 
 /**
@@ -572,6 +620,7 @@ const STRAY = 180;
  * only happens to `colors`, the element's own, never the terminal's.
  */
 export function wheel(curve: Curve, colors: ReadonlySet<string>, fills: ReadonlySet<string>, z: number): Effect {
+  requireCurve(curve);
   const P = curve.seconds;
   // A segment's seed, from the colour it is.
   const seed = (hex: string): number => hash(Number.parseInt(hex.slice(1), 16) * 1e-4, 17.3 + z);

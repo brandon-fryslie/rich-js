@@ -14,12 +14,17 @@ import {
   Oklch,
   Style,
   contrastRatio,
+  EFFECT_LIGHTS,
+  SHIMMER_WIDTH,
+  pulse,
+  shares,
+  shimmer,
+  sparkle,
   type Renderable,
   type TerminalTheme,
 } from "../../../src/index.js";
 import { cellLen, graphemes } from "../../../src/core/cells.js";
-import { LIGHTS, SHIMMER_WIDTH, drawnSubject, runDemo, stripSubject, subjectUnder, textSubject } from "../../../examples/effects-feel/app.js";
-import { pulse, shares, shimmer, sparkle } from "../../../examples/effects-feel/curves.js";
+import { drawnSubject, runDemo, stripSubject, subjectUnder, textSubject } from "../../../examples/effects-feel/app.js";
 import { parseSettings } from "../../../examples/effects-feel/settings.js";
 import { envAtDepth } from "../../../examples/effects-feel/vocabulary.js";
 import { scriptedHost } from "../../host/scripted-host.js";
@@ -189,7 +194,7 @@ describe("a strip under a pulse", () => {
     "on a %s ground moves each colour the strip sets, alike in neighbouring cells, and leaves the terminal's alone",
     (_, theme) => {
       const strip = drawnSubject(stripSubject(theme), options, theme);
-      const loop = pulse({ seconds: 2, ease: EASES.linear, swing: 1 }, LIGHTS.sun, 0);
+      const loop = pulse({ seconds: 2, ease: EASES.linear, swing: 1 }, EFFECT_LIGHTS.sun, 0);
       const lit = subjectUnder(strip, loop, theme);
       const share = shares(strip.pairs, strip.colors, loop.touch);
       const before = colorsByCell(strip.renderable, theme);
@@ -219,7 +224,7 @@ describe("a strip under a pulse", () => {
       // OKLab's lightness, and a display shows none of it.
       const pulseCurve = parseSettings([])!.curves.pulse;
       const strip = drawnSubject(stripSubject(theme), options, theme);
-      const lit = subjectUnder(strip, pulse(pulseCurve, LIGHTS.sun, strip.z), theme);
+      const lit = subjectUnder(strip, pulse(pulseCurve, EFFECT_LIGHTS.sun, strip.z), theme);
       const before = colorsByCell(strip.renderable, theme);
       const oklch = (hex: string) => Oklch.fromRgba(ColorSpec.parse(hex).getTruecolor());
       const seen = (a: string, b: string) => (Math.max(oklch(a).l, oklch(b).l) < 0.2 ? 0 : oklch(a).deltaE(oklch(b)));
@@ -241,9 +246,9 @@ describe("every loop keeps the words readable", () => {
   const AA = 4.5;
   const { curves } = parseSettings([])!;
   const made = {
-    shimmer: (span: number, z: number) => shimmer({ ...curves.shimmer, swing: 1 }, span, SHIMMER_WIDTH, LIGHTS.sun, z),
-    pulse: (_span: number, z: number) => pulse({ ...curves.pulse, swing: 1 }, LIGHTS.sun, z),
-    sparkle: (span: number, z: number) => sparkle({ ...curves.sparkle, swing: 1 }, span, LIGHTS.firefly, z),
+    shimmer: (span: number, z: number) => shimmer({ ...curves.shimmer, swing: 1 }, span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, z),
+    pulse: (_span: number, z: number) => pulse({ ...curves.pulse, swing: 1 }, EFFECT_LIGHTS.sun, z),
+    sparkle: (span: number, z: number) => sparkle({ ...curves.sparkle, swing: 1 }, span, EFFECT_LIGHTS.firefly, z),
   };
   const grounds = [["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const;
   const depths = [["truecolor", ColorDepth.TRUECOLOR], ["256", ColorDepth.EIGHT_BIT]] as const;
