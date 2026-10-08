@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-353",
+      "ref": "refs/pull/353/merge",
+      "sha": "1d63e11b14b8ad2f09fa3d6d33a1d6f4752c01f6",
+      "timestamp": "2026-10-08T16:43:46.259Z",
+      "commits": [
+        {
+          "sha": "1d63e11b14b8ad2f09fa3d6d33a1d6f4752c01f6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T10:41:38-06:00",
+          "message": "Merge e0c6eb3781a2a2b5c493d4dfb656c34592c9488d into f8d2b36d27626e6651f49a6ddcd6708995d65663\n"
+        },
+        {
+          "sha": "e0c6eb3781a2a2b5c493d4dfb656c34592c9488d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T10:41:27-06:00",
+          "message": "feat(docs): a card shows its setup locked, labelled by origin, folded on docs pages (rich-example-card-obsb.skf)\n\nThe card's editor now holds the whole program its block runs as: the setup\nabove it, in groups labelled by where they came from (\"imports\", \"assumed by\nevery example\", \"assumed on this page\", \"from '<heading>'\"), the block, and the\nbraces closing the setup's scopes. Everything but the block is locked: a change\nreaching into it, typed, pasted or deleted, changes nothing. On a docs page the\nsetup is folded into one strip, \"▸ N lines of setup\", shown while the editor\nhas focus; a click unfolds it. A thrown error's line is the program's line, so\nit counts the setup.\n\n- theme/setup-regions.ts: the locked, labelled, foldable setup as one\n  CodeMirror extension; where it starts (folded/unfolded) is the caller's, for\n  the playground (A5).\n- example-slice.ts: \"Try it\" and the card's setup are cut from one parts list.\n  The card's setup imports only what the block names and does not import\n  itself, so a block that imports what it uses has no setup at all\n  (rich-example-card-obsb.021). aroundBlock is gone.\n- example-markers.ts: each fence carries the heading it sits under.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f8d2b36d27626e6651f49a6ddcd6708995d65663",
