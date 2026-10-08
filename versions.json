@@ -4,15 +4,22 @@
     {
       "version": "pr-344",
       "ref": "refs/pull/344/merge",
-      "sha": "568c37547e6823ffd5622670cf1bb0c216c17fdc",
-      "timestamp": "2026-10-08T02:51:32.310Z",
+      "sha": "71199fb2c7d6730486d9ed1dc94f47b7167513cc",
+      "timestamp": "2026-10-08T02:58:59.237Z",
       "commits": [
         {
-          "sha": "568c37547e6823ffd5622670cf1bb0c216c17fdc",
+          "sha": "71199fb2c7d6730486d9ed1dc94f47b7167513cc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T20:50:19-06:00",
-          "message": "Merge 81589699f135b4b9e7706dc5ae85262f82823536 into 6fe3afb5b7d68eb56269e27448533f4188eb77b1\n"
+          "timestamp": "2026-10-08T02:57:33Z",
+          "message": "Merge 0db065a5e42cd8202e1c27a73826464f76e003cf into 6fe3afb5b7d68eb56269e27448533f4188eb77b1\n"
+        },
+        {
+          "sha": "0db065a5e42cd8202e1c27a73826464f76e003cf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T20:57:28-06:00",
+          "message": "fix(pretty): one quoting for keys and strings, escaping what does not print, as Rich's repr (rich-pretty-h3uh)\n\nReview: DEL, C1 and format characters passed raw through JSON.stringify; a\nquoted key skipped maxString; a default-ignorable or 20-digit key read as a\ndifferent bare key.\n"
         },
         {
           "sha": "81589699f135b4b9e7706dc5ae85262f82823536",
