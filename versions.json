@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-359",
-      "ref": "refs/pull/359/merge",
-      "sha": "d0602bda607ac2525f9cfe35613c4142d591a6db",
-      "timestamp": "2026-10-08T21:17:31.039Z",
-      "commits": [
-        {
-          "sha": "d0602bda607ac2525f9cfe35613c4142d591a6db",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T21:16:11Z",
-          "message": "Merge 55ef731a39f5207be3e4ab42a3fd9a2edc0cded4 into 1ac1289df6b6c395f5af7b5df4e38c023f5a3c88\n"
-        },
-        {
-          "sha": "55ef731a39f5207be3e4ab42a3fd9a2edc0cded4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T15:16:05-06:00",
-          "message": "fix(docs): a card's program carries its terminal size into the playground; Esc→Tab leaves only within CodeMirror's 2 s (rich-example-card-b5rz.z0w)\n\nHigh review pass on #359:\n- CardProgram holds its terminal size; the link format is now `program.`,\n  `files.` links still open at the example size. A demo opened in the\n  playground runs at its card.json size, not 75x24.\n- terminal-size.ts is the one parser of a size (card.json and links),\n  capped so a crafted link cannot allocate a huge screen; card.json\n  errors, malformed JSON included, name the file.\n- Escape arms Tab-to-leave for 2 s, as CodeMirror's tabFocusMode does;\n  the hint text lives beside the handler (LEAVE_HINT).\n- TerminalSpec extends TerminalSize; dropdown-demo's runDemo returns its\n  promise, dropping the uncalled stop.\n"
-        },
-        {
-          "sha": "7cb3754a4a05aa365561ce72b620d4425730820a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T14:57:44-06:00",
-          "message": "feat(docs): dropdown-demo's page runs in the card, with keyboard input and its own terminal size (rich-example-card-b5rz.z0w)\n\nA live card's terminal size is now the card's (`CardData.terminal`,\n`TerminalSize`): a docs block's is EXAMPLE_TERMINAL's, a demo's is what its\n`card.json` gives, parsed once in demo-card.ts and refused at build naming\nthe file. LiveScreen takes the size as a prop; everything else about the\nterminal stays EXAMPLE_TERMINAL's.\n\nWhile a live terminal has focus every key is the program's, Tab and Escape\nincluded. A ring and a bar hint say so, and Escape then Tab leaves it, the\nsame way out as the card's editor; the Escape still reaches the program.\n\ndropdown-demo is reshaped to the demo shape: main.ts is the entry for the\ncard and `npm run demo:dropdown` (which still refuses a non-TTY), imports use\npublished names, wire.ts/index.ts are gone, and it fits its 100x30 card.\n\ne2e: the dropdown is opened, moved and selected by keyboard through its card,\nTab stays the demo's, Esc-then-Tab leaves, an edit restarts it, the bottom\nrow is in view. `shown()` no longer blocks on rows that do not exist yet, so\na poll re-scrolls a terminal the opening editor pushed off screen.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "1ac1289df6b6c395f5af7b5df4e38c023f5a3c88",
-      "timestamp": "2026-10-08T20:46:08.385Z",
+      "sha": "ed23a5bf2319fa3a0b6806596c8dda356304b595",
+      "timestamp": "2026-10-08T21:19:20.880Z",
       "commits": [
         {
-          "sha": "1ac1289df6b6c395f5af7b5df4e38c023f5a3c88",
+          "sha": "ed23a5bf2319fa3a0b6806596c8dda356304b595",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T14:44:39-06:00",
-          "message": "feat(docs): rich-strip's demo page runs in the card, with file tabs (rich-example-card-b5rz.hpj) (#358)\n\n* feat(docs): rich-strip's demo page runs in the card, with file tabs (rich-example-card-b5rz.hpj)\n\nA card's program is now a set of files, the entry first. A docs block is the\none-file case and shows no tabs; a demo shows a tab per file, every one\neditable, imports between them resolved at run time, the program re-run on\nedit. Reset restores every file; the playground link (format `files.`)\ncarries them all, and `card.` and bare links still open.\n\nrich-strip is reshaped to the demo shape: `main.ts` is the entry for the card\nand `npm run strip`, imports use published names, and the tour fits the\ncard's 75x24 terminal. Published names resolve to src/ through\nPUBLISHED_PATHS in loadCompilerOptions (coverage, docs compiler) and\nscripts/build-demos.ts (Node), both derived from ENTRY_BY_SPECIFIER.\ndemos.json records card and iframe demos; e2e drives rich-strip's card.\neffects-playground's page script is renamed page.ts so main.ts means a demo.\n\n* fix(docs): a demo is held at build to the check its card runs, and the file tabs are the ARIA tabs pattern (rich-example-card-b5rz.hpj)\n\nReview (high) of #358:\n- demoProgram runs refuseUnrunnable, now whole-program: the card's compile,\n  and every import a library package or one of the program's own files. A\n  relative import that leaves examples/ is refused naming the importer.\n- oneSource is gone; every one-file program is programFiles(oneFile(...)).\n- thrownAt reads Firefox/Safari `fn@file:line:col` frames.\n- DEMO_ENTRY lives in demo-entry.ts so vite.config.demos.ts no longer loads\n  the docs example pipeline.\n- File tabs: roving tabindex, arrow/Home/End keys, editor as labelled tabpanel.\n- package.json#devEngines asks contributors for a Node with unflagged type\n  stripping (^22.18.0 || >=23.6.0), which scripts/build-demos.ts needs;\n  engines.node, the consumer floor, is unchanged.\n\n* fix(docs): a refused program says which file refused it, to the build and under the card (rich-example-card-b5rz.hpj)\n\nReview (medium) of #358: the build named the entry and the card named no\nfile when a non-entry file was refused. PlaygroundProgram's refused arm now\ncarries at: { file, line | null }; the eval's refusal claims no line."
+          "timestamp": "2026-10-08T15:18:09-06:00",
+          "message": "feat(docs): dropdown-demo's page runs in the card, with keyboard input and its own terminal size (rich-example-card-b5rz.z0w) (#359)\n\n* feat(docs): dropdown-demo's page runs in the card, with keyboard input and its own terminal size (rich-example-card-b5rz.z0w)\n\nA live card's terminal size is now the card's (`CardData.terminal`,\n`TerminalSize`): a docs block's is EXAMPLE_TERMINAL's, a demo's is what its\n`card.json` gives, parsed once in demo-card.ts and refused at build naming\nthe file. LiveScreen takes the size as a prop; everything else about the\nterminal stays EXAMPLE_TERMINAL's.\n\nWhile a live terminal has focus every key is the program's, Tab and Escape\nincluded. A ring and a bar hint say so, and Escape then Tab leaves it, the\nsame way out as the card's editor; the Escape still reaches the program.\n\ndropdown-demo is reshaped to the demo shape: main.ts is the entry for the\ncard and `npm run demo:dropdown` (which still refuses a non-TTY), imports use\npublished names, wire.ts/index.ts are gone, and it fits its 100x30 card.\n\ne2e: the dropdown is opened, moved and selected by keyboard through its card,\nTab stays the demo's, Esc-then-Tab leaves, an edit restarts it, the bottom\nrow is in view. `shown()` no longer blocks on rows that do not exist yet, so\na poll re-scrolls a terminal the opening editor pushed off screen.\n\n* fix(docs): a card's program carries its terminal size into the playground; Esc→Tab leaves only within CodeMirror's 2 s (rich-example-card-b5rz.z0w)\n\nHigh review pass on #359:\n- CardProgram holds its terminal size; the link format is now `program.`,\n  `files.` links still open at the example size. A demo opened in the\n  playground runs at its card.json size, not 75x24.\n- terminal-size.ts is the one parser of a size (card.json and links),\n  capped so a crafted link cannot allocate a huge screen; card.json\n  errors, malformed JSON included, name the file.\n- Escape arms Tab-to-leave for 2 s, as CodeMirror's tabFocusMode does;\n  the hint text lives beside the handler (LEAVE_HINT).\n- TerminalSpec extends TerminalSize; dropdown-demo's runDemo returns its\n  promise, dropping the uncalled stop."
         }
       ]
     }
