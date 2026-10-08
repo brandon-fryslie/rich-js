@@ -4,15 +4,22 @@
     {
       "version": "pr-353",
       "ref": "refs/pull/353/merge",
-      "sha": "1d63e11b14b8ad2f09fa3d6d33a1d6f4752c01f6",
-      "timestamp": "2026-10-08T16:43:46.259Z",
+      "sha": "8f5cc186966235d8b89e24fa9c0c5166425789ce",
+      "timestamp": "2026-10-08T16:59:07.984Z",
       "commits": [
         {
-          "sha": "1d63e11b14b8ad2f09fa3d6d33a1d6f4752c01f6",
+          "sha": "8f5cc186966235d8b89e24fa9c0c5166425789ce",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T10:41:38-06:00",
-          "message": "Merge e0c6eb3781a2a2b5c493d4dfb656c34592c9488d into f8d2b36d27626e6651f49a6ddcd6708995d65663\n"
+          "timestamp": "2026-10-08T16:58:00Z",
+          "message": "Merge 2295a8b9dacca9fad124c2c3698a38f2702a5879 into f8d2b36d27626e6651f49a6ddcd6708995d65663\n"
+        },
+        {
+          "sha": "2295a8b9dacca9fad124c2c3698a38f2702a5879",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T10:57:55-06:00",
+          "message": "fix(docs): a card's setup strip takes no line, a selection into the setup unfolds it, and a change across it lands in the block (rich-example-card-obsb.skf)\n\nHigh review on #353: the strip no longer appears and disappears as a line on\nfocus, so nothing under the editor moves mid-click; arrow keys, Ctrl+Home and\nselect-all unfold the setup rather than leaving the cursor in hidden text; a\npaste over select-all replaces the block. A card's setup leaves the block's\nown bare imports to it, a group is labelled with its heading as rendered, and\na scope with no setup above it fails at its page and line.\n"
         },
         {
           "sha": "e0c6eb3781a2a2b5c493d4dfb656c34592c9488d",
