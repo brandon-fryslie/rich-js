@@ -4,15 +4,22 @@
     {
       "version": "pr-351",
       "ref": "refs/pull/351/merge",
-      "sha": "1136c3f2911e0986765644631d09143a8993e1f9",
-      "timestamp": "2026-10-08T15:51:02.334Z",
+      "sha": "2e5d7090ee339d88bea7fa3c18dd6d2212143224",
+      "timestamp": "2026-10-08T16:06:26.449Z",
       "commits": [
         {
-          "sha": "1136c3f2911e0986765644631d09143a8993e1f9",
+          "sha": "2e5d7090ee339d88bea7fa3c18dd6d2212143224",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T09:49:55-06:00",
-          "message": "Merge 3c4f20fd2723aad102fa444d501ada62b7ba9cdc into 75b71956bc080e3e5a0e19e959b27dbcd9cc59be\n"
+          "timestamp": "2026-10-08T16:04:18Z",
+          "message": "Merge be52f7120db9a269f0c3d736b28c83dca2e087cb into 75b71956bc080e3e5a0e19e959b27dbcd9cc59be\n"
+        },
+        {
+          "sha": "be52f7120db9a269f0c3d736b28c83dca2e087cb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T10:04:13-06:00",
+          "message": "fix(docs): card review — failures reported, output bounded, Try it follows the edit, editor loaded on approach (rich-example-card-obsb.lz3)\n\n- A failed editor load is forgotten like a failed tools load (one loader).\n- Any failure in an edit's run is said under the output, not an unhandled rejection.\n- runStatic ends a run past an output limit, so the page thread never draws a flood.\n- Dimming is derived: output drawn for code other than the editor's.\n- An edited card's Try it opens the edit; reset restores the page's link.\n- CodeMirror loads when a pointer or focus reaches a card, not on every page.\n- The build runs a block's card program only when it differs from its Try it program.\n- Sandbox failure text names the worker, not the live terminal; import comments say what Sucrase does.\n"
         },
         {
           "sha": "3c4f20fd2723aad102fa444d501ada62b7ba9cdc",
