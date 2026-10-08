@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-346",
+      "ref": "refs/pull/346/merge",
+      "sha": "2a77d2821e1fa101863ae17e2f33640ff90357ef",
+      "timestamp": "2026-10-08T03:19:15.910Z",
+      "commits": [
+        {
+          "sha": "2a77d2821e1fa101863ae17e2f33640ff90357ef",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T21:17:50-06:00",
+          "message": "Merge 801b7177da710e667a3f5aa06d5f2c39e5e3bc8e into 99b2f5aa52d71219493244790c584a410f3dab0c\n"
+        },
+        {
+          "sha": "801b7177da710e667a3f5aa06d5f2c39e5e3bc8e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T21:17:45-06:00",
+          "message": "fix(progress): bar.complete, bar.finished and bar.pulse in Rich's rgb colours (rich-progress-p3gy)\n\nRich's DEFAULT_STYLES draw the fill and pulse in rgb(249,38,114) and a\nfinished bar in rgb(114,156,31); ours named magenta and green. The back\nalready defaulted to bar.back (grey23), so that half of the ticket was\nstale.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "99b2f5aa52d71219493244790c584a410f3dab0c",
