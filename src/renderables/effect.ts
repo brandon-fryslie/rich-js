@@ -22,8 +22,9 @@
  *   cell (`Style.shiftedBy`), so hit testing still finds the owner.
  * - A cell whose colours come back unchanged keeps its original `ColorSpec`,
  *   and a segment whose every cell is unchanged is yielded as it was, so the
- *   identity effect is byte-identical. Neighbouring cells given equal colours
- *   stay one segment: a segment is cut only where the colours change.
+ *   identity effect is byte-identical. Neighbouring cells the output depth
+ *   writes alike stay one segment: a segment is cut only where the written
+ *   colours change, so two colours that land on one index are one run.
  * - New colours are built with `ColorSpec.fromRgba`, never parsed from a
  *   string, so no frame adds an entry to a parse cache.
  * - With no colour output (`colorSystem: null`) there is nothing for an
@@ -34,7 +35,7 @@
  */
 
 import { cellLen, graphemes } from "../core/cells.js";
-import { ColorDepth, ColorSpec, SURFACE_BLACK, type ColorRgba, type TerminalTheme } from "../core/color.js";
+import { ColorDepth, ColorSpec, SURFACE_BLACK, rgbDistance, type ColorRgba, type TerminalTheme } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
@@ -123,38 +124,41 @@ export class Effected implements Renderable, Measurable {
       const wire = base.drawnColors(options.colorSystem ?? undefined);
       const ink = (wire.color ?? DEFAULT).getTruecolor(this.theme, true);
       const paper = (wire.bgcolor ?? DEFAULT).getTruecolor(this.theme, false);
-      const from = onScreen({ fg: ink, bg: paper }, base);
-      // Each grapheme's colours, merged into runs of equal colours as they
-      // come; `undefined` is a run left as the segment drew it.
-      const runs: { text: string; cells: number; colors: CellColors | undefined }[] = [];
+      const slots = { fg: ink, bg: paper };
+      const from = onScreen(slots, base);
+      // [LAW:one-source-of-truth] A run is cells the wire writes alike: each
+      // cell is drawn at the output depth first and merged on the colours that
+      // writes, so two truecolors landing on one index stay one run. A cell
+      // the effect gave its neighbour's colours is drawn as that neighbour was.
+      const runs: { text: string; cells: number; colors: CellColors; drawn: DrawnColors }[] = [];
       for (const glyph of graphemes(segment.text)) {
-        let colors: CellColors | undefined;
+        let colors = slots;
         if (glyph === "\n") {
           row++;
           col = 0;
         } else {
-          const to = this.effect(from, { row, col, seed: this.seed(row, col) }, this.t);
-          colors = sameColors(to, from) ? undefined : to;
+          // Back from the screen to the style's slots: the same swap undoes itself.
+          colors = onScreen(this.effect(from, { row, col, seed: this.seed(row, col) }, this.t), base);
           col += cellLen(glyph);
         }
         const last = runs[runs.length - 1];
-        if (last !== undefined && sameRun(last.colors, colors)) {
+        const drawn = last !== undefined && sameColors(last.colors, colors) ? last.drawn : this.respec(wire, slots, colors, depth);
+        if (last !== undefined && writesAlike(last.drawn, drawn)) {
           last.text += glyph;
           last.cells += cellLen(glyph);
+          last.colors = colors;
         } else {
-          runs.push({ text: glyph, cells: cellLen(glyph), colors });
+          runs.push({ text: glyph, cells: cellLen(glyph), colors, drawn });
         }
       }
-      if (runs.every((run) => run.colors === undefined)) {
+      if (runs.every((run) => writesAlike(run.drawn, wire))) {
         yield segment;
         continue;
       }
       let offset = 0;
       for (const run of runs) {
         const shifted = base.shiftedBy(offset);
-        // Back from the screen to the style's slots: the same swap undoes itself.
-        const slots = run.colors === undefined ? undefined : onScreen(run.colors, base);
-        const style = slots === undefined ? shifted : shifted.add(this.respec(wire, { fg: ink, bg: paper }, slots, depth));
+        const style = writesAlike(run.drawn, wire) ? shifted : shifted.add(Style.fromColor(run.drawn.color, run.drawn.bgcolor));
         yield new Segment(run.text, style);
         offset += run.cells;
       }
@@ -166,21 +170,26 @@ export class Effected implements Renderable, Measurable {
   }
 
   /**
-   * The style that draws a run's slot colours `to` where the segment drew
+   * The specs that draw a cell's slot colours `to` where the segment drew
    * `from` with `wire`: a slot the effect left alone keeps its written spec,
    * and a moved one is laid on what is beneath it — the ground on
    * `SURFACE_BLACK`, the glyph on that ground, as the writer lays any
    * translucent colour (`Style.drawnColors`) — then drawn in the colour nearest it at `depth`
-   * that the terminal shows (`ColorSpec.matchOn`), so a colour moved a little
-   * off a theme slot or the default colour is still drawn as that one.
+   * that the terminal shows (`ColorSpec.matchOn`). A move the depth cannot
+   * show is no move: where the written spec is as near the moved colour as
+   * that match, the slot keeps it, so below truecolor a colour moved a little
+   * off any colour it can write — a theme slot, the default colour, the cube —
+   * is still drawn as that one.
    */
-  private respec(wire: ReturnType<Style["drawnColors"]>, from: CellColors, to: CellColors, depth: ColorDepth): Style {
+  private respec(wire: DrawnColors, from: CellColors, to: CellColors, depth: ColorDepth): DrawnColors {
     // [LAW:one-source-of-truth] The writer's surface, so one translucent colour draws one way in a frame.
     const ground = to.bg.compositeOver(SURFACE_BLACK);
     const glyph = to.fg.compositeOver(ground);
-    const drawn = (spec: ColorSpec | undefined, was: ColorRgba, now: ColorRgba, foreground: boolean) =>
-      sameColor(was, now) ? spec : ColorSpec.matchOn(now, depth, this.theme, foreground);
-    return Style.fromColor(drawn(wire.color, from.fg, glyph, true), drawn(wire.bgcolor, from.bg, ground, false));
+    const drawn = (spec: ColorSpec | undefined, was: ColorRgba, now: ColorRgba, foreground: boolean) => {
+      const match = ColorSpec.matchOn(now, depth, this.theme, foreground);
+      return rgbDistance(was, now) <= rgbDistance(match.getTruecolor(this.theme, foreground), now) ? spec : match;
+    };
+    return { color: drawn(wire.color, from.fg, glyph, true), bgcolor: drawn(wire.bgcolor, from.bg, ground, false) };
   }
 
   /** A cell's seed: FNV-1a of the key and the position, scaled into [0, 1). */
@@ -191,6 +200,8 @@ export class Effected implements Renderable, Measurable {
 
 const DEFAULT = ColorSpec.default();
 
+type DrawnColors = ReturnType<Style["drawnColors"]>;
+
 /**
  * A style's colour slots as the screen shows them, or the reverse: `reverse`
  * swaps glyph and ground, and swapping twice is where you started.
@@ -199,14 +210,27 @@ function onScreen(colors: CellColors, style: Style): CellColors {
   return style.reverse === true ? { fg: colors.bg, bg: colors.fg } : colors;
 }
 
-function sameColor(a: ColorRgba, b: ColorRgba): boolean {
-  return a.red === b.red && a.green === b.green && a.blue === b.blue && a.alpha === b.alpha;
+/**
+ * Whether two cells' colours are written alike. A slot with no colour is not
+ * the default colour: it writes nothing, so a style a container lays beneath
+ * (`Segment.applyStyle`) still shows through it, where `39`/`49` would not.
+ */
+function writesAlike(a: DrawnColors, b: DrawnColors): boolean {
+  return slotWritesAlike(a.color, b.color, true) && slotWritesAlike(a.bgcolor, b.bgcolor, false);
+}
+
+function slotWritesAlike(a: ColorSpec | undefined, b: ColorSpec | undefined, foreground: boolean): boolean {
+  return a === b || written(a, foreground) === written(b, foreground);
+}
+
+function written(spec: ColorSpec | undefined, foreground: boolean): string {
+  return spec?.getAnsiCodes(foreground).join(";") ?? "";
 }
 
 function sameColors(a: CellColors, b: CellColors): boolean {
   return sameColor(a.fg, b.fg) && sameColor(a.bg, b.bg);
 }
 
-function sameRun(a: CellColors | undefined, b: CellColors | undefined): boolean {
-  return a === undefined || b === undefined ? a === b : sameColors(a, b);
+function sameColor(a: ColorRgba, b: ColorRgba): boolean {
+  return a.red === b.red && a.green === b.green && a.blue === b.blue && a.alpha === b.alpha;
 }

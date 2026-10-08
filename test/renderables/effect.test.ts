@@ -11,6 +11,7 @@ import { RichText } from "../../src/core/text.js";
 import { Effected, type CellColors, type Effect, type EffectCell } from "../../src/renderables/effect.js";
 import { Group } from "../../src/renderables/group.js";
 import { Panel } from "../../src/renderables/panel.js";
+import { ProgressBar } from "../../src/renderables/progressBar.js";
 import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { Button } from "../../src/widgets/button.js";
 import { WidgetApp } from "../../src/widgets/widget-app.js";
@@ -104,6 +105,54 @@ describe("Effected — segments are cut only where colours change", () => {
   it("cuts per cell only for an effect that colours every cell differently", () => {
     const segments = [...effected(fixed(new Segment("abc")), perColumn).render({ maxWidth: 10 })];
     expect(segments.map((s) => s.text)).toEqual(["a", "b", "c"]);
+  });
+
+  it("keeps cells whole that the output depth writes alike, though the effect gave each its own colour", () => {
+    const nearBlack: Effect = (colors, cell) => ({ fg: new ColorRgba(cell.col + 1, 0, 0), bg: colors.bg });
+    for (const colorSystem of [ColorDepth.EIGHT_BIT, ColorDepth.STANDARD]) {
+      const segments = [...effected(fixed(new Segment("abcdef")), nearBlack).render({ maxWidth: 10, colorSystem })];
+      expect(segments.map((s) => s.text)).toEqual(["abcdef"]);
+    }
+  });
+
+  it("yields a segment as it was when every moved cell is written as its colour was", () => {
+    // Odd columns nudged a unit off whatever they are written in: the default
+    // colour, a theme slot, a cube or grey-ramp entry, white. No depth below
+    // truecolor can show the move, so none is written.
+    const near = (c: ColorRgba) => new ColorRgba(c.red > 127 ? c.red - 1 : c.red + 1, c.green, c.blue);
+    const nudge: Effect = (colors, cell) => (cell.col % 2 === 0 ? colors : { fg: near(colors.fg), bg: near(colors.bg) });
+    for (const style of [undefined, "red", "#ff0000", "#ffffff", "#808080", "#ff00ff on #ff0000"]) {
+      for (const colorSystem of [ColorDepth.EIGHT_BIT, ColorDepth.STANDARD]) {
+        const segment = new Segment("abcdef", style === undefined ? undefined : Style.parse(style));
+        const segments = [...effected(fixed(segment), nudge).render({ maxWidth: 10, colorSystem })];
+        expect(segments, `${style} at ${colorSystem}`).toEqual([segment]);
+        expect(segments[0]).toBe(segment);
+      }
+    }
+  });
+
+  it("leaves a cell with no colour of its own showing a style laid beneath, however little it was moved", () => {
+    // Every ground moves visibly; one glyph is nudged and rounds back to the default colour it was handed.
+    const greenWithNudge: Effect = (colors, cell) => ({
+      fg: cell.col === 0 ? new ColorRgba(colors.fg.red - 3, colors.fg.green, colors.fg.blue) : colors.fg,
+      bg: new ColorRgba(0, 215, 0),
+    });
+    const drawn = [...Segment.applyStyle(
+      [...effected(fixed(new Segment("abc")), greenWithNudge).render({ maxWidth: 10, colorSystem: ColorDepth.EIGHT_BIT })],
+      Style.parse("red"),
+    )];
+    expect(drawn.map((s) => s.style?.color?.name)).toEqual(drawn.map(() => "red"));
+  });
+
+  it("never writes one SGR twice in a row for a pulsing ProgressBar", () => {
+    // A run, its reset, then the same SGR again: two segments the wire draws as one.
+    const repeated = /\x1b\[([\d;]+)m[^\x1b]*\x1b\[0m\x1b\[\1m/;
+    for (const colorSystem of ["256", "ansi"] as const) {
+      for (const t of [0, 1.5, 3, 7.25]) {
+        const drawn = renderToString(new ProgressBar({ width: 40, pulse: { t } }), { width: 80, colorSystem });
+        expect(drawn).not.toMatch(repeated);
+      }
+    }
   });
 
   it("never cuts a wide glyph, and counts it as the two cells it covers", () => {
@@ -220,7 +269,7 @@ describe("Effected — below truecolor", () => {
     const plain = fixed(new Segment("x"));
     for (const colorSystem of ["ansi", "256"] as const) {
       const drawn = renderToString(onMocha(plain, nudge), { width: 10, colorSystem });
-      expect(drawn).toContain("\x1b[39;49m");
+      expect(drawn).toBe(renderToString(plain, { width: 10, colorSystem }));
     }
   });
 
