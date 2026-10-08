@@ -4,15 +4,22 @@
     {
       "version": "pr-356",
       "ref": "refs/pull/356/merge",
-      "sha": "80b6cbe2bd21c00de5e28a9c59a19d6eed8d5bb9",
-      "timestamp": "2026-10-08T18:44:43.983Z",
+      "sha": "ceba59d5c080dba09ec443c702478b112408bc8d",
+      "timestamp": "2026-10-08T19:02:50.159Z",
       "commits": [
         {
-          "sha": "80b6cbe2bd21c00de5e28a9c59a19d6eed8d5bb9",
+          "sha": "ceba59d5c080dba09ec443c702478b112408bc8d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T12:42:39-06:00",
-          "message": "Merge 5752928e4af46b7080191386a8aa40582e1019a4 into 56686da190b6c15bbb5960c1549f345af6d1e50b\n"
+          "timestamp": "2026-10-08T19:01:25Z",
+          "message": "Merge ff35be55e928cc560c13242a4e094aabf441be77 into 56686da190b6c15bbb5960c1549f345af6d1e50b\n"
+        },
+        {
+          "sha": "ff35be55e928cc560c13242a4e094aabf441be77",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T13:01:18-06:00",
+          "message": "fix(docs): one rule for what only a terminal shows, in the build and the browser (rich-example-card-obsb.cau)\n\nReview (high) of #356:\n- scanEscapes (example-fragments.ts) is the one reading of which escapes a\n  drawing drops; the build's disallowedEscape and the browser's CSI-only\n  redraws are gone. ESC 7/8, ESC M, ESC c and non-link OSC now end a static\n  run; erase in line, which decodeAnsi draws, passes the build too.\n- Timers are bound lexically by runInTerminal and counted there; runsOn is\n  the one 'runs on' rule. The worker no longer patches its global timers, and\n  the build refuses a static block whose card program leaves a timer set.\n- A card link's setup lines may hold no line break and its code no \\r; the\n  slicer now emits a multi-line carried statement as one Line per line.\n- Mod-Enter runs the edit at once instead of after the typing debounce.\n- e2e no-break-space helpers use an explicit \\u00a0; the redraw test now\n  exercises the escape path, with the timer path its own test.\n- Dead .rich-live-button:disabled and duplicate .rich-playground colour\n  selectors removed; MAX_PROGRAM_BYTES says it bounds the packed JSON, and a\n  test pins that boundary.\n"
         },
         {
           "sha": "5752928e4af46b7080191386a8aa40582e1019a4",
