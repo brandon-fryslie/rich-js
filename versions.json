@@ -4,15 +4,22 @@
     {
       "version": "pr-358",
       "ref": "refs/pull/358/merge",
-      "sha": "75019da0c44b7251ef2fe421c859fc97f5dd9000",
-      "timestamp": "2026-10-08T20:32:27.269Z",
+      "sha": "4d971ab4f178f73fcfc0c0aa26aaff1ae885ba4f",
+      "timestamp": "2026-10-08T20:39:23.630Z",
       "commits": [
         {
-          "sha": "75019da0c44b7251ef2fe421c859fc97f5dd9000",
+          "sha": "4d971ab4f178f73fcfc0c0aa26aaff1ae885ba4f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T20:30:57Z",
-          "message": "Merge 2392d423e8b8c549caa47599b6cd81ec75357b2e into f99118dd0e378c092d3b305d3eb6504e5a24a028\n"
+          "timestamp": "2026-10-08T20:37:52Z",
+          "message": "Merge 0b124fed0e782c90173522f34400905e1eca39c8 into f99118dd0e378c092d3b305d3eb6504e5a24a028\n"
+        },
+        {
+          "sha": "0b124fed0e782c90173522f34400905e1eca39c8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T14:37:48-06:00",
+          "message": "fix(docs): a refused program says which file refused it, to the build and under the card (rich-example-card-b5rz.hpj)\n\nReview (medium) of #358: the build named the entry and the card named no\nfile when a non-entry file was refused. PlaygroundProgram's refused arm now\ncarries at: { file, line | null }; the eval's refusal claims no line.\n"
         },
         {
           "sha": "2392d423e8b8c549caa47599b6cd81ec75357b2e",
