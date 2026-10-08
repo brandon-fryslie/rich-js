@@ -2,28 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-347",
-      "ref": "refs/pull/347/merge",
-      "sha": "c43107754f70ad58df19b9d1fd5bf9ab47664b5c",
-      "timestamp": "2026-10-08T03:37:42.260Z",
-      "commits": [
-        {
-          "sha": "c43107754f70ad58df19b9d1fd5bf9ab47664b5c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T21:36:40-06:00",
-          "message": "Merge acffdfd0b0dfccf9fea9a62332b0388763af4591 into dcca762a594fcefda10634cafdfa88ba9121bb71\n"
-        },
-        {
-          "sha": "acffdfd0b0dfccf9fea9a62332b0388763af4591",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T21:36:36-06:00",
-          "message": "fix(progress): a given completed wins over advance in updateTask, as Rich's update (rich-progress-tsna)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "dcca762a594fcefda10634cafdfa88ba9121bb71",
