@@ -4,15 +4,22 @@
     {
       "version": "pr-351",
       "ref": "refs/pull/351/merge",
-      "sha": "2e5d7090ee339d88bea7fa3c18dd6d2212143224",
-      "timestamp": "2026-10-08T16:06:26.449Z",
+      "sha": "86884ec6120687adca4f020198c4b55c69d25cb3",
+      "timestamp": "2026-10-08T16:10:57.188Z",
       "commits": [
         {
-          "sha": "2e5d7090ee339d88bea7fa3c18dd6d2212143224",
+          "sha": "86884ec6120687adca4f020198c4b55c69d25cb3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T16:04:18Z",
-          "message": "Merge be52f7120db9a269f0c3d736b28c83dca2e087cb into 75b71956bc080e3e5a0e19e959b27dbcd9cc59be\n"
+          "timestamp": "2026-10-08T16:09:27Z",
+          "message": "Merge 6b1938266aedf4bf829094e3459a95309b012760 into 75b71956bc080e3e5a0e19e959b27dbcd9cc59be\n"
+        },
+        {
+          "sha": "6b1938266aedf4bf829094e3459a95309b012760",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T10:09:22-06:00",
+          "message": "fix(docs): card — Try it follows every edit on its own, editor-load state owned by the code state, exit 0 draws (rich-example-card-obsb.lz3)\n\n- Try it is encoded on each change, independent of the run and its tools.\n- The editor's load failure lives on the fence state; the next click that opens the editor clears it.\n- A card that leaves the page while the editor loads builds no editor.\n- process.exit(0) ends a run as finished, as in Node.\n- The example terminal and its themes load with the run's tools, not in every page's entry.\n"
         },
         {
           "sha": "be52f7120db9a269f0c3d736b28c83dca2e087cb",
