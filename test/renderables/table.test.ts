@@ -1405,13 +1405,6 @@ describe("Table markup", () => {
     expect(collectLines(captioned, { maxWidth: 20 })).toEqual(["┏━━━┓", "┃ A ┃", "┡━━━┩", "│ x │", "└───┘", "     "]);
   });
 
-  it("lets a RichText title's own justify outrank titleJustify, as Rich does", () => {
-    const t = new Table({ title: new RichText("T", { justify: "left" }), titleJustify: "right" });
-    t.addColumn("HHHHHHHH");
-    t.addRow("x");
-    expect(collectLines(t, { maxWidth: 30 })[0]).toBe("T           ");
-  });
-
   it("sizes a column holding a renderable cell to something it can hold", () => {
     // `String(panel)` is `[object Object]`, which the tag pattern swallows
     // whole — markup-parsing a non-string cell measured this column as zero.
@@ -1656,18 +1649,19 @@ describe("Table and Column styles", () => {
     expect(draw(t)).toBe(expected);
   });
 
-  // rich-table-qj6i.kpp: a `Text`'s own justify outranks titleJustify and
-  // captionJustify in Rich 9d8f9a3, which drew each of these bytes.
+  // rich-table-qj6i.kpp: a `Text`'s own justify outranks an explicit
+  // titleJustify and captionJustify in Rich 9d8f9a3, which drew each of these
+  // bytes.
   it.each([
     [
       "title",
-      { title: new RichText("T", { style: "bold", justify: "left" }) },
+      { title: new RichText("T", { style: "bold", justify: "left" }), titleJustify: "right" as const },
       "h",
       "\x1b[1mT    \x1b[0m\n┏━━━┓\n┃\x1b[1m \x1b[0m\x1b[1mh\x1b[0m\x1b[1m \x1b[0m┃\n┡━━━┩\n└───┘\n",
     ],
     [
       "caption",
-      { caption: new RichText("C", { justify: "right" }), captionStyle: "on green" },
+      { caption: new RichText("C", { justify: "right" }), captionJustify: "left" as const },
       "header",
       `${FRAME}         C\n`,
     ],
