@@ -340,7 +340,8 @@ function liveOutlet(program: CardProgram, look: { readonly label: string; readon
   const { terminal, contrast } = program;
   const start = codesOf(program);
   // Made once and kept: each scroll into view and each Restart asks for it.
-  // The opened code is the build's, which refused it had it not parsed (`refuseUnrunnable` in example-runner.ts).
+  // The opened code has parsed already: the build's, which refused it otherwise
+  // (`refuseUnrunnable` in example-runner.ts), or an edit a static run ran first (`decidedOutlet`).
   const startProgram = loader(async (): Promise<LiveProgram> => {
     const made = await programs();
     const compiled = made.playgroundProgram(programFiles(program), made.library);
