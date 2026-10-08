@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-336",
+      "ref": "refs/pull/336/merge",
+      "sha": "3e5be9db88f7770ae18ae4c67e946b7b1517c943",
+      "timestamp": "2026-10-08T00:23:12.310Z",
+      "commits": [
+        {
+          "sha": "3e5be9db88f7770ae18ae4c67e946b7b1517c943",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T18:21:54-06:00",
+          "message": "Merge 56dade9a31129d6eb0aeb96f5746edffeb2ec0d8 into bdf8f8e48b2f051d31d9ce84272954db4055f3e5\n"
+        },
+        {
+          "sha": "56dade9a31129d6eb0aeb96f5746edffeb2ec0d8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T18:21:51-06:00",
+          "message": "fix(deploy): state what the multiplexer guarantees on a cross-slot race, against v1.1.0 (rich-workflows-ui0d)\n"
+        },
+        {
+          "sha": "ab8bed0e733372542818f0b5dc4474d72c25ab39",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T11:00:03-06:00",
+          "message": "fix(deploy): one concurrency group per docs slot, so a PR run cannot cancel a pending master deploy (rich-workflows-ui0d)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "bdf8f8e48b2f051d31d9ce84272954db4055f3e5",
@@ -13,28 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-07T18:19:38-06:00",
           "message": "effects: promote the effect catalogue to src/ with a docs page (rich-effects-fxiy.br2) (#338)\n\n* effects: promote the effect catalogue to src/ with a docs page (rich-effects-fxiy.br2)\n\nShimmer, pulse, sparkle, wheel, fade-in and dissolve-out move from the\neffects-feel demo into src/renderables/effects.ts, exported from the main\nbarrel with the signed-off curves (EFFECT_CURVES), lights (EFFECT_LIGHTS)\nand SHIMMER_WIDTH. Their noise moves to src/core/noise.ts, unexported.\n\nfadeIn and dissolveOut now return a Transition: the effect, and done(t).\n\nThe demo draws from the library and its own curve file is gone; its flag\ndefaults derive from EFFECT_CURVES. The effects playground still cuts each\nprogram from the source it plays, now src/renderables/effects.ts plus the\nnoise it reaches, since the live library admits only public entry points.\n\nVerified: the demo's output at fixed t (1632 frames: every effect, both\nsubjects, Mocha and Latte, truecolor/256/16, two magnitudes, two transition\nstarts) is byte-identical before and after the switch.\n\n* effects: review fixes — shape params dropped, curves checked when built, shares refuses an unpaired colour (rich-effects-fxiy.br2)\n\nfadeIn/dissolveOut no longer take a shape: no caller passed one, and an\nown above 1 made done() lie. Each builds its phase once, so a curve with\nno duration throws as it is made; transition output unchanged (old vs new\ncompared over 216k cell-frames, 0 differ). The playground cuts each\ndeclaration from its own doc comment, so noise.ts's file header no longer\nlands in programs. Docs example draws on Mocha's ground; stale curves.ts\npointers fixed.\n\n* effects: a curve's swing is checked when its effect is made; an overshooting ease saturates (rich-effects-fxiy.br2)\n\nrequireCurve, at each effect's construction, refuses a seconds that is not\npositive and a swing outside [0, 1]. A field or visibility outside [0, 1] —\nwhat a CSS cubic-bezier with overshoot yields — is held to it where strength\nis consumed (onColors, veiled), so dissolveOut's own clamp goes. In-range\nvalues are untouched."
-        }
-      ]
-    },
-    {
-      "version": "pr-336",
-      "ref": "refs/pull/336/merge",
-      "sha": "593eac5d3357ad6674b4bd5ffc39b0b3caed5b45",
-      "timestamp": "2026-10-03T17:01:24.694Z",
-      "commits": [
-        {
-          "sha": "593eac5d3357ad6674b4bd5ffc39b0b3caed5b45",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T11:00:08-06:00",
-          "message": "Merge 55b07c4540d69ccf64ebd4192ec1e9cb2dea331a into dec2facc8b0d76a04a34f10462f118357b141ffd\n"
-        },
-        {
-          "sha": "55b07c4540d69ccf64ebd4192ec1e9cb2dea331a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T11:00:03-06:00",
-          "message": "fix(deploy): one concurrency group per docs slot, so a PR run cannot cancel a pending master deploy (rich-workflows-ui0d)\n"
         }
       ]
     }
