@@ -4,15 +4,22 @@
     {
       "version": "pr-348",
       "ref": "refs/pull/348/merge",
-      "sha": "cb6eab170191235f95c348c2f7cebdc88d4fe4e5",
-      "timestamp": "2026-10-08T03:44:40.191Z",
+      "sha": "4a684a6b29c119e2909ac20fb62df80ba8a10a02",
+      "timestamp": "2026-10-08T03:47:59.949Z",
       "commits": [
         {
-          "sha": "cb6eab170191235f95c348c2f7cebdc88d4fe4e5",
+          "sha": "4a684a6b29c119e2909ac20fb62df80ba8a10a02",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T21:43:35-06:00",
-          "message": "Merge bcc2cfe70bbce56d3e27591c3284c5f99935dcb5 into c157f260073e646950f2434768acdd652b10bbbb\n"
+          "timestamp": "2026-10-08T03:46:56Z",
+          "message": "Merge ea089af854bac259295d0c0b1eefeb3aa93661e3 into c157f260073e646950f2434768acdd652b10bbbb\n"
+        },
+        {
+          "sha": "ea089af854bac259295d0c0b1eefeb3aa93661e3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T21:46:51-06:00",
+          "message": "test(table): pin the text's own justify against an explicit titleJustify/captionJustify, one test per rule (rich-table-qj6i.kpp)\n"
         },
         {
           "sha": "bcc2cfe70bbce56d3e27591c3284c5f99935dcb5",
