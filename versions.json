@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-343",
+      "ref": "refs/pull/343/merge",
+      "sha": "c4dd0104c3101cbc349867f6859898bd496184b2",
+      "timestamp": "2026-10-08T02:26:39.244Z",
+      "commits": [
+        {
+          "sha": "c4dd0104c3101cbc349867f6859898bd496184b2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T20:25:13-06:00",
+          "message": "Merge 0c9fb5d2c8d90aa4d4a8811a258609b6de2b3b93 into 9088edbc42cb5162fecd47ea2005490c0784f44c\n"
+        },
+        {
+          "sha": "0c9fb5d2c8d90aa4d4a8811a258609b6de2b3b93",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T20:25:08-06:00",
+          "message": "fix(rule): Rule draws its line in rule.line and its title in rule.text, as Rich does (rich-rule-koc0)\n\nRich 9d8f9a3 defaults Rule's style to \"rule.line\" (bright_green) and reads\na string title with render_str(style=\"rule.text\") (null), appending it to the\nline on its own. The port drew an unstyled line and laid the line's style\nunder the title; its theme had rule.line green and rule.text bold. A centred\ntitle's gaps now leave in the same run as the line beside them, as Rich's do.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "9088edbc42cb5162fecd47ea2005490c0784f44c",
