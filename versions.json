@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-350",
+      "ref": "refs/pull/350/merge",
+      "sha": "7f992f20a7f6bbb847d4b6b584b48bd272b42353",
+      "timestamp": "2026-10-08T04:22:52.129Z",
+      "commits": [
+        {
+          "sha": "7f992f20a7f6bbb847d4b6b584b48bd272b42353",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T22:21:14-06:00",
+          "message": "Merge f02861bc930122280a43e0b58f678a61bb4b5661 into 8a9003923f8a0e11a816c580c2a25653c4736c0a\n"
+        },
+        {
+          "sha": "f02861bc930122280a43e0b58f678a61bb4b5661",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T22:21:09-06:00",
+          "message": "fix(progress): progress.percentage magenta and progress.elapsed yellow, as Rich's (rich-progress-rihd)\n\nThe rest of the progress.* block already matched rich/default_styles.py.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "8a9003923f8a0e11a816c580c2a25653c4736c0a",
