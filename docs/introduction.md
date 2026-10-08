@@ -50,7 +50,7 @@ console.print("[green]:check_mark: Done![/green] [dim]3 files written[/dim]");
 
 The Console auto-detects terminal size and color support. See [Console](./console) for the full reference.
 
-The examples in these docs assume that `console` is `new Console()` and that the library names they use come from `@promptctl/rich-js`, so they skip those two lines. Any other name stands for your own code or data, and the text around the example says what it is. Names from the subpath entries, such as `@promptctl/rich-js/widgets`, are always imported explicitly. **Try it**, beside an example's output, opens the example in the [playground](./playground) as a program of its own, with those lines and anything it uses from the examples above it written in. Most examples can also be edited where they stand: click into the code, and the output under it is redrawn from your edit as you type; **reset** puts the page's code back.
+The examples in these docs assume that `console` is `new Console()` and that the library names they use come from `@promptctl/rich-js`, so they skip those two lines. Any other name stands for your own code or data, and the text around the example says what it is. Names from the subpath entries, such as `@promptctl/rich-js/widgets`, are always imported explicitly. **Try it**, beside an example's output, opens the example in the [playground](./playground) as a program of its own, with those lines and anything it uses from the examples above it written in. Most examples can also be edited where they stand: click into the code, and the output under it is redrawn from your edit as you type, and **Try it** opens your edit rather than the page's; **reset** puts the page's code back.
 
 ## What comes next
 
