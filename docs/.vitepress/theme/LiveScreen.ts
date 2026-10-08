@@ -1,7 +1,8 @@
 /// <reference lib="dom" />
 /**
  * A program running in a live terminal on a page: a live card's output
- * (theme/RichExample.ts), and the landing page's hero (theme/RichShowcase.ts).
+ * (theme/RichExample.ts), and the landing page's hero, one with its code
+ * hidden (theme/RichShowcase.ts).
  *
  * This is where the site decides when such a program runs. It runs while its
  * terminal is on screen, from the start each time it scrolls into view, and

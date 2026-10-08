@@ -35,6 +35,9 @@ test("the hero's text and buttons are on the page before its terminal has loaded
   await expect(page.locator(".VPHero .text")).toHaveText("Beautiful terminal output");
   await expect(page.locator(".VPHero .actions")).toContainText("Get Started");
   await expect(showcase(page)).toBeVisible();
+  // It is a docs card with its code hidden: neither the page's code nor an editor.
+  await expect(showcase(page).locator(".rich-example-card .rich-live-screen")).toHaveCount(1);
+  await expect(showcase(page).locator("pre, .cm-editor")).toHaveCount(0);
   await expect(showcase(page).locator(".xterm")).toHaveCount(0);
 
   release();
@@ -111,7 +114,7 @@ for (const deviceScaleFactor of [1, 1.25, 1.5]) {
           await route.continue();
         });
         const errors = await open(page);
-        const card = showcase(page).locator(".rich-live");
+        const card = showcase(page).locator(".rich-example-card");
         await expect(card).toBeVisible();
         await expect(showcase(page).locator(".xterm")).toHaveCount(0);
         const before = await card.evaluate((element) => element.getBoundingClientRect().height);

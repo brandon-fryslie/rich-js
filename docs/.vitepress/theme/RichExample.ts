@@ -16,6 +16,10 @@
  *   unfolded and line numbers on. An edit is written back to the hash once
  *   typing pauses, so the address bar is a link to what the editor holds.
  *
+ * A third place shows one with its code hidden and nothing to edit: the
+ * landing page's hero (RichShowcase.ts), a live card's output in the card's
+ * frame, built there and not with `cardCore`.
+ *
  * Once typing pauses the card shows what its program (`cardSource`) does with
  * the edit, in what stands under the code, its outlet:
  *
