@@ -34,6 +34,7 @@
  */
 import ts from "typescript";
 import type { Fence } from "./example-markers.js";
+import type { CardSetup } from "./example-card.js";
 import { SourceBuilder, importBindings, importLines, splitImports, type ExampleProgram, type ImportBinding } from "./example-program.js";
 
 /** A program the checker has read, and the file in it that is `program`'s source. */
@@ -226,4 +227,18 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
     if (open > 0) add("}".repeat(open), null);
     return { page: program.page, source: out.lines.join("\n"), origins: out.origins, blocks: [target] };
   };
+}
+
+/**
+ * A block's program, cut where the block's own lines stand: what the program
+ * writes above them, and what it writes below. The block's lines are one run,
+ * the program's last part, so everything else is setup.
+ */
+export function aroundBlock(program: ExampleProgram): CardSetup {
+  const block = program.blocks[0]!;
+  const own = (line: number | null) => line !== null && line > block.line && line < block.closeLine;
+  const first = program.origins.findIndex(own);
+  if (first === -1) throw new Error(`docs/${program.page}:${block.line}: the block's program holds none of the block's lines`);
+  const lines = program.source.split("\n");
+  return { before: lines.slice(0, first), after: lines.slice(first + program.origins.filter(own).length) };
 }

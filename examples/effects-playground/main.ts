@@ -22,7 +22,7 @@
 import { library, programs } from "virtual:effects-playground";
 import runtime from "virtual:rich-live/runtime";
 import { LiveTerminal, elementFont, type LiveState } from "../../docs/.vitepress/theme/live-terminal.js";
-import { createEditor } from "../../docs/.vitepress/theme/playground-editor.js";
+import { PROGRAM_PANE, createEditor } from "../../docs/.vitepress/theme/playground-editor.js";
 import { EASES, type TerminalTheme } from "../../src/index.js";
 import { THEMES } from "../effects-feel/app.js";
 import { DEPTHS, EFFECTS, type EffectName } from "../effects-feel/vocabulary.js";
@@ -171,7 +171,7 @@ async function playground(effect: EffectName, parent: HTMLElement): Promise<void
     clearTimeout(pending);
     pending = setTimeout(apply, RUN_AFTER_MS);
   };
-  const editor = createEditor(editorParent, programs[effect], { change: changed, run: restart });
+  const editor = createEditor(editorParent, programs[effect], { change: changed, run: restart }, PROGRAM_PANE);
   restartButton.addEventListener("click", restart);
   reset.addEventListener("click", () => editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: programs[effect] } }));
   reconcile(programs[effect]);

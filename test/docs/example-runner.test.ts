@@ -27,7 +27,10 @@ import {
 import { PAGE_PARSER, scanFences } from "../../docs/.vitepress/example-markers.js";
 import { runInTerminal } from "../../docs/.vitepress/simulated-process.js";
 import { decodeProgram } from "../../docs/.vitepress/playground-hash.js";
+import { cardSource } from "../../docs/.vitepress/example-card.js";
+import { playgroundScript } from "../../docs/.vitepress/theme/playground-program.js";
 import { EXAMPLE_TERMINAL } from "../../docs/.vitepress/example-terminal.js";
+import type { CardData } from "../../docs/.vitepress/example-card.js";
 
 const compiler = new ExampleCompiler();
 const library = liveLibraryOnce();
@@ -45,21 +48,42 @@ const PANEL = readFileSync(path.join(REPO_ROOT, "docs", "panel.md"), "utf-8");
 const page = (...blocks: string[]) => blocks.join("\n\n");
 const fence = (code: string, info = "ts") => `\`\`\`${info}\n${code}\n\`\`\``;
 
-/** The output wrappers the run wrote, in page order. */
-const outputs = (markdown: string) => [...markdown.matchAll(/<div class="rich-example-output"[^\n]*<\/div>/g)].map((m) => m[0]);
+/**
+ * Every example the run wrote, in page order: an editable card, read from the
+ * constant the page's script hands its component, or an output written under
+ * the fence.
+ */
+type Example = { readonly kind: "card"; readonly card: CardData } | { readonly kind: "output"; readonly html: string };
+
+function examples(markdown: string): Example[] {
+  const data = new Map([...markdown.matchAll(/^const (__richCard_\d+) = (.*);$/gm)].map((m) => [m[1]!, JSON.parse(m[2]!) as CardData]));
+  return [...markdown.matchAll(/<RichExample :card="(__richCard_\d+)">|<div class="rich-example-output"[^\n]*<\/div>/g)].map((m) =>
+    m[1] === undefined ? { kind: "output", html: m[0] } : { kind: "card", card: data.get(m[1])! },
+  );
+}
+
+/** The editable cards the run wrote, in page order. */
+const cards = (markdown: string): CardData[] => examples(markdown).flatMap((e) => (e.kind === "card" ? [e.card] : []));
+
+/** The outputs the run wrote under a fence, in page order. */
+const outputs = (markdown: string): string[] => examples(markdown).flatMap((e) => (e.kind === "output" ? [e.html] : []));
+
+/** What each example shows under its code, in page order: a card's two fragments, or the output written under the fence. */
+const shown = (markdown: string): string[] => examples(markdown).map((e) => (e.kind === "card" ? e.card.output.light + e.card.output.dark : e.html));
 
 describe("docs/panel.md", { timeout: 60_000 }, () => {
-  it("carries a light and a dark fragment under every example", async () => {
+  it("makes every example a card carrying a light and a dark fragment", async () => {
     const result = await run(PANEL, "panel.md");
-    const shown = outputs(result);
-    expect(shown).toHaveLength(scanFences("panel.md", PANEL).length);
-    for (const html of shown) {
-      expect(html).toMatch(/<div class="rich-example-light" v-pre><pre style="[^"]*background:#fafafa/);
-      expect(html).toMatch(/<div class="rich-example-dark" v-pre><pre style="[^"]*background:#282c34/);
+    const made = cards(result);
+    expect(made).toHaveLength(scanFences("panel.md", PANEL).length);
+    for (const { output } of made) {
+      expect(output.light).toMatch(/^<pre style="[^"]*background:#fafafa/);
+      expect(output.dark).toMatch(/^<pre style="[^"]*background:#282c34/);
     }
     const unwrapped = result
-      .replace(/\n<div class="rich-example">\n\n/g, "")
-      .replace(/\n\n<div class="rich-example-output"[^\n]*<\/div>\n\n<\/div>\n/g, "");
+      .replace(/^\n<script setup>\n.*?\n<\/script>\n\n/s, "")
+      .replace(/\n<RichExample :card="__richCard_\d+">\n\n/g, "")
+      .replace(/\n\n<\/RichExample>\n/g, "");
     expect(unwrapped).toBe(PANEL);
   });
 
@@ -87,20 +111,36 @@ describe("the example widget", () => {
   // The fence stays a fence for VitePress to highlight; the widget is the
   // element around it and the output panel under it, each between blank lines
   // so markdown still parses the fence and the prose after it.
-  it("puts the fence and its output in one element, the output labelled with where it came from", async () => {
+  it("puts a static fence in an editable card, its output labelled with where it came from", async () => {
     const result = await run(`Before.\n${fence("console.print(1);")}\nAfter.`);
     expect(result).toMatch(
-      /^Before\.\n\n<div class="rich-example">\n\n```ts\nconsole\.print\(1\);\n```\n\n<div class="rich-example-output"[^>\n]*>[^\n]*<\/div>\n\n<\/div>\n\nAfter\.$/,
+      /^\n<script setup>\nconst __richCard_0 = \{[^\n]*\};\n<\/script>\n\nBefore\.\n\n<RichExample :card="__richCard_0">\n\n```ts\nconsole\.print\(1\);\n```\n\n<\/RichExample>\n\nAfter\.$/,
     );
-    const [shown] = outputs(result);
-    expect(shown).toContain('<span class="rich-example-name">Output</span><span class="rich-example-caption">produced by running the code above</span>');
+    const [card] = cards(result);
+    expect(card).toMatchObject({ code: "console.print(1);", label: "Output", caption: "produced by running the code above" });
+  });
+
+  it("hands a card the setup its block runs on, and the edited block runs in its place", async () => {
+    const result = await run(page(fence('const title = "shared";', "ts silent"), fence('import { Rule } from "@promptctl/rich-js";\nconsole.print(new Rule(title));')));
+    const [card] = cards(result);
+    expect(card!.setup.before.join("\n")).toContain('const title = "shared";');
+    // The block's own lines are the card's code, not part of its setup.
+    expect([...card!.setup.before, ...card!.setup.after].join("\n")).not.toContain("console.print");
+    const program = cardSource(card!.setup, card!.code.replace("new Rule(title)", "title.toUpperCase()"));
+    expect(await liveOutput(playgroundScript(program, (await library()).script))).toContain("SHARED");
+  });
+
+  it("keeps a string in a card's data from closing the page's script", async () => {
+    const result = await run(fence('console.print("</script>");'));
+    expect(result).not.toMatch(/^const __richCard_0 = .*<\/script>/m);
+    expect(cards(result)[0]!.code).toBe('console.print("</script>");');
   });
 
   // custom.css shrinks an output's font to fit its card by this count, so a
   // short output keeps the code size however narrow the card.
   it("says how many columns its output draws: a static one its widest row, a live one the terminal", async () => {
-    const [short] = outputs(await run(fence('console.print("ab\\nabcd");')));
-    expect(short).toMatch(/^<div class="rich-example-output" style="--rich-example-columns:4">/);
+    const [short] = cards(await run(fence('console.print("ab\\nabcd");')));
+    expect(short!.output.columns).toBe(4);
     const [live] = outputs((await runPage(`# t\n\n${fence('console.print("live");', "ts live")}`)).markdown);
     expect(live).toMatch(new RegExp(`^<div class="rich-example-output" style="--rich-example-columns:${EXAMPLE_TERMINAL.columns}">`));
   });
@@ -111,7 +151,7 @@ describe("one page, one program", () => {
     const result = await run(
       page(fence('console.print(new Rule("one"));'), fence("const console = new Console({ width: 20 });\nconsole.print(new Rule());")),
     );
-    const [first, second] = outputs(result);
+    const [first, second] = shown(result);
     expect(first).toContain("one");
     // 20 cells of rule in each of the two fragments.
     expect(second!.match(/─/g)).toHaveLength(40);
@@ -119,19 +159,19 @@ describe("one page, one program", () => {
 
   it("lets a block see what the blocks above it declared", async () => {
     const result = await run(page(fence('const title = "shared";', "ts silent"), fence("console.print(title);")));
-    expect(outputs(result)[1]).toContain("shared");
+    expect(shown(result)[1]).toContain("shared");
   });
 
   it("reads the page's exampleContext, which may not print", async () => {
     const context = ["---", "exampleContext: |", "  const items = [\"a\", \"b\"];", "---", ""].join("\n");
-    expect(outputs(await run(context + fence('console.print(items.join("+"));')))[0]).toContain("a+b");
+    expect(shown(await run(context + fence('console.print(items.join("+"));')))[0]).toContain("a+b");
     const noisy = ["---", "exampleContext: |", '  console.print("hi");', "---", ""].join("\n");
     await expect(run(noisy + fence('console.print("x");'))).rejects.toThrow(/exampleContext wrote/);
   });
 
   it("lets the exampleContext redeclare console for every block below it", async () => {
     const context = ["---", "exampleContext: |", "  const console = new Console({ width: 20 });", "---", ""].join("\n");
-    expect(outputs(await run(context + fence("console.print(new Rule());")))[0]!.match(/─/g)).toHaveLength(40);
+    expect(shown(await run(context + fence("console.print(new Rule());")))[0]!.match(/─/g)).toHaveLength(40);
   });
 
   it("blames the exampleContext, not the first block, when the context throws", async () => {
@@ -146,7 +186,7 @@ describe("one page, one program", () => {
   });
 
   it("merges a type import and a value import of one export, from any entry point", async () => {
-    const shown = outputs(
+    const drawn = shown(
       await run(
         page(
           fence('import { BrowserTerminalHost } from "@promptctl/rich-js/host";\nconsole.print(typeof BrowserTerminalHost);'),
@@ -154,35 +194,35 @@ describe("one page, one program", () => {
         ),
       ),
     );
-    expect(shown[0]).toContain("function");
-    expect(shown[1]).toContain("null");
+    expect(drawn[0]).toContain("function");
+    expect(drawn[1]).toContain("null");
   });
 
   it("decodes a character whose bytes arrive in two writes", async () => {
-    const shown = outputs(await run(fence("process.stdout.write(new Uint8Array([0xe2, 0x94]));\nprocess.stdout.write(new Uint8Array([0x80]));")))[0]!;
-    expect(shown).toContain("─");
-    expect(shown).not.toContain("\uFFFD");
+    const drawn = shown(await run(fence("process.stdout.write(new Uint8Array([0xe2, 0x94]));\nprocess.stdout.write(new Uint8Array([0x80]));")))[0]!;
+    expect(drawn).toContain("─");
+    expect(drawn).not.toContain("\uFFFD");
   });
 
   it("assumes the main barrel's types as well as its values", async () => {
-    const shown = outputs(await run(fence("const width = (options: RenderOptions) => options.maxWidth;\nconsole.print(String(typeof width));")))[0]!;
-    expect(shown).toContain("function");
+    const drawn = shown(await run(fence("const width = (options: RenderOptions) => options.maxWidth;\nconsole.print(String(typeof width));")))[0]!;
+    expect(drawn).toContain("function");
   });
 
   it("lets a block import a barrel type it also uses as a value", async () => {
-    const shown = outputs(
+    const drawn = shown(
       await run(fence('import type { Console } from "@promptctl/rich-js";\nconst c: Console = new Console({ width: 20 });\nc.print("typed");')),
     )[0]!;
-    expect(shown).toContain("typed");
+    expect(drawn).toContain("typed");
   });
 
   it("lets a static block print a hyperlink", async () => {
-    expect(outputs(await run(fence('console.print("[link=https://example.com]site[/link]");')))[0]).toContain("site");
+    expect(shown(await run(fence('console.print("[link=https://example.com]site[/link]");')))[0]).toContain("site");
   });
 
   it("leaves prose written straight under a fence to markdown", async () => {
     const result = await run(`${fence('console.print("x");')}\n**after**`);
-    expect(result).toMatch(/<\/div>\n\n\*\*after\*\*$/);
+    expect(result).toMatch(/<\/RichExample>\n\n\*\*after\*\*$/);
   });
 
   it("shows a silent block's note in place of output", async () => {
@@ -254,9 +294,9 @@ describe("a live block", () => {
 
   it("puts the card of an example in a ::: container inside that container", async () => {
     const result = await run(["::: tip Placement", "", fence('console.print("x");'), "", ":::"].join("\n"));
-    const cards = PAGE_PARSER.parse(result, {}).filter((t) => t.type === "html_block" && t.content.includes("rich-example"));
-    expect(cards.length).toBeGreaterThan(0);
-    expect(cards.map((t) => t.level)).toEqual(cards.map(() => 1));
+    const card = PAGE_PARSER.parse(result, {}).filter((t) => t.type === "html_block" && t.content.includes("RichExample"));
+    expect(card.length).toBeGreaterThan(0);
+    expect(card.map((t) => t.level)).toEqual(card.map(() => 1));
   });
 
   it("is not refused for a <script setup> shown in a fence", async () => {
@@ -307,8 +347,10 @@ describe("a live block", () => {
 
 /** The program each "Try it" link on the page opens, in page order, and the address before its hash. */
 async function tried(markdown: string): Promise<{ href: string; program: string }[]> {
-  const links = [...markdown.matchAll(/<a class="rich-example-try" href="([^"#]*)#([^"]+)">Try it<\/a>/g)];
-  return Promise.all(links.map(async ([, href, hash]) => ({ href: href!, program: await decodeProgram(hash!) })));
+  const links = examples(markdown).flatMap((e) =>
+    e.kind === "card" ? [`${e.card.tryIt.playground}#${e.card.tryIt.program}`] : [...e.html.matchAll(/<a class="rich-example-try" href="([^"]*)">Try it<\/a>/g)].map((m) => m[1]!),
+  );
+  return Promise.all(links.map(async (link) => ({ href: link.split("#")[0]!, program: await decodeProgram(link.split("#")[1]!) })));
 }
 
 describe("Try it", () => {
@@ -318,7 +360,7 @@ describe("Try it", () => {
     expect(first!.program).toBe(['import { Console } from "@promptctl/rich-js";', "", "const console = new Console();", "", 'const title = "shared";\nconsole.print("first");'].join("\n"));
     // What the first block printed is not the second's to print again.
     expect(second!.program).toBe(['import { Console } from "@promptctl/rich-js";', "", "const console = new Console();", "", 'const title = "shared";', "", "console.print(title);"].join("\n"));
-    expect(outputs(result)[1]).toContain('<a class="rich-example-try" href="playground#');
+    expect(cards(result)[1]!.tryIt.playground).toBe("playground");
   });
 
   it("opens docs/panel.md's blocks naming only what each uses, a block that imports keeping its own imports", async () => {
@@ -411,22 +453,22 @@ describe("Try it", () => {
 
 describe("a page run's time and random numbers", () => {
   /** What an output shows, as text: its light fragment without the markup. */
-  const text = (html: string) => /<div class="rich-example-light" v-pre>(.*?)<\/div>/.exec(html)![1]!.replace(/<[^>]*>/g, "").replaceAll("&#10;", "").trim();
+  const text = (card: CardData) => card.output.light.replace(/<[^>]*>/g, "").trim();
 
   it("are one instant and one sequence for every program the run executes", async () => {
     // Each block is run twice, in the chain and as its "Try it" program, and the two must print the same.
-    const shown = outputs(await run(page(fence("console.print(String(Date.now()), String(Math.random()));"), fence("console.print(String(Date.now()));"))));
-    const [first, second] = shown.map(text);
+    const made = cards(await run(page(fence("console.print(String(Date.now()), String(Math.random()));"), fence("console.print(String(Date.now()));"))));
+    const [first, second] = made.map(text);
     expect(first!.split(" ")[0]).toBe(second);
   });
 
   it("keep \`Date()\` a string, as a host's is", async () => {
-    expect(text(outputs(await run(fence("console.print(typeof Date(), Date() === new Date().toString());")))[0]!)).toBe("string true");
+    expect(text(cards(await run(fence("console.print(typeof Date(), Date() === new Date().toString());")))[0]!)).toBe("string true");
   });
 
   it("are the build's own, not a constant", async () => {
     const markdown = fence("console.print(String(Math.random()));");
-    expect(text(outputs(await run(markdown))[0]!)).not.toBe(text(outputs(await run(markdown))[0]!));
+    expect(text(cards(await run(markdown))[0]!)).not.toBe(text(cards(await run(markdown))[0]!));
   });
 });
 
@@ -451,7 +493,7 @@ describe("a page that breaks its contract fails the build", () => {
     [
       "a live block on a page with its own <script setup>",
       page("<script setup>\nconst n = 1;\n</script>", fence("console.print(1);", "ts live")),
-      /fixture\.md:1: a page with a live example cannot have its own <script setup>/,
+      /fixture\.md:1: a page with a live example or an editable card cannot have its own <script setup>/,
     ],
     [
       "an exampleContext whose code is not indented",

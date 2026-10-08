@@ -3,7 +3,7 @@
  * process. Its first message is the program and its terminal; every later one
  * is a key typed at the terminal, or a mark it answers at once. Removing the
  * sandboxed frame that made the worker is how the page stops the program.
- * live-terminal.ts owns why a worker, and why in a frame.
+ * sandbox.ts owns why a worker, and why in a frame.
  *
  * It reaches the page as text (`LIVE_RUNTIME_MODULE` in example-runner.ts): one
  * classic script whose only statement is a call of `serve`, so nothing here may
@@ -11,7 +11,7 @@
  * `"sideEffects": false` promises; a bundle of a bare import of it is empty.
  */
 import { runInTerminal } from "../simulated-process.js";
-import type { FromWorker, ToWorker } from "./live-terminal.js";
+import type { FromWorker, ToWorker } from "./sandbox.js";
 
 /**
  * The worker's global scope, as far as this file uses it. Declared here rather

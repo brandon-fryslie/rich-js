@@ -8,6 +8,15 @@ declare module "virtual:rich-live/runtime" {
 }
 
 /**
+ * The live library's script: served by the docs-examples plugin as
+ * `LIBRARY_MODULE` (example-runner.ts), which owns what it is.
+ */
+declare module "virtual:rich-live/library" {
+  const library: string;
+  export default library;
+}
+
+/**
  * What the playground page runs: served by the docs-examples plugin as
  * `PLAYGROUND_MODULE` (example-runner.ts), which owns what each is.
  */

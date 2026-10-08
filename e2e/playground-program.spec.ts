@@ -194,6 +194,6 @@ test("a worker the frame cannot start ends the run with a report, rather than le
   await play(page, 'process.stdout.write("never");');
   await expect(state(page)).toHaveAttribute("data-state", "exited");
   // The state changes as the report is written; xterm draws the write a moment later.
-  await expect.poll(() => rows(page)).toMatch(/The live terminal's worker did not (load|start)/);
+  await expect.poll(() => rows(page)).toMatch(/The worker that runs the program did not (load|start)/);
   expect(errors).toEqual([]);
 });
