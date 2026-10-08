@@ -110,6 +110,21 @@ test("a program that prints without end is stopped in its worker, and the page s
   expect(errors).toEqual([]);
 });
 
+test("a program that exits 0 is drawn as one that finished", async ({ page }) => {
+  const errors = await open(page, "tables.html");
+  await edit(page);
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.press("Home");
+  await page.keyboard.type('table.addRow("Oct 8, 2026", "An Exiting Row", "$1", "$2");\n');
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.type("\nprocess.exit(0);");
+  // Output is no longer stale only once it is drawn from the code with the exit in it.
+  await expect(firstCard(page).locator(".rich-example-output")).not.toHaveClass(/rich-example-stale/, { timeout: 15_000 });
+  expect(await shown(page)).toContain("An Exiting Row");
+  await expect(firstCard(page).locator(".rich-example-failure")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test("Try it opens the card's edit", async ({ page }) => {
   const errors = await open(page, "tables.html");
   await edit(page);

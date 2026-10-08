@@ -22,7 +22,6 @@
 import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, type PropType } from "vue";
 import type { EditorView } from "@codemirror/view";
 import { cardSource, codeLine, type CardData } from "../example-card.js";
-import { EXAMPLE_TERMINAL, STATIC_RUN_LIMIT_MS } from "../example-terminal.js";
 import type { Drawn } from "../example-fragments.js";
 import { encodeProgram } from "../playground-hash.js";
 import type { StaticEnd, StaticRun } from "./static-run.js";
@@ -43,14 +42,19 @@ function loader<T>(load: () => Promise<T>): () => Promise<T> {
   return () => (loaded ??= load().catch((error: unknown) => ((loaded = undefined), Promise.reject(error))));
 }
 
-/** What running an edit needs, loaded the first time a card runs one. */
+/**
+ * What running an edit needs, loaded the first time a card runs one. The
+ * example terminal is among it: its themes would otherwise be in every page's
+ * first download.
+ */
 const tools = loader(async () => {
-  const [runtime, library, program, fragments, run] = await Promise.all([
+  const [runtime, library, program, fragments, run, terminal] = await Promise.all([
     import("virtual:rich-live/runtime"),
     import("virtual:rich-live/library"),
     import("./playground-program.js"),
     import("../example-fragments.js"),
     import("./static-run.js"),
+    import("../example-terminal.js"),
   ]);
   return {
     runtime: runtime.default,
@@ -59,6 +63,8 @@ const tools = loader(async () => {
     thrownAt: program.thrownAt,
     drawOutput: fragments.drawOutput,
     runStatic: run.runStatic,
+    terminal: terminal.EXAMPLE_TERMINAL,
+    limitMs: terminal.STATIC_RUN_LIMIT_MS,
   };
 });
 
@@ -67,11 +73,16 @@ type Tools = Awaited<ReturnType<typeof tools>>;
 /** The editor, loaded the first time a reader's pointer or focus reaches a card, so a click has it at hand. */
 const editorModules = loader(() => Promise.all([import("./playground-editor.js"), import("@codemirror/view"), import("@codemirror/state")]));
 
-/** Where the code stands: the page's highlighted fence, an editor on its way, or the editor. */
+/**
+ * Where the code stands: the page's highlighted fence, with why the editor did
+ * not load if a click asked for it and it failed; an editor on its way; the
+ * editor; or nowhere, the card having left the page.
+ */
 type Code =
-  | { readonly kind: "fence" }
+  | { readonly kind: "fence"; readonly refused: string | null }
   | { readonly kind: "opening" }
-  | { readonly kind: "editor"; readonly view: EditorView };
+  | { readonly kind: "editor"; readonly view: EditorView }
+  | { readonly kind: "unmounted" };
 
 const message = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
@@ -83,13 +94,13 @@ export default defineComponent({
   setup(props, { slots }) {
     const root = ref<HTMLElement | null>(null);
     const host = ref<HTMLElement | null>(null);
-    const code = shallowRef<Code>({ kind: "fence" });
+    const code = shallowRef<Code>({ kind: "fence", refused: null });
     const text = ref(props.card.code);
     /** The output shown, and the code it is the output of. */
     const drawn = shallowRef<{ readonly code: string; readonly output: Drawn }>({ code: props.card.code, output: props.card.output });
     const failure = ref<string | null>(null);
-    /** The hash "Try it" opens the playground on: the page's program, or the card's edit. */
-    const tryIt = ref(props.card.tryIt.program);
+    /** The hash "Try it" opens the playground on, the page's program or the card's edit; or why an edit has none. */
+    const tryIt = shallowRef<{ readonly hash: string } | { readonly refused: string }>({ hash: props.card.tryIt.program });
     const edited = computed(() => text.value !== props.card.code);
 
     // [LAW:no-ambient-temporal-coupling] Each edit is a turn, and only the
@@ -118,23 +129,22 @@ export default defineComponent({
     };
 
     // [LAW:no-silent-failure] Whatever fails on the way, loading, compiling,
-    // linking, running or drawing, is said under the output.
+    // running or drawing, is said under the output.
     async function run(source: string, mine: number): Promise<void> {
       try {
-        const whole = cardSource(props.card.setup, source);
-        const [made, hash] = await Promise.all([tools(), encodeProgram(whole)]);
+        const made = await tools();
         if (mine !== turn) return;
-        tryIt.value = hash;
         running = made.runStatic(root.value!, {
           runtime: made.runtime,
-          script: made.playgroundScript(whole, made.library),
-          terminal: EXAMPLE_TERMINAL,
-          limitMs: STATIC_RUN_LIMIT_MS,
+          script: made.playgroundScript(cardSource(props.card.setup, source), made.library),
+          terminal: made.terminal,
+          limitMs: made.limitMs,
           limitChars: OUTPUT_LIMIT_CHARS,
         });
         const { bytes, end } = await running.result;
         if (mine !== turn || end.kind === "stopped") return;
-        if (end.kind === "finished") {
+        // A program that exits 0 has ended as one that finished, as in Node.
+        if (end.kind === "finished" || (end.kind === "exited" && end.code === 0)) {
           drawn.value = { code: source, output: made.drawOutput(bytes) };
           failure.value = null;
         } else {
@@ -145,6 +155,15 @@ export default defineComponent({
       }
     }
 
+    /** Point "Try it" at the card's program around `source`, which needs nothing a run does. */
+    async function link(source: string, mine: number): Promise<void> {
+      const linked = await encodeProgram(cardSource(props.card.setup, source)).then(
+        (hash) => ({ hash }),
+        (error: unknown) => ({ refused: `"Try it" cannot carry this edit: ${message(error)}` }),
+      );
+      if (mine === turn) tryIt.value = linked;
+    }
+
     /** The code changed to `source`: show the page's output for the page's code, and run any other. */
     function changed(source: string): void {
       text.value = source;
@@ -153,10 +172,11 @@ export default defineComponent({
       running?.stop();
       if (source === props.card.code) {
         drawn.value = { code: source, output: props.card.output };
-        tryIt.value = props.card.tryIt.program;
+        tryIt.value = { hash: props.card.tryIt.program };
         failure.value = null;
         return;
       }
+      void link(source, mine);
       pending = setTimeout(() => void run(source, mine), RUN_AFTER_MS);
     }
 
@@ -165,13 +185,14 @@ export default defineComponent({
       if (code.value.kind !== "fence") return;
       code.value = { kind: "opening" };
       const modules = await editorModules().catch((error: unknown) => {
-        code.value = { kind: "fence" };
-        failure.value = `The editor could not load: ${message(error)}`;
+        if (code.value.kind === "opening") code.value = { kind: "fence", refused: `The editor could not load: ${message(error)}` };
         return null;
       });
       if (modules === null) return;
       const [{ createEditor }, { EditorView: View }, { Prec }] = modules;
       await nextTick();
+      // The card may have left the page while the editor loaded.
+      if (code.value.kind !== "opening") return;
       const view = createEditor(host.value!, props.card.code, { change: changed, run: () => changed(view.state.doc.toString()) }, [
         View.contentAttributes.of({ "aria-label": "Example code" }),
         // The fence's own measures, so the code does not move when the editor takes its place.
@@ -224,12 +245,14 @@ export default defineComponent({
       running?.stop();
       const now = code.value;
       if (now.kind === "editor") now.view.destroy();
+      code.value = { kind: "unmounted" };
     });
 
     return () => {
       const now = code.value;
       const { card } = props;
       const stale = drawn.value.code !== text.value;
+      const link = tryIt.value;
       return h(
         "div",
         {
@@ -250,11 +273,15 @@ export default defineComponent({
             h("div", { class: "rich-example-label" }, [
               h("span", { class: "rich-example-name" }, card.label),
               h("span", { class: "rich-example-caption" }, card.caption),
-              h("a", { class: "rich-example-try", href: `${card.tryIt.playground}#${tryIt.value}` }, "Try it"),
+              "hash" in link
+                ? h("a", { class: "rich-example-try", href: `${card.tryIt.playground}#${link.hash}` }, "Try it")
+                : h("span", { class: "rich-example-try", "aria-disabled": "true", title: link.refused }, "Try it"),
             ]),
             h("div", { class: "rich-example-light", innerHTML: drawn.value.output.light }),
             h("div", { class: "rich-example-dark", innerHTML: drawn.value.output.dark }),
-            failure.value === null ? null : h("p", { class: "rich-example-failure", role: "alert" }, failure.value),
+            ...[failure.value, now.kind === "fence" ? now.refused : null].map((said) =>
+              said === null ? null : h("p", { class: "rich-example-failure", role: "alert" }, said),
+            ),
           ]),
         ],
       );
