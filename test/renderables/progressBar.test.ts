@@ -3,8 +3,9 @@ import { ProgressBar } from "../../src/renderables/progressBar.js";
 import { Segment } from "../../src/core/segment.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import { getStyle } from "../../src/core/protocol.js";
-import { ColorDepth } from "../../src/core/color.js";
-import { Style } from "../../src/core/style.js";
+import { ColorDepth, ColorSpec } from "../../src/core/color.js";
+import { renderToString } from "../../src/core/render.js";
+import { Oklch } from "../../src/core/oklch.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -126,16 +127,12 @@ describe("ProgressBar", () => {
       expect(back?.style).toEqual(getStyle(opts, "bar.back"));
     });
 
-    it("draws in Rich's colours: the fill rgb(249,38,114), the back grey23, a finished bar rgb(114,156,31)", () => {
-      const opts: RenderOptions = { maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR };
-      const half = collectSegments(new ProgressBar({ total: 10, completed: 5, width: 10 }), opts);
-      expect(half.map((s) => [s.text, s.style])).toEqual([
-        ["━━━━━", Style.parse("rgb(249,38,114)")],
-        ["╺", Style.parse("grey23")],
-        ["━━━━", Style.parse("grey23")],
-      ]);
-      const done = collectSegments(new ProgressBar({ total: 10, completed: 10, width: 10 }), opts);
-      expect(done.map((s) => [s.text, s.style])).toEqual([["━━━━━━━━━━", Style.parse("rgb(114,156,31)")]]);
+    it("writes Rich's bytes: the fill rgb(249,38,114), a finished bar rgb(114,156,31)", () => {
+      // Rich's `Console(color_system="truecolor").print(bar, end="")` for each bar.
+      const half = renderToString(new ProgressBar({ total: 10, completed: 5, width: 10 }), { colorSystem: "truecolor" });
+      expect(half).toBe("\x1b[38;2;249;38;114m━━━━━\x1b[0m\x1b[38;5;237m╺\x1b[0m\x1b[38;5;237m━━━━\x1b[0m");
+      const done = renderToString(new ProgressBar({ total: 10, completed: 10, width: 10 }), { colorSystem: "truecolor" });
+      expect(done).toBe("\x1b[38;2;114;156;31m━━━━━━━━━━\x1b[0m");
     });
 
     it("draws half a cell when the fill lands on a half", () => {
@@ -215,6 +212,23 @@ describe("ProgressBar", () => {
       const segments = frames.flatMap((t) => collectSegments(new ProgressBar({ width: 40, style, pulse: { t } }), TRUECOLOR));
       expect(new Set(segments.map((s) => s.style?.color?.getTruecolor().hex)).size).toBeGreaterThan(1);
       for (const s of segments) expect(s.style?.bgcolor).toBeUndefined();
+    });
+
+    it("lights the track toward Rich's `bar.pulse`, rgb(249,38,114)", () => {
+      const oklch = (color: ColorSpec) => Oklch.fromRgba(color.getTruecolor());
+      const glows = Array.from({ length: 40 }, (_, i) => i * 0.5)
+        .flatMap((t) => collectSegments(new ProgressBar({ width: 40, pulse: { t } }), TRUECOLOR))
+        .flatMap((s) => (s.style?.color ? [oklch(s.style.color)] : []));
+      const brightest = glows.reduce((a, b) => (b.c > a.c ? b : a));
+      expect(Math.abs(brightest.h - oklch(ColorSpec.parse("rgb(249,38,114)")).h)).toBeLessThan(15);
+    });
+
+    it("lights the track in the 16-colour slot nearest the light, red", () => {
+      const STANDARD: RenderOptions = { maxWidth: 80, colorSystem: ColorDepth.STANDARD };
+      const names = Array.from({ length: 40 }, (_, i) => i * 0.5)
+        .flatMap((t) => collectSegments(new ProgressBar({ width: 40, pulse: { t } }), STANDARD))
+        .map((s) => s.style?.color?.name);
+      expect(names).toContain("color(1)");
     });
 
     it("draws nothing on an output with no colour, where the back and its light cannot be drawn", () => {
