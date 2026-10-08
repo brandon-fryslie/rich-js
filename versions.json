@@ -4,15 +4,22 @@
     {
       "version": "pr-341",
       "ref": "refs/pull/341/merge",
-      "sha": "c4e388092c0bfb9c03c827b01c8980cb96713327",
-      "timestamp": "2026-10-08T01:49:03.847Z",
+      "sha": "a26bad71d825fbd88a5184659dc7295a65a951ba",
+      "timestamp": "2026-10-08T01:56:26.150Z",
       "commits": [
         {
-          "sha": "c4e388092c0bfb9c03c827b01c8980cb96713327",
+          "sha": "a26bad71d825fbd88a5184659dc7295a65a951ba",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T01:47:42Z",
-          "message": "Merge 8a5a17f84f6fdd25d3e384ef1283f7c326f190e8 into 2d11591378efe0356595191d0cc01736782d55c9\n"
+          "timestamp": "2026-10-08T01:55:23Z",
+          "message": "Merge b329b97ce4657369738dc529659e49ab3b4c6894 into 2d11591378efe0356595191d0cc01736782d55c9\n"
+        },
+        {
+          "sha": "b329b97ce4657369738dc529659e49ab3b4c6894",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T19:55:19-06:00",
+          "message": "fix(effects): the written colour wins a tie with the rematch, and respec runs only where colours change (rich-effects-fxiy.7b3)\n\nReview (escalation high): wire is downgraded with the stock table while matchOn rounds on the theme, so a 1-unit nudge of #ff0000 at 256 rewrote 38;5;196 as 91 and #ffffff as 39. A slot now keeps its written spec when that is as near the moved colour as matchOn's choice (rgbDistance, the one distance). Cells merge on equal colours first, so respec and matchOn run once per change, not per cell.\n"
         },
         {
           "sha": "8a5a17f84f6fdd25d3e384ef1283f7c326f190e8",
