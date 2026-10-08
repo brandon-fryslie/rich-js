@@ -204,9 +204,10 @@ function deriveEntryModules(pkg: PackageManifest): ReadonlyMap<string, string> {
  *
  * Local overrides: `noEmit: true` (we never emit), `noUnusedLocals` /
  * `noUnusedParameters` off (those would flag legitimate example-file
- * patterns and aren't relevant to symbol resolution), and `types`
+ * patterns and aren't relevant to symbol resolution), `types`
  * extended with `node` if absent (both src/ and examples/ touch Node
- * builtins).
+ * builtins), and `PUBLISHED_PATHS`, so a docs example or a demo that imports
+ * the package by its published names resolves them to `src/`.
  */
 export function loadCompilerOptions(): ts.CompilerOptions {
   const configPath = path.join(REPO_ROOT, "tsconfig.json");
@@ -234,8 +235,24 @@ export function loadCompilerOptions(): ts.CompilerOptions {
     noUnusedLocals: false,
     noUnusedParameters: false,
     types: Array.from(new Set([...(parsed.options.types ?? []), "node"])),
+    paths: PUBLISHED_PATHS,
   };
 }
+
+/**
+ * Each published import specifier as a compiler `paths` entry naming the
+ * absolute source file it is.
+ *
+ * [LAW:one-source-of-truth] The compiler's view of the published names, read
+ * off `ENTRY_BY_SPECIFIER`: the coverage verifier, the docs' example
+ * compiler and the demo build (scripts/build-demos.ts) all resolve
+ * `@promptctl/rich-js/…` through it, so none of them carries a list of its
+ * own. A coverage program without it would leave every published-name import
+ * in `examples/` unresolved, and the exports it names undemonstrated.
+ */
+export const PUBLISHED_PATHS: Readonly<Record<string, string[]>> = Object.fromEntries(
+  [...ENTRY_BY_SPECIFIER].map(([specifier, src]) => [specifier, [path.join(REPO_ROOT, src)]]),
+);
 
 /**
  * Every `.ts` file under a repo-relative directory, recursively, sorted.

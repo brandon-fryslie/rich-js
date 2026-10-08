@@ -37,13 +37,64 @@ export interface CardSetup {
 export const NO_SETUP: CardSetup = { before: [], after: [] };
 
 /**
- * What a card edits: its block, and the setup the block runs on. "Try it"
- * carries one to the playground (playground-hash.ts), which opens it as the
- * card held it, the setup still locked and labelled.
+ * One file of a card's program: its name, the setup its code runs on, and the
+ * code a reader edits. A file's name is its path from the entry's directory,
+ * the way an import between the program's files spells it (`app.ts`,
+ * `../_capabilities/memory-file-system.ts`), and the name a thrown error's
+ * stack gives its lines. Only a docs block has a setup; every file of a demo
+ * is all the reader's, `NO_SETUP`.
  */
-export interface CardProgram {
+export interface CardFile {
+  readonly name: string;
   readonly setup: CardSetup;
   readonly code: string;
+}
+
+/**
+ * What a card edits: its files, the entry first, each shown as a tab. A docs
+ * card's program is one file, its block in the setup the block runs on, and
+ * it shows no tabs. "Try it" carries one to the playground
+ * (playground-hash.ts), which opens it as the card held it, the setup still
+ * locked and labelled.
+ */
+export interface CardProgram {
+  readonly files: readonly [CardFile, ...CardFile[]];
+}
+
+/** The name of a docs block's one file. */
+export const PLAYGROUND_SOURCE = "playground.ts";
+
+/** A one-file program: `code`, in `setup`. */
+export const oneFile = (setup: CardSetup, code: string): CardProgram => ({ files: [{ name: PLAYGROUND_SOURCE, setup, code }] });
+
+/** What a reader has made of a program's files: the code of each, in the program's order. */
+export type Codes = readonly string[];
+
+/** The code of each of `program`'s files. */
+export const codesOf = (program: CardProgram): Codes => program.files.map((file) => file.code);
+
+export const sameCodes = (a: Codes, b: Codes): boolean => a.length === b.length && a.every((code, i) => code === b[i]);
+
+/** `program` with `codes` in place of its files' code. */
+export const withCodes = (program: CardProgram, codes: Codes): CardProgram => {
+  const [entry, ...rest] = program.files;
+  return { files: [{ ...entry, code: codes[0]! }, ...rest.map((file, i) => ({ ...file, code: codes[i + 1]! }))] };
+};
+
+/** One file of a program as it runs: its name, and its source, its code in its setup (`cardSource`). */
+export interface ProgramFile {
+  readonly name: string;
+  readonly source: string;
+}
+
+/** A program's files as it runs: one at least, the entry first. */
+export type ProgramFiles = readonly [ProgramFile, ...ProgramFile[]];
+
+/** The files `program` runs as. */
+export function programFiles(program: CardProgram): ProgramFiles {
+  const run = (file: CardFile): ProgramFile => ({ name: file.name, source: cardSource(file.setup, file.code) });
+  const [entry, ...rest] = program.files;
+  return [run(entry), ...rest.map(run)];
 }
 
 /** The caption of output a card's code printed when it ran: an edit's, or the page's own unless its marker says more. */
@@ -58,11 +109,10 @@ export const RUNNING = { label: "Live", caption: "the code above, running in you
 /** What a card says in place of output when its code printed nothing. */
 export const PRINTS_NOTHING = "This example prints nothing when it runs.";
 
-/** What every card a reader can edit carries: its code, the program around it, and the panel under it. */
+/** What every card a reader can edit carries: its program, and the panel under it. */
 interface Editable {
-  /** The block as the page shows it. */
-  readonly code: string;
-  readonly setup: CardSetup;
+  /** The program as the page shows it: a docs block's, one file holding the block as the page shows it. */
+  readonly program: CardProgram;
   /** The output panel's label and the caption beside it. */
   readonly label: string;
   readonly caption: string;

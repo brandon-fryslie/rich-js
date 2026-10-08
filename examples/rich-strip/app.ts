@@ -1,14 +1,10 @@
 /**
- * rich-strip demo body — every built-in `Joiner` printed side-by-side.
+ * rich-strip's body: every built-in `Joiner`, each under its name, sized to
+ * fit the docs card's terminal.
  *
- * [LAW:dataflow-not-control-flow] `runDemo` takes a `TerminalHost` as a value
- * and never branches on environment. Node bootstraps with `NodeTerminalHost`,
- * browser bootstraps with `BrowserTerminalHost`; the demo code path is identical.
- *
- * [LAW:one-source-of-truth] The Console-using demos take their whole
- * environment from `hostEnvironment(host)`, so the host is the one sink the demo
- * writes to and the one terminal it asks about size and colour. No second path
- * to `process`.
+ * [LAW:one-source-of-truth] It takes its whole environment from
+ * `hostEnvironment(host)`, so the host is the one sink it writes to and the one
+ * terminal it asks about size and colour. No second path to `process`.
  */
 
 import {
@@ -23,15 +19,10 @@ import {
   Style,
   RichText,
   FlexStrip,
-} from "../../src/index.js";
-import { hostEnvironment, type TerminalHost } from "../../src/host/index.js";
+} from "@promptctl/rich-js";
+import { hostEnvironment, type TerminalHost } from "@promptctl/rich-js/host";
 
-export interface DemoHandle {
-  /** Detach any resources the demo holds. One-shot demos have nothing to do. */
-  stop(): void;
-}
-
-export function runDemo(host: TerminalHost): DemoHandle {
+export function runDemo(host: TerminalHost): void {
   const { cols } = host.size();
   const consoleOut = new Console({
     environment: hostEnvironment(host),
@@ -45,10 +36,11 @@ export function runDemo(host: TerminalHost): DemoHandle {
     new RichText(" 12% ", { style: Style.parse("white on #b45309"), end: "", noWrap: true }),
   ];
 
-  const showcase = (label: string, strip: Strip): void => {
+  // Each strip under its name, with no blank line between them: the whole tour
+  // fits one screen of the docs card's terminal, so none of it scrolls away.
+  const showcase = (label: string, strip: Strip | FlexStrip): void => {
     consoleOut.print(new RichText(label, { style: "bold" }));
     consoleOut.print(strip);
-    consoleOut.print(new RichText(""));
   };
 
   showcase("PowerlineJoiner", new Strip(cells, new PowerlineJoiner()));
@@ -65,7 +57,7 @@ export function runDemo(host: TerminalHost): DemoHandle {
   // together: here the default set spelled out, then the ASCII set a terminal
   // without a powerline font would take.
   showcase(
-    `PowerlineJoiner, default set spelled out (${JSON.stringify(POWERLINE_JOINER_GLYPHS)})`,
+    `PowerlineJoiner(${JSON.stringify(POWERLINE_JOINER_GLYPHS)})`,
     new Strip([...cells, ...shared], new PowerlineJoiner(POWERLINE_JOINER_GLYPHS)),
   );
   showcase(
@@ -94,23 +86,12 @@ export function runDemo(host: TerminalHost): DemoHandle {
   const tags = [
     "rust", "typescript", "go", "python", "elixir", "haskell",
     "ocaml", "zig", "swift", "kotlin", "ruby", "lua", "clojure",
-    "scala", "erlang", "nim", "crystal", "rescript", "purescript",
+    "scala", "erlang", "nim",
   ];
   const tagCells = tags.map(
     (t, i) => new RichText(` ${t} `, { style: Style.parse(`white on ${PALETTE[i % PALETTE.length]!}`), end: "", noWrap: true }),
   );
 
-  consoleOut.print(new RichText("FlexStrip + PowerlineJoiner (wrap-to-width)", { style: "bold" }));
-  consoleOut.print(new FlexStrip(tagCells, { joiner: new PowerlineJoiner() }));
-  consoleOut.print(new RichText(""));
-
-  consoleOut.print(new RichText("FlexStrip + gap (tag cloud)", { style: "bold" }));
-  consoleOut.print(new FlexStrip(tagCells, { gap: 1 }));
-  consoleOut.print(new RichText(""));
-
-  return {
-    stop(): void {
-      // one-shot demo — nothing to detach
-    },
-  };
+  showcase("FlexStrip + PowerlineJoiner (wrap-to-width)", new FlexStrip(tagCells, { joiner: new PowerlineJoiner() }));
+  showcase("FlexStrip + gap (tag cloud)", new FlexStrip(tagCells, { gap: 1 }));
 }

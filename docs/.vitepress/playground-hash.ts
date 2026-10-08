@@ -1,24 +1,25 @@
 /**
  * The playground's URL hash: the program a link opens, carried in the link.
  *
- * A hash is a card's program (example-card.ts's `CardProgram`), its block and
- * the setup the block runs on, as JSON, compressed (`deflate`) and written in
- * base64url behind the format's name, `card.`. So a link reproduces a program
- * with no backend, survives being pasted anywhere a URL does, and opens with
- * the setup still locked and labelled where it came from. Compressing keeps a
- * docs-sized example to a link a chat message does not cut.
+ * A hash is a card's program (example-card.ts's `CardProgram`), every file of
+ * it with the setup each runs on, as JSON, compressed (`deflate`) and written
+ * in base64url behind the format's name, `files.`. So a link reproduces a
+ * program with no backend, survives being pasted anywhere a URL does, and
+ * opens with each file as the card held it, a docs block's setup still locked
+ * and labelled where it came from. Compressing keeps a docs-sized example to a
+ * link a chat message does not cut.
  *
- * A hash with no `.` is the format before it: the program's source alone,
- * compressed the same way. base64url has no `.`, so the two cannot be
- * mistaken for each other, and an old link still opens, as a program with no
- * setup, every line of it the reader's.
+ * Links in the two formats before it still open, as a program of one file:
+ * `card.`, a docs block and its setup, and a hash with no `.`, the program's
+ * source alone, every line of it the reader's. base64url has no `.`, so no
+ * two formats can be mistaken for each other.
  *
  * [LAW:one-source-of-truth] This module is the format. It uses only what a
  * browser and Node both provide (`CompressionStream`, `btoa`), so anything
  * that writes or reads a playground link, on the page or at build time, does
  * it here.
  */
-import { NO_SETUP, type CardProgram, type SetupGroup } from "./example-card.js";
+import { NO_SETUP, PLAYGROUND_SOURCE, oneFile, type CardFile, type CardProgram, type SetupGroup } from "./example-card.js";
 
 /**
  * The most a link carries, in UTF-8 bytes of what it packs (the program, its
@@ -29,7 +30,10 @@ import { NO_SETUP, type CardProgram, type SetupGroup } from "./example-card.js";
 export const MAX_PROGRAM_BYTES = 1 << 20;
 
 /** The name a hash in this format starts with, before its `.`. */
-const FORMAT = "card";
+const FORMAT = "files";
+
+/** The name a hash in the format before this one starts with: one file, a docs block and its setup. */
+const ONE_FILE_FORMAT = "card";
 
 const tooLong = () => new Error(`a playground program is at most ${MAX_PROGRAM_BYTES} bytes`);
 
@@ -74,8 +78,8 @@ async function unpacked(payload: string): Promise<string> {
 
 /** The hash, without its `#`, that opens the playground on `program`. */
 export async function encodeProgram(program: CardProgram): Promise<string> {
-  const { setup, code } = program;
-  return `${FORMAT}.${await packed(JSON.stringify({ setup, code }))}`;
+  const files = program.files.map(({ name, setup, code }) => ({ name, setup, code }));
+  return `${FORMAT}.${await packed(JSON.stringify({ files }))}`;
 }
 
 /** The fields of `value`, each unknown until read: none of them, for a value with no fields. */
@@ -96,17 +100,29 @@ const isGroup = (value: unknown): value is SetupGroup => {
 };
 
 /**
- * [LAW:parse-dont-validate] What a hash's JSON says, as a `CardProgram`, or
- * the shape it breaks: the editor locks the setup by these lines, so nothing
- * past here may hold one of another shape.
+ * [LAW:parse-dont-validate] What a hash's JSON says of one file, as a
+ * `CardFile` named `name`, or the shape it breaks: the editor locks the setup
+ * by these lines, so nothing past here may hold one of another shape.
  */
-function cardProgram(json: unknown): CardProgram {
+function cardFile(json: unknown, name: unknown): CardFile {
   const { setup, code } = fields<"setup" | "code">(json);
   const { before, after } = fields<"before" | "after">(setup);
   if (typeof code !== "string" || code.includes("\r") || !Array.isArray(before) || !before.every(isGroup) || !isLines(after)) {
     throw new Error("the link's program is not a block and the setup it runs on");
   }
-  return { setup: { before, after }, code };
+  // A name is a path an import spells, so no line break and nothing empty.
+  if (typeof name !== "string" || !/^[^\r\n]+$/.test(name)) throw new Error("the link names a file of its program with no name");
+  return { name, setup: { before, after }, code };
+}
+
+/** What a hash in this format says, as a `CardProgram`: one file at least, no two of one name. */
+function cardProgram(json: unknown): CardProgram {
+  const { files } = fields<"files">(json);
+  if (!Array.isArray(files) || files.length === 0) throw new Error("the link's program has no files");
+  const [entry, ...rest] = files.map((file: unknown) => cardFile(file, fields<"name">(file).name));
+  const names = [entry!, ...rest].map((file) => file.name);
+  if (new Set(names).size !== names.length) throw new Error(`the link's program names a file twice: ${names.join(", ")}`);
+  return { files: [entry!, ...rest] };
 }
 
 /**
@@ -115,8 +131,13 @@ function cardProgram(json: unknown): CardProgram {
  */
 export async function decodeProgram(hash: string): Promise<CardProgram> {
   const dot = hash.indexOf(".");
-  if (dot === -1) return { setup: NO_SETUP, code: await unpacked(hash) };
+  if (dot === -1) return oneFile(NO_SETUP, await unpacked(hash));
   const format = hash.slice(0, dot);
-  if (format !== FORMAT) throw new Error(`a playground link in a format named "${format}", which this playground does not read`);
-  return cardProgram(JSON.parse(await unpacked(hash.slice(dot + 1))));
+  const json = (): Promise<unknown> => unpacked(hash.slice(dot + 1)).then((text) => JSON.parse(text) as unknown);
+  if (format === FORMAT) return cardProgram(await json());
+  if (format === ONE_FILE_FORMAT) {
+    const { setup, code } = cardFile(await json(), PLAYGROUND_SOURCE);
+    return oneFile(setup, code);
+  }
+  throw new Error(`a playground link in a format named "${format}", which this playground does not read`);
 }

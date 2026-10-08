@@ -43,11 +43,11 @@ test("the scores table opens with its setup locked, labelled and unfolded, print
   const example = card(page, "const scores = new Table(");
   const shown = await drawnLines(example.locator(".rich-example-output"));
   const link = example.getByRole("link", { name: "Try it" });
-  const { setup } = await decodeProgram((await link.getAttribute("href"))!.split("#")[1]!);
+  const { files: [{ setup }] } = await decodeProgram((await link.getAttribute("href"))!.split("#")[1]!);
   expect(setup.before.length).toBe(2);
   await link.click();
 
-  await expect(page).toHaveURL(/\/playground#card\..+/);
+  await expect(page).toHaveURL(/\/playground#files\..+/);
   await expect(editor(page)).toContainText("const scores = new Table(", OPENING);
   // Unfolded: every group's label and locked line is drawn, no strip folds them.
   await expect(playground(page).locator(".rich-setup-label")).toHaveText(setup.before.map((group) => `🔒︎ ${group.origin}`));
@@ -59,8 +59,8 @@ test("the scores table opens with its setup locked, labelled and unfolded, print
   await editor(page).click();
   await page.keyboard.press("ControlOrMeta+A");
   await page.keyboard.insertText('console.print("[bold]edited scores[/]");');
-  await expect.poll(async () => (await decodeProgram(new URL(page.url()).hash.slice(1))).code).toBe('console.print("[bold]edited scores[/]");');
-  expect((await decodeProgram(new URL(page.url()).hash.slice(1))).setup).toEqual(setup);
+  await expect.poll(async () => (await decodeProgram(new URL(page.url()).hash.slice(1))).files[0].code).toBe('console.print("[bold]edited scores[/]");');
+  expect((await decodeProgram(new URL(page.url()).hash.slice(1))).files[0].setup).toEqual(setup);
   await expect.poll(() => drawnLines(playground(page).locator(".rich-example-output"))).toEqual(["edited scores"]);
 
   await page.reload();

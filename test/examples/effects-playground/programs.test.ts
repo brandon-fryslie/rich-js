@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { libraryModule, liveLibraryOnce } from "../../../docs/.vitepress/example-runner.js";
 import { runInTerminal } from "../../../docs/.vitepress/simulated-process.js";
 import { playgroundScript } from "../../../docs/.vitepress/theme/playground-program.js";
+import { NO_SETUP, oneFile, programFiles } from "../../../docs/.vitepress/example-card.js";
 import { CONTROL_DEFAULTS, type Controls } from "../../../examples/effects-playground/controls.js";
 import { KIT_MODULE, edit, started, told } from "../../../examples/effects-playground/edits.js";
 import { EFFECTS_FILE, KIT_FILE, effectPrograms } from "../../../examples/effects-playground/programs.js";
@@ -52,7 +53,7 @@ describe("an effect's program", () => {
     const [shared, kit] = await Promise.all([library(), libraryModule(KIT_MODULE, KIT_FILE)]);
     const output: string[] = [];
     vi.useFakeTimers();
-    await runInTerminal(playgroundScript(programs[effect], shared.script + kit.code), {
+    await runInTerminal(playgroundScript(programFiles(oneFile(NO_SETUP, programs[effect])), shared.script + kit.code), {
       columns: 108,
       rows: 6,
       isTTY: true,

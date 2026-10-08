@@ -1,77 +1,107 @@
 /**
- * The playground's link format: a card's program, its setup included,
- * survives the trip into a URL hash and back; a link in the format before it
- * still opens, as a program with no setup; and a hash that was not written
- * either way fails rather than opening as some other program.
+ * The playground's link format: a card's program, every file of it with its
+ * setup, survives the trip into a URL hash and back; links in the two formats
+ * before it still open, as a program of one file; and a hash that was not
+ * written any of those ways fails rather than opening as some other program.
  */
 import { deflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { NO_SETUP, type CardProgram } from "../../docs/.vitepress/example-card.js";
+import { NO_SETUP, oneFile, type CardProgram, type CardSetup } from "../../docs/.vitepress/example-card.js";
 import { MAX_PROGRAM_BYTES, decodeProgram, encodeProgram } from "../../docs/.vitepress/playground-hash.js";
 
-const PROGRAM: CardProgram = {
-  setup: {
-    before: [
-      { origin: "imports", lines: ['import { Console } from "@promptctl/rich-js";', ""] },
-      { origin: "from 'Basic usage'", lines: ["const console = new Console();", "", "{"] },
-    ],
-    after: ["}"],
-  },
-  code: 'console.print("[bold magenta]Hello[/], naïve café — 👋 ✓");',
+const SETUP: CardSetup = {
+  before: [
+    { origin: "imports", lines: ['import { Console } from "@promptctl/rich-js";', ""] },
+    { origin: "from 'Basic usage'", lines: ["const console = new Console();", "", "{"] },
+  ],
+  after: ["}"],
 };
 
-/** A hash as the format before this one wrote it: the source alone, deflated, in base64url. */
+const CODE = 'console.print("[bold magenta]Hello[/], naïve café — 👋 ✓");';
+
+const PROGRAM: CardProgram = oneFile(SETUP, CODE);
+
+/** A demo's program: an entry and the files it imports, one from a directory beside it. */
+const DEMO: CardProgram = {
+  files: [
+    { name: "main.ts", setup: NO_SETUP, code: 'import { run } from "./app.js";\nrun();' },
+    { name: "app.ts", setup: NO_SETUP, code: 'export const run = () => process.stdout.write("ran");' },
+    { name: "../_capabilities/file-system.ts", setup: NO_SETUP, code: "export interface FileSystem {}" },
+  ],
+};
+
+/** `json`, deflated, in base64url, behind `format`. */
+const shaped = (format: string, json: unknown) => `${format}.${deflateSync(JSON.stringify(json)).toString("base64url")}`;
+
+/** A hash as the oldest format wrote it: the source alone, deflated, in base64url. */
 const oldHash = (source: string) => deflateSync(source).toString("base64url");
 
 describe("a playground hash", () => {
-  it("opens the program it was made from, its setup and every character kept", async () => {
+  it("opens the program it was made from, every file, its setup and every character kept", async () => {
     expect(await decodeProgram(await encodeProgram(PROGRAM))).toEqual(PROGRAM);
-    const empty = { setup: NO_SETUP, code: "" };
+    expect(await decodeProgram(await encodeProgram(DEMO))).toEqual(DEMO);
+    const empty = oneFile(NO_SETUP, "");
     expect(await decodeProgram(await encodeProgram(empty))).toEqual(empty);
   });
 
-  it("opens a link in the format before it as that source with no setup", async () => {
-    expect(await decodeProgram(oldHash(PROGRAM.code))).toEqual({ setup: NO_SETUP, code: PROGRAM.code });
+  it("opens a link in the format before it as that block and its setup", async () => {
+    expect(await decodeProgram(shaped("card", { setup: SETUP, code: CODE }))).toEqual(PROGRAM);
+  });
+
+  it("opens a link in the oldest format as that source with no setup", async () => {
+    expect(await decodeProgram(oldHash(CODE))).toEqual(oneFile(NO_SETUP, CODE));
   });
 
   it("is made only of characters a URL fragment carries as they are", async () => {
-    expect(await encodeProgram({ ...PROGRAM, code: PROGRAM.code.repeat(20) })).toMatch(/^card\.[A-Za-z0-9_-]+$/);
+    expect(await encodeProgram(oneFile(SETUP, CODE.repeat(20)))).toMatch(/^files\.[A-Za-z0-9_-]+$/);
   });
 
   it("is shorter than the program it carries", async () => {
-    const code = PROGRAM.code.repeat(20);
-    expect((await encodeProgram({ ...PROGRAM, code })).length).toBeLessThan(code.length);
+    const code = CODE.repeat(20);
+    expect((await encodeProgram(oneFile(SETUP, code))).length).toBeLessThan(code.length);
   });
 
   it("refuses a program longer than a link carries, whichever way it is going", async () => {
     const long = "x".repeat(MAX_PROGRAM_BYTES + 1);
-    await expect(encodeProgram({ setup: NO_SETUP, code: long })).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
+    await expect(encodeProgram(oneFile(NO_SETUP, long))).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
     // A hash inflating past the limit, as a crafted one would: the limit is on what comes out.
     const bomb = oldHash(long);
     expect(bomb.length).toBeLessThan(MAX_PROGRAM_BYTES / 100);
     await expect(decodeProgram(bomb)).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
+    await expect(decodeProgram(`files.${bomb}`)).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
     await expect(decodeProgram(`card.${bomb}`)).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
     // The limit is on what is packed, the program's JSON, and a program that fills it exactly still opens.
-    const fits = "x".repeat(MAX_PROGRAM_BYTES - JSON.stringify({ setup: NO_SETUP, code: "" }).length);
-    expect(await decodeProgram(await encodeProgram({ setup: NO_SETUP, code: fits }))).toEqual({ setup: NO_SETUP, code: fits });
-    await expect(encodeProgram({ setup: NO_SETUP, code: `${fits}x` })).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
+    const { files } = oneFile(NO_SETUP, "");
+    const fits = "x".repeat(MAX_PROGRAM_BYTES - JSON.stringify({ files }).length);
+    expect(await decodeProgram(await encodeProgram(oneFile(NO_SETUP, fits)))).toEqual(oneFile(NO_SETUP, fits));
+    await expect(encodeProgram(oneFile(NO_SETUP, `${fits}x`))).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
   });
 
   it("fails on a hash it did not write", async () => {
     await expect(decodeProgram("not a hash!")).rejects.toThrow();
     const hash = await encodeProgram(PROGRAM);
     await expect(decodeProgram(hash.slice(0, hash.length / 2))).rejects.toThrow();
-    await expect(decodeProgram(`page.${hash.slice("card.".length)}`)).rejects.toThrow('a format named "page"');
+    await expect(decodeProgram(`page.${hash.slice("files.".length)}`)).rejects.toThrow('a format named "page"');
   });
 
-  it("fails on a card whose JSON is not a block and its setup", async () => {
-    const shaped = (json: unknown) => `card.${deflateSync(JSON.stringify(json)).toString("base64url")}`;
-    for (const json of [null, "code", { code: "x" }, { setup: { before: [{ origin: 1, lines: [] }], after: [] }, code: "x" }, { setup: NO_SETUP, code: 1 },
+  it("fails on a file whose JSON is not a block and its setup", async () => {
+    for (const file of [null, "code", { code: "x" }, { setup: { before: [{ origin: 1, lines: [] }], after: [] }, code: "x" }, { setup: NO_SETUP, code: 1 },
       // A line break inside a line, or a carriage return anywhere: the editor would make either a line of its own.
       { setup: { before: [{ origin: "imports", lines: ["a\r\nb"] }], after: [] }, code: "x" },
       { setup: { before: [], after: ["}\n"] }, code: "x" },
       { setup: NO_SETUP, code: "a\r\nb" }]) {
-      await expect(decodeProgram(shaped(json))).rejects.toThrow("not a block and the setup it runs on");
+      await expect(decodeProgram(shaped("card", file))).rejects.toThrow("not a block and the setup it runs on");
+      await expect(decodeProgram(shaped("files", { files: [{ name: "main.ts", ...(file as object) }] }))).rejects.toThrow();
     }
+  });
+
+  it("fails on a program of no files, a file with no name, or two files of one name", async () => {
+    const file = { setup: NO_SETUP, code: "x" };
+    await expect(decodeProgram(shaped("files", { files: [] }))).rejects.toThrow("has no files");
+    await expect(decodeProgram(shaped("files", {}))).rejects.toThrow("has no files");
+    for (const name of [undefined, "", "a\nb", 1]) {
+      await expect(decodeProgram(shaped("files", { files: [{ name, ...file }] }))).rejects.toThrow("with no name");
+    }
+    await expect(decodeProgram(shaped("files", { files: [{ name: "a.ts", ...file }, { name: "a.ts", ...file }] }))).rejects.toThrow("names a file twice");
   });
 });

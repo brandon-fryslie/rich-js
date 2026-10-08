@@ -5,7 +5,7 @@ import { defineAsyncComponent, h } from 'vue'
 import './code-font.css'
 import './custom.css'
 import { trackDevicePixelRatio } from './device-pixel-ratio.js'
-import RichExample, { RichPlayground } from './RichExample.js'
+import RichExample, { RichDemo, RichPlayground } from './RichExample.js'
 
 const RichShowcase = defineAsyncComponent(() => import('./RichShowcase.js'))
 
@@ -18,8 +18,9 @@ export default {
     if (inBrowser) trackDevicePixelRatio(document.documentElement)
     // Not async: nearly every page has one, and it is the page's own card
     // until a reader edits it. What editing needs it loads itself. The
-    // playground is the same card, so it comes with it.
+    // playground and a demo's page are the same card, so they come with it.
     app.component('RichExample', RichExample)
     app.component('RichPlayground', RichPlayground)
+    app.component('RichDemo', RichDemo)
   },
 } satisfies Theme

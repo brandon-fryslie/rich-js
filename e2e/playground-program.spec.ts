@@ -22,6 +22,7 @@ const from = (file: string) => JSON.stringify(resolve(REPO_ROOT, file));
 const HARNESS = `
 import { LiveTerminal, READABLE_CONTRAST } from ${from("docs/.vitepress/theme/live-terminal.ts")};
 import { playgroundScript } from ${from("docs/.vitepress/theme/playground-program.ts")};
+import { NO_SETUP, oneFile, programFiles } from ${from("docs/.vitepress/example-card.ts")};
 import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from ${from("docs/.vitepress/example-terminal.ts")};
 globalThis.start = async (runtime, library) => {
   const element = Object.assign(document.createElement("div"), { id: "terminal" });
@@ -34,7 +35,7 @@ globalThis.start = async (runtime, library) => {
     minimumContrast: READABLE_CONTRAST,
   });
   live.onState((state) => (element.dataset.state = state.kind));
-  globalThis.play = (source) => live.run(playgroundScript(source, library), "live");
+  globalThis.play = (source) => live.run(playgroundScript(programFiles(oneFile(NO_SETUP, source)), library), "live");
   globalThis.stop = () => live.stop();
 };
 `;

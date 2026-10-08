@@ -12,7 +12,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { deflateSync } from "node:zlib";
 import { ATOM_ONE_DARK, ATOM_ONE_LIGHT } from "../src/themes/terminalThemes.js";
-import { NO_SETUP } from "../docs/.vitepress/example-card.js";
+import { NO_SETUP, oneFile } from "../docs/.vitepress/example-card.js";
 import { decodeProgram } from "../docs/.vitepress/playground-hash.js";
 
 async function open(page: Page, path = "playground.html"): Promise<string[]> {
@@ -124,7 +124,7 @@ test("a link it cannot read says so and opens the start example, until an edit m
   await expect.poll(() => drawn(page), OPENING).toContain("Hello, World!");
   await write(page, HELLO_AGAIN);
   await expect(alert(page)).toHaveCount(0);
-  expect(await hashProgram(page)).toEqual({ setup: NO_SETUP, code: HELLO_AGAIN });
+  expect(await hashProgram(page)).toEqual(oneFile(NO_SETUP, HELLO_AGAIN));
   expect(errors).toEqual([]);
 });
 
@@ -138,7 +138,7 @@ test("the link keeps up with fast typing and ends on what the editor holds", asy
   // editor and cannot see the cap itself.
   const typed = "x".repeat(250);
   await page.keyboard.type(typed);
-  await expect.poll(() => hashProgram(page).then(({ code }) => code, () => "")).toBe(typed);
+  await expect.poll(() => hashProgram(page).then(({ files }) => files[0].code, () => "")).toBe(typed);
   await expect(alert(page)).toHaveCount(0);
   expect(errors).toEqual([]);
 });

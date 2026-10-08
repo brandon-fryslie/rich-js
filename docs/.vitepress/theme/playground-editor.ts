@@ -55,36 +55,38 @@ export const PROGRAM_PANE: readonly Extension[] = [
   EditorView.contentAttributes.of({ "aria-label": "Program" }),
 ];
 
-/** What the editor tells its page: the program changed, or the reader asked to run it. */
+/** What the editor tells its page: the file it holds changed, or the reader asked to run it; each with the file's text. */
 export interface EditorEvents {
   change(source: string): void;
-  run(): void;
+  run(source: string): void;
 }
 
 /**
- * An editor in `parent` holding `source`, with `shown`: what its caller
- * draws around the code, and the label it reads as. Mod-Enter (Ctrl, or Cmd on a Mac)
+ * One file as the editor holds it: `source`, with `shown`, what its caller
+ * draws around the code and the label it reads as, and an undo history of its
+ * own. A card of several files keeps one for each and puts the one whose tab
+ * is chosen in its editor (`createEditor`). Mod-Enter (Ctrl, or Cmd on a Mac)
  * runs; Tab indents, and Escape then Tab leaves the editor, as CodeMirror
  * documents for a keyboard user.
  */
-export function createEditor(parent: HTMLElement, source: string, events: EditorEvents, shown: readonly Extension[]): EditorView {
-  return new EditorView({
-    parent,
-    state: EditorState.create({
-      doc: source,
-      extensions: [
-        drawSelection(),
-        history(),
-        indentOnInput(),
-        bracketMatching(),
-        javascript({ typescript: true }),
-        syntaxHighlighting(HIGHLIGHT),
-        THEME,
-        shown,
-        // Ahead of the default keymap, which binds Mod-Enter to a blank line.
-        keymap.of([{ key: "Mod-Enter", run: () => (events.run(), true) }, indentWithTab, ...defaultKeymap, ...historyKeymap]),
-        EditorView.updateListener.of((update) => update.docChanged && events.change(update.state.doc.toString())),
-      ],
-    }),
+export function editorState(source: string, events: EditorEvents, shown: readonly Extension[]): EditorState {
+  return EditorState.create({
+    doc: source,
+    extensions: [
+      drawSelection(),
+      history(),
+      indentOnInput(),
+      bracketMatching(),
+      javascript({ typescript: true }),
+      syntaxHighlighting(HIGHLIGHT),
+      THEME,
+      shown,
+      // Ahead of the default keymap, which binds Mod-Enter to a blank line.
+      keymap.of([{ key: "Mod-Enter", run: (view) => (events.run(view.state.doc.toString()), true) }, indentWithTab, ...defaultKeymap, ...historyKeymap]),
+      EditorView.updateListener.of((update) => update.docChanged && events.change(update.state.doc.toString())),
+    ],
   });
 }
+
+/** An editor in `parent`, holding `state`. */
+export const createEditor = (parent: HTMLElement, state: EditorState): EditorView => new EditorView({ parent, state });

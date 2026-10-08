@@ -7,8 +7,9 @@ import { useData, withBase } from 'vitepress'
 import { computed } from 'vue'
 
 // [LAW:dataflow-not-control-flow] The page does not branch on which demo it
-// is — params is data flowing through one fixed template. Same code path
-// every demo.
+// is — params is data flowing through one fixed template. A demo with a card
+// (docs/.vitepress/demo-card.ts) shows it; one without is shown in the iframe
+// of its bundle until it moves to a card.
 const { params } = useData()
 
 const srcHref = computed(() => withBase(`/demos-app/${params.value.demo}/`))
@@ -21,12 +22,16 @@ const sourceHref = computed(
   <h1 class="rich-demo-title"><code>{{ $params.demo }}</code></h1>
 
   <p class="rich-demo-meta">
-    <a :href="srcHref" target="_blank" rel="noopener">Open standalone ↗</a>
-    ·
+    <template v-if="!$params.card">
+      <a :href="srcHref" target="_blank" rel="noopener">Open standalone ↗</a>
+      ·
+    </template>
     <a :href="sourceHref" target="_blank" rel="noopener">View source on GitHub ↗</a>
   </p>
 
+  <div v-if="$params.card" class="vp-doc"><RichDemo :card="$params.card" /></div>
   <iframe
+    v-else
     :src="srcHref"
     :title="`rich-js live demo: ${$params.demo}`"
     class="rich-demo-frame"
