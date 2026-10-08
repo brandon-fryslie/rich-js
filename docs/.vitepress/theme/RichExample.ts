@@ -7,7 +7,8 @@
  * At rest it is the page's own card: VitePress's highlighted fence, passed in
  * as the default slot, over the output the build printed. A click in the code,
  * or Enter on it, puts an editor in the fence's place, its cursor where the
- * click was. Once typing pauses the card runs its program on the edit
+ * click was. The editor holds the whole program, the setup the block runs on
+ * locked and folded around it (setup-regions.ts). Once typing pauses the card runs its program on the edit
  * (`cardSource`) in a sandboxed worker (static-run.ts) and draws what it
  * printed the way the build draws it (example-fragments.ts). Output drawn for
  * code other than the editor's is dimmed: while an edit waits to run, and
@@ -21,7 +22,7 @@
  */
 import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, type PropType } from "vue";
 import type { EditorView } from "@codemirror/view";
-import { cardSource, codeLine, type CardData } from "../example-card.js";
+import { blockOf, blockSpan, cardSource, type CardData } from "../example-card.js";
 import type { Drawn } from "../example-fragments.js";
 import { encodeProgram } from "../playground-hash.js";
 import type { StaticEnd, StaticRun } from "./static-run.js";
@@ -71,7 +72,12 @@ const tools = loader(async () => {
 type Tools = Awaited<ReturnType<typeof tools>>;
 
 /** The editor, loaded the first time a reader's pointer or focus reaches a card, so a click has it at hand. */
-const editorModules = loader(() => Promise.all([import("./playground-editor.js"), import("@codemirror/view"), import("@codemirror/state")]));
+/** The space VitePress's fence leaves above and below its code: the editor's too, and the height of the folded setup's strip, drawn in it. */
+const FENCE_PADDING = "20px";
+
+const editorModules = loader(() =>
+  Promise.all([import("./playground-editor.js"), import("@codemirror/view"), import("@codemirror/state"), import("./setup-regions.js")]),
+);
 
 /**
  * Where the code stands: the page's highlighted fence, with why the editor did
@@ -81,7 +87,7 @@ const editorModules = loader(() => Promise.all([import("./playground-editor.js")
 type Code =
   | { readonly kind: "fence"; readonly refused: string | null }
   | { readonly kind: "opening" }
-  | { readonly kind: "editor"; readonly view: EditorView }
+  | { readonly kind: "editor"; readonly view: EditorView; readonly unfoldSetup: () => void }
   | { readonly kind: "unmounted" };
 
 const message = (error: unknown): string => (error instanceof Error ? error.message : String(error));
@@ -111,13 +117,14 @@ export default defineComponent({
     let running: StaticRun | null = null;
 
     /** Why a run did not draw, as said under the output. */
-    const failed = (end: Exclude<StaticEnd, { kind: "finished" | "stopped" }>, source: string, thrownAt: Tools["thrownAt"]): string => {
+    const failed = (end: Exclude<StaticEnd, { kind: "finished" | "stopped" }>, thrownAt: Tools["thrownAt"]): string => {
       switch (end.kind) {
         case "threw": {
           const at = thrownAt(end.report);
-          const line = at === null ? null : codeLine(props.card.setup, source, at);
+          // The editor holds the whole program, so the program's line is the
+          // reader's once the setup it counts is shown (`run`).
           const headline = end.report.split("\n")[0]!;
-          return line === null ? headline : `${headline} (line ${line})`;
+          return at === null ? headline : `${headline} (line ${at})`;
         }
         case "exited":
           return `It called process.exit(${end.code}).`;
@@ -148,7 +155,10 @@ export default defineComponent({
           drawn.value = { code: source, output: made.drawOutput(bytes) };
           failure.value = null;
         } else {
-          failure.value = failed(end, source, made.thrownAt);
+          failure.value = failed(end, made.thrownAt);
+          // A thrown error's line counts the setup's lines, so they are put in view.
+          const now = code.value;
+          if (end.kind === "threw" && now.kind === "editor") now.unfoldSetup();
         }
       } catch (error) {
         if (mine === turn) failure.value = `The example could not run: ${message(error)}`;
@@ -189,25 +199,35 @@ export default defineComponent({
         return null;
       });
       if (modules === null) return;
-      const [{ createEditor }, { EditorView: View }, { Prec }] = modules;
+      const [{ createEditor }, { EditorView: View }, { Prec }, { setupRegions, unfoldSetup }] = modules;
       await nextTick();
       // The card may have left the page while the editor loaded.
       if (code.value.kind !== "opening") return;
-      const view = createEditor(host.value!, props.card.code, { change: changed, run: () => changed(view.state.doc.toString()) }, [
+      const { setup } = props.card;
+      const changedTo = (program: string) => changed(blockOf(setup, program));
+      const view = createEditor(host.value!, cardSource(setup, props.card.code), { change: changedTo, run: () => changedTo(view.state.doc.toString()) }, [
+        setupRegions(setup, "folded"),
         View.contentAttributes.of({ "aria-label": "Example code" }),
-        // The fence's own measures, so the code does not move when the editor takes its place.
+        // The fence's own measures, so the code does not move when the editor
+        // takes its place; the folded setup's strip stands in the space above it.
         Prec.highest(
           View.theme({
             "&": { backgroundColor: "var(--vp-code-block-bg)" },
             ".cm-scroller": { fontFamily: "var(--rich-code-font-family)", lineHeight: "var(--vp-code-line-height)" },
-            ".cm-content": { padding: "20px 0" },
-            ".cm-line": { padding: "0 24px" },
+            ".cm-content": { padding: `${FENCE_PADDING} 0` },
+            ".cm-line, .rich-setup-label, .rich-setup-strip": { padding: "0 24px" },
+            ".rich-setup-strip": { lineHeight: FENCE_PADDING },
           }),
         ),
       ]);
-      code.value = { kind: "editor", view };
+      code.value = { kind: "editor", view, unfoldSetup: () => unfoldSetup(view) };
       await nextTick();
-      const anchor = at === null ? 0 : (view.posAtCoords(at) ?? 0);
+      // The cursor starts in the block, where the click was or nearest it: a
+      // click in the space above the code is a click on its first line.
+      const span = blockSpan(setup);
+      const start = span.before;
+      const end = view.state.doc.length - span.after;
+      const anchor = at === null ? start : Math.min(Math.max(view.posAtCoords(at) ?? start, start), end);
       view.dispatch({ selection: { anchor } });
       view.focus();
     }
@@ -230,7 +250,9 @@ export default defineComponent({
     };
     const reset = () => {
       const now = code.value;
-      if (now.kind === "editor") now.view.dispatch({ changes: { from: 0, to: now.view.state.doc.length, insert: props.card.code } });
+      if (now.kind !== "editor") return;
+      const { before, after } = blockSpan(props.card.setup);
+      now.view.dispatch({ changes: { from: before, to: now.view.state.doc.length - after, insert: props.card.code } });
     };
 
     // The page is the server's until this runs: a click before it reaches

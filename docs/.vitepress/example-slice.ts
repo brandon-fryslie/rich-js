@@ -18,6 +18,11 @@
  * Nothing a block above it printed is carried, so a block's program prints what
  * the block printed and not what the blocks above it printed.
  *
+ * A card shows the same parts above its block, locked, each labelled with
+ * where it came from: "imports", the prelude's `console` ("assumed by every
+ * example"), the page's `exampleContext` ("assumed on this page"), or the
+ * heading of the block it was carried from ("from 'Basic usage'").
+ *
  * The page nests each part in the scope of the one before, so a block may
  * redeclare any name; its program opens a scope where a part redeclares a
  * name above it, and only there.
@@ -62,10 +67,19 @@ function declaredNames(statement: ts.Statement): string[] {
 const isImportBinding = (node: ts.Node): boolean => ts.isImportSpecifier(node) || ts.isNamespaceImport(node) || ts.isImportClause(node);
 
 /**
- * The program of each block of `program`, the program a page runs, as the
+ * A block on its own: the program "Try it" opens, and the same setup around
+ * the block as its editable card holds it (example-card.ts).
+ */
+export interface Standalone {
+  readonly program: ExampleProgram;
+  readonly setup: CardSetup;
+}
+
+/**
+ * Each block of `program`, the program a page runs, on its own, as the
  * checker read it: `target`, one of `program`'s blocks, with what it needs.
  */
-export function standalonePrograms(checked: Checked, program: ExampleProgram): (target: Fence) => ExampleProgram {
+export function standalonePrograms(checked: Checked, program: ExampleProgram): (target: Fence) => Standalone {
   const { checker, file } = checked;
   const origin = (node: ts.Node): number | null => program.origins[file.getLineAndCharacterOfPosition(node.getStart(file)).line] ?? null;
   /** The part of the page a statement belongs to: the prelude, the context or one block. */
@@ -178,67 +192,86 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
       }
       grew = needed.size > before;
     }
-    // Every import the block writes, and every one it or a statement it needs
-    // names, in the order the page's imports and then the prelude bind them.
+    // Every import a needed statement names, and every one the block writes,
+    // in the order the page's imports and then the prelude bind them.
     const own = splitImports(target.code, target.line + 1);
-    const bindings = new Map(
-      [
-        ...[...needed].flatMap((statement) => reading.get(statement)!.bound),
-        ...own.imports.flatMap((imp) => (imp.kind === "binding" ? [imported.get(imp.local)!] : [])),
-      ]
-        .sort((a, b) => order.indexOf(a.local) - order.indexOf(b.local))
-        .map((b) => [b.local, b] as const),
-    );
-    const body = own.body.split("\n").map((text, i) => ({ text, line: target.line + 1 + i }));
-    const firstLine = body.findIndex(({ text }) => text.trim() !== "");
+    const ownLocals = new Set(own.imports.flatMap((imp) => (imp.kind === "binding" ? [imp.local] : [])));
+    const named = [...needed].flatMap((statement) => reading.get(statement)!.bound.map((binding) => ({ binding, byBlock: inTarget(statement) })));
+    const ordered = (bound: readonly ImportBinding[]) =>
+      [...new Map([...bound].sort((a, b) => order.indexOf(a.local) - order.indexOf(b.local)).map((b) => [b.local, b] as const)).values()];
+    const bindings = ordered([...named.map((n) => n.binding), ...[...ownLocals].map((local) => imported.get(local)!)]);
+    // The names the block's own imports bind as the program binds them: not a
+    // barrel value the block imports as a type, which the program imports as a value.
+    const blockBinds = new Set(own.imports.flatMap((imp) => (imp.kind === "binding" && imp.typeOnly === imported.get(imp.local)!.typeOnly ? [imp.local] : [])));
+    // A bare import is run for what it does, so every one the page ran by `end` runs here too.
+    const imports = (end: number, bound: readonly ImportBinding[]): Line[] =>
+      [...new Set(bare.filter((b) => b.line < end).map((b) => b.text)), ...importLines(bound)].map((text) => ({ text, line: null }));
 
-    // The parts it carries, in page order, each with the names it declares,
-    // then the block, less the blank lines left where its imports were before its first line.
-    const parts: { names: string[]; lines: { text: string; line: number | null }[] }[] = [];
-    let part: unknown;
+    // The parts it carries, in page order, each with where it came from and
+    // the names it declares, then the block. A part that redeclares a name
+    // above it opens the scope the page gives it.
+    const parts: { from: Fence | "prelude" | "context"; names: string[]; lines: Line[] }[] = [];
     for (const statement of statements.filter((s) => needed.has(s) && !inTarget(s))) {
-      if (partOf(statement) !== part) parts.push({ names: [], lines: [] });
-      part = partOf(statement);
+      if (partOf(statement) !== parts.at(-1)?.from) parts.push({ from: partOf(statement), names: [], lines: [] });
       parts.at(-1)!.names.push(...declaredNames(statement));
       parts.at(-1)!.lines.push(carried(statement));
     }
-    parts.push({
-      names: statements.filter(inTarget).flatMap(declaredNames),
-      lines: body.slice(firstLine === -1 ? body.length : firstLine),
-    });
-
-    const out = new SourceBuilder();
-    const add = (text: string, line: number | null) => out.add(text, line);
-    // A bare import is run for what it does, so every one the page ran by the block's end runs here too.
-    [...new Set(bare.filter((b) => b.line < target.closeLine).map((b) => b.text)), ...importLines([...bindings.values()])].forEach((line) => add(line, null));
-    // A blank line stands between parts, as between blocks on the page, and a
-    // part that redeclares a name above it opens the scope the page gives it.
-    const visible = new Set(bindings.keys());
-    let open = 0;
-    for (const { names, lines } of parts) {
-      if (out.lines.length > 0) add("", null);
-      if (names.some((name) => visible.has(name))) {
-        add("{", null);
-        open += 1;
-      }
+    const visible = new Set(bindings.map((b) => b.local));
+    const opens = [...parts, { names: statements.filter(inTarget).flatMap(declaredNames) }].map(({ names }) => {
+      const redeclares = names.some((name) => visible.has(name));
       names.forEach((name) => visible.add(name));
-      lines.forEach(({ text, line }) => add(text, line));
+      return redeclares ? [{ text: "{", line: null }] : [];
+    });
+    const setup = parts.map((part, i) => ({ from: part.from, lines: [...opens[i]!, ...part.lines] }));
+    const blockOpens = opens.at(-1)!;
+    const after: Line[] = opens.some((o) => o.length > 0) ? [{ text: "}".repeat(opens.filter((o) => o.length > 0).length), line: null }] : [];
+
+    // "Try it" hoists the block's imports into the program's, so the program
+    // type-checks; the block is its lines less the blank ones left where its
+    // imports were before its first line.
+    const body = own.body.split("\n").map((text, i) => ({ text, line: target.line + 1 + i }));
+    const firstLine = body.findIndex(({ text }) => text.trim() !== "");
+    const out = new SourceBuilder();
+    // A blank line stands between parts, as between blocks on the page.
+    [imports(target.closeLine, bindings), ...setup.map((part) => part.lines), [...blockOpens, ...body.slice(firstLine === -1 ? body.length : firstLine)]]
+      .filter((lines) => lines.length > 0)
+      .forEach((lines, i) => [...(i === 0 ? [] : [{ text: "", line: null }]), ...lines].forEach(({ text, line }) => out.add(text, line)));
+    after.forEach(({ text, line }) => out.add(text, line));
+
+    // A card holds the block whole, its imports included, so its setup
+    // imports only what the block names and does not import itself, what
+    // the setup's own statements name, and the bare imports above the block.
+    // [LAW:one-source-of-truth] The parts and their scopes are the ones "Try it" carries.
+    const cardImports = imports(target.line, ordered(named.filter((n) => !n.byBlock || !blockBinds.has(n.binding.local)).map((n) => n.binding)));
+    const setupText = [{ origin: "imports", lines: cardImports }, ...setup.map((part) => ({ origin: originOf(part.from), lines: part.lines }))]
+      .filter((part) => part.lines.length > 0)
+      .flatMap(({ origin, lines }) => [...lines, { text: "" }].map(({ text }) => ({ origin, text })));
+    // The blank line after a part, and the brace opening the block's scope,
+    // are the part's above them; neighbouring parts from one place are one group.
+    if (blockOpens.length > 0) {
+      // [LAW:no-silent-failure] The block's scope is opened against a name its
+      // setup binds; a scope with no setup above it is a program this cut has no reading of.
+      const last = setupText.at(-1);
+      if (last === undefined) throw new Error(`docs/${program.page}:${target.line}: the block opens a scope its card has no setup to put above`);
+      setupText.push(...blockOpens.map(({ text }) => ({ origin: last.origin, text })));
     }
-    if (open > 0) add("}".repeat(open), null);
-    return { page: program.page, source: out.lines.join("\n"), origins: out.origins, blocks: [target] };
+    const before: { origin: string; lines: string[] }[] = [];
+    for (const { origin, text } of setupText) {
+      if (before.at(-1)?.origin !== origin) before.push({ origin, lines: [] });
+      before.at(-1)!.lines.push(text);
+    }
+    return {
+      program: { page: program.page, source: out.lines.join("\n"), origins: out.origins, blocks: [target] },
+      setup: { before, after: after.map((l) => l.text) },
+    };
   };
 }
 
-/**
- * A block's program, cut where the block's own lines stand: what the program
- * writes above them, and what it writes below. The block's lines are one run,
- * the program's last part, so everything else is setup.
- */
-export function aroundBlock(program: ExampleProgram): CardSetup {
-  const block = program.blocks[0]!;
-  const own = (line: number | null) => line !== null && line > block.line && line < block.closeLine;
-  const first = program.origins.findIndex(own);
-  if (first === -1) throw new Error(`docs/${program.page}:${block.line}: the block's program holds none of the block's lines`);
-  const lines = program.source.split("\n");
-  return { before: lines.slice(0, first), after: lines.slice(first + program.origins.filter(own).length) };
+type Line = { readonly text: string; readonly line: number | null };
+
+/** How a card labels a part of its setup by where it came from. */
+function originOf(from: Fence | "prelude" | "context"): string {
+  if (from === "prelude") return "assumed by every example";
+  if (from === "context") return "assumed on this page";
+  return from.section === null ? "from above" : `from '${from.section}'`;
 }

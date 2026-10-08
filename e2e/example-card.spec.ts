@@ -150,3 +150,49 @@ test("an error names the card's own line, under the last good output", async ({ 
   await expect(firstCard(page).locator(".rich-example-failure")).toHaveText(/RangeError: edited \(line 21\)$/, { timeout: 15_000 });
   expect(errors).toEqual([]);
 });
+
+test("a card's setup is one strip while it has focus, the code does not move for it, and the keyboard unfolds it", async ({ page }) => {
+  const errors = await open(page, "tables.html");
+  // docs/tables.md's "Adding columns" card runs on setup the page gives it.
+  const card = page.locator(".rich-example-card").filter({ hasText: "const scores" });
+  await expect(card).toHaveClass(/rich-example-editable/, { timeout: 10_000 });
+  await card.locator("pre.shiki").click();
+  await expect(card.locator(".cm-content")).toBeFocused({ timeout: 10_000 });
+  const strip = card.locator(".rich-setup-strip");
+  await expect(strip).toHaveText("▸ 2 lines of setup");
+  await expect(strip).toBeVisible();
+  const code = card.locator(".cm-line").first();
+  const focusedAt = await code.boundingBox();
+  // The strip stands in the space above the code and takes no line: the first
+  // line sits under the fence's 20px of padding, as in a card with no setup.
+  expect(focusedAt!.y).toBeCloseTo((await card.locator(".cm-content").boundingBox())!.y + 20, 0);
+  // Leaving the editor hides the strip and moves nothing, so a press on reset lands where it was aimed.
+  await card.locator(".cm-content").blur();
+  await expect(strip).toBeHidden();
+  expect(await code.boundingBox()).toEqual(focusedAt);
+
+  await code.click();
+  await page.keyboard.press("Home");
+  await page.keyboard.press("ArrowUp");
+  await expect(card.locator(".rich-setup-label")).not.toHaveCount(0);
+  await expect(strip).toHaveCount(0);
+  // A key typed in the setup changes nothing.
+  await page.keyboard.type("x");
+  await expect(card.locator(".rich-example-edited")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("a click above a card's code opens it folded, and an error's line is counted in the setup it shows", async ({ page }) => {
+  const errors = await open(page, "tables.html");
+  const card = page.locator(".rich-example-card").filter({ hasText: "const scores" });
+  await expect(card).toHaveClass(/rich-example-editable/, { timeout: 10_000 });
+  // The fence's top padding, above its first line.
+  await card.locator("pre.shiki").click({ position: { x: 40, y: 5 } });
+  await expect(card.locator(".cm-content")).toBeFocused({ timeout: 10_000 });
+  await expect(card.locator(".rich-setup-strip")).toBeVisible();
+  await page.keyboard.type("throw new RangeError(\"edited\");\n");
+  // Two lines of setup, each with the blank line under it: the block's first line is the program's fifth.
+  await expect(card.locator(".rich-example-failure")).toHaveText(/RangeError: edited \(line 5\)$/, { timeout: 15_000 });
+  await expect(card.locator(".rich-setup-label")).toHaveCount(2);
+  expect(errors).toEqual([]);
+});

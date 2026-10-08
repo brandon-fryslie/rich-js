@@ -104,6 +104,8 @@ export interface Block {
   readonly closeLine: number;
   /** What the fence sits in, outermost first; empty at the page's top level. */
   readonly within: readonly Enclosure[];
+  /** The heading the fence sits under, as written; null above the page's first. */
+  readonly section: string | null;
   /**
    * The language as VitePress's highlighter reads it: lowercased, a `-vue`
    * suffix dropped, `""` for none. A ```` ```TS ```` fence is TypeScript.
@@ -122,6 +124,7 @@ export interface Fence {
   /** 1-based line of the closing fence. */
   readonly closeLine: number;
   readonly within: readonly Enclosure[];
+  readonly section: string | null;
   readonly marker: Marker;
   readonly code: string;
 }
@@ -142,6 +145,14 @@ export const PAGE_PARSER: MarkdownIt = CONTAINERS.reduce(
   (md, name) => md.use(container, name),
   new MarkdownIt({ html: true }),
 ).use((md) => md.core.ruler.enableOnly(["normalize", "block"]));
+
+/** Reads a heading's inline markup, which `PAGE_PARSER`, block rules only, leaves as written. */
+const INLINE_PARSER = new MarkdownIt();
+
+/** A heading's text as the page shows it: its markup (`code`, emphasis, links, escapes) read as what it renders. */
+function headingText(markdown: string): string {
+  return INLINE_PARSER.parseInline(markdown, {})[0]!.children!.flatMap((child) => (child.type === "text" || child.type === "code_inline" ? [child.content] : [])).join("");
+}
 
 const ENCLOSURE: Readonly<Record<string, Enclosure>> = {
   list_item_open: "list item",
@@ -182,9 +193,12 @@ export function scanBlocks(page: string, markdown: string): Block[] {
   // Every block open around the current token, each an enclosure or not one.
   const open: (Enclosure | null)[] = [];
   const blocks: Block[] = [];
-  for (const token of PAGE_PARSER.parse(body, {})) {
+  let section: string | null = null;
+  const tokens = PAGE_PARSER.parse(body, {});
+  for (const [i, token] of tokens.entries()) {
     if (token.nesting === 1) open.push(ENCLOSURE[token.type] ?? null);
     if (token.nesting === -1) open.pop();
+    if (token.type === "heading_open") section = headingText(tokens[i + 1]!.content);
     if (token.type !== "fence") continue;
     const [start, end] = token.map!;
     // markdown-it's own answer: a closed fence spans its content lines plus two fence lines.
@@ -198,6 +212,7 @@ export function scanBlocks(page: string, markdown: string): Block[] {
       line: start + 1,
       closeLine: end,
       within: open.filter((enclosure) => enclosure !== null),
+      section,
       language: written.replace(/-vue$/, "").toLowerCase(),
       attributes,
       code,
@@ -221,7 +236,7 @@ export function scanFences(page: string, markdown: string): Fence[] {
 export function typescriptFences(blocks: readonly Block[]): Fence[] {
   return blocks
     .filter((block) => TYPESCRIPT.has(block.language))
-    .map(({ page, line, closeLine, within, attributes, code }) => ({ page, line, closeLine, within, marker: markerOf(page, line, attributes), code }));
+    .map(({ page, line, closeLine, within, section, attributes, code }) => ({ page, line, closeLine, within, section, marker: markerOf(page, line, attributes), code }));
 }
 
 /**
