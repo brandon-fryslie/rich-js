@@ -20,9 +20,8 @@
 # local action cannot check out the repository it lives in.
 #
 # So does the time limit: a composite step cannot carry `timeout-minutes`, so
-# each job running this sets 20. A healthy job takes 5–11 minutes; GitHub's
-# default is 6 hours, and two PR #338 runs spent all of it stalled on an apt
-# mirror inside `playwright install --with-deps` (rich-workflows-1qvg).
+# the calling job does, and test/seam/workflow-pins.ts fails any job without
+# one.
 
 name: Gate
 description: >-

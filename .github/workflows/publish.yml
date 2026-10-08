@@ -54,8 +54,6 @@ jobs:
   # stand in; both halves are the same change.
   gate:
     runs-on: ubuntu-latest
-    # The gate action owns this number's argument; ci.yml's ci job carries
-    # the same one.
     timeout-minutes: 20
     permissions:
       contents: read
@@ -103,6 +101,7 @@ jobs:
   node-floor:
     needs: gate
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
@@ -128,6 +127,7 @@ jobs:
   publish:
     needs: [gate, node-floor]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       # Required for npm provenance — attests that this tarball was built by

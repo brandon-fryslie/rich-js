@@ -55,7 +55,7 @@ describe("the workflows under .github/", () => {
     );
   });
 
-  it("pin one major per action and name Node only where a grant allows", () => {
+  it("pin one major per action, name Node only where a grant allows, and bound every job", () => {
     const failures = workflowViolations(WORKFLOWS, NODE_VERSION_LITERALS).map(
       describeWorkflowViolation,
     );
@@ -66,9 +66,17 @@ describe("the workflows under .github/", () => {
         `the agent-code-review-setup skill: align the other files to it, or change ` +
         `the skill's template and re-run its installer — never edit it by hand. A ` +
         `job that runs \`src/\` reads Node with \`node-version-file: package.json\`; ` +
-        `any other bare literal needs a row in NODE_VERSION_LITERALS with its reason.` +
+        `any other bare literal needs a row in NODE_VERSION_LITERALS with its reason. ` +
+        `Every job sets timeout-minutes; workflow-pins.ts says how to size it.` +
         `\n\n${failures.join("\n")}\n`,
     ).toEqual([]);
+  });
+
+  it("find every job, so the time-limit rule is not green for free", () => {
+    const jobs = WORKFLOWS.flatMap(scanWorkflow).flatMap((f) => (f.kind === "job" ? [f.name] : []));
+    expect(jobs).toEqual(
+      expect.arrayContaining(["ci", "node-floor", "gate", "publish", "slot", "deploy", "review"]),
+    );
   });
 
   it("read the skill-authored workflow's SHA pins rather than skipping them", () => {
@@ -226,5 +234,55 @@ describe("workflowViolations: node-version literals", () => {
       v.rule === "node-version-count" ? `${v.value}:${v.sites.length}/${v.granted}` : v.rule,
     );
     expect(rules.sort()).toEqual(["22:0/1", "24:1/0"]);
+  });
+});
+
+describe("workflowViolations: job time limits", () => {
+  const JOBS = [
+    "on: push",
+    "jobs:",
+    "  # a comment at job level",
+    "  build:",
+    "    runs-on: ubuntu-latest",
+    "    timeout-minutes: 20 # twice the slowest run",
+    "    steps:",
+    "      - run: make",
+    "        timeout-minutes: 5",
+    "",
+    "  test:",
+    "    runs-on: ubuntu-latest",
+    "    steps:",
+    "      - run: make test",
+    "        timeout-minutes: 5",
+  ].join("\n");
+
+  it("catches a job with no limit of its own, a step's limit notwithstanding", () => {
+    expect(workflowViolations([workflow(JOBS)], [])).toEqual([
+      { rule: "unbounded-job", name: "test", site: { file: "wf.yml", line: 11, text: "test:" } },
+    ]);
+  });
+
+  it("closes the jobs block at the next top-level key", () => {
+    const text = "jobs:\n  a:\n    timeout-minutes: 10\nenv:\n  B: 1\n";
+    expect(workflowViolations([workflow(text)], [])).toEqual([]);
+  });
+
+  it("asks nothing of a composite action, which has no jobs", () => {
+    expect(
+      workflowViolations([workflow("runs:\n  using: composite\n  steps:\n    - run: x")], []),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ["an expression", "jobs:\n  a:\n    timeout-minutes: ${{ inputs.t }}"],
+    ["a quoted key", "jobs:\n  a:\n    'timeout-minutes': 10"],
+    ["a quoted job id", 'jobs:\n  "a":\n    timeout-minutes: 10'],
+    ["a flow-mapped jobs block", "jobs: { a: { runs-on: x } }"],
+    ["a jobs block indented past two spaces", "jobs:\n    a:\n      timeout-minutes: 10"],
+    ["a limit in a composite action", "runs:\n  steps:\n    - run: x\n      timeout-minutes: 5"],
+  ])("reports %s as unreadable rather than passing it", (_, text) => {
+    expect(workflowViolations([workflow(text)], [])).toContainEqual(
+      expect.objectContaining({ rule: "unreadable" }),
+    );
   });
 });
