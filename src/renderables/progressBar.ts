@@ -88,7 +88,7 @@ export class ProgressBar implements Renderable, Measurable {
    */
   private pulseEffect(options: RenderOptions, width: number, depth: ColorDepth, theme: TerminalTheme): Effect {
     const ink = getStyle(options, this.style).drawnColors(depth).color ?? ColorSpec.default();
-    const glow = getStyle(options, "bar.pulse").color ?? ColorSpec.default();
+    const glow = getStyle(options, "bar.pulse").drawnColors(depth).color ?? ColorSpec.default();
     const loop = shimmer(PULSE_CURVE, width, PULSE_REACH, glow.getTruecolor(theme, true), 0);
     const lit = onColors(new Map([[ink.getTruecolor(theme, true).hex, 1]]), loop);
     // The light falls on the line, never the ground: a back colour equal to
