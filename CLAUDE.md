@@ -16,7 +16,7 @@ npx vitest run -t "test name"            # single test by name
 npm run lint           # three type-check passes — see below
 npm run docs:dev       # build demo bundles, then serve the VitePress site
 npm run docs:build     # same, but produce the static site (dead-link gate)
-npm run demo:build     # tsc -p tsconfig.demo.json → dist-demo/
+npm run demo:build     # scripts/build-demos.ts: tsconfig.demo.json → dist-demo/
 npm run demos:build    # demo tsc + vite bundle of examples/ for the docs site
 npm run test:demos     # playwright, e2e/demos.spec.ts, against the demo bundles
 ```

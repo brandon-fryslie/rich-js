@@ -2,13 +2,16 @@
  * Browser bundle pipeline for demos (ticket rich-demo-site-pek.3).
  *
  * [LAW:single-enforcer] One pipeline produces every demo bundle that the docs
- * site consumes. There is no second build path: a demo is bundleable iff it
- * has a `wire.ts` exporting `mount(terminal): MountHandle` (the shape
- * established in rich-demo-site-pek.2's harness).
+ * site consumes, and the list of every demo the site shows. A demo is one of
+ * two shapes: one with a `main.ts` (`DEMO_ENTRY`) runs in a card on its page
+ * (docs/.vitepress/demo-card.ts) and needs no bundle; one with a `wire.ts`
+ * exporting `mount(terminal): MountHandle` (the shape established in
+ * rich-demo-site-pek.2's harness) is bundled here and shown in an iframe,
+ * until it moves to the first shape.
  *
  * [LAW:dataflow-not-control-flow] The set of demos is data, not code — the
- * config enumerates `examples/<name>/wire.ts` at build time. Adding a demo
- * is "create the directory and the wire.ts"; no list to edit here. Staging
+ * config enumerates `examples/<name>/` at build time. Adding a demo
+ * is "create the directory and its entry"; no list to edit here. Staging
  * runs in a plugin's `buildStart` hook, not at config-evaluation time, so
  * `vite preview` (and any tooling that just reads the config) doesn't trigger
  * filesystem writes — the discriminator "are we building right now?" is data
@@ -32,6 +35,7 @@ import { resolve, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { XTERM } from "./examples/_browser-shell/xterm.js";
 import { DEMO_TERMINAL } from "./examples/_browser-shell/demo-terminal.js";
+import { DEMO_ENTRY } from "./docs/.vitepress/demo-card.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const examplesDir = resolve(__dirname, "examples");
@@ -55,8 +59,8 @@ const manifestPath = resolve(docsDir, ".vitepress", "demos.json");
 
 // ---- Demo discovery --------------------------------------------------------
 //
-// A demo is *any* directory under examples/ that has a wire.ts (the
-// authoring source). Discovery runs at config-evaluation time because Vite
+// A demo is *any* directory under examples/ that has a `main.ts`, which runs in
+// a card, or a `wire.ts`, which is bundled. Discovery runs at config-evaluation time because Vite
 // needs the input set declared up front; preview / config-reading tooling
 // must be able to load this file with no filesystem writes and no build-
 // only preconditions.
@@ -66,13 +70,26 @@ const manifestPath = resolve(docsDir, ".vitepress", "demos.json");
 // scoped via `apply: "build"`). Splitting validation from enumeration this
 // way means `vite preview --config vite.config.demos.ts` loads cleanly
 // even when `dist-demo/` is absent — only `vite build` requires it.
-function discoverDemos(): readonly string[] {
+/** A demo as the manifest records it: its name, and whether its page shows it in a card or in the iframe of its bundle. */
+interface Demo {
+  readonly name: string;
+  readonly runs: "card" | "iframe";
+}
+
+function discoverDemos(): readonly Demo[] {
   return readdirSync(examplesDir, { withFileTypes: true })
     .filter((d) => d.isDirectory() && !d.name.startsWith("_"))
     .map((d) => d.name)
-    .filter((name) => existsSync(resolve(examplesDir, name, "wire.ts")))
-    .sort();
+    .sort()
+    .flatMap((name): Demo[] =>
+      existsSync(resolve(examplesDir, name, DEMO_ENTRY)) ? [{ name, runs: "card" }]
+      : existsSync(resolve(examplesDir, name, "wire.ts")) ? [{ name, runs: "iframe" }]
+      : [],
+    );
 }
+
+/** The demos bundled here: those the iframe shows. */
+const bundled = (demos: readonly Demo[]): readonly string[] => demos.filter((demo) => demo.runs === "iframe").map((demo) => demo.name);
 
 // ---- Staging ---------------------------------------------------------------
 //
@@ -84,10 +101,11 @@ function discoverDemos(): readonly string[] {
 //
 // This is also where the "compiled wire.js exists" build constraint is
 // enforced. Silently excluding demos missing their compiled wire would let
-// `vite build` (skipping the tsc step that `npm run demos:build` chains)
+// `vite build` (skipping the compile step that `npm run demos:build` chains)
 // appear to succeed while quietly dropping new demos from the output. Loud
 // failure instead. [LAW:verifiable-goals]
-function stageDemos(demos: readonly string[]): void {
+function stageDemos(all: readonly Demo[]): void {
+  const demos = bundled(all);
   const missing = demos.filter(
     (name) => !existsSync(resolve(compiledExamplesDir, name, "wire.js")),
   );
@@ -96,8 +114,8 @@ function stageDemos(demos: readonly string[]): void {
     throw new Error(
       `vite.config.demos.ts: ${missing.length} demo(s) have wire.ts but no compiled wire.js:\n` +
         list +
-        `\nRun \`npm run demos:build\` (which chains tsc first), or run ` +
-        `\`tsc -p tsconfig.demo.json\` before invoking vite directly.`,
+        `\nRun \`npm run demos:build\` (which compiles the demos first), or run ` +
+        `\`node scripts/build-demos.ts\` before invoking vite directly.`,
     );
   }
 
@@ -138,11 +156,12 @@ function stageDemos(demos: readonly string[]): void {
 
   // [LAW:one-source-of-truth] Manifest is the demo list the docs site renders
   // from. Writing it here (in the build-only path) ties manifest contents to
-  // the exact set of demos that just got staged — they cannot drift.
+  // the exact set of demos that were just discovered, those staged among
+  // them — they cannot drift.
   mkdirSync(dirname(manifestPath), { recursive: true });
   writeFileSync(
     manifestPath,
-    JSON.stringify({ demos: demos.map((name) => ({ name })) }, null, 2) + "\n",
+    JSON.stringify({ demos: all }, null, 2) + "\n",
   );
 }
 
@@ -151,7 +170,7 @@ function stageDemos(demos: readonly string[]): void {
 // config or running `vite preview` / `vite dev` skips this plugin entirely.
 // [LAW:types-are-the-program] `apply` makes the build-only constraint a
 // property of the plugin object, not a property of which hooks fire.
-function stagingPlugin(demos: readonly string[]): Plugin {
+function stagingPlugin(demos: readonly Demo[]): Plugin {
   return {
     name: "rich-js-demo-staging",
     apply: "build",
@@ -167,7 +186,7 @@ const demos = discoverDemos();
 // the files behind them are written at buildStart — Vite reads inputs only
 // after `buildStart` resolves, so the files exist by the time it tries to.
 const input: Record<string, string> = {};
-for (const name of demos) {
+for (const name of bundled(demos)) {
   input[name] = resolve(stagingDir, name, "index.html");
 }
 

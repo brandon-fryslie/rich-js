@@ -136,7 +136,7 @@ test("Try it opens the card's edit", async ({ page }) => {
   await firstCard(page).getByRole("link", { name: "Try it" }).click();
   await page.waitForURL(/playground/);
   // The editor draws only the lines in view, so the program is read from the link.
-  expect((await decodeProgram(new URL(page.url()).hash.slice(1))).code).toContain("An Edited Row");
+  expect((await decodeProgram(new URL(page.url()).hash.slice(1))).files[0].code).toContain("An Edited Row");
   await expect(page.locator(".rich-playground .cm-content")).toBeVisible();
   expect(errors).toEqual([]);
 });

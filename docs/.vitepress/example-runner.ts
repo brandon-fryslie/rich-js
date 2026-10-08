@@ -47,7 +47,7 @@ import { resolveAlias } from "../../scripts/resolve-alias.js";
 import { tscTransform } from "../../scripts/tsc-transform.js";
 import { EXAMPLE_TERMINAL, STATIC_RUN_LIMIT_MS } from "./example-terminal.js";
 import { drawOutput, undrawnEscape } from "./example-fragments.js";
-import { cardSource, type CardData, type CardProgram } from "./example-card.js";
+import { cardSource, oneFile, type CardData, type CardProgram } from "./example-card.js";
 import {
   MARKERS,
   frontmatterEnd,
@@ -78,7 +78,7 @@ import { runInTerminal, runsOn, type SimulatedTerminal } from "./simulated-proce
 import { LIBRARY_BINDING } from "./live-library.js";
 import { standalonePrograms, type Checked, type Standalone } from "./example-slice.js";
 import { encodeProgram } from "./playground-hash.js";
-import { playgroundProgram, playgroundScript } from "./theme/playground-program.js";
+import { oneSource, playgroundProgram, playgroundScript } from "./theme/playground-program.js";
 
 const PROGRAM_FILE = path.join(REPO_ROOT, "docs", "__docs-example__.ts");
 
@@ -90,10 +90,7 @@ const PROGRAM_FILE = path.join(REPO_ROOT, "docs", "__docs-example__.ts");
 export class ExampleCompiler {
   private previous: ts.Program | undefined = undefined;
   private readonly parsed = new Map<string, { readonly mtimeMs: number; readonly file: ts.SourceFile }>();
-  private readonly options: ts.CompilerOptions = {
-    ...loadCompilerOptions(),
-    paths: Object.fromEntries([...ENTRY_BY_SPECIFIER].map(([spec, src]) => [spec, [path.join(REPO_ROOT, src)]])),
-  };
+  private readonly options: ts.CompilerOptions = loadCompilerOptions();
 
   private compile(source: string): ts.Program {
     const host = ts.createCompilerHost(this.options);
@@ -499,7 +496,7 @@ export function playgroundStart(compiler: ExampleCompiler, markdown: string): st
 const PLAYGROUND_PAGE = "playground.md";
 
 /** The playground's address from `page`'s, relative so it holds under any base the site is served from. */
-function playgroundHref(page: string): string {
+export function playgroundHref(page: string): string {
   return path.posix.relative(path.posix.dirname(`/${page}`), `/${PLAYGROUND_PAGE.replace(/\.md$/, "")}`);
 }
 
@@ -520,7 +517,7 @@ const OPENS = `this block's card and "Try it" run it as the program below`;
  * front of a reader.
  */
 async function tryItPrints(fence: Fence, source: string, record: BlockRecord, shared: LiveLibrary, world: World): Promise<void> {
-  const { stream, end, exits, listened } = await capture(playgroundScript(source, shared.script), world);
+  const { stream, end, exits, listened } = await capture(playgroundScript(oneSource(source), shared.script), world);
   // [LAW:one-source-of-truth] What the page's static run ends a program for (theme/static-run.ts), refused here, so an edit of a block the build drew can be drawn too.
   if (listened) throw new Error(`docs/${fence.page}:${fence.line}: ${OPENS}, which reads what is typed at it; mark it \`live\`\n${source}`);
   if (end.kind === "finished" && end.runsOn) {
@@ -579,7 +576,7 @@ const isModuleOnly = (node: ts.Node): boolean =>
  * [LAW:single-enforcer] A bundled live program (`bundleOnLibrary`) and a
  * program the browser compiles (`refuseUnrunnable`) are both held to it here.
  */
-function refuseOffLibrary(at: string, specifier: string, clause: ts.ImportClause | undefined): void {
+export function refuseOffLibrary(at: string, specifier: string, clause: ts.ImportClause | undefined): void {
   if (!LIVE_LIBRARY_PACKAGES.includes(specifier)) {
     throw new Error(`${at}: a live example cannot import ${specifier}; it may import ${LIVE_LIBRARY_PACKAGES.join(", ")}`);
   }
@@ -596,7 +593,7 @@ function refuseOffLibrary(at: string, specifier: string, clause: ts.ImportClause
  * which is where it says so.
  */
 function refuseUnrunnable(at: string, source: string, library: string): void {
-  const compiled = playgroundProgram(source, library);
+  const compiled = playgroundProgram(oneSource(source), library);
   if (compiled.kind === "refused") throw new Error(`${at}: ${OPENS}, which the browser cannot run: ${compiled.message}\n${source}`);
   const requires = (node: ts.Node): void => {
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "require") {
@@ -606,7 +603,7 @@ function refuseUnrunnable(at: string, source: string, library: string): void {
     }
     ts.forEachChild(node, requires);
   };
-  requires(ts.createSourceFile("card.js", compiled.code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS));
+  for (const { code } of compiled.modules) requires(ts.createSourceFile("card.js", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS));
   const defaults = (node: ts.Node): void => {
     if (ts.isImportDeclaration(node) && node.importClause?.name !== undefined && !node.importClause.isTypeOnly) {
       refuseOffLibrary(at, (node.moduleSpecifier as ts.StringLiteral).text, node.importClause);
@@ -757,7 +754,7 @@ export async function runPageExamples(
       });
     }
   }
-  const opened = (fence: Fence): CardProgram => ({ setup: tried.get(fence)!.setup, code: fence.code });
+  const opened = (fence: Fence): CardProgram => oneFile(tried.get(fence)!.setup, fence.code);
   const { code: script } = await bundleOrThrow(`docs/${page}`, generated(program.source));
   const world = newWorld();
   const { stream, end, exits } = await capture(script, world);
@@ -777,10 +774,7 @@ export async function runPageExamples(
   }
   const bytes = new Map<Fence, string>(chain.map((fence, i) => [fence, blockBytes(fence, blocks[i]!)]));
   const shared = await library();
-  const source = (fence: Fence): string => {
-    const { setup, code } = opened(fence);
-    return cardSource(setup, code);
-  };
+  const source = (fence: Fence): string => cardSource(tried.get(fence)!.setup, fence.code);
   for (const [i, fence] of chain.entries()) await tryItPrints(fence, source(fence), blocks[i]!, shared, world);
   for (const fence of tried.keys()) {
     if (MARKERS[fence.marker].run === "browser") refuseUnrunnable(`docs/${page}:${fence.line}`, source(fence), shared.script);
@@ -793,8 +787,7 @@ export async function runPageExamples(
     const rule: MarkerRule = MARKERS[fence.marker];
     if (rule.run === "never") return { run: "never", label: rule.label, note: rule.note };
     const editable = {
-      code: fence.code,
-      setup: tried.get(fence)!.setup,
+      program: opened(fence),
       label: rule.label,
       caption: rule.caption,
       tryIt: { playground, program: hashes.get(fence)! },

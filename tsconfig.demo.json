@@ -1,3 +1,5 @@
+// Compiled by scripts/build-demos.ts, not by `tsc -p`: a demo imports the
+// library by its published names, which that script maps onto `src/`.
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
@@ -9,5 +11,5 @@
     "sourceMap": true
   },
   "include": ["src/**/*.ts", "examples/**/*.ts"],
-  "exclude": ["node_modules", "dist", "dist-demo", "test", "examples/effects-playground/main.ts", "examples/effects-playground/virtual.d.ts"]
+  "exclude": ["node_modules", "dist", "dist-demo", "test", "examples/effects-playground/page.ts", "examples/effects-playground/virtual.d.ts"]
 }

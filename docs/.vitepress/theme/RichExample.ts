@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 /**
  * A program as one editable card: its code, and under it what the code does.
- * Two places show one, with one core between them (`cardCore`):
+ * Three places show one, with one core between them (`cardCore`):
  *
  * - a docs example (`RichExample`). The build hands it the block
  *   (example-card.ts); the page renders it on the server, so a reader sees the
@@ -11,23 +11,28 @@
  *   fence's place, its cursor where the click was, the setup the block runs on
  *   locked and folded around it (setup-regions.ts). "Try it" opens the code
  *   the card holds in the playground.
+ * - a demo's page (`RichDemo`): the demo's files (demo-card.ts) in an editor
+ *   from the start, a tab for each, over the program running in a live
+ *   terminal. "Open in playground" opens every file the card holds there.
  * - the playground (`RichPlayground`): the card at the page's full width,
  *   opened on the program in the URL's hash (playground-hash.ts), its setup
  *   unfolded and line numbers on. An edit is written back to the hash once
  *   typing pauses, so the address bar is a link to what the editor holds.
  *
- * A third place shows one with its code hidden and nothing to edit: the
- * landing page's hero (RichShowcase.ts), a live card's output in the card's
- * frame, built there and not with `cardCore`.
+ * A card's program is files, the entry first (`CardProgram`); one of several
+ * files shows a tab for each, and the editor holds the one whose tab is
+ * chosen. A fourth place shows one with its code hidden and nothing to edit:
+ * the landing page's hero (RichShowcase.ts), a live card's output in the
+ * card's frame, built there and not with `cardCore`.
  *
- * Once typing pauses the card shows what its program (`cardSource`) does with
- * the edit, in what stands under the code, its outlet:
+ * Once typing pauses the card shows what its program (`programFiles`) does
+ * with the edit, in what stands under the code, its outlet:
  *
  * - a block the build runs shows the output the build printed for it until
  *   it is edited; an edit runs in a sandboxed worker (static-run.ts) and its
  *   output is drawn the way the build draws it (example-fragments.ts);
- * - a `live` block's output is its program running in a live terminal
- *   (LiveScreen.ts), which an edit restarts on the edited program;
+ * - a `live` block's output, and a demo's, is its program running in a live
+ *   terminal (LiveScreen.ts), which an edit restarts on the edited program;
  * - a playground program is run the static way, and drawn so when it ends; one
  *   that does what only a terminal shows, reading what is typed or redrawing
  *   what it drew, or is still running at the limit, moves to a live terminal.
@@ -60,9 +65,26 @@ import {
   type VNode,
   type VNodeArrayChildren,
 } from "vue";
-import type { Extension } from "@codemirror/state";
+import type { EditorState, Extension } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
-import { DRAWN, NO_SETUP, PRINTS_NOTHING, RAN, RUNNING, blockOf, blockSpan, cardSource, type CardData, type CardProgram, type CardSetup } from "../example-card.js";
+import {
+  DRAWN,
+  NO_SETUP,
+  PRINTS_NOTHING,
+  RAN,
+  RUNNING,
+  blockOf,
+  blockSpan,
+  cardSource,
+  codesOf,
+  oneFile,
+  programFiles,
+  sameCodes,
+  withCodes,
+  type CardData,
+  type CardProgram,
+  type Codes,
+} from "../example-card.js";
 import type { Drawn } from "../example-fragments.js";
 import { decodeProgram, encodeProgram } from "../playground-hash.js";
 import type { SetupStart } from "./setup-regions.js";
@@ -136,6 +158,7 @@ const message = (error: unknown): string => (error instanceof Error ? error.mess
 
 type EditableCard = Extract<CardData, { readonly run: "build" | "browser" }>;
 type ReadOnlyCard = Extract<CardData, { readonly run: "never" }>;
+type LiveCard = Extract<CardData, { readonly run: "browser" }>;
 
 /** The strip naming the output panel: its label, then what stands beside it. */
 const labelStrip = (label: string, beside: readonly VNode[]): VNode =>
@@ -155,32 +178,40 @@ function readOnlyView(card: ReadOnlyCard, slots: Slots): () => VNode {
 
 /**
  * How showing an edit's output ended: shown, or what went wrong, said under
- * the output. A failure that names a line of the program counts the setup's
- * lines, so the card puts them in view.
+ * the output, with the file whose line it names, if it names one. A line of a
+ * file counts its setup's lines, so the card puts them in view.
  */
-type Outcome = { readonly kind: "shown" } | { readonly kind: "failed"; readonly said: string; readonly namesLine: boolean };
+type Outcome = { readonly kind: "shown" } | { readonly kind: "failed"; readonly said: string; readonly at: string | null };
 
 const SHOWN: Outcome = { kind: "shown" };
 
 /** How a static run of an edit came out: as an outcome, or by doing what only a terminal shows, said as a failure would be. */
 type StaticOutcome = Outcome | { readonly kind: "terminal"; readonly said: string };
 
-/** A crash's report as said under the output: its first line, and the line of the program it names. */
-function crashSaid(report: string, thrownAt: ThrownAt): string {
-  const at = thrownAt(report);
+/** The names of `program`'s files, the names a stack gives their lines. */
+const namesOf = (program: CardProgram): string[] => program.files.map((file) => file.name);
+
+/**
+ * A crash's report as said under the output, its first line, and the file of
+ * `names` it names first, if any. A program of one file shows no tabs, so its
+ * line needs no file's name.
+ */
+function crashSaid(report: string, thrownAt: ThrownAt, names: readonly string[]): Extract<Outcome, { kind: "failed" }> {
+  const at = thrownAt(report, names);
   const headline = report.split("\n")[0]!;
-  return at === null ? headline : `${headline} (line ${at})`;
+  if (at === null) return { kind: "failed", said: headline, at: null };
+  return { kind: "failed", said: `${headline} (${names.length === 1 ? "" : `${at.file} `}line ${at.line})`, at: at.file };
 }
 
 /** How a static run that did not draw came out. */
-function staticEnded(end: Exclude<StaticEnd, { kind: "finished" | "stopped" }>, thrownAt: ThrownAt): StaticOutcome {
+function staticEnded(end: Exclude<StaticEnd, { kind: "finished" | "stopped" }>, thrownAt: ThrownAt, names: readonly string[]): StaticOutcome {
   switch (end.kind) {
     case "threw":
-      return { kind: "failed", said: crashSaid(end.report, thrownAt), namesLine: true };
+      return crashSaid(end.report, thrownAt, names);
     case "exited":
-      return { kind: "failed", said: `It called process.exit(${end.code}).`, namesLine: false };
+      return { kind: "failed", said: `It called process.exit(${end.code}).`, at: null };
     case "overflowed":
-      return { kind: "failed", said: `Stopped after ${end.limitChars} characters: it was still printing.`, namesLine: false };
+      return { kind: "failed", said: `Stopped after ${end.limitChars} characters: it was still printing.`, at: null };
     case "timedOut":
       return { kind: "terminal", said: `Stopped after ${end.limitMs / 1000} s: it was still running.` };
     case "listening":
@@ -194,20 +225,20 @@ function staticEnded(end: Exclude<StaticEnd, { kind: "finished" | "stopped" }>, 
 
 /** What stands under an editable card's code: the output of some code, and how an edit's output reaches it. */
 interface Outlet {
-  /** The code what it shows is the output of; null before it shows any. */
-  readonly code: () => string | null;
+  /** The code of each file what it shows is the output of; null before it shows any. */
+  readonly codes: () => Codes | null;
   readonly label: () => string;
   readonly caption: () => string;
   /** How many columns what it shows is drawn in, for the font to fit the card; null when that is nothing at all. */
   readonly columns: () => number | null;
   readonly body: () => VNodeArrayChildren;
-  /** Show the output of `source`, the card's code, while `current` says no newer edit has come. */
-  show(source: string, current: () => boolean): Promise<Outcome>;
+  /** Show the output of the card's program with `codes` in its files, while `current` says no newer edit has come. */
+  show(codes: Codes, current: () => boolean): Promise<Outcome>;
 }
 
 /** Output drawn under the code: the code it is the output of, what it printed, and the caption that says where it came from. */
 interface Shown {
-  readonly code: string;
+  readonly codes: Codes;
   readonly output: Drawn | null;
   readonly caption: string;
 }
@@ -215,22 +246,23 @@ interface Shown {
 /** A card's code run for what it prints: the output last drawn, and how a run of other code draws its own. */
 interface StaticRuns {
   readonly drawn: ShallowRef<Shown | null>;
-  run(source: string, current: () => boolean): Promise<StaticOutcome>;
+  run(codes: Codes, current: () => boolean): Promise<StaticOutcome>;
 }
 
 /**
- * `setup` around whatever code is run, each run's frame in `root`. Code
- * `rest` is the output of is shown with that output, with nothing run.
+ * `program` with whatever code is run in its files, each run's frame in
+ * `root`. Code `rest` is the output of is shown with that output, with nothing
+ * run.
  */
-function staticRuns(setup: CardSetup, root: Ref<HTMLElement | null>, rest: Shown | null): StaticRuns {
+function staticRuns(program: CardProgram, root: Ref<HTMLElement | null>, rest: Shown | null): StaticRuns {
   const drawn = shallowRef<Shown | null>(rest);
   let running: StaticRun | null = null;
   onBeforeUnmount(() => running?.stop());
   return {
     drawn,
-    async run(source, current) {
+    async run(codes, current) {
       running?.stop();
-      if (source === rest?.code) {
+      if (rest !== null && sameCodes(codes, rest.codes)) {
         drawn.value = rest;
         return SHOWN;
       }
@@ -238,7 +270,7 @@ function staticRuns(setup: CardSetup, root: Ref<HTMLElement | null>, rest: Shown
       if (!current()) return SHOWN;
       running = made.runStatic(root.value!, {
         runtime: made.runtime,
-        script: made.playgroundScript(cardSource(setup, source), made.library),
+        script: made.playgroundScript(programFiles(withCodes(program, codes)), made.library),
         terminal: made.terminal,
         limitMs: made.limitMs,
         limitChars: OUTPUT_LIMIT_CHARS,
@@ -247,10 +279,10 @@ function staticRuns(setup: CardSetup, root: Ref<HTMLElement | null>, rest: Shown
       if (!current() || end.kind === "stopped") return SHOWN;
       // A program that exits 0 has ended as one that finished, as in Node.
       if (end.kind === "finished" || (end.kind === "exited" && end.code === 0)) {
-        drawn.value = { code: source, output: made.drawOutput(bytes), caption: RAN };
+        drawn.value = { codes, output: made.drawOutput(bytes), caption: RAN };
         return SHOWN;
       }
-      return staticEnded(end, made.thrownAt);
+      return staticEnded(end, made.thrownAt, namesOf(program));
     },
   };
 }
@@ -258,7 +290,7 @@ function staticRuns(setup: CardSetup, root: Ref<HTMLElement | null>, rest: Shown
 /** What `drawn` shows, under `label`. */
 function drawnView(drawn: ShallowRef<Shown | null>, label: string): Omit<Outlet, "show"> {
   return {
-    code: () => drawn.value?.code ?? null,
+    codes: () => drawn.value?.codes ?? null,
     label: () => label,
     caption: () => drawn.value?.caption ?? DRAWN.caption,
     columns: () => drawn.value?.output?.columns ?? null,
@@ -279,45 +311,44 @@ function drawnView(drawn: ShallowRef<Shown | null>, label: string): Omit<Outlet,
  * says it is static.
  */
 function staticOutlet(card: Extract<CardData, { readonly run: "build" }>, root: Ref<HTMLElement | null>): Outlet {
-  const runs = staticRuns(card.setup, root, { code: card.code, output: card.output, caption: card.caption });
+  const runs = staticRuns(card.program, root, { codes: codesOf(card.program), output: card.output, caption: card.caption });
   return {
     ...drawnView(runs.drawn, card.label),
-    async show(source, current) {
-      const outcome = await runs.run(source, current);
-      return outcome.kind === "terminal" ? { kind: "failed", said: outcome.said, namesLine: false } : outcome;
+    async show(codes, current) {
+      const outcome = await runs.run(codes, current);
+      return outcome.kind === "terminal" ? { kind: "failed", said: outcome.said, at: null } : outcome;
     },
   };
 }
 
 /**
- * `start` in `setup`, running in a live terminal of `columns` columns. An edit
- * that parses is a new program, which the terminal restarts on; one that does
- * not leaves the terminal running the last that did.
+ * `program` running in a live terminal of `columns` columns. An edit that
+ * parses is a new program, which the terminal restarts on; one that does not
+ * leaves the terminal running the last that did.
  */
-function liveOutlet(setup: CardSetup, start: string, look: { readonly label: string; readonly caption: string }, columns: number): Outlet {
+function liveOutlet(program: CardProgram, look: { readonly label: string; readonly caption: string }, columns: number): Outlet {
+  const start = codesOf(program);
   // Made once and kept: each scroll into view and each Restart asks for it.
   const startProgram = loader(async () => {
     const made = await programs();
-    return made.playgroundScript(cardSource(setup, start), made.library);
+    return made.playgroundScript(programFiles(program), made.library);
   });
-  const running = shallowRef<{ readonly code: string; readonly program: () => Promise<string> }>({ code: start, program: startProgram });
+  const running = shallowRef<{ readonly codes: Codes; readonly program: () => Promise<string> }>({ codes: start, program: startProgram });
   return {
-    code: () => running.value.code,
+    codes: () => running.value.codes,
     label: () => look.label,
     caption: () => look.caption,
     columns: () => columns,
     body: () => [h(LiveScreen, { program: running.value.program })],
-    async show(source, current) {
-      if (source === start) {
-        running.value = { code: source, program: startProgram };
+    async show(codes, current) {
+      if (sameCodes(codes, start)) {
+        running.value = { codes, program: startProgram };
         return SHOWN;
       }
       const made = await programs();
-      const program = made.playgroundProgram(cardSource(setup, source), made.library);
-      if (program.kind === "refused") {
-        return { kind: "failed", said: crashSaid(program.report, made.thrownAt), namesLine: made.thrownAt(program.report) !== null };
-      }
-      if (current()) running.value = { code: source, program: () => Promise.resolve(program.script) };
+      const compiled = made.playgroundProgram(programFiles(withCodes(program, codes)), made.library);
+      if (compiled.kind === "refused") return crashSaid(compiled.report, made.thrownAt, namesOf(program));
+      if (current()) running.value = { codes, program: () => Promise.resolve(compiled.script) };
       return SHOWN;
     },
   };
@@ -328,24 +359,24 @@ function liveOutlet(setup: CardSetup, start: string, look: { readonly label: str
  * when it ends; one that does what only a terminal shows is run in a live
  * terminal instead, until a version that ends is drawn again.
  */
-function decidedOutlet(setup: CardSetup, root: Ref<HTMLElement | null>): Outlet {
-  const runs = staticRuns(setup, root, null);
+function decidedOutlet(program: CardProgram, root: Ref<HTMLElement | null>): Outlet {
+  const runs = staticRuns(program, root, null);
   const still = drawnView(runs.drawn, DRAWN.label);
   const live = shallowRef<Outlet | null>(null);
   const now = () => live.value ?? still;
   return {
-    code: () => now().code(),
+    codes: () => now().codes(),
     label: () => now().label(),
     caption: () => now().caption(),
     columns: () => now().columns(),
     body: () => now().body(),
-    async show(source, current) {
-      const outcome = await runs.run(source, current);
+    async show(codes, current) {
+      const outcome = await runs.run(codes, current);
       if (!current()) return SHOWN;
       if (outcome.kind === "shown") live.value = null;
       if (outcome.kind !== "terminal") return outcome;
       const { terminal } = await statics();
-      if (current()) live.value = liveOutlet(setup, source, RUNNING, terminal.columns);
+      if (current()) live.value = liveOutlet(withCodes(program, codes), RUNNING, terminal.columns);
       return SHOWN;
     },
   };
@@ -386,22 +417,33 @@ const PAGE_SEAT: Seat = {
   ],
 };
 
-/** An editor in the playground: the setup in view from the start, with line numbers, as a program's whole page. */
-const PLAYGROUND_SEAT: Seat = {
+/** An editor that is a program's whole page, the playground's and a demo's: the setup in view from the start, with line numbers. */
+const PROGRAM_SEAT: Seat = {
   setup: "unfolded",
   shown: ([{ PROGRAM_PANE }]) => [...PROGRAM_PANE],
 };
 
 /**
- * What every editable card does with its code: `opened` in an editor, the
- * edit shown by `outlet` once typing pauses, a failure said under it, and the
- * opened code put back on reset. `edited` hears each change, with whether it
- * is still the newest.
+ * What every editable card does with its program: each of its files `opened`
+ * in an editor, the one whose tab is chosen on screen, the edit shown by
+ * `outlet` once typing pauses, a failure said under it, and the opened code
+ * put back on reset. `edited` hears each change, with whether it is still the
+ * newest.
  */
-function cardCore(opened: CardProgram, outlet: Outlet, edited: (source: string, current: () => boolean) => void) {
+function cardCore(opened: CardProgram, outlet: Outlet, edited: (codes: Codes, current: () => boolean) => void) {
   const code = shallowRef<Code>({ kind: "fence", refused: null });
-  const text = ref(opened.code);
+  const openedCodes = codesOf(opened);
+  const texts = shallowRef<Codes>(openedCodes);
   const failure = ref<string | null>(null);
+  /** The file whose tab is chosen. */
+  const active = ref(0);
+  /**
+   * Each file the editor has held and does not hold now, as it left it, its
+   * undo history with it. The file it holds is its own state.
+   */
+  const away = new Map<number, EditorState>();
+  /** Makes a file's state, the first time the editor is asked to hold it. */
+  let stateOf: ((file: number) => EditorState) | null = null;
 
   // [LAW:no-ambient-temporal-coupling] Each edit is a turn, and only the
   // newest turn may show what it does: a show that ends after a newer edit is
@@ -411,38 +453,42 @@ function cardCore(opened: CardProgram, outlet: Outlet, edited: (source: string, 
 
   // [LAW:no-silent-failure] Whatever fails on the way, loading, compiling,
   // running or drawing, is said under the output.
-  async function show(source: string, mine: number): Promise<void> {
+  async function show(codes: Codes, mine: number): Promise<void> {
     const current = () => mine === turn;
     try {
-      const outcome = await outlet.show(source, current);
+      const outcome = await outlet.show(codes, current);
       if (!current()) return;
       failure.value = outcome.kind === "shown" ? null : outcome.said;
       const now = code.value;
-      if (outcome.kind === "failed" && outcome.namesLine && now.kind === "editor") now.unfoldSetup();
+      if (outcome.kind === "failed" && outcome.at === opened.files[active.value]!.name && now.kind === "editor") now.unfoldSetup();
     } catch (error) {
       if (current()) failure.value = `The example could not run: ${message(error)}`;
     }
   }
 
   /**
-   * Show what `source` does once typing pauses, or `now` when the reader asks
+   * Show what `codes` does once typing pauses, or `now` when the reader asks
    * for it; the opened code, whose output an outlet may already hold, at once.
    */
-  function run(source: string, when: "paused" | "now"): number {
+  function run(codes: Codes, when: "paused" | "now"): number {
     const mine = ++turn;
     clearTimeout(pending);
-    pending = setTimeout(() => void show(source, mine), when === "now" || source === opened.code ? 0 : RUN_AFTER_MS);
+    pending = setTimeout(() => void show(codes, mine), when === "now" || sameCodes(codes, openedCodes) ? 0 : RUN_AFTER_MS);
     return mine;
   }
 
-  /** The code changed to `source`, or the reader asked to run it. */
-  function changed(source: string, when: "paused" | "now"): void {
-    text.value = source;
-    const mine = run(source, when);
-    edited(source, () => mine === turn);
+  /** The files' code changed to `codes`, or the reader asked to run it. */
+  function changed(codes: Codes, when: "paused" | "now"): void {
+    texts.value = codes;
+    const mine = run(codes, when);
+    edited(codes, () => mine === turn);
   }
 
-  /** Put an editor holding the opened program in `host`, seated as `seat` says. */
+  /** `file`'s code is now `source`, every other file's as it was. */
+  const changedIn = (file: number, source: string, when: "paused" | "now") =>
+    changed(texts.value.map((text, i) => (i === file ? source : text)), when);
+
+  /** Put an editor holding the chosen file in `host`, seated as `seat` says. */
   async function openEditor(host: () => HTMLElement, seat: Seat): Promise<EditorView | null> {
     code.value = { kind: "opening" };
     const modules = await editorModules().catch((error: unknown) => {
@@ -450,26 +496,43 @@ function cardCore(opened: CardProgram, outlet: Outlet, edited: (source: string, 
       return null;
     });
     if (modules === null) return null;
-    const [{ createEditor }, , , { setupRegions, unfoldSetup }] = modules;
+    const [{ createEditor, editorState }, , , { setupRegions, unfoldSetup }] = modules;
     await nextTick();
     // The card may have left the page while the editor loaded.
     if (code.value.kind !== "opening") return null;
-    const { setup } = opened;
-    const changedTo = (program: string, when: "paused" | "now") => changed(blockOf(setup, program), when);
-    const view = createEditor(host(), cardSource(setup, text.value), { change: (program) => changedTo(program, "paused"), run: () => changedTo(view.state.doc.toString(), "now") }, [
-      setupRegions(setup, seat.setup),
-      ...seat.shown(modules),
-    ]);
+    stateOf = (file) => {
+      const { setup } = opened.files[file]!;
+      const edit = (when: "paused" | "now") => (program: string) => changedIn(file, blockOf(setup, program), when);
+      return editorState(cardSource(setup, texts.value[file]!), { change: edit("paused"), run: edit("now") }, [setupRegions(setup, seat.setup), ...seat.shown(modules)]);
+    };
+    const view = createEditor(host(), stateOf(active.value));
     code.value = { kind: "editor", view, unfoldSetup: () => unfoldSetup(view) };
     await nextTick();
     return view;
   }
 
+  /** Choose `file`'s tab: the editor holds it, as it was left. */
+  function choose(file: number): void {
+    const now = code.value;
+    if (now.kind === "editor" && stateOf !== null && file !== active.value) {
+      away.set(active.value, now.view.state);
+      now.view.setState(away.get(file) ?? stateOf(file));
+      away.delete(file);
+    }
+    active.value = file;
+  }
+
+  /** Put every file's opened code back, each as an edit its own undo can take back. */
   const reset = () => {
     const now = code.value;
     if (now.kind !== "editor") return;
-    const { before, after } = blockSpan(opened.setup);
-    now.view.dispatch({ changes: { from: before, to: now.view.state.doc.length - after, insert: opened.code } });
+    const restore = (state: EditorState, file: number) => {
+      const { before, after } = blockSpan(opened.files[file]!.setup);
+      return state.update({ changes: { from: before, to: state.doc.length - after, insert: openedCodes[file]! } });
+    };
+    for (const [file, state] of away) away.set(file, restore(state, file).state);
+    now.view.dispatch(restore(now.view.state, active.value));
+    changed(openedCodes, "paused");
   };
 
   onBeforeUnmount(() => {
@@ -480,7 +543,7 @@ function cardCore(opened: CardProgram, outlet: Outlet, edited: (source: string, 
     code.value = { kind: "unmounted" };
   });
 
-  const isEdited = computed(() => text.value !== opened.code);
+  const isEdited = computed(() => !sameCodes(texts.value, openedCodes));
 
   /** The quiet line offering the opened code back, `● edited · reset`; or, where it always shows, that there is nothing to put back. */
   const editedLine = () =>
@@ -489,13 +552,33 @@ function cardCore(opened: CardProgram, outlet: Outlet, edited: (source: string, 
       h("button", { type: "button", class: "rich-example-reset", disabled: !isEdited.value, onClick: reset }, "reset"),
     ]);
 
+  /** A tab for each file, named as an import between them names it; none for a program of one file, which has nothing to choose between. */
+  const tabs = () =>
+    opened.files.length === 1
+      ? null
+      : h(
+          "div",
+          { class: "rich-example-tabs", role: "tablist", "aria-label": "Files" },
+          opened.files.map((file, i) =>
+            h(
+              "button",
+              { type: "button", role: "tab", class: "rich-example-tab", "aria-selected": String(i === active.value), onClick: () => choose(i) },
+              file.name,
+            ),
+          ),
+        );
+
   /** The output panel: its label strip, with `beside` after the caption, the output, and what went wrong. */
   const output = (beside: readonly VNode[]) => {
     const now = code.value;
     const columns = outlet.columns();
+    const shown = outlet.codes();
     return h(
       "div",
-      { class: ["rich-example-output", outlet.code() !== text.value ? "rich-example-stale" : null], style: columns === null ? null : { "--rich-example-columns": columns } },
+      {
+        class: ["rich-example-output", shown === null || !sameCodes(shown, texts.value) ? "rich-example-stale" : null],
+        style: columns === null ? null : { "--rich-example-columns": columns },
+      },
       [
         labelStrip(outlet.label(), [h("span", { class: "rich-example-caption" }, outlet.caption()), ...beside]),
         ...outlet.body(),
@@ -506,29 +589,41 @@ function cardCore(opened: CardProgram, outlet: Outlet, edited: (source: string, 
     );
   };
 
-  return { code, edited: isEdited, run, openEditor, editedLine, output };
+  return { code, active, edited: isEdited, run, openEditor, editedLine, tabs, output };
+}
+
+/**
+ * Where a card's "Try it" goes: the playground, on the card's opened program
+ * for its opened code, and on its program with any other code, which needs
+ * nothing a run does; or why an edit has no link. `label` is what the link says.
+ */
+function tryItLink(program: CardProgram, tryIt: { readonly playground: string; readonly program: string }, label: string) {
+  const linked = shallowRef<{ readonly hash: string } | { readonly refused: string }>({ hash: tryIt.program });
+  const opened = codesOf(program);
+  async function link(codes: Codes, current: () => boolean): Promise<void> {
+    const next = sameCodes(codes, opened)
+      ? { hash: tryIt.program }
+      : await encodeProgram(withCodes(program, codes)).then(
+          (hash) => ({ hash }),
+          (error: unknown) => ({ refused: `"${label}" cannot carry this edit: ${message(error)}` }),
+        );
+    if (current()) linked.value = next;
+  }
+  const view = () => {
+    const now = linked.value;
+    return "hash" in now
+      ? h("a", { class: "rich-example-try", href: `${tryIt.playground}#${now.hash}` }, label)
+      : h("span", { class: "rich-example-try", "aria-disabled": "true", title: now.refused }, label);
+  };
+  return { link, view };
 }
 
 function editableView(card: EditableCard, slots: Slots): () => VNode {
   const root = ref<HTMLElement | null>(null);
   const host = ref<HTMLElement | null>(null);
-  const opened: CardProgram = { setup: card.setup, code: card.code };
-  /** The hash "Try it" opens the playground on, the page's program or the card's edit; or why an edit has none. */
-  const tryIt = shallowRef<{ readonly hash: string } | { readonly refused: string }>({ hash: card.tryIt.program });
-  const outlet = card.run === "build" ? staticOutlet(card, root) : liveOutlet(card.setup, card.code, card, card.columns);
-
-  /** Point "Try it" at the page's program for the page's code, and at the card's program around any other, which needs nothing a run does. */
-  async function link(source: string, current: () => boolean): Promise<void> {
-    const linked =
-      source === card.code
-        ? { hash: card.tryIt.program }
-        : await encodeProgram({ setup: card.setup, code: source }).then(
-            (hash) => ({ hash }),
-            (error: unknown) => ({ refused: `"Try it" cannot carry this edit: ${message(error)}` }),
-          );
-    if (current()) tryIt.value = linked;
-  }
-  const core = cardCore(opened, outlet, (source, current) => void link(source, current));
+  const outlet = card.run === "build" ? staticOutlet(card, root) : liveOutlet(card.program, card, card.columns);
+  const tryIt = tryItLink(card.program, card.tryIt, "Try it");
+  const core = cardCore(card.program, outlet, (codes, current) => void tryIt.link(codes, current));
 
   /** Put the editor in the fence's place, its cursor at `at` on screen, or at the start. */
   async function edit(at: { readonly x: number; readonly y: number } | null): Promise<void> {
@@ -537,7 +632,7 @@ function editableView(card: EditableCard, slots: Slots): () => VNode {
     if (view === null) return;
     // The cursor starts in the block, where the click was or nearest it: a
     // click in the space above the code is a click on its first line.
-    const span = blockSpan(card.setup);
+    const span = blockSpan(card.program.files[core.active.value]!.setup);
     const start = span.before;
     const end = view.state.doc.length - span.after;
     const anchor = at === null ? start : Math.min(Math.max(view.posAtCoords(at) ?? start, start), end);
@@ -571,7 +666,6 @@ function editableView(card: EditableCard, slots: Slots): () => VNode {
 
   return () => {
     const now = core.code.value;
-    const link = tryIt.value;
     return h(
       "div",
       {
@@ -586,11 +680,7 @@ function editableView(card: EditableCard, slots: Slots): () => VNode {
         now.kind === "editor" ? null : slots["default"]?.(),
         now.kind === "fence" ? null : h("div", { class: "rich-example-editor", ref: host }),
         core.edited.value ? core.editedLine() : null,
-        core.output([
-          "hash" in link
-            ? h("a", { class: "rich-example-try", href: `${card.tryIt.playground}#${link.hash}` }, "Try it")
-            : h("span", { class: "rich-example-try", "aria-disabled": "true", title: link.refused }, "Try it"),
-        ]),
+        core.output([tryIt.view()]),
       ],
     );
   };
@@ -608,6 +698,50 @@ export default defineComponent({
 });
 
 /**
+ * A card open from the start, a program's whole page: its tabs, an editor on
+ * the program's entry, the line offering the opened code back, and the output
+ * of `outlet`, made with the card's frame, with `beside` in its label strip.
+ */
+function openCardView(
+  program: CardProgram,
+  outlet: (root: Ref<HTMLElement | null>) => Outlet,
+  edited: (codes: Codes, current: () => boolean) => void,
+  beside: () => VNode[],
+) {
+  const root = ref<HTMLElement | null>(null);
+  const host = ref<HTMLElement | null>(null);
+  const core = cardCore(program, outlet(root), edited);
+  onMounted(() => void core.openEditor(() => host.value!, PROGRAM_SEAT));
+  return {
+    core,
+    render: () =>
+      h("div", { class: "rich-example rich-example-card", ref: root }, [
+        core.tabs(),
+        h("div", { class: "rich-example-editor", ref: host }),
+        core.editedLine(),
+        core.output(beside()),
+      ]),
+  };
+}
+
+/**
+ * A demo's page's card (demo-card.ts): its files in the editor from the
+ * start, a tab for each, over the program running in a live terminal.
+ */
+export const RichDemo = defineComponent({
+  name: "RichDemo",
+  props: {
+    card: { type: Object as PropType<LiveCard>, required: true },
+  },
+  setup(props) {
+    const { card } = props;
+    const tryIt = tryItLink(card.program, card.tryIt, "Open in playground");
+    const live = () => liveOutlet(card.program, card, card.columns);
+    return openCardView(card.program, live, (codes, current) => void tryIt.link(codes, current), () => [tryIt.view()]).render;
+  },
+});
+
+/**
  * The playground's card, on one program: an editor from the start, the
  * program run at once, and every edit handed to `edited`.
  */
@@ -618,20 +752,10 @@ const PlaygroundCard = defineComponent({
     edited: { type: Function as PropType<(program: CardProgram) => void>, required: true },
   },
   setup(props) {
-    const root = ref<HTMLElement | null>(null);
-    const host = ref<HTMLElement | null>(null);
     const { program } = props;
-    const core = cardCore(program, decidedOutlet(program.setup, root), (code) => props.edited({ setup: program.setup, code }));
-    onMounted(() => {
-      core.run(program.code, "now");
-      void core.openEditor(() => host.value!, PLAYGROUND_SEAT);
-    });
-    return () =>
-      h("div", { class: "rich-example rich-example-card", ref: root }, [
-        h("div", { class: "rich-example-editor", ref: host }),
-        core.editedLine(),
-        core.output([]),
-      ]);
+    const card = openCardView(program, (root) => decidedOutlet(program, root), (codes) => props.edited(withCodes(program, codes)), () => []);
+    onMounted(() => card.core.run(codesOf(program), "now"));
+    return card.render;
   },
 });
 
@@ -671,7 +795,7 @@ export const RichPlayground = defineComponent({
     async function follow(): Promise<void> {
       const event = next();
       const hash = location.hash.slice(1);
-      const start = () => import("virtual:rich-live/playground").then(({ start }): CardProgram => ({ setup: NO_SETUP, code: start }));
+      const start = () => import("virtual:rich-live/playground").then(({ start }): CardProgram => oneFile(NO_SETUP, start));
       try {
         const program = await (hash === "" ? start() : decodeProgram(hash)).catch(async (error: unknown) => {
           const fallback = await start();

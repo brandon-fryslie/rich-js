@@ -234,6 +234,34 @@
   color: var(--vp-c-brand-1);
 }
 
+/* A card of several files names each on a tab above its editor; the chosen
+ * one is underlined in the brand colour, as the docs' own code groups mark theirs. */
+.vp-doc .rich-example-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 0 12px;
+  background: var(--vp-c-bg-soft);
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.vp-doc .rich-example-tab {
+  padding: 0 12px;
+  border-bottom: 2px solid transparent;
+  font-family: var(--vp-font-family-mono);
+  font-size: 13px;
+  line-height: 40px;
+  color: var(--vp-c-text-2);
+}
+
+.vp-doc .rich-example-tab:hover {
+  color: var(--vp-c-text-1);
+}
+
+.vp-doc .rich-example-tab[aria-selected='true'] {
+  border-bottom-color: var(--vp-c-brand-1);
+  color: var(--vp-c-text-1);
+}
+
 .vp-doc .rich-example-reset:hover {
   text-decoration: underline;
 }

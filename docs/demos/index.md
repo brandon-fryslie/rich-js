@@ -15,7 +15,9 @@ const demoHref = (name) => withBase(`/demos/${name}`)
 
 # Live Demos
 
-Each demo runs the rich-js library directly in your browser via [xterm.js](https://xtermjs.org/) — the same code that runs as a node CLI, mounted against a browser `TerminalHost`. No screenshots, no recordings: every page below is a real, interactive terminal.
+Each demo runs the rich-js library directly in your browser via [xterm.js](https://xtermjs.org/). No screenshots, no recordings: every page below is a real, interactive terminal.
+
+A demo is a Node program, and its page runs that same program. Its entry is `main.ts`, which builds its own terminal with `NodeTerminalHost` or prints through a `Console`; on the page it runs in a terminal the page gives it, the way the [live examples](/widgets) do, so nothing in it asks where it is running. It imports the library by its published names, `@promptctl/rich-js` and its subpaths, and its own files by relative paths. Its page shows each file as a tab you can edit, and the program re-runs on the edit; "Open in playground" takes every file with it. The demos that do not have a `main.ts` yet run in a frame of their own.
 
 To run these in your own terminal instead, see the [Demos section of the README](https://github.com/brandon-fryslie/rich-js#demos) — it gives the npm script for each demo and a line on what it shows.
 

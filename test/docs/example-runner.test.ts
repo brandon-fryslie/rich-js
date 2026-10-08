@@ -27,8 +27,8 @@ import {
 import { PAGE_PARSER, scanFences } from "../../docs/.vitepress/example-markers.js";
 import { runInTerminal } from "../../docs/.vitepress/simulated-process.js";
 import { decodeProgram } from "../../docs/.vitepress/playground-hash.js";
-import { PRINTS_NOTHING, cardSource, setupLines } from "../../docs/.vitepress/example-card.js";
-import { playgroundScript } from "../../docs/.vitepress/theme/playground-program.js";
+import { PRINTS_NOTHING, cardSource, programFiles, setupLines } from "../../docs/.vitepress/example-card.js";
+import { oneSource, playgroundScript } from "../../docs/.vitepress/theme/playground-program.js";
 import { EXAMPLE_TERMINAL } from "../../docs/.vitepress/example-terminal.js";
 import type { CardData } from "../../docs/.vitepress/example-card.js";
 
@@ -63,7 +63,7 @@ const cards = (markdown: string): BuildCard[] => allCards(markdown).flatMap((car
 const liveCards = (markdown: string): LiveCard[] => allCards(markdown).flatMap((card) => (card.run === "browser" ? [card] : []));
 
 /** What a live card's terminal shows, run to the end of its program's body: its program, on the site's library. */
-const liveCardOutput = async (card: LiveCard): Promise<string> => liveOutput(playgroundScript(cardSource(card.setup, card.code), (await library()).script));
+const liveCardOutput = async (card: LiveCard): Promise<string> => liveOutput(playgroundScript(programFiles(card.program), (await library()).script));
 
 /** What a card the build runs, or one that runs nowhere, shows under its code at rest: its two fragments, or the sentence in their place. */
 function cardShows(card: BuildCard | Extract<CardData, { readonly run: "never" }>): string {
@@ -120,17 +120,17 @@ describe("the example widget", () => {
       /^\n<script setup>\nconst __richCard_0 = \{[^\n]*\};\n<\/script>\n\nBefore\.\n\n<RichExample :card="__richCard_0">\n\n```ts\nconsole\.print\(1\);\n```\n\n<\/RichExample>\n\nAfter\.$/,
     );
     const [card] = cards(result);
-    expect(card).toMatchObject({ code: "console.print(1);", label: "Output", caption: "produced by running the code above" });
+    expect(card).toMatchObject({ program: { files: [{ code: "console.print(1);" }] }, label: "Output", caption: "produced by running the code above" });
   });
 
   it("hands a card the setup its block runs on, and the edited block runs in its place", async () => {
     const result = await run(page(fence('const title = "shared";', "ts silent"), fence('import { Rule } from "@promptctl/rich-js";\nconsole.print(new Rule(title));')));
     const [, card] = cards(result);
-    expect(setupLines(card!.setup).join("\n")).toContain('const title = "shared";');
+    expect(setupLines(card!.program.files[0].setup).join("\n")).toContain('const title = "shared";');
     // The block's own lines are the card's code, not part of its setup.
-    expect([...setupLines(card!.setup), ...card!.setup.after].join("\n")).not.toContain("console.print");
-    const program = cardSource(card!.setup, card!.code.replace("new Rule(title)", "title.toUpperCase()"));
-    expect(await liveOutput(playgroundScript(program, (await library()).script))).toContain("SHARED");
+    expect([...setupLines(card!.program.files[0].setup), ...card!.program.files[0].setup.after].join("\n")).not.toContain("console.print");
+    const program = cardSource(card!.program.files[0].setup, card!.program.files[0].code.replace("new Rule(title)", "title.toUpperCase()"));
+    expect(await liveOutput(playgroundScript(oneSource(program), (await library()).script))).toContain("SHARED");
   });
 
   it("labels each group of a card's setup with where it came from", async () => {
@@ -138,7 +138,7 @@ describe("the example widget", () => {
       page("# Page", "## Basic usage", fence('const title = "shared";', "ts silent"), "## Next", fence("console.print(new Rule(title));")),
     );
     const [, card] = cards(result);
-    expect(card!.setup.before).toEqual([
+    expect(card!.program.files[0].setup.before).toEqual([
       { origin: "imports", lines: ['import { Console, Rule } from "@promptctl/rich-js";', ""] },
       { origin: "assumed by every example", lines: ["const console = new Console();", ""] },
       { origin: "from 'Basic usage'", lines: ['const title = "shared";', ""] },
@@ -149,8 +149,8 @@ describe("the example widget", () => {
     const own = 'import { Console, Rule } from "@promptctl/rich-js";\nconst console = new Console();\nconsole.print(new Rule("one"));';
     const second = 'import { Panel } from "@promptctl/rich-js";\nconsole.print(new Panel(new Rule("two")));';
     const [first, next] = cards(await run(page(fence(own), fence(second))));
-    expect(first!.setup).toEqual({ before: [], after: [] });
-    expect(next!.setup.before).toEqual([
+    expect(first!.program.files[0].setup).toEqual({ before: [], after: [] });
+    expect(next!.program.files[0].setup.before).toEqual([
       { origin: "imports", lines: ['import { Console, Rule } from "@promptctl/rich-js";', ""] },
       { origin: "from above", lines: ["const console = new Console();", ""] },
     ]);
@@ -160,15 +160,15 @@ describe("the example widget", () => {
     const [first, next] = cards(
       await run(page("## Using `track()` \\*here\\*", fence('import "@promptctl/rich-js";\nconst title = "shared";\nconsole.print(title);'), fence("console.print(title);"))),
     );
-    expect(setupLines(first!.setup)).not.toContain('import "@promptctl/rich-js";');
-    expect(setupLines(next!.setup)).toContain('import "@promptctl/rich-js";');
-    expect(next!.setup.before.map((group) => group.origin)).toContain("from 'Using track() *here*'");
+    expect(setupLines(first!.program.files[0].setup)).not.toContain('import "@promptctl/rich-js";');
+    expect(setupLines(next!.program.files[0].setup)).toContain('import "@promptctl/rich-js";');
+    expect(next!.program.files[0].setup.before.map((group) => group.origin)).toContain("from 'Using track() *here*'");
   });
 
   it("keeps a string in a card's data from closing the page's script", async () => {
     const result = await run(fence('console.print("</script>");'));
     expect(result).not.toMatch(/^const __richCard_0 = .*<\/script>/m);
-    expect(cards(result)[0]!.code).toBe('console.print("</script>");');
+    expect(cards(result)[0]!.program.files[0].code).toBe('console.print("</script>");');
   });
 
   // custom.css shrinks an output's font to fit its card by this count, so a
@@ -262,7 +262,7 @@ describe("one page, one program", () => {
 
   it("makes a silent block an editable card that printed nothing", async () => {
     const [card] = cards(await run(page(fence("const a = 1;", "ts silent"), fence("console.print(a);"))));
-    expect(card).toMatchObject({ code: "const a = 1;", output: null, label: "Output" });
+    expect(card).toMatchObject({ program: { files: [{ code: "const a = 1;" }] }, output: null, label: "Output" });
   });
 
   it("makes a throws block an editable card showing its output, then the error, and keeps its names to itself", async () => {
@@ -296,7 +296,7 @@ describe("a live block", () => {
   it("is an editable card whose output is its program, which only the browser runs", async () => {
     const markdown = await run(`# t\n\n${fence('console.print("live");', "ts live")}`);
     const [card] = allCards(markdown);
-    expect(card).toMatchObject({ run: "browser", code: 'console.print("live");', label: "Live", caption: "the code above, running in your browser" });
+    expect(card).toMatchObject({ run: "browser", program: { files: [{ code: 'console.print("live");' }] }, label: "Live", caption: "the code above, running in your browser" });
     expect(await liveCardOutput(card as LiveCard)).toContain("live");
     expect(markdown).not.toContain("import(");
   });
@@ -369,7 +369,7 @@ async function tried(markdown: string): Promise<{ href: string; program: string 
   const links = allCards(markdown).flatMap((card) => (card.run === "never" ? [] : [`${card.tryIt.playground}#${card.tryIt.program}`]));
   return Promise.all(
     links.map(async (link) => {
-      const { setup, code } = await decodeProgram(link.split("#")[1]!);
+      const { files: [{ setup, code }] } = await decodeProgram(link.split("#")[1]!);
       return { href: link.split("#")[0]!, program: cardSource(setup, code) };
     }),
   );
@@ -388,8 +388,8 @@ describe("Try it", () => {
   it("carries the block and the setup its card holds it in, so the playground locks and labels the same groups", async () => {
     const result = await run(page(fence('const title = "shared";\nconsole.print("first");'), fence("console.print(title);")));
     const card = cards(result)[1]!;
-    expect(await decodeProgram(card.tryIt.program)).toEqual({ setup: card.setup, code: card.code });
-    expect(card.setup.before.map((group) => group.origin)).toEqual(["imports", "assumed by every example", "from above"]);
+    expect(await decodeProgram(card.tryIt.program)).toEqual(card.program);
+    expect(card.program.files[0].setup.before.map((group) => group.origin)).toEqual(["imports", "assumed by every example", "from above"]);
   });
 
   it("opens docs/panel.md's blocks naming only what each uses, a block that imports keeping its own imports", async () => {
@@ -593,7 +593,7 @@ describe("the plugin", () => {
     const [, librarySpecifier] = /^export \{ default \} from ("[^"]+");$/.exec(module)!;
     const library = (await plugin.load.call(context, plugin.resolveId(JSON.parse(librarySpecifier!) as string)!))!;
     const [, script] = /^export default (".*");$/s.exec(library)!;
-    expect(await liveOutput(playgroundScript('import { Console } from "@promptctl/rich-js";\nnew Console().print("served");', JSON.parse(script!) as string))).toContain("served");
+    expect(await liveOutput(playgroundScript(oneSource('import { Console } from "@promptctl/rich-js";\nnew Console().print("served");'), JSON.parse(script!) as string))).toContain("served");
     expect(plugin.resolveId("./elsewhere.js")).toBeNull();
     await expect(plugin.load.call(context, `\0${LIVE_MODULE_PREFIX}0000`)).rejects.toThrow(/no live library was served under this id/);
   });
