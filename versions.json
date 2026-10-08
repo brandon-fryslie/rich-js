@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-341",
-      "ref": "refs/pull/341/merge",
-      "sha": "a26bad71d825fbd88a5184659dc7295a65a951ba",
-      "timestamp": "2026-10-08T01:56:26.150Z",
-      "commits": [
-        {
-          "sha": "a26bad71d825fbd88a5184659dc7295a65a951ba",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T01:55:23Z",
-          "message": "Merge b329b97ce4657369738dc529659e49ab3b4c6894 into 2d11591378efe0356595191d0cc01736782d55c9\n"
-        },
-        {
-          "sha": "b329b97ce4657369738dc529659e49ab3b4c6894",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T19:55:19-06:00",
-          "message": "fix(effects): the written colour wins a tie with the rematch, and respec runs only where colours change (rich-effects-fxiy.7b3)\n\nReview (escalation high): wire is downgraded with the stock table while matchOn rounds on the theme, so a 1-unit nudge of #ff0000 at 256 rewrote 38;5;196 as 91 and #ffffff as 39. A slot now keeps its written spec when that is as near the moved colour as matchOn's choice (rgbDistance, the one distance). Cells merge on equal colours first, so respec and matchOn run once per change, not per cell.\n"
-        },
-        {
-          "sha": "8a5a17f84f6fdd25d3e384ef1283f7c326f190e8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T19:47:37-06:00",
-          "message": "fix(effects): no colour is not the default colour; a move the depth cannot show keeps the written spec (rich-effects-fxiy.7b3)\n\nReview (medium): treating an absent slot as the default merged runs whose first cell then forced 39 over a style a container lays beneath (Segment.applyStyle). Runs compare strictly again; the unshowable-move case is settled per cell in respec.\n"
-        },
-        {
-          "sha": "861e0f6757b1247979e11263e6d97cb9bd6537fa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T19:43:38-06:00",
-          "message": "fix(effects): runs merge on what each slot writes, so the default colour and no colour are one run (rich-effects-fxiy.7b3)\n\nReview (high): a cell nudged off the default colour at 256/16 colours wrote 39 beside cells writing nothing, cutting a run per cell; the merge also built a Style and SGR string per cell. Runs now compare per-slot written codes, absent read as default.\n"
-        },
-        {
-          "sha": "e3425c5c81cdc9b17fe8ca4b985befd79f216cf1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T19:35:13-06:00",
-          "message": "fix(effects): Effected merges cells on what the depth writes, so colours landing on one index are one run (rich-effects-fxiy.7b3)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "2d11591378efe0356595191d0cc01736782d55c9",
-      "timestamp": "2026-10-08T01:28:54.100Z",
+      "sha": "8a62d728942a2c4b72b3b7a19ad2b154ec432c44",
+      "timestamp": "2026-10-08T02:00:12.533Z",
       "commits": [
         {
-          "sha": "2d11591378efe0356595191d0cc01736782d55c9",
+          "sha": "8a62d728942a2c4b72b3b7a19ad2b154ec432c44",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T19:27:28-06:00",
-          "message": "feat(progress): ProgressBar's pulse animates, as the library's shimmer (rich-effects-fxiy.3rg) (#340)\n\n* feat(progress): ProgressBar's pulse animates, as the library's shimmer (rich-effects-fxiy.3rg)\n\n`ProgressBar` stored `pulse` and nothing read it. `pulse` is now `{ t }`,\nthe moment to draw: the whole bar in its back style, lit along its length\nby `shimmer` toward `bar.pulse`, through `Effected`. The bar has no\nanimation code of its own and reads no clock.\n\n`BarColumn` pulses a task that is not started or has no total, as Rich's\ndoes, at `Task.time`, the frame's moment on the `Progress` clock (Rich's\n`Task.get_time()`). A task with no total no longer fills against an\nassumed 100 and never finishes.\n\n`ProgressBar`'s back style defaults to `bar.back`, as in Rich, instead of\nno style. Light only lifts a colour, so it could barely move an unstyled\ntrack drawn in the terminal's foreground.\n\nBreaking: `ProgressBarOptions.pulse` is `{ t: number }`, not a boolean,\nand `Task` has a required `time`.\n\n* review(progress): pin the pulse's no-colour blank and the bar.back default; docs say what the shimmer's weather and refresh rate do (rich-effects-fxiy.3rg)\n\n* fix(progress): the pulse lights the bar's line, never the ground behind it (rich-effects-fxiy.3rg)\n\n* fix(progress): the pulse's glow resolves as drawn, like its ink; docs state the dark spells' length (rich-effects-fxiy.3rg)"
+          "timestamp": "2026-10-07T19:59:08-06:00",
+          "message": "fix(effects): Effected merges cells on what the depth writes (rich-effects-fxiy.7b3) (#341)\n\n* fix(effects): Effected merges cells on what the depth writes, so colours landing on one index are one run (rich-effects-fxiy.7b3)\n\n* fix(effects): runs merge on what each slot writes, so the default colour and no colour are one run (rich-effects-fxiy.7b3)\n\nReview (high): a cell nudged off the default colour at 256/16 colours wrote 39 beside cells writing nothing, cutting a run per cell; the merge also built a Style and SGR string per cell. Runs now compare per-slot written codes, absent read as default.\n\n* fix(effects): no colour is not the default colour; a move the depth cannot show keeps the written spec (rich-effects-fxiy.7b3)\n\nReview (medium): treating an absent slot as the default merged runs whose first cell then forced 39 over a style a container lays beneath (Segment.applyStyle). Runs compare strictly again; the unshowable-move case is settled per cell in respec.\n\n* fix(effects): the written colour wins a tie with the rematch, and respec runs only where colours change (rich-effects-fxiy.7b3)\n\nReview (escalation high): wire is downgraded with the stock table while matchOn rounds on the theme, so a 1-unit nudge of #ff0000 at 256 rewrote 38;5;196 as 91 and #ffffff as 39. A slot now keeps its written spec when that is as near the moved colour as matchOn's choice (rgbDistance, the one distance). Cells merge on equal colours first, so respec and matchOn run once per change, not per cell."
         }
       ]
     }
