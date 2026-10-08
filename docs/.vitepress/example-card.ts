@@ -33,19 +33,32 @@ export interface CardSetup {
   readonly after: readonly string[];
 }
 
-/** One static block's card. */
-export interface CardData {
-  /** The block as the page shows it. */
-  readonly code: string;
-  readonly setup: CardSetup;
-  /** What the block printed at build time. */
-  readonly output: Drawn;
-  /** The output panel's label and the caption beside it. */
-  readonly label: string;
-  readonly caption: string;
-  /** Where "Try it" goes: the playground, and the hash that opens the block's program in it. */
-  readonly tryIt: { readonly playground: string; readonly program: string };
-}
+/** The caption of output a card's code printed when it ran: an edit's, or the page's own unless its marker says more. */
+export const RAN = "produced by running the code above";
+
+/** What a card says in place of output when its code printed nothing. */
+export const PRINTS_NOTHING = "This example prints nothing when it runs.";
+
+/**
+ * One block's card, by where its marker says the block runs
+ * (example-markers.ts). A block the build runs is editable; one that runs
+ * nowhere is the same card, read-only, its note in place of output.
+ */
+export type CardData =
+  | {
+      readonly run: "build";
+      /** The block as the page shows it. */
+      readonly code: string;
+      readonly setup: CardSetup;
+      /** What the block printed at build time; null if it printed nothing (`drawOutput`). */
+      readonly output: Drawn | null;
+      /** The output panel's label and the caption beside it. */
+      readonly label: string;
+      readonly caption: string;
+      /** Where "Try it" goes: the playground, and the hash that opens the block's program in it. */
+      readonly tryIt: { readonly playground: string; readonly program: string };
+    }
+  | { readonly run: "never"; readonly label: string; readonly note: string };
 
 /** The lines above a card's block, in order. */
 export const setupLines = (setup: CardSetup): string[] => setup.before.flatMap((group) => group.lines);

@@ -25,7 +25,13 @@ export interface Drawn {
   readonly columns: number;
 }
 
-export function drawOutput(bytes: string): Drawn {
+/**
+ * `bytes` drawn, or null when there are none: a program that printed nothing
+ * draws as one that printed a blank line, so the bytes, not the drawing, say
+ * which it was.
+ */
+export function drawOutput(bytes: string): Drawn | null {
+  if (bytes === "") return null;
   const text = decodeAnsi(bytes, { noWrap: true });
   const segments: Segment[] = [...text.render({ maxWidth: EXAMPLE_TERMINAL.columns, isTerminal: false, asciiOnly: false })];
   const [columns] = Segment.getShape(Segment.splitLines(segments));

@@ -14,15 +14,19 @@
  * code other than the editor's is dimmed: while an edit waits to run, and
  * after one that threw, exited, or ran past the time or output limit, with
  * what went wrong under it in red. "Try it" opens the code the card holds.
+ * Output that is no bytes at all is said in words in its place.
+ *
+ * A block the build does not run is the same card, read-only: its code over
+ * the note its marker gives, and nothing to edit.
  *
  * [LAW:dataflow-not-control-flow] What the card shows is a function of the
  * code in it. The page's own code is shown with the output the build proved
  * for it, with nothing run; any other code is run. Reset is putting the page's
  * code back, nothing more.
  */
-import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, type PropType } from "vue";
+import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, type PropType, type Slots, type VNode } from "vue";
 import type { EditorView } from "@codemirror/view";
-import { blockOf, blockSpan, cardSource, type CardData } from "../example-card.js";
+import { PRINTS_NOTHING, RAN, blockOf, blockSpan, cardSource, type CardData } from "../example-card.js";
 import type { Drawn } from "../example-fragments.js";
 import { encodeProgram } from "../playground-hash.js";
 import type { StaticEnd, StaticRun } from "./static-run.js";
@@ -92,221 +96,252 @@ type Code =
 
 const message = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
+type EditableCard = Extract<CardData, { readonly run: "build" }>;
+type ReadOnlyCard = Extract<CardData, { readonly run: "never" }>;
+
+/** The strip naming the output panel: its label, then what stands beside it. */
+const labelStrip = (label: string, beside: readonly VNode[]): VNode =>
+  h("div", { class: "rich-example-label" }, [h("span", { class: "rich-example-name" }, label), ...beside]);
+
+/** A sentence in the output's place. */
+const note = (said: string): VNode => h("p", { class: "rich-example-note" }, said);
+
+/** A block the build does not run: its code over its note, nothing to edit. */
+function readOnlyView(card: ReadOnlyCard, slots: Slots): () => VNode {
+  return () =>
+    h("div", { class: "rich-example rich-example-card" }, [
+      slots["default"]?.(),
+      h("div", { class: "rich-example-output" }, [labelStrip(card.label, []), note(card.note)]),
+    ]);
+}
+
+/** Output drawn under the code: the code it is the output of, what it printed, and the caption that says where it came from. */
+interface Shown {
+  readonly code: string;
+  readonly output: Drawn | null;
+  readonly caption: string;
+}
+
+function editableView(card: EditableCard, slots: Slots): () => VNode {
+  const root = ref<HTMLElement | null>(null);
+  const host = ref<HTMLElement | null>(null);
+  const code = shallowRef<Code>({ kind: "fence", refused: null });
+  const text = ref(card.code);
+  const page: Shown = { code: card.code, output: card.output, caption: card.caption };
+  const drawn = shallowRef<Shown>(page);
+  const failure = ref<string | null>(null);
+  /** The hash "Try it" opens the playground on, the page's program or the card's edit; or why an edit has none. */
+  const tryIt = shallowRef<{ readonly hash: string } | { readonly refused: string }>({ hash: card.tryIt.program });
+  const edited = computed(() => text.value !== card.code);
+
+  // [LAW:no-ambient-temporal-coupling] Each edit is a turn, and only the
+  // newest turn's run may draw: an edit ends the run before it, and a run
+  // that ends after a newer edit is no one's.
+  let turn = 0;
+  let pending: ReturnType<typeof setTimeout> | undefined;
+  let running: StaticRun | null = null;
+
+  /** Why a run did not draw, as said under the output. */
+  const failed = (end: Exclude<StaticEnd, { kind: "finished" | "stopped" }>, thrownAt: Tools["thrownAt"]): string => {
+    switch (end.kind) {
+      case "threw": {
+        const at = thrownAt(end.report);
+        // The editor holds the whole program, so the program's line is the
+        // reader's once the setup it counts is shown (`run`).
+        const headline = end.report.split("\n")[0]!;
+        return at === null ? headline : `${headline} (line ${at})`;
+      }
+      case "exited":
+        return `It called process.exit(${end.code}).`;
+      case "timedOut":
+        return `Stopped after ${end.limitMs / 1000} s: it was still running.`;
+      case "overflowed":
+        return `Stopped after ${end.limitChars} characters: it was still printing.`;
+    }
+  };
+
+  // [LAW:no-silent-failure] Whatever fails on the way, loading, compiling,
+  // running or drawing, is said under the output.
+  async function run(source: string, mine: number): Promise<void> {
+    try {
+      const made = await tools();
+      if (mine !== turn) return;
+      running = made.runStatic(root.value!, {
+        runtime: made.runtime,
+        script: made.playgroundScript(cardSource(card.setup, source), made.library),
+        terminal: made.terminal,
+        limitMs: made.limitMs,
+        limitChars: OUTPUT_LIMIT_CHARS,
+      });
+      const { bytes, end } = await running.result;
+      if (mine !== turn || end.kind === "stopped") return;
+      // A program that exits 0 has ended as one that finished, as in Node.
+      if (end.kind === "finished" || (end.kind === "exited" && end.code === 0)) {
+        drawn.value = { code: source, output: made.drawOutput(bytes), caption: RAN };
+        failure.value = null;
+      } else {
+        failure.value = failed(end, made.thrownAt);
+        // A thrown error's line counts the setup's lines, so they are put in view.
+        const now = code.value;
+        if (end.kind === "threw" && now.kind === "editor") now.unfoldSetup();
+      }
+    } catch (error) {
+      if (mine === turn) failure.value = `The example could not run: ${message(error)}`;
+    }
+  }
+
+  /** Point "Try it" at the card's program around `source`, which needs nothing a run does. */
+  async function link(source: string, mine: number): Promise<void> {
+    const linked = await encodeProgram(cardSource(card.setup, source)).then(
+      (hash) => ({ hash }),
+      (error: unknown) => ({ refused: `"Try it" cannot carry this edit: ${message(error)}` }),
+    );
+    if (mine === turn) tryIt.value = linked;
+  }
+
+  /** The code changed to `source`: show the page's output for the page's code, and run any other. */
+  function changed(source: string): void {
+    text.value = source;
+    const mine = ++turn;
+    clearTimeout(pending);
+    running?.stop();
+    if (source === card.code) {
+      drawn.value = page;
+      tryIt.value = { hash: card.tryIt.program };
+      failure.value = null;
+      return;
+    }
+    void link(source, mine);
+    pending = setTimeout(() => void run(source, mine), RUN_AFTER_MS);
+  }
+
+  /** Put the editor in the fence's place, its cursor at `at` on screen, or at the start. */
+  async function edit(at: { readonly x: number; readonly y: number } | null): Promise<void> {
+    if (code.value.kind !== "fence") return;
+    code.value = { kind: "opening" };
+    const modules = await editorModules().catch((error: unknown) => {
+      if (code.value.kind === "opening") code.value = { kind: "fence", refused: `The editor could not load: ${message(error)}` };
+      return null;
+    });
+    if (modules === null) return;
+    const [{ createEditor }, { EditorView: View }, { Prec }, { setupRegions, unfoldSetup }] = modules;
+    await nextTick();
+    // The card may have left the page while the editor loaded.
+    if (code.value.kind !== "opening") return;
+    const { setup } = card;
+    const changedTo = (program: string) => changed(blockOf(setup, program));
+    const view = createEditor(host.value!, cardSource(setup, card.code), { change: changedTo, run: () => changedTo(view.state.doc.toString()) }, [
+      setupRegions(setup, "folded"),
+      View.contentAttributes.of({ "aria-label": "Example code" }),
+      // The fence's own measures, so the code does not move when the editor
+      // takes its place; the folded setup's strip stands in the space above it.
+      Prec.highest(
+        View.theme({
+          "&": { backgroundColor: "var(--vp-code-block-bg)" },
+          ".cm-scroller": { fontFamily: "var(--rich-code-font-family)", lineHeight: "var(--vp-code-line-height)" },
+          ".cm-content": { padding: `${FENCE_PADDING} 0` },
+          ".cm-line, .rich-setup-label, .rich-setup-strip": { padding: "0 24px" },
+          ".rich-setup-strip": { lineHeight: FENCE_PADDING },
+        }),
+      ),
+    ]);
+    code.value = { kind: "editor", view, unfoldSetup: () => unfoldSetup(view) };
+    await nextTick();
+    // The cursor starts in the block, where the click was or nearest it: a
+    // click in the space above the code is a click on its first line.
+    const span = blockSpan(setup);
+    const start = span.before;
+    const end = view.state.doc.length - span.after;
+    const anchor = at === null ? start : Math.min(Math.max(view.posAtCoords(at) ?? start, start), end);
+    view.dispatch({ selection: { anchor } });
+    view.focus();
+  }
+
+  // A failed fetch here is said by the click that needs the editor, which
+  // fetches it again.
+  const approached = () => void editorModules().catch(() => {});
+  // A click that selected text is the reader copying, not editing; the
+  // fence's own copy button is the reader copying too.
+  const clicked = (event: MouseEvent) => {
+    const target = event.target as Element;
+    if (target.closest("div[class*='language-']") === null || target.closest("button") !== null) return;
+    if (getSelection()?.isCollapsed === false) return;
+    void edit({ x: event.clientX, y: event.clientY });
+  };
+  const pressed = (event: KeyboardEvent) => {
+    if (event.key !== "Enter" || (event.target as Element).closest("div[class*='language-'] pre") === null) return;
+    event.preventDefault();
+    void edit(null);
+  };
+  const reset = () => {
+    const now = code.value;
+    if (now.kind !== "editor") return;
+    const { before, after } = blockSpan(card.setup);
+    now.view.dispatch({ changes: { from: before, to: now.view.state.doc.length - after, insert: card.code } });
+  };
+
+  // The page is the server's until this runs: a click before it reaches
+  // nothing, so the card says it can be edited only from here.
+  const editable = ref(false);
+  onMounted(() => {
+    editable.value = true;
+  });
+  onBeforeUnmount(() => {
+    turn += 1;
+    clearTimeout(pending);
+    running?.stop();
+    const now = code.value;
+    if (now.kind === "editor") now.view.destroy();
+    code.value = { kind: "unmounted" };
+  });
+
+  return () => {
+    const now = code.value;
+    const { output, caption } = drawn.value;
+    const stale = drawn.value.code !== text.value;
+    const link = tryIt.value;
+    return h(
+      "div",
+      {
+        class: ["rich-example rich-example-card", editable.value ? "rich-example-editable" : null],
+        ref: root,
+        onClick: clicked,
+        onKeydown: pressed,
+        onPointerenter: approached,
+        onFocusin: approached,
+      },
+      [
+        now.kind === "editor" ? null : slots["default"]?.(),
+        now.kind === "fence" ? null : h("div", { class: "rich-example-editor", ref: host }),
+        edited.value
+          ? h("div", { class: "rich-example-edited" }, ["● edited · ", h("button", { type: "button", class: "rich-example-reset", onClick: reset }, "reset")])
+          : null,
+        h("div", { class: ["rich-example-output", stale ? "rich-example-stale" : null], style: output === null ? null : { "--rich-example-columns": output.columns } }, [
+          labelStrip(card.label, [
+            h("span", { class: "rich-example-caption" }, caption),
+            "hash" in link
+              ? h("a", { class: "rich-example-try", href: `${card.tryIt.playground}#${link.hash}` }, "Try it")
+              : h("span", { class: "rich-example-try", "aria-disabled": "true", title: link.refused }, "Try it"),
+          ]),
+          ...(output === null
+            ? [note(PRINTS_NOTHING)]
+            : [h("div", { class: "rich-example-light", innerHTML: output.light }), h("div", { class: "rich-example-dark", innerHTML: output.dark })]),
+          ...[failure.value, now.kind === "fence" ? now.refused : null].map((said) =>
+            said === null ? null : h("p", { class: "rich-example-failure", role: "alert" }, said),
+          ),
+        ]),
+      ],
+    );
+  };
+}
+
 export default defineComponent({
   name: "RichExample",
   props: {
     card: { type: Object as PropType<CardData>, required: true },
   },
   setup(props, { slots }) {
-    const root = ref<HTMLElement | null>(null);
-    const host = ref<HTMLElement | null>(null);
-    const code = shallowRef<Code>({ kind: "fence", refused: null });
-    const text = ref(props.card.code);
-    /** The output shown, and the code it is the output of. */
-    const drawn = shallowRef<{ readonly code: string; readonly output: Drawn }>({ code: props.card.code, output: props.card.output });
-    const failure = ref<string | null>(null);
-    /** The hash "Try it" opens the playground on, the page's program or the card's edit; or why an edit has none. */
-    const tryIt = shallowRef<{ readonly hash: string } | { readonly refused: string }>({ hash: props.card.tryIt.program });
-    const edited = computed(() => text.value !== props.card.code);
-
-    // [LAW:no-ambient-temporal-coupling] Each edit is a turn, and only the
-    // newest turn's run may draw: an edit ends the run before it, and a run
-    // that ends after a newer edit is no one's.
-    let turn = 0;
-    let pending: ReturnType<typeof setTimeout> | undefined;
-    let running: StaticRun | null = null;
-
-    /** Why a run did not draw, as said under the output. */
-    const failed = (end: Exclude<StaticEnd, { kind: "finished" | "stopped" }>, thrownAt: Tools["thrownAt"]): string => {
-      switch (end.kind) {
-        case "threw": {
-          const at = thrownAt(end.report);
-          // The editor holds the whole program, so the program's line is the
-          // reader's once the setup it counts is shown (`run`).
-          const headline = end.report.split("\n")[0]!;
-          return at === null ? headline : `${headline} (line ${at})`;
-        }
-        case "exited":
-          return `It called process.exit(${end.code}).`;
-        case "timedOut":
-          return `Stopped after ${end.limitMs / 1000} s: it was still running.`;
-        case "overflowed":
-          return `Stopped after ${end.limitChars} characters: it was still printing.`;
-      }
-    };
-
-    // [LAW:no-silent-failure] Whatever fails on the way, loading, compiling,
-    // running or drawing, is said under the output.
-    async function run(source: string, mine: number): Promise<void> {
-      try {
-        const made = await tools();
-        if (mine !== turn) return;
-        running = made.runStatic(root.value!, {
-          runtime: made.runtime,
-          script: made.playgroundScript(cardSource(props.card.setup, source), made.library),
-          terminal: made.terminal,
-          limitMs: made.limitMs,
-          limitChars: OUTPUT_LIMIT_CHARS,
-        });
-        const { bytes, end } = await running.result;
-        if (mine !== turn || end.kind === "stopped") return;
-        // A program that exits 0 has ended as one that finished, as in Node.
-        if (end.kind === "finished" || (end.kind === "exited" && end.code === 0)) {
-          drawn.value = { code: source, output: made.drawOutput(bytes) };
-          failure.value = null;
-        } else {
-          failure.value = failed(end, made.thrownAt);
-          // A thrown error's line counts the setup's lines, so they are put in view.
-          const now = code.value;
-          if (end.kind === "threw" && now.kind === "editor") now.unfoldSetup();
-        }
-      } catch (error) {
-        if (mine === turn) failure.value = `The example could not run: ${message(error)}`;
-      }
-    }
-
-    /** Point "Try it" at the card's program around `source`, which needs nothing a run does. */
-    async function link(source: string, mine: number): Promise<void> {
-      const linked = await encodeProgram(cardSource(props.card.setup, source)).then(
-        (hash) => ({ hash }),
-        (error: unknown) => ({ refused: `"Try it" cannot carry this edit: ${message(error)}` }),
-      );
-      if (mine === turn) tryIt.value = linked;
-    }
-
-    /** The code changed to `source`: show the page's output for the page's code, and run any other. */
-    function changed(source: string): void {
-      text.value = source;
-      const mine = ++turn;
-      clearTimeout(pending);
-      running?.stop();
-      if (source === props.card.code) {
-        drawn.value = { code: source, output: props.card.output };
-        tryIt.value = { hash: props.card.tryIt.program };
-        failure.value = null;
-        return;
-      }
-      void link(source, mine);
-      pending = setTimeout(() => void run(source, mine), RUN_AFTER_MS);
-    }
-
-    /** Put the editor in the fence's place, its cursor at `at` on screen, or at the start. */
-    async function edit(at: { readonly x: number; readonly y: number } | null): Promise<void> {
-      if (code.value.kind !== "fence") return;
-      code.value = { kind: "opening" };
-      const modules = await editorModules().catch((error: unknown) => {
-        if (code.value.kind === "opening") code.value = { kind: "fence", refused: `The editor could not load: ${message(error)}` };
-        return null;
-      });
-      if (modules === null) return;
-      const [{ createEditor }, { EditorView: View }, { Prec }, { setupRegions, unfoldSetup }] = modules;
-      await nextTick();
-      // The card may have left the page while the editor loaded.
-      if (code.value.kind !== "opening") return;
-      const { setup } = props.card;
-      const changedTo = (program: string) => changed(blockOf(setup, program));
-      const view = createEditor(host.value!, cardSource(setup, props.card.code), { change: changedTo, run: () => changedTo(view.state.doc.toString()) }, [
-        setupRegions(setup, "folded"),
-        View.contentAttributes.of({ "aria-label": "Example code" }),
-        // The fence's own measures, so the code does not move when the editor
-        // takes its place; the folded setup's strip stands in the space above it.
-        Prec.highest(
-          View.theme({
-            "&": { backgroundColor: "var(--vp-code-block-bg)" },
-            ".cm-scroller": { fontFamily: "var(--rich-code-font-family)", lineHeight: "var(--vp-code-line-height)" },
-            ".cm-content": { padding: `${FENCE_PADDING} 0` },
-            ".cm-line, .rich-setup-label, .rich-setup-strip": { padding: "0 24px" },
-            ".rich-setup-strip": { lineHeight: FENCE_PADDING },
-          }),
-        ),
-      ]);
-      code.value = { kind: "editor", view, unfoldSetup: () => unfoldSetup(view) };
-      await nextTick();
-      // The cursor starts in the block, where the click was or nearest it: a
-      // click in the space above the code is a click on its first line.
-      const span = blockSpan(setup);
-      const start = span.before;
-      const end = view.state.doc.length - span.after;
-      const anchor = at === null ? start : Math.min(Math.max(view.posAtCoords(at) ?? start, start), end);
-      view.dispatch({ selection: { anchor } });
-      view.focus();
-    }
-
-    // A failed fetch here is said by the click that needs the editor, which
-    // fetches it again.
-    const approached = () => void editorModules().catch(() => {});
-    // A click that selected text is the reader copying, not editing; the
-    // fence's own copy button is the reader copying too.
-    const clicked = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (target.closest("div[class*='language-']") === null || target.closest("button") !== null) return;
-      if (getSelection()?.isCollapsed === false) return;
-      void edit({ x: event.clientX, y: event.clientY });
-    };
-    const pressed = (event: KeyboardEvent) => {
-      if (event.key !== "Enter" || (event.target as Element).closest("div[class*='language-'] pre") === null) return;
-      event.preventDefault();
-      void edit(null);
-    };
-    const reset = () => {
-      const now = code.value;
-      if (now.kind !== "editor") return;
-      const { before, after } = blockSpan(props.card.setup);
-      now.view.dispatch({ changes: { from: before, to: now.view.state.doc.length - after, insert: props.card.code } });
-    };
-
-    // The page is the server's until this runs: a click before it reaches
-    // nothing, so the card says it can be edited only from here.
-    const editable = ref(false);
-    onMounted(() => {
-      editable.value = true;
-    });
-    onBeforeUnmount(() => {
-      turn += 1;
-      clearTimeout(pending);
-      running?.stop();
-      const now = code.value;
-      if (now.kind === "editor") now.view.destroy();
-      code.value = { kind: "unmounted" };
-    });
-
-    return () => {
-      const now = code.value;
-      const { card } = props;
-      const stale = drawn.value.code !== text.value;
-      const link = tryIt.value;
-      return h(
-        "div",
-        {
-          class: ["rich-example rich-example-card", editable.value ? "rich-example-editable" : null],
-          ref: root,
-          onClick: clicked,
-          onKeydown: pressed,
-          onPointerenter: approached,
-          onFocusin: approached,
-        },
-        [
-          now.kind === "editor" ? null : slots["default"]?.(),
-          now.kind === "fence" ? null : h("div", { class: "rich-example-editor", ref: host }),
-          edited.value
-            ? h("div", { class: "rich-example-edited" }, ["● edited · ", h("button", { type: "button", class: "rich-example-reset", onClick: reset }, "reset")])
-            : null,
-          h("div", { class: ["rich-example-output", stale ? "rich-example-stale" : null], style: { "--rich-example-columns": drawn.value.output.columns } }, [
-            h("div", { class: "rich-example-label" }, [
-              h("span", { class: "rich-example-name" }, card.label),
-              h("span", { class: "rich-example-caption" }, card.caption),
-              "hash" in link
-                ? h("a", { class: "rich-example-try", href: `${card.tryIt.playground}#${link.hash}` }, "Try it")
-                : h("span", { class: "rich-example-try", "aria-disabled": "true", title: link.refused }, "Try it"),
-            ]),
-            h("div", { class: "rich-example-light", innerHTML: drawn.value.output.light }),
-            h("div", { class: "rich-example-dark", innerHTML: drawn.value.output.dark }),
-            ...[failure.value, now.kind === "fence" ? now.refused : null].map((said) =>
-              said === null ? null : h("p", { class: "rich-example-failure", role: "alert" }, said),
-            ),
-          ]),
-        ],
-      );
-    };
+    const { card } = props;
+    return card.run === "build" ? editableView(card, slots) : readOnlyView(card, slots);
   },
 });

@@ -18,6 +18,7 @@
 
 import MarkdownIt from "markdown-it";
 import container from "markdown-it-container";
+import { RAN } from "./example-card.js";
 
 /**
  * What happens to a block, and what the reader is told about it.
@@ -28,46 +29,25 @@ import container from "markdown-it-container";
  * also says what it must do (print, print nothing, or throw), and breaking
  * that fails the build.
  *
- * The rest is what the example widget shows under the code. `label` names the
+ * The rest is what the example card shows under the code. `label` names the
  * panel; `caption`, beside it, says where its contents came from, which is
- * what tells a reader the output below is the code above, run. `note` is the
- * sentence shown in place of output; only a block that shows no output has
- * one.
+ * what tells a reader the output below is the code above, run. A block that
+ * runs nowhere shows no output, and its `note` says why in its place.
  */
 export type MarkerRule =
-  | {
-      readonly run: "build";
-      readonly outcome: "prints" | "silent" | "throws";
-      readonly label: string;
-      readonly caption: string;
-      readonly note: string | null;
-    }
-  | { readonly run: "browser"; readonly label: string; readonly caption: string; readonly note: null }
-  | { readonly run: "never"; readonly label: string; readonly caption: null; readonly note: string };
-
-const RAN = "produced by running the code above";
+  | { readonly run: "build"; readonly outcome: "prints" | "silent" | "throws"; readonly label: string; readonly caption: string }
+  | { readonly run: "browser"; readonly label: string; readonly caption: string }
+  | { readonly run: "never"; readonly label: string; readonly note: string };
 
 export const MARKERS = {
-  static: { run: "build", outcome: "prints", label: "Output", caption: RAN, note: null },
-  silent: {
-    run: "build",
-    outcome: "silent",
-    label: "Output",
-    caption: RAN,
-    note: "This example prints nothing when it runs.",
-  },
-  throws: { run: "build", outcome: "throws", label: "Output", caption: `${RAN}, which throws`, note: null },
-  live: { run: "browser", label: "Live", caption: "the code above, running in your browser", note: null },
-  shape: {
-    run: "never",
-    label: "Not run",
-    caption: null,
-    note: "This is a shape to implement, not a complete program.",
-  },
+  static: { run: "build", outcome: "prints", label: "Output", caption: RAN },
+  silent: { run: "build", outcome: "silent", label: "Output", caption: RAN },
+  throws: { run: "build", outcome: "throws", label: "Output", caption: `${RAN}, which throws` },
+  live: { run: "browser", label: "Live", caption: "the code above, running in your browser" },
+  shape: { run: "never", label: "Not run", note: "This is a shape to implement, not a complete program." },
   node: {
     run: "never",
     label: "Not run",
-    caption: null,
     note: "It needs a real Node process (a file, stdin, or process exit). Run it locally to see it.",
   },
 } as const satisfies Record<string, MarkerRule>;

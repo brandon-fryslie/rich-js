@@ -5,9 +5,10 @@
  * the build printed, and hydrating it moves nothing; clicking into the code
  * and typing re-renders the output from the edit; reset puts the page's code
  * and output back; and a program that never ends leaves the page responsive
- * while the card says it was stopped.
+ * while the card says it was stopped. A silent or throws block is the same
+ * card; a shape or node block is too, read-only.
  */
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 import { decodeProgram } from "../docs/.vitepress/playground-hash.js";
 
 async function open(page: Page, path: string): Promise<string[]> {
@@ -196,3 +197,75 @@ test("a click above a card's code opens it folded, and an error's line is counte
   await expect(card.locator(".rich-setup-label")).toHaveCount(2);
   expect(errors).toEqual([]);
 });
+
+/**
+ * The card around the block whose code holds `text`, on the page open: pinned
+ * by its place on the page, so it stays this card once an edit takes the text out.
+ */
+async function cardWith(page: Page, text: string): Promise<Locator> {
+  const cards = page.locator(".rich-example-card");
+  const at = await cards.evaluateAll((all, text) => all.findIndex((card) => card.textContent!.includes(text)), text);
+  expect(at, `a card holding ${JSON.stringify(text)}`).not.toBe(-1);
+  return cards.nth(at);
+}
+
+/** Put the editor in `card` and its cursor at the start of the block's last line. */
+async function editLastLine(page: Page, card: Locator): Promise<void> {
+  await expect(card).toHaveClass(/rich-example-editable/, { timeout: 10_000 });
+  await card.locator("pre.shiki").click();
+  await expect(card.locator(".cm-content")).toBeFocused({ timeout: 10_000 });
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.press("Home");
+}
+
+test("a silent block says it prints nothing until an edit prints something", async ({ page }) => {
+  const errors = await open(page, "console.html");
+  const card = await cardWith(page, "const console = new Console();");
+  await expect(card.locator(".rich-example-note")).toHaveText("This example prints nothing when it runs.");
+  await expect(card.locator(".rich-example-light")).toHaveCount(0);
+  await editLastLine(page, card);
+  await page.keyboard.press("End");
+  await page.keyboard.type('\nconsole.print("now it prints");');
+  await expect(card.locator(".rich-example-light pre")).toContainText("now it prints", { timeout: 15_000 });
+  await expect(card.locator(".rich-example-note")).toHaveCount(0);
+  await card.getByRole("button", { name: "reset" }).click();
+  await expect(card.locator(".rich-example-note")).toHaveText("This example prints nothing when it runs.");
+  expect(errors).toEqual([]);
+});
+
+for (const scheme of ["light", "dark"] as const) {
+  test(`a throws block shows its error as the page does, and an edit that stops it throwing shows its output (${scheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    const errors = await open(page, "markup.html");
+    const card = await cardWith(page, "[bold]Hello[/red]");
+    const output = card.locator(`.rich-example-${scheme} pre`);
+    await expect(output).toBeVisible();
+    await expect(output).toContainText("MarkupSyntaxError");
+    await expect(card.locator(".rich-example-caption")).toHaveText("produced by running the code above, which throws");
+    await editLastLine(page, card);
+    await page.keyboard.press("Shift+End");
+    await page.keyboard.type('console.print("[bold]Hello[/bold]");');
+    await expect(output).toHaveText(/^\s*Hello\s*$/, { timeout: 15_000 });
+    await expect(card.locator(".rich-example-caption")).toHaveText("produced by running the code above");
+    await expect(card.locator(".rich-example-failure")).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+}
+
+for (const [marker, path, code, note] of [
+  ["shape", "effects.html", "type Effect =", "This is a shape to implement, not a complete program."],
+  ["node", "console.html", "nodeAsk);", "It needs a real Node process"],
+] as const) {
+  test(`a ${marker} block is the same card, read-only, with its note`, async ({ page }) => {
+    const errors = await open(page, path);
+    const card = await cardWith(page, code);
+    await expect(card.locator(".rich-example-name")).toHaveText("Not run");
+    await expect(card.locator(".rich-example-note")).toContainText(note);
+    await expect(card.getByRole("link", { name: "Try it" })).toHaveCount(0);
+    await page.waitForLoadState("networkidle");
+    await card.locator("pre.shiki").click();
+    await expect(card).not.toHaveClass(/rich-example-editable/);
+    await expect(card.locator(".cm-editor")).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+}
