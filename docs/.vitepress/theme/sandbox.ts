@@ -20,6 +20,7 @@
  * what a program prints.
  */
 import type { TerminalSize } from "../terminal-size.js";
+import type { RunFile } from "../hot-runtime.js";
 
 /** The terminal a program sees: everything about it but where its bytes go. */
 export interface TerminalSpec extends TerminalSize {
@@ -31,6 +32,8 @@ export interface TerminalSpec extends TerminalSize {
 export type ToWorker =
   | { readonly kind: "run"; readonly script: string; readonly terminal: TerminalSpec }
   | { readonly kind: "input"; readonly chunk: string | Uint8Array }
+  /** A new version of the running program's files, to run in its place if it accepts them (hot-runtime.ts). */
+  | { readonly kind: "edit"; readonly files: readonly RunFile[] }
   /** Answered with a `mark` at once; see that message. */
   | { readonly kind: "mark" };
 
@@ -40,6 +43,8 @@ export type FromWorker =
   /** The program began reading what is typed at its terminal. */
   | { readonly kind: "listening" }
   | { readonly kind: "exit"; readonly code: number }
+  /** The running program did not accept an `edit`, and runs on as it was. */
+  | { readonly kind: "declined" }
   /**
    * The program's body has returned and every job it queued has run.
    * `runsOn` says whether a timer it set is still set, so it runs on after

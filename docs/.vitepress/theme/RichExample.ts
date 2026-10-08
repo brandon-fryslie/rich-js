@@ -32,7 +32,8 @@
  *   it is edited; an edit runs in a sandboxed worker (static-run.ts) and its
  *   output is drawn the way the build draws it (example-fragments.ts);
  * - a `live` block's output, and a demo's, is its program running in a live
- *   terminal (LiveScreen.ts), which an edit restarts on the edited program;
+ *   terminal (LiveScreen.ts), which an edit restarts on the edited program,
+ *   or, for a program that accepts edits (hot-runtime.ts), re-runs in place;
  * - a playground program is run the static way, and drawn so when it ends; one
  *   that does what only a terminal shows, reading what is typed or redrawing
  *   what it drew, or is still running at the limit, moves to a live terminal.
@@ -89,6 +90,7 @@ import {
   type Codes,
 } from "../example-card.js";
 import type { Drawn } from "../example-fragments.js";
+import type { LiveProgram } from "./live-terminal.js";
 import { decodeProgram, encodeProgram } from "../playground-hash.js";
 import type { SetupStart } from "./setup-regions.js";
 import type { StaticEnd, StaticRun } from "./static-run.js";
@@ -330,18 +332,22 @@ function staticOutlet(card: Extract<CardData, { readonly run: "build" }>, root: 
 }
 
 /**
- * `program` running in a live terminal of its size and contrast. An edit that parses is a new program, which the terminal
- * restarts on; one that does not leaves the terminal running the last that did.
+ * `program` running in a live terminal of its size and contrast. An edit that
+ * parses is a new version of it, which the terminal runs (`LiveScreen`); one
+ * that does not leaves the terminal running the last that did.
  */
 function liveOutlet(program: CardProgram, look: { readonly label: string; readonly caption: string }): Outlet {
   const { terminal, contrast } = program;
   const start = codesOf(program);
   // Made once and kept: each scroll into view and each Restart asks for it.
-  const startProgram = loader(async () => {
+  // The opened code is the build's, which refused it had it not parsed (`refuseUnrunnable` in example-runner.ts).
+  const startProgram = loader(async (): Promise<LiveProgram> => {
     const made = await programs();
-    return made.playgroundScript(programFiles(program), made.library);
+    const compiled = made.playgroundProgram(programFiles(program), made.library);
+    if (compiled.kind === "refused") throw new Error(compiled.report);
+    return compiled;
   });
-  const running = shallowRef<{ readonly codes: Codes; readonly program: () => Promise<string> }>({ codes: start, program: startProgram });
+  const running = shallowRef<{ readonly codes: Codes; readonly program: () => Promise<LiveProgram> }>({ codes: start, program: startProgram });
   return {
     codes: () => running.value.codes,
     label: () => look.label,
@@ -356,7 +362,7 @@ function liveOutlet(program: CardProgram, look: { readonly label: string; readon
       const made = await programs();
       const compiled = made.playgroundProgram(programFiles(withCodes(program, codes)), made.library);
       if (compiled.kind === "refused") return failedAt(`SyntaxError: ${compiled.message}`, compiled.at, namesOf(program));
-      if (current()) running.value = { codes, program: () => Promise.resolve(compiled.script) };
+      if (current()) running.value = { codes, program: () => Promise.resolve(compiled) };
       return SHOWN;
     },
   };

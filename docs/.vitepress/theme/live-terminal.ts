@@ -20,7 +20,18 @@ import type { Contrast } from "../example-card.js";
 import { BrowserTerminalHost, type XtermDisposable, type XtermTerminal } from "../../../src/host/index.js";
 import type { TerminalTheme } from "../../../src/index.js";
 import { XTERM } from "../../../examples/_browser-shell/xterm.js";
+import type { RunFile } from "../hot-runtime.js";
 import { sandbox, type Sandbox, type TerminalSpec, type ToWorker } from "./sandbox.js";
+
+/**
+ * A program as a live terminal runs it: the script that starts it in a new
+ * process, and its files, which replace a running version that accepts them
+ * (hot-runtime.ts).
+ */
+export interface LiveProgram {
+  readonly script: string;
+  readonly files: readonly RunFile[];
+}
 
 /**
  * How a run shows its program: `live`, as it runs; or `still`, one frame drawn
@@ -190,6 +201,8 @@ export class LiveTerminal {
   private sandbox: Sandbox | null = null;
   private deadline: ReturnType<typeof setTimeout> | undefined;
   private state: LiveState = { kind: "idle" };
+  /** What the running program not accepting the newest edit restarts. */
+  private declined: () => void = () => {};
   private readonly listeners = new Set<(state: LiveState) => void>();
   private readonly host: BrowserTerminalHost;
   private readonly fit: () => void;
@@ -306,11 +319,24 @@ export class LiveTerminal {
         // What is typed reaches a program whether or not it said it would read it.
         case "listening":
           return;
+        case "declined":
+          return this.declined();
       }
     });
     this.sandbox = run;
     this.post({ kind: "run", script, terminal: this.options.terminal });
     this.setState({ kind: "running" });
+  }
+
+  /**
+   * Run `program` in place of the running one if that one accepts it, its
+   * screen and the state it carries kept; otherwise, and with none running,
+   * from a clear screen, as `run` does.
+   */
+  edit(program: LiveProgram, mode: RunMode): void {
+    if (this.sandbox === null) return this.run(program.script, mode);
+    this.declined = () => this.run(program.script, mode);
+    this.post({ kind: "edit", files: program.files });
   }
 
   /** Type `chunk` at the running program, as a key typed at the terminal is; with none running, it goes nowhere. */

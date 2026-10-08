@@ -6,8 +6,10 @@
  *
  * [LAW:verifiable-goals] A slider is a view of a literal, so what is checked
  * is the literal: moving one changes the number in the editor, the program
- * restarts on that code (its heading says the frame rate it plays at), and
- * reset puts the code, the slider and the output back.
+ * runs that code (its heading says the frame rate it plays at), and reset
+ * puts the code, the slider and the output back. The kit accepts edits
+ * (examples/effects-playground/kit.ts), so an edit runs in place: the frame
+ * its heading counts carries on rather than starting again from 0.
  */
 import { test, expect, type Locator, type Page } from "@playwright/test";
 import { EFFECTS } from "../examples/effects-feel/vocabulary.js";
@@ -114,5 +116,39 @@ test("a box emptied leaves the literal as it is, and shows it again", async ({ p
   await box.press("Enter");
   await expect.poll(() => code(card)).toContain("const FPS = 12;");
   await expect(slider(card, "FPS")).toHaveValue("12");
+  expect(errors).toEqual([]);
+});
+
+/** The frame, curve time and frame rate a card's heading says it plays at; null before it has drawn. */
+const clock = async (card: Locator): Promise<{ readonly frame: number; readonly t: number; readonly fps: number } | null> => {
+  const heading = /frame (\d+) · curve time ([\d.]+) · (\d+) fps/.exec(await shown(card));
+  return heading === null ? null : { frame: Number(heading[1]), t: Number(heading[2]), fps: Number(heading[3]) };
+};
+
+test("an edit, by a slider or typed, runs in place: the clock carries on rather than starting over", async ({ page }) => {
+  // The whole card in view: a terminal scrolled out of view is stopped, and runs from the start when it is back.
+  await page.setViewportSize({ width: 1280, height: 1600 });
+  const errors = await openPage(page);
+  const card = cardOf(page, "pulse");
+  await expect.poll(async () => (await clock(card))?.frame ?? 0, LOADED).toBeGreaterThan(30);
+  const before = (await clock(card))!;
+
+  await slider(card, "FPS").fill("12");
+  await expect.poll(async () => (await clock(card))?.fps, LOADED).toBe(12);
+  const slid = (await clock(card))!;
+  expect(slid.frame).toBeGreaterThan(before.frame);
+  expect(slid.t).toBeGreaterThan(before.t);
+
+  const editor = card.locator(".cm-content");
+  await editor.getByText("const FPS = 12;").click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("ArrowLeft");
+  for (let i = 0; i < 2; i++) await page.keyboard.press("Backspace");
+  await page.keyboard.insertText("20");
+  await expect(editor).toContainText("const FPS = 20;");
+  await expect.poll(async () => (await clock(card))?.fps, LOADED).toBe(20);
+  const typed = (await clock(card))!;
+  expect(typed.frame).toBeGreaterThan(slid.frame);
+  expect(typed.t).toBeGreaterThan(slid.t);
   expect(errors).toEqual([]);
 });

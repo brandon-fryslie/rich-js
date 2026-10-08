@@ -1,7 +1,8 @@
 /**
  * The worker a live terminal runs one program in: it is that program's
  * process. Its first message is the program and its terminal; every later one
- * is a key typed at the terminal, or a mark it answers at once. Removing the
+ * is a key typed at the terminal, an edit of the program, or a mark it answers
+ * at once. Removing the
  * sandboxed frame that made the worker is how the page stops the program.
  * sandbox.ts owns why a worker, and why in a frame.
  *
@@ -10,7 +11,8 @@
  * use `import.meta`. Importing this module does nothing, as package.json's
  * `"sideEffects": false` promises; a bundle of a bare import of it is empty.
  */
-import { runInTerminal, runsOn } from "../simulated-process.js";
+import { runsOn, startInTerminal } from "../simulated-process.js";
+import type { RunFile } from "../hot-runtime.js";
 import type { FromWorker, ToWorker } from "./sandbox.js";
 
 /**
@@ -62,6 +64,10 @@ export function serve(): void {
   // Keys typed before the program subscribed to its stdin have nowhere to go,
   // as on a terminal whose program is not reading yet.
   let deliver: (chunk: string | Uint8Array) => void = () => {};
+  // An edit is sent only to a worker the page has sent its program to.
+  let edit = (_files: readonly RunFile[]): void => {
+    throw new Error("an edit reached a worker running no program");
+  };
 
   scope.onmessage = ({ data }) => {
     switch (data.kind) {
@@ -69,8 +75,10 @@ export function serve(): void {
         return deliver(data.chunk);
       case "mark":
         return post({ kind: "mark" });
-      case "run":
-        return void runInTerminal(data.script, {
+      case "edit":
+        return edit(data.files);
+      case "run": {
+        const { hot, returned } = startInTerminal(data.script, {
           ...data.terminal,
           write: (chunk) => post({ kind: "output", chunk }),
           onInput: (to) => {
@@ -81,9 +89,18 @@ export function serve(): void {
             post({ kind: "exit", code });
             scope.close();
           },
-        })
-          .then(runsOn)
-          .then((on) => post({ kind: "settled", runsOn: on }), crash);
+        });
+        // A version that throws as it is replaced, or as it runs, crashes the program as its first version would.
+        edit = (files) =>
+          void Promise.resolve(files)
+            .then((next) => {
+              const replacement = hot.replace(next);
+              if (replacement.kind === "declined") return post({ kind: "declined" });
+              return replacement.ran;
+            })
+            .catch(crash);
+        return void returned.then(runsOn).then((on) => post({ kind: "settled", runsOn: on }), crash);
+      }
     }
   };
 }

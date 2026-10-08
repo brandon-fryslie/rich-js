@@ -1,3 +1,4 @@
+/// <reference path="./sucrase-parser.d.ts" />
 /**
  * A visitor's TypeScript, its files with the entry first, as the one script a
  * live terminal runs: the live library, then the visitor's files on it.
@@ -27,13 +28,40 @@
  * file is required as Node requires a module, and runs to its end before the
  * import that required it returns, so a top-level `await` in one does not parse.
  *
+ * A file's `import.meta` is its own object, `{ hot }`, the file's hot context
+ * (hot-runtime.ts), so a program that accepts an edit is re-run in place. The
+ * eval cannot say `import.meta`, which only a module may, so each is rewritten
+ * to a name bound per file (`IMPORT_META`), found by Sucrase's own tokenizer:
+ * a pattern over the text would also rewrite the words inside a string.
+ *
  * [LAW:dataflow-not-control-flow] Code that does not compile is a script too:
  * one that throws the syntax error at its line. A run always has a program,
  * and a terminal shows every failure the one way it shows a crash.
  */
 import { transform } from "sucrase";
+// Sucrase's parser is not among its published entry points; the test that
+// rewrites `import.meta` (test/docs/playground-program.test.ts) pins it.
+import { parse } from "sucrase/dist/parser/index.js";
 import { LIBRARY_BINDING } from "../live-library.js";
+import { HOT_BINDING, type RunFile } from "../hot-runtime.js";
 import type { ProgramFiles } from "../example-card.js";
+
+/** The name each file's `import.meta` is rewritten to, a parameter of the function `evaluate` makes of it. */
+const IMPORT_META = "__richImportMeta";
+
+/**
+ * `code`, compiled JavaScript, with each `import.meta` written `IMPORT_META`,
+ * keeping any line break between its tokens so every line stays where it was.
+ * A `meta` read off a property named `import` (`o.import.meta`) is not one.
+ */
+export function rewriteImportMeta(code: string): string {
+  const { tokens } = parse(code, false, false, false);
+  const text = (i: number) => (tokens[i] === undefined ? "" : code.slice(tokens[i]!.start, tokens[i]!.end));
+  const metas = tokens.flatMap((token, i) =>
+    text(i) === "import" && text(i + 1) === "." && text(i + 2) === "meta" && text(i - 1) !== "." && text(i - 1) !== "?." ? [{ start: token.start, end: tokens[i + 2]!.end }] : [],
+  );
+  return metas.reduceRight((out, { start, end }) => `${out.slice(0, start)}${IMPORT_META}${"\n".repeat(out.slice(start, end).split("\n").length - 1)}${out.slice(end)}`, code);
+}
 
 /** A file's code, stripped of its types, or where it failed to parse. */
 type Compiled =
@@ -49,7 +77,7 @@ const isParseError = (error: unknown): error is ParseError => error instanceof S
 
 function compile(source: string): Compiled {
   try {
-    return { kind: "compiled", code: transform(source, { transforms: ["typescript", "imports"] }).code };
+    return { kind: "compiled", code: rewriteImportMeta(transform(source, { transforms: ["typescript", "imports"] }).code) };
   } catch (error) {
     // [LAW:no-silent-failure] Only a parse error is the visitor's; anything
     // else Sucrase throws is a fault here, and stays one.
@@ -79,24 +107,20 @@ export function fileOf(specifier: string, importer: string): string {
   return parts.join("/").replace(/\.js$/, ".ts");
 }
 
-/** A file of a program as it is run: its name, and its code compiled and wrapped as the function `evaluate` makes of it. */
-interface Module {
-  readonly name: string;
-  readonly wrapped: string;
-}
-
 /**
- * Runs a program: `files`, the entry first, each a function of its `require`
- * and its `exports` once `evaluate` has read it, on `library`. It is written
+ * Runs a program: `files`, the entry first, each a function of its `require`,
+ * its `exports` and its `import.meta` once `evaluate` has read it, on
+ * `library`, each file's `import.meta.hot` its context in `hot`. It is written
  * into the program as source, so it may use nothing but its own names and the
  * globals: `fileOf` is handed in, since a minifier renames what this calls by
  * a name from outside it.
  */
 function run(
   library: Readonly<Record<string, object>>,
-  files: readonly Module[],
-  evaluate: (wrapped: string) => (require: unknown, exports: object) => unknown,
+  files: readonly RunFile[],
+  evaluate: (wrapped: string) => (require: unknown, exports: object, meta: object) => unknown,
   fileOf: (specifier: string, importer: string) => string,
+  hot: { context(file: string): object },
 ) {
   const packages = new Map(Object.entries(library));
   const sources = new Map(files.map((file) => [file.name, file.wrapped]));
@@ -122,13 +146,13 @@ function run(
       // import cycle, gets the exports set so far, as in Node.
       const exports = {};
       loaded.set(name, exports);
-      evaluate(wrapped)(requireIn(name), exports);
+      evaluate(wrapped)(requireIn(name), exports, { hot: hot.context(name) });
       return exports;
     };
   const [entry] = files;
   const exports = {};
   loaded.set(entry!.name, exports);
-  return evaluate(entry!.wrapped)(requireIn(entry!.name), exports);
+  return evaluate(entry!.wrapped)(requireIn(entry!.name), exports, { hot: hot.context(entry!.name) });
 }
 
 /**
@@ -156,6 +180,8 @@ export type PlaygroundProgram =
       readonly script: string;
       /** Each file's code as compiled, each import it runs a `require`. */
       readonly modules: readonly { readonly name: string; readonly code: string }[];
+      /** Each file as the script runs it, for a new version to replace a running one with (hot-runtime.ts). */
+      readonly files: readonly RunFile[];
     }
   | {
       readonly kind: "refused";
@@ -166,8 +192,8 @@ export type PlaygroundProgram =
     };
 
 /** `files` compiled and wrapped, or the first that does not parse. */
-function modules(files: ProgramFiles): { readonly kind: "runs"; readonly modules: readonly (Module & { readonly code: string })[] } | Extract<PlaygroundProgram, { kind: "refused" }> {
-  const compiled: (Module & { readonly code: string })[] = [];
+function modules(files: ProgramFiles): { readonly kind: "runs"; readonly modules: readonly (RunFile & { readonly code: string })[] } | Extract<PlaygroundProgram, { kind: "refused" }> {
+  const compiled: (RunFile & { readonly code: string })[] = [];
   for (const [i, { name, source }] of files.entries()) {
     const file = compile(source);
     if (file.kind === "refused") {
@@ -175,12 +201,11 @@ function modules(files: ProgramFiles): { readonly kind: "runs"; readonly modules
       const { message, line, column } = file;
       return { kind: "refused", message, report: `SyntaxError: ${message}\n    at ${name}:${line}:${column}`, at: { file: name, line } };
     }
-    const wrapped = `(${i === 0 ? "async " : ""}(require, exports) => {${file.code}\n})\n//# sourceURL=${name}`;
-    // [LAW:single-enforcer] Sucrase passes what only a module may say,
-    // `import.meta`, and the eval then refuses it, as it refuses an `await`
-    // outside the entry. The eval's own parser is asked here, running
-    // nothing, so an edit and the build (example-runner.ts) are refused the
-    // one way.
+    const wrapped = `(${i === 0 ? "async " : ""}(require, exports, ${IMPORT_META}) => {${file.code}\n})\n//# sourceURL=${name}`;
+    // [LAW:single-enforcer] The eval refuses what it cannot run that Sucrase
+    // passes, an `await` outside the entry. Its own parser is asked here,
+    // running nothing, so an edit and the build (example-runner.ts) are
+    // refused the one way.
     try {
       new Function(wrapped);
     } catch (error) {
@@ -201,10 +226,11 @@ function modules(files: ProgramFiles): { readonly kind: "runs"; readonly modules
 export function playgroundProgram(files: ProgramFiles, library: string): PlaygroundProgram {
   const made = modules(files);
   if (made.kind === "refused") return made;
-  const wrappedFiles = JSON.stringify(made.modules.map(({ name, wrapped }) => ({ name, wrapped })));
+  const runs = made.modules.map(({ name, wrapped }) => ({ name, wrapped }));
   // A direct eval, here in the program, where each file sees `process` and the library.
-  const script = [library, `await (${run})(${LIBRARY_BINDING}, ${wrappedFiles}, (wrapped) => eval(wrapped), ${fileOf});`].join("\n");
-  return { kind: "runs", script, modules: made.modules.map(({ name, code }) => ({ name, code })) };
+  const runFiles = `(files) => (${run})(${LIBRARY_BINDING}, files, (wrapped) => eval(wrapped), ${fileOf}, ${HOT_BINDING})`;
+  const script = [library, `await ${HOT_BINDING}.start(${runFiles}, ${JSON.stringify(runs)});`].join("\n");
+  return { kind: "runs", script, modules: made.modules.map(({ name, code }) => ({ name, code })), files: runs };
 }
 
 /**
