@@ -69,10 +69,19 @@ describe("the playground's program", { timeout: 60_000 }, () => {
     expect(lines(error)).toEqual([2]);
   });
 
-  it("gives each file an import.meta of its own, its hot context, where Node's would carry more", async () => {
-    const { output, error } = await play('process.stdout.write(`${typeof import.meta.hot?.accept} ${import.meta.url}`);');
+  it("gives each file an import.meta of its own, its hot context", async () => {
+    const { output, error } = await play("process.stdout.write(typeof import.meta.hot?.accept);");
     expect(error).toBeNull();
-    expect(output).toBe("function undefined");
+    expect(output).toBe("function");
+  });
+
+  it("refuses any other read of import.meta at its line, which Node would answer and this could not", async () => {
+    for (const read of ["import.meta.url", "import.meta", "import.meta?.hot"]) {
+      const { output, error } = await play(`process.stdout.write("ran");\nconst x: unknown = ${read};`);
+      expect(output).toBe("");
+      expect((error as Error).message).toMatch(/reads only `import\.meta\.hot`/);
+      expect(lines(error)).toEqual([2]);
+    }
   });
 
   it("reports a thrown error at the line that threw", async () => {
@@ -191,6 +200,9 @@ describe("hot replacement", { timeout: 60_000 }, () => {
     return { output, replace: (next: string) => hot.replace(compiled(next).files) };
   }
 
+  /** A program that writes every millisecond, `TICKS` times, and then stops, so no test leaves it running. */
+  const TICKS = 200;
+
   /** The program a version of which counts on from what the last one carried, ticking every millisecond, writing `label` and the count. */
   const counter = (label: string) =>
     [
@@ -198,7 +210,7 @@ describe("hot replacement", { timeout: 60_000 }, () => {
       "let n = carried;",
       "import.meta.hot?.accept();",
       'import.meta.hot?.dispose((data) => { data["n"] = n; });',
-      `const tick = setInterval(() => { n += 1; process.stdout.write(\`${label}\${n} \`); }, 1);`,
+      `const tick = setInterval(() => { n += 1; process.stdout.write(\`${label}\${n} \`); if (n === carried + ${TICKS}) clearInterval(tick); }, 1);`,
       'process.stdin.on("data", () => {});',
     ].join("\n");
 
@@ -219,7 +231,7 @@ describe("hot replacement", { timeout: 60_000 }, () => {
   });
 
   it("declines an edit for a program that never accepted, which runs on untouched", async () => {
-    const { output, replace } = await started('const tick = setInterval(() => process.stdout.write("a"), 1);');
+    const { output, replace } = await started(`let k = 0;\nconst tick = setInterval(() => { process.stdout.write("a"); if (++k === ${TICKS}) clearInterval(tick); }, 1);`);
     expect(replace(counter("b")).kind).toBe("declined");
     await settle(10);
     const at = output.length;

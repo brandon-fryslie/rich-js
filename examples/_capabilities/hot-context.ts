@@ -12,8 +12,10 @@
  * It departs from Vite in one place: `accept()` in any file accepts an edit to
  * any file, because every file runs again, not only the one that changed.
  *
- * Where no host replaces modules — Node, the build — `import.meta.hot` is
- * undefined, so a program writes every use with `?.` and runs unchanged.
+ * In Node `import.meta.hot` is undefined, so a program writes every use with
+ * `?.` and runs unchanged there. Every docs terminal gives one, the build's
+ * included, whose runs no edit ever reaches. `hot` is the only thing a
+ * program here may read off `import.meta`.
  *
  * [LAW:one-source-of-truth] The one declaration of the shape: the ambient
  * `ImportMeta` programs type-check against (import-meta-hot.d.ts) and the

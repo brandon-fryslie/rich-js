@@ -20,17 +20,18 @@ import type { Contrast } from "../example-card.js";
 import { BrowserTerminalHost, type XtermDisposable, type XtermTerminal } from "../../../src/host/index.js";
 import type { TerminalTheme } from "../../../src/index.js";
 import { XTERM } from "../../../examples/_browser-shell/xterm.js";
-import type { RunFile } from "../hot-runtime.js";
+import type { Version } from "../hot-runtime.js";
 import { sandbox, type Sandbox, type TerminalSpec, type ToWorker } from "./sandbox.js";
 
 /**
  * A program as a live terminal runs it: the script that starts it in a new
  * process, and its files, which replace a running version that accepts them
- * (hot-runtime.ts).
+ * (hot-runtime.ts). A bundled script has no files to replace one with, `null`,
+ * so an edit of it restarts it.
  */
 export interface LiveProgram {
   readonly script: string;
-  readonly files: readonly RunFile[];
+  readonly files: Version | null;
 }
 
 /**
@@ -330,13 +331,13 @@ export class LiveTerminal {
 
   /**
    * Run `program` in place of the running one if that one accepts it, its
-   * screen and the state it carries kept; otherwise, and with none running,
-   * from a clear screen, as `run` does.
+   * screen and the state it carries kept; otherwise, with none running, and
+   * for a program with no files, from a clear screen, as `run` does.
    */
-  edit(program: LiveProgram, mode: RunMode): void {
-    if (this.sandbox === null) return this.run(program.script, mode);
-    this.declined = () => this.run(program.script, mode);
-    this.post({ kind: "edit", files: program.files });
+  edit({ script, files }: LiveProgram, mode: RunMode): void {
+    if (this.sandbox === null || files === null) return this.run(script, mode);
+    this.declined = () => this.run(script, mode);
+    this.post({ kind: "edit", files });
   }
 
   /** Type `chunk` at the running program, as a key typed at the terminal is; with none running, it goes nowhere. */

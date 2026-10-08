@@ -24,8 +24,11 @@ export interface RunFile {
   readonly wrapped: string;
 }
 
-/** Runs a version of a program's files in the process, its entry's top level settling the promise. */
-export type RunFiles = (files: readonly RunFile[]) => Promise<unknown>;
+/** A version of a program: its files as they are run, the entry first. */
+export type Version = readonly [RunFile, ...RunFile[]];
+
+/** Runs a version of a program in the process, its entry's top level settling the promise. */
+export type RunFiles = (files: Version) => Promise<unknown>;
 
 /** What came of an edit: run in place, or declined, for the page to restart the program on it. */
 export type Replacement = { readonly kind: "replaced"; readonly ran: Promise<unknown> } | { readonly kind: "declined" };
@@ -40,7 +43,7 @@ export class HotRuntime {
   constructor(private readonly clear: () => void) {}
 
   /** Run the program's first version, `files`, by `runFiles`, which runs every later one too. */
-  start(runFiles: RunFiles, files: readonly RunFile[]): Promise<unknown> {
+  start(runFiles: RunFiles, files: Version): Promise<unknown> {
     this.runFiles = runFiles;
     return runFiles(files);
   }
@@ -65,7 +68,7 @@ export class HotRuntime {
    * callbacks run, what it left running is cleared, and `files` run in its
    * place, a new version that accepts or not on its own.
    */
-  replace(files: readonly RunFile[]): Replacement {
+  replace(files: Version): Replacement {
     if (!this.accepted) return { kind: "declined" };
     for (const dispose of this.disposers.splice(0)) dispose();
     this.clear();

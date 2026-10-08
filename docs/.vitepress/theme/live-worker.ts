@@ -12,7 +12,7 @@
  * `"sideEffects": false` promises; a bundle of a bare import of it is empty.
  */
 import { runsOn, startInTerminal } from "../simulated-process.js";
-import type { RunFile } from "../hot-runtime.js";
+import type { Version } from "../hot-runtime.js";
 import type { FromWorker, ToWorker } from "./sandbox.js";
 
 /**
@@ -65,7 +65,7 @@ export function serve(): void {
   // as on a terminal whose program is not reading yet.
   let deliver: (chunk: string | Uint8Array) => void = () => {};
   // An edit is sent only to a worker the page has sent its program to.
-  let edit = (_files: readonly RunFile[]): void => {
+  let edit = (_files: Version): void => {
     throw new Error("an edit reached a worker running no program");
   };
 

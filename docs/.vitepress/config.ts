@@ -99,6 +99,15 @@ export default defineConfig({
     // Runs each page's examples and writes their output under them;
     // `example-runner.ts`'s header owns why it is a pre-transform.
     plugins: [docsExamplesPlugin()],
+    resolve: {
+      alias: {
+        // The playground's import of Sucrase's parser names its CommonJS build,
+        // the one Node can load; the page takes the ES build `sucrase` itself
+        // resolves to, so it carries one parser, not two
+        // (theme/playground-program.ts).
+        'sucrase/dist/parser/index.js': 'sucrase/dist/esm/parser/index.js',
+      },
+    },
   },
 
   markdown: {

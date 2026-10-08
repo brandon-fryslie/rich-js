@@ -32,7 +32,10 @@
  * (hot-runtime.ts), so a program that accepts an edit is re-run in place. The
  * eval cannot say `import.meta`, which only a module may, so each is rewritten
  * to a name bound per file (`IMPORT_META`), found by Sucrase's own tokenizer:
- * a pattern over the text would also rewrite the words inside a string.
+ * a pattern over the text would also rewrite the words inside a string. Any
+ * other use of it, `import.meta.url` or the object passed whole, is refused at
+ * its line, as a syntax error is: Node's `import.meta` carries what this one
+ * does not, and a read of it would be `undefined` here and a value there.
  *
  * [LAW:dataflow-not-control-flow] Code that does not compile is a script too:
  * one that throws the syntax error at its line. A run always has a program,
@@ -40,27 +43,37 @@
  */
 import { transform } from "sucrase";
 // Sucrase's parser is not among its published entry points; the test that
-// rewrites `import.meta` (test/docs/playground-program.test.ts) pins it.
+// rewrites `import.meta` (test/docs/playground-program.test.ts) pins it. The
+// page reads its ES build instead, the one `sucrase` is (config.ts).
 import { parse } from "sucrase/dist/parser/index.js";
 import { LIBRARY_BINDING } from "../live-library.js";
-import { HOT_BINDING, type RunFile } from "../hot-runtime.js";
-import type { ProgramFiles } from "../example-card.js";
+import { HOT_BINDING, type RunFile, type Version } from "../hot-runtime.js";
+import type { ProgramFile, ProgramFiles } from "../example-card.js";
 
 /** The name each file's `import.meta` is rewritten to, a parameter of the function `evaluate` makes of it. */
 const IMPORT_META = "__richImportMeta";
 
+/** Each `import.meta` in `code`, by its tokens, and the name read off it, `""` for none. */
+function importMetas(code: string, typescript: boolean): { readonly start: number; readonly end: number; readonly member: string }[] {
+  const { tokens } = parse(code, false, typescript, false);
+  const text = (i: number) => (tokens[i] === undefined ? "" : code.slice(tokens[i]!.start, tokens[i]!.end));
+  // A `meta` read off a property named `import` (`o.import.meta`) is not one.
+  return tokens.flatMap((token, i) =>
+    text(i) === "import" && text(i + 1) === "." && text(i + 2) === "meta" && text(i - 1) !== "." && text(i - 1) !== "?."
+      ? [{ start: token.start, end: tokens[i + 2]!.end, member: text(i + 3) === "." ? text(i + 4) : "" }]
+      : [],
+  );
+}
+
 /**
  * `code`, compiled JavaScript, with each `import.meta` written `IMPORT_META`,
  * keeping any line break between its tokens so every line stays where it was.
- * A `meta` read off a property named `import` (`o.import.meta`) is not one.
  */
 export function rewriteImportMeta(code: string): string {
-  const { tokens } = parse(code, false, false, false);
-  const text = (i: number) => (tokens[i] === undefined ? "" : code.slice(tokens[i]!.start, tokens[i]!.end));
-  const metas = tokens.flatMap((token, i) =>
-    text(i) === "import" && text(i + 1) === "." && text(i + 2) === "meta" && text(i - 1) !== "." && text(i - 1) !== "?." ? [{ start: token.start, end: tokens[i + 2]!.end }] : [],
+  return importMetas(code, false).reduceRight(
+    (out, { start, end }) => `${out.slice(0, start)}${IMPORT_META}${"\n".repeat(out.slice(start, end).split("\n").length - 1)}${out.slice(end)}`,
+    code,
   );
-  return metas.reduceRight((out, { start, end }) => `${out.slice(0, start)}${IMPORT_META}${"\n".repeat(out.slice(start, end).split("\n").length - 1)}${out.slice(end)}`, code);
 }
 
 /** A file's code, stripped of its types, or where it failed to parse. */
@@ -77,7 +90,14 @@ const isParseError = (error: unknown): error is ParseError => error instanceof S
 
 function compile(source: string): Compiled {
   try {
-    return { kind: "compiled", code: rewriteImportMeta(transform(source, { transforms: ["typescript", "imports"] }).code) };
+    const { code } = transform(source, { transforms: ["typescript", "imports"] });
+    // [LAW:no-silent-failure] Read where it was written, so the line is the visitor's.
+    const other = importMetas(source, true).find(({ member }) => member !== "hot");
+    if (other === undefined) return { kind: "compiled", code: rewriteImportMeta(code) };
+    const before = source.slice(0, other.start);
+    const line = before.split("\n").length;
+    const message = `a program here reads only \`import.meta.hot\` from \`import.meta\`, which has nothing else`;
+    return { kind: "refused", message, line, column: other.start - before.lastIndexOf("\n") };
   } catch (error) {
     // [LAW:no-silent-failure] Only a parse error is the visitor's; anything
     // else Sucrase throws is a fault here, and stays one.
@@ -117,7 +137,7 @@ export function fileOf(specifier: string, importer: string): string {
  */
 function run(
   library: Readonly<Record<string, object>>,
-  files: readonly RunFile[],
+  files: Version,
   evaluate: (wrapped: string) => (require: unknown, exports: object, meta: object) => unknown,
   fileOf: (specifier: string, importer: string) => string,
   hot: { context(file: string): object },
@@ -151,8 +171,8 @@ function run(
     };
   const [entry] = files;
   const exports = {};
-  loaded.set(entry!.name, exports);
-  return evaluate(entry!.wrapped)(requireIn(entry!.name), exports, { hot: hot.context(entry!.name) });
+  loaded.set(entry.name, exports);
+  return evaluate(entry.wrapped)(requireIn(entry.name), exports, { hot: hot.context(entry.name) });
 }
 
 /**
@@ -181,7 +201,7 @@ export type PlaygroundProgram =
       /** Each file's code as compiled, each import it runs a `require`. */
       readonly modules: readonly { readonly name: string; readonly code: string }[];
       /** Each file as the script runs it, for a new version to replace a running one with (hot-runtime.ts). */
-      readonly files: readonly RunFile[];
+      readonly files: Version;
     }
   | {
       readonly kind: "refused";
@@ -191,31 +211,45 @@ export type PlaygroundProgram =
       readonly at: { readonly file: string; readonly line: number | null };
     };
 
-/** `files` compiled and wrapped, or the first that does not parse. */
-function modules(files: ProgramFiles): { readonly kind: "runs"; readonly modules: readonly (RunFile & { readonly code: string })[] } | Extract<PlaygroundProgram, { kind: "refused" }> {
-  const compiled: (RunFile & { readonly code: string })[] = [];
-  for (const [i, { name, source }] of files.entries()) {
-    const file = compile(source);
-    if (file.kind === "refused") {
-      // The stack is only the visitor's line: the frames of this script would point at code they never wrote.
-      const { message, line, column } = file;
-      return { kind: "refused", message, report: `SyntaxError: ${message}\n    at ${name}:${line}:${column}`, at: { file: name, line } };
-    }
-    const wrapped = `(${i === 0 ? "async " : ""}(require, exports, ${IMPORT_META}) => {${file.code}\n})\n//# sourceURL=${name}`;
-    // [LAW:single-enforcer] The eval refuses what it cannot run that Sucrase
-    // passes, an `await` outside the entry. Its own parser is asked here,
-    // running nothing, so an edit and the build (example-runner.ts) are
-    // refused the one way.
-    try {
-      new Function(wrapped);
-    } catch (error) {
-      if (!(error instanceof SyntaxError)) throw error;
-      // The eval's parser says no line, so none is claimed.
-      return { kind: "refused", message: error.message, report: `SyntaxError: ${error.message}\n    at ${name}`, at: { file: name, line: null } };
-    }
-    compiled.push({ name, wrapped, code: file.code });
+/** A file of a program compiled, as the script runs it and as it reads. */
+type Module = RunFile & { readonly code: string };
+
+type Refused = Extract<PlaygroundProgram, { kind: "refused" }>;
+
+/** `file` compiled and wrapped, an async function if it is the entry, or why it cannot run. */
+function wrap({ name, source }: ProgramFile, entry: boolean): Module | Refused {
+  const file = compile(source);
+  if (file.kind === "refused") {
+    // The stack is only the visitor's line: the frames of this script would point at code they never wrote.
+    const { message, line, column } = file;
+    return { kind: "refused", message, report: `SyntaxError: ${message}\n    at ${name}:${line}:${column}`, at: { file: name, line } };
   }
-  return { kind: "runs", modules: compiled };
+  const wrapped = `(${entry ? "async " : ""}(require, exports, ${IMPORT_META}) => {${file.code}\n})\n//# sourceURL=${name}`;
+  // [LAW:single-enforcer] The eval refuses what it cannot run that Sucrase
+  // passes, an `await` outside the entry. Its own parser is asked here,
+  // running nothing, so an edit and the build (example-runner.ts) are
+  // refused the one way.
+  try {
+    new Function(wrapped);
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    // The eval's parser says no line, so none is claimed.
+    return { kind: "refused", message: error.message, report: `SyntaxError: ${error.message}\n    at ${name}`, at: { file: name, line: null } };
+  }
+  return { name, wrapped, code: file.code };
+}
+
+/** `files` compiled and wrapped, the entry first, or the first that cannot run. */
+function modules([entry, ...rest]: ProgramFiles): { readonly kind: "runs"; readonly modules: readonly [Module, ...Module[]] } | Refused {
+  const first = wrap(entry, true);
+  if ("kind" in first) return first;
+  const others: Module[] = [];
+  for (const file of rest) {
+    const made = wrap(file, false);
+    if ("kind" in made) return made;
+    others.push(made);
+  }
+  return { kind: "runs", modules: [first, ...others] };
 }
 
 /**
@@ -226,7 +260,9 @@ function modules(files: ProgramFiles): { readonly kind: "runs"; readonly modules
 export function playgroundProgram(files: ProgramFiles, library: string): PlaygroundProgram {
   const made = modules(files);
   if (made.kind === "refused") return made;
-  const runs = made.modules.map(({ name, wrapped }) => ({ name, wrapped }));
+  const [entry, ...rest] = made.modules;
+  const runOf = ({ name, wrapped }: Module): RunFile => ({ name, wrapped });
+  const runs: Version = [runOf(entry), ...rest.map(runOf)];
   // A direct eval, here in the program, where each file sees `process` and the library.
   const runFiles = `(files) => (${run})(${LIBRARY_BINDING}, files, (wrapped) => eval(wrapped), ${fileOf}, ${HOT_BINDING})`;
   const script = [library, `await ${HOT_BINDING}.start(${runFiles}, ${JSON.stringify(runs)});`].join("\n");

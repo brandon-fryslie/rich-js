@@ -20,7 +20,7 @@
  * what a program prints.
  */
 import type { TerminalSize } from "../terminal-size.js";
-import type { RunFile } from "../hot-runtime.js";
+import type { Version } from "../hot-runtime.js";
 
 /** The terminal a program sees: everything about it but where its bytes go. */
 export interface TerminalSpec extends TerminalSize {
@@ -33,7 +33,7 @@ export type ToWorker =
   | { readonly kind: "run"; readonly script: string; readonly terminal: TerminalSpec }
   | { readonly kind: "input"; readonly chunk: string | Uint8Array }
   /** A new version of the running program's files, to run in its place if it accepts them (hot-runtime.ts). */
-  | { readonly kind: "edit"; readonly files: readonly RunFile[] }
+  | { readonly kind: "edit"; readonly files: Version }
   /** Answered with a `mark` at once; see that message. */
   | { readonly kind: "mark" };
 

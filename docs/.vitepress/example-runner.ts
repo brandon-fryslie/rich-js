@@ -82,6 +82,9 @@ import { fileOf, playgroundProgram, playgroundScript } from "./theme/playground-
 
 const PROGRAM_FILE = path.join(REPO_ROOT, "docs", "__docs-example__.ts");
 
+/** `import.meta.hot`, which every docs terminal binds a program's `import.meta` to (theme/playground-program.ts). */
+const IMPORT_META_HOT = path.join(REPO_ROOT, "examples", "_capabilities", "import-meta-hot.d.ts");
+
 /**
  * A TypeScript program over the repo's own options. Every file but the
  * example is parsed once and kept until its mtime changes, so each page
@@ -106,7 +109,7 @@ export class ExampleCompiler {
     };
     const fileExists = host.fileExists.bind(host);
     host.fileExists = (fileName) => fileName === PROGRAM_FILE || fileExists(fileName);
-    this.previous = ts.createProgram({ rootNames: [PROGRAM_FILE], options: this.options, host, oldProgram: this.previous });
+    this.previous = ts.createProgram({ rootNames: [PROGRAM_FILE, IMPORT_META_HOT], options: this.options, host, oldProgram: this.previous });
     return this.previous;
   }
 
@@ -640,7 +643,7 @@ async function bundleOnLibrary(at: string, entry: Entry): Promise<Bundled> {
   const { code, modules } = await bundleOrThrow(at, entry, { format: "es", onLibrary: true });
   const file = ts.createSourceFile("live.js", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
   const refuse = (node: ts.Node): void => {
-    if (isModuleOnly(node)) throw new Error(`${at}: a live example imports only with \`import\` declarations, not \`import()\``);
+    if (isModuleOnly(node)) throw new Error(`${at}: a bundled live example cannot use \`${ts.isMetaProperty(node) ? "import.meta" : "import()"}\`, which only a module may`);
     ts.forEachChild(node, refuse);
   };
   refuse(file);

@@ -347,9 +347,15 @@ describe("a live block", () => {
     await expect(run(page("# t", fence(deep, "ts live")))).rejects.toThrow(`fixture.md:3: a live example cannot import ${specifier}; it may import`);
   });
 
-  it("runs a block reading import.meta, which the card gives each file", async () => {
-    const block = "console.print(typeof import.meta);";
+  it("runs a block reading import.meta.hot, which the card gives each file", async () => {
+    const block = "console.print(typeof import.meta.hot);";
     expect(await liveCardOutput(liveCards(await run(page("# t", fence(block, "ts live"))))[0]!)).toContain("object");
+  });
+
+  it("refuses a block reading anything else off import.meta, at its page and line", async () => {
+    await expect(run(page("# t", fence("console.print(String(import.meta.url));", "ts live")))).rejects.toThrow(
+      /fixture\.md:3: this block.s card and "Try it" run it as the program below, which the browser cannot run: .*import\.meta\.hot/,
+    );
   });
 
   it("runs a block importing only a type from a module the library does not hold, which Sucrase removes", async () => {
