@@ -127,6 +127,19 @@ describe("Effected — segments are cut only where colours change", () => {
     }
   });
 
+  it("leaves a cell with no colour of its own showing a style laid beneath, however little it was moved", () => {
+    // Every ground moves visibly; one glyph is nudged and rounds back to the default colour it was handed.
+    const greenWithNudge: Effect = (colors, cell) => ({
+      fg: cell.col === 0 ? new ColorRgba(colors.fg.red - 3, colors.fg.green, colors.fg.blue) : colors.fg,
+      bg: new ColorRgba(0, 215, 0),
+    });
+    const drawn = [...Segment.applyStyle(
+      [...effected(fixed(new Segment("abc")), greenWithNudge).render({ maxWidth: 10, colorSystem: ColorDepth.EIGHT_BIT })],
+      Style.parse("red"),
+    )];
+    expect(drawn.map((s) => s.style?.color?.name)).toEqual(drawn.map(() => "red"));
+  });
+
   it("never writes one SGR twice in a row for a pulsing ProgressBar", () => {
     // A run, its reset, then the same SGR again: two segments the wire draws as one.
     const repeated = /\x1b\[([\d;]+)m[^\x1b]*\x1b\[0m\x1b\[\1m/;

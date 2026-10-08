@@ -179,8 +179,12 @@ export class Effected implements Renderable, Measurable {
     // [LAW:one-source-of-truth] The writer's surface, so one translucent colour draws one way in a frame.
     const ground = to.bg.compositeOver(SURFACE_BLACK);
     const glyph = to.fg.compositeOver(ground);
-    const drawn = (spec: ColorSpec | undefined, was: ColorRgba, now: ColorRgba, foreground: boolean) =>
-      sameColor(was, now) ? spec : ColorSpec.matchOn(now, depth, this.theme, foreground);
+    // A move the depth cannot show is no move: a slot matched back to the colour
+    // it was drawn in — no colour being the default — keeps its written spec.
+    const drawn = (spec: ColorSpec | undefined, was: ColorRgba, now: ColorRgba, foreground: boolean) => {
+      const match = sameColor(was, now) ? spec : ColorSpec.matchOn(now, depth, this.theme, foreground);
+      return written(match, foreground) === written(spec ?? DEFAULT, foreground) ? spec : match;
+    };
     return { color: drawn(wire.color, from.fg, glyph, true), bgcolor: drawn(wire.bgcolor, from.bg, ground, false) };
   }
 
@@ -203,16 +207,20 @@ function onScreen(colors: CellColors, style: Style): CellColors {
 }
 
 /**
- * Whether two cells' colours are written alike. A slot with no colour writes
- * nothing and the default colour writes `39`/`49`, but every segment opens
- * after a reset, so both draw the terminal's default and are one colour here.
+ * Whether two cells' colours are written alike. A slot with no colour is not
+ * the default colour: it writes nothing, so a style a container lays beneath
+ * (`Segment.applyStyle`) still shows through it, where `39`/`49` would not.
  */
 function writesAlike(a: DrawnColors, b: DrawnColors): boolean {
   return slotWritesAlike(a.color, b.color, true) && slotWritesAlike(a.bgcolor, b.bgcolor, false);
 }
 
 function slotWritesAlike(a: ColorSpec | undefined, b: ColorSpec | undefined, foreground: boolean): boolean {
-  return a === b || (a ?? DEFAULT).getAnsiCodes(foreground).join(";") === (b ?? DEFAULT).getAnsiCodes(foreground).join(";");
+  return a === b || written(a, foreground) === written(b, foreground);
+}
+
+function written(spec: ColorSpec | undefined, foreground: boolean): string {
+  return spec?.getAnsiCodes(foreground).join(";") ?? "";
 }
 
 function sameColor(a: ColorRgba, b: ColorRgba): boolean {
