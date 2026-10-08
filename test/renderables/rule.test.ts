@@ -69,6 +69,35 @@ describe("Rule", () => {
     expect(bytes).toBe(`${expected}\n`);
   });
 
+  // Rich 9d8f9a3's bytes at width 12: the line is drawn in `rule.line` unless a
+  // style is given, and the title is never in the line's style, only its own.
+  const G = "\x1b[92m";
+  const R = "\x1b[31m";
+  const Z = "\x1b[0m";
+  const B = `\x1b[1mB${Z} t`;
+  it.each([
+    ["center", undefined, "T", `${G}──── ${Z}T${G} ─────${Z}`],
+    ["center", undefined, "[bold]B[/bold] t", `${G}─── ${Z}${B}${G} ────${Z}`],
+    ["center", "red", "T", `${R}──── ${Z}T${R} ─────${Z}`],
+    ["center", "red", "[bold]B[/bold] t", `${R}─── ${Z}${B}${R} ────${Z}`],
+    ["left", undefined, "T", `T ${G}──────────${Z}`],
+    ["left", undefined, "[bold]B[/bold] t", `${B} ${G}────────${Z}`],
+    ["left", "red", "T", `T ${R}──────────${Z}`],
+    ["left", "red", "[bold]B[/bold] t", `${B} ${R}────────${Z}`],
+    ["right", undefined, "T", `${G}──────────${Z} T`],
+    ["right", undefined, "[bold]B[/bold] t", `${G}────────${Z} ${B}`],
+    ["right", "red", "T", `${R}──────────${Z} T`],
+    ["right", "red", "[bold]B[/bold] t", `${R}────────${Z} ${B}`],
+  ] as const)("%s with style %s draws %j in colour as Rich does", (align, style, title, expected) => {
+    const rule = new Rule(title, style === undefined ? { align } : { align, style });
+    expect(renderToString(rule, { width: 12, colorSystem: "truecolor" })).toBe(`${expected}\n`);
+  });
+
+  it("draws a bare line in rule.line, or its own style, as Rich does", () => {
+    expect(renderToString(new Rule(), { width: 5, colorSystem: "truecolor" })).toBe(`${G}─────${Z}\n`);
+    expect(renderToString(new Rule(undefined, { style: "red" }), { width: 5, colorSystem: "truecolor" })).toBe(`${R}─────${Z}\n`);
+  });
+
   it("uses custom characters", () => {
     const rule = new Rule(undefined, { characters: "*" });
     const lines = collectLines(rule, { maxWidth: 5 });

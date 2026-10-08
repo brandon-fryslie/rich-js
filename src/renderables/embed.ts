@@ -114,9 +114,12 @@ export class InlineLabel {
     this._content = new EmbeddedText(content);
   }
 
-  /** The label drawn under `options`: one line, its own overflow kept for the caller's cut. */
-  text(options: RenderOptions): RichText {
-    const text = this._content.text(options);
+  /**
+   * The label drawn under `options`: one line, its own overflow kept for the
+   * caller's cut. A string reads with `base` as its style, as `EmbeddedText.text` reads one.
+   */
+  text(options: RenderOptions, base?: Style): RichText {
+    const text = this._content.text(options, base);
     // A fragment of the line, so its own end is not drawn, as Rich's `_title` clears it.
     text.end = "";
     text.plain = text.plain.replaceAll("\n", " ");
