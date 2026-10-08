@@ -816,9 +816,9 @@ export const DEFAULT_STYLES: Record<string, Style> = {
 
   // Bar
   "bar.back": Style.parse("grey23"),
-  "bar.complete": Style.parse("magenta"),
-  "bar.finished": Style.parse("green"),
-  "bar.pulse": Style.parse("magenta"),
+  "bar.complete": Style.parse("rgb(249,38,114)"),
+  "bar.finished": Style.parse("rgb(114,156,31)"),
+  "bar.pulse": Style.parse("rgb(249,38,114)"),
 
   // Scrollbar
   "scrollbar.thumb": NULL_STYLE,
