@@ -197,6 +197,13 @@ describe("ProgressBar", () => {
       for (const t of frames) for (const s of collectSegments(reversed(t), TRUECOLOR)) expect(s.style?.bgcolor).toBeUndefined();
     });
 
+    it.each(["bold", "reverse"])("pulses a back styled %s, which names no colour of its own, as Rich does", (style) => {
+      const frames = Array.from({ length: 40 }, (_, i) => i * 0.5);
+      const segments = frames.flatMap((t) => collectSegments(new ProgressBar({ width: 40, style, pulse: { t } }), TRUECOLOR));
+      expect(new Set(segments.map((s) => s.style?.color?.getTruecolor().hex)).size).toBeGreaterThan(1);
+      for (const s of segments) expect(s.style?.bgcolor).toBeUndefined();
+    });
+
     it("draws nothing on an output with no colour, where the back and its light cannot be drawn", () => {
       const NO_COLOR: RenderOptions = { maxWidth: 80, colorSystem: null };
       for (const t of [0, 3, 30]) expect(collectSegments(new ProgressBar({ width: 40, completed: 70, pulse: { t } }), NO_COLOR)).toEqual([]);

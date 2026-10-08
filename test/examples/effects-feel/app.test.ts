@@ -204,7 +204,7 @@ describe("a strip under a pulse", () => {
 
       // Every colour the strip sets moves, but for one whose cells have no
       // contrast to spare; the terminal's own ground does not.
-      const rgba = new Map(strip.pairs.flat().map((c) => [c.hex, c]));
+      const rgba = new Map(strip.pairs.flatMap(({ fg, bg }) => [fg, bg]).map((c) => [c.hex, c]));
       const still = new Set(["ground", ...[...share].filter(([hex, s]) => loop.touch(rgba.get(hex)!, s).hex === hex).map(([hex]) => hex)]);
       before.forEach((pair, i) =>
         pair.forEach((was, slot) => expect([was, frames.every((after) => after[i]![slot] === was)]).toEqual([was, still.has(was)])),

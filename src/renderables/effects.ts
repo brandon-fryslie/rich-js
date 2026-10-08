@@ -60,8 +60,13 @@ export interface Loop {
   readonly field: Field;
 }
 
-/** A cell's ink and ground, as the screen shows them. */
-export type Pair = readonly [ColorRgba, ColorRgba];
+/**
+ * A cell's ink and ground as the screen shows them, and which of the two are
+ * the terminal's: what an `Effect` is handed for that cell.
+ */
+export interface Pair extends CellColors {
+  readonly terminal: EffectCell["terminal"];
+}
 
 /** The contrast no touch takes a cell below, unless it rested below it: WCAG AA for body text. */
 const LEGIBLE = 4.5;
@@ -83,9 +88,9 @@ const ROUNDING = 0.01;
  * How much of `touch` each of `colors` (hex) can take: the largest share in
  * [0, 1] at which every pair in `pairs` that shows it, touched at the same
  * strength, still reads at its resting contrast or `LEGIBLE`, whichever is
- * lower. A colour in a pair but not in `colors` — the terminal's ground, say —
- * takes none. One of `colors` in no pair has nothing to be measured against,
- * and throws.
+ * lower. A colour in a pair but not in `colors` takes none, and so does one
+ * the terminal supplies, whatever its hex, as in `onColors`. One of `colors`
+ * no pair writes has nothing to be measured against, and throws.
  *
  * Colours are settled lightest first, each against every partner: one
  * already settled at its share, one not yet settled as it is. So the lighter
@@ -95,15 +100,21 @@ const ROUNDING = 0.01;
  * because its lighter partner was settled against exactly that.
  */
 export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touch: Touch): Map<string, number> {
-  const rgba = new Map(pairs.flat().map((color): [string, ColorRgba] => [color.hex, color]));
+  // [LAW:one-source-of-truth] A slot shows a subject colour, by hex, only
+  // where the element writes it: the reading `onColors` lights by.
+  const sides = pairs.map(({ fg, bg, terminal }) => [
+    { color: fg, own: terminal.fg ? undefined : fg.hex },
+    { color: bg, own: terminal.bg ? undefined : bg.hex },
+  ] as const);
+  const rgba = new Map(sides.flat().flatMap(({ color, own }): [string, ColorRgba][] => (own === undefined ? [] : [[own, color]])));
   const unpaired = [...colors].filter((hex) => !rgba.has(hex));
-  if (unpaired.length > 0) throw new RangeError(`shares: ${unpaired.join(", ")} in no pair, so nothing to keep legible against`);
+  if (unpaired.length > 0) throw new RangeError(`shares: ${unpaired.join(", ")} written in no pair, so nothing to keep legible against`);
   const lightness = (hex: string): number => Oklch.fromRgba(rgba.get(hex)!).l;
   const settled = new Map<string, number>();
   for (const hex of [...colors].sort((a, b) => lightness(b) - lightness(a))) {
-    const partners = pairs.flatMap(([fg, bg]): [ColorRgba, number][] => {
-      const partner = fg.hex === hex ? bg : bg.hex === hex ? fg : undefined;
-      return partner === undefined ? [] : [[partner, settled.get(partner.hex) ?? 0]];
+    const partners = sides.flatMap(([fg, bg]): [ColorRgba, number][] => {
+      const partner = fg.own === hex ? bg : bg.own === hex ? fg : undefined;
+      return partner === undefined ? [] : [[partner.color, partner.own === undefined ? 0 : (settled.get(partner.own) ?? 0)]];
     });
     const color = rgba.get(hex)!;
     const holds = (share: number): boolean =>
