@@ -4,9 +4,11 @@
 # versioned-subdirectory layout for both cases.
 #
 # [LAW:one-source-of-truth] The deploy "slot" name is computed once
-# (steps.version.outputs.slot) and read by both the VitePress build
-# (via VITEPRESS_BASE) and the multiplexer action (via `version:`).
-# Drift between the two would 404 every asset on the deployed page.
+# (needs.slot.outputs.slot) and read by the deploy job's concurrency
+# group, the VitePress build (via VITEPRESS_BASE) and the multiplexer
+# action (via `version:`). Drift between the last two would 404 every
+# asset on the deployed page; drift from the first lets one slot's run
+# cancel another slot's pending deploy (rich-workflows-ui0d).
 #
 # [LAW:dataflow-not-control-flow] The same job runs on every event;
 # variability lives in the slot value (`master` vs `pr-<N>`), not in
@@ -20,29 +22,38 @@ on:
     branches: [master]
   pull_request:
 
-# One concurrency group per deploy slot, not one for the whole site.
-# GitHub keeps at most ONE pending run per group: a newly queued run
-# cancels the group's pending one whatever `cancel-in-progress` says —
-# that setting only spares the run already executing. With a single
-# shared group, a PR run queued behind a running deploy cancelled the
-# pending master deploy, and merged docs never shipped (rich-workflows-ui0d).
-#
-# Keyed per slot, the only run that can cancel a pending deploy is a
-# newer one for the same slot — the same master or the same PR at a later
-# commit — so each slot always ends at its newest commit. Runs for
-# different slots may push to gh-pages at once. The multiplexer (v1.1.0+,
-# which `@v1` below resolves to) pushes without force; when it loses the
-# race it rebuilds the whole site from the new tip and pushes again, and
-# it fails the run on any other rejection. So a lost race costs a retry
-# and never silently drops a deploy. The key is the
-# identity the slot step below names (PR number, else branch), not the
-# slot string itself: a concurrency group cannot read a step output.
-concurrency:
-  group: pages-deploy-${{ github.event.pull_request.number || github.ref_name }}
-  cancel-in-progress: false
-
 jobs:
+  # Slot is the version subdirectory name. Master push → `master`;
+  # PR → `pr-<number>`. The multiplexer's auto-derivation produces
+  # the same names, but passing `version:` explicitly ties the
+  # build's base URL to the action's deploy slot via one shared
+  # variable, so the two cannot drift. Its own job because a job-level
+  # `concurrency:` can read `needs` outputs and never a step's.
+  slot:
+    runs-on: ubuntu-latest
+    outputs:
+      slot: ${{ steps.slot.outputs.slot }}
+    steps:
+      - id: slot
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "slot=pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "slot=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
   deploy:
+    needs: slot
+    # One group per slot, not one for the site: GitHub keeps at most one
+    # pending run per group and a newly queued run cancels it, whatever
+    # `cancel-in-progress` says. A shared group let a PR run cancel the
+    # pending master deploy. Per slot, newest wins, so cancelling the run
+    # in progress too only drops work about to be overwritten. Runs for
+    # different slots race on gh-pages; gh-pages-multiplexer v1.1.0 owns
+    # that race (src/deploy.ts: non-force push, rebuild on a stale tip).
+    concurrency:
+      group: pages-deploy-${{ needs.slot.outputs.slot }}
+      cancel-in-progress: true
     # [LAW:single-enforcer] Trust boundary lives at exactly one place.
     # For fork PRs, GitHub forces GITHUB_TOKEN to read-only (correctly —
     # untrusted PR code cannot have write access to the base repo), so
@@ -62,20 +73,6 @@ jobs:
         with:
           fetch-depth: 0    # multiplexer reads full git history for the per-deploy commit manifest
 
-      # Slot is the version subdirectory name. Master push → `master`;
-      # PR → `pr-<number>`. The multiplexer's auto-derivation produces
-      # the same names, but passing `version:` explicitly ties the
-      # build's base URL to the action's deploy slot via one shared
-      # variable, so the two cannot drift.
-      - name: Compute version slot
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "slot=pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "slot=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-          fi
-
       # [LAW:one-source-of-truth] This job compiles `src/` — docs:build bundles
       # examples/ through the demo tsconfig — so it must run a Node the package
       # supports, and `engines.node` is that declaration. ci.yml's setup-node
@@ -94,13 +91,13 @@ jobs:
         env:
           # docs/.vitepress/config.ts reads this. Must match the
           # `version:` input below exactly or every deep asset 404s.
-          VITEPRESS_BASE: /${{ github.event.repository.name }}/${{ steps.version.outputs.slot }}/
+          VITEPRESS_BASE: /${{ github.event.repository.name }}/${{ needs.slot.outputs.slot }}/
         run: npm run docs:build
 
-      - uses: brandon-fryslie/gh-pages-multiplexer@v1
+      - uses: brandon-fryslie/gh-pages-multiplexer@v1.1.0
         with:
           source-dir: docs/.vitepress/dist
-          version: ${{ steps.version.outputs.slot }}
+          version: ${{ needs.slot.outputs.slot }}
           # The VitePress build already emits absolute URLs rooted at
           # VITEPRESS_BASE — no post-hoc rewriting needed.
           base-path-mode: none
