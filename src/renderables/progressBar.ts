@@ -90,7 +90,10 @@ export class ProgressBar implements Renderable, Measurable {
     const ink = getStyle(options, this.style).drawnColors(depth).color ?? ColorSpec.default();
     const glow = getStyle(options, "bar.pulse").color ?? ColorSpec.default();
     const loop = shimmer(PULSE_CURVE, width, PULSE_REACH, glow.getTruecolor(theme, true), 0);
-    return onColors(new Map([[ink.getTruecolor(theme, true).hex, 1]]), loop);
+    const lit = onColors(new Map([[ink.getTruecolor(theme, true).hex, 1]]), loop);
+    // The light falls on the line, never the ground: a back colour equal to
+    // the terminal's would otherwise light the cell behind it too.
+    return (colors, cell, t) => ({ fg: lit(colors, cell, t).fg, bg: colors.bg });
   }
 
   /** Rich 9d8f9a3 `__rich_console__`: the fill is counted in half cells, and a total of zero is a bar already full. */

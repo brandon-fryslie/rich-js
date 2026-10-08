@@ -106,8 +106,10 @@ and `TaskProgressColumn` and `TimeRemainingColumn` show nothing for it. The puls
 the library's [shimmer](./effects), so its light comes and goes the way the shimmer's
 does, and the bar can rest unlit for several seconds between bands. It is drawn at the
 `Progress` clock's time on each frame: the bands cross at the same speed whatever the
-refresh rate, and a slower refresh shows them further along each frame. On an output
-with no colour the pulse cannot be drawn, so a pulsing bar is blank.
+refresh rate, and a slower refresh shows them further along each frame. Below truecolor
+the light moves only in the steps the output's depth can draw: at 256 colours faintly,
+and at 16 colours not at all, as with [every effect](./effects). On an output with no
+colour the pulse cannot be drawn, so a pulsing bar is blank.
 
 ### Transient display
 
