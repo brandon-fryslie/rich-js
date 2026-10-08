@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-359",
+      "ref": "refs/pull/359/merge",
+      "sha": "a56bd1ad11e9c64c77fc2fae49ed1a0edd94cc5c",
+      "timestamp": "2026-10-08T20:59:22.759Z",
+      "commits": [
+        {
+          "sha": "a56bd1ad11e9c64c77fc2fae49ed1a0edd94cc5c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T14:57:49-06:00",
+          "message": "Merge 7cb3754a4a05aa365561ce72b620d4425730820a into 1ac1289df6b6c395f5af7b5df4e38c023f5a3c88\n"
+        },
+        {
+          "sha": "7cb3754a4a05aa365561ce72b620d4425730820a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T14:57:44-06:00",
+          "message": "feat(docs): dropdown-demo's page runs in the card, with keyboard input and its own terminal size (rich-example-card-b5rz.z0w)\n\nA live card's terminal size is now the card's (`CardData.terminal`,\n`TerminalSize`): a docs block's is EXAMPLE_TERMINAL's, a demo's is what its\n`card.json` gives, parsed once in demo-card.ts and refused at build naming\nthe file. LiveScreen takes the size as a prop; everything else about the\nterminal stays EXAMPLE_TERMINAL's.\n\nWhile a live terminal has focus every key is the program's, Tab and Escape\nincluded. A ring and a bar hint say so, and Escape then Tab leaves it, the\nsame way out as the card's editor; the Escape still reaches the program.\n\ndropdown-demo is reshaped to the demo shape: main.ts is the entry for the\ncard and `npm run demo:dropdown` (which still refuses a non-TTY), imports use\npublished names, wire.ts/index.ts are gone, and it fits its 100x30 card.\n\ne2e: the dropdown is opened, moved and selected by keyboard through its card,\nTab stays the demo's, Esc-then-Tab leaves, an edit restarts it, the bottom\nrow is in view. `shown()` no longer blocks on rows that do not exist yet, so\na poll re-scrolls a terminal the opening editor pushed off screen.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "1ac1289df6b6c395f5af7b5df4e38c023f5a3c88",
