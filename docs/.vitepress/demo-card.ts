@@ -18,6 +18,9 @@
  *   another of the card's files (`fileOf`); in Node, scripts/build-demos.ts
  *   compiles both onto `src/`. The coverage gate (test/coverage/) resolves the
  *   published names to `src/` too, so they demonstrate what they import.
+ * - Its card's terminal is the size `card.json` beside its entry gives
+ *   (`CARD_OPTIONS`), which the demo is drawn to fit. A demo never takes the
+ *   size as a parameter; it reads it off its terminal, as it does in Node.
  * - Its tabs are the entry, then every other file it reaches by a relative
  *   import, each named by its path from the entry's directory, a file shared
  *   from `examples/_capabilities/` included. A demo of one file shows no tabs.
@@ -33,9 +36,9 @@ import path from "node:path";
 import { REPO_ROOT } from "../../scripts/repo-facts.js";
 import { DEMO_ENTRY } from "./demo-entry.js";
 import { NO_SETUP, RUNNING, type CardData, type CardFile, type CardProgram } from "./example-card.js";
-import { EXAMPLE_TERMINAL } from "./example-terminal.js";
 import { liveLibraryOnce, playgroundHref, refuseUnrunnable } from "./example-runner.js";
 import { encodeProgram } from "./playground-hash.js";
+import { terminalSize, type TerminalSize } from "./terminal-size.js";
 import { fileOf } from "./theme/playground-program.js";
 
 /** A demo's card: a program the browser runs in a live terminal. */
@@ -54,7 +57,8 @@ function relativeImports(name: string, source: string): string[] {
 
 /**
  * The program of the demo in `directory`: its entry and every file it reaches
- * by a relative import, in the order it reaches them, refused unless the card
+ * by a relative import, in the order it reaches them, at its card's size
+ * (`demoTerminal`), refused unless the card
  * runs it on `library`, the live library's script. A relative import may not
  * leave `examples/`, the directory `directory` is in, since a demo reaches
  * the library by its published names.
@@ -76,9 +80,26 @@ export function demoProgram(directory: string, library: string): CardProgram {
   };
   reach(DEMO_ENTRY);
   const [entry, ...rest] = files;
-  const program: CardProgram = { files: [entry!, ...rest] };
+  const program: CardProgram = { files: [entry!, ...rest], terminal: demoTerminal(directory) };
   refuseUnrunnable(at, "its demo's card runs it", program, library);
   return program;
+}
+
+/** The file beside a demo's entry that says what its card is: the size of its terminal. */
+export const CARD_OPTIONS = "card.json";
+
+/**
+ * [LAW:parse-dont-validate] The terminal size `card.json` in `directory`
+ * gives, or the build fails naming the file.
+ */
+export function demoTerminal(directory: string): TerminalSize {
+  const file = path.join(directory, CARD_OPTIONS);
+  try {
+    const options: unknown = JSON.parse(readFileSync(file, "utf-8"));
+    return terminalSize(typeof options === "object" && options !== null ? (options as { readonly terminal?: unknown }).terminal : undefined);
+  } catch (error) {
+    throw new Error(`${path.relative(REPO_ROOT, file)}: must be { "terminal": <size> }: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+  }
 }
 
 /** The live library every demo's card is held to, built once for them all. */
@@ -86,12 +107,12 @@ const library = liveLibraryOnce();
 
 /** The card the page of the demo in `examples/<demo>/` shows. */
 export async function demoCard(demo: string): Promise<DemoCard> {
-  const program = demoProgram(path.join(REPO_ROOT, "examples", demo), (await library()).script);
+  const directory = path.join(REPO_ROOT, "examples", demo);
+  const program = demoProgram(directory, (await library()).script);
   return {
     run: "browser",
     program,
     ...RUNNING,
     tryIt: { playground: playgroundHref(`demos/${demo}.md`), program: await encodeProgram(program) },
-    columns: EXAMPLE_TERMINAL.columns,
   };
 }

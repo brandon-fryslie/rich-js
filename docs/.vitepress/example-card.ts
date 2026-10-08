@@ -19,6 +19,7 @@
  * Pure and dependency-free: the build reads it in Node, the card in the page.
  */
 import type { Drawn } from "./example-fragments.js";
+import { EXAMPLE_SIZE, type TerminalSize } from "./terminal-size.js";
 
 /** Lines of a card's setup that came from one place, named as the card labels them: "imports", "from 'Basic usage'". */
 export interface SetupGroup {
@@ -51,21 +52,23 @@ export interface CardFile {
 }
 
 /**
- * What a card edits: its files, the entry first, each shown as a tab. A docs
- * card's program is one file, its block in the setup the block runs on, and
- * it shows no tabs. "Try it" carries one to the playground
- * (playground-hash.ts), which opens it as the card held it, the setup still
- * locked and labelled.
+ * What a card edits: its files, the entry first, each shown as a tab, and the
+ * size of the terminal it runs in. A docs card's program is one file, its
+ * block in the setup the block runs on, at `EXAMPLE_SIZE`, and it shows no
+ * tabs; a demo's is drawn for a size of its own (demo-card.ts). "Try it"
+ * carries one to the playground (playground-hash.ts), which opens it as the
+ * card held it, the setup still locked and labelled, at its size.
  */
 export interface CardProgram {
   readonly files: readonly [CardFile, ...CardFile[]];
+  readonly terminal: TerminalSize;
 }
 
 /** The name of a docs block's one file. */
 export const PLAYGROUND_SOURCE = "playground.ts";
 
-/** A one-file program: `code`, in `setup`. */
-export const oneFile = (setup: CardSetup, code: string): CardProgram => ({ files: [{ name: PLAYGROUND_SOURCE, setup, code }] });
+/** A one-file program: `code`, in `setup`, at `EXAMPLE_SIZE`. */
+export const oneFile = (setup: CardSetup, code: string): CardProgram => ({ files: [{ name: PLAYGROUND_SOURCE, setup, code }], terminal: EXAMPLE_SIZE });
 
 /** What a reader has made of a program's files: the code of each, in the program's order. */
 export type Codes = readonly string[];
@@ -78,7 +81,7 @@ export const sameCodes = (a: Codes, b: Codes): boolean => a.length === b.length 
 /** `program` with `codes` in place of its files' code. */
 export const withCodes = (program: CardProgram, codes: Codes): CardProgram => {
   const [entry, ...rest] = program.files;
-  return { files: [{ ...entry, code: codes[0]! }, ...rest.map((file, i) => ({ ...file, code: codes[i + 1]! }))] };
+  return { ...program, files: [{ ...entry, code: codes[0]! }, ...rest.map((file, i) => ({ ...file, code: codes[i + 1]! }))] };
 };
 
 /** One file of a program as it runs: its name, and its source, its code in its setup (`cardSource`). */
@@ -124,8 +127,8 @@ interface Editable {
  * One block's card, by where its marker says the block runs
  * (example-markers.ts). A block the build runs is editable, its output the
  * one the build printed until it is edited. A block that runs in the browser
- * is editable, its output its program running in a live terminal of
- * `columns` columns. One that runs nowhere is the same card, read-only, its
+ * is editable, its output its program running in a live terminal of the
+ * program's size. One that runs nowhere is the same card, read-only, its
  * note in place of output.
  */
 export type CardData =
@@ -134,7 +137,7 @@ export type CardData =
       /** What the block printed at build time; null if it printed nothing (`drawOutput`). */
       readonly output: Drawn | null;
     })
-  | (Editable & { readonly run: "browser"; readonly columns: number })
+  | (Editable & { readonly run: "browser" })
   | { readonly run: "never"; readonly label: string; readonly note: string };
 
 /** The lines above a card's block, in order. */

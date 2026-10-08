@@ -7,17 +7,14 @@
  * same terminal: one width, one environment, one pair of themes.
  */
 import { ATOM_ONE_DARK, ATOM_ONE_LIGHT } from "../../src/themes/terminalThemes.js";
+import { EXAMPLE_SIZE } from "./terminal-size.js";
 
 /**
- * 75 columns is what the docs content column holds in the code font at 1440px
- * wide. Where the column is narrower an output that wide shrinks its font to
- * fit (custom.css, `.rich-example-output`), down to a floor below which it
- * scrolls; it never reflows. The environment is exactly this: nothing from the build
- * machine's or the browser's passes through.
+ * The example terminal: `EXAMPLE_SIZE`, and an environment that is exactly
+ * this, nothing from the build machine's or the browser's passing through.
  */
 export const EXAMPLE_TERMINAL = {
-  columns: 75,
-  rows: 24,
+  ...EXAMPLE_SIZE,
   isTTY: true,
   env: { TERM: "xterm-256color", COLORTERM: "truecolor" },
 } as const;

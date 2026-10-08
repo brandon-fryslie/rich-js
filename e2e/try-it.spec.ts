@@ -47,7 +47,7 @@ test("the scores table opens with its setup locked, labelled and unfolded, print
   expect(setup.before.length).toBe(2);
   await link.click();
 
-  await expect(page).toHaveURL(/\/playground#files\..+/);
+  await expect(page).toHaveURL(/\/playground#program\..+/);
   await expect(editor(page)).toContainText("const scores = new Table(", OPENING);
   // Unfolded: every group's label and locked line is drawn, no strip folds them.
   await expect(playground(page).locator(".rich-setup-label")).toHaveText(setup.before.map((group) => `🔒︎ ${group.origin}`));

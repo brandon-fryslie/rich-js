@@ -34,6 +34,6 @@ export default defineComponent({
         // The terminal the card runs its program in, for the stylesheet to size it by.
         style: { "--rich-example-columns": EXAMPLE_TERMINAL.columns, "--rich-example-rows": EXAMPLE_TERMINAL.rows },
       },
-      [h("div", { class: "rich-example rich-example-card" }, [h("div", { class: "rich-example-output" }, [h(LiveScreen, { program: showcase })])])],
+      [h("div", { class: "rich-example rich-example-card" }, [h("div", { class: "rich-example-output" }, [h(LiveScreen, { program: showcase, terminal: EXAMPLE_TERMINAL })])])],
     ),
 });

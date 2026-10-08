@@ -296,6 +296,19 @@
   overflow-x: auto;
 }
 
+/* Focused, every key is the program's (theme/LiveScreen.ts): the ring says so. */
+.rich-live-screen:focus-within {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: -2px;
+}
+
+.rich-live-hint {
+  margin-right: auto;
+  font-size: 12px;
+  line-height: 26px;
+  color: var(--vp-c-text-2);
+}
+
 .rich-live-bar {
   display: flex;
   justify-content: flex-end;

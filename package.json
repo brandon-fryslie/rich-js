@@ -75,7 +75,7 @@
     "viewport": "node scripts/build-demos.ts && node dist-demo/examples/rich-viewport/index.js",
     "markup-plugins": "node scripts/build-demos.ts && node dist-demo/examples/rich-markup-plugins/index.js",
     "demo-inputs": "node scripts/build-demos.ts && node dist-demo/examples/rich-config/index.js",
-    "demo:dropdown": "node scripts/build-demos.ts && node dist-demo/examples/dropdown-demo/index.js",
+    "demo:dropdown": "node scripts/build-demos.ts && node dist-demo/examples/dropdown-demo/main.js",
     "dash": "node scripts/build-demos.ts && node dist-demo/examples/rich-dash/index.js",
     "template-bindings": "node scripts/build-demos.ts && node dist-demo/examples/rich-template-bindings/index.js",
     "themes-and-color-studio": "node scripts/build-demos.ts && node dist-demo/examples/themes-and-color-studio/index.js",

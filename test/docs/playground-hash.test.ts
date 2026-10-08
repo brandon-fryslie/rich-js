@@ -1,13 +1,14 @@
 /**
  * The playground's link format: a card's program, every file of it with its
- * setup, survives the trip into a URL hash and back; links in the two formats
- * before it still open, as a program of one file; and a hash that was not
+ * setup and its terminal's size, survives the trip into a URL hash and back;
+ * links in the formats before it still open, at the example size; and a hash that was not
  * written any of those ways fails rather than opening as some other program.
  */
 import { deflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { NO_SETUP, oneFile, type CardProgram, type CardSetup } from "../../docs/.vitepress/example-card.js";
 import { MAX_PROGRAM_BYTES, decodeProgram, encodeProgram } from "../../docs/.vitepress/playground-hash.js";
+import { EXAMPLE_SIZE, MAX_TERMINAL_CELLS } from "../../docs/.vitepress/terminal-size.js";
 
 const SETUP: CardSetup = {
   before: [
@@ -28,6 +29,7 @@ const DEMO: CardProgram = {
     { name: "app.ts", setup: NO_SETUP, code: 'export const run = () => process.stdout.write("ran");' },
     { name: "../_capabilities/file-system.ts", setup: NO_SETUP, code: "export interface FileSystem {}" },
   ],
+  terminal: { columns: 100, rows: 30 },
 };
 
 /** `json`, deflated, in base64url, behind `format`. */
@@ -44,7 +46,20 @@ describe("a playground hash", () => {
     expect(await decodeProgram(await encodeProgram(empty))).toEqual(empty);
   });
 
-  it("opens a link in the format before it as that block and its setup", async () => {
+  it("opens a link in the files format as those files at the example size", async () => {
+    const { files } = DEMO;
+    expect(await decodeProgram(shaped("files", { files }))).toEqual({ files, terminal: EXAMPLE_SIZE });
+  });
+
+  it.each([
+    ["no terminal", undefined],
+    ["a fraction", { columns: 90.5, rows: 28 }],
+    ["more cells than a terminal has", { columns: MAX_TERMINAL_CELLS + 1, rows: 28 }],
+  ])("refuses a link whose program has %s", async (_, terminal) => {
+    await expect(decodeProgram(shaped("program", { files: DEMO.files, terminal }))).rejects.toThrow("a terminal is");
+  });
+
+  it("opens a link in the card format as that block and its setup", async () => {
     expect(await decodeProgram(shaped("card", { setup: SETUP, code: CODE }))).toEqual(PROGRAM);
   });
 
@@ -53,7 +68,7 @@ describe("a playground hash", () => {
   });
 
   it("is made only of characters a URL fragment carries as they are", async () => {
-    expect(await encodeProgram(oneFile(SETUP, CODE.repeat(20)))).toMatch(/^files\.[A-Za-z0-9_-]+$/);
+    expect(await encodeProgram(oneFile(SETUP, CODE.repeat(20)))).toMatch(/^program\.[A-Za-z0-9_-]+$/);
   });
 
   it("is shorter than the program it carries", async () => {
@@ -68,11 +83,12 @@ describe("a playground hash", () => {
     const bomb = oldHash(long);
     expect(bomb.length).toBeLessThan(MAX_PROGRAM_BYTES / 100);
     await expect(decodeProgram(bomb)).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
+    await expect(decodeProgram(`program.${bomb}`)).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
     await expect(decodeProgram(`files.${bomb}`)).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
     await expect(decodeProgram(`card.${bomb}`)).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
     // The limit is on what is packed, the program's JSON, and a program that fills it exactly still opens.
     const { files } = oneFile(NO_SETUP, "");
-    const fits = "x".repeat(MAX_PROGRAM_BYTES - JSON.stringify({ files }).length);
+    const fits = "x".repeat(MAX_PROGRAM_BYTES - JSON.stringify({ files, terminal: EXAMPLE_SIZE }).length);
     expect(await decodeProgram(await encodeProgram(oneFile(NO_SETUP, fits)))).toEqual(oneFile(NO_SETUP, fits));
     await expect(encodeProgram(oneFile(NO_SETUP, `${fits}x`))).rejects.toThrow(`at most ${MAX_PROGRAM_BYTES} bytes`);
   });
@@ -81,7 +97,7 @@ describe("a playground hash", () => {
     await expect(decodeProgram("not a hash!")).rejects.toThrow();
     const hash = await encodeProgram(PROGRAM);
     await expect(decodeProgram(hash.slice(0, hash.length / 2))).rejects.toThrow();
-    await expect(decodeProgram(`page.${hash.slice("files.".length)}`)).rejects.toThrow('a format named "page"');
+    await expect(decodeProgram(`page.${hash.slice("program.".length)}`)).rejects.toThrow('a format named "page"');
   });
 
   it("fails on a file whose JSON is not a block and its setup", async () => {

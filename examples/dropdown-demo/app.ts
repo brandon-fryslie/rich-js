@@ -2,9 +2,8 @@
  * dropdown-demo body — three Dropdowns exercising baseline, filter, and
  * mutation paths. [LAW:dataflow-not-control-flow]
  *
- * The demo runs against any `TerminalHost`. Node bootstraps with
- * `NodeTerminalHost`; the browser bootstrap with `BrowserTerminalHost`. The
- * code path here is identical in both — the host is the value that differs.
+ * The demo runs against any `TerminalHost`; main.ts hands it the one it
+ * builds, which in the docs card is the card's terminal.
  *
  * The widgets are laid out by composition — a `Group` for the body, a
  * `Layout` that keeps the status rows at the bottom of the screen — and
@@ -15,7 +14,7 @@
  */
 
 import { runInAction, observable, action } from "mobx";
-import { Segment, Style, ColorSpec, Group, Layout } from "../../src/index.js";
+import { Segment, Style, ColorSpec, Group, Layout, type Renderable, type RenderOptions } from "@promptctl/rich-js";
 import {
   Dropdown,
   WidgetApp,
@@ -24,19 +23,9 @@ import {
   WidgetBase,
   hasOverlay,
   KeyEvent,
-} from "../../src/widgets/index.js";
-import type { TerminalHost } from "../../src/host/index.js";
-import type { InteractiveWidget } from "../../src/widgets/types.js";
-import type {
-  Renderable,
-  RenderOptions,
-} from "../../src/core/protocol.js";
-
-export interface DemoHandle {
-  stop(): void;
-  /** Settles once the demo has stopped and handed the terminal back. */
-  readonly done: Promise<void>;
-}
+  type InteractiveWidget,
+} from "@promptctl/rich-js/widgets";
+import type { TerminalHost } from "@promptctl/rich-js/host";
 
 const SHORT_OPTIONS = ["Red", "Green", "Blue"];
 
@@ -96,21 +85,22 @@ class KeyEchoWidget extends WidgetBase {
   }
 }
 
-export function runDemo(host: TerminalHost): DemoHandle {
+/** Run the demo on `host`; settles once it has stopped and handed the terminal back. */
+export function runDemo(host: TerminalHost): Promise<void> {
   const ddShort = new Dropdown({
     options: SHORT_OPTIONS,
     selectedIndex: 0,
-    id: "dd-short",
+    id: "short",
   });
   const ddLong = new Dropdown({
     options: LONG_OPTIONS,
     selectedIndex: 0,
-    id: "dd-long",
+    id: "long",
   });
   const ddMutating = new Dropdown({
     options: MUTATION_CYCLE[0]!,
     selectedIndex: 0,
-    id: "dd-mutating",
+    id: "mutating",
   });
 
   const keyEcho = new KeyEchoWidget();
@@ -263,8 +253,5 @@ export function runDemo(host: TerminalHost): DemoHandle {
     });
   }, 3000);
 
-  return {
-    stop: () => app.stop(),
-    done: app.run().finally(() => clearInterval(mutationTimer)),
-  };
+  return app.run().finally(() => clearInterval(mutationTimer));
 }

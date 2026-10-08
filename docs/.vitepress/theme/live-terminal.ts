@@ -109,8 +109,23 @@ interface Xterm extends XtermTerminal {
   reset(): void;
   dispose(): void;
   onWriteParsed(handler: () => void): XtermDisposable;
+  /** `handler` sees each key event first; one it answers false for xterm leaves to the page. */
+  attachCustomKeyEventHandler(handler: (event: KeyboardEvent) => boolean): void;
   options: { theme: Record<string, string>; fontFamily: string; fontSize: number };
 }
+
+/** Keys pressed only to change another: Shift between Escape and Tab still leaves. */
+const MODIFIERS: ReadonlySet<string> = new Set(["Shift", "Control", "Alt", "Meta"]);
+
+/**
+ * How long after an Escape a Tab leaves the terminal: CodeMirror's window for
+ * the same way out of its editor (`tabFocusMode` in @codemirror/view), so a
+ * Tab a program is sent well after an Escape stays the program's.
+ */
+const LEAVE_WITHIN_MS = 2000;
+
+/** The way out of a focused terminal, as the page says it beside one (LiveScreen.ts). */
+export const LEAVE_HINT = "Keys go to the program · Esc then Tab leaves";
 
 type XtermConstructor = new (options: Record<string, unknown>) => Xterm;
 
@@ -225,6 +240,18 @@ export class LiveTerminal {
     // key (VitePress's `/` and Ctrl+K) never sees it while the terminal has
     // focus; unfocused, every shortcut is the page's.
     this.host.onData((chunk) => this.post({ kind: "input", chunk }));
+    // Every key is the program's, Tab and Escape too, so a keyboard needs one
+    // way out (`LEAVE_HINT`): Escape, then Tab, as it leaves the card's editor
+    // (playground-editor.ts). The Escape still reaches the program; a Tab as
+    // the next key, within `LEAVE_WITHIN_MS`, is the page's, and moves focus
+    // on, or back with Shift.
+    let escapedAt = -Infinity;
+    screen.attachCustomKeyEventHandler((event) => {
+      if (event.type !== "keydown" || MODIFIERS.has(event.key)) return true;
+      const leaving = event.key === "Tab" && event.timeStamp - escapedAt <= LEAVE_WITHIN_MS;
+      escapedAt = event.key === "Escape" ? event.timeStamp : -Infinity;
+      return !leaving;
+    });
   }
 
   /** Run `script` from a clear screen, ending whatever ran before. */

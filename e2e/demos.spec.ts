@@ -73,11 +73,13 @@ const terminalRows = (page: Page) => card(page).locator(".rich-live .xterm-rows"
 /**
  * What the card's terminal shows, scrolled into view first: a long file's tab
  * pushes it below the fold, and a live terminal off screen is stopped
- * (theme/LiveScreen.ts), its rows blank.
+ * (theme/LiveScreen.ts), its rows blank. It reads without waiting for the
+ * rows, so a poll scrolls again each time: the editor opening under a first
+ * scroll pushes the terminal back off screen before it starts.
  */
 const shown = async (page: Page) => {
   await card(page).locator(".rich-live").scrollIntoViewIfNeeded();
-  return (await terminalRows(page).innerText()).replaceAll("\u00a0", " ");
+  return (await terminalRows(page).allInnerTexts()).join("").replaceAll("\u00a0", " ");
 };
 const tab = (page: Page, name: string) => card(page).getByRole("tab", { name });
 const editor = (page: Page) => card(page).locator(".cm-content");
@@ -85,7 +87,7 @@ const editor = (page: Page) => card(page).locator(".cm-content");
 for (const { name } of manifest.demos.filter((demo) => demo.runs === "card")) {
   test(`demo card runs cleanly: ${name}`, async ({ page }) => {
     const errors = await openDemo(page, name);
-    await expect(terminalRows(page)).toContainText(/\S/, LOADED);
+    await expect.poll(() => shown(page), LOADED).toMatch(/\S/);
     await expect(card(page).locator(".rich-example-failure")).toHaveCount(0);
     expect(errors).toEqual([]);
   });
@@ -248,9 +250,77 @@ test("a demo's card shows its files as tabs; an edit to any re-runs it, reset pu
   expect(await shown(page)).not.toContain("EDITED IN");
 
   await link.click();
-  await page.waitForURL(/playground#files\./);
+  await page.waitForURL(/playground#program\./);
   await expect(page.locator(".rich-playground").getByRole("tab")).toHaveText(["main.ts", "app.ts"], LOADED);
   await expect(page.locator(".rich-playground .cm-content")).toContainText("new NodeTerminalHost()");
   await expect.poll(async () => (await page.locator(".rich-playground .rich-example-output").innerText()).replaceAll("\u00a0", " "), LOADED).toContain("PowerlineJoiner");
+  expect(errors).toEqual([]);
+});
+
+// The first interactive demo on a card: keys typed while its terminal has
+// focus are the program's, Tab and Escape included, and Escape then Tab is
+// the way out (docs/.vitepress/theme/live-terminal.ts).
+test("an interactive demo's card takes keys while focused, says so, lets focus leave, and fits its own terminal: dropdown-demo", async ({ page }) => {
+  const errors = await openDemo(page, "dropdown-demo");
+  const screen = card(page).locator(".rich-live-screen");
+  const hint = card(page).locator(".rich-live-hint");
+  const focusedInScreen = () => screen.evaluate((element) => element.contains(document.activeElement));
+  await expect.poll(() => shown(page), LOADED).toContain("Dropdown demo");
+
+  // Its terminal is its card.json's size, every row drawn and in view: the
+  // status rows the layout holds at the bottom are the last of thirty.
+  const rowsOnScreen = card(page).locator(".xterm-rows > div");
+  await expect(rowsOnScreen).toHaveCount(30);
+  await expect(rowsOnScreen.last()).toHaveText(/esc=cancel\s*$/);
+  const lastRowInView = await screen.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    const rows = element.querySelectorAll(".xterm-rows > div");
+    const last = rows[rows.length - 1]!.getBoundingClientRect();
+    return last.bottom <= box.bottom && last.right <= box.right;
+  });
+  expect(lastRowInView).toBe(true);
+
+  await expect(hint).toHaveCount(0);
+  await screen.locator(".xterm-screen").click();
+  expect(await focusedInScreen()).toBe(true);
+  await expect(hint).toContainText("Esc then Tab leaves");
+
+  // The first dropdown has focus: Enter opens it, an arrow moves, Enter selects.
+  await page.keyboard.press("Enter");
+  await expect.poll(() => shown(page)).toContain("short: sel=0 exp=true hl=0");
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(() => shown(page)).toContain("short: sel=0 exp=true hl=1");
+  await page.keyboard.press("Enter");
+  await expect.poll(() => shown(page)).toContain("short: sel=1 exp=false");
+
+  // Tab is the demo's: it moves the demo's focus, and the page's stays put.
+  for (let i = 0; i < 3; i++) await page.keyboard.press("Tab");
+  await expect.poll(() => shown(page)).toContain("custom widget (focused)");
+  expect(await focusedInScreen()).toBe(true);
+
+  // A Tab long after an Escape is still the program's: the way out lasts as
+  // long as CodeMirror's (`LEAVE_WITHIN_MS`), 2 s.
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(2_500);
+  await page.keyboard.press("Tab");
+  await expect.poll(() => shown(page)).not.toContain("custom widget (focused)");
+  expect(await focusedInScreen()).toBe(true);
+  await page.keyboard.press("Shift+Tab");
+  await expect.poll(() => shown(page)).toContain("custom widget (focused)");
+
+  // Escape reaches the program; the Tab right after it leaves the card's terminal.
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Tab");
+  expect(await focusedInScreen()).toBe(false);
+  await expect(hint).toHaveCount(0);
+  await expect.poll(() => shown(page)).toContain("key=escape");
+
+  // An edit restarts it on the edited program.
+  await tab(page, "app.ts").click();
+  const app = readFileSync(resolve(__dirname, "..", "examples", "dropdown-demo", "app.ts"), "utf-8");
+  await editor(page).click();
+  await page.keyboard.press("ControlOrMeta+A");
+  await page.keyboard.insertText(app.replace('"Dropdown demo"', '"Dropdown EDITED"'));
+  await expect.poll(() => shown(page), LOADED).toContain("Dropdown EDITED");
   expect(errors).toEqual([]);
 });
