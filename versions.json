@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-354",
-      "ref": "refs/pull/354/merge",
-      "sha": "70ac2bfeafca771c6f5afff1892b3ff142422997",
-      "timestamp": "2026-10-08T17:28:14.413Z",
-      "commits": [
-        {
-          "sha": "70ac2bfeafca771c6f5afff1892b3ff142422997",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T17:26:54Z",
-          "message": "Merge 28a8a8dba43c43abd96e0e6d8e6a563d006f886b into 20a5e1da88b3eaeb4f221640339eade1ae7c1222\n"
-        },
-        {
-          "sha": "28a8a8dba43c43abd96e0e6d8e6a563d006f886b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T11:26:49-06:00",
-          "message": "fix(docs): headers name every non-live block a card; read-only e2e waits for an editor to prove none opened (rich-example-card-obsb.oil)\n"
-        },
-        {
-          "sha": "9f14c28f499be2fcbc23e62814c2b231c97cab71",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T11:19:45-06:00",
-          "message": "feat(docs): silent, throws, shape and node blocks are the card; the old output markup is gone (rich-example-card-obsb.oil)\n\nEvery block the build runs is an editable card. A run that printed nothing\nshows the prints-nothing note in place of output, whatever its marker, so\nsilent needs no case of its own. A throws block's caption follows what is\ndrawn: an edit that stops the throw is captioned as a plain run. shape and\nnode blocks are the same card, read-only, with their note. The runner now\nwrites markup only for live blocks.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "20a5e1da88b3eaeb4f221640339eade1ae7c1222",
-      "timestamp": "2026-10-08T17:08:47.926Z",
+      "sha": "37eab7c8b844269b1e2036d7550bcccad6f20d6a",
+      "timestamp": "2026-10-08T17:35:16.039Z",
       "commits": [
         {
-          "sha": "20a5e1da88b3eaeb4f221640339eade1ae7c1222",
+          "sha": "37eab7c8b844269b1e2036d7550bcccad6f20d6a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T11:07:07-06:00",
-          "message": "feat(docs): a card shows its setup locked, labelled by origin, folded on docs pages (rich-example-card-obsb.skf) (#353)\n\n* feat(docs): a card shows its setup locked, labelled by origin, folded on docs pages (rich-example-card-obsb.skf)\n\nThe card's editor now holds the whole program its block runs as: the setup\nabove it, in groups labelled by where they came from (\"imports\", \"assumed by\nevery example\", \"assumed on this page\", \"from '<heading>'\"), the block, and the\nbraces closing the setup's scopes. Everything but the block is locked: a change\nreaching into it, typed, pasted or deleted, changes nothing. On a docs page the\nsetup is folded into one strip, \"▸ N lines of setup\", shown while the editor\nhas focus; a click unfolds it. A thrown error's line is the program's line, so\nit counts the setup.\n\n- theme/setup-regions.ts: the locked, labelled, foldable setup as one\n  CodeMirror extension; where it starts (folded/unfolded) is the caller's, for\n  the playground (A5).\n- example-slice.ts: \"Try it\" and the card's setup are cut from one parts list.\n  The card's setup imports only what the block names and does not import\n  itself, so a block that imports what it uses has no setup at all\n  (rich-example-card-obsb.021). aroundBlock is gone.\n- example-markers.ts: each fence carries the heading it sits under.\n\n* fix(docs): a card's setup strip takes no line, a selection into the setup unfolds it, and a change across it lands in the block (rich-example-card-obsb.skf)\n\nHigh review on #353: the strip no longer appears and disappears as a line on\nfocus, so nothing under the editor moves mid-click; arrow keys, Ctrl+Home and\nselect-all unfold the setup rather than leaving the cursor in hidden text; a\npaste over select-all replaces the block. A card's setup leaves the block's\nown bare imports to it, a group is labelled with its heading as rendered, and\na scope with no setup above it fails at its page and line.\n\n* fix(docs): a thrown error shows the setup its line counts, and a click above a card's code starts in the block (rich-example-card-obsb.skf)"
+          "timestamp": "2026-10-08T11:33:41-06:00",
+          "message": "feat(docs): silent, throws, shape and node blocks are the card (rich-example-card-obsb.oil) (#354)\n\n* feat(docs): silent, throws, shape and node blocks are the card; the old output markup is gone (rich-example-card-obsb.oil)\n\nEvery block the build runs is an editable card. A run that printed nothing\nshows the prints-nothing note in place of output, whatever its marker, so\nsilent needs no case of its own. A throws block's caption follows what is\ndrawn: an edit that stops the throw is captioned as a plain run. shape and\nnode blocks are the same card, read-only, with their note. The runner now\nwrites markup only for live blocks.\n\n* fix(docs): headers name every non-live block a card; read-only e2e waits for an editor to prove none opened (rich-example-card-obsb.oil)"
         }
       ]
     }
