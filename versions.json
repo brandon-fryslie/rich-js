@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-341",
+      "ref": "refs/pull/341/merge",
+      "sha": "1b0f4077f8cf5eabe841377b8379bfa615f30f0f",
+      "timestamp": "2026-10-08T01:36:49.764Z",
+      "commits": [
+        {
+          "sha": "1b0f4077f8cf5eabe841377b8379bfa615f30f0f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T19:35:26-06:00",
+          "message": "Merge e3425c5c81cdc9b17fe8ca4b985befd79f216cf1 into 2d11591378efe0356595191d0cc01736782d55c9\n"
+        },
+        {
+          "sha": "e3425c5c81cdc9b17fe8ca4b985befd79f216cf1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T19:35:13-06:00",
+          "message": "fix(effects): Effected merges cells on what the depth writes, so colours landing on one index are one run (rich-effects-fxiy.7b3)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "2d11591378efe0356595191d0cc01736782d55c9",
