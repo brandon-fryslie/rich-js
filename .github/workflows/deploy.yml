@@ -30,8 +30,11 @@ on:
 # Keyed per slot, the only run that can cancel a pending deploy is a
 # newer one for the same slot — the same master or the same PR at a later
 # commit — so each slot always ends at its newest commit. Runs for
-# different slots may push to gh-pages at once; the multiplexer's
-# fetch-rebase-push retry is what makes that safe. The key is the
+# different slots may push to gh-pages at once. The multiplexer (v1.1.0+,
+# which `@v1` below resolves to) pushes without force; when it loses the
+# race it rebuilds the whole site from the new tip and pushes again, and
+# it fails the run on any other rejection. So a lost race costs a retry
+# and never silently drops a deploy. The key is the
 # identity the slot step below names (PR number, else branch), not the
 # slot string itself: a concurrency group cannot read a step output.
 concurrency:
