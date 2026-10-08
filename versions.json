@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-361",
-      "ref": "refs/pull/361/merge",
-      "sha": "9c267d1424a4283d81541bc0d895b82544b7c92c",
-      "timestamp": "2026-10-08T22:42:45.592Z",
-      "commits": [
-        {
-          "sha": "9c267d1424a4283d81541bc0d895b82544b7c92c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T22:41:35Z",
-          "message": "Merge 401e2c1f6e6b41b0f38f818aca3d76aa1a1b9093 into 4a2c5c12ad497c59b5f1c6941187c48dc658d383\n"
-        },
-        {
-          "sha": "401e2c1f6e6b41b0f38f818aca3d76aa1a1b9093",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T16:41:30-06:00",
-          "message": "docs(theme): liveOutlet's opened code parsed on either path, the build's or an edit's (rich-example-card-b5rz.auo)\n"
-        },
-        {
-          "sha": "5c8ba8da25601eace52381cd177c1926dd3bc586",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T16:36:48-06:00",
-          "message": "fix(docs): import.meta reads only hot, a program version has a file, one Sucrase parser on the page (rich-example-card-b5rz.auo)\n\n- Any read of import.meta but .hot is refused at its line, as a syntax\n  error is, rather than undefined in the browser and a value in Node.\n- Docs fences type-check against import.meta.hot, which every docs\n  terminal binds.\n- Version = readonly [RunFile, ...RunFile[]] at every seam; a bundled\n  script has files: null, and an edit of it restarts it.\n- The page aliases Sucrase's parser to its ES build: the playground chunk\n  carries one parser, 365 KB -> 209 KB.\n- The bundled-path refusal names the construct it refuses.\n- Hot-replacement tests stop their 1 ms timers.\n"
-        },
-        {
-          "sha": "c6e04ffa7444e6532bed1cf27fa6feb1b40ed108",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T16:21:36-06:00",
-          "message": "feat(docs): an edit reaches a running program that accepts it without a restart (rich-example-card-b5rz.auo)\n\nA program opts in through a subset of Vite's import.meta.hot (accept,\ndispose, data). The worker runs an accepted edit in the process it is\nalready running in: dispose callbacks, then every timer and process\nlistener the last version left is cleared, then the new files run with\nthe same per-file data. A program that never accepts is declined and the\npage restarts it as before. No CardOptions field: the program's accept()\nis the one switch.\n\nimport.meta is rewritten per file using Sucrase's internal tokenizer,\npinned by a test. The effects kit carries its clock through dispose.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "4a2c5c12ad497c59b5f1c6941187c48dc658d383",
-      "timestamp": "2026-10-08T21:59:45.725Z",
+      "sha": "fd2fb62af63054f953bf160b9fdfaa97fa147d67",
+      "timestamp": "2026-10-08T22:51:21.675Z",
       "commits": [
         {
-          "sha": "4a2c5c12ad497c59b5f1c6941187c48dc658d383",
+          "sha": "fd2fb62af63054f953bf160b9fdfaa97fa147d67",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T15:58:03-06:00",
-          "message": "feat(docs): effects-playground is a docs page on the card, with sliders (rich-example-card-b5rz.cek) (#360)\n\n* feat(docs): effects-playground is a docs page on the card, with sliders over the numbers in its code (rich-example-card-b5rz.cek)\n\n/effects-playground shows one card per effect. Each card's entry is the\neffect's program, cut from src/renderables/effects.ts (programs.ts), beside\nkit.ts and the effects-feel demo's subjects (examples/effects-feel/subjects.ts),\nwhich it runs as further files. The run controls became named constants in\nthat program (FPS, STEP), so they are sliders like any other value.\n\nSliders are a card option: card.json may say \"sliders\": true, and\n\"contrast\": \"as drawn\" for a program that paints its own ground. tunables.ts\nmoved to docs/.vitepress and a slider is still an edit of its literal, made in\nthe card's editor, so reset restores both. In this slice an edit restarts the\nprogram.\n\nThe standalone page, its vite server, the terminal mirror and the in-place\nedit channel (edits.ts, controls.ts, mirror.ts, terminal.ts) are gone with\ntheir npm scripts.\n\nPublished names now resolve to src/ in the test suite (vitest alias,\ntsconfig.test.json paths), held to PUBLISHED_PATHS by\ntest/seam/test-resolution.test.ts: a card file under examples/ imports the\nlibrary by those names, and a test that reaches one ran before dist/ exists.\n\n* fix(docs): effect cards carry their contrast to the playground; slider boxes keep typing and refuse non-numbers (rich-example-card-b5rz.cek)\n\nReview (high) of #360:\n- Contrast is the program's, not the card's: CardProgram carries it, the\n  playground hash encodes it (a program. link without one opens readable),\n  so \"Open in playground\" on an effect shows it as drawn.\n- A magnitude's slider starts a step above zero: FPS 0 and a 0-second curve\n  both throw in the library.\n- A slider's number box is left alone while focused, and an empty or\n  unreadable entry is put back, never written as 0 or NaN.\n- card.json is read once per demo card; the opened tunables once per slider set.\n- A test runs a transition through its restart; effectCards() is made in beforeAll."
+          "timestamp": "2026-10-08T16:50:10-06:00",
+          "message": "feat(docs): edits reach a running program that accepts them without restarting it (rich-example-card-b5rz.auo) (#361)\n\n* feat(docs): an edit reaches a running program that accepts it without a restart (rich-example-card-b5rz.auo)\n\nA program opts in through a subset of Vite's import.meta.hot (accept,\ndispose, data). The worker runs an accepted edit in the process it is\nalready running in: dispose callbacks, then every timer and process\nlistener the last version left is cleared, then the new files run with\nthe same per-file data. A program that never accepts is declined and the\npage restarts it as before. No CardOptions field: the program's accept()\nis the one switch.\n\nimport.meta is rewritten per file using Sucrase's internal tokenizer,\npinned by a test. The effects kit carries its clock through dispose.\n\n* fix(docs): import.meta reads only hot, a program version has a file, one Sucrase parser on the page (rich-example-card-b5rz.auo)\n\n- Any read of import.meta but .hot is refused at its line, as a syntax\n  error is, rather than undefined in the browser and a value in Node.\n- Docs fences type-check against import.meta.hot, which every docs\n  terminal binds.\n- Version = readonly [RunFile, ...RunFile[]] at every seam; a bundled\n  script has files: null, and an edit of it restarts it.\n- The page aliases Sucrase's parser to its ES build: the playground chunk\n  carries one parser, 365 KB -> 209 KB.\n- The bundled-path refusal names the construct it refuses.\n- Hot-replacement tests stop their 1 ms timers.\n\n* docs(theme): liveOutlet's opened code parsed on either path, the build's or an edit's (rich-example-card-b5rz.auo)"
         }
       ]
     }
