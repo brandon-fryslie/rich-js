@@ -2,28 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-362",
-      "ref": "refs/pull/362/merge",
-      "sha": "b57d2171b96c8776fd0c95f3aebe751625f6e957",
-      "timestamp": "2026-10-08T23:16:39.364Z",
-      "commits": [
-        {
-          "sha": "b57d2171b96c8776fd0c95f3aebe751625f6e957",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T17:15:20-06:00",
-          "message": "Merge cabe242897f3eab9448e7f0c3ea65aa8e0def1a4 into fd2fb62af63054f953bf160b9fdfaa97fa147d67\n"
-        },
-        {
-          "sha": "cabe242897f3eab9448e7f0c3ea65aa8e0def1a4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T17:14:12-06:00",
-          "message": "fix(docs): docs:dev serves pages again — a docs bundle hands NODE_ENV back (rich-example-card-b5rz.b5s)\n\nVite's in-process `build` sets NODE_ENV to \"production\" when it is unset.\n`[demo].paths.ts` bundles the live library (via `demoCard`) while VitePress\nresolves its config, before the dev server resolves its own, so `docs:dev`\ncame up with DEV false and every page threw `__VP_HASH_MAP__ is not\ndefined`. `bundle` now restores the host's value, or its absence, when the\nlast overlapping bundle ends.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "fd2fb62af63054f953bf160b9fdfaa97fa147d67",
