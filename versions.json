@@ -2,28 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-357",
-      "ref": "refs/pull/357/merge",
-      "sha": "d60f581bb276e882ac0d74903b211455a80203c1",
-      "timestamp": "2026-10-08T19:24:13.702Z",
-      "commits": [
-        {
-          "sha": "d60f581bb276e882ac0d74903b211455a80203c1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T13:22:44-06:00",
-          "message": "Merge 2a31555aa21224bd335d662c242d77b2b07365e6 into 478bc3ea1558c6dde8911316517f396d218d29ad\n"
-        },
-        {
-          "sha": "2a31555aa21224bd335d662c242d77b2b07365e6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T13:22:36-06:00",
-          "message": "feat(docs): the landing showcase is an output-only card (rich-example-card-obsb.9yd)\n\nThe hero's live terminal now stands in the docs card's frame and output\npanel (OutputCard in theme/RichExample.ts), with no code; RichShowcase.ts\nkeeps only the hero's sizing frame, loaded apart so the example terminal's\nthemes stay off every other page. RichLive was already gone (2pn renamed\nit LiveScreen).\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "478bc3ea1558c6dde8911316517f396d218d29ad",
