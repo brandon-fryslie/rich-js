@@ -4,15 +4,22 @@
     {
       "version": "pr-340",
       "ref": "refs/pull/340/merge",
-      "sha": "8d2253fca8cd2a0dcecd2721654e70df4112cc3a",
-      "timestamp": "2026-10-08T01:18:34.353Z",
+      "sha": "9eb93d7282c27d7ce23990d42c8605229eaed230",
+      "timestamp": "2026-10-08T01:24:26.298Z",
       "commits": [
         {
-          "sha": "8d2253fca8cd2a0dcecd2721654e70df4112cc3a",
+          "sha": "9eb93d7282c27d7ce23990d42c8605229eaed230",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T01:17:12Z",
-          "message": "Merge 7ac375719d820de3c1292d1f4b976b2e20abb952 into 7a5f6de0d8336d9c005ab8c3b223cfbe0695b01e\n"
+          "timestamp": "2026-10-08T01:22:51Z",
+          "message": "Merge 0a1667b8529559f49f2d7abc78b73754d4bcac42 into 7a5f6de0d8336d9c005ab8c3b223cfbe0695b01e\n"
+        },
+        {
+          "sha": "0a1667b8529559f49f2d7abc78b73754d4bcac42",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T19:22:46-06:00",
+          "message": "fix(progress): the pulse's glow resolves as drawn, like its ink; docs state the dark spells' length (rich-effects-fxiy.3rg)\n"
         },
         {
           "sha": "7ac375719d820de3c1292d1f4b976b2e20abb952",
