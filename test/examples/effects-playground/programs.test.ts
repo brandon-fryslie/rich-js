@@ -1,24 +1,23 @@
 /**
- * The effects playground's programs: each is the library's own code from
- * src/renderables/effects.ts, and each runs as the playground runs it — the docs' playground
- * script on the live library with the kit added — and draws the demo's
- * subjects. The page, its terminals and its editors are not exercised here.
+ * The effects playground page's programs and cards: each program is the
+ * library's own code from src/renderables/effects.ts, and each card runs it
+ * as the page does — its files on the live library, under the docs'
+ * simulated process — drawing the demo's subjects. The page itself is
+ * e2e/effects-playground.spec.ts's.
  */
 import { readFileSync } from "node:fs";
 import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { libraryModule, liveLibraryOnce } from "../../../docs/.vitepress/example-runner.js";
+import { cardLibrary } from "../../../docs/.vitepress/demo-card.js";
+import { programFiles, withCodes, type CardProgram } from "../../../docs/.vitepress/example-card.js";
+import { effectCards } from "../../../docs/.vitepress/effect-cards.js";
 import { runInTerminal } from "../../../docs/.vitepress/simulated-process.js";
 import { playgroundScript } from "../../../docs/.vitepress/theme/playground-program.js";
-import { NO_SETUP, oneFile, programFiles } from "../../../docs/.vitepress/example-card.js";
-import { CONTROL_DEFAULTS, type Controls } from "../../../examples/effects-playground/controls.js";
-import { KIT_MODULE, edit, started, told } from "../../../examples/effects-playground/edits.js";
-import { EFFECTS_FILE, KIT_FILE, effectPrograms } from "../../../examples/effects-playground/programs.js";
-import { EFFECTS, EFFECT_DEFAULTS } from "../../../examples/effects-feel/vocabulary.js";
+import { EFFECTS_FILE, effectPrograms } from "../../../examples/effects-playground/programs.js";
+import { EFFECTS, EFFECT_DEFAULTS, RUN_DEFAULTS, STEP } from "../../../examples/effects-feel/vocabulary.js";
 
 const programs = effectPrograms();
 const effects = readFileSync(EFFECTS_FILE, "utf-8");
-const library = liveLibraryOnce();
 
 afterEach(() => {
   vi.clearAllTimers();
@@ -42,120 +41,77 @@ describe("an effect's program", () => {
     }
   });
 
-  it("opens on the curve the demo defaults to", () => {
+  it("opens on the curve the library defaults to and the pace the demo plays at, each a named number a slider is over", () => {
     for (const effect of EFFECTS) {
       const d = EFFECT_DEFAULTS[effect];
       expect(programs[effect]).toContain(`const CURVE: Curve = { seconds: ${d.seconds}, ease: EASES["${d.ease}"], swing: ${d.swing} };`);
+      expect(programs[effect]).toContain(`const FPS = ${RUN_DEFAULTS.fps};`);
+      expect(programs[effect]).toContain(`const STEP = ${STEP};`);
     }
   });
+});
 
-  it.each(EFFECTS)("%s runs on the live library and the kit, drawing the demo's strip and status line", { timeout: 120_000 }, async (effect) => {
-    const [shared, kit] = await Promise.all([library(), libraryModule(KIT_MODULE, KIT_FILE)]);
+describe("an effect's card", { timeout: 120_000 }, () => {
+  const cards = effectCards();
+
+  /** The bytes `program` writes in its first `ms` of running in its card's terminal. */
+  async function drawn(program: CardProgram, ms = 340): Promise<string> {
     const output: string[] = [];
+    const library = (await cardLibrary()).script;
     vi.useFakeTimers();
-    await runInTerminal(playgroundScript(programFiles(oneFile(NO_SETUP, programs[effect])), shared.script + kit.code), {
-      columns: 108,
-      rows: 6,
+    await runInTerminal(playgroundScript(programFiles(program), library), {
+      ...program.terminal,
       isTTY: true,
       env: { TERM: "xterm-256color", COLORTERM: "truecolor" },
       write: (chunk) => void output.push(String(chunk)),
       onInput: () => {},
       exit: () => {},
     });
-    // Ten frames at the demo's 30 a second.
-    vi.advanceTimersByTime(340);
-    const drawn = stripAnsi(output.join(""));
-    expect(drawn).toContain(`${effect} · frame 10 · curve time 2.50`);
-    expect(drawn).toContain("claude.ai");
-    expect(drawn).toContain("Thinking about how a band of light");
-  });
-});
-
-describe("what is typed at a running program", () => {
-  /** `source` started under `controls`, then `typed` typed at it after ten frames; the bytes of the ten frames after that. */
-  async function framesAfter(source: string, typed: string | undefined, controls: Controls = CONTROL_DEFAULTS, ms = 340): Promise<string> {
-    const [shared, kit] = await Promise.all([library(), libraryModule(KIT_MODULE, KIT_FILE)]);
-    const output: string[] = [];
-    let type: (chunk: string | Uint8Array) => void = () => {};
-    vi.useFakeTimers();
-    await runInTerminal(started(source, shared.script + kit.code, controls), {
-      columns: 108,
-      rows: 20,
-      isTTY: true,
-      env: { TERM: "xterm-256color", COLORTERM: "truecolor" },
-      write: (chunk) => void output.push(String(chunk)),
-      onInput: (deliver) => void (type = deliver),
-      exit: () => {},
-    });
-    await vi.advanceTimersByTimeAsync(ms);
-    if (typed !== undefined) type(typed);
-    output.length = 0;
     await vi.advanceTimersByTimeAsync(ms);
     vi.clearAllTimers();
     return output.join("");
   }
 
-  it("an edit changes the effect in place: the clock carries on", { timeout: 120_000 }, async () => {
-    // Pulse, whose swing shows in the first seconds; shimmer's first pass comes later.
-    const source = programs.pulse;
-    const still = source.replace(/swing: [\d.]+ \}/, "swing: 0 }");
-    expect(still).not.toBe(source);
-    const kept = await framesAfter(source, edit(source));
-    const changed = await framesAfter(source, edit(still));
-    // The clock carried on through the edit.
-    for (const frames of [kept, changed]) expect(stripAnsi(frames)).toContain("pulse · frame 20 · curve time 5.00");
-    // The same frames, under the edited swing, are drawn as a program begun with it draws them.
-    expect(changed).not.toBe(kept);
-    expect(changed).toBe(await framesAfter(still, undefined));
+  const cardOf = async (effect: string) => (await cards).find((c) => c.effect === effect)!.card;
+
+  it("is every effect's, in the demo's order, each with sliders and every colour as drawn", async () => {
+    expect((await cards).map((c) => c.effect)).toEqual([...EFFECTS]);
+    for (const { effect, card } of await cards) {
+      expect(card.program.files.map((file) => file.name)).toEqual([`${effect}.ts`, "kit.ts", "../effects-feel/subjects.ts"]);
+      expect(card.program.files[0].code).toBe(programs[effect]);
+      expect(card.options).toEqual({ sliders: true, contrast: "as drawn" });
+    }
   });
 
-  it("a control changes the run in place, as one started under it draws it", { timeout: 120_000 }, async () => {
-    const source = programs.pulse;
-    const quieter = { ...CONTROL_DEFAULTS, magnitude: 0.25 };
-    const kept = await framesAfter(source, undefined);
-    const changed = await framesAfter(source, told({ kind: "controls", controls: quieter }));
-    expect(stripAnsi(changed)).toContain("pulse · frame 20 · curve time 5.00 · 0.7s real · 30 fps · rate ×1 · magnitude ×0.25");
-    expect(changed).not.toBe(kept);
-    expect(changed).toBe(await framesAfter(source, undefined, quieter));
+  it.each(EFFECTS)("%s runs in its card, drawing the demo's strip and status line", async (effect) => {
+    const shown = stripAnsi(await drawn((await cardOf(effect)).program));
+    // Ten frames at the demo's 30 a second, the first numbered 0.
+    expect(shown).toContain("frame 9 · curve time 2.25 · 30 fps");
+    expect(shown).toContain("claude.ai");
+    expect(shown).toContain("Thinking about how a band of light");
   });
 
-  it("the rate moves the demo's time on faster from where it stands", { timeout: 120_000 }, async () => {
-    const changed = await framesAfter(programs.pulse, told({ kind: "controls", controls: { ...CONTROL_DEFAULTS, rate: 2 } }));
-    // From the frame after the change, each moves the demo's time half a second.
-    const drawn = stripAnsi(changed);
-    expect(drawn).toContain("pulse · frame 19 · curve time 6.75");
-    expect(drawn).toContain("pulse · frame 20 · curve time 7.25");
-  });
-
-  it("another effect's program plays as a scene of its own, on its own clock, under the first", { timeout: 120_000 }, async () => {
-    const drawn = stripAnsi(await framesAfter(programs.pulse, edit(programs.fade)));
-    expect(drawn).toContain("pulse · frame 20 · curve time 5.00");
-    expect(drawn).toContain("fade · frame 9 · curve time 2.25");
-    expect(drawn.lastIndexOf("pulse ·")).toBeLessThan(drawn.lastIndexOf("fade ·"));
-  });
-
-  it("a frame is drawn the same whatever the frame rate: the rate sets only how often one comes", { timeout: 120_000 }, async () => {
+  it("a frame is drawn the same whatever FPS says: it sets only how often one comes", async () => {
+    const { program } = await cardOf("pulse");
+    const atFps = (fps: number): CardProgram => withCodes(program, [programs.pulse.replace(/const FPS = \d+;/, `const FPS = ${fps};`), ...program.files.slice(1).map((f) => f.code)]);
     // Each frame's own synchronized update, its heading (which names the rate) and the padding it moves taken out.
-    const frames = (drawn: string): string[] =>
-      drawn
+    const frames = (bytes: string): string[] =>
+      bytes
         .split("\x1b[?2026h")
         .slice(1)
-        .map((frame) => frame.replace(/pulse · frame [^\x1b]*/, "").replace(/ +/g, " "));
-    const fast = frames(await framesAfter(programs.pulse, undefined));
-    // At 2 fps, ten frames take five seconds.
-    const slow = frames(await framesAfter(programs.pulse, undefined, { ...CONTROL_DEFAULTS, fps: 2 }, 5000));
+        .map((frame) => frame.replace(/frame [^\x1b]*/, "").replace(/ +/g, " "));
+    const fast = frames(await drawn(atFps(30)));
+    // At 2 a second, ten frames take five seconds.
+    const slow = frames(await drawn(atFps(2), 5000));
     expect(fast).toHaveLength(10);
     expect(slow).toEqual(fast);
   });
 
-  it("a restart starts the clock over in place", { timeout: 120_000 }, async () => {
-    const restarted = stripAnsi(await framesAfter(programs.pulse, told({ kind: "restart", scene: "pulse" })));
-    expect(restarted).toContain("pulse · frame 9 · curve time 2.25");
-    expect(restarted).not.toContain("frame 20");
-  });
-
-  it("a replay starts the transition over from now", { timeout: 120_000 }, async () => {
-    const replayed = await framesAfter(programs.fade, told({ kind: "replay", scene: "fade" }));
-    expect(replayed).not.toBe(await framesAfter(programs.fade, undefined));
+  it("a curve edited in the code is the curve it plays", async () => {
+    const { program } = await cardOf("pulse");
+    const still = programs.pulse.replace(/swing: [\d.]+ \}/, "swing: 0 }");
+    expect(still).not.toBe(programs.pulse);
+    const edited = await drawn(withCodes(program, [still, ...program.files.slice(1).map((f) => f.code)]));
+    expect(edited).not.toBe(await drawn(program));
   });
 });

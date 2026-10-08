@@ -12,6 +12,19 @@
  */
 import { defineConfig } from "vitest/config";
 import { tscTransform } from "./scripts/tsc-transform.js";
+import { PUBLISHED_PATHS } from "./scripts/repo-facts.js";
+
+/**
+ * Each published name as the `src/` file it publishes, as every other in-repo
+ * reader resolves it: a demo under `examples/` imports the library by those
+ * names, and Node would self-resolve them to `dist/`, a different build and,
+ * before `npm run build`, none. Exact names only, so a deep import the package
+ * does not publish still fails. test/seam/test-resolution.test.ts holds it.
+ */
+const publishedAsSource = Object.entries(PUBLISHED_PATHS).map(([name, [file]]) => ({
+  find: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}$`),
+  replacement: file!,
+}));
 
 // [LAW:single-enforcer] A timeout is a hang detector, not a speed budget, so it
 // has one home, and a hook is as much a place a run can hang as a test. Tests
@@ -26,6 +39,7 @@ const HANG_MS = 30_000;
 
 export default defineConfig({
   plugins: [tscTransform(import.meta.dirname)],
+  resolve: { alias: publishedAsSource },
   test: {
     include: ["test/**/*.{test,spec}.{ts,tsx,js,jsx}"],
     exclude: ["node_modules", "dist", "dist-demo", "e2e"],

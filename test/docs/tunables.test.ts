@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { effectPrograms } from "../../../examples/effects-playground/programs.js";
-import { range, spelled, tunables } from "../../../examples/effects-playground/tunables.js";
+import { effectPrograms } from "../../examples/effects-playground/programs.js";
+import { range, spelled, tunables } from "../../docs/.vitepress/tunables.js";
 
 describe("tunables", () => {
   it("finds a capitalised constant, an object's properties and an ease, each where its literal stands", () => {

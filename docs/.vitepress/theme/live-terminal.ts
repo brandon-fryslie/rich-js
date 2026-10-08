@@ -16,6 +16,7 @@
  * through `BrowserTerminalHost`, the library's own host for an xterm terminal,
  * so a program's newlines reach the screen the way a tty delivers them.
  */
+import type { Contrast } from "../example-card.js";
 import { BrowserTerminalHost, type XtermDisposable, type XtermTerminal } from "../../../src/host/index.js";
 import type { TerminalTheme } from "../../../src/index.js";
 import { XTERM } from "../../../examples/_browser-shell/xterm.js";
@@ -67,6 +68,9 @@ export interface LiveTerminalOptions {
  * its background (WCAG AA), as several desktop terminals can.
  */
 export const READABLE_CONTRAST = 4.5;
+
+/** The least contrast a card's live terminal lets a colour have, by the card's `Contrast` (example-card.ts). */
+export const MINIMUM_CONTRAST: Readonly<Record<Contrast, number>> = { readable: READABLE_CONTRAST, "as drawn": 1 };
 
 /**
  * The font static output is drawn in, as `LiveTerminalOptions` takes it:

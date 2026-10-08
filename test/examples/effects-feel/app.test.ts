@@ -24,7 +24,8 @@ import {
   type TerminalTheme,
 } from "../../../src/index.js";
 import { cellLen, graphemes } from "../../../src/core/cells.js";
-import { drawnSubject, runDemo, stripSubject, subjectUnder, textSubject } from "../../../examples/effects-feel/app.js";
+import { runDemo } from "../../../examples/effects-feel/app.js";
+import { drawnSubject, stripSubject, subjectUnder, textSubject } from "../../../examples/effects-feel/subjects.js";
 import { parseSettings } from "../../../examples/effects-feel/settings.js";
 import { envAtDepth } from "../../../examples/effects-feel/vocabulary.js";
 import { scriptedHost } from "../../host/scripted-host.js";

@@ -14,7 +14,25 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
-    "rootDir": "."
+    "rootDir": ".",
+    // A demo under `examples/` imports the library by its published names,
+    // as its card runs it, and a test reaches those files: each name is the
+    // `src/` file it publishes, as every other in-repo reader resolves it
+    // (`PUBLISHED_PATHS` in scripts/repo-facts.ts). Node would self-resolve
+    // them to `dist/`, which lint runs before anything builds.
+    // test/seam/test-resolution.test.ts holds this list to that one.
+    "paths": {
+      "@promptctl/rich-js": ["./src/index.ts"],
+      "@promptctl/rich-js/themes/data": ["./src/themes/data/index.ts"],
+      "@promptctl/rich-js/themes/registry": ["./src/themes/registry.ts"],
+      "@promptctl/rich-js/host": ["./src/host/index.ts"],
+      "@promptctl/rich-js/widgets": ["./src/widgets/index.ts"],
+      "@promptctl/rich-js/template-bindings": ["./src/template-bindings/index.ts"],
+      "@promptctl/rich-js/node/save": ["./src/node/save.ts"],
+      "@promptctl/rich-js/node/prompt": ["./src/node/prompt.ts"],
+      "@promptctl/rich-js/node/traceback": ["./src/node/traceback.ts"],
+      "@promptctl/rich-js/node/terminal-host": ["./src/node/terminal-host.ts"]
+    }
   },
   "include": ["test"]
 }

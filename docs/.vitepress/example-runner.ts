@@ -47,7 +47,7 @@ import { resolveAlias } from "../../scripts/resolve-alias.js";
 import { tscTransform } from "../../scripts/tsc-transform.js";
 import { EXAMPLE_TERMINAL, STATIC_RUN_LIMIT_MS } from "./example-terminal.js";
 import { drawOutput, undrawnEscape } from "./example-fragments.js";
-import { oneFile, programFiles, type CardData, type CardProgram } from "./example-card.js";
+import { PLAIN_CARD, oneFile, programFiles, type CardData, type CardProgram } from "./example-card.js";
 import {
   MARKERS,
   frontmatterEnd,
@@ -803,6 +803,7 @@ export async function runPageExamples(
     if (rule.run === "never") return { run: "never", label: rule.label, note: rule.note };
     const editable = {
       program: opened(fence),
+      options: PLAIN_CARD,
       label: rule.label,
       caption: rule.caption,
       tryIt: { playground, program: hashes.get(fence)! },

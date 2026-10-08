@@ -112,10 +112,32 @@ export const RUNNING = { label: "Live", caption: "the code above, running in you
 /** What a card says in place of output when its code printed nothing. */
 export const PRINTS_NOTHING = "This example prints nothing when it runs.";
 
+/**
+ * The colours a card's live terminal shows: kept readable against the
+ * terminal's ground (`READABLE_CONTRAST` in theme/live-terminal.ts), or every
+ * one as the program drew it, for a program that paints its own ground and
+ * means a colour to sink into it, as an effect fading out does.
+ */
+export type Contrast = "readable" | "as drawn";
+
+/**
+ * How a card shows its program, beyond the program itself, which a link to
+ * the playground carries without these: whether it has a slider over each
+ * named number in its code (tunables.ts), and the contrast of its live terminal.
+ */
+export interface CardOptions {
+  readonly sliders: boolean;
+  readonly contrast: Contrast;
+}
+
+/** How a docs block's card shows its program, and a demo's unless its card.json says otherwise. */
+export const PLAIN_CARD: CardOptions = { sliders: false, contrast: "readable" };
+
 /** What every card a reader can edit carries: its program, and the panel under it. */
 interface Editable {
   /** The program as the page shows it: a docs block's, one file holding the block as the page shows it. */
   readonly program: CardProgram;
+  readonly options: CardOptions;
   /** The output panel's label and the caption beside it. */
   readonly label: string;
   readonly caption: string;

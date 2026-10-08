@@ -1,10 +1,13 @@
 /**
- * effects-playground — the values in a program a slider can set.
+ * The values in a card's code a slider can set, for a card whose options turn
+ * its sliders on (example-card.ts; theme/CardSliders.ts draws them).
  *
  * [LAW:one-source-of-truth] A slider holds no value of its own: it is a view
  * of one literal in the program's text, found here, and setting it is an edit
  * of that text. The program is the only place a value lives, so the code a
- * playground shows is always the code it runs, sliders and all.
+ * card shows is always the code it runs, sliders and all.
+ *
+ * Pure and dependency-free: the build's tests read it in Node, the card in the page.
  *
  * A tunable is a number given a name the way a constant is in `src/renderables/effects.ts`: a
  * constant spelled in capitals, `const STRIDE = 80;`, or a property of an
