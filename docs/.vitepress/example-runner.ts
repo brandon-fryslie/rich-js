@@ -1,6 +1,6 @@
 /**
- * Runs a docs page's examples at build time and writes their output under
- * them.
+ * Runs a docs page's examples at build time and puts each in what shows it:
+ * a card holding the output the build proved for it, or a live terminal.
  *
  * It is a Vite plugin with `enforce: "pre"`: VitePress's own plugin turns
  * markdown into Vue in its `transform` and declares no `enforce`, so a pre
@@ -21,8 +21,9 @@
  *   5. cut the captured bytes into per-block output and hold each block to
  *      what its marker promised;
  *   6. draw each block's bytes as a light and a dark fragment
- *      (example-fragments.ts); a static block's become its editable card's
- *      (example-card.ts), the rest are written under the fence;
+ *      (example-fragments.ts) and hand them to the block's card
+ *      (example-card.ts); every block but a `live` one is a card, and one that
+ *      runs nowhere is a read-only card with its note;
  *   7. bundle each `live` block's program from step 2 on
  *      the one library every live block shares (`LiveLibrary`), which the
  *      page imports as a module when its live terminal (theme/RichLive.ts)
@@ -30,7 +31,7 @@
  *   8. cut each block that runs into a program of its own (example-slice.ts),
  *      type-check it and link it from the block's "Try it"; a block of the
  *      chain's is also run as the playground runs it and held to the block's
- *      output, and a static block's card program with it.
+ *      output, and its card program with it.
  *
  * [LAW:no-silent-failure] Every failure throws and fails the build, naming the
  * page, and the line when one line is to blame.
@@ -395,11 +396,8 @@ function disallowedEscape(output: string): string | null {
   return at === -1 ? null : JSON.stringify(rest.replace(SGR, "").slice(at, at + 8));
 }
 
-/**
- * The bytes a block shows, held to what its marker promised; `null` for a
- * `silent` block, whose note stands in place of output.
- */
-function blockBytes(fence: Fence & { readonly marker: BuildMarker }, record: BlockRecord): string | null {
+/** The bytes a block shows, held to what its marker promised. */
+function blockBytes(fence: Fence & { readonly marker: BuildMarker }, record: BlockRecord): string {
   const at = `docs/${fence.page}:${fence.line}`;
   const { outcome } = MARKERS[fence.marker];
   if (outcome === "throws" && record.ended.kind === "completed") throw new Error(`${at}: marked \`throws\` but returned normally`);
@@ -407,7 +405,6 @@ function blockBytes(fence: Fence & { readonly marker: BuildMarker }, record: Blo
   if (outcome === "prints" && record.output === "") throw new Error(`${at}: writes nothing; mark it \`silent\``);
   const escape = disallowedEscape(record.output);
   if (escape !== null) throw new Error(`${at}: writes the escape ${escape}, which moves the cursor or clears the screen; mark it \`live\``);
-  if (outcome === "silent") return null;
   return record.ended.kind === "completed" ? record.output : `${record.output}${record.ended.line}\n`;
 }
 
@@ -420,50 +417,16 @@ function stoppedAt(page: string, context: ExampleContext | null, chain: readonly
 }
 
 /**
- * What a block shows under its code: nothing (its note stands there), the
- * bytes it printed at build time, or a live terminal running the program the
- * page's script binds to `binding`.
+ * What goes under a live block: a terminal running the program the page's
+ * script binds to `binding`, as wide as the whole example terminal, since what
+ * it will draw is not known here (custom.css shrinks the output's font where
+ * the card is narrower). One line of HTML: a blank line inside it would end
+ * markdown's HTML block and hand the rest to the markdown parser.
  */
-type Shown =
-  | { readonly kind: "nothing" }
-  | { readonly kind: "bytes"; readonly bytes: string }
-  | { readonly kind: "live"; readonly binding: string };
-
-/**
- * The output's HTML, and how many columns wide it draws: custom.css shrinks
- * the output's font where the card is narrower than that. A static output is
- * as wide as its widest row, so a short one keeps the code size; a live one is
- * the whole terminal, since what it will draw is not known here.
- */
-function shownHtml(shown: Shown): { html: string; columns: number | null } {
-  switch (shown.kind) {
-    case "nothing":
-      return { html: "", columns: null };
-    case "bytes": {
-      const { light, dark, columns } = drawOutput(shown.bytes);
-      return { html: `<div class="rich-example-light" v-pre>${light}</div><div class="rich-example-dark" v-pre>${dark}</div>`, columns };
-    }
-    case "live":
-      return { html: `<RichLive :load="${shown.binding}" />`, columns: EXAMPLE_TERMINAL.columns };
-  }
-}
-
-/**
- * What goes under a block. One line of HTML: a blank line inside it would end
- * markdown's HTML block and hand the rest of the fragment to the markdown
- * parser, so each fragment's row breaks are written as `&#10;`, which a `pre`
- * shows the same way. `v-pre` on each fragment keeps Vue from reading `{{` in
- * output; it cannot sit on the whole card, which may hold a component.
- */
-function outputHtml(fence: Fence, shown: Shown, tryIt: string | null): string {
-  const { label, caption, note } = MARKERS[fence.marker];
-  const captionHtml = caption === null ? "" : `<span class="rich-example-caption">${caption}</span>`;
-  const tryHtml = tryIt === null ? "" : `<a class="rich-example-try" href="${tryIt}">Try it</a>`;
-  const labelHtml = `<div class="rich-example-label"><span class="rich-example-name">${label}</span>${captionHtml}${tryHtml}</div>`;
-  const noteHtml = note === null ? "" : `<p class="rich-example-note">${note}</p>`;
-  const { html, columns } = shownHtml(shown);
-  const style = columns === null ? "" : ` style="--rich-example-columns:${columns}"`;
-  return `<div class="rich-example-output"${style}>${labelHtml}${noteHtml}${html}</div>`.replaceAll("\n", "&#10;");
+function liveHtml(binding: string, tryIt: string): string {
+  const { label, caption } = MARKERS.live;
+  const labelHtml = `<div class="rich-example-label"><span class="rich-example-name">${label}</span><span class="rich-example-caption">${caption}</span><a class="rich-example-try" href="${tryIt}">Try it</a></div>`;
+  return `<div class="rich-example-output" style="--rich-example-columns:${EXAMPLE_TERMINAL.columns}">${labelHtml}<RichLive :load="${binding}" /></div>`;
 }
 
 /**
@@ -587,7 +550,7 @@ function playgroundHref(page: string): string {
 
 /**
  * A program a block is run as on its own, and who runs it: "Try it", which
- * opens it in the playground, or a static block's editable card, which runs
+ * opens it in the playground, or a build block's editable card, which runs
  * the "Try it" program around whatever its editor holds (example-card.ts).
  */
 interface Opened {
@@ -604,7 +567,7 @@ const OPENS: Record<Opened["by"], string> = {
 function openedAs(fence: Fence, { program, setup }: Standalone): Opened[] {
   const all: Opened[] = [
     { by: "try it", source: program.source },
-    ...(isCard(fence) ? [{ by: "card", source: cardSource(setup, fence.code) } as const] : []),
+    { by: "card", source: cardSource(setup, fence.code) },
   ];
   return all.filter((opened, i) => all.findIndex((other) => other.source === opened.source) === i);
 }
@@ -756,7 +719,7 @@ function scriptLine(page: string, markdown: string, blocks: readonly Block[]): n
   const clash = lines.findIndex(
     (line, i) => /^<script\b[^>]*\bsetup\b/.test(line) && !blocks.some((b) => b.line <= i + 1 && i + 1 <= b.closeLine),
   );
-  if (clash !== -1) throw new Error(`docs/${page}:${clash + 1}: a page with a live example or an editable card cannot have its own <script setup>`);
+  if (clash !== -1) throw new Error(`docs/${page}:${clash + 1}: a page with an example card or a live example cannot have its own <script setup>`);
   return frontmatterEnd(lines) + 1;
 }
 
@@ -777,10 +740,7 @@ function refuseCutOff(fences: readonly Fence[]): void {
   }
 }
 
-/** Whether a block is an editable card (theme/RichExample.ts): for now, a static one. */
-const isCard = (fence: Fence): boolean => fence.marker === "static";
-
-/** `markdown` with each executed or exempt example's output written under its fence. */
+/** `markdown` with each example in its card, and each live one's terminal written under its fence. */
 export async function runPageExamples(
   compiler: ExampleCompiler,
   page: string,
@@ -835,7 +795,7 @@ export async function runPageExamples(
   if (contextRecord.output !== "") {
     throw new Error(`docs/${page}: exampleContext wrote ${JSON.stringify(contextRecord.output.slice(0, 60))}; it may not print`);
   }
-  const bytes = new Map<Fence, string | null>(chain.map((fence, i) => [fence, blockBytes(fence, blocks[i]!)]));
+  const bytes = new Map<Fence, string>(chain.map((fence, i) => [fence, blockBytes(fence, blocks[i]!)]));
   const shared = await library();
   for (const [i, fence] of chain.entries()) {
     for (const opened of openedAs(fence, tried.get(fence)!)) await tryItPrints(fence, opened, blocks[i]!, shared, world);
@@ -849,25 +809,37 @@ export async function runPageExamples(
   const programs = await Promise.all(liveBlocks.map(([fence, blockProgram]) => liveProgram(page, fence, blockProgram, library)));
   const live = new Map<Fence, LiveProgram>(liveBlocks.map(([fence], i) => [fence, programs[i]!]));
   const binding = (program: LiveProgram): string => `__richLive_${program.id}`;
-  const shown = (fence: Fence): Shown => {
-    const program = live.get(fence);
-    if (program !== undefined) return { kind: "live", binding: binding(program) };
-    const printed = bytes.get(fence) ?? null;
-    return printed === null ? { kind: "nothing" } : { kind: "bytes", bytes: printed };
-  };
-  // A static block is an editable card, its data a constant of the page's
+  // Every block but a live one is a card, its data a constant of the page's
   // script. `<` is escaped so no string in it can close the script.
+  const cardData = (fence: Fence): CardData | null => {
+    const rule: MarkerRule = MARKERS[fence.marker];
+    switch (rule.run) {
+      case "build":
+        return {
+          run: "build",
+          code: fence.code,
+          setup: tried.get(fence)!.setup,
+          output: drawOutput(bytes.get(fence)!),
+          label: rule.label,
+          caption: rule.caption,
+          tryIt: { playground, program: hashes.get(fence)! },
+        };
+      case "never":
+        return { run: "never", label: rule.label, note: rule.note };
+      case "browser":
+        return null;
+    }
+  };
   const cards = new Map<Fence, { readonly binding: string; readonly data: CardData }>(
-    chain.filter(isCard).map((fence, i) => {
-      const { label, caption } = MARKERS[fence.marker];
-      const data: CardData = { code: fence.code, setup: tried.get(fence)!.setup, output: drawOutput(bytes.get(fence)!), label, caption, tryIt: { playground, program: hashes.get(fence)! } };
-      return [fence, { binding: `__richCard_${i}`, data }];
-    }),
+    fences.flatMap((fence) => {
+      const data = cardData(fence);
+      return data === null ? [] : [[fence, data] as const];
+    }).map(([fence, data], i) => [fence, { binding: `__richCard_${i}`, data }]),
   );
   const around = (fence: Fence): { readonly open: string; readonly close: readonly string[] } => {
     const card = cards.get(fence);
     return card === undefined
-      ? { open: '<div class="rich-example">', close: [outputHtml(fence, shown(fence), links.get(fence) ?? null), "", "</div>"] }
+      ? { open: '<div class="rich-example">', close: [liveHtml(binding(live.get(fence)!), links.get(fence)!), "", "</div>"] }
       : { open: `<RichExample :card="${card.binding}">`, close: ["</RichExample>"] };
   };
 

@@ -1,11 +1,11 @@
 /**
- * A static example's output as the docs draw it: the bytes a program wrote,
+ * An example's output as the docs draw it: the bytes a program wrote,
  * decoded (`decodeAnsi`, each colour kept the kind it was emitted as) and
  * encoded as one HTML fragment per site colour mode.
  *
  * [LAW:one-source-of-truth] Two places draw output from bytes: the build,
- * which runs every example and writes what it printed under it
- * (example-runner.ts), and the editable card in the browser, which runs a
+ * which runs every example and hands what it printed to its card
+ * (example-runner.ts), and the card in the browser, which runs a
  * reader's edit (theme/RichExample.ts). Both call this, so one byte stream
  * cannot be drawn two ways. It reads nothing but the library and the example
  * terminal, and so runs in either.
@@ -25,7 +25,13 @@ export interface Drawn {
   readonly columns: number;
 }
 
-export function drawOutput(bytes: string): Drawn {
+/**
+ * `bytes` drawn, or null when there are none: a program that printed nothing
+ * draws as one that printed a blank line, so the bytes, not the drawing, say
+ * which it was.
+ */
+export function drawOutput(bytes: string): Drawn | null {
+  if (bytes === "") return null;
   const text = decodeAnsi(bytes, { noWrap: true });
   const segments: Segment[] = [...text.render({ maxWidth: EXAMPLE_TERMINAL.columns, isTerminal: false, asciiOnly: false })];
   const [columns] = Segment.getShape(Segment.splitLines(segments));

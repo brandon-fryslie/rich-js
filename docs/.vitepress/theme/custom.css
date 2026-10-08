@@ -82,8 +82,8 @@
  * A `.rich-example` around VitePress's own code block, and under it the output
  * panel — a label strip naming where the output came from, then the output (a
  * light and a dark fragment, one shown per colour mode) or a note in its
- * place. docs/.vitepress/example-runner.ts writes it, or for a static example
- * the editable card component draws it (theme/RichExample.ts).
+ * place. The card component draws it (theme/RichExample.ts), or for a live
+ * example docs/.vitepress/example-runner.ts writes it.
  */
 .vp-doc .rich-example {
   margin: 16px 0;
@@ -205,7 +205,8 @@
  * Once edited, one quiet line offers the page's code back; output that is not
  * the editor's code's is dimmed, and a run that failed says why in red under it. */
 .vp-doc .rich-example-card .rich-example-light,
-.vp-doc .rich-example-card .rich-example-dark {
+.vp-doc .rich-example-card .rich-example-dark,
+.vp-doc .rich-example-card .rich-example-note {
   transition: opacity 0.2s;
 }
 
@@ -243,7 +244,8 @@
 }
 
 .vp-doc .rich-example-stale > .rich-example-light,
-.vp-doc .rich-example-stale > .rich-example-dark {
+.vp-doc .rich-example-stale > .rich-example-dark,
+.vp-doc .rich-example-stale > .rich-example-note {
   opacity: 0.45;
 }
 
