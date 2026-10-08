@@ -4,15 +4,22 @@
     {
       "version": "pr-354",
       "ref": "refs/pull/354/merge",
-      "sha": "d2dda9e7d37c8b4a9eefeaf072fdc8c3de563f98",
-      "timestamp": "2026-10-08T17:21:07.244Z",
+      "sha": "70ac2bfeafca771c6f5afff1892b3ff142422997",
+      "timestamp": "2026-10-08T17:28:14.413Z",
       "commits": [
         {
-          "sha": "d2dda9e7d37c8b4a9eefeaf072fdc8c3de563f98",
+          "sha": "70ac2bfeafca771c6f5afff1892b3ff142422997",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T11:19:54-06:00",
-          "message": "Merge 9f14c28f499be2fcbc23e62814c2b231c97cab71 into 20a5e1da88b3eaeb4f221640339eade1ae7c1222\n"
+          "timestamp": "2026-10-08T17:26:54Z",
+          "message": "Merge 28a8a8dba43c43abd96e0e6d8e6a563d006f886b into 20a5e1da88b3eaeb4f221640339eade1ae7c1222\n"
+        },
+        {
+          "sha": "28a8a8dba43c43abd96e0e6d8e6a563d006f886b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-08T11:26:49-06:00",
+          "message": "fix(docs): headers name every non-live block a card; read-only e2e waits for an editor to prove none opened (rich-example-card-obsb.oil)\n"
         },
         {
           "sha": "9f14c28f499be2fcbc23e62814c2b231c97cab71",
