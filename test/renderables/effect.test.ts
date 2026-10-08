@@ -82,6 +82,23 @@ describe("Effected — the identity effect", () => {
     expect(segment!.style?.drawnColors().color?.getTruecolor()).toEqual(seen[0]!.fg);
   });
 
+  it("tells a cell which colours on screen are the terminal's: unset or `default`, swapped under reverse", () => {
+    const seen: EffectCell["terminal"][] = [];
+    const record: Effect = (c, cell) => (seen.push(cell.terminal), c);
+    const black = "#000000";
+    const segments = [
+      new Segment("a"),
+      new Segment("b", Style.parse(`${black} on default`)),
+      new Segment("c", Style.parse(`reverse ${black}`)),
+    ];
+    [...effected(fixed(...segments), record).render({ maxWidth: 10 })];
+    expect(seen).toEqual([
+      { fg: true, bg: true },
+      { fg: false, bg: true },
+      { fg: true, bg: false },
+    ]);
+  });
+
   it("hands a cell the colour its depth writes, not the one it names", () => {
     const seen: CellColors[] = [];
     const record: Effect = (c) => (seen.push(c), c);

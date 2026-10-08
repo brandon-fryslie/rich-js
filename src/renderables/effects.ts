@@ -83,8 +83,9 @@ const ROUNDING = 0.01;
  * How much of `touch` each of `colors` (hex) can take: the largest share in
  * [0, 1] at which every pair in `pairs` that shows it, touched at the same
  * strength, still reads at its resting contrast or `LEGIBLE`, whichever is
- * lower. A colour in no pair's `colors` is the terminal's, and takes none.
- * One of `colors` in no pair has nothing to be measured against, and throws.
+ * lower. A colour in a pair but not in `colors` — the terminal's ground, say —
+ * takes none. One of `colors` in no pair has nothing to be measured against,
+ * and throws.
  *
  * Colours are settled lightest first, each against every partner: one
  * already settled at its share, one not yet settled as it is. So the lighter
@@ -126,13 +127,16 @@ export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touc
  * A loop as an `Effect` on a subject's own colours, by hex, wherever a cell
  * shows them, each touched at its share of the cell's strength. A powerline
  * strip's fill is the ground of its cells and the ink of the seam glyphs
- * between them, so the arrow moves with the cell it points out of.
+ * between them, so the arrow moves with the cell it points out of. A colour
+ * the terminal supplies (`EffectCell.terminal`) is not the subject's, whatever
+ * its hex, and takes no share.
  */
 export function onColors(share: ReadonlyMap<string, number>, loop: Loop): Effect {
   return ({ fg, bg }, cell, t) => {
     const w = Math.round(clamp01(loop.field(cell, t)) * LEVELS) / LEVELS;
-    const moved = (color: ColorRgba): ColorRgba => touchedAt(loop.touch, color, (share.get(color.hex) ?? 0) * w);
-    return { fg: moved(fg), bg: moved(bg) };
+    const moved = (color: ColorRgba, terminal: boolean): ColorRgba =>
+      touchedAt(loop.touch, color, (terminal ? 0 : (share.get(color.hex) ?? 0)) * w);
+    return { fg: moved(fg, cell.terminal.fg), bg: moved(bg, cell.terminal.bg) };
   };
 }
 
@@ -632,14 +636,12 @@ export function wheel(curve: Curve, colors: ReadonlySet<string>, fills: Readonly
     const s = seed(hex);
     return (360 * t) / P + curve.swing * STRAY * ((stray(s, t) - stray(s, 0)) / 1.5);
   };
-  // The segment a colour turns with, drawn beside `other` in one cell.
-  const segment = (color: ColorRgba, other: ColorRgba): string | undefined =>
-    !colors.has(color.hex) ? undefined : fills.has(color.hex) || !colors.has(other.hex) ? color.hex : other.hex;
-  return (drawn, _cell, t) => {
-    const turn = (color: ColorRgba, other: ColorRgba): ColorRgba => {
-      const key = segment(color, other);
-      return key === undefined ? color : Oklch.fromRgba(color).applyKey({ ...IDENTITY, hueShift: turned(key, t) }).toRgba();
-    };
-    return { fg: turn(drawn.fg, drawn.bg), bg: turn(drawn.bg, drawn.fg) };
+  return (drawn, cell, t) => {
+    // Whether a slot shows one of the element's colours: never the terminal's, whatever its hex.
+    const own = { fg: !cell.terminal.fg && colors.has(drawn.fg.hex), bg: !cell.terminal.bg && colors.has(drawn.bg.hex) };
+    // An own colour turns with its segment: itself if a fill or beside no own colour, else the one beside it.
+    const turn = (color: ColorRgba, mine: boolean, other: ColorRgba, theirs: boolean): ColorRgba =>
+      !mine ? color : Oklch.fromRgba(color).applyKey({ ...IDENTITY, hueShift: turned(fills.has(color.hex) || !theirs ? color.hex : other.hex, t) }).toRgba();
+    return { fg: turn(drawn.fg, own.fg, drawn.bg, own.bg), bg: turn(drawn.bg, own.bg, drawn.fg, own.fg) };
   };
 }

@@ -42,7 +42,9 @@ const curve = (seconds: number, swing: number): Curve => ({ seconds, ease: EASES
 const ink = new ColorRgba(205, 214, 244);
 const ground = new ColorRgba(30, 30, 46);
 const colors: CellColors = { fg: ink, bg: ground };
-const cells: EffectCell[] = Array.from({ length: 40 }, (_, col) => ({ row: 0, col, seed: (col * 0.6180339) % 1 }));
+/** Neither colour the terminal's: both are the subject's own. */
+const written = { fg: false, bg: false };
+const cells: EffectCell[] = Array.from({ length: 40 }, (_, col) => ({ row: 0, col, seed: (col * 0.6180339) % 1, terminal: written }));
 
 const sameColor = (a: ColorRgba, b: ColorRgba): boolean => a.red === b.red && a.green === b.green && a.blue === b.blue;
 const distance = (a: ColorRgba, b: ColorRgba): number => Oklch.fromRgba(a).deltaE(Oklch.fromRgba(b));
@@ -98,7 +100,7 @@ describe("the wheel", () => {
   const grounds = new Set(fills.map((c) => c.hex));
   const hue = (c: ColorRgba): number => Oklch.fromRgba(c).h;
   const turned = (from: ColorRgba, to: ColorRgba): number => (((hue(to) - hue(from)) % 360) + 360) % 360;
-  const cell: EffectCell = { row: 0, col: 3, seed: 0 };
+  const cell: EffectCell = { row: 0, col: 3, seed: 0, terminal: written };
 
   it("turns every hue the whole way round once a period, lightness and chroma kept", () => {
     const P = 907;
@@ -288,7 +290,19 @@ describe("the loops move", () => {
     // 59, t 114.5, where a crest of 1 − hypot(noise, 0.12) went below zero and
     // its power was NaN.
     const glint = shimmer(curve(48, 1), 400, 400, sun, 0);
-    expect(Number.isFinite(glint.field({ row: 15, col: 59, seed: 0 }, 114.5))).toBe(true);
+    expect(Number.isFinite(glint.field({ row: 15, col: 59, seed: 0, terminal: written }, 114.5))).toBe(true);
+  });
+
+  it("onColors and the wheel leave the terminal's colours alone, whatever their hex", () => {
+    // The ground is in the share, but here it is the terminal's: a subject colour that shares its hex.
+    const onTerminal = cells.map((cell) => ({ ...cell, terminal: { fg: false, bg: true } }));
+    const lit = onColors(new Map([[ink.hex, 1], [ground.hex, 1]]), pulse(curve(3, 0.2), sun, 0));
+    const turning = wheel(curve(907, 0.25), new Set([ink.hex, ground.hex]), new Set([ground.hex]), 0);
+    for (const effect of [lit, turning]) {
+      const turn = Array.from({ length: 30 }, (_, i) => effect(colors, onTerminal[0]!, 100 + i / 10));
+      expect(turn.every((moved) => moved.bg === ground)).toBe(true);
+      expect(turn.some((moved) => !sameColor(moved.fg, ink))).toBe(true);
+    }
   });
 
   it("onColors leaves a colour not in its set alone", () => {
@@ -335,7 +349,7 @@ describe("the transitions run start to end", () => {
   it("a dissolve-out lets some of what is left come back before it goes, and ends gone", () => {
     const dissolve = curve(30, 1);
     const effect = dissolveOut(dissolve, 0, 0, ground).effect;
-    const wide: EffectCell[] = Array.from({ length: 120 }, (_, col) => ({ row: 0, col, seed: 0 }));
+    const wide: EffectCell[] = Array.from({ length: 120 }, (_, col) => ({ row: 0, col, seed: 0, terminal: written }));
     const shown = (cell: EffectCell, t: number): number => distance(effect(colors, cell, t).fg, ground);
     const risen = wide.filter((cell) => {
       const series = Array.from({ length: 600 }, (_, i) => shown(cell, i * 0.05));
@@ -426,7 +440,7 @@ describe("the loops never jump", () => {
   it.each(Object.entries(loops))("%s moves no cell more than the bar between frames at 1 fps", (_, loop) => {
     let worst = 0;
     for (const { span, z, offset } of ELEMENTS) {
-      const strip: EffectCell[] = Array.from({ length: 2 * span }, (_, i) => ({ row: i % 2, col: Math.floor(i / 2), seed: 0 }));
+      const strip: EffectCell[] = Array.from({ length: 2 * span }, (_, i) => ({ row: i % 2, col: Math.floor(i / 2), seed: 0, terminal: written }));
       for (const color of fills) {
         const move = loop(span, z);
         // A frame at a time, as a screen draws them.

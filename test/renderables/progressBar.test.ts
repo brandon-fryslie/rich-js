@@ -190,6 +190,13 @@ describe("ProgressBar", () => {
       for (const t of frames) for (const s of collectSegments(black(t), TRUECOLOR)) expect(s.style?.bgcolor).toBeUndefined();
     });
 
+    it("lights a reversed back, whose colour is the ground the screen shows", () => {
+      const reversed = (t: number) => new ProgressBar({ width: 40, style: "reverse #444444", pulse: { t } });
+      const frames = Array.from({ length: 40 }, (_, i) => i * 0.5);
+      expect(frames.some((t) => lit(reversed(t), TRUECOLOR).length > 0)).toBe(true);
+      for (const t of frames) for (const s of collectSegments(reversed(t), TRUECOLOR)) expect(s.style?.bgcolor).toBeUndefined();
+    });
+
     it("draws nothing on an output with no colour, where the back and its light cannot be drawn", () => {
       const NO_COLOR: RenderOptions = { maxWidth: 80, colorSystem: null };
       for (const t of [0, 3, 30]) expect(collectSegments(new ProgressBar({ width: 40, completed: 70, pulse: { t } }), NO_COLOR)).toEqual([]);
