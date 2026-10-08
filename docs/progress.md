@@ -187,9 +187,9 @@ progress.stop();
 |---|---|
 | `BarColumn` | The progress bar, filled in half cells; on an output with no colour only the filled part is drawn, as Rich does. A task not yet started, or with no `total`, pulses |
 | `TextColumn` | A format string (see below) |
-| `TaskProgressColumn` | Percentage complete, right-aligned in four cells so the row holds still |
-| `TimeElapsedColumn` | Elapsed time, held where it stopped once the task is finished |
-| `TimeRemainingColumn` | Estimated time remaining, at the speed of the updates in the 30 seconds before the latest one — `-:--:--` until two updates that moved the task lie apart in time; `{ elapsedWhenFinished: true }` shows the time the task took once it is finished |
+| `TaskProgressColumn` | Percentage complete, styled `progress.percentage`, right-aligned in four cells so the row holds still |
+| `TimeElapsedColumn` | Elapsed time, styled `progress.elapsed`, held where it stopped once the task is finished |
+| `TimeRemainingColumn` | Estimated time remaining, styled `progress.remaining`, at the speed of the updates in the 30 seconds before the latest one — `-:--:--` until two updates that moved the task lie apart in time; `{ elapsedWhenFinished: true }` shows the time the task took once it is finished, styled `progress.elapsed` |
 | `MofNCompleteColumn` | `completed/total` in whole numbers, styled `progress.download`; the count is padded to the total's width so the row holds still as it counts up to its total. `{ separator }` replaces the `/` |
 | `SpinnerColumn` | Animated spinner, styled `progress.spinner`; a space once the task is finished |
 
