@@ -11,6 +11,7 @@ import { RichText } from "../../src/core/text.js";
 import { Effected, type CellColors, type Effect, type EffectCell } from "../../src/renderables/effect.js";
 import { Group } from "../../src/renderables/group.js";
 import { Panel } from "../../src/renderables/panel.js";
+import { ProgressBar } from "../../src/renderables/progressBar.js";
 import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { Button } from "../../src/widgets/button.js";
 import { WidgetApp } from "../../src/widgets/widget-app.js";
@@ -104,6 +105,25 @@ describe("Effected — segments are cut only where colours change", () => {
   it("cuts per cell only for an effect that colours every cell differently", () => {
     const segments = [...effected(fixed(new Segment("abc")), perColumn).render({ maxWidth: 10 })];
     expect(segments.map((s) => s.text)).toEqual(["a", "b", "c"]);
+  });
+
+  it("keeps cells whole that the output depth writes alike, though the effect gave each its own colour", () => {
+    const nearBlack: Effect = (colors, cell) => ({ fg: new ColorRgba(cell.col + 1, 0, 0), bg: colors.bg });
+    for (const colorSystem of [ColorDepth.EIGHT_BIT, ColorDepth.STANDARD]) {
+      const segments = [...effected(fixed(new Segment("abcdef")), nearBlack).render({ maxWidth: 10, colorSystem })];
+      expect(segments.map((s) => s.text)).toEqual(["abcdef"]);
+    }
+  });
+
+  it("never writes one SGR twice in a row for a pulsing ProgressBar", () => {
+    // A run, its reset, then the same SGR again: two segments the wire draws as one.
+    const repeated = /\x1b\[([\d;]+)m[^\x1b]*\x1b\[0m\x1b\[\1m/;
+    for (const colorSystem of ["256", "ansi"] as const) {
+      for (const t of [0, 1.5, 3, 7.25]) {
+        const drawn = renderToString(new ProgressBar({ width: 40, pulse: { t } }), { width: 80, colorSystem });
+        expect(drawn).not.toMatch(repeated);
+      }
+    }
   });
 
   it("never cuts a wide glyph, and counts it as the two cells it covers", () => {

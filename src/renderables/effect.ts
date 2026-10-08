@@ -22,8 +22,9 @@
  *   cell (`Style.shiftedBy`), so hit testing still finds the owner.
  * - A cell whose colours come back unchanged keeps its original `ColorSpec`,
  *   and a segment whose every cell is unchanged is yielded as it was, so the
- *   identity effect is byte-identical. Neighbouring cells given equal colours
- *   stay one segment: a segment is cut only where the colours change.
+ *   identity effect is byte-identical. Neighbouring cells the output depth
+ *   writes alike stay one segment: a segment is cut only where the written
+ *   colours change, so two colours that land on one index are one run.
  * - New colours are built with `ColorSpec.fromRgba`, never parsed from a
  *   string, so no frame adds an entry to a parse cache.
  * - With no colour output (`colorSystem: null`) there is nothing for an
@@ -124,37 +125,40 @@ export class Effected implements Renderable, Measurable {
       const ink = (wire.color ?? DEFAULT).getTruecolor(this.theme, true);
       const paper = (wire.bgcolor ?? DEFAULT).getTruecolor(this.theme, false);
       const from = onScreen({ fg: ink, bg: paper }, base);
-      // Each grapheme's colours, merged into runs of equal colours as they
-      // come; `undefined` is a run left as the segment drew it.
-      const runs: { text: string; cells: number; colors: CellColors | undefined }[] = [];
+      // [LAW:one-source-of-truth] A run is cells the wire writes alike: each
+      // cell is drawn at the output depth first and merged on the SGR codes
+      // that writes, so two truecolors landing on one index stay one run.
+      const sgr = (drawn: DrawnColors) => Style.fromColor(drawn.color, drawn.bgcolor).toSgrCodes(depth);
+      const unchanged = sgr(wire);
+      const runs: { text: string; cells: number; drawn: DrawnColors; sgr: string }[] = [];
       for (const glyph of graphemes(segment.text)) {
-        let colors: CellColors | undefined;
+        let drawn = wire;
         if (glyph === "\n") {
           row++;
           col = 0;
         } else {
           const to = this.effect(from, { row, col, seed: this.seed(row, col) }, this.t);
-          colors = sameColors(to, from) ? undefined : to;
+          // Back from the screen to the style's slots: the same swap undoes itself.
+          drawn = this.respec(wire, { fg: ink, bg: paper }, onScreen(to, base), depth);
           col += cellLen(glyph);
         }
+        const codes = sgr(drawn);
         const last = runs[runs.length - 1];
-        if (last !== undefined && sameRun(last.colors, colors)) {
+        if (last !== undefined && last.sgr === codes) {
           last.text += glyph;
           last.cells += cellLen(glyph);
         } else {
-          runs.push({ text: glyph, cells: cellLen(glyph), colors });
+          runs.push({ text: glyph, cells: cellLen(glyph), drawn, sgr: codes });
         }
       }
-      if (runs.every((run) => run.colors === undefined)) {
+      if (runs.every((run) => run.sgr === unchanged)) {
         yield segment;
         continue;
       }
       let offset = 0;
       for (const run of runs) {
         const shifted = base.shiftedBy(offset);
-        // Back from the screen to the style's slots: the same swap undoes itself.
-        const slots = run.colors === undefined ? undefined : onScreen(run.colors, base);
-        const style = slots === undefined ? shifted : shifted.add(this.respec(wire, { fg: ink, bg: paper }, slots, depth));
+        const style = run.sgr === unchanged ? shifted : shifted.add(Style.fromColor(run.drawn.color, run.drawn.bgcolor));
         yield new Segment(run.text, style);
         offset += run.cells;
       }
@@ -166,7 +170,7 @@ export class Effected implements Renderable, Measurable {
   }
 
   /**
-   * The style that draws a run's slot colours `to` where the segment drew
+   * The specs that draw a cell's slot colours `to` where the segment drew
    * `from` with `wire`: a slot the effect left alone keeps its written spec,
    * and a moved one is laid on what is beneath it — the ground on
    * `SURFACE_BLACK`, the glyph on that ground, as the writer lays any
@@ -174,13 +178,13 @@ export class Effected implements Renderable, Measurable {
    * that the terminal shows (`ColorSpec.matchOn`), so a colour moved a little
    * off a theme slot or the default colour is still drawn as that one.
    */
-  private respec(wire: ReturnType<Style["drawnColors"]>, from: CellColors, to: CellColors, depth: ColorDepth): Style {
+  private respec(wire: DrawnColors, from: CellColors, to: CellColors, depth: ColorDepth): DrawnColors {
     // [LAW:one-source-of-truth] The writer's surface, so one translucent colour draws one way in a frame.
     const ground = to.bg.compositeOver(SURFACE_BLACK);
     const glyph = to.fg.compositeOver(ground);
     const drawn = (spec: ColorSpec | undefined, was: ColorRgba, now: ColorRgba, foreground: boolean) =>
       sameColor(was, now) ? spec : ColorSpec.matchOn(now, depth, this.theme, foreground);
-    return Style.fromColor(drawn(wire.color, from.fg, glyph, true), drawn(wire.bgcolor, from.bg, ground, false));
+    return { color: drawn(wire.color, from.fg, glyph, true), bgcolor: drawn(wire.bgcolor, from.bg, ground, false) };
   }
 
   /** A cell's seed: FNV-1a of the key and the position, scaled into [0, 1). */
@@ -190,6 +194,8 @@ export class Effected implements Renderable, Measurable {
 }
 
 const DEFAULT = ColorSpec.default();
+
+type DrawnColors = ReturnType<Style["drawnColors"]>;
 
 /**
  * A style's colour slots as the screen shows them, or the reverse: `reverse`
@@ -203,10 +209,3 @@ function sameColor(a: ColorRgba, b: ColorRgba): boolean {
   return a.red === b.red && a.green === b.green && a.blue === b.blue && a.alpha === b.alpha;
 }
 
-function sameColors(a: CellColors, b: CellColors): boolean {
-  return sameColor(a.fg, b.fg) && sameColor(a.bg, b.bg);
-}
-
-function sameRun(a: CellColors | undefined, b: CellColors | undefined): boolean {
-  return a === undefined || b === undefined ? a === b : sameColors(a, b);
-}
