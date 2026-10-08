@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-344",
+      "ref": "refs/pull/344/merge",
+      "sha": "568c37547e6823ffd5622670cf1bb0c216c17fdc",
+      "timestamp": "2026-10-08T02:51:32.310Z",
+      "commits": [
+        {
+          "sha": "568c37547e6823ffd5622670cf1bb0c216c17fdc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T20:50:19-06:00",
+          "message": "Merge 81589699f135b4b9e7706dc5ae85262f82823536 into 6fe3afb5b7d68eb56269e27448533f4188eb77b1\n"
+        },
+        {
+          "sha": "81589699f135b4b9e7706dc5ae85262f82823536",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T20:50:08-06:00",
+          "message": "fix(pretty): quote an object key that is not a name or an index, as Rich reprs it (rich-pretty-h3uh)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "6fe3afb5b7d68eb56269e27448533f4188eb77b1",
