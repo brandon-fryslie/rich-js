@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-353",
-      "ref": "refs/pull/353/merge",
-      "sha": "eb9a16687002e4d4bd82a3c6d9c7096016e67395",
-      "timestamp": "2026-10-08T17:03:28.350Z",
-      "commits": [
-        {
-          "sha": "eb9a16687002e4d4bd82a3c6d9c7096016e67395",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T17:01:53Z",
-          "message": "Merge 821365e351823dda8ac50240df8861f437626e0d into f8d2b36d27626e6651f49a6ddcd6708995d65663\n"
-        },
-        {
-          "sha": "821365e351823dda8ac50240df8861f437626e0d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T11:01:48-06:00",
-          "message": "fix(docs): a thrown error shows the setup its line counts, and a click above a card's code starts in the block (rich-example-card-obsb.skf)\n"
-        },
-        {
-          "sha": "2295a8b9dacca9fad124c2c3698a38f2702a5879",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T10:57:55-06:00",
-          "message": "fix(docs): a card's setup strip takes no line, a selection into the setup unfolds it, and a change across it lands in the block (rich-example-card-obsb.skf)\n\nHigh review on #353: the strip no longer appears and disappears as a line on\nfocus, so nothing under the editor moves mid-click; arrow keys, Ctrl+Home and\nselect-all unfold the setup rather than leaving the cursor in hidden text; a\npaste over select-all replaces the block. A card's setup leaves the block's\nown bare imports to it, a group is labelled with its heading as rendered, and\na scope with no setup above it fails at its page and line.\n"
-        },
-        {
-          "sha": "e0c6eb3781a2a2b5c493d4dfb656c34592c9488d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T10:41:27-06:00",
-          "message": "feat(docs): a card shows its setup locked, labelled by origin, folded on docs pages (rich-example-card-obsb.skf)\n\nThe card's editor now holds the whole program its block runs as: the setup\nabove it, in groups labelled by where they came from (\"imports\", \"assumed by\nevery example\", \"assumed on this page\", \"from '<heading>'\"), the block, and the\nbraces closing the setup's scopes. Everything but the block is locked: a change\nreaching into it, typed, pasted or deleted, changes nothing. On a docs page the\nsetup is folded into one strip, \"▸ N lines of setup\", shown while the editor\nhas focus; a click unfolds it. A thrown error's line is the program's line, so\nit counts the setup.\n\n- theme/setup-regions.ts: the locked, labelled, foldable setup as one\n  CodeMirror extension; where it starts (folded/unfolded) is the caller's, for\n  the playground (A5).\n- example-slice.ts: \"Try it\" and the card's setup are cut from one parts list.\n  The card's setup imports only what the block names and does not import\n  itself, so a block that imports what it uses has no setup at all\n  (rich-example-card-obsb.021). aroundBlock is gone.\n- example-markers.ts: each fence carries the heading it sits under.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "f8d2b36d27626e6651f49a6ddcd6708995d65663",
-      "timestamp": "2026-10-08T16:22:58.452Z",
+      "sha": "20a5e1da88b3eaeb4f221640339eade1ae7c1222",
+      "timestamp": "2026-10-08T17:08:47.926Z",
       "commits": [
         {
-          "sha": "f8d2b36d27626e6651f49a6ddcd6708995d65663",
+          "sha": "20a5e1da88b3eaeb4f221640339eade1ae7c1222",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T10:21:33-06:00",
-          "message": "docs(introduction): an edited example's Try it opens the edit (rich-example-card-obsb.lz3) (#352)"
+          "timestamp": "2026-10-08T11:07:07-06:00",
+          "message": "feat(docs): a card shows its setup locked, labelled by origin, folded on docs pages (rich-example-card-obsb.skf) (#353)\n\n* feat(docs): a card shows its setup locked, labelled by origin, folded on docs pages (rich-example-card-obsb.skf)\n\nThe card's editor now holds the whole program its block runs as: the setup\nabove it, in groups labelled by where they came from (\"imports\", \"assumed by\nevery example\", \"assumed on this page\", \"from '<heading>'\"), the block, and the\nbraces closing the setup's scopes. Everything but the block is locked: a change\nreaching into it, typed, pasted or deleted, changes nothing. On a docs page the\nsetup is folded into one strip, \"▸ N lines of setup\", shown while the editor\nhas focus; a click unfolds it. A thrown error's line is the program's line, so\nit counts the setup.\n\n- theme/setup-regions.ts: the locked, labelled, foldable setup as one\n  CodeMirror extension; where it starts (folded/unfolded) is the caller's, for\n  the playground (A5).\n- example-slice.ts: \"Try it\" and the card's setup are cut from one parts list.\n  The card's setup imports only what the block names and does not import\n  itself, so a block that imports what it uses has no setup at all\n  (rich-example-card-obsb.021). aroundBlock is gone.\n- example-markers.ts: each fence carries the heading it sits under.\n\n* fix(docs): a card's setup strip takes no line, a selection into the setup unfolds it, and a change across it lands in the block (rich-example-card-obsb.skf)\n\nHigh review on #353: the strip no longer appears and disappears as a line on\nfocus, so nothing under the editor moves mid-click; arrow keys, Ctrl+Home and\nselect-all unfold the setup rather than leaving the cursor in hidden text; a\npaste over select-all replaces the block. A card's setup leaves the block's\nown bare imports to it, a group is labelled with its heading as rendered, and\na scope with no setup above it fails at its page and line.\n\n* fix(docs): a thrown error shows the setup its line counts, and a click above a card's code starts in the block (rich-example-card-obsb.skf)"
         }
       ]
     }
