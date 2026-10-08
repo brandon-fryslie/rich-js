@@ -11,6 +11,7 @@ import path from "node:path";
 import { REPO_ROOT } from "../../scripts/repo-facts.js";
 import {
   ExampleCompiler,
+  LIBRARY_MODULE,
   LIVE_MODULE_PREFIX,
   LIVE_RUNTIME_MODULE,
   PLAYGROUND_MODULE,
@@ -20,7 +21,6 @@ import {
   type LoadContext,
   docsExamplesPlugin,
   liveLibraryOnce,
-  liveScript,
   playgroundStart,
   runPageExamples,
 } from "../../docs/.vitepress/example-runner.js";
@@ -34,8 +34,7 @@ import type { CardData } from "../../docs/.vitepress/example-card.js";
 
 const compiler = new ExampleCompiler();
 const library = liveLibraryOnce();
-const runPage = (markdown: string, page = "fixture.md") => runPageExamples(compiler, page, markdown, library);
-const run = async (markdown: string, page = "fixture.md") => (await runPage(markdown, page)).markdown;
+const run = (markdown: string, page = "fixture.md") => runPageExamples(compiler, page, markdown, library);
 
 /** What a live program writes, run to the end of its body in the example terminal. */
 async function liveOutput(script: string): Promise<string> {
@@ -48,39 +47,32 @@ const PANEL = readFileSync(path.join(REPO_ROOT, "docs", "panel.md"), "utf-8");
 const page = (...blocks: string[]) => blocks.join("\n\n");
 const fence = (code: string, info = "ts") => `\`\`\`${info}\n${code}\n\`\`\``;
 
-/**
- * Every example the run wrote, in page order: a card, read from the constant
- * the page's script hands its component, or a live block's output written
- * under the fence.
- */
-type Example = { readonly kind: "card"; readonly card: CardData } | { readonly kind: "output"; readonly html: string };
-
-function examples(markdown: string): Example[] {
+/** Every card the run wrote, in page order, read from the constant the page's script hands its component. */
+function allCards(markdown: string): CardData[] {
   const data = new Map([...markdown.matchAll(/^const (__richCard_\d+) = (.*);$/gm)].map((m) => [m[1]!, JSON.parse(m[2]!) as CardData]));
-  return [...markdown.matchAll(/<RichExample :card="(__richCard_\d+)">|<div class="rich-example-output"[^\n]*<\/div>/g)].map((m) =>
-    m[1] === undefined ? { kind: "output", html: m[0] } : { kind: "card", card: data.get(m[1])! },
-  );
+  return [...markdown.matchAll(/<RichExample :card="(__richCard_\d+)">/g)].map((m) => data.get(m[1]!)!);
 }
 
-type EditableCard = Extract<CardData, { readonly run: "build" }>;
+type BuildCard = Extract<CardData, { readonly run: "build" }>;
+type LiveCard = Extract<CardData, { readonly run: "browser" }>;
 
-/** The cards the run wrote, in page order. */
-const allCards = (markdown: string): CardData[] => examples(markdown).flatMap((e) => (e.kind === "card" ? [e.card] : []));
+/** The cards of blocks the build runs, in page order. */
+const cards = (markdown: string): BuildCard[] => allCards(markdown).flatMap((card) => (card.run === "build" ? [card] : []));
 
-/** The editable cards the run wrote, in page order. */
-const cards = (markdown: string): EditableCard[] => allCards(markdown).flatMap((card) => (card.run === "build" ? [card] : []));
+/** The cards of live blocks, in page order. */
+const liveCards = (markdown: string): LiveCard[] => allCards(markdown).flatMap((card) => (card.run === "browser" ? [card] : []));
 
-/** The outputs the run wrote under a fence, in page order. */
-const outputs = (markdown: string): string[] => examples(markdown).flatMap((e) => (e.kind === "output" ? [e.html] : []));
+/** What a live card's terminal shows, run to the end of its program's body: its program, on the site's library. */
+const liveCardOutput = async (card: LiveCard): Promise<string> => liveOutput(playgroundScript(cardSource(card.setup, card.code), (await library()).script));
 
-/** What a card shows under its code at rest: its two fragments, or the sentence in their place. */
-function cardShows(card: CardData): string {
+/** What a card the build runs, or one that runs nowhere, shows under its code at rest: its two fragments, or the sentence in their place. */
+function cardShows(card: BuildCard | Extract<CardData, { readonly run: "never" }>): string {
   if (card.run === "never") return card.note;
   return card.output === null ? PRINTS_NOTHING : card.output.light + card.output.dark;
 }
 
-/** What each example shows under its code, in page order. */
-const shown = (markdown: string): string[] => examples(markdown).map((e) => (e.kind === "card" ? cardShows(e.card) : e.html));
+/** What each example the build draws shows under its code, in page order. */
+const shown = (markdown: string): string[] => allCards(markdown).flatMap((card) => (card.run === "browser" ? [] : [cardShows(card)]));
 
 describe("docs/panel.md", { timeout: 60_000 }, () => {
   it("makes every example a card carrying a light and a dark fragment", async () => {
@@ -184,8 +176,8 @@ describe("the example widget", () => {
   it("says how many columns its output draws: a static one its widest row, a live one the terminal", async () => {
     const [short] = cards(await run(fence('console.print("ab\\nabcd");')));
     expect(short!.output!.columns).toBe(4);
-    const [live] = outputs((await runPage(`# t\n\n${fence('console.print("live");', "ts live")}`)).markdown);
-    expect(live).toMatch(new RegExp(`^<div class="rich-example-output" style="--rich-example-columns:${EXAMPLE_TERMINAL.columns}">`));
+    const [live] = liveCards(await run(`# t\n\n${fence('console.print("live");', "ts live")}`));
+    expect(live!.columns).toBe(EXAMPLE_TERMINAL.columns);
   });
 });
 
@@ -301,24 +293,20 @@ describe("one page, one program", () => {
 });
 
 describe("a live block", () => {
-  it("shows a live terminal under its code, loading the block's own program only when asked", async () => {
-    const result = await runPage(`# t\n\n${fence('console.print("live");', "ts live")}`);
-    const [program] = result.live;
-    const binding = `__richLive_${program!.id}`;
-    expect(result.live).toHaveLength(1);
-    expect(result.markdown).toContain(`<script setup>\nconst ${binding} = () => import("${LIVE_MODULE_PREFIX}${program!.id}");\n</script>`);
-    const [shown] = outputs(result.markdown);
-    expect(shown).toContain('<span class="rich-example-name">Live</span>');
-    expect(shown).toContain(`<RichLive :load="${binding}" />`);
-    expect(await liveOutput(liveScript(program!))).toContain("live");
+  it("is an editable card whose output is its program, which only the browser runs", async () => {
+    const markdown = await run(`# t\n\n${fence('console.print("live");', "ts live")}`);
+    const [card] = allCards(markdown);
+    expect(card).toMatchObject({ run: "browser", code: 'console.print("live");', label: "Live", caption: "the code above, running in your browser" });
+    expect(await liveCardOutput(card as LiveCard)).toContain("live");
+    expect(markdown).not.toContain("import(");
   });
 
   it("is its block alone under the page's context, and writes only what the block writes", async () => {
     const context = ["---", "exampleContext: |", '  const who = "context";', "---", ""].join("\n");
-    const result = await runPage(context + page(fence('const above = "above";', "ts silent"), fence("console.print(who);", "ts live")));
-    const written = await liveOutput(liveScript(result.live[0]!));
+    const [card] = liveCards(await run(context + page(fence('const above = "above";', "ts silent"), fence("console.print(who);", "ts live"))));
+    const written = await liveCardOutput(card!);
     expect(written).toContain("context");
-    expect(written).not.toContain("rich-example");
+    expect(written).not.toContain("above");
     await expect(run(context + page(fence('const above = "above";', "ts silent"), fence("console.print(above);", "ts live")))).rejects.toThrow(
       /fixture\.md:\d+: Cannot find name 'above'/,
     );
@@ -341,56 +329,44 @@ describe("a live block", () => {
   });
 
   it("is not refused for a <script setup> shown in a fence", async () => {
-    const result = await runPage(page(fence('<script setup lang="ts">\n</script>', "vue"), fence("console.print(1);", "ts live")));
-    expect(result.live).toHaveLength(1);
+    expect(liveCards(await run(page(fence('<script setup lang="ts">\n</script>', "vue"), fence("console.print(1);", "ts live"))))).toHaveLength(1);
   });
 
-  // Each program carries its own code; the library it runs on is bundled once
-  // for the site and shared, so a page of live examples does not download the
-  // library once per example.
-  it("shares one library between blocks, and keeps it out of each block", async () => {
-    const result = await runPage(page(fence('console.print("one");', "ts live"), fence('console.print("two");', "ts live")));
-    const [one, two] = result.live;
-    expect(one!.library).toBe(two!.library);
-    for (const program of result.live) expect(program.block.length).toBeLessThan(one!.library.script.length / 50);
-    expect(await liveOutput(liveScript(two!))).toContain("two");
-  });
-
-  it("runs a block importing another entry point, or a peer, on the same library", async () => {
+  it("runs a block importing another entry point, a peer, or a module by import(), on the one library", async () => {
     const widgets = 'import { Checkbox } from "@promptctl/rich-js/widgets";\nimport { observable } from "mobx";\nconsole.print(typeof Checkbox, typeof observable);';
-    const result = await runPage(page(fence('console.print("main");', "ts live"), fence(widgets, "ts live")));
-    const [main, other] = result.live;
-    expect(main!.library).toBe(other!.library);
-    // One mobx, the library's: the block carries none of its own.
-    expect(other!.block.length).toBeLessThan(2_000);
-    expect(await liveOutput(liveScript(other!))).toContain("function function");
+    const dynamic = 'const { Panel } = await import("@promptctl/rich-js");\nconsole.print(new Panel("boxed"));';
+    const [other, imported] = liveCards(await run(page(fence(widgets, "ts live"), fence(dynamic, "ts live"))));
+    expect(await liveCardOutput(other!)).toContain("function function");
+    expect(await liveCardOutput(imported!)).toContain("boxed");
   });
 
-  it("refuses a block that imports with import(), which a live program cannot run", async () => {
-    const dynamic = 'const { Panel } = await import("@promptctl/rich-js");\nconsole.print(new Panel("x"));';
-    await expect(runPage(page("# t", fence(dynamic, "ts live")))).rejects.toThrow(/fixture\.md:3: a live example imports only with `import` declarations/);
+  // A file past the entry points, an entry point the worker cannot run, and an entry point by its file.
+  it.each(["../src/renderables/panel.js", "@promptctl/rich-js/node/save", "../src/index.js"])("refuses a block importing %s, which the library does not hold", async (specifier) => {
+    const deep = `import * as m from "${specifier}";\nconsole.print(Object.keys(m));`;
+    await expect(run(page("# t", fence(deep, "ts live")))).rejects.toThrow(`fixture.md:3: a live example cannot import ${specifier}; it may import`);
   });
 
-  // A file past the entry points, and an entry point the worker cannot run.
-  it.each(["renderables/panel", "node/save"])("refuses a block importing src/%s.ts, which the library does not hold", async (file) => {
-    const deep = `import * as m from "../src/${file}.js";\nconsole.print(Object.keys(m));`;
-    await expect(runPage(page("# t", fence(deep, "ts live")))).rejects.toThrow(
-      new RegExp(`fixture\\.md:3: bundling failed: .*imports src/${file}\\.ts, which the live library does not hold; .*through src/index\\.ts(?!.*node/save)`, "s"),
+  it("refuses a block the browser cannot run, import.meta among it", async () => {
+    await expect(run(page("# t", fence("console.print(String(import.meta.url));", "ts live")))).rejects.toThrow(
+      /fixture\.md:3: "Try it" opens this block as the program below, which the browser cannot run: .*import\.meta/,
     );
   });
 
-  it("shares one module with an identical block", async () => {
-    const result = await runPage(page(fence("console.print(1);", "ts live"), fence("console.print(1);", "ts live")));
-    expect(result.live).toHaveLength(1);
-    expect(result.markdown.match(/import\(/g)).toHaveLength(1);
+  it("runs a block importing only a type from a module the library does not hold, which Sucrase removes", async () => {
+    const typed = 'import type { Stats } from "node:fs";\nconst size = (stats: Stats) => stats.size;\nconsole.print(typeof size);';
+    expect(await liveCardOutput(liveCards(await run(page("# t", fence(typed, "ts live"))))[0]!)).toContain("function");
+  });
+
+  it("refuses a block importing a default export, which no module in the library has", async () => {
+    await expect(run(page("# t", fence('import mobx from "mobx";\nconsole.print(typeof mobx);', "ts live")))).rejects.toThrow(
+      "fixture.md:3: mobx is imported by default, which the live library does not carry",
+    );
   });
 });
 
 /** The program each "Try it" link on the page opens, in page order, and the address before its hash. */
 async function tried(markdown: string): Promise<{ href: string; program: string }[]> {
-  const links = examples(markdown).flatMap((e) =>
-    e.kind === "card" ? (e.card.run === "build" ? [`${e.card.tryIt.playground}#${e.card.tryIt.program}`] : []) : [...e.html.matchAll(/<a class="rich-example-try" href="([^"]*)">Try it<\/a>/g)].map((m) => m[1]!),
-  );
+  const links = allCards(markdown).flatMap((card) => (card.run === "never" ? [] : [`${card.tryIt.playground}#${card.tryIt.program}`]));
   return Promise.all(links.map(async (link) => ({ href: link.split("#")[0]!, program: await decodeProgram(link.split("#")[1]!) })));
 }
 
@@ -450,8 +426,8 @@ describe("Try it", () => {
   });
 
   it("opens a live block as its program alone, and gives a block that runs nowhere no link", async () => {
-    const result = await runPage(page(fence('const above = "above";\nconsole.print(above);'), fence('console.print("live");', "ts live"), fence("process.exit(1);", "ts node")));
-    const links = await tried(result.markdown);
+    const result = await run(page(fence('const above = "above";\nconsole.print(above);'), fence('console.print("live");', "ts live"), fence("process.exit(1);", "ts node")));
+    const links = await tried(result);
     expect(links).toHaveLength(2);
     expect(links[1]!.program).toBe(['import { Console } from "@promptctl/rich-js";', "", "const console = new Console();", "", 'console.print("live");'].join("\n"));
   });
@@ -494,7 +470,7 @@ describe("Try it", () => {
 
 describe("a page run's time and random numbers", () => {
   /** What an output shows, as text: its light fragment without the markup. */
-  const text = (card: EditableCard) => card.output!.light.replace(/<[^>]*>/g, "").trim();
+  const text = (card: BuildCard) => card.output!.light.replace(/<[^>]*>/g, "").trim();
 
   it("are one instant and one sequence for every program the run executes", async () => {
     // Each block is run twice, in the chain and as its "Try it" program, and the two must print the same.
@@ -534,7 +510,7 @@ describe("a page that breaks its contract fails the build", () => {
     [
       "a live block on a page with its own <script setup>",
       page("<script setup>\nconst n = 1;\n</script>", fence("console.print(1);", "ts live")),
-      /fixture\.md:1: a page with an example card or a live example cannot have its own <script setup>/,
+      /fixture\.md:1: a page with an example card cannot have its own <script setup>/,
     ],
     [
       "an exampleContext whose code is not indented",
@@ -594,20 +570,17 @@ describe("the plugin", () => {
     expect(await plugin.transform(markdown, id)).not.toEqual(first);
   });
 
-  it("serves a page's live programs as the modules its script imports", { timeout: 60_000 }, async () => {
+  it("serves the cards the live library, under the module its id names, and nothing under an id it did not serve", { timeout: 60_000 }, async () => {
     const plugin = docsExamplesPlugin();
-    const transformed = await plugin.transform(fence('console.print("served");', "ts live"), path.join(REPO_ROOT, "docs", "fixture-live.md"));
-    const [specifier] = /virtual:rich-live\/[0-9a-f]+/.exec(transformed!.code)!;
     // Vite's context, for a module that depends on no file.
     const context: LoadContext = { addWatchFile: () => {} };
-    const program = (await plugin.load.call(context, plugin.resolveId(specifier)!))!;
-    // The program imports its library and adds its own code to it.
-    const [, librarySpecifier, block] = /^import library from ("[^"]+");\nexport default library \+ (".*");$/s.exec(program)!;
+    const module = (await plugin.load.call(context, plugin.resolveId(LIBRARY_MODULE)!))!;
+    const [, librarySpecifier] = /^export \{ default \} from ("[^"]+");$/.exec(module)!;
     const library = (await plugin.load.call(context, plugin.resolveId(JSON.parse(librarySpecifier!) as string)!))!;
     const [, script] = /^export default (".*");$/s.exec(library)!;
-    expect(await liveOutput((JSON.parse(script!) as string) + (JSON.parse(block!) as string))).toContain("served");
+    expect(await liveOutput(playgroundScript('import { Console } from "@promptctl/rich-js";\nnew Console().print("served");', JSON.parse(script!) as string))).toContain("served");
     expect(plugin.resolveId("./elsewhere.js")).toBeNull();
-    await expect(plugin.load.call(context, `\0${LIVE_MODULE_PREFIX}0000`)).rejects.toThrow(/no page run produced this live program/);
+    await expect(plugin.load.call(context, `\0${LIVE_MODULE_PREFIX}0000`)).rejects.toThrow(/no live library was served under this id/);
   });
 
   it("serves the live terminal's worker as one classic script, with no page run needed", { timeout: 60_000 }, async () => {
@@ -637,11 +610,9 @@ describe("the plugin", () => {
     // The playground is no page this plugin transforms, so `docs:dev` learns it is stale only from these.
     expect(watched).toContain(startPage);
     expect(watched).toContain(path.join(REPO_ROOT, "src", "index.ts"));
-    // One library for the site: a live example's program imports the very module the playground does.
-    const transformed = await plugin.transform(fence('console.print("served");', "ts live"), path.join(REPO_ROOT, "docs", "fixture-live.md"));
-    const [specifier] = /virtual:rich-live\/[0-9a-f]+/.exec(transformed!.code)!;
-    const program = (await plugin.load.call(context, plugin.resolveId(specifier)!))!;
-    expect(program.startsWith(`import library from ${librarySpecifier!};`)).toBe(true);
+    // One library for the site: the cards import the very module the playground does.
+    const cards = (await plugin.load.call(context, plugin.resolveId(LIBRARY_MODULE)!))!;
+    expect(cards).toBe(`export { default } from ${librarySpecifier!};`);
     expect(await plugin.load.call(context, plugin.resolveId(JSON.parse(librarySpecifier!) as string)!)).toMatch(/^export default "/);
   });
 

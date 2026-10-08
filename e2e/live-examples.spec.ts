@@ -1,13 +1,17 @@
 /// <reference lib="dom" />
 /**
- * A docs page's live examples, in the built site: a progress example animates
- * under its code while it is on screen and stops when scrolled away; a reader
- * who asked for reduced motion gets a still frame; a widget example takes keys
- * while its terminal has focus, and the page's own shortcuts work when it does
- * not; a prompt is answered by what the reader types; a program that fails
- * to load says so and leaves no terminal behind.
+ * A docs page's live examples, each an editable card whose output is a live
+ * terminal (docs/.vitepress/theme/RichExample.ts), in the built site: a
+ * progress example animates under its code while it is on screen and stops
+ * when scrolled away; a reader who asked for reduced motion gets a still
+ * frame; an edit restarts the program with the edited code, and one that does
+ * not parse says so in red over the terminal it leaves running; a widget
+ * example takes keys while its terminal has focus, and the page's own
+ * shortcuts work when it does not; a prompt is answered by what the reader
+ * types; a program that fails to load says so and leaves no terminal behind.
  * What the terminal shows is read from xterm's rows.
  */
+import { readFileSync, readdirSync } from "node:fs";
 import { test, expect, type Locator, type Page } from "@playwright/test";
 
 async function open(page: Page, path: string): Promise<string[]> {
@@ -105,8 +109,8 @@ for (const [path, code, drawn] of [
 }
 
 test("a program that fails to load says so, and leaves no terminal to stack another on", async ({ page }) => {
-  // A live program is its own chunk, named for its content hash.
-  await page.route(/\/assets\/chunks\/[0-9a-f]{16}\.[^/]+\.js$/, (route) => route.abort());
+  // A live card's program is made on the live library, its own chunk.
+  await page.route(/\/assets\/chunks\/library\.[^/]+\.js$/, (route) => route.abort());
   await open(page, "progress.html");
   const live = liveUnder(page, 'progress.addTask("Rendering..."');
   const failure = live.locator(".rich-live-failure");
@@ -124,6 +128,88 @@ test("a program that fails to load says so, and leaves no terminal to stack anot
   await expect(failure).toHaveCount(1);
   await page.waitForTimeout(500);
   await expect(live.locator(".xterm")).toHaveCount(0);
+});
+
+// The build type-checks a live card's program but never runs it: the browser
+// is the first thing that does, so each one is run here.
+const LIVE_PAGES = readdirSync("docs")
+  .filter((file) => file.endsWith(".md") && /^```(ts|typescript) live\b/m.test(readFileSync(`docs/${file}`, "utf-8")))
+  .map((file) => file.replace(/\.md$/, ".html"));
+
+test("finds the pages with live examples", () => {
+  expect(LIVE_PAGES).toContain("progress.html");
+});
+
+for (const path of LIVE_PAGES) {
+  test(`every live example on ${path} starts without crashing`, async ({ page }) => {
+    const errors = await open(page, path);
+    const terminals = page.locator(".rich-example-card .rich-live");
+    const count = await terminals.count();
+    expect(count).toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) {
+      const live = terminals.nth(i);
+      await scrollTo(live);
+      await expect.poll(() => rows(live), { timeout: 15_000 }).not.toBe("");
+      expect(await rows(live)).not.toContain("Uncaught");
+      await expect(live.locator(".rich-live-failure")).toHaveCount(0);
+    }
+    expect(errors).toEqual([]);
+  });
+}
+
+/**
+ * The card of the live example whose code contains `code`, its editor open
+ * with the cursor at the end of the line `last`. The program's end is not the
+ * block's: the setup closes the scope it opened for the block there, locked.
+ */
+async function editAtEnd(page: Page, code: string, last: string): Promise<Locator> {
+  const card = page.locator(".rich-example-card", { hasText: code });
+  await expect(card).toHaveClass(/rich-example-editable/, { timeout: 10_000 });
+  await card.locator("pre.shiki").click();
+  await expect(card.locator(".cm-content")).toBeFocused({ timeout: 10_000 });
+  await card.locator(".cm-line", { hasText: last }).click();
+  await page.keyboard.press("End");
+  return card;
+}
+
+test("an edit restarts a live example on the edited code", async ({ page }) => {
+  const errors = await open(page, "progress.html");
+  const live = liveUnder(page, 'progress.addTask("Rendering..."');
+  await scrollTo(live);
+  await expect.poll(() => percent(live)).toBeLessThan(100);
+
+  const card = await editAtEnd(page, 'progress.addTask("Rendering..."', "progress.stop();");
+  await page.keyboard.type('\nprocess.stdout.write("An edited line\\n");');
+  await expect(card.locator(".rich-example-edited")).toContainText("edited");
+  // From the start: the bar counts up again, then the edit's line is printed under it.
+  await expect.poll(() => rows(live), { timeout: 20_000 }).toContain("An edited line");
+  await expect(card.locator(".rich-example-failure")).toHaveCount(0);
+  await expect(card.locator(".rich-example-output")).not.toHaveClass(/rich-example-stale/);
+
+  // Reset puts the page's program back, and the terminal runs it from the start.
+  await card.locator(".rich-example-reset").click();
+  await expect(card.locator(".rich-example-edited")).toHaveCount(0);
+  await expect.poll(() => percent(live)).toBeLessThan(100);
+  expect(await rows(live)).not.toContain("An edited line");
+  expect(errors).toEqual([]);
+});
+
+test("an edit that does not parse says so in red, and keeps the terminal and what it runs", async ({ page }) => {
+  const errors = await open(page, "progress.html");
+  const live = liveUnder(page, 'progress.addTask("Rendering..."');
+  await scrollTo(live);
+  await expect.poll(() => percent(live)).toBeLessThan(100);
+
+  const card = await editAtEnd(page, 'progress.addTask("Rendering..."', "progress.stop();");
+  await page.keyboard.type("\nconst = ;");
+  const failure = card.locator(".rich-example-failure");
+  await expect(failure).toContainText("SyntaxError", { timeout: 10_000 });
+  await expect(card.locator(".rich-example-output")).toHaveClass(/rich-example-stale/);
+  // The terminal was not restarted on the edit: the page's program is still what it shows.
+  await expect(live.locator(".xterm")).toHaveCount(1);
+  expect(await rows(live)).toContain("Rendering...");
+  expect(await rows(live)).not.toContain("SyntaxError");
+  expect(errors).toEqual([]);
 });
 
 test("lines printed through live.console stay above the live display", async ({ page }) => {

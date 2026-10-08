@@ -84,16 +84,39 @@ export function thrownAt(report: string): number | null {
   return frame === null ? null : Number(frame[1]);
 }
 
-/** The script that runs `source`, a visitor's TypeScript, on `library`, the live library's script. */
-export function playgroundScript(source: string, library: string): string {
+/**
+ * A visitor's program as a live terminal takes it: the script that runs it,
+ * or, for code that does not parse, the report a run of it would crash with,
+ * naming the line when the parse that failed knows it.
+ */
+export type PlaygroundProgram =
+  | { readonly kind: "runs"; readonly script: string; /** The visitor's code as compiled, each import it runs a `require`. */ readonly code: string }
+  | { readonly kind: "refused"; readonly message: string; readonly report: string };
+
+/**
+ * `source`, a visitor's TypeScript, on `library`, the live library's script.
+ * Code that does not parse is refused here, for a caller that keeps what is
+ * on screen rather than run it (theme/RichExample.ts).
+ */
+export function playgroundProgram(source: string, library: string): PlaygroundProgram {
   const compiled = compile(source);
   if (compiled.kind === "refused") {
     // The stack is only the visitor's line: the frames of this script would point at code they never wrote.
-    const stack = `SyntaxError: ${compiled.message}\n    at ${PLAYGROUND_SOURCE}:${compiled.line}:${compiled.column}`;
-    return `throw Object.assign(new SyntaxError(${JSON.stringify(compiled.message)}), { stack: ${JSON.stringify(stack)} });`;
+    const { message, line, column } = compiled;
+    return { kind: "refused", message, report: `SyntaxError: ${message}\n    at ${PLAYGROUND_SOURCE}:${line}:${column}` };
   }
   const evaluated = `(async () => {${compiled.code}\n})\n//# sourceURL=${PLAYGROUND_SOURCE}`;
-  return [
+  // [LAW:single-enforcer] Sucrase passes what only a module may say,
+  // `import.meta`, and the eval then refuses it. The eval's own parser is asked
+  // here, running nothing, so an edit and the build (example-runner.ts) are
+  // refused the one way.
+  try {
+    new Function(evaluated);
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    return { kind: "refused", message: error.message, report: `SyntaxError: ${error.message}` };
+  }
+  const script = [
     library,
     `const require = (${requireFrom})(${LIBRARY_BINDING});`,
     // Sucrase writes a module's exports onto `exports`; the program is the
@@ -101,4 +124,16 @@ export function playgroundScript(source: string, library: string): string {
     "const exports = {};",
     `await eval(${JSON.stringify(evaluated)})();`,
   ].join("\n");
+  return { kind: "runs", script, code: compiled.code };
+}
+
+/**
+ * The script that runs `source` on `library`, as `playgroundProgram` makes
+ * it; code that does not parse is a script that throws the syntax error at
+ * its line.
+ */
+export function playgroundScript(source: string, library: string): string {
+  const program = playgroundProgram(source, library);
+  if (program.kind === "runs") return program.script;
+  return `throw Object.assign(new SyntaxError(${JSON.stringify(program.message)}), { stack: ${JSON.stringify(program.report)} });`;
 }

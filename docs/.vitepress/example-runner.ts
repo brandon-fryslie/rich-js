@@ -1,6 +1,8 @@
 /**
- * Runs a docs page's examples at build time and puts each in what shows it:
- * a card holding the output the build proved for it, or a live terminal.
+ * Runs a docs page's examples at build time and puts each in its card
+ * (example-card.ts): one holding the output the build proved for it, one
+ * whose output is its program running in a live terminal, or one that runs
+ * nowhere.
  *
  * It is a Vite plugin with `enforce: "pre"`: VitePress's own plugin turns
  * markdown into Vue in its `transform` and declares no `enforce`, so a pre
@@ -21,17 +23,14 @@
  *   5. cut the captured bytes into per-block output and hold each block to
  *      what its marker promised;
  *   6. draw each block's bytes as a light and a dark fragment
- *      (example-fragments.ts) and hand them to the block's card
- *      (example-card.ts); every block but a `live` one is a card, and one that
+ *      (example-fragments.ts) and hand them to the block's card; one that
  *      runs nowhere is a read-only card with its note;
- *   7. bundle each `live` block's program from step 2 on
- *      the one library every live block shares (`LiveLibrary`), which the
- *      page imports as a module when its live terminal (theme/RichLive.ts)
- *      first scrolls into view;
- *   8. cut each block that runs into a program of its own (example-slice.ts),
+ *   7. cut each block that runs into a program of its own (example-slice.ts),
  *      type-check it and link it from the block's "Try it"; a block of the
  *      chain's is also run as the playground runs it and held to the block's
- *      output, and its card program with it.
+ *      output, and its card program with it. A `live` block's programs run
+ *      only in the browser, on the one library every program there shares
+ *      (`LiveLibrary`), so each is held to importing only what it holds.
  *
  * [LAW:no-silent-failure] Every failure throws and fails the build, naming the
  * page, and the line when one line is to blame.
@@ -79,7 +78,7 @@ import { runInTerminal, type SimulatedTerminal } from "./simulated-process.js";
 import { LIBRARY_BINDING } from "./live-library.js";
 import { standalonePrograms, type Checked, type Standalone } from "./example-slice.js";
 import { encodeProgram } from "./playground-hash.js";
-import { playgroundScript } from "./theme/playground-program.js";
+import { playgroundProgram, playgroundScript } from "./theme/playground-program.js";
 
 const PROGRAM_FILE = path.join(REPO_ROOT, "docs", "__docs-example__.ts");
 
@@ -417,19 +416,6 @@ function stoppedAt(page: string, context: ExampleContext | null, chain: readonly
 }
 
 /**
- * What goes under a live block: a terminal running the program the page's
- * script binds to `binding`, as wide as the whole example terminal, since what
- * it will draw is not known here (custom.css shrinks the output's font where
- * the card is narrower). One line of HTML: a blank line inside it would end
- * markdown's HTML block and hand the rest to the markdown parser.
- */
-function liveHtml(binding: string, tryIt: string): string {
-  const { label, caption } = MARKERS.live;
-  const labelHtml = `<div class="rich-example-label"><span class="rich-example-name">${label}</span><span class="rich-example-caption">${caption}</span><a class="rich-example-try" href="${tryIt}">Try it</a></div>`;
-  return `<div class="rich-example-output" style="--rich-example-columns:${EXAMPLE_TERMINAL.columns}">${labelHtml}<RichLive :load="${binding}" /></div>`;
-}
-
-/**
  * The library every live program runs on: each package in
  * `LIVE_LIBRARY_PACKAGES`, all its exports, bundled as one script that
  * declares `LIBRARY_BINDING`, keyed by specifier. There is one for the site,
@@ -446,30 +432,6 @@ function liveHtml(binding: string, tryIt: string): string {
 export interface LiveLibrary {
   readonly id: string;
   readonly script: string;
-}
-
-/**
- * A live block's program: its own code, bundled with the package's entry
- * points left out and read from its library, and that library. What the live
- * terminal runs is `liveScript`, the two joined. Its id is the hash of both,
- * so an edit in `docs:dev` is a new module rather than a stale one the dev
- * server has cached.
- */
-export interface LiveProgram {
-  readonly id: string;
-  readonly block: string;
-  readonly library: LiveLibrary;
-}
-
-/** The one script a live program runs as: its library, then its block. */
-export function liveScript(program: LiveProgram): string {
-  return program.library.script + program.block;
-}
-
-/** A page run: its markdown with every example's output written in, and the live programs it loads. */
-export interface PageRun {
-  readonly markdown: string;
-  readonly live: readonly LiveProgram[];
 }
 
 /** The virtual module a live program is served as. */
@@ -511,9 +473,8 @@ async function bundleOrThrow(where: string, entry: Entry, shape: BundleShape = {
 export const PLAYGROUND_MODULE = `${LIVE_MODULE_PREFIX}playground`;
 
 /**
- * The module whose default export is the live library's script, for a page
- * that runs programs on it without a live block of its own to import it
- * through: an editable card running a reader's edit (theme/RichExample.ts).
+ * The module whose default export is the live library's script, for an
+ * editable card (theme/RichExample.ts) running its program on it.
  */
 export const LIBRARY_MODULE = `${LIVE_MODULE_PREFIX}library`;
 
@@ -624,10 +585,55 @@ async function bundleLiveLibrary(): Promise<LiveLibrary> {
   return { id: hash(script), script };
 }
 
-/** Whether `node` is an `import()` or `import.meta`, which a program run as a function body cannot evaluate. */
+/** Whether `node` is an `import()` or `import.meta`, which a bundled program, run as a function body, cannot evaluate. */
 const isModuleOnly = (node: ts.Node): boolean =>
   (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) ||
   (ts.isMetaProperty(node) && node.keywordToken === ts.SyntaxKind.ImportKeyword);
+
+/**
+ * Refuse an import a program on the live library makes that the library
+ * cannot answer: of a module it does not hold, or of a default export, which
+ * no module in it has.
+ *
+ * [LAW:single-enforcer] A bundled live program (`bundleOnLibrary`) and a
+ * program the browser compiles (`refuseUnrunnable`) are both held to it here.
+ */
+function refuseOffLibrary(at: string, specifier: string, clause: ts.ImportClause | undefined): void {
+  if (!LIVE_LIBRARY_PACKAGES.includes(specifier)) {
+    throw new Error(`${at}: a live example cannot import ${specifier}; it may import ${LIVE_LIBRARY_PACKAGES.join(", ")}`);
+  }
+  if (clause?.name !== undefined) throw new Error(`${at}: ${specifier} is imported by default, which the live library does not carry`);
+}
+
+/**
+ * Refuse a program a live block is opened as, which the browser compiles and
+ * runs (theme/playground-program.ts) and nothing runs before a reader does:
+ * one that compile refuses, and one that requires what the live library does
+ * not hold. What it requires is read off the compiled code, where Sucrase has
+ * made each import whose bindings are read as values a `require`, `import()`
+ * included, and dropped the rest. A default import is read off the source,
+ * which is where it says so.
+ */
+function refuseUnrunnable(at: string, { by, source }: Opened, library: string): void {
+  const compiled = playgroundProgram(source, library);
+  if (compiled.kind === "refused") throw new Error(`${at}: ${OPENS[by]}, which the browser cannot run: ${compiled.message}\n${source}`);
+  const requires = (node: ts.Node): void => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "require") {
+      const [specifier] = node.arguments;
+      if (specifier === undefined || !ts.isStringLiteral(specifier)) throw new Error(`${at}: a live example imports a module only by its name, written out`);
+      refuseOffLibrary(at, specifier.text, undefined);
+    }
+    ts.forEachChild(node, requires);
+  };
+  requires(ts.createSourceFile("card.js", compiled.code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS));
+  const defaults = (node: ts.Node): void => {
+    if (ts.isImportDeclaration(node) && node.importClause?.name !== undefined && !node.importClause.isTypeOnly) {
+      refuseOffLibrary(at, (node.moduleSpecifier as ts.StringLiteral).text, node.importClause);
+    }
+    ts.forEachChild(node, defaults);
+  };
+  defaults(ts.createSourceFile("card.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS));
+}
 
 /**
  * A live program's own code: bundled with what the library supplies left as
@@ -649,11 +655,8 @@ async function bundleOnLibrary(at: string, entry: Entry): Promise<Bundled> {
     if (ts.isExportDeclaration(statement) || ts.isExportAssignment(statement)) throw new Error(`${at}: a live example cannot export`);
     if (!ts.isImportDeclaration(statement)) continue;
     const specifier = (statement.moduleSpecifier as ts.StringLiteral).text;
-    if (!LIVE_LIBRARY_PACKAGES.includes(specifier)) {
-      throw new Error(`${at}: a live example cannot import ${specifier}; it may import ${LIVE_LIBRARY_PACKAGES.join(", ")}`);
-    }
     const clause = statement.importClause;
-    if (clause?.name !== undefined) throw new Error(`${at}: ${specifier} is imported by default, which the live library does not carry`);
+    refuseOffLibrary(at, specifier, clause);
     const from = `${LIBRARY_BINDING}[${JSON.stringify(specifier)}]`;
     const bindings = clause?.namedBindings;
     const key = (name: ts.ModuleExportName): string => (ts.isStringLiteral(name) ? JSON.stringify(name.text) : name.text);
@@ -678,11 +681,6 @@ export async function libraryModule(name: string, file: string): Promise<Bundled
   const entry = generated(`import * as module from ${JSON.stringify(file)};\n${LIBRARY_BINDING}[${JSON.stringify(name)}] = module;`);
   const { code, modules } = await bundleOnLibrary(path.relative(REPO_ROOT, file), entry);
   return { code, modules: [file, ...modules] };
-}
-
-async function liveProgram(page: string, fence: Fence, program: ExampleProgram, library: LibrarySource): Promise<LiveProgram> {
-  const [{ code: block }, shared] = await Promise.all([bundleOnLibrary(`docs/${page}:${fence.line}`, generated(program.source)), library()]);
-  return { id: hash(shared.id + block), block, library: shared };
 }
 
 /**
@@ -719,7 +717,7 @@ function scriptLine(page: string, markdown: string, blocks: readonly Block[]): n
   const clash = lines.findIndex(
     (line, i) => /^<script\b[^>]*\bsetup\b/.test(line) && !blocks.some((b) => b.line <= i + 1 && i + 1 <= b.closeLine),
   );
-  if (clash !== -1) throw new Error(`docs/${page}:${clash + 1}: a page with an example card or a live example cannot have its own <script setup>`);
+  if (clash !== -1) throw new Error(`docs/${page}:${clash + 1}: a page with an example card cannot have its own <script setup>`);
   return frontmatterEnd(lines) + 1;
 }
 
@@ -740,13 +738,13 @@ function refuseCutOff(fences: readonly Fence[]): void {
   }
 }
 
-/** `markdown` with each example in its card, and each live one's terminal written under its fence. */
+/** `markdown` with each example in its card. */
 export async function runPageExamples(
   compiler: ExampleCompiler,
   page: string,
   markdown: string,
   library: LibrarySource = liveLibraryOnce(),
-): Promise<PageRun> {
+): Promise<string> {
   const scanned = scanBlocks(page, markdown);
   const fences = typescriptFences(scanned);
   refuseCutOff(fences);
@@ -800,77 +798,57 @@ export async function runPageExamples(
   for (const [i, fence] of chain.entries()) {
     for (const opened of openedAs(fence, tried.get(fence)!)) await tryItPrints(fence, opened, blocks[i]!, shared, world);
   }
+  for (const [fence, standalone] of tried) {
+    if (MARKERS[fence.marker].run === "browser") {
+      for (const opened of openedAs(fence, standalone)) refuseUnrunnable(`docs/${page}:${fence.line}`, opened, shared.script);
+    }
+  }
   const playground = playgroundHref(page);
   const hashes = new Map<Fence, string>(
     await Promise.all([...tried].map(async ([fence, standalone]) => [fence, await encodeProgram(standalone.program.source)] as const)),
   );
-  const links = new Map<Fence, string>([...hashes].map(([fence, hash]) => [fence, `${playground}#${hash}`]));
-  const liveBlocks = [...alone].filter(([fence]) => MARKERS[fence.marker].run === "browser");
-  const programs = await Promise.all(liveBlocks.map(([fence, blockProgram]) => liveProgram(page, fence, blockProgram, library)));
-  const live = new Map<Fence, LiveProgram>(liveBlocks.map(([fence], i) => [fence, programs[i]!]));
-  const binding = (program: LiveProgram): string => `__richLive_${program.id}`;
-  // Every block but a live one is a card, its data a constant of the page's
-  // script. `<` is escaped so no string in it can close the script.
-  const cardData = (fence: Fence): CardData | null => {
+  // Every block is a card, its data a constant of the page's script. `<` is
+  // escaped so no string in it can close the script.
+  const cardData = (fence: Fence): CardData => {
     const rule: MarkerRule = MARKERS[fence.marker];
-    switch (rule.run) {
-      case "build":
-        return {
-          run: "build",
-          code: fence.code,
-          setup: tried.get(fence)!.setup,
-          output: drawOutput(bytes.get(fence)!),
-          label: rule.label,
-          caption: rule.caption,
-          tryIt: { playground, program: hashes.get(fence)! },
-        };
-      case "never":
-        return { run: "never", label: rule.label, note: rule.note };
-      case "browser":
-        return null;
-    }
+    if (rule.run === "never") return { run: "never", label: rule.label, note: rule.note };
+    const editable = {
+      code: fence.code,
+      setup: tried.get(fence)!.setup,
+      label: rule.label,
+      caption: rule.caption,
+      tryIt: { playground, program: hashes.get(fence)! },
+    };
+    // A live terminal is as wide as the whole example terminal, since what
+    // its program will draw is not known here (custom.css shrinks the
+    // output's font where the card is narrower).
+    return rule.run === "build"
+      ? { run: "build", ...editable, output: drawOutput(bytes.get(fence)!) }
+      : { run: "browser", ...editable, columns: EXAMPLE_TERMINAL.columns };
   };
   const cards = new Map<Fence, { readonly binding: string; readonly data: CardData }>(
-    fences.flatMap((fence) => {
-      const data = cardData(fence);
-      return data === null ? [] : [[fence, data] as const];
-    }).map(([fence, data], i) => [fence, { binding: `__richCard_${i}`, data }]),
+    fences.map((fence, i) => [fence, { binding: `__richCard_${i}`, data: cardData(fence) }]),
   );
-  const around = (fence: Fence): { readonly open: string; readonly close: readonly string[] } => {
-    const card = cards.get(fence);
-    return card === undefined
-      ? { open: '<div class="rich-example">', close: [liveHtml(binding(live.get(fence)!), links.get(fence)!), "", "</div>"] }
-      : { open: `<RichExample :card="${card.binding}">`, close: ["</RichExample>"] };
-  };
 
   const lines = pageLines(markdown);
-  // The widget: the fence, untouched for VitePress to highlight, inside one
-  // element the theme draws as a single card: the card component, or an
-  // element with the output written beneath the fence. Every piece of HTML
-  // stands between blank lines, because markdown's HTML block runs to the next
-  // blank line: without them the fence would not be parsed as a fence, and
-  // prose written straight under it would be swallowed. A component's slot is
-  // markdown the same way.
+  // The widget: the fence, untouched for VitePress to highlight, inside the
+  // card component, which draws it and the output beneath it as one card. The
+  // component's tags stand between blank lines, because markdown's HTML block
+  // runs to the next blank line: without them the fence would not be parsed
+  // as a fence, and prose written straight under it would be swallowed. The
+  // component's slot is markdown the same way.
   for (const fence of [...fences].reverse()) {
-    const { open, close } = around(fence);
-    lines.splice(fence.closeLine, 0, "", ...close, "");
-    lines.splice(fence.line - 1, 0, "", open, "");
+    lines.splice(fence.closeLine, 0, "", "</RichExample>", "");
+    lines.splice(fence.line - 1, 0, "", `<RichExample :card="${cards.get(fence)!.binding}">`, "");
   }
-  // Each live program is a module of its own, imported only when its terminal
-  // asks for it: a reader who never scrolls to one never downloads it.
-  // Two blocks with the same program share one module and one binding.
-  const modules = [...new Map(programs.map((p) => [p.id, p])).values()];
-  const pageScript = [
-    ...modules.map((p) => `const ${binding(p)} = () => import(${JSON.stringify(LIVE_MODULE_PREFIX + p.id)});`),
-    ...[...cards.values()].map(({ binding, data }) => `const ${binding} = ${JSON.stringify(data).replaceAll("<", "\\u003c")};`),
-  ];
+  const pageScript = [...cards.values()].map(({ binding, data }) => `const ${binding} = ${JSON.stringify(data).replaceAll("<", "\\u003c")};`);
   if (pageScript.length > 0) lines.splice(scriptLine(page, markdown, scanned), 0, "", "<script setup>", ...pageScript, "</script>", "");
-  return { markdown: lines.join("\n"), live: modules };
+  return lines.join("\n");
 }
 
 /**
  * The Vite plugin: every page's examples, run as the page is built,
- * and the live programs those pages import. Typed by its shape rather than as
+ * and the live modules the site's components import. Typed by its shape rather than as
  * `vite`'s `Plugin`, because VitePress runs it on the vite it bundles, not on
  * the one `bundleExample` builds with.
  */
@@ -905,13 +883,13 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
   // through this transform. The last run of each page is kept by what its
   // output is a function of, the page and `src/`, so a build runs a page once
   // and `docs:dev` re-runs it when either is edited.
-  const runs = new Map<string, { readonly key: string; readonly result: Promise<PageRun> }>();
+  const runs = new Map<string, { readonly key: string; readonly result: Promise<string> }>();
   let library: { readonly source: string | null; readonly get: LibrarySource } = { source: null, get: liveLibraryOnce() };
-  // Every live program and library a page run has produced, as the module
-  // served under its id. A page imports only the ids its own run returned, so
-  // one that outlives an edit is never asked for. A program imports its
-  // library, so the bundler gives a library its programs share one chunk.
-  const live = new Map<string, string>();
+  // Every live library served, as the module served under its id. A module
+  // imports only the id it was served with, so one that outlives an edit is
+  // never asked for, and the bundler gives a library its importers share one
+  // chunk.
+  const libraries = new Map<string, string>();
   // The live library is a function of `src/` alone: built once per state of it.
   const libraryAt = (source: string): LibrarySource => {
     if (library.source !== source) library = { source, get: liveLibraryOnce() };
@@ -920,7 +898,7 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
   /** Serve `shared` under its id, and return the specifier that imports it. */
   const serveLibrary = (shared: LiveLibrary): string => {
     const id = `${LIVE_LIBRARY_PATH}${shared.id}`;
-    live.set(id, `export default ${JSON.stringify(shared.script)};`);
+    libraries.set(id, `export default ${JSON.stringify(shared.script)};`);
     return JSON.stringify(LIVE_MODULE_PREFIX + id);
   };
   return {
@@ -935,11 +913,7 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
       const last = runs.get(id);
       const result = last !== undefined && last.key === key ? last.result : runPageExamples(compiler, page, code, libraryAt(source));
       runs.set(id, { key, result });
-      const run = await result;
-      for (const program of run.live) {
-        live.set(program.id, liveModule(serveLibrary(program.library), program.block));
-      }
-      return { code: run.markdown, map: null };
+      return { code: await result, map: null };
     },
     resolveId: (id) => (id.startsWith(LIVE_MODULE_PREFIX) ? `\0${id}` : null),
     async load(id) {
@@ -958,15 +932,15 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
         const startPage = path.join(docsRoot, PLAYGROUND_START_PAGE);
         [startPage, ...listTypeScriptFiles("src")].forEach((file) => this.addWatchFile(file));
         const start = playgroundStart(compiler, readFileSync(startPage, "utf-8"));
-        // Imported from the same module the live examples import, so the site bundles the library once.
+        // Imported from the same module the cards import, so the site bundles the library once.
         const shared = await libraryAt(stamp())();
         return `import library from ${serveLibrary(shared)};\nexport { library };\nexport const start = ${JSON.stringify(start)};`;
       }
       if (id === `\0${LIBRARY_MODULE}`) {
         // Imported by the card component, not by a page this plugin
         // transforms, so only these watches rebuild it in `docs:dev`. It
-        // re-exports the module the live examples import, so the site
-        // bundles the library once.
+        // re-exports the module the playground and the showcase import, so
+        // the site bundles the library once.
         listTypeScriptFiles("src").forEach((file) => this.addWatchFile(file));
         const shared = await libraryAt(stamp())();
         return `export { default } from ${serveLibrary(shared)};`;
@@ -979,8 +953,8 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
         [...showcase.modules, ...listTypeScriptFiles("src")].forEach((file) => this.addWatchFile(file));
         return liveModule(serveLibrary(shared), showcase.code);
       }
-      const module = live.get(id.slice(RESOLVED_LIVE_PREFIX.length));
-      if (module === undefined) throw new Error(`${id.slice(1)}: no page run produced this live program`);
+      const module = libraries.get(id.slice(RESOLVED_LIVE_PREFIX.length));
+      if (module === undefined) throw new Error(`${id.slice(1)}: no live library was served under this id`);
       return module;
     },
   };

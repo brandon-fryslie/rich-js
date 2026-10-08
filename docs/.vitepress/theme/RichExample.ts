@@ -1,30 +1,34 @@
 /// <reference lib="dom" />
 /**
  * A docs example as one editable card: its code, and under it what the code
- * prints. The build hands it the block (example-card.ts); the page renders it
+ * does. The build hands it the block (example-card.ts); the page renders it
  * on the server, so a reader sees the card before any of this runs.
  *
  * At rest it is the page's own card: VitePress's highlighted fence, passed in
- * as the default slot, over the output the build printed. A click in the code,
- * or Enter on it, puts an editor in the fence's place, its cursor where the
- * click was. The editor holds the whole program, the setup the block runs on
- * locked and folded around it (setup-regions.ts). Once typing pauses the card runs its program on the edit
- * (`cardSource`) in a sandboxed worker (static-run.ts) and draws what it
- * printed the way the build draws it (example-fragments.ts). Output drawn for
- * code other than the editor's is dimmed: while an edit waits to run, and
- * after one that threw, exited, or ran past the time or output limit, with
- * what went wrong under it in red. "Try it" opens the code the card holds.
- * Output that is no bytes at all is said in words in its place.
+ * as the default slot, over the block's output. A click in the code, or Enter
+ * on it, puts an editor in the fence's place, its cursor where the click was.
+ * The editor holds the whole program, the setup the block runs on locked and
+ * folded around it (setup-regions.ts). Once typing pauses the card shows what
+ * its program (`cardSource`) does with the edit, in what stands under the
+ * code, its outlet:
+ *
+ * - a block the build runs shows the output the build printed for it until
+ *   it is edited; an edit runs in a sandboxed worker (static-run.ts) and its
+ *   output is drawn the way the build draws it (example-fragments.ts);
+ * - a `live` block's output is its program running in a live terminal
+ *   (LiveScreen.ts), which an edit restarts on the edited program.
+ *
+ * Output shown for code other than the editor's is dimmed: while an edit
+ * waits to run, and after one that could not, with what went wrong under it
+ * in red. "Try it" opens the code the card holds.
  *
  * A block the build does not run is the same card, read-only: its code over
  * the note its marker gives, and nothing to edit.
  *
  * [LAW:dataflow-not-control-flow] What the card shows is a function of the
- * code in it. The page's own code is shown with the output the build proved
- * for it, with nothing run; any other code is run. Reset is putting the page's
- * code back, nothing more.
+ * code in it. Reset is putting the page's code back, nothing more.
  */
-import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, type PropType, type Slots, type VNode } from "vue";
+import { computed, defineAsyncComponent, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, type PropType, type Ref, type Slots, type VNode, type VNodeArrayChildren } from "vue";
 import type { EditorView } from "@codemirror/view";
 import { PRINTS_NOTHING, RAN, blockOf, blockSpan, cardSource, type CardData } from "../example-card.js";
 import type { Drawn } from "../example-fragments.js";
@@ -47,25 +51,32 @@ function loader<T>(load: () => Promise<T>): () => Promise<T> {
   return () => (loaded ??= load().catch((error: unknown) => ((loaded = undefined), Promise.reject(error))));
 }
 
+/** What making a card's program into a script needs, loaded the first time a card runs one. */
+const programs = loader(async () => {
+  const [library, program] = await Promise.all([import("virtual:rich-live/library"), import("./playground-program.js")]);
+  return {
+    library: library.default,
+    playgroundProgram: program.playgroundProgram,
+    playgroundScript: program.playgroundScript,
+    thrownAt: program.thrownAt,
+  };
+});
+
 /**
- * What running an edit needs, loaded the first time a card runs one. The
- * example terminal is among it: its themes would otherwise be in every page's
- * first download.
+ * What running an edit for its output needs besides. The example terminal is
+ * among it: its themes would otherwise be in every page's first download.
  */
-const tools = loader(async () => {
-  const [runtime, library, program, fragments, run, terminal] = await Promise.all([
+const statics = loader(async () => {
+  const [made, runtime, fragments, run, terminal] = await Promise.all([
+    programs(),
     import("virtual:rich-live/runtime"),
-    import("virtual:rich-live/library"),
-    import("./playground-program.js"),
     import("../example-fragments.js"),
     import("./static-run.js"),
     import("../example-terminal.js"),
   ]);
   return {
+    ...made,
     runtime: runtime.default,
-    library: library.default,
-    playgroundScript: program.playgroundScript,
-    thrownAt: program.thrownAt,
     drawOutput: fragments.drawOutput,
     runStatic: run.runStatic,
     terminal: terminal.EXAMPLE_TERMINAL,
@@ -73,12 +84,15 @@ const tools = loader(async () => {
   };
 });
 
-type Tools = Awaited<ReturnType<typeof tools>>;
+type ThrownAt = Awaited<ReturnType<typeof programs>>["thrownAt"];
 
-/** The editor, loaded the first time a reader's pointer or focus reaches a card, so a click has it at hand. */
+/** A live card's terminal, loaded with the first page that has one: it brings xterm's setup and the example terminal's themes. */
+const LiveScreen = defineAsyncComponent(() => import("./LiveScreen.js"));
+
 /** The space VitePress's fence leaves above and below its code: the editor's too, and the height of the folded setup's strip, drawn in it. */
 const FENCE_PADDING = "20px";
 
+/** The editor, loaded the first time a reader's pointer or focus reaches a card, so a click has it at hand. */
 const editorModules = loader(() =>
   Promise.all([import("./playground-editor.js"), import("@codemirror/view"), import("@codemirror/state"), import("./setup-regions.js")]),
 );
@@ -96,7 +110,7 @@ type Code =
 
 const message = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
-type EditableCard = Extract<CardData, { readonly run: "build" }>;
+type EditableCard = Extract<CardData, { readonly run: "build" | "browser" }>;
 type ReadOnlyCard = Extract<CardData, { readonly run: "never" }>;
 
 /** The strip naming the output panel: its label, then what stands beside it. */
@@ -115,6 +129,34 @@ function readOnlyView(card: ReadOnlyCard, slots: Slots): () => VNode {
     ]);
 }
 
+/**
+ * How showing an edit's output ended: shown, or what went wrong, said under
+ * the output. A failure that names a line of the program counts the setup's
+ * lines, so the card puts them in view.
+ */
+type Outcome = { readonly kind: "shown" } | { readonly kind: "failed"; readonly said: string; readonly namesLine: boolean };
+
+const SHOWN: Outcome = { kind: "shown" };
+
+/** A crash's report as said under the output: its first line, and the line of the program it names. */
+function crashSaid(report: string, thrownAt: ThrownAt): string {
+  const at = thrownAt(report);
+  const headline = report.split("\n")[0]!;
+  return at === null ? headline : `${headline} (line ${at})`;
+}
+
+/** What stands under an editable card's code: the output of some code, and how an edit's output reaches it. */
+interface Outlet {
+  /** The code what it shows is the output of. */
+  readonly code: () => string;
+  readonly caption: () => string;
+  /** How many columns what it shows is drawn in, for the font to fit the card; null when that is nothing at all. */
+  readonly columns: () => number | null;
+  readonly body: () => VNodeArrayChildren;
+  /** Show the output of `source`, the card's code, while `current` says no newer edit has come. */
+  show(source: string, current: () => boolean): Promise<Outcome>;
+}
+
 /** Output drawn under the code: the code it is the output of, what it printed, and the caption that says where it came from. */
 interface Shown {
   readonly code: string;
@@ -122,35 +164,22 @@ interface Shown {
   readonly caption: string;
 }
 
-function editableView(card: EditableCard, slots: Slots): () => VNode {
-  const root = ref<HTMLElement | null>(null);
-  const host = ref<HTMLElement | null>(null);
-  const code = shallowRef<Code>({ kind: "fence", refused: null });
-  const text = ref(card.code);
+/**
+ * A block the build runs: the page's own code is shown with the output the
+ * build proved for it, with nothing run; any other code is run, its frame in
+ * `root`.
+ */
+function staticOutlet(card: Extract<CardData, { readonly run: "build" }>, root: Ref<HTMLElement | null>): Outlet {
   const page: Shown = { code: card.code, output: card.output, caption: card.caption };
   const drawn = shallowRef<Shown>(page);
-  const failure = ref<string | null>(null);
-  /** The hash "Try it" opens the playground on, the page's program or the card's edit; or why an edit has none. */
-  const tryIt = shallowRef<{ readonly hash: string } | { readonly refused: string }>({ hash: card.tryIt.program });
-  const edited = computed(() => text.value !== card.code);
-
-  // [LAW:no-ambient-temporal-coupling] Each edit is a turn, and only the
-  // newest turn's run may draw: an edit ends the run before it, and a run
-  // that ends after a newer edit is no one's.
-  let turn = 0;
-  let pending: ReturnType<typeof setTimeout> | undefined;
   let running: StaticRun | null = null;
+  onBeforeUnmount(() => running?.stop());
 
   /** Why a run did not draw, as said under the output. */
-  const failed = (end: Exclude<StaticEnd, { kind: "finished" | "stopped" }>, thrownAt: Tools["thrownAt"]): string => {
+  const failed = (end: Exclude<StaticEnd, { kind: "finished" | "stopped" }>, thrownAt: ThrownAt): string => {
     switch (end.kind) {
-      case "threw": {
-        const at = thrownAt(end.report);
-        // The editor holds the whole program, so the program's line is the
-        // reader's once the setup it counts is shown (`run`).
-        const headline = end.report.split("\n")[0]!;
-        return at === null ? headline : `${headline} (line ${at})`;
-      }
+      case "threw":
+        return crashSaid(end.report, thrownAt);
       case "exited":
         return `It called process.exit(${end.code}).`;
       case "timedOut":
@@ -160,12 +189,24 @@ function editableView(card: EditableCard, slots: Slots): () => VNode {
     }
   };
 
-  // [LAW:no-silent-failure] Whatever fails on the way, loading, compiling,
-  // running or drawing, is said under the output.
-  async function run(source: string, mine: number): Promise<void> {
-    try {
-      const made = await tools();
-      if (mine !== turn) return;
+  return {
+    code: () => drawn.value.code,
+    caption: () => drawn.value.caption,
+    columns: () => drawn.value.output?.columns ?? null,
+    body: () => {
+      const { output } = drawn.value;
+      return output === null
+        ? [note(PRINTS_NOTHING)]
+        : [h("div", { class: "rich-example-light", innerHTML: output.light }), h("div", { class: "rich-example-dark", innerHTML: output.dark })];
+    },
+    async show(source, current) {
+      running?.stop();
+      if (source === card.code) {
+        drawn.value = page;
+        return SHOWN;
+      }
+      const made = await statics();
+      if (!current()) return SHOWN;
       running = made.runStatic(root.value!, {
         runtime: made.runtime,
         script: made.playgroundScript(cardSource(card.setup, source), made.library),
@@ -174,45 +215,102 @@ function editableView(card: EditableCard, slots: Slots): () => VNode {
         limitChars: OUTPUT_LIMIT_CHARS,
       });
       const { bytes, end } = await running.result;
-      if (mine !== turn || end.kind === "stopped") return;
+      if (!current() || end.kind === "stopped") return SHOWN;
       // A program that exits 0 has ended as one that finished, as in Node.
       if (end.kind === "finished" || (end.kind === "exited" && end.code === 0)) {
         drawn.value = { code: source, output: made.drawOutput(bytes), caption: RAN };
-        failure.value = null;
-      } else {
-        failure.value = failed(end, made.thrownAt);
-        // A thrown error's line counts the setup's lines, so they are put in view.
-        const now = code.value;
-        if (end.kind === "threw" && now.kind === "editor") now.unfoldSetup();
+        return SHOWN;
       }
+      return { kind: "failed", said: failed(end, made.thrownAt), namesLine: end.kind === "threw" };
+    },
+  };
+}
+
+/**
+ * A `live` block: its program running in a live terminal. An edit that parses
+ * is a new program, which the terminal restarts on; one that does not leaves
+ * the terminal running the last that did.
+ */
+function liveOutlet(card: Extract<CardData, { readonly run: "browser" }>): Outlet {
+  // Made once and kept: each scroll into view and each Restart asks for it.
+  const pageProgram = loader(async () => {
+    const made = await programs();
+    return made.playgroundScript(cardSource(card.setup, card.code), made.library);
+  });
+  const running = shallowRef<{ readonly code: string; readonly program: () => Promise<string> }>({ code: card.code, program: pageProgram });
+  return {
+    code: () => running.value.code,
+    caption: () => card.caption,
+    columns: () => card.columns,
+    body: () => [h(LiveScreen, { program: running.value.program })],
+    async show(source, current) {
+      if (source === card.code) {
+        running.value = { code: source, program: pageProgram };
+        return SHOWN;
+      }
+      const made = await programs();
+      const program = made.playgroundProgram(cardSource(card.setup, source), made.library);
+      if (program.kind === "refused") {
+        return { kind: "failed", said: crashSaid(program.report, made.thrownAt), namesLine: made.thrownAt(program.report) !== null };
+      }
+      if (current()) running.value = { code: source, program: () => Promise.resolve(program.script) };
+      return SHOWN;
+    },
+  };
+}
+
+function editableView(card: EditableCard, slots: Slots): () => VNode {
+  const root = ref<HTMLElement | null>(null);
+  const host = ref<HTMLElement | null>(null);
+  const code = shallowRef<Code>({ kind: "fence", refused: null });
+  const text = ref(card.code);
+  const outlet = card.run === "build" ? staticOutlet(card, root) : liveOutlet(card);
+  const failure = ref<string | null>(null);
+  /** The hash "Try it" opens the playground on, the page's program or the card's edit; or why an edit has none. */
+  const tryIt = shallowRef<{ readonly hash: string } | { readonly refused: string }>({ hash: card.tryIt.program });
+  const edited = computed(() => text.value !== card.code);
+
+  // [LAW:no-ambient-temporal-coupling] Each edit is a turn, and only the
+  // newest turn may show what it does: a show that ends after a newer edit is
+  // no one's.
+  let turn = 0;
+  let pending: ReturnType<typeof setTimeout> | undefined;
+
+  // [LAW:no-silent-failure] Whatever fails on the way, loading, compiling,
+  // running or drawing, is said under the output.
+  async function show(source: string, mine: number): Promise<void> {
+    const current = () => mine === turn;
+    try {
+      const outcome = await outlet.show(source, current);
+      if (!current()) return;
+      failure.value = outcome.kind === "shown" ? null : outcome.said;
+      const now = code.value;
+      if (outcome.kind === "failed" && outcome.namesLine && now.kind === "editor") now.unfoldSetup();
     } catch (error) {
-      if (mine === turn) failure.value = `The example could not run: ${message(error)}`;
+      if (current()) failure.value = `The example could not run: ${message(error)}`;
     }
   }
 
-  /** Point "Try it" at the card's program around `source`, which needs nothing a run does. */
+  /** Point "Try it" at the page's program for the page's code, and at the card's program around any other, which needs nothing a run does. */
   async function link(source: string, mine: number): Promise<void> {
-    const linked = await encodeProgram(cardSource(card.setup, source)).then(
-      (hash) => ({ hash }),
-      (error: unknown) => ({ refused: `"Try it" cannot carry this edit: ${message(error)}` }),
-    );
+    const linked =
+      source === card.code
+        ? { hash: card.tryIt.program }
+        : await encodeProgram(cardSource(card.setup, source)).then(
+            (hash) => ({ hash }),
+            (error: unknown) => ({ refused: `"Try it" cannot carry this edit: ${message(error)}` }),
+          );
     if (mine === turn) tryIt.value = linked;
   }
 
-  /** The code changed to `source`: show the page's output for the page's code, and run any other. */
+  /** The code changed to `source`: show what it does once typing pauses. */
   function changed(source: string): void {
     text.value = source;
     const mine = ++turn;
     clearTimeout(pending);
-    running?.stop();
-    if (source === card.code) {
-      drawn.value = page;
-      tryIt.value = { hash: card.tryIt.program };
-      failure.value = null;
-      return;
-    }
     void link(source, mine);
-    pending = setTimeout(() => void run(source, mine), RUN_AFTER_MS);
+    // The page's code runs nothing new, so a reset shows the page's output at once.
+    pending = setTimeout(() => void show(source, mine), source === card.code ? 0 : RUN_AFTER_MS);
   }
 
   /** Put the editor in the fence's place, its cursor at `at` on screen, or at the start. */
@@ -289,7 +387,6 @@ function editableView(card: EditableCard, slots: Slots): () => VNode {
   onBeforeUnmount(() => {
     turn += 1;
     clearTimeout(pending);
-    running?.stop();
     const now = code.value;
     if (now.kind === "editor") now.view.destroy();
     code.value = { kind: "unmounted" };
@@ -297,8 +394,8 @@ function editableView(card: EditableCard, slots: Slots): () => VNode {
 
   return () => {
     const now = code.value;
-    const { output, caption } = drawn.value;
-    const stale = drawn.value.code !== text.value;
+    const stale = outlet.code() !== text.value;
+    const columns = outlet.columns();
     const link = tryIt.value;
     return h(
       "div",
@@ -316,16 +413,14 @@ function editableView(card: EditableCard, slots: Slots): () => VNode {
         edited.value
           ? h("div", { class: "rich-example-edited" }, ["● edited · ", h("button", { type: "button", class: "rich-example-reset", onClick: reset }, "reset")])
           : null,
-        h("div", { class: ["rich-example-output", stale ? "rich-example-stale" : null], style: output === null ? null : { "--rich-example-columns": output.columns } }, [
+        h("div", { class: ["rich-example-output", stale ? "rich-example-stale" : null], style: columns === null ? null : { "--rich-example-columns": columns } }, [
           labelStrip(card.label, [
-            h("span", { class: "rich-example-caption" }, caption),
+            h("span", { class: "rich-example-caption" }, outlet.caption()),
             "hash" in link
               ? h("a", { class: "rich-example-try", href: `${card.tryIt.playground}#${link.hash}` }, "Try it")
               : h("span", { class: "rich-example-try", "aria-disabled": "true", title: link.refused }, "Try it"),
           ]),
-          ...(output === null
-            ? [note(PRINTS_NOTHING)]
-            : [h("div", { class: "rich-example-light", innerHTML: output.light }), h("div", { class: "rich-example-dark", innerHTML: output.dark })]),
+          ...outlet.body(),
           ...[failure.value, now.kind === "fence" ? now.refused : null].map((said) =>
             said === null ? null : h("p", { class: "rich-example-failure", role: "alert" }, said),
           ),
@@ -342,6 +437,6 @@ export default defineComponent({
   },
   setup(props, { slots }) {
     const { card } = props;
-    return card.run === "build" ? editableView(card, slots) : readOnlyView(card, slots);
+    return card.run === "never" ? readOnlyView(card, slots) : editableView(card, slots);
   },
 });
