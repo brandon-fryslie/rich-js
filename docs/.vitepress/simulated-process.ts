@@ -44,6 +44,7 @@
 
 import { formatWithOptions } from "node-inspect-extracted";
 import type { ConsoleEnvironment, ConsoleStream } from "../../src/index.js";
+import { HOT_BINDING, HotRuntime } from "./hot-runtime.js";
 
 /**
  * The terminal a program runs in: its size, whether it is a TTY, the
@@ -77,10 +78,10 @@ export interface SimulatedTerminal extends ConsoleStream {
 // async function's prototype.
 const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor as new (
   ...parametersThenBody: string[]
-) => (process: SimulatedProcess, console: ProgramConsole, ...timers: unknown[]) => Promise<void>;
+) => (process: SimulatedProcess, console: ProgramConsole, hot: HotRuntime, ...timers: unknown[]) => Promise<void>;
 
-/** The names a program's body binds to the stand-ins, in the order `runInTerminal` passes them. */
-const PARAMETERS = ["process", "console", "setTimeout", "setInterval", "clearTimeout", "clearInterval"];
+/** The names a program's body binds to the stand-ins, in the order `startInTerminal` passes them. */
+const PARAMETERS = ["process", "console", HOT_BINDING, "setTimeout", "setInterval", "clearTimeout", "clearInterval"];
 
 type Listener = (...args: never[]) => void;
 
@@ -114,6 +115,11 @@ class Events {
 
   emit(event: string, ...args: unknown[]): void {
     for (const listener of [...(this.listeners.get(event) ?? [])]) (listener as (...a: unknown[]) => void)(...args);
+  }
+
+  removeAllListeners(): this {
+    this.listeners.clear();
+    return this;
   }
 }
 
@@ -256,12 +262,13 @@ const nodeDelay = (ms: number | undefined): number => {
  * one clear serves both names.
  */
 function programTimers() {
-  const set = new Set<unknown>();
   type Id = Parameters<typeof globalThis.clearTimeout>[0];
+  const set = new Set<Id>();
   const clear = (id: Id): void => {
     set.delete(id);
     globalThis.clearTimeout(id);
   };
+  const clearAll = (): void => set.forEach((id) => clear(id));
   return {
     setTimeout: (handler: Handler, ms?: number, ...args: unknown[]) => {
       const id = globalThis.setTimeout(() => {
@@ -279,6 +286,7 @@ function programTimers() {
     clearTimeout: clear,
     clearInterval: clear,
     anySet: () => set.size > 0,
+    clearAll,
   };
 }
 
@@ -300,12 +308,19 @@ export interface Returned {
 export const runsOn = (returned: Returned): Promise<boolean> =>
   new Promise((settle) => void globalThis.setTimeout(() => settle(returned.timersSet()), 1));
 
+/** A program started in a terminal: how it is replaced in place, and its body settling. */
+export interface Started {
+  readonly hot: HotRuntime;
+  /** Settles when the program's body does. Every failure rejects, one that stops the program compiling included. */
+  readonly returned: Promise<Returned>;
+}
+
 /**
- * Run a bundled program with `process` bound to a stand-in for `terminal`.
- * Settles when the program's body does. Every failure rejects, one that stops
- * the program compiling included.
+ * Start a bundled program with `process` bound to a stand-in for `terminal`,
+ * and its hot runtime bound as `HOT_BINDING`, which clears, on a replacement,
+ * every timer the program set and every listener on its `process` and streams.
  */
-export async function runInTerminal(program: string, terminal: SimulatedTerminal): Promise<Returned> {
+export function startInTerminal(program: string, terminal: SimulatedTerminal): Started {
   // "use strict" because the program was written as a module, and a sloppy body
   // would turn an assignment to an undeclared name into a global — a leak.
   // [LAW:no-shared-mutable-globals] `console` is bound as `process` is, so the
@@ -314,7 +329,6 @@ export async function runInTerminal(program: string, terminal: SimulatedTerminal
   // host's. The body is a block so that a program declaring its own
   // `console` — every docs example's `const console = new Console()` — shadows
   // the parameter instead of redeclaring it, which is a SyntaxError.
-  const body = new AsyncFunction(...PARAMETERS, `"use strict"; {\n${program}\n}`);
   const timers = programTimers();
   let listened = false;
   const stdin: Input = new Input(terminal.isTTY, () => {
@@ -325,6 +339,21 @@ export async function runInTerminal(program: string, terminal: SimulatedTerminal
   // [LAW:one-source-of-truth] The env is copied per run: a program that sets
   // `process.env.X` changes its own run and not the terminal it was handed.
   const process = new SimulatedProcess(terminal, { ...terminal.env }, stdin);
-  await body(process, programConsole(process), timers.setTimeout, timers.setInterval, timers.clearTimeout, timers.clearInterval);
-  return { timersSet: timers.anySet };
+  const hot = new HotRuntime(() => {
+    timers.clearAll();
+    for (const events of [process, process.stdin, process.stdout]) events.removeAllListeners();
+  });
+  const returned = (async () => {
+    const body = new AsyncFunction(...PARAMETERS, `"use strict"; {\n${program}\n}`);
+    await body(process, programConsole(process), hot, timers.setTimeout, timers.setInterval, timers.clearTimeout, timers.clearInterval);
+    return { timersSet: timers.anySet };
+  })();
+  return { hot, returned };
 }
+
+/**
+ * Run a bundled program with `process` bound to a stand-in for `terminal`,
+ * where nothing will replace it. Settles when the program's body does. Every
+ * failure rejects, one that stops the program compiling included.
+ */
+export const runInTerminal = (program: string, terminal: SimulatedTerminal): Promise<Returned> => startInTerminal(program, terminal).returned;

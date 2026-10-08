@@ -103,8 +103,9 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
         return finish({ kind: "threw", report: message.report });
       case "exit":
         return ended({ kind: "exited", code: message.code });
-      // Answers a `mark`, which a static run never sends.
+      // Answers a `mark` or an `edit`, which a static run never sends.
       case "mark":
+      case "declined":
         return;
     }
   });

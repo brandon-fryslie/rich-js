@@ -21,7 +21,7 @@ import { defineComponent, h } from "vue";
 import { EXAMPLE_TERMINAL } from "../example-terminal.js";
 import LiveScreen from "./LiveScreen.js";
 
-const showcase = () => import("virtual:rich-live/showcase").then((module) => module.default);
+const showcase = () => import("virtual:rich-live/showcase").then((module) => ({ script: module.default, files: null }));
 
 export default defineComponent({
   name: "RichShowcase",

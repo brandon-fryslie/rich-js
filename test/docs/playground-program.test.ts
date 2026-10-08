@@ -8,10 +8,10 @@
 import { describe, expect, it } from "vitest";
 import stripAnsi from "strip-ansi";
 import { liveLibraryOnce } from "../../docs/.vitepress/example-runner.js";
-import { runInTerminal } from "../../docs/.vitepress/simulated-process.js";
+import { runInTerminal, startInTerminal } from "../../docs/.vitepress/simulated-process.js";
 import { EXAMPLE_TERMINAL } from "../../docs/.vitepress/example-terminal.js";
 import { NO_SETUP, PLAYGROUND_SOURCE, oneFile, programFiles, type ProgramFiles } from "../../docs/.vitepress/example-card.js";
-import { fileOf, playgroundProgram, playgroundScript, thrownAt } from "../../docs/.vitepress/theme/playground-program.js";
+import { fileOf, playgroundProgram, playgroundScript, rewriteImportMeta, thrownAt } from "../../docs/.vitepress/theme/playground-program.js";
 
 const library = liveLibraryOnce();
 
@@ -69,14 +69,19 @@ describe("the playground's program", { timeout: 60_000 }, () => {
     expect(lines(error)).toEqual([2]);
   });
 
-  it("refuses import.meta, which Sucrase passes and only a module may say, and runs nothing", async () => {
-    expect(playgroundProgram(one('process.stdout.write("ran");\nprocess.stdout.write(String(import.meta.url));'), "")).toMatchObject({
-      kind: "refused",
-      report: expect.stringMatching(/^SyntaxError: .*import\.meta/),
-    });
-    const { output, error } = await play('process.stdout.write("ran");\nprocess.stdout.write(String(import.meta.url));');
-    expect(output).toBe("");
-    expect(error).toBeInstanceOf(SyntaxError);
+  it("gives each file an import.meta of its own, its hot context", async () => {
+    const { output, error } = await play("process.stdout.write(typeof import.meta.hot?.accept);");
+    expect(error).toBeNull();
+    expect(output).toBe("function");
+  });
+
+  it("refuses any other read of import.meta at its line, which Node would answer and this could not", async () => {
+    for (const read of ["import.meta.url", "import.meta", "import.meta?.hot"]) {
+      const { output, error } = await play(`process.stdout.write("ran");\nconst x: unknown = ${read};`);
+      expect(output).toBe("");
+      expect((error as Error).message).toMatch(/reads only `import\.meta\.hot`/);
+      expect(lines(error)).toEqual([2]);
+    }
   });
 
   it("reports a thrown error at the line that threw", async () => {
@@ -169,5 +174,68 @@ describe("fileOf", () => {
     expect(fileOf("../rich-strip/app.js", "../_capabilities/x.ts")).toBe("../rich-strip/app.ts");
     expect(fileOf("./views/panel.js", "main.ts")).toBe("views/panel.ts");
     expect(fileOf("../app.js", "views/panel.ts")).toBe("app.ts");
+  });
+});
+
+describe("rewriteImportMeta", () => {
+  // Sucrase's tokenizer is internal to it (sucrase/dist/parser); this is what pins it.
+  it("rewrites import.meta, line breaks inside it kept, and not a string that spells it or a property named import", () => {
+    const code = 'const s = "import.meta";\nimport.meta.hot;\nimport\n  . meta;\no.import.meta;\no?.import.meta;';
+    expect(rewriteImportMeta(code)).toBe('const s = "import.meta";\n__richImportMeta.hot;\n__richImportMeta\n;\no.import.meta;\no?.import.meta;');
+  });
+});
+
+describe("hot replacement", { timeout: 60_000 }, () => {
+  /** A program on the live library started in a terminal, and how to replace it with `source`. */
+  async function started(source: string) {
+    const { script: lib } = await library();
+    const output: string[] = [];
+    const compiled = (code: string) => {
+      const program = playgroundProgram(one(code), lib);
+      if (program.kind === "refused") throw new Error(program.report);
+      return program;
+    };
+    const { hot, returned } = startInTerminal(compiled(source).script, { ...EXAMPLE_TERMINAL, write: (chunk) => output.push(String(chunk)), onInput: () => {}, exit: () => {} });
+    await returned;
+    return { output, replace: (next: string) => hot.replace(compiled(next).files) };
+  }
+
+  /** A program that writes every millisecond, `TICKS` times, and then stops, so no test leaves it running. */
+  const TICKS = 200;
+
+  /** The program a version of which counts on from what the last one carried, ticking every millisecond, writing `label` and the count. */
+  const counter = (label: string) =>
+    [
+      'const carried = (import.meta.hot?.data["n"] ?? 0) as number;',
+      "let n = carried;",
+      "import.meta.hot?.accept();",
+      'import.meta.hot?.dispose((data) => { data["n"] = n; });',
+      `const tick = setInterval(() => { n += 1; process.stdout.write(\`${label}\${n} \`); if (n === carried + ${TICKS}) clearInterval(tick); }, 1);`,
+      'process.stdin.on("data", () => {});',
+    ].join("\n");
+
+  const settle = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  it("runs a version that accepted in its place, carrying what its dispose wrote, and stops the last one's timers", async () => {
+    const { output, replace } = await started(counter("a"));
+    await settle(20);
+    const replaced = replace(counter("b"));
+    expect(replaced.kind).toBe("replaced");
+    const at = output.length;
+    const last = Number(output.at(-1)!.trim().slice(1));
+    await settle(20);
+    const after = output.slice(at).join("");
+    // Only the new version writes now, counting on from where the old one stopped.
+    expect(after).not.toMatch(/a\d/);
+    expect(after.trim().split(" ")[0]).toBe(`b${last + 1}`);
+  });
+
+  it("declines an edit for a program that never accepted, which runs on untouched", async () => {
+    const { output, replace } = await started(`let k = 0;\nconst tick = setInterval(() => { process.stdout.write("a"); if (++k === ${TICKS}) clearInterval(tick); }, 1);`);
+    expect(replace(counter("b")).kind).toBe("declined");
+    await settle(10);
+    const at = output.length;
+    await settle(10);
+    expect(output.slice(at).join("")).toMatch(/^a+$/);
   });
 });

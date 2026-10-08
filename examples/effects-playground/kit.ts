@@ -35,6 +35,10 @@ export interface Pace {
  * Play `make` on the demo's strip and status line, a frame `pace.fps` times a
  * second, each moving curve time by `pace.step`. Every `pace.every` of curve
  * time a transition starts over. It plays until the terminal is taken away.
+ *
+ * An edit of the card is run in place (`import.meta.hot`,
+ * examples/_capabilities/hot-context.ts): the clock is carried into the new
+ * version, which picks up at the frame and curve time the last one reached.
  */
 export function play(make: Make, pace: Pace): void {
   const console = new Console();
@@ -51,8 +55,13 @@ export function play(make: Make, pace: Pace): void {
     (made = made?.start === start ? made : { start, effects: subjects.map((s) => make(s, start)) }).effects;
 
   const live = new Live(undefined, { console, altScreen: true, autoRefresh: false });
-  let frame = 0;
-  let t = 0;
+  // Carried as the last version left it; the first starts at 0.
+  const carried = (import.meta.hot?.data["clock"] ?? { frame: 0, t: 0 }) as { frame: number; t: number };
+  let { frame, t } = carried;
+  import.meta.hot?.accept();
+  import.meta.hot?.dispose((data) => {
+    data["clock"] = { frame, t };
+  });
   const draw = (): void => {
     const start = Number.isFinite(pace.every) ? Math.floor(t / pace.every) * pace.every : 0;
     const effects = effectsFrom(start);

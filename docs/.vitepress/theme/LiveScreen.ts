@@ -10,10 +10,11 @@
  * motion gets one still frame instead, and a button to run it live. It wears
  * the theme of the site's colour mode, as static output does.
  *
- * `program` makes the script to run, and is asked afresh for each run: the
+ * `program` makes the program to run, and is asked afresh for each run: the
  * terminal, and the worker it runs in, are fetched only when it first scrolls
- * into view. A new `program` is a new program: it runs at once if the
- * terminal is on screen, and when it next scrolls into view if not.
+ * into view. A new `program` is an edit: on screen it runs at once, in place
+ * of the running one if that one accepts it (`LiveTerminal.edit`), and off
+ * screen when it next scrolls into view.
  *
  * Its `terminal` and `contrast` are its program's (example-card.ts);
  * everything else about the terminal is `EXAMPLE_TERMINAL`'s. While it has focus every
@@ -25,7 +26,7 @@ import { useData } from "vitepress";
 import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "../example-terminal.js";
 import type { Contrast } from "../example-card.js";
 import type { TerminalSize } from "../terminal-size.js";
-import { LEAVE_HINT, LiveTerminal, MINIMUM_CONTRAST, elementFont, type LiveState, type RunMode } from "./live-terminal.js";
+import { LEAVE_HINT, LiveTerminal, MINIMUM_CONTRAST, elementFont, type LiveProgram, type LiveState, type RunMode } from "./live-terminal.js";
 
 /** What the button does, said for each state the terminal can be in. */
 const BUTTON: Record<LiveState["kind"], string> = {
@@ -39,7 +40,7 @@ const BUTTON: Record<LiveState["kind"], string> = {
 export default defineComponent({
   name: "LiveScreen",
   props: {
-    program: { type: Function as PropType<() => Promise<string>>, required: true },
+    program: { type: Function as PropType<() => Promise<LiveProgram>>, required: true },
     terminal: { type: Object as PropType<TerminalSize>, required: true },
     contrast: { type: String as PropType<Contrast>, required: true },
   },
@@ -86,18 +87,20 @@ export default defineComponent({
     // only the newest ask may start a program: a program that loads after the
     // terminal has scrolled away, or after a newer program, is no one's.
     let asked = 0;
-    const start = (mode: RunMode) => {
+    /** Run the program from the start, or as an edit of the one running. */
+    const start = (mode: RunMode, how: "run" | "edit") => {
       const mine = ++asked;
       const current = () => mine === asked;
       // A terminal is made, and what went wrong cleared, only for the newest ask.
       void props
         .program()
-        .then(async (script) => {
+        .then(async (program) => {
           if (!current()) return;
           const { live } = await made(screen.value!);
           if (!current()) return;
           failure.value = null;
-          live.run(script, mode);
+          if (how === "edit") live.edit(program, mode);
+          else live.run(program.script, mode);
         })
         .catch((error: unknown) => {
           if (current()) failure.value = `The live terminal could not start: ${error instanceof Error ? error.message : String(error)}`;
@@ -110,7 +113,7 @@ export default defineComponent({
 
     watch(
       () => props.program,
-      () => onScreen && start(motion),
+      () => onScreen && start(motion, "edit"),
     );
 
     onMounted(() => {
@@ -120,7 +123,7 @@ export default defineComponent({
       // entry is where the terminal is now.
       observer = new IntersectionObserver((entries) => {
         onScreen = entries.at(-1)!.isIntersecting;
-        if (onScreen) start(motion);
+        if (onScreen) start(motion, "run");
         else stop();
       });
       observer.observe(element);
@@ -153,7 +156,7 @@ export default defineComponent({
         h("div", { class: "rich-live-bar" }, [
           ...(focused.value ? [h("span", { class: "rich-live-hint" }, LEAVE_HINT)] : []),
           ...(failure.value === null ? [] : [h("span", { class: "rich-live-failure", role: "alert" }, failure.value)]),
-          h("button", { type: "button", class: "rich-live-button", onClick: () => start("live") }, BUTTON[state.value.kind]),
+          h("button", { type: "button", class: "rich-live-button", onClick: () => start("live", "run") }, BUTTON[state.value.kind]),
         ]),
       ]);
   },
