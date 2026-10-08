@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-345",
-      "ref": "refs/pull/345/merge",
-      "sha": "6f7d9465488c5487b7004a2faeef5798d31dbd1d",
-      "timestamp": "2026-10-08T03:08:23.245Z",
-      "commits": [
-        {
-          "sha": "6f7d9465488c5487b7004a2faeef5798d31dbd1d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T21:06:56-06:00",
-          "message": "Merge 4819367a27a045878a03ba2ab233fc1e07de22f3 into 01cb640835c0f3c860d0e99b36dd95641a61f0c0\n"
-        },
-        {
-          "sha": "4819367a27a045878a03ba2ab233fc1e07de22f3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T21:06:52-06:00",
-          "message": "fix(effects-feel): read a strip's text cells off the render its colours come from (rich-effects-feel-tupd)\n\nA seam is told by what drew it, not by its glyph: the strip's joiner stamps\nevery seam cell with an owner, so an ASCII lead that draws nothing no longer\nshifts the text set one column off the colours it is matched against.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "01cb640835c0f3c860d0e99b36dd95641a61f0c0",
-      "timestamp": "2026-10-08T03:04:14.577Z",
+      "sha": "99b2f5aa52d71219493244790c584a410f3dab0c",
+      "timestamp": "2026-10-08T03:14:37.749Z",
       "commits": [
         {
-          "sha": "01cb640835c0f3c860d0e99b36dd95641a61f0c0",
+          "sha": "99b2f5aa52d71219493244790c584a410f3dab0c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T21:03:13-06:00",
-          "message": "fix(pretty): quote an object key that is not a name or an index, as Rich reprs it (rich-pretty-h3uh) (#344)\n\n* fix(pretty): quote an object key that is not a name or an index, as Rich reprs it (rich-pretty-h3uh)\n\n* fix(pretty): one quoting for keys and strings, escaping what does not print, as Rich's repr (rich-pretty-h3uh)\n\nReview: DEL, C1 and format characters passed raw through JSON.stringify; a\nquoted key skipped maxString; a default-ignorable or 20-digit key read as a\ndifferent bare key."
+          "timestamp": "2026-10-07T21:13:12-06:00",
+          "message": "fix(effects-feel): read a strip's text cells off the render its colours come from (rich-effects-feel-tupd) (#345)\n\nA seam is told by what drew it, not by its glyph: the strip's joiner stamps\nevery seam cell with an owner, so an ASCII lead that draws nothing no longer\nshifts the text set one column off the colours it is matched against."
         }
       ]
     }
