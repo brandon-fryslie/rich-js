@@ -9,9 +9,11 @@
  * edit of that literal, which the card makes in its editor like any other: the
  * output follows as it follows typing, and reset puts the sliders back with
  * the code. A slider spans what its value's range is in the code the card
- * opened (`opened`), so dragging it does not move its own ends.
+ * opened (`opened`), so dragging it does not move its own ends. A box is left
+ * alone while it has focus, so a number half typed is not put back under the
+ * reader by a render, and an entry that is no number is put back, not written.
  */
-import { defineComponent, h, type PropType } from "vue";
+import { defineComponent, h, type PropType, type VNode } from "vue";
 import { EASES } from "../../../src/core/easing.js";
 import { range, spelled, tunables, type Tunable } from "../tunables.js";
 
@@ -27,9 +29,10 @@ export default defineComponent({
     write: { type: Function as PropType<(from: number, to: number, spelling: string) => void>, required: true },
   },
   setup(props) {
-    const openedValues = () => new Map(tunables(props.opened).map((t) => [t.name, t.value]));
+    // The code the card opened never changes under a card's sliders: each file has its own.
+    const spanned = new Map(tunables(props.opened).map((t) => [t.name, t.value]));
 
-    const control = (t: Tunable, spanned: ReadonlyMap<string, number | string>) => {
+    const control = (t: Tunable) => {
       const label = h("span", { class: "rich-sliders-name", title: t.name }, t.name);
       const set = (spelling: string) => props.write(t.from, t.to, spelling);
       if (t.kind === "ease") {
@@ -44,17 +47,25 @@ export default defineComponent({
       }
       const from = spanned.get(t.name);
       const { min, max, step } = range(typeof from === "number" ? from : t.value);
-      const number = (event: Event) => set(spelled(Number((event.target as HTMLInputElement).value)));
+      const shown = String(t.value);
+      const number = (event: Event) => {
+        const input = event.target as HTMLInputElement;
+        // [LAW:parse-dont-validate] An empty or unreadable box reads as NaN, and the literal is left as it is.
+        if (Number.isNaN(input.valueAsNumber)) input.value = shown;
+        else set(spelled(input.valueAsNumber));
+      };
+      // The box has no `value` prop: Vue would put it back on every render, typing or not.
+      const show = (vnode: VNode) => {
+        const box = vnode.el as HTMLInputElement;
+        if (box !== document.activeElement) box.value = shown;
+      };
       return h("label", { class: "rich-sliders-control", key: t.name }, [
         label,
         h("input", { type: "range", min, max, step, value: t.value, "aria-label": t.name, onInput: number }),
-        h("input", { type: "number", step, value: t.value, "aria-label": `${t.name}, typed`, onChange: number }),
+        h("input", { type: "number", step, "aria-label": `${t.name}, typed`, onChange: number, onVnodeMounted: show, onVnodeUpdated: show }),
       ]);
     };
 
-    return () => {
-      const spanned = openedValues();
-      return h("div", { class: "rich-sliders", role: "group", "aria-label": "Values in the code" }, tunables(props.source).map((t) => control(t, spanned)));
-    };
+    return () => h("div", { class: "rich-sliders", role: "group", "aria-label": "Values in the code" }, tunables(props.source).map(control));
   },
 });

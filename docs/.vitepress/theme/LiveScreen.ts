@@ -15,9 +15,8 @@
  * into view. A new `program` is a new program: it runs at once if the
  * terminal is on screen, and when it next scrolls into view if not.
  *
- * Its `terminal` is the size the card gives it (example-card.ts), and its
- * `contrast` the card's too; everything else about the terminal is
- * `EXAMPLE_TERMINAL`'s. While it has focus every
+ * Its `terminal` and `contrast` are its program's (example-card.ts);
+ * everything else about the terminal is `EXAMPLE_TERMINAL`'s. While it has focus every
  * key is the program's, so it says so: a ring round it, and the way out
  * (`LEAVE_HINT`) in its bar.
  */

@@ -62,11 +62,17 @@ export function tunables(source: string): Tunable[] {
   return found.sort((a, b) => a.from - b.from);
 }
 
-/** What a slider over `value` spans: a share's 0–1, or out to four times a larger number. */
+/**
+ * What a slider over `value` spans: a share's 0–1, or out to four times a
+ * larger number. A larger positive number is a count, a duration or a rate,
+ * which nothing breaks (`frameRate(0)` throws, a curve of 0 seconds has no
+ * shape), so its slider starts a step above it.
+ */
 export function range(value: number): { readonly min: number; readonly max: number; readonly step: number } {
   if (value >= 0 && value <= 1) return { min: 0, max: 1, step: 0.01 };
   const max = 4 * Math.abs(value);
-  return Number.isInteger(value) ? { min: value < 0 ? -max : 0, max, step: 1 } : { min: value < 0 ? -max : 0, max, step: max / 400 };
+  const step = Number.isInteger(value) ? 1 : max / 400;
+  return { min: value < 0 ? -max : step, max, step };
 }
 
 /** A number as a program spells it: no more digits than it means. */

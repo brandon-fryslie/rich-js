@@ -33,13 +33,13 @@ export interface EffectCard {
 
 /** Every effect's card, in the order the effects-feel demo lists them. */
 export async function effectCards(): Promise<readonly EffectCard[]> {
-  const { terminal, options } = cardJson(EFFECTS_DIRECTORY);
+  const { screen, options } = cardJson(EFFECTS_DIRECTORY);
   const { script } = await cardLibrary();
   const programs = effectPrograms();
   const playground = playgroundHref(EFFECTS_PAGE);
   return Promise.all(
     EFFECTS.map(async (effect) => {
-      const program = cardProgram(EFFECTS_DIRECTORY, { name: `${effect}.ts`, code: programs[effect] }, terminal, script);
+      const program = cardProgram(EFFECTS_DIRECTORY, { name: `${effect}.ts`, code: programs[effect] }, screen, script);
       return { effect, card: { run: "browser", program, options, ...RUNNING, tryIt: { playground, program: await encodeProgram(program) } } };
     }),
   );

@@ -98,3 +98,21 @@ test("typing a number in the code moves its slider", async ({ page }) => {
   await expect(editor).toContainText("const STEP = 0.5;");
   await expect(slider(card, "STEP")).toHaveValue("0.5");
 });
+
+test("a box emptied leaves the literal as it is, and shows it again", async ({ page }) => {
+  const errors = await openPage(page);
+  const card = cardOf(page, "pulse");
+  const box = card.getByRole("spinbutton", { name: "FPS, typed", exact: true });
+  await expect(box).toHaveValue("30", LOADED);
+  await box.fill("");
+  await box.press("Enter");
+  await expect(box).toHaveValue("30");
+  expect(await code(card)).toContain("const FPS = 30;");
+  await expect(card.locator(".rich-example-edited")).toContainText("unedited");
+
+  await box.fill("12");
+  await box.press("Enter");
+  await expect.poll(() => code(card)).toContain("const FPS = 12;");
+  await expect(slider(card, "FPS")).toHaveValue("12");
+  expect(errors).toEqual([]);
+});

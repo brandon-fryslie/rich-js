@@ -87,7 +87,6 @@ import {
   type CardOptions,
   type CardProgram,
   type Codes,
-  type Contrast,
 } from "../example-card.js";
 import type { Drawn } from "../example-fragments.js";
 import { decodeProgram, encodeProgram } from "../playground-hash.js";
@@ -331,12 +330,11 @@ function staticOutlet(card: Extract<CardData, { readonly run: "build" }>, root: 
 }
 
 /**
- * `program` running in a live terminal of its size, showing colour at
- * `contrast`. An edit that parses is a new program, which the terminal
+ * `program` running in a live terminal of its size and contrast. An edit that parses is a new program, which the terminal
  * restarts on; one that does not leaves the terminal running the last that did.
  */
-function liveOutlet(program: CardProgram, look: { readonly label: string; readonly caption: string }, contrast: Contrast): Outlet {
-  const { terminal } = program;
+function liveOutlet(program: CardProgram, look: { readonly label: string; readonly caption: string }): Outlet {
+  const { terminal, contrast } = program;
   const start = codesOf(program);
   // Made once and kept: each scroll into view and each Restart asks for it.
   const startProgram = loader(async () => {
@@ -385,7 +383,7 @@ function decidedOutlet(program: CardProgram, root: Ref<HTMLElement | null>): Out
       if (!current()) return SHOWN;
       if (outcome.kind === "shown") live.value = null;
       if (outcome.kind !== "terminal") return outcome;
-      if (current()) live.value = liveOutlet(withCodes(program, codes), RUNNING, PLAIN_CARD.contrast);
+      if (current()) live.value = liveOutlet(withCodes(program, codes), RUNNING);
       return SHOWN;
     },
   };
@@ -685,7 +683,7 @@ function tryItLink(program: CardProgram, tryIt: { readonly playground: string; r
 function editableView(card: EditableCard, slots: Slots): () => VNode {
   const root = ref<HTMLElement | null>(null);
   const host = ref<HTMLElement | null>(null);
-  const outlet = card.run === "build" ? staticOutlet(card, root) : liveOutlet(card.program, card, card.options.contrast);
+  const outlet = card.run === "build" ? staticOutlet(card, root) : liveOutlet(card.program, card);
   const tryIt = tryItLink(card.program, card.tryIt, "Try it");
   const core = cardCore(card.program, card.options, outlet, (codes, current) => void tryIt.link(codes, current));
 
@@ -803,7 +801,7 @@ export const RichDemo = defineComponent({
   setup(props) {
     const { card } = props;
     const tryIt = tryItLink(card.program, card.tryIt, "Open in playground");
-    const live = () => liveOutlet(card.program, card, card.options.contrast);
+    const live = () => liveOutlet(card.program, card);
     return openCardView(card.program, card.options, live, (codes, current) => void tryIt.link(codes, current), () => [tryIt.view()]).render;
   },
 });

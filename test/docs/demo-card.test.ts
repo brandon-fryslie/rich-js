@@ -33,7 +33,7 @@ function demo(files: Readonly<Record<string, string>>): string {
 }
 
 /** `demo`'s program, held to running on the live library. */
-const programOf = async (directory: string) => demoProgram(directory, (await library()).script);
+const programOf = async (directory: string) => demoProgram(directory, cardJson(directory).screen, (await library()).script);
 
 describe("a demo's program", { timeout: 60_000 }, () => {
   it("is its entry, then every file it reaches by a relative import, once each, a file beside its directory included", async () => {
@@ -79,16 +79,16 @@ describe("a demo's program", { timeout: 60_000 }, () => {
 });
 
 describe("a demo's card.json", () => {
-  it("gives its terminal's size, and the card shows its program as a docs block's card does", () => {
+  it("gives its terminal's size, readable, and the card shows its program as a docs block's card does", () => {
     expect(cardJson(demo({ [CARD_OPTIONS]: '{ "terminal": { "columns": 90, "rows": 28 } }' }))).toEqual({
-      terminal: { columns: 90, rows: 28 },
+      screen: { terminal: { columns: 90, rows: 28 }, contrast: "readable" },
       options: PLAIN_CARD,
     });
   });
 
   it("may turn on the card's sliders and show every colour as drawn", () => {
     const json = '{ "terminal": { "columns": 90, "rows": 28 }, "sliders": true, "contrast": "as drawn" }';
-    expect(cardJson(demo({ [CARD_OPTIONS]: json })).options).toEqual({ sliders: true, contrast: "as drawn" });
+    expect(cardJson(demo({ [CARD_OPTIONS]: json }))).toMatchObject({ screen: { contrast: "as drawn" }, options: { sliders: true } });
   });
 
   it.each([
@@ -143,7 +143,7 @@ describe("dropdown-demo's card", { timeout: 60_000 }, () => {
     expect(card.program.files.map(({ name, code }) => [name, code])).toEqual(
       ["main.ts", "app.ts"].map((name) => [name, readFileSync(path.join(directory, name), "utf-8")]),
     );
-    expect(card.program.terminal).toEqual(cardJson(directory).terminal);
+    expect(card.program).toMatchObject(cardJson(directory).screen);
     // "Open in playground" opens it at that size, not the example terminal's.
     expect(await decodeProgram(card.tryIt.program)).toEqual(card.program);
   });

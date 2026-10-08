@@ -52,23 +52,39 @@ export interface CardFile {
 }
 
 /**
+ * The colours a program's live terminal shows: kept readable against the
+ * terminal's ground (`READABLE_CONTRAST` in theme/live-terminal.ts), or every
+ * one as the program drew it, for a program that paints its own ground and
+ * means a colour to sink into it, as an effect fading out does.
+ */
+export const CONTRASTS = ["readable", "as drawn"] as const;
+export type Contrast = (typeof CONTRASTS)[number];
+
+/**
  * What a card edits: its files, the entry first, each shown as a tab, and the
- * size of the terminal it runs in. A docs card's program is one file, its
- * block in the setup the block runs on, at `EXAMPLE_SIZE`, and it shows no
- * tabs; a demo's is drawn for a size of its own (demo-card.ts). "Try it"
- * carries one to the playground (playground-hash.ts), which opens it as the
- * card held it, the setup still locked and labelled, at its size.
+ * size and contrast of the terminal it runs in. A docs card's program is one
+ * file, its block in the setup the block runs on, at `EXAMPLE_SIZE` and kept
+ * readable, and it shows no tabs; a demo's is drawn for a terminal of its own
+ * (demo-card.ts). "Try it" carries one to the playground (playground-hash.ts),
+ * which opens it as the card held it, the setup still locked and labelled, in
+ * its terminal: the contrast is the program's, not the card's, because a
+ * program drawn to sink into its ground looks broken in any other.
  */
 export interface CardProgram {
   readonly files: readonly [CardFile, ...CardFile[]];
   readonly terminal: TerminalSize;
+  readonly contrast: Contrast;
 }
 
 /** The name of a docs block's one file. */
 export const PLAYGROUND_SOURCE = "playground.ts";
 
-/** A one-file program: `code`, in `setup`, at `EXAMPLE_SIZE`. */
-export const oneFile = (setup: CardSetup, code: string): CardProgram => ({ files: [{ name: PLAYGROUND_SOURCE, setup, code }], terminal: EXAMPLE_SIZE });
+/** A one-file program: `code`, in `setup`, at `EXAMPLE_SIZE`, kept readable. */
+export const oneFile = (setup: CardSetup, code: string): CardProgram => ({
+  files: [{ name: PLAYGROUND_SOURCE, setup, code }],
+  terminal: EXAMPLE_SIZE,
+  contrast: "readable",
+});
 
 /** What a reader has made of a program's files: the code of each, in the program's order. */
 export type Codes = readonly string[];
@@ -113,25 +129,16 @@ export const RUNNING = { label: "Live", caption: "the code above, running in you
 export const PRINTS_NOTHING = "This example prints nothing when it runs.";
 
 /**
- * The colours a card's live terminal shows: kept readable against the
- * terminal's ground (`READABLE_CONTRAST` in theme/live-terminal.ts), or every
- * one as the program drew it, for a program that paints its own ground and
- * means a colour to sink into it, as an effect fading out does.
- */
-export type Contrast = "readable" | "as drawn";
-
-/**
  * How a card shows its program, beyond the program itself, which a link to
  * the playground carries without these: whether it has a slider over each
- * named number in its code (tunables.ts), and the contrast of its live terminal.
+ * named number in its code (tunables.ts).
  */
 export interface CardOptions {
   readonly sliders: boolean;
-  readonly contrast: Contrast;
 }
 
 /** How a docs block's card shows its program, and a demo's unless its card.json says otherwise. */
-export const PLAIN_CARD: CardOptions = { sliders: false, contrast: "readable" };
+export const PLAIN_CARD: CardOptions = { sliders: false };
 
 /** What every card a reader can edit carries: its program, and the panel under it. */
 interface Editable {

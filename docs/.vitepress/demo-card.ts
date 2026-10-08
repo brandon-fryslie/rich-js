@@ -36,10 +36,10 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { REPO_ROOT } from "../../scripts/repo-facts.js";
 import { DEMO_ENTRY } from "./demo-entry.js";
-import { NO_SETUP, PLAIN_CARD, RUNNING, type CardData, type CardFile, type CardOptions, type CardProgram, type Contrast } from "./example-card.js";
+import { CONTRASTS, NO_SETUP, PLAIN_CARD, RUNNING, type CardData, type CardFile, type CardOptions, type CardProgram } from "./example-card.js";
 import { liveLibraryOnce, playgroundHref, refuseUnrunnable } from "./example-runner.js";
 import { encodeProgram } from "./playground-hash.js";
-import { terminalSize, type TerminalSize } from "./terminal-size.js";
+import { terminalSize } from "./terminal-size.js";
 import { fileOf } from "./theme/playground-program.js";
 
 /** A demo's card: a program the browser runs in a live terminal. */
@@ -58,14 +58,14 @@ function relativeImports(name: string, source: string): string[] {
 
 /**
  * The program whose entry is `entry`, a file of `directory`, and every file
- * it reaches by a relative import, in the order it reaches them, at
- * `terminal`'s size, refused unless the card runs it on `library`, the live
+ * it reaches by a relative import, in the order it reaches them, in
+ * `screen`'s terminal, refused unless the card runs it on `library`, the live
  * library's script. A relative import may not leave `examples/`, the directory
  * `directory` is in, since a demo reaches the library by its published names.
  * The entry is handed in, so it need not be a file on disk: an effect's card
  * opens on a program made from the library's own source (effect-cards.ts).
  */
-export function cardProgram(directory: string, entry: { readonly name: string; readonly code: string }, terminal: TerminalSize, library: string): CardProgram {
+export function cardProgram(directory: string, entry: { readonly name: string; readonly code: string }, screen: Screen, library: string): CardProgram {
   const files: CardFile[] = [];
   const at = (name: string): string => path.relative(REPO_ROOT, path.join(directory, name));
   const reach = (name: string, code: string): void => {
@@ -81,46 +81,47 @@ export function cardProgram(directory: string, entry: { readonly name: string; r
   };
   reach(entry.name, entry.code);
   const [first, ...rest] = files;
-  const program: CardProgram = { files: [first!, ...rest], terminal };
+  const program: CardProgram = { files: [first!, ...rest], ...screen };
   refuseUnrunnable(at, "its card runs it", program, library);
   return program;
 }
 
-/** The program of the demo in `directory`: its entry, `main.ts`, and what it reaches, at its card's size (`cardJson`). */
-export function demoProgram(directory: string, library: string): CardProgram {
+/** The program of the demo in `directory`: its entry, `main.ts`, and what it reaches, in `screen`'s terminal (its `cardJson`'s). */
+export function demoProgram(directory: string, screen: Screen, library: string): CardProgram {
   const entry = { name: DEMO_ENTRY, code: readFileSync(path.join(directory, DEMO_ENTRY), "utf-8") };
-  return cardProgram(directory, entry, cardJson(directory).terminal, library);
+  return cardProgram(directory, entry, screen, library);
 }
 
 /** The file beside a card's entry that says what its card is. */
 export const CARD_OPTIONS = "card.json";
 
-/** What a card.json says: the size of the card's terminal, and how the card shows its program. */
+/** The terminal a card's program runs in: its size and its contrast. */
+export type Screen = Pick<CardProgram, "terminal" | "contrast">;
+
+/** What a card.json says: the terminal the card's program runs in, and how the card shows it. */
 export interface CardJson {
-  readonly terminal: TerminalSize;
+  readonly screen: Screen;
   readonly options: CardOptions;
 }
-
-const CONTRASTS: readonly Contrast[] = ["readable", "as drawn"];
 
 /**
  * [LAW:parse-dont-validate] What `card.json` in `directory` says, or the
  * build fails naming the file: `{ "terminal": <size> }`, and optionally
  * `"sliders": true` and `"contrast": "as drawn"`, each otherwise as a docs
- * block's card has it (`PLAIN_CARD`).
+ * block's card has it (`PLAIN_CARD`, `oneFile`).
  */
 export function cardJson(directory: string): CardJson {
   const file = path.join(directory, CARD_OPTIONS);
   try {
     const read: unknown = JSON.parse(readFileSync(file, "utf-8"));
-    const { terminal, sliders = PLAIN_CARD.sliders, contrast = PLAIN_CARD.contrast, ...rest } =
+    const { terminal, sliders = PLAIN_CARD.sliders, contrast = "readable", ...rest } =
       typeof read === "object" && read !== null ? (read as { readonly terminal?: unknown; readonly sliders?: unknown; readonly contrast?: unknown }) : {};
     const unknown = Object.keys(rest);
     if (unknown.length > 0) throw new Error(`it has no ${unknown.map((key) => JSON.stringify(key)).join(", ")}`);
     if (typeof sliders !== "boolean") throw new Error(`"sliders" is true or false`);
     const known = CONTRASTS.find((c) => c === contrast);
     if (known === undefined) throw new Error(`"contrast" is one of ${CONTRASTS.map((c) => JSON.stringify(c)).join(", ")}`);
-    return { terminal: terminalSize(terminal), options: { sliders, contrast: known } };
+    return { screen: { terminal: terminalSize(terminal), contrast: known }, options: { sliders } };
   } catch (error) {
     throw new Error(
       `${path.relative(REPO_ROOT, file)}: must be { "terminal": <size>, "sliders"?: <boolean>, "contrast"?: <contrast> }: ${error instanceof Error ? error.message : String(error)}`,
@@ -135,11 +136,12 @@ export const cardLibrary = liveLibraryOnce();
 /** The card the page of the demo in `examples/<demo>/` shows. */
 export async function demoCard(demo: string): Promise<DemoCard> {
   const directory = path.join(REPO_ROOT, "examples", demo);
-  const program = demoProgram(directory, (await cardLibrary()).script);
+  const { screen, options } = cardJson(directory);
+  const program = demoProgram(directory, screen, (await cardLibrary()).script);
   return {
     run: "browser",
     program,
-    options: cardJson(directory).options,
+    options,
     ...RUNNING,
     tryIt: { playground: playgroundHref(`demos/${demo}.md`), program: await encodeProgram(program) },
   };

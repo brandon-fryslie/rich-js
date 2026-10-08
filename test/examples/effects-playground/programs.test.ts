@@ -7,10 +7,11 @@
  */
 import { readFileSync } from "node:fs";
 import stripAnsi from "strip-ansi";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cardLibrary } from "../../../docs/.vitepress/demo-card.js";
 import { programFiles, withCodes, type CardProgram } from "../../../docs/.vitepress/example-card.js";
-import { effectCards } from "../../../docs/.vitepress/effect-cards.js";
+import { effectCards, type EffectCard } from "../../../docs/.vitepress/effect-cards.js";
+import { decodeProgram } from "../../../docs/.vitepress/playground-hash.js";
 import { runInTerminal } from "../../../docs/.vitepress/simulated-process.js";
 import { playgroundScript } from "../../../docs/.vitepress/theme/playground-program.js";
 import { EFFECTS_FILE, effectPrograms } from "../../../examples/effects-playground/programs.js";
@@ -52,7 +53,11 @@ describe("an effect's program", () => {
 });
 
 describe("an effect's card", { timeout: 120_000 }, () => {
-  const cards = effectCards();
+  let cards: readonly EffectCard[];
+  // Made where a failure is reported against this block, not as a rejection nobody awaits yet.
+  beforeAll(async () => {
+    cards = await effectCards();
+  });
 
   /** The bytes `program` writes in its first `ms` of running in its card's terminal. */
   async function drawn(program: CardProgram, ms = 340): Promise<string> {
@@ -72,19 +77,24 @@ describe("an effect's card", { timeout: 120_000 }, () => {
     return output.join("");
   }
 
-  const cardOf = async (effect: string) => (await cards).find((c) => c.effect === effect)!.card;
+  const cardOf = (effect: string) => cards.find((c) => c.effect === effect)!.card;
 
-  it("is every effect's, in the demo's order, each with sliders and every colour as drawn", async () => {
-    expect((await cards).map((c) => c.effect)).toEqual([...EFFECTS]);
-    for (const { effect, card } of await cards) {
+  it("is every effect's, in the demo's order, each with sliders and every colour as drawn", () => {
+    expect(cards.map((c) => c.effect)).toEqual([...EFFECTS]);
+    for (const { effect, card } of cards) {
       expect(card.program.files.map((file) => file.name)).toEqual([`${effect}.ts`, "kit.ts", "../effects-feel/subjects.ts"]);
       expect(card.program.files[0].code).toBe(programs[effect]);
-      expect(card.options).toEqual({ sliders: true, contrast: "as drawn" });
+      expect(card.program.contrast).toBe("as drawn");
+      expect(card.options).toEqual({ sliders: true });
     }
   });
 
+  it("carries every colour as drawn to the playground, where the effect is shown as on the card", async () => {
+    for (const { card } of cards) expect((await decodeProgram(card.tryIt.program)).contrast).toBe("as drawn");
+  });
+
   it.each(EFFECTS)("%s runs in its card, drawing the demo's strip and status line", async (effect) => {
-    const shown = stripAnsi(await drawn((await cardOf(effect)).program));
+    const shown = stripAnsi(await drawn(cardOf(effect).program));
     // Ten frames at the demo's 30 a second, the first numbered 0.
     expect(shown).toContain("frame 9 · curve time 2.25 · 30 fps");
     expect(shown).toContain("claude.ai");
@@ -92,7 +102,7 @@ describe("an effect's card", { timeout: 120_000 }, () => {
   });
 
   it("a frame is drawn the same whatever FPS says: it sets only how often one comes", async () => {
-    const { program } = await cardOf("pulse");
+    const { program } = cardOf("pulse");
     const atFps = (fps: number): CardProgram => withCodes(program, [programs.pulse.replace(/const FPS = \d+;/, `const FPS = ${fps};`), ...program.files.slice(1).map((f) => f.code)]);
     // Each frame's own synchronized update, its heading (which names the rate) and the padding it moves taken out.
     const frames = (bytes: string): string[] =>
@@ -108,10 +118,25 @@ describe("an effect's card", { timeout: 120_000 }, () => {
   });
 
   it("a curve edited in the code is the curve it plays", async () => {
-    const { program } = await cardOf("pulse");
+    const { program } = cardOf("pulse");
     const still = programs.pulse.replace(/swing: [\d.]+ \}/, "swing: 0 }");
     expect(still).not.toBe(programs.pulse);
     const edited = await drawn(withCodes(program, [still, ...program.files.slice(1).map((f) => f.code)]));
     expect(edited).not.toBe(await drawn(program));
+  });
+
+  it("a transition starts over every CURVE.seconds × 1.25 of curve time, from where it began", async () => {
+    const { program } = cardOf("fade");
+    // A second's curve starts over each 1.25 of curve time: every five frames at STEP 0.25.
+    const brief = programs.fade.replace(/seconds: [\d.]+,/, "seconds: 1,");
+    expect(brief).not.toBe(programs.fade);
+    const frames = (await drawn(withCodes(program, [brief, ...program.files.slice(1).map((f) => f.code)])))
+      .split("\x1b[?2026h")
+      .slice(1)
+      .map((frame) => frame.replace(/frame [^\x1b]*/, "").replace(/ +/g, " "));
+    expect(frames).toHaveLength(10);
+    // It moves within a pass, and each frame of the second pass is the first's.
+    expect(frames[2]).not.toBe(frames[0]);
+    expect(frames.slice(5)).toEqual(frames.slice(0, 5));
   });
 });

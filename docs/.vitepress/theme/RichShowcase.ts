@@ -18,7 +18,6 @@
  * page's first download should carry.
  */
 import { defineComponent, h } from "vue";
-import { PLAIN_CARD } from "../example-card.js";
 import { EXAMPLE_TERMINAL } from "../example-terminal.js";
 import LiveScreen from "./LiveScreen.js";
 
@@ -35,6 +34,6 @@ export default defineComponent({
         // The terminal the card runs its program in, for the stylesheet to size it by.
         style: { "--rich-example-columns": EXAMPLE_TERMINAL.columns, "--rich-example-rows": EXAMPLE_TERMINAL.rows },
       },
-      [h("div", { class: "rich-example rich-example-card" }, [h("div", { class: "rich-example-output" }, [h(LiveScreen, { program: showcase, terminal: EXAMPLE_TERMINAL, contrast: PLAIN_CARD.contrast })])])],
+      [h("div", { class: "rich-example rich-example-card" }, [h("div", { class: "rich-example-output" }, [h(LiveScreen, { program: showcase, terminal: EXAMPLE_TERMINAL, contrast: "readable" })])])],
     ),
 });
