@@ -4,14 +4,14 @@
 
 import { asCellCol, cellLen, setCellSize } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
-import type { RichText } from "../core/text.js";
-import { Style, NULL_STYLE } from "../core/style.js";
+import { resolveStyle, type RichText } from "../core/text.js";
+import type { Style } from "../core/style.js";
 import type {
   Renderable,
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawable, getStyle } from "../core/protocol.js";
+import { drawable } from "../core/protocol.js";
 import { cutLabel, drawLabel, inlineLabel, type InlineLabel } from "./embed.js";
 
 export type RuleAlign = "left" | "center" | "right";
@@ -48,13 +48,15 @@ export class Rule implements Renderable, Measurable {
     this._label = inlineLabel(title);
     this.characters = chars;
     this.align = align ?? "center";
-    this.style = options?.style ?? NULL_STYLE;
+    this.style = options?.style ?? "rule.line";
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
     const maxWidth = options.maxWidth;
     const ruleChar = drawable(options, this.characters, ASCII_RULE_CHAR);
-    const style = getStyle(options, this.style);
+    // [LAW:single-enforcer] Resolved as Rich resolves the span it appends the
+    // line in: a name the theme lacks draws unstyled rather than throwing.
+    const style = resolveStyle(options, this.style);
     const ruleStyle = style.isNull ? undefined : style;
     const line = (width: number) => new Segment(repeatToWidth(ruleChar, width), ruleStyle);
 
@@ -68,9 +70,11 @@ export class Rule implements Renderable, Measurable {
       return;
     }
 
-    const text = this._label.text(options);
+    // Rich's `render_str(title, style="rule.text")`: the title is read in its
+    // own style and set beside the line, never in the line's style.
+    const text = this._label.text(options, "rule.text");
     cutLabel(text, room, drawable(options, "\u2026", "."));
-    const title = drawLabel(text, options, ruleStyle);
+    const title = drawLabel(text, options, undefined);
     const titleWidth = Segment.getLineLength(title);
 
     // As Rich lays the line out: the gaps of a centred title are the rule's,
@@ -78,11 +82,9 @@ export class Rule implements Renderable, Measurable {
     switch (this.align) {
       case "center": {
         const left = Math.floor((maxWidth - titleWidth) / 2) - 1;
-        yield line(left);
-        yield new Segment(" ", ruleStyle);
+        yield new Segment(`${repeatToWidth(ruleChar, left)} `, ruleStyle);
         yield* title;
-        yield new Segment(" ", ruleStyle);
-        yield line(maxWidth - left - titleWidth - 2);
+        yield new Segment(` ${repeatToWidth(ruleChar, maxWidth - left - titleWidth - 2)}`, ruleStyle);
         break;
       }
       case "left":

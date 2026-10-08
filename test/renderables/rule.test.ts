@@ -3,8 +3,19 @@ import { Rule } from "../../src/renderables/rule.js";
 import { Segment } from "../../src/core/segment.js";
 import { renderToString } from "../../src/core/render.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import { Console, type ConsoleOptions } from "../../src/core/console.js";
+import { RichText } from "../../src/core/text.js";
+import { Theme } from "../../src/core/style.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
+
+/** The bytes `draw` writes through a 12-column truecolor console. */
+function printed(draw: (console: Console) => void, options: ConsoleOptions): string {
+  const chunks: string[] = [];
+  const file = { write: (data: string) => void chunks.push(data) };
+  draw(new Console({ file, width: 12, colorSystem: "truecolor", ...options }));
+  return chunks.join("");
+}
 
 function collectLines(renderable: Renderable, options: RenderOptions): string[] {
   const segments = [...renderable.render(options)];
@@ -67,6 +78,60 @@ describe("Rule", () => {
   ] as const)("%s at width %i cuts %j inside its styling, as Rich does", (align, width, title, expected) => {
     const bytes = renderToString(new Rule(title, { align, style: "none" }), { width, colorSystem: "truecolor" });
     expect(bytes).toBe(`${expected}\n`);
+  });
+
+  // Rich 9d8f9a3's bytes at width 12: the line is drawn in `rule.line` unless a
+  // style is given, and the title is never in the line's style, only its own.
+  const G = "\x1b[92m";
+  const R = "\x1b[31m";
+  const Z = "\x1b[0m";
+  const B = `\x1b[1mB${Z} t`;
+  it.each([
+    ["center", undefined, "T", `${G}──── ${Z}T${G} ─────${Z}`],
+    ["center", undefined, "[bold]B[/bold] t", `${G}─── ${Z}${B}${G} ────${Z}`],
+    ["center", "red", "T", `${R}──── ${Z}T${R} ─────${Z}`],
+    ["center", "red", "[bold]B[/bold] t", `${R}─── ${Z}${B}${R} ────${Z}`],
+    ["left", undefined, "T", `T ${G}──────────${Z}`],
+    ["left", undefined, "[bold]B[/bold] t", `${B} ${G}────────${Z}`],
+    ["left", "red", "T", `T ${R}──────────${Z}`],
+    ["left", "red", "[bold]B[/bold] t", `${B} ${R}────────${Z}`],
+    ["right", undefined, "T", `${G}──────────${Z} T`],
+    ["right", undefined, "[bold]B[/bold] t", `${G}────────${Z} ${B}`],
+    ["right", "red", "T", `${R}──────────${Z} T`],
+    ["right", "red", "[bold]B[/bold] t", `${R}────────${Z} ${B}`],
+  ] as const)("%s with style %s draws %j in colour as Rich does", (align, style, title, expected) => {
+    const rule = new Rule(title, style === undefined ? { align } : { align, style });
+    expect(renderToString(rule, { width: 12, colorSystem: "truecolor" })).toBe(`${expected}\n`);
+  });
+
+  it("draws a bare line in rule.line, or its own style, as Rich does", () => {
+    expect(renderToString(new Rule(), { width: 5, colorSystem: "truecolor" })).toBe(`${G}─────${Z}\n`);
+    expect(renderToString(new Rule(undefined, { style: "red" }), { width: 5, colorSystem: "truecolor" })).toBe(`${R}─────${Z}\n`);
+  });
+
+  // Rich 9d8f9a3's bytes at width 12. A string title reads in `rule.text` only
+  // where nothing highlights it, since Rich's `render_str` highlights a fresh
+  // `Text` and copies only the spans; a `Text` title never reads in it.
+  const I = "\x1b[3m";
+  it.each([
+    [true, "T", `${G}──── ${Z}T${G} ─────${Z}`],
+    [false, "T", `${G}──── ${Z}${I}T${Z}${G} ─────${Z}`],
+    [true, new RichText("T"), `${G}──── ${Z}T${G} ─────${Z}`],
+    [false, new RichText("T"), `${G}──── ${Z}T${G} ─────${Z}`],
+  ] as const)("with highlight %s draws %j in the theme's rule.text as Rich does", (highlight, title, expected) => {
+    const theme = new Theme({ "rule.text": "italic" });
+    expect(printed((c) => c.print(new Rule(title)), { theme, highlight })).toBe(`${expected}\n`);
+  });
+
+  // Rich resolves both names with a null default, so a theme that inherits
+  // neither draws them unstyled rather than failing.
+  it.each([
+    ["a titled rule", (c: Console) => c.print(new Rule("T")), "──── T ─────"],
+    ["a bare rule", (c: Console) => c.print(new Rule()), "────────────"],
+    ["a text title over a given style", (c: Console) => c.print(new Rule(new RichText("T"), { style: "red" })), `${R}──── ${Z}T${R} ─────${Z}`],
+    ["console.rule", (c: Console) => c.rule("T"), "──── T ─────"],
+  ] as const)("draws %s under a theme without rule.line or rule.text as Rich does", (_name, draw, expected) => {
+    expect(printed(draw, { theme: new Theme({}, { inherit: false }) })).toBe(`${expected}\n`);
   });
 
   it("uses custom characters", () => {

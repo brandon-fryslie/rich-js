@@ -766,8 +766,8 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "log.level": NULL_STYLE,
 
   // Rule
-  "rule.line": Style.parse("green"),
-  "rule.text": Style.parse("bold"),
+  "rule.line": Style.parse("bright_green"),
+  "rule.text": NULL_STYLE,
 
   // JSON
   "json.brace": Style.parse("bold"),
