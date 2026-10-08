@@ -451,7 +451,7 @@ describe("Pretty", () => {
       .toBe('{ s: "ab😀"+2 }\n');
     // A ZWJ family is five code points and one glyph: it is kept or dropped whole.
     expect(collectText(new Pretty("a👨‍👩‍👧b", { maxString: 2 }), { maxWidth: 80 }))
-      .toBe('"a👨‍👩‍👧"+1\n');
+      .toBe('"a👨\\u200d👩\\u200d👧"+1\n');
     // A flag is two regional indicators, a toned hand a base and a modifier.
     expect(collectText(new Pretty("🇺🇸🇫🇷x", { maxString: 1 }), { maxWidth: 80 }))
       .toBe('"🇺🇸"+2\n');
@@ -757,8 +757,29 @@ describe("Pretty", () => {
     it("quotes any other key as a string, escaping what does not print", () => {
       // Raw, `"k\rx"` showed as `kx` — RichText drops the CR — and `"a b"` read
       // as two words.
-      expect(shown({ "k\rx": 1, "a\nb": 8, "a b": 2, "": 3, "01": 4, "-1": 5, "a‍b": 6, 'q"': 7 }))
-        .toBe('{ "k\\rx": 1, "a\\nb": 8, "a b": 2, "": 3, "01": 4, "-1": 5, "a‍b": 6, "q\\"": 7 }\n');
+      expect(shown({ "k\rx": 1, "a\nb": 8, "a b": 2, "": 3, "01": 4, "-1": 5, 'q"': 7 }))
+        .toBe('{ "k\\rx": 1, "a\\nb": 8, "a b": 2, "": 3, "01": 4, "-1": 5, "q\\"": 7 }\n');
+    });
+
+    it("escapes in keys and values alike what Python's isprintable refuses", () => {
+      // Raw, DEL vanished in RichText, 0x9B reached the terminal as an 8-bit
+      // CSI, and U+202E reversed the rest of the line.
+      expect(shown({ "k\x7fx": "v\x9b2J", "a\u200Db": "\u202e", c: "a\u00a0b\u{e0001}" }))
+        .toBe('{ "k\\u007fx": "v\\u009b2J", "a\\u200db": "\\u202e", c: "a\\u00a0b\\u{e0001}" }\n');
+    });
+
+    it("quotes a name that holds a character printing as nothing", () => {
+      expect(shown({ "a\uFE0F": 1, a: 2 })).toBe('{ "a\uFE0F": 1, a: 2 }\n');
+    });
+
+    it("quotes an index too long to name itself as a literal", () => {
+      expect(shown({ "999999999999999": 1, "99999999999999999999": 2 }))
+        .toBe('{ 999999999999999: 1, "99999999999999999999": 2 }\n');
+    });
+
+    it("cuts a quoted key to maxString, as it cuts a string value", () => {
+      expect(collectText(new Pretty({ "x yx yx y": 1, abcdefgh: 2 }, { maxString: 3 }), { maxWidth: 80 }))
+        .toBe('{ "x y"+6: 1, abcdefgh: 2 }\n');
     });
 
     it("highlights a quoted key as a string", () => {
