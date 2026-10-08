@@ -4,15 +4,22 @@
     {
       "version": "pr-343",
       "ref": "refs/pull/343/merge",
-      "sha": "c4dd0104c3101cbc349867f6859898bd496184b2",
-      "timestamp": "2026-10-08T02:26:39.244Z",
+      "sha": "bc23f040100474059860e2ca314cec6ad7c4672d",
+      "timestamp": "2026-10-08T02:36:38.233Z",
       "commits": [
         {
-          "sha": "c4dd0104c3101cbc349867f6859898bd496184b2",
+          "sha": "bc23f040100474059860e2ca314cec6ad7c4672d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T20:25:13-06:00",
-          "message": "Merge 0c9fb5d2c8d90aa4d4a8811a258609b6de2b3b93 into 9088edbc42cb5162fecd47ea2005490c0784f44c\n"
+          "timestamp": "2026-10-08T02:35:12Z",
+          "message": "Merge 70778f8b1a58a480c177891baac12f31ee83d0d8 into 9088edbc42cb5162fecd47ea2005490c0784f44c\n"
+        },
+        {
+          "sha": "70778f8b1a58a480c177891baac12f31ee83d0d8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T20:35:07-06:00",
+          "message": "fix(rule): resolve rule.line and rule.text as Rich does, and keep demo titles styled (rich-rule-koc0)\n\nReview (high) on #343. The line style now resolves through resolveStyle, so a\ntheme without rule.line draws unstyled where getStyle threw; rule.text goes in\nas a name and only an unhighlighted string title takes it, as Rich's\nrender_str drops the base style when it highlights. docs/console.md said the\ntitle skips markup and takes style; both were false. Demos that styled a title\nthrough style now style it through markup or a RichText.\n"
         },
         {
           "sha": "0c9fb5d2c8d90aa4d4a8811a258609b6de2b3b93",
