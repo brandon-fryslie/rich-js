@@ -149,6 +149,40 @@ describe("ProgressBar", () => {
     });
   });
 
+  describe("pulse", () => {
+    const TRUECOLOR: RenderOptions = { maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR };
+    /** The columns drawn in a colour other than the empty bar's. */
+    const lit = (bar: ProgressBar, opts: RenderOptions): number[] => {
+      const back = getStyle(opts, bar.style).color?.name;
+      const cols: number[] = [];
+      let col = 0;
+      for (const s of collectSegments(bar, opts)) {
+        for (let i = 0; i < s.text.length; i++, col++) if (s.style?.color?.name !== back) cols.push(col);
+      }
+      return cols;
+    };
+    const centre = (cols: number[]): number => cols.reduce((a, b) => a + b, 0) / cols.length;
+
+    it("carries its band along the bar as t moves on", () => {
+      const at = (t: number) => lit(new ProgressBar({ width: 40, pulse: { t } }), TRUECOLOR);
+      const early = at(2.5);
+      const later = at(4.5);
+      expect(early.length).toBeGreaterThan(0);
+      expect(later.length).toBeGreaterThan(0);
+      expect(centre(later)).toBeGreaterThan(centre(early) + 5);
+    });
+
+    it("draws the same bytes for the same t", () => {
+      const draw = () => collectSegments(new ProgressBar({ width: 40, pulse: { t: 3 } }), TRUECOLOR);
+      expect(draw()).toEqual(draw());
+    });
+
+    it("is the empty bar, whatever it has completed, before the first pass enters", () => {
+      const pulsing = new ProgressBar({ width: 40, completed: 70, pulse: { t: 0 } });
+      expect(collectSegments(pulsing, TRUECOLOR)).toEqual(collectSegments(new ProgressBar({ width: 40 }), TRUECOLOR));
+    });
+  });
+
   describe("measurement", () => {
     it("minimum >= 0", () => {
       // [SPEC] Implements Measurable. minimum >= 0.

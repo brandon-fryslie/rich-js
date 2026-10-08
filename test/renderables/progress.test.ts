@@ -16,6 +16,7 @@ import { Theme } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
+import { ColorDepth } from "../../src/core/color.js";
 import { fakeClock } from "../core/fake-clock.js";
 
 const OPTS: RenderOptions = {
@@ -31,6 +32,7 @@ const fakeTask = (description: string): Task => ({
   completed: 0,
   visible: true,
   startTime: 0,
+  time: 0,
   elapsed: 0,
   finishedTime: undefined,
   speed: undefined,
@@ -288,6 +290,41 @@ describe("SpinnerColumn (rich-progress-sy9s)", () => {
 describe("Progress.finished (rich-progress-qjm9)", () => {
   it("is true with no tasks, as Rich's `all` over none is", () => {
     expect(new Progress({ console: new Console({ file: { write: () => {} } }) }).finished).toBe(true);
+  });
+});
+
+describe("BarColumn pulses (rich-effects-fxiy.3rg)", () => {
+  // Python Rich 9d8f9a3: `BarColumn` pulses a task `not task.started`, and
+  // `ProgressBar` one whose total is None, at the progress's `get_time()`.
+  it("pulses a task not started or with no total, at the frame's moment on the progress's clock", () => {
+    const bars = new BarColumn(20);
+    const pulses: ({ readonly t: number } | undefined)[] = [];
+    const recorder: ProgressColumn = {
+      tableColumn: {},
+      render: (task) => {
+        pulses.push(bars.render(task).pulse);
+        return new RichText("");
+      },
+    };
+    const clock = fakeClock();
+    const progress = new Progress(recorder, { console: new Console({ file: { write: () => {} } }), clock });
+    progress.addTask("running", { total: 10 });
+    progress.addTask("queued", { total: 10, start: false });
+    progress.addTask("open-ended");
+    clock.advance(7.5);
+    [...progress.render(OPTS)];
+    expect(pulses).toEqual([undefined, { t: 7.5 }, { t: 7.5 }]);
+  });
+
+  it("moves a task with no total along as the clock does", () => {
+    const clock = fakeClock();
+    const progress = new Progress(new BarColumn(40), { console: new Console({ file: { write: () => {} } }), clock });
+    progress.addTask("open-ended");
+    const frame = (): Segment[] => [...progress.render({ ...OPTS, colorSystem: ColorDepth.TRUECOLOR })];
+    clock.advance(2.5);
+    const early = frame();
+    clock.advance(2);
+    expect(frame()).not.toEqual(early);
   });
 });
 
