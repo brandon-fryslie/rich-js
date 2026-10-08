@@ -10,7 +10,7 @@ import path from "node:path";
 import stripAnsi from "strip-ansi";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../scripts/repo-facts.js";
-import { demoCard, demoProgram } from "../../docs/.vitepress/demo-card.js";
+import { CARD_OPTIONS, demoCard, demoProgram, demoTerminal } from "../../docs/.vitepress/demo-card.js";
 import { programFiles } from "../../docs/.vitepress/example-card.js";
 import { EXAMPLE_TERMINAL } from "../../docs/.vitepress/example-terminal.js";
 import { liveLibraryOnce } from "../../docs/.vitepress/example-runner.js";
@@ -78,6 +78,23 @@ describe("a demo's program", { timeout: 60_000 }, () => {
   });
 });
 
+describe("a demo's terminal", () => {
+  it("is the size its card.json gives", () => {
+    expect(demoTerminal(demo({ [CARD_OPTIONS]: '{ "terminal": { "columns": 90, "rows": 28 } }' }))).toEqual({ columns: 90, rows: 28 });
+  });
+
+  it.each([
+    ["no rows", '{ "terminal": { "columns": 90 } }'],
+    ["a fraction", '{ "terminal": { "columns": 90.5, "rows": 28 } }'],
+    ["zero", '{ "terminal": { "columns": 0, "rows": 28 } }'],
+    ["a string", '{ "terminal": { "columns": "90", "rows": 28 } }'],
+    ["no terminal", "{}"],
+    ["null", "null"],
+  ])("is refused naming its card.json when it has %s", (_, json) => {
+    expect(() => demoTerminal(demo({ [CARD_OPTIONS]: json }))).toThrow(/demo\/card\.json: must be/);
+  });
+});
+
 describe("rich-strip's card", { timeout: 60_000 }, () => {
   it("holds main.ts and app.ts as they are on disk, and opens them all in the playground", async () => {
     const card = await demoCard("rich-strip");
@@ -94,6 +111,7 @@ describe("rich-strip's card", { timeout: 60_000 }, () => {
     const written: string[] = [];
     await runInTerminal(playgroundScript(programFiles(program), (await library()).script), {
       ...EXAMPLE_TERMINAL,
+      ...(await demoCard("rich-strip")).terminal,
       write: (chunk) => written.push(typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)),
       onInput: () => {},
       exit: () => {},
@@ -103,5 +121,16 @@ describe("rich-strip's card", { timeout: 60_000 }, () => {
     expect(rows).toContain("FlexStrip + gap (tag cloud)");
     // Its last line ends with a line break, so the cursor stands on a row of its own: that row too must fit.
     expect(rows.length).toBeLessThanOrEqual(EXAMPLE_TERMINAL.rows);
+  });
+});
+
+describe("dropdown-demo's card", { timeout: 60_000 }, () => {
+  it("holds main.ts and app.ts as they are on disk, in a terminal of its own size", async () => {
+    const card = await demoCard("dropdown-demo");
+    const directory = path.join(REPO_ROOT, "examples", "dropdown-demo");
+    expect(card.program.files.map(({ name, code }) => [name, code])).toEqual(
+      ["main.ts", "app.ts"].map((name) => [name, readFileSync(path.join(directory, name), "utf-8")]),
+    );
+    expect(card.terminal).toEqual(demoTerminal(directory));
   });
 });

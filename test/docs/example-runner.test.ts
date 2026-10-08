@@ -173,11 +173,11 @@ describe("the example widget", () => {
 
   // custom.css shrinks an output's font to fit its card by this count, so a
   // short output keeps the code size however narrow the card.
-  it("says how many columns its output draws: a static one its widest row, a live one the terminal", async () => {
+  it("says how many columns its output draws: a static one its widest row, a live one the example terminal", async () => {
     const [short] = cards(await run(fence('console.print("ab\\nabcd");')));
     expect(short!.output!.columns).toBe(4);
     const [live] = liveCards(await run(`# t\n\n${fence('console.print("live");', "ts live")}`));
-    expect(live!.columns).toBe(EXAMPLE_TERMINAL.columns);
+    expect(live!.terminal).toEqual({ columns: EXAMPLE_TERMINAL.columns, rows: EXAMPLE_TERMINAL.rows });
   });
 });
 

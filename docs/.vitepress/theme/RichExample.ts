@@ -87,6 +87,7 @@ import {
   type Codes,
 } from "../example-card.js";
 import type { Drawn } from "../example-fragments.js";
+import type { TerminalSize } from "../example-terminal.js";
 import { decodeProgram, encodeProgram } from "../playground-hash.js";
 import type { SetupStart } from "./setup-regions.js";
 import type { StaticEnd, StaticRun } from "./static-run.js";
@@ -325,11 +326,11 @@ function staticOutlet(card: Extract<CardData, { readonly run: "build" }>, root: 
 }
 
 /**
- * `program` running in a live terminal of `columns` columns. An edit that
+ * `program` running in a live terminal of `terminal`'s size. An edit that
  * parses is a new program, which the terminal restarts on; one that does not
  * leaves the terminal running the last that did.
  */
-function liveOutlet(program: CardProgram, look: { readonly label: string; readonly caption: string }, columns: number): Outlet {
+function liveOutlet(program: CardProgram, look: { readonly label: string; readonly caption: string }, terminal: TerminalSize): Outlet {
   const start = codesOf(program);
   // Made once and kept: each scroll into view and each Restart asks for it.
   const startProgram = loader(async () => {
@@ -341,8 +342,8 @@ function liveOutlet(program: CardProgram, look: { readonly label: string; readon
     codes: () => running.value.codes,
     label: () => look.label,
     caption: () => look.caption,
-    columns: () => columns,
-    body: () => [h(LiveScreen, { program: running.value.program })],
+    columns: () => terminal.columns,
+    body: () => [h(LiveScreen, { program: running.value.program, terminal })],
     async show(codes, current) {
       if (sameCodes(codes, start)) {
         running.value = { codes, program: startProgram };
@@ -379,7 +380,7 @@ function decidedOutlet(program: CardProgram, root: Ref<HTMLElement | null>): Out
       if (outcome.kind === "shown") live.value = null;
       if (outcome.kind !== "terminal") return outcome;
       const { terminal } = await statics();
-      if (current()) live.value = liveOutlet(withCodes(program, codes), RUNNING, terminal.columns);
+      if (current()) live.value = liveOutlet(withCodes(program, codes), RUNNING, terminal);
       return SHOWN;
     },
   };
@@ -660,7 +661,7 @@ function tryItLink(program: CardProgram, tryIt: { readonly playground: string; r
 function editableView(card: EditableCard, slots: Slots): () => VNode {
   const root = ref<HTMLElement | null>(null);
   const host = ref<HTMLElement | null>(null);
-  const outlet = card.run === "build" ? staticOutlet(card, root) : liveOutlet(card.program, card, card.columns);
+  const outlet = card.run === "build" ? staticOutlet(card, root) : liveOutlet(card.program, card, card.terminal);
   const tryIt = tryItLink(card.program, card.tryIt, "Try it");
   const core = cardCore(card.program, outlet, (codes, current) => void tryIt.link(codes, current));
 
@@ -775,7 +776,7 @@ export const RichDemo = defineComponent({
   setup(props) {
     const { card } = props;
     const tryIt = tryItLink(card.program, card.tryIt, "Open in playground");
-    const live = () => liveOutlet(card.program, card, card.columns);
+    const live = () => liveOutlet(card.program, card, card.terminal);
     return openCardView(card.program, live, (codes, current) => void tryIt.link(codes, current), () => [tryIt.view()]).render;
   },
 });

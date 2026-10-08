@@ -19,6 +19,7 @@
  * Pure and dependency-free: the build reads it in Node, the card in the page.
  */
 import type { Drawn } from "./example-fragments.js";
+import type { TerminalSize } from "./example-terminal.js";
 
 /** Lines of a card's setup that came from one place, named as the card labels them: "imports", "from 'Basic usage'". */
 export interface SetupGroup {
@@ -125,7 +126,8 @@ interface Editable {
  * (example-markers.ts). A block the build runs is editable, its output the
  * one the build printed until it is edited. A block that runs in the browser
  * is editable, its output its program running in a live terminal of
- * `columns` columns. One that runs nowhere is the same card, read-only, its
+ * `terminal`'s size: a docs block's is `EXAMPLE_TERMINAL`'s, a demo's its own
+ * (demo-card.ts). One that runs nowhere is the same card, read-only, its
  * note in place of output.
  */
 export type CardData =
@@ -134,7 +136,7 @@ export type CardData =
       /** What the block printed at build time; null if it printed nothing (`drawOutput`). */
       readonly output: Drawn | null;
     })
-  | (Editable & { readonly run: "browser"; readonly columns: number })
+  | (Editable & { readonly run: "browser"; readonly terminal: TerminalSize })
   | { readonly run: "never"; readonly label: string; readonly note: string };
 
 /** The lines above a card's block, in order. */

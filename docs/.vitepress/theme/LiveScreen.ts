@@ -14,10 +14,15 @@
  * terminal, and the worker it runs in, are fetched only when it first scrolls
  * into view. A new `program` is a new program: it runs at once if the
  * terminal is on screen, and when it next scrolls into view if not.
+ *
+ * Its `terminal` is the size the card gives it (example-card.ts); everything
+ * else about the terminal is `EXAMPLE_TERMINAL`'s. While it has focus every
+ * key is the program's, so it says so: a ring round it, and the way out
+ * (live-terminal.ts) in its bar.
  */
 import { defineComponent, h, onBeforeUnmount, onMounted, ref, watch, type PropType } from "vue";
 import { useData } from "vitepress";
-import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "../example-terminal.js";
+import { EXAMPLE_TERMINAL, EXAMPLE_THEMES, type TerminalSize } from "../example-terminal.js";
 import { LiveTerminal, READABLE_CONTRAST, elementFont, type LiveState, type RunMode } from "./live-terminal.js";
 
 /** What the button does, said for each state the terminal can be in. */
@@ -33,6 +38,7 @@ export default defineComponent({
   name: "LiveScreen",
   props: {
     program: { type: Function as PropType<() => Promise<string>>, required: true },
+    terminal: { type: Object as PropType<TerminalSize>, required: true },
   },
   setup(props) {
     const screen = ref<HTMLElement | null>(null);
@@ -40,6 +46,7 @@ export default defineComponent({
     const { isDark } = useData();
     const theme = () => (isDark.value ? EXAMPLE_THEMES.dark : EXAMPLE_THEMES.light);
     const failure = ref<string | null>(null);
+    const focused = ref(false);
     let ready: Promise<{ readonly live: LiveTerminal; readonly unwatch: () => void }> | undefined;
     let observer: IntersectionObserver | undefined;
     let resized: ResizeObserver | undefined;
@@ -55,7 +62,7 @@ export default defineComponent({
         .then((runtime) =>
           LiveTerminal.create(element, {
             runtime: runtime.default,
-            terminal: EXAMPLE_TERMINAL,
+            terminal: { ...EXAMPLE_TERMINAL, columns: props.terminal.columns, rows: props.terminal.rows },
             theme: theme(),
             font: elementFont(element),
             minimumContrast: READABLE_CONTRAST,
@@ -134,8 +141,14 @@ export default defineComponent({
 
     return () =>
       h("div", { class: "rich-live" }, [
-        h("div", { class: "rich-live-screen", ref: screen }),
+        h("div", {
+          class: "rich-live-screen",
+          ref: screen,
+          onFocusin: () => (focused.value = true),
+          onFocusout: () => (focused.value = false),
+        }),
         h("div", { class: "rich-live-bar" }, [
+          ...(focused.value ? [h("span", { class: "rich-live-hint" }, "Keys go to the program · Esc then Tab leaves")] : []),
           ...(failure.value === null ? [] : [h("span", { class: "rich-live-failure", role: "alert" }, failure.value)]),
           h("button", { type: "button", class: "rich-live-button", onClick: () => start("live") }, BUTTON[state.value.kind]),
         ]),

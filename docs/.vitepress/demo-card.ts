@@ -18,6 +18,9 @@
  *   another of the card's files (`fileOf`); in Node, scripts/build-demos.ts
  *   compiles both onto `src/`. The coverage gate (test/coverage/) resolves the
  *   published names to `src/` too, so they demonstrate what they import.
+ * - Its card's terminal is the size `card.json` beside its entry gives
+ *   (`CARD_OPTIONS`), which the demo is drawn to fit. A demo never takes the
+ *   size as a parameter; it reads it off its terminal, as it does in Node.
  * - Its tabs are the entry, then every other file it reaches by a relative
  *   import, each named by its path from the entry's directory, a file shared
  *   from `examples/_capabilities/` included. A demo of one file shows no tabs.
@@ -33,7 +36,7 @@ import path from "node:path";
 import { REPO_ROOT } from "../../scripts/repo-facts.js";
 import { DEMO_ENTRY } from "./demo-entry.js";
 import { NO_SETUP, RUNNING, type CardData, type CardFile, type CardProgram } from "./example-card.js";
-import { EXAMPLE_TERMINAL } from "./example-terminal.js";
+import type { TerminalSize } from "./example-terminal.js";
 import { liveLibraryOnce, playgroundHref, refuseUnrunnable } from "./example-runner.js";
 import { encodeProgram } from "./playground-hash.js";
 import { fileOf } from "./theme/playground-program.js";
@@ -81,17 +84,36 @@ export function demoProgram(directory: string, library: string): CardProgram {
   return program;
 }
 
+/** The file beside a demo's entry that says what its card is: the size of its terminal. */
+export const CARD_OPTIONS = "card.json";
+
+/**
+ * [LAW:parse-dont-validate] The terminal size `card.json` in `directory`
+ * gives, or the build fails naming the file.
+ */
+export function demoTerminal(directory: string): TerminalSize {
+  const file = path.join(directory, CARD_OPTIONS);
+  const options = JSON.parse(readFileSync(file, "utf-8")) as { readonly terminal?: { readonly columns?: unknown; readonly rows?: unknown } } | null;
+  const { columns, rows } = options?.terminal ?? {};
+  const cells = (value: unknown): value is number => Number.isInteger(value) && (value as number) > 0;
+  if (!cells(columns) || !cells(rows)) {
+    throw new Error(`${path.relative(REPO_ROOT, file)}: must be { "terminal": { "columns": <cells>, "rows": <cells> } }, each a whole number above 0`);
+  }
+  return { columns, rows };
+}
+
 /** The live library every demo's card is held to, built once for them all. */
 const library = liveLibraryOnce();
 
 /** The card the page of the demo in `examples/<demo>/` shows. */
 export async function demoCard(demo: string): Promise<DemoCard> {
-  const program = demoProgram(path.join(REPO_ROOT, "examples", demo), (await library()).script);
+  const directory = path.join(REPO_ROOT, "examples", demo);
+  const program = demoProgram(directory, (await library()).script);
   return {
     run: "browser",
     program,
     ...RUNNING,
     tryIt: { playground: playgroundHref(`demos/${demo}.md`), program: await encodeProgram(program) },
-    columns: EXAMPLE_TERMINAL.columns,
+    terminal: demoTerminal(directory),
   };
 }

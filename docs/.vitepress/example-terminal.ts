@@ -9,6 +9,15 @@
 import { ATOM_ONE_DARK, ATOM_ONE_LIGHT } from "../../src/themes/terminalThemes.js";
 
 /**
+ * How big a terminal is, in cells: what a card's live terminal takes from the
+ * card (example-card.ts), everything else about it being `EXAMPLE_TERMINAL`'s.
+ */
+export interface TerminalSize {
+  readonly columns: number;
+  readonly rows: number;
+}
+
+/**
  * 75 columns is what the docs content column holds in the code font at 1440px
  * wide. Where the column is narrower an output that wide shrinks its font to
  * fit (custom.css, `.rich-example-output`), down to a floor below which it

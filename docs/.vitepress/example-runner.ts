@@ -807,12 +807,12 @@ export async function runPageExamples(
       caption: rule.caption,
       tryIt: { playground, program: hashes.get(fence)! },
     };
-    // A live terminal is as wide as the whole example terminal, since what
-    // its program will draw is not known here (custom.css shrinks the
-    // output's font where the card is narrower).
+    // A live terminal is the whole example terminal, since what its program
+    // will draw is not known here (custom.css shrinks the output's font where
+    // the card is narrower).
     return rule.run === "build"
       ? { run: "build", ...editable, output: drawOutput(bytes.get(fence)!) }
-      : { run: "browser", ...editable, columns: EXAMPLE_TERMINAL.columns };
+      : { run: "browser", ...editable, terminal: { columns: EXAMPLE_TERMINAL.columns, rows: EXAMPLE_TERMINAL.rows } };
   };
   const cards = new Map<Fence, { readonly binding: string; readonly data: CardData }>(
     fences.map((fence, i) => [fence, { binding: `__richCard_${i}`, data: cardData(fence) }]),
