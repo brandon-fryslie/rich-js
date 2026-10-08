@@ -721,6 +721,20 @@ const EXPAND_SEPARATOR = SEPARATOR.trimEnd();
 const elided = (dropped: number): Slot[] =>
   dropped > 0 ? [{ head: `... +${dropped}`, join: "", holes: [] }] : [];
 
+/**
+ * A key as an object literal would spell it: bare when it is a name or an
+ * index, which reads as itself, and quoted as a string otherwise. Rich reprs
+ * every key; printed raw, `"a b"` was indistinguishable from two words and a
+ * `\r` in one was dropped by `RichText`, so the key shown was not the key held.
+ * Quoting only what needs it keeps the JavaScript reading `{ a: 1 }`.
+ *
+ * The bare form refuses the two joiners an identifier may continue with,
+ * because they print as nothing; `ID_Continue` has carried them since Unicode
+ * 15.1, so the lookahead names them.
+ */
+const BARE_KEY = /^(?![^]*[\u200c\u200d])(?:[\p{ID_Start}$_][\p{ID_Continue}$]*|0|[1-9]\d*)$/u;
+const keyText = (key: string): string => (BARE_KEY.test(key) ? key : JSON.stringify(key));
+
 
 export class Pretty implements Renderable, Measurable {
   readonly data: unknown;
@@ -933,7 +947,7 @@ export class Pretty implements Renderable, Measurable {
         const keys = Object.keys(record);
         return this._container("{", "}", " ", keys.length, level, () =>
           keys.slice(0, cap).map((k): Slot => ({
-            head: k,
+            head: keyText(k),
             join: ": ",
             holes: [{ read: () => record[k], tail: flat("") }],
           })),

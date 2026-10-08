@@ -351,7 +351,6 @@ describe("Pretty", () => {
       expect(laidOut({ ["k".repeat(30)]: 1 }, 20)).toEqual([
         "{", "    " + "k".repeat(14), "        " + "k".repeat(10), "        kkkkkk: 1", "}",
       ]);
-      expect(laidOut({ "a\nb": 1 }, 40)).toEqual(["{", "    a", "        b: 1", "}"]);
     });
 
     it("keeps a wrapped key's colon on the key's last row", () => {
@@ -361,10 +360,12 @@ describe("Pretty", () => {
       ]);
     });
 
-    it("indents from where a key's last row starts, not from the whitespace it opens with", () => {
-      // Read back out of the text, `   b`'s own spaces moved the entries to column 15 and `}` to 11.
-      expect(laidOut({ "a\n   b": new Map([[1, 2]]) }, 20)).toEqual([
-        "{", "    a", "           b: Map {", "            1 => 2", "        }", "}",
+    it("indents from where a Map key's last row starts, not from the whitespace it opens with", () => {
+      // Read back out of the text, `   b`'s own spaces moved the entries to column 19 and `}` to 15.
+      const key = { toString: () => "a\n   b" };
+      expect(laidOut({ k: new Map([[key, new Map([[1, 2]])]]) }, 20)).toEqual([
+        "{", "    k: Map {", "        a", "               b => Map {", "                1 =>", "                    2",
+        "            }", "    }", "}",
       ]);
     });
 
@@ -518,8 +519,8 @@ describe("Pretty", () => {
     });
 
     it("keeps each guide on its glyphs past a control character the text drops", () => {
-      const text = guided({ "k\rx": 1, b: { c: 1 } }, 80, { expandAll: true });
-      expect(text.plain).toBe(["{", "│   kx: 1,", "│   b: {", "│   │   c: 1", "│   }", "}"].join("\n"));
+      const text = guided({ a: { toString: () => "k\rx" }, b: { c: 1 } }, 80, { expandAll: true });
+      expect(text.plain).toBe(["{", "│   a: kx,", "│   b: {", "│   │   c: 1", "│   }", "}"].join("\n"));
       expect(guideRuns(text)).toEqual(["│   ", "│   ", "│   │   ", "│   "]);
     });
 
@@ -543,8 +544,8 @@ describe("Pretty", () => {
     it("keeps what follows a value that ends its own line", () => {
       expect(guided([{ toString: () => "x\n" }, 2], 80, { expandAll: true }).plain)
         .toBe(["[", "│   x", "│   ,", "│   2", "]"].join("\n"));
-      expect(guided({ "a\n": 1 }, 80, { expandAll: true }).plain)
-        .toBe(["{", "│   a", "│   : 1", "}"].join("\n"));
+      expect(guided(new Map([[{ toString: () => "a\n" }, 1]]), 80, { expandAll: true }).plain)
+        .toBe(["Map {", "│   a", "│    => 1", "}"].join("\n"));
     });
 
     it("leaves a blank row empty when guides are off", () => {
@@ -555,8 +556,8 @@ describe("Pretty", () => {
     // What continues a blank row sits inside the structure. At column 0 it was
     // left of the slot, and a row hung from there came before the margin.
     it("lays out a value continuing a blank row inside its slot", () => {
-      expect(new Pretty({ "a\n": "bb cc dd ee" }).toText({ maxWidth: 11 }).plain)
-        .toBe(["{", "    a", '    : "bb', "      cc dd", '      ee"', "}"].join("\n"));
+      expect(new Pretty(new Map([[{ toString: () => "a\n" }, "bb cc dd ee"]])).toText({ maxWidth: 11 }).plain)
+        .toBe(["Map {", "    a", '     => "bb', "        cc", "        dd", '        ee"', "}"].join("\n"));
     });
 
     it("draws none with no indent to stand in", () => {
@@ -743,6 +744,27 @@ describe("Pretty", () => {
       const text = collectText(new Pretty({ a: shared, b: shared }), { maxWidth: 80 });
       expect(text).not.toContain("[Circular]");
       expect(text).toBe("{ a: { v: 1 }, b: { v: 1 } }\n");
+    });
+  });
+
+  describe("keys", () => {
+    const shown = (value: unknown): string => collectText(new Pretty(value), { maxWidth: 80 });
+
+    it("leaves a name or an index bare", () => {
+      expect(shown({ a: 1, $b_2: 2, café: 3, 0: 4, 10: 5 })).toBe("{ 0: 4, 10: 5, a: 1, $b_2: 2, café: 3 }\n");
+    });
+
+    it("quotes any other key as a string, escaping what does not print", () => {
+      // Raw, `"k\rx"` showed as `kx` — RichText drops the CR — and `"a b"` read
+      // as two words.
+      expect(shown({ "k\rx": 1, "a\nb": 8, "a b": 2, "": 3, "01": 4, "-1": 5, "a‍b": 6, 'q"': 7 }))
+        .toBe('{ "k\\rx": 1, "a\\nb": 8, "a b": 2, "": 3, "01": 4, "-1": 5, "a‍b": 6, "q\\"": 7 }\n');
+    });
+
+    it("highlights a quoted key as a string", () => {
+      const text = new Pretty({ "a b": 1 }).toText({ maxWidth: 80 });
+      const span = text.spans.find((s) => text.plain.slice(s.start, s.end) === '"a b"');
+      expect(span?.style).toBe("repr.str");
     });
   });
 
