@@ -27,8 +27,8 @@ import {
 import { PAGE_PARSER, scanFences } from "../../docs/.vitepress/example-markers.js";
 import { runInTerminal } from "../../docs/.vitepress/simulated-process.js";
 import { decodeProgram } from "../../docs/.vitepress/playground-hash.js";
-import { PRINTS_NOTHING, cardSource, programFiles, setupLines } from "../../docs/.vitepress/example-card.js";
-import { oneSource, playgroundScript } from "../../docs/.vitepress/theme/playground-program.js";
+import { NO_SETUP, PRINTS_NOTHING, cardSource, oneFile, programFiles, setupLines } from "../../docs/.vitepress/example-card.js";
+import { playgroundScript } from "../../docs/.vitepress/theme/playground-program.js";
 import { EXAMPLE_TERMINAL } from "../../docs/.vitepress/example-terminal.js";
 import type { CardData } from "../../docs/.vitepress/example-card.js";
 
@@ -130,7 +130,7 @@ describe("the example widget", () => {
     // The block's own lines are the card's code, not part of its setup.
     expect([...setupLines(card!.program.files[0].setup), ...card!.program.files[0].setup.after].join("\n")).not.toContain("console.print");
     const program = cardSource(card!.program.files[0].setup, card!.program.files[0].code.replace("new Rule(title)", "title.toUpperCase()"));
-    expect(await liveOutput(playgroundScript(oneSource(program), (await library()).script))).toContain("SHARED");
+    expect(await liveOutput(playgroundScript(programFiles(oneFile(NO_SETUP, program)), (await library()).script))).toContain("SHARED");
   });
 
   it("labels each group of a card's setup with where it came from", async () => {
@@ -593,7 +593,7 @@ describe("the plugin", () => {
     const [, librarySpecifier] = /^export \{ default \} from ("[^"]+");$/.exec(module)!;
     const library = (await plugin.load.call(context, plugin.resolveId(JSON.parse(librarySpecifier!) as string)!))!;
     const [, script] = /^export default (".*");$/s.exec(library)!;
-    expect(await liveOutput(playgroundScript(oneSource('import { Console } from "@promptctl/rich-js";\nnew Console().print("served");'), JSON.parse(script!) as string))).toContain("served");
+    expect(await liveOutput(playgroundScript(programFiles(oneFile(NO_SETUP, 'import { Console } from "@promptctl/rich-js";\nnew Console().print("served");')), JSON.parse(script!) as string))).toContain("served");
     expect(plugin.resolveId("./elsewhere.js")).toBeNull();
     await expect(plugin.load.call(context, `\0${LIVE_MODULE_PREFIX}0000`)).rejects.toThrow(/no live library was served under this id/);
   });

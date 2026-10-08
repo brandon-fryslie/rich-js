@@ -10,13 +10,16 @@ import path from "node:path";
 import stripAnsi from "strip-ansi";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../scripts/repo-facts.js";
-import { DEMO_ENTRY, demoCard, demoProgram } from "../../docs/.vitepress/demo-card.js";
+import { demoCard, demoProgram } from "../../docs/.vitepress/demo-card.js";
 import { programFiles } from "../../docs/.vitepress/example-card.js";
 import { EXAMPLE_TERMINAL } from "../../docs/.vitepress/example-terminal.js";
 import { liveLibraryOnce } from "../../docs/.vitepress/example-runner.js";
+import { DEMO_ENTRY } from "../../docs/.vitepress/demo-entry.js";
 import { decodeProgram } from "../../docs/.vitepress/playground-hash.js";
 import { runInTerminal } from "../../docs/.vitepress/simulated-process.js";
 import { playgroundScript } from "../../docs/.vitepress/theme/playground-program.js";
+
+const library = liveLibraryOnce();
 
 /** A demo directory holding `files`, by their names from it. */
 function demo(files: Readonly<Record<string, string>>): string {
@@ -29,8 +32,11 @@ function demo(files: Readonly<Record<string, string>>): string {
   return directory;
 }
 
-describe("a demo's program", () => {
-  it("is its entry, then every file it reaches by a relative import, once each, a file beside its directory included", () => {
+/** `demo`'s program, held to running on the live library. */
+const programOf = async (directory: string) => demoProgram(directory, (await library()).script);
+
+describe("a demo's program", { timeout: 60_000 }, () => {
+  it("is its entry, then every file it reaches by a relative import, once each, a file beside its directory included", async () => {
     const directory = demo({
       [DEMO_ENTRY]: 'import { run } from "./app.js";\nimport type { Shape } from "./shape.js";\nrun();',
       "app.ts": 'import { fs } from "../_capabilities/fs.js";\nimport "./main.js";\nexport const run = () => fs;',
@@ -39,7 +45,7 @@ describe("a demo's program", () => {
       "../_capabilities/more.ts": "export const more = 2;",
       "unused.ts": "export {};",
     });
-    expect(demoProgram(directory).files.map((file) => file.name)).toEqual([
+    expect((await programOf(directory)).files.map((file) => file.name)).toEqual([
       "main.ts",
       "app.ts",
       "../_capabilities/fs.ts",
@@ -48,13 +54,27 @@ describe("a demo's program", () => {
     ]);
   });
 
-  it("imports a package only from the live library, but for types, which running drops", () => {
+  it("imports a package only from the live library, but for types, which running drops", async () => {
     const ok = demo({ [DEMO_ENTRY]: 'import { Console } from "@promptctl/rich-js";\nimport type { save } from "@promptctl/rich-js/node/save";\nnew Console();' });
-    expect(demoProgram(ok).files).toHaveLength(1);
-    expect(() => demoProgram(demo({ [DEMO_ENTRY]: 'import { saveText } from "@promptctl/rich-js/node/save";' }))).toThrow(
-      /a live example cannot import @promptctl\/rich-js\/node\/save/,
+    expect((await programOf(ok)).files).toHaveLength(1);
+    await expect(programOf(demo({ [DEMO_ENTRY]: 'import { saveText } from "@promptctl/rich-js/node/save";\nsaveText;' }))).rejects.toThrow(
+      /demo\/main\.ts: a live example cannot import @promptctl\/rich-js\/node\/save/,
     );
-    expect(() => demoProgram(demo({ [DEMO_ENTRY]: 'const app = await import("./app.js");' }))).toThrow(/not `import\(\)`/);
+  });
+
+  it("imports by `import()` only a file it also imports by name", async () => {
+    await expect(programOf(demo({ [DEMO_ENTRY]: 'const app = await import("./app.js");', "app.ts": "export {};" }))).rejects.toThrow(
+      /demo\/main\.ts: a live example cannot import \.\/app\.js; it may import its own files, main\.ts$/,
+    );
+  });
+
+  it("is refused where the card's compile refuses it, naming the file", async () => {
+    const directory = demo({ [DEMO_ENTRY]: 'import "./app.js";', "app.ts": "console.log(import.meta.url);" });
+    await expect(programOf(directory)).rejects.toThrow(/demo\/main\.ts: its demo's card runs it, which the browser cannot run: SyntaxError: .*\n {4}at app\.ts/);
+  });
+
+  it("refuses a relative import that leaves examples/, naming the file that makes it", async () => {
+    await expect(programOf(demo({ [DEMO_ENTRY]: 'import "../../src/index.js";' }))).rejects.toThrow(/main\.ts: \.\.\/\.\.\/src\/index\.js is outside examples\//);
   });
 });
 
@@ -72,7 +92,7 @@ describe("rich-strip's card", { timeout: 60_000 }, () => {
   it("prints the whole tour on one screen of the card's terminal, as the card runs it", async () => {
     const { program } = await demoCard("rich-strip");
     const written: string[] = [];
-    await runInTerminal(playgroundScript(programFiles(program), (await liveLibraryOnce()()).script), {
+    await runInTerminal(playgroundScript(programFiles(program), (await library()).script), {
       ...EXAMPLE_TERMINAL,
       write: (chunk) => written.push(typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)),
       onInput: () => {},

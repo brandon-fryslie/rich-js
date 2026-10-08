@@ -58,6 +58,7 @@ import {
   onMounted,
   ref,
   shallowRef,
+  useId,
   type PropType,
   type Ref,
   type ShallowRef,
@@ -437,6 +438,9 @@ function cardCore(opened: CardProgram, outlet: Outlet, edited: (codes: Codes, cu
   const failure = ref<string | null>(null);
   /** The file whose tab is chosen. */
   const active = ref(0);
+  /** The ids that tie each tab to the editor, the panel it shows its file in. */
+  const ids = useId();
+  const tabId = (file: number) => `${ids}-tab-${file}`;
   /**
    * Each file the editor has held and does not hold now, as it left it, its
    * undo history with it. The file it holds is its own state.
@@ -552,21 +556,54 @@ function cardCore(opened: CardProgram, outlet: Outlet, edited: (codes: Codes, cu
       h("button", { type: "button", class: "rich-example-reset", disabled: !isEdited.value, onClick: reset }, "reset"),
     ]);
 
-  /** A tab for each file, named as an import between them names it; none for a program of one file, which has nothing to choose between. */
+  /** The file each key that moves along a tab list chooses, from `file`, as the WAI-ARIA tabs pattern has them. */
+  const tabKeys: Readonly<Record<string, (file: number) => number>> = {
+    ArrowRight: (file) => (file + 1) % opened.files.length,
+    ArrowLeft: (file) => (file - 1 + opened.files.length) % opened.files.length,
+    Home: () => 0,
+    End: () => opened.files.length - 1,
+  };
+  const moveTab = (event: KeyboardEvent) => {
+    const move = tabKeys[event.key];
+    if (move === undefined) return;
+    event.preventDefault();
+    const file = move(active.value);
+    choose(file);
+    document.getElementById(tabId(file))!.focus();
+  };
+
+  /**
+   * A tab for each file, named as an import between them names it; none for a
+   * program of one file, which has nothing to choose between. Only the chosen
+   * tab takes focus by Tab, the arrow keys move between them, and each
+   * controls the editor, the panel (`panel`).
+   */
   const tabs = () =>
     opened.files.length === 1
       ? null
       : h(
           "div",
-          { class: "rich-example-tabs", role: "tablist", "aria-label": "Files" },
+          { class: "rich-example-tabs", role: "tablist", "aria-label": "Files", onKeydown: moveTab },
           opened.files.map((file, i) =>
             h(
               "button",
-              { type: "button", role: "tab", class: "rich-example-tab", "aria-selected": String(i === active.value), onClick: () => choose(i) },
+              {
+                type: "button",
+                role: "tab",
+                id: tabId(i),
+                class: "rich-example-tab",
+                "aria-selected": String(i === active.value),
+                "aria-controls": `${ids}-panel`,
+                tabindex: i === active.value ? 0 : -1,
+                onClick: () => choose(i),
+              },
               file.name,
             ),
           ),
         );
+
+  /** What makes the editor the tabs' panel, labelled by the chosen tab; nothing where there are no tabs. */
+  const panel = () => (opened.files.length === 1 ? {} : { id: `${ids}-panel`, role: "tabpanel", "aria-labelledby": tabId(active.value) });
 
   /** The output panel: its label strip, with `beside` after the caption, the output, and what went wrong. */
   const output = (beside: readonly VNode[]) => {
@@ -589,7 +626,7 @@ function cardCore(opened: CardProgram, outlet: Outlet, edited: (codes: Codes, cu
     );
   };
 
-  return { code, active, edited: isEdited, run, openEditor, editedLine, tabs, output };
+  return { code, active, edited: isEdited, run, openEditor, editedLine, tabs, panel, output };
 }
 
 /**
@@ -717,7 +754,7 @@ function openCardView(
     render: () =>
       h("div", { class: "rich-example rich-example-card", ref: root }, [
         core.tabs(),
-        h("div", { class: "rich-example-editor", ref: host }),
+        h("div", { class: "rich-example-editor", ref: host, ...core.panel() }),
         core.editedLine(),
         core.output(beside()),
       ]),

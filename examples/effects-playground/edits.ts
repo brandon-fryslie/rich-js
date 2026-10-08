@@ -11,7 +11,8 @@
  * and the screen carry on through both.
  */
 import { LIBRARY_BINDING } from "../../docs/.vitepress/live-library.js";
-import { oneSource, playgroundScript } from "../../docs/.vitepress/theme/playground-program.js";
+import { NO_SETUP, oneFile, programFiles } from "../../docs/.vitepress/example-card.js";
+import { playgroundScript } from "../../docs/.vitepress/theme/playground-program.js";
 import type { Controls, Heard } from "./controls.js";
 
 /** The name a program imports the kit by. */
@@ -42,12 +43,12 @@ export function started(source: string, library: string, controls: Controls): st
     `  else if (chunk.startsWith(${JSON.stringify(HEARD)})) ${kit}.hear(JSON.parse(chunk.slice(${HEARD.length})));`,
     `});`,
   ].join("\n");
-  return `${playgroundScript(oneSource(source), `${library}\n${kit}.hear(${JSON.stringify(heard)});`)}\n${listen}`;
+  return `${playgroundScript(programFiles(oneFile(NO_SETUP, source)), `${library}\n${kit}.hear(${JSON.stringify(heard)});`)}\n${listen}`;
 }
 
 /** `source` as an edit typed at a program `started` began: its script without the library, which the process holds. */
 export function edit(source: string): string {
-  return `${EDIT}(async () => {\n${playgroundScript(oneSource(source), "")}\n})();`;
+  return `${EDIT}(async () => {\n${playgroundScript(programFiles(oneFile(NO_SETUP, source)), "")}\n})();`;
 }
 
 /** `message` as typed at a program `started` began. */

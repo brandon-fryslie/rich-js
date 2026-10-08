@@ -35,7 +35,7 @@ import { resolve, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { XTERM } from "./examples/_browser-shell/xterm.js";
 import { DEMO_TERMINAL } from "./examples/_browser-shell/demo-terminal.js";
-import { DEMO_ENTRY } from "./docs/.vitepress/demo-card.js";
+import { DEMO_ENTRY } from "./docs/.vitepress/demo-entry.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const examplesDir = resolve(__dirname, "examples");

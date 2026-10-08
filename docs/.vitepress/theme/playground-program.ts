@@ -33,10 +33,7 @@
  */
 import { transform } from "sucrase";
 import { LIBRARY_BINDING } from "../live-library.js";
-import { PLAYGROUND_SOURCE, type ProgramFiles } from "../example-card.js";
-
-/** `source` as a program of one file, as a docs block's card runs it. */
-export const oneSource = (source: string): ProgramFiles => [{ name: PLAYGROUND_SOURCE, source }];
+import type { ProgramFiles } from "../example-card.js";
 
 /** A file's code, stripped of its types, or where it failed to parse. */
 type Compiled =
@@ -138,11 +135,13 @@ function run(
  * The file and line of the visitor's code a failure's report names first: the
  * innermost frame of the stack that is in one of `names`, every engine writing
  * a frame as the source's name, its line and its column. `null` when no frame
- * is the visitor's, as for a failure raised wholly inside the library.
+ * is the visitor's, as for a failure raised wholly inside the library. The
+ * name starts the frame or follows what an engine puts before it: V8's
+ * `at ` or `(`, SpiderMonkey's and JavaScriptCore's `fn@`.
  */
 export function thrownAt(report: string, names: readonly string[]): { readonly file: string; readonly line: number } | null {
   const escaped = names.map((name) => name.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&"));
-  const frame = new RegExp(`(?:^|[\\s(])(${escaped.join("|")}):(\\d+):\\d+`, "m").exec(report);
+  const frame = new RegExp(`(?:^|[\\s(@])(${escaped.join("|")}):(\\d+):\\d+`, "m").exec(report);
   return frame === null ? null : { file: frame[1]!, line: Number(frame[2]) };
 }
 

@@ -6,7 +6,7 @@
  * A demo is a Node program, and the card runs that same program unchanged:
  *
  * - `examples/<name>/main.ts` is its entry, for the card and for its
- *   `npm run` script alike (`DEMO_ENTRY`).
+ *   `npm run` script alike (`DEMO_ENTRY`, demo-entry.ts).
  * - It builds its own terminal, `new NodeTerminalHost()`, or prints through a
  *   `new Console()`. In the card it runs on the stand-in process
  *   (simulated-process.ts), which gives it the card's terminal, its size,
@@ -23,72 +23,70 @@
  *   from `examples/_capabilities/` included. A demo of one file shows no tabs.
  *
  * [LAW:single-enforcer] A demo is held to running in the card here, at
- * build: an import the live library does not hold, or one by `import()`,
- * fails the docs build naming the file and the import.
+ * build, by the check every live docs block passes (`refuseUnrunnable`): the
+ * card's compile refusing a file, or an import neither the live library nor
+ * the demo's files answer, fails the docs build naming the file.
  */
 import ts from "typescript";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { REPO_ROOT } from "../../scripts/repo-facts.js";
+import { DEMO_ENTRY } from "./demo-entry.js";
 import { NO_SETUP, RUNNING, type CardData, type CardFile, type CardProgram } from "./example-card.js";
 import { EXAMPLE_TERMINAL } from "./example-terminal.js";
-import { playgroundHref, refuseOffLibrary } from "./example-runner.js";
+import { liveLibraryOnce, playgroundHref, refuseUnrunnable } from "./example-runner.js";
 import { encodeProgram } from "./playground-hash.js";
 import { fileOf } from "./theme/playground-program.js";
-
-/** The file a demo directory runs from, in the card and in Node. */
-export const DEMO_ENTRY = "main.ts";
 
 /** A demo's card: a program the browser runs in a live terminal. */
 export type DemoCard = Extract<CardData, { readonly run: "browser" }>;
 
-/** Each import `source`, the file `name`, makes of a module by name: its specifier, and its clause, which a bare import has none of. */
-function imports(name: string, source: string): { readonly specifier: string; readonly clause: ts.ImportClause | undefined; readonly typeOnly: boolean }[] {
+/** Each module `source` imports or re-exports by a relative name. */
+function relativeImports(name: string, source: string): string[] {
   const file = ts.createSourceFile(name, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const found: ReturnType<typeof imports> = [];
-  const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
-      throw new Error(`${name}: a demo imports only with \`import\` declarations, not \`import()\``);
-    }
-    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier !== undefined) {
-      const clause = ts.isImportDeclaration(node) ? node.importClause : undefined;
-      const typeOnly = ts.isImportDeclaration(node) ? clause?.isTypeOnly === true : node.isTypeOnly;
-      found.push({ specifier: (node.moduleSpecifier as ts.StringLiteral).text, clause, typeOnly });
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(file);
-  return found;
+  return file.statements.flatMap((node) =>
+    (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier !== undefined && ts.isStringLiteral(node.moduleSpecifier)
+      && node.moduleSpecifier.text.startsWith(".")
+      ? [node.moduleSpecifier.text]
+      : [],
+  );
 }
 
 /**
  * The program of the demo in `directory`: its entry and every file it reaches
- * by a relative import, in the order it reaches them. Every import of a
- * package is one the live library answers, or only of types, which running
- * drops.
+ * by a relative import, in the order it reaches them, refused unless the card
+ * runs it on `library`, the live library's script. A relative import may not
+ * leave `examples/`, the directory `directory` is in, since a demo reaches
+ * the library by its published names.
  */
-export function demoProgram(directory: string): CardProgram {
+export function demoProgram(directory: string, library: string): CardProgram {
   const files: CardFile[] = [];
-  const reached = new Set<string>();
+  const at = (name: string): string => path.relative(REPO_ROOT, path.join(directory, name));
   const reach = (name: string): void => {
-    if (reached.has(name)) return;
-    reached.add(name);
+    if (files.some((file) => file.name === name)) return;
     const code = readFileSync(path.join(directory, name), "utf-8");
     files.push({ name, setup: NO_SETUP, code });
-    const at = path.relative(REPO_ROOT, path.join(directory, name));
-    for (const { specifier, clause, typeOnly } of imports(at, code)) {
-      if (specifier.startsWith(".")) reach(fileOf(specifier, name));
-      else if (!typeOnly) refuseOffLibrary(at, specifier, clause);
+    for (const specifier of relativeImports(at(name), code)) {
+      const reached = fileOf(specifier, name);
+      if (path.relative(path.dirname(directory), path.join(directory, reached)).startsWith("..")) {
+        throw new Error(`${at(name)}: ${specifier} is outside examples/; a demo imports the library by its published names, @promptctl/rich-js and its subpaths`);
+      }
+      reach(reached);
     }
   };
   reach(DEMO_ENTRY);
   const [entry, ...rest] = files;
-  return { files: [entry!, ...rest] };
+  const program: CardProgram = { files: [entry!, ...rest] };
+  refuseUnrunnable(at, "its demo's card runs it", program, library);
+  return program;
 }
+
+/** The live library every demo's card is held to, built once for them all. */
+const library = liveLibraryOnce();
 
 /** The card the page of the demo in `examples/<demo>/` shows. */
 export async function demoCard(demo: string): Promise<DemoCard> {
-  const program = demoProgram(path.join(REPO_ROOT, "examples", demo));
+  const program = demoProgram(path.join(REPO_ROOT, "examples", demo), (await library()).script);
   return {
     run: "browser",
     program,

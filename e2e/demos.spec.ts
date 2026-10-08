@@ -203,6 +203,17 @@ test("a demo's card shows its files as tabs; an edit to any re-runs it, reset pu
   await expect(editor(page)).toContainText("new NodeTerminalHost()", LOADED);
   await expect.poll(() => shown(page), LOADED).toContain("PowerlineJoiner");
 
+  // The tabs are the WAI-ARIA tabs pattern: one Tab stop, the arrow keys move
+  // the choice and focus with it, and the editor is the chosen tab's panel.
+  await expect(tab(page, "app.ts")).toHaveAttribute("tabindex", "-1");
+  await tab(page, "main.ts").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(tab(page, "app.ts")).toBeFocused();
+  await expect(tab(page, "app.ts")).toHaveAttribute("aria-selected", "true");
+  await expect(card(page).getByRole("tabpanel", { name: "app.ts" })).toContainText("export function runDemo");
+  await page.keyboard.press("Home");
+  await expect(tab(page, "main.ts")).toHaveAttribute("aria-selected", "true");
+
   // An edit in a file that is not the entry reaches the program it imports it
   // into: the tour, a screen long, replaced by one line.
   await tab(page, "app.ts").click();

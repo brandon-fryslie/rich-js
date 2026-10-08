@@ -13,7 +13,8 @@
  * [LAW:one-source-of-truth] Both halves read `ENTRY_BY_SPECIFIER`, the walk of
  * `package.json#exports` every other reader of the published names uses.
  *
- * Run by Node's own TypeScript type stripping, so it imports `.ts` by name.
+ * Run by Node's own TypeScript type stripping, so it imports `.ts` by name;
+ * that is the Node `package.json#devEngines` asks a contributor for.
  */
 import ts from "typescript";
 import path from "node:path";

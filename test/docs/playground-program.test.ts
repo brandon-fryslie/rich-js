@@ -10,15 +10,18 @@ import stripAnsi from "strip-ansi";
 import { liveLibraryOnce } from "../../docs/.vitepress/example-runner.js";
 import { runInTerminal } from "../../docs/.vitepress/simulated-process.js";
 import { EXAMPLE_TERMINAL } from "../../docs/.vitepress/example-terminal.js";
-import { PLAYGROUND_SOURCE, type ProgramFiles } from "../../docs/.vitepress/example-card.js";
-import { fileOf, oneSource, playgroundProgram, playgroundScript, thrownAt } from "../../docs/.vitepress/theme/playground-program.js";
+import { NO_SETUP, PLAYGROUND_SOURCE, oneFile, programFiles, type ProgramFiles } from "../../docs/.vitepress/example-card.js";
+import { fileOf, playgroundProgram, playgroundScript, thrownAt } from "../../docs/.vitepress/theme/playground-program.js";
 
 const library = liveLibraryOnce();
+
+/** `source` as a docs block's one-file program. */
+const one = (source: string): ProgramFiles => programFiles(oneFile(NO_SETUP, source));
 
 /** What `source`, or a program of `files`, writes, and the error it ends on. */
 async function play(source: string | ProgramFiles): Promise<{ readonly output: string; readonly error: unknown }> {
   const output: string[] = [];
-  const script = playgroundScript(typeof source === "string" ? oneSource(source) : source, (await library()).script);
+  const script = playgroundScript(typeof source === "string" ? one(source) : source, (await library()).script);
   const error = await runInTerminal(script, { ...EXAMPLE_TERMINAL, write: (chunk) => output.push(String(chunk)), onInput: () => {}, exit: () => {} }).then(
     () => null,
     (thrown: unknown) => thrown,
@@ -67,7 +70,7 @@ describe("the playground's program", { timeout: 60_000 }, () => {
   });
 
   it("refuses import.meta, which Sucrase passes and only a module may say, and runs nothing", async () => {
-    expect(playgroundProgram(oneSource('process.stdout.write("ran");\nprocess.stdout.write(String(import.meta.url));'), "")).toMatchObject({
+    expect(playgroundProgram(one('process.stdout.write("ran");\nprocess.stdout.write(String(import.meta.url));'), "")).toMatchObject({
       kind: "refused",
       report: expect.stringMatching(/^SyntaxError: .*import\.meta/),
     });
@@ -126,6 +129,11 @@ describe("a program of several files", { timeout: 60_000 }, () => {
     ]);
     expect((error as Error).message).toBe("boom");
     expect(thrownAt((error as Error).stack!, ["main.ts", "app.ts"])).toEqual({ file: "app.ts", line: 2 });
+  });
+
+  it("reads a frame as Firefox and Safari write it, and not a file whose name only ends in a program file's", () => {
+    expect(thrownAt("Error: boom\nfail@app.ts:2:9\n@main.ts:3:1", ["main.ts", "app.ts"])).toEqual({ file: "app.ts", line: 2 });
+    expect(thrownAt("Error: boom\n    at fail (domain.ts:2:9)", ["main.ts"])).toBeNull();
   });
 
   it("refuses an import of a file the program does not have, naming the file that imports it and those it has", async () => {
