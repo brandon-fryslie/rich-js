@@ -115,6 +115,18 @@ describe("Effected — segments are cut only where colours change", () => {
     }
   });
 
+  it("yields a segment as it was when every moved cell is written as its colour was", () => {
+    // Odd columns nudged off the default colour, which every depth below truecolor rounds back to it.
+    const nudge: Effect = (colors, cell) =>
+      cell.col % 2 === 0 ? colors : { fg: new ColorRgba(colors.fg.red - 3, colors.fg.green, colors.fg.blue), bg: colors.bg };
+    for (const colorSystem of [ColorDepth.EIGHT_BIT, ColorDepth.STANDARD]) {
+      const segment = new Segment("abcdef");
+      const segments = [...effected(fixed(segment), nudge).render({ maxWidth: 10, colorSystem })];
+      expect(segments).toHaveLength(1);
+      expect(segments[0]).toBe(segment);
+    }
+  });
+
   it("never writes one SGR twice in a row for a pulsing ProgressBar", () => {
     // A run, its reset, then the same SGR again: two segments the wire draws as one.
     const repeated = /\x1b\[([\d;]+)m[^\x1b]*\x1b\[0m\x1b\[\1m/;
@@ -240,7 +252,7 @@ describe("Effected — below truecolor", () => {
     const plain = fixed(new Segment("x"));
     for (const colorSystem of ["ansi", "256"] as const) {
       const drawn = renderToString(onMocha(plain, nudge), { width: 10, colorSystem });
-      expect(drawn).toContain("\x1b[39;49m");
+      expect(drawn).toBe(renderToString(plain, { width: 10, colorSystem }));
     }
   });
 

@@ -116,7 +116,7 @@ Nothing in an effect reads a clock. Whoever draws frames builds the view for eac
 
 ## What an effect cannot change
 
-An effect changes how cells look, never which cells exist or who drew them. Text, links, and the anchors that let a click or Tab reach a widget all pass through, so a button under an effect still takes clicks. A cell whose colours come back unchanged is drawn exactly as before: the identity effect `(colors) => colors` produces byte-identical output. Neighbouring cells the terminal is sent alike stay one segment: below truecolor, two colours that land on one palette index are one run.
+An effect changes how cells look, never which cells exist or who drew them. Text, links, and the anchors that let a click or Tab reach a widget all pass through, so a button under an effect still takes clicks. A cell whose colours come back unchanged is drawn exactly as before: the identity effect `(colors) => colors` produces byte-identical output. Neighbouring cells of one segment that the terminal is sent alike stay one segment: below truecolor, two colours that land on one palette index are one run, and so are a cell moved onto the default colour and one that sets none. Cells from two segments stay two, as the wrapped renderable drew them.
 
 With no colour output at all, an effect has nothing to change, and the wrapped renderable draws as it would without it.
 

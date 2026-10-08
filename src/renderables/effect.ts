@@ -126,11 +126,9 @@ export class Effected implements Renderable, Measurable {
       const paper = (wire.bgcolor ?? DEFAULT).getTruecolor(this.theme, false);
       const from = onScreen({ fg: ink, bg: paper }, base);
       // [LAW:one-source-of-truth] A run is cells the wire writes alike: each
-      // cell is drawn at the output depth first and merged on the SGR codes
-      // that writes, so two truecolors landing on one index stay one run.
-      const sgr = (drawn: DrawnColors) => Style.fromColor(drawn.color, drawn.bgcolor).toSgrCodes(depth);
-      const unchanged = sgr(wire);
-      const runs: { text: string; cells: number; drawn: DrawnColors; sgr: string }[] = [];
+      // cell is drawn at the output depth first and merged on the colours that
+      // writes, so two truecolors landing on one index stay one run.
+      const runs: { text: string; cells: number; drawn: DrawnColors }[] = [];
       for (const glyph of graphemes(segment.text)) {
         let drawn = wire;
         if (glyph === "\n") {
@@ -142,23 +140,22 @@ export class Effected implements Renderable, Measurable {
           drawn = this.respec(wire, { fg: ink, bg: paper }, onScreen(to, base), depth);
           col += cellLen(glyph);
         }
-        const codes = sgr(drawn);
         const last = runs[runs.length - 1];
-        if (last !== undefined && last.sgr === codes) {
+        if (last !== undefined && writesAlike(last.drawn, drawn)) {
           last.text += glyph;
           last.cells += cellLen(glyph);
         } else {
-          runs.push({ text: glyph, cells: cellLen(glyph), drawn, sgr: codes });
+          runs.push({ text: glyph, cells: cellLen(glyph), drawn });
         }
       }
-      if (runs.every((run) => run.sgr === unchanged)) {
+      if (runs.every((run) => writesAlike(run.drawn, wire))) {
         yield segment;
         continue;
       }
       let offset = 0;
       for (const run of runs) {
         const shifted = base.shiftedBy(offset);
-        const style = run.sgr === unchanged ? shifted : shifted.add(Style.fromColor(run.drawn.color, run.drawn.bgcolor));
+        const style = writesAlike(run.drawn, wire) ? shifted : shifted.add(Style.fromColor(run.drawn.color, run.drawn.bgcolor));
         yield new Segment(run.text, style);
         offset += run.cells;
       }
@@ -203,6 +200,19 @@ type DrawnColors = ReturnType<Style["drawnColors"]>;
  */
 function onScreen(colors: CellColors, style: Style): CellColors {
   return style.reverse === true ? { fg: colors.bg, bg: colors.fg } : colors;
+}
+
+/**
+ * Whether two cells' colours are written alike. A slot with no colour writes
+ * nothing and the default colour writes `39`/`49`, but every segment opens
+ * after a reset, so both draw the terminal's default and are one colour here.
+ */
+function writesAlike(a: DrawnColors, b: DrawnColors): boolean {
+  return slotWritesAlike(a.color, b.color, true) && slotWritesAlike(a.bgcolor, b.bgcolor, false);
+}
+
+function slotWritesAlike(a: ColorSpec | undefined, b: ColorSpec | undefined, foreground: boolean): boolean {
+  return a === b || (a ?? DEFAULT).getAnsiCodes(foreground).join(";") === (b ?? DEFAULT).getAnsiCodes(foreground).join(";");
 }
 
 function sameColor(a: ColorRgba, b: ColorRgba): boolean {
