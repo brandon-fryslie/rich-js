@@ -721,6 +721,29 @@ const EXPAND_SEPARATOR = SEPARATOR.trimEnd();
 const elided = (dropped: number): Slot[] =>
   dropped > 0 ? [{ head: `... +${dropped}`, join: "", holes: [] }] : [];
 
+/**
+ * A key `Pretty._key` may leave bare. The bare form refuses a default-ignorable code point, which prints as
+ * nothing, so `"a\ufe0f"` cannot pass for `a`; `ID_Continue` admits several.
+ * An index is at most 15 digits: every such literal is a safe integer and
+ * names itself, where `99999999999999999999` would name `1e20`'s key.
+ */
+const BARE_KEY = /^(?![^]*\p{Default_Ignorable_Code_Point})(?:[\p{ID_Start}$_][\p{ID_Continue}$]*|0|[1-9]\d{0,14})$/u;
+
+/**
+ * What Python's `str.isprintable` refuses \u2014 control, format, private-use,
+ * unassigned, and every separator but the space \u2014 which Rich's repr escapes
+ * and JSON.stringify leaves raw past C0. Raw, DEL vanishes in `RichText`, a C1
+ * byte reaches the terminal as a control, and a format character hides or
+ * reorders what is around it.
+ */
+const UNPRINTABLE = /(?! )[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}\p{Zs}]/gu;
+
+/** `value` in double quotes, every character that does not print escaped. */
+const quoted = (value: string): string =>
+  JSON.stringify(value).replace(UNPRINTABLE, (c) => {
+    const hex = c.codePointAt(0)!.toString(16).padStart(4, "0");
+    return hex.length > 4 ? `\\u{${hex}}` : `\\u${hex}`;
+  });
 
 export class Pretty implements Renderable, Measurable {
   readonly data: unknown;
@@ -798,18 +821,8 @@ export class Pretty implements Renderable, Measurable {
     if (value === undefined) return "undefined";
 
     switch (typeof value) {
-      case "string": {
-        // The dropped count is an annotation about the value, not part of it,
-        // so it goes after the closing quote — the way `maxLength`'s `... +N`
-        // sits beside the kept entries rather than inside the last one. Inside
-        // the quotes it reads as content, and copying it out yields a string
-        // the program never held.
-        //
-        // A cluster is at least one code unit, so a string no longer than the
-        // cap in code units is within it in clusters, and needs no segmenting.
-        if (this.maxString === undefined || value.length <= this.maxString) return JSON.stringify(value);
-        return this._cutString(value, this.maxString);
-      }
+      case "string":
+        return this._string(value);
       case "number":
       case "bigint":
       case "boolean":
@@ -824,11 +837,39 @@ export class Pretty implements Renderable, Measurable {
   }
 
   /**
+   * `value` quoted, and cut to `maxString` when it is longer.
+   *
+   * The dropped count is an annotation about the value, not part of it, so it
+   * goes after the closing quote — the way `maxLength`'s `... +N` sits beside
+   * the kept entries rather than inside the last one. Inside the quotes it
+   * reads as content, and copying it out yields a string the program never
+   * held.
+   *
+   * A cluster is at least one code unit, so a string no longer than the cap in
+   * code units is within it in clusters, and needs no segmenting.
+   */
+  private _string(value: string): string {
+    if (this.maxString === undefined || value.length <= this.maxString) return quoted(value);
+    return this._cutString(value, this.maxString);
+  }
+
+  /**
+   * A key as an object literal would spell it: bare when it is a name or an
+   * index, which reads as itself, and quoted as a string otherwise. Rich reprs
+   * every key; printed raw, `"a b"` was indistinguishable from two words and a
+   * `\r` in one was dropped by `RichText`, so the key shown was not the key held.
+   * Quoting only what needs it keeps the JavaScript reading `{ a: 1 }`. A
+   * quoted key is a string and `maxString` cuts it; a bare one is a name.
+   */
+  private _key(key: string): string {
+    return BARE_KEY.test(key) ? key : this._string(key);
+  }
+
+  /**
    * `value` cut to `max` grapheme clusters, with the rest counted after the
    * closing quote.
    *
-   * The unit is the cluster of the value, counted before `JSON.stringify`
-   * escapes it. A code unit cut can keep half a surrogate pair, which
+   * The unit is the cluster of the value, counted before `quoted` escapes it. A code unit cut can keep half a surrogate pair, which
    * JSON.stringify prints as a `\ud83d` escape; a code point cut can keep half
    * a flag or a ZWJ family. Either way the kept prefix shows something the
    * value never held, and the dropped count is in a unit nobody can see.
@@ -842,8 +883,8 @@ export class Pretty implements Renderable, Measurable {
     if (cut === undefined) {
       const clusters = graphemes(value);
       cut = clusters.length <= max
-        ? JSON.stringify(value)
-        : JSON.stringify(clusters.slice(0, max).join("")) + `+${clusters.length - max}`;
+        ? quoted(value)
+        : quoted(clusters.slice(0, max).join("")) + `+${clusters.length - max}`;
       this.cutStrings.set(value, cut);
     }
     return cut;
@@ -933,7 +974,7 @@ export class Pretty implements Renderable, Measurable {
         const keys = Object.keys(record);
         return this._container("{", "}", " ", keys.length, level, () =>
           keys.slice(0, cap).map((k): Slot => ({
-            head: k,
+            head: this._key(k),
             join: ": ",
             holes: [{ read: () => record[k], tail: flat("") }],
           })),
