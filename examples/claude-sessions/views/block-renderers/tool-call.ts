@@ -54,7 +54,7 @@ export function renderToolCall(block: ToolCallBlock, opts: RenderOpts): Renderab
 
   const items: Renderable[] = [inputRenderable];
   if (block.hasResult) {
-    items.push(new Rule("result", { style: "dim" }));
+    items.push(new Rule("[dim]result", { style: "dim" }));
     const resultDisplay = opts.isExpanded
       ? block.result
       : truncate(block.result, RESULT_PREVIEW_LINES);
@@ -63,7 +63,7 @@ export function renderToolCall(block: ToolCallBlock, opts: RenderOpts): Renderab
     highlightSearch(resultText, opts.searchQuery);
     items.push(resultText);
   } else {
-    items.push(new Rule("no result", { style: "dim red" }));
+    items.push(new Rule("[dim red]no result", { style: "dim red" }));
   }
 
   const body = new Group(...items);

@@ -494,9 +494,9 @@ console.rule("Section One");
 console.rule(undefined, { style: "blue", align: "left" });
 ```
 
-The title is plain text. `rule()` does not parse markup in it, so
-`"[bold]Section One[/bold]"` draws the brackets rather than emboldening the
-words — style the whole rule with the `style` option instead.
+The line is drawn in `style`, `rule.line` by default; the title never takes it.
+A string title is read as `print` reads a string, so markup styles it:
+`console.rule("[bold red]Section One", { style: "red" })` draws both in red.
 
 ## Status
 

@@ -23,7 +23,7 @@ export function renderSubagent(block: SubagentBlock, opts: RenderOpts): Renderab
   items.push(promptText);
 
   if (block.hasResult) {
-    items.push(new Rule("result", { style: "dim magenta" }));
+    items.push(new Rule("[dim magenta]result", { style: "dim magenta" }));
     const resultDisplay = opts.isExpanded
       ? block.resultText
       : truncate(block.resultText, PREVIEW_LINES);
@@ -31,7 +31,7 @@ export function renderSubagent(block: SubagentBlock, opts: RenderOpts): Renderab
     highlightSearch(resultText, opts.searchQuery);
     items.push(resultText);
   } else {
-    items.push(new Rule("no result", { style: "dim red" }));
+    items.push(new Rule("[dim red]no result", { style: "dim red" }));
   }
 
   const body = new Group(...items);

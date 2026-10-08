@@ -359,7 +359,7 @@ interface Section {
 function makeSection(title: string, rows: DemoRow[], extraVisibleItems: StaticItem[] = []): Section {
   const headerItem = new StaticItem({
     id: uid("hdr"),
-    render: (opts) => new Rule(title, { style: cyanBoldStyle }).render(opts),
+    render: (opts) => new Rule(new RichText(title, { style: cyanBoldStyle }), { style: cyanBoldStyle }).render(opts),
   });
   const headerSpacer  = makeSpacerItem();
   const trailingSpacer = makeSpacerItem();

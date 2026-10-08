@@ -26,7 +26,7 @@ import { cellCount, cellLen, setCellSize } from "../core/cells.js";
 import { activeHighlighter, readStr } from "../core/markup.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
-import type { Style } from "../core/style.js";
+import type { Style, TextStyle } from "../core/style.js";
 import { RichText } from "../core/text.js";
 
 /**
@@ -57,16 +57,20 @@ export class EmbeddedText implements Renderable, Measurable {
    * The text this content draws under `options`. A string reads with `base` as
    * its style, as Rich's `render_str(style=)` gives one; text handed over
    * keeps its own, since the caller already said how it looks — so a table's
-   * `Text` title draws without the title style, as Rich's does.
+   * `Text` title draws without the title style, as Rich's does. A highlighted
+   * string keeps only its spans: Rich's `render_str` highlights a fresh `Text`
+   * of the plain string and copies the spans onto it, so `base` is lost there,
+   * and a title Rich reads with highlighting on draws without it.
    */
-  text(options: RenderOptions, base?: Style): RichText {
+  text(options: RenderOptions, base?: TextStyle): RichText {
     if (typeof this._source !== "string") return this._source.copy();
     const markup = options.markup !== false;
     const reading = this._readings.get(markup) ?? readStr(this._source, markup);
     this._readings.set(markup, reading);
     const text = reading.copy();
-    if (base) text.style = base;
-    activeHighlighter(options)?.highlight(text);
+    const highlighter = activeHighlighter(options);
+    if (base !== undefined && highlighter === undefined) text.style = base;
+    highlighter?.highlight(text);
     return text;
   }
 
@@ -118,7 +122,7 @@ export class InlineLabel {
    * The label drawn under `options`: one line, its own overflow kept for the
    * caller's cut. A string reads with `base` as its style, as `EmbeddedText.text` reads one.
    */
-  text(options: RenderOptions, base?: Style): RichText {
+  text(options: RenderOptions, base?: TextStyle): RichText {
     const text = this._content.text(options, base);
     // A fragment of the line, so its own end is not drawn, as Rich's `_title` clears it.
     text.end = "";

@@ -67,7 +67,7 @@ export class CoverageRenderable implements Renderable {
     const items: Renderable[] = [];
 
     // ── 1. All 18 Box variants, plus one built here ──────────────────
-    items.push(new Rule("Box Variants (18) + a custom Box", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Box Variants (18) + a custom Box", { style: "bold cyan" }));
     const boxStyles = [
       { name: "ASCII", box: ASCII }, { name: "ASCII2", box: ASCII2 },
       { name: "ASCII_DBL", box: ASCII_DOUBLE_HEAD },
@@ -101,7 +101,7 @@ export class CoverageRenderable implements Renderable {
     items.push(new Columns(boxPanels, { equal: true, expand: true }));
 
     // ── 2. ProgressBar (standalone) ──────────────────────────────────
-    items.push(new Rule("ProgressBar", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]ProgressBar", { style: "bold cyan" }));
     // A ProgressBar is a line fragment, so each sits in a grid row beside its
     // label rather than in a Group, which would run the next row onto it.
     const bars = Table.grid().addColumn().addColumn();
@@ -111,13 +111,13 @@ export class CoverageRenderable implements Renderable {
     items.push(bars);
 
     // ── 3. Columns ───────────────────────────────────────────────────
-    items.push(new Rule("Columns", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Columns", { style: "bold cyan" }));
     const fruits = ["apple", "banana", "cherry", "date", "elderberry",
       "fig", "grape", "honeydew", "kiwi", "lemon", "mango", "nectarine"];
     items.push(new Columns(fruits.map((f) => new RichText(f)), { expand: true }));
 
     // ── 4. The Highlighter family ────────────────────────────────────
-    items.push(new Rule("Highlighters", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Highlighters", { style: "bold cyan" }));
     const nh = new NullHighlighter();
     const nhText = new RichText("NullHighlighter applied: no styles changed");
     nh.highlight(nhText);
@@ -144,7 +144,7 @@ export class CoverageRenderable implements Renderable {
     items.push(new ShoutHighlighter().call("A custom Highlighter SHOUTS the LOUD words."));
 
     // ── 5. Emoji + NoEmoji ───────────────────────────────────────────
-    items.push(new Rule("Emoji + NoEmoji", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Emoji + NoEmoji", { style: "bold cyan" }));
     // An Emoji is a line fragment, as in Rich, so it sits in a grid row
     // beside its label rather than running the next item onto its line.
     items.push(Table.grid().addColumn().addColumn().addRow(`Emoji("star"):`, new Emoji("star")));
@@ -160,7 +160,7 @@ export class CoverageRenderable implements Renderable {
     ));
 
     // ── 6. StyleStack + Theme + DEFAULT_STYLES ───────────────────────
-    items.push(new Rule("StyleStack + Theme", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]StyleStack + Theme", { style: "bold cyan" }));
     const stack = new StyleStack(Style.parse("white"));
     stack.push(Style.parse("bold"));
     stack.push(Style.parse("italic red"));
@@ -185,7 +185,7 @@ export class CoverageRenderable implements Renderable {
     items.push(new RichText(`NULL_STYLE.isNull: ${String(NULL_STYLE.isNull)}`));
 
     // ── 7. Palette + parseRgbHex + ColorDepth + ColorParseError ───────
-    items.push(new Rule("Color / Palette", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Color / Palette", { style: "bold cyan" }));
     const rgb = parseRgbHex("ff6600");
     items.push(new RichText(`parseRgbHex("ff6600") = ${rgb.hex} (r=${rgb.red} g=${rgb.green} b=${rgb.blue})`));
     items.push(new RichText(
@@ -201,14 +201,14 @@ export class CoverageRenderable implements Renderable {
     ));
 
     // ── 8. Cell functions ────────────────────────────────────────────
-    items.push(new Rule("Cell Functions", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Cell Functions", { style: "bold cyan" }));
     items.push(new RichText(`cellLen("hello") = ${cellLen("hello")}`));
     items.push(new RichText(`splitText("abcdef", 3) = ${JSON.stringify(splitText("abcdef", asCellCol(3)))}`));
     items.push(new RichText(`chopCells("hello world", 7) = ${JSON.stringify(chopCells("hello world", asCellCol(7)))}`));
     items.push(new RichText(`setCellSize("ab", 5) = ${JSON.stringify(setCellSize("ab", asCellCol(5)))}`));
 
     // ── 9. Measurement + measureRenderables ──────────────────────────
-    items.push(new Rule("Measurement", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Measurement", { style: "bold cyan" }));
     const measurable = new RichText("measure this text");
     const m = Measurement.get(options, measurable);
     items.push(new RichText(`Measurement.get: min=${m.minimum}, max=${m.maximum}`));
@@ -216,13 +216,13 @@ export class CoverageRenderable implements Renderable {
     items.push(new RichText(`measureRenderables: min=${multi.minimum}, max=${multi.maximum}`));
 
     // ── 10. Protocol checks ──────────────────────────────────────────
-    items.push(new Rule("Protocol", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Protocol", { style: "bold cyan" }));
     items.push(new RichText(
       `isRenderable(RichText)=${isRenderable(measurable)} isMeasurable(RichText)=${isMeasurable(measurable)} isRenderable("str")=${isRenderable("str")}`,
     ));
 
     // ── 11. StyleSyntaxError + MarkupError ───────────────────────────
-    items.push(new Rule("Error Types", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Error Types", { style: "bold cyan" }));
     try { Style.parse("zzzz_invalid"); } catch (e) {
       items.push(new RichText(`StyleSyntaxError: ${e instanceof StyleSyntaxError}`));
     }
@@ -235,23 +235,23 @@ export class CoverageRenderable implements Renderable {
     }
 
     // ── 12. Spinner data ─────────────────────────────────────────────
-    items.push(new Rule("Spinner Data", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Spinner Data", { style: "bold cyan" }));
     items.push(new RichText(
       `${Object.keys(SPINNERS).length} spinners. DEFAULT="${DEFAULT_SPINNER}". Sample: ${Object.keys(SPINNERS).slice(0, 8).join(", ")}`,
     ));
 
     // ── 13. Align (all three) ────────────────────────────────────────
-    items.push(new Rule("Align", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Align", { style: "bold cyan" }));
     items.push(new Align(new RichText("← left"), "left"));
     items.push(new Align(new RichText("center →"), "center"));
     items.push(new Align(new RichText("right →"), "right"));
 
     // ── 14. Padding (standalone) ─────────────────────────────────────
-    items.push(new Rule("Padding (standalone)", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Padding (standalone)", { style: "bold cyan" }));
     items.push(new Padding(new RichText("Padded [1,2,1,2]"), [1, 2, 1, 2]));
 
     // ── 15. Progress (rendered as a static snapshot) ───────────────
-    items.push(new Rule("Progress (static render)", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Progress (static render)", { style: "bold cyan" }));
     // Exercise Progress + all column types by rendering its table output
     // directly (without start/stop which use Live for animation).
     const progress = new Progress(
@@ -271,14 +271,14 @@ export class CoverageRenderable implements Renderable {
     items.push(progress);
 
     // ── 16. Status (construction + renderable output) ────────────────
-    items.push(new Rule("Status (construction)", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Status (construction)", { style: "bold cyan" }));
     // Status wraps a Spinner + message in a Live. We can't call start()
     // here but we validate construction + the internal renderable.
     const status = new Status("Loading session...", { spinner: "dots" });
     items.push(new RichText(`Status constructed: spinner=dots message="${status.message}"`));
 
     // ── 17. Prompt classes (construction, no stdin) ──────────────────
-    items.push(new Rule("Prompt classes", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Prompt classes", { style: "bold cyan" }));
     // Prompt/IntPrompt/FloatPrompt/Confirm use readline — can't call
     // .ask() in a TUI. Exercise their existence and type checks.
     items.push(new RichText(
@@ -287,7 +287,7 @@ export class CoverageRenderable implements Renderable {
     ));
 
     // ── 18. track (generator, exercised without Live) ────────────────
-    items.push(new Rule("track()", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]track()", { style: "bold cyan" }));
     // track() wraps an iterable with progress. We consume it eagerly
     // to exercise the code path. It creates a Progress + Live internally
     // but we can't display it in our TUI — just prove it doesn't crash.
@@ -295,7 +295,7 @@ export class CoverageRenderable implements Renderable {
     items.push(new RichText(`track: generator function exists = ${typeof track === "function"}`));
 
     // ── 19. Span (what a highlighter actually leaves behind) ─────────
-    items.push(new Rule("Span", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Span", { style: "bold cyan" }));
     // Styling annotates ranges; it never rewrites the text. Reading the
     // spans back is how you see that — the plain string is untouched.
     const spanned = new RichText("Spans annotate a range, not the whole string.");
@@ -309,7 +309,7 @@ export class CoverageRenderable implements Renderable {
     ));
 
     // ── 20. Segment → ANSI without a Console ─────────────────────────
-    items.push(new Rule("renderToString / segmentsToString", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]renderToString / segmentsToString", { style: "bold cyan" }));
     const sample = new Panel(new RichText("rendered off-console"), { box: SQUARE });
     const plain = renderToString(sample, { width: 40, colorSystem: null });
     items.push(new RichText(
@@ -357,11 +357,11 @@ export class CoverageRenderable implements Renderable {
     ));
 
     // ── 21. Spinner (a single frame, no Live) ────────────────────────
-    items.push(new Rule("Spinner", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Spinner", { style: "bold cyan" }));
     items.push(new Spinner("dots", "spinning without a Live"));
 
     // ── 22. Table built from explicit Columns ────────────────────────
-    items.push(new Rule("Table + Column", { style: "bold cyan" }));
+    items.push(new Rule("[bold cyan]Table + Column", { style: "bold cyan" }));
     const table = new Table({ box: HEAVY_HEAD, title: "Columns configured directly" });
     table.columns.push(new Column({ header: "left", justify: "left", minWidth: 10 }));
     table.columns.push(new Column({ header: "centered", justify: "center", minWidth: 12 }));
