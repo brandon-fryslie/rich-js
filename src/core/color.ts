@@ -135,8 +135,9 @@ function luminanceRatio(la: number, lb: number): number {
 // --- ColorTable ---
 
 // [LAW:one-source-of-truth] The one distance every table scan ranks by, so
-// `matchWhere`'s "nearest by the distance `match` uses" cannot drift.
-function rgbDistance(a: ColorRgba, b: ColorRgba): number {
+// `matchWhere`'s "nearest by the distance `match` uses" cannot drift, and
+// `Effected` weighs a written colour against `ColorSpec.matchOn` by it too.
+export function rgbDistance(a: ColorRgba, b: ColorRgba): number {
   const dr = a.red - b.red;
   const dg = a.green - b.green;
   const db = a.blue - b.blue;

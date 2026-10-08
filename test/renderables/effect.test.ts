@@ -116,14 +116,18 @@ describe("Effected — segments are cut only where colours change", () => {
   });
 
   it("yields a segment as it was when every moved cell is written as its colour was", () => {
-    // Odd columns nudged off the default colour, which every depth below truecolor rounds back to it.
-    const nudge: Effect = (colors, cell) =>
-      cell.col % 2 === 0 ? colors : { fg: new ColorRgba(colors.fg.red - 3, colors.fg.green, colors.fg.blue), bg: colors.bg };
-    for (const colorSystem of [ColorDepth.EIGHT_BIT, ColorDepth.STANDARD]) {
-      const segment = new Segment("abcdef");
-      const segments = [...effected(fixed(segment), nudge).render({ maxWidth: 10, colorSystem })];
-      expect(segments).toHaveLength(1);
-      expect(segments[0]).toBe(segment);
+    // Odd columns nudged a unit off whatever they are written in: the default
+    // colour, a theme slot, a cube or grey-ramp entry, white. No depth below
+    // truecolor can show the move, so none is written.
+    const near = (c: ColorRgba) => new ColorRgba(c.red > 127 ? c.red - 1 : c.red + 1, c.green, c.blue);
+    const nudge: Effect = (colors, cell) => (cell.col % 2 === 0 ? colors : { fg: near(colors.fg), bg: near(colors.bg) });
+    for (const style of [undefined, "red", "#ff0000", "#ffffff", "#808080", "#ff00ff on #ff0000"]) {
+      for (const colorSystem of [ColorDepth.EIGHT_BIT, ColorDepth.STANDARD]) {
+        const segment = new Segment("abcdef", style === undefined ? undefined : Style.parse(style));
+        const segments = [...effected(fixed(segment), nudge).render({ maxWidth: 10, colorSystem })];
+        expect(segments, `${style} at ${colorSystem}`).toEqual([segment]);
+        expect(segments[0]).toBe(segment);
+      }
     }
   });
 

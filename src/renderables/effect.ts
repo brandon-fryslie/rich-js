@@ -35,7 +35,7 @@
  */
 
 import { cellLen, graphemes } from "../core/cells.js";
-import { ColorDepth, ColorSpec, SURFACE_BLACK, type ColorRgba, type TerminalTheme } from "../core/color.js";
+import { ColorDepth, ColorSpec, SURFACE_BLACK, rgbDistance, type ColorRgba, type TerminalTheme } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
@@ -124,28 +124,31 @@ export class Effected implements Renderable, Measurable {
       const wire = base.drawnColors(options.colorSystem ?? undefined);
       const ink = (wire.color ?? DEFAULT).getTruecolor(this.theme, true);
       const paper = (wire.bgcolor ?? DEFAULT).getTruecolor(this.theme, false);
-      const from = onScreen({ fg: ink, bg: paper }, base);
+      const slots = { fg: ink, bg: paper };
+      const from = onScreen(slots, base);
       // [LAW:one-source-of-truth] A run is cells the wire writes alike: each
       // cell is drawn at the output depth first and merged on the colours that
-      // writes, so two truecolors landing on one index stay one run.
-      const runs: { text: string; cells: number; drawn: DrawnColors }[] = [];
+      // writes, so two truecolors landing on one index stay one run. A cell
+      // the effect gave its neighbour's colours is drawn as that neighbour was.
+      const runs: { text: string; cells: number; colors: CellColors; drawn: DrawnColors }[] = [];
       for (const glyph of graphemes(segment.text)) {
-        let drawn = wire;
+        let colors = slots;
         if (glyph === "\n") {
           row++;
           col = 0;
         } else {
-          const to = this.effect(from, { row, col, seed: this.seed(row, col) }, this.t);
           // Back from the screen to the style's slots: the same swap undoes itself.
-          drawn = this.respec(wire, { fg: ink, bg: paper }, onScreen(to, base), depth);
+          colors = onScreen(this.effect(from, { row, col, seed: this.seed(row, col) }, this.t), base);
           col += cellLen(glyph);
         }
         const last = runs[runs.length - 1];
+        const drawn = last !== undefined && sameColors(last.colors, colors) ? last.drawn : this.respec(wire, slots, colors, depth);
         if (last !== undefined && writesAlike(last.drawn, drawn)) {
           last.text += glyph;
           last.cells += cellLen(glyph);
+          last.colors = colors;
         } else {
-          runs.push({ text: glyph, cells: cellLen(glyph), drawn });
+          runs.push({ text: glyph, cells: cellLen(glyph), colors, drawn });
         }
       }
       if (runs.every((run) => writesAlike(run.drawn, wire))) {
@@ -172,18 +175,19 @@ export class Effected implements Renderable, Measurable {
    * and a moved one is laid on what is beneath it — the ground on
    * `SURFACE_BLACK`, the glyph on that ground, as the writer lays any
    * translucent colour (`Style.drawnColors`) — then drawn in the colour nearest it at `depth`
-   * that the terminal shows (`ColorSpec.matchOn`), so a colour moved a little
-   * off a theme slot or the default colour is still drawn as that one.
+   * that the terminal shows (`ColorSpec.matchOn`). A move the depth cannot
+   * show is no move: where the written spec is as near the moved colour as
+   * that match, the slot keeps it, so below truecolor a colour moved a little
+   * off any colour it can write — a theme slot, the default colour, the cube —
+   * is still drawn as that one.
    */
   private respec(wire: DrawnColors, from: CellColors, to: CellColors, depth: ColorDepth): DrawnColors {
     // [LAW:one-source-of-truth] The writer's surface, so one translucent colour draws one way in a frame.
     const ground = to.bg.compositeOver(SURFACE_BLACK);
     const glyph = to.fg.compositeOver(ground);
-    // A move the depth cannot show is no move: a slot matched back to the colour
-    // it was drawn in — no colour being the default — keeps its written spec.
     const drawn = (spec: ColorSpec | undefined, was: ColorRgba, now: ColorRgba, foreground: boolean) => {
-      const match = sameColor(was, now) ? spec : ColorSpec.matchOn(now, depth, this.theme, foreground);
-      return written(match, foreground) === written(spec ?? DEFAULT, foreground) ? spec : match;
+      const match = ColorSpec.matchOn(now, depth, this.theme, foreground);
+      return rgbDistance(was, now) <= rgbDistance(match.getTruecolor(this.theme, foreground), now) ? spec : match;
     };
     return { color: drawn(wire.color, from.fg, glyph, true), bgcolor: drawn(wire.bgcolor, from.bg, ground, false) };
   }
@@ -223,7 +227,10 @@ function written(spec: ColorSpec | undefined, foreground: boolean): string {
   return spec?.getAnsiCodes(foreground).join(";") ?? "";
 }
 
+function sameColors(a: CellColors, b: CellColors): boolean {
+  return sameColor(a.fg, b.fg) && sameColor(a.bg, b.bg);
+}
+
 function sameColor(a: ColorRgba, b: ColorRgba): boolean {
   return a.red === b.red && a.green === b.green && a.blue === b.blue && a.alpha === b.alpha;
 }
-
