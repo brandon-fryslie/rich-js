@@ -4,15 +4,22 @@
     {
       "version": "pr-346",
       "ref": "refs/pull/346/merge",
-      "sha": "2a77d2821e1fa101863ae17e2f33640ff90357ef",
-      "timestamp": "2026-10-08T03:19:15.910Z",
+      "sha": "b04addd308cc8b9e951e68942d3ed5acdfb18b63",
+      "timestamp": "2026-10-08T03:26:35.378Z",
       "commits": [
         {
-          "sha": "2a77d2821e1fa101863ae17e2f33640ff90357ef",
+          "sha": "b04addd308cc8b9e951e68942d3ed5acdfb18b63",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-07T21:17:50-06:00",
-          "message": "Merge 801b7177da710e667a3f5aa06d5f2c39e5e3bc8e into 99b2f5aa52d71219493244790c584a410f3dab0c\n"
+          "timestamp": "2026-10-08T03:25:08Z",
+          "message": "Merge 136d6ca4a79768f4c1ed3c6f182a5db18530e555 into 99b2f5aa52d71219493244790c584a410f3dab0c\n"
+        },
+        {
+          "sha": "136d6ca4a79768f4c1ed3c6f182a5db18530e555",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-07T21:25:03-06:00",
+          "message": "test(progress): pin Rich's bar bytes and bar.pulse colour; docs say the 16-colour pulse flashes red (rich-progress-p3gy)\n"
         },
         {
           "sha": "801b7177da710e667a3f5aa06d5f2c39e5e3bc8e",
