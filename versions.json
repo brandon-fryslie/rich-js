@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "478bc3ea1558c6dde8911316517f396d218d29ad",
-      "timestamp": "2026-10-08T19:19:23.249Z",
+      "sha": "f99118dd0e378c092d3b305d3eb6504e5a24a028",
+      "timestamp": "2026-10-08T19:30:43.788Z",
       "commits": [
         {
-          "sha": "478bc3ea1558c6dde8911316517f396d218d29ad",
+          "sha": "f99118dd0e378c092d3b305d3eb6504e5a24a028",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T13:18:08-06:00",
-          "message": "feat(docs): /playground is the card at full width (rich-example-card-obsb.cau) (#356)\n\n* feat(docs): /playground is the card at full width (rich-example-card-obsb.cau)\n\nThe playground is the example card: line numbers on, setup unfolded, the\nedited line always shown, the program in the hash. Try it carries the card's\nprogram, setup groups included (card.<deflated JSON>); a hash in the old\nformat opens as a program with no setup.\n\nThe card decides how to show a playground program from what it does: a\nstatic run is drawn; one that redraws, listens on stdin, leaves a timer\nrunning past its body, or is still running at the limit moves to the live\nterminal. RichPlayground.ts is deleted.\n\n* fix(docs): one rule for what only a terminal shows, in the build and the browser (rich-example-card-obsb.cau)\n\nReview (high) of #356:\n- scanEscapes (example-fragments.ts) is the one reading of which escapes a\n  drawing drops; the build's disallowedEscape and the browser's CSI-only\n  redraws are gone. ESC 7/8, ESC M, ESC c and non-link OSC now end a static\n  run; erase in line, which decodeAnsi draws, passes the build too.\n- Timers are bound lexically by runInTerminal and counted there; runsOn is\n  the one 'runs on' rule. The worker no longer patches its global timers, and\n  the build refuses a static block whose card program leaves a timer set.\n- A card link's setup lines may hold no line break and its code no \\r; the\n  slicer now emits a multi-line carried statement as one Line per line.\n- Mod-Enter runs the edit at once instead of after the typing debounce.\n- e2e no-break-space helpers use an explicit \\u00a0; the redraw test now\n  exercises the escape path, with the timer path its own test.\n- Dead .rich-live-button:disabled and duplicate .rich-playground colour\n  selectors removed; MAX_PROGRAM_BYTES says it bounds the packed JSON, and a\n  test pins that boundary.\n\n* fix(docs): the build and the static run agree on stdin, unfinished escapes and timer order (rich-example-card-obsb.cau)\n\nReview (medium) of #356:\n- The build refuses a static block whose card program listens on stdin, as\n  the page's static run ends one.\n- undrawnEscape moves to example-fragments.ts; the static run applies it to\n  what is left unread when a program ends, as the build does.\n- scanEscapes drops an escape as soon as it can no longer become one a\n  drawing draws, and bounds an open link at 4096 chars, so the per-write\n  re-read is bounded.\n- Program timer delays are taken as Node takes them (under 1 ms is 1 ms) and\n  runsOn waits 1 ms, so it answers alike in Node and a browser."
+          "timestamp": "2026-10-08T13:29:05-06:00",
+          "message": "feat(docs): the landing showcase is an output-only card (rich-example-card-obsb.9yd) (#357)\n\n* feat(docs): the landing showcase is an output-only card (rich-example-card-obsb.9yd)\n\nThe hero's live terminal now stands in the docs card's frame and output\npanel (OutputCard in theme/RichExample.ts), with no code; RichShowcase.ts\nkeeps only the hero's sizing frame, loaded apart so the example terminal's\nthemes stay off every other page. RichLive was already gone (2pn renamed\nit LiveScreen).\n\n* fix(docs): the hero builds its card where its terminal is loaded (rich-example-card-obsb.9yd)\n\nOutputCard in the eager RichExample.ts could only reach LiveScreen through\nits async wrapper: on client navigation the hero stood empty until that\nchunk arrived, one round trip after RichShowcase's own."
         }
       ]
     }
