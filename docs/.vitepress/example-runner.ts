@@ -76,7 +76,7 @@ import {
 } from "./example-program.js";
 import { runInTerminal, type SimulatedTerminal } from "./simulated-process.js";
 import { LIBRARY_BINDING } from "./live-library.js";
-import { aroundBlock, standalonePrograms, type Checked } from "./example-slice.js";
+import { standalonePrograms, type Checked, type Standalone } from "./example-slice.js";
 import { encodeProgram } from "./playground-hash.js";
 import { playgroundScript } from "./theme/playground-program.js";
 
@@ -601,10 +601,10 @@ const OPENS: Record<Opened["by"], string> = {
 };
 
 /** The programs a block is opened as, each once: a card whose program is its "Try it" program is held by that one run. */
-function openedAs(fence: Fence, standalone: ExampleProgram): Opened[] {
+function openedAs(fence: Fence, { program, setup }: Standalone): Opened[] {
   const all: Opened[] = [
-    { by: "try it", source: standalone.source },
-    ...(isCard(fence) ? [{ by: "card", source: cardSource(aroundBlock(standalone), fence.code) } as const] : []),
+    { by: "try it", source: program.source },
+    ...(isCard(fence) ? [{ by: "card", source: cardSource(setup, fence.code) } as const] : []),
   ];
   return all.filter((opened, i) => all.findIndex((other) => other.source === opened.source) === i);
 }
@@ -800,16 +800,16 @@ export async function runPageExamples(
   // being run at build time is no licence to call something that does not exist.
   const alone = new Map<Fence, ExampleProgram>(fences.filter((f) => !runsAtBuild(f)).map((fence) => [fence, buildBlockProgram(page, context, fence, barrel)]));
   // Each "Try it" program is cut from the program its block ran in, as the checker read it.
-  const cutAlone = new Map<Fence, ExampleProgram>();
+  const cutAlone = new Map<Fence, Standalone>();
   for (const [fence, blockProgram] of alone) {
     const read = compiler.check(blockProgram);
     if (MARKERS[fence.marker].run !== "never") cutAlone.set(fence, standalonePrograms(read, blockProgram)(fence));
   }
   const inChain = standalonePrograms(checked, program);
-  const tried = new Map<Fence, ExampleProgram>(
+  const tried = new Map<Fence, Standalone>(
     fences.filter((fence) => MARKERS[fence.marker].run !== "never").map((fence) => [fence, runsAtBuild(fence) ? inChain(fence) : cutAlone.get(fence)!]),
   );
-  for (const [fence, standalone] of tried) {
+  for (const [fence, { program: standalone }] of tried) {
     try {
       compiler.check(standalone);
     } catch (error) {
@@ -842,7 +842,7 @@ export async function runPageExamples(
   }
   const playground = playgroundHref(page);
   const hashes = new Map<Fence, string>(
-    await Promise.all([...tried].map(async ([fence, standalone]) => [fence, await encodeProgram(standalone.source)] as const)),
+    await Promise.all([...tried].map(async ([fence, standalone]) => [fence, await encodeProgram(standalone.program.source)] as const)),
   );
   const links = new Map<Fence, string>([...hashes].map(([fence, hash]) => [fence, `${playground}#${hash}`]));
   const liveBlocks = [...alone].filter(([fence]) => MARKERS[fence.marker].run === "browser");
@@ -860,7 +860,7 @@ export async function runPageExamples(
   const cards = new Map<Fence, { readonly binding: string; readonly data: CardData }>(
     chain.filter(isCard).map((fence, i) => {
       const { label, caption } = MARKERS[fence.marker];
-      const data: CardData = { code: fence.code, setup: aroundBlock(tried.get(fence)!), output: drawOutput(bytes.get(fence)!), label, caption, tryIt: { playground, program: hashes.get(fence)! } };
+      const data: CardData = { code: fence.code, setup: tried.get(fence)!.setup, output: drawOutput(bytes.get(fence)!), label, caption, tryIt: { playground, program: hashes.get(fence)! } };
       return [fence, { binding: `__richCard_${i}`, data }];
     }),
   );

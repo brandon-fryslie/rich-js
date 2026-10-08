@@ -27,7 +27,7 @@ import {
 import { PAGE_PARSER, scanFences } from "../../docs/.vitepress/example-markers.js";
 import { runInTerminal } from "../../docs/.vitepress/simulated-process.js";
 import { decodeProgram } from "../../docs/.vitepress/playground-hash.js";
-import { cardSource } from "../../docs/.vitepress/example-card.js";
+import { cardSource, setupLines } from "../../docs/.vitepress/example-card.js";
 import { playgroundScript } from "../../docs/.vitepress/theme/playground-program.js";
 import { EXAMPLE_TERMINAL } from "../../docs/.vitepress/example-terminal.js";
 import type { CardData } from "../../docs/.vitepress/example-card.js";
@@ -123,11 +123,34 @@ describe("the example widget", () => {
   it("hands a card the setup its block runs on, and the edited block runs in its place", async () => {
     const result = await run(page(fence('const title = "shared";', "ts silent"), fence('import { Rule } from "@promptctl/rich-js";\nconsole.print(new Rule(title));')));
     const [card] = cards(result);
-    expect(card!.setup.before.join("\n")).toContain('const title = "shared";');
+    expect(setupLines(card!.setup).join("\n")).toContain('const title = "shared";');
     // The block's own lines are the card's code, not part of its setup.
-    expect([...card!.setup.before, ...card!.setup.after].join("\n")).not.toContain("console.print");
+    expect([...setupLines(card!.setup), ...card!.setup.after].join("\n")).not.toContain("console.print");
     const program = cardSource(card!.setup, card!.code.replace("new Rule(title)", "title.toUpperCase()"));
     expect(await liveOutput(playgroundScript(program, (await library()).script))).toContain("SHARED");
+  });
+
+  it("labels each group of a card's setup with where it came from", async () => {
+    const result = await run(
+      page("# Page", "## Basic usage", fence('const title = "shared";', "ts silent"), "## Next", fence("console.print(new Rule(title));")),
+    );
+    const [card] = cards(result);
+    expect(card!.setup.before).toEqual([
+      { origin: "imports", lines: ['import { Console, Rule } from "@promptctl/rich-js";', ""] },
+      { origin: "assumed by every example", lines: ["const console = new Console();", ""] },
+      { origin: "from 'Basic usage'", lines: ['const title = "shared";', ""] },
+    ]);
+  });
+
+  it("gives a block that imports everything it uses no setup, and leaves a block's own imports to the block", async () => {
+    const own = 'import { Console, Rule } from "@promptctl/rich-js";\nconst console = new Console();\nconsole.print(new Rule("one"));';
+    const second = 'import { Panel } from "@promptctl/rich-js";\nconsole.print(new Panel(new Rule("two")));';
+    const [first, next] = cards(await run(page(fence(own), fence(second))));
+    expect(first!.setup).toEqual({ before: [], after: [] });
+    expect(next!.setup.before).toEqual([
+      { origin: "imports", lines: ['import { Console, Rule } from "@promptctl/rich-js";', ""] },
+      { origin: "from above", lines: ["const console = new Console();", ""] },
+    ]);
   });
 
   it("keeps a string in a card's data from closing the page's script", async () => {

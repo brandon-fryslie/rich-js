@@ -2,14 +2,14 @@
  * What the build hands an editable example card (theme/RichExample.ts), and
  * the program the card runs when a reader edits its code.
  *
- * The card's program is the block's "Try it" program (example-slice.ts) with
- * the block's own lines replaced by whatever the editor holds: the setup the
- * block runs on above it, and the scopes that setup opened closed below it.
- * The editor holds the block as the page shows it, its imports included, so
- * an import lands inside the setup's scopes; the playground's script turns
- * each module's first import into a `require` where it stands, and a later
- * import of a module already required into a name on that one
- * (theme/playground-program.ts), which runs as well there as at the top.
+ * The card's program is the setup its block runs on above it, in groups by
+ * where each came from (example-slice.ts), then whatever the editor holds,
+ * then the scopes that setup opened, closed. The editor holds the block as the
+ * page shows it, its imports included, so the setup imports only what the
+ * block does not, and an import may land inside the setup's scopes; the
+ * playground's script turns each module's first import into a `require` where
+ * it stands, and a later import of a module already required into a name on
+ * that one (theme/playground-program.ts), which runs as well there as at the top.
  *
  * [LAW:one-source-of-truth] The build runs this same composition of the
  * unedited block and holds it to the bytes the page shows
@@ -20,9 +20,16 @@
  */
 import type { Drawn } from "./example-fragments.js";
 
-/** The "Try it" program around its block: the lines above the block's, and the lines below. */
+/** Lines of a card's setup that came from one place, named as the card labels them: "imports", "from 'Basic usage'". */
+export interface SetupGroup {
+  readonly origin: string;
+  /** The group's lines, ending in the blank line that parts it from what follows (and, last, any brace opening the block's scope). */
+  readonly lines: readonly string[];
+}
+
+/** The program around a card's block: the groups above it, and the lines below it that close their scopes. */
 export interface CardSetup {
-  readonly before: readonly string[];
+  readonly before: readonly SetupGroup[];
   readonly after: readonly string[];
 }
 
@@ -40,16 +47,22 @@ export interface CardData {
   readonly tryIt: { readonly playground: string; readonly program: string };
 }
 
+/** The lines above a card's block, in order. */
+export const setupLines = (setup: CardSetup): string[] => setup.before.flatMap((group) => group.lines);
+
 /** The program a card runs: `code` in the place of its block's lines. */
 export function cardSource(setup: CardSetup, code: string): string {
-  return [...setup.before, code, ...setup.after].join("\n");
+  return [...setupLines(setup), code, ...setup.after].join("\n");
 }
 
-/**
- * The line of the card's code that `programLine`, a 1-based line of
- * `cardSource(setup, code)`, is; `null` for a line of the setup.
- */
-export function codeLine(setup: CardSetup, code: string, programLine: number): number | null {
-  const line = programLine - setup.before.length;
-  return line >= 1 && line <= code.split("\n").length ? line : null;
+/** How many characters of a card's program stand before its block, and how many after it, whatever the block holds. */
+export function blockSpan(setup: CardSetup): { readonly before: number; readonly after: number } {
+  const length = (lines: readonly string[]) => lines.reduce((sum, line) => sum + line.length + 1, 0);
+  return { before: length(setupLines(setup)), after: length(setup.after) };
+}
+
+/** The block in `program`, a card's program around it. */
+export function blockOf(setup: CardSetup, program: string): string {
+  const { before, after } = blockSpan(setup);
+  return program.slice(before, program.length - after);
 }
