@@ -1,6 +1,6 @@
 /**
- * Runs a docs page's examples at build time and writes their output under
- * them.
+ * Runs a docs page's examples at build time and puts each in what shows it:
+ * a card holding the output the build proved for it, or a live terminal.
  *
  * It is a Vite plugin with `enforce: "pre"`: VitePress's own plugin turns
  * markdown into Vue in its `transform` and declares no `enforce`, so a pre
@@ -21,8 +21,9 @@
  *   5. cut the captured bytes into per-block output and hold each block to
  *      what its marker promised;
  *   6. draw each block's bytes as a light and a dark fragment
- *      (example-fragments.ts); a static block's become its editable card's
- *      (example-card.ts), the rest are written under the fence;
+ *      (example-fragments.ts) and hand them to the block's card
+ *      (example-card.ts); every block but a `live` one is a card, and one that
+ *      runs nowhere is a read-only card with its note;
  *   7. bundle each `live` block's program from step 2 on
  *      the one library every live block shares (`LiveLibrary`), which the
  *      page imports as a module when its live terminal (theme/RichLive.ts)
@@ -30,7 +31,7 @@
  *   8. cut each block that runs into a program of its own (example-slice.ts),
  *      type-check it and link it from the block's "Try it"; a block of the
  *      chain's is also run as the playground runs it and held to the block's
- *      output, and a static block's card program with it.
+ *      output, and its card program with it.
  *
  * [LAW:no-silent-failure] Every failure throws and fails the build, naming the
  * page, and the line when one line is to blame.
@@ -718,7 +719,7 @@ function scriptLine(page: string, markdown: string, blocks: readonly Block[]): n
   const clash = lines.findIndex(
     (line, i) => /^<script\b[^>]*\bsetup\b/.test(line) && !blocks.some((b) => b.line <= i + 1 && i + 1 <= b.closeLine),
   );
-  if (clash !== -1) throw new Error(`docs/${page}:${clash + 1}: a page with a live example or an editable card cannot have its own <script setup>`);
+  if (clash !== -1) throw new Error(`docs/${page}:${clash + 1}: a page with an example card or a live example cannot have its own <script setup>`);
   return frontmatterEnd(lines) + 1;
 }
 
@@ -739,7 +740,7 @@ function refuseCutOff(fences: readonly Fence[]): void {
   }
 }
 
-/** `markdown` with each executed or exempt example's output written under its fence. */
+/** `markdown` with each example in its card, and each live one's terminal written under its fence. */
 export async function runPageExamples(
   compiler: ExampleCompiler,
   page: string,

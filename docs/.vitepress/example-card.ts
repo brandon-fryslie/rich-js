@@ -1,6 +1,6 @@
 /**
- * What the build hands an editable example card (theme/RichExample.ts), and
- * the program the card runs when a reader edits its code.
+ * What the build hands an example card (theme/RichExample.ts), and the
+ * program the card runs when a reader edits its code.
  *
  * The card's program is the setup its block runs on above it, in groups by
  * where each came from (example-slice.ts), then whatever the editor holds,

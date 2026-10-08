@@ -262,9 +262,14 @@ for (const [marker, path, code, note] of [
     await expect(card.locator(".rich-example-name")).toHaveText("Not run");
     await expect(card.locator(".rich-example-note")).toContainText(note);
     await expect(card.getByRole("link", { name: "Try it" })).toHaveCount(0);
-    await page.waitForLoadState("networkidle");
-    await card.locator("pre.shiki").click();
+    // The page is hydrated once an editable card says so; this card never does.
+    const editable = page.locator(".rich-example-editable").first();
+    await expect(editable).toBeVisible({ timeout: 10_000 });
     await expect(card).not.toHaveClass(/rich-example-editable/);
+    await card.locator("pre.shiki").click();
+    // An editor opened after the click proves one would have opened here by now.
+    await editable.locator("pre.shiki").click();
+    await expect(editable.locator(".cm-content")).toBeFocused({ timeout: 10_000 });
     await expect(card.locator(".cm-editor")).toHaveCount(0);
     expect(errors).toEqual([]);
   });

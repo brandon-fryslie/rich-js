@@ -534,7 +534,7 @@ describe("a page that breaks its contract fails the build", () => {
     [
       "a live block on a page with its own <script setup>",
       page("<script setup>\nconst n = 1;\n</script>", fence("console.print(1);", "ts live")),
-      /fixture\.md:1: a page with a live example or an editable card cannot have its own <script setup>/,
+      /fixture\.md:1: a page with an example card or a live example cannot have its own <script setup>/,
     ],
     [
       "an exampleContext whose code is not indented",

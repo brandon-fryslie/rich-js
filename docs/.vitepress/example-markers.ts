@@ -32,7 +32,10 @@ import { RAN } from "./example-card.js";
  * The rest is what the example card shows under the code. `label` names the
  * panel; `caption`, beside it, says where its contents came from, which is
  * what tells a reader the output below is the code above, run. A block that
- * runs nowhere shows no output, and its `note` says why in its place.
+ * runs nowhere shows no output, and its `note` says why in its place. What a
+ * block that ran shows when it printed nothing is not a marker's to say: an
+ * edit of any build block can print nothing, and the card says so for all of
+ * them (`PRINTS_NOTHING` in example-card.ts).
  */
 export type MarkerRule =
   | { readonly run: "build"; readonly outcome: "prints" | "silent" | "throws"; readonly label: string; readonly caption: string }
