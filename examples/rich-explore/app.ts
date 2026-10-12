@@ -3,13 +3,13 @@
  *
  * [LAW:capabilities-over-context] `run` is parameterised on a `TerminalHost`
  * (where I/O goes) and a `FileSystem` (where files come from). The demo
- * body never branches on environment; the two capabilities are the values
- * that differ between node and browser entries.
+ * body never branches on environment; `main.ts` and `node.ts` differ only in
+ * the `FileSystem` they pass.
  */
 
-import { App, type TerminalHost } from "../../src/host/index.js";
-import type { Viewport } from "../../src/index.js";
-import type { FileSystem } from "../_capabilities/index.js";
+import { App, type TerminalHost } from "@promptctl/rich-js/host";
+import type { Viewport } from "@promptctl/rich-js";
+import type { FileSystem } from "../_capabilities/file-system.js";
 import {
   initialState,
   toggleExpand,

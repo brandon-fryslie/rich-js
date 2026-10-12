@@ -1,33 +1,8 @@
 /**
- * rich-explore — browser bootstrap. Constructs `BrowserTerminalHost` over
- * the xterm.js Terminal provided by the page shell, hands the shared demo
- * body a `MemoryFileSystem` populated with a small but kind-diverse fixture
- * tree, and returns the mount handle.
- *
- * [LAW:one-source-of-truth] The same `run` function from app.ts powers the
- * node and browser entries. No forked code path; the two capabilities are
- * the values that differ.
- *
- * [LAW:dataflow-not-control-flow] The fixture below is data. Adding more
- * files — or a third entry kind — is a matter of extending the tree; no
- * demo-side logic changes.
+ * The files rich-explore browses in its card, where a page has no file system
+ * to give it: one of each kind the preview pane draws.
  */
-
-import {
-  BrowserTerminalHost,
-  type TerminalHost,
-  type XtermTerminal,
-} from "../../src/host/terminal-host.js";
-import {
-  MemoryFileSystem,
-  type MemoryTree,
-} from "../_capabilities/index.js";
-import { run } from "./app.js";
-
-export interface MountHandle {
-  readonly host: TerminalHost;
-  stop(): void;
-}
+import type { MemoryTree } from "../_capabilities/memory-file-system.js";
 
 // One small fixture tree exercising every renderer kind so the demo's
 // preview pane has something interesting for each:
@@ -37,9 +12,9 @@ export interface MountHandle {
 //   - directory                 → renderDirectory
 //   - binary   (`.png` ext)     → renderBinary (metadata only)
 //   - fallback (no extension)   → renderFallback
-const README_MD = `# rich-explore (browser fixture)
+const README_MD = `# rich-explore (the card's files)
 
-This is a self-contained in-memory fixture so the demo runs in the browser.
+This is a self-contained in-memory fixture so the demo runs in its card on the docs site.
 
 ## Controls
 
@@ -99,7 +74,7 @@ used for any file whose extension is not recognised by fs/kinds.ts.
 // content, so the metadata-only renderer fires regardless.
 const ICON_PNG = "(png bytes elided — the binary renderer reads metadata only)";
 
-const FIXTURE_TREE: MemoryTree = {
+export const FIXTURE_TREE: MemoryTree = {
   home: "/home/demo",
   root: {
     kind: "directory",
@@ -132,24 +107,3 @@ const FIXTURE_TREE: MemoryTree = {
     },
   },
 };
-
-export function mount(terminal: XtermTerminal): MountHandle {
-  const host = new BrowserTerminalHost({ terminal });
-  const fs = new MemoryFileSystem(FIXTURE_TREE);
-  const explorer = run(host, fs, fs.homeDir());
-  // `done` resolves on a quit action; in the browser `q`/Ctrl-C are still
-  // delivered by xterm so the same termination path applies. Page shell
-  // does not auto-unmount, so the user sees the post-quit alt-screen
-  // restore and the tab stays open. The app has handed the terminal back
-  // before `done` rejects, so a rejection is only logged. We deliberately do
-  // not poke the shell's #status — mount.ts has already set it to "ready" by
-  // the time this could fire, and reaching back into the DOM here would
-  // couple wire.ts to shell layout.
-  explorer.done.catch((err: unknown) => {
-    // eslint-disable-next-line no-console
-    console.error("rich-explore: run() rejected after mount", err);
-  });
-  return { host, stop: explorer.stop };
-}
-
-export default mount;

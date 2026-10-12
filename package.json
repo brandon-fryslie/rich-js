@@ -66,7 +66,7 @@
     "docs:dev": "npm run demos:build && vitepress dev docs",
     "docs:build": "npm run demos:build && vitepress build docs",
     "docs:preview": "vitepress preview docs",
-    "demo": "node scripts/build-demos.ts && node dist-demo/examples/rich-explore/index.js",
+    "demo": "node scripts/build-demos.ts && node dist-demo/examples/rich-explore/node.js",
     "demo:build": "node scripts/build-demos.ts",
     "sessions": "node scripts/build-demos.ts && node dist-demo/examples/claude-sessions/index.js",
     "strip": "node scripts/build-demos.ts && node dist-demo/examples/rich-strip/main.js",

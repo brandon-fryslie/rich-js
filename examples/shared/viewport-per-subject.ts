@@ -7,7 +7,7 @@
  * this is what outlives the frame for a pane whose subject changes under it.
  */
 
-import { RichText, Viewport } from "../../src/index.js";
+import { RichText, Viewport } from "@promptctl/rich-js";
 
 const blank = (): Viewport => new Viewport(new RichText(""));
 

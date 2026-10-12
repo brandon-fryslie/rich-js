@@ -1,6 +1,6 @@
-import { Panel, RichText, Constrain } from "../../../src/index.js";
-import type { Renderable, Viewport } from "../../../src/index.js";
-import type { FileSystem } from "../../_capabilities/index.js";
+import { Panel, RichText, Constrain } from "@promptctl/rich-js";
+import type { Renderable, Viewport } from "@promptctl/rich-js";
+import type { FileSystem } from "../../_capabilities/file-system.js";
 import type { Entry } from "../fs/walk.js";
 import type { FileKind } from "../fs/kinds.js";
 import type { Mode } from "../state.js";

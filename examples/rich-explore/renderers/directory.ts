@@ -1,6 +1,6 @@
-import { Table } from "../../../src/index.js";
-import type { Renderable } from "../../../src/index.js";
-import type { FileSystem } from "../../_capabilities/index.js";
+import { Table } from "@promptctl/rich-js";
+import type { Renderable } from "@promptctl/rich-js";
+import type { FileSystem } from "../../_capabilities/file-system.js";
 import { listDir, formatSize, type Entry } from "../fs/walk.js";
 
 export function renderDirectory(fs: FileSystem, entry: Entry): Renderable {
