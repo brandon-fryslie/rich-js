@@ -1,5 +1,5 @@
-import { RichText } from "../../../src/index.js";
-import type { Renderable } from "../../../src/index.js";
+import { RichText } from "@promptctl/rich-js";
+import type { Renderable } from "@promptctl/rich-js";
 import type { AppState } from "../state.js";
 
 /**

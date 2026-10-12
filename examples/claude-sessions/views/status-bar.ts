@@ -1,4 +1,4 @@
-import { escapeMarkup, withCellWidth, type RichText, type Renderable, type RenderOptions, type Segment } from "../../../src/index.js";
+import { escapeMarkup, withCellWidth, type RichText, type Renderable, type RenderOptions, type Segment } from "@promptctl/rich-js";
 import type { AppState } from "../state.js";
 import { markup } from "./block-renderers/_common.js";
 

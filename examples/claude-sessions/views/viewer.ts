@@ -3,8 +3,8 @@
  * block in view.
  */
 
-import { Panel, RichText } from "../../../src/index.js";
-import type { Renderable } from "../../../src/index.js";
+import { Panel, RichText } from "@promptctl/rich-js";
+import type { Renderable } from "@promptctl/rich-js";
 import type { AppState } from "../state.js";
 import type { SessionsView } from "./shell.js";
 import { renderBlock } from "./block-renderers/index.js";

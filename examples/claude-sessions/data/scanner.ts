@@ -4,10 +4,10 @@
  * first-prompt extraction). Skips subagent/tool-results subdirectories —
  * only top-level `*.jsonl` in each project directory counts as a "session".
  *
- * [LAW:capabilities-over-context] All filesystem access is via the injected
+ * [LAW:effects-at-boundaries] All filesystem access is via the injected
  * `FileSystem` capability — there is no `node:fs` import here. The same code
  * runs against `NodeFileSystem` in the terminal entry and a
- * `MemoryFileSystem` populated with a fixture in the browser entry.
+ * `MemoryFileSystem` populated with a fixture in the card entry.
  */
 
 import type { FileSystem } from "../../_capabilities/index.js";

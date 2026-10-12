@@ -1,5 +1,5 @@
-import { Panel, Pretty, RichText } from "../../../../src/index.js";
-import type { Renderable } from "../../../../src/index.js";
+import { Panel, Pretty, RichText } from "@promptctl/rich-js";
+import type { Renderable } from "@promptctl/rich-js";
 import type { Block } from "../../data/types.js";
 import { styledTimestamp, borderFor } from "./_common.js";
 import type { RenderOpts } from "./index.js";

@@ -3,7 +3,7 @@
  *
  * Reducers produce new states; views are pure functions of state.
  *
- * [LAW:capabilities-over-context] The `FileSystem` capability is part of
+ * [LAW:effects-at-boundaries] The `FileSystem` capability is part of
  * AppState — it is an injected dependency, fixed at construction time, and
  * the reducers that touch I/O read it from state rather than from ambient
  * `node:fs` imports. Spreading `...state` carries it forward unchanged.

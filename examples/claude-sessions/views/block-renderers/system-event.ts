@@ -1,5 +1,5 @@
-import { Rule, Align, RichText } from "../../../../src/index.js";
-import type { Renderable } from "../../../../src/index.js";
+import { Rule, Align, RichText } from "@promptctl/rich-js";
+import type { Renderable } from "@promptctl/rich-js";
 import type { SystemBlock } from "../../data/types.js";
 import { emoji } from "./_common.js";
 import type { RenderOpts } from "./index.js";

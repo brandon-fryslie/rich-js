@@ -1,5 +1,5 @@
-import { Panel, RichText, Traceback } from "../../../../src/index.js";
-import type { Renderable } from "../../../../src/index.js";
+import { Panel, RichText, Traceback } from "@promptctl/rich-js";
+import type { Renderable } from "@promptctl/rich-js";
 import type { ErrorBlock } from "../../data/types.js";
 import { styledTimestamp, borderFor, emoji } from "./_common.js";
 import type { RenderOpts } from "./index.js";

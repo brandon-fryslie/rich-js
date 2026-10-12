@@ -5,8 +5,8 @@
  * Synchronous by design — tested fast enough on ~10K files with early
  * termination at maxHits. Streaming/async is a future extension if needed.
  *
- * [LAW:capabilities-over-context] All file reads go through the injected
- * `FileSystem`; no `node:fs` import. Browser bundles supply a
+ * [LAW:effects-at-boundaries] All file reads go through the injected
+ * `FileSystem`; no `node:fs` import. The card supplies a
  * `MemoryFileSystem` and the search runs against fixture data without any
  * code-path branching.
  */
