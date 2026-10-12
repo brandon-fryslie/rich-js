@@ -4,15 +4,22 @@
     {
       "version": "pr-366",
       "ref": "refs/pull/366/merge",
-      "sha": "5480afce4220e2ee5762f7b4f014a1bf0a5e3f69",
-      "timestamp": "2026-10-12T10:40:50.863Z",
+      "sha": "565b19ff85f2096a9726681ae795dc99f3532d54",
+      "timestamp": "2026-10-12T10:45:34.392Z",
       "commits": [
         {
-          "sha": "5480afce4220e2ee5762f7b4f014a1bf0a5e3f69",
+          "sha": "565b19ff85f2096a9726681ae795dc99f3532d54",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T04:39:10-06:00",
-          "message": "Merge 72a05edbf1e4afc322de7535d3572a8a5de8e60e into 125ae3d9750d71dabbce8aecb57beccfb9f3cd18\n"
+          "timestamp": "2026-10-12T10:44:16Z",
+          "message": "Merge 930004d1481136b3d8f02e6690d4892d49fc0f5b into 125ae3d9750d71dabbce8aecb57beccfb9f3cd18\n"
+        },
+        {
+          "sha": "930004d1481136b3d8f02e6690d4892d49fc0f5b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-12T04:44:10-06:00",
+          "message": "fix(docs): rich-config review — one card-screen reader, card.json through its parser, focus without a click (rich-demos-k78j.ai1)\n"
         },
         {
           "sha": "72a05edbf1e4afc322de7535d3572a8a5de8e60e",
