@@ -12,7 +12,7 @@
  * read `state.fs` to pass it into per-file renderers.
  */
 
-import type { FileSystem } from "../_capabilities/index.js";
+import type { FileSystem } from "../_capabilities/file-system.js";
 import { listDir, type Entry } from "./fs/walk.js";
 
 export type Mode = "browse" | "coverage";

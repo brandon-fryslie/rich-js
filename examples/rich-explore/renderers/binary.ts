@@ -1,5 +1,5 @@
-import { Table } from "../../../src/index.js";
-import type { Renderable } from "../../../src/index.js";
+import { Table } from "@promptctl/rich-js";
+import type { Renderable } from "@promptctl/rich-js";
 import { formatSize, type Entry } from "../fs/walk.js";
 
 export function renderBinary(entry: Entry): Renderable {

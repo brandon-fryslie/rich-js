@@ -1,6 +1,6 @@
-import { Syntax } from "../../../src/index.js";
-import type { Renderable, SyntaxLanguage } from "../../../src/index.js";
-import type { FileSystem } from "../../_capabilities/index.js";
+import { Syntax } from "@promptctl/rich-js";
+import type { Renderable, SyntaxLanguage } from "@promptctl/rich-js";
+import type { FileSystem } from "../../_capabilities/file-system.js";
 import type { Entry } from "../fs/walk.js";
 
 // Only the languages Syntax has a grammar for; any other file shows as text.

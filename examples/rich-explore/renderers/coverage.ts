@@ -54,8 +54,8 @@ import {
   SPINNERS, DEFAULT_SPINNER,
   // Markup
   renderMarkup,
-} from "../../../src/index.js";
-import type { Renderable, RenderOptions } from "../../../src/index.js";
+} from "@promptctl/rich-js";
+import type { Renderable, RenderOptions } from "@promptctl/rich-js";
 
 export class CoverageRenderable implements Renderable {
   *render(options: RenderOptions): Iterable<Segment> {

@@ -1,6 +1,6 @@
-import { RichText } from "../../../src/index.js";
-import type { Renderable } from "../../../src/index.js";
-import type { FileSystem } from "../../_capabilities/index.js";
+import { RichText } from "@promptctl/rich-js";
+import type { Renderable } from "@promptctl/rich-js";
+import type { FileSystem } from "../../_capabilities/file-system.js";
 import type { Entry } from "../fs/walk.js";
 
 const MAX_BYTES = 64 * 1024;

@@ -1,4 +1,4 @@
-import { Layout, RichText, Viewport } from "../../../src/index.js";
+import { Layout, RichText, Viewport } from "@promptctl/rich-js";
 import type { AppState } from "../state.js";
 import { selectedNode } from "../state.js";
 import { ViewportPerSubject } from "../../shared/viewport-per-subject.js";

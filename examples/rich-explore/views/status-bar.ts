@@ -1,5 +1,5 @@
-import { RichText } from "../../../src/index.js";
-import type { Renderable } from "../../../src/index.js";
+import { RichText } from "@promptctl/rich-js";
+import type { Renderable } from "@promptctl/rich-js";
 
 const HINTS: ReadonlyArray<[string, string]> = [
   ["↑↓/jk", "move"],
@@ -9,7 +9,7 @@ const HINTS: ReadonlyArray<[string, string]> = [
   ["g/G", "top/bot"],
   ["PgUp/Dn", "page"],
   ["^z", "suspend"],
-  ["q/esc", "quit"],
+  ["q", "quit"],
 ];
 
 export function buildStatusBar(): Renderable {

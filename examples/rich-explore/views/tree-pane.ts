@@ -1,5 +1,5 @@
-import { Tree, Panel, RichText } from "../../../src/index.js";
-import type { Renderable, Viewport } from "../../../src/index.js";
+import { Tree, Panel, RichText } from "@promptctl/rich-js";
+import type { Renderable, Viewport } from "@promptctl/rich-js";
 import type { AppState, NodeData } from "../state.js";
 import { visibleNodes } from "../state.js";
 import type { FileKind } from "../fs/kinds.js";

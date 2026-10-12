@@ -37,7 +37,6 @@ const KEYMAP: Record<string, Action> = {
   "\x1a": { type: "suspend" }, // ctrl-z, a key in raw mode
   "q": { type: "quit" },
   "\x03": { type: "quit" },
-  "\x1b": { type: "quit" },
 };
 
 export function lookup(key: string): Action {

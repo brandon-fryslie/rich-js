@@ -9,7 +9,7 @@
  * in the browser entry.
  */
 
-import type { FileSystem } from "../../_capabilities/index.js";
+import type { FileSystem } from "../../_capabilities/file-system.js";
 import { kindForPath, type FileKind } from "./kinds.js";
 
 export interface Entry {
