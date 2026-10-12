@@ -6,7 +6,7 @@
  * `split` direction. No special cases per widget kind.
  */
 
-import { Layout } from "../../src/index.js";
+import { Layout } from "@promptctl/rich-js";
 
 export interface LayoutSpec {
   /** Cell name (only set on leaves). Must equal the bound widget id. */

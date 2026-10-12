@@ -10,7 +10,7 @@
  * State is the only thing that varies between widgets.
  */
 
-import type { Renderable } from "../../src/index.js";
+import type { Renderable } from "@promptctl/rich-js";
 
 export interface TickContext {
   /** Frame counter, monotonically increasing from 0. */

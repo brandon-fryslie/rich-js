@@ -15,8 +15,8 @@
  * separate `exists` precheck branch; the data (the thrown error) decides.
  */
 
-import { Markdown, type Renderable } from "../../../src/index.js";
-import type { FileSystem } from "../../_capabilities/index.js";
+import { Markdown, type Renderable } from "@promptctl/rich-js";
+import type { FileSystem } from "../../_capabilities/file-system.js";
 import { defineWidget } from "../widget.js";
 
 interface NotesState {
