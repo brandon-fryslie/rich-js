@@ -6,7 +6,7 @@
  * the card and `npm run` print the same tour. [LAW:dataflow-not-control-flow]
  */
 import { Console, RichText } from "@promptctl/rich-js";
-import { blank,  dim } from "./look.js";
+import { blank, dim } from "./look.js";
 import { section1ColorValues, section2ColorSpec, section3ColorSystem } from "./values.js";
 import { section4ThemeRegistry, section5ColorRefs, section6TerminalThemes } from "./themes.js";
 import { section7Transposition } from "./transposition.js";

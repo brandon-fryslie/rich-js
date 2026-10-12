@@ -193,8 +193,8 @@ test("a demo's Powerline glyphs draw in the Powerline face: rich-strip", async (
 // never see where it starts. The first row on screen has to be the first row
 // printed. `first` matches the whole first row: rich-strip's first label
 // recurs further down, and a row that merely contains it would pass scrolled
-// to the bottom. rich-strip fits its card's terminal; themes-and-color-studio
-// prints far more than its card's terminal holds, and still opens on its title.
+// to the bottom. Both fit their card's terminal, which keeps no scrollback;
+// themes-and-color-studio is the long one, and still opens on its title.
 test("a printed demo opens on its first line: rich-strip", async ({ page }) => {
   await openDemo(page, "rich-strip");
   await expect(terminalRows(page).locator("> div").first()).toHaveText(/^PowerlineJoiner\s*$/, LOADED);

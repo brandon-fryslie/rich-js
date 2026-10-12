@@ -24,6 +24,7 @@ import type { ColorSystemName, DetectColorOptions } from "@promptctl/rich-js";
 
 import { bgFgStyle, blank, blurb, dim, sectionHeader } from "./look.js";
 
+// ===========================================================================
 // SECTION 1 — Color values, parsing, blending, alpha compositing
 // ===========================================================================
 

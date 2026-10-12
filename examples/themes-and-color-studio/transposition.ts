@@ -18,6 +18,7 @@ import type { ThemeKey } from "@promptctl/rich-js";
 
 import { bgFgStyle, blank, blurb, bold, sectionHeader, SEMANTIC_VARS } from "./look.js";
 
+// ===========================================================================
 // SECTION 7 — OKLCH transposition (themes-as-melodies)
 // ===========================================================================
 

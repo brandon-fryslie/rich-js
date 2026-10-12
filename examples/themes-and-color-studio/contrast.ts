@@ -21,6 +21,7 @@ import {
 
 import { bgFgStyle, blank, blurb, bold, dim, sectionHeader, SEMANTIC_VARS } from "./look.js";
 
+// ===========================================================================
 // SECTION 8 — WCAG contrast toolkit
 // ===========================================================================
 

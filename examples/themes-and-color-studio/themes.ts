@@ -58,6 +58,7 @@ import { getThemeBaseColors, type ThemeBaseColors } from "@promptctl/rich-js/the
 
 import { bgFgStyle, blank, blurb, bold, dim, sectionHeader, SEMANTIC_VARS, truncate } from "./look.js";
 
+// ===========================================================================
 // SECTION 4 — Theme registry (every bundled theme as a swatch row)
 // ===========================================================================
 
