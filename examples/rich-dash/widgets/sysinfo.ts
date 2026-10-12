@@ -12,8 +12,8 @@
  * passed in is the variability.
  */
 
-import { RichText, Style, Table, type Renderable } from "../../../src/index.js";
-import type { SystemInfo } from "../../_capabilities/index.js";
+import { RichText, Style, Table, type Renderable } from "@promptctl/rich-js";
+import type { SystemInfo } from "../../_capabilities/system-info.js";
 import { defineWidget } from "../widget.js";
 
 interface SysinfoState {

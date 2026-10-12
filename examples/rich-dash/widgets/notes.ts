@@ -9,14 +9,13 @@
  * absolute `readmePath`; it does not know whether the path resolves on disk
  * (node) or in a memory tree (browser). Same body, different capability.
  *
- * [LAW:dataflow-not-control-flow] Missing-file and unreadable-file converge
- * on the same fallback Markdown — both `FileSystem` impls throw on read
- * failure per the interface contract, so one try/catch handles both. No
- * separate `exists` precheck branch; the data (the thrown error) decides.
+ * [LAW:no-silent-failure] A README that cannot be read fails `init`, and so
+ * the run, with the path in the error: a placeholder panel would hide a
+ * wrong path behind a dashboard that looks fine.
  */
 
-import { Markdown, type Renderable } from "../../../src/index.js";
-import type { FileSystem } from "../../_capabilities/index.js";
+import { Markdown, type Renderable } from "@promptctl/rich-js";
+import type { FileSystem } from "../../_capabilities/file-system.js";
 import { defineWidget } from "../widget.js";
 
 interface NotesState {
@@ -26,13 +25,8 @@ interface NotesState {
 const MAX_LINES = 60;
 
 function loadReadme(fs: FileSystem, readmePath: string): NotesState {
-  try {
-    const md = fs.readFile(readmePath);
-    const truncated = md.split("\n").slice(0, MAX_LINES).join("\n");
-    return { body: new Markdown(truncated) };
-  } catch {
-    return { body: new Markdown("# README not found\n\nNo README.md was located.") };
-  }
+  const truncated = fs.readFile(readmePath).split("\n").slice(0, MAX_LINES).join("\n");
+  return { body: new Markdown(truncated) };
 }
 
 export function notesWidget(fs: FileSystem, readmePath: string) {

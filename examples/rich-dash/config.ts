@@ -14,7 +14,8 @@
  * SystemInfo, and the job widget needs neither.
  */
 
-import type { FileSystem, SystemInfo } from "../_capabilities/index.js";
+import type { FileSystem } from "../_capabilities/file-system.js";
+import type { SystemInfo } from "../_capabilities/system-info.js";
 import type { LayoutSpec } from "./layout.js";
 import type { Widget } from "./widget.js";
 import { jobWidget } from "./widgets/job.js";
@@ -47,6 +48,6 @@ export const LAYOUT: LayoutSpec = {
         { name: "job",     ratio: 1 },
       ],
     },
-    { name: "notes", ratio: 2 },
+    { name: "notes", ratio: 1 },
   ],
 };

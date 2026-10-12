@@ -32,7 +32,7 @@ import {
   withCellWidth,
   type Renderable,
   type RenderOptions,
-} from "../../../src/index.js";
+} from "@promptctl/rich-js";
 import { defineWidget } from "../widget.js";
 
 interface Stage {

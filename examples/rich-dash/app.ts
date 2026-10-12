@@ -12,8 +12,8 @@
  * the demo body has no environment-aware branches.
  */
 
-import { Layout, Panel, RichText, Style, type Renderable } from "../../src/index.js";
-import { App, type TerminalHost } from "../../src/host/index.js";
+import { Layout, Panel, RichText, Style, type Renderable } from "@promptctl/rich-js";
+import { App, type TerminalHost } from "@promptctl/rich-js/host";
 import { buildWidgets, LAYOUT, type DashboardCapabilities } from "./config.js";
 import { buildLayout } from "./layout.js";
 import type { Widget } from "./widget.js";
