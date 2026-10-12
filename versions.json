@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-363",
+      "ref": "refs/pull/363/merge",
+      "sha": "0c53acdbd5c84d6f79ebcceb0e8face7172349d7",
+      "timestamp": "2026-10-12T09:52:29.384Z",
+      "commits": [
+        {
+          "sha": "0c53acdbd5c84d6f79ebcceb0e8face7172349d7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-12T03:51:16-06:00",
+          "message": "Merge 5984dc0b24a5f154e2658138f3abb9b43320e60b into 29dfa8c75ffb781b3b8b6af4468559e721c7258d\n"
+        },
+        {
+          "sha": "5984dc0b24a5f154e2658138f3abb9b43320e60b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-12T03:51:12-06:00",
+          "message": "feat(docs): rich-markup-plugins runs in the card (rich-demos-k78j.7iv)\n\nOne file, main.ts, printing through new Console(); the entry for the card\nand npm run markup-plugins. Revamped: each sample's markup prints dim above\nwhat it draws, samples fit the card's 75 columns, handlers in the\ndocs/markup-tags.md idiom. app.ts/index.ts/wire.ts deleted.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "29dfa8c75ffb781b3b8b6af4468559e721c7258d",
