@@ -4,15 +4,22 @@
     {
       "version": "pr-371",
       "ref": "refs/pull/371/merge",
-      "sha": "3e4ca3bd65d83a628708a42da0d3bc6086508d1c",
-      "timestamp": "2026-10-12T11:46:38.870Z",
+      "sha": "25aacc2e900a91c8c922911ebe509178f9f0b7b7",
+      "timestamp": "2026-10-12T11:52:40.515Z",
       "commits": [
         {
-          "sha": "3e4ca3bd65d83a628708a42da0d3bc6086508d1c",
+          "sha": "25aacc2e900a91c8c922911ebe509178f9f0b7b7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T05:45:04-06:00",
-          "message": "Merge c0d41d474e8dd7d8e66bc7bedc171fef20c4f2d2 into a06df97e0d0c368392d2aed4c81b3c19ae2dfc69\n"
+          "timestamp": "2026-10-12T11:51:13Z",
+          "message": "Merge 275391f1402a666a36ae6ced8c16b3290f7d2d41 into a06df97e0d0c368392d2aed4c81b3c19ae2dfc69\n"
+        },
+        {
+          "sha": "275391f1402a666a36ae6ced8c16b3290f7d2d41",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-12T05:51:08-06:00",
+          "message": "fix(examples): terminal-host escapes every control byte, quits mid-read, hands back cooked mode on any exit (rich-demos-k78j.9yz)\n"
         },
         {
           "sha": "c0d41d474e8dd7d8e66bc7bedc171fef20c4f2d2",
