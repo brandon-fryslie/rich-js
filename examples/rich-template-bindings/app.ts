@@ -33,18 +33,6 @@ import {
   asCellCol,
   cellLen,
   cellFit,
-} from "../../src/index.js";
-import {
-  WidgetApp,
-  StaticItem,
-  TextInput,
-  charGreedyWrap,
-  type WrapStrategy,
-  type WrapRow,
-} from "../../src/widgets/index.js";
-import type { TerminalHost } from "../../src/host/index.js";
-import { createEngine, type Engine } from "@promptctl/go-template-js";
-import {
   MONOKAI,
   NORD,
   GRUVBOX,
@@ -58,8 +46,19 @@ import {
   SOLARIZED_DARK,
   SOLARIZED_LIGHT,
   ATOM_ONE_DARK,
-} from "../../src/themes/terminalThemes.js";
-import { ColorDepth, type TerminalTheme } from "../../src/core/color.js";
+  ColorDepth,
+  type TerminalTheme,
+} from "@promptctl/rich-js";
+import {
+  WidgetApp,
+  StaticItem,
+  TextInput,
+  charGreedyWrap,
+  type WrapStrategy,
+  type WrapRow,
+} from "@promptctl/rich-js/widgets";
+import type { TerminalHost } from "@promptctl/rich-js/host";
+import { createEngine, type Engine } from "@promptctl/go-template-js";
 import {
   richTextFuncs,
   createRichTextEngine,
@@ -67,7 +66,7 @@ import {
   colorFuncs,
   readableOnFunc,
   renderTemplate,
-} from "../../src/template-bindings/index.js";
+} from "@promptctl/rich-js/template-bindings";
 import { makeAutoObservable } from "mobx";
 
 // ─── Engines ───────────────────────────────────────────────────────────────
@@ -599,9 +598,8 @@ const headerSpacer = makeSpacerItem();
 
 // ─── Demo entry ────────────────────────────────────────────────────────────
 //
-// [LAW:dataflow-not-control-flow] runDemo takes a TerminalHost as a value;
-// node bootstrap passes NodeTerminalHost, browser bootstrap passes
-// BrowserTerminalHost. Same code path either way.
+// runDemo takes the host main.ts builds — in the docs card, the card's
+// terminal — as a parameter, so a test can hand it one over streams it drives.
 
 export interface DemoHandle {
   stop(): void;
