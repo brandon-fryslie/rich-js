@@ -4,15 +4,22 @@
     {
       "version": "pr-368",
       "ref": "refs/pull/368/merge",
-      "sha": "a2c820b93aad9cce805c93ca1322af4c39452b96",
-      "timestamp": "2026-10-12T11:05:34.599Z",
+      "sha": "0b4d8ce81e9a06b9ff354e4d95926d7c53b9bf68",
+      "timestamp": "2026-10-12T11:13:02.772Z",
       "commits": [
         {
-          "sha": "a2c820b93aad9cce805c93ca1322af4c39452b96",
+          "sha": "0b4d8ce81e9a06b9ff354e4d95926d7c53b9bf68",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T05:03:46-06:00",
-          "message": "Merge 9384b1430eea481ca501ee9883aa2f64b11eed76 into 9fc7581130755dc805368c13dddc53526ee08cd5\n"
+          "timestamp": "2026-10-12T11:11:26Z",
+          "message": "Merge 9037d85b6338a2e77312860efd745f141b0a0cf0 into 9fc7581130755dc805368c13dddc53526ee08cd5\n"
+        },
+        {
+          "sha": "9037d85b6338a2e77312860efd745f141b0a0cf0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-12T05:11:21-06:00",
+          "message": "fix(docs): rich-explore review — Escape test can fail, card says when it quits, stale comments (rich-demos-k78j.s6s)\n"
         },
         {
           "sha": "9384b1430eea481ca501ee9883aa2f64b11eed76",
