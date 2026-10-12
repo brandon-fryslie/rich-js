@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-366",
-      "ref": "refs/pull/366/merge",
-      "sha": "565b19ff85f2096a9726681ae795dc99f3532d54",
-      "timestamp": "2026-10-12T10:45:34.392Z",
-      "commits": [
-        {
-          "sha": "565b19ff85f2096a9726681ae795dc99f3532d54",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T10:44:16Z",
-          "message": "Merge 930004d1481136b3d8f02e6690d4892d49fc0f5b into 125ae3d9750d71dabbce8aecb57beccfb9f3cd18\n"
-        },
-        {
-          "sha": "930004d1481136b3d8f02e6690d4892d49fc0f5b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T04:44:10-06:00",
-          "message": "fix(docs): rich-config review — one card-screen reader, card.json through its parser, focus without a click (rich-demos-k78j.ai1)\n"
-        },
-        {
-          "sha": "72a05edbf1e4afc322de7535d3572a8a5de8e60e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T04:39:05-06:00",
-          "message": "feat(docs): rich-config runs in the card (rich-demos-k78j.ai1)\n\nmain.ts is the entry for the card and npm run demo-inputs; index.ts and\nwire.ts are gone and app.ts imports the library by its published names.\ncard.json keeps the 100x30 the two-pane layout was drawn for. The e2e\nspec drives the same keyboard and mouse checks through the card.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "125ae3d9750d71dabbce8aecb57beccfb9f3cd18",
