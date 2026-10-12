@@ -1,0 +1,1 @@
+import{F as e,bt as t}from"./layout-U3UfakgY.js";var n=class{renderables;constructor(...e){this.renderables=e}*render(e){let n={...e,height:t(e.height)};for(let e of this.renderables)yield*e.render(n)}measure(t){return e(t,this.renderables)}};export{n as t};
