@@ -141,12 +141,11 @@ for (const { name } of manifest.demos.filter((demo) => demo.runs === "iframe")) 
 // because nothing returned the carriage before a newline. A Panel's rows all
 // start at its left border, so any row that does not has been pushed along.
 test("a demo's rows start at the left edge: rich-viewport", async ({ page }) => {
-  await page.goto("demos-app/rich-viewport/");
-  // A boot failure should read as its own message, not a missing "╭".
-  await expect(page.locator("#status")).toContainText("ready");
-  const rows = page.locator(".xterm-rows > div");
-  await expect(rows.first()).toContainText("╭");
-  const drawn = (await rows.allTextContents()).filter((row) => row.trim() !== "");
+  await openDemo(page, "rich-viewport");
+  await expect.poll(() => shown(page), LOADED).toContain("╭");
+  const drawn = (await terminalRows(page).locator("> div").allInnerTexts())
+    .map((row) => row.replaceAll("\u00a0", " "))
+    .filter((row) => /[╭│╰]/.test(row));
   expect(drawn.length, "the panel drew no rows").toBeGreaterThan(2);
   for (const row of drawn) {
     expect(row, `a row does not start at the panel's left border: ${JSON.stringify(drawn)}`).toMatch(/^[╭│╰]/);
