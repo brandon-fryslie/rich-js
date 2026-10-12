@@ -137,9 +137,7 @@ for (const name of ["rich-markup-plugins", "themes-and-color-studio", "rich-view
   test(`a demo's rows start at the left edge: ${name}`, async ({ page }) => {
     await openDemo(page, name);
     await expect.poll(() => shown(page), LOADED).toMatch(/\S/);
-    const drawn = (await terminalRows(page).locator("> div").allInnerTexts())
-      .map((row) => row.replaceAll("\u00a0", " "))
-      .filter((row) => row.trim() !== "");
+    const drawn = (await cardRows(page)).filter((row) => row.trim() !== "");
     expect(drawn.length, "the demo drew no rows").toBeGreaterThan(2);
     for (const [i, row] of drawn.entries()) {
       if (i === 0) continue;
