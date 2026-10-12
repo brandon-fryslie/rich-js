@@ -98,4 +98,4 @@ blocky.scrollTo(40);
 console.print(new Panel(blocky, { title: "log", borderStyle: "cyan" }));
 ```
 
-`npm run viewport` runs the selection example above, with a scrollbar, against a list of forty lines: the keys move the selection, and the wheel scrolls the window away from it until the next key brings it back. The [demo page](/demos/rich-viewport) runs the same program in the browser.
+`npm run viewport` is the selection example above in a `WidgetApp`, with a scrollbar, against a list of forty lines. It calls `ensureVisible` when a key moves the selection rather than in every frame: called every frame, it would pull the window back onto the selection on the same render that applies a wheel notch, and the wheel would never move it. So the wheel scrolls the window away from the selection until the next key brings it back. The [demo page](/demos/rich-viewport) runs the same program in the browser.

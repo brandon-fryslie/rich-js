@@ -46,10 +46,17 @@ const MOVES = new Map<string, number>([
   ["end", ENTRIES.length],
 ]);
 
+const host = new NodeTerminalHost();
+if (!host.isTTY) {
+  process.stderr.write("Error: npm run viewport requires an interactive terminal.\n");
+  process.exit(1);
+}
+
 let selected = 0;
-const viewport = new Viewport(list(selected), { rows: ROWS, scrollbar: SCROLLBAR });
+// Empty until the view hands it the list: the list is built in one place.
+const viewport = new Viewport(new RichText(""), { rows: ROWS, scrollbar: SCROLLBAR });
 const app = new WidgetApp({
-  host: new NodeTerminalHost(),
+  host,
   surface: "alternate",
   view: () => {
     viewport.content = list(selected);
@@ -62,6 +69,8 @@ const app = new WidgetApp({
 
 app.onKey((event) => {
   if (event.key === "q" || (event.ctrl && event.key === "c")) return app.stop();
+  // A chord is not its letter: Ctrl+K arrives as `k` with `ctrl` set.
+  if (event.ctrl || event.meta) return;
   const move = MOVES.get(event.key);
   if (move === undefined) return;
   selected = Math.min(ENTRIES.length - 1, Math.max(0, selected + move));
