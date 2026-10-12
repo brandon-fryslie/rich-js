@@ -4,7 +4,7 @@
  * Pure tick: snapshot the host's vitals into a state record. Pure render:
  * project the record into a Table. The widget never touches the screen.
  *
- * [LAW:capabilities-over-context] The widget takes a `SystemInfo` capability
+ * [LAW:effects-at-boundaries] The widget takes a `SystemInfo` capability
  * rather than importing `node:os` directly. Same render path in node and
  * browser; only the capability value differs.
  *

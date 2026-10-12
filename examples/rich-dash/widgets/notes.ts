@@ -5,7 +5,7 @@
  * (returns the same reference). Even no-op widgets follow the same protocol
  * as everything else — no special "static widget" path.
  *
- * [LAW:capabilities-over-context] The widget takes a `FileSystem` and an
+ * [LAW:effects-at-boundaries] The widget takes a `FileSystem` and an
  * absolute `readmePath`; it does not know whether the path resolves on disk
  * (node) or in a memory tree (browser). Same body, different capability.
  *

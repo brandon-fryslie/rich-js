@@ -13,7 +13,7 @@
  * - Mode: add a top-level mode for filter expressions / REPL
  */
 
-import type { FileSystem } from "../_capabilities/index.js";
+import type { FileSystem } from "../_capabilities/file-system.js";
 import type { Block, ProjectMeta, SessionMeta } from "./data/types.js";
 import { scanProjects } from "./data/scanner.js";
 import { loadSession, type RawLine } from "./data/loader.js";

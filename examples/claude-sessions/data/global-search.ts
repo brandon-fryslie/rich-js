@@ -11,7 +11,7 @@
  * code-path branching.
  */
 
-import type { FileSystem } from "../../_capabilities/index.js";
+import type { FileSystem } from "../../_capabilities/file-system.js";
 import type { ProjectMeta } from "./types.js";
 
 export interface GlobalHit {

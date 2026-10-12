@@ -5,7 +5,8 @@
 import type { MemoryTree } from "../_capabilities/memory-file-system.js";
 
 /**
- * One embedded session — enough to render an interesting first frame.
+ * One embedded session — opened, it renders real Human, Assistant and
+ * ToolCall blocks.
  *
  * - The first line of the JSONL carries a `slug` field so the scanner's
  *   first-line peek attaches a name to the session in the sidebar.

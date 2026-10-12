@@ -6,7 +6,7 @@
  * state, in a Panel, into the Layout cell named for it. The app owns the
  * terminal; this body owns the clock.
  *
- * [LAW:capabilities-over-context] `run` takes a `TerminalHost` and a
+ * [LAW:effects-at-boundaries] `run` takes a `TerminalHost` and a
  * `DashboardCapabilities` bag — FileSystem, SystemInfo, and the README path
  * the notes widget reads. Node and browser entries supply different values;
  * the demo body has no environment-aware branches.

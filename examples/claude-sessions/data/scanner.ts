@@ -10,7 +10,7 @@
  * `MemoryFileSystem` populated with a fixture in the card entry.
  */
 
-import type { FileSystem } from "../../_capabilities/index.js";
+import type { FileSystem } from "../../_capabilities/file-system.js";
 import type { ProjectMeta, SessionMeta } from "./types.js";
 
 function projectsRoot(fs: FileSystem): string {

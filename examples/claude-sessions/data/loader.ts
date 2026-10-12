@@ -10,7 +10,7 @@
  * the card load an embedded session fixture via the same code path.
  */
 
-import type { FileSystem } from "../../_capabilities/index.js";
+import type { FileSystem } from "../../_capabilities/file-system.js";
 
 export interface RawLine {
   readonly lineNumber: number;

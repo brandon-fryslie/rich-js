@@ -10,7 +10,7 @@
  */
 
 import { App, type TerminalHost } from "@promptctl/rich-js/host";
-import type { FileSystem } from "../_capabilities/index.js";
+import type { FileSystem } from "../_capabilities/file-system.js";
 import {
   initialState,
   moveSidebar,

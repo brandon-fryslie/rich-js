@@ -7,7 +7,7 @@
  * Extension points: add a new Mode variant for search/debug/diff without
  * touching existing reducers.
  *
- * [LAW:capabilities-over-context] `fs` is part of state, not a global or
+ * [LAW:effects-at-boundaries] `fs` is part of state, not a global or
  * ambient `node:fs` import. Reducers spread it forward unchanged; views
  * read `state.fs` to pass it into per-file renderers.
  */
@@ -81,7 +81,7 @@ export function loadChildren(state: AppState, path: string): AppState {
     return { ...state, nodes };
   }
 
-  // [LAW:capabilities-over-context] FileSystem.readDir returns `[]` for
+  // [LAW:effects-at-boundaries] FileSystem.readDir returns `[]` for
   // unreadable directories rather than throwing — the per-entry stat in
   // listDir surfaces individual failures on Entry.error. No try/catch
   // wrapping the capability call.

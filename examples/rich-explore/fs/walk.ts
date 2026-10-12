@@ -3,7 +3,7 @@
  * (permission denied, broken symlinks) are captured on the Entry so the
  * UI can render them explicitly rather than the whole listing crashing.
  *
- * [LAW:capabilities-over-context] The directory walk takes a `FileSystem`;
+ * [LAW:effects-at-boundaries] The directory walk takes a `FileSystem`;
  * there is no `node:fs` import. The same code runs against `NodeFileSystem`
  * in `node.ts` and a `MemoryFileSystem` populated with a fixture in `main.ts`,
  * the card's entry.
