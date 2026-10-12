@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "125ae3d9750d71dabbce8aecb57beccfb9f3cd18",
-      "timestamp": "2026-10-12T10:36:09.888Z",
+      "sha": "01c2608cc39bf8fdcf437fca5a27f8144253e550",
+      "timestamp": "2026-10-12T10:47:17.372Z",
       "commits": [
         {
-          "sha": "125ae3d9750d71dabbce8aecb57beccfb9f3cd18",
+          "sha": "01c2608cc39bf8fdcf437fca5a27f8144253e550",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T04:35:00-06:00",
-          "message": "feat(docs): themes-and-color-studio runs in the card (rich-demos-k78j.t3k) (#365)\n\n* feat(docs): themes-and-color-studio runs in the card (rich-demos-k78j.t3k)\n\nThe 1,250-line app.ts is split by section into files the card shows as\ntabs (tour, look, values, themes, transposition, contrast) behind main.ts.\nRecording to EXPORT_* needs node/save, so it lives in node.ts, which\nnpm run themes-and-color-studio runs and the card never reaches. The\ntour prints byte-identical to before (EXPORT_TEXT diff).\n\nThe card's terminal keeps no scrollback, so card.json gives it the rows\nto hold the whole tour, and the width test now also holds the height.\n\n* fix(docs): review — stale entry/fit comments, section dividers (rich-demos-k78j.t3k)"
+          "timestamp": "2026-10-12T04:45:44-06:00",
+          "message": "feat(docs): rich-config runs in the card (rich-demos-k78j.ai1) (#366)\n\n* feat(docs): rich-config runs in the card (rich-demos-k78j.ai1)\n\nmain.ts is the entry for the card and npm run demo-inputs; index.ts and\nwire.ts are gone and app.ts imports the library by its published names.\ncard.json keeps the 100x30 the two-pane layout was drawn for. The e2e\nspec drives the same keyboard and mouse checks through the card.\n\n* fix(docs): rich-config review — one card-screen reader, card.json through its parser, focus without a click (rich-demos-k78j.ai1)\n\n* test(e2e): left-edge check reads rows through cardRows (rich-demos-k78j.ai1)"
         }
       ]
     }
