@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "01c2608cc39bf8fdcf437fca5a27f8144253e550",
-      "timestamp": "2026-10-12T10:47:17.372Z",
+      "sha": "9fc7581130755dc805368c13dddc53526ee08cd5",
+      "timestamp": "2026-10-12T11:00:02.135Z",
       "commits": [
         {
-          "sha": "01c2608cc39bf8fdcf437fca5a27f8144253e550",
+          "sha": "9fc7581130755dc805368c13dddc53526ee08cd5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T04:45:44-06:00",
-          "message": "feat(docs): rich-config runs in the card (rich-demos-k78j.ai1) (#366)\n\n* feat(docs): rich-config runs in the card (rich-demos-k78j.ai1)\n\nmain.ts is the entry for the card and npm run demo-inputs; index.ts and\nwire.ts are gone and app.ts imports the library by its published names.\ncard.json keeps the 100x30 the two-pane layout was drawn for. The e2e\nspec drives the same keyboard and mouse checks through the card.\n\n* fix(docs): rich-config review — one card-screen reader, card.json through its parser, focus without a click (rich-demos-k78j.ai1)\n\n* test(e2e): left-edge check reads rows through cardRows (rich-demos-k78j.ai1)"
+          "timestamp": "2026-10-12T04:58:26-06:00",
+          "message": "feat(docs): rich-template-bindings runs in the card (rich-demos-k78j.ebz) (#367)\n\n* feat(docs): rich-template-bindings runs in the card (rich-demos-k78j.ebz)\n\nmain.ts is the entry for the card and npm run template-bindings; index.ts and\nwire.ts are gone and app.ts imports the library, its template-bindings\nsubpath and both optional peers by their published names. card.json keeps\nthe 100x30 the iframe page drew at. A new e2e spec types into a template and\nswitches sections through the card.\n\n* fix(docs): template-bindings card fits every section; PgUp/PgDn nav the browser lets through (rich-demos-k78j.ebz)"
         }
       ]
     }
