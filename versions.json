@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "e2b183d90c45ffdf3c48d6ce00c1ab40baf50310",
-      "timestamp": "2026-10-12T11:27:43.295Z",
+      "sha": "a06df97e0d0c368392d2aed4c81b3c19ae2dfc69",
+      "timestamp": "2026-10-12T11:39:48.901Z",
       "commits": [
         {
-          "sha": "e2b183d90c45ffdf3c48d6ce00c1ab40baf50310",
+          "sha": "a06df97e0d0c368392d2aed4c81b3c19ae2dfc69",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T05:26:22-06:00",
-          "message": "feat(docs): rich-dash runs in the card (rich-demos-k78j.61f) (#369)\n\n* feat(docs): rich-dash runs in the card (rich-demos-k78j.61f)\n\nmain.ts runs the dashboard on fixture.ts's README and vitals in the card;\nnode.ts runs it on the real ones for npm run dash. wire.ts/index.ts gone,\nlibrary imported by published names.\n\n* fix(docs): rich-dash card fits its terminal and fails loudly (rich-demos-k78j.61f)\n\n- notes/README columns split 1:1 so the build panel's Progress columns fit 100 cells\n- notes widget no longer swallows a README read failure into a placeholder\n- e2e asserts fixture-only text per panel\n- fixture uptime under a day so seconds tick; architecture block fits the panel"
+          "timestamp": "2026-10-12T05:38:12-06:00",
+          "message": "feat(docs): claude-sessions runs in the card (rich-demos-k78j.dja) (#370)\n\n* feat(docs): claude-sessions runs in the card (rich-demos-k78j.dja)\n\nmain.ts runs the session browser on fixture.ts's one-session tree in the\ncard; node.ts runs it on ~/.claude/projects for npm run sessions. wire.ts\nand index.ts gone, library imported by published names.\n\n* fix(examples): claude-sessions imports FileSystem directly, drops the dead barrel; one law token across demos (rich-demos-k78j.dja)"
         }
       ]
     }
