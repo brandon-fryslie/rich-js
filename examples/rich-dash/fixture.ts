@@ -24,10 +24,10 @@ they read differ.
 ## Architecture
 
 \`\`\`
-run(host, { fs, sysinfo, readmePath })
-  -> buildWidgets(caps)        // per-widget capabilities
-  -> App + one clock           // the terminal, and a tick per frame
-  -> Layout + Panels           // pure render of widget state
+run(host, caps)
+  -> buildWidgets(caps)
+  -> App + one clock
+  -> Layout + Panels
 \`\`\`
 `;
 
@@ -50,7 +50,7 @@ export const SYSINFO_SNAPSHOT: SystemInfoSnapshot = {
   hostname: "rich-dash.browser",
   platform: "browser",
   arch: "wasm32",
-  uptimeAtBootSec: 60 * 60 * 24 * 3, // 3 days of "uptime" to make formatUptime exercise its days/hours/minutes branches
+  uptimeAtBootSec: 60 * 60 * 5, // under a day, so formatUptime shows seconds and the panel visibly ticks
   loadAverage: [0.42, 0.58, 0.61],
   totalMemoryBytes: 16 * 1024 ** 3,
   freeMemoryBytes: 7 * 1024 ** 3,

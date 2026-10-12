@@ -48,6 +48,6 @@ export const LAYOUT: LayoutSpec = {
         { name: "job",     ratio: 1 },
       ],
     },
-    { name: "notes", ratio: 2 },
+    { name: "notes", ratio: 1 },
   ],
 };

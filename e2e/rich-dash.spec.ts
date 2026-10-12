@@ -15,9 +15,9 @@ test.beforeEach(async ({ page }) => {
 
 test("every panel draws from the fixture", async ({ page }) => {
   const shown = await screen(page);
-  expect(shown).toContain("sysinfo");
-  expect(shown).toContain("build");
-  expect(shown).toContain("README");
+  expect(shown).toContain("rich-dash.browser"); // sysinfo: the fixture snapshot
+  expect(shown).toContain("fetch sources"); // build: the job panel's first stage
+  expect(shown).toContain("rich-dash (fixture)"); // README: the fixture file
 });
 
 test("the dashboard keeps repainting", async ({ page }) => {
