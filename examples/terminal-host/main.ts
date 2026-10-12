@@ -12,5 +12,8 @@ if (!host.isTTY) {
 }
 
 host.start();
-await inspectKeys(host);
-host.stop();
+try {
+  await inspectKeys(host);
+} finally {
+  host.stop();
+}

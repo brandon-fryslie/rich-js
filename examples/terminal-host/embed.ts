@@ -14,6 +14,9 @@ import { inspectKeys } from "./app.js";
 export async function mountInPage(terminal: XtermTerminal): Promise<void> {
   const host = new BrowserTerminalHost({ terminal });
   host.start();
-  await inspectKeys(host);
-  host.stop();
+  try {
+    await inspectKeys(host);
+  } finally {
+    host.stop();
+  }
 }

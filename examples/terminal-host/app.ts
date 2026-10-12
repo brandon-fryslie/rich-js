@@ -13,11 +13,19 @@
  */
 import type { DataHandler, ResizeHandler, TerminalHost } from "@promptctl/rich-js/host";
 
-const QUIT = new Set(["\x03", "\x04"]);
+const QUIT = /[\x03\x04]/;
+const NAMED: Record<string, string> = { "\t": "\\t", "\r": "\\r", "\n": "\\n", "\x1b": "\\e" };
 
-/** One chunk as printable text: control bytes escaped, everything else as is. */
+/**
+ * One chunk as printable text: every C0 control, DEL and C1 control escaped —
+ * by name where it has one, as `\xNN` otherwise — and everything else as is,
+ * so a quote or a backslash shows as the one byte it is.
+ */
 export function describeChunk(chunk: string): string {
-  return JSON.stringify(chunk).slice(1, -1).replace(/\\u001b/g, "\\e");
+  return chunk.replace(
+    /[\x00-\x1f\x7f-\x9f]/g,
+    (c) => NAMED[c] ?? `\\x${c.charCodeAt(0).toString(16).padStart(2, "0")}`,
+  );
 }
 
 /** Run the inspector on `host` until Ctrl-D or Ctrl-C, then hand the terminal back. */
@@ -26,25 +34,31 @@ export function inspectKeys(host: TerminalHost): Promise<void> {
   const { cols, rows } = host.size();
   host.setRawMode(true);
   host.write("\x1b[2J\x1b[H");
-  host.write(`\x1b[1mterminal-host\x1b[0m · ${cols}x${rows}\r\n`);
-  host.write("Press any key to see what it sends. Ctrl-D quits.\r\n\r\n");
+  host.write(`\x1b[1mterminal-host\x1b[0m · ${cols}x${rows}\n`);
+  host.write("Press any key to see what it sends. Ctrl-D or Ctrl-C quits.\n\n");
 
   return new Promise((resolve) => {
+    const printKey = (chunk: string): void => {
+      if (chunk) host.write(`key  \x1b[36m${describeChunk(chunk)}\x1b[0m\n`);
+    };
     const onData: DataHandler = (data) => {
-      const chunk = typeof data === "string" ? data : decoder.decode(data);
-      if (QUIT.has(chunk)) {
-        stopData();
-        stopResize();
-        host.setRawMode(false);
-        resolve();
-        return;
-      }
-      host.write(`key  \x1b[36m${describeChunk(chunk)}\x1b[0m\r\n`);
+      const chunk = typeof data === "string" ? data : decoder.decode(data, { stream: true });
+      // A paste or a fast typist can put the quit key inside a larger read.
+      const quit = chunk.search(QUIT);
+      if (quit < 0) return printKey(chunk);
+      printKey(chunk.slice(0, quit));
+      stopData();
+      stopResize();
+      stopExit();
+      host.setRawMode(false);
+      resolve();
     };
     const onResize: ResizeHandler = (size) => {
-      host.write(`size \x1b[33m${size.cols}x${size.rows}\x1b[0m\r\n`);
+      host.write(`size \x1b[33m${size.cols}x${size.rows}\x1b[0m\n`);
     };
     const stopData = host.onData(onData);
     const stopResize = host.onResize(onResize);
+    // Ended any other way, the program still hands back cooked mode.
+    const stopExit = host.onExit(() => host.setRawMode(false));
   });
 }
