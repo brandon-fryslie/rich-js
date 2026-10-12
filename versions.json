@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-363",
-      "ref": "refs/pull/363/merge",
-      "sha": "f0a3a2e37a636d85165f1745fabd2937a7c767ee",
-      "timestamp": "2026-10-12T09:57:47.802Z",
-      "commits": [
-        {
-          "sha": "f0a3a2e37a636d85165f1745fabd2937a7c767ee",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T09:56:43Z",
-          "message": "Merge 3612e9a954881d77093d5d7416350fec6684e280 into 29dfa8c75ffb781b3b8b6af4468559e721c7258d\n"
-        },
-        {
-          "sha": "3612e9a954881d77093d5d7416350fec6684e280",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T03:56:38-06:00",
-          "message": "fix(demo): rich-markup-plugins handlers fail loudly, restore the global tag, fit the card (rich-demos-k78j.7iv)\n"
-        },
-        {
-          "sha": "5984dc0b24a5f154e2658138f3abb9b43320e60b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T03:51:12-06:00",
-          "message": "feat(docs): rich-markup-plugins runs in the card (rich-demos-k78j.7iv)\n\nOne file, main.ts, printing through new Console(); the entry for the card\nand npm run markup-plugins. Revamped: each sample's markup prints dim above\nwhat it draws, samples fit the card's 75 columns, handlers in the\ndocs/markup-tags.md idiom. app.ts/index.ts/wire.ts deleted.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "29dfa8c75ffb781b3b8b6af4468559e721c7258d",
-      "timestamp": "2026-10-08T23:25:27.142Z",
+      "sha": "ed24e8653331b4c983a3ccdc7a41b8ce3482a9e0",
+      "timestamp": "2026-10-12T09:59:44.329Z",
       "commits": [
         {
-          "sha": "29dfa8c75ffb781b3b8b6af4468559e721c7258d",
+          "sha": "ed24e8653331b4c983a3ccdc7a41b8ce3482a9e0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-08T17:23:52-06:00",
-          "message": "fix(docs): docs:dev serves pages again — a docs bundle hands NODE_ENV back (rich-example-card-b5rz.b5s) (#362)\n\n* fix(docs): docs:dev serves pages again — a docs bundle hands NODE_ENV back (rich-example-card-b5rz.b5s)\n\nVite's in-process `build` sets NODE_ENV to \"production\" when it is unset.\n`[demo].paths.ts` bundles the live library (via `demoCard`) while VitePress\nresolves its config, before the dev server resolves its own, so `docs:dev`\ncame up with DEV false and every page threw `__VP_HASH_MAP__ is not\ndefined`. `bundle` now restores the host's value, or its absence, when the\nlast overlapping bundle ends.\n\n* fix(docs): the NODE_ENV a bundle restores is counted per process, not per module copy (rich-example-card-b5rz.b5s)\n\nVitePress inlines example-runner.ts into its config and again into\n[demo].paths.ts; a per-copy in-flight count let one copy put back the\n\"production\" another copy's bundle wrote. The test's restore no longer\nwrites the string \"undefined\", and a failing bundle and two copies are covered."
+          "timestamp": "2026-10-12T03:58:14-06:00",
+          "message": "feat(docs): rich-markup-plugins runs in the card (rich-demos-k78j.7iv) (#363)\n\n* feat(docs): rich-markup-plugins runs in the card (rich-demos-k78j.7iv)\n\nOne file, main.ts, printing through new Console(); the entry for the card\nand npm run markup-plugins. Revamped: each sample's markup prints dim above\nwhat it draws, samples fit the card's 75 columns, handlers in the\ndocs/markup-tags.md idiom. app.ts/index.ts/wire.ts deleted.\n\n* fix(demo): rich-markup-plugins handlers fail loudly, restore the global tag, fit the card (rich-demos-k78j.7iv)"
         }
       ]
     }
