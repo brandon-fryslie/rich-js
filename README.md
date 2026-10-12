@@ -390,6 +390,7 @@ npm run demo
 | `npm run effects-feel` | effects-feel | Shimmer, a gentle pulse on chosen elements, sparkle, a hue wheel, fade-in and a dissolve-out that eddies back before it goes, on a powerline strip and a run of text, at a colour depth you choose, with keys to step the frame rate, the demo's pace and the theme while it runs. A demo for agreeing how the effects feel; `npm run effects-feel -- --help` lists the flags and keys. |
 | `npm run markup-plugins` | rich-markup-plugins | Custom markup tags registered through `MarkupRegistry`. Prints once and exits. |
 | `npm run viewport` | rich-viewport | A selection you move through a list taller than its window with the arrow keys, `j`/`k`, PgUp/PgDn and Home/End, kept in view by `Viewport.ensureVisible`; the mouse wheel scrolls the window, and `q` quits. |
+| `npm run terminal-host` | terminal-host | Each key you press printed as the bytes the terminal sends for it, and each resize as the new size — a program written against `TerminalHost` alone. `examples/terminal-host/embed.ts` runs the same program on an xterm.js terminal in your own page. |
 
 `Ctrl-C` quits any demo that stays running.
 
