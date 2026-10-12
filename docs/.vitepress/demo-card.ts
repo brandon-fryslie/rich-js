@@ -5,8 +5,10 @@
  *
  * A demo is a Node program, and the card runs that same program unchanged:
  *
- * - `examples/<name>/main.ts` is its entry, for the card and for its
- *   `npm run` script alike (`DEMO_ENTRY`, demo-entry.ts).
+ * - `examples/<name>/main.ts` is its entry in the card, and its `npm run` script
+ *   runs it too, unless the demo has a `node.ts` for what a page cannot
+ *   do, which then runs the same program plus that (`DEMO_ENTRY`,
+ *   demo-entry.ts).
  * - It builds its own terminal, `new NodeTerminalHost()`, or prints through a
  *   `new Console()`. In the card it runs on the stand-in process
  *   (simulated-process.ts), which gives it the card's terminal, its size,
