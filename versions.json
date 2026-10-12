@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-365",
-      "ref": "refs/pull/365/merge",
-      "sha": "188ad8d63507a845962c14ff2d01ad7e3df55df8",
-      "timestamp": "2026-10-12T10:32:06.240Z",
-      "commits": [
-        {
-          "sha": "188ad8d63507a845962c14ff2d01ad7e3df55df8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T10:30:43Z",
-          "message": "Merge 8815051a6c567fe17a21eb9a7f65ce6acc03f35a into a4b2d8ea75884c9196ba8a505a0da6ec95397cc2\n"
-        },
-        {
-          "sha": "8815051a6c567fe17a21eb9a7f65ce6acc03f35a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T04:30:38-06:00",
-          "message": "fix(docs): review — stale entry/fit comments, section dividers (rich-demos-k78j.t3k)\n"
-        },
-        {
-          "sha": "4509fabad6d6b3804407cb14b2036236fbb865ed",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T04:26:20-06:00",
-          "message": "feat(docs): themes-and-color-studio runs in the card (rich-demos-k78j.t3k)\n\nThe 1,250-line app.ts is split by section into files the card shows as\ntabs (tour, look, values, themes, transposition, contrast) behind main.ts.\nRecording to EXPORT_* needs node/save, so it lives in node.ts, which\nnpm run themes-and-color-studio runs and the card never reaches. The\ntour prints byte-identical to before (EXPORT_TEXT diff).\n\nThe card's terminal keeps no scrollback, so card.json gives it the rows\nto hold the whole tour, and the width test now also holds the height.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "a4b2d8ea75884c9196ba8a505a0da6ec95397cc2",
-      "timestamp": "2026-10-12T10:16:22.948Z",
+      "sha": "125ae3d9750d71dabbce8aecb57beccfb9f3cd18",
+      "timestamp": "2026-10-12T10:36:09.888Z",
       "commits": [
         {
-          "sha": "a4b2d8ea75884c9196ba8a505a0da6ec95397cc2",
+          "sha": "125ae3d9750d71dabbce8aecb57beccfb9f3cd18",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T04:14:45-06:00",
-          "message": "feat(docs): rich-viewport runs in the card (rich-demos-k78j.jdg) (#364)\n\n* feat(docs): rich-viewport runs in the card (rich-demos-k78j.jdg)\n\nOne file, main.ts, a WidgetApp on NodeTerminalHost; the entry for the card\nand npm run viewport. Revamped: the auto-walking cursor is now driven by the\nkeys, and the wheel scrolls the window away from it (ensureVisible runs on a\nmove, not every frame). app.ts/index.ts/wire.ts deleted; the left-edge e2e\nreads the card.\n\n* fix(docs): review — staircase guard on a printed demo, viewport TTY check and chords, docs agree with the demo (rich-demos-k78j.jdg)\n\n* docs(viewport): the selection example brings the selection into view on a move, so the wheel can scroll it (rich-demos-k78j.jdg)"
+          "timestamp": "2026-10-12T04:35:00-06:00",
+          "message": "feat(docs): themes-and-color-studio runs in the card (rich-demos-k78j.t3k) (#365)\n\n* feat(docs): themes-and-color-studio runs in the card (rich-demos-k78j.t3k)\n\nThe 1,250-line app.ts is split by section into files the card shows as\ntabs (tour, look, values, themes, transposition, contrast) behind main.ts.\nRecording to EXPORT_* needs node/save, so it lives in node.ts, which\nnpm run themes-and-color-studio runs and the card never reaches. The\ntour prints byte-identical to before (EXPORT_TEXT diff).\n\nThe card's terminal keeps no scrollback, so card.json gives it the rows\nto hold the whole tour, and the width test now also holds the height.\n\n* fix(docs): review — stale entry/fit comments, section dividers (rich-demos-k78j.t3k)"
         }
       ]
     }
