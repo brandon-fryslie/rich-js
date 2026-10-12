@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-364",
-      "ref": "refs/pull/364/merge",
-      "sha": "a666c9e7cf9f484b3b9b5c785d518e755c5c7af8",
-      "timestamp": "2026-10-12T10:13:19.757Z",
-      "commits": [
-        {
-          "sha": "a666c9e7cf9f484b3b9b5c785d518e755c5c7af8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T10:12:12Z",
-          "message": "Merge a8835c5962022f76d6946a766ed8e77358fdd234 into ed24e8653331b4c983a3ccdc7a41b8ce3482a9e0\n"
-        },
-        {
-          "sha": "a8835c5962022f76d6946a766ed8e77358fdd234",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T04:12:07-06:00",
-          "message": "fix(docs): review — staircase guard on a printed demo, viewport TTY check and chords, docs agree with the demo (rich-demos-k78j.jdg)\n"
-        },
-        {
-          "sha": "59383b7504031cc8744c5d33a5b2a1a8751f6903",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T04:02:58-06:00",
-          "message": "feat(docs): rich-viewport runs in the card (rich-demos-k78j.jdg)\n\nOne file, main.ts, a WidgetApp on NodeTerminalHost; the entry for the card\nand npm run viewport. Revamped: the auto-walking cursor is now driven by the\nkeys, and the wheel scrolls the window away from it (ensureVisible runs on a\nmove, not every frame). app.ts/index.ts/wire.ts deleted; the left-edge e2e\nreads the card.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ed24e8653331b4c983a3ccdc7a41b8ce3482a9e0",
