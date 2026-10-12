@@ -2,7 +2,7 @@
  * SystemInfo capability — the seam between demos and the host's OS-level
  * vitals (hostname, uptime, load, memory, platform, arch).
  *
- * [LAW:capabilities-over-context] Demos that display system stats take a
+ * [LAW:effects-at-boundaries] Demos that display system stats take a
  * `SystemInfo` parameter, not ambient `node:os` access. The granted ability
  * is exactly the read-only metrics these demos display — no process control,
  * no environment access, no FS introspection.

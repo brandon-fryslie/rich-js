@@ -1,5 +1,5 @@
-import { Panel, Group, Rule, RichText } from "../../../../src/index.js";
-import type { Renderable } from "../../../../src/index.js";
+import { Panel, Group, Rule, RichText } from "@promptctl/rich-js";
+import type { Renderable } from "@promptctl/rich-js";
 import type { SubagentBlock } from "../../data/types.js";
 import { styledTimestamp, borderFor, truncate, emoji, highlightSearch } from "./_common.js";
 import type { RenderOpts } from "./index.js";

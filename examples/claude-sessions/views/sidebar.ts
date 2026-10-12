@@ -1,5 +1,5 @@
-import { Panel, Tree, RichText } from "../../../src/index.js";
-import type { Renderable, Viewport } from "../../../src/index.js";
+import { Panel, Tree, RichText } from "@promptctl/rich-js";
+import type { Renderable, Viewport } from "@promptctl/rich-js";
 import type { AppState } from "../state.js";
 
 function fmtSize(n: number): string {

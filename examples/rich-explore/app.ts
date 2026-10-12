@@ -1,7 +1,7 @@
 /**
  * Main loop: data → reducer → render, in an `App` on the alternate screen.
  *
- * [LAW:capabilities-over-context] `run` is parameterised on a `TerminalHost`
+ * [LAW:effects-at-boundaries] `run` is parameterised on a `TerminalHost`
  * (where I/O goes) and a `FileSystem` (where files come from). The demo
  * body never branches on environment; `main.ts` and `node.ts` differ only in
  * the `FileSystem` they pass.

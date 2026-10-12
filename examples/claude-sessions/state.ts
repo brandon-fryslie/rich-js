@@ -3,7 +3,7 @@
  *
  * Reducers produce new states; views are pure functions of state.
  *
- * [LAW:capabilities-over-context] The `FileSystem` capability is part of
+ * [LAW:effects-at-boundaries] The `FileSystem` capability is part of
  * AppState — it is an injected dependency, fixed at construction time, and
  * the reducers that touch I/O read it from state rather than from ambient
  * `node:fs` imports. Spreading `...state` carries it forward unchanged.
@@ -13,7 +13,7 @@
  * - Mode: add a top-level mode for filter expressions / REPL
  */
 
-import type { FileSystem } from "../_capabilities/index.js";
+import type { FileSystem } from "../_capabilities/file-system.js";
 import type { Block, ProjectMeta, SessionMeta } from "./data/types.js";
 import { scanProjects } from "./data/scanner.js";
 import { loadSession, type RawLine } from "./data/loader.js";

@@ -5,12 +5,12 @@
  * in well under 2s on modern hardware. Streaming is an extension point for
  * future giant-file handling.
  *
- * [LAW:capabilities-over-context] File reads go through the injected
+ * [LAW:effects-at-boundaries] File reads go through the injected
  * `FileSystem`; there is no `node:fs` import. This is the seam that lets
- * the browser bundle load embedded session fixtures via the same code path.
+ * the card load an embedded session fixture via the same code path.
  */
 
-import type { FileSystem } from "../../_capabilities/index.js";
+import type { FileSystem } from "../../_capabilities/file-system.js";
 
 export interface RawLine {
   readonly lineNumber: number;

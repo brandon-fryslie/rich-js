@@ -19,8 +19,8 @@ import {
   measureRenderables,
   withBoundedWidth,
   withCellWidth,
-} from "../../../src/index.js";
-import type { Measurable, Renderable, RenderOptions, Viewport } from "../../../src/index.js";
+} from "@promptctl/rich-js";
+import type { Measurable, Renderable, RenderOptions, Viewport } from "@promptctl/rich-js";
 
 export class ItemsInView implements Renderable, Measurable {
   constructor(

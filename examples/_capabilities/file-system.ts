@@ -1,7 +1,7 @@
 /**
  * FileSystem capability — the seam between demos and their filesystem.
  *
- * [LAW:capabilities-over-context] Demos that need to read files take a
+ * [LAW:effects-at-boundaries] Demos that need to read files take a
  * `FileSystem` parameter, not ambient `node:fs` access. The granted ability is
  * exactly the operations these demos perform — read a file, peek its first
  * bytes, list a directory, stat a path, ask whether it exists, plus the path

@@ -4,8 +4,8 @@
  * highlight, scroll-to-cursor, and a summary header.
  */
 
-import { Panel, RichText } from "../../../src/index.js";
-import type { Renderable, Viewport } from "../../../src/index.js";
+import { Panel, RichText } from "@promptctl/rich-js";
+import type { Renderable, Viewport } from "@promptctl/rich-js";
 import type { AppState } from "../state.js";
 import type { GlobalHit } from "../data/global-search.js";
 import { highlightSearch } from "./block-renderers/_common.js";

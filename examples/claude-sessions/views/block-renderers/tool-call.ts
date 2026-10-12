@@ -1,5 +1,5 @@
-import { Panel, RichText, Group, Rule, Syntax } from "../../../../src/index.js";
-import type { Renderable } from "../../../../src/index.js";
+import { Panel, RichText, Group, Rule, Syntax } from "@promptctl/rich-js";
+import type { Renderable } from "@promptctl/rich-js";
 import type { ToolCallBlock } from "../../data/types.js";
 import { styledTimestamp, borderFor, truncate, emoji, highlightSearch } from "./_common.js";
 import type { RenderOpts } from "./index.js";

@@ -68,7 +68,7 @@
     "docs:preview": "vitepress preview docs",
     "demo": "node scripts/build-demos.ts && node dist-demo/examples/rich-explore/node.js",
     "demo:build": "node scripts/build-demos.ts",
-    "sessions": "node scripts/build-demos.ts && node dist-demo/examples/claude-sessions/index.js",
+    "sessions": "node scripts/build-demos.ts && node dist-demo/examples/claude-sessions/node.js",
     "strip": "node scripts/build-demos.ts && node dist-demo/examples/rich-strip/main.js",
     "effects-feel": "node scripts/build-demos.ts && node dist-demo/examples/effects-feel/index.js",
     "viewport": "node scripts/build-demos.ts && node dist-demo/examples/rich-viewport/main.js",

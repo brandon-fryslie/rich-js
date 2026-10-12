@@ -4,7 +4,7 @@
  */
 
 import type { Block } from "../../data/types.js";
-import type { Renderable } from "../../../../src/index.js";
+import type { Renderable } from "@promptctl/rich-js";
 import { renderHuman } from "./human.js";
 import { renderAssistant } from "./assistant.js";
 import { renderToolCall } from "./tool-call.js";

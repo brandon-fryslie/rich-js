@@ -8,9 +8,9 @@ import {
   ISO8601Highlighter,
   RegexHighlighter,
   emojiReplace,
-} from "../../../../src/index.js";
-import type { Renderable } from "../../../../src/index.js";
-import { renderMarkup } from "../../../../src/core/markup.js";
+  renderMarkup,
+  type Renderable,
+} from "@promptctl/rich-js";
 
 // Singleton highlighters
 const iso8601 = new ISO8601Highlighter();
@@ -64,6 +64,4 @@ export function highlightSearch(text: RichText, query: string | undefined): void
   new SearchHighlighter().highlight(text);
 }
 
-/** Wrap a renderable in Padding. Re-exported so renderers don't all import it. */
-export { Padding } from "../../../../src/index.js";
 export type { Renderable };

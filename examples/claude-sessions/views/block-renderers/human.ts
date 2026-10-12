@@ -1,5 +1,5 @@
-import { Panel, RichText } from "../../../../src/index.js";
-import type { Renderable } from "../../../../src/index.js";
+import { Panel, RichText } from "@promptctl/rich-js";
+import type { Renderable } from "@promptctl/rich-js";
 import type { HumanBlock } from "../../data/types.js";
 import { styledTimestamp, borderFor, truncate, emoji, highlightSearch } from "./_common.js";
 import type { RenderOpts } from "./index.js";

@@ -1,5 +1,5 @@
-import { Layout, RichText, Viewport } from "../../../src/index.js";
-import type { Renderable } from "../../../src/index.js";
+import { Layout, RichText, Viewport } from "@promptctl/rich-js";
+import type { Renderable } from "@promptctl/rich-js";
 import type { AppState } from "../state.js";
 import { ViewportPerSubject } from "../../shared/viewport-per-subject.js";
 import { buildSidebar } from "./sidebar.js";
@@ -7,7 +7,7 @@ import { buildViewer } from "./viewer.js";
 import { buildSearchBar } from "./search-bar.js";
 import { buildStatusBar } from "./status-bar.js";
 import { markup } from "./block-renderers/_common.js";
-import { escapeMarkup } from "../../../src/index.js";
+import { escapeMarkup } from "@promptctl/rich-js";
 
 function buildHeader(state: AppState): Renderable {
   let src = "[bold white on blue] claude-sessions [/bold white on blue]";

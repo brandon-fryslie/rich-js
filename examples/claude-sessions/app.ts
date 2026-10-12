@@ -3,14 +3,14 @@
  * on the alternate screen. Search-typing mode reads keys through its own
  * keymap, which passes every key but the lifecycle ones to the query.
  *
- * [LAW:capabilities-over-context] `run` is parameterised on both a
+ * [LAW:effects-at-boundaries] `run` is parameterised on both a
  * `TerminalHost` (where I/O goes) and a `FileSystem` (where session data
  * comes from). The demo body never branches on environment; the two
- * capabilities are the values that differ between node and browser entries.
+ * capabilities are the values that differ between `main.ts` and `node.ts`.
  */
 
-import { App, type TerminalHost } from "../../src/host/index.js";
-import type { FileSystem } from "../_capabilities/index.js";
+import { App, type TerminalHost } from "@promptctl/rich-js/host";
+import type { FileSystem } from "../_capabilities/file-system.js";
 import {
   initialState,
   moveSidebar,

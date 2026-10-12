@@ -8,7 +8,7 @@
  * `app.ts` pairs each widget with `Layout.getByName(widget.id)` at startup
  * and fails there when a widget has no leaf.
  *
- * [LAW:capabilities-over-context] `buildWidgets` takes a capability bag.
+ * [LAW:effects-at-boundaries] `buildWidgets` takes a capability bag.
  * Each widget factory closes over exactly the capabilities it needs — the
  * sysinfo widget never sees the FileSystem, the notes widget never sees
  * SystemInfo, and the job widget needs neither.
