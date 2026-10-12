@@ -11,7 +11,7 @@
  * combinedItem reads input.value / cursorPosition / focused (all MobX
  * observables), so the app repaints on every change.
  *
- * Ctrl+PageUp / Ctrl+PageDown — navigate sections
+ * PageUp / PageDown — navigate sections
  *                  (Ctrl+P / Ctrl+N are reserved for cursor up/down inside
  *                  the editable templates, per readline conventions)
  * Tab / Shift+Tab  — cycle inputs
@@ -591,7 +591,7 @@ const appTitleItem = new StaticItem({
 
 const navHintItem = new StaticItem({
   id: "nav-hint",
-  render: () => [new Segment("  Ctrl+PgUp/PgDn: sections  ·  Tab: focus  ·  arrows/Ctrl+A·E·W·U·K·etc: edit  ·  Ctrl+C: exit", dimStyle)],
+  render: () => [new Segment("  PgUp/PgDn: sections  ·  Tab: focus  ·  arrows/Ctrl+A·E·U·K·etc: edit  ·  Ctrl+C: exit", dimStyle)],
 });
 
 const headerSpacer = makeSpacerItem();
@@ -599,7 +599,7 @@ const headerSpacer = makeSpacerItem();
 // ─── Demo entry ────────────────────────────────────────────────────────────
 //
 // runDemo takes the host main.ts builds — in the docs card, the card's
-// terminal — as a parameter, so a test can hand it one over streams it drives.
+// terminal — as a parameter rather than building its own.
 
 export interface DemoHandle {
   stop(): void;
@@ -617,10 +617,12 @@ export function runDemo(host: TerminalHost): DemoHandle {
     view: () => new Group(appTitleItem, navHintItem, headerSpacer, SECTIONS[state.sectionIdx]!.view),
   });
 
-  // Section nav uses Ctrl+PageUp / Ctrl+PageDown rather than Ctrl+P/Ctrl+N —
-  // the latter are readline line-motion bindings that TextInput now consumes
-  // for cursor up/down inside the editable templates. PageUp/PageDown have
-  // no readline meaning, so the two layers don't fight over the same keys.
+  // Section nav uses PageUp / PageDown rather than Ctrl+P/Ctrl+N — the latter
+  // are readline line-motion bindings that TextInput consumes for cursor
+  // up/down inside the editable templates. PageUp/PageDown have no readline
+  // meaning, so the two layers don't fight over the same keys. Not Ctrl+PgUp/
+  // PgDn: in the docs card the browser reserves those for switching tabs, and
+  // the page never sees them. For the same reason the hint leaves out Ctrl+W.
   // High-priority: these run BEFORE the focused widget, so a focused
   // TextInput can't accidentally swallow Ctrl+C or our section-nav chords.
   // Stopping the event prevents the focused widget from also reacting to
@@ -632,8 +634,8 @@ export function runDemo(host: TerminalHost): DemoHandle {
       return;
     }
     const n = SECTIONS.length;
-    if (event.ctrl && event.key === "pageup")        { state.prev(n); event.stop(); }
-    else if (event.ctrl && event.key === "pagedown") { state.next(n); event.stop(); }
+    if (event.key === "pageup")        { state.prev(n); event.stop(); }
+    else if (event.key === "pagedown") { state.next(n); event.stop(); }
   }, { priority: "high" });
 
   return { stop: () => app.stop(), done: app.run() };
