@@ -72,7 +72,7 @@
     "strip": "node scripts/build-demos.ts && node dist-demo/examples/rich-strip/main.js",
     "effects-feel": "node scripts/build-demos.ts && node dist-demo/examples/effects-feel/index.js",
     "viewport": "node scripts/build-demos.ts && node dist-demo/examples/rich-viewport/index.js",
-    "markup-plugins": "node scripts/build-demos.ts && node dist-demo/examples/rich-markup-plugins/index.js",
+    "markup-plugins": "node scripts/build-demos.ts && node dist-demo/examples/rich-markup-plugins/main.js",
     "demo-inputs": "node scripts/build-demos.ts && node dist-demo/examples/rich-config/index.js",
     "demo:dropdown": "node scripts/build-demos.ts && node dist-demo/examples/dropdown-demo/main.js",
     "dash": "node scripts/build-demos.ts && node dist-demo/examples/rich-dash/index.js",
