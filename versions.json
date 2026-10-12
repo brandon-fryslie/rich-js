@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-368",
-      "ref": "refs/pull/368/merge",
-      "sha": "0b4d8ce81e9a06b9ff354e4d95926d7c53b9bf68",
-      "timestamp": "2026-10-12T11:13:02.772Z",
-      "commits": [
-        {
-          "sha": "0b4d8ce81e9a06b9ff354e4d95926d7c53b9bf68",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T11:11:26Z",
-          "message": "Merge 9037d85b6338a2e77312860efd745f141b0a0cf0 into 9fc7581130755dc805368c13dddc53526ee08cd5\n"
-        },
-        {
-          "sha": "9037d85b6338a2e77312860efd745f141b0a0cf0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T05:11:21-06:00",
-          "message": "fix(docs): rich-explore review — Escape test can fail, card says when it quits, stale comments (rich-demos-k78j.s6s)\n"
-        },
-        {
-          "sha": "9384b1430eea481ca501ee9883aa2f64b11eed76",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T05:03:41-06:00",
-          "message": "feat(docs): rich-explore runs in the card (rich-demos-k78j.s6s)\n\nmain.ts is the card's entry and browses fixture.ts's in-memory files;\nnode.ts, which npm run demo runs, browses the real file system. Every\nimport is by published name, and the shared FileSystem type is imported\nfrom its own file so the card shows no unused capability tabs.\n\nEscape no longer quits: in the card it is the first half of the way out\n(Escape then Tab), so it ended the program on the way. q and Ctrl-C quit.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "9fc7581130755dc805368c13dddc53526ee08cd5",
-      "timestamp": "2026-10-12T11:00:02.135Z",
+      "sha": "836801d0c7f1f684e423ffe4158d2b4d061b8e58",
+      "timestamp": "2026-10-12T11:15:15.973Z",
       "commits": [
         {
-          "sha": "9fc7581130755dc805368c13dddc53526ee08cd5",
+          "sha": "836801d0c7f1f684e423ffe4158d2b4d061b8e58",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T04:58:26-06:00",
-          "message": "feat(docs): rich-template-bindings runs in the card (rich-demos-k78j.ebz) (#367)\n\n* feat(docs): rich-template-bindings runs in the card (rich-demos-k78j.ebz)\n\nmain.ts is the entry for the card and npm run template-bindings; index.ts and\nwire.ts are gone and app.ts imports the library, its template-bindings\nsubpath and both optional peers by their published names. card.json keeps\nthe 100x30 the iframe page drew at. A new e2e spec types into a template and\nswitches sections through the card.\n\n* fix(docs): template-bindings card fits every section; PgUp/PgDn nav the browser lets through (rich-demos-k78j.ebz)"
+          "timestamp": "2026-10-12T05:13:40-06:00",
+          "message": "feat(docs): rich-explore runs in the card (rich-demos-k78j.s6s) (#368)\n\n* feat(docs): rich-explore runs in the card (rich-demos-k78j.s6s)\n\nmain.ts is the card's entry and browses fixture.ts's in-memory files;\nnode.ts, which npm run demo runs, browses the real file system. Every\nimport is by published name, and the shared FileSystem type is imported\nfrom its own file so the card shows no unused capability tabs.\n\nEscape no longer quits: in the card it is the first half of the way out\n(Escape then Tab), so it ended the program on the way. q and Ctrl-C quit.\n\n* fix(docs): rich-explore review — Escape test can fail, card says when it quits, stale comments (rich-demos-k78j.s6s)"
         }
       ]
     }
