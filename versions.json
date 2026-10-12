@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-372",
-      "ref": "refs/pull/372/merge",
-      "sha": "45d140837a6f741efaf2d2fe9bf9e81d4d9ada05",
-      "timestamp": "2026-10-12T12:10:35.859Z",
-      "commits": [
-        {
-          "sha": "45d140837a6f741efaf2d2fe9bf9e81d4d9ada05",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T12:09:03Z",
-          "message": "Merge ee75350eb1559a2dee27f7f7382ec8d3160f9313 into 9433adf446edd4c8d0c9b894b4c8bc55f051baa7\n"
-        },
-        {
-          "sha": "ee75350eb1559a2dee27f7f7382ec8d3160f9313",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T06:08:57-06:00",
-          "message": "fix(docs): review — demo list checked, loud when empty, compiler-free; CI builds terminal demos (rich-demos-k78j.7qo)\n"
-        },
-        {
-          "sha": "cc4d07cccf1a9d99a67d44415e522f418976be6f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T06:00:43-06:00",
-          "message": "chore(docs): delete the iframe demo shell; one demo list read off examples/ (rich-demos-k78j.7qo)\n\nEvery demo runs in its card, so the vite demo bundle, demos:build, the\ngenerated demos.json, the _browser-shell templates, the browser-terminal-host\nharness and the iframe branches of the demo page and e2e spec go. demoNames()\nin docs/.vitepress/demo-entry.ts is the one list the sidebar, the demo routes,\nthe Demos index (demos.data.ts) and the e2e gate read. XTERM moves beside the\nlive terminal that loads it.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "9433adf446edd4c8d0c9b894b4c8bc55f051baa7",
-      "timestamp": "2026-10-12T11:56:32.817Z",
+      "sha": "63d46dbe2fd6198ca0b7a4bf4ddc19aa88c44345",
+      "timestamp": "2026-10-12T12:15:28.762Z",
       "commits": [
         {
-          "sha": "9433adf446edd4c8d0c9b894b4c8bc55f051baa7",
+          "sha": "63d46dbe2fd6198ca0b7a4bf4ddc19aa88c44345",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T05:54:43-06:00",
-          "message": "feat(examples): terminal-host demo replaces the BrowserTerminalHost harness (rich-demos-k78j.9yz) (#371)\n\n* feat(examples): terminal-host demo replaces the BrowserTerminalHost harness (rich-demos-k78j.9yz)\n\nThe harness exercised BrowserTerminalHost, which the card now builds for every\nprogram. terminal-host is the same contract as a demo: a key inspector written\nagainst TerminalHost alone, run on NodeTerminalHost by main.ts (card and\nnpm run terminal-host) and on BrowserTerminalHost by embed.ts, which a unit\ntest drives on a fake xterm. The harness's own files stay until 7qo: they are\nthe iframe bundler's last input, and removing them breaks demos:build.\n\n* fix(examples): terminal-host escapes every control byte, quits mid-read, hands back cooked mode on any exit (rich-demos-k78j.9yz)\n\n* fix(examples): terminal-host shows bytes that are not UTF-8 as \\xNN, not U+FFFD (rich-demos-k78j.9yz)"
+          "timestamp": "2026-10-12T06:13:50-06:00",
+          "message": "chore(docs): delete the iframe demo shell (rich-demos-k78j.7qo) (#372)\n\n* chore(docs): delete the iframe demo shell; one demo list read off examples/ (rich-demos-k78j.7qo)\n\nEvery demo runs in its card, so the vite demo bundle, demos:build, the\ngenerated demos.json, the _browser-shell templates, the browser-terminal-host\nharness and the iframe branches of the demo page and e2e spec go. demoNames()\nin docs/.vitepress/demo-entry.ts is the one list the sidebar, the demo routes,\nthe Demos index (demos.data.ts) and the e2e gate read. XTERM moves beside the\nlive terminal that loads it.\n\n* fix(docs): review — demo list checked, loud when empty, compiler-free; CI builds terminal demos (rich-demos-k78j.7qo)"
         }
       ]
     }
