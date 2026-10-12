@@ -132,8 +132,9 @@ for (const { name } of manifest.demos.filter((demo) => demo.runs === "iframe")) 
 // space of its own — a padded badge does — so leading space alone is not it.
 // rich-markup-plugins and themes-and-color-studio print through Console, which
 // ends rows with a bare newline and so needs the host's carriage return;
-// rich-viewport paints through WidgetApp, which returns the carriage itself.
-for (const name of ["rich-markup-plugins", "themes-and-color-studio", "rich-viewport"]) {
+// rich-template-bindings and rich-viewport paint through WidgetApp, which
+// returns the carriage itself.
+for (const name of ["rich-markup-plugins", "rich-template-bindings", "themes-and-color-studio", "rich-viewport"]) {
   test(`a demo's rows start at the left edge: ${name}`, async ({ page }) => {
     await openDemo(page, name);
     await expect.poll(() => shown(page), LOADED).toMatch(/\S/);

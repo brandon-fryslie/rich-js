@@ -11,7 +11,7 @@
  * combinedItem reads input.value / cursorPosition / focused (all MobX
  * observables), so the app repaints on every change.
  *
- * Ctrl+PageUp / Ctrl+PageDown — navigate sections
+ * PageUp / PageDown — navigate sections
  *                  (Ctrl+P / Ctrl+N are reserved for cursor up/down inside
  *                  the editable templates, per readline conventions)
  * Tab / Shift+Tab  — cycle inputs
@@ -33,18 +33,6 @@ import {
   asCellCol,
   cellLen,
   cellFit,
-} from "../../src/index.js";
-import {
-  WidgetApp,
-  StaticItem,
-  TextInput,
-  charGreedyWrap,
-  type WrapStrategy,
-  type WrapRow,
-} from "../../src/widgets/index.js";
-import type { TerminalHost } from "../../src/host/index.js";
-import { createEngine, type Engine } from "@promptctl/go-template-js";
-import {
   MONOKAI,
   NORD,
   GRUVBOX,
@@ -58,8 +46,19 @@ import {
   SOLARIZED_DARK,
   SOLARIZED_LIGHT,
   ATOM_ONE_DARK,
-} from "../../src/themes/terminalThemes.js";
-import { ColorDepth, type TerminalTheme } from "../../src/core/color.js";
+  ColorDepth,
+  type TerminalTheme,
+} from "@promptctl/rich-js";
+import {
+  WidgetApp,
+  StaticItem,
+  TextInput,
+  charGreedyWrap,
+  type WrapStrategy,
+  type WrapRow,
+} from "@promptctl/rich-js/widgets";
+import type { TerminalHost } from "@promptctl/rich-js/host";
+import { createEngine, type Engine } from "@promptctl/go-template-js";
 import {
   richTextFuncs,
   createRichTextEngine,
@@ -67,7 +66,7 @@ import {
   colorFuncs,
   readableOnFunc,
   renderTemplate,
-} from "../../src/template-bindings/index.js";
+} from "@promptctl/rich-js/template-bindings";
 import { makeAutoObservable } from "mobx";
 
 // ─── Engines ───────────────────────────────────────────────────────────────
@@ -592,16 +591,15 @@ const appTitleItem = new StaticItem({
 
 const navHintItem = new StaticItem({
   id: "nav-hint",
-  render: () => [new Segment("  Ctrl+PgUp/PgDn: sections  ·  Tab: focus  ·  arrows/Ctrl+A·E·W·U·K·etc: edit  ·  Ctrl+C: exit", dimStyle)],
+  render: () => [new Segment("  PgUp/PgDn: sections  ·  Tab: focus  ·  arrows/Ctrl+A·E·U·K·etc: edit  ·  Ctrl+C: exit", dimStyle)],
 });
 
 const headerSpacer = makeSpacerItem();
 
 // ─── Demo entry ────────────────────────────────────────────────────────────
 //
-// [LAW:dataflow-not-control-flow] runDemo takes a TerminalHost as a value;
-// node bootstrap passes NodeTerminalHost, browser bootstrap passes
-// BrowserTerminalHost. Same code path either way.
+// runDemo takes the host main.ts builds — in the docs card, the card's
+// terminal — as a parameter rather than building its own.
 
 export interface DemoHandle {
   stop(): void;
@@ -619,10 +617,12 @@ export function runDemo(host: TerminalHost): DemoHandle {
     view: () => new Group(appTitleItem, navHintItem, headerSpacer, SECTIONS[state.sectionIdx]!.view),
   });
 
-  // Section nav uses Ctrl+PageUp / Ctrl+PageDown rather than Ctrl+P/Ctrl+N —
-  // the latter are readline line-motion bindings that TextInput now consumes
-  // for cursor up/down inside the editable templates. PageUp/PageDown have
-  // no readline meaning, so the two layers don't fight over the same keys.
+  // Section nav uses PageUp / PageDown rather than Ctrl+P/Ctrl+N — the latter
+  // are readline line-motion bindings that TextInput consumes for cursor
+  // up/down inside the editable templates. PageUp/PageDown have no readline
+  // meaning, so the two layers don't fight over the same keys. Not Ctrl+PgUp/
+  // PgDn: in the docs card the browser reserves those for switching tabs, and
+  // the page never sees them. For the same reason the hint leaves out Ctrl+W.
   // High-priority: these run BEFORE the focused widget, so a focused
   // TextInput can't accidentally swallow Ctrl+C or our section-nav chords.
   // Stopping the event prevents the focused widget from also reacting to
@@ -634,8 +634,8 @@ export function runDemo(host: TerminalHost): DemoHandle {
       return;
     }
     const n = SECTIONS.length;
-    if (event.ctrl && event.key === "pageup")        { state.prev(n); event.stop(); }
-    else if (event.ctrl && event.key === "pagedown") { state.next(n); event.stop(); }
+    if (event.key === "pageup")        { state.prev(n); event.stop(); }
+    else if (event.key === "pagedown") { state.next(n); event.stop(); }
   }, { priority: "high" });
 
   return { stop: () => app.stop(), done: app.run() };
