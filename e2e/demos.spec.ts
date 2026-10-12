@@ -1,21 +1,12 @@
 /// <reference lib="dom" />
 /**
- * Headless-browser gate: every demo in the docs manifest boots cleanly.
- * Ticket: rich-demo-site-pek.5.
+ * Headless-browser gate: every demo runs cleanly in its card on its page
+ * (docs/.vitepress/demo-card.ts): its terminal draws, and nothing on the page
+ * reports a failure.
  *
- * A demo runs one of two ways (vite.config.demos.ts): in a card on its page
- * (docs/.vitepress/demo-card.ts), or in the iframe of its own bundle. A card
- * demo is driven through the card: its terminal draws, and nothing on the
- * page reports a failure. A bundled demo is driven through its bundle.
- *
- * [LAW:dataflow-not-control-flow] One test body per way a demo runs,
- * parameterised by manifest entries. Adding/removing a demo updates coverage
- * with zero test edits — the variability lives in
- * `docs/.vitepress/demos.json`, not in the test source.
- *
- * [LAW:one-source-of-truth] The demo list is read from the same manifest the
- * VitePress config, the dynamic-route paths file, and the landing-page index
- * read. No second list of demos lives in the test repo.
+ * [LAW:one-source-of-truth] The demo list is `demoNames()`
+ * (docs/.vitepress/demo-entry.ts), the list the sidebar, the demo routes and
+ * the Demos index read. Adding a demo adds its test with no edit here.
  *
  * [LAW:verifiable-goals] "This demo rendered for real" is its terminal's rows
  * holding a non-whitespace character, with no failure said and no error
@@ -29,30 +20,11 @@ import { test, expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { demoNames } from "../docs/.vitepress/demo-entry.js";
 import { decodeProgram } from "../docs/.vitepress/playground-hash.js";
 import { card, cardRows } from "./card-screen.js";
 
-interface DemoManifest {
-  readonly demos: ReadonlyArray<{ readonly name: string; readonly runs: "card" | "iframe" }>;
-}
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const manifestPath = resolve(
-  __dirname,
-  "..",
-  "docs",
-  ".vitepress",
-  "demos.json",
-);
-
-const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as DemoManifest;
-
-if (manifest.demos.length === 0) {
-  throw new Error(
-    `e2e/demos.spec.ts: manifest at ${manifestPath} contains zero demos. ` +
-      `Run \`npm run docs:build\` first.`,
-  );
-}
 
 // The editor and the library load with the card; its terminal brings xterm.js from its CDN.
 const LOADED = { timeout: 20_000 };
@@ -73,55 +45,12 @@ const shown = async (page: Page) => (await cardRows(page)).join("\n");
 const tab = (page: Page, name: string) => card(page).getByRole("tab", { name });
 const editor = (page: Page) => card(page).locator(".cm-content");
 
-for (const { name } of manifest.demos.filter((demo) => demo.runs === "card")) {
+for (const name of demoNames()) {
   test(`demo card runs cleanly: ${name}`, async ({ page }) => {
     const errors = await openDemo(page, name);
     await expect.poll(() => shown(page), LOADED).toMatch(/\S/);
     await expect(card(page).locator(".rich-example-failure")).toHaveCount(0);
     expect(errors).toEqual([]);
-  });
-}
-
-for (const { name } of manifest.demos.filter((demo) => demo.runs === "iframe")) {
-  test(`demo bundle boots cleanly: ${name}`, async ({ page }) => {
-    const consoleErrors: string[] = [];
-    const pageErrors: string[] = [];
-
-    page.on("console", (msg) => {
-      if (msg.type() === "error") consoleErrors.push(msg.text());
-    });
-    page.on("pageerror", (err) => {
-      pageErrors.push(err.message);
-    });
-
-    await page.goto(`demos-app/${name}/`);
-
-    // Locate #status by id only, then assert class and text separately.
-    // On boot failure mount.ts.tmpl sets class="err" with a "boot error: ..."
-    // message — using the composite selector `#status.ok` would time out
-    // without surfacing that text, so the failure output reduces to
-    // "selector timeout" instead of the real error.
-    const status = page.locator("#status");
-    await expect(status).toBeAttached();
-    await expect(status).toHaveClass("ok");
-    await expect(status).toContainText("ready");
-
-    const rows = page.locator(".xterm-rows");
-    await expect(rows).toBeAttached();
-    // Polls until the demo's first frame contains at least one non-whitespace
-    // character. An empty 30-row terminal still has 30 row divs (just with
-    // whitespace textContent), so `/\S/` is what distinguishes "demo wrote"
-    // from "demo crashed before writing".
-    await expect(rows).toContainText(/\S/);
-
-    expect(
-      consoleErrors,
-      `unexpected console.error calls: ${consoleErrors.join(" | ")}`,
-    ).toHaveLength(0);
-    expect(
-      pageErrors,
-      `unexpected uncaught exceptions: ${pageErrors.join(" | ")}`,
-    ).toHaveLength(0);
   });
 }
 

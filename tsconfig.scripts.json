@@ -24,13 +24,13 @@
   "include": [
     "scripts/**/*.mjs",
     "scripts/**/*.ts",
-    "vite.config.demos.ts",
     "docs/*.data.ts",
     "vitest.config.ts",
     "playwright.config.ts",
     "docs/.vitepress/config.ts",
     "docs/.vitepress/theme/**/*.ts",
     "docs/.vitepress/node-readline.ts",
+    "docs/.vitepress/demos.data.ts",
     "docs/demos/**/*.ts",
     "e2e/**/*.ts"
   ]

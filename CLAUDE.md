@@ -14,11 +14,10 @@ npm run test           # vitest run (all tests)
 npx vitest run test/core/color.test.ts   # single test file
 npx vitest run -t "test name"            # single test by name
 npm run lint           # three type-check passes — see below
-npm run docs:dev       # build demo bundles, then serve the VitePress site
-npm run docs:build     # same, but produce the static site (dead-link gate)
+npm run docs:dev       # serve the VitePress site
+npm run docs:build     # produce the static site (dead-link gate)
 npm run demo:build     # scripts/build-demos.ts: tsconfig.demo.json → dist-demo/
-npm run demos:build    # demo tsc + vite bundle of examples/ for the docs site
-npm run test:demos     # playwright, e2e/demos.spec.ts, against the demo bundles
+npm run test:demos     # playwright, e2e/, against the built docs site
 ```
 
 `npm run lint` is not one pass and not just `src/`. It is:
@@ -37,7 +36,7 @@ Individual demos each have their own script (`npm run demo`, `sessions`, `dash`,
 
 `docs/` is a published VitePress site and the single place the library's surface is described in prose. There is no separate specification directory; there is no roadmap document. If you need to know what a subsystem does, read its page in `docs/`, then read the source — the source carries the design rationale in module-header comments and is the authority when the two disagree.
 
-When you add a page, add it to `guideSidebar` in `docs/.vitepress/sidebar.ts` — not `config.ts`, which only imports the regions and derives the Guide nav's `activeMatch` from `guideSidebar`, so the sidebar entry is also what gives the page its nav highlight. The split exists because `config.ts` reads the gitignored `demos.json` at module load, which a unit test cannot do on a fresh clone; `sidebar.ts`'s header owns the rest of that argument.
+When you add a page, add it to `guideSidebar` in `docs/.vitepress/sidebar.ts` — not `config.ts`, which only imports the regions and derives the Guide nav's `activeMatch` from `guideSidebar`, so the sidebar entry is also what gives the page its nav highlight. The split exists so a unit test can read the regions without loading `config.ts`; `sidebar.ts`'s header owns that argument.
 
 That is the only list, and it is now checked. It used to be two hand-copied lists, and they had already drifted: `strip` was in neither, so a substantial page was reachable only by search. `test/docs/page-reachability.test.ts` fails when the regions and `docs/*.md` stop naming the same set.
 
@@ -153,7 +152,7 @@ Nothing reachable from `src/index.ts` may import `node:fs`, `node:readline`, or 
 
 You will be deep in `console.ts` or a renderable, you will need to write a file or read a line, and you will think *"one `import { writeFileSync } from 'node:fs'` here, it's a Node library anyway."* That is the moment. Don't. Put the capability in `src/node/`, give it a subpath in `package.json#exports`, and have the caller pass it in — the way `Prompt.ask(question, nodeAsk)` takes its input capability as an argument rather than reaching for readline itself.
 
-The counter-argument is real and worth naming: this *is* a terminal library, and browsers are not its main target. Granted. But the widget layer ships a `BrowserTerminalHost` and the demo site runs `examples/` in a browser under `npm run demos:build` — that bundle is a real consumer, and it breaks at bundle time with an unresolvable `fs`, in CI, far from the import that caused it.
+The counter-argument is real and worth naming: this *is* a terminal library, and browsers are not its main target. Granted. But the widget layer ships a `BrowserTerminalHost` and the docs site runs every demo under `examples/` in a browser card — that is a real consumer, and it breaks at build time with an unresolvable `fs`, in CI, far from the import that caused it.
 
 `test/seam/browser-safe.test.ts` is what stops that failure from landing on someone other than the person who wrote the import: it walks the runtime import graph from every `package.json#exports` entry outside `src/node/` and fails in the unit suite, naming the file, the line, and the chain that reached it. A Node builtin on a runtime edge breaks it, and so does a module-scope read of any name in `AMBIENT_GLOBALS`. `test/seam/browser-safe.ts`'s header owns the rest — what module scope means here, and why there is no `typeof` exemption.
 

@@ -63,8 +63,8 @@
     "test:watch": "vitest",
     "lint": "tsc --noEmit && tsc -p tsconfig.scripts.json && tsc -p tsconfig.test.json",
     "clean": "rm -rf dist",
-    "docs:dev": "npm run demos:build && vitepress dev docs",
-    "docs:build": "npm run demos:build && vitepress build docs",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "demo": "node scripts/build-demos.ts && node dist-demo/examples/rich-explore/node.js",
     "demo:build": "node scripts/build-demos.ts",
@@ -78,10 +78,7 @@
     "dash": "node scripts/build-demos.ts && node dist-demo/examples/rich-dash/node.js",
     "template-bindings": "node scripts/build-demos.ts && node dist-demo/examples/rich-template-bindings/main.js",
     "themes-and-color-studio": "node scripts/build-demos.ts && node dist-demo/examples/themes-and-color-studio/node.js",
-    "harness:browser-host": "node scripts/build-demos.ts && echo 'Serving harness at http://localhost:8080/examples/browser-terminal-host-harness/' && npx --yes http-server@14.1.1 -p 8080 -c-1 -s .",
     "terminal-host": "node scripts/build-demos.ts && node dist-demo/examples/terminal-host/main.js",
-    "demos:build": "node scripts/build-demos.ts && vite build --config vite.config.demos.ts",
-    "demos:preview": "vite preview --config vite.config.demos.ts",
     "test:demos": "playwright test"
   },
   "keywords": [

@@ -1,7 +1,6 @@
 /* ─── Monospace font stack for code ────────────────────────────
- * One stack, read by code, by generated example output and by the demo
- * terminals alike: the docs theme imports this file, and every demo shell
- * (examples/_browser-shell/index.html.tmpl) links it. Its first face draws
+ * One stack, read by code, by generated example output and by the live
+ * terminals alike: the docs theme imports this file. Its first face draws
  * only the Powerline glyphs (scripts/powerline-font.py builds it), so a
  * Strip's arrows and caps are shapes on a reader with no patched font;
  * everything else falls through to the faces after it. */

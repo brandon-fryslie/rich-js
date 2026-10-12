@@ -19,7 +19,7 @@
 import type { Contrast } from "../example-card.js";
 import { BrowserTerminalHost, type XtermDisposable, type XtermTerminal } from "../../../src/host/index.js";
 import type { TerminalTheme } from "../../../src/index.js";
-import { XTERM } from "../../../examples/_browser-shell/xterm.js";
+import { XTERM } from "./xterm.js";
 import type { Version } from "../hot-runtime.js";
 import { sandbox, type Sandbox, type TerminalSpec, type ToWorker } from "./sandbox.js";
 

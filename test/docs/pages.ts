@@ -30,8 +30,8 @@ const DOCS_ROOT = path.join(REPO_ROOT, "docs");
  * `docs/demos/` is not guide pages.
  *
  * It holds the Demos tab's routes: an index and `[demo].md`, a VitePress
- * dynamic route whose pages come from the gitignored `demos.json` build
- * manifest rather than from files. They have no slug of their own to be
+ * dynamic route whose pages come from `examples/` (`demoNames`,
+ * docs/.vitepress/demo-entry.ts) rather than from files. They have no slug of their own to be
  * reachable at, and the sidebar region that links them is excluded from the
  * reachability comparison for the same reason — `sidebar.ts`'s header owns that
  * argument.
