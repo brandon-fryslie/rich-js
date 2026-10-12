@@ -28,9 +28,18 @@ export function describeChunk(chunk: string): string {
   );
 }
 
+/** A chunk of single-byte chars that were not UTF-8: ASCII as `describeChunk`, the rest as `\xNN`. */
+function describeBytes(chunk: string): string {
+  return describeChunk(chunk).replace(
+    /[\x80-\uffff]/g,
+    (c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, "0")}`,
+  );
+}
+
 /** Run the inspector on `host` until Ctrl-D or Ctrl-C, then hand the terminal back. */
 export function inspectKeys(host: TerminalHost): Promise<void> {
-  const decoder = new TextDecoder();
+  // Fatal, so a byte that is not UTF-8 is shown as itself rather than as U+FFFD.
+  const decoder = new TextDecoder("utf-8", { fatal: true });
   const { cols, rows } = host.size();
   host.setRawMode(true);
   host.write("\x1b[2J\x1b[H");
@@ -38,15 +47,24 @@ export function inspectKeys(host: TerminalHost): Promise<void> {
   host.write("Press any key to see what it sends. Ctrl-D or Ctrl-C quits.\n\n");
 
   return new Promise((resolve) => {
-    const printKey = (chunk: string): void => {
-      if (chunk) host.write(`key  \x1b[36m${describeChunk(chunk)}\x1b[0m\n`);
+    const printKey = (chunk: string, shown = describeChunk(chunk)): void => {
+      if (chunk) host.write(`key  \x1b[36m${shown}\x1b[0m\n`);
     };
     const onData: DataHandler = (data) => {
-      const chunk = typeof data === "string" ? data : decoder.decode(data, { stream: true });
+      let chunk: string;
+      let shown: ((chunk: string) => string) | undefined;
+      try {
+        chunk = typeof data === "string" ? data : decoder.decode(data, { stream: true });
+      } catch {
+        // Not UTF-8: one char per byte, each byte at or above 0x80 shown as `\xNN`.
+        chunk = String.fromCharCode(...(data as Uint8Array));
+        shown = describeBytes;
+      }
       // A paste or a fast typist can put the quit key inside a larger read.
       const quit = chunk.search(QUIT);
-      if (quit < 0) return printKey(chunk);
-      printKey(chunk.slice(0, quit));
+      const head = quit < 0 ? chunk : chunk.slice(0, quit);
+      printKey(head, shown?.(head));
+      if (quit < 0) return;
       stopData();
       stopResize();
       stopExit();

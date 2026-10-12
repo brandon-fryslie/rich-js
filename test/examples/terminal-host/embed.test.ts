@@ -52,12 +52,15 @@ describe("terminal-host demo", () => {
     const done = inspectKeys(host);
     // é split across two reads still decodes as é.
     stdin.write(Buffer.from([0xc3]));
-    stdin.write(Buffer.from([0xa9, 0x61, 0x04]));
+    stdin.write(Buffer.from([0xa9, 0x61]));
+    // A raw 8-bit CSI is not UTF-8; it shows as its byte.
+    stdin.write(Buffer.from([0x9b, 0x32, 0x4a, 0x04]));
     await done;
     host.stop();
 
     expect(raw.at(-1)).toBe(false);
     expect(written.join("")).toContain("éa");
+    expect(written.join("")).toContain("\\x9b2J");
     expect(written.join("")).not.toContain("\ufffd");
   });
 });
