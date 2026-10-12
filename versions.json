@@ -4,15 +4,22 @@
     {
       "version": "pr-372",
       "ref": "refs/pull/372/merge",
-      "sha": "4fc8662d6c8887eeaef1fcce460ecbd939b3b5d2",
-      "timestamp": "2026-10-12T12:03:21.686Z",
+      "sha": "45d140837a6f741efaf2d2fe9bf9e81d4d9ada05",
+      "timestamp": "2026-10-12T12:10:35.859Z",
       "commits": [
         {
-          "sha": "4fc8662d6c8887eeaef1fcce460ecbd939b3b5d2",
+          "sha": "45d140837a6f741efaf2d2fe9bf9e81d4d9ada05",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T06:01:45-06:00",
-          "message": "Merge cc4d07cccf1a9d99a67d44415e522f418976be6f into 9433adf446edd4c8d0c9b894b4c8bc55f051baa7\n"
+          "timestamp": "2026-10-12T12:09:03Z",
+          "message": "Merge ee75350eb1559a2dee27f7f7382ec8d3160f9313 into 9433adf446edd4c8d0c9b894b4c8bc55f051baa7\n"
+        },
+        {
+          "sha": "ee75350eb1559a2dee27f7f7382ec8d3160f9313",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-12T06:08:57-06:00",
+          "message": "fix(docs): review — demo list checked, loud when empty, compiler-free; CI builds terminal demos (rich-demos-k78j.7qo)\n"
         },
         {
           "sha": "cc4d07cccf1a9d99a67d44415e522f418976be6f",
