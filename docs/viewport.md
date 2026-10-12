@@ -58,18 +58,24 @@ viewport.ensureVisible(selected, selected + 1);
 console.print(new Panel(viewport, { title: `line ${selected} in view`, borderStyle: "cyan" }));
 ```
 
-The scroll position belongs to the viewport, not to its content. A view rebuilt every frame keeps one `Viewport` and replaces `content`:
+The scroll position belongs to the viewport, not to its content. A view rebuilt every frame keeps one `Viewport` and replaces `content`, and brings the selection into view when the selection moves, not in every frame — called in every frame, `ensureVisible` would undo each scroll the mouse wheel queues on the very render that applies it:
 
 ```typescript
 const viewport = new Viewport(renderList(state), { rows: 8 });
 
+function select(state: State, selected: number): State {
+  viewport.ensureVisible(selected, selected + 1);
+  return { ...state, selected };
+}
+
 function frame(state: State) {
   viewport.content = renderList(state);
-  viewport.ensureVisible(state.selected, state.selected + 1);
   return new Panel(viewport);
 }
 
-console.print(frame(state));
+const next = select(state, state.selected + 1);
+
+console.print(frame(next));
 ```
 
 ## Scrollbar
@@ -98,4 +104,4 @@ blocky.scrollTo(40);
 console.print(new Panel(blocky, { title: "log", borderStyle: "cyan" }));
 ```
 
-`npm run viewport` is the selection example above in a `WidgetApp`, with a scrollbar, against a list of forty lines. It calls `ensureVisible` when a key moves the selection rather than in every frame: called every frame, it would pull the window back onto the selection on the same render that applies a wheel notch, and the wheel would never move it. So the wheel scrolls the window away from the selection until the next key brings it back. The [demo page](/demos/rich-viewport) runs the same program in the browser.
+`npm run viewport` is the selection example above in a `WidgetApp`, with a scrollbar, against a list of forty lines: the keys move the selection, and the wheel scrolls the window away from it until the next key brings it back. The [demo page](/demos/rich-viewport) runs the same program in the browser.
