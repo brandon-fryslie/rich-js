@@ -75,8 +75,8 @@ jobs:
         with:
           fetch-depth: 0    # multiplexer reads full git history for the per-deploy commit manifest
 
-      # [LAW:one-source-of-truth] This job compiles `src/` — docs:build bundles
-      # examples/ through the demo tsconfig — so it must run a Node the package
+      # [LAW:one-source-of-truth] This job compiles `src/` — docs:build runs
+      # every example and demo — so it must run a Node the package
       # supports, and `engines.node` is that declaration. ci.yml's setup-node
       # step owns the argument for reading it this way, range resolution
       # included; not restated here. The `node-version: 20` this replaces

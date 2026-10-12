@@ -7,7 +7,7 @@
  * the page whole. What the terminal shows is read from xterm's rows.
  */
 import { test, expect, type Page } from "@playwright/test";
-import { XTERM } from "../examples/_browser-shell/xterm.js";
+import { XTERM } from "../docs/.vitepress/theme/xterm.js";
 import { EXAMPLE_THEMES } from "../docs/.vitepress/example-terminal.js";
 
 async function open(page: Page): Promise<string[]> {

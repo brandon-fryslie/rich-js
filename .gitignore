@@ -1,12 +1,9 @@
 node_modules/
 dist/
 dist-demo/
-.vite-demos/
 *.tsbuildinfo
 docs/.vitepress/dist/
 docs/.vitepress/cache/
-docs/.vitepress/demos.json
-docs/public/demos-app/
 playwright-report/
 test-results/
 .idea/

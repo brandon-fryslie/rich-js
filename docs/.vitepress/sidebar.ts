@@ -2,20 +2,20 @@
  * The sidebar regions that are backed by a `docs/*.md` file.
  *
  * These live apart from `config.ts` because two readers need them and only one
- * of them can afford that file. `config.ts` reads `demos.json` — a gitignored
- * build artifact written by `demos:build` — at module load, so importing it
- * from the unit suite would throw on a fresh clone. The regions themselves are
- * data and read nothing, so the reachability gate can import them directly.
- * [LAW:effects-at-boundaries] The manifest read stays in `config.ts`; what is
- * merely data moves to where both callers can reach it.
+ * of them can afford that file. `config.ts` loads the docs build at module
+ * load — the example pipeline, and the demo list read off `examples/` — none of
+ * which the unit suite should pay to import. The regions themselves are data
+ * and read nothing, so the reachability gate can import them directly.
+ * [LAW:effects-at-boundaries] The reads stay in `config.ts`; what is merely
+ * data moves to where both callers can reach it.
  *
  * [LAW:one-source-of-truth] This is the site's only list of guide pages.
  * `config.ts` composes these regions into the sidebar and derives the Guide
  * nav's `activeMatch` from `guideSidebar`; `test/docs/page-reachability.test.ts`
  * asserts they name exactly the pages on disk. Nothing re-states the list.
  *
- * The Demos region is deliberately not here. It is derived from the build
- * manifest and its links are dynamic routes rather than `docs/*.md` files, so
+ * The Demos region is deliberately not here. It is derived from `examples/`
+ * (`demoNames`, demo-entry.ts) and its links are dynamic routes rather than `docs/*.md` files, so
  * keeping it in `config.ts` leaves this side of the reachability comparison
  * with nothing to exclude: every region below names pages that exist on disk.
  * The disk side turns the same tab away by name — `NOT_PAGES` in

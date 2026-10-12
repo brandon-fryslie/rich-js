@@ -1,12 +1,9 @@
 /**
  * The one xterm.js the site loads: its version, and the integrity hash of each
- * file taken from jsDelivr. The demo shell's HTML and the docs' live terminal
- * both load from here, so the site cannot run two versions of it.
+ * file taken from jsDelivr. The live terminal (live-terminal.ts) loads it from
+ * here, and the landing e2e spec checks the page against it.
  *
- * [LAW:one-source-of-truth] A version bump is this file: the demo shell's
- * `__XTERM_*__` placeholders are filled from it by vite.config.demos.ts, and
- * the live terminal (docs/.vitepress/theme/live-terminal.ts) reads it
- * directly.
+ * [LAW:one-source-of-truth] A version bump is this file.
  */
 export const XTERM = {
   script: {

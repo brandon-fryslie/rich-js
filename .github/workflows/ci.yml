@@ -6,7 +6,7 @@
 # separately.
 #
 # The demo gate (rich-demo-site-pek.5) builds the docs site and asserts every
-# demo in docs/.vitepress/demos.json boots cleanly in real Chromium.
+# demo under examples/ runs cleanly in its card in real Chromium.
 
 name: CI
 

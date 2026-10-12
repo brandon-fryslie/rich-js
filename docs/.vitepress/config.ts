@@ -2,27 +2,13 @@ import { defineConfig } from 'vitepress'
 import { guideSidebar, pageSidebarRegions } from './sidebar.js'
 import { docsExamplesPlugin } from './example-runner.js'
 import { HTML_FRAGMENT_CSS } from '../../src/core/export-html.js'
-import { readFileSync } from 'node:fs'
-import { resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { demoNames } from './demo-entry.js'
 
-// [LAW:one-source-of-truth] The Demos sidebar is derived from the same
-// manifest the bundle pipeline writes and the dynamic-route paths file
-// reads — exactly one list of demos for the entire docs site.
-// [LAW:dataflow-not-control-flow] No branch on "manifest may or may not
-// exist"; demos:build is a prerequisite of docs:build/docs:dev (wired in
-// package.json). A missing manifest fails loudly here with a clear path,
-// which is the verifiable build constraint we want. [LAW:verifiable-goals]
-interface DemoManifest {
-  readonly demos: ReadonlyArray<{ readonly name: string }>
-}
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const manifestPath = resolve(__dirname, 'demos.json')
-const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8')) as DemoManifest
-const demoSidebarItems = manifest.demos.map((d) => ({
-  text: d.name,
-  link: `/demos/${d.name}`,
+// [LAW:one-source-of-truth] The Demos sidebar is `demoNames()`, the list the
+// demo routes and the Demos index read too.
+const demoSidebarItems = demoNames().map((name) => ({
+  text: name,
+  link: `/demos/${name}`,
 }))
 
 // The sidebar is split into one region per top-level nav tab: Guide, Protocol,
@@ -34,8 +20,7 @@ const demoSidebarItems = manifest.demos.map((d) => ({
 // lists of one fact and had already drifted: `strip` was in neither, so a
 // substantial page was reachable only by search.
 //
-// The page-backed regions live in `./sidebar.js` so `test/docs/` can read them
-// without executing the `demos.json` read above; see that file's header.
+// The page-backed regions live in `./sidebar.js`; see that file's header.
 const guideActiveMatch = `^/(${guideSidebar
   .flatMap((group) => group.items.map((item) => item.link.slice(1)))
   .join('|')})`
