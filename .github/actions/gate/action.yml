@@ -46,6 +46,12 @@ runs:
       run: npm run docs:build
       shell: bash
 
+    # The emit every `npm run <demo>` script runs first; nothing else in CI
+    # compiles the node.ts entries through tsconfig.demo.json.
+    - name: Build terminal demos
+      run: npm run demo:build
+      shell: bash
+
     # `--with-deps` installs the system libraries Chromium needs on
     # ubuntu-latest (fonts, libnss, etc.). Chromium-only — we don't run
     # Webkit/Firefox; the bundle output is the same for every browser.
@@ -53,10 +59,9 @@ runs:
       run: npx playwright install --with-deps chromium
       shell: bash
 
-    # [LAW:dataflow-not-control-flow] The set of demos under test comes from
-    # the manifest — the same JSON the VitePress config / paths file / landing
-    # page read. CI does not enumerate demos; it runs whatever the manifest
-    # says.
+    # [LAW:dataflow-not-control-flow] The set of demos under test is
+    # `demoNames()` (docs/.vitepress/demo-entry.ts), the list the sidebar,
+    # routes and Demos index read. CI does not enumerate demos.
     - name: Headless-browser gate (demo pages)
       run: npm run test:demos
       shell: bash

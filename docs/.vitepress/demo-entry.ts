@@ -9,20 +9,23 @@
  */
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { REPO_ROOT } from "../../scripts/repo-facts.js";
+import { fileURLToPath } from "node:url";
 
 export const DEMO_ENTRY = "main.ts";
 
-const EXAMPLES = path.join(REPO_ROOT, "examples");
+const EXAMPLES = fileURLToPath(new URL("../../examples", import.meta.url));
 
 /**
  * [LAW:one-source-of-truth] The site's one list of demos, read off the tree:
- * every directory under `examples/` with a `DEMO_ENTRY`, by name. A `_`
- * directory is shared code, not a demo.
+ * every directory under `examples/` with a `DEMO_ENTRY`, by name. Empty is
+ * never a true answer — it means `EXAMPLES` or `DEMO_ENTRY` stopped matching
+ * the tree — so it throws rather than handing every reader nothing to check.
  */
 export function demoNames(): readonly string[] {
-  return readdirSync(EXAMPLES, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_") && existsSync(path.join(EXAMPLES, entry.name, DEMO_ENTRY)))
+  const names = readdirSync(EXAMPLES, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && existsSync(path.join(EXAMPLES, entry.name, DEMO_ENTRY)))
     .map((entry) => entry.name)
     .sort();
+  if (names.length === 0) throw new Error(`no demos: no ${EXAMPLES}/*/${DEMO_ENTRY}`);
+  return names;
 }

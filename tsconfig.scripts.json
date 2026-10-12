@@ -30,6 +30,7 @@
     "docs/.vitepress/config.ts",
     "docs/.vitepress/theme/**/*.ts",
     "docs/.vitepress/node-readline.ts",
+    "docs/.vitepress/demos.data.ts",
     "docs/demos/**/*.ts",
     "e2e/**/*.ts"
   ]

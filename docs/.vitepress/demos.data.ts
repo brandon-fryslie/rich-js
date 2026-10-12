@@ -3,11 +3,11 @@
  * runs in the browser and so cannot read `examples/` itself: VitePress runs
  * this loader at build and hands its result to the page.
  */
-import { demoNames } from "./demo-entry.js";
+import { DEMO_ENTRY, demoNames } from "./demo-entry.js";
 
 export declare const data: readonly string[];
 
 export default {
-  watch: ["../../examples/*/main.ts"],
+  watch: [`../../examples/*/${DEMO_ENTRY}`],
   load: (): readonly string[] => demoNames(),
 };
