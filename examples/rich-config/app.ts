@@ -1,14 +1,16 @@
 /**
  * rich-config demo body — interactive theme + widgets explorer.
  *
- * [LAW:dataflow-not-control-flow] Demos do not branch on environment; the
- * `TerminalHost` parameter is the value that differs between node and browser.
+ * The demo runs against any `TerminalHost`; main.ts hands it the one it
+ * builds, which in the docs card is the card's terminal. The host is a
+ * parameter rather than built here so `test/examples/rich-config/` can hand
+ * it one over streams it drives.
  *
  * The widgets are laid out by composition, and nothing tells the app where
  * they went: they sit in a `Panel` in the left pane of a `Layout` split, the
  * preview they drive in a `Panel` in the right pane, and the status and log
- * rows hold the bottom of the screen. `test/examples/rich-config/` (node host)
- * and `e2e/rich-config.spec.ts` (browser host) drive this demo through that
+ * rows hold the bottom of the screen. `test/examples/rich-config/` (over streams)
+ * and `e2e/rich-config.spec.ts` (in its card) drive this demo through that
  * nesting, key by key and click by click.
  *
  * Press Tab to navigate · Space/Enter to interact.
@@ -25,8 +27,9 @@ import {
   WidgetApp,
   widgetAt,
   StaticItem,
-} from "../../src/widgets/index.js";
-import type { TerminalHost } from "../../src/host/index.js";
+  type InteractiveWidget,
+} from "@promptctl/rich-js/widgets";
+import type { TerminalHost } from "@promptctl/rich-js/host";
 import {
   Segment,
   Style,
@@ -59,10 +62,10 @@ import {
   ROSE_PINE_DAWN,
   ATOM_ONE_DARK,
   ATOM_ONE_LIGHT,
-} from "../../src/index.js";
-import type { InteractiveWidget } from "../../src/widgets/types.js";
-import type { ColorRgba } from "../../src/core/color.js";
-import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+  type ColorRgba,
+  type Renderable,
+  type RenderOptions,
+} from "@promptctl/rich-js";
 
 export interface DemoHandle {
   stop(): void;

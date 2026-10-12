@@ -30,6 +30,7 @@ import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decodeProgram } from "../docs/.vitepress/playground-hash.js";
+import { card, cardRows } from "./card-screen.js";
 
 interface DemoManifest {
   readonly demos: ReadonlyArray<{ readonly name: string; readonly runs: "card" | "iframe" }>;
@@ -67,20 +68,8 @@ async function openDemo(page: Page, name: string): Promise<string[]> {
   return errors;
 }
 
-const card = (page: Page) => page.locator(".rich-example-card");
 const terminalRows = (page: Page) => card(page).locator(".rich-live .xterm-rows");
-// xterm's DOM renderer draws some of a row's spaces as no-break spaces.
-/**
- * What the card's terminal shows, scrolled into view first: a long file's tab
- * pushes it below the fold, and a live terminal off screen is stopped
- * (theme/LiveScreen.ts), its rows blank. It reads without waiting for the
- * rows, so a poll scrolls again each time: the editor opening under a first
- * scroll pushes the terminal back off screen before it starts.
- */
-const shown = async (page: Page) => {
-  await card(page).locator(".rich-live").scrollIntoViewIfNeeded();
-  return (await terminalRows(page).allInnerTexts()).join("").replaceAll("\u00a0", " ");
-};
+const shown = async (page: Page) => (await cardRows(page)).join("\n");
 const tab = (page: Page, name: string) => card(page).getByRole("tab", { name });
 const editor = (page: Page) => card(page).locator(".cm-content");
 
@@ -148,9 +137,7 @@ for (const name of ["rich-markup-plugins", "themes-and-color-studio", "rich-view
   test(`a demo's rows start at the left edge: ${name}`, async ({ page }) => {
     await openDemo(page, name);
     await expect.poll(() => shown(page), LOADED).toMatch(/\S/);
-    const drawn = (await terminalRows(page).locator("> div").allInnerTexts())
-      .map((row) => row.replaceAll("\u00a0", " "))
-      .filter((row) => row.trim() !== "");
+    const drawn = (await cardRows(page)).filter((row) => row.trim() !== "");
     expect(drawn.length, "the demo drew no rows").toBeGreaterThan(2);
     for (const [i, row] of drawn.entries()) {
       if (i === 0) continue;

@@ -1,24 +1,22 @@
 /**
- * The acceptance test of rich-runtime-fna under the browser host: the
- * rich-config demo, its widgets in a `Panel` in one pane of a `Layout` split,
- * driven through a real xterm.js by the keyboard and the mouse — the bytes for
- * both are xterm's own, produced from DOM events, not written by this test.
+ * The acceptance test of rich-runtime-fna in a real terminal: the rich-config
+ * demo, its widgets in a `Panel` in one pane of a `Layout` split, running in
+ * its card on the demo page and driven through the card's xterm.js by the
+ * keyboard and the mouse — the bytes for both are xterm's own, produced from
+ * DOM events, not written by this test.
  *
- * `test/examples/rich-config/union.test.ts` runs the same demo under the node
- * host; the demo has no path of its own for either.
+ * `test/examples/rich-config/union.test.ts` runs the same demo, on the same
+ * `NodeTerminalHost`, over streams it writes itself.
  */
+import { fileURLToPath } from "node:url";
 import { test, expect, type Page } from "@playwright/test";
 import { cellLen } from "../src/core/cells.js";
-import { DEMO_TERMINAL } from "../examples/_browser-shell/demo-terminal.js";
+import { cardJson } from "../docs/.vitepress/demo-card.js";
+import { card, cardRows as screen } from "./card-screen.js";
 
-/** The terminal's rows as the user reads them. */
-async function screen(page: Page): Promise<string[]> {
-  const rows = await page.locator(".xterm-rows > div").allTextContents();
-  return rows.map((row) => row.replace(/\u00a0/g, " "));
-}
-
+const TERMINAL = cardJson(fileURLToPath(new URL("../examples/rich-config", import.meta.url))).screen.terminal;
 async function shows(page: Page, text: string): Promise<void> {
-  await expect.poll(async () => (await screen(page)).join("\n")).toContain(text);
+  await expect.poll(async () => (await screen(page)).join("\n"), { timeout: 20_000 }).toContain(text);
 }
 
 /** Click the cell where `text` first appears on screen, at its first character. */
@@ -28,9 +26,9 @@ async function clickOn(page: Page, text: string): Promise<void> {
   expect(y, `"${text}" is on screen:\n${rows.join("\n")}`).toBeGreaterThanOrEqual(0);
   // A string index counts code units; the terminal counts cells.
   const x = cellLen(rows[y]!.slice(0, rows[y]!.indexOf(text)));
-  const box = await page.locator(".xterm-screen").boundingBox();
+  const box = await card(page).locator(".xterm-screen").boundingBox();
   if (box === null) throw new Error("the terminal's screen is not laid out");
-  const cell = { width: box.width / DEMO_TERMINAL.cols, height: box.height / DEMO_TERMINAL.rows };
+  const cell = { width: box.width / TERMINAL.columns, height: box.height / TERMINAL.rows };
   await page.mouse.click(
     box.x + (x + 0.5) * cell.width,
     box.y + (y + 0.5) * cell.height,
@@ -38,9 +36,11 @@ async function clickOn(page: Page, text: string): Promise<void> {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("demos-app/rich-config/");
-  await expect(page.locator("#status")).toContainText("ready");
+  await page.goto("demos/rich-config.html");
   await shows(page, "─ Widgets ─");
+  // Keys reach the program once its terminal has focus. Focus xterm's input,
+  // not a click on the screen, which the app would take as a click on a widget.
+  await card(page).locator(".xterm-helper-textarea").focus();
 });
 
 test("draws the widgets in a panel beside the preview", async ({ page }) => {

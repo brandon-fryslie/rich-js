@@ -73,7 +73,7 @@
     "effects-feel": "node scripts/build-demos.ts && node dist-demo/examples/effects-feel/index.js",
     "viewport": "node scripts/build-demos.ts && node dist-demo/examples/rich-viewport/main.js",
     "markup-plugins": "node scripts/build-demos.ts && node dist-demo/examples/rich-markup-plugins/main.js",
-    "demo-inputs": "node scripts/build-demos.ts && node dist-demo/examples/rich-config/index.js",
+    "demo-inputs": "node scripts/build-demos.ts && node dist-demo/examples/rich-config/main.js",
     "demo:dropdown": "node scripts/build-demos.ts && node dist-demo/examples/dropdown-demo/main.js",
     "dash": "node scripts/build-demos.ts && node dist-demo/examples/rich-dash/index.js",
     "template-bindings": "node scripts/build-demos.ts && node dist-demo/examples/rich-template-bindings/index.js",

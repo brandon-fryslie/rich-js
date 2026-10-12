@@ -9,8 +9,8 @@
  * off the screen — the demo's own status and log rows — so the test holds for
  * any layout that puts the same widgets on screen.
  *
- * The node host runs it here, over streams; `e2e/rich-config.spec.ts` runs the
- * same demo under the browser host in a real xterm.js.
+ * It runs here over streams this test writes; `e2e/rich-config.spec.ts` runs
+ * the same demo, on the same `NodeTerminalHost`, in its docs card's xterm.js.
  */
 
 import { describe, it, expect, afterEach } from "vitest";
