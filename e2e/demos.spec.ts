@@ -141,10 +141,10 @@ for (const { name } of manifest.demos.filter((demo) => demo.runs === "iframe")) 
 // because nothing returned the carriage before a newline. That is the check: a
 // row indented by exactly the width of the row above it. A row may start with a
 // space of its own — a padded badge does — so leading space alone is not it.
-// rich-markup-plugins prints through Console, which ends rows
-// with a bare newline and so needs the host's carriage return; rich-viewport
-// paints through WidgetApp, which returns the carriage itself.
-for (const name of ["rich-markup-plugins", "rich-viewport"]) {
+// rich-markup-plugins and themes-and-color-studio print through Console, which
+// ends rows with a bare newline and so needs the host's carriage return;
+// rich-viewport paints through WidgetApp, which returns the carriage itself.
+for (const name of ["rich-markup-plugins", "themes-and-color-studio", "rich-viewport"]) {
   test(`a demo's rows start at the left edge: ${name}`, async ({ page }) => {
     await openDemo(page, name);
     await expect.poll(() => shown(page), LOADED).toMatch(/\S/);
@@ -193,17 +193,24 @@ test("a demo's Powerline glyphs draw in the Powerline face: rich-strip", async (
 // never see where it starts. The first row on screen has to be the first row
 // printed. `first` matches the whole first row: rich-strip's first label
 // recurs further down, and a row that merely contains it would pass scrolled
-// to the bottom. rich-strip fits its card's terminal for this; a bundled demo's
-// shell scrolls back to the top.
+// to the bottom. rich-strip fits its card's terminal; themes-and-color-studio
+// prints far more than its card's terminal holds, and still opens on its title.
 test("a printed demo opens on its first line: rich-strip", async ({ page }) => {
   await openDemo(page, "rich-strip");
   await expect(terminalRows(page).locator("> div").first()).toHaveText(/^PowerlineJoiner\s*$/, LOADED);
 });
 
 test("a printed demo opens on its first line: themes-and-color-studio", async ({ page }) => {
-  await page.goto("demos-app/themes-and-color-studio/");
-  await expect(page.locator("#status")).toContainText("ready");
-  await expect(page.locator(".xterm-rows > div").first()).toHaveText(/^themes-and-color-studio\b/);
+  await openDemo(page, "themes-and-color-studio");
+  await expect(terminalRows(page).locator("> div").first()).toHaveText(/^themes-and-color-studio\b/, LOADED);
+});
+
+test("themes-and-color-studio's card shows its entry and every section file as tabs, and not its Node entry", async ({ page }) => {
+  await openDemo(page, "themes-and-color-studio");
+  await expect(card(page).getByRole("tab")).toHaveText(
+    ["main.ts", "tour.ts", "look.ts", "values.ts", "themes.ts", "transposition.ts", "contrast.ts"],
+    LOADED,
+  );
 });
 
 test("a demo's card shows its files as tabs; an edit to any re-runs it, reset puts every file back, and the playground opens them all", async ({ page }) => {
