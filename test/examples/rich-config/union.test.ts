@@ -10,7 +10,7 @@
  * any layout that puts the same widgets on screen.
  *
  * The node host runs it here, over streams; `e2e/rich-config.spec.ts` runs the
- * same demo under the browser host in a real xterm.js.
+ * same demo in its docs card, in a real xterm.js.
  */
 
 import { describe, it, expect, afterEach } from "vitest";
