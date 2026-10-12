@@ -12,5 +12,8 @@ import { MemoryFileSystem } from "../_capabilities/memory-file-system.js";
 import { run } from "./app.js";
 import { FIXTURE_TREE } from "./fixture.js";
 
+// The card has no shell to return to, so say the program ended.
+const host = new NodeTerminalHost();
 const fs = new MemoryFileSystem(FIXTURE_TREE);
-await run(new NodeTerminalHost(), fs, fs.homeDir()).done;
+await run(host, fs, fs.homeDir()).done;
+host.write("rich-explore has quit.\n");

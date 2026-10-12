@@ -37,7 +37,10 @@ test("c swaps the preview for the coverage page and back", async ({ page }) => {
 test("Escape then Tab leaves the card with the explorer still running", async ({ page }) => {
   await page.keyboard.press("Escape");
   await page.keyboard.press("Tab");
-  await expect.poll(() => screen(page), LOADED).toContain("README.md");
+  // A quit program would still show its last frame, so ask it to move.
+  await card(page).locator(".xterm-helper-textarea").focus();
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(() => screen(page), LOADED).toContain("/home/demo/src");
 });
 
 // The card keeps no scrollback: the status bar is the frame's last row.

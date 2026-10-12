@@ -5,8 +5,8 @@
  *
  * [LAW:capabilities-over-context] The directory walk takes a `FileSystem`;
  * there is no `node:fs` import. The same code runs against `NodeFileSystem`
- * in the terminal entry and a `MemoryFileSystem` populated with a fixture
- * in the browser entry.
+ * in `node.ts` and a `MemoryFileSystem` populated with a fixture in `main.ts`,
+ * the card's entry.
  */
 
 import type { FileSystem } from "../../_capabilities/file-system.js";
