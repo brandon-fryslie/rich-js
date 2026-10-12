@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "ed24e8653331b4c983a3ccdc7a41b8ce3482a9e0",
-      "timestamp": "2026-10-12T09:59:44.329Z",
+      "sha": "a4b2d8ea75884c9196ba8a505a0da6ec95397cc2",
+      "timestamp": "2026-10-12T10:16:22.948Z",
       "commits": [
         {
-          "sha": "ed24e8653331b4c983a3ccdc7a41b8ce3482a9e0",
+          "sha": "a4b2d8ea75884c9196ba8a505a0da6ec95397cc2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T03:58:14-06:00",
-          "message": "feat(docs): rich-markup-plugins runs in the card (rich-demos-k78j.7iv) (#363)\n\n* feat(docs): rich-markup-plugins runs in the card (rich-demos-k78j.7iv)\n\nOne file, main.ts, printing through new Console(); the entry for the card\nand npm run markup-plugins. Revamped: each sample's markup prints dim above\nwhat it draws, samples fit the card's 75 columns, handlers in the\ndocs/markup-tags.md idiom. app.ts/index.ts/wire.ts deleted.\n\n* fix(demo): rich-markup-plugins handlers fail loudly, restore the global tag, fit the card (rich-demos-k78j.7iv)"
+          "timestamp": "2026-10-12T04:14:45-06:00",
+          "message": "feat(docs): rich-viewport runs in the card (rich-demos-k78j.jdg) (#364)\n\n* feat(docs): rich-viewport runs in the card (rich-demos-k78j.jdg)\n\nOne file, main.ts, a WidgetApp on NodeTerminalHost; the entry for the card\nand npm run viewport. Revamped: the auto-walking cursor is now driven by the\nkeys, and the wheel scrolls the window away from it (ensureVisible runs on a\nmove, not every frame). app.ts/index.ts/wire.ts deleted; the left-edge e2e\nreads the card.\n\n* fix(docs): review — staircase guard on a printed demo, viewport TTY check and chords, docs agree with the demo (rich-demos-k78j.jdg)\n\n* docs(viewport): the selection example brings the selection into view on a move, so the wheel can scroll it (rich-demos-k78j.jdg)"
         }
       ]
     }
