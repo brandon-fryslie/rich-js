@@ -1,31 +1,20 @@
 /**
- * The acceptance test of rich-runtime-fna under the browser host: the
- * rich-config demo, its widgets in a `Panel` in one pane of a `Layout` split,
- * running in its card on the demo page and driven through the card's xterm.js
- * by the keyboard and the mouse — the bytes for both are xterm's own,
- * produced from DOM events, not written by this test.
+ * The acceptance test of rich-runtime-fna in a real terminal: the rich-config
+ * demo, its widgets in a `Panel` in one pane of a `Layout` split, running in
+ * its card on the demo page and driven through the card's xterm.js by the
+ * keyboard and the mouse — the bytes for both are xterm's own, produced from
+ * DOM events, not written by this test.
  *
- * `test/examples/rich-config/union.test.ts` runs the same demo under the node
- * host; the demo has no path of its own for either.
+ * `test/examples/rich-config/union.test.ts` runs the same demo, on the same
+ * `NodeTerminalHost`, over streams it writes itself.
  */
+import { fileURLToPath } from "node:url";
 import { test, expect, type Page } from "@playwright/test";
 import { cellLen } from "../src/core/cells.js";
-import cardConfig from "../examples/rich-config/card.json" with { type: "json" };
+import { cardJson } from "../docs/.vitepress/demo-card.js";
+import { card, cardRows as screen } from "./card-screen.js";
 
-const TERMINAL = cardConfig.terminal;
-const card = (page: Page) => page.locator(".rich-example-card");
-
-/**
- * The terminal's rows as the user reads them. Scrolled into view on every
- * read: a live terminal off screen is stopped (theme/LiveScreen.ts), and the
- * editor opening above it can push it back off after a first scroll.
- */
-async function screen(page: Page): Promise<string[]> {
-  await card(page).locator(".rich-live").scrollIntoViewIfNeeded();
-  const rows = await card(page).locator(".xterm-rows > div").allTextContents();
-  return rows.map((row) => row.replace(/\u00a0/g, " "));
-}
-
+const TERMINAL = cardJson(fileURLToPath(new URL("../examples/rich-config", import.meta.url))).screen.terminal;
 async function shows(page: Page, text: string): Promise<void> {
   await expect.poll(async () => (await screen(page)).join("\n"), { timeout: 20_000 }).toContain(text);
 }
@@ -49,8 +38,9 @@ async function clickOn(page: Page, text: string): Promise<void> {
 test.beforeEach(async ({ page }) => {
   await page.goto("demos/rich-config.html");
   await shows(page, "─ Widgets ─");
-  // Keys reach the program once its terminal has focus.
-  await card(page).locator(".xterm-screen").click();
+  // Keys reach the program once its terminal has focus. Focus xterm's input,
+  // not a click on the screen, which the app would take as a click on a widget.
+  await card(page).locator(".xterm-helper-textarea").focus();
 });
 
 test("draws the widgets in a panel beside the preview", async ({ page }) => {

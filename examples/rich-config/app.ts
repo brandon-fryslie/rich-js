@@ -2,7 +2,9 @@
  * rich-config demo body — interactive theme + widgets explorer.
  *
  * The demo runs against any `TerminalHost`; main.ts hands it the one it
- * builds, which in the docs card is the card's terminal.
+ * builds, which in the docs card is the card's terminal. The host is a
+ * parameter rather than built here so `test/examples/rich-config/` can hand
+ * it one over streams it drives.
  *
  * The widgets are laid out by composition, and nothing tells the app where
  * they went: they sit in a `Panel` in the left pane of a `Layout` split, the

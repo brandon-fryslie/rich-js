@@ -12,7 +12,7 @@ import { runDemo } from "./app.js";
 
 const host = new NodeTerminalHost();
 if (!host.isTTY) {
-  process.stderr.write("Error: demo-inputs requires an interactive terminal.\n");
+  process.stderr.write("Error: npm run demo-inputs requires an interactive terminal.\n");
   process.exit(1);
 }
 
