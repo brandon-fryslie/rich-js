@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-372",
+      "ref": "refs/pull/372/merge",
+      "sha": "4fc8662d6c8887eeaef1fcce460ecbd939b3b5d2",
+      "timestamp": "2026-10-12T12:03:21.686Z",
+      "commits": [
+        {
+          "sha": "4fc8662d6c8887eeaef1fcce460ecbd939b3b5d2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-12T06:01:45-06:00",
+          "message": "Merge cc4d07cccf1a9d99a67d44415e522f418976be6f into 9433adf446edd4c8d0c9b894b4c8bc55f051baa7\n"
+        },
+        {
+          "sha": "cc4d07cccf1a9d99a67d44415e522f418976be6f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-12T06:00:43-06:00",
+          "message": "chore(docs): delete the iframe demo shell; one demo list read off examples/ (rich-demos-k78j.7qo)\n\nEvery demo runs in its card, so the vite demo bundle, demos:build, the\ngenerated demos.json, the _browser-shell templates, the browser-terminal-host\nharness and the iframe branches of the demo page and e2e spec go. demoNames()\nin docs/.vitepress/demo-entry.ts is the one list the sidebar, the demo routes,\nthe Demos index (demos.data.ts) and the e2e gate read. XTERM moves beside the\nlive terminal that loads it.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "9433adf446edd4c8d0c9b894b4c8bc55f051baa7",
