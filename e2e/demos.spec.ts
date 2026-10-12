@@ -138,20 +138,28 @@ for (const { name } of manifest.demos.filter((demo) => demo.runs === "iframe")) 
 
 // "Drew something" passes a frame whose rows each start where the last one
 // ended: every demo drew as a staircase while the gate above stayed green,
-// because nothing returned the carriage before a newline. A Panel's rows all
-// start at its left border, so any row that does not has been pushed along.
-test("a demo's rows start at the left edge: rich-viewport", async ({ page }) => {
-  await page.goto("demos-app/rich-viewport/");
-  // A boot failure should read as its own message, not a missing "╭".
-  await expect(page.locator("#status")).toContainText("ready");
-  const rows = page.locator(".xterm-rows > div");
-  await expect(rows.first()).toContainText("╭");
-  const drawn = (await rows.allTextContents()).filter((row) => row.trim() !== "");
-  expect(drawn.length, "the panel drew no rows").toBeGreaterThan(2);
-  for (const row of drawn) {
-    expect(row, `a row does not start at the panel's left border: ${JSON.stringify(drawn)}`).toMatch(/^[╭│╰]/);
-  }
-});
+// because nothing returned the carriage before a newline. That is the check: a
+// row indented by exactly the width of the row above it. A row may start with a
+// space of its own — a padded badge does — so leading space alone is not it.
+// rich-markup-plugins prints through Console, which ends rows
+// with a bare newline and so needs the host's carriage return; rich-viewport
+// paints through WidgetApp, which returns the carriage itself.
+for (const name of ["rich-markup-plugins", "rich-viewport"]) {
+  test(`a demo's rows start at the left edge: ${name}`, async ({ page }) => {
+    await openDemo(page, name);
+    await expect.poll(() => shown(page), LOADED).toMatch(/\S/);
+    const drawn = (await terminalRows(page).locator("> div").allInnerTexts())
+      .map((row) => row.replaceAll("\u00a0", " "))
+      .filter((row) => row.trim() !== "");
+    expect(drawn.length, "the demo drew no rows").toBeGreaterThan(2);
+    for (const [i, row] of drawn.entries()) {
+      if (i === 0) continue;
+      const indent = row.length - row.trimStart().length;
+      expect(indent, `row ${i} starts where row ${i - 1} ended: ${JSON.stringify(drawn)}`)
+        .not.toBe(drawn[i - 1]!.trimEnd().length);
+    }
+  });
+}
 
 // A row can hold the right code point and still draw a missing-glyph box: the
 // terminal's own fonts have nothing in the Powerline private-use range. Only
