@@ -41,7 +41,8 @@
  *
  * Output shown for code other than the editor's is dimmed: while an edit
  * waits to run, and after one that could not, with what went wrong under it
- * in red.
+ * in red. A live program that fails as it runs is said there too, by the
+ * terminal handing its report to the card, never drawn over its last frame.
  *
  * A block the build does not run is the same card, read-only: its code over
  * the note its marker gives, and nothing to edit.
@@ -148,6 +149,7 @@ type ThrownAt = Awaited<ReturnType<typeof programs>>["thrownAt"];
 
 /** A live card's terminal, loaded with the first page that has one: it brings xterm's setup and the example terminal's themes. */
 const LiveScreen = defineAsyncComponent(() => import("./LiveScreen.js"));
+type LiveFailure = import("./LiveScreen.js").LiveFailure;
 
 /** A card's sliders, loaded with the first card that has them: they bring the library's curve names. */
 const CardSliders = defineAsyncComponent(() => import("./CardSliders.js"));
@@ -242,6 +244,8 @@ interface Outlet {
   /** How many columns what it shows is drawn in, for the font to fit the card; null when that is nothing at all. */
   readonly columns: () => number | null;
   readonly body: () => VNodeArrayChildren;
+  /** What what it shows has failed with since it last started, said as a failure of an edit is; null while nothing has. */
+  readonly failure: () => string | null;
   /** Show the output of the card's program with `codes` in its files, while `current` says no newer edit has come. */
   show(codes: Codes, current: () => boolean): Promise<Outcome>;
 }
@@ -304,6 +308,8 @@ function drawnView(drawn: ShallowRef<Shown | null>, label: string): Omit<Outlet,
     label: () => label,
     caption: () => drawn.value?.caption ?? DRAWN.caption,
     columns: () => drawn.value?.output?.columns ?? null,
+    // A static run's failure is its edit's outcome: nothing fails after it is drawn.
+    failure: () => null,
     body: () => {
       const shown = drawn.value;
       if (shown === null) return [];
@@ -349,12 +355,26 @@ function liveOutlet(program: CardProgram, look: { readonly label: string; readon
     return compiled;
   });
   const running = shallowRef<{ readonly codes: Codes; readonly program: () => Promise<LiveProgram> }>({ codes: start, program: startProgram });
+  // [LAW:one-source-of-truth] The terminal hands what goes wrong to the card,
+  // which says it in its one place for failures, beside the editor. Each
+  // failure is a turn: a crash's report is said once its stack is read, and
+  // only if no newer failure, or newer run, has come meanwhile.
+  const crash = ref<string | null>(null);
+  let heard = 0;
+  const failed = (failure: LiveFailure | null) => {
+    const mine = ++heard;
+    if (failure?.kind !== "crashed") return void (crash.value = failure?.said ?? null);
+    void programs().then((made) => {
+      if (mine === heard) crash.value = crashSaid(failure.report, made.thrownAt, namesOf(program)).said;
+    });
+  };
   return {
     codes: () => running.value.codes,
     label: () => look.label,
     caption: () => look.caption,
     columns: () => terminal.columns,
-    body: () => [h(LiveScreen, { program: running.value.program, terminal, contrast })],
+    failure: () => crash.value,
+    body: () => [h(LiveScreen, { program: running.value.program, terminal, contrast, failed })],
     async show(codes, current) {
       if (sameCodes(codes, start)) {
         running.value = { codes, program: startProgram };
@@ -384,6 +404,7 @@ function decidedOutlet(program: CardProgram, root: Ref<HTMLElement | null>): Out
     label: () => now().label(),
     caption: () => now().caption(),
     columns: () => now().columns(),
+    failure: () => now().failure(),
     body: () => now().body(),
     async show(codes, current) {
       const outcome = await runs.run(codes, current);
@@ -633,7 +654,7 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
       [
         labelStrip(outlet.label(), [h("span", { class: "rich-example-caption" }, outlet.caption()), ...beside]),
         ...outlet.body(),
-        ...[failure.value, now.kind === "fence" ? now.refused : null].map((said) =>
+        ...[failure.value, outlet.failure(), now.kind === "fence" ? now.refused : null].map((said) =>
           said === null ? null : h("p", { class: "rich-example-failure", role: "alert" }, said),
         ),
       ],

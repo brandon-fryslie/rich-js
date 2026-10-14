@@ -17,23 +17,35 @@
  * with it, and the example terminal it is sized by, whose themes no other
  * page's first download should carry.
  */
-import { defineComponent, h } from "vue";
+import { defineComponent, h, ref } from "vue";
 import { EXAMPLE_TERMINAL } from "../example-terminal.js";
-import LiveScreen from "./LiveScreen.js";
+import LiveScreen, { type LiveFailure } from "./LiveScreen.js";
 
 const showcase = () => import("virtual:rich-live/showcase").then((module) => ({ script: module.default, files: null }));
 
 export default defineComponent({
   name: "RichShowcase",
-  setup: () => () =>
-    h(
-      "section",
-      {
-        class: "rich-showcase",
-        "aria-label": "rich-js, running live",
-        // The terminal the card runs its program in, for the stylesheet to size it by.
-        style: { "--rich-example-columns": EXAMPLE_TERMINAL.columns, "--rich-example-rows": EXAMPLE_TERMINAL.rows },
-      },
-      [h("div", { class: "rich-example rich-example-card" }, [h("div", { class: "rich-example-output" }, [h(LiveScreen, { program: showcase, terminal: EXAMPLE_TERMINAL, contrast: "readable" })])])],
-    ),
+  setup: () => {
+    // The hero's code is hidden, so what goes wrong is said under its terminal, with nothing in the stack to point at.
+    const failure = ref<string | null>(null);
+    const failed = (next: LiveFailure | null) => (failure.value = next === null ? null : next.kind === "crashed" ? next.report.split("\n")[0]! : next.said);
+    return () =>
+      h(
+        "section",
+        {
+          class: "rich-showcase",
+          "aria-label": "rich-js, running live",
+          // The terminal the card runs its program in, for the stylesheet to size it by.
+          style: { "--rich-example-columns": EXAMPLE_TERMINAL.columns, "--rich-example-rows": EXAMPLE_TERMINAL.rows },
+        },
+        [
+          h("div", { class: "rich-example rich-example-card" }, [
+            h("div", { class: "rich-example-output" }, [
+              h(LiveScreen, { program: showcase, terminal: EXAMPLE_TERMINAL, contrast: "readable", failed }),
+              failure.value === null ? null : h("p", { class: "rich-example-failure", role: "alert" }, failure.value),
+            ]),
+          ]),
+        ],
+      );
+  },
 });

@@ -18,7 +18,7 @@ const from = (file: string) => JSON.stringify(resolve(REPO_ROOT, file));
 
 // Exposes `play(source)` and `stop()` on the page, over one live terminal in
 // the docs examples' terminal and dark theme. The terminal's state is on its
-// element as `data-state`.
+// element as `data-state`, and a crash's report as `data-report`.
 const HARNESS = `
 import { LiveTerminal, READABLE_CONTRAST } from ${from("docs/.vitepress/theme/live-terminal.ts")};
 import { playgroundScript } from ${from("docs/.vitepress/theme/playground-program.ts")};
@@ -34,7 +34,10 @@ globalThis.start = async (runtime, library) => {
     font: { family: "monospace", size: 14 },
     minimumContrast: READABLE_CONTRAST,
   });
-  live.onState((state) => (element.dataset.state = state.kind));
+  live.onState((state) => {
+    element.dataset.state = state.kind;
+    if (state.kind === "crashed") element.dataset.report = state.report;
+  });
   globalThis.play = (source) => live.run(playgroundScript(programFiles(oneFile(NO_SETUP, source)), library), "live");
   globalThis.stop = () => live.stop();
 };
@@ -70,6 +73,8 @@ const play = (page: Page, source: string) => page.evaluate((s) => (globalThis as
 // xterm's DOM renderer draws some of a row's spaces as no-break spaces.
 const rows = async (page: Page) => (await page.locator("#terminal .xterm-rows").innerText()).replaceAll(" ", " ");
 const state = (page: Page) => page.locator("#terminal");
+/** What the program crashed with, as the terminal hands it to the page; "" until it has. */
+const report = async (page: Page) => (await state(page).getAttribute("data-report")) ?? "";
 
 test.beforeAll(async () => {
   test.setTimeout(120_000);
@@ -142,23 +147,23 @@ test("a Button responds to keys", async ({ page }) => {
 test("a syntax error reports its line", async ({ page }) => {
   await open(page);
   await play(page, 'const planet = "Mercury";\nconst orbit: number = ;\n');
-  await expect.poll(() => rows(page)).toContain("Uncaught SyntaxError");
-  expect(await rows(page)).toContain("at playground.ts:2:");
-  await expect(state(page)).toHaveAttribute("data-state", "exited");
+  await expect.poll(() => report(page)).toContain("Uncaught SyntaxError");
+  expect(await report(page)).toContain("at playground.ts:2:");
+  await expect(state(page)).toHaveAttribute("data-state", "crashed");
 });
 
 test("a thrown error reports its line, the one it was thrown on first", async ({ page }) => {
   await open(page);
   await play(page, 'const planet = "Mercury";\n\nfunction orbit(): never {\n  throw new Error("lost in space");\n}\norbit();\n');
-  await expect.poll(() => rows(page)).toContain("Uncaught Error: lost in space");
-  expect([...(await rows(page)).matchAll(/playground\.ts:(\d+):/g)].map((m) => m[1])).toEqual(["4", "6"]);
+  await expect.poll(() => report(page)).toContain("Uncaught Error: lost in space");
+  expect([...(await report(page)).matchAll(/playground\.ts:(\d+):/g)].map((m) => m[1])).toEqual(["4", "6"]);
 });
 
 test("an error thrown from a timer, after the body is done, reports its line", async ({ page }) => {
   await open(page);
   await play(page, 'setTimeout(() => {\n  throw new RangeError("too far");\n}, 10);\n');
-  await expect.poll(() => rows(page)).toContain("Uncaught RangeError: too far");
-  expect(await rows(page)).toContain("playground.ts:2:");
+  await expect.poll(() => report(page)).toContain("Uncaught RangeError: too far");
+  expect(await report(page)).toContain("playground.ts:2:");
 });
 
 test("a program that never finishes can be stopped, and the page stays responsive while it runs", async ({ page }) => {
@@ -193,8 +198,7 @@ test("a worker the frame cannot start ends the run with a report, rather than le
   // engine that denies an opaque origin one would.
   const errors = await open(page, `<meta http-equiv="Content-Security-Policy" content="worker-src 'none'">`);
   await play(page, 'process.stdout.write("never");');
-  await expect(state(page)).toHaveAttribute("data-state", "exited");
-  // The state changes as the report is written; xterm draws the write a moment later.
-  await expect.poll(() => rows(page)).toMatch(/The worker that runs the program did not (load|start)/);
+  await expect(state(page)).toHaveAttribute("data-state", "crashed");
+  expect(await report(page)).toMatch(/The worker that runs the program did not (load|start)/);
   expect(errors).toEqual([]);
 });
