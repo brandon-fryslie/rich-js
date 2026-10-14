@@ -4,15 +4,22 @@
     {
       "version": "pr-375",
       "ref": "refs/pull/375/merge",
-      "sha": "5e2f7837847b4cd6537f538dd9353b57a0e2dd8b",
-      "timestamp": "2026-10-14T19:37:32.565Z",
+      "sha": "37c7b96136273056ec1ec07480f4205847c54ec5",
+      "timestamp": "2026-10-14T19:48:27.798Z",
       "commits": [
         {
-          "sha": "5e2f7837847b4cd6537f538dd9353b57a0e2dd8b",
+          "sha": "37c7b96136273056ec1ec07480f4205847c54ec5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T13:36:02-06:00",
-          "message": "Merge e8dbe1651d9ca282bc77fbe9785b103df5768fc8 into e2d42d530f6d1deca4d8993813b5c799091c777f\n"
+          "timestamp": "2026-10-14T19:46:53Z",
+          "message": "Merge 0351962ccb1f619d5f8b1c7b2f3990d01d8422df into e2d42d530f6d1deca4d8993813b5c799091c777f\n"
+        },
+        {
+          "sha": "0351962ccb1f619d5f8b1c7b2f3990d01d8422df",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T13:46:48-06:00",
+          "message": "fix(docs): one keyed shape for both tab layouts, measured from the real tab elements (rich-demos-k78j.gjt review)\n\nA layout change no longer remounts the editor; each tab in the unseen row\nis observed so a late font re-measures; the width picks the list's\nopening state once; going back to a row wants 32px spare; the list is\nat most 35% of the card; folded, the toggle's arrows switch files.\n"
         },
         {
           "sha": "e8dbe1651d9ca282bc77fbe9785b103df5768fc8",
