@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-373",
-      "ref": "refs/pull/373/merge",
-      "sha": "fc7c032ba64ab0e0bb45fe8200a95bf75b7762e7",
-      "timestamp": "2026-10-14T19:07:26.298Z",
-      "commits": [
-        {
-          "sha": "fc7c032ba64ab0e0bb45fe8200a95bf75b7762e7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T19:06:22Z",
-          "message": "Merge 2c078bbe50d708986fb0c71e18a90b7dfd63584b into 63d46dbe2fd6198ca0b7a4bf4ddc19aa88c44345\n"
-        },
-        {
-          "sha": "2c078bbe50d708986fb0c71e18a90b7dfd63584b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T13:06:16-06:00",
-          "message": "fix(docs): live failures keep their stack, unfold the setup, and say a failing exit (rich-demos-k78j.1cv review)\n"
-        },
-        {
-          "sha": "080b1331da6593376aedcbbed4c00cd8fd175bd4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T12:59:45-06:00",
-          "message": "fix(docs): a live card's crash is said on the card, not drawn into its terminal (rich-demos-k78j.1cv)\n\nLiveTerminal ends a crashed program in a 'crashed' state carrying the\nreport; LiveScreen hands every failure to its card through a required\n'failed' prop instead of keeping a second failure surface of its own. The\ncard's one rich-example-failure says it, located by the same crashSaid the\nstatic runs use, and keeps it through an edit that does not parse.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "63d46dbe2fd6198ca0b7a4bf4ddc19aa88c44345",
-      "timestamp": "2026-10-12T12:15:28.762Z",
+      "sha": "bbdebb4f5649c9ce9362ab157eda74b7dc2ef3c6",
+      "timestamp": "2026-10-14T19:10:21.287Z",
       "commits": [
         {
-          "sha": "63d46dbe2fd6198ca0b7a4bf4ddc19aa88c44345",
+          "sha": "bbdebb4f5649c9ce9362ab157eda74b7dc2ef3c6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-12T06:13:50-06:00",
-          "message": "chore(docs): delete the iframe demo shell (rich-demos-k78j.7qo) (#372)\n\n* chore(docs): delete the iframe demo shell; one demo list read off examples/ (rich-demos-k78j.7qo)\n\nEvery demo runs in its card, so the vite demo bundle, demos:build, the\ngenerated demos.json, the _browser-shell templates, the browser-terminal-host\nharness and the iframe branches of the demo page and e2e spec go. demoNames()\nin docs/.vitepress/demo-entry.ts is the one list the sidebar, the demo routes,\nthe Demos index (demos.data.ts) and the e2e gate read. XTERM moves beside the\nlive terminal that loads it.\n\n* fix(docs): review — demo list checked, loud when empty, compiler-free; CI builds terminal demos (rich-demos-k78j.7qo)"
+          "timestamp": "2026-10-14T13:09:12-06:00",
+          "message": "fix(docs): a live card's crash is said on the card (rich-demos-k78j.1cv) (#373)\n\n* fix(docs): a live card's crash is said on the card, not drawn into its terminal (rich-demos-k78j.1cv)\n\nLiveTerminal ends a crashed program in a 'crashed' state carrying the\nreport; LiveScreen hands every failure to its card through a required\n'failed' prop instead of keeping a second failure surface of its own. The\ncard's one rich-example-failure says it, located by the same crashSaid the\nstatic runs use, and keeps it through an edit that does not parse.\n\n* fix(docs): live failures keep their stack, unfold the setup, and say a failing exit (rich-demos-k78j.1cv review)\n\n* fix(docs): failure styles outrank .vp-doc p again (rich-demos-k78j.1cv review)"
         }
       ]
     }
