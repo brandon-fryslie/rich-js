@@ -4,15 +4,22 @@
     {
       "version": "pr-374",
       "ref": "refs/pull/374/merge",
-      "sha": "efd0af85cab71a849da782b0ed3d5921f5f1ded4",
-      "timestamp": "2026-10-14T19:17:41.948Z",
+      "sha": "7ca34ee699f3ad9259df7ca2ada42fedfe8f3055",
+      "timestamp": "2026-10-14T19:25:03.661Z",
       "commits": [
         {
-          "sha": "efd0af85cab71a849da782b0ed3d5921f5f1ded4",
+          "sha": "7ca34ee699f3ad9259df7ca2ada42fedfe8f3055",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T13:16:30-06:00",
-          "message": "Merge 74990067af55f12e5f55b63a66b9c81e2cee9ad1 into bbdebb4f5649c9ce9362ab157eda74b7dc2ef3c6\n"
+          "timestamp": "2026-10-14T19:23:44Z",
+          "message": "Merge 64b6ec3c4810ba4f8532168d6abb02e29de6f23a into bbdebb4f5649c9ce9362ab157eda74b7dc2ef3c6\n"
+        },
+        {
+          "sha": "64b6ec3c4810ba4f8532168d6abb02e29de6f23a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T13:23:38-06:00",
+          "message": "fix(docs): failures really stick, and a live card runs while the card is on screen (rich-demos-k78j.rzr review)\n\noverflow: clip on cards, so sticky has the window to stick to; a live\nprogram runs while its card is on screen, so an edit made above an\noff-screen terminal still runs and fails where the reader is; failure\nnodes keyed by source; editor scroll margin keeps the cursor line above\nthe stuck bar; the folded report is capped.\n"
         },
         {
           "sha": "74990067af55f12e5f55b63a66b9c81e2cee9ad1",
