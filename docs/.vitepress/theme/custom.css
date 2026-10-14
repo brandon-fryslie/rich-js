@@ -318,8 +318,11 @@
   opacity: 0.45;
 }
 
-/* Unscoped: the landing hero's card says its failures here too, outside `.vp-doc`. */
-.rich-example-failure {
+/* Under any card, not `.vp-doc`: the landing hero's card is outside it, and
+ * this must still outrank `.vp-doc p`'s margins inside it. The playground's
+ * own failure, above its card, is one too. */
+.rich-example-card .rich-example-failure,
+.rich-playground .rich-example-failure {
   margin: 0;
   padding: 8px 16px;
   border-top: 1px solid var(--vp-c-divider);
@@ -330,11 +333,12 @@
   color: var(--vp-c-danger-1);
 }
 
-.rich-example-failure > summary {
+.rich-example-card .rich-example-failure > summary {
+  margin: 0;
   cursor: pointer;
 }
 
-.rich-example-failure > pre {
+.rich-example-card .rich-example-failure > pre {
   margin: 8px 0 0;
   overflow-x: auto;
   white-space: pre;
