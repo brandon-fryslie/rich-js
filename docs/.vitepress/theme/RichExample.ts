@@ -40,9 +40,10 @@
  *   What the program does decides it, not a choice the visitor makes.
  *
  * Output shown for code other than the editor's is dimmed: while an edit
- * waits to run, and after one that could not, with what went wrong under it
- * in red. A live program that fails as it runs is said there too, by the
- * terminal handing its report to the card, never drawn over its last frame.
+ * waits to run, and after one that could not, with what went wrong in red
+ * under the code, where the reader is typing. A live program that fails as
+ * it runs is said there too, by the terminal handing its report to the
+ * card, never drawn over its last frame.
  *
  * A block the build does not run is the same card, read-only: its code over
  * the note its marker gives, and nothing to edit.
@@ -172,10 +173,10 @@ type ReadOnlyCard = Extract<CardData, { readonly run: "never" }>;
 type LiveCard = Extract<CardData, { readonly run: "browser" }>;
 
 /** A failure in the card's one place for them: its sentence, and the whole report under it, folded, when there is more. */
-const failureView = ({ said, report }: Failed): VNode =>
+const failureView = ({ said, report }: Failed, key: string): VNode =>
   report === null
-    ? h("p", { class: "rich-example-failure", role: "alert" }, said)
-    : h("details", { class: "rich-example-failure", role: "alert" }, [h("summary", said), h("pre", report)]);
+    ? h("p", { key, class: "rich-example-failure", role: "alert" }, said)
+    : h("details", { key, class: "rich-example-failure", role: "alert" }, [h("summary", said), h("pre", report)]);
 
 /** The strip naming the output panel: its label, then what stands beside it. */
 const labelStrip = (label: string, beside: readonly VNode[]): VNode =>
@@ -195,7 +196,7 @@ function readOnlyView(card: ReadOnlyCard, slots: Slots): () => VNode {
 
 /**
  * How showing an edit's output ended: shown, or what went wrong, said under
- * the output, with the file whose line it names, if it names one. A line of a
+ * the code, with the file whose line it names, if it names one. A line of a
  * file counts its setup's lines, so the card puts them in view.
  */
 type Outcome = { readonly kind: "shown" } | Failed;
@@ -215,7 +216,7 @@ type StaticOutcome = Outcome | { readonly kind: "terminal"; readonly said: strin
 const namesOf = (program: CardProgram): string[] => program.files.map((file) => file.name);
 
 /**
- * A failure said under the output: `headline`, then where it is, if it is in
+ * A failure said under the code: `headline`, then where it is, if it is in
  * one of the visitor's files, by its file and by its line where that is known.
  * A program of one file shows no tabs, so it needs no file's name.
  */
@@ -225,7 +226,7 @@ function failedAt(headline: string, at: { readonly file: string; readonly line: 
   return { kind: "failed", said: where === "" ? headline : `${headline} (${where})`, at: at.file, report: null };
 }
 
-/** A crash's report as said under the output: its first line, at the file of `names` its stack names first, with the whole report kept when it says more. */
+/** A crash's report as said under the code: its first line, at the file of `names` its stack names first, with the whole report kept when it says more. */
 function crashSaid(report: string, thrownAt: ThrownAt, names: readonly string[]): Failed {
   const [headline, ...rest] = report.split("\n");
   return { ...failedAt(headline!, thrownAt(report, names), names), report: rest.length === 0 ? null : report };
@@ -489,7 +490,7 @@ const PROGRAM_SEAT: Seat = {
 /**
  * What every editable card does with its program: each of its files `opened`
  * in an editor, the one whose tab is chosen on screen, the edit shown by
- * `outlet` once typing pauses, a failure said under it, and the opened code
+ * `outlet` once typing pauses, a failure said under the code, and the opened code
  * put back on reset; and, where `options` turn them on, sliders over the
  * values in the chosen file's code, each an edit in the editor. `edited`
  * hears each change, with whether it is still the newest.
@@ -519,7 +520,7 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
   let pending: ReturnType<typeof setTimeout> | undefined;
 
   // [LAW:no-silent-failure] Whatever fails on the way, loading, compiling,
-  // running or drawing, is said under the output.
+  // running or drawing, is said under the code (`failures`).
   async function show(codes: Codes, mine: number): Promise<void> {
     const current = () => mine === turn;
     try {
@@ -568,14 +569,22 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
       return null;
     });
     if (modules === null) return null;
-    const [{ createEditor, editorState }, , , { setupRegions, unfoldSetup }] = modules;
+    const [{ createEditor, editorState }, { EditorView: View }, , { setupRegions, unfoldSetup }] = modules;
+    // The failures stick over the bottom of the window (`failures`): the line
+    // the cursor is brought into view on is kept above them, not under them.
+    // The margin is how far they cover the editor, which is nothing where the
+    // editor scrolls itself and they sit below it, as in the playground.
+    const underFailures = View.scrollMargins.of((view) => {
+      const box = failuresBox.value?.getBoundingClientRect();
+      return { bottom: box === undefined ? 0 : Math.max(0, view.dom.getBoundingClientRect().bottom - box.top) };
+    });
     await nextTick();
     // The card may have left the page while the editor loaded.
     if (code.value.kind !== "opening") return null;
     stateOf = (file) => {
       const { setup } = opened.files[file]!;
       const edit = (when: "paused" | "now") => (program: string) => changedIn(file, blockOf(setup, program), when);
-      return editorState(cardSource(setup, texts.value[file]!), { change: edit("paused"), run: edit("now") }, [setupRegions(setup, seat.setup), ...seat.shown(modules)]);
+      return editorState(cardSource(setup, texts.value[file]!), { change: edit("paused"), run: edit("now") }, [setupRegions(setup, seat.setup), underFailures, ...seat.shown(modules)]);
     };
     const view = createEditor(host(), stateOf(active.value));
     code.value = { kind: "editor", view, unfoldSetup: () => unfoldSetup(view) };
@@ -673,9 +682,8 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
   /** What makes the editor the tabs' panel, labelled by the chosen tab; nothing where there are no tabs. */
   const panel = () => (opened.files.length === 1 ? {} : { id: `${ids}-panel`, role: "tabpanel", "aria-labelledby": tabId(active.value) });
 
-  /** The output panel: its label strip, with `beside` after the caption, the output, and what went wrong. */
+  /** The output panel: its label strip, with `beside` after the caption, and the output. */
   const output = (beside: readonly VNode[]) => {
-    const now = code.value;
     const columns = outlet.columns();
     const shown = outlet.codes();
     return h(
@@ -687,11 +695,28 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
       [
         labelStrip(outlet.label(), [h("span", { class: "rich-example-caption" }, outlet.caption()), ...beside]),
         ...outlet.body(),
-        ...[failure.value, outlet.failure(), now.kind === "fence" && now.refused !== null ? failed(now.refused) : null].map((said) =>
-          said === null ? null : failureView(said),
-        ),
       ],
     );
+  };
+
+  /**
+   * What went wrong, under the code rather than the output: the edit's, the
+   * running program's, and the editor's own. It sticks to the bottom of the
+   * window while the code above it is in view, so a failure is read where
+   * the reader is typing, however tall the code or the output.
+   */
+  const failuresBox = ref<HTMLElement | null>(null);
+  const failures = () => {
+    const now = code.value;
+    // Keyed by where each came from, so one going does not hand its element, and its folded report's state, to another.
+    const said = (
+      [
+        ["edit", failure.value],
+        ["running", outlet.failure()],
+        ["editor", now.kind === "fence" && now.refused !== null ? failed(now.refused) : null],
+      ] as const
+    ).flatMap(([from, one]) => (one === null ? [] : [failureView(one, from)]));
+    return said.length === 0 ? null : h("div", { class: "rich-example-failures", ref: failuresBox }, said);
   };
 
   /**
@@ -712,7 +737,7 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
     });
   };
 
-  return { code, active, edited: isEdited, run, openEditor, editedLine, tabs, panel, sliders, output };
+  return { code, active, edited: isEdited, run, openEditor, editedLine, tabs, panel, sliders, failures, output };
 }
 
 /**
@@ -802,6 +827,7 @@ function editableView(card: EditableCard, slots: Slots): () => VNode {
       [
         now.kind === "editor" ? null : slots["default"]?.(),
         now.kind === "fence" ? null : h("div", { class: "rich-example-editor", ref: host }),
+        core.failures(),
         core.sliders(),
         core.edited.value ? core.editedLine() : null,
         core.output([tryIt.view()]),
@@ -843,6 +869,7 @@ function openCardView(
       h("div", { class: "rich-example rich-example-card", ref: root }, [
         core.tabs(),
         h("div", { class: "rich-example-editor", ref: host, ...core.panel() }),
+        core.failures(),
         core.sliders(),
         core.editedLine(),
         core.output(beside()),
