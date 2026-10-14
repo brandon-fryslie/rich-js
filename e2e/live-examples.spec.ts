@@ -151,7 +151,6 @@ for (const path of LIVE_PAGES) {
       const live = terminals.nth(i);
       await scrollTo(live);
       await expect.poll(() => rows(live), { timeout: 15_000 }).not.toBe("");
-      expect(await rows(live)).not.toContain("Uncaught");
       await expect(page.locator(".rich-example-card", { has: live }).locator(".rich-example-failure")).toHaveCount(0);
     }
     expect(errors).toEqual([]);
@@ -219,6 +218,7 @@ for (const [kind, edit, said] of [
   ["a throw as it starts", '\nthrow new Error("lost in space");', "Uncaught Error: lost in space"],
   ["a throw from a timer", '\nsetTimeout(() => { throw new RangeError("too far"); }, 10);', "Uncaught RangeError: too far"],
   ["an unhandled rejection", '\nvoid Promise.reject(new TypeError("no orbit"));', "TypeError: no orbit"],
+  ["an exit with a failing code", "\nprocess.exit(3);", "It called process.exit(3)."],
 ] as const) {
   test(`${kind} in a live example is said on its card, not in its terminal`, async ({ page }) => {
     const errors = await open(page, "progress.html");
@@ -246,6 +246,10 @@ test("a run's failure stays said through an edit that does not parse, and goes o
   await page.keyboard.type("\nconst = ;");
   await expect(failure.filter({ hasText: "SyntaxError" })).toHaveCount(1, { timeout: 10_000 });
   await expect(failure.filter({ hasText: "lost in space" })).toHaveCount(1);
+  // Its stack is kept, folded under the line that says it.
+  const crashed = failure.filter({ hasText: "lost in space" });
+  await crashed.locator("summary").click();
+  await expect(crashed.locator("pre")).toContainText("at ");
 
   await card.locator(".rich-example-reset").click();
   await expect(failure).toHaveCount(0, { timeout: 20_000 });

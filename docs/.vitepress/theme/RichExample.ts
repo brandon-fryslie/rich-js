@@ -61,6 +61,7 @@ import {
   ref,
   shallowRef,
   useId,
+  watch,
   type PropType,
   type Ref,
   type ShallowRef,
@@ -170,6 +171,12 @@ type EditableCard = Extract<CardData, { readonly run: "build" | "browser" }>;
 type ReadOnlyCard = Extract<CardData, { readonly run: "never" }>;
 type LiveCard = Extract<CardData, { readonly run: "browser" }>;
 
+/** A failure in the card's one place for them: its sentence, and the whole report under it, folded, when there is more. */
+const failureView = ({ said, report }: Failed): VNode =>
+  report === null
+    ? h("p", { class: "rich-example-failure", role: "alert" }, said)
+    : h("details", { class: "rich-example-failure", role: "alert" }, [h("summary", said), h("pre", report)]);
+
 /** The strip naming the output panel: its label, then what stands beside it. */
 const labelStrip = (label: string, beside: readonly VNode[]): VNode =>
   h("div", { class: "rich-example-label" }, [h("span", { class: "rich-example-name" }, label), ...beside]);
@@ -191,7 +198,13 @@ function readOnlyView(card: ReadOnlyCard, slots: Slots): () => VNode {
  * the output, with the file whose line it names, if it names one. A line of a
  * file counts its setup's lines, so the card puts them in view.
  */
-type Outcome = { readonly kind: "shown" } | { readonly kind: "failed"; readonly said: string; readonly at: string | null };
+type Outcome = { readonly kind: "shown" } | Failed;
+
+/** What went wrong, said in a line, where it is, and the whole report it was said from, if there is more of it than the line. */
+type Failed = { readonly kind: "failed"; readonly said: string; readonly at: string | null; readonly report: string | null };
+
+/** A failure that is only its sentence. */
+const failed = (said: string): Failed => ({ kind: "failed", said, at: null, report: null });
 
 const SHOWN: Outcome = { kind: "shown" };
 
@@ -206,14 +219,20 @@ const namesOf = (program: CardProgram): string[] => program.files.map((file) => 
  * one of the visitor's files, by its file and by its line where that is known.
  * A program of one file shows no tabs, so it needs no file's name.
  */
-function failedAt(headline: string, at: { readonly file: string; readonly line: number | null } | null, names: readonly string[]): Extract<Outcome, { kind: "failed" }> {
-  if (at === null) return { kind: "failed", said: headline, at: null };
+function failedAt(headline: string, at: { readonly file: string; readonly line: number | null } | null, names: readonly string[]): Failed {
+  if (at === null) return failed(headline);
   const where = [...(names.length === 1 ? [] : [at.file]), ...(at.line === null ? [] : [`line ${at.line}`])].join(" ");
-  return { kind: "failed", said: where === "" ? headline : `${headline} (${where})`, at: at.file };
+  return { kind: "failed", said: where === "" ? headline : `${headline} (${where})`, at: at.file, report: null };
 }
 
-/** A crash's report as said under the output: its first line, at the file of `names` its stack names first. */
-const crashSaid = (report: string, thrownAt: ThrownAt, names: readonly string[]) => failedAt(report.split("\n")[0]!, thrownAt(report, names), names);
+/** A crash's report as said under the output: its first line, at the file of `names` its stack names first, with the whole report kept when it says more. */
+function crashSaid(report: string, thrownAt: ThrownAt, names: readonly string[]): Failed {
+  const [headline, ...rest] = report.split("\n");
+  return { ...failedAt(headline!, thrownAt(report, names), names), report: rest.length === 0 ? null : report };
+}
+
+/** A program that ended itself with a code other than 0, as Node's would. */
+const exitSaid = (code: number): Failed => failed(`It called process.exit(${code}).`);
 
 /** How a static run that did not draw came out. */
 function staticEnded(end: Exclude<StaticEnd, { kind: "finished" | "stopped" }>, thrownAt: ThrownAt, names: readonly string[]): StaticOutcome {
@@ -221,9 +240,9 @@ function staticEnded(end: Exclude<StaticEnd, { kind: "finished" | "stopped" }>, 
     case "threw":
       return crashSaid(end.report, thrownAt, names);
     case "exited":
-      return { kind: "failed", said: `It called process.exit(${end.code}).`, at: null };
+      return exitSaid(end.code);
     case "overflowed":
-      return { kind: "failed", said: `Stopped after ${end.limitChars} characters: it was still printing.`, at: null };
+      return failed(`Stopped after ${end.limitChars} characters: it was still printing.`);
     case "timedOut":
       return { kind: "terminal", said: `Stopped after ${end.limitMs / 1000} s: it was still running.` };
     case "listening":
@@ -245,7 +264,7 @@ interface Outlet {
   readonly columns: () => number | null;
   readonly body: () => VNodeArrayChildren;
   /** What what it shows has failed with since it last started, said as a failure of an edit is; null while nothing has. */
-  readonly failure: () => string | null;
+  readonly failure: () => Failed | null;
   /** Show the output of the card's program with `codes` in its files, while `current` says no newer edit has come. */
   show(codes: Codes, current: () => boolean): Promise<Outcome>;
 }
@@ -332,7 +351,7 @@ function staticOutlet(card: Extract<CardData, { readonly run: "build" }>, root: 
     ...drawnView(runs.drawn, card.label),
     async show(codes, current) {
       const outcome = await runs.run(codes, current);
-      return outcome.kind === "terminal" ? { kind: "failed", said: outcome.said, at: null } : outcome;
+      return outcome.kind === "terminal" ? failed(outcome.said) : outcome;
     },
   };
 }
@@ -356,25 +375,34 @@ function liveOutlet(program: CardProgram, look: { readonly label: string; readon
   });
   const running = shallowRef<{ readonly codes: Codes; readonly program: () => Promise<LiveProgram> }>({ codes: start, program: startProgram });
   // [LAW:one-source-of-truth] The terminal hands what goes wrong to the card,
-  // which says it in its one place for failures, beside the editor. Each
-  // failure is a turn: a crash's report is said once its stack is read, and
-  // only if no newer failure, or newer run, has come meanwhile.
-  const crash = ref<string | null>(null);
+  // which says it in its one place for failures. Each failure is a turn: a
+  // crash's report is said once its stack is read, and only if no newer
+  // failure, or newer run, has come meanwhile.
+  const failure = shallowRef<Failed | null>(null);
   let heard = 0;
-  const failed = (failure: LiveFailure | null) => {
+  const heardOf = (next: LiveFailure | null) => {
     const mine = ++heard;
-    if (failure?.kind !== "crashed") return void (crash.value = failure?.said ?? null);
-    void programs().then((made) => {
-      if (mine === heard) crash.value = crashSaid(failure.report, made.thrownAt, namesOf(program)).said;
-    });
+    const say = (said: Failed | null) => void (mine === heard && (failure.value = said));
+    if (next === null) return say(null);
+    switch (next.kind) {
+      case "unstarted":
+        return say(failed(next.said));
+      case "exited":
+        return say(exitSaid(next.code));
+      case "crashed":
+        return void programs().then(
+          (made) => say(crashSaid(next.report, made.thrownAt, namesOf(program))),
+          (error: unknown) => say({ ...failed(next.report.split("\n")[0]!), report: `${next.report}\n\n(Its lines could not be placed: ${message(error)})` }),
+        );
+    }
   };
   return {
     codes: () => running.value.codes,
     label: () => look.label,
     caption: () => look.caption,
     columns: () => terminal.columns,
-    failure: () => crash.value,
-    body: () => [h(LiveScreen, { program: running.value.program, terminal, contrast, failed })],
+    failure: () => failure.value,
+    body: () => [h(LiveScreen, { program: running.value.program, terminal, contrast, failed: heardOf })],
     async show(codes, current) {
       if (sameCodes(codes, start)) {
         running.value = { codes, program: startProgram };
@@ -470,7 +498,7 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
   const code = shallowRef<Code>({ kind: "fence", refused: null });
   const openedCodes = codesOf(opened);
   const texts = shallowRef<Codes>(openedCodes);
-  const failure = ref<string | null>(null);
+  const failure = shallowRef<Failed | null>(null);
   /** The file whose tab is chosen. */
   const active = ref(0);
   /** The ids that tie each tab to the editor, the panel it shows its file in. */
@@ -497,13 +525,18 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
     try {
       const outcome = await outlet.show(codes, current);
       if (!current()) return;
-      failure.value = outcome.kind === "shown" ? null : outcome.said;
-      const now = code.value;
-      if (outcome.kind === "failed" && outcome.at === opened.files[active.value]!.name && now.kind === "editor") now.unfoldSetup();
+      failure.value = outcome.kind === "shown" ? null : outcome;
     } catch (error) {
-      if (current()) failure.value = `The example could not run: ${message(error)}`;
+      if (current()) failure.value = failed(`The example could not run: ${message(error)}`);
     }
   }
+
+  // A line a failure names counts its file's setup, so the setup is put in
+  // view, whichever way the failure came: an edit's, or the running program's.
+  watch([failure, () => outlet.failure()], (failures) => {
+    const now = code.value;
+    if (now.kind === "editor" && failures.some((said) => said?.at === opened.files[active.value]!.name)) now.unfoldSetup();
+  });
 
   /**
    * Show what `codes` does once typing pauses, or `now` when the reader asks
@@ -654,8 +687,8 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
       [
         labelStrip(outlet.label(), [h("span", { class: "rich-example-caption" }, outlet.caption()), ...beside]),
         ...outlet.body(),
-        ...[failure.value, outlet.failure(), now.kind === "fence" ? now.refused : null].map((said) =>
-          said === null ? null : h("p", { class: "rich-example-failure", role: "alert" }, said),
+        ...[failure.value, outlet.failure(), now.kind === "fence" && now.refused !== null ? failed(now.refused) : null].map((said) =>
+          said === null ? null : failureView(said),
         ),
       ],
     );

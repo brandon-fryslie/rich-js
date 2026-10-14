@@ -28,7 +28,17 @@ export default defineComponent({
   setup: () => {
     // The hero's code is hidden, so what goes wrong is said under its terminal, with nothing in the stack to point at.
     const failure = ref<string | null>(null);
-    const failed = (next: LiveFailure | null) => (failure.value = next === null ? null : next.kind === "crashed" ? next.report.split("\n")[0]! : next.said);
+    const said = (next: LiveFailure): string => {
+      switch (next.kind) {
+        case "unstarted":
+          return next.said;
+        case "exited":
+          return `It called process.exit(${next.code}).`;
+        case "crashed":
+          return next.report.split("\n")[0]!;
+      }
+    };
+    const failed = (next: LiveFailure | null) => (failure.value = next === null ? null : said(next));
     return () =>
       h(
         "section",

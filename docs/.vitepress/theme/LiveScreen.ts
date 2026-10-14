@@ -42,8 +42,11 @@ const BUTTON: Record<LiveState["kind"], string> = {
   crashed: "Run again",
 };
 
-/** What went wrong with the program on screen: it could not be started, or it ended with an uncaught failure. */
-export type LiveFailure = { readonly kind: "unstarted"; readonly said: string } | { readonly kind: "crashed"; readonly report: string };
+/** What went wrong with the program on screen: it could not be started, it ended itself with a code other than 0, or it ended with an uncaught failure. */
+export type LiveFailure =
+  | { readonly kind: "unstarted"; readonly said: string }
+  | { readonly kind: "exited"; readonly code: number }
+  | { readonly kind: "crashed"; readonly report: string };
 
 export default defineComponent({
   name: "LiveScreen",
@@ -84,7 +87,7 @@ export default defineComponent({
         (live) => {
           live.onState((next) => {
             state.value = next;
-            if (next.kind === "crashed") props.failed({ kind: "crashed", report: next.report });
+            if (next.kind === "crashed" || (next.kind === "exited" && next.code !== 0)) props.failed(next);
           });
           return { live, unwatch: watch(isDark, () => live.setTheme(theme())) };
         },

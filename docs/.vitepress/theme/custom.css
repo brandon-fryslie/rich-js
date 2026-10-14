@@ -318,7 +318,8 @@
   opacity: 0.45;
 }
 
-.vp-doc .rich-example-failure {
+/* Unscoped: the landing hero's card says its failures here too, outside `.vp-doc`. */
+.rich-example-failure {
   margin: 0;
   padding: 8px 16px;
   border-top: 1px solid var(--vp-c-divider);
@@ -327,6 +328,17 @@
   line-height: 20px;
   white-space: pre-wrap;
   color: var(--vp-c-danger-1);
+}
+
+.rich-example-failure > summary {
+  cursor: pointer;
+}
+
+.rich-example-failure > pre {
+  margin: 8px 0 0;
+  overflow-x: auto;
+  white-space: pre;
+  color: var(--vp-c-text-2);
 }
 
 /* A live terminal: a live card's (theme/LiveScreen.ts), the playground's among them. Its font is the one static
