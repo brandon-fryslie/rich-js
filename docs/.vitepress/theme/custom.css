@@ -325,26 +325,42 @@
   white-space: nowrap;
 }
 
-/* Tabs that do not fit in one row: a list beside the editor, by folder. */
+/* The tabs and the editor, in one shape whichever way the tabs lie: a row
+ * above it, or, where they do not fit in one, a list beside it by folder,
+ * no wider than a third of the card so the code keeps its width. */
 .vp-doc .rich-example-files {
   display: grid;
-  grid-template-columns: minmax(10rem, max-content) minmax(0, 1fr);
-  border-bottom: 1px solid var(--vp-c-divider);
-}
-
-.vp-doc .rich-example-files-folded {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.vp-doc .rich-example-filelist {
+.vp-doc .rich-example-files-listed {
+  grid-template-columns: fit-content(35%) minmax(0, 1fr);
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+/* Beside a list taller than its code, the editor still fills its column. */
+.vp-doc .rich-example-files-listed > .rich-example-editor > .cm-editor {
+  height: 100%;
+}
+
+.vp-doc .rich-example-files-listed.rich-example-files-folded {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.vp-doc .rich-example-files:not(.rich-example-files-listed) > .rich-example-filelist {
+  display: contents;
+}
+
+.vp-doc .rich-example-files-listed > .rich-example-filelist {
   align-self: start;
+  min-width: 10rem;
   max-height: 70vh;
   overflow: auto;
   background: var(--vp-c-bg-soft);
   border-right: 1px solid var(--vp-c-divider);
 }
 
-.vp-doc .rich-example-files-folded > .rich-example-filelist {
+.vp-doc .rich-example-files-listed.rich-example-files-folded > .rich-example-filelist {
   border-right: 0;
   border-bottom: 1px solid var(--vp-c-divider);
 }
@@ -369,13 +385,13 @@
   display: none;
 }
 
-.vp-doc .rich-example-filelist > .rich-example-tabs:not([hidden]) {
+.vp-doc .rich-example-files-listed .rich-example-filelist > .rich-example-tabs:not([hidden]) {
   display: block;
   padding: 0 0 8px;
   border: 0;
 }
 
-.vp-doc .rich-example-filelist .rich-example-tab {
+.vp-doc .rich-example-files-listed .rich-example-filelist .rich-example-tab {
   display: block;
   width: 100%;
   padding: 0 12px 0 22px;
@@ -384,9 +400,11 @@
   line-height: 28px;
   text-align: left;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.vp-doc .rich-example-filelist .rich-example-tab[aria-selected='true'] {
+.vp-doc .rich-example-files-listed .rich-example-filelist .rich-example-tab[aria-selected='true'] {
   border-left-color: var(--vp-c-brand-1);
   background: var(--vp-c-default-soft);
 }
