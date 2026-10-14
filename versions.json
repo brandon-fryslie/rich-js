@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-374",
+      "ref": "refs/pull/374/merge",
+      "sha": "efd0af85cab71a849da782b0ed3d5921f5f1ded4",
+      "timestamp": "2026-10-14T19:17:41.948Z",
+      "commits": [
+        {
+          "sha": "efd0af85cab71a849da782b0ed3d5921f5f1ded4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T13:16:30-06:00",
+          "message": "Merge 74990067af55f12e5f55b63a66b9c81e2cee9ad1 into bbdebb4f5649c9ce9362ab157eda74b7dc2ef3c6\n"
+        },
+        {
+          "sha": "74990067af55f12e5f55b63a66b9c81e2cee9ad1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T13:16:25-06:00",
+          "message": "fix(docs): a card's failures stand under its code and stay in view while it is (rich-demos-k78j.rzr)\n\ncardCore hands its failures out on their own (failures()), and both card\nviews place them directly under the editor; the block is sticky to the\nwindow's bottom so a tall editor or output never pushes it out of sight.\n\nAlso repairs two example-card e2e assertions that 1cv broke on master: a\ncrash's failure now folds its stack under the sentence, so they read the\nsummary.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "bbdebb4f5649c9ce9362ab157eda74b7dc2ef3c6",
