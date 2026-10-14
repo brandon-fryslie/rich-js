@@ -66,6 +66,7 @@ import {
   type PropType,
   type Ref,
   type ShallowRef,
+  type ComponentPublicInstance,
   type Slots,
   type VNode,
   type VNodeArrayChildren,
@@ -171,6 +172,18 @@ const message = (error: unknown): string => (error instanceof Error ? error.mess
 type EditableCard = Extract<CardData, { readonly run: "build" | "browser" }>;
 type ReadOnlyCard = Extract<CardData, { readonly run: "never" }>;
 type LiveCard = Extract<CardData, { readonly run: "browser" }>;
+
+/** `names` grouped by the folder each is in, "" for none, each group where its first name is, in the order the names come. */
+function byFolder(names: readonly string[]): { readonly folder: string; readonly files: number[] }[] {
+  const groups = new Map<string, number[]>();
+  names.forEach((name, file) => {
+    const folder = name.includes("/") ? name.slice(0, name.lastIndexOf("/")) : "";
+    const group = groups.get(folder);
+    if (group === undefined) groups.set(folder, [file]);
+    else group.push(file);
+  });
+  return [...groups].map(([folder, files]) => ({ folder, files }));
+}
 
 /** A failure in the card's one place for them: its sentence, and the whole report under it, folded, when there is more. */
 const failureView = ({ said, report }: Failed, key: string): VNode =>
@@ -502,6 +515,45 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
   const failure = shallowRef<Failed | null>(null);
   /** The file whose tab is chosen. */
   const active = ref(0);
+  /** The files by folder, each folder where its first file is, and the order their tabs are seen in. */
+  const groups = byFolder(opened.files.map((file) => file.name));
+  const order = groups.flatMap((group) => group.files);
+  /** Whether the tabs fit in one row, as the unseen row says (`withFiles`); and, where they do not, whether the list is open. */
+  const layout = ref<"row" | "list">("row");
+  const listOpen = ref(true);
+  /** A card narrower than this starts with its list of files folded: beside the list, its code would be too narrow to read. */
+  const LIST_OPEN_FROM_PX = 720;
+  /**
+   * How much room a list wants to spare before it goes back to a row: more
+   * than a scrollbar, whose coming and going with the card's new height
+   * would otherwise flip it back and forth.
+   */
+  const ROW_SPARE_PX = 32;
+  let measured: ResizeObserver | undefined;
+  let listedOnce = false;
+  /**
+   * The unseen row, observed for as long as it is in the page: a card shows
+   * it only where it has tabs (`withFiles`), so whatever renders it is what
+   * measures, and a card without it measures nothing.
+   */
+  const measureRow = (row: Element | ComponentPublicInstance | null) => {
+    measured?.disconnect();
+    if (!(row instanceof HTMLElement)) return;
+    measured = new ResizeObserver(() => {
+      // Where the last tab ends, not the row's scroll width, which never reads less than the row: room to spare is a fact too.
+      const end = row.getBoundingClientRect().right - parseFloat(getComputedStyle(row).paddingRight);
+      const spare = end - row.lastElementChild!.getBoundingClientRect().right;
+      const next = layout.value === "row" ? (spare < 0 ? "list" : "row") : spare >= ROW_SPARE_PX ? "row" : "list";
+      // The width decides whether the list starts open once; after that it is the reader's.
+      if (next === "list" && !listedOnce) listOpen.value = row.clientWidth >= LIST_OPEN_FROM_PX;
+      listedOnce ||= next === "list";
+      layout.value = next;
+    });
+    // The row, for the card's width; each tab in it, for a font that arrives late and widens them.
+    measured.observe(row);
+    for (const tab of row.children) measured.observe(tab);
+  };
+  onBeforeUnmount(() => measured?.disconnect());
   /** The ids that tie each tab to the editor, the panel it shows its file in. */
   const ids = useId();
   const tabId = (file: number) => `${ids}-tab-${file}`;
@@ -634,11 +686,16 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
     ]);
 
   /** The file each key that moves along a tab list chooses, from `file`, as the WAI-ARIA tabs pattern has them. */
+  // Along the order the tabs are seen in, the row's and the list's alike, so
+  // both arrow pairs move: the row is read left to right, the list top to bottom.
+  const step = (file: number, by: number) => order[(order.indexOf(file) + by + order.length) % order.length]!;
   const tabKeys: Readonly<Record<string, (file: number) => number>> = {
-    ArrowRight: (file) => (file + 1) % opened.files.length,
-    ArrowLeft: (file) => (file - 1 + opened.files.length) % opened.files.length,
-    Home: () => 0,
-    End: () => opened.files.length - 1,
+    ArrowRight: (file) => step(file, 1),
+    ArrowDown: (file) => step(file, 1),
+    ArrowLeft: (file) => step(file, -1),
+    ArrowUp: (file) => step(file, -1),
+    Home: () => order[0]!,
+    End: () => order.at(-1)!,
   };
   const moveTab = (event: KeyboardEvent) => {
     const move = tabKeys[event.key];
@@ -646,38 +703,95 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
     event.preventDefault();
     const file = move(active.value);
     choose(file);
-    document.getElementById(tabId(file))!.focus();
+    // Focus follows the chosen tab, unless the tabs are folded away and the toggle holds it.
+    if (event.currentTarget instanceof HTMLElement && event.currentTarget.role === "tablist") document.getElementById(tabId(file))!.focus();
   };
 
+  /** A tab choosing `file`, reading `label`, its whole name said to whoever cannot see the folder it is listed under. */
+  const tab = (file: number, label: string) =>
+    h(
+      "button",
+      {
+        type: "button",
+        role: "tab",
+        id: tabId(file),
+        class: "rich-example-tab",
+        "aria-selected": String(file === active.value),
+        "aria-controls": `${ids}-panel`,
+        ...(label === opened.files[file]!.name ? {} : { "aria-label": opened.files[file]!.name }),
+        title: opened.files[file]!.name,
+        tabindex: file === active.value ? 0 : -1,
+        onClick: () => choose(file),
+      },
+      label,
+    );
+
   /**
-   * A tab for each file, named as an import between them names it; none for a
-   * program of one file, which has nothing to choose between. Only the chosen
-   * tab takes focus by Tab, the arrow keys move between them, and each
-   * controls the editor, the panel (`panel`).
+   * The editor, with a tab for each file above it, named as an import between
+   * them names it; none for a program of one file, which has nothing to
+   * choose between. Only the chosen tab takes focus by Tab, the arrow keys
+   * move between them, and each controls the editor, the panel (`panel`).
+   *
+   * Tabs that would not fit in one row are a list beside the editor instead,
+   * grouped by folder, which the reader can fold away to give the code the
+   * width; a narrow card starts with it folded. A row of the same tabs is
+   * kept, unseen, at the card's width, and says when they no longer fit,
+   * whatever the width or the font.
    */
-  const tabs = () =>
-    opened.files.length === 1
-      ? null
-      : h(
-          "div",
-          { class: "rich-example-tabs", role: "tablist", "aria-label": "Files", onKeydown: moveTab },
-          opened.files.map((file, i) =>
-            h(
-              "button",
-              {
-                type: "button",
-                role: "tab",
-                id: tabId(i),
-                class: "rich-example-tab",
-                "aria-selected": String(i === active.value),
-                "aria-controls": `${ids}-panel`,
-                tabindex: i === active.value ? 0 : -1,
-                onClick: () => choose(i),
-              },
-              file.name,
-            ),
+  const withFiles = (editor: VNode): VNodeArrayChildren => {
+    if (opened.files.length === 1) return [editor];
+    const list = layout.value === "list";
+    const open = !list || listOpen.value;
+    const measuring = h(
+      "div",
+      { key: "measure", class: "rich-example-tabs rich-example-tabs-measure", ref: measureRow, "aria-hidden": "true", inert: true },
+      order.map((file) => h("button", { type: "button", class: "rich-example-tab", tabindex: -1 }, opened.files[file]!.name)),
+    );
+    const tabs = list
+      ? groups.flatMap(({ folder, files }) => [
+          ...(folder === "" ? [] : [h("div", { class: "rich-example-folder", "aria-hidden": "true" }, `${folder}/`)]),
+          ...files.map((file) => tab(file, opened.files[file]!.name.slice(folder === "" ? 0 : folder.length + 1))),
+        ])
+      : order.map((file) => tab(file, opened.files[file]!.name));
+    // [LAW:dataflow-not-control-flow] One shape for both layouts, keyed, so
+    // a change of layout restyles the tabs and never remounts the editor.
+    return [
+      measuring,
+      h("div", { key: "files", class: ["rich-example-files", list ? "rich-example-files-listed" : null, open ? null : "rich-example-files-folded"] }, [
+        h("div", { key: "filelist", class: "rich-example-filelist" }, [
+          list
+            ? h(
+                "button",
+                {
+                  type: "button",
+                  class: "rich-example-files-toggle",
+                  "aria-expanded": String(open),
+                  "aria-controls": `${ids}-files`,
+                  onClick: () => (listOpen.value = !open),
+                  // Folded, the toggle is where the arrows move between files.
+                  onKeydown: open ? undefined : moveTab,
+                },
+                open ? "◂ Files" : `▸ ${opened.files[active.value]!.name}`,
+              )
+            : null,
+          h(
+            "div",
+            {
+              class: "rich-example-tabs",
+              id: `${ids}-files`,
+              role: "tablist",
+              "aria-label": "Files",
+              "aria-orientation": list ? "vertical" : "horizontal",
+              hidden: !open,
+              onKeydown: moveTab,
+            },
+            tabs,
           ),
-        );
+        ]),
+        editor,
+      ]),
+    ];
+  };
 
   /** What makes the editor the tabs' panel, labelled by the chosen tab; nothing where there are no tabs. */
   const panel = () => (opened.files.length === 1 ? {} : { id: `${ids}-panel`, role: "tabpanel", "aria-labelledby": tabId(active.value) });
@@ -737,7 +851,7 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
     });
   };
 
-  return { code, active, edited: isEdited, run, openEditor, editedLine, tabs, panel, sliders, failures, output };
+  return { code, active, edited: isEdited, run, openEditor, editedLine, withFiles, panel, sliders, failures, output };
 }
 
 /**
@@ -867,8 +981,7 @@ function openCardView(
     core,
     render: () =>
       h("div", { class: "rich-example rich-example-card", ref: root }, [
-        core.tabs(),
-        h("div", { class: "rich-example-editor", ref: host, ...core.panel() }),
+        ...core.withFiles(h("div", { key: "editor", class: "rich-example-editor", ref: host, ...core.panel() })),
         core.failures(),
         core.sliders(),
         core.editedLine(),

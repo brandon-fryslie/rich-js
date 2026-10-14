@@ -282,3 +282,82 @@ for (const [name, edit, said] of [
     expect(at!.y).toBeLessThan(output!.y);
   });
 }
+
+test("a card whose tabs fit in one row keeps the row: rich-strip", async ({ page }) => {
+  await page.setViewportSize({ width: 1300, height: 800 });
+  await openDemo(page, "rich-strip");
+  await expect(tab(page, "app.ts")).toBeVisible(LOADED);
+  await expect(card(page).getByRole("tablist", { name: "Files" })).toHaveAttribute("aria-orientation", "horizontal");
+  await expect(card(page).locator(".rich-example-files-toggle")).toHaveCount(0);
+});
+
+for (const scheme of ["light", "dark"] as const) {
+  test(`tabs that would wrap are a list by folder beside the code, folded away on request (${scheme}): claude-sessions`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.setViewportSize({ width: 1300, height: 800 });
+    await openDemo(page, "claude-sessions");
+    const list = card(page).getByRole("tablist", { name: "Files" });
+    await expect(list).toHaveAttribute("aria-orientation", "vertical", LOADED);
+    await expect(card(page).locator(".rich-example-folder", { hasText: "views/" }).first()).toBeVisible();
+    // Beside the code, not above it.
+    const [at, code] = await Promise.all([list.boundingBox(), editor(page).boundingBox()]);
+    expect(at!.x + at!.width).toBeLessThanOrEqual(code!.x);
+
+    // A list is read top to bottom: the arrows down it choose each file in turn.
+    await tab(page, "main.ts").focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(tab(page, "app.ts")).toHaveAttribute("aria-selected", "true");
+    await expect(tab(page, "app.ts")).toBeFocused();
+    await expect(editor(page)).toContainText("Main loop for claude-sessions");
+
+    const before = (await editor(page).boundingBox())!.width;
+    const toggle = card(page).locator(".rich-example-files-toggle");
+    await toggle.click();
+    await expect(list).toBeHidden();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(toggle).toContainText("app.ts");
+    await expect.poll(async () => (await editor(page).boundingBox())!.width).toBeGreaterThan(before);
+    await toggle.click();
+    await expect(list).toBeVisible();
+  });
+}
+
+test("in a narrow window the list of files starts folded, and opens on request: claude-sessions", async ({ page }) => {
+  await page.setViewportSize({ width: 600, height: 800 });
+  await openDemo(page, "claude-sessions");
+  const toggle = card(page).locator(".rich-example-files-toggle");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false", LOADED);
+  await expect(card(page).getByRole("tablist", { name: "Files", includeHidden: true })).toBeHidden();
+  await toggle.click();
+  await expect(card(page).getByRole("tablist", { name: "Files" })).toBeVisible();
+});
+
+test("a card resized across the fit keeps its editor, and its edit: themes-and-color-studio", async ({ page }) => {
+  await page.setViewportSize({ width: 1300, height: 800 });
+  await openDemo(page, "themes-and-color-studio");
+  const list = card(page).getByRole("tablist", { name: "Files", includeHidden: true });
+  await expect(list).toHaveAttribute("aria-orientation", "horizontal", LOADED);
+  await editor(page).click();
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.insertText("\n// kept across the resize");
+  // Too narrow for its tabs in one row, then back.
+  await page.setViewportSize({ width: 500, height: 800 });
+  await expect(list).toHaveAttribute("aria-orientation", "vertical");
+  await expect(editor(page)).toContainText("kept across the resize");
+  await page.setViewportSize({ width: 1300, height: 800 });
+  await expect(list).toHaveAttribute("aria-orientation", "horizontal");
+  await expect(editor(page)).toContainText("kept across the resize");
+  await expect(card(page).locator(".cm-editor")).toHaveCount(1);
+});
+
+test("folded, the toggle's arrows move between files: claude-sessions", async ({ page }) => {
+  await page.setViewportSize({ width: 600, height: 800 });
+  await openDemo(page, "claude-sessions");
+  const toggle = card(page).locator(".rich-example-files-toggle");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false", LOADED);
+  await toggle.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(toggle).toContainText("app.ts");
+  await expect(toggle).toBeFocused();
+  await expect(editor(page)).toContainText("Main loop for claude-sessions");
+});
