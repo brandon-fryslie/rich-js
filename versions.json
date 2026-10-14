@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-373",
+      "ref": "refs/pull/373/merge",
+      "sha": "fe899511c5256a6182e560da44814b50b76a8b63",
+      "timestamp": "2026-10-14T19:01:25.612Z",
+      "commits": [
+        {
+          "sha": "fe899511c5256a6182e560da44814b50b76a8b63",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T12:59:50-06:00",
+          "message": "Merge 080b1331da6593376aedcbbed4c00cd8fd175bd4 into 63d46dbe2fd6198ca0b7a4bf4ddc19aa88c44345\n"
+        },
+        {
+          "sha": "080b1331da6593376aedcbbed4c00cd8fd175bd4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T12:59:45-06:00",
+          "message": "fix(docs): a live card's crash is said on the card, not drawn into its terminal (rich-demos-k78j.1cv)\n\nLiveTerminal ends a crashed program in a 'crashed' state carrying the\nreport; LiveScreen hands every failure to its card through a required\n'failed' prop instead of keeping a second failure surface of its own. The\ncard's one rich-example-failure says it, located by the same crashSaid the\nstatic runs use, and keeps it through an edit that does not parse.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "63d46dbe2fd6198ca0b7a4bf4ddc19aa88c44345",
