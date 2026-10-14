@@ -66,6 +66,7 @@ import {
   type PropType,
   type Ref,
   type ShallowRef,
+  type ComponentPublicInstance,
   type Slots,
   type VNode,
   type VNodeArrayChildren,
@@ -520,7 +521,6 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
   /** Whether the tabs fit in one row, as the unseen row says (`withFiles`); and, where they do not, whether the list is open. */
   const layout = ref<"row" | "list">("row");
   const listOpen = ref(true);
-  const measure = ref<HTMLElement | null>(null);
   /** A card narrower than this starts with its list of files folded: beside the list, its code would be too narrow to read. */
   const LIST_OPEN_FROM_PX = 720;
   /**
@@ -531,10 +531,14 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
   const ROW_SPARE_PX = 32;
   let measured: ResizeObserver | undefined;
   let listedOnce = false;
-  onMounted(() => {
-    // A program of one file has no tabs to fit.
-    if (opened.files.length === 1) return;
-    const row = measure.value!;
+  /**
+   * The unseen row, observed for as long as it is in the page: a card shows
+   * it only where it has tabs (`withFiles`), so whatever renders it is what
+   * measures, and a card without it measures nothing.
+   */
+  const measureRow = (row: Element | ComponentPublicInstance | null) => {
+    measured?.disconnect();
+    if (!(row instanceof HTMLElement)) return;
     measured = new ResizeObserver(() => {
       // Where the last tab ends, not the row's scroll width, which never reads less than the row: room to spare is a fact too.
       const end = row.getBoundingClientRect().right - parseFloat(getComputedStyle(row).paddingRight);
@@ -548,7 +552,7 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
     // The row, for the card's width; each tab in it, for a font that arrives late and widens them.
     measured.observe(row);
     for (const tab of row.children) measured.observe(tab);
-  });
+  };
   onBeforeUnmount(() => measured?.disconnect());
   /** The ids that tie each tab to the editor, the panel it shows its file in. */
   const ids = useId();
@@ -740,7 +744,7 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
     const open = !list || listOpen.value;
     const measuring = h(
       "div",
-      { key: "measure", class: "rich-example-tabs rich-example-tabs-measure", ref: measure, "aria-hidden": "true", inert: true },
+      { key: "measure", class: "rich-example-tabs rich-example-tabs-measure", ref: measureRow, "aria-hidden": "true", inert: true },
       order.map((file) => h("button", { type: "button", class: "rich-example-tab", tabindex: -1 }, opened.files[file]!.name)),
     );
     const tabs = list
