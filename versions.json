@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-374",
-      "ref": "refs/pull/374/merge",
-      "sha": "4c9e9cba0d73b052b9fda181ddaafa4cf7ac46a1",
-      "timestamp": "2026-10-14T19:27:18.997Z",
-      "commits": [
-        {
-          "sha": "4c9e9cba0d73b052b9fda181ddaafa4cf7ac46a1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T19:25:37Z",
-          "message": "Merge e65799c6bb545368d22abafcde6548f0b3e9bd9d into bbdebb4f5649c9ce9362ab157eda74b7dc2ef3c6\n"
-        },
-        {
-          "sha": "e65799c6bb545368d22abafcde6548f0b3e9bd9d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T13:25:32-06:00",
-          "message": "fix(docs): the editor's scroll margin is only what the failures cover (rich-demos-k78j.rzr review)\n"
-        },
-        {
-          "sha": "64b6ec3c4810ba4f8532168d6abb02e29de6f23a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T13:23:38-06:00",
-          "message": "fix(docs): failures really stick, and a live card runs while the card is on screen (rich-demos-k78j.rzr review)\n\noverflow: clip on cards, so sticky has the window to stick to; a live\nprogram runs while its card is on screen, so an edit made above an\noff-screen terminal still runs and fails where the reader is; failure\nnodes keyed by source; editor scroll margin keeps the cursor line above\nthe stuck bar; the folded report is capped.\n"
-        },
-        {
-          "sha": "74990067af55f12e5f55b63a66b9c81e2cee9ad1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T13:16:25-06:00",
-          "message": "fix(docs): a card's failures stand under its code and stay in view while it is (rich-demos-k78j.rzr)\n\ncardCore hands its failures out on their own (failures()), and both card\nviews place them directly under the editor; the block is sticky to the\nwindow's bottom so a tall editor or output never pushes it out of sight.\n\nAlso repairs two example-card e2e assertions that 1cv broke on master: a\ncrash's failure now folds its stack under the sentence, so they read the\nsummary.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "bbdebb4f5649c9ce9362ab157eda74b7dc2ef3c6",
-      "timestamp": "2026-10-14T19:10:21.287Z",
+      "sha": "e2d42d530f6d1deca4d8993813b5c799091c777f",
+      "timestamp": "2026-10-14T19:28:54.281Z",
       "commits": [
         {
-          "sha": "bbdebb4f5649c9ce9362ab157eda74b7dc2ef3c6",
+          "sha": "e2d42d530f6d1deca4d8993813b5c799091c777f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T13:09:12-06:00",
-          "message": "fix(docs): a live card's crash is said on the card (rich-demos-k78j.1cv) (#373)\n\n* fix(docs): a live card's crash is said on the card, not drawn into its terminal (rich-demos-k78j.1cv)\n\nLiveTerminal ends a crashed program in a 'crashed' state carrying the\nreport; LiveScreen hands every failure to its card through a required\n'failed' prop instead of keeping a second failure surface of its own. The\ncard's one rich-example-failure says it, located by the same crashSaid the\nstatic runs use, and keeps it through an edit that does not parse.\n\n* fix(docs): live failures keep their stack, unfold the setup, and say a failing exit (rich-demos-k78j.1cv review)\n\n* fix(docs): failure styles outrank .vp-doc p again (rich-demos-k78j.1cv review)"
+          "timestamp": "2026-10-14T13:27:19-06:00",
+          "message": "fix(docs): card failures stay in view while editing (rich-demos-k78j.rzr) (#374)\n\n* fix(docs): a card's failures stand under its code and stay in view while it is (rich-demos-k78j.rzr)\n\ncardCore hands its failures out on their own (failures()), and both card\nviews place them directly under the editor; the block is sticky to the\nwindow's bottom so a tall editor or output never pushes it out of sight.\n\nAlso repairs two example-card e2e assertions that 1cv broke on master: a\ncrash's failure now folds its stack under the sentence, so they read the\nsummary.\n\n* fix(docs): failures really stick, and a live card runs while the card is on screen (rich-demos-k78j.rzr review)\n\noverflow: clip on cards, so sticky has the window to stick to; a live\nprogram runs while its card is on screen, so an edit made above an\noff-screen terminal still runs and fails where the reader is; failure\nnodes keyed by source; editor scroll margin keeps the cursor line above\nthe stuck bar; the folded report is capped.\n\n* fix(docs): the editor's scroll margin is only what the failures cover (rich-demos-k78j.rzr review)"
         }
       ]
     }
