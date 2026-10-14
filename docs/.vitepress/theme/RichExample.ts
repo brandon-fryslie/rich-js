@@ -41,8 +41,9 @@
  *
  * Output shown for code other than the editor's is dimmed: while an edit
  * waits to run, and after one that could not, with what went wrong in red
- * under the code, where the reader is typing. A live program that fails as it runs is said there too, by the
- * terminal handing its report to the card, never drawn over its last frame.
+ * under the code, where the reader is typing. A live program that fails as
+ * it runs is said there too, by the terminal handing its report to the
+ * card, never drawn over its last frame.
  *
  * A block the build does not run is the same card, read-only: its code over
  * the note its marker gives, and nothing to edit.
@@ -172,10 +173,10 @@ type ReadOnlyCard = Extract<CardData, { readonly run: "never" }>;
 type LiveCard = Extract<CardData, { readonly run: "browser" }>;
 
 /** A failure in the card's one place for them: its sentence, and the whole report under it, folded, when there is more. */
-const failureView = ({ said, report }: Failed): VNode =>
+const failureView = ({ said, report }: Failed, key: string): VNode =>
   report === null
-    ? h("p", { class: "rich-example-failure", role: "alert" }, said)
-    : h("details", { class: "rich-example-failure", role: "alert" }, [h("summary", said), h("pre", report)]);
+    ? h("p", { key, class: "rich-example-failure", role: "alert" }, said)
+    : h("details", { key, class: "rich-example-failure", role: "alert" }, [h("summary", said), h("pre", report)]);
 
 /** The strip naming the output panel: its label, then what stands beside it. */
 const labelStrip = (label: string, beside: readonly VNode[]): VNode =>
@@ -568,14 +569,17 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
       return null;
     });
     if (modules === null) return null;
-    const [{ createEditor, editorState }, , , { setupRegions, unfoldSetup }] = modules;
+    const [{ createEditor, editorState }, { EditorView: View }, , { setupRegions, unfoldSetup }] = modules;
+    // The failures stick over the bottom of the window (`failures`): the line
+    // the cursor is brought into view on is kept above them, not under them.
+    const underFailures = View.scrollMargins.of(() => ({ bottom: failuresBox.value?.offsetHeight ?? 0 }));
     await nextTick();
     // The card may have left the page while the editor loaded.
     if (code.value.kind !== "opening") return null;
     stateOf = (file) => {
       const { setup } = opened.files[file]!;
       const edit = (when: "paused" | "now") => (program: string) => changedIn(file, blockOf(setup, program), when);
-      return editorState(cardSource(setup, texts.value[file]!), { change: edit("paused"), run: edit("now") }, [setupRegions(setup, seat.setup), ...seat.shown(modules)]);
+      return editorState(cardSource(setup, texts.value[file]!), { change: edit("paused"), run: edit("now") }, [setupRegions(setup, seat.setup), underFailures, ...seat.shown(modules)]);
     };
     const view = createEditor(host(), stateOf(active.value));
     code.value = { kind: "editor", view, unfoldSetup: () => unfoldSetup(view) };
@@ -696,10 +700,18 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
    * window while the code above it is in view, so a failure is read where
    * the reader is typing, however tall the code or the output.
    */
+  const failuresBox = ref<HTMLElement | null>(null);
   const failures = () => {
     const now = code.value;
-    const said = [failure.value, outlet.failure(), now.kind === "fence" && now.refused !== null ? failed(now.refused) : null].filter((one) => one !== null);
-    return said.length === 0 ? null : h("div", { class: "rich-example-failures" }, said.map(failureView));
+    // Keyed by where each came from, so one going does not hand its element, and its folded report's state, to another.
+    const said = (
+      [
+        ["edit", failure.value],
+        ["running", outlet.failure()],
+        ["editor", now.kind === "fence" && now.refused !== null ? failed(now.refused) : null],
+      ] as const
+    ).flatMap(([from, one]) => (one === null ? [] : [failureView(one, from)]));
+    return said.length === 0 ? null : h("div", { class: "rich-example-failures", ref: failuresBox }, said);
   };
 
   /**

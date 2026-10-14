@@ -88,7 +88,10 @@
   margin: 16px 0;
   border: 1px solid var(--vp-c-divider);
   border-radius: 10px;
-  overflow: hidden;
+  /* Clipped, not hidden: a hidden overflow is a scroll container, and the
+   * failures held at the window's bottom (`.rich-example-failures`) would
+   * stick inside a card that never scrolls. */
+  overflow: clip;
 }
 
 .vp-doc .rich-example > div[class*='language-'] {
@@ -349,8 +352,10 @@
 }
 
 .rich-example-card .rich-example-failure > pre {
+  /* Held at the window's bottom, a long stack must not cover the code. */
+  max-height: 30vh;
   margin: 8px 0 0;
-  overflow-x: auto;
+  overflow: auto;
   white-space: pre;
   color: var(--vp-c-text-2);
 }
@@ -428,7 +433,7 @@
   max-width: 100%;
   margin: 0 auto;
   border-radius: 10px;
-  overflow: hidden;
+  overflow: clip;
   box-shadow: 0 0 0 1px var(--vp-c-divider), var(--vp-shadow-3);
 }
 

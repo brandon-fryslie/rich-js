@@ -264,20 +264,17 @@ for (const [name, edit, said] of [
   ["claude-sessions", 'throw new Error("lost in space");\n', "lost in space"],
 ] as const) {
   test(`a failure is in view while the code is, not under the output: ${name}`, async ({ page }) => {
-    await page.setViewportSize({ width: 1100, height: 700 });
+    // Shorter than the code, so only a failure held at the window's bottom is in view with it.
+    await page.setViewportSize({ width: 1100, height: 300 });
     await openDemo(page, name);
     await expect(editor(page)).toBeVisible(LOADED);
     await editor(page).click();
     await page.keyboard.press("ControlOrMeta+Home");
     await page.keyboard.insertText(edit);
     const failure = card(page).locator(".rich-example-failure", { hasText: said });
-    // A live program runs only while its terminal is on screen, so a crash needs it there once.
-    await expect
-      .poll(async () => {
-        await card(page).locator(".rich-live").scrollIntoViewIfNeeded();
-        return failure.count();
-      }, LOADED)
-      .toBe(1);
+    // The terminal is out of sight below; the card is on screen, so the edit runs and its failure is said here.
+    await expect(failure).toHaveCount(1, LOADED);
+    await expect(card(page).locator(".rich-live")).not.toBeInViewport();
     // The reader is still where they typed: the top of the code in view, and the failure with it.
     await editor(page).evaluate((element) => element.scrollIntoView({ block: "start" }));
     await expect(failure).toBeInViewport();

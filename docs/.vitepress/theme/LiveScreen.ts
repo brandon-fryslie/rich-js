@@ -5,8 +5,10 @@
  * hidden (theme/RichShowcase.ts).
  *
  * This is where the site decides when such a program runs. It runs while its
- * terminal is on screen, from the start each time it scrolls into view, and
- * stops when it scrolls away. A reader who asked their system for reduced
+ * card is on screen, from the start each time it scrolls into view, and
+ * stops when it scrolls away. The card, not the terminal: a reader editing
+ * code above a terminal scrolled out of sight still has their edit run, and
+ * hears at the code how it failed. A reader who asked their system for reduced
  * motion gets one still frame instead, and a button to run it live. It wears
  * the theme of the site's colour mode, as static output does.
  *
@@ -134,13 +136,15 @@ export default defineComponent({
       const element = screen.value!;
       motion = matchMedia("(prefers-reduced-motion: reduce)").matches ? "still" : "live";
       // A fast scroll can deliver an enter and a leave in one batch; the last
-      // entry is where the terminal is now.
+      // entry is where the card is now.
       observer = new IntersectionObserver((entries) => {
         onScreen = entries.at(-1)!.isIntersecting;
         if (onScreen) start(motion, "run");
         else stop();
       });
-      observer.observe(element);
+      const card = element.closest(".rich-example-card");
+      if (card === null) throw new Error("A live terminal runs only inside a card: .rich-example-card is its on-screen extent.");
+      observer.observe(card);
       // The font's size follows the card's width (custom.css), so a terminal
       // made at one width is refitted when the card is resized.
       resized = new ResizeObserver(() => void ready?.then(({ live }) => live.setFont(elementFont(element)), () => {}));
