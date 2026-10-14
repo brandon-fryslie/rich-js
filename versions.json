@@ -4,15 +4,22 @@
     {
       "version": "pr-373",
       "ref": "refs/pull/373/merge",
-      "sha": "fe899511c5256a6182e560da44814b50b76a8b63",
-      "timestamp": "2026-10-14T19:01:25.612Z",
+      "sha": "fc7c032ba64ab0e0bb45fe8200a95bf75b7762e7",
+      "timestamp": "2026-10-14T19:07:26.298Z",
       "commits": [
         {
-          "sha": "fe899511c5256a6182e560da44814b50b76a8b63",
+          "sha": "fc7c032ba64ab0e0bb45fe8200a95bf75b7762e7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T12:59:50-06:00",
-          "message": "Merge 080b1331da6593376aedcbbed4c00cd8fd175bd4 into 63d46dbe2fd6198ca0b7a4bf4ddc19aa88c44345\n"
+          "timestamp": "2026-10-14T19:06:22Z",
+          "message": "Merge 2c078bbe50d708986fb0c71e18a90b7dfd63584b into 63d46dbe2fd6198ca0b7a4bf4ddc19aa88c44345\n"
+        },
+        {
+          "sha": "2c078bbe50d708986fb0c71e18a90b7dfd63584b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T13:06:16-06:00",
+          "message": "fix(docs): live failures keep their stack, unfold the setup, and say a failing exit (rich-demos-k78j.1cv review)\n"
         },
         {
           "sha": "080b1331da6593376aedcbbed4c00cd8fd175bd4",
