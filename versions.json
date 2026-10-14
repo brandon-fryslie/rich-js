@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "e2d42d530f6d1deca4d8993813b5c799091c777f",
-      "timestamp": "2026-10-14T19:28:54.281Z",
+      "sha": "b260442de6629a61ef58d580e81a89469c3d679d",
+      "timestamp": "2026-10-14T19:56:37.072Z",
       "commits": [
         {
-          "sha": "e2d42d530f6d1deca4d8993813b5c799091c777f",
+          "sha": "b260442de6629a61ef58d580e81a89469c3d679d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T13:27:19-06:00",
-          "message": "fix(docs): card failures stay in view while editing (rich-demos-k78j.rzr) (#374)\n\n* fix(docs): a card's failures stand under its code and stay in view while it is (rich-demos-k78j.rzr)\n\ncardCore hands its failures out on their own (failures()), and both card\nviews place them directly under the editor; the block is sticky to the\nwindow's bottom so a tall editor or output never pushes it out of sight.\n\nAlso repairs two example-card e2e assertions that 1cv broke on master: a\ncrash's failure now folds its stack under the sentence, so they read the\nsummary.\n\n* fix(docs): failures really stick, and a live card runs while the card is on screen (rich-demos-k78j.rzr review)\n\noverflow: clip on cards, so sticky has the window to stick to; a live\nprogram runs while its card is on screen, so an edit made above an\noff-screen terminal still runs and fails where the reader is; failure\nnodes keyed by source; editor scroll margin keeps the cursor line above\nthe stuck bar; the folded report is capped.\n\n* fix(docs): the editor's scroll margin is only what the failures cover (rich-demos-k78j.rzr review)"
+          "timestamp": "2026-10-14T13:55:05-06:00",
+          "message": "feat(docs): many-file cards get a foldable file list (rich-demos-k78j.gjt) (#375)\n\n* feat(docs): tabs that would wrap become a foldable list of files by folder (rich-demos-k78j.gjt)\n\nAn unseen one-row copy of the tabs, at the card's width, says when they no\nlonger fit; then they are a vertical tablist beside the editor, grouped by\nfolder, folded by a toggle, and folded from the start on a card narrower\nthan 720px. Tabs follow the grouped order in both layouts and the arrow\nkeys of both orientations move along it.\n\n* fix(docs): one keyed shape for both tab layouts, measured from the real tab elements (rich-demos-k78j.gjt review)\n\nA layout change no longer remounts the editor; each tab in the unseen row\nis observed so a late font re-measures; the width picks the list's\nopening state once; going back to a row wants 32px spare; the list is\nat most 35% of the card; folded, the toggle's arrows switch files.\n\n* fix(docs): the measuring row observes itself, for as long as it is in the page (rich-demos-k78j.gjt review)"
         }
       ]
     }
