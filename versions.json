@@ -4,15 +4,22 @@
     {
       "version": "pr-374",
       "ref": "refs/pull/374/merge",
-      "sha": "7ca34ee699f3ad9259df7ca2ada42fedfe8f3055",
-      "timestamp": "2026-10-14T19:25:03.661Z",
+      "sha": "4c9e9cba0d73b052b9fda181ddaafa4cf7ac46a1",
+      "timestamp": "2026-10-14T19:27:18.997Z",
       "commits": [
         {
-          "sha": "7ca34ee699f3ad9259df7ca2ada42fedfe8f3055",
+          "sha": "4c9e9cba0d73b052b9fda181ddaafa4cf7ac46a1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T19:23:44Z",
-          "message": "Merge 64b6ec3c4810ba4f8532168d6abb02e29de6f23a into bbdebb4f5649c9ce9362ab157eda74b7dc2ef3c6\n"
+          "timestamp": "2026-10-14T19:25:37Z",
+          "message": "Merge e65799c6bb545368d22abafcde6548f0b3e9bd9d into bbdebb4f5649c9ce9362ab157eda74b7dc2ef3c6\n"
+        },
+        {
+          "sha": "e65799c6bb545368d22abafcde6548f0b3e9bd9d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T13:25:32-06:00",
+          "message": "fix(docs): the editor's scroll margin is only what the failures cover (rich-demos-k78j.rzr review)\n"
         },
         {
           "sha": "64b6ec3c4810ba4f8532168d6abb02e29de6f23a",
