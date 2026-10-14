@@ -5,7 +5,8 @@
  * progress example animates under its code while it is on screen and stops
  * when scrolled away; a reader who asked for reduced motion gets a still
  * frame; an edit restarts the program with the edited code, and one that does
- * not parse says so in red over the terminal it leaves running; a widget
+ * not parse says so in red over the terminal it leaves running, and one
+ * that fails as it runs says so in the same place, not in the terminal; a widget
  * example takes keys while its terminal has focus, and the page's own
  * shortcuts work when it does not; a prompt is answered by what the reader
  * types; a program that fails to load says so and leaves no terminal behind.
@@ -113,7 +114,7 @@ test("a program that fails to load says so, and leaves no terminal to stack anot
   await page.route(/\/assets\/chunks\/library\.[^/]+\.js$/, (route) => route.abort());
   await open(page, "progress.html");
   const live = liveUnder(page, 'progress.addTask("Rendering..."');
-  const failure = live.locator(".rich-live-failure");
+  const failure = page.locator(".rich-example-card", { hasText: 'progress.addTask("Rendering..."' }).locator(".rich-example-failure");
 
   await expect
     .poll(async () => {
@@ -150,8 +151,7 @@ for (const path of LIVE_PAGES) {
       const live = terminals.nth(i);
       await scrollTo(live);
       await expect.poll(() => rows(live), { timeout: 15_000 }).not.toBe("");
-      expect(await rows(live)).not.toContain("Uncaught");
-      await expect(live.locator(".rich-live-failure")).toHaveCount(0);
+      await expect(page.locator(".rich-example-card", { has: live }).locator(".rich-example-failure")).toHaveCount(0);
     }
     expect(errors).toEqual([]);
   });
@@ -209,6 +209,51 @@ test("an edit that does not parse says so in red, and keeps the terminal and wha
   await expect(live.locator(".xterm")).toHaveCount(1);
   expect(await rows(live)).toContain("Rendering...");
   expect(await rows(live)).not.toContain("SyntaxError");
+  expect(errors).toEqual([]);
+});
+
+// Each way a running program fails, said where the edit's own failures are,
+// and never drawn into the terminal over the program's last frame.
+for (const [kind, edit, said] of [
+  ["a throw as it starts", '\nthrow new Error("lost in space");', "Uncaught Error: lost in space"],
+  ["a throw from a timer", '\nsetTimeout(() => { throw new RangeError("too far"); }, 10);', "Uncaught RangeError: too far"],
+  ["an unhandled rejection", '\nvoid Promise.reject(new TypeError("no orbit"));', "TypeError: no orbit"],
+  ["an exit with a failing code", "\nprocess.exit(3);", "It called process.exit(3)."],
+] as const) {
+  test(`${kind} in a live example is said on its card, not in its terminal`, async ({ page }) => {
+    const errors = await open(page, "progress.html");
+    const live = liveUnder(page, 'progress.addTask("Rendering..."');
+    await scrollTo(live);
+    const card = await editAtEnd(page, 'progress.addTask("Rendering..."', "progress.stop();");
+    await page.keyboard.type(edit);
+    const failure = card.locator(".rich-example-failure");
+    await expect(failure).toContainText(said, { timeout: 20_000 });
+    await expect(button(live)).toHaveText("Run again");
+    expect(await rows(live)).not.toContain(said);
+    expect(errors).toEqual([]);
+  });
+}
+
+test("a run's failure stays said through an edit that does not parse, and goes once an edit runs", async ({ page }) => {
+  const errors = await open(page, "progress.html");
+  const live = liveUnder(page, 'progress.addTask("Rendering..."');
+  await scrollTo(live);
+  const card = await editAtEnd(page, 'progress.addTask("Rendering..."', "progress.stop();");
+  const failure = card.locator(".rich-example-failure");
+  await page.keyboard.type('\nthrow new Error("lost in space");');
+  await expect(failure).toContainText("lost in space", { timeout: 20_000 });
+
+  await page.keyboard.type("\nconst = ;");
+  await expect(failure.filter({ hasText: "SyntaxError" })).toHaveCount(1, { timeout: 10_000 });
+  await expect(failure.filter({ hasText: "lost in space" })).toHaveCount(1);
+  // Its stack is kept, folded under the line that says it.
+  const crashed = failure.filter({ hasText: "lost in space" });
+  await crashed.locator("summary").click();
+  await expect(crashed.locator("pre")).toContainText("at ");
+
+  await card.locator(".rich-example-reset").click();
+  await expect(failure).toHaveCount(0, { timeout: 20_000 });
+  await expect.poll(() => percent(live)).toBeLessThan(100);
   expect(errors).toEqual([]);
 });
 

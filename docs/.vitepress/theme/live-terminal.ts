@@ -58,7 +58,11 @@ export type LiveState =
   | { readonly kind: "running" }
   | { readonly kind: "still" }
   | { readonly kind: "stopped" }
-  | { readonly kind: "exited"; readonly code: number };
+  | { readonly kind: "exited"; readonly code: number }
+  // An uncaught failure ends the program, as it ends a Node process; its
+  // report is for the page to say where the reader is looking, not for the
+  // terminal, whose last frame would draw over it.
+  | { readonly kind: "crashed"; readonly report: string };
 
 export interface LiveTerminalOptions {
   /** The worker's script, the default export of `LIVE_RUNTIME_MODULE` (example-runner.ts). */
@@ -309,12 +313,9 @@ export class LiveTerminal {
         case "settled":
           if (mode === "still") freeze();
           return;
-        // A failure ends the program, as an uncaught exception ends a Node
-        // process, and is shown red, on lines of its own.
         case "crashed":
           flush();
-          this.host.write(`\n\x1b[31m${data.report}\x1b[0m\n`);
-          return this.end({ kind: "exited", code: 1 });
+          return this.end({ kind: "crashed", report: data.report });
         case "mark":
           return freeze();
         // What is typed reaches a program whether or not it said it would read it.

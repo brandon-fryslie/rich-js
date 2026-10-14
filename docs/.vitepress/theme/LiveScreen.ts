@@ -20,6 +20,10 @@
  * everything else about the terminal is `EXAMPLE_TERMINAL`'s. While it has focus every
  * key is the program's, so it says so: a ring round it, and the way out
  * (`LEAVE_HINT`) in its bar.
+ *
+ * What goes wrong it does not say itself: it hands each failure to `failed`,
+ * and null when the newest run starts, for the card to say it where its
+ * reader is looking. The card owns its one place for what went wrong.
  */
 import { defineComponent, h, onBeforeUnmount, onMounted, ref, watch, type PropType } from "vue";
 import { useData } from "vitepress";
@@ -35,7 +39,14 @@ const BUTTON: Record<LiveState["kind"], string> = {
   still: "Play",
   stopped: "Run",
   exited: "Run again",
+  crashed: "Run again",
 };
+
+/** What went wrong with the program on screen: it could not be started, it ended itself with a code other than 0, or it ended with an uncaught failure. */
+export type LiveFailure =
+  | { readonly kind: "unstarted"; readonly said: string }
+  | { readonly kind: "exited"; readonly code: number }
+  | { readonly kind: "crashed"; readonly report: string };
 
 export default defineComponent({
   name: "LiveScreen",
@@ -43,13 +54,13 @@ export default defineComponent({
     program: { type: Function as PropType<() => Promise<LiveProgram>>, required: true },
     terminal: { type: Object as PropType<TerminalSize>, required: true },
     contrast: { type: String as PropType<Contrast>, required: true },
+    failed: { type: Function as PropType<(failure: LiveFailure | null) => void>, required: true },
   },
   setup(props) {
     const screen = ref<HTMLElement | null>(null);
     const state = ref<LiveState>({ kind: "idle" });
     const { isDark } = useData();
     const theme = () => (isDark.value ? EXAMPLE_THEMES.dark : EXAMPLE_THEMES.light);
-    const failure = ref<string | null>(null);
     const focused = ref(false);
     let ready: Promise<{ readonly live: LiveTerminal; readonly unwatch: () => void }> | undefined;
     let observer: IntersectionObserver | undefined;
@@ -74,7 +85,10 @@ export default defineComponent({
         )
         .then(
         (live) => {
-          live.onState((next) => (state.value = next));
+          live.onState((next) => {
+            state.value = next;
+            if (next.kind === "crashed" || (next.kind === "exited" && next.code !== 0)) props.failed(next);
+          });
           return { live, unwatch: watch(isDark, () => live.setTheme(theme())) };
         },
         (error: unknown) => {
@@ -98,12 +112,12 @@ export default defineComponent({
           if (!current()) return;
           const { live } = await made(screen.value!);
           if (!current()) return;
-          failure.value = null;
+          props.failed(null);
           if (how === "edit") live.edit(program, mode);
           else live.run(program.script, mode);
         })
         .catch((error: unknown) => {
-          if (current()) failure.value = `The live terminal could not start: ${error instanceof Error ? error.message : String(error)}`;
+          if (current()) props.failed({ kind: "unstarted", said: `The live terminal could not start: ${error instanceof Error ? error.message : String(error)}` });
         });
     };
     const stop = () => {
@@ -155,7 +169,6 @@ export default defineComponent({
         }),
         h("div", { class: "rich-live-bar" }, [
           ...(focused.value ? [h("span", { class: "rich-live-hint" }, LEAVE_HINT)] : []),
-          ...(failure.value === null ? [] : [h("span", { class: "rich-live-failure", role: "alert" }, failure.value)]),
           h("button", { type: "button", class: "rich-live-button", onClick: () => start("live", "run") }, BUTTON[state.value.kind]),
         ]),
       ]);
