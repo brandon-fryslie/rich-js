@@ -572,7 +572,12 @@ function cardCore(opened: CardProgram, options: CardOptions, outlet: Outlet, edi
     const [{ createEditor, editorState }, { EditorView: View }, , { setupRegions, unfoldSetup }] = modules;
     // The failures stick over the bottom of the window (`failures`): the line
     // the cursor is brought into view on is kept above them, not under them.
-    const underFailures = View.scrollMargins.of(() => ({ bottom: failuresBox.value?.offsetHeight ?? 0 }));
+    // The margin is how far they cover the editor, which is nothing where the
+    // editor scrolls itself and they sit below it, as in the playground.
+    const underFailures = View.scrollMargins.of((view) => {
+      const box = failuresBox.value?.getBoundingClientRect();
+      return { bottom: box === undefined ? 0 : Math.max(0, view.dom.getBoundingClientRect().bottom - box.top) };
+    });
     await nextTick();
     // The card may have left the page while the editor loaded.
     if (code.value.kind !== "opening") return null;
