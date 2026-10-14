@@ -257,3 +257,31 @@ test("an interactive demo's card takes keys while focused, says so, lets focus l
   await expect.poll(() => shown(page), LOADED).toContain("Dropdown EDITED");
   expect(errors).toEqual([]);
 });
+
+for (const [name, edit, said] of [
+  ["themes-and-color-studio", "const = ;\n", "SyntaxError"],
+  // At the top: the entry's last line waits on an app that never ends.
+  ["claude-sessions", 'throw new Error("lost in space");\n', "lost in space"],
+] as const) {
+  test(`a failure is in view while the code is, not under the output: ${name}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1100, height: 700 });
+    await openDemo(page, name);
+    await expect(editor(page)).toBeVisible(LOADED);
+    await editor(page).click();
+    await page.keyboard.press("ControlOrMeta+Home");
+    await page.keyboard.insertText(edit);
+    const failure = card(page).locator(".rich-example-failure", { hasText: said });
+    // A live program runs only while its terminal is on screen, so a crash needs it there once.
+    await expect
+      .poll(async () => {
+        await card(page).locator(".rich-live").scrollIntoViewIfNeeded();
+        return failure.count();
+      }, LOADED)
+      .toBe(1);
+    // The reader is still where they typed: the top of the code in view, and the failure with it.
+    await editor(page).evaluate((element) => element.scrollIntoView({ block: "start" }));
+    await expect(failure).toBeInViewport();
+    const [at, output] = await Promise.all([failure.boundingBox(), card(page).locator(".rich-example-output").boundingBox()]);
+    expect(at!.y).toBeLessThan(output!.y);
+  });
+}

@@ -148,7 +148,7 @@ test("an error names the card's own line, under the last good output", async ({ 
   await page.keyboard.press("Home");
   await page.keyboard.type('throw new RangeError("edited");\n');
   // The page's block is 21 lines, the last printing the table; the throw is now line 21.
-  await expect(firstCard(page).locator(".rich-example-failure")).toHaveText(/RangeError: edited \(line 21\)$/, { timeout: 15_000 });
+  await expect(firstCard(page).locator(".rich-example-failure summary")).toHaveText(/RangeError: edited \(line 21\)$/, { timeout: 15_000 });
   expect(errors).toEqual([]);
 });
 
@@ -193,7 +193,7 @@ test("a click above a card's code opens it folded, and an error's line is counte
   await expect(card.locator(".rich-setup-strip")).toBeVisible();
   await page.keyboard.type("throw new RangeError(\"edited\");\n");
   // Two lines of setup, each with the blank line under it: the block's first line is the program's fifth.
-  await expect(card.locator(".rich-example-failure")).toHaveText(/RangeError: edited \(line 5\)$/, { timeout: 15_000 });
+  await expect(card.locator(".rich-example-failure summary")).toHaveText(/RangeError: edited \(line 5\)$/, { timeout: 15_000 });
   await expect(card.locator(".rich-setup-label")).toHaveCount(2);
   expect(errors).toEqual([]);
 });

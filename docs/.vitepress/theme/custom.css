@@ -318,6 +318,16 @@
   opacity: 0.45;
 }
 
+/* A card's failures, under its code (theme/RichExample.ts `failures`): held at
+ * the bottom of the window while the code above is in view, over whatever
+ * scrolls beneath. */
+.rich-example-failures {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--vp-c-bg-soft);
+}
+
 /* Under any card, not `.vp-doc`: the landing hero's card is outside it, and
  * this must still outrank `.vp-doc p`'s margins inside it. The playground's
  * own failure, above its card, is one too. */
