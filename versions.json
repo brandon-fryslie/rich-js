@@ -4,15 +4,22 @@
     {
       "version": "pr-391",
       "ref": "refs/pull/391/merge",
-      "sha": "0e81e088e7f7033ed109cf17b2c654a0e44f7586",
-      "timestamp": "2026-10-15T08:00:31.968Z",
+      "sha": "0ca03fdfc98f568e72bb02ce2169dd5d44bb04d2",
+      "timestamp": "2026-10-15T08:06:57.877Z",
       "commits": [
         {
-          "sha": "0e81e088e7f7033ed109cf17b2c654a0e44f7586",
+          "sha": "0ca03fdfc98f568e72bb02ce2169dd5d44bb04d2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:59:25-06:00",
-          "message": "Merge cb1c28341b16fcabe57d5e49fd09f8eb1d4fc925 into 2b6b3f631dc859632eb6336d8d91e928868bffe1\n"
+          "timestamp": "2026-10-15T08:05:26Z",
+          "message": "Merge b5dc30b5e55e445f6d0f7edca25f0bdfe049a1f4 into 2b6b3f631dc859632eb6336d8d91e928868bffe1\n"
+        },
+        {
+          "sha": "b5dc30b5e55e445f6d0f7edca25f0bdfe049a1f4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T02:05:21-06:00",
+          "message": "Held ESC: one rule in feed, the sink hears Escape after the buffer settles, and an ESC[/ESC O introducer that opens nothing is replayed as keys (rich-host-input-0c4f)\n"
         },
         {
           "sha": "cb1c28341b16fcabe57d5e49fd09f8eb1d4fc925",
