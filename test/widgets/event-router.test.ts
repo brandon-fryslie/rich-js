@@ -374,10 +374,26 @@ describe("InputParser on a whole-keys host", () => {
     expect(keys).toEqual(["escape", next, "x", "1"]);
   });
 
+  it.each([["["], ["O"]])("reads a whole ESC %s chunk as the Alt chord xterm.js sends it for", (glyph) => {
+    const { keys, parser } = wholeKeys();
+    parser.feed(`\x1b${glyph}`);
+    parser.feed("x");
+    expect(keys).toEqual([`meta+${glyph}`, "x"]);
+  });
+
   it("re-reads an incomplete tail after Escape", () => {
     const { keys, parser } = wholeKeys();
     parser.feed("\x1b\x1b[");
-    expect(keys).toEqual(["escape", "escape", "["]);
+    expect(keys).toEqual(["escape", "meta+["]);
+  });
+
+  it("settles the rest of the chunk when a handler throws on Escape", () => {
+    const { keys, parser } = wholeKeys((key) => {
+      if (key === "escape") throw new Error("handler");
+    });
+    expect(() => parser.feed("\x1b\x1b[")).toThrow("handler");
+    parser.feed("q");
+    expect(keys).toEqual(["escape", "meta+[", "q"]);
   });
 
   it("still reads whole sequences and Alt chords", () => {

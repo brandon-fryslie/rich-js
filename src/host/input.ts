@@ -9,10 +9,12 @@
  *
  * [LAW:dataflow-not-control-flow] The same parse pipeline runs for every
  * input chunk: append → consume one event at a time until the buffer can't
- * yield more. The byte's value, not a side-mode, decides which event is
- * emitted. There is no "are we mid-sequence" mode flag — the buffer head
- * carries all the state we need, so a UTF-8 character or an escape sequence
- * split across two chunks is completed by the second.
+ * yield more. The byte's value decides which event is emitted; there is no
+ * "are we mid-sequence" mode flag — the buffer head carries that state, so on
+ * a host whose chunks can split a key, a UTF-8 character or an escape
+ * sequence split across two chunks is completed by the second. What a chunk
+ * end means is the host's `InputChunks`, the one input to the parser that is
+ * not a byte, and it decides only what becomes of an unfinished ESC.
  *
  * Lone-ESC handling: a bare `\x1b` is ambiguous (escape key vs. start of a
  * CSI sequence), and only the host's `InputChunks` can settle it. On a
@@ -215,6 +217,11 @@ type ConsumeResult =
   | { kind: "incomplete" } // need more bytes
   | { kind: "skip"; bytes: number }; // unrecognised — drop bytes
 
+// Alt on a printable byte: the glyph the terminal sent, with meta held.
+function altKey(byte: number): KeyPress {
+  return { key: String.fromCharCode(byte), character: "", shift: false, ctrl: false, meta: true };
+}
+
 export class InputParser {
   // [LAW:types-are-the-program] The parse buffer is `Uint8Array`, not
   // `Buffer` — node's Buffer extends Uint8Array, so Buffer chunks from
@@ -233,6 +240,10 @@ export class InputParser {
   /** Feed a chunk of bytes (or a string of them) into the parser. */
   feed(chunk: Uint8Array | string): void {
     const next = typeof chunk === "string" ? UTF8_ENCODER.encode(chunk) : chunk;
+    if (this.chunks === "whole-keys") {
+      this.buffer = concatBytes(this.buffer, next);
+      return this.settleChunk();
+    }
     // A held lone ESC waits only for the rest of a split CSI/SS3 introducer.
     // Any other next chunk means Escape was its own key, even when the hold
     // timer has not run yet: a busy worker can queue the next key ahead of it,
@@ -247,7 +258,6 @@ export class InputParser {
     } finally {
       this.drain();
     }
-    if (this.chunks === "whole-keys") return this.settleChunk();
     // [LAW:dataflow-not-control-flow] If a lone ESC remains, defer emission
     // until the next macrotask so a follow-up chunk can extend it. Only a lone
     // one: a sequence split after `ESC [` waits for its rest, however late.
@@ -260,14 +270,24 @@ export class InputParser {
   }
 
   // A whole-key chunk has ended, so an ESC still at the buffer head opens no
-  // sequence — not even after `[` or `O`, which a busy worker can have queued
-  // as the next key. The buffer is settled before the sink hears Escape, as in
-  // `feed`, so a sink that resets the parser ends the loop.
+  // sequence. `ESC [` / `ESC O` alone is the whole key Alt+[ / Alt+O; any
+  // other ESC is Escape, and what followed it is read again on its own. Each
+  // key is taken off the buffer before the sink hears it, and the rest is
+  // settled even when the sink throws, so no introducer outlives its chunk.
   private settleChunk(): void {
-    while (this.buffer[0] === ESC) {
-      this.buffer = this.buffer.subarray(1);
-      this.sink.key(ESCAPE);
+    try {
       this.drain();
+    } finally {
+      if (this.buffer[0] === ESC) {
+        const introducer = this.buffer.length === 2;
+        const press = introducer ? altKey(this.buffer[1]!) : ESCAPE;
+        this.buffer = this.buffer.subarray(introducer ? 2 : 1);
+        try {
+          this.sink.key(press);
+        } finally {
+          this.settleChunk();
+        }
+      }
     }
   }
 
@@ -433,12 +453,7 @@ export class InputParser {
     // The key is the glyph the terminal sent, as for Alt+`>`: the glyph
     // already carries shift, so Alt+G is `meta+G` and never `meta+shift+g`.
     if (b1 >= 0x20 && b1 <= 0x7e) {
-      const ch = String.fromCharCode(b1);
-      return {
-        kind: "key",
-        bytes: 2,
-        event: ({ key: ch, character: "", shift: false, ctrl: false, meta: true }),
-      };
+      return { kind: "key", bytes: 2, event: altKey(b1) };
     }
     // ESC <control byte> is read as Escape, then the Ctrl chord — never as
     // Alt+Ctrl. The bytes cannot tell the two apart, and Escape then Ctrl+C
