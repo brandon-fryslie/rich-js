@@ -13,7 +13,7 @@ import type {
 } from "../core/protocol.js";
 import { drawable, getStyle } from "../core/protocol.js";
 import { Effected, type Effect } from "./effect.js";
-import { EFFECT_CURVES, onColors, shimmer } from "./effects.js";
+import { EFFECT_CURVES, atShares, shimmer } from "./effects.js";
 
 const BAR = "━";
 const ASCII_BAR = "-";
@@ -98,7 +98,8 @@ export class ProgressBar implements Renderable, Measurable {
     const ink = back.drawnColors(depth).color ?? ColorSpec.default();
     const glow = getStyle(options, "bar.pulse").drawnColors(depth).color ?? ColorSpec.default();
     const loop = shimmer(PULSE_CURVE, width, PULSE_REACH, glow.getTruecolor(theme, true), 0);
-    return onColors(new Map([[ink.getTruecolor(theme, true).hex, 1]]), loop);
+    const whole = new Map([[ink.getTruecolor(theme, true).hex, 1]]);
+    return atShares(loop, () => whole);
   }
 
   /** Rich 9d8f9a3 `__rich_console__`: the fill is counted in half cells, and a total of zero is a bar already full. */

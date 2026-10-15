@@ -174,7 +174,7 @@ describe("Effected — segments are cut only where colours change", () => {
 
   it("never cuts a wide glyph, and counts it as the two cells it covers", () => {
     const cells: EffectCell[] = [];
-    const effect: Effect = (colors, cell) => (cells.push(cell), perColumn(colors, cell, 0));
+    const effect: Effect = (colors, cell, _t, drawn) => (cells.push(cell), perColumn(colors, cell, 0, drawn));
     const segments = [...effected(fixed(new Segment("a漢b")), effect).render({ maxWidth: 10 })];
     expect(cells.map((c) => c.col)).toEqual([0, 1, 3]);
     expect(segments.map((s) => s.text)).toEqual(["a", "漢", "b"]);
@@ -217,7 +217,7 @@ describe("Effected — composition", () => {
   it("nesting two effects draws what calling one after the other draws", () => {
     const warm: Effect = (c, cell) => ({ fg: new ColorRgba(255, (cell.col * 40) % 256, 0), bg: c.bg });
     const ground: Effect = (c, cell, t) => ({ fg: c.fg, bg: new ColorRgba(0, 0, (cell.row * 90 + t) % 256) });
-    const both: Effect = (c, cell, t) => ground(warm(c, cell, t), cell, t);
+    const both: Effect = (c, cell, t, drawn) => ground(warm(c, cell, t, drawn), cell, t, drawn);
     expect(renderToString(effected(effected(styled, warm, 7), ground, 7), { width: 30 })).toBe(
       renderToString(effected(styled, both, 7), { width: 30 }),
     );

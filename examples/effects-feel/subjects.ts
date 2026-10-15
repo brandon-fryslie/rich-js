@@ -1,9 +1,9 @@
 /**
  * effects-feel — what the effects are tried on: a powerline strip and a run
- * of text, drawn in a theme, and how a loop is settled on the colours they
- * draw. The demo's screen (app.ts) shows them, and so does each card on the
- * docs' effects playground page (examples/effects-playground/kit.ts), which
- * runs this file as one of its program's files.
+ * of text, drawn in a theme, and which elements of them a pulse breathes. The
+ * demo's screen (app.ts) shows them, and so does each card on the docs'
+ * effects playground page (examples/effects-playground/kit.ts), which runs
+ * this file as one of its program's files.
  *
  * So it imports the library by its published names, as a card's file does
  * (docs/.vitepress/demo-card.ts), and nothing from node.
@@ -16,22 +16,15 @@ import {
   Measurement,
   JOINERS,
   RichText,
-  Segment,
   Strip,
   Style,
-  cellLen,
   ensureContrast,
-  graphemes,
   onColors,
-  shares,
   type Effect,
-  type Joiner,
   type Loop,
   type Measurable,
-  type Pair,
   type Renderable,
   type RenderOptions,
-  type StyledRenderable,
   type TerminalTheme,
 } from "@promptctl/rich-js";
 
@@ -66,94 +59,11 @@ export interface DrawnSubject extends Subject {
   readonly options: RenderOptions;
   /** Its width in columns. */
   readonly span: number;
-  /** The colours it sets in the cells it draws text in, by hex, as the screen shows them. */
-  readonly colors: ReadonlySet<string>;
-  /** Every distinct ink and ground of a cell it draws text in, as the screen shows them. */
-  readonly pairs: readonly Pair[];
-  /** `row:col` of every cell it draws text in. */
-  readonly text: ReadonlySet<string>;
 }
 
-/** A cell of finished output: where it is, its glyph, and the style it is drawn with. */
-export interface Cell {
-  readonly at: string;
-  readonly glyph: string;
-  readonly style: Style;
-}
-
-/**
- * Finished output cell by cell. [LAW:one-source-of-truth] It walks graphemes
- * by `graphemes()`, as `Effected` does, so a position here is the one an
- * effect was handed.
- */
-export function cellsOf(segments: Iterable<Segment>): Cell[] {
-  const cells: Cell[] = [];
-  let row = 0;
-  let col = 0;
-  for (const segment of segments) {
-    if (segment.isControl) continue;
-    for (const glyph of graphemes(segment.text)) {
-      if (glyph === "\n") {
-        row++;
-        col = 0;
-        continue;
-      }
-      cells.push({ at: `${row}:${col}`, glyph, style: segment.style ?? Style.null() });
-      col += cellLen(glyph);
-    }
-  }
-  return cells;
-}
-
-const DEFAULT = ColorSpec.default();
-
-/**
- * A cell's ink and ground as the wire draws them at `options`' depth, the
- * theme resolving the rest, and which of the two are the terminal's.
- */
-export function shown(cell: Cell, options: RenderOptions, theme: TerminalTheme): Pair {
-  const drawn = cell.style.drawnColors(options.colorSystem ?? undefined);
-  return {
-    fg: (drawn.color ?? DEFAULT).getTruecolor(theme, true),
-    bg: (drawn.bgcolor ?? DEFAULT).getTruecolor(theme, false),
-    terminal: { fg: drawn.color?.isDefault ?? true, bg: drawn.bgcolor?.isDefault ?? true },
-  };
-}
-
-/**
- * The owner stamped on every cell a joiner draws between a strip's cells: a
- * colour seam, not text. A seam is told by what drew it, not by its glyph — an
- * ASCII joiner draws other glyphs, and its lead draws none, so every cell
- * after it sits a column left of where a glyph render has it.
- */
-const SEAM = Object.freeze({ name: "seam" });
-
-/** `joiner`, every seam it draws stamped as `SEAM`'s. */
-function seamed<T extends StyledRenderable>(joiner: Joiner<T>): Joiner<T> {
-  return {
-    join(left, right, context) {
-      const seam = joiner.join(left, right, context);
-      return { render: (options) => Segment.anchorLines([[...seam.render(options)]], SEAM)[0]! };
-    },
-  };
-}
-
-/** Whether `owner` drew the cell, at any depth of its nesting. */
-function drawnBy(cell: Cell, owner: object): boolean {
-  for (let anchor = cell.style.anchor; anchor; anchor = anchor.inner) if (anchor.owner === owner) return true;
-  return false;
-}
-
-export function drawnSubject(subject: Subject, drawnWith: RenderOptions, theme: TerminalTheme): DrawnSubject {
+export function drawnSubject(subject: Subject, drawnWith: RenderOptions): DrawnSubject {
   const span = Measurement.get({ ...drawnWith, maxWidth: Number.MAX_SAFE_INTEGER }, subject.renderable).maximum;
-  const options = { ...drawnWith, maxWidth: span };
-  const lettered = cellsOf(subject.renderable.render(options)).filter((cell) => cell.glyph.trim() !== "" && !drawnBy(cell, SEAM));
-  const text = new Set(lettered.map((cell) => cell.at));
-  // A colour the cell leaves to the terminal is no colour of the subject's.
-  const drawn = lettered.map((cell) => shown(cell, options, theme));
-  const colors = new Set(drawn.flatMap(({ fg, bg, terminal }) => [...(terminal.fg ? [] : [fg.hex]), ...(terminal.bg ? [] : [bg.hex])]));
-  const pairs = [...new Map(drawn.map((pair): [string, Pair] => [`${pair.fg.hex}/${pair.bg.hex}/${pair.terminal.fg}/${pair.terminal.bg}`, pair])).values()];
-  return { ...subject, options, span, colors, pairs, text };
+  return { ...subject, options: { ...drawnWith, maxWidth: span }, span };
 }
 
 /** A colour of the theme's palette by its name; a name the palette lacks is a bug here. */
@@ -184,7 +94,7 @@ const PULSED: Readonly<Record<string, readonly string[]>> = { strip: ["ctx 61%",
 /** A powerline strip of a dozen cells over the theme's palette. */
 export function stripSubject(theme: TerminalTheme): Subject {
   const cells = STRIP_LABELS.map((label, i) => new RichText(` ${label} `, { style: stripStyle(theme, i), end: "", noWrap: true }));
-  return { name: "strip", renderable: new Strip(cells, seamed(JOINERS.powerline)), z: 0 };
+  return { name: "strip", renderable: new Strip(cells, JOINERS.powerline), z: 0 };
 }
 
 /**
@@ -199,25 +109,6 @@ export function textSubject(theme: TerminalTheme, depth: ColorDepth): Subject {
 }
 
 /**
- * `loop` on `subject`'s own colours, each at the share of it its cells can
- * spare. Shares are settled on the colours as the run's depth draws them:
- * at 256 colours a touched colour lands on the cube, and the contrast it
- * spends is the cube colour's. Only `colors` — the subject's own, unless an
- * element of it is chosen — are touched.
- */
-export function subjectUnder(subject: DrawnSubject, loop: Loop, theme: TerminalTheme, colors: ReadonlySet<string> = subject.colors): Effect {
-  const depth = subject.options.colorSystem ?? ColorDepth.TRUECOLOR;
-  const asDrawn = (color: ColorRgba, w: number): ColorRgba =>
-    ColorSpec.fromRgba(loop.touch(color, w)).downgrade(depth).getTruecolor(theme);
-  return onColors(shares(subject.pairs, colors, asDrawn), loop);
-}
-
-/** The fills of `subject`: the colours it sets that are the ground of a cell it draws text in. */
-export function fills(subject: DrawnSubject): ReadonlySet<string> {
-  return new Set(subject.pairs.flatMap(({ bg, terminal }) => (terminal.bg ? [] : [bg.hex])));
-}
-
-/**
  * A pulse breathing the elements chosen for `subject` (`PULSED`), each its
  * own `pulseAt(z)`, at a `z` of its own so each keeps a time of its own, on
  * the fill the screen draws them with; a subject with none chosen is left be.
@@ -225,7 +116,7 @@ export function fills(subject: DrawnSubject): ReadonlySet<string> {
 export function pulsedOn(subject: DrawnSubject, pulseAt: (z: number) => Loop, theme: TerminalTheme): Effect {
   const effects = (PULSED[subject.name] ?? []).map((label, n) => {
     const fill = stripStyle(theme, STRIP_LABELS.indexOf(label)).drawnColors(subject.options.colorSystem ?? undefined).bgcolor!;
-    return subjectUnder(subject, pulseAt(subject.z + 3.7 * (n + 1)), theme, new Set([fill.getTruecolor(theme, false).hex]));
+    return onColors(pulseAt(subject.z + 3.7 * (n + 1)), new Set([fill.getTruecolor(theme, false).hex]));
   });
-  return (colors, cell, t) => effects.reduce((moved, effect) => effect(moved, cell, t), colors);
+  return (colors, cell, t, drawn) => effects.reduce((moved, effect) => effect(moved, cell, t, drawn), colors);
 }

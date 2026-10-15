@@ -75,6 +75,24 @@ export interface Joiner<T extends StyledRenderable = StyledRenderable> {
   join(left: T | null, right: T | null, context: JoinContext): Renderable;
 }
 
+/**
+ * The owner every cell a strip's joiner draws is stamped with
+ * (`Segment.anchorLines`), whatever the joiner: a seam is told by what drew
+ * it, never by its glyph, which an ASCII joiner draws otherwise and a lead may
+ * not draw at all. An effect reads it to leave a seam out of the words it
+ * keeps legible (`drawnOf`, `../renderables/effect.ts`).
+ */
+export const JOIN: object = Object.freeze({ name: "join" });
+
+/**
+ * [LAW:single-enforcer] What `joiner` draws at one join, every cell stamped
+ * as `JOIN`'s: the one way `Strip` and `FlexStrip` draw a join.
+ */
+export function drawJoin<T extends StyledRenderable>(joiner: Joiner<T>, left: T | null, right: T | null, context: JoinContext): Renderable {
+  const join = joiner.join(left, right, context);
+  return { render: (options) => Segment.anchorLines([[...join.render(options)]], JOIN)[0]! };
+}
+
 // --- Strip ---
 
 export class Strip<T extends StyledRenderable = StyledRenderable> implements Renderable, Measurable {
@@ -99,12 +117,12 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
     // `left` fills the canvas, and the first item would pad over the rest of
     // the row. Where the row sits in the width is its container's to say.
     const row: RenderOptions = { ...options, justify: undefined };
-    yield* this.joiner.join(null, items[0]!, { index: 0 }).render(row);
+    yield* drawJoin(this.joiner, null, items[0]!, { index: 0 }).render(row);
     for (let i = 0; i < items.length; i++) {
       const item = items[i]!;
       yield* item.render(row);
       const next = i + 1 < items.length ? items[i + 1]! : null;
-      yield* this.joiner.join(item, next, { index: i + 1 }).render(row);
+      yield* drawJoin(this.joiner, item, next, { index: i + 1 }).render(row);
     }
 
     // [LAW:one-source-of-truth] `Strip`'s sibling `FlexStrip` ends every line

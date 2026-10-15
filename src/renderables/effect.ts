@@ -2,11 +2,18 @@
  * Effected — a renderable whose finished cells' colours pass through an
  * effect at a moment `t`.
  *
- * An effect is one pure function: a cell's colours, where the cell is, and a
- * time in, the cell's new colours out. Shimmer, pulse, fade and dissolve are
- * all this one shape, differing by what the function does with its inputs
- * [LAW:one-type-per-behavior]; two effects stack by nesting one wrapper in
- * another, which is the same as calling one after the other.
+ * An effect is one pure function: a cell's colours, where the cell is, a time,
+ * and what the element draws in that frame in, the cell's new colours out.
+ * Shimmer, pulse, fade and dissolve are all this one shape, differing by what
+ * the function does with its inputs [LAW:one-type-per-behavior]; two effects
+ * stack by nesting one wrapper in another, which is the same as calling one
+ * after the other but for what the outer one measures: the inner one's output.
+ *
+ * What the element draws (`Drawn`) is measured here, in the render, off the
+ * same reading of each segment its cells are drawn from, and handed to every
+ * cell of the frame alike. It is what an effect keeping words legible is
+ * settled against (`onColors`, `./effects.ts`), so no caller derives it a
+ * second time from a render of its own.
  *
  * [LAW:no-ambient-temporal-coupling] `t` is a constructor argument, not a
  * clock read. Whoever draws frames builds the view for each frame's `t`, so
@@ -40,6 +47,7 @@ import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
+import { JOIN } from "../core/strip.js";
 import { Style } from "../core/style.js";
 
 /**
@@ -71,8 +79,39 @@ export interface EffectCell {
   readonly terminal: { readonly fg: boolean; readonly bg: boolean };
 }
 
-/** A cell's colours at time `t`, in seconds. Return `colors` to leave it be. */
-export type Effect = (colors: CellColors, cell: EffectCell, t: number) => CellColors;
+/**
+ * A cell's ink and ground as the screen shows them, and which of the two are
+ * the terminal's: what an `Effect` is handed for that cell.
+ */
+export interface Pair extends CellColors {
+  readonly terminal: EffectCell["terminal"];
+}
+
+/**
+ * The colours the element an effect wraps draws its words in, in one frame,
+ * as the screen shows them: what an effect that must keep the words legible
+ * is measured against. A word cell is one whose glyph is not blank and that a
+ * strip's joiner did not draw (`JOIN`): a seam's ink is the fill beside it,
+ * not words.
+ */
+export interface Drawn {
+  /** Every distinct ink and ground of a word cell. */
+  readonly pairs: readonly Pair[];
+  /** The colours the element sets itself in its word cells, by hex: never the terminal's, whatever its hex. */
+  readonly colors: ReadonlySet<string>;
+  /** Of `colors`, the ones a word cell has for its ground. */
+  readonly fills: ReadonlySet<string>;
+  /** The depth the frame is written at: below truecolor a moved colour lands on a palette colour. */
+  readonly depth: ColorDepth;
+  /** The terminal the frame is drawn on. */
+  readonly theme: TerminalTheme;
+}
+
+/**
+ * A cell's colours at time `t`, in seconds, in a frame whose element draws
+ * `drawn`. Return `colors` to leave it be.
+ */
+export type Effect = (colors: CellColors, cell: EffectCell, t: number, drawn: Drawn) => CellColors;
 
 export interface EffectedOptions {
   /** The moment to draw, in seconds. */
@@ -116,25 +155,20 @@ export class Effected implements Renderable, Measurable {
     }
     // No depth named is no downgrade, as `drawnColors` reads it.
     const depth = options.colorSystem ?? ColorDepth.TRUECOLOR;
+    // [LAW:one-source-of-truth] The frame is measured before any cell is
+    // handed to the effect, off the same looks its cells are drawn from.
+    const looked = looks(segments, depth, this.theme);
+    const drawn = measured(looked, depth, this.theme);
     let row = 0;
     let col = 0;
-    for (const segment of segments) {
-      if (segment.isControl) {
+    for (const { segment, look } of looked) {
+      if (look === undefined) {
         yield segment;
         continue;
       }
-      const base = segment.style ?? Style.null();
-      // [LAW:single-enforcer] `drawnColors` is what the wire writes at this
-      // depth — alpha flattened, downgraded — and the theme resolves what it
-      // leaves to the terminal. A slot the effect leaves alone keeps the
-      // written spec, so it stays what the screen showed whatever moves
-      // beside it.
-      const wire = base.drawnColors(options.colorSystem ?? undefined);
-      const ink = (wire.color ?? DEFAULT).getTruecolor(this.theme, true);
-      const paper = (wire.bgcolor ?? DEFAULT).getTruecolor(this.theme, false);
-      const slots = { fg: ink, bg: paper };
-      const from = onScreen(slots, base);
-      const terminal = onScreen({ fg: wire.color?.isDefault ?? true, bg: wire.bgcolor?.isDefault ?? true }, base);
+      const { style: base, wire, slots, pair } = look;
+      const { terminal } = pair;
+      const from: CellColors = { fg: pair.fg, bg: pair.bg };
       // [LAW:one-source-of-truth] A run is cells the wire writes alike: each
       // cell is drawn at the output depth first and merged on the colours that
       // writes, so two truecolors landing on one index stay one run. A cell
@@ -147,17 +181,17 @@ export class Effected implements Renderable, Measurable {
           col = 0;
         } else {
           // Back from the screen to the style's slots: the same swap undoes itself.
-          colors = onScreen(this.effect(from, { row, col, seed: this.seed(row, col), terminal }, this.t), base);
+          colors = onScreen(this.effect(from, { row, col, seed: this.seed(row, col), terminal }, this.t, drawn), base);
           col += cellLen(glyph);
         }
         const last = runs[runs.length - 1];
-        const drawn = last !== undefined && sameColors(last.colors, colors) ? last.drawn : this.respec(wire, slots, colors, depth);
-        if (last !== undefined && writesAlike(last.drawn, drawn)) {
+        const writes = last !== undefined && sameColors(last.colors, colors) ? last.drawn : this.respec(wire, slots, colors, depth);
+        if (last !== undefined && writesAlike(last.drawn, writes)) {
           last.text += glyph;
           last.cells += cellLen(glyph);
           last.colors = colors;
         } else {
-          runs.push({ text: glyph, cells: cellLen(glyph), colors, drawn });
+          runs.push({ text: glyph, cells: cellLen(glyph), colors, drawn: writes });
         }
       }
       if (runs.every((run) => writesAlike(run.drawn, wire))) {
@@ -210,6 +244,58 @@ export class Effected implements Renderable, Measurable {
 const DEFAULT = ColorSpec.default();
 
 type DrawnColors = ReturnType<Style["drawnColors"]>;
+
+/**
+ * How one segment is drawn. [LAW:single-enforcer] `drawnColors` is what the
+ * wire writes at the depth — alpha flattened, downgraded — and the theme
+ * resolves what it leaves to the terminal. A slot an effect leaves alone keeps
+ * the written spec, so it stays what the screen showed whatever moves beside it.
+ */
+interface Look {
+  readonly style: Style;
+  /** The specs the wire writes. */
+  readonly wire: DrawnColors;
+  /** The style's two slots, as colours. */
+  readonly slots: CellColors;
+  /** The slots as the screen shows them, `reverse` applied. */
+  readonly pair: Pair;
+}
+
+/** Each of `segments` with how it is drawn at `depth` on `theme`; a control segment draws nothing. */
+function looks(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalTheme): { segment: Segment; look: Look | undefined }[] {
+  return [...segments].map((segment) => {
+    if (segment.isControl) return { segment, look: undefined };
+    const style = segment.style ?? Style.null();
+    const wire = style.drawnColors(depth);
+    const slots = { fg: (wire.color ?? DEFAULT).getTruecolor(theme, true), bg: (wire.bgcolor ?? DEFAULT).getTruecolor(theme, false) };
+    const terminal = onScreen({ fg: wire.color?.isDefault ?? true, bg: wire.bgcolor?.isDefault ?? true }, style);
+    return { segment, look: { style, wire, slots, pair: { ...onScreen(slots, style), terminal } } };
+  });
+}
+
+/** What `looked` draws its words in: `Drawn`'s measure, taken once per frame. */
+function measured(looked: readonly { segment: Segment; look: Look | undefined }[], depth: ColorDepth, theme: TerminalTheme): Drawn {
+  const words = looked.flatMap(({ segment, look }) => (look !== undefined && segment.text.trim() !== "" && !drawnByJoin(look.style) ? [look.pair] : []));
+  const pairs = [...new Map(words.map((pair): [string, Pair] => [`${pair.fg.hex}/${pair.bg.hex}/${pair.terminal.fg}/${pair.terminal.bg}`, pair])).values()];
+  // [LAW:one-source-of-truth] A slot the terminal fills is no colour of the element's, whatever its hex.
+  const own = (slot: "fg" | "bg"): string[] => pairs.flatMap((pair) => (pair.terminal[slot] ? [] : [pair[slot].hex]));
+  return { pairs, colors: new Set([...own("fg"), ...own("bg")]), fills: new Set(own("bg")), depth, theme };
+}
+
+/** Whether a strip's joiner drew the cell, at any depth of the owners' nesting. */
+function drawnByJoin(style: Style): boolean {
+  for (let anchor = style.anchor; anchor; anchor = anchor.inner) if (anchor.owner === JOIN) return true;
+  return false;
+}
+
+/**
+ * What `segments`, drawn at `depth` on `theme`, draw their words in, measured
+ * as `Effected` measures its child for every frame. Measure an element's
+ * output under an effect to read the contrast its words are left at.
+ */
+export function drawnOf(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalTheme): Drawn {
+  return measured(looks(segments, depth, theme), depth, theme);
+}
 
 /**
  * A style's colour slots as the screen shows them, or the reverse: `reverse`

@@ -14,7 +14,7 @@
 import { CATPPUCCIN_MOCHA, ColorDepth, ColorSpec, Console, Effected, Group, Live, Padding, RichText, Style, frameRate, systemClock, type Effect } from "@promptctl/rich-js";
 import { drawnSubject, stripSubject, textSubject, type DrawnSubject } from "../effects-feel/subjects.js";
 
-export { fills, pulsedOn, subjectUnder, type DrawnSubject } from "../effects-feel/subjects.js";
+export { pulsedOn, type DrawnSubject } from "../effects-feel/subjects.js";
 
 /** The theme the subjects are drawn in: the effects-feel demo's first dark one. */
 export const THEME = CATPPUCCIN_MOCHA;
@@ -43,7 +43,7 @@ export interface Pace {
 export function play(make: Make, pace: Pace): void {
   const console = new Console();
   const drawnWith = console.options;
-  const subjects = [stripSubject(THEME), textSubject(THEME, drawnWith.colorSystem ?? ColorDepth.TRUECOLOR)].map((s) => drawnSubject(s, drawnWith, THEME));
+  const subjects = [stripSubject(THEME), textSubject(THEME, drawnWith.colorSystem ?? ColorDepth.TRUECOLOR)].map((s) => drawnSubject(s, drawnWith));
   const ink = ColorSpec.fromRgba(THEME.foregroundColor);
   const dim = Style.fromColor(ink).add(Style.parse("dim"));
   const paper = Style.fromColor(ink, ColorSpec.fromRgba(THEME.backgroundColor));

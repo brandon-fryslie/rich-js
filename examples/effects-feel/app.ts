@@ -41,6 +41,8 @@ import {
   ColorSpec,
   Console,
   Effected,
+  drawnOf,
+  onColors,
   Group,
   Padding,
   RichText,
@@ -65,14 +67,13 @@ import {
   sparkle,
   wheel,
   type Curve,
-  type Loop,
   type Transition,
 } from "../../src/index.js";
 import { App, hostEnvironment, keyName, type TerminalHost } from "../../src/host/index.js";
 import { frameClock } from "../_capabilities/frame-clock.js";
 import { STEP, depthDrawn, type EffectName } from "./vocabulary.js";
 import type { NamedCurve, Settings } from "./settings.js";
-import { cellsOf, drawnSubject, fills, paletteRgba, pulsedOn, shown, stripSubject, subjectUnder, textSubject, type DrawnSubject, type Subject } from "./subjects.js";
+import { drawnSubject, paletteRgba, pulsedOn, stripSubject, textSubject, type DrawnSubject, type Subject } from "./subjects.js";
 
 /**
  * The bundled themes a run can be drawn in, in the order the theme keys walk
@@ -129,10 +130,11 @@ function sampled(seconds: number): number[] {
 }
 
 /**
- * The worst contrast between text and its ground over every frame `draw`
- * makes at each of `times`, read off the drawn cells as the wire writes them.
- * Yields after each frame, so a caller can spread the hundreds of frames a
- * loop is measured over across its own frames instead of holding one.
+ * The worst contrast between words and their ground over every frame `draw`
+ * makes at each of `times`, read off what the frame draws its words in as the
+ * wire writes it (`drawnOf`). Yields after each frame, so a caller can spread
+ * the hundreds of frames a loop is measured over across its own frames
+ * instead of holding one.
  */
 function* worstContrast(
   subjects: readonly DrawnSubject[],
@@ -143,10 +145,8 @@ function* worstContrast(
   let worst = Number.POSITIVE_INFINITY;
   for (const subject of subjects) {
     for (const t of times) {
-      for (const cell of cellsOf(draw(subject, t))) {
-        const { fg, bg } = shown(cell, subject.options, theme);
-        worst = subject.text.has(cell.at) ? Math.min(worst, contrastRatio(fg, bg)) : worst;
-      }
+      const { pairs } = drawnOf(draw(subject, t), subject.options.colorSystem ?? ColorDepth.TRUECOLOR, theme);
+      worst = Math.min(worst, ...pairs.map(({ fg, bg }) => contrastRatio(fg, bg)));
       yield;
     }
   }
@@ -169,8 +169,9 @@ function spread(steps: Generator<void>, clock: Clock, budget: number): Unsubscri
 /**
  * Everything a theme decides: the subjects drawn in it, each loop settled on
  * their colours, the contrast each loop was measured at, and the styles of
- * the lines around them. Built once per theme, since settling the shares is
- * costly, and read by every frame until the keys choose another theme.
+ * the lines around them. Built once per theme, so each loop's effect settles
+ * its shares on the first frame and reads them on every frame after, until
+ * the keys choose another theme.
  * Measuring the contrast costs more still — hundreds of frames a loop — so
  * `contrast` says it is being measured until `measure`, run between the
  * frames, has filled each loop's line in.
@@ -195,16 +196,15 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
   const quiet = Style.fromColor(ColorSpec.fromRgba(paletteRgba(theme, "foreground-muted")));
   const heading = Style.fromColor(ink).add(Style.parse("bold"));
   const depth = drawnWith.colorSystem ?? ColorDepth.TRUECOLOR;
-  const subjects = [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, drawnWith, theme));
+  const subjects = [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, drawnWith));
 
   // A loop that lights is settled on the subject's colours at the share each
   // can spare; the wheel keeps lightness and chroma, so it is tried as it is.
-  const lit = (s: DrawnSubject, loop: Loop): Effect => subjectUnder(s, loop, theme);
   const made: Record<LoopName, (subject: DrawnSubject) => Effect> = {
-    shimmer: (s) => lit(s, shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, s.z)),
+    shimmer: (s) => onColors(shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, s.z)),
     pulse: (s) => pulsedOn(s, (z) => pulse(curves.pulse, EFFECT_LIGHTS.sun, z), theme),
-    sparkle: (s) => lit(s, sparkle(curves.sparkle, s.span, EFFECT_LIGHTS.firefly, s.z)),
-    wheel: (s) => wheel(curves.wheel, s.colors, fills(s), s.z),
+    sparkle: (s) => onColors(sparkle(curves.sparkle, s.span, EFFECT_LIGHTS.firefly, s.z)),
+    wheel: (s) => wheel(curves.wheel, s.z),
   };
   const loops = Object.fromEntries(
     LOOPS.map((name) => {

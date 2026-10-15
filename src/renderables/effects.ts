@@ -36,17 +36,18 @@
  * [LAW:no-ambient-temporal-coupling] No curve reads a clock; `t` is the
  * effect's argument, so the frame owner decides when to sample.
  *
- * Every import below names something the package exports, but for `noise`,
- * which the docs' effects playground page supplies itself: each of its
+ * Every import below names something the package exports, but for `noise`
+ * and `Memo`, which the docs' effects playground page supplies itself: each of its
  * cards runs this file's own declarations as the program a visitor edits
  * (`examples/effects-playground/programs.ts`), on the published library.
  */
 
-import { ColorRgba, contrastRatio } from "../core/color.js";
+import { ColorRgba, ColorSpec, contrastRatio, type TerminalTheme } from "../core/color.js";
 import { EASES, Phase, type Ease } from "../core/easing.js";
 import { fbm, hash, noise, smoothstep } from "../core/noise.js";
+import { Memo } from "../core/memo.js";
 import { IDENTITY, Oklch } from "../core/oklch.js";
-import type { CellColors, Effect, EffectCell } from "./effect.js";
+import type { Drawn, Effect, EffectCell, Pair } from "./effect.js";
 
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
@@ -58,14 +59,6 @@ export type Field = (cell: EffectCell, t: number) => number;
 export interface Loop {
   readonly touch: Touch;
   readonly field: Field;
-}
-
-/**
- * A cell's ink and ground as the screen shows them, and which of the two are
- * the terminal's: what an `Effect` is handed for that cell.
- */
-export interface Pair extends CellColors {
-  readonly terminal: EffectCell["terminal"];
 }
 
 /** The contrast no touch takes a cell below, unless it rested below it: WCAG AA for body text. */
@@ -90,7 +83,7 @@ const ROUNDING = 0.01;
  * strength, still reads at its resting contrast or `LEGIBLE`, whichever is
  * lower. A colour in a pair but not in `colors` takes none, and so does one
  * the terminal supplies, whatever its hex, as in `onColors`. One of `colors`
- * no pair writes has nothing to be measured against, and throws.
+ * no pair writes has nothing to be measured against, and takes it all.
  *
  * Colours are settled lightest first, each against every partner: one
  * already settled at its share, one not yet settled as it is. So the lighter
@@ -107,11 +100,12 @@ export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touc
     { color: bg, own: terminal.bg ? undefined : bg.hex },
   ] as const);
   const rgba = new Map(sides.flat().flatMap(({ color, own }): [string, ColorRgba][] => (own === undefined ? [] : [[own, color]])));
-  const unpaired = [...colors].filter((hex) => !rgba.has(hex));
-  if (unpaired.length > 0) throw new RangeError(`shares: ${unpaired.join(", ")} written in no pair, so nothing to keep legible against`);
+  // A colour no pair writes keeps no word legible, so nothing bounds its share:
+  // a frame drawing a lit colour only under blanks and seams, or not at all,
+  // is a frame like any other.
+  const settled = new Map([...colors].filter((hex) => !rgba.has(hex)).map((hex): [string, number] => [hex, 1]));
   const lightness = (hex: string): number => Oklch.fromRgba(rgba.get(hex)!).l;
-  const settled = new Map<string, number>();
-  for (const hex of [...colors].sort((a, b) => lightness(b) - lightness(a))) {
+  for (const hex of [...colors].filter((hex) => rgba.has(hex)).sort((a, b) => lightness(b) - lightness(a))) {
     const partners = sides.flatMap(([fg, bg]): [ColorRgba, number][] => {
       const partner = fg.own === hex ? bg : bg.own === hex ? fg : undefined;
       return partner === undefined ? [] : [[partner.color, partner.own === undefined ? 0 : (settled.get(partner.own) ?? 0)]];
@@ -135,18 +129,47 @@ export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touc
 }
 
 /**
- * A loop as an `Effect` on a subject's own colours, by hex, wherever a cell
- * shows them, each touched at its share of the cell's strength. A powerline
- * strip's fill is the ground of its cells and the ink of the seam glyphs
- * between them, so the arrow moves with the cell it points out of. A colour
- * the terminal supplies (`EffectCell.terminal`) is not the subject's, whatever
- * its hex, and takes no share.
+ * A loop as an `Effect` on the element's own colours, by hex, wherever a cell
+ * shows them, each touched at its share of the cell's strength: the share
+ * `shares` settles for it against the pairs the element draws its words in
+ * (`Drawn`), touched as the frame's depth writes them — at 256 colours a
+ * touched colour lands on the cube, and the contrast it spends is the cube
+ * colour's. `colors` are the ones lit, by default every colour the element
+ * sets itself. A powerline strip's fill is the ground of its cells and the
+ * ink of the seam glyphs between them, so the arrow moves with the cell it
+ * points out of. A colour the terminal supplies (`EffectCell.terminal`) is
+ * not the element's, whatever its hex, and takes no share.
+ *
+ * Settling shares is costly, so it is done once for each set of colours an
+ * element draws: make the effect once and draw it in every frame, and a frame
+ * drawing what an earlier one drew costs no settling.
  */
-export function onColors(share: ReadonlyMap<string, number>, loop: Loop): Effect {
-  return ({ fg, bg }, cell, t) => {
+export function onColors(loop: Loop, colors?: ReadonlySet<string>): Effect {
+  const settled = new WeakMap<TerminalTheme, Memo<ReadonlyMap<string, number>>>();
+  const settle = (drawn: Drawn): ReadonlyMap<string, number> => {
+    const lit = colors ?? drawn.colors;
+    const key = [drawn.depth, ...drawn.pairs.map(({ fg, bg, terminal }) => `${fg.hex}/${bg.hex}/${terminal.fg}/${terminal.bg}`), "|", ...lit].join(" ");
+    const memo = settled.get(drawn.theme) ?? new Memo<ReadonlyMap<string, number>>();
+    settled.set(drawn.theme, memo);
+    const asWritten: Touch = (color, w) => ColorSpec.fromRgba(loop.touch(color, w)).downgrade(drawn.depth).getTruecolor(drawn.theme);
+    return memo.get(key, () => shares(drawn.pairs, lit, asWritten));
+  };
+  return atShares(loop, settle);
+}
+
+/**
+ * A loop as an `Effect` on colours by hex, each touched at the share
+ * `share` gives it of the cell's strength in a frame drawing what `Drawn`
+ * says; a colour it gives none, and one the terminal supplies, stays as it is.
+ */
+export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string, number>): Effect {
+  // Every cell of a frame is handed the same `Drawn`, so its shares are looked up once a frame.
+  let frame: { drawn: Drawn | undefined; share: ReadonlyMap<string, number> } = { drawn: undefined, share: new Map() };
+  return ({ fg, bg }, cell, t, drawn) => {
+    if (frame.drawn !== drawn) frame = { drawn, share: share(drawn) };
     const w = Math.round(clamp01(loop.field(cell, t)) * LEVELS) / LEVELS;
     const moved = (color: ColorRgba, terminal: boolean): ColorRgba =>
-      touchedAt(loop.touch, color, (terminal ? 0 : (share.get(color.hex) ?? 0)) * w);
+      touchedAt(loop.touch, color, (terminal ? 0 : (frame.share.get(color.hex) ?? 0)) * w);
     return { fg: moved(fg, cell.terminal.fg), bg: moved(bg, cell.terminal.bg) };
   };
 }
@@ -494,7 +517,7 @@ export type Visibility = (cell: EffectCell, t: number) => number;
  */
 export function veiled(visibility: Visibility, swing: number, ground: ColorRgba): Effect {
   const to = Oklch.fromRgba(ground);
-  return (colors: CellColors, cell, t) => {
+  return (colors, cell, t) => {
     const hidden = swing * (1 - clamp01(visibility(cell, t)));
     if (hidden === 0) return colors;
     const bg = blend(Oklch.fromRgba(colors.bg), to, hidden);
@@ -632,9 +655,10 @@ const STRAY = 180;
  * its own. A segment's stray is slow noise of its own, at `STRAY_PERIODS`,
  * so no two keep step, and the row never shows one spread of hues twice.
  * Lightness and chroma are kept, so the words read as they did; the turn
- * only happens to `colors`, the element's own, never the terminal's.
+ * only happens to the element's own colours (`Drawn.colors`), never the
+ * terminal's.
  */
-export function wheel(curve: Curve, colors: ReadonlySet<string>, fills: ReadonlySet<string>, z: number): Effect {
+export function wheel(curve: Curve, z: number): Effect {
   requireCurve(curve);
   const P = curve.seconds;
   // A segment's seed, from the colour it is.
@@ -647,12 +671,12 @@ export function wheel(curve: Curve, colors: ReadonlySet<string>, fills: Readonly
     const s = seed(hex);
     return (360 * t) / P + curve.swing * STRAY * ((stray(s, t) - stray(s, 0)) / 1.5);
   };
-  return (drawn, cell, t) => {
+  return (shown, cell, t, { colors, fills }) => {
     // Whether a slot shows one of the element's colours: never the terminal's, whatever its hex.
-    const own = { fg: !cell.terminal.fg && colors.has(drawn.fg.hex), bg: !cell.terminal.bg && colors.has(drawn.bg.hex) };
+    const own = { fg: !cell.terminal.fg && colors.has(shown.fg.hex), bg: !cell.terminal.bg && colors.has(shown.bg.hex) };
     // An own colour turns with its segment: itself if a fill or beside no own colour, else the one beside it.
     const turn = (color: ColorRgba, mine: boolean, other: ColorRgba, theirs: boolean): ColorRgba =>
       !mine ? color : Oklch.fromRgba(color).applyKey({ ...IDENTITY, hueShift: turned(fills.has(color.hex) || !theirs ? color.hex : other.hex, t) }).toRgba();
-    return { fg: turn(drawn.fg, own.fg, drawn.bg, own.bg), bg: turn(drawn.bg, own.bg, drawn.fg, own.fg) };
+    return { fg: turn(shown.fg, own.fg, shown.bg, own.bg), bg: turn(shown.bg, own.bg, shown.fg, own.fg) };
   };
 }

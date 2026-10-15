@@ -23,6 +23,7 @@ import { EFFECTS, EFFECT_DEFAULTS, RUN_DEFAULTS, STEP, type EffectName } from ".
 
 export const EFFECTS_FILE = fileURLToPath(new URL("../../src/renderables/effects.ts", import.meta.url));
 export const NOISE_FILE = fileURLToPath(new URL("../../src/core/noise.ts", import.meta.url));
+export const MEMO_FILE = fileURLToPath(new URL("../../src/core/memo.ts", import.meta.url));
 
 /** The module a program imports the kit (kit.ts) by: a file of its card beside it. */
 const KIT_MODULE = "./kit.js";
@@ -40,7 +41,7 @@ const IMPORTED_AS: Readonly<Record<string, string>> = {
  * program carries what it reaches there too, cut from that file as the
  * effect's own declarations are cut from `effects.ts`.
  */
-const CUT_FROM: Readonly<Record<string, string>> = { "../core/noise.js": NOISE_FILE };
+const CUT_FROM: Readonly<Record<string, string>> = { "../core/noise.js": NOISE_FILE, "../core/memo.js": MEMO_FILE };
 
 /** The files a program is cut from, by path: `effects.ts` and each one `CUT_FROM` names. */
 export type Sources = Readonly<Record<string, string>>;
@@ -56,10 +57,10 @@ const REPLAYING = "{ fps: FPS, step: STEP, every: CURVE.seconds * 1.25 }";
  * demo's subjects as the demo does (`scene` and `view` in app.ts).
  */
 const PLAYED: Readonly<Record<EffectName, { readonly fn: string; readonly play: string }>> = {
-  shimmer: { fn: "shimmer", play: `play((s) => subjectUnder(s, shimmer(CURVE, s.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, s.z), THEME), ${LOOPING});` },
+  shimmer: { fn: "shimmer", play: `play((s) => onColors(shimmer(CURVE, s.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, s.z)), ${LOOPING});` },
   pulse: { fn: "pulse", play: `play((s) => pulsedOn(s, (z) => pulse(CURVE, EFFECT_LIGHTS.sun, z), THEME), ${LOOPING});` },
-  sparkle: { fn: "sparkle", play: `play((s) => subjectUnder(s, sparkle(CURVE, s.span, EFFECT_LIGHTS.firefly, s.z), THEME), ${LOOPING});` },
-  wheel: { fn: "wheel", play: `play((s) => wheel(CURVE, s.colors, fills(s), s.z), ${LOOPING});` },
+  sparkle: { fn: "sparkle", play: `play((s) => onColors(sparkle(CURVE, s.span, EFFECT_LIGHTS.firefly, s.z)), ${LOOPING});` },
+  wheel: { fn: "wheel", play: `play((s) => wheel(CURVE, s.z), ${LOOPING});` },
   fade: { fn: "fadeIn", play: `play((s, start) => fadeIn(CURVE, start, s.z, THEME.backgroundColor).effect, ${REPLAYING});` },
   dissolve: { fn: "dissolveOut", play: `play((s, start) => dissolveOut(CURVE, start, s.z, THEME.backgroundColor).effect, ${REPLAYING});` },
 };
@@ -131,7 +132,7 @@ export function effectProgram(effect: EffectName, sources: Sources): string {
   return [
     ...imports,
     // `EASES`, which the curve below names, comes with `effects.ts`'s own imports.
-    `import { THEME, fills, play, pulsedOn, subjectUnder } from "${KIT_MODULE}";`,
+    `import { THEME, play, pulsedOn } from "${KIT_MODULE}";`,
     "",
     `// ${effect}: its curve, at the library's defaults (EFFECT_CURVES).`,
     `const CURVE: Curve = { seconds: ${d.seconds}, ease: EASES["${d.ease}"], swing: ${d.swing} };`,
