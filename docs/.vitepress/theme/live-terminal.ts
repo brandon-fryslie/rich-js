@@ -247,13 +247,14 @@ export class LiveTerminal {
     // over this card that reported it would have: the newest one.
     let notch = 0;
     this.host = new BrowserTerminalHost({ terminal: screen, passWheel: (lines) => scrollBy({ top: lines * notch }) });
-    // A program that asked for no pointer reports (an inline app, a still or
-    // ended card) never hears the wheel: the page scrolls past the card as it
-    // does past any element, and xterm, with no scrollback, does not turn the
-    // turn into arrow keys.
+    // Only a running program that asked for pointer reports hears the wheel.
+    // Past any other card (an inline app, a still one, one whose program ended
+    // or crashed with reporting still on) the page scrolls as it does past any
+    // element, and xterm, with no scrollback, does not turn the turn into
+    // arrow keys.
     screen.attachCustomWheelEventHandler((event) => {
       notch = distance(event);
-      return screen.modes.mouseTrackingMode !== "none";
+      return this.sandbox !== null && screen.modes.mouseTrackingMode !== "none";
     });
     // The rows are clipped by an element that clips and cannot scroll: a
     // scrollable one would scroll to show xterm's input field wherever the

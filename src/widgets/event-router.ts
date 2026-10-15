@@ -134,6 +134,7 @@ export class EventRouter {
    * outward.
    */
   wheel({ x, y, lines }: Wheel): boolean {
+    this.point(x, y);
     const target = scrollTargetAt(this.source.frame, x, y, lines);
     if (!target) return false;
     target.scrollBy(lines);
@@ -142,6 +143,15 @@ export class EventRouter {
   }
 
   // --- Dispatch ---
+
+  // [LAW:single-enforcer] Every pointer report, the wheel's included, says
+  // where the pointer is, so hover is read again from wherever it last was.
+  private point(x: number, y: number): ReturnType<typeof widgetAt> {
+    const hit = widgetAt(this.source.frame, x, y);
+    this.pointer = { x, y };
+    this.hover(hit?.widget ?? null);
+    return hit;
+  }
 
   // [LAW:dataflow-not-control-flow] Three-stage walk; same shape every
   // dispatch, only the event's `stopped` flag short-circuits later stages.
@@ -179,9 +189,7 @@ export class EventRouter {
     for (const handler of this.mouseHandlers) handler(event);
 
     const frame = this.source.frame;
-    const hit = widgetAt(frame, event.x, event.y);
-    this.pointer = { x: event.x, y: event.y };
-    this.hover(hit?.widget ?? null);
+    const hit = this.point(event.x, event.y);
 
     // After the program's handlers, so one that reads focus sees it as it was;
     // before delivery, so the pressed widget has focus when it hears the

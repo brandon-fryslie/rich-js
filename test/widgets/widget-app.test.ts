@@ -772,6 +772,18 @@ describe("WidgetApp and the wheel", () => {
     expect(host.passed()).toEqual([-1, 1]);
   });
 
+  it("hovers the widget a turn scrolls under a pointer that has reported no motion", async () => {
+    const host = scriptedHost({ cols: 10, rows: 4 });
+    const boxes = ["a", "b", "c"].map((id) => new Checkbox({ label: id, id }));
+    const viewport = new Viewport(new Group(...boxes), { rows: 2 });
+    // A Group gives the viewport no region, so it shows its own two rows.
+    start(host, () => new Group(viewport, text("\nbelow")));
+    await tick();
+    host.type(DOWN); // over the first row, which now shows b
+    await tick();
+    expect(boxes.map((box) => box.hovered)).toEqual([false, true, false]);
+  });
+
   it("offers onWheel a turn no viewport moved with, and passes on only what it does not move", async () => {
     const host = scriptedHost({ cols: 10, rows: 4 });
     const app = start(host, () => text("still"));
