@@ -554,16 +554,21 @@ describe("on a sixteen-colour terminal a loop holds still", () => {
     new RichText("   menu   ", { style: Style.parse("black on #648ee1") }),
   ];
   const themes = [["default", DEFAULT_TERMINAL_THEME], ["tokyo-night", TOKYO_NIGHT]] as const;
-  const ansi = (renderable: Renderable): string => renderToString(renderable, { width: 20, colorSystem: "ansi" });
+  // Both depths that write the sixteen slots: the ANSI terminal's and the Windows console's.
+  const depths = [["ansi", ColorDepth.STANDARD], ["windows", ColorDepth.WINDOWS]] as const;
+  const cases = Object.entries(EFFECT_CATALOGUE.loops).flatMap(([name, make]) =>
+    themes.flatMap(([theme, colors]) => depths.map(([depth, colorSystem]) => [name, theme, depth, make, colors, colorSystem] as const)),
+  );
 
-  it.each(Object.entries(EFFECT_CATALOGUE.loops).flatMap(([name, make]) => themes.map(([theme, colors]) => [name, theme, make, colors] as const)))(
-    "%s on %s writes every cell on its slot at every second of its period",
-    (name, _theme, make, theme) => {
+  it.each(cases)(
+    "%s on %s at %s writes every cell on its slot at every second of its period",
+    (name, _theme, _depth, make, theme, colorSystem) => {
       const seconds = EFFECT_CURVES[name as LoopName].seconds;
+      const write = (renderable: Renderable): string => renderToString(renderable, { width: 20, colorSystem });
       const moved = elements.flatMap((element, e) => {
         const effect = make({ span: 10, z: 7 });
-        const rest = ansi(element);
-        const t = Array.from({ length: seconds + 1 }, (_, t) => t).find((t) => ansi(new Effected(element, effect, { t, key: "k", theme })) !== rest);
+        const rest = write(element);
+        const t = Array.from({ length: seconds + 1 }, (_, t) => t).find((t) => write(new Effected(element, effect, { t, key: "k", theme })) !== rest);
         return t === undefined ? [] : [`element ${e} at t=${t}`];
       });
       expect(moved).toEqual([]);
