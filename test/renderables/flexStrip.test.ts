@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
-import { PowerlineJoiner } from "../../src/core/strip.js";
+import { arrows } from "../core/arrows.js";
 import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
@@ -62,16 +62,16 @@ describe("FlexStrip", () => {
     expect(lines.length).toBeGreaterThan(1);
   });
 
-  it("wraps with a PowerlineJoiner: every line opens with the lead and closes with the tail", () => {
+  it("wraps with a powerline joiner: every line opens with the lead and closes with the tail", () => {
     const items = [
       cell(" main ", "white on blue"),
       cell(" foo ", "white on cyan"),
       cell(" bar ", "white on green"),
       cell(" baz ", "white on magenta"),
     ];
-    // PowerlineJoiner: start-cap = lead fg=item.bg no bg; end-cap = tail fg=item.bg no bg;
+    // powerline: start-cap = lead fg=item.bg no bg; end-cap = tail fg=item.bg no bg;
     // mid = glyph fg=L.bg bg=R.bg. Caps distinct from the arrow so each is seen.
-    const strip = new FlexStrip(items, { joiner: new PowerlineJoiner({ glyph: ">", divider: "|", lead: "(", tail: ")" }) });
+    const strip = new FlexStrip(items, { joiner: arrows({ lead: "(", tail: ")" }) });
     // Each item is 6 wide. One item per line is (+6+) = 8; a second adds
     // >+6 = 7 → 15 > 14, so every line holds exactly one item.
     const lines = renderLines(strip, OPTS(14));

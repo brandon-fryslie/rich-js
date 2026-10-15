@@ -105,7 +105,8 @@ export interface RenderOptions {
   onDraw?: (owner: object) => void;
 }
 
-const ASCII_TEXT = /^[\x00-\x7F]*$/;
+/** Whether `text` is all ASCII — what an `asciiOnly` output can draw. */
+export const isAscii = (text: string): boolean => /^[\x00-\x7F]*$/.test(text);
 
 /**
  * `chosen` as this output can draw it: `ascii` in its place when the output is
@@ -127,7 +128,7 @@ export function drawable<T>(
   ascii: T,
   glyphs: (value: T) => string = String,
 ): T {
-  return options.asciiOnly === true && !ASCII_TEXT.test(glyphs(chosen)) ? ascii : chosen;
+  return options.asciiOnly === true && !isAscii(glyphs(chosen)) ? ascii : chosen;
 }
 
 /**

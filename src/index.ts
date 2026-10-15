@@ -188,21 +188,14 @@ export type { RichTextOptions } from "./core/text.js";
 // Strip + Joiner
 export {
   Strip,
-  PowerlineJoiner,
+  CellJoiner,
   SEAM_MIN_DELTA_E,
-  POWERLINE_JOINER_GLYPHS,
-  CapsuleJoiner,
-  PlainJoiner,
-  GradientJoiner,
+  POWERLINE_JOINER,
+  CAPSULE_JOINER,
+  PLAIN_JOINER,
+  gradientJoiner,
 } from "./core/strip.js";
-export type {
-  StyledRenderable,
-  Joiner,
-  PowerlineJoinerOptions,
-  CapsuleJoinerOptions,
-  PlainJoinerOptions,
-  GradientJoinerOptions,
-} from "./core/strip.js";
+export type { StyledRenderable, Joiner, JoinShape, JoinCell, CellColor, Paint } from "./core/strip.js";
 
 // renderToString — stateless one-shot emission
 export {

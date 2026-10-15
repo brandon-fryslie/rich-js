@@ -28,7 +28,7 @@ Endpoints (`null` left or right) are explicit positions in the protocol — ever
 ## Basic use
 
 ```typescript
-import { Console, Strip, RichText, PowerlineJoiner, Style } from "@promptctl/rich-js";
+import { Console, Strip, RichText, POWERLINE_JOINER, Style } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -41,13 +41,13 @@ const strip = new Strip(
     cell(" claude.ai ", "#ffffff on #0891b2"),
     cell(" 3.4k tok ", "#ffffff on #16a34a"),
   ],
-  new PowerlineJoiner(), // default set: POWERLINE_JOINER_GLYPHS
+  POWERLINE_JOINER,
 );
 
 console.print(strip);
 ```
 
-The arrow between two cells takes its fg from the left cell's right-edge background and its bg from the right cell's left-edge background. The strip opens with a lead cap in the first cell's colour and closes with a tail cap in the last cell's, each with no bg of its own. The default lead is a notch cut into the first cell — as if an arrow before it pointed in — rather than a shape pointing out, and the tail is the arrow pointing on out, so a run reads as one chevron from end to end. Swap the joiner — the strip restyles with no other code change.
+The arrow between two cells takes its fg from the left cell's right-edge background and its bg from the right cell's left-edge background. The strip opens with a lead cap in the first cell's colour and closes with a tail cap in the last cell's, each with no bg of its own. The lead is a notch cut into the first cell — as if an arrow before it pointed in — rather than a shape pointing out, and the tail is the arrow pointing on out, so a run reads as one chevron from end to end. Swap the joiner — the strip restyles with no other code change.
 
 `noWrap: true` is the option doing the work here: without it, a cell wider than the console wraps across lines and takes the strip's layout with it. `end: ""` declares that the cell contributes no line terminator of its own — without it, a cell's default `end` would draw a trailing `"\n"` into the middle of the strip's single line, breaking the layout it is meant to hold together.
 
@@ -55,15 +55,75 @@ The strip itself ends its own line, the same way [`Group`](./group)'s other chil
 
 It measures as the one row it draws, and since that row never wraps, its width is both its minimum and its maximum. A `Table` cell, an `Align` or a `Columns` holding a strip sizes it to that row: not to all the width it was offered, and never narrower than the row, which would crop off its last items.
 
-## Built-in joiners
+## One joiner, many shapes
 
-### `PowerlineJoiner`
+Every built-in joiner is a `CellJoiner`, and what tells them apart is data: a `JoinShape` naming the cells drawn at each kind of join.
 
-Powerline arrows.
+- `seam` — between two neighbours.
+- `divider` — in the seam's place where the two neighbours' backgrounds are drawn as one colour (below). It has the width of the seam.
+- `lead` — where a run is entered from nothing.
+- `tail` — where a run leaves into nothing.
+
+A `JoinCell` is a glyph and the two colours it is drawn in, `fg` and `bg`. Each colour is one of:
+
+- `{ edge: "left" | "right", part: "bg" | "fg" }` — a neighbour's background or text colour, at the column facing the join;
+- `{ role: name }` — the foreground colour of a style name, resolved against the render's [theme](./style#style-themes);
+- `{ mix: [a, b, t] }` — `a` and `b` blended at `t`;
+- `"ground"` — the terminal's own background.
+
+Nobody knows the colour of `"ground"`, so it is never mixed, and a cell may put it on one side only. As a `bg` it leaves the terminal's background showing. As an `fg` the cell is drawn in reverse video (SGR 7), filled with its `bg` colour while the glyph's ink shows the terminal's background. So an inverted shape is the same glyph drawn the other way round, never a glyph of its own.
+
+A shape is checked once, when the joiner is built, and the constructor throws on any of these:
+
+- a cell with `"ground"` on both sides, or inside a `mix`;
+- a `lead` naming the `left` neighbour, or a `tail` naming the `right` one;
+- a `oneOf` glyph whose members differ in width;
+- a `divider` whose width differs from the `seam`'s;
+- a non-ASCII glyph in the `ascii` shape.
+
+The second argument is the `ascii` shape, drawn instead when the output is [ASCII-only](./console).
 
 ```typescript
-const powerline = new PowerlineJoiner(); // POWERLINE_JOINER_GLYPHS: U+E0B0 arrow and tail, U+E0B1 divider, U+E0D7 lead (a notch)
+import { CellJoiner, POWERLINE_JOINER, type JoinShape } from "@promptctl/rich-js";
 
+// The powerline shape with the slant glyph wherever the arrow stood.
+const slant: JoinShape = {
+  seam: [{ glyph: "\ue0bc", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } }],
+  divider: [{ glyph: "\ue0bd", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } }],
+  lead: [{ glyph: "\ue0bc", fg: "ground", bg: { edge: "right", part: "bg" } }],
+  tail: [{ glyph: "\ue0bc", fg: { edge: "left", part: "bg" }, bg: "ground" }],
+};
+
+console.print(
+  new Strip(
+    [cell(" build ", "#083344 on #22d3ee"), cell(" test ", "#4a044e on #e879f9")],
+    new CellJoiner(slant, POWERLINE_JOINER.ascii),
+  ),
+);
+```
+
+### Which part a join draws
+
+Each join looks at its two neighbours. A neighbour is missing at the strip's ends. It also counts as missing when any part of the shape paints with its background and it has none to paint: no `bgcolor`, or `… on default`, which is the transparent terminal default.
+
+- Both present: the `seam`, or the `divider` where the two backgrounds are indistinct.
+- Only the right: the `lead`.
+- Only the left: the `tail`.
+- Neither: nothing.
+
+So a coloured run is capped the same way wherever it sits. A colourless item before a coloured one leads the coloured run in, exactly as the strip's start does. A coloured item before a colourless one tails out, and two colourless neighbours join with nothing. A shape that paints with neither neighbour's background, like `PLAIN_JOINER`, joins colourless items too.
+
+"Indistinct" is perceptual: two backgrounds closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) are one. They are measured as drawn. A translucent background is flattened onto the render substrate, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`), so two backgrounds that 256 colours or ANSI draw as one entry are indistinct, however far apart they were computed. Named or indexed colours have no RGB value to measure, so two of them are one only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
+
+A neighbour's background is read as drawn too, flattened onto the render substrate, so a cell painted in it continues that neighbour rather than compositing a second time over whatever the cell sits on.
+
+## Built-in joiners
+
+### `POWERLINE_JOINER`
+
+Powerline arrows: U+E0B0 in the left background over the right, and U+E0B1, the thin arrow, as the divider in the left item's text colour on its own background. The divider is the vim-airline convention, and it reads exactly as well as that item's text does. The lead is U+E0B0 with `"ground"` as its `fg`, a notch whose base is the cell's left edge. Its ink is the terminal's background colour, drawn opaque, so a terminal with a translucent background shows the notch as a solid patch of that colour. The tail is the arrow over the terminal's background. ASCII draws `>` and opens each run flat.
+
+```typescript
 console.print(
   new Strip(
     [
@@ -72,34 +132,12 @@ console.print(
       cell(" master ", "#052e16 on #4ade80"),
       cell(" ✎ 2 ", "#422006 on #facc15"),
     ],
-    powerline,
+    POWERLINE_JOINER,
   ),
 );
 ```
 
-The arrow, divider and tail are classic powerline glyphs. The lead is from the Powerline Extra range that Nerd Fonts carry, and a classic powerline-patched font does not have it; under such a font, pass `{ ...POWERLINE_JOINER_GLYPHS, lead: "" }` to open each run flat.
-
-Every join is painted in whichever neighbour has a background colour. That single rule covers all three positions:
-
-- `join(L, R)`: glyph with `fg = L.bg` as drawn (flattened onto the render substrate, so opaque — the arrow is the left cell continuing, not composited a second time over `R`), `bg = R.bg` — or, when the two backgrounds are indistinct (below), the divider with `fg = L`'s text colour and `bg = L.bg`.
-- `join(L, null)`: `tail` with `fg = L.bg` and no bg — the last cell bleeds out into the terminal.
-- `join(null, R)`: `lead` with `fg = R.bg` and no bg. The default, U+E0D7, leaves empty a triangle whose base is its cell's left edge and whose point touches the first cell, so that cell opens notched and the terminal's own background shows through the notch — it matches that background exactly, translucent or not, because nothing is painted to imitate it.
-
-When `L` and `R` share a background, the arrow would be drawn in its own background colour and vanish. The joiner draws the divider there instead (`divider`, U+E0B1 by default, the thin arrow) in `L`'s text colour on `L`'s own background, which is the vim-airline convention. The divider is therefore `L`'s text, and it reads exactly as well as that text does. "Share" is perceptual: two backgrounds closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) count as one. They are measured as drawn: a translucent background is flattened onto the render substrate, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`). So two backgrounds that 256 colours or ANSI draw as one entry share, however far apart they were computed. Named or indexed colours have no RGB value to measure, so two of them share only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
-
-The first two cells above share a background, so the seam between them is the divider, drawn in the left cell's text colour; the other two seams are arrows.
-
-```typescript
-const run = [cell(" build ", "#083344 on #22d3ee"), cell(" test ", "#4a044e on #e879f9")];
-
-console.print(new Strip(run, new PowerlineJoiner({ glyph: ">", divider: "|", lead: "<", tail: ">" }))); // an ASCII set
-console.print(new Strip(run, new PowerlineJoiner({ ...POWERLINE_JOINER_GLYPHS, lead: "\ue0b6", tail: "\ue0b4" }))); // rounded ends
-console.print(new Strip(run, new PowerlineJoiner({ ...POWERLINE_JOINER_GLYPHS, lead: "", tail: "" }))); // flat ends
-```
-
-`glyph`, `divider`, `lead` and `tail` are given together or not at all. A replacement arrow with the default divider beside it would leave a glyph the arrow's font may not have. A cap shape is a value of this set, never a joiner of its own; `""` draws that end flat.
-
-An item *without* a background is the same case as a missing one. A colourless `L` before a coloured `R` is led in exactly as the strip's start is, a coloured `L` before a colourless `R` is tailed out exactly as its end is, and two colourless neighbours join with nothing — so every coloured run is capped the same way wherever it sits in the strip. `… on default` counts as no background: the terminal default is transparent, so there is still nothing to paint.
+The first two cells above share a background, so the seam between them is the divider. The other two seams are arrows.
 
 ```typescript
 console.print(
@@ -109,22 +147,16 @@ console.print(
       cell(" then ", "italic"),
       cell(" ✘ deploy ", "#ffffff on #dc2626"),
     ],
-    new PowerlineJoiner(),
+    POWERLINE_JOINER,
   ),
 );
 ```
 
-### `CapsuleJoiner`
+### `CAPSULE_JOINER`
 
-Rounded pills — close the previous capsule, separator, open the next.
+Rounded pills. Each run is opened by U+E0B6 and closed by U+E0B4, both in its background over the terminal's, with a space between pills. ASCII draws `(` and `)`.
 
 ```typescript
-const capsules = new CapsuleJoiner({
-  left: "\ue0b6",      // 
-  right: "\ue0b4",     // 
-  separator: " ",
-});
-
 console.print(
   new Strip(
     [
@@ -132,37 +164,29 @@ console.print(
       cell("go", "black on #00add8"),
       cell("zig", "black on #f7a41d"),
     ],
-    capsules,
+    CAPSULE_JOINER,
   ),
 );
 ```
 
-- Start: left-cap with `fg = first.bg`.
-- End: right-cap with `fg = last.bg`.
-- Middle: right-cap (`fg = left.bg`) + separator + left-cap (`fg = right.bg`).
+### `PLAIN_JOINER`
 
-### `PlainJoiner`
-
-A fixed separator everywhere. Endpoints are empty.
+` | ` between every pair of items, in the theme's `strip.separator` colour (`bright_black` by default), and nothing at the ends.
 
 ```typescript
-const crumbs = new PlainJoiner({ separator: " › ", style: Style.parse("dim") });
-
 console.print(
   new Strip(
     [cell("docs", "#38bdf8"), cell("guide", "#38bdf8"), cell("strip.md", "bold #f59e0b")],
-    crumbs,
+    PLAIN_JOINER,
   ),
 );
 ```
 
-### `GradientJoiner`
+### `gradientJoiner(steps)`
 
 Interpolates colours between adjacent items' backgrounds. Useful for fade transitions, bandwidth meters, and decorative bars.
 
 ```typescript
-const fade = new GradientJoiner({ steps: 4 });
-
 console.print(
   new Strip(
     [
@@ -170,20 +194,20 @@ console.print(
       cell(" warm ", "bold #ffffff on #a21caf"),
       cell(" hot ", "bold #ffffff on #dc2626"),
     ],
-    fade,
+    gradientJoiner(4),
   ),
 );
 ```
 
-- Middle: `steps` cells, each painted with the half-block glyph `▌` (U+258C) so one cell carries **two** colour samples — `fg` for the left half, `bg` for the right half. `steps` cells therefore produce `2 × steps` colour samples between the two anchors, doubling the perceived smoothness compared to one-colour-per-cell at the same width.
-- All samples use midpoint sampling — no sample ever equals either anchor.
-- Endpoints, and items whose `bgcolor` is absent or `default`, render empty — a gradient needs two colours to ramp between.
+- The seam is `steps` cells (4 by default), each the half-block glyph `▌` (U+258C), so one cell carries **two** colour samples: `fg` for the left half and `bg` for the right. `steps` cells therefore produce `2 × steps` samples between the two anchors, doubling the perceived smoothness compared with one colour per cell at the same width. ASCII draws a space, keeping only the backgrounds.
+- Every sample is a `mix`, taken at a midpoint, so no sample ever equals either anchor.
+- Endpoints, and items whose `bgcolor` is absent or `default`, render empty, because a gradient needs two colours to ramp between.
 - A named background (`blue`, `color(4)`) is the terminal theme's own shade, so each sample is a `blend(…)` colour of the two anchors rather than a fixed RGB. An export under a theme draws the ramp from that theme's `blue` to its `red`, the shades the anchors themselves are drawn in. A live terminal is sent the standard-table RGB, because a render cannot know the terminal's palette.
-- Best on truecolor. On 256-colour terminals the colour-system downgrade still works, but adjacent samples quantize to the same palette index — neighbouring half-cells collapse into one colour and the gradient visibly stripes.
+- Best on truecolor. On 256-colour terminals the colour-system downgrade still works, but adjacent samples quantize to the same palette index, so neighbouring half-cells collapse into one colour and the gradient visibly stripes.
 
 ## Custom joiners
 
-A joiner is a pure function `(leftItem | null, rightItem | null) -> Renderable`. Implement the interface to define your own:
+A shape covers any join drawn as a fixed run of cells. Underneath it, a joiner is a pure function `(leftItem | null, rightItem | null) -> Renderable`, and implementing that interface defines a joiner no shape can express:
 
 ```typescript
 import type { Joiner, Renderable, RenderOptions, StyledRenderable } from "@promptctl/rich-js";
@@ -215,12 +239,12 @@ Items in a Strip implement `StyledRenderable` — a `Renderable` plus `edgeStyle
 
 ## Edge styles are the protocol
 
-Joiners read only the two edge columns. A `PowerlineJoiner` between items `L` and `R`, rendered with `options`, paints its glyph with:
+Joiners read only the two edge columns. `POWERLINE_JOINER` between items `L` and `R`, rendered with `options`, paints its arrow with:
 
 - `fg = L.edgeStyle("right", options).bgcolor`
 - `bg = R.edgeStyle("left", options).bgcolor`
 
-and, where those two backgrounds are within `SEAM_MIN_DELTA_E`, draws its divider with `fg = L.edgeStyle("right", options).color` instead. Where only one side has a background, the colour comes from that side alone: the lead takes `fg = R.edgeStyle("left", options).bgcolor`, the tail `fg = L.edgeStyle("right", options).bgcolor`, and neither has a bg.
+and, where those two backgrounds are within `SEAM_MIN_DELTA_E`, draws its divider with `fg = L.edgeStyle("right", options).color` instead.
 
 The interior of each item is invisible to the joiner. That means a cell can vary `bgcolor`, `fgcolor`, or text attributes per column without breaking the join — only the column the joiner actually meets matters.
 
@@ -237,7 +261,7 @@ status.stylize("bright_green", 6, 7);   // "S"
 status.stylize("bright_green", 8, 10);  // "+3"
 status.stylize("bright_red",   11, 13); // "-2"
 
-console.print(new Strip([status, cell(" rich-js ", "#ffffff on #9333ea")], new PowerlineJoiner()));
+console.print(new Strip([status, cell(" rich-js ", "#ffffff on #9333ea")], POWERLINE_JOINER));
 ```
 
 The cell's left and right edges both report `white on blue` (the base style), so the powerline arrows on either side stay consistent. The `S`/`+3`/`-2` runs in the interior have their own fg without touching the joiner.
@@ -248,7 +272,7 @@ If the leftmost and rightmost columns of a cell carry different backgrounds (e.g
 
 ## Why this is a primitive
 
-- **The join is a pure function.** Trivial to unit-test in isolation, trivial to compose. Powerline-vs-capsule is one constructor swap.
+- **The join is a pure function.** Trivial to unit-test in isolation, trivial to compose. Powerline-vs-capsule is one value swapped for another.
 - **Endpoints are explicit.** `join(null, X)` and `join(X, null)` are first-class positions — no special-casing the first/last segment after the fact.
 - **Edge-painter on a path graph.** The strip is a path, items are vertices, joiners paint edges — a clean shape that generalises to any "look at my neighbour's style" pattern.
 
@@ -257,7 +281,7 @@ If the leftmost and rightmost columns of a cell carry different backgrounds (e.g
 `FlexStrip` packs styled items into as many fit on a line and breaks to the next, like CSS `flex-wrap`. It uses the same `Joiner` protocol — every line is its own sub-strip, so a line break is just a pair of endpoints.
 
 ```typescript
-import { FlexStrip, RichText, PowerlineJoiner, Style } from "@promptctl/rich-js";
+import { FlexStrip, RichText, POWERLINE_JOINER, Style } from "@promptctl/rich-js";
 
 const strip = new FlexStrip(
   tags.map(
@@ -268,7 +292,7 @@ const strip = new FlexStrip(
         noWrap: true,
       }),
   ),
-  { joiner: new PowerlineJoiner(), gap: 0, align: "left" },
+  { joiner: POWERLINE_JOINER, gap: 0, align: "left" },
 );
 console.print(strip);
 ```

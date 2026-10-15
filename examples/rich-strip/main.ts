@@ -1,5 +1,5 @@
 /**
- * rich-strip: every built-in `Joiner`, printed one after another.
+ * rich-strip: every built-in joiner, printed one after another.
  *
  * The entry for `npm run strip` and for the demo's card on the docs site
  * alike. In the card it runs on the page's stand-in process, so the terminal
