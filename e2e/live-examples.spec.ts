@@ -14,10 +14,10 @@
  */
 import { readFileSync, readdirSync } from "node:fs";
 import { test, expect, type Locator, type Page } from "@playwright/test";
+import { pageErrors } from "./page-errors.js";
 
 async function open(page: Page, path: string): Promise<string[]> {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  const errors = pageErrors(page);
   await page.goto(path);
   return errors;
 }

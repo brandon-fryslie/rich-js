@@ -13,6 +13,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { resolve } from "node:path";
 import { bundleExample, bundleLiveRuntime, liveLibraryOnce } from "../docs/.vitepress/example-runner.js";
 import { REPO_ROOT } from "../scripts/repo-facts.js";
+import { pageErrors } from "./page-errors.js";
 
 const from = (file: string) => JSON.stringify(resolve(REPO_ROOT, file));
 
@@ -59,8 +60,7 @@ const build = () =>
 
 /** A blank page, wearing `head` if given, with a terminal on it, and every error the page itself raised. */
 async function open(page: Page, head = ""): Promise<string[]> {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  const errors = pageErrors(page);
   await page.setContent(`<!doctype html><head>${head}</head><body></body>`);
   const { harness, runtime, library } = await build();
   await page.addScriptTag({ content: harness, type: "module" });

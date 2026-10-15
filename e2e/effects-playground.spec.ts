@@ -14,14 +14,14 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
 import { EFFECTS } from "../examples/effects-feel/vocabulary.js";
 import { decodeProgram } from "../docs/.vitepress/playground-hash.js";
+import { pageErrors } from "./page-errors.js";
 
 // The editor and the library load with the card; its terminal brings xterm.js from its CDN.
 const LOADED = { timeout: 20_000 };
 
 /** The page, and every error it raised. */
 async function openPage(page: Page): Promise<string[]> {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  const errors = pageErrors(page);
   page.on("console", (msg) => {
     if (msg.type() === "error") errors.push(msg.text());
   });

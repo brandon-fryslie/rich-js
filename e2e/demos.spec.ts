@@ -23,6 +23,7 @@ import { fileURLToPath } from "node:url";
 import { demoNames } from "../docs/.vitepress/demo-entry.js";
 import { decodeProgram } from "../docs/.vitepress/playground-hash.js";
 import { card, cardRows } from "./card-screen.js";
+import { pageErrors } from "./page-errors.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -31,8 +32,7 @@ const LOADED = { timeout: 20_000 };
 
 /** A demo's page, and every error the page raised. */
 async function openDemo(page: Page, name: string): Promise<string[]> {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  const errors = pageErrors(page);
   page.on("console", (msg) => {
     if (msg.type() === "error") errors.push(msg.text());
   });
