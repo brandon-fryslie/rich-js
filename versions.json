@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "7e2ca6beee1ca3f5a134735a7bc68c07aa740798",
-      "timestamp": "2026-10-15T07:48:03.104Z",
+      "sha": "16632107cb4692eebc3b7d482166a9fb7b3b32f9",
+      "timestamp": "2026-10-15T07:49:35.568Z",
       "commits": [
         {
-          "sha": "7e2ca6beee1ca3f5a134735a7bc68c07aa740798",
+          "sha": "16632107cb4692eebc3b7d482166a9fb7b3b32f9",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:46:30-06:00",
-          "message": "JOINERS: the bundled joiner definitions by name (rich-joiners-9ntp.6pd) (#388)\n\n* JOINERS: the bundled joiner definitions by name (rich-joiners-9ntp.6pd)\n\nOne frozen table replaces POWERLINE_JOINER, CAPSULE_JOINER and PLAIN_JOINER:\npowerline, prism, slant, backslant, flame, pixel, ice, bubble, capsule,\nwrapper, metro, stitch, torn, plain — each a CellJoiner with its ASCII form.\nmetro's rail is the new strip.rail theme role. The rich-strip demo prints\nthe whole table, one joiner a row; its card grows to 30 rows.\n\n* Review (high): divider measured per seam cell; joinerNamed; torn divider; a real variant example (rich-joiners-9ntp.6pd)\n\n* Review (medium): a slot blended with itself is the slot, so prism/torn divide on named grounds; comments follow the per-cell rule (rich-joiners-9ntp.6pd)\n\n* Review (high, escalation): a seam is lost only when every cell is; ink measured on its own ground; blend at its ends is the end (rich-joiners-9ntp.6pd)"
+          "timestamp": "2026-10-15T01:47:55-06:00",
+          "message": "Playground e2e reads the playground's failure, not the card's run error (rich-playground-3cyp) (#389)\n\n* Playground e2e reads the playground's failure, not the card's run error (rich-playground-3cyp)\n\nThe fast-typing test types 250 x's, a program that throws a ReferenceError\nonce its debounced run finishes. The alert locator matched any [role=alert]\nin the playground, the card's run failure included, so toHaveCount(0) passed\nonly when it checked before the run. It now names .rich-playground-failure,\nthe one element every use of it meant.\n\n* Playground failure locator keeps the alert role; comment names every failure it shows (rich-playground-3cyp)"
         }
       ]
     }
