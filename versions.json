@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-395",
+      "ref": "refs/pull/395/merge",
+      "sha": "e2efa9b5b624b0db9183f1fa1bb0018fb68def51",
+      "timestamp": "2026-10-15T09:21:40.008Z",
+      "commits": [
+        {
+          "sha": "e2efa9b5b624b0db9183f1fa1bb0018fb68def51",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T03:20:28-06:00",
+          "message": "Merge 40d7263ac4004f4813f2a3085fd5e63d35c1bc23 into 87726acbf87c1c27a284c448721c6e70f02e98c0\n"
+        },
+        {
+          "sha": "40d7263ac4004f4813f2a3085fd5e63d35c1bc23",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T03:20:11-06:00",
+          "message": "chore(release): 0.21.0\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "87726acbf87c1c27a284c448721c6e70f02e98c0",
