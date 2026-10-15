@@ -94,7 +94,7 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
   Effected: {
     ends: "content",
     build: (content) =>
-      new Effected(content, (c) => c, {
+      new Effected(content, () => (c) => c, {
         t: 0,
         key: "content",
         theme: DEFAULT_TERMINAL_THEME,

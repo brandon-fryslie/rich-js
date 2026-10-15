@@ -91,7 +91,7 @@ const ROWS: Record<string, Row> = {
   Effected: {
     draws: "glyphs",
     make: () =>
-      new Effected(panel(), (c) => c, {
+      new Effected(panel(), () => (c) => c, {
         t: 0,
         key: "panel",
         theme: DEFAULT_TERMINAL_THEME,

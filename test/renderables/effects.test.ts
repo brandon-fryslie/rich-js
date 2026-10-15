@@ -71,14 +71,18 @@ const NOTHING = frame(new Set());
 /** An effect bound to one frame's `Drawn`, as a cell sees it. */
 type On = (colors: CellColors, cell: EffectCell, t: number) => CellColors;
 /** `effect` in frames that draw `drawn`. */
-const on = (effect: Effect, drawn: Drawn): On => (colors, cell, t) => effect(colors, cell, t, drawn);
+const on = (effect: Effect, drawn: Drawn): On => (colors, cell, t) => effect(t, drawn)(colors, cell);
 /** The ink at its whole share: the subject every curve here is tried on. */
 const inkOn = new Map([[ink.hex, 1]]);
 /** `loop` on the ink at its whole share. */
 const onInk = (loop: Loop): Effect => atShares(loop, () => inkOn);
 /** `color` under `loop` at a cell and moment, at its whole share. */
-const under = (loop: Loop, color: ColorRgba, cell: EffectCell, t: number): ColorRgba => loop.touch(color, loop.field(cell, t));
-const at = (effect: Effect, t: number): CellColors[] => cells.map((cell) => effect(colors, cell, t, NOTHING));
+const under = (loop: Loop, color: ColorRgba, cell: EffectCell, t: number): ColorRgba => loop.touch(color, loop.field(t)(cell));
+/** Every cell of `cells` in `effect`'s frame at `t`. */
+const at = (effect: Effect, t: number): CellColors[] => {
+  const shown = effect(t, NOTHING);
+  return cells.map((cell) => shown(colors, cell));
+};
 
 function bytes(renderable: Renderable): string {
   return renderToString(renderable, { width: 60 });
@@ -96,7 +100,7 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
 
   it.each([0, 11.3, 22.6, 82.14])("pulse at the start of its period, at z %s", (z) => {
     const breath = pulse(curve(3, 0.2), sun, z);
-    expect(cells.map((cell) => breath.field(cell, 0))).toEqual(cells.map(() => 0));
+    expect(cells.map(breath.field(0))).toEqual(cells.map(() => 0));
     expect(drawn(onInk(breath), 0)).toBe(untouched);
   });
 
@@ -200,7 +204,7 @@ describe("the wheel", () => {
 describe("the loops move", () => {
   it.each([0, 11.3, 22.6])("pulse warms toward its light and settles back to rest, over and over, at z %s", (z) => {
     const beat = pulse(curve(8, 0.4), sun, z);
-    const series = Array.from({ length: 1200 }, (_, i) => beat.field(cells[0]!, i / 4));
+    const series = Array.from({ length: 1200 }, (_, i) => beat.field(i / 4)(cells[0]!));
     expect(Math.max(...series)).toBeGreaterThan(0.4 * 0.7 * 0.9);
     expect(Math.max(...series)).toBeLessThanOrEqual(0.4);
     // Back at rest between beats, again and again: a run of rest after each.
@@ -212,15 +216,15 @@ describe("the loops move", () => {
 
   it("the element glows as one: every cell at once", () => {
     const beat = pulse(curve(8, 0.4), sun, 0);
-    for (const t of [3, 17.5, 90]) expect(new Set(cells.map((cell) => beat.field(cell, t))).size).toBe(1);
+    for (const t of [3, 17.5, 90]) expect(new Set(cells.map(beat.field(t))).size).toBe(1);
   });
 
   it("each element keeps a time of its own, and no beat is the last again", () => {
     const [a, b] = [pulse(curve(43, 0.5), sun, 3.7), pulse(curve(43, 0.5), sun, 7.4)];
-    const apart = Array.from({ length: 400 }, (_, i) => Math.abs(a.field(cells[0]!, i * 2) - b.field(cells[0]!, i * 2)));
+    const apart = Array.from({ length: 400 }, (_, i) => Math.abs(a.field(i * 2)(cells[0]!) - b.field(i * 2)(cells[0]!)));
     expect(Math.max(...apart)).toBeGreaterThan(0.2);
     // Beats differ in depth: the tops of the first dozen are not one height.
-    const tops = Array.from({ length: 12 }, (_, n) => Math.max(...Array.from({ length: 80 }, (_, i) => a.field(cells[0]!, ((n + i / 80) * 43) / 0.9))));
+    const tops = Array.from({ length: 12 }, (_, n) => Math.max(...Array.from({ length: 80 }, (_, i) => a.field(((n + i / 80) * 43) / 0.9)(cells[0]!))));
     expect(Math.max(...tops) - Math.min(...tops)).toBeGreaterThan(0.01);
   });
 
@@ -255,7 +259,7 @@ describe("the loops move", () => {
     // whatever their fireflies would have done.
     const at = (z: number) => {
       const loop = sparkle(curve(22, 0.5), 40, EFFECT_LIGHTS.firefly, z);
-      return Array.from({ length: 120 }, (_, t) => cells.map((cell) => loop.field(cell, t))).flat();
+      return Array.from({ length: 120 }, (_, t) => cells.map(loop.field(t))).flat();
     };
     expect(Math.max(...at(0))).toBeGreaterThan(0.25);
     expect(at(0)).not.toEqual(at(11.3));
@@ -270,7 +274,7 @@ describe("the loops move", () => {
     // strictly within `band` of its centre, so one alone, its centre between
     // two columns, lights 2·band, and that is the run seen most often. The row
     // is never lit end to end.
-    const rows = Array.from({ length: 400 }, (_, i) => cells.map((cell) => (loop.field(cell, i * 0.1) > 0 ? "x" : " ")).join(""));
+    const rows = Array.from({ length: 400 }, (_, i) => cells.map(loop.field(i * 0.1)).map((w) => (w > 0 ? "x" : " ")).join(""));
     const runs = rows.flatMap((row) =>
       row
         .slice(1, -1)
@@ -289,7 +293,7 @@ describe("the loops move", () => {
     const P = 10;
     const loop = shimmer(curve(P, 0.7), 40, 8, sun, 0);
     // Whether any light is on the row, second by second, over sixty periods.
-    const on = Array.from({ length: 60 * P }, (_, t) => cells.some((cell) => loop.field(cell, t) > 0));
+    const on = Array.from({ length: 60 * P }, (_, t) => cells.map(loop.field(t)).some((w) => w > 0));
     // The lengths of the unbroken runs where the light is `want`.
     const spells = (want: boolean): number[] =>
       on
@@ -315,7 +319,7 @@ describe("the loops move", () => {
     // 59, t 114.5, where a crest of 1 − hypot(noise, 0.12) went below zero and
     // its power was NaN.
     const glint = shimmer(curve(48, 1), 400, 400, sun, 0);
-    expect(Number.isFinite(glint.field({ row: 15, col: 59, seed: 0, terminal: written, anchor: undefined }, 114.5))).toBe(true);
+    expect(Number.isFinite(glint.field(114.5)({ row: 15, col: 59, seed: 0, terminal: written, anchor: undefined }))).toBe(true);
   });
 
   it("onColors and the wheel treat the terminal's colour as one outside the set, whatever its hex", () => {
@@ -398,7 +402,7 @@ describe("the transitions run start to end", () => {
 
   it("a cell with a fill of its own arrives from the terminal's ground, fill and ink together", () => {
     const fill = new ColorRgba(137, 180, 250);
-    const filled = (effect: Effect, t: number) => effect({ fg: ink, bg: fill }, cells[0]!, t, NOTHING);
+    const filled = (effect: Effect, t: number) => effect(t, NOTHING)({ fg: ink, bg: fill }, cells[0]!);
     const fade = curve(2, 1);
     const start = filled(fadeIn(fade, 0).effect, 0);
     expect([start.fg.hex, start.bg.hex]).toEqual([terminalGround.hex, terminalGround.hex]);
@@ -409,8 +413,8 @@ describe("the transitions run start to end", () => {
   it("the ground a cell arrives from and leaves to is that of the terminal the frame is drawn on", () => {
     const latte = { ...NOTHING, theme: CATPPUCCIN_LATTE };
     const ground = CATPPUCCIN_LATTE.backgroundColor.hex;
-    const arriving = fadeIn(curve(2, 1), 0).effect(colors, cells[0]!, 0, latte);
-    const gone = dissolveOut(curve(2, 1), 0).effect(colors, cells[0]!, 2, latte);
+    const arriving = fadeIn(curve(2, 1), 0).effect(0, latte)(colors, cells[0]!);
+    const gone = dissolveOut(curve(2, 1), 0).effect(2, latte)(colors, cells[0]!);
     expect([arriving.fg.hex, arriving.bg.hex, gone.fg.hex, gone.bg.hex]).toEqual([ground, ground, ground, ground]);
   });
 
@@ -418,7 +422,7 @@ describe("the transitions run start to end", () => {
     const dissolve = curve(30, 1);
     const effect = dissolveOut(dissolve, 0).effect;
     const wide: EffectCell[] = Array.from({ length: 120 }, (_, col) => ({ row: 0, col, seed: 0, terminal: written, anchor: undefined }));
-    const shown = (cell: EffectCell, t: number): number => distance(effect(colors, cell, t, NOTHING).fg, terminalGround);
+    const shown = (cell: EffectCell, t: number): number => distance(effect(t, NOTHING)(colors, cell).fg, terminalGround);
     const risen = wide.filter((cell) => {
       const series = Array.from({ length: 600 }, (_, i) => shown(cell, i * 0.05));
       return series.some((v, i) => i > 0 && v - series[i - 1]! > 0.002);
@@ -427,8 +431,8 @@ describe("the transitions run start to end", () => {
     expect(risen.length).toBeGreaterThan(5);
     expect(risen.length).toBeLessThan(wide.length * 0.8);
     // Every cell rises from the first, whole, to the last, gone.
-    for (const cell of wide) expect(sameColor(effect(colors, cell, dissolve.seconds, NOTHING).fg, terminalGround)).toBe(true);
-    for (const cell of wide) expect(sameColor(effect(colors, cell, 0, NOTHING).fg, ink)).toBe(true);
+    for (const cell of wide) expect(sameColor(effect(dissolve.seconds, NOTHING)(colors, cell).fg, terminalGround)).toBe(true);
+    for (const cell of wide) expect(sameColor(effect(0, NOTHING)(colors, cell).fg, ink)).toBe(true);
   });
 
   it("swing below 1 stops short of invisible", () => {
@@ -469,9 +473,9 @@ describe("a curve is checked when its effect is made", () => {
   });
 
   it("a loop's field past 1, from an ease that overshoots, is drawn at full strength and no further", () => {
-    const loop: Loop = { touch: light(sun), field: () => 1.3 };
-    const full: Loop = { touch: light(sun), field: () => 1 };
-    expect(onInk(loop)(colors, cells[0]!, 0, NOTHING)).toEqual(onInk(full)(colors, cells[0]!, 0, NOTHING));
+    const loop: Loop = { touch: light(sun), field: () => () => 1.3 };
+    const full: Loop = { touch: light(sun), field: () => () => 1 };
+    expect(onInk(loop)(0, NOTHING)(colors, cells[0]!)).toEqual(onInk(full)(0, NOTHING)(colors, cells[0]!));
   });
 });
 
@@ -512,7 +516,10 @@ describe("the loops never jump", () => {
       for (const color of fills) {
         const move = loop(span, z);
         // A frame at a time, as a screen draws them.
-        const frame = (t: number): ColorRgba[] => strip.map((cell) => under(move, color, cell, t));
+        const frame = (t: number): ColorRgba[] => {
+          const field = move.field(t);
+          return strip.map((cell) => move.touch(color, field(cell)));
+        };
         let last = frame(offset);
         for (let t = 1 + offset; t < WATCHED; t++) {
           const next = frame(t);
@@ -544,12 +551,12 @@ describe("a cell under light still reads", () => {
   it.each(cases)("%s: no strength takes a cell below its resting contrast or AA", (_, pairs) => {
     const touch = light(sun);
     const colors = new Set(pairs.flatMap(({ fg, bg, terminal }) => [...(terminal.fg ? [] : [fg.hex]), ...(terminal.bg ? [] : [bg.hex])]));
-    const effect = onColors({ touch, field: (_cell, t) => t });
+    const effect = onColors({ touch, field: (t) => () => t });
     const drawn = frame(colors, new Set(), pairs);
     for (const { fg, bg, terminal } of pairs) {
       const floor = Math.min(contrastRatio(fg, bg), AA);
       for (let w = 0; w <= 1; w += 0.05) {
-        const lit = effect({ fg, bg }, { ...cells[0]!, terminal }, w, drawn);
+        const lit = effect(w, drawn)({ fg, bg }, { ...cells[0]!, terminal });
         expect(contrastRatio(lit.fg, lit.bg)).toBeGreaterThanOrEqual(floor - 0.02);
       }
     }
@@ -625,7 +632,7 @@ describe("a loop lit on what Effected draws", () => {
     const fill = theme.palette.get("secondary")!;
     const blank = new RichText("   ", { style: Style.fromColor(ColorSpec.fromRgba(theme.palette.get("on-secondary")!), ColorSpec.fromRgba(fill)), end: "", noWrap: true });
     const bare = new Strip([words, blank], JOINERS.powerline);
-    const lit = onColors({ touch: light(sun), field: () => 1 }, new Set([fill.hex]));
+    const lit = onColors({ touch: light(sun), field: () => () => 1 }, new Set([fill.hex]));
     const cells = [...new Effected(bare, lit, { t: 0, key: "bare", theme }).render(options)].flatMap((segment) =>
       segment.style?.bgcolor === undefined ? [] : [segment.style.bgcolor.getTruecolor(theme, false)],
     );
@@ -648,7 +655,7 @@ describe("a loop lit on what Effected draws", () => {
   it("settles its shares once for what an element draws, not once a frame", () => {
     let touches = 0;
     const glow = light(sun);
-    const loop: Loop = { touch: (color, w) => (touches++, glow(color, w)), field: () => 0.5 };
+    const loop: Loop = { touch: (color, w) => (touches++, glow(color, w)), field: () => () => 0.5 };
     const lit = onColors(loop);
     const frameAt = (t: number): number => {
       touches = 0;
@@ -719,7 +726,7 @@ describe("a loop lit reads as the wire writes it", () => {
         const word = new RichText("ab", { style, end: "", noWrap: true });
         const floor = Math.min(worst(word.render(options), depth, theme), AA) - slack;
         return strengths.flatMap((w) => {
-          const lit = new Effected(word, onColors({ touch, field: () => w }), { t: 0, key: "word", theme });
+          const lit = new Effected(word, onColors({ touch, field: () => () => w }), { t: 0, key: "word", theme });
           const now = worst(lit.render(options), depth, theme);
           return now < floor ? [`${style} at ${w.toFixed(2)}: ${now.toFixed(3)} under ${floor.toFixed(3)}`] : [];
         });

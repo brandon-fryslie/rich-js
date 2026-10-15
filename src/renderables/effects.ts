@@ -53,8 +53,12 @@ import { Effected, type Drawn, type Effect, type EffectCell, type Pair } from ".
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
 
-/** How strongly a loop acts on a cell at a moment, in [0, 1]; `onColors` holds a field outside it to it. */
-export type Field = (cell: EffectCell, t: number) => number;
+/**
+ * How strongly a loop acts at a moment `t` on each cell, in [0, 1]; `onColors`
+ * holds a field outside it to it. Staged as `Effect` is: what holds for the
+ * whole moment is worked out once, then every cell is asked.
+ */
+export type Field = (t: number) => (cell: EffectCell) => number;
 
 /** A looping effect: what it does to a colour, and where and when, how strongly. */
 export interface Loop {
@@ -175,14 +179,15 @@ export function onColors(loop: Loop, colors?: ReadonlySet<string>): Effect {
  * says; a colour it gives none, and one the terminal supplies, stays as it is.
  */
 export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string, number>): Effect {
-  // Every cell of a frame is handed the same `Drawn`, so its shares are looked up once a frame.
-  let frame: { drawn: Drawn | undefined; share: ReadonlyMap<string, number> } = { drawn: undefined, share: new Map() };
-  return ({ fg, bg }, cell, t, drawn) => {
-    if (frame.drawn !== drawn) frame = { drawn, share: share(drawn) };
-    const w = Math.round(clamp01(loop.field(cell, t)) * LEVELS) / LEVELS;
-    const moved = (color: ColorRgba, terminal: boolean): ColorRgba =>
-      touchedAt(loop.touch, color, (terminal ? 0 : (frame.share.get(color.hex) ?? 0)) * w);
-    return { fg: moved(fg, cell.terminal.fg), bg: moved(bg, cell.terminal.bg) };
+  return (t, drawn) => {
+    const shared = share(drawn);
+    const field = loop.field(t);
+    return ({ fg, bg }, cell) => {
+      const w = Math.round(clamp01(field(cell)) * LEVELS) / LEVELS;
+      const moved = (color: ColorRgba, terminal: boolean): ColorRgba =>
+        touchedAt(loop.touch, color, (terminal ? 0 : (shared.get(color.hex) ?? 0)) * w);
+      return { fg: moved(fg, cell.terminal.fg), bg: moved(bg, cell.terminal.bg) };
+    };
   };
 }
 
@@ -336,14 +341,15 @@ export function pulse(curve: Curve, glow: ColorRgba, z: number): Loop {
   const WANDER = 0.1;
   const wander = (t: number): number => WANDER * noise(t / (3 * curve.seconds), 0.5, 0.5 + z);
   const start = wander(0);
-  const field: Field = (_cell, t) => {
+  const field: Field = (t) => {
     const beats = (rate * t) / curve.seconds + wander(t) - start;
     const n = Math.floor(beats);
     // Each beat's own depth, 70% to the whole of the swing; it changes where
     // the beat is at rest, so nothing jumps.
     const depth = 0.7 + 0.3 * smoothstep(-0.5, 0.5, noise(n * 0.37, 2.1, z));
     const beat = 0.5 - 0.5 * Math.cos(2 * Math.PI * (beats - n));
-    return curve.swing * curve.ease(depth * beat);
+    const level = curve.swing * curve.ease(depth * beat);
+    return () => level;
   };
   return { touch: light(glow), field };
 }
@@ -406,34 +412,30 @@ export function shimmer(curve: Curve, span: number, width: number, glow: ColorRg
     const centre = q * across - width + 0.06 * across * Math.sin(Math.PI * q) * noise(q, 2.7, j + z);
     return { strength, centre };
   };
-  // The passes on the row at one moment: a frame asks for the same moment
-  // once per cell, so they are worked out once per moment.
-  let passing = { t: Number.NaN, passes: [] as { strength: number; centre: number }[] };
-  // Where two passes overlap the brighter wins, so light never doubles up;
-  // the first slot is 0, so before it nothing is lit.
-  const band = (col: number, t: number): number => {
-    if (passing.t !== t) {
-      const last = Math.floor(t / SLOT);
-      const passes = [];
-      for (let j = Math.max(0, Math.ceil(last - UP)); j <= last; j++) passes.push(pass(j, t));
-      passing = { t, passes };
-    }
-    let lit = 0;
-    for (const { strength, centre } of passing.passes) lit = Math.max(lit, strength * bump((col - centre) / width));
-    return lit;
+  // The passes on the row at `t`; the first slot is 0, so before it there are none.
+  const passing = (t: number): { strength: number; centre: number }[] => {
+    const last = Math.floor(t / SLOT);
+    const passes = [];
+    for (let j = Math.max(0, Math.ceil(last - UP)); j <= last; j++) passes.push(pass(j, t));
+    return passes;
   };
   // A ripple's crest: a Gaussian ridge, 1 where the field crosses zero and in
   // (0, 1] for any noise, smooth throughout, so a crest sliding through a cell
   // lights it smoothly.
   const ripple = (a: number, b: number, c: number): number => Math.exp(-((noise(a, b, c) / 0.8) ** 2));
-  const field: Field = (cell, t) => {
-    const lit = band(cell.col, t);
-    const row = cell.row + z;
-    const current = 0.8 * noise(cell.col * 0.05, row * 0.3 + 1.3, t * 0.02);
-    const caustic =
-      (ripple(cell.col * 0.21 + current, row * 0.9, t * 0.022) * ripple(cell.col * 0.33 + 9.1 - current, row * 0.7, t * 0.018 + 4.2)) **
-      2;
-    return curve.swing * curve.ease(lit * (0.1 + 0.6 * caustic));
+  const field: Field = (t) => {
+    const passes = passing(t);
+    return (cell) => {
+      // Where two passes overlap the brighter wins, so light never doubles up.
+      let lit = 0;
+      for (const { strength, centre } of passes) lit = Math.max(lit, strength * bump((cell.col - centre) / width));
+      const row = cell.row + z;
+      const current = 0.8 * noise(cell.col * 0.05, row * 0.3 + 1.3, t * 0.02);
+      const caustic =
+        (ripple(cell.col * 0.21 + current, row * 0.9, t * 0.022) * ripple(cell.col * 0.33 + 9.1 - current, row * 0.7, t * 0.018 + 4.2)) **
+        2;
+      return curve.swing * curve.ease(lit * (0.1 + 0.6 * caustic));
+    };
   };
   return { touch: light(glow), field };
 }
@@ -466,58 +468,52 @@ export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number):
     // Out of step with every other firefly from the first moment.
     offset: hash(i, 0.7 + z) * TURN,
   }));
-  // Where every firefly is and how bright at one moment: a frame asks for
-  // the same moment once per cell, so it is worked out once per moment.
-  let flown = { t: Number.NaN, flies: [] as { x: number; y: number; glow: number }[] };
-  const fliesAt = (t: number) => {
-    if (flown.t !== t) {
-      flown = {
-        t,
-        flies: homes.map((fly) => {
-          // Flash `n` is one event: whether it comes, how bright, when in
-          // its turn and where are its own. Between flashes the firefly
-          // is dark, so where it moves to is never seen moving.
-          const u = t + fly.offset;
-          const n = Math.floor(u / TURN);
-          // A dark turn is a flash with no light: it keeps its length, so
-          // every flash is timed alike.
-          const lit = hash(n, fly.z + 1) < 0.15 ? 0 : 1;
-          const k = 0.5 + 0.5 * hash(n, fly.z + 2);
-          const at = hash(n, fly.z + 3) * (1 - lasts(FLASH, k));
-          const s = u / TURN - n - at;
-          // While it glows it drifts a few cells one way or the other, as
-          // fast as it is bright: quickest at its height, slowing as it
-          // fades — the lit stroke a firefly draws on the dusk. A brighter
-          // flash lasts longer and draws a longer stroke at the same pace.
-          return {
-            x:
-              fly.home +
-              HOP * (2 * hash(n, fly.z + 4) - 1) +
-              GLIDE * k * (2 * hash(n, fly.z + 5) - 1) * given(FLASH, s, k) +
-              1.5 * noise(fly.z, 0.1, t * 0.035),
-            y: 0.6 * noise(fly.z, 2.2, t * 0.035),
-            glow: lit * swell(FLASH, s, k),
-          };
-        }),
+  // Where every firefly is at `t`, and how bright.
+  const fliesAt = (t: number): { x: number; y: number; glow: number }[] =>
+    homes.map((fly) => {
+      // Flash `n` is one event: whether it comes, how bright, when in
+      // its turn and where are its own. Between flashes the firefly
+      // is dark, so where it moves to is never seen moving.
+      const u = t + fly.offset;
+      const n = Math.floor(u / TURN);
+      // A dark turn is a flash with no light: it keeps its length, so
+      // every flash is timed alike.
+      const lit = hash(n, fly.z + 1) < 0.15 ? 0 : 1;
+      const k = 0.5 + 0.5 * hash(n, fly.z + 2);
+      const at = hash(n, fly.z + 3) * (1 - lasts(FLASH, k));
+      const s = u / TURN - n - at;
+      // While it glows it drifts a few cells one way or the other, as
+      // fast as it is bright: quickest at its height, slowing as it
+      // fades — the lit stroke a firefly draws on the dusk. A brighter
+      // flash lasts longer and draws a longer stroke at the same pace.
+      return {
+        x:
+          fly.home +
+          HOP * (2 * hash(n, fly.z + 4) - 1) +
+          GLIDE * k * (2 * hash(n, fly.z + 5) - 1) * given(FLASH, s, k) +
+          1.5 * noise(fly.z, 0.1, t * 0.035),
+        y: 0.6 * noise(fly.z, 2.2, t * 0.035),
+        glow: lit * swell(FLASH, s, k),
       };
-    }
-    return flown.flies;
-  };
-  const field: Field = (cell, t) => {
-    // Where two halos overlap the brighter wins, so light never doubles up.
-    let shine = 0;
-    for (const fly of fliesAt(t)) shine = Math.max(shine, fly.glow * bump(Math.hypot(cell.col - fly.x, 2 * (cell.row - fly.y)) / HALO));
-    return curve.swing * curve.ease(shine);
+    });
+  const field: Field = (t) => {
+    const flies = fliesAt(t);
+    return (cell) => {
+      // Where two halos overlap the brighter wins, so light never doubles up.
+      let shine = 0;
+      for (const fly of flies) shine = Math.max(shine, fly.glow * bump(Math.hypot(cell.col - fly.x, 2 * (cell.row - fly.y)) / HALO));
+      return curve.swing * curve.ease(shine);
+    };
   };
   return { touch: light(glow), field };
 }
 
 /**
- * How much of a cell shows at `t`: 1 is the cell as drawn, 0 is the cell gone
- * to the terminal's ground. Read per cell, so cells can arrive or leave apart. One
- * outside [0, 1] is held to it.
+ * How much of each cell shows at `t`: 1 is the cell as drawn, 0 is the cell
+ * gone to the terminal's ground. Read per cell, so cells can arrive or leave
+ * apart, and staged as `Field` is. One outside [0, 1] is held to it.
  */
-export type Visibility = (cell: EffectCell, t: number) => number;
+export type Visibility = (t: number) => (cell: EffectCell) => number;
 
 /**
  * A cell mixed toward the ground of the terminal the frame is drawn on
@@ -528,12 +524,16 @@ export type Visibility = (cell: EffectCell, t: number) => number;
  * hiding — 1 reaches fully invisible. A cell wholly shown is returned as it was.
  */
 export function veiled(visibility: Visibility, swing: number): Effect {
-  return (colors, cell, t, { theme }) => {
-    const hidden = swing * (1 - clamp01(visibility(cell, t)));
-    if (hidden === 0) return colors;
+  return (t, { theme }) => {
+    const shows = visibility(t);
     // [LAW:one-source-of-truth] The ground is the terminal `Effected` draws on, never a second one handed here.
-    const bg = blend(Oklch.fromRgba(colors.bg), Oklch.fromRgba(theme.backgroundColor), hidden);
-    return { fg: blend(Oklch.fromRgba(colors.fg), bg, hidden).toRgba(), bg: bg.toRgba() };
+    const ground = Oklch.fromRgba(theme.backgroundColor);
+    return (colors, cell) => {
+      const hidden = swing * (1 - clamp01(shows(cell)));
+      if (hidden === 0) return colors;
+      const bg = blend(Oklch.fromRgba(colors.bg), ground, hidden);
+      return { fg: blend(Oklch.fromRgba(colors.fg), bg, hidden).toRgba(), bg: bg.toRgba() };
+    };
   };
 }
 
@@ -588,7 +588,7 @@ function ownChange(curve: Curve, place: (cell: EffectCell) => number): Visibilit
   const own = curve.seconds * OWN;
   // One phase, shifted per cell, so no cell builds its own each frame.
   const change = Phase.once(0, own);
-  return (cell, t) => change(t - place(cell) * (curve.seconds - own));
+  return (t) => (cell) => change(t - place(cell) * (curve.seconds - own));
 }
 
 /**
@@ -599,7 +599,13 @@ function ownChange(curve: Curve, place: (cell: EffectCell) => number): Visibilit
 export function fadeIn(curve: Curve, z: number): Transition {
   requireCurve(curve);
   const risen = ownChange(curve, order(1.7 + z));
-  return transition(curve, veiled((cell, t) => curve.ease(risen(cell, t)), curve.swing));
+  return transition(
+    curve,
+    veiled((t) => {
+      const at = risen(t);
+      return (cell) => curve.ease(at(cell));
+    }, curve.swing),
+  );
 }
 
 /**
@@ -629,11 +635,14 @@ export function dissolveOut(curve: Curve, z: number): Transition {
   const { depth, from, to, maskFrom, maskTo, late } = DISSOLVE_SHAPE;
   return transition(
     curve,
-    veiled((cell, t) => {
-      const gone = curve.ease(faded(cell, t));
-      const q = clamp01((gone - from) / (to - from));
-      const back = depth * smoothstep(maskFrom, maskTo, eddy(cell)) * (1 - late + late * place(cell)) * Math.sin(Math.PI * q) ** 2;
-      return 1 - gone + back;
+    veiled((t) => {
+      const at = faded(t);
+      return (cell) => {
+        const gone = curve.ease(at(cell));
+        const q = clamp01((gone - from) / (to - from));
+        const back = depth * smoothstep(maskFrom, maskTo, eddy(cell)) * (1 - late + late * place(cell)) * Math.sin(Math.PI * q) ** 2;
+        return 1 - gone + back;
+      };
     }, curve.swing),
   );
 }
@@ -681,7 +690,7 @@ export function wheel(curve: Curve, z: number): Effect {
     const s = seed(hex);
     return (360 * t) / P + curve.swing * STRAY * ((stray(s, t) - stray(s, 0)) / 1.5);
   };
-  return (shown, cell, t, { colors, fills }) => {
+  return (t, { colors, fills }) => (shown, cell) => {
     // Whether a slot shows one of the element's colours: never the terminal's, whatever its hex.
     const own = { fg: !cell.terminal.fg && colors.has(shown.fg.hex), bg: !cell.terminal.bg && colors.has(shown.bg.hex) };
     // An own colour turns with its segment: itself if a fill or beside no own colour, else the one beside it.

@@ -1,12 +1,14 @@
 # Effects
 
-An effect changes the colours of a renderable's cells over time: a highlight sweeping through text, a pulse that brightens and dims, a fade. It is one pure function, given a cell's colours, where the cell is, a time `t` in seconds, and what the whole element draws in that frame, and returning the cell's new colours:
+An effect changes the colours of a renderable's cells over time: a highlight sweeping through text, a pulse that brightens and dims, a fade. It is one pure function in two stages. The first is given a time `t` in seconds and what the whole element draws in that frame, and returns the second, which is given each cell's colours and where the cell is, and returns the cell's new colours:
 
 ```typescript shape
 import type { CellColors, Drawn, EffectCell } from "@promptctl/rich-js";
 
-type Effect = (colors: CellColors, cell: EffectCell, t: number, drawn: Drawn) => CellColors;
+type Effect = (t: number, drawn: Drawn) => (colors: CellColors, cell: EffectCell) => CellColors;
 ```
+
+`Effected` calls the first stage once a frame and the second once for each cell of it, so whatever holds for the whole frame, such as where a band of light stands at `t`, is worked out once rather than once a cell.
 
 ## Ready-made effects
 
@@ -109,14 +111,16 @@ const highlight = new ColorRgba(255, 214, 102);
 const sweep = Phase.loop(1.5);
 const label = "  thinking about colour  ";
 
-const shimmer: Effect = (colors, cell, t) => {
+const shimmer: Effect = (t) => {
   const centre = sweep(t) * label.length;
-  const weight = Math.max(0, 1 - Math.abs(cell.col - centre) / 4);
-  const toward = new ColorRamp(EASES.linear, [
-    { at: 0, color: colors.fg },
-    { at: 1, color: highlight },
-  ]);
-  return { fg: toward.at(weight), bg: colors.bg };
+  return (colors, cell) => {
+    const weight = Math.max(0, 1 - Math.abs(cell.col - centre) / 4);
+    const toward = new ColorRamp(EASES.linear, [
+      { at: 0, color: colors.fg },
+      { at: 1, color: highlight },
+    ]);
+    return { fg: toward.at(weight), bg: colors.bg };
+  };
 };
 
 for (const t of [0, 0.5, 1]) {
@@ -138,7 +142,7 @@ Nothing in an effect reads a clock. Whoever draws frames builds the view for eac
 
 ## What an effect cannot change
 
-An effect changes how cells look, never which cells exist or who drew them. Text, links, and the anchors that let a click or Tab reach a widget all pass through, so a button under an effect still takes clicks. A cell whose colours come back unchanged is drawn exactly as before: the identity effect `(colors) => colors` produces byte-identical output. Neighbouring cells of one segment that the terminal is sent alike stay one segment: below truecolor, two colours that land on one palette index are one run, and a cell moved too little for the depth to show keeps the colour it was written in, none included. Cells from two segments stay two, as the wrapped renderable drew them.
+An effect changes how cells look, never which cells exist or who drew them. Text, links, and the anchors that let a click or Tab reach a widget all pass through, so a button under an effect still takes clicks. A cell whose colours come back unchanged is drawn exactly as before: the identity effect `() => (colors) => colors` produces byte-identical output. Neighbouring cells of one segment that the terminal is sent alike stay one segment: below truecolor, two colours that land on one palette index are one run, and a cell moved too little for the depth to show keeps the colour it was written in, none included. Cells from two segments stay two, as the wrapped renderable drew them.
 
 With no colour output at all, an effect has nothing to change, and the wrapped renderable draws as it would without it.
 
