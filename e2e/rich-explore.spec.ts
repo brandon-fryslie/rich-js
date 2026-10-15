@@ -35,12 +35,19 @@ test("c swaps the preview for the coverage page and back", async ({ page }) => {
 // Escape is the first half of the card's way out (Escape then Tab), so it
 // must not end the program on the way.
 test("Escape then Tab leaves the card with the explorer still running", async ({ page }) => {
+  const input = card(page).locator(".xterm-helper-textarea");
   await page.keyboard.press("Escape");
   await page.keyboard.press("Tab");
-  // A quit program would still show its last frame, so ask it to move.
-  await card(page).locator(".xterm-helper-textarea").focus();
-  await page.keyboard.press("ArrowDown");
-  await expect.poll(() => screen(page), LOADED).toContain("/home/demo/rich-js/docs");
+  await expect(input).not.toBeFocused();
+  // A quit program would still show its last frame, so ask it to move. The
+  // program holds a lone Escape for a tick (src/host/input.ts), and a key that
+  // lands inside it reads as that key with Alt, which moves nothing — so the
+  // ask is G, which moves to the same place however often it is pressed.
+  await input.focus();
+  await expect(async () => {
+    await page.keyboard.press("G");
+    expect(await screen(page)).not.toContain("/home/demo/rich-js/.github");
+  }).toPass(LOADED);
 });
 
 // The card keeps no scrollback: the status bar is the frame's last row.
