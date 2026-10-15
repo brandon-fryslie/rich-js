@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "42c422e4022be20030c3bc6e27de6c7e86526832",
-      "timestamp": "2026-10-15T04:19:07.753Z",
+      "sha": "7ec40ddf41d47b2dce9e14ad323d9130a748c68b",
+      "timestamp": "2026-10-15T04:46:37.292Z",
       "commits": [
         {
-          "sha": "42c422e4022be20030c3bc6e27de6c7e86526832",
+          "sha": "7ec40ddf41d47b2dce9e14ad323d9130a748c68b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T22:17:51-06:00",
-          "message": "feat(widgets): a press focuses the widget under it (rich-demos-k78j.pej) (#378)\n\n* feat(widgets): a press focuses the widget under it, focusOnClick removes it (rich-demos-k78j.pej)\n\nThe click-to-focus copies in rich-config and dropdown-demo are gone;\ndropdown-demo's status line shows the widget under the pointer, which\nkeeps widgetAt demonstrated.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(widgets): click-to-focus is a router step, left button only (rich-demos-k78j.pej)\n\nReview (high): focus moved in a handler registered first, ahead of the\nprogram's onMouse, contradicting docs; it re-ran widgetAt; any button\nfocused. Now dispatchMouse moves focus after program handlers, before\ndelivery, reusing its hit.\n\n* docs(widgets): focusOnClick names the left button (rich-demos-k78j.pej)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-10-14T22:45:05-06:00",
+          "message": "feat(renderables): ListView, moveSelection, ViewportPerKey (rich-demos-k78j.3gp) (#379)\n\n* feat(renderables): ListView, moveSelection, ViewportPerKey ship beside Viewport (rich-demos-k78j.3gp)\n\nThe demos' copies move into the library: ItemsInView becomes ListView (gap and\ncontext options), the clamped selection moves become moveSelection, and\nexamples/shared/ViewportPerSubject becomes ViewportPerKey. Viewport.follow\nbrings a range into view only when it changes, so a ListView rebuilt every\nframe no longer undoes the wheel's scroll. rich-dash's RateSparkline gains a\nnatural width, which keeps withBoundedWidth demonstrated.\n\n* fix(renderables): follow re-brings the selection in when rows shrink; ListView refuses bad indices (rich-demos-k78j.3gp)\n\nReview high: panes rebuilt per frame follow instead of ensuring; Dropdown\nmoves through moveSelection; RateSparkline's minimum is 0.\n\n* fix(renderables): ListView measures at unbounded width; sidebar scrolls per list (rich-demos-k78j.3gp)\n\nReview medium: gutter read from the viewport, not subtracted from Infinity;\nclaude-sessions' sidebar holds a viewport per level so follow does not\nmistake two lists' line 1 for one selection.\n\n* fix(renderables): follow holds only a shown selection across a resize; gap sits between items (rich-demos-k78j.3gp)\n\nReview high (escalation): moveSelection moves to core/selection so widgets\ngains no edge into renderables; Viewport reads its own gutter getter;\ndocs/viewport.md describes follow."
         }
       ]
     }

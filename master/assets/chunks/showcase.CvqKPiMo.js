@@ -1,4 +1,4 @@
-import t from"./library.C16Eebaa.js";const e=t+`
+import t from"./library.D2Rtk5wG.js";const e=t+`
 const { BarColumn, ColorSpec, Layout, Live, Panel, Progress, RichText, Segment, SpinnerColumn, Style, Table, TaskProgressColumn, TextColumn, Tree, regionRows, withCellWidth } = __richLibrary["@promptctl/rich-js"];
 //#region examples/showcase/showcase.ts
 /**
