@@ -124,10 +124,10 @@ describe("FlexStrip seam index", () => {
   it("gives each surviving seam the glyph it has unwrapped", () => {
     const pick: JoinCell = { glyph: { oneOf: ["a", "b", "c", "d"] }, fg: { role: "strip.separator" }, bg: "ground" };
     const shape: JoinShape = { seam: [pick], divider: [pick], lead: [], tail: [] };
-    const items = Array.from({ length: 12 }, (_, i) => cell(String(i % 10)));
+    const items = Array.from({ length: 12 }, (_, i) => cell(String.fromCharCode(65 + i)));
     const strip = new FlexStrip(items, { joiner: new CellJoiner(shape, shape) });
     const [wide] = renderLines(strip, OPTS(200));
-    // Each seam in a wrapped line sits between the same two digits, so it
+    // Each seam in a wrapped line sits between the same two letters, and no two seams share a pair,, so it
     // must read the same as in the unwrapped line.
     const narrow = renderLines(strip, OPTS(7));
     expect(narrow.length).toBeGreaterThan(1);

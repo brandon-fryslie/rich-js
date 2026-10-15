@@ -678,8 +678,13 @@ describe("oneOf picks per seam", () => {
     expect(new Set(drawn).size).toBeGreaterThan(1);
   });
 
-  it("draws the same glyph at the same seam on every render", () => {
-    expect(seams()).toEqual(seams());
-    expect(seams({ maxWidth: 40 })).toEqual(seams());
+  it("picks a wrap's tail and lead independently though they share an index", () => {
+    const caps = new CellJoiner({ seam: [], divider: [], lead: [pick], tail: [pick] }, { seam: [], divider: [], lead: [pick], tail: [pick] });
+    const differ = Array.from({ length: 16 }, (_, index) => {
+      const lead = [...caps.join(null, items[0]!, { index }).render(OPTIONS)][0]!.text;
+      const tail = [...caps.join(items[0]!, null, { index }).render(OPTIONS)][0]!.text;
+      return lead !== tail;
+    });
+    expect(differ.some(Boolean)).toBe(true);
   });
 });

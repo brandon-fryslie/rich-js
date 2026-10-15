@@ -31,7 +31,7 @@ import { Style } from "./style.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK } from "./color.js";
 import { Oklch } from "./oklch.js";
 import { cellLen } from "./cells.js";
-import { hash } from "./noise.js";
+import { fnv1a } from "./fnv1a.js";
 import { drawable, getStyle, isAscii, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
 
 // --- StyledRenderable ---
@@ -164,8 +164,9 @@ export type CellColor = Paint | "ground";
  * One styled run of a join. A `oneOf` glyph is a set any member of which may
  * stand in the cell; every member has the same width, because consumers
  * measure a join by rendering it. Which member stands is hashed from the
- * join's `index` and the cell's place in it, so it holds still from frame to
- * frame and differs from seam to seam even between the same two colours.
+ * join's part, its `index` and the cell's place in it, so it holds still from
+ * frame to frame while the items before it do, and differs from seam to seam
+ * even between the same two colours.
  */
 export interface JoinCell {
   readonly glyph: string | { readonly oneOf: readonly string[] };
@@ -211,9 +212,13 @@ function* paintsIn(paint: Paint): Iterable<Paint> {
 }
 
 const glyphsOf = (cell: JoinCell): readonly string[] => (typeof cell.glyph === "string" ? [cell.glyph] : cell.glyph.oneOf);
-const pickGlyph = (cell: JoinCell, index: number, at: number): string => {
+// An integer hash, so every engine picks the same member, scaled from its high
+// bits — FNV-1a's low bits barely mix — so the pick is in range by
+// construction. The part is in the key so a wrap's tail and lead, which share
+// an index, are picked independently.
+const pickGlyph = (cell: JoinCell, part: Part, index: number, at: number): string => {
   const glyphs = glyphsOf(cell);
-  return glyphs[Math.floor(hash(index, at) * glyphs.length)]!;
+  return glyphs[Math.floor((parseInt(fnv1a(`${part}:${index}:${at}`), 16) / 2 ** 32) * glyphs.length)]!;
 };
 const cellWidth = (cell: JoinCell): number => cellLen(glyphsOf(cell)[0] ?? "");
 const partWidth = (cells: readonly JoinCell[]): number => cells.reduce((width, cell) => width + cellWidth(cell), 0);
@@ -410,8 +415,9 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
         const hasLeft = left !== null && (!reads.left || leftBg !== undefined);
         const hasRight = right !== null && (!reads.right || rightBg !== undefined);
         const divides = drawn.divider !== drawn.seam && leftBg !== undefined && rightBg !== undefined && vanishes(leftBg, rightBg, options.colorSystem);
-        const cells = hasLeft && hasRight ? (divides ? drawn.divider : drawn.seam) : hasRight ? drawn.lead : hasLeft ? drawn.tail : [];
-        for (const [at, cell] of cells.entries()) yield new Segment(pickGlyph(cell, index, at), cellStyle(cell, edges, options));
+        const part: Part | undefined = hasLeft && hasRight ? (divides ? "divider" : "seam") : hasRight ? "lead" : hasLeft ? "tail" : undefined;
+        if (part === undefined) return;
+        for (const [at, cell] of drawn[part].entries()) yield new Segment(pickGlyph(cell, part, index, at), cellStyle(cell, edges, options));
       },
     };
   }
