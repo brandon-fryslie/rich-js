@@ -4,15 +4,22 @@
     {
       "version": "pr-394",
       "ref": "refs/pull/394/merge",
-      "sha": "64bb333b4dbab72fd0052255999d000b410b3973",
-      "timestamp": "2026-10-15T08:45:10.905Z",
+      "sha": "e3ee92328608b287d6e0ac0e59e6e52128b409ed",
+      "timestamp": "2026-10-15T08:56:22.045Z",
       "commits": [
         {
-          "sha": "64bb333b4dbab72fd0052255999d000b410b3973",
+          "sha": "e3ee92328608b287d6e0ac0e59e6e52128b409ed",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T02:43:33-06:00",
-          "message": "Merge 1dba2901ae7f048f9d05ab1884b8ad80d7ee56de into 7dbb3e3861046fdadf79c218572a95086864f0a3\n"
+          "timestamp": "2026-10-15T08:55:07Z",
+          "message": "Merge 26fa8933f15c421678342fa45eaece5d048557ef into 7dbb3e3861046fdadf79c218572a95086864f0a3\n"
+        },
+        {
+          "sha": "26fa8933f15c421678342fa45eaece5d048557ef",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T02:55:01-06:00",
+          "message": "A seam cell owns its ink and its ground separately (rich-effects-cbgp.4y4)\n\nA powerline arrow is inked in the fill it points out of over the fill it\npoints into, so stamping the whole cell with one neighbour left the other\nitem's colour moving with it and the owner's own ground still. CellJoiner\nnow records, per cell, whose colour its ink and its ground show\n(colorsOwnedBy), and confined moves only the owner's sides. Join cells no\nlonger borrow an item's anchor at a join-relative column, so hit-testing\nand the anchor's position stay true.\n"
         },
         {
           "sha": "1dba2901ae7f048f9d05ab1884b8ad80d7ee56de",
