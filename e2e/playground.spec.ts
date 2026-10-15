@@ -28,7 +28,8 @@ const output = (page: Page) => page.locator(".rich-playground .rich-example-outp
 const drawn = async (page: Page) => (await page.locator(".rich-playground .rich-example-output").innerText()).replaceAll("\u00a0", " ");
 // xterm's DOM renderer draws some of a row's spaces as no-break spaces.
 const rows = async (page: Page) => (await page.locator(".rich-playground .xterm-rows").innerText()).replaceAll("\u00a0", " ");
-const alert = (page: Page) => page.locator(".rich-playground [role=alert]");
+/** The playground's own failure, announced: a link it could not read or write, or a start that failed; never the card's, which a typed program may raise by running. */
+const failure = (page: Page) => page.locator(".rich-playground-failure[role=alert]");
 const hashProgram = async (page: Page) => decodeProgram(new URL(page.url()).hash.slice(1));
 
 /** Replace the editor's code with `source`, as a reader selecting all and typing would. */
@@ -120,10 +121,10 @@ test("a link in the format before this one opens, every line of it editable", as
 
 test("a link it cannot read says so and opens the start example, until an edit makes a link again", async ({ page }) => {
   const errors = await open(page, "playground.html#not-a-program");
-  await expect(alert(page)).toContainText("could not be read");
+  await expect(failure(page)).toContainText("could not be read");
   await expect.poll(() => drawn(page), OPENING).toContain("Hello, World!");
   await write(page, HELLO_AGAIN);
-  await expect(alert(page)).toHaveCount(0);
+  await expect(failure(page)).toHaveCount(0);
   expect(await hashProgram(page)).toEqual(oneFile(NO_SETUP, HELLO_AGAIN));
   expect(errors).toEqual([]);
 });
@@ -139,7 +140,7 @@ test("the link keeps up with fast typing and ends on what the editor holds", asy
   const typed = "x".repeat(250);
   await page.keyboard.type(typed);
   await expect.poll(() => hashProgram(page).then(({ files }) => files[0].code, () => "")).toBe(typed);
-  await expect(alert(page)).toHaveCount(0);
+  await expect(failure(page)).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -153,7 +154,7 @@ test("a link the browser refuses to write says so", async ({ page }) => {
     };
   });
   await write(page, HELLO_AGAIN);
-  await expect(alert(page)).toContainText("The link could not be updated: The URL is too long");
+  await expect(failure(page)).toContainText("The link could not be updated: The URL is too long");
   expect(errors).toEqual([]);
 });
 
