@@ -2,10 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   Strip,
   CellJoiner,
-  POWERLINE_JOINER,
+  JOINERS,
+  joinerNamed,
   SEAM_MIN_DELTA_E,
-  CAPSULE_JOINER,
-  PLAIN_JOINER,
   gradientJoiner,
   type JoinCell,
   type JoinShape,
@@ -50,7 +49,7 @@ const GREEN = cell(" green ", "white on green");
 
 describe("Strip render walk", () => {
   it("emits nothing for an empty strip", () => {
-    const strip = new Strip([], POWERLINE_JOINER);
+    const strip = new Strip([], JOINERS.powerline);
     expect(render(strip)).toEqual([]);
   });
 
@@ -92,7 +91,7 @@ describe("Strip render walk", () => {
   });
 
   it("emits no terminator for an empty strip", () => {
-    const strip = new Strip([], POWERLINE_JOINER);
+    const strip = new Strip([], JOINERS.powerline);
     expect([...strip.render(OPTIONS)]).toEqual([]);
   });
 });
@@ -266,7 +265,7 @@ describe("powerline same-bg structural join", () => {
   });
 
   it("draws the powerline arrow, its divider, and its lead as the arrow in reverse video", () => {
-    const segs = render(new Strip([RED_A, RED_B, BLUE_C], POWERLINE_JOINER));
+    const segs = render(new Strip([RED_A, RED_B, BLUE_C], JOINERS.powerline));
     // The literals, so a changed shape cannot pass by comparing it to itself.
     expect(segs.map((s) => s.text).filter((_, i) => i % 2 === 0)).toEqual(["\ue0b0", "\ue0b1", "\ue0b0", "\ue0b0"]);
     expect(segs[0]!.style?.color?.name).toBe(RED_A.edgeStyle("left", OPTIONS).bgcolor?.name);
@@ -331,11 +330,11 @@ describe("powerline no-bg edges paint nothing", () => {
   });
 });
 
-describe("CAPSULE_JOINER", () => {
+describe("JOINERS.capsule", () => {
   const ASCII: RenderOptions = { ...OPTIONS, asciiOnly: true };
 
   it("opens a run with its open cap and closes it with its close cap, each in the run's ground", () => {
-    const segs = render(new Strip([RED], CAPSULE_JOINER), ASCII);
+    const segs = render(new Strip([RED], JOINERS.capsule), ASCII);
     expect(segs.map((s) => s.text)).toEqual(["(", " red ", ")"]);
     for (const cap of [segs[0]!, segs[2]!]) {
       expect(cap.style?.color?.name).toBe("red");
@@ -344,35 +343,35 @@ describe("CAPSULE_JOINER", () => {
   });
 
   it("closes the left pill, spaces, and opens the right one between items", () => {
-    const segs = render(new Strip([RED, BLUE], CAPSULE_JOINER), ASCII);
+    const segs = render(new Strip([RED, BLUE], JOINERS.capsule), ASCII);
     expect(segs.map((s) => s.text)).toEqual(["(", " red ", ")", " ", "(", " blue ", ")"]);
     expect(segs[2]!.style?.color?.name).toBe("red");
     expect(segs[4]!.style?.color?.name).toBe("blue");
   });
 
   it("draws the rounded glyphs where the output is not ASCII-only", () => {
-    expect(render(new Strip([RED], CAPSULE_JOINER)).map((s) => s.text)).toEqual(["\ue0b6", " red ", "\ue0b4"]);
+    expect(render(new Strip([RED], JOINERS.capsule)).map((s) => s.text)).toEqual(["\ue0b6", " red ", "\ue0b4"]);
   });
 });
 
-describe("PLAIN_JOINER", () => {
+describe("JOINERS.plain", () => {
   it("emits empty caps and a separator between items", () => {
-    expect(render(new Strip([RED, BLUE], PLAIN_JOINER)).map((s) => s.text)).toEqual([" red ", " | ", " blue "]);
+    expect(render(new Strip([RED, BLUE], JOINERS.plain)).map((s) => s.text)).toEqual([" red ", " | ", " blue "]);
   });
 
   it("emits no separator for a single item", () => {
-    expect(render(new Strip([RED], PLAIN_JOINER)).map((s) => s.text)).toEqual([" red "]);
+    expect(render(new Strip([RED], JOINERS.plain)).map((s) => s.text)).toEqual([" red "]);
   });
 
   it("joins items with no ground, since its seam paints with neither neighbour's", () => {
-    const segs = render(new Strip([cell("docs", "cyan"), cell("guide", "cyan")], PLAIN_JOINER));
+    const segs = render(new Strip([cell("docs", "cyan"), cell("guide", "cyan")], JOINERS.plain));
     expect(segs.map((s) => s.text)).toEqual(["docs", " | ", "guide"]);
   });
 
   it("draws the separator in the theme's strip.separator colour", () => {
     const themed: RenderOptions = { ...OPTIONS, theme: new Theme({ "strip.separator": "magenta" }) };
-    expect(render(new Strip([RED, BLUE], PLAIN_JOINER), themed)[1]!.style?.color?.name).toBe("magenta");
-    expect(render(new Strip([RED, BLUE], PLAIN_JOINER))[1]!.style?.color?.name).toBe("bright_black");
+    expect(render(new Strip([RED, BLUE], JOINERS.plain), themed)[1]!.style?.color?.name).toBe("magenta");
+    expect(render(new Strip([RED, BLUE], JOINERS.plain))[1]!.style?.color?.name).toBe("bright_black");
   });
 });
 
@@ -533,9 +532,9 @@ describe("Strip measure", () => {
     cellLen(render(strip, options).map((s) => s.text).join(""));
 
   it.each([
-    ["POWERLINE_JOINER", POWERLINE_JOINER],
-    ["CAPSULE_JOINER", CAPSULE_JOINER],
-    ["PLAIN_JOINER", PLAIN_JOINER],
+    ["JOINERS.powerline", JOINERS.powerline],
+    ["JOINERS.capsule", JOINERS.capsule],
+    ["JOINERS.plain", JOINERS.plain],
     ["gradientJoiner(3)", gradientJoiner(3)],
   ])("measures at the width it draws, not the width offered, with a %s", (_name, joiner) => {
     const strip = new Strip([RED, BLUE, GREEN], joiner);
@@ -547,14 +546,14 @@ describe("Strip measure", () => {
   it("measures the joins it draws at the options it is measured with", () => {
     // An ASCII-only output draws the powerline set flat at the start, so the
     // lead cell is gone from the measurement too.
-    const strip = new Strip([RED, BLUE], POWERLINE_JOINER);
+    const strip = new Strip([RED, BLUE], JOINERS.powerline);
     const ascii: RenderOptions = { ...UNBOUNDED, asciiOnly: true };
     expect(Measurement.get(ascii, strip).maximum).toBe(drawnWidth(strip, ascii));
     expect(Measurement.get(ascii, strip).maximum).toBe(Measurement.get(UNBOUNDED, strip).maximum - 1);
   });
 
   it("measures one width as both bounds, since its row never narrows", () => {
-    const strip = new Strip([cell("one two", "on red"), cell("three", "on blue")], PLAIN_JOINER);
+    const strip = new Strip([cell("one two", "on red"), cell("three", "on blue")], JOINERS.plain);
     expect(Measurement.get(UNBOUNDED, strip)).toEqual(new Measurement(7 + 3 + 5, 7 + 3 + 5));
   });
 
@@ -562,14 +561,14 @@ describe("Strip measure", () => {
     const strip = new Strip(
       [new RichText(" alpha beta ", { style: "on red", end: "", noWrap: true }),
         new RichText(" gamma delta ", { style: "on blue", end: "", noWrap: true })],
-      POWERLINE_JOINER,
+      JOINERS.powerline,
     );
     const table = new Table({ showHeader: false }).addRow(strip, "a long neighbour that would gladly take every column it is offered");
     expect(renderToString(table, { colorSystem: null, width: 50 })).toContain(" gamma delta ");
   });
 
   it("measures an empty strip as no cells, as it draws none", () => {
-    expect(Measurement.get(UNBOUNDED, new Strip([], POWERLINE_JOINER))).toEqual(new Measurement(0, 0));
+    expect(Measurement.get(UNBOUNDED, new Strip([], JOINERS.powerline))).toEqual(new Measurement(0, 0));
   });
 });
 
@@ -581,11 +580,11 @@ describe("CellJoiner", () => {
   const joiner = (parts: Partial<JoinShape>) => new CellJoiner(shape(parts), shape({}));
 
   it("draws ground as the fg in reverse video: SGR 7, the fg the cell's bg colour, no bg", () => {
-    const lead = render(new Strip([RED], POWERLINE_JOINER))[0]!;
+    const lead = render(new Strip([RED], JOINERS.powerline))[0]!;
     expect(lead.style?.reverse).toBe(true);
     expect(lead.style?.color?.name).toBe("red");
     expect(lead.style?.bgcolor).toBeUndefined();
-    expect(renderToString(new Strip([RED], POWERLINE_JOINER), { colorSystem: ColorDepth.STANDARD, width: 80 })).toMatch(/^\x1b\[7;31m\ue0b0/);
+    expect(renderToString(new Strip([RED], JOINERS.powerline), { colorSystem: ColorDepth.STANDARD, width: 80 })).toMatch(/^\x1b\[7;31m\ue0b0/);
   });
 
   it("refuses a lead that names the left neighbour", () => {
@@ -628,7 +627,7 @@ describe("CellJoiner", () => {
     const j = new CellJoiner(shape({ seam, divider: seam }), shape({}));
     seam.push(arrow);
     expect(render(new Strip([RED, BLUE], j)).map((s) => s.text)).toEqual([" red ", ">", " blue "]);
-    expect(Object.isFrozen(POWERLINE_JOINER.shape.seam[0])).toBe(true);
+    expect(Object.isFrozen(JOINERS.powerline.shape.seam[0])).toBe(true);
   });
 
   it("reads which neighbours need a ground off the form it draws", () => {
@@ -686,5 +685,124 @@ describe("oneOf picks per seam", () => {
       return lead !== tail;
     });
     expect(differ.some(Boolean)).toBe(true);
+  });
+});
+
+describe("JOINERS, the bundled definitions", () => {
+  const NAMES = ["powerline", "prism", "slant", "backslant", "flame", "pixel", "ice", "bubble", "capsule", "wrapper", "metro", "stitch", "torn", "plain"];
+  const ASCII: RenderOptions = { ...OPTIONS, asciiOnly: true };
+  const joinText = (segs: Segment[], items: readonly RichText[]): string[] => {
+    const itemTexts = new Set(items.map((i) => i.plain));
+    return segs.filter((s) => !itemTexts.has(s.text)).map((s) => s.text);
+  };
+
+  it("names every definition the ticket ships, and is frozen", () => {
+    expect(Object.keys(JOINERS).sort()).toEqual([...NAMES].sort());
+    expect(Object.isFrozen(JOINERS)).toBe(true);
+  });
+
+  it.each(NAMES)("%s draws every seam at one width, in either form", (name) => {
+    const joiner = joinerNamed(name);
+    const items = [RED, BLUE, GREEN, RED, BLUE, GREEN, RED];
+    for (const options of [OPTIONS, ASCII]) {
+      const widths = Array.from({ length: items.length - 1 }, (_, i) =>
+        [...joiner.join(items[i]!, items[i + 1]!, { index: i + 1 }).render(options)].reduce((w, s) => w + s.cellLength, 0),
+      );
+      expect(new Set(widths).size).toBe(1);
+      expect(widths[0]).toBeGreaterThan(0);
+    }
+    const ascii = render(new Strip(items, joiner), ASCII).map((s) => s.text).join("");
+    expect(ascii).toMatch(/^[\x20-\x7e]*$/);
+  });
+
+  it.each(["powerline", "slant", "backslant", "flame", "pixel", "ice", "bubble"])("%s leads with its seam glyph reversed out of the terminal's ground", (name) => {
+    const { seam, lead } = joinerNamed(name).shape;
+    expect(lead).toEqual([{ glyph: seam[0]!.glyph, fg: "ground", bg: { edge: "right", part: "bg" } }]);
+    const [leadSeg] = render(new Strip([RED], joinerNamed(name)));
+    expect(leadSeg!.style?.reverse).toBe(true);
+    expect(leadSeg!.style?.color?.name).toBe("red");
+  });
+
+  it("prism steps through the grounds' thirds in three arrows", () => {
+    const segs = joinText(render(new Strip([RED, BLUE], JOINERS.prism)), [RED, BLUE]);
+    expect(segs.slice(1, 4)).toEqual(["", "", ""]);
+    const seam = render(new Strip([RED, BLUE], JOINERS.prism)).slice(2, 5);
+    expect(seam[0]!.style?.bgcolor).toEqual(seam[1]!.style?.color);
+    expect(seam[1]!.style?.bgcolor).toEqual(seam[2]!.style?.color);
+    expect(seam[2]!.style?.bgcolor?.name).toBe("blue");
+  });
+
+  it("wrapper and metro close and open each run over the terminal's ground", () => {
+    expect(joinText(render(new Strip([RED, BLUE], JOINERS.wrapper)), [RED, BLUE])).toEqual(["", "", "", ""]);
+    const metro = render(new Strip([RED, BLUE], JOINERS.metro));
+    expect(joinText(metro, [RED, BLUE])).toEqual(["", "", "──", "", ""]);
+    expect(metro.every((s) => s.text === " red " || s.text === " blue " || s.style?.bgcolor === undefined)).toBe(true);
+  });
+
+  it("metro's rail is the theme's strip.rail", () => {
+    const theme = new Theme({ "strip.rail": "magenta" });
+    const rail = render(new Strip([RED, BLUE], JOINERS.metro), { ...OPTIONS, theme }).find((s) => s.text === "──");
+    expect(rail!.style?.color?.name).toBe("magenta");
+  });
+
+  it("stitch and torn sit on the grounds' midpoint and draw nothing at the ends", () => {
+    for (const joiner of [JOINERS.stitch, JOINERS.torn]) {
+      const segs = render(new Strip([RED, BLUE], joiner));
+      expect(segs).toHaveLength(3);
+      const mid = ColorSpec.blend(ColorSpec.parse("red"), ColorSpec.parse("blue"), 0.5);
+      expect(segs[1]!.style?.bgcolor).toEqual(mid);
+    }
+  });
+
+  it("joinerNamed reads a name from config, and refuses one the table lacks", () => {
+    expect(joinerNamed("prism")).toBe(JOINERS.prism);
+    for (const name of ["constructor", "toString", "__proto__", "Powerline"]) expect(() => joinerNamed(name)).toThrow(/no joiner named .*the joiners are powerline, prism/);
+  });
+
+  // #3a3f58 and #4a5070 are ΔE_OK ~.066 apart: a one-cell arrow between them
+  // shows, but each of prism's arrows steps a third of that, and would not.
+  const NEAR_A = cell(" a ", "white on #3a3f58");
+  const NEAR_B = cell(" b ", "white on #4a5070");
+
+  it("prism divides where its third-steps would vanish though a one-cell arrow would not", () => {
+    const powerline = joinText(render(new Strip([NEAR_A, NEAR_B], JOINERS.powerline)), [NEAR_A, NEAR_B]);
+    expect(powerline[1]).toBe("\ue0b0");
+    const prism = joinText(render(new Strip([NEAR_A, NEAR_B], JOINERS.prism)), [NEAR_A, NEAR_B]);
+    expect(prism.slice(1, 4)).toEqual([" ", "\ue0b1", " "]);
+  });
+
+  it("torn draws its divider, the tear in the left item's text, where its ink would vanish into the midpoint", () => {
+    const tear = render(new Strip([NEAR_A, NEAR_A], JOINERS.torn))[1]!;
+    expect(tear.style?.color?.name).toBe("white");
+    expect(["\u259a\u259e", "\u259e\u259a", "\u2598\u2597", "\u259d\u2596", "\u2596\u259d", "\u2597\u2598"]).toContain(tear.text);
+    expect(render(new Strip([NEAR_A, cell(" c ", "white on #a78bfa")], JOINERS.torn))[1]!.style?.color?.name).not.toBe("white");
+  });
+
+  it("prism and torn divide between two grounds of one palette slot", () => {
+    const red = cell(" r ", "white on red");
+    expect(joinText(render(new Strip([red, RED], JOINERS.prism)), [red, RED]).slice(1, 4)).toEqual([" ", "\ue0b1", " "]);
+    expect(render(new Strip([red, RED], JOINERS.torn))[1]!.style?.color?.name).toBe("white");
+  });
+
+  it("prism keeps its arrows at sixteen colours, where one third rounds into an end but the others show", () => {
+    const seam = joinText(render(new Strip([RED, BLUE], JOINERS.prism), { ...OPTIONS, colorSystem: ColorDepth.STANDARD }), [RED, BLUE]);
+    expect(seam.slice(1, 4)).toEqual(["\ue0b0", "\ue0b0", "\ue0b0"]);
+  });
+
+  it("measures translucent ink composited over its own cell's ground, as drawn", () => {
+    const ink: JoinShape = { seam: [{ glyph: "x", fg: { edge: "left", part: "fg" }, bg: { edge: "right", part: "bg" } }], divider: [{ glyph: "|", fg: { edge: "left", part: "fg" }, bg: { edge: "right", part: "bg" } }], lead: [], tail: [] };
+    const j = new CellJoiner(ink, ink);
+    const faint = cell(" a ", "#ffffff04 on #3a3f58");
+    const solid = cell(" a ", "#ffffff on #3a3f58");
+    const b = cell(" b ", "white on #3a3f58");
+    expect(joinText(render(new Strip([faint, b], j)), [faint, b])).toEqual(["|"]);
+    expect(joinText(render(new Strip([solid, b], j)), [solid, b])).toEqual(["x"]);
+  });
+
+  it("torn picks its quadrant pair per seam", () => {
+    const items = Array.from({ length: 12 }, (_, i) => (i % 2 ? RED : BLUE));
+    const tears = render(new Strip(items, JOINERS.torn)).filter((s) => s.text !== " red " && s.text !== " blue ").map((s) => s.text);
+    expect(tears).toHaveLength(11);
+    expect(new Set(tears).size).toBeGreaterThan(1);
   });
 });

@@ -11,10 +11,9 @@ import {
   Console,
   Strip,
   CellJoiner,
-  POWERLINE_JOINER,
+  JOINERS,
+  joinerNamed,
   SEAM_MIN_DELTA_E,
-  CAPSULE_JOINER,
-  PLAIN_JOINER,
   gradientJoiner,
   Style,
   RichText,
@@ -44,27 +43,41 @@ export function runDemo(host: TerminalHost): void {
     consoleOut.print(strip);
   };
 
-  showcase("POWERLINE_JOINER", new Strip(cells, POWERLINE_JOINER));
+  // The table one joiner a row, its name the row's first item: a name has no
+  // ground, so each joiner meets it as it meets the strip's start.
+  consoleOut.print(new RichText("JOINERS", { style: "bold" }));
+  const width = Math.max(...Object.keys(JOINERS).map((name) => name.length));
+  for (const name of Object.keys(JOINERS)) {
+    consoleOut.print(new Strip([new RichText(` ${name.padEnd(width)} `, { end: "", noWrap: true }), ...cells], joinerNamed(name)));
+  }
   // Neighbours whose backgrounds sit closer than SEAM_MIN_DELTA_E would hide the
   // arrow in their shared colour, so the joiner draws the thin divider there.
   const shared = ["one", "two", "three"].map(
     (t) => new RichText(` ${t} `, { style: Style.parse("white on #3a3f58"), end: "", noWrap: true }),
   );
   showcase(
-    `POWERLINE_JOINER, shared background (divider below ΔE ${SEAM_MIN_DELTA_E})`,
-    new Strip([...cells, ...shared], POWERLINE_JOINER),
+    `JOINERS.powerline, shared background (divider below ΔE ${SEAM_MIN_DELTA_E})`,
+    new Strip([...cells, ...shared], JOINERS.powerline),
   );
-  // A joiner is a value: the powerline shape with the slant glyph in every
-  // place the arrow stood, its lead the slant in reverse video.
-  const slant: JoinShape = {
-    seam: [{ glyph: "\ue0bc", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } }],
-    divider: [{ glyph: "\ue0bd", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } }],
-    lead: [{ glyph: "\ue0bc", fg: "ground", bg: { edge: "right", part: "bg" } }],
-    tail: [{ glyph: "\ue0bc", fg: { edge: "left", part: "bg" }, bg: "ground" }],
+  // A joiner is a value: one the table does not bundle, two arrows meeting
+  // point to point, the right ground reaching back into the left.
+  const meet: JoinShape = {
+    ...JOINERS.powerline.shape,
+    seam: [
+      { glyph: "\ue0b2", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } },
+      { glyph: "\ue0b0", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } },
+    ],
+    divider: [
+      { glyph: "\ue0b3", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
+      { glyph: "\ue0b1", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
+    ],
   };
-  showcase("CellJoiner, a slant shape", new Strip([...cells, ...shared], new CellJoiner(slant, POWERLINE_JOINER.ascii)));
-  showcase("CAPSULE_JOINER", new Strip(cells, CAPSULE_JOINER));
-  showcase("PLAIN_JOINER", new Strip(cells, PLAIN_JOINER));
+  const meetAscii: JoinShape = {
+    ...JOINERS.powerline.ascii,
+    seam: [{ glyph: "<>", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } }],
+    divider: [{ glyph: "<>", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } }],
+  };
+  showcase("CellJoiner, arrows meeting", new Strip([...cells, ...shared], new CellJoiner(meet, meetAscii)));
   showcase("gradientJoiner(6)", new Strip(cells, gradientJoiner(6)));
 
   // "Unbounded" gradient: fill the row between two anchor cells with as many
@@ -91,6 +104,6 @@ export function runDemo(host: TerminalHost): void {
     (t, i) => new RichText(` ${t} `, { style: Style.parse(`white on ${PALETTE[i % PALETTE.length]!}`), end: "", noWrap: true }),
   );
 
-  showcase("FlexStrip + POWERLINE_JOINER (wrap-to-width)", new FlexStrip(tagCells, { joiner: POWERLINE_JOINER }));
+  showcase("FlexStrip + JOINERS.powerline (wrap-to-width)", new FlexStrip(tagCells, { joiner: JOINERS.powerline }));
   showcase("FlexStrip + gap (tag cloud)", new FlexStrip(tagCells, { gap: 1 }));
 }

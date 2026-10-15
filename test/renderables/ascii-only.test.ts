@@ -24,7 +24,7 @@ import type { Renderable } from "../../src/core/protocol.js";
 import {
   Align,
   BarColumn,
-  CAPSULE_JOINER,
+  JOINERS,
   Columns,
   Constrain,
   DEFAULT_TERMINAL_THEME,
@@ -37,8 +37,6 @@ import {
   Markdown,
   Padding,
   Panel,
-  PLAIN_JOINER,
-  POWERLINE_JOINER,
   Pretty,
   Progress,
   ProgressBar,
@@ -80,9 +78,9 @@ const ROWS: Record<string, Row> = {
   Strip: {
     draws: "glyphs",
     make: () => new Group(
-      new Strip(cells(), POWERLINE_JOINER),
-      new Strip(cells(), CAPSULE_JOINER),
-      new Strip(cells(), PLAIN_JOINER),
+      new Strip(cells(), JOINERS.powerline),
+      new Strip(cells(), JOINERS.capsule),
+      new Strip(cells(), JOINERS.plain),
       new Strip(cells(), gradientJoiner()),
     ),
   },
@@ -119,7 +117,7 @@ const ROWS: Record<string, Row> = {
     },
   },
   Columns: { draws: "glyphs", make: () => new Columns([panel(), panel()]) },
-  FlexStrip: { draws: "glyphs", make: () => new FlexStrip(cells(), { joiner: POWERLINE_JOINER }) },
+  FlexStrip: { draws: "glyphs", make: () => new FlexStrip(cells(), { joiner: JOINERS.powerline }) },
   Progress: {
     draws: "glyphs",
     make: () => {

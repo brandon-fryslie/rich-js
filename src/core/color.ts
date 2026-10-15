@@ -688,7 +688,14 @@ export class ColorSpec {
     if (!(t >= 0 && t <= 1)) throw new ColorParseError(`A blend's fraction is in [0, 1]; got ${t}`);
     const a = from.fixedValue;
     const b = to.fixedValue;
-    return a !== undefined && b !== undefined ? ColorSpec.fromRgba(blendRgb(a, b, t)) : new ColorBlend(from, to, t);
+    if (a !== undefined && b !== undefined) return ColorSpec.fromRgba(blendRgb(a, b, t));
+    // A blend that draws as one of its ends is that end — not a blend whose
+    // name no comparison will ever match back to it: at t 0 or 1, or between
+    // one slot of one palette spelled twice.
+    if (t === 0) return from;
+    if (t === 1) return to;
+    const oneSlot = from.type === to.type && (from.number !== undefined ? from.number === to.number : from.name === to.name);
+    return oneSlot ? from : new ColorBlend(from, to, t);
   }
 
   /**
