@@ -4,15 +4,22 @@
     {
       "version": "pr-379",
       "ref": "refs/pull/379/merge",
-      "sha": "c6cd0ed3eecc75ed8c161f4710dde9c1b627874a",
-      "timestamp": "2026-10-15T04:35:10.225Z",
+      "sha": "a121683224aebd81abfd1b7d902dae67627a2913",
+      "timestamp": "2026-10-15T04:39:17.835Z",
       "commits": [
         {
-          "sha": "c6cd0ed3eecc75ed8c161f4710dde9c1b627874a",
+          "sha": "a121683224aebd81abfd1b7d902dae67627a2913",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T04:33:40Z",
-          "message": "Merge 940bc377d56ac7f2d0aae7236031ca8f43ec0484 into 42c422e4022be20030c3bc6e27de6c7e86526832\n"
+          "timestamp": "2026-10-15T04:37:50Z",
+          "message": "Merge bc7dad7cb9a78a5acd65a67f7921423a55c2b8f6 into 42c422e4022be20030c3bc6e27de6c7e86526832\n"
+        },
+        {
+          "sha": "bc7dad7cb9a78a5acd65a67f7921423a55c2b8f6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T22:37:45-06:00",
+          "message": "fix(renderables): ListView measures at unbounded width; sidebar scrolls per list (rich-demos-k78j.3gp)\n\nReview medium: gutter read from the viewport, not subtracted from Infinity;\nclaude-sessions' sidebar holds a viewport per level so follow does not\nmistake two lists' line 1 for one selection.\n"
         },
         {
           "sha": "940bc377d56ac7f2d0aae7236031ca8f43ec0484",
