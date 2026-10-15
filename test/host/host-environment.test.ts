@@ -33,6 +33,7 @@ function makeRecordingHost(opts: {
   const writes: (string | Uint8Array)[] = [];
   return {
     writes,
+    inputChunks: "split",
     resize(next) {
       size = next;
     },

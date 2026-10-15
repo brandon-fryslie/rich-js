@@ -41,6 +41,7 @@ export function scriptedHost(initial: TerminalSize = { cols: 20, rows: 4 }): Scr
   const exitHandlers = new Set<() => void>();
   const dataHandlers = new Set<DataHandler>();
   return {
+    inputChunks: "split",
     output: () => writes.join(""),
     raw: () => raw,
     started: () => started,

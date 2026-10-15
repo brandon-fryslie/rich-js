@@ -15,11 +15,16 @@
  * split across two chunks is completed by the second.
  *
  * Lone-ESC handling: a bare `\x1b` is ambiguous (escape key vs. start of a
- * CSI sequence). When the buffer is drained but ends with a lone ESC, the
- * parser defers emission via setTimeout(0). A next chunk opening with `[` or
- * `O` extends the sequence; any other next chunk emits the ESC as Escape
- * first. `flush()` drains it synchronously.
+ * CSI sequence), and only the host's `InputChunks` can settle it. On a
+ * `"whole-keys"` host a chunk ends on a key boundary, so an ESC still waiting
+ * at a chunk's end opened nothing: it is Escape, and what followed it is read
+ * again on its own. On a `"split"` host the parser defers a lone ESC via
+ * setTimeout(0). A next chunk opening with `[` or `O` extends the sequence;
+ * any other next chunk emits the ESC as Escape first. `flush()` drains it
+ * synchronously.
  */
+
+import type { InputChunks } from "./terminal-host.js";
 
 /** A key as the terminal reported it: plain data, with no say over who hears it. */
 export interface KeyPress {
@@ -220,7 +225,10 @@ export class InputParser {
   // across node and browser; `setImmediate` is node-only.
   private escTimer: ReturnType<typeof setTimeout> | undefined;
 
-  constructor(private readonly sink: InputSink) {}
+  constructor(
+    private readonly sink: InputSink,
+    private readonly chunks: InputChunks,
+  ) {}
 
   /** Feed a chunk of bytes (or a string of them) into the parser. */
   feed(chunk: Uint8Array | string): void {
@@ -239,6 +247,7 @@ export class InputParser {
     } finally {
       this.drain();
     }
+    if (this.chunks === "whole-keys") return this.settleChunk();
     // [LAW:dataflow-not-control-flow] If a lone ESC remains, defer emission
     // until the next macrotask so a follow-up chunk can extend it. Only a lone
     // one: a sequence split after `ESC [` waits for its rest, however late.
@@ -247,6 +256,18 @@ export class InputParser {
         this.escTimer = undefined;
         this.flush();
       }, 0);
+    }
+  }
+
+  // A whole-key chunk has ended, so an ESC still at the buffer head opens no
+  // sequence — not even after `[` or `O`, which a busy worker can have queued
+  // as the next key. The buffer is settled before the sink hears Escape, as in
+  // `feed`, so a sink that resets the parser ends the loop.
+  private settleChunk(): void {
+    while (this.buffer[0] === ESC) {
+      this.buffer = this.buffer.subarray(1);
+      this.sink.key(ESCAPE);
+      this.drain();
     }
   }
 

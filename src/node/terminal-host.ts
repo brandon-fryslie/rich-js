@@ -31,6 +31,7 @@
 import type {
   DataHandler,
   ExitHandler,
+  InputChunks,
   ResizeHandler,
   TerminalHost,
   TerminalSize,
@@ -50,6 +51,12 @@ interface NodeReadable {
   resume?(): unknown;
   pause?(): unknown;
   readonly isTTY?: boolean;
+  /**
+   * Set by a stream that delivers whole keys — the docs site's simulated
+   * stdin forwards xterm.js's events one to one. Node's own stdin is a tty
+   * read and sets nothing, so it is `"split"`.
+   */
+  readonly inputChunks?: InputChunks;
 }
 
 interface NodeWritable {
@@ -126,6 +133,7 @@ export class NodeTerminalHost implements TerminalHost {
   private readonly stdout: NodeWritable;
   private readonly process: NodeProcess;
   readonly env: Env;
+  readonly inputChunks: InputChunks;
   private readonly dataHandlers = new Set<DataHandler>();
   private readonly resizeHandlers = new Set<ResizeHandler>();
   private dataListener: ((chunk: Buffer | string) => void) | undefined;
@@ -137,6 +145,7 @@ export class NodeTerminalHost implements TerminalHost {
     this.stdout = options.stdout ?? (process.stdout as unknown as NodeWritable);
     this.env = options.env ?? process.env;
     this.process = options.process ?? process;
+    this.inputChunks = this.stdin.inputChunks ?? "split";
   }
 
   get isTTY(): boolean {
