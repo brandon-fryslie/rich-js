@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-389",
+      "ref": "refs/pull/389/merge",
+      "sha": "ab7b24320eb6e5db79fc84d68ecaa66dc7337995",
+      "timestamp": "2026-10-15T07:38:44.755Z",
+      "commits": [
+        {
+          "sha": "ab7b24320eb6e5db79fc84d68ecaa66dc7337995",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T07:36:59Z",
+          "message": "Merge 635e59519f6b6f362bebff1674cf07a0c1db1406 into da6f038edeb4406b5cfe532ce4a669664f43da84\n"
+        },
+        {
+          "sha": "635e59519f6b6f362bebff1674cf07a0c1db1406",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:36:53-06:00",
+          "message": "Playground failure locator keeps the alert role; comment names every failure it shows (rich-playground-3cyp)\n"
+        },
+        {
+          "sha": "4297978bf537f63890c90ae7ef607db29838adcf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:32:33-06:00",
+          "message": "Playground e2e reads the playground's failure, not the card's run error (rich-playground-3cyp)\n\nThe fast-typing test types 250 x's, a program that throws a ReferenceError\nonce its debounced run finishes. The alert locator matched any [role=alert]\nin the playground, the card's run failure included, so toHaveCount(0) passed\nonly when it checked before the run. It now names .rich-playground-failure,\nthe one element every use of it meant.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-388",
       "ref": "refs/pull/388/merge",
       "sha": "00389cf7ed917ae20cf45aacb05f65135f296d4a",
@@ -27,28 +56,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-15T01:28:09-06:00",
           "message": "JOINERS: the bundled joiner definitions by name (rich-joiners-9ntp.6pd)\n\nOne frozen table replaces POWERLINE_JOINER, CAPSULE_JOINER and PLAIN_JOINER:\npowerline, prism, slant, backslant, flame, pixel, ice, bubble, capsule,\nwrapper, metro, stitch, torn, plain — each a CellJoiner with its ASCII form.\nmetro's rail is the new strip.rail theme role. The rich-strip demo prints\nthe whole table, one joiner a row; its card grows to 30 rows.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-389",
-      "ref": "refs/pull/389/merge",
-      "sha": "cf35b500869cbf16709fe7e073854d0ef29fb333",
-      "timestamp": "2026-10-15T07:34:11.152Z",
-      "commits": [
-        {
-          "sha": "cf35b500869cbf16709fe7e073854d0ef29fb333",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:32:39-06:00",
-          "message": "Merge 4297978bf537f63890c90ae7ef607db29838adcf into da6f038edeb4406b5cfe532ce4a669664f43da84\n"
-        },
-        {
-          "sha": "4297978bf537f63890c90ae7ef607db29838adcf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:32:33-06:00",
-          "message": "Playground e2e reads the playground's failure, not the card's run error (rich-playground-3cyp)\n\nThe fast-typing test types 250 x's, a program that throws a ReferenceError\nonce its debounced run finishes. The alert locator matched any [role=alert]\nin the playground, the card's run failure included, so toHaveCount(0) passed\nonly when it checked before the run. It now names .rich-playground-failure,\nthe one element every use of it meant.\n"
         }
       ]
     },
