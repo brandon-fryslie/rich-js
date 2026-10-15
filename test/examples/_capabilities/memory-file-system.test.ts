@@ -171,14 +171,14 @@ describe("MemoryFileSystem lookup operations", () => {
     expect(() => fs.readFile("/home/x/.claude/missing")).toThrow();
   });
 
-  it("readFirstBytes returns a prefix of file contents", () => {
-    expect(fs.readFirstBytes(
+  it("readLastBytes returns a suffix of file contents", () => {
+    expect(fs.readLastBytes(
       "/home/x/.claude/projects/proj-a/session-1.jsonl",
       4,
-    )).toBe("line");
+    )).toBe("e-2\n");
   });
 
-  it("readFirstBytes slices by bytes, not characters (matches NodeFileSystem)", () => {
+  it("readLastBytes slices by bytes, not characters (matches NodeFileSystem)", () => {
     const multibyteTree: MemoryTree = {
       home: "/home/x",
       root: {
@@ -196,20 +196,21 @@ describe("MemoryFileSystem lookup operations", () => {
 
     // 4 chars * 2 bytes = 8 bytes total. Requesting 4 bytes should yield
     // 2 characters, not 4 — proving byte-precise semantics.
-    const result = mfs.readFirstBytes("/home/x/multibyte.txt", 4);
+    const result = mfs.readLastBytes("/home/x/multibyte.txt", 4);
     expect(result).toBe("éé");
 
-    // Requesting 3 bytes splits the third 'é' mid-codepoint; the decoder's
-    // non-fatal mode emits a replacement character for the partial sequence.
-    const partial = mfs.readFirstBytes("/home/x/multibyte.txt", 3);
-    expect(partial).toBe("é�");
+    // Requesting 3 bytes splits the second-to-last 'é' mid-codepoint; the
+    // decoder's non-fatal mode emits a replacement character for the partial
+    // sequence.
+    const partial = mfs.readLastBytes("/home/x/multibyte.txt", 3);
+    expect(partial).toBe("�é");
   });
 
-  it("readFirstBytes returns null for empty or missing files", () => {
-    expect(fs.readFirstBytes(
+  it("readLastBytes returns null for empty or missing files", () => {
+    expect(fs.readLastBytes(
       "/home/x/.claude/projects/proj-a/session-2.jsonl",
       32,
     )).toBeNull();
-    expect(fs.readFirstBytes("/missing", 32)).toBeNull();
+    expect(fs.readLastBytes("/missing", 32)).toBeNull();
   });
 });

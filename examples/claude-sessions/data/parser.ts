@@ -27,6 +27,9 @@ const HIDDEN_TYPES = new Set([
   "queue-operation",
   "last-prompt",
   "pr-link",
+  "custom-title",
+  "ai-title",
+  "agent-name",
 ]);
 
 interface AssistantContent {
@@ -69,7 +72,14 @@ interface RawRecord {
   sourceToolAssistantUUID?: string;
 }
 
-/** Extract agentId for a Task tool_use. Prefer the structured
+/**
+ * The tool that runs a subagent: `Agent`, called `Task` before Claude Code
+ * renamed it. A call to any other tool ran one too when its result names the
+ * agent — a skill run forked, for one — so that is a subagent call as well.
+ */
+const SUBAGENT_TOOLS = new Set(["Agent", "Task"]);
+
+/** Extract agentId for a subagent tool_use. Prefer the structured
  *  toolUseResult.agentId field on the wrapping user record; fall back to
  *  the tool_result content (sometimes echoed there). Null if none found. */
 function extractAgentId(
@@ -145,33 +155,46 @@ function dropHidden(lines: ReadonlyArray<RawLine>, showHidden: boolean): RawLine
 }
 
 /**
- * Step 2: dedup streaming assistant chunks. For consecutive assistant lines
- * sharing the same message.id, keep only the last one. The last record holds
- * the final stop_reason and the complete content; earlier ones are partial.
+ * Step 2: join one assistant message's records. Claude Code writes each
+ * content block of a message — its thinking, its text, each tool call — as a
+ * record of its own, every one carrying the message's id, so consecutive
+ * assistant lines sharing an id are one message: its content is theirs in
+ * order, its parent is the first one's, and the rest of it (stop_reason,
+ * usage) is the last one's.
+ *
+ * The joined line keeps the records it was joined from (`parts`), verbatim,
+ * so each block can say exactly which records it is drawn from (`source`).
  */
-function dedupStreaming(lines: ReadonlyArray<RawLine>): RawLine[] {
-  const out: RawLine[] = [];
+interface Joined {
+  readonly line: RawLine;
+  /** The records the line was joined from, first to last, as read. */
+  readonly parts: readonly RawLine[];
+}
+
+function joinMessageRecords(lines: ReadonlyArray<RawLine>): Joined[] {
+  const out: Joined[] = [];
   for (const line of lines) {
     const r = line.parsed as RawRecord;
-    if (r.type !== "assistant") {
-      out.push(line);
-      continue;
-    }
-    const id = r.message?.id;
-    if (!id) {
-      out.push(line);
-      continue;
-    }
-    // If the previous emitted line is also an assistant with the same id, replace it
     const prev = out[out.length - 1];
-    const prevRec = prev?.parsed as RawRecord | undefined;
-    if (prev && prevRec?.type === "assistant" && prevRec.message?.id === id) {
-      out[out.length - 1] = line;
-    } else {
-      out.push(line);
+    const prevRec = prev?.line.parsed as RawRecord | undefined;
+    const id = r.type === "assistant" ? r.message?.id : undefined;
+    if (prev === undefined || id === undefined || prevRec?.type !== "assistant" || prevRec.message?.id !== id) {
+      out.push({ line, parts: [line] });
+      continue;
     }
+    const blocks = (record: RawRecord) => (Array.isArray(record.message?.content) ? record.message.content : []);
+    out[out.length - 1] = {
+      line: { ...line, parsed: { ...r, uuid: prevRec.uuid, parentUuid: prevRec.parentUuid, message: { ...r.message!, content: [...blocks(prevRec), ...blocks(r)] } } },
+      parts: [...prev.parts, line],
+    };
   }
   return out;
+}
+
+/** Whether `line` is the record that carries the tool call `toolUseId`. */
+function carriesToolUse(line: RawLine, toolUseId: string): boolean {
+  const content = (line.parsed as RawRecord).message?.content;
+  return Array.isArray(content) && content.some((c) => c.type === "tool_use" && c.id === toolUseId);
 }
 
 /**
@@ -179,7 +202,8 @@ function dedupStreaming(lines: ReadonlyArray<RawLine>): RawLine[] {
  * matching tool_result in the next user message; the standalone tool_result
  * user message is consumed (not emitted as its own Block).
  */
-function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
+function emitBlocks(joined: ReadonlyArray<Joined>): Block[] {
+  const lines = joined.map((j) => j.line);
   const out: Block[] = [];
   // Map of toolUseId → resolved AssistantContent (the result), populated as
   // we walk forward and consume tool_result user messages.
@@ -200,6 +224,7 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
   for (let i = 0; i < lines.length; i++) {
     if (consumedResultIndices.has(i)) continue;
     const line = lines[i]!;
+    const parts = joined[i]!.parts;
     const r = line.parsed as RawRecord;
     const uuid = r.uuid ?? `line-${line.lineNumber}`;
     const parentUuid = r.parentUuid ?? null;
@@ -212,7 +237,7 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
         uuid,
         parentUuid,
         timestamp,
-        raw: line.parsed,
+        source: parts,
         subtype: r.subtype ?? "system",
         durationMs: typeof r.durationMs === "number" ? r.durationMs : null,
       };
@@ -228,7 +253,7 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
         uuid,
         parentUuid,
         timestamp,
-        raw: line.parsed,
+        source: parts,
         errorType: r.error ?? "error",
         text: text || asString(r.error) || "(unknown error)",
       };
@@ -251,7 +276,8 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
           uuid,
           parentUuid,
           timestamp,
-          raw: line.parsed,
+          // Its text and thinking: every record of the message but its tool calls, each its own block below.
+          source: parts.filter((part) => !toolUses.some((tu) => carriesToolUse(part, tu.id ?? ""))),
           text,
           model: r.message.model ?? "(unknown)",
           inputTokens: r.message.usage?.input_tokens ?? 0,
@@ -269,28 +295,27 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
         const isError = resolved?.content.is_error === true;
         if (resolved) consumedResultIndices.add(resolved.lineIndex);
 
-        if (toolName === "Task") {
+        // The records this call is drawn from: the one that made it and, once
+        // answered, the one that answered it — each verbatim, and each where a
+        // lookup by its uuid finds this block.
+        const madeBy = parts.find((part) => carriesToolUse(part, toolUseId)) ?? line;
+        const source = resolved ? [madeBy, joined[resolved.lineIndex]!.line] : [madeBy];
+        const parentOf = (madeBy.parsed as RawRecord).parentUuid ?? null;
+
+        const agentId = extractAgentId(resolved ? (lines[resolved.lineIndex]!.parsed as RawRecord) : undefined, resolved?.content);
+        if (SUBAGENT_TOOLS.has(toolName) || agentId !== null) {
           const input = (tu.input ?? {}) as Record<string, unknown>;
-          const resultUserRecord = resolved
-            ? (lines[resolved.lineIndex]!.parsed as RawRecord)
-            : undefined;
-          const agentId = extractAgentId(resultUserRecord, resolved?.content);
+          const text = (...keys: string[]) => keys.map((key) => input[key]).find((v): v is string => typeof v === "string");
           const block: SubagentBlock = {
             kind: "subagent",
             uuid: `${uuid}#${toolUseId}`,
-            parentUuid: uuid,
+            parentUuid: parentOf,
             timestamp,
-            raw: { tool_use: tu, tool_result: resolved?.content ?? null },
+            source,
             toolUseId,
-            subagentType: typeof input["subagent_type"] === "string"
-              ? input["subagent_type"] as string
-              : "task",
-            description: typeof input["description"] === "string"
-              ? input["description"] as string
-              : "",
-            prompt: typeof input["prompt"] === "string"
-              ? input["prompt"] as string
-              : "",
+            subagentType: text("subagent_type", "skill") ?? "task",
+            description: text("description") ?? "",
+            prompt: text("prompt", "args") ?? "",
             resultText,
             hasResult: resolved !== undefined,
             agentId,
@@ -300,9 +325,9 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
           const block: ToolCallBlock = {
             kind: "tool-call",
             uuid: `${uuid}#${toolUseId}`,
-            parentUuid: uuid,
+            parentUuid: parentOf,
             timestamp,
-            raw: { tool_use: tu, tool_result: resolved?.content ?? null },
+            source,
             toolName,
             toolUseId,
             input: tu.input ?? null,
@@ -337,7 +362,7 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
         uuid,
         parentUuid,
         timestamp,
-        raw: line.parsed,
+        source: parts,
         text: text || "(tool result orphan — see raw view)",
         promptId: typeof r.promptId === "string" ? r.promptId : null,
         isMeta: r.isMeta === true,
@@ -352,7 +377,7 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
       uuid,
       parentUuid,
       timestamp,
-      raw: line.parsed,
+      source: parts,
       errorType: r.type ?? "unknown",
       text: `(unknown record type: ${r.type ?? "?"})`,
     };
@@ -371,5 +396,5 @@ export function parseBlocks(
   opts?: ParseOptions,
 ): Block[] {
   const showHidden = opts?.showHidden === true;
-  return emitBlocks(dedupStreaming(dropHidden(lines, showHidden)));
+  return emitBlocks(joinMessageRecords(dropHidden(lines, showHidden)));
 }

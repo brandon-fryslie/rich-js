@@ -1,7 +1,7 @@
 /**
  * Scans `<home>/.claude/projects/` for project directories and their session
- * JSONL files. Reads only stats + the first line of each file (for slug and
- * first-prompt extraction). Skips subagent/tool-results subdirectories —
+ * JSONL files. Reads only stats + the last bytes of each file (for the
+ * session's title). Skips subagent/tool-results subdirectories —
  * only top-level `*.jsonl` in each project directory counts as a "session".
  *
  * [LAW:effects-at-boundaries] All filesystem access is via the injected
@@ -17,20 +17,29 @@ function projectsRoot(fs: FileSystem): string {
   return fs.join(fs.homeDir(), ".claude", "projects");
 }
 
-function extractMeta(firstLine: string | null): { slug: string | null; firstPrompt: string | null } {
-  if (!firstLine) return { slug: null, firstPrompt: null };
-  try {
-    const parsed = JSON.parse(firstLine) as Record<string, unknown>;
-    const slug = typeof parsed["slug"] === "string" ? parsed["slug"] as string : null;
-    let firstPrompt: string | null = null;
-    const message = parsed["message"] as Record<string, unknown> | undefined;
-    if (message && typeof message["content"] === "string") {
-      firstPrompt = (message["content"] as string).slice(0, 200);
+/**
+ * How much of a session's end is read for its title: Claude Code re-appends
+ * a session's title records as it writes, so the newest sits near the end
+ * and this is the window Claude Code itself reads its metadata from.
+ */
+const TITLE_WINDOW_BYTES = 64 * 1024;
+
+/**
+ * A session's title as Claude Code shows it: the newest name a person gave it
+ * (`custom-title`), else the newest it was given (`ai-title`), else its
+ * `slug`. A line the window's cut ends inside does not parse, and is passed
+ * over like any other.
+ */
+function extractTitle(tail: readonly string[]): string | null {
+  const records = tail.flatMap((line) => {
+    try {
+      return [JSON.parse(line) as Record<string, unknown>];
+    } catch {
+      return [];
     }
-    return { slug, firstPrompt };
-  } catch {
-    return { slug: null, firstPrompt: null };
-  }
+  });
+  const newest = (name: string) => records.map((r) => r[name]).filter((v): v is string => typeof v === "string").at(-1) ?? null;
+  return newest("customTitle") ?? newest("aiTitle") ?? newest("slug");
 }
 
 function prettifyDirName(name: string): string {
@@ -41,12 +50,6 @@ function prettifyDirName(name: string): string {
   return name.startsWith("-") ? name.slice(1) : name;
 }
 
-function firstLine(text: string | null): string | null {
-  if (text === null) return null;
-  const nl = text.indexOf("\n");
-  return nl >= 0 ? text.slice(0, nl) : text;
-}
-
 function scanSessions(fs: FileSystem, projectDir: string): SessionMeta[] {
   const out: SessionMeta[] = [];
   for (const name of fs.readDir(projectDir)) {
@@ -54,15 +57,13 @@ function scanSessions(fs: FileSystem, projectDir: string): SessionMeta[] {
     const full = fs.join(projectDir, name);
     const s = fs.stat(full);
     if (s === null || !s.isFile) continue;
-    const head = firstLine(fs.readFirstBytes(full, 4096));
-    const { slug, firstPrompt } = extractMeta(head);
+    const title = extractTitle((fs.readLastBytes(full, TITLE_WINDOW_BYTES) ?? "").split("\n"));
     out.push({
       path: full,
       fileName: name.replace(/\.jsonl$/, ""),
       size: s.size,
       mtime: s.mtime,
-      slug,
-      firstPrompt,
+      title,
     });
   }
   out.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());

@@ -66,8 +66,8 @@ export interface FileSystem {
    *  be read (consumers are responsible for catching where appropriate). */
   readFile(path: string): string;
 
-  /** Best-effort: read up to `maxBytes` from the start of a file and return
+  /** Best-effort: read up to `maxBytes` from the end of a file and return
    *  the UTF-8 string. Returns `null` if the file cannot be opened or is
    *  empty. Implementations may read fewer bytes for short files. */
-  readFirstBytes(path: string, maxBytes: number): string | null;
+  readLastBytes(path: string, maxBytes: number): string | null;
 }

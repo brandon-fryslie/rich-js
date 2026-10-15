@@ -46,5 +46,6 @@ export default defineConfig({
     testTimeout: HANG_MS,
     hookTimeout: HANG_MS,
     setupFiles: ["test/suite/timeout-report.ts"],
+    globalSetup: ["test/suite/stage-repo-files.ts"],
   },
 });

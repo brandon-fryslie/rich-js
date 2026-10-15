@@ -19,6 +19,7 @@
 import ts from "typescript";
 import path from "node:path";
 import { ENTRY_BY_SPECIFIER, PUBLISHED_PATHS, REPO_ROOT } from "./repo-facts.ts";
+import { stageRepoFiles } from "./repo-staging.ts";
 
 const CONFIG = path.join(REPO_ROOT, "tsconfig.demo.json");
 
@@ -58,6 +59,9 @@ const rewriteSpecifiers: ts.TransformerFactory<ts.SourceFile> = (context) => (fi
   };
   return ts.visitEachChild(file, visit, context);
 };
+
+// The demos' cards read their staging from this repository; it is generated, so write it first.
+stageRepoFiles();
 
 const read = ts.readConfigFile(CONFIG, ts.sys.readFile);
 if (read.error) throw new Error(ts.formatDiagnostic(read.error, ts.createCompilerHost({})));

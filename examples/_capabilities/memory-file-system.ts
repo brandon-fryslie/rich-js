@@ -196,7 +196,7 @@ export class MemoryFileSystem implements FileSystem {
     return node.content;
   }
 
-  readFirstBytes(path: string, maxBytes: number): string | null {
+  readLastBytes(path: string, maxBytes: number): string | null {
     const node = this.lookup(path);
     if (node === null || node.kind !== "file") return null;
     if (node.content.length === 0) return null;
@@ -207,7 +207,7 @@ export class MemoryFileSystem implements FileSystem {
     // strictly ≤ maxBytes when truncation produces replacement chars
     // (U+FFFD encodes to 3 bytes), matching node's Buffer.toString.
     const encoded = new TextEncoder().encode(node.content);
-    const slice = encoded.subarray(0, Math.min(maxBytes, encoded.length));
+    const slice = encoded.subarray(Math.max(0, encoded.length - maxBytes));
     return new TextDecoder("utf-8", { fatal: false }).decode(slice);
   }
 

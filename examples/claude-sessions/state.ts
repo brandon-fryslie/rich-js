@@ -258,12 +258,10 @@ export function toggleExpand(state: AppState): AppState {
 export function toggleHidden(state: AppState): AppState {
   if (state.rawLines.length === 0) return state;
   const showHidden = !state.showHidden;
-  const currentUuid = selectedBlock(state)?.uuid;
+  const current = selectedBlock(state)?.source.map(uuidOf).find((uuid) => uuid !== undefined);
   const blocks = parseBlocks(state.rawLines, { showHidden });
-  // Try to keep selection on the same block after the filter changes
-  const nextIdx = currentUuid
-    ? Math.max(0, blocks.findIndex((b) => b.uuid === currentUuid))
-    : 0;
+  // The selection stays on the block drawn from the same record.
+  const nextIdx = current === undefined ? 0 : Math.max(0, blockIndexOf(blocks, current));
   return {
     ...state,
     showHidden,
@@ -277,10 +275,41 @@ export function toggleHidden(state: AppState): AppState {
 
 // --- Navigation ---
 
+/** The uuid a JSONL record carries, or none. */
+const uuidOf = (line: RawLine): string | undefined => {
+  const uuid = line.parsed["uuid"];
+  return typeof uuid === "string" ? uuid : undefined;
+};
+
+/** The first block drawn from the record `uuid`, or -1. [LAW:single-enforcer] Every lookup of a block by a record's uuid. */
+export function blockIndexOf(blocks: ReadonlyArray<Block>, uuid: string): number {
+  return blocks.findIndex((b) => b.source.some((line) => uuidOf(line) === uuid));
+}
+
+/**
+ * The block the record `uuid` belongs under: the block drawn from it, or else
+ * from its nearest ancestor that has one — a record no block shows (a hidden
+ * type, a thinking-only part) passes the reference up its own parent.
+ */
+function ancestorBlockIndex(state: AppState, uuid: string | null): number {
+  const parentOf = new Map(state.rawLines.flatMap((line) => {
+    const id = uuidOf(line);
+    const parent = line.parsed["parentUuid"];
+    return id === undefined ? [] : [[id, typeof parent === "string" ? parent : null] as const];
+  }));
+  const seen = new Set<string>();
+  for (let at = uuid; at !== null && !seen.has(at); at = parentOf.get(at) ?? null) {
+    seen.add(at);
+    const idx = blockIndexOf(state.blocks, at);
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
 export function jumpToParent(state: AppState): AppState {
   const block = selectedBlock(state);
-  if (!block || !block.parentUuid) return state;
-  const idx = state.blocks.findIndex((b) => b.uuid === block.parentUuid);
+  if (!block) return state;
+  const idx = ancestorBlockIndex(state, block.parentUuid);
   if (idx < 0) return state;
   return { ...state, selectedBlockIndex: idx };
 }
@@ -467,7 +496,7 @@ export function openSelectedGlobalHit(state: AppState): AppState {
   });
   // Try to jump to the matching block by uuid
   if (hit.uuid) {
-    const idx = loaded.blocks.findIndex((b) => b.uuid === hit.uuid || b.uuid.startsWith(`${hit.uuid}#`));
+    const idx = blockIndexOf(loaded.blocks, hit.uuid);
     if (idx >= 0) {
       return { ...loaded, selectedBlockIndex: idx };
     }

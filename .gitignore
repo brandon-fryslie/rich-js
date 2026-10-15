@@ -10,3 +10,6 @@ test-results/
 .mcp.json
 .claude/*.lock
 .claude/worktrees/
+# Generated from the files they stage by scripts/repo-staging.ts.
+examples/rich-explore/staging/rich-js.ts
+examples/rich-dash/staging/readme.ts
