@@ -44,7 +44,7 @@ import { WidgetBase } from "./widget-base.js";
 
 export interface WidgetAppOptions extends AppOptions {
   /**
-   * Whether a press focuses the widget under it, before the widget hears the
+   * Whether a left-button press focuses the widget under it, before it hears the
    * press. `true` unless given.
    */
   readonly focusOnClick?: boolean;
