@@ -4,15 +4,22 @@
     {
       "version": "pr-382",
       "ref": "refs/pull/382/merge",
-      "sha": "9a780eef448aa5ec2674d6a20eac5ddd67f30dae",
-      "timestamp": "2026-10-15T06:23:51.166Z",
+      "sha": "89e9a700c789cc566c1aa7a78141f678f8b9f488",
+      "timestamp": "2026-10-15T06:29:54.051Z",
       "commits": [
         {
-          "sha": "9a780eef448aa5ec2674d6a20eac5ddd67f30dae",
+          "sha": "89e9a700c789cc566c1aa7a78141f678f8b9f488",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T00:22:38-06:00",
-          "message": "Merge ab0a1d4939bc042a3009a32562bab7bb34be2bd8 into e8a8eb094be6a4f8c5924e6898097e098b287893\n"
+          "timestamp": "2026-10-15T06:28:28Z",
+          "message": "Merge 729f2e33dc221267d4d70b0ac827d1ef53a0f1d4 into e8a8eb094be6a4f8c5924e6898097e098b287893\n"
+        },
+        {
+          "sha": "729f2e33dc221267d4d70b0ac827d1ef53a0f1d4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T00:28:23-06:00",
+          "message": "fix(demos): scrub before trim; prose keeps more than tool output (rich-demos-k78j.3ok)\n\nTrimming first could cut a home path or email below its scrub pattern\n(/Users/b leaked). Cuts are by code point, the marker names both lines and\ncharacters lost, and only the newest title record of each kind is staged.\n"
         },
         {
           "sha": "ab0a1d4939bc042a3009a32562bab7bb34be2bd8",
