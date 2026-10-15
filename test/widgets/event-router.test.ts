@@ -398,6 +398,38 @@ describe("InputParser on a split host", () => {
     parser.feed("q");
     expect(keys).toEqual(["a", "meta+[", "q"]);
   });
+
+  it("holds a stalled tail behind keys a handler that threw had not reached", () => {
+    const { keys, parser } = split((key) => {
+      if (key === "a") throw new Error("handler");
+    });
+    expect(() => parser.feed("ab\x1b[")).toThrow("handler");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS);
+    parser.feed("q");
+    expect(keys).toEqual(["a", "b", "meta+[", "q"]);
+  });
+
+  it("reads a held ESC [ as Alt+[ when a key queued ahead of the escape delay opens with ESC", () => {
+    const { keys, parser } = split();
+    parser.feed("\x1b[");
+    parser.feed("\x1b[B");
+    expect(keys).toEqual(["meta+[", "down"]);
+  });
+
+  it("holds one sequence at a time when a handler feeds the parser", () => {
+    let parser!: InputParser;
+    const h = split((key) => {
+      if (key === "x") parser.feed("\x1b");
+    });
+    parser = h.parser;
+    parser.feed("x");
+    parser.reset();
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS / 2);
+    parser.feed("\x1b[");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS / 2);
+    parser.feed("A");
+    expect(h.keys).toEqual(["x", "up"]);
+  });
 });
 
 // A host whose chunks end on key boundaries (xterm.js, and the docs worker's

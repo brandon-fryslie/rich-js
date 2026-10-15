@@ -6,7 +6,7 @@
  * how `run` settles, for bytes typed at a scripted host.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 import { App, type AppOptions } from "../../src/host/app.js";
 import { ESCAPE_DELAY_MS, keyName, type KeyPress } from "../../src/host/input.js";
@@ -46,6 +46,9 @@ describe("App hears keys", () => {
     ["Escape then Ctrl+X in one read", "\x1b\x18", ["escape", "ctrl+x"]],
     ["Escape before a pointer report", "\x1b\x1b[<35;1;1M", ["escape"]],
     ["Alt+G by its glyph", "\x1bG\x1b>", ["meta+G", "meta+>"]],
+    ["Alt+[ then Down in one read", "\x1b[\x1b[B", ["meta+[", "down"]],
+    ["Alt+O then Ctrl+X in one read", "\x1bO\x18", ["meta+O", "ctrl+x"]],
+    ["Escape cut short by Ctrl+X in a pointer report", "\x1b[<0;1\x18", ["escape", "[", "<", "0", ";", "1", "ctrl+x"]],
     ["Ctrl+Space", "\x00", ["ctrl+space"]],
     ["Ctrl+\\ ] ^ _", "\x1c\x1d\x1e\x1f", ["ctrl+\\", "ctrl+]", "ctrl+^", "ctrl+_"]],
   ])("hears %s", (_, bytes, names) => {
@@ -103,12 +106,17 @@ describe("App's quit keys", () => {
   });
 
   it("does not hear a lone ESC typed just before it stopped", async () => {
-    const { host, app, done, keys } = started();
-    host.type("\x1b");
-    app.stop();
-    await done;
-    await new Promise((resolve) => setTimeout(resolve, ESCAPE_DELAY_MS));
-    expect(keys).toEqual([]);
+    vi.useFakeTimers();
+    try {
+      const { host, app, done, keys } = started();
+      host.type("\x1b");
+      app.stop();
+      await done;
+      vi.advanceTimersByTime(ESCAPE_DELAY_MS);
+      expect(keys).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("hears nothing typed after the key it stopped on", async () => {

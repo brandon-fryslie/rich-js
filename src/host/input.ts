@@ -234,6 +234,21 @@ function altKey(byte: number): KeyPress {
   return { key: String.fromCharCode(byte), character: "", shift: false, ctrl: false, meta: true };
 }
 
+// ECMA-48: an escape sequence is built of bytes 0x20–0x7E after its ESC, so
+// any other byte (ESC itself, a control, a UTF-8 byte) ends one unfinished.
+function inSequence(byte: number): boolean {
+  return byte >= 0x20 && byte <= 0x7e;
+}
+
+// [LAW:one-source-of-truth] An escape sequence that ended before its final
+// byte — at a whole-key chunk's end, at the escape delay, or at a byte that
+// cannot belong to it — opened nothing. `ESC [` / `ESC O` alone is the whole
+// key Alt+[ / Alt+O; any other ESC is Escape, and what followed it is read
+// again on its own.
+function unfinished(sequence: Uint8Array): { bytes: number; event: KeyPress } {
+  return sequence.length === 2 ? { bytes: 2, event: altKey(sequence[1]!) } : { bytes: 1, event: ESCAPE };
+}
+
 export class InputParser {
   // [LAW:types-are-the-program] The parse buffer is `Uint8Array`, not
   // `Buffer` — node's Buffer extends Uint8Array, so Buffer chunks from
@@ -275,27 +290,31 @@ export class InputParser {
   // [LAW:no-ambient-temporal-coupling] Whatever drain leaves at an ESC is an
   // unfinished sequence, and the escape delay is what tells one whose rest is
   // still in flight from one that stalled: a stalled `ESC [` held for good
-  // would read the next key as its final byte (rich-host-input-gnl7). The hold
-  // is armed even when a handler throws mid-drain, so no tail is left unheld.
+  // would read the next key as its final byte (rich-host-input-gnl7). A
+  // handler that throws leaves the rest of the chunk to be read in full before
+  // the hold is armed, as settleChunk does, so no tail is left unheld; and the
+  // parser holds one timer, so arming it replaces any a re-entrant feed armed.
   private drainAndHold(): void {
+    let drained = false;
     try {
       this.drain();
+      drained = true;
     } finally {
-      if (this.buffer[0] === ESC) {
-        this.escTimer = setTimeout(() => {
-          this.escTimer = undefined;
-          this.flush();
-        }, ESCAPE_DELAY_MS);
-      }
+      if (!drained) this.drainAndHold();
     }
+    if (this.buffer[0] !== ESC) return;
+    this.cancelEscape();
+    this.escTimer = setTimeout(() => {
+      this.escTimer = undefined;
+      this.flush();
+    }, ESCAPE_DELAY_MS);
   }
 
   // A whole-key chunk has ended, so an ESC still at the buffer head opens no
-  // sequence. `ESC [` / `ESC O` alone is the whole key Alt+[ / Alt+O; any
-  // other ESC is Escape, and what followed it is read again on its own. Each
-  // key is taken off the buffer before the sink hears it, and a sink that
-  // throws leaves the rest of the chunk to be read in full before this rule
-  // meets its end, so no byte of one chunk outlives it.
+  // sequence, and is read as `unfinished` reads it. Each key is taken off the
+  // buffer before the sink hears it, and a sink that throws leaves the rest of
+  // the chunk to be read in full before this rule meets its end, so no byte of
+  // one chunk outlives it.
   private settleChunk(): void {
     let drained = false;
     try {
@@ -305,11 +324,10 @@ export class InputParser {
       if (!drained) this.settleChunk();
     }
     if (this.buffer[0] !== ESC) return;
-    const introducer = this.buffer.length === 2;
-    const press = introducer ? altKey(this.buffer[1]!) : ESCAPE;
-    this.buffer = this.buffer.subarray(introducer ? 2 : 1);
+    const { bytes, event } = unfinished(this.buffer);
+    this.buffer = this.buffer.subarray(bytes);
     try {
-      this.sink.key(press);
+      this.sink.key(event);
     } finally {
       this.settleChunk();
     }
@@ -489,6 +507,7 @@ export class InputParser {
 
   private consumeSS3(buf: Uint8Array): ConsumeResult {
     if (buf.length < 3) return { kind: "incomplete" };
+    if (!inSequence(buf[2]!)) return { kind: "key", ...unfinished(buf.subarray(0, 2)) };
     const final = String.fromCharCode(buf[2]!);
     const name = SS3_KEYS[final];
     if (!name) return { kind: "skip", bytes: 3 };
@@ -534,6 +553,7 @@ export class InputParser {
             event: decodeMouseFromCb(cb, col, row, b === M_UPPER),
           };
         }
+        if (!inSequence(b)) return { kind: "key", ...unfinished(buf.subarray(0, i)) };
       }
       return { kind: "incomplete" };
     }
@@ -547,6 +567,7 @@ export class InputParser {
         const final = String.fromCharCode(b);
         return decodeCSI(params, final, i + 1);
       }
+      if (!inSequence(b)) return { kind: "key", ...unfinished(buf.subarray(0, i)) };
       params += String.fromCharCode(b);
     }
     return { kind: "incomplete" };
