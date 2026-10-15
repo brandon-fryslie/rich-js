@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-379",
+      "ref": "refs/pull/379/merge",
+      "sha": "c90bf17f27323d428c517721937b06507f6322c0",
+      "timestamp": "2026-10-15T04:29:15.603Z",
+      "commits": [
+        {
+          "sha": "c90bf17f27323d428c517721937b06507f6322c0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T22:27:50-06:00",
+          "message": "Merge 111336e4d25678f3c743b49074e37de3f12b9dc5 into 42c422e4022be20030c3bc6e27de6c7e86526832\n"
+        },
+        {
+          "sha": "111336e4d25678f3c743b49074e37de3f12b9dc5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T22:27:45-06:00",
+          "message": "feat(renderables): ListView, moveSelection, ViewportPerKey ship beside Viewport (rich-demos-k78j.3gp)\n\nThe demos' copies move into the library: ItemsInView becomes ListView (gap and\ncontext options), the clamped selection moves become moveSelection, and\nexamples/shared/ViewportPerSubject becomes ViewportPerKey. Viewport.follow\nbrings a range into view only when it changes, so a ListView rebuilt every\nframe no longer undoes the wheel's scroll. rich-dash's RateSparkline gains a\nnatural width, which keeps withBoundedWidth demonstrated.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "42c422e4022be20030c3bc6e27de6c7e86526832",
