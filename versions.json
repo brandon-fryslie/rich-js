@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "345b10f5a83028a3260fd3b25cecdaecf8250989",
-      "timestamp": "2026-10-15T04:07:39.939Z",
+      "sha": "42c422e4022be20030c3bc6e27de6c7e86526832",
+      "timestamp": "2026-10-15T04:19:07.753Z",
       "commits": [
         {
-          "sha": "345b10f5a83028a3260fd3b25cecdaecf8250989",
+          "sha": "42c422e4022be20030c3bc6e27de6c7e86526832",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T22:06:03-06:00",
-          "message": "feat(host): App reads keys — onKey/onMouse, Ctrl+C quits, quitKeys (rich-demos-k78j.4yc) (#377)\n\n* feat(host): App reads keys — onKey/onMouse, Ctrl+C quits, quitKeys (rich-demos-k78j.4yc)\n\nThe byte parser moves from widgets/EventRouter down to host/input.ts.\nApp owns the one host.onData subscription and parser; WidgetApp's router\nroutes what App hears. keyName() is the one name per key; quitKeys\n(default [\"ctrl+c\"], [] removes) are checked before any handler. A\nhandler that throws fails the app.\n\nThe four App demos (claude-sessions, rich-explore, rich-dash,\neffects-feel) drop their TextDecoders, escape literals and try/fail\nrouting; keymaps are keyed by keyName.\n\nWidgetApp now quits on Ctrl+C too, since it is an App: docs/widgets.md\ndrops the hand-written Ctrl+C handler.\n\n* fix(host): review — Alt sequences, Ctrl range, sideways wheel, quit-key names, late handler errors (rich-demos-k78j.4yc)\n\nESC ESC [ A is Alt+Up and ESC <ctrl> is Alt+Ctrl, not escape; 0x00 and\n0x1c-0x1f name Ctrl+Space and Ctrl+\\ ] ^ _; Alt+printable is keyed by its\nglyph; SGR wheel 66/67 are scroll_left/right. quitKeys parse against keyName's\ngrammar and throw on a name no key goes by. A handler that stops the app is\nthe last to hear the event, and an error after stop throws instead of\nvanishing. Dead Ctrl+C handlers removed from four demos.\n\n* fix(host): review — ESC before a pointer report and before a Ctrl chord is Escape; quit-key names match the Ctrl glyphs the parser makes (rich-demos-k78j.4yc)"
+          "timestamp": "2026-10-14T22:17:51-06:00",
+          "message": "feat(widgets): a press focuses the widget under it (rich-demos-k78j.pej) (#378)\n\n* feat(widgets): a press focuses the widget under it, focusOnClick removes it (rich-demos-k78j.pej)\n\nThe click-to-focus copies in rich-config and dropdown-demo are gone;\ndropdown-demo's status line shows the widget under the pointer, which\nkeeps widgetAt demonstrated.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(widgets): click-to-focus is a router step, left button only (rich-demos-k78j.pej)\n\nReview (high): focus moved in a handler registered first, ahead of the\nprogram's onMouse, contradicting docs; it re-ran widgetAt; any button\nfocused. Now dispatchMouse moves focus after program handlers, before\ndelivery, reusing its hit.\n\n* docs(widgets): focusOnClick names the left button (rich-demos-k78j.pej)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
