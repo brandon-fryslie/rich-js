@@ -4,15 +4,22 @@
     {
       "version": "pr-402",
       "ref": "refs/pull/402/merge",
-      "sha": "29d4a5edc37a37d5a4307b7aa95397e6cd66a66d",
-      "timestamp": "2026-10-15T17:17:55.334Z",
+      "sha": "f15057891441aa7bc2eecd286442c62654dd0687",
+      "timestamp": "2026-10-15T17:25:18.708Z",
       "commits": [
         {
-          "sha": "29d4a5edc37a37d5a4307b7aa95397e6cd66a66d",
+          "sha": "f15057891441aa7bc2eecd286442c62654dd0687",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T17:16:14Z",
-          "message": "Merge 14a5d8cfd51365c56ff92a583e6b1b4327de95e5 into 680f56460643c5e8cdcdbdf5a8dbcaba8b6c3215\n"
+          "timestamp": "2026-10-15T17:24:01Z",
+          "message": "Merge b3b2808128e835a28cb8a17df64ad678a2e6fd03 into 680f56460643c5e8cdcdbdf5a8dbcaba8b6c3215\n"
+        },
+        {
+          "sha": "b3b2808128e835a28cb8a17df64ad678a2e6fd03",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T11:23:55-06:00",
+          "message": "The escape delay settles a hold only after the loop has read waiting input (rich-host-input-gnl7)\n\nReview (escalation high) of #402:\n- Node runs an expired timer before it reads input queued behind a long\n  frame, so a split arrow whose rest waited behind a >100ms paint read as\n  meta+[ then A. The delay's end now settles the hold one event-loop turn\n  later; test/node/escape-delay.test.ts drives a real socket through\n  NodeTerminalHost to prove it.\n- An unknown SS3 final was skipped, so Esc, O, h typed inside the delay lost\n  all three keys. No terminal reports in SS3, so it is reissued as the keys it\n  holds (`unfinished` is now `reissue`, Textual's word).\n- settleChunk and drainAndHold share one throw-recovery drain (drainFully).\n- InputChunks' doc no longer claims a split host never resolves by timer.\n"
         },
         {
           "sha": "14a5d8cfd51365c56ff92a583e6b1b4327de95e5",
