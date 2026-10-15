@@ -32,7 +32,7 @@ async function pointAt(page: Page, demo: string, col: number, row: number): Prom
 test.use({ viewport: { width: 1280, height: 500 } });
 
 for (const [name, drawn] of [
-  ["claude-sessions", "home-demo-rich-js"],
+  ["claude-sessions", "home-demo-code-rich-js"],
   ["rich-config", "─ Preview ─"],
   // A program that has ended asked for no pointer reports: the page scrolls past it natively.
   ["rich-strip", "PowerlineJoiner"],

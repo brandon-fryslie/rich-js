@@ -145,31 +145,28 @@ function dropHidden(lines: ReadonlyArray<RawLine>, showHidden: boolean): RawLine
 }
 
 /**
- * Step 2: dedup streaming assistant chunks. For consecutive assistant lines
- * sharing the same message.id, keep only the last one. The last record holds
- * the final stop_reason and the complete content; earlier ones are partial.
+ * Step 2: join one assistant message's records. Claude Code writes each
+ * content block of a message — its thinking, its text, each tool call — as a
+ * record of its own, every one carrying the message's id, so consecutive
+ * assistant lines sharing an id are one message: its content is theirs in
+ * order, and the rest of it (stop_reason, usage) is the last one's.
  */
-function dedupStreaming(lines: ReadonlyArray<RawLine>): RawLine[] {
+function joinMessageRecords(lines: ReadonlyArray<RawLine>): RawLine[] {
   const out: RawLine[] = [];
   for (const line of lines) {
     const r = line.parsed as RawRecord;
-    if (r.type !== "assistant") {
-      out.push(line);
-      continue;
-    }
-    const id = r.message?.id;
-    if (!id) {
-      out.push(line);
-      continue;
-    }
-    // If the previous emitted line is also an assistant with the same id, replace it
     const prev = out[out.length - 1];
     const prevRec = prev?.parsed as RawRecord | undefined;
-    if (prev && prevRec?.type === "assistant" && prevRec.message?.id === id) {
-      out[out.length - 1] = line;
-    } else {
+    const id = r.type === "assistant" ? r.message?.id : undefined;
+    if (prev === undefined || id === undefined || prevRec?.type !== "assistant" || prevRec.message?.id !== id) {
       out.push(line);
+      continue;
     }
+    const blocks = (record: RawRecord) => (Array.isArray(record.message?.content) ? record.message.content : []);
+    out[out.length - 1] = {
+      ...line,
+      parsed: { ...r, message: { ...r.message!, content: [...blocks(prevRec), ...blocks(r)] } },
+    };
   }
   return out;
 }
@@ -371,5 +368,5 @@ export function parseBlocks(
   opts?: ParseOptions,
 ): Block[] {
   const showHidden = opts?.showHidden === true;
-  return emitBlocks(dedupStreaming(dropHidden(lines, showHidden)));
+  return emitBlocks(joinMessageRecords(dropHidden(lines, showHidden)));
 }

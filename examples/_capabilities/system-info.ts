@@ -12,7 +12,8 @@
  * Same call sites, different value.
  *
  * [LAW:one-source-of-truth] There is exactly one SystemInfo interface; the
- * node and memory implementations are derived from it. A demo that imports
+ * node implementation and the card's staged one (rich-dash/staging/) are
+ * derived from it. A demo that imports
  * `node:os` directly is a leak — fix the demo, not the type.
  *
  * [LAW:one-way-deps] Demos depend on `_capabilities/`; the capability has
@@ -22,7 +23,7 @@
 /**
  * Read-only snapshot of system vitals. Each accessor returns a fresh value
  * on every call — implementations decide whether that means re-reading the
- * kernel (node) or returning a constant from a fixture (memory).
+ * kernel (node) or computing the staged runner's vitals for the moment (card).
  *
  * The surface is intentionally narrow: every method here has a real caller.
  * Add methods when a real caller appears, not before.
@@ -40,8 +41,7 @@ export interface SystemInfo {
   /** Seconds since the host booted (production: `os.uptime()`). */
   uptimeSeconds(): number;
 
-  /** 1/5/15-minute load averages. The browser has no real loadavg, so the
-   *  memory impl returns its fixture values verbatim. */
+  /** 1/5/15-minute load averages. */
   loadAverage(): readonly [number, number, number];
 
   /** Total physical memory, in bytes. */

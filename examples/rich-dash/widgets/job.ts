@@ -1,5 +1,7 @@
 /**
- * job — fake build pipeline driving a `Progress` instance.
+ * job — this repository's build pipeline, played back, driving a `Progress`
+ * instance: its real steps, each working through the real things that step
+ * works through, and each run a different length, as runs are.
  *
  * `Progress` is reused as a pure Renderable: we never call `progress.start()`,
  * so its internal Live timer never fires. The dashboard's `App` drives
@@ -39,6 +41,7 @@ import { defineWidget } from "../widget.js";
 
 interface Stage {
   readonly description: string;
+  readonly items: readonly string[];
   readonly total: number;
   taskId: number;
   completed: number;
@@ -60,12 +63,38 @@ const LOG_KEPT = 200;
 const MAX_ADVANCE = 4;
 const RATES_KEPT = 48;
 
-const STAGE_PLAN: ReadonlyArray<{ description: string; total: number }> = [
-  { description: "fetch sources", total: 40 },
-  { description: "compile",       total: 120 },
-  { description: "link",          total: 30 },
-  { description: "package",       total: 20 },
+const STAGE_PLAN: ReadonlyArray<{ readonly description: string; readonly items: readonly string[] }> = [
+  { description: "lint", items: ["tsc --noEmit", "tsc -p tsconfig.scripts.json", "tsc -p tsconfig.test.json"] },
+  {
+    description: "tsc",
+    items: [
+      "src/core/color.ts", "src/core/style.ts", "src/core/segment.ts", "src/core/text.ts", "src/core/markup.ts",
+      "src/core/console.ts", "src/renderables/table.ts", "src/renderables/panel.ts", "src/renderables/layout.ts",
+      "src/renderables/progress.ts", "src/host/app.ts", "src/widgets/widget-app.ts", "src/themes/transpose.ts",
+    ],
+  },
+  {
+    description: "vitest",
+    items: [
+      "test/core/color.test.ts", "test/core/style.test.ts", "test/core/text-wrap.test.ts", "test/core/markup.test.ts",
+      "test/core/export-svg.test.ts", "test/renderables/table.test.ts", "test/renderables/layout.test.ts",
+      "test/renderables/viewport.test.ts", "test/host/app-input.test.ts", "test/widgets/dropdown.test.ts",
+      "test/themes/transpose.test.ts", "test/seam/browser-safe.test.ts", "test/seam/tarball.test.ts",
+      "test/coverage/coverage.test.ts",
+    ],
+  },
+  {
+    description: "docs:build",
+    items: ["introduction.md", "console.md", "markup.md", "tables.md", "panel.md", "layout.md", "live.md", "widgets.md", "demos/index.md"],
+  },
+  {
+    description: "test:demos",
+    items: ["example-card.spec.ts", "playground.spec.ts", "claude-sessions.spec.ts", "rich-dash.spec.ts", "rich-explore.spec.ts", "wheel.spec.ts"],
+  },
 ];
+
+/** Ticks a stage takes per item: each run between three and nine, so no two runs are the same length. */
+const runLength = (items: number) => items * (3 + Math.floor(Math.random() * 7));
 
 function buildProgress(): { progress: Progress; stages: Stage[] } {
   const progress = new Progress(
@@ -76,15 +105,22 @@ function buildProgress(): { progress: Progress; stages: Stage[] } {
     new TimeElapsedColumn(),
     { autoRefresh: false },
   );
-  const stages: Stage[] = STAGE_PLAN.map((s) => ({
-    description: s.description,
-    total: s.total,
-    taskId: progress.addTask(s.description, { total: s.total, start: false }),
-    completed: 0,
-  }));
+  const stages: Stage[] = STAGE_PLAN.map((s) => {
+    const total = runLength(s.items.length);
+    return {
+      description: s.description,
+      items: s.items,
+      total,
+      taskId: progress.addTask(s.description, { total, start: false }),
+      completed: 0,
+    };
+  });
   if (stages[0]) progress.startTask(stages[0].taskId);
   return { progress, stages };
 }
+
+/** The item a stage is on when it has done `completed` of its work. */
+const itemAt = (stage: Stage, completed: number) => stage.items[Math.min(stage.items.length - 1, Math.floor((completed / stage.total) * stage.items.length))]!;
 
 function init(): JobState {
   const built = buildProgress();
@@ -113,10 +149,13 @@ function tick(state: JobState): JobState {
   state.rates.push(stage.completed - before);
   state.rates.splice(0, state.rates.length - RATES_KEPT);
   state.progress.updateTask(stage.taskId, { completed: stage.completed });
-  record(state, `${stage.description}: ${stage.completed}/${stage.total}`);
+  // A line when the stage reaches its next item, as a tool's log does.
+  if (before === 0 || itemAt(stage, before) !== itemAt(stage, stage.completed)) {
+    record(state, `${stage.description}  ${itemAt(stage, stage.completed)}`);
+  }
 
   if (stage.completed >= stage.total) {
-    record(state, `${stage.description} done`);
+    record(state, `${stage.description} ok`);
     state.cursor += 1;
     const next = state.stages[state.cursor];
     if (next) state.progress.startTask(next.taskId);

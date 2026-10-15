@@ -29,11 +29,12 @@ import { EXAMPLE_SIZE, terminalSize } from "./terminal-size.js";
 
 /**
  * The most a link carries, in UTF-8 bytes of what it packs (the program, its
- * setup and their JSON): far past any program a person writes, and far short
- * of what a crafted hash can inflate to. A link is opened on sight, so reading
- * one must not be able to exhaust the tab.
+ * setup and their JSON): past the largest demo's program — claude-sessions,
+ * whose staged sessions weigh ~2.5 MB — and far short of what a crafted hash
+ * can inflate to. A link is opened on sight, so reading one must not be able
+ * to exhaust the tab.
  */
-export const MAX_PROGRAM_BYTES = 1 << 20;
+export const MAX_PROGRAM_BYTES = 4 << 20;
 
 /** The name a hash in this format starts with, before its `.`. */
 const FORMAT = "program";

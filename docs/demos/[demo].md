@@ -11,6 +11,9 @@ import { computed } from 'vue'
 // (docs/.vitepress/demo-card.ts).
 const { params } = useData()
 
+// The card arrives as JSON ([demo].paths.ts says why).
+const card = computed(() => JSON.parse(params.value.card))
+
 const sourceHref = computed(
   () => `https://github.com/brandon-fryslie/rich-js/tree/master/examples/${params.value.demo}`,
 )
@@ -23,7 +26,7 @@ const sourceHref = computed(
     <a :href="sourceHref" target="_blank" rel="noopener">View source on GitHub ↗</a>
   </p>
 
-  <div class="vp-doc"><RichDemo :card="$params.card" /></div>
+  <div class="vp-doc"><RichDemo :card="card" /></div>
 </div>
 
 <style scoped>
