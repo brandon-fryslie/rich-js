@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "da6f038edeb4406b5cfe532ce4a669664f43da84",
+      "timestamp": "2026-10-15T07:29:58.832Z",
+      "commits": [
+        {
+          "sha": "da6f038edeb4406b5cfe532ce4a669664f43da84",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:28:21-06:00",
+          "message": "rich-dash drives frames from App's clock, not its own setInterval (rich-rich-dash-ds50) (#387)\n\n* rich-dash drives frames from App's clock, not its own setInterval (rich-rich-dash-ds50)\n\nThe dashboard's widgets advance in the view, once per frame period of the\ntime App hands it, on a Clock that arrives in DashboardCapabilities. The\nsecond timer, its Date.now reads and the try/catch that routed its errors\ninto app.fail are gone: a widget that throws now throws inside the frame,\nwhich App already fails on. A suspended dashboard paints nothing and so\nstands still, and a fake clock drives it (test/examples/rich-dash/app.test.ts).\n\nTickContext had no reader in any widget and is deleted rather than\nre-sourced.\n\n* rich-dash counts frames with effects-feel's frameClock, now shared (rich-rich-dash-ds50)\n\nFlooring absolute clock time into periods dropped a tick whenever a timer\nframe landed a rounding error short of a period edge. A frame counter has\nno edges to miss, and a repaint between frames is handed the same number."
+        }
+      ]
+    },
+    {
       "version": "pr-388",
       "ref": "refs/pull/388/merge",
       "sha": "2f39a67933ec01029a2410bb969f3e10ad300a10",
@@ -20,21 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-15T01:28:09-06:00",
           "message": "JOINERS: the bundled joiner definitions by name (rich-joiners-9ntp.6pd)\n\nOne frozen table replaces POWERLINE_JOINER, CAPSULE_JOINER and PLAIN_JOINER:\npowerline, prism, slant, backslant, flame, pixel, ice, bubble, capsule,\nwrapper, metro, stitch, torn, plain — each a CellJoiner with its ASCII form.\nmetro's rail is the new strip.rail theme role. The rich-strip demo prints\nthe whole table, one joiner a row; its card grows to 30 rows.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "f93e21ac25bc2fb2fa97bb93e94d1fffd870816e",
-      "timestamp": "2026-10-15T07:20:36.275Z",
-      "commits": [
-        {
-          "sha": "f93e21ac25bc2fb2fa97bb93e94d1fffd870816e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:19:19-06:00",
-          "message": "Seam index in the join context; oneOf picks per seam (rich-joiners-9ntp.bex) (#386)\n\n* Seam index in the join context; oneOf picks per seam (rich-joiners-9ntp.bex)\n\nJoiner.join takes { index }: the join before item i is i, the end after\nthe last of n items is n. FlexStrip passes the same index at a wrap, so\nevery surviving seam keeps its glyph. CellJoiner hashes (index, cell\noffset) to pick a oneOf member.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* oneOf picks by integer hash of part, index and cell (rich-joiners-9ntp.bex review)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
