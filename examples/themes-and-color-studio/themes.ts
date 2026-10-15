@@ -366,14 +366,16 @@ export function section5ColorRefs(out: Console): void {
   const sweep = Phase.loop(1.5);
   const indent = "      ";
   const label = "  thinking about colour  ";
-  const shimmer: Effect = (colors, cell, t) => {
+  const shimmer: Effect = (t) => {
     const centre = indent.length + sweep(t) * label.length;
-    const weight = Math.max(0, 1 - Math.abs(cell.col - centre) / 4);
-    const toward = new ColorRamp(EASES.linear, [
-      { at: 0, color: colors.fg },
-      { at: 1, color: highlight },
-    ]);
-    return { fg: toward.at(weight), bg: colors.bg };
+    return (colors, cell) => {
+      const weight = Math.max(0, 1 - Math.abs(cell.col - centre) / 4);
+      const toward = new ColorRamp(EASES.linear, [
+        { at: 0, color: colors.fg },
+        { at: 1, color: highlight },
+      ]);
+      return { fg: toward.at(weight), bg: colors.bg };
+    };
   };
   out.print(bold("    Effected — a per-cell effect sampled at t = 0, 0.5, 1 s:"));
   for (const t of [0, 0.5, 1]) {

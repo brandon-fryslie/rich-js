@@ -2,16 +2,19 @@
  * Effected — a renderable whose finished cells' colours pass through an
  * effect at a moment `t`.
  *
- * An effect is one pure function: a cell's colours, where the cell is, a time,
- * and what the element draws in that frame in, the cell's new colours out.
- * Shimmer, pulse, fade and dissolve are all this one shape, differing by what
- * the function does with its inputs [LAW:one-type-per-behavior]; two effects
- * stack by nesting one wrapper in another, which is the same as calling one
- * after the other but for what the outer one measures: the inner one's output.
+ * An effect is one pure function in two stages: a time and what the element
+ * draws in that frame in, a function of the frame out; and into that, a
+ * cell's colours and where the cell is, the cell's new colours out. Whatever
+ * holds for the whole frame is worked out in the first stage, once, and every
+ * cell of the frame is handed to the second. Shimmer, pulse, fade and
+ * dissolve are all this one shape, differing by what the function does with
+ * its inputs [LAW:one-type-per-behavior]; two effects stack by nesting one
+ * wrapper in another, which is the same as calling one after the other but
+ * for what the outer one measures: the inner one's output.
  *
  * What the element draws (`Drawn`) is measured here, in the render, off the
- * same reading of each segment its cells are drawn from, and handed to every
- * cell of the frame alike. It is what an effect keeping words legible is
+ * same reading of each segment its cells are drawn from, and handed to the
+ * effect's first stage, once a frame. It is what an effect keeping words legible is
  * settled against (`onColors`, `./effects.ts`), so no caller derives it a
  * second time from a render of its own.
  *
@@ -123,10 +126,13 @@ export interface Drawn {
 }
 
 /**
- * A cell's colours at time `t`, in seconds, in a frame whose element draws
- * `drawn`. Return `colors` to leave it be.
+ * The frame at time `t`, in seconds, whose element draws `drawn`: each cell's
+ * colours in that frame. Return `colors` to leave a cell be.
+ * [LAW:types-are-the-program] Per-frame work is the outer stage, so it runs
+ * once a frame by the shape of the call, never by a cache asking whether this
+ * cell's frame is the last one's.
  */
-export type Effect = (colors: CellColors, cell: EffectCell, t: number, drawn: Drawn) => CellColors;
+export type Effect = (t: number, drawn: Drawn) => (colors: CellColors, cell: EffectCell) => CellColors;
 
 export interface EffectedOptions {
   /** The moment to draw, in seconds. */
@@ -173,7 +179,7 @@ export class Effected implements Renderable, Measurable {
     // [LAW:one-source-of-truth] The frame is measured before any cell is
     // handed to the effect, off the same looks its cells are drawn from.
     const looked = looks(segments, depth, this.theme);
-    const drawn = measured(looked, depth, this.theme);
+    const frame = this.effect(this.t, measured(looked, depth, this.theme));
     let row = 0;
     let col = 0;
     for (const { segment, look } of looked) {
@@ -199,7 +205,7 @@ export class Effected implements Renderable, Measurable {
         } else {
           const anchor = base.anchor && shiftAnchor(base.anchor, into);
           // Back from the screen to the style's slots: the same swap undoes itself.
-          colors = onScreen(this.effect(from, { row, col, seed: this.seed(row, col), terminal, anchor }, this.t, drawn), pair.reverse);
+          colors = onScreen(frame(from, { row, col, seed: this.seed(row, col), terminal, anchor }), pair.reverse);
           col += cellLen(glyph);
         }
         into += cellLen(glyph);
@@ -311,10 +317,13 @@ function measured(looked: readonly { segment: Segment; look: Look | undefined }[
  * (`colorsOwnedBy`, `../core/strip.ts`).
  */
 export function confined(effect: Effect, owner: object): Effect {
-  return (colors, cell, t, drawn) => {
-    const owned = colorsOwnedBy(cell.anchor, owner);
-    const moved = effect(colors, cell, t, drawn);
-    return { fg: owned.fg ? moved.fg : colors.fg, bg: owned.bg ? moved.bg : colors.bg };
+  return (t, drawn) => {
+    const frame = effect(t, drawn);
+    return (colors, cell) => {
+      const owned = colorsOwnedBy(cell.anchor, owner);
+      const moved = frame(colors, cell);
+      return { fg: owned.fg ? moved.fg : colors.fg, bg: owned.bg ? moved.bg : colors.bg };
+    };
   };
 }
 
