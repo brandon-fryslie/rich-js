@@ -388,6 +388,16 @@ describe("follow", () => {
     expect(shown(viewport, { rows: 3, exact: true })).toEqual(["2", "3", "4"]);
   });
 
+  it("leaves a range the wheel scrolled away from where the wheel left it, at any row count", () => {
+    const viewport = new Viewport(numbered(10));
+    viewport.follow(0, 1);
+    shown(viewport, { rows: 3, exact: true });
+    viewport.scrollBy(5);
+    expect(shown(viewport, { rows: 3, exact: true })).toEqual(["5", "6", "7"]);
+    expect(shown(viewport, { rows: 4, exact: true })).toEqual(["5", "6", "7", "8"]);
+    expect(shown(viewport, { rows: 2, exact: true })).toEqual(["5", "6"]);
+  });
+
   it("leaves a wheel scroll alone while the rows stay the same", () => {
     const viewport = new Viewport(numbered(10));
     viewport.follow(4, 5);

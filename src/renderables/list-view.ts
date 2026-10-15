@@ -1,6 +1,6 @@
 /**
  * ListView — items stacked down a `Viewport`, scrolled to keep the selected
- * one in view, and `moveSelection`, the cursor that picks it.
+ * one in view. `moveSelection` (core/selection) is the cursor that picks it.
  *
  * An item can wrap, so the lines the selected one covers exist only at the
  * width it is drawn at, which a render is handed and whoever builds the frame
@@ -21,17 +21,6 @@ import { Measurement, measureRenderables } from "../core/measure.js";
 import { withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import type { Viewport } from "./viewport.js";
-
-/**
- * The selection `delta` items on from `index` in a list of `length`, held to
- * the list's ends: `-Infinity` is the first item and `Infinity` the last. A
- * move that cannot go anywhere returns `index` itself, so `next === index`
- * says nothing moved and the caller can skip a repaint. An empty list has
- * nowhere to move to and returns `index`.
- */
-export function moveSelection(index: number, delta: number, length: number): number {
-  return length === 0 ? index : Math.max(0, Math.min(length - 1, index + delta));
-}
 
 export interface ListViewOptions {
   /** Blank lines between one item and the next. Absent, none. */
@@ -71,15 +60,12 @@ export class ListView implements Renderable, Measurable {
     const { height: _height, ...rest } = bounded;
     const options = { ...rest, maxWidth: this.viewport.contentWidth(rest.maxWidth) };
     const gap: Segment[][] = Array.from({ length: this.gap }, () => []);
-    // Each item's lines, then the gap under it — the last item's included, so
-    // every item spans the same shape and the selected one's range is a sum.
-    const drawn = this.items.map((item) => [...Segment.splitLines(item.render(options)), ...gap]);
-    const linesIn = (from: number, to: number): number =>
-      drawn.slice(from, to).reduce((total, lines) => total + lines.length, 0);
-    const start = linesIn(0, this.selected);
-    // The selected item's range stops short of the gap under it.
-    const end = linesIn(0, this.selected + 1) - this.gap;
-    const lines = drawn.flat();
+    const drawn = this.items.map((item) => Segment.splitLines(item.render(options)));
+    // The gap sits between items, so every item before the selected one
+    // brings its lines and one gap.
+    const start = drawn.slice(0, this.selected).reduce((total, item) => total + item.length + this.gap, 0);
+    const end = start + (drawn[this.selected]?.length ?? 0);
+    const lines = drawn.flatMap((item, i) => (i === 0 ? item : [...gap, ...item]));
     this.viewport.content = {
       *render(): Iterable<Segment> {
         for (const line of lines) {

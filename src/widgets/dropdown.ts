@@ -28,7 +28,7 @@ import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { cellLen, setCellSize, splitText, asCellCol } from "../core/cells.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
-import { moveSelection } from "../renderables/list-view.js";
+import { moveSelection } from "../core/selection.js";
 import type { TerminalTheme } from "../core/color.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";

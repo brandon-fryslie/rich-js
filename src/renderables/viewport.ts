@@ -165,9 +165,10 @@ export class Viewport implements Renderable, Measurable, Scrollable {
    * `follow` named. A view rebuilt every frame calls this in every frame with
    * its selection's lines, and the selection is brought into view when it
    * moves — not on every frame, which would undo on its very render each
-   * scroll the mouse wheel queues. A render at a different row count than
-   * the one that last brought it in brings it in again: the same lines can
-   * fall off the bottom of a viewport that got shorter.
+   * scroll the mouse wheel queues. A followed range the last render showed
+   * whole stays shown when the row count changes: the same lines can fall off
+   * the bottom of a viewport that got shorter. One the wheel had scrolled
+   * away from stays away.
    */
   follow(start: number, end: number): void {
     if (start === this._followed.start && end === this._followed.end) return;
@@ -190,16 +191,17 @@ export class Viewport implements Renderable, Measurable, Scrollable {
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     const { height, ...options } = withBoundedWidth(rawOptions, this);
-    const gutter = gutterWidth(this.scrollbar);
+    const gutter = this.gutter;
     const contentWidth = this.contentWidth(options.maxWidth);
     const lines = Segment.splitLines(this.content.render({ ...options, maxWidth: contentWidth }));
     const extent: Extent = { rows: viewRows(height, this.rows, lines.length), lines: lines.length };
-    this._extent = extent;
     const followed = this._followed;
-    if (!Number.isNaN(followed.start) && followed.rows !== extent.rows) {
-      if (!Number.isNaN(followed.rows)) this.ensureVisible(followed.start, followed.end);
-      this._followed = { ...followed, rows: extent.rows };
+    const wasShown = followed.start >= this._offset && followed.end <= this._offset + this._extent.rows;
+    this._extent = extent;
+    if (!Number.isNaN(followed.rows) && followed.rows !== extent.rows && wasShown) {
+      this.ensureVisible(followed.start, followed.end);
     }
+    if (!Number.isNaN(followed.start)) this._followed = { ...followed, rows: extent.rows };
     this._offset = this.resolve(extent);
     this._moves = [];
 
@@ -249,7 +251,7 @@ export class Viewport implements Renderable, Measurable, Scrollable {
     // `withBoundedWidth`: the bounded parse asks this very method for the
     // natural width.
     const options = withCellWidth(rawOptions);
-    const gutter = gutterWidth(this.scrollbar);
+    const gutter = this.gutter;
     const inner = { ...options, maxWidth: this.contentWidth(options.maxWidth) };
     const content = Measurement.get(inner, this.content);
     return new Measurement(content.minimum + gutter, content.maximum + gutter).withMaximum(options.maxWidth);

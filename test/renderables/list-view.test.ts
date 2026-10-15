@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { ListView, moveSelection } from "../../src/renderables/list-view.js";
+import { ListView } from "../../src/renderables/list-view.js";
+import { moveSelection } from "../../src/core/selection.js";
 import { SCROLLBAR, Viewport, ViewportPerKey } from "../../src/renderables/viewport.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
@@ -89,6 +90,10 @@ describe("ListView's arguments", () => {
   });
   it("takes 0 as the selection of an empty list", () => {
     expect(() => new ListView(new Viewport(new RichText("")), [], 0)).not.toThrow();
+  });
+  it("puts its gap between items, not under the last", () => {
+    const lines = Segment.splitLines(new ListView(new Viewport(new RichText("")), items, 0, { gap: 1 }).render({ maxWidth: 5 }));
+    expect(lines.map((l) => l.map((s) => s.text).join("").trimEnd())).toEqual(["a", "", "b"]);
   });
   it("measures at an unbounded width", () => {
     const list = new ListView(new Viewport(new RichText(""), { scrollbar: SCROLLBAR }), items, 0);
