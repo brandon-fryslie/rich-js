@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-394",
+      "ref": "refs/pull/394/merge",
+      "sha": "64bb333b4dbab72fd0052255999d000b410b3973",
+      "timestamp": "2026-10-15T08:45:10.905Z",
+      "commits": [
+        {
+          "sha": "64bb333b4dbab72fd0052255999d000b410b3973",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T02:43:33-06:00",
+          "message": "Merge 1dba2901ae7f048f9d05ab1884b8ad80d7ee56de into 7dbb3e3861046fdadf79c218572a95086864f0a3\n"
+        },
+        {
+          "sha": "1dba2901ae7f048f9d05ab1884b8ad80d7ee56de",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T02:43:20-06:00",
+          "message": "An effect can confine itself to one owner's cells (rich-effects-cbgp.4y4)\n\nEffectCell carries the cell's anchor, and confined(effect, owner) applies an\neffect only to the cells that owner drew. Strip and FlexStrip stamp every item's\ncells with the item (drawItem), and CellJoiner stamps each join cell inked in a\nneighbour's colour with that neighbour, so a seam's arrow moves with the item it\npoints out of; a cell inked in a role or a mix stays the join's alone.\n\nThe effects-feel demo's pulse now singles out its items by owner instead of by\nfill hex.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "7dbb3e3861046fdadf79c218572a95086864f0a3",
