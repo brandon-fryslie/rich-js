@@ -91,19 +91,14 @@ export interface Joiner<T extends StyledRenderable = StyledRenderable> {
 export const JOIN: object = Object.freeze({ name: "join" });
 
 /**
- * Who owns a role, a mix or the terminal's ground on a join cell: no
- * neighbour, and nothing outside this module, so no set of owners holds it.
- */
-const NOBODY: object = Object.freeze({ name: "nobody" });
-
-/**
  * Whose colour each side of a join cell shows on screen, its ink and its
- * ground: the neighbour whose edge a `Paint` names, or `NOBODY`.
+ * ground: the neighbour whose edge a `Paint` names, or `null` for a role, a
+ * mix or the terminal's ground, which are no neighbour's.
  */
 class ColorOwners {
   constructor(
-    readonly fg: object,
-    readonly bg: object,
+    readonly fg: object | null,
+    readonly bg: object | null,
   ) {}
 }
 
@@ -115,7 +110,10 @@ class ColorOwners {
 export function colorsOwnedBy(anchor: Anchor | undefined, owners: ReadonlySet<object>): { readonly fg: boolean; readonly bg: boolean } {
   for (let level = anchor; level; level = level.inner) {
     if (owners.has(level.owner)) return { fg: true, bg: true };
-    if (level.owner instanceof ColorOwners) return { fg: owners.has(level.owner.fg), bg: owners.has(level.owner.bg) };
+    if (level.owner instanceof ColorOwners) {
+      const { fg, bg } = level.owner;
+      return { fg: fg !== null && owners.has(fg), bg: bg !== null && owners.has(bg) };
+    }
   }
   return { fg: false, bg: false };
 }
@@ -483,7 +481,7 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
         const neighbours = { left, right };
         // On screen a cell's ink is its `fg` paint and its ground its `bg`,
         // reverse video or not (`cellStyle`).
-        const ownerOf = (color: CellColor): object => (color !== "ground" && "edge" in color ? (neighbours[color.edge] ?? NOBODY) : NOBODY);
+        const ownerOf = (color: CellColor): object | null => (color !== "ground" && "edge" in color ? neighbours[color.edge] : null);
         const styled = (part: Part) =>
           drawn[part].map((cell, at) => {
             const owners = new ColorOwners(ownerOf(cell.fg), ownerOf(cell.bg));

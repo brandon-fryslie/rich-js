@@ -85,7 +85,7 @@ for (const t of [0, 10, 20]) {
 
 A colour mixed from the two neighbours, such as the middle of a `prism` or a `gradientJoiner` ramp, belongs to neither item, and `confined` leaves it alone.
 
-To move every item but one, confine the effect to all the others in one call, `confined(shimmer, items[0]!, items[2]!)`, rather than once per item. The effect is handed only the cells one of its owners drew, so one confined effect costs one call a cell however many owners it has.
+To move every item but one, name all the others in one call: `confined(onColors(shimmer(…)), items[0]!, items[2]!)` moves the colours either of them drew. One confined effect per item does not add up to that. `confined` nested in `confined` moves only the colours both owners drew, none for two separate items, and an `Effected` wrapped around another measures the inner one's output, so `onColors` settles different shares. The effect is handed only the cells one of its owners drew, so it costs one call a cell however many owners it has.
 
 ### A transition says when it is done
 

@@ -6,7 +6,9 @@
  * draws in that frame in, a function of the frame out; and into that, a
  * cell's colours and where the cell is, the cell's new colours out. Whatever
  * holds for the whole frame is worked out in the first stage, once, and every
- * cell of the frame is handed to the second. Shimmer, pulse, fade and
+ * cell of the frame is handed to the second, but for those a wrapper keeps
+ * back: `confined` hands over only the cells its owners drew, so a second
+ * stage never counts on seeing them all. Shimmer, pulse, fade and
  * dissolve are all this one shape, differing by what the function does with
  * its inputs [LAW:one-type-per-behavior]; two effects stack by nesting one
  * wrapper in another, which is the same as calling one after the other but
