@@ -4,15 +4,22 @@
     {
       "version": "pr-379",
       "ref": "refs/pull/379/merge",
-      "sha": "c90bf17f27323d428c517721937b06507f6322c0",
-      "timestamp": "2026-10-15T04:29:15.603Z",
+      "sha": "c6cd0ed3eecc75ed8c161f4710dde9c1b627874a",
+      "timestamp": "2026-10-15T04:35:10.225Z",
       "commits": [
         {
-          "sha": "c90bf17f27323d428c517721937b06507f6322c0",
+          "sha": "c6cd0ed3eecc75ed8c161f4710dde9c1b627874a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T22:27:50-06:00",
-          "message": "Merge 111336e4d25678f3c743b49074e37de3f12b9dc5 into 42c422e4022be20030c3bc6e27de6c7e86526832\n"
+          "timestamp": "2026-10-15T04:33:40Z",
+          "message": "Merge 940bc377d56ac7f2d0aae7236031ca8f43ec0484 into 42c422e4022be20030c3bc6e27de6c7e86526832\n"
+        },
+        {
+          "sha": "940bc377d56ac7f2d0aae7236031ca8f43ec0484",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T22:33:35-06:00",
+          "message": "fix(renderables): follow re-brings the selection in when rows shrink; ListView refuses bad indices (rich-demos-k78j.3gp)\n\nReview high: panes rebuilt per frame follow instead of ensuring; Dropdown\nmoves through moveSelection; RateSparkline's minimum is 0.\n"
         },
         {
           "sha": "111336e4d25678f3c743b49074e37de3f12b9dc5",
