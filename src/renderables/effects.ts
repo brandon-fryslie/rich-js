@@ -83,7 +83,7 @@ const ROUNDING = 0.01;
  * strength, still reads at its resting contrast or `LEGIBLE`, whichever is
  * lower. A colour in a pair but not in `colors` takes none, and so does one
  * the terminal supplies, whatever its hex, as in `onColors`. One of `colors`
- * no pair writes has nothing to be measured against, and throws.
+ * no pair writes has nothing to be measured against, and takes it all.
  *
  * Colours are settled lightest first, each against every partner: one
  * already settled at its share, one not yet settled as it is. So the lighter
@@ -100,11 +100,12 @@ export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touc
     { color: bg, own: terminal.bg ? undefined : bg.hex },
   ] as const);
   const rgba = new Map(sides.flat().flatMap(({ color, own }): [string, ColorRgba][] => (own === undefined ? [] : [[own, color]])));
-  const unpaired = [...colors].filter((hex) => !rgba.has(hex));
-  if (unpaired.length > 0) throw new RangeError(`shares: ${unpaired.join(", ")} written in no pair, so nothing to keep legible against`);
+  // A colour no pair writes keeps no word legible, so nothing bounds its share:
+  // a frame drawing a lit colour only under blanks and seams, or not at all,
+  // is a frame like any other.
+  const settled = new Map([...colors].filter((hex) => !rgba.has(hex)).map((hex): [string, number] => [hex, 1]));
   const lightness = (hex: string): number => Oklch.fromRgba(rgba.get(hex)!).l;
-  const settled = new Map<string, number>();
-  for (const hex of [...colors].sort((a, b) => lightness(b) - lightness(a))) {
+  for (const hex of [...colors].filter((hex) => rgba.has(hex)).sort((a, b) => lightness(b) - lightness(a))) {
     const partners = sides.flatMap(([fg, bg]): [ColorRgba, number][] => {
       const partner = fg.own === hex ? bg : bg.own === hex ? fg : undefined;
       return partner === undefined ? [] : [[partner.color, partner.own === undefined ? 0 : (settled.get(partner.own) ?? 0)]];

@@ -523,13 +523,13 @@ describe("a cell under light still reads", () => {
     expect(share.get(fill.hex)).toBeLessThan(1);
   });
 
-  it("a colour no pair writes has nothing to stay legible against, and is refused by name", () => {
+  it("a colour no pair writes has nothing to stay legible against, and takes the whole touch", () => {
     const fg = palette(CATPPUCCIN_MOCHA, "foreground");
     const ground = CATPPUCCIN_MOCHA.backgroundColor;
     const accent = palette(CATPPUCCIN_MOCHA, "accent");
-    expect(() => shares([pair(fg, ground, onTerminalGround)], new Set([fg.hex, accent.hex]), light(sun))).toThrow(accent.hex);
+    expect(shares([pair(fg, ground, onTerminalGround)], new Set([fg.hex, accent.hex]), light(sun)).get(accent.hex)).toBe(1);
     // The terminal's ground is in the pair, but the element never writes it.
-    expect(() => shares([pair(fg, ground, onTerminalGround)], new Set([fg.hex, ground.hex]), light(sun))).toThrow(ground.hex);
+    expect(shares([pair(fg, ground, onTerminalGround)], new Set([fg.hex, ground.hex]), light(sun)).get(ground.hex)).toBe(1);
   });
 });
 
@@ -577,6 +577,18 @@ describe("a loop lit on what Effected draws", () => {
       });
     }
     expect(moved).toBeGreaterThan(0);
+  });
+
+  it("a lit fill no word sits on lights whole: a frame drawing it only under blanks draws", () => {
+    const words = new RichText(" hi ", { style: Style.fromColor(ColorSpec.fromRgba(theme.palette.get("on-primary")!), ColorSpec.fromRgba(theme.palette.get("primary")!)), end: "", noWrap: true });
+    const fill = theme.palette.get("secondary")!;
+    const blank = new RichText("   ", { style: Style.fromColor(ColorSpec.fromRgba(theme.palette.get("on-secondary")!), ColorSpec.fromRgba(fill)), end: "", noWrap: true });
+    const bare = new Strip([words, blank], JOINERS.powerline);
+    const lit = onColors({ touch: light(sun), field: () => 1 }, new Set([fill.hex]));
+    const cells = [...new Effected(bare, lit, { t: 0, key: "bare", theme }).render(options)].flatMap((segment) =>
+      segment.style?.bgcolor === undefined ? [] : [segment.style.bgcolor.getTruecolor(theme, false)],
+    );
+    expect(cells.some((bg) => !sameColor(bg, fill) && sameColor(bg, light(sun)(fill, 1)))).toBe(true);
   });
 
   it("the wheel turns each seam's ink with the fill of the cell it points out of, read off the strip", () => {
