@@ -15,7 +15,9 @@ import {
   contrastRatio,
   renderToString,
   Console,
+  DEFAULT_TERMINAL_THEME,
   JOINERS,
+  TOKYO_NIGHT,
   Strip,
   type CellColors,
   type Drawn,
@@ -44,6 +46,7 @@ import {
   wheel,
   type Curve,
   type Loop,
+  type LoopName,
 } from "../../src/renderables/effects.js";
 
 const curve = (seconds: number, swing: number): Curve => ({ seconds, ease: EASES.linear, swing });
@@ -540,6 +543,39 @@ describe("the loops never jump", () => {
   });
 });
 
+describe("on a sixteen-colour terminal a loop holds still", () => {
+  // Each element drawn on its own, as a share is settled against only what
+  // one element draws: every slot as a ground under the slot half the
+  // palette away as ink, and the strip that found it, a fill off the palette
+  // that "ansi" writes as a slot.
+  const slot = (i: number): ColorSpec => ColorSpec.parse(`color(${i})`);
+  const elements = [
+    ...Array.from({ length: 16 }, (_, i) => new RichText(" ab ", { style: Style.fromColor(slot((i + 8) % 16), slot(i)) })),
+    new RichText("   menu   ", { style: Style.parse("black on #648ee1") }),
+  ];
+  const themes = [["default", DEFAULT_TERMINAL_THEME], ["tokyo-night", TOKYO_NIGHT]] as const;
+  // Both depths that write the sixteen slots: the ANSI terminal's and the Windows console's.
+  const depths = [["ansi", ColorDepth.STANDARD], ["windows", ColorDepth.WINDOWS]] as const;
+  const cases = Object.entries(EFFECT_CATALOGUE.loops).flatMap(([name, make]) =>
+    themes.flatMap(([theme, colors]) => depths.map(([depth, colorSystem]) => [name, theme, depth, make, colors, colorSystem] as const)),
+  );
+
+  it.each(cases)(
+    "%s on %s at %s writes every cell on its slot at every second of its period",
+    (name, _theme, _depth, make, theme, colorSystem) => {
+      const seconds = EFFECT_CURVES[name as LoopName].seconds;
+      const write = (renderable: Renderable): string => renderToString(renderable, { width: 20, colorSystem });
+      const moved = elements.flatMap((element, e) => {
+        const effect = make({ span: 10, z: 7 });
+        const rest = write(element);
+        const t = Array.from({ length: seconds + 1 }, (_, t) => t).find((t) => write(new Effected(element, effect, { t, key: "k", theme })) !== rest);
+        return t === undefined ? [] : [`element ${e} at t=${t}`];
+      });
+      expect(moved).toEqual([]);
+    },
+  );
+});
+
 describe("a cell under light still reads", () => {
   const AA = 4.5;
   const palette = (theme: typeof CATPPUCCIN_MOCHA, key: string): ColorRgba => theme.palette.get(key)!;
@@ -682,13 +718,12 @@ describe("a loop lit reads as the wire writes it", () => {
   /**
    * Each depth with the only slack a word cell gets there: what 8-bit
    * rounding of an OKLCH round trip can cost a contrast ratio in truecolor,
-   * and nothing below it, where every colour written is one the depth holds
-   * exactly.
+   * and nothing at 256, where every colour written is one the depth holds
+   * exactly. At 16 a loop holds still, which its own suite checks.
    */
   const depths = [
     ["truecolor", ColorDepth.TRUECOLOR, "truecolor", 0.01],
     ["256", ColorDepth.EIGHT_BIT, "256", 0],
-    ["16", ColorDepth.STANDARD, "ansi", 0],
   ] as const;
   const themes = [["Mocha", CATPPUCCIN_MOCHA], ["Latte", CATPPUCCIN_LATTE]] as const;
   /** The sun's light, and a touch that thins a colour, which the wire lays on what is beneath it. */
