@@ -298,8 +298,9 @@ describe("every loop keeps the words readable", () => {
         // never sees its brightest passes.
         const P = curves[loop].seconds;
         for (let t = 0; t < 12 * P; t += P / 36) {
-          // 8-bit rounding of a colour the shares settled exactly can cost a hair.
-          contrasts(t).forEach((now, i) => expect(now).toBeGreaterThanOrEqual(Math.min(rest[i]!, AA) - 0.01));
+          // 8-bit rounding of a colour the shares settled exactly can cost a hair in truecolor; below it nothing is rounded.
+          const slack = depth === ColorDepth.TRUECOLOR ? 0.01 : 0;
+          contrasts(t).forEach((now, i) => expect(now).toBeGreaterThanOrEqual(Math.min(rest[i]!, AA) - slack));
         }
       }
     },

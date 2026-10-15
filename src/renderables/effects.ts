@@ -43,12 +43,12 @@
  * (`examples/effects-playground/programs.ts`), on the published library.
  */
 
-import { ColorRgba, ColorSpec, contrastRatio, type TerminalTheme } from "../core/color.js";
+import { ColorDepth, ColorRgba, contrastRatio, type TerminalTheme } from "../core/color.js";
 import { EASES, Phase, type Ease } from "../core/easing.js";
 import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo } from "../core/memo.js";
 import { IDENTITY, Oklch } from "../core/oklch.js";
-import type { Drawn, Effect, EffectCell } from "./effect.js";
+import { Effected, type Drawn, type Effect, type EffectCell, type Pair } from "./effect.js";
 
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
@@ -78,6 +78,10 @@ const STRENGTHS = Array.from({ length: LEVELS }, (_, i) => (i + 1) / LEVELS);
 /** What 8-bit rounding of an OKLCH round trip can cost a contrast ratio. */
 const ROUNDING = 0.01;
 
+/** A pair's two sides, glyph and ground. */
+type Side = "fg" | "bg";
+const SIDES: readonly Side[] = ["fg", "bg"];
+
 /**
  * How much of `touch` each of `colors` (hex) can take: the largest share in
  * [0, 1] at which every pair `drawn` shows it in, touched at the same
@@ -96,32 +100,36 @@ const ROUNDING = 0.01;
  */
 export function shares({ pairs, depth, theme }: Drawn, colors: ReadonlySet<string>, touch: Touch): Map<string, number> {
   // [LAW:one-source-of-truth] A slot shows a subject colour, by hex, only
-  // where the element writes it: the reading `onColors` lights by. Under
-  // `reverse` the ink is written in the ground's slot.
-  const sides = pairs.map(({ fg, bg, terminal, reverse }) => [
-    { color: fg, own: terminal.fg ? undefined : fg.hex, foreground: !reverse },
-    { color: bg, own: terminal.bg ? undefined : bg.hex, foreground: reverse },
-  ] as const);
-  type Side = (typeof sides)[number][number];
-  // [LAW:one-source-of-truth] The colour a side shows touched at `w` is the one `Effected` writes for it (`ColorSpec.matchMove`).
-  const shown = ({ color, foreground }: Side, w: number): ColorRgba =>
-    ColorSpec.matchMove(color, touchedAt(touch, color, w), depth, theme, foreground)?.getTruecolor(theme, foreground) ?? color;
-  const rgba = new Map(sides.flat().flatMap(({ color, own }): [string, ColorRgba][] => (own === undefined ? [] : [[own, color]])));
+  // where the element writes it: the reading `onColors` lights by.
+  const own = (pair: Pair, side: Side): string | undefined => (pair.terminal[side] ? undefined : pair[side].hex);
+  const rgba = new Map(pairs.flatMap((pair) => SIDES.flatMap((side): [string, ColorRgba][] => {
+    const hex = own(pair, side);
+    return hex === undefined ? [] : [[hex, pair[side]]];
+  })));
+  // Below truecolor every colour written is one the depth holds exactly, so only truecolor's rounding has a cost to forgive.
+  const slack = depth === ColorDepth.TRUECOLOR ? ROUNDING : 0;
   // A colour no pair writes keeps no word legible, so nothing bounds its share:
   // a frame drawing a lit colour only under blanks and seams, or not at all,
   // is a frame like any other.
   const settled = new Map([...colors].filter((hex) => !rgba.has(hex)).map((hex): [string, number] => [hex, 1]));
   const lightness = (hex: string): number => Oklch.fromRgba(rgba.get(hex)!).l;
   for (const hex of [...colors].filter((hex) => rgba.has(hex)).sort((a, b) => lightness(b) - lightness(a))) {
-    // Each pair showing the colour, from its side: the colour's own slot, and its partner's.
-    const facing = sides.flatMap(([fg, bg]): [Side, Side, number][] => {
-      const [mine, partner] = fg.own === hex ? [fg, bg] : bg.own === hex ? [bg, fg] : [undefined, undefined];
-      return mine === undefined ? [] : [[mine, partner, partner.own === undefined ? 0 : (settled.get(partner.own) ?? 0)]];
+    // Each pair showing the colour, with the side it shows it on and the share its partner takes.
+    const facing = pairs.flatMap((pair): [Pair, Side, number][] => {
+      const mine = SIDES.find((side) => own(pair, side) === hex);
+      if (mine === undefined) return [];
+      const partner = own(pair, mine === "fg" ? "bg" : "fg");
+      return [[pair, mine, partner === undefined ? 0 : (settled.get(partner) ?? 0)]];
     });
+    // [LAW:one-source-of-truth] A pair reads in the colours `Effected` writes it in, touched at each side's share.
     const holds = (share: number): boolean =>
-      facing.every(([mine, partner, theirs]) => {
-        const floor = Math.min(contrastRatio(mine.color, partner.color), LEGIBLE);
-        return STRENGTHS.every((w) => contrastRatio(shown(mine, share * w), shown(partner, theirs * w)) >= floor - ROUNDING);
+      facing.every(([pair, mine, theirs]) => {
+        const floor = Math.min(contrastRatio(pair.fg, pair.bg), LEGIBLE) - slack;
+        const at = (side: Side, w: number): ColorRgba => touchedAt(touch, pair[side], (side === mine ? share : theirs) * w);
+        return STRENGTHS.every((w) => {
+          const shown = Effected.shows(pair, { fg: at("fg", w), bg: at("bg", w) }, depth, theme);
+          return contrastRatio(shown.fg, shown.bg) >= floor;
+        });
       });
     let [lo, hi] = holds(1) ? [1, 1] : [0, 1];
     for (let i = 0; i < 20 && hi - lo > 1e-3; i++) {

@@ -662,12 +662,22 @@ describe("a loop lit on what Effected draws", () => {
   });
 });
 
-describe("a loop lit below truecolor reads as the wire writes it", () => {
+describe("a loop lit reads as the wire writes it", () => {
   const AA = 4.5;
-  /** What 8-bit rounding of an OKLCH round trip can cost a contrast ratio: the only slack a word cell gets. */
-  const ROUNDING = 0.01;
-  const depths = [["256", ColorDepth.EIGHT_BIT, "256"], ["16", ColorDepth.STANDARD, "ansi"]] as const;
+  /**
+   * Each depth with the only slack a word cell gets there: what 8-bit
+   * rounding of an OKLCH round trip can cost a contrast ratio in truecolor,
+   * and nothing below it, where every colour written is one the depth holds
+   * exactly.
+   */
+  const depths = [
+    ["truecolor", ColorDepth.TRUECOLOR, "truecolor", 0.01],
+    ["256", ColorDepth.EIGHT_BIT, "256", 0],
+    ["16", ColorDepth.STANDARD, "ansi", 0],
+  ] as const;
   const themes = [["Mocha", CATPPUCCIN_MOCHA], ["Latte", CATPPUCCIN_LATTE]] as const;
+  /** The sun's light, and a touch that thins a colour, which the wire lays on what is beneath it. */
+  const touches = [["sunlight", light(sun)], ["thinning", (c: ColorRgba, w: number) => new ColorRgba(c.red, c.green, c.blue, 1 - w / 2)]] as const;
 
   /**
    * Words in colours off any palette, seeded so every run draws the same
@@ -700,16 +710,16 @@ describe("a loop lit below truecolor reads as the wire writes it", () => {
     );
   }
 
-  it.each(themes.flatMap(([name, theme]) => depths.map(([d, depth, system]) => [name, d, theme, depth, system] as const)))(
-    "on %s at %s colours, no word cell falls below its resting contrast or AA",
-    (_name, _d, theme, depth, system) => {
+  it.each(touches.flatMap(([t, touch]) => themes.flatMap(([name, theme]) => depths.map(([d, depth, system, slack]) => [t, name, d, touch, theme, depth, system, slack] as const))))(
+    "%s on %s at %s colours: no word cell falls below its resting contrast or AA",
+    (_t, _name, _d, touch, theme, depth, system, slack) => {
       const options = new Console({ width: 40, colorSystem: system }).options;
       const strengths = Array.from({ length: 12 }, (_, i) => (i + 1) / 12);
       const failures = words(100).flatMap((style) => {
         const word = new RichText("ab", { style, end: "", noWrap: true });
-        const floor = Math.min(worst(word.render(options), depth, theme), AA) - ROUNDING;
+        const floor = Math.min(worst(word.render(options), depth, theme), AA) - slack;
         return strengths.flatMap((w) => {
-          const lit = new Effected(word, onColors({ touch: light(sun), field: () => w }), { t: 0, key: "word", theme });
+          const lit = new Effected(word, onColors({ touch, field: () => w }), { t: 0, key: "word", theme });
           const now = worst(lit.render(options), depth, theme);
           return now < floor ? [`${style} at ${w.toFixed(2)}: ${now.toFixed(3)} under ${floor.toFixed(3)}`] : [];
         });
