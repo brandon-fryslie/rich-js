@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "290350a763993e900806e33999f29f32f406ae37",
+      "timestamp": "2026-10-15T09:31:36.184Z",
+      "commits": [
+        {
+          "sha": "290350a763993e900806e33999f29f32f406ae37",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T03:30:00-06:00",
+          "message": "chore(release): 0.21.0 (#395)"
+        }
+      ]
+    },
+    {
       "version": "pr-396",
       "ref": "refs/pull/396/merge",
       "sha": "08f6b81d42b5782e9a7e575df2daa0e95ea549b8",
@@ -20,43 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-15T03:22:54-06:00",
           "message": "The effect catalogue is one named table with one call shape (rich-effects-cbgp.ydw)\n\nEFFECT_CATALOGUE makes every catalogue effect by its EFFECT_CURVES name:\n`loops` as Effects, `transitions` as Transitions, each called as\n(element: EffectTarget, curve?) with the signed-off curve, light and width\nbuilt in. Keyed by LoopName/TransitionName, derived from EFFECT_CURVES, so a\ncurve signed off without an entry does not compile.\n\nTo make that one call shape true, fadeIn and dissolveOut take (curve, z):\nevery effect runs on its own clock from t = 0, and a veil blends toward\nDrawn.theme's background, the terminal Effected already names, instead of a\nsecond ground handed in. SHIMMER_WIDTH leaves the barrel; the catalogue\ncarries it.\n\nThe effects-feel demo and its legibility test draw through the catalogue,\nand the playground binds each card to its factory function rather than a\nname in a string.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-395",
-      "ref": "refs/pull/395/merge",
-      "sha": "e2efa9b5b624b0db9183f1fa1bb0018fb68def51",
-      "timestamp": "2026-10-15T09:21:40.008Z",
-      "commits": [
-        {
-          "sha": "e2efa9b5b624b0db9183f1fa1bb0018fb68def51",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T03:20:28-06:00",
-          "message": "Merge 40d7263ac4004f4813f2a3085fd5e63d35c1bc23 into 87726acbf87c1c27a284c448721c6e70f02e98c0\n"
-        },
-        {
-          "sha": "40d7263ac4004f4813f2a3085fd5e63d35c1bc23",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T03:20:11-06:00",
-          "message": "chore(release): 0.21.0\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "87726acbf87c1c27a284c448721c6e70f02e98c0",
-      "timestamp": "2026-10-15T09:08:58.574Z",
-      "commits": [
-        {
-          "sha": "87726acbf87c1c27a284c448721c6e70f02e98c0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T03:07:26-06:00",
-          "message": "An effect can confine itself to one owner's cells (rich-effects-cbgp.4y4) (#394)\n\n* An effect can confine itself to one owner's cells (rich-effects-cbgp.4y4)\n\nEffectCell carries the cell's anchor, and confined(effect, owner) applies an\neffect only to the cells that owner drew. Strip and FlexStrip stamp every item's\ncells with the item (drawItem), and CellJoiner stamps each join cell inked in a\nneighbour's colour with that neighbour, so a seam's arrow moves with the item it\npoints out of; a cell inked in a role or a mix stays the join's alone.\n\nThe effects-feel demo's pulse now singles out its items by owner instead of by\nfill hex.\n\n* A seam cell owns its ink and its ground separately (rich-effects-cbgp.4y4)\n\nA powerline arrow is inked in the fill it points out of over the fill it\npoints into, so stamping the whole cell with one neighbour left the other\nitem's colour moving with it and the owner's own ground still. CellJoiner\nnow records, per cell, whose colour its ink and its ground show\n(colorsOwnedBy), and confined moves only the owner's sides. Join cells no\nlonger borrow an item's anchor at a join-relative column, so hit-testing\nand the anchor's position stay true.\n\n* Say which owners confined can reach; pulsedOn names both arrows (rich-effects-cbgp.4y4)"
         }
       ]
     },
