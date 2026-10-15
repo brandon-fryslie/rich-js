@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-391",
+      "ref": "refs/pull/391/merge",
+      "sha": "0e81e088e7f7033ed109cf17b2c654a0e44f7586",
+      "timestamp": "2026-10-15T08:00:31.968Z",
+      "commits": [
+        {
+          "sha": "0e81e088e7f7033ed109cf17b2c654a0e44f7586",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:59:25-06:00",
+          "message": "Merge cb1c28341b16fcabe57d5e49fd09f8eb1d4fc925 into 2b6b3f631dc859632eb6336d8d91e928868bffe1\n"
+        },
+        {
+          "sha": "cb1c28341b16fcabe57d5e49fd09f8eb1d4fc925",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:59:20-06:00",
+          "message": "A held lone ESC is Escape unless the next chunk opens a CSI/SS3 sequence (rich-host-input-0c4f)\n\nA busy worker can queue the next key ahead of the 0ms hold timer, so\nEscape then G read as Alt+G. Only [ or O continues a split introducer;\nany other next chunk emits the held ESC first. Drops the toPass retry in\ne2e/rich-explore.spec.ts that worked around it.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "2b6b3f631dc859632eb6336d8d91e928868bffe1",
