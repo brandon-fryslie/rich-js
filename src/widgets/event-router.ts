@@ -174,6 +174,8 @@ export class EventRouter {
       this.source.refresh();
       return;
     }
+    // A viewport scrolls only by lines, so the sideways wheel moves nothing.
+    if (event.type === "scroll_left" || event.type === "scroll_right") return;
 
     // [LAW:dataflow-not-control-flow] Same pipeline every event; the
     // capture value and event type pick the target. mouse_down opens a

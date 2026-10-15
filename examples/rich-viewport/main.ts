@@ -68,7 +68,7 @@ const app = new WidgetApp({
 });
 
 app.onKey((event) => {
-  if (event.key === "q" || (event.ctrl && event.key === "c")) return app.stop();
+  if (event.key === "q") return app.stop();
   // A chord is not its letter: Ctrl+K arrives as `k` with `ctrl` set.
   if (event.ctrl || event.meta) return;
   const move = MOVES.get(event.key);

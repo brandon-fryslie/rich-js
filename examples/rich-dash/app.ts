@@ -91,8 +91,6 @@ export function run(host: TerminalHost, caps: DashboardCapabilities): Running {
     lastTickAt = now;
   };
 
-  // Before anything is subscribed: a widget that throws on its first tick
-  // leaves no listener behind on a host no app ever started.
   tick();
   app.onKey((press) => {
     switch (KEYS[keyName(press)]) {

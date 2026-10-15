@@ -249,10 +249,10 @@ describe("EventRouter — key parsing", () => {
     ]);
   });
 
-  it("Alt+uppercase carries shift=true", () => {
+  it("Alt+uppercase is keyed by its glyph, which carries shift", () => {
     h.feed("\x1bF");
     expect(h.keyEvents).toMatchObject([
-      { key: "f", character: "", shift: true, ctrl: false, meta: true },
+      { key: "F", character: "", shift: false, ctrl: false, meta: true },
     ]);
   });
 

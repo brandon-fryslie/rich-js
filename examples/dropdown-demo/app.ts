@@ -223,18 +223,9 @@ export function runDemo(host: TerminalHost): Promise<void> {
 
   const app = new WidgetApp({ host, surface: "alternate", view: () => view });
 
-  // [LAW:single-enforcer] The app owns the terminal and hands it back on
-  // every path out; the demo only adds a global Ctrl-C handler and the
+  // [LAW:single-enforcer] The app owns the terminal, quits on Ctrl+C and
+  // hands the terminal back on every path out; the demo only adds the
   // click→focus policy.
-  app.onKey(
-    (event) => {
-      if (event.ctrl && event.key === "c") {
-        app.stop();
-        event.stop();
-      }
-    },
-    { priority: "high" },
-  );
 
   app.onMouse((event) => {
     if (event.type !== "mouse_up") return;

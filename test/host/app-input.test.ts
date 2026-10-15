@@ -40,6 +40,18 @@ describe("App hears keys", () => {
     expect(presses.map((p) => p.character)).toEqual(["é", "→"]);
   });
 
+  it.each([
+    ["Option+Up as ESC ESC [ A", "\x1b\x1b[A", ["meta+up"]],
+    ["Alt+Ctrl+X", "\x1b\x18", ["ctrl+meta+x"]],
+    ["Alt+G by its glyph", "\x1bG\x1b>", ["meta+G", "meta+>"]],
+    ["Ctrl+Space", "\x00", ["ctrl+space"]],
+    ["Ctrl+\\ ] ^ _", "\x1c\x1d\x1e\x1f", ["ctrl+\\", "ctrl+]", "ctrl+^", "ctrl+_"]],
+  ])("hears %s", (_, bytes, names) => {
+    const { host, keys } = started({ quitKeys: ["escape"] });
+    host.type(bytes);
+    expect(keys).toEqual(names);
+  });
+
   it("hears no more once its handler unsubscribes", () => {
     const { host, app } = started();
     const heard: string[] = [];
@@ -76,6 +88,21 @@ describe("App's quit keys", () => {
     expect(keys).toEqual(["ctrl+c"]);
   });
 
+  it.each(["esc", "Ctrl+C", "shift+g", "ctrl+C", "ctrl+shift+c"])("refuses %s, which no key is named", (name) => {
+    expect(() => new App({ host: scriptedHost(), surface: "alternate", view: () => new RichText("x"), quitKeys: [name] })).toThrow(
+      /no key is named/,
+    );
+  });
+
+  it("does not hear a lone ESC typed just before it stopped", async () => {
+    const { host, app, done, keys } = started();
+    host.type("\x1b");
+    app.stop();
+    await done;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(keys).toEqual([]);
+  });
+
   it("hears nothing typed after the key it stopped on", async () => {
     const { host, done, keys } = started();
     host.type("a\x03b");
@@ -105,6 +132,27 @@ describe("App input handlers that throw", () => {
     host.type("\x1b[<0;3;2M");
     await expect(done).rejects.toBe(error);
   });
+
+  it("throw what a handler threw after stopping the app, with no run left to reject", async () => {
+    const { host, app, done } = started();
+    const error = new Error("after stop");
+    app.onKey(() => {
+      app.stop();
+      throw error;
+    });
+    expect(() => host.type("a")).toThrow(error);
+    await done;
+  });
+
+  it("let no handler after the one that stopped the app hear the key", async () => {
+    const { host, app, done } = started();
+    const heard: string[] = [];
+    app.onKey(() => app.stop());
+    app.onKey((press) => heard.push(press.key));
+    host.type("a");
+    await done;
+    expect(heard).toEqual([]);
+  });
 });
 
 describe("App hears the pointer", () => {
@@ -112,11 +160,13 @@ describe("App hears the pointer", () => {
     const { host, app } = started();
     const events: ScreenMouseEvent[] = [];
     app.onMouse((event) => events.push(event));
-    host.type("\x1b[<0;3;2M\x1b[<0;3;2m\x1b[<65;1;1M");
+    host.type("\x1b[<0;3;2M\x1b[<0;3;2m\x1b[<65;1;1M\x1b[<66;1;1M\x1b[<67;1;1M");
     expect(events.map((e) => [e.type, e.x, e.y])).toEqual([
       ["mouse_down", 2, 1],
       ["mouse_up", 2, 1],
       ["scroll_down", 0, 0],
+      ["scroll_left", 0, 0],
+      ["scroll_right", 0, 0],
     ]);
   });
 });
@@ -133,7 +183,6 @@ describe("keyName", () => {
     [{ key: "tab", shift: true }, "shift+tab"],
     [{ key: "left", meta: true }, "meta+left"],
     [{ key: "up", ctrl: true, meta: true, shift: true }, "ctrl+meta+shift+up"],
-    [{ key: "b", meta: true, shift: true }, "meta+shift+b"],
   ])("names %o %s", (init, name) => {
     expect(keyName(press(init))).toBe(name);
   });

@@ -38,7 +38,7 @@ import { SurfacePainter, type Surface } from "../core/paint.js";
 import { fitHeight, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { hostEnvironment } from "./host-environment.js";
-import { InputParser, keyName, type KeyPress, type ScreenMouseEvent } from "./input.js";
+import { InputParser, keyName, parseKeyName, type KeyPress, type ScreenMouseEvent } from "./input.js";
 import type { TerminalHost } from "./terminal-host.js";
 
 /**
@@ -85,6 +85,7 @@ export interface AppOptions extends DrawOptions {
   /**
    * The keys that stop the app, by `keyName`, heard before any `onKey`
    * handler. `["ctrl+c"]` unless given; `[]` leaves every key to the program.
+   * A name no key goes by throws here.
    */
   readonly quitKeys?: readonly string[];
 }
@@ -139,7 +140,7 @@ export class App {
     this.view = options.view;
     this.clock = options.clock ?? systemClock();
     this._rate = options.rate ?? DEFAULT_RATE;
-    this.quitKeys = new Set(options.quitKeys ?? DEFAULT_QUIT_KEYS);
+    this.quitKeys = new Set((options.quitKeys ?? DEFAULT_QUIT_KEYS).map(parseKeyName));
     this.console = new Console({ ...drawOptions(options), environment: hostEnvironment(options.host) });
   }
 
@@ -326,7 +327,12 @@ export class App {
 
   private end(outcome: Outcome): void {
     const phase = this._phase;
-    if (phase === "idle" || phase === "stopped") return;
+    // [LAW:no-silent-failure] An error after the app ended has no `run` left
+    // to reject, so it is thrown to whoever raised it instead of dropped.
+    if (phase === "idle" || phase === "stopped") {
+      if (outcome.kind === "failed") throw outcome.error;
+      return;
+    }
     this._phase = "stopped";
     this.tick();
     for (const unsubscribe of this.subscriptions) unsubscribe();
@@ -347,10 +353,10 @@ export class App {
 
   // [LAW:no-silent-failure] The host calls these handlers, not the program,
   // so one that throws ends the app with its error, as a frame that throws
-  // does; the handlers after it do not hear an event for a stopped app.
+  // does. A handler that stops the app is the last to hear the event.
   private hear<E>(handlers: ReadonlySet<(event: E) => void>, event: E): void {
     try {
-      for (const handler of [...handlers]) handler(event);
+      for (const handler of [...handlers]) if (this._phase !== "stopped") handler(event);
     } catch (error) {
       this.fail(error);
     }

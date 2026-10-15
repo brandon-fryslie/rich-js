@@ -38,7 +38,14 @@ export interface KeyPress {
 // a check of `type` narrows the whole event.
 export type ScreenMouseEvent = { [T in MouseEventType]: MouseEventOf<T> }[MouseEventType];
 
-type MouseEventType = "mouse_down" | "mouse_up" | "mouse_move" | "scroll_up" | "scroll_down";
+type MouseEventType =
+  | "mouse_down"
+  | "mouse_up"
+  | "mouse_move"
+  | "scroll_up"
+  | "scroll_down"
+  | "scroll_left"
+  | "scroll_right";
 
 interface MouseEventOf<Type extends string> {
   readonly type: Type;
@@ -132,6 +139,29 @@ const SS3_KEYS: Record<string, string> = {
   H: "home",
   F: "end",
 };
+
+// Every name a key with no glyph goes by.
+const NAMED_KEYS: ReadonlySet<string> = new Set([
+  ...Object.values(SINGLE_BYTE_KEYS),
+  ...Object.values(CSI_LETTER_KEYS),
+  ...Object.values(CSI_TILDE_KEYS),
+  ...Object.values(SS3_KEYS),
+]);
+
+/**
+ * `name`, if `keyName` can produce it: modifiers in its order, then a named
+ * key or one glyph, with no `shift+` on a glyph and no capital after `ctrl+`.
+ * [LAW:parse-dont-validate] A name no key can produce throws here, at the
+ * one place a program hands names in, rather than binding a key that never fires.
+ */
+export function parseKeyName(name: string): string {
+  const match = /^(ctrl\+)?(meta\+)?(shift\+)?(.+)$/u.exec(name)!;
+  const [, ctrl, , shift, base] = match;
+  const glyph = [...base!].length === 1;
+  const producible = NAMED_KEYS.has(base!) || (glyph && !shift && !(ctrl && base !== base!.toLowerCase()));
+  if (!producible) throw new Error(`no key is named ${JSON.stringify(name)}; see keyName`);
+  return name;
+}
 
 const ESC = 0x1b;
 const LBRACKET = 0x5b; // [
@@ -260,16 +290,7 @@ export class InputParser {
       };
     }
 
-    // Ctrl+letter (Ctrl+A=0x01 .. Ctrl+Z=0x1a), excluding the bytes already
-    // claimed by SINGLE_BYTE_KEYS above (tab=0x09, enter=0x0a/0x0d, backspace=0x08).
-    if (b0 < 0x20) {
-      const letter = String.fromCharCode(b0 + 0x60); // 0x01 → 'a'
-      return {
-        kind: "key",
-        bytes: 1,
-        event: ({ key: letter, character: "", shift: false, ctrl: true, meta: false }),
-      };
-    }
+    if (b0 < 0x20) return { kind: "key", bytes: 1, event: ctrlKey(b0, false) };
 
     // Printable ASCII / start of a UTF-8 multibyte character.
     return this.consumePrintable(buf);
@@ -305,6 +326,17 @@ export class InputParser {
     if (b1 === LBRACKET) return this.consumeCSI(buf);
     // ESC O X → SS3 (F1–F4 / arrows on some terms)
     if (b1 === O_BYTE) return this.consumeSS3(buf);
+    // ESC ESC [ … / ESC ESC O … → Alt on a key the terminal sends as a
+    // sequence (macOS Terminal and iTerm send Option+Up as `ESC ESC [ A`): the
+    // inner sequence, with meta held.
+    if (b1 === ESC && buf.length > 2 && (buf[2] === LBRACKET || buf[2] === O_BYTE)) {
+      const inner = this.consumeEscape(buf.subarray(1));
+      return inner.kind === "key"
+        ? { kind: "key", bytes: inner.bytes + 1, event: { ...inner.event, meta: true } }
+        : inner.kind === "incomplete"
+          ? inner
+          : { ...inner, bytes: inner.bytes + 1 };
+    }
     // ESC ESC → escape key (some terminals double-send). Consume BOTH bytes
     // so the user sees one escape event, not two. Without this, the second
     // ESC remained in the buffer and produced a second escape via the
@@ -349,22 +381,20 @@ export class InputParser {
         }),
       };
     }
+    // The key is the glyph the terminal sent, as for Alt+`>`: the glyph
+    // already carries shift, so Alt+G is `meta+G` and never `meta+shift+g`.
     if (b1 >= 0x20 && b1 <= 0x7e) {
       const ch = String.fromCharCode(b1);
       return {
         kind: "key",
         bytes: 2,
-        event: ({
-          key: ch.toLowerCase(),
-          character: "",
-          shift: ch !== ch.toLowerCase(),
-          ctrl: false,
-          meta: true,
-        }),
+        event: ({ key: ch, character: "", shift: false, ctrl: false, meta: true }),
       };
     }
-    // Truly unrecognised follow-up byte → treat the ESC as a lone escape
-    // and re-process from b1 on the next pass.
+    // ESC <control byte> → Alt+Ctrl: `ESC 0x18` is Alt+Ctrl+X.
+    if (b1 < 0x20) return { kind: "key", bytes: 2, event: ctrlKey(b1, true) };
+    // A UTF-8 lead byte after ESC → treat the ESC as a lone escape and
+    // re-process from b1 on the next pass.
     return {
       kind: "key",
       bytes: 1,
@@ -440,6 +470,17 @@ export class InputParser {
 
 // --- Helpers ---
 
+// The wheel's button bits: vertical, then the horizontal wheel or tilt.
+const SCROLL = ["scroll_up", "scroll_down", "scroll_left", "scroll_right"] as const;
+
+// A C0 control byte as the Ctrl chord that types it, with Alt held or not.
+// 0x00 is Ctrl+Space; 0x01–0x1a are Ctrl+A–Z; 0x1c–0x1f are Ctrl+\ ] ^ _.
+// The bytes SINGLE_BYTE_KEYS names (tab, enter, backspace, escape) never reach here.
+function ctrlKey(byte: number, meta: boolean): KeyPress {
+  const key = byte === 0 ? "space" : String.fromCharCode(byte + (byte <= 0x1a ? 0x60 : 0x40));
+  return { key, character: "", shift: false, ctrl: true, meta };
+}
+
 function decodeMouseFromCb(
   cb: number,
   x: number,
@@ -452,10 +493,7 @@ function decodeMouseFromCb(
   const shift = !!(cb & 4);
   const ctrl = !!(cb & 16); // bit 16 = ctrl in xterm encoding
 
-  if (isScroll) {
-    const type = button === 0 ? "scroll_up" : "scroll_down";
-    return { type, x, y, button: 0, shift, ctrl };
-  }
+  if (isScroll) return { type: SCROLL[button]!, x, y, button: 0, shift, ctrl };
   if (isMotion) {
     return { type: "mouse_move", x, y, button, shift, ctrl };
   }

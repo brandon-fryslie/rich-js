@@ -29,11 +29,11 @@ await app.run();
 
 ## Keys and the pointer
 
-`onKey(handler)` hears every key the terminal sends, as a `KeyPress`: the `key`, the `character` it types (`""` for a key that types none), and whether `shift`, `ctrl` and `meta` were held. `keyName(press)` is the one name a key goes by, so a keymap is a table keyed by it. A key that types a character is named by that character — `q`, `G`, `>` — and any other key by its name — `up`, `enter`, `space`, `f5` — with the modifiers held in front, always in the order `ctrl+`, `meta+`, `shift+`: `ctrl+z`, `shift+tab`, `meta+left`.
+`onKey(handler)` hears every key the terminal sends, as a `KeyPress`: the `key`, the `character` it types (`""` for a key that types none), and whether `shift`, `ctrl` and `meta` were held. `keyName(press)` is the one name a key goes by, so a keymap is a table keyed by it. A key that types a character is named by that character — `q`, `G`, `>` — and any other key by its name — `up`, `enter`, `space`, `f5` — with the modifiers held in front, always in the order `ctrl+`, `meta+`, `shift+`: `ctrl+z`, `shift+tab`, `meta+left`. Shift is never named on a character, which already carries it, with Alt held or not: Shift+G is `G`, Alt+Shift+G is `meta+G`.
 
 `onMouse(handler)` hears every pointer event — presses, releases, motion and the wheel — at the terminal cell under the pointer, counted from 0. Only the alternate surface reports the pointer. Each returns a function that stops the handler hearing.
 
-Ctrl+C stops the app. No other key means anything to the app: every other key does what your handlers make it do, so `q` quits only an app that binds it. `quitKeys` lists the keys that stop the app, by `keyName`, and they are heard before any handler, so no handler can swallow one. `["ctrl+c"]` is the default; `[]` leaves every key to you:
+Ctrl+C stops the app. No other key means anything to the app: every other key does what your handlers make it do, so `q` quits only an app that binds it. `quitKeys` lists the keys that stop the app, by `keyName`, and they are heard before any handler, so no handler can swallow one. `["ctrl+c"]` is the default; `[]` leaves every key to you. A name no key goes by — `esc`, `Ctrl+C`, `shift+g` — throws when the app is made, rather than binding a key that never fires:
 
 ```ts silent
 import { RichText } from "@promptctl/rich-js";
