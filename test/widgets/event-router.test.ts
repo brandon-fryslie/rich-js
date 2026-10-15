@@ -405,6 +405,18 @@ describe("InputParser on a whole-keys host", () => {
     expect(keys).toEqual(["up", "f1", "meta+G", "meta+up"]);
   });
 
+  it.each([
+    ["a\x1b[A", "q", ["a", "up", "q"]],
+    ["ab\x1b", "q", ["a", "b", "escape", "q"]],
+  ])("reads the rest of %j whole when a handler throws mid-chunk", (chunk, next, expected) => {
+    const { keys, parser } = wholeKeys((key) => {
+      if (key === "a") throw new Error("handler");
+    });
+    expect(() => parser.feed(chunk)).toThrow("handler");
+    parser.feed(next);
+    expect(keys).toEqual(expected);
+  });
+
   it("stops settling when Escape resets the parser", () => {
     const { keys, parser } = wholeKeys((key, p) => {
       if (key === "escape") p.reset();

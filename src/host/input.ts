@@ -272,22 +272,25 @@ export class InputParser {
   // A whole-key chunk has ended, so an ESC still at the buffer head opens no
   // sequence. `ESC [` / `ESC O` alone is the whole key Alt+[ / Alt+O; any
   // other ESC is Escape, and what followed it is read again on its own. Each
-  // key is taken off the buffer before the sink hears it, and the rest is
-  // settled even when the sink throws, so no introducer outlives its chunk.
+  // key is taken off the buffer before the sink hears it, and a sink that
+  // throws leaves the rest of the chunk to be read in full before this rule
+  // meets its end, so no byte of one chunk outlives it.
   private settleChunk(): void {
+    let drained = false;
     try {
       this.drain();
+      drained = true;
     } finally {
-      if (this.buffer[0] === ESC) {
-        const introducer = this.buffer.length === 2;
-        const press = introducer ? altKey(this.buffer[1]!) : ESCAPE;
-        this.buffer = this.buffer.subarray(introducer ? 2 : 1);
-        try {
-          this.sink.key(press);
-        } finally {
-          this.settleChunk();
-        }
-      }
+      if (!drained) this.settleChunk();
+    }
+    if (this.buffer[0] !== ESC) return;
+    const introducer = this.buffer.length === 2;
+    const press = introducer ? altKey(this.buffer[1]!) : ESCAPE;
+    this.buffer = this.buffer.subarray(introducer ? 2 : 1);
+    try {
+      this.sink.key(press);
+    } finally {
+      this.settleChunk();
     }
   }
 
