@@ -33,8 +33,8 @@ import { REPO_ROOT } from "./repo-facts.ts";
 
 const SESSIONS: Readonly<Record<string, readonly string[]>> = {
   "cc-hands": ["343f2948", "72de8d71", "9cdac691"],
-  "low-talker": ["89ff8d3c", "85ee29e4"],
-  "links-issue-tracker": ["fe6510c9", "2a3da176"],
+  "low-talker": ["89ff8d3c", "85ee29e4", "eb64e0f3"],
+  "links-issue-tracker": ["fe6510c9", "2a3da176", "9cb4bcc8"],
   "rich-js": ["5c83db1d", "04aeda33", "8c79e4c7"],
   vhid: ["e6c996c1", "5744c4aa", "38b3f562"],
 };
@@ -44,8 +44,8 @@ const SESSIONS: Readonly<Record<string, readonly string[]>> = {
 // bounds: the docs build refuses a demo past it, and this script prints what
 // the tree packs to. Most of that is the records' ids, which do not compress,
 // so the number of records weighs more than how much of each is kept.
-const KEEP_LINES = 8;
-const KEEP_CHARS = 600;
+const KEEP_LINES = 5;
+const KEEP_CHARS = 320;
 
 /**
  * What the viewer draws: the records it renders (data/parser.ts), the title
