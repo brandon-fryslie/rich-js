@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-396",
-      "ref": "refs/pull/396/merge",
-      "sha": "c43df9d7965b94332183a4411318fb19e2a76bc5",
-      "timestamp": "2026-10-15T09:37:04.013Z",
-      "commits": [
-        {
-          "sha": "c43df9d7965b94332183a4411318fb19e2a76bc5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T09:35:22Z",
-          "message": "Merge 29d4a70ddfe24c3dc6e7318694270839ee41ea32 into 290350a763993e900806e33999f29f32f406ae37\n"
-        },
-        {
-          "sha": "29d4a70ddfe24c3dc6e7318694270839ee41ea32",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T03:35:16-06:00",
-          "message": "Review fixes for the effect catalogue (rich-effects-cbgp.ydw)\n\n- docs: a fade-in is not at rest at t = 0; say only that every effect runs on\n  its own clock from there. A shimmer made by hand takes its own reach.\n- LoopName is spelled out beside TransitionName, and EFFECT_CURVES is held to\n  both, so a new curve does not compile until it is placed in a section,\n  instead of defaulting to a loop.\n- The playground names each card's function by a shorthand key, not its\n  runtime .name, which a bundler renames on a collision.\n- effects-feel builds its transitions once per scene, as it does its loops.\n"
-        },
-        {
-          "sha": "06c4e4f41ddf2a758358a21affd452e381632685",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T03:22:54-06:00",
-          "message": "The effect catalogue is one named table with one call shape (rich-effects-cbgp.ydw)\n\nEFFECT_CATALOGUE makes every catalogue effect by its EFFECT_CURVES name:\n`loops` as Effects, `transitions` as Transitions, each called as\n(element: EffectTarget, curve?) with the signed-off curve, light and width\nbuilt in. Keyed by LoopName/TransitionName, derived from EFFECT_CURVES, so a\ncurve signed off without an entry does not compile.\n\nTo make that one call shape true, fadeIn and dissolveOut take (curve, z):\nevery effect runs on its own clock from t = 0, and a veil blends toward\nDrawn.theme's background, the terminal Effected already names, instead of a\nsecond ground handed in. SHIMMER_WIDTH leaves the barrel; the catalogue\ncarries it.\n\nThe effects-feel demo and its legibility test draw through the catalogue,\nand the playground binds each card to its factory function rather than a\nname in a string.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "290350a763993e900806e33999f29f32f406ae37",
-      "timestamp": "2026-10-15T09:31:36.184Z",
+      "sha": "66338ca059a759cd37b802a189ea227bc1007ec3",
+      "timestamp": "2026-10-15T09:48:01.268Z",
       "commits": [
         {
-          "sha": "290350a763993e900806e33999f29f32f406ae37",
+          "sha": "66338ca059a759cd37b802a189ea227bc1007ec3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T03:30:00-06:00",
-          "message": "chore(release): 0.21.0 (#395)"
+          "timestamp": "2026-10-15T03:46:20-06:00",
+          "message": "The effect catalogue is one named table with one call shape (rich-effects-cbgp.ydw) (#396)\n\n* The effect catalogue is one named table with one call shape (rich-effects-cbgp.ydw)\n\nEFFECT_CATALOGUE makes every catalogue effect by its EFFECT_CURVES name:\n`loops` as Effects, `transitions` as Transitions, each called as\n(element: EffectTarget, curve?) with the signed-off curve, light and width\nbuilt in. Keyed by LoopName/TransitionName, derived from EFFECT_CURVES, so a\ncurve signed off without an entry does not compile.\n\nTo make that one call shape true, fadeIn and dissolveOut take (curve, z):\nevery effect runs on its own clock from t = 0, and a veil blends toward\nDrawn.theme's background, the terminal Effected already names, instead of a\nsecond ground handed in. SHIMMER_WIDTH leaves the barrel; the catalogue\ncarries it.\n\nThe effects-feel demo and its legibility test draw through the catalogue,\nand the playground binds each card to its factory function rather than a\nname in a string.\n\n* Review fixes for the effect catalogue (rich-effects-cbgp.ydw)\n\n- docs: a fade-in is not at rest at t = 0; say only that every effect runs on\n  its own clock from there. A shimmer made by hand takes its own reach.\n- LoopName is spelled out beside TransitionName, and EFFECT_CURVES is held to\n  both, so a new curve does not compile until it is placed in a section,\n  instead of defaulting to a loop.\n- The playground names each card's function by a shorthand key, not its\n  runtime .name, which a bundler renames on a collision.\n- effects-feel builds its transitions once per scene, as it does its loops."
         }
       ]
     },
