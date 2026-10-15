@@ -4,15 +4,22 @@
     {
       "version": "pr-403",
       "ref": "refs/pull/403/merge",
-      "sha": "c86664fa142c8d9b3bf987761da384371399e436",
-      "timestamp": "2026-10-15T17:46:14.527Z",
+      "sha": "cbfe7b9c6cc67d0491af534a3a3a27a2f0583ea0",
+      "timestamp": "2026-10-15T17:54:23.194Z",
       "commits": [
         {
-          "sha": "c86664fa142c8d9b3bf987761da384371399e436",
+          "sha": "cbfe7b9c6cc67d0491af534a3a3a27a2f0583ea0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T11:44:45-06:00",
-          "message": "Merge 00369d9c2ef333da90f0e3a6e7219105f4ead35b into 0f601efdb998987e49cbd21d271e430f576bc52f\n"
+          "timestamp": "2026-10-15T17:52:48Z",
+          "message": "Merge afe55bcde326f2f0b489d6a0ada59084b9a00a30 into 0f601efdb998987e49cbd21d271e430f576bc52f\n"
+        },
+        {
+          "sha": "afe55bcde326f2f0b489d6a0ada59084b9a00a30",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T11:52:43-06:00",
+          "message": "Sixteen-colour hold: public docs say it, WINDOWS is checked, the prose stops contradicting itself (rich-effects-759a)\n\nonColors' and wheel's JSDoc now say they hold still on a sixteen-colour\nterminal; docs/effects.md and stillOnSlots' header no longer claim every\nmove is a jump, only one that shows; the hold-still suite also renders at\nColorDepth.WINDOWS, which fails when WINDOWS leaves onlySlots.\n"
         },
         {
           "sha": "00369d9c2ef333da90f0e3a6e7219105f4ead35b",
