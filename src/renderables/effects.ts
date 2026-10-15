@@ -170,7 +170,7 @@ export function onColors(loop: Loop, colors?: ReadonlySet<string>): Effect {
     settled.set(drawn.theme, memo);
     return memo.get(key, () => shares(drawn, lit, loop.touch));
   };
-  return atShares(loop, settle);
+  return stillOnSlots(atShares(loop, settle));
 }
 
 /**
@@ -189,6 +189,33 @@ export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string
       return { fg: moved(fg, cell.terminal.fg), bg: moved(bg, cell.terminal.bg) };
     };
   };
+}
+
+/**
+ * `loop` as drawn at the frame's depth: where the depth writes only the
+ * sixteen ANSI slots, or no colour, every move a loop could make is a jump
+ * to another slot, and a light on an element never jumps — so there it
+ * holds every cell still, and anywhere else it moves. [LAW:single-enforcer]
+ * `onColors` and `wheel` draw through this, so every loop in the catalogue
+ * meets the sixteen-colour terminal here. `atShares` does not: a progress
+ * bar's pulse is the news that work is going on, and flashes a slot as
+ * Rich's does.
+ */
+function stillOnSlots(loop: Effect): Effect {
+  return (t, drawn) => (onlySlots(drawn.depth) ? (colors) => colors : loop(t, drawn));
+}
+
+/** Whether `depth` writes nothing between the slots it has: the sixteen, at either sixteen-colour depth, or none. */
+function onlySlots(depth: ColorDepth): boolean {
+  switch (depth) {
+    case ColorDepth.DEFAULT:
+    case ColorDepth.STANDARD:
+    case ColorDepth.WINDOWS:
+      return true;
+    case ColorDepth.EIGHT_BIT:
+    case ColorDepth.TRUECOLOR:
+      return false;
+  }
 }
 
 /**
@@ -690,14 +717,14 @@ export function wheel(curve: Curve, z: number): Effect {
     const s = seed(hex);
     return (360 * t) / P + curve.swing * STRAY * ((stray(s, t) - stray(s, 0)) / 1.5);
   };
-  return (t, { colors, fills }) => (shown, cell) => {
+  return stillOnSlots((t, { colors, fills }) => (shown, cell) => {
     // Whether a slot shows one of the element's colours: never the terminal's, whatever its hex.
     const own = { fg: !cell.terminal.fg && colors.has(shown.fg.hex), bg: !cell.terminal.bg && colors.has(shown.bg.hex) };
     // An own colour turns with its segment: itself if a fill or beside no own colour, else the one beside it.
     const turn = (color: ColorRgba, mine: boolean, other: ColorRgba, theirs: boolean): ColorRgba =>
       !mine ? color : Oklch.fromRgba(color).applyKey({ ...IDENTITY, hueShift: turned(fills.has(color.hex) || !theirs ? color.hex : other.hex, t) }).toRgba();
     return { fg: turn(shown.fg, own.fg, shown.bg, own.bg), bg: turn(shown.bg, own.bg, shown.fg, own.fg) };
-  };
+  });
 }
 
 /**
