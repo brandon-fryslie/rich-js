@@ -28,7 +28,7 @@ Endpoints (`null` left or right) are explicit positions in the protocol — ever
 ## Basic use
 
 ```typescript
-import { Console, Strip, RichText, JOINERS, Style } from "@promptctl/rich-js";
+import { Console, Strip, RichText, JOINERS, joinerNamed, Style } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -60,7 +60,7 @@ It measures as the one row it draws, and since that row never wraps, its width i
 Every built-in joiner is a `CellJoiner`, and what tells them apart is data: a `JoinShape` naming the cells drawn at each kind of join.
 
 - `seam` — between two neighbours.
-- `divider` — in the seam's place where the two neighbours' backgrounds are drawn as one colour (below). It has the width of the seam.
+- `divider` — in the seam's place where the seam would not be seen: where any of its cells draws its glyph in a colour indistinct from the cell's own background (below). It has the width of the seam.
 - `lead` — where a run is entered from nothing.
 - `tail` — where a run leaves into nothing.
 
@@ -88,19 +88,29 @@ The second argument is the `ascii` shape, drawn instead when the output is [ASCI
 ```typescript
 import { CellJoiner, JOINERS, type JoinShape } from "@promptctl/rich-js";
 
-// One the table does not bundle: the lower-right triangle wherever the slant's
-// glyph stood, its lead the triangle reversed out of the terminal's ground.
-const wedge: JoinShape = {
-  ...JOINERS.slant.shape,
-  seam: [{ glyph: "\ue0ba", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } }],
-  lead: [{ glyph: "\ue0ba", fg: { edge: "right", part: "bg" }, bg: "ground" }],
-  tail: [{ glyph: "\ue0ba", fg: "ground", bg: { edge: "left", part: "bg" } }],
+// One the table does not bundle: two arrows meeting point to point, the
+// right background reaching back into the left.
+const meet: JoinShape = {
+  ...JOINERS.powerline.shape,
+  seam: [
+    { glyph: "\ue0b2", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } },
+    { glyph: "\ue0b0", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } },
+  ],
+  divider: [
+    { glyph: "\ue0b3", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
+    { glyph: "\ue0b1", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
+  ],
+};
+const meetAscii: JoinShape = {
+  ...JOINERS.powerline.ascii,
+  seam: [{ glyph: "<>", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } }],
+  divider: [{ glyph: "<>", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } }],
 };
 
 console.print(
   new Strip(
     [cell(" build ", "#083344 on #22d3ee"), cell(" test ", "#4a044e on #e879f9")],
-    new CellJoiner(wedge, JOINERS.slant.ascii),
+    new CellJoiner(meet, meetAscii),
   ),
 );
 ```
@@ -109,20 +119,20 @@ console.print(
 
 Each join looks at its two neighbours. A neighbour is missing at the strip's ends. It also counts as missing when any part of the shape paints with its background and it has none to paint: no `bgcolor`, or `… on default`, which is the transparent terminal default.
 
-- Both present: the `seam`, or the `divider` where the two backgrounds are indistinct.
+- Both present: the `seam`, or the `divider` where a seam cell's glyph is indistinct from its background.
 - Only the right: the `lead`.
 - Only the left: the `tail`.
 - Neither: nothing.
 
 So a coloured run is capped the same way wherever it sits. A colourless item before a coloured one leads the coloured run in, exactly as the strip's start does. A coloured item before a colourless one tails out, and two colourless neighbours join with nothing. A shape that paints with neither neighbour's background, like `JOINERS.plain`, joins colourless items too.
 
-"Indistinct" is perceptual: two backgrounds closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) are one. They are measured as drawn. A translucent background is flattened onto the render substrate, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`), so two backgrounds that 256 colours or ANSI draw as one entry are indistinct, however far apart they were computed. Named or indexed colours have no RGB value to measure, so two of them are one only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
+"Indistinct" is perceptual: two colours closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) are one. Each seam cell is measured, not the two neighbours' backgrounds, so `prism`, whose arrows each step a third of the way between them, divides where a one-cell arrow would still show. Colours are measured as drawn. A translucent colour is flattened onto the render substrate, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`), so two colours that 256 colours or ANSI draw as one entry are indistinct, however far apart they were computed. Named or indexed colours have no RGB value to measure, so two of them are one only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
 
 A neighbour's background is read as drawn too, flattened onto the render substrate, so a cell painted in it continues that neighbour rather than compositing a second time over whatever the cell sits on.
 
 ## Built-in joiners
 
-`JOINERS` is the table of bundled joiners, by name, so a joiner named in a consumer's config is a lookup: `JOINERS[name]`. Each is a `CellJoiner` with its ASCII form, and its `shape` is there to build a variant from, as the wedge above is built from `slant`.
+`JOINERS` is the table of bundled joiners, by name. A joiner named in a consumer's config is read with `joinerNamed(name)`, which throws on a name the table lacks. Each is a `CellJoiner` with its ASCII form, and its `shape` is there to build a variant from, as `meet` above is built from `powerline`.
 
 ### `JOINERS.powerline`
 
@@ -194,7 +204,7 @@ console.print(
 - `wrapper` — `capsule`'s shape in arrows: each run opened by U+E0B2 and closed by U+E0B0, touching.
 - `metro` — `capsule` with a two-cell rail between pills, in the theme's `strip.rail` colour.
 - `stitch` — a dotted rule in the left item's text colour over the midpoint of the two backgrounds.
-- `torn` — a ragged quadrant pair in the left background over that midpoint; which pair is picked per seam.
+- `torn` — a ragged quadrant pair in the left background over that midpoint; which pair is picked per seam. Its divider is the same tear in the left item's text colour.
 
 `stitch` and `torn` draw nothing at the ends, where there is no second background to meet.
 
@@ -203,7 +213,7 @@ for (const name of ["prism", "bubble", "metro", "torn"] as const) {
   console.print(
     new Strip(
       [cell(" src ", "black on #a78bfa"), cell(" core ", "black on #f472b6"), cell(" strip.ts ", "black on #fbbf24")],
-      JOINERS[name],
+      joinerNamed(name),
     ),
   );
 }

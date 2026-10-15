@@ -328,10 +328,10 @@ function drawnGround(bg: ColorSpec): ColorSpec {
   return bg.flattenAlpha(SURFACE_BLACK);
 }
 
-// A seam the eye cannot tell from the ground it is drawn on. What is measured
+// Ink the eye cannot tell from the ground it is drawn on. What is measured
 // is what is drawn — `Style.drawnColors`, the colours the writer encodes: the
-// left ground flattened onto the right and the right onto the terminal's
-// black, both downgraded to the depth the render encodes at, so two grounds
+// ink flattened onto the ground and the ground onto the terminal's black,
+// both downgraded to the depth the render encodes at, so two colours
 // 256 colours round to one cube entry are the one entry they render as. A
 // colour whose RGB is the terminal theme's own (ANSI 0–15, a blend reaching
 // one) has no value here, so two of them are the same only when they are one
@@ -339,8 +339,8 @@ function drawnGround(bg: ColorSpec): ColorSpec {
 // depth that spells it ("red", "color(1)", an EIGHT_BIT spec on 0–15 are one
 // slot) — or the same blend, whose name spells each end by its slot for the
 // same reason.
-function vanishes(leftBg: ColorSpec, rightBg: ColorSpec, colorSystem: ColorDepth | null | undefined): boolean {
-  const { color, bgcolor } = new Style({ color: drawnGround(leftBg), bgcolor: rightBg }).drawnColors(colorSystem ?? ColorDepth.TRUECOLOR);
+function vanishes(ink: ColorSpec, ground: ColorSpec, colorSystem: ColorDepth | null | undefined): boolean {
+  const { color, bgcolor } = new Style({ color: drawnGround(ink), bgcolor: ground }).drawnColors(colorSystem ?? ColorDepth.TRUECOLOR);
   if (color === undefined || bgcolor === undefined) return false;
   const av = color.fixedValue;
   const bv = bgcolor.fixedValue;
@@ -367,6 +367,18 @@ function resolvePaint(paint: Paint, edges: Edges, options: RenderOptions): Color
   const b = resolvePaint(to, edges, options);
   // A mix with no colour at one end has nothing to blend toward.
   return a && b && ColorSpec.blend(a, b, t);
+}
+
+// A seam cell whose ink the eye cannot tell from its own ground. Measured per
+// cell, as drawn, never across the two neighbours' grounds: a seam that steps
+// between them in thirds vanishes at a third of the difference that would
+// leave a one-cell seam visible. "ground" has no colour to measure, so a cell
+// with it on either side is never said to vanish.
+function inkVanishes(cell: JoinCell, edges: Edges, options: RenderOptions): boolean {
+  if (cell.fg === "ground" || cell.bg === "ground") return false;
+  const ink = resolvePaint(cell.fg, edges, options);
+  const ground = resolvePaint(cell.bg, edges, options);
+  return ink !== undefined && ground !== undefined && vanishes(ink, ground, options.colorSystem);
 }
 
 function cellStyle(cell: JoinCell, edges: Edges, options: RenderOptions): Style {
@@ -414,7 +426,7 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
         const rightBg = paintableBg(edges.right?.bgcolor);
         const hasLeft = left !== null && (!reads.left || leftBg !== undefined);
         const hasRight = right !== null && (!reads.right || rightBg !== undefined);
-        const divides = drawn.divider !== drawn.seam && leftBg !== undefined && rightBg !== undefined && vanishes(leftBg, rightBg, options.colorSystem);
+        const divides = hasLeft && hasRight && drawn.divider !== drawn.seam && drawn.seam.some((cell) => inkVanishes(cell, edges, options));
         const part: Part | undefined = hasLeft && hasRight ? (divides ? "divider" : "seam") : hasRight ? "lead" : hasLeft ? "tail" : undefined;
         if (part === undefined) return;
         for (const [at, cell] of drawn[part].entries()) yield new Segment(pickGlyph(cell, part, index, at), cellStyle(cell, edges, options));
@@ -460,6 +472,12 @@ function prism(glyph: string, thin: string): JoinShape {
   };
 }
 
+// A powerline-family joiner: `shape` over `glyph`, its ASCII form the same
+// shape over `ascii`, beginning each run flat — an ASCII arrow reversed out of
+// the terminal's ground is a block of nothing.
+const arrows = (shape: (glyph: string, thin: string) => JoinShape, glyph: string, thin: string, ascii: string, asciiThin: string): CellJoiner =>
+  new CellJoiner(shape(glyph, thin), { ...shape(ascii, asciiThin), lead: [] });
+
 // Each run closed by `close` and opened by `open`, both in its ground over the
 // terminal's, with `between` — cells on the terminal's ground — between runs.
 function pill(open: string, close: string, between: readonly JoinCell[]): JoinShape {
@@ -477,52 +495,50 @@ function midpoint(glyph: JoinCell["glyph"], fg: Paint): JoinShape {
   return { seam, divider: seam, lead: [], tail: [] };
 }
 
+// A ragged tear in the left ground over the midpoint; where that ink would
+// vanish into the midpoint — grounds a few steps apart, or one ground — the
+// same tear in the left item's text.
+function torn(glyphs: readonly string[]): JoinShape {
+  return { ...midpoint({ oneOf: glyphs }, LEFT_BG), divider: [{ glyph: { oneOf: glyphs }, fg: LEFT_FG, bg: HALF }] };
+}
+
 const PLAIN_SEAM: readonly JoinCell[] = [{ glyph: " | ", fg: { role: "strip.separator" }, bg: GROUND }];
 const PLAIN: JoinShape = { seam: PLAIN_SEAM, divider: PLAIN_SEAM, lead: [], tail: [] };
 
 /**
- * The bundled joiners, by name — a consumer that names its joiner in config
- * looks it up here. Each is a `CellJoiner` with its ASCII form:
- *   • `powerline` — U+E0B0 in the left ground over the right, divided by U+E0B1
- *     in the left item's text; the lead is the arrow reversed out of the
- *     terminal's ground, the tail the arrow over it. ASCII `>`, beginning flat;
- *   • `prism` — three arrows stepping through the grounds' thirds; ends as
- *     `powerline`. ASCII `>>>`;
- *   • `slant` (U+E0BC), `backslant` (U+E0B8), `flame` (U+E0C0), `pixel`
- *     (U+E0C4), `ice` (U+E0C8), `bubble` (U+E0B4) — `powerline` with their glyph;
- *   • `capsule` — pills opened by U+E0B6 and closed by U+E0B4 over the
- *     terminal's ground, a space between. ASCII `(` and `)`;
- *   • `wrapper` — `capsule`'s shape in arrows, U+E0B2 and U+E0B0, touching;
- *   • `metro` — `capsule` with a two-cell rail in the theme's `strip.rail`
- *     between pills;
- *   • `stitch` — a dotted rule in the left item's text over the grounds'
- *     midpoint; `torn` — a ragged quadrant pair, picked per seam, in the left
- *     ground over that midpoint. Neither draws at the ends;
- *   • `plain` — ` | ` in the theme's `strip.separator` between every pair, and
- *     nothing at the ends. It names no neighbour, so it joins items with no
- *     ground too.
- * Every shape but `plain` paints with a neighbour's ground, so a neighbour
- * with none is joined as an endpoint.
+ * The bundled joiners, by name. What each draws is `docs/strip.md`'s
+ * "Built-in joiners"; a name from config is read with `joinerNamed`.
  */
 export const JOINERS = Object.freeze({
-  powerline: new CellJoiner(edge("\ue0b0", "\ue0b1"), { ...edge(">", ">"), lead: [] }),
-  prism: new CellJoiner(prism("\ue0b0", "\ue0b1"), { ...prism(">", ">"), lead: [] }),
-  slant: new CellJoiner(edge("\ue0bc", "\ue0bd"), { ...edge("/", "/"), lead: [] }),
-  backslant: new CellJoiner(edge("\ue0b8", "\ue0b9"), { ...edge("\\", "\\"), lead: [] }),
-  flame: new CellJoiner(edge("\ue0c0", "\ue0c1"), { ...edge("}", "}"), lead: [] }),
-  pixel: new CellJoiner(edge("\ue0c4", "\ue0b1"), { ...edge("#", ">"), lead: [] }),
-  ice: new CellJoiner(edge("\ue0c8", "\ue0b1"), { ...edge("]", ">"), lead: [] }),
-  bubble: new CellJoiner(edge("\ue0b4", "\ue0b5"), { ...edge(")", ")"), lead: [] }),
+  powerline: arrows(edge, "\ue0b0", "\ue0b1", ">", ">"),
+  prism: arrows(prism, "\ue0b0", "\ue0b1", ">", ">"),
+  slant: arrows(edge, "\ue0bc", "\ue0bd", "/", "/"),
+  backslant: arrows(edge, "\ue0b8", "\ue0b9", "\\", "\\"),
+  flame: arrows(edge, "\ue0c0", "\ue0c1", "}", "}"),
+  pixel: arrows(edge, "\ue0c4", "\ue0b1", "#", ">"),
+  ice: arrows(edge, "\ue0c8", "\ue0b1", "]", ">"),
+  bubble: arrows(edge, "\ue0b4", "\ue0b5", ")", ")"),
   capsule: new CellJoiner(capsule("\ue0b6", "\ue0b4"), capsule("(", ")")),
   wrapper: new CellJoiner(pill("\ue0b2", "\ue0b0", []), pill("<", ">", [])),
   metro: new CellJoiner(metro("\ue0b6", "\ue0b4", "\u2500\u2500"), metro("(", ")", "--")),
   stitch: new CellJoiner(midpoint("\u250a", LEFT_FG), midpoint(":", LEFT_FG)),
-  torn: new CellJoiner(
-    midpoint({ oneOf: ["\u259a\u259e", "\u259e\u259a", "\u2598\u2597", "\u259d\u2596", "\u2596\u259d", "\u2597\u2598"] }, LEFT_BG),
-    midpoint({ oneOf: ["/\\", "\\/"] }, LEFT_BG),
-  ),
+  torn: new CellJoiner(torn(["\u259a\u259e", "\u259e\u259a", "\u2598\u2597", "\u259d\u2596", "\u2596\u259d", "\u2597\u2598"]), torn(["/\\", "\\/"])),
   plain: new CellJoiner(PLAIN, PLAIN),
 });
+
+type JoinerName = keyof typeof JOINERS;
+
+/**
+ * The bundled joiner `name` names — a name read from config, parsed. Throws on
+ * any other string, naming the ones there are; an own-key test, so `toString`
+ * and the rest of `Object.prototype` are not joiners.
+ */
+export function joinerNamed(name: string): CellJoiner {
+  if (!isJoinerName(name)) throw new Error(`no joiner named ${JSON.stringify(name)}; the joiners are ${Object.keys(JOINERS).join(", ")}`);
+  return JOINERS[name];
+}
+
+const isJoinerName = (name: string): name is JoinerName => Object.hasOwn(JOINERS, name);
 
 function gradient(steps: number, glyph: string): JoinShape {
   // Midpoint sampling across `2 * steps` half-cell positions: cell i takes

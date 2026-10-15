@@ -3,6 +3,7 @@ import {
   Strip,
   CellJoiner,
   JOINERS,
+  joinerNamed,
   SEAM_MIN_DELTA_E,
   gradientJoiner,
   type JoinCell,
@@ -701,7 +702,7 @@ describe("JOINERS, the bundled definitions", () => {
   });
 
   it.each(NAMES)("%s draws every seam at one width, in either form", (name) => {
-    const joiner = JOINERS[name as keyof typeof JOINERS];
+    const joiner = joinerNamed(name);
     const items = [RED, BLUE, GREEN, RED, BLUE, GREEN, RED];
     for (const options of [OPTIONS, ASCII]) {
       const widths = Array.from({ length: items.length - 1 }, (_, i) =>
@@ -715,9 +716,9 @@ describe("JOINERS, the bundled definitions", () => {
   });
 
   it.each(["powerline", "slant", "backslant", "flame", "pixel", "ice", "bubble"])("%s leads with its seam glyph reversed out of the terminal's ground", (name) => {
-    const { seam, lead } = JOINERS[name as keyof typeof JOINERS].shape;
+    const { seam, lead } = joinerNamed(name).shape;
     expect(lead).toEqual([{ glyph: seam[0]!.glyph, fg: "ground", bg: { edge: "right", part: "bg" } }]);
-    const [leadSeg] = render(new Strip([RED], JOINERS[name as keyof typeof JOINERS]));
+    const [leadSeg] = render(new Strip([RED], joinerNamed(name)));
     expect(leadSeg!.style?.reverse).toBe(true);
     expect(leadSeg!.style?.color?.name).toBe("red");
   });
@@ -751,6 +752,30 @@ describe("JOINERS, the bundled definitions", () => {
       const mid = ColorSpec.blend(ColorSpec.parse("red"), ColorSpec.parse("blue"), 0.5);
       expect(segs[1]!.style?.bgcolor).toEqual(mid);
     }
+  });
+
+  it("joinerNamed reads a name from config, and refuses one the table lacks", () => {
+    expect(joinerNamed("prism")).toBe(JOINERS.prism);
+    for (const name of ["constructor", "toString", "__proto__", "Powerline"]) expect(() => joinerNamed(name)).toThrow(/no joiner named .*the joiners are powerline, prism/);
+  });
+
+  // #3a3f58 and #4a5070 are ΔE_OK ~.066 apart: a one-cell arrow between them
+  // shows, but each of prism's arrows steps a third of that, and would not.
+  const NEAR_A = cell(" a ", "white on #3a3f58");
+  const NEAR_B = cell(" b ", "white on #4a5070");
+
+  it("prism divides where its third-steps would vanish though a one-cell arrow would not", () => {
+    const powerline = joinText(render(new Strip([NEAR_A, NEAR_B], JOINERS.powerline)), [NEAR_A, NEAR_B]);
+    expect(powerline[1]).toBe("\ue0b0");
+    const prism = joinText(render(new Strip([NEAR_A, NEAR_B], JOINERS.prism)), [NEAR_A, NEAR_B]);
+    expect(prism.slice(1, 4)).toEqual([" ", "\ue0b1", " "]);
+  });
+
+  it("torn draws its divider, the tear in the left item's text, where its ink would vanish into the midpoint", () => {
+    const tear = render(new Strip([NEAR_A, NEAR_A], JOINERS.torn))[1]!;
+    expect(tear.style?.color?.name).toBe("white");
+    expect(["\u259a\u259e", "\u259e\u259a", "\u2598\u2597", "\u259d\u2596", "\u2596\u259d", "\u2597\u2598"]).toContain(tear.text);
+    expect(render(new Strip([NEAR_A, cell(" c ", "white on #a78bfa")], JOINERS.torn))[1]!.style?.color?.name).not.toBe("white");
   });
 
   it("torn picks its quadrant pair per seam", () => {

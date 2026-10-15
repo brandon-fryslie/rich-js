@@ -12,6 +12,7 @@ import {
   Strip,
   CellJoiner,
   JOINERS,
+  joinerNamed,
   SEAM_MIN_DELTA_E,
   gradientJoiner,
   Style,
@@ -46,8 +47,8 @@ export function runDemo(host: TerminalHost): void {
   // ground, so each joiner meets it as it meets the strip's start.
   consoleOut.print(new RichText("JOINERS", { style: "bold" }));
   const width = Math.max(...Object.keys(JOINERS).map((name) => name.length));
-  for (const [name, joiner] of Object.entries(JOINERS)) {
-    consoleOut.print(new Strip([new RichText(` ${name.padEnd(width)} `, { end: "", noWrap: true }), ...cells], joiner));
+  for (const name of Object.keys(JOINERS)) {
+    consoleOut.print(new Strip([new RichText(` ${name.padEnd(width)} `, { end: "", noWrap: true }), ...cells], joinerNamed(name)));
   }
   // Neighbours whose backgrounds sit closer than SEAM_MIN_DELTA_E would hide the
   // arrow in their shared colour, so the joiner draws the thin divider there.
@@ -58,15 +59,25 @@ export function runDemo(host: TerminalHost): void {
     `JOINERS.powerline, shared background (divider below ΔE ${SEAM_MIN_DELTA_E})`,
     new Strip([...cells, ...shared], JOINERS.powerline),
   );
-  // A joiner is a value: one the table does not bundle, the lower-right
-  // triangle in every place the arrow stood, its lead the triangle reversed.
-  const wedge: JoinShape = {
-    ...JOINERS.slant.shape,
-    seam: [{ glyph: "\ue0ba", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } }],
-    lead: [{ glyph: "\ue0ba", fg: { edge: "right", part: "bg" }, bg: "ground" }],
-    tail: [{ glyph: "\ue0ba", fg: "ground", bg: { edge: "left", part: "bg" } }],
+  // A joiner is a value: one the table does not bundle, two arrows meeting
+  // point to point, the right ground reaching back into the left.
+  const meet: JoinShape = {
+    ...JOINERS.powerline.shape,
+    seam: [
+      { glyph: "\ue0b2", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } },
+      { glyph: "\ue0b0", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } },
+    ],
+    divider: [
+      { glyph: "\ue0b3", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
+      { glyph: "\ue0b1", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
+    ],
   };
-  showcase("CellJoiner, a wedge shape", new Strip([...cells, ...shared], new CellJoiner(wedge, JOINERS.slant.ascii)));
+  const meetAscii: JoinShape = {
+    ...JOINERS.powerline.ascii,
+    seam: [{ glyph: "<>", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } }],
+    divider: [{ glyph: "<>", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } }],
+  };
+  showcase("CellJoiner, arrows meeting", new Strip([...cells, ...shared], new CellJoiner(meet, meetAscii)));
   showcase("gradientJoiner(6)", new Strip(cells, gradientJoiner(6)));
 
   // "Unbounded" gradient: fill the row between two anchor cells with as many

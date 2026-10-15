@@ -191,6 +191,7 @@ export {
   CellJoiner,
   SEAM_MIN_DELTA_E,
   JOINERS,
+  joinerNamed,
   gradientJoiner,
 } from "./core/strip.js";
 export type { StyledRenderable, Joiner, JoinContext, JoinShape, JoinCell, CellColor, Paint } from "./core/strip.js";
