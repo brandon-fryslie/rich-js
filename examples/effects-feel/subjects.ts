@@ -14,7 +14,7 @@ import {
   ColorRgba,
   ColorSpec,
   Measurement,
-  POWERLINE_JOINER,
+  JOINERS,
   RichText,
   Segment,
   Strip,
@@ -184,7 +184,7 @@ const PULSED: Readonly<Record<string, readonly string[]>> = { strip: ["ctx 61%",
 /** A powerline strip of a dozen cells over the theme's palette. */
 export function stripSubject(theme: TerminalTheme): Subject {
   const cells = STRIP_LABELS.map((label, i) => new RichText(` ${label} `, { style: stripStyle(theme, i), end: "", noWrap: true }));
-  return { name: "strip", renderable: new Strip(cells, seamed(POWERLINE_JOINER)), z: 0 };
+  return { name: "strip", renderable: new Strip(cells, seamed(JOINERS.powerline)), z: 0 };
 }
 
 /**

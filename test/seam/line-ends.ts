@@ -31,7 +31,7 @@ import { RichText } from "../../src/core/text.js";
 import { Emoji } from "../../src/core/emoji.js";
 import { JSONRenderable } from "../../src/core/json.js";
 import { Pretty } from "../../src/core/pretty.js";
-import { PLAIN_JOINER, Strip } from "../../src/core/strip.js";
+import { JOINERS, Strip } from "../../src/core/strip.js";
 import { Align } from "../../src/renderables/align.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
@@ -133,7 +133,7 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
   Slider: { ends: "own-line", build: () => new Slider() },
   Spinner: { ends: "own-line", build: () => new Spinner("dots", "hi") },
   StaticItem: { ends: "own-line", build: () => new StaticItem({ id: "s", render: text("x") }) },
-  Strip: { ends: "own-line", build: () => new Strip([text("a")], PLAIN_JOINER) },
+  Strip: { ends: "own-line", build: () => new Strip([text("a")], JOINERS.plain) },
   Syntax: { ends: "own-line", build: () => new Syntax("x = 1", "python") },
   Table: {
     ends: "own-line",

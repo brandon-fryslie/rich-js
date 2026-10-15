@@ -771,6 +771,7 @@ export const DEFAULT_STYLES: Record<string, Style> = {
 
   // Strip
   "strip.separator": Style.parse("bright_black"),
+  "strip.rail": Style.parse("bright_black"),
 
   // JSON
   "json.brace": Style.parse("bold"),

@@ -130,7 +130,7 @@ describe("rich-strip's card", { timeout: 60_000 }, () => {
       exit: () => {},
     });
     const rows = stripAnsi(written.join("")).split(/\r?\n/);
-    expect(rows[0]).toBe("POWERLINE_JOINER");
+    expect(rows[0]).toBe("JOINERS");
     expect(rows).toContain("FlexStrip + gap (tag cloud)");
     // Its last line ends with a line break, so the cursor stands on a row of its own: that row too must fit.
     expect(rows.length).toBeLessThanOrEqual(program.terminal.rows);

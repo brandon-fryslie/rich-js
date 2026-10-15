@@ -423,63 +423,106 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
   }
 }
 
-// --- The four joiners as shapes ---
+// --- The bundled joiners ---
 
 const LEFT_BG: Paint = { edge: "left", part: "bg" };
 const RIGHT_BG: Paint = { edge: "right", part: "bg" };
 const LEFT_FG: Paint = { edge: "left", part: "fg" };
+const HALF: Paint = { mix: [LEFT_BG, RIGHT_BG, 1 / 2] };
 
 const GROUND = "ground";
 
-/**
- * The powerline joiner: U+E0B0 (right-arrow) in the left ground over the
- * right, divided by U+E0B1 (thin right-arrow) in the left item's text. The
- * lead is the arrow with the left ground replaced by the terminal's — drawn
- * in reverse video it leaves a notch whose base is the cell's left edge, inked
- * in the terminal's background colour. That ink is opaque, so under a
- * translucent terminal the notch does not let what is behind it through. The
- * tail is the arrow over the terminal's ground.
- * ASCII draws `>` everywhere and begins each run flat.
- */
-export const POWERLINE_JOINER = new CellJoiner(
-  {
-    seam: [{ glyph: "", fg: LEFT_BG, bg: RIGHT_BG }],
-    divider: [{ glyph: "", fg: LEFT_FG, bg: LEFT_BG }],
-    lead: [{ glyph: "", fg: GROUND, bg: RIGHT_BG }],
-    tail: [{ glyph: "", fg: LEFT_BG, bg: GROUND }],
-  },
-  {
-    seam: [{ glyph: ">", fg: LEFT_BG, bg: RIGHT_BG }],
-    divider: [{ glyph: ">", fg: LEFT_FG, bg: LEFT_BG }],
-    lead: [],
-    tail: [{ glyph: ">", fg: LEFT_BG, bg: GROUND }],
-  },
-);
+// A one-cell edge in the powerline family: `glyph` in the left ground over the
+// right; divided by `thin` in the left item's text; led by the same glyph with
+// the left ground replaced by the terminal's — in reverse video, a notch whose
+// ink is the terminal's background — and tailed by it over the terminal's.
+function edge(glyph: string, thin: string): JoinShape {
+  return {
+    seam: [{ glyph, fg: LEFT_BG, bg: RIGHT_BG }],
+    divider: [{ glyph: thin, fg: LEFT_FG, bg: LEFT_BG }],
+    lead: [{ glyph, fg: GROUND, bg: RIGHT_BG }],
+    tail: [{ glyph, fg: LEFT_BG, bg: GROUND }],
+  };
+}
 
-function capsule(open: string, close: string): JoinShape {
-  const seam: JoinCell[] = [
-    { glyph: close, fg: LEFT_BG, bg: GROUND },
-    { glyph: " ", fg: LEFT_FG, bg: GROUND },
-    { glyph: open, fg: RIGHT_BG, bg: GROUND },
-  ];
+// Three powerline arrows stepping through the two thirds between the grounds.
+function prism(glyph: string, thin: string): JoinShape {
+  const third = (t: number): Paint => ({ mix: [LEFT_BG, RIGHT_BG, t] });
+  const pad: JoinCell = { glyph: " ", fg: LEFT_FG, bg: LEFT_BG };
+  return {
+    ...edge(glyph, thin),
+    seam: [
+      { glyph, fg: LEFT_BG, bg: third(1 / 3) },
+      { glyph, fg: third(1 / 3), bg: third(2 / 3) },
+      { glyph, fg: third(2 / 3), bg: RIGHT_BG },
+    ],
+    divider: [pad, { glyph: thin, fg: LEFT_FG, bg: LEFT_BG }, pad],
+  };
+}
+
+// Each run closed by `close` and opened by `open`, both in its ground over the
+// terminal's, with `between` — cells on the terminal's ground — between runs.
+function pill(open: string, close: string, between: readonly JoinCell[]): JoinShape {
+  const seam: JoinCell[] = [{ glyph: close, fg: LEFT_BG, bg: GROUND }, ...between, { glyph: open, fg: RIGHT_BG, bg: GROUND }];
   return { seam, divider: seam, lead: [{ glyph: open, fg: RIGHT_BG, bg: GROUND }], tail: [{ glyph: close, fg: LEFT_BG, bg: GROUND }] };
 }
 
-/**
- * Rounded pills: each run opened by U+E0B6 and closed by U+E0B4, both in its
- * ground over the terminal's, a space between pills. ASCII draws `(` and `)`.
- */
-export const CAPSULE_JOINER = new CellJoiner(capsule("", ""), capsule("(", ")"));
+const capsule = (open: string, close: string): JoinShape => pill(open, close, [{ glyph: " ", fg: LEFT_FG, bg: GROUND }]);
+const metro = (open: string, close: string, rail: string): JoinShape => pill(open, close, [{ glyph: rail, fg: { role: "strip.rail" }, bg: GROUND }]);
+
+// One cell drawn over the two grounds' midpoint, so it reads as neither item's;
+// nothing at the ends, where there is no second ground to meet.
+function midpoint(glyph: JoinCell["glyph"], fg: Paint): JoinShape {
+  const seam: JoinCell[] = [{ glyph, fg, bg: HALF }];
+  return { seam, divider: seam, lead: [], tail: [] };
+}
 
 const PLAIN_SEAM: readonly JoinCell[] = [{ glyph: " | ", fg: { role: "strip.separator" }, bg: GROUND }];
 const PLAIN: JoinShape = { seam: PLAIN_SEAM, divider: PLAIN_SEAM, lead: [], tail: [] };
 
 /**
- * ` | ` between every pair of items, in the theme's `strip.separator` colour;
- * nothing at the ends. Its shape names no neighbour, so it joins items with no
- * ground too.
+ * The bundled joiners, by name — a consumer that names its joiner in config
+ * looks it up here. Each is a `CellJoiner` with its ASCII form:
+ *   • `powerline` — U+E0B0 in the left ground over the right, divided by U+E0B1
+ *     in the left item's text; the lead is the arrow reversed out of the
+ *     terminal's ground, the tail the arrow over it. ASCII `>`, beginning flat;
+ *   • `prism` — three arrows stepping through the grounds' thirds; ends as
+ *     `powerline`. ASCII `>>>`;
+ *   • `slant` (U+E0BC), `backslant` (U+E0B8), `flame` (U+E0C0), `pixel`
+ *     (U+E0C4), `ice` (U+E0C8), `bubble` (U+E0B4) — `powerline` with their glyph;
+ *   • `capsule` — pills opened by U+E0B6 and closed by U+E0B4 over the
+ *     terminal's ground, a space between. ASCII `(` and `)`;
+ *   • `wrapper` — `capsule`'s shape in arrows, U+E0B2 and U+E0B0, touching;
+ *   • `metro` — `capsule` with a two-cell rail in the theme's `strip.rail`
+ *     between pills;
+ *   • `stitch` — a dotted rule in the left item's text over the grounds'
+ *     midpoint; `torn` — a ragged quadrant pair, picked per seam, in the left
+ *     ground over that midpoint. Neither draws at the ends;
+ *   • `plain` — ` | ` in the theme's `strip.separator` between every pair, and
+ *     nothing at the ends. It names no neighbour, so it joins items with no
+ *     ground too.
+ * Every shape but `plain` paints with a neighbour's ground, so a neighbour
+ * with none is joined as an endpoint.
  */
-export const PLAIN_JOINER = new CellJoiner(PLAIN, PLAIN);
+export const JOINERS = Object.freeze({
+  powerline: new CellJoiner(edge("\ue0b0", "\ue0b1"), { ...edge(">", ">"), lead: [] }),
+  prism: new CellJoiner(prism("\ue0b0", "\ue0b1"), { ...prism(">", ">"), lead: [] }),
+  slant: new CellJoiner(edge("\ue0bc", "\ue0bd"), { ...edge("/", "/"), lead: [] }),
+  backslant: new CellJoiner(edge("\ue0b8", "\ue0b9"), { ...edge("\\", "\\"), lead: [] }),
+  flame: new CellJoiner(edge("\ue0c0", "\ue0c1"), { ...edge("}", "}"), lead: [] }),
+  pixel: new CellJoiner(edge("\ue0c4", "\ue0b1"), { ...edge("#", ">"), lead: [] }),
+  ice: new CellJoiner(edge("\ue0c8", "\ue0b1"), { ...edge("]", ">"), lead: [] }),
+  bubble: new CellJoiner(edge("\ue0b4", "\ue0b5"), { ...edge(")", ")"), lead: [] }),
+  capsule: new CellJoiner(capsule("\ue0b6", "\ue0b4"), capsule("(", ")")),
+  wrapper: new CellJoiner(pill("\ue0b2", "\ue0b0", []), pill("<", ">", [])),
+  metro: new CellJoiner(metro("\ue0b6", "\ue0b4", "\u2500\u2500"), metro("(", ")", "--")),
+  stitch: new CellJoiner(midpoint("\u250a", LEFT_FG), midpoint(":", LEFT_FG)),
+  torn: new CellJoiner(
+    midpoint({ oneOf: ["\u259a\u259e", "\u259e\u259a", "\u2598\u2597", "\u259d\u2596", "\u2596\u259d", "\u2597\u2598"] }, LEFT_BG),
+    midpoint({ oneOf: ["/\\", "\\/"] }, LEFT_BG),
+  ),
+  plain: new CellJoiner(PLAIN, PLAIN),
+});
 
 function gradient(steps: number, glyph: string): JoinShape {
   // Midpoint sampling across `2 * steps` half-cell positions: cell i takes

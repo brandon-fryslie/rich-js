@@ -190,9 +190,7 @@ export {
   Strip,
   CellJoiner,
   SEAM_MIN_DELTA_E,
-  POWERLINE_JOINER,
-  CAPSULE_JOINER,
-  PLAIN_JOINER,
+  JOINERS,
   gradientJoiner,
 } from "./core/strip.js";
 export type { StyledRenderable, Joiner, JoinContext, JoinShape, JoinCell, CellColor, Paint } from "./core/strip.js";

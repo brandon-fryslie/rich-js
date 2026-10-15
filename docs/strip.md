@@ -28,7 +28,7 @@ Endpoints (`null` left or right) are explicit positions in the protocol — ever
 ## Basic use
 
 ```typescript
-import { Console, Strip, RichText, POWERLINE_JOINER, Style } from "@promptctl/rich-js";
+import { Console, Strip, RichText, JOINERS, Style } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -41,7 +41,7 @@ const strip = new Strip(
     cell(" claude.ai ", "#ffffff on #0891b2"),
     cell(" 3.4k tok ", "#ffffff on #16a34a"),
   ],
-  POWERLINE_JOINER,
+  JOINERS.powerline,
 );
 
 console.print(strip);
@@ -86,20 +86,21 @@ A shape is checked once, when the joiner is built, and the constructor throws on
 The second argument is the `ascii` shape, drawn instead when the output is [ASCII-only](./console).
 
 ```typescript
-import { CellJoiner, POWERLINE_JOINER, type JoinShape } from "@promptctl/rich-js";
+import { CellJoiner, JOINERS, type JoinShape } from "@promptctl/rich-js";
 
-// The powerline shape with the slant glyph wherever the arrow stood.
-const slant: JoinShape = {
-  seam: [{ glyph: "\ue0bc", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } }],
-  divider: [{ glyph: "\ue0bd", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } }],
-  lead: [{ glyph: "\ue0bc", fg: "ground", bg: { edge: "right", part: "bg" } }],
-  tail: [{ glyph: "\ue0bc", fg: { edge: "left", part: "bg" }, bg: "ground" }],
+// One the table does not bundle: the lower-right triangle wherever the slant's
+// glyph stood, its lead the triangle reversed out of the terminal's ground.
+const wedge: JoinShape = {
+  ...JOINERS.slant.shape,
+  seam: [{ glyph: "\ue0ba", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } }],
+  lead: [{ glyph: "\ue0ba", fg: { edge: "right", part: "bg" }, bg: "ground" }],
+  tail: [{ glyph: "\ue0ba", fg: "ground", bg: { edge: "left", part: "bg" } }],
 };
 
 console.print(
   new Strip(
     [cell(" build ", "#083344 on #22d3ee"), cell(" test ", "#4a044e on #e879f9")],
-    new CellJoiner(slant, POWERLINE_JOINER.ascii),
+    new CellJoiner(wedge, JOINERS.slant.ascii),
   ),
 );
 ```
@@ -113,7 +114,7 @@ Each join looks at its two neighbours. A neighbour is missing at the strip's end
 - Only the left: the `tail`.
 - Neither: nothing.
 
-So a coloured run is capped the same way wherever it sits. A colourless item before a coloured one leads the coloured run in, exactly as the strip's start does. A coloured item before a colourless one tails out, and two colourless neighbours join with nothing. A shape that paints with neither neighbour's background, like `PLAIN_JOINER`, joins colourless items too.
+So a coloured run is capped the same way wherever it sits. A colourless item before a coloured one leads the coloured run in, exactly as the strip's start does. A coloured item before a colourless one tails out, and two colourless neighbours join with nothing. A shape that paints with neither neighbour's background, like `JOINERS.plain`, joins colourless items too.
 
 "Indistinct" is perceptual: two backgrounds closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) are one. They are measured as drawn. A translucent background is flattened onto the render substrate, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`), so two backgrounds that 256 colours or ANSI draw as one entry are indistinct, however far apart they were computed. Named or indexed colours have no RGB value to measure, so two of them are one only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
 
@@ -121,7 +122,9 @@ A neighbour's background is read as drawn too, flattened onto the render substra
 
 ## Built-in joiners
 
-### `POWERLINE_JOINER`
+`JOINERS` is the table of bundled joiners, by name, so a joiner named in a consumer's config is a lookup: `JOINERS[name]`. Each is a `CellJoiner` with its ASCII form, and its `shape` is there to build a variant from, as the wedge above is built from `slant`.
+
+### `JOINERS.powerline`
 
 Powerline arrows: U+E0B0 in the left background over the right, and U+E0B1, the thin arrow, as the divider in the left item's text colour on its own background. The divider is the vim-airline convention, and it reads exactly as well as that item's text does. The lead is U+E0B0 with `"ground"` as its `fg`, a notch whose base is the cell's left edge. Its ink is the terminal's background colour, drawn opaque, so a terminal with a translucent background shows the notch as a solid patch of that colour. The tail is the arrow over the terminal's background. ASCII draws `>` and opens each run flat.
 
@@ -134,7 +137,7 @@ console.print(
       cell(" master ", "#052e16 on #4ade80"),
       cell(" ✎ 2 ", "#422006 on #facc15"),
     ],
-    POWERLINE_JOINER,
+    JOINERS.powerline,
   ),
 );
 ```
@@ -149,12 +152,12 @@ console.print(
       cell(" then ", "italic"),
       cell(" ✘ deploy ", "#ffffff on #dc2626"),
     ],
-    POWERLINE_JOINER,
+    JOINERS.powerline,
   ),
 );
 ```
 
-### `CAPSULE_JOINER`
+### `JOINERS.capsule`
 
 Rounded pills. Each run is opened by U+E0B6 and closed by U+E0B4, both in its background over the terminal's, with a space between pills. ASCII draws `(` and `)`.
 
@@ -166,12 +169,12 @@ console.print(
       cell("go", "black on #00add8"),
       cell("zig", "black on #f7a41d"),
     ],
-    CAPSULE_JOINER,
+    JOINERS.capsule,
   ),
 );
 ```
 
-### `PLAIN_JOINER`
+### `JOINERS.plain`
 
 ` | ` between every pair of items, in the theme's `strip.separator` colour (`bright_black` by default), and nothing at the ends.
 
@@ -179,9 +182,31 @@ console.print(
 console.print(
   new Strip(
     [cell("docs", "#38bdf8"), cell("guide", "#38bdf8"), cell("strip.md", "bold #f59e0b")],
-    PLAIN_JOINER,
+    JOINERS.plain,
   ),
 );
+```
+
+### The rest of the table
+
+- `prism` — three arrows stepping through the two thirds between the backgrounds; ends as `powerline`.
+- `slant` (U+E0BC), `backslant` (U+E0B8), `flame` (U+E0C0), `pixel` (U+E0C4), `ice` (U+E0C8), `bubble` (U+E0B4) — `powerline` with their glyph, the lead included.
+- `wrapper` — `capsule`'s shape in arrows: each run opened by U+E0B2 and closed by U+E0B0, touching.
+- `metro` — `capsule` with a two-cell rail between pills, in the theme's `strip.rail` colour.
+- `stitch` — a dotted rule in the left item's text colour over the midpoint of the two backgrounds.
+- `torn` — a ragged quadrant pair in the left background over that midpoint; which pair is picked per seam.
+
+`stitch` and `torn` draw nothing at the ends, where there is no second background to meet.
+
+```typescript
+for (const name of ["prism", "bubble", "metro", "torn"] as const) {
+  console.print(
+    new Strip(
+      [cell(" src ", "black on #a78bfa"), cell(" core ", "black on #f472b6"), cell(" strip.ts ", "black on #fbbf24")],
+      JOINERS[name],
+    ),
+  );
+}
 ```
 
 ### `gradientJoiner(steps)`
@@ -241,7 +266,7 @@ Items in a Strip implement `StyledRenderable` — a `Renderable` plus `edgeStyle
 
 ## Edge styles are the protocol
 
-Joiners read only the two edge columns. `POWERLINE_JOINER` between items `L` and `R`, rendered with `options`, paints its arrow with:
+Joiners read only the two edge columns. `JOINERS.powerline` between items `L` and `R`, rendered with `options`, paints its arrow with:
 
 - `fg = L.edgeStyle("right", options).bgcolor`
 - `bg = R.edgeStyle("left", options).bgcolor`
@@ -263,7 +288,7 @@ status.stylize("bright_green", 6, 7);   // "S"
 status.stylize("bright_green", 8, 10);  // "+3"
 status.stylize("bright_red",   11, 13); // "-2"
 
-console.print(new Strip([status, cell(" rich-js ", "#ffffff on #9333ea")], POWERLINE_JOINER));
+console.print(new Strip([status, cell(" rich-js ", "#ffffff on #9333ea")], JOINERS.powerline));
 ```
 
 The cell's left and right edges both report `white on blue` (the base style), so the powerline arrows on either side stay consistent. The `S`/`+3`/`-2` runs in the interior have their own fg without touching the joiner.
@@ -283,7 +308,7 @@ If the leftmost and rightmost columns of a cell carry different backgrounds (e.g
 `FlexStrip` packs styled items into as many fit on a line and breaks to the next, like CSS `flex-wrap`. It uses the same `Joiner` protocol — every line is its own sub-strip, so a line break is just a pair of endpoints.
 
 ```typescript
-import { FlexStrip, RichText, POWERLINE_JOINER, Style } from "@promptctl/rich-js";
+import { FlexStrip, RichText, JOINERS, Style } from "@promptctl/rich-js";
 
 const strip = new FlexStrip(
   tags.map(
@@ -294,7 +319,7 @@ const strip = new FlexStrip(
         noWrap: true,
       }),
   ),
-  { joiner: POWERLINE_JOINER, gap: 0, align: "left" },
+  { joiner: JOINERS.powerline, gap: 0, align: "left" },
 );
 console.print(strip);
 ```
