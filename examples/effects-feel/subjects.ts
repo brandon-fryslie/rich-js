@@ -131,8 +131,8 @@ const SEAM = Object.freeze({ name: "seam" });
 /** `joiner`, every seam it draws stamped as `SEAM`'s. */
 function seamed<T extends StyledRenderable>(joiner: Joiner<T>): Joiner<T> {
   return {
-    join(left, right) {
-      const seam = joiner.join(left, right);
+    join(left, right, context) {
+      const seam = joiner.join(left, right, context);
       return { render: (options) => Segment.anchorLines([[...seam.render(options)]], SEAM)[0]! };
     },
   };

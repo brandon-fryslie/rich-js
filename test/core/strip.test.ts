@@ -662,3 +662,29 @@ describe("CellJoiner", () => {
     );
   });
 });
+
+describe("oneOf picks per seam", () => {
+  const CHOICES = ["a", "b", "c", "d"];
+  const pick: JoinCell = { glyph: { oneOf: CHOICES }, fg: { role: "strip.separator" }, bg: "ground" };
+  const varied = new CellJoiner({ seam: [pick], divider: [pick], lead: [], tail: [] }, { seam: [pick], divider: [pick], lead: [], tail: [] });
+  // Every item the same colour, so nothing but the seam's index can tell two seams apart.
+  const items = Array.from({ length: 16 }, () => cell("-", "white on red"));
+  const seams = (options: RenderOptions = OPTIONS) => render(new Strip(items, varied), options).filter((s) => s.text !== "-").map((s) => s.text);
+
+  it("varies the glyph from seam to seam between the same two colours", () => {
+    const drawn = seams();
+    expect(drawn).toHaveLength(15);
+    expect(drawn.every((g) => CHOICES.includes(g))).toBe(true);
+    expect(new Set(drawn).size).toBeGreaterThan(1);
+  });
+
+  it("picks a wrap's tail and lead independently though they share an index", () => {
+    const caps = new CellJoiner({ seam: [], divider: [], lead: [pick], tail: [pick] }, { seam: [], divider: [], lead: [pick], tail: [pick] });
+    const differ = Array.from({ length: 16 }, (_, index) => {
+      const lead = [...caps.join(null, items[0]!, { index }).render(OPTIONS)][0]!.text;
+      const tail = [...caps.join(items[0]!, null, { index }).render(OPTIONS)][0]!.text;
+      return lead !== tail;
+    });
+    expect(differ.some(Boolean)).toBe(true);
+  });
+});
