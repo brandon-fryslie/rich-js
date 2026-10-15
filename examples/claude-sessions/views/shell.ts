@@ -1,7 +1,6 @@
-import { Layout, RichText, Viewport } from "@promptctl/rich-js";
+import { Layout, RichText, Viewport, ViewportPerKey } from "@promptctl/rich-js";
 import type { Renderable } from "@promptctl/rich-js";
 import type { AppState } from "../state.js";
-import { ViewportPerSubject } from "../../shared/viewport-per-subject.js";
 import { buildSidebar } from "./sidebar.js";
 import { buildViewer } from "./viewer.js";
 import { buildSearchBar } from "./search-bar.js";
@@ -37,16 +36,16 @@ function buildHeader(state: AppState): Renderable {
 export interface SessionsView {
   readonly sidebar: Viewport;
   /** Per loaded session: each opens at its top, not at the last one's scroll. */
-  readonly viewer: ViewportPerSubject;
+  readonly viewer: ViewportPerKey;
   /** Per query, the same way. */
-  readonly results: ViewportPerSubject;
+  readonly results: ViewportPerKey;
 }
 
 export function sessionsView(): SessionsView {
   return {
     sidebar: new Viewport(new RichText("")),
-    viewer: new ViewportPerSubject(),
-    results: new ViewportPerSubject(),
+    viewer: new ViewportPerKey(),
+    results: new ViewportPerKey(),
   };
 }
 

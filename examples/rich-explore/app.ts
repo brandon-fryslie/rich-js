@@ -8,7 +8,7 @@
  */
 
 import { App, type TerminalHost } from "@promptctl/rich-js/host";
-import type { Viewport } from "@promptctl/rich-js";
+import { moveSelection, type Viewport } from "@promptctl/rich-js";
 import type { FileSystem } from "../_capabilities/file-system.js";
 import {
   initialState,
@@ -21,33 +21,12 @@ import {
 import { lookup, type Action } from "./keymap.js";
 import { buildShell, ExploreView } from "./views/shell.js";
 
-function clamp(n: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, n));
-}
-
+/** `delta` entries on; `-Infinity` and `Infinity` are the first and the last. */
 function selectByDelta(state: AppState, delta: number): AppState {
   const visible = visibleNodes(state);
-  if (visible.length === 0) return state;
-  const idx = visible.findIndex((n) => n.entry.path === state.selectedPath);
-  const base = idx < 0 ? 0 : idx;
-  const nextIdx = clamp(base + delta, 0, visible.length - 1);
-  const nextPath = visible[nextIdx]!.entry.path;
-  if (nextPath === state.selectedPath) return state;
-  return { ...state, selectedPath: nextPath };
-}
-
-function selectFirst(state: AppState): AppState {
-  const visible = visibleNodes(state);
-  const first = visible[0];
-  if (!first || first.entry.path === state.selectedPath) return state;
-  return { ...state, selectedPath: first.entry.path };
-}
-
-function selectLast(state: AppState): AppState {
-  const visible = visibleNodes(state);
-  const last = visible[visible.length - 1];
-  if (!last || last.entry.path === state.selectedPath) return state;
-  return { ...state, selectedPath: last.entry.path };
+  const index = Math.max(0, visible.findIndex((n) => n.entry.path === state.selectedPath));
+  const next = visible[moveSelection(index, delta, visible.length)];
+  return next === undefined || next.entry.path === state.selectedPath ? state : { ...state, selectedPath: next.entry.path };
 }
 
 // [LAW:one-source-of-truth] The preview's scroll position is its viewport's:
@@ -81,9 +60,9 @@ function reduce(state: AppState, action: Action, preview: Viewport): AppState {
         ? scrolled(state, () => preview.scrollBy(action.delta))
         : selectByDelta(state, action.delta);
     case "move-first":
-      return state.focus === "preview" ? scrolled(state, () => preview.scrollTo(0)) : selectFirst(state);
+      return state.focus === "preview" ? scrolled(state, () => preview.scrollTo(0)) : selectByDelta(state, -Infinity);
     case "move-last":
-      return state.focus === "preview" ? scrolled(state, () => preview.scrollTo(Infinity)) : selectLast(state);
+      return state.focus === "preview" ? scrolled(state, () => preview.scrollTo(Infinity)) : selectByDelta(state, Infinity);
     case "open":
       return state.focus === "preview" ? state : openSelected(state);
     case "up":

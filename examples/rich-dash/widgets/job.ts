@@ -29,7 +29,9 @@ import {
   insetHeight,
   regionRows,
   stackedHeight,
+  withBoundedWidth,
   withCellWidth,
+  type Measurable,
   type Renderable,
   type RenderOptions,
 } from "@promptctl/rich-js";
@@ -149,13 +151,14 @@ const RATE_LABEL = "rate ";
  * and it draws them with the names a running progress bar draws its fill and
  * track with — `bar.complete` and `bar.back` — resolved by `getStyle` against
  * the theme of the render, so a theme that recolours those recolours this too.
- * It is one row, cut to the width and the ceiling it is offered.
+ * It is one row, cut to the width and the ceiling it is offered; offered no
+ * bound, it is as wide as its label and every sample it keeps.
  */
-class RateSparkline implements Renderable {
+class RateSparkline implements Renderable, Measurable {
   constructor(private readonly samples: readonly number[]) {}
 
   *render(options: RenderOptions): Iterable<Segment> {
-    const { maxWidth } = withCellWidth(options);
+    const { maxWidth } = withBoundedWidth(options, this);
     const cells = Math.max(0, Math.min(maxWidth - RATE_LABEL.length, RATES_KEPT));
     const shown = this.samples.slice(this.samples.length - cells);
     const level = (sample: number) => LEVELS[Math.round((sample / MAX_ADVANCE) * (LEVELS.length - 1))];
@@ -170,6 +173,12 @@ class RateSparkline implements Renderable {
       false,
     );
     for (const row of [line].slice(0, options.height?.rows)) yield* row;
+  }
+
+  measure(options: RenderOptions): { minimum: number; maximum: number } {
+    // `withCellWidth` and not `withBoundedWidth`: the bounded parse asks this very method.
+    const width = Math.min(RATE_LABEL.length + RATES_KEPT, withCellWidth(options).maxWidth);
+    return { minimum: width, maximum: width };
   }
 }
 

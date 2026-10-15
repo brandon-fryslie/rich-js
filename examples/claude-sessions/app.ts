@@ -17,8 +17,6 @@ import {
   descendSidebar,
   ascendSidebar,
   moveViewer,
-  viewerFirst,
-  viewerLast,
   toggleSidebar,
   toggleFocus,
   toggleViewMode,
@@ -69,9 +67,9 @@ function reduce(state: AppState, action: Action): AppState {
         ? moveSidebar(state, action.delta)
         : moveViewer(state, action.delta);
     case "first":
-      return state.focus === "sidebar" ? state : viewerFirst(state);
+      return state.focus === "sidebar" ? state : moveViewer(state, -Infinity);
     case "last":
-      return state.focus === "sidebar" ? state : viewerLast(state);
+      return state.focus === "sidebar" ? state : moveViewer(state, Infinity);
     case "open":
       return handleOpen(state);
     case "back":

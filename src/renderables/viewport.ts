@@ -113,6 +113,8 @@ export class Viewport implements Renderable, Measurable, Scrollable {
   // Nothing rendered, nothing shown: no move can take until the first render.
   private _extent: Extent = { rows: 0, lines: 0 };
   private _moves: Move[] = [];
+  // No range followed yet: NaN equals nothing, so the first `follow` moves.
+  private _followed = { start: NaN, end: NaN };
 
   constructor(content: Renderable, options: ViewportOptions = {}) {
     this.content = content;
@@ -156,6 +158,19 @@ export class Viewport implements Renderable, Measurable, Scrollable {
    */
   ensureVisible(start: number, end: number): void {
     this._moves.push((offset, { rows }) => Math.min(start, Math.max(offset, end - rows)));
+  }
+
+  /**
+   * `ensureVisible(start, end)`, when the range differs from the one the last
+   * `follow` named. A view rebuilt every frame calls this in every frame with
+   * its selection's lines, and the selection is brought into view when it
+   * moves — not on every frame, which would undo on its very render each
+   * scroll the mouse wheel queues.
+   */
+  follow(start: number, end: number): void {
+    if (start === this._followed.start && end === this._followed.end) return;
+    this._followed = { start, end };
+    this.ensureVisible(start, end);
   }
 
   /**
@@ -228,6 +243,35 @@ export class Viewport implements Renderable, Measurable, Scrollable {
     return new Measurement(content.minimum + gutter, content.maximum + gutter).withMaximum(options.maxWidth);
   }
 }
+
+/**
+ * One viewport per thing a pane shows, named by a key. The same viewport comes
+ * back while the key holds, so its scroll position does too; a new key gets a
+ * fresh one, so a new subject opens at its top rather than wherever the last
+ * one was left. A frame is rebuilt on every key press and a scroll position is
+ * a viewport's, so this is what outlives the frame for a pane whose subject
+ * changes under it.
+ */
+export class ViewportPerKey {
+  private held: { key: string; viewport: Viewport };
+
+  constructor(private readonly options: ViewportOptions = {}) {
+    this.held = { key: "", viewport: this.fresh() };
+  }
+
+  /** The viewport for `key`: the held one while the key holds, a fresh one otherwise. */
+  of(key: string): Viewport {
+    if (key !== this.held.key) this.held = { key, viewport: this.fresh() };
+    return this.held.viewport;
+  }
+
+  private fresh(): Viewport {
+    // Empty until a view hands it content: the content is built where the frame is.
+    return new Viewport(EMPTY, this.options);
+  }
+}
+
+const EMPTY: Renderable = { *render(): Iterable<Segment> {} };
 
 const scrollbarGlyphs = ({ thumb, track }: Scrollbar): string => thumb.glyph + track.glyph;
 

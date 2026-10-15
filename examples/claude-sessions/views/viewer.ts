@@ -3,13 +3,12 @@
  * block in view.
  */
 
-import { Panel, RichText } from "@promptctl/rich-js";
+import { ListView, Panel, RichText } from "@promptctl/rich-js";
 import type { Renderable } from "@promptctl/rich-js";
 import type { AppState } from "../state.js";
 import type { SessionsView } from "./shell.js";
 import { renderBlock } from "./block-renderers/index.js";
 import { buildGlobalResults } from "./global-results.js";
-import { ItemsInView } from "./items-in-view.js";
 
 function blockItems(state: AppState): Renderable[] {
   if (state.blocks.length === 0) {
@@ -46,7 +45,7 @@ export function buildViewer(state: AppState, view: SessionsView, focused: boolea
     : "";
   const modeTag = state.viewMode === "raw" ? "  [raw]" : "";
   const hiddenTag = state.showHidden ? "  [+hidden]" : "";
-  return new Panel(new ItemsInView(view.viewer.of(state.loadedSessionPath ?? ""), blockItems(state), state.selectedBlockIndex), {
+  return new Panel(new ListView(view.viewer.of(state.loadedSessionPath ?? ""), blockItems(state), state.selectedBlockIndex, { gap: 1 }), {
     title: `${focusPrefix}${sessionName}${blockInfo}${depthTag}${modeTag}${hiddenTag}`,
     borderStyle: focused ? "bold green" : "dim green",
     padding: [0, 1],

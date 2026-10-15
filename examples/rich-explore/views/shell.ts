@@ -1,7 +1,6 @@
-import { Layout, RichText, Viewport } from "@promptctl/rich-js";
+import { Layout, RichText, Viewport, ViewportPerKey } from "@promptctl/rich-js";
 import type { AppState } from "../state.js";
 import { selectedNode } from "../state.js";
-import { ViewportPerSubject } from "../../shared/viewport-per-subject.js";
 import { buildTreePane } from "./tree-pane.js";
 import { buildPreviewPane } from "./preview-pane.js";
 import { buildStatusBar } from "./status-bar.js";
@@ -13,7 +12,7 @@ import { buildStatusBar } from "./status-bar.js";
  */
 export class ExploreView {
   readonly tree = new Viewport(new RichText(""));
-  private readonly preview = new ViewportPerSubject();
+  private readonly preview = new ViewportPerKey();
 
   /** The preview's viewport for what `state` shows in it. */
   previewOf(state: AppState): Viewport {

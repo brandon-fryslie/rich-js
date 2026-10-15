@@ -4,12 +4,11 @@
  * highlight, scroll-to-cursor, and a summary header.
  */
 
-import { Panel, RichText } from "@promptctl/rich-js";
+import { ListView, Panel, RichText } from "@promptctl/rich-js";
 import type { Renderable, Viewport } from "@promptctl/rich-js";
 import type { AppState } from "../state.js";
 import type { GlobalHit } from "../data/global-search.js";
 import { highlightSearch } from "./block-renderers/_common.js";
-import { ItemsInView } from "./items-in-view.js";
 
 function buildHitLine(hit: GlobalHit, isSelected: boolean, query: string): RichText {
   // Each line of a hit ends at the pane's edge rather than wrapping under it.
@@ -47,7 +46,7 @@ export function buildGlobalResults(
   const cursor = total > 0 ? state.search.globalCursor + 1 : 0;
   const focusPrefix = focused ? "▸ " : "";
   const title = `${focusPrefix}Global Results: "${state.search.query}"  ${cursor}/${total}`;
-  return new Panel(new ItemsInView(viewport, hitItems(state), state.search.globalCursor), {
+  return new Panel(new ListView(viewport, hitItems(state), state.search.globalCursor, { gap: 1 }), {
     title,
     borderStyle: focused ? "bold yellow" : "dim yellow",
     padding: [0, 1],

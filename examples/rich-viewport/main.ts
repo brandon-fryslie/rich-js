@@ -14,7 +14,7 @@
  * scrolls the window with no code here: `WidgetApp` does that for any viewport
  * under the pointer.
  */
-import { Group, Panel, RichText, SCROLLBAR, Viewport } from "@promptctl/rich-js";
+import { Group, Panel, RichText, SCROLLBAR, Viewport, moveSelection } from "@promptctl/rich-js";
 import { WidgetApp } from "@promptctl/rich-js/widgets";
 import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
 
@@ -42,8 +42,8 @@ const MOVES = new Map<string, number>([
   ["down", 1], ["j", 1],
   ["pageup", -ROWS],
   ["pagedown", ROWS],
-  ["home", -ENTRIES.length],
-  ["end", ENTRIES.length],
+  ["home", -Infinity],
+  ["end", Infinity],
 ]);
 
 const host = new NodeTerminalHost();
@@ -73,7 +73,7 @@ app.onKey((event) => {
   if (event.ctrl || event.meta) return;
   const move = MOVES.get(event.key);
   if (move === undefined) return;
-  selected = Math.min(ENTRIES.length - 1, Math.max(0, selected + move));
+  selected = moveSelection(selected, move, ENTRIES.length);
   // Brought into view when it moves, not every frame, so the wheel can scroll
   // the window away from the cursor and the next key brings it back.
   viewport.ensureVisible(selected, selected + 1);

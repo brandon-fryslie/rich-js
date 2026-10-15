@@ -367,3 +367,16 @@ describe("measure", () => {
     expect(viewport.measure({ maxWidth: 4 })).toEqual({ minimum: 4, maximum: 4 });
   });
 });
+
+describe("follow", () => {
+  it("brings a range into view only when it differs from the last one followed", () => {
+    const viewport = new Viewport(numbered(10), { rows: 2 });
+    viewport.follow(5, 6);
+    expect(shown(viewport)).toEqual(["4", "5"]);
+    viewport.scrollTo(0);
+    viewport.follow(5, 6);
+    expect(shown(viewport)).toEqual(["0", "1"]);
+    viewport.follow(6, 7);
+    expect(shown(viewport)).toEqual(["5", "6"]);
+  });
+});
