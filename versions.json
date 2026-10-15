@@ -4,15 +4,22 @@
     {
       "version": "pr-384",
       "ref": "refs/pull/384/merge",
-      "sha": "adedee584d31137074dbcd8f5db3472a65a43631",
-      "timestamp": "2026-10-15T06:57:05.650Z",
+      "sha": "37ed8a7f36be8c7b3cbd5aaf6453fa9792961dc5",
+      "timestamp": "2026-10-15T07:04:47.292Z",
       "commits": [
         {
-          "sha": "adedee584d31137074dbcd8f5db3472a65a43631",
+          "sha": "37ed8a7f36be8c7b3cbd5aaf6453fa9792961dc5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T00:55:34-06:00",
-          "message": "Merge 6dcfb5ccea673cc0dced6e452bae2fc873d37562 into cbc20459c94f43ef5e1bb5e60ab0dd95510067d1\n"
+          "timestamp": "2026-10-15T07:03:11Z",
+          "message": "Merge 7da0124161183423b3d0d854247274c2cdffdbbc into cbc20459c94f43ef5e1bb5e60ab0dd95510067d1\n"
+        },
+        {
+          "sha": "7da0124161183423b3d0d854247274c2cdffdbbc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:03:05-06:00",
+          "message": "fix(strip): parse joiner shapes into frozen copies; read seam grounds off the drawn form (rich-joiners-9ntp.mjl)\n\nReview (high) findings: ascii form used the glyph seam's ground reads;\nmalformed Paint and out-of-range mix passed construction; caller could\nmutate a validated shape; vanishes ran when divider is the seam; ASCII\ntest duplicated protocol's; docs claimed the reversed notch is\ntranslucent-safe.\n"
         },
         {
           "sha": "6dcfb5ccea673cc0dced6e452bae2fc873d37562",
