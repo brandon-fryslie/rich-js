@@ -227,6 +227,19 @@ describe("runInTerminal", () => {
     expect(term.output).toEqual(["got q at 75x24"]);
   });
 
+  it("tells a NodeTerminalHost program its stdin delivers whole keys", async () => {
+    const term = terminal(75);
+    const host = JSON.stringify(resolve(REPO_ROOT, "src/node/terminal-host.ts"));
+    await runInTerminal(
+      await bundleExample(`
+        import { NodeTerminalHost } from ${host};
+        new NodeTerminalHost().write(new NodeTerminalHost().inputChunks);
+      `),
+      term,
+    );
+    expect(term.output).toEqual(["whole-keys"]);
+  });
+
   it("hands the terminal a wheel turn a NodeTerminalHost program passes outward", async () => {
     const term = terminal(75);
     const host = JSON.stringify(resolve(REPO_ROOT, "src/node/terminal-host.ts"));

@@ -5,7 +5,7 @@ import type { RenderOptions } from "../../src/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
-import { InputParser, type ScreenMouseEvent } from "../../src/host/input.js";
+import { InputParser, keyName, type ScreenMouseEvent } from "../../src/host/input.js";
 import type { KeyEvent, WidgetMouseEvent, FrameSource } from "../../src/widgets/types.js";
 import { parserFor } from "./feed.js";
 
@@ -309,7 +309,7 @@ describe("EventRouter — key parsing", () => {
         if (press.key === "escape") parser.reset();
       },
       mouse: () => {},
-    });
+    }, "split");
     parser.feed("\x1b");
     parser.feed("a\x1b");
     parser.flush();
@@ -324,7 +324,7 @@ describe("EventRouter — key parsing", () => {
         if (press.key === "escape") throw new Error("handler");
       },
       mouse: () => {},
-    });
+    }, "split");
     parser.feed("\x1b");
     expect(() => parser.feed("ab")).toThrow("handler");
     expect(keys).toEqual(["escape", "a", "b"]);
@@ -340,6 +340,89 @@ describe("EventRouter — key parsing", () => {
     h.feed("3");
     h.feed("~");
     expect(h.keyEvents.map((e) => e.key)).toEqual(["delete"]);
+  });
+});
+
+// A host whose chunks end on key boundaries (xterm.js, and the docs worker's
+// stdin) settles every chunk as it arrives: nothing is held for a timer that a
+// busy worker would run too late (rich-host-input-ab9n).
+describe("InputParser on a whole-keys host", () => {
+  function wholeKeys(onKey: (key: string, parser: InputParser) => void = () => {}) {
+    const keys: string[] = [];
+    const parser: InputParser = new InputParser({
+      key: (press) => {
+        keys.push(keyName(press));
+        onKey(press.key, parser);
+      },
+      mouse: () => {},
+    }, "whole-keys");
+    return { keys, parser };
+  }
+
+  it("reads a lone ESC chunk as Escape at once", () => {
+    const { keys, parser } = wholeKeys();
+    parser.feed("\x1b");
+    expect(keys).toEqual(["escape"]);
+  });
+
+  it.each([["["], ["O"]])("reads Escape then %s as two keys, and the parser recovers", (next) => {
+    const { keys, parser } = wholeKeys();
+    parser.feed("\x1b");
+    parser.feed(next);
+    parser.feed("x");
+    parser.feed("1");
+    expect(keys).toEqual(["escape", next, "x", "1"]);
+  });
+
+  it.each([["["], ["O"]])("reads a whole ESC %s chunk as the Alt chord xterm.js sends it for", (glyph) => {
+    const { keys, parser } = wholeKeys();
+    parser.feed(`\x1b${glyph}`);
+    parser.feed("x");
+    expect(keys).toEqual([`meta+${glyph}`, "x"]);
+  });
+
+  it("re-reads an incomplete tail after Escape", () => {
+    const { keys, parser } = wholeKeys();
+    parser.feed("\x1b\x1b[");
+    expect(keys).toEqual(["escape", "meta+["]);
+  });
+
+  it("settles the rest of the chunk when a handler throws on Escape", () => {
+    const { keys, parser } = wholeKeys((key) => {
+      if (key === "escape") throw new Error("handler");
+    });
+    expect(() => parser.feed("\x1b\x1b[")).toThrow("handler");
+    parser.feed("q");
+    expect(keys).toEqual(["escape", "meta+[", "q"]);
+  });
+
+  it("still reads whole sequences and Alt chords", () => {
+    const { keys, parser } = wholeKeys();
+    parser.feed("\x1b[A");
+    parser.feed("\x1bOP");
+    parser.feed("\x1bG");
+    parser.feed("\x1b\x1b[A");
+    expect(keys).toEqual(["up", "f1", "meta+G", "meta+up"]);
+  });
+
+  it.each([
+    ["a\x1b[A", "q", ["a", "up", "q"]],
+    ["ab\x1b", "q", ["a", "b", "escape", "q"]],
+  ])("reads the rest of %j whole when a handler throws mid-chunk", (chunk, next, expected) => {
+    const { keys, parser } = wholeKeys((key) => {
+      if (key === "a") throw new Error("handler");
+    });
+    expect(() => parser.feed(chunk)).toThrow("handler");
+    parser.feed(next);
+    expect(keys).toEqual(expected);
+  });
+
+  it("stops settling when Escape resets the parser", () => {
+    const { keys, parser } = wholeKeys((key, p) => {
+      if (key === "escape") p.reset();
+    });
+    parser.feed("\x1b\x1b[");
+    expect(keys).toEqual(["escape"]);
   });
 });
 

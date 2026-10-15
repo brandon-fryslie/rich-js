@@ -9,17 +9,24 @@
  *
  * [LAW:dataflow-not-control-flow] The same parse pipeline runs for every
  * input chunk: append → consume one event at a time until the buffer can't
- * yield more. The byte's value, not a side-mode, decides which event is
- * emitted. There is no "are we mid-sequence" mode flag — the buffer head
- * carries all the state we need, so a UTF-8 character or an escape sequence
- * split across two chunks is completed by the second.
+ * yield more. The byte's value decides which event is emitted; there is no
+ * "are we mid-sequence" mode flag — the buffer head carries that state, so on
+ * a host whose chunks can split a key, a UTF-8 character or an escape
+ * sequence split across two chunks is completed by the second. What a chunk
+ * end means is the host's `InputChunks`, the one input to the parser that is
+ * not a byte, and it decides only what becomes of an unfinished ESC.
  *
  * Lone-ESC handling: a bare `\x1b` is ambiguous (escape key vs. start of a
- * CSI sequence). When the buffer is drained but ends with a lone ESC, the
- * parser defers emission via setTimeout(0). A next chunk opening with `[` or
- * `O` extends the sequence; any other next chunk emits the ESC as Escape
- * first. `flush()` drains it synchronously.
+ * CSI sequence), and only the host's `InputChunks` can settle it. On a
+ * `"whole-keys"` host a chunk ends on a key boundary, so an ESC still waiting
+ * at a chunk's end opened nothing: it is Escape, and what followed it is read
+ * again on its own. On a `"split"` host the parser defers a lone ESC via
+ * setTimeout(0). A next chunk opening with `[` or `O` extends the sequence;
+ * any other next chunk emits the ESC as Escape first. `flush()` drains it
+ * synchronously.
  */
+
+import type { InputChunks } from "./terminal-host.js";
 
 /** A key as the terminal reported it: plain data, with no say over who hears it. */
 export interface KeyPress {
@@ -210,6 +217,11 @@ type ConsumeResult =
   | { kind: "incomplete" } // need more bytes
   | { kind: "skip"; bytes: number }; // unrecognised — drop bytes
 
+// Alt on a printable byte: the glyph the terminal sent, with meta held.
+function altKey(byte: number): KeyPress {
+  return { key: String.fromCharCode(byte), character: "", shift: false, ctrl: false, meta: true };
+}
+
 export class InputParser {
   // [LAW:types-are-the-program] The parse buffer is `Uint8Array`, not
   // `Buffer` — node's Buffer extends Uint8Array, so Buffer chunks from
@@ -220,11 +232,18 @@ export class InputParser {
   // across node and browser; `setImmediate` is node-only.
   private escTimer: ReturnType<typeof setTimeout> | undefined;
 
-  constructor(private readonly sink: InputSink) {}
+  constructor(
+    private readonly sink: InputSink,
+    private readonly chunks: InputChunks,
+  ) {}
 
   /** Feed a chunk of bytes (or a string of them) into the parser. */
   feed(chunk: Uint8Array | string): void {
     const next = typeof chunk === "string" ? UTF8_ENCODER.encode(chunk) : chunk;
+    if (this.chunks === "whole-keys") {
+      this.buffer = concatBytes(this.buffer, next);
+      return this.settleChunk();
+    }
     // A held lone ESC waits only for the rest of a split CSI/SS3 introducer.
     // Any other next chunk means Escape was its own key, even when the hold
     // timer has not run yet: a busy worker can queue the next key ahead of it,
@@ -247,6 +266,31 @@ export class InputParser {
         this.escTimer = undefined;
         this.flush();
       }, 0);
+    }
+  }
+
+  // A whole-key chunk has ended, so an ESC still at the buffer head opens no
+  // sequence. `ESC [` / `ESC O` alone is the whole key Alt+[ / Alt+O; any
+  // other ESC is Escape, and what followed it is read again on its own. Each
+  // key is taken off the buffer before the sink hears it, and a sink that
+  // throws leaves the rest of the chunk to be read in full before this rule
+  // meets its end, so no byte of one chunk outlives it.
+  private settleChunk(): void {
+    let drained = false;
+    try {
+      this.drain();
+      drained = true;
+    } finally {
+      if (!drained) this.settleChunk();
+    }
+    if (this.buffer[0] !== ESC) return;
+    const introducer = this.buffer.length === 2;
+    const press = introducer ? altKey(this.buffer[1]!) : ESCAPE;
+    this.buffer = this.buffer.subarray(introducer ? 2 : 1);
+    try {
+      this.sink.key(press);
+    } finally {
+      this.settleChunk();
     }
   }
 
@@ -412,12 +456,7 @@ export class InputParser {
     // The key is the glyph the terminal sent, as for Alt+`>`: the glyph
     // already carries shift, so Alt+G is `meta+G` and never `meta+shift+g`.
     if (b1 >= 0x20 && b1 <= 0x7e) {
-      const ch = String.fromCharCode(b1);
-      return {
-        kind: "key",
-        bytes: 2,
-        event: ({ key: ch, character: "", shift: false, ctrl: false, meta: true }),
-      };
+      return { kind: "key", bytes: 2, event: altKey(b1) };
     }
     // ESC <control byte> is read as Escape, then the Ctrl chord — never as
     // Alt+Ctrl. The bytes cannot tell the two apart, and Escape then Ctrl+C

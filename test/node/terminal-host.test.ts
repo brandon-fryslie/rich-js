@@ -144,3 +144,14 @@ describe("NodeTerminalHost.suspend", () => {
     expect(proc.killed).toEqual([{ pid: 0, signal: "SIGTSTP" }]);
   });
 });
+
+describe("NodeTerminalHost.inputChunks", () => {
+  it("is split for a stream that declares nothing, as a tty read is", () => {
+    expect(host(new RecordedProcess()).inputChunks).toBe("split");
+  });
+
+  it("is what a stdin that delivers whole keys declares", () => {
+    const stdin = Object.assign(new PassThrough(), { inputChunks: "whole-keys" as const });
+    expect(new NodeTerminalHost({ stdin, env: {}, process: new RecordedProcess() }).inputChunks).toBe("whole-keys");
+  });
+});

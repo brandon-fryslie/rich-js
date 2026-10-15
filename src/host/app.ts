@@ -148,14 +148,15 @@ export class App {
   private readonly mouseHandlers = new Set<(event: AppMouseEvent) => void>();
   private readonly wheelHandlers = new Set<(wheel: Wheel) => boolean>();
   private readonly quitKeys: ReadonlySet<string>;
-  private readonly input = new InputParser({
-    key: (press) => this.key(press),
-    mouse: (event) => this.mouse(event),
-  });
+  private readonly input: InputParser;
   private settle: (outcome: Outcome) => void = () => {};
 
   constructor(options: AppOptions) {
     this.host = options.host;
+    this.input = new InputParser(
+      { key: (press) => this.key(press), mouse: (event) => this.mouse(event) },
+      options.host.inputChunks,
+    );
     this.surface = options.surface;
     this.painter = new SurfacePainter(options.surface, (bytes) => this.host.write(bytes));
     this.view = options.view;

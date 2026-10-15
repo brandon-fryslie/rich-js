@@ -3,6 +3,7 @@ export type {
   TerminalHost,
   TerminalSize,
   DataHandler,
+  InputChunks,
   ResizeHandler,
   ExitHandler,
   BrowserTerminalHostOptions,

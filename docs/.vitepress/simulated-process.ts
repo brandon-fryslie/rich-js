@@ -44,6 +44,7 @@
 
 import { formatWithOptions } from "node-inspect-extracted";
 import type { ConsoleEnvironment, ConsoleStream } from "../../src/index.js";
+import type { InputChunks } from "../../src/host/index.js";
 import { HOT_BINDING, HotRuntime } from "./hot-runtime.js";
 
 /**
@@ -159,6 +160,10 @@ class Output extends Events implements ConsoleStream {
  * is typed, which is what raw mode asks for.
  */
 class Input extends Events {
+  // Each `data` is one event from the page's xterm.js, which never splits a
+  // key across two; `NodeTerminalHost` reads this off its stdin.
+  readonly inputChunks: InputChunks = "whole-keys";
+
   constructor(
     readonly isTTY: boolean,
     /** Called each time a listener for `data` is added. */

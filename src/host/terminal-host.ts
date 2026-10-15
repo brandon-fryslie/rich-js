@@ -53,6 +53,14 @@ export interface TerminalSize {
 }
 
 export type DataHandler = (chunk: Uint8Array | string) => void;
+
+/**
+ * Where a host's input chunks may end. `"whole-keys"`: every chunk ends on a
+ * key boundary, so no escape sequence is ever split across two (xterm.js
+ * emits one key, or one paste, per event). `"split"`: a chunk may end
+ * anywhere, as a read from a tty can.
+ */
+export type InputChunks = "whole-keys" | "split";
 export type ResizeHandler = (size: TerminalSize) => void;
 export type ExitHandler = () => void;
 
@@ -72,6 +80,14 @@ export interface TerminalHost {
    * runtime's parser accepts either.
    */
   onData(handler: DataHandler): Unsubscribe;
+
+  /**
+   * Where `onData`'s chunks may end. The parser holds a lone ESC open for
+   * the rest of a sequence only on a host whose chunks can split one; a
+   * timer cannot stand in for this, because a busy program reads a queued
+   * next key before any timer runs (rich-host-input-ab9n).
+   */
+  readonly inputChunks: InputChunks;
 
   /**
    * Subscribe to terminal resize events. The handler fires with the new
@@ -214,6 +230,7 @@ export class BrowserTerminalHost implements TerminalHost {
   private resizeSubscription: XtermDisposable | undefined;
 
   readonly passWheel: (lines: number) => void;
+  readonly inputChunks = "whole-keys";
 
   constructor(options: BrowserTerminalHostOptions) {
     this.terminal = options.terminal;
