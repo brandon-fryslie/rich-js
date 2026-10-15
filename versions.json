@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-397",
-      "ref": "refs/pull/397/merge",
-      "sha": "341142ff489aca804a31cee1bc0549f75aa293f2",
-      "timestamp": "2026-10-15T10:08:58.101Z",
-      "commits": [
-        {
-          "sha": "341142ff489aca804a31cee1bc0549f75aa293f2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T10:07:22Z",
-          "message": "Merge 95acc1d8392ff83d177f982b652d8c85983399a6 into 66338ca059a759cd37b802a189ea227bc1007ec3\n"
-        },
-        {
-          "sha": "95acc1d8392ff83d177f982b652d8c85983399a6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T04:07:17-06:00",
-          "message": "shares reads a pair through the one writer Effected moves a slot with (rich-effects-x7y0)\n\nEffected.shows composites and matches through movedSpecs, the function\nrespec writes with, so a translucent touch no longer throws in matchOn\nand the share check sees the glyph laid on its moved ground. Below\ntruecolor every written colour is exact, so the 8-bit slack applies only\nat truecolor.\n"
-        },
-        {
-          "sha": "3c806e8136cc0da900fed7f2cf2788217d3d0c90",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T03:55:49-06:00",
-          "message": "onColors settles shares on the colour Effected writes below truecolor (rich-effects-x7y0)\n\nBelow truecolor, `shares` checked contrast against `fromRgba(...).downgrade(depth)`\nwhile `Effected` wrote `ColorSpec.matchOn` for the cell's slot, keeping the\nwritten spec when the depth could not show the move. The two disagreed at 256\nand 16 colours, so a word could fall below its resting contrast or AA.\n\nThe rule now lives once, as `ColorSpec.matchMove`, and both sides call it.\n`Pair` gains `reverse`, so each side is matched in the slot it is written in.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "66338ca059a759cd37b802a189ea227bc1007ec3",
-      "timestamp": "2026-10-15T09:48:01.268Z",
+      "sha": "5bb98818867463579bf3ea4e62c1043c2c32c30d",
+      "timestamp": "2026-10-15T10:20:20.316Z",
       "commits": [
         {
-          "sha": "66338ca059a759cd37b802a189ea227bc1007ec3",
+          "sha": "5bb98818867463579bf3ea4e62c1043c2c32c30d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T03:46:20-06:00",
-          "message": "The effect catalogue is one named table with one call shape (rich-effects-cbgp.ydw) (#396)\n\n* The effect catalogue is one named table with one call shape (rich-effects-cbgp.ydw)\n\nEFFECT_CATALOGUE makes every catalogue effect by its EFFECT_CURVES name:\n`loops` as Effects, `transitions` as Transitions, each called as\n(element: EffectTarget, curve?) with the signed-off curve, light and width\nbuilt in. Keyed by LoopName/TransitionName, derived from EFFECT_CURVES, so a\ncurve signed off without an entry does not compile.\n\nTo make that one call shape true, fadeIn and dissolveOut take (curve, z):\nevery effect runs on its own clock from t = 0, and a veil blends toward\nDrawn.theme's background, the terminal Effected already names, instead of a\nsecond ground handed in. SHIMMER_WIDTH leaves the barrel; the catalogue\ncarries it.\n\nThe effects-feel demo and its legibility test draw through the catalogue,\nand the playground binds each card to its factory function rather than a\nname in a string.\n\n* Review fixes for the effect catalogue (rich-effects-cbgp.ydw)\n\n- docs: a fade-in is not at rest at t = 0; say only that every effect runs on\n  its own clock from there. A shimmer made by hand takes its own reach.\n- LoopName is spelled out beside TransitionName, and EFFECT_CURVES is held to\n  both, so a new curve does not compile until it is placed in a section,\n  instead of defaulting to a loop.\n- The playground names each card's function by a shorthand key, not its\n  runtime .name, which a bundler renames on a collision.\n- effects-feel builds its transitions once per scene, as it does its loops."
+          "timestamp": "2026-10-15T04:18:47-06:00",
+          "message": "onColors settles shares on the colour Effected writes below truecolor (rich-effects-x7y0) (#397)\n\n* onColors settles shares on the colour Effected writes below truecolor (rich-effects-x7y0)\n\nBelow truecolor, `shares` checked contrast against `fromRgba(...).downgrade(depth)`\nwhile `Effected` wrote `ColorSpec.matchOn` for the cell's slot, keeping the\nwritten spec when the depth could not show the move. The two disagreed at 256\nand 16 colours, so a word could fall below its resting contrast or AA.\n\nThe rule now lives once, as `ColorSpec.matchMove`, and both sides call it.\n`Pair` gains `reverse`, so each side is matched in the slot it is written in.\n\n* shares reads a pair through the one writer Effected moves a slot with (rich-effects-x7y0)\n\nEffected.shows composites and matches through movedSpecs, the function\nrespec writes with, so a translucent touch no longer throws in matchOn\nand the share check sees the glyph laid on its moved ground. Below\ntruecolor every written colour is exact, so the 8-bit slack applies only\nat truecolor."
         }
       ]
     },
