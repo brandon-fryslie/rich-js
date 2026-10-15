@@ -1,6 +1,6 @@
 {
   "name": "@promptctl/rich-js",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "description": "Rich text and beautiful formatting in the terminal — a TypeScript port of Python's Rich",
   "repository": {
     "type": "git",
@@ -99,7 +99,11 @@
   ],
   "license": "MIT",
   "devEngines": {
-    "runtime": { "name": "node", "version": "^22.18.0 || >=23.6.0", "onFail": "error" }
+    "runtime": {
+      "name": "node",
+      "version": "^22.18.0 || >=23.6.0",
+      "onFail": "error"
+    }
   },
   "engines": {
     "node": ">=20"
