@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-396",
+      "ref": "refs/pull/396/merge",
+      "sha": "08f6b81d42b5782e9a7e575df2daa0e95ea549b8",
+      "timestamp": "2026-10-15T09:24:25.596Z",
+      "commits": [
+        {
+          "sha": "08f6b81d42b5782e9a7e575df2daa0e95ea549b8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T03:22:58-06:00",
+          "message": "Merge 06c4e4f41ddf2a758358a21affd452e381632685 into 87726acbf87c1c27a284c448721c6e70f02e98c0\n"
+        },
+        {
+          "sha": "06c4e4f41ddf2a758358a21affd452e381632685",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T03:22:54-06:00",
+          "message": "The effect catalogue is one named table with one call shape (rich-effects-cbgp.ydw)\n\nEFFECT_CATALOGUE makes every catalogue effect by its EFFECT_CURVES name:\n`loops` as Effects, `transitions` as Transitions, each called as\n(element: EffectTarget, curve?) with the signed-off curve, light and width\nbuilt in. Keyed by LoopName/TransitionName, derived from EFFECT_CURVES, so a\ncurve signed off without an entry does not compile.\n\nTo make that one call shape true, fadeIn and dissolveOut take (curve, z):\nevery effect runs on its own clock from t = 0, and a veil blends toward\nDrawn.theme's background, the terminal Effected already names, instead of a\nsecond ground handed in. SHIMMER_WIDTH leaves the barrel; the catalogue\ncarries it.\n\nThe effects-feel demo and its legibility test draw through the catalogue,\nand the playground binds each card to its factory function rather than a\nname in a string.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-395",
       "ref": "refs/pull/395/merge",
       "sha": "e2efa9b5b624b0db9183f1fa1bb0018fb68def51",
