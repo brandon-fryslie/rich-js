@@ -2,42 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-381",
-      "ref": "refs/pull/381/merge",
-      "sha": "5829c5552382718311331e9bac175b710e974ca2",
-      "timestamp": "2026-10-15T06:01:44.900Z",
-      "commits": [
-        {
-          "sha": "5829c5552382718311331e9bac175b710e974ca2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T06:00:22Z",
-          "message": "Merge 0959d701824a3a17959e451e3b7e4df75220e4f7 into 6c940178ea21c7cdc2f4a40f39dbb318709e49f1\n"
-        },
-        {
-          "sha": "0959d701824a3a17959e451e3b7e4df75220e4f7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T00:00:17-06:00",
-          "message": "fix(demos): address medium review findings (rich-demos-k78j.3ok)\n"
-        },
-        {
-          "sha": "17383234253a8bb6ba102b7cb5ab1cdf932056db",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T23:52:19-06:00",
-          "message": "fix(demos): address high review findings (rich-demos-k78j.3ok)\n"
-        },
-        {
-          "sha": "0f9c0e8e7dcd89c5d33975b089e42892fcaa3858",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T23:39:35-06:00",
-          "message": "feat(demos): data-backed demos open on real staged data (rich-demos-k78j.3ok)\n\nclaude-sessions: the owner's 21 real sessions from five projects, trimmed\nand scrubbed by scripts/stage-claude-sessions.ts. rich-explore: 54 files of\nthis repository. rich-dash: a runner whose vitals never visibly repeat, this\nrepo's real pipeline steps, and its README. Each under examples/<demo>/staging/.\n\nAlso: parser joins an assistant message written one block per record (it\nkept only the last, dropping text before a tool call); demo pages take their\ncard as escaped JSON, since VitePress writes params into a <script> and a\n</script> in content broke the build; MAX_PROGRAM_BYTES 1 → 4 MiB so the\nclaude-sessions link fits.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "6c940178ea21c7cdc2f4a40f39dbb318709e49f1",
