@@ -49,6 +49,7 @@ describe("App hears keys", () => {
     ["Alt+[ then Down in one read", "\x1b[\x1b[B", ["meta+[", "down"]],
     ["Alt+O then Ctrl+X in one read", "\x1bO\x18", ["meta+O", "ctrl+x"]],
     ["Escape cut short by Ctrl+X in a pointer report", "\x1b[<0;1\x18", ["escape", "[", "<", "0", ";", "1", "ctrl+x"]],
+    ["Escape before a sequence cut short", "\x1b\x1b[1\x1b[B", ["escape", "escape", "[", "1", "down"]],
     ["Ctrl+Space", "\x00", ["ctrl+space"]],
     ["Ctrl+\\ ] ^ _", "\x1c\x1d\x1e\x1f", ["ctrl+\\", "ctrl+]", "ctrl+^", "ctrl+_"]],
   ])("hears %s", (_, bytes, names) => {

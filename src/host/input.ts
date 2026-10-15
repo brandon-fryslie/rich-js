@@ -226,6 +226,7 @@ function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
 type ConsumeResult =
   | { kind: "key"; bytes: number; event: KeyPress }
   | { kind: "mouse"; bytes: number; event: ScreenMouseEvent }
+  | { kind: "unfinished"; bytes: number; event: KeyPress } // a sequence cut short, read by `unfinished`
   | { kind: "incomplete" } // need more bytes
   | { kind: "skip"; bytes: number }; // unrecognised — drop bytes
 
@@ -360,7 +361,7 @@ export class InputParser {
       const result = this.consumeOne(this.buffer);
       if (result.kind === "incomplete") return;
       this.buffer = this.buffer.subarray(result.bytes);
-      if (result.kind === "key") this.sink.key(result.event);
+      if (result.kind === "key" || result.kind === "unfinished") this.sink.key(result.event);
       else if (result.kind === "mouse") this.sink.mouse(result.event);
       // skip → drop bytes silently
     }
@@ -437,7 +438,8 @@ export class InputParser {
     // inner sequence, with meta held.
     if (b1 === ESC && buf.length > 2 && (buf[2] === LBRACKET || buf[2] === O_BYTE)) {
       // A pointer report is never Alt-prefixed (SGR carries modifiers in its
-      // button byte), so before anything but a key the first ESC is Escape.
+      // button byte), and a sequence cut short is no key to hold Alt on, so
+      // before anything but a key the first ESC is Escape.
       const inner = this.consumeEscape(buf.subarray(1));
       if (inner.kind === "incomplete") return inner;
       if (inner.kind === "key") {
@@ -507,7 +509,7 @@ export class InputParser {
 
   private consumeSS3(buf: Uint8Array): ConsumeResult {
     if (buf.length < 3) return { kind: "incomplete" };
-    if (!inSequence(buf[2]!)) return { kind: "key", ...unfinished(buf.subarray(0, 2)) };
+    if (!inSequence(buf[2]!)) return { kind: "unfinished", ...unfinished(buf.subarray(0, 2)) };
     const final = String.fromCharCode(buf[2]!);
     const name = SS3_KEYS[final];
     if (!name) return { kind: "skip", bytes: 3 };
@@ -553,7 +555,7 @@ export class InputParser {
             event: decodeMouseFromCb(cb, col, row, b === M_UPPER),
           };
         }
-        if (!inSequence(b)) return { kind: "key", ...unfinished(buf.subarray(0, i)) };
+        if (!inSequence(b)) return { kind: "unfinished", ...unfinished(buf.subarray(0, i)) };
       }
       return { kind: "incomplete" };
     }
@@ -567,7 +569,7 @@ export class InputParser {
         const final = String.fromCharCode(b);
         return decodeCSI(params, final, i + 1);
       }
-      if (!inSequence(b)) return { kind: "key", ...unfinished(buf.subarray(0, i)) };
+      if (!inSequence(b)) return { kind: "unfinished", ...unfinished(buf.subarray(0, i)) };
       params += String.fromCharCode(b);
     }
     return { kind: "incomplete" };
