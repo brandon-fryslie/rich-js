@@ -31,7 +31,7 @@ import type { Unsubscribe } from "../core/subscription.js";
 import { App, type AppOptions, type AppPhase } from "../host/app.js";
 import { DefaultFocusManager } from "./focus-manager.js";
 import { EventRouter } from "./event-router.js";
-import { footprintOf, ownersOn } from "./hit.js";
+import { footprintOf, ownersOn, widgetAt } from "./hit.js";
 import { hasOverlay } from "./types.js";
 import type {
   FocusManager,
@@ -41,6 +41,14 @@ import type {
 } from "./types.js";
 import type { ScreenMouseEvent } from "../host/input.js";
 import { WidgetBase } from "./widget-base.js";
+
+export interface WidgetAppOptions extends AppOptions {
+  /**
+   * Whether a press focuses the widget under it, before the widget hears the
+   * press. `true` unless given.
+   */
+  readonly focusOnClick?: boolean;
+}
 
 export class WidgetApp implements FrameSource {
   readonly focusManager: FocusManager;
@@ -52,8 +60,8 @@ export class WidgetApp implements FrameSource {
   // The widgets the view drew for the frame on screen, in document order.
   private drawn: readonly WidgetBase[] = [];
 
-  constructor(options: AppOptions) {
-    const { view } = options;
+  constructor(options: WidgetAppOptions) {
+    const { view, focusOnClick = true } = options;
     this.reaction = new Reaction("WidgetApp", () => this.app.refresh());
     this.app = new App({
       ...options,
@@ -65,6 +73,15 @@ export class WidgetApp implements FrameSource {
     });
     this.focusManager = this.focus;
     this.router = new EventRouter({ source: this });
+    // Ahead of any handler the program adds, so the widget a press lands on
+    // has focus when its own handleMouse hears the press. `focus` passes over
+    // a widget that cannot take it.
+    if (focusOnClick) {
+      this.router.onMouse((event) => {
+        const hit = event.type === "mouse_down" ? widgetAt(this.app.frame, event.x, event.y) : undefined;
+        if (hit) this.focus.focus(hit.widget);
+      });
+    }
     // [LAW:single-enforcer] The app reads the terminal; the router routes
     // what it hears, after the app's quit keys.
     this.app.onKey((press) => this.router.key(press));

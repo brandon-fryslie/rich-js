@@ -18,10 +18,10 @@ import { Segment, Style, ColorSpec, Group, Layout, type Renderable, type RenderO
 import {
   Dropdown,
   WidgetApp,
-  widgetAt,
   StaticItem,
   WidgetBase,
   hasOverlay,
+  widgetAt,
   KeyEvent,
   type InteractiveWidget,
 } from "@promptctl/rich-js/widgets";
@@ -157,6 +157,10 @@ export function runDemo(host: TerminalHost): Promise<void> {
     new Segment(`hl=${dd.highlightedIndex}`),
   ];
 
+  // The widget that drew the cell under the pointer, read off the frame on
+  // screen by `widgetAt` — the same lookup the app routes clicks with.
+  const underPointer = observable.box("—");
+
   const statusItem = new StaticItem({
     id: "static-status",
     render: (_options) => {
@@ -165,6 +169,7 @@ export function runDemo(host: TerminalHost): Promise<void> {
         if (i > 0) out.push(new Segment("  |  ", dimStyle));
         out.push(...statusFragment(dd));
       }
+      out.push(new Segment("  |  ", dimStyle), new Segment("pointer: ", labelStyle), new Segment(underPointer.get()));
       return out;
     },
   });
@@ -222,18 +227,9 @@ export function runDemo(host: TerminalHost): Promise<void> {
   view.splitColumn(new Layout(body), new Layout(new Group(statusItem, cheatSheetItem), { size: 2 }));
 
   const app = new WidgetApp({ host, surface: "alternate", view: () => view });
-
-  // [LAW:single-enforcer] The app owns the terminal, quits on Ctrl+C and
-  // hands the terminal back on every path out; the demo only adds the
-  // click→focus policy.
-
-  app.onMouse((event) => {
-    if (event.type !== "mouse_up") return;
-    // The frame on screen says who drew the cell under the pointer; focus()
-    // ignores a widget that cannot take focus.
-    const hit = widgetAt(app.frame, event.x, event.y);
-    if (hit) app.focusManager.focus(hit.widget);
-  });
+  app.onMouse(
+    action((event) => underPointer.set(widgetAt(app.frame, event.x, event.y)?.widget.id ?? "—")),
+  );
 
   let cycleIdx = 0;
   const mutationTimer = setInterval(() => {

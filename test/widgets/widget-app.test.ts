@@ -23,6 +23,7 @@ import { Viewport } from "../../src/renderables/viewport.js";
 import { RichText } from "../../src/core/text.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import type { Segment } from "../../src/core/segment.js";
+import type { WidgetMouseEvent } from "../../src/widgets/types.js";
 import { Style, Theme } from "../../src/core/style.js";
 import type { AppOptions } from "../../src/host/app.js";
 import { scriptedHost, type ScriptedHost } from "../host/scripted-host.js";
@@ -382,6 +383,68 @@ describe("WidgetApp pointer", () => {
   });
 });
 
+describe("WidgetApp defaults", () => {
+  /** A checkbox that records whether it had focus when each press reached it. */
+  class PressProbe extends Checkbox {
+    readonly focusedAtPress: boolean[] = [];
+    override handleMouse(event: WidgetMouseEvent): void {
+      if (event.type === "mouse_down") this.focusedAtPress.push(this.focused);
+      super.handleMouse(event);
+    }
+  }
+
+  function pair(): { view: Renderable; first: Checkbox; second: PressProbe } {
+    const first = new Checkbox({ label: "first", id: "first" });
+    const second = new PressProbe({ label: "second", id: "second" });
+    return { view: new Group(first, text("\n"), second), first, second };
+  }
+
+  it("focuses the widget a press lands on before the widget hears the press", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const { view, first, second } = pair();
+    const app = start(host, () => view);
+    await tick();
+    expect(app.focusManager.current).toBe(first);
+
+    const at = cellOf(app, "second");
+    host.type(click(at.x, at.y));
+
+    expect(app.focusManager.current).toBe(second);
+    expect(second.focusedAtPress).toEqual([true]);
+    expect(second.checked).toBe(true);
+  });
+
+  it("leaves focus where it was on a press, with focusOnClick false", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const { view, first, second } = pair();
+    const app = new WidgetApp({ host, surface: "alternate", view: () => view, focusOnClick: false });
+    void app.run();
+    await tick();
+
+    const at = cellOf(app, "second");
+    host.type(click(at.x, at.y));
+
+    expect(app.focusManager.current).toBe(first);
+    expect(second.focusedAtPress).toEqual([false]);
+    expect(second.checked).toBe(true);
+  });
+
+  it("hands Ctrl+C to the program, with quitKeys empty", async () => {
+    const host = scriptedHost({ cols: 20, rows: 3 });
+    const app = new WidgetApp({ host, surface: "alternate", view: () => text("x"), quitKeys: [] });
+    const heard: string[] = [];
+    app.onKey((event) => heard.push(event.key), { priority: "high" });
+    void app.run();
+    await tick();
+
+    host.type("\x03");
+
+    expect(heard).toEqual(["c"]);
+    expect(app.phase).toBe("running");
+    app.stop();
+  });
+});
+
 describe("WidgetApp wheel", () => {
   /** Lines `from` to `to`, one a line, each reading `line <n>`. */
   function lines(from: number, to: number): Renderable {
@@ -569,9 +632,6 @@ describe("WidgetApp lifecycle", () => {
       surface: "alternate",
       view: () => new Checkbox({ label: "a", id: "a" }),
     });
-    app.onKey((event) => {
-      if (event.ctrl && event.key === "c") app.stop();
-    }, { priority: "high" });
     const done = app.run();
     await tick();
 
