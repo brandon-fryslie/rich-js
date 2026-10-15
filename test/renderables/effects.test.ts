@@ -68,10 +68,10 @@ const frame = (own: ReadonlySet<string>, fills: ReadonlySet<string> = new Set(),
 });
 /** A frame an effect that reads nothing of it is handed. */
 const NOTHING = frame(new Set());
-/** An effect bound to one frame's `Drawn`, as a cell sees it. */
-type On = (colors: CellColors, cell: EffectCell, t: number) => CellColors;
+/** An effect's frames at each moment, every one drawing the same `Drawn`. */
+type On = (t: number) => ReturnType<Effect>;
 /** `effect` in frames that draw `drawn`. */
-const on = (effect: Effect, drawn: Drawn): On => (colors, cell, t) => effect(t, drawn)(colors, cell);
+const on = (effect: Effect, drawn: Drawn): On => (t) => effect(t, drawn);
 /** The ink at its whole share: the subject every curve here is tried on. */
 const inkOn = new Map([[ink.hex, 1]]);
 /** `loop` on the ink at its whole share. */
@@ -135,7 +135,7 @@ describe("the wheel", () => {
     const P = 907;
     const round = on(wheel(curve(P, 0), 0), frame(own, grounds));
     for (const fill of fills) {
-      const at = (t: number) => round({ fg: ink, bg: fill }, cell, t).bg;
+      const at = (t: number) => round(t)({ fg: ink, bg: fill }, cell).bg;
       // A quarter of the way round, a quarter turn; at the end, back.
       // To a degree or so: the sRGB round trip lands a step off.
       expect(Math.abs(turned(fill, at(P / 4)) - 90)).toBeLessThan(2);
@@ -150,10 +150,11 @@ describe("the wheel", () => {
 
   it("turns a cell's ink and fill together, and leaves the terminal's colour alone", () => {
     const round = on(wheel(curve(907, 0.25), 0), frame(own, grounds));
-    const { fg, bg } = round({ fg: ink, bg: fills[0]! }, cell, 300);
+    const shown = round(300);
+    const { fg, bg } = shown({ fg: ink, bg: fills[0]! }, cell);
     // The same turn, to a degree or so: the sRGB round trip lands a step off.
     expect(Math.abs(turned(ink, fg) - turned(fills[0]!, bg))).toBeLessThan(2);
-    const text = round({ fg: ink, bg: ground }, cell, 300);
+    const text = shown({ fg: ink, bg: ground }, cell);
     expect(text.bg).toBe(ground);
     expect(turned(ink, text.fg)).toBeGreaterThan(0);
   });
@@ -161,22 +162,23 @@ describe("the wheel", () => {
   it("keeps a powerline cap the colour of the cell it caps: a fill turns at its own pace as ink too", () => {
     const round = on(wheel(curve(907, 0.25), 0), frame(own, grounds));
     const [a, b] = [fills[0]!, fills[1]!];
-    const t = 300;
-    const cellA = round({ fg: ink, bg: a }, cell, t).bg;
-    const cellB = round({ fg: ink, bg: b }, { ...cell, col: 12 }, t).bg;
-    const cap = round({ fg: a, bg: b }, { ...cell, col: 11 }, t);
+    const shown = round(300);
+    const cellA = shown({ fg: ink, bg: a }, cell).bg;
+    const cellB = shown({ fg: ink, bg: b }, { ...cell, col: 12 }).bg;
+    const cap = shown({ fg: a, bg: b }, { ...cell, col: 11 });
     expect(cap.fg.hex).toBe(cellA.hex);
     expect(cap.bg.hex).toBe(cellB.hex);
     // The last cap, onto the terminal's ground, keeps its cell's colour too.
-    expect(round({ fg: b, bg: ground }, { ...cell, col: 20 }, t).fg.hex).toBe(cellB.hex);
+    expect(shown({ fg: b, bg: ground }, { ...cell, col: 20 }).fg.hex).toBe(cellB.hex);
   });
 
   it("lets each segment stray from the shared turn by its own amount, within the swing", () => {
     const P = 907;
     const swing = 0.25;
     const round = on(wheel(curve(P, swing), 0), frame(own, grounds));
+    const shown = round(P / 2);
     const strays = fills.map((fill) => {
-      const got = turned(fill, round({ fg: ink, bg: fill }, cell, P / 2).bg);
+      const got = turned(fill, shown({ fg: ink, bg: fill }, cell).bg);
       return ((got - 180 + 540) % 360) - 180;
     });
     // Apart from one another, and none past half a turn times the swing.
@@ -190,9 +192,9 @@ describe("the wheel", () => {
     let worst = 0;
     for (const fill of fills) {
       // From the first frame: the turn starts from the palette as drawn.
-      let last = round({ fg: ink, bg: fill }, cell, 0);
+      let last = round(0)({ fg: ink, bg: fill }, cell);
       for (let t = 1; t < 1800; t++) {
-        const next = round({ fg: ink, bg: fill }, cell, t);
+        const next = round(t)({ fg: ink, bg: fill }, cell);
         worst = Math.max(worst, Oklch.fromRgba(last.bg).deltaE(Oklch.fromRgba(next.bg)), Oklch.fromRgba(last.fg).deltaE(Oklch.fromRgba(next.fg)));
         last = next;
       }
@@ -332,9 +334,15 @@ describe("the loops move", () => {
       [on(wheel(turn, 0), frame(new Set([ink.hex, ground.hex]), new Set([ground.hex]))), on(wheel(turn, 0), frame(new Set([ink.hex])))],
     ];
     for (const [effect, withoutGround] of effects) {
-      const frames = cells.flatMap((cell) => Array.from({ length: 30 }, (_, i) => [cell, 100 + i / 10] as const));
-      const moved = frames.map(([cell, t]) => effect(colors, { ...cell, terminal: onTerminal }, t));
-      expect(moved).toEqual(frames.map(([cell, t]) => withoutGround(colors, cell, t)));
+      const moments = Array.from({ length: 30 }, (_, i) => 100 + i / 10);
+      const moved = moments.flatMap((t) => {
+        const shown = effect(t);
+        return cells.map((cell) => shown(colors, { ...cell, terminal: onTerminal }));
+      });
+      expect(moved).toEqual(moments.flatMap((t) => {
+        const shown = withoutGround(t);
+        return cells.map((cell) => shown(colors, cell));
+      }));
       expect(moved.some(({ fg }) => !sameColor(fg, ink))).toBe(true);
     }
   });
@@ -342,7 +350,7 @@ describe("the loops move", () => {
   it("onColors leaves a colour not in its set alone", () => {
     // A beat starts at rest, so the turn is watched whole.
     const effect = on(atShares(pulse(curve(3, 0.2), sun, 0), () => new Map([[ground.hex, 1]])), NOTHING);
-    const turn = Array.from({ length: 30 }, (_, i) => effect(colors, cells[0]!, i / 10));
+    const turn = Array.from({ length: 30 }, (_, i) => effect(i / 10)(colors, cells[0]!));
     expect(turn.every((moved) => moved.fg === ink)).toBe(true);
     expect(turn.some((moved) => !sameColor(moved.bg, ground))).toBe(true);
   });
