@@ -1,7 +1,7 @@
 /**
  * Scans `<home>/.claude/projects/` for project directories and their session
- * JSONL files. Reads only stats + the first bytes of each file (for the
- * session's title and first prompt). Skips subagent/tool-results subdirectories —
+ * JSONL files. Reads only stats + the last bytes of each file (for the
+ * session's title). Skips subagent/tool-results subdirectories —
  * only top-level `*.jsonl` in each project directory counts as a "session".
  *
  * [LAW:effects-at-boundaries] All filesystem access is via the injected
@@ -18,24 +18,28 @@ function projectsRoot(fs: FileSystem): string {
 }
 
 /**
- * A session's title as Claude Code names it: the name a person gave it
- * (`custom-title`), else the one it was given (`ai-title`), else its `slug`.
- * Each is a record of its own, written near the top of the file; the first
- * prompt is the first record's, when that is a prompt. The line the head's
- * cut ends inside does not parse, and is passed over like any other.
+ * How much of a session's end is read for its title: Claude Code re-appends
+ * a session's title records as it writes, so the newest sits near the end
+ * and this is the window Claude Code itself reads its metadata from.
  */
-function extractMeta(head: readonly string[]): { title: string | null; firstPrompt: string | null } {
-  const records = head.flatMap((line) => {
+const TITLE_WINDOW_BYTES = 64 * 1024;
+
+/**
+ * A session's title as Claude Code shows it: the newest name a person gave it
+ * (`custom-title`), else the newest it was given (`ai-title`), else its
+ * `slug`. A line the window's cut ends inside does not parse, and is passed
+ * over like any other.
+ */
+function extractTitle(tail: readonly string[]): string | null {
+  const records = tail.flatMap((line) => {
     try {
       return [JSON.parse(line) as Record<string, unknown>];
     } catch {
       return [];
     }
   });
-  const field = (name: string) => records.map((r) => r[name]).find((v): v is string => typeof v === "string") ?? null;
-  const message = records[0]?.["message"] as Record<string, unknown> | undefined;
-  const firstPrompt = typeof message?.["content"] === "string" ? message["content"].slice(0, 200) : null;
-  return { title: field("customTitle") ?? field("aiTitle") ?? field("slug"), firstPrompt };
+  const newest = (name: string) => records.map((r) => r[name]).filter((v): v is string => typeof v === "string").at(-1) ?? null;
+  return newest("customTitle") ?? newest("aiTitle") ?? newest("slug");
 }
 
 function prettifyDirName(name: string): string {
@@ -53,14 +57,13 @@ function scanSessions(fs: FileSystem, projectDir: string): SessionMeta[] {
     const full = fs.join(projectDir, name);
     const s = fs.stat(full);
     if (s === null || !s.isFile) continue;
-    const { title, firstPrompt } = extractMeta((fs.readFirstBytes(full, 4096) ?? "").split("\n"));
+    const title = extractTitle((fs.readLastBytes(full, TITLE_WINDOW_BYTES) ?? "").split("\n"));
     out.push({
       path: full,
       fileName: name.replace(/\.jsonl$/, ""),
       size: s.size,
       mtime: s.mtime,
       title,
-      firstPrompt,
     });
   }
   out.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());

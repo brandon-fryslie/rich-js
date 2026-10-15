@@ -29,12 +29,22 @@ import { EXAMPLE_SIZE, terminalSize } from "./terminal-size.js";
 
 /**
  * The most a link carries, in UTF-8 bytes of what it packs (the program, its
- * setup and their JSON): past the largest demo's program — claude-sessions,
- * whose staged sessions weigh ~2.5 MB — and far short of what a crafted hash
- * can inflate to. A link is opened on sight, so reading one must not be able
- * to exhaust the tab.
+ * setup and their JSON): past the largest demo's program, and far short of
+ * what a crafted hash can inflate to. A link is opened on sight, so reading
+ * one must not be able to exhaust the tab. What a link may carry packed is
+ * `MAX_LINK_CHARS`, the tighter bound for any real program.
  */
 export const MAX_PROGRAM_BYTES = 4 << 20;
+
+/**
+ * The longest link hash this writes, in characters: 512 KiB, half of the
+ * 1 MiB Firefox caps a URL at (`network.standard-url.max-length`) — the
+ * tightest of the engines this site runs on, Chromium's being 2 MiB — with
+ * the other half left for the page's path and for an edit that grows the
+ * program. Past it a browser cuts or refuses the URL, and the playground
+ * opens on a program that cannot be read.
+ */
+export const MAX_LINK_CHARS = 512 * 1024;
 
 /** The name a hash in this format starts with, before its `.`. */
 const FORMAT = "program";
@@ -67,16 +77,24 @@ async function bounded(stream: ReadableStream<Uint8Array<ArrayBuffer>>): Promise
 const through = (bytes: Uint8Array<ArrayBuffer>, stream: CompressionStream | DecompressionStream) =>
   bounded(new Blob([bytes]).stream().pipeThrough(stream));
 
-/** `text`'s UTF-8, deflated, in base64url. */
+/**
+ * `text`'s UTF-8, deflated, in base64url. [LAW:single-enforcer] Every link is
+ * written here, so here is where one too long for a browser is refused —
+ * which fails the docs build for a card whose program could not travel.
+ */
 async function packed(text: string): Promise<string> {
   const bytes = new TextEncoder().encode(text);
   // A link this wrote is one `decodeProgram` opens.
   if (bytes.length > MAX_PROGRAM_BYTES) throw tooLong();
   const deflated = await through(bytes, new CompressionStream("deflate"));
-  return btoa(Array.from(deflated, (byte) => String.fromCharCode(byte)).join(""))
+  const payload = btoa(Array.from(deflated, (byte) => String.fromCharCode(byte)).join(""))
     .replaceAll("+", "-")
     .replaceAll("/", "_")
     .replace(/=+$/, "");
+  if (payload.length > MAX_LINK_CHARS) {
+    throw new Error(`a playground link is at most ${MAX_LINK_CHARS} characters, and this program packs to ${payload.length}`);
+  }
+  return payload;
 }
 
 /** The text `packed` made `payload` of. */

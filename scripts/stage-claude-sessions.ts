@@ -17,31 +17,35 @@
  *   says how many it lost; one longer than `KEEP_CHARS` is cut the same way;
  * - a thinking block's `signature`, opaque bytes no reader can use, is dropped;
  * - the machine is scrubbed out: the owner's home becomes `/home/demo`, their
- *   user name `demo`, the host's name `demo-host`, every private IPv4 address
+ *   user name `demo`, every machine on their network `demo-host`, a Tailscale
+ *   name `demo-host.tailnet.invalid` (RFC 2606), every private IPv4 address
  *   the documentation address 192.0.2.1 (RFC 5737), and email addresses and
  *   anything shaped like a credential are replaced.
  *
  * It is the one writer of the directory — the per-project modules and the
  * `projects.ts` that gathers them — so a re-run reproduces it whole.
  */
-import { readdirSync, readFileSync, statSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { deflateSync } from "node:zlib";
 import { homedir, hostname, userInfo } from "node:os";
 import path from "node:path";
 import { REPO_ROOT } from "./repo-facts.ts";
 
 const SESSIONS: Readonly<Record<string, readonly string[]>> = {
-  "cc-hands": ["343f2948", "72de8d71", "50be1d48", "bf68ecda", "9cdac691"],
-  "low-talker": ["89ff8d3c", "344d3433", "85ee29e4", "eb64e0f3"],
-  "links-issue-tracker": ["fe6510c9", "2a3da176", "fe5b78a8", "9cb4bcc8"],
-  "rich-js": ["5c83db1d", "04aeda33", "de7a7dc9", "8c79e4c7"],
-  vhid: ["e6c996c1", "08b61075", "5744c4aa", "38b3f562"],
+  "cc-hands": ["343f2948", "72de8d71", "9cdac691"],
+  "low-talker": ["89ff8d3c", "85ee29e4"],
+  "links-issue-tracker": ["fe6510c9", "2a3da176"],
+  "rich-js": ["5c83db1d", "04aeda33", "8c79e4c7"],
+  vhid: ["e6c996c1", "5744c4aa", "38b3f562"],
 };
 
-// Tight enough that the 21 sessions weigh ~2.5 MB together. What a card can
-// carry is MAX_PROGRAM_BYTES (docs/.vitepress/playground-hash.ts), and the
-// docs build refuses a demo past it.
-const KEEP_LINES = 20;
-const KEEP_CHARS = 1500;
+// With `SESSIONS`, tight enough that the staged tree fits the card's
+// playground link, which MAX_LINK_CHARS (docs/.vitepress/playground-hash.ts)
+// bounds: the docs build refuses a demo past it, and this script prints what
+// the tree packs to. Most of that is the records' ids, which do not compress,
+// so the number of records weighs more than how much of each is kept.
+const KEEP_LINES = 8;
+const KEEP_CHARS = 600;
 
 /**
  * What the viewer draws: the records it renders (data/parser.ts), the title
@@ -49,13 +53,52 @@ const KEEP_CHARS = 1500;
  * fields it reads. Everything else in a record — the envelope repeated on
  * every line, the hook and skill listings in `attachment` records, a tool's
  * result held a second time in `toolUseResult` — is weight the card cannot
- * carry and the reader never sees.
+ * carry and the reader never sees; of `toolUseResult` only the `agentId` a
+ * subagent call is drilled into by is kept.
  */
 const SHOWN_TYPES = new Set(["user", "assistant", "system", "custom-title", "ai-title"]);
 const SHOWN_FIELDS = new Set([
   "type", "uuid", "parentUuid", "timestamp", "message", "subtype", "content", "level",
   "isMeta", "isSidechain", "isApiErrorMessage", "durationMs", "error", "promptId", "slug", "customTitle", "aiTitle",
 ]);
+
+/** A record as the viewer reads it: its shown fields, its message as `shownMessage` has it, and its result's `agentId`. */
+function shownRecord(record: Record<string, unknown>): Record<string, unknown> {
+  const kept = Object.fromEntries(Object.entries(record).filter(([key]) => SHOWN_FIELDS.has(key)));
+  const { message, toolUseResult } = record;
+  const agentId = typeof toolUseResult === "object" && toolUseResult !== null ? (toolUseResult as { agentId?: unknown }).agentId : undefined;
+  return {
+    ...kept,
+    ...(typeof message === "object" && message !== null ? { message: shownMessage(message as Record<string, unknown>) } : {}),
+    ...(typeof agentId === "string" ? { toolUseResult: { agentId } } : {}),
+  };
+}
+
+/**
+ * The records of a JSONL file the viewer shows, each re-parented onto its
+ * nearest shown ancestor. Claude Code chains every record to the one before
+ * it, the records staging drops included; a shown record whose parent was
+ * dropped would name a record the card does not have.
+ */
+function shownRecords(text: string): Record<string, unknown>[] {
+  const records = text.split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line) as Record<string, unknown>);
+  const parentOf = new Map(records.flatMap((r) => (typeof r["uuid"] === "string" ? [[r["uuid"], typeof r["parentUuid"] === "string" ? r["parentUuid"] : null] as const] : [])));
+  const shown = records.filter((record) => SHOWN_TYPES.has(String(record["type"])));
+  const kept = new Set(shown.map((r) => r["uuid"]).filter((uuid): uuid is string => typeof uuid === "string"));
+  const nearestKept = (uuid: string | null): string | null => {
+    const seen = new Set<string>();
+    let at = uuid;
+    while (at !== null && !kept.has(at) && !seen.has(at)) {
+      seen.add(at);
+      at = parentOf.get(at) ?? null;
+    }
+    return at !== null && kept.has(at) ? at : null;
+  };
+  return shown.map((record) => {
+    const staged = shownRecord(record);
+    return "parentUuid" in staged ? { ...staged, parentUuid: nearestKept(typeof record["parentUuid"] === "string" ? record["parentUuid"] : null) } : staged;
+  });
+}
 
 /** A message as the viewer reads it: who, which model, how it stopped, what it said, and its token counts. */
 function shownMessage(message: Record<string, unknown>): Record<string, unknown> {
@@ -89,9 +132,13 @@ const PRIVATE_IPV4 = /\b(?:10\.\d{1,3}|192\.168|172\.(?:1[6-9]|2\d|3[01])|100\.(
 const USER = userInfo().username;
 const word = (name: string) => new RegExp(`(?<![A-Za-z0-9])${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![A-Za-z0-9])`, "g");
 
+// A Tailscale MagicDNS name, `<host>.<tailnet>.ts.net`, and any name under it.
+const MAGIC_DNS = /\b[\w-]+(?:\.[\w-]+)*\.ts\.net\b/g;
+
 function scrub(text: string): string {
   let out = text.replaceAll(HOME, DEMO_HOME).replaceAll(HOME.replaceAll("/", "-"), DEMO_HOME.replaceAll("/", "-"));
   out = out.replace(PRIVATE_IPV4, "192.0.2.1");
+  out = out.replace(MAGIC_DNS, "demo-host.tailnet.invalid");
   out = out.replace(EMAIL, "demo@example.com");
   for (const host of HOSTS) out = out.replace(word(host), "demo-host");
   out = out.replace(word(USER), "demo");
@@ -133,7 +180,11 @@ function rawTemplateBody(jsonl: string): string {
   return jsonl.replaceAll("`", "\\u0060").replaceAll("$", "\\u0024");
 }
 
-/** Each picked session's file, read once. */
+/**
+ * Each picked session's file, read once, with the transcript of every
+ * subagent it ran — what drilling into a subagent call opens, at
+ * `<session>/subagents/agent-<id>.jsonl` beside it, as Claude Code keeps it.
+ */
 const SOURCES = Object.entries(SESSIONS).map(([project, ids]) => {
   const dir = path.join(HOME, ".claude/projects", `${HOME.replaceAll("/", "-")}-code-${project}`);
   const names = readdirSync(dir);
@@ -141,25 +192,55 @@ const SOURCES = Object.entries(SESSIONS).map(([project, ids]) => {
     const matches = names.filter((name) => name.startsWith(id) && name.endsWith(".jsonl"));
     if (matches.length !== 1) throw new Error(`${dir}: expected one session starting ${id}, found ${matches.length}`);
     const file = path.join(dir, matches[0]!);
-    return { id, name: matches[0]!, file, text: readFileSync(file, "utf-8") };
+    const subagentDir = path.join(dir, matches[0]!.replace(/\.jsonl$/, ""), "subagents");
+    const subagents = existsSync(subagentDir)
+      ? readdirSync(subagentDir).filter((name) => /^agent-.*\.jsonl$/.test(name)).map((name) => ({ name, file: path.join(subagentDir, name), text: readFileSync(path.join(subagentDir, name), "utf-8") }))
+      : [];
+    return { id, name: matches[0]!, file, text: readFileSync(file, "utf-8"), subagents };
   })] as const;
 });
 
 /**
- * The machines the sessions name: this one, and every mDNS `<name>.local` any
- * of them reaches — a session run here ssh-es and scp-s to the others on the
- * LAN — so no host is named in this file. A name counts only in a host
- * position: the host of `user@host` (a format verb's `%s@host` is an address
- * template, not a login), an argument of ssh, scp, rsync, sftp, mosh or ping,
- * or the host of a `host:path` remote. A `.local` anywhere else — a file's
- * `settings.local.json`, code's `binding.local` — names no machine. Each host
- * is then scrubbed wherever it appears as a word, bare or with its `.local`.
+ * The machines on this owner's network, by name: this one, every LAN or
+ * tailnet host their ssh config and known hosts name (mDNS `<name>.local`,
+ * a MagicDNS label), and every `<name>.local` or MagicDNS name
+ * the sessions reach — so no host is named in this file. A `.local` from the
+ * sessions counts only in a host position: the host of `user@host` (a format
+ * verb's `%s@host` is an address template, not a login), an argument of ssh,
+ * scp, rsync, sftp, mosh or ping, or the host of a `host:path` remote; one
+ * anywhere else — a file's `settings.local.json`, code's `binding.local` —
+ * names no machine. A name of two letters is too common a word to scrub as
+ * one. Each host is then scrubbed wherever it appears as a word, bare or with its `.local`.
  */
 const HOST_POSITION = /(?:(?<![%\w.-])[A-Za-z_][\w.-]*@|\b(?:ssh|scp|rsync|sftp|mosh|ping)\s+(?:-\S+\s+)*|(?<![\w.$-])(?=[A-Za-z0-9-]+\.local:))([A-Za-z0-9-]+)\.local(?![\w-]|\.[A-Za-z0-9])/g;
-const HOSTS = new Set([
-  hostname().replace(/\.local$/, ""),
-  ...SOURCES.flatMap(([, files]) => files.flatMap(({ text }) => [...text.matchAll(HOST_POSITION)].map((m) => m[1]!))),
-]);
+const read = (file: string) => (existsSync(file) ? readFileSync(file, "utf-8") : "");
+const SSH_NAMES = [
+  ...[...read(path.join(HOME, ".ssh/config")).matchAll(/^\s*Host(?:Name)?\s+(.+)$/gim)].flatMap((m) => m[1]!.trim().split(/\s+/)),
+  ...read(path.join(HOME, ".ssh/known_hosts")).split("\n").flatMap((line) => (line.startsWith("|") ? [] : (line.split(" ")[0] ?? "").split(","))),
+].map((name) => name.replace(/^\[|\](:\d+)?$/g, ""));
+/**
+ * A name of a machine on the owner's own network, as its labels, or none: an
+ * mDNS or MagicDNS name. A public name, an address or a pattern is not one,
+ * and nor is a bare ssh alias — `runner`, `gpu` — which is as often an
+ * English word as a machine, and scrubbing it would rewrite every sentence it
+ * appears in.
+ */
+const ownMachine = (name: string): string[] => {
+  if (/[*?]/.test(name) || /^[\d.:]+$/.test(name)) return [];
+  if (/\.local$/.test(name)) return [name.replace(/\.local$/, "")];
+  if (/\.ts\.net$/.test(name)) return name.split(".").slice(0, -2);
+  return [];
+};
+const HOSTS = new Set(
+  [
+    `${hostname().replace(/\.local$/, "")}.local`,
+    ...SSH_NAMES,
+    ...SOURCES.flatMap(([, files]) => files.flatMap(({ text, subagents }) => [text, ...subagents.map((a) => a.text)].flatMap((t) => [
+      ...[...t.matchAll(HOST_POSITION)].map((m) => `${m[1]!}.local`),
+      ...[...t.matchAll(MAGIC_DNS)].map((m) => m[0]),
+    ]))),
+  ].flatMap(ownMachine).filter((name) => name.length > 2),
+);
 console.log(`hosts: ${HOSTS.size}`);
 
 const out = path.join(REPO_ROOT, "examples/claude-sessions/staging");
@@ -168,19 +249,27 @@ const out = path.join(REPO_ROOT, "examples/claude-sessions/staging");
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out);
 
-let total = 0;
+/** A file of the staged tree, its records as the viewer reads them. */
+const stagedFile = (file: string, text: string) => {
+  const jsonl = shownRecords(text).map((record) => JSON.stringify(stage(record))).join("\n");
+  return { mtime: statSync(file).mtime.toISOString(), jsonl };
+};
+
+const fileLiteral = (f: { readonly mtime: string; readonly jsonl: string }, indent: string) => `{
+${indent}  kind: "file",
+${indent}  mtime: new Date("${f.mtime}"),
+${indent}  content: String.raw\`${rawTemplateBody(f.jsonl)}\`,
+${indent}}`;
+
+let total = "";
 for (const [project, sessionsOf] of SOURCES) {
-  const sessions = sessionsOf.map(({ id, name, file, text }) => {
-    const records = text.split("\n").filter((line) => line.trim() !== "");
-    const shown = records
-      .map((line) => JSON.parse(line) as Record<string, unknown>)
-      .filter((record) => SHOWN_TYPES.has(String(record["type"])))
-      .map((record) => Object.fromEntries(Object.entries(record).filter(([key]) => SHOWN_FIELDS.has(key))))
-      .map((record) => (typeof record["message"] === "object" && record["message"] !== null ? { ...record, message: shownMessage(record["message"] as Record<string, unknown>) } : record));
-    const jsonl = shown.map((record) => JSON.stringify(stage(record))).join("\n");
-    total += Buffer.byteLength(jsonl);
-    console.log(`${project}/${id}: ${records.length} records, ${Math.round(Buffer.byteLength(jsonl) / 1024)} KB`);
-    return { name, mtime: statSync(file).mtime.toISOString(), jsonl };
+  const sessions = sessionsOf.map(({ id, name, file, text, subagents }) => {
+    const session = stagedFile(file, text);
+    // Only the subagents a staged call names: a run the session does not reach is weight.
+    const named = subagents.filter((a) => session.jsonl.includes(`"agentId":"${a.name.replace(/^agent-|\.jsonl$/g, "")}"`)).map((a) => ({ name: a.name, ...stagedFile(a.file, a.text) }));
+    for (const f of [session, ...named]) total += f.jsonl;
+    console.log(`${project}/${id}: ${Math.round(Buffer.byteLength(session.jsonl) / 1024)} KB, ${named.length} subagents ${Math.round(named.reduce((n, a) => n + Buffer.byteLength(a.jsonl), 0) / 1024)} KB`);
+    return { name, session, named };
   });
   const module = `/** ${project}: real sessions, trimmed and scrubbed by scripts/stage-claude-sessions.ts, which writes this file. */
 import type { MemoryDirectory } from "../../_capabilities/memory-file-system.js";
@@ -190,11 +279,10 @@ export const PROJECT = "${DEMO_HOME.replaceAll("/", "-")}-code-${project}";
 export const SESSIONS: MemoryDirectory = {
   kind: "directory",
   children: {
-${sessions.map((s) => `    "${s.name}": {
-      kind: "file",
-      mtime: new Date("${s.mtime}"),
-      content: String.raw\`${rawTemplateBody(s.jsonl)}\`,
-    },`).join("\n")}
+${sessions.map((s) => `    "${s.name}": ${fileLiteral(s.session, "    ")},${s.named.length === 0 ? "" : `
+    "${s.name.replace(/\.jsonl$/, "")}": { kind: "directory", children: { subagents: { kind: "directory", children: {
+${s.named.map((a) => `      "${a.name}": ${fileLiteral(a, "      ")},`).join("\n")}
+    } } } },`}`).join("\n")}
   },
 };
 `;
@@ -229,4 +317,6 @@ export const STAGED_HOME: MemoryTree = {
 };
 `);
 
-console.log(`total: ${Math.round(total / 1024)} KB`);
+// What the card's playground link carries of these, which MAX_LINK_CHARS
+// (docs/.vitepress/playground-hash.ts) bounds: deflated, then base64.
+console.log(`total: ${Math.round(Buffer.byteLength(total) / 1024)} KB, ~${Math.round((deflateSync(total).length * 4) / 3 / 1024)} KB in a link`);

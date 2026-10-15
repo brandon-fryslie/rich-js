@@ -6,6 +6,8 @@
  * navigates and the renderer dispatches on.
  */
 
+import type { RawLine } from "./loader.js";
+
 export type BlockKind =
   | "human"
   | "assistant"
@@ -19,9 +21,10 @@ export interface BlockBase {
   readonly uuid: string;
   readonly parentUuid: string | null;
   readonly timestamp: string;       // ISO 8601
-  readonly raw: unknown;            // parsed JSON for raw view
-  /** The uuid of every JSONL record this block is drawn from (parser.ts, joinMessageRecords). */
-  readonly records: readonly string[];
+  /** The JSONL records this block is drawn from, verbatim and in file order
+   *  (parser.ts): what its raw view shows, and what a lookup by a record's
+   *  uuid finds it by (state.ts, blockIndexOf). */
+  readonly source: readonly RawLine[];
 }
 
 export interface HumanBlock extends BlockBase {
@@ -53,9 +56,9 @@ export interface ToolCallBlock extends BlockBase {
 export interface SubagentBlock extends BlockBase {
   readonly kind: "subagent";
   readonly toolUseId: string;
-  readonly subagentType: string;    // from input.subagent_type, fallback "task"
+  readonly subagentType: string;    // input.subagent_type, or a forked skill's input.skill; else "task"
   readonly description: string;     // from input.description
-  readonly prompt: string;          // from input.prompt (truncated)
+  readonly prompt: string;          // input.prompt, or a forked skill's input.args
   readonly resultText: string;
   readonly hasResult: boolean;
   /** Short agent id used to locate the subagent's own JSONL file. Null if
@@ -91,7 +94,6 @@ export interface SessionMeta {
   readonly size: number;
   readonly mtime: Date;
   readonly title: string | null;    // custom-title, else ai-title, else slug (scanner.ts)
-  readonly firstPrompt: string | null;
 }
 
 export interface ProjectMeta {

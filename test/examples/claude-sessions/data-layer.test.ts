@@ -7,6 +7,7 @@
 import { describe, it, expect } from "vitest";
 import {
   MemoryFileSystem,
+  type MemoryDirectory,
   type MemoryTree,
 } from "../../../examples/_capabilities/memory-file-system.js";
 import { scanProjects } from "../../../examples/claude-sessions/data/scanner.js";
@@ -102,15 +103,18 @@ describe("scanProjects against MemoryFileSystem", () => {
 
     const session = projects[0]!.sessions[0]!;
     expect(session.title).toBe("rich-js-port");
-    expect(session.firstPrompt).toBe("Hello world prompt");
     expect(session.size).toBeGreaterThan(0);
     expect(session.fileName).toBe("fixture-session");
   });
 
-  it("titles a session by the name a person gave it over the one it was given", () => {
+  it("titles a session by the newest name a person gave it, over any it was given", () => {
     const content = [
+      { type: "custom-title", customTitle: "first name" },
       { type: "ai-title", aiTitle: "Given name" },
       { type: "custom-title", customTitle: "chosen name" },
+      ...Array.from({ length: 200 }, (_, i) => ({ type: "user", uuid: `u${i}`, message: { role: "user", content: "x".repeat(100) } })),
+      { type: "custom-title", customTitle: "renamed far past the head" },
+      { type: "ai-title", aiTitle: "Newer given name" },
       { type: "user", uuid: "u1", slug: "a-slug", message: { role: "user", content: "hi" } },
     ].map((r) => JSON.stringify(r)).join("\n");
     const fs = new MemoryFileSystem({
@@ -119,7 +123,7 @@ describe("scanProjects against MemoryFileSystem", () => {
         "-p": { kind: "directory", children: { "s.jsonl": { kind: "file", mtime: new Date(0), content } } },
       } } } } } },
     });
-    expect(scanProjects(fs)[0]!.sessions[0]!.title).toBe("chosen name");
+    expect(scanProjects(fs)[0]!.sessions[0]!.title).toBe("renamed far past the head");
   });
 
   it("titles every staged session the card opens on", () => {
@@ -127,6 +131,19 @@ describe("scanProjects against MemoryFileSystem", () => {
     expect(sessions.length).toBeGreaterThan(0);
     expect(sessions.filter((s) => s.title === null).map((s) => s.fileName)).toEqual([]);
     expect(sessions.find((s) => s.fileName.startsWith("5c83db1d"))?.title).toBe("rich example card");
+  });
+
+  it("stages every record's parent beside it, so no reference dangles", () => {
+    const files = (dir: MemoryDirectory): string[] =>
+      Object.values(dir.children).flatMap((node) => (node.kind === "file" ? [node.content] : files(node)));
+    const staged = files(STAGED_HOME.root);
+    const dangling = staged.flatMap((content) => {
+      const records = content.split("\n").map((line) => JSON.parse(line) as { uuid?: string; parentUuid?: string | null });
+      const uuids = new Set(records.map((r) => r.uuid));
+      return records.filter((r) => typeof r.parentUuid === "string" && !uuids.has(r.parentUuid));
+    });
+    expect(staged.length).toBeGreaterThan(15);
+    expect(dangling).toEqual([]);
   });
 
   it("returns empty when ~/.claude/projects is missing", () => {

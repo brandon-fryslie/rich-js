@@ -15,6 +15,7 @@
 import {
   closeSync,
   existsSync,
+  fstatSync,
   openSync,
   readdirSync,
   readFileSync,
@@ -77,12 +78,13 @@ export class NodeFileSystem implements FileSystem {
     return readFileSync(path, "utf-8");
   }
 
-  readFirstBytes(path: string, maxBytes: number): string | null {
+  readLastBytes(path: string, maxBytes: number): string | null {
     let fd = -1;
     try {
       fd = openSync(path, "r");
-      const buf = Buffer.alloc(maxBytes);
-      const n = readSync(fd, buf, 0, buf.length, 0);
+      const size = fstatSync(fd).size;
+      const buf = Buffer.alloc(Math.min(maxBytes, size));
+      const n = readSync(fd, buf, 0, buf.length, size - buf.length);
       if (n === 0) return null;
       return buf.toString("utf-8", 0, n);
     } catch {

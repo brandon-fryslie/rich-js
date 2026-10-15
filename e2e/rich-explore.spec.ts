@@ -19,8 +19,8 @@ test("the selection moves with the arrow keys and the preview follows it", async
   await expect.poll(() => screen(page), LOADED).toContain("/home/demo/rich-js/.github");
   await page.keyboard.press("ArrowDown");
   await expect.poll(() => screen(page), LOADED).toContain("/home/demo/rich-js/docs");
-  // Past node_modules, src, test, .gitignore and LICENSE to package.json, previewed as JSON.
-  for (let i = 0; i < 6; i++) await page.keyboard.press("ArrowDown");
+  // Past src, test, .gitignore and LICENSE to package.json, previewed as JSON.
+  for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowDown");
   await expect.poll(() => screen(page), LOADED).toContain('"@promptctl/rich-js"');
 });
 

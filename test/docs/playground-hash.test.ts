@@ -7,7 +7,7 @@
 import { deflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { NO_SETUP, oneFile, type CardProgram, type CardSetup } from "../../docs/.vitepress/example-card.js";
-import { MAX_PROGRAM_BYTES, decodeProgram, encodeProgram } from "../../docs/.vitepress/playground-hash.js";
+import { MAX_LINK_CHARS, MAX_PROGRAM_BYTES, decodeProgram, encodeProgram } from "../../docs/.vitepress/playground-hash.js";
 import { EXAMPLE_SIZE, MAX_TERMINAL_CELLS } from "../../docs/.vitepress/terminal-size.js";
 
 const SETUP: CardSetup = {
@@ -81,6 +81,18 @@ describe("a playground hash", () => {
   it("is shorter than the program it carries", async () => {
     const code = CODE.repeat(20);
     expect((await encodeProgram(oneFile(SETUP, code))).length).toBeLessThan(code.length);
+  });
+
+  it("refuses a program whose link would be longer than a browser takes", async () => {
+    // Text deflate cannot shrink much: a pseudo-random run of base64's letters.
+    let seed = 1;
+    const noise = Array.from({ length: MAX_LINK_CHARS * 1.2 }, () => {
+      seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+      return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[(seed >>> 16) % 64];
+    }).join("");
+    await expect(encodeProgram(oneFile(NO_SETUP, noise))).rejects.toThrow(`a playground link is at most ${MAX_LINK_CHARS} characters`);
+    const fits = noise.slice(0, MAX_LINK_CHARS / 2);
+    expect((await encodeProgram(oneFile(NO_SETUP, fits))).length).toBeLessThanOrEqual(MAX_LINK_CHARS);
   });
 
   it("refuses a program longer than a link carries, whichever way it is going", async () => {
