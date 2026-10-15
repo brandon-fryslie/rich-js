@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-392",
+      "ref": "refs/pull/392/merge",
+      "sha": "caf12afad2d37e4e42de9cf040b0c246d4f746b0",
+      "timestamp": "2026-10-15T08:10:54.356Z",
+      "commits": [
+        {
+          "sha": "caf12afad2d37e4e42de9cf040b0c246d4f746b0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T02:09:11-06:00",
+          "message": "Merge dba2b9891fc54de3653d81cc1b22e25f3bfd6d11 into 2b6b3f631dc859632eb6336d8d91e928868bffe1\n"
+        },
+        {
+          "sha": "dba2b9891fc54de3653d81cc1b22e25f3bfd6d11",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T02:08:58-06:00",
+          "message": "Effected measures what its child draws; onColors and wheel read it (rich-effects-cbgp.071)\n\nAn effect is now handed what the element draws in the frame (`Drawn`: the\nink/ground pairs of its word cells, its own colours and fills, the depth and\ntheme), measured in Effected's render off the same per-segment reading its\ncells are drawn from. `onColors(loop, colors?)` settles its shares against\nthat measurement, memoized per set of colours drawn; `wheel(curve, z)` reads\nits colours and fills from it. `drawnOf` exposes the same measurement.\n\nStrip and FlexStrip stamp every join they draw with the `JOIN` owner, so a\nseam is left out of the words kept legible without the caller's help.\n\nThe effects-feel demo's copy of that measurement (drawnSubject's pairs and\ncolours, subjectUnder, fills, cellsOf, shown, seamed) is gone; its frames are\nbyte-identical across 4 themes x 3 depths x 4 loops x 10 instants.\n\n`shares` leaves the barrel: no caller needs it now.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-391",
       "ref": "refs/pull/391/merge",
       "sha": "90aeedade0d404839eaeba393714ecc7073da5eb",
