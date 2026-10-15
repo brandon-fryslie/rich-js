@@ -14,10 +14,10 @@ import { deflateSync } from "node:zlib";
 import { ATOM_ONE_DARK, ATOM_ONE_LIGHT } from "../src/themes/terminalThemes.js";
 import { NO_SETUP, oneFile } from "../docs/.vitepress/example-card.js";
 import { decodeProgram } from "../docs/.vitepress/playground-hash.js";
+import { pageErrors } from "./page-errors.js";
 
 async function open(page: Page, path = "playground.html"): Promise<string[]> {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  const errors = pageErrors(page);
   await page.goto(path);
   return errors;
 }

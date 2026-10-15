@@ -9,10 +9,10 @@
 import { test, expect, type Page } from "@playwright/test";
 import { XTERM } from "../docs/.vitepress/theme/xterm.js";
 import { EXAMPLE_THEMES } from "../docs/.vitepress/example-terminal.js";
+import { pageErrors } from "./page-errors.js";
 
 async function open(page: Page): Promise<string[]> {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  const errors = pageErrors(page);
   await page.goto("./");
   return errors;
 }
