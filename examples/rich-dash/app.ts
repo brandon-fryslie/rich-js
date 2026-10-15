@@ -2,17 +2,17 @@
  * rich-dash demo body — a dashboard of ticking widgets, in an `App` on the
  * alternate screen.
  *
- * The clock advances every widget's state; each frame draws every widget's
- * state, in a Panel, into the Layout cell named for it. The app owns the
- * terminal; this body owns the clock.
+ * Each frame period advances every widget's state; each frame draws every
+ * widget's state, in a Panel, into the Layout cell named for it. The app owns
+ * the terminal and the frame clock.
  *
  * [LAW:effects-at-boundaries] `run` takes a `TerminalHost` and a
- * `DashboardCapabilities` bag — FileSystem, SystemInfo, and the README path
- * the notes widget reads. Node and browser entries supply different values;
+ * `DashboardCapabilities` bag — Clock, FileSystem, SystemInfo, and the README
+ * path the notes widget reads. Node and browser entries supply different values;
  * the demo body has no environment-aware branches.
  */
 
-import { Layout, Panel, RichText, Style, type Renderable } from "@promptctl/rich-js";
+import { Layout, Panel, RichText, Style, frameRate, type Renderable } from "@promptctl/rich-js";
 import { App, keyName, type TerminalHost } from "@promptctl/rich-js/host";
 import { buildWidgets, LAYOUT, type DashboardCapabilities } from "./config.js";
 import { buildLayout } from "./layout.js";
@@ -79,19 +79,20 @@ export function run(host: TerminalHost, caps: DashboardCapabilities): Running {
 
   const layout = buildLayout(LAYOUT);
   const panes = bindPanes(layout, buildWidgets(caps));
-  const app = new App({ host, surface: "alternate", view: () => draw(layout, panes) });
-
-  let frame = 0;
-  let lastTickAt: number | undefined;
-  const tick = (): void => {
-    const now = Date.now();
-    const ctx = { frame, now, deltaMs: lastTickAt === undefined ? 0 : now - lastTickAt };
-    for (const pane of panes) pane.state = pane.widget.tick(pane.state, ctx);
-    frame += 1;
-    lastTickAt = now;
+  // [LAW:no-ambient-temporal-coupling] The app owns the one frame timer and
+  // reads the clock; the widgets advance on the frame time it hands the view.
+  // A frame repainted inside the period it already drew — a resize, say —
+  // shows the same state, and a suspended app paints nothing, so nothing
+  // advances until it resumes.
+  let period = Math.floor(caps.clock.now() * FPS);
+  const view = (t: number): Layout => {
+    const now = Math.floor(t * FPS);
+    if (now !== period) for (const pane of panes) pane.state = pane.widget.tick(pane.state);
+    period = now;
+    return draw(layout, panes);
   };
+  const app = new App({ host, surface: "alternate", view, clock: caps.clock, rate: frameRate(FPS) });
 
-  tick();
   app.onKey((press) => {
     switch (KEYS[keyName(press)]) {
       case "quit":
@@ -103,20 +104,8 @@ export function run(host: TerminalHost, caps: DashboardCapabilities): Running {
     }
   });
 
-  // [LAW:no-ambient-temporal-coupling] The clock lives exactly as long as the
-  // app: it starts before the first frame and is cleared on every way `run`
-  // settles.
-  const clock = setInterval(() => {
-    // [LAW:no-silent-failure] The timer calls `tick`, so a widget that throws
-    // there would reach neither `done` nor the terminal's hand-back.
-    try {
-      tick();
-    } catch (error) {
-      app.fail(error);
-      return;
-    }
-    app.refresh();
-  }, 1000 / FPS);
-  const done = app.run().finally(() => clearInterval(clock));
-  return { done, stop: () => app.stop() };
+  // The dashboard moves for as long as it runs; the app releases the timer
+  // on every way `run` settles.
+  app.animate();
+  return { done: app.run(), stop: () => app.stop() };
 }

@@ -7,6 +7,7 @@
  * build runner's vitals and this repository's README. `npm run dash` runs
  * `node.ts`, which reads the real ones.
  */
+import { systemClock } from "@promptctl/rich-js";
 import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
 import { MemoryFileSystem } from "../_capabilities/memory-file-system.js";
 import { run } from "./app.js";
@@ -16,6 +17,7 @@ import { StagedSystemInfo } from "./staging/vitals.js";
 // The card has no shell to return to, so say the program ended.
 const host = new NodeTerminalHost();
 const fs = new MemoryFileSystem({ home: "/home/demo", root: { kind: "directory", children: { "README.md": { kind: "file", content: README } } } });
-const sysinfo = new StagedSystemInfo(() => Date.now());
-await run(host, { fs, sysinfo, readmePath: fs.join(fs.homeDir(), "README.md") }).done;
+const clock = systemClock();
+const sysinfo = new StagedSystemInfo(() => clock.now() * 1000);
+await run(host, { clock, fs, sysinfo, readmePath: fs.join(fs.homeDir(), "README.md") }).done;
 host.write("rich-dash has quit.\n");

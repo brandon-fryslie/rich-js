@@ -7,6 +7,7 @@
  */
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { systemClock } from "@promptctl/rich-js";
 import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
 import { NodeFileSystem } from "../_capabilities/node-file-system.js";
 import { NodeSystemInfo } from "../_capabilities/node-system-info.js";
@@ -20,4 +21,4 @@ const readmePath =
   [fs.resolve(HERE, "../../README.md"), fs.resolve(HERE, "../../../README.md")]
     .find((p) => fs.exists(p)) ?? fs.resolve(HERE, "../../README.md");
 
-await run(new NodeTerminalHost(), { fs, sysinfo: new NodeSystemInfo(), readmePath }).done;
+await run(new NodeTerminalHost(), { clock: systemClock(), fs, sysinfo: new NodeSystemInfo(), readmePath }).done;
