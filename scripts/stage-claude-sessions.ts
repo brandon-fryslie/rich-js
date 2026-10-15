@@ -44,8 +44,11 @@ const SESSIONS: Readonly<Record<string, readonly string[]>> = {
 // bounds: the docs build refuses a demo past it, and this script prints what
 // the tree packs to. Most of that is the records' ids, which do not compress,
 // so the number of records weighs more than how much of each is kept.
-const KEEP_LINES = 5;
-const KEEP_CHARS = 320;
+// What the reader came to read — a turn's prose — keeps more than a tool's
+// output, which is most of the weight and is only skimmed.
+type Keep = { readonly lines: number; readonly chars: number };
+const KEEP: Keep = { lines: 5, chars: 320 };
+const KEEP_PROSE: Keep = { lines: 12, chars: 900 };
 
 /**
  * What the viewer draws: the records it renders (data/parser.ts), the title
@@ -57,6 +60,7 @@ const KEEP_CHARS = 320;
  * subagent call is drilled into by is kept.
  */
 const SHOWN_TYPES = new Set(["user", "assistant", "system", "custom-title", "ai-title"]);
+const TITLE_TYPES = new Set(["custom-title", "ai-title"]);
 const SHOWN_FIELDS = new Set([
   "type", "uuid", "parentUuid", "timestamp", "message", "subtype", "content", "level",
   "isMeta", "isSidechain", "isApiErrorMessage", "durationMs", "error", "promptId", "slug", "customTitle", "aiTitle",
@@ -83,7 +87,13 @@ function shownRecord(record: Record<string, unknown>): Record<string, unknown> {
 function shownRecords(text: string): Record<string, unknown>[] {
   const records = text.split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line) as Record<string, unknown>);
   const parentOf = new Map(records.flatMap((r) => (typeof r["uuid"] === "string" ? [[r["uuid"], typeof r["parentUuid"] === "string" ? r["parentUuid"] : null] as const] : [])));
-  const shown = records.filter((record) => SHOWN_TYPES.has(String(record["type"])));
+  // The sidebar reads only the newest title record of each kind, and a renamed
+  // session repeats its title on every turn; the older copies are dead weight.
+  const lastOfType = new Map(records.map((r, i) => [String(r["type"]), i]));
+  const shown = records.filter((record, i) => {
+    const type = String(record["type"]);
+    return SHOWN_TYPES.has(type) && (!TITLE_TYPES.has(type) || lastOfType.get(type) === i);
+  });
   const kept = new Set(shown.map((r) => r["uuid"]).filter((uuid): uuid is string => typeof uuid === "string"));
   const nearestKept = (uuid: string | null): string | null => {
     const seen = new Set<string>();
@@ -146,23 +156,28 @@ function scrub(text: string): string {
   return out;
 }
 
-function trim(text: string): string {
+function trim(text: string, keep: Keep): string {
   const lines = text.split("\n");
-  const kept = lines.length > KEEP_LINES ? lines.slice(0, KEEP_LINES).join("\n") : text;
-  const cut = kept.length > KEEP_CHARS ? kept.slice(0, KEEP_CHARS) : kept;
+  const kept = lines.length > keep.lines ? lines.slice(0, keep.lines).join("\n") : text;
+  // By code point, so a cut never leaves half a surrogate pair.
+  const points = Array.from(kept);
+  const cut = points.length > keep.chars ? points.slice(0, keep.chars).join("") : kept;
   if (cut === text) return text;
-  const lost = lines.length - cut.split("\n").length;
-  return `${cut}\n… ${lost > 0 ? `${lost} more lines` : `${text.length - cut.length} more characters`}`;
+  const lostLines = lines.length - kept.split("\n").length;
+  const lostChars = kept.length - cut.length;
+  const lost = [lostChars > 0 ? `${lostChars} more characters` : "", lostLines > 0 ? `${lostLines} more lines` : ""].filter(Boolean);
+  return `${cut}\n… ${lost.join(", ")}`;
 }
 
-function stage(value: unknown): unknown {
-  if (typeof value === "string") return scrub(trim(value));
-  if (Array.isArray(value)) return value.map(stage);
+function stage(value: unknown, keep: Keep = KEEP): unknown {
+  if (typeof value === "string") return trim(scrub(value), keep);
+  if (Array.isArray(value)) return value.map((v) => stage(v, keep));
   if (typeof value === "object" && value !== null) {
     const record = value as Record<string, unknown>;
     const thinking = record["type"] === "thinking";
+    const prose = record["type"] === "text" ? KEEP_PROSE : keep;
     return Object.fromEntries(
-      Object.entries(record).filter(([key]) => !(thinking && key === "signature")).map(([key, v]) => [scrub(key), stage(v)]),
+      Object.entries(record).filter(([key]) => !(thinking && key === "signature")).map(([key, v]) => [scrub(key), stage(v, prose)]),
     );
   }
   return value;
