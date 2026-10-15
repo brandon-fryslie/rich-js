@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-399",
-      "ref": "refs/pull/399/merge",
-      "sha": "6b08daaf2be755883eae9c8a456b5c407bde2104",
-      "timestamp": "2026-10-15T12:14:16.680Z",
-      "commits": [
-        {
-          "sha": "6b08daaf2be755883eae9c8a456b5c407bde2104",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T06:12:52-06:00",
-          "message": "Merge 25d7e4657e41b0ef50638c0306a9aa0ac4d7e106 into ca7d64f278e59f854beff3d3fbb43efc29b466e1\n"
-        },
-        {
-          "sha": "25d7e4657e41b0ef50638c0306a9aa0ac4d7e106",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T06:12:44-06:00",
-          "message": "chore(release): 0.22.0 (lockfile)"
-        },
-        {
-          "sha": "b0815b3c143219a18768a9a2e2c2fed19a6a7be1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T06:12:40-06:00",
-          "message": "chore(release): 0.22.0"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "ca7d64f278e59f854beff3d3fbb43efc29b466e1",
-      "timestamp": "2026-10-15T10:46:53.650Z",
+      "sha": "1586b751cab88738c6b9a6e2d17a9202c32c7e49",
+      "timestamp": "2026-10-15T12:24:37.939Z",
       "commits": [
         {
-          "sha": "ca7d64f278e59f854beff3d3fbb43efc29b466e1",
+          "sha": "1586b751cab88738c6b9a6e2d17a9202c32c7e49",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T04:45:17-06:00",
-          "message": "An Effect does its per-frame work once a frame, by its shape (rich-effects-caii) (#398)\n\n* An Effect does its per-frame work once a frame, by its shape (rich-effects-caii)\n\nEffect is (t, drawn) => (colors, cell) => colors, and Field and Visibility\nare staged the same way. Effected calls the frame stage once per render, so\nthe three closure caches that asked \"same frame as last call?\" (atShares,\nshimmer, sparkle) are gone, and veiled converts the theme's ground to OKLCH\nonce a frame instead of once a cell.\n\n* effects tests drive an effect a frame at a time, as Effected does (rich-effects-caii)"
+          "timestamp": "2026-10-15T06:23:24-06:00",
+          "message": "chore(release): 0.22.0 (#399)\n\n* chore(release): 0.22.0\n\n* chore(release): 0.22.0 (lockfile)"
         }
       ]
     },
