@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-401",
-      "ref": "refs/pull/401/merge",
-      "sha": "11cf46180e0bbf6ff6d523e7ddc82ce7577811a6",
-      "timestamp": "2026-10-15T16:40:28.032Z",
-      "commits": [
-        {
-          "sha": "11cf46180e0bbf6ff6d523e7ddc82ce7577811a6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T10:38:51-06:00",
-          "message": "Merge aefd11209b8ef78514ada9fbef2c6748e007fc12 into 76c21f3cff8c4cb736d57a69b44cd9ce5e7232ac\n"
-        },
-        {
-          "sha": "aefd11209b8ef78514ada9fbef2c6748e007fc12",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T10:38:46-06:00",
-          "message": "chore(release): 0.23.0\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "76c21f3cff8c4cb736d57a69b44cd9ce5e7232ac",
-      "timestamp": "2026-10-15T16:39:49.333Z",
+      "sha": "a2edd3c1c6d70438b367b6cad71e3de328c9b461",
+      "timestamp": "2026-10-15T16:41:22.552Z",
       "commits": [
         {
-          "sha": "76c21f3cff8c4cb736d57a69b44cd9ce5e7232ac",
+          "sha": "a2edd3c1c6d70438b367b6cad71e3de328c9b461",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T10:38:32-06:00",
-          "message": "confined takes several owners and skips cells none of them drew (rich-effects-lyam) (#400)\n\n* confined takes several owners and hands the effect only cells one of them drew (rich-effects-lyam)\n\nconfined(effect, ...owners) confines one effect to a set of owners in one\nwrapper; colorsOwnedBy reads ownership against a ReadonlySet. A cell no owner\ndrew is returned as drawn without calling the effect's second stage, so moving\nevery item but one costs one call a cell instead of one per item. A join cell's\nside that shows no neighbour is owned by a module-private NOBODY rather than\nnull, so no set can hold it.\n\n* confined: docs name an Effect and why one call beats per-item wrappers; header admits a wrapper may keep cells back; null for no owner (review)"
+          "timestamp": "2026-10-15T10:39:07-06:00",
+          "message": "chore(release): 0.23.0 (#401)"
         }
       ]
     },
