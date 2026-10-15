@@ -14,13 +14,11 @@ import {
   Oklch,
   Style,
   contrastRatio,
+  EFFECT_CATALOGUE,
   EFFECT_LIGHTS,
-  SHIMMER_WIDTH,
   pulse,
   drawnOf,
   onColors,
-  shimmer,
-  sparkle,
   type Renderable,
   type TerminalTheme,
 } from "../../../src/index.js";
@@ -260,11 +258,8 @@ describe("a strip under a pulse", () => {
 describe("every loop keeps the words readable", () => {
   const AA = 4.5;
   const { curves } = parseSettings([])!;
-  const made = {
-    shimmer: (span: number, z: number) => shimmer({ ...curves.shimmer, swing: 1 }, span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, z),
-    pulse: (_span: number, z: number) => pulse({ ...curves.pulse, swing: 1 }, EFFECT_LIGHTS.sun, z),
-    sparkle: (span: number, z: number) => sparkle({ ...curves.sparkle, swing: 1 }, span, EFFECT_LIGHTS.firefly, z),
-  };
+  // The loops that light, as the catalogue makes them, at full swing: the most any moves.
+  const lights = ["shimmer", "pulse", "sparkle"] as const;
   const grounds = [["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const;
   const depths = [["truecolor", ColorDepth.TRUECOLOR], ["256", ColorDepth.EIGHT_BIT]] as const;
   /** Whether a strip's joiner drew the cell. */
@@ -273,12 +268,12 @@ describe("every loop keeps the words readable", () => {
     return false;
   };
 
-  it.each(grounds.flatMap(([g, theme]) => depths.flatMap(([d, depth]) => Object.keys(made).map((loop) => [loop, g, d, theme, depth] as const))))(
+  it.each(grounds.flatMap(([g, theme]) => depths.flatMap(([d, depth]) => lights.map((loop) => [loop, g, d, theme, depth] as const))))(
     "%s on a %s ground at %s colours: no lettered cell falls below its resting contrast or AA",
     (loop, _g, _d, theme, depth) => {
       const at = new Console({ width: 200, colorSystem: depth === ColorDepth.TRUECOLOR ? "truecolor" : "256" }).options;
       for (const subject of [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, at))) {
-        const effect = onColors(made[loop as keyof typeof made](subject.span, subject.z));
+        const effect = EFFECT_CATALOGUE.loops[loop](subject, { ...curves[loop], swing: 1 });
         const contrasts = (t: number | undefined): number[] => {
           const drawn = t === undefined ? subject.renderable.render(subject.options) : new Effected(subject.renderable, effect, { t, key: loop, theme }).render(subject.options);
           const out: number[] = [];
@@ -300,7 +295,7 @@ describe("every loop keeps the words readable", () => {
         // Twelve periods, 36 moments a period: a sky can keep a subject's
         // shimmer under cloud for periods together, and a shorter window
         // never sees its brightest passes.
-        const P = curves[loop as keyof typeof made].seconds;
+        const P = curves[loop].seconds;
         for (let t = 0; t < 12 * P; t += P / 36) {
           // 8-bit rounding of a colour the shares settled exactly can cost a hair.
           contrasts(t).forEach((now, i) => expect(now).toBeGreaterThanOrEqual(Math.min(rest[i]!, AA) - 0.05));
