@@ -2,6 +2,49 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-391",
+      "ref": "refs/pull/391/merge",
+      "sha": "c99a3bfa3be681b8a6d9e8aa1c91f29b46faea59",
+      "timestamp": "2026-10-15T08:13:01.845Z",
+      "commits": [
+        {
+          "sha": "c99a3bfa3be681b8a6d9e8aa1c91f29b46faea59",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T08:11:26Z",
+          "message": "Merge 61c9233cbfda01d9af5bb471c92ef055d3e2f681 into 2b6b3f631dc859632eb6336d8d91e928868bffe1\n"
+        },
+        {
+          "sha": "61c9233cbfda01d9af5bb471c92ef055d3e2f681",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T02:11:20-06:00",
+          "message": "Held ESC: one holdingEscape, drain survives a throwing Escape handler, ESCAPE everywhere (rich-host-input-0c4f)\n"
+        },
+        {
+          "sha": "a2f21da080dd660cc617d76c42339e80420ba12e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T02:08:13-06:00",
+          "message": "Lone ESC alone holds on the timer: a sequence split after its introducer waits for its rest (rich-host-input-0c4f)\n"
+        },
+        {
+          "sha": "b5dc30b5e55e445f6d0f7edca25f0bdfe049a1f4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T02:05:21-06:00",
+          "message": "Held ESC: one rule in feed, the sink hears Escape after the buffer settles, and an ESC[/ESC O introducer that opens nothing is replayed as keys (rich-host-input-0c4f)\n"
+        },
+        {
+          "sha": "cb1c28341b16fcabe57d5e49fd09f8eb1d4fc925",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:59:20-06:00",
+          "message": "A held lone ESC is Escape unless the next chunk opens a CSI/SS3 sequence (rich-host-input-0c4f)\n\nA busy worker can queue the next key ahead of the 0ms hold timer, so\nEscape then G read as Alt+G. Only [ or O continues a split introducer;\nany other next chunk emits the held ESC first. Drops the toPass retry in\ne2e/rich-explore.spec.ts that worked around it.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "660172b653724983f44d1b5c952e3cb2f9a16504",
