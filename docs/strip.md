@@ -60,7 +60,7 @@ It measures as the one row it draws, and since that row never wraps, its width i
 Every built-in joiner is a `CellJoiner`, and what tells them apart is data: a `JoinShape` naming the cells drawn at each kind of join.
 
 - `seam` — between two neighbours.
-- `divider` — in the seam's place where the seam would not be seen: where any of its cells draws its glyph in a colour indistinct from the cell's own background (below). It has the width of the seam.
+- `divider` — in the seam's place where the seam would not be seen: where every one of its cells draws its glyph in a colour indistinct from the cell's own background (below). It has the width of the seam.
 - `lead` — where a run is entered from nothing.
 - `tail` — where a run leaves into nothing.
 
@@ -119,14 +119,14 @@ console.print(
 
 Each join looks at its two neighbours. A neighbour is missing at the strip's ends. It also counts as missing when any part of the shape paints with its background and it has none to paint: no `bgcolor`, or `… on default`, which is the transparent terminal default.
 
-- Both present: the `seam`, or the `divider` where a seam cell's glyph is indistinct from its background.
+- Both present: the `seam`, or the `divider` where every seam cell's glyph is indistinct from its background.
 - Only the right: the `lead`.
 - Only the left: the `tail`.
 - Neither: nothing.
 
 So a coloured run is capped the same way wherever it sits. A colourless item before a coloured one leads the coloured run in, exactly as the strip's start does. A coloured item before a colourless one tails out, and two colourless neighbours join with nothing. A shape that paints with neither neighbour's background, like `JOINERS.plain`, joins colourless items too.
 
-"Indistinct" is perceptual: two colours closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) are one. Each seam cell is measured, not the two neighbours' backgrounds, so `prism`, whose arrows each step a third of the way between them, divides where a one-cell arrow would still show. Colours are measured as drawn. A translucent colour is flattened onto the render substrate, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`), so two colours that 256 colours or ANSI draw as one entry are indistinct, however far apart they were computed. Named or indexed colours have no RGB value to measure, so two of them are one only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
+"Indistinct" is perceptual: two colours closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) are one. Each seam cell is measured, not the two neighbours' backgrounds, so `prism`, whose arrows each step a third of the way between them, divides where a one-cell arrow would still show. A cell drawn on the terminal's own background is always seen. Colours are measured as drawn. A glyph's translucent colour is flattened onto its cell's background, and a translucent background onto the render substrate, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`), so two colours that 256 colours or ANSI draw as one entry are indistinct, however far apart they were computed. Named or indexed colours have no RGB value to measure, so two of them are one only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
 
 A neighbour's background is read as drawn too, flattened onto the render substrate, so a cell painted in it continues that neighbour rather than compositing a second time over whatever the cell sits on.
 

@@ -177,7 +177,7 @@ export interface JoinCell {
 /**
  * The cells a joiner draws at each kind of join:
  *   • `seam` — between two neighbours;
- *   • `divider` — in the seam's place where a seam cell's ink is drawn
+ *   • `divider` — in the seam's place where every seam cell's ink is drawn
  *     indistinct from its own ground (see `SEAM_MIN_DELTA_E`), so the seam
  *     would vanish;
  *     the same width as `seam`;
@@ -328,19 +328,21 @@ function drawnGround(bg: ColorSpec): ColorSpec {
   return bg.flattenAlpha(SURFACE_BLACK);
 }
 
-// Ink the eye cannot tell from the ground it is drawn on. What is measured
-// is what is drawn — `Style.drawnColors`, the colours the writer encodes: the
-// ink flattened onto the ground and the ground onto the terminal's black,
-// both downgraded to the depth the render encodes at, so two colours
-// 256 colours round to one cube entry are the one entry they render as. A
-// colour whose RGB is the terminal theme's own (ANSI 0–15, a blend reaching
-// one) has no value here, so two of them are the same only when they are one
-// expression: the same palette slot — its `number`, never the name or the
-// depth that spells it ("red", "color(1)", an EIGHT_BIT spec on 0–15 are one
-// slot) — or the same blend, whose name spells each end by its slot for the
-// same reason.
-function vanishes(ink: ColorSpec, ground: ColorSpec, colorSystem: ColorDepth | null | undefined): boolean {
-  const { color, bgcolor } = new Style({ color: drawnGround(ink), bgcolor: ground }).drawnColors(colorSystem ?? ColorDepth.TRUECOLOR);
+// A cell whose ink the eye cannot tell from its ground, read off the style it
+// is drawn in. What is measured is what is drawn — `Style.drawnColors`, the
+// colours the writer encodes: the ink flattened onto the cell's own ground and
+// the ground onto the terminal's black, both downgraded to the depth the
+// render encodes at, so two colours that depth rounds to one entry are the one
+// entry they render as. A colour whose RGB is the terminal theme's own (ANSI
+// 0–15, a blend reaching one) has no value here, so two of them are the same
+// only when they are one expression: the same palette slot — its `number`,
+// never the name or the depth that spells it ("red", "color(1)", an EIGHT_BIT
+// spec on 0–15 are one slot) — or the same blend, whose name spells each end
+// by its slot for the same reason. A cell on the terminal's ground, or in
+// reverse video over it, has a colour nobody knows on one side, and is seen.
+function vanishes(style: Style, colorSystem: ColorDepth | null | undefined): boolean {
+  if (style.reverse) return false;
+  const { color, bgcolor } = style.drawnColors(colorSystem ?? ColorDepth.TRUECOLOR);
   if (color === undefined || bgcolor === undefined) return false;
   const av = color.fixedValue;
   const bv = bgcolor.fixedValue;
@@ -369,18 +371,6 @@ function resolvePaint(paint: Paint, edges: Edges, options: RenderOptions): Color
   return a && b && ColorSpec.blend(a, b, t);
 }
 
-// A seam cell whose ink the eye cannot tell from its own ground. Measured per
-// cell, as drawn, never across the two neighbours' grounds: a seam that steps
-// between them in thirds vanishes at a third of the difference that would
-// leave a one-cell seam visible. "ground" has no colour to measure, so a cell
-// with it on either side is never said to vanish.
-function inkVanishes(cell: JoinCell, edges: Edges, options: RenderOptions): boolean {
-  if (cell.fg === "ground" || cell.bg === "ground") return false;
-  const ink = resolvePaint(cell.fg, edges, options);
-  const ground = resolvePaint(cell.bg, edges, options);
-  return ink !== undefined && ground !== undefined && vanishes(ink, ground, options.colorSystem);
-}
-
 function cellStyle(cell: JoinCell, edges: Edges, options: RenderOptions): Style {
   // [LAW:dataflow-not-control-flow] "ground" is the absence of a colour on its
   // side; as the fg it is reverse video over the bg colour, so the glyph's ink
@@ -399,7 +389,7 @@ const shapeGlyphs = (shape: JoinShape): string => PARTS.flatMap((part) => shape[
  * Which part a join draws is read off its two neighbours. A neighbour is
  * missing at the strip's ends, and counts as missing — an endpoint — when the
  * shape paints with its ground anywhere and it has none to paint. With both present the
- * join is the seam, or the divider where any seam cell's ink is drawn
+ * join is the seam, or the divider where every seam cell's ink is drawn
  * indistinct from its ground at `options.colorSystem`; with only the right, the lead; with only
  * the left, the tail; with neither, nothing.
  *
@@ -426,10 +416,18 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
         const rightBg = paintableBg(edges.right?.bgcolor);
         const hasLeft = left !== null && (!reads.left || leftBg !== undefined);
         const hasRight = right !== null && (!reads.right || rightBg !== undefined);
-        const divides = hasLeft && hasRight && drawn.divider !== drawn.seam && drawn.seam.some((cell) => inkVanishes(cell, edges, options));
-        const part: Part | undefined = hasLeft && hasRight ? (divides ? "divider" : "seam") : hasRight ? "lead" : hasLeft ? "tail" : undefined;
-        if (part === undefined) return;
-        for (const [at, cell] of drawn[part].entries()) yield new Segment(pickGlyph(cell, part, index, at), cellStyle(cell, edges, options));
+        const styled = (part: Part) => drawn[part].map((cell, at) => new Segment(pickGlyph(cell, part, index, at), cellStyle(cell, edges, options)));
+        if (!hasLeft || !hasRight) {
+          if (hasLeft || hasRight) yield* styled(hasRight ? "lead" : "tail");
+          return;
+        }
+        // A seam is lost only when every cell of it is: one cell rounded into
+        // its ground at a shallow depth still leaves the others to show the
+        // step, and measuring per cell, not across the two grounds, divides a
+        // seam stepping in thirds where each third would not be seen.
+        const seam = styled("seam");
+        const lost = drawn.divider !== drawn.seam && seam.every((segment) => segment.style !== undefined && vanishes(segment.style, options.colorSystem));
+        yield* lost ? styled("divider") : seam;
       },
     };
   }

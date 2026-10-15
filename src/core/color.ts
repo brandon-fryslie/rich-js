@@ -689,10 +689,13 @@ export class ColorSpec {
     const a = from.fixedValue;
     const b = to.fixedValue;
     if (a !== undefined && b !== undefined) return ColorSpec.fromRgba(blendRgb(a, b, t));
-    // A palette slot blended with itself is that slot, at every t — not a
-    // blend whose name no comparison will ever match back to the slot.
-    const sameSlot = from.number !== undefined ? from.number === to.number : from.name === to.name;
-    return sameSlot ? from : new ColorBlend(from, to, t);
+    // A blend that draws as one of its ends is that end — not a blend whose
+    // name no comparison will ever match back to it: at t 0 or 1, or between
+    // one slot of one palette spelled twice.
+    if (t === 0) return from;
+    if (t === 1) return to;
+    const oneSlot = from.type === to.type && (from.number !== undefined ? from.number === to.number : from.name === to.name);
+    return oneSlot ? from : new ColorBlend(from, to, t);
   }
 
   /**

@@ -784,6 +784,21 @@ describe("JOINERS, the bundled definitions", () => {
     expect(render(new Strip([red, RED], JOINERS.torn))[1]!.style?.color?.name).toBe("white");
   });
 
+  it("prism keeps its arrows at sixteen colours, where one third rounds into an end but the others show", () => {
+    const seam = joinText(render(new Strip([RED, BLUE], JOINERS.prism), { ...OPTIONS, colorSystem: ColorDepth.STANDARD }), [RED, BLUE]);
+    expect(seam.slice(1, 4)).toEqual(["\ue0b0", "\ue0b0", "\ue0b0"]);
+  });
+
+  it("measures translucent ink composited over its own cell's ground, as drawn", () => {
+    const ink: JoinShape = { seam: [{ glyph: "x", fg: { edge: "left", part: "fg" }, bg: { edge: "right", part: "bg" } }], divider: [{ glyph: "|", fg: { edge: "left", part: "fg" }, bg: { edge: "right", part: "bg" } }], lead: [], tail: [] };
+    const j = new CellJoiner(ink, ink);
+    const faint = cell(" a ", "#ffffff04 on #3a3f58");
+    const solid = cell(" a ", "#ffffff on #3a3f58");
+    const b = cell(" b ", "white on #3a3f58");
+    expect(joinText(render(new Strip([faint, b], j)), [faint, b])).toEqual(["|"]);
+    expect(joinText(render(new Strip([solid, b], j)), [solid, b])).toEqual(["x"]);
+  });
+
   it("torn picks its quadrant pair per seam", () => {
     const items = Array.from({ length: 12 }, (_, i) => (i % 2 ? RED : BLUE));
     const tears = render(new Strip(items, JOINERS.torn)).filter((s) => s.text !== " red " && s.text !== " blue ").map((s) => s.text);

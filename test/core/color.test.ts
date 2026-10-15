@@ -721,6 +721,11 @@ describe("ColorSpec.blend()", () => {
     expect(ColorSpec.blend(red, ColorSpec.parse("color(1)"), 0.3)).toBe(red);
   });
 
+  it("is the end it draws as at t 0 or 1", () => {
+    expect(ColorSpec.blend(red, blue, 0)).toBe(red);
+    expect(ColorSpec.blend(red, blue, 1)).toBe(blue);
+  });
+
   it("draws as the mix of the shades a theme draws its ends in", () => {
     const mixed = ColorSpec.blend(blue, red, 0.25);
     expect(mixed.getTruecolor(ATOM_ONE_DARK)).toEqual(
