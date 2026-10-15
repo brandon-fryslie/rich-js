@@ -4,15 +4,22 @@
     {
       "version": "pr-397",
       "ref": "refs/pull/397/merge",
-      "sha": "b81a9f5f82a31f38c35ee850f1b6aa359f4e2382",
-      "timestamp": "2026-10-15T09:57:10.561Z",
+      "sha": "341142ff489aca804a31cee1bc0549f75aa293f2",
+      "timestamp": "2026-10-15T10:08:58.101Z",
       "commits": [
         {
-          "sha": "b81a9f5f82a31f38c35ee850f1b6aa359f4e2382",
+          "sha": "341142ff489aca804a31cee1bc0549f75aa293f2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T03:56:01-06:00",
-          "message": "Merge 3c806e8136cc0da900fed7f2cf2788217d3d0c90 into 66338ca059a759cd37b802a189ea227bc1007ec3\n"
+          "timestamp": "2026-10-15T10:07:22Z",
+          "message": "Merge 95acc1d8392ff83d177f982b652d8c85983399a6 into 66338ca059a759cd37b802a189ea227bc1007ec3\n"
+        },
+        {
+          "sha": "95acc1d8392ff83d177f982b652d8c85983399a6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T04:07:17-06:00",
+          "message": "shares reads a pair through the one writer Effected moves a slot with (rich-effects-x7y0)\n\nEffected.shows composites and matches through movedSpecs, the function\nrespec writes with, so a translucent touch no longer throws in matchOn\nand the share check sees the glyph laid on its moved ground. Below\ntruecolor every written colour is exact, so the 8-bit slack applies only\nat truecolor.\n"
         },
         {
           "sha": "3c806e8136cc0da900fed7f2cf2788217d3d0c90",
