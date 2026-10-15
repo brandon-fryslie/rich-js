@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-378",
-      "ref": "refs/pull/378/merge",
-      "sha": "c5c0f562f432e6e3c7ad1bcba4026914c1bc69ef",
-      "timestamp": "2026-10-15T04:17:36.587Z",
-      "commits": [
-        {
-          "sha": "c5c0f562f432e6e3c7ad1bcba4026914c1bc69ef",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T04:16:16Z",
-          "message": "Merge f958827b50b4c3ee16c367d2805829129eff8240 into 345b10f5a83028a3260fd3b25cecdaecf8250989\n"
-        },
-        {
-          "sha": "f958827b50b4c3ee16c367d2805829129eff8240",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T22:16:09-06:00",
-          "message": "fix(widgets): click-to-focus is a router step, left button only (rich-demos-k78j.pej)\n\nReview (high): focus moved in a handler registered first, ahead of the\nprogram's onMouse, contradicting docs; it re-ran widgetAt; any button\nfocused. Now dispatchMouse moves focus after program handlers, before\ndelivery, reusing its hit.\n"
-        },
-        {
-          "sha": "2db9544b88280d55fc770ebdab746c62ac8f4163",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T22:11:04-06:00",
-          "message": "feat(widgets): a press focuses the widget under it, focusOnClick removes it (rich-demos-k78j.pej)\n\nThe click-to-focus copies in rich-config and dropdown-demo are gone;\ndropdown-demo's status line shows the widget under the pointer, which\nkeeps widgetAt demonstrated.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "345b10f5a83028a3260fd3b25cecdaecf8250989",
