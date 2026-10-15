@@ -4,15 +4,22 @@
     {
       "version": "pr-398",
       "ref": "refs/pull/398/merge",
-      "sha": "13fe0da011b2512d69f1759cc4924a2b86994e7a",
-      "timestamp": "2026-10-15T10:29:01.207Z",
+      "sha": "21c5502bcd4835683bf339ddc9c9f12663651d46",
+      "timestamp": "2026-10-15T10:35:50.476Z",
       "commits": [
         {
-          "sha": "13fe0da011b2512d69f1759cc4924a2b86994e7a",
+          "sha": "21c5502bcd4835683bf339ddc9c9f12663651d46",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T04:27:21-06:00",
-          "message": "Merge 127f32782e43e0d891ef3feada888f55b52d91b8 into 5bb98818867463579bf3ea4e62c1043c2c32c30d\n"
+          "timestamp": "2026-10-15T10:34:11Z",
+          "message": "Merge 6d4151c8f60f36df17933deab1b257969a63d353 into 5bb98818867463579bf3ea4e62c1043c2c32c30d\n"
+        },
+        {
+          "sha": "6d4151c8f60f36df17933deab1b257969a63d353",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T04:34:06-06:00",
+          "message": "effects tests drive an effect a frame at a time, as Effected does (rich-effects-caii)\n"
         },
         {
           "sha": "127f32782e43e0d891ef3feada888f55b52d91b8",
