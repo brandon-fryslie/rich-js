@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-394",
-      "ref": "refs/pull/394/merge",
-      "sha": "2add40966946038753f15f55c7cab1e6dd864d8f",
-      "timestamp": "2026-10-15T09:01:28.251Z",
-      "commits": [
-        {
-          "sha": "2add40966946038753f15f55c7cab1e6dd864d8f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T08:59:55Z",
-          "message": "Merge a77b47a53c6f755a4d58bae9791957b833220a43 into 7dbb3e3861046fdadf79c218572a95086864f0a3\n"
-        },
-        {
-          "sha": "a77b47a53c6f755a4d58bae9791957b833220a43",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T02:59:50-06:00",
-          "message": "Say which owners confined can reach; pulsedOn names both arrows (rich-effects-cbgp.4y4)\n"
-        },
-        {
-          "sha": "26fa8933f15c421678342fa45eaece5d048557ef",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T02:55:01-06:00",
-          "message": "A seam cell owns its ink and its ground separately (rich-effects-cbgp.4y4)\n\nA powerline arrow is inked in the fill it points out of over the fill it\npoints into, so stamping the whole cell with one neighbour left the other\nitem's colour moving with it and the owner's own ground still. CellJoiner\nnow records, per cell, whose colour its ink and its ground show\n(colorsOwnedBy), and confined moves only the owner's sides. Join cells no\nlonger borrow an item's anchor at a join-relative column, so hit-testing\nand the anchor's position stay true.\n"
-        },
-        {
-          "sha": "1dba2901ae7f048f9d05ab1884b8ad80d7ee56de",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T02:43:20-06:00",
-          "message": "An effect can confine itself to one owner's cells (rich-effects-cbgp.4y4)\n\nEffectCell carries the cell's anchor, and confined(effect, owner) applies an\neffect only to the cells that owner drew. Strip and FlexStrip stamp every item's\ncells with the item (drawItem), and CellJoiner stamps each join cell inked in a\nneighbour's colour with that neighbour, so a seam's arrow moves with the item it\npoints out of; a cell inked in a role or a mix stays the join's alone.\n\nThe effects-feel demo's pulse now singles out its items by owner instead of by\nfill hex.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "7dbb3e3861046fdadf79c218572a95086864f0a3",
-      "timestamp": "2026-10-15T08:28:34.146Z",
+      "sha": "87726acbf87c1c27a284c448721c6e70f02e98c0",
+      "timestamp": "2026-10-15T09:08:58.574Z",
       "commits": [
         {
-          "sha": "7dbb3e3861046fdadf79c218572a95086864f0a3",
+          "sha": "87726acbf87c1c27a284c448721c6e70f02e98c0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T02:27:12-06:00",
-          "message": "Effected lights a Loop on the colours it draws (rich-effects-cbgp.071) (#392)\n\n* Effected measures what its child draws; onColors and wheel read it (rich-effects-cbgp.071)\n\nAn effect is now handed what the element draws in the frame (`Drawn`: the\nink/ground pairs of its word cells, its own colours and fills, the depth and\ntheme), measured in Effected's render off the same per-segment reading its\ncells are drawn from. `onColors(loop, colors?)` settles its shares against\nthat measurement, memoized per set of colours drawn; `wheel(curve, z)` reads\nits colours and fills from it. `drawnOf` exposes the same measurement.\n\nStrip and FlexStrip stamp every join they draw with the `JOIN` owner, so a\nseam is left out of the words kept legible without the caller's help.\n\nThe effects-feel demo's copy of that measurement (drawnSubject's pairs and\ncolours, subjectUnder, fills, cellsOf, shown, seamed) is gone; its frames are\nbyte-identical across 4 themes x 3 depths x 4 loops x 10 instants.\n\n`shares` leaves the barrel: no caller needs it now.\n\n* A lit colour no word cell shows takes the whole touch, not a throw mid-render (rich-effects-cbgp.071)\n\nshares refused a colour written in no pair. That was a caller's mistake when\nthe caller passed the pairs; now Effected measures them each frame, and a\nframe drawing a lit fill only under blanks, or not at all, threw from render."
+          "timestamp": "2026-10-15T03:07:26-06:00",
+          "message": "An effect can confine itself to one owner's cells (rich-effects-cbgp.4y4) (#394)\n\n* An effect can confine itself to one owner's cells (rich-effects-cbgp.4y4)\n\nEffectCell carries the cell's anchor, and confined(effect, owner) applies an\neffect only to the cells that owner drew. Strip and FlexStrip stamp every item's\ncells with the item (drawItem), and CellJoiner stamps each join cell inked in a\nneighbour's colour with that neighbour, so a seam's arrow moves with the item it\npoints out of; a cell inked in a role or a mix stays the join's alone.\n\nThe effects-feel demo's pulse now singles out its items by owner instead of by\nfill hex.\n\n* A seam cell owns its ink and its ground separately (rich-effects-cbgp.4y4)\n\nA powerline arrow is inked in the fill it points out of over the fill it\npoints into, so stamping the whole cell with one neighbour left the other\nitem's colour moving with it and the owner's own ground still. CellJoiner\nnow records, per cell, whose colour its ink and its ground show\n(colorsOwnedBy), and confined moves only the owner's sides. Join cells no\nlonger borrow an item's anchor at a join-relative column, so hit-testing\nand the anchor's position stay true.\n\n* Say which owners confined can reach; pulsedOn names both arrows (rich-effects-cbgp.4y4)"
         }
       ]
     },
