@@ -119,8 +119,8 @@ function buildProgress(): { progress: Progress; stages: Stage[] } {
   return { progress, stages };
 }
 
-/** The item a stage is on when it has done `completed` of its work. */
-const itemAt = (stage: Stage, completed: number) => stage.items[Math.min(stage.items.length - 1, Math.floor((completed / stage.total) * stage.items.length))]!;
+/** The index of the item a stage is on when it has done `completed` of its work. */
+const itemIndex = (stage: Stage, completed: number) => Math.min(stage.items.length - 1, Math.floor((completed / stage.total) * stage.items.length));
 
 function init(): JobState {
   const built = buildProgress();
@@ -149,10 +149,10 @@ function tick(state: JobState): JobState {
   state.rates.push(stage.completed - before);
   state.rates.splice(0, state.rates.length - RATES_KEPT);
   state.progress.updateTask(stage.taskId, { completed: stage.completed });
-  // A line when the stage reaches its next item, as a tool's log does.
-  if (before === 0 || itemAt(stage, before) !== itemAt(stage, stage.completed)) {
-    record(state, `${stage.description}  ${itemAt(stage, stage.completed)}`);
-  }
+  // A line for each item the stage reaches, as a tool's log does — every one
+  // this tick moved past included, however far it advanced.
+  const from = before === 0 ? 0 : itemIndex(stage, before) + 1;
+  for (const item of stage.items.slice(from, itemIndex(stage, stage.completed) + 1)) record(state, `${stage.description}  ${item}`);
 
   if (stage.completed >= stage.total) {
     record(state, `${stage.description} ok`);

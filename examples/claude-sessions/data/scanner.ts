@@ -1,7 +1,7 @@
 /**
  * Scans `<home>/.claude/projects/` for project directories and their session
- * JSONL files. Reads only stats + the first line of each file (for slug and
- * first-prompt extraction). Skips subagent/tool-results subdirectories —
+ * JSONL files. Reads only stats + the first bytes of each file (for the
+ * session's title and first prompt). Skips subagent/tool-results subdirectories —
  * only top-level `*.jsonl` in each project directory counts as a "session".
  *
  * [LAW:effects-at-boundaries] All filesystem access is via the injected
@@ -17,20 +17,25 @@ function projectsRoot(fs: FileSystem): string {
   return fs.join(fs.homeDir(), ".claude", "projects");
 }
 
-function extractMeta(firstLine: string | null): { slug: string | null; firstPrompt: string | null } {
-  if (!firstLine) return { slug: null, firstPrompt: null };
-  try {
-    const parsed = JSON.parse(firstLine) as Record<string, unknown>;
-    const slug = typeof parsed["slug"] === "string" ? parsed["slug"] as string : null;
-    let firstPrompt: string | null = null;
-    const message = parsed["message"] as Record<string, unknown> | undefined;
-    if (message && typeof message["content"] === "string") {
-      firstPrompt = (message["content"] as string).slice(0, 200);
+/**
+ * A session's title as Claude Code names it: the name a person gave it
+ * (`custom-title`), else the one it was given (`ai-title`), else its `slug`.
+ * Each is a record of its own, written near the top of the file; the first
+ * prompt is the first record's, when that is a prompt. The line the head's
+ * cut ends inside does not parse, and is passed over like any other.
+ */
+function extractMeta(head: readonly string[]): { title: string | null; firstPrompt: string | null } {
+  const records = head.flatMap((line) => {
+    try {
+      return [JSON.parse(line) as Record<string, unknown>];
+    } catch {
+      return [];
     }
-    return { slug, firstPrompt };
-  } catch {
-    return { slug: null, firstPrompt: null };
-  }
+  });
+  const field = (name: string) => records.map((r) => r[name]).find((v): v is string => typeof v === "string") ?? null;
+  const message = records[0]?.["message"] as Record<string, unknown> | undefined;
+  const firstPrompt = typeof message?.["content"] === "string" ? message["content"].slice(0, 200) : null;
+  return { title: field("customTitle") ?? field("aiTitle") ?? field("slug"), firstPrompt };
 }
 
 function prettifyDirName(name: string): string {
@@ -41,12 +46,6 @@ function prettifyDirName(name: string): string {
   return name.startsWith("-") ? name.slice(1) : name;
 }
 
-function firstLine(text: string | null): string | null {
-  if (text === null) return null;
-  const nl = text.indexOf("\n");
-  return nl >= 0 ? text.slice(0, nl) : text;
-}
-
 function scanSessions(fs: FileSystem, projectDir: string): SessionMeta[] {
   const out: SessionMeta[] = [];
   for (const name of fs.readDir(projectDir)) {
@@ -54,14 +53,13 @@ function scanSessions(fs: FileSystem, projectDir: string): SessionMeta[] {
     const full = fs.join(projectDir, name);
     const s = fs.stat(full);
     if (s === null || !s.isFile) continue;
-    const head = firstLine(fs.readFirstBytes(full, 4096));
-    const { slug, firstPrompt } = extractMeta(head);
+    const { title, firstPrompt } = extractMeta((fs.readFirstBytes(full, 4096) ?? "").split("\n"));
     out.push({
       path: full,
       fileName: name.replace(/\.jsonl$/, ""),
       size: s.size,
       mtime: s.mtime,
-      slug,
+      title,
       firstPrompt,
     });
   }

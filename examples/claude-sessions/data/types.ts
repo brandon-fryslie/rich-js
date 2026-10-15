@@ -88,7 +88,7 @@ export interface SessionMeta {
   readonly fileName: string;        // basename, no .jsonl
   readonly size: number;
   readonly mtime: Date;
-  readonly slug: string | null;     // best-effort first-line slug
+  readonly title: string | null;    // custom-title, else ai-title, else slug (scanner.ts)
   readonly firstPrompt: string | null;
 }
 

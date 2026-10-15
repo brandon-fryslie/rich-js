@@ -4,15 +4,31 @@ layout: page
 
 <script setup>
 import { useData } from 'vitepress'
-import { computed } from 'vue'
+import { computed, shallowRef, watch } from 'vue'
+import { decodeProgram } from '../.vitepress/playground-hash.ts'
 
 // [LAW:dataflow-not-control-flow] The page does not branch on which demo it
 // is — params is data flowing through one fixed template, the demo's card
 // (docs/.vitepress/demo-card.ts).
 const { params } = useData()
 
-// The card arrives as JSON ([demo].paths.ts says why).
-const card = computed(() => JSON.parse(params.value.card))
+// The card arrives as JSON without its program, which it carries packed in
+// its playground link ([demo].paths.ts says why); the card shows once that is
+// unpacked, and a page left before then never shows it.
+const card = shallowRef(null)
+watch(
+  () => params.value.card,
+  (json, _, onCleanup) => {
+    let current = true
+    onCleanup(() => { current = false })
+    card.value = null
+    const sent = JSON.parse(json)
+    decodeProgram(sent.tryIt.program).then((program) => {
+      if (current) card.value = { ...sent, program }
+    })
+  },
+  { immediate: true },
+)
 
 const sourceHref = computed(
   () => `https://github.com/brandon-fryslie/rich-js/tree/master/examples/${params.value.demo}`,
@@ -26,7 +42,7 @@ const sourceHref = computed(
     <a :href="sourceHref" target="_blank" rel="noopener">View source on GitHub ↗</a>
   </p>
 
-  <div class="vp-doc"><RichDemo :card="card" /></div>
+  <div class="vp-doc"><RichDemo v-if="card" :card="card" /></div>
 </div>
 
 <style scoped>

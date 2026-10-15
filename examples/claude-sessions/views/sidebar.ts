@@ -44,7 +44,7 @@ export function buildSidebar(state: AppState, viewport: Viewport, focused: boole
     const sessions = project?.sessions ?? [];
     sessions.forEach((s, i) => {
       const isSel = i === state.selectedSessionIndex;
-      const titleText = s.slug ?? s.fileName.slice(0, 8);
+      const titleText = s.title ?? s.fileName.slice(0, 8);
       const meta = `${fmtSize(s.size)} · ${fmtMtime(s.mtime)}`;
       const label = new RichText(`${titleText}  `, { end: "", noWrap: true, overflow: "ellipsis" });
       label.append(meta, "dim");

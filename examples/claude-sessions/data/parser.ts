@@ -27,6 +27,9 @@ const HIDDEN_TYPES = new Set([
   "queue-operation",
   "last-prompt",
   "pr-link",
+  "custom-title",
+  "ai-title",
+  "agent-name",
 ]);
 
 interface AssistantContent {
@@ -69,7 +72,10 @@ interface RawRecord {
   sourceToolAssistantUUID?: string;
 }
 
-/** Extract agentId for a Task tool_use. Prefer the structured
+/** The tool that runs a subagent: `Agent`, called `Task` before Claude Code renamed it. */
+const SUBAGENT_TOOLS = new Set(["Agent", "Task"]);
+
+/** Extract agentId for a subagent tool_use. Prefer the structured
  *  toolUseResult.agentId field on the wrapping user record; fall back to
  *  the tool_result content (sometimes echoed there). Null if none found. */
 function extractAgentId(
@@ -149,7 +155,8 @@ function dropHidden(lines: ReadonlyArray<RawLine>, showHidden: boolean): RawLine
  * content block of a message — its thinking, its text, each tool call — as a
  * record of its own, every one carrying the message's id, so consecutive
  * assistant lines sharing an id are one message: its content is theirs in
- * order, and the rest of it (stop_reason, usage) is the last one's.
+ * order, its place in the conversation (uuid, parentUuid) is the first one's,
+ * and the rest of it (stop_reason, usage) is the last one's.
  */
 function joinMessageRecords(lines: ReadonlyArray<RawLine>): RawLine[] {
   const out: RawLine[] = [];
@@ -163,9 +170,12 @@ function joinMessageRecords(lines: ReadonlyArray<RawLine>): RawLine[] {
       continue;
     }
     const blocks = (record: RawRecord) => (Array.isArray(record.message?.content) ? record.message.content : []);
+    // Each record is parented on the one before it, so only the first's
+    // uuid and parentUuid place the message in the conversation; a later
+    // one's would point at a part that is no longer a block of its own.
     out[out.length - 1] = {
       ...line,
-      parsed: { ...r, message: { ...r.message!, content: [...blocks(prevRec), ...blocks(r)] } },
+      parsed: { ...r, uuid: prevRec.uuid, parentUuid: prevRec.parentUuid, message: { ...r.message!, content: [...blocks(prevRec), ...blocks(r)] } },
     };
   }
   return out;
@@ -266,7 +276,7 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
         const isError = resolved?.content.is_error === true;
         if (resolved) consumedResultIndices.add(resolved.lineIndex);
 
-        if (toolName === "Task") {
+        if (SUBAGENT_TOOLS.has(toolName)) {
           const input = (tu.input ?? {}) as Record<string, unknown>;
           const resultUserRecord = resolved
             ? (lines[resolved.lineIndex]!.parsed as RawRecord)

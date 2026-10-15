@@ -18,6 +18,8 @@ import type { SystemInfo } from "../../_capabilities/system-info.js";
 const GIB = 1024 ** 3;
 const TOTAL_BYTES = 32 * GIB;
 
+// Not src/core/noise.ts: a card's program reaches the library only by its
+// published names, and the package does not export noise.
 /** A repeatable pseudo-random number in [0, 1) for integer `i` on channel `seed`. */
 function hash(i: number, seed: number): number {
   const x = Math.sin(i * 127.1 + seed * 311.7) * 43758.5453;
@@ -34,19 +36,20 @@ function noise(x: number, seed: number): number {
 
 const wave = (t: number, period: number, phase: number) => Math.sin((2 * Math.PI * t) / period + phase);
 
+// Collection cycle `i` starts at `i * CYCLE_SPACING` plus a jitter under the
+// spacing, so cycles stay in order and run from 4 s to 16 s — found from `t` by
+// one division, however long the card has been open.
+const CYCLE_SPACING = 10;
+const CYCLE_JITTER = 6;
+const cycleStart = (i: number) => i * CYCLE_SPACING + CYCLE_JITTER * hash(i, 2);
+
 /** The heap's size at `t`: within each collection cycle it grows from a floor; at the cycle's end it is collected. */
 function heapBytes(t: number): number {
-  let start = 0;
-  for (let cycle = 0; ; cycle++) {
-    const length = 4 + 13 * hash(cycle, 2);
-    if (t < start + length) {
-      const floor = (0.3 + 0.5 * hash(cycle, 3)) * GIB;
-      const rate = (0.12 + 0.3 * hash(cycle, 4)) * GIB;
-      const age = t - start;
-      return floor + rate * age + 0.05 * GIB * noise(t * 2, 5);
-    }
-    start += length;
-  }
+  const slot = Math.floor(t / CYCLE_SPACING);
+  const cycle = t < cycleStart(slot) ? slot - 1 : slot;
+  const floor = (0.3 + 0.5 * hash(cycle, 3)) * GIB;
+  const rate = (0.12 + 0.3 * hash(cycle, 4)) * GIB;
+  return floor + rate * (t - cycleStart(cycle)) + 0.05 * GIB * noise(t * 2, 5);
 }
 
 export interface Vitals {

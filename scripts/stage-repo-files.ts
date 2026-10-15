@@ -5,7 +5,8 @@
  * rich-dash's notes panel renders.
  *
  * Run by hand (`node scripts/stage-repo-files.ts`) after those files change;
- * its output is committed. `PICKED` is the pick: sources from
+ * its output is committed, and test/examples/staged-repo-files.test.ts fails
+ * until it is re-run. `PICKED` is the pick: sources from
  * src/core and src/renderables, a few docs pages and their site's theme, the
  * manifest and a JSON config, CI, tests, an extensionless LICENSE, and a real
  * PNG four directories down in node_modules — one of each kind the preview

@@ -90,7 +90,7 @@ export function searchGlobal(
           sessionIndex: si,
           sessionPath: session.path,
           projectDisplayName: project.displayName,
-          sessionLabel: session.slug ?? session.fileName.slice(0, 8),
+          sessionLabel: session.title ?? session.fileName.slice(0, 8),
           lineNumber: li + 1,
           snippet: makeSnippet(line, pos),
           uuid: extractUuid(line),

@@ -12,6 +12,7 @@ import {
 import { scanProjects } from "../../../examples/claude-sessions/data/scanner.js";
 import { loadSession } from "../../../examples/claude-sessions/data/loader.js";
 import { searchGlobal } from "../../../examples/claude-sessions/data/global-search.js";
+import { STAGED_HOME } from "../../../examples/claude-sessions/staging/projects.js";
 
 const FIRST_LINE = JSON.stringify({
   type: "user",
@@ -89,7 +90,7 @@ function buildTree(): MemoryTree {
 }
 
 describe("scanProjects against MemoryFileSystem", () => {
-  it("discovers projects + sessions and pulls slug from first line", () => {
+  it("discovers projects + sessions and titles a session by its slug when it has no other title", () => {
     const fs = new MemoryFileSystem(buildTree());
     const projects = scanProjects(fs);
     expect(projects).toHaveLength(2);
@@ -100,10 +101,32 @@ describe("scanProjects against MemoryFileSystem", () => {
     expect(projects[0]?.sessions).toHaveLength(1);
 
     const session = projects[0]!.sessions[0]!;
-    expect(session.slug).toBe("rich-js-port");
+    expect(session.title).toBe("rich-js-port");
     expect(session.firstPrompt).toBe("Hello world prompt");
     expect(session.size).toBeGreaterThan(0);
     expect(session.fileName).toBe("fixture-session");
+  });
+
+  it("titles a session by the name a person gave it over the one it was given", () => {
+    const content = [
+      { type: "ai-title", aiTitle: "Given name" },
+      { type: "custom-title", customTitle: "chosen name" },
+      { type: "user", uuid: "u1", slug: "a-slug", message: { role: "user", content: "hi" } },
+    ].map((r) => JSON.stringify(r)).join("\n");
+    const fs = new MemoryFileSystem({
+      home: "/home/demo",
+      root: { kind: "directory", children: { ".claude": { kind: "directory", children: { projects: { kind: "directory", children: {
+        "-p": { kind: "directory", children: { "s.jsonl": { kind: "file", mtime: new Date(0), content } } },
+      } } } } } },
+    });
+    expect(scanProjects(fs)[0]!.sessions[0]!.title).toBe("chosen name");
+  });
+
+  it("titles every staged session the card opens on", () => {
+    const sessions = scanProjects(new MemoryFileSystem(STAGED_HOME)).flatMap((p) => p.sessions);
+    expect(sessions.length).toBeGreaterThan(0);
+    expect(sessions.filter((s) => s.title === null).map((s) => s.fileName)).toEqual([]);
+    expect(sessions.find((s) => s.fileName.startsWith("5c83db1d"))?.title).toBe("rich example card");
   });
 
   it("returns empty when ~/.claude/projects is missing", () => {
