@@ -429,19 +429,43 @@ describe("WidgetApp defaults", () => {
     expect(second.checked).toBe(true);
   });
 
-  it("hands Ctrl+C to the program, with quitKeys empty", async () => {
-    const host = scriptedHost({ cols: 20, rows: 3 });
-    const app = new WidgetApp({ host, surface: "alternate", view: () => text("x"), quitKeys: [] });
-    const heard: string[] = [];
-    app.onKey((event) => heard.push(event.key), { priority: "high" });
-    void app.run();
+  it("leaves focus where it was on a press a widget cannot take", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const first = new Checkbox({ label: "first", id: "first" });
+    const off = new Checkbox({ label: "off", id: "off", disabled: true });
+    const app = start(host, () => new Group(first, text("\n"), off));
     await tick();
 
-    host.type("\x03");
+    const at = cellOf(app, "off");
+    host.type(click(at.x, at.y));
 
-    expect(heard).toEqual(["c"]);
-    expect(app.phase).toBe("running");
-    app.stop();
+    expect(app.focusManager.current).toBe(first);
+  });
+
+  it("leaves focus where it was on a right-button press", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const { view, first } = pair();
+    const app = start(host, () => view);
+    await tick();
+
+    const at = cellOf(app, "second");
+    host.type(`\x1b[<2;${at.x + 1};${at.y + 1}M`);
+
+    expect(app.focusManager.current).toBe(first);
+  });
+
+  it("runs the program's onMouse handlers before focus moves", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const { view, first } = pair();
+    const app = start(host, () => view);
+    const seen: unknown[] = [];
+    app.onMouse((event) => { if (event.type === "mouse_down") seen.push(app.focusManager.current); });
+    await tick();
+
+    const at = cellOf(app, "second");
+    host.type(click(at.x, at.y));
+
+    expect(seen).toEqual([first]);
   });
 });
 
@@ -550,6 +574,21 @@ describe("WidgetApp wheel", () => {
 });
 
 describe("WidgetApp lifecycle", () => {
+  it("hands Ctrl+C to the program, with quitKeys empty", async () => {
+    const host = scriptedHost({ cols: 20, rows: 3 });
+    const app = new WidgetApp({ host, surface: "alternate", view: () => text("x"), quitKeys: [] });
+    const heard: string[] = [];
+    app.onKey((event) => heard.push(event.key), { priority: "high" });
+    void app.run();
+    await tick();
+
+    host.type("\x03");
+
+    expect(heard).toEqual(["c"]);
+    expect(app.phase).toBe("running");
+    app.stop();
+  });
+
   it("repaints when an observable the view read changes", async () => {
     const host = scriptedHost({ cols: 20, rows: 3 });
     const label = observable.box("before");

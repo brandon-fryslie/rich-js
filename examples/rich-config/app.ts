@@ -403,7 +403,6 @@ export function runDemo(host: TerminalHost): DemoHandle {
 
   const app = new WidgetApp({ host, surface: "alternate", view: () => view });
 
-
   const disposeFilter = autorun(() => {
     const darkOnly = tgDarkOnly.on;
     const canonicalTheme = THEMES[state.selectedThemeIdx]!;

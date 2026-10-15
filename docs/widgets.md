@@ -60,7 +60,7 @@ Ctrl+C stops the app, as it stops any [`App`](/app#keys-and-the-pointer), whatev
 
 **Repainting is automatic.** The app tracks every MobX observable read while it draws a frame — a label, `focused`, `checked`, or the state your `view` function reads to decide what to show — and paints a new frame when one changes. Changes made in the same task land in one frame. A change no observable carries — a `Viewport` your key handler scrolled — asks for its frame with `app.refresh()`.
 
-**A press focuses the widget under it**, before that widget hears the press; a widget that cannot take focus leaves focus where it was. `focusOnClick: false` turns that off, leaving focus to Tab and to your own handlers.
+**A left-button press focuses the widget under it**, before that widget hears the press; a widget that cannot take focus leaves focus where it was. `focusOnClick: false` turns that off, leaving focus to Tab and to your own handlers — and an expanded `Dropdown`, which closes when it loses focus, then stays open through a press elsewhere.
 
 **The pointer reaches the widget that drew the cell under it**, as a `WidgetMouseEvent` in the widget's own coordinates: `x` and `y` are the column and row of the cell in its own output, and `over` says whether it drew that cell. A press starts a drag the widget keeps until the button is released, measured from where the widget is painted now, so a slider dragged past its end reads a column beyond its width. Hover is the widget under the pointer on the frame on screen, read again after every frame, so a widget that appears under a still pointer is hovered and one that goes stops being. The wheel is not a widget's: it scrolls the innermost [`Viewport`](/viewport) under the pointer that can move that way a line a notch, including when the pointer is over a widget that viewport shows, and paints the next frame. Only the alternate surface reports the pointer: an inline frame does not know which row of the screen it starts on, so it gets keys alone.
 
@@ -118,7 +118,7 @@ app.onKey((event) => {
 });
 ```
 
-Pointer events do not use the chain. Subscribe with `app.onMouse(handler)` and your handler runs *first*, in terminal cells — before the app finds the widget under the pointer, updates hover state, and delivers the event to it. That order makes `onMouse` the place to intercept: `widgetAt(app.frame, event.x, event.y)` says which widget drew the cell, and the widget still receives its own event afterwards.
+Pointer events do not use the chain. Subscribe with `app.onMouse(handler)` and your handler runs *first*, in terminal cells — before the app finds the widget under the pointer, updates hover state, moves focus to it on a press, and delivers the event to it. That order makes `onMouse` the place to intercept: `widgetAt(app.frame, event.x, event.y)` says which widget drew the cell, and the widget still receives its own event afterwards.
 
 ## Layout
 

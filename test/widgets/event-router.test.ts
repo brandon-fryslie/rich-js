@@ -108,7 +108,7 @@ function makeHarness(initial: StubWidget[] = []): Harness {
     refresh: () => {},
   };
 
-  const router = new EventRouter({ source });
+  const router = new EventRouter({ source, focusOnClick: false });
   const parser = parserFor(router);
 
   const keyEvents: KeyEvent[] = [];
@@ -548,7 +548,7 @@ describe("EventRouter — the wheel", () => {
       },
       refresh: () => refreshes++,
     };
-    const parser = parserFor(new EventRouter({ source }));
+    const parser = parserFor(new EventRouter({ source, focusOnClick: false }));
     return { feed: (bytes) => parser.feed(bytes), refreshes: () => refreshes };
   }
 
