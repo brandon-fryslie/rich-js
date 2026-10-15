@@ -301,19 +301,6 @@ describe("EventRouter — key parsing", () => {
     expect(h.keyEvents.every((e) => !e.meta)).toBe(true);
   });
 
-  // The same race with `[` or `O` next: the ESC holds an introducer that
-  // opens no sequence, and the hold timer gives up on it.
-  it.each([
-    ["[", ["escape", "["]],
-    ["O", ["escape", "o"]],
-  ])("emits a held ESC then %s as keys when no sequence follows", (next, keys) => {
-    h.feed("\x1b");
-    h.feed(next);
-    expect(h.keyEvents).toEqual([]);
-    h.parser.flush();
-    expect(h.keyEvents.map((e) => e.key)).toEqual(keys);
-  });
-
   it("drains nothing after a held ESC whose Escape resets the parser", () => {
     const keys: string[] = [];
     const parser: InputParser = new InputParser({

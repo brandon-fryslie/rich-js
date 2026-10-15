@@ -16,10 +16,9 @@
  *
  * Lone-ESC handling: a bare `\x1b` is ambiguous (escape key vs. start of a
  * CSI sequence). When the buffer is drained but ends with a lone ESC, the
- * parser defers emission via setTimeout(0), and likewise an ESC followed only
- * by `[` or `O`. A next chunk opening with `[` or `O` extends a lone ESC; any
- * other next chunk emits it as Escape first. When the timer runs, or on
- * `flush()`, the held ESC is Escape and the bytes after it are keys.
+ * parser defers emission via setTimeout(0). A next chunk opening with `[` or
+ * `O` extends the sequence; any other next chunk emits the ESC as Escape
+ * first. `flush()` drains it synchronously.
  */
 
 /** A key as the terminal reported it: plain data, with no say over who hears it. */
@@ -204,13 +203,6 @@ function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
   return merged;
 }
 
-// A lone ESC, or one with only a CSI/SS3 introducer after it: bytes that are
-// Escape (then `[` or `O`) unless more of a sequence follows.
-function holdsEscape(buf: Uint8Array): boolean {
-  if (buf[0] !== ESC) return false;
-  return buf.length === 1 || (buf.length === 2 && (buf[1] === LBRACKET || buf[1] === O_BYTE));
-}
-
 // Result of attempting to consume one event from the head of the buffer.
 type ConsumeResult =
   | { kind: "key"; bytes: number; event: KeyPress }
@@ -246,9 +238,10 @@ export class InputParser {
     this.buffer = concatBytes(escaped ? EMPTY_BYTES : this.buffer, next);
     if (escaped) this.sink.key(ESCAPE);
     this.drain();
-    // [LAW:dataflow-not-control-flow] If a held ESC remains, defer emission
-    // until the next macrotask so a follow-up chunk can extend it.
-    if (holdsEscape(this.buffer)) {
+    // [LAW:dataflow-not-control-flow] If a lone ESC remains, defer emission
+    // until the next macrotask so a follow-up chunk can extend it. Only a lone
+    // one: a sequence split after `ESC [` waits for its rest, however late.
+    if (this.buffer.length === 1 && this.buffer[0] === ESC) {
       this.escTimer = setTimeout(() => {
         this.escTimer = undefined;
         this.flush();
@@ -256,16 +249,13 @@ export class InputParser {
     }
   }
 
-  /**
-   * Force a held ESC out of the buffer as Escape, and what it held after it —
-   * a `[` or `O` that opened no sequence — as the keys they are.
-   */
+  /** Force any pending lone ESC out of the buffer. */
   flush(): void {
     this.cancelEscape();
-    if (!holdsEscape(this.buffer)) return;
-    this.buffer = this.buffer.subarray(1);
-    this.sink.key(ESCAPE);
-    this.drain();
+    if (this.buffer.length === 1 && this.buffer[0] === ESC) {
+      this.buffer = EMPTY_BYTES;
+      this.sink.key(ESCAPE);
+    }
   }
 
   /** Drop what is buffered and any pending lone ESC: the parser as constructed. */
