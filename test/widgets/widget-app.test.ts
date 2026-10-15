@@ -745,11 +745,14 @@ describe("WidgetApp and the wheel", () => {
   it("scrolls the viewport under the pointer, and passes nothing outward", async () => {
     const host = scriptedHost({ cols: 10, rows: 4 });
     const viewport = new Viewport(new RichText("0\n1\n2\n3\n4"), { rows: 2 });
-    start(host, () => viewport);
+    let frames = 0;
+    start(host, () => (frames++, viewport));
     await tick();
+    const before = frames;
     host.type(DOWN);
     await tick();
     expect(viewport.offset).toBe(1);
+    expect(frames - before).toBe(1);
     expect(host.passed()).toEqual([]);
   });
 
@@ -757,12 +760,26 @@ describe("WidgetApp and the wheel", () => {
     const host = scriptedHost({ cols: 10, rows: 4 });
     const viewport = new Viewport(new RichText("0\n1\n2\n3\n4"), { rows: 2 });
     // A Group gives the viewport no region, so it shows its own two rows.
-    start(host, () => new Group(viewport, text("\nbelow")));
+    let frames = 0;
+    start(host, () => (frames++, new Group(viewport, text("\nbelow"))));
     await tick();
+    const before = frames;
     host.type(UP); // at the start already
     host.type(BELOW); // under the viewport
     await tick();
     expect(viewport.offset).toBe(0);
+    expect(frames).toBe(before);
     expect(host.passed()).toEqual([-1, 1]);
+  });
+
+  it("offers onWheel a turn no viewport moved with, and passes on only what it does not move", async () => {
+    const host = scriptedHost({ cols: 10, rows: 4 });
+    const app = start(host, () => text("still"));
+    await tick();
+    const heard: number[] = [];
+    app.onWheel((wheel) => (heard.push(wheel.lines), wheel.lines > 0));
+    host.type(DOWN + UP);
+    expect(heard).toEqual([1, -1]);
+    expect(host.passed()).toEqual([-1]);
   });
 });

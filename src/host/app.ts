@@ -115,7 +115,13 @@ export interface Wheel {
 
 // The sideways wheel is not here: nothing scrolls by columns, inside an app or
 // around it.
-const WHEEL_LINES: Partial<Record<ScreenMouseEvent["type"], number>> = { scroll_up: -1, scroll_down: 1 };
+const WHEEL_LINES = { scroll_up: -1, scroll_down: 1 } as const;
+type WheelTurn = Extract<ScreenMouseEvent, { type: keyof typeof WHEEL_LINES }>;
+
+/** A pointer event `onMouse` hears: every one but the vertical wheel, which is `onWheel`'s. */
+export type AppMouseEvent = Exclude<ScreenMouseEvent, WheelTurn>;
+
+const isWheelTurn = (event: ScreenMouseEvent): event is WheelTurn => event.type in WHEEL_LINES;
 
 export class App {
   private readonly host: TerminalHost;
@@ -139,7 +145,7 @@ export class App {
   private subscriptions: Unsubscribe[] = [];
   private readonly paintHandlers = new Set<(frame: readonly (readonly Segment[])[]) => void>();
   private readonly keyHandlers = new Set<(press: KeyPress) => void>();
-  private readonly mouseHandlers = new Set<(event: ScreenMouseEvent) => void>();
+  private readonly mouseHandlers = new Set<(event: AppMouseEvent) => void>();
   private readonly wheelHandlers = new Set<(wheel: Wheel) => boolean>();
   private readonly quitKeys: ReadonlySet<string>;
   private readonly input = new InputParser({
@@ -303,10 +309,11 @@ export class App {
   }
 
   /**
-   * Hear every pointer event, in terminal cells. Only the alternate surface
-   * reports the pointer. A handler that throws fails the app.
+   * Hear every pointer event but the vertical wheel, which is `onWheel`'s,
+   * in terminal cells. Only the alternate surface reports the pointer. A
+   * handler that throws fails the app.
    */
-  onMouse(handler: (event: ScreenMouseEvent) => void): Unsubscribe {
+  onMouse(handler: (event: AppMouseEvent) => void): Unsubscribe {
     this.mouseHandlers.add(handler);
     return () => this.mouseHandlers.delete(handler);
   }
@@ -380,16 +387,18 @@ export class App {
   }
 
   // [LAW:dataflow-not-control-flow] One rule for every app: a wheel turn
-  // nothing in the app moved with goes outward. An app with no wheel handler
-  // passes every turn, so whether the page scrolls never depends on whether
-  // the program reads the pointer, or on which kind of app it is.
+  // nothing in the app moved with goes outward. The vertical wheel reaches the
+  // program through `onWheel` alone, so moving something with it and claiming
+  // the turn are one act, and an app that reads no wheel passes every turn.
+  // [LAW:single-enforcer] Only a running app holds the terminal, so only a
+  // running app is offered a turn or passes one on.
   private mouse(event: ScreenMouseEvent): void {
-    this.hear(this.mouseHandlers, event);
+    if (!isWheelTurn(event)) return this.hear(this.mouseHandlers, event);
+    if (this._phase !== "running") return;
     const lines = WHEEL_LINES[event.type];
-    if (lines === undefined) return;
     const wheel: Wheel = { x: event.x, y: event.y, lines };
     try {
-      const moved = [...this.wheelHandlers].some((handler) => this._phase !== "stopped" && handler(wheel));
+      const moved = [...this.wheelHandlers].some((handler) => this._phase === "running" && handler(wheel));
       if (!moved && this._phase === "running") this.host.passWheel(lines);
     } catch (error) {
       this.fail(error);

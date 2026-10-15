@@ -28,7 +28,7 @@ import { Reaction } from "mobx";
 import { Segment } from "../core/segment.js";
 import type { Renderable, RenderOptions } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
-import { App, type AppOptions, type AppPhase } from "../host/app.js";
+import { App, type AppOptions, type AppPhase, type Wheel } from "../host/app.js";
 import { DefaultFocusManager } from "./focus-manager.js";
 import { EventRouter } from "./event-router.js";
 import { footprintOf, ownersOn } from "./hit.js";
@@ -39,7 +39,7 @@ import type {
   KeyEvent,
   KeyHandlerOptions,
 } from "./types.js";
-import type { ScreenMouseEvent } from "../host/input.js";
+import type { AppMouseEvent } from "../host/app.js";
 import { WidgetBase } from "./widget-base.js";
 
 export interface WidgetAppOptions extends AppOptions {
@@ -146,9 +146,18 @@ export class WidgetApp implements FrameSource {
     return this.router.onKey(handler, options);
   }
 
-  /** Hear every pointer event, in terminal cells, before any widget does. */
-  onMouse(handler: (event: ScreenMouseEvent) => void): Unsubscribe {
+  /** Hear every pointer event but the vertical wheel, in terminal cells, before any widget does. */
+  onMouse(handler: (event: AppMouseEvent) => void): Unsubscribe {
     return this.router.onMouse(handler);
+  }
+
+  /**
+   * Offer each wheel turn the viewport under the pointer did not move with to
+   * `handler`, as `App.onWheel` does: it returns whether it moved something,
+   * and a turn nothing moved with is passed outward.
+   */
+  onWheel(handler: (wheel: Wheel) => boolean): Unsubscribe {
+    return this.app.onWheel(handler);
   }
 
   private compose(view: () => Renderable, options: RenderOptions): Segment[] {

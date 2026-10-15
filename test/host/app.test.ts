@@ -677,6 +677,30 @@ describe("App and the wheel", () => {
     expect(host.passed()).toEqual([]);
   });
 
+  it("does not tell onMouse about the vertical wheel, which is onWheel's", () => {
+    const host = scriptedHost();
+    const target = app(host, () => text("still"));
+    void target.run();
+    const heard: string[] = [];
+    target.onMouse((event) => heard.push(event.type));
+    host.type(DOWN + "\x1b[<66;3;2M");
+    expect(heard).toEqual(["scroll_left"]);
+  });
+
+  it("while suspended, offers no handler a turn and passes none outward", async () => {
+    const host = scriptedHost();
+    const target = app(host, () => text("still"));
+    void target.run();
+    const heard: unknown[] = [];
+    target.onWheel((wheel) => (heard.push(wheel), true));
+    const suspended = target.suspend();
+    host.type(DOWN);
+    host.resume();
+    await suspended;
+    expect(heard).toEqual([]);
+    expect(host.passed()).toEqual([]);
+  });
+
   it("fails with the error a wheel handler throws", async () => {
     const host = scriptedHost();
     const target = new App({ host, surface: "alternate", view: () => text("still") });

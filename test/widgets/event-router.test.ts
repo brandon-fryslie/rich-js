@@ -396,11 +396,11 @@ describe("EventRouter — mouse parsing", () => {
     ]);
   });
 
-  it("parses SGR scroll wheel", () => {
+  it("parses SGR sideways scroll", () => {
     const h = makeHarness();
-    h.feed("\x1b[<64;1;1M"); // scroll up
-    h.feed("\x1b[<65;1;1M"); // scroll down
-    expect(h.mouseEvents.map((e) => e.type)).toEqual(["scroll_up", "scroll_down"]);
+    h.feed("\x1b[<66;1;1M"); // scroll left
+    h.feed("\x1b[<67;1;1M"); // scroll right
+    expect(h.mouseEvents.map((e) => e.type)).toEqual(["scroll_left", "scroll_right"]);
   });
 
   it("parses X10 mouse fallback", () => {
@@ -527,10 +527,10 @@ describe("EventRouter — drag capture", () => {
     const h = makeHarness([a, b]);
 
     h.feed("\x1b[<0;1;1M"); // a captures a drag
-    h.feed("\x1b[<64;7;1M"); // the wheel over b
+    h.feed("\x1b[<66;7;1M"); // the sideways wheel over b
     expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down"]);
     expect(b.mouseEvents).toEqual([]);
-    expect(h.mouseEvents.map((e) => e.type)).toEqual(["mouse_down", "scroll_up"]);
+    expect(h.mouseEvents.map((e) => e.type)).toEqual(["mouse_down", "scroll_left"]);
   });
 });
 
