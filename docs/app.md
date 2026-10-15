@@ -31,7 +31,9 @@ await app.run();
 
 `onKey(handler)` hears every key the terminal sends, as a `KeyPress`: the `key`, the `character` it types (`""` for a key that types none), and whether `shift`, `ctrl` and `meta` were held. `keyName(press)` is the one name a key goes by, so a keymap is a table keyed by it. A key that types a character is named by that character — `q`, `G`, `>` — and any other key by its name — `up`, `enter`, `space`, `f5` — with the modifiers held in front, always in the order `ctrl+`, `meta+`, `shift+`: `ctrl+z`, `shift+tab`, `meta+left`. Shift is never named on a character, which already carries it, with Alt held or not: Shift+G is `G`, Alt+Shift+G is `meta+G`.
 
-`onMouse(handler)` hears every pointer event — presses, releases, motion and the wheel — at the terminal cell under the pointer, counted from 0. Only the alternate surface reports the pointer. Each returns a function that stops the handler hearing.
+`onMouse(handler)` hears every pointer event but the vertical wheel — presses, releases, motion and sideways scrolling — at the terminal cell under the pointer, counted from 0. Only the alternate surface reports the pointer. Each returns a function that stops the handler hearing.
+
+`onWheel(handler)` is offered each notch of the wheel as a `Wheel` — the cell under the pointer and `lines`, `1` towards the end of the content and `-1` back — and returns whether it moved anything with it. A notch nothing moved with is passed outward, to the host's `passWheel`: on a page the page scrolls, and in a terminal, which is the outermost thing, nothing happens. An app that reads no wheel passes every notch, so a still app on a page never traps the page's scrolling. A `WidgetApp` offers the wheel to the viewport under the pointer first, then to its own `onWheel` handlers.
 
 Ctrl+C stops the app. No other key means anything to the app: every other key does what your handlers make it do, so `q` quits only an app that binds it. `quitKeys` lists the keys that stop the app, by `keyName`, and they are heard before any handler, so no handler can swallow one. `["ctrl+c"]` is the default; `[]` leaves every key to you. A name no key goes by — `esc`, `Ctrl+C`, `shift+g` — throws when the app is made, rather than binding a key that never fires:
 
@@ -151,6 +153,6 @@ In raw mode Ctrl+Z reaches the program as a key (`ctrl+z`), not as the signal th
 
 ## The same app in a browser
 
-Build the app over a `BrowserTerminalHost` instead — it wraps an [xterm.js](https://xtermjs.org) terminal — and nothing else changes. The page owns the terminal, so in a browser nothing ends the program under the app, and `suspend()` hands the terminal back and takes it again at once.
+Build the app over a `BrowserTerminalHost` instead — it wraps an [xterm.js](https://xtermjs.org) terminal and takes `passWheel`, what scrolls the page by a notch the app passed outward — and nothing else changes. The page owns the terminal, so in a browser nothing ends the program under the app, and `suspend()` hands the terminal back and takes it again at once.
 
 The `rich-explore`, `rich-dash` and `claude-sessions` demos are each an `App`; each runs in node from its own npm script and on this site's [demos page](/demos/) from the same source.

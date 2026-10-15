@@ -103,6 +103,26 @@ const POINTER: Record<Surface, { readonly on: string; readonly off: string }> = 
   inline: { on: "", off: "" },
 };
 
+/**
+ * A turn of the wheel, where the pointer was when it turned: `lines` is
+ * positive towards the end of the content, a line a notch.
+ */
+export interface Wheel {
+  readonly x: number;
+  readonly y: number;
+  readonly lines: number;
+}
+
+// The sideways wheel is not here: nothing scrolls by columns, inside an app or
+// around it.
+const WHEEL_LINES = { scroll_up: -1, scroll_down: 1 } as const;
+type WheelTurn = Extract<ScreenMouseEvent, { type: keyof typeof WHEEL_LINES }>;
+
+/** A pointer event `onMouse` hears: every one but the vertical wheel, which is `onWheel`'s. */
+export type AppMouseEvent = Exclude<ScreenMouseEvent, WheelTurn>;
+
+const isWheelTurn = (event: ScreenMouseEvent): event is WheelTurn => event.type in WHEEL_LINES;
+
 export class App {
   private readonly host: TerminalHost;
   private readonly surface: Surface;
@@ -125,11 +145,12 @@ export class App {
   private subscriptions: Unsubscribe[] = [];
   private readonly paintHandlers = new Set<(frame: readonly (readonly Segment[])[]) => void>();
   private readonly keyHandlers = new Set<(press: KeyPress) => void>();
-  private readonly mouseHandlers = new Set<(event: ScreenMouseEvent) => void>();
+  private readonly mouseHandlers = new Set<(event: AppMouseEvent) => void>();
+  private readonly wheelHandlers = new Set<(wheel: Wheel) => boolean>();
   private readonly quitKeys: ReadonlySet<string>;
   private readonly input = new InputParser({
     key: (press) => this.key(press),
-    mouse: (event) => this.hear(this.mouseHandlers, event),
+    mouse: (event) => this.mouse(event),
   });
   private settle: (outcome: Outcome) => void = () => {};
 
@@ -288,12 +309,26 @@ export class App {
   }
 
   /**
-   * Hear every pointer event, in terminal cells. Only the alternate surface
-   * reports the pointer. A handler that throws fails the app.
+   * Hear every pointer event but the vertical wheel, which is `onWheel`'s,
+   * in terminal cells. Only the alternate surface reports the pointer. A
+   * handler that throws fails the app.
    */
-  onMouse(handler: (event: ScreenMouseEvent) => void): Unsubscribe {
+  onMouse(handler: (event: AppMouseEvent) => void): Unsubscribe {
     this.mouseHandlers.add(handler);
     return () => this.mouseHandlers.delete(handler);
+  }
+
+  /**
+   * Offer every wheel turn to `handler`, which returns whether it moved
+   * something. A turn no handler moves anything with is passed outward to the
+   * host (`TerminalHost.passWheel`), so the page or terminal around the app
+   * scrolls instead. Handlers are offered a turn in the order they subscribed,
+   * and the first that moves something takes it. A handler that throws fails
+   * the app.
+   */
+  onWheel(handler: (wheel: Wheel) => boolean): Unsubscribe {
+    this.wheelHandlers.add(handler);
+    return () => this.wheelHandlers.delete(handler);
   }
 
   /** Hand the terminal back for good; `run` resolves. */
@@ -349,6 +384,25 @@ export class App {
   private key(press: KeyPress): void {
     if (this.quitKeys.has(keyName(press))) return this.stop();
     this.hear(this.keyHandlers, press);
+  }
+
+  // [LAW:dataflow-not-control-flow] One rule for every app: a wheel turn
+  // nothing in the app moved with goes outward. The vertical wheel reaches the
+  // program through `onWheel` alone, so moving something with it and claiming
+  // the turn are one act, and an app that reads no wheel passes every turn.
+  // [LAW:single-enforcer] Only a running app holds the terminal, so only a
+  // running app is offered a turn or passes one on.
+  private mouse(event: ScreenMouseEvent): void {
+    if (!isWheelTurn(event)) return this.hear(this.mouseHandlers, event);
+    if (this._phase !== "running") return;
+    const lines = WHEEL_LINES[event.type];
+    const wheel: Wheel = { x: event.x, y: event.y, lines };
+    try {
+      const moved = [...this.wheelHandlers].some((handler) => this._phase === "running" && handler(wheel));
+      if (!moved && this._phase === "running") this.host.passWheel(lines);
+    } catch (error) {
+      this.fail(error);
+    }
   }
 
   // [LAW:no-silent-failure] The host calls these handlers, not the program,

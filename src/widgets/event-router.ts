@@ -16,7 +16,9 @@ import type {
 import { drew, originOf, scrollTargetAt, widgetAt } from "./hit.js";
 import type { Segment } from "../core/segment.js";
 import type { Unsubscribe } from "../core/subscription.js";
-import type { KeyPress, ScreenMouseEvent } from "../host/input.js";
+import type { KeyPress } from "../host/input.js";
+import type { AppMouseEvent } from "../host/app.js";
+import type { Wheel } from "../host/app.js";
 
 type KeyHandler = (event: KeyEvent) => void;
 interface RegisteredKeyHandler {
@@ -57,7 +59,7 @@ export class EventRouter {
   // in priority tiers and stops as soon as some participant calls
   // `event.stop()`. Insertion order is preserved within each tier.
   private readonly keyChain: RegisteredKeyHandler[] = [];
-  private readonly mouseHandlers = new Set<(event: ScreenMouseEvent) => void>();
+  private readonly mouseHandlers = new Set<(event: AppMouseEvent) => void>();
 
   constructor(options: EventRouterOptions) {
     this.source = options.source;
@@ -110,7 +112,7 @@ export class EventRouter {
     };
   }
 
-  onMouse(handler: (event: ScreenMouseEvent) => void): Unsubscribe {
+  onMouse(handler: (event: AppMouseEvent) => void): Unsubscribe {
     this.mouseHandlers.add(handler);
     return () => this.mouseHandlers.delete(handler);
   }
@@ -121,11 +123,35 @@ export class EventRouter {
   }
 
   /** Route a pointer event the app heard. */
-  mouse(event: ScreenMouseEvent): void {
+  mouse(event: AppMouseEvent): void {
     this.dispatchMouse(event);
   }
 
+  /**
+   * Scroll the innermost viewport under the pointer that can move, a line a
+   * notch, past any widget it shows there and whatever a drag captured.
+   * Whether one moved is the answer: with none, the app passes the wheel
+   * outward.
+   */
+  wheel({ x, y, lines }: Wheel): boolean {
+    this.point(x, y);
+    const target = scrollTargetAt(this.source.frame, x, y, lines);
+    if (!target) return false;
+    target.scrollBy(lines);
+    this.source.refresh();
+    return true;
+  }
+
   // --- Dispatch ---
+
+  // [LAW:single-enforcer] Every pointer report, the wheel's included, says
+  // where the pointer is, so hover is read again from wherever it last was.
+  private point(x: number, y: number): ReturnType<typeof widgetAt> {
+    const hit = widgetAt(this.source.frame, x, y);
+    this.pointer = { x, y };
+    this.hover(hit?.widget ?? null);
+    return hit;
+  }
 
   // [LAW:dataflow-not-control-flow] Three-stage walk; same shape every
   // dispatch, only the event's `stopped` flag short-circuits later stages.
@@ -159,13 +185,11 @@ export class EventRouter {
     }
   }
 
-  private dispatchMouse(event: ScreenMouseEvent): void {
+  private dispatchMouse(event: AppMouseEvent): void {
     for (const handler of this.mouseHandlers) handler(event);
 
     const frame = this.source.frame;
-    const hit = widgetAt(frame, event.x, event.y);
-    this.pointer = { x: event.x, y: event.y };
-    this.hover(hit?.widget ?? null);
+    const hit = this.point(event.x, event.y);
 
     // After the program's handlers, so one that reads focus sees it as it was;
     // before delivery, so the pressed widget has focus when it hears the
@@ -175,18 +199,8 @@ export class EventRouter {
       this.source.focusManager.focus(hit.widget);
     }
 
-    // The wheel scrolls the innermost viewport under the pointer that can
-    // move, a line a notch, past any widget it shows there and whatever a
-    // drag captured. With none, nothing moved and there is nothing to paint.
-    if (event.type === "scroll_up" || event.type === "scroll_down") {
-      const lines = event.type === "scroll_down" ? 1 : -1;
-      const target = scrollTargetAt(frame, event.x, event.y, lines);
-      if (!target) return;
-      target.scrollBy(lines);
-      this.source.refresh();
-      return;
-    }
-    // A viewport scrolls only by lines, so the sideways wheel moves nothing.
+    // The wheel is `wheel`'s, which `App` hands the vertical turns; nothing
+    // scrolls by columns.
     if (event.type === "scroll_left" || event.type === "scroll_right") return;
 
     // [LAW:dataflow-not-control-flow] Same pipeline every event; the

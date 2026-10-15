@@ -40,6 +40,8 @@ export type ToWorker =
 /** What the worker running a program sends the page. */
 export type FromWorker =
   | { readonly kind: "output"; readonly chunk: string | Uint8Array }
+  /** A wheel turn the program moved nothing with: the page scrolls by `lines` of the terminal's rows. */
+  | { readonly kind: "wheel"; readonly lines: number }
   /** The program began reading what is typed at its terminal. */
   | { readonly kind: "listening" }
   | { readonly kind: "exit"; readonly code: number }

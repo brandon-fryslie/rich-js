@@ -23,10 +23,18 @@ import { FakeXtermTerminal } from "./fake-xterm.js";
 describe("BrowserTerminalHost", () => {
   let term: FakeXtermTerminal;
   let host: BrowserTerminalHost;
+  let passed: number[];
 
   beforeEach(() => {
     term = new FakeXtermTerminal(80, 24);
-    host = new BrowserTerminalHost({ terminal: term });
+    passed = [];
+    host = new BrowserTerminalHost({ terminal: term, passWheel: (lines) => passed.push(lines) });
+  });
+
+  it("passes a wheel turn to the page through the function it was given", () => {
+    host.passWheel(3);
+    host.passWheel(-1);
+    expect(passed).toEqual([3, -1]);
   });
 
   describe("static surface", () => {

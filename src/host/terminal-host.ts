@@ -112,6 +112,13 @@ export interface TerminalHost {
   readonly env: Env;
 
   /**
+   * Scroll whatever holds this terminal by `lines` (positive towards the end
+   * of its content): a wheel turn that moved nothing in the program, passed
+   * outward. A terminal that is the outermost thing does nothing with it.
+   */
+  passWheel(lines: number): void;
+
+  /**
    * Run `handler` once, when the program ends by any path this host can
    * observe, so whoever changed the terminal can hand it back. The program
    * still ends as it would have without the handler: a signal still
@@ -187,6 +194,11 @@ export interface BrowserTerminalHostOptions {
    * `NodeTerminalHost`'s relationship to `process.stdin`/`process.stdout`.
    */
   terminal: XtermTerminal;
+  /**
+   * Scroll the page by `lines` of this terminal's rows: what the host does
+   * with a wheel turn the program passed outward (`TerminalHost.passWheel`).
+   */
+  passWheel: (lines: number) => void;
 }
 
 const XTERM_ENV: Env = Object.freeze({
@@ -201,8 +213,11 @@ export class BrowserTerminalHost implements TerminalHost {
   private dataSubscription: XtermDisposable | undefined;
   private resizeSubscription: XtermDisposable | undefined;
 
+  readonly passWheel: (lines: number) => void;
+
   constructor(options: BrowserTerminalHostOptions) {
     this.terminal = options.terminal;
+    this.passWheel = options.passWheel;
   }
 
   // [LAW:dataflow-not-control-flow] xterm.js is always an interactive

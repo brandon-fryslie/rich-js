@@ -131,6 +131,10 @@ interface Xterm extends XtermTerminal {
   onWriteParsed(handler: () => void): XtermDisposable;
   /** `handler` sees each key event first; one it answers false for xterm leaves to the page. */
   attachCustomKeyEventHandler(handler: (event: KeyboardEvent) => boolean): void;
+  /** `handler` sees each wheel event first; one it answers false for xterm leaves to the page. */
+  attachCustomWheelEventHandler(handler: (event: WheelEvent) => boolean): void;
+  /** `"none"` while the program has asked for no pointer reports. */
+  readonly modes: { readonly mouseTrackingMode: string };
   options: { theme: Record<string, string>; fontFamily: string; fontSize: number };
 }
 
@@ -233,7 +237,25 @@ export class LiveTerminal {
     private readonly screen: Xterm,
     private readonly options: LiveTerminalOptions,
   ) {
-    this.host = new BrowserTerminalHost({ terminal: screen });
+    // Measured each time: the cell height changes when a web font arrives or
+    // the page zooms.
+    const row = () => screen.element!.offsetHeight / options.terminal.rows;
+    // A wheel event's own distance in pixels, by its `deltaMode`: pixels, lines, pages.
+    const distance = (event: WheelEvent) => Math.abs(event.deltaY) * [1, row(), innerHeight][event.deltaMode]!;
+    // xterm reports one notch to the program per wheel event whatever its
+    // distance, so a notch passed back scrolls the page as far as the event
+    // over this card that reported it would have: the newest one.
+    let notch = 0;
+    this.host = new BrowserTerminalHost({ terminal: screen, passWheel: (lines) => scrollBy({ top: lines * notch }) });
+    // Only a running program that asked for pointer reports hears the wheel.
+    // Past any other card (an inline app, a still one, one whose program ended
+    // or crashed with reporting still on) the page scrolls as it does past any
+    // element, and xterm, with no scrollback, does not turn the turn into
+    // arrow keys.
+    screen.attachCustomWheelEventHandler((event) => {
+      notch = distance(event);
+      return this.sandbox !== null && screen.modes.mouseTrackingMode !== "none";
+    });
     // The rows are clipped by an element that clips and cannot scroll: a
     // scrollable one would scroll to show xterm's input field wherever the
     // cursor is, and move the drawn rows out of sight.
@@ -253,8 +275,7 @@ export class LiveTerminal {
     this.fit = () => {
       const lowest = Array.from({ length: rows }, (_, y) => y).filter(drawn).pop() ?? 0;
       reached = Math.max(reached, lowest + 1, screen.buffer.active.cursorY + 1);
-      // Measured each time: the cell height changes when a web font arrives or the page zooms.
-      clip.style.height = `${(reached * screen.element!.offsetHeight) / rows}px`;
+      clip.style.height = `${reached * row()}px`;
     };
     this.fit();
     screen.onWriteParsed(this.fit);
@@ -307,6 +328,8 @@ export class LiveTerminal {
       switch (data.kind) {
         case "output":
           return show(data.chunk);
+        case "wheel":
+          return this.host.passWheel(data.lines);
         case "exit":
           flush();
           return this.end({ kind: "exited", code: data.code });

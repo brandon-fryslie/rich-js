@@ -21,6 +21,8 @@ export interface ScriptedHost extends TerminalHost {
   /** The pending `suspend()`, resolved by the test as a shell's `fg` would. */
   resume(): void;
   readonly suspends: () => number;
+  /** Every wheel turn the app passed outward, in lines. */
+  readonly passed: () => readonly number[];
   /** Bytes arriving from the terminal, as a keypress or the pointer sends them. */
   type(data: Uint8Array | string): void;
 }
@@ -34,6 +36,7 @@ export function scriptedHost(initial: TerminalSize = { cols: 20, rows: 4 }): Scr
     throw new Error("resume() with no suspend pending");
   };
   const writes: string[] = [];
+  const passed: number[] = [];
   const resizeHandlers = new Set<ResizeHandler>();
   const exitHandlers = new Set<() => void>();
   const dataHandlers = new Set<DataHandler>();
@@ -42,6 +45,10 @@ export function scriptedHost(initial: TerminalSize = { cols: 20, rows: 4 }): Scr
     raw: () => raw,
     started: () => started,
     suspends: () => suspends,
+    passed: () => passed,
+    passWheel(lines) {
+      passed.push(lines);
+    },
     resize(next) {
       size = next;
       for (const h of resizeHandlers) h(next);

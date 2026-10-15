@@ -21,6 +21,7 @@ const LIBRARY = JSON.stringify(resolve(REPO_ROOT, "src/index.ts"));
 interface TestTerminal extends SimulatedTerminal {
   readonly output: string[];
   readonly exits: number[];
+  readonly wheels: number[];
   /** Type at the terminal, once the program has subscribed. */
   type(chunk: string): void;
 }
@@ -28,6 +29,7 @@ interface TestTerminal extends SimulatedTerminal {
 function terminal(columns: number): TestTerminal {
   const output: string[] = [];
   const exits: number[] = [];
+  const wheels: number[] = [];
   let deliver: ((chunk: string) => void) | undefined;
   return {
     columns,
@@ -39,8 +41,10 @@ function terminal(columns: number): TestTerminal {
       deliver = to;
     },
     exit: (code) => exits.push(code),
+    passWheel: (lines) => wheels.push(lines),
     output,
     exits,
+    wheels,
     type: (chunk) => deliver!(chunk),
   };
 }
@@ -221,6 +225,19 @@ describe("runInTerminal", () => {
     );
     term.type("q");
     expect(term.output).toEqual(["got q at 75x24"]);
+  });
+
+  it("hands the terminal a wheel turn a NodeTerminalHost program passes outward", async () => {
+    const term = terminal(75);
+    const host = JSON.stringify(resolve(REPO_ROOT, "src/node/terminal-host.ts"));
+    await runInTerminal(
+      await bundleExample(`
+        import { NodeTerminalHost } from ${host};
+        new NodeTerminalHost().passWheel(-2);
+      `),
+      term,
+    );
+    expect(term.wheels).toEqual([-2]);
   });
 
   it("answers a nodeAsk prompt with the line typed at the terminal, echoed as it is typed", async () => {

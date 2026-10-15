@@ -38,6 +38,7 @@ globalThis.runExample = async (program) => {
     env: { TERM: "xterm-256color", COLORTERM: "truecolor" },
     write: (chunk) => output.push(String(chunk)),
     onInput: () => {},
+    passWheel: () => {},
     exit: () => {},
   });
   return { output, before, during: globalThis.during, after: typeof process };

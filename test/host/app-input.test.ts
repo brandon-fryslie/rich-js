@@ -9,7 +9,8 @@
 import { describe, it, expect } from "vitest";
 
 import { App, type AppOptions } from "../../src/host/app.js";
-import { keyName, type KeyPress, type ScreenMouseEvent } from "../../src/host/input.js";
+import { keyName, type KeyPress } from "../../src/host/input.js";
+import type { AppMouseEvent } from "../../src/host/app.js";
 import { RichText } from "../../src/core/text.js";
 import { scriptedHost, type ScriptedHost } from "./scripted-host.js";
 
@@ -163,15 +164,14 @@ describe("App input handlers that throw", () => {
 });
 
 describe("App hears the pointer", () => {
-  it("as events in terminal cells", () => {
+  it("as events in terminal cells, all but the vertical wheel", () => {
     const { host, app } = started();
-    const events: ScreenMouseEvent[] = [];
+    const events: AppMouseEvent[] = [];
     app.onMouse((event) => events.push(event));
     host.type("\x1b[<0;3;2M\x1b[<0;3;2m\x1b[<65;1;1M\x1b[<66;1;1M\x1b[<67;1;1M");
     expect(events.map((e) => [e.type, e.x, e.y])).toEqual([
       ["mouse_down", 2, 1],
       ["mouse_up", 2, 1],
-      ["scroll_down", 0, 0],
       ["scroll_left", 0, 0],
       ["scroll_right", 0, 0],
     ]);

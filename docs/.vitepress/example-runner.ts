@@ -401,6 +401,8 @@ async function capture(script: string, world: World): Promise<{ stream: string; 
     onInput: () => {
       listened = true;
     },
+    // Nothing points at a build, so no wheel turns.
+    passWheel: () => {},
     // Recorded rather than thrown: a throw the program could catch, or one
     // raised from a timer after the run, would hide the call or crash the build.
     exit: (code) => exits.push(code),

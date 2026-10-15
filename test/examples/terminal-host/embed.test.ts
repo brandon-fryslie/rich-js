@@ -15,7 +15,7 @@ import { FakeXtermTerminal } from "../../host/fake-xterm.js";
 describe("terminal-host demo", () => {
   it("prints each key as its bytes and each resize, and Ctrl-D releases the terminal", async () => {
     const term = new FakeXtermTerminal(75, 24);
-    const done = mountInPage(term);
+    const done = mountInPage(term, () => {});
     term.emitData("\x1b[A");
     term.setSize(90, 30);
     term.emitData("\x04");
