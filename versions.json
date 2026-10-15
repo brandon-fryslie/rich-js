@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-377",
+      "ref": "refs/pull/377/merge",
+      "sha": "21f0bbf300baf361148a9cd90baf5e2658f5aea9",
+      "timestamp": "2026-10-15T03:52:56.664Z",
+      "commits": [
+        {
+          "sha": "21f0bbf300baf361148a9cd90baf5e2658f5aea9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T21:51:20-06:00",
+          "message": "Merge ee2e331229f7bb3a78b7df1b49435d2f66bae1b7 into 84390e4e3566ee7bb50dd236464c6e8dd4f3314b\n"
+        },
+        {
+          "sha": "ee2e331229f7bb3a78b7df1b49435d2f66bae1b7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T21:51:11-06:00",
+          "message": "feat(host): App reads keys — onKey/onMouse, Ctrl+C quits, quitKeys (rich-demos-k78j.4yc)\n\nThe byte parser moves from widgets/EventRouter down to host/input.ts.\nApp owns the one host.onData subscription and parser; WidgetApp's router\nroutes what App hears. keyName() is the one name per key; quitKeys\n(default [\"ctrl+c\"], [] removes) are checked before any handler. A\nhandler that throws fails the app.\n\nThe four App demos (claude-sessions, rich-explore, rich-dash,\neffects-feel) drop their TextDecoders, escape literals and try/fail\nrouting; keymaps are keyed by keyName.\n\nWidgetApp now quits on Ctrl+C too, since it is an App: docs/widgets.md\ndrops the hand-written Ctrl+C handler.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "84390e4e3566ee7bb50dd236464c6e8dd4f3314b",
