@@ -148,17 +148,25 @@ const NAMED_KEYS: ReadonlySet<string> = new Set([
   ...Object.values(SS3_KEYS),
 ]);
 
+// [LAW:one-source-of-truth] The glyphs a Ctrl chord is named by are what
+// `ctrlKey` makes of the control bytes no named key claims.
+const CTRL_GLYPHS: ReadonlySet<string> = new Set(
+  Array.from({ length: 0x20 }, (_, byte) => byte)
+    .filter((byte) => byte !== 0 && !(byte in SINGLE_BYTE_KEYS))
+    .map((byte) => ctrlKey(byte).key),
+);
+
 /**
  * `name`, if `keyName` can produce it: modifiers in its order, then a named
- * key or one glyph, with no `shift+` on a glyph and no capital after `ctrl+`.
+ * key or one glyph, with no `shift+` on a glyph and, after `ctrl+`, only a
+ * glyph a control byte stands for.
  * [LAW:parse-dont-validate] A name no key can produce throws here, at the
  * one place a program hands names in, rather than binding a key that never fires.
  */
 export function parseKeyName(name: string): string {
-  const match = /^(ctrl\+)?(meta\+)?(shift\+)?(.+)$/u.exec(name)!;
-  const [, ctrl, , shift, base] = match;
-  const glyph = [...base!].length === 1;
-  const producible = NAMED_KEYS.has(base!) || (glyph && !shift && !(ctrl && base !== base!.toLowerCase()));
+  const [, ctrl, , shift, base] = /^(ctrl\+)?(meta\+)?(shift\+)?(.*)$/u.exec(name)!;
+  const glyph = [...base!].length === 1 && !shift && (!ctrl || CTRL_GLYPHS.has(base!));
+  const producible = NAMED_KEYS.has(base!) || glyph;
   if (!producible) throw new Error(`no key is named ${JSON.stringify(name)}; see keyName`);
   return name;
 }
@@ -290,7 +298,7 @@ export class InputParser {
       };
     }
 
-    if (b0 < 0x20) return { kind: "key", bytes: 1, event: ctrlKey(b0, false) };
+    if (b0 < 0x20) return { kind: "key", bytes: 1, event: ctrlKey(b0) };
 
     // Printable ASCII / start of a UTF-8 multibyte character.
     return this.consumePrintable(buf);
@@ -330,12 +338,14 @@ export class InputParser {
     // sequence (macOS Terminal and iTerm send Option+Up as `ESC ESC [ A`): the
     // inner sequence, with meta held.
     if (b1 === ESC && buf.length > 2 && (buf[2] === LBRACKET || buf[2] === O_BYTE)) {
+      // A pointer report is never Alt-prefixed (SGR carries modifiers in its
+      // button byte), so before anything but a key the first ESC is Escape.
       const inner = this.consumeEscape(buf.subarray(1));
-      return inner.kind === "key"
-        ? { kind: "key", bytes: inner.bytes + 1, event: { ...inner.event, meta: true } }
-        : inner.kind === "incomplete"
-          ? inner
-          : { ...inner, bytes: inner.bytes + 1 };
+      if (inner.kind === "incomplete") return inner;
+      if (inner.kind === "key") {
+        return { kind: "key", bytes: inner.bytes + 1, event: { ...inner.event, meta: true } };
+      }
+      return { kind: "key", bytes: 1, event: ESCAPE };
     }
     // ESC ESC → escape key (some terminals double-send). Consume BOTH bytes
     // so the user sees one escape event, not two. Without this, the second
@@ -391,10 +401,10 @@ export class InputParser {
         event: ({ key: ch, character: "", shift: false, ctrl: false, meta: true }),
       };
     }
-    // ESC <control byte> → Alt+Ctrl: `ESC 0x18` is Alt+Ctrl+X.
-    if (b1 < 0x20) return { kind: "key", bytes: 2, event: ctrlKey(b1, true) };
-    // A UTF-8 lead byte after ESC → treat the ESC as a lone escape and
-    // re-process from b1 on the next pass.
+    // ESC <control byte> is read as Escape, then the Ctrl chord — never as
+    // Alt+Ctrl. The bytes cannot tell the two apart, and Escape then Ctrl+C
+    // typed during a stalled frame must still reach the quit keys as Ctrl+C.
+    // Any other byte after ESC (a UTF-8 lead) is likewise re-read on its own.
     return {
       kind: "key",
       bytes: 1,
@@ -476,10 +486,12 @@ const SCROLL = ["scroll_up", "scroll_down", "scroll_left", "scroll_right"] as co
 // A C0 control byte as the Ctrl chord that types it, with Alt held or not.
 // 0x00 is Ctrl+Space; 0x01–0x1a are Ctrl+A–Z; 0x1c–0x1f are Ctrl+\ ] ^ _.
 // The bytes SINGLE_BYTE_KEYS names (tab, enter, backspace, escape) never reach here.
-function ctrlKey(byte: number, meta: boolean): KeyPress {
+function ctrlKey(byte: number): KeyPress {
   const key = byte === 0 ? "space" : String.fromCharCode(byte + (byte <= 0x1a ? 0x60 : 0x40));
-  return { key, character: "", shift: false, ctrl: true, meta };
+  return { key, character: "", shift: false, ctrl: true, meta: false };
 }
+
+const ESCAPE: KeyPress = { key: "escape", character: "", shift: false, ctrl: false, meta: false };
 
 function decodeMouseFromCb(
   cb: number,

@@ -42,12 +42,13 @@ describe("App hears keys", () => {
 
   it.each([
     ["Option+Up as ESC ESC [ A", "\x1b\x1b[A", ["meta+up"]],
-    ["Alt+Ctrl+X", "\x1b\x18", ["ctrl+meta+x"]],
+    ["Escape then Ctrl+X in one read", "\x1b\x18", ["escape", "ctrl+x"]],
+    ["Escape before a pointer report", "\x1b\x1b[<35;1;1M", ["escape"]],
     ["Alt+G by its glyph", "\x1bG\x1b>", ["meta+G", "meta+>"]],
     ["Ctrl+Space", "\x00", ["ctrl+space"]],
     ["Ctrl+\\ ] ^ _", "\x1c\x1d\x1e\x1f", ["ctrl+\\", "ctrl+]", "ctrl+^", "ctrl+_"]],
   ])("hears %s", (_, bytes, names) => {
-    const { host, keys } = started({ quitKeys: ["escape"] });
+    const { host, keys } = started({ quitKeys: [] });
     host.type(bytes);
     expect(keys).toEqual(names);
   });
@@ -88,10 +89,16 @@ describe("App's quit keys", () => {
     expect(keys).toEqual(["ctrl+c"]);
   });
 
-  it.each(["esc", "Ctrl+C", "shift+g", "ctrl+C", "ctrl+shift+c"])("refuses %s, which no key is named", (name) => {
+  it.each(["esc", "Ctrl+C", "shift+g", "ctrl+C", "ctrl+shift+c", "ctrl+m", "ctrl+i", "ctrl+[", "ctrl+1", ""])("refuses %s, which no key is named", (name) => {
     expect(() => new App({ host: scriptedHost(), surface: "alternate", view: () => new RichText("x"), quitKeys: [name] })).toThrow(
       /no key is named/,
     );
+  });
+
+  it("stops on Ctrl+C typed right after Escape, in one read", async () => {
+    const { host, done } = started();
+    host.type("\x1b\x03");
+    await done;
   });
 
   it("does not hear a lone ESC typed just before it stopped", async () => {
