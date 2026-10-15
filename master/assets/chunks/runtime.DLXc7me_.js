@@ -2333,6 +2333,9 @@ var Output = class extends Events {
 		this.terminal.write(chunk);
 		return true;
 	}
+	passWheel(lines) {
+		this.terminal.passWheel(lines);
+	}
 };
 /**
 * The terminal's input side, as a program's \`process.stdin\`. Raw mode, pause
@@ -2570,6 +2573,10 @@ function serve() {
 					write: (chunk) => post({
 						kind: "output",
 						chunk
+					}),
+					passWheel: (lines) => post({
+						kind: "wheel",
+						lines
 					}),
 					onInput: (to) => {
 						deliver = to;
