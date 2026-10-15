@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "7dbb3e3861046fdadf79c218572a95086864f0a3",
+      "timestamp": "2026-10-15T08:28:34.146Z",
+      "commits": [
+        {
+          "sha": "7dbb3e3861046fdadf79c218572a95086864f0a3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T02:27:12-06:00",
+          "message": "Effected lights a Loop on the colours it draws (rich-effects-cbgp.071) (#392)\n\n* Effected measures what its child draws; onColors and wheel read it (rich-effects-cbgp.071)\n\nAn effect is now handed what the element draws in the frame (`Drawn`: the\nink/ground pairs of its word cells, its own colours and fills, the depth and\ntheme), measured in Effected's render off the same per-segment reading its\ncells are drawn from. `onColors(loop, colors?)` settles its shares against\nthat measurement, memoized per set of colours drawn; `wheel(curve, z)` reads\nits colours and fills from it. `drawnOf` exposes the same measurement.\n\nStrip and FlexStrip stamp every join they draw with the `JOIN` owner, so a\nseam is left out of the words kept legible without the caller's help.\n\nThe effects-feel demo's copy of that measurement (drawnSubject's pairs and\ncolours, subjectUnder, fills, cellsOf, shown, seamed) is gone; its frames are\nbyte-identical across 4 themes x 3 depths x 4 loops x 10 instants.\n\n`shares` leaves the barrel: no caller needs it now.\n\n* A lit colour no word cell shows takes the whole touch, not a throw mid-render (rich-effects-cbgp.071)\n\nshares refused a colour written in no pair. That was a caller's mistake when\nthe caller passed the pairs; now Effected measures them each frame, and a\nframe drawing a lit fill only under blanks, or not at all, threw from render."
+        }
+      ]
+    },
+    {
       "version": "pr-393",
       "ref": "refs/pull/393/merge",
       "sha": "0b7faefd2eaaeb6d404ba7e6058a759ce38ae164",
@@ -34,50 +49,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-15T02:16:41-06:00",
           "message": "A whole-keys host settles each input chunk; no lone ESC is held for a timer (rich-host-input-ab9n)\n\nTerminalHost declares inputChunks: xterm.js (BrowserTerminalHost, and the\ndocs worker's simulated stdin through NodeTerminalHost) never splits a key\nacross chunks, so an ESC left at a chunk's end is Escape and what followed\nit is re-read. A tty stays \"split\" and keeps the setTimeout(0) hold.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-392",
-      "ref": "refs/pull/392/merge",
-      "sha": "c49e30c4a4c437cb2a96197d083ccd8a0d741a57",
-      "timestamp": "2026-10-15T08:23:46.438Z",
-      "commits": [
-        {
-          "sha": "c49e30c4a4c437cb2a96197d083ccd8a0d741a57",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T08:22:21Z",
-          "message": "Merge 72b3bfcd05e0458c22ba39212adb4c0ed6ca4a85 into 660172b653724983f44d1b5c952e3cb2f9a16504\n"
-        },
-        {
-          "sha": "72b3bfcd05e0458c22ba39212adb4c0ed6ca4a85",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T02:22:15-06:00",
-          "message": "A lit colour no word cell shows takes the whole touch, not a throw mid-render (rich-effects-cbgp.071)\n\nshares refused a colour written in no pair. That was a caller's mistake when\nthe caller passed the pairs; now Effected measures them each frame, and a\nframe drawing a lit fill only under blanks, or not at all, threw from render.\n"
-        },
-        {
-          "sha": "87127b9c53855de847cf6d4f7c98874ed3add556",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T02:08:58-06:00",
-          "message": "Effected measures what its child draws; onColors and wheel read it (rich-effects-cbgp.071)\n\nAn effect is now handed what the element draws in the frame (`Drawn`: the\nink/ground pairs of its word cells, its own colours and fills, the depth and\ntheme), measured in Effected's render off the same per-segment reading its\ncells are drawn from. `onColors(loop, colors?)` settles its shares against\nthat measurement, memoized per set of colours drawn; `wheel(curve, z)` reads\nits colours and fills from it. `drawnOf` exposes the same measurement.\n\nStrip and FlexStrip stamp every join they draw with the `JOIN` owner, so a\nseam is left out of the words kept legible without the caller's help.\n\nThe effects-feel demo's copy of that measurement (drawnSubject's pairs and\ncolours, subjectUnder, fills, cellsOf, shown, seamed) is gone; its frames are\nbyte-identical across 4 themes x 3 depths x 4 loops x 10 instants.\n\n`shares` leaves the barrel: no caller needs it now.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "660172b653724983f44d1b5c952e3cb2f9a16504",
-      "timestamp": "2026-10-15T08:12:55.381Z",
-      "commits": [
-        {
-          "sha": "660172b653724983f44d1b5c952e3cb2f9a16504",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T02:11:37-06:00",
-          "message": "A held lone ESC is Escape unless the next chunk opens a CSI/SS3 sequence (rich-host-input-0c4f) (#391)\n\n* A held lone ESC is Escape unless the next chunk opens a CSI/SS3 sequence (rich-host-input-0c4f)\n\nA busy worker can queue the next key ahead of the 0ms hold timer, so\nEscape then G read as Alt+G. Only [ or O continues a split introducer;\nany other next chunk emits the held ESC first. Drops the toPass retry in\ne2e/rich-explore.spec.ts that worked around it.\n\n* Held ESC: one rule in feed, the sink hears Escape after the buffer settles, and an ESC[/ESC O introducer that opens nothing is replayed as keys (rich-host-input-0c4f)\n\n* Lone ESC alone holds on the timer: a sequence split after its introducer waits for its rest (rich-host-input-0c4f)\n\n* Held ESC: one holdingEscape, drain survives a throwing Escape handler, ESCAPE everywhere (rich-host-input-0c4f)"
         }
       ]
     }
