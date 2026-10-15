@@ -26,6 +26,7 @@
  * styling, so the cell type does too.
  */
 
+import type { Anchor } from "./anchor.js";
 import { Segment } from "./segment.js";
 import { Style } from "./style.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK } from "./color.js";
@@ -81,8 +82,38 @@ export interface Joiner<T extends StyledRenderable = StyledRenderable> {
  * it, never by its glyph, which an ASCII joiner draws otherwise and a lead may
  * not draw at all. An effect reads it to leave a seam out of the words it
  * keeps legible (`drawnOf`, `../renderables/effect.ts`).
+ *
+ * Inside it, every cell a `CellJoiner` draws names whose colour each of its
+ * two sides shows (`colorsOwnedBy`). One seam cell can show two neighbours —
+ * a powerline arrow is inked in the fill it points out of, over the fill it
+ * points into — so a cell has no single owner; each side has one.
  */
 export const JOIN: object = Object.freeze({ name: "join" });
+
+/**
+ * Whose colour each side of a join cell shows on screen, its ink and its
+ * ground: the neighbour whose edge a `Paint` names, or `null` for a role, a
+ * mix or the terminal's ground, which are no neighbour's.
+ */
+class ColorOwners {
+  constructor(
+    readonly fg: object | null,
+    readonly bg: object | null,
+  ) {}
+}
+
+/**
+ * Which of a cell's two colours on screen are `owner`'s: both, for a cell
+ * `owner` drew, itself or through an owner nested in its output; for a cell a
+ * `CellJoiner` drew, the sides shown in `owner`'s colour.
+ */
+export function colorsOwnedBy(anchor: Anchor | undefined, owner: object): { readonly fg: boolean; readonly bg: boolean } {
+  for (let level = anchor; level; level = level.inner) {
+    if (level.owner === owner) return { fg: true, bg: true };
+    if (level.owner instanceof ColorOwners) return { fg: level.owner.fg === owner, bg: level.owner.bg === owner };
+  }
+  return { fg: false, bg: false };
+}
 
 /**
  * [LAW:single-enforcer] What `joiner` draws at one join, every cell stamped
@@ -91,6 +122,16 @@ export const JOIN: object = Object.freeze({ name: "join" });
 export function drawJoin<T extends StyledRenderable>(joiner: Joiner<T>, left: T | null, right: T | null, context: JoinContext): Renderable {
   const join = joiner.join(left, right, context);
   return { render: (options) => Segment.anchorLines([[...join.render(options)]], JOIN)[0]! };
+}
+
+/**
+ * [LAW:single-enforcer] What `item` draws, every cell stamped as the item's,
+ * so whoever holds the composed row reads which item drew a cell however the
+ * row was laid out or wrapped: the one way `Strip` and `FlexStrip` draw an
+ * item.
+ */
+export function drawItem(item: StyledRenderable): Renderable {
+  return { render: (options) => Segment.anchorLines([[...item.render(options)]], item)[0]! };
 }
 
 // --- Strip ---
@@ -120,7 +161,7 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
     yield* drawJoin(this.joiner, null, items[0]!, { index: 0 }).render(row);
     for (let i = 0; i < items.length; i++) {
       const item = items[i]!;
-      yield* item.render(row);
+      yield* drawItem(item).render(row);
       const next = i + 1 < items.length ? items[i + 1]! : null;
       yield* drawJoin(this.joiner, item, next, { index: i + 1 }).render(row);
     }
@@ -434,7 +475,15 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
         const rightBg = paintableBg(edges.right?.bgcolor);
         const hasLeft = left !== null && (!reads.left || leftBg !== undefined);
         const hasRight = right !== null && (!reads.right || rightBg !== undefined);
-        const styled = (part: Part) => drawn[part].map((cell, at) => new Segment(pickGlyph(cell, part, index, at), cellStyle(cell, edges, options)));
+        const neighbours = { left, right };
+        // On screen a cell's ink is its `fg` paint and its ground its `bg`,
+        // reverse video or not (`cellStyle`).
+        const ownerOf = (color: CellColor): object | null => (color !== "ground" && "edge" in color ? neighbours[color.edge] : null);
+        const styled = (part: Part) =>
+          drawn[part].map((cell, at) => {
+            const owners = new ColorOwners(ownerOf(cell.fg), ownerOf(cell.bg));
+            return new Segment(pickGlyph(cell, part, index, at), cellStyle(cell, edges, options).withAnchor({ owner: owners, row: 0, col: 0, inner: undefined }));
+          });
         if (!hasLeft || !hasRight) {
           if (hasLeft || hasRight) yield* styled(hasRight ? "lead" : "tail");
           return;

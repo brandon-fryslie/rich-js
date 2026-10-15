@@ -12,6 +12,7 @@
  * the user sees. Z-order is paint order — whoever painted a cell last owns it.
  */
 
+import { drawnBy } from "../core/anchor.js";
 import { Segment } from "../core/segment.js";
 import { isScrollable } from "../core/protocol.js";
 import type { Scrollable } from "../core/protocol.js";
@@ -111,8 +112,7 @@ export function drew(
   x: number,
   y: number,
 ): boolean {
-  for (let a = Segment.anchorAt(frame, x, y); a; a = a.inner) if (a.owner === widget) return true;
-  return false;
+  return drawnBy(Segment.anchorAt(frame, x, y), widget);
 }
 
 /**

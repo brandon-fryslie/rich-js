@@ -22,7 +22,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawJoin, type Joiner, type StyledRenderable } from "../core/strip.js";
+import { drawItem, drawJoin, type Joiner, type StyledRenderable } from "../core/strip.js";
 
 export type FlexAlign = "left" | "center" | "right" | "justify";
 
@@ -101,7 +101,7 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
 
     // Pre-render every item and every joiner form we might need. Doing this
     // up-front turns packing into a pure data computation over widths.
-    const itemBlocks = items.map((it) => renderToBlock(it, options));
+    const itemBlocks = items.map((it) => renderToBlock(drawItem(it), options));
     const startCap = (i: number): RenderedBlock =>
       joiner ? renderToBlock(drawJoin(joiner, null, items[i]!, { index: i }), options) : EMPTY_BLOCK;
     const endCap = (i: number): RenderedBlock =>

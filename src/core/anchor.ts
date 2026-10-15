@@ -52,3 +52,12 @@ export function shiftAnchor(anchor: Anchor, cells: number): Anchor {
     inner: anchor.inner && shiftAnchor(anchor.inner, cells),
   };
 }
+
+/**
+ * Whether `owner` drew the cell `anchor` names, itself or through an owner
+ * nested in its output.
+ */
+export function drawnBy(anchor: Anchor | undefined, owner: object): boolean {
+  for (let level = anchor; level; level = level.inner) if (level.owner === owner) return true;
+  return false;
+}

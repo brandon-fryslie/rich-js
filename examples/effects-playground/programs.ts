@@ -58,7 +58,7 @@ const REPLAYING = "{ fps: FPS, step: STEP, every: CURVE.seconds * 1.25 }";
  */
 const PLAYED: Readonly<Record<EffectName, { readonly fn: string; readonly play: string }>> = {
   shimmer: { fn: "shimmer", play: `play((s) => onColors(shimmer(CURVE, s.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, s.z)), ${LOOPING});` },
-  pulse: { fn: "pulse", play: `play((s) => pulsedOn(s, (z) => pulse(CURVE, EFFECT_LIGHTS.sun, z), THEME), ${LOOPING});` },
+  pulse: { fn: "pulse", play: `play((s) => pulsedOn(s, (z) => pulse(CURVE, EFFECT_LIGHTS.sun, z)), ${LOOPING});` },
   sparkle: { fn: "sparkle", play: `play((s) => onColors(sparkle(CURVE, s.span, EFFECT_LIGHTS.firefly, s.z)), ${LOOPING});` },
   wheel: { fn: "wheel", play: `play((s) => wheel(CURVE, s.z), ${LOOPING});` },
   fade: { fn: "fadeIn", play: `play((s, start) => fadeIn(CURVE, start, s.z, THEME.backgroundColor).effect, ${REPLAYING});` },

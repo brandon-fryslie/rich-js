@@ -18,6 +18,7 @@ import {
   RichText,
   Strip,
   Style,
+  confined,
   ensureContrast,
   onColors,
   type Effect,
@@ -48,6 +49,8 @@ export interface Subject {
   readonly renderable: Renderable & Measurable;
   /** Where it sits in the noise, so two subjects under one effect never move in lockstep. */
   readonly z: number;
+  /** The elements of it a pulse breathes, told apart by who drew each cell, never by its colour. */
+  readonly pulsed: readonly object[];
 }
 
 /**
@@ -85,16 +88,14 @@ function stripStyle(theme: TerminalTheme, i: number): Style {
     : Style.fromColor(color("foreground"), color(`${key}-muted`));
 }
 
-/**
- * The elements the pulse is for, by the subject they are in and the labels of
- * the cells they are: the rest of the screen does not breathe.
- */
-const PULSED: Readonly<Record<string, readonly string[]>> = { strip: ["ctx 61%", "ok"] };
+/** The labels of the strip's cells a pulse breathes: the rest of the screen does not. */
+const PULSED: readonly string[] = ["ctx 61%", "ok"];
 
 /** A powerline strip of a dozen cells over the theme's palette. */
 export function stripSubject(theme: TerminalTheme): Subject {
   const cells = STRIP_LABELS.map((label, i) => new RichText(` ${label} `, { style: stripStyle(theme, i), end: "", noWrap: true }));
-  return { name: "strip", renderable: new Strip(cells, JOINERS.powerline), z: 0 };
+  const pulsed = cells.filter((_, i) => PULSED.includes(STRIP_LABELS[i]!));
+  return { name: "strip", renderable: new Strip(cells, JOINERS.powerline), z: 0, pulsed };
 }
 
 /**
@@ -105,18 +106,15 @@ export function stripSubject(theme: TerminalTheme): Subject {
 export function textSubject(theme: TerminalTheme, depth: ColorDepth): Subject {
   const ink = ensureContrast(paletteRgba(theme, "foreground-muted"), theme.backgroundColor, STATUS_CONTRAST, depth, undefined, theme);
   const style = Style.fromColor(ColorSpec.fromRgba(ink));
-  return { name: "text", renderable: new RichText(TEXT, { style, noWrap: true }), z: 11.3 };
+  return { name: "text", renderable: new RichText(TEXT, { style, noWrap: true }), z: 11.3, pulsed: [] };
 }
 
 /**
- * A pulse breathing the elements chosen for `subject` (`PULSED`), each its
- * own `pulseAt(z)`, at a `z` of its own so each keeps a time of its own, on
- * the fill the screen draws them with; a subject with none chosen is left be.
+ * A pulse breathing each of `subject`'s pulsed elements, and its side of the
+ * arrows either side of it, with a `pulseAt(z)` of its own at a `z` of its
+ * own, so each keeps a time of its own; a subject with none is left be.
  */
-export function pulsedOn(subject: DrawnSubject, pulseAt: (z: number) => Loop, theme: TerminalTheme): Effect {
-  const effects = (PULSED[subject.name] ?? []).map((label, n) => {
-    const fill = stripStyle(theme, STRIP_LABELS.indexOf(label)).drawnColors(subject.options.colorSystem ?? undefined).bgcolor!;
-    return onColors(pulseAt(subject.z + 3.7 * (n + 1)), new Set([fill.getTruecolor(theme, false).hex]));
-  });
+export function pulsedOn(subject: DrawnSubject, pulseAt: (z: number) => Loop): Effect {
+  const effects = subject.pulsed.map((element, n) => confined(onColors(pulseAt(subject.z + 3.7 * (n + 1))), element));
   return (colors, cell, t, drawn) => effects.reduce((moved, effect) => effect(moved, cell, t, drawn), colors);
 }

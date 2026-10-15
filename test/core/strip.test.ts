@@ -6,13 +6,14 @@ import {
   joinerNamed,
   SEAM_MIN_DELTA_E,
   gradientJoiner,
+  colorsOwnedBy,
   type JoinCell,
   type JoinShape,
 } from "../../src/core/strip.js";
 import { arrows } from "./arrows.js";
 import { Style, Theme } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
-import type { Segment } from "../../src/core/segment.js";
+import { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import { ColorDepth, ColorRgba, ColorSpec, blendRgb } from "../../src/core/color.js";
 import { exportLines } from "../../src/core/export-lines.js";
@@ -93,6 +94,34 @@ describe("Strip render walk", () => {
   it("emits no terminator for an empty strip", () => {
     const strip = new Strip([], JOINERS.powerline);
     expect([...strip.render(OPTIONS)]).toEqual([]);
+  });
+});
+
+describe("whose each colour of a strip is", () => {
+  /** Each cell's ink and ground, as `ink/ground` by the owning item's name, or `-` for a colour no item's. */
+  const owners = (strip: Strip): string[] => {
+    const frame = [render(strip)];
+    const width = frame[0]!.reduce((cells, segment) => cells + segment.cellLength, 0);
+    return Array.from({ length: width }, (_, x) => {
+      const anchor = Segment.anchorAt(frame, x, 0);
+      const of = (side: "fg" | "bg"): string => (colorsOwnedBy(anchor, RED)[side] ? "red" : colorsOwnedBy(anchor, BLUE)[side] ? "blue" : "-");
+      return `${of("fg")}/${of("bg")}`;
+    });
+  };
+  const of = (owner: string, cells: number): string[] => Array.from({ length: cells }, () => owner);
+
+  it("is the item that drew it, and a seam's arrow is inked by the item it points out of over the item it points into", () => {
+    // lead in reverse video over red, " red ", the arrow, " blue ", tail
+    expect(owners(new Strip([RED, BLUE], JOINERS.powerline))).toEqual(["-/red", ...of("red/red", 5), "red/blue", ...of("blue/blue", 6), "blue/-"]);
+  });
+
+  it("leaves the terminal's ground no item's", () => {
+    // lead, " red ", close, a blank in red's ink, open, " blue ", close
+    expect(owners(new Strip([RED, BLUE], JOINERS.capsule))).toEqual(["red/-", ...of("red/red", 5), ...of("red/-", 2), "blue/-", ...of("blue/blue", 6), "blue/-"]);
+  });
+
+  it("leaves a colour mixed from the two grounds no item's", () => {
+    expect(owners(new Strip([RED, BLUE], JOINERS.prism))).toEqual(["-/red", ...of("red/red", 5), "red/-", "-/-", "-/blue", ...of("blue/blue", 6), "blue/-"]);
   });
 });
 
