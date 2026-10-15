@@ -4,15 +4,22 @@
     {
       "version": "pr-377",
       "ref": "refs/pull/377/merge",
-      "sha": "21f0bbf300baf361148a9cd90baf5e2658f5aea9",
-      "timestamp": "2026-10-15T03:52:56.664Z",
+      "sha": "30a3056dd067b03bccd2ed531112f6eefb0216f5",
+      "timestamp": "2026-10-15T04:03:16.756Z",
       "commits": [
         {
-          "sha": "21f0bbf300baf361148a9cd90baf5e2658f5aea9",
+          "sha": "30a3056dd067b03bccd2ed531112f6eefb0216f5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T21:51:20-06:00",
-          "message": "Merge ee2e331229f7bb3a78b7df1b49435d2f66bae1b7 into 84390e4e3566ee7bb50dd236464c6e8dd4f3314b\n"
+          "timestamp": "2026-10-15T04:01:47Z",
+          "message": "Merge 7d71fa6939eb873a9ea45789aa8b960eed6d11f5 into 84390e4e3566ee7bb50dd236464c6e8dd4f3314b\n"
+        },
+        {
+          "sha": "7d71fa6939eb873a9ea45789aa8b960eed6d11f5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T22:01:40-06:00",
+          "message": "fix(host): review — Alt sequences, Ctrl range, sideways wheel, quit-key names, late handler errors (rich-demos-k78j.4yc)\n\nESC ESC [ A is Alt+Up and ESC <ctrl> is Alt+Ctrl, not escape; 0x00 and\n0x1c-0x1f name Ctrl+Space and Ctrl+\\ ] ^ _; Alt+printable is keyed by its\nglyph; SGR wheel 66/67 are scroll_left/right. quitKeys parse against keyName's\ngrammar and throw on a name no key goes by. A handler that stops the app is\nthe last to hear the event, and an error after stop throws instead of\nvanishing. Dead Ctrl+C handlers removed from four demos.\n"
         },
         {
           "sha": "ee2e331229f7bb3a78b7df1b49435d2f66bae1b7",
