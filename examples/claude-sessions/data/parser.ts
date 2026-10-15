@@ -155,27 +155,36 @@ function dropHidden(lines: ReadonlyArray<RawLine>, showHidden: boolean): RawLine
  * content block of a message — its thinking, its text, each tool call — as a
  * record of its own, every one carrying the message's id, so consecutive
  * assistant lines sharing an id are one message: its content is theirs in
- * order, its place in the conversation (uuid, parentUuid) is the first one's,
- * and the rest of it (stop_reason, usage) is the last one's.
+ * order, its parent is the first one's, and the rest of it (stop_reason,
+ * usage) is the last one's.
+ *
+ * Each record is parented on the one before it, and what follows the message
+ * — its turn's duration, the next prompt — on its last, so a reference into
+ * the message may name any of its records. The joined message keeps them all
+ * (`records`), and a lookup by uuid matches any of them (`blockIndexOf`).
  */
-function joinMessageRecords(lines: ReadonlyArray<RawLine>): RawLine[] {
-  const out: RawLine[] = [];
+interface Joined {
+  readonly line: RawLine;
+  /** The uuid of every record the line was joined from, first to last. */
+  readonly records: readonly string[];
+}
+
+function joinMessageRecords(lines: ReadonlyArray<RawLine>): Joined[] {
+  const out: Joined[] = [];
   for (const line of lines) {
     const r = line.parsed as RawRecord;
+    const records = [r.uuid ?? `line-${line.lineNumber}`];
     const prev = out[out.length - 1];
-    const prevRec = prev?.parsed as RawRecord | undefined;
+    const prevRec = prev?.line.parsed as RawRecord | undefined;
     const id = r.type === "assistant" ? r.message?.id : undefined;
     if (prev === undefined || id === undefined || prevRec?.type !== "assistant" || prevRec.message?.id !== id) {
-      out.push(line);
+      out.push({ line, records });
       continue;
     }
     const blocks = (record: RawRecord) => (Array.isArray(record.message?.content) ? record.message.content : []);
-    // Each record is parented on the one before it, so only the first's
-    // uuid and parentUuid place the message in the conversation; a later
-    // one's would point at a part that is no longer a block of its own.
     out[out.length - 1] = {
-      ...line,
-      parsed: { ...r, uuid: prevRec.uuid, parentUuid: prevRec.parentUuid, message: { ...r.message!, content: [...blocks(prevRec), ...blocks(r)] } },
+      line: { ...line, parsed: { ...r, uuid: prevRec.uuid, parentUuid: prevRec.parentUuid, message: { ...r.message!, content: [...blocks(prevRec), ...blocks(r)] } } },
+      records: [...prev.records, ...records],
     };
   }
   return out;
@@ -186,7 +195,8 @@ function joinMessageRecords(lines: ReadonlyArray<RawLine>): RawLine[] {
  * matching tool_result in the next user message; the standalone tool_result
  * user message is consumed (not emitted as its own Block).
  */
-function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
+function emitBlocks(joined: ReadonlyArray<Joined>): Block[] {
+  const lines = joined.map((j) => j.line);
   const out: Block[] = [];
   // Map of toolUseId → resolved AssistantContent (the result), populated as
   // we walk forward and consume tool_result user messages.
@@ -207,6 +217,7 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
   for (let i = 0; i < lines.length; i++) {
     if (consumedResultIndices.has(i)) continue;
     const line = lines[i]!;
+    const records = joined[i]!.records;
     const r = line.parsed as RawRecord;
     const uuid = r.uuid ?? `line-${line.lineNumber}`;
     const parentUuid = r.parentUuid ?? null;
@@ -220,6 +231,7 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
         parentUuid,
         timestamp,
         raw: line.parsed,
+        records,
         subtype: r.subtype ?? "system",
         durationMs: typeof r.durationMs === "number" ? r.durationMs : null,
       };
@@ -236,6 +248,7 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
         parentUuid,
         timestamp,
         raw: line.parsed,
+        records,
         errorType: r.error ?? "error",
         text: text || asString(r.error) || "(unknown error)",
       };
@@ -259,6 +272,7 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
           parentUuid,
           timestamp,
           raw: line.parsed,
+          records,
           text,
           model: r.message.model ?? "(unknown)",
           inputTokens: r.message.usage?.input_tokens ?? 0,
@@ -288,6 +302,7 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
             parentUuid: uuid,
             timestamp,
             raw: { tool_use: tu, tool_result: resolved?.content ?? null },
+            records,
             toolUseId,
             subagentType: typeof input["subagent_type"] === "string"
               ? input["subagent_type"] as string
@@ -310,6 +325,7 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
             parentUuid: uuid,
             timestamp,
             raw: { tool_use: tu, tool_result: resolved?.content ?? null },
+            records,
             toolName,
             toolUseId,
             input: tu.input ?? null,
@@ -345,6 +361,7 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
         parentUuid,
         timestamp,
         raw: line.parsed,
+        records,
         text: text || "(tool result orphan — see raw view)",
         promptId: typeof r.promptId === "string" ? r.promptId : null,
         isMeta: r.isMeta === true,
@@ -360,6 +377,7 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
       parentUuid,
       timestamp,
       raw: line.parsed,
+      records,
       errorType: r.type ?? "unknown",
       text: `(unknown record type: ${r.type ?? "?"})`,
     };

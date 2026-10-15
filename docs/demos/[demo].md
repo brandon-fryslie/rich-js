@@ -15,17 +15,23 @@ const { params } = useData()
 // The card arrives as JSON without its program, which it carries packed in
 // its playground link ([demo].paths.ts says why); the card shows once that is
 // unpacked, and a page left before then never shows it.
-const card = shallowRef(null)
+// [LAW:no-silent-failure] A program that cannot be unpacked takes the card's
+// place as the error, on the page and in the console, rather than a blank.
+const state = shallowRef({ kind: 'loading' })
 watch(
   () => params.value.card,
   (json, _, onCleanup) => {
     let current = true
     onCleanup(() => { current = false })
-    card.value = null
+    state.value = { kind: 'loading' }
     const sent = JSON.parse(json)
-    decodeProgram(sent.tryIt.program).then((program) => {
-      if (current) card.value = { ...sent, program }
-    })
+    decodeProgram(sent.tryIt.program).then(
+      (program) => { if (current) state.value = { kind: 'card', card: { ...sent, program } } },
+      (error) => {
+        console.error(`demos/${params.value.demo}: the card's program could not be unpacked`, error)
+        if (current) state.value = { kind: 'failed', message: error instanceof Error ? error.message : String(error) }
+      },
+    )
   },
   { immediate: true },
 )
@@ -42,7 +48,10 @@ const sourceHref = computed(
     <a :href="sourceHref" target="_blank" rel="noopener">View source on GitHub ↗</a>
   </p>
 
-  <div class="vp-doc"><RichDemo v-if="card" :card="card" /></div>
+  <div class="vp-doc">
+    <RichDemo v-if="state.kind === 'card'" :card="state.card" />
+    <p v-else-if="state.kind === 'failed'" class="rich-demo-failed" role="alert">This demo could not be opened: {{ state.message }}</p>
+  </div>
 </div>
 
 <style scoped>
@@ -58,6 +67,11 @@ const sourceHref = computed(
 .rich-demo-title code {
   background: transparent;
   padding: 0;
+}
+.rich-demo-failed {
+  color: var(--vp-c-danger-1);
+  font-family: var(--vp-font-family-mono);
+  font-size: 13px;
 }
 .rich-demo-meta {
   font-size: 13px;

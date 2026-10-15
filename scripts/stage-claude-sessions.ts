@@ -147,14 +147,20 @@ const SOURCES = Object.entries(SESSIONS).map(([project, ids]) => {
 
 /**
  * The machines the sessions name: this one, and every mDNS `<name>.local` any
- * of them mentions — a session run here talks about the others on the LAN —
- * so no host is named in this file. Each is scrubbed wherever it appears as a
- * word, bare or with its `.local`.
+ * of them reaches — a session run here ssh-es and scp-s to the others on the
+ * LAN — so no host is named in this file. A name counts only in a host
+ * position: the host of `user@host` (a format verb's `%s@host` is an address
+ * template, not a login), an argument of ssh, scp, rsync, sftp, mosh or ping,
+ * or the host of a `host:path` remote. A `.local` anywhere else — a file's
+ * `settings.local.json`, code's `binding.local` — names no machine. Each host
+ * is then scrubbed wherever it appears as a word, bare or with its `.local`.
  */
+const HOST_POSITION = /(?:(?<![%\w.-])[A-Za-z_][\w.-]*@|\b(?:ssh|scp|rsync|sftp|mosh|ping)\s+(?:-\S+\s+)*|(?<![\w.$-])(?=[A-Za-z0-9-]+\.local:))([A-Za-z0-9-]+)\.local(?![\w-]|\.[A-Za-z0-9])/g;
 const HOSTS = new Set([
   hostname().replace(/\.local$/, ""),
-  ...SOURCES.flatMap(([, files]) => files.flatMap(({ text }) => [...text.matchAll(/(?<![A-Za-z0-9.-])([A-Za-z0-9-]+)\.local\b/g)].map((m) => m[1]!))),
+  ...SOURCES.flatMap(([, files]) => files.flatMap(({ text }) => [...text.matchAll(HOST_POSITION)].map((m) => m[1]!))),
 ]);
+console.log(`hosts: ${HOSTS.size}`);
 
 const out = path.join(REPO_ROOT, "examples/claude-sessions/staging");
 // [LAW:one-source-of-truth] This script is the directory's one writer, so it

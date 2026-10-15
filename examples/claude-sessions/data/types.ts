@@ -20,6 +20,8 @@ export interface BlockBase {
   readonly parentUuid: string | null;
   readonly timestamp: string;       // ISO 8601
   readonly raw: unknown;            // parsed JSON for raw view
+  /** The uuid of every JSONL record this block is drawn from (parser.ts, joinMessageRecords). */
+  readonly records: readonly string[];
 }
 
 export interface HumanBlock extends BlockBase {

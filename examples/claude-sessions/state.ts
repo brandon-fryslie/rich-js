@@ -277,10 +277,15 @@ export function toggleHidden(state: AppState): AppState {
 
 // --- Navigation ---
 
+/** The first block drawn from the record `uuid`, or -1. [LAW:single-enforcer] Every lookup of a block by a record's uuid. */
+export function blockIndexOf(blocks: ReadonlyArray<Block>, uuid: string): number {
+  return blocks.findIndex((b) => b.records.includes(uuid));
+}
+
 export function jumpToParent(state: AppState): AppState {
   const block = selectedBlock(state);
   if (!block || !block.parentUuid) return state;
-  const idx = state.blocks.findIndex((b) => b.uuid === block.parentUuid);
+  const idx = blockIndexOf(state.blocks, block.parentUuid);
   if (idx < 0) return state;
   return { ...state, selectedBlockIndex: idx };
 }
@@ -467,7 +472,7 @@ export function openSelectedGlobalHit(state: AppState): AppState {
   });
   // Try to jump to the matching block by uuid
   if (hit.uuid) {
-    const idx = loaded.blocks.findIndex((b) => b.uuid === hit.uuid || b.uuid.startsWith(`${hit.uuid}#`));
+    const idx = blockIndexOf(loaded.blocks, hit.uuid);
     if (idx >= 0) {
       return { ...loaded, selectedBlockIndex: idx };
     }

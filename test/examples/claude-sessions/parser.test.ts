@@ -50,6 +50,17 @@ describe("parseBlocks", () => {
     expect(selectedBlock(jumpToParent(state))).toMatchObject({ kind: "human", text: "Run the tests." });
   });
 
+  it("places what follows a message written as several records under that message", () => {
+    const blocks = parseBlocks(lines([
+      part("a1", { type: "text", text: "Done." }, "tool_use", "p0"),
+      part("a2", { type: "tool_use", id: "t1", name: "Bash", input: { command: "ls" } }, "end_turn", "a1"),
+      { type: "system", subtype: "turn_duration", uuid: "s1", parentUuid: "a2", timestamp: "2026-10-04T07:00:09Z", durationMs: 9000 },
+    ]));
+    const base = initialState(new MemoryFileSystem({ home: "/home/demo", root: { kind: "directory", children: {} } }));
+    const state = { ...base, blocks, selectedBlockIndex: blocks.findIndex((block) => block.kind === "system") };
+    expect(selectedBlock(jumpToParent(state))).toMatchObject({ kind: "assistant", text: "Done." });
+  });
+
   it("reads a call to the Agent tool, and to its old name Task, as a subagent", () => {
     const call = (id: string, name: string) => part(`a-${id}`, { type: "tool_use", id, name, input: { subagent_type: "Explore", description: "find it", prompt: "look" } }, "tool_use");
     const blocks = parseBlocks(lines([
