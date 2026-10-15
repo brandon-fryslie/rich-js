@@ -778,6 +778,12 @@ describe("JOINERS, the bundled definitions", () => {
     expect(render(new Strip([NEAR_A, cell(" c ", "white on #a78bfa")], JOINERS.torn))[1]!.style?.color?.name).not.toBe("white");
   });
 
+  it("prism and torn divide between two grounds of one palette slot", () => {
+    const red = cell(" r ", "white on red");
+    expect(joinText(render(new Strip([red, RED], JOINERS.prism)), [red, RED]).slice(1, 4)).toEqual([" ", "\ue0b1", " "]);
+    expect(render(new Strip([red, RED], JOINERS.torn))[1]!.style?.color?.name).toBe("white");
+  });
+
   it("torn picks its quadrant pair per seam", () => {
     const items = Array.from({ length: 12 }, (_, i) => (i % 2 ? RED : BLUE));
     const tears = render(new Strip(items, JOINERS.torn)).filter((s) => s.text !== " red " && s.text !== " blue ").map((s) => s.text);

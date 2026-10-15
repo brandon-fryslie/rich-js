@@ -177,8 +177,9 @@ export interface JoinCell {
 /**
  * The cells a joiner draws at each kind of join:
  *   • `seam` — between two neighbours;
- *   • `divider` — in the seam's place where the two grounds are drawn as one
- *     colour (see `SEAM_MIN_DELTA_E`), so the seam would vanish into them;
+ *   • `divider` — in the seam's place where a seam cell's ink is drawn
+ *     indistinct from its own ground (see `SEAM_MIN_DELTA_E`), so the seam
+ *     would vanish;
  *     the same width as `seam`;
  *   • `lead` — where a run is entered from nothing: the strip's start, or a
  *     neighbour with no ground for the seam to paint. It cannot name `left`;
@@ -195,10 +196,9 @@ type Part = keyof JoinShape;
 const PARTS: readonly Part[] = ["seam", "divider", "lead", "tail"];
 
 /**
- * The least ΔE_OK two neighbouring backgrounds must differ by for a seam drawn
- * between them to be seen. Below it the seam is drawn in a colour the eye
- * cannot tell from its own background, so the joiner draws the divider
- * instead. Twice the ~.02 threshold of a visible difference, because a seam is
+ * The least ΔE_OK a seam cell's ink must differ from its own ground by for the
+ * seam to be seen. Below it the eye cannot tell the ink from the ground,
+ * so the joiner draws the divider instead. Twice the ~.02 threshold of a visible difference, because a seam is
  * one cell wide.
  */
 export const SEAM_MIN_DELTA_E = 0.04;
@@ -399,8 +399,8 @@ const shapeGlyphs = (shape: JoinShape): string => PARTS.flatMap((part) => shape[
  * Which part a join draws is read off its two neighbours. A neighbour is
  * missing at the strip's ends, and counts as missing — an endpoint — when the
  * shape paints with its ground anywhere and it has none to paint. With both present the
- * join is the seam, or the divider where the two grounds are drawn as one
- * colour at `options.colorSystem`; with only the right, the lead; with only
+ * join is the seam, or the divider where any seam cell's ink is drawn
+ * indistinct from its ground at `options.colorSystem`; with only the right, the lead; with only
  * the left, the tail; with neither, nothing.
  *
  * `ascii` is the shape an ASCII-only output draws instead, whole.

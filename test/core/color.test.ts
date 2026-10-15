@@ -716,6 +716,11 @@ describe("ColorSpec.blend()", () => {
   const blue = ColorSpec.parse("blue");
   const red = ColorSpec.parse("red");
 
+  it("is the slot itself when both ends are one palette slot, however spelled", () => {
+    expect(ColorSpec.blend(red, red, 0.5)).toBe(red);
+    expect(ColorSpec.blend(red, ColorSpec.parse("color(1)"), 0.3)).toBe(red);
+  });
+
   it("draws as the mix of the shades a theme draws its ends in", () => {
     const mixed = ColorSpec.blend(blue, red, 0.25);
     expect(mixed.getTruecolor(ATOM_ONE_DARK)).toEqual(
