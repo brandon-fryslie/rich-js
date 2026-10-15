@@ -2,28 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-376",
-      "ref": "refs/pull/376/merge",
-      "sha": "0e2d7366cd534f3002291db276ccae14082c0e3f",
-      "timestamp": "2026-10-15T03:38:27.041Z",
-      "commits": [
-        {
-          "sha": "0e2d7366cd534f3002291db276ccae14082c0e3f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T21:37:02-06:00",
-          "message": "Merge e2fd2ad1f6ad5d0874c7057aa2b8fdd29cc6cdea into b260442de6629a61ef58d580e81a89469c3d679d\n"
-        },
-        {
-          "sha": "e2fd2ad1f6ad5d0874c7057aa2b8fdd29cc6cdea",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T21:36:53-06:00",
-          "message": "test(e2e): page errors carry their stacks (rich-demos-k78j.4rx)\n\nThe scores-table page error failed one run and never again: ~800 runs since,\n6x CPU throttle included, are clean, and the one failure kept only its message.\nEvery spec now collects page errors through pageErrors(), which keeps the stack,\nso a recurrence names where it threw.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b260442de6629a61ef58d580e81a89469c3d679d",
