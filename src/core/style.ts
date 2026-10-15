@@ -769,6 +769,9 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "rule.line": Style.parse("bright_green"),
   "rule.text": NULL_STYLE,
 
+  // Strip
+  "strip.separator": Style.parse("bright_black"),
+
   // JSON
   "json.brace": Style.parse("bold"),
   "json.bool_true": Style.parse("italic bright_green"),

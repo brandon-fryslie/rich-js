@@ -4,7 +4,8 @@ import { ColorDepth } from "../../src/core/color.js";
 import { RichText } from "../../src/core/text.js";
 import { Style } from "../../src/core/style.js";
 import { Segment, ControlType } from "../../src/core/segment.js";
-import { Strip, PowerlineJoiner } from "../../src/core/strip.js";
+import { Strip } from "../../src/core/strip.js";
+import { arrows } from "./arrows.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { renderMarkup } from "../../src/core/markup.js";
 import { OSC8_CLOSE, osc8Open, osc8Sequences } from "../../src/core/osc8.js";
@@ -60,13 +61,13 @@ describe("renderToString", () => {
     expect(a).toBe(b);
   });
 
-  it("renders a Strip with PowerlineJoiner end-to-end as ANSI", () => {
+  it("renders a powerline Strip end-to-end as ANSI", () => {
     const strip = new Strip(
       [
         new RichText(" main ", { style: "white on blue", end: "" }),
         new RichText(" foo ", { style: "white on cyan", end: "" }),
       ],
-      new PowerlineJoiner({ glyph: ">", divider: "|", lead: "<", tail: ">" }),
+      arrows(),
     );
     const out = renderToString(strip, { colorSystem: ColorDepth.TRUECOLOR });
     expect(out).toContain(" main ");

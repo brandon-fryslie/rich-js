@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { Group } from "../../src/renderables/group.js";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { Segment } from "../../src/core/segment.js";
-import { Strip, PowerlineJoiner } from "../../src/core/strip.js";
+import { Strip } from "../../src/core/strip.js";
+import { arrows } from "../core/arrows.js";
 import { RichText } from "../../src/core/text.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
@@ -86,13 +87,13 @@ describe("Group", () => {
     const after = new RichText("after\n", { end: "" });
 
     it("Strip puts the next renderable on its own line", () => {
-      const strip = new Strip([cellA, cellB], new PowerlineJoiner({ glyph: ">", divider: "|", lead: "<", tail: ">" }));
+      const strip = new Strip([cellA, cellB], arrows());
       const group = new Group(strip, after);
       expect(collectText(group, { maxWidth: 80 })).toBe("<a>b>\nafter\n");
     });
 
     it("FlexStrip puts the next renderable on its own line", () => {
-      const flexStrip = new FlexStrip([cellA, cellB], { joiner: new PowerlineJoiner({ glyph: ">", divider: "|", lead: "<", tail: ">" }) });
+      const flexStrip = new FlexStrip([cellA, cellB], { joiner: arrows() });
       const group = new Group(flexStrip, after);
       expect(collectText(group, { maxWidth: 80 })).toBe("<a>b>\nafter\n");
     });

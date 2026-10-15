@@ -30,7 +30,8 @@ import { Segment } from "./segment.js";
 import { Style } from "./style.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK } from "./color.js";
 import { Oklch } from "./oklch.js";
-import { drawable, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
+import { cellLen } from "./cells.js";
+import { drawable, getStyle, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
 
 // --- StyledRenderable ---
 
@@ -121,73 +122,154 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
   }
 }
 
-// --- Helpers ---
-
-const EMPTY: Renderable = {
-  *render(_options: RenderOptions): Iterable<Segment> {
-    // intentionally empty
-  },
-};
-
-/** A renderable whose segments are computed from the options it is rendered with. */
-function deferred(emit: (options: RenderOptions) => Iterable<Segment>): Renderable {
-  return { render: emit };
-}
-
-// Endpoint and powerline join glyphs paint the adjacent item's edge bg
-// *as* their fg. If the edge has no bgcolor, the glyph degrades to the
-// default fg — which renders as nothing visible against the terminal
-// background, the right outcome for an unstyled edge.
-function bgAsFg(edge: Style): Style {
-  return new Style({ color: edge.bgcolor });
-}
-
-// A bg with a real colour to paint. `undefined` (no bg) and the terminal
-// DEFAULT colour (transparent — identical to the terminal background) are the
-// two representations of "nothing to paint"; the powerline separator treats
-// them the same, so the gate cannot be fooled by an explicit `… on default`.
-function paintableBg(bg: ColorSpec | undefined): ColorSpec | undefined {
-  return bg !== undefined && !bg.isDefault ? bg : undefined;
-}
-
-// A cap, arrow or gradient is its cell continuing: that cell's ground as the
-// writer draws it (`Style.drawnColors`, onto the terminal's black), so a
-// translucent ground is not composited a second time over whatever it enters.
-function drawnGround(bg: ColorSpec): ColorSpec {
-  return bg.flattenAlpha(SURFACE_BLACK);
-}
-
-// A cap is its glyph in its cell's ground, and "" is a flat end: no glyph, so
-// no segment — the same output as a join with nothing to paint.
-function* cap(glyph: string, bg: ColorSpec): Iterable<Segment> {
-  if (glyph !== "") yield new Segment(glyph, new Style({ color: drawnGround(bg) }));
-}
-
-// --- PowerlineJoiner ---
+// --- CellJoiner ---
 
 /**
- * The least ΔE_OK two neighbouring backgrounds must differ by for the powerline
- * arrow between them to be seen. Below it the arrow is drawn in a colour the
- * eye cannot tell from its own background, so the joiner draws the divider
+ * A colour a joiner's cell is drawn in. Each variant names where the colour
+ * comes from when the join is drawn:
+ *   • an `edge` — a neighbour's ground (`bg`) or text (`fg`) at the column
+ *     facing the join, read through `StyledRenderable.edgeStyle`;
+ *   • a `role` — a style name, resolved against the render's theme, whose
+ *     foreground colour is the colour;
+ *   • a `mix` — two colours blended at `t` (0 is the first, 1 the second).
+ */
+export type Paint =
+  | { readonly edge: "left" | "right"; readonly part: "bg" | "fg" }
+  | { readonly role: string }
+  | { readonly mix: readonly [Paint, Paint, number] };
+
+/**
+ * A `Paint`, or `"ground"`: the terminal's own background, whose colour nobody
+ * knows. That is why it is never mixed (`Paint` excludes it), and why a cell
+ * may put it on one side only. As a cell's `fg` it is drawn in reverse video —
+ * the glyph's ink shows the terminal's background through a cell filled with
+ * the `bg` colour — so an inverted shape is the same glyph, never a glyph of
+ * its own.
+ */
+export type CellColor = Paint | "ground";
+
+/**
+ * One styled run of a join. A `oneOf` glyph is a set any member of which may
+ * stand in the cell; every member has the same width, because consumers
+ * measure a join by rendering it.
+ */
+export interface JoinCell {
+  readonly glyph: string | { readonly oneOf: readonly string[] };
+  readonly fg: CellColor;
+  readonly bg: CellColor;
+}
+
+/**
+ * The cells a joiner draws at each kind of join:
+ *   • `seam` — between two neighbours;
+ *   • `divider` — in the seam's place where the two grounds are drawn as one
+ *     colour (see `SEAM_MIN_DELTA_E`), so the seam would vanish into them;
+ *     the same width as `seam`;
+ *   • `lead` — where a run is entered from nothing: the strip's start, or a
+ *     neighbour with no ground for the seam to paint. It cannot name `left`;
+ *   • `tail` — where a run leaves into nothing. It cannot name `right`.
+ */
+export interface JoinShape {
+  readonly seam: readonly JoinCell[];
+  readonly divider: readonly JoinCell[];
+  readonly lead: readonly JoinCell[];
+  readonly tail: readonly JoinCell[];
+}
+
+type Part = keyof JoinShape;
+const PARTS: readonly Part[] = ["seam", "divider", "lead", "tail"];
+
+/**
+ * The least ΔE_OK two neighbouring backgrounds must differ by for a seam drawn
+ * between them to be seen. Below it the seam is drawn in a colour the eye
+ * cannot tell from its own background, so the joiner draws the divider
  * instead. Twice the ~.02 threshold of a visible difference, because a seam is
  * one cell wide.
  */
 export const SEAM_MIN_DELTA_E = 0.04;
 
-// An arrow the eye cannot tell from the ground it is drawn on. What is
-// measured is what is drawn — `Style.drawnColors`, the colours the writer
-// encodes: the arrow's colour flattened onto its ground and the ground onto
-// the terminal's black, both downgraded to the depth the render encodes at,
-// so two grounds 256 colours round to one cube entry are the one entry they
-// render as. A colour whose RGB is the terminal theme's own (ANSI 0–15, a
-// blend reaching one) has no value here, so two of them are the same only
-// when they are one expression: the same palette slot — its `number`, never
-// the name or the depth that spells it ("red", "color(1)", an EIGHT_BIT spec
-// on 0–15 are one slot) — or the same blend, whose name spells each end by its
-// slot for the same reason.
-function vanishes(arrow: Style, colorSystem: ColorDepth | null | undefined): boolean {
-  // No colour emitted draws nothing to tell apart; measure what was handed.
-  const { color, bgcolor } = arrow.drawnColors(colorSystem ?? ColorDepth.TRUECOLOR);
+const ASCII_TEXT = /^[\x00-\x7F]*$/;
+
+function* paintsIn(color: CellColor): Iterable<Paint | "ground"> {
+  yield color;
+  if (typeof color === "object" && "mix" in color) {
+    yield* paintsIn(color.mix[0]);
+    yield* paintsIn(color.mix[1]);
+  }
+}
+
+const glyphsOf = (cell: JoinCell): readonly string[] => (typeof cell.glyph === "string" ? [cell.glyph] : cell.glyph.oneOf);
+const cellWidth = (cell: JoinCell): number => cellLen(glyphsOf(cell)[0] ?? "");
+const partWidth = (cells: readonly JoinCell[]): number => cells.reduce((width, cell) => width + cellWidth(cell), 0);
+
+/**
+ * [LAW:parse-dont-validate] The one place a shape is checked, so every rule
+ * the cell model states is refused at construction and the render reads a
+ * shape that already holds them. A shape is often authored as data — a
+ * consumer's config — so the rules the types state are checked here too.
+ */
+function checkShape(shape: JoinShape, form: "glyph" | "ascii"): JoinShape {
+  const refuse = (where: string, why: string): never => {
+    throw new Error(`CellJoiner: ${form} ${where} ${why}`);
+  };
+  for (const part of PARTS) {
+    shape[part].forEach((cell, i) => {
+      const where = `${part}[${i}]`;
+      if (cell.fg === "ground" && cell.bg === "ground") refuse(where, "has ground on both sides");
+      for (const side of [cell.fg, cell.bg]) {
+        if (typeof side === "object" && "mix" in side) {
+          for (const inner of paintsIn(side)) if (inner === "ground") refuse(where, "mixes ground, whose colour is unknown");
+        }
+        for (const paint of paintsIn(side)) {
+          if (typeof paint !== "object" || !("edge" in paint)) continue;
+          if (part === "lead" && paint.edge === "left") refuse(where, "names the left neighbour, which a lead never has");
+          if (part === "tail" && paint.edge === "right") refuse(where, "names the right neighbour, which a tail never has");
+        }
+      }
+      const glyphs = glyphsOf(cell);
+      if (glyphs.length === 0) refuse(where, "has an empty oneOf");
+      if (glyphs.some((glyph) => cellLen(glyph) !== cellWidth(cell))) refuse(where, "has oneOf members of different widths");
+      if (form === "ascii" && !glyphs.every((glyph) => ASCII_TEXT.test(glyph))) refuse(where, "is not ASCII");
+    });
+  }
+  if (partWidth(shape.divider) !== partWidth(shape.seam)) refuse("divider", "is not the width of the seam");
+  return shape;
+}
+
+// Whether any cell of `cells` paints with `side`'s ground.
+const readsGround = (cells: readonly JoinCell[], side: "left" | "right"): boolean =>
+  cells.some((cell) =>
+    [cell.fg, cell.bg].some((color) => [...paintsIn(color)].some((p) => typeof p === "object" && "edge" in p && p.edge === side && p.part === "bg")),
+  );
+
+// A bg with a real colour to paint. `undefined` (no bg) and the terminal
+// DEFAULT colour (transparent — identical to the terminal background) are the
+// two representations of "nothing to paint", so an explicit `… on default`
+// cannot smuggle a seam.
+function paintableBg(bg: ColorSpec | undefined): ColorSpec | undefined {
+  return bg !== undefined && !bg.isDefault ? bg : undefined;
+}
+
+// A neighbour's ground as the writer draws it (`Style.drawnColors`, onto the
+// terminal's black), so a translucent ground is not composited a second time
+// over whatever a join cell enters.
+function drawnGround(bg: ColorSpec): ColorSpec {
+  return bg.flattenAlpha(SURFACE_BLACK);
+}
+
+// A seam the eye cannot tell from the ground it is drawn on. What is measured
+// is what is drawn — `Style.drawnColors`, the colours the writer encodes: the
+// left ground flattened onto the right and the right onto the terminal's
+// black, both downgraded to the depth the render encodes at, so two grounds
+// 256 colours round to one cube entry are the one entry they render as. A
+// colour whose RGB is the terminal theme's own (ANSI 0–15, a blend reaching
+// one) has no value here, so two of them are the same only when they are one
+// expression: the same palette slot — its `number`, never the name or the
+// depth that spells it ("red", "color(1)", an EIGHT_BIT spec on 0–15 are one
+// slot) — or the same blend, whose name spells each end by its slot for the
+// same reason.
+function vanishes(leftBg: ColorSpec, rightBg: ColorSpec, colorSystem: ColorDepth | null | undefined): boolean {
+  const { color, bgcolor } = new Style({ color: drawnGround(leftBg), bgcolor: rightBg }).drawnColors(colorSystem ?? ColorDepth.TRUECOLOR);
   if (color === undefined || bgcolor === undefined) return false;
   const av = color.fixedValue;
   const bv = bgcolor.fixedValue;
@@ -196,246 +278,162 @@ function vanishes(arrow: Style, colorSystem: ColorDepth | null | undefined): boo
     : color.number !== undefined ? color.number === bgcolor.number : color.name === bgcolor.name;
 }
 
-// [LAW:types-are-the-program] The arrow, its divider and the two caps are one
-// vocabulary: a caller who replaces the arrow (say with ASCII ">") must also say
-// what divides and what caps, or the default powerline glyphs would render as
-// tofu beside it. So they are given together or not at all — the default set is
-// the unset case. A cap shape (rounded, slanted, flat) is therefore a value of
-// this record, never a joiner of its own.
-export interface PowerlineJoinerOptions {
-  /** Glyph for every join between two coloured items. */
-  glyph: string;
-  /**
-   * Glyph drawn between neighbours whose backgrounds the eye cannot tell apart,
-   * in the left item's text colour — the arrow itself would vanish into the
-   * shared background.
-   */
-  divider: string;
-  /**
-   * Glyph for every join a coloured item is entered from nothing — the strip's
-   * start, or a colourless left neighbour — painted in the right item's
-   * background. `""` begins a coloured run flat.
-   */
-  lead: string;
-  /**
-   * Glyph for every join a coloured item leaves into nothing — the strip's end,
-   * or a colourless right neighbour — painted in the left item's background.
-   * `""` ends a coloured run flat.
-   */
-  tail: string;
+interface Edges {
+  readonly left: Style | undefined;
+  readonly right: Style | undefined;
+}
+
+function resolvePaint(paint: Paint, edges: Edges, options: RenderOptions): ColorSpec | undefined {
+  if ("edge" in paint) {
+    const edge = edges[paint.edge];
+    if (paint.part === "fg") return edge?.color;
+    const bg = paintableBg(edge?.bgcolor);
+    return bg && drawnGround(bg);
+  }
+  if ("role" in paint) return getStyle(options, paint.role).color;
+  const [from, to, t] = paint.mix;
+  const a = resolvePaint(from, edges, options);
+  const b = resolvePaint(to, edges, options);
+  // A mix with no colour at one end has nothing to blend toward.
+  return a && b && ColorSpec.blend(a, b, t);
+}
+
+function cellStyle(cell: JoinCell, edges: Edges, options: RenderOptions): Style {
+  // [LAW:dataflow-not-control-flow] "ground" is the absence of a colour on its
+  // side; as the fg it is reverse video over the bg colour, so the glyph's ink
+  // is the terminal's own background.
+  if (cell.fg === "ground") return new Style({ color: cell.bg === "ground" ? undefined : resolvePaint(cell.bg, edges, options), reverse: true });
+  const color = resolvePaint(cell.fg, edges, options);
+  return new Style({ color, bgcolor: cell.bg === "ground" ? undefined : resolvePaint(cell.bg, edges, options) });
+}
+
+const shapeGlyphs = (shape: JoinShape): string => PARTS.flatMap((part) => shape[part].flatMap(glyphsOf)).join("");
+
+/**
+ * The one joiner: what it draws at each join is the `JoinShape` it is given,
+ * so a new joiner is a value, never a class.
+ *
+ * Which part a join draws is read off its two neighbours. A neighbour is
+ * missing at the strip's ends, and counts as missing — an endpoint — when the
+ * seam paints with its ground and it has none to paint. With both present the
+ * join is the seam, or the divider where the two grounds are drawn as one
+ * colour at `options.colorSystem`; with only the right, the lead; with only
+ * the left, the tail; with neither, nothing.
+ *
+ * `ascii` is the shape an ASCII-only output draws instead, whole.
+ */
+export class CellJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
+  readonly shape: JoinShape;
+  readonly ascii: JoinShape;
+  private readonly _seamReads: { readonly left: boolean; readonly right: boolean };
+
+  constructor(shape: JoinShape, ascii: JoinShape) {
+    this.shape = checkShape(shape, "glyph");
+    this.ascii = checkShape(ascii, "ascii");
+    this._seamReads = { left: readsGround(shape.seam, "left"), right: readsGround(shape.seam, "right") };
+  }
+
+  join(left: T | null, right: T | null): Renderable {
+    const { shape, ascii, _seamReads: reads } = this;
+    return {
+      *render(options: RenderOptions): Iterable<Segment> {
+        const drawn = drawable(options, shape, ascii, shapeGlyphs);
+        const edges: Edges = { left: left?.edgeStyle("right", options), right: right?.edgeStyle("left", options) };
+        const leftBg = paintableBg(edges.left?.bgcolor);
+        const rightBg = paintableBg(edges.right?.bgcolor);
+        const hasLeft = left !== null && (!reads.left || leftBg !== undefined);
+        const hasRight = right !== null && (!reads.right || rightBg !== undefined);
+        const cells =
+          hasLeft && hasRight
+            ? leftBg && rightBg && vanishes(leftBg, rightBg, options.colorSystem) ? drawn.divider : drawn.seam
+            : hasRight ? drawn.lead
+            : hasLeft ? drawn.tail
+            : [];
+        // A oneOf draws its first member until a join knows its seam index
+        // (rich-joiners-9ntp.bex).
+        for (const cell of cells) yield new Segment(glyphsOf(cell)[0]!, cellStyle(cell, edges, options));
+      },
+    };
+  }
+}
+
+// --- The four joiners as shapes ---
+
+const LEFT_BG: Paint = { edge: "left", part: "bg" };
+const RIGHT_BG: Paint = { edge: "right", part: "bg" };
+const LEFT_FG: Paint = { edge: "left", part: "fg" };
+
+const GROUND = "ground";
+
+/**
+ * The powerline joiner: U+E0B0 (right-arrow) in the left ground over the
+ * right, divided by U+E0B1 (thin right-arrow) in the left item's text. The
+ * lead is the arrow with the left ground replaced by the terminal's — drawn
+ * in reverse video it leaves a notch whose base is the cell's left edge, the
+ * terminal's own background showing through, so it matches under a
+ * translucent terminal too. The tail is the arrow over the terminal's ground.
+ * ASCII draws `>` everywhere and begins each run flat.
+ */
+export const POWERLINE_JOINER = new CellJoiner(
+  {
+    seam: [{ glyph: "", fg: LEFT_BG, bg: RIGHT_BG }],
+    divider: [{ glyph: "", fg: LEFT_FG, bg: LEFT_BG }],
+    lead: [{ glyph: "", fg: GROUND, bg: RIGHT_BG }],
+    tail: [{ glyph: "", fg: LEFT_BG, bg: GROUND }],
+  },
+  {
+    seam: [{ glyph: ">", fg: LEFT_BG, bg: RIGHT_BG }],
+    divider: [{ glyph: ">", fg: LEFT_FG, bg: LEFT_BG }],
+    lead: [],
+    tail: [{ glyph: ">", fg: LEFT_BG, bg: GROUND }],
+  },
+);
+
+function capsule(open: string, close: string): JoinShape {
+  const seam: JoinCell[] = [
+    { glyph: close, fg: LEFT_BG, bg: GROUND },
+    { glyph: " ", fg: LEFT_FG, bg: GROUND },
+    { glyph: open, fg: RIGHT_BG, bg: GROUND },
+  ];
+  return { seam, divider: seam, lead: [{ glyph: open, fg: RIGHT_BG, bg: GROUND }], tail: [{ glyph: close, fg: LEFT_BG, bg: GROUND }] };
 }
 
 /**
- * The powerline set: U+E0B0 (right-arrow) divided by U+E0B1 (thin right-arrow),
- * led by U+E0D7 (Nerd Fonts ple-left_hard_divider_inverse, the right-arrow's
- * inverse) and tailed by the arrow itself. The lead leaves empty a triangle
- * whose base is its cell's left edge and whose point touches the first item, so
- * the run opens notched — as if an arrow before it pointed in — rather than
- * with a shape pointing out. The notch is the terminal's own background showing
- * through, never a colour painted to imitate it, so it matches under a
- * translucent terminal background too. The lead is a Powerline Extra glyph: a
- * classic powerline font lacks it.
+ * Rounded pills: each run opened by U+E0B6 and closed by U+E0B4, both in its
+ * ground over the terminal's, a space between pills. ASCII draws `(` and `)`.
  */
-export const POWERLINE_JOINER_GLYPHS: Readonly<PowerlineJoinerOptions> = Object.freeze({
-  glyph: "\ue0b0",
-  divider: "\ue0b1",
-  lead: "\ue0d7",
-  tail: "\ue0b0",
-});
+export const CAPSULE_JOINER = new CellJoiner(capsule("", ""), capsule("(", ")"));
 
-/** The powerline set in ASCII: an arrow for every join, runs begun flat. */
-const ASCII_POWERLINE_GLYPHS: Readonly<PowerlineJoinerOptions> = Object.freeze({
-  glyph: ">",
-  divider: ">",
-  lead: "",
-  tail: ">",
-});
+const PLAIN_SEAM: readonly JoinCell[] = [{ glyph: " | ", fg: { role: "strip.separator" }, bg: GROUND }];
+const PLAIN: JoinShape = { seam: PLAIN_SEAM, divider: PLAIN_SEAM, lead: [], tail: [] };
 
-const powerlineGlyphs = ({ glyph, divider, lead, tail }: PowerlineJoinerOptions): string => glyph + divider + lead + tail;
+/**
+ * ` | ` between every pair of items, in the theme's `strip.separator` colour;
+ * nothing at the ends. Its seam names no neighbour, so it joins items with no
+ * ground too.
+ */
+export const PLAIN_JOINER = new CellJoiner(PLAIN, PLAIN);
 
-export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
-  private readonly _glyphs: Readonly<PowerlineJoinerOptions>;
-
-  constructor(options: PowerlineJoinerOptions = POWERLINE_JOINER_GLYPHS) {
-    this._glyphs = options;
-  }
-
-  join(left: T | null, right: T | null): Renderable {
-    // [LAW:dataflow-not-control-flow] One table for all three positions (start
-    // cap, mid-join, end cap), read off which side has a colour to paint. The
-    // endpoints are not control-flow special cases; they are the DATA cases
-    // where a neighbour (hence its bg) is absent:
-    //   • both bgs — the arrow in the LEFT bg (the colour bleeding rightward)
-    //     over the RIGHT bg.
-    //   • left bg only — the end cap, OR a coloured item before a colourless
-    //     one — the tail bleeds the left colour out over the terminal
-    //     background (fg = left bg, no bg).
-    //   • right bg only — the start cap, OR a colourless item before a coloured
-    //     one — the lead: the right colour painted over the terminal
-    //     background in the lead's shape (fg = right bg, no bg).
-    //   • neither — nothing to paint, so the join yields nothing.
-    // Equal REAL bgs still emit: a same-bg seam between two distinct items is a
-    // structural boundary, never suppressed. The arrow would be drawn in its own
-    // background colour there and vanish, so the seam is the DIVIDER instead, in
-    // the left item's text colour — the vim-airline convention for neighbours
-    // that share a background. "Equal" is perceptual (SEAM_MIN_DELTA_E) and
-    // measured on the colours the terminal draws at `options.colorSystem`: an
-    // arrow a hair off its background is as invisible as one exactly on it,
-    // and two backgrounds 256 colours round to one entry are one background.
-    // Background colour is paint, not structure; its ABSENCE (nothing to paint)
-    // is the only thing that elides the separator, and that is paint logic.
-    // "Absent" = no bg OR the terminal default (transparent) — paintableBg folds
-    // both to undefined so an explicit `… on default` cannot smuggle a separator.
-    const glyphs = this._glyphs;
-    return deferred(function* (options) {
-      const { glyph, divider, lead, tail } = drawable(options, glyphs, ASCII_POWERLINE_GLYPHS, powerlineGlyphs);
-      const leftEdge = left?.edgeStyle("right", options);
-      const leftBg = paintableBg(leftEdge?.bgcolor);
-      const rightBg = paintableBg(right?.edgeStyle("left", options).bgcolor);
-      if (leftBg === undefined) {
-        if (rightBg !== undefined) yield* cap(lead, rightBg);
-        return;
-      }
-      if (rightBg === undefined) {
-        yield* cap(tail, leftBg);
-        return;
-      }
-      const arrow = new Style({ color: drawnGround(leftBg), bgcolor: rightBg });
-      // The divider is the left item's text on the left item's own ground,
-      // so it reads exactly as well as that item's text does, at any depth.
-      yield vanishes(arrow, options.colorSystem)
-        ? new Segment(divider, new Style({ color: leftEdge?.color, bgcolor: leftBg }))
-        : new Segment(glyph, arrow);
-    });
-  }
-}
-
-// --- CapsuleJoiner ---
-
-export interface CapsuleJoinerOptions {
-  /** Left-cap glyph (default: U+E0B6, powerline rounded left). */
-  left?: string;
-  /** Right-cap glyph (default: U+E0B4, powerline rounded right). */
-  right?: string;
-  /** Separator inserted between adjacent capsules in the middle position. */
-  separator?: string;
-}
-
-interface Caps {
-  readonly left: string;
-  readonly right: string;
-}
-
-const ASCII_CAPS: Caps = { left: "(", right: ")" };
-const capGlyphs = ({ left, right }: Caps): string => left + right;
-
-export class CapsuleJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
-  private readonly _caps: Caps;
-  private readonly _separator: string;
-
-  constructor(options?: CapsuleJoinerOptions) {
-    this._caps = { left: options?.left ?? "", right: options?.right ?? "" };
-    this._separator = options?.separator ?? " ";
-  }
-
-  *_emit(left: T | null, right: T | null, options: RenderOptions): Iterable<Segment> {
-    const caps = drawable(options, this._caps, ASCII_CAPS, capGlyphs);
-    const separator = drawable(options, this._separator, " ");
-    if (left === null && right === null) return;
-    if (left === null) {
-      yield new Segment(caps.left, bgAsFg(right!.edgeStyle("left", options)));
-      return;
-    }
-    if (right === null) {
-      yield new Segment(caps.right, bgAsFg(left.edgeStyle("right", options)));
-      return;
-    }
-    // Middle: close the left capsule, separator (unstyled), open the right.
-    yield new Segment(caps.right, bgAsFg(left.edgeStyle("right", options)));
-    if (separator.length > 0) yield new Segment(separator);
-    yield new Segment(caps.left, bgAsFg(right.edgeStyle("left", options)));
-  }
-
-  join(left: T | null, right: T | null): Renderable {
-    return deferred((options) => this._emit(left, right, options));
-  }
-}
-
-// --- PlainJoiner ---
-
-export interface PlainJoinerOptions {
-  separator?: string;
-  style?: Style;
-}
-
-export class PlainJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
-  private readonly _separator: string;
-  private readonly _style: Style;
-
-  constructor(options?: PlainJoinerOptions) {
-    this._separator = options?.separator ?? " | ";
-    this._style = options?.style ?? Style.parse("dim");
-  }
-
-  join(left: T | null, right: T | null): Renderable {
-    // Endpoints are empty — a fixed separator has no natural cap.
-    if (left === null || right === null) return EMPTY;
-    const separator = this._separator;
-    const style = this._style;
-    return deferred((options) => [new Segment(drawable(options, separator, " | "), style)]);
-  }
-}
-
-// --- GradientJoiner ---
-
-export interface GradientJoinerOptions {
-  /** Number of cells between adjacent items (default: 4). */
-  steps?: number;
+function gradient(steps: number, glyph: string): JoinShape {
+  // Midpoint sampling across `2 * steps` half-cell positions: cell i takes
+  // samples 2i (its ink, the left half) and 2i+1 (its ground, the right half),
+  // so no sample equals either neighbour's ground.
+  const samples = 2 * steps;
+  const seam = Array.from({ length: steps }, (_, i): JoinCell => ({
+    glyph,
+    fg: { mix: [LEFT_BG, RIGHT_BG, (2 * i + 0.5) / samples] },
+    bg: { mix: [LEFT_BG, RIGHT_BG, (2 * i + 1.5) / samples] },
+  }));
+  return { seam, divider: seam, lead: [], tail: [] };
 }
 
 /**
- * Half-block dithering glyph: paints the cell's left half with the foreground
- * colour and the right half with the background colour. Lets each cell carry
- * two colour samples — `2 * steps` samples in `steps` cells — so the gradient
- * looks twice as smooth as one-colour-per-cell at the same width.
+ * A ramp of `steps` cells from the left ground to the right. Each cell is the
+ * half block U+258C, ink on its left half and ground on its right, so it
+ * carries two samples; ASCII draws a space, keeping the grounds alone. Nothing
+ * at the ends, or beside a neighbour with no ground — there is no colour to
+ * ramp toward.
  */
-const HALF_BLOCK = "▌"; // ▌
-
-export class GradientJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
-  private readonly _steps: number;
-
-  constructor(options?: GradientJoinerOptions) {
-    this._steps = options?.steps ?? 4;
-  }
-
-  join(left: T | null, right: T | null): Renderable {
-    // [LAW:dataflow-not-control-flow] Endpoints have no opposite anchor to
-    // interpolate toward — the data (a missing neighbor) makes the gradient
-    // empty. Same for edges with nothing to paint: nothing to blend between.
-    if (left === null || right === null) return EMPTY;
-    const steps = this._steps;
-    return deferred(function* (options) {
-      const lbg = paintableBg(left.edgeStyle("right", options).bgcolor);
-      const rbg = paintableBg(right.edgeStyle("left", options).bgcolor);
-      if (!lbg || !rbg) return;
-      const from = drawnGround(lbg);
-      const to = drawnGround(rbg);
-      // An ASCII cell carries one sample, the background: the gradient keeps
-      // its colours at half the resolution.
-      const half = drawable(options, HALF_BLOCK, " ");
-      const samples = 2 * steps;
-      // Midpoint sampling across `2 * steps` half-cell positions: sample j has
-      // t = (j + 0.5) / samples. Cell i takes samples 2i (left half) and 2i+1
-      // (right half). No sample ever equals either anchor.
-      for (let i = 0; i < steps; i++) {
-        const tLeft = (2 * i + 0.5) / samples;
-        const tRight = (2 * i + 1.5) / samples;
-        // Each sample stays a mix of the two grounds, so a theme that draws
-        // `blue` in its own shade draws the ramp from that shade.
-        const fg = ColorSpec.blend(from, to, tLeft);
-        const bg = ColorSpec.blend(from, to, tRight);
-        yield new Segment(half, new Style({ color: fg, bgcolor: bg }));
-      }
-    });
-  }
+export function gradientJoiner(steps = 4): CellJoiner {
+  return new CellJoiner(gradient(steps, "▌"), gradient(steps, " "));
 }

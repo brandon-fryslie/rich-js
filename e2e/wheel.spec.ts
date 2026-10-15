@@ -35,7 +35,7 @@ for (const [name, drawn] of [
   ["claude-sessions", "home-demo-code-rich-js"],
   ["rich-config", "─ Preview ─"],
   // A program that has ended asked for no pointer reports: the page scrolls past it natively.
-  ["rich-strip", "PowerlineJoiner"],
+  ["rich-strip", "POWERLINE_JOINER"],
 ] as const) {
   test(`the wheel over ${name}, which scrolls nothing, scrolls the page`, async ({ page }) => {
     await page.goto(`demos/${name}.html`);

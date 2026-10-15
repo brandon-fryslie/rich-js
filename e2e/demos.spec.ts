@@ -115,7 +115,7 @@ test("a demo's Powerline glyphs draw in the Powerline face: rich-strip", async (
 // themes-and-color-studio is the long one, and still opens on its title.
 test("a printed demo opens on its first line: rich-strip", async ({ page }) => {
   await openDemo(page, "rich-strip");
-  await expect(terminalRows(page).locator("> div").first()).toHaveText(/^PowerlineJoiner\s*$/, LOADED);
+  await expect(terminalRows(page).locator("> div").first()).toHaveText(/^POWERLINE_JOINER\s*$/, LOADED);
 });
 
 test("a printed demo opens on its first line: themes-and-color-studio", async ({ page }) => {
@@ -136,7 +136,7 @@ test("a demo's card shows its files as tabs; an edit to any re-runs it, reset pu
   await expect(card(page).getByRole("tab")).toHaveText(["main.ts", "app.ts"]);
   await expect(tab(page, "main.ts")).toHaveAttribute("aria-selected", "true");
   await expect(editor(page)).toContainText("new NodeTerminalHost()", LOADED);
-  await expect.poll(() => shown(page), LOADED).toContain("PowerlineJoiner");
+  await expect.poll(() => shown(page), LOADED).toContain("POWERLINE_JOINER");
 
   // The tabs are the WAI-ARIA tabs pattern: one Tab stop, the arrow keys move
   // the choice and focus with it, and the editor is the chosen tab's panel.
@@ -158,7 +158,7 @@ test("a demo's card shows its files as tabs; an edit to any re-runs it, reset pu
   await page.keyboard.press("ControlOrMeta+A");
   await page.keyboard.insertText('export function runDemo(): void {\n  process.stdout.write("EDITED IN APP\\n");\n}');
   await expect.poll(() => shown(page), LOADED).toContain("EDITED IN APP");
-  await expect.poll(() => shown(page)).not.toContain("PowerlineJoiner");
+  await expect.poll(() => shown(page)).not.toContain("POWERLINE_JOINER");
 
   // The entry's edit joins it, and the first file's survives the switch back.
   await tab(page, "main.ts").click();
@@ -179,14 +179,14 @@ test("a demo's card shows its files as tabs; an edit to any re-runs it, reset pu
   await expect(editor(page)).not.toContainText("EDITED IN MAIN");
   await tab(page, "app.ts").click();
   await expect(editor(page)).not.toContainText("EDITED IN APP");
-  await expect.poll(async () => (await shown(page)).split("\n")[0], LOADED).toMatch(/^PowerlineJoiner\s*$/);
+  await expect.poll(async () => (await shown(page)).split("\n")[0], LOADED).toMatch(/^POWERLINE_JOINER\s*$/);
   expect(await shown(page)).not.toContain("EDITED IN");
 
   await link.click();
   await page.waitForURL(/playground#program\./);
   await expect(page.locator(".rich-playground").getByRole("tab")).toHaveText(["main.ts", "app.ts"], LOADED);
   await expect(page.locator(".rich-playground .cm-content")).toContainText("new NodeTerminalHost()");
-  await expect.poll(async () => (await page.locator(".rich-playground .rich-example-output").innerText()).replaceAll("\u00a0", " "), LOADED).toContain("PowerlineJoiner");
+  await expect.poll(async () => (await page.locator(".rich-playground .rich-example-output").innerText()).replaceAll("\u00a0", " "), LOADED).toContain("POWERLINE_JOINER");
   expect(errors).toEqual([]);
 });
 

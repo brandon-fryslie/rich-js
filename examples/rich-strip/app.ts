@@ -1,5 +1,5 @@
 /**
- * rich-strip's body: every built-in `Joiner`, each under its name, sized to
+ * rich-strip's body: every built-in joiner, each under its name, sized to
  * fit the docs card's terminal.
  *
  * [LAW:one-source-of-truth] It takes its whole environment from
@@ -10,15 +10,16 @@
 import {
   Console,
   Strip,
-  PowerlineJoiner,
+  CellJoiner,
+  POWERLINE_JOINER,
   SEAM_MIN_DELTA_E,
-  POWERLINE_JOINER_GLYPHS,
-  CapsuleJoiner,
-  PlainJoiner,
-  GradientJoiner,
+  CAPSULE_JOINER,
+  PLAIN_JOINER,
+  gradientJoiner,
   Style,
   RichText,
   FlexStrip,
+  type JoinShape,
 } from "@promptctl/rich-js";
 import { hostEnvironment, type TerminalHost } from "@promptctl/rich-js/host";
 
@@ -43,30 +44,28 @@ export function runDemo(host: TerminalHost): void {
     consoleOut.print(strip);
   };
 
-  showcase("PowerlineJoiner", new Strip(cells, new PowerlineJoiner()));
+  showcase("POWERLINE_JOINER", new Strip(cells, POWERLINE_JOINER));
   // Neighbours whose backgrounds sit closer than SEAM_MIN_DELTA_E would hide the
   // arrow in their shared colour, so the joiner draws the thin divider there.
   const shared = ["one", "two", "three"].map(
     (t) => new RichText(` ${t} `, { style: Style.parse("white on #3a3f58"), end: "", noWrap: true }),
   );
   showcase(
-    `PowerlineJoiner, shared background (divider below ΔE ${SEAM_MIN_DELTA_E})`,
-    new Strip(shared, new PowerlineJoiner()),
+    `POWERLINE_JOINER, shared background (divider below ΔE ${SEAM_MIN_DELTA_E})`,
+    new Strip([...cells, ...shared], POWERLINE_JOINER),
   );
-  // The arrow, its divider and the two caps are one vocabulary, replaced
-  // together: here the default set spelled out, then the ASCII set a terminal
-  // without a powerline font would take.
-  showcase(
-    `PowerlineJoiner(${JSON.stringify(POWERLINE_JOINER_GLYPHS)})`,
-    new Strip([...cells, ...shared], new PowerlineJoiner(POWERLINE_JOINER_GLYPHS)),
-  );
-  showcase(
-    "PowerlineJoiner, ASCII set",
-    new Strip([...cells, ...shared], new PowerlineJoiner({ glyph: ">", divider: "|", lead: "<", tail: ">" })),
-  );
-  showcase("CapsuleJoiner", new Strip(cells, new CapsuleJoiner()));
-  showcase("PlainJoiner", new Strip(cells, new PlainJoiner()));
-  showcase("GradientJoiner (steps=6)", new Strip(cells, new GradientJoiner({ steps: 6 })));
+  // A joiner is a value: the powerline shape with the slant glyph in every
+  // place the arrow stood, its lead the slant in reverse video.
+  const slant: JoinShape = {
+    seam: [{ glyph: "\ue0bc", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } }],
+    divider: [{ glyph: "\ue0bd", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } }],
+    lead: [{ glyph: "\ue0bc", fg: "ground", bg: { edge: "right", part: "bg" } }],
+    tail: [{ glyph: "\ue0bc", fg: { edge: "left", part: "bg" }, bg: "ground" }],
+  };
+  showcase("CellJoiner, a slant shape", new Strip([...cells, ...shared], new CellJoiner(slant, POWERLINE_JOINER.ascii)));
+  showcase("CAPSULE_JOINER", new Strip(cells, CAPSULE_JOINER));
+  showcase("PLAIN_JOINER", new Strip(cells, PLAIN_JOINER));
+  showcase("gradientJoiner(6)", new Strip(cells, gradientJoiner(6)));
 
   // "Unbounded" gradient: fill the row between two anchor cells with as many
   // steps as the terminal can show.
@@ -75,8 +74,8 @@ export function runDemo(host: TerminalHost): void {
   const anchorWidth = " #ff0066 ".length + " #00ccff ".length;
   const fillSteps = Math.max(1, consoleOut.width - anchorWidth);
   showcase(
-    `GradientJoiner (steps=${fillSteps}, full-width fill)`,
-    new Strip([LEFT_ANCHOR, RIGHT_ANCHOR], new GradientJoiner({ steps: fillSteps })),
+    `gradientJoiner(${fillSteps}), full-width fill`,
+    new Strip([LEFT_ANCHOR, RIGHT_ANCHOR], gradientJoiner(fillSteps)),
   );
 
   const PALETTE = [
@@ -92,6 +91,6 @@ export function runDemo(host: TerminalHost): void {
     (t, i) => new RichText(` ${t} `, { style: Style.parse(`white on ${PALETTE[i % PALETTE.length]!}`), end: "", noWrap: true }),
   );
 
-  showcase("FlexStrip + PowerlineJoiner (wrap-to-width)", new FlexStrip(tagCells, { joiner: new PowerlineJoiner() }));
+  showcase("FlexStrip + POWERLINE_JOINER (wrap-to-width)", new FlexStrip(tagCells, { joiner: POWERLINE_JOINER }));
   showcase("FlexStrip + gap (tag cloud)", new FlexStrip(tagCells, { gap: 1 }));
 }
