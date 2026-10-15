@@ -309,18 +309,23 @@ function measured(looked: readonly { segment: Segment; look: Look | undefined }[
 }
 
 /**
- * `effect` on the colours `owner` drew, itself or through an owner nested in
- * its output, and every other colour left as it is: one item of a strip whose
- * items share a fill, one widget of a screen. A seam cell shows its two
- * neighbours side by side, a powerline arrow in the fill it points out of
- * over the fill it points into, so each side moves with its own item
- * (`colorsOwnedBy`, `../core/strip.ts`).
+ * `effect` on the colours any of `owners` drew, itself or through an owner
+ * nested in its output, and every other colour left as it is: one item of a
+ * strip whose items share a fill, the items of a row one other item stands
+ * apart from, one widget of a screen. A seam cell shows its two neighbours
+ * side by side, a powerline arrow in the fill it points out of over the fill
+ * it points into, so each side moves with its own item (`colorsOwnedBy`,
+ * `../core/strip.ts`). A cell none of them drew is never handed to the
+ * effect, so confining one effect to many owners costs one call a cell, not
+ * one for each owner.
  */
-export function confined(effect: Effect, owner: object): Effect {
+export function confined(effect: Effect, ...owners: readonly object[]): Effect {
+  const confinedTo: ReadonlySet<object> = new Set(owners);
   return (t, drawn) => {
     const frame = effect(t, drawn);
     return (colors, cell) => {
-      const owned = colorsOwnedBy(cell.anchor, owner);
+      const owned = colorsOwnedBy(cell.anchor, confinedTo);
+      if (!owned.fg && !owned.bg) return colors;
       const moved = frame(colors, cell);
       return { fg: owned.fg ? moved.fg : colors.fg, bg: owned.bg ? moved.bg : colors.bg };
     };

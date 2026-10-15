@@ -91,26 +91,31 @@ export interface Joiner<T extends StyledRenderable = StyledRenderable> {
 export const JOIN: object = Object.freeze({ name: "join" });
 
 /**
+ * Who owns a role, a mix or the terminal's ground on a join cell: no
+ * neighbour, and nothing outside this module, so no set of owners holds it.
+ */
+const NOBODY: object = Object.freeze({ name: "nobody" });
+
+/**
  * Whose colour each side of a join cell shows on screen, its ink and its
- * ground: the neighbour whose edge a `Paint` names, or `null` for a role, a
- * mix or the terminal's ground, which are no neighbour's.
+ * ground: the neighbour whose edge a `Paint` names, or `NOBODY`.
  */
 class ColorOwners {
   constructor(
-    readonly fg: object | null,
-    readonly bg: object | null,
+    readonly fg: object,
+    readonly bg: object,
   ) {}
 }
 
 /**
- * Which of a cell's two colours on screen are `owner`'s: both, for a cell
- * `owner` drew, itself or through an owner nested in its output; for a cell a
- * `CellJoiner` drew, the sides shown in `owner`'s colour.
+ * Which of a cell's two colours on screen are one of `owners`': both, for a
+ * cell one of them drew, itself or through an owner nested in its output; for
+ * a cell a `CellJoiner` drew, the sides shown in one of their colours.
  */
-export function colorsOwnedBy(anchor: Anchor | undefined, owner: object): { readonly fg: boolean; readonly bg: boolean } {
+export function colorsOwnedBy(anchor: Anchor | undefined, owners: ReadonlySet<object>): { readonly fg: boolean; readonly bg: boolean } {
   for (let level = anchor; level; level = level.inner) {
-    if (level.owner === owner) return { fg: true, bg: true };
-    if (level.owner instanceof ColorOwners) return { fg: level.owner.fg === owner, bg: level.owner.bg === owner };
+    if (owners.has(level.owner)) return { fg: true, bg: true };
+    if (level.owner instanceof ColorOwners) return { fg: owners.has(level.owner.fg), bg: owners.has(level.owner.bg) };
   }
   return { fg: false, bg: false };
 }
@@ -478,7 +483,7 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
         const neighbours = { left, right };
         // On screen a cell's ink is its `fg` paint and its ground its `bg`,
         // reverse video or not (`cellStyle`).
-        const ownerOf = (color: CellColor): object | null => (color !== "ground" && "edge" in color ? neighbours[color.edge] : null);
+        const ownerOf = (color: CellColor): object => (color !== "ground" && "edge" in color ? (neighbours[color.edge] ?? NOBODY) : NOBODY);
         const styled = (part: Part) =>
           drawn[part].map((cell, at) => {
             const owners = new ColorOwners(ownerOf(cell.fg), ownerOf(cell.bg));

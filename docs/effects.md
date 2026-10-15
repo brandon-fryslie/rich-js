@@ -66,7 +66,7 @@ The shares keep the words readable. `Effected` measures every ink and ground pai
 
 ### One element of many
 
-`confined(effect, owner)` applies `effect` only to the colours `owner` drew, and leaves every other colour exactly as it was. It goes by who drew each cell, not by its colour, so it can single out one of several items that share a fill. An owner is whatever stamps the cells it draws (`Segment.anchorLines`): every widget, every `Viewport`, and every item of a `Strip` or `FlexStrip`, however the strip wraps. Confined to anything that draws without stamping, such as the `Strip` itself, an effect moves nothing. A seam cell can show two items at once — a powerline arrow is inked in the fill it points out of, over the fill it points into — so its ink moves with one item and its ground with the other:
+`confined(effect, ...owners)` applies `effect` only to the colours any of `owners` drew, and leaves every other colour exactly as it was. It goes by who drew each cell, not by its colour, so it can single out one of several items that share a fill. An owner is whatever stamps the cells it draws (`Segment.anchorLines`): every widget, every `Viewport`, and every item of a `Strip` or `FlexStrip`, however the strip wraps. Confined to anything that draws without stamping, such as the `Strip` itself, an effect moves nothing. A seam cell can show two items at once — a powerline arrow is inked in the fill it points out of, over the fill it points into — so its ink moves with one item and its ground with the other:
 
 ```typescript
 import { CATPPUCCIN_MOCHA, EFFECT_CURVES, EFFECT_LIGHTS, Effected, JOINERS, RichText, Strip, Style, confined, onColors, pulse } from "@promptctl/rich-js";
@@ -84,6 +84,8 @@ for (const t of [0, 10, 20]) {
 ```
 
 A colour mixed from the two neighbours, such as the middle of a `prism` or a `gradientJoiner` ramp, belongs to neither item, and `confined` leaves it alone.
+
+To move every item but one, confine the effect to all the others in one call, `confined(shimmer, items[0]!, items[2]!)`, rather than once per item. The effect is handed only the cells one of its owners drew, so one confined effect costs one call a cell however many owners it has.
 
 ### A transition says when it is done
 
