@@ -405,6 +405,21 @@ describe("confined — an effect on one owner's cells", () => {
     expect(moved(flex, items[1]!, 8)).toEqual([run(false, 7), run(true, 7)]);
   });
 
+  it("moves only the item's side of a seam it shares with an item of another fill", () => {
+    const items = ["#1e66f5", "#40a02b", "#d20f39"].map((fill) => new RichText(" x ", { style: `white on ${fill}`, end: "", noWrap: true }));
+    const strip = new Strip(items, JOINERS.powerline);
+    /** Each cell's foreground and background as its style writes them. */
+    const sides = (frame: Renderable): string[][] =>
+      [...frame.render({ maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR })].flatMap((s) =>
+        [...graphemes(s.text)].filter((glyph) => glyph !== "\n").map(() => [s.style?.color?.getTruecolor(THEME, true).hex ?? "", s.style?.bgcolor?.getTruecolor(THEME, false).hex ?? ""]),
+      );
+    const before = sides(strip);
+    const after = sides(effected(strip, confined(repaint, items[1]!)));
+    const moved = after.map(([fg, bg], x) => `${fg !== before[x]![0] ? "fg" : ""}${bg !== before[x]![1] ? "bg" : ""}`);
+    // lead, " x ", the arrow into the item, " x ", the arrow out of it, " x ", tail
+    expect(moved).toEqual(["", "", "", "", "bg", "fgbg", "fgbg", "fgbg", "fg", "", "", "", ""]);
+  });
+
   it("leaves every cell as it was for an owner that drew none", () => {
     const strip = new Strip(twins(), JOINERS.powerline);
     expect(moved(strip, {}, 80).flat().some(Boolean)).toBe(false);

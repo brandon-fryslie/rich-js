@@ -48,7 +48,7 @@ import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
-import { JOIN } from "../core/strip.js";
+import { JOIN, colorsOwnedBy } from "../core/strip.js";
 import { Style } from "../core/style.js";
 
 /**
@@ -294,13 +294,19 @@ function measured(looked: readonly { segment: Segment; look: Look | undefined }[
 }
 
 /**
- * `effect` on the cells `owner` drew, itself or through an owner nested in
- * its output, and every other cell left as it is: one item of a strip whose
- * items share a fill, one widget of a screen. A seam's arrow is the item it
- * points out of (`JOIN`, `../core/strip.ts`), so it moves with that item.
+ * `effect` on the colours `owner` drew, itself or through an owner nested in
+ * its output, and every other colour left as it is: one item of a strip whose
+ * items share a fill, one widget of a screen. A seam cell shows its two
+ * neighbours side by side, a powerline arrow in the fill it points out of
+ * over the fill it points into, so each side moves with its own item
+ * (`colorsOwnedBy`, `../core/strip.ts`).
  */
 export function confined(effect: Effect, owner: object): Effect {
-  return (colors, cell, t, drawn) => (drawnBy(cell.anchor, owner) ? effect(colors, cell, t, drawn) : colors);
+  return (colors, cell, t, drawn) => {
+    const owned = colorsOwnedBy(cell.anchor, owner);
+    const moved = effect(colors, cell, t, drawn);
+    return { fg: owned.fg ? moved.fg : colors.fg, bg: owned.bg ? moved.bg : colors.bg };
+  };
 }
 
 /**

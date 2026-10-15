@@ -26,6 +26,7 @@
  * styling, so the cell type does too.
  */
 
+import type { Anchor } from "./anchor.js";
 import { Segment } from "./segment.js";
 import { Style } from "./style.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK } from "./color.js";
@@ -82,12 +83,37 @@ export interface Joiner<T extends StyledRenderable = StyledRenderable> {
  * not draw at all. An effect reads it to leave a seam out of the words it
  * keeps legible (`drawnOf`, `../renderables/effect.ts`).
  *
- * A joiner may draw a cell as part of one neighbour — the arrow pointing out
- * of it — by stamping the cell with that neighbour, so inside `JOIN` the cell
- * is the neighbour's, at its column among the cells the join draws as that
- * neighbour's. An effect confined to the neighbour reaches it (`confined`).
+ * Inside it, every cell a `CellJoiner` draws names whose colour each of its
+ * two sides shows (`colorsOwnedBy`). One seam cell can show two neighbours —
+ * a powerline arrow is inked in the fill it points out of, over the fill it
+ * points into — so a cell has no single owner; each side has one.
  */
 export const JOIN: object = Object.freeze({ name: "join" });
+
+/**
+ * Whose colour each side of a join cell shows on screen, its ink and its
+ * ground: the neighbour whose edge a `Paint` names, or `null` for a role, a
+ * mix or the terminal's ground, which are no neighbour's.
+ */
+class ColorOwners {
+  constructor(
+    readonly fg: object | null,
+    readonly bg: object | null,
+  ) {}
+}
+
+/**
+ * Which of a cell's two colours on screen are `owner`'s: both, for a cell
+ * `owner` drew, itself or through an owner nested in its output; for a cell a
+ * `CellJoiner` drew, the sides shown in `owner`'s colour.
+ */
+export function colorsOwnedBy(anchor: Anchor | undefined, owner: object): { readonly fg: boolean; readonly bg: boolean } {
+  for (let level = anchor; level; level = level.inner) {
+    if (level.owner === owner) return { fg: true, bg: true };
+    if (level.owner instanceof ColorOwners) return { fg: level.owner.fg === owner, bg: level.owner.bg === owner };
+  }
+  return { fg: false, bg: false };
+}
 
 /**
  * [LAW:single-enforcer] What `joiner` draws at one join, every cell stamped
@@ -413,17 +439,6 @@ function cellStyle(cell: JoinCell, edges: Edges, options: RenderOptions): Style 
   return new Style({ color, bgcolor: cell.bg === "ground" ? undefined : resolvePaint(cell.bg, edges, options) });
 }
 
-/**
- * The neighbour a join cell is drawn as part of: the one whose colour inks its
- * glyph — the cell's fg, or its bg under reverse video — so a powerline arrow,
- * inked in the fill it points out of, is that item's. A cell inked in a role
- * or a mix is the join's alone.
- */
-function partOf(cell: JoinCell): "left" | "right" | undefined {
-  const ink = cell.fg === "ground" ? cell.bg : cell.fg;
-  return ink !== "ground" && "edge" in ink ? ink.edge : undefined;
-}
-
 const shapeGlyphs = (shape: JoinShape): string => PARTS.flatMap((part) => shape[part].flatMap(glyphsOf)).join("");
 
 /**
@@ -461,20 +476,14 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
         const hasLeft = left !== null && (!reads.left || leftBg !== undefined);
         const hasRight = right !== null && (!reads.right || rightBg !== undefined);
         const neighbours = { left, right };
-        const styled = (part: Part) => {
-          const cols = { left: 0, right: 0 };
-          return drawn[part].map((cell, at) => {
-            const glyph = pickGlyph(cell, part, index, at);
-            const style = cellStyle(cell, edges, options);
-            const side = partOf(cell);
-            if (side === undefined) return new Segment(glyph, style);
-            const col = cols[side];
-            cols[side] += cellLen(glyph);
-            // `parseShape` refuses a lead naming `left` and a tail naming
-            // `right`, so the neighbour a cell is part of is always there.
-            return new Segment(glyph, style.withAnchor({ owner: neighbours[side]!, row: 0, col, inner: undefined }));
+        // On screen a cell's ink is its `fg` paint and its ground its `bg`,
+        // reverse video or not (`cellStyle`).
+        const ownerOf = (color: CellColor): object | null => (color !== "ground" && "edge" in color ? neighbours[color.edge] : null);
+        const styled = (part: Part) =>
+          drawn[part].map((cell, at) => {
+            const owners = new ColorOwners(ownerOf(cell.fg), ownerOf(cell.bg));
+            return new Segment(pickGlyph(cell, part, index, at), cellStyle(cell, edges, options).withAnchor({ owner: owners, row: 0, col: 0, inner: undefined }));
           });
-        };
         if (!hasLeft || !hasRight) {
           if (hasLeft || hasRight) yield* styled(hasRight ? "lead" : "tail");
           return;
