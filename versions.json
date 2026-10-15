@@ -2,42 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-379",
-      "ref": "refs/pull/379/merge",
-      "sha": "a121683224aebd81abfd1b7d902dae67627a2913",
-      "timestamp": "2026-10-15T04:39:17.835Z",
-      "commits": [
-        {
-          "sha": "a121683224aebd81abfd1b7d902dae67627a2913",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T04:37:50Z",
-          "message": "Merge bc7dad7cb9a78a5acd65a67f7921423a55c2b8f6 into 42c422e4022be20030c3bc6e27de6c7e86526832\n"
-        },
-        {
-          "sha": "bc7dad7cb9a78a5acd65a67f7921423a55c2b8f6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T22:37:45-06:00",
-          "message": "fix(renderables): ListView measures at unbounded width; sidebar scrolls per list (rich-demos-k78j.3gp)\n\nReview medium: gutter read from the viewport, not subtracted from Infinity;\nclaude-sessions' sidebar holds a viewport per level so follow does not\nmistake two lists' line 1 for one selection.\n"
-        },
-        {
-          "sha": "940bc377d56ac7f2d0aae7236031ca8f43ec0484",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T22:33:35-06:00",
-          "message": "fix(renderables): follow re-brings the selection in when rows shrink; ListView refuses bad indices (rich-demos-k78j.3gp)\n\nReview high: panes rebuilt per frame follow instead of ensuring; Dropdown\nmoves through moveSelection; RateSparkline's minimum is 0.\n"
-        },
-        {
-          "sha": "111336e4d25678f3c743b49074e37de3f12b9dc5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T22:27:45-06:00",
-          "message": "feat(renderables): ListView, moveSelection, ViewportPerKey ship beside Viewport (rich-demos-k78j.3gp)\n\nThe demos' copies move into the library: ItemsInView becomes ListView (gap and\ncontext options), the clamped selection moves become moveSelection, and\nexamples/shared/ViewportPerSubject becomes ViewportPerKey. Viewport.follow\nbrings a range into view only when it changes, so a ListView rebuilt every\nframe no longer undoes the wheel's scroll. rich-dash's RateSparkline gains a\nnatural width, which keeps withBoundedWidth demonstrated.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "42c422e4022be20030c3bc6e27de6c7e86526832",
