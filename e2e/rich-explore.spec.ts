@@ -39,14 +39,15 @@ test("Escape then Tab leaves the card with the explorer still running", async ({
   await page.keyboard.press("Escape");
   await page.keyboard.press("Tab");
   await expect(input).not.toBeFocused();
-  // A quit program would still show its last frame, so ask it to move. The
-  // program holds a lone Escape for a tick (src/host/input.ts), and a key that
-  // lands inside it reads as that key with Alt, which moves nothing — so the
-  // ask is G, which moves to the same place however often it is pressed.
+  // Only a running program can move the selection, so ask it to: G, to the last
+  // entry. `InputParser.feed` holds a lone Escape on `escTimer`, and a key that
+  // lands before the timer fires reads as Alt+key, which moves nothing
+  // (rich-host-input-0c4f) — so G is pressed until it lands; pressing it twice
+  // goes nowhere new.
   await input.focus();
   await expect(async () => {
     await page.keyboard.press("G");
-    expect(await screen(page)).not.toContain("/home/demo/rich-js/.github");
+    expect(await screen(page)).toContain("/home/demo/rich-js/tsconfig.json");
   }).toPass(LOADED);
 });
 
