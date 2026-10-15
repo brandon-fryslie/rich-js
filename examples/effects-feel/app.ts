@@ -202,7 +202,7 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
   // can spare; the wheel keeps lightness and chroma, so it is tried as it is.
   const made: Record<LoopName, (subject: DrawnSubject) => Effect> = {
     shimmer: (s) => onColors(shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, s.z)),
-    pulse: (s) => pulsedOn(s, (z) => pulse(curves.pulse, EFFECT_LIGHTS.sun, z), theme),
+    pulse: (s) => pulsedOn(s, (z) => pulse(curves.pulse, EFFECT_LIGHTS.sun, z)),
     sparkle: (s) => onColors(sparkle(curves.sparkle, s.span, EFFECT_LIGHTS.firefly, s.z)),
     wheel: (s) => wheel(curves.wheel, s.z),
   };

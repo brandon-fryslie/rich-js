@@ -41,6 +41,7 @@
  * what the child drew, so a sweep crosses the element, not the screen.
  */
 
+import { drawnBy, shiftAnchor, type Anchor } from "../core/anchor.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK, rgbDistance, type ColorRgba, type TerminalTheme } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
@@ -77,6 +78,12 @@ export interface EffectCell {
    * hex can equal one the element wrote; this is what tells them apart.
    */
   readonly terminal: { readonly fg: boolean; readonly bg: boolean };
+  /**
+   * Who drew the cell, and where it sits in their output, as
+   * `Segment.anchorAt` reads it off a frame: what tells one owner's cells
+   * from another's when their colours are alike (`confined`).
+   */
+  readonly anchor: Anchor | undefined;
 }
 
 /**
@@ -174,16 +181,20 @@ export class Effected implements Renderable, Measurable {
       // writes, so two truecolors landing on one index stay one run. A cell
       // the effect gave its neighbour's colours is drawn as that neighbour was.
       const runs: { text: string; cells: number; colors: CellColors; drawn: DrawnColors }[] = [];
+      // Cells into the segment, as `base.shiftedBy` counts them below.
+      let into = 0;
       for (const glyph of graphemes(segment.text)) {
         let colors = slots;
         if (glyph === "\n") {
           row++;
           col = 0;
         } else {
+          const anchor = base.anchor && shiftAnchor(base.anchor, into);
           // Back from the screen to the style's slots: the same swap undoes itself.
-          colors = onScreen(this.effect(from, { row, col, seed: this.seed(row, col), terminal }, this.t, drawn), base);
+          colors = onScreen(this.effect(from, { row, col, seed: this.seed(row, col), terminal, anchor }, this.t, drawn), base);
           col += cellLen(glyph);
         }
+        into += cellLen(glyph);
         const last = runs[runs.length - 1];
         const writes = last !== undefined && sameColors(last.colors, colors) ? last.drawn : this.respec(wire, slots, colors, depth);
         if (last !== undefined && writesAlike(last.drawn, writes)) {
@@ -275,17 +286,21 @@ function looks(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalTh
 
 /** What `looked` draws its words in: `Drawn`'s measure, taken once per frame. */
 function measured(looked: readonly { segment: Segment; look: Look | undefined }[], depth: ColorDepth, theme: TerminalTheme): Drawn {
-  const words = looked.flatMap(({ segment, look }) => (look !== undefined && segment.text.trim() !== "" && !drawnByJoin(look.style) ? [look.pair] : []));
+  const words = looked.flatMap(({ segment, look }) => (look !== undefined && segment.text.trim() !== "" && !drawnBy(look.style.anchor, JOIN) ? [look.pair] : []));
   const pairs = [...new Map(words.map((pair): [string, Pair] => [`${pair.fg.hex}/${pair.bg.hex}/${pair.terminal.fg}/${pair.terminal.bg}`, pair])).values()];
   // [LAW:one-source-of-truth] A slot the terminal fills is no colour of the element's, whatever its hex.
   const own = (slot: "fg" | "bg"): string[] => pairs.flatMap((pair) => (pair.terminal[slot] ? [] : [pair[slot].hex]));
   return { pairs, colors: new Set([...own("fg"), ...own("bg")]), fills: new Set(own("bg")), depth, theme };
 }
 
-/** Whether a strip's joiner drew the cell, at any depth of the owners' nesting. */
-function drawnByJoin(style: Style): boolean {
-  for (let anchor = style.anchor; anchor; anchor = anchor.inner) if (anchor.owner === JOIN) return true;
-  return false;
+/**
+ * `effect` on the cells `owner` drew, itself or through an owner nested in
+ * its output, and every other cell left as it is: one item of a strip whose
+ * items share a fill, one widget of a screen. A seam's arrow is the item it
+ * points out of (`JOIN`, `../core/strip.ts`), so it moves with that item.
+ */
+export function confined(effect: Effect, owner: object): Effect {
+  return (colors, cell, t, drawn) => (drawnBy(cell.anchor, owner) ? effect(colors, cell, t, drawn) : colors);
 }
 
 /**

@@ -1,14 +1,16 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { PassThrough, Writable } from "stream";
-import { cellLen } from "../../src/core/cells.js";
+import { cellLen, graphemes } from "../../src/core/cells.js";
 import { ColorDepth, ColorRgba, ColorSpec } from "../../src/core/color.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
-import { renderToString } from "../../src/core/render.js";
+import { renderToString, segmentToString } from "../../src/core/render.js";
 import { Measurement } from "../../src/core/measure.js";
 import { Segment } from "../../src/core/segment.js";
+import { JOINERS, Strip } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
-import { Effected, type CellColors, type Effect, type EffectCell } from "../../src/renderables/effect.js";
+import { Effected, confined, type CellColors, type Effect, type EffectCell } from "../../src/renderables/effect.js";
+import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { Group } from "../../src/renderables/group.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { ProgressBar } from "../../src/renderables/progressBar.js";
@@ -364,5 +366,47 @@ describe("Effected — widgets under an effect", () => {
     } finally {
       app.stop();
     }
+  });
+});
+
+describe("confined — an effect on one owner's cells", () => {
+  const FILL = Style.parse("white on #3050a0");
+  const AT = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false };
+  const repaint: Effect = () => ({ fg: RED, bg: BLUE });
+  /** Two items with one fill, so no colour tells them apart. */
+  const twins = (): RichText[] => ["one", "two"].map((label) => new RichText(` ${label} `, { style: FILL, end: "", noWrap: true }));
+  /** Every cell of a frame, row by row, as the bytes that draw it. */
+  const cells = (segments: Iterable<Segment>): string[][] =>
+    Segment.splitLines(segments).map((line) => line.flatMap((s) => [...graphemes(s.text)].map((glyph) => segmentToString(new Segment(glyph, s.style), AT))));
+  const drawn = (frame: Renderable, maxWidth: number): string[][] => cells(frame.render({ maxWidth, colorSystem: ColorDepth.TRUECOLOR }));
+  /** Which cells of `frame` the effect confined to `owner` moved, row by row. */
+  const moved = (frame: Renderable, owner: object, maxWidth: number): boolean[][] => {
+    const before = drawn(frame, maxWidth);
+    const after = drawn(effected(frame, confined(repaint, owner)), maxWidth);
+    expect(after.map((row) => row.length)).toEqual(before.map((row) => row.length));
+    return after.map((row, y) => row.map((cell, x) => cell !== before[y]![x]));
+  };
+  const run = (on: boolean, n: number): boolean[] => Array.from({ length: n }, () => on);
+
+  it("moves one item of a strip and the seams it points out of, and no other cell", () => {
+    const items = twins();
+    const strip = new Strip(items, JOINERS.powerline);
+    // lead, " one ", the divider one fill draws in the seam's place, " two ", tail
+    expect(drawn(strip, 80)[0]![6]).toContain("");
+    expect(moved(strip, items[0]!, 80)).toEqual([[...run(true, 7), ...run(false, 6)]]);
+    expect(moved(strip, items[1]!, 80)).toEqual([[...run(false, 7), ...run(true, 6)]]);
+  });
+
+  it("still moves only that item and its seams when a FlexStrip wraps it onto a line of its own", () => {
+    const items = twins();
+    const flex = new FlexStrip(items, { joiner: JOINERS.powerline });
+    // each line: lead, item, tail
+    expect(moved(flex, items[0]!, 8)).toEqual([run(true, 7), run(false, 7)]);
+    expect(moved(flex, items[1]!, 8)).toEqual([run(false, 7), run(true, 7)]);
+  });
+
+  it("leaves every cell as it was for an owner that drew none", () => {
+    const strip = new Strip(twins(), JOINERS.powerline);
+    expect(moved(strip, {}, 80).flat().some(Boolean)).toBe(false);
   });
 });

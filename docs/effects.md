@@ -71,6 +71,27 @@ The shares keep the words readable. `Effected` measures every ink and ground pai
 
 `drawnOf(segments, depth, theme)` takes the same measurement of any rendered output. Measure an element under an effect to read the contrast its words are left at.
 
+### One element of many
+
+`confined(effect, owner)` applies `effect` only to the cells `owner` drew, and leaves every other cell exactly as it was. It goes by who drew each cell, not by its colour, so it can single out one of several items that share a fill. Every item of a `Strip` or `FlexStrip` is the owner of its cells, however the strip wraps. A seam glyph inked in an item's colour, such as a powerline arrow drawn in the fill it points out of, counts as that item's cell and moves with it:
+
+```typescript
+import { CATPPUCCIN_MOCHA, EFFECT_CURVES, EFFECT_LIGHTS, Effected, JOINERS, RichText, Strip, Style, confined, onColors, pulse } from "@promptctl/rich-js";
+
+const fill = Style.parse("#1e1e2e on #89b4fa");
+const items = ["main", "ctx 61%", "ok"].map((label) => new RichText(` ${label} `, { style: fill, end: "", noWrap: true }));
+const strip = new Strip(items, JOINERS.powerline);
+
+// Only "ctx 61%" and the arrow after it breathe; the other two items keep their fill.
+const breathing = confined(onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, 0)), items[1]!);
+
+for (const t of [0, 10, 20]) {
+  console.print(new Effected(strip, breathing, { t, key: "status", theme: CATPPUCCIN_MOCHA }));
+}
+```
+
+A seam cell inked in a mix of its two neighbours, such as the middle of a `prism` or a `gradientJoiner` ramp, belongs to neither item, and `confined` leaves it alone.
+
 ### A transition says when it is done
 
 `fadeIn` and `dissolveOut` take a start time and return a `Transition`: the `effect` to draw, and `done(t)`, true from the moment every cell has arrived or gone. A caller stops drawing an element that has dissolved, or drops the effect from one that has faded in, when `done` says so:
@@ -122,6 +143,7 @@ Nothing in an effect reads a clock. Whoever draws frames builds the view for eac
 - `seed` is a number in `[0, 1)` that stays the same for that cell on every frame, for effects that vary cell by cell. It is derived from the `key` option and the cell's position, so two elements showing the same text under different keys do not move in lockstep.
 - `colors` are what the screen shows: the glyph's colour and the colour behind it, so under `reverse` they are the style's two colours swapped. A cell that sets no colour of its own, or names one of the sixteen ANSI colours, is handed that colour from the `theme` option, a `TerminalTheme`. The terminal's real palette is never queried, so the caller supplies it.
 - `terminal` says, for `fg` and `bg` as the screen shows them, whether that colour is the terminal's own: one the style leaves unset or sets to `default`. Resolved through the theme, it can have the same hex as a colour the element wrote; `terminal` is what tells the two apart. `onColors` and `wheel` never move a colour the terminal supplies.
+- `anchor` is who drew the cell, and where it sits in their output, as `Segment.anchorAt` reads it off a frame, or `undefined` for a cell no owner stamped. `confined` reads it.
 
 ## What an effect cannot change
 

@@ -6,13 +6,15 @@ import {
   joinerNamed,
   SEAM_MIN_DELTA_E,
   gradientJoiner,
+  JOIN,
   type JoinCell,
   type JoinShape,
 } from "../../src/core/strip.js";
+import { drawnBy } from "../../src/core/anchor.js";
 import { arrows } from "./arrows.js";
 import { Style, Theme } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
-import type { Segment } from "../../src/core/segment.js";
+import { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import { ColorDepth, ColorRgba, ColorSpec, blendRgb } from "../../src/core/color.js";
 import { exportLines } from "../../src/core/export-lines.js";
@@ -93,6 +95,34 @@ describe("Strip render walk", () => {
   it("emits no terminator for an empty strip", () => {
     const strip = new Strip([], JOINERS.powerline);
     expect([...strip.render(OPTIONS)]).toEqual([]);
+  });
+});
+
+describe("whose each cell of a strip is", () => {
+  /** Each cell's owner, by the item's name, or `join` for a seam cell that is no item's. */
+  const owners = (strip: Strip): string[] => {
+    const frame = [render(strip)];
+    const named = [[RED, "red"], [BLUE, "blue"]] as const;
+    const width = frame[0]!.reduce((cells, segment) => cells + segment.cellLength, 0);
+    return Array.from({ length: width }, (_, x) => {
+      const anchor = Segment.anchorAt(frame, x, 0);
+      const items = named.filter(([item]) => drawnBy(anchor, item)).map(([, name]) => name);
+      return items.length > 0 ? items.join("+") : drawnBy(anchor, JOIN) ? "join" : "nobody";
+    });
+  };
+  const of = (owner: string, cells: number): string[] => Array.from({ length: cells }, () => owner);
+
+  it("is the item that drew it, and a seam's arrow is the item it points out of", () => {
+    expect(owners(new Strip([RED, BLUE], JOINERS.powerline))).toEqual([...of("red", 7), ...of("blue", 7)]);
+  });
+
+  it("is the item whose ground inks it, even through reverse video, and an edge's open glyph is the item it opens", () => {
+    // lead, " red ", close, a blank in red's ink, open, " blue ", close
+    expect(owners(new Strip([RED, BLUE], JOINERS.capsule))).toEqual([...of("red", 8), ...of("blue", 8)]);
+  });
+
+  it("is the join's alone where a seam cell is inked in a mix of the two grounds", () => {
+    expect(owners(new Strip([RED, BLUE], JOINERS.prism))).toEqual([...of("red", 7), ...of("join", 2), ...of("blue", 7)]);
   });
 });
 

@@ -274,6 +274,8 @@ console.print(
 
 Items in a Strip implement `StyledRenderable` — a `Renderable` plus `edgeStyle(side: "left" | "right", options: RenderOptions): Style`, which reports the style of the item's leftmost or rightmost cell column. It takes the render's options because an edge's style may be a [theme](./style#style-themes) name, and only the render knows which theme it is drawing for. So a joiner reads edges inside the `render` of the renderable it returns, as `SplitJoiner` does, and never in `join`. `RichText` implements `StyledRenderable` directly; consumers with richer items can implement the interface themselves.
 
+Every cell an item draws in a strip is stamped with that item as its owner, so an effect can pick out one item with [`confined`](./effects#one-element-of-many). A cell a joiner draws belongs to the join alone, unless the joiner stamps it with one of its neighbours using `Segment.anchorLines([[cell]], left)`, which makes it that neighbour's cell. `CellJoiner` does this for every cell inked in a neighbour's colour, such as an arrow drawn in the fill it points out of. `SplitJoiner`'s half block shows both grounds equally, so it belongs to neither neighbour and is left unstamped.
+
 ## Edge styles are the protocol
 
 Joiners read only the two edge columns. `JOINERS.powerline` between items `L` and `R`, rendered with `options`, paints its arrow with:

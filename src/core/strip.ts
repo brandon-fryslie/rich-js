@@ -81,6 +81,11 @@ export interface Joiner<T extends StyledRenderable = StyledRenderable> {
  * it, never by its glyph, which an ASCII joiner draws otherwise and a lead may
  * not draw at all. An effect reads it to leave a seam out of the words it
  * keeps legible (`drawnOf`, `../renderables/effect.ts`).
+ *
+ * A joiner may draw a cell as part of one neighbour — the arrow pointing out
+ * of it — by stamping the cell with that neighbour, so inside `JOIN` the cell
+ * is the neighbour's, at its column among the cells the join draws as that
+ * neighbour's. An effect confined to the neighbour reaches it (`confined`).
  */
 export const JOIN: object = Object.freeze({ name: "join" });
 
@@ -91,6 +96,16 @@ export const JOIN: object = Object.freeze({ name: "join" });
 export function drawJoin<T extends StyledRenderable>(joiner: Joiner<T>, left: T | null, right: T | null, context: JoinContext): Renderable {
   const join = joiner.join(left, right, context);
   return { render: (options) => Segment.anchorLines([[...join.render(options)]], JOIN)[0]! };
+}
+
+/**
+ * [LAW:single-enforcer] What `item` draws, every cell stamped as the item's,
+ * so whoever holds the composed row reads which item drew a cell however the
+ * row was laid out or wrapped: the one way `Strip` and `FlexStrip` draw an
+ * item.
+ */
+export function drawItem(item: StyledRenderable): Renderable {
+  return { render: (options) => Segment.anchorLines([[...item.render(options)]], item)[0]! };
 }
 
 // --- Strip ---
@@ -120,7 +135,7 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
     yield* drawJoin(this.joiner, null, items[0]!, { index: 0 }).render(row);
     for (let i = 0; i < items.length; i++) {
       const item = items[i]!;
-      yield* item.render(row);
+      yield* drawItem(item).render(row);
       const next = i + 1 < items.length ? items[i + 1]! : null;
       yield* drawJoin(this.joiner, item, next, { index: i + 1 }).render(row);
     }
@@ -398,6 +413,17 @@ function cellStyle(cell: JoinCell, edges: Edges, options: RenderOptions): Style 
   return new Style({ color, bgcolor: cell.bg === "ground" ? undefined : resolvePaint(cell.bg, edges, options) });
 }
 
+/**
+ * The neighbour a join cell is drawn as part of: the one whose colour inks its
+ * glyph — the cell's fg, or its bg under reverse video — so a powerline arrow,
+ * inked in the fill it points out of, is that item's. A cell inked in a role
+ * or a mix is the join's alone.
+ */
+function partOf(cell: JoinCell): "left" | "right" | undefined {
+  const ink = cell.fg === "ground" ? cell.bg : cell.fg;
+  return ink !== "ground" && "edge" in ink ? ink.edge : undefined;
+}
+
 const shapeGlyphs = (shape: JoinShape): string => PARTS.flatMap((part) => shape[part].flatMap(glyphsOf)).join("");
 
 /**
@@ -434,7 +460,21 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
         const rightBg = paintableBg(edges.right?.bgcolor);
         const hasLeft = left !== null && (!reads.left || leftBg !== undefined);
         const hasRight = right !== null && (!reads.right || rightBg !== undefined);
-        const styled = (part: Part) => drawn[part].map((cell, at) => new Segment(pickGlyph(cell, part, index, at), cellStyle(cell, edges, options)));
+        const neighbours = { left, right };
+        const styled = (part: Part) => {
+          const cols = { left: 0, right: 0 };
+          return drawn[part].map((cell, at) => {
+            const glyph = pickGlyph(cell, part, index, at);
+            const style = cellStyle(cell, edges, options);
+            const side = partOf(cell);
+            if (side === undefined) return new Segment(glyph, style);
+            const col = cols[side];
+            cols[side] += cellLen(glyph);
+            // `parseShape` refuses a lead naming `left` and a tail naming
+            // `right`, so the neighbour a cell is part of is always there.
+            return new Segment(glyph, style.withAnchor({ owner: neighbours[side]!, row: 0, col, inner: undefined }));
+          });
+        };
         if (!hasLeft || !hasRight) {
           if (hasLeft || hasRight) yield* styled(hasRight ? "lead" : "tail");
           return;
