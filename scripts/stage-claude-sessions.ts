@@ -13,8 +13,9 @@
  * A session is kept as it was recorded — every record, in order, under its
  * real file name and modification time — but for three cuts, each applied to
  * every string in it, so no field is special-cased:
- * - a string longer than `KEEP_LINES` lines keeps its first `KEEP_LINES` and
- *   says how many it lost; one longer than `KEEP_CHARS` is cut the same way;
+ * - a string past its `Keep` — `KEEP_PROSE` for what a person or the model
+ *   said, `KEEP` inside a tool call or result and in a meta record — keeps its
+ *   first lines and characters and says how many it lost;
  * - a thinking block's `signature`, opaque bytes no reader can use, is dropped;
  * - the machine is scrubbed out: the owner's home becomes `/home/demo`, their
  *   user name `demo`, every machine on their network `demo-host`, a Tailscale
@@ -164,20 +165,21 @@ function trim(text: string, keep: Keep): string {
   const cut = points.length > keep.chars ? points.slice(0, keep.chars).join("") : kept;
   if (cut === text) return text;
   const lostLines = lines.length - kept.split("\n").length;
-  const lostChars = kept.length - cut.length;
+  const lostChars = points.length - Array.from(cut).length;
   const lost = [lostChars > 0 ? `${lostChars} more characters` : "", lostLines > 0 ? `${lostLines} more lines` : ""].filter(Boolean);
   return `${cut}\n… ${lost.join(", ")}`;
 }
 
-function stage(value: unknown, keep: Keep = KEEP): unknown {
+function stage(value: unknown, keep: Keep): unknown {
   if (typeof value === "string") return trim(scrub(value), keep);
   if (Array.isArray(value)) return value.map((v) => stage(v, keep));
   if (typeof value === "object" && value !== null) {
     const record = value as Record<string, unknown>;
     const thinking = record["type"] === "thinking";
-    const prose = record["type"] === "text" ? KEEP_PROSE : keep;
+    // A tool's call and result are output wherever they sit, text blocks included.
+    const inner = record["type"] === "tool_use" || record["type"] === "tool_result" ? KEEP : keep;
     return Object.fromEntries(
-      Object.entries(record).filter(([key]) => !(thinking && key === "signature")).map(([key, v]) => [scrub(key), stage(v, prose)]),
+      Object.entries(record).filter(([key]) => !(thinking && key === "signature")).map(([key, v]) => [scrub(key), stage(v, inner)]),
     );
   }
   return value;
@@ -266,7 +268,7 @@ mkdirSync(out);
 
 /** A file of the staged tree, its records as the viewer reads them. */
 const stagedFile = (file: string, text: string) => {
-  const jsonl = shownRecords(text).map((record) => JSON.stringify(stage(record))).join("\n");
+  const jsonl = shownRecords(text).map((record) => JSON.stringify(stage(record, record["isMeta"] === true ? KEEP : KEEP_PROSE))).join("\n");
   return { mtime: statSync(file).mtime.toISOString(), jsonl };
 };
 
