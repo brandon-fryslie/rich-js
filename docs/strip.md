@@ -64,6 +64,8 @@ Every built-in joiner is a `CellJoiner`, and what tells them apart is data: a `J
 - `lead` — where a run is entered from nothing.
 - `tail` — where a run leaves into nothing.
 
+A cell's `glyph` is a string, or `{ oneOf: [...] }`: a set of same-width glyphs, any of which may stand in the cell. Which one stands is picked from the join's place in the strip, so it holds still from frame to frame and differs between seams, even seams between the same two colours.
+
 A `JoinCell` is a glyph and the two colours it is drawn in, `fg` and `bg`. Each colour is one of:
 
 - `{ edge: "left" | "right", part: "bg" | "fg" }` — a neighbour's background or text colour, at the column facing the join;
@@ -207,7 +209,7 @@ console.print(
 
 ## Custom joiners
 
-A shape covers any join drawn as a fixed run of cells. Underneath it, a joiner is a pure function `(leftItem | null, rightItem | null) -> Renderable`, and implementing that interface defines a joiner no shape can express:
+A shape covers any join drawn as a fixed run of cells. Underneath it, a joiner is a pure function `(leftItem | null, rightItem | null, { index }) -> Renderable`, where `index` counts joins from the strip's start — the join before item `i` is `i`, the end after the last of `n` items is `n`, and a `FlexStrip` wrap keeps every seam's index —, and implementing that interface defines a joiner no shape can express:
 
 ```typescript
 import type { Joiner, Renderable, RenderOptions, StyledRenderable } from "@promptctl/rich-js";

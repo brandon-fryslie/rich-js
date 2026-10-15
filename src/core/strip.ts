@@ -31,6 +31,7 @@ import { Style } from "./style.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK } from "./color.js";
 import { Oklch } from "./oklch.js";
 import { cellLen } from "./cells.js";
+import { hash } from "./noise.js";
 import { drawable, getStyle, isAscii, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
 
 // --- StyledRenderable ---
@@ -54,13 +55,24 @@ export interface StyledRenderable extends Renderable {
 
 // --- Joiner ---
 
+/**
+ * Where a join sits in its strip. `index` counts joins from the strip's start:
+ * the join before item `i` is `i`, and the end after the last of `n` items is
+ * `n`. It names the seam, not the line it lands on, so where a `FlexStrip`
+ * wraps, the end cap and the next line's lead both carry the index of the seam
+ * the wrap replaced — and every seam that survives a wrap keeps its own.
+ */
+export interface JoinContext {
+  readonly index: number;
+}
+
 export interface Joiner<T extends StyledRenderable = StyledRenderable> {
   /**
    * `left === null` marks the start endpoint; `right === null` marks the end
    * endpoint. The joiner decides what an endpoint looks like — typically
    * fg-only with no bg so the strip blends into the terminal background.
    */
-  join(left: T | null, right: T | null): Renderable;
+  join(left: T | null, right: T | null, context: JoinContext): Renderable;
 }
 
 // --- Strip ---
@@ -87,12 +99,12 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
     // `left` fills the canvas, and the first item would pad over the rest of
     // the row. Where the row sits in the width is its container's to say.
     const row: RenderOptions = { ...options, justify: undefined };
-    yield* this.joiner.join(null, items[0]!).render(row);
+    yield* this.joiner.join(null, items[0]!, { index: 0 }).render(row);
     for (let i = 0; i < items.length; i++) {
       const item = items[i]!;
       yield* item.render(row);
       const next = i + 1 < items.length ? items[i + 1]! : null;
-      yield* this.joiner.join(item, next).render(row);
+      yield* this.joiner.join(item, next, { index: i + 1 }).render(row);
     }
 
     // [LAW:one-source-of-truth] `Strip`'s sibling `FlexStrip` ends every line
@@ -151,7 +163,9 @@ export type CellColor = Paint | "ground";
 /**
  * One styled run of a join. A `oneOf` glyph is a set any member of which may
  * stand in the cell; every member has the same width, because consumers
- * measure a join by rendering it.
+ * measure a join by rendering it. Which member stands is hashed from the
+ * join's `index` and the cell's place in it, so it holds still from frame to
+ * frame and differs from seam to seam even between the same two colours.
  */
 export interface JoinCell {
   readonly glyph: string | { readonly oneOf: readonly string[] };
@@ -197,6 +211,10 @@ function* paintsIn(paint: Paint): Iterable<Paint> {
 }
 
 const glyphsOf = (cell: JoinCell): readonly string[] => (typeof cell.glyph === "string" ? [cell.glyph] : cell.glyph.oneOf);
+const pickGlyph = (cell: JoinCell, index: number, at: number): string => {
+  const glyphs = glyphsOf(cell);
+  return glyphs[Math.floor(hash(index, at) * glyphs.length)]!;
+};
 const cellWidth = (cell: JoinCell): number => cellLen(glyphsOf(cell)[0] ?? "");
 const partWidth = (cells: readonly JoinCell[]): number => cells.reduce((width, cell) => width + cellWidth(cell), 0);
 
@@ -381,7 +399,7 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
     this._forms = { glyph: formOf(this.shape), ascii: formOf(this.ascii) };
   }
 
-  join(left: T | null, right: T | null): Renderable {
+  join(left: T | null, right: T | null, { index }: JoinContext): Renderable {
     const forms = this._forms;
     return {
       *render(options: RenderOptions): Iterable<Segment> {
@@ -393,9 +411,7 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
         const hasRight = right !== null && (!reads.right || rightBg !== undefined);
         const divides = drawn.divider !== drawn.seam && leftBg !== undefined && rightBg !== undefined && vanishes(leftBg, rightBg, options.colorSystem);
         const cells = hasLeft && hasRight ? (divides ? drawn.divider : drawn.seam) : hasRight ? drawn.lead : hasLeft ? drawn.tail : [];
-        // A oneOf draws its first member until a join knows its seam index
-        // (rich-joiners-9ntp.bex).
-        for (const cell of cells) yield new Segment(glyphsOf(cell)[0]!, cellStyle(cell, edges, options));
+        for (const [at, cell] of cells.entries()) yield new Segment(pickGlyph(cell, index, at), cellStyle(cell, edges, options));
       },
     };
   }

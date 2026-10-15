@@ -195,7 +195,7 @@ export {
   PLAIN_JOINER,
   gradientJoiner,
 } from "./core/strip.js";
-export type { StyledRenderable, Joiner, JoinShape, JoinCell, CellColor, Paint } from "./core/strip.js";
+export type { StyledRenderable, Joiner, JoinContext, JoinShape, JoinCell, CellColor, Paint } from "./core/strip.js";
 
 // renderToString — stateless one-shot emission
 export {

@@ -103,11 +103,11 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
     // up-front turns packing into a pure data computation over widths.
     const itemBlocks = items.map((it) => renderToBlock(it, options));
     const startCap = (i: number): RenderedBlock =>
-      joiner ? renderToBlock(joiner.join(null, items[i]!), options) : EMPTY_BLOCK;
+      joiner ? renderToBlock(joiner.join(null, items[i]!, { index: i }), options) : EMPTY_BLOCK;
     const endCap = (i: number): RenderedBlock =>
-      joiner ? renderToBlock(joiner.join(items[i]!, null), options) : EMPTY_BLOCK;
+      joiner ? renderToBlock(joiner.join(items[i]!, null, { index: i + 1 }), options) : EMPTY_BLOCK;
     const midJoin = (i: number, j: number): RenderedBlock =>
-      joiner ? renderToBlock(joiner.join(items[i]!, items[j]!), options) : EMPTY_BLOCK;
+      joiner ? renderToBlock(joiner.join(items[i]!, items[j]!, { index: j }), options) : EMPTY_BLOCK;
 
     // Build lines as arrays of "blocks" (item or join). Each line begins with
     // the start-cap for its first item and ends with the end-cap for its last.
@@ -227,23 +227,23 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
     for (let i = 0; i < items.length; i++) {
       const itemWidth = renderToBlock(items[i]!, options).width;
       const sc = this.joiner
-        ? renderToBlock(this.joiner.join(null, items[i]!), options).width
+        ? renderToBlock(this.joiner.join(null, items[i]!, { index: i }), options).width
         : 0;
       const ec = this.joiner
-        ? renderToBlock(this.joiner.join(items[i]!, null), options).width
+        ? renderToBlock(this.joiner.join(items[i]!, null, { index: i + 1 }), options).width
         : 0;
       minimum = Math.max(minimum, itemWidth + sc + ec);
       maximum += itemWidth;
       if (i > 0) {
         maximum += this.gap * 2;
         if (this.joiner) {
-          maximum += renderToBlock(this.joiner.join(items[i - 1]!, items[i]!), options).width;
+          maximum += renderToBlock(this.joiner.join(items[i - 1]!, items[i]!, { index: i }), options).width;
         }
       }
     }
     if (this.joiner) {
-      maximum += renderToBlock(this.joiner.join(null, items[0]!), options).width;
-      maximum += renderToBlock(this.joiner.join(items[items.length - 1]!, null), options).width;
+      maximum += renderToBlock(this.joiner.join(null, items[0]!, { index: 0 }), options).width;
+      maximum += renderToBlock(this.joiner.join(items[items.length - 1]!, null, { index: items.length }), options).width;
     }
     return { minimum, maximum };
   }

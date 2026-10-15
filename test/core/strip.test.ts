@@ -662,3 +662,24 @@ describe("CellJoiner", () => {
     );
   });
 });
+
+describe("oneOf picks per seam", () => {
+  const CHOICES = ["a", "b", "c", "d"];
+  const pick: JoinCell = { glyph: { oneOf: CHOICES }, fg: { role: "strip.separator" }, bg: "ground" };
+  const varied = new CellJoiner({ seam: [pick], divider: [pick], lead: [], tail: [] }, { seam: [pick], divider: [pick], lead: [], tail: [] });
+  // Every item the same colour, so nothing but the seam's index can tell two seams apart.
+  const items = Array.from({ length: 16 }, () => cell("-", "white on red"));
+  const seams = (options: RenderOptions = OPTIONS) => render(new Strip(items, varied), options).filter((s) => s.text !== "-").map((s) => s.text);
+
+  it("varies the glyph from seam to seam between the same two colours", () => {
+    const drawn = seams();
+    expect(drawn).toHaveLength(15);
+    expect(drawn.every((g) => CHOICES.includes(g))).toBe(true);
+    expect(new Set(drawn).size).toBeGreaterThan(1);
+  });
+
+  it("draws the same glyph at the same seam on every render", () => {
+    expect(seams()).toEqual(seams());
+    expect(seams({ maxWidth: 40 })).toEqual(seams());
+  });
+});
