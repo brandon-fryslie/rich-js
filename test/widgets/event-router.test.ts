@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { runInAction } from "mobx";
 import { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
-import { InputParser, keyName, type ScreenMouseEvent } from "../../src/host/input.js";
+import { ESCAPE_DELAY_MS, InputParser, keyName, type ScreenMouseEvent } from "../../src/host/input.js";
 import type { KeyEvent, WidgetMouseEvent, FrameSource } from "../../src/widgets/types.js";
 import { parserFor } from "./feed.js";
 
@@ -340,6 +340,111 @@ describe("EventRouter — key parsing", () => {
     h.feed("3");
     h.feed("~");
     expect(h.keyEvents.map((e) => e.key)).toEqual(["delete"]);
+  });
+});
+
+// A real tty's reads can end inside a sequence, so an unfinished one is held
+// for the escape delay: a rest that arrives within it completes the key, and
+// one that has stalled by then is read as the keys it holds (rich-host-input-gnl7).
+describe("InputParser on a split host", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  // The escape delay, then the turn of the event loop that reads any input
+  // waiting behind it: with no input here, that turn is its pending timer.
+  function escapeDelayPasses(): void {
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS);
+    vi.runOnlyPendingTimers();
+  }
+
+  function split(onKey: (key: string) => void = () => {}) {
+    const keys: string[] = [];
+    const parser = new InputParser({
+      key: (press) => {
+        keys.push(keyName(press));
+        onKey(press.key);
+      },
+      mouse: () => {},
+    }, "split");
+    return { keys, parser };
+  }
+
+  it.each([["["], ["O"]])("reads a stalled ESC %s as its Alt chord, and the next key as itself", (glyph) => {
+    const { keys, parser } = split();
+    parser.feed("\x1b");
+    parser.feed(glyph);
+    escapeDelayPasses();
+    parser.feed("q");
+    expect(keys).toEqual([`meta+${glyph}`, "q"]);
+  });
+
+  it("completes a sequence whose rest arrives within the escape delay", () => {
+    const { keys, parser } = split();
+    parser.feed("\x1b[");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS - 1);
+    parser.feed("A");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS);
+    expect(keys).toEqual(["up"]);
+  });
+
+  it("reads a lone ESC as Escape once the escape delay passes", () => {
+    const { keys, parser } = split();
+    parser.feed("\x1b");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS - 1);
+    expect(keys).toEqual([]);
+    vi.advanceTimersByTime(1);
+    vi.runOnlyPendingTimers();
+    expect(keys).toEqual(["escape"]);
+  });
+
+  it("holds a stalled tail left by a handler that threw", () => {
+    const { keys, parser } = split((key) => {
+      if (key === "a") throw new Error("handler");
+    });
+    expect(() => parser.feed("a\x1b[")).toThrow("handler");
+    escapeDelayPasses();
+    parser.feed("q");
+    expect(keys).toEqual(["a", "meta+[", "q"]);
+  });
+
+  it("holds a stalled tail behind keys a handler that threw had not reached", () => {
+    const { keys, parser } = split((key) => {
+      if (key === "a") throw new Error("handler");
+    });
+    expect(() => parser.feed("ab\x1b[")).toThrow("handler");
+    escapeDelayPasses();
+    parser.feed("q");
+    expect(keys).toEqual(["a", "b", "meta+[", "q"]);
+  });
+
+  it("reads a held ESC [ as Alt+[ when a key queued ahead of the escape delay opens with ESC", () => {
+    const { keys, parser } = split();
+    parser.feed("\x1b[");
+    parser.feed("\x1b[B");
+    expect(keys).toEqual(["meta+[", "down"]);
+  });
+
+  it("reads Escape typed before an O and a key no terminal sends after ESC O", () => {
+    const { keys, parser } = split();
+    parser.feed("\x1b");
+    parser.feed("O");
+    parser.feed("h");
+    expect(keys).toEqual(["escape", "O", "h"]);
+  });
+
+  it("holds one sequence at a time when a handler feeds the parser", () => {
+    let parser!: InputParser;
+    const h = split((key) => {
+      if (key === "x") parser.feed("\x1b");
+    });
+    parser = h.parser;
+    parser.feed("x");
+    parser.reset();
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS / 2);
+    parser.feed("\x1b[");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS / 2);
+    parser.feed("A");
+    expect(h.keys).toEqual(["x", "up"]);
   });
 });
 

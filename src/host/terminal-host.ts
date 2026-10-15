@@ -82,10 +82,11 @@ export interface TerminalHost {
   onData(handler: DataHandler): Unsubscribe;
 
   /**
-   * Where `onData`'s chunks may end. The parser holds a lone ESC open for
-   * the rest of a sequence only on a host whose chunks can split one; a
-   * timer cannot stand in for this, because a busy program reads a queued
-   * next key before any timer runs (rich-host-input-ab9n).
+   * Where `onData`'s chunks may end. The parser holds an unfinished escape
+   * sequence open for its rest, for the escape delay, only on a host whose
+   * chunks can split one; a whole-keys host settles each chunk as it arrives,
+   * because a busy worker there reads a queued next key before any timer
+   * runs (rich-host-input-ab9n).
    */
   readonly inputChunks: InputChunks;
 

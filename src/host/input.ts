@@ -16,14 +16,17 @@
  * end means is the host's `InputChunks`, the one input to the parser that is
  * not a byte, and it decides only what becomes of an unfinished ESC.
  *
- * Lone-ESC handling: a bare `\x1b` is ambiguous (escape key vs. start of a
- * CSI sequence), and only the host's `InputChunks` can settle it. On a
+ * An unfinished escape sequence is ambiguous: `ESC` alone is the Escape key
+ * or the start of a sequence, and `ESC [` is Alt+[ or the start of a CSI.
+ * Only the host's `InputChunks` and the clock can settle it. On a
  * `"whole-keys"` host a chunk ends on a key boundary, so an ESC still waiting
  * at a chunk's end opened nothing: it is Escape, and what followed it is read
- * again on its own. On a `"split"` host the parser defers a lone ESC via
- * setTimeout(0). A next chunk opening with `[` or `O` extends the sequence;
- * any other next chunk emits the ESC as Escape first. `flush()` drains it
- * synchronously.
+ * again on its own. On a `"split"` host a read can end anywhere, so the
+ * parser holds the unfinished sequence for the escape delay — ncurses'
+ * ESCDELAY, tmux's escape-time — and, when nothing has extended it by then,
+ * settles it by the same whole-keys rule. A held lone ESC is also settled
+ * early by a next chunk that cannot extend it: anything but `[` or `O`.
+ * `flush()` settles the hold synchronously.
  */
 
 import type { InputChunks } from "./terminal-host.js";
@@ -199,6 +202,15 @@ const ASCII_DECODER = new TextDecoder("ascii");
 
 const EMPTY_BYTES = new Uint8Array(0);
 
+/**
+ * How long a `"split"` host's parser waits for the rest of an unfinished
+ * escape sequence before reading it as the keys it already holds. Textual's
+ * ESCAPE_DELAY and vim's `ttimeoutlen` default to the same: long enough for
+ * the rest of a sequence a read split (over ssh, say) to arrive, short
+ * enough that Escape does not feel late.
+ */
+export const ESCAPE_DELAY_MS = 100;
+
 // Concatenate two byte arrays into a fresh Uint8Array. Replaces
 // `Buffer.concat([...])` so the parser holds no node-specific globals.
 function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
@@ -214,12 +226,29 @@ function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
 type ConsumeResult =
   | { kind: "key"; bytes: number; event: KeyPress }
   | { kind: "mouse"; bytes: number; event: ScreenMouseEvent }
+  | { kind: "reissued"; bytes: number; event: KeyPress } // a sequence that opened no key, read by `reissue`
   | { kind: "incomplete" } // need more bytes
   | { kind: "skip"; bytes: number }; // unrecognised — drop bytes
 
 // Alt on a printable byte: the glyph the terminal sent, with meta held.
 function altKey(byte: number): KeyPress {
   return { key: String.fromCharCode(byte), character: "", shift: false, ctrl: false, meta: true };
+}
+
+// ECMA-48: an escape sequence is built of bytes 0x20–0x7E after its ESC, so
+// any other byte (ESC itself, a control, a UTF-8 byte) ends one unfinished.
+function inSequence(byte: number): boolean {
+  return byte >= 0x20 && byte <= 0x7e;
+}
+
+// [LAW:one-source-of-truth] An escape sequence that opened no key — ended
+// before its final byte (at a whole-key chunk's end, at the escape delay, or at
+// a byte that cannot belong to it), or an SS3 no terminal sends — is reissued
+// as the keys it holds, as Textual reissues one. `ESC [` / `ESC O` alone is the
+// whole key Alt+[ / Alt+O; any other ESC is Escape, and what followed it is
+// read again on its own.
+function reissue(sequence: Uint8Array): { bytes: number; event: KeyPress } {
+  return sequence.length === 2 ? { bytes: 2, event: altKey(sequence[1]!) } : { bytes: 1, event: ESCAPE };
 }
 
 export class InputParser {
@@ -256,60 +285,78 @@ export class InputParser {
     try {
       if (escaped) this.sink.key(ESCAPE);
     } finally {
-      this.drain();
-    }
-    // [LAW:dataflow-not-control-flow] If a lone ESC remains, defer emission
-    // until the next macrotask so a follow-up chunk can extend it. Only a lone
-    // one: a sequence split after `ESC [` waits for its rest, however late.
-    if (this.holdingEscape()) {
-      this.escTimer = setTimeout(() => {
-        this.escTimer = undefined;
-        this.flush();
-      }, 0);
+      this.drainAndHold();
     }
   }
 
+  private drainAndHold(): void {
+    try {
+      this.drainFully();
+    } finally {
+      this.hold();
+    }
+  }
+
+  // [LAW:no-ambient-temporal-coupling] Whatever drain leaves at an ESC is an
+  // unfinished sequence, and the escape delay is what tells one whose rest is
+  // still in flight from one that stalled: a stalled `ESC [` held for good
+  // would read the next key as its final byte (rich-host-input-gnl7). The delay
+  // counts time the program could have read the rest in: node runs an expired
+  // timer before it reads input queued behind a long frame, so the delay's end
+  // settles the hold only after one more turn of the event loop has read what
+  // was waiting. The parser holds one timer, so arming it replaces any other.
+  private hold(): void {
+    this.cancelEscape();
+    if (this.buffer[0] !== ESC) return;
+    this.escTimer = setTimeout(() => {
+      this.escTimer = setTimeout(() => this.flush(), 0);
+    }, ESCAPE_DELAY_MS);
+  }
+
   // A whole-key chunk has ended, so an ESC still at the buffer head opens no
-  // sequence. `ESC [` / `ESC O` alone is the whole key Alt+[ / Alt+O; any
-  // other ESC is Escape, and what followed it is read again on its own. Each
-  // key is taken off the buffer before the sink hears it, and a sink that
-  // throws leaves the rest of the chunk to be read in full before this rule
-  // meets its end, so no byte of one chunk outlives it.
+  // sequence, and is read as `reissue` reads it. Each key is taken off the
+  // buffer before the sink hears it, so no byte of one chunk outlives it.
   private settleChunk(): void {
+    try {
+      this.drainFully();
+    } finally {
+      if (this.buffer[0] === ESC) {
+        const { bytes, event } = reissue(this.buffer);
+        this.buffer = this.buffer.subarray(bytes);
+        try {
+          this.sink.key(event);
+        } finally {
+          this.settleChunk();
+        }
+      }
+    }
+  }
+
+  // Drain, and when a handler throws, read the rest of the buffer in full
+  // before the throw goes on, so a throwing handler strands no key behind it.
+  private drainFully(): void {
     let drained = false;
     try {
       this.drain();
       drained = true;
     } finally {
-      if (!drained) this.settleChunk();
-    }
-    if (this.buffer[0] !== ESC) return;
-    const introducer = this.buffer.length === 2;
-    const press = introducer ? altKey(this.buffer[1]!) : ESCAPE;
-    this.buffer = this.buffer.subarray(introducer ? 2 : 1);
-    try {
-      this.sink.key(press);
-    } finally {
-      this.settleChunk();
+      if (!drained) this.drainFully();
     }
   }
 
-  /** Force any pending lone ESC out of the buffer. */
+  /** Settle a held escape sequence now, as the end of a whole-key chunk. */
   flush(): void {
     this.cancelEscape();
-    if (this.holdingEscape()) {
-      this.buffer = EMPTY_BYTES;
-      this.sink.key(ESCAPE);
-    }
+    this.settleChunk();
   }
 
-  /** Drop what is buffered and any pending lone ESC: the parser as constructed. */
+  /** Drop what is buffered and any held escape sequence: the parser as constructed. */
   reset(): void {
     this.cancelEscape();
     this.buffer = EMPTY_BYTES;
   }
 
-  /** The parser's one hold: a lone ESC that may yet open a sequence. */
+  /** A lone ESC, the one hold a next chunk can settle early. */
   private holdingEscape(): boolean {
     return this.buffer.length === 1 && this.buffer[0] === ESC;
   }
@@ -324,7 +371,7 @@ export class InputParser {
       const result = this.consumeOne(this.buffer);
       if (result.kind === "incomplete") return;
       this.buffer = this.buffer.subarray(result.bytes);
-      if (result.kind === "key") this.sink.key(result.event);
+      if (result.kind === "key" || result.kind === "reissued") this.sink.key(result.event);
       else if (result.kind === "mouse") this.sink.mouse(result.event);
       // skip → drop bytes silently
     }
@@ -401,7 +448,8 @@ export class InputParser {
     // inner sequence, with meta held.
     if (b1 === ESC && buf.length > 2 && (buf[2] === LBRACKET || buf[2] === O_BYTE)) {
       // A pointer report is never Alt-prefixed (SGR carries modifiers in its
-      // button byte), so before anything but a key the first ESC is Escape.
+      // button byte), and a sequence reissued is no key to hold Alt on, so
+      // before anything but a key the first ESC is Escape.
       const inner = this.consumeEscape(buf.subarray(1));
       if (inner.kind === "incomplete") return inner;
       if (inner.kind === "key") {
@@ -471,9 +519,11 @@ export class InputParser {
 
   private consumeSS3(buf: Uint8Array): ConsumeResult {
     if (buf.length < 3) return { kind: "incomplete" };
+    if (!inSequence(buf[2]!)) return { kind: "reissued", ...reissue(buf.subarray(0, 2)) };
     const final = String.fromCharCode(buf[2]!);
     const name = SS3_KEYS[final];
-    if (!name) return { kind: "skip", bytes: 3 };
+    // No terminal reports in SS3, so an unknown final was typed: Escape, then O.
+    if (!name) return { kind: "reissued", ...reissue(buf.subarray(0, 3)) };
     return {
       kind: "key",
       bytes: 3,
@@ -516,6 +566,7 @@ export class InputParser {
             event: decodeMouseFromCb(cb, col, row, b === M_UPPER),
           };
         }
+        if (!inSequence(b)) return { kind: "reissued", ...reissue(buf.subarray(0, i)) };
       }
       return { kind: "incomplete" };
     }
@@ -529,6 +580,7 @@ export class InputParser {
         const final = String.fromCharCode(b);
         return decodeCSI(params, final, i + 1);
       }
+      if (!inSequence(b)) return { kind: "reissued", ...reissue(buf.subarray(0, i)) };
       params += String.fromCharCode(b);
     }
     return { kind: "incomplete" };
