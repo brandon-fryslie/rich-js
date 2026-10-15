@@ -14,6 +14,7 @@
  * SystemInfo, and the job widget needs neither.
  */
 
+import type { Clock } from "@promptctl/rich-js";
 import type { FileSystem } from "../_capabilities/file-system.js";
 import type { SystemInfo } from "../_capabilities/system-info.js";
 import type { LayoutSpec } from "./layout.js";
@@ -23,6 +24,8 @@ import { notesWidget } from "./widgets/notes.js";
 import { sysinfoWidget } from "./widgets/sysinfo.js";
 
 export interface DashboardCapabilities {
+  /** What the dashboard's frames are timed on. */
+  readonly clock: Clock;
   readonly fs: FileSystem;
   readonly sysinfo: SystemInfo;
   /** Absolute path to the README the notes widget should render. */

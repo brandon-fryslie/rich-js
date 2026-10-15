@@ -16,9 +16,8 @@ describe("job widget log", () => {
     const random = vi.spyOn(Math, "random").mockReturnValue(0); // the shortest run: three ticks an item
     let state = jobWidget.init();
     random.mockReturnValue(0.999); // the longest advance a tick makes
-    const ctx = { frame: 0, now: 0, deltaMs: 0 };
     const text = () => renderToString(jobWidget.render(state), { width: 200, colorSystem: null });
-    for (let i = 0; i < 500 && !text().includes("test:demos ok"); i++) state = jobWidget.tick(state, ctx);
+    for (let i = 0; i < 500 && !text().includes("test:demos ok"); i++) state = jobWidget.tick(state);
 
     const lines = text().split("\n").map((line) => line.trim());
     const logged = (stage: string) => lines.filter((line) => line.startsWith(`${stage}  `) && !line.includes("━")).map((line) => line.slice(stage.length + 2));

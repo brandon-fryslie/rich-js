@@ -2,7 +2,7 @@
  * Widget protocol — the only contract the dashboard knows about.
  *
  * The dashboard treats every widget identically: call `init` once, call `tick`
- * each frame to advance state, call `render` to project state into a
+ * once a frame to advance state, call `render` to project state into a
  * `Renderable`. There are no widget-identity branches anywhere — variability
  * lives in the state values returned by `tick`, not in control flow.
  *
@@ -11,15 +11,6 @@
  */
 
 import type { Renderable } from "@promptctl/rich-js";
-
-export interface TickContext {
-  /** Frame counter, monotonically increasing from 0. */
-  readonly frame: number;
-  /** Wall-clock time when this tick started, in ms. */
-  readonly now: number;
-  /** Milliseconds since the previous tick (0 on the first tick). */
-  readonly deltaMs: number;
-}
 
 export interface WidgetSpec<S> {
   /** Stable identifier; must match the `name` of a Layout cell. */
@@ -30,8 +21,8 @@ export interface WidgetSpec<S> {
   readonly borderStyle?: string;
   /** Build the widget's initial state. Called once at startup. */
   init(): S;
-  /** Advance widget state for the next frame. Returning the same reference is fine. */
-  tick(state: S, ctx: TickContext): S;
+  /** Advance widget state by one frame. Returning the same reference is fine. */
+  tick(state: S): S;
   /** Project state to a Renderable for this frame. Do not perform screen I/O here. */
   render(state: S): Renderable;
 }
@@ -47,7 +38,7 @@ export interface Widget {
   readonly title: string;
   readonly borderStyle?: string;
   init(): unknown;
-  tick(state: unknown, ctx: TickContext): unknown;
+  tick(state: unknown): unknown;
   render(state: unknown): Renderable;
 }
 
