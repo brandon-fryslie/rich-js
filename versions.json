@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-381",
+      "ref": "refs/pull/381/merge",
+      "sha": "ec18c9c92fbc9924486f7bb0afc60486a610cc41",
+      "timestamp": "2026-10-15T05:41:00.468Z",
+      "commits": [
+        {
+          "sha": "ec18c9c92fbc9924486f7bb0afc60486a610cc41",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T23:39:41-06:00",
+          "message": "Merge 0f9c0e8e7dcd89c5d33975b089e42892fcaa3858 into 6c940178ea21c7cdc2f4a40f39dbb318709e49f1\n"
+        },
+        {
+          "sha": "0f9c0e8e7dcd89c5d33975b089e42892fcaa3858",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T23:39:35-06:00",
+          "message": "feat(demos): data-backed demos open on real staged data (rich-demos-k78j.3ok)\n\nclaude-sessions: the owner's 21 real sessions from five projects, trimmed\nand scrubbed by scripts/stage-claude-sessions.ts. rich-explore: 54 files of\nthis repository. rich-dash: a runner whose vitals never visibly repeat, this\nrepo's real pipeline steps, and its README. Each under examples/<demo>/staging/.\n\nAlso: parser joins an assistant message written one block per record (it\nkept only the last, dropping text before a tool call); demo pages take their\ncard as escaped JSON, since VitePress writes params into a <script> and a\n</script> in content broke the build; MAX_PROGRAM_BYTES 1 → 4 MiB so the\nclaude-sessions link fits.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "6c940178ea21c7cdc2f4a40f39dbb318709e49f1",
