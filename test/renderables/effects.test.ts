@@ -23,6 +23,8 @@ import {
   type EffectCell,
   type Pair,
   type Renderable,
+  type Segment,
+  type TerminalTheme,
 } from "../../src/index.js";
 import { CATPPUCCIN_LATTE, CATPPUCCIN_MOCHA } from "../../src/index.js";
 import {
@@ -526,7 +528,7 @@ describe("the loops never jump", () => {
 describe("a cell under light still reads", () => {
   const AA = 4.5;
   const palette = (theme: typeof CATPPUCCIN_MOCHA, key: string): ColorRgba => theme.palette.get(key)!;
-  const pair = (fg: ColorRgba, bg: ColorRgba, terminal = written): Pair => ({ fg, bg, terminal });
+  const pair = (fg: ColorRgba, bg: ColorRgba, terminal = written): Pair => ({ fg, bg, terminal, reverse: false });
   const onTerminalGround = { fg: false, bg: true };
   const latteInk = palette(CATPPUCCIN_LATTE, "foreground-muted");
   const slate = new ColorRgba(48, 48, 48);
@@ -556,7 +558,7 @@ describe("a cell under light still reads", () => {
   it("the lighter of a pair takes the whole light, and its darker partner what contrast is left", () => {
     const fg = palette(CATPPUCCIN_MOCHA, "foreground");
     const fill = palette(CATPPUCCIN_MOCHA, "secondary-muted");
-    const share = shares([pair(fg, fill)], new Set([fg.hex, fill.hex]), light(sun));
+    const share = shares(frame(new Set(), new Set(), [pair(fg, fill)]), new Set([fg.hex, fill.hex]), light(sun));
     expect(share.get(fg.hex)).toBe(1);
     expect(share.get(fill.hex)).toBeGreaterThan(0);
     expect(share.get(fill.hex)).toBeLessThan(1);
@@ -566,9 +568,9 @@ describe("a cell under light still reads", () => {
     const fg = palette(CATPPUCCIN_MOCHA, "foreground");
     const ground = CATPPUCCIN_MOCHA.backgroundColor;
     const accent = palette(CATPPUCCIN_MOCHA, "accent");
-    expect(shares([pair(fg, ground, onTerminalGround)], new Set([fg.hex, accent.hex]), light(sun)).get(accent.hex)).toBe(1);
+    expect(shares(frame(new Set(), new Set(), [pair(fg, ground, onTerminalGround)]), new Set([fg.hex, accent.hex]), light(sun)).get(accent.hex)).toBe(1);
     // The terminal's ground is in the pair, but the element never writes it.
-    expect(shares([pair(fg, ground, onTerminalGround)], new Set([fg.hex, ground.hex]), light(sun)).get(ground.hex)).toBe(1);
+    expect(shares(frame(new Set(), new Set(), [pair(fg, ground, onTerminalGround)]), new Set([fg.hex, ground.hex]), light(sun)).get(ground.hex)).toBe(1);
   });
 });
 
@@ -658,4 +660,61 @@ describe("a loop lit on what Effected draws", () => {
     expect(frameAt(1)).toBeLessThanOrEqual(2 * rest.length);
     expect(first).toBeGreaterThan(10 * frameAt(2));
   });
+});
+
+describe("a loop lit below truecolor reads as the wire writes it", () => {
+  const AA = 4.5;
+  /** What 8-bit rounding of an OKLCH round trip can cost a contrast ratio: the only slack a word cell gets. */
+  const ROUNDING = 0.01;
+  const depths = [["256", ColorDepth.EIGHT_BIT, "256"], ["16", ColorDepth.STANDARD, "ansi"]] as const;
+  const themes = [["Mocha", CATPPUCCIN_MOCHA], ["Latte", CATPPUCCIN_LATTE]] as const;
+
+  /**
+   * Words in colours off any palette, seeded so every run draws the same
+   * ones: half `reverse`, so the ink is written in the ground's slot, and a
+   * fifth on the terminal's own ground. The theme's palettes are spaced for
+   * reading and land where a touched colour is written alike either way;
+   * arbitrary colours are where the shares and the wire part.
+   */
+  function words(count: number): Style[] {
+    let seed = 7;
+    const next = (): number => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    const rgb = (): ColorSpec => ColorSpec.fromRgba(new ColorRgba(Math.floor(next() * 256), Math.floor(next() * 256), Math.floor(next() * 256)));
+    return Array.from({ length: count }, () => {
+      const [color, bgcolor, reverse, terminalGround] = [rgb(), rgb(), next() < 0.5, next() < 0.2];
+      return new Style({ color, bgcolor: terminalGround ? undefined : bgcolor, reverse });
+    });
+  }
+
+  /** The worst contrast of a word cell of `segments` as the wire writes them at `depth`, read on `theme`. */
+  function worst(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalTheme): number {
+    return Math.min(
+      ...[...segments].flatMap((segment) => {
+        if (segment.isControl) return [];
+        const style = segment.style ?? Style.null();
+        const wire = style.drawnColors(depth);
+        const slots = { fg: (wire.color ?? ColorSpec.default()).getTruecolor(theme, true), bg: (wire.bgcolor ?? ColorSpec.default()).getTruecolor(theme, false) };
+        const { fg, bg } = style.reverse === true ? { fg: slots.bg, bg: slots.fg } : slots;
+        return [contrastRatio(fg, bg)];
+      }),
+    );
+  }
+
+  it.each(themes.flatMap(([name, theme]) => depths.map(([d, depth, system]) => [name, d, theme, depth, system] as const)))(
+    "on %s at %s colours, no word cell falls below its resting contrast or AA",
+    (_name, _d, theme, depth, system) => {
+      const options = new Console({ width: 40, colorSystem: system }).options;
+      const strengths = Array.from({ length: 12 }, (_, i) => (i + 1) / 12);
+      const failures = words(100).flatMap((style) => {
+        const word = new RichText("ab", { style, end: "", noWrap: true });
+        const floor = Math.min(worst(word.render(options), depth, theme), AA) - ROUNDING;
+        return strengths.flatMap((w) => {
+          const lit = new Effected(word, onColors({ touch: light(sun), field: () => w }), { t: 0, key: "word", theme });
+          const now = worst(lit.render(options), depth, theme);
+          return now < floor ? [`${style} at ${w.toFixed(2)}: ${now.toFixed(3)} under ${floor.toFixed(3)}`] : [];
+        });
+      });
+      expect(failures).toEqual([]);
+    },
+  );
 });

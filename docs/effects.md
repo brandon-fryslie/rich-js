@@ -48,7 +48,7 @@ Every effect runs on its own clock from `t = 0`: draw it at the time since it be
 
 `shimmer`, `pulse` and `sparkle` return a `Loop`: what the light does to one colour, and how strongly it acts on each cell at each moment. `onColors` turns a loop into an `Effect` on the colours the element sets itself, each at its own share of the light, and that is how the catalogue makes them. The terminal's own colours are left alone, even where one has the hex of a colour the element sets. Call the functions yourself to light with another colour than the catalogue's (`EFFECT_LIGHTS`); a `shimmer` made that way also takes how many columns its light reaches either side of its centre, which the catalogue's entry chooses for you. Or call them to light only some of the element's colours, passed by hex as a second argument: `onColors(loop, new Set([fill.hex]))`.
 
-The shares keep the words readable. `Effected` measures every ink and ground pair the element draws its words in, and hands that measurement to the effect as `drawn`. Each colour gets the largest share at which every pair it appears in still reads at its resting contrast, or at WCAG AA (4.5:1) if it rested above that. A colour with contrast to spare glows brightly; one with none barely moves. Settling the shares is costly, so make the effect once and draw it in every frame: a frame that draws the colours an earlier frame drew reuses that frame's shares.
+The shares keep the words readable. `Effected` measures every ink and ground pair the element draws its words in, and hands that measurement to the effect as `drawn`. Each colour gets the largest share at which every pair it appears in still reads at its resting contrast, or at WCAG AA (4.5:1) if it rested above that, in the colours the output's depth writes it in. Below truecolor that is the colour `Effected` writes for the cell's glyph or ground slot, so the promise holds at 256 and 16 colours as it does in truecolor. A colour with contrast to spare glows brightly; one with none barely moves. Settling the shares is costly, so make the effect once and draw it in every frame: a frame that draws the colours an earlier frame drew reuses that frame's shares.
 
 `wheel` keeps lightness and chroma and only turns hue, so it needs no shares. It reads which colours are the element's, and which of them are fills, from the same measurement.
 
@@ -56,7 +56,7 @@ The shares keep the words readable. `Effected` measures every ink and ground pai
 
 `drawn` is the same for every cell of a frame. It describes the cells the element draws words in: those whose glyph is not blank and that a strip's joiner did not draw, since a powerline seam's ink is the fill beside it, not words.
 
-- `pairs` is every distinct ink and ground of those cells as the screen shows them, each with the `terminal` flags a cell carries.
+- `pairs` is every distinct ink and ground of those cells as the screen shows them, each with the `terminal` flags a cell carries and `reverse`, whether its style writes the ink in the ground's slot.
 - `colors` is the colours the element sets itself in those cells, by hex. `fills` is those of them that are a cell's ground.
 - `depth` and `theme` are what the frame is written at and drawn on.
 

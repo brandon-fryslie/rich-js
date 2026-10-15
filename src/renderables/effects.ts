@@ -48,7 +48,7 @@ import { EASES, Phase, type Ease } from "../core/easing.js";
 import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo } from "../core/memo.js";
 import { IDENTITY, Oklch } from "../core/oklch.js";
-import type { Drawn, Effect, EffectCell, Pair } from "./effect.js";
+import type { Drawn, Effect, EffectCell } from "./effect.js";
 
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
@@ -80,9 +80,10 @@ const ROUNDING = 0.01;
 
 /**
  * How much of `touch` each of `colors` (hex) can take: the largest share in
- * [0, 1] at which every pair in `pairs` that shows it, touched at the same
+ * [0, 1] at which every pair `drawn` shows it in, touched at the same
  * strength, still reads at its resting contrast or `LEGIBLE`, whichever is
- * lower. A colour in a pair but not in `colors` takes none, and so does one
+ * lower, in the colours `Effected` writes it in at `drawn`'s depth and theme.
+ * A colour in a pair but not in `colors` takes none, and so does one
  * the terminal supplies, whatever its hex, as in `onColors`. One of `colors`
  * no pair writes has nothing to be measured against, and takes it all.
  *
@@ -93,13 +94,18 @@ const ROUNDING = 0.01;
  * the fill room to glow — and a darker colour left as it is always holds,
  * because its lighter partner was settled against exactly that.
  */
-export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touch: Touch): Map<string, number> {
+export function shares({ pairs, depth, theme }: Drawn, colors: ReadonlySet<string>, touch: Touch): Map<string, number> {
   // [LAW:one-source-of-truth] A slot shows a subject colour, by hex, only
-  // where the element writes it: the reading `onColors` lights by.
-  const sides = pairs.map(({ fg, bg, terminal }) => [
-    { color: fg, own: terminal.fg ? undefined : fg.hex },
-    { color: bg, own: terminal.bg ? undefined : bg.hex },
+  // where the element writes it: the reading `onColors` lights by. Under
+  // `reverse` the ink is written in the ground's slot.
+  const sides = pairs.map(({ fg, bg, terminal, reverse }) => [
+    { color: fg, own: terminal.fg ? undefined : fg.hex, foreground: !reverse },
+    { color: bg, own: terminal.bg ? undefined : bg.hex, foreground: reverse },
   ] as const);
+  type Side = (typeof sides)[number][number];
+  // [LAW:one-source-of-truth] The colour a side shows touched at `w` is the one `Effected` writes for it (`ColorSpec.matchMove`).
+  const shown = ({ color, foreground }: Side, w: number): ColorRgba =>
+    ColorSpec.matchMove(color, touchedAt(touch, color, w), depth, theme, foreground)?.getTruecolor(theme, foreground) ?? color;
   const rgba = new Map(sides.flat().flatMap(({ color, own }): [string, ColorRgba][] => (own === undefined ? [] : [[own, color]])));
   // A colour no pair writes keeps no word legible, so nothing bounds its share:
   // a frame drawing a lit colour only under blanks and seams, or not at all,
@@ -107,17 +113,15 @@ export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touc
   const settled = new Map([...colors].filter((hex) => !rgba.has(hex)).map((hex): [string, number] => [hex, 1]));
   const lightness = (hex: string): number => Oklch.fromRgba(rgba.get(hex)!).l;
   for (const hex of [...colors].filter((hex) => rgba.has(hex)).sort((a, b) => lightness(b) - lightness(a))) {
-    const partners = sides.flatMap(([fg, bg]): [ColorRgba, number][] => {
-      const partner = fg.own === hex ? bg : bg.own === hex ? fg : undefined;
-      return partner === undefined ? [] : [[partner.color, partner.own === undefined ? 0 : (settled.get(partner.own) ?? 0)]];
+    // Each pair showing the colour, from its side: the colour's own slot, and its partner's.
+    const facing = sides.flatMap(([fg, bg]): [Side, Side, number][] => {
+      const [mine, partner] = fg.own === hex ? [fg, bg] : bg.own === hex ? [bg, fg] : [undefined, undefined];
+      return mine === undefined ? [] : [[mine, partner, partner.own === undefined ? 0 : (settled.get(partner.own) ?? 0)]];
     });
-    const color = rgba.get(hex)!;
     const holds = (share: number): boolean =>
-      partners.every(([partner, theirs]) => {
-        const floor = Math.min(contrastRatio(color, partner), LEGIBLE);
-        return STRENGTHS.every(
-          (w) => contrastRatio(touchedAt(touch, color, share * w), touchedAt(touch, partner, theirs * w)) >= floor - ROUNDING,
-        );
+      facing.every(([mine, partner, theirs]) => {
+        const floor = Math.min(contrastRatio(mine.color, partner.color), LEGIBLE);
+        return STRENGTHS.every((w) => contrastRatio(shown(mine, share * w), shown(partner, theirs * w)) >= floor - ROUNDING);
       });
     let [lo, hi] = holds(1) ? [1, 1] : [0, 1];
     for (let i = 0; i < 20 && hi - lo > 1e-3; i++) {
@@ -133,9 +137,9 @@ export function shares(pairs: readonly Pair[], colors: ReadonlySet<string>, touc
  * A loop as an `Effect` on the element's own colours, by hex, wherever a cell
  * shows them, each touched at its share of the cell's strength: the share
  * `shares` settles for it against the pairs the element draws its words in
- * (`Drawn`), touched as the frame's depth writes them — at 256 colours a
- * touched colour lands on the cube, and the contrast it spends is the cube
- * colour's. `colors` are the ones lit, by default every colour the element
+ * (`Drawn`), touched as `Effected` writes them at the frame's depth — below
+ * truecolor a touched colour lands on a colour the slot can write, and the
+ * contrast it spends is that colour's. `colors` are the ones lit, by default every colour the element
  * sets itself. A powerline strip's fill is the ground of its cells and the
  * ink of the seam glyphs between them, so the arrow moves with the cell it
  * points out of. A colour the terminal supplies (`EffectCell.terminal`) is
@@ -149,11 +153,10 @@ export function onColors(loop: Loop, colors?: ReadonlySet<string>): Effect {
   const settled = new WeakMap<TerminalTheme, Memo<ReadonlyMap<string, number>>>();
   const settle = (drawn: Drawn): ReadonlyMap<string, number> => {
     const lit = colors ?? drawn.colors;
-    const key = [drawn.depth, ...drawn.pairs.map(({ fg, bg, terminal }) => `${fg.hex}/${bg.hex}/${terminal.fg}/${terminal.bg}`), "|", ...lit].join(" ");
+    const key = [drawn.depth, ...drawn.pairs.map(({ fg, bg, terminal, reverse }) => `${fg.hex}/${bg.hex}/${terminal.fg}/${terminal.bg}/${reverse}`), "|", ...lit].join(" ");
     const memo = settled.get(drawn.theme) ?? new Memo<ReadonlyMap<string, number>>();
     settled.set(drawn.theme, memo);
-    const asWritten: Touch = (color, w) => ColorSpec.fromRgba(loop.touch(color, w)).downgrade(drawn.depth).getTruecolor(drawn.theme);
-    return memo.get(key, () => shares(drawn.pairs, lit, asWritten));
+    return memo.get(key, () => shares(drawn, lit, loop.touch));
   };
   return atShares(loop, settle);
 }

@@ -728,6 +728,19 @@ export class ColorSpec {
   }
 
   /**
+   * The spec a slot is written in once its colour moves from `was`, what its
+   * written spec draws on `theme`, to the opaque `now`: `matchOn`'s — or
+   * none, where the written spec is as near `now` as that match. A move the
+   * depth cannot show is no move, so below truecolor a colour moved a little
+   * off any colour the depth can write — a theme slot, the default colour,
+   * the cube — keeps the spec it was written in.
+   */
+  static matchMove(was: ColorRgba, now: ColorRgba, depth: ColorDepth, theme: TerminalTheme, foreground: boolean): ColorSpec | undefined {
+    const match = ColorSpec.matchOn(now, depth, theme, foreground);
+    return rgbDistance(was, now) <= rgbDistance(match.getTruecolor(theme, foreground), now) ? undefined : match;
+  }
+
+  /**
    * Parse a color string. Memoized (`Memo`): a string parsed again while
    * remembered returns the same instance.
    */
