@@ -42,11 +42,11 @@ for (const t of [0, 60, 100]) {
 }
 ```
 
-Every effect starts at rest at `t = 0` and runs on its own clock: draw it at the time since it began.
+Every effect runs on its own clock from `t = 0`: draw it at the time since it began.
 
 ### A loop lights the element's own colours
 
-`shimmer`, `pulse` and `sparkle` return a `Loop`: what the light does to one colour, and how strongly it acts on each cell at each moment. `onColors` turns a loop into an `Effect` on the colours the element sets itself, each at its own share of the light, and that is how the catalogue makes them. The terminal's own colours are left alone, even where one has the hex of a colour the element sets. Call the functions yourself to light with another colour than the catalogue's (`EFFECT_LIGHTS`), or to light only some of the element's colours, passed by hex as a second argument: `onColors(loop, new Set([fill.hex]))`.
+`shimmer`, `pulse` and `sparkle` return a `Loop`: what the light does to one colour, and how strongly it acts on each cell at each moment. `onColors` turns a loop into an `Effect` on the colours the element sets itself, each at its own share of the light, and that is how the catalogue makes them. The terminal's own colours are left alone, even where one has the hex of a colour the element sets. Call the functions yourself to light with another colour than the catalogue's (`EFFECT_LIGHTS`); a `shimmer` made that way also takes how many columns its light reaches either side of its centre, which the catalogue's entry chooses for you. Or call them to light only some of the element's colours, passed by hex as a second argument: `onColors(loop, new Set([fill.hex]))`.
 
 The shares keep the words readable. `Effected` measures every ink and ground pair the element draws its words in, and hands that measurement to the effect as `drawn`. Each colour gets the largest share at which every pair it appears in still reads at its resting contrast, or at WCAG AA (4.5:1) if it rested above that. A colour with contrast to spare glows brightly; one with none barely moves. Settling the shares is costly, so make the effect once and draw it in every frame: a frame that draws the colours an earlier frame drew reuses that frame's shares.
 

@@ -61,12 +61,13 @@ import {
   EFFECT_LIGHTS,
   pulse,
   type Curve,
+  type Transition,
   type LoopName,
   type TransitionName,
 } from "../../src/index.js";
 import { App, hostEnvironment, keyName, type TerminalHost } from "../../src/host/index.js";
 import { frameClock } from "../_capabilities/frame-clock.js";
-import { LOOPS, STEP, depthDrawn, type EffectName } from "./vocabulary.js";
+import { LOOPS, STEP, TRANSITIONS, depthDrawn, type EffectName } from "./vocabulary.js";
 import type { NamedCurve, Settings } from "./settings.js";
 import { drawnSubject, paletteRgba, pulsedOn, stripSubject, textSubject, type DrawnSubject, type Subject } from "./subjects.js";
 
@@ -176,6 +177,7 @@ interface Scene {
   readonly heading: Style;
   readonly subjects: readonly DrawnSubject[];
   readonly loops: Record<LoopName, (subject: DrawnSubject) => Effect>;
+  readonly transitions: Record<TransitionName, (subject: DrawnSubject) => Transition>;
   readonly contrast: Record<LoopName, string>;
   readonly measure: () => Generator<void>;
   /** The curves it was built with: the flags', at the magnitude on show. */
@@ -190,17 +192,21 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
   const depth = drawnWith.colorSystem ?? ColorDepth.TRUECOLOR;
   const subjects = [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, drawnWith));
 
-  // Each loop as the catalogue makes it, at the flags' curve, on the whole
+  // Each effect as the catalogue makes it, at the flags' curve, on the whole
   // subject — but a pulse, which breathes the subject's chosen elements, each
-  // lit on its own (`pulsedOn`).
-  const made = (name: LoopName, s: DrawnSubject): Effect =>
-    name === "pulse" ? pulsedOn(s, (z) => pulse(curves.pulse, EFFECT_LIGHTS.sun, z)) : EFFECT_CATALOGUE.loops[name](s, curves[name]);
-  const loops = Object.fromEntries(
-    LOOPS.map((name) => {
-      const built = new Map(subjects.map((s) => [s, made(name, s)]));
-      return [name, (s: DrawnSubject) => built.get(s)!];
-    }),
-  ) as Record<LoopName, (subject: DrawnSubject) => Effect>;
+  // lit on its own (`pulsedOn`). Made once per scene: settling a loop's shares
+  // is costly, and a transition is drawn at the time since it began.
+  const each = <Name extends EffectName, Made>(names: readonly Name[], make: (name: Name, s: DrawnSubject) => Made) =>
+    Object.fromEntries(
+      names.map((name) => {
+        const built = new Map(subjects.map((s) => [s, make(name, s)]));
+        return [name, (s: DrawnSubject) => built.get(s)!];
+      }),
+    ) as Record<Name, (subject: DrawnSubject) => Made>;
+  const loops = each(LOOPS, (name, s) =>
+    name === "pulse" ? pulsedOn(s, (z) => pulse(curves.pulse, EFFECT_LIGHTS.sun, z)) : EFFECT_CATALOGUE.loops[name](s, curves[name]),
+  );
+  const transitions = each(TRANSITIONS, (name, s) => EFFECT_CATALOGUE.transitions[name](s, curves[name]));
 
   // With no colour drawn there is no contrast to read: every effect is the
   // identity, and every cell is the terminal's own ink on its own ground.
@@ -217,7 +223,7 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
       contrast[loop] = `worst contrast ${ratio(worst)} over ${CONTRAST.periods * curves[loop].seconds}s (at rest ${rest})`;
     }
   }
-  return { theme, ink, paper, quiet, heading, subjects, loops, contrast, measure, curves };
+  return { theme, ink, paper, quiet, heading, subjects, loops, transitions, contrast, measure, curves };
 }
 
 /**
@@ -337,9 +343,9 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
    * catalogue makes it at the flags' curve, running until every one is done.
    */
   const transitionRow = (t: number, name: TransitionName, key: string): Renderable[] => {
-    const made = new Map(shown.subjects.map((s) => [s, EFFECT_CATALOGUE.transitions[name](s, curves[name])]));
-    const status = [...made.values()].every((transition) => transition.done(t)) ? `done — ${key} replays` : "running";
-    return row(t, name, status, (s) => made.get(s)!.effect);
+    const made = shown.transitions[name];
+    const status = shown.subjects.every((s) => made(s).done(t)) ? `done — ${key} replays` : "running";
+    return row(t, name, status, (s) => made(s).effect);
   };
 
   let replayed = 0;

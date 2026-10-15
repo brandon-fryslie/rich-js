@@ -54,18 +54,23 @@ const LOOPING = "{ fps: FPS, step: STEP, every: Infinity }";
 const REPLAYING = "{ fps: FPS, step: STEP, every: CURVE.seconds * 1.25 }";
 
 /**
- * Each effect's function in `effects.ts`, and the line that plays it on the
- * demo's subjects as the demo does (`scene` and `view` in app.ts). The
- * function itself, not its name in a string, so a rename in the library is a
- * compile error here rather than a card the docs build cannot cut.
+ * The functions the cards play, each keyed by the name `effects.ts` declares
+ * it under, which a shorthand key is checked to be. Never a function's
+ * runtime `name`: the docs build's bundler renames one that collides.
  */
-const PLAYED: Readonly<Record<EffectName, { readonly fn: (...args: never[]) => unknown; readonly play: string }>> = {
-  shimmer: { fn: shimmer, play: `play((s) => onColors(shimmer(CURVE, s.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, s.z)), ${LOOPING});` },
-  pulse: { fn: pulse, play: `play((s) => pulsedOn(s, (z) => pulse(CURVE, EFFECT_LIGHTS.sun, z)), ${LOOPING});` },
-  sparkle: { fn: sparkle, play: `play((s) => onColors(sparkle(CURVE, s.span, EFFECT_LIGHTS.firefly, s.z)), ${LOOPING});` },
-  wheel: { fn: wheel, play: `play((s) => wheel(CURVE, s.z), ${LOOPING});` },
-  fade: { fn: fadeIn, play: `play((s) => fadeIn(CURVE, s.z).effect, ${REPLAYING});` },
-  dissolve: { fn: dissolveOut, play: `play((s) => dissolveOut(CURVE, s.z).effect, ${REPLAYING});` },
+const PLAYABLE = { shimmer, pulse, sparkle, wheel, fadeIn, dissolveOut };
+
+/**
+ * Each effect's function in `effects.ts`, and the line that plays it on the
+ * demo's subjects as the demo does (`scene` and `view` in app.ts).
+ */
+const PLAYED: Readonly<Record<EffectName, { readonly fn: keyof typeof PLAYABLE; readonly play: string }>> = {
+  shimmer: { fn: "shimmer", play: `play((s) => onColors(shimmer(CURVE, s.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, s.z)), ${LOOPING});` },
+  pulse: { fn: "pulse", play: `play((s) => pulsedOn(s, (z) => pulse(CURVE, EFFECT_LIGHTS.sun, z)), ${LOOPING});` },
+  sparkle: { fn: "sparkle", play: `play((s) => onColors(sparkle(CURVE, s.span, EFFECT_LIGHTS.firefly, s.z)), ${LOOPING});` },
+  wheel: { fn: "wheel", play: `play((s) => wheel(CURVE, s.z), ${LOOPING});` },
+  fade: { fn: "fadeIn", play: `play((s) => fadeIn(CURVE, s.z).effect, ${REPLAYING});` },
+  dissolve: { fn: "dissolveOut", play: `play((s) => dissolveOut(CURVE, s.z).effect, ${REPLAYING});` },
 };
 
 /** Every name a node mentions, its own declarations' included. */
@@ -108,8 +113,7 @@ export function effectProgram(effect: EffectName, sources: Sources): string {
   const files = [file, ...Object.values(CUT_FROM).map(parse)];
   const statements = files.flatMap((f) => f.statements.filter((s) => !ts.isImportDeclaration(s)).map((s): [ts.SourceFile, ts.Statement] => [f, s]));
   const byName = new Map(statements.flatMap(([, s]) => declared(s).map((name): [string, ts.Statement] => [name, s])));
-  const { play } = PLAYED[effect];
-  const fn = PLAYED[effect].fn.name;
+  const { fn, play } = PLAYED[effect];
   const root = byName.get(fn);
   if (root === undefined) throw new Error(`${EFFECTS_FILE}: no top-level ${fn} for the ${effect} playground`);
 

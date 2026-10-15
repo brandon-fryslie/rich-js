@@ -213,7 +213,7 @@ export const EFFECT_CURVES = {
   wheel: { seconds: 907, ease: EASES.linear, swing: 1 },
   fade: { seconds: 20, ease: EASES["ease-in-out"], swing: 1 },
   dissolve: { seconds: 30, ease: EASES["ease-in-out"], swing: 1 },
-} as const satisfies Record<string, Curve>;
+} as const satisfies Record<LoopName | TransitionName, Curve>;
 
 /** The lights the loops were signed off casting, warm as sunlight and fireflies are. */
 export const EFFECT_LIGHTS = {
@@ -691,21 +691,22 @@ export interface EffectTarget {
   readonly z: number;
 }
 
-/** The names in `EFFECT_CURVES` of the effects that run once. */
-export type TransitionName = "fade" | "dissolve";
+/** The names of the effects that loop. */
+export type LoopName = "shimmer" | "pulse" | "sparkle" | "wheel";
 
-/** The names in `EFFECT_CURVES` of the effects that loop: every one that does not run once. */
-export type LoopName = Exclude<keyof typeof EFFECT_CURVES, TransitionName>;
+/** The names of the effects that run once. */
+export type TransitionName = "fade" | "dissolve";
 
 /**
  * Every effect in the catalogue by its name in `EFFECT_CURVES`, each made the
  * one way: for an element, at its signed-off curve unless handed another,
  * with the light and the width it was signed off with. A loop comes lit on
  * the element's own colours (`onColors`); a transition comes as itself, to
- * be told when it is done. [LAW:types-are-the-program] Keyed by the curves'
- * names, so a curve signed off with no entry here does not compile, and a
- * picker walking a section's names offers an effect added here with no
- * change of its own.
+ * be told when it is done. [LAW:types-are-the-program] Keyed by the two
+ * name types, which `EFFECT_CURVES` is held to as well: a curve signed off
+ * does not compile until it is named a loop or a transition, and then not
+ * until it has an entry here making one. A picker walking a section's names
+ * offers an effect added here with no change of its own.
  */
 export const EFFECT_CATALOGUE: {
   readonly loops: Readonly<Record<LoopName, (element: EffectTarget, curve?: Curve) => Effect>>;
