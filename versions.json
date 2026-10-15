@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-386",
+      "ref": "refs/pull/386/merge",
+      "sha": "606933a059648bcafb306b346754a5c740417d1c",
+      "timestamp": "2026-10-15T07:13:51.003Z",
+      "commits": [
+        {
+          "sha": "606933a059648bcafb306b346754a5c740417d1c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:12:15-06:00",
+          "message": "Merge c5f3b1851335f8274b5834e7dcf3502d1b96b1a4 into 21ca8bfb4d77d0526017936371cfc63b4b317fa6\n"
+        },
+        {
+          "sha": "c5f3b1851335f8274b5834e7dcf3502d1b96b1a4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:12:11-06:00",
+          "message": "Seam index in the join context; oneOf picks per seam (rich-joiners-9ntp.bex)\n\nJoiner.join takes { index }: the join before item i is i, the end after\nthe last of n items is n. FlexStrip passes the same index at a wrap, so\nevery surviving seam keeps its glyph. CellJoiner hashes (index, cell\noffset) to pick a oneOf member.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "21ca8bfb4d77d0526017936371cfc63b4b317fa6",
