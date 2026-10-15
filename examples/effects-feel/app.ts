@@ -42,7 +42,6 @@ import {
   Console,
   Effected,
   drawnOf,
-  onColors,
   Group,
   Padding,
   RichText,
@@ -58,20 +57,17 @@ import {
   type RenderOptions,
   Segment,
   type TerminalTheme,
+  EFFECT_CATALOGUE,
   EFFECT_LIGHTS,
-  SHIMMER_WIDTH,
-  dissolveOut,
-  fadeIn,
   pulse,
-  shimmer,
-  sparkle,
-  wheel,
   type Curve,
   type Transition,
+  type LoopName,
+  type TransitionName,
 } from "../../src/index.js";
 import { App, hostEnvironment, keyName, type TerminalHost } from "../../src/host/index.js";
 import { frameClock } from "../_capabilities/frame-clock.js";
-import { STEP, depthDrawn, type EffectName } from "./vocabulary.js";
+import { LOOPS, STEP, TRANSITIONS, depthDrawn, type EffectName } from "./vocabulary.js";
 import type { NamedCurve, Settings } from "./settings.js";
 import { drawnSubject, paletteRgba, pulsedOn, stripSubject, textSubject, type DrawnSubject, type Subject } from "./subjects.js";
 
@@ -84,9 +80,6 @@ export const THEMES: readonly TerminalTheme[] = [
   TOKYO_NIGHT, NORD, DRACULA, GRUVBOX, MONOKAI, ROSE_PINE, ROSE_PINE_MOON, ROSE_PINE_DAWN,
   SOLARIZED_DARK, SOLARIZED_LIGHT, ATOM_ONE_DARK, ATOM_ONE_LIGHT, FLEXOKI, CYBERPUNK,
 ];
-
-const LOOPS = ["shimmer", "pulse", "sparkle", "wheel"] as const;
-type LoopName = (typeof LOOPS)[number];
 
 /** The frame rates the fps keys step through, slowest first. */
 const FPS_STEPS = [0.5, 1, 2, 5, 10, 15, 30] as const;
@@ -184,6 +177,7 @@ interface Scene {
   readonly heading: Style;
   readonly subjects: readonly DrawnSubject[];
   readonly loops: Record<LoopName, (subject: DrawnSubject) => Effect>;
+  readonly transitions: Record<TransitionName, (subject: DrawnSubject) => Transition>;
   readonly contrast: Record<LoopName, string>;
   readonly measure: () => Generator<void>;
   /** The curves it was built with: the flags', at the magnitude on show. */
@@ -198,20 +192,21 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
   const depth = drawnWith.colorSystem ?? ColorDepth.TRUECOLOR;
   const subjects = [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, drawnWith));
 
-  // A loop that lights is settled on the subject's colours at the share each
-  // can spare; the wheel keeps lightness and chroma, so it is tried as it is.
-  const made: Record<LoopName, (subject: DrawnSubject) => Effect> = {
-    shimmer: (s) => onColors(shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, s.z)),
-    pulse: (s) => pulsedOn(s, (z) => pulse(curves.pulse, EFFECT_LIGHTS.sun, z)),
-    sparkle: (s) => onColors(sparkle(curves.sparkle, s.span, EFFECT_LIGHTS.firefly, s.z)),
-    wheel: (s) => wheel(curves.wheel, s.z),
-  };
-  const loops = Object.fromEntries(
-    LOOPS.map((name) => {
-      const built = new Map(subjects.map((s) => [s, made[name](s)]));
-      return [name, (s: DrawnSubject) => built.get(s)!];
-    }),
-  ) as Record<LoopName, (subject: DrawnSubject) => Effect>;
+  // Each effect as the catalogue makes it, at the flags' curve, on the whole
+  // subject — but a pulse, which breathes the subject's chosen elements, each
+  // lit on its own (`pulsedOn`). Made once per scene: settling a loop's shares
+  // is costly, and a transition is drawn at the time since it began.
+  const each = <Name extends EffectName, Made>(names: readonly Name[], make: (name: Name, s: DrawnSubject) => Made) =>
+    Object.fromEntries(
+      names.map((name) => {
+        const built = new Map(subjects.map((s) => [s, make(name, s)]));
+        return [name, (s: DrawnSubject) => built.get(s)!];
+      }),
+    ) as Record<Name, (subject: DrawnSubject) => Made>;
+  const loops = each(LOOPS, (name, s) =>
+    name === "pulse" ? pulsedOn(s, (z) => pulse(curves.pulse, EFFECT_LIGHTS.sun, z)) : EFFECT_CATALOGUE.loops[name](s, curves[name]),
+  );
+  const transitions = each(TRANSITIONS, (name, s) => EFFECT_CATALOGUE.transitions[name](s, curves[name]));
 
   // With no colour drawn there is no contrast to read: every effect is the
   // identity, and every cell is the terminal's own ink on its own ground.
@@ -228,7 +223,7 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
       contrast[loop] = `worst contrast ${ratio(worst)} over ${CONTRAST.periods * curves[loop].seconds}s (at rest ${rest})`;
     }
   }
-  return { theme, ink, paper, quiet, heading, subjects, loops, contrast, measure, curves };
+  return { theme, ink, paper, quiet, heading, subjects, loops, transitions, contrast, measure, curves };
 }
 
 /**
@@ -343,11 +338,14 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     new RichText(""),
   ];
 
-  /** A transition's row: each subject under its own, running until every one of them is done. */
-  const transitionRow = (t: number, name: EffectName, key: string, make: (subject: DrawnSubject) => Transition): Renderable[] => {
-    const made = new Map(shown.subjects.map((s) => [s, make(s)]));
-    const status = [...made.values()].every((transition) => transition.done(t)) ? `done — ${key} replays` : "running";
-    return row(t, name, status, (s) => made.get(s)!.effect);
+  /**
+   * A transition's row, `t` into it: each subject under its own, as the
+   * catalogue makes it at the flags' curve, running until every one is done.
+   */
+  const transitionRow = (t: number, name: TransitionName, key: string): Renderable[] => {
+    const made = shown.transitions[name];
+    const status = shown.subjects.every((s) => made(s).done(t)) ? `done — ${key} replays` : "running";
+    return row(t, name, status, (s) => made(s).effect);
   };
 
   let replayed = 0;
@@ -365,8 +363,8 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
         new RichText("f fade-in · d dissolve · n/p theme · </> fps · -/+ rate · [/] magnitude · q quits", { style: shown.quiet, noWrap: true }),
         new RichText(""),
         ...LOOPS.flatMap((loop) => row(t, loop, contrast[loop], loops[loop])),
-        ...transitionRow(t, "fade", "f", (s) => fadeIn(curves.fade, fadeStart, s.z, theme.backgroundColor)),
-        ...transitionRow(t, "dissolve", "d", (s) => dissolveOut(curves.dissolve, dissolveStart, s.z, theme.backgroundColor)),
+        ...transitionRow(t - fadeStart, "fade", "f"),
+        ...transitionRow(t - dissolveStart, "dissolve", "d"),
       ),
       [1, 2],
       { style: Style.fromColor(shown.ink, shown.paper) },

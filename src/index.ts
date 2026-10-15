@@ -268,9 +268,9 @@ export { Constrain } from "./renderables/constrain.js";
 export { Effected, confined, drawnOf } from "./renderables/effect.js";
 export type { CellColors, Drawn, Effect, EffectCell, EffectedOptions, Pair } from "./renderables/effect.js";
 export {
+  EFFECT_CATALOGUE,
   EFFECT_CURVES,
   EFFECT_LIGHTS,
-  SHIMMER_WIDTH,
   dissolveOut,
   fadeIn,
   onColors,
@@ -279,7 +279,7 @@ export {
   sparkle,
   wheel,
 } from "./renderables/effects.js";
-export type { Curve, Field, Loop, Touch, Transition } from "./renderables/effects.js";
+export type { Curve, EffectTarget, Field, Loop, LoopName, Touch, Transition, TransitionName } from "./renderables/effects.js";
 export { Align } from "./renderables/align.js";
 export type { Alignment } from "./core/place.js";
 export { Padding } from "./renderables/padding.js";

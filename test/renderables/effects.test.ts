@@ -26,6 +26,7 @@ import {
 } from "../../src/index.js";
 import { CATPPUCCIN_LATTE, CATPPUCCIN_MOCHA } from "../../src/index.js";
 import {
+  EFFECT_CATALOGUE,
   EFFECT_CURVES,
   EFFECT_LIGHTS,
   SHIMMER_WIDTH,
@@ -103,11 +104,11 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
 
   it("fade-in once it has settled", () => {
     const fade = curve(2, 1);
-    expect(drawn(fadeIn(fade, 5, 0, ground).effect, 5 + fade.seconds)).toBe(untouched);
+    expect(drawn(fadeIn(fade, 0).effect, fade.seconds)).toBe(untouched);
   });
 
-  it("dissolve-out before it starts", () => {
-    expect(drawn(dissolveOut(curve(3, 1), 5, 0, ground).effect, 5)).toBe(untouched);
+  it("dissolve-out as it starts", () => {
+    expect(drawn(dissolveOut(curve(3, 1), 0).effect, 0)).toBe(untouched);
   });
 
   it("the wheel at the start of its turn", () => {
@@ -341,24 +342,54 @@ describe("the loops move", () => {
   });
 });
 
+describe("the catalogue makes every effect one way, by name", () => {
+  const element = { span: 29, z: 0 };
+  const untouched = bytes(subject);
+  /** Moments across `seconds`, where any loop has moved by. */
+  const across = (seconds: number): number[] => Array.from({ length: 12 }, (_, i) => ((i + 1) / 12) * seconds);
+
+  it("holds each effect a curve was signed off for (EFFECT_CURVES), and only those", () => {
+    const names = [...Object.keys(EFFECT_CATALOGUE.loops), ...Object.keys(EFFECT_CATALOGUE.transitions)];
+    expect(names.sort()).toEqual(Object.keys(EFFECT_CURVES).sort());
+  });
+
+  it.each(Object.entries(EFFECT_CATALOGUE.loops))("%s moves the element over its period, at its signed-off curve unless handed one", (name, make) => {
+    const signed = EFFECT_CURVES[name as keyof typeof EFFECT_CATALOGUE.loops];
+    const times = across(signed.seconds);
+    const at = (effect: Effect): string[] => times.map((t) => drawn(effect, t));
+    expect(at(make(element)).some((frame) => frame !== untouched)).toBe(true);
+    expect(at(make(element))).toEqual(at(make(element, signed)));
+    expect(at(make(element))).not.toEqual(at(make(element, { ...signed, seconds: signed.seconds / 3 })));
+  });
+
+  it.each(Object.entries(EFFECT_CATALOGUE.transitions))("%s is done at its signed-off duration unless handed another", (name, make) => {
+    const { seconds } = EFFECT_CURVES[name as keyof typeof EFFECT_CATALOGUE.transitions];
+    expect([seconds - 0.01, seconds].map((t) => make(element).done(t))).toEqual([false, true]);
+    expect(make(element, curve(2, 1)).done(2)).toBe(true);
+  });
+});
+
 describe("the transitions run start to end", () => {
+  /** The ground of the terminal every frame here is drawn on: what a cell arrives from and leaves to. */
+  const terminalGround = NOTHING.theme.backgroundColor;
+
   it("a fade-in starts with every cell's ink on its ground", () => {
-    expect(at(fadeIn(curve(2, 1), 4, 0, ground).effect, 4).every((c) => sameColor(c.fg, c.bg))).toBe(true);
+    expect(at(fadeIn(curve(2, 1), 0).effect, 0).every((c) => sameColor(c.fg, c.bg))).toBe(true);
   });
 
   it("a fade-in arrives cell by cell", () => {
-    const halfway = at(fadeIn(curve(2, 1), 0, 0, ground).effect, 1).map((c) => c.fg.hex);
+    const halfway = at(fadeIn(curve(2, 1), 0).effect, 1).map((c) => c.fg.hex);
     expect(new Set(halfway).size).toBeGreaterThan(1);
   });
 
   it("a dissolve-out leaves every cell's ink on its ground", () => {
     const dissolve = curve(3, 1);
-    expect(at(dissolveOut(dissolve, 4, 0, ground).effect, 4 + dissolve.seconds).every((c) => sameColor(c.fg, c.bg))).toBe(true);
+    expect(at(dissolveOut(dissolve, 0).effect, dissolve.seconds).every((c) => sameColor(c.fg, c.bg))).toBe(true);
   });
 
   it("a dissolve-out thins cells gradually, some gone while others are still whole", () => {
-    const midway = at(dissolveOut(curve(8, 1), 0, 0, ground).effect, 2.5).map((c) => c.fg);
-    const thinning = midway.filter((fg) => !sameColor(fg, ink) && !sameColor(fg, ground));
+    const midway = at(dissolveOut(curve(8, 1), 0).effect, 2.5).map((c) => c.fg);
+    const thinning = midway.filter((fg) => !sameColor(fg, ink) && !sameColor(fg, terminalGround));
     expect(thinning.length).toBeGreaterThan(0);
     expect(midway.some((fg) => sameColor(fg, ink))).toBe(true);
   });
@@ -367,17 +398,25 @@ describe("the transitions run start to end", () => {
     const fill = new ColorRgba(137, 180, 250);
     const filled = (effect: Effect, t: number) => effect({ fg: ink, bg: fill }, cells[0]!, t, NOTHING);
     const fade = curve(2, 1);
-    const start = filled(fadeIn(fade, 0, 0, ground).effect, 0);
-    expect([start.fg.hex, start.bg.hex]).toEqual([ground.hex, ground.hex]);
-    const end = filled(fadeIn(fade, 0, 0, ground).effect, fade.seconds);
+    const start = filled(fadeIn(fade, 0).effect, 0);
+    expect([start.fg.hex, start.bg.hex]).toEqual([terminalGround.hex, terminalGround.hex]);
+    const end = filled(fadeIn(fade, 0).effect, fade.seconds);
     expect([end.fg.hex, end.bg.hex]).toEqual([ink.hex, fill.hex]);
+  });
+
+  it("the ground a cell arrives from and leaves to is that of the terminal the frame is drawn on", () => {
+    const latte = { ...NOTHING, theme: CATPPUCCIN_LATTE };
+    const ground = CATPPUCCIN_LATTE.backgroundColor.hex;
+    const arriving = fadeIn(curve(2, 1), 0).effect(colors, cells[0]!, 0, latte);
+    const gone = dissolveOut(curve(2, 1), 0).effect(colors, cells[0]!, 2, latte);
+    expect([arriving.fg.hex, arriving.bg.hex, gone.fg.hex, gone.bg.hex]).toEqual([ground, ground, ground, ground]);
   });
 
   it("a dissolve-out lets some of what is left come back before it goes, and ends gone", () => {
     const dissolve = curve(30, 1);
-    const effect = dissolveOut(dissolve, 0, 0, ground).effect;
+    const effect = dissolveOut(dissolve, 0).effect;
     const wide: EffectCell[] = Array.from({ length: 120 }, (_, col) => ({ row: 0, col, seed: 0, terminal: written, anchor: undefined }));
-    const shown = (cell: EffectCell, t: number): number => distance(effect(colors, cell, t, NOTHING).fg, ground);
+    const shown = (cell: EffectCell, t: number): number => distance(effect(colors, cell, t, NOTHING).fg, terminalGround);
     const risen = wide.filter((cell) => {
       const series = Array.from({ length: 600 }, (_, i) => shown(cell, i * 0.05));
       return series.some((v, i) => i > 0 && v - series[i - 1]! > 0.002);
@@ -386,35 +425,35 @@ describe("the transitions run start to end", () => {
     expect(risen.length).toBeGreaterThan(5);
     expect(risen.length).toBeLessThan(wide.length * 0.8);
     // Every cell rises from the first, whole, to the last, gone.
-    for (const cell of wide) expect(sameColor(effect(colors, cell, dissolve.seconds, NOTHING).fg, ground)).toBe(true);
+    for (const cell of wide) expect(sameColor(effect(colors, cell, dissolve.seconds, NOTHING).fg, terminalGround)).toBe(true);
     for (const cell of wide) expect(sameColor(effect(colors, cell, 0, NOTHING).fg, ink)).toBe(true);
   });
 
   it("swing below 1 stops short of invisible", () => {
-    expect(at(fadeIn(curve(2, 0.5), 0, 0, ground).effect, 0).some((c) => sameColor(c.fg, c.bg))).toBe(false);
+    expect(at(fadeIn(curve(2, 0.5), 0).effect, 0).some((c) => sameColor(c.fg, c.bg))).toBe(false);
   });
 
   it.each([
     ["fade-in", fadeIn],
     ["dissolve-out", dissolveOut],
   ])("a %s is done from the moment its last cell settles, and the cells stop changing then", (_, make) => {
-    const transition = make(curve(6, 1), 3, 0, ground);
-    expect([2, 3, 8.99].map((t) => transition.done(t))).toEqual([false, false, false]);
-    expect([9, 9.5, 1e6].map((t) => transition.done(t))).toEqual([true, true, true]);
-    expect(at(transition.effect, 1e6)).toEqual(at(transition.effect, 9));
-    expect(at(transition.effect, 5)).not.toEqual(at(transition.effect, 9));
+    const transition = make(curve(6, 1), 0);
+    expect([-1, 0, 5.99].map((t) => transition.done(t))).toEqual([false, false, false]);
+    expect([6, 6.5, 1e6].map((t) => transition.done(t))).toEqual([true, true, true]);
+    expect(at(transition.effect, 1e6)).toEqual(at(transition.effect, 6));
+    expect(at(transition.effect, 2)).not.toEqual(at(transition.effect, 6));
   });
 
   it.each([
     ["fade-in", fadeIn],
     ["dissolve-out", dissolveOut],
   ])("a %s with no duration fails as it is made, not at its first frame", (_, make) => {
-    expect(() => make(curve(0, 1), 0, 0, ground)).toThrow(/must be a positive number of seconds, got 0/);
+    expect(() => make(curve(0, 1), 0)).toThrow(/must be a positive number of seconds, got 0/);
   });
 
   it("an ease that overshoots saturates: the cells arrive whole, never past it", () => {
     const back = cubicBezier(0.34, 1.56, 0.64, 1);
-    const fade = fadeIn({ seconds: 10, ease: back, swing: 1 }, 0, 0, ground);
+    const fade = fadeIn({ seconds: 10, ease: back, swing: 1 }, 0);
     for (let t = 0; t <= 10; t += 0.1) for (const c of at(fade.effect, t)) expect(c.fg).toBeInstanceOf(ColorRgba);
     expect(at(fade.effect, 10)).toEqual(at(fade.effect, 1e6));
   });
@@ -422,7 +461,7 @@ describe("the transitions run start to end", () => {
 
 describe("a curve is checked when its effect is made", () => {
   it.each([1.5, -0.1, Number.NaN])("a swing of %s, outside [0, 1], is refused", (swing) => {
-    for (const make of [() => pulse(curve(4, swing), sun, 0), () => fadeIn(curve(4, swing), 0, 0, ground), () => wheel(curve(4, swing), 0)]) {
+    for (const make of [() => pulse(curve(4, swing), sun, 0), () => fadeIn(curve(4, swing), 0), () => wheel(curve(4, swing), 0)]) {
       expect(make).toThrow(/swing must be in \[0, 1\]/);
     }
   });

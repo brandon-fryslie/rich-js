@@ -5,11 +5,14 @@
  * command line read the one table.
  */
 
-import { ColorDepth, EASES, EFFECT_CURVES, type Ease, type Env } from "../../src/index.js";
+import { ColorDepth, EASES, EFFECT_CATALOGUE, EFFECT_CURVES, type Ease, type Env, type LoopName, type TransitionName } from "../../src/index.js";
 import type { EaseName } from "../../src/core/easing.js";
 
-export const EFFECTS = ["shimmer", "pulse", "sparkle", "wheel", "fade", "dissolve"] as const satisfies readonly (keyof typeof EFFECT_CURVES)[];
-export type EffectName = (typeof EFFECTS)[number];
+// [LAW:one-source-of-truth] The demo's effects are the library's catalogue, loops first.
+export type EffectName = LoopName | TransitionName;
+export const LOOPS = Object.keys(EFFECT_CATALOGUE.loops) as LoopName[];
+export const TRANSITIONS = Object.keys(EFFECT_CATALOGUE.transitions) as TransitionName[];
+export const EFFECTS: readonly EffectName[] = [...LOOPS, ...TRANSITIONS];
 
 /** What each effect's swing measures, for the flags' help. */
 const SWING_UNITS: Record<EffectName, string> = {

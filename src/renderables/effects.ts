@@ -3,7 +3,8 @@
  * long as they are drawn, and fade-in and dissolve-out, which run once and
  * are done. Each is an `Effect` for `Effected` (`./effect.ts`); the defaults
  * in `EFFECT_CURVES` are the ones signed off by eye in the effects-feel demo
- * (`npm run effects-feel`), at 30 fps and at one frame a second.
+ * (`npm run effects-feel`), at 30 fps and at one frame a second, and
+ * `EFFECT_CATALOGUE` makes every one of them at those, by name, one way.
  *
  * Each effect is something a first-time observer already knows from life —
  * a slow glow, sunlight moving on water, the colours of daylight, fireflies, ink
@@ -212,7 +213,7 @@ export const EFFECT_CURVES = {
   wheel: { seconds: 907, ease: EASES.linear, swing: 1 },
   fade: { seconds: 20, ease: EASES["ease-in-out"], swing: 1 },
   dissolve: { seconds: 30, ease: EASES["ease-in-out"], swing: 1 },
-} as const satisfies Record<string, Curve>;
+} as const satisfies Record<LoopName | TransitionName, Curve>;
 
 /** The lights the loops were signed off casting, warm as sunlight and fireflies are. */
 export const EFFECT_LIGHTS = {
@@ -508,19 +509,19 @@ export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number):
 export type Visibility = (cell: EffectCell, t: number) => number;
 
 /**
- * A cell mixed toward the terminal's `ground` by how hidden it is: its fill
- * toward the ground, and its ink toward that fill, so an element with fills
- * of its own — a powerline strip — arrives and leaves whole, fill and words
- * together, never as bare coloured blocks. Invisible is ink and fill equal
- * to the ground. `swing` scales the hiding — 1 reaches fully invisible. A
- * cell wholly shown is returned as it was.
+ * A cell mixed toward the ground of the terminal the frame is drawn on
+ * (`Drawn.theme`) by how hidden it is: its fill toward the ground, and its ink
+ * toward that fill, so an element with fills of its own — a powerline strip —
+ * arrives and leaves whole, fill and words together, never as bare coloured
+ * blocks. Invisible is ink and fill equal to the ground. `swing` scales the
+ * hiding — 1 reaches fully invisible. A cell wholly shown is returned as it was.
  */
-export function veiled(visibility: Visibility, swing: number, ground: ColorRgba): Effect {
-  const to = Oklch.fromRgba(ground);
-  return (colors, cell, t) => {
+export function veiled(visibility: Visibility, swing: number): Effect {
+  return (colors, cell, t, { theme }) => {
     const hidden = swing * (1 - clamp01(visibility(cell, t)));
     if (hidden === 0) return colors;
-    const bg = blend(Oklch.fromRgba(colors.bg), to, hidden);
+    // [LAW:one-source-of-truth] The ground is the terminal `Effected` draws on, never a second one handed here.
+    const bg = blend(Oklch.fromRgba(colors.bg), Oklch.fromRgba(theme.backgroundColor), hidden);
     return { fg: blend(Oklch.fromRgba(colors.fg), bg, hidden).toRgba(), bg: bg.toRgba() };
   };
 }
@@ -546,19 +547,19 @@ function order(z: number): (cell: EffectCell) => number {
 }
 
 /**
- * An effect that runs once: a fade-in or a dissolve-out from its start time
- * over its curve's `seconds`. `done(t)` is true from the moment every cell
- * has arrived or gone, so the caller knows when to stop drawing an element
- * that is leaving, or to drop the effect from one that has arrived.
+ * An effect that runs once: a fade-in or a dissolve-out over its curve's
+ * `seconds` from `t = 0`, its own clock as every effect's is — the caller
+ * draws it at the time since it began. `done(t)` is true from the moment
+ * every cell has arrived or gone, so the caller knows when to stop drawing an
+ * element that is leaving, or to drop the effect from one that has arrived.
  */
 export interface Transition {
   readonly effect: Effect;
   done(t: number): boolean;
 }
 
-function transition(curve: Curve, start: number, effect: Effect): Transition {
-  const end = start + curve.seconds;
-  return { effect, done: (t) => t >= end };
+function transition(curve: Curve, effect: Effect): Transition {
+  return { effect, done: (t) => t >= curve.seconds };
 }
 
 /**
@@ -568,27 +569,26 @@ function transition(curve: Curve, start: number, effect: Effect): Transition {
 const OWN = 0.45;
 
 /**
- * Each cell's progress through its own change in a transition starting at
- * `start`, in [0, 1]: a cell `place` along the order starts that share of the
- * way through the time the others leave it, and takes `OWN` of `seconds`.
+ * Each cell's progress through its own change in a transition, in [0, 1]: a
+ * cell `place` along the order starts that share of the way through the time
+ * the others leave it, and takes `OWN` of `seconds`.
  */
-function ownChange(curve: Curve, start: number, place: (cell: EffectCell) => number): Visibility {
+function ownChange(curve: Curve, place: (cell: EffectCell) => number): Visibility {
   const own = curve.seconds * OWN;
   // One phase, shifted per cell, so no cell builds its own each frame.
-  const change = Phase.once(start, own);
+  const change = Phase.once(0, own);
   return (cell, t) => change(t - place(cell) * (curve.seconds - own));
 }
 
 /**
- * Fade-in starting at `start`, as ink blooming in water: patches of the
- * element surface first and the rest follows outward from them, each cell
- * rising smoothly over its own part of the duration. Whole at
- * `start + seconds`.
+ * Fade-in, as ink blooming in water: patches of the element surface first
+ * and the rest follows outward from them, each cell rising smoothly over its
+ * own part of the duration. Whole at `seconds`.
  */
-export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba): Transition {
+export function fadeIn(curve: Curve, z: number): Transition {
   requireCurve(curve);
-  const risen = ownChange(curve, start, order(1.7 + z));
-  return transition(curve, start, veiled((cell, t) => curve.ease(risen(cell, t)), curve.swing, ground));
+  const risen = ownChange(curve, order(1.7 + z));
+  return transition(curve, veiled((cell, t) => curve.ease(risen(cell, t)), curve.swing));
 }
 
 /**
@@ -603,28 +603,27 @@ export function fadeIn(curve: Curve, start: number, z: number, ground: ColorRgba
 const DISSOLVE_SHAPE = { depth: 0.4, from: 0.5, to: 0.95, maskFrom: 0.35, maskTo: 0.75, late: 0.6 };
 
 /**
- * Dissolve-out starting at `start`, as mist lifting: the element thins in
- * drifting patches, each cell fading smoothly over its own part of the
- * duration, until nothing is left at `start + seconds`. Mist does not lift
+ * Dissolve-out, as mist lifting: the element thins in drifting patches, each
+ * cell fading smoothly over its own part of the duration, until nothing is
+ * left at `seconds`. Mist does not lift
  * in one breath: towards the end, patches of what is left — the later a cell
  * goes, the likelier — rise back part way, as the last of it eddies, before
  * they thin away for good.
  */
-export function dissolveOut(curve: Curve, start: number, z: number, ground: ColorRgba): Transition {
+export function dissolveOut(curve: Curve, z: number): Transition {
   requireCurve(curve);
   const place = order(4.2 + z);
   const eddy = order(9.3 + z);
-  const faded = ownChange(curve, start, place);
+  const faded = ownChange(curve, place);
   const { depth, from, to, maskFrom, maskTo, late } = DISSOLVE_SHAPE;
   return transition(
     curve,
-    start,
     veiled((cell, t) => {
       const gone = curve.ease(faded(cell, t));
       const q = clamp01((gone - from) / (to - from));
       const back = depth * smoothstep(maskFrom, maskTo, eddy(cell)) * (1 - late + late * place(cell)) * Math.sin(Math.PI * q) ** 2;
       return 1 - gone + back;
-    }, curve.swing, ground),
+    }, curve.swing),
   );
 }
 
@@ -680,3 +679,47 @@ export function wheel(curve: Curve, z: number): Effect {
     return { fg: turn(shown.fg, own.fg, shown.bg, own.bg), bg: turn(shown.bg, own.bg, shown.fg, own.fg) };
   };
 }
+
+/**
+ * What a catalogue effect is made for: the element it is drawn on, as wide as
+ * `span` columns — how far a shimmer crosses, how many fireflies keep to it —
+ * and at `z` in the noise, so two elements under one effect do not move in
+ * lockstep.
+ */
+export interface EffectTarget {
+  readonly span: number;
+  readonly z: number;
+}
+
+/** The names of the effects that loop. */
+export type LoopName = "shimmer" | "pulse" | "sparkle" | "wheel";
+
+/** The names of the effects that run once. */
+export type TransitionName = "fade" | "dissolve";
+
+/**
+ * Every effect in the catalogue by its name in `EFFECT_CURVES`, each made the
+ * one way: for an element, at its signed-off curve unless handed another,
+ * with the light and the width it was signed off with. A loop comes lit on
+ * the element's own colours (`onColors`); a transition comes as itself, to
+ * be told when it is done. [LAW:types-are-the-program] Keyed by the two
+ * name types, which `EFFECT_CURVES` is held to as well: a curve signed off
+ * does not compile until it is named a loop or a transition, and then not
+ * until it has an entry here making one. A picker walking a section's names
+ * offers an effect added here with no change of its own.
+ */
+export const EFFECT_CATALOGUE: {
+  readonly loops: Readonly<Record<LoopName, (element: EffectTarget, curve?: Curve) => Effect>>;
+  readonly transitions: Readonly<Record<TransitionName, (element: EffectTarget, curve?: Curve) => Transition>>;
+} = {
+  loops: {
+    shimmer: (element, curve = EFFECT_CURVES.shimmer) => onColors(shimmer(curve, element.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, element.z)),
+    pulse: (element, curve = EFFECT_CURVES.pulse) => onColors(pulse(curve, EFFECT_LIGHTS.sun, element.z)),
+    sparkle: (element, curve = EFFECT_CURVES.sparkle) => onColors(sparkle(curve, element.span, EFFECT_LIGHTS.firefly, element.z)),
+    wheel: (element, curve = EFFECT_CURVES.wheel) => wheel(curve, element.z),
+  },
+  transitions: {
+    fade: (element, curve = EFFECT_CURVES.fade) => fadeIn(curve, element.z),
+    dissolve: (element, curve = EFFECT_CURVES.dissolve) => dissolveOut(curve, element.z),
+  },
+};

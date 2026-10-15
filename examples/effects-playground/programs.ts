@@ -19,6 +19,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
+import { dissolveOut, fadeIn, pulse, shimmer, sparkle, wheel } from "../../src/index.js";
 import { EFFECTS, EFFECT_DEFAULTS, RUN_DEFAULTS, STEP, type EffectName } from "../effects-feel/vocabulary.js";
 
 export const EFFECTS_FILE = fileURLToPath(new URL("../../src/renderables/effects.ts", import.meta.url));
@@ -53,16 +54,23 @@ const LOOPING = "{ fps: FPS, step: STEP, every: Infinity }";
 const REPLAYING = "{ fps: FPS, step: STEP, every: CURVE.seconds * 1.25 }";
 
 /**
+ * The functions the cards play, each keyed by the name `effects.ts` declares
+ * it under, which a shorthand key is checked to be. Never a function's
+ * runtime `name`: the docs build's bundler renames one that collides.
+ */
+const PLAYABLE = { shimmer, pulse, sparkle, wheel, fadeIn, dissolveOut };
+
+/**
  * Each effect's function in `effects.ts`, and the line that plays it on the
  * demo's subjects as the demo does (`scene` and `view` in app.ts).
  */
-const PLAYED: Readonly<Record<EffectName, { readonly fn: string; readonly play: string }>> = {
+const PLAYED: Readonly<Record<EffectName, { readonly fn: keyof typeof PLAYABLE; readonly play: string }>> = {
   shimmer: { fn: "shimmer", play: `play((s) => onColors(shimmer(CURVE, s.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, s.z)), ${LOOPING});` },
   pulse: { fn: "pulse", play: `play((s) => pulsedOn(s, (z) => pulse(CURVE, EFFECT_LIGHTS.sun, z)), ${LOOPING});` },
   sparkle: { fn: "sparkle", play: `play((s) => onColors(sparkle(CURVE, s.span, EFFECT_LIGHTS.firefly, s.z)), ${LOOPING});` },
   wheel: { fn: "wheel", play: `play((s) => wheel(CURVE, s.z), ${LOOPING});` },
-  fade: { fn: "fadeIn", play: `play((s, start) => fadeIn(CURVE, start, s.z, THEME.backgroundColor).effect, ${REPLAYING});` },
-  dissolve: { fn: "dissolveOut", play: `play((s, start) => dissolveOut(CURVE, start, s.z, THEME.backgroundColor).effect, ${REPLAYING});` },
+  fade: { fn: "fadeIn", play: `play((s) => fadeIn(CURVE, s.z).effect, ${REPLAYING});` },
+  dissolve: { fn: "dissolveOut", play: `play((s) => dissolveOut(CURVE, s.z).effect, ${REPLAYING});` },
 };
 
 /** Every name a node mentions, its own declarations' included. */
@@ -132,7 +140,7 @@ export function effectProgram(effect: EffectName, sources: Sources): string {
   return [
     ...imports,
     // `EASES`, which the curve below names, comes with `effects.ts`'s own imports.
-    `import { THEME, play, pulsedOn } from "${KIT_MODULE}";`,
+    `import { play, pulsedOn } from "${KIT_MODULE}";`,
     "",
     `// ${effect}: its curve, at the library's defaults (EFFECT_CURVES).`,
     `const CURVE: Curve = { seconds: ${d.seconds}, ease: EASES["${d.ease}"], swing: ${d.swing} };`,

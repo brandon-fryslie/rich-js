@@ -19,8 +19,8 @@ export { pulsedOn, type DrawnSubject } from "../effects-feel/subjects.js";
 /** The theme the subjects are drawn in: the effects-feel demo's first dark one. */
 export const THEME = CATPPUCCIN_MOCHA;
 
-/** A program's effect: what `subject` is drawn under for a transition that started at curve time `start`. */
-export type Make = (subject: DrawnSubject, start: number) => Effect;
+/** A program's effect: what `subject` is drawn under, on the effect's own clock from 0. */
+export type Make = (subject: DrawnSubject) => Effect;
 
 /** How a program plays: frames a second, how far each moves curve time, and how often a transition starts over. */
 export interface Pace {
@@ -48,11 +48,9 @@ export function play(make: Make, pace: Pace): void {
   const dim = Style.fromColor(ink).add(Style.parse("dim"));
   const paper = Style.fromColor(ink, ColorSpec.fromRgba(THEME.backgroundColor));
 
-  // Made again only when a transition starts over: settling a loop's shares
-  // is costly, and every frame reads them.
-  let made: { readonly start: number; readonly effects: readonly Effect[] } | undefined;
-  const effectsFrom = (start: number): readonly Effect[] =>
-    (made = made?.start === start ? made : { start, effects: subjects.map((s) => make(s, start)) }).effects;
+  // Made once: settling a loop's shares is costly, and every frame reads them.
+  // A transition starting over is the same effect drawn from its own 0 again.
+  const effects = subjects.map((s) => make(s));
 
   const live = new Live(undefined, { console, altScreen: true, autoRefresh: false });
   // Carried as the last version left it; the first starts at 0.
@@ -64,9 +62,8 @@ export function play(make: Make, pace: Pace): void {
   });
   const draw = (): void => {
     const start = Number.isFinite(pace.every) ? Math.floor(t / pace.every) * pace.every : 0;
-    const effects = effectsFrom(start);
     const heading = new RichText(`frame ${frame} · curve time ${t.toFixed(2)} · ${pace.fps} fps`, { style: dim, noWrap: true });
-    const drawn = subjects.map((s, n) => new Effected(s.renderable, effects[n]!, { t, key: s.name, theme: THEME }));
+    const drawn = subjects.map((s, n) => new Effected(s.renderable, effects[n]!, { t: t - start, key: s.name, theme: THEME }));
     live.update(new Padding(new Group(heading, new RichText(""), ...drawn), [1, 2], { style: paper }), { refresh: true });
     t += pace.step;
     frame += 1;

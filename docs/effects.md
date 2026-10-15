@@ -23,39 +23,30 @@ The library ships six. Four loop for as long as they are drawn, and two run once
 
 Each takes a `Curve`: `seconds` (a loop's period, or a transition's duration), an `ease`, and a `swing`, how far the move goes at full strength. `EFFECT_CURVES` holds the curves each effect was tuned to by eye, at 30 frames a second and at one. They are slow on purpose. At one frame a second, no cell's colour moves more than a barely noticeable step from one frame to the next, so the motion reads as drift rather than as ticks.
 
+`EFFECT_CATALOGUE` makes each of them by its name in `EFFECT_CURVES`, all the same way, with the curve and the light it was tuned with. `EFFECT_CATALOGUE.loops` holds the four loops, each made into an `Effect`, and `EFFECT_CATALOGUE.transitions` holds `fade` and `dissolve`, each made into a `Transition`. Every entry takes the element it is for, as an `EffectTarget`: its `span`, its width in columns, and its `z`, which places it in the noise the effect is drawn from, so two elements given different values do not move in lockstep. An entry also takes an optional curve to use in place of the tuned one. To offer a choice of effects, list `Object.keys(EFFECT_CATALOGUE.loops)`; `LoopName` is the type of that choice. An effect added to the library then appears in the list without any change to your code.
+
 Here is a status line under a shimmer, drawn at three moments:
 
 ```typescript
-import {
-  CATPPUCCIN_MOCHA,
-  ColorSpec,
-  EFFECT_CURVES,
-  EFFECT_LIGHTS,
-  Effected,
-  RichText,
-  SHIMMER_WIDTH,
-  Style,
-  onColors,
-  shimmer,
-} from "@promptctl/rich-js";
+import { CATPPUCCIN_MOCHA, ColorSpec, EFFECT_CATALOGUE, Effected, RichText, Style } from "@promptctl/rich-js";
 
 const theme = CATPPUCCIN_MOCHA;
 const ink = theme.foregroundColor;
 const words = "Thinking about how light should cross these words";
 const line = new RichText(words, { style: Style.fromColor(ColorSpec.fromRgba(ink), ColorSpec.fromRgba(theme.backgroundColor)) });
 
-const lit = onColors(shimmer(EFFECT_CURVES.shimmer, words.length, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, 0));
+const lit = EFFECT_CATALOGUE.loops.shimmer({ span: words.length, z: 0 });
 
 for (const t of [0, 60, 100]) {
   console.print(new Effected(line, lit, { t, key: "status", theme }));
 }
 ```
 
-Every effect's `z` argument (the `0` above) places the element in the noise the effect is drawn from. Give two elements different values and they do not move in lockstep.
+Every effect runs on its own clock from `t = 0`: draw it at the time since it began.
 
 ### A loop lights the element's own colours
 
-`shimmer`, `pulse` and `sparkle` return a `Loop`: what the light does to one colour, and how strongly it acts on each cell at each moment. `onColors` turns a loop into an `Effect` on the colours the element sets itself, each at its own share of the light. The terminal's own colours are left alone, even where one has the hex of a colour the element sets. To light only some of the element's colours, pass them by hex as a second argument: `onColors(loop, new Set([fill.hex]))`.
+`shimmer`, `pulse` and `sparkle` return a `Loop`: what the light does to one colour, and how strongly it acts on each cell at each moment. `onColors` turns a loop into an `Effect` on the colours the element sets itself, each at its own share of the light, and that is how the catalogue makes them. The terminal's own colours are left alone, even where one has the hex of a colour the element sets. Call the functions yourself to light with another colour than the catalogue's (`EFFECT_LIGHTS`); a `shimmer` made that way also takes how many columns its light reaches either side of its centre, which the catalogue's entry chooses for you. Or call them to light only some of the element's colours, passed by hex as a second argument: `onColors(loop, new Set([fill.hex]))`.
 
 The shares keep the words readable. `Effected` measures every ink and ground pair the element draws its words in, and hands that measurement to the effect as `drawn`. Each colour gets the largest share at which every pair it appears in still reads at its resting contrast, or at WCAG AA (4.5:1) if it rested above that. A colour with contrast to spare glows brightly; one with none barely moves. Settling the shares is costly, so make the effect once and draw it in every frame: a frame that draws the colours an earlier frame drew reuses that frame's shares.
 
@@ -94,16 +85,16 @@ A colour mixed from the two neighbours, such as the middle of a `prism` or a `gr
 
 ### A transition says when it is done
 
-`fadeIn` and `dissolveOut` take a start time and return a `Transition`: the `effect` to draw, and `done(t)`, true from the moment every cell has arrived or gone. A caller stops drawing an element that has dissolved, or drops the effect from one that has faded in, when `done` says so:
+`fadeIn` and `dissolveOut` return a `Transition`: the `effect` to draw, and `done(t)`, true from the moment every cell has arrived or gone, its curve's `seconds` after it began. A caller stops drawing an element that has dissolved, or drops the effect from one that has faded in, when `done` says so:
 
 ```typescript
-import { CATPPUCCIN_MOCHA, EFFECT_CURVES, dissolveOut } from "@promptctl/rich-js";
+import { EFFECT_CATALOGUE } from "@promptctl/rich-js";
 
-const leaving = dissolveOut(EFFECT_CURVES.dissolve, 10, 0, CATPPUCCIN_MOCHA.backgroundColor);
-console.print([20, 39.9, 40].map((t) => `${t}s: ${leaving.done(t) ? "gone" : "leaving"}`).join(" · "));
+const leaving = EFFECT_CATALOGUE.transitions.dissolve({ span: 20, z: 0 });
+console.print([10, 29.9, 30].map((t) => `${t}s: ${leaving.done(t) ? "gone" : "leaving"}`).join(" · "));
 ```
 
-Both blend toward the ground you give them, which should be the terminal's own background: the library never asks the terminal what that is.
+Both blend toward the background of the `theme` given to `Effected`, the terminal the frame is drawn on: the library never asks the terminal what that is.
 
 To edit and tune each effect's code while it runs, open the [effects playground](/effects-playground). To watch every effect at any frame rate, colour depth and theme, run `npm run effects-feel` in a checkout of this repository.
 

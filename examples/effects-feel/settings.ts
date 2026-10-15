@@ -8,7 +8,7 @@
 
 import { parseArgs, type ParseArgsConfig } from "node:util";
 import { EASES, parseEase, type Curve } from "../../src/index.js";
-import { DEPTHS, EFFECTS, EFFECT_DEFAULTS, GROUNDS, RUN_DEFAULTS, type Depth, type EffectName, type Ground } from "./vocabulary.js";
+import { DEPTHS, EFFECTS, EFFECT_DEFAULTS, GROUNDS, RUN_DEFAULTS, TRANSITIONS, type Depth, type EffectName, type Ground } from "./vocabulary.js";
 
 /** A curve as the flags spelled it, so the screen can say what is running. */
 export interface NamedCurve extends Curve {
@@ -27,7 +27,7 @@ const FPS_RANGE = [0.5, 30] as const;
 const curveFlags = EFFECTS.flatMap((effect) => [`${effect}-${secondsWord(effect)}`, `${effect}-ease`, `${effect}-swing`]);
 
 function secondsWord(effect: EffectName): "period" | "duration" {
-  return effect === "fade" || effect === "dissolve" ? "duration" : "period";
+  return (TRANSITIONS as readonly EffectName[]).includes(effect) ? "duration" : "period";
 }
 
 export const USAGE = [
