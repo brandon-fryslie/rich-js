@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { PassThrough, Writable } from "stream";
 import { runInAction } from "mobx";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
@@ -8,13 +7,9 @@ import type { RenderOptions } from "../../src/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
-import { NodeTerminalHost } from "../../src/node/terminal-host.js";
-import type {
-  KeyEvent,
-  WidgetMouseEvent,
-  ScreenMouseEvent,
-  FrameSource,
-} from "../../src/widgets/types.js";
+import type { InputParser, ScreenMouseEvent } from "../../src/host/input.js";
+import type { KeyEvent, WidgetMouseEvent, FrameSource } from "../../src/widgets/types.js";
+import { parserFor } from "./feed.js";
 
 interface Rect {
   x: number;
@@ -70,43 +65,10 @@ class StubWidget extends WidgetBase {
   }
 }
 
-class CapturingStream extends Writable {
-  chunks: string[] = [];
-  isTTY = false;
-  columns = 80;
-  rows = 24;
-
-  override _write(
-    chunk: Buffer | string,
-    _encoding: BufferEncoding,
-    cb: (err?: Error | null) => void,
-  ): void {
-    this.chunks.push(typeof chunk === "string" ? chunk : chunk.toString("utf8"));
-    cb();
-  }
-
-  joined(): string {
-    return this.chunks.join("");
-  }
-}
-
-// [LAW:single-enforcer] One helper builds the host over mock streams for
-// every router test. PassThrough + CapturingStream structurally satisfy
-// NodeTerminalHost's internal `NodeReadable` / `NodeWritable` shapes (both
-// have .on/.off/resume/pause; CapturingStream adds columns/rows/isTTY in
-// this file). The unknown-cast launders the strict node typing without
-// weakening NodeTerminalHost itself.
-function makeNodeHost(stdin: PassThrough, stdout: CapturingStream): NodeTerminalHost {
-  return new NodeTerminalHost({
-    stdin: stdin as unknown as NodeJS.ReadStream,
-    stdout: stdout as unknown as NodeJS.WriteStream,
-  });
-}
-
 interface Harness {
   router: EventRouter;
-  stdin: PassThrough;
-  stdout: CapturingStream;
+  parser: InputParser;
+  feed: (bytes: Uint8Array | string) => void;
   fm: DefaultFocusManager;
   widgets: StubWidget[];
   source: FrameSource;
@@ -134,8 +96,6 @@ function paint(widgets: readonly StubWidget[]): Segment[][] {
 }
 
 function makeHarness(initial: StubWidget[] = []): Harness {
-  const stdin = new PassThrough();
-  const stdout = new CapturingStream();
   let widgets = initial;
   const fm = new DefaultFocusManager(() => widgets);
   fm.settle(widgets);
@@ -148,8 +108,8 @@ function makeHarness(initial: StubWidget[] = []): Harness {
     refresh: () => {},
   };
 
-  const host = makeNodeHost(stdin, stdout);
-  const router = new EventRouter({ source, host });
+  const router = new EventRouter({ source });
+  const parser = parserFor(router);
 
   const keyEvents: KeyEvent[] = [];
   const mouseEvents: ScreenMouseEvent[] = [];
@@ -164,8 +124,8 @@ function makeHarness(initial: StubWidget[] = []): Harness {
 
   return {
     router,
-    stdin,
-    stdout,
+    parser,
+    feed: (bytes) => parser.feed(bytes),
     fm,
     widgets,
     source,
@@ -188,26 +148,26 @@ describe("EventRouter — key parsing", () => {
   });
 
   it("parses a printable character into a key event", () => {
-    h.router.feed("x");
+    h.feed("x");
     expect(h.keyEvents).toMatchObject([
       { key: "x", character: "x", shift: false, ctrl: false, meta: false },
     ]);
   });
 
   it("dispatches printable keys to the focused widget", () => {
-    h.router.feed("z");
+    h.feed("z");
     expect(h.widgets[0]!.keyEvents).toHaveLength(1);
     expect(h.widgets[0]!.keyEvents[0]!.character).toBe("z");
     expect(h.widgets[1]!.keyEvents).toHaveLength(0);
   });
 
   it("emits ctrl=true for control bytes", () => {
-    h.router.feed("\x01"); // Ctrl+A
+    h.feed("\x01"); // Ctrl+A
     expect(h.keyEvents[0]).toMatchObject({ key: "a", ctrl: true });
   });
 
   it("emits Ctrl+C as { key:'c', ctrl:true } without swallowing", () => {
-    h.router.feed("\x03");
+    h.feed("\x03");
     expect(h.keyEvents[0]).toMatchObject({
       key: "c",
       character: "",
@@ -220,11 +180,11 @@ describe("EventRouter — key parsing", () => {
   });
 
   it("recognises enter, tab, backspace, space", () => {
-    h.router.feed("\r");
-    h.router.feed("\n");
-    h.router.feed("\t");
-    h.router.feed("\x7f");
-    h.router.feed(" ");
+    h.feed("\r");
+    h.feed("\n");
+    h.feed("\t");
+    h.feed("\x7f");
+    h.feed(" ");
     expect(h.keyEvents.map((e) => e.key)).toEqual([
       "enter",
       "enter",
@@ -235,19 +195,19 @@ describe("EventRouter — key parsing", () => {
   });
 
   it("recognises arrow keys via CSI", () => {
-    h.router.feed("\x1b[A");
-    h.router.feed("\x1b[B");
-    h.router.feed("\x1b[C");
-    h.router.feed("\x1b[D");
+    h.feed("\x1b[A");
+    h.feed("\x1b[B");
+    h.feed("\x1b[C");
+    h.feed("\x1b[D");
     expect(h.keyEvents.map((e) => e.key)).toEqual(["up", "down", "right", "left"]);
   });
 
   it("recognises home/end/pageup/pagedown/delete via CSI tilde", () => {
-    h.router.feed("\x1b[1~");
-    h.router.feed("\x1b[3~");
-    h.router.feed("\x1b[4~");
-    h.router.feed("\x1b[5~");
-    h.router.feed("\x1b[6~");
+    h.feed("\x1b[1~");
+    h.feed("\x1b[3~");
+    h.feed("\x1b[4~");
+    h.feed("\x1b[5~");
+    h.feed("\x1b[6~");
     expect(h.keyEvents.map((e) => e.key)).toEqual([
       "home",
       "delete",
@@ -258,21 +218,21 @@ describe("EventRouter — key parsing", () => {
   });
 
   it("recognises F1–F12", () => {
-    h.router.feed("\x1bOP"); // F1 via SS3
-    h.router.feed("\x1b[15~"); // F5
-    h.router.feed("\x1b[24~"); // F12
+    h.feed("\x1bOP"); // F1 via SS3
+    h.feed("\x1b[15~"); // F5
+    h.feed("\x1b[24~"); // F12
     expect(h.keyEvents.map((e) => e.key)).toEqual(["f1", "f5", "f12"]);
   });
 
   it("emits Alt+letter for ESC + printable byte in a single chunk", () => {
-    h.router.feed("\x1bb");
+    h.feed("\x1bb");
     expect(h.keyEvents).toMatchObject([
       { key: "b", character: "", shift: false, ctrl: false, meta: true },
     ]);
   });
 
   it("Alt+Backspace decodes ESC + 0x7f", () => {
-    h.router.feed("\x1b\x7f");
+    h.feed("\x1b\x7f");
     expect(h.keyEvents).toMatchObject([
       { key: "backspace", character: "", shift: false, ctrl: false, meta: true },
     ]);
@@ -283,23 +243,23 @@ describe("EventRouter — key parsing", () => {
     // name on the Alt path too. A handler matching `event.key === "space"`
     // must catch both bare space and Alt+Space; the only difference is
     // event.meta.
-    h.router.feed("\x1b ");
+    h.feed("\x1b ");
     expect(h.keyEvents).toMatchObject([
       { key: "space", character: "", shift: false, ctrl: false, meta: true },
     ]);
   });
 
   it("Alt+uppercase carries shift=true", () => {
-    h.router.feed("\x1bF");
+    h.feed("\x1bF");
     expect(h.keyEvents).toMatchObject([
       { key: "f", character: "", shift: true, ctrl: false, meta: true },
     ]);
   });
 
   it("treats lone ESC as the escape key (after flush)", () => {
-    h.router.feed("\x1b");
+    h.feed("\x1b");
     expect(h.keyEvents).toHaveLength(0); // deferred
-    h.router.flush();
+    h.parser.flush();
     expect(h.keyEvents).toMatchObject([
       { key: "escape", character: "", shift: false, ctrl: false, meta: false },
     ]);
@@ -309,8 +269,8 @@ describe("EventRouter — key parsing", () => {
     // Some terminals send the escape key as two consecutive ESC bytes. The
     // parser must consume both and emit ONE event, not two — otherwise the
     // user pressing Esc once gets handled twice.
-    h.router.feed("\x1b\x1b");
-    h.router.flush(); // drain any deferred lone-ESC timer (defensive — should be empty)
+    h.feed("\x1b\x1b");
+    h.parser.flush(); // drain any deferred lone-ESC timer (defensive — should be empty)
     expect(h.keyEvents).toHaveLength(1);
     expect(h.keyEvents[0]).toMatchObject({
       key: "escape", character: "", shift: false, ctrl: false, meta: false,
@@ -318,15 +278,15 @@ describe("EventRouter — key parsing", () => {
   });
 
   it("does not emit lone ESC when followed by a CSI sequence in a later chunk", () => {
-    h.router.feed("\x1b");
-    h.router.feed("[A");
+    h.feed("\x1b");
+    h.feed("[A");
     expect(h.keyEvents.map((e) => e.key)).toEqual(["up"]);
   });
 
   it("handles a CSI sequence split across multiple chunks", () => {
-    h.router.feed("\x1b[");
-    h.router.feed("3");
-    h.router.feed("~");
+    h.feed("\x1b[");
+    h.feed("3");
+    h.feed("~");
     expect(h.keyEvents.map((e) => e.key)).toEqual(["delete"]);
   });
 });
@@ -337,9 +297,9 @@ describe("EventRouter — tab navigation", () => {
     const b = new StubWidget("b");
     const h = makeHarness([a, b]);
     expect(h.fm.current).toBe(a);
-    h.router.feed("\t");
+    h.feed("\t");
     expect(h.fm.current).toBe(b);
-    h.router.feed("\t");
+    h.feed("\t");
     expect(h.fm.current).toBe(a);
   });
 
@@ -349,7 +309,7 @@ describe("EventRouter — tab navigation", () => {
     const c = new StubWidget("c");
     const h = makeHarness([a, b, c]);
     expect(h.fm.current).toBe(a);
-    h.router.feed("\x1b[Z");
+    h.feed("\x1b[Z");
     expect(h.fm.current).toBe(c);
   });
 
@@ -357,7 +317,7 @@ describe("EventRouter — tab navigation", () => {
     const a = new StubWidget("a");
     const b = new StubWidget("b");
     const h = makeHarness([a, b]);
-    h.router.feed("\t");
+    h.feed("\t");
     // StubWidget.handleKey does not call event.stop() → FocusManager (registered
     // as a normal-priority chain handler) runs and moves focus.
     expect(a.keyEvents).toHaveLength(1);
@@ -375,7 +335,7 @@ describe("EventRouter — tab navigation", () => {
     const a = new TabConsumer("a");
     const b = new StubWidget("b");
     const h = makeHarness([a, b]);
-    h.router.feed("\t");
+    h.feed("\t");
     expect(h.fm.current).toBe(a); // focus did not move
   });
 
@@ -392,7 +352,7 @@ describe("EventRouter — tab navigation", () => {
       },
       { priority: "high" },
     );
-    h.router.feed("\x03"); // Ctrl+C
+    h.feed("\x03"); // Ctrl+C
     expect(highSawIt).toBe(true);
     // Focused widget never saw it because the high handler stopped the event.
     expect(a.keyEvents.find((e) => e.ctrl && e.key === "c")).toBeUndefined();
@@ -409,7 +369,7 @@ describe("EventRouter — tab navigation", () => {
     const observed = new Observer("o");
     const h = makeHarness([observed]);
     h.router.onKey(() => order.push("normal")); // default priority = "normal"
-    h.router.feed("x");
+    h.feed("x");
     expect(order).toEqual(["widget", "normal"]);
   });
 });
@@ -419,8 +379,8 @@ describe("EventRouter — mouse parsing", () => {
     const a = new StubWidget("a");
     a.place({ x: 0, y: 0, width: 10, height: 1 });
     const h = makeHarness([a]);
-    h.router.feed("\x1b[<0;5;1M"); // press at col 5 (0-based: 4), row 1 (0-based: 0)
-    h.router.feed("\x1b[<0;5;1m"); // release
+    h.feed("\x1b[<0;5;1M"); // press at col 5 (0-based: 4), row 1 (0-based: 0)
+    h.feed("\x1b[<0;5;1m"); // release
     expect(h.mouseEvents).toEqual([
       { type: "mouse_down", x: 4, y: 0, button: 0, shift: false, ctrl: false },
       { type: "mouse_up", x: 4, y: 0, button: 0, shift: false, ctrl: false },
@@ -432,7 +392,7 @@ describe("EventRouter — mouse parsing", () => {
     a.place({ x: 0, y: 0, width: 10, height: 1 });
     const h = makeHarness([a]);
     // cb=35 = 3 (release-any) + 32 (motion bit) = no-button motion
-    h.router.feed("\x1b[<35;3;1M");
+    h.feed("\x1b[<35;3;1M");
     expect(h.mouseEvents).toEqual([
       { type: "mouse_move", x: 2, y: 0, button: 3, shift: false, ctrl: false },
     ]);
@@ -440,8 +400,8 @@ describe("EventRouter — mouse parsing", () => {
 
   it("parses SGR scroll wheel", () => {
     const h = makeHarness();
-    h.router.feed("\x1b[<64;1;1M"); // scroll up
-    h.router.feed("\x1b[<65;1;1M"); // scroll down
+    h.feed("\x1b[<64;1;1M"); // scroll up
+    h.feed("\x1b[<65;1;1M"); // scroll down
     expect(h.mouseEvents.map((e) => e.type)).toEqual(["scroll_up", "scroll_down"]);
   });
 
@@ -450,7 +410,7 @@ describe("EventRouter — mouse parsing", () => {
     // ESC [ M cb cx cy where each byte = value + 32 (1-based)
     // cb=32 (button 0 press), cx=33 (col 1), cy=33 (row 1) → x=0, y=0
     const buf = Buffer.from([0x1b, 0x5b, 0x4d, 32, 33, 33]);
-    h.router.feed(buf);
+    h.feed(buf);
     expect(h.mouseEvents).toEqual([
       { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false },
     ]);
@@ -462,7 +422,7 @@ describe("EventRouter — mouse parsing", () => {
     lower.place({ x: 0, y: 0, width: 10, height: 3 });
     upper.place({ x: 0, y: 0, width: 10, height: 3 });
     const h = makeHarness([lower, upper]);
-    h.router.feed("\x1b[<0;3;2M");
+    h.feed("\x1b[<0;3;2M");
     expect(upper.mouseEvents).toHaveLength(1);
     expect(lower.mouseEvents).toHaveLength(0);
   });
@@ -471,7 +431,7 @@ describe("EventRouter — mouse parsing", () => {
     const a = new StubWidget("a");
     a.place({ x: 4, y: 2, width: 6, height: 3 });
     const h = makeHarness([a]);
-    h.router.feed("\x1b[<0;7;4M"); // screen (6, 3)
+    h.feed("\x1b[<0;7;4M"); // screen (6, 3)
     expect(a.mouseEvents).toEqual([
       { type: "mouse_down", x: 2, y: 1, button: 0, shift: false, ctrl: false, over: true },
     ]);
@@ -493,21 +453,21 @@ describe("EventRouter — drag capture", () => {
     const h = makeHarness([a, b]);
 
     // Press inside a.
-    h.router.feed("\x1b[<0;1;1M");
+    h.feed("\x1b[<0;1;1M");
     expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down"]);
     expect(b.mouseEvents).toHaveLength(0);
 
     // Move onto b — STILL routes to a because a captured the drag.
-    h.router.feed("\x1b[<32;7;1M");
+    h.feed("\x1b[<32;7;1M");
     expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down", "mouse_move"]);
     expect(b.mouseEvents.filter((e) => e.type === "mouse_move")).toHaveLength(0);
 
     // Release outside a — routes to a (captured), then capture clears.
-    h.router.feed("\x1b[<0;7;1m");
+    h.feed("\x1b[<0;7;1m");
     expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down", "mouse_move", "mouse_up"]);
 
     // A fresh move after release goes by hit-test again.
-    h.router.feed("\x1b[<35;7;1M");
+    h.feed("\x1b[<35;7;1M");
     expect(b.mouseEvents.some((e) => e.type === "mouse_move")).toBe(true);
   });
 
@@ -518,9 +478,9 @@ describe("EventRouter — drag capture", () => {
     b.place({ x: 8, y: 1, width: 5, height: 1 });
     const h = makeHarness([a, b]);
 
-    h.router.feed("\x1b[<0;5;2M"); // press screen (4, 1) → a's column 1
-    h.router.feed("\x1b[<32;11;3M"); // drag over b and a row down: (10, 2)
-    h.router.feed("\x1b[<0;2;2m"); // release left of a: (1, 1)
+    h.feed("\x1b[<0;5;2M"); // press screen (4, 1) → a's column 1
+    h.feed("\x1b[<32;11;3M"); // drag over b and a row down: (10, 2)
+    h.feed("\x1b[<0;2;2m"); // release left of a: (1, 1)
     expect(a.mouseEvents.map(({ type, x, y }) => ({ type, x, y }))).toEqual([
       { type: "mouse_down", x: 1, y: 0 },
       { type: "mouse_move", x: 7, y: 1 },
@@ -533,9 +493,9 @@ describe("EventRouter — drag capture", () => {
     a.place({ x: 3, y: 1, width: 5, height: 1 });
     const h = makeHarness([a]);
 
-    h.router.feed("\x1b[<0;5;2M"); // press screen (4, 1) → a's column 1
+    h.feed("\x1b[<0;5;2M"); // press screen (4, 1) → a's column 1
     a.place({ x: 6, y: 2, width: 5, height: 1 }); // repainted right and down
-    h.router.feed("\x1b[<32;9;3M"); // (8, 2) → a's column 2 where it is now
+    h.feed("\x1b[<32;9;3M"); // (8, 2) → a's column 2 where it is now
     expect(a.mouseEvents.map(({ type, x, y }) => ({ type, x, y }))).toEqual([
       { type: "mouse_down", x: 1, y: 0 },
       { type: "mouse_move", x: 2, y: 0 },
@@ -549,10 +509,10 @@ describe("EventRouter — drag capture", () => {
     b.place({ x: 5, y: 0, width: 5, height: 1 });
     const h = makeHarness([a, b]);
 
-    h.router.feed("\x1b[<0;1;1M");
-    h.router.feed("\x1b[<0;7;1m"); // released on b
-    h.router.feed("\x1b[<0;1;1M");
-    h.router.feed("\x1b[<0;3;1m"); // released on a
+    h.feed("\x1b[<0;1;1M");
+    h.feed("\x1b[<0;7;1m"); // released on b
+    h.feed("\x1b[<0;1;1M");
+    h.feed("\x1b[<0;3;1m"); // released on a
     expect(a.mouseEvents.map(({ type, over }) => ({ type, over }))).toEqual([
       { type: "mouse_down", over: true },
       { type: "mouse_up", over: false },
@@ -568,8 +528,8 @@ describe("EventRouter — drag capture", () => {
     b.place({ x: 5, y: 0, width: 5, height: 1 });
     const h = makeHarness([a, b]);
 
-    h.router.feed("\x1b[<0;1;1M"); // a captures a drag
-    h.router.feed("\x1b[<64;7;1M"); // the wheel over b
+    h.feed("\x1b[<0;1;1M"); // a captures a drag
+    h.feed("\x1b[<64;7;1M"); // the wheel over b
     expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down"]);
     expect(b.mouseEvents).toEqual([]);
     expect(h.mouseEvents.map((e) => e.type)).toEqual(["mouse_down", "scroll_up"]);
@@ -578,7 +538,7 @@ describe("EventRouter — drag capture", () => {
 
 describe("EventRouter — the wheel", () => {
   /** A router over the frame `viewport` paints at the top left, counting the frames it asks for. */
-  function wheelHarness(viewport: Viewport): { router: EventRouter; refreshes: () => number } {
+  function wheelHarness(viewport: Viewport): { feed: (bytes: string) => void; refreshes: () => number } {
     const fm = new DefaultFocusManager(() => []);
     let refreshes = 0;
     const source: FrameSource = {
@@ -588,14 +548,14 @@ describe("EventRouter — the wheel", () => {
       },
       refresh: () => refreshes++,
     };
-    const router = new EventRouter({ source, host: makeNodeHost(new PassThrough(), new CapturingStream()) });
-    return { router, refreshes: () => refreshes };
+    const parser = parserFor(new EventRouter({ source }));
+    return { feed: (bytes) => parser.feed(bytes), refreshes: () => refreshes };
   }
 
   it("scrolls the viewport under the pointer and asks for the frame that shows it", () => {
     const viewport = new Viewport(new RichText("0\n1\n2\n3\n4"), { rows: 2 });
     const h = wheelHarness(viewport);
-    h.router.feed("\x1b[<65;1;1M"); // down, over the viewport
+    h.feed("\x1b[<65;1;1M"); // down, over the viewport
     expect(h.refreshes()).toBe(1);
     [...viewport.render({ maxWidth: 10 })];
     expect(viewport.offset).toBe(1);
@@ -604,8 +564,8 @@ describe("EventRouter — the wheel", () => {
   it("with no viewport under the pointer that can move that way, moves nothing and asks for no frame", () => {
     const viewport = new Viewport(new RichText("0\n1\n2\n3\n4"), { rows: 2 });
     const h = wheelHarness(viewport);
-    h.router.feed("\x1b[<64;1;1M"); // up, at the start already
-    h.router.feed("\x1b[<65;1;9M"); // down, below the viewport
+    h.feed("\x1b[<64;1;1M"); // up, at the start already
+    h.feed("\x1b[<65;1;9M"); // down, below the viewport
     expect(h.refreshes()).toBe(0);
     [...viewport.render({ maxWidth: 10 })];
     expect(viewport.offset).toBe(0);
@@ -621,28 +581,28 @@ describe("EventRouter — hover dispatch", () => {
     const h = makeHarness([a, b]);
 
     // Move into a — only a should change to hovered=true
-    h.router.feed("\x1b[<35;2;1M");
+    h.feed("\x1b[<35;2;1M");
     expect(a.hovered).toBe(true);
     expect(b.hovered).toBe(false);
 
     // Move from a into b — both change
-    h.router.feed("\x1b[<35;7;1M");
+    h.feed("\x1b[<35;7;1M");
     expect(a.hovered).toBe(false);
     expect(b.hovered).toBe(true);
 
     // Move outside both
-    h.router.feed("\x1b[<35;20;1M");
+    h.feed("\x1b[<35;20;1M");
     expect(a.hovered).toBe(false);
     expect(b.hovered).toBe(false);
   });
 
-  it("stop() clears hover, since the router no longer knows where the pointer is", () => {
+  it("reset() clears hover, since the router no longer knows where the pointer is", () => {
     const a = new StubWidget("a");
     a.place({ x: 0, y: 0, width: 5, height: 1 });
     const h = makeHarness([a]);
-    h.router.feed("\x1b[<35;2;1M");
+    h.feed("\x1b[<35;2;1M");
     expect(a.hovered).toBe(true);
-    h.router.stop();
+    h.router.reset();
     expect(a.hovered).toBe(false);
   });
 
@@ -651,72 +611,16 @@ describe("EventRouter — hover dispatch", () => {
     a.place({ x: 0, y: 0, width: 10, height: 1 });
     const h = makeHarness([a]);
 
-    h.router.feed("\x1b[<35;2;1M");
-    h.router.feed("\x1b[<35;3;1M");
-    h.router.feed("\x1b[<35;4;1M");
+    h.feed("\x1b[<35;2;1M");
+    h.feed("\x1b[<35;3;1M");
+    h.feed("\x1b[<35;4;1M");
     // All three moves are inside a → only the first transition should record.
     expect(a.hoverChanges).toEqual([true]);
   });
 });
 
-describe("EventRouter — start/stop", () => {
-  it("attaches a data listener on start and detaches on stop", () => {
-    const stdin = new PassThrough();
-    const stdout = new CapturingStream();
-    const a = new StubWidget("a");
-    const fm = new DefaultFocusManager(() => [a]);
-    fm.settle([a]);
-    const source: FrameSource = { focusManager: fm, frame: paint([a]), refresh: () => {} };
-
-    const host = makeNodeHost(stdin, stdout);
-    const router = new EventRouter({ source, host });
-
-    router.start();
-    expect(stdin.listenerCount("data")).toBe(1);
-    stdin.write("x");
-    // Microtask: PassThrough delivers synchronously after .write here
-    expect(a.keyEvents).toHaveLength(1);
-
-    router.stop();
-    expect(stdin.listenerCount("data")).toBe(0);
-  });
-
-  it("never writes to the terminal — raw mode and pointer reporting are the App's", () => {
-    const h = makeHarness();
-    h.router.start();
-    h.router.feed("x");
-    h.router.stop();
-    expect(h.stdout.joined()).toBe("");
-  });
-
-  it("is idempotent — repeated start() / stop() are safe", () => {
-    const h = makeHarness();
-    h.router.start();
-    h.router.start();
-    h.router.stop();
-    h.router.stop();
-    // No throw, no extra listeners.
-    expect(h.stdin.listenerCount("data")).toBe(0);
-  });
-
-  it("stop() clears the parse buffer so dangling bytes don't leak into the next session", () => {
-    // [LAW:one-source-of-truth] Per-session state belongs to a session.
-    // A half-parsed CSI must not survive a stop/start cycle.
-    const a = new StubWidget("a");
-    const h = makeHarness([a]);
-
-    h.router.feed("\x1b["); // start of a CSI; parser is mid-sequence
-    h.router.stop();
-
-    a.keyEvents.length = 0;
-    h.router.start();
-    // If the buffer had leaked, "A" would have completed "\x1b[A" → "up".
-    // After stop's reset, the bare "A" is just the letter a.
-    h.router.feed("A");
-    expect(a.keyEvents.map((e) => e.key)).toEqual(["a"]);
-  });
-
-  it("stop() clears drag capture so the next session hit-tests fresh", () => {
+describe("EventRouter — reset", () => {
+  it("reset() clears drag capture so the next session hit-tests fresh", () => {
     // [LAW:one-source-of-truth] capturedWidget belongs to the current
     // session. Leaking it would misroute the first mouse_move after restart.
     const a = new StubWidget("a");
@@ -726,20 +630,19 @@ describe("EventRouter — start/stop", () => {
     const h = makeHarness([a, b]);
 
     // mouse_down on a: opens drag capture.
-    h.router.feed("\x1b[<0;1;1M");
+    h.feed("\x1b[<0;1;1M");
     expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down"]);
 
-    h.router.stop();
+    h.router.reset();
     a.mouseEvents.length = 0;
     b.mouseEvents.length = 0;
 
-    h.router.start();
     // mouse_move over b. With capture cleared, the router
     // hit-tests fresh: b receives the mouse_move (as the topmost-hit
     // widget) and the hover loop flips b.hovered to true. The point of
     // this assertion is that `a` — which held capture in the previous
     // session — must NOT receive any mouse_move after restart.
-    h.router.feed("\x1b[<32;7;1M");
+    h.feed("\x1b[<32;7;1M");
     expect(a.mouseEvents.filter((e) => e.type === "mouse_move")).toHaveLength(0);
   });
 });

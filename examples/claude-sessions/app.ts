@@ -9,7 +9,7 @@
  * capabilities are the values that differ between `main.ts` and `node.ts`.
  */
 
-import { App, type TerminalHost } from "@promptctl/rich-js/host";
+import { App, keyName, type KeyPress, type TerminalHost } from "@promptctl/rich-js/host";
 import type { FileSystem } from "../_capabilities/file-system.js";
 import {
   initialState,
@@ -102,7 +102,7 @@ function reduce(state: AppState, action: Action): AppState {
       if (state.search.mode !== "off") return searchExit(state);
       return { ...state, statusMessage: "(press q to quit)" };
     case "search-key":
-      return reduceSearchTyping(state, action.key);
+      return reduceSearchTyping(state, action.press);
     case "suspend":
     case "quit":
     case "none":
@@ -110,15 +110,17 @@ function reduce(state: AppState, action: Action): AppState {
   }
 }
 
-function reduceSearchTyping(state: AppState, chunk: string): AppState {
-  if (chunk === "\r" || chunk === "\n") return searchSubmit(state);
-  if (chunk === "\x1b") return searchExit(state);
-  if (chunk === "\x7f" || chunk === "\b") return searchBackspace(state);
-  if (chunk.length === 1) {
-    const code = chunk.charCodeAt(0);
-    if (code >= 0x20 && code < 0x7f) return searchType(state, chunk);
+function reduceSearchTyping(state: AppState, press: KeyPress): AppState {
+  switch (keyName(press)) {
+    case "enter":
+      return searchSubmit(state);
+    case "escape":
+      return searchExit(state);
+    case "backspace":
+      return searchBackspace(state);
   }
-  return state;
+  // A key that types a character types it into the query; any other is ignored.
+  return press.ctrl || press.meta || press.character === "" ? state : searchType(state, press.character);
 }
 
 /** The viewer, running: `done` settles as `App.run` does. */
@@ -138,13 +140,8 @@ export function run(host: TerminalHost, fs: FileSystem): Running {
   // shell of the state as it is then.
   const app = new App({ host, surface: "alternate", view: () => buildShell(state, view) });
 
-  // Hoist the decoder out of the hot path — node delivers Buffer chunks on
-  // every keystroke. `{ stream: true }` keeps a multibyte sequence split
-  // across two chunks whole.
-  const decoder = new TextDecoder();
-  host.onData((chunk) => {
-    const text = typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
-    const action = (isTyping(state) ? lookupTyping : lookup)(text);
+  app.onKey((press) => {
+    const action = (isTyping(state) ? lookupTyping : lookup)(press);
     switch (action.type) {
       case "quit":
         app.stop();
@@ -153,17 +150,9 @@ export function run(host: TerminalHost, fs: FileSystem): Running {
         void app.suspend();
         return;
     }
-    // [LAW:no-silent-failure] The host calls this handler, so a reducer that
-    // throws here would reach neither `done` nor the terminal's hand-back.
-    let next: AppState;
-    try {
-      next = reduce(state, action);
-    } catch (error) {
-      app.fail(error);
-      return;
-    }
-    // A key that changes nothing — a pointer report among them, on the
-    // alternate screen — paints nothing.
+    // A reducer that throws fails the app, the terminal handed back first.
+    const next = reduce(state, action);
+    // A key that changes nothing paints nothing.
     if (next === state) return;
     state = next;
     app.refresh();

@@ -22,7 +22,7 @@ export interface ScriptedHost extends TerminalHost {
   resume(): void;
   readonly suspends: () => number;
   /** Bytes arriving from the terminal, as a keypress or the pointer sends them. */
-  type(data: string): void;
+  type(data: Uint8Array | string): void;
 }
 
 export function scriptedHost(initial: TerminalSize = { cols: 20, rows: 4 }): ScriptedHost {

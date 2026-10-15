@@ -116,16 +116,8 @@ export function run(host: TerminalHost, fs: FileSystem, startPath: string): Runn
   // the state as it is then.
   const app = new App({ host, surface: "alternate", view: () => buildShell(state, view) });
 
-  // Hoist the decoder out of the hot path — node delivers Buffer chunks on
-  // every keystroke; one shared decoder avoids per-event allocation and
-  // keeps the demo body free of `Buffer`, which the browser lacks.
-  // `{ stream: true }` preserves partial multibyte sequences across chunks
-  // (a UTF-8 codepoint split between two onData calls — possible on paste
-  // of non-ASCII text — would otherwise decode to U+FFFD).
-  const decoder = new TextDecoder();
-  host.onData((chunk) => {
-    const text = typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
-    const action = lookup(text);
+  app.onKey((press) => {
+    const action = lookup(press);
     switch (action.type) {
       case "quit":
         app.stop();
@@ -134,14 +126,8 @@ export function run(host: TerminalHost, fs: FileSystem, startPath: string): Runn
         void app.suspend();
         return;
     }
-    // [LAW:no-silent-failure] The host calls this handler, so a reducer that
-    // throws here would reach neither `done` nor the terminal's hand-back.
-    try {
-      state = reduce(state, action, view.previewOf(state));
-    } catch (error) {
-      app.fail(error);
-      return;
-    }
+    // A reducer that throws fails the app, the terminal handed back first.
+    state = reduce(state, action, view.previewOf(state));
     // Every key repaints: a scroll moves the preview's viewport and leaves
     // the state as it was.
     app.refresh();

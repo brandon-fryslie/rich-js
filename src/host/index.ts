@@ -14,3 +14,5 @@ export { hostEnvironment } from "./host-environment.js";
 export { App } from "./app.js";
 export type { AppOptions, AppPhase } from "./app.js";
 export type { Surface } from "../core/paint.js";
+export { keyName } from "./input.js";
+export type { KeyPress, ScreenMouseEvent } from "./input.js";

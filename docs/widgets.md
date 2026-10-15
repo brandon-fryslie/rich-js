@@ -44,24 +44,11 @@ const app = new WidgetApp({
 
 submit.onSubmit(() => app.stop());
 
-// Raw mode swallows Ctrl+C, so the app must handle it itself.
-app.onKey(
-  (event) => {
-    if (event.ctrl && event.key === "c") {
-      event.stop();
-      app.stop();
-    }
-  },
-  { priority: "high" },
-);
-
 await app.run();
 console.log(`${name.value} — subscribed: ${subscribe.checked}`);
 ```
 
-::: warning Always wire up an exit
-While the app runs, the terminal is in raw mode, where Ctrl+C arrives as a key event instead of ending the program. Without a handler like the one above, the only way out is another terminal. `app.stop()` hands the terminal back — raw mode off, pointer reporting off, the cursor shown, the screen as it was — and `run()` resolves. A crash or a signal hands it back too.
-:::
+Ctrl+C stops the app, as it stops any [`App`](/app#keys-and-the-pointer), whatever has focus; `quitKeys` changes which keys do. `app.stop()` hands the terminal back — raw mode off, pointer reporting off, the cursor shown, the screen as it was — and `run()` resolves. A crash or a signal hands it back too.
 
 ## What WidgetApp adds to an App
 
@@ -75,7 +62,7 @@ While the app runs, the terminal is in raw mode, where Ctrl+C arrives as a key e
 
 **The pointer reaches the widget that drew the cell under it**, as a `WidgetMouseEvent` in the widget's own coordinates: `x` and `y` are the column and row of the cell in its own output, and `over` says whether it drew that cell. A press starts a drag the widget keeps until the button is released, measured from where the widget is painted now, so a slider dragged past its end reads a column beyond its width. Hover is the widget under the pointer on the frame on screen, read again after every frame, so a widget that appears under a still pointer is hovered and one that goes stops being. The wheel is not a widget's: it scrolls the innermost [`Viewport`](/viewport) under the pointer that can move that way a line a notch, including when the pointer is over a widget that viewport shows, and paints the next frame. Only the alternate surface reports the pointer: an inline frame does not know which row of the screen it starts on, so it gets keys alone.
 
-Construct widgets once, outside the view function. A widget holds its own state — its value, whether it has focus — and a `view` that built a new `TextInput` every frame would never settle: focus moves onto the new one, which repaints, which builds another. The app keeps reading keys, so a Ctrl+C handler still stops it, but it paints without end and every key goes to a widget the next frame throws away.
+Construct widgets once, outside the view function. A widget holds its own state — its value, whether it has focus — and a `view` that built a new `TextInput` every frame would never settle: focus moves onto the new one, which repaints, which builds another. The app keeps reading keys, so Ctrl+C still stops it, but it paints without end and every key goes to a widget the next frame throws away.
 
 ## Reacting to changes
 
@@ -101,9 +88,9 @@ These are notifications about your application's data, not a redraw contract. Re
 
 ## Key dispatch
 
-One key event walks a three-stage chain, in this order:
+A quit key — Ctrl+C, unless `quitKeys` says otherwise — stops the app before any of this. Every other key walks a three-stage chain, in this order:
 
-1. **High-priority handlers**, in registration order. This tier is for global overrides that must beat whatever is focused — Ctrl+C shutdown, application-level navigation.
+1. **High-priority handlers**, in registration order. This tier is for global overrides that must beat whatever is focused — a save shortcut, application-level navigation.
 2. **The focused widget**, via its `handleKey(event)`.
 3. **Normal-priority handlers**, in registration order. The app registers its focus manager's Tab handling here, ahead of anything you add, which is what makes Tab work.
 

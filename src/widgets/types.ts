@@ -9,24 +9,18 @@
 import type { Renderable, Measurable, RenderOptions } from "../core/protocol.js";
 import type { Segment } from "../core/segment.js";
 import type { Unsubscribe } from "../core/subscription.js";
+import type { KeyPress, ScreenMouseEvent } from "../host/input.js";
 
 // --- Event types ---
 
-// [LAW:types-are-the-program] KeyEvent carries a single mutable signal
+// [LAW:types-are-the-program] KeyEvent is a `KeyPress` the app heard, plus
+// the say over who else hears it. It carries a single mutable signal
 // (`stopped`) that participants in the dispatch chain set by calling
 // `stop()`. Treating it as an interface would force every handler to
 // shuttle a return value upward and the router to interpret it — the
 // class collapses that into one self-describing value flowing through
 // the chain.
-export interface KeyEventInit {
-  key: string;
-  character: string;
-  shift: boolean;
-  ctrl: boolean;
-  meta: boolean;
-}
-
-export class KeyEvent {
+export class KeyEvent implements KeyPress {
   readonly key: string;
   readonly character: string;
   readonly shift: boolean;
@@ -34,7 +28,7 @@ export class KeyEvent {
   readonly meta: boolean;
   private _stopped = false;
 
-  constructor(init: KeyEventInit) {
+  constructor(init: KeyPress) {
     this.key = init.key;
     this.character = init.character;
     this.shift = init.shift;
@@ -58,34 +52,15 @@ export interface KeyHandlerOptions {
   priority?: KeyHandlerPriority;
 }
 
-// [LAW:one-source-of-truth] Mouse types are exactly what EventRouter emits.
-// There is no "click" — clicks are derived by handlers from mouse_down +
-// mouse_up pairs on the same widget. Keeping unreachable values in the
-// union would force every consumer to handle a case that never arrives.
-// `x`/`y` are the terminal cell under the pointer: what `onMouse` hears.
-// One member per `type`, so a check of `type` narrows the whole event.
-export type ScreenMouseEvent = { [T in MouseEventType]: MouseEventOf<T> }[MouseEventType];
-
-type MouseEventType = "mouse_down" | "mouse_up" | "mouse_move" | "scroll_up" | "scroll_down";
-
-interface MouseEventOf<Type extends string> {
-  type: Type;
-  x: number;
-  y: number;
-  button: number;
-  shift: boolean;
-  ctrl: boolean;
-}
-
 // The same event as one widget receives it. `x`/`y` are in the widget's own
 // output: column and row of the cell it drew, or, for a drag it captured,
 // relative to where it is painted now — so they fall outside the widget once
 // the pointer leaves it. `over` is whether it drew the cell under the pointer.
 // The wheel is not a widget's: it scrolls the innermost `Scrollable` under the
 // pointer, whatever widget it shows there.
-export interface WidgetMouseEvent extends MouseEventOf<"mouse_down" | "mouse_up" | "mouse_move"> {
-  over: boolean;
-}
+export type WidgetMouseEvent = Extract<ScreenMouseEvent, { type: "mouse_down" | "mouse_up" | "mouse_move" }> & {
+  readonly over: boolean;
+};
 
 export interface WidgetFocusEvent {
   type: "focus" | "blur";

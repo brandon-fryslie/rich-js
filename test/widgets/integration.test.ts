@@ -183,12 +183,13 @@ describe("widget pipeline integration", () => {
   });
 
   describe("ctrl+c", () => {
-    it("emits a key event with ctrl: true and key: 'c'", async () => {
+    it("stops the app before any handler or the focused widget hears it", async () => {
       await flush();
-      const seen: { key: string; ctrl: boolean }[] = [];
-      h.app.onKey((e) => seen.push({ key: e.key, ctrl: e.ctrl }));
+      const seen: string[] = [];
+      h.app.onKey((e) => seen.push(e.key), { priority: "high" });
       h.stdin.write(Buffer.from([0x03])); // ETX = ctrl+c
-      expect(seen).toContainEqual({ key: "c", ctrl: true });
+      expect(h.app.phase).toBe("stopped");
+      expect(seen).toEqual([]);
     });
   });
 

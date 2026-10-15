@@ -68,7 +68,7 @@ import {
   type Loop,
   type Transition,
 } from "../../src/index.js";
-import { App, hostEnvironment, type TerminalHost } from "../../src/host/index.js";
+import { App, hostEnvironment, keyName, type TerminalHost } from "../../src/host/index.js";
 import { STEP, depthDrawn, type EffectName } from "./vocabulary.js";
 import type { NamedCurve, Settings } from "./settings.js";
 import { cellsOf, drawnSubject, fills, paletteRgba, pulsedOn, shown, stripSubject, subjectUnder, textSubject, type DrawnSubject, type Subject } from "./subjects.js";
@@ -394,7 +394,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   app.animate();
 
   // [LAW:dataflow-not-control-flow] Each key is a row in this table; a key
-  // not in it does nothing, so a mouse report repaints nothing.
+  // not in it does nothing.
   const replay = (): number => {
     app.refresh();
     return pace.now(frames.now());
@@ -440,21 +440,9 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     "]": () => magnify(1),
     "[": () => magnify(-1),
     q: () => app.stop(),
-    "\x03": () => app.stop(),
   };
-  const decoder = new TextDecoder();
-  const unsubscribe = host.onData((chunk) => {
-    try {
-      const text = typeof chunk === "string" ? chunk : decoder.decode(chunk);
-      for (const key of text) keys[key]?.();
-    } catch (error) {
-      app.fail(error);
-    }
-  });
+  app.onKey((press) => keys[keyName(press)]?.());
 
-  const done = app.run().finally(() => {
-    unsubscribe();
-    stopMeasuring();
-  });
+  const done = app.run().finally(stopMeasuring);
   return { done };
 }

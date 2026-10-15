@@ -1,8 +1,11 @@
 /**
- * Data-driven key → action table. To bind a new key, add a row; no edits
- * to the main loop required. Actions are a discriminated union consumed
- * by the reducer in app.ts.
+ * Data-driven key → action table, keyed by `keyName`. To bind a new key, add
+ * a row; no edits to the main loop required. Actions are a discriminated
+ * union consumed by the reducer in app.ts. Ctrl+C is the app's own quit key
+ * and never reaches the table.
  */
+
+import { keyName, type KeyPress } from "@promptctl/rich-js/host";
 
 export type Action =
   | { type: "move"; delta: number }
@@ -17,28 +20,26 @@ export type Action =
   | { type: "none" };
 
 const KEYMAP: Record<string, Action> = {
-  "\x1b[A": { type: "move", delta: -1 },
-  "\x1b[B": { type: "move", delta: 1 },
+  "up": { type: "move", delta: -1 },
+  "down": { type: "move", delta: 1 },
   "k": { type: "move", delta: -1 },
   "j": { type: "move", delta: 1 },
-  "\x1b[5~": { type: "move", delta: -10 },
-  "\x1b[6~": { type: "move", delta: 10 },
-  "\x1b[C": { type: "open" },
-  "\r": { type: "open" },
-  "\n": { type: "open" },
+  "pageup": { type: "move", delta: -10 },
+  "pagedown": { type: "move", delta: 10 },
+  "right": { type: "open" },
+  "enter": { type: "open" },
   "l": { type: "open" },
-  "\x1b[D": { type: "up" },
+  "left": { type: "up" },
   "h": { type: "up" },
   "g": { type: "move-first" },
   "G": { type: "move-last" },
-  "\t": { type: "focus-toggle" },
-  "\x1b[Z": { type: "focus-toggle" }, // shift-tab
+  "tab": { type: "focus-toggle" },
+  "shift+tab": { type: "focus-toggle" },
   "c": { type: "coverage" },
-  "\x1a": { type: "suspend" }, // ctrl-z, a key in raw mode
+  "ctrl+z": { type: "suspend" }, // a key in raw mode
   "q": { type: "quit" },
-  "\x03": { type: "quit" },
 };
 
-export function lookup(key: string): Action {
-  return KEYMAP[key] ?? { type: "none" };
+export function lookup(press: KeyPress): Action {
+  return KEYMAP[keyName(press)] ?? { type: "none" };
 }
