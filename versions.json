@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-402",
+      "ref": "refs/pull/402/merge",
+      "sha": "949594186fc831c8949e3ca11cac72134a01a53e",
+      "timestamp": "2026-10-15T17:07:19.763Z",
+      "commits": [
+        {
+          "sha": "949594186fc831c8949e3ca11cac72134a01a53e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T11:06:09-06:00",
+          "message": "Merge 0ef85df123ec509fd5c132c216aee96fd486318e into 680f56460643c5e8cdcdbdf5a8dbcaba8b6c3215\n"
+        },
+        {
+          "sha": "0ef85df123ec509fd5c132c216aee96fd486318e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T11:06:03-06:00",
+          "message": "A split host settles a stalled escape sequence after the escape delay (rich-host-input-gnl7)\n\nOn a \"split\" host only a lone ESC was held on a timer; an `ESC [` or\n`ESC O` left at a read's end waited forever and took the next key as\nits final byte. Any unfinished escape sequence is now held for\nESCAPE_DELAY_MS (100, Textual's ESCAPE_DELAY and vim's ttimeoutlen) and\nthen settled by the whole-keys rule: `ESC [` alone is Alt+[, any other\nESC is Escape with the rest read again.\n\nThe delay replaces the 0ms lone-ESC timer, so a lone ESC split from its\n`[A` over ssh now completes too. Costs: Escape on a real tty is heard\nafter 100ms, and Escape then `[` typed within 100ms reads as Alt+[.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "680f56460643c5e8cdcdbdf5a8dbcaba8b6c3215",
