@@ -208,8 +208,9 @@ describe("a strip under a pulse", () => {
       const strip = drawnSubject(stripSubject(theme), options);
       const loop = pulse({ seconds: 2, ease: EASES.linear, swing: 1 }, EFFECT_LIGHTS.sun, 0);
       const lit = onColors(loop);
-      const { pairs, colors } = drawnOf(strip.renderable.render(options), ColorDepth.TRUECOLOR, theme);
-      const share = shares(pairs, colors, loop.touch);
+      const drawn = drawnOf(strip.renderable.render(options), ColorDepth.TRUECOLOR, theme);
+      const { pairs, colors } = drawn;
+      const share = shares(drawn, colors, loop.touch);
       const before = colorsByCell(strip.renderable, theme);
       // Two breaths, a frame each tenth of a second: a cell can be resting at any one moment.
       const frames = Array.from({ length: 40 }, (_, i) => colorsByCell(new Effected(strip.renderable, lit, { t: i / 10, key: "strip", theme }), theme));
@@ -261,17 +262,17 @@ describe("every loop keeps the words readable", () => {
   // The loops that light, as the catalogue makes them, at full swing: the most any moves.
   const lights = ["shimmer", "pulse", "sparkle"] as const;
   const grounds = [["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const;
-  const depths = [["truecolor", ColorDepth.TRUECOLOR], ["256", ColorDepth.EIGHT_BIT]] as const;
+  const depths = [["truecolor", ColorDepth.TRUECOLOR, "truecolor"], ["256", ColorDepth.EIGHT_BIT, "256"], ["16", ColorDepth.STANDARD, "ansi"]] as const;
   /** Whether a strip's joiner drew the cell. */
   const joined = (style: Style): boolean => {
     for (let anchor = style.anchor; anchor; anchor = anchor.inner) if (anchor.owner === JOIN) return true;
     return false;
   };
 
-  it.each(grounds.flatMap(([g, theme]) => depths.flatMap(([d, depth]) => lights.map((loop) => [loop, g, d, theme, depth] as const))))(
+  it.each(grounds.flatMap(([g, theme]) => depths.flatMap(([d, depth, system]) => lights.map((loop) => [loop, g, d, theme, depth, system] as const))))(
     "%s on a %s ground at %s colours: no lettered cell falls below its resting contrast or AA",
-    (loop, _g, _d, theme, depth) => {
-      const at = new Console({ width: 200, colorSystem: depth === ColorDepth.TRUECOLOR ? "truecolor" : "256" }).options;
+    (loop, _g, _d, theme, depth, system) => {
+      const at = new Console({ width: 200, colorSystem: system }).options;
       for (const subject of [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, at))) {
         const effect = EFFECT_CATALOGUE.loops[loop](subject, { ...curves[loop], swing: 1 });
         const contrasts = (t: number | undefined): number[] => {
@@ -297,8 +298,9 @@ describe("every loop keeps the words readable", () => {
         // never sees its brightest passes.
         const P = curves[loop].seconds;
         for (let t = 0; t < 12 * P; t += P / 36) {
-          // 8-bit rounding of a colour the shares settled exactly can cost a hair.
-          contrasts(t).forEach((now, i) => expect(now).toBeGreaterThanOrEqual(Math.min(rest[i]!, AA) - 0.05));
+          // 8-bit rounding of a colour the shares settled exactly can cost a hair in truecolor; below it nothing is rounded.
+          const slack = depth === ColorDepth.TRUECOLOR ? 0.01 : 0;
+          contrasts(t).forEach((now, i) => expect(now).toBeGreaterThanOrEqual(Math.min(rest[i]!, AA) - slack));
         }
       }
     },

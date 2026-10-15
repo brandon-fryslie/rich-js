@@ -43,7 +43,7 @@
 
 import { drawnBy, shiftAnchor, type Anchor } from "../core/anchor.js";
 import { cellLen, graphemes } from "../core/cells.js";
-import { ColorDepth, ColorSpec, SURFACE_BLACK, rgbDistance, type ColorRgba, type TerminalTheme } from "../core/color.js";
+import { ColorDepth, ColorSpec, SURFACE_BLACK, type ColorRgba, type TerminalTheme } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
@@ -87,11 +87,19 @@ export interface EffectCell {
 }
 
 /**
- * A cell's ink and ground as the screen shows them, and which of the two are
- * the terminal's: what an `Effect` is handed for that cell.
+ * A cell's ink and ground as the screen shows them, which of the two are the
+ * terminal's, and whether its style swaps them (`reverse`): what an `Effect`
+ * is handed for that cell.
  */
 export interface Pair extends CellColors {
   readonly terminal: EffectCell["terminal"];
+  /**
+   * Whether the ink is written in the style's ground slot and the ground in
+   * its ink slot. Below truecolor the slot decides what a moved colour can
+   * land on: a slot set to `default` draws the terminal's foreground in one
+   * and its background in the other.
+   */
+  readonly reverse: boolean;
 }
 
 /**
@@ -191,7 +199,7 @@ export class Effected implements Renderable, Measurable {
         } else {
           const anchor = base.anchor && shiftAnchor(base.anchor, into);
           // Back from the screen to the style's slots: the same swap undoes itself.
-          colors = onScreen(this.effect(from, { row, col, seed: this.seed(row, col), terminal, anchor }, this.t, drawn), base);
+          colors = onScreen(this.effect(from, { row, col, seed: this.seed(row, col), terminal, anchor }, this.t, drawn), pair.reverse);
           col += cellLen(glyph);
         }
         into += cellLen(glyph);
@@ -224,26 +232,26 @@ export class Effected implements Renderable, Measurable {
   }
 
   /**
+   * The colours the screen shows for `pair` once it is drawn moved to `to`,
+   * both as the screen shows them, at `depth` on `theme`: what an effect
+   * moving a pair's colours leaves its words reading in.
+   * [LAW:one-source-of-truth] Read through `movedSpecs`, the one writer a
+   * moved slot is written with.
+   */
+  static shows(pair: Pair, to: CellColors, depth: ColorDepth, theme: TerminalTheme): CellColors {
+    const from = onScreen(pair, pair.reverse);
+    const moved = movedSpecs(from, onScreen(to, pair.reverse), depth, theme);
+    return onScreen({ fg: moved.fg?.getTruecolor(theme, true) ?? from.fg, bg: moved.bg?.getTruecolor(theme, false) ?? from.bg }, pair.reverse);
+  }
+
+  /**
    * The specs that draw a cell's slot colours `to` where the segment drew
-   * `from` with `wire`: a slot the effect left alone keeps its written spec,
-   * and a moved one is laid on what is beneath it — the ground on
-   * `SURFACE_BLACK`, the glyph on that ground, as the writer lays any
-   * translucent colour (`Style.drawnColors`) — then drawn in the colour nearest it at `depth`
-   * that the terminal shows (`ColorSpec.matchOn`). A move the depth cannot
-   * show is no move: where the written spec is as near the moved colour as
-   * that match, the slot keeps it, so below truecolor a colour moved a little
-   * off any colour it can write — a theme slot, the default colour, the cube —
-   * is still drawn as that one.
+   * `from` with `wire`: each moved slot in the spec `movedSpecs` writes it
+   * in, the rest as `wire` wrote them.
    */
   private respec(wire: DrawnColors, from: CellColors, to: CellColors, depth: ColorDepth): DrawnColors {
-    // [LAW:one-source-of-truth] The writer's surface, so one translucent colour draws one way in a frame.
-    const ground = to.bg.compositeOver(SURFACE_BLACK);
-    const glyph = to.fg.compositeOver(ground);
-    const drawn = (spec: ColorSpec | undefined, was: ColorRgba, now: ColorRgba, foreground: boolean) => {
-      const match = ColorSpec.matchOn(now, depth, this.theme, foreground);
-      return rgbDistance(was, now) <= rgbDistance(match.getTruecolor(this.theme, foreground), now) ? spec : match;
-    };
-    return { color: drawn(wire.color, from.fg, glyph, true), bgcolor: drawn(wire.bgcolor, from.bg, ground, false) };
+    const moved = movedSpecs(from, to, depth, this.theme);
+    return { color: moved.fg ?? wire.color, bgcolor: moved.bg ?? wire.bgcolor };
   }
 
   /** A cell's seed: FNV-1a of the key and the position, scaled into [0, 1). */
@@ -279,15 +287,16 @@ function looks(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalTh
     const style = segment.style ?? Style.null();
     const wire = style.drawnColors(depth);
     const slots = { fg: (wire.color ?? DEFAULT).getTruecolor(theme, true), bg: (wire.bgcolor ?? DEFAULT).getTruecolor(theme, false) };
-    const terminal = onScreen({ fg: wire.color?.isDefault ?? true, bg: wire.bgcolor?.isDefault ?? true }, style);
-    return { segment, look: { style, wire, slots, pair: { ...onScreen(slots, style), terminal } } };
+    const reverse = style.reverse === true;
+    const terminal = onScreen({ fg: wire.color?.isDefault ?? true, bg: wire.bgcolor?.isDefault ?? true }, reverse);
+    return { segment, look: { style, wire, slots, pair: { ...onScreen(slots, reverse), terminal, reverse } } };
   });
 }
 
 /** What `looked` draws its words in: `Drawn`'s measure, taken once per frame. */
 function measured(looked: readonly { segment: Segment; look: Look | undefined }[], depth: ColorDepth, theme: TerminalTheme): Drawn {
   const words = looked.flatMap(({ segment, look }) => (look !== undefined && segment.text.trim() !== "" && !drawnBy(look.style.anchor, JOIN) ? [look.pair] : []));
-  const pairs = [...new Map(words.map((pair): [string, Pair] => [`${pair.fg.hex}/${pair.bg.hex}/${pair.terminal.fg}/${pair.terminal.bg}`, pair])).values()];
+  const pairs = [...new Map(words.map((pair): [string, Pair] => [`${pair.fg.hex}/${pair.bg.hex}/${pair.terminal.fg}/${pair.terminal.bg}/${pair.reverse}`, pair])).values()];
   // [LAW:one-source-of-truth] A slot the terminal fills is no colour of the element's, whatever its hex.
   const own = (slot: "fg" | "bg"): string[] => pairs.flatMap((pair) => (pair.terminal[slot] ? [] : [pair[slot].hex]));
   return { pairs, colors: new Set([...own("fg"), ...own("bg")]), fills: new Set(own("bg")), depth, theme };
@@ -322,8 +331,23 @@ export function drawnOf(segments: Iterable<Segment>, depth: ColorDepth, theme: T
  * A style's colour slots as the screen shows them, or the reverse: `reverse`
  * swaps glyph and ground, and swapping twice is where you started.
  */
-function onScreen<T>(slots: { readonly fg: T; readonly bg: T }, style: Style): { readonly fg: T; readonly bg: T } {
-  return style.reverse === true ? { fg: slots.bg, bg: slots.fg } : slots;
+function onScreen<T>(slots: { readonly fg: T; readonly bg: T }, reverse: boolean): { readonly fg: T; readonly bg: T } {
+  return reverse ? { fg: slots.bg, bg: slots.fg } : slots;
+}
+
+/**
+ * The specs a cell's slots are written in once their colours move from
+ * `from`, what the written specs draw, to `to`: each laid on what is beneath
+ * it — the ground on `SURFACE_BLACK`, the glyph on that ground, as the writer
+ * lays any translucent colour (`Style.drawnColors`) — then matched at `depth`
+ * (`ColorSpec.matchMove`). A slot the depth shows no move in has none, and
+ * keeps the spec it was written in.
+ */
+function movedSpecs(from: CellColors, to: CellColors, depth: ColorDepth, theme: TerminalTheme): { readonly fg?: ColorSpec; readonly bg?: ColorSpec } {
+  // [LAW:one-source-of-truth] The writer's surface, so one translucent colour draws one way in a frame.
+  const ground = to.bg.compositeOver(SURFACE_BLACK);
+  const glyph = to.fg.compositeOver(ground);
+  return { fg: ColorSpec.matchMove(from.fg, glyph, depth, theme, true), bg: ColorSpec.matchMove(from.bg, ground, depth, theme, false) };
 }
 
 /**
