@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "6c940178ea21c7cdc2f4a40f39dbb318709e49f1",
-      "timestamp": "2026-10-15T05:18:21.506Z",
+      "sha": "e8a8eb094be6a4f8c5924e6898097e098b287893",
+      "timestamp": "2026-10-15T06:20:31.785Z",
       "commits": [
         {
-          "sha": "6c940178ea21c7cdc2f4a40f39dbb318709e49f1",
+          "sha": "e8a8eb094be6a4f8c5924e6898097e098b287893",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T23:16:48-06:00",
-          "message": "feat(host): a wheel no app moves anything with scrolls the page (rich-demos-k78j.d24) (#380)\n\n* feat(host): a wheel no app moves anything with scrolls the page (rich-demos-k78j.d24)\n\nApp offers every wheel notch to onWheel consumers and passes one none moved\nanything with to the new required TerminalHost.passWheel. WidgetApp's one\nconsumer is its router's viewport scroll. NodeTerminalHost hands it to a stdout\nthat carries passWheel (the card's stand-in) and otherwise does nothing; the\ncard's worker posts it and the page scrolls by that many terminal rows.\n\nDeviation from the ticket's design: the card's programs run on\nNodeTerminalHost in the worker, so the way out is an optional passWheel on the\nstdout stream rather than BrowserTerminalHost alone.\n\n* fix(host): the vertical wheel is onWheel's alone; cards scroll the page a whole notch (rich-demos-k78j.d24)\n\nReview (high): onMouse no longer hears scroll_up/down (AppMouseEvent), so an\napp cannot move something with a turn and still pass it outward; WidgetApp\ngains onWheel; only a running app is offered or passes a turn. The card\nscrolls the page by the reporting event's own distance, and a terminal with\nno pointer reporting leaves the wheel to the page instead of turning it into\narrow keys. e2e pointer columns come from card.json.\n\n* fix(widgets): a wheel turn says where the pointer is; a card with no live program leaves the wheel to the page (rich-demos-k78j.d24)\n\nReview (medium): EventRouter.wheel records the pointer and re-reads hover,\nas every other pointer report does; the card's wheel handler also asks\nwhether a program is still running to hear the report."
+          "timestamp": "2026-10-15T00:19:00-06:00",
+          "message": "Data-backed demos open on real staged data (rich-demos-k78j.3ok) (#381)\n\n* feat(demos): data-backed demos open on real staged data (rich-demos-k78j.3ok)\n\nclaude-sessions: the owner's 21 real sessions from five projects, trimmed\nand scrubbed by scripts/stage-claude-sessions.ts. rich-explore: 54 files of\nthis repository. rich-dash: a runner whose vitals never visibly repeat, this\nrepo's real pipeline steps, and its README. Each under examples/<demo>/staging/.\n\nAlso: parser joins an assistant message written one block per record (it\nkept only the last, dropping text before a tool call); demo pages take their\ncard as escaped JSON, since VitePress writes params into a <script> and a\n</script> in content broke the build; MAX_PROGRAM_BYTES 1 → 4 MiB so the\nclaude-sessions link fits.\n\n* fix(demos): address high review findings (rich-demos-k78j.3ok)\n\n* fix(demos): address medium review findings (rich-demos-k78j.3ok)\n\n* fix(demos): address escalation review findings (rich-demos-k78j.3ok)"
         }
       ]
     }
