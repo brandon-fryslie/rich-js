@@ -28,8 +28,8 @@ const output = (page: Page) => page.locator(".rich-playground .rich-example-outp
 const drawn = async (page: Page) => (await page.locator(".rich-playground .rich-example-output").innerText()).replaceAll("\u00a0", " ");
 // xterm's DOM renderer draws some of a row's spaces as no-break spaces.
 const rows = async (page: Page) => (await page.locator(".rich-playground .xterm-rows").innerText()).replaceAll("\u00a0", " ");
-/** The playground's own failure, its address bar and card disagreeing; never the card's, which a typed program may raise by running. */
-const failure = (page: Page) => page.locator(".rich-playground-failure");
+/** The playground's own failure, announced: a link it could not read or write, or a start that failed; never the card's, which a typed program may raise by running. */
+const failure = (page: Page) => page.locator(".rich-playground-failure[role=alert]");
 const hashProgram = async (page: Page) => decodeProgram(new URL(page.url()).hash.slice(1));
 
 /** Replace the editor's code with `source`, as a reader selecting all and typing would. */
