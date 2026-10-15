@@ -4,15 +4,22 @@
     {
       "version": "pr-394",
       "ref": "refs/pull/394/merge",
-      "sha": "e3ee92328608b287d6e0ac0e59e6e52128b409ed",
-      "timestamp": "2026-10-15T08:56:22.045Z",
+      "sha": "2add40966946038753f15f55c7cab1e6dd864d8f",
+      "timestamp": "2026-10-15T09:01:28.251Z",
       "commits": [
         {
-          "sha": "e3ee92328608b287d6e0ac0e59e6e52128b409ed",
+          "sha": "2add40966946038753f15f55c7cab1e6dd864d8f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T08:55:07Z",
-          "message": "Merge 26fa8933f15c421678342fa45eaece5d048557ef into 7dbb3e3861046fdadf79c218572a95086864f0a3\n"
+          "timestamp": "2026-10-15T08:59:55Z",
+          "message": "Merge a77b47a53c6f755a4d58bae9791957b833220a43 into 7dbb3e3861046fdadf79c218572a95086864f0a3\n"
+        },
+        {
+          "sha": "a77b47a53c6f755a4d58bae9791957b833220a43",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T02:59:50-06:00",
+          "message": "Say which owners confined can reach; pulsedOn names both arrows (rich-effects-cbgp.4y4)\n"
         },
         {
           "sha": "26fa8933f15c421678342fa45eaece5d048557ef",
