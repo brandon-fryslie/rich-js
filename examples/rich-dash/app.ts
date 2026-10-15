@@ -2,9 +2,9 @@
  * rich-dash demo body — a dashboard of ticking widgets, in an `App` on the
  * alternate screen.
  *
- * Each frame period advances every widget's state; each frame draws every
- * widget's state, in a Panel, into the Layout cell named for it. The app owns
- * the terminal and the frame clock.
+ * Each frame advances every widget's state, then draws every widget's state,
+ * in a Panel, into the Layout cell named for it. The app owns the terminal and
+ * the frame timer.
  *
  * [LAW:effects-at-boundaries] `run` takes a `TerminalHost` and a
  * `DashboardCapabilities` bag — Clock, FileSystem, SystemInfo, and the README
@@ -14,6 +14,7 @@
 
 import { Layout, Panel, RichText, Style, frameRate, type Renderable } from "@promptctl/rich-js";
 import { App, keyName, type TerminalHost } from "@promptctl/rich-js/host";
+import { frameClock } from "../_capabilities/frame-clock.js";
 import { buildWidgets, LAYOUT, type DashboardCapabilities } from "./config.js";
 import { buildLayout } from "./layout.js";
 import type { Widget } from "./widget.js";
@@ -80,18 +81,17 @@ export function run(host: TerminalHost, caps: DashboardCapabilities): Running {
   const layout = buildLayout(LAYOUT);
   const panes = bindPanes(layout, buildWidgets(caps));
   // [LAW:no-ambient-temporal-coupling] The app owns the one frame timer and
-  // reads the clock; the widgets advance on the frame time it hands the view.
-  // A frame repainted inside the period it already drew — a resize, say —
-  // shows the same state, and a suspended app paints nothing, so nothing
-  // advances until it resumes.
-  let period = Math.floor(caps.clock.now() * FPS);
-  const view = (t: number): Layout => {
-    const now = Math.floor(t * FPS);
-    if (now !== period) for (const pane of panes) pane.state = pane.widget.tick(pane.state);
-    period = now;
+  // hands the view the frame number; the view shows each widget as it stands
+  // after that many ticks. A repaint between frames — a resize, a resume — is
+  // handed the same number and shows the same state, and a suspended app's
+  // timer is stopped, so its frames stop with it.
+  const clock = frameClock(caps.clock);
+  let ticked = 0;
+  const view = (frame: number): Layout => {
+    for (; ticked < frame; ticked++) for (const pane of panes) pane.state = pane.widget.tick(pane.state);
     return draw(layout, panes);
   };
-  const app = new App({ host, surface: "alternate", view, clock: caps.clock, rate: frameRate(FPS) });
+  const app = new App({ host, surface: "alternate", view, clock, rate: frameRate(FPS) });
 
   app.onKey((press) => {
     switch (KEYS[keyName(press)]) {

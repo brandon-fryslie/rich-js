@@ -2,7 +2,7 @@
  * Widget protocol — the only contract the dashboard knows about.
  *
  * The dashboard treats every widget identically: call `init` once, call `tick`
- * once a frame period to advance state, call `render` to project state into a
+ * once a frame to advance state, call `render` to project state into a
  * `Renderable`. There are no widget-identity branches anywhere — variability
  * lives in the state values returned by `tick`, not in control flow.
  *
@@ -21,7 +21,7 @@ export interface WidgetSpec<S> {
   readonly borderStyle?: string;
   /** Build the widget's initial state. Called once at startup. */
   init(): S;
-  /** Advance widget state by one frame period. Returning the same reference is fine. */
+  /** Advance widget state by one frame. Returning the same reference is fine. */
   tick(state: S): S;
   /** Project state to a Renderable for this frame. Do not perform screen I/O here. */
   render(state: S): Renderable;

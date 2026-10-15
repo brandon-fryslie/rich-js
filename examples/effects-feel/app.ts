@@ -69,6 +69,7 @@ import {
   type Transition,
 } from "../../src/index.js";
 import { App, hostEnvironment, keyName, type TerminalHost } from "../../src/host/index.js";
+import { frameClock } from "../_capabilities/frame-clock.js";
 import { STEP, depthDrawn, type EffectName } from "./vocabulary.js";
 import type { NamedCurve, Settings } from "./settings.js";
 import { cellsOf, drawnSubject, fills, paletteRgba, pulsedOn, shown, stripSubject, subjectUnder, textSubject, type DrawnSubject, type Subject } from "./subjects.js";
@@ -228,23 +229,6 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
     }
   }
   return { theme, ink, paper, quiet, heading, subjects, loops, contrast, measure, curves };
-}
-
-/**
- * A clock that counts frames: `now()` is how many ticks have fired, so a
- * view handed it is handed its frame number, and a repaint between ticks —
- * a key's — is handed the same one again. The ticks come from `clock`.
- */
-function frameClock(clock: Clock): Clock {
-  let frames = 0;
-  return {
-    now: () => frames,
-    every: (rate, tick) =>
-      clock.every(rate, () => {
-        frames += 1;
-        tick();
-      }),
-  };
 }
 
 /**
