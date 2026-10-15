@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "16632107cb4692eebc3b7d482166a9fb7b3b32f9",
-      "timestamp": "2026-10-15T07:49:35.568Z",
+      "sha": "2b6b3f631dc859632eb6336d8d91e928868bffe1",
+      "timestamp": "2026-10-15T07:56:00.762Z",
       "commits": [
         {
-          "sha": "16632107cb4692eebc3b7d482166a9fb7b3b32f9",
+          "sha": "2b6b3f631dc859632eb6336d8d91e928868bffe1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:47:55-06:00",
-          "message": "Playground e2e reads the playground's failure, not the card's run error (rich-playground-3cyp) (#389)\n\n* Playground e2e reads the playground's failure, not the card's run error (rich-playground-3cyp)\n\nThe fast-typing test types 250 x's, a program that throws a ReferenceError\nonce its debounced run finishes. The alert locator matched any [role=alert]\nin the playground, the card's run failure included, so toHaveCount(0) passed\nonly when it checked before the run. It now names .rich-playground-failure,\nthe one element every use of it meant.\n\n* Playground failure locator keeps the alert role; comment names every failure it shows (rich-playground-3cyp)"
+          "timestamp": "2026-10-15T01:54:25-06:00",
+          "message": "rich-explore e2e: probe liveness with an idempotent key after Escape (rich-e2e-flake-q35x) (#390)\n\n* rich-explore e2e: probe liveness with an idempotent key after Escape (rich-e2e-flake-q35x)\n\nThe parser holds a lone ESC for one setTimeout(0); under load the test's\nArrowDown landed inside it and decoded as Alt+Down, which moves nothing.\nThe test now asserts focus left the card and retries G (move-last).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* rich-explore e2e: liveness asserts G reached tsconfig.json; Escape race filed as rich-host-input-0c4f (rich-e2e-flake-q35x)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
