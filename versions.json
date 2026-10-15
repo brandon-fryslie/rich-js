@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-388",
+      "ref": "refs/pull/388/merge",
+      "sha": "00389cf7ed917ae20cf45aacb05f65135f296d4a",
+      "timestamp": "2026-10-15T07:38:30.547Z",
+      "commits": [
+        {
+          "sha": "00389cf7ed917ae20cf45aacb05f65135f296d4a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T07:36:52Z",
+          "message": "Merge 13c6fc89012587eb7d2cdebfd2012dfbe8b33a61 into da6f038edeb4406b5cfe532ce4a669664f43da84\n"
+        },
+        {
+          "sha": "13c6fc89012587eb7d2cdebfd2012dfbe8b33a61",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:36:47-06:00",
+          "message": "Review (high): divider measured per seam cell; joinerNamed; torn divider; a real variant example (rich-joiners-9ntp.6pd)\n"
+        },
+        {
+          "sha": "3eab0025835eac69eaaed919af89d4ff1aa66c28",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:28:09-06:00",
+          "message": "JOINERS: the bundled joiner definitions by name (rich-joiners-9ntp.6pd)\n\nOne frozen table replaces POWERLINE_JOINER, CAPSULE_JOINER and PLAIN_JOINER:\npowerline, prism, slant, backslant, flame, pixel, ice, bubble, capsule,\nwrapper, metro, stitch, torn, plain — each a CellJoiner with its ASCII form.\nmetro's rail is the new strip.rail theme role. The rich-strip demo prints\nthe whole table, one joiner a row; its card grows to 30 rows.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-389",
       "ref": "refs/pull/389/merge",
       "sha": "cf35b500869cbf16709fe7e073854d0ef29fb333",
@@ -35,28 +64,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-15T01:28:21-06:00",
           "message": "rich-dash drives frames from App's clock, not its own setInterval (rich-rich-dash-ds50) (#387)\n\n* rich-dash drives frames from App's clock, not its own setInterval (rich-rich-dash-ds50)\n\nThe dashboard's widgets advance in the view, once per frame period of the\ntime App hands it, on a Clock that arrives in DashboardCapabilities. The\nsecond timer, its Date.now reads and the try/catch that routed its errors\ninto app.fail are gone: a widget that throws now throws inside the frame,\nwhich App already fails on. A suspended dashboard paints nothing and so\nstands still, and a fake clock drives it (test/examples/rich-dash/app.test.ts).\n\nTickContext had no reader in any widget and is deleted rather than\nre-sourced.\n\n* rich-dash counts frames with effects-feel's frameClock, now shared (rich-rich-dash-ds50)\n\nFlooring absolute clock time into periods dropped a tick whenever a timer\nframe landed a rounding error short of a period edge. A frame counter has\nno edges to miss, and a repaint between frames is handed the same number."
-        }
-      ]
-    },
-    {
-      "version": "pr-388",
-      "ref": "refs/pull/388/merge",
-      "sha": "2f39a67933ec01029a2410bb969f3e10ad300a10",
-      "timestamp": "2026-10-15T07:29:25.420Z",
-      "commits": [
-        {
-          "sha": "2f39a67933ec01029a2410bb969f3e10ad300a10",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:28:14-06:00",
-          "message": "Merge 3eab0025835eac69eaaed919af89d4ff1aa66c28 into f93e21ac25bc2fb2fa97bb93e94d1fffd870816e\n"
-        },
-        {
-          "sha": "3eab0025835eac69eaaed919af89d4ff1aa66c28",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:28:09-06:00",
-          "message": "JOINERS: the bundled joiner definitions by name (rich-joiners-9ntp.6pd)\n\nOne frozen table replaces POWERLINE_JOINER, CAPSULE_JOINER and PLAIN_JOINER:\npowerline, prism, slant, backslant, flame, pixel, ice, bubble, capsule,\nwrapper, metro, stitch, torn, plain — each a CellJoiner with its ASCII form.\nmetro's rail is the new strip.rail theme role. The rich-strip demo prints\nthe whole table, one joiner a row; its card grows to 30 rows.\n"
         }
       ]
     }
