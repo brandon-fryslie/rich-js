@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-382",
-      "ref": "refs/pull/382/merge",
-      "sha": "1ad1f5f3d53285e1c647e7d9b1a93a53f204047b",
-      "timestamp": "2026-10-15T06:32:34.582Z",
-      "commits": [
-        {
-          "sha": "1ad1f5f3d53285e1c647e7d9b1a93a53f204047b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T06:31:03Z",
-          "message": "Merge cd6bb0b572a2444cc8752c589f94fb0387481241 into e8a8eb094be6a4f8c5924e6898097e098b287893\n"
-        },
-        {
-          "sha": "cd6bb0b572a2444cc8752c589f94fb0387481241",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T00:30:57-06:00",
-          "message": "fix(demos): prose keep by position — human prompts in, tool calls and meta records out (rich-demos-k78j.3ok)\n"
-        },
-        {
-          "sha": "729f2e33dc221267d4d70b0ac827d1ef53a0f1d4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T00:28:23-06:00",
-          "message": "fix(demos): scrub before trim; prose keeps more than tool output (rich-demos-k78j.3ok)\n\nTrimming first could cut a home path or email below its scrub pattern\n(/Users/b leaked). Cuts are by code point, the marker names both lines and\ncharacters lost, and only the newest title record of each kind is staged.\n"
-        },
-        {
-          "sha": "ab0a1d4939bc042a3009a32562bab7bb34be2bd8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T00:22:33-06:00",
-          "message": "fix(demos): stage at least three sessions per project (rich-demos-k78j.3ok)\n\nThe owner's rule is 3-5 sessions from each of five projects; fitting the\n512 KiB playground link had left links-issue-tracker and low-talker at two.\nAdds 9cb4bcc8 and eb64e0f3 from the owner's list and trims every string to\n5 lines / 320 chars (from 8 / 600) so the link stays under MAX_LINK_CHARS.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "e8a8eb094be6a4f8c5924e6898097e098b287893",
-      "timestamp": "2026-10-15T06:20:31.785Z",
+      "sha": "3a6a8cbd5d97aae9380e6641acf02dd56664b2e8",
+      "timestamp": "2026-10-15T06:37:51.939Z",
       "commits": [
         {
-          "sha": "e8a8eb094be6a4f8c5924e6898097e098b287893",
+          "sha": "3a6a8cbd5d97aae9380e6641acf02dd56664b2e8",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T00:19:00-06:00",
-          "message": "Data-backed demos open on real staged data (rich-demos-k78j.3ok) (#381)\n\n* feat(demos): data-backed demos open on real staged data (rich-demos-k78j.3ok)\n\nclaude-sessions: the owner's 21 real sessions from five projects, trimmed\nand scrubbed by scripts/stage-claude-sessions.ts. rich-explore: 54 files of\nthis repository. rich-dash: a runner whose vitals never visibly repeat, this\nrepo's real pipeline steps, and its README. Each under examples/<demo>/staging/.\n\nAlso: parser joins an assistant message written one block per record (it\nkept only the last, dropping text before a tool call); demo pages take their\ncard as escaped JSON, since VitePress writes params into a <script> and a\n</script> in content broke the build; MAX_PROGRAM_BYTES 1 → 4 MiB so the\nclaude-sessions link fits.\n\n* fix(demos): address high review findings (rich-demos-k78j.3ok)\n\n* fix(demos): address medium review findings (rich-demos-k78j.3ok)\n\n* fix(demos): address escalation review findings (rich-demos-k78j.3ok)"
+          "timestamp": "2026-10-15T00:36:43-06:00",
+          "message": "Stage at least three sessions per project (rich-demos-k78j.3ok) (#382)\n\n* fix(demos): stage at least three sessions per project (rich-demos-k78j.3ok)\n\nThe owner's rule is 3-5 sessions from each of five projects; fitting the\n512 KiB playground link had left links-issue-tracker and low-talker at two.\nAdds 9cb4bcc8 and eb64e0f3 from the owner's list and trims every string to\n5 lines / 320 chars (from 8 / 600) so the link stays under MAX_LINK_CHARS.\n\n* fix(demos): scrub before trim; prose keeps more than tool output (rich-demos-k78j.3ok)\n\nTrimming first could cut a home path or email below its scrub pattern\n(/Users/b leaked). Cuts are by code point, the marker names both lines and\ncharacters lost, and only the newest title record of each kind is staged.\n\n* fix(demos): prose keep by position — human prompts in, tool calls and meta records out (rich-demos-k78j.3ok)\n\n* fix(demos): one budget rule, grapheme cuts, link size checked by its encoder (rich-demos-k78j.3ok)\n\nkeepOf owns which strings are output (tool calls/results, system and meta\nrecords, tag-wrapped harness turns). The script's deflate estimate ran 58 KiB\nunder the real link; it is gone, and demo-card.test.ts encodes the card."
         }
       ]
     }
