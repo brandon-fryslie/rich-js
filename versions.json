@@ -4,15 +4,22 @@
     {
       "version": "pr-380",
       "ref": "refs/pull/380/merge",
-      "sha": "486123d0f6ce37271062bc1ffd3f98e57fcb1571",
-      "timestamp": "2026-10-15T04:57:35.769Z",
+      "sha": "82ca1084c078ff9d66e99fe5e7c9acf87312f79a",
+      "timestamp": "2026-10-15T05:13:30.090Z",
       "commits": [
         {
-          "sha": "486123d0f6ce37271062bc1ffd3f98e57fcb1571",
+          "sha": "82ca1084c078ff9d66e99fe5e7c9acf87312f79a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T22:56:04-06:00",
-          "message": "Merge a6c8a633b40d82029fe28ef4f36b247404561b75 into 7ec40ddf41d47b2dce9e14ad323d9130a748c68b\n"
+          "timestamp": "2026-10-15T05:11:52Z",
+          "message": "Merge 7ba5f7c817e0df983f8681660ca32d90b94b59c9 into 7ec40ddf41d47b2dce9e14ad323d9130a748c68b\n"
+        },
+        {
+          "sha": "7ba5f7c817e0df983f8681660ca32d90b94b59c9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-14T23:11:47-06:00",
+          "message": "fix(host): the vertical wheel is onWheel's alone; cards scroll the page a whole notch (rich-demos-k78j.d24)\n\nReview (high): onMouse no longer hears scroll_up/down (AppMouseEvent), so an\napp cannot move something with a turn and still pass it outward; WidgetApp\ngains onWheel; only a running app is offered or passes a turn. The card\nscrolls the page by the reporting event's own distance, and a terminal with\nno pointer reporting leaves the wheel to the page instead of turning it into\narrow keys. e2e pointer columns come from card.json.\n"
         },
         {
           "sha": "a6c8a633b40d82029fe28ef4f36b247404561b75",

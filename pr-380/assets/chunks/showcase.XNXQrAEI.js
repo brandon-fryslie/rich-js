@@ -1,4 +1,4 @@
-import t from"./library.Csr_jU9V.js";const e=t+`
+import t from"./library.B2-IE-ML.js";const e=t+`
 const { BarColumn, ColorSpec, Layout, Live, Panel, Progress, RichText, Segment, SpinnerColumn, Style, Table, TaskProgressColumn, TextColumn, Tree, regionRows, withCellWidth } = __richLibrary["@promptctl/rich-js"];
 //#region examples/showcase/showcase.ts
 /**
