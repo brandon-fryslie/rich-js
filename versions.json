@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-398",
-      "ref": "refs/pull/398/merge",
-      "sha": "21c5502bcd4835683bf339ddc9c9f12663651d46",
-      "timestamp": "2026-10-15T10:35:50.476Z",
-      "commits": [
-        {
-          "sha": "21c5502bcd4835683bf339ddc9c9f12663651d46",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T10:34:11Z",
-          "message": "Merge 6d4151c8f60f36df17933deab1b257969a63d353 into 5bb98818867463579bf3ea4e62c1043c2c32c30d\n"
-        },
-        {
-          "sha": "6d4151c8f60f36df17933deab1b257969a63d353",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T04:34:06-06:00",
-          "message": "effects tests drive an effect a frame at a time, as Effected does (rich-effects-caii)\n"
-        },
-        {
-          "sha": "127f32782e43e0d891ef3feada888f55b52d91b8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T04:27:09-06:00",
-          "message": "An Effect does its per-frame work once a frame, by its shape (rich-effects-caii)\n\nEffect is (t, drawn) => (colors, cell) => colors, and Field and Visibility\nare staged the same way. Effected calls the frame stage once per render, so\nthe three closure caches that asked \"same frame as last call?\" (atShares,\nshimmer, sparkle) are gone, and veiled converts the theme's ground to OKLCH\nonce a frame instead of once a cell.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "5bb98818867463579bf3ea4e62c1043c2c32c30d",
-      "timestamp": "2026-10-15T10:20:20.316Z",
+      "sha": "ca7d64f278e59f854beff3d3fbb43efc29b466e1",
+      "timestamp": "2026-10-15T10:46:53.650Z",
       "commits": [
         {
-          "sha": "5bb98818867463579bf3ea4e62c1043c2c32c30d",
+          "sha": "ca7d64f278e59f854beff3d3fbb43efc29b466e1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T04:18:47-06:00",
-          "message": "onColors settles shares on the colour Effected writes below truecolor (rich-effects-x7y0) (#397)\n\n* onColors settles shares on the colour Effected writes below truecolor (rich-effects-x7y0)\n\nBelow truecolor, `shares` checked contrast against `fromRgba(...).downgrade(depth)`\nwhile `Effected` wrote `ColorSpec.matchOn` for the cell's slot, keeping the\nwritten spec when the depth could not show the move. The two disagreed at 256\nand 16 colours, so a word could fall below its resting contrast or AA.\n\nThe rule now lives once, as `ColorSpec.matchMove`, and both sides call it.\n`Pair` gains `reverse`, so each side is matched in the slot it is written in.\n\n* shares reads a pair through the one writer Effected moves a slot with (rich-effects-x7y0)\n\nEffected.shows composites and matches through movedSpecs, the function\nrespec writes with, so a translucent touch no longer throws in matchOn\nand the share check sees the glyph laid on its moved ground. Below\ntruecolor every written colour is exact, so the 8-bit slack applies only\nat truecolor."
+          "timestamp": "2026-10-15T04:45:17-06:00",
+          "message": "An Effect does its per-frame work once a frame, by its shape (rich-effects-caii) (#398)\n\n* An Effect does its per-frame work once a frame, by its shape (rich-effects-caii)\n\nEffect is (t, drawn) => (colors, cell) => colors, and Field and Visibility\nare staged the same way. Effected calls the frame stage once per render, so\nthe three closure caches that asked \"same frame as last call?\" (atShares,\nshimmer, sparkle) are gone, and veiled converts the theme's ground to OKLCH\nonce a frame instead of once a cell.\n\n* effects tests drive an effect a frame at a time, as Effected does (rich-effects-caii)"
         }
       ]
     },
