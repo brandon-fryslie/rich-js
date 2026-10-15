@@ -4,15 +4,22 @@
     {
       "version": "pr-393",
       "ref": "refs/pull/393/merge",
-      "sha": "02e60ad1475b53afd3aa39ae839f12cf0506074c",
-      "timestamp": "2026-10-15T08:24:14.399Z",
+      "sha": "0b7faefd2eaaeb6d404ba7e6058a759ce38ae164",
+      "timestamp": "2026-10-15T08:26:37.201Z",
       "commits": [
         {
-          "sha": "02e60ad1475b53afd3aa39ae839f12cf0506074c",
+          "sha": "0b7faefd2eaaeb6d404ba7e6058a759ce38ae164",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T08:22:42Z",
-          "message": "Merge 46e4bf24d4eff57d89067d2949110bf951cc9e46 into 660172b653724983f44d1b5c952e3cb2f9a16504\n"
+          "timestamp": "2026-10-15T08:25:02Z",
+          "message": "Merge 830bbb8ed392a1fbc155e92deabcc08b97335689 into 660172b653724983f44d1b5c952e3cb2f9a16504\n"
+        },
+        {
+          "sha": "830bbb8ed392a1fbc155e92deabcc08b97335689",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T02:24:57-06:00",
+          "message": "Whole-keys settle reads a chunk's rest in full when a sink throws mid-drain (rich-host-input-ab9n)\n"
         },
         {
           "sha": "46e4bf24d4eff57d89067d2949110bf951cc9e46",
