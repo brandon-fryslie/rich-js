@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-389",
-      "ref": "refs/pull/389/merge",
-      "sha": "ab7b24320eb6e5db79fc84d68ecaa66dc7337995",
-      "timestamp": "2026-10-15T07:38:44.755Z",
-      "commits": [
-        {
-          "sha": "ab7b24320eb6e5db79fc84d68ecaa66dc7337995",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T07:36:59Z",
-          "message": "Merge 635e59519f6b6f362bebff1674cf07a0c1db1406 into da6f038edeb4406b5cfe532ce4a669664f43da84\n"
-        },
-        {
-          "sha": "635e59519f6b6f362bebff1674cf07a0c1db1406",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:36:53-06:00",
-          "message": "Playground failure locator keeps the alert role; comment names every failure it shows (rich-playground-3cyp)\n"
-        },
-        {
-          "sha": "4297978bf537f63890c90ae7ef607db29838adcf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:32:33-06:00",
-          "message": "Playground e2e reads the playground's failure, not the card's run error (rich-playground-3cyp)\n\nThe fast-typing test types 250 x's, a program that throws a ReferenceError\nonce its debounced run finishes. The alert locator matched any [role=alert]\nin the playground, the card's run failure included, so toHaveCount(0) passed\nonly when it checked before the run. It now names .rich-playground-failure,\nthe one element every use of it meant.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "da6f038edeb4406b5cfe532ce4a669664f43da84",
-      "timestamp": "2026-10-15T07:29:58.832Z",
+      "sha": "7e2ca6beee1ca3f5a134735a7bc68c07aa740798",
+      "timestamp": "2026-10-15T07:48:03.104Z",
       "commits": [
         {
-          "sha": "da6f038edeb4406b5cfe532ce4a669664f43da84",
+          "sha": "7e2ca6beee1ca3f5a134735a7bc68c07aa740798",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:28:21-06:00",
-          "message": "rich-dash drives frames from App's clock, not its own setInterval (rich-rich-dash-ds50) (#387)\n\n* rich-dash drives frames from App's clock, not its own setInterval (rich-rich-dash-ds50)\n\nThe dashboard's widgets advance in the view, once per frame period of the\ntime App hands it, on a Clock that arrives in DashboardCapabilities. The\nsecond timer, its Date.now reads and the try/catch that routed its errors\ninto app.fail are gone: a widget that throws now throws inside the frame,\nwhich App already fails on. A suspended dashboard paints nothing and so\nstands still, and a fake clock drives it (test/examples/rich-dash/app.test.ts).\n\nTickContext had no reader in any widget and is deleted rather than\nre-sourced.\n\n* rich-dash counts frames with effects-feel's frameClock, now shared (rich-rich-dash-ds50)\n\nFlooring absolute clock time into periods dropped a tick whenever a timer\nframe landed a rounding error short of a period edge. A frame counter has\nno edges to miss, and a repaint between frames is handed the same number."
+          "timestamp": "2026-10-15T01:46:30-06:00",
+          "message": "JOINERS: the bundled joiner definitions by name (rich-joiners-9ntp.6pd) (#388)\n\n* JOINERS: the bundled joiner definitions by name (rich-joiners-9ntp.6pd)\n\nOne frozen table replaces POWERLINE_JOINER, CAPSULE_JOINER and PLAIN_JOINER:\npowerline, prism, slant, backslant, flame, pixel, ice, bubble, capsule,\nwrapper, metro, stitch, torn, plain — each a CellJoiner with its ASCII form.\nmetro's rail is the new strip.rail theme role. The rich-strip demo prints\nthe whole table, one joiner a row; its card grows to 30 rows.\n\n* Review (high): divider measured per seam cell; joinerNamed; torn divider; a real variant example (rich-joiners-9ntp.6pd)\n\n* Review (medium): a slot blended with itself is the slot, so prism/torn divide on named grounds; comments follow the per-cell rule (rich-joiners-9ntp.6pd)\n\n* Review (high, escalation): a seam is lost only when every cell is; ink measured on its own ground; blend at its ends is the end (rich-joiners-9ntp.6pd)"
         }
       ]
     }
