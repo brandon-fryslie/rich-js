@@ -1,5 +1,5 @@
 /** The look every section shares: how a swatch is painted, and the text around it. */
-import { ColorRgba, ensureContrast, RichText, Style } from "@promptctl/rich-js";
+import { ColorRgba, ensureContrast, graphemes, RichText, Style } from "@promptctl/rich-js";
 
 /**
  * Build a `Style` that paints `fg` text on `bg`, flattening alpha against
@@ -44,8 +44,11 @@ export function dim(text: string): RichText {
 // Error messages carry a near-miss suggestion list and can run long. Cap
 // them so one diagnostic can't take over the section, while leaving room
 // for the suggestions themselves — those are the useful half of the message.
+// Counted in grapheme clusters, so the cut never splits an emoji or an
+// accented letter in two.
 export function truncate(text: string, max: number): string {
-  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
+  const clusters = graphemes(text);
+  return clusters.length <= max ? text : `${clusters.slice(0, max - 1).join("")}…`;
 }
 
 // The semantic vars we sample across the demo. Ordered roughly by role:

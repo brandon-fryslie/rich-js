@@ -1,11 +1,11 @@
 # Effects
 
-An effect changes the colours of a renderable's cells over time: a highlight sweeping through text, a pulse that brightens and dims, a fade. It is one pure function, given a cell's colours, where the cell is, and a time `t` in seconds, and returning the cell's new colours:
+An effect changes the colours of a renderable's cells over time: a highlight sweeping through text, a pulse that brightens and dims, a fade. It is one pure function, given a cell's colours, where the cell is, a time `t` in seconds, and what the whole element draws in that frame, and returning the cell's new colours:
 
 ```typescript shape
-import type { CellColors, EffectCell } from "@promptctl/rich-js";
+import type { CellColors, Drawn, EffectCell } from "@promptctl/rich-js";
 
-type Effect = (colors: CellColors, cell: EffectCell, t: number) => CellColors;
+type Effect = (colors: CellColors, cell: EffectCell, t: number, drawn: Drawn) => CellColors;
 ```
 
 ## Ready-made effects
@@ -36,7 +36,6 @@ import {
   SHIMMER_WIDTH,
   Style,
   onColors,
-  shares,
   shimmer,
 } from "@promptctl/rich-js";
 
@@ -45,9 +44,7 @@ const ink = theme.foregroundColor;
 const words = "Thinking about how light should cross these words";
 const line = new RichText(words, { style: Style.fromColor(ColorSpec.fromRgba(ink), ColorSpec.fromRgba(theme.backgroundColor)) });
 
-const glint = shimmer(EFFECT_CURVES.shimmer, words.length, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, 0);
-const pair = { fg: ink, bg: theme.backgroundColor, terminal: { fg: false, bg: false } };
-const lit = onColors(shares([pair], new Set([ink.hex]), glint.touch), glint);
+const lit = onColors(shimmer(EFFECT_CURVES.shimmer, words.length, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, 0));
 
 for (const t of [0, 60, 100]) {
   console.print(new Effected(line, lit, { t, key: "status", theme }));
@@ -56,13 +53,23 @@ for (const t of [0, 60, 100]) {
 
 Every effect's `z` argument (the `0` above) places the element in the noise the effect is drawn from. Give two elements different values and they do not move in lockstep.
 
-### A loop lights only the colours it is given
+### A loop lights the element's own colours
 
-`shimmer`, `pulse` and `sparkle` return a `Loop`: what the light does to one colour, and how strongly it acts on each cell at each moment. `onColors` turns a loop into an `Effect` over a set of colours, each at its own share of the light, so whatever else is on the screen is left alone, the terminal's own colours included even where one has the hex of a colour in the set.
+`shimmer`, `pulse` and `sparkle` return a `Loop`: what the light does to one colour, and how strongly it acts on each cell at each moment. `onColors` turns a loop into an `Effect` on the colours the element sets itself, each at its own share of the light. The terminal's own colours are left alone, even where one has the hex of a colour the element sets. To light only some of the element's colours, pass them by hex as a second argument: `onColors(loop, new Set([fill.hex]))`.
 
-`shares` works those shares out so the words stay readable. Give it every ink and ground pair the element draws its text in, each saying which of the two are the terminal's as an effect's `terminal` does, and the colours that should take the light. A terminal's colour holds still, as `onColors` holds it. Each colour gets the largest share at which every pair it appears in still reads at its resting contrast, or at WCAG AA (4.5:1) if it rested above that. A colour with contrast to spare glows brightly; one with none barely moves.
+The shares keep the words readable. `Effected` measures every ink and ground pair the element draws its words in, and hands that measurement to the effect as `drawn`. Each colour gets the largest share at which every pair it appears in still reads at its resting contrast, or at WCAG AA (4.5:1) if it rested above that. A colour with contrast to spare glows brightly; one with none barely moves. Settling the shares is costly, so make the effect once and draw it in every frame: a frame that draws the colours an earlier frame drew reuses that frame's shares.
 
-`wheel` keeps lightness and chroma and only turns hue, so it is an `Effect` already and needs no shares.
+`wheel` keeps lightness and chroma and only turns hue, so it needs no shares. It reads which colours are the element's, and which of them are fills, from the same measurement.
+
+### What a frame knows
+
+`drawn` is the same for every cell of a frame. It describes the cells the element draws words in: those whose glyph is not blank and that a strip's joiner did not draw, since a powerline seam's ink is the fill beside it, not words.
+
+- `pairs` is every distinct ink and ground of those cells as the screen shows them, each with the `terminal` flags a cell carries.
+- `colors` is the colours the element sets itself in those cells, by hex. `fills` is those of them that are a cell's ground.
+- `depth` and `theme` are what the frame is written at and drawn on.
+
+`drawnOf(segments, depth, theme)` takes the same measurement of any rendered output. Measure an element under an effect to read the contrast its words are left at.
 
 ### A transition says when it is done
 
@@ -124,4 +131,4 @@ With no colour output at all, an effect has nothing to change, and the wrapped r
 
 A colour an effect moves is written as the nearest colour the output's depth can draw on the `theme` terminal: the RGB value itself in truecolor; otherwise the nearest of the terminal's default colour, the theme's sixteen and, at 256 colours, the cube and grey ramp. A translucent colour is laid on what is beneath it first, as every translucent colour the library writes is: the ground on black, since a terminal cannot say what lies under its cells, and the glyph on that ground. So below truecolor a colour moved a little off an ANSI slot or the default colour is still drawn as that one, and a pulse on a sixteen-colour terminal holds still rather than jumping to another slot.
 
-Effects stack by nesting: `new Effected(new Effected(child, a, options), b, options)` draws each cell in the colours that applying `a` and then `b` gives it. The bytes can differ from one effect that calls `a` then `b`: the outer layer sees the inner layer's output as written, so a colour the inner layer changed reaches the outer one already rounded to the output's depth, and stays written as that even where the outer one moves it back.
+Effects stack by nesting: `new Effected(new Effected(child, a, options), b, options)` draws each cell in the colours that applying `a` and then `b` gives it. The bytes can differ from one effect that calls `a` then `b`: the outer layer sees the inner layer's output as written, so a colour the inner layer changed reaches the outer one already rounded to the output's depth, and stays written as that even where the outer one moves it back. The outer layer's `drawn` is measured on the inner layer's output too, so a loop lit by `onColors` on the outside settles its shares against colours that move every frame.

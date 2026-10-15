@@ -17,7 +17,8 @@ import {
   EFFECT_LIGHTS,
   SHIMMER_WIDTH,
   pulse,
-  shares,
+  drawnOf,
+  onColors,
   shimmer,
   sparkle,
   type Renderable,
@@ -25,7 +26,9 @@ import {
 } from "../../../src/index.js";
 import { cellLen, graphemes } from "../../../src/core/cells.js";
 import { runDemo } from "../../../examples/effects-feel/app.js";
-import { drawnSubject, stripSubject, subjectUnder, textSubject } from "../../../examples/effects-feel/subjects.js";
+import { shares } from "../../../src/renderables/effects.js";
+import { JOIN } from "../../../src/core/strip.js";
+import { drawnSubject, stripSubject, textSubject } from "../../../examples/effects-feel/subjects.js";
 import { parseSettings } from "../../../examples/effects-feel/settings.js";
 import { envAtDepth } from "../../../examples/effects-feel/vocabulary.js";
 import { scriptedHost } from "../../host/scripted-host.js";
@@ -178,36 +181,37 @@ describe("a strip under a pulse", () => {
   }
 
   it("spans the columns it draws", () => {
-    const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), options, CATPPUCCIN_MOCHA);
+    const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), options);
     const rows = [...strip.renderable.render(options)].map((segment) => segment.text).join("").split("\n");
     expect(strip.span).toBe(Math.max(...rows.map(cellLen)));
   });
 
-  it.each([["glyphs", false], ["ASCII", true]] as const)("reads the cells it letters where it draws them, in %s", (_, asciiOnly) => {
-    // An ASCII lead draws nothing, so every cell after it sits a column left
-    // of where a glyph render has it.
-    const at = { ...options, asciiOnly };
-    const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), at, CATPPUCCIN_MOCHA);
-    const rows = [...strip.renderable.render(strip.options)].map((segment) => segment.text).join("").split("\n");
-    const lettered = [...strip.text].map((cell) => cell.split(":").map(Number)).map(([row, col]) => [...rows[row!]!][col!]).join("");
-    expect(lettered).toBe("main+3~2claude.aiopus3.4ktok12%$0.42ctx61%rich-jseffects14:02ok");
+  /** What `subject` draws its words in, as `Effected` measures it. */
+  const drawnIn = (subject: { renderable: Renderable }, at = options) => drawnOf(subject.renderable.render(at), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA);
+
+  it.each([["glyphs", false], ["ASCII", true]] as const)("is measured on the lettering of its twelve cells and on none of its seams, in %s", (_, asciiOnly) => {
+    const { pairs, fills } = drawnIn(stripSubject(CATPPUCCIN_MOCHA), { ...options, asciiOnly });
+    expect(pairs).toHaveLength(12);
+    // A seam's ink is the fill beside it: no pair of a seam's is measured.
+    expect(pairs.filter(({ fg }) => fills.has(fg.hex))).toEqual([]);
   });
 
-  it("reads the colours it sets in the cells it letters, and none of the terminal's", () => {
-    const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), options, CATPPUCCIN_MOCHA);
+  it("is measured on the colours it sets in the cells it letters, and none of the terminal's", () => {
+    const strip = drawnIn(stripSubject(CATPPUCCIN_MOCHA));
     expect(strip.colors.has(CATPPUCCIN_MOCHA.palette.get("foreground")!.hex)).toBe(true);
     expect(strip.colors.has(CATPPUCCIN_MOCHA.palette.get("secondary-muted")!.hex)).toBe(true);
-    const text = drawnSubject(textSubject(CATPPUCCIN_MOCHA, ColorDepth.TRUECOLOR), options, CATPPUCCIN_MOCHA);
+    const text = drawnIn(textSubject(CATPPUCCIN_MOCHA, ColorDepth.TRUECOLOR));
     expect(text.colors.has(CATPPUCCIN_MOCHA.backgroundColor.hex)).toBe(false);
   });
 
   it.each([["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const)(
     "on a %s ground moves each colour the strip sets, alike in neighbouring cells, and leaves the terminal's alone",
     (_, theme) => {
-      const strip = drawnSubject(stripSubject(theme), options, theme);
+      const strip = drawnSubject(stripSubject(theme), options);
       const loop = pulse({ seconds: 2, ease: EASES.linear, swing: 1 }, EFFECT_LIGHTS.sun, 0);
-      const lit = subjectUnder(strip, loop, theme);
-      const share = shares(strip.pairs, strip.colors, loop.touch);
+      const lit = onColors(loop);
+      const { pairs, colors } = drawnOf(strip.renderable.render(options), ColorDepth.TRUECOLOR, theme);
+      const share = shares(pairs, colors, loop.touch);
       const before = colorsByCell(strip.renderable, theme);
       // Two breaths, a frame each tenth of a second: a cell can be resting at any one moment.
       const frames = Array.from({ length: 40 }, (_, i) => colorsByCell(new Effected(strip.renderable, lit, { t: i / 10, key: "strip", theme }), theme));
@@ -215,7 +219,7 @@ describe("a strip under a pulse", () => {
 
       // Every colour the strip sets moves, but for one whose cells have no
       // contrast to spare; the terminal's own ground does not.
-      const rgba = new Map(strip.pairs.flatMap(({ fg, bg }) => [fg, bg]).map((c) => [c.hex, c]));
+      const rgba = new Map(pairs.flatMap(({ fg, bg }) => [fg, bg]).map((c) => [c.hex, c]));
       const still = new Set(["ground", ...[...share].filter(([hex, s]) => loop.touch(rgba.get(hex)!, s).hex === hex).map(([hex]) => hex)]);
       before.forEach((pair, i) =>
         pair.forEach((was, slot) => expect([was, frames.every((after) => after[i]![slot] === was)]).toEqual([was, still.has(was)])),
@@ -234,8 +238,8 @@ describe("a strip under a pulse", () => {
       // steepest as well as at its top. Near black an 8-bit step is large in
       // OKLab's lightness, and a display shows none of it.
       const pulseCurve = parseSettings([])!.curves.pulse;
-      const strip = drawnSubject(stripSubject(theme), options, theme);
-      const lit = subjectUnder(strip, pulse(pulseCurve, EFFECT_LIGHTS.sun, strip.z), theme);
+      const strip = drawnSubject(stripSubject(theme), options);
+      const lit = onColors(pulse(pulseCurve, EFFECT_LIGHTS.sun, strip.z));
       const before = colorsByCell(strip.renderable, theme);
       const oklch = (hex: string) => Oklch.fromRgba(ColorSpec.parse(hex).getTruecolor());
       const seen = (a: string, b: string) => (Math.max(oklch(a).l, oklch(b).l) < 0.2 ? 0 : oklch(a).deltaE(oklch(b)));
@@ -263,28 +267,31 @@ describe("every loop keeps the words readable", () => {
   };
   const grounds = [["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const;
   const depths = [["truecolor", ColorDepth.TRUECOLOR], ["256", ColorDepth.EIGHT_BIT]] as const;
+  /** Whether a strip's joiner drew the cell. */
+  const joined = (style: Style): boolean => {
+    for (let anchor = style.anchor; anchor; anchor = anchor.inner) if (anchor.owner === JOIN) return true;
+    return false;
+  };
 
   it.each(grounds.flatMap(([g, theme]) => depths.flatMap(([d, depth]) => Object.keys(made).map((loop) => [loop, g, d, theme, depth] as const))))(
     "%s on a %s ground at %s colours: no lettered cell falls below its resting contrast or AA",
     (loop, _g, _d, theme, depth) => {
       const at = new Console({ width: 200, colorSystem: depth === ColorDepth.TRUECOLOR ? "truecolor" : "256" }).options;
-      for (const subject of [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, at, theme))) {
-        const effect = subjectUnder(subject, made[loop as keyof typeof made](subject.span, subject.z), theme);
+      for (const subject of [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, at))) {
+        const effect = onColors(made[loop as keyof typeof made](subject.span, subject.z));
         const contrasts = (t: number | undefined): number[] => {
           const drawn = t === undefined ? subject.renderable.render(subject.options) : new Effected(subject.renderable, effect, { t, key: loop, theme }).render(subject.options);
           const out: number[] = [];
-          let [row, col] = [0, 0];
           for (const segment of drawn) {
             if (segment.isControl) continue;
-            const colors = (segment.style ?? Style.null()).drawnColors(at.colorSystem ?? undefined);
+            const style = segment.style ?? Style.null();
+            const colors = style.drawnColors(at.colorSystem ?? undefined);
             const fg = colors.color?.getTruecolor(theme, true) ?? theme.foregroundColor;
             const bg = colors.bgcolor?.getTruecolor(theme, false) ?? theme.backgroundColor;
+            // A lettered cell: a glyph that is not blank, and not a seam's.
+            const seam = joined(style);
             for (const glyph of graphemes(segment.text)) {
-              if (glyph === "\n") [row, col] = [row + 1, 0];
-              else {
-                out.push(subject.text.has(`${row}:${col}`) ? contrastRatio(fg, bg) : Number.POSITIVE_INFINITY);
-                col += cellLen(glyph);
-              }
+              if (glyph !== "\n") out.push(!seam && glyph.trim() !== "" ? contrastRatio(fg, bg) : Number.POSITIVE_INFINITY);
             }
           }
           return out;
