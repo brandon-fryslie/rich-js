@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "a2edd3c1c6d70438b367b6cad71e3de328c9b461",
-      "timestamp": "2026-10-15T16:41:22.552Z",
+      "sha": "680f56460643c5e8cdcdbdf5a8dbcaba8b6c3215",
+      "timestamp": "2026-10-15T17:00:49.548Z",
       "commits": [
         {
-          "sha": "a2edd3c1c6d70438b367b6cad71e3de328c9b461",
+          "sha": "680f56460643c5e8cdcdbdf5a8dbcaba8b6c3215",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T10:39:07-06:00",
-          "message": "chore(release): 0.23.0 (#401)"
+          "timestamp": "2026-10-15T10:59:09-06:00",
+          "message": "A whole-keys host settles each input chunk (rich-host-input-ab9n) (#393)\n\n* A whole-keys host settles each input chunk; no lone ESC is held for a timer (rich-host-input-ab9n)\n\nTerminalHost declares inputChunks: xterm.js (BrowserTerminalHost, and the\ndocs worker's simulated stdin through NodeTerminalHost) never splits a key\nacross chunks, so an ESC left at a chunk's end is Escape and what followed\nit is re-read. A tty stays \"split\" and keeps the setTimeout(0) hold.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* Whole-keys settle: ESC [ / ESC O is the Alt chord; settling survives a throwing sink (rich-host-input-ab9n)\n\nReview fixes: whole-keys feed no longer runs the split hold logic; header\nnames InputChunks; docs Input field typed; integration test that a\nNodeTerminalHost in the docs worker reads whole-keys. Split-host residue\nfiled as rich-host-input-gnl7.\n\n* Whole-keys settle reads a chunk's rest in full when a sink throws mid-drain (rich-host-input-ab9n)\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     }
