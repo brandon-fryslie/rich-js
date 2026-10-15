@@ -121,7 +121,7 @@ A neighbour's background is read as drawn too, flattened onto the render substra
 
 ### `POWERLINE_JOINER`
 
-Powerline arrows: U+E0B0 in the left background over the right, and U+E0B1, the thin arrow, as the divider in the left item's text colour on its own background. The divider is the vim-airline convention, and it reads exactly as well as that item's text does. The lead is U+E0B0 with `"ground"` as its `fg`, a notch whose base is the cell's left edge. The terminal's own background shows through it, so it matches that background exactly, translucent or not. The tail is the arrow over the terminal's background. ASCII draws `>` and opens each run flat.
+Powerline arrows: U+E0B0 in the left background over the right, and U+E0B1, the thin arrow, as the divider in the left item's text colour on its own background. The divider is the vim-airline convention, and it reads exactly as well as that item's text does. The lead is U+E0B0 with `"ground"` as its `fg`, a notch whose base is the cell's left edge. Its ink is the terminal's background colour, drawn opaque, so a terminal with a translucent background shows the notch as a solid patch of that colour. The tail is the arrow over the terminal's background. ASCII draws `>` and opens each run flat.
 
 ```typescript
 console.print(

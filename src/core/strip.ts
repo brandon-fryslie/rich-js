@@ -31,7 +31,7 @@ import { Style } from "./style.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK } from "./color.js";
 import { Oklch } from "./oklch.js";
 import { cellLen } from "./cells.js";
-import { drawable, getStyle, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
+import { drawable, getStyle, isAscii, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
 
 // --- StyledRenderable ---
 
@@ -188,13 +188,11 @@ const PARTS: readonly Part[] = ["seam", "divider", "lead", "tail"];
  */
 export const SEAM_MIN_DELTA_E = 0.04;
 
-const ASCII_TEXT = /^[\x00-\x7F]*$/;
-
-function* paintsIn(color: CellColor): Iterable<Paint | "ground"> {
-  yield color;
-  if (typeof color === "object" && "mix" in color) {
-    yield* paintsIn(color.mix[0]);
-    yield* paintsIn(color.mix[1]);
+function* paintsIn(paint: Paint): Iterable<Paint> {
+  yield paint;
+  if ("mix" in paint) {
+    yield* paintsIn(paint.mix[0]);
+    yield* paintsIn(paint.mix[1]);
   }
 }
 
@@ -202,45 +200,82 @@ const glyphsOf = (cell: JoinCell): readonly string[] => (typeof cell.glyph === "
 const cellWidth = (cell: JoinCell): number => cellLen(glyphsOf(cell)[0] ?? "");
 const partWidth = (cells: readonly JoinCell[]): number => cells.reduce((width, cell) => width + cellWidth(cell), 0);
 
+type Refuse = (why: string) => never;
+
+// `raw` as a `Paint`, or refused. `absent` is the neighbour this part may not
+// name, because the part is also drawn where that neighbour does not exist.
+function parsePaint(raw: unknown, absent: "left" | "right" | undefined, refuse: Refuse): Paint {
+  if (raw === "ground") return refuse("mixes ground, whose colour is unknown");
+  const p = (typeof raw === "object" && raw !== null ? raw : {}) as { edge?: unknown; part?: unknown; role?: unknown; mix?: unknown };
+  if ((p.edge === "left" || p.edge === "right") && (p.part === "bg" || p.part === "fg")) {
+    if (p.edge === absent) refuse(`names the ${absent} neighbour, which this part is drawn without`);
+    return Object.freeze({ edge: p.edge, part: p.part });
+  }
+  if (typeof p.role === "string") return Object.freeze({ role: p.role });
+  if (Array.isArray(p.mix) && p.mix.length === 3) {
+    const [from, to, t] = p.mix as unknown[];
+    if (typeof t !== "number" || !(t >= 0 && t <= 1)) refuse(`mixes at ${String(t)}, outside 0..1`);
+    return Object.freeze({ mix: Object.freeze([parsePaint(from, absent, refuse), parsePaint(to, absent, refuse), t as number] as const) });
+  }
+  return refuse(`has a colour that is not a Paint: ${JSON.stringify(raw)}`);
+}
+
+const parseColor = (raw: CellColor, absent: "left" | "right" | undefined, refuse: Refuse): CellColor =>
+  raw === "ground" ? raw : parsePaint(raw, absent, refuse);
+
+const ABSENT: Readonly<Record<Part, "left" | "right" | undefined>> = { seam: undefined, divider: undefined, lead: "left", tail: "right" };
+
 /**
  * [LAW:parse-dont-validate] The one place a shape is checked, so every rule
  * the cell model states is refused at construction and the render reads a
  * shape that already holds them. A shape is often authored as data — a
- * consumer's config — so the rules the types state are checked here too.
+ * consumer's config — so the rules the types state are checked here too, and
+ * what comes back is a frozen copy the caller can no longer change.
  */
-function checkShape(shape: JoinShape, form: "glyph" | "ascii"): JoinShape {
-  const refuse = (where: string, why: string): never => {
-    throw new Error(`CellJoiner: ${form} ${where} ${why}`);
-  };
-  for (const part of PARTS) {
-    shape[part].forEach((cell, i) => {
-      const where = `${part}[${i}]`;
-      if (cell.fg === "ground" && cell.bg === "ground") refuse(where, "has ground on both sides");
-      for (const side of [cell.fg, cell.bg]) {
-        if (typeof side === "object" && "mix" in side) {
-          for (const inner of paintsIn(side)) if (inner === "ground") refuse(where, "mixes ground, whose colour is unknown");
-        }
-        for (const paint of paintsIn(side)) {
-          if (typeof paint !== "object" || !("edge" in paint)) continue;
-          if (part === "lead" && paint.edge === "left") refuse(where, "names the left neighbour, which a lead never has");
-          if (part === "tail" && paint.edge === "right") refuse(where, "names the right neighbour, which a tail never has");
-        }
-      }
-      const glyphs = glyphsOf(cell);
-      if (glyphs.length === 0) refuse(where, "has an empty oneOf");
-      if (glyphs.some((glyph) => cellLen(glyph) !== cellWidth(cell))) refuse(where, "has oneOf members of different widths");
-      if (form === "ascii" && !glyphs.every((glyph) => ASCII_TEXT.test(glyph))) refuse(where, "is not ASCII");
-    });
-  }
-  if (partWidth(shape.divider) !== partWidth(shape.seam)) refuse("divider", "is not the width of the seam");
-  return shape;
+function parseShape(raw: JoinShape, form: "glyph" | "ascii"): JoinShape {
+  const parseCells = (part: Part): readonly JoinCell[] =>
+    Object.freeze(
+      raw[part].map((cell, i): JoinCell => {
+        const refuse: Refuse = (why) => {
+          throw new Error(`CellJoiner: ${form} ${part}[${i}] ${why}`);
+        };
+        if (cell.fg === "ground" && cell.bg === "ground") refuse("has ground on both sides");
+        const glyphs = glyphsOf(cell);
+        if (glyphs.length === 0) refuse("has an empty oneOf");
+        if (glyphs.some((glyph) => cellLen(glyph) !== cellWidth(cell))) refuse("has oneOf members of different widths");
+        if (form === "ascii" && !glyphs.every(isAscii)) refuse("is not ASCII");
+        return Object.freeze({
+          glyph: typeof cell.glyph === "string" ? cell.glyph : Object.freeze({ oneOf: Object.freeze([...glyphs]) }),
+          fg: parseColor(cell.fg, ABSENT[part], refuse),
+          bg: parseColor(cell.bg, ABSENT[part], refuse),
+        });
+      }),
+    );
+  const seam = parseCells("seam");
+  // A divider authored as the seam itself stays the seam, so a render can see
+  // it has no choice to make.
+  const divider = raw.divider === raw.seam ? seam : parseCells("divider");
+  if (partWidth(divider) !== partWidth(seam)) throw new Error(`CellJoiner: ${form} divider is not the width of the seam`);
+  return Object.freeze({ seam, divider, lead: parseCells("lead"), tail: parseCells("tail") });
 }
 
 // Whether any cell of `cells` paints with `side`'s ground.
 const readsGround = (cells: readonly JoinCell[], side: "left" | "right"): boolean =>
   cells.some((cell) =>
-    [cell.fg, cell.bg].some((color) => [...paintsIn(color)].some((p) => typeof p === "object" && "edge" in p && p.edge === side && p.part === "bg")),
+    [cell.fg, cell.bg].some((color) => color !== "ground" && [...paintsIn(color)].some((p) => "edge" in p && p.edge === side && p.part === "bg")),
   );
+
+// One form of a joiner — its shape and what is read off the shape once, so a
+// render does not re-derive it. Which neighbours the seam needs a ground from
+// belongs to the form drawn, never to the other one.
+interface Form {
+  readonly shape: JoinShape;
+  readonly seamReads: { readonly left: boolean; readonly right: boolean };
+}
+
+function formOf(shape: JoinShape): Form {
+  return { shape, seamReads: { left: readsGround(shape.seam, "left"), right: readsGround(shape.seam, "right") } };
+}
 
 // A bg with a real colour to paint. `undefined` (no bg) and the terminal
 // DEFAULT colour (transparent — identical to the terminal background) are the
@@ -325,30 +360,26 @@ const shapeGlyphs = (shape: JoinShape): string => PARTS.flatMap((part) => shape[
 export class CellJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
   readonly shape: JoinShape;
   readonly ascii: JoinShape;
-  private readonly _seamReads: { readonly left: boolean; readonly right: boolean };
+  private readonly _forms: { readonly glyph: Form; readonly ascii: Form };
 
   constructor(shape: JoinShape, ascii: JoinShape) {
-    this.shape = checkShape(shape, "glyph");
-    this.ascii = checkShape(ascii, "ascii");
-    this._seamReads = { left: readsGround(shape.seam, "left"), right: readsGround(shape.seam, "right") };
+    this.shape = parseShape(shape, "glyph");
+    this.ascii = parseShape(ascii, "ascii");
+    this._forms = { glyph: formOf(this.shape), ascii: formOf(this.ascii) };
   }
 
   join(left: T | null, right: T | null): Renderable {
-    const { shape, ascii, _seamReads: reads } = this;
+    const forms = this._forms;
     return {
       *render(options: RenderOptions): Iterable<Segment> {
-        const drawn = drawable(options, shape, ascii, shapeGlyphs);
+        const { shape: drawn, seamReads: reads } = drawable(options, forms.glyph, forms.ascii, (form) => shapeGlyphs(form.shape));
         const edges: Edges = { left: left?.edgeStyle("right", options), right: right?.edgeStyle("left", options) };
         const leftBg = paintableBg(edges.left?.bgcolor);
         const rightBg = paintableBg(edges.right?.bgcolor);
         const hasLeft = left !== null && (!reads.left || leftBg !== undefined);
         const hasRight = right !== null && (!reads.right || rightBg !== undefined);
-        const cells =
-          hasLeft && hasRight
-            ? leftBg && rightBg && vanishes(leftBg, rightBg, options.colorSystem) ? drawn.divider : drawn.seam
-            : hasRight ? drawn.lead
-            : hasLeft ? drawn.tail
-            : [];
+        const divides = drawn.divider !== drawn.seam && leftBg !== undefined && rightBg !== undefined && vanishes(leftBg, rightBg, options.colorSystem);
+        const cells = hasLeft && hasRight ? (divides ? drawn.divider : drawn.seam) : hasRight ? drawn.lead : hasLeft ? drawn.tail : [];
         // A oneOf draws its first member until a join knows its seam index
         // (rich-joiners-9ntp.bex).
         for (const cell of cells) yield new Segment(glyphsOf(cell)[0]!, cellStyle(cell, edges, options));
@@ -369,9 +400,10 @@ const GROUND = "ground";
  * The powerline joiner: U+E0B0 (right-arrow) in the left ground over the
  * right, divided by U+E0B1 (thin right-arrow) in the left item's text. The
  * lead is the arrow with the left ground replaced by the terminal's — drawn
- * in reverse video it leaves a notch whose base is the cell's left edge, the
- * terminal's own background showing through, so it matches under a
- * translucent terminal too. The tail is the arrow over the terminal's ground.
+ * in reverse video it leaves a notch whose base is the cell's left edge, inked
+ * in the terminal's background colour. That ink is opaque, so under a
+ * translucent terminal the notch does not let what is behind it through. The
+ * tail is the arrow over the terminal's ground.
  * ASCII draws `>` everywhere and begins each run flat.
  */
 export const POWERLINE_JOINER = new CellJoiner(

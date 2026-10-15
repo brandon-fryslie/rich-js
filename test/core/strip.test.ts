@@ -589,7 +589,7 @@ describe("CellJoiner", () => {
   });
 
   it("refuses a lead that names the left neighbour", () => {
-    expect(() => joiner({ lead: [{ glyph: ">", fg: LEFT_BG, bg: "ground" }] })).toThrow(/glyph lead\[0\] names the left neighbour/);
+    expect(() => joiner({ lead: [{ glyph: ">", fg: LEFT_BG, bg: "ground" }] })).toThrow(/glyph lead\[0\] names the left neighbour, which this part is drawn without/);
   });
 
   it("refuses a tail that names the right neighbour, inside a mix too", () => {
@@ -613,6 +613,33 @@ describe("CellJoiner", () => {
 
   it("refuses a divider of a different width than the seam", () => {
     expect(() => joiner({ divider: [arrow, arrow] })).toThrow(/divider is not the width of the seam/);
+  });
+
+  it("refuses a colour that is no Paint, and a mix outside 0..1", () => {
+    const bad = (fg: unknown) => () => joiner({ seam: [{ glyph: ">", fg: fg as JoinCell["fg"], bg: RIGHT_BG }] });
+    expect(bad({})).toThrow(/seam\[0\] has a colour that is not a Paint/);
+    expect(bad({ edge: "left", part: "ink" })).toThrow(/not a Paint/);
+    expect(bad({ mix: [LEFT_BG, RIGHT_BG, 1.5] })).toThrow(/mixes at 1.5, outside 0..1/);
+    expect(bad({ mix: [LEFT_BG, RIGHT_BG, Number.NaN] })).toThrow(/outside 0..1/);
+  });
+
+  it("keeps a frozen copy, so the caller's shape cannot change it afterwards", () => {
+    const seam: JoinCell[] = [arrow];
+    const j = new CellJoiner(shape({ seam, divider: seam }), shape({}));
+    seam.push(arrow);
+    expect(render(new Strip([RED, BLUE], j)).map((s) => s.text)).toEqual([" red ", ">", " blue "]);
+    expect(Object.isFrozen(POWERLINE_JOINER.shape.seam[0])).toBe(true);
+  });
+
+  it("reads which neighbours need a ground off the form it draws", () => {
+    // The glyph seam names no neighbour; the ascii seam needs both grounds, so
+    // in ASCII a groundless neighbour is an endpoint.
+    const plain: JoinCell = { glyph: "│", fg: { role: "strip.separator" }, bg: "ground" };
+    const glyph: JoinShape = { seam: [plain], divider: [plain], lead: [], tail: [] };
+    const ascii: JoinShape = { seam: [arrow], divider: [arrow], lead: [{ glyph: "<", fg: RIGHT_BG, bg: "ground" }], tail: [] };
+    const j = new CellJoiner(glyph, ascii);
+    const text = render(new Strip([cell("a", ""), cell("b", "on blue")], j), { ...OPTIONS, asciiOnly: true }).map((s) => s.text).join("");
+    expect(text).toBe("a<b");
   });
 
   it("refuses an ascii form that is not ASCII", () => {
