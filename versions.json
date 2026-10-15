@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-403",
+      "ref": "refs/pull/403/merge",
+      "sha": "c86664fa142c8d9b3bf987761da384371399e436",
+      "timestamp": "2026-10-15T17:46:14.527Z",
+      "commits": [
+        {
+          "sha": "c86664fa142c8d9b3bf987761da384371399e436",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T11:44:45-06:00",
+          "message": "Merge 00369d9c2ef333da90f0e3a6e7219105f4ead35b into 0f601efdb998987e49cbd21d271e430f576bc52f\n"
+        },
+        {
+          "sha": "00369d9c2ef333da90f0e3a6e7219105f4ead35b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T11:44:41-06:00",
+          "message": "A loop on a sixteen-colour terminal holds every cell on its slot (rich-effects-759a)\n\nAt \"ansi\" every move a loop makes is a jump to another slot, and a strong\nenough light carried a cell there: pulse spent about half its period on\nwhite over a bright-black fill. onColors and wheel now draw through\nstillOnSlots, which holds every cell still where the depth writes only the\nsixteen slots. atShares is left moving, because ProgressBar's pulse flashes\na slot at 16 colours as Rich's does.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "0f601efdb998987e49cbd21d271e430f576bc52f",
