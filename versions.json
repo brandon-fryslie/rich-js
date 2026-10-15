@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-388",
+      "ref": "refs/pull/388/merge",
+      "sha": "2f39a67933ec01029a2410bb969f3e10ad300a10",
+      "timestamp": "2026-10-15T07:29:25.420Z",
+      "commits": [
+        {
+          "sha": "2f39a67933ec01029a2410bb969f3e10ad300a10",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:28:14-06:00",
+          "message": "Merge 3eab0025835eac69eaaed919af89d4ff1aa66c28 into f93e21ac25bc2fb2fa97bb93e94d1fffd870816e\n"
+        },
+        {
+          "sha": "3eab0025835eac69eaaed919af89d4ff1aa66c28",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:28:09-06:00",
+          "message": "JOINERS: the bundled joiner definitions by name (rich-joiners-9ntp.6pd)\n\nOne frozen table replaces POWERLINE_JOINER, CAPSULE_JOINER and PLAIN_JOINER:\npowerline, prism, slant, backslant, flame, pixel, ice, bubble, capsule,\nwrapper, metro, stitch, torn, plain — each a CellJoiner with its ASCII form.\nmetro's rail is the new strip.rail theme role. The rich-strip demo prints\nthe whole table, one joiner a row; its card grows to 30 rows.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f93e21ac25bc2fb2fa97bb93e94d1fffd870816e",
