@@ -350,6 +350,13 @@ describe("InputParser on a split host", () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
+  // The escape delay, then the turn of the event loop that reads any input
+  // waiting behind it: with no input here, that turn is its pending timer.
+  function escapeDelayPasses(): void {
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS);
+    vi.runOnlyPendingTimers();
+  }
+
   function split(onKey: (key: string) => void = () => {}) {
     const keys: string[] = [];
     const parser = new InputParser({
@@ -366,7 +373,7 @@ describe("InputParser on a split host", () => {
     const { keys, parser } = split();
     parser.feed("\x1b");
     parser.feed(glyph);
-    vi.advanceTimersByTime(ESCAPE_DELAY_MS);
+    escapeDelayPasses();
     parser.feed("q");
     expect(keys).toEqual([`meta+${glyph}`, "q"]);
   });
@@ -386,6 +393,7 @@ describe("InputParser on a split host", () => {
     vi.advanceTimersByTime(ESCAPE_DELAY_MS - 1);
     expect(keys).toEqual([]);
     vi.advanceTimersByTime(1);
+    vi.runOnlyPendingTimers();
     expect(keys).toEqual(["escape"]);
   });
 
@@ -394,7 +402,7 @@ describe("InputParser on a split host", () => {
       if (key === "a") throw new Error("handler");
     });
     expect(() => parser.feed("a\x1b[")).toThrow("handler");
-    vi.advanceTimersByTime(ESCAPE_DELAY_MS);
+    escapeDelayPasses();
     parser.feed("q");
     expect(keys).toEqual(["a", "meta+[", "q"]);
   });
@@ -404,7 +412,7 @@ describe("InputParser on a split host", () => {
       if (key === "a") throw new Error("handler");
     });
     expect(() => parser.feed("ab\x1b[")).toThrow("handler");
-    vi.advanceTimersByTime(ESCAPE_DELAY_MS);
+    escapeDelayPasses();
     parser.feed("q");
     expect(keys).toEqual(["a", "b", "meta+[", "q"]);
   });
@@ -414,6 +422,14 @@ describe("InputParser on a split host", () => {
     parser.feed("\x1b[");
     parser.feed("\x1b[B");
     expect(keys).toEqual(["meta+[", "down"]);
+  });
+
+  it("reads Escape typed before an O and a key no terminal sends after ESC O", () => {
+    const { keys, parser } = split();
+    parser.feed("\x1b");
+    parser.feed("O");
+    parser.feed("h");
+    expect(keys).toEqual(["escape", "O", "h"]);
   });
 
   it("holds one sequence at a time when a handler feeds the parser", () => {
