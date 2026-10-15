@@ -80,6 +80,22 @@ describe("ListView", () => {
   });
 });
 
+describe("ListView's arguments", () => {
+  const items = [new RichText("a"), new RichText("b")];
+  it("refuses a selection that is not an item's index", () => {
+    expect(() => new ListView(new Viewport(new RichText("")), items, -1)).toThrow(RangeError);
+    expect(() => new ListView(new Viewport(new RichText("")), items, 2)).toThrow(RangeError);
+    expect(() => new ListView(new Viewport(new RichText("")), items, 0.5)).toThrow(RangeError);
+  });
+  it("takes 0 as the selection of an empty list", () => {
+    expect(() => new ListView(new Viewport(new RichText("")), [], 0)).not.toThrow();
+  });
+  it("refuses a gap or context that is not a whole number of lines", () => {
+    expect(() => new ListView(new Viewport(new RichText("")), items, 0, { gap: 1.5 })).toThrow(RangeError);
+    expect(() => new ListView(new Viewport(new RichText("")), items, 0, { context: -1 })).toThrow(RangeError);
+  });
+});
+
 describe("ViewportPerKey", () => {
   it("hands back the same viewport while the key holds, and a fresh one for a new key", () => {
     const viewports = new ViewportPerKey();

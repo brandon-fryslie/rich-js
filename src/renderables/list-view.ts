@@ -43,6 +43,11 @@ export interface ListViewOptions {
   context?: number;
 }
 
+function lineCount(name: string, value: number): number {
+  if (!Number.isInteger(value) || value < 0) throw new RangeError(`ListView: ${name} ${value} is not a whole number of lines`);
+  return value;
+}
+
 export class ListView implements Renderable, Measurable {
   readonly gap: number;
   readonly context: number;
@@ -53,8 +58,12 @@ export class ListView implements Renderable, Measurable {
     readonly selected: number,
     options: ListViewOptions = {},
   ) {
-    this.gap = options.gap ?? 0;
-    this.context = options.context ?? 0;
+    this.gap = lineCount("gap", options.gap ?? 0);
+    this.context = lineCount("context", options.context ?? 0);
+    // An empty list's selection is 0: there is nothing for it to name.
+    if (!Number.isInteger(selected) || selected < 0 || selected >= Math.max(1, items.length)) {
+      throw new RangeError(`ListView: selected ${selected} is not an index of ${items.length} items`);
+    }
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {

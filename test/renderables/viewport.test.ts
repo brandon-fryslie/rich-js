@@ -379,4 +379,21 @@ describe("follow", () => {
     viewport.follow(6, 7);
     expect(shown(viewport)).toEqual(["5", "6"]);
   });
+
+  it("brings the followed range in again when the viewport gets shorter", () => {
+    const viewport = new Viewport(numbered(10));
+    viewport.follow(4, 5);
+    expect(shown(viewport, { rows: 5, exact: true })).toEqual(["0", "1", "2", "3", "4"]);
+    viewport.follow(4, 5);
+    expect(shown(viewport, { rows: 3, exact: true })).toEqual(["2", "3", "4"]);
+  });
+
+  it("leaves a wheel scroll alone while the rows stay the same", () => {
+    const viewport = new Viewport(numbered(10));
+    viewport.follow(4, 5);
+    shown(viewport, { rows: 3, exact: true });
+    viewport.scrollTo(0);
+    viewport.follow(4, 5);
+    expect(shown(viewport, { rows: 3, exact: true })).toEqual(["0", "1", "2"]);
+  });
 });

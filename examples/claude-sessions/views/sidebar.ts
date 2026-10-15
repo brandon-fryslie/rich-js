@@ -60,7 +60,7 @@ export function buildSidebar(state: AppState, viewport: Viewport, focused: boole
   viewport.content = tree;
   // A line either side of the selection stays in view too: the entry next
   // to it, and above the first entry the root, which names what is listed.
-  viewport.ensureVisible(selectedLine - 1, selectedLine + 2);
+  viewport.follow(selectedLine - 1, selectedLine + 2);
   const titlePrefix = focused ? "▸ " : "";
   const title = state.sidebarLevel === "project"
     ? `${titlePrefix}Projects (${state.projects.length})`

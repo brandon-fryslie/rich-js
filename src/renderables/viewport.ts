@@ -114,7 +114,7 @@ export class Viewport implements Renderable, Measurable, Scrollable {
   private _extent: Extent = { rows: 0, lines: 0 };
   private _moves: Move[] = [];
   // No range followed yet: NaN equals nothing, so the first `follow` moves.
-  private _followed = { start: NaN, end: NaN };
+  private _followed = { start: NaN, end: NaN, rows: NaN };
 
   constructor(content: Renderable, options: ViewportOptions = {}) {
     this.content = content;
@@ -165,11 +165,13 @@ export class Viewport implements Renderable, Measurable, Scrollable {
    * `follow` named. A view rebuilt every frame calls this in every frame with
    * its selection's lines, and the selection is brought into view when it
    * moves — not on every frame, which would undo on its very render each
-   * scroll the mouse wheel queues.
+   * scroll the mouse wheel queues. A render at a different row count than
+   * the one that last brought it in brings it in again: the same lines can
+   * fall off the bottom of a viewport that got shorter.
    */
   follow(start: number, end: number): void {
     if (start === this._followed.start && end === this._followed.end) return;
-    this._followed = { start, end };
+    this._followed = { start, end, rows: NaN };
     this.ensureVisible(start, end);
   }
 
@@ -188,6 +190,11 @@ export class Viewport implements Renderable, Measurable, Scrollable {
     const lines = Segment.splitLines(this.content.render({ ...options, maxWidth: contentWidth }));
     const extent: Extent = { rows: viewRows(height, this.rows, lines.length), lines: lines.length };
     this._extent = extent;
+    const followed = this._followed;
+    if (!Number.isNaN(followed.start) && followed.rows !== extent.rows) {
+      if (!Number.isNaN(followed.rows)) this.ensureVisible(followed.start, followed.end);
+      this._followed = { ...followed, rows: extent.rows };
+    }
     this._offset = this.resolve(extent);
     this._moves = [];
 

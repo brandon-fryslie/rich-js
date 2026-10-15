@@ -24,8 +24,9 @@ import { buildShell, ExploreView } from "./views/shell.js";
 /** `delta` entries on; `-Infinity` and `Infinity` are the first and the last. */
 function selectByDelta(state: AppState, delta: number): AppState {
   const visible = visibleNodes(state);
-  const index = Math.max(0, visible.findIndex((n) => n.entry.path === state.selectedPath));
-  const next = visible[moveSelection(index, delta, visible.length)];
+  const index = visible.findIndex((n) => n.entry.path === state.selectedPath);
+  // A selection hidden under a collapsed directory moves onto the first entry.
+  const next = visible[index === -1 ? 0 : moveSelection(index, delta, visible.length)];
   return next === undefined || next.entry.path === state.selectedPath ? state : { ...state, selectedPath: next.entry.path };
 }
 

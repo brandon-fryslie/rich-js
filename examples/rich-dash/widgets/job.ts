@@ -177,8 +177,9 @@ class RateSparkline implements Renderable, Measurable {
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
     // `withCellWidth` and not `withBoundedWidth`: the bounded parse asks this very method.
+    // It crops to any width, so the least it needs is nothing.
     const width = Math.min(RATE_LABEL.length + RATES_KEPT, withCellWidth(options).maxWidth);
-    return { minimum: width, maximum: width };
+    return { minimum: 0, maximum: width };
   }
 }
 
