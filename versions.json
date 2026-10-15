@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-388",
+      "ref": "refs/pull/388/merge",
+      "sha": "c67386c42bb2a48b7ce5ea2c95e6330b9457ca6e",
+      "timestamp": "2026-10-15T07:41:39.465Z",
+      "commits": [
+        {
+          "sha": "c67386c42bb2a48b7ce5ea2c95e6330b9457ca6e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T07:40:05Z",
+          "message": "Merge b30f649bfa3ff5fb8d65e10d98061749d5237614 into da6f038edeb4406b5cfe532ce4a669664f43da84\n"
+        },
+        {
+          "sha": "b30f649bfa3ff5fb8d65e10d98061749d5237614",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:40:00-06:00",
+          "message": "Review (medium): a slot blended with itself is the slot, so prism/torn divide on named grounds; comments follow the per-cell rule (rich-joiners-9ntp.6pd)\n"
+        },
+        {
+          "sha": "13c6fc89012587eb7d2cdebfd2012dfbe8b33a61",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:36:47-06:00",
+          "message": "Review (high): divider measured per seam cell; joinerNamed; torn divider; a real variant example (rich-joiners-9ntp.6pd)\n"
+        },
+        {
+          "sha": "3eab0025835eac69eaaed919af89d4ff1aa66c28",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:28:09-06:00",
+          "message": "JOINERS: the bundled joiner definitions by name (rich-joiners-9ntp.6pd)\n\nOne frozen table replaces POWERLINE_JOINER, CAPSULE_JOINER and PLAIN_JOINER:\npowerline, prism, slant, backslant, flame, pixel, ice, bubble, capsule,\nwrapper, metro, stitch, torn, plain — each a CellJoiner with its ASCII form.\nmetro's rail is the new strip.rail theme role. The rich-strip demo prints\nthe whole table, one joiner a row; its card grows to 30 rows.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-389",
       "ref": "refs/pull/389/merge",
       "sha": "ab7b24320eb6e5db79fc84d68ecaa66dc7337995",
@@ -27,35 +63,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-15T01:32:33-06:00",
           "message": "Playground e2e reads the playground's failure, not the card's run error (rich-playground-3cyp)\n\nThe fast-typing test types 250 x's, a program that throws a ReferenceError\nonce its debounced run finishes. The alert locator matched any [role=alert]\nin the playground, the card's run failure included, so toHaveCount(0) passed\nonly when it checked before the run. It now names .rich-playground-failure,\nthe one element every use of it meant.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-388",
-      "ref": "refs/pull/388/merge",
-      "sha": "00389cf7ed917ae20cf45aacb05f65135f296d4a",
-      "timestamp": "2026-10-15T07:38:30.547Z",
-      "commits": [
-        {
-          "sha": "00389cf7ed917ae20cf45aacb05f65135f296d4a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T07:36:52Z",
-          "message": "Merge 13c6fc89012587eb7d2cdebfd2012dfbe8b33a61 into da6f038edeb4406b5cfe532ce4a669664f43da84\n"
-        },
-        {
-          "sha": "13c6fc89012587eb7d2cdebfd2012dfbe8b33a61",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:36:47-06:00",
-          "message": "Review (high): divider measured per seam cell; joinerNamed; torn divider; a real variant example (rich-joiners-9ntp.6pd)\n"
-        },
-        {
-          "sha": "3eab0025835eac69eaaed919af89d4ff1aa66c28",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:28:09-06:00",
-          "message": "JOINERS: the bundled joiner definitions by name (rich-joiners-9ntp.6pd)\n\nOne frozen table replaces POWERLINE_JOINER, CAPSULE_JOINER and PLAIN_JOINER:\npowerline, prism, slant, backslant, flame, pixel, ice, bubble, capsule,\nwrapper, metro, stitch, torn, plain — each a CellJoiner with its ASCII form.\nmetro's rail is the new strip.rail theme role. The rich-strip demo prints\nthe whole table, one joiner a row; its card grows to 30 rows.\n"
         }
       ]
     },
