@@ -4,15 +4,22 @@
     {
       "version": "pr-391",
       "ref": "refs/pull/391/merge",
-      "sha": "0ca03fdfc98f568e72bb02ce2169dd5d44bb04d2",
-      "timestamp": "2026-10-15T08:06:57.877Z",
+      "sha": "90aeedade0d404839eaeba393714ecc7073da5eb",
+      "timestamp": "2026-10-15T08:09:49.317Z",
       "commits": [
         {
-          "sha": "0ca03fdfc98f568e72bb02ce2169dd5d44bb04d2",
+          "sha": "90aeedade0d404839eaeba393714ecc7073da5eb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T08:05:26Z",
-          "message": "Merge b5dc30b5e55e445f6d0f7edca25f0bdfe049a1f4 into 2b6b3f631dc859632eb6336d8d91e928868bffe1\n"
+          "timestamp": "2026-10-15T08:08:18Z",
+          "message": "Merge a2f21da080dd660cc617d76c42339e80420ba12e into 2b6b3f631dc859632eb6336d8d91e928868bffe1\n"
+        },
+        {
+          "sha": "a2f21da080dd660cc617d76c42339e80420ba12e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T02:08:13-06:00",
+          "message": "Lone ESC alone holds on the timer: a sequence split after its introducer waits for its rest (rich-host-input-0c4f)\n"
         },
         {
           "sha": "b5dc30b5e55e445f6d0f7edca25f0bdfe049a1f4",
