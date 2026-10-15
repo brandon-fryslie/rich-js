@@ -32,6 +32,7 @@ function routerOver(root: Layout): InputParser {
   const frame = (): Segment[][] => Segment.splitLines(root.render(OPTIONS));
   return parserFor(new EventRouter({
     source: { focusManager: new DefaultFocusManager(() => []), get frame() { return frame(); }, refresh: () => {} },
+    focusOnClick: false,
   }));
 }
 

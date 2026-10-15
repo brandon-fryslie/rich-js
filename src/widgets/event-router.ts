@@ -34,10 +34,13 @@ interface Target {
 
 export interface EventRouterOptions {
   source: FrameSource;
+  /** Whether a left-button press focuses the widget under it before it hears the press. */
+  focusOnClick: boolean;
 }
 
 export class EventRouter {
   private readonly source: FrameSource;
+  private readonly focusOnClick: boolean;
   // [LAW:single-enforcer] Drag capture lives only here. A mouse_down's
   // target is recorded; mouse_move/mouse_up between then and the next
   // mouse_up route to it unconditionally and relative to where it is painted
@@ -58,6 +61,7 @@ export class EventRouter {
 
   constructor(options: EventRouterOptions) {
     this.source = options.source;
+    this.focusOnClick = options.focusOnClick;
 
     // [LAW:single-enforcer] FocusManager owns Tab/Shift+Tab traversal —
     // register it as a normal-priority handler so it participates in the
@@ -162,6 +166,14 @@ export class EventRouter {
     const hit = widgetAt(frame, event.x, event.y);
     this.pointer = { x: event.x, y: event.y };
     this.hover(hit?.widget ?? null);
+
+    // After the program's handlers, so one that reads focus sees it as it was;
+    // before delivery, so the pressed widget has focus when it hears the
+    // press. Only the left button: another may open the terminal's own menu.
+    // `focus` passes over a widget that cannot take it.
+    if (this.focusOnClick && event.type === "mouse_down" && event.button === 0 && hit) {
+      this.source.focusManager.focus(hit.widget);
+    }
 
     // The wheel scrolls the innermost viewport under the pointer that can
     // move, a line a notch, past any widget it shows there and whatever a

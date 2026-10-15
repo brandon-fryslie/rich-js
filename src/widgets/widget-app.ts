@@ -42,6 +42,14 @@ import type {
 import type { ScreenMouseEvent } from "../host/input.js";
 import { WidgetBase } from "./widget-base.js";
 
+export interface WidgetAppOptions extends AppOptions {
+  /**
+   * Whether a left-button press focuses the widget under it, before it hears the
+   * press. `true` unless given.
+   */
+  readonly focusOnClick?: boolean;
+}
+
 export class WidgetApp implements FrameSource {
   readonly focusManager: FocusManager;
   private readonly focus: DefaultFocusManager;
@@ -52,8 +60,8 @@ export class WidgetApp implements FrameSource {
   // The widgets the view drew for the frame on screen, in document order.
   private drawn: readonly WidgetBase[] = [];
 
-  constructor(options: AppOptions) {
-    const { view } = options;
+  constructor(options: WidgetAppOptions) {
+    const { view, focusOnClick = true } = options;
     this.reaction = new Reaction("WidgetApp", () => this.app.refresh());
     this.app = new App({
       ...options,
@@ -64,7 +72,7 @@ export class WidgetApp implements FrameSource {
       return this.drawn.filter((widget) => owners.has(widget));
     });
     this.focusManager = this.focus;
-    this.router = new EventRouter({ source: this });
+    this.router = new EventRouter({ source: this, focusOnClick });
     // [LAW:single-enforcer] The app reads the terminal; the router routes
     // what it hears, after the app's quit keys.
     this.app.onKey((press) => this.router.key(press));

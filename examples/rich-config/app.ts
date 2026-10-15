@@ -25,7 +25,6 @@ import {
   Dropdown,
   Slider,
   WidgetApp,
-  widgetAt,
   StaticItem,
   type InteractiveWidget,
 } from "@promptctl/rich-js/widgets";
@@ -403,14 +402,6 @@ export function runDemo(host: TerminalHost): DemoHandle {
   );
 
   const app = new WidgetApp({ host, surface: "alternate", view: () => view });
-
-  app.onMouse((event) => {
-    if (event.type !== "mouse_up") return;
-    // The frame on screen says who drew the cell under the pointer; focus()
-    // ignores a widget that cannot take focus.
-    const hit = widgetAt(app.frame, event.x, event.y);
-    if (hit) app.focusManager.focus(hit.widget);
-  });
 
   const disposeFilter = autorun(() => {
     const darkOnly = tgDarkOnly.on;
