@@ -16,14 +16,17 @@
  * end means is the host's `InputChunks`, the one input to the parser that is
  * not a byte, and it decides only what becomes of an unfinished ESC.
  *
- * Lone-ESC handling: a bare `\x1b` is ambiguous (escape key vs. start of a
- * CSI sequence), and only the host's `InputChunks` can settle it. On a
+ * An unfinished escape sequence is ambiguous: `ESC` alone is the Escape key
+ * or the start of a sequence, and `ESC [` is Alt+[ or the start of a CSI.
+ * Only the host's `InputChunks` and the clock can settle it. On a
  * `"whole-keys"` host a chunk ends on a key boundary, so an ESC still waiting
  * at a chunk's end opened nothing: it is Escape, and what followed it is read
- * again on its own. On a `"split"` host the parser defers a lone ESC via
- * setTimeout(0). A next chunk opening with `[` or `O` extends the sequence;
- * any other next chunk emits the ESC as Escape first. `flush()` drains it
- * synchronously.
+ * again on its own. On a `"split"` host a read can end anywhere, so the
+ * parser holds the unfinished sequence for the escape delay — ncurses'
+ * ESCDELAY, tmux's escape-time — and, when nothing has extended it by then,
+ * settles it by the same whole-keys rule. A held lone ESC is also settled
+ * early by a next chunk that cannot extend it: anything but `[` or `O`.
+ * `flush()` settles the hold synchronously.
  */
 
 import type { InputChunks } from "./terminal-host.js";
@@ -199,6 +202,15 @@ const ASCII_DECODER = new TextDecoder("ascii");
 
 const EMPTY_BYTES = new Uint8Array(0);
 
+/**
+ * How long a `"split"` host's parser waits for the rest of an unfinished
+ * escape sequence before reading it as the keys it already holds. Textual's
+ * ESCAPE_DELAY and vim's `ttimeoutlen` default to the same: long enough for
+ * the rest of a sequence a read split (over ssh, say) to arrive, short
+ * enough that Escape does not feel late.
+ */
+export const ESCAPE_DELAY_MS = 100;
+
 // Concatenate two byte arrays into a fresh Uint8Array. Replaces
 // `Buffer.concat([...])` so the parser holds no node-specific globals.
 function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
@@ -256,16 +268,25 @@ export class InputParser {
     try {
       if (escaped) this.sink.key(ESCAPE);
     } finally {
-      this.drain();
+      this.drainAndHold();
     }
-    // [LAW:dataflow-not-control-flow] If a lone ESC remains, defer emission
-    // until the next macrotask so a follow-up chunk can extend it. Only a lone
-    // one: a sequence split after `ESC [` waits for its rest, however late.
-    if (this.holdingEscape()) {
-      this.escTimer = setTimeout(() => {
-        this.escTimer = undefined;
-        this.flush();
-      }, 0);
+  }
+
+  // [LAW:no-ambient-temporal-coupling] Whatever drain leaves at an ESC is an
+  // unfinished sequence, and the escape delay is what tells one whose rest is
+  // still in flight from one that stalled: a stalled `ESC [` held for good
+  // would read the next key as its final byte (rich-host-input-gnl7). The hold
+  // is armed even when a handler throws mid-drain, so no tail is left unheld.
+  private drainAndHold(): void {
+    try {
+      this.drain();
+    } finally {
+      if (this.buffer[0] === ESC) {
+        this.escTimer = setTimeout(() => {
+          this.escTimer = undefined;
+          this.flush();
+        }, ESCAPE_DELAY_MS);
+      }
     }
   }
 
@@ -294,22 +315,19 @@ export class InputParser {
     }
   }
 
-  /** Force any pending lone ESC out of the buffer. */
+  /** Settle a held escape sequence now, as the end of a whole-key chunk. */
   flush(): void {
     this.cancelEscape();
-    if (this.holdingEscape()) {
-      this.buffer = EMPTY_BYTES;
-      this.sink.key(ESCAPE);
-    }
+    this.settleChunk();
   }
 
-  /** Drop what is buffered and any pending lone ESC: the parser as constructed. */
+  /** Drop what is buffered and any held escape sequence: the parser as constructed. */
   reset(): void {
     this.cancelEscape();
     this.buffer = EMPTY_BYTES;
   }
 
-  /** The parser's one hold: a lone ESC that may yet open a sequence. */
+  /** A lone ESC, the one hold a next chunk can settle early. */
   private holdingEscape(): boolean {
     return this.buffer.length === 1 && this.buffer[0] === ESC;
   }

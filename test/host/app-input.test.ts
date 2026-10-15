@@ -9,7 +9,7 @@
 import { describe, it, expect } from "vitest";
 
 import { App, type AppOptions } from "../../src/host/app.js";
-import { keyName, type KeyPress } from "../../src/host/input.js";
+import { ESCAPE_DELAY_MS, keyName, type KeyPress } from "../../src/host/input.js";
 import type { AppMouseEvent } from "../../src/host/app.js";
 import { RichText } from "../../src/core/text.js";
 import { scriptedHost, type ScriptedHost } from "./scripted-host.js";
@@ -107,7 +107,7 @@ describe("App's quit keys", () => {
     host.type("\x1b");
     app.stop();
     await done;
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, ESCAPE_DELAY_MS));
     expect(keys).toEqual([]);
   });
 
