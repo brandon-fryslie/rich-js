@@ -15,7 +15,7 @@ import { PLAIN_CARD, programFiles } from "../../docs/.vitepress/example-card.js"
 import { EXAMPLE_TERMINAL } from "../../docs/.vitepress/example-terminal.js";
 import { liveLibraryOnce } from "../../docs/.vitepress/example-runner.js";
 import { DEMO_ENTRY } from "../../docs/.vitepress/demo-entry.js";
-import { decodeProgram } from "../../docs/.vitepress/playground-hash.js";
+import { MAX_LINK_CHARS, decodeProgram } from "../../docs/.vitepress/playground-hash.js";
 import { runInTerminal } from "../../docs/.vitepress/simulated-process.js";
 import { playgroundScript } from "../../docs/.vitepress/theme/playground-program.js";
 
@@ -147,5 +147,13 @@ describe("dropdown-demo's card", { timeout: 60_000 }, () => {
     expect(card.program).toMatchObject(cardJson(directory).screen);
     // "Open in playground" opens it at that size, not the example terminal's.
     expect(await decodeProgram(card.tryIt.program)).toEqual(card.program);
+  });
+});
+
+describe("claude-sessions' card", { timeout: 60_000 }, () => {
+  // Its staged sessions are the heaviest program any card carries, and
+  // scripts/stage-claude-sessions.ts regenerates them; encoding is what says they still fit.
+  it("packs into a playground link", async () => {
+    expect((await demoCard("claude-sessions")).tryIt.program.length).toBeLessThanOrEqual(MAX_LINK_CHARS);
   });
 });

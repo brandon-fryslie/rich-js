@@ -13,8 +13,8 @@
  * A session is kept as it was recorded — every record, in order, under its
  * real file name and modification time — but for three cuts, each applied to
  * every string in it, so no field is special-cased:
- * - a string longer than `KEEP_LINES` lines keeps its first `KEEP_LINES` and
- *   says how many it lost; one longer than `KEEP_CHARS` is cut the same way;
+ * - a string past its `Keep` (`keepOf` says which) keeps its first lines and
+ *   characters and says how much it lost;
  * - a thinking block's `signature`, opaque bytes no reader can use, is dropped;
  * - the machine is scrubbed out: the owner's home becomes `/home/demo`, their
  *   user name `demo`, every machine on their network `demo-host`, a Tailscale
@@ -26,26 +26,28 @@
  * `projects.ts` that gathers them — so a re-run reproduces it whole.
  */
 import { existsSync, readdirSync, readFileSync, statSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
-import { deflateSync } from "node:zlib";
 import { homedir, hostname, userInfo } from "node:os";
 import path from "node:path";
 import { REPO_ROOT } from "./repo-facts.ts";
 
 const SESSIONS: Readonly<Record<string, readonly string[]>> = {
   "cc-hands": ["343f2948", "72de8d71", "9cdac691"],
-  "low-talker": ["89ff8d3c", "85ee29e4"],
-  "links-issue-tracker": ["fe6510c9", "2a3da176"],
+  "low-talker": ["89ff8d3c", "85ee29e4", "eb64e0f3"],
+  "links-issue-tracker": ["fe6510c9", "2a3da176", "9cb4bcc8"],
   "rich-js": ["5c83db1d", "04aeda33", "8c79e4c7"],
   vhid: ["e6c996c1", "5744c4aa", "38b3f562"],
 };
 
 // With `SESSIONS`, tight enough that the staged tree fits the card's
 // playground link, which MAX_LINK_CHARS (docs/.vitepress/playground-hash.ts)
-// bounds: the docs build refuses a demo past it, and this script prints what
-// the tree packs to. Most of that is the records' ids, which do not compress,
+// bounds: encodeProgram refuses a demo past it, in the docs build and in
+// test/docs/demo-card.test.ts. Most of that is the records' ids, which do not compress,
 // so the number of records weighs more than how much of each is kept.
-const KEEP_LINES = 8;
-const KEEP_CHARS = 600;
+// What the reader came to read — a turn's prose — keeps more than a tool's
+// output, which is most of the weight and is only skimmed.
+type Keep = { readonly lines: number; readonly chars: number };
+const KEEP: Keep = { lines: 5, chars: 320 };
+const KEEP_PROSE: Keep = { lines: 12, chars: 900 };
 
 /**
  * What the viewer draws: the records it renders (data/parser.ts), the title
@@ -57,6 +59,7 @@ const KEEP_CHARS = 600;
  * subagent call is drilled into by is kept.
  */
 const SHOWN_TYPES = new Set(["user", "assistant", "system", "custom-title", "ai-title"]);
+const TITLE_TYPES = new Set(["custom-title", "ai-title"]);
 const SHOWN_FIELDS = new Set([
   "type", "uuid", "parentUuid", "timestamp", "message", "subtype", "content", "level",
   "isMeta", "isSidechain", "isApiErrorMessage", "durationMs", "error", "promptId", "slug", "customTitle", "aiTitle",
@@ -83,7 +86,13 @@ function shownRecord(record: Record<string, unknown>): Record<string, unknown> {
 function shownRecords(text: string): Record<string, unknown>[] {
   const records = text.split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line) as Record<string, unknown>);
   const parentOf = new Map(records.flatMap((r) => (typeof r["uuid"] === "string" ? [[r["uuid"], typeof r["parentUuid"] === "string" ? r["parentUuid"] : null] as const] : [])));
-  const shown = records.filter((record) => SHOWN_TYPES.has(String(record["type"])));
+  // The sidebar reads only the newest title record of each kind, and a renamed
+  // session repeats its title on every turn; the older copies are dead weight.
+  const lastOfType = new Map(records.flatMap((r, i) => (TITLE_TYPES.has(String(r["type"])) ? [[String(r["type"]), i] as const] : [])));
+  const shown = records.filter((record, i) => {
+    const type = String(record["type"]);
+    return SHOWN_TYPES.has(type) && (!TITLE_TYPES.has(type) || lastOfType.get(type) === i);
+  });
   const kept = new Set(shown.map((r) => r["uuid"]).filter((uuid): uuid is string => typeof uuid === "string"));
   const nearestKept = (uuid: string | null): string | null => {
     const seen = new Set<string>();
@@ -146,23 +155,45 @@ function scrub(text: string): string {
   return out;
 }
 
-function trim(text: string): string {
-  const lines = text.split("\n");
-  const kept = lines.length > KEEP_LINES ? lines.slice(0, KEEP_LINES).join("\n") : text;
-  const cut = kept.length > KEEP_CHARS ? kept.slice(0, KEEP_CHARS) : kept;
-  if (cut === text) return text;
-  const lost = lines.length - cut.split("\n").length;
-  return `${cut}\n… ${lost > 0 ? `${lost} more lines` : `${text.length - cut.length} more characters`}`;
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+function trim(text: string, keep: Keep): string {
+  // A trailing newline ends the last line; it does not start another.
+  const lines = text.replace(/\n$/, "").split("\n");
+  if (lines.length <= keep.lines && text.length <= keep.chars) return text;
+  const kept = lines.slice(0, keep.lines).join("\n");
+  // By grapheme, so a cut never splits what the reader sees as one character.
+  const graphemes = Array.from(GRAPHEMES.segment(kept), (g) => g.segment);
+  const cut = graphemes.slice(0, keep.chars).join("");
+  if (cut === text || cut === text.replace(/\n$/, "")) return text;
+  const lostLines = lines.length - Math.min(lines.length, keep.lines);
+  const lostChars = Array.from(GRAPHEMES.segment(text)).length - graphemes.slice(0, keep.chars).length;
+  const plural = (n: number, unit: string) => `${n} more ${unit}${n === 1 ? "" : "s"}`;
+  return `${cut}\n… ${[plural(lostChars, "character"), ...(lostLines > 0 ? [plural(lostLines, "line")] : [])].join(", ")}`;
 }
 
-function stage(value: unknown): unknown {
-  if (typeof value === "string") return scrub(trim(value));
-  if (Array.isArray(value)) return value.map(stage);
+/**
+ * The budget `value`'s strings get, given its container's: what a person or
+ * the model said keeps `KEEP_PROSE`; output keeps `KEEP` — a tool's call and
+ * result wherever they sit, a `system` or meta record, and a turn whose text is
+ * harness output wrapped in a tag (`<bash-stdout>`, `<task-notification>`, …).
+ */
+function keepOf(record: Record<string, unknown>, inherited: Keep): Keep {
+  const { type, isMeta, message } = record;
+  if (type === "tool_use" || type === "tool_result" || type === "system" || isMeta === true) return KEEP;
+  const content = typeof message === "object" && message !== null ? (message as { content?: unknown }).content : undefined;
+  return typeof content === "string" && content.startsWith("<") ? KEEP : inherited;
+}
+
+function stage(value: unknown, keep: Keep): unknown {
+  if (typeof value === "string") return trim(scrub(value), keep);
+  if (Array.isArray(value)) return value.map((v) => stage(v, keep));
   if (typeof value === "object" && value !== null) {
     const record = value as Record<string, unknown>;
     const thinking = record["type"] === "thinking";
+    const inner = keepOf(record, keep);
     return Object.fromEntries(
-      Object.entries(record).filter(([key]) => !(thinking && key === "signature")).map(([key, v]) => [scrub(key), stage(v)]),
+      Object.entries(record).filter(([key]) => !(thinking && key === "signature")).map(([key, v]) => [scrub(key), stage(v, inner)]),
     );
   }
   return value;
@@ -251,7 +282,7 @@ mkdirSync(out);
 
 /** A file of the staged tree, its records as the viewer reads them. */
 const stagedFile = (file: string, text: string) => {
-  const jsonl = shownRecords(text).map((record) => JSON.stringify(stage(record))).join("\n");
+  const jsonl = shownRecords(text).map((record) => JSON.stringify(stage(record, KEEP_PROSE))).join("\n");
   return { mtime: statSync(file).mtime.toISOString(), jsonl };
 };
 
@@ -317,6 +348,6 @@ export const STAGED_HOME: MemoryTree = {
 };
 `);
 
-// What the card's playground link carries of these, which MAX_LINK_CHARS
-// (docs/.vitepress/playground-hash.ts) bounds: deflated, then base64.
-console.log(`total: ${Math.round(Buffer.byteLength(total) / 1024)} KB, ~${Math.round((deflateSync(total).length * 4) / 3 / 1024)} KB in a link`);
+// Whether the card's link still fits is encodeProgram's to say, not an
+// estimate here: test/docs/demo-card.test.ts encodes this card.
+console.log(`total: ${Math.round(Buffer.byteLength(total) / 1024)} KB staged`);
