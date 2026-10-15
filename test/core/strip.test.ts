@@ -642,6 +642,20 @@ describe("CellJoiner", () => {
     expect(text).toBe("a<b");
   });
 
+  it("refuses a shape that is not cells, naming the part", () => {
+    expect(() => new CellJoiner({ seam: [arrow], divider: [arrow], tail: [] } as unknown as JoinShape, shape({}))).toThrow(/glyph lead is not a list of cells/);
+    expect(() => joiner({ seam: [{ ...arrow, glyph: 5 as unknown as string }] })).toThrow(/seam\[0\] has a glyph that is neither/);
+    expect(() => joiner({ seam: [{ ...arrow, glyph: { oneOf: "ab" as unknown as string[] } }] })).toThrow(/seam\[0\] has a glyph that is neither/);
+  });
+
+  it("treats a neighbour as missing when any part needs its ground, not only the seam", () => {
+    // The seam names no neighbour; the lead paints the right ground. A
+    // groundless right item gets no lead, so no colourless reversed block.
+    const bar: JoinCell = { glyph: "│", fg: { role: "strip.separator" }, bg: "ground" };
+    const j = new CellJoiner({ seam: [bar], divider: [bar], lead: [{ glyph: "\ue0b0", fg: "ground", bg: RIGHT_BG }], tail: [] }, shape({}));
+    expect(render(new Strip([cell("a", "")], j)).map((s) => s.text)).toEqual(["a"]);
+  });
+
   it("refuses an ascii form that is not ASCII", () => {
     expect(() => new CellJoiner(shape({}), shape({ seam: [{ ...arrow, glyph: "\ue0b0" }], divider: [{ ...arrow, glyph: "\ue0b0" }] }))).toThrow(
       /ascii seam\[0\] is not ASCII/,

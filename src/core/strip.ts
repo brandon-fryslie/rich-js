@@ -225,6 +225,14 @@ const parseColor = (raw: CellColor, absent: "left" | "right" | undefined, refuse
 
 const ABSENT: Readonly<Record<Part, "left" | "right" | undefined>> = { seam: undefined, divider: undefined, lead: "left", tail: "right" };
 
+function parseList(raw: unknown, where: string): readonly JoinCell[] {
+  if (!Array.isArray(raw)) throw new Error(`CellJoiner: ${where} is not a list of cells`);
+  return raw.map((cell: unknown, i) => {
+    if (typeof cell !== "object" || cell === null) throw new Error(`CellJoiner: ${where}[${i}] is not a cell`);
+    return cell as JoinCell;
+  });
+}
+
 /**
  * [LAW:parse-dont-validate] The one place a shape is checked, so every rule
  * the cell model states is refused at construction and the render reads a
@@ -235,10 +243,15 @@ const ABSENT: Readonly<Record<Part, "left" | "right" | undefined>> = { seam: und
 function parseShape(raw: JoinShape, form: "glyph" | "ascii"): JoinShape {
   const parseCells = (part: Part): readonly JoinCell[] =>
     Object.freeze(
-      raw[part].map((cell, i): JoinCell => {
+      parseList(raw[part], `${form} ${part}`).map((cell, i): JoinCell => {
         const refuse: Refuse = (why) => {
           throw new Error(`CellJoiner: ${form} ${part}[${i}] ${why}`);
         };
+        const glyph: unknown = cell.glyph;
+        const oneOf: unknown = typeof glyph === "object" && glyph !== null ? (glyph as { oneOf?: unknown }).oneOf : undefined;
+        if (typeof glyph !== "string" && !(Array.isArray(oneOf) && oneOf.every((g) => typeof g === "string"))) {
+          refuse(`has a glyph that is neither a string nor a oneOf of strings: ${JSON.stringify(glyph)}`);
+        }
         if (cell.fg === "ground" && cell.bg === "ground") refuse("has ground on both sides");
         const glyphs = glyphsOf(cell);
         if (glyphs.length === 0) refuse("has an empty oneOf");
@@ -259,22 +272,22 @@ function parseShape(raw: JoinShape, form: "glyph" | "ascii"): JoinShape {
   return Object.freeze({ seam, divider, lead: parseCells("lead"), tail: parseCells("tail") });
 }
 
-// Whether any cell of `cells` paints with `side`'s ground.
-const readsGround = (cells: readonly JoinCell[], side: "left" | "right"): boolean =>
-  cells.some((cell) =>
+// Whether any cell of `shape` paints with `side`'s ground.
+const readsGround = (shape: JoinShape, side: "left" | "right"): boolean =>
+  PARTS.flatMap((part) => shape[part]).some((cell) =>
     [cell.fg, cell.bg].some((color) => color !== "ground" && [...paintsIn(color)].some((p) => "edge" in p && p.edge === side && p.part === "bg")),
   );
 
 // One form of a joiner — its shape and what is read off the shape once, so a
-// render does not re-derive it. Which neighbours the seam needs a ground from
+// render does not re-derive it. Which neighbours the form needs a ground from
 // belongs to the form drawn, never to the other one.
 interface Form {
   readonly shape: JoinShape;
-  readonly seamReads: { readonly left: boolean; readonly right: boolean };
+  readonly reads: { readonly left: boolean; readonly right: boolean };
 }
 
 function formOf(shape: JoinShape): Form {
-  return { shape, seamReads: { left: readsGround(shape.seam, "left"), right: readsGround(shape.seam, "right") } };
+  return { shape, reads: { left: readsGround(shape, "left"), right: readsGround(shape, "right") } };
 }
 
 // A bg with a real colour to paint. `undefined` (no bg) and the terminal
@@ -350,7 +363,7 @@ const shapeGlyphs = (shape: JoinShape): string => PARTS.flatMap((part) => shape[
  *
  * Which part a join draws is read off its two neighbours. A neighbour is
  * missing at the strip's ends, and counts as missing — an endpoint — when the
- * seam paints with its ground and it has none to paint. With both present the
+ * shape paints with its ground anywhere and it has none to paint. With both present the
  * join is the seam, or the divider where the two grounds are drawn as one
  * colour at `options.colorSystem`; with only the right, the lead; with only
  * the left, the tail; with neither, nothing.
@@ -372,7 +385,7 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
     const forms = this._forms;
     return {
       *render(options: RenderOptions): Iterable<Segment> {
-        const { shape: drawn, seamReads: reads } = drawable(options, forms.glyph, forms.ascii, (form) => shapeGlyphs(form.shape));
+        const { shape: drawn, reads } = drawable(options, forms.glyph, forms.ascii, (form) => shapeGlyphs(form.shape));
         const edges: Edges = { left: left?.edgeStyle("right", options), right: right?.edgeStyle("left", options) };
         const leftBg = paintableBg(edges.left?.bgcolor);
         const rightBg = paintableBg(edges.right?.bgcolor);
@@ -441,7 +454,7 @@ const PLAIN: JoinShape = { seam: PLAIN_SEAM, divider: PLAIN_SEAM, lead: [], tail
 
 /**
  * ` | ` between every pair of items, in the theme's `strip.separator` colour;
- * nothing at the ends. Its seam names no neighbour, so it joins items with no
+ * nothing at the ends. Its shape names no neighbour, so it joins items with no
  * ground too.
  */
 export const PLAIN_JOINER = new CellJoiner(PLAIN, PLAIN);

@@ -104,14 +104,14 @@ console.print(
 
 ### Which part a join draws
 
-Each join looks at its two neighbours. A neighbour is missing at the strip's ends. It also counts as missing when the seam paints with its background and it has none to paint: no `bgcolor`, or `… on default`, which is the transparent terminal default.
+Each join looks at its two neighbours. A neighbour is missing at the strip's ends. It also counts as missing when any part of the shape paints with its background and it has none to paint: no `bgcolor`, or `… on default`, which is the transparent terminal default.
 
 - Both present: the `seam`, or the `divider` where the two backgrounds are indistinct.
 - Only the right: the `lead`.
 - Only the left: the `tail`.
 - Neither: nothing.
 
-So a coloured run is capped the same way wherever it sits. A colourless item before a coloured one leads the coloured run in, exactly as the strip's start does. A coloured item before a colourless one tails out, and two colourless neighbours join with nothing. A seam that paints with neither neighbour's background, like `PLAIN_JOINER`'s, joins colourless items too.
+So a coloured run is capped the same way wherever it sits. A colourless item before a coloured one leads the coloured run in, exactly as the strip's start does. A coloured item before a colourless one tails out, and two colourless neighbours join with nothing. A shape that paints with neither neighbour's background, like `PLAIN_JOINER`, joins colourless items too.
 
 "Indistinct" is perceptual: two backgrounds closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) are one. They are measured as drawn. A translucent background is flattened onto the render substrate, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`), so two backgrounds that 256 colours or ANSI draw as one entry are indistinct, however far apart they were computed. Named or indexed colours have no RGB value to measure, so two of them are one only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
 
