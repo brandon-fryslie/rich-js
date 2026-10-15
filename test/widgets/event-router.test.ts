@@ -316,6 +316,20 @@ describe("EventRouter — key parsing", () => {
     expect(keys).toEqual(["escape"]);
   });
 
+  it("drains the next chunk even when the held ESC's Escape throws", () => {
+    const keys: string[] = [];
+    const parser = new InputParser({
+      key: (press) => {
+        keys.push(press.key);
+        if (press.key === "escape") throw new Error("handler");
+      },
+      mouse: () => {},
+    });
+    parser.feed("\x1b");
+    expect(() => parser.feed("ab")).toThrow("handler");
+    expect(keys).toEqual(["escape", "a", "b"]);
+  });
+
   it("still reads Alt+key when ESC and the key arrive in one chunk", () => {
     h.feed("\x1bG");
     expect(h.keyEvents).toMatchObject([{ key: "G", meta: true }]);
