@@ -4,15 +4,22 @@
     {
       "version": "pr-381",
       "ref": "refs/pull/381/merge",
-      "sha": "96de4b83a79bcbe108b070daf83fcff00c2fbadc",
-      "timestamp": "2026-10-15T05:53:41.987Z",
+      "sha": "5829c5552382718311331e9bac175b710e974ca2",
+      "timestamp": "2026-10-15T06:01:44.900Z",
       "commits": [
         {
-          "sha": "96de4b83a79bcbe108b070daf83fcff00c2fbadc",
+          "sha": "5829c5552382718311331e9bac175b710e974ca2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T05:52:24Z",
-          "message": "Merge 17383234253a8bb6ba102b7cb5ab1cdf932056db into 6c940178ea21c7cdc2f4a40f39dbb318709e49f1\n"
+          "timestamp": "2026-10-15T06:00:22Z",
+          "message": "Merge 0959d701824a3a17959e451e3b7e4df75220e4f7 into 6c940178ea21c7cdc2f4a40f39dbb318709e49f1\n"
+        },
+        {
+          "sha": "0959d701824a3a17959e451e3b7e4df75220e4f7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T00:00:17-06:00",
+          "message": "fix(demos): address medium review findings (rich-demos-k78j.3ok)\n"
         },
         {
           "sha": "17383234253a8bb6ba102b7cb5ab1cdf932056db",
