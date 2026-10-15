@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-383",
-      "ref": "refs/pull/383/merge",
-      "sha": "45577566447bc344d3e7d4021ed8447734ef71fe",
-      "timestamp": "2026-10-15T06:45:32.420Z",
-      "commits": [
-        {
-          "sha": "45577566447bc344d3e7d4021ed8447734ef71fe",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T00:44:17-06:00",
-          "message": "Merge 6ee7dab203cd2010042238c88cbea1db27b9372b into 3a6a8cbd5d97aae9380e6641acf02dd56664b2e8\n"
-        },
-        {
-          "sha": "6ee7dab203cd2010042238c88cbea1db27b9372b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T00:44:12-06:00",
-          "message": "chore(docs-runner): delete libraryModule, which has no callers (rich-docs-runner-37pe)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "3a6a8cbd5d97aae9380e6641acf02dd56664b2e8",
-      "timestamp": "2026-10-15T06:37:51.939Z",
+      "sha": "cbc20459c94f43ef5e1bb5e60ab0dd95510067d1",
+      "timestamp": "2026-10-15T06:48:21.747Z",
       "commits": [
         {
-          "sha": "3a6a8cbd5d97aae9380e6641acf02dd56664b2e8",
+          "sha": "cbc20459c94f43ef5e1bb5e60ab0dd95510067d1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T00:36:43-06:00",
-          "message": "Stage at least three sessions per project (rich-demos-k78j.3ok) (#382)\n\n* fix(demos): stage at least three sessions per project (rich-demos-k78j.3ok)\n\nThe owner's rule is 3-5 sessions from each of five projects; fitting the\n512 KiB playground link had left links-issue-tracker and low-talker at two.\nAdds 9cb4bcc8 and eb64e0f3 from the owner's list and trims every string to\n5 lines / 320 chars (from 8 / 600) so the link stays under MAX_LINK_CHARS.\n\n* fix(demos): scrub before trim; prose keeps more than tool output (rich-demos-k78j.3ok)\n\nTrimming first could cut a home path or email below its scrub pattern\n(/Users/b leaked). Cuts are by code point, the marker names both lines and\ncharacters lost, and only the newest title record of each kind is staged.\n\n* fix(demos): prose keep by position — human prompts in, tool calls and meta records out (rich-demos-k78j.3ok)\n\n* fix(demos): one budget rule, grapheme cuts, link size checked by its encoder (rich-demos-k78j.3ok)\n\nkeepOf owns which strings are output (tool calls/results, system and meta\nrecords, tag-wrapped harness turns). The script's deflate estimate ran 58 KiB\nunder the real link; it is gone, and demo-card.test.ts encodes the card."
+          "timestamp": "2026-10-15T00:46:44-06:00",
+          "message": "chore(docs-runner): delete libraryModule, which has no callers (rich-docs-runner-37pe) (#383)"
         }
       ]
     }
