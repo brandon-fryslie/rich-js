@@ -697,20 +697,6 @@ async function bundleOnLibrary(at: string, entry: Entry): Promise<Bundled> {
 }
 
 /**
- * `file`, a module of this repository's own, as a script that adds it to the
- * live library under `name`: bundled onto the library as a live program is,
- * its exports set on `LIBRARY_BINDING` where the playground's `require` reads
- * every module a program may import. Run after the library and before the
- * program, it lets a program import `name` as it imports a package. Returns
- * the script and every file it was built from.
- */
-export async function libraryModule(name: string, file: string): Promise<Bundled> {
-  const entry = generated(`import * as module from ${JSON.stringify(file)};\n${LIBRARY_BINDING}[${JSON.stringify(name)}] = module;`);
-  const { code, modules } = await bundleOnLibrary(path.relative(REPO_ROOT, file), entry);
-  return { code, modules: [file, ...modules] };
-}
-
-/**
  * The program the landing page's hero runs (theme/RichShowcase.ts). It is a
  * program under `examples/`, not a docs block, so the demo-coverage gate
  * (test/coverage/) counts what it imports; it runs on the live library as a
