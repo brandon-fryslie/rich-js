@@ -73,7 +73,7 @@ The shares keep the words readable. `Effected` measures every ink and ground pai
 
 ### One element of many
 
-`confined(effect, owner)` applies `effect` only to the colours `owner` drew, and leaves every other colour exactly as it was. It goes by who drew each cell, not by its colour, so it can single out one of several items that share a fill. Every item of a `Strip` or `FlexStrip` is the owner of its cells, however the strip wraps. A seam cell can show two items at once — a powerline arrow is inked in the fill it points out of, over the fill it points into — so its ink moves with one item and its ground with the other:
+`confined(effect, owner)` applies `effect` only to the colours `owner` drew, and leaves every other colour exactly as it was. It goes by who drew each cell, not by its colour, so it can single out one of several items that share a fill. An owner is whatever stamps the cells it draws (`Segment.anchorLines`): every widget, every `Viewport`, and every item of a `Strip` or `FlexStrip`, however the strip wraps. Confined to anything that draws without stamping, such as the `Strip` itself, an effect moves nothing. A seam cell can show two items at once — a powerline arrow is inked in the fill it points out of, over the fill it points into — so its ink moves with one item and its ground with the other:
 
 ```typescript
 import { CATPPUCCIN_MOCHA, EFFECT_CURVES, EFFECT_LIGHTS, Effected, JOINERS, RichText, Strip, Style, confined, onColors, pulse } from "@promptctl/rich-js";
