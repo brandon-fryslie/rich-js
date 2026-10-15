@@ -6,13 +6,17 @@
  *
  *   const term = new Terminal();
  *   term.open(document.getElementById("term"));
- *   await mountInPage(term);
+ *   const row = () => term.element.offsetHeight / term.rows;
+ *   await mountInPage(term, (lines) => scrollBy({ top: lines * row() }));
+ *
+ * The second argument is where a wheel turn the program moves nothing with
+ * goes: here, the page scrolls by that many of the terminal's rows.
  */
 import { BrowserTerminalHost, type XtermTerminal } from "@promptctl/rich-js/host";
 import { inspectKeys } from "./app.js";
 
-export async function mountInPage(terminal: XtermTerminal): Promise<void> {
-  const host = new BrowserTerminalHost({ terminal });
+export async function mountInPage(terminal: XtermTerminal, passWheel: (lines: number) => void): Promise<void> {
+  const host = new BrowserTerminalHost({ terminal, passWheel });
   host.start();
   try {
     await inspectKeys(host);

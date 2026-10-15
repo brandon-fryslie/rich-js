@@ -736,3 +736,33 @@ describe("WidgetApp drawing options", () => {
     expect(up?.style?.equals(Style.parse("bold green"))).toBe(true);
   });
 });
+
+describe("WidgetApp and the wheel", () => {
+  const DOWN = "\x1b[<65;1;1M";
+  const UP = "\x1b[<64;1;1M";
+  const BELOW = "\x1b[<65;1;4M";
+
+  it("scrolls the viewport under the pointer, and passes nothing outward", async () => {
+    const host = scriptedHost({ cols: 10, rows: 4 });
+    const viewport = new Viewport(new RichText("0\n1\n2\n3\n4"), { rows: 2 });
+    start(host, () => viewport);
+    await tick();
+    host.type(DOWN);
+    await tick();
+    expect(viewport.offset).toBe(1);
+    expect(host.passed()).toEqual([]);
+  });
+
+  it("passes outward a turn over a viewport at that end, and one over no viewport", async () => {
+    const host = scriptedHost({ cols: 10, rows: 4 });
+    const viewport = new Viewport(new RichText("0\n1\n2\n3\n4"), { rows: 2 });
+    // A Group gives the viewport no region, so it shows its own two rows.
+    start(host, () => new Group(viewport, text("\nbelow")));
+    await tick();
+    host.type(UP); // at the start already
+    host.type(BELOW); // under the viewport
+    await tick();
+    expect(viewport.offset).toBe(0);
+    expect(host.passed()).toEqual([-1, 1]);
+  });
+});

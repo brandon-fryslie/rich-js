@@ -81,6 +81,7 @@ export function serve(): void {
         const { hot, returned } = startInTerminal(data.script, {
           ...data.terminal,
           write: (chunk) => post({ kind: "output", chunk }),
+          passWheel: (lines) => post({ kind: "wheel", lines }),
           onInput: (to) => {
             deliver = to;
             post({ kind: "listening" });

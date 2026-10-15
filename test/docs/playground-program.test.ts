@@ -22,7 +22,7 @@ const one = (source: string): ProgramFiles => programFiles(oneFile(NO_SETUP, sou
 async function play(source: string | ProgramFiles): Promise<{ readonly output: string; readonly error: unknown }> {
   const output: string[] = [];
   const script = playgroundScript(typeof source === "string" ? one(source) : source, (await library()).script);
-  const error = await runInTerminal(script, { ...EXAMPLE_TERMINAL, write: (chunk) => output.push(String(chunk)), onInput: () => {}, exit: () => {} }).then(
+  const error = await runInTerminal(script, { ...EXAMPLE_TERMINAL, write: (chunk) => output.push(String(chunk)), onInput: () => {}, passWheel: () => {}, exit: () => {} }).then(
     () => null,
     (thrown: unknown) => thrown,
   );
@@ -195,7 +195,7 @@ describe("hot replacement", { timeout: 60_000 }, () => {
       if (program.kind === "refused") throw new Error(program.report);
       return program;
     };
-    const { hot, returned } = startInTerminal(compiled(source).script, { ...EXAMPLE_TERMINAL, write: (chunk) => output.push(String(chunk)), onInput: () => {}, exit: () => {} });
+    const { hot, returned } = startInTerminal(compiled(source).script, { ...EXAMPLE_TERMINAL, write: (chunk) => output.push(String(chunk)), onInput: () => {}, passWheel: () => {}, exit: () => {} });
     await returned;
     return { output, replace: (next: string) => hot.replace(compiled(next).files) };
   }

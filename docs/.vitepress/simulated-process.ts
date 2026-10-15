@@ -70,6 +70,11 @@ export interface SimulatedTerminal extends ConsoleStream {
    * terminal nobody types at never calls what it is handed.
    */
   onInput(deliver: (chunk: string | Uint8Array) => void): void;
+  /**
+   * The program passed a wheel turn outward (`TerminalHost.passWheel`): it
+   * moved nothing, so what holds the terminal scrolls by `lines` of its rows.
+   */
+  passWheel(lines: number): void;
   /** The program called `process.exit(code)`. What that ends is the terminal's to decide. */
   exit(code: number): void;
 }
@@ -139,6 +144,12 @@ class Output extends Events implements ConsoleStream {
   write(chunk: string | Uint8Array): boolean {
     this.terminal.write(chunk);
     return true;
+  }
+
+  // What `NodeTerminalHost` passes a wheel turn outward through: this
+  // terminal sits in a page, which scrolls.
+  passWheel(lines: number): void {
+    this.terminal.passWheel(lines);
   }
 }
 

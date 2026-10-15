@@ -126,6 +126,7 @@ describe("rich-strip's card", { timeout: 60_000 }, () => {
       ...program.terminal,
       write: (chunk) => written.push(typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)),
       onInput: () => {},
+      passWheel: () => {},
       exit: () => {},
     });
     const rows = stripAnsi(written.join("")).split(/\r?\n/);

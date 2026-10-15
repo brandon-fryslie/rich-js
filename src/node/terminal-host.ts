@@ -59,6 +59,12 @@ interface NodeWritable {
   readonly columns?: number;
   readonly rows?: number;
   readonly isTTY?: boolean;
+  /**
+   * Scroll whatever holds the terminal this stream writes to. Node's own
+   * stdout has none: its terminal is the outermost thing. A stand-in whose
+   * terminal sits in a page (the docs' example card) has one.
+   */
+  passWheel?(lines: number): void;
 }
 
 /**
@@ -143,6 +149,14 @@ export class NodeTerminalHost implements TerminalHost {
 
   write(data: Uint8Array | string): void {
     this.stdout.write(data);
+  }
+
+  // A terminal that reports the wheel to the program has taken it from its
+  // own scrollback, and nothing here can hand it back: on node's stdout this
+  // does nothing. A stdout whose terminal sits in something that scrolls
+  // carries the way out itself.
+  passWheel(lines: number): void {
+    this.stdout.passWheel?.(lines);
   }
 
   size(): TerminalSize {

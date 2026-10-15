@@ -77,6 +77,7 @@ export class WidgetApp implements FrameSource {
     // what it hears, after the app's quit keys.
     this.app.onKey((press) => this.router.key(press));
     this.app.onMouse((event) => this.router.mouse(event));
+    this.app.onWheel((wheel) => this.router.wheel(wheel));
     this.app.onPaint(() => {
       this.focus.settle(this.drawn);
       this.router.framePainted();

@@ -70,6 +70,7 @@ describe("an effect's card", { timeout: 120_000 }, () => {
       env: { TERM: "xterm-256color", COLORTERM: "truecolor" },
       write: (chunk) => void output.push(String(chunk)),
       onInput: () => {},
+      passWheel: () => {},
       exit: () => {},
     });
     await vi.advanceTimersByTimeAsync(ms);

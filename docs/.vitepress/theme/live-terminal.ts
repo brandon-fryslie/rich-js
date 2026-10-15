@@ -233,7 +233,10 @@ export class LiveTerminal {
     private readonly screen: Xterm,
     private readonly options: LiveTerminalOptions,
   ) {
-    this.host = new BrowserTerminalHost({ terminal: screen });
+    // Measured each time, as `fit` measures it: the cell height changes when a
+    // web font arrives or the page zooms.
+    const row = () => screen.element!.offsetHeight / options.terminal.rows;
+    this.host = new BrowserTerminalHost({ terminal: screen, passWheel: (lines) => scrollBy({ top: lines * row() }) });
     // The rows are clipped by an element that clips and cannot scroll: a
     // scrollable one would scroll to show xterm's input field wherever the
     // cursor is, and move the drawn rows out of sight.
@@ -307,6 +310,8 @@ export class LiveTerminal {
       switch (data.kind) {
         case "output":
           return show(data.chunk);
+        case "wheel":
+          return this.host.passWheel(data.lines);
         case "exit":
           flush();
           return this.end({ kind: "exited", code: data.code });

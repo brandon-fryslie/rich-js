@@ -41,7 +41,7 @@ const run = (markdown: string, page = "fixture.md") => runPageExamples(compiler,
 /** What a live program writes, run to the end of its body in the example terminal. */
 async function liveOutput(script: string): Promise<string> {
   const output: string[] = [];
-  await runInTerminal(script, { ...EXAMPLE_TERMINAL, write: (chunk) => output.push(String(chunk)), onInput: () => {}, exit: () => {} });
+  await runInTerminal(script, { ...EXAMPLE_TERMINAL, write: (chunk) => output.push(String(chunk)), onInput: () => {}, passWheel: () => {}, exit: () => {} });
   return output.join("");
 }
 const PANEL = readFileSync(path.join(REPO_ROOT, "docs", "panel.md"), "utf-8");
@@ -656,6 +656,7 @@ describe("the plugin", () => {
         ...EXAMPLE_TERMINAL,
         write: (chunk) => output.push(String(chunk)),
         onInput: () => {},
+        passWheel: () => {},
         exit: () => {},
       });
       // Its first frame is drawn before its body returns, where a still frame is taken.

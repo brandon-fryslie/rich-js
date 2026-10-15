@@ -17,6 +17,7 @@ import { drew, originOf, scrollTargetAt, widgetAt } from "./hit.js";
 import type { Segment } from "../core/segment.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import type { KeyPress, ScreenMouseEvent } from "../host/input.js";
+import type { Wheel } from "../host/app.js";
 
 type KeyHandler = (event: KeyEvent) => void;
 interface RegisteredKeyHandler {
@@ -125,6 +126,20 @@ export class EventRouter {
     this.dispatchMouse(event);
   }
 
+  /**
+   * Scroll the innermost viewport under the pointer that can move, a line a
+   * notch, past any widget it shows there and whatever a drag captured.
+   * Whether one moved is the answer: with none, the app passes the wheel
+   * outward.
+   */
+  wheel({ x, y, lines }: Wheel): boolean {
+    const target = scrollTargetAt(this.source.frame, x, y, lines);
+    if (!target) return false;
+    target.scrollBy(lines);
+    this.source.refresh();
+    return true;
+  }
+
   // --- Dispatch ---
 
   // [LAW:dataflow-not-control-flow] Three-stage walk; same shape every
@@ -175,18 +190,9 @@ export class EventRouter {
       this.source.focusManager.focus(hit.widget);
     }
 
-    // The wheel scrolls the innermost viewport under the pointer that can
-    // move, a line a notch, past any widget it shows there and whatever a
-    // drag captured. With none, nothing moved and there is nothing to paint.
-    if (event.type === "scroll_up" || event.type === "scroll_down") {
-      const lines = event.type === "scroll_down" ? 1 : -1;
-      const target = scrollTargetAt(frame, event.x, event.y, lines);
-      if (!target) return;
-      target.scrollBy(lines);
-      this.source.refresh();
-      return;
-    }
-    // A viewport scrolls only by lines, so the sideways wheel moves nothing.
+    // The wheel is `wheel`'s: a viewport scrolls only by lines, and nothing
+    // scrolls by columns.
+    if (event.type === "scroll_up" || event.type === "scroll_down") return;
     if (event.type === "scroll_left" || event.type === "scroll_right") return;
 
     // [LAW:dataflow-not-control-flow] Same pipeline every event; the

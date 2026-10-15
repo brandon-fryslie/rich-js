@@ -33,6 +33,8 @@ await app.run();
 
 `onMouse(handler)` hears every pointer event — presses, releases, motion and the wheel — at the terminal cell under the pointer, counted from 0. Only the alternate surface reports the pointer. Each returns a function that stops the handler hearing.
 
+`onWheel(handler)` is offered each notch of the wheel as a `Wheel` — the cell under the pointer and `lines`, `1` towards the end of the content and `-1` back — and returns whether it moved anything with it. A notch nothing moved with is passed outward, to the host's `passWheel`: on a page the page scrolls, and in a terminal, which is the outermost thing, nothing happens. An app that reads no wheel passes every notch, so a still app on a page never traps the page's scrolling. A `WidgetApp` offers the wheel to the viewport under the pointer.
+
 Ctrl+C stops the app. No other key means anything to the app: every other key does what your handlers make it do, so `q` quits only an app that binds it. `quitKeys` lists the keys that stop the app, by `keyName`, and they are heard before any handler, so no handler can swallow one. `["ctrl+c"]` is the default; `[]` leaves every key to you. A name no key goes by — `esc`, `Ctrl+C`, `shift+g` — throws when the app is made, rather than binding a key that never fires:
 
 ```ts silent
@@ -151,6 +153,6 @@ In raw mode Ctrl+Z reaches the program as a key (`ctrl+z`), not as the signal th
 
 ## The same app in a browser
 
-Build the app over a `BrowserTerminalHost` instead — it wraps an [xterm.js](https://xtermjs.org) terminal — and nothing else changes. The page owns the terminal, so in a browser nothing ends the program under the app, and `suspend()` hands the terminal back and takes it again at once.
+Build the app over a `BrowserTerminalHost` instead — it wraps an [xterm.js](https://xtermjs.org) terminal and takes `passWheel`, what scrolls the page by a notch the app passed outward — and nothing else changes. The page owns the terminal, so in a browser nothing ends the program under the app, and `suspend()` hands the terminal back and takes it again at once.
 
 The `rich-explore`, `rich-dash` and `claude-sessions` demos are each an `App`; each runs in node from its own npm script and on this site's [demos page](/demos/) from the same source.

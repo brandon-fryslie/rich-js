@@ -45,6 +45,7 @@ function makeRecordingHost(opts: {
     setRawMode: () => {},
     onExit: () => () => {},
     suspend: () => Promise.resolve(),
+    passWheel: () => {},
     isTTY: opts.isTTY,
     writesToTerminal: opts.isTTY,
     env: opts.env,
@@ -71,7 +72,7 @@ describe("hostEnvironment", () => {
   it("a console on a browser host draws a hex colour as 24-bit SGR", () => {
     const xterm = fakeXterm();
     const out = new Console({
-      environment: hostEnvironment(new BrowserTerminalHost({ terminal: xterm })),
+      environment: hostEnvironment(new BrowserTerminalHost({ terminal: xterm, passWheel: () => {} })),
     });
 
     out.print("[#fd8019]warning[/]");

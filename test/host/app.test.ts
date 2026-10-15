@@ -644,3 +644,48 @@ describe("App inline", () => {
     expect(host.output()).not.toContain(ALT_OFF);
   });
 });
+
+describe("App and the wheel", () => {
+  const UP = "\x1b[<64;3;2M";
+  const DOWN = "\x1b[<65;3;2M";
+
+  it("with nothing reading the wheel, passes every turn outward", () => {
+    const host = scriptedHost();
+    void app(host, () => text("still")).run();
+    host.type(DOWN + UP + DOWN);
+    expect(host.passed()).toEqual([1, -1, 1]);
+  });
+
+  it("passes a turn outward only when no wheel handler moved anything with it", () => {
+    const host = scriptedHost();
+    const target = app(host, () => text("still"));
+    void target.run();
+    const heard: unknown[] = [];
+    target.onWheel((wheel) => (heard.push(wheel), wheel.lines > 0));
+    host.type(DOWN + UP);
+    expect(heard).toEqual([
+      { x: 2, y: 1, lines: 1 },
+      { x: 2, y: 1, lines: -1 },
+    ]);
+    expect(host.passed()).toEqual([-1]);
+  });
+
+  it("passes nothing outward for a click or the sideways wheel", () => {
+    const host = scriptedHost();
+    void app(host, () => text("still")).run();
+    host.type("\x1b[<0;3;2M\x1b[<0;3;2m\x1b[<66;3;2M");
+    expect(host.passed()).toEqual([]);
+  });
+
+  it("fails with the error a wheel handler throws", async () => {
+    const host = scriptedHost();
+    const target = new App({ host, surface: "alternate", view: () => text("still") });
+    const run = target.run();
+    target.onWheel(() => {
+      throw new Error("wheel");
+    });
+    host.type(DOWN);
+    await expect(run).rejects.toThrow("wheel");
+    expect(host.passed()).toEqual([]);
+  });
+});
