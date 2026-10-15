@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-402",
-      "ref": "refs/pull/402/merge",
-      "sha": "f15057891441aa7bc2eecd286442c62654dd0687",
-      "timestamp": "2026-10-15T17:25:18.708Z",
-      "commits": [
-        {
-          "sha": "f15057891441aa7bc2eecd286442c62654dd0687",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T17:24:01Z",
-          "message": "Merge b3b2808128e835a28cb8a17df64ad678a2e6fd03 into 680f56460643c5e8cdcdbdf5a8dbcaba8b6c3215\n"
-        },
-        {
-          "sha": "b3b2808128e835a28cb8a17df64ad678a2e6fd03",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T11:23:55-06:00",
-          "message": "The escape delay settles a hold only after the loop has read waiting input (rich-host-input-gnl7)\n\nReview (escalation high) of #402:\n- Node runs an expired timer before it reads input queued behind a long\n  frame, so a split arrow whose rest waited behind a >100ms paint read as\n  meta+[ then A. The delay's end now settles the hold one event-loop turn\n  later; test/node/escape-delay.test.ts drives a real socket through\n  NodeTerminalHost to prove it.\n- An unknown SS3 final was skipped, so Esc, O, h typed inside the delay lost\n  all three keys. No terminal reports in SS3, so it is reissued as the keys it\n  holds (`unfinished` is now `reissue`, Textual's word).\n- settleChunk and drainAndHold share one throw-recovery drain (drainFully).\n- InputChunks' doc no longer claims a split host never resolves by timer.\n"
-        },
-        {
-          "sha": "14a5d8cfd51365c56ff92a583e6b1b4327de95e5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T11:16:08-06:00",
-          "message": "A sequence cut short is its own ConsumeResult kind, so Alt never wraps it (rich-host-input-gnl7)\n\nReview (medium) of #402: the ESC ESC Alt-prefix branch wrapped a cut-short\nsequence as a key, reading Escape then a cut sequence as one meta+escape.\n"
-        },
-        {
-          "sha": "200c056d90c46a2fb0095de2778668bf7e238777",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T11:13:12-06:00",
-          "message": "A byte that cannot belong to an escape sequence ends it unfinished (rich-host-input-gnl7)\n\nReview (high) of #402:\n- consumeCSI/SS3 took ESC and control bytes as parameter or final bytes, so\n  Alt+[ then Down read as \"B\" in one read, and a held ESC [ ate a queued\n  ESC-led key. ECMA-48 sequences are bytes 0x20-0x7E; any other byte now ends\n  one, read by the one rule a stalled sequence is (`unfinished`).\n- drainAndHold finishes the drain after a handler throws before arming the\n  hold, so a stalled tail behind unread keys is still held.\n- Arming the hold cancels any timer a re-entrant feed armed.\n- The stop test uses fake timers instead of a real 100ms wait.\n"
-        },
-        {
-          "sha": "0ef85df123ec509fd5c132c216aee96fd486318e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T11:06:03-06:00",
-          "message": "A split host settles a stalled escape sequence after the escape delay (rich-host-input-gnl7)\n\nOn a \"split\" host only a lone ESC was held on a timer; an `ESC [` or\n`ESC O` left at a read's end waited forever and took the next key as\nits final byte. Any unfinished escape sequence is now held for\nESCAPE_DELAY_MS (100, Textual's ESCAPE_DELAY and vim's ttimeoutlen) and\nthen settled by the whole-keys rule: `ESC [` alone is Alt+[, any other\nESC is Escape with the rest read again.\n\nThe delay replaces the 0ms lone-ESC timer, so a lone ESC split from its\n`[A` over ssh now completes too. Costs: Escape on a real tty is heard\nafter 100ms, and Escape then `[` typed within 100ms reads as Alt+[.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "680f56460643c5e8cdcdbdf5a8dbcaba8b6c3215",
-      "timestamp": "2026-10-15T17:00:49.548Z",
+      "sha": "0f601efdb998987e49cbd21d271e430f576bc52f",
+      "timestamp": "2026-10-15T17:36:08.615Z",
       "commits": [
         {
-          "sha": "680f56460643c5e8cdcdbdf5a8dbcaba8b6c3215",
+          "sha": "0f601efdb998987e49cbd21d271e430f576bc52f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T10:59:09-06:00",
-          "message": "A whole-keys host settles each input chunk (rich-host-input-ab9n) (#393)\n\n* A whole-keys host settles each input chunk; no lone ESC is held for a timer (rich-host-input-ab9n)\n\nTerminalHost declares inputChunks: xterm.js (BrowserTerminalHost, and the\ndocs worker's simulated stdin through NodeTerminalHost) never splits a key\nacross chunks, so an ESC left at a chunk's end is Escape and what followed\nit is re-read. A tty stays \"split\" and keeps the setTimeout(0) hold.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* Whole-keys settle: ESC [ / ESC O is the Alt chord; settling survives a throwing sink (rich-host-input-ab9n)\n\nReview fixes: whole-keys feed no longer runs the split hold logic; header\nnames InputChunks; docs Input field typed; integration test that a\nNodeTerminalHost in the docs worker reads whole-keys. Split-host residue\nfiled as rich-host-input-gnl7.\n\n* Whole-keys settle reads a chunk's rest in full when a sink throws mid-drain (rich-host-input-ab9n)\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-10-15T11:34:53-06:00",
+          "message": "A split host settles a stalled escape sequence after the escape delay (rich-host-input-gnl7) (#402)\n\n* A split host settles a stalled escape sequence after the escape delay (rich-host-input-gnl7)\n\nOn a \"split\" host only a lone ESC was held on a timer; an `ESC [` or\n`ESC O` left at a read's end waited forever and took the next key as\nits final byte. Any unfinished escape sequence is now held for\nESCAPE_DELAY_MS (100, Textual's ESCAPE_DELAY and vim's ttimeoutlen) and\nthen settled by the whole-keys rule: `ESC [` alone is Alt+[, any other\nESC is Escape with the rest read again.\n\nThe delay replaces the 0ms lone-ESC timer, so a lone ESC split from its\n`[A` over ssh now completes too. Costs: Escape on a real tty is heard\nafter 100ms, and Escape then `[` typed within 100ms reads as Alt+[.\n\n* A byte that cannot belong to an escape sequence ends it unfinished (rich-host-input-gnl7)\n\nReview (high) of #402:\n- consumeCSI/SS3 took ESC and control bytes as parameter or final bytes, so\n  Alt+[ then Down read as \"B\" in one read, and a held ESC [ ate a queued\n  ESC-led key. ECMA-48 sequences are bytes 0x20-0x7E; any other byte now ends\n  one, read by the one rule a stalled sequence is (`unfinished`).\n- drainAndHold finishes the drain after a handler throws before arming the\n  hold, so a stalled tail behind unread keys is still held.\n- Arming the hold cancels any timer a re-entrant feed armed.\n- The stop test uses fake timers instead of a real 100ms wait.\n\n* A sequence cut short is its own ConsumeResult kind, so Alt never wraps it (rich-host-input-gnl7)\n\nReview (medium) of #402: the ESC ESC Alt-prefix branch wrapped a cut-short\nsequence as a key, reading Escape then a cut sequence as one meta+escape.\n\n* The escape delay settles a hold only after the loop has read waiting input (rich-host-input-gnl7)\n\nReview (escalation high) of #402:\n- Node runs an expired timer before it reads input queued behind a long\n  frame, so a split arrow whose rest waited behind a >100ms paint read as\n  meta+[ then A. The delay's end now settles the hold one event-loop turn\n  later; test/node/escape-delay.test.ts drives a real socket through\n  NodeTerminalHost to prove it.\n- An unknown SS3 final was skipped, so Esc, O, h typed inside the delay lost\n  all three keys. No terminal reports in SS3, so it is reissued as the keys it\n  holds (`unfinished` is now `reissue`, Textual's word).\n- settleChunk and drainAndHold share one throw-recovery drain (drainFully).\n- InputChunks' doc no longer claims a split host never resolves by timer."
         }
       ]
     }
