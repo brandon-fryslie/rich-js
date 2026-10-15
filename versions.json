@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-385",
+      "ref": "refs/pull/385/merge",
+      "sha": "0ed68bd3cf53b000af300e840a535575cf00e4bb",
+      "timestamp": "2026-10-15T07:10:10.763Z",
+      "commits": [
+        {
+          "sha": "0ed68bd3cf53b000af300e840a535575cf00e4bb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T07:08:39Z",
+          "message": "Merge aa26dff6fa5f8678a422ea72d7889803f1ee5e2d into b009caa3d171690f4b63a709d6ed7529952b0bb7\n"
+        },
+        {
+          "sha": "aa26dff6fa5f8678a422ea72d7889803f1ee5e2d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T01:07:11-06:00",
+          "message": "chore(release): 0.20.0\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b009caa3d171690f4b63a709d6ed7529952b0bb7",
@@ -13,28 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-15T01:07:58-06:00",
           "message": "One CellJoiner replaces the four joiner classes (rich-joiners-9ntp.mjl) (#384)\n\n* feat(strip): one CellJoiner whose shape is data replaces the four joiner classes (rich-joiners-9ntp.mjl)\n\nPowerlineJoiner, CapsuleJoiner, PlainJoiner and GradientJoiner are deleted.\nEach is now a JoinShape value given to CellJoiner: POWERLINE_JOINER,\nCAPSULE_JOINER, PLAIN_JOINER, gradientJoiner(steps). Every rule of the cell\nmodel is refused at construction.\n\nBehaviour changes:\n- The powerline lead is U+E0B0 drawn in reverse video (\"ground\" as fg), not U+E0D7.\n- PLAIN_JOINER draws \" | \" in the new theme style strip.separator (bright_black), not dim.\n- CAPSULE_JOINER ships its rounded glyphs and a space between pills; with fg-only\n  neighbours it draws nothing, where it used to draw caps in the default colour.\n\n* fix(strip): parse joiner shapes into frozen copies; read seam grounds off the drawn form (rich-joiners-9ntp.mjl)\n\nReview (high) findings: ascii form used the glyph seam's ground reads;\nmalformed Paint and out-of-range mix passed construction; caller could\nmutate a validated shape; vanishes ran when divider is the seam; ASCII\ntest duplicated protocol's; docs claimed the reversed notch is\ntranslucent-safe.\n\n* fix(strip): any part reading a neighbour's ground decides its presence; parse shape structure (rich-joiners-9ntp.mjl)"
-        }
-      ]
-    },
-    {
-      "version": "pr-385",
-      "ref": "refs/pull/385/merge",
-      "sha": "f7edd8db41f04bdcb218776e25c8b4c6e9b1c3f7",
-      "timestamp": "2026-10-15T07:08:27.761Z",
-      "commits": [
-        {
-          "sha": "f7edd8db41f04bdcb218776e25c8b4c6e9b1c3f7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:07:22-06:00",
-          "message": "Merge 133cfea52419cc220ee78d6421997ac0b638eb18 into cbc20459c94f43ef5e1bb5e60ab0dd95510067d1\n"
-        },
-        {
-          "sha": "133cfea52419cc220ee78d6421997ac0b638eb18",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:07:11-06:00",
-          "message": "chore(release): 0.20.0\n"
         }
       ]
     }
