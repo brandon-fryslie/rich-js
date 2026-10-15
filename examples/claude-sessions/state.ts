@@ -13,6 +13,7 @@
  * - Mode: add a top-level mode for filter expressions / REPL
  */
 
+import { moveSelection } from "@promptctl/rich-js";
 import type { FileSystem } from "../_capabilities/file-system.js";
 import type { Block, ProjectMeta, SessionMeta } from "./data/types.js";
 import { scanProjects } from "./data/scanner.js";
@@ -142,26 +143,16 @@ export function selectedGlobalHit(state: AppState): GlobalHit | undefined {
   return state.search.globalHits[state.search.globalCursor];
 }
 
-// --- Reducer helpers ---
-
-function clamp(n: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, n));
-}
-
 // --- Sidebar ---
 
 export function moveSidebar(state: AppState, delta: number): AppState {
   if (state.sidebarLevel === "project") {
-    if (state.projects.length === 0) return state;
-    const next = clamp(state.selectedProjectIndex + delta, 0, state.projects.length - 1);
-    if (next === state.selectedProjectIndex) return state;
-    return { ...state, selectedProjectIndex: next, selectedSessionIndex: 0 };
+    const next = moveSelection(state.selectedProjectIndex, delta, state.projects.length);
+    return next === state.selectedProjectIndex ? state : { ...state, selectedProjectIndex: next, selectedSessionIndex: 0 };
   }
   const sessions = selectedProject(state)?.sessions ?? [];
-  if (sessions.length === 0) return state;
-  const next = clamp(state.selectedSessionIndex + delta, 0, sessions.length - 1);
-  if (next === state.selectedSessionIndex) return state;
-  return { ...state, selectedSessionIndex: next };
+  const next = moveSelection(state.selectedSessionIndex, delta, sessions.length);
+  return next === state.selectedSessionIndex ? state : { ...state, selectedSessionIndex: next };
 }
 
 export function descendSidebar(state: AppState): AppState {
@@ -230,23 +221,10 @@ export function openSelectedSession(state: AppState): AppState {
 
 // --- Viewer movement ---
 
+/** `delta` blocks on; `-Infinity` and `Infinity` are the first and the last. */
 export function moveViewer(state: AppState, delta: number): AppState {
-  if (state.blocks.length === 0) return state;
-  const next = clamp(state.selectedBlockIndex + delta, 0, state.blocks.length - 1);
-  if (next === state.selectedBlockIndex) return state;
-  return { ...state, selectedBlockIndex: next };
-}
-
-export function viewerFirst(state: AppState): AppState {
-  if (state.blocks.length === 0 || state.selectedBlockIndex === 0) return state;
-  return { ...state, selectedBlockIndex: 0 };
-}
-
-export function viewerLast(state: AppState): AppState {
-  if (state.blocks.length === 0) return state;
-  const last = state.blocks.length - 1;
-  if (state.selectedBlockIndex === last) return state;
-  return { ...state, selectedBlockIndex: last };
+  const next = moveSelection(state.selectedBlockIndex, delta, state.blocks.length);
+  return next === state.selectedBlockIndex ? state : { ...state, selectedBlockIndex: next };
 }
 
 // --- Layout / mode toggles ---

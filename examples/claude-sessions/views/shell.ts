@@ -1,7 +1,6 @@
-import { Layout, RichText, Viewport } from "@promptctl/rich-js";
+import { Layout, ViewportPerKey } from "@promptctl/rich-js";
 import type { Renderable } from "@promptctl/rich-js";
 import type { AppState } from "../state.js";
-import { ViewportPerSubject } from "../../shared/viewport-per-subject.js";
 import { buildSidebar } from "./sidebar.js";
 import { buildViewer } from "./viewer.js";
 import { buildSearchBar } from "./search-bar.js";
@@ -35,18 +34,18 @@ function buildHeader(state: AppState): Renderable {
  * would start from the top.
  */
 export interface SessionsView {
-  readonly sidebar: Viewport;
+  readonly sidebar: ViewportPerKey;
   /** Per loaded session: each opens at its top, not at the last one's scroll. */
-  readonly viewer: ViewportPerSubject;
+  readonly viewer: ViewportPerKey;
   /** Per query, the same way. */
-  readonly results: ViewportPerSubject;
+  readonly results: ViewportPerKey;
 }
 
 export function sessionsView(): SessionsView {
   return {
-    sidebar: new Viewport(new RichText("")),
-    viewer: new ViewportPerSubject(),
-    results: new ViewportPerSubject(),
+    sidebar: new ViewportPerKey(),
+    viewer: new ViewportPerKey(),
+    results: new ViewportPerKey(),
   };
 }
 
@@ -66,7 +65,7 @@ export function buildShell(state: AppState, view: SessionsView): Layout {
 
   if (state.sidebarVisible) {
     const browserPane = new Layout(
-      buildSidebar(state, view.sidebar, state.focus === "sidebar"),
+      buildSidebar(state, view.sidebar.of(sidebarKey(state)), state.focus === "sidebar"),
       { name: "browser", ratio: 1, minimumSize: 5 },
     );
     body.splitColumn(browserPane, viewerPane);
@@ -76,4 +75,10 @@ export function buildShell(state: AppState, view: SessionsView): Layout {
 
   root.splitColumn(header, body, searchBar, footer);
   return root;
+}
+
+// A level, and each project's session list, scrolls on its own: entries at the
+// same line in two lists are not one selection to follow.
+function sidebarKey(state: AppState): string {
+  return state.sidebarLevel === "project" ? "projects" : `sessions:${state.selectedProjectIndex}`;
 }

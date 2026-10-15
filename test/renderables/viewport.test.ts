@@ -367,3 +367,43 @@ describe("measure", () => {
     expect(viewport.measure({ maxWidth: 4 })).toEqual({ minimum: 4, maximum: 4 });
   });
 });
+
+describe("follow", () => {
+  it("brings a range into view only when it differs from the last one followed", () => {
+    const viewport = new Viewport(numbered(10), { rows: 2 });
+    viewport.follow(5, 6);
+    expect(shown(viewport)).toEqual(["4", "5"]);
+    viewport.scrollTo(0);
+    viewport.follow(5, 6);
+    expect(shown(viewport)).toEqual(["0", "1"]);
+    viewport.follow(6, 7);
+    expect(shown(viewport)).toEqual(["5", "6"]);
+  });
+
+  it("brings the followed range in again when the viewport gets shorter", () => {
+    const viewport = new Viewport(numbered(10));
+    viewport.follow(4, 5);
+    expect(shown(viewport, { rows: 5, exact: true })).toEqual(["0", "1", "2", "3", "4"]);
+    viewport.follow(4, 5);
+    expect(shown(viewport, { rows: 3, exact: true })).toEqual(["2", "3", "4"]);
+  });
+
+  it("leaves a range the wheel scrolled away from where the wheel left it, at any row count", () => {
+    const viewport = new Viewport(numbered(10));
+    viewport.follow(0, 1);
+    shown(viewport, { rows: 3, exact: true });
+    viewport.scrollBy(5);
+    expect(shown(viewport, { rows: 3, exact: true })).toEqual(["5", "6", "7"]);
+    expect(shown(viewport, { rows: 4, exact: true })).toEqual(["5", "6", "7", "8"]);
+    expect(shown(viewport, { rows: 2, exact: true })).toEqual(["5", "6"]);
+  });
+
+  it("leaves a wheel scroll alone while the rows stay the same", () => {
+    const viewport = new Viewport(numbered(10));
+    viewport.follow(4, 5);
+    shown(viewport, { rows: 3, exact: true });
+    viewport.scrollTo(0);
+    viewport.follow(4, 5);
+    expect(shown(viewport, { rows: 3, exact: true })).toEqual(["0", "1", "2"]);
+  });
+});

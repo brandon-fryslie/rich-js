@@ -78,6 +78,36 @@ const next = select(state, state.selected + 1);
 console.print(frame(next));
 ```
 
+## A list kept in view
+
+`ListView` draws items stacked down a viewport you hand it, and keeps the selected one in view. An item may wrap to any number of lines: the list draws them at the viewport's content width, so it knows which lines the selection covers. `gap` puts blank lines between items, and `context` keeps that many lines above and below the selection in view too, so the next item shows before the cursor reaches it. It brings the selection into view with `follow(start, end)`, which calls `ensureVisible` only when the range differs from the last one followed — so the list can be rebuilt every frame, and the wheel still scrolls away from the selection until it moves. `follow` is the per-frame form of the pattern above, for any view rebuilt every frame: call it with the selection's lines each frame instead of `ensureVisible` on select. A followed range that was in view stays in view when the viewport's rows change; one the wheel scrolled away from stays where the wheel left it.
+
+`moveSelection(index, delta, length)` is the cursor: `index + delta` held to the list's ends, with `-Infinity` and `Infinity` naming the first and the last item. When nothing moves it returns `index` itself, so `next === index` tells a reducer it has nothing to change.
+
+```typescript
+import { ListView, moveSelection } from "@promptctl/rich-js";
+
+const notes = Array.from({ length: 12 }, (_, i) =>
+  renderMarkup(`[bold]note ${i}[/] ${"a longer body that wraps ".repeat(1 + (i % 3))}`),
+);
+const list = new Viewport(new RichText(""), { rows: 6, scrollbar: SCROLLBAR });
+const cursor = moveSelection(0, 7, notes.length);
+
+console.print(new Panel(new ListView(list, notes, cursor, { gap: 1, context: 1 }), { title: `note ${cursor}` }));
+```
+
+A pane whose subject changes — the file a preview shows, the session a reader has open — wants a fresh scroll position for each subject and the same one while it holds. `ViewportPerKey` is that: `of(key)` returns the viewport it holds while `key` is unchanged, and a new one, made with the options it was given, for a new key.
+
+```typescript
+import { ViewportPerKey } from "@promptctl/rich-js";
+
+const previews = new ViewportPerKey({ rows: 4 });
+const preview = previews.of("README.md");
+preview.content = renderMarkup(log);
+preview.scrollTo(10);
+console.print(new Panel(previews.of("README.md"), { title: "README.md" }));
+```
+
 ## Scrollbar
 
 Pass `scrollbar` to draw one down the right edge. The content renders narrower by the scrollbar's gutter, one cell for `SCROLLBAR`.

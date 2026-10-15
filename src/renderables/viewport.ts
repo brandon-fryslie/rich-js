@@ -113,6 +113,8 @@ export class Viewport implements Renderable, Measurable, Scrollable {
   // Nothing rendered, nothing shown: no move can take until the first render.
   private _extent: Extent = { rows: 0, lines: 0 };
   private _moves: Move[] = [];
+  // No range followed yet: NaN equals nothing, so the first `follow` moves.
+  private _followed = { start: NaN, end: NaN, rows: NaN };
 
   constructor(content: Renderable, options: ViewportOptions = {}) {
     this.content = content;
@@ -159,20 +161,47 @@ export class Viewport implements Renderable, Measurable, Scrollable {
   }
 
   /**
+   * `ensureVisible(start, end)`, when the range differs from the one the last
+   * `follow` named. A view rebuilt every frame calls this in every frame with
+   * its selection's lines, and the selection is brought into view when it
+   * moves — not on every frame, which would undo on its very render each
+   * scroll the mouse wheel queues. A followed range the last render showed
+   * whole stays shown when the row count changes: the same lines can fall off
+   * the bottom of a viewport that got shorter. One the wheel had scrolled
+   * away from stays away.
+   */
+  follow(start: number, end: number): void {
+    if (start === this._followed.start && end === this._followed.end) return;
+    this._followed = { start, end, rows: NaN };
+    this.ensureVisible(start, end);
+  }
+
+  /**
    * The width its content renders at, out of `width`: what the scrollbar's
    * gutter leaves. Lines handed to `ensureVisible` are lines at this width.
    */
   contentWidth(width: number): number {
-    return cellCount(width - gutterWidth(this.scrollbar));
+    return cellCount(width - this.gutter);
+  }
+
+  /** The cells the scrollbar's gutter takes beside the content. */
+  get gutter(): number {
+    return gutterWidth(this.scrollbar);
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     const { height, ...options } = withBoundedWidth(rawOptions, this);
-    const gutter = gutterWidth(this.scrollbar);
+    const gutter = this.gutter;
     const contentWidth = this.contentWidth(options.maxWidth);
     const lines = Segment.splitLines(this.content.render({ ...options, maxWidth: contentWidth }));
     const extent: Extent = { rows: viewRows(height, this.rows, lines.length), lines: lines.length };
+    const followed = this._followed;
+    const wasShown = followed.start >= this._offset && followed.end <= this._offset + this._extent.rows;
     this._extent = extent;
+    if (!Number.isNaN(followed.rows) && followed.rows !== extent.rows && wasShown) {
+      this.ensureVisible(followed.start, followed.end);
+    }
+    if (!Number.isNaN(followed.start)) this._followed = { ...followed, rows: extent.rows };
     this._offset = this.resolve(extent);
     this._moves = [];
 
@@ -222,12 +251,41 @@ export class Viewport implements Renderable, Measurable, Scrollable {
     // `withBoundedWidth`: the bounded parse asks this very method for the
     // natural width.
     const options = withCellWidth(rawOptions);
-    const gutter = gutterWidth(this.scrollbar);
+    const gutter = this.gutter;
     const inner = { ...options, maxWidth: this.contentWidth(options.maxWidth) };
     const content = Measurement.get(inner, this.content);
     return new Measurement(content.minimum + gutter, content.maximum + gutter).withMaximum(options.maxWidth);
   }
 }
+
+/**
+ * One viewport per thing a pane shows, named by a key. The same viewport comes
+ * back while the key holds, so its scroll position does too; a new key gets a
+ * fresh one, so a new subject opens at its top rather than wherever the last
+ * one was left. A frame is rebuilt on every key press and a scroll position is
+ * a viewport's, so this is what outlives the frame for a pane whose subject
+ * changes under it.
+ */
+export class ViewportPerKey {
+  private held: { key: string; viewport: Viewport };
+
+  constructor(private readonly options: ViewportOptions = {}) {
+    this.held = { key: "", viewport: this.fresh() };
+  }
+
+  /** The viewport for `key`: the held one while the key holds, a fresh one otherwise. */
+  of(key: string): Viewport {
+    if (key !== this.held.key) this.held = { key, viewport: this.fresh() };
+    return this.held.viewport;
+  }
+
+  private fresh(): Viewport {
+    // Empty until a view hands it content: the content is built where the frame is.
+    return new Viewport(EMPTY, this.options);
+  }
+}
+
+const EMPTY: Renderable = { *render(): Iterable<Segment> {} };
 
 const scrollbarGlyphs = ({ thumb, track }: Scrollbar): string => thumb.glyph + track.glyph;
 

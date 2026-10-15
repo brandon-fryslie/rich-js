@@ -28,6 +28,7 @@ import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { cellLen, setCellSize, splitText, asCellCol } from "../core/cells.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
+import { moveSelection } from "../core/selection.js";
 import type { TerminalTheme } from "../core/color.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
@@ -128,12 +129,11 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     // expanded
     switch (event.key) {
       case "up":
-        this.highlightedIndex = Math.max(0, this.highlightedIndex - 1);
+        this.highlightedIndex = moveSelection(this.highlightedIndex, -1, this.filteredOptions.length);
         event.stop();
         return;
       case "down": {
-        const max = Math.max(0, this.filteredOptions.length - 1);
-        this.highlightedIndex = Math.min(max, this.highlightedIndex + 1);
+        this.highlightedIndex = moveSelection(this.highlightedIndex, 1, this.filteredOptions.length);
         event.stop();
         return;
       }

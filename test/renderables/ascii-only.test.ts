@@ -52,6 +52,7 @@ import {
   Traceback,
   Tree,
   Viewport,
+  ListView,
   SCROLLBAR,
 } from "../../src/index.js";
 import {
@@ -101,6 +102,7 @@ const ROWS: Record<string, Row> = {
   Align: { draws: "glyphs", make: () => new Align(panel()) },
   Padding: { draws: "glyphs", make: () => new Padding(panel(), 1) },
   Viewport: { draws: "glyphs", make: () => new Viewport(new RichText("a\nb\nc\nd"), { rows: 2, scrollbar: SCROLLBAR }) },
+  ListView: { draws: "glyphs", make: () => new ListView(new Viewport(new RichText(""), { rows: 2, scrollbar: SCROLLBAR }), [panel()], 0) },
   Rule: { draws: "glyphs", make: () => new Rule("title") },
   Panel: { draws: "glyphs", make: panel },
   Group: { draws: "glyphs", make: () => new Group(panel()) },

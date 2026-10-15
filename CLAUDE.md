@@ -82,7 +82,7 @@ non-interactive program needs from the terminal without any of the above
 Build order within `src/core/`. Each tier imports only from tiers above it, but for `protocol`'s type-only import of `Highlighter`, whose comment owns why:
 
 ```
-0   anchor · cells · color · easing · env · fnv1a · memo · noise · subscription
+0   anchor · cells · color · easing · env · fnv1a · memo · noise · selection · subscription
 1   clock · oklch · osc8 · style · wrap
 2   segment
 3   box · protocol · export-lines
@@ -124,6 +124,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **noise** — Perlin's improved gradient noise (`noise`, `fbm`) plus `hash` and `smoothstep`: the smooth texture the effect catalogue (`renderables/effects.ts`) is drawn from. Not exported from the package; the effects playground carries its source into each program instead (`examples/effects-playground/programs.ts`).
 - **osc8** — the OSC 8 hyperlink wire grammar, one home: the terminator bytes a URL may not carry (`stripOscTerminators`, used by RichText at its data-model boundary), the producer every link is written through (`osc8Open` — sanitize + a URL-derived `id=` so a split link hovers as one — and `OSC8_CLOSE`), and the reader: `osc8Sequences` (typed scan of rendered bytes) over the `OSC8` pattern (exported for composing into a larger regex).
 - **env** — `Env`, the environment map every public signature names instead of `NodeJS.ProcessEnv`, which a project without `@types/node` cannot resolve. `test/seam/browser-types.test.ts` type-checks every non-`node/` entry's emitted declarations with no Node types loaded, the type-level twin of the browser-safe gate below.
+- **selection** — `moveSelection`: the clamped list cursor every list that moves a selection shares — `ListView`'s callers and `Dropdown` alike.
 - **subscription** — `Unsubscribe`, the return type of every `on…()` in the library. It sits this low because `host/` and `widgets/` both need it and neither may depend on the other.
 - **clock** — `Clock` (`now()` in seconds, `every(rate, tick)`), the capability whoever draws frames — `App`, `Live` — is handed, and `FrameRate`, which only `frameRate` makes: the one place a rate is checked. `systemClock` is the platform's, read only when called.
 - **anchor** — `Anchor`: a cell's row and column in the output of whatever drew it, carried on the cell's `Style` so every container passes it through untouched. `Segment.anchorLines` stamps an owner's output, `Segment.splitCells` keeps a cut half's anchor true, and `Segment.anchorAt` reads any cell of a composed frame. Its module header owns why a position travels up on the frame rather than down the render options.
