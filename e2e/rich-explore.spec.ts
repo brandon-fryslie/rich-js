@@ -40,15 +40,10 @@ test("Escape then Tab leaves the card with the explorer still running", async ({
   await page.keyboard.press("Tab");
   await expect(input).not.toBeFocused();
   // Only a running program can move the selection, so ask it to: G, to the last
-  // entry. `InputParser.feed` holds a lone Escape on `escTimer`, and a key that
-  // lands before the timer fires reads as Alt+key, which moves nothing
-  // (rich-host-input-0c4f) — so G is pressed until it lands; pressing it twice
-  // goes nowhere new.
+  // entry.
   await input.focus();
-  await expect(async () => {
-    await page.keyboard.press("G");
-    expect(await screen(page)).toContain("/home/demo/rich-js/tsconfig.json");
-  }).toPass(LOADED);
+  await page.keyboard.press("G");
+  await expect.poll(() => screen(page), LOADED).toContain("/home/demo/rich-js/tsconfig.json");
 });
 
 // The card keeps no scrollback: the status bar is the frame's last row.

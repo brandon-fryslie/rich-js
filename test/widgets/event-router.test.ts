@@ -281,6 +281,31 @@ describe("EventRouter — key parsing", () => {
     expect(h.keyEvents.map((e) => e.key)).toEqual(["up"]);
   });
 
+  it("does not emit lone ESC when an SS3 sequence completes it in a later chunk", () => {
+    h.feed("\x1b");
+    h.feed("OP");
+    expect(h.keyEvents.map((e) => e.key)).toEqual(["f1"]);
+  });
+
+  // A held ESC whose timer has not run yet when the next key lands — a busy
+  // worker queues both messages first (rich-host-input-0c4f). Only `[` and `O`
+  // continue a split sequence, so any other next chunk means Escape was its own key.
+  it.each([
+    ["a key that starts with ESC", "\x1b[B", ["escape", "down"]],
+    ["a printable key", "G", ["escape", "g"]],
+    ["a control key", "\t", ["escape", "tab"]],
+  ])("emits a held ESC as escape before %s in the next chunk", (_name, next, keys) => {
+    h.feed("\x1b");
+    h.feed(next);
+    expect(h.keyEvents.map((e) => e.key)).toEqual(keys);
+    expect(h.keyEvents.every((e) => !e.meta)).toBe(true);
+  });
+
+  it("still reads Alt+key when ESC and the key arrive in one chunk", () => {
+    h.feed("\x1bG");
+    expect(h.keyEvents).toMatchObject([{ key: "G", meta: true }]);
+  });
+
   it("handles a CSI sequence split across multiple chunks", () => {
     h.feed("\x1b[");
     h.feed("3");

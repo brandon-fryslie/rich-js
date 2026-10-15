@@ -16,8 +16,9 @@
  *
  * Lone-ESC handling: a bare `\x1b` is ambiguous (escape key vs. start of a
  * CSI sequence). When the buffer is drained but ends with a lone ESC, the
- * parser defers emission via setTimeout(0). The next chunk cancels the timer
- * if it extends the sequence. `flush()` drains it synchronously.
+ * parser defers emission via setTimeout(0). A next chunk opening with `[` or
+ * `O` extends the sequence and cancels the timer; any other next chunk emits
+ * the ESC as Escape first. `flush()` drains it synchronously.
  */
 
 /** A key as the terminal reported it: plain data, with no say over who hears it. */
@@ -224,6 +225,11 @@ export class InputParser {
   /** Feed a chunk of bytes (or a string of them) into the parser. */
   feed(chunk: Uint8Array | string): void {
     const next = typeof chunk === "string" ? UTF8_ENCODER.encode(chunk) : chunk;
+    // A held ESC waits only for the rest of a split CSI/SS3 introducer. Any
+    // other next chunk means Escape was its own key, even when the hold timer
+    // has not run yet: a busy worker can queue the next key ahead of it, and
+    // joining them would read Escape then G as Alt+G.
+    if (next.length > 0 && next[0] !== LBRACKET && next[0] !== O_BYTE) this.flush();
     this.buffer = concatBytes(this.buffer, next);
     this.cancelEscape();
     this.drain();
