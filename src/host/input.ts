@@ -16,8 +16,9 @@
  *
  * Lone-ESC handling: a bare `\x1b` is ambiguous (escape key vs. start of a
  * CSI sequence). When the buffer is drained but ends with a lone ESC, the
- * parser defers emission via setTimeout(0). The next chunk cancels the timer
- * if it extends the sequence. `flush()` drains it synchronously.
+ * parser defers emission via setTimeout(0). A next chunk opening with `[` or
+ * `O` extends the sequence; any other next chunk emits the ESC as Escape
+ * first. `flush()` drains it synchronously.
  */
 
 /** A key as the terminal reported it: plain data, with no say over who hears it. */
@@ -224,12 +225,24 @@ export class InputParser {
   /** Feed a chunk of bytes (or a string of them) into the parser. */
   feed(chunk: Uint8Array | string): void {
     const next = typeof chunk === "string" ? UTF8_ENCODER.encode(chunk) : chunk;
-    this.buffer = concatBytes(this.buffer, next);
+    // A held lone ESC waits only for the rest of a split CSI/SS3 introducer.
+    // Any other next chunk means Escape was its own key, even when the hold
+    // timer has not run yet: a busy worker can queue the next key ahead of it,
+    // and joining them would read Escape then G as Alt+G (rich-host-input-0c4f).
+    const escaped = this.holdingEscape() && next.length > 0 && next[0] !== LBRACKET && next[0] !== O_BYTE;
     this.cancelEscape();
-    this.drain();
+    // The buffer is settled before the sink hears Escape, so a sink that
+    // resets the parser on it (an app stopping) leaves nothing to drain.
+    this.buffer = concatBytes(escaped ? EMPTY_BYTES : this.buffer, next);
+    try {
+      if (escaped) this.sink.key(ESCAPE);
+    } finally {
+      this.drain();
+    }
     // [LAW:dataflow-not-control-flow] If a lone ESC remains, defer emission
-    // until the next macrotask so a follow-up chunk can extend it.
-    if (this.buffer.length === 1 && this.buffer[0] === ESC) {
+    // until the next macrotask so a follow-up chunk can extend it. Only a lone
+    // one: a sequence split after `ESC [` waits for its rest, however late.
+    if (this.holdingEscape()) {
       this.escTimer = setTimeout(() => {
         this.escTimer = undefined;
         this.flush();
@@ -240,9 +253,9 @@ export class InputParser {
   /** Force any pending lone ESC out of the buffer. */
   flush(): void {
     this.cancelEscape();
-    if (this.buffer.length === 1 && this.buffer[0] === ESC) {
+    if (this.holdingEscape()) {
       this.buffer = EMPTY_BYTES;
-      this.sink.key(({ key: "escape", character: "", shift: false, ctrl: false, meta: false }));
+      this.sink.key(ESCAPE);
     }
   }
 
@@ -250,6 +263,11 @@ export class InputParser {
   reset(): void {
     this.cancelEscape();
     this.buffer = EMPTY_BYTES;
+  }
+
+  /** The parser's one hold: a lone ESC that may yet open a sequence. */
+  private holdingEscape(): boolean {
+    return this.buffer.length === 1 && this.buffer[0] === ESC;
   }
 
   private cancelEscape(): void {
@@ -355,7 +373,7 @@ export class InputParser {
       return {
         kind: "key",
         bytes: 2,
-        event: ({ key: "escape", character: "", shift: false, ctrl: false, meta: false }),
+        event: ESCAPE,
       };
     }
     // ESC <named> / ESC <printable> → Alt-modified key.
@@ -408,7 +426,7 @@ export class InputParser {
     return {
       kind: "key",
       bytes: 1,
-      event: ({ key: "escape", character: "", shift: false, ctrl: false, meta: false }),
+      event: ESCAPE,
     };
   }
 

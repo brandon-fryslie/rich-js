@@ -5,7 +5,7 @@ import type { RenderOptions } from "../../src/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
-import type { InputParser, ScreenMouseEvent } from "../../src/host/input.js";
+import { InputParser, type ScreenMouseEvent } from "../../src/host/input.js";
 import type { KeyEvent, WidgetMouseEvent, FrameSource } from "../../src/widgets/types.js";
 import { parserFor } from "./feed.js";
 
@@ -279,6 +279,60 @@ describe("EventRouter — key parsing", () => {
     h.feed("\x1b");
     h.feed("[A");
     expect(h.keyEvents.map((e) => e.key)).toEqual(["up"]);
+  });
+
+  it("does not emit lone ESC when an SS3 sequence completes it in a later chunk", () => {
+    h.feed("\x1b");
+    h.feed("OP");
+    expect(h.keyEvents.map((e) => e.key)).toEqual(["f1"]);
+  });
+
+  // A held ESC whose timer has not run yet when the next key lands — a busy
+  // worker queues both messages first (rich-host-input-0c4f). Only `[` and `O`
+  // continue a split sequence, so any other next chunk means Escape was its own key.
+  it.each([
+    ["a key that starts with ESC", "\x1b[B", ["escape", "down"]],
+    ["a printable key", "G", ["escape", "g"]],
+    ["a control key", "\t", ["escape", "tab"]],
+  ])("emits a held ESC as escape before %s in the next chunk", (_name, next, keys) => {
+    h.feed("\x1b");
+    h.feed(next);
+    expect(h.keyEvents.map((e) => e.key)).toEqual(keys);
+    expect(h.keyEvents.every((e) => !e.meta)).toBe(true);
+  });
+
+  it("drains nothing after a held ESC whose Escape resets the parser", () => {
+    const keys: string[] = [];
+    const parser: InputParser = new InputParser({
+      key: (press) => {
+        keys.push(press.key);
+        if (press.key === "escape") parser.reset();
+      },
+      mouse: () => {},
+    });
+    parser.feed("\x1b");
+    parser.feed("a\x1b");
+    parser.flush();
+    expect(keys).toEqual(["escape"]);
+  });
+
+  it("drains the next chunk even when the held ESC's Escape throws", () => {
+    const keys: string[] = [];
+    const parser = new InputParser({
+      key: (press) => {
+        keys.push(press.key);
+        if (press.key === "escape") throw new Error("handler");
+      },
+      mouse: () => {},
+    });
+    parser.feed("\x1b");
+    expect(() => parser.feed("ab")).toThrow("handler");
+    expect(keys).toEqual(["escape", "a", "b"]);
+  });
+
+  it("still reads Alt+key when ESC and the key arrive in one chunk", () => {
+    h.feed("\x1bG");
+    expect(h.keyEvents).toMatchObject([{ key: "G", meta: true }]);
   });
 
   it("handles a CSI sequence split across multiple chunks", () => {
