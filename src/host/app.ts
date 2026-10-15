@@ -23,6 +23,12 @@
  * frame's encoding. What differs per host — whether the program can end
  * under us, how it is suspended — is the `TerminalHost`'s, so the same app
  * runs in node and in a browser with no path of its own for either.
+ *
+ * [LAW:single-enforcer] Input has one reader: the app subscribes to its
+ * host's bytes once and parses them (`host/input`), so a program hears keys
+ * and the pointer as events and never decodes a byte. The quit keys are
+ * checked here, before any handler hears the key, so nothing a program binds
+ * — a focused field in a `WidgetApp` included — can swallow them.
  */
 
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
@@ -32,6 +38,7 @@ import { SurfacePainter, type Surface } from "../core/paint.js";
 import { fitHeight, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { hostEnvironment } from "./host-environment.js";
+import { InputParser, keyName, parseKeyName, type KeyPress, type ScreenMouseEvent } from "./input.js";
 import type { TerminalHost } from "./terminal-host.js";
 
 /**
@@ -75,9 +82,16 @@ export interface AppOptions extends DrawOptions {
   readonly clock?: Clock;
   /** How often the app paints while something is animating. 30 frames a second, unless given. */
   readonly rate?: FrameRate;
+  /**
+   * The keys that stop the app, by `keyName`, heard before any `onKey`
+   * handler. `["ctrl+c"]` unless given; `[]` leaves every key to the program.
+   * A name no key goes by throws here.
+   */
+  readonly quitKeys?: readonly string[];
 }
 
 const DEFAULT_RATE = frameRate(30);
+const DEFAULT_QUIT_KEYS: readonly string[] = ["ctrl+c"];
 
 // Button presses, motion and the wheel, in the SGR encoding: coordinates as
 // decimal numbers, so a terminal wider than 223 columns still reports them.
@@ -110,6 +124,13 @@ export class App {
   private refreshQueued = false;
   private subscriptions: Unsubscribe[] = [];
   private readonly paintHandlers = new Set<(frame: readonly (readonly Segment[])[]) => void>();
+  private readonly keyHandlers = new Set<(press: KeyPress) => void>();
+  private readonly mouseHandlers = new Set<(event: ScreenMouseEvent) => void>();
+  private readonly quitKeys: ReadonlySet<string>;
+  private readonly input = new InputParser({
+    key: (press) => this.key(press),
+    mouse: (event) => this.hear(this.mouseHandlers, event),
+  });
   private settle: (outcome: Outcome) => void = () => {};
 
   constructor(options: AppOptions) {
@@ -119,6 +140,7 @@ export class App {
     this.view = options.view;
     this.clock = options.clock ?? systemClock();
     this._rate = options.rate ?? DEFAULT_RATE;
+    this.quitKeys = new Set((options.quitKeys ?? DEFAULT_QUIT_KEYS).map(parseKeyName));
     this.console = new Console({ ...drawOptions(options), environment: hostEnvironment(options.host) });
   }
 
@@ -172,6 +194,7 @@ export class App {
       this._phase = "running";
       this.host.start();
       this.subscriptions = [
+        this.host.onData((chunk) => this.input.feed(chunk)),
         this.host.onResize(() => this.refresh()),
         // The program is ending under the app — by a signal, a crash, or an
         // exit the app's own code never saw. Ending hands the terminal back,
@@ -255,6 +278,24 @@ export class App {
     return () => this.paintHandlers.delete(handler);
   }
 
+  /**
+   * Hear every key the app does not quit on, by the `KeyPress` the terminal
+   * reported; `keyName` names it. A handler that throws fails the app.
+   */
+  onKey(handler: (press: KeyPress) => void): Unsubscribe {
+    this.keyHandlers.add(handler);
+    return () => this.keyHandlers.delete(handler);
+  }
+
+  /**
+   * Hear every pointer event, in terminal cells. Only the alternate surface
+   * reports the pointer. A handler that throws fails the app.
+   */
+  onMouse(handler: (event: ScreenMouseEvent) => void): Unsubscribe {
+    this.mouseHandlers.add(handler);
+    return () => this.mouseHandlers.delete(handler);
+  }
+
   /** Hand the terminal back for good; `run` resolves. */
   stop(): void {
     this.end({ kind: "stopped" });
@@ -286,15 +327,39 @@ export class App {
 
   private end(outcome: Outcome): void {
     const phase = this._phase;
-    if (phase === "idle" || phase === "stopped") return;
+    // [LAW:no-silent-failure] An error after the app ended has no `run` left
+    // to reject, so it is thrown to whoever raised it instead of dropped.
+    if (phase === "idle" || phase === "stopped") {
+      if (outcome.kind === "failed") throw outcome.error;
+      return;
+    }
     this._phase = "stopped";
     this.tick();
     for (const unsubscribe of this.subscriptions) unsubscribe();
     this.subscriptions = [];
+    this.input.reset();
     // A suspended app handed the terminal back when it suspended.
     if (phase === "running") this.leave();
     this.host.stop();
     this.settle(outcome);
+  }
+
+  // --- input ---
+
+  private key(press: KeyPress): void {
+    if (this.quitKeys.has(keyName(press))) return this.stop();
+    this.hear(this.keyHandlers, press);
+  }
+
+  // [LAW:no-silent-failure] The host calls these handlers, not the program,
+  // so one that throws ends the app with its error, as a frame that throws
+  // does. A handler that stops the app is the last to hear the event.
+  private hear<E>(handlers: ReadonlySet<(event: E) => void>, event: E): void {
+    try {
+      for (const handler of [...handlers]) if (this._phase !== "stopped") handler(event);
+    } catch (error) {
+      this.fail(error);
+    }
   }
 
   // [LAW:single-enforcer] Whether the clock is ticking, and at what rate,

@@ -13,18 +13,18 @@
  */
 
 import { Layout, Panel, RichText, Style, type Renderable } from "@promptctl/rich-js";
-import { App, type TerminalHost } from "@promptctl/rich-js/host";
+import { App, keyName, type TerminalHost } from "@promptctl/rich-js/host";
 import { buildWidgets, LAYOUT, type DashboardCapabilities } from "./config.js";
 import { buildLayout } from "./layout.js";
 import type { Widget } from "./widget.js";
 
 const FPS = 8;
 
-// In raw mode Ctrl+C and Ctrl+Z reach the program as keys.
+// By `keyName`. In raw mode Ctrl+Z reaches the program as a key; Ctrl+C is
+// the app's own quit key.
 const KEYS: Readonly<Record<string, "quit" | "suspend">> = {
   q: "quit",
-  "\x03": "quit",
-  "\x1a": "suspend",
+  "ctrl+z": "suspend",
 };
 
 /** The dashboard, running: `done` settles as `App.run` does. */
@@ -91,13 +91,9 @@ export function run(host: TerminalHost, caps: DashboardCapabilities): Running {
     lastTickAt = now;
   };
 
-  // Before anything is subscribed: a widget that throws on its first tick
-  // leaves no listener behind on a host no app ever started.
   tick();
-  const decoder = new TextDecoder();
-  host.onData((chunk) => {
-    const key = typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
-    switch (KEYS[key]) {
+  app.onKey((press) => {
+    switch (KEYS[keyName(press)]) {
       case "quit":
         app.stop();
         return;

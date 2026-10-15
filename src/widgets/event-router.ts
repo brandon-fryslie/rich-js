@@ -1,37 +1,22 @@
 /**
- * EventRouter — parses raw stdin into KeyEvent / ScreenMouseEvent values
- * and dispatches them to widgets via a FocusManager and the frame on screen.
+ * EventRouter — dispatches the keys and pointer events an `App` hears to
+ * widgets, via a FocusManager and the frame on screen.
  *
- * It reads the terminal and never sets it up: raw mode and mouse tracking are
- * the runtime's (`App`), which undoes them on every path out.
- *
- * [LAW:single-enforcer] ANSI escape parsing lives only here — widgets never
- * see raw bytes. One parser, one dispatch surface.
- *
- * [LAW:dataflow-not-control-flow] The same parse pipeline runs for every
- * input chunk: append → consume one event at a time until the buffer can't
- * yield more. The byte's value, not a side-mode, decides which event is
- * emitted. There is no "are we mid-sequence" mode flag — the buffer head
- * carries all the state we need.
- *
- * Lone-ESC handling: a bare `\x1b` is ambiguous (escape key vs. start of a
- * CSI sequence). When the buffer is drained but ends with a lone ESC, the
- * router defers emission via setTimeout(0). The next chunk cancels the timer
- * if it extends the sequence. Tests can call `flush()` to drain synchronously.
+ * It parses nothing and reads no terminal: `App` owns the one parser over its
+ * host's input (`host/input`), and `WidgetApp` hands this what the app hears.
  */
 
 import { KeyEvent } from "./types.js";
 import type {
   FrameSource,
   InteractiveWidget,
-  ScreenMouseEvent,
   KeyHandlerOptions,
   KeyHandlerPriority,
 } from "./types.js";
 import { drew, originOf, scrollTargetAt, widgetAt } from "./hit.js";
 import type { Segment } from "../core/segment.js";
 import type { Unsubscribe } from "../core/subscription.js";
-import type { TerminalHost } from "../host/terminal-host.js";
+import type { KeyPress, ScreenMouseEvent } from "../host/input.js";
 
 type KeyHandler = (event: KeyEvent) => void;
 interface RegisteredKeyHandler {
@@ -49,126 +34,10 @@ interface Target {
 
 export interface EventRouterOptions {
   source: FrameSource;
-  /** The I/O capability the router reads input from. */
-  host: TerminalHost;
 }
-
-// Single-byte → key name table for the trivial cases.
-const SINGLE_BYTE_KEYS: Record<number, string> = {
-  0x09: "tab",
-  0x0a: "enter",
-  0x0d: "enter",
-  0x1b: "escape",
-  0x08: "backspace",
-  0x7f: "backspace",
-  0x20: "space",
-};
-
-// Final-byte → key name for the simple `ESC[<X>` arrow / nav forms.
-const CSI_LETTER_KEYS: Record<string, string> = {
-  A: "up",
-  B: "down",
-  C: "right",
-  D: "left",
-  H: "home",
-  F: "end",
-  Z: "tab", // shift+tab encodes as ESC[Z
-};
-
-// `ESC[<n>~` numeric forms for navigation / function keys.
-const CSI_TILDE_KEYS: Record<string, string> = {
-  "1": "home",
-  "2": "insert",
-  "3": "delete",
-  "4": "end",
-  "5": "pageup",
-  "6": "pagedown",
-  "7": "home",
-  "8": "end",
-  "11": "f1",
-  "12": "f2",
-  "13": "f3",
-  "14": "f4",
-  "15": "f5",
-  "17": "f6",
-  "18": "f7",
-  "19": "f8",
-  "20": "f9",
-  "21": "f10",
-  "23": "f11",
-  "24": "f12",
-};
-
-// SS3 form `ESC O X` for F1–F4 (and arrow keys on some terminals).
-const SS3_KEYS: Record<string, string> = {
-  P: "f1",
-  Q: "f2",
-  R: "f3",
-  S: "f4",
-  A: "up",
-  B: "down",
-  C: "right",
-  D: "left",
-  H: "home",
-  F: "end",
-};
-
-const ESC = 0x1b;
-const LBRACKET = 0x5b; // [
-const LANGLE = 0x3c; // <
-const O_BYTE = 0x4f; // O
-const M_UPPER = 0x4d; // M
-const M_LOWER = 0x6d; // m
-
-// [LAW:single-enforcer] Shared encode/decode singletons. The parser
-// receives `Uint8Array | string` from the host and walks bytes through
-// its state machine; conversion happens at the two boundaries (string
-// input → bytes via TextEncoder; printable-byte run → JS string via
-// TextDecoder) and only there. Module-level instances keep the seam
-// allocation-free and runtime-agnostic — both APIs are universal across
-// node and browser.
-const UTF8_ENCODER = new TextEncoder();
-const UTF8_DECODER = new TextDecoder("utf-8");
-const ASCII_DECODER = new TextDecoder("ascii");
-
-const EMPTY_BYTES = new Uint8Array(0);
-
-// Concatenate two byte arrays into a fresh Uint8Array. Replaces
-// `Buffer.concat([...])` so the parser holds no node-specific globals.
-function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
-  if (a.length === 0) return b;
-  if (b.length === 0) return a;
-  const merged = new Uint8Array(a.length + b.length);
-  merged.set(a, 0);
-  merged.set(b, a.length);
-  return merged;
-}
-
-// Result of attempting to consume one event from the head of the buffer.
-type ConsumeResult =
-  | { kind: "key"; bytes: number; event: KeyEvent }
-  | { kind: "mouse"; bytes: number; event: ScreenMouseEvent }
-  | { kind: "incomplete" } // need more bytes
-  | { kind: "skip"; bytes: number }; // unrecognised — drop bytes
 
 export class EventRouter {
   private readonly source: FrameSource;
-  private readonly host: TerminalHost;
-
-  // [LAW:types-are-the-program] The parse buffer is `Uint8Array`, not
-  // `Buffer` — node's Buffer extends Uint8Array, so Buffer chunks from
-  // process.stdin satisfy this type and the parser still works on node,
-  // while a browser host can emit native Uint8Array without the runtime
-  // depending on a Buffer global polyfill.
-  private buffer: Uint8Array = EMPTY_BYTES;
-  private running = false;
-  private dataUnsubscribe: Unsubscribe | undefined;
-  // [LAW:types-are-the-program] `setTimeout`/`clearTimeout` are universal
-  // across node and browser; `setImmediate` is node-only. Same one-macrotask
-  // semantics for our purpose (defer until current sync work + queued
-  // microtasks drain), without forcing a `setImmediate` polyfill on the
-  // browser host.
-  private escTimer: ReturnType<typeof setTimeout> | undefined;
   // [LAW:single-enforcer] Drag capture lives only here. A mouse_down's
   // target is recorded; mouse_move/mouse_up between then and the next
   // mouse_up route to it unconditionally and relative to where it is painted
@@ -189,7 +58,6 @@ export class EventRouter {
 
   constructor(options: EventRouterOptions) {
     this.source = options.source;
-    this.host = options.host;
 
     // [LAW:single-enforcer] FocusManager owns Tab/Shift+Tab traversal —
     // register it as a normal-priority handler so it participates in the
@@ -200,40 +68,13 @@ export class EventRouter {
     this.onKey((event) => this.source.focusManager.handleKey(event));
   }
 
-  // --- Lifecycle ---
-
-  start(): void {
-    if (this.running) return;
-    this.running = true;
-    // Subscribing starts the underlying stream flowing on node, and is all
-    // it takes on a transport with no paused mode.
-    this.dataUnsubscribe = this.host.onData((chunk) => this.feed(chunk));
-  }
-
-  stop(): void {
-    if (this.running) {
-      this.running = false;
-
-      if (this.dataUnsubscribe) {
-        this.dataUnsubscribe();
-        this.dataUnsubscribe = undefined;
-      }
-    }
-
-    // [LAW:one-source-of-truth] Per-session state belongs to one session.
-    // stop() leaves the router in the same shape a fresh construction
-    // would: empty parse buffer, no captured widget, nothing hovered, no
-    // pending ESC timer.
-    // All cleanup is outside the `running` guard because feed() can arm
-    // escTimer (and grow buffer) even when running is false — without
-    // those, a pre-start feed could leave a deferred escape firing into
-    // the next session. Clearing already-empty state is a no-op so this
-    // stays safe on repeated stop().
-    if (this.escTimer) {
-      clearTimeout(this.escTimer);
-      this.escTimer = undefined;
-    }
-    this.buffer = EMPTY_BYTES;
+  /**
+   * Drop what a run left behind — a captured drag, the pointer, hover — so the
+   * router is in the shape a fresh construction would be.
+   *
+   * [LAW:one-source-of-truth] Per-session state belongs to one session.
+   */
+  reset(): void {
     this.captured = null;
     this.pointer = null;
     this.hover(null);
@@ -270,259 +111,14 @@ export class EventRouter {
     return () => this.mouseHandlers.delete(handler);
   }
 
-  // --- Test / advanced API ---
-
-  /** Feed a chunk of bytes (or a string of bytes) into the parser. */
-  feed(chunk: Uint8Array | string): void {
-    const next = typeof chunk === "string" ? UTF8_ENCODER.encode(chunk) : chunk;
-    this.buffer = concatBytes(this.buffer, next);
-    if (this.escTimer) {
-      clearTimeout(this.escTimer);
-      this.escTimer = undefined;
-    }
-    this.drain();
-    // [LAW:dataflow-not-control-flow] If a lone ESC remains, defer emission
-    // until the next macrotask so a follow-up chunk can extend it. The
-    // explicit `0` is structural deferral, not a throttle — it just lets
-    // the current sync work + queued microtasks drain before flushing.
-    if (this.buffer.length === 1 && this.buffer[0] === ESC) {
-      this.escTimer = setTimeout(() => {
-        this.escTimer = undefined;
-        this.flush();
-      }, 0);
-    }
+  /** Route a key the app heard. */
+  key(press: KeyPress): void {
+    this.dispatchKey(new KeyEvent(press));
   }
 
-  /** Force any pending lone ESC out of the buffer. */
-  flush(): void {
-    if (this.escTimer) {
-      clearTimeout(this.escTimer);
-      this.escTimer = undefined;
-    }
-    if (this.buffer.length > 0 && this.buffer[0] === ESC && this.buffer.length === 1) {
-      this.buffer = this.buffer.subarray(1);
-      this.dispatchKey(new KeyEvent({ key: "escape", character: "", shift: false, ctrl: false, meta: false }));
-    }
-  }
-
-  // --- Internals ---
-
-  private drain(): void {
-    while (this.buffer.length > 0) {
-      const result = this.consumeOne(this.buffer);
-      if (result.kind === "incomplete") return;
-      this.buffer = this.buffer.subarray(result.bytes);
-      if (result.kind === "key") this.dispatchKey(result.event);
-      else if (result.kind === "mouse") this.dispatchMouse(result.event);
-      // skip → drop bytes silently
-    }
-  }
-
-  private consumeOne(buf: Uint8Array): ConsumeResult {
-    const b0 = buf[0]!;
-
-    if (b0 === ESC) return this.consumeEscape(buf);
-
-    // Ctrl+C
-    if (b0 === 0x03) {
-      return {
-        kind: "key",
-        bytes: 1,
-        event: new KeyEvent({ key: "c", character: "", shift: false, ctrl: true, meta: false }),
-      };
-    }
-
-    // Named single-byte keys (tab/enter/space/backspace).
-    const named = SINGLE_BYTE_KEYS[b0];
-    if (named && named !== "escape") {
-      return {
-        kind: "key",
-        bytes: 1,
-        event: new KeyEvent({
-          key: named,
-          character: named === "space" ? " " : "",
-          shift: false,
-          ctrl: false,
-          meta: false,
-        }),
-      };
-    }
-
-    // Ctrl+letter (Ctrl+A=0x01 .. Ctrl+Z=0x1a), excluding the bytes already
-    // claimed by SINGLE_BYTE_KEYS above (tab=0x09, enter=0x0a/0x0d, backspace=0x08).
-    if (b0 < 0x20) {
-      const letter = String.fromCharCode(b0 + 0x60); // 0x01 → 'a'
-      return {
-        kind: "key",
-        bytes: 1,
-        event: new KeyEvent({ key: letter, character: "", shift: false, ctrl: true, meta: false }),
-      };
-    }
-
-    // Printable ASCII / start of a UTF-8 multibyte character.
-    return this.consumePrintable(buf);
-  }
-
-  private consumePrintable(buf: Uint8Array): ConsumeResult {
-    const b0 = buf[0]!;
-    let len = 1;
-    if (b0 >= 0xc0 && b0 < 0xe0) len = 2;
-    else if (b0 >= 0xe0 && b0 < 0xf0) len = 3;
-    else if (b0 >= 0xf0) len = 4;
-    if (buf.length < len) return { kind: "incomplete" };
-
-    const character = UTF8_DECODER.decode(buf.subarray(0, len));
-    return {
-      kind: "key",
-      bytes: len,
-      event: new KeyEvent({
-        key: character.toLowerCase(),
-        character,
-        shift: character.length === 1 && character !== character.toLowerCase(),
-        ctrl: false,
-        meta: false,
-      }),
-    };
-  }
-
-  private consumeEscape(buf: Uint8Array): ConsumeResult {
-    if (buf.length === 1) return { kind: "incomplete" };
-    const b1 = buf[1]!;
-
-    // ESC [ ... → CSI
-    if (b1 === LBRACKET) return this.consumeCSI(buf);
-    // ESC O X → SS3 (F1–F4 / arrows on some terms)
-    if (b1 === O_BYTE) return this.consumeSS3(buf);
-    // ESC ESC → escape key (some terminals double-send). Consume BOTH bytes
-    // so the user sees one escape event, not two. Without this, the second
-    // ESC remained in the buffer and produced a second escape via the
-    // lone-ESC flush path.
-    if (b1 === ESC) {
-      return {
-        kind: "key",
-        bytes: 2,
-        event: new KeyEvent({ key: "escape", character: "", shift: false, ctrl: false, meta: false }),
-      };
-    }
-    // ESC <named> / ESC <printable> → Alt-modified key.
-    // Terminals encode Alt+<key> as the literal byte preceded by ESC, so
-    // `ESC b` is Alt+B, `ESC <0x7f>` is Alt+Backspace, `ESC <0x20>` is
-    // Alt+Space, etc. The router surfaces this as `{ key, meta: true }` —
-    // matching the shape used for Ctrl-modified keys, so handlers can
-    // branch on `event.meta` without parsing escape sequences themselves.
-    //
-    // [LAW:one-source-of-truth] Named single-byte keys (space, tab,
-    // enter, backspace) use the SAME canonical key names on the Alt path
-    // as on the non-Alt path. Without this, `Alt+Space` decoded as
-    // `key: " "` while a bare space decoded as `key: "space"`, so a
-    // handler couldn't match Alt+Space via `event.key === "space" &&
-    // event.meta`. Routing through SINGLE_BYTE_KEYS first preserves the
-    // canonical naming.
-    //
-    // [LAW:one-source-of-truth] Modifier decoding for *all* navigation keys
-    // lives in this file: CSI param-style modifiers (e.g. `ESC[1;3D` for
-    // Alt+Left) flow through `decodeModifier`, and ESC-prefixed Alt forms
-    // flow through this branch. Widgets read `event.meta` and never re-parse.
-    const namedAlt = SINGLE_BYTE_KEYS[b1];
-    if (namedAlt && namedAlt !== "escape") {
-      return {
-        kind: "key",
-        bytes: 2,
-        event: new KeyEvent({
-          key: namedAlt,
-          character: "",
-          shift: false,
-          ctrl: false,
-          meta: true,
-        }),
-      };
-    }
-    if (b1 >= 0x20 && b1 <= 0x7e) {
-      const ch = String.fromCharCode(b1);
-      return {
-        kind: "key",
-        bytes: 2,
-        event: new KeyEvent({
-          key: ch.toLowerCase(),
-          character: "",
-          shift: ch !== ch.toLowerCase(),
-          ctrl: false,
-          meta: true,
-        }),
-      };
-    }
-    // Truly unrecognised follow-up byte → treat the ESC as a lone escape
-    // and re-process from b1 on the next pass.
-    return {
-      kind: "key",
-      bytes: 1,
-      event: new KeyEvent({ key: "escape", character: "", shift: false, ctrl: false, meta: false }),
-    };
-  }
-
-  private consumeSS3(buf: Uint8Array): ConsumeResult {
-    if (buf.length < 3) return { kind: "incomplete" };
-    const final = String.fromCharCode(buf[2]!);
-    const name = SS3_KEYS[final];
-    if (!name) return { kind: "skip", bytes: 3 };
-    return {
-      kind: "key",
-      bytes: 3,
-      event: new KeyEvent({ key: name, character: "", shift: false, ctrl: false, meta: false }),
-    };
-  }
-
-  private consumeCSI(buf: Uint8Array): ConsumeResult {
-    // buf starts with ESC [
-    const next = buf[2];
-    if (next === undefined) return { kind: "incomplete" };
-
-    // X10 mouse: ESC [ M b x y  (3 raw bytes after M)
-    if (next === M_UPPER) {
-      if (buf.length < 6) return { kind: "incomplete" };
-      const cb = buf[3]! - 32;
-      const col = buf[4]! - 32 - 1;
-      const row = buf[5]! - 32 - 1;
-      return { kind: "mouse", bytes: 6, event: decodeMouseFromCb(cb, col, row, true) };
-    }
-
-    // SGR mouse: ESC [ < cb ; x ; y M|m
-    if (next === LANGLE) {
-      // Find terminator M or m.
-      for (let i = 3; i < buf.length; i++) {
-        const b = buf[i]!;
-        if (b === M_UPPER || b === M_LOWER) {
-          const params = ASCII_DECODER.decode(buf.subarray(3, i));
-          const parts = params.split(";");
-          if (parts.length !== 3) return { kind: "skip", bytes: i + 1 };
-          const cb = parseInt(parts[0]!, 10);
-          const col = parseInt(parts[1]!, 10) - 1;
-          const row = parseInt(parts[2]!, 10) - 1;
-          if (Number.isNaN(cb) || Number.isNaN(col) || Number.isNaN(row)) {
-            return { kind: "skip", bytes: i + 1 };
-          }
-          return {
-            kind: "mouse",
-            bytes: i + 1,
-            event: decodeMouseFromCb(cb, col, row, b === M_UPPER),
-          };
-        }
-      }
-      return { kind: "incomplete" };
-    }
-
-    // Generic CSI: collect parameter / intermediate bytes until a final byte
-    // in the range 0x40–0x7e is found.
-    let params = "";
-    for (let i = 2; i < buf.length; i++) {
-      const b = buf[i]!;
-      if (b >= 0x40 && b <= 0x7e) {
-        const final = String.fromCharCode(b);
-        return decodeCSI(params, final, i + 1);
-      }
-      params += String.fromCharCode(b);
-    }
-    return { kind: "incomplete" };
+  /** Route a pointer event the app heard. */
+  mouse(event: ScreenMouseEvent): void {
+    this.dispatchMouse(event);
   }
 
   // --- Dispatch ---
@@ -578,6 +174,8 @@ export class EventRouter {
       this.source.refresh();
       return;
     }
+    // A viewport scrolls only by lines, so the sideways wheel moves nothing.
+    if (event.type === "scroll_left" || event.type === "scroll_right") return;
 
     // [LAW:dataflow-not-control-flow] Same pipeline every event; the
     // capture value and event type pick the target. mouse_down opens a
@@ -618,86 +216,4 @@ export class EventRouter {
 function relocate(frame: readonly (readonly Segment[])[], target: Target): Target {
   const origin = originOf(frame, target.widget);
   return origin ? { widget: target.widget, originX: origin.x, originY: origin.y } : target;
-}
-
-function decodeMouseFromCb(
-  cb: number,
-  x: number,
-  y: number,
-  isPress: boolean,
-): ScreenMouseEvent {
-  const isMotion = (cb & 32) !== 0;
-  const isScroll = (cb & 64) !== 0;
-  const button = cb & 3;
-  const shift = !!(cb & 4);
-  const ctrl = !!(cb & 16); // bit 16 = ctrl in xterm encoding
-
-  if (isScroll) {
-    const type = button === 0 ? "scroll_up" : "scroll_down";
-    return { type, x, y, button: 0, shift, ctrl };
-  }
-  if (isMotion) {
-    return { type: "mouse_move", x, y, button, shift, ctrl };
-  }
-  return {
-    type: isPress ? "mouse_down" : "mouse_up",
-    x,
-    y,
-    button,
-    shift,
-    ctrl,
-  };
-}
-
-function decodeCSI(params: string, final: string, bytes: number): ConsumeResult {
-  // Handle modifier suffixes like `1;2A` (shift+up). We split params on `;`.
-  const parts = params.split(";");
-  const first = parts[0] ?? "";
-  const mod = parseInt(parts[1] ?? "", 10);
-  const { shift, ctrl, meta } = decodeModifier(mod);
-
-  if (final === "~") {
-    const name = CSI_TILDE_KEYS[first];
-    if (!name) return { kind: "skip", bytes };
-    return {
-      kind: "key",
-      bytes,
-      event: new KeyEvent({ key: name, character: "", shift, ctrl, meta }),
-    };
-  }
-
-  const name = CSI_LETTER_KEYS[final];
-  if (!name) return { kind: "skip", bytes };
-
-  // Special case: ESC[Z is shift+tab regardless of explicit modifier.
-  // [LAW:one-source-of-truth] `character` is the printable character the
-  // key would produce, or "" for non-printable / modifier-only events.
-  // The non-shifted tab path emits character: "" (Tab is named, not
-  // printed) — keep shift+tab consistent. Distinguish via key === "tab"
-  // + shift, not character.
-  if (final === "Z") {
-    return {
-      kind: "key",
-      bytes,
-      event: new KeyEvent({ key: "tab", character: "", shift: true, ctrl: false, meta: false }),
-    };
-  }
-
-  return {
-    kind: "key",
-    bytes,
-    event: new KeyEvent({ key: name, character: "", shift, ctrl, meta }),
-  };
-}
-
-function decodeModifier(mod: number): { shift: boolean; ctrl: boolean; meta: boolean } {
-  if (!Number.isFinite(mod) || mod <= 1) {
-    return { shift: false, ctrl: false, meta: false };
-  }
-  const bits = mod - 1;
-  return {
-    shift: (bits & 1) !== 0,
-    meta: (bits & 2) !== 0,
-    ctrl: (bits & 4) !== 0,
-  };
 }

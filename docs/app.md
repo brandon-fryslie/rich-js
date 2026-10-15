@@ -4,7 +4,7 @@
 
 ```ts node
 import { RichText } from "@promptctl/rich-js";
-import { App } from "@promptctl/rich-js/host";
+import { App, keyName } from "@promptctl/rich-js/host";
 import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
 
 const host = new NodeTerminalHost();
@@ -13,13 +13,11 @@ let presses = 0;
 const app = new App({
   host,
   surface: "alternate",
-  view: () => new RichText(`${presses} keys pressed — q quits, ctrl+z suspends`),
+  view: () => new RichText(`${presses} keys pressed — ctrl+c quits, ctrl+z suspends`),
 });
 
-host.onData((chunk) => {
-  const key = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
-  if (key === "q") return app.stop();
-  if (key === "\x1a") return void app.suspend();
+app.onKey((press) => {
+  if (keyName(press) === "ctrl+z") return void app.suspend();
   presses += 1;
   app.refresh();
 });
@@ -28,6 +26,34 @@ await app.run();
 ```
 
 `App` is on the `host` subpath, beside the `TerminalHost` it runs on. It carries no third-party dependency. An app whose view has [widgets](/widgets) in it — fields, buttons, dropdowns that take focus and clicks — is a `WidgetApp`, which is an `App` with that input added.
+
+## Keys and the pointer
+
+`onKey(handler)` hears every key the terminal sends, as a `KeyPress`: the `key`, the `character` it types (`""` for a key that types none), and whether `shift`, `ctrl` and `meta` were held. `keyName(press)` is the one name a key goes by, so a keymap is a table keyed by it. A key that types a character is named by that character — `q`, `G`, `>` — and any other key by its name — `up`, `enter`, `space`, `f5` — with the modifiers held in front, always in the order `ctrl+`, `meta+`, `shift+`: `ctrl+z`, `shift+tab`, `meta+left`. Shift is never named on a character, which already carries it, with Alt held or not: Shift+G is `G`, Alt+Shift+G is `meta+G`.
+
+`onMouse(handler)` hears every pointer event — presses, releases, motion and the wheel — at the terminal cell under the pointer, counted from 0. Only the alternate surface reports the pointer. Each returns a function that stops the handler hearing.
+
+Ctrl+C stops the app. No other key means anything to the app: every other key does what your handlers make it do, so `q` quits only an app that binds it. `quitKeys` lists the keys that stop the app, by `keyName`, and they are heard before any handler, so no handler can swallow one. `["ctrl+c"]` is the default; `[]` leaves every key to you. A name no key goes by — `esc`, `Ctrl+C`, `shift+g` — throws when the app is made, rather than binding a key that never fires:
+
+```ts silent
+import { RichText } from "@promptctl/rich-js";
+import { App, keyName } from "@promptctl/rich-js/host";
+import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
+
+let last = "nothing yet";
+const app = new App({
+  host: new NodeTerminalHost(),
+  surface: "inline",
+  quitKeys: ["q", "escape"],
+  view: () => new RichText(`last key: ${last} — q or escape quits`),
+});
+app.onKey((press) => {
+  last = keyName(press);
+  app.refresh();
+});
+```
+
+A handler that throws ends the app with its error, as a frame that throws does.
 
 ## The view is asked for every frame
 
@@ -113,14 +139,15 @@ While it runs, the app hides the cursor, switches the terminal to raw mode and, 
 
 - you call `stop()` — `run()` resolves;
 - the view throws while a frame is painted — `run()` rejects with that error;
-- you call `fail(error)` — `run()` rejects with `error`. Code of yours that the app does not call — a key handler, a timer — ends the app this way when it throws, so the error reaches `run()`'s caller with the terminal already handed back;
+- a key or pointer handler throws — `run()` rejects with that error;
+- you call `fail(error)` — `run()` rejects with `error`. Code of yours that the app does not call — a timer, a promise's callback — ends the app this way when it throws, so the error reaches `run()`'s caller with the terminal already handed back;
 - the program ends under the app: `process.exit`, `SIGINT`, `SIGTERM`, `SIGHUP`, an uncaught exception or an unhandled rejection — `run()` does not settle, so no code after it runs while the program ends.
 
 In that last case the program still ends the way it would have without the app. A signal still terminates the process, `process.exit` keeps its exit code, and a crash is still reported — after the terminal is handed back, so the report lands on the normal screen instead of vanishing with the alternate one. That holds for [`installTraceback`](/traceback) whichever you set up first.
 
 ## Suspending
 
-In raw mode Ctrl+Z reaches the program as a key (`"\x1a"`), not as the signal that suspends it, so the app decides what it means. `suspend()` hands the terminal back and stops the process the way the shell's job control does — the whole job, so a launcher such as `npm run` stops with it and the shell gets its prompt back. When the user runs `fg`, the app takes the terminal again and repaints; the promise `suspend()` returned resolves then.
+In raw mode Ctrl+Z reaches the program as a key (`ctrl+z`), not as the signal that suspends it, so the app decides what it means: bind it to `suspend()`, as the first example does. `suspend()` hands the terminal back and stops the process the way the shell's job control does — the whole job, so a launcher such as `npm run` stops with it and the shell gets its prompt back. When the user runs `fg`, the app takes the terminal again and repaints; the promise `suspend()` returned resolves then.
 
 ## The same app in a browser
 

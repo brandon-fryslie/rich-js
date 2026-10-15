@@ -7,7 +7,8 @@ import { Slider } from "../../src/widgets/slider.js";
 import { TextInput } from "../../src/widgets/text-input.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
-import { NodeTerminalHost } from "../../src/node/terminal-host.js";
+import type { InputParser } from "../../src/host/input.js";
+import { parserFor } from "./feed.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 
@@ -26,13 +27,12 @@ function composed(widget: InteractiveWidget): Layout {
   return layout;
 }
 
-/** A router reading the frame `root` paints now, as an app would supply it. */
-function routerOver(root: Layout): EventRouter {
+/** Input into a router reading the frame `root` paints now, as an app would supply it. */
+function routerOver(root: Layout): InputParser {
   const frame = (): Segment[][] => Segment.splitLines(root.render(OPTIONS));
-  return new EventRouter({
+  return parserFor(new EventRouter({
     source: { focusManager: new DefaultFocusManager(() => []), get frame() { return frame(); }, refresh: () => {} },
-    host: new NodeTerminalHost({ stdout: { write: () => true, on: () => {}, off: () => {} } }),
-  });
+  }));
 }
 
 /** Where `text` first appears on screen, read off the painted characters. */

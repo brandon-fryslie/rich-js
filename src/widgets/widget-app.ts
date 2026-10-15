@@ -20,7 +20,8 @@
  *
  * [LAW:locality-or-seam] `App` knows nothing of widgets — `host/` depends on
  * `core/` alone — and this reaches it only through the seams it already has:
- * the view is a renderable, and `onPaint` hears the frame.
+ * the view is a renderable, `onPaint` hears the frame, and `onKey`/`onMouse`
+ * hear the input.
  */
 
 import { Reaction } from "mobx";
@@ -37,8 +38,8 @@ import type {
   FrameSource,
   KeyEvent,
   KeyHandlerOptions,
-  ScreenMouseEvent,
 } from "./types.js";
+import type { ScreenMouseEvent } from "../host/input.js";
 import { WidgetBase } from "./widget-base.js";
 
 export class WidgetApp implements FrameSource {
@@ -63,7 +64,11 @@ export class WidgetApp implements FrameSource {
       return this.drawn.filter((widget) => owners.has(widget));
     });
     this.focusManager = this.focus;
-    this.router = new EventRouter({ source: this, host: options.host });
+    this.router = new EventRouter({ source: this });
+    // [LAW:single-enforcer] The app reads the terminal; the router routes
+    // what it hears, after the app's quit keys.
+    this.app.onKey((press) => this.router.key(press));
+    this.app.onMouse((event) => this.router.mouse(event));
     this.app.onPaint(() => {
       this.focus.settle(this.drawn);
       this.router.framePainted();
@@ -87,16 +92,12 @@ export class WidgetApp implements FrameSource {
    * until the app stops — `App.run`, with the input.
    */
   async run(): Promise<void> {
-    // App refuses a second run; this one must not end the input of the first.
+    // App refuses a second run; this one must not end the state of the first.
     if (this.app.phase !== "idle") return this.app.run();
-    // Listening before the app starts, so a first frame that throws — and
-    // stops the host — is not followed by a subscription that restarts it.
-    this.router.start();
-    const running = this.app.run();
     try {
-      await running;
+      await this.app.run();
     } finally {
-      this.router.stop();
+      this.router.reset();
       this.reaction.dispose();
     }
   }
@@ -128,7 +129,7 @@ export class WidgetApp implements FrameSource {
   }
 
   /**
-   * Hear every key. A `high` handler hears it before the focused widget, a
+   * Hear every key the app does not quit on. A `high` handler hears it before the focused widget, a
    * `normal` one after it — and after Tab has moved focus — and a handler
    * that calls `event.stop()` ends the key there.
    */

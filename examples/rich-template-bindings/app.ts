@@ -624,15 +624,9 @@ export function runDemo(host: TerminalHost): DemoHandle {
   // PgDn: in the docs card the browser reserves those for switching tabs, and
   // the page never sees them. For the same reason the hint leaves out Ctrl+W.
   // High-priority: these run BEFORE the focused widget, so a focused
-  // TextInput can't accidentally swallow Ctrl+C or our section-nav chords.
-  // Stopping the event prevents the focused widget from also reacting to
-  // the same press.
+  // TextInput can't swallow the section-nav keys. Stopping the event keeps
+  // the focused widget from also reacting to the same press.
   app.onKey((event) => {
-    if (event.ctrl && event.key === "c") {
-      app.stop();
-      event.stop();
-      return;
-    }
     const n = SECTIONS.length;
     if (event.key === "pageup")        { state.prev(n); event.stop(); }
     else if (event.key === "pagedown") { state.next(n); event.stop(); }

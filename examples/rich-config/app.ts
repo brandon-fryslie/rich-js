@@ -404,13 +404,6 @@ export function runDemo(host: TerminalHost): DemoHandle {
 
   const app = new WidgetApp({ host, surface: "alternate", view: () => view });
 
-  app.onKey((event) => {
-    if (event.ctrl && event.key === "c") {
-      app.stop();
-      event.stop();
-    }
-  }, { priority: "high" });
-
   app.onMouse((event) => {
     if (event.type !== "mouse_up") return;
     // The frame on screen says who drew the cell under the pointer; focus()
