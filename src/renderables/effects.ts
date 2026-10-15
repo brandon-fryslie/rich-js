@@ -43,11 +43,11 @@
  * (`examples/effects-playground/programs.ts`), on the published library.
  */
 
-import { ColorDepth, ColorRgba, contrastRatio, type TerminalTheme } from "../core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec, contrastRatio, relativeLuminance, type TerminalTheme } from "../core/color.js";
 import { EASES, Phase, type Ease } from "../core/easing.js";
 import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo } from "../core/memo.js";
-import { IDENTITY, Oklch } from "../core/oklch.js";
+import { Oklch } from "../core/oklch.js";
 import { Effected, type Drawn, type Effect, type EffectCell, type Pair } from "./effect.js";
 
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
@@ -82,6 +82,17 @@ const STRENGTHS = Array.from({ length: LEVELS }, (_, i) => (i + 1) / LEVELS);
 /** What 8-bit rounding of an OKLCH round trip can cost a contrast ratio. */
 const ROUNDING = 0.01;
 
+/**
+ * The contrast no loop draws `pair` below at `depth`: its resting contrast or
+ * `LEGIBLE`, whichever is lower, less what truecolor's rounding can cost.
+ * Below truecolor every colour written is one the depth holds exactly, so
+ * there is nothing to forgive. [LAW:one-source-of-truth] The floor `shares`
+ * settles the light against and `wheel` writes its turn above.
+ */
+function floorOf(pair: Pair, depth: ColorDepth): number {
+  return Math.min(contrastRatio(pair.fg, pair.bg), LEGIBLE) - (depth === ColorDepth.TRUECOLOR ? ROUNDING : 0);
+}
+
 /** A pair's two sides, glyph and ground. */
 type Side = "fg" | "bg";
 const SIDES: readonly Side[] = ["fg", "bg"];
@@ -110,8 +121,6 @@ export function shares({ pairs, depth, theme }: Drawn, colors: ReadonlySet<strin
     const hex = own(pair, side);
     return hex === undefined ? [] : [[hex, pair[side]]];
   })));
-  // Below truecolor every colour written is one the depth holds exactly, so only truecolor's rounding has a cost to forgive.
-  const slack = depth === ColorDepth.TRUECOLOR ? ROUNDING : 0;
   // A colour no pair writes keeps no word legible, so nothing bounds its share:
   // a frame drawing a lit colour only under blanks and seams, or not at all,
   // is a frame like any other.
@@ -128,7 +137,7 @@ export function shares({ pairs, depth, theme }: Drawn, colors: ReadonlySet<strin
     // [LAW:one-source-of-truth] A pair reads in the colours `Effected` writes it in, touched at each side's share.
     const holds = (share: number): boolean =>
       facing.every(([pair, mine, theirs]) => {
-        const floor = Math.min(contrastRatio(pair.fg, pair.bg), LEGIBLE) - slack;
+        const floor = floorOf(pair, depth);
         const at = (side: Side, w: number): ColorRgba => touchedAt(touch, pair[side], (side === mine ? share : theirs) * w);
         return STRENGTHS.every((w) => {
           const shown = Effected.shows(pair, { fg: at("fg", w), bg: at("bg", w) }, depth, theme);
@@ -701,8 +710,12 @@ const STRAY = 180;
  * together; on the terminal's ground, a run of text's ink is a segment of
  * its own. A segment's stray is slow noise of its own, at `STRAY_PERIODS`,
  * so no two keep step, and the row never shows one spread of hues twice.
- * Lightness and chroma are kept, so the words read as they did; the turn
- * only happens to the element's own colours (`Drawn.colors`), never the
+ * A colour keeps its luminance as it turns (`hueTurned`), so every pair of
+ * words reads at the contrast it rested at; at 256 colours a turned colour
+ * lands on a colour the depth writes, one that keeps every pair of words it
+ * is drawn in at its floor (`floorOf`) — its resting contrast or WCAG AA,
+ * whichever is lower — as `shares` keeps the light's (`turnedBounds`). The
+ * turn only happens to the element's own colours (`Drawn.colors`), never the
  * terminal's. On a sixteen-colour terminal nothing turns (`stillOnSlots`).
  */
 export function wheel(curve: Curve, z: number): Effect {
@@ -718,14 +731,119 @@ export function wheel(curve: Curve, z: number): Effect {
     const s = seed(hex);
     return (360 * t) / P + curve.swing * STRAY * ((stray(s, t) - stray(s, 0)) / 1.5);
   };
-  return stillOnSlots((t, { colors, fills }) => (shown, cell) => {
+  return stillOnSlots((t, { colors, fills, pairs, depth, theme }) => {
     // Whether a slot shows one of the element's colours: never the terminal's, whatever its hex.
-    const own = { fg: !cell.terminal.fg && colors.has(shown.fg.hex), bg: !cell.terminal.bg && colors.has(shown.bg.hex) };
-    // An own colour turns with its segment: itself if a fill or beside no own colour, else the one beside it.
-    const turn = (color: ColorRgba, mine: boolean, other: ColorRgba, theirs: boolean): ColorRgba =>
-      !mine ? color : Oklch.fromRgba(color).applyKey({ ...IDENTITY, hueShift: turned(fills.has(color.hex) || !theirs ? color.hex : other.hex, t) }).toRgba();
-    return { fg: turn(shown.fg, own.fg, shown.bg, own.bg), bg: turn(shown.bg, own.bg, shown.fg, own.fg) };
+    const own = (terminal: boolean, color: ColorRgba): boolean => !terminal && colors.has(color.hex);
+    // The segment an own colour turns with: itself if a fill or beside no own colour, else the one beside it.
+    const segmentOf = (color: ColorRgba, other: ColorRgba, theirs: boolean): string => (fills.has(color.hex) || !theirs ? color.hex : other.hex);
+    // A colour as it turns with a segment: written one way wherever it is drawn in a frame.
+    const keyOf = (color: ColorRgba, segment: string): string => `${color.hex} ${segment}`;
+    const bounds = turnedBounds(pairs, depth, (pair, side) => {
+      const other = side === "fg" ? "bg" : "fg";
+      return own(pair.terminal[side], pair[side]) ? keyOf(pair[side], segmentOf(pair[side], pair[other], own(pair.terminal[other], pair[other]))) : undefined;
+    });
+    // 256 colours writes a turned colour as one it has an index for; truecolor
+    // as one of the two either side of its luminance. Or as the colour it
+    // turns from, which its bounds are measured from and so always admit.
+    const indexed = ColorSpec.indexed(depth, theme).map(([, color]) => color);
+    const written = new Map<string, ColorRgba>();
+    const choose = (color: ColorRgba, segment: string): ColorRgba => {
+      const turn = hueTurned(color, turned(segment, t));
+      return nearestWithin(turn.looks, [color, ...(depth === ColorDepth.TRUECOLOR ? turn.either : indexed)], bounds.get(keyOf(color, segment)) ?? UNBOUNDED);
+    };
+    const write = (color: ColorRgba, segment: string): ColorRgba => {
+      const found = written.get(keyOf(color, segment)) ?? choose(color, segment);
+      written.set(keyOf(color, segment), found);
+      return found;
+    };
+    return (shown, cell) => {
+      const mine = { fg: own(cell.terminal.fg, shown.fg), bg: own(cell.terminal.bg, shown.bg) };
+      const turn = (color: ColorRgba, ours: boolean, other: ColorRgba, theirs: boolean): ColorRgba => (ours ? write(color, segmentOf(color, other, theirs)) : color);
+      return { fg: turn(shown.fg, mine.fg, shown.bg, mine.bg), bg: turn(shown.bg, mine.bg, shown.fg, mine.fg) };
+    };
   });
+}
+
+/** A colour turned round the hue circle at its luminance (`hueTurned`). */
+interface Turned {
+  /** The turned colour, the nearest written stands in for. */
+  readonly looks: ColorRgba;
+  /** The 8-bit colours of the turned hue either side of the luminance, darker first. */
+  readonly either: readonly ColorRgba[];
+}
+
+/**
+ * `color` turned `degrees` round the hue circle at its own relative
+ * luminance, and at its own chroma where the gamut has it. WCAG contrast is
+ * a ratio of luminances, so a pair of colours each turned this way reads at
+ * the contrast it did; one turned at its OKLCH lightness instead does not,
+ * since equal lightness is not equal luminance across hues. The lightness
+ * is found by bisection, as `ensureContrastToward` finds one, and 8-bit
+ * rounding lands the luminance between two colours, so both are kept. At 0
+ * degrees the colour itself, exactly: an OKLCH round trip can land a step
+ * off (`touchedAt`).
+ */
+function hueTurned(color: ColorRgba, degrees: number): Turned {
+  if (degrees === 0) return { looks: color, either: [color] };
+  const from = Oklch.fromRgba(color);
+  const luminance = relativeLuminance(color);
+  const at = (l: number): ColorRgba => new Oklch(l, from.c, from.h + degrees, from.alpha).toRgba();
+  let [dim, bright] = [0, 1];
+  for (let i = 0; i < 24; i++) {
+    const mid = (dim + bright) / 2;
+    [dim, bright] = relativeLuminance(at(mid)) < luminance ? [mid, bright] : [dim, mid];
+  }
+  return { looks: at(bright), either: [at(dim), at(bright)] };
+}
+
+/** Where a colour's luminance may land, as `stop`: none is bounded until a pair bounds it. */
+interface Bounds {
+  readonly lo: number;
+  readonly hi: number;
+}
+const UNBOUNDED: Bounds = { lo: -Infinity, hi: Infinity };
+
+/** A luminance where WCAG contrast is a difference: the ratio of two colours is `exp` of the gap between their stops. */
+const stop = (color: ColorRgba): number => Math.log(relativeLuminance(color) + 0.05);
+
+/**
+ * How far each turned colour's luminance may land from the one it rests at,
+ * keyed as `turnedAs` keys each side of a pair — none for a side that holds
+ * still — so that every pair of `pairs` reads at its floor (`floorOf`) at
+ * `depth` however each of its colours lands within its bounds.
+ *
+ * A pair's contrast to spare above its floor, as a gap between stops, is
+ * shared out evenly between its sides that turn: the lighter may land that
+ * much darker, the darker that much lighter, and never further. So a colour
+ * written once for every pair it is drawn in is bounded by each of them at
+ * once, and a frame writes it one way wherever it falls. A pair whose floor
+ * is 1:1 holds however it is drawn, and bounds nothing.
+ */
+function turnedBounds(pairs: readonly Pair[], depth: ColorDepth, turnedAs: (pair: Pair, side: Side) => string | undefined): ReadonlyMap<string, Bounds> {
+  const bounds = new Map<string, Bounds>();
+  for (const pair of pairs.filter((pair) => floorOf(pair, depth) > 1)) {
+    const spare = Math.log(contrastRatio(pair.fg, pair.bg)) - Math.log(floorOf(pair, depth));
+    const share = spare / SIDES.filter((side) => turnedAs(pair, side) !== undefined).length;
+    for (const side of SIDES) {
+      const key = turnedAs(pair, side);
+      if (key === undefined) continue;
+      const [mine, theirs] = [stop(pair[side]), stop(pair[side === "fg" ? "bg" : "fg"])];
+      const { lo, hi } = bounds.get(key) ?? UNBOUNDED;
+      bounds.set(key, mine >= theirs ? { lo: Math.max(lo, mine - share), hi } : { lo, hi: Math.min(hi, mine + share) });
+    }
+  }
+  return bounds;
+}
+
+/**
+ * Of `candidates`, the one that looks nearest `color` (OKLab's ΔE) among
+ * those whose luminance is within `bounds`. Ties go to the earlier. The
+ * caller offers one its bounds admit; a reduce over none throws.
+ */
+function nearestWithin(color: ColorRgba, candidates: readonly ColorRgba[], { lo, hi }: Bounds): ColorRgba {
+  const looks = Oklch.fromRgba(color);
+  const admitted = candidates.filter((candidate) => stop(candidate) >= lo && stop(candidate) <= hi);
+  return admitted.map((candidate) => [candidate, looks.deltaE(Oklch.fromRgba(candidate))] as const).reduce((best, next) => (next[1] < best[1] ? next : best))[0];
 }
 
 /**

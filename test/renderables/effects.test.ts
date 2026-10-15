@@ -13,6 +13,7 @@ import {
   RichText,
   Style,
   contrastRatio,
+  relativeLuminance,
   renderToString,
   Console,
   DEFAULT_TERMINAL_THEME,
@@ -29,6 +30,8 @@ import {
   type TerminalTheme,
 } from "../../src/index.js";
 import { CATPPUCCIN_LATTE, CATPPUCCIN_MOCHA } from "../../src/index.js";
+import { drawnBy } from "../../src/core/anchor.js";
+import { JOIN } from "../../src/core/strip.js";
 import {
   EFFECT_CATALOGUE,
   EFFECT_CURVES,
@@ -134,7 +137,7 @@ describe("the wheel", () => {
   const turned = (from: ColorRgba, to: ColorRgba): number => (((hue(to) - hue(from)) % 360) + 360) % 360;
   const cell: EffectCell = { row: 0, col: 3, seed: 0, terminal: written, anchor: undefined };
 
-  it("turns every hue the whole way round once a period, lightness and chroma kept", () => {
+  it("turns every hue the whole way round once a period, luminance and chroma kept", () => {
     const P = 907;
     const round = on(wheel(curve(P, 0), 0), frame(own, grounds));
     for (const fill of fills) {
@@ -144,10 +147,9 @@ describe("the wheel", () => {
       expect(Math.abs(turned(fill, at(P / 4)) - 90)).toBeLessThan(2);
       expect(Math.abs(turned(fill, at(P / 2)) - 180)).toBeLessThan(2);
       expect(Math.min(turned(fill, at(P)), 360 - turned(fill, at(P)))).toBeLessThan(1);
-      const was = Oklch.fromRgba(fill);
-      const is = Oklch.fromRgba(at(P / 3));
-      expect(is.l).toBeCloseTo(was.l, 1);
-      expect(is.c).toBeCloseTo(was.c, 1);
+      // Contrast is a ratio of luminances, so a turn that keeps luminance keeps every pair's.
+      expect(relativeLuminance(at(P / 3))).toBeCloseTo(relativeLuminance(fill), 2);
+      expect(Oklch.fromRgba(at(P / 3)).c).toBeCloseTo(Oklch.fromRgba(fill).c, 1);
     }
   });
 
@@ -490,6 +492,23 @@ describe("a curve is checked when its effect is made", () => {
   });
 });
 
+/**
+ * Words in colours off any palette, seeded so every run draws the same
+ * ones: half `reverse`, so the ink is written in the ground's slot, and a
+ * fifth on the terminal's own ground. The theme's palettes are spaced for
+ * reading and land where a touched colour is written alike either way;
+ * arbitrary colours are where the shares and the wire part.
+ */
+function words(count: number): Style[] {
+  let seed = 7;
+  const next = (): number => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  const rgb = (): ColorSpec => ColorSpec.fromRgba(new ColorRgba(Math.floor(next() * 256), Math.floor(next() * 256), Math.floor(next() * 256)));
+  return Array.from({ length: count }, () => {
+    const [color, bgcolor, reverse, terminalGround] = [rgb(), rgb(), next() < 0.5, next() < 0.2];
+    return new Style({ color, bgcolor: terminalGround ? undefined : bgcolor, reverse });
+  });
+}
+
 describe("the loops never jump", () => {
   // Claude Code redraws once a second, so that is where a step is largest.
   // A frame-to-frame move under two just-noticeable differences (dE_OK
@@ -729,23 +748,6 @@ describe("a loop lit reads as the wire writes it", () => {
   /** The sun's light, and a touch that thins a colour, which the wire lays on what is beneath it. */
   const touches = [["sunlight", light(sun)], ["thinning", (c: ColorRgba, w: number) => new ColorRgba(c.red, c.green, c.blue, 1 - w / 2)]] as const;
 
-  /**
-   * Words in colours off any palette, seeded so every run draws the same
-   * ones: half `reverse`, so the ink is written in the ground's slot, and a
-   * fifth on the terminal's own ground. The theme's palettes are spaced for
-   * reading and land where a touched colour is written alike either way;
-   * arbitrary colours are where the shares and the wire part.
-   */
-  function words(count: number): Style[] {
-    let seed = 7;
-    const next = (): number => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-    const rgb = (): ColorSpec => ColorSpec.fromRgba(new ColorRgba(Math.floor(next() * 256), Math.floor(next() * 256), Math.floor(next() * 256)));
-    return Array.from({ length: count }, () => {
-      const [color, bgcolor, reverse, terminalGround] = [rgb(), rgb(), next() < 0.5, next() < 0.2];
-      return new Style({ color, bgcolor: terminalGround ? undefined : bgcolor, reverse });
-    });
-  }
-
   /** The worst contrast of a word cell of `segments` as the wire writes them at `depth`, read on `theme`. */
   function worst(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalTheme): number {
     return Math.min(
@@ -777,4 +779,52 @@ describe("a loop lit reads as the wire writes it", () => {
       expect(failures).toEqual([]);
     },
   );
+});
+
+describe("every loop keeps its words legible at every depth, the whole of its period", () => {
+  const AA = 4.5;
+  // At 16 colours a loop holds still, and holding still takes nothing away.
+  const depths = [["truecolor", 0.01], ["256", 0], ["ansi", 0]] as const;
+  const themes = [["default", DEFAULT_TERMINAL_THEME], ["tokyo-night", TOKYO_NIGHT]] as const;
+  const mocha = (key: string): ColorSpec => ColorSpec.fromRgba(CATPPUCCIN_MOCHA.palette.get(key)!);
+  const elements: [string, Renderable][] = [
+    // The settings door cc-candybar found: dark ink on a mid blue, resting at 5.3:1.
+    ["dark ink on a mid blue", new RichText(" menu ", { style: Style.parse("#1a1b26 on #648ee1"), end: "", noWrap: true })],
+    // One fill under a lighter ink and a darker one, each resting under AA: the fill may move neither way.
+    ["a fill between its inks", new RichText(" ab ", { style: Style.parse("#d0b080 on #7a5ea8"), end: "", noWrap: true }).append(" cd ", Style.parse("#1e2a1a on #7a5ea8"))],
+    ["a powerline strip", new Strip(["primary", "secondary", "accent", "success"].map((key) => new RichText(` ${key} `, { style: Style.fromColor(mocha(`on-${key}`), mocha(key)), end: "", noWrap: true })), JOINERS.powerline)],
+    ...words(12).map((style, i): [string, Renderable] => [`words ${i}`, new RichText(" ab ", { style, end: "", noWrap: true })]),
+  ];
+
+  /** Each cell `renderable` draws as the screen shows it at `colorSystem` on `theme`, and whether it is a word cell as `Drawn` counts one. */
+  function screen(renderable: Renderable, colorSystem: (typeof depths)[number][0], theme: TerminalTheme): { fg: ColorRgba; bg: ColorRgba; word: boolean }[] {
+    const options = new Console({ width: 80, colorSystem }).options;
+    const depth = options.colorSystem!;
+    return [...renderable.render(options)].flatMap((segment) => {
+      if (segment.isControl) return [];
+      const style = segment.style ?? Style.null();
+      const wire = style.drawnColors(depth);
+      const slots = { fg: (wire.color ?? ColorSpec.default()).getTruecolor(theme, true), bg: (wire.bgcolor ?? ColorSpec.default()).getTruecolor(theme, false) };
+      const { fg, bg } = style.reverse === true ? { fg: slots.bg, bg: slots.fg } : slots;
+      return [...segment.text].filter((glyph) => glyph !== "\n").map((glyph) => ({ fg, bg, word: glyph.trim() !== "" && !drawnBy(style.anchor, JOIN) }));
+    });
+  }
+
+  const cases = Object.entries(EFFECT_CATALOGUE.loops).flatMap(([name, make]) =>
+    themes.flatMap(([theme, colors]) => depths.map(([depth, slack]) => [name, theme, depth, make, colors, slack] as const)),
+  );
+  it.each(cases)("%s on %s at %s: no word cell falls below its resting contrast or AA, at any second", (name, _theme, depth, make, theme, slack) => {
+    const seconds = EFFECT_CURVES[name as LoopName].seconds;
+    const failures = elements.flatMap(([label, element]) => {
+      const rest = screen(element, depth, theme);
+      const effect = make({ span: 40, z: 7 });
+      for (let t = 0; t <= seconds; t++) {
+        const now = screen(new Effected(element, effect, { t, key: label, theme }), depth, theme);
+        const under = rest.findIndex((was, i) => was.word && contrastRatio(now[i]!.fg, now[i]!.bg) < Math.min(contrastRatio(was.fg, was.bg), AA) - slack);
+        if (under >= 0) return [`${label} at t=${t}: ${now[under]!.fg.hex} on ${now[under]!.bg.hex}, rested ${rest[under]!.fg.hex} on ${rest[under]!.bg.hex}`];
+      }
+      return [];
+    });
+    expect(failures).toEqual([]);
+  });
 });
