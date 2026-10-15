@@ -16,9 +16,10 @@
  *
  * Lone-ESC handling: a bare `\x1b` is ambiguous (escape key vs. start of a
  * CSI sequence). When the buffer is drained but ends with a lone ESC, the
- * parser defers emission via setTimeout(0). A next chunk opening with `[` or
- * `O` extends the sequence and cancels the timer; any other next chunk emits
- * the ESC as Escape first. `flush()` drains it synchronously.
+ * parser defers emission via setTimeout(0), and likewise an ESC followed only
+ * by `[` or `O`. A next chunk opening with `[` or `O` extends a lone ESC; any
+ * other next chunk emits it as Escape first. When the timer runs, or on
+ * `flush()`, the held ESC is Escape and the bytes after it are keys.
  */
 
 /** A key as the terminal reported it: plain data, with no say over who hears it. */
@@ -203,6 +204,13 @@ function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
   return merged;
 }
 
+// A lone ESC, or one with only a CSI/SS3 introducer after it: bytes that are
+// Escape (then `[` or `O`) unless more of a sequence follows.
+function holdsEscape(buf: Uint8Array): boolean {
+  if (buf[0] !== ESC) return false;
+  return buf.length === 1 || (buf.length === 2 && (buf[1] === LBRACKET || buf[1] === O_BYTE));
+}
+
 // Result of attempting to consume one event from the head of the buffer.
 type ConsumeResult =
   | { kind: "key"; bytes: number; event: KeyPress }
@@ -225,17 +233,22 @@ export class InputParser {
   /** Feed a chunk of bytes (or a string of them) into the parser. */
   feed(chunk: Uint8Array | string): void {
     const next = typeof chunk === "string" ? UTF8_ENCODER.encode(chunk) : chunk;
-    // A held ESC waits only for the rest of a split CSI/SS3 introducer. Any
-    // other next chunk means Escape was its own key, even when the hold timer
-    // has not run yet: a busy worker can queue the next key ahead of it, and
-    // joining them would read Escape then G as Alt+G.
-    if (next.length > 0 && next[0] !== LBRACKET && next[0] !== O_BYTE) this.flush();
-    this.buffer = concatBytes(this.buffer, next);
+    // A held lone ESC waits only for the rest of a split CSI/SS3 introducer.
+    // Any other next chunk means Escape was its own key, even when the hold
+    // timer has not run yet: a busy worker can queue the next key ahead of it,
+    // and joining them would read Escape then G as Alt+G (rich-host-input-0c4f).
+    const escaped =
+      this.buffer.length === 1 && this.buffer[0] === ESC && next.length > 0 &&
+      next[0] !== LBRACKET && next[0] !== O_BYTE;
     this.cancelEscape();
+    // The buffer is settled before the sink hears Escape, so a sink that
+    // resets the parser on it (an app stopping) leaves nothing to drain.
+    this.buffer = concatBytes(escaped ? EMPTY_BYTES : this.buffer, next);
+    if (escaped) this.sink.key(ESCAPE);
     this.drain();
-    // [LAW:dataflow-not-control-flow] If a lone ESC remains, defer emission
+    // [LAW:dataflow-not-control-flow] If a held ESC remains, defer emission
     // until the next macrotask so a follow-up chunk can extend it.
-    if (this.buffer.length === 1 && this.buffer[0] === ESC) {
+    if (holdsEscape(this.buffer)) {
       this.escTimer = setTimeout(() => {
         this.escTimer = undefined;
         this.flush();
@@ -243,13 +256,16 @@ export class InputParser {
     }
   }
 
-  /** Force any pending lone ESC out of the buffer. */
+  /**
+   * Force a held ESC out of the buffer as Escape, and what it held after it —
+   * a `[` or `O` that opened no sequence — as the keys they are.
+   */
   flush(): void {
     this.cancelEscape();
-    if (this.buffer.length === 1 && this.buffer[0] === ESC) {
-      this.buffer = EMPTY_BYTES;
-      this.sink.key(({ key: "escape", character: "", shift: false, ctrl: false, meta: false }));
-    }
+    if (!holdsEscape(this.buffer)) return;
+    this.buffer = this.buffer.subarray(1);
+    this.sink.key(ESCAPE);
+    this.drain();
   }
 
   /** Drop what is buffered and any pending lone ESC: the parser as constructed. */

@@ -42,6 +42,7 @@ test("Escape then Tab leaves the card with the explorer still running", async ({
   // Only a running program can move the selection, so ask it to: G, to the last
   // entry.
   await input.focus();
+  await expect(input).toBeFocused();
   await page.keyboard.press("G");
   await expect.poll(() => screen(page), LOADED).toContain("/home/demo/rich-js/tsconfig.json");
 });

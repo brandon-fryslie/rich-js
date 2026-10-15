@@ -5,7 +5,7 @@ import type { RenderOptions } from "../../src/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
-import type { InputParser, ScreenMouseEvent } from "../../src/host/input.js";
+import { InputParser, type ScreenMouseEvent } from "../../src/host/input.js";
 import type { KeyEvent, WidgetMouseEvent, FrameSource } from "../../src/widgets/types.js";
 import { parserFor } from "./feed.js";
 
@@ -299,6 +299,34 @@ describe("EventRouter — key parsing", () => {
     h.feed(next);
     expect(h.keyEvents.map((e) => e.key)).toEqual(keys);
     expect(h.keyEvents.every((e) => !e.meta)).toBe(true);
+  });
+
+  // The same race with `[` or `O` next: the ESC holds an introducer that
+  // opens no sequence, and the hold timer gives up on it.
+  it.each([
+    ["[", ["escape", "["]],
+    ["O", ["escape", "o"]],
+  ])("emits a held ESC then %s as keys when no sequence follows", (next, keys) => {
+    h.feed("\x1b");
+    h.feed(next);
+    expect(h.keyEvents).toEqual([]);
+    h.parser.flush();
+    expect(h.keyEvents.map((e) => e.key)).toEqual(keys);
+  });
+
+  it("drains nothing after a held ESC whose Escape resets the parser", () => {
+    const keys: string[] = [];
+    const parser: InputParser = new InputParser({
+      key: (press) => {
+        keys.push(press.key);
+        if (press.key === "escape") parser.reset();
+      },
+      mouse: () => {},
+    });
+    parser.feed("\x1b");
+    parser.feed("a\x1b");
+    parser.flush();
+    expect(keys).toEqual(["escape"]);
   });
 
   it("still reads Alt+key when ESC and the key arrive in one chunk", () => {
