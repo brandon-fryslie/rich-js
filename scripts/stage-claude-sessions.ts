@@ -13,9 +13,8 @@
  * A session is kept as it was recorded — every record, in order, under its
  * real file name and modification time — but for three cuts, each applied to
  * every string in it, so no field is special-cased:
- * - a string past its `Keep` — `KEEP_PROSE` for what a person or the model
- *   said, `KEEP` inside a tool call or result and in a meta record — keeps its
- *   first lines and characters and says how many it lost;
+ * - a string past its `Keep` (`keepOf` says which) keeps its first lines and
+ *   characters and says how much it lost;
  * - a thinking block's `signature`, opaque bytes no reader can use, is dropped;
  * - the machine is scrubbed out: the owner's home becomes `/home/demo`, their
  *   user name `demo`, every machine on their network `demo-host`, a Tailscale
@@ -27,7 +26,6 @@
  * `projects.ts` that gathers them — so a re-run reproduces it whole.
  */
 import { existsSync, readdirSync, readFileSync, statSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
-import { deflateSync } from "node:zlib";
 import { homedir, hostname, userInfo } from "node:os";
 import path from "node:path";
 import { REPO_ROOT } from "./repo-facts.ts";
@@ -42,8 +40,8 @@ const SESSIONS: Readonly<Record<string, readonly string[]>> = {
 
 // With `SESSIONS`, tight enough that the staged tree fits the card's
 // playground link, which MAX_LINK_CHARS (docs/.vitepress/playground-hash.ts)
-// bounds: the docs build refuses a demo past it, and this script prints what
-// the tree packs to. Most of that is the records' ids, which do not compress,
+// bounds: encodeProgram refuses a demo past it, in the docs build and in
+// test/docs/demo-card.test.ts. Most of that is the records' ids, which do not compress,
 // so the number of records weighs more than how much of each is kept.
 // What the reader came to read — a turn's prose — keeps more than a tool's
 // output, which is most of the weight and is only skimmed.
@@ -90,7 +88,7 @@ function shownRecords(text: string): Record<string, unknown>[] {
   const parentOf = new Map(records.flatMap((r) => (typeof r["uuid"] === "string" ? [[r["uuid"], typeof r["parentUuid"] === "string" ? r["parentUuid"] : null] as const] : [])));
   // The sidebar reads only the newest title record of each kind, and a renamed
   // session repeats its title on every turn; the older copies are dead weight.
-  const lastOfType = new Map(records.map((r, i) => [String(r["type"]), i]));
+  const lastOfType = new Map(records.flatMap((r, i) => (TITLE_TYPES.has(String(r["type"])) ? [[String(r["type"]), i] as const] : [])));
   const shown = records.filter((record, i) => {
     const type = String(record["type"]);
     return SHOWN_TYPES.has(type) && (!TITLE_TYPES.has(type) || lastOfType.get(type) === i);
@@ -157,17 +155,34 @@ function scrub(text: string): string {
   return out;
 }
 
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
 function trim(text: string, keep: Keep): string {
-  const lines = text.split("\n");
-  const kept = lines.length > keep.lines ? lines.slice(0, keep.lines).join("\n") : text;
-  // By code point, so a cut never leaves half a surrogate pair.
-  const points = Array.from(kept);
-  const cut = points.length > keep.chars ? points.slice(0, keep.chars).join("") : kept;
-  if (cut === text) return text;
-  const lostLines = lines.length - kept.split("\n").length;
-  const lostChars = points.length - Array.from(cut).length;
-  const lost = [lostChars > 0 ? `${lostChars} more characters` : "", lostLines > 0 ? `${lostLines} more lines` : ""].filter(Boolean);
-  return `${cut}\n… ${lost.join(", ")}`;
+  // A trailing newline ends the last line; it does not start another.
+  const lines = text.replace(/\n$/, "").split("\n");
+  if (lines.length <= keep.lines && text.length <= keep.chars) return text;
+  const kept = lines.slice(0, keep.lines).join("\n");
+  // By grapheme, so a cut never splits what the reader sees as one character.
+  const graphemes = Array.from(GRAPHEMES.segment(kept), (g) => g.segment);
+  const cut = graphemes.slice(0, keep.chars).join("");
+  if (cut === text || cut === text.replace(/\n$/, "")) return text;
+  const lostLines = lines.length - Math.min(lines.length, keep.lines);
+  const lostChars = Array.from(GRAPHEMES.segment(text)).length - graphemes.slice(0, keep.chars).length;
+  const plural = (n: number, unit: string) => `${n} more ${unit}${n === 1 ? "" : "s"}`;
+  return `${cut}\n… ${[plural(lostChars, "character"), ...(lostLines > 0 ? [plural(lostLines, "line")] : [])].join(", ")}`;
+}
+
+/**
+ * The budget `value`'s strings get, given its container's: what a person or
+ * the model said keeps `KEEP_PROSE`; output keeps `KEEP` — a tool's call and
+ * result wherever they sit, a `system` or meta record, and a turn whose text is
+ * harness output wrapped in a tag (`<bash-stdout>`, `<task-notification>`, …).
+ */
+function keepOf(record: Record<string, unknown>, inherited: Keep): Keep {
+  const { type, isMeta, message } = record;
+  if (type === "tool_use" || type === "tool_result" || type === "system" || isMeta === true) return KEEP;
+  const content = typeof message === "object" && message !== null ? (message as { content?: unknown }).content : undefined;
+  return typeof content === "string" && content.startsWith("<") ? KEEP : inherited;
 }
 
 function stage(value: unknown, keep: Keep): unknown {
@@ -176,8 +191,7 @@ function stage(value: unknown, keep: Keep): unknown {
   if (typeof value === "object" && value !== null) {
     const record = value as Record<string, unknown>;
     const thinking = record["type"] === "thinking";
-    // A tool's call and result are output wherever they sit, text blocks included.
-    const inner = record["type"] === "tool_use" || record["type"] === "tool_result" ? KEEP : keep;
+    const inner = keepOf(record, keep);
     return Object.fromEntries(
       Object.entries(record).filter(([key]) => !(thinking && key === "signature")).map(([key, v]) => [scrub(key), stage(v, inner)]),
     );
@@ -268,7 +282,7 @@ mkdirSync(out);
 
 /** A file of the staged tree, its records as the viewer reads them. */
 const stagedFile = (file: string, text: string) => {
-  const jsonl = shownRecords(text).map((record) => JSON.stringify(stage(record, record["isMeta"] === true ? KEEP : KEEP_PROSE))).join("\n");
+  const jsonl = shownRecords(text).map((record) => JSON.stringify(stage(record, KEEP_PROSE))).join("\n");
   return { mtime: statSync(file).mtime.toISOString(), jsonl };
 };
 
@@ -334,6 +348,6 @@ export const STAGED_HOME: MemoryTree = {
 };
 `);
 
-// What the card's playground link carries of these, which MAX_LINK_CHARS
-// (docs/.vitepress/playground-hash.ts) bounds: deflated, then base64.
-console.log(`total: ${Math.round(Buffer.byteLength(total) / 1024)} KB, ~${Math.round((deflateSync(total).length * 4) / 3 / 1024)} KB in a link`);
+// Whether the card's link still fits is encodeProgram's to say, not an
+// estimate here: test/docs/demo-card.test.ts encodes this card.
+console.log(`total: ${Math.round(Buffer.byteLength(total) / 1024)} KB staged`);
