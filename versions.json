@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-393",
+      "ref": "refs/pull/393/merge",
+      "sha": "02e60ad1475b53afd3aa39ae839f12cf0506074c",
+      "timestamp": "2026-10-15T08:24:14.399Z",
+      "commits": [
+        {
+          "sha": "02e60ad1475b53afd3aa39ae839f12cf0506074c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T08:22:42Z",
+          "message": "Merge 46e4bf24d4eff57d89067d2949110bf951cc9e46 into 660172b653724983f44d1b5c952e3cb2f9a16504\n"
+        },
+        {
+          "sha": "46e4bf24d4eff57d89067d2949110bf951cc9e46",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T02:22:37-06:00",
+          "message": "Whole-keys settle: ESC [ / ESC O is the Alt chord; settling survives a throwing sink (rich-host-input-ab9n)\n\nReview fixes: whole-keys feed no longer runs the split hold logic; header\nnames InputChunks; docs Input field typed; integration test that a\nNodeTerminalHost in the docs worker reads whole-keys. Split-host residue\nfiled as rich-host-input-gnl7.\n"
+        },
+        {
+          "sha": "926ab4eab5f9ed807928d14c60da9b8012ba5427",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T02:16:41-06:00",
+          "message": "A whole-keys host settles each input chunk; no lone ESC is held for a timer (rich-host-input-ab9n)\n\nTerminalHost declares inputChunks: xterm.js (BrowserTerminalHost, and the\ndocs worker's simulated stdin through NodeTerminalHost) never splits a key\nacross chunks, so an ESC left at a chunk's end is Escape and what followed\nit is re-read. A tty stays \"split\" and keeps the setTimeout(0) hold.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-392",
       "ref": "refs/pull/392/merge",
       "sha": "c49e30c4a4c437cb2a96197d083ccd8a0d741a57",
@@ -27,28 +56,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-15T02:08:58-06:00",
           "message": "Effected measures what its child draws; onColors and wheel read it (rich-effects-cbgp.071)\n\nAn effect is now handed what the element draws in the frame (`Drawn`: the\nink/ground pairs of its word cells, its own colours and fills, the depth and\ntheme), measured in Effected's render off the same per-segment reading its\ncells are drawn from. `onColors(loop, colors?)` settles its shares against\nthat measurement, memoized per set of colours drawn; `wheel(curve, z)` reads\nits colours and fills from it. `drawnOf` exposes the same measurement.\n\nStrip and FlexStrip stamp every join they draw with the `JOIN` owner, so a\nseam is left out of the words kept legible without the caller's help.\n\nThe effects-feel demo's copy of that measurement (drawnSubject's pairs and\ncolours, subjectUnder, fills, cellsOf, shown, seamed) is gone; its frames are\nbyte-identical across 4 themes x 3 depths x 4 loops x 10 instants.\n\n`shares` leaves the barrel: no caller needs it now.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-393",
-      "ref": "refs/pull/393/merge",
-      "sha": "be524d424b85899422f7e2604d4d131378f6c406",
-      "timestamp": "2026-10-15T08:18:22.115Z",
-      "commits": [
-        {
-          "sha": "be524d424b85899422f7e2604d4d131378f6c406",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T02:16:46-06:00",
-          "message": "Merge 926ab4eab5f9ed807928d14c60da9b8012ba5427 into 660172b653724983f44d1b5c952e3cb2f9a16504\n"
-        },
-        {
-          "sha": "926ab4eab5f9ed807928d14c60da9b8012ba5427",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T02:16:41-06:00",
-          "message": "A whole-keys host settles each input chunk; no lone ESC is held for a timer (rich-host-input-ab9n)\n\nTerminalHost declares inputChunks: xterm.js (BrowserTerminalHost, and the\ndocs worker's simulated stdin through NodeTerminalHost) never splits a key\nacross chunks, so an ESC left at a chunk's end is Escape and what followed\nit is re-read. A tty stays \"split\" and keeps the setTimeout(0) hold.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         }
       ]
     },
