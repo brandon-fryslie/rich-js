@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-397",
+      "ref": "refs/pull/397/merge",
+      "sha": "b81a9f5f82a31f38c35ee850f1b6aa359f4e2382",
+      "timestamp": "2026-10-15T09:57:10.561Z",
+      "commits": [
+        {
+          "sha": "b81a9f5f82a31f38c35ee850f1b6aa359f4e2382",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T03:56:01-06:00",
+          "message": "Merge 3c806e8136cc0da900fed7f2cf2788217d3d0c90 into 66338ca059a759cd37b802a189ea227bc1007ec3\n"
+        },
+        {
+          "sha": "3c806e8136cc0da900fed7f2cf2788217d3d0c90",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-15T03:55:49-06:00",
+          "message": "onColors settles shares on the colour Effected writes below truecolor (rich-effects-x7y0)\n\nBelow truecolor, `shares` checked contrast against `fromRgba(...).downgrade(depth)`\nwhile `Effected` wrote `ColorSpec.matchOn` for the cell's slot, keeping the\nwritten spec when the depth could not show the move. The two disagreed at 256\nand 16 colours, so a word could fall below its resting contrast or AA.\n\nThe rule now lives once, as `ColorSpec.matchMove`, and both sides call it.\n`Pair` gains `reverse`, so each side is matched in the slot it is written in.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "66338ca059a759cd37b802a189ea227bc1007ec3",
