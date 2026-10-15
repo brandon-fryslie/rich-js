@@ -25,8 +25,9 @@ import { buildShell, ExploreView } from "./views/shell.js";
 function selectByDelta(state: AppState, delta: number): AppState {
   const visible = visibleNodes(state);
   const index = visible.findIndex((n) => n.entry.path === state.selectedPath);
-  // A selection hidden under a collapsed directory moves onto the first entry.
-  const next = visible[index === -1 ? 0 : moveSelection(index, delta, visible.length)];
+  // A selection hidden under a collapsed directory sits before the first
+  // entry: down lands on it, End on the last.
+  const next = visible[moveSelection(index, delta, visible.length)];
   return next === undefined || next.entry.path === state.selectedPath ? state : { ...state, selectedPath: next.entry.path };
 }
 

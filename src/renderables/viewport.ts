@@ -180,7 +180,12 @@ export class Viewport implements Renderable, Measurable, Scrollable {
    * gutter leaves. Lines handed to `ensureVisible` are lines at this width.
    */
   contentWidth(width: number): number {
-    return cellCount(width - gutterWidth(this.scrollbar));
+    return cellCount(width - this.gutter);
+  }
+
+  /** The cells the scrollbar's gutter takes beside the content. */
+  get gutter(): number {
+    return gutterWidth(this.scrollbar);
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {

@@ -90,6 +90,10 @@ describe("ListView's arguments", () => {
   it("takes 0 as the selection of an empty list", () => {
     expect(() => new ListView(new Viewport(new RichText("")), [], 0)).not.toThrow();
   });
+  it("measures at an unbounded width", () => {
+    const list = new ListView(new Viewport(new RichText(""), { scrollbar: SCROLLBAR }), items, 0);
+    expect(list.measure({ maxWidth: Infinity })).toEqual({ minimum: 2, maximum: 2 });
+  });
   it("refuses a gap or context that is not a whole number of lines", () => {
     expect(() => new ListView(new Viewport(new RichText("")), items, 0, { gap: 1.5 })).toThrow(RangeError);
     expect(() => new ListView(new Viewport(new RichText("")), items, 0, { context: -1 })).toThrow(RangeError);

@@ -101,7 +101,7 @@ export class ListView implements Renderable, Measurable {
     // `withBoundedWidth`: the bounded parse asks this very method.
     const options = withCellWidth(rawOptions);
     const contentWidth = this.viewport.contentWidth(options.maxWidth);
-    const gutter = options.maxWidth - contentWidth;
+    const gutter = this.viewport.gutter;
     const items = measureRenderables({ ...options, maxWidth: contentWidth }, this.items);
     return new Measurement(items.minimum + gutter, items.maximum + gutter).withMaximum(options.maxWidth);
   }
