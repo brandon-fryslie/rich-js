@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "b260442de6629a61ef58d580e81a89469c3d679d",
-      "timestamp": "2026-10-14T19:56:37.072Z",
+      "sha": "84390e4e3566ee7bb50dd236464c6e8dd4f3314b",
+      "timestamp": "2026-10-15T03:42:41.846Z",
       "commits": [
         {
-          "sha": "b260442de6629a61ef58d580e81a89469c3d679d",
+          "sha": "84390e4e3566ee7bb50dd236464c6e8dd4f3314b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-14T13:55:05-06:00",
-          "message": "feat(docs): many-file cards get a foldable file list (rich-demos-k78j.gjt) (#375)\n\n* feat(docs): tabs that would wrap become a foldable list of files by folder (rich-demos-k78j.gjt)\n\nAn unseen one-row copy of the tabs, at the card's width, says when they no\nlonger fit; then they are a vertical tablist beside the editor, grouped by\nfolder, folded by a toggle, and folded from the start on a card narrower\nthan 720px. Tabs follow the grouped order in both layouts and the arrow\nkeys of both orientations move along it.\n\n* fix(docs): one keyed shape for both tab layouts, measured from the real tab elements (rich-demos-k78j.gjt review)\n\nA layout change no longer remounts the editor; each tab in the unseen row\nis observed so a late font re-measures; the width picks the list's\nopening state once; going back to a row wants 32px spare; the list is\nat most 35% of the card; folded, the toggle's arrows switch files.\n\n* fix(docs): the measuring row observes itself, for as long as it is in the page (rich-demos-k78j.gjt review)"
+          "timestamp": "2026-10-14T21:41:05-06:00",
+          "message": "test(e2e): page errors carry their stacks (rich-demos-k78j.4rx) (#376)\n\n* test(e2e): page errors carry their stacks (rich-demos-k78j.4rx)\n\nThe scores-table page error failed one run and never again: ~800 runs since,\n6x CPU throttle included, are clean, and the one failure kept only its message.\nEvery spec now collects page errors through pageErrors(), which keeps the stack,\nso a recurrence names where it threw.\n\n* fix(e2e): a frameless page error keeps its message (rich-demos-k78j.4rx)"
         }
       ]
     }
