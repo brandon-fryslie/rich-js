@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "1586b751cab88738c6b9a6e2d17a9202c32c7e49",
-      "timestamp": "2026-10-15T12:24:37.939Z",
+      "sha": "76c21f3cff8c4cb736d57a69b44cd9ce5e7232ac",
+      "timestamp": "2026-10-15T16:39:49.333Z",
       "commits": [
         {
-          "sha": "1586b751cab88738c6b9a6e2d17a9202c32c7e49",
+          "sha": "76c21f3cff8c4cb736d57a69b44cd9ce5e7232ac",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T06:23:24-06:00",
-          "message": "chore(release): 0.22.0 (#399)\n\n* chore(release): 0.22.0\n\n* chore(release): 0.22.0 (lockfile)"
+          "timestamp": "2026-10-15T10:38:32-06:00",
+          "message": "confined takes several owners and skips cells none of them drew (rich-effects-lyam) (#400)\n\n* confined takes several owners and hands the effect only cells one of them drew (rich-effects-lyam)\n\nconfined(effect, ...owners) confines one effect to a set of owners in one\nwrapper; colorsOwnedBy reads ownership against a ReadonlySet. A cell no owner\ndrew is returned as drawn without calling the effect's second stage, so moving\nevery item but one costs one call a cell instead of one per item. A join cell's\nside that shows no neighbour is owned by a module-private NOBODY rather than\nnull, so no set can hold it.\n\n* confined: docs name an Effect and why one call beats per-item wrappers; header admits a wrapper may keep cells back; null for no owner (review)"
         }
       ]
     },
