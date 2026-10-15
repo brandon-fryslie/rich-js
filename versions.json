@@ -15,42 +15,6 @@
           "message": "chore(release): 0.23.0 (#401)"
         }
       ]
-    },
-    {
-      "version": "pr-393",
-      "ref": "refs/pull/393/merge",
-      "sha": "0b7faefd2eaaeb6d404ba7e6058a759ce38ae164",
-      "timestamp": "2026-10-15T08:26:37.201Z",
-      "commits": [
-        {
-          "sha": "0b7faefd2eaaeb6d404ba7e6058a759ce38ae164",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T08:25:02Z",
-          "message": "Merge 830bbb8ed392a1fbc155e92deabcc08b97335689 into 660172b653724983f44d1b5c952e3cb2f9a16504\n"
-        },
-        {
-          "sha": "830bbb8ed392a1fbc155e92deabcc08b97335689",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T02:24:57-06:00",
-          "message": "Whole-keys settle reads a chunk's rest in full when a sink throws mid-drain (rich-host-input-ab9n)\n"
-        },
-        {
-          "sha": "46e4bf24d4eff57d89067d2949110bf951cc9e46",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T02:22:37-06:00",
-          "message": "Whole-keys settle: ESC [ / ESC O is the Alt chord; settling survives a throwing sink (rich-host-input-ab9n)\n\nReview fixes: whole-keys feed no longer runs the split hold logic; header\nnames InputChunks; docs Input field typed; integration test that a\nNodeTerminalHost in the docs worker reads whole-keys. Split-host residue\nfiled as rich-host-input-gnl7.\n"
-        },
-        {
-          "sha": "926ab4eab5f9ed807928d14c60da9b8012ba5427",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T02:16:41-06:00",
-          "message": "A whole-keys host settles each input chunk; no lone ESC is held for a timer (rich-host-input-ab9n)\n\nTerminalHost declares inputChunks: xterm.js (BrowserTerminalHost, and the\ndocs worker's simulated stdin through NodeTerminalHost) never splits a key\nacross chunks, so an ESC left at a chunk's end is Escape and what followed\nit is re-read. A tty stays \"split\" and keeps the setTimeout(0) hold.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
     }
   ]
 }
