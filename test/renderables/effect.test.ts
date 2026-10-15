@@ -376,7 +376,7 @@ describe("Effected — widgets under an effect", () => {
   });
 });
 
-describe("confined — an effect on one owner's cells", () => {
+describe("confined — an effect on its owners' cells", () => {
   const FILL = Style.parse("white on #3050a0");
   const AT = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false };
   const repaint: Effect = () => () => ({ fg: RED, bg: BLUE });
@@ -412,19 +412,47 @@ describe("confined — an effect on one owner's cells", () => {
     expect(moved(flex, items[1]!, 8)).toEqual([run(false, 7), run(true, 7)]);
   });
 
-  it("moves only the item's side of a seam it shares with an item of another fill", () => {
-    const items = ["#1e66f5", "#40a02b", "#d20f39"].map((fill) => new RichText(" x ", { style: `white on ${fill}`, end: "", noWrap: true }));
-    const strip = new Strip(items, JOINERS.powerline);
-    /** Each cell's foreground and background as its style writes them. */
-    const sides = (frame: Renderable): string[][] =>
-      [...frame.render({ maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR })].flatMap((s) =>
-        [...graphemes(s.text)].filter((glyph) => glyph !== "\n").map(() => [s.style?.color?.getTruecolor(THEME, true).hex ?? "", s.style?.bgcolor?.getTruecolor(THEME, false).hex ?? ""]),
-      );
+  /** Three items of three fills, so every seam shows two of them. */
+  const trio = (): RichText[] => ["#1e66f5", "#40a02b", "#d20f39"].map((fill) => new RichText(" x ", { style: `white on ${fill}`, end: "", noWrap: true }));
+  /** Each cell's foreground and background as its style writes them. */
+  const sides = (frame: Renderable): string[][] =>
+    [...frame.render({ maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR })].flatMap((s) =>
+      [...graphemes(s.text)].filter((glyph) => glyph !== "\n").map(() => [s.style?.color?.getTruecolor(THEME, true).hex ?? "", s.style?.bgcolor?.getTruecolor(THEME, false).hex ?? ""]),
+    );
+  /** Which sides of each cell of `strip` the effect confined to `owners` moved. */
+  const movedSides = (strip: Renderable, ...owners: object[]): string[] => {
     const before = sides(strip);
-    const after = sides(effected(strip, confined(repaint, items[1]!)));
-    const moved = after.map(([fg, bg], x) => `${fg !== before[x]![0] ? "fg" : ""}${bg !== before[x]![1] ? "bg" : ""}`);
+    return sides(effected(strip, confined(repaint, ...owners))).map(([fg, bg], x) => `${fg !== before[x]![0] ? "fg" : ""}${bg !== before[x]![1] ? "bg" : ""}`);
+  };
+
+  it("moves only the item's side of a seam it shares with an item of another fill", () => {
+    const items = trio();
     // lead, " x ", the arrow into the item, " x ", the arrow out of it, " x ", tail
-    expect(moved).toEqual(["", "", "", "", "bg", "fgbg", "fgbg", "fgbg", "fg", "", "", "", ""]);
+    expect(movedSides(new Strip(items, JOINERS.powerline), items[1]!)).toEqual(["", "", "", "", "bg", "fgbg", "fgbg", "fgbg", "fg", "", "", "", ""]);
+  });
+
+  it("moves two owners' colours, the whole seam between them, and only their side of the seam beside a third", () => {
+    const items = trio();
+    // the lead (reverse video, so the first item's fill is its ink slot), " x ", the arrow from the first
+    // into the second, " x ", the arrow into the third, " x ", tail
+    expect(movedSides(new Strip(items, JOINERS.powerline), items[0]!, items[1]!)).toEqual(["fg", "fgbg", "fgbg", "fgbg", "fgbg", "fgbg", "fgbg", "fgbg", "fg", "", "", "", ""]);
+  });
+
+  it("hands the effect only the cells one of its owners drew, under one first stage a frame", () => {
+    const items = trio();
+    const frames: number[] = [];
+    const handed: number[] = [];
+    const counting: Effect = (t) => {
+      frames.push(t);
+      return (colors, cell) => {
+        handed.push(cell.col);
+        return colors;
+      };
+    };
+    sides(effected(new Strip(items, JOINERS.powerline), confined(counting, items[1]!, items[2]!)));
+    expect(frames).toEqual([0]);
+    // the arrow into the second item, " x ", the arrow into the third, " x ", tail
+    expect(handed).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12]);
   });
 
   it("leaves every cell as it was for an owner that drew none", () => {

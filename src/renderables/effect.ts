@@ -6,7 +6,9 @@
  * draws in that frame in, a function of the frame out; and into that, a
  * cell's colours and where the cell is, the cell's new colours out. Whatever
  * holds for the whole frame is worked out in the first stage, once, and every
- * cell of the frame is handed to the second. Shimmer, pulse, fade and
+ * cell of the frame is handed to the second, but for those a wrapper keeps
+ * back: `confined` hands over only the cells its owners drew, so a second
+ * stage never counts on seeing them all. Shimmer, pulse, fade and
  * dissolve are all this one shape, differing by what the function does with
  * its inputs [LAW:one-type-per-behavior]; two effects stack by nesting one
  * wrapper in another, which is the same as calling one after the other but
@@ -309,18 +311,23 @@ function measured(looked: readonly { segment: Segment; look: Look | undefined }[
 }
 
 /**
- * `effect` on the colours `owner` drew, itself or through an owner nested in
- * its output, and every other colour left as it is: one item of a strip whose
- * items share a fill, one widget of a screen. A seam cell shows its two
- * neighbours side by side, a powerline arrow in the fill it points out of
- * over the fill it points into, so each side moves with its own item
- * (`colorsOwnedBy`, `../core/strip.ts`).
+ * `effect` on the colours any of `owners` drew, itself or through an owner
+ * nested in its output, and every other colour left as it is: one item of a
+ * strip whose items share a fill, the items of a row one other item stands
+ * apart from, one widget of a screen. A seam cell shows its two neighbours
+ * side by side, a powerline arrow in the fill it points out of over the fill
+ * it points into, so each side moves with its own item (`colorsOwnedBy`,
+ * `../core/strip.ts`). A cell none of them drew is never handed to the
+ * effect, so confining one effect to many owners costs one call a cell, not
+ * one for each owner.
  */
-export function confined(effect: Effect, owner: object): Effect {
+export function confined(effect: Effect, ...owners: readonly object[]): Effect {
+  const confinedTo: ReadonlySet<object> = new Set(owners);
   return (t, drawn) => {
     const frame = effect(t, drawn);
     return (colors, cell) => {
-      const owned = colorsOwnedBy(cell.anchor, owner);
+      const owned = colorsOwnedBy(cell.anchor, confinedTo);
+      if (!owned.fg && !owned.bg) return colors;
       const moved = frame(colors, cell);
       return { fg: owned.fg ? moved.fg : colors.fg, bg: owned.bg ? moved.bg : colors.bg };
     };

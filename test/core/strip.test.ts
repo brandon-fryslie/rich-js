@@ -104,7 +104,7 @@ describe("whose each colour of a strip is", () => {
     const width = frame[0]!.reduce((cells, segment) => cells + segment.cellLength, 0);
     return Array.from({ length: width }, (_, x) => {
       const anchor = Segment.anchorAt(frame, x, 0);
-      const of = (side: "fg" | "bg"): string => (colorsOwnedBy(anchor, RED)[side] ? "red" : colorsOwnedBy(anchor, BLUE)[side] ? "blue" : "-");
+      const of = (side: "fg" | "bg"): string => (colorsOwnedBy(anchor, new Set([RED]))[side] ? "red" : colorsOwnedBy(anchor, new Set([BLUE]))[side] ? "blue" : "-");
       return `${of("fg")}/${of("bg")}`;
     });
   };
@@ -122,6 +122,16 @@ describe("whose each colour of a strip is", () => {
 
   it("leaves a colour mixed from the two grounds no item's", () => {
     expect(owners(new Strip([RED, BLUE], JOINERS.prism))).toEqual(["-/red", ...of("red/red", 5), "red/-", "-/-", "-/blue", ...of("blue/blue", 6), "blue/-"]);
+  });
+
+  it("is one of a set of owners wherever it is any one of theirs, and none of the empty set's", () => {
+    const frame = [render(new Strip([RED, BLUE], JOINERS.powerline))];
+    const cells = Array.from({ length: frame[0]!.reduce((n, segment) => n + segment.cellLength, 0) }, (_, x) => Segment.anchorAt(frame, x, 0));
+    const owned = (owners: ReadonlySet<object>) => cells.map((anchor) => colorsOwnedBy(anchor, owners));
+    const red = owned(new Set([RED]));
+    const blue = owned(new Set([BLUE]));
+    expect(owned(new Set([RED, BLUE]))).toEqual(red.map((r, x) => ({ fg: r.fg || blue[x]!.fg, bg: r.bg || blue[x]!.bg })));
+    expect(owned(new Set()).some((side) => side.fg || side.bg)).toBe(false);
   });
 });
 

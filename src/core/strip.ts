@@ -103,14 +103,17 @@ class ColorOwners {
 }
 
 /**
- * Which of a cell's two colours on screen are `owner`'s: both, for a cell
- * `owner` drew, itself or through an owner nested in its output; for a cell a
- * `CellJoiner` drew, the sides shown in `owner`'s colour.
+ * Which of a cell's two colours on screen are one of `owners`': both, for a
+ * cell one of them drew, itself or through an owner nested in its output; for
+ * a cell a `CellJoiner` drew, the sides shown in one of their colours.
  */
-export function colorsOwnedBy(anchor: Anchor | undefined, owner: object): { readonly fg: boolean; readonly bg: boolean } {
+export function colorsOwnedBy(anchor: Anchor | undefined, owners: ReadonlySet<object>): { readonly fg: boolean; readonly bg: boolean } {
   for (let level = anchor; level; level = level.inner) {
-    if (level.owner === owner) return { fg: true, bg: true };
-    if (level.owner instanceof ColorOwners) return { fg: level.owner.fg === owner, bg: level.owner.bg === owner };
+    if (owners.has(level.owner)) return { fg: true, bg: true };
+    if (level.owner instanceof ColorOwners) {
+      const { fg, bg } = level.owner;
+      return { fg: fg !== null && owners.has(fg), bg: bg !== null && owners.has(bg) };
+    }
   }
   return { fg: false, bg: false };
 }
