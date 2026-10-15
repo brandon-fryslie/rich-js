@@ -2,28 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-387",
-      "ref": "refs/pull/387/merge",
-      "sha": "82b83753b3bf44efac2f698be2fe6207af598103",
-      "timestamp": "2026-10-15T07:22:05.800Z",
-      "commits": [
-        {
-          "sha": "82b83753b3bf44efac2f698be2fe6207af598103",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:20:31-06:00",
-          "message": "Merge e1e12df87e5e75e783977f73869ebb29f76e1a6d into f93e21ac25bc2fb2fa97bb93e94d1fffd870816e\n"
-        },
-        {
-          "sha": "e1e12df87e5e75e783977f73869ebb29f76e1a6d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T01:20:21-06:00",
-          "message": "rich-dash drives frames from App's clock, not its own setInterval (rich-rich-dash-ds50)\n\nThe dashboard's widgets advance in the view, once per frame period of the\ntime App hands it, on a Clock that arrives in DashboardCapabilities. The\nsecond timer, its Date.now reads and the try/catch that routed its errors\ninto app.fail are gone: a widget that throws now throws inside the frame,\nwhich App already fails on. A suspended dashboard paints nothing and so\nstands still, and a fake clock drives it (test/examples/rich-dash/app.test.ts).\n\nTickContext had no reader in any widget and is deleted rather than\nre-sourced.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f93e21ac25bc2fb2fa97bb93e94d1fffd870816e",
