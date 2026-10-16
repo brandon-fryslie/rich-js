@@ -237,17 +237,55 @@ export interface JoinCell {
 }
 
 /**
- * The cells a joiner draws at each kind of join:
- *   • `seam` — between two neighbours;
+ * A cell of a seam, or one of the joiner's caps standing in a seam's place:
+ * `{ cap: "tail" }` closes the run the seam leaves, `{ cap: "lead" }` opens the
+ * run it enters, drawn as whatever caps the seam is joined with. That is how
+ * a seam that parts its runs — `capsule`, `metro` — ends each in the caps
+ * picked for it rather than in caps of its own.
+ */
+export type SeamCell = JoinCell | { readonly cap: "lead" | "tail" };
+
+/**
+ * What a joiner draws between two neighbours, in one form:
+ *   • `seam` — the cells between them;
  *   • `divider` — in the seam's place where every seam cell's ink is drawn
  *     indistinct from its own ground (see `SEAM_MIN_DELTA_E`), so the seam
- *     would vanish;
- *     the same width as `seam`;
+ *     would vanish; the same width as `seam`.
+ */
+export interface SeamForm {
+  readonly seam: readonly SeamCell[];
+  readonly divider: readonly SeamCell[];
+}
+
+/**
+ * What a joiner draws at the ends of a run, in one form:
  *   • `lead` — where a run is entered from nothing: the strip's start, or a
  *     neighbour with no ground for the seam to paint. It cannot name `left`;
  *   • `tail` — where a run leaves into nothing. It cannot name `right`.
  */
-export interface JoinShape {
+export interface CapsForm {
+  readonly lead: readonly JoinCell[];
+  readonly tail: readonly JoinCell[];
+}
+
+/**
+ * The middle of a joiner: its seam, and the `ascii` seam an ASCII-only output
+ * draws instead. Picked apart from the caps, so any seam ends in any caps.
+ */
+export interface JoinSeam {
+  readonly glyph: SeamForm;
+  readonly ascii: SeamForm;
+}
+
+/** The ends of a joiner: its caps, and the `ascii` caps an ASCII-only output draws instead. */
+export interface JoinCaps {
+  readonly glyph: CapsForm;
+  readonly ascii: CapsForm;
+}
+
+// A seam joined with its caps, every cap cell replaced by the cells it names:
+// the one shape a render reads.
+interface JoinShape {
   readonly seam: readonly JoinCell[];
   readonly divider: readonly JoinCell[];
   readonly lead: readonly JoinCell[];
@@ -255,7 +293,9 @@ export interface JoinShape {
 }
 
 type Part = keyof JoinShape;
+type FormName = keyof JoinSeam;
 const PARTS: readonly Part[] = ["seam", "divider", "lead", "tail"];
+const FORMS: readonly FormName[] = ["glyph", "ascii"];
 
 /**
  * The least ΔE_OK a seam cell's ink must differ from its own ground by for the
@@ -310,51 +350,83 @@ const parseColor = (raw: CellColor, absent: "left" | "right" | undefined, refuse
 
 const ABSENT: Readonly<Record<Part, "left" | "right" | undefined>> = { seam: undefined, divider: undefined, lead: "left", tail: "right" };
 
-function parseList(raw: unknown, where: string): readonly JoinCell[] {
-  if (!Array.isArray(raw)) throw new Error(`CellJoiner: ${where} is not a list of cells`);
-  return raw.map((cell: unknown, i) => {
-    if (typeof cell !== "object" || cell === null) throw new Error(`CellJoiner: ${where}[${i}] is not a cell`);
-    return cell as JoinCell;
+function parseCell(cell: JoinCell, form: FormName, part: Part, refuse: Refuse): JoinCell {
+  const glyph: unknown = cell.glyph;
+  const oneOf: unknown = typeof glyph === "object" && glyph !== null ? (glyph as { oneOf?: unknown }).oneOf : undefined;
+  if (typeof glyph !== "string" && !(Array.isArray(oneOf) && oneOf.every((g) => typeof g === "string"))) {
+    refuse(`has a glyph that is neither a string nor a oneOf of strings: ${JSON.stringify(glyph)}`);
+  }
+  if (cell.fg === "ground" && cell.bg === "ground") refuse("has ground on both sides");
+  const glyphs = glyphsOf(cell);
+  if (glyphs.length === 0) refuse("has an empty oneOf");
+  if (glyphs.some((glyph) => cellLen(glyph) !== cellWidth(cell))) refuse("has oneOf members of different widths");
+  if (form === "ascii" && !glyphs.every(isAscii)) refuse("is not ASCII");
+  return Object.freeze({
+    glyph: typeof cell.glyph === "string" ? cell.glyph : Object.freeze({ oneOf: Object.freeze([...glyphs]) }),
+    fg: parseColor(cell.fg, ABSENT[part], refuse),
+    bg: parseColor(cell.bg, ABSENT[part], refuse),
   });
 }
 
+// `raw[form][part]` as frozen cells, each checked by `parseOne`, or refused
+// naming where it sits.
+function parseCells<C>(raw: unknown, form: FormName, part: Part, parseOne: (cell: object, refuse: Refuse) => C): readonly C[] {
+  const forms = raw as Partial<Record<FormName, Partial<Record<Part, unknown>>>> | null | undefined;
+  if (typeof forms?.[form] !== "object" || forms[form] === null) throw new Error(`CellJoiner: has no ${form} form`);
+  const cells = forms[form][part];
+  if (!Array.isArray(cells)) throw new Error(`CellJoiner: ${form} ${part} is not a list of cells`);
+  return Object.freeze(
+    cells.map((cell: unknown, i) => {
+      const refuse: Refuse = (why) => {
+        throw new Error(`CellJoiner: ${form} ${part}[${i}] ${why}`);
+      };
+      return typeof cell === "object" && cell !== null ? parseOne(cell, refuse) : refuse("is not a cell");
+    }),
+  );
+}
+
+const asCell = (form: FormName, part: Part) => (cell: object, refuse: Refuse): JoinCell => parseCell(cell as JoinCell, form, part, refuse);
+
+const asSeamCell = (form: FormName, part: Part) => (cell: object, refuse: Refuse): SeamCell => {
+  if (!("cap" in cell)) return parseCell(cell as JoinCell, form, part, refuse);
+  const { cap } = cell;
+  return cap === "lead" || cap === "tail" ? Object.freeze({ cap }) : refuse(`names a cap that is neither lead nor tail: ${JSON.stringify(cap)}`);
+};
+
 /**
- * [LAW:parse-dont-validate] The one place a shape is checked, so every rule
- * the cell model states is refused at construction and the render reads a
- * shape that already holds them. A shape is often authored as data — a
- * consumer's config — so the rules the types state are checked here too, and
- * what comes back is a frozen copy the caller can no longer change.
+ * [LAW:parse-dont-validate] The one place a seam is checked, so every rule
+ * the cell model states is refused at construction and the render reads cells
+ * that already hold them. A seam is often authored as data — a consumer's
+ * config — so the rules the types state are checked here too, and what comes
+ * back is a frozen copy the caller can no longer change.
  */
-function parseShape(raw: JoinShape, form: "glyph" | "ascii"): JoinShape {
-  const parseCells = (part: Part): readonly JoinCell[] =>
-    Object.freeze(
-      parseList(raw[part], `${form} ${part}`).map((cell, i): JoinCell => {
-        const refuse: Refuse = (why) => {
-          throw new Error(`CellJoiner: ${form} ${part}[${i}] ${why}`);
-        };
-        const glyph: unknown = cell.glyph;
-        const oneOf: unknown = typeof glyph === "object" && glyph !== null ? (glyph as { oneOf?: unknown }).oneOf : undefined;
-        if (typeof glyph !== "string" && !(Array.isArray(oneOf) && oneOf.every((g) => typeof g === "string"))) {
-          refuse(`has a glyph that is neither a string nor a oneOf of strings: ${JSON.stringify(glyph)}`);
-        }
-        if (cell.fg === "ground" && cell.bg === "ground") refuse("has ground on both sides");
-        const glyphs = glyphsOf(cell);
-        if (glyphs.length === 0) refuse("has an empty oneOf");
-        if (glyphs.some((glyph) => cellLen(glyph) !== cellWidth(cell))) refuse("has oneOf members of different widths");
-        if (form === "ascii" && !glyphs.every(isAscii)) refuse("is not ASCII");
-        return Object.freeze({
-          glyph: typeof cell.glyph === "string" ? cell.glyph : Object.freeze({ oneOf: Object.freeze([...glyphs]) }),
-          fg: parseColor(cell.fg, ABSENT[part], refuse),
-          bg: parseColor(cell.bg, ABSENT[part], refuse),
-        });
-      }),
-    );
-  const seam = parseCells("seam");
-  // A divider authored as the seam itself stays the seam, so a render can see
-  // it has no choice to make.
-  const divider = raw.divider === raw.seam ? seam : parseCells("divider");
-  if (partWidth(divider) !== partWidth(seam)) throw new Error(`CellJoiner: ${form} divider is not the width of the seam`);
-  return Object.freeze({ seam, divider, lead: parseCells("lead"), tail: parseCells("tail") });
+function parseSeam(raw: JoinSeam): JoinSeam {
+  const parseForm = (form: FormName): SeamForm => {
+    const seam = parseCells(raw, form, "seam", asSeamCell(form, "seam"));
+    // A divider authored as the seam itself stays the seam, so a render can see
+    // it has no choice to make.
+    const divider = raw[form].divider === raw[form].seam ? seam : parseCells(raw, form, "divider", asSeamCell(form, "divider"));
+    return Object.freeze({ seam, divider });
+  };
+  return Object.freeze({ glyph: parseForm("glyph"), ascii: parseForm("ascii") });
+}
+
+/** [LAW:parse-dont-validate] `parseSeam`'s twin for the caps. */
+function parseCaps(raw: JoinCaps): JoinCaps {
+  const parseForm = (form: FormName): CapsForm =>
+    Object.freeze({ lead: parseCells(raw, form, "lead", asCell(form, "lead")), tail: parseCells(raw, form, "tail", asCell(form, "tail")) });
+  return Object.freeze({ glyph: parseForm("glyph"), ascii: parseForm("ascii") });
+}
+
+// One form of the seam joined with that form of the caps. The seam's width is
+// only known once its caps stand in it, so this is where the divider's is held
+// to it.
+function joinForms(seam: SeamForm, caps: CapsForm, form: FormName): JoinShape {
+  const splice = (cells: readonly SeamCell[]): readonly JoinCell[] => cells.flatMap((cell) => ("cap" in cell ? caps[cell.cap] : [cell]));
+  const seamCells = splice(seam.seam);
+  const divider = seam.divider === seam.seam ? seamCells : splice(seam.divider);
+  if (partWidth(divider) !== partWidth(seamCells)) throw new Error(`CellJoiner: ${form} divider is not the width of the seam`);
+  return { seam: seamCells, divider, lead: caps.lead, tail: caps.tail };
 }
 
 // Whether any cell of `shape` paints with `side`'s ground.
@@ -445,27 +517,30 @@ function cellStyle(cell: JoinCell, edges: Edges, options: RenderOptions): Style 
 const shapeGlyphs = (shape: JoinShape): string => PARTS.flatMap((part) => shape[part].flatMap(glyphsOf)).join("");
 
 /**
- * The one joiner: what it draws at each join is the `JoinShape` it is given,
- * so a new joiner is a value, never a class.
+ * The one joiner: what it draws is a `JoinSeam` between neighbours and a
+ * `JoinCaps` at the ends of each run, picked independently, so a new joiner is
+ * a pair of values, never a class.
  *
  * Which part a join draws is read off its two neighbours. A neighbour is
  * missing at the strip's ends, and counts as missing — an endpoint — when the
- * shape paints with its ground anywhere and it has none to paint. With both present the
- * join is the seam, or the divider where every seam cell's ink is drawn
- * indistinct from its ground at `options.colorSystem`; with only the right, the lead; with only
- * the left, the tail; with neither, nothing.
+ * seam or the caps paint with its ground anywhere and it has none to paint.
+ * With both present the join is the seam, or the divider where every seam
+ * cell's ink is drawn indistinct from its ground at `options.colorSystem`;
+ * with only the right, the lead; with only the left, the tail; with neither,
+ * nothing.
  *
- * `ascii` is the shape an ASCII-only output draws instead, whole.
+ * An ASCII-only output draws the `ascii` form of both, whole.
  */
 export class CellJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
-  readonly shape: JoinShape;
-  readonly ascii: JoinShape;
-  private readonly _forms: { readonly glyph: Form; readonly ascii: Form };
+  readonly seam: JoinSeam;
+  readonly caps: JoinCaps;
+  private readonly _forms: Readonly<Record<FormName, Form>>;
 
-  constructor(shape: JoinShape, ascii: JoinShape) {
-    this.shape = parseShape(shape, "glyph");
-    this.ascii = parseShape(ascii, "ascii");
-    this._forms = { glyph: formOf(this.shape), ascii: formOf(this.ascii) };
+  constructor(seam: JoinSeam, caps: JoinCaps) {
+    this.seam = parseSeam(seam);
+    this.caps = parseCaps(caps);
+    const [glyph, ascii] = FORMS.map((form) => formOf(joinForms(this.seam[form], this.caps[form], form)));
+    this._forms = { glyph: glyph!, ascii: ascii! };
   }
 
   join(left: T | null, right: T | null, { index }: JoinContext): Renderable {
@@ -503,7 +578,7 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
   }
 }
 
-// --- The bundled joiners ---
+// --- The bundled seams and caps ---
 
 const LEFT_BG: Paint = { edge: "left", part: "bg" };
 const RIGHT_BG: Paint = { edge: "right", part: "bg" };
@@ -511,26 +586,40 @@ const LEFT_FG: Paint = { edge: "left", part: "fg" };
 const HALF: Paint = { mix: [LEFT_BG, RIGHT_BG, 1 / 2] };
 
 const GROUND = "ground";
+const LEAD: SeamCell = { cap: "lead" };
+const TAIL: SeamCell = { cap: "tail" };
 
-// A one-cell edge in the powerline family: `glyph` in the left ground over the
-// right; divided by `thin` in the left item's text; led by the same glyph with
-// the left ground replaced by the terminal's — in reverse video, a notch whose
-// ink is the terminal's background — and tailed by it over the terminal's.
-function edge(glyph: string, thin: string): JoinShape {
-  return {
-    seam: [{ glyph, fg: LEFT_BG, bg: RIGHT_BG }],
-    divider: [{ glyph: thin, fg: LEFT_FG, bg: LEFT_BG }],
-    lead: [{ glyph, fg: GROUND, bg: RIGHT_BG }],
-    tail: [{ glyph, fg: LEFT_BG, bg: GROUND }],
-  };
+const both = <F>(glyph: F, ascii: F): { readonly glyph: F; readonly ascii: F } => ({ glyph, ascii });
+
+// A powerline glyph family: the glyph, its thin form, and their ASCII stand-ins.
+interface Family {
+  readonly glyph: string;
+  readonly thin: string;
+  readonly ascii: string;
+  readonly asciiThin: string;
 }
 
-// Three powerline arrows stepping through the two thirds between the grounds.
-function prism(glyph: string, thin: string): JoinShape {
+const POWERLINE: Family = { glyph: "", thin: "", ascii: ">", asciiThin: ">" };
+const SLANT: Family = { glyph: "", thin: "", ascii: "/", asciiThin: "/" };
+const BACKSLANT: Family = { glyph: "", thin: "", ascii: "\\", asciiThin: "\\" };
+const FLAME: Family = { glyph: "", thin: "", ascii: "}", asciiThin: "}" };
+const PIXEL: Family = { glyph: "", thin: "", ascii: "#", asciiThin: ">" };
+const ICE: Family = { glyph: "", thin: "", ascii: "]", asciiThin: ">" };
+const BUBBLE: Family = { glyph: "", thin: "", ascii: ")", asciiThin: ")" };
+
+// `glyph` in the left ground over the right; divided by `thin` in the left
+// item's text.
+const arrow = (glyph: string, thin: string): SeamForm => ({
+  seam: [{ glyph, fg: LEFT_BG, bg: RIGHT_BG }],
+  divider: [{ glyph: thin, fg: LEFT_FG, bg: LEFT_BG }],
+});
+const arrowSeam = (f: Family): JoinSeam => both(arrow(f.glyph, f.thin), arrow(f.ascii, f.asciiThin));
+
+// Three arrows stepping through the two thirds between the grounds.
+function prism(glyph: string, thin: string): SeamForm {
   const third = (t: number): Paint => ({ mix: [LEFT_BG, RIGHT_BG, t] });
   const pad: JoinCell = { glyph: " ", fg: LEFT_FG, bg: LEFT_BG };
   return {
-    ...edge(glyph, thin),
     seam: [
       { glyph, fg: LEFT_BG, bg: third(1 / 3) },
       { glyph, fg: third(1 / 3), bg: third(2 / 3) },
@@ -540,75 +629,134 @@ function prism(glyph: string, thin: string): JoinShape {
   };
 }
 
-// A powerline-family joiner: `shape` over `glyph`, its ASCII form the same
-// shape over `ascii`, beginning each run flat — an ASCII arrow reversed out of
-// the terminal's ground is a block of nothing.
-const arrows = (shape: (glyph: string, thin: string) => JoinShape, glyph: string, thin: string, ascii: string, asciiThin: string): CellJoiner =>
-  new CellJoiner(shape(glyph, thin), { ...shape(ascii, asciiThin), lead: [] });
-
-// Each run closed by `close` and opened by `open`, both in its ground over the
-// terminal's, with `between` — cells on the terminal's ground — between runs.
-function pill(open: string, close: string, between: readonly JoinCell[]): JoinShape {
-  const seam: JoinCell[] = [{ glyph: close, fg: LEFT_BG, bg: GROUND }, ...between, { glyph: open, fg: RIGHT_BG, bg: GROUND }];
-  return { seam, divider: seam, lead: [{ glyph: open, fg: RIGHT_BG, bg: GROUND }], tail: [{ glyph: close, fg: LEFT_BG, bg: GROUND }] };
+// The runs parted: the caps close the one and open the other, `between` —
+// cells on the terminal's ground — set between them.
+function parted(between: readonly JoinCell[]): SeamForm {
+  const seam = [TAIL, ...between, LEAD];
+  return { seam, divider: seam };
 }
 
-const capsule = (open: string, close: string): JoinShape => pill(open, close, [{ glyph: " ", fg: LEFT_FG, bg: GROUND }]);
-const metro = (open: string, close: string, rail: string): JoinShape => pill(open, close, [{ glyph: rail, fg: { role: "strip.rail" }, bg: GROUND }]);
-
-// One cell drawn over the two grounds' midpoint, so it reads as neither item's;
-// nothing at the ends, where there is no second ground to meet.
-function midpoint(glyph: JoinCell["glyph"], fg: Paint): JoinShape {
+// One cell drawn over the two grounds' midpoint, so it reads as neither item's.
+function midpoint(glyph: JoinCell["glyph"], fg: Paint): SeamForm {
   const seam: JoinCell[] = [{ glyph, fg, bg: HALF }];
-  return { seam, divider: seam, lead: [], tail: [] };
+  return { seam, divider: seam };
 }
 
 // A ragged tear in the left ground over the midpoint; where that ink would
 // vanish into the midpoint — grounds a few steps apart, or one ground — the
 // same tear in the left item's text.
-function torn(glyphs: readonly string[]): JoinShape {
-  return { ...midpoint({ oneOf: glyphs }, LEFT_BG), divider: [{ glyph: { oneOf: glyphs }, fg: LEFT_FG, bg: HALF }] };
+function torn(glyphs: readonly string[]): SeamForm {
+  return { seam: midpoint({ oneOf: glyphs }, LEFT_BG).seam, divider: [{ glyph: { oneOf: glyphs }, fg: LEFT_FG, bg: HALF }] };
 }
 
 const PLAIN_SEAM: readonly JoinCell[] = [{ glyph: " | ", fg: { role: "strip.separator" }, bg: GROUND }];
-const PLAIN: JoinShape = { seam: PLAIN_SEAM, divider: PLAIN_SEAM, lead: [], tail: [] };
+const PLAIN: SeamForm = { seam: PLAIN_SEAM, divider: PLAIN_SEAM };
+const SPACE: JoinCell = { glyph: " ", fg: LEFT_FG, bg: GROUND };
+const rail = (glyph: string): JoinCell => ({ glyph, fg: { role: "strip.rail" }, bg: GROUND });
 
 /**
- * The bundled joiners, by name. What each draws is `docs/strip.md`'s
- * "Built-in joiners"; a name from config is read with `joinerNamed`.
+ * The bundled seams, by name: what a joiner draws between two neighbours.
+ * What each draws is `docs/strip.md`'s "Seams"; any of them ends in any of
+ * `CAPS`.
  */
-export const JOINERS = Object.freeze({
-  powerline: arrows(edge, "\ue0b0", "\ue0b1", ">", ">"),
-  prism: arrows(prism, "\ue0b0", "\ue0b1", ">", ">"),
-  slant: arrows(edge, "\ue0bc", "\ue0bd", "/", "/"),
-  backslant: arrows(edge, "\ue0b8", "\ue0b9", "\\", "\\"),
-  flame: arrows(edge, "\ue0c0", "\ue0c1", "}", "}"),
-  pixel: arrows(edge, "\ue0c4", "\ue0b1", "#", ">"),
-  ice: arrows(edge, "\ue0c8", "\ue0b1", "]", ">"),
-  bubble: arrows(edge, "\ue0b4", "\ue0b5", ")", ")"),
-  capsule: new CellJoiner(capsule("\ue0b6", "\ue0b4"), capsule("(", ")")),
-  wrapper: new CellJoiner(pill("\ue0b2", "\ue0b0", []), pill("<", ">", [])),
-  metro: new CellJoiner(metro("\ue0b6", "\ue0b4", "\u2500\u2500"), metro("(", ")", "--")),
-  stitch: new CellJoiner(midpoint("\u250a", LEFT_FG), midpoint(":", LEFT_FG)),
-  torn: new CellJoiner(torn(["\u259a\u259e", "\u259e\u259a", "\u2598\u2597", "\u259d\u2596", "\u2596\u259d", "\u2597\u2598"]), torn(["/\\", "\\/"])),
-  plain: new CellJoiner(PLAIN, PLAIN),
+export const SEAMS = Object.freeze({
+  powerline: parseSeam(arrowSeam(POWERLINE)),
+  prism: parseSeam(both(prism(POWERLINE.glyph, POWERLINE.thin), prism(POWERLINE.ascii, POWERLINE.asciiThin))),
+  slant: parseSeam(arrowSeam(SLANT)),
+  backslant: parseSeam(arrowSeam(BACKSLANT)),
+  flame: parseSeam(arrowSeam(FLAME)),
+  pixel: parseSeam(arrowSeam(PIXEL)),
+  ice: parseSeam(arrowSeam(ICE)),
+  bubble: parseSeam(arrowSeam(BUBBLE)),
+  capsule: parseSeam(both(parted([SPACE]), parted([SPACE]))),
+  wrapper: parseSeam(both(parted([]), parted([]))),
+  metro: parseSeam(both(parted([rail("──")]), parted([rail("--")]))),
+  stitch: parseSeam(both(midpoint("┊", LEFT_FG), midpoint(":", LEFT_FG))),
+  torn: parseSeam(both(torn(["▚▞", "▞▚", "▘▗", "▝▖", "▖▝", "▗▘"]), torn(["/\\", "\\/"]))),
+  plain: parseSeam(both(PLAIN, PLAIN)),
 });
 
-type JoinerName = keyof typeof JOINERS;
+// The family's glyph reversed out of the terminal's ground at the lead — a
+// notch whose ink is the terminal's background — and over that ground at the
+// tail, so a run reads as one chevron. ASCII opens each run flat: an ASCII
+// glyph reversed out of the terminal's ground is a block of nothing.
+const flowCaps = (f: Family): JoinCaps =>
+  both(
+    { lead: [{ glyph: f.glyph, fg: GROUND, bg: RIGHT_BG }], tail: [{ glyph: f.glyph, fg: LEFT_BG, bg: GROUND }] },
+    { lead: [], tail: [{ glyph: f.ascii, fg: LEFT_BG, bg: GROUND }] },
+  );
+
+// `open` and `close`, each in its run's ground over the terminal's.
+const pill = (open: string, close: string): CapsForm => ({
+  lead: [{ glyph: open, fg: RIGHT_BG, bg: GROUND }],
+  tail: [{ glyph: close, fg: LEFT_BG, bg: GROUND }],
+});
+
+const FLAT: CapsForm = { lead: [], tail: [] };
 
 /**
- * The bundled joiner `name` names — a name read from config, parsed. Throws on
- * any other string, naming the ones there are; an own-key test, so `toString`
- * and the rest of `Object.prototype` are not joiners.
+ * The bundled caps, by name: what a joiner draws where a run begins and ends.
+ * What each draws is `docs/strip.md`'s "Caps"; any of them ends any of
+ * `SEAMS`.
  */
-export function joinerNamed(name: string): CellJoiner {
-  if (!isJoinerName(name)) throw new Error(`no joiner named ${JSON.stringify(name)}; the joiners are ${Object.keys(JOINERS).join(", ")}`);
-  return JOINERS[name];
+export const CAPS = Object.freeze({
+  powerline: parseCaps(flowCaps(POWERLINE)),
+  slant: parseCaps(flowCaps(SLANT)),
+  backslant: parseCaps(flowCaps(BACKSLANT)),
+  flame: parseCaps(flowCaps(FLAME)),
+  pixel: parseCaps(flowCaps(PIXEL)),
+  ice: parseCaps(flowCaps(ICE)),
+  bubble: parseCaps(flowCaps(BUBBLE)),
+  capsule: parseCaps(both(pill("", ""), pill("(", ")"))),
+  wrapper: parseCaps(both(pill("", ""), pill("<", ">"))),
+  flat: parseCaps(both(FLAT, FLAT)),
+});
+
+/**
+ * The bundled joiners, by name: each a seam from `SEAMS` ended in caps from
+ * `CAPS`. What each draws is `docs/strip.md`'s "Built-in joiners"; a name from
+ * config is read with `joinerNamed`.
+ */
+export const JOINERS = Object.freeze({
+  powerline: new CellJoiner(SEAMS.powerline, CAPS.powerline),
+  prism: new CellJoiner(SEAMS.prism, CAPS.powerline),
+  slant: new CellJoiner(SEAMS.slant, CAPS.slant),
+  backslant: new CellJoiner(SEAMS.backslant, CAPS.backslant),
+  flame: new CellJoiner(SEAMS.flame, CAPS.flame),
+  pixel: new CellJoiner(SEAMS.pixel, CAPS.pixel),
+  ice: new CellJoiner(SEAMS.ice, CAPS.ice),
+  bubble: new CellJoiner(SEAMS.bubble, CAPS.bubble),
+  capsule: new CellJoiner(SEAMS.capsule, CAPS.capsule),
+  wrapper: new CellJoiner(SEAMS.wrapper, CAPS.wrapper),
+  metro: new CellJoiner(SEAMS.metro, CAPS.capsule),
+  stitch: new CellJoiner(SEAMS.stitch, CAPS.flat),
+  torn: new CellJoiner(SEAMS.torn, CAPS.flat),
+  plain: new CellJoiner(SEAMS.plain, CAPS.flat),
+});
+
+/**
+ * A joiner as config names it: one of `JOINERS`, or a seam from `SEAMS` ended
+ * in caps from `CAPS`, each named apart.
+ */
+export type JoinerSpec = string | { readonly seam: string; readonly caps: string };
+
+/**
+ * The joiner `spec` names — a joiner read from config, parsed. Throws on a
+ * name its table lacks, naming the ones there are; an own-key test, so
+ * `toString` and the rest of `Object.prototype` are no one's name.
+ */
+export function joinerNamed(spec: JoinerSpec): CellJoiner {
+  return typeof spec === "string"
+    ? named(JOINERS, "joiner", "joiners", spec)
+    : new CellJoiner(named(SEAMS, "seam", "seams", spec.seam), named(CAPS, "caps", "caps", spec.caps));
 }
 
-const isJoinerName = (name: string): name is JoinerName => Object.hasOwn(JOINERS, name);
+function named<V>(table: Readonly<Record<string, V>>, kind: string, kinds: string, name: string): V {
+  if (!Object.hasOwn(table, name)) throw new Error(`no ${kind} named ${JSON.stringify(name)}; the ${kinds} are ${Object.keys(table).join(", ")}`);
+  return table[name]!;
+}
 
-function gradient(steps: number, glyph: string): JoinShape {
+function gradient(steps: number, glyph: string): SeamForm {
   // Midpoint sampling across `2 * steps` half-cell positions: cell i takes
   // samples 2i (its ink, the left half) and 2i+1 (its ground, the right half),
   // so no sample equals either neighbour's ground.
@@ -618,16 +766,16 @@ function gradient(steps: number, glyph: string): JoinShape {
     fg: { mix: [LEFT_BG, RIGHT_BG, (2 * i + 0.5) / samples] },
     bg: { mix: [LEFT_BG, RIGHT_BG, (2 * i + 1.5) / samples] },
   }));
-  return { seam, divider: seam, lead: [], tail: [] };
+  return { seam, divider: seam };
 }
 
 /**
  * A ramp of `steps` cells from the left ground to the right. Each cell is the
  * half block U+258C, ink on its left half and ground on its right, so it
- * carries two samples; ASCII draws a space, keeping the grounds alone. Nothing
- * at the ends, or beside a neighbour with no ground — there is no colour to
- * ramp toward.
+ * carries two samples; ASCII draws a space, keeping the grounds alone. Beside
+ * a neighbour with no ground there is no colour to ramp toward, so that join
+ * draws the caps the ramp is ended in.
  */
-export function gradientJoiner(steps = 4): CellJoiner {
-  return new CellJoiner(gradient(steps, "▌"), gradient(steps, " "));
+export function gradientSeam(steps = 4): JoinSeam {
+  return parseSeam(both(gradient(steps, "▌"), gradient(steps, " ")));
 }
