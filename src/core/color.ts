@@ -716,15 +716,34 @@ export class ColorSpec {
     if (value.alpha < 1) throw new RangeError(`matchOn rounds an opaque colour; got alpha ${value.alpha}`);
     if (depth === ColorDepth.TRUECOLOR) return ColorSpec.fromRgba(value);
     if (depth === ColorDepth.DEFAULT) return ColorSpec.default();
-    const slot = theme.ansiColors.match(value);
     // [LAW:dataflow-not-control-flow] Every candidate is scored; the depth
     // only decides whether the cube is among them. Ties go to the earlier.
+    // Each table's nearest stands in for all of it: the tables' `match` is
+    // memoised and ranks by this distance, so the winner is `indexed`'s.
+    const slot = theme.ansiColors.match(value);
     const candidates: [ColorSpec, ColorRgba][] = [
       [ColorSpec.default(), foreground ? theme.foregroundColor : theme.backgroundColor],
       [new ColorSpec(`color(${slot})`, depth === ColorDepth.WINDOWS ? depth : ColorDepth.STANDARD, slot), theme.ansiColors.get(slot)],
       ...(depth === ColorDepth.EIGHT_BIT ? [cubeCandidate(value)] : []),
     ];
     return candidates.reduce((best, next) => (rgbDistance(next[1], value) < rgbDistance(best[1], value) ? next : best))[0];
+  }
+
+  /**
+   * Every colour `depth` writes by index, each with the colour a terminal
+   * known to show `theme` draws it in, lowest index first: the theme's
+   * sixteen, and at 256 colours the cube and grey ramp after them. Each is
+   * drawn alike as glyph and as ground, which the default colour is not, so
+   * it is not among them. Truecolor writes a colour itself and the default
+   * depth only the default, so neither writes any by index. The colours
+   * `matchOn` rounds to, but for the default, read off the same two tables.
+   */
+  static indexed(depth: ColorDepth, theme: TerminalTheme): readonly (readonly [ColorSpec, ColorRgba])[] {
+    const byDepth = indexedMemo.get(theme) ?? new Map<ColorDepth, readonly (readonly [ColorSpec, ColorRgba])[]>();
+    indexedMemo.set(theme, byDepth);
+    const listed = byDepth.get(depth) ?? listIndexed(depth, theme);
+    byDepth.set(depth, listed);
+    return listed;
   }
 
   /**
@@ -777,6 +796,26 @@ export class ColorSpec {
 function cubeCandidate(value: ColorRgba): [ColorSpec, ColorRgba] {
   const index = EIGHT_BIT_DOWNGRADE_TABLE.match(value);
   return [ColorSpec.fromAnsi(index), EIGHT_BIT_DOWNGRADE_TABLE.get(index)];
+}
+
+/** `ColorSpec.indexed`'s list, made once for each theme and depth. */
+const indexedMemo = new WeakMap<TerminalTheme, Map<ColorDepth, readonly (readonly [ColorSpec, ColorRgba])[]>>();
+
+function listIndexed(depth: ColorDepth, theme: TerminalTheme): readonly (readonly [ColorSpec, ColorRgba])[] {
+  const slots = (): (readonly [ColorSpec, ColorRgba])[] =>
+    Array.from({ length: 16 }, (_, slot) => [new ColorSpec(`color(${slot})`, depth === ColorDepth.WINDOWS ? depth : ColorDepth.STANDARD, slot), theme.ansiColors.get(slot)] as const);
+  switch (depth) {
+    case ColorDepth.TRUECOLOR:
+    case ColorDepth.DEFAULT:
+      return [];
+    case ColorDepth.STANDARD:
+    case ColorDepth.WINDOWS:
+      return slots();
+    case ColorDepth.EIGHT_BIT: {
+      const { firstIndex, size } = EIGHT_BIT_DOWNGRADE_TABLE;
+      return [...slots(), ...Array.from({ length: size }, (_, i) => [ColorSpec.fromAnsi(firstIndex + i), EIGHT_BIT_DOWNGRADE_TABLE.get(firstIndex + i)] as const)];
+    }
+  }
 }
 
 function mix(from: ColorSpec, to: ColorSpec, t: number, theme?: TerminalTheme): ColorRgba {
