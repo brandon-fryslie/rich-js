@@ -29,13 +29,11 @@ import type {
  * is one this table does not know: it is drawn as an error, so the reader
  * still sees it and the table's gap is visible.
  *
- * [LAW:one-source-of-truth] emitBlocks draws exactly the drawn types — its
+ * [LAW:one-source-of-truth] emitBlocks draws exactly the drawn types: its
  * dispatch over them is exhaustive, so a type added here does not compile
- * until it is drawn — and scripts/stage-claude-sessions.ts stages the card's
- * sessions from the same list, so the card and the Node script draw the same
- * records.
+ * until it is drawn. A record's type is the one readRecord reads it as.
  */
-export const DRAWN_RECORD_TYPES = ["user", "assistant", "system"] as const;
+const DRAWN_RECORD_TYPES = ["user", "assistant", "system"] as const;
 export const HIDDEN_RECORD_TYPES = [
   "agent-name",
   "ai-title",
@@ -112,9 +110,10 @@ type RawRecord = {
   message?: MessageShape;
   toolUseResult?: { agentId?: string } | unknown;
   sourceToolAssistantUUID?: string;
+  attachment?: { type?: string; prompt?: string | AssistantContent[]; isMeta?: boolean };
 };
 
-/** A line dropHidden kept: one with a `type`, read as a record from there on. */
+/** A line readRecords kept: one with a `type`, read as a record from there on. */
 interface RecordLine extends RawLine {
   readonly parsed: RawRecord;
 }
@@ -187,16 +186,49 @@ function flattenToolResultText(c: AssistantContent): string {
 }
 
 /**
- * Step 1: drop hidden types (unless showHidden is true).
- * Lines without a `type` are always dropped — they're not renderable.
+ * A record as the parser reads it, and the lines it was read from (`parts`),
+ * verbatim, so each block can say exactly which records it is drawn from
+ * (`source`) and the raw view shows what Claude Code wrote.
  */
-function dropHidden(lines: ReadonlyArray<RawLine>, showHidden: boolean): RecordLine[] {
-  const out: RecordLine[] = [];
+interface Joined {
+  readonly line: RecordLine;
+  /** The records the line was read from, first to last, as written. */
+  readonly parts: readonly RecordLine[];
+}
+
+/**
+ * A record as what it is. Claude Code files a prompt the user sent while a
+ * turn ran as an `attachment` of type `queued_command`, with no user record of
+ * its own, so that one is read as the user record it stands for.
+ */
+function readRecord(r: RawRecord): RawRecord {
+  const a = r.attachment;
+  if (r.type !== "attachment" || a?.type !== "queued_command") return r;
+  return { ...r, type: "user", isMeta: a.isMeta, message: { role: "user", content: a.prompt } };
+}
+
+/**
+ * Whether the viewer draws `record` in the conversation.
+ * [LAW:one-source-of-truth] scripts/stage-claude-sessions.ts stages the card's
+ * sessions by it, so the card and the Node script draw the same records.
+ */
+export function isDrawnRecord(record: Record<string, unknown>): boolean {
+  return typeof record["type"] === "string" && isDrawn(readRecord(record as RawRecord).type);
+}
+
+/**
+ * Step 1: read each line as its record, dropping hidden types (unless
+ * showHidden is true). Lines without a `type` are always dropped — they're
+ * not renderable.
+ */
+function readRecords(lines: ReadonlyArray<RawLine>, showHidden: boolean): Joined[] {
+  const out: Joined[] = [];
   for (const line of lines) {
-    const type = line.parsed["type"];
-    if (typeof type !== "string") continue;
-    if (!showHidden && RECORD_TYPES.get(type) === "hidden") continue;
-    out.push(line as RecordLine);
+    if (typeof line.parsed["type"] !== "string") continue;
+    const written = line as RecordLine;
+    const read: RecordLine = { ...written, parsed: readRecord(written.parsed) };
+    if (!showHidden && RECORD_TYPES.get(read.parsed.type) === "hidden") continue;
+    out.push({ line: read, parts: [written] });
   }
   return out;
 }
@@ -208,31 +240,23 @@ function dropHidden(lines: ReadonlyArray<RawLine>, showHidden: boolean): RecordL
  * assistant lines sharing an id are one message: its content is theirs in
  * order, its parent is the first one's, and the rest of it (stop_reason,
  * usage) is the last one's.
- *
- * The joined line keeps the records it was joined from (`parts`), verbatim,
- * so each block can say exactly which records it is drawn from (`source`).
  */
-interface Joined {
-  readonly line: RecordLine;
-  /** The records the line was joined from, first to last, as read. */
-  readonly parts: readonly RecordLine[];
-}
-
-function joinMessageRecords(lines: ReadonlyArray<RecordLine>): Joined[] {
+function joinMessageRecords(records: ReadonlyArray<Joined>): Joined[] {
   const out: Joined[] = [];
-  for (const line of lines) {
+  for (const next of records) {
+    const { line } = next;
     const r = line.parsed;
     const prev = out[out.length - 1];
     const prevRec = prev?.line.parsed;
     const id = r.type === "assistant" ? r.message?.id : undefined;
     if (prev === undefined || id === undefined || prevRec?.type !== "assistant" || prevRec.message?.id !== id) {
-      out.push({ line, parts: [line] });
+      out.push(next);
       continue;
     }
     const blocks = (record: RawRecord) => (Array.isArray(record.message?.content) ? record.message.content : []);
     out[out.length - 1] = {
       line: { ...line, parsed: { ...r, uuid: prevRec.uuid, parentUuid: prevRec.parentUuid, message: { ...r.message!, content: [...blocks(prevRec), ...blocks(r)] } } },
-      parts: [...prev.parts, line],
+      parts: [...prev.parts, ...next.parts],
     };
   }
   return out;
@@ -442,5 +466,5 @@ export function parseBlocks(
   opts?: ParseOptions,
 ): Block[] {
   const showHidden = opts?.showHidden === true;
-  return emitBlocks(joinMessageRecords(dropHidden(lines, showHidden)));
+  return emitBlocks(joinMessageRecords(readRecords(lines, showHidden)));
 }
