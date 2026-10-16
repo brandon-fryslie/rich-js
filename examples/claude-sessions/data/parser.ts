@@ -5,9 +5,10 @@
  *   raw lines → drop hidden types → dedup streaming chunks
  *              → consume tool_use+tool_result pairs → emit Blocks
  *
- * The parser is intentionally lenient: any line whose shape is unfamiliar
- * is either dropped (when its `type` is in HIDDEN_TYPES) or rendered as a
- * synthetic ErrorBlock so the user can still inspect it via raw view.
+ * The parser is intentionally lenient: a record of a type `RECORD_TYPES` keeps
+ * out of the conversation is dropped, or drawn as a RecordBlock when hidden
+ * records are shown, and one of a type it does not name is drawn as a synthetic
+ * ErrorBlock so the user can still inspect it via raw view.
  */
 
 import type { RawLine } from "./loader.js";
@@ -19,17 +20,49 @@ import type {
   SubagentBlock,
   SystemBlock,
   ErrorBlock,
+  RecordBlock,
 } from "./types.js";
 
-const HIDDEN_TYPES = new Set([
-  "file-history-snapshot",
-  "progress",
-  "queue-operation",
-  "last-prompt",
-  "pr-link",
-  "custom-title",
-  "ai-title",
-  "agent-name",
+/**
+ * What the viewer does with each record type Claude Code writes: draws it as
+ * the conversation, or keeps it out — session state, titles, file history,
+ * hook output — until hidden records are shown (`H`). A type missing here is
+ * one Claude Code began writing after this table: it is drawn as an error, so
+ * the reader still sees it and the table's gap is visible.
+ *
+ * [LAW:one-source-of-truth] scripts/stage-claude-sessions.ts stages the card's
+ * sessions from this table's drawn types, so the card and the Node script
+ * draw the same records.
+ */
+export const RECORD_TYPES: ReadonlyMap<string, "drawn" | "hidden"> = new Map([
+  ["user", "drawn"],
+  ["assistant", "drawn"],
+  ["system", "drawn"],
+  ...[
+    "agent-name",
+    "ai-title",
+    "artifact-autoreact-ledger",
+    "artifact-comment-monitor",
+    "atis-latch",
+    "attachment",
+    "bridge-session",
+    "continued-in",
+    "cost-state",
+    "custom-title",
+    "file-history-delta",
+    "file-history-snapshot",
+    "fork-context-ref",
+    "frame-link",
+    "history-suppression",
+    "last-prompt",
+    "mode",
+    "permission-mode",
+    "pr-link",
+    "progress",
+    "queue-operation",
+    "relocated",
+    "worktree-state",
+  ].map((type) => [type, "hidden"] as const),
 ]);
 
 interface AssistantContent {
@@ -148,7 +181,7 @@ function dropHidden(lines: ReadonlyArray<RawLine>, showHidden: boolean): RawLine
   for (const line of lines) {
     const r = line.parsed as RawRecord;
     if (typeof r.type !== "string") continue;
-    if (!showHidden && HIDDEN_TYPES.has(r.type)) continue;
+    if (!showHidden && RECORD_TYPES.get(r.type) === "hidden") continue;
     out.push(line);
   }
   return out;
@@ -371,6 +404,13 @@ function emitBlocks(joined: ReadonlyArray<Joined>): Block[] {
       continue;
     }
 
+    const recordType = r.type ?? "?";
+    if (RECORD_TYPES.get(recordType) === "hidden") {
+      const block: RecordBlock = { kind: "record", uuid, parentUuid, timestamp, source: parts, recordType };
+      out.push(block);
+      continue;
+    }
+
     // Unknown type — synthesize an Error block so user can inspect via raw view
     const fallback: ErrorBlock = {
       kind: "error",
@@ -378,8 +418,8 @@ function emitBlocks(joined: ReadonlyArray<Joined>): Block[] {
       parentUuid,
       timestamp,
       source: parts,
-      errorType: r.type ?? "unknown",
-      text: `(unknown record type: ${r.type ?? "?"})`,
+      errorType: recordType,
+      text: `(unknown record type: ${recordType})`,
     };
     out.push(fallback);
   }

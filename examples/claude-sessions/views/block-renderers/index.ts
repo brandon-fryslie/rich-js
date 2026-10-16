@@ -10,6 +10,7 @@ import { renderAssistant } from "./assistant.js";
 import { renderToolCall } from "./tool-call.js";
 import { renderSubagent } from "./subagent.js";
 import { renderSystem } from "./system-event.js";
+import { renderRecord } from "./record.js";
 import { renderError } from "./error.js";
 import { renderRaw } from "./raw.js";
 
@@ -28,6 +29,7 @@ export function renderBlock(block: Block, opts: RenderOpts): Renderable {
     case "tool-call": return renderToolCall(block, opts);
     case "subagent": return renderSubagent(block, opts);
     case "system": return renderSystem(block, opts);
+    case "record": return renderRecord(block, opts);
     case "error": return renderError(block, opts);
   }
 }

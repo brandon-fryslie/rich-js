@@ -28,6 +28,7 @@
 import { existsSync, readdirSync, readFileSync, statSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { homedir, hostname, userInfo } from "node:os";
 import path from "node:path";
+import { RECORD_TYPES } from "../examples/claude-sessions/data/parser.ts";
 import { REPO_ROOT } from "./repo-facts.ts";
 
 const SESSIONS: Readonly<Record<string, readonly string[]>> = {
@@ -58,8 +59,8 @@ const KEEP_PROSE: Keep = { lines: 12, chars: 900 };
  * carry and the reader never sees; of `toolUseResult` only the `agentId` a
  * subagent call is drilled into by is kept.
  */
-const SHOWN_TYPES = new Set(["user", "assistant", "system", "custom-title", "ai-title"]);
 const TITLE_TYPES = new Set(["custom-title", "ai-title"]);
+const SHOWN_TYPES = new Set([...[...RECORD_TYPES].flatMap(([type, use]) => (use === "drawn" ? [type] : [])), ...TITLE_TYPES]);
 const SHOWN_FIELDS = new Set([
   "type", "uuid", "parentUuid", "timestamp", "message", "subtype", "content", "level",
   "isMeta", "isSidechain", "isApiErrorMessage", "durationMs", "error", "promptId", "slug", "customTitle", "aiTitle",

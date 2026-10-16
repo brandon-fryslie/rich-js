@@ -14,6 +14,7 @@ export type BlockKind =
   | "tool-call"
   | "subagent"
   | "system"
+  | "record"
   | "error";
 
 export interface BlockBase {
@@ -72,6 +73,12 @@ export interface SystemBlock extends BlockBase {
   readonly durationMs: number | null;
 }
 
+/** A record the viewer keeps out of the conversation (parser.ts, RECORD_TYPES), drawn when hidden records are shown. */
+export interface RecordBlock extends BlockBase {
+  readonly kind: "record";
+  readonly recordType: string;
+}
+
 export interface ErrorBlock extends BlockBase {
   readonly kind: "error";
   readonly errorType: string;
@@ -84,6 +91,7 @@ export type Block =
   | ToolCallBlock
   | SubagentBlock
   | SystemBlock
+  | RecordBlock
   | ErrorBlock;
 
 // --- Sidebar / scanner types ---
