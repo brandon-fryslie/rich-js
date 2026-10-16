@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-408",
+      "ref": "refs/pull/408/merge",
+      "sha": "87a74829e7f1320503ca7989dfeb06698eb1107c",
+      "timestamp": "2026-10-16T23:14:15.787Z",
+      "commits": [
+        {
+          "sha": "87a74829e7f1320503ca7989dfeb06698eb1107c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T17:12:54-06:00",
+          "message": "Merge 2d3df7a2020a323fe6d2b1cd4132d4af63bd86fb into be55d8d03e743ffc840c4d98afbdebb22d195f8b\n"
+        },
+        {
+          "sha": "2d3df7a2020a323fe6d2b1cd4132d4af63bd86fb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T17:12:49-06:00",
+          "message": "A transition settles its last cell as it is done, on any element (rich-unfiled-791c.7b9h)\n\nA transition staggered its cells by raw noise, which on a short element\nspans a narrow band of the order: an 11-column dissolve settled at 21 s\nand said done at 30. Drawn now lists the cells the effect will be handed\n(confined narrows it to its owners'), and the order is spread over them,\nso the first cell starts at 0 and the last settles at `seconds`. The\ndocs state the gap that is left: an ease's flat tail, and below\ntruecolor the last palette step.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "be55d8d03e743ffc840c4d98afbdebb22d195f8b",
