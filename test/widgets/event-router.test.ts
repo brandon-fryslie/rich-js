@@ -268,7 +268,7 @@ describe("EventRouter — key parsing", () => {
     // parser must consume both and emit ONE event, not two — otherwise the
     // user pressing Esc once gets handled twice.
     h.feed("\x1b\x1b");
-    h.parser.flush(); // drain any deferred lone-ESC timer (defensive — should be empty)
+    h.parser.flush(); // a split host holds ESC ESC for the byte after it; flush settles it
     expect(h.keyEvents).toHaveLength(1);
     expect(h.keyEvents[0]).toMatchObject({
       key: "escape", character: "", shift: false, ctrl: false, meta: false,
@@ -440,6 +440,14 @@ describe("InputParser on a split host", () => {
     expect(keys).toEqual(["escape", "q"]);
   });
 
+  it.each([["O", ["escape", "O"]], ["Ox", ["escape", "O", "x"]]])("reads a stalled ESC ESC %s as one Escape and the keys after it", (rest, expected) => {
+    const { keys, parser } = split();
+    parser.feed("\x1b\x1b");
+    parser.feed(rest);
+    escapeDelayPasses();
+    expect(keys).toEqual(expected);
+  });
+
   it("reads a held ESC ESC as one Escape when the next key cannot extend it", () => {
     const { keys, parser } = split();
     parser.feed("\x1b\x1b");
@@ -518,7 +526,7 @@ describe("InputParser on a whole-keys host", () => {
   it("re-reads an incomplete tail after Escape", () => {
     const { keys, parser } = wholeKeys();
     parser.feed("\x1b\x1b[");
-    expect(keys).toEqual(["escape", "meta+["]);
+    expect(keys).toEqual(["escape", "["]);
   });
 
   it("settles the rest of the chunk when a handler throws on Escape", () => {
@@ -527,7 +535,7 @@ describe("InputParser on a whole-keys host", () => {
     });
     expect(() => parser.feed("\x1b\x1b[")).toThrow("handler");
     parser.feed("q");
-    expect(keys).toEqual(["escape", "meta+[", "q"]);
+    expect(keys).toEqual(["escape", "[", "q"]);
   });
 
   it("still reads whole sequences and Alt chords", () => {
