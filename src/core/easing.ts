@@ -185,6 +185,13 @@ export interface Beat {
   readonly period: number;
   /** Which hold is in progress at `t` seconds: an index into `holds`. */
   at(t: number): number;
+  /**
+   * When the hold in progress at `t` began, in seconds on `t`'s own
+   * timeline: what a sample-and-hold on this beat reads at `t`. Every `t`
+   * inside one hold of one pass answers the same number, to the bit, so an
+   * effect handed it draws the same frame throughout.
+   */
+  start(t: number): number;
 }
 
 /**
@@ -224,17 +231,28 @@ export function beat(holds: readonly number[]): Beat {
   // A copy, and the one `at` walks: what `at` and `period` were built from
   // stays what `holds` says whatever the caller does to its array.
   const own = [...holds];
+  // The last hold whose start the time has reached. The first starts at
+  // 0, so the walk always stops, and its length is the count of holds,
+  // never a function of `t`.
+  const index = (into: number): number => {
+    let i = own.length - 1;
+    while (starts[i]! > into) i--;
+    return i;
+  };
   return {
     holds: own,
     period,
-    // The last hold whose start the time has reached. The first starts at
-    // 0, so the walk always stops, and its length is the count of holds,
-    // never a function of `t`.
     at(t) {
-      const into = wrapSeconds("Beat.at", t, period);
-      let i = own.length - 1;
-      while (starts[i]! > into) i--;
-      return i;
+      return index(wrapSeconds("Beat.at", t, period));
+    },
+    // Which pass `t` is in, as a whole number, then that pass's start plus
+    // the hold's: two integers and two constants, so every `t` in the hold
+    // builds the one float. `t - into` is a whole number of periods but for
+    // rounding, which `round` takes off; carrying `starts[i]` out of `t`
+    // itself would leave each sample its own rounding.
+    start(t) {
+      const into = wrapSeconds("Beat.start", t, period);
+      return Math.round((t - into) / period) * period + starts[index(into)]!;
     },
   };
 }

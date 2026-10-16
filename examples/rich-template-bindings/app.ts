@@ -608,9 +608,19 @@ const GAUGE_TMPL =
 const BEAT_TMPL =
 `{{ "waiting" | dim }}{{ frames 0.4 "." 0.4 ".." 0.4 "..." }}  {{ frames 0.5 ("█" | fg (color "primary")) 0.5 " " }}  {{ "a hold of its own: " | dim }}{{ frames 2 ("long" | fg (color "accent")) 0.25 ("blink" | fg (color "warning")) }}`;
 
+// `stepped <seconds> <color> …` is the colour in progress at the moment, a
+// colour value like any other, so it goes wherever a colour goes: here into
+// `readableOn`, which keeps each step readable on the ground the template
+// names, and then into `fg`.
+const SIGNAL_TMPL =
+`{{- $bg  := color "surface" -}}
+{{- $ink := readableOn (stepped 1 "#ff5555" 1 "#f1fa8c" 1 "#50fa7b") $bg 4.5 -}}
+{{ "effort " | dim }}{{ frames 1 "›" 1 "››" 1 "›››" | fg $ink | bg $bg | bold }}{{ " max" | dim }}`;
+
 const secFrames = makeSection("Frames — content on a beat, drawn for the frame's time", [
   makeDemoRow("one-second frames, each its own colour, one width", GAUGE_TMPL, animatedEngine),
   makeDemoRow("holds are seconds, and may differ", BEAT_TMPL, animatedEngine),
+  makeDemoRow("stepped — a colour on a beat, kept readable on its ground", SIGNAL_TMPL, animatedEngine),
 ]);
 
 // ─── Section list ──────────────────────────────────────────────────────────

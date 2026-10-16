@@ -233,6 +233,45 @@ describe("beat — holds in seconds, the hold in progress out, no clock read", (
     expect(b.at(2.5)).toBe(0);
   });
 
+  it("start is when the hold in progress began, on t's own timeline, before zero too", () => {
+    const b = beat([1, 0.5, 2.5]);
+    expect(b.start(0)).toBe(0);
+    expect(b.start(0.99)).toBe(0);
+    expect(b.start(1)).toBe(1);
+    expect(b.start(1.4)).toBe(1);
+    expect(b.start(1.5)).toBe(1.5);
+    expect(b.start(3.9)).toBe(1.5);
+    expect(b.start(4)).toBe(4);
+    expect(b.start(5.2)).toBe(5);
+    expect(b.start(-0.5)).toBe(-2.5);
+    expect(b.start(-3.9)).toBe(-4);
+  });
+
+  it("every t inside one hold answers the same start, to the bit, far from zero too", () => {
+    const b = beat([0.1, 0.1, 0.1]);
+    for (const base of [0, 1e6, 1e9]) {
+      // Samples strictly inside the second hold: a tenth past its start, a tenth short of its end.
+      const inside = Array.from({ length: 60 }, (_, i) => b.start(base + 0.11 + (i / 60) * 0.08));
+      expect(new Set(inside).size).toBe(1);
+      expect(inside[0]).toBeCloseTo(base + 0.1, 6);
+    }
+  });
+
+  it("start of a t exactly on a boundary is that boundary, for holds that are not exact in binary", () => {
+    const tenths = beat([0.1, 0.1, 0.1]);
+    expect([0, 0.1, 0.2].map((t) => tenths.start(t))).toEqual([0, 0.1, 0.2]);
+    expect(beat([0.4, 0.4, 0.4]).start(0.4)).toBe(0.4);
+  });
+
+  it("start and at agree: the start of a hold is a t at which that hold is in progress", () => {
+    const b = beat([1, 0.5, 2.5]);
+    for (const t of [0, 0.3, 1, 1.2, 1.5, 3, 4, 7.9, 1e6 + 1.3, -0.7]) expect(b.at(b.start(t))).toBe(b.at(t));
+  });
+
+  it("start refuses a t that is not finite", () => {
+    expect(() => beat([1]).start(Number.NaN)).toThrow(/Beat.start needs a finite t, got NaN/);
+  });
+
   it("refuses no holds, and a hold that is not a positive number of seconds", () => {
     expect(() => beat([])).toThrow(/at least one hold/);
     expect(() => beat([1, 0])).toThrow(/beat hold 1 must be a positive number of seconds, got 0/);

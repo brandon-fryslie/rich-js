@@ -93,3 +93,51 @@ describe("frames in a template", () => {
     expect(() => engineAt({ t: 0 }).parse(`{{ frames "a" 1 }}`).evaluate({})).toThrowError();
   });
 });
+
+describe("stepped in a template", () => {
+  const STEPPED = `{{ stepped 1 "#ff5555" 1 "#f1fa8c" 1 "#50fa7b" }}`;
+  const HEXES = ["#ff5555", "#f1fa8c", "#50fa7b"];
+
+  it("is the colour in progress at the moment, as a colour value, looping", () => {
+    const clock = { t: 0 };
+    const compiled = engineAt(clock).compile(STEPPED);
+    for (const [t, hex] of [[0, 0], [0.99, 0], [1, 1], [2.5, 2], [3, 0], [1e6 + 0.5, 1]] as const) {
+      clock.t = t;
+      expect(compiled({})[0]!.plain).toBe(HEXES[hex]);
+    }
+  });
+
+  it("goes where a colour goes: fg, and readableOn against the ground the template names", () => {
+    const clock = { t: 1 };
+    const engine = engineAt(clock);
+    const asInk = engine.compile(`{{ "›››" | fg (stepped 1 "#ff5555" 1 "#f1fa8c") }}`)({})[0]!;
+    expect(asInk.resolvedStyle({ maxWidth: 10 }).color!.getTruecolor().hex).toBe("#f1fa8c");
+    // Pale yellow on white does not read; readableOn moves it, as it moves any colour.
+    const legible = engine.compile(`{{ readableOn (stepped 1 "#ff5555" 1 "#f1fa8c") "#ffffff" 4.5 }}`)({})[0]!.plain;
+    expect(legible).not.toBe("#f1fa8c");
+    expect(legible).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it("reads the time when the template is evaluated, so one template plays at one redraw a second and at sixty", () => {
+    const clock = { t: 0 };
+    const compiled = engineAt(clock).compile(STEPPED);
+    const at = (t: number): string => {
+      clock.t = t;
+      return compiled({})[0]!.plain;
+    };
+    expect([0, 1, 2, 3].map(at)).toEqual([...HEXES, HEXES[0]]);
+    expect(Array.from({ length: 180 }, (_, i) => at(i / 60)).join(" ")).toBe(HEXES.map((hex) => Array.from({ length: 60 }, () => hex).join(" ")).join(" "));
+  });
+
+  it("a trailing hold with no colour is refused, naming the pairs", () => {
+    expect(() => engineAt({ t: 0 }).parse(`{{ stepped 1 "#ff5555" 2 }}`).evaluate({})).toThrow(/last hold \(2 s\) has no color/);
+  });
+
+  it("a value that is not a colour is refused as every colour function refuses one", () => {
+    expect(() => engineAt({ t: 0 }).parse(`{{ stepped 1 "primary" }}`).evaluate({})).toThrow(/stepped expected a color .* wrap it: stepped \(color "primary"\)/);
+  });
+
+  it("a hold that is not a positive number of seconds is refused", () => {
+    expect(() => engineAt({ t: 0 }).parse(`{{ stepped 0 "#ff5555" }}`).evaluate({})).toThrow(/positive number of seconds/);
+  });
+});

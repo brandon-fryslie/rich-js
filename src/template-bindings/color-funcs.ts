@@ -74,7 +74,7 @@ import { darken, contrastFor, ensureContrast } from "../themes/colorMath.js";
  * must then be a colour these functions can compute with (`computable`).
  * [LAW:no-silent-failure]
  */
-function asColor(value: string, func: string): ColorRgba {
+export function asColor(value: string, func: string): ColorRgba {
   let colour: ColorRgba;
   try {
     colour = parseHexColor(value.trim());
