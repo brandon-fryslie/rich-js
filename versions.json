@@ -2,6 +2,49 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-408",
+      "ref": "refs/pull/408/merge",
+      "sha": "72907fcec2d9a064efbc8e67a8fca5b2100720ca",
+      "timestamp": "2026-10-16T23:54:25.974Z",
+      "commits": [
+        {
+          "sha": "72907fcec2d9a064efbc8e67a8fca5b2100720ca",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T23:52:51Z",
+          "message": "Merge fe39fdff1b2ccc8ee6757ae0d53d50f4ddfdc8be into be55d8d03e743ffc840c4d98afbdebb22d195f8b\n"
+        },
+        {
+          "sha": "fe39fdff1b2ccc8ee6757ae0d53d50f4ddfdc8be",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T17:52:46-06:00",
+          "message": "Drawn lists its cells only when an effect reads them (rich-unfiled-791c.7b9h)\n\ndrawnOf walked every glyph to list cells nobody read: 0.87 ms against\nmaster's 0.06 on 80 segments. effects-feel measures contrast with it hundreds\nof times between frames, and its CI test, 21 s of a 30 s limit on master,\ntimed out twice on #408. Words are measured a segment at a time again; cells\nare listed off the glyph walk the first time they are read.\n"
+        },
+        {
+          "sha": "aafe68c71f82e333e2fada92a3572ece5f82c779",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T17:38:52-06:00",
+          "message": "A transition keeps only the cells a frame lists, and a line on a blank cell shows (rich-unfiled-791c.7b9h)\n\n/code-review medium on #408. A cell handed while blank was kept at a clamped\nstart and never spread over the order once it showed; it is now timed per frame\nuntil a frame lists it. A blank cell whose style draws underline, strike,\noverline, frame or encircle shows its ink, so Drawn.cells lists it.\n"
+        },
+        {
+          "sha": "362d0ea7ba1687ccb4b31b00469a0790b0d6dc94",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T17:26:53-06:00",
+          "message": "A transition settles each cell once and spreads over the cells that show (rich-unfiled-791c.7b9h)\n\n/code-review high on #408. A cell's change is kept from the first frame that\ndraws it, so an element that gains columns as it moves never sends a cell back:\nrenormalising every frame moved a start by up to 30% of seconds on a short\nelement. Drawn.cells lists only cells that show something, so padding on the\nterminal's ground no longer stretches the order past the glyphs. The dissolve's\nrebound weighs a cell by where it goes in the element's order. Pair has its doc\ncomment back, and confined reads ownership once for listed and handed cells.\n"
+        },
+        {
+          "sha": "2d3df7a2020a323fe6d2b1cd4132d4af63bd86fb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T17:12:49-06:00",
+          "message": "A transition settles its last cell as it is done, on any element (rich-unfiled-791c.7b9h)\n\nA transition staggered its cells by raw noise, which on a short element\nspans a narrow band of the order: an 11-column dissolve settled at 21 s\nand said done at 30. Drawn now lists the cells the effect will be handed\n(confined narrows it to its owners'), and the order is spread over them,\nso the first cell starts at 0 and the last settles at `seconds`. The\ndocs state the gap that is left: an ease's flat tail, and below\ntruecolor the last palette step.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-409",
       "ref": "refs/pull/409/merge",
       "sha": "491f84c7a4b66524994ebcea1f73264ed17c5a8b",
@@ -49,42 +92,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T17:41:50-06:00",
           "message": "Colour steps on a beat as a signal, and any effect samples on one (rich-animation-xi28.bjo)\n\nsteppedInk(steps) is an Effect whose ink steps through colours on a beat,\none a hold, looping, for the time it is handed. Each step's ink is written\nas the colour nearest the step's that the depth draws and that reads on the\ncell's ground at the catalogue's floor (floorOf: resting contrast or AA,\nwhichever is lower), measured as Effected writes it; in truecolor through\nensureContrast, the slide readableOn makes, below it the nearest indexed\ncolour, so at sixteen colours it steps slot to slot where the loops hold\nstill. The search is memoized per ink, ground and step, so a frame inside a\nstep redoes none.\n\nonBeat(effect, beat) samples any effect at Beat.start(t), new on Beat: the\nmoment the hold in progress began, bit-identical for every t inside it. A\nshort-curve wheel on beat([1]) is a hue walk a step a second.\n\nstepped <seconds> <color> ... joins frames in animationFuncs: the colour in\nprogress as a colour value, so it nests in fg and readableOn.\n\nEffectCell carries reverse, so a cell and its colours make its Pair.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-408",
-      "ref": "refs/pull/408/merge",
-      "sha": "ad7dc59441ca7cb13f8811d50b53623cb602071b",
-      "timestamp": "2026-10-16T23:40:44.205Z",
-      "commits": [
-        {
-          "sha": "ad7dc59441ca7cb13f8811d50b53623cb602071b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T23:38:57Z",
-          "message": "Merge aafe68c71f82e333e2fada92a3572ece5f82c779 into be55d8d03e743ffc840c4d98afbdebb22d195f8b\n"
-        },
-        {
-          "sha": "aafe68c71f82e333e2fada92a3572ece5f82c779",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T17:38:52-06:00",
-          "message": "A transition keeps only the cells a frame lists, and a line on a blank cell shows (rich-unfiled-791c.7b9h)\n\n/code-review medium on #408. A cell handed while blank was kept at a clamped\nstart and never spread over the order once it showed; it is now timed per frame\nuntil a frame lists it. A blank cell whose style draws underline, strike,\noverline, frame or encircle shows its ink, so Drawn.cells lists it.\n"
-        },
-        {
-          "sha": "362d0ea7ba1687ccb4b31b00469a0790b0d6dc94",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T17:26:53-06:00",
-          "message": "A transition settles each cell once and spreads over the cells that show (rich-unfiled-791c.7b9h)\n\n/code-review high on #408. A cell's change is kept from the first frame that\ndraws it, so an element that gains columns as it moves never sends a cell back:\nrenormalising every frame moved a start by up to 30% of seconds on a short\nelement. Drawn.cells lists only cells that show something, so padding on the\nterminal's ground no longer stretches the order past the glyphs. The dissolve's\nrebound weighs a cell by where it goes in the element's order. Pair has its doc\ncomment back, and confined reads ownership once for listed and handed cells.\n"
-        },
-        {
-          "sha": "2d3df7a2020a323fe6d2b1cd4132d4af63bd86fb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T17:12:49-06:00",
-          "message": "A transition settles its last cell as it is done, on any element (rich-unfiled-791c.7b9h)\n\nA transition staggered its cells by raw noise, which on a short element\nspans a narrow band of the order: an 11-column dissolve settled at 21 s\nand said done at 30. Drawn now lists the cells the effect will be handed\n(confined narrows it to its owners'), and the order is spread over them,\nso the first cell starts at 0 and the last settles at `seconds`. The\ndocs state the gap that is left: an ease's flat tail, and below\ntruecolor the last palette step.\n"
         }
       ]
     },
