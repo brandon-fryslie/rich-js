@@ -17,6 +17,7 @@
 import {
   BarColumn,
   ColorSpec,
+  Frames,
   Layout,
   Live,
   Panel,
@@ -145,13 +146,28 @@ const project = new Tree("[bold]rich-js", { guide_style: "bright_black" });
 project.add("[magenta]core").add("console.ts");
 project.add("[magenta]renderables").add("table.ts");
 
-const heading = new RichText("");
-heading.append("rich-js", Style.parse("bold magenta"));
-heading.append(" · beautiful terminal output for TypeScript", Style.parse("dim"));
+/**
+ * The chevrons after the name: one, two, three, one again, a second each,
+ * every frame in its own colour and all drawn one cell wide, so the tagline
+ * never moves. Frames are seconds, so the gauge turns at the same pace
+ * however often the dashboard redraws.
+ */
+const CHEVRONS = ["›", "››", "›››"].map((glyphs, i) => ({
+  text: new RichText(glyphs, { style: Style.parse(["green", "yellow", "red"][i]!) }),
+  seconds: 1,
+}));
+
+function heading(t: number): RichText {
+  const line = new RichText("");
+  line.append("rich-js ", Style.parse("bold magenta"));
+  line.append(new Frames(CHEVRONS, { t }).text());
+  line.append(" · beautiful terminal output for TypeScript", Style.parse("dim"));
+  return line;
+}
 
 const root = new Layout(undefined, { name: "root" });
 root.splitColumn(
-  new Layout(new Panel(heading, { expand: true, borderStyle: "magenta" }), { name: "heading", size: 3 }),
+  new Layout(undefined, { name: "heading", size: 3 }),
   new Layout(undefined, { name: "middle" }),
   new Layout(new Panel(jobs, { title: "Progress", borderStyle: "bright_black", expand: true }), { name: "jobs", size: 7 }),
 );
@@ -164,6 +180,7 @@ right.splitColumn(
 
 /** The dashboard as it stands `t` seconds in. */
 function frameAt(t: number): Layout {
+  root.getByName("heading")!.update(new Panel(heading(t), { expand: true, borderStyle: "magenta" }));
   root.getByName("services")!.update(services(t));
   root.getByName("spectrum")!.update(new Panel(new Spectrum(t), { title: "Truecolor", borderStyle: "bright_black", expand: true, padding: 0 }));
   JOBS.forEach((job, i) => jobs.updateTask(tasks[i]!, { completed: Math.round(((t / job.seconds + job.offset) % 1) * STEPS) }));

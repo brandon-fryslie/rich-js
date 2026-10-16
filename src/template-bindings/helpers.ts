@@ -26,12 +26,22 @@ import { RichText } from "../core/text.js";
  * before the render whose theme says what the name stands for.
  */
 export function applyStyleToFragment(child: unknown, style: Style): RichText {
+  const fragment = asFragment(child);
+  const result = fragment.copy();
+  result.style = layerStyle(fragment.style, style);
+  return result;
+}
+
+/**
+ * The gate every `"liftable"` slot's value crosses: the binding's own `T`, or
+ * a loud failure. [LAW:parse-dont-validate] What leaves is a `RichText`, so
+ * no body re-checks it.
+ */
+export function asFragment(child: unknown): RichText {
   if (!(child instanceof RichText)) {
     throw new TypeError(
       `template function expected a RichText fragment, got ${typeof child === "object" ? Object.prototype.toString.call(child) : typeof child}`,
     );
   }
-  const result = child.copy();
-  result.style = layerStyle(child.style, style);
-  return result;
+  return child;
 }

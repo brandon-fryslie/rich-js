@@ -60,6 +60,7 @@ import {
 import type { TerminalHost } from "@promptctl/rich-js/host";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import {
+  animationFuncs,
   richTextFuncs,
   createRichTextEngine,
   paletteFuncs,
@@ -133,8 +134,28 @@ function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<Rich
   });
 }
 
+// The fourth shape: `animationFuncs(frameTime)` registers `frames`, which
+// draws for a moment, and the moment is the host's to hand in. The app hands
+// its view each frame's time; the view notes it here, and every template
+// evaluated in that frame reads it — templates compile once, so the time is
+// read when one is evaluated, never captured when it is built.
+let frameTime = 0;
+
+function makeAnimatedEngine(theme: TerminalTheme): Engine<RichText> {
+  return createEngine<RichText>({
+    fromString: (s) => new RichText(s),
+    toString: (rt) => rt.plain,
+    funcs: {
+      ...richTextFuncs(),
+      ...paletteFuncs(() => theme.palette),
+      ...animationFuncs(() => frameTime),
+    },
+  });
+}
+
 const gruvboxEngine    = makeEngine(GRUVBOX);
 const gruvbox256Engine = makeEngineDrawnAt(GRUVBOX, ColorDepth.EIGHT_BIT);
+const animatedEngine   = makeAnimatedEngine(TOKYO_NIGHT);
 const tokyoEngine      = makeEngine(TOKYO_NIGHT);
 const gruvboxCalcEngine = makeCalculatorEngine(GRUVBOX);
 
@@ -570,11 +591,33 @@ const secColorValues = makeSection("Colour values — compute · name · paint",
                                                             NO_PALETTE_TMPL, themelessEngine),
 ]);
 
+// ─── §5 — Frames (content on a beat) ───────────────────────────────────────
+//
+// `frames <seconds> <frame> …` draws the frame in progress at the moment the
+// template is evaluated, looping, every frame at the width of the widest so
+// nothing beside it moves. Holds are seconds, not frame counts: the same
+// template plays at this demo's thirty frames a second and at a statusline's
+// one. A frame is any fragment, so each carries its own colour.
+
+const GAUGE_TMPL =
+`{{- $up  := color "success" -}}
+{{- $hot := color "warning" -}}
+{{- $max := color "error" -}}
+{{ "effort " | dim }}{{ frames 1 ("›" | fg $up | bold) 1 ("››" | fg $hot | bold) 1 ("›››" | fg $max | bold) }}{{ " max" | dim }}`;
+
+const BEAT_TMPL =
+`{{ "waiting" | dim }}{{ frames 0.4 "." 0.4 ".." 0.4 "..." }}  {{ frames 0.5 ("█" | fg (color "primary")) 0.5 " " }}  {{ "a hold of its own: " | dim }}{{ frames 2 ("long" | fg (color "accent")) 0.25 ("blink" | fg (color "warning")) }}`;
+
+const secFrames = makeSection("Frames — content on a beat, drawn for the frame's time", [
+  makeDemoRow("one-second frames, each its own colour, one width", GAUGE_TMPL, animatedEngine),
+  makeDemoRow("holds are seconds, and may differ", BEAT_TMPL, animatedEngine),
+]);
+
 // ─── Section list ──────────────────────────────────────────────────────────
 
-const SECTIONS: Section[] = [secPush, secThemeMatrix, secRamps, secColorValues];
+const SECTIONS: Section[] = [secPush, secThemeMatrix, secRamps, secColorValues, secFrames];
 
-const SECTION_NAMES = ["Push", "Theme Matrix", "Ramps", "Colour Values"];
+const SECTION_NAMES = ["Push", "Theme Matrix", "Ramps", "Colour Values", "Frames"];
 
 // ─── Always-visible header ─────────────────────────────────────────────────
 
@@ -614,8 +657,24 @@ export function runDemo(host: TerminalHost): DemoHandle {
   const app = new WidgetApp({
     host,
     surface: "alternate",
-    view: () => new Group(appTitleItem, navHintItem, headerSpacer, SECTIONS[state.sectionIdx]!.view),
+    view: (t) => {
+      frameTime = t;
+      return new Group(appTitleItem, navHintItem, headerSpacer, SECTIONS[state.sectionIdx]!.view);
+    },
   });
+
+  // The frames section moves on its own, so the app ticks while it is on
+  // show and only then: every other section paints when a key changes it.
+  let animating: (() => void) | undefined;
+  const animateIf = (shown: Section): void => {
+    const wanted = shown === secFrames;
+    if (wanted && animating === undefined) animating = app.animate();
+    if (!wanted && animating !== undefined) {
+      animating();
+      animating = undefined;
+    }
+  };
+  animateIf(SECTIONS[state.sectionIdx]!);
 
   // Section nav uses PageUp / PageDown rather than Ctrl+P/Ctrl+N — the latter
   // are readline line-motion bindings that TextInput consumes for cursor
@@ -630,6 +689,7 @@ export function runDemo(host: TerminalHost): DemoHandle {
     const n = SECTIONS.length;
     if (event.key === "pageup")        { state.prev(n); event.stop(); }
     else if (event.key === "pagedown") { state.next(n); event.stop(); }
+    animateIf(SECTIONS[state.sectionIdx]!);
   }, { priority: "high" });
 
   return { stop: () => app.stop(), done: app.run() };

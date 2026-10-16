@@ -109,7 +109,7 @@ export type { ColorStop } from "./themes/ramp.js";
 // Progress in [0, 1]: phases turn seconds into it, eases reshape it. One
 // vocabulary for ramps and time-based effects alike, CSS's names throughout.
 export { EASES, Phase, cubicBezier, parseEase, steps } from "./core/easing.js";
-export type { Ease, StepPosition } from "./core/easing.js";
+export type { Beat, Ease, StepPosition } from "./core/easing.js";
 // The time source and timer whoever draws frames is handed, and the one
 // parser of the rate it ticks at.
 export { frameRate, systemClock } from "./core/clock.js";
@@ -313,6 +313,8 @@ export { ProgressBar } from "./renderables/progressBar.js";
 export type { ProgressBarOptions } from "./renderables/progressBar.js";
 export { Spinner } from "./renderables/spinner.js";
 export type { SpinnerOptions } from "./renderables/spinner.js";
+export { Frames } from "./renderables/frames.js";
+export type { Frame, FramesOptions } from "./renderables/frames.js";
 export { Table, Column } from "./renderables/table.js";
 export type { TableOptions, ColumnOptions } from "./renderables/table.js";
 export { Tree } from "./renderables/tree.js";

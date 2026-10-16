@@ -115,7 +115,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
   this one answers word structure; separate from `text` because the pieces it
   finds are what every renderable showing a string is cut into, and its output
   is pinned against the reference in `test/core/text-wrap.golden.txt`.
-- **easing** — progress in [0, 1]: `Ease` (CSS's `cubicBezier`/`steps` and their named curves in `EASES`, `parseEase` for a spelled name) and `Phase` (`once`/`loop`/`pingPong`, seconds in, no clock read). The one curve vocabulary `ColorRamp` and every effect share.
+- **easing** — progress in [0, 1]: `Ease` (CSS's `cubicBezier`/`steps` and their named curves in `EASES`, `parseEase` for a spelled name) and `Phase` (`once`/`loop`/`pingPong`, seconds in, no clock read), plus `beat` — holds in seconds, looped, the hold in progress out — which `Frames` turns on. The one timing vocabulary `ColorRamp`, every effect and every frame sequence share.
 - **oklch** — perceptually-uniform polar colour space. sRGB ↔ OKLab ↔ OKLCH, reversible but for the final 0–255 quantization. This is where equal numeric deltas mean equal perceptual deltas, which is what transposition needs.
 - **style** — immutable `Style` descriptors (colours + text attributes + links). `Style.parse` (cached), `Style.add`. Includes `StyleStack`, `Theme`, `DEFAULT_STYLES`.
 - **segment** — atomic render unit `(text, style?, control?)`. Static methods (`applyStyle`, `splitLines`, `adjustLineLength`, `simplify`, `divide`) operate on `Segment[]` / `Segment[][]`.

@@ -170,6 +170,54 @@ function positiveSeconds(what: string, seconds: number): void {
   }
 }
 
+/**
+ * A beat: holds of given lengths in seconds, played in order and looped, the
+ * way the frames of an animation are each held and then replaced. `at(t)` is
+ * the index of the hold in progress at `t`, counted from the first hold at
+ * `t = 0`, and the sequence wraps every `period` seconds, before zero too,
+ * as `Phase.loop` wraps. With equal holds `at` is `steps(n)` read as an
+ * index; the holds here may differ, which `steps` cannot say, so a frame
+ * held for a second and the next for a quarter are one beat.
+ */
+export interface Beat {
+  readonly holds: readonly number[];
+  /** The sum of the holds: how long one pass takes, in seconds. */
+  readonly period: number;
+  /** Which hold is in progress at `t` seconds: an index into `holds`. */
+  at(t: number): number;
+}
+
+/** `holds` as a `Beat`; a beat with no hold, or a hold that is not a positive number of seconds, throws. */
+export function beat(holds: readonly number[]): Beat {
+  if (holds.length === 0) throw new RangeError("a beat needs at least one hold");
+  holds.forEach((hold, i) => positiveSeconds(`beat hold ${i}`, hold));
+  const period = holds.reduce((sum, hold) => sum + hold, 0);
+  // [LAW:one-source-of-truth] Where each hold begins, as progress through
+  // the period: the unit `Phase.loop` reports, computed by the same
+  // division, so a `t` that falls exactly on a boundary lands on the hold
+  // that begins there, at any rate the host samples.
+  const starts: number[] = [];
+  let elapsed = 0;
+  for (const hold of holds) {
+    starts.push(elapsed / period);
+    elapsed += hold;
+  }
+  const wrap = Phase.loop(period);
+  return {
+    holds,
+    period,
+    // The last hold whose start the progress has reached. The first starts
+    // at 0, so the walk always stops, and its length is the count of holds,
+    // never a function of `t`.
+    at(t) {
+      const progress = wrap(t);
+      let i = holds.length - 1;
+      while (starts[i]! > progress) i--;
+      return i;
+    },
+  };
+}
+
 /** The three phase shapes. Each takes seconds and returns a `Phase`. */
 export const Phase = {
   /** 0 before `start`, rising to 1 over `duration` seconds, then held at 1. */

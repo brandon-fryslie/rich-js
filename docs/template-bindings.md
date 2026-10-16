@@ -39,7 +39,9 @@ The functions ship in two groups, split by exactly one question — does it need
 
 `richTextFuncs()` is everything that does not: the color sinks `fg` and `bg`, the palette-free color math, every text attribute, `link`, and `style`. It is safe to register unconditionally. Its one optional argument, `drawnAt: () => DrawnAt`, says where the text lands — `{ depth, terminal? }`, the depth the terminal will draw at and, when you know it, the `TerminalTheme` drawing it: `readableOn` measures its floor on the colours actually drawn, at sixteen colours in that terminal's own — what that guarantees, fallback included, is stated once in [Contrast](/contrast). Omitted, it is truecolor. A host that swaps `readableOn` alone — per segment, say — registers `readableOnFunc(drawnAt)` over the key instead. A project with no theme system at all still gets the complete vocabulary by feeding it hex literals.
 
-`paletteFuncs(getPalette)` is the two that do: `color`, which turns a palette variable name into a color, and `ramp`, whose stops are palette names. It is the only registration that knows a palette exists, which is why it is the only one that takes an argument.
+`paletteFuncs(getPalette)` is the two that do: `color`, which turns a palette variable name into a color, and `ramp`, whose stops are palette names. It is the only registration that knows a palette exists.
+
+A third, `animationFuncs(frameTime)`, answers a different question: what moment is the template drawn for? It registers `frames`, which draws the frame in progress at the time `frameTime()` reports when the template is evaluated, and a host that redraws on its own clock hands that clock's time in. [Frames](/frames#in-a-template) shows it in use.
 
 `createRichTextEngine()` wires up `richTextFuncs()` alone — it cannot supply a palette. Once you want theme colors, build the engine yourself and merge both maps:
 

@@ -123,14 +123,23 @@ export class InlineLabel {
    * caller's cut. A string reads with `base` as its style, as `EmbeddedText.text` reads one.
    */
   text(options: RenderOptions, base?: TextStyle): RichText {
-    const text = this._content.text(options, base);
-    // A fragment of the line, so its own end is not drawn, as Rich's `_title` clears it.
-    text.end = "";
-    text.plain = text.plain.replaceAll("\n", " ");
-    // Tabs widened before anything measures it, so a cut to the border and
-    // the width a title asks for count the cells the label will draw.
-    return text.expandTabs();
+    return setIntoLine(this._content.text(options, base));
   }
+}
+
+/**
+ * `text`, changed in place into a fragment of a line it shares, as Rich's
+ * `_title` reads one: its own end is not drawn, newlines become spaces so it
+ * stays on its line, and tabs are widened to their stops before anything
+ * measures it, so a cut to a border and the width a label asks for count
+ * the cells it will draw. [LAW:single-enforcer] The one reading of "set into
+ * a line", for a label read through the crossing above and for text a
+ * caller hands over already read (`Frames`).
+ */
+export function setIntoLine(text: RichText): RichText {
+  text.end = "";
+  text.plain = text.plain.replaceAll("\n", " ");
+  return text.expandTabs();
 }
 
 /**

@@ -30,6 +30,7 @@ import {
   DEFAULT_TERMINAL_THEME,
   Effected,
   FlexStrip,
+  Frames,
   gradientSeam,
   CAPS,
   CellJoiner,
@@ -108,6 +109,7 @@ const ROWS: Record<string, Row> = {
   Group: { draws: "glyphs", make: () => new Group(panel()) },
   ProgressBar: { draws: "glyphs", make: () => new ProgressBar({ total: 10, completed: 5 }) },
   Spinner: { draws: "glyphs", make: () => new Spinner() },
+  Frames: { draws: "text", make: () => new Frames([{ text: new RichText("a"), seconds: 1 }], { t: 0 }), why: "draws the frames it is handed, the caller's content" },
   Table: { draws: "glyphs", make: () => new Table().addColumn("head").addRow("cell") },
   Tree: {
     draws: "glyphs",

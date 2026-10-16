@@ -38,6 +38,7 @@ import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 import { Constrain } from "../../src/renderables/constrain.js";
 import { Effected } from "../../src/renderables/effect.js";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
+import { Frames } from "../../src/renderables/frames.js";
 import { Group } from "../../src/renderables/group.js";
 import { Layout } from "../../src/renderables/layout.js";
 import { Markdown } from "../../src/renderables/markdown.js";
@@ -108,6 +109,11 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
     why: "one glyph, set inside a line of text as the reference's Emoji is: it yields the character and nothing after it",
   },
   FlexStrip: { ends: "own-line", build: () => new FlexStrip([text("a")]) },
+  Frames: {
+    ends: "open",
+    build: () => new Frames([{ text: text("a"), seconds: 1 }], { t: 0 }),
+    why: "the frame in progress, set inside a line among other cells — a gauge after a model name in a status line — so it ends no line of its own",
+  },
   Group: { ends: "content", build: (content) => new Group(text("a"), content), why: "renders its content and nothing after it, as the reference's does: its last line is its content's" },
   JSONRenderable: { ends: "own-line", build: () => JSONRenderable.fromData({ a: 1 }) },
   Layout: { ends: "own-line", build: () => new Layout(text("x")) },
