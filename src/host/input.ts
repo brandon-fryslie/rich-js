@@ -24,8 +24,10 @@
  * again on its own. On a `"split"` host a read can end anywhere, so the
  * parser holds the unfinished sequence for the escape delay — ncurses'
  * ESCDELAY, tmux's escape-time — and, when nothing has extended it by then,
- * settles it by the same whole-keys rule. A held lone ESC is also settled
- * early by a next chunk that cannot extend it: anything but `[` or `O`.
+ * settles it by the same whole-keys rule. `ESC ESC` is held too, since the
+ * byte after it decides whether it is Alt on a sequence or one Escape. A held
+ * lone ESC is also settled early by a next chunk that opens with anything but
+ * `[` or `O`, because a busy worker can queue the next key behind it.
  * `flush()` settles the hold synchronously.
  */
 
@@ -244,10 +246,12 @@ function inSequence(byte: number): boolean {
 // [LAW:one-source-of-truth] An escape sequence that opened no key — ended
 // before its final byte (at a whole-key chunk's end, at the escape delay, or at
 // a byte that cannot belong to it), or an SS3 no terminal sends — is reissued
-// as the keys it holds, as Textual reissues one. `ESC [` / `ESC O` alone is the
-// whole key Alt+[ / Alt+O; any other ESC is Escape, and what followed it is
-// read again on its own.
+// as the keys it holds, as Textual reissues one. `ESC ESC` is one Escape, as a
+// terminal that double-sends it means, whatever followed it; `ESC [` / `ESC O`
+// alone is the whole key Alt+[ / Alt+O; any other ESC is Escape. What followed
+// the Escape is read again on its own.
 function reissue(sequence: Uint8Array): { bytes: number; event: KeyPress } {
+  if (sequence[1] === ESC) return { bytes: 2, event: ESCAPE };
   return sequence.length === 2 ? { bytes: 2, event: altKey(sequence[1]!) } : { bytes: 1, event: ESCAPE };
 }
 
@@ -356,7 +360,7 @@ export class InputParser {
     this.buffer = EMPTY_BYTES;
   }
 
-  /** A lone ESC, the one hold a next chunk can settle early. */
+  /** A lone ESC, the one hold a next chunk can settle before its bytes are read. */
   private holdingEscape(): boolean {
     return this.buffer.length === 1 && this.buffer[0] === ESC;
   }
@@ -443,30 +447,25 @@ export class InputParser {
     if (b1 === LBRACKET) return this.consumeCSI(buf);
     // ESC O X → SS3 (F1–F4 / arrows on some terms)
     if (b1 === O_BYTE) return this.consumeSS3(buf);
-    // ESC ESC [ … / ESC ESC O … → Alt on a key the terminal sends as a
-    // sequence (macOS Terminal and iTerm send Option+Up as `ESC ESC [ A`): the
-    // inner sequence, with meta held.
-    if (b1 === ESC && buf.length > 2 && (buf[2] === LBRACKET || buf[2] === O_BYTE)) {
-      // A pointer report is never Alt-prefixed (SGR carries modifiers in its
-      // button byte), and a sequence reissued is no key to hold Alt on, so
-      // before anything but a key the first ESC is Escape.
-      const inner = this.consumeEscape(buf.subarray(1));
-      if (inner.kind === "incomplete") return inner;
-      if (inner.kind === "key") {
-        return { kind: "key", bytes: inner.bytes + 1, event: { ...inner.event, meta: true } };
-      }
-      return { kind: "key", bytes: 1, event: ESCAPE };
-    }
-    // ESC ESC → escape key (some terminals double-send). Consume BOTH bytes
-    // so the user sees one escape event, not two. Without this, the second
-    // ESC remained in the buffer and produced a second escape via the
-    // lone-ESC flush path.
     if (b1 === ESC) {
-      return {
-        kind: "key",
-        bytes: 2,
-        event: ESCAPE,
-      };
+      // The byte after `ESC ESC` decides what it opens, so a read that ends
+      // between them leaves it unfinished, held like any other.
+      if (buf.length === 2) return { kind: "incomplete" };
+      // ESC ESC [ … / ESC ESC O … → Alt on a key the terminal sends as a
+      // sequence (macOS Terminal and iTerm send Option+Up as `ESC ESC [ A`):
+      // the inner sequence, with meta held.
+      if (buf[2] === LBRACKET || buf[2] === O_BYTE) {
+        const inner = this.consumeEscape(buf.subarray(1));
+        if (inner.kind === "incomplete") return inner;
+        if (inner.kind === "key") {
+          return { kind: "key", bytes: inner.bytes + 1, event: { ...inner.event, meta: true } };
+        }
+        // A pointer report is never Alt-prefixed (SGR carries modifiers in its
+        // button byte): the second ESC is the report's, and the first is Escape.
+        if (inner.kind !== "reissued") return { kind: "key", bytes: 1, event: ESCAPE };
+      }
+      // `ESC ESC` before a byte that opens no key opened none itself.
+      return { kind: "reissued", ...reissue(buf) };
     }
     // ESC <named> / ESC <printable> → Alt-modified key.
     // Terminals encode Alt+<key> as the literal byte preceded by ESC, so
