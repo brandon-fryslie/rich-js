@@ -194,12 +194,16 @@ export interface Beat {
  * not a finite number of seconds fails here, loudly, and nowhere else. A
  * `t` at or past zero is `t % period` alone, which is exact; only a negative
  * `t` is carried up by a period, so a boundary a host samples exactly lands
- * on the pass that begins there.
+ * on the pass that begins there, and the answer is always under the period.
  */
 function wrapSeconds(what: string, t: number, period: number): number {
   if (!Number.isFinite(t)) throw new RangeError(`${what} needs a finite t, got ${t}`);
   const into = t % period;
-  return into < 0 ? into + period : into;
+  if (into >= 0) return into;
+  // A negative epsilon carried up rounds to the period itself; that is the
+  // start of the next pass, never a point past the end of this one.
+  const carried = into + period;
+  return carried >= period ? 0 : carried;
 }
 
 /** `holds` as a `Beat`; a beat with no hold, or a hold that is not a positive number of seconds, throws. */

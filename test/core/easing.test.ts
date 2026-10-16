@@ -219,6 +219,11 @@ describe("beat — holds in seconds, the hold in progress out, no clock read", (
     expect(() => Phase.loop(1)(Number.NaN)).toThrow(/Phase.loop needs a finite t/);
   });
 
+  it("a negative epsilon wraps to 0, never to the period itself", () => {
+    expect(Phase.loop(1)(-1e-17)).toBe(0);
+    expect(beat([1, 1]).at(-1e-17)).toBe(0);
+  });
+
   it("holds is a copy: a caller's later change to the array it passed changes nothing", () => {
     const holds = [1, 1];
     const b = beat(holds);
