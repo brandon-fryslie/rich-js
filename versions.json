@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-406",
+      "ref": "refs/pull/406/merge",
+      "sha": "92a81beafeb3874267f0de25f94609225e308061",
+      "timestamp": "2026-10-16T22:29:35.144Z",
+      "commits": [
+        {
+          "sha": "92a81beafeb3874267f0de25f94609225e308061",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T22:27:44Z",
+          "message": "Merge 956a363e1956976a4076501893f94057973bdab0 into 542a093bdd88aff75a63a19756138cd5822ceed3\n"
+        },
+        {
+          "sha": "956a363e1956976a4076501893f94057973bdab0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T16:26:49-06:00",
+          "message": "A joiner is a seam and caps picked independently (rich-joiners-9ntp.13i)\n\nCellJoiner takes a JoinSeam (the middle) and a JoinCaps (the ends), each\nwith its glyph and ascii forms, so any seam ends in any caps: SEAMS.prism\nwith CAPS.bubble is one constructor call, and joinerNamed reads\n{ seam, caps } from config beside a JOINERS name. A seam cell may be\n{ cap: \"lead\" | \"tail\" }, so the seams that part their runs (capsule,\nwrapper, metro) end them in whatever caps they are joined with.\ngradientSeam replaces gradientJoiner.\n\nEvery JOINERS preset and the gradient render byte-identically to before\n(truecolor, 16-colour and ASCII, checked against a pre-change snapshot).\n"
+        }
+      ]
+    },
+    {
       "version": "pr-405",
       "ref": "refs/pull/405/merge",
       "sha": "667814fa5e0278a0b28e587d9283b774368898b7",
