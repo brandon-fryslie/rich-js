@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { EASES, Phase, cubicBezier, parseEase, steps, type Ease } from "../../src/core/easing.js";
+import { EASES, Phase, beat, cubicBezier, parseEase, steps, type Ease } from "../../src/core/easing.js";
 
 /**
  * The CSS reference curve, straight from its definition: the cubic Bézier
@@ -153,5 +153,89 @@ describe("Phase — seconds in, progress out, no clock read", () => {
     expect(() => Phase.loop(-1)).toThrow(/Phase.loop period/);
     expect(() => Phase.pingPong(Number.POSITIVE_INFINITY)).toThrow(/Phase.pingPong period/);
     expect(() => Phase.once(Number.NaN, 1)).toThrow(/start must be finite/);
+  });
+});
+
+describe("beat — holds in seconds, the hold in progress out, no clock read", () => {
+  it("counts holds from t = 0 and wraps every period, before zero too", () => {
+    const b = beat([1, 1, 1]);
+    expect(b.period).toBe(3);
+    expect(b.at(0)).toBe(0);
+    expect(b.at(0.999)).toBe(0);
+    expect(b.at(1)).toBe(1);
+    expect(b.at(2.2)).toBe(2);
+    expect(b.at(3)).toBe(0);
+    expect(b.at(-0.5)).toBe(2);
+  });
+
+  it("holds may differ: each is in progress for its own seconds", () => {
+    const b = beat([1, 0.25, 0.5]);
+    expect(b.period).toBe(1.75);
+    expect(b.at(0.99)).toBe(0);
+    expect(b.at(1)).toBe(1);
+    expect(b.at(1.24)).toBe(1);
+    expect(b.at(1.25)).toBe(2);
+    expect(b.at(1.75)).toBe(0);
+  });
+
+  it("with equal holds it is steps(n) read as an index", () => {
+    const n = 4;
+    const b = beat(Array.from({ length: n }, () => 0.5));
+    const stepped = steps(n);
+    for (let t = 0; t < 4; t += 0.01) expect(b.at(t)).toBe(Math.round(stepped(Phase.loop(b.period)(t)) * n));
+  });
+
+  it("sampled sixty times a second, a one-second hold is in progress for exactly sixty consecutive samples", () => {
+    const b = beat([1, 1, 1]);
+    const samples = Array.from({ length: 180 }, (_, i) => b.at(i / 60));
+    expect(samples.join("")).toBe("0".repeat(60) + "1".repeat(60) + "2".repeat(60));
+  });
+
+  it("sampled once a second, a period of whole seconds shows one hold forever", () => {
+    const b = beat([0.25, 0.25, 0.25, 0.25]);
+    for (let t = 0; t < 100; t++) expect(b.at(t)).toBe(0);
+  });
+
+  it("answers the same far from zero: a lookup, never a walk through time", () => {
+    const b = beat([1, 0.5, 2.5]);
+    for (const t of [0, 1.2, 1.4, 3.6]) {
+      expect(b.at(1e6 + t)).toBe(b.at(t));
+      expect(b.at(1e9 + t)).toBe(b.at(t));
+    }
+  });
+
+  it("a t exactly on a boundary lands on the hold that begins there, for holds that are not exact in binary", () => {
+    // 0.1 is not a dyadic fraction; a wrap by a detour through `+ period`
+    // lands 0.1 one ulp short and shows every frame one sample late.
+    const tenths = beat([0.1, 0.1, 0.1]);
+    expect([0, 0.1, 0.2].map((t) => tenths.at(t))).toEqual([0, 1, 2]);
+    expect(beat([0.4, 0.4, 0.4]).at(0.4)).toBe(1);
+    expect(beat([1 / 3, 1 / 3, 1 / 3]).at(1 / 3)).toBe(1);
+  });
+
+  it("refuses a t that is not finite, in at, and so does Phase.loop", () => {
+    expect(() => beat([1, 1]).at(Number.NaN)).toThrow(/Beat.at needs a finite t, got NaN/);
+    expect(() => beat([1, 1]).at(Number.POSITIVE_INFINITY)).toThrow(/finite t/);
+    expect(() => Phase.loop(1)(Number.NaN)).toThrow(/Phase.loop needs a finite t/);
+  });
+
+  it("a negative epsilon wraps to 0, never to the period itself", () => {
+    expect(Phase.loop(1)(-1e-17)).toBe(0);
+    expect(beat([1, 1]).at(-1e-17)).toBe(0);
+  });
+
+  it("holds is a copy: a caller's later change to the array it passed changes nothing", () => {
+    const holds = [1, 1];
+    const b = beat(holds);
+    holds.push(1);
+    expect(b.holds).toEqual([1, 1]);
+    expect(b.period).toBe(2);
+    expect(b.at(2.5)).toBe(0);
+  });
+
+  it("refuses no holds, and a hold that is not a positive number of seconds", () => {
+    expect(() => beat([])).toThrow(/at least one hold/);
+    expect(() => beat([1, 0])).toThrow(/beat hold 1 must be a positive number of seconds, got 0/);
+    expect(() => beat([Number.NaN])).toThrow(/beat hold 0/);
   });
 });

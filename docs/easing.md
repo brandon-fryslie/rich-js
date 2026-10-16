@@ -52,6 +52,8 @@ for (const t of [0, 0.5, 1, 1.5, 2]) {
 
 To run the cells of one effect on the same curve but shifted in time, add a per-cell offset to `t` before the phase sees it: `phase(t + offset)`.
 
+A `Beat` is holds in seconds, played in order and looped: `at(t)` is the index of the hold in progress, and `period` is their sum. With equal holds it is `steps(n)` read as an index; the holds may differ. [Frames](/frames) are drawn on one, and expose it as `beat`.
+
 ## In a color ramp
 
 `ColorRamp` takes an `Ease` for the way between each pair of its stops. The template function `ramp` takes the same ease by name. See [Colors are values](/template-bindings#colors-are-values) on the Template Bindings page.

@@ -1,0 +1,89 @@
+# Frames
+
+Frames change *what* an element shows on a beat: a sequence of frames, each held for its own number of seconds and then replaced by the next, looping. An [effect](/effects) changes how an element's cells are coloured and may never change a glyph; frames are the other kind of motion, and the two compose by nesting.
+
+Nothing here reads a clock. A `Frames` is drawn for a time `t` in seconds that its host hands in, so the same `t` always draws the same bytes, at one redraw a second or sixty.
+
+## A sequence of frames
+
+Each frame is a `RichText`, free to carry its own style, and its hold in seconds. Draw the sequence for a moment and it shows the frame in progress then, counted from the first frame at `t = 0` and wrapping every period:
+
+```typescript
+import { Frames, RichText, Style } from "@promptctl/rich-js";
+
+const chevrons = ["›", "››", "›››"].map((glyphs, i) => ({
+  text: new RichText(glyphs, { style: Style.parse(["green", "yellow", "red"][i]!) }),
+  seconds: 1,
+}));
+
+for (const t of [0, 1.5, 2.2, 3]) {
+  const gauge = new Frames(chevrons, { t });
+  console.print(`t=${t}s  effort ${gauge.text().plain} max`);
+}
+```
+
+Every frame draws at one width, the widest frame's, padded on the right, so whatever sits beside the frames never moves as they turn; `width` says what that is. A frame is a fragment of a line: it ends no line of its own, a newline inside one becomes a space, and it measures at exactly its width; a slot forced narrower crops it, and never folds or wraps it onto a second line.
+
+`text()` is the frame in progress as a `RichText` of its own, a copy, for a line assembled from pieces; `Frames` is also a renderable, so it can be printed or set in a table cell directly. The holds are its `beat`, whose `period` is their sum.
+
+## Holds are seconds
+
+A hold is a number of seconds, never a count of frames, so one sequence plays unchanged whatever the redraw rate. Redrawn sixty times a second, a one-second frame shows for exactly sixty frames. Redrawn once a second, as a status line is, the same sequence turns once a second: a frame held for less than a second is skipped, and a sequence whose period is a whole number of seconds shows one frame forever:
+
+```typescript
+import { Frames, RichText } from "@promptctl/rich-js";
+
+const quarters = ["a", "b", "c", "d"].map((glyph) => ({ text: new RichText(glyph), seconds: 0.25 }));
+
+const onceASecond = [0, 1, 2, 3].map((t) => new Frames(quarters, { t }).text().plain);
+const sixtyASecond = Array.from({ length: 60 }, (_, i) => new Frames(quarters, { t: i / 60 }).text().plain);
+
+console.print(`once a second:  ${onceASecond.join(" ")}`);
+console.print(`sixty a second: ${[...new Set(sixtyASecond)].join(" ")}`);
+```
+
+`Frames` does not adapt to the rate: the rate belongs to whoever draws the frames, and so does the fix, which is holds that the host's rate can show. The [easing and phase vocabulary](/easing) is where the timing comes from, and the beat is part of it.
+
+## Lit by an effect
+
+An effect wraps whatever is up: `Effected` around `Frames` lights the frame in progress and still changes no glyph.
+
+```typescript
+import { CATPPUCCIN_MOCHA, EFFECT_CATALOGUE, Effected, Frames, RichText, Style } from "@promptctl/rich-js";
+
+const theme = CATPPUCCIN_MOCHA;
+const frames = ["loading", "loading.", "loading..", "loading..."].map((text) => ({
+  text: new RichText(text, { style: Style.parse("bold") }),
+  seconds: 0.5,
+}));
+const lit = EFFECT_CATALOGUE.loops.pulse({ span: 10, z: 3 });
+
+for (const t of [0, 0.5, 1]) {
+  console.print(new Effected(new Frames(frames, { t }), lit, { t, key: "loading", theme }));
+}
+```
+
+## In a template
+
+A host that builds its text in templates registers `animationFuncs(frameTime)` from the [template bindings](/template-bindings), handing in the time the way `richTextFuncs` is handed the drawn depth. `frames <seconds> <frame> <seconds> <frame> …` is then the frame in progress at the moment the template is evaluated, and a frame is any fragment:
+
+```typescript
+import { createEngine } from "@promptctl/go-template-js";
+import { RichText } from "@promptctl/rich-js";
+import { animationFuncs, richTextFuncs } from "@promptctl/rich-js/template-bindings";
+
+let frameTime = 0;
+const engine = createEngine<RichText>({
+  fromString: (s) => new RichText(s),
+  toString: (rt) => rt.plain,
+  funcs: { ...richTextFuncs(), ...animationFuncs(() => frameTime) },
+});
+
+const gauge = engine.compile(`{{ "effort " | dim }}{{ frames 1 ("›" | fg "green") 1 ("››" | fg "yellow") 1 ("›››" | fg "red") }}{{ " max" | dim }}`);
+
+for (frameTime of [0, 1.5, 2.2, 3]) {
+  console.print(RichText.fromFragments(gauge({})));
+}
+```
+
+The template is compiled once and reads the time each time it is evaluated, so a host that evaluates it on every redraw hands in each redraw's time and nothing else changes.

@@ -170,6 +170,75 @@ function positiveSeconds(what: string, seconds: number): void {
   }
 }
 
+/**
+ * A beat: holds of given lengths in seconds, played in order and looped, the
+ * way the frames of an animation are each held and then replaced. `at(t)` is
+ * the index of the hold in progress at `t`, counted from the first hold at
+ * `t = 0`, and the sequence wraps every `period` seconds, before zero too,
+ * as `Phase.loop` wraps. With equal holds `at` is `steps(n)` read as an
+ * index; the holds here may differ, which `steps` cannot say, so a frame
+ * held for a second and the next for a quarter are one beat.
+ */
+export interface Beat {
+  readonly holds: readonly number[];
+  /** The sum of the holds: how long one pass takes, in seconds. */
+  readonly period: number;
+  /** Which hold is in progress at `t` seconds: an index into `holds`. */
+  at(t: number): number;
+}
+
+/**
+ * The seconds into the current pass of a `period` at `t`: `t` taken modulo
+ * the period, into [0, period), before zero too. [LAW:single-enforcer] The
+ * one wrap `Phase.loop` and `beat` both read time through, so a `t` that is
+ * not a finite number of seconds fails here, loudly, and nowhere else. A
+ * `t` at or past zero is `t % period` alone, which is exact; only a negative
+ * `t` is carried up by a period, so a boundary a host samples exactly lands
+ * on the pass that begins there, and the answer is always under the period.
+ */
+function wrapSeconds(what: string, t: number, period: number): number {
+  if (!Number.isFinite(t)) throw new RangeError(`${what} needs a finite t, got ${t}`);
+  const into = t % period;
+  if (into >= 0) return into;
+  // A negative epsilon carried up rounds to the period itself; that is the
+  // start of the next pass, never a point past the end of this one.
+  const carried = into + period;
+  return carried >= period ? 0 : carried;
+}
+
+/** `holds` as a `Beat`; a beat with no hold, or a hold that is not a positive number of seconds, throws. */
+export function beat(holds: readonly number[]): Beat {
+  if (holds.length === 0) throw new RangeError("a beat needs at least one hold");
+  holds.forEach((hold, i) => positiveSeconds(`beat hold ${i}`, hold));
+  const period = holds.reduce((sum, hold) => sum + hold, 0);
+  // Where each hold begins, in seconds into the period: the unit
+  // `wrapSeconds` answers in, so the sum a boundary sits at is the number
+  // the wrap of a `t` on that boundary produces, and the hold that begins
+  // there is the one in progress, at any rate the host samples.
+  const starts: number[] = [];
+  let elapsed = 0;
+  for (const hold of holds) {
+    starts.push(elapsed);
+    elapsed += hold;
+  }
+  // A copy, and the one `at` walks: what `at` and `period` were built from
+  // stays what `holds` says whatever the caller does to its array.
+  const own = [...holds];
+  return {
+    holds: own,
+    period,
+    // The last hold whose start the time has reached. The first starts at
+    // 0, so the walk always stops, and its length is the count of holds,
+    // never a function of `t`.
+    at(t) {
+      const into = wrapSeconds("Beat.at", t, period);
+      let i = own.length - 1;
+      while (starts[i]! > into) i--;
+      return i;
+    },
+  };
+}
+
 /** The three phase shapes. Each takes seconds and returns a `Phase`. */
 export const Phase = {
   /** 0 before `start`, rising to 1 over `duration` seconds, then held at 1. */
@@ -182,7 +251,7 @@ export const Phase = {
   /** 0 → 1 every `period` seconds, wrapping back to 0; negative `t` wraps too. */
   loop(period: number): Phase {
     positiveSeconds("Phase.loop period", period);
-    return (t) => (((t % period) + period) % period) / period;
+    return (t) => wrapSeconds("Phase.loop", t, period) / period;
   },
 
   /** 0 → 1 → 0 every `period` seconds: there in the first half, back in the second. */
