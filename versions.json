@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-404",
-      "ref": "refs/pull/404/merge",
-      "sha": "985f3dfe93ac74a5279570bf9dde0b3fbdad93b9",
-      "timestamp": "2026-10-16T22:09:11.094Z",
-      "commits": [
-        {
-          "sha": "985f3dfe93ac74a5279570bf9dde0b3fbdad93b9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T22:07:38Z",
-          "message": "Merge 119dd3346b014fa0ef85293812ea4587e07c9da0 into 65ff2f1b975d7d83b311734b862d022af8efa2b3\n"
-        },
-        {
-          "sha": "119dd3346b014fa0ef85293812ea4587e07c9da0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T16:07:32-06:00",
-          "message": "The wheel's stop is read off contrastRatio, so its playground card runs (rich-effects-wps6)\n\nThe effects playground runs effects.ts as a program on the published\nlibrary, and contrastStop was not a package export: the wheel card threw\nin turnedBounds. A colour's log contrast with black is its stop up to a\nconstant, and only gaps between stops are read, so contrastRatio, the one\nWCAG formula, serves; color.ts is back to master's but for indexed.\n"
-        },
-        {
-          "sha": "8ea5859621d2f4272aff57eb38d5ef92b4d368d8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T15:58:51-06:00",
-          "message": "A turned colour with no room for its rounding holds still, and the wheel's bounds are settled once (rich-effects-wps6)\n\nReview (high) of #404: at truecolor a fill bounded by a lighter and a\ndarker ink snapped between its turn and its rest frame to frame, since\nwhether hueTurned's two 8-bit colours fit its bounds changed with the hue.\nBounds narrower than ROUNDING_GAP, the widest those two can part, now\nhold the colour still at every t; at least that wide, one always fits.\nA wheel jump test at truecolor fails without it.\n\nmatchOn goes back to the memoised table matches; the wheel's bounds are\nmemoised per Drawn and its indexed candidates measured once per theme and\ndepth. contrastStop gives the stop scale one home beside luminanceRatio,\nsharing WCAG's flare. The docs' wheel paragraph says what the code keeps.\n"
-        },
-        {
-          "sha": "9685e6fca34bf44c84b83b099ac8454b9bbb0237",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T12:23:21-06:00",
-          "message": "The wheel keeps every word pair at its floor, at truecolor and 256 (rich-effects-wps6)\n\nThe wheel turned hue at fixed OKLCH lightness and claimed that kept words\nreading as they did. It does not: equal lightness is not equal luminance\nacross hues, so truecolor pairs drifted under their floor (50 of 60 seeded\npairs), and at 256 colours each turned slot was rounded to the cube without\nits partner (the ticket's strip: 226 of 601 frames under 4.5:1).\n\nA colour now turns at its own relative luminance, so contrast is kept by\nconstruction, and is written as the colour nearest its turn whose luminance\nstays within bounds derived from every word pair it is drawn in: each pair's\ncontrast to spare above its floor is split between its turning sides. One\nwritten colour per segment per frame, so powerline caps still match their\ncells. The resting colour is always a candidate and always within bounds.\n\nColorSpec.indexed lists the colours a depth writes by index; matchOn scores\nthat list, so the wheel's candidates and the writer's rounding are one set.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "65ff2f1b975d7d83b311734b862d022af8efa2b3",
-      "timestamp": "2026-10-15T18:04:04.413Z",
+      "sha": "542a093bdd88aff75a63a19756138cd5822ceed3",
+      "timestamp": "2026-10-16T22:19:36.809Z",
       "commits": [
         {
-          "sha": "65ff2f1b975d7d83b311734b862d022af8efa2b3",
+          "sha": "542a093bdd88aff75a63a19756138cd5822ceed3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T12:02:55-06:00",
-          "message": "A loop on a sixteen-colour terminal holds every cell on its slot (rich-effects-759a) (#403)\n\n* A loop on a sixteen-colour terminal holds every cell on its slot (rich-effects-759a)\n\nAt \"ansi\" every move a loop makes is a jump to another slot, and a strong\nenough light carried a cell there: pulse spent about half its period on\nwhite over a bright-black fill. onColors and wheel now draw through\nstillOnSlots, which holds every cell still where the depth writes only the\nsixteen slots. atShares is left moving, because ProgressBar's pulse flashes\na slot at 16 colours as Rich's does.\n\n* Sixteen-colour hold: public docs say it, WINDOWS is checked, the prose stops contradicting itself (rich-effects-759a)\n\nonColors' and wheel's JSDoc now say they hold still on a sixteen-colour\nterminal; docs/effects.md and stillOnSlots' header no longer claim every\nmove is a jump, only one that shows; the hold-still suite also renders at\nColorDepth.WINDOWS, which fails when WINDOWS leaves onlySlots."
+          "timestamp": "2026-10-16T16:18:24-06:00",
+          "message": "The wheel keeps every word pair at its floor, at truecolor and 256 (rich-effects-wps6) (#404)\n\n* The wheel keeps every word pair at its floor, at truecolor and 256 (rich-effects-wps6)\n\nThe wheel turned hue at fixed OKLCH lightness and claimed that kept words\nreading as they did. It does not: equal lightness is not equal luminance\nacross hues, so truecolor pairs drifted under their floor (50 of 60 seeded\npairs), and at 256 colours each turned slot was rounded to the cube without\nits partner (the ticket's strip: 226 of 601 frames under 4.5:1).\n\nA colour now turns at its own relative luminance, so contrast is kept by\nconstruction, and is written as the colour nearest its turn whose luminance\nstays within bounds derived from every word pair it is drawn in: each pair's\ncontrast to spare above its floor is split between its turning sides. One\nwritten colour per segment per frame, so powerline caps still match their\ncells. The resting colour is always a candidate and always within bounds.\n\nColorSpec.indexed lists the colours a depth writes by index; matchOn scores\nthat list, so the wheel's candidates and the writer's rounding are one set.\n\n* A turned colour with no room for its rounding holds still, and the wheel's bounds are settled once (rich-effects-wps6)\n\nReview (high) of #404: at truecolor a fill bounded by a lighter and a\ndarker ink snapped between its turn and its rest frame to frame, since\nwhether hueTurned's two 8-bit colours fit its bounds changed with the hue.\nBounds narrower than ROUNDING_GAP, the widest those two can part, now\nhold the colour still at every t; at least that wide, one always fits.\nA wheel jump test at truecolor fails without it.\n\nmatchOn goes back to the memoised table matches; the wheel's bounds are\nmemoised per Drawn and its indexed candidates measured once per theme and\ndepth. contrastStop gives the stop scale one home beside luminanceRatio,\nsharing WCAG's flare. The docs' wheel paragraph says what the code keeps.\n\n* The wheel's stop is read off contrastRatio, so its playground card runs (rich-effects-wps6)\n\nThe effects playground runs effects.ts as a program on the published\nlibrary, and contrastStop was not a package export: the wheel card threw\nin turnedBounds. A colour's log contrast with black is its stop up to a\nconstant, and only gaps between stops are read, so contrastRatio, the one\nWCAG formula, serves; color.ts is back to master's but for indexed."
         }
       ]
     }
