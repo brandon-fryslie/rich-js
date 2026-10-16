@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-409",
+      "ref": "refs/pull/409/merge",
+      "sha": "c8d5ab2318a51bede5a3e323780d2ef805682e56",
+      "timestamp": "2026-10-16T23:39:50.811Z",
+      "commits": [
+        {
+          "sha": "c8d5ab2318a51bede5a3e323780d2ef805682e56",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T17:38:15-06:00",
+          "message": "Merge ce11584e3f928588b2944462807f3aefae78bafe into be55d8d03e743ffc840c4d98afbdebb22d195f8b\n"
+        },
+        {
+          "sha": "ce11584e3f928588b2944462807f3aefae78bafe",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T17:38:02-06:00",
+          "message": "claude-sessions opens a real session on its first message (rich-demos-k78j.iuf)\n\nClaude Code now writes mode, attachment and a dozen other session-state\nrecords the parser did not know, so it drew each as an \"unknown record type\"\nerror panel ahead of the conversation. Every type found across two weeks of\nreal transcripts is now named in RECORD_TYPES (data/parser.ts) as drawn or\nhidden. A hidden record shown with H is a rule naming its type, not an error;\na type the table does not name is still drawn as an error, so it reaches the\nreader.\n\nThe card's staging script took its own list of drawn types; it now derives\nthem from RECORD_TYPES, so the card and the Node script draw the same records.\nThe staged data it writes is unchanged.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-408",
       "ref": "refs/pull/408/merge",
       "sha": "965bc8b99a5f292c8fb9a67431c225af69eb9acf",
