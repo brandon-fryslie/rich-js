@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-406",
-      "ref": "refs/pull/406/merge",
-      "sha": "158e91a805bd336ba7163720e2cb6218334b4b97",
-      "timestamp": "2026-10-16T22:48:47.191Z",
-      "commits": [
-        {
-          "sha": "158e91a805bd336ba7163720e2cb6218334b4b97",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T22:47:26Z",
-          "message": "Merge d819e460e29defbe83dfc0f3e11afa7a342349da into b90ed6b2bc4c241a081f7aed2c92ef0ccac72dd4\n"
-        },
-        {
-          "sha": "d819e460e29defbe83dfc0f3e11afa7a342349da",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T16:47:21-06:00",
-          "message": "Each part reads its own grounds; a seam's divider fits it under every caps (rich-joiners-9ntp.13i)\n\nHigh review pass on #406:\n- A seam decides its endpoints from the grounds the seam and divider read,\n  a lead or tail from the one it reads, so caps that need a ground no longer\n  stop a seam that needs none (plain + capsule dropped every \" | \").\n- parseSeam holds the divider to the seam's width under every caps (own cells'\n  width and each cap's count equal), so a parsed seam is valid with any caps.\n- A cell naming a cap and drawing a glyph is refused, not silently reduced.\n- Refusals name the argument (`seam:` / `caps:`), not `CellJoiner:`.\n- joinerNamed refuses a spec that is neither a name nor { seam, caps }.\n- Private Use Area glyphs back to \\u escapes, as master had them.\n"
-        },
-        {
-          "sha": "956a363e1956976a4076501893f94057973bdab0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T16:26:49-06:00",
-          "message": "A joiner is a seam and caps picked independently (rich-joiners-9ntp.13i)\n\nCellJoiner takes a JoinSeam (the middle) and a JoinCaps (the ends), each\nwith its glyph and ascii forms, so any seam ends in any caps: SEAMS.prism\nwith CAPS.bubble is one constructor call, and joinerNamed reads\n{ seam, caps } from config beside a JOINERS name. A seam cell may be\n{ cap: \"lead\" | \"tail\" }, so the seams that part their runs (capsule,\nwrapper, metro) end them in whatever caps they are joined with.\ngradientSeam replaces gradientJoiner.\n\nEvery JOINERS preset and the gradient render byte-identically to before\n(truecolor, 16-colour and ASCII, checked against a pre-change snapshot).\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "b90ed6b2bc4c241a081f7aed2c92ef0ccac72dd4",
-      "timestamp": "2026-10-16T22:48:43.101Z",
+      "sha": "992c64010370ccc70e57e95178e29ecaef0d998e",
+      "timestamp": "2026-10-16T23:00:19.715Z",
       "commits": [
         {
-          "sha": "b90ed6b2bc4c241a081f7aed2c92ef0ccac72dd4",
+          "sha": "992c64010370ccc70e57e95178e29ecaef0d998e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T16:47:05-06:00",
-          "message": "A split host holds ESC ESC for the byte that decides it (rich-unfiled-791c.hyfo) (#405)\n\n* A split host holds ESC ESC for the byte that decides it (rich-unfiled-791c.hyfo)\n\nmacOS Terminal sends Option+Up as `ESC ESC [ A`. On a split host a read\nthat ended after `ESC ESC` was consumed at once as one Escape, so no hold\nwas armed and the rest arrived as `[` and `A`.\n\n`ESC ESC` alone is now unfinished like `ESC [` alone: held for the escape\ndelay on a split host, settled at the chunk's end on a whole-keys host.\n`reissue` reads it as one Escape, so the double-send rule has one home\nwhether the sequence stalls or is ended by a byte that cannot extend it.\n\n* ESC ESC that opens no key is one Escape, whatever follows it (rich-unfiled-791c.hyfo)\n\nA stalled ESC ESC O on a split host read as Escape, Alt+O, and ESC ESC\nbefore a sequence cut short as two Escapes, while ESC ESC before any\nother byte was one. reissue now reads ESC ESC as the one double-sent\nEscape at any length; only a pointer report keeps the second ESC."
+          "timestamp": "2026-10-16T16:58:41-06:00",
+          "message": "A joiner is a seam and caps picked independently (rich-joiners-9ntp.13i) (#406)\n\n* A joiner is a seam and caps picked independently (rich-joiners-9ntp.13i)\n\nCellJoiner takes a JoinSeam (the middle) and a JoinCaps (the ends), each\nwith its glyph and ascii forms, so any seam ends in any caps: SEAMS.prism\nwith CAPS.bubble is one constructor call, and joinerNamed reads\n{ seam, caps } from config beside a JOINERS name. A seam cell may be\n{ cap: \"lead\" | \"tail\" }, so the seams that part their runs (capsule,\nwrapper, metro) end them in whatever caps they are joined with.\ngradientSeam replaces gradientJoiner.\n\nEvery JOINERS preset and the gradient render byte-identically to before\n(truecolor, 16-colour and ASCII, checked against a pre-change snapshot).\n\n* Each part reads its own grounds; a seam's divider fits it under every caps (rich-joiners-9ntp.13i)\n\nHigh review pass on #406:\n- A seam decides its endpoints from the grounds the seam and divider read,\n  a lead or tail from the one it reads, so caps that need a ground no longer\n  stop a seam that needs none (plain + capsule dropped every \" | \").\n- parseSeam holds the divider to the seam's width under every caps (own cells'\n  width and each cap's count equal), so a parsed seam is valid with any caps.\n- A cell naming a cap and drawing a glyph is refused, not silently reduced.\n- Refusals name the argument (`seam:` / `caps:`), not `CellJoiner:`.\n- joinerNamed refuses a spec that is neither a name nor { seam, caps }.\n- Private Use Area glyphs back to \\u escapes, as master had them."
         }
       ]
     },
