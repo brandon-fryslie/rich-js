@@ -43,7 +43,7 @@
  * (`examples/effects-playground/programs.ts`), on the published library.
  */
 
-import { ColorDepth, ColorRgba, ColorSpec, contrastRatio, contrastStop, relativeLuminance, type TerminalTheme } from "../core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec, contrastRatio, relativeLuminance, type TerminalTheme } from "../core/color.js";
 import { EASES, Phase, type Ease } from "../core/easing.js";
 import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo } from "../core/memo.js";
@@ -807,7 +807,14 @@ function hueTurned(color: ColorRgba, degrees: number): Turned {
   return { looks: at(bright), either: [at(dim), at(bright)] };
 }
 
-/** Where a colour's luminance may land, as `contrastStop`: none is bounded until a pair bounds it. */
+/**
+ * Where a colour sits on WCAG's contrast scale: the log of its contrast with
+ * black. Two colours' contrast ratio is `exp` of the gap between their
+ * stops, so a contrast to keep is a distance a colour may move.
+ */
+const stop = (color: ColorRgba): number => Math.log(contrastRatio(color, new ColorRgba(0, 0, 0)));
+
+/** Where a colour's luminance may land, as `stop`: none is bounded until a pair bounds it. */
 interface Bounds {
   readonly lo: number;
   readonly hi: number;
@@ -849,7 +856,7 @@ function turnedBounds(pairs: readonly Pair[], depth: ColorDepth, turnedAs: (pair
     for (const side of SIDES) {
       const key = turnedAs(pair, side);
       if (key === undefined) continue;
-      const [mine, theirs] = [contrastStop(pair[side]), contrastStop(pair[side === "fg" ? "bg" : "fg"])];
+      const [mine, theirs] = [stop(pair[side]), stop(pair[side === "fg" ? "bg" : "fg"])];
       const { lo, hi } = bounds.get(key) ?? UNBOUNDED;
       bounds.set(key, mine >= theirs ? { lo: Math.max(lo, mine - share), hi } : { lo, hi: Math.min(hi, mine + share) });
     }
@@ -863,7 +870,7 @@ interface Measured {
   readonly looks: Oklch;
   readonly stop: number;
 }
-const measured = (color: ColorRgba): Measured => ({ color, looks: Oklch.fromRgba(color), stop: contrastStop(color) });
+const measured = (color: ColorRgba): Measured => ({ color, looks: Oklch.fromRgba(color), stop: stop(color) });
 
 /** `ColorSpec.indexed`'s colours, measured once for each theme and depth. */
 const measuredMemo = new WeakMap<readonly (readonly [ColorSpec, ColorRgba])[], readonly Measured[]>();

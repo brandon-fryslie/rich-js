@@ -125,23 +125,11 @@ export function contrastRatio(a: ColorRgba, b: ColorRgba): number {
   return luminanceRatio(relativeLuminance(a), relativeLuminance(b));
 }
 
-/** WCAG's flare: the light a screen reflects, added to both luminances a contrast ratio divides. */
-const FLARE = 0.05;
-
 // [LAW:single-enforcer] The WCAG ratio over two relative luminances — the one
 // formula `contrastRatio` and `ColorTable.matchReadable` (which caches its
-// entries' luminances) both measure with, and `contrastStop` takes the log of.
+// entries' luminances) both measure with.
 function luminanceRatio(la: number, lb: number): number {
-  return (Math.max(la, lb) + FLARE) / (Math.min(la, lb) + FLARE);
-}
-
-/**
- * Where a colour sits on WCAG's contrast scale, the log of its relative
- * luminance plus the flare: two colours' contrast ratio is `exp` of the gap
- * between their stops, so a contrast to keep is a distance a colour may move.
- */
-export function contrastStop(c: ColorRgba): number {
-  return Math.log(relativeLuminance(c) + FLARE);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
 // --- ColorTable ---
