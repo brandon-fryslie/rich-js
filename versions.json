@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-410",
+      "ref": "refs/pull/410/merge",
+      "sha": "7ebf76c3155356aa645104b07e49779a77a33536",
+      "timestamp": "2026-10-16T23:43:38.380Z",
+      "commits": [
+        {
+          "sha": "7ebf76c3155356aa645104b07e49779a77a33536",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T17:41:55-06:00",
+          "message": "Merge 6467a716fb9b72c7b258ac328008459478dffe57 into be55d8d03e743ffc840c4d98afbdebb22d195f8b\n"
+        },
+        {
+          "sha": "6467a716fb9b72c7b258ac328008459478dffe57",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T17:41:50-06:00",
+          "message": "Colour steps on a beat as a signal, and any effect samples on one (rich-animation-xi28.bjo)\n\nsteppedInk(steps) is an Effect whose ink steps through colours on a beat,\none a hold, looping, for the time it is handed. Each step's ink is written\nas the colour nearest the step's that the depth draws and that reads on the\ncell's ground at the catalogue's floor (floorOf: resting contrast or AA,\nwhichever is lower), measured as Effected writes it; in truecolor through\nensureContrast, the slide readableOn makes, below it the nearest indexed\ncolour, so at sixteen colours it steps slot to slot where the loops hold\nstill. The search is memoized per ink, ground and step, so a frame inside a\nstep redoes none.\n\nonBeat(effect, beat) samples any effect at Beat.start(t), new on Beat: the\nmoment the hold in progress began, bit-identical for every t inside it. A\nshort-curve wheel on beat([1]) is a hue walk a step a second.\n\nstepped <seconds> <color> ... joins frames in animationFuncs: the colour in\nprogress as a colour value, so it nests in fg and readableOn.\n\nEffectCell carries reverse, so a cell and its colours make its Pair.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-408",
       "ref": "refs/pull/408/merge",
       "sha": "ad7dc59441ca7cb13f8811d50b53623cb602071b",
