@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-405",
+      "ref": "refs/pull/405/merge",
+      "sha": "9c49ef94e5560e2109e4211c1fc18c87dea2c7c3",
+      "timestamp": "2026-10-16T22:36:04.290Z",
+      "commits": [
+        {
+          "sha": "9c49ef94e5560e2109e4211c1fc18c87dea2c7c3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T22:34:27Z",
+          "message": "Merge d89bce6e8ff48b7af8c13469d269a40d05de2e4c into 542a093bdd88aff75a63a19756138cd5822ceed3\n"
+        },
+        {
+          "sha": "d89bce6e8ff48b7af8c13469d269a40d05de2e4c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T16:34:22-06:00",
+          "message": "ESC ESC that opens no key is one Escape, whatever follows it (rich-unfiled-791c.hyfo)\n\nA stalled ESC ESC O on a split host read as Escape, Alt+O, and ESC ESC\nbefore a sequence cut short as two Escapes, while ESC ESC before any\nother byte was one. reissue now reads ESC ESC as the one double-sent\nEscape at any length; only a pointer report keeps the second ESC.\n"
+        },
+        {
+          "sha": "ad2f9b332a30597c3b9fded304c6058b798ff705",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T16:25:17-06:00",
+          "message": "A split host holds ESC ESC for the byte that decides it (rich-unfiled-791c.hyfo)\n\nmacOS Terminal sends Option+Up as `ESC ESC [ A`. On a split host a read\nthat ended after `ESC ESC` was consumed at once as one Escape, so no hold\nwas armed and the rest arrived as `[` and `A`.\n\n`ESC ESC` alone is now unfinished like `ESC [` alone: held for the escape\ndelay on a split host, settled at the chunk's end on a whole-keys host.\n`reissue` reads it as one Escape, so the double-send rule has one home\nwhether the sequence stalls or is ended by a byte that cannot extend it.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-406",
       "ref": "refs/pull/406/merge",
       "sha": "92a81beafeb3874267f0de25f94609225e308061",
@@ -20,28 +49,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T16:26:49-06:00",
           "message": "A joiner is a seam and caps picked independently (rich-joiners-9ntp.13i)\n\nCellJoiner takes a JoinSeam (the middle) and a JoinCaps (the ends), each\nwith its glyph and ascii forms, so any seam ends in any caps: SEAMS.prism\nwith CAPS.bubble is one constructor call, and joinerNamed reads\n{ seam, caps } from config beside a JOINERS name. A seam cell may be\n{ cap: \"lead\" | \"tail\" }, so the seams that part their runs (capsule,\nwrapper, metro) end them in whatever caps they are joined with.\ngradientSeam replaces gradientJoiner.\n\nEvery JOINERS preset and the gradient render byte-identically to before\n(truecolor, 16-colour and ASCII, checked against a pre-change snapshot).\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-405",
-      "ref": "refs/pull/405/merge",
-      "sha": "667814fa5e0278a0b28e587d9283b774368898b7",
-      "timestamp": "2026-10-16T22:26:48.739Z",
-      "commits": [
-        {
-          "sha": "667814fa5e0278a0b28e587d9283b774368898b7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T16:25:21-06:00",
-          "message": "Merge ad2f9b332a30597c3b9fded304c6058b798ff705 into 542a093bdd88aff75a63a19756138cd5822ceed3\n"
-        },
-        {
-          "sha": "ad2f9b332a30597c3b9fded304c6058b798ff705",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T16:25:17-06:00",
-          "message": "A split host holds ESC ESC for the byte that decides it (rich-unfiled-791c.hyfo)\n\nmacOS Terminal sends Option+Up as `ESC ESC [ A`. On a split host a read\nthat ended after `ESC ESC` was consumed at once as one Escape, so no hold\nwas armed and the rest arrived as `[` and `A`.\n\n`ESC ESC` alone is now unfinished like `ESC [` alone: held for the escape\ndelay on a split host, settled at the chunk's end on a whole-keys host.\n`reissue` reads it as one Escape, so the double-send rule has one home\nwhether the sequence stalls or is ended by a byte that cannot extend it.\n"
         }
       ]
     },
