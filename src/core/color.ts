@@ -125,11 +125,23 @@ export function contrastRatio(a: ColorRgba, b: ColorRgba): number {
   return luminanceRatio(relativeLuminance(a), relativeLuminance(b));
 }
 
+/** WCAG's flare: the light a screen reflects, added to both luminances a contrast ratio divides. */
+const FLARE = 0.05;
+
 // [LAW:single-enforcer] The WCAG ratio over two relative luminances — the one
 // formula `contrastRatio` and `ColorTable.matchReadable` (which caches its
-// entries' luminances) both measure with.
+// entries' luminances) both measure with, and `contrastStop` takes the log of.
 function luminanceRatio(la: number, lb: number): number {
-  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  return (Math.max(la, lb) + FLARE) / (Math.min(la, lb) + FLARE);
+}
+
+/**
+ * Where a colour sits on WCAG's contrast scale, the log of its relative
+ * luminance plus the flare: two colours' contrast ratio is `exp` of the gap
+ * between their stops, so a contrast to keep is a distance a colour may move.
+ */
+export function contrastStop(c: ColorRgba): number {
+  return Math.log(relativeLuminance(c) + FLARE);
 }
 
 // --- ColorTable ---
@@ -717,10 +729,14 @@ export class ColorSpec {
     if (depth === ColorDepth.TRUECOLOR) return ColorSpec.fromRgba(value);
     if (depth === ColorDepth.DEFAULT) return ColorSpec.default();
     // [LAW:dataflow-not-control-flow] Every candidate is scored; the depth
-    // only decides which are among them. Ties go to the earlier.
-    const candidates: readonly (readonly [ColorSpec, ColorRgba])[] = [
+    // only decides whether the cube is among them. Ties go to the earlier.
+    // Each table's nearest stands in for all of it: the tables' `match` is
+    // memoised and ranks by this distance, so the winner is `indexed`'s.
+    const slot = theme.ansiColors.match(value);
+    const candidates: [ColorSpec, ColorRgba][] = [
       [ColorSpec.default(), foreground ? theme.foregroundColor : theme.backgroundColor],
-      ...ColorSpec.indexed(depth, theme),
+      [new ColorSpec(`color(${slot})`, depth === ColorDepth.WINDOWS ? depth : ColorDepth.STANDARD, slot), theme.ansiColors.get(slot)],
+      ...(depth === ColorDepth.EIGHT_BIT ? [cubeCandidate(value)] : []),
     ];
     return candidates.reduce((best, next) => (rgbDistance(next[1], value) < rgbDistance(best[1], value) ? next : best))[0];
   }
@@ -731,8 +747,8 @@ export class ColorSpec {
    * sixteen, and at 256 colours the cube and grey ramp after them. Each is
    * drawn alike as glyph and as ground, which the default colour is not, so
    * it is not among them. Truecolor writes a colour itself and the default
-   * depth only the default, so neither writes any by index.
-   * [LAW:one-source-of-truth] The colours `matchOn` rounds to, but for the default.
+   * depth only the default, so neither writes any by index. The colours
+   * `matchOn` rounds to, but for the default, read off the same two tables.
    */
   static indexed(depth: ColorDepth, theme: TerminalTheme): readonly (readonly [ColorSpec, ColorRgba])[] {
     const byDepth = indexedMemo.get(theme) ?? new Map<ColorDepth, readonly (readonly [ColorSpec, ColorRgba])[]>();
@@ -786,6 +802,12 @@ export class ColorSpec {
         return ColorSpec.default();
     }
   }
+}
+
+/** The cube or grey-ramp entry nearest `value`, and its colour. */
+function cubeCandidate(value: ColorRgba): [ColorSpec, ColorRgba] {
+  const index = EIGHT_BIT_DOWNGRADE_TABLE.match(value);
+  return [ColorSpec.fromAnsi(index), EIGHT_BIT_DOWNGRADE_TABLE.get(index)];
 }
 
 /** `ColorSpec.indexed`'s list, made once for each theme and depth. */

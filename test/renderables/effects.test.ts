@@ -509,11 +509,12 @@ function words(count: number): Style[] {
   });
 }
 
+// Claude Code redraws once a second, so that is where a step is largest.
+// A frame-to-frame move under two just-noticeable differences (dE_OK
+// ~0.02 each) reads as drift, not as a tick.
+const STEP = 0.04;
+
 describe("the loops never jump", () => {
-  // Claude Code redraws once a second, so that is where a step is largest.
-  // A frame-to-frame move under two just-noticeable differences (dE_OK
-  // ~0.02 each) reads as drift, not as a tick.
-  const STEP = 0.04;
   // Fills and ink the strip draws, each at its whole share: the most any moves.
   // Near black is left out: there 8-bit steps are large in OKLab's lightness
   // and a display's black level shows none of them.
@@ -822,6 +823,27 @@ describe("every loop keeps its words legible at every depth, the whole of its pe
         const now = screen(new Effected(element, effect, { t, key: label, theme }), depth, theme);
         const under = rest.findIndex((was, i) => was.word && contrastRatio(now[i]!.fg, now[i]!.bg) < Math.min(contrastRatio(was.fg, was.bg), AA) - slack);
         if (under >= 0) return [`${label} at t=${t}: ${now[under]!.fg.hex} on ${now[under]!.bg.hex}, rested ${rest[under]!.fg.hex} on ${rest[under]!.bg.hex}`];
+      }
+      return [];
+    });
+    expect(failures).toEqual([]);
+  });
+
+  // The wheel turns slowly, so a frame-to-frame step is only ever a colour
+  // snapping: between its turn and its rest, where its rounding fits at one
+  // hue and not the next. At 256 colours every step is to another indexed
+  // colour, so it is measured where the rounding is finest.
+  it("the wheel at truecolor moves no cell more than the bar between frames at 1 fps", () => {
+    const theme = DEFAULT_TERMINAL_THEME;
+    const failures = elements.flatMap(([label, element]) => {
+      const effect = EFFECT_CATALOGUE.loops.wheel({ span: 40, z: 7 });
+      const at = (t: number) => screen(new Effected(element, effect, { t, key: label, theme }), "truecolor", theme);
+      let last = at(0);
+      for (let t = 1; t <= EFFECT_CURVES.wheel.seconds; t++) {
+        const now = at(t);
+        const jump = now.findIndex((cell, i) => Math.max(distance(cell.fg, last[i]!.fg), distance(cell.bg, last[i]!.bg)) >= STEP);
+        if (jump >= 0) return [`${label} at t=${t}: ${last[jump]!.fg.hex} on ${last[jump]!.bg.hex} to ${now[jump]!.fg.hex} on ${now[jump]!.bg.hex}`];
+        last = now;
       }
       return [];
     });

@@ -43,7 +43,7 @@
  * (`examples/effects-playground/programs.ts`), on the published library.
  */
 
-import { ColorDepth, ColorRgba, ColorSpec, contrastRatio, relativeLuminance, type TerminalTheme } from "../core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec, contrastRatio, contrastStop, relativeLuminance, type TerminalTheme } from "../core/color.js";
 import { EASES, Phase, type Ease } from "../core/easing.js";
 import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo } from "../core/memo.js";
@@ -175,12 +175,17 @@ export function onColors(loop: Loop, colors?: ReadonlySet<string>): Effect {
   const settled = new WeakMap<TerminalTheme, Memo<ReadonlyMap<string, number>>>();
   const settle = (drawn: Drawn): ReadonlyMap<string, number> => {
     const lit = colors ?? drawn.colors;
-    const key = [drawn.depth, ...drawn.pairs.map(({ fg, bg, terminal, reverse }) => `${fg.hex}/${bg.hex}/${terminal.fg}/${terminal.bg}/${reverse}`), "|", ...lit].join(" ");
+    const key = [drawnKey(drawn), "|", ...lit].join(" ");
     const memo = settled.get(drawn.theme) ?? new Memo<ReadonlyMap<string, number>>();
     settled.set(drawn.theme, memo);
     return memo.get(key, () => shares(drawn, lit, loop.touch));
   };
   return stillOnSlots(atShares(loop, settle));
+}
+
+/** What a frame draws, as a key: its depth and its pairs, which its `colors` and `fills` are read off. */
+function drawnKey({ depth, pairs }: Drawn): string {
+  return [depth, ...pairs.map(({ fg, bg, terminal, reverse }) => `${fg.hex}/${bg.hex}/${terminal.fg}/${terminal.bg}/${reverse}`)].join(" ");
 }
 
 /**
@@ -731,25 +736,31 @@ export function wheel(curve: Curve, z: number): Effect {
     const s = seed(hex);
     return (360 * t) / P + curve.swing * STRAY * ((stray(s, t) - stray(s, 0)) / 1.5);
   };
-  return stillOnSlots((t, { colors, fills, pairs, depth, theme }) => {
+  // A turned colour's bounds rest on what a frame draws, never on `t`: settled once for each.
+  const settled = new WeakMap<TerminalTheme, Memo<ReadonlyMap<string, Bounds>>>();
+  return stillOnSlots((t, drawn) => {
+    const { colors, fills, depth, theme } = drawn;
     // Whether a slot shows one of the element's colours: never the terminal's, whatever its hex.
     const own = (terminal: boolean, color: ColorRgba): boolean => !terminal && colors.has(color.hex);
     // The segment an own colour turns with: itself if a fill or beside no own colour, else the one beside it.
     const segmentOf = (color: ColorRgba, other: ColorRgba, theirs: boolean): string => (fills.has(color.hex) || !theirs ? color.hex : other.hex);
     // A colour as it turns with a segment: written one way wherever it is drawn in a frame.
     const keyOf = (color: ColorRgba, segment: string): string => `${color.hex} ${segment}`;
-    const bounds = turnedBounds(pairs, depth, (pair, side) => {
-      const other = side === "fg" ? "bg" : "fg";
-      return own(pair.terminal[side], pair[side]) ? keyOf(pair[side], segmentOf(pair[side], pair[other], own(pair.terminal[other], pair[other]))) : undefined;
-    });
+    const memo = settled.get(theme) ?? new Memo<ReadonlyMap<string, Bounds>>();
+    settled.set(theme, memo);
+    const bounds = memo.get(drawnKey(drawn), () =>
+      turnedBounds(drawn.pairs, depth, (pair, side) => {
+        const other = side === "fg" ? "bg" : "fg";
+        return own(pair.terminal[side], pair[side]) ? keyOf(pair[side], segmentOf(pair[side], pair[other], own(pair.terminal[other], pair[other]))) : undefined;
+      }),
+    );
     // 256 colours writes a turned colour as one it has an index for; truecolor
-    // as one of the two either side of its luminance. Or as the colour it
-    // turns from, which its bounds are measured from and so always admit.
-    const indexed = ColorSpec.indexed(depth, theme).map(([, color]) => color);
+    // as one of the two either side of its luminance.
+    const indexed = measuredIndexed(depth, theme);
     const written = new Map<string, ColorRgba>();
     const choose = (color: ColorRgba, segment: string): ColorRgba => {
       const turn = hueTurned(color, turned(segment, t));
-      return nearestWithin(turn.looks, [color, ...(depth === ColorDepth.TRUECOLOR ? turn.either : indexed)], bounds.get(keyOf(color, segment)) ?? UNBOUNDED);
+      return nearestWithin(turn.looks, color, depth === ColorDepth.TRUECOLOR ? turn.either.map(measured) : indexed, bounds.get(keyOf(color, segment)) ?? UNBOUNDED);
     };
     const write = (color: ColorRgba, segment: string): ColorRgba => {
       const found = written.get(keyOf(color, segment)) ?? choose(color, segment);
@@ -796,21 +807,32 @@ function hueTurned(color: ColorRgba, degrees: number): Turned {
   return { looks: at(bright), either: [at(dim), at(bright)] };
 }
 
-/** Where a colour's luminance may land, as `stop`: none is bounded until a pair bounds it. */
+/** Where a colour's luminance may land, as `contrastStop`: none is bounded until a pair bounds it. */
 interface Bounds {
   readonly lo: number;
   readonly hi: number;
 }
 const UNBOUNDED: Bounds = { lo: -Infinity, hi: Infinity };
+/** Bounds that admit no turn: the colour is written as it rests. */
+const STILL: Bounds = { lo: Infinity, hi: -Infinity };
 
-/** A luminance where WCAG contrast is a difference: the ratio of two colours is `exp` of the gap between their stops. */
-const stop = (color: ColorRgba): number => Math.log(relativeLuminance(color) + 0.05);
+/**
+ * The widest 8-bit rounding parts `hueTurned`'s two colours, in stops. They
+ * are one point of the hue rounded two ways, so they differ by at most a
+ * step in each channel, and a channel of a colour that dark or light can
+ * take a step only so large: worst near a luminance of 0.05, at 3.03% of
+ * contrast. Bounds at least this wide admit one of the two whatever the
+ * hue; narrower, a colour would turn at some hues and snap back to rest at
+ * the next, so it holds still.
+ */
+const ROUNDING_GAP = Math.log(1.031);
 
 /**
  * How far each turned colour's luminance may land from the one it rests at,
  * keyed as `turnedAs` keys each side of a pair — none for a side that holds
  * still — so that every pair of `pairs` reads at its floor (`floorOf`) at
- * `depth` however each of its colours lands within its bounds.
+ * `depth` however each of its colours lands within its bounds. Bounds
+ * narrower than `ROUNDING_GAP` are `STILL`.
  *
  * A pair's contrast to spare above its floor, as a gap between stops, is
  * shared out evenly between its sides that turn: the lighter may land that
@@ -827,23 +849,41 @@ function turnedBounds(pairs: readonly Pair[], depth: ColorDepth, turnedAs: (pair
     for (const side of SIDES) {
       const key = turnedAs(pair, side);
       if (key === undefined) continue;
-      const [mine, theirs] = [stop(pair[side]), stop(pair[side === "fg" ? "bg" : "fg"])];
+      const [mine, theirs] = [contrastStop(pair[side]), contrastStop(pair[side === "fg" ? "bg" : "fg"])];
       const { lo, hi } = bounds.get(key) ?? UNBOUNDED;
       bounds.set(key, mine >= theirs ? { lo: Math.max(lo, mine - share), hi } : { lo, hi: Math.min(hi, mine + share) });
     }
   }
-  return bounds;
+  return new Map([...bounds].map(([key, { lo, hi }]) => [key, hi - lo < ROUNDING_GAP ? STILL : { lo, hi }]));
+}
+
+/** A colour a turn may be written as, with what `nearestWithin` reads of it. */
+interface Measured {
+  readonly color: ColorRgba;
+  readonly looks: Oklch;
+  readonly stop: number;
+}
+const measured = (color: ColorRgba): Measured => ({ color, looks: Oklch.fromRgba(color), stop: contrastStop(color) });
+
+/** `ColorSpec.indexed`'s colours, measured once for each theme and depth. */
+const measuredMemo = new WeakMap<readonly (readonly [ColorSpec, ColorRgba])[], readonly Measured[]>();
+function measuredIndexed(depth: ColorDepth, theme: TerminalTheme): readonly Measured[] {
+  const indexed = ColorSpec.indexed(depth, theme);
+  const listed = measuredMemo.get(indexed) ?? indexed.map(([, color]) => measured(color));
+  measuredMemo.set(indexed, listed);
+  return listed;
 }
 
 /**
- * Of `candidates`, the one that looks nearest `color` (OKLab's ΔE) among
- * those whose luminance is within `bounds`. Ties go to the earlier. The
- * caller offers one its bounds admit; a reduce over none throws.
+ * The colour that looks nearest `color` (OKLab's ΔE): `rest`, or one of
+ * `candidates` whose luminance is within `bounds`. `rest` is what the bounds
+ * are measured from, so it is always offered; ties go to it, then to the
+ * earlier.
  */
-function nearestWithin(color: ColorRgba, candidates: readonly ColorRgba[], { lo, hi }: Bounds): ColorRgba {
+function nearestWithin(color: ColorRgba, rest: ColorRgba, candidates: readonly Measured[], { lo, hi }: Bounds): ColorRgba {
   const looks = Oklch.fromRgba(color);
-  const admitted = candidates.filter((candidate) => stop(candidate) >= lo && stop(candidate) <= hi);
-  return admitted.map((candidate) => [candidate, looks.deltaE(Oklch.fromRgba(candidate))] as const).reduce((best, next) => (next[1] < best[1] ? next : best))[0];
+  const offered = [measured(rest), ...candidates.filter(({ stop }) => stop >= lo && stop <= hi)];
+  return offered.map((candidate) => [candidate.color, looks.deltaE(candidate.looks)] as const).reduce((best, next) => (next[1] < best[1] ? next : best))[0];
 }
 
 /**
