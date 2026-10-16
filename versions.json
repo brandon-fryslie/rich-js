@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "992c64010370ccc70e57e95178e29ecaef0d998e",
-      "timestamp": "2026-10-16T23:00:19.715Z",
+      "sha": "be55d8d03e743ffc840c4d98afbdebb22d195f8b",
+      "timestamp": "2026-10-16T23:08:59.472Z",
       "commits": [
         {
-          "sha": "992c64010370ccc70e57e95178e29ecaef0d998e",
+          "sha": "be55d8d03e743ffc840c4d98afbdebb22d195f8b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T16:58:41-06:00",
-          "message": "A joiner is a seam and caps picked independently (rich-joiners-9ntp.13i) (#406)\n\n* A joiner is a seam and caps picked independently (rich-joiners-9ntp.13i)\n\nCellJoiner takes a JoinSeam (the middle) and a JoinCaps (the ends), each\nwith its glyph and ascii forms, so any seam ends in any caps: SEAMS.prism\nwith CAPS.bubble is one constructor call, and joinerNamed reads\n{ seam, caps } from config beside a JOINERS name. A seam cell may be\n{ cap: \"lead\" | \"tail\" }, so the seams that part their runs (capsule,\nwrapper, metro) end them in whatever caps they are joined with.\ngradientSeam replaces gradientJoiner.\n\nEvery JOINERS preset and the gradient render byte-identically to before\n(truecolor, 16-colour and ASCII, checked against a pre-change snapshot).\n\n* Each part reads its own grounds; a seam's divider fits it under every caps (rich-joiners-9ntp.13i)\n\nHigh review pass on #406:\n- A seam decides its endpoints from the grounds the seam and divider read,\n  a lead or tail from the one it reads, so caps that need a ground no longer\n  stop a seam that needs none (plain + capsule dropped every \" | \").\n- parseSeam holds the divider to the seam's width under every caps (own cells'\n  width and each cap's count equal), so a parsed seam is valid with any caps.\n- A cell naming a cap and drawing a glyph is refused, not silently reduced.\n- Refusals name the argument (`seam:` / `caps:`), not `CellJoiner:`.\n- joinerNamed refuses a spec that is neither a name nor { seam, caps }.\n- Private Use Area glyphs back to \\u escapes, as master had them."
+          "timestamp": "2026-10-16T17:07:21-06:00",
+          "message": "Frames of content play on a beat for a time the host hands in (rich-animation-xi28.a3n) (#407)\n\n* Frames of content play on a beat for a time the host hands in (rich-animation-xi28.a3n)\n\n`beat(holds)` joins the easing vocabulary: holds in seconds, looped on\n`Phase.loop`, the hold in progress out, so a sequence of unequal holds is one\nbeat and `steps(n)` is its equal-holds case. `Frames` draws the frame in\nprogress at a handed `t` — every frame at the widest one's width, ending no\nline, each frame its own `RichText` — and `animationFuncs(frameTime)` registers\n`frames <seconds> <frame> …` for a template, the time read when it is evaluated.\n\nNothing reads a clock; holds are seconds, never frame counts, and both are\ntested sampled once a second and sixty times a second. A 120-column row holding\nthe frames renders at 0.015 ms p50 at t = 0 and at t = 10⁶ s.\n\n* A beat lands a boundary sample on the hold that begins there, and a frame is cropped before it wraps (rich-animation-xi28.a3n)\n\nHigh review on #407. beat wrapped t through (t % p + p) % p and compared\nprogress, so t = 0.1 on 0.1 s holds landed one ulp short and every frame\nshowed a sample late; now one wrapSeconds in seconds, exact at and past\nzero, that Phase.loop reads too, and the one place a non-finite t fails.\nBeat.holds is a copy. Frames settles its index at construction, measures\neach frame once, renders without a copy, and draws noWrap + crop so a slot\nnarrower than the widest frame cannot fold it onto a second line. The\nwall-clock p50 test is gone: the lookup it pinned is asserted by\neasing.test.ts far-from-zero, deterministically.\n\n* A negative epsilon wraps to zero, not to the period (rich-animation-xi28.a3n)\n\nMedium review on #407: wrapSeconds carried -1e-17 up to exactly the\nperiod, so Phase.loop answered 1 where its range is [0, 1)."
         }
       ]
     }
