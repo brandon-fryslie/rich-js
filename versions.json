@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "b90ed6b2bc4c241a081f7aed2c92ef0ccac72dd4",
+      "timestamp": "2026-10-16T22:48:43.101Z",
+      "commits": [
+        {
+          "sha": "b90ed6b2bc4c241a081f7aed2c92ef0ccac72dd4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T16:47:05-06:00",
+          "message": "A split host holds ESC ESC for the byte that decides it (rich-unfiled-791c.hyfo) (#405)\n\n* A split host holds ESC ESC for the byte that decides it (rich-unfiled-791c.hyfo)\n\nmacOS Terminal sends Option+Up as `ESC ESC [ A`. On a split host a read\nthat ended after `ESC ESC` was consumed at once as one Escape, so no hold\nwas armed and the rest arrived as `[` and `A`.\n\n`ESC ESC` alone is now unfinished like `ESC [` alone: held for the escape\ndelay on a split host, settled at the chunk's end on a whole-keys host.\n`reissue` reads it as one Escape, so the double-send rule has one home\nwhether the sequence stalls or is ended by a byte that cannot extend it.\n\n* ESC ESC that opens no key is one Escape, whatever follows it (rich-unfiled-791c.hyfo)\n\nA stalled ESC ESC O on a split host read as Escape, Alt+O, and ESC ESC\nbefore a sequence cut short as two Escapes, while ESC ESC before any\nother byte was one. reissue now reads ESC ESC as the one double-sent\nEscape at any length; only a pointer report keeps the second ESC."
+        }
+      ]
+    },
+    {
       "version": "pr-407",
       "ref": "refs/pull/407/merge",
       "sha": "f6416da219ea253a16eb7a75e74825331b98f7aa",
@@ -24,35 +39,6 @@
       ]
     },
     {
-      "version": "pr-405",
-      "ref": "refs/pull/405/merge",
-      "sha": "9c49ef94e5560e2109e4211c1fc18c87dea2c7c3",
-      "timestamp": "2026-10-16T22:36:04.290Z",
-      "commits": [
-        {
-          "sha": "9c49ef94e5560e2109e4211c1fc18c87dea2c7c3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T22:34:27Z",
-          "message": "Merge d89bce6e8ff48b7af8c13469d269a40d05de2e4c into 542a093bdd88aff75a63a19756138cd5822ceed3\n"
-        },
-        {
-          "sha": "d89bce6e8ff48b7af8c13469d269a40d05de2e4c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T16:34:22-06:00",
-          "message": "ESC ESC that opens no key is one Escape, whatever follows it (rich-unfiled-791c.hyfo)\n\nA stalled ESC ESC O on a split host read as Escape, Alt+O, and ESC ESC\nbefore a sequence cut short as two Escapes, while ESC ESC before any\nother byte was one. reissue now reads ESC ESC as the one double-sent\nEscape at any length; only a pointer report keeps the second ESC.\n"
-        },
-        {
-          "sha": "ad2f9b332a30597c3b9fded304c6058b798ff705",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T16:25:17-06:00",
-          "message": "A split host holds ESC ESC for the byte that decides it (rich-unfiled-791c.hyfo)\n\nmacOS Terminal sends Option+Up as `ESC ESC [ A`. On a split host a read\nthat ended after `ESC ESC` was consumed at once as one Escape, so no hold\nwas armed and the rest arrived as `[` and `A`.\n\n`ESC ESC` alone is now unfinished like `ESC [` alone: held for the escape\ndelay on a split host, settled at the chunk's end on a whole-keys host.\n`reissue` reads it as one Escape, so the double-send rule has one home\nwhether the sequence stalls or is ended by a byte that cannot extend it.\n"
-        }
-      ]
-    },
-    {
       "version": "pr-406",
       "ref": "refs/pull/406/merge",
       "sha": "92a81beafeb3874267f0de25f94609225e308061",
@@ -71,21 +57,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T16:26:49-06:00",
           "message": "A joiner is a seam and caps picked independently (rich-joiners-9ntp.13i)\n\nCellJoiner takes a JoinSeam (the middle) and a JoinCaps (the ends), each\nwith its glyph and ascii forms, so any seam ends in any caps: SEAMS.prism\nwith CAPS.bubble is one constructor call, and joinerNamed reads\n{ seam, caps } from config beside a JOINERS name. A seam cell may be\n{ cap: \"lead\" | \"tail\" }, so the seams that part their runs (capsule,\nwrapper, metro) end them in whatever caps they are joined with.\ngradientSeam replaces gradientJoiner.\n\nEvery JOINERS preset and the gradient render byte-identically to before\n(truecolor, 16-colour and ASCII, checked against a pre-change snapshot).\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "542a093bdd88aff75a63a19756138cd5822ceed3",
-      "timestamp": "2026-10-16T22:19:36.809Z",
-      "commits": [
-        {
-          "sha": "542a093bdd88aff75a63a19756138cd5822ceed3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T16:18:24-06:00",
-          "message": "The wheel keeps every word pair at its floor, at truecolor and 256 (rich-effects-wps6) (#404)\n\n* The wheel keeps every word pair at its floor, at truecolor and 256 (rich-effects-wps6)\n\nThe wheel turned hue at fixed OKLCH lightness and claimed that kept words\nreading as they did. It does not: equal lightness is not equal luminance\nacross hues, so truecolor pairs drifted under their floor (50 of 60 seeded\npairs), and at 256 colours each turned slot was rounded to the cube without\nits partner (the ticket's strip: 226 of 601 frames under 4.5:1).\n\nA colour now turns at its own relative luminance, so contrast is kept by\nconstruction, and is written as the colour nearest its turn whose luminance\nstays within bounds derived from every word pair it is drawn in: each pair's\ncontrast to spare above its floor is split between its turning sides. One\nwritten colour per segment per frame, so powerline caps still match their\ncells. The resting colour is always a candidate and always within bounds.\n\nColorSpec.indexed lists the colours a depth writes by index; matchOn scores\nthat list, so the wheel's candidates and the writer's rounding are one set.\n\n* A turned colour with no room for its rounding holds still, and the wheel's bounds are settled once (rich-effects-wps6)\n\nReview (high) of #404: at truecolor a fill bounded by a lighter and a\ndarker ink snapped between its turn and its rest frame to frame, since\nwhether hueTurned's two 8-bit colours fit its bounds changed with the hue.\nBounds narrower than ROUNDING_GAP, the widest those two can part, now\nhold the colour still at every t; at least that wide, one always fits.\nA wheel jump test at truecolor fails without it.\n\nmatchOn goes back to the memoised table matches; the wheel's bounds are\nmemoised per Drawn and its indexed candidates measured once per theme and\ndepth. contrastStop gives the stop scale one home beside luminanceRatio,\nsharing WCAG's flare. The docs' wheel paragraph says what the code keeps.\n\n* The wheel's stop is read off contrastRatio, so its playground card runs (rich-effects-wps6)\n\nThe effects playground runs effects.ts as a program on the published\nlibrary, and contrastStop was not a package export: the wheel card threw\nin turnedBounds. A colour's log contrast with black is its stop up to a\nconstant, and only gaps between stops are read, so contrastRatio, the one\nWCAG formula, serves; color.ts is back to master's but for indexed."
         }
       ]
     }
