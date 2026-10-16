@@ -4,10 +4,9 @@
  * and it sits where its first record does — under the prompt it answers.
  */
 import { describe, expect, it } from "vitest";
-import { MemoryFileSystem, type MemoryNode } from "../../../examples/_capabilities/memory-file-system.js";
+import { MemoryFileSystem } from "../../../examples/_capabilities/memory-file-system.js";
 import type { RawLine } from "../../../examples/claude-sessions/data/loader.js";
-import { parseBlocks, RECORD_TYPES } from "../../../examples/claude-sessions/data/parser.js";
-import { STAGED_HOME } from "../../../examples/claude-sessions/staging/projects.js";
+import { HIDDEN_RECORD_TYPES, parseBlocks } from "../../../examples/claude-sessions/data/parser.js";
 import { blockIndexOf, initialState, jumpToParent, selectedBlock, toggleHidden, type AppState } from "../../../examples/claude-sessions/state.js";
 
 function lines(records: readonly Record<string, unknown>[]): RawLine[] {
@@ -127,14 +126,13 @@ describe("parseBlocks", () => {
   });
 
   describe("the record types Claude Code writes", () => {
-    const hidden = [...RECORD_TYPES].flatMap(([type, use]) => (use === "hidden" ? [type] : []));
     const session = (types: readonly string[]) => lines([
       ...types.map((type, i) => ({ type, uuid: `h${i}`, parentUuid: i === 0 ? null : `h${i - 1}`, timestamp: "2026-10-16T22:00:00Z" })),
       { type: "user", uuid: "p0", parentUuid: `h${types.length - 1}`, timestamp: "2026-10-16T22:00:01Z", message: { role: "user", content: "Start." } },
     ]);
 
     it("opens a session on its first message, past every record it keeps out", () => {
-      expect(parseBlocks(session(hidden))).toMatchObject([{ kind: "human", text: "Start." }]);
+      expect(parseBlocks(session(HIDDEN_RECORD_TYPES))).toMatchObject([{ kind: "human", text: "Start." }]);
     });
 
     it("draws a kept-out record by its type, not as an error, when hidden records are shown", () => {
@@ -147,11 +145,9 @@ describe("parseBlocks", () => {
       expect(parseBlocks(read)[0]).toMatchObject({ kind: "error", errorType: "not-yet-written", source: [read[0]] });
     });
 
-    it("is a table that names every type the card's sessions were staged with", () => {
-      const files = (node: MemoryNode): string[] => (node.kind === "file" ? [node.content] : Object.values(node.children).flatMap(files));
-      const types = new Set(files(STAGED_HOME.root).flatMap((content) => content.split("\n").map((raw) => String((JSON.parse(raw) as { type?: unknown }).type))));
-      expect(types.size).toBeGreaterThan(0);
-      expect([...types].filter((type) => !RECORD_TYPES.has(type))).toEqual([]);
+    it("draws a known type it cannot read as malformed, not as unknown", () => {
+      const read = lines([{ type: "user", uuid: "u0", parentUuid: null, timestamp: "2026-10-16T22:00:00Z" }]);
+      expect(parseBlocks(read)).toMatchObject([{ kind: "error", errorType: "user", text: "(user record without a message)", source: [read[0]] }]);
     });
   });
 });
