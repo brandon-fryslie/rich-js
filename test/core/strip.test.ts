@@ -5,10 +5,16 @@ import {
   JOINERS,
   joinerNamed,
   SEAM_MIN_DELTA_E,
-  gradientJoiner,
+  gradientSeam,
+  SEAMS,
+  CAPS,
   colorsOwnedBy,
   type JoinCell,
-  type JoinShape,
+  type JoinSeam,
+  type JoinCaps,
+  type SeamForm,
+  type CapsForm,
+  type JoinerSpec,
 } from "../../src/core/strip.js";
 import { arrows } from "./arrows.js";
 import { Style, Theme } from "../../src/core/style.js";
@@ -414,12 +420,13 @@ describe("JOINERS.plain", () => {
   });
 });
 
-describe("gradientJoiner", () => {
+describe("gradientSeam", () => {
+  const ramp = (steps?: number) => new CellJoiner(gradientSeam(steps), CAPS.flat);
   const FF0000 = cell(" a ", "on #ff0000");
   const BLUE00FF = cell(" b ", "on #0000ff");
 
   it("emits half-block cells carrying two colour samples each", () => {
-    const strip = new Strip([FF0000, BLUE00FF], gradientJoiner(3));
+    const strip = new Strip([FF0000, BLUE00FF], ramp(3));
     const segs = render(strip);
     expect(segs.map((s) => s.text)).toEqual([" a ", "▌", "▌", "▌", " b "]);
     const grad = segs.slice(1, 4);
@@ -440,18 +447,18 @@ describe("gradientJoiner", () => {
   });
 
   it("renders empty at endpoints", () => {
-    const strip = new Strip([FF0000], gradientJoiner(4));
+    const strip = new Strip([FF0000], ramp(4));
     expect(render(strip).map((s) => s.text)).toEqual([" a "]);
   });
 
   it("renders empty when an item lacks an edge bgcolor", () => {
     const noBg = cell(" x ", "white");
-    const strip = new Strip([FF0000, noBg], gradientJoiner(2));
+    const strip = new Strip([FF0000, noBg], ramp(2));
     expect(render(strip).map((s) => s.text)).toEqual([" a ", " x "]);
   });
 
   it("ramps between the shades a theme draws its named neighbours in, in export", () => {
-    const strip = new Strip([cell(" a ", "white on blue"), cell(" b ", "white on red")], gradientJoiner(2));
+    const strip = new Strip([cell(" a ", "white on blue"), cell(" b ", "white on red")], ramp(2));
     const [row] = exportLines(render(strip), ATOM_ONE_DARK);
     const grounds = row!.map((run) => run.look.background as ColorRgba);
     const blue = ATOM_ONE_DARK.ansiColors.get(4);
@@ -462,12 +469,12 @@ describe("gradientJoiner", () => {
   });
 
   it("draws nothing beside a default ground, which is no colour to ramp from", () => {
-    const strip = new Strip([cell(" a ", "white on default"), cell(" b ", "white on red")], gradientJoiner(1));
+    const strip = new Strip([cell(" a ", "white on default"), cell(" b ", "white on red")], ramp(1));
     expect(render(strip).map((s) => s.text)).toEqual([" a ", " b "]);
   });
 
   it("ramps between translucent grounds as their cells draw them", () => {
-    const strip = new Strip([cell(" a ", "white on #ffffff80"), cell(" b ", "white on #ff0000")], gradientJoiner(1));
+    const strip = new Strip([cell(" a ", "white on #ffffff80"), cell(" b ", "white on #ff0000")], ramp(1));
     const [, join] = render(strip);
     const drawn = join!.style!.drawnColors();
     const seen = new ColorRgba(255, 255, 255, 128 / 255).compositeOver(new ColorRgba(0, 0, 0));
@@ -477,7 +484,7 @@ describe("gradientJoiner", () => {
   });
 
   it("defaults to steps=4", () => {
-    const strip = new Strip([FF0000, BLUE00FF], gradientJoiner());
+    const strip = new Strip([FF0000, BLUE00FF], ramp());
     const segs = render(strip);
     expect(segs.map((s) => s.text)).toEqual([" a ", "▌", "▌", "▌", "▌", " b "]);
   });
@@ -574,7 +581,7 @@ describe("Strip measure", () => {
     ["JOINERS.powerline", JOINERS.powerline],
     ["JOINERS.capsule", JOINERS.capsule],
     ["JOINERS.plain", JOINERS.plain],
-    ["gradientJoiner(3)", gradientJoiner(3)],
+    ["gradientSeam(3)", new CellJoiner(gradientSeam(3), CAPS.flat)],
   ])("measures at the width it draws, not the width offered, with a %s", (_name, joiner) => {
     const strip = new Strip([RED, BLUE, GREEN], joiner);
     const { maximum } = Measurement.get(UNBOUNDED, strip);
@@ -615,8 +622,11 @@ describe("CellJoiner", () => {
   const LEFT_BG = { edge: "left", part: "bg" } as const;
   const RIGHT_BG = { edge: "right", part: "bg" } as const;
   const arrow: JoinCell = { glyph: ">", fg: LEFT_BG, bg: RIGHT_BG };
-  const shape = (parts: Partial<JoinShape>): JoinShape => ({ seam: [arrow], divider: [arrow], lead: [], tail: [], ...parts });
-  const joiner = (parts: Partial<JoinShape>) => new CellJoiner(shape(parts), shape({}));
+  const seamForm = (form: Partial<SeamForm> = {}): SeamForm => ({ seam: [arrow], divider: [arrow], ...form });
+  const capsForm = (form: Partial<CapsForm> = {}): CapsForm => ({ lead: [], tail: [], ...form });
+  // Every part named in the glyph form; the ascii form plain arrows, flat.
+  const joiner = ({ lead = [], tail = [], ...seam }: Partial<SeamForm & CapsForm>) =>
+    new CellJoiner({ glyph: seamForm(seam), ascii: seamForm() }, { glyph: capsForm({ lead, tail }), ascii: capsForm() });
 
   it("draws ground as the fg in reverse video: SGR 7, the fg the cell's bg colour, no bg", () => {
     const lead = render(new Strip([RED], JOINERS.powerline))[0]!;
@@ -663,25 +673,28 @@ describe("CellJoiner", () => {
 
   it("keeps a frozen copy, so the caller's shape cannot change it afterwards", () => {
     const seam: JoinCell[] = [arrow];
-    const j = new CellJoiner(shape({ seam, divider: seam }), shape({}));
+    const j = joiner({ seam, divider: seam });
     seam.push(arrow);
     expect(render(new Strip([RED, BLUE], j)).map((s) => s.text)).toEqual([" red ", ">", " blue "]);
-    expect(Object.isFrozen(JOINERS.powerline.shape.seam[0])).toBe(true);
+    expect(Object.isFrozen(JOINERS.powerline.seam.glyph.seam[0])).toBe(true);
+    expect(Object.isFrozen(SEAMS.prism.glyph.seam[0])).toBe(true);
+    expect(Object.isFrozen(CAPS.bubble.glyph.lead[0])).toBe(true);
   });
 
   it("reads which neighbours need a ground off the form it draws", () => {
     // The glyph seam names no neighbour; the ascii seam needs both grounds, so
     // in ASCII a groundless neighbour is an endpoint.
     const plain: JoinCell = { glyph: "│", fg: { role: "strip.separator" }, bg: "ground" };
-    const glyph: JoinShape = { seam: [plain], divider: [plain], lead: [], tail: [] };
-    const ascii: JoinShape = { seam: [arrow], divider: [arrow], lead: [{ glyph: "<", fg: RIGHT_BG, bg: "ground" }], tail: [] };
-    const j = new CellJoiner(glyph, ascii);
+    const j = new CellJoiner(
+      { glyph: seamForm({ seam: [plain], divider: [plain] }), ascii: seamForm() },
+      { glyph: capsForm(), ascii: capsForm({ lead: [{ glyph: "<", fg: RIGHT_BG, bg: "ground" }] }) },
+    );
     const text = render(new Strip([cell("a", ""), cell("b", "on blue")], j), { ...OPTIONS, asciiOnly: true }).map((s) => s.text).join("");
     expect(text).toBe("a<b");
   });
 
   it("refuses a shape that is not cells, naming the part", () => {
-    expect(() => new CellJoiner({ seam: [arrow], divider: [arrow], tail: [] } as unknown as JoinShape, shape({}))).toThrow(/glyph lead is not a list of cells/);
+    expect(() => new CellJoiner({ glyph: seamForm(), ascii: seamForm() }, { glyph: { tail: [] }, ascii: capsForm() } as unknown as JoinCaps)).toThrow(/glyph lead is not a list of cells/);
     expect(() => joiner({ seam: [{ ...arrow, glyph: 5 as unknown as string }] })).toThrow(/seam\[0\] has a glyph that is neither/);
     expect(() => joiner({ seam: [{ ...arrow, glyph: { oneOf: "ab" as unknown as string[] } }] })).toThrow(/seam\[0\] has a glyph that is neither/);
   });
@@ -690,12 +703,12 @@ describe("CellJoiner", () => {
     // The seam names no neighbour; the lead paints the right ground. A
     // groundless right item gets no lead, so no colourless reversed block.
     const bar: JoinCell = { glyph: "│", fg: { role: "strip.separator" }, bg: "ground" };
-    const j = new CellJoiner({ seam: [bar], divider: [bar], lead: [{ glyph: "\ue0b0", fg: "ground", bg: RIGHT_BG }], tail: [] }, shape({}));
+    const j = joiner({ seam: [bar], divider: [bar], lead: [{ glyph: "\ue0b0", fg: "ground", bg: RIGHT_BG }] });
     expect(render(new Strip([cell("a", "")], j)).map((s) => s.text)).toEqual(["a"]);
   });
 
   it("refuses an ascii form that is not ASCII", () => {
-    expect(() => new CellJoiner(shape({}), shape({ seam: [{ ...arrow, glyph: "\ue0b0" }], divider: [{ ...arrow, glyph: "\ue0b0" }] }))).toThrow(
+    expect(() => new CellJoiner({ glyph: seamForm(), ascii: seamForm({ seam: [{ ...arrow, glyph: "\ue0b0" }], divider: [{ ...arrow, glyph: "\ue0b0" }] }) }, CAPS.flat)).toThrow(
       /ascii seam\[0\] is not ASCII/,
     );
   });
@@ -704,7 +717,8 @@ describe("CellJoiner", () => {
 describe("oneOf picks per seam", () => {
   const CHOICES = ["a", "b", "c", "d"];
   const pick: JoinCell = { glyph: { oneOf: CHOICES }, fg: { role: "strip.separator" }, bg: "ground" };
-  const varied = new CellJoiner({ seam: [pick], divider: [pick], lead: [], tail: [] }, { seam: [pick], divider: [pick], lead: [], tail: [] });
+  const picks: SeamForm = { seam: [pick], divider: [pick] };
+  const varied = new CellJoiner({ glyph: picks, ascii: picks }, CAPS.flat);
   // Every item the same colour, so nothing but the seam's index can tell two seams apart.
   const items = Array.from({ length: 16 }, () => cell("-", "white on red"));
   const seams = (options: RenderOptions = OPTIONS) => render(new Strip(items, varied), options).filter((s) => s.text !== "-").map((s) => s.text);
@@ -717,7 +731,9 @@ describe("oneOf picks per seam", () => {
   });
 
   it("picks a wrap's tail and lead independently though they share an index", () => {
-    const caps = new CellJoiner({ seam: [], divider: [], lead: [pick], tail: [pick] }, { seam: [], divider: [], lead: [pick], tail: [pick] });
+    const none: SeamForm = { seam: [], divider: [] };
+    const ends: CapsForm = { lead: [pick], tail: [pick] };
+    const caps = new CellJoiner({ glyph: none, ascii: none }, { glyph: ends, ascii: ends });
     const differ = Array.from({ length: 16 }, (_, index) => {
       const lead = [...caps.join(null, items[0]!, { index }).render(OPTIONS)][0]!.text;
       const tail = [...caps.join(items[0]!, null, { index }).render(OPTIONS)][0]!.text;
@@ -755,8 +771,8 @@ describe("JOINERS, the bundled definitions", () => {
   });
 
   it.each(["powerline", "slant", "backslant", "flame", "pixel", "ice", "bubble"])("%s leads with its seam glyph reversed out of the terminal's ground", (name) => {
-    const { seam, lead } = joinerNamed(name).shape;
-    expect(lead).toEqual([{ glyph: seam[0]!.glyph, fg: "ground", bg: { edge: "right", part: "bg" } }]);
+    const { seam, caps } = joinerNamed(name);
+    expect(caps.glyph.lead).toEqual([{ glyph: (seam.glyph.seam[0] as JoinCell).glyph, fg: "ground", bg: { edge: "right", part: "bg" } }]);
     const [leadSeg] = render(new Strip([RED], joinerNamed(name)));
     expect(leadSeg!.style?.reverse).toBe(true);
     expect(leadSeg!.style?.color?.name).toBe("red");
@@ -764,7 +780,7 @@ describe("JOINERS, the bundled definitions", () => {
 
   it("prism steps through the grounds' thirds in three arrows", () => {
     const segs = joinText(render(new Strip([RED, BLUE], JOINERS.prism)), [RED, BLUE]);
-    expect(segs.slice(1, 4)).toEqual(["", "", ""]);
+    expect(segs.slice(1, 4)).toEqual(["\ue0b0", "\ue0b0", "\ue0b0"]);
     const seam = render(new Strip([RED, BLUE], JOINERS.prism)).slice(2, 5);
     expect(seam[0]!.style?.bgcolor).toEqual(seam[1]!.style?.color);
     expect(seam[1]!.style?.bgcolor).toEqual(seam[2]!.style?.color);
@@ -772,9 +788,9 @@ describe("JOINERS, the bundled definitions", () => {
   });
 
   it("wrapper and metro close and open each run over the terminal's ground", () => {
-    expect(joinText(render(new Strip([RED, BLUE], JOINERS.wrapper)), [RED, BLUE])).toEqual(["", "", "", ""]);
+    expect(joinText(render(new Strip([RED, BLUE], JOINERS.wrapper)), [RED, BLUE])).toEqual(["\ue0b2", "\ue0b0", "\ue0b2", "\ue0b0"]);
     const metro = render(new Strip([RED, BLUE], JOINERS.metro));
-    expect(joinText(metro, [RED, BLUE])).toEqual(["", "", "──", "", ""]);
+    expect(joinText(metro, [RED, BLUE])).toEqual(["\ue0b6", "\ue0b4", "──", "\ue0b6", "\ue0b4"]);
     expect(metro.every((s) => s.text === " red " || s.text === " blue " || s.style?.bgcolor === undefined)).toBe(true);
   });
 
@@ -829,8 +845,8 @@ describe("JOINERS, the bundled definitions", () => {
   });
 
   it("measures translucent ink composited over its own cell's ground, as drawn", () => {
-    const ink: JoinShape = { seam: [{ glyph: "x", fg: { edge: "left", part: "fg" }, bg: { edge: "right", part: "bg" } }], divider: [{ glyph: "|", fg: { edge: "left", part: "fg" }, bg: { edge: "right", part: "bg" } }], lead: [], tail: [] };
-    const j = new CellJoiner(ink, ink);
+    const ink: SeamForm = { seam: [{ glyph: "x", fg: { edge: "left", part: "fg" }, bg: { edge: "right", part: "bg" } }], divider: [{ glyph: "|", fg: { edge: "left", part: "fg" }, bg: { edge: "right", part: "bg" } }] };
+    const j = new CellJoiner({ glyph: ink, ascii: ink }, CAPS.flat);
     const faint = cell(" a ", "#ffffff04 on #3a3f58");
     const solid = cell(" a ", "#ffffff on #3a3f58");
     const b = cell(" b ", "white on #3a3f58");
@@ -843,5 +859,95 @@ describe("JOINERS, the bundled definitions", () => {
     const tears = render(new Strip(items, JOINERS.torn)).filter((s) => s.text !== " red " && s.text !== " blue ").map((s) => s.text);
     expect(tears).toHaveLength(11);
     expect(new Set(tears).size).toBeGreaterThan(1);
+  });
+});
+
+describe("a seam ends in any caps", () => {
+  const ASCII: RenderOptions = { ...OPTIONS, asciiOnly: true };
+  const LEFT_BG = { edge: "left", part: "bg" } as const;
+  const cellsWidth = (cells: readonly JoinCell[]): number => cells.reduce((w, c) => w + cellLen(typeof c.glyph === "string" ? c.glyph : c.glyph.oneOf[0]!), 0);
+  const drawnWidth = (joiner: CellJoiner, left: RichText | null, right: RichText | null, index: number, options: RenderOptions): number =>
+    [...joiner.join(left, right, { index }).render(options)].reduce((w, s) => w + s.cellLength, 0);
+  const PAIRS = (Object.keys(SEAMS) as (keyof typeof SEAMS)[]).flatMap((seam) => (Object.keys(CAPS) as (keyof typeof CAPS)[]).map((caps) => [seam, caps] as const));
+
+  it.each(PAIRS)("%s ended in %s draws every seam at one width and its caps at the ends, in either form", (seam, caps) => {
+    const joiner = joinerNamed({ seam, caps });
+    const items = [RED, BLUE, GREEN, RED, BLUE];
+    for (const [options, form] of [[OPTIONS, "glyph"], [ASCII, "ascii"]] as const) {
+      const seams = items.slice(1).map((right, i) => drawnWidth(joiner, items[i]!, right, i + 1, options));
+      // One width, which may be none: `wrapper` is the caps touching, and
+      // `flat` caps are no cells, so the runs meet edge to edge.
+      expect(new Set(seams).size).toBe(1);
+      expect(drawnWidth(joiner, null, RED, 0, options)).toBe(cellsWidth(CAPS[caps][form].lead));
+      expect(drawnWidth(joiner, BLUE, null, items.length, options)).toBe(cellsWidth(CAPS[caps][form].tail));
+    }
+    expect(render(new Strip(items, joiner), ASCII).map((s) => s.text).join("")).toMatch(/^[\x20-\x7e]*$/);
+  });
+
+  it("prism ended in bubble caps opens and closes in the bubble, stepping through the thirds between", () => {
+    const segs = render(new Strip([RED, BLUE], joinerNamed({ seam: "prism", caps: "bubble" })));
+    expect(segs.map((s) => s.text)).toEqual(["\ue0b4", " red ", "\ue0b0", "\ue0b0", "\ue0b0", " blue ", "\ue0b4"]);
+    expect(segs[0]!.style?.reverse).toBe(true);
+    expect(segs[0]!.style?.color?.name).toBe("red");
+    expect(segs.at(-1)!.style?.color?.name).toBe("blue");
+    expect(segs.at(-1)!.style?.bgcolor).toBeUndefined();
+  });
+
+  it("a seam that parts its runs ends each in the caps it is joined with", () => {
+    const segs = render(new Strip([RED, BLUE], new CellJoiner(SEAMS.capsule, CAPS.powerline)));
+    expect(segs.map((s) => s.text)).toEqual(["\ue0b0", " red ", "\ue0b0", " ", "\ue0b0", " blue ", "\ue0b0"]);
+    const [tail, , lead] = segs.slice(2, 5);
+    expect(tail!.style?.color?.name).toBe("red");
+    expect(tail!.style?.bgcolor).toBeUndefined();
+    expect(lead!.style?.reverse).toBe(true);
+    expect(lead!.style?.color?.name).toBe("blue");
+  });
+
+  it("ends a gradient ramp in the caps it is given", () => {
+    const segs = render(new Strip([cell(" a ", "on #ff0000"), cell(" b ", "on #0000ff")], new CellJoiner(gradientSeam(2), CAPS.capsule)));
+    expect(segs.map((s) => s.text)).toEqual(["\ue0b6", " a ", "▌", "▌", " b ", "\ue0b4"]);
+  });
+
+  it("holds a divider to the width of its seam under every caps, when the seam is parsed", () => {
+    const bar: JoinCell = { glyph: "|", fg: { role: "strip.separator" }, bg: "ground" };
+    const seamOf = (seam: SeamForm): JoinSeam => ({ glyph: seam, ascii: seam });
+    // As wide as the seam under one-cell tail caps, and no wider under any other.
+    const widerUnderFlat = seamOf({ seam: [{ cap: "tail" }], divider: [bar] });
+    expect(() => new CellJoiner(widerUnderFlat, CAPS.capsule)).toThrow(/^seam: glyph divider is not the width of the seam under every caps$/);
+    const sameUnderAll = seamOf({ seam: [{ cap: "tail" }, { ...bar, glyph: " " }], divider: [{ cap: "tail" }, bar] });
+    for (const caps of Object.values(CAPS)) expect(() => new CellJoiner(sameUnderAll, caps)).not.toThrow();
+  });
+
+  it("refuses a cap that is neither the lead nor the tail, or that draws cells of its own", () => {
+    const seam = { seam: [{ cap: "middle" }], divider: [] } as unknown as SeamForm;
+    expect(() => new CellJoiner({ glyph: seam, ascii: seam }, CAPS.flat)).toThrow(/^seam: glyph seam\[0\] names a cap that is neither lead nor tail: "middle"$/);
+    const tagged = { seam: [{ cap: "lead", glyph: ">", fg: LEFT_BG, bg: "ground" }], divider: [] } as unknown as SeamForm;
+    expect(() => new CellJoiner({ glyph: tagged, ascii: tagged }, CAPS.flat)).toThrow(/^seam: glyph seam\[0\] names a cap and draws cells of its own/);
+  });
+
+  it("refuses a seam or caps missing a form, naming which", () => {
+    expect(() => new CellJoiner({ glyph: SEAMS.plain.glyph } as unknown as JoinSeam, CAPS.flat)).toThrow(/^seam: has no ascii form$/);
+    expect(() => new CellJoiner(SEAMS.plain, { ascii: CAPS.flat.ascii } as unknown as JoinCaps)).toThrow(/^caps: has no glyph form$/);
+  });
+
+  it("draws a seam that needs no ground between items without one, whatever caps end it", () => {
+    const docs = cell("docs", "#38bdf8");
+    const guide = cell("guide", "#38bdf8");
+    const x = cell("x", "on red");
+    const text = (joiner: CellJoiner) => render(new Strip([docs, guide, x], joiner)).map((s) => s.text).join("");
+    for (const caps of Object.keys(CAPS)) expect(text(joinerNamed({ seam: "plain", caps }))).toContain("docs | guide | x");
+  });
+
+  it("joinerNamed reads a seam and caps named apart, and refuses a name either table lacks", () => {
+    const mixed = render(new Strip([RED, BLUE], joinerNamed({ seam: "torn", caps: "capsule" })));
+    expect(mixed[0]!.text).toBe("\ue0b6");
+    expect(() => joinerNamed({ seam: "prism", caps: "prism" })).toThrow(/no caps named "prism"; the caps are powerline, .*, flat/);
+    expect(() => joinerNamed({ seam: "toString", caps: "flat" })).toThrow(/no seam named "toString"; the seams are powerline, prism/);
+    expect(() => joinerNamed(null as unknown as JoinerSpec)).toThrow(/^a joiner is a name or \{ seam, caps \}, not null$/);
+  });
+
+  it("freezes the tables", () => {
+    expect(Object.isFrozen(SEAMS)).toBe(true);
+    expect(Object.isFrozen(CAPS)).toBe(true);
   });
 });

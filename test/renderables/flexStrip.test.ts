@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { arrows } from "../core/arrows.js";
-import { CellJoiner, type JoinCell, type JoinShape } from "../../src/core/strip.js";
+import { CAPS, CellJoiner, type JoinCell, type SeamForm } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
@@ -123,9 +123,9 @@ describe("FlexStrip", () => {
 describe("FlexStrip seam index", () => {
   it("gives each surviving seam the glyph it has unwrapped", () => {
     const pick: JoinCell = { glyph: { oneOf: ["a", "b", "c", "d"] }, fg: { role: "strip.separator" }, bg: "ground" };
-    const shape: JoinShape = { seam: [pick], divider: [pick], lead: [], tail: [] };
+    const seam: SeamForm = { seam: [pick], divider: [pick] };
     const items = Array.from({ length: 12 }, (_, i) => cell(String.fromCharCode(65 + i)));
-    const strip = new FlexStrip(items, { joiner: new CellJoiner(shape, shape) });
+    const strip = new FlexStrip(items, { joiner: new CellJoiner({ glyph: seam, ascii: seam }, CAPS.flat) });
     const [wide] = renderLines(strip, OPTS(200));
     // Each seam in a wrapped line sits between the same two letters, and no two seams share a pair,, so it
     // must read the same as in the unwrapped line.

@@ -190,11 +190,26 @@ export {
   Strip,
   CellJoiner,
   SEAM_MIN_DELTA_E,
+  SEAMS,
+  CAPS,
   JOINERS,
   joinerNamed,
-  gradientJoiner,
+  gradientSeam,
 } from "./core/strip.js";
-export type { StyledRenderable, Joiner, JoinContext, JoinShape, JoinCell, CellColor, Paint } from "./core/strip.js";
+export type {
+  StyledRenderable,
+  Joiner,
+  JoinContext,
+  JoinSeam,
+  JoinCaps,
+  SeamForm,
+  CapsForm,
+  SeamCell,
+  JoinCell,
+  CellColor,
+  Paint,
+  JoinerSpec,
+} from "./core/strip.js";
 
 // renderToString — stateless one-shot emission
 export {

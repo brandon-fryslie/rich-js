@@ -12,13 +12,15 @@ import {
   Strip,
   CellJoiner,
   JOINERS,
+  SEAMS,
+  CAPS,
   joinerNamed,
   SEAM_MIN_DELTA_E,
-  gradientJoiner,
+  gradientSeam,
   Style,
   RichText,
   FlexStrip,
-  type JoinShape,
+  type JoinSeam,
 } from "@promptctl/rich-js";
 import { hostEnvironment, type TerminalHost } from "@promptctl/rich-js/host";
 
@@ -59,26 +61,27 @@ export function runDemo(host: TerminalHost): void {
     `JOINERS.powerline, shared background (divider below ΔE ${SEAM_MIN_DELTA_E})`,
     new Strip([...cells, ...shared], JOINERS.powerline),
   );
-  // A joiner is a value: one the table does not bundle, two arrows meeting
+  // The middle and the ends are picked apart: any seam ends in any caps.
+  showcase("SEAMS.prism + CAPS.bubble", new Strip(cells, new CellJoiner(SEAMS.prism, CAPS.bubble)));
+  // A seam is a value: one the table does not bundle, two arrows meeting
   // point to point, the right ground reaching back into the left.
-  const meet: JoinShape = {
-    ...JOINERS.powerline.shape,
-    seam: [
-      { glyph: "\ue0b2", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } },
-      { glyph: "\ue0b0", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } },
-    ],
-    divider: [
-      { glyph: "\ue0b3", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
-      { glyph: "\ue0b1", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
-    ],
+  const meet: JoinSeam = {
+    glyph: {
+      seam: [
+        { glyph: "\ue0b2", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } },
+        { glyph: "\ue0b0", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } },
+      ],
+      divider: [
+        { glyph: "\ue0b3", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
+        { glyph: "\ue0b1", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
+      ],
+    },
+    ascii: {
+      seam: [{ glyph: "<>", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } }],
+      divider: [{ glyph: "<>", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } }],
+    },
   };
-  const meetAscii: JoinShape = {
-    ...JOINERS.powerline.ascii,
-    seam: [{ glyph: "<>", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } }],
-    divider: [{ glyph: "<>", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } }],
-  };
-  showcase("CellJoiner, arrows meeting", new Strip([...cells, ...shared], new CellJoiner(meet, meetAscii)));
-  showcase("gradientJoiner(6)", new Strip(cells, gradientJoiner(6)));
+  showcase("arrows meeting + CAPS.powerline", new Strip([...cells, ...shared], new CellJoiner(meet, CAPS.powerline)));
 
   // "Unbounded" gradient: fill the row between two anchor cells with as many
   // steps as the terminal can show.
@@ -87,8 +90,8 @@ export function runDemo(host: TerminalHost): void {
   const anchorWidth = " #ff0066 ".length + " #00ccff ".length;
   const fillSteps = Math.max(1, consoleOut.width - anchorWidth);
   showcase(
-    `gradientJoiner(${fillSteps}), full-width fill`,
-    new Strip([LEFT_ANCHOR, RIGHT_ANCHOR], gradientJoiner(fillSteps)),
+    `gradientSeam(${fillSteps}) + CAPS.flat, full-width fill`,
+    new Strip([LEFT_ANCHOR, RIGHT_ANCHOR], new CellJoiner(gradientSeam(fillSteps), CAPS.flat)),
   );
 
   const PALETTE = [

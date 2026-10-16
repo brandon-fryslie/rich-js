@@ -55,14 +55,40 @@ The strip itself ends its own line, the same way [`Group`](./group)'s other chil
 
 It measures as the one row it draws, and since that row never wraps, its width is both its minimum and its maximum. A `Table` cell, an `Align` or a `Columns` holding a strip sizes it to that row: not to all the width it was offered, and never narrower than the row, which would crop off its last items.
 
-## One joiner, many shapes
+## A seam and its caps
 
-Every built-in joiner is a `CellJoiner`, and what tells them apart is data: a `JoinShape` naming the cells drawn at each kind of join.
+Every built-in joiner is a `CellJoiner`, and what tells them apart is data, in two halves picked independently of each other:
+
+- a `JoinSeam`, the middle: what is drawn between two neighbours;
+- a `JoinCaps`, the ends: what is drawn where a run of colour begins and ends.
+
+Any seam ends in any caps. `SEAMS` and `CAPS` are the bundled halves by name, and `new CellJoiner(seam, caps)` puts two of them together:
+
+```typescript
+import { CAPS, CellJoiner, SEAMS } from "@promptctl/rich-js";
+
+// prism's three stepping arrows between the cells, ended in bubble's caps.
+console.print(
+  new Strip(
+    [cell(" src ", "black on #a78bfa"), cell(" core ", "black on #f472b6"), cell(" strip.ts ", "black on #fbbf24")],
+    new CellJoiner(SEAMS.prism, CAPS.bubble),
+  ),
+);
+```
+
+A seam names the cells of two parts:
 
 - `seam` — between two neighbours.
 - `divider` — in the seam's place where the seam would not be seen: where every one of its cells draws its glyph in a colour indistinct from the cell's own background (below). It has the width of the seam.
+
+The caps name two more:
+
 - `lead` — where a run is entered from nothing.
 - `tail` — where a run leaves into nothing.
+
+A cell of a seam may also be `{ cap: "tail" }` or `{ cap: "lead" }`: the caps themselves standing in the seam, closing the run the seam leaves or opening the one it enters. That is how `SEAMS.capsule` parts two runs, a tail, a space and a lead, and ends each in whatever caps it is joined with: rounded with `CAPS.capsule`, arrows with `CAPS.powerline`.
+
+Each half holds two forms, `glyph` and `ascii`, and an [ASCII-only](./console) output draws the `ascii` form of both.
 
 A cell's `glyph` is a string, or `{ oneOf: [...] }`: a set of same-width glyphs, any of which may stand in the cell. Which one stands is picked from the join's place in the strip, so it holds still from frame to frame while the items before it stay put, and differs between seams, even seams between the same two colours.
 
@@ -75,56 +101,55 @@ A `JoinCell` is a glyph and the two colours it is drawn in, `fg` and `bg`. Each 
 
 Nobody knows the colour of `"ground"`, so it is never mixed, and a cell may put it on one side only. As a `bg` it leaves the terminal's background showing. As an `fg` the cell is drawn in reverse video (SGR 7), filled with its `bg` colour while the glyph's ink shows the terminal's background. So an inverted shape is the same glyph drawn the other way round, never a glyph of its own.
 
-A shape is checked once, when the joiner is built, and the constructor throws on any of these:
+A joiner is checked once, when it is built, and the constructor throws on any of these:
 
 - a cell with `"ground"` on both sides, or inside a `mix`;
 - a `lead` naming the `left` neighbour, or a `tail` naming the `right` one;
 - a `oneOf` glyph whose members differ in width;
-- a `divider` whose width differs from the `seam`'s;
-- a non-ASCII glyph in the `ascii` shape.
-
-The second argument is the `ascii` shape, drawn instead when the output is [ASCII-only](./console).
+- a `cap` other than `lead` or `tail`, or a cell that names a cap and draws a glyph too;
+- a `divider` whose width differs from the `seam`'s under any caps: the two must name each cap as many times and their own cells must be as wide.
+- a non-ASCII glyph in an `ascii` form.
 
 ```typescript
-import { CellJoiner, JOINERS, type JoinShape } from "@promptctl/rich-js";
+import { CAPS, CellJoiner, type JoinSeam } from "@promptctl/rich-js";
 
-// One the table does not bundle: two arrows meeting point to point, the
-// right background reaching back into the left.
-const meet: JoinShape = {
-  ...JOINERS.powerline.shape,
-  seam: [
-    { glyph: "\ue0b2", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } },
-    { glyph: "\ue0b0", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } },
-  ],
-  divider: [
-    { glyph: "\ue0b3", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
-    { glyph: "\ue0b1", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
-  ],
-};
-const meetAscii: JoinShape = {
-  ...JOINERS.powerline.ascii,
-  seam: [{ glyph: "<>", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } }],
-  divider: [{ glyph: "<>", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } }],
+// A seam the table does not bundle: two arrows meeting point to point, the
+// right background reaching back into the left. Ended in powerline's caps.
+const meet: JoinSeam = {
+  glyph: {
+    seam: [
+      { glyph: "\ue0b2", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } },
+      { glyph: "\ue0b0", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } },
+    ],
+    divider: [
+      { glyph: "\ue0b3", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
+      { glyph: "\ue0b1", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
+    ],
+  },
+  ascii: {
+    seam: [{ glyph: "<>", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } }],
+    divider: [{ glyph: "<>", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } }],
+  },
 };
 
 console.print(
   new Strip(
     [cell(" build ", "#083344 on #22d3ee"), cell(" test ", "#4a044e on #e879f9")],
-    new CellJoiner(meet, meetAscii),
+    new CellJoiner(meet, CAPS.powerline),
   ),
 );
 ```
 
 ### Which part a join draws
 
-Each join looks at its two neighbours. A neighbour is missing at the strip's ends. It also counts as missing when any part of the shape paints with its background and it has none to paint: no `bgcolor`, or `… on default`, which is the transparent terminal default.
+Each join looks at its two neighbours. A neighbour is missing at the strip's ends. It also counts as missing when the seam paints with its background anywhere and it has none to paint: no `bgcolor`, or `… on default`, which is the transparent terminal default.
 
 - Both present: the `seam`, or the `divider` where every seam cell's glyph is indistinct from its background.
-- Only the right: the `lead`.
-- Only the left: the `tail`.
+- Only the right: the `lead`, if it has the background the `lead` paints with.
+- Only the left: the `tail`, if it has the background the `tail` paints with.
 - Neither: nothing.
 
-So a coloured run is capped the same way wherever it sits. A colourless item before a coloured one leads the coloured run in, exactly as the strip's start does. A coloured item before a colourless one tails out, and two colourless neighbours join with nothing. A shape that paints with neither neighbour's background, like `JOINERS.plain`, joins colourless items too.
+So a coloured run is capped the same way wherever it sits. A colourless item before a coloured one leads the coloured run in, exactly as the strip's start does. A coloured item before a colourless one tails out, and two colourless neighbours join with nothing. A seam that paints with neither neighbour's background, like `SEAMS.plain`, joins colourless items too, whatever caps end it.
 
 "Indistinct" is perceptual: two colours closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) are one. Each seam cell is measured, not the two neighbours' backgrounds, so `prism`, whose arrows each step a third of the way between them, divides where a one-cell arrow would still show. A cell drawn on the terminal's own background is always seen. Colours are measured as drawn. A glyph's translucent colour is flattened onto its cell's background, and a translucent background onto the render substrate, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`), so two colours that 256 colours or ANSI draw as one entry are indistinct, however far apart they were computed. Named or indexed colours have no RGB value to measure, so two of them are one only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
 
@@ -132,7 +157,18 @@ A neighbour's background is read as drawn too, flattened onto the render substra
 
 ## Built-in joiners
 
-`JOINERS` is the table of bundled joiners, by name. A joiner named in a consumer's config is read with `joinerNamed(name)`, which throws on a name the table lacks. Each is a `CellJoiner` with its ASCII form, and its `shape` is there to build a variant from, as `meet` above is built from `powerline`.
+`JOINERS` is the table of bundled joiners, by name, each a seam from `SEAMS` ended in caps from `CAPS`. Every seam in `SEAMS` has the name of the joiner it comes from, so `SEAMS.prism` is the middle of `JOINERS.prism`.
+
+A joiner named in a consumer's config is read with `joinerNamed`. It takes a name from `JOINERS`, or a seam and caps named apart, and throws on a name its table lacks:
+
+```typescript
+// JOINERS.prism, then SEAMS.prism ended in CAPS.capsule.
+for (const spec of ["prism", { seam: "prism", caps: "capsule" }] as const) {
+  console.print(
+    new Strip([cell(" src ", "black on #a78bfa"), cell(" core ", "black on #f472b6")], joinerNamed(spec)),
+  );
+}
+```
 
 ### `JOINERS.powerline`
 
@@ -199,14 +235,12 @@ console.print(
 
 ### The rest of the table
 
-- `prism` — three arrows stepping through the two thirds between the backgrounds; ends as `powerline`.
-- `slant` (U+E0BC), `backslant` (U+E0B8), `flame` (U+E0C0), `pixel` (U+E0C4), `ice` (U+E0C8), `bubble` (U+E0B4) — `powerline` with their glyph, the lead included.
-- `wrapper` — `capsule`'s shape in arrows: each run opened by U+E0B2 and closed by U+E0B0, touching.
-- `metro` — `capsule` with a two-cell rail between pills, in the theme's `strip.rail` colour.
-- `stitch` — a dotted rule in the left item's text colour over the midpoint of the two backgrounds.
-- `torn` — a ragged quadrant pair in the left background over that midpoint; which pair is picked per seam. Its divider is the same tear in the left item's text colour.
-
-`stitch` and `torn` draw nothing at the ends, where there is no second background to meet.
+- `prism` — three arrows stepping through the two thirds between the backgrounds; ended in `CAPS.powerline`.
+- `slant` (U+E0BC), `backslant` (U+E0B8), `flame` (U+E0C0), `pixel` (U+E0C4), `ice` (U+E0C8), `bubble` (U+E0B4) — `powerline` with their glyph, seam and caps alike.
+- `wrapper` — the caps touching, ended in `CAPS.wrapper`: each run opened by U+E0B2 and closed by U+E0B0.
+- `metro` — the caps with a two-cell rail between them, in the theme's `strip.rail` colour; ended in `CAPS.capsule`.
+- `stitch` — a dotted rule in the left item's text colour over the midpoint of the two backgrounds; ended in `CAPS.flat`.
+- `torn` — a ragged quadrant pair in the left background over that midpoint; which pair is picked per seam. Its divider is the same tear in the left item's text colour. Ended in `CAPS.flat`.
 
 ```typescript
 for (const name of ["prism", "bubble", "metro", "torn"] as const) {
@@ -219,9 +253,31 @@ for (const name of ["prism", "bubble", "metro", "torn"] as const) {
 }
 ```
 
-### `gradientJoiner(steps)`
+### Caps
 
-Interpolates colours between adjacent items' backgrounds. Useful for fade transitions, bandwidth meters, and decorative bars.
+`CAPS` holds the ends, and any of them ends any seam:
+
+- `powerline`, `slant`, `backslant`, `flame`, `pixel`, `ice`, `bubble` — the joiner's glyph reversed out of the terminal's background at the lead, a notch, and drawn over that background at the tail, so a run reads as one shape pointing the same way end to end. ASCII opens each run flat.
+- `capsule` — rounded ends pointing out: U+E0B6 opens a run and U+E0B4 closes it, each in the run's background over the terminal's. ASCII draws `(` and `)`.
+- `wrapper` — arrows pointing out: U+E0B2 opens and U+E0B0 closes. ASCII draws `<` and `>`.
+- `flat` — nothing; a run's background ends square.
+
+The seams that part their runs, `capsule`, `wrapper` and `metro`, draw these same caps in the middle of the strip, so the ends picked for a strip are the ends of every run in it.
+
+```typescript
+for (const [seam, caps] of [["prism", "bubble"], ["prism", "capsule"], ["capsule", "powerline"], ["torn", "wrapper"]] as const) {
+  console.print(
+    new Strip(
+      [cell(" src ", "black on #a78bfa"), cell(" core ", "black on #f472b6"), cell(" strip.ts ", "black on #fbbf24")],
+      new CellJoiner(SEAMS[seam], CAPS[caps]),
+    ),
+  );
+}
+```
+
+### `gradientSeam(steps)`
+
+A seam that interpolates colours between adjacent items' backgrounds. Useful for fade transitions, bandwidth meters, and decorative bars.
 
 ```typescript
 console.print(
@@ -231,20 +287,20 @@ console.print(
       cell(" warm ", "bold #ffffff on #a21caf"),
       cell(" hot ", "bold #ffffff on #dc2626"),
     ],
-    gradientJoiner(4),
+    new CellJoiner(gradientSeam(4), CAPS.flat),
   ),
 );
 ```
 
 - The seam is `steps` cells (4 by default), each the half-block glyph `▌` (U+258C), so one cell carries **two** colour samples: `fg` for the left half and `bg` for the right. `steps` cells therefore produce `2 × steps` samples between the two anchors, doubling the perceived smoothness compared with one colour per cell at the same width. ASCII draws a space, keeping only the backgrounds.
 - Every sample is a `mix`, taken at a midpoint, so no sample ever equals either anchor.
-- Endpoints, and items whose `bgcolor` is absent or `default`, render empty, because a gradient needs two colours to ramp between.
+- A gradient needs two colours to ramp between, so beside an item whose `bgcolor` is absent or `default` the join is an endpoint, and draws the caps the ramp is ended in: nothing, with `CAPS.flat`.
 - A named background (`blue`, `color(4)`) is the terminal theme's own shade, so each sample is a `blend(…)` colour of the two anchors rather than a fixed RGB. An export under a theme draws the ramp from that theme's `blue` to its `red`, the shades the anchors themselves are drawn in. A live terminal is sent the standard-table RGB, because a render cannot know the terminal's palette.
 - Best on truecolor. On 256-colour terminals the colour-system downgrade still works, but adjacent samples quantize to the same palette index, so neighbouring half-cells collapse into one colour and the gradient visibly stripes.
 
 ## Custom joiners
 
-A shape covers any join drawn as a fixed run of cells. Underneath it, a joiner is a pure function `(leftItem | null, rightItem | null, { index }) -> Renderable`, and implementing that interface defines a joiner no shape can express. `index` counts joins from the strip's start: the join before item `i` is `i`, and the end after the last of `n` items is `n`. Where a `FlexStrip` wraps, the end cap and the next line's lead both carry the index of the seam they replace, so every seam keeps its index however the strip wraps.
+A seam and its caps cover any join drawn as fixed runs of cells. Underneath them, a joiner is a pure function `(leftItem | null, rightItem | null, { index }) -> Renderable`, and implementing that interface defines a joiner no seam and caps can express. `index` counts joins from the strip's start: the join before item `i` is `i`, and the end after the last of `n` items is `n`. Where a `FlexStrip` wraps, the end cap and the next line's lead both carry the index of the seam they replace, so every seam keeps its index however the strip wraps.
 
 ```typescript
 import type { Joiner, Renderable, RenderOptions, StyledRenderable } from "@promptctl/rich-js";
