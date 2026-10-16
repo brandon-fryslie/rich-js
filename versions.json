@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-405",
+      "ref": "refs/pull/405/merge",
+      "sha": "667814fa5e0278a0b28e587d9283b774368898b7",
+      "timestamp": "2026-10-16T22:26:48.739Z",
+      "commits": [
+        {
+          "sha": "667814fa5e0278a0b28e587d9283b774368898b7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T16:25:21-06:00",
+          "message": "Merge ad2f9b332a30597c3b9fded304c6058b798ff705 into 542a093bdd88aff75a63a19756138cd5822ceed3\n"
+        },
+        {
+          "sha": "ad2f9b332a30597c3b9fded304c6058b798ff705",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T16:25:17-06:00",
+          "message": "A split host holds ESC ESC for the byte that decides it (rich-unfiled-791c.hyfo)\n\nmacOS Terminal sends Option+Up as `ESC ESC [ A`. On a split host a read\nthat ended after `ESC ESC` was consumed at once as one Escape, so no hold\nwas armed and the rest arrived as `[` and `A`.\n\n`ESC ESC` alone is now unfinished like `ESC [` alone: held for the escape\ndelay on a split host, settled at the chunk's end on a whole-keys host.\n`reissue` reads it as one Escape, so the double-send rule has one home\nwhether the sequence stalls or is ended by a byte that cannot extend it.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "542a093bdd88aff75a63a19756138cd5822ceed3",
