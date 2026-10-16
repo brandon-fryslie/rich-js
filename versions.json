@@ -4,15 +4,22 @@
     {
       "version": "pr-404",
       "ref": "refs/pull/404/merge",
-      "sha": "92415e682d737c2aa29ab2740d8c354000b66127",
-      "timestamp": "2026-10-15T18:25:03.636Z",
+      "sha": "43d107252b09f188e6674e1c8a939202614a8be5",
+      "timestamp": "2026-10-16T22:00:38.329Z",
       "commits": [
         {
-          "sha": "92415e682d737c2aa29ab2740d8c354000b66127",
+          "sha": "43d107252b09f188e6674e1c8a939202614a8be5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-15T12:23:26-06:00",
-          "message": "Merge 9685e6fca34bf44c84b83b099ac8454b9bbb0237 into 65ff2f1b975d7d83b311734b862d022af8efa2b3\n"
+          "timestamp": "2026-10-16T21:58:56Z",
+          "message": "Merge 8ea5859621d2f4272aff57eb38d5ef92b4d368d8 into 65ff2f1b975d7d83b311734b862d022af8efa2b3\n"
+        },
+        {
+          "sha": "8ea5859621d2f4272aff57eb38d5ef92b4d368d8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T15:58:51-06:00",
+          "message": "A turned colour with no room for its rounding holds still, and the wheel's bounds are settled once (rich-effects-wps6)\n\nReview (high) of #404: at truecolor a fill bounded by a lighter and a\ndarker ink snapped between its turn and its rest frame to frame, since\nwhether hueTurned's two 8-bit colours fit its bounds changed with the hue.\nBounds narrower than ROUNDING_GAP, the widest those two can part, now\nhold the colour still at every t; at least that wide, one always fits.\nA wheel jump test at truecolor fails without it.\n\nmatchOn goes back to the memoised table matches; the wheel's bounds are\nmemoised per Drawn and its indexed candidates measured once per theme and\ndepth. contrastStop gives the stop scale one home beside luminanceRatio,\nsharing WCAG's flare. The docs' wheel paragraph says what the code keeps.\n"
         },
         {
           "sha": "9685e6fca34bf44c84b83b099ac8454b9bbb0237",
