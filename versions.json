@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-409",
+      "ref": "refs/pull/409/merge",
+      "sha": "491f84c7a4b66524994ebcea1f73264ed17c5a8b",
+      "timestamp": "2026-10-16T23:49:06.642Z",
+      "commits": [
+        {
+          "sha": "491f84c7a4b66524994ebcea1f73264ed17c5a8b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T23:47:26Z",
+          "message": "Merge b6f3429721f406b9dacf60458bd657ef87df07db into be55d8d03e743ffc840c4d98afbdebb22d195f8b\n"
+        },
+        {
+          "sha": "b6f3429721f406b9dacf60458bd657ef87df07db",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T17:47:20-06:00",
+          "message": "The parser draws exactly the record types the table calls drawn (rich-demos-k78j.iuf)\n\nReview of #409: the table's drawn half was read only by the staging script;\nemitBlocks still decided by hand. DRAWN_RECORD_TYPES is now a typed tuple\nemitBlocks dispatches over exhaustively, so a type added there does not\ncompile until it is drawn. dropHidden hands on RecordLines, typed records,\nso the casts and the dead '?' fallback downstream go. A drawn-type record\nwith no message is reported malformed, not unknown. Older sessions' summary\nrecords are hidden. The staged-types test was circular (staging filters\nby the same table) and is replaced by a type on TITLE_TYPES.\n\nFollow-up, unverified: rich-demos-k78j.5d7 (queued_command attachments).\n"
+        },
+        {
+          "sha": "ce11584e3f928588b2944462807f3aefae78bafe",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T17:38:02-06:00",
+          "message": "claude-sessions opens a real session on its first message (rich-demos-k78j.iuf)\n\nClaude Code now writes mode, attachment and a dozen other session-state\nrecords the parser did not know, so it drew each as an \"unknown record type\"\nerror panel ahead of the conversation. Every type found across two weeks of\nreal transcripts is now named in RECORD_TYPES (data/parser.ts) as drawn or\nhidden. A hidden record shown with H is a rule naming its type, not an error;\na type the table does not name is still drawn as an error, so it reaches the\nreader.\n\nThe card's staging script took its own list of drawn types; it now derives\nthem from RECORD_TYPES, so the card and the Node script draw the same records.\nThe staged data it writes is unchanged.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-410",
       "ref": "refs/pull/410/merge",
       "sha": "7ebf76c3155356aa645104b07e49779a77a33536",
@@ -56,28 +85,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T17:12:49-06:00",
           "message": "A transition settles its last cell as it is done, on any element (rich-unfiled-791c.7b9h)\n\nA transition staggered its cells by raw noise, which on a short element\nspans a narrow band of the order: an 11-column dissolve settled at 21 s\nand said done at 30. Drawn now lists the cells the effect will be handed\n(confined narrows it to its owners'), and the order is spread over them,\nso the first cell starts at 0 and the last settles at `seconds`. The\ndocs state the gap that is left: an ease's flat tail, and below\ntruecolor the last palette step.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-409",
-      "ref": "refs/pull/409/merge",
-      "sha": "c8d5ab2318a51bede5a3e323780d2ef805682e56",
-      "timestamp": "2026-10-16T23:39:50.811Z",
-      "commits": [
-        {
-          "sha": "c8d5ab2318a51bede5a3e323780d2ef805682e56",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T17:38:15-06:00",
-          "message": "Merge ce11584e3f928588b2944462807f3aefae78bafe into be55d8d03e743ffc840c4d98afbdebb22d195f8b\n"
-        },
-        {
-          "sha": "ce11584e3f928588b2944462807f3aefae78bafe",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T17:38:02-06:00",
-          "message": "claude-sessions opens a real session on its first message (rich-demos-k78j.iuf)\n\nClaude Code now writes mode, attachment and a dozen other session-state\nrecords the parser did not know, so it drew each as an \"unknown record type\"\nerror panel ahead of the conversation. Every type found across two weeks of\nreal transcripts is now named in RECORD_TYPES (data/parser.ts) as drawn or\nhidden. A hidden record shown with H is a rule naming its type, not an error;\na type the table does not name is still drawn as an error, so it reaches the\nreader.\n\nThe card's staging script took its own list of drawn types; it now derives\nthem from RECORD_TYPES, so the card and the Node script draw the same records.\nThe staged data it writes is unchanged.\n"
         }
       ]
     },
