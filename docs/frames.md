@@ -18,11 +18,11 @@ const chevrons = ["›", "››", "›››"].map((glyphs, i) => ({
 
 for (const t of [0, 1.5, 2.2, 3]) {
   const gauge = new Frames(chevrons, { t });
-  console.print(`t=${t}s  effort ${gauge.text().plain.padEnd(gauge.width)} max`);
+  console.print(`t=${t}s  effort ${gauge.text().plain} max`);
 }
 ```
 
-Every frame draws at one width, the widest frame's, padded on the right, so whatever sits beside the frames never moves as they turn; `width` says what that is. A frame is a fragment of a line: it ends no line of its own, a newline inside one becomes a space, and it measures at exactly its width, so a table column holding it never narrows or wraps it.
+Every frame draws at one width, the widest frame's, padded on the right, so whatever sits beside the frames never moves as they turn; `width` says what that is. A frame is a fragment of a line: it ends no line of its own, a newline inside one becomes a space, and it measures at exactly its width; a slot forced narrower crops it, and never folds or wraps it onto a second line.
 
 `text()` is the frame in progress as a `RichText` of its own, a copy, for a line assembled from pieces; `Frames` is also a renderable, so it can be printed or set in a table cell directly. The holds are its `beat`, whose `period` is their sum.
 

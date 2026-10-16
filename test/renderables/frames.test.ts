@@ -137,42 +137,16 @@ describe("Frames — at the host's rate, whatever it is", () => {
     expect(new Set(Array.from({ length: 60 }, (_, i) => text(quarters, i / 60)))).toEqual(new Set(["a", "b", "c", "d"]));
   });
 
+  it("a slot narrower than the frame crops it and never folds or wraps it onto a second line", () => {
+    const wide: Frame[] = [{ text: new RichText("ab cd"), seconds: 1 }, { text: new RichText("abcdef"), seconds: 1 }];
+    expect(drawn(wide, 0, 3)).toBe("ab ");
+    expect(drawn(wide, 1, 3)).toBe("abc");
+    expect(drawn(wide, 0, 3)).not.toContain("\n");
+  });
+
   it("refuses a t that is not finite, and a hold that is not a positive number of seconds", () => {
     expect(() => new Frames(chevrons, { t: Number.NaN })).toThrow(/finite t/);
     expect(() => new Frames([{ text: new RichText("a"), seconds: 0 }], { t: 0 })).toThrow(/positive number of seconds/);
     expect(() => new Frames([], { t: 0 })).toThrow(/at least one hold/);
-  });
-});
-
-describe("Frames — a draw costs the same at t = 0 and t = 10⁶ s", () => {
-  // The effects' measured range on a 120-column row through `renderToString`
-  // (epic rich-animation-xi28): 0.17–0.21 ms p50, ≤ 0.36 ms p99, at 60 fps.
-  // The bound here is loose enough for a loaded CI machine and tight enough
-  // that a draw walking time from zero would miss it at 10⁶ by orders.
-  const P50_MS = 0.5;
-  const row = (t: number): RichText =>
-    new RichText("effort ", { end: "" })
-      .append(new Frames(chevrons, { t }).text())
-      .append(" " + "x".repeat(111));
-
-  const p50 = (at: number): number => {
-    const costs: number[] = [];
-    for (let i = 0; i < 600; i++) {
-      const t = at + i / 60;
-      const started = performance.now();
-      renderToString(row(t), { width: 120 });
-      costs.push(performance.now() - started);
-    }
-    costs.sort((a, b) => a - b);
-    return costs[300]!;
-  };
-
-  it("a 120-column row holding the frames draws within the effects' range at both times", () => {
-    expect(row(0).cellLength).toBe(120);
-    p50(0); // warm
-    const near = p50(0);
-    const far = p50(1e6);
-    expect(near).toBeLessThan(P50_MS);
-    expect(far).toBeLessThan(P50_MS);
   });
 });

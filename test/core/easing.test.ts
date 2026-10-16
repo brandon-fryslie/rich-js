@@ -204,6 +204,30 @@ describe("beat — holds in seconds, the hold in progress out, no clock read", (
     }
   });
 
+  it("a t exactly on a boundary lands on the hold that begins there, for holds that are not exact in binary", () => {
+    // 0.1 is not a dyadic fraction; a wrap by a detour through `+ period`
+    // lands 0.1 one ulp short and shows every frame one sample late.
+    const tenths = beat([0.1, 0.1, 0.1]);
+    expect([0, 0.1, 0.2].map((t) => tenths.at(t))).toEqual([0, 1, 2]);
+    expect(beat([0.4, 0.4, 0.4]).at(0.4)).toBe(1);
+    expect(beat([1 / 3, 1 / 3, 1 / 3]).at(1 / 3)).toBe(1);
+  });
+
+  it("refuses a t that is not finite, in at, and so does Phase.loop", () => {
+    expect(() => beat([1, 1]).at(Number.NaN)).toThrow(/Beat.at needs a finite t, got NaN/);
+    expect(() => beat([1, 1]).at(Number.POSITIVE_INFINITY)).toThrow(/finite t/);
+    expect(() => Phase.loop(1)(Number.NaN)).toThrow(/Phase.loop needs a finite t/);
+  });
+
+  it("holds is a copy: a caller's later change to the array it passed changes nothing", () => {
+    const holds = [1, 1];
+    const b = beat(holds);
+    holds.push(1);
+    expect(b.holds).toEqual([1, 1]);
+    expect(b.period).toBe(2);
+    expect(b.at(2.5)).toBe(0);
+  });
+
   it("refuses no holds, and a hold that is not a positive number of seconds", () => {
     expect(() => beat([])).toThrow(/at least one hold/);
     expect(() => beat([1, 0])).toThrow(/beat hold 1 must be a positive number of seconds, got 0/);

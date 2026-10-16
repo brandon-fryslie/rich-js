@@ -54,25 +54,33 @@ export class Frames implements Renderable, Measurable {
   readonly t: number;
   // Each frame as it draws: a line fragment padded to `width`, made once.
   private readonly _shown: readonly RichText[];
+  // Which of them `t` lands on, settled once: `beat.at` refuses a `t` that
+  // is not finite, so a bad time fails here, at construction.
+  private readonly _index: number;
 
   constructor(frames: readonly Frame[], options: FramesOptions) {
     this.beat = beat(frames.map((frame) => frame.seconds));
-    if (!Number.isFinite(options.t)) {
-      throw new RangeError(`Frames needs a finite t, got ${options.t}`);
-    }
+    this._index = this.beat.at(options.t);
     this.t = options.t;
     const texts = frames.map((frame) => setIntoLine(frame.text.copy()));
-    this.width = Math.max(...texts.map((text) => text.cellLength));
-    this._shown = texts.map((text) => text.padRight(this.width - text.cellLength));
+    const widths = texts.map((text) => text.cellLength);
+    this.width = Math.max(...widths);
+    this._shown = texts.map((text, i) => {
+      // One picture: a slot narrower than the frame crops it, never folds
+      // or wraps it onto a second line, which `measure` says it cannot take.
+      text.noWrap = true;
+      text.overflow = "crop";
+      return text.padRight(this.width - widths[i]!);
+    });
   }
 
   /** The frame in progress at `t`, at `width` cells, ending no line: a copy, the caller's to change. */
   text(): RichText {
-    return this._shown[this.beat.at(this.t)]!.copy();
+    return this._shown[this._index]!.copy();
   }
 
   render(options: RenderOptions): Iterable<Segment> {
-    return this.text().render(options);
+    return this._shown[this._index]!.render(options);
   }
 
   /**
