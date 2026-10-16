@@ -4,15 +4,22 @@
     {
       "version": "pr-408",
       "ref": "refs/pull/408/merge",
-      "sha": "87a74829e7f1320503ca7989dfeb06698eb1107c",
-      "timestamp": "2026-10-16T23:14:15.787Z",
+      "sha": "965bc8b99a5f292c8fb9a67431c225af69eb9acf",
+      "timestamp": "2026-10-16T23:28:36.015Z",
       "commits": [
         {
-          "sha": "87a74829e7f1320503ca7989dfeb06698eb1107c",
+          "sha": "965bc8b99a5f292c8fb9a67431c225af69eb9acf",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T17:12:54-06:00",
-          "message": "Merge 2d3df7a2020a323fe6d2b1cd4132d4af63bd86fb into be55d8d03e743ffc840c4d98afbdebb22d195f8b\n"
+          "timestamp": "2026-10-16T23:26:58Z",
+          "message": "Merge 362d0ea7ba1687ccb4b31b00469a0790b0d6dc94 into be55d8d03e743ffc840c4d98afbdebb22d195f8b\n"
+        },
+        {
+          "sha": "362d0ea7ba1687ccb4b31b00469a0790b0d6dc94",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T17:26:53-06:00",
+          "message": "A transition settles each cell once and spreads over the cells that show (rich-unfiled-791c.7b9h)\n\n/code-review high on #408. A cell's change is kept from the first frame that\ndraws it, so an element that gains columns as it moves never sends a cell back:\nrenormalising every frame moved a start by up to 30% of seconds on a short\nelement. Drawn.cells lists only cells that show something, so padding on the\nterminal's ground no longer stretches the order past the glyphs. The dissolve's\nrebound weighs a cell by where it goes in the element's order. Pair has its doc\ncomment back, and confined reads ownership once for listed and handed cells.\n"
         },
         {
           "sha": "2d3df7a2020a323fe6d2b1cd4132d4af63bd86fb",
