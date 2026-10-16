@@ -4,15 +4,22 @@
     {
       "version": "pr-404",
       "ref": "refs/pull/404/merge",
-      "sha": "43d107252b09f188e6674e1c8a939202614a8be5",
-      "timestamp": "2026-10-16T22:00:38.329Z",
+      "sha": "985f3dfe93ac74a5279570bf9dde0b3fbdad93b9",
+      "timestamp": "2026-10-16T22:09:11.094Z",
       "commits": [
         {
-          "sha": "43d107252b09f188e6674e1c8a939202614a8be5",
+          "sha": "985f3dfe93ac74a5279570bf9dde0b3fbdad93b9",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T21:58:56Z",
-          "message": "Merge 8ea5859621d2f4272aff57eb38d5ef92b4d368d8 into 65ff2f1b975d7d83b311734b862d022af8efa2b3\n"
+          "timestamp": "2026-10-16T22:07:38Z",
+          "message": "Merge 119dd3346b014fa0ef85293812ea4587e07c9da0 into 65ff2f1b975d7d83b311734b862d022af8efa2b3\n"
+        },
+        {
+          "sha": "119dd3346b014fa0ef85293812ea4587e07c9da0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T16:07:32-06:00",
+          "message": "The wheel's stop is read off contrastRatio, so its playground card runs (rich-effects-wps6)\n\nThe effects playground runs effects.ts as a program on the published\nlibrary, and contrastStop was not a package export: the wheel card threw\nin turnedBounds. A colour's log contrast with black is its stop up to a\nconstant, and only gaps between stops are read, so contrastRatio, the one\nWCAG formula, serves; color.ts is back to master's but for indexed.\n"
         },
         {
           "sha": "8ea5859621d2f4272aff57eb38d5ef92b4d368d8",
