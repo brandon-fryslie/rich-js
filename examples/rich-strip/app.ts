@@ -68,12 +68,12 @@ export function runDemo(host: TerminalHost): void {
   const meet: JoinSeam = {
     glyph: {
       seam: [
-        { glyph: "", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } },
-        { glyph: "", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } },
+        { glyph: "\ue0b2", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } },
+        { glyph: "\ue0b0", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } },
       ],
       divider: [
-        { glyph: "", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
-        { glyph: "", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
+        { glyph: "\ue0b3", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
+        { glyph: "\ue0b1", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
       ],
     },
     ascii: {

@@ -106,8 +106,8 @@ A joiner is checked once, when it is built, and the constructor throws on any of
 - a cell with `"ground"` on both sides, or inside a `mix`;
 - a `lead` naming the `left` neighbour, or a `tail` naming the `right` one;
 - a `oneOf` glyph whose members differ in width;
-- a `cap` other than `lead` or `tail`;
-- a `divider` whose width differs from the `seam`'s once the caps stand in them;
+- a `cap` other than `lead` or `tail`, or a cell that names a cap and draws a glyph too;
+- a `divider` whose width differs from the `seam`'s under any caps: the two must name each cap as many times and their own cells must be as wide.
 - a non-ASCII glyph in an `ascii` form.
 
 ```typescript
@@ -118,12 +118,12 @@ import { CAPS, CellJoiner, type JoinSeam } from "@promptctl/rich-js";
 const meet: JoinSeam = {
   glyph: {
     seam: [
-      { glyph: "", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } },
-      { glyph: "", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } },
+      { glyph: "\ue0b2", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } },
+      { glyph: "\ue0b0", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } },
     ],
     divider: [
-      { glyph: "", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
-      { glyph: "", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
+      { glyph: "\ue0b3", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
+      { glyph: "\ue0b1", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
     ],
   },
   ascii: {
@@ -142,14 +142,14 @@ console.print(
 
 ### Which part a join draws
 
-Each join looks at its two neighbours. A neighbour is missing at the strip's ends. It also counts as missing when the seam or the caps paint with its background anywhere and it has none to paint: no `bgcolor`, or `… on default`, which is the transparent terminal default.
+Each join looks at its two neighbours. A neighbour is missing at the strip's ends. It also counts as missing when the seam paints with its background anywhere and it has none to paint: no `bgcolor`, or `… on default`, which is the transparent terminal default.
 
 - Both present: the `seam`, or the `divider` where every seam cell's glyph is indistinct from its background.
-- Only the right: the `lead`.
-- Only the left: the `tail`.
+- Only the right: the `lead`, if it has the background the `lead` paints with.
+- Only the left: the `tail`, if it has the background the `tail` paints with.
 - Neither: nothing.
 
-So a coloured run is capped the same way wherever it sits. A colourless item before a coloured one leads the coloured run in, exactly as the strip's start does. A coloured item before a colourless one tails out, and two colourless neighbours join with nothing. A joiner that paints with neither neighbour's background, like `JOINERS.plain`, joins colourless items too.
+So a coloured run is capped the same way wherever it sits. A colourless item before a coloured one leads the coloured run in, exactly as the strip's start does. A coloured item before a colourless one tails out, and two colourless neighbours join with nothing. A seam that paints with neither neighbour's background, like `SEAMS.plain`, joins colourless items too, whatever caps end it.
 
 "Indistinct" is perceptual: two colours closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) are one. Each seam cell is measured, not the two neighbours' backgrounds, so `prism`, whose arrows each step a third of the way between them, divides where a one-cell arrow would still show. A cell drawn on the terminal's own background is always seen. Colours are measured as drawn. A glyph's translucent colour is flattened onto its cell's background, and a translucent background onto the render substrate, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`), so two colours that 256 colours or ANSI draw as one entry are indistinct, however far apart they were computed. Named or indexed colours have no RGB value to measure, so two of them are one only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
 
