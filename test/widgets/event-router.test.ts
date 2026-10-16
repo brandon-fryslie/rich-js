@@ -424,6 +424,29 @@ describe("InputParser on a split host", () => {
     expect(keys).toEqual(["meta+[", "down"]);
   });
 
+  it.each([["[A", "meta+up"], ["OP", "meta+f1"]])("completes an Alt chord whose read ended after ESC ESC, rest %j", (rest, key) => {
+    const { keys, parser } = split();
+    parser.feed("\x1b\x1b");
+    expect(keys).toEqual([]);
+    parser.feed(rest);
+    expect(keys).toEqual([key]);
+  });
+
+  it("reads a stalled ESC ESC as one Escape, and the next key as itself", () => {
+    const { keys, parser } = split();
+    parser.feed("\x1b\x1b");
+    escapeDelayPasses();
+    parser.feed("q");
+    expect(keys).toEqual(["escape", "q"]);
+  });
+
+  it("reads a held ESC ESC as one Escape when the next key cannot extend it", () => {
+    const { keys, parser } = split();
+    parser.feed("\x1b\x1b");
+    parser.feed("G");
+    expect(keys).toEqual(["escape", "G"]);
+  });
+
   it("reads Escape typed before an O and a key no terminal sends after ESC O", () => {
     const { keys, parser } = split();
     parser.feed("\x1b");
@@ -484,6 +507,12 @@ describe("InputParser on a whole-keys host", () => {
     parser.feed(`\x1b${glyph}`);
     parser.feed("x");
     expect(keys).toEqual([`meta+${glyph}`, "x"]);
+  });
+
+  it("reads a whole ESC ESC chunk as one Escape", () => {
+    const { keys, parser } = wholeKeys();
+    parser.feed("\x1b\x1b");
+    expect(keys).toEqual(["escape"]);
   });
 
   it("re-reads an incomplete tail after Escape", () => {

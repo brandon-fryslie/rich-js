@@ -245,10 +245,12 @@ function inSequence(byte: number): boolean {
 // before its final byte (at a whole-key chunk's end, at the escape delay, or at
 // a byte that cannot belong to it), or an SS3 no terminal sends — is reissued
 // as the keys it holds, as Textual reissues one. `ESC [` / `ESC O` alone is the
-// whole key Alt+[ / Alt+O; any other ESC is Escape, and what followed it is
+// whole key Alt+[ / Alt+O, and `ESC ESC` alone is one Escape, as a terminal
+// that double-sends it means; any other ESC is Escape, and what followed it is
 // read again on its own.
 function reissue(sequence: Uint8Array): { bytes: number; event: KeyPress } {
-  return sequence.length === 2 ? { bytes: 2, event: altKey(sequence[1]!) } : { bytes: 1, event: ESCAPE };
+  if (sequence.length !== 2) return { bytes: 1, event: ESCAPE };
+  return { bytes: 2, event: sequence[1] === ESC ? ESCAPE : altKey(sequence[1]!) };
 }
 
 export class InputParser {
@@ -443,30 +445,26 @@ export class InputParser {
     if (b1 === LBRACKET) return this.consumeCSI(buf);
     // ESC O X → SS3 (F1–F4 / arrows on some terms)
     if (b1 === O_BYTE) return this.consumeSS3(buf);
-    // ESC ESC [ … / ESC ESC O … → Alt on a key the terminal sends as a
-    // sequence (macOS Terminal and iTerm send Option+Up as `ESC ESC [ A`): the
-    // inner sequence, with meta held.
-    if (b1 === ESC && buf.length > 2 && (buf[2] === LBRACKET || buf[2] === O_BYTE)) {
-      // A pointer report is never Alt-prefixed (SGR carries modifiers in its
-      // button byte), and a sequence reissued is no key to hold Alt on, so
-      // before anything but a key the first ESC is Escape.
-      const inner = this.consumeEscape(buf.subarray(1));
-      if (inner.kind === "incomplete") return inner;
-      if (inner.kind === "key") {
-        return { kind: "key", bytes: inner.bytes + 1, event: { ...inner.event, meta: true } };
-      }
-      return { kind: "key", bytes: 1, event: ESCAPE };
-    }
-    // ESC ESC → escape key (some terminals double-send). Consume BOTH bytes
-    // so the user sees one escape event, not two. Without this, the second
-    // ESC remained in the buffer and produced a second escape via the
-    // lone-ESC flush path.
     if (b1 === ESC) {
-      return {
-        kind: "key",
-        bytes: 2,
-        event: ESCAPE,
-      };
+      // The byte after `ESC ESC` decides what it opens, so a read that ends
+      // between them leaves it unfinished, held like any other.
+      if (buf.length === 2) return { kind: "incomplete" };
+      // ESC ESC [ … / ESC ESC O … → Alt on a key the terminal sends as a
+      // sequence (macOS Terminal and iTerm send Option+Up as `ESC ESC [ A`):
+      // the inner sequence, with meta held.
+      if (buf[2] === LBRACKET || buf[2] === O_BYTE) {
+        // A pointer report is never Alt-prefixed (SGR carries modifiers in its
+        // button byte), and a sequence reissued is no key to hold Alt on, so
+        // before anything but a key the first ESC is Escape.
+        const inner = this.consumeEscape(buf.subarray(1));
+        if (inner.kind === "incomplete") return inner;
+        if (inner.kind === "key") {
+          return { kind: "key", bytes: inner.bytes + 1, event: { ...inner.event, meta: true } };
+        }
+        return { kind: "key", bytes: 1, event: ESCAPE };
+      }
+      // Any other byte ends `ESC ESC`, which opened no key.
+      return { kind: "reissued", ...reissue(buf.subarray(0, 2)) };
     }
     // ESC <named> / ESC <printable> → Alt-modified key.
     // Terminals encode Alt+<key> as the literal byte preceded by ESC, so
