@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-454",
+      "ref": "refs/pull/454/merge",
+      "sha": "d39d42cda3710615883216835d668ecc183fa557",
+      "timestamp": "2026-10-17T19:09:44.169Z",
+      "commits": [
+        {
+          "sha": "d39d42cda3710615883216835d668ecc183fa557",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T13:08:25-06:00",
+          "message": "Merge 9461b1a278d90f648ac1a5f9228392b9b5de0b01 into 0abcc9482e3af85fee5d0b392753bde41d46680a\n"
+        },
+        {
+          "sha": "9461b1a278d90f648ac1a5f9228392b9b5de0b01",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T13:08:21-06:00",
+          "message": "expectLinearTime's own tests run their smaller size about three times over the floor on GitHub's runner (rich-unfiled-791c.acoa)\n\nThe unloaded run in 'passes linear work when the machine turns busy partway\nthrough' took ~4.9 ms on GitHub's runner against FLOOR_MS = 5 (CI run\n39060726759). The quadratic cases sat at ~7 ms, the same failure one faster\nrunner away. The stall is now four times the run it delays, so the stalled\npair's ratio no longer depends on the size.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "0abcc9482e3af85fee5d0b392753bde41d46680a",
