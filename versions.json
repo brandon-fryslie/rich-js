@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-454",
-      "ref": "refs/pull/454/merge",
-      "sha": "ab9f5b0a8ec01065b1f8b9d495e3d526aad4a60d",
-      "timestamp": "2026-10-17T19:14:10.436Z",
-      "commits": [
-        {
-          "sha": "ab9f5b0a8ec01065b1f8b9d495e3d526aad4a60d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T19:12:15Z",
-          "message": "Merge 30ed31e3fc8ee9f20b353b16b69ab1fada4c18ec into 0abcc9482e3af85fee5d0b392753bde41d46680a\n"
-        },
-        {
-          "sha": "30ed31e3fc8ee9f20b353b16b69ab1fada4c18ec",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T13:12:10-06:00",
-          "message": "expectLinearTime's own tests pin that a stalled larger run cannot fail linear work, and the floor comment names only the sizes that measure growth (rich-unfiled-791c.acoa)\n"
-        },
-        {
-          "sha": "9461b1a278d90f648ac1a5f9228392b9b5de0b01",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T13:08:21-06:00",
-          "message": "expectLinearTime's own tests run their smaller size about three times over the floor on GitHub's runner (rich-unfiled-791c.acoa)\n\nThe unloaded run in 'passes linear work when the machine turns busy partway\nthrough' took ~4.9 ms on GitHub's runner against FLOOR_MS = 5 (CI run\n39060726759). The quadratic cases sat at ~7 ms, the same failure one faster\nrunner away. The stall is now four times the run it delays, so the stalled\npair's ratio no longer depends on the size.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "0abcc9482e3af85fee5d0b392753bde41d46680a",
-      "timestamp": "2026-10-17T19:05:09.285Z",
+      "sha": "e2057d85912680d7097bec9872c2aae65a164c4e",
+      "timestamp": "2026-10-17T19:23:51.802Z",
       "commits": [
         {
-          "sha": "0abcc9482e3af85fee5d0b392753bde41d46680a",
+          "sha": "e2057d85912680d7097bec9872c2aae65a164c4e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T13:03:49-06:00",
-          "message": "Markdown reads each text's backtick runs once instead of rescanning for every unclosed opener (rich-unfiled-791c.lbtu) (#453)\n\n* Markdown reads each text's backtick runs once instead of rescanning for every unclosed opener (rich-unfiled-791c.lbtu)\n\ninlineAt's code case compiled a RegExp per backtick run and scanned to the\nend of the text for a closer of that length, so a paragraph of openers no\nrun closes took time quadratic in its length: `\\``x ` repeated 32,000 times\ntook 4.5 s. InlineState (formerly LinkLabels — it now holds more of\nmarkdown-it's inline state than the label scan) indexes each text's whole\nruns by length once, and an opener looks up the first run of its length\nafter it: 15 ms for the same input.\n\nA differential run of 200,000 random inputs (116,673 with code spans,\nescaped partial openers and link labels among them) against the previous\nreader found no difference in output.\n\n* Markdown indexes a block's backtick runs once and shares them with every link label cut from it (rich-unfiled-791c.lbtu)\n\nKeying the index by text built a fresh one for each link's sliced label,\nso a paragraph of [`a`](u) links took quadratic time and memory. A label\nis cut at its ']', never inside a run, so the block's runs bound by the\nlabel's length are the label's runs."
+          "timestamp": "2026-10-17T13:21:49-06:00",
+          "message": "expectLinearTime's own tests run their smaller size about three times over the floor on GitHub's runner (rich-unfiled-791c.acoa) (#454)\n\n* expectLinearTime's own tests run their smaller size about three times over the floor on GitHub's runner (rich-unfiled-791c.acoa)\n\nThe unloaded run in 'passes linear work when the machine turns busy partway\nthrough' took ~4.9 ms on GitHub's runner against FLOOR_MS = 5 (CI run\n39060726759). The quadratic cases sat at ~7 ms, the same failure one faster\nrunner away. The stall is now four times the run it delays, so the stalled\npair's ratio no longer depends on the size.\n\n* expectLinearTime's own tests pin that a stalled larger run cannot fail linear work, and the floor comment names only the sizes that measure growth (rich-unfiled-791c.acoa)"
         }
       ]
     }
