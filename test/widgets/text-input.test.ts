@@ -428,15 +428,35 @@ describe("TextInput", () => {
       expect(minimum).toBe(10);
     });
 
-    it("maximum tracks max(value.length, placeholder.length) + 2 with floor at minimum", () => {
-      const empty = new TextInput();
-      expect(empty.measure(RENDER).maximum).toBe(10);
+    it("reports a maximum at the floor for an input that draws narrower", () => {
+      expect(new TextInput().measure(RENDER).maximum).toBe(10);
+      expect(new TextInput({ value: "ab\ncd", multiline: true }).measure(RENDER).maximum).toBe(10);
+    });
 
-      const longer = new TextInput({ value: "abcdefghijklmnop" });
-      expect(longer.measure(RENDER).maximum).toBe(18);
+    // Each focused, with the cursor at the end of its widest line: the widest
+    // the input draws.
+    it.each([
+      ["a value", { value: "abcdefghijklmnop" }],
+      ["a placeholder over an empty value", { placeholder: "abcdefghijklmnop" }],
+      ["glyphs of zero cells", { value: "a" + "\u200b".repeat(20) + "b" }],
+      ["a password of wide glyphs", { value: "あ".repeat(20), password: true }],
+      ["multi-line", { value: "ab\nx\nabcdefghijklmnop", multiline: true }],
+      ["multi-line glyphs of zero cells", { value: "ab\na" + "\u200b".repeat(20) + "b", multiline: true }],
+      ["a multi-line password of wide glyphs", { value: "あ\n" + "あ".repeat(20), password: true, multiline: true }],
+    ])("reports as its maximum the width it draws, nothing cut at that width: %s", (_, options) => {
+      const t = new TextInput(options);
+      t.focused = true;
+      t.cursorPosition = asCodePoint(t.value.length);
+      const unbounded = rowsText(t, { maxWidth: 200 });
+      const { maximum } = t.measure(RENDER);
+      expect(Math.max(...unbounded.split("\n").map(cellLen))).toBe(maximum);
+      expect(rowsText(t, { maxWidth: maximum })).toBe(unbounded);
+    });
 
-      const placeholderOnly = new TextInput({ placeholder: "abcdefghijklmnop" });
-      expect(placeholderOnly.measure(RENDER).maximum).toBe(18);
+    it("keeps the cursor's cell in view at the end of a value wider than the field", () => {
+      const t = new TextInput({ value: "a".repeat(30) + "XYZ" });
+      t.focused = true;
+      expect(rowsText(t, { maxWidth: 22 })).toBe(`[${"a".repeat(16)}XYZ ]`);
     });
   });
 
@@ -1377,9 +1397,10 @@ describe("TextInput", () => {
     });
 
     it("is measured as the one cell it is drawn as", () => {
-      const thirty = new TextInput({ value: "a".repeat(30) }).measure(RENDER);
-      expect(new TextInput({ value: "​".repeat(30) }).measure(RENDER)).toEqual(thirty);
-      expect(new TextInput({ value: "​".repeat(30), multiline: true }).measure(RENDER)).toEqual(thirty);
+      for (const multiline of [false, true]) {
+        const thirty = new TextInput({ value: "a".repeat(30), multiline }).measure(RENDER);
+        expect(new TextInput({ value: "​".repeat(30), multiline }).measure(RENDER)).toEqual(thirty);
+      }
     });
 
     it("wraps a long line in time linear in its length", () => {

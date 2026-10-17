@@ -245,6 +245,14 @@ export interface TextInputOptions {
 }
 
 const MIN_CONTENT_WIDTH = 8;
+
+// [LAW:one-source-of-truth] The cells single-line content takes: its text and,
+// past the text's end, the cell the cursor stands on there — never fewer than
+// the floor. The render sizes and scrolls the field by it; `measure` asks it
+// with the cursor at the end, the widest a value draws.
+function singleLineExtent(textCells: number, cursorCell: number): CellCol {
+  return asCellCol(Math.max(MIN_CONTENT_WIDTH, textCells, cursorCell + 1));
+}
 // What one line shows in place of a glyph of `value`; each is one cell.
 const NEWLINE_GLYPH = "↵";
 const ASCII_NEWLINE_GLYPH = "~";
@@ -894,11 +902,11 @@ export class TextInput extends ThemedWidget {
     const rawCellWidth = asCellCol(cellLen(rawDisplay));
     const cursorCellCol = asCellCol(cellLen(shown(this.value.slice(0, this.cursorPosition))));
     const maxAvailable = asCellCol(Math.max(MIN_CONTENT_WIDTH, options.maxWidth - 2));
-    const desiredWidth = asCellCol(Math.max(MIN_CONTENT_WIDTH, rawCellWidth, cursorCellCol + 1));
-    const contentWidth = asCellCol(Math.min(maxAvailable, desiredWidth));
+    const contentWidth = asCellCol(Math.min(maxAvailable, singleLineExtent(rawCellWidth, cursorCellCol)));
 
-    // Slide viewport (in cells) to keep cursor visible when content overflows.
-    const startCell = asCellCol(Math.max(0, Math.min(rawCellWidth - contentWidth, cursorCellCol - contentWidth + 1)));
+    // Slide viewport (in cells) to keep the cursor's cell visible when content
+    // overflows — at the end of the text, that is the cell past its last glyph.
+    const startCell = asCellCol(Math.max(0, cursorCellCol + 1 - contentWidth));
     const [, afterStart] = splitText(rawDisplay, startCell);
     // splitText snaps backward when startCell falls mid-wide-char, so afterStart
     // may start 1 cell earlier than requested. actualStartCell is the real offset.
@@ -1126,11 +1134,17 @@ export class TextInput extends ThemedWidget {
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
     const minimum = MIN_CONTENT_WIDTH + 2;
-    // The widest line as drawn: a multi-line value draws each logical line on
-    // rows of its own, a single-line one draws its breaks as glyphs.
-    const lines = this._multiline ? this.value.split("\n") : [this.value];
-    const widest = lines.reduce((w, line) => Math.max(w, cellLen(this._shown(line, options))), 0);
-    const maximum = Math.max(minimum, Math.max(widest, cellLen(this.placeholder)) + 2);
+    const shownCells = (line: string): number => cellLen(this._shown(line, options));
+    // The widest the value draws, its cursor at the end of a line included: a
+    // multi-line value draws each logical line on rows of its own, with no
+    // brackets and no placeholder; a single-line one draws its breaks as
+    // glyphs between brackets, and its placeholder over an empty value.
+    const maximum = this._multiline
+      ? this.value.split("\n").reduce((w, line) => Math.max(w, shownCells(line) + 1), minimum)
+      : singleLineExtent(
+        this.value === "" ? cellLen(this.placeholder) : shownCells(this.value),
+        shownCells(this.value),
+      ) + 2;
     return { minimum, maximum };
   }
 
