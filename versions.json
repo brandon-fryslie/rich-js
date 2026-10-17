@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "3bcf167a4e05b64dcc58876730c11a90c222b9af",
-      "timestamp": "2026-10-17T02:32:09.066Z",
+      "sha": "63efd6e5f1b953f3ff5c4dfef4ebc23d7fd33cd2",
+      "timestamp": "2026-10-17T02:37:03.589Z",
       "commits": [
         {
-          "sha": "3bcf167a4e05b64dcc58876730c11a90c222b9af",
+          "sha": "63efd6e5f1b953f3ff5c4dfef4ebc23d7fd33cd2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:30:27-06:00",
-          "message": "claude-sessions names every system record it draws (rich-demos-k78j.0d5) (#420)\n\n* claude-sessions names every system record it draws (rich-demos-k78j.0d5)\n\nA system record's rule was titled by its duration, which only turn_duration\nrecords carry, so every slash command and stop hook drew as an empty '⚫ —'.\nThe parser now reads what each record says: a turn and how long it took, a\ncommand's command line over its output, how many stop hooks ran over their\nerrors, and any other subtype by its name over its content.\n\nThe card's sessions are re-staged so they carry the fields that reading needs.\nThe re-run also brings in what the stager already keeps and the committed\nstaging predated: ten queued prompts, and the assistant records under them.\n\n* claude-sessions draws a slash command once, and a system record's fields as read (rich-demos-k78j.0d5)\n\nReview of #420. A slash command is the record that runs it and the\nlocal_command record of its output, whose parent it is; the parser now joins\nthe two as it joins one message's chunks, so /clear and /login draw once, and a\nprompt that runs a command with no output reads as its command line instead of\nraw tags. Command tags have one reader for both record kinds.\n\nA system record's own fields are typed unknown, as the JSON is, so each is read\nby what it holds: a malformed one draws instead of failing the session, a\nmissing hook count is not claimed as zero, and a stop hook that prevented\ncontinuation shows its reason (the stager now keeps preventedContinuation and\nstopReason; re-staging added only those two fields). Output cut short by the\nstager keeps its text, output carrying escape codes is decoded, and the body\nfollows selection like the title.\n\n* claude-sessions joins a command by its parent link and keeps all it says (rich-demos-k78j.0d5)\n\nMedium review of #420. A local_command record's text is its content with the\ncommand tags gone and the output tags unwrapped, so text outside those tags is\ndrawn rather than dropped. The record that runs a command and its output are\njoined by the output's parentUuid instead of adjacency, so showing hidden\nrecords no longer splits a command into two blocks."
+          "timestamp": "2026-10-16T20:35:24-06:00",
+          "message": "A host can ask when what it draws next changes (rich-animation-xi28.6rs) (#416)\n\n* A host can ask when what it draws next changes (rich-animation-xi28.6rs)\n\n* systemClock.at ticks only once the clock reads the time\n\nReview (medium, post-rebase) on PR #416.\n\nA platform timer is due by the event loop's millisecond-truncated time,\nso it ran while performance.now() still read under the time asked for,\nby up to most of a millisecond. A Live waking at a frame's end then drew\nthe old frame again and waited again, at every boundary. The wait is now\nrounded up and a timer that ran early is armed again for the remainder,\nin the clock, once, for every host.\n\nStyle.toString's docstring claimed a round-trip through parse; meta,\nanchor and nextChange have no spelling, so it now says it is the look.\n\n* The stepped-ink cost test samples the step's first frame as it samples the rest\n\nCI failed its one-sample assertion by 0.7%: a lone first-frame timing against a median of 59. Nine fresh signals' first frames are taken and their median compared, so one sample's jitter decides nothing. The contract asserted is unchanged.\n\n* The shape-card spec finds the Effect shape block by its interface line\n\ndocs/effects.md's shape block is `interface Effect {` now that an effect may say when its frame next changes; the spec looked for `type Effect =` and found no card."
         }
       ]
     },
@@ -42,49 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T20:20:40-06:00",
           "message": "Markdown drops inline HTML where Rich does, and reads backslash escapes (rich-unfiled-791c.5r6q)\n\nmarkdown-it-py's HTML_TAG_RE — a tag, comment, processing instruction,\ndeclaration or CDATA section — is read inline and drawn as nothing. The\nblock kind for a lone tag and the inline rule now share one tag grammar.\n\nThe escape rule comes with it: markdown-it reads '\\<' at the backslash\nbefore html_inline sees the '<', so without it '\\<span>' would draw '\\'\nwhere Rich draws '<span>'.\n\nUnclosed openers scan to the end of the text from every '<', as\nmarkdown-it-py's own regex does.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-416",
-      "ref": "refs/pull/416/merge",
-      "sha": "4ba31ddc678b6150bd99e22673be7b4b80a38ba7",
-      "timestamp": "2026-10-17T02:25:44.899Z",
-      "commits": [
-        {
-          "sha": "4ba31ddc678b6150bd99e22673be7b4b80a38ba7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T02:23:58Z",
-          "message": "Merge 35cfbbf15a6f60f12ea6135d48414e6cbd07e0f4 into 8ea70430cce91b045edf9750e63fb7041f59c1a0\n"
-        },
-        {
-          "sha": "35cfbbf15a6f60f12ea6135d48414e6cbd07e0f4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:23:53-06:00",
-          "message": "The shape-card spec finds the Effect shape block by its interface line\n\ndocs/effects.md's shape block is `interface Effect {` now that an effect may say when its frame next changes; the spec looked for `type Effect =` and found no card.\n"
-        },
-        {
-          "sha": "5e9c78209cac60466a847dfefb5c274c3f2375c5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:10:08-06:00",
-          "message": "The stepped-ink cost test samples the step's first frame as it samples the rest\n\nCI failed its one-sample assertion by 0.7%: a lone first-frame timing against a median of 59. Nine fresh signals' first frames are taken and their median compared, so one sample's jitter decides nothing. The contract asserted is unchanged.\n"
-        },
-        {
-          "sha": "7ef478d18b8469b8875ad3a1142b5bca43fde0b5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:05:01-06:00",
-          "message": "systemClock.at ticks only once the clock reads the time\n\nReview (medium, post-rebase) on PR #416.\n\nA platform timer is due by the event loop's millisecond-truncated time,\nso it ran while performance.now() still read under the time asked for,\nby up to most of a millisecond. A Live waking at a frame's end then drew\nthe old frame again and waited again, at every boundary. The wait is now\nrounded up and a timer that ran early is armed again for the remainder,\nin the clock, once, for every host.\n\nStyle.toString's docstring claimed a round-trip through parse; meta,\nanchor and nextChange have no spelling, so it now says it is the look.\n"
-        },
-        {
-          "sha": "9c2c75e6e8edf05ee7414af116e7594bd5eefdfd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T19:49:38-06:00",
-          "message": "A host can ask when what it draws next changes (rich-animation-xi28.6rs)\n"
         }
       ]
     }
