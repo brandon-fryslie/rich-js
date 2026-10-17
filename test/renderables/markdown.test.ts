@@ -350,6 +350,15 @@ describe("Markdown", () => {
     expect(performance.now() - started).toBeLessThan(1000);
   });
 
+  it("reads a run of quotes in time linear in its length, whether each takes its lazy line or not", () => {
+    const started = performance.now();
+    new Markdown("> # h\nx\n".repeat(4000));
+    // Copying every line a quote might take before reading it took eight seconds here.
+    new Markdown("> a\nb\n".repeat(4000));
+    // Reading a quote again for each lazy line it took took nine seconds here.
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
   it("reads a paragraph behind unclosed brackets in time linear in its length", () => {
     const started = performance.now();
     new Markdown("[".repeat(19) + "a".repeat(2_000_000));
@@ -642,6 +651,101 @@ describe("Markdown", () => {
     expect(links("[a](b\u007fc)")).toEqual([]);
     expect(links("[a](\u000b)")).toEqual([]);
     expect(links("[a](b\u000b)")).toEqual([]);
+  });
+
+  // --- Reference links and their definitions, as Rich draws them ---
+
+  it("links full, collapsed and shortcut references to their definition, and draws the definition as nothing", () => {
+    // Rich 15: one row, both linked to http://a.
+    expect(rows('[x][r] and [r]\n\n[r]: http://a "t"', 80)).toEqual(["x and r", ""]);
+    expect(links('[x][r] and [r]\n\n[r]: http://a "t"')).toEqual([["x", "http://a"], ["r", "http://a"]]);
+    expect(links("![i][r]\n\n[r]: http://a")).toEqual([["i", "http://a"]]);
+    expect(rows("![i][r]\n\n[r]: http://a", 80, { hyperlinks: false })).toEqual(["🌆 i", ""]);
+  });
+
+  // Each case below is Rich 15's own output for its source, without hyperlinks.
+  it.each([
+    ["[r][] x\n\n[r]: /u", ["r (/u) x", ""]],
+    ["![i][]\n\n[i]: a.png", ["🌆 i", ""]],
+    // A label matches stripped, each run of whitespace one space, case-folded.
+    ["[Foo  Bar][]\n\n[foo bar]: /u", ["Foo  Bar (/u)", ""]],
+    ["[A]\n\n[a]: /u", ["A (/u)", ""]],
+    ["[ẞ]\n\n[SS]: /u", ["ẞ (/u)", ""]],
+    ["[a b]\n\n[a b]: /u", ["a b (/u)", ""]],
+    ["[a\nb]: /u\n\n[a b]", ["a b (/u)", ""]],
+    // A label matches as written, escapes and all; the first definition of it wins.
+    ["[\\*a\\*]: /u\n\n[*a*] [\\*a\\*]", ["[a] *a* (/u)", ""]],
+    ["[a]\n\n[a]: /1\n[a]: /2", ["a (/1)", ""]],
+    ["[a]: /1\n[b]: /2\n\n[a] [b]", ["a (/1) b (/2)", ""]],
+    // Each part may run onto the lines after it.
+    ['[a]:\n/u\n"t"\n\n[a]', ["a (/u)", ""]],
+    ['[a]: /u "t\nu"\n\n[a]', ["a (/u)", ""]],
+    ["[a]: <>\n\n[a]", ["a ()", ""]],
+    ["[a]\n\n[a]: <b c>", ["a (b%20c)", ""]],
+    ["[a]: http://ÄB.com\n\n[a]", ["a (http://xn--B-5da.com)", ""]],
+    // A title followed by more on its line is given up, and the definition ends with its destination.
+    ['[a]: /u\n"t" x\n\n[a]', ['"t" x', "", "a (/u)", ""]],
+    ["[a]: /u\n===\n\n[a]", ["===", "", "a (/u)", ""]],
+    // Not a definition: an empty title then more, more after the destination, a refused scheme, a
+    // bracket in the label, an empty label, a line that opens a block, or a paragraph to interrupt.
+    ['[a]: /u\n"" x\n\n[a]', ['[a]: /u "" x', "", "[a]", ""]],
+    ["[a]: /u x\n\n[a]", ["[a]: /u x", "", "[a]", ""]],
+    ['[a]: /u "t"x\n\n[a]', ['[a]: /u "t"x', "", "[a]", ""]],
+    ["[a]: javascript:x\n\n[a]", ["[a]: javascript:x", "", "[a]", ""]],
+    ["[a[b]]: /u\n\n[a[b]]", ["[a[b]]: /u", "", "[a[b]]", ""]],
+    ["[ ]: /u\n\n[ ]", ["[ ]: /u", "", "[ ]", ""]],
+    ["[a]:\n- /u\n\n[a]", ["[a]:", "", " • /u", "", "[a]", ""]],
+    ["p\n[a]: /u\n\n[a]", ["p [a]: /u", "", "[a]", ""]],
+    // A definition in a container defines its label for the whole document.
+    ["- [a]\n\n> [a]: /q", ["", " • a (/q)", "", ""]],
+    ["- [a]: /u\n- b", ["", " • b", ""]],
+    // A full reference to no definition is no link, and neither is its first label alone.
+    ["[a][b]\n\n[a]: /u", ["[a][b]", ""]],
+    ["[x]: /u\n\n[x][ ]", ["[x][ ]", ""]],
+    ["[foo][bar][baz]\n\n[baz]: /url1\n[bar]: /url2", ["foo (/url2)baz (/url1)", ""]],
+    // A label holding a link is refused, so only the inner one links.
+    ["[a [b] c][r]\n\n[b]: /b\n[r]: /r", ["[a b (/b) c]r (/r)", ""]],
+    ["[x]: /u\n\n[[x]]", ["[x (/u)]", ""]],
+    ["![a [b] c][r]\n\n[b]: /b\n[r]: /r", ["🌆 a [b] c", ""]],
+  ])("reads the references in %j as Rich does", (source, expected) => {
+    expect(rows(source, 80, { hyperlinks: false })).toEqual(expected);
+  });
+
+  it("falls back from a refused inline link to a reference, read from where the refusal stopped, as Rich does", () => {
+    expect(rows("[x](not a link)\n\n[x]: /u", 80, { hyperlinks: false })).toEqual(["x (/u)(not a link)", ""]);
+    // markdown-it reads `b` as no title, and looks for a reference's label one past it.
+    expect(rows("[x](a b[y] z\n\n[y]: /u", 80, { hyperlinks: false })).toEqual(["x (/u) z", ""]);
+    // An image does not fall back, and a `(` with only space after it is neither.
+    expect(rows("![x](a b)\n\n[x]: /u", 80, { hyperlinks: false })).toEqual(["!x (/u)(a b)", ""]);
+    expect(rows("[x]: /u\n\n[x](", 80, { hyperlinks: false })).toEqual(["[x](", ""]);
+    expect(rows("[x]: /u\n\n[x]( ", 80, { hyperlinks: false })).toEqual(["[x](", ""]);
+  });
+
+  it("ends a container where a lazy line follows a definition that does not take it, as Rich does", () => {
+    // The definition takes a lazy title, and the quote with it.
+    expect(rows('> [a]: /u\n"t"\n\n[a]', 80, { hyperlinks: false })).toEqual(["", "a (/u)", ""]);
+    // A lazy line no definition or paragraph takes is not the quote's.
+    expect(rows("> [a]: /u\nfoo\n\n[a]", 80, { hyperlinks: false })).toEqual(["", "foo", "", "a (/u)", ""]);
+    // A quote's lazy line is short of an item's indentation however far it is indented.
+    expect(rows("> - -|-\n\t===", 80)).toEqual(["", "▌  • -|- ===", ""]);
+  });
+
+  it("ends a definition at a backslash that escapes its destination's line ending, as Rich does", () => {
+    // markdown-it reads a destination in the text it holds, which ends with the destination's line.
+    expect(rows("[a]: x\\\ny\n\n[a]", 40, { hyperlinks: false })).toEqual(["y", "", "a (x%5C)", ""]);
+    expect(rows('[a]: x\\\n"t"\n\n[a]', 40, { hyperlinks: false })).toEqual(['"t"', "", "a (x%5C)", ""]);
+    // However many lines a label running over several took on before it.
+    expect(rows("[a\nb\nc\nd\ne]:\nx\\\ny\nz\n\n[a b c d e]", 40, { hyperlinks: false })).toEqual(["y z", "", "a b c d e (x%5C)", ""]);
+    expect(rows("[a\nb\nc\nd\ne]:\n<x\\\ny>\n\n[a b c d e]", 40, { hyperlinks: false })).toEqual(["[a b c d e]: <x", "y>", "", "[a b c d e]", ""]);
+  });
+
+  it("reads a definition's label or title left open across many lines in time linear in their number", () => {
+    for (const opening of ["[a", '[a]: /u "']) {
+      const started = performance.now();
+      new Markdown(opening + "x\n".repeat(200_000));
+      // Text grown a line at a time, and read after each, took over five seconds here.
+      expect(performance.now() - started).toBeLessThan(2000);
+    }
   });
 
   /** Each run of drawn text that is a link, and the href it links to. */
