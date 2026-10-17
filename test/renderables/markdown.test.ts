@@ -358,6 +358,20 @@ describe("Markdown", () => {
     expect(rows(">\t\tfoo", 20)).toEqual(["", "▌", "▌    foo", "▌", ""]);
   });
 
+  it("counts a tab after a nested quote's `>` from the content of the quote around it, as Rich does", () => {
+    // Rich 15's rows. Past the second `>`, markdown-it's stops are not the source's: the
+    // whitespace after the third `>` here reaches a code indent, so the line continues the paragraph.
+    expect(rows("> > >    a\n> > >  \t> > a", 40)).toEqual(["", "▌ ▌ ▌ a > > a", ""]);
+    expect(rows("> > >    a\n    > > >  \t> > a", 40)).toEqual(["", "▌ ▌ ▌ a > > a", ""]);
+    expect(rows("> > >  \t- a", 40)).toEqual(["", "▌ ▌ ▌", "▌ ▌ ▌  - a", "▌ ▌ ▌", ""]);
+    expect(rows("> > >\t  - a", 40)).toEqual(["", "▌ ▌ ▌  • a", ""]);
+    // The code indent is cut in the quote's own stops, which may leave less of the line than the source would.
+    expect(rows("> > >\t\t- a", 40)).toEqual(["", "▌ ▌ ▌", "▌ ▌ ▌  - a", "▌ ▌ ▌", ""]);
+    // A cut that the two measures leave short of an item's text keeps what it stops before, the marker too.
+    expect(rows("> \t>  \t- a", 40)).toEqual(["", "▌ ▌  • - a", ""]);
+    expect(rows("  > >  \t>\t 1. a", 40)).toEqual(["", "▌ ▌ ▌  1 . a", ""]);
+  });
+
   it("draws a tab in code as spaces to the code's own stops, never a raw tab", () => {
     expect(rows("- a\n\n  ```\n  \tx\n  ```", 20)).toEqual(["", " • a", "", "        x", "", ""]);
     expect(rows("    \tx", 20)).toEqual(["", "     x", "", ""]);
