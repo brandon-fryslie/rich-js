@@ -109,6 +109,10 @@ export type RawRecord = {
   promptId?: string;
   subtype?: string;
   durationMs?: number;
+  content?: string;
+  commandRun?: { command: string; args: string };
+  hookCount?: number;
+  hookErrors?: string[];
   message?: MessageShape;
   toolUseResult?: { agentId?: string } | unknown;
   sourceToolAssistantUUID?: string;
@@ -196,6 +200,43 @@ interface Joined {
   readonly line: RecordLine;
   /** The records the line was read from, first to last, as written. */
   readonly parts: readonly RecordLine[];
+}
+
+/** The text inside the first `<name>…</name>` in `content`, trimmed; "" when it has none. */
+function tagged(content: string, name: string): string {
+  return content.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`))?.[1]?.trim() ?? "";
+}
+
+/**
+ * What a system record says. Claude Code writes one for a turn's duration, a
+ * slash command and its output, the stop hooks that ran, and notices that are
+ * their `content` — an away summary, a compaction, a usage limit. A subtype not
+ * named here is drawn by its name and content, so one nobody has seen still
+ * reaches the reader.
+ */
+function systemEvent(r: RawRecord): Pick<SystemBlock, "subtype" | "label" | "text" | "durationMs"> {
+  const subtype = r.subtype ?? "system";
+  const content = r.content ?? "";
+  const durationMs = r.durationMs ?? null;
+  switch (subtype) {
+    case "turn_duration":
+      return { subtype, label: "turn", text: "", durationMs };
+    // A command's own record carries `commandRun` and its output; an older one
+    // carries the command line, as tags, in its content.
+    case "local_command": {
+      const command = r.commandRun
+        ? `/${r.commandRun.command} ${r.commandRun.args}`
+        : `${tagged(content, "command-name")} ${tagged(content, "command-args")}`;
+      const output = [tagged(content, "local-command-stdout"), tagged(content, "local-command-stderr")].filter((s) => s !== "");
+      return { subtype, label: command.trim() || "local command", text: output.join("\n"), durationMs };
+    }
+    case "stop_hook_summary": {
+      const hooks = r.hookCount ?? 0;
+      return { subtype, label: `${hooks} stop hook${hooks === 1 ? "" : "s"}`, text: (r.hookErrors ?? []).join("\n"), durationMs };
+    }
+    default:
+      return { subtype, label: subtype.replaceAll("_", " "), text: content, durationMs };
+  }
 }
 
 /**
@@ -315,18 +356,8 @@ function emitBlocks(joined: ReadonlyArray<Joined>): Block[] {
       continue;
     }
 
-    // System turn-duration → SystemBlock
     if (recordType === "system") {
-      const block: SystemBlock = {
-        kind: "system",
-        uuid,
-        parentUuid,
-        timestamp,
-        source: parts,
-        subtype: r.subtype ?? "system",
-        durationMs: typeof r.durationMs === "number" ? r.durationMs : null,
-      };
-      out.push(block);
+      out.push({ kind: "system", uuid, parentUuid, timestamp, source: parts, ...systemEvent(r) });
       continue;
     }
 
