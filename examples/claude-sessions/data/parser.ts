@@ -25,48 +25,50 @@ import type {
 /**
  * What the viewer does with each record type Claude Code writes: draws it as
  * the conversation, or keeps it out — session state, titles, file history,
- * hook output — until hidden records are shown (`H`). A type in neither list
+ * hook output — until hidden records are shown (`H`). A type it does not name
  * is one this table does not know: it is drawn as an error, so the reader
- * still sees it and the table's gap is visible.
+ * still sees it and the table's gap is visible. One literal, so a type cannot
+ * be named twice: a duplicate key does not compile.
  *
  * [LAW:one-source-of-truth] emitBlocks draws exactly the drawn types: its
- * dispatch over them is exhaustive, so a type added here does not compile
+ * dispatch over them is exhaustive, so a type made drawn here does not compile
  * until it is drawn. A record's type is the one readRecord reads it as.
  */
-const DRAWN_RECORD_TYPES = ["user", "assistant", "system"] as const;
-export const HIDDEN_RECORD_TYPES = [
-  "agent-name",
-  "ai-title",
-  "artifact-autoreact-ledger",
-  "artifact-comment-monitor",
-  "atis-latch",
-  "attachment",
-  "bridge-session",
-  "continued-in",
-  "cost-state",
-  "custom-title",
-  "file-history-delta",
-  "file-history-snapshot",
-  "fork-context-ref",
-  "frame-link",
-  "history-suppression",
-  "last-prompt",
-  "mode",
-  "permission-mode",
-  "pr-link",
-  "progress",
-  "queue-operation",
-  "relocated",
-  "summary",
-  "worktree-state",
-] as const;
-export type DrawnRecordType = (typeof DRAWN_RECORD_TYPES)[number];
-export type HiddenRecordType = (typeof HIDDEN_RECORD_TYPES)[number];
+const RECORD_USE = {
+  user: "drawn",
+  assistant: "drawn",
+  system: "drawn",
+  "agent-name": "hidden",
+  "ai-title": "hidden",
+  "artifact-autoreact-ledger": "hidden",
+  "artifact-comment-monitor": "hidden",
+  "atis-latch": "hidden",
+  attachment: "hidden",
+  "bridge-session": "hidden",
+  "continued-in": "hidden",
+  "cost-state": "hidden",
+  "custom-title": "hidden",
+  "file-history-delta": "hidden",
+  "file-history-snapshot": "hidden",
+  "fork-context-ref": "hidden",
+  "frame-link": "hidden",
+  "history-suppression": "hidden",
+  "last-prompt": "hidden",
+  mode: "hidden",
+  "permission-mode": "hidden",
+  "pr-link": "hidden",
+  progress: "hidden",
+  "queue-operation": "hidden",
+  relocated: "hidden",
+  summary: "hidden",
+  "worktree-state": "hidden",
+} as const satisfies Record<string, "drawn" | "hidden">;
+type RecordType = keyof typeof RECORD_USE;
+export type DrawnRecordType = { [T in RecordType]: (typeof RECORD_USE)[T] extends "drawn" ? T : never }[RecordType];
+export type HiddenRecordType = Exclude<RecordType, DrawnRecordType>;
 
-const RECORD_TYPES: ReadonlyMap<string, "drawn" | "hidden"> = new Map([
-  ...DRAWN_RECORD_TYPES.map((type) => [type, "drawn"] as const),
-  ...HIDDEN_RECORD_TYPES.map((type) => [type, "hidden"] as const),
-]);
+const RECORD_TYPES: ReadonlyMap<string, "drawn" | "hidden"> = new Map(Object.entries(RECORD_USE));
+export const HIDDEN_RECORD_TYPES = [...RECORD_TYPES].flatMap(([type, use]) => (use === "hidden" ? [type] : []));
 
 function isDrawn(type: string): type is DrawnRecordType {
   return RECORD_TYPES.get(type) === "drawn";
@@ -96,7 +98,7 @@ interface MessageShape {
   };
 }
 
-type RawRecord = {
+export type RawRecord = {
   type: string;
   uuid?: string;
   parentUuid?: string | null;
@@ -201,7 +203,7 @@ interface Joined {
  * turn ran as an `attachment` of type `queued_command`, with no user record of
  * its own, so that one is read as the user record it stands for.
  */
-function readRecord(r: RawRecord): RawRecord {
+export function readRecord(r: RawRecord): RawRecord {
   const a = r.attachment;
   if (r.type !== "attachment" || a?.type !== "queued_command") return r;
   return { ...r, type: "user", isMeta: a.isMeta, message: { role: "user", content: a.prompt } };
@@ -379,7 +381,7 @@ function emitBlocks(joined: ReadonlyArray<Joined>): Block[] {
         // answered, the one that answered it — each verbatim, and each where a
         // lookup by its uuid finds this block.
         const madeBy = parts.find((part) => carriesToolUse(part, toolUseId)) ?? line;
-        const source = resolved ? [madeBy, joined[resolved.lineIndex]!.line] : [madeBy];
+        const source = resolved ? [madeBy, ...joined[resolved.lineIndex]!.parts] : [madeBy];
         const parentOf = madeBy.parsed.parentUuid ?? null;
 
         const agentId = extractAgentId(resolved ? lines[resolved.lineIndex]!.parsed : undefined, resolved?.content);
