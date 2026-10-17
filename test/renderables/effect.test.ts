@@ -9,7 +9,7 @@ import { Segment } from "../../src/core/segment.js";
 import { JOINERS, Strip } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
-import { Effected, confined, type CellColors, type Effect, type EffectCell } from "../../src/renderables/effect.js";
+import { Effected, confined, drawnOf, type CellColors, type Effect, type EffectCell } from "../../src/renderables/effect.js";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { Group } from "../../src/renderables/group.js";
 import { Panel } from "../../src/renderables/panel.js";
@@ -376,6 +376,47 @@ describe("Effected — widgets under an effect", () => {
   });
 });
 
+describe("Drawn.cells — the cells an effect is handed, listed before it is handed any", () => {
+  it("lists every cell the second stage is handed, a wide glyph once at its first column and a newline as none", () => {
+    const listed: string[] = [];
+    const handed: string[] = [];
+    const recording: Effect = (_t, drawn) => {
+      listed.push(...drawn.cells().map(({ row, col }) => `${row}:${col}`));
+      return (colors, cell) => {
+        handed.push(`${cell.row}:${cell.col}`);
+        return colors;
+      };
+    };
+    renderToString(effected(new RichText("a界b\ncd"), recording), { width: 10, colorSystem: "truecolor" });
+    expect(handed).toEqual(["0:0", "0:1", "0:3", "1:0", "1:1"]);
+    expect(listed).toEqual(handed);
+  });
+  it("leaves out a blank cell on the terminal's ground, which it hands but which shows nothing", () => {
+    const listed: string[] = [];
+    const handed: string[] = [];
+    const recording: Effect = (_t, drawn) => {
+      listed.push(...drawn.cells().map(({ row, col }) => `${row}:${col}`));
+      return (colors, cell) => {
+        handed.push(`${cell.row}:${cell.col}`);
+        return colors;
+      };
+    };
+    renderToString(effected(new RichText("a b"), recording), { width: 10, colorSystem: "truecolor" });
+    expect(handed).toEqual(["0:0", "0:1", "0:2"]);
+    expect(listed).toEqual(["0:0", "0:2"]);
+  });
+  it("lists a blank cell whose style draws a line in its ink", () => {
+    const listed: string[] = [];
+    const recording: Effect = (_t, drawn) => {
+      listed.push(...drawn.cells().map(({ row, col }) => `${row}:${col}`));
+      return (colors) => colors;
+    };
+    const lines = ["underline", "underline2", "strike", "overline", "frame", "encircle"].map((line) => new Segment(" ", Style.parse(line)));
+    renderToString(effected(fixed(new Segment("a"), new Segment(" "), ...lines), recording), { width: 10, colorSystem: "truecolor" });
+    expect(listed).toEqual(["0:0", "0:2", "0:3", "0:4", "0:5", "0:6", "0:7"]);
+  });
+});
+
 describe("confined — an effect on its owners' cells", () => {
   const FILL = Style.parse("white on #3050a0");
   const AT = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false };
@@ -441,9 +482,11 @@ describe("confined — an effect on its owners' cells", () => {
   it("hands the effect only the cells one of its owners drew, under one first stage a frame", () => {
     const items = trio();
     const frames: number[] = [];
+    const listed: number[] = [];
     const handed: number[] = [];
-    const counting: Effect = (t) => {
+    const counting: Effect = (t, drawn) => {
       frames.push(t);
+      listed.push(...drawn.cells().map((cell) => cell.col));
       return (colors, cell) => {
         handed.push(cell.col);
         return colors;
@@ -453,6 +496,17 @@ describe("confined — an effect on its owners' cells", () => {
     expect(frames).toEqual([0]);
     // the arrow into the second item, " x ", the arrow into the third, " x ", tail
     expect(handed).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    // and tells the first stage which, before it hands any
+    expect(listed).toEqual(handed);
+  });
+
+  it("asks for the cells only when its effect does", () => {
+    const asked: number[] = [];
+    const drawn = { ...drawnOf([], ColorDepth.TRUECOLOR, DEFAULT_TERMINAL_THEME), cells: () => (asked.push(1), []) };
+    confined(() => (colors) => colors, {})(0, drawn);
+    expect(asked).toHaveLength(0);
+    confined((_t, frame) => (frame.cells(), (colors) => colors), {})(0, drawn);
+    expect(asked).toHaveLength(1);
   });
 
   it("leaves every cell as it was for an owner that drew none", () => {

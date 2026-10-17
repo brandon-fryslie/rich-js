@@ -14,8 +14,9 @@
  * wrapper in another, which is the same as calling one after the other but
  * for what the outer one measures: the inner one's output.
  *
- * What the element draws (`Drawn`) is measured here, in the render, off the
- * same reading of each segment its cells are drawn from, and handed to the
+ * What the element draws (`Drawn`) — the cells the second stage will be
+ * handed, and the colours of its words — is measured here, in the render, off
+ * the same reading of each segment its cells are drawn from, and handed to the
  * effect's first stage, once a frame. It is what an effect keeping words legible is
  * settled against (`onColors`, `./effects.ts`), so no caller derives it a
  * second time from a render of its own.
@@ -94,6 +95,9 @@ export interface EffectCell {
   readonly anchor: Anchor | undefined;
 }
 
+/** Where a cell sits and who drew it: an `EffectCell` before it has a seed or colours. */
+export type Placed = Pick<EffectCell, "row" | "col" | "anchor">;
+
 /**
  * A cell's ink and ground as the screen shows them, which of the two are the
  * terminal's, and whether its style swaps them (`reverse`): what an `Effect`
@@ -111,13 +115,24 @@ export interface Pair extends CellColors {
 }
 
 /**
- * The colours the element an effect wraps draws its words in, in one frame,
- * as the screen shows them: what an effect that must keep the words legible
- * is measured against. A word cell is one whose glyph is not blank and that a
- * strip's joiner did not draw (`JOIN`): a seam's ink is the fill beside it,
- * not words.
+ * What the element an effect wraps draws in one frame: the cells the effect
+ * is handed, and the colours the element draws its words in, as the screen
+ * shows them — what an effect that must keep the words legible is measured
+ * against. A word cell is one whose glyph is not blank and that a strip's
+ * joiner did not draw (`JOIN`): a seam's ink is the fill beside it, not words.
  */
 export interface Drawn {
+  /**
+   * Every cell the element shows something in this frame — a glyph, a
+   * ground that is not the terminal's, or a line its style draws — where it
+   * sits and who drew it, listed before the second stage is handed any: what
+   * an effect spread over the element — a transition, which has its last cell
+   * settle as it ends — is spread over. A blank cell on the terminal's ground
+   * that draws no line is handed but not listed, since nothing in it shows.
+   * `confined` narrows it to the cells its owners drew. A call, so a frame
+   * whose effect does not ask lists none.
+   */
+  cells(): readonly Placed[];
   /** Every distinct ink and ground of a word cell. */
   readonly pairs: readonly Pair[];
   /** The colours the element sets itself in its word cells, by hex: never the terminal's, whatever its hex. */
@@ -184,10 +199,9 @@ export class Effected implements Renderable, Measurable {
     // [LAW:one-source-of-truth] The frame is measured before any cell is
     // handed to the effect, off the same looks its cells are drawn from.
     const looked = looks(segments, depth, this.theme);
-    const frame = this.effect(this.t, measured(looked, depth, this.theme));
-    let row = 0;
-    let col = 0;
-    for (const { segment, look } of looked) {
+    const walked = walk(looked);
+    const frame = this.effect(this.t, measured(looked, () => walked, depth, this.theme));
+    for (const { segment, look, glyphs } of walked) {
       if (look === undefined) {
         yield segment;
         continue;
@@ -200,20 +214,9 @@ export class Effected implements Renderable, Measurable {
       // writes, so two truecolors landing on one index stay one run. A cell
       // the effect gave its neighbour's colours is drawn as that neighbour was.
       const runs: { text: string; cells: number; colors: CellColors; drawn: DrawnColors }[] = [];
-      // Cells into the segment, as `base.shiftedBy` counts them below.
-      let into = 0;
-      for (const glyph of graphemes(segment.text)) {
-        let colors = slots;
-        if (glyph === "\n") {
-          row++;
-          col = 0;
-        } else {
-          const anchor = base.anchor && shiftAnchor(base.anchor, into);
-          // Back from the screen to the style's slots: the same swap undoes itself.
-          colors = onScreen(frame(from, { row, col, seed: this.seed(row, col), terminal, reverse: pair.reverse, anchor }), pair.reverse);
-          col += cellLen(glyph);
-        }
-        into += cellLen(glyph);
+      for (const { glyph, cell } of glyphs) {
+        // Back from the screen to the style's slots: the same swap undoes itself.
+        const colors = cell === undefined ? slots : onScreen(frame(from, { ...cell, seed: this.seed(cell.row, cell.col), terminal, reverse: pair.reverse }), pair.reverse);
         const last = runs[runs.length - 1];
         const writes = last !== undefined && sameColors(last.colors, colors) ? last.drawn : this.respec(wire, slots, colors, depth);
         if (last !== undefined && writesAlike(last.drawn, writes)) {
@@ -292,7 +295,7 @@ interface Look {
 }
 
 /** Each of `segments` with how it is drawn at `depth` on `theme`; a control segment draws nothing. */
-function looks(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalTheme): { segment: Segment; look: Look | undefined }[] {
+function looks(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalTheme): Looked[] {
   return [...segments].map((segment) => {
     if (segment.isControl) return { segment, look: undefined };
     const style = segment.style ?? Style.null();
@@ -304,13 +307,75 @@ function looks(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalTh
   });
 }
 
-/** What `looked` draws its words in: `Drawn`'s measure, taken once per frame. */
-function measured(looked: readonly { segment: Segment; look: Look | undefined }[], depth: ColorDepth, theme: TerminalTheme): Drawn {
+/** A segment with how it is drawn, or none for a control segment, which draws nothing. */
+interface Looked {
+  readonly segment: Segment;
+  readonly look: Look | undefined;
+}
+
+/** A segment with how it is drawn and each of its glyphs, placed where a cell is drawn — never a newline, which is no cell. */
+interface Walked extends Looked {
+  readonly glyphs: readonly { readonly glyph: string; readonly cell: Placed | undefined }[];
+}
+
+/**
+ * Each glyph of `looked`, where its cell sits: rows and columns from the
+ * top-left of the output, a wide glyph one cell at its first column, and its
+ * anchor shifted to that column as `Style.shiftedBy` shifts a run's.
+ * [LAW:one-source-of-truth] The one walk: what `Drawn.cells` lists and what
+ * the render hands the effect are read off it.
+ */
+function walk(looked: readonly Looked[]): Walked[] {
+  let row = 0;
+  let col = 0;
+  return looked.map(({ segment, look }) => {
+    if (look === undefined) return { segment, look, glyphs: [] };
+    const anchor = look.style.anchor;
+    // Cells into the segment, as `base.shiftedBy` counts them in the render.
+    let into = 0;
+    const glyphs = [...graphemes(segment.text)].map((glyph) => {
+      const cell = glyph === "\n" ? undefined : { row, col, anchor: anchor && shiftAnchor(anchor, into) };
+      [row, col] = glyph === "\n" ? [row + 1, 0] : [row, col + cellLen(glyph)];
+      into += cellLen(glyph);
+      return { glyph, cell };
+    });
+    return { segment, look, glyphs };
+  });
+}
+
+/** Whether `style` draws in its ink on a blank glyph: a line under, through or over it, or a frame round it. */
+function drawsLines(style: Style): boolean {
+  return [style.underline, style.underline2, style.strike, style.overline, style.frame, style.encircle].some((on) => on === true);
+}
+
+/**
+ * What `looked` draws: `Drawn`'s measure, taken once per frame. Its `cells`
+ * are listed off `walked` the first time they are asked for, since only an
+ * effect spread over the element asks, and a glyph walk is what measuring the
+ * words alone, a segment at a time, is spared (`drawnOf`).
+ */
+function measured(looked: readonly Looked[], walked: () => readonly Walked[], depth: ColorDepth, theme: TerminalTheme): Drawn {
+  const ground = theme.backgroundColor.hex;
+  let listed: readonly Placed[] | undefined;
+  const list = (): readonly Placed[] =>
+    walked().flatMap(({ look, glyphs }) => {
+      if (look === undefined) return [];
+      // A blank glyph shows its ground, and any line its style draws in its ink.
+      const blankShows = look.pair.bg.hex !== ground || drawsLines(look.style);
+      return glyphs.flatMap(({ glyph, cell }) => (cell !== undefined && (glyph.trim() !== "" || blankShows) ? [cell] : []));
+    });
   const words = looked.flatMap(({ segment, look }) => (look !== undefined && segment.text.trim() !== "" && !drawnBy(look.style.anchor, JOIN) ? [look.pair] : []));
   const pairs = [...new Map(words.map((pair): [string, Pair] => [`${pair.fg.hex}/${pair.bg.hex}/${pair.terminal.fg}/${pair.terminal.bg}/${pair.reverse}`, pair])).values()];
   // [LAW:one-source-of-truth] A slot the terminal fills is no colour of the element's, whatever its hex.
   const own = (slot: "fg" | "bg"): string[] => pairs.flatMap((pair) => (pair.terminal[slot] ? [] : [pair[slot].hex]));
-  return { pairs, colors: new Set([...own("fg"), ...own("bg")]), fills: new Set(own("bg")), depth, theme };
+  return {
+    cells: () => (listed ??= list()),
+    pairs,
+    colors: new Set([...own("fg"), ...own("bg")]),
+    fills: new Set(own("bg")),
+    depth,
+    theme,
+  };
 }
 
 /**
@@ -340,11 +405,14 @@ export function onBeat(effect: Effect, beat: Beat): Effect {
  */
 export function confined(effect: Effect, ...owners: readonly object[]): Effect {
   const confinedTo: ReadonlySet<object> = new Set(owners);
+  // [LAW:single-enforcer] One reading of which slots are owned, for the cells listed and the cells handed alike.
+  const ownedOf = (cell: Placed) => colorsOwnedBy(cell.anchor, confinedTo);
+  const any = ({ fg, bg }: { fg: boolean; bg: boolean }): boolean => fg || bg;
   return (t, drawn) => {
-    const frame = effect(t, drawn);
+    const frame = effect(t, { ...drawn, cells: () => drawn.cells().filter((cell) => any(ownedOf(cell))) });
     return (colors, cell) => {
-      const owned = colorsOwnedBy(cell.anchor, confinedTo);
-      if (!owned.fg && !owned.bg) return colors;
+      const owned = ownedOf(cell);
+      if (!any(owned)) return colors;
       const moved = frame(colors, cell);
       return { fg: owned.fg ? moved.fg : colors.fg, bg: owned.bg ? moved.bg : colors.bg };
     };
@@ -357,7 +425,8 @@ export function confined(effect: Effect, ...owners: readonly object[]): Effect {
  * output under an effect to read the contrast its words are left at.
  */
 export function drawnOf(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalTheme): Drawn {
-  return measured(looks(segments, depth, theme), depth, theme);
+  const looked = looks(segments, depth, theme);
+  return measured(looked, () => walk(looked), depth, theme);
 }
 
 /**

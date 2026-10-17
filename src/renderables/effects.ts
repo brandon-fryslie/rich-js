@@ -53,7 +53,7 @@ import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo } from "../core/memo.js";
 import { Oklch } from "../core/oklch.js";
 import { ensureContrast } from "../themes/colorMath.js";
-import { Effected, type Drawn, type Effect, type EffectCell, type Pair } from "./effect.js";
+import { Effected, type Drawn, type Effect, type EffectCell, type Pair, type Placed } from "./effect.js";
 
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
@@ -568,11 +568,12 @@ export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number):
 }
 
 /**
- * How much of each cell shows at `t`: 1 is the cell as drawn, 0 is the cell
- * gone to the terminal's ground. Read per cell, so cells can arrive or leave
- * apart, and staged as `Field` is. One outside [0, 1] is held to it.
+ * How much of each cell shows at `t` in a frame drawing what `Drawn` says: 1
+ * is the cell as drawn, 0 is the cell gone to the terminal's ground. Read per
+ * cell, so cells can arrive or leave apart, and staged as `Effect` is. One
+ * outside [0, 1] is held to it.
  */
-export type Visibility = (t: number) => (cell: EffectCell) => number;
+export type Visibility = (t: number, drawn: Drawn) => (cell: EffectCell) => number;
 
 /**
  * A cell mixed toward the ground of the terminal the frame is drawn on
@@ -583,8 +584,9 @@ export type Visibility = (t: number) => (cell: EffectCell) => number;
  * hiding — 1 reaches fully invisible. A cell wholly shown is returned as it was.
  */
 export function veiled(visibility: Visibility, swing: number): Effect {
-  return (t, { theme }) => {
-    const shows = visibility(t);
+  return (t, drawn) => {
+    const { theme } = drawn;
+    const shows = visibility(t, drawn);
     // [LAW:one-source-of-truth] The ground is the terminal `Effected` draws on, never a second one handed here.
     const ground = Oklch.fromRgba(theme.backgroundColor);
     return (colors, cell) => {
@@ -602,7 +604,7 @@ export function veiled(visibility: Visibility, swing: number): Effect {
  * with soft edges, as ink spreads or mist thins. `z` places the element in
  * the noise. A cell's place never changes, so it is worked out once.
  */
-function order(z: number): (cell: EffectCell) => number {
+function order(z: number): (cell: Placed) => number {
   const places = new Map<string, number>();
   return (cell) => {
     const at = `${cell.row}:${cell.col}`;
@@ -639,15 +641,55 @@ function transition(curve: Curve, effect: Effect): Transition {
 const OWN = 0.45;
 
 /**
- * Each cell's progress through its own change in a transition, in [0, 1]: a
- * cell `place` along the order starts that share of the way through the time
- * the others leave it, and takes `OWN` of `seconds`.
+ * A cell's own change in a transition: how far along the element's order it
+ * starts, in [0, 1], and how far through the change it is at `t`, in [0, 1].
  */
-function ownChange(curve: Curve, place: (cell: EffectCell) => number): Visibility {
-  const own = curve.seconds * OWN;
-  // One phase, shifted per cell, so no cell builds its own each frame.
-  const change = Phase.once(0, own);
-  return (t) => (cell) => change(t - place(cell) * (curve.seconds - own));
+interface Change {
+  readonly along: number;
+  progress(t: number): number;
+}
+
+/**
+ * Each cell's own change in a transition, in a frame listing `cells`: a cell
+ * starts as far through the time the others leave it as its `place` falls
+ * between the element's first and last, so on any element, however little of
+ * the order its cells span, the first starts at 0 and the last settles at
+ * `seconds`. [LAW:one-source-of-truth] That is what lets `done` read
+ * `seconds` alone. An element whose cells all share one place has no order to
+ * stagger, and its change takes the whole of `seconds`.
+ *
+ * A cell's change is settled in the first frame that lists it and kept, as
+ * its place is, so an element whose cells change while it moves — a label
+ * that gains a column as it leaves — spreads only its new cells over the
+ * order it has then, and never sends a cell that has gone back to a later
+ * start. [LAW:no-ambient-temporal-coupling] The transition owns that record;
+ * it is why a transition is made for one element.
+ */
+function ownChange(curve: Curve, place: (cell: Placed) => number): (cells: readonly Placed[]) => (cell: Placed) => Change {
+  const changes = new Map<string, Change>();
+  const key = (cell: Placed): string => `${cell.row}:${cell.col}`;
+  return (cells) => {
+    const [first, last] = extent(cells.map(place));
+    const stagger = (last > first ? 1 - OWN : 0) * curve.seconds;
+    // One phase a frame, shifted per cell, so no cell builds its own.
+    const change = Phase.once(0, curve.seconds - stagger);
+    // A share of the way from the first place to the last, held to the order for a cell the frame does not list.
+    const settled = (cell: Placed): Change => {
+      const along = last > first ? clamp01((place(cell) - first) / (last - first)) : 0;
+      return { along, progress: (t) => change(t - along * stagger) };
+    };
+    for (const cell of cells) {
+      const at = key(cell);
+      changes.set(at, changes.get(at) ?? settled(cell));
+    }
+    // A cell the frame hands but does not list shows nothing yet, so it is timed for this frame alone.
+    return (cell) => changes.get(key(cell)) ?? settled(cell);
+  };
+}
+
+/** The least and greatest of `values`; of none, a frame with no cell to place, both 0. */
+function extent(values: readonly number[]): readonly [number, number] {
+  return values.reduce<readonly [number, number]>(([lo, hi], v) => [Math.min(lo, v), Math.max(hi, v)], [values[0] ?? 0, values[0] ?? 0]);
 }
 
 /**
@@ -660,9 +702,9 @@ export function fadeIn(curve: Curve, z: number): Transition {
   const risen = ownChange(curve, order(1.7 + z));
   return transition(
     curve,
-    veiled((t) => {
-      const at = risen(t);
-      return (cell) => curve.ease(at(cell));
+    veiled((t, drawn) => {
+      const of = risen(drawn.cells());
+      return (cell) => curve.ease(of(cell).progress(t));
     }, curve.swing),
   );
 }
@@ -688,18 +730,18 @@ const DISSOLVE_SHAPE = { depth: 0.4, from: 0.5, to: 0.95, maskFrom: 0.35, maskTo
  */
 export function dissolveOut(curve: Curve, z: number): Transition {
   requireCurve(curve);
-  const place = order(4.2 + z);
   const eddy = order(9.3 + z);
-  const faded = ownChange(curve, place);
+  const faded = ownChange(curve, order(4.2 + z));
   const { depth, from, to, maskFrom, maskTo, late } = DISSOLVE_SHAPE;
   return transition(
     curve,
-    veiled((t) => {
-      const at = faded(t);
+    veiled((t, drawn) => {
+      const of = faded(drawn.cells());
       return (cell) => {
-        const gone = curve.ease(at(cell));
+        const { along, progress } = of(cell);
+        const gone = curve.ease(progress(t));
         const q = clamp01((gone - from) / (to - from));
-        const back = depth * smoothstep(maskFrom, maskTo, eddy(cell)) * (1 - late + late * place(cell)) * Math.sin(Math.PI * q) ** 2;
+        const back = depth * smoothstep(maskFrom, maskTo, eddy(cell)) * (1 - late + late * along) * Math.sin(Math.PI * q) ** 2;
         return 1 - gone + back;
       };
     }, curve.swing),
