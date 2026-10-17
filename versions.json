@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "2232273a5417c6b00538f6f2c74d9120f6d3f366",
+      "timestamp": "2026-10-17T00:09:28.182Z",
+      "commits": [
+        {
+          "sha": "2232273a5417c6b00538f6f2c74d9120f6d3f366",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T18:07:49-06:00",
+          "message": "Colour steps on a beat as a signal, and any effect samples on one (rich-animation-xi28.bjo) (#410)\n\n* Colour steps on a beat as a signal, and any effect samples on one (rich-animation-xi28.bjo)\n\nsteppedInk(steps) is an Effect whose ink steps through colours on a beat,\none a hold, looping, for the time it is handed. Each step's ink is written\nas the colour nearest the step's that the depth draws and that reads on the\ncell's ground at the catalogue's floor (floorOf: resting contrast or AA,\nwhichever is lower), measured as Effected writes it; in truecolor through\nensureContrast, the slide readableOn makes, below it the nearest indexed\ncolour, so at sixteen colours it steps slot to slot where the loops hold\nstill. The search is memoized per ink, ground and step, so a frame inside a\nstep redoes none.\n\nonBeat(effect, beat) samples any effect at Beat.start(t), new on Beat: the\nmoment the hold in progress began, bit-identical for every t inside it. A\nshort-curve wheel on beat([1]) is a hue walk a step a second.\n\nstepped <seconds> <color> ... joins frames in animationFuncs: the colour in\nprogress as a colour value, so it nests in fg and readableOn.\n\nEffectCell carries reverse, so a cell and its colours make its Pair.\n\n* Beat.start lands in the hold at reads, and a template hold is refused in the function's own words\n\nReview (high): for holds not exact in binary, the pass's start plus the hold's\ncould round an ulp under the boundary, so at(start(t)) was the hold before for\nnearly half of all samples; start now walks up to the first float at places in\nthe hold, and a sweep pins it. steppedInk snapshots its colours as beat does\nits holds. The template pairs parser refuses a non-positive hold itself, so the\nauthor reads the engine's 'error calling stepped' and no stray 'beat'. The cost\ntest builds a fresh signal per base so the first frame is a real search."
+        }
+      ]
+    },
+    {
       "version": "pr-409",
       "ref": "refs/pull/409/merge",
       "sha": "c303f202c85a501984e6924c7d2bf24d27608768",
@@ -41,35 +56,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T17:38:02-06:00",
           "message": "claude-sessions opens a real session on its first message (rich-demos-k78j.iuf)\n\nClaude Code now writes mode, attachment and a dozen other session-state\nrecords the parser did not know, so it drew each as an \"unknown record type\"\nerror panel ahead of the conversation. Every type found across two weeks of\nreal transcripts is now named in RECORD_TYPES (data/parser.ts) as drawn or\nhidden. A hidden record shown with H is a rule naming its type, not an error;\na type the table does not name is still drawn as an error, so it reaches the\nreader.\n\nThe card's staging script took its own list of drawn types; it now derives\nthem from RECORD_TYPES, so the card and the Node script draw the same records.\nThe staged data it writes is unchanged.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-410",
-      "ref": "refs/pull/410/merge",
-      "sha": "30e990e769186678405f9b3c3eb1099ddf2ec094",
-      "timestamp": "2026-10-17T00:01:23.550Z",
-      "commits": [
-        {
-          "sha": "30e990e769186678405f9b3c3eb1099ddf2ec094",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T00:00:16Z",
-          "message": "Merge 53fe29a45b63dda791ffb9101c715876c3699464 into be55d8d03e743ffc840c4d98afbdebb22d195f8b\n"
-        },
-        {
-          "sha": "53fe29a45b63dda791ffb9101c715876c3699464",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:00:11-06:00",
-          "message": "Beat.start lands in the hold at reads, and a template hold is refused in the function's own words\n\nReview (high): for holds not exact in binary, the pass's start plus the hold's\ncould round an ulp under the boundary, so at(start(t)) was the hold before for\nnearly half of all samples; start now walks up to the first float at places in\nthe hold, and a sweep pins it. steppedInk snapshots its colours as beat does\nits holds. The template pairs parser refuses a non-positive hold itself, so the\nauthor reads the engine's 'error calling stepped' and no stray 'beat'. The cost\ntest builds a fresh signal per base so the first frame is a real search.\n"
-        },
-        {
-          "sha": "6467a716fb9b72c7b258ac328008459478dffe57",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T17:41:50-06:00",
-          "message": "Colour steps on a beat as a signal, and any effect samples on one (rich-animation-xi28.bjo)\n\nsteppedInk(steps) is an Effect whose ink steps through colours on a beat,\none a hold, looping, for the time it is handed. Each step's ink is written\nas the colour nearest the step's that the depth draws and that reads on the\ncell's ground at the catalogue's floor (floorOf: resting contrast or AA,\nwhichever is lower), measured as Effected writes it; in truecolor through\nensureContrast, the slide readableOn makes, below it the nearest indexed\ncolour, so at sixteen colours it steps slot to slot where the loops hold\nstill. The search is memoized per ink, ground and step, so a frame inside a\nstep redoes none.\n\nonBeat(effect, beat) samples any effect at Beat.start(t), new on Beat: the\nmoment the hold in progress began, bit-identical for every t inside it. A\nshort-curve wheel on beat([1]) is a hue walk a step a second.\n\nstepped <seconds> <color> ... joins frames in animationFuncs: the colour in\nprogress as a colour value, so it nests in fg and readableOn.\n\nEffectCell carries reverse, so a cell and its colours make its Pair.\n"
         }
       ]
     },
@@ -120,21 +106,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T17:12:49-06:00",
           "message": "A transition settles its last cell as it is done, on any element (rich-unfiled-791c.7b9h)\n\nA transition staggered its cells by raw noise, which on a short element\nspans a narrow band of the order: an 11-column dissolve settled at 21 s\nand said done at 30. Drawn now lists the cells the effect will be handed\n(confined narrows it to its owners'), and the order is spread over them,\nso the first cell starts at 0 and the last settles at `seconds`. The\ndocs state the gap that is left: an ease's flat tail, and below\ntruecolor the last palette step.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "be55d8d03e743ffc840c4d98afbdebb22d195f8b",
-      "timestamp": "2026-10-16T23:08:59.472Z",
-      "commits": [
-        {
-          "sha": "be55d8d03e743ffc840c4d98afbdebb22d195f8b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T17:07:21-06:00",
-          "message": "Frames of content play on a beat for a time the host hands in (rich-animation-xi28.a3n) (#407)\n\n* Frames of content play on a beat for a time the host hands in (rich-animation-xi28.a3n)\n\n`beat(holds)` joins the easing vocabulary: holds in seconds, looped on\n`Phase.loop`, the hold in progress out, so a sequence of unequal holds is one\nbeat and `steps(n)` is its equal-holds case. `Frames` draws the frame in\nprogress at a handed `t` — every frame at the widest one's width, ending no\nline, each frame its own `RichText` — and `animationFuncs(frameTime)` registers\n`frames <seconds> <frame> …` for a template, the time read when it is evaluated.\n\nNothing reads a clock; holds are seconds, never frame counts, and both are\ntested sampled once a second and sixty times a second. A 120-column row holding\nthe frames renders at 0.015 ms p50 at t = 0 and at t = 10⁶ s.\n\n* A beat lands a boundary sample on the hold that begins there, and a frame is cropped before it wraps (rich-animation-xi28.a3n)\n\nHigh review on #407. beat wrapped t through (t % p + p) % p and compared\nprogress, so t = 0.1 on 0.1 s holds landed one ulp short and every frame\nshowed a sample late; now one wrapSeconds in seconds, exact at and past\nzero, that Phase.loop reads too, and the one place a non-finite t fails.\nBeat.holds is a copy. Frames settles its index at construction, measures\neach frame once, renders without a copy, and draws noWrap + crop so a slot\nnarrower than the widest frame cannot fold it onto a second line. The\nwall-clock p50 test is gone: the lookup it pinned is asserted by\neasing.test.ts far-from-zero, deterministically.\n\n* A negative epsilon wraps to zero, not to the period (rich-animation-xi28.a3n)\n\nMedium review on #407: wrapSeconds carried -1e-17 up to exactly the\nperiod, so Phase.loop answered 1 where its range is [0, 1)."
         }
       ]
     }
