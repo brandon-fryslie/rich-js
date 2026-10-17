@@ -5,8 +5,9 @@
  * Block structure is read as CommonMark reads it: a blockquote and a list
  * item are both containers, their lines tokenized as Markdown of their own
  * once the container's marker or indentation is cut off, and drawn beside a
- * gutter — the quote's bar, the item's marker then its hang. Where CommonMark
- * leaves the drawing open, Rich's is followed.
+ * gutter — the quote's bar, the item's marker then its hang. A table, which
+ * CommonMark has none of, is read as markdown-it — Rich's parser — reads one.
+ * Where CommonMark leaves the drawing open, Rich's is followed.
  */
 
 import { cellLen, expandTabs, parseTabSize } from "../core/cells.js";
@@ -14,6 +15,8 @@ import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { RichText, resolveStyle } from "../core/text.js";
 import { Rule } from "./rule.js";
+import { Table } from "./table.js";
+import { SIMPLE } from "../core/box.js";
 import type {
   Renderable,
   Measurable,
@@ -49,6 +52,14 @@ interface BlockSettings extends InlineSettings {
 /** What a list item's gutter opens with: a bullet, or its number in the list, padded to the list's widest. */
 type ItemMarker = { readonly kind: "bullet" } | { readonly kind: "number"; readonly label: string };
 
+/** Where a table column's cells sit, from the colons on its delimiter cell. None is GFM's no alignment, which Rich leaves to its column: left. */
+type CellAlign = "left" | "center" | "right" | undefined;
+
+interface TableColumn {
+  readonly header: string;
+  readonly align: CellAlign;
+}
+
 type MdToken =
   | { type: "heading"; level: number; text: string }
   | { type: "paragraph"; text: string }
@@ -56,6 +67,8 @@ type MdToken =
   | { type: "hr" }
   | { type: "list_item"; marker: ItemMarker; children: MdToken[] }
   | { type: "blockquote"; children: MdToken[] }
+  /** Each row holds one cell per column: a short row filled out with empty cells, a long one cut. */
+  | { type: "table"; columns: readonly TableColumn[]; rows: readonly (readonly string[])[] }
   | { type: "blank" };
 
 /**
@@ -83,6 +96,15 @@ const ITEM_MARKER = /^(?:[*+-]|(\d{1,9})\.)/;
 const LEAD = /^[ \t]*/;
 const HARD_BREAK = /(?: {2,}|\\)$/;
 const BLOCK_STARTS = [HEADING, FENCE, QUOTE, RULE];
+/** A line that may be a table's delimiter row, screened as markdown-it screens one: pipes, dashes, colons and space only, and not a dash then a space, which opens a list item. */
+const DELIMITER_ROW = /^(?!-[ \t])[-:|][-:| \t]+$/;
+const DELIMITER_CELL = /^:?-+:?$/;
+/**
+ * How many empty cells a table's short rows may be filled out with before the
+ * table ends, as markdown-it caps them: a header of many columns over many
+ * one-cell rows would otherwise grow a few kilobytes of source into millions of cells.
+ */
+const MAX_AUTOCOMPLETED_CELLS = 0x10000;
 /** Indentation that makes a line indented code when it opens a block, as CommonMark counts it. */
 const CODE_INDENT = 4;
 /** The tab stop code is drawn with, as Rich's `Syntax` draws it. */
@@ -171,6 +193,54 @@ function itemStart(line: Line): ItemStart | undefined {
   };
 }
 
+/** Whether `line` may be a table's row: a line of its container's own, neither lazy paragraph text nor indented code. */
+function tableLine(line: Line): boolean {
+  return !line.lazy && indentOf(line) < CODE_INDENT;
+}
+
+/**
+ * A table row's cells, as markdown-it splits one: at every `|` no backslash escapes,
+ * a pipe at either end of the row closing it rather than opening an empty
+ * cell, and each cell trimmed. An escaped `\|` is a `|` in its cell, inside a
+ * code span too.
+ */
+function rowCells(row: string): string[] {
+  const cells = [""];
+  for (const ch of row.trim()) {
+    const last = cells.length - 1;
+    if (ch !== "|") cells[last] += ch;
+    else if (cells[last]!.endsWith("\\")) cells[last] = `${cells[last]!.slice(0, -1)}|`;
+    else cells.push("");
+  }
+  const from = cells[0] === "" ? 1 : 0;
+  const to = cells.length > from && cells[cells.length - 1] === "" ? -1 : undefined;
+  return cells.slice(from, to).map((cell) => cell.trim());
+}
+
+/** The alignment of each column `line` declares, if it is a table's delimiter row: a run of dashes per column, a colon on the side its cells sit. */
+function alignments(line: Line): CellAlign[] | undefined {
+  const text = body(line);
+  if (!tableLine(line) || !DELIMITER_ROW.test(text)) return undefined;
+  const cells = rowCells(text);
+  if (!cells.every((cell) => DELIMITER_CELL.test(cell))) return undefined;
+  return cells.map((cell) => (cell.endsWith(":") ? (cell.startsWith(":") ? "center" : "right") : cell.startsWith(":") ? "left" : undefined));
+}
+
+/**
+ * The columns of the table opening at `start`, if one does, as markdown-it
+ * reads one: a header row with a pipe in it, then a delimiter row naming as
+ * many columns.
+ */
+function tableAt(lines: readonly Line[], start: number): TableColumn[] | undefined {
+  const head = lines[start]!;
+  const delimiter = lines[start + 1];
+  if (delimiter === undefined || !tableLine(head) || !body(head).includes("|")) return undefined;
+  const aligns = alignments(delimiter);
+  if (!aligns) return undefined;
+  const headers = rowCells(body(head));
+  return headers.length === aligns.length ? headers.map((header, n) => ({ header, align: aligns[n] })) : undefined;
+}
+
 /** Whether two item starts belong to one list: the same bullet character, or both numbered. */
 function sameList(a: ItemStart, b: ItemStart): boolean {
   return a.bullet === b.bullet;
@@ -246,7 +316,7 @@ function continuesLazily(inner: readonly Line[], line: Line, afterLazy: boolean)
 
 /**
  * The text of the paragraph begun at `start`, every line after it up to a
- * blank or a line that ends a paragraph, and the index of the line that ended
+ * blank, a line that ends a paragraph or a table's header row, and the index of the line that ended
  * it. Soft-broken lines are joined by one space, as a Markdown renderer
  * reflows them, with their own indentation dropped; a line ending in two
  * spaces or a backslash breaks hard, and its break is kept.
@@ -254,7 +324,7 @@ function continuesLazily(inner: readonly Line[], line: Line, afterLazy: boolean)
 function continuation(lines: readonly Line[], start: number): { text: string; next: number } {
   const parts = [lines[start]!.text];
   let i = start + 1;
-  for (; i < lines.length && !isBlank(lines[i]!) && !endsParagraph(lines[i]!); i++) parts.push(lines[i]!.text);
+  for (; i < lines.length && !isBlank(lines[i]!) && !endsParagraph(lines[i]!) && !tableAt(lines, i); i++) parts.push(lines[i]!.text);
   const text = parts
     .map((part, n) => {
       const words = (n === parts.length - 1 ? part : part.replace(HARD_BREAK, "")).trim();
@@ -335,6 +405,23 @@ function tokenize(lines: readonly Line[]): MdToken[] {
     if (isBlank(line)) {
       tokens.push({ type: "blank" });
       i++;
+      continue;
+    }
+
+    // Table: before every other block, as markdown-it tries it, so a header
+    // row that reads as a heading or a list item is still a header. Its body
+    // rows run to a blank line or a line that opens a block.
+    const columns = tableAt(lines, i);
+    if (columns) {
+      const rows: string[][] = [];
+      let autocompleted = 0;
+      for (i += 2; i < lines.length && !isBlank(lines[i]!) && tableLine(lines[i]!) && !opensBlock(lines[i]!); i++) {
+        const cells = rowCells(body(lines[i]!));
+        autocompleted += columns.length - cells.length;
+        if (autocompleted > MAX_AUTOCOMPLETED_CELLS) break;
+        rows.push(columns.map((_, n) => cells[n] ?? ""));
+      }
+      tokens.push({ type: "table", columns, rows });
       continue;
     }
 
@@ -677,6 +764,21 @@ function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, setti
         const bar = new Segment(drawable(options, "▎ ", "| "), getStyle(options, "markdown.hr"));
         const body = (inner: RenderOptions) => renderTokens(token.children, inner, settings);
         yield* guttered(body, options, bar, bar, Style.parse("dim italic"));
+        break;
+      }
+
+      case "table": {
+        // Rich's TableElement: each cell inline Markdown placed by its
+        // column's alignment, the header's in `markdown.table.header` on top.
+        const cell = (text: string, justify: CellAlign): RichText => {
+          const content = new RichText("", { justify });
+          appendInline(content, text, settings, options);
+          return content;
+        };
+        const table = new Table({ box: SIMPLE, padEdge: false, style: "markdown.table.border", showEdge: true, collapsePadding: true });
+        for (const { header, align } of token.columns) table.addColumn(cell(header, align).stylize("markdown.table.header"));
+        for (const row of token.rows) table.addRow(...row.map((text, n) => cell(text, token.columns[n]!.align)));
+        yield* table.render(options);
         break;
       }
 

@@ -806,6 +806,8 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "markdown.hr": Style.parse("yellow"),
   "markdown.link": Style.parse("bright_blue"),
   "markdown.link_url": Style.parse("blue"),
+  "markdown.table.border": Style.parse("cyan"),
+  "markdown.table.header": Style.parse("not bold cyan"),
 
   // Progress
   "progress.description": NULL_STYLE,

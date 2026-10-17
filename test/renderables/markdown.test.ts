@@ -438,6 +438,79 @@ describe("Markdown", () => {
     }
   });
 
+  // --- Tables ---
+
+  it("draws a GFM pipe table as Rich's Table, its cells placed by the delimiter row's colons", () => {
+    // Rich 14's own output for this source at 40 columns, the blank it draws
+    // between the paragraph and the table aside.
+    const md = [
+      "Intro text",
+      "| Left | Centre | Right | Plain |",
+      "|:-----|:------:|------:|-------|",
+      "| a | **bold** | `code` | x \\| y |",
+      "| longer cell | b |",
+      "| 1 | 2 | 3 | 4 | 5 |",
+      "after",
+    ].join("\n");
+    expect(rows(md, 40)).toEqual([
+      "Intro text",
+      "",
+      " Left         Centre  Right  Plain",
+      " ─────────────────────────────────",
+      " a             bold    code  x | y",
+      " longer cell    b",
+      " 1              2         3  4",
+      " after",
+      "",
+      "",
+    ]);
+  });
+
+  it("draws a table cell's inline Markdown, and its header in markdown.table.header", () => {
+    const segs = collectSegments(new Markdown("| **h** | k |\n|---|---|\n| *i* | `c` |"), { maxWidth: 40 });
+    const styleOf = (text: string) => segs.find((s) => s.text === text)?.style;
+    expect(styleOf("h")).toEqual(DEFAULT_THEME.resolve("table.header").add(Style.parse("bold")).add(DEFAULT_THEME.resolve("markdown.table.header")));
+    expect(styleOf("i")?.italic).toBe(true);
+    expect(styleOf("c")?.color).toEqual(DEFAULT_THEME.resolve("markdown.code").color);
+  });
+
+  it("reads a table where markdown-it does, and leaves one where it does not", () => {
+    // A header row is tried before any other block, so a quote's marker is a cell.
+    expect(rows("> a | b\n--|--", 30)).toEqual(["", " > a  b", " ──────", "", ""]);
+    expect(rows("a|b\n-|-\n1|2", 30)).toEqual(["", " a  b", " ────", " 1  2", "", ""]);
+    // A delimiter row naming another count of columns is no table: this is a setext heading.
+    expect(rows("a | b\n---", 30)).toEqual(["a | b", ""]);
+    // A lazy line is only ever paragraph text.
+    expect(rows("> a | b\n> more\n--|--", 30)).toEqual(["▎ a | b more --|--", ""]);
+    // A table ends a paragraph, and a line that opens a block ends the table.
+    expect(rows("| a |\n|---|\n| 1 |\n> q", 30)).toEqual(["", " a", " ─", " 1", "", "▎ q", ""]);
+  });
+
+  it("ends a table at the row that fills out more than markdown-it's 65536 empty cells", () => {
+    // 257 columns over one-cell rows: each row fills out 256, so the 256th row
+    // reaches 65536 and is kept, and the 257th passes it and is paragraph text.
+    // Wide enough that every column has room to show its cell.
+    const lastRows = (bodyRows: number) =>
+      rows([`|${" h |".repeat(257)}`, `|${"---|".repeat(257)}`, ...Array<string>(bodyRows).fill("| a |"), "stop"].join("\n"), 1100)
+        .slice(-4)
+        .map((row) => row.trimEnd());
+    expect(lastRows(255)).toEqual([" a", " stop", "", ""]);
+    expect(lastRows(256)).toEqual([" a", "", "stop", ""]);
+  });
+
+  it("draws a table inside a list item, under its hang", () => {
+    expect(rows("- x\n\n  | a | b |\n  |---|---|\n  | 1 | 2 |", 30)).toEqual([
+      "  • x",
+      "",
+      "",
+      "     a  b",
+      "     ────",
+      "     1  2",
+      "",
+      "",
+    ]);
+  });
+
   // --- Measurement ---
 
   it("measurement returns valid values", () => {
