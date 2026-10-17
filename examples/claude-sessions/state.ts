@@ -200,7 +200,7 @@ function loadPath(state: AppState, path: string, opts: {
       showHidden,
       focus: "viewer",
       search: EMPTY_SEARCH,
-      statusMessage: `${opts.statusPrefix ?? "Loaded"} ${blockCount} blocks${result.skipped > 0 ? ` (${result.skipped} lines skipped)` : ""}`,
+      statusMessage: `${opts.statusPrefix ?? "Loaded"} ${blockCount} block${blockCount === 1 ? "" : "s"}${result.skipped > 0 ? ` (${result.skipped} line${result.skipped === 1 ? "" : "s"} skipped)` : ""}`,
       errorMessage: null,
     };
   } catch (err) {
