@@ -14,6 +14,8 @@ import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { RichText, resolveStyle } from "../core/text.js";
 import { Rule } from "./rule.js";
+import { Padding } from "./padding.js";
+import { pyRstrip } from "./python-space.js";
 import { Syntax } from "./syntax.js";
 import { Table } from "./table.js";
 import { parseMarkdown, type CellAlign, type Inline, type MdToken } from "./markdown-parse.js";
@@ -23,7 +25,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawable, getStyle, groundedStyle, stackedHeight } from "../core/protocol.js";
+import { drawable, getStyle, groundedStyle, stackedHeight, withCellWidth } from "../core/protocol.js";
 
 export interface MarkdownOptions {
   /** The style of `inline code`: a theme name or a style definition. Default `markdown.code`. */
@@ -354,12 +356,6 @@ function inline(
   };
 }
 
-/**
- * What Python's `str.rstrip` strips: `str.isspace`, which is not JavaScript's
- * `\s` — it takes the four separator controls and NEL, and leaves U+FEFF.
- */
-const TRAILING_PYTHON_SPACE = /[\t-\r\x1c-\x20\x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+$/;
-
 const NO_GUTTER = new Segment("");
 
 /**
@@ -399,25 +395,11 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
 
     case "code_block": {
       // Rich's CodeBlock: the code, its trailing whitespace dropped, handed to
-      // `Syntax` word-wrapped, then a margin of one cell all round it — every
-      // cell of the block, margin and all, in the code's style.
+      // `Syntax` word-wrapped inside a padding of one cell all round — every
+      // cell of the block, padding and all, in the code's style.
       const style = groundedStyle(options, getStyle(options, "markdown.code"));
-      const width = Math.max(0, options.maxWidth - 2);
-      const syntax = new Syntax(token.code.replace(TRAILING_PYTHON_SPACE, ""), "text", { wordWrap: true });
-      const margin = new Segment(" ", style);
-      const blank = new Segment(" ".repeat(options.maxWidth), style);
-      // In no width at all Rich draws no row of the code, only the margin's.
-      const lines = width > 0 ? Segment.splitLines(Segment.applyStyle(syntax.render({ ...options, maxWidth: width }), style)) : [];
-      yield blank;
-      yield Segment.line();
-      for (const line of lines) {
-        yield margin;
-        yield* Segment.adjustLineLength(line, width, style);
-        yield margin;
-        yield Segment.line();
-      }
-      yield blank;
-      yield Segment.line();
+      const syntax = new Syntax(pyRstrip(token.code), "text", { wordWrap: true });
+      yield* new Padding(syntax, 1, { style }).render(options);
       break;
     }
 
@@ -493,8 +475,8 @@ export class Markdown implements Renderable, Measurable {
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
-    // Every block below is one of a stack.
-    const options = { ...rawOptions, height: stackedHeight(rawOptions.height) };
+    // The width parsed once, for every block below, each one of a stack.
+    const options = { ...withCellWidth(rawOptions), height: stackedHeight(rawOptions.height) };
     // Rich's `new_line`: set by each element as it exits, read before anything is drawn.
     let newLine = false;
     for (const step of documentSteps(this.parsed, options, this)) {

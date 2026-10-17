@@ -237,7 +237,7 @@ describe("Markdown", () => {
     ]);
   });
 
-  it("draws a fenced block inside a quote line for line", () => {
+  it("draws a fenced block inside a quote, its padding inside the quote's bar", () => {
     expect(rows("> ```\n> a = 1\n> b = 2\n> ```", 80)).toEqual(["", "▎", "▎  a = 1", "▎  b = 2", "▎", ""]);
   });
 
@@ -284,7 +284,7 @@ describe("Markdown", () => {
     expect(rows("    \tx", 20)).toEqual(["", "     x", "", ""]);
   });
 
-  it("draws a code block as Rich's Syntax does: word-wrapped inside a margin of one cell, its trailing whitespace dropped", () => {
+  it("draws a code block as Rich's CodeBlock does: word-wrapped inside a padding of one cell, its trailing whitespace dropped", () => {
     const full = (markdown: string, maxWidth: number) => collectText(new Markdown(markdown), { maxWidth }).split("\n");
     // Rich 15's rows, trailing spaces and all.
     expect(full("```\naaa bbb ccc ddd eee fff ggg\n```", 20)).toEqual([" ".repeat(20), " aaa bbb ccc ddd    ", " eee fff ggg        ", " ".repeat(20), ""]);
@@ -294,12 +294,18 @@ describe("Markdown", () => {
     // Python's whitespace, not JavaScript's: NEL and U+001F go, U+FEFF stays.
     expect(full("```\nx \u0085\u001f\n\n```", 6)).toEqual(["      ", " x    ", "      ", ""]);
     expect(full("```\nx﻿\n```", 6)).toEqual(["      ", " x﻿    ", "      ", ""]);
-    // With no width left for the code, only the margin is drawn.
-    expect(full("```\nab\n```", 2)).toEqual(["  ", "  ", ""]);
-    expect(full("```\nab\n```", 1)).toEqual([" ", " ", ""]);
+    // Squeezed, the code keeps a column before the padding does, as every
+    // Padding does; Rich draws only the padding's rows here.
+    expect(full("```\nab\n```", 2)).toEqual(["  ", " a", " b", "  ", ""]);
+    expect(full("```\nab\n```", 1)).toEqual([" ", "a", "b", " ", ""]);
   });
 
-  it("draws every cell of a code block, its margin included, in the code's style", () => {
+  it("parses the width once, as every renderable does, before a code block draws in it", () => {
+    expect(rows("```\nab\n```", -1)).toEqual(["", "", "", ""]);
+    expect(rows("```\nab\n```", 4.5)).toEqual(["", " ab", "", ""]);
+  });
+
+  it("draws every cell of a code block, its padding included, in the code's style", () => {
     const styles = collectSegments(new Markdown("```\nab\n```"), { maxWidth: 6 }).filter((s) => s.text !== "\n").map((s) => s.style);
     expect(styles).toEqual(styles.map(() => DEFAULT_THEME.resolve("markdown.code")));
   });
