@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Markdown, type MarkdownOptions } from "../../src/renderables/markdown.js";
+import { linkHref } from "../../src/renderables/markdown-url.js";
 import { Segment } from "../../src/core/segment.js";
 import { DEFAULT_THEME, Style } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
@@ -311,6 +312,8 @@ describe("Markdown", () => {
     const bold = segment(md, "bold").style;
     expect(bold?.bold).toBe(true);
     expect(bold?.link).toBe("https://x");
+    // Without hyperlinks, Rich writes the label's text plain in markdown.link.
+    expect(segment(md, "bold docs", { hyperlinks: false }).style?.bold).toBeFalsy();
   });
 
   it("draws an image as Rich does: a picture, then its alt text linked to the image", () => {
@@ -320,8 +323,128 @@ describe("Markdown", () => {
     expect(rows("![](img/a.png)", 80)).toEqual(["🌆 a.png", ""]);
   });
 
+  it("draws an image's alt text as written, never parsed as Markdown, as Rich does", () => {
+    expect(rows("![**a** `c` <a@b.co> \\*b &amp; [y]](q)", 80)[0]).toBe("🌆 **a** `c` <a@b.co> \\*b &amp; [y]");
+    expect(links("![<http://x>](y)")).toEqual([["<http://x>", "y"]]);
+  });
+
   it("leaves brackets that are not a link as they are", () => {
     expect(rows("[a] (b) and [c](d", 80)).toEqual(["[a] (b) and [c](d", ""]);
+  });
+
+  /** Each run of drawn text that is a link, and the href it links to. */
+  function links(markdown: string, options?: MarkdownOptions): [string, string][] {
+    const runs: [string, string][] = [];
+    let last: string | undefined;
+    for (const { text, style } of collectSegments(new Markdown(markdown, options), { maxWidth: 80 })) {
+      const href = style?.link;
+      if (href !== undefined && href === last) runs[runs.length - 1]![0] += text;
+      else if (href !== undefined) runs.push([text, href]);
+      last = href;
+    }
+    return runs;
+  }
+
+  // Each case below is Rich 14's own output for its source.
+
+  it("draws an autolink as Rich does: its URL or address without the brackets, and the link", () => {
+    expect(rows("x <http://e.com> y", 80)).toEqual(["x http://e.com y", ""]);
+    expect(links("x <http://e.com> y")).toEqual([["http://e.com", "http://e.com"]]);
+    expect(links("x <a@b.co> y")).toEqual([["a@b.co", "mailto:a@b.co"]]);
+    expect(segment("<http://e.com>", "http://e.com").style).toEqual(segment("[a](http://e.com)", "a").style);
+    expect(rows("x <http://e.com> y", 80, { hyperlinks: false })).toEqual(["x http://e.com (http://e.com) y", ""]);
+    expect(rows("x <a@b.co> y", 80, { hyperlinks: false })).toEqual(["x a@b.co (mailto:a@b.co) y", ""]);
+    expect(rows("<made-up-scheme://foo,bar> <a+b:c> <localhost:5001/foo> <a@b>", 80)[0]).toBe(
+      "made-up-scheme://foo,bar a+b:c localhost:5001/foo a@b",
+    );
+  });
+
+  it("reads an autolink's text as written, binding it tighter than emphasis or a link's brackets", () => {
+    expect(links("<http://e.com/*a*>")).toEqual([["http://e.com/*a*", "http://e.com/*a*"]]);
+    expect(rows("*a <http://e.com/*> b*", 80)[0]).toBe("a http://e.com/* b");
+    expect(links("[a <http://e.com/]> b](u)")).toEqual([
+      ["a ", "u"],
+      ["http://e.com/]", "http://e.com/%5D"],
+      [" b", "u"],
+    ]);
+    expect(segment("**<http://e.com>**", "http://e.com").style?.bold).toBe(true);
+    expect(rows("`<http://e.com>`", 80)[0]).toBe("<http://e.com>");
+    expect(rows("[a <http://x> b](u)", 80, { hyperlinks: false })[0]).toBe("a http://x (http://x) b (u)");
+  });
+
+  it("leaves a `<` that opens no autolink as it is", () => {
+    for (const source of ["< http://e.com>", "<m:abc>", "<//x>", "<a@ö.com>", "<a@-b.c>"]) {
+      expect(rows(source, 80)[0]).toBe(source);
+      expect(links(source)).toEqual([]);
+    }
+    expect(rows("<http://e.com\nx>", 80)[0]).toBe("<http://e.com x>");
+    expect(rows("<x <http://e.com>>", 80)[0]).toBe("<x http://e.com>");
+  });
+
+  it("makes every link's href as markdown-it does: its host punycoded, the rest percent-encoded", () => {
+    expect(links("<http://e.com/a(b)c?q=1&r=[2]>")).toEqual([["http://e.com/a(b)c?q=1&r=[2]", "http://e.com/a(b)c?q=1&r=%5B2%5D"]]);
+    expect(links("<http://e.com/`x`>")).toEqual([["http://e.com/`x`", "http://e.com/%60x%60"]]);
+    expect(links("<http://e.com/%2F%zz>")).toEqual([["http://e.com/%2F%zz", "http://e.com/%2F%25zz"]]);
+    expect(links("<http://[::1]/ä>")).toEqual([["http://[::1]/ä", "http://%5B::1%5D/%C3%A4"]]);
+    expect(links("<http://ÄB.com>")).toEqual([["http://ÄB.com", "http://xn--B-5da.com"]]);
+    expect(links("<http://müller-straße.de>")).toEqual([["http://müller-straße.de", "http://xn--mller-strae-46a18a.de"]]);
+    expect(links("<http://😀.com/😀>")).toEqual([["http://😀.com/😀", "http://xn--e28h.com/%F0%9F%98%80"]]);
+    expect(links("<http://日本。例え.jp/>")).toEqual([["http://日本.例え.jp/", "http://xn--wgv71a.xn--r8jz45g.jp/"]]);
+    expect(links("<https://user:pw@ä.com:8080/p?q#f>")).toEqual([["https://user:pw@ä.com:8080/p?q#f", "https://user:pw@xn--4ca.com:8080/p?q#f"]]);
+    expect(links("<mailto:Ä@ö.com>")).toEqual([["mailto:Ä@ö.com", "mailto:%C3%84@xn--nda.com"]]);
+    expect(links("<mailto:a@ä.com?subject=ä>")).toEqual([["mailto:a@ä.com?subject=ä", "mailto:a@xn--4ca.com?subject=%C3%A4"]]);
+    // Only an http, https or mailto host is punycoded.
+    expect(links("<ftp://ä.com> <HTTP://ä.com>")).toEqual([
+      ["ftp://ä.com", "ftp://%C3%A4.com"],
+      ["HTTP://ä.com", "HTTP://%C3%A4.com"],
+    ]);
+    // A host is cut where a part stops being a host label.
+    expect(links("<http://[ä]/x> <http://e.com::/x>")).toEqual([
+      ["http://ä/x", "http://xn--4ca/x"],
+      ["http://e.com:/x", "http://e.com:/x"],
+    ]);
+    expect(links("[a](http://e.com/ä%20x) [b](<http://e.com/a b>) [c](//ä.com) [d](ä.com/b)")).toEqual([
+      ["a", "http://e.com/%C3%A4%20x"],
+      ["b", "http://e.com/a%20b"],
+      ["c", "//xn--4ca.com"],
+      ["d", "%C3%A4.com/b"],
+    ]);
+    expect(links("![i](http://e.com/ä.png)")).toEqual([["i", "http://e.com/%C3%A4.png"]]);
+    // A scheme is read as Python's IGNORECASE reads [a-z], which folds İ into it.
+    expect(links("[a](İmailto:@/2İ.http:///c)")).toEqual([["a", "%C4%B0mailto:/2%C4%B0.http:///c"]]);
+  });
+
+  it("decodes an autolink's escapes and punycoded host for reading, but not a reserved character", () => {
+    expect(links("<http://e.com/ä%20>")).toEqual([["http://e.com/ä ", "http://e.com/%C3%A4%20"]]);
+    expect(links("<http://e.com/%C3%A4%2f%3F>")).toEqual([["http://e.com/ä%2F%3F", "http://e.com/%C3%A4%2f%3F"]]);
+    expect(links("<http://xn--4ca.com/x> <http://xn--mller-kva.de>")).toEqual([
+      ["http://ä.com/x", "http://xn--4ca.com/x"],
+      ["http://müller.de", "http://xn--mller-kva.de"],
+    ]);
+    // A label that is no punycode is drawn as written; xn-- with nothing after it is the empty label.
+    expect(links("<http://xn--zz.com> <http://xn--.com>")).toEqual([
+      ["http://xn--zz.com", "http://xn--zz.com"],
+      ["http://.com", "http://xn--.com"],
+    ]);
+    // A byte that is no part of well-formed UTF-8 reads as U+FFFD.
+    expect(links("<http://e.com/%E2%82>")).toEqual([["http://e.com/��", "http://e.com/%E2%82"]]);
+    expect(links("<http://e.com/%C0%80%ED%A0%80%F4%90%80%80>")[0]![0]).toBe(`http://e.com/${"�".repeat(9)}`);
+  });
+
+  it("strips a URL's whitespace in one pass, however long a run of it the URL holds", () => {
+    // Linear takes ~10 ms here; the backtracking strip it replaced took ~10 s.
+    const started = performance.now();
+    expect(linkHref(`http://e.com/${"\u3000".repeat(100_000)}x`)).toBe(`http://e.com/${"%E3%80%80".repeat(100_000)}x`);
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
+  it("draws no link to a script, a file, or data that is not an image, as markdown-it refuses one", () => {
+    for (const source of ["<javascript:alert(1)>", "<vbscript:x>", "<file:///etc>", "[a](javascript:x)", "[a](JAVASCRIPT:x)", "[a](data:text/html,x)"]) {
+      expect(rows(source, 80)[0]).toBe(source);
+      expect(links(source)).toEqual([]);
+    }
+    expect(links("<data:image/png;base64,x>")).toEqual([["data:image/png;base64,x", "data:image/png;base64,x"]]);
+    expect(links("![a](data:image/gif;x)")).toEqual([["a", "data:image/gif;x"]]);
   });
 
   // --- Options ---
@@ -383,11 +506,17 @@ describe("Markdown", () => {
     expect(code.style?.color).toEqual(segment("`foo()`", "foo()").style?.color);
   });
 
-  it("writes a link's URL after its text when hyperlinks is false", () => {
-    const md = "[link](https://example.com) here";
-    expect(rows(md, 80, { hyperlinks: false })).toEqual(["link (https://example.com) here", ""]);
-    expect(segment(md, "link", { hyperlinks: false }).style?.link).toBeUndefined();
-    expect(segment(md, "https://example.com", { hyperlinks: false }).style?.link).toBe("https://example.com");
+  it("writes a link's URL after its text, and links nothing, when hyperlinks is false, as Rich does", () => {
+    const md = "[link](https://example.com) here <a@b.co>";
+    expect(rows(md, 80, { hyperlinks: false })).toEqual(["link (https://example.com) here a@b.co (mailto:a@b.co)", ""]);
+    expect(links(md, { hyperlinks: false })).toEqual([]);
+  });
+
+  it("links nothing to an empty URL, as Rich does", () => {
+    expect(rows("[a](<>)", 80)[0]).toBe("a");
+    expect(links("[a](<>)")).toEqual([]);
+    expect(links("![x](<>)")).toEqual([]);
+    expect(rows("[a](<>)", 80, { hyperlinks: false })[0]).toBe("a ()");
   });
 
   it("places paragraphs, list items and quotes by justify, and leaves headings where they are", () => {
@@ -434,7 +563,7 @@ describe("Markdown", () => {
         .filter((s) => s.style?.link === "https://e.com")
         .map((s) => s.text)
         .join("");
-      expect(linked).toBe(options.hyperlinks === false ? "https://e.com" : "ab");
+      expect(linked).toBe(options.hyperlinks === false ? "" : "ab");
     }
   });
 

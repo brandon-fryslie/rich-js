@@ -68,6 +68,12 @@ describe("Style construction", () => {
     expect(s.dim).toBeUndefined();
   });
 
+  it("reads an empty link as no link, as Rich's Style does", () => {
+    expect(new Style({ link: "" }).link).toBeUndefined();
+    expect(new Style({ link: "" }).isNull).toBe(true);
+    expect(new Style({ link: "u" }).add(new Style({ link: "" })).link).toBe("u");
+  });
+
   it("constructs with a link", () => {
     const s = new Style({ link: "https://example.com" });
     expect(s.link).toBe("https://example.com");

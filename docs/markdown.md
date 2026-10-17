@@ -52,7 +52,15 @@ comment, a processing instruction, a declaration or a CDATA section inside text 
 either. A backslash before a punctuation character writes that character as itself, so `\<span>`
 draws `<span>`.
 
-An image is drawn as Rich draws it: a picture glyph, then its alt text, linked to the image.
+An image is drawn as Rich draws it: a picture glyph, then its alt text as written, never parsed
+as Markdown, linked to the image.
+An autolink — `<https://example.com>`, or `<name@example.com>`, which links to
+`mailto:name@example.com` — is drawn as a link whose text is the address as written, its escapes
+decoded for reading. Every link's URL is made an href as markdown-it makes one: the host punycoded
+after a lowercase `http:`, `https:` or `mailto:`, or after a bare `//`, and the rest
+percent-encoded. A `javascript:`, `vbscript:`
+or `file:` URL, or a `data:` one that is not an image, is no link, and its source is drawn as
+written.
 
 ## Tables
 
@@ -91,7 +99,7 @@ it with [`Syntax`](./syntax) instead.
 | Option | Default | Effect |
 |--------|---------|--------|
 | `inlineCodeStyle` | `"markdown.code"` | The style of `` `inline code` ``: a theme name, a style definition such as `"bold magenta"`, or a `Style` |
-| `hyperlinks` | `true` | A link's text is the link, drawn in `markdown.link_url`. With `false` the text is drawn in `markdown.link` and the URL is written after it in parentheses, for a reader who cannot click it |
+| `hyperlinks` | `true` | A link's text is the link, drawn in `markdown.link_url`. With `false` the text is drawn plain in `markdown.link`, its own styles dropped, and the URL is written after it in parentheses, for a reader who cannot click it |
 | `justify` | `"left"` | Where paragraphs, list items and quoted text sit in the width: `"left"`, `"center"`, `"right"` or `"full"`. Headings keep their own placement, as Rich's do: an h1 is centred and every other level is left |
 
 ```typescript
