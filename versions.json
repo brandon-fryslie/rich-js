@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-445",
+      "ref": "refs/pull/445/merge",
+      "sha": "9c8755d53f118d09f4ac287693d5a356a0e71e84",
+      "timestamp": "2026-10-17T15:29:03.873Z",
+      "commits": [
+        {
+          "sha": "9c8755d53f118d09f4ac287693d5a356a0e71e84",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T09:27:18-06:00",
+          "message": "Merge 3c0cd5f3004feb461841315ed5cc3cda7d26fd62 into 2666c650b9d20477d70b711db4424bb90706e356\n"
+        },
+        {
+          "sha": "3c0cd5f3004feb461841315ed5cc3cda7d26fd62",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T09:27:14-06:00",
+          "message": "Markdown strips a code span's padding space from each side, as markdown-it does (rich-unfiled-791c.3kln)\n\nA code span whose text starts and ends with a space and is not all\nwhitespace, as Python's str.strip reads it, loses one space from each end:\n'a ` b ` c' draws 'a b c'. '`  `' is kept whole, and a no-break space or a\ntab pads nothing. Pinned against Rich 15 (markdown-it-py 4.2.0).\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "2666c650b9d20477d70b711db4424bb90706e356",
