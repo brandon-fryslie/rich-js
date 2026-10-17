@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-425",
+      "ref": "refs/pull/425/merge",
+      "sha": "613ab39f17609b197a958f8a519ff9bd9becff17",
+      "timestamp": "2026-10-17T02:59:00.283Z",
+      "commits": [
+        {
+          "sha": "613ab39f17609b197a958f8a519ff9bd9becff17",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:57:14-06:00",
+          "message": "Merge cacb14b51cb0440e2a3f9f221b083dd60404675e into 392c9836831bcf47617b692e821473171b927b45\n"
+        },
+        {
+          "sha": "cacb14b51cb0440e2a3f9f221b083dd60404675e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:57:09-06:00",
+          "message": "An effect's next change is asked with the frame it draws (rich-animation-xi28.3an)\n\nEffect.nextChange took only t, so stillOnSlots — identity at the\nsixteen-colour depths — answered t and a Live repainted still content at\nits rate. The signature mirrors the first stage, (t, drawn), and Effected\nstamps after it has measured the frame, with the one measure.\n\nonBeat answered the hold's end whatever the inner effect said: a beat\nover a done transition said a time where the inner said never. It now\nanswers the first hold start at or after the inner's next change from the\nhold's start, and never when the inner says never.\n\nwithNextChange takes an Effect and says its answer replaces the inner's;\nconfined hands its narrowed frame to both stages. Live reads the soonest\nchange off its rows without flattening them.\n\nThe showcase's flash is a composer over the hue walk, answering the\nsooner of its own next flash and the walk's step, in place of two nested\nEffected and a heading that spelled the signal's next step.\n\nFound by /code-review high on release PR #423; lands before v0.24.0 is\ntagged, since the signature is public.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "392c9836831bcf47617b692e821473171b927b45",
