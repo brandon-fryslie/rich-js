@@ -4,15 +4,22 @@
     {
       "version": "pr-420",
       "ref": "refs/pull/420/merge",
-      "sha": "16398ead57dc8eef43d2301749469d6d2e5d0094",
-      "timestamp": "2026-10-17T02:16:54.852Z",
+      "sha": "51235a7ec702f3bd9a0783f0e5ae08a61283fdd3",
+      "timestamp": "2026-10-17T02:21:26.137Z",
       "commits": [
         {
-          "sha": "16398ead57dc8eef43d2301749469d6d2e5d0094",
+          "sha": "51235a7ec702f3bd9a0783f0e5ae08a61283fdd3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T02:15:14Z",
-          "message": "Merge c53fc7818e903e7943560c0069993d714ab124ed into 8ea70430cce91b045edf9750e63fb7041f59c1a0\n"
+          "timestamp": "2026-10-17T02:19:44Z",
+          "message": "Merge 0b48932565f54de567f1eeeec27c2c1ee17e7eb1 into 8ea70430cce91b045edf9750e63fb7041f59c1a0\n"
+        },
+        {
+          "sha": "0b48932565f54de567f1eeeec27c2c1ee17e7eb1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:19:39-06:00",
+          "message": "claude-sessions joins a command by its parent link and keeps all it says (rich-demos-k78j.0d5)\n\nMedium review of #420. A local_command record's text is its content with the\ncommand tags gone and the output tags unwrapped, so text outside those tags is\ndrawn rather than dropped. The record that runs a command and its output are\njoined by the output's parentUuid instead of adjacency, so showing hidden\nrecords no longer splits a command into two blocks.\n"
         },
         {
           "sha": "c53fc7818e903e7943560c0069993d714ab124ed",
