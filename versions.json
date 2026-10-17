@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-439",
-      "ref": "refs/pull/439/merge",
-      "sha": "fcc63bfb808d9973a58fc7b63b2dfeb5dc597a24",
-      "timestamp": "2026-10-17T12:21:16.568Z",
-      "commits": [
-        {
-          "sha": "fcc63bfb808d9973a58fc7b63b2dfeb5dc597a24",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T12:19:54Z",
-          "message": "Merge e7f1c631d19277e344340b2ba331bc67313b598f into fba9dcd11dd39b4f64f188a0b1a7bf8c1af4a160\n"
-        },
-        {
-          "sha": "e7f1c631d19277e344340b2ba331bc67313b598f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T06:19:48-06:00",
-          "message": "Markdown pads a code block with Padding and strips it in one pass (rich-unfiled-791c.ct7i review)\n\nThe trailing-whitespace regex was quadratic in an interior run; pyRstrip\nscans from the end over the one PY_WHITESPACE set. The hand-built margin\nis Padding, so at widths under three the code keeps a column before the\npadding does, as every Padding does. The width is parsed once at the top\nof Markdown.render.\n"
-        },
-        {
-          "sha": "d0d10e80ee188d06fea1484017d6729269b93197",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T06:06:08-06:00",
-          "message": "Markdown draws a code block inside Syntax's margin, as Rich does (rich-unfiled-791c.ct7i)\n\nRich's CodeBlock hands the code, rstripped, to Syntax(word_wrap=True,\npadding=1). The block now draws through our Syntax the same way: word-wrapped\nat width-2, tab stops of 4 (was 8), and a one-cell margin of the code's style\non every side. Trailing whitespace is Python's str.isspace set, not JS's \\s.\nPinned against Rich 15 rows, including widths 1 and 2 where Rich draws only\nthe margin.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "fba9dcd11dd39b4f64f188a0b1a7bf8c1af4a160",
-      "timestamp": "2026-10-17T11:58:55.616Z",
+      "sha": "65828614a6d5ab5be20c7600447523ffb649be1f",
+      "timestamp": "2026-10-17T12:35:09.789Z",
       "commits": [
         {
-          "sha": "fba9dcd11dd39b4f64f188a0b1a7bf8c1af4a160",
+          "sha": "65828614a6d5ab5be20c7600447523ffb649be1f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T05:57:09-06:00",
-          "message": "Markdown draws a rule in -, as Rich's HorizontalRule does (rich-unfiled-791c.x0d0) (#438)\n\n* Markdown draws a rule in -, as Rich's HorizontalRule does (rich-unfiled-791c.x0d0)\n\n* The quote-rule test quotes Rich's 36 dashes and names the tickets that own its divergences (rich-unfiled-791c.x0d0)"
+          "timestamp": "2026-10-17T06:33:40-06:00",
+          "message": "Markdown draws a code block inside Syntax's margin, as Rich does (rich-unfiled-791c.ct7i) (#439)\n\n* Markdown draws a code block inside Syntax's margin, as Rich does (rich-unfiled-791c.ct7i)\n\nRich's CodeBlock hands the code, rstripped, to Syntax(word_wrap=True,\npadding=1). The block now draws through our Syntax the same way: word-wrapped\nat width-2, tab stops of 4 (was 8), and a one-cell margin of the code's style\non every side. Trailing whitespace is Python's str.isspace set, not JS's \\s.\nPinned against Rich 15 rows, including widths 1 and 2 where Rich draws only\nthe margin.\n\n* Markdown pads a code block with Padding and strips it in one pass (rich-unfiled-791c.ct7i review)\n\nThe trailing-whitespace regex was quadratic in an interior run; pyRstrip\nscans from the end over the one PY_WHITESPACE set. The hand-built margin\nis Padding, so at widths under three the code keeps a column before the\npadding does, as every Padding does. The width is parsed once at the top\nof Markdown.render."
         }
       ]
     }
