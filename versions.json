@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-413",
+      "ref": "refs/pull/413/merge",
+      "sha": "4ac098d7ad0a2a6720abccffff3d5d26c8d83d0c",
+      "timestamp": "2026-10-17T00:38:31.943Z",
+      "commits": [
+        {
+          "sha": "4ac098d7ad0a2a6720abccffff3d5d26c8d83d0c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T00:37:02Z",
+          "message": "Merge e407f31c8d031dd75051d77ce8335d51f32d42ff into b0579cc17713b904935e040bba4b01e744eb3f74\n"
+        },
+        {
+          "sha": "e407f31c8d031dd75051d77ce8335d51f32d42ff",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T18:36:54-06:00",
+          "message": "effects-feel: each loop's measured line asserted by name, the wait bounded by the test's own budget (rich-unfiled-791c.2iki)\n\nReview (high): counting 'worst contrast' matches >= 5 counted frames, not\nloops; at 1 fps a machine that measures every loop between two ticks\npaints the four lines once and fails. The 30_000 wait copied HANG_MS.\n"
+        },
+        {
+          "sha": "f324f7575abcd619004ed81d3afbf64fcfc0d744",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T18:32:34-06:00",
+          "message": "effects-feel measures every loop's contrast at 1 fps, not 30 (rich-unfiled-791c.2iki)\n\nThe demo paints on a wall-clock rate, so its frames cost the same each\nsecond however loaded the machine is, and the contrast measuring gets\nwhat is left. At 30 fps under a full suite that was little: 7.4-10.6 s\nlocally, 21 s of 30 on CI. At 1 fps, 4.1-5.2 s under the full suite\n(three runs), 2.0 s alone (was 2.8 s).\n"
+        }
+      ]
+    },
+    {
       "version": "pr-412",
       "ref": "refs/pull/412/merge",
       "sha": "67864008ea55623b5920a097aac7f60662d3b156",
@@ -27,28 +56,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T18:24:22-06:00",
           "message": "Two demos' rows read whole in their card's terminal (rich-demos-k78j.4jr)\n\nrich-template-bindings: every editor-panel title now fits the 34 cells a\nhalf-row panel gives it in an 80-column terminal (44 at the card's 100), and\nthe nav hint fits 80 columns instead of losing \"Ctrl+C: exit\". At the card\nsize five titles were cut, not the three the checkpoint counted.\n\ndropdown-demo: the pointer readout moves to its own row; beside the three\ndropdowns' state it ran the status to 114 cells.\n\ntest/examples/demo-rows.test.ts runs each demo in a roomy headless xterm and\nin its card's, and fails on any title, rule or unboxed row the roomy screens\nshow that the card's do not show whole. It fails on the pre-fix demos with\nevery cut above.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-413",
-      "ref": "refs/pull/413/merge",
-      "sha": "f8fecfacd7fa13fac006ce54cd02b3ba814925fd",
-      "timestamp": "2026-10-17T00:34:28.618Z",
-      "commits": [
-        {
-          "sha": "f8fecfacd7fa13fac006ce54cd02b3ba814925fd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:32:40-06:00",
-          "message": "Merge f324f7575abcd619004ed81d3afbf64fcfc0d744 into b0579cc17713b904935e040bba4b01e744eb3f74\n"
-        },
-        {
-          "sha": "f324f7575abcd619004ed81d3afbf64fcfc0d744",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:32:34-06:00",
-          "message": "effects-feel measures every loop's contrast at 1 fps, not 30 (rich-unfiled-791c.2iki)\n\nThe demo paints on a wall-clock rate, so its frames cost the same each\nsecond however loaded the machine is, and the contrast measuring gets\nwhat is left. At 30 fps under a full suite that was little: 7.4-10.6 s\nlocally, 21 s of 30 on CI. At 1 fps, 4.1-5.2 s under the full suite\n(three runs), 2.0 s alone (was 2.8 s).\n"
         }
       ]
     },
