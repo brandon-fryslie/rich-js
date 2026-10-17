@@ -4,15 +4,22 @@
     {
       "version": "pr-447",
       "ref": "refs/pull/447/merge",
-      "sha": "5868494f330bad1e76b549492724bed4f996248a",
-      "timestamp": "2026-10-17T16:14:55.609Z",
+      "sha": "e0eb64ee4422ec1e7e4a3f88ec5b963958b7f2b1",
+      "timestamp": "2026-10-17T16:19:12.197Z",
       "commits": [
         {
-          "sha": "5868494f330bad1e76b549492724bed4f996248a",
+          "sha": "e0eb64ee4422ec1e7e4a3f88ec5b963958b7f2b1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T16:13:09Z",
-          "message": "Merge 0f1f2b2b3abf88ae2439465000e129c9426334fa into 201b6f5593ae0b66c16cd9cfc6557b6525788690\n"
+          "timestamp": "2026-10-17T16:17:38Z",
+          "message": "Merge 4272daea00dbcaf252dd4d5bb83847f2664404d7 into 201b6f5593ae0b66c16cd9cfc6557b6525788690\n"
+        },
+        {
+          "sha": "4272daea00dbcaf252dd4d5bb83847f2664404d7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T10:17:33-06:00",
+          "message": "Markdown takes markdown-it's empty-item step only when the marker line has no content (rich-unfiled-791c.tx0u)\n\nThe previous commit decided it from the line where the item ends, so an item\nwhose content starts on its second line ('1.\\n   foo\\n\\n\\n1. b') stepped over\none blank line and split the list. It is markdown-it's condition again: the\nline after the marker is blank, and the step lands two lines on.\n"
         },
         {
           "sha": "0f1f2b2b3abf88ae2439465000e129c9426334fa",
