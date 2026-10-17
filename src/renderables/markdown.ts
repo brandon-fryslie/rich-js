@@ -241,11 +241,10 @@ function* inlineSteps(inlines: readonly Inline[], within: Enclosing, settings: I
 
 /**
  * The step Rich takes exiting `token`'s element: every element sets
- * `new_line` but a rule, which draws its own blank row after it, and neither
- * a blank token nor unread content is an element.
+ * `new_line` but a rule, which draws its own blank row after it.
  */
-function exitSteps(token: MdToken): readonly Step[] {
-  return token.type === "blank" || token.type === "unread" ? [] : [{ kind: "exit", newLine: token.type !== "hr" }];
+function exitStep(token: MdToken): Step {
+  return { kind: "exit", newLine: token.type !== "hr" };
 }
 
 /**
@@ -257,7 +256,7 @@ function* stepsInside(token: MdToken, within: Enclosing, options: RenderOptions,
   const children = function* (blocks: readonly MdToken[], inner: Enclosing): Iterable<Step> {
     for (const child of blocks) {
       yield* stepsInside(child, inner, options, settings);
-      yield* exitSteps(child);
+      yield exitStep(child);
     }
   };
   switch (token.type) {
@@ -269,7 +268,7 @@ function* stepsInside(token: MdToken, within: Enclosing, options: RenderOptions,
       break;
     case "list":
       for (const item of token.items) {
-        yield* children(item.children, within);
+        yield* children(item, within);
         yield EXIT;
       }
       break;
@@ -285,24 +284,19 @@ function* stepsInside(token: MdToken, within: Enclosing, options: RenderOptions,
     case "code_block":
     case "html_block":
     case "hr":
-    case "blank":
-    case "unread":
       break;
   }
 }
 
 /**
  * The steps of the whole document. Rich draws a block at the top of it as it
- * exits, so a block is drawn where its exit is — and a blank line or content
- * left unread, which exit nothing, draw nothing.
+ * exits, so a block is drawn where its exit is.
  */
 function* documentSteps(tokens: readonly MdToken[], options: RenderOptions, settings: InlineSettings): Iterable<Step> {
   for (const token of tokens) {
     yield* stepsInside(token, { styles: [], link: undefined }, options, settings);
-    for (const exit of exitSteps(token)) {
-      yield { kind: "block", token };
-      yield exit;
-    }
+    yield { kind: "block", token };
+    yield exitStep(token);
   }
 }
 
@@ -423,7 +417,7 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
       const hang = new Segment(" ".repeat(width), markerStyle);
       for (const [n, item] of token.items.entries()) {
         const marker = start === undefined ? drawable(options, " • ", " * ") : `${String(start + n).padStart(width - 1)} `;
-        const body = (inner: RenderOptions) => renderTokens(item.children, inner, settings);
+        const body = (inner: RenderOptions) => renderTokens(item, inner, settings);
         yield* guttered(body, options, new Segment(marker, markerStyle), hang, getStyle(options, "markdown.item"));
       }
       break;
@@ -452,9 +446,7 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
     }
 
     case "html_block":
-    case "unread":
-    case "blank":
-      // Rich draws nothing for any of them.
+      // Rich draws nothing for it.
       break;
   }
 }

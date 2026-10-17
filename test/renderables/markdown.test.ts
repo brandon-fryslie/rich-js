@@ -142,7 +142,7 @@ describe("Markdown", () => {
   });
 
   it("opens an ATX heading at a space, a tab or the end of the line after its #s", () => {
-        // markdown-it's empty heading holds an empty inline token, which Rich exits as an element of its own.
+    // markdown-it's empty heading holds an empty inline token, which Rich exits as an element of its own.
     for (const md of ["para\n#", "para\n# ", "para\n#  "]) expect(rows(md, 80)).toEqual(["para", "", "", ""]);
     // A paragraph separator is no line ending to markdown-it, which splits lines at \\n alone.
     expect(rows("# a\u2029", 80)).toEqual([`${" ".repeat(39)}a`, ""]);

@@ -24,37 +24,43 @@ interface TableColumn<Text> {
   readonly align: CellAlign;
 }
 
-/** A list item: its blocks. */
-interface ListItem<Text = readonly Inline[]> {
-  readonly children: readonly MdToken<Text>[];
-}
-
 /**
  * A block, its text as `Text`: the source's own text after the block pass,
  * and that text read into inlines after the inline pass, which is what
- * `parseMarkdown` hands back.
+ * `parseMarkdown` hands back. `Mark` is what the block pass keeps besides:
+ * none, once the inline pass has dropped its marks.
  */
-export type MdToken<Text = readonly Inline[]> =
+export type MdToken<Text = readonly Inline[], Mark = never> =
   | { type: "heading"; level: number; text: Text }
   | { type: "paragraph"; text: Text }
   | { type: "code_block"; code: string }
   | { type: "hr" }
-  /** `start` is an ordered list's first number, as its source writes it; a bullet list has none. */
-  | { type: "list"; start: number | undefined; items: readonly ListItem<Text>[] }
-  | { type: "blockquote"; children: readonly MdToken<Text>[] }
+  /** `start` is an ordered list's first number, as its source writes it; a bullet list has none. Each item is its blocks. */
+  | { type: "list"; start: number | undefined; items: readonly (readonly MdToken<Text, Mark>[])[] }
+  | { type: "blockquote"; children: readonly MdToken<Text, Mark>[] }
   /** Each row holds one cell per column: a short row filled out with empty cells, a long one cut. */
   | { type: "table"; columns: readonly TableColumn<Text>[]; rows: readonly (readonly Text[])[] }
   /** Kept, though nothing draws it, so a container ending in one does not end in the paragraph before it. */
   | { type: "html_block" }
+  | Mark;
+
+/**
+ * What the block pass keeps that markdown-it makes no token of, for the
+ * reads that decide where a container ends; the inline pass drops each.
+ */
+type BlockMark =
   /**
    * A container's content past `MAX_NESTING`, which markdown-it skips unread,
-   * or the lines after a list whose item that deep took every one of them.
-   * Kept, though nothing draws it, so a line after it continues the container
-   * as markdown-it's would: `open` where the last line skipped has text.
+   * or the lines after a list whose item that deep took every one of them, so
+   * a line after it continues the container as markdown-it's would: `open`
+   * where the last line skipped has text.
    */
   | { type: "unread"; open: boolean }
-  /** A blank line: kept, though nothing draws it, so a container ending in one does not end in the paragraph before it. */
+  /** A blank line, so a container ending in one does not end in the paragraph before it. */
   | { type: "blank" };
+
+/** A block as the block pass reads it. */
+type Block = MdToken<string, BlockMark>;
 
 /** The element markdown-it makes of a pair of delimiters. */
 type EmphasisTag = "em" | "strong" | "s";
@@ -356,13 +362,13 @@ function underline(line: Line | undefined): RegExpExecArray | null {
 }
 
 /** Whether the last block of `tokens`, followed into the containers it closes, is a paragraph still open. */
-function endsInParagraph(tokens: readonly MdToken<string>[]): boolean {
+function endsInParagraph(tokens: readonly Block[]): boolean {
   const last = tokens[tokens.length - 1];
   switch (last?.type) {
     case "paragraph":
       return true;
     case "list":
-      return endsInParagraph(last.items[last.items.length - 1]!.children);
+      return endsInParagraph(last.items[last.items.length - 1]!);
     case "blockquote":
       return endsInParagraph(last.children);
     case "unread":
@@ -443,7 +449,7 @@ function closingFence(open: string): RegExp {
  * is a list that swallowed them ends in the `unread` that list leaves, and so
  * swallows them too.
  */
-function swallowsRest(children: readonly MdToken<string>[]): boolean {
+function swallowsRest(children: readonly Block[]): boolean {
   return children[children.length - 1]?.type === "unread";
 }
 
@@ -452,8 +458,8 @@ function swallowsRest(children: readonly MdToken<string>[]): boolean {
  * where an item swallowed the rest of `lines`, the `unread` they are, ending
  * where they do.
  */
-function list(first: ItemStart, level: number, lines: readonly Line[], start: number): { tokens: MdToken<string>[]; next: number } {
-  const items: { children: MdToken<string>[] }[] = [];
+function list(first: ItemStart, level: number, lines: readonly Line[], start: number): { tokens: Block[]; next: number } {
+  const items: Block[][] = [];
   let i = start;
   // Where the last item's lines end.
   let end = start;
@@ -466,12 +472,12 @@ function list(first: ItemStart, level: number, lines: readonly Line[], start: nu
     // A list and its item each nest a level, as markdown-it's tokens do.
     const { inner, next } = itemLines(item, level + 2, lines, i);
     const children = tokenize(inner, level + 2);
-    items.push({ children });
+    items.push(children);
     swallowed = swallowsRest(children);
     end = swallowed ? lines.length : next;
     for (i = end; i < lines.length && isBlank(lines[i]!); i++);
   }
-  const token: MdToken<string> = { type: "list", start: first.bullet === undefined ? first.start : undefined, items };
+  const token: Block = { type: "list", start: first.bullet === undefined ? first.start : undefined, items };
   if (swallowed) return { tokens: [token, { type: "unread", open: !isBlank(lines[lines.length - 1]!) }], next: lines.length };
   // The blank lines after the last item belong to whatever follows the list.
   return { tokens: [token], next: end };
@@ -483,9 +489,9 @@ function list(first: ItemStart, level: number, lines: readonly Line[], start: nu
  * it skips blank lines before it checks the level, so only content with text
  * in it is left unread.
  */
-function tokenize(lines: readonly Line[], level: number): MdToken<string>[] {
+function tokenize(lines: readonly Line[], level: number): Block[] {
   if (level >= MAX_NESTING) return lines.every(isBlank) ? [] : [{ type: "unread", open: !isBlank(lines[lines.length - 1]!) }];
-  const tokens: MdToken<string>[] = [];
+  const tokens: Block[] = [];
   let i = 0;
 
   while (i < lines.length) {
@@ -1210,16 +1216,21 @@ function matched(found: Exclude<InlineMatch, DelimiterRun | { kind: "line_ending
   }
 }
 
-/** `token` with its text, and the text of every block inside it, read into inlines: markdown-it's inline pass. */
-function inlined(token: MdToken<string>): MdToken {
+/** The blocks among `tokens`, their marks dropped, with their text read into inlines: markdown-it's inline pass. */
+function inlined(tokens: readonly Block[]): MdToken[] {
+  return tokens.filter((token): token is Exclude<Block, BlockMark> => token.type !== "blank" && token.type !== "unread").map(inlinedBlock);
+}
+
+/** `token` with its text, and the text of every block inside it, read into inlines. */
+function inlinedBlock(token: Exclude<Block, BlockMark>): MdToken {
   switch (token.type) {
     case "heading":
     case "paragraph":
       return { ...token, text: parseInline(token.text) };
     case "list":
-      return { ...token, items: token.items.map((item) => ({ ...item, children: item.children.map(inlined) })) };
+      return { ...token, items: token.items.map(inlined) };
     case "blockquote":
-      return { ...token, children: token.children.map(inlined) };
+      return { ...token, children: inlined(token.children) };
     case "table":
       return {
         ...token,
@@ -1234,5 +1245,5 @@ function inlined(token: MdToken<string>): MdToken {
 /** `source` read as Markdown: its blocks, and the text in each read into inlines. A line ends at `\r\n`, `\r` or `\n`, as markdown-it normalizes them. */
 export function parseMarkdown(source: string): MdToken[] {
   const lines = source.split(/\r\n?|\n/).map((text): Line => ({ text, margin: 0, lazy: false }));
-  return tokenize(lines, 0).map(inlined);
+  return inlined(tokenize(lines, 0));
 }
