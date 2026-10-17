@@ -41,8 +41,8 @@ function started(argv: string[] = []) {
 }
 
 /** Until the screen has shown `text`, however long the frames take. */
-const shown = (host: { output(): string }, text: string | RegExp) =>
-  vi.waitFor(() => expect(host.output()).toMatch(text), { timeout: 5000, interval: 10 });
+const shown = (host: { output(): string }, text: string | RegExp, timeout = 5000) =>
+  vi.waitFor(() => expect(host.output()).toMatch(text), { timeout, interval: 10 });
 
 const FIRST_FRAME = "effects feel";
 
@@ -57,14 +57,17 @@ describe("effects-feel", () => {
   });
 
   it("draws every effect, with the worst contrast of each loop measured between the frames", async () => {
-    const { host, demo } = started();
+    // At the rate Claude Code draws at. Frames cost the same each second
+    // however loaded the machine is; the measuring gets what is left, and at
+    // 30 a second under a loaded suite there was little left.
+    const { host, demo } = started(["--fps", "1"]);
     await shown(host, FIRST_FRAME);
     // The first frame is up before any loop's contrast is, since measuring
     // one takes hundreds of frames and holding the screen for them is what
     // the demo is not allowed to do.
     expect(host.output()).toContain("measuring contrast…");
     // Measuring every loop is a second or two of work spread between the frames; more under a loaded suite.
-    await vi.waitFor(() => expect(host.output()).toMatch(/wheel .*worst contrast \d+\.\d\d:1 over \d+s \(at rest \d+\.\d\d:1\)/), { timeout: 30_000, interval: 50 });
+    await shown(host, /wheel .*worst contrast \d+\.\d\d:1 over \d+s \(at rest \d+\.\d\d:1\)/, 30_000);
     host.type("q");
     await demo.done;
     const out = host.output();
