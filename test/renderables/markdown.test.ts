@@ -520,6 +520,9 @@ describe("Markdown", () => {
     expect(rows("> 1.\n>\n> 1. a", 80)).toEqual(["", "▌  2 a", ""]);
     expect(rows("- 1.\n\n\n  1. b", 80)).toEqual(["", " •  1 b", ""]);
     expect(rows("- 1.\n\n  1. b", 80)).toEqual(["", " •  2 b", ""]);
+    // An item whose content starts on its second line is not empty.
+    expect(rows("1.\n   foo\n\n\n1. b", 80)).toEqual(["", " 1 foo", " 2 b", ""]);
+    expect(rows("1.\n   foo\n\n   bar\n\n\n1. b", 80)).toEqual(["", " 1 foo", "   bar", " 2 b", ""]);
   });
 
   it("keeps a loose item's later paragraphs in the item, with no row between them, as Rich draws them", () => {
