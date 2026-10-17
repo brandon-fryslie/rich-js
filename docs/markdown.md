@@ -64,6 +64,10 @@ does, differently: text takes up to seven decimal digits or six hex and draws `�
 that is no character — `&#0;`, a surrogate, a control, past U+10FFFF — where a URL takes up to
 eight digits of either base and leaves that code as written.
 
+Emphasis is paired as markdown-it pairs it and drawn in `markdown.em`, italic, and
+`markdown.strong`, bold. Rich turns on GFM's strikethrough, so `~~text~~` is drawn in
+`markdown.s`, struck through; a single `~` strikes nothing.
+
 An image is drawn as Rich draws it: a picture glyph, then its alt text as written, never parsed
 as Markdown, linked to the link it sits in or else to the image. It is drawn ahead of the block
 it sits in, not where it sits — ahead of the whole list, quote or table that holds it — and the

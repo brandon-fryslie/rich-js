@@ -55,16 +55,20 @@ export type MdToken<Text = readonly Inline[]> =
   | { type: "unread"; open: boolean }
   | { type: "blank" };
 
+/** The element markdown-it makes of a pair of delimiters. */
+type EmphasisTag = "em" | "strong" | "s";
+
 /**
  * CommonMark's inlines, as one block's text reads: a code span, emphasis or a
  * link holding inlines of its own, an autolink, an image, inline HTML, a line
  * ending, and text — a backslash escape and a character reference already the
- * characters they stand for.
+ * characters they stand for. Emphasis is named by the element markdown-it
+ * makes of it, GFM's strikethrough `s` among them.
  */
 export type Inline =
   | { kind: "text"; text: string }
   | { kind: "code"; code: string }
-  | { kind: "emphasis"; style: "bold" | "italic"; children: readonly Inline[] }
+  | { kind: "emphasis"; tag: EmphasisTag; children: readonly Inline[] }
   | { kind: "link"; children: readonly Inline[]; url: string }
   /** `text` is the URL as written, normalized as markdown-it shows it, never read as Markdown. */
   | { kind: "autolink"; text: string; url: string }
@@ -597,14 +601,24 @@ type InlineMatch =
   /** A line ending, soft or hard by the spaces before it, which are the text before it. */
   | { kind: "line_ending"; end: number };
 
+/** The characters a run of delimiters is made of: emphasis's two, and strikethrough's. */
+type Marker = "*" | "_" | "~";
+
 /**
- * A run of one emphasis marker, as markdown-it's `scanDelims` reads it: whether
- * it can open emphasis, close it, or both, decided once by what borders it.
+ * A run of one marker, as markdown-it's `scanDelims` reads it: whether it can
+ * open, close, or both, decided once by what borders it. It stands for `count`
+ * delimiters, each written `unit` — one per `*` or `_`, one per `~~` — and,
+ * where a `~` run is odd, a `lone` `~` ahead of them that is only text.
+ * `length` is what the rule of 3 reads, the run's length for emphasis and 0,
+ * which disables it, for strikethrough.
  */
 interface DelimiterRun {
   readonly kind: "delimiters";
-  readonly marker: "*" | "_";
+  readonly marker: Marker;
+  readonly unit: string;
+  readonly count: number;
   readonly length: number;
+  readonly lone: boolean;
   readonly canOpen: boolean;
   readonly canClose: boolean;
   readonly end: number;
@@ -617,7 +631,7 @@ interface DelimiterRun {
  * spends `open` and `close` as it goes.
  */
 interface Delimiter {
-  readonly marker: "*" | "_";
+  readonly marker: Marker;
   readonly length: number;
   readonly piece: number;
   open: boolean;
@@ -774,7 +788,7 @@ class LinkLabels {
 }
 
 /** Every character `inlineAt` opens a construct at, and the `]` a link label ends at. */
-const STEP_STOPS = new Set(["`", "*", "_", "&", "\n", "\\", "<", "!", "[", "]"]);
+const STEP_STOPS = new Set(["`", "*", "_", "~", "&", "\n", "\\", "<", "!", "[", "]"]);
 
 /**
  * Where markdown-it's `text` rule leaves a step from `i` in `text` that opens
@@ -830,15 +844,16 @@ function charBefore(text: string, i: number): string {
 }
 
 /**
- * The run of `*` or `_` starting at `i` in `text`, as markdown-it's
+ * The run of `*`, `_` or `~` starting at `i` in `text`, as markdown-it's
  * `scanDelims` reads it. A run is left-flanking where what follows it is no
  * space, and is punctuation only if what precedes it is a space or
- * punctuation too; right-flanking is the mirror. A `*` run opens where it is
- * left-flanking and closes where it is right-flanking; a `_` run may not do
- * either inside a word.
+ * punctuation too; right-flanking is the mirror. A `*` or `~` run opens where
+ * it is left-flanking and closes where it is right-flanking; a `_` run may
+ * not do either inside a word. A `~` run is strikethrough's, which takes its
+ * tildes two at a time and none at all from a run of one — that `~` is text.
  */
-function delimiterRun(text: string, i: number): DelimiterRun {
-  const marker = text[i] as "*" | "_";
+function delimiterRun(text: string, i: number): DelimiterRun | undefined {
+  const marker = text[i] as Marker;
   let end = i;
   while (text[end] === marker) end++;
   const before = charBefore(text, i);
@@ -847,11 +862,17 @@ function delimiterRun(text: string, i: number): DelimiterRun {
   const [punctBefore, punctAfter] = [PUNCTUATION.test(before), PUNCTUATION.test(after)];
   const left = !spaceAfter && (!punctAfter || spaceBefore || punctBefore);
   const right = !spaceBefore && (!punctBefore || spaceAfter || punctAfter);
-  const inWord = marker === "*";
+  const inWord = marker !== "_";
+  const length = end - i;
+  const strike = marker === "~";
+  if (strike && length < 2) return undefined;
   return {
     kind: "delimiters",
     marker,
-    length: end - i,
+    unit: strike ? "~~" : marker,
+    count: strike ? Math.floor(length / 2) : length,
+    length: strike ? 0 : length,
+    lone: strike && length % 2 === 1,
     canOpen: left && (inWord || !right || punctBefore),
     canClose: right && (inWord || !left || punctAfter),
     end,
@@ -867,7 +888,7 @@ function delimiterRun(text: string, i: number): DelimiterRun {
  * closer like this one already failed to find, so the pass is linear.
  */
 function balancePairs(delimiters: readonly Delimiter[]): void {
-  const openersBottom = { "*": [-1, -1, -1, -1, -1, -1], _: [-1, -1, -1, -1, -1, -1] };
+  const openersBottom = { "*": [-1, -1, -1, -1, -1, -1], _: [-1, -1, -1, -1, -1, -1], "~": [-1, -1, -1, -1, -1, -1] };
   const jumps: number[] = [];
   let headerIdx = 0;
   let lastPiece = -2;
@@ -904,45 +925,63 @@ function balancePairs(delimiters: readonly Delimiter[]): void {
 
 /**
  * `pieces` with each pair of delimiters `balancePairs` made into emphasis, as
- * markdown-it's emphasis `postProcess` makes them: innermost pair first, a pair
- * strong where the pair enclosing it is of the same marker and touches it at
- * both ends, so the two are spent as one, and italic otherwise. A delimiter
- * left unpaired is the text it is, joined to the text beside it as
+ * markdown-it's strikethrough and emphasis `postProcess` make them: a `~~`
+ * pair `s`; and, innermost pair first, a `*` or `_` pair `strong` where the
+ * pair enclosing it is of the same marker and touches it at both ends, so the
+ * two are spent as one, and `em` otherwise. The `lone` `~` of an odd run, met
+ * just before a `~~` that closes, is moved past every `~~` closing beside it,
+ * as strikethrough's is, so `x ~~~a~~~` strikes `a` between two plain `~`. A
+ * delimiter left unpaired is the text it is, joined to the text beside it as
  * markdown-it's `fragments_join` joins it, so a run of text between line
  * endings is one piece.
  */
-function emphasized(pieces: readonly Inline[], delimiters: readonly Delimiter[]): Inline[] {
-  const roles = new Map<number, "bold" | "italic" | "close" | "spent">();
+function emphasized(pieces: readonly Inline[], delimiters: readonly Delimiter[], lone: ReadonlySet<number>): Inline[] {
+  const roles = new Map<number, EmphasisTag | "close" | "spent">();
+  const strikeCloses = new Set<number>();
   for (let i = delimiters.length - 1; i >= 0; i--) {
     const opener = delimiters[i]!;
     if (opener.end < 0) continue;
     const closer = delimiters[opener.end]!;
     const outer = delimiters[i - 1];
+    const strike = opener.marker === "~";
     const strong =
+      !strike &&
       outer !== undefined &&
       outer.end === opener.end + 1 &&
       outer.marker === opener.marker &&
       outer.piece === opener.piece - 1 &&
       delimiters[opener.end + 1]!.piece === closer.piece + 1;
-    roles.set(opener.piece, strong ? "bold" : "italic").set(closer.piece, "close");
+    roles.set(opener.piece, strike ? "s" : strong ? "strong" : "em").set(closer.piece, "close");
+    if (strike) strikeCloses.add(closer.piece);
     if (strong) {
       roles.set(outer.piece, "spent").set(delimiters[opener.end + 1]!.piece, "spent");
       i--;
     }
   }
+  // The pieces in the order they are read, each lone `~` swapped with the
+  // last `~~` of the closing run after it, as strikethrough's postProcess swaps
+  // its tokens.
+  const order = pieces.map((_, p) => p);
+  for (const p of [...lone].filter((p) => strikeCloses.has(p + 1))) {
+    let last = p + 1;
+    while (strikeCloses.has(last + 1)) last++;
+    [order[p], order[last]] = [order[last]!, order[p]!];
+  }
   const open: Inline[][] = [[]];
-  const styles: ("bold" | "italic")[] = [];
-  for (const [p, piece] of pieces.entries()) {
+  const tags: EmphasisTag[] = [];
+  for (const p of order) {
+    const piece = pieces[p]!;
     const role = roles.get(p);
     switch (role) {
-      case "bold":
-      case "italic":
-        styles.push(role);
+      case "em":
+      case "strong":
+      case "s":
+        tags.push(role);
         open.push([]);
         break;
       case "close": {
         const children = open.pop()!;
-        open.at(-1)!.push({ kind: "emphasis", style: styles.pop()!, children });
+        open.at(-1)!.push({ kind: "emphasis", tag: tags.pop()!, children });
         break;
       }
       case "spent":
@@ -990,6 +1029,7 @@ function inlineAt(text: string, i: number, labels: LinkLabels, level: number): I
     }
     case "*":
     case "_":
+    case "~":
       return delimiterRun(text, i);
     case "&":
       return referenceAt(text, i);
@@ -1043,6 +1083,8 @@ function inlineAt(text: string, i: number, labels: LinkLabels, level: number): I
 function inlines(text: string, from: number, labels: LinkLabels, level: number): Inline[] {
   const pieces: Inline[] = [];
   const delimiters: Delimiter[] = [];
+  // The pieces that are an odd `~` run's lone `~`.
+  const lone = new Set<number>();
   let plain = from;
   for (let i = from; i < text.length; ) {
     const found = inlineAt(text, i, labels, level);
@@ -1057,16 +1099,17 @@ function inlines(text: string, from: number, labels: LinkLabels, level: number):
     if (plain < kept) pieces.push({ kind: "text", text: text.slice(plain, kept) });
     if (found.kind === "line_ending") pieces.push({ kind: i - kept >= 2 ? "hardbreak" : "softbreak" });
     else if (found.kind === "delimiters") {
-      for (let k = 0; k < found.length; k++) {
+      if (found.lone) lone.add(pieces.push({ kind: "text", text: "~" }) - 1);
+      for (let k = 0; k < found.count; k++) {
         delimiters.push({ marker: found.marker, length: found.length, piece: pieces.length, open: found.canOpen, close: found.canClose, end: -1 });
-        pieces.push({ kind: "text", text: found.marker });
+        pieces.push({ kind: "text", text: found.unit });
       }
     } else pieces.push(matched(found, text, labels, level));
     i = plain = found.end;
   }
   if (plain < text.length) pieces.push({ kind: "text", text: text.slice(plain) });
   balancePairs(delimiters);
-  return emphasized(pieces, delimiters);
+  return emphasized(pieces, delimiters, lone);
 }
 
 /** `text` read into inlines from its start. */

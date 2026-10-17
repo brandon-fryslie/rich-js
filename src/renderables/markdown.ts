@@ -140,7 +140,7 @@ function appendInline(result: RichText, inlines: readonly Inline[], settings: In
   const open = (container: Container): (() => void) => {
     switch (container.kind) {
       case "emphasis":
-        return enter([container.style]);
+        return enter([`markdown.${container.tag}`]);
       case "link":
         return openLink(container.url);
     }
@@ -203,7 +203,7 @@ function* inlineSteps(inlines: readonly Inline[], within: Enclosing, settings: I
   const open = (container: Container, outer: Frame): Frame => {
     switch (container.kind) {
       case "emphasis":
-        styles.push(container.style);
+        styles.push(`markdown.${container.tag}`);
         return { entered: 1, link: outer.link };
       case "link": {
         // Without hyperlinks Rich enters no style for a link, and an image in one is linked to nothing.
