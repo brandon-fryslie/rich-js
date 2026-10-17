@@ -184,15 +184,17 @@ describe("Markdown", () => {
     // Padding is a space on both sides: one side, or a tab, a no-break or an ideographic space, pads nothing.
     expect(rows("a ` b` c", 80)).toEqual(["a  b c", ""]);
     expect(rows("a `b ` c", 80)).toEqual(["a b  c", ""]);
-    expect(rows("a ` b ` c", 80)).toEqual(["a  b  c", ""]);
-    expect(rows("a ` b　` c", 80)).toEqual(["a  b　 c", ""]);
+    expect(rows("a `\u00a0b\u00a0` c", 80)).toEqual(["a \u00a0b\u00a0 c", ""]);
+    expect(rows("a ` b\u3000` c", 80)).toEqual(["a  b\u3000 c", ""]);
+    expect(rows("a `\tb\t` c", 80)).toEqual(["a       b        c", ""]);
     // All whitespace, as Python's str.strip reads it, is kept whole; U+FEFF is not whitespace there, so it is padded.
     expect(rows("a ` ` c", 80)).toEqual(["a   c", ""]);
     expect(rows("a `  ` c", 80)).toEqual(["a    c", ""]);
     expect(rows("a `   ` c", 80)).toEqual(["a     c", ""]);
-    expect(rows("a `   ` c", 80)).toEqual(["a     c", ""]);
+    expect(rows("a ` \u00a0 ` c", 80)).toEqual(["a  \u00a0  c", ""]);
+    expect(rows("a ` \t ` c", 80)).toEqual(["a         c", ""]);
     expect(rows("a ` \u0085 ` c", 80)).toEqual(["a  \u0085  c", ""]);
-    expect(rows("a ` ﻿ ` c", 80)).toEqual(["a ﻿ c", ""]);
+    expect(rows("a ` \ufeff ` c", 80)).toEqual(["a \ufeff c", ""]);
   });
 
   it("keeps a paragraph line's indentation in a code span that crosses its line ending", () => {

@@ -1317,7 +1317,7 @@ function inlineAt(text: string, i: number, labels: LinkLabels, level: number): I
       close.lastIndex = i + ticks.length;
       const found = close.exec(text);
       if (!found) return { kind: "text", text: ticks, end: i + ticks.length };
-      // A code span's line endings are spaces, and a space each side pads it unless it is all whitespace, as markdown-it's backticks rule has them.
+      // A code span's line endings are spaces, and a space each side pads it unless `str.strip` empties it, as markdown-it-py's backticks rule has them. markdown-it in JS strips by `/^ (.+) $/` and so pads an all-space span too.
       const code = text.slice(i + ticks.length, found.index).replaceAll("\n", " ");
       const padded = code.startsWith(" ") && code.endsWith(" ") && pyStrip(code) !== "";
       return { kind: "code", code: padded ? code.slice(1, -1) : code, end: found.index + ticks.length };
