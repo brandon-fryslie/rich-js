@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-440",
-      "ref": "refs/pull/440/merge",
-      "sha": "b1ddaae259f699d8b6a7ea74f3aafc561442809b",
-      "timestamp": "2026-10-17T12:58:08.795Z",
-      "commits": [
-        {
-          "sha": "b1ddaae259f699d8b6a7ea74f3aafc561442809b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T12:56:21Z",
-          "message": "Merge d47cc0d138fb3d0372e28d263b68551f5f7b7838 into 65828614a6d5ab5be20c7600447523ffb649be1f\n"
-        },
-        {
-          "sha": "d47cc0d138fb3d0372e28d263b68551f5f7b7838",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T06:56:16-06:00",
-          "message": "Grounded code keeps the terminal's colours inside a quote (rich-unfiled-791c.rm6p)\n\nReview of #440 (high): at 16 colours `groundedStyle` dropped code's colours to\nunset, so the quote's new magenta showed through and code in a quote drew bold\nmagenta, against docs/markdown.md's \"in the terminal's own colours\". It now\nnames `default on default`, which is what its header already promised; Rich's\ncode likewise keeps its own colours over a quote's.\n\nThe quote's style name is one constant again for the bar, its body and its\nimages' alt text; the docs say the style lies under the quote's blocks rather\nthan colouring all of them; console.test's theme table gains the name.\n"
-        },
-        {
-          "sha": "1f58249487c4e830e3b34e8f0e935c475791a44a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T06:39:20-06:00",
-          "message": "Markdown draws a quote's bar as ▌ in markdown.block_quote, as Rich does (rich-unfiled-791c.rm6p)\n\nRich's BlockQuote draws its bar and the blocks it holds in the one\nmarkdown.block_quote style (magenta). The port drew the bar ▎ in\nmarkdown.hr and the body in a hardcoded dim italic; both now read the\none theme entry, so a theme restyles the whole quote.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "65828614a6d5ab5be20c7600447523ffb649be1f",
-      "timestamp": "2026-10-17T12:35:09.789Z",
+      "sha": "e10e9e8e09e2ca2535bfa727caa10a617c647fea",
+      "timestamp": "2026-10-17T13:08:54.105Z",
       "commits": [
         {
-          "sha": "65828614a6d5ab5be20c7600447523ffb649be1f",
+          "sha": "e10e9e8e09e2ca2535bfa727caa10a617c647fea",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T06:33:40-06:00",
-          "message": "Markdown draws a code block inside Syntax's margin, as Rich does (rich-unfiled-791c.ct7i) (#439)\n\n* Markdown draws a code block inside Syntax's margin, as Rich does (rich-unfiled-791c.ct7i)\n\nRich's CodeBlock hands the code, rstripped, to Syntax(word_wrap=True,\npadding=1). The block now draws through our Syntax the same way: word-wrapped\nat width-2, tab stops of 4 (was 8), and a one-cell margin of the code's style\non every side. Trailing whitespace is Python's str.isspace set, not JS's \\s.\nPinned against Rich 15 rows, including widths 1 and 2 where Rich draws only\nthe margin.\n\n* Markdown pads a code block with Padding and strips it in one pass (rich-unfiled-791c.ct7i review)\n\nThe trailing-whitespace regex was quadratic in an interior run; pyRstrip\nscans from the end over the one PY_WHITESPACE set. The hand-built margin\nis Padding, so at widths under three the code keeps a column before the\npadding does, as every Padding does. The width is parsed once at the top\nof Markdown.render."
+          "timestamp": "2026-10-17T07:07:29-06:00",
+          "message": "Markdown draws a quote's bar as ▌ in markdown.block_quote, as Rich does (rich-unfiled-791c.rm6p) (#440)\n\n* Markdown draws a quote's bar as ▌ in markdown.block_quote, as Rich does (rich-unfiled-791c.rm6p)\n\nRich's BlockQuote draws its bar and the blocks it holds in the one\nmarkdown.block_quote style (magenta). The port drew the bar ▎ in\nmarkdown.hr and the body in a hardcoded dim italic; both now read the\none theme entry, so a theme restyles the whole quote.\n\n* Grounded code keeps the terminal's colours inside a quote (rich-unfiled-791c.rm6p)\n\nReview of #440 (high): at 16 colours `groundedStyle` dropped code's colours to\nunset, so the quote's new magenta showed through and code in a quote drew bold\nmagenta, against docs/markdown.md's \"in the terminal's own colours\". It now\nnames `default on default`, which is what its header already promised; Rich's\ncode likewise keeps its own colours over a quote's.\n\nThe quote's style name is one constant again for the bar, its body and its\nimages' alt text; the docs say the style lies under the quote's blocks rather\nthan colouring all of them; console.test's theme table gains the name."
         }
       ]
     }
