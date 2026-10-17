@@ -127,6 +127,11 @@ describe("scanProjects against MemoryFileSystem", () => {
     expect(scanProjects(fs)[0]!.sessions[0]!.title).toBe("renamed far past the head");
   });
 
+  it("passes over a title-window line holding JSON that is not an object", () => {
+    const fs = new MemoryFileSystem(buildTree(`${FIRST_LINE}\nnull\n${SECOND_LINE}\n[]\n`));
+    expect(scanProjects(fs)[0]!.sessions[0]!.title).toBe("rich-js-port");
+  });
+
   it("titles every staged session the card opens on", () => {
     const sessions = scanProjects(new MemoryFileSystem(STAGED_HOME)).flatMap((p) => p.sessions);
     expect(sessions.length).toBeGreaterThan(0);
@@ -167,7 +172,9 @@ describe("loadSession against MemoryFileSystem", () => {
     expect(result.skipped).toBe(0);
     expect((result.lines[0]?.parsed as { type?: string }).type).toBe("user");
     expect((result.lines[1]?.parsed as { type?: string }).type).toBe("assistant");
-    expect(openSelectedSession(initialState(fs)).statusMessage).not.toMatch(/skipped/);
+    const opened = openSelectedSession(initialState(fs));
+    expect(opened.errorMessage).toBeNull();
+    expect(opened.statusMessage).toMatch(/^Loaded \d+ blocks?$/);
   });
 
   it("reports a malformed line as one line skipped", () => {
@@ -178,7 +185,20 @@ describe("loadSession against MemoryFileSystem", () => {
     );
     expect(result.lines.map((line) => line.lineNumber)).toEqual([1, 3]);
     expect(result.skipped).toBe(1);
-    expect(openSelectedSession(initialState(fs)).statusMessage).toMatch(/\(1 lines skipped\)$/);
+    expect(openSelectedSession(initialState(fs)).statusMessage).toMatch(/ \(1 line skipped\)$/);
+  });
+
+  it("skips a line holding JSON that is not an object, and loads the rest", () => {
+    const fs = new MemoryFileSystem(buildTree(`${FIRST_LINE}\nnull\n42\n[]\n"x"\n${SECOND_LINE}\n`));
+    const result = loadSession(
+      fs,
+      "/home/demo/.claude/projects/-home-demo-rich-js/fixture-session.jsonl",
+    );
+    expect(result.lines.map((line) => line.lineNumber)).toEqual([1, 6]);
+    expect(result.skipped).toBe(4);
+    const opened = openSelectedSession(initialState(fs));
+    expect(opened.errorMessage).toBeNull();
+    expect(opened.statusMessage).toMatch(/ \(4 lines skipped\)$/);
   });
 
   it("propagates read errors so the demo can surface them as status", () => {

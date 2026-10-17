@@ -11,6 +11,7 @@
  */
 
 import type { FileSystem } from "../../_capabilities/file-system.js";
+import { jsonlRecord } from "./loader.js";
 import type { ProjectMeta, SessionMeta } from "./types.js";
 
 function projectsRoot(fs: FileSystem): string {
@@ -27,17 +28,11 @@ const TITLE_WINDOW_BYTES = 64 * 1024;
 /**
  * A session's title as Claude Code shows it: the newest name a person gave it
  * (`custom-title`), else the newest it was given (`ai-title`), else its
- * `slug`. A line the window's cut ends inside does not parse, and is passed
+ * `slug`. A line the window's cut ends inside holds no record, and is passed
  * over like any other.
  */
 function extractTitle(tail: readonly string[]): string | null {
-  const records = tail.flatMap((line) => {
-    try {
-      return [JSON.parse(line) as Record<string, unknown>];
-    } catch {
-      return [];
-    }
-  });
+  const records = tail.map(jsonlRecord).filter((r) => r !== undefined);
   const newest = (name: string) => records.map((r) => r[name]).filter((v): v is string => typeof v === "string").at(-1) ?? null;
   return newest("customTitle") ?? newest("aiTitle") ?? newest("slug");
 }
