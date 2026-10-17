@@ -514,7 +514,9 @@ export function shimmer(curve: Curve, width: number, glow: ColorRgba, z: number)
  * (`Drawn.cells`): one every `PER` columns along a row of the lattice, a row
  * of the lattice every `ROWS` rows, each firefly near a home of its own.
  * The lattice does not hang on how wide or deep the element is, so one that
- * gains or loses a column or a row moves no firefly already over it. A firefly flashes — kindles,
+ * grows or shrinks at its last column or bottom row moves no firefly; one
+ * whose first column moves, as centred words that change length do, carries
+ * its fireflies with it. A firefly flashes — kindles,
  * drifts a few cells glowing, slowing as it fades — then flies on in the
  * dark and flashes again somewhere a few cells off, the way fireflies at
  * dusk are seen: a short lit stroke, then gone, each time a little
