@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-417",
+      "ref": "refs/pull/417/merge",
+      "sha": "4f6910fd132217101873a2186ac2eb3f4392bbec",
+      "timestamp": "2026-10-17T01:33:09.440Z",
+      "commits": [
+        {
+          "sha": "4f6910fd132217101873a2186ac2eb3f4392bbec",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T01:31:28Z",
+          "message": "Merge a2d6bd937f01556ccfd49c919f32aee3d9a04724 into c483773d7f7576f512bf4466d571500f6c1e5ffe\n"
+        },
+        {
+          "sha": "a2d6bd937f01556ccfd49c919f32aee3d9a04724",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:31:23-06:00",
+          "message": "A Markdown table is read as markdown-it reads one, capped as it caps (rich-demos-k78j.5yo)\n\nReview of PR 417: the page and comments said GFM, but the parser is\nmarkdown-it's, which tries a table before any other block where GitHub\ndoes not. Body rows now stop at markdown-it's 65536 filled-out cells,\none predicate says which lines may be table rows, and a header row is\nsplit only once its delimiter row is one.\n"
+        },
+        {
+          "sha": "2f104598b990357120d67b4e9d512f92a3c6957b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:15:45-06:00",
+          "message": "Markdown draws a GFM pipe table as Rich's Table (rich-demos-k78j.5yo)\n\nA header row, then a delimiter row naming as many columns, is a table, read\nas markdown-it reads one: tried before every other block, able to end a\nparagraph, its body running to a blank line or a line that opens a block.\nEach cell keeps its inline Markdown and sits where its delimiter's colons\nput it; the header is drawn in markdown.table.header and the borders in\nmarkdown.table.border, the styles and Table settings Rich uses.\n\nPinned against Rich 14's own output. Column widths are Table's, which\ndivides a squeezed width differently from Rich on purpose (table.ts\nheader), so a wide table wraps its cells at other columns than Rich's.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-418",
       "ref": "refs/pull/418/merge",
       "sha": "effcafb1280db3e3bc1043db6a810dbd6687b207",
@@ -42,28 +71,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T19:18:26-06:00",
           "message": "shimmer and sparkle cross the element where its frame lists cells (rich-unfiled-791c.c8g5) (#415)\n\n* shimmer and sparkle cross the element where its frame lists cells (rich-unfiled-791c.c8g5)\n\nA loop's Field is now handed the frame's Drawn, as a transition's Visibility\nalready is, and shimmer and sparkle read the element's columns (and sparkle\nits rows) off Drawn.cells each frame. EffectTarget.span, the caller-stated\nsecond source for that fact, is gone, as are the span arguments of shimmer\nand sparkle and DrawnSubject.span in effects-feel.\n\nA padded, wrapped or confined element was crossed at columns 0..span; it is\nnow crossed where it shows. Fireflies keep homes a fixed stride from the\nelement's first column, so an element that gains a column gains a firefly at\nmost rather than reshuffling every home.\n\n* sparkle keeps its fireflies on a lattice that a width change cannot move (rich-unfiled-791c.c8g5)\n\nReview of PR #415 found sparkle re-deriving its firefly count and stride from\neach frame's width, so an element gaining one column could add a firefly\nmid-flash or slide every home on a narrow one (0.21 of a 0.95 swing, measured).\nFireflies now sit one per PER columns along lattice rows ROWS apart, laid from\nthe element's first column and top row; the frame's extent only bounds which\nslots are worked out, and a cell asks only the fireflies whose light can reach\nit. A tall element is lit on every row, as the doc now says.\n\nextent is a loop rather than a reduce allocating a tuple per value.\n\n* sparkle's doc says which edge a width change leaves its fireflies still on (rich-unfiled-791c.c8g5)"
-        }
-      ]
-    },
-    {
-      "version": "pr-417",
-      "ref": "refs/pull/417/merge",
-      "sha": "e47a4d7c8cea511836f6ba3624d9903bcf776209",
-      "timestamp": "2026-10-17T01:17:43.610Z",
-      "commits": [
-        {
-          "sha": "e47a4d7c8cea511836f6ba3624d9903bcf776209",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T19:16:05-06:00",
-          "message": "Merge 2f104598b990357120d67b4e9d512f92a3c6957b into 07805a292885f45fde1b670d2a6b446ddd48a0e4\n"
-        },
-        {
-          "sha": "2f104598b990357120d67b4e9d512f92a3c6957b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T19:15:45-06:00",
-          "message": "Markdown draws a GFM pipe table as Rich's Table (rich-demos-k78j.5yo)\n\nA header row, then a delimiter row naming as many columns, is a table, read\nas markdown-it reads one: tried before every other block, able to end a\nparagraph, its body running to a blank line or a line that opens a block.\nEach cell keeps its inline Markdown and sits where its delimiter's colons\nput it; the header is drawn in markdown.table.header and the borders in\nmarkdown.table.border, the styles and Table settings Rich uses.\n\nPinned against Rich 14's own output. Column widths are Table's, which\ndivides a squeezed width differently from Rich on purpose (table.ts\nheader), so a wide table wraps its cells at other columns than Rich's.\n"
         }
       ]
     },
