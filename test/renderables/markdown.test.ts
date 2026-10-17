@@ -730,6 +730,15 @@ describe("Markdown", () => {
     expect(rows("> - -|-\n\t===", 80)).toEqual(["", "▌  • -|- ===", ""]);
   });
 
+  it("ends a definition at a backslash that escapes its destination's line ending, as Rich does", () => {
+    // markdown-it reads a destination in the text it holds, which ends with the destination's line.
+    expect(rows("[a]: x\\\ny\n\n[a]", 40, { hyperlinks: false })).toEqual(["y", "", "a (x%5C)", ""]);
+    expect(rows('[a]: x\\\n"t"\n\n[a]', 40, { hyperlinks: false })).toEqual(['"t"', "", "a (x%5C)", ""]);
+    // However many lines a label running over several took on before it.
+    expect(rows("[a\nb\nc\nd\ne]:\nx\\\ny\nz\n\n[a b c d e]", 40, { hyperlinks: false })).toEqual(["y z", "", "a b c d e (x%5C)", ""]);
+    expect(rows("[a\nb\nc\nd\ne]:\n<x\\\ny>\n\n[a b c d e]", 40, { hyperlinks: false })).toEqual(["[a b c d e]: <x", "y>", "", "[a b c d e]", ""]);
+  });
+
   it("reads a definition's label or title left open across many lines in time linear in their number", () => {
     for (const opening of ["[a", '[a]: /u "']) {
       const started = performance.now();

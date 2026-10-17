@@ -455,9 +455,9 @@ function definitionAt(lines: Lines, start: number): { label: string; url: string
   // The definition's text so far, each line from its first character that is
   // not leading whitespace and ended by its line ending. markdown-it takes a
   // line on only as a read reaches the end of the last; this takes them on in
-  // runs that double, which changes nothing — every read that reaches the end
-  // takes more on — but copies the text of a definition running over n lines
-  // log n times rather than n.
+  // runs that double, which changes no read but the destination's — every
+  // other read that reaches the end takes more on — and copies the text of a
+  // definition running over n lines log n times rather than n.
   let text = `${body(lines.at(start)!)}\n`;
   let taken = start + 1;
   let run = 1;
@@ -484,20 +484,28 @@ function definitionAt(lines: Lines, start: number): { label: string; url: string
   if (text[labelEnd + 1] !== ":") return undefined;
 
   const destinationStart = spaceEnd(labelEnd + 2);
-  const destination = destinationAt(text, destinationStart);
+  // markdown-it reads the destination in the text it holds, which ends with the destination's own line.
+  const held = text.slice(0, text.indexOf("\n", destinationStart) + 1);
+  const destination = destinationAt(held, destinationStart);
   // An empty destination outside angle brackets is none, as markdown-it's `parseLinkDestination` reads it.
   if (destination === undefined || destination.end === destinationStart) return undefined;
   const url = linkHref(unescapeAll(destination.raw));
   if (url === undefined) return undefined;
 
-  const titleStart = spaceEnd(destination.end);
-  const title = titleStart > destination.end ? titleAt(text, titleStart, takeLines) : undefined;
-  // The definition ends at its line's end, past the spaces and tabs there.
-  const lineEnd = (from: number): number => from + matchAt(LINE_INDENT, text, from)![0].length;
-  let end = lineEnd(title?.end ?? destination.end);
-  // markdown-it gives up only a title with text in it for what follows it on its line, so an empty one followed by more ends no definition.
-  if (text[end] !== "\n" && title?.text === true) end = lineEnd(destination.end);
-  if (text[end] !== "\n") return undefined;
+  // The line ending the definition ends at.
+  let end = held.length - 1;
+  // A destination that took its line's ending, behind a backslash, ends the
+  // definition at it: markdown-it holds no text past it to read a title in.
+  if (destination.end < held.length) {
+    const titleStart = spaceEnd(destination.end);
+    const title = titleStart > destination.end ? titleAt(text, titleStart, takeLines) : undefined;
+    // The definition ends at its line's end, past the spaces and tabs there.
+    const lineEnd = (from: number): number => from + matchAt(LINE_INDENT, text, from)![0].length;
+    end = lineEnd(title?.end ?? destination.end);
+    // markdown-it gives up only a title with text in it for what follows it on its line, so an empty one followed by more ends no definition.
+    if (text[end] !== "\n" && title?.text === true) end = lineEnd(destination.end);
+    if (text[end] !== "\n") return undefined;
+  }
 
   const label = normalizeReference(text.slice(1, labelEnd));
   if (label === "") return undefined;
