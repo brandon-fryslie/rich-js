@@ -44,7 +44,8 @@ is text — continuing the parent's paragraph, or indented code after a blank li
 drawn as Rich draws them: a bullet in `markdown.item.bullet`, bold, and a number with no dot in
 `markdown.item.number`, cyan. A numbered list counts on from its first number, right-aligned in
 a column as wide as the number one past its last item, Rich's sizing, so every item hangs at
-one column; an empty item is counted and draws nothing. Tabs in
+one column; an empty item is counted and draws nothing. The item's blocks are drawn in
+`markdown.item`, which the default theme leaves plain. Tabs in
 the indentation reach the stops of 4 they reach in the source, however deep the line is nested.
 
 An HTML block — a line opening with `<div>`, `<!--`, `<pre>` or another of CommonMark's

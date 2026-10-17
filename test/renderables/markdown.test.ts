@@ -312,7 +312,10 @@ describe("Markdown", () => {
     expect(styleOf(" • ")).toEqual(["red"]);
     expect(styleOf(" 1 ")).toEqual(["green"]);
     expect(styleOf("   ")).toEqual(["red", "green"]);
-    expect(segs.filter((s) => /[a-d]/.test(s.text)).every((s) => s.style?.italic)).toBe(true);
+    // The item's whole width, its padding with its text, as Rich's render_lines pads it.
+    const body = segs.filter((s) => s.text !== "" && s.text !== "\n" && ![" • ", " 1 ", "   "].includes(s.text));
+    expect(body.map((s) => s.text).join("")).toBe("a b c d ");
+    expect(body.every((s) => s.style?.italic)).toBe(true);
     // Rich's defaults.
     expect(DEFAULT_THEME.resolve("markdown.item.bullet")).toEqual(Style.parse("bold"));
     expect(DEFAULT_THEME.resolve("markdown.item.number")).toEqual(Style.parse("cyan"));
