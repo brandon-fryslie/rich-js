@@ -59,11 +59,12 @@ import { Effected, type Drawn, type Effect, type EffectCell, type Pair, type Pla
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
 
 /**
- * How strongly a loop acts at a moment `t` on each cell, in [0, 1]; `onColors`
- * holds a field outside it to it. Staged as `Effect` is: what holds for the
- * whole moment is worked out once, then every cell is asked.
+ * How strongly a loop acts at a moment `t` on each cell of a frame drawing
+ * what `Drawn` says, in [0, 1]; `onColors` holds a field outside it to it.
+ * Staged as `Effect` is: what holds for the whole moment is worked out once,
+ * then every cell is asked.
  */
-export type Field = (t: number) => (cell: EffectCell) => number;
+export type Field = (t: number, drawn: Drawn) => (cell: EffectCell) => number;
 
 /** A looping effect: what it does to a colour, and where and when, how strongly. */
 export interface Loop {
@@ -213,7 +214,7 @@ function pairKey({ fg, bg, terminal, reverse }: Pair): string {
 export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string, number>): Effect {
   return (t, drawn) => {
     const shared = share(drawn);
-    const field = loop.field(t);
+    const field = loop.field(t, drawn);
     return ({ fg, bg }, cell) => {
       const w = Math.round(clamp01(field(cell)) * LEVELS) / LEVELS;
       const moved = (color: ColorRgba, terminal: boolean): ColorRgba =>
@@ -427,8 +428,9 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
 /**
  * Shimmer, as sunlight moving across water. Swing: how far into `light` the
  * brightest glint goes, 0–1. A soft band of light, `width` columns either
- * side of its centre, crosses columns 0 to `span`, entering and leaving
- * fully off the row, `STRIDE` columns in about three quarters of a period. Its passes
+ * side of its centre, crosses the element from the first column a frame
+ * lists (`Drawn.cells`) to the last, entering and leaving fully off it,
+ * `STRIDE` columns in about three quarters of a period. Its passes
  * come the way light comes and goes on water as clouds move: while the sun
  * is out they are bright and follow close on one another, one sometimes
  * catching the last; under cloud they thin to faint ones with the row still
@@ -438,26 +440,26 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
  * on a slow current and re-forming as they go, so the glints dance while
  * the band glides. Before the first pass enters, the row is untouched.
  */
-export function shimmer(curve: Curve, span: number, width: number, glow: ColorRgba, z: number): Loop {
+export function shimmer(curve: Curve, width: number, glow: ColorRgba, z: number): Loop {
   requireCurve(curve);
   const P = curve.seconds;
-  const across = span + 2 * width;
   // Passes are events on slots of half a period. Whether slot `j` holds one,
   // and how bright, is the sky's: slow noise over the slots, so sunny and
   // cloudy spells each last a few periods, and a pass is likelier and
   // brighter the clearer the sky.
   const SLOT = P / 2;
   const sky = (j: number): number => smoothstep(-0.4, 0.4, noise(j / 7, 3.3, 5.5 + z));
-  // Pass `j` at `t`: how bright its band is and where its centre stands, off
-  // the row before it sets off and once it is done. It sets off somewhere in
-  // the first `SETS_OFF` of its slot and carries its centre `STRIDE` columns
-  // in `LEAST` to `LEAST + SPREAD` periods, give or take its drift, and every
-  // one is off the row `UP` slots after its own began.
+  // Pass `j` at `t`, over a crossing `across` columns long — the element's
+  // and the band's either side: how bright its band is and where its centre
+  // stands from the element's first column, off the element before it sets
+  // off and once it is done. It sets off somewhere in the first `SETS_OFF`
+  // of its slot and carries its centre `STRIDE` columns in `LEAST` to
+  // `LEAST + SPREAD` periods, give or take its drift, so a pass's centre moves
+  // at the same pace however long the crossing.
   const SETS_OFF = 0.7;
   const LEAST = 0.51;
   const SPREAD = 0.4;
-  const UP = SETS_OFF + ((LEAST + SPREAD) * P * across) / STRIDE / SLOT;
-  const pass = (j: number, t: number): { strength: number; centre: number } => {
+  const pass = (j: number, t: number, across: number): { strength: number; centre: number } => {
     const clear = sky(j);
     // Even under cloud about one slot in three holds a pass, a faint one, so a
     // still spell lasts a period or so, the way a cloud's shadow does, and
@@ -467,27 +469,33 @@ export function shimmer(curve: Curve, span: number, width: number, glow: ColorRg
     const crossing = ((P * across) / STRIDE) * (LEAST + SPREAD * hash(j, 5.5 + z));
     const q = clamp01((t - (j + SETS_OFF * hash(j, 6.5 + z)) * SLOT) / crossing);
     // It drifts ahead and behind on slow noise, by nothing at either edge of
-    // the row and never enough to turn it back.
+    // the element and never enough to turn it back.
     const centre = q * across - width + 0.06 * across * Math.sin(Math.PI * q) * noise(q, 2.7, j + z);
     return { strength, centre };
   };
-  // The passes on the row at `t`; the first slot is 0, so before it there are none.
-  const passing = (t: number): { strength: number; centre: number }[] => {
+  // The passes on the element at `t`, every one off it `up` slots after its
+  // own began; the first slot is 0, so before it there are none.
+  const passing = (t: number, across: number): { strength: number; centre: number }[] => {
+    const up = SETS_OFF + ((LEAST + SPREAD) * P * across) / STRIDE / SLOT;
     const last = Math.floor(t / SLOT);
     const passes = [];
-    for (let j = Math.max(0, Math.ceil(last - UP)); j <= last; j++) passes.push(pass(j, t));
+    for (let j = Math.max(0, Math.ceil(last - up)); j <= last; j++) passes.push(pass(j, t, across));
     return passes;
   };
   // A ripple's crest: a Gaussian ridge, 1 where the field crosses zero and in
   // (0, 1] for any noise, smooth throughout, so a crest sliding through a cell
   // lights it smoothly.
   const ripple = (a: number, b: number, c: number): number => Math.exp(-((noise(a, b, c) / 0.8) ** 2));
-  const field: Field = (t) => {
-    const passes = passing(t);
+  const field: Field = (t, drawn) => {
+    // [LAW:one-source-of-truth] The element is as wide as the cells its frame
+    // lists, never as a width its caller states: a padded, wrapped or
+    // confined element is crossed where it shows.
+    const [left, right] = extent(drawn.cells().map((cell) => cell.col));
+    const passes = passing(t, right - left + 1 + 2 * width);
     return (cell) => {
       // Where two passes overlap the brighter wins, so light never doubles up.
       let lit = 0;
-      for (const { strength, centre } of passes) lit = Math.max(lit, strength * bump((cell.col - centre) / width));
+      for (const { strength, centre } of passes) lit = Math.max(lit, strength * bump((cell.col - left - centre) / width));
       const row = cell.row + z;
       const current = 0.8 * noise(cell.col * 0.05, row * 0.3 + 1.3, t * 0.02);
       const caustic =
@@ -501,8 +509,14 @@ export function shimmer(curve: Curve, span: number, width: number, glow: ColorRg
 
 /**
  * Sparkle, as fireflies. Swing: how far into the firefly's `light` a glow
- * goes at its brightest, 0–1. About one firefly to every eight columns of
- * `span`, each keeping near a home of its own. A firefly flashes — kindles,
+ * goes at its brightest, 0–1. Fireflies keep to a lattice laid from the
+ * element's first column and top row as a frame lists its cells
+ * (`Drawn.cells`): one every `PER` columns along a row of the lattice, a row
+ * of the lattice every `ROWS` rows, each firefly near a home of its own.
+ * The lattice does not hang on how wide or deep the element is, so one that
+ * grows or shrinks at its last column or bottom row moves no firefly; one
+ * whose first column moves, as centred words that change length do, carries
+ * its fireflies with it. A firefly flashes — kindles,
  * drifts a few cells glowing, slowing as it fades — then flies on in the
  * dark and flashes again somewhere a few cells off, the way fireflies at
  * dusk are seen: a short lit stroke, then gone, each time a little
@@ -513,54 +527,79 @@ export function shimmer(curve: Curve, span: number, width: number, glow: ColorRg
  * turn: its brightest flash, rise and fall, takes `FLASH` of it, and a
  * dimmer one less.
  */
-export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
+export function sparkle(curve: Curve, glow: ColorRgba, z: number): Loop {
   requireCurve(curve);
-  const count = Math.max(3, Math.round(span / 8));
+  // The columns a firefly has to itself along a row of the lattice, and the
+  // rows between two rows of it: more than a halo's reach, so a one-row
+  // element is lit by one row of fireflies.
+  const PER = 8;
+  const ROWS = 3;
   const HALO = 5;
   // How far from home a flash may begin, and how far the brightest drifts while lit.
   const HOP = 5;
   const GLIDE = 5;
   const TURN = curve.seconds;
-  const homes = Array.from({ length: count }, (_, i) => ({
-    home: (i + 0.5 + 0.7 * noise(i * 1.7 + 0.2, 0.3, 0.5 + z)) * (span / count),
-    z: i * 4.9 + 0.3 + z,
+  // How far from its slot's middle a firefly's light can reach a cell: its
+  // home's jitter, a hop, a glide, its wander, and its halo; across rows,
+  // its wander and its halo, which counts a row as two columns.
+  const REACH = 0.7 * PER + HOP + GLIDE + 1.5 + HALO;
+  const REACH_ROWS = 0.6 + HALO / 2;
+  // The firefly of slot `i` along lattice row `k` at `t`, from the element's
+  // first column and top row: where it is, and how bright. Flash `n` is one
+  // event: whether it comes, how bright, when in its turn and where are its
+  // own. Between flashes the firefly is dark, so where it moves to is never
+  // seen moving.
+  const firefly = (i: number, k: number, t: number, left: number, top: number): { x: number; y: number; glow: number } => {
+    const id = i * 4.9 + k * 31.7 + 0.3 + z;
+    const home = i + 0.5 + 0.7 * noise(i * 1.7 + 0.2, 0.3 + k * 2.9, 0.5 + z);
     // Out of step with every other firefly from the first moment.
-    offset: hash(i, 0.7 + z) * TURN,
-  }));
-  // Where every firefly is at `t`, and how bright.
-  const fliesAt = (t: number): { x: number; y: number; glow: number }[] =>
-    homes.map((fly) => {
-      // Flash `n` is one event: whether it comes, how bright, when in
-      // its turn and where are its own. Between flashes the firefly
-      // is dark, so where it moves to is never seen moving.
-      const u = t + fly.offset;
-      const n = Math.floor(u / TURN);
-      // A dark turn is a flash with no light: it keeps its length, so
-      // every flash is timed alike.
-      const lit = hash(n, fly.z + 1) < 0.15 ? 0 : 1;
-      const k = 0.5 + 0.5 * hash(n, fly.z + 2);
-      const at = hash(n, fly.z + 3) * (1 - lasts(FLASH, k));
-      const s = u / TURN - n - at;
-      // While it glows it drifts a few cells one way or the other, as
-      // fast as it is bright: quickest at its height, slowing as it
-      // fades — the lit stroke a firefly draws on the dusk. A brighter
-      // flash lasts longer and draws a longer stroke at the same pace.
-      return {
-        x:
-          fly.home +
-          HOP * (2 * hash(n, fly.z + 4) - 1) +
-          GLIDE * k * (2 * hash(n, fly.z + 5) - 1) * given(FLASH, s, k) +
-          1.5 * noise(fly.z, 0.1, t * 0.035),
-        y: 0.6 * noise(fly.z, 2.2, t * 0.035),
-        glow: lit * swell(FLASH, s, k),
-      };
-    });
-  const field: Field = (t) => {
-    const flies = fliesAt(t);
+    const u = t + hash(i + k * 1013, 0.7 + z) * TURN;
+    const n = Math.floor(u / TURN);
+    // A dark turn is a flash with no light: it keeps its length, so
+    // every flash is timed alike.
+    const lit = hash(n, id + 1) < 0.15 ? 0 : 1;
+    const strength = 0.5 + 0.5 * hash(n, id + 2);
+    const at = hash(n, id + 3) * (1 - lasts(FLASH, strength));
+    const s = u / TURN - n - at;
+    // While it glows it drifts a few cells one way or the other, as
+    // fast as it is bright: quickest at its height, slowing as it
+    // fades — the lit stroke a firefly draws on the dusk. A brighter
+    // flash lasts longer and draws a longer stroke at the same pace.
+    return {
+      x:
+        left +
+        home * PER +
+        HOP * (2 * hash(n, id + 4) - 1) +
+        GLIDE * strength * (2 * hash(n, id + 5) - 1) * given(FLASH, s, strength) +
+        1.5 * noise(id, 0.1, t * 0.035),
+      y: top + k * ROWS + 0.6 * noise(id, 2.2, t * 0.035),
+      glow: lit * swell(FLASH, s, strength),
+    };
+  };
+  const field: Field = (t, drawn) => {
+    // [LAW:one-source-of-truth] The element is where its frame lists cells,
+    // never a width its caller states: a padded, wrapped or confined element
+    // has its fireflies over it. Its extent only bounds which slots are
+    // worked out; where each firefly is never depends on it.
+    const cells = drawn.cells();
+    const [left, right] = extent(cells.map((cell) => cell.col));
+    const [top, bottom] = extent(cells.map((cell) => cell.row));
+    const slot = (col: number): number => (col - left) / PER - 0.5;
+    const band = (row: number): number => (row - top) / ROWS;
+    const [i0, i1] = [Math.ceil(slot(left - REACH)), Math.floor(slot(right + REACH))];
+    const [k0, k1] = [Math.ceil(band(top - REACH_ROWS)), Math.floor(band(bottom + REACH_ROWS))];
+    const flies = Array.from({ length: k1 - k0 + 1 }, (_, k) => Array.from({ length: i1 - i0 + 1 }, (_, i) => firefly(i0 + i, k0 + k, t, left, top)));
     return (cell) => {
-      // Where two halos overlap the brighter wins, so light never doubles up.
+      // A cell is asked only of the fireflies whose light can reach it, and
+      // where two halos overlap the brighter wins, so light never doubles up.
       let shine = 0;
-      for (const fly of flies) shine = Math.max(shine, fly.glow * bump(Math.hypot(cell.col - fly.x, 2 * (cell.row - fly.y)) / HALO));
+      const [ia, ib] = [Math.max(i0, Math.ceil(slot(cell.col - REACH))), Math.min(i1, Math.floor(slot(cell.col + REACH)))];
+      const [ka, kb] = [Math.max(k0, Math.ceil(band(cell.row - REACH_ROWS))), Math.min(k1, Math.floor(band(cell.row + REACH_ROWS)))];
+      for (let k = ka; k <= kb; k++)
+        for (let i = ia; i <= ib; i++) {
+          const fly = flies[k - k0]![i - i0]!;
+          shine = Math.max(shine, fly.glow * bump(Math.hypot(cell.col - fly.x, 2 * (cell.row - fly.y)) / HALO));
+        }
       return curve.swing * curve.ease(shine);
     };
   };
@@ -689,7 +728,13 @@ function ownChange(curve: Curve, place: (cell: Placed) => number): (cells: reado
 
 /** The least and greatest of `values`; of none, a frame with no cell to place, both 0. */
 function extent(values: readonly number[]): readonly [number, number] {
-  return values.reduce<readonly [number, number]>(([lo, hi], v) => [Math.min(lo, v), Math.max(hi, v)], [values[0] ?? 0, values[0] ?? 0]);
+  let lo = values[0] ?? 0;
+  let hi = lo;
+  for (const v of values) {
+    lo = Math.min(lo, v);
+    hi = Math.max(hi, v);
+  }
+  return [lo, hi];
 }
 
 /**
@@ -1023,13 +1068,11 @@ function legibleInk(step: ColorRgba, pair: Pair, depth: ColorDepth, theme: Termi
 }
 
 /**
- * What a catalogue effect is made for: the element it is drawn on, as wide as
- * `span` columns — how far a shimmer crosses, how many fireflies keep to it —
- * and at `z` in the noise, so two elements under one effect do not move in
- * lockstep.
+ * What a catalogue effect is made for: the element it is drawn on, at `z` in
+ * the noise, so two elements under one effect do not move in lockstep. How
+ * wide the element is, the effect reads off each frame (`Drawn.cells`).
  */
 export interface EffectTarget {
-  readonly span: number;
   readonly z: number;
 }
 
@@ -1055,9 +1098,9 @@ export const EFFECT_CATALOGUE: {
   readonly transitions: Readonly<Record<TransitionName, (element: EffectTarget, curve?: Curve) => Transition>>;
 } = {
   loops: {
-    shimmer: (element, curve = EFFECT_CURVES.shimmer) => onColors(shimmer(curve, element.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, element.z)),
+    shimmer: (element, curve = EFFECT_CURVES.shimmer) => onColors(shimmer(curve, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, element.z)),
     pulse: (element, curve = EFFECT_CURVES.pulse) => onColors(pulse(curve, EFFECT_LIGHTS.sun, element.z)),
-    sparkle: (element, curve = EFFECT_CURVES.sparkle) => onColors(sparkle(curve, element.span, EFFECT_LIGHTS.firefly, element.z)),
+    sparkle: (element, curve = EFFECT_CURVES.sparkle) => onColors(sparkle(curve, EFFECT_LIGHTS.firefly, element.z)),
     wheel: (element, curve = EFFECT_CURVES.wheel) => wheel(curve, element.z),
   },
   transitions: {

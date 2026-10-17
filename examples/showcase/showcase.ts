@@ -172,7 +172,7 @@ const SIGNAL = steppedInk([
   { color: new ColorRgba(241, 250, 140), seconds: 1 },
   { color: new ColorRgba(80, 250, 123), seconds: 1 },
 ]);
-const WALK = onBeat(EFFECT_CATALOGUE.loops.wheel({ span: 8, z: 0 }, { seconds: 6, ease: EASES.linear, swing: 0 }), beat([1]));
+const WALK = onBeat(EFFECT_CATALOGUE.loops.wheel({ z: 0 }, { seconds: 6, ease: EASES.linear, swing: 0 }), beat([1]));
 const THEME = DEFAULT_TERMINAL_THEME;
 
 function heading(t: number): Renderable {

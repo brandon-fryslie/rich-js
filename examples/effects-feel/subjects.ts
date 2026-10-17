@@ -60,13 +60,11 @@ export interface Subject {
  */
 export interface DrawnSubject extends Subject {
   readonly options: RenderOptions;
-  /** Its width in columns. */
-  readonly span: number;
 }
 
 export function drawnSubject(subject: Subject, drawnWith: RenderOptions): DrawnSubject {
   const span = Measurement.get({ ...drawnWith, maxWidth: Number.MAX_SAFE_INTEGER }, subject.renderable).maximum;
-  return { ...subject, options: { ...drawnWith, maxWidth: span }, span };
+  return { ...subject, options: { ...drawnWith, maxWidth: span } };
 }
 
 /** A colour of the theme's palette by its name; a name the palette lacks is a bug here. */

@@ -86,7 +86,7 @@ export class ProgressBar implements Renderable, Measurable {
     // [LAW:no-ambient-temporal-coupling] The moment is the caller's; the bar
     // only says what it looks like then. An empty track, lit by the shimmer.
     const track: Renderable = { render: (o) => this.track(o, width, 0, back) };
-    yield* new Effected(track, this.pulseEffect(options, back, width, depth, theme), { t: this.pulse.t, key: "progress-bar", theme }).render(options);
+    yield* new Effected(track, this.pulseEffect(options, back, depth, theme), { t: this.pulse.t, key: "progress-bar", theme }).render(options);
   }
 
   /**
@@ -94,10 +94,10 @@ export class ProgressBar implements Renderable, Measurable {
    * `depth`, toward `bar.pulse`. A bar has no words to keep legible, so its
    * back takes the whole of the light.
    */
-  private pulseEffect(options: RenderOptions, back: Style, width: number, depth: ColorDepth, theme: TerminalTheme): Effect {
+  private pulseEffect(options: RenderOptions, back: Style, depth: ColorDepth, theme: TerminalTheme): Effect {
     const ink = back.drawnColors(depth).color ?? ColorSpec.default();
     const glow = getStyle(options, "bar.pulse").drawnColors(depth).color ?? ColorSpec.default();
-    const loop = shimmer(PULSE_CURVE, width, PULSE_REACH, glow.getTruecolor(theme, true), 0);
+    const loop = shimmer(PULSE_CURVE, PULSE_REACH, glow.getTruecolor(theme, true), 0);
     const whole = new Map([[ink.getTruecolor(theme, true).hex, 1]]);
     return atShares(loop, () => whole);
   }

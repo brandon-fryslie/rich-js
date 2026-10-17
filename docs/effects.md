@@ -25,7 +25,7 @@ The library ships six, and one [signal](#a-signal-steps). Four loop for as long 
 
 Each takes a `Curve`: `seconds` (a loop's period, or a transition's duration), an `ease`, and a `swing`, how far the move goes at full strength. `EFFECT_CURVES` holds the curves each effect was tuned to by eye, at 30 frames a second and at one. They are slow on purpose. At one frame a second, no cell's colour moves more than a barely noticeable step from one frame to the next, so the motion reads as drift rather than as ticks.
 
-`EFFECT_CATALOGUE` makes each of them by its name in `EFFECT_CURVES`, all the same way, with the curve and the light it was tuned with. `EFFECT_CATALOGUE.loops` holds the four loops, each made into an `Effect`, and `EFFECT_CATALOGUE.transitions` holds `fade` and `dissolve`, each made into a `Transition`. Every entry takes the element it is for, as an `EffectTarget`: its `span`, its width in columns, and its `z`, which places it in the noise the effect is drawn from, so two elements given different values do not move in lockstep. An entry also takes an optional curve to use in place of the tuned one. To offer a choice of effects, list `Object.keys(EFFECT_CATALOGUE.loops)`; `LoopName` is the type of that choice. An effect added to the library then appears in the list without any change to your code.
+`EFFECT_CATALOGUE` makes each of them by its name in `EFFECT_CURVES`, all the same way, with the curve and the light it was tuned with. `EFFECT_CATALOGUE.loops` holds the four loops, each made into an `Effect`, and `EFFECT_CATALOGUE.transitions` holds `fade` and `dissolve`, each made into a `Transition`. Every entry takes the element it is for, as an `EffectTarget`: its `z`, which places it in the noise the effect is drawn from, so two elements given different values do not move in lockstep. How wide the element is, an effect reads off what it draws in each frame, so a shimmer crosses a padded, wrapped or confined element where it shows. An entry also takes an optional curve to use in place of the tuned one. To offer a choice of effects, list `Object.keys(EFFECT_CATALOGUE.loops)`; `LoopName` is the type of that choice. An effect added to the library then appears in the list without any change to your code.
 
 Here is a status line under a shimmer, drawn at three moments:
 
@@ -37,7 +37,7 @@ const ink = theme.foregroundColor;
 const words = "Thinking about how light should cross these words";
 const line = new RichText(words, { style: Style.fromColor(ColorSpec.fromRgba(ink), ColorSpec.fromRgba(theme.backgroundColor)) });
 
-const lit = EFFECT_CATALOGUE.loops.shimmer({ span: words.length, z: 0 });
+const lit = EFFECT_CATALOGUE.loops.shimmer({ z: 0 });
 
 for (const t of [0, 60, 100]) {
   console.print(new Effected(line, lit, { t, key: "status", theme }));
@@ -98,7 +98,7 @@ To move every item but one, name all the others in one call: `confined(onColors(
 ```typescript
 import { EFFECT_CATALOGUE } from "@promptctl/rich-js";
 
-const leaving = EFFECT_CATALOGUE.transitions.dissolve({ span: 20, z: 0 });
+const leaving = EFFECT_CATALOGUE.transitions.dissolve({ z: 0 });
 console.print([10, 29.9, 30].map((t) => `${t}s: ${leaving.done(t) ? "gone" : "leaving"}`).join(" · "));
 ```
 
@@ -137,7 +137,7 @@ import { CATPPUCCIN_MOCHA, EASES, EFFECT_CATALOGUE, Effected, RichText, Style, b
 
 const theme = CATPPUCCIN_MOCHA;
 const label = new RichText(" rich-js ", { style: Style.parse("#1e1e2e on #89b4fa") });
-const walk = onBeat(EFFECT_CATALOGUE.loops.wheel({ span: 9, z: 0 }, { seconds: 6, ease: EASES.linear, swing: 0 }), beat([1]));
+const walk = onBeat(EFFECT_CATALOGUE.loops.wheel({ z: 0 }, { seconds: 6, ease: EASES.linear, swing: 0 }), beat([1]));
 
 for (const t of [0, 0.5, 1, 2.5]) {
   console.print(new Effected(label, walk, { t, key: "brand", theme }));
