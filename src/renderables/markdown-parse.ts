@@ -1316,10 +1316,11 @@ function inlineAt(text: string, i: number, labels: LinkLabels, level: number): I
       const close = new RegExp(`(?<!\`)${ticks}(?!\`)`, "g");
       close.lastIndex = i + ticks.length;
       const found = close.exec(text);
-      // A code span's line endings are spaces, as markdown-it's backticks rule has them.
-      return found
-        ? { kind: "code", code: text.slice(i + ticks.length, found.index).replaceAll("\n", " "), end: found.index + ticks.length }
-        : { kind: "text", text: ticks, end: i + ticks.length };
+      if (!found) return { kind: "text", text: ticks, end: i + ticks.length };
+      // A code span's line endings are spaces, and a space each side pads it unless `str.strip` empties it, as markdown-it-py's backticks rule has them. markdown-it in JS strips by `/^ (.+) $/` and so pads an all-space span too.
+      const code = text.slice(i + ticks.length, found.index).replaceAll("\n", " ");
+      const padded = code.startsWith(" ") && code.endsWith(" ") && pyStrip(code) !== "";
+      return { kind: "code", code: padded ? code.slice(1, -1) : code, end: found.index + ticks.length };
     }
     case "*":
     case "_":
