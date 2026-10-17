@@ -233,7 +233,21 @@ describe("Markdown", () => {
   });
 
   it("draws a quote's bar down every row it wraps to, with its lines joined", () => {
-    expect(rows("> one two\n> three four", 12)).toEqual(["", "▌ one two", "▌ three four", ""]);
+    expect(rows("> one two\n> three four", 12)).toEqual(["", "▌ one two", "▌ three", "▌ four", ""]);
+  });
+
+  // Rich 15's own rows, trailing spaces kept: BlockQuote lays its content out
+  // at the width less four beside a two-cell bar, so a quote's rows end two
+  // cells short of the width.
+  it.each<[string, number, MarkdownOptions | undefined, string[]]>([
+    ["> one two\n> three four", 12, undefined, ["", "▌ one two ", "▌ three   ", "▌ four    ", ""]],
+    ["> ---", 40, undefined, [`▌ ${"-".repeat(36)}`, `▌ ${" ".repeat(36)}`, ""]],
+    ["> one two", 12, { justify: "right" }, ["", "▌  one two", ""]],
+    ["> one two", 12, { justify: "center" }, ["", "▌ one two ", ""]],
+    ["> one two three four five", 12, { justify: "full" }, ["", "▌ one  two", "▌ three   ", "▌ four    ", "▌ five    ", ""]],
+    ["> > one two three", 12, undefined, ["", "▌ ▌ one   ", "▌ ▌ two   ", "▌ ▌ thre  ", "▌ ▌ e     ", ""]],
+  ])("lays the quote in %j at width %i out as Rich does", (source, width, options, expected) => {
+    expect(collectText(new Markdown(source, options), { maxWidth: width }).split("\n")).toEqual(expected);
   });
 
   it("keeps every row inside its width when a list runs into a paragraph", () => {
@@ -600,9 +614,8 @@ describe("Markdown", () => {
   });
 
   it("owes no newline after a rule, as Rich's render loop does not", () => {
-    // Rich 15: ["🌆 i ▌ x", "▌ " + 36×"-", "▌", ""]. The rule's two extra
-    // cells are the quote width, rich-unfiled-791c.hlmh's.
-    expect(rows("> x ![i](p.png)\n>\n> ***", 40)).toEqual(["🌆 i ▌ x", `▌ ${"-".repeat(38)}`, "▌", ""]);
+    // Rich 15: ["🌆 i ▌ x", "▌ " + 36×"-", "▌", ""].
+    expect(rows("> x ![i](p.png)\n>\n> ***", 40)).toEqual(["🌆 i ▌ x", `▌ ${"-".repeat(36)}`, "▌", ""]);
   });
 
   // --- Blank rows between blocks ---
@@ -1031,7 +1044,7 @@ describe("Markdown", () => {
       "",
       " •      item",
       "",
-      "▌      quote",
+      "▌    quote",
       "",
     ]);
   });

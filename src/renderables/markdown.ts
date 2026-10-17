@@ -431,11 +431,12 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
 
     case "blockquote": {
       // Rich's BlockQuote: the bar and everything the quote holds in the one
-      // style.
+      // style, the content laid out four cells short of the width beside a
+      // bar of two, so every row of a quote ends two cells short.
       const style = getStyle(options, QUOTE_STYLE);
       const bar = new Segment(drawable(options, "▌ ", "| "), style);
       const body = (inner: RenderOptions) => renderLines(token.children, inner, settings, style);
-      yield* guttered(body, options, bar, bar);
+      yield* guttered(body, { ...options, maxWidth: options.maxWidth - 2 }, bar, bar);
       break;
     }
 
