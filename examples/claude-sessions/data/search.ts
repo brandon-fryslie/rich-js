@@ -21,7 +21,7 @@ function matchableText(block: Block): string {
     case "subagent":
       return `${block.subagentType}\n${block.description}\n${block.prompt}\n${block.resultText}`;
     case "system":
-      return block.subtype;
+      return `${block.subtype}\n${block.label}\n${block.text}`;
     case "record":
       return block.recordType;
     case "error":

@@ -1,11 +1,12 @@
-import { Rule, Align, RichText } from "@promptctl/rich-js";
+import { Rule, Align, RichText, Group, decodeAnsi } from "@promptctl/rich-js";
 import type { Renderable } from "@promptctl/rich-js";
 import type { SystemBlock } from "../../data/types.js";
-import { emoji } from "./_common.js";
+import { emoji, highlightSearch, truncate } from "./_common.js";
 import type { RenderOpts } from "./index.js";
 
-function formatDuration(ms: number | null): string {
-  if (ms === null) return "—";
+const TEXT_PREVIEW_LINES = 3;
+
+function formatDuration(ms: number): string {
   const s = Math.round(ms / 1000);
   if (s < 60) return `${s}s`;
   const m = Math.floor(s / 60);
@@ -16,11 +17,17 @@ function formatDuration(ms: number | null): string {
   return `${h}h ${rm}m`;
 }
 
+/** A rule naming what happened and how long it took, over the text the record carries. */
 export function renderSystem(block: SystemBlock, opts: RenderOpts): Renderable {
   const icon = block.subtype === "turn_duration" ? emoji(":hourglass:") : emoji(":black_circle:");
   const style = opts.isSelected ? "bold white" : "dim white";
-  const title = new RichText(`${icon} ${formatDuration(block.durationMs)}`, { style });
-  const rule = new Rule(title, { style, characters: "─" });
+  const duration = block.durationMs === null ? "" : ` · ${formatDuration(block.durationMs)}`;
+  const title = new RichText(`${icon} ${block.label}${duration}`, { style });
+  highlightSearch(title, opts.searchQuery);
   // Wrap in Align to exercise the Align renderable
-  return new Align(rule, "center");
+  const rule = new Align(new Rule(title, { style, characters: "─" }), "center");
+  // A command's output carries the escape codes it was printed with.
+  const text = decodeAnsi(opts.isExpanded ? block.text : truncate(block.text, TEXT_PREVIEW_LINES), { style, end: "" });
+  highlightSearch(text, opts.searchQuery);
+  return new Group(rule, ...(block.text === "" ? [] : [text]));
 }

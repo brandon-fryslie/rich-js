@@ -107,8 +107,16 @@ export type RawRecord = {
   isApiErrorMessage?: boolean;
   error?: string;
   promptId?: string;
-  subtype?: string;
-  durationMs?: number;
+  // A system record's own fields, as unchecked as the JSON they came from:
+  // systemEvent reads each one.
+  subtype?: unknown;
+  durationMs?: unknown;
+  content?: unknown;
+  commandRun?: unknown;
+  hookCount?: unknown;
+  hookErrors?: unknown;
+  preventedContinuation?: unknown;
+  stopReason?: unknown;
   message?: MessageShape;
   toolUseResult?: { agentId?: string } | unknown;
   sourceToolAssistantUUID?: string;
@@ -199,6 +207,85 @@ interface Joined {
 }
 
 /**
+ * The text inside the first `<name>…</name>` in `content`, trimmed; "" when it
+ * has none. One whose closing tag is gone runs to the end of `content`: the
+ * stager cuts a long record short, and the cut keeps what it says it lost.
+ */
+function tagged(content: string, name: string): string {
+  return content.match(new RegExp(`<${name}>([\\s\\S]*?)(?:</${name}>|$)`))?.[1]?.trim() ?? "";
+}
+
+/** A record that runs a slash command is these tags and nothing else. */
+const COMMAND = /^(?:\s*<command-(name|message|args)>[\s\S]*?<\/command-\1>)+\s*$/;
+
+/** What a command record says besides its command line: its content, command tags gone and output tags unwrapped. */
+function commandOutput(content: string): string {
+  return content
+    .replace(/<command-(name|message|args)>[\s\S]*?<\/command-\1>/g, "")
+    .replace(/<local-command-std(?:out|err)>|<\/local-command-std(?:out|err)>/g, (tag) => (tag.startsWith("</") ? "\n" : ""))
+    .trim();
+}
+
+/** The command line `content`'s command tags spell — "/btw How are docs built?" — or "" when it has none. */
+function commandTags(content: string): string {
+  return `${tagged(content, "command-name")} ${tagged(content, "command-args")}`.trim();
+}
+
+/** The command line of a record that runs a slash command; "" for any other text. */
+function commandLine(content: string): string {
+  return COMMAND.test(content) ? commandTags(content) : "";
+}
+
+/** The text a user or system record carries; "" for any other. */
+function contentOf(r: RawRecord): string {
+  return r.type === "user" ? extractTextFromContent(r.message?.content) : r.type === "system" ? asString(r.content) : "";
+}
+
+/** The command line an output record names in `commandRun`; "" when it names none. */
+function ranCommand(run: unknown): string {
+  if (typeof run !== "object" || run === null) return "";
+  const { command, args } = run as Record<string, unknown>;
+  return `/${asString(command)} ${asString(args)}`.trim();
+}
+
+/** `values` as lines of text, the empty ones left out; a value that is not a list is a list of one. */
+function linesOf(...values: unknown[]): string {
+  return values.flatMap((v) => (Array.isArray(v) ? v : [v])).map(asString).filter((s) => s !== "").join("\n");
+}
+
+/**
+ * What a system record says. Claude Code writes one for a turn's duration, a
+ * slash command and its output, the stop hooks that ran, and notices that are
+ * their `content` — an away summary, a compaction, a usage limit. A subtype not
+ * named here is drawn by its name and content, so one nobody has seen still
+ * reaches the reader.
+ */
+function systemEvent(r: RawRecord): Pick<SystemBlock, "subtype" | "label" | "text" | "durationMs"> {
+  const subtype = typeof r.subtype === "string" ? r.subtype : "system";
+  const content = asString(r.content);
+  const durationMs = typeof r.durationMs === "number" ? r.durationMs : null;
+  switch (subtype) {
+    case "turn_duration":
+      return { subtype, label: "turn", text: "", durationMs };
+    // The command line is the tags of the record that ran the command, which
+    // joinCommandRecords sets ahead of its output; an output record with no such
+    // record ahead of it names its command in `commandRun`.
+    case "local_command": {
+      const command = commandTags(content) || ranCommand(r.commandRun);
+      return { subtype, label: command || "local command", text: commandOutput(content), durationMs };
+    }
+    case "stop_hook_summary": {
+      const n = r.hookCount;
+      const hooks = typeof n === "number" ? `${n} stop hook${n === 1 ? "" : "s"}` : "stop hooks";
+      const prevented = r.preventedContinuation === true ? " · prevented continuation" : "";
+      return { subtype, label: hooks + prevented, text: linesOf(r.hookErrors, r.stopReason), durationMs };
+    }
+    default:
+      return { subtype, label: subtype.replaceAll("_", " "), text: content, durationMs };
+  }
+}
+
+/**
  * A record as what it is. Claude Code files a prompt the user sent while a
  * turn ran as an `attachment` of type `queued_command`, with no user record of
  * its own, so that one is read as the user record it stands for.
@@ -264,6 +351,36 @@ function joinMessageRecords(records: ReadonlyArray<Joined>): Joined[] {
   return out;
 }
 
+/**
+ * Step 2b: join a slash command's records. Claude Code writes the command line
+ * — as a user record, or a `local_command` one when it ran mid-turn — and then
+ * a `local_command` record of the command's output whose parent it is, so the
+ * two are one command: the output record, holding the line's tags ahead of its
+ * own, under the line's uuid and parent, where the line stood. They are found
+ * by that parent link, not by sitting together, so a hidden record written
+ * between them joins or splits nothing whether hidden records are shown or not.
+ */
+function joinCommandRecords(records: ReadonlyArray<Joined>): Joined[] {
+  const out: Joined[] = [];
+  const at = new Map<string, number>();
+  for (const next of records) {
+    const r = next.line.parsed;
+    const i = r.type === "system" && r.subtype === "local_command" && typeof r.parentUuid === "string" ? at.get(r.parentUuid) : undefined;
+    const prev = i === undefined ? undefined : out[i];
+    if (i === undefined || prev === undefined || commandLine(contentOf(prev.line.parsed)) === "") {
+      if (typeof r.uuid === "string") at.set(r.uuid, out.length);
+      out.push(next);
+      continue;
+    }
+    const ran = prev.line.parsed;
+    out[i] = {
+      line: { ...next.line, parsed: { ...r, uuid: ran.uuid, parentUuid: ran.parentUuid, content: `${contentOf(ran)}\n${asString(r.content)}` } },
+      parts: [...prev.parts, ...next.parts],
+    };
+  }
+  return out;
+}
+
 /** Whether `line` is the record that carries the tool call `toolUseId`. */
 function carriesToolUse(line: RecordLine, toolUseId: string): boolean {
   const content = line.parsed.message?.content;
@@ -315,18 +432,8 @@ function emitBlocks(joined: ReadonlyArray<Joined>): Block[] {
       continue;
     }
 
-    // System turn-duration → SystemBlock
     if (recordType === "system") {
-      const block: SystemBlock = {
-        kind: "system",
-        uuid,
-        parentUuid,
-        timestamp,
-        source: parts,
-        subtype: r.subtype ?? "system",
-        durationMs: typeof r.durationMs === "number" ? r.durationMs : null,
-      };
-      out.push(block);
+      out.push({ kind: "system", uuid, parentUuid, timestamp, source: parts, ...systemEvent(r) });
       continue;
     }
 
@@ -432,9 +539,9 @@ function emitBlocks(joined: ReadonlyArray<Joined>): Block[] {
       }
       // Tool results that didn't get paired (orphan) — show as a generic
       // human block with the raw text so the user isn't confused
-      const text = typeof r.message.content === "string"
-        ? r.message.content
-        : extractTextFromContent(r.message.content);
+      // A prompt that runs a slash command reads as the command line it runs.
+      const said = extractTextFromContent(r.message.content);
+      const text = commandLine(said) || said;
       // Skip empty content
       if (text.trim().length === 0 && !isToolResultContent(r.message.content)) {
         continue;
@@ -468,5 +575,5 @@ export function parseBlocks(
   opts?: ParseOptions,
 ): Block[] {
   const showHidden = opts?.showHidden === true;
-  return emitBlocks(joinMessageRecords(readRecords(lines, showHidden)));
+  return emitBlocks(joinCommandRecords(joinMessageRecords(readRecords(lines, showHidden))));
 }

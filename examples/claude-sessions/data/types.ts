@@ -67,9 +67,12 @@ export interface SubagentBlock extends BlockBase {
   readonly agentId: string | null;
 }
 
+/** A system record as what it says (parser.ts, systemEvent): what happened, any text it carries, and how long it took. */
 export interface SystemBlock extends BlockBase {
   readonly kind: "system";
   readonly subtype: string;
+  readonly label: string;           // "turn", "/clear", "2 stop hooks", "away summary"
+  readonly text: string;            // command output, hook errors, the record's content; "" when it carries none
   readonly durationMs: number | null;
 }
 
