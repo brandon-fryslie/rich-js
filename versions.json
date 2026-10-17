@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-447",
+      "ref": "refs/pull/447/merge",
+      "sha": "0490990bf3385123f4ec1b1e7584655d070fb54e",
+      "timestamp": "2026-10-17T16:07:50.851Z",
+      "commits": [
+        {
+          "sha": "0490990bf3385123f4ec1b1e7584655d070fb54e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T10:06:01-06:00",
+          "message": "Merge d8638285662d1c150d8bcc02d72f493cdc57b1f5 into 201b6f5593ae0b66c16cd9cfc6557b6525788690\n"
+        },
+        {
+          "sha": "d8638285662d1c150d8bcc02d72f493cdc57b1f5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T10:05:56-06:00",
+          "message": "Markdown ends a list at the second blank line after an empty item, as markdown-it does (rich-unfiled-791c.tx0u)\n\nmarkdown-it's list rule, for an item whose content is empty and whose next\nline is blank, skips to the line two past it without tokenizing and checks\nthat line for the next item, skipping no more blank lines. '-\\n\\n\\n- a' is\ntwo lists there; it was one here. Pinned against Rich 15 (markdown-it-py 4.2).\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "201b6f5593ae0b66c16cd9cfc6557b6525788690",
