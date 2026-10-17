@@ -4,15 +4,22 @@
     {
       "version": "pr-443",
       "ref": "refs/pull/443/merge",
-      "sha": "0ea7679bc8514741d82689e2670b37d6115e836c",
-      "timestamp": "2026-10-17T14:52:01.271Z",
+      "sha": "a08a6ad51b6e5412055ed241bcd3cf9556431957",
+      "timestamp": "2026-10-17T14:56:59.761Z",
       "commits": [
         {
-          "sha": "0ea7679bc8514741d82689e2670b37d6115e836c",
+          "sha": "a08a6ad51b6e5412055ed241bcd3cf9556431957",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T08:50:14-06:00",
-          "message": "Merge 9c21a975fb1e35389a7d86bd4ecef2feb8a9fb37 into 876ed63e43cd10a85cb34ed9fe936de820d81f0f\n"
+          "timestamp": "2026-10-17T14:55:41Z",
+          "message": "Merge 7e41cbebc2eaa52fd17f31657249a5e5e78b6f49 into 876ed63e43cd10a85cb34ed9fe936de820d81f0f\n"
+        },
+        {
+          "sha": "7e41cbebc2eaa52fd17f31657249a5e5e78b6f49",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T08:55:37-06:00",
+          "message": "ItemStart's marker is CommonMark's two kinds, so a bullet cannot carry a number; nested and quoted delimiter changes pinned (rich-unfiled-791c.zhwr review)\n"
         },
         {
           "sha": "9c21a975fb1e35389a7d86bd4ecef2feb8a9fb37",
