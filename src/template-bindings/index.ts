@@ -14,9 +14,10 @@
  * - `paletteFuncs(getPalette)` — `color` and `ramp`, the two functions that
  *   resolve a palette name. This is the *only* registration that knows a
  *   palette exists. [LAW:one-way-deps]
- * - `animationFuncs(frameTime)` — `frames`, which draws for a moment. It is
- *   the only registration that knows the template is evaluated at a time,
- *   and the time is the host's to hand in (`./animation-funcs.ts`).
+ * - `animationFuncs(frameTime)` — `frames` and `stepped`, a fragment and a
+ *   colour drawn for a moment. It is the only registration that knows the
+ *   template is evaluated at a time, and the time is the host's to hand in
+ *   (`./animation-funcs.ts`).
  *
  * `createRichTextEngine()` wires up `richTextFuncs()` only — it cannot supply a
  * palette. Consumers that name theme colours call `paletteFuncs(getPalette)`

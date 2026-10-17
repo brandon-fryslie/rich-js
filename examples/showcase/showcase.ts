@@ -16,7 +16,12 @@
 
 import {
   BarColumn,
+  ColorRgba,
   ColorSpec,
+  DEFAULT_TERMINAL_THEME,
+  EASES,
+  EFFECT_CATALOGUE,
+  Effected,
   Frames,
   Layout,
   Live,
@@ -30,7 +35,10 @@ import {
   TaskProgressColumn,
   TextColumn,
   Tree,
+  beat,
+  onBeat,
   regionRows,
+  steppedInk,
   withCellWidth,
   type Renderable,
   type RenderOptions,
@@ -148,20 +156,35 @@ project.add("[magenta]renderables").add("table.ts");
 
 /**
  * The chevrons after the name: one, two, three, one again, a second each,
- * every frame in its own colour and all drawn one cell wide, so the tagline
- * never moves. Frames are seconds, so the gauge turns at the same pace
- * however often the dashboard redraws.
+ * all drawn at one width, so the tagline never moves, and their ink stepping
+ * through three bright colours on the same beat, each kept readable on the
+ * bubble behind it. Frames and steps are seconds, so the gauge turns at the
+ * same pace however often the dashboard redraws. The name itself walks the
+ * hue wheel a step a second: a wheel that would take six seconds to turn,
+ * sampled once a second.
  */
-const CHEVRONS = ["›", "››", "›››"].map((glyphs, i) => ({
-  text: new RichText(glyphs, { style: Style.parse(["green", "yellow", "red"][i]!) }),
+const CHEVRONS = ["›", "››", "›››"].map((glyphs) => ({
+  text: new RichText(glyphs, { style: Style.parse("bold #cdd6f4 on #313244") }),
   seconds: 1,
 }));
+const SIGNAL = steppedInk([
+  { color: new ColorRgba(255, 85, 85), seconds: 1 },
+  { color: new ColorRgba(241, 250, 140), seconds: 1 },
+  { color: new ColorRgba(80, 250, 123), seconds: 1 },
+]);
+const WALK = onBeat(EFFECT_CATALOGUE.loops.wheel({ span: 8, z: 0 }, { seconds: 6, ease: EASES.linear, swing: 0 }), beat([1]));
+const THEME = DEFAULT_TERMINAL_THEME;
 
-function heading(t: number): RichText {
-  const line = new RichText("");
-  line.append("rich-js ", Style.parse("bold magenta"));
-  line.append(new Frames(CHEVRONS, { t }).text());
-  line.append(" · beautiful terminal output for TypeScript", Style.parse("dim"));
+function heading(t: number): Renderable {
+  const line = Table.grid({ padding: 0 });
+  line.addColumn();
+  line.addColumn();
+  line.addColumn();
+  line.addRow(
+    new Effected(new RichText("rich-js ", { style: Style.parse("bold #1e1e2e on #cba6f7"), end: "" }), WALK, { t, key: "brand", theme: THEME }),
+    new Effected(new Frames(CHEVRONS, { t }), SIGNAL, { t, key: "effort", theme: THEME }),
+    new RichText(" · beautiful terminal output for TypeScript", { style: Style.parse("dim"), end: "" }),
+  );
   return line;
 }
 

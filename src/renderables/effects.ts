@@ -10,7 +10,11 @@
  * a slow glow, sunlight moving on water, the colours of daylight, fireflies, ink
  * blooming in water, mist lifting — because a motion the eye recognises
  * reads as calm and alive, where a motion it has to learn reads as a widget.
- * What makes those motions familiar is what every curve here keeps:
+ * One effect here is not ambience but a signal, and keeps none of this on
+ * purpose: `steppedInk` steps its ink through colours on a beat, the news
+ * that something is at its limit, and jumps from slot to slot where the
+ * loops hold still. What makes the loops' motions familiar is what every
+ * curve of theirs keeps:
  *
  * - Nothing jumps. Every curve is continuous in time, built from smooth
  *   noise (`core/noise.ts`) and smooth waveforms, so at one frame a second a cell
@@ -44,10 +48,11 @@
  */
 
 import { ColorDepth, ColorRgba, ColorSpec, contrastRatio, relativeLuminance, type TerminalTheme } from "../core/color.js";
-import { EASES, Phase, type Ease } from "../core/easing.js";
+import { EASES, Phase, beat, type Ease } from "../core/easing.js";
 import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo } from "../core/memo.js";
 import { Oklch } from "../core/oklch.js";
+import { ensureContrast } from "../themes/colorMath.js";
 import { Effected, type Drawn, type Effect, type EffectCell, type Pair } from "./effect.js";
 
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
@@ -185,7 +190,19 @@ export function onColors(loop: Loop, colors?: ReadonlySet<string>): Effect {
 
 /** What a frame draws, as a key: its depth and its pairs, which its `colors` and `fills` are read off. */
 function drawnKey({ depth, pairs }: Drawn): string {
-  return [depth, ...pairs.map(({ fg, bg, terminal, reverse }) => `${fg.hex}/${bg.hex}/${terminal.fg}/${terminal.bg}/${reverse}`)].join(" ");
+  return [depth, ...pairs.map(pairKey)].join(" ");
+}
+
+/**
+ * A pair as a key: two pairs the screen shows alike, from slots alike, are
+ * one — the spelling `Drawn.pairs` is made distinct by (`./effect.ts`), and
+ * what every memo here over a frame's pairs is keyed on. Spelled here rather
+ * than imported: a playground card runs this file on the published library
+ * (header), and a name this file imports from `./effect.js` is one the
+ * package exports.
+ */
+function pairKey({ fg, bg, terminal, reverse }: Pair): string {
+  return `${fg.hex}/${bg.hex}/${terminal.fg}/${terminal.bg}/${reverse}`;
 }
 
 /**
@@ -214,7 +231,7 @@ export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string
  * `onColors` and `wheel` draw through this, so every loop in the catalogue
  * meets the sixteen-colour terminal here. `atShares` does not: a progress
  * bar's pulse is the news that work is going on, and flashes a slot as
- * Rich's does.
+ * Rich's does; nor does `steppedInk`, a signal, which steps slot to slot.
  */
 function stillOnSlots(loop: Effect): Effect {
   return (t, drawn) => (onlySlots(drawn.depth) ? (colors) => colors : loop(t, drawn));
@@ -888,9 +905,79 @@ function measuredIndexed(depth: ColorDepth, theme: TerminalTheme): readonly Meas
  * earlier.
  */
 function nearestWithin(color: ColorRgba, rest: ColorRgba, candidates: readonly Measured[], { lo, hi }: Bounds): ColorRgba {
+  return nearestOf(color, [measured(rest), ...candidates.filter(({ stop }) => stop >= lo && stop <= hi)])!.color;
+}
+
+/** Of `offered`, the one that looks nearest `color` (OKLab's ΔE), ties to the earlier; none when nothing is offered. */
+function nearestOf(color: ColorRgba, offered: readonly Measured[]): Measured | undefined {
   const looks = Oklch.fromRgba(color);
-  const offered = [measured(rest), ...candidates.filter(({ stop }) => stop >= lo && stop <= hi)];
-  return offered.map((candidate) => [candidate.color, looks.deltaE(candidate.looks)] as const).reduce((best, next) => (next[1] < best[1] ? next : best))[0];
+  let best: [Measured, number] | undefined;
+  for (const candidate of offered) {
+    const apart = looks.deltaE(candidate.looks);
+    if (best === undefined || apart < best[1]) best = [candidate, apart];
+  }
+  return best?.[0];
+}
+
+/** One step of a signal: the ink it draws, and how long it is held, in seconds. */
+export interface ColorStep {
+  readonly color: ColorRgba;
+  readonly seconds: number;
+}
+
+/**
+ * A signal: every cell's ink stepping through `steps`' colours on a beat,
+ * one colour a hold, looping, for the time it is handed — a gauge's
+ * chevrons in bright changing colours. The ground is left as the cell draws
+ * it, and the words stay legible on it: each step's ink is written as the
+ * colour nearest the step's (OKLab's ΔE) that the depth draws and that
+ * reads on the cell's ground, as `Effected` writes it, at the cell's floor
+ * (`floorOf`) — its resting contrast or `LEGIBLE`, whichever is lower, the
+ * floor every loop here keeps. In truecolor that is the step itself, or its
+ * hue and chroma at the lightness nearest it that reaches the floor
+ * (`ensureContrast`, the one slide a template's `readableOn` makes too);
+ * below truecolor, the nearest of the colours the depth has an index for, so on a
+ * sixteen-colour terminal it steps from slot to slot, the one effect here
+ * that does (`stillOnSlots`). A cell whose ground no offered colour reads
+ * on keeps the ink it rested in.
+ *
+ * The search is settled once for each ink, ground and step, so a frame
+ * inside a step redoes none, and nor does a later pass of the beat: at sixty
+ * frames a second a one-second step is sixty identical frames.
+ * [LAW:no-ambient-temporal-coupling] The beat is `core/easing.ts`'s, and
+ * nothing here reads a clock.
+ */
+export function steppedInk(steps: readonly ColorStep[]): Effect {
+  const rhythm = beat(steps.map((step) => step.seconds));
+  // A copy, as `beat` keeps of the holds: what the signal plays stays what
+  // `steps` said whatever the caller does to its array.
+  const inks = steps.map((step) => step.color);
+  const settled = new WeakMap<TerminalTheme, Memo<ColorRgba>>();
+  return (t, { depth, theme }) => {
+    const step = inks[rhythm.at(t)]!;
+    const memo = settled.get(theme) ?? new Memo<ColorRgba>();
+    settled.set(theme, memo);
+    return (colors, cell) => {
+      const pair: Pair = { ...colors, terminal: cell.terminal, reverse: cell.reverse };
+      return { fg: memo.get(`${depth} ${pairKey(pair)} ${step.hex}`, () => legibleInk(step, pair, depth, theme)), bg: colors.bg };
+    };
+  };
+}
+
+/**
+ * The colour nearest `step` the depth writes that reads on `pair`'s ground
+ * at `pair`'s floor, as `Effected` writes it (`shows`), or `pair`'s own ink
+ * when none does. [LAW:one-source-of-truth] Measured the way `shares` and
+ * `wheel` measure: the written colours, at the catalogue's floor.
+ */
+function legibleInk(step: ColorRgba, pair: Pair, depth: ColorDepth, theme: TerminalTheme): ColorRgba {
+  const floor = floorOf(pair, depth);
+  const offered = depth === ColorDepth.TRUECOLOR ? [step, ensureContrast(step, pair.bg, floor)].map(measured) : measuredIndexed(depth, theme);
+  const reads = ({ color }: Measured): boolean => {
+    const shown = Effected.shows(pair, { fg: color, bg: pair.bg }, depth, theme);
+    return contrastRatio(shown.fg, shown.bg) >= floor;
+  };
+  return nearestOf(step, offered.filter(reads))?.color ?? pair.fg;
 }
 
 /**

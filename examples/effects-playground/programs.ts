@@ -34,6 +34,7 @@ const IMPORTED_AS: Readonly<Record<string, string>> = {
   "../core/color.js": "@promptctl/rich-js",
   "../core/easing.js": "@promptctl/rich-js",
   "../core/oklch.js": "@promptctl/rich-js",
+  "../themes/colorMath.js": "@promptctl/rich-js",
   "./effect.js": "@promptctl/rich-js",
 };
 

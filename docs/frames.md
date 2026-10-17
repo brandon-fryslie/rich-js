@@ -87,3 +87,26 @@ for (frameTime of [0, 1.5, 2.2, 3]) {
 ```
 
 The template is compiled once and reads the time each time it is evaluated, so a host that evaluates it on every redraw hands in each redraw's time and nothing else changes.
+
+`stepped <seconds> <color> <seconds> <color> …` is the same beat for a colour: the colour in progress at the moment, as a [colour value](/template-bindings#colors-are-values), so it goes wherever a colour goes. Here the chevrons turn and their ink steps through three bright colours, each kept readable on the ground the template names:
+
+```typescript
+import { createEngine } from "@promptctl/go-template-js";
+import { RichText } from "@promptctl/rich-js";
+import { animationFuncs, richTextFuncs } from "@promptctl/rich-js/template-bindings";
+
+let frameTime = 0;
+const engine = createEngine<RichText>({
+  fromString: (s) => new RichText(s),
+  toString: (rt) => rt.plain,
+  funcs: { ...richTextFuncs(), ...animationFuncs(() => frameTime) },
+});
+
+const gauge = engine.compile(`{{- $bg := "#313244" -}}
+{{- $ink := readableOn (stepped 1 "#ff5555" 1 "#f1fa8c" 1 "#50fa7b") $bg 4.5 -}}
+{{ frames 1 "›" 1 "››" 1 "›››" | fg $ink | bg $bg }}`);
+
+for (frameTime of [0, 1, 2, 3]) {
+  console.print(RichText.fromFragments(gauge({})));
+}
+```

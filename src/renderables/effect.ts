@@ -49,6 +49,7 @@
 import { drawnBy, shiftAnchor, type Anchor } from "../core/anchor.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK, type ColorRgba, type TerminalTheme } from "../core/color.js";
+import type { Beat } from "../core/easing.js";
 import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
@@ -83,6 +84,8 @@ export interface EffectCell {
    * hex can equal one the element wrote; this is what tells them apart.
    */
   readonly terminal: { readonly fg: boolean; readonly bg: boolean };
+  /** Whether the cell's style swaps its two slots, as `Pair.reverse` says: with `colors` and `terminal`, the cell's `Pair`. */
+  readonly reverse: boolean;
   /**
    * Who drew the cell, and where it sits in their output, as
    * `Segment.anchorAt` reads it off a frame: what tells one owner's cells
@@ -207,7 +210,7 @@ export class Effected implements Renderable, Measurable {
         } else {
           const anchor = base.anchor && shiftAnchor(base.anchor, into);
           // Back from the screen to the style's slots: the same swap undoes itself.
-          colors = onScreen(frame(from, { row, col, seed: this.seed(row, col), terminal, anchor }), pair.reverse);
+          colors = onScreen(frame(from, { row, col, seed: this.seed(row, col), terminal, reverse: pair.reverse, anchor }), pair.reverse);
           col += cellLen(glyph);
         }
         into += cellLen(glyph);
@@ -308,6 +311,20 @@ function measured(looked: readonly { segment: Segment; look: Look | undefined }[
   // [LAW:one-source-of-truth] A slot the terminal fills is no colour of the element's, whatever its hex.
   const own = (slot: "fg" | "bg"): string[] => pairs.flatMap((pair) => (pair.terminal[slot] ? [] : [pair[slot].hex]));
   return { pairs, colors: new Set([...own("fg"), ...own("bg")]), fills: new Set(own("bg")), depth, theme };
+}
+
+/**
+ * `effect` sampled and held on `beat`: drawn at the moment the hold in
+ * progress began (`Beat.start`), so within a hold every frame is the frame
+ * at its start, and at each hold's start it moves on. A continuous effect
+ * given a short curve becomes one that steps — a `wheel` turning a sixth of
+ * a turn once a second — and at one redraw a second a hold shorter than a
+ * second is skipped, as frames are. [LAW:no-ambient-temporal-coupling] The
+ * held time is a function of `t`, so the same `t` draws the same bytes at
+ * any rate.
+ */
+export function onBeat(effect: Effect, beat: Beat): Effect {
+  return (t, drawn) => effect(beat.start(t), drawn);
 }
 
 /**

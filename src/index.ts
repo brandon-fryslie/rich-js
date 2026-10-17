@@ -108,7 +108,7 @@ export { ColorRamp } from "./themes/ramp.js";
 export type { ColorStop } from "./themes/ramp.js";
 // Progress in [0, 1]: phases turn seconds into it, eases reshape it. One
 // vocabulary for ramps and time-based effects alike, CSS's names throughout.
-export { EASES, Phase, cubicBezier, parseEase, steps } from "./core/easing.js";
+export { EASES, Phase, beat, cubicBezier, parseEase, steps } from "./core/easing.js";
 export type { Beat, Ease, StepPosition } from "./core/easing.js";
 // The time source and timer whoever draws frames is handed, and the one
 // parser of the rate it ticks at.
@@ -280,7 +280,7 @@ export type { Env } from "./core/env.js";
 
 // Renderables
 export { Constrain } from "./renderables/constrain.js";
-export { Effected, confined, drawnOf } from "./renderables/effect.js";
+export { Effected, confined, drawnOf, onBeat } from "./renderables/effect.js";
 export type { CellColors, Drawn, Effect, EffectCell, EffectedOptions, Pair } from "./renderables/effect.js";
 export {
   EFFECT_CATALOGUE,
@@ -292,9 +292,10 @@ export {
   pulse,
   shimmer,
   sparkle,
+  steppedInk,
   wheel,
 } from "./renderables/effects.js";
-export type { Curve, EffectTarget, Field, Loop, LoopName, Touch, Transition, TransitionName } from "./renderables/effects.js";
+export type { ColorStep, Curve, EffectTarget, Field, Loop, LoopName, Touch, Transition, TransitionName } from "./renderables/effects.js";
 export { Align } from "./renderables/align.js";
 export type { Alignment } from "./core/place.js";
 export { Padding } from "./renderables/padding.js";

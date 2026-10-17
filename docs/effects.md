@@ -12,7 +12,7 @@ type Effect = (t: number, drawn: Drawn) => (colors: CellColors, cell: EffectCell
 
 ## Ready-made effects
 
-The library ships six. Four loop for as long as they are drawn, and two run once:
+The library ships six, and one [signal](#a-signal-steps). Four loop for as long as they are drawn, and two run once:
 
 | Effect | What it looks like |
 | --- | --- |
@@ -100,6 +100,44 @@ console.print([10, 29.9, 30].map((t) => `${t}s: ${leaving.done(t) ? "gone" : "le
 
 Both blend toward the background of the `theme` given to `Effected`, the terminal the frame is drawn on: the library never asks the terminal what that is.
 
+### A signal steps
+
+The loops are ambience, and nothing in them jumps. `steppedInk` is a signal, and jumps on purpose: every cell's ink steps through a sequence of colours on a beat, one colour a hold, looping, for the time it is handed, the way a gauge at its limit shows bright changing colours. Each step is a `ColorStep`, a colour and its hold in seconds, and the holds are a `Beat` as [frames](/frames) are, so one sequence plays at one redraw a second and at sixty.
+
+The ground stays as the cell draws it, and the words stay readable on it. Each step's ink is written as the colour nearest the step's that the output's depth can draw and that reads on the cell's ground at the floor every loop here keeps: the cell's resting contrast, or WCAG AA if it rested above that, measured on the colours the terminal is sent. In truecolor that is the step itself, or its hue at the lightness nearest it that clears the floor. Below truecolor it is the nearest colour the depth has an index for, so on a sixteen-colour terminal the ink steps from slot to slot, where the loops hold still. The search runs once for each ink, ground and step, so every frame inside a step costs what any frame does.
+
+```typescript
+import { CATPPUCCIN_MOCHA, ColorRgba, Effected, Frames, RichText, Style, steppedInk } from "@promptctl/rich-js";
+
+const theme = CATPPUCCIN_MOCHA;
+const chevrons = ["›", "››", "›››"].map((glyphs) => ({ text: new RichText(glyphs, { style: Style.parse("bold on #313244") }), seconds: 1 }));
+const signal = steppedInk([
+  { color: new ColorRgba(255, 85, 85), seconds: 1 },
+  { color: new ColorRgba(241, 250, 140), seconds: 1 },
+  { color: new ColorRgba(80, 250, 123), seconds: 1 },
+]);
+
+for (const t of [0, 1, 2, 3]) {
+  console.print(new Effected(new Frames(chevrons, { t }), signal, { t, key: "effort", theme }));
+}
+```
+
+### Sampled on a beat
+
+`onBeat(effect, beat)` samples any effect once a hold: within a hold it draws the frame at the hold's start, and at each hold's start it moves on. A `wheel` given a short curve and sampled once a second becomes a hue walk that turns a step at a time; sampled sixty times a second it still turns once a second, since the beat is seconds. At one redraw a second a hold shorter than a second is skipped, as a frame is.
+
+```typescript
+import { CATPPUCCIN_MOCHA, EASES, EFFECT_CATALOGUE, Effected, RichText, Style, beat, onBeat } from "@promptctl/rich-js";
+
+const theme = CATPPUCCIN_MOCHA;
+const label = new RichText(" rich-js ", { style: Style.parse("#1e1e2e on #89b4fa") });
+const walk = onBeat(EFFECT_CATALOGUE.loops.wheel({ span: 9, z: 0 }, { seconds: 6, ease: EASES.linear, swing: 0 }), beat([1]));
+
+for (const t of [0, 0.5, 1, 2.5]) {
+  console.print(new Effected(label, walk, { t, key: "brand", theme }));
+}
+```
+
 To edit and tune each effect's code while it runs, open the [effects playground](/effects-playground). To watch every effect at any frame rate, colour depth and theme, run `npm run effects-feel` in a checkout of this repository.
 
 ## Writing an effect
@@ -140,6 +178,7 @@ Nothing in an effect reads a clock. Whoever draws frames builds the view for eac
 - `seed` is a number in `[0, 1)` that stays the same for that cell on every frame, for effects that vary cell by cell. It is derived from the `key` option and the cell's position, so two elements showing the same text under different keys do not move in lockstep.
 - `colors` are what the screen shows: the glyph's colour and the colour behind it, so under `reverse` they are the style's two colours swapped. A cell that sets no colour of its own, or names one of the sixteen ANSI colours, is handed that colour from the `theme` option, a `TerminalTheme`. The terminal's real palette is never queried, so the caller supplies it.
 - `terminal` says, for `fg` and `bg` as the screen shows them, whether that colour is the terminal's own: one the style leaves unset or sets to `default`. Resolved through the theme, it can have the same hex as a colour the element wrote; `terminal` is what tells the two apart. `onColors` and `wheel` never move a colour the terminal supplies.
+- `reverse` says whether the cell's style swaps its two slots, so the ink is written in the ground's slot. With `colors` and `terminal` it is the cell's `Pair`, the shape `drawn.pairs` lists.
 - `anchor` is who drew the cell, and where it sits in their output, as `Segment.anchorAt` reads it off a frame, or `undefined` for a cell no owner stamped. `confined` reads it.
 
 ## What an effect cannot change
@@ -148,6 +187,6 @@ An effect changes how cells look, never which cells exist or who drew them. Text
 
 With no colour output at all, an effect has nothing to change, and the wrapped renderable draws as it would without it.
 
-A colour an effect moves is written as the nearest colour the output's depth can draw on the `theme` terminal: the RGB value itself in truecolor; otherwise the nearest of the terminal's default colour, the theme's sixteen and, at 256 colours, the cube and grey ramp. A translucent colour is laid on what is beneath it first, as every translucent colour the library writes is: the ground on black, since a terminal cannot say what lies under its cells, and the glyph on that ground. So below truecolor a colour moved a little off an ANSI slot or the default colour is still drawn as that one. On a sixteen-colour terminal a move that does show is a jump to another slot, so there a loop — `wheel`, and any lit by `onColors`, every one in the catalogue among them — holds every cell still rather than flickering between slots. A transition still runs, from slot to slot, since it moves once and is done.
+A colour an effect moves is written as the nearest colour the output's depth can draw on the `theme` terminal: the RGB value itself in truecolor; otherwise the nearest of the terminal's default colour, the theme's sixteen and, at 256 colours, the cube and grey ramp. A translucent colour is laid on what is beneath it first, as every translucent colour the library writes is: the ground on black, since a terminal cannot say what lies under its cells, and the glyph on that ground. So below truecolor a colour moved a little off an ANSI slot or the default colour is still drawn as that one. On a sixteen-colour terminal a move that does show is a jump to another slot, so there a loop — `wheel`, and any lit by `onColors`, every one in the catalogue among them — holds every cell still rather than flickering between slots. A transition still runs, from slot to slot, since it moves once and is done, and so does `steppedInk`, since stepping is what a signal is for.
 
 Effects stack by nesting: `new Effected(new Effected(child, a, options), b, options)` draws each cell in the colours that applying `a` and then `b` gives it. The bytes can differ from one effect that calls `a` then `b`: the outer layer sees the inner layer's output as written, so a colour the inner layer changed reaches the outer one already rounded to the output's depth, and stays written as that even where the outer one moves it back. The outer layer's `drawn` is measured on the inner layer's output too, so a loop lit by `onColors` on the outside settles its shares against colours that move every frame.
