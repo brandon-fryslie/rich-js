@@ -410,6 +410,8 @@ describe("Markdown", () => {
       ["d", "%C3%A4.com/b"],
     ]);
     expect(links("![i](http://e.com/ä.png)")).toEqual([["i", "http://e.com/%C3%A4.png"]]);
+    // A scheme is read as Python's IGNORECASE reads [a-z], which folds İ into it.
+    expect(links("[a](İmailto:@/2İ.http:///c)")).toEqual([["a", "%C4%B0mailto:/2%C4%B0.http:///c"]]);
   });
 
   it("decodes an autolink's escapes and punycoded host for reading, but not a reserved character", () => {
@@ -504,11 +506,17 @@ describe("Markdown", () => {
     expect(code.style?.color).toEqual(segment("`foo()`", "foo()").style?.color);
   });
 
-  it("writes a link's URL after its text when hyperlinks is false", () => {
-    const md = "[link](https://example.com) here";
-    expect(rows(md, 80, { hyperlinks: false })).toEqual(["link (https://example.com) here", ""]);
-    expect(segment(md, "link", { hyperlinks: false }).style?.link).toBeUndefined();
-    expect(segment(md, "https://example.com", { hyperlinks: false }).style?.link).toBe("https://example.com");
+  it("writes a link's URL after its text, and links nothing, when hyperlinks is false, as Rich does", () => {
+    const md = "[link](https://example.com) here <a@b.co>";
+    expect(rows(md, 80, { hyperlinks: false })).toEqual(["link (https://example.com) here a@b.co (mailto:a@b.co)", ""]);
+    expect(links(md, { hyperlinks: false })).toEqual([]);
+  });
+
+  it("links nothing to an empty URL, as Rich does", () => {
+    expect(rows("[a](<>)", 80)[0]).toBe("a");
+    expect(links("[a](<>)")).toEqual([]);
+    expect(links("![x](<>)")).toEqual([]);
+    expect(rows("[a](<>)", 80, { hyperlinks: false })[0]).toBe("a ()");
   });
 
   it("places paragraphs, list items and quotes by justify, and leaves headings where they are", () => {
@@ -555,7 +563,7 @@ describe("Markdown", () => {
         .filter((s) => s.style?.link === "https://e.com")
         .map((s) => s.text)
         .join("");
-      expect(linked).toBe(options.hyperlinks === false ? "https://e.com" : "ab");
+      expect(linked).toBe(options.hyperlinks === false ? "" : "ab");
     }
   });
 

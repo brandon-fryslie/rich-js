@@ -754,20 +754,14 @@ function styled(text: string, style: string | Style, settings: InlineSettings, o
 
 /**
  * `label` linked to `url`, appended to `result` as Rich draws a link: the
- * label is the link, or without hyperlinks the label's text is written plain
- * and the URL after it, and that is still the link, for a terminal that can
- * click it.
+ * label is the link, or without hyperlinks nothing is, and the label's text
+ * is written plain with the URL after it, for a reader who cannot click it.
  */
 function appendLink(result: RichText, label: RichText, url: string, settings: InlineSettings): void {
-  const link = new RichText("", { style: new Style({ link: url }) });
   if (settings.hyperlinks) {
-    result.append(link.append(new RichText("", { style: "markdown.link_url" }).append(label)));
+    result.append(new RichText("", { style: new Style({ link: url }) }).append(new RichText("", { style: "markdown.link_url" }).append(label)));
   } else {
-    result
-      .append(label.plain, "markdown.link")
-      .append(" (")
-      .append(link.append(url, "markdown.link_url"))
-      .append(")");
+    result.append(label.plain, "markdown.link").append(" (").append(url, "markdown.link_url").append(")");
   }
 }
 

@@ -171,7 +171,8 @@ export class Style {
     this.frame = options.frame;
     this.encircle = options.encircle;
     this.overline = options.overline;
-    this.link = options.link;
+    // As the reference's `self._link`, read only for truth: an empty URL is no link.
+    this.link = options.link || undefined;
     this.meta = options.meta;
     this.anchor = options.anchor;
   }

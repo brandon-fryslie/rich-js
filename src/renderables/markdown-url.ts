@@ -33,7 +33,8 @@ function pyStrip(text: string): string {
   return text.slice(start, end);
 }
 
-const PROTOCOL = /^[a-z0-9.+-]+:/i;
+/** mdurl's protocol, `[a-z0-9.+-]+:` under Python's IGNORECASE, which also folds İ, ı, ſ and K (Kelvin) into `[a-z]`. */
+const PROTOCOL = /^[a-z0-9.+\-\u0130\u0131\u017f\u212a]+:/i;
 const PORT = /:[0-9]*$/;
 const HOST_ENDING_CHARS = "/?#";
 const NON_HOST_CHARS = "%/?;#'{}|\\^`<>\" \r\n\t";
