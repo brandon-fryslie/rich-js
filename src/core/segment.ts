@@ -112,6 +112,21 @@ export class Segment {
   }
 
   /**
+   * When what `segments` show next changes, in seconds on the timeline of
+   * whoever drew them: the soonest `Style.nextChange` among them, read off
+   * the composed frame the way `anchorAt` reads an owner — `t` itself for a
+   * frame something in moves every frame, `Infinity` for one that never
+   * changes. What a host that drew the frame at `t` asks before drawing
+   * again: a frame of frames answers the next frame's start, a transition
+   * `t` until it is done, still content never.
+   */
+  static nextChange(segments: Iterable<Segment>): number {
+    let soonest = Number.POSITIVE_INFINITY;
+    for (const segment of segments) soonest = Math.min(soonest, segment.style?.nextChange ?? Number.POSITIVE_INFINITY);
+    return soonest;
+  }
+
+  /**
    * The anchor of the cell at column `x` of row `y` in a composed frame, or
    * `undefined` when that cell was drawn by no owner or lies outside the frame.
    */

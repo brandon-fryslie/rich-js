@@ -47,9 +47,31 @@ console.print(`sixty a second: ${[...new Set(sixtyASecond)].join(" ")}`);
 
 A sequence does not adapt to the rate: the rate belongs to whoever draws the frames, and so does the fix, which is holds that the host's rate can show. The [easing and phase vocabulary](/easing) is where the timing comes from, and the beat is part of it.
 
+## When the frame next changes
+
+What is drawn for a time says when it changes next. A frame drawn at `t` is drawn until the next frame begins, and its cells carry that moment: every cell of the frame is stamped with it on its `Style`, where it rides up through any container the frame sits in, as a cell's anchor does, and writes no byte. Whoever holds the composed frame reads the soonest off it with `Segment.nextChange`, so a host knows when to draw again without asking each container what it holds:
+
+```typescript
+import { FrameSequence, Frames, Panel, RichText, Segment } from "@promptctl/rich-js";
+
+const quarters = new FrameSequence(["a", "b", "c", "d"].map((glyph) => ({ text: new RichText(glyph), seconds: 0.25 })));
+const whole = new FrameSequence(["›", "››", "›››"].map((glyph) => ({ text: new RichText(glyph), seconds: 1 })));
+
+for (const t of [0, 1, 2]) {
+  const fast = Segment.nextChange(new Panel(new Frames(quarters, { t })).render({ maxWidth: 20 }));
+  const slow = Segment.nextChange(new Panel(new Frames(whole, { t })).render({ maxWidth: 20 }));
+  const still = Segment.nextChange(new Panel("effort").render({ maxWidth: 20 }));
+  console.print(`t=${t}s  quarters change at ${fast}s, chevrons at ${slow}s, still text ${still === Infinity ? "never" : `at ${still}s`}`);
+}
+```
+
+Every animated primitive answers the same question: an [effect](/effects) stamps its frame too, a stepped signal and an effect sampled on a beat at their next step's start, a loop at `t` itself since it moves every frame, a transition at `t` until it is `done` and never after. Still content never changes, so it carries no stamp and the answer is `Infinity`. The stamp survives `text(t)` and whatever the frame is appended into, so a line assembled from fragments — a template's output among them — still says when it turns.
+
+A host that draws once a second can read from the answers alone that it is skipping frames: at each `t` the quarters above change at `t + 0.25`, before its next draw at `t + 1`, while the chevrons change exactly at it. A host drawing sixty times a second sees the next change never come before its next frame. A [`Live`](/live#auto-refresh) reads the answer off every frame it draws and wakes then, so it draws each frame of a sequence rather than a sample of them.
+
 ## Spinners
 
-A `Spinner` is a `FrameSequence` over one of the named spinners — `dots`, `line`, `bouncingBall` and the rest of the cli-spinners set — each frame held for the spinner's interval, with an optional label after it. It is built once and asked for its frame at a time: `spinner.at(t)` is the renderable, the frame in progress at the time it is handed, as Rich's `Spinner.render(time)` is, and a spinner reads no clock. `speed` scales the time: `2` turns it twice as fast, and a negative speed runs it backwards.
+A `Spinner` is a `FrameSequence` over one of the named spinners — `dots`, `line`, `bouncingBall` and the rest of the cli-spinners set — each frame held for the spinner's interval, with an optional label after it. It is built once and asked for its frame at a time: `spinner.at(t)` is the renderable, the frame in progress at the time it is handed, as Rich's `Spinner.render(time)` is, and a spinner reads no clock. `speed` scales the holds: `2` holds each frame half as long, and a negative speed runs the frames backwards.
 
 ```typescript
 import { Group, Spinner } from "@promptctl/rich-js";

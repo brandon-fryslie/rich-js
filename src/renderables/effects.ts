@@ -53,7 +53,7 @@ import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo } from "../core/memo.js";
 import { Oklch } from "../core/oklch.js";
 import { ensureContrast } from "../themes/colorMath.js";
-import { Effected, type Drawn, type Effect, type EffectCell, type Pair, type Placed } from "./effect.js";
+import { Effected, withNextChange, type Drawn, type Effect, type EffectCell, type Pair, type Placed } from "./effect.js";
 
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
@@ -663,6 +663,8 @@ function order(z: number): (cell: Placed) => number {
  * draws it at the time since it began. `done(t)` is true from the moment
  * every cell has arrived or gone, so the caller knows when to stop drawing an
  * element that is leaving, or to drop the effect from one that has arrived.
+ * Until then the effect's frame changes every frame, and from then never:
+ * its `nextChange` is `done` read as a time. [LAW:one-source-of-truth]
  */
 export interface Transition {
   readonly effect: Effect;
@@ -670,7 +672,8 @@ export interface Transition {
 }
 
 function transition(curve: Curve, effect: Effect): Transition {
-  return { effect, done: (t) => t >= curve.seconds };
+  const done = (t: number): boolean => t >= curve.seconds;
+  return { effect: withNextChange(effect, (t) => (done(t) ? Number.POSITIVE_INFINITY : t)), done };
 }
 
 /**
@@ -1030,7 +1033,8 @@ export interface ColorStep {
  *
  * The search is settled once for each ink, ground and step, so a frame
  * inside a step redoes none, and nor does a later pass of the beat: at sixty
- * frames a second a one-second step is sixty identical frames.
+ * frames a second a one-second step is sixty identical frames, and the
+ * frame says it changes next when the step ends (`Beat.end`).
  * [LAW:no-ambient-temporal-coupling] The beat is `core/easing.ts`'s, and
  * nothing here reads a clock.
  */
@@ -1040,15 +1044,18 @@ export function steppedInk(steps: readonly ColorStep[]): Effect {
   // `steps` said whatever the caller does to its array.
   const inks = steps.map((step) => step.color);
   const settled = new WeakMap<TerminalTheme, Memo<ColorRgba>>();
-  return (t, { depth, theme }) => {
-    const step = inks[rhythm.at(t)]!;
-    const memo = settled.get(theme) ?? new Memo<ColorRgba>();
-    settled.set(theme, memo);
-    return (colors, cell) => {
-      const pair: Pair = { ...colors, terminal: cell.terminal, reverse: cell.reverse };
-      return { fg: memo.get(`${depth} ${pairKey(pair)} ${step.hex}`, () => legibleInk(step, pair, depth, theme)), bg: colors.bg };
-    };
-  };
+  return withNextChange(
+    (t, { depth, theme }) => {
+      const step = inks[rhythm.at(t)]!;
+      const memo = settled.get(theme) ?? new Memo<ColorRgba>();
+      settled.set(theme, memo);
+      return (colors, cell) => {
+        const pair: Pair = { ...colors, terminal: cell.terminal, reverse: cell.reverse };
+        return { fg: memo.get(`${depth} ${pairKey(pair)} ${step.hex}`, () => legibleInk(step, pair, depth, theme)), bg: colors.bg };
+      };
+    },
+    (t) => rhythm.end(t),
+  );
 }
 
 /**

@@ -133,7 +133,9 @@ console.print(`[bold green]:check_mark: ${jobs.length} jobs done[/]`);
 
 ## Auto-refresh
 
-The default refresh rate is 4 times per second. Tune it with `refreshPerSecond` — any positive, finite number, so `0.5` refreshes once every two seconds; anything else throws when the `Live` is constructed. `clock` is what the refresh ticks on, `systemClock()` unless you pass a [`Clock`](/app#animating-at-a-frame-rate) of your own. Or turn auto-refresh off and draw each frame yourself with `refresh()` — or with `update(newRenderable, { refresh: true })`. A frame is drawn only between `start()` and `stop()`; outside them `refresh()` draws nothing, because the screen is no longer `Live`'s:
+The default refresh rate is 4 times per second. Tune it with `refreshPerSecond` — any positive, finite number, so `0.5` refreshes once every two seconds; anything else throws when the `Live` is constructed. `clock` is what the refresh waits on, `systemClock()` unless you pass a [`Clock`](/app#animating-at-a-frame-rate) of your own.
+
+The rate is how often `Live` draws on its own. A frame whose content says it changes sooner is drawn when it changes: after each frame `Live` reads [when what it drew next changes](/frames#when-the-frame-next-changes) off the frame itself and waits until then or until the rate's next frame, whichever comes first. So a `Live` at four frames a second still draws every frame of a `Frames` sequence held a tenth of a second each, and one showing a [spinner](/frames#spinners) turns it at the spinner's own interval, while a table mutated in place, which says nothing about when it changes, is drawn at the rate alone, and an effect that moves every frame is drawn at the rate and no faster. Or turn auto-refresh off and draw each frame yourself with `refresh()` — or with `update(newRenderable, { refresh: true })`. A frame is drawn only between `start()` and `stop()`; outside them `refresh()` draws nothing, because the screen is no longer `Live`'s:
 
 ```typescript live
 const counter = new Panel("", { expand: false, borderStyle: "magenta" });

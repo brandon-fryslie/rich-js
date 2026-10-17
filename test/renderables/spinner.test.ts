@@ -102,11 +102,17 @@ describe("Spinner", () => {
       expect(frameAt(hold * 1.5, 2)).toBe(DOTS[3]);
     });
 
-    it("steps backwards at a negative speed, wrapping to the last frame as Rich's does", () => {
+    it("steps backwards at a negative speed, from the last frame, each held the interval", () => {
       const hold = SPINNERS["dots"]!.interval / 1000;
-      expect(frameAt(0, -1)).toBe(DOTS[0]);
+      expect(frameAt(0, -1)).toBe(DOTS[9]);
       expect(frameAt(hold * 0.5, -1)).toBe(DOTS[9]);
       expect(frameAt(hold * 1.5, -1)).toBe(DOTS[8]);
+      expect(frameAt(hold * 0.25, -2)).toBe(DOTS[9]);
+      expect(frameAt(hold * 0.75, -2)).toBe(DOTS[8]);
+    });
+
+    it("refuses a speed of zero, which would hold one frame forever", () => {
+      expect(() => new Spinner("dots", "", { speed: 0 })).toThrow(RangeError);
     });
   });
 

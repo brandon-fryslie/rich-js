@@ -59,15 +59,43 @@ export interface Clock {
   now(): number;
   /** Call `tick` once a frame at `rate` until the returned function is called. */
   every(rate: FrameRate, tick: () => void): Unsubscribe;
+  /**
+   * Call `tick` once, when this clock reads `time` — as soon as it can for a
+   * time already past — unless the returned function is called first. What
+   * a host that knows when its frame next changes (`Segment.nextChange`)
+   * waits on. A `time` further off than a timer can wait, about 24.8 days,
+   * throws, as `frameRate` refuses the rate.
+   */
+  at(time: number, tick: () => void): Unsubscribe;
 }
 
-/** The platform's monotonic clock and its interval timer. */
+/** The platform's monotonic clock and its timers. */
 export function systemClock(): Clock {
+  const now = (): number => performance.now() / 1000;
   return {
-    now: () => performance.now() / 1000,
+    now,
     every: (rate, tick) => {
       const timer = setInterval(tick, rate.interval * 1000);
       return () => clearInterval(timer);
+    },
+    at: (time, tick) => {
+      if (!(time - now() <= LONGEST_INTERVAL)) {
+        throw new RangeError(`a clock waits at most ${LONGEST_INTERVAL} s, not until ${time} s from ${now()} s`);
+      }
+      // [LAW:single-enforcer] A platform timer is due by a whole millisecond
+      // of the event loop's own time, truncated, so it can run while this
+      // clock still reads under `time` — by most of a millisecond. The
+      // contract is the clock's reading, and it is held here, once, for every
+      // host: the wait is rounded up, and a timer that runs early is armed
+      // again for what remains, so `tick` runs when `now()` has reached
+      // `time` and not before. A host re-drawing at a frame's end would
+      // otherwise draw the old frame again and wait again, every boundary.
+      let timer: ReturnType<typeof setTimeout>;
+      const arm = (): void => {
+        timer = setTimeout(() => (now() < time ? arm() : tick()), Math.ceil(Math.max(0, time - now()) * 1000));
+      };
+      arm();
+      return () => clearTimeout(timer);
     },
   };
 }

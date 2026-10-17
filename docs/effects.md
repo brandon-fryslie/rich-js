@@ -5,10 +5,13 @@ An effect changes the colours of a renderable's cells over time: a highlight swe
 ```typescript shape
 import type { CellColors, Drawn, EffectCell } from "@promptctl/rich-js";
 
-type Effect = (t: number, drawn: Drawn) => (colors: CellColors, cell: EffectCell) => CellColors;
+interface Effect {
+  (t: number, drawn: Drawn): (colors: CellColors, cell: EffectCell) => CellColors;
+  readonly nextChange?: (t: number) => number;
+}
 ```
 
-`Effected` calls the first stage once a frame and the second once for each cell of it, so whatever holds for the whole frame, such as where a band of light stands at `t`, is worked out once rather than once a cell.
+`Effected` calls the first stage once a frame and the second once for each cell of it, so whatever holds for the whole frame, such as where a band of light stands at `t`, is worked out once rather than once a cell. An effect that knows when its frame next changes says so in `nextChange`; a plain function is an effect that moves every frame. See [When the frame next changes](/frames#when-the-frame-next-changes).
 
 ## Ready-made effects
 
@@ -104,13 +107,15 @@ console.print([10, 29.9, 30].map((t) => `${t}s: ${leaving.done(t) ? "gone" : "le
 
 Both blend toward the background of the `theme` given to `Effected`, the terminal the frame is drawn on: the library never asks the terminal what that is.
 
+A transition's frame [changes](/frames#when-the-frame-next-changes) every frame until it is done and never after: its effect's `nextChange` is `done` read as a time, `t` before it and `Infinity` from it, so a host drawing the element can stop waking for it without asking `done` itself.
+
 The bytes can stop changing a little before `done`. Near its end, an ease that flattens out, such as the default `ease-in-out`, moves a cell by less than one step of a colour channel, so nothing new is written. In truecolor that is within about a second on an element of several cells. An element of one cell takes the whole duration over its change, so its flat tail is longer. Below truecolor a colour is written as the nearest one the depth has, and the last change lands when the curve passes halfway between the last two of them. That depends on the colours, and at 256 colours a fade can finish visibly several seconds early. `done` is when the curve ends, not when the bytes stop.
 
 ### A signal steps
 
 The loops are ambience, and nothing in them jumps. `steppedInk` is a signal, and jumps on purpose: every cell's ink steps through a sequence of colours on a beat, one colour a hold, looping, for the time it is handed, the way a gauge at its limit shows bright changing colours. Each step is a `ColorStep`, a colour and its hold in seconds, and the holds are a `Beat` as [frames](/frames) are, so one sequence plays at one redraw a second and at sixty.
 
-The ground stays as the cell draws it, and the words stay readable on it. Each step's ink is written as the colour nearest the step's that the output's depth can draw and that reads on the cell's ground at the floor every loop here keeps: the cell's resting contrast, or WCAG AA if it rested above that, measured on the colours the terminal is sent. In truecolor that is the step itself, or its hue at the lightness nearest it that clears the floor. Below truecolor it is the nearest colour the depth has an index for, so on a sixteen-colour terminal the ink steps from slot to slot, where the loops hold still. The search runs once for each ink, ground and step, so every frame inside a step costs what any frame does.
+The ground stays as the cell draws it, and the words stay readable on it. Each step's ink is written as the colour nearest the step's that the output's depth can draw and that reads on the cell's ground at the floor every loop here keeps: the cell's resting contrast, or WCAG AA if it rested above that, measured on the colours the terminal is sent. In truecolor that is the step itself, or its hue at the lightness nearest it that clears the floor. Below truecolor it is the nearest colour the depth has an index for, so on a sixteen-colour terminal the ink steps from slot to slot, where the loops hold still. The search runs once for each ink, ground and step, so every frame inside a step costs what any frame does, and the frame says it [next changes](/frames#when-the-frame-next-changes) when the step ends.
 
 ```typescript
 import { CATPPUCCIN_MOCHA, ColorRgba, Effected, FrameSequence, Frames, RichText, Style, steppedInk } from "@promptctl/rich-js";
@@ -130,7 +135,7 @@ for (const t of [0, 1, 2, 3]) {
 
 ### Sampled on a beat
 
-`onBeat(effect, beat)` samples any effect once a hold: within a hold it draws the frame at the hold's start, and at each hold's start it moves on. A `wheel` given a short curve and sampled once a second becomes a hue walk that turns a step at a time; sampled sixty times a second it still turns once a second, since the beat is seconds. At one redraw a second a hold shorter than a second is skipped, as a frame is.
+`onBeat(effect, beat)` samples any effect once a hold: within a hold it draws the frame at the hold's start, and at each hold's start it moves on. A `wheel` given a short curve and sampled once a second becomes a hue walk that turns a step at a time; sampled sixty times a second it still turns once a second, since the beat is seconds. At one redraw a second a hold shorter than a second is skipped, as a frame is. The frame [next changes](/frames#when-the-frame-next-changes) when the hold ends, whatever the sampled effect would have said in between.
 
 ```typescript
 import { CATPPUCCIN_MOCHA, EASES, EFFECT_CATALOGUE, Effected, RichText, Style, beat, onBeat } from "@promptctl/rich-js";

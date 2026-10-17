@@ -49,10 +49,22 @@ export type LiveView = Renderable | ((t: number) => Renderable);
 const viewOf = (view: LiveView | undefined): ((t: number) => Renderable) | undefined =>
   view === undefined || typeof view === "function" ? view : () => view;
 
+// What a drawn frame said: its time on the Live's clock, and when what it shows next changes (`Segment.nextChange`).
+interface Said {
+  readonly t: number;
+  readonly nextChange: number;
+}
+
 export interface LiveOptions {
-  /** Frames a second while auto-refreshing: positive and finite, fractional included. */
+  /**
+   * How often the auto-refresh draws on its own, in frames a second:
+   * positive and finite, fractional included. The next frame comes a frame
+   * interval after the last one drawn, a `refresh()` of your own included,
+   * or sooner when that frame's content says it changes sooner
+   * (`Segment.nextChange`).
+   */
   refreshPerSecond?: number;
-  /** What the auto-refresh ticks on. The platform's, unless given. */
+  /** What the auto-refresh waits on. The platform's, unless given. */
   clock?: Clock;
   autoRefresh?: boolean;
   transient?: boolean;
@@ -73,7 +85,8 @@ export class Live {
   private _transient: boolean;
   private _verticalOverflow: "crop" | "ellipsis" | "visible";
   private readonly _painter: Painter;
-  private _stopTicking: Unsubscribe | undefined;
+  // The one wait for the next auto-refresh frame, armed after each frame.
+  private _waking: Unsubscribe | undefined;
   // [LAW:one-source-of-truth] The console's live region, held from `start()`
   // to the hand-back — which is what "started" means, so there is no separate
   // flag to disagree with it.
@@ -114,21 +127,9 @@ export class Live {
     const held = this._console.claimLiveRegion({ around: (text) => this._stepAround(text) });
     this._held = held;
     this._painter.take();
-
-    if (this._autoRefresh) {
-      // No caller is on the stack to run `stop()` for a frame that throws
-      // here, and in Node the throw ends the process — so the terminal is
-      // handed back first, and the error then goes on to wherever an uncaught
-      // one goes.
-      this._stopTicking = this._clock.every(this._rate, () => {
-        try {
-          this.refresh();
-        } catch (error) {
-          this._release(held);
-          throw error;
-        }
-      });
-    }
+    // Nothing is drawn yet, so nothing has said when it changes: the first
+    // auto-refresh frame comes at the rate, from now.
+    this._wake(held, { t: this._clock.now(), nextChange: Number.POSITIVE_INFINITY });
   }
 
   stop(): void {
@@ -160,15 +161,55 @@ export class Live {
     // A frame is drawn only while this Live holds the terminal, as in Rich:
     // before `start()` or after the hand-back it would land on a screen that
     // belongs to someone else — the main buffer, under the user's own output.
-    if (this._held === null) return;
-    this._paint(() => this._frame());
+    const held = this._held;
+    if (held === null) return;
+    // [LAW:no-ambient-temporal-coupling] The frame says when what it shows
+    // next changes; the next auto-refresh frame is then, or at the rate,
+    // whichever is sooner. The painter decides whether this frame is drawn
+    // now — a final-frame painter draws nothing before the hand-back — and a
+    // frame not drawn has said nothing.
+    let said: Said | undefined;
+    this._paint(() => {
+      const { t, lines } = this._frame();
+      said = { t, nextChange: Segment.nextChange(lines.flat()) };
+      return lines;
+    });
+    this._wake(held, said ?? { t: this._clock.now(), nextChange: Number.POSITIVE_INFINITY });
   }
 
-  private _frame(): Segment[][] {
-    if (!this._view) return [];
+  // Arm the one wait for the next auto-refresh frame while `held`: at the
+  // frame's `nextChange` when that is before the rate's next frame, else at
+  // the rate — both measured from the frame's own `t`, never from a second
+  // reading of the clock, so the rate does not stretch by what a frame cost
+  // to draw, and a change that fell due while it was drawn is drawn at once
+  // (`Clock.at` fires now for a time already past). Content that changes
+  // every frame answers `t` itself, and is drawn at the rate.
+  private _wake(held: Unsubscribe, { t, nextChange }: Said): void {
+    this._waking?.();
+    this._waking = undefined;
+    if (!this._autoRefresh) return;
+    const at = Math.min(t + this._rate.interval, nextChange > t ? nextChange : Number.POSITIVE_INFINITY);
+    // No caller is on the stack to run `stop()` for a frame that throws
+    // here, and in Node the throw ends the process — so the terminal is
+    // handed back first, and the error then goes on to wherever an uncaught
+    // one goes.
+    this._waking = this._clock.at(at, () => {
+      try {
+        this.refresh();
+      } catch (error) {
+        this._release(held);
+        throw error;
+      }
+    });
+  }
+
+  // The frame at the clock's now, with that time: the one the view was handed, and the one the next wake is measured from.
+  private _frame(): { t: number; lines: Segment[][] } {
     // [LAW:effects-at-boundaries] One read of the clock a frame, handed to
     // the view as the frame's time.
-    const renderable = this._view(this._clock.now());
+    const t = this._clock.now();
+    if (!this._view) return { t, lines: [] };
+    const renderable = this._view(t);
     // [LAW:dataflow-not-control-flow] Both modes render under the terminal's
     // rows and differ only in what those rows are: the alternate screen is a
     // region the frame stands in, and an inline frame keeps its natural height
@@ -177,14 +218,14 @@ export class Live {
     const options = this._console.options;
     const height = this._painter.height(options.height.rows);
     const lines = Segment.splitLines(renderable.render({ ...options, height }));
-    return fitHeight(this._overflow(lines, height.rows), height);
+    return { t, lines: fitHeight(this._overflow(lines, height.rows), height) };
   }
 
   // What the console writes goes where the frame was, and the frame is painted
   // again under it, as Rich's render hook does — in the bytes the console
   // writes, so a render that throws writes nothing.
   private _stepAround(text: string): string {
-    return this._painter.around(text, () => this._frame(), this._screen(), this._console.destination);
+    return this._painter.around(text, () => this._frame().lines, this._screen(), this._console.destination);
   }
 
   // [LAW:effects-at-boundaries] The frame is fully rendered before a byte
@@ -217,8 +258,8 @@ export class Live {
   private _release(held: Unsubscribe): void {
     held();
     this._held = null;
-    this._stopTicking?.();
-    this._stopTicking = undefined;
+    this._waking?.();
+    this._waking = undefined;
     this._painter.handBack();
   }
 }

@@ -96,6 +96,7 @@ export interface StyleOptions {
   link?: string;
   meta?: Record<string, unknown>;
   anchor?: Anchor;
+  nextChange?: number;
 }
 
 export class StyleSyntaxError extends Error {
@@ -134,8 +135,27 @@ export class Style {
    * unequal, because they came from different places.
    */
   readonly anchor: Anchor | undefined;
+  /**
+   * When what this style's cells show next changes, in seconds on the
+   * timeline of whoever drew the frame — `t` itself for a cell drawn by
+   * something that moves every frame, and `Infinity`, the default, for one
+   * that never changes. It draws nothing. Whatever draws for a handed time
+   * stamps its cells with it (`Frames`, `Effected`), the stamp rides up
+   * through every container as the anchor does (`./anchor.ts`), and
+   * whoever holds the composed frame reads the soonest off it
+   * (`Segment.nextChange`), so a host knows when to draw again without
+   * asking each container. Two styles laid together change at the sooner.
+   */
+  readonly nextChange: number;
 
   constructor(options: StyleOptions = {}) {
+    const nextChange = options.nextChange ?? Number.POSITIVE_INFINITY;
+    // [LAW:parse-dont-validate] A time or never, settled where the style is
+    // made: NaN and -Infinity fail here, so no reader of a frame meets one.
+    if (!(nextChange > Number.NEGATIVE_INFINITY)) {
+      throw new RangeError(`Style nextChange must be a time in seconds or Infinity, got ${nextChange}`);
+    }
+    this.nextChange = nextChange;
     this.color = resolveColor(options.color);
     this.bgcolor = resolveBackground(options.bgcolor);
     this.bold = options.bold;
@@ -175,7 +195,8 @@ export class Style {
       this.overline === undefined &&
       this.link === undefined &&
       this.meta === undefined &&
-      this.anchor === undefined
+      this.anchor === undefined &&
+      this.nextChange === Number.POSITIVE_INFINITY
     );
   }
 
@@ -261,6 +282,8 @@ export class Style {
           ? { ...this.meta, ...other.meta }
           : other.meta ?? this.meta,
       anchor: other.anchor ?? this.anchor,
+      // Cells under both change when either does: the sooner.
+      nextChange: Math.min(this.nextChange, other.nextChange),
     });
   }
 
@@ -283,7 +306,8 @@ export class Style {
       this.encircle === other.encircle &&
       this.overline === other.overline &&
       this.link === other.link &&
-      anchorsEqual(this.anchor, other.anchor)
+      anchorsEqual(this.anchor, other.anchor) &&
+      this.nextChange === other.nextChange
     );
   }
 
@@ -339,7 +363,11 @@ export class Style {
   }
 
   /**
-   * Serializes to a canonical string that round-trips through `Style.parse()`.
+   * The look as a canonical string that round-trips through `Style.parse()`:
+   * colours, attributes and the link, which is all a style string can spell.
+   * What a style carries beyond its look — `meta`, `anchor`, `nextChange` —
+   * has no spelling and is not here, so two styles that differ only there
+   * read alike; `equals` tells them apart.
    */
   toString(): string {
     if (this.isNull) return "none";

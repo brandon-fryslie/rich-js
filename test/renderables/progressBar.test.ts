@@ -238,7 +238,9 @@ describe("ProgressBar", () => {
 
     it("is the empty bar, whatever it has completed, before the first pass enters", () => {
       const pulsing = new ProgressBar({ width: 40, completed: 70, pulse: { t: 0 } });
-      expect(collectSegments(pulsing, TRUECOLOR)).toEqual(collectSegments(new ProgressBar({ width: 40 }), TRUECOLOR));
+      // The same bytes; what the pulsing bar adds is that it changes every frame (Style.nextChange), which writes none.
+      expect(renderToString(pulsing, { width: 40, colorSystem: ColorDepth.TRUECOLOR })).toBe(renderToString(new ProgressBar({ width: 40 }), { width: 40, colorSystem: ColorDepth.TRUECOLOR }));
+      expect(Segment.nextChange(pulsing.render(TRUECOLOR))).toBe(0);
     });
   });
 
