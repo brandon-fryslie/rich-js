@@ -33,18 +33,23 @@ import { asFragment } from "./helpers.js";
 /**
  * The `(seconds, value)` pairs a call spells, each value read through
  * `value`. The gate has typed every even slot as a float and every odd one
- * as `value`'s input; what it cannot see is the pairing, settled here.
- * [LAW:parse-dont-validate] `Frames` and `beat` receive holds they never
- * re-check, and refuse a hold that is not a positive number of seconds
- * themselves.
+ * as `value`'s input; what it cannot see is the pairing, or that a hold is
+ * a positive number of seconds: both settled here, under the engine's
+ * "error calling <function>" and nothing else, since a template author
+ * knows neither `Frames` nor `beat`, which refuse the same hold in their
+ * own names. [LAW:parse-dont-validate]
  */
-function pairs<V>(func: string, what: string, tail: readonly unknown[], value: (v: unknown) => V): { seconds: number; value: V }[] {
+function pairs<V>(what: string, tail: readonly unknown[], value: (v: unknown) => V): { seconds: number; value: V }[] {
   if (tail.length % 2 !== 0) {
-    throw new RangeError(`${func}' last hold (${String(tail[tail.length - 1])} s) has no ${what} — ${func} are <seconds> <${what}> pairs`);
+    throw new RangeError(`last hold (${String(tail[tail.length - 1])} s) has no ${what} — the arguments are <seconds> <${what}> pairs`);
   }
   const paired: { seconds: number; value: V }[] = [];
   for (let i = 0; i < tail.length; i += 2) {
-    paired.push({ seconds: tail[i] as number, value: value(tail[i + 1]) });
+    const seconds = tail[i] as number;
+    if (!Number.isFinite(seconds) || seconds <= 0) {
+      throw new RangeError(`hold ${i / 2} must be a positive number of seconds, got ${seconds}`);
+    }
+    paired.push({ seconds, value: value(tail[i + 1]) });
   }
   return paired;
 }
@@ -59,7 +64,7 @@ function pairs<V>(func: string, what: string, tail: readonly unknown[], value: (
 export function animationFuncs(frameTime: () => number): FuncMap {
   const framesFunc: TemplateFunc = {
     fn: ((...tail: unknown[]) => {
-      const frames: Frame[] = pairs("frames", "frame", tail, asFragment).map(({ seconds, value }) => ({ seconds, text: value }));
+      const frames: Frame[] = pairs("frame", tail, asFragment).map(({ seconds, value }) => ({ seconds, text: value }));
       return new Frames(frames, { t: frameTime() }).text();
     }) as TemplateFunc["fn"],
     argTypes: ["float", "liftable"],
@@ -68,7 +73,7 @@ export function animationFuncs(frameTime: () => number): FuncMap {
   };
   const steppedFunc: TemplateFunc = {
     fn: ((...tail: unknown[]) => {
-      const steps = pairs("stepped", "color", tail, (v) => asColor(v as string, "stepped"));
+      const steps = pairs("color", tail, (v) => asColor(v as string, "stepped"));
       return steps[beat(steps.map((step) => step.seconds)).at(frameTime())]!.value.hex;
     }) as TemplateFunc["fn"],
     argTypes: ["float", "string"],

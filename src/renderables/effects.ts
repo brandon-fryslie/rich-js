@@ -949,9 +949,12 @@ export interface ColorStep {
  */
 export function steppedInk(steps: readonly ColorStep[]): Effect {
   const rhythm = beat(steps.map((step) => step.seconds));
+  // A copy, as `beat` keeps of the holds: what the signal plays stays what
+  // `steps` said whatever the caller does to its array.
+  const inks = steps.map((step) => step.color);
   const settled = new WeakMap<TerminalTheme, Memo<ColorRgba>>();
   return (t, { depth, theme }) => {
-    const step = steps[rhythm.at(t)]!.color;
+    const step = inks[rhythm.at(t)]!;
     const memo = settled.get(theme) ?? new Memo<ColorRgba>();
     settled.set(theme, memo);
     return (colors, cell) => {

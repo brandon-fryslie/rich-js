@@ -146,6 +146,16 @@ describe("steppedInk — each step's ink reads on its ground, as drawn, at every
     expect(() => steppedInk([])).toThrow(/at least one hold/);
     expect(() => steppedInk([{ color: BRIGHT[0]!, seconds: 0 }])).toThrow(/positive number of seconds/);
   });
+
+  it("plays the steps it was given, whatever the caller does to its array afterwards", () => {
+    const steps = [...STEPS];
+    const kept = steppedInk(steps);
+    steps.pop();
+    steps[1] = { color: new ColorRgba(139, 233, 253), seconds: 9 };
+    const inkAt = (t: number): string =>
+      pairOf(render(new Effected(word(Style.parse("bold #cdd6f4 on #1e1e2e")), kept, { t, key: "k", theme: CATPPUCCIN_MOCHA }), ColorDepth.TRUECOLOR), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA).fg.hex;
+    expect([0, 1, 2].map(inkAt)).toEqual(BRIGHT.map((color) => color.hex));
+  });
 });
 
 describe("steppedInk — at the host's rate, whatever it is", () => {
@@ -180,7 +190,6 @@ describe("steppedInk — at the host's rate, whatever it is", () => {
     // turn with it, so a loaded box slows both alike: on a quiet one the
     // signal's frame is about 1.3× identity's, pulse's about 1.8×.
     const row = new RichText("›".repeat(120), { style: Style.parse("bold #cdd6f4 on #313244"), end: "", noWrap: true });
-    const fresh = steppedInk(STEPS);
     const identity: Effect = () => (colors) => colors;
     const frame = (effect: Effect, t: number): number => {
       const began = performance.now();
@@ -190,6 +199,8 @@ describe("steppedInk — at the host's rate, whatever it is", () => {
     const median = (xs: number[]): number => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
     frame(identity, 0);
     for (const base of [0, 1e6]) {
+      // A signal built here, so the first frame at each base is the one that runs the search.
+      const fresh = steppedInk(STEPS);
       const first = frame(fresh, base);
       const samples = Array.from({ length: 59 }, (_, i) => ({ untouched: frame(identity, base + (i + 1) / 60), signal: frame(fresh, base + (i + 1) / 60) }));
       const inside = median(samples.map((s) => s.signal));

@@ -268,6 +268,25 @@ describe("beat — holds in seconds, the hold in progress out, no clock read", (
     for (const t of [0, 0.3, 1, 1.2, 1.5, 3, 4, 7.9, 1e6 + 1.3, -0.7]) expect(b.at(b.start(t))).toBe(b.at(t));
   });
 
+  it("start and at agree for holds that are not exact in binary, at every sample, and start is never after t", () => {
+    // A pass's start plus a hold's can round an ulp under the boundary, which
+    // `at` would read as the hold before: for tenths, nearly half of all
+    // samples did. Swept densely across many passes, before zero too.
+    for (const holds of [[0.1, 0.1, 0.1], [0.3, 0.2, 0.1], [1.1, 0.9]]) {
+      const b = beat(holds);
+      const disagree: number[] = [];
+      const after: number[] = [];
+      for (let k = 0; k < 20_000; k++) {
+        const t = (k / 20_000) * 50 - 5;
+        const began = b.start(t);
+        if (b.at(began) !== b.at(t)) disagree.push(t);
+        if (began > t) after.push(t);
+      }
+      expect(disagree, `holds ${holds.join(",")}`).toEqual([]);
+      expect(after, `holds ${holds.join(",")}`).toEqual([]);
+    }
+  });
+
   it("start refuses a t that is not finite", () => {
     expect(() => beat([1]).start(Number.NaN)).toThrow(/Beat.start needs a finite t, got NaN/);
   });
