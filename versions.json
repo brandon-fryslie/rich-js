@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-437",
+      "ref": "refs/pull/437/merge",
+      "sha": "e360f375d6fef111c137d7dd9d33e9c66a13056b",
+      "timestamp": "2026-10-17T11:13:44.312Z",
+      "commits": [
+        {
+          "sha": "e360f375d6fef111c137d7dd9d33e9c66a13056b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T05:11:41-06:00",
+          "message": "Merge b00034a9a158ed2644a4d6f082aa62eb52aa90f2 into 52e5742120d6ef1684d983c3cb4fca2df709e7ec\n"
+        },
+        {
+          "sha": "b00034a9a158ed2644a4d6f082aa62eb52aa90f2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T05:11:37-06:00",
+          "message": "Markdown draws a blank row where Rich's new_line puts one, not one per blank source line (rich-unfiled-791c.mk71)\n\nRich reads no blank line of the source: every element it exits sets\nnew_line (a rule and an image clear it), and a blank row goes ahead of\nwhatever it draws next while it is set. The renderer now walks the\ndocument in Rich's order — images as met, top-level blocks as they exit —\nand that flag is the only source of blank rows. Blank tokens and list\nitem gaps draw nothing; a rule draws its own blank row after it.\n\nAlso matches Rich for an empty quote (rich-unfiled-791c.erhp): no row,\nand the row its exit puts ahead of the next block.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "52e5742120d6ef1684d983c3cb4fca2df709e7ec",
