@@ -215,7 +215,7 @@ function makeSpacerItem(): StaticItem {
 // everything below "what to break on" lives in the widget itself.
 
 const templateAtomWrap: WrapStrategy = (line, { firstWidth, continuationWidth }) => {
-  if (line.length === 0) return [{ content: "", start: asCodePoint(0) }];
+  if (line.length === 0) return [{ start: asCodePoint(0), end: asCodePoint(0) }];
 
   // Tokenize: each {{...}} is one atom; text runs between are atoms.
   const atoms: { text: string; start: number }[] = [];
@@ -250,7 +250,7 @@ const templateAtomWrap: WrapStrategy = (line, { firstWidth, continuationWidth })
   let isFirst = true;
 
   const emitBuf = (): void => {
-    rows.push({ content: buf, start: asCodePoint(bufStart) });
+    rows.push({ start: asCodePoint(bufStart), end: asCodePoint(bufStart + buf.length) });
     isFirst = false;
     buf = "";
     bufStart = -1;
@@ -266,7 +266,7 @@ const templateAtomWrap: WrapStrategy = (line, { firstWidth, continuationWidth })
         firstWidth: asCellCol(isFirst ? firstWidth : continuationWidth),
         continuationWidth,
       })) {
-        rows.push({ content: row.content, start: asCodePoint(textStart + row.start) });
+        rows.push({ start: asCodePoint(textStart + row.start), end: asCodePoint(textStart + row.end) });
         isFirst = false;
       }
       return;
@@ -282,7 +282,7 @@ const templateAtomWrap: WrapStrategy = (line, { firstWidth, continuationWidth })
       if (chunk.length === 0) chunk = [...slice][0]!; // force-take first code point
       const lastSpace = chunk.lastIndexOf(" ");
       if (lastSpace > 0) chunk = chunk.slice(0, lastSpace + 1);
-      rows.push({ content: chunk, start: asCodePoint(textStart + p) });
+      rows.push({ start: asCodePoint(textStart + p), end: asCodePoint(textStart + p + chunk.length) });
       isFirst = false;
       p += chunk.length;
     }
@@ -306,7 +306,7 @@ const templateAtomWrap: WrapStrategy = (line, { firstWidth, continuationWidth })
     }
   }
   if (buf !== "") emitBuf();
-  return rows.length === 0 ? [{ content: "", start: asCodePoint(0) }] : rows;
+  return rows.length === 0 ? [{ start: asCodePoint(0), end: asCodePoint(0) }] : rows;
 };
 
 // ─── Two-column row composition ─────────────────────────────────────────────

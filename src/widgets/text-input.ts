@@ -8,6 +8,7 @@
  *   - multi-line  (`multiline: true`): Enter inserts a `\n`; `value` may
  *                            contain logical line breaks; Up/Down navigate
  *                            between logical lines preserving column intent.
+ *                            A glyph of zero cells is drawn as `◌` here too.
  *
  * [LAW:dataflow-not-control-flow] cursor and value are observable data; the
  * keymap dispatches to small `@action` mutators that all flow through the
@@ -70,7 +71,6 @@ import {
   setCellSize,
   splitText,
   cellStepFrom,
-  cellColToCodeUnitOffset,
   asCellCol,
   asCodePoint,
   asCodeUnit,
@@ -90,20 +90,22 @@ import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
 /**
  * A soft-wrap strategy. Given one logical line of text and cell-width budgets,
- * return the visual sub-rows that line wraps into. The first sub-row uses
- * `firstWidth` as its capacity; every subsequent (continuation) sub-row uses
- * `continuationWidth` (typically `firstWidth - cellLen(continuationMarker)`).
+ * return the visual sub-rows that line wraps into. The line arrives as the
+ * widget shows it — each glyph of zero cells already its one-cell `◌`, each
+ * glyph of a password its mask — so the budget counts the cells drawn. The
+ * first sub-row uses `firstWidth` as its capacity; every subsequent
+ * (continuation) sub-row uses `continuationWidth` (typically
+ * `firstWidth - cellLen(continuationMarker)`).
  *
- * Each returned row carries:
- *   - `content` — the displayed text for that visual row (the widget prepends
- *     the continuation marker itself; the strategy never includes it).
- *   - `start`   — code-unit offset into the *logical line* where `content`
- *     begins, so the widget can map visual positions back to absolute `value`
- *     offsets for cursor projection.
+ * Each returned row is the stretch `[start, end)` of the line as given that
+ * the row draws; the widget draws the matching stretch of `value` and
+ * prepends the continuation marker itself.
  *
- * [LAW:types-are-the-program] Budget params are `CellCol`; `start` is
- * `CodePoint` (a `CodeUnit` on a code-point boundary) — the type system
- * prevents mixing these integer spaces inside a custom strategy.
+ * [LAW:types-are-the-program] A row names where it falls in the line rather
+ * than carrying text of its own, so it cannot draw anything the line does not
+ * hold. Budget params are `CellCol`; offsets are `CodePoint` (a `CodeUnit` on
+ * a code-point boundary) — the type system prevents mixing these integer
+ * spaces inside a custom strategy.
  *
  * Built-in: `charGreedyWrap` (break at any character at the width limit).
  * Custom: any function matching this signature. Template-aware wrapping
@@ -116,9 +118,10 @@ export type WrapStrategy = (
 ) => readonly WrapRow[];
 
 export interface WrapRow {
-  readonly content: string;
-  /** Code-point offset into the logical line where `content` begins. */
+  /** Offset into the line as given where the row begins. */
   readonly start: CodePoint;
+  /** Offset into the line as given where the row ends, exclusive. */
+  readonly end: CodePoint;
 }
 
 /**
@@ -129,6 +132,7 @@ export interface WrapRow {
  * the absence of wrap.
  */
 interface VisualRow {
+  /** The stretch of `value` the row shows, as `value` holds it. */
   readonly content: string;
   /** Code-point offset into `value` where this row's content begins. */
   readonly valueStart: CodePoint;
@@ -146,7 +150,7 @@ interface VisualRow {
  * wide for the whole budget is force-taken — see `cellStepFrom`.
  */
 export const charGreedyWrap: WrapStrategy = (line, { firstWidth, continuationWidth }) => {
-  if (line.length === 0) return [{ content: "", start: asCodePoint(0) }];
+  if (line.length === 0) return [{ start: asCodePoint(0), end: asCodePoint(0) }];
   const rows: WrapRow[] = [];
   let pos: CodePoint = asCodePoint(0);
   let isFirst = true;
@@ -154,7 +158,7 @@ export const charGreedyWrap: WrapStrategy = (line, { firstWidth, continuationWid
     const cap = isFirst ? firstWidth : continuationWidth;
     if (cap <= 0) break;
     const end = cellStepFrom(line, pos, cap);
-    rows.push({ content: line.slice(pos, end), start: pos });
+    rows.push({ start: pos, end });
     pos = end;
     isFirst = false;
   }
@@ -350,7 +354,9 @@ export class TextInput extends ThemedWidget {
   // single-line renderer. Captured by _renderSingleLine and read by
   // handleMouse so the hit-test uses the same visual origin the user sees.
   private _singleLineViewportStart: CellCol = asCellCol(0);
-  private _singleLineAsciiOnly = false;
+  // How the last render could draw, so the hit-test and vertical motion
+  // measure `value` as it was shown.
+  private _drawn: { readonly asciiOnly: boolean } = { asciiOnly: false };
 
   readonly multiline: boolean;
 
@@ -490,25 +496,14 @@ export class TextInput extends ThemedWidget {
       // Continuation rows start after the marker; non-continuation rows start at column 0.
       const contentXOff = asCellCol(row.isContinuation ? this._markerWidth : 0);
       const relX = asCellCol(Math.max(0, event.x - contentXOff));
-      this.cursorPosition = asCodeUnit(row.valueStart + cellColToCodeUnitOffset(row.content, relX));
+      this.cursorPosition = asCodeUnit(row.valueStart + this._offsetAtShownCell(row.content, relX));
     } else {
       // [LAW:types-are-the-program] relX is a cell-column offset into the full
       // display string. Add _singleLineViewportStart (the scroll offset captured
       // by _renderSingleLine) so a click on a scrolled viewport maps to the
       // correct code-unit in the underlying value.
       const relX = asCellCol(Math.max(0, event.x - 1) + this._singleLineViewportStart);
-      // The glyphs of `value` whose shown cells lie wholly left of the click,
-      // shown as the last render showed them.
-      const shownAs = this._shownAs({ asciiOnly: this._singleLineAsciiOnly });
-      let at = 0;
-      let col = 0;
-      for (const g of graphemes(this.value)) {
-        const w = cellLen(shownAs(g));
-        if (col + w > relX) break;
-        col += w;
-        at += g.length;
-      }
-      this.cursorPosition = asCodeUnit(at);
+      this.cursorPosition = this._offsetAtShownCell(this.value, relX);
     }
     this._preferredColumn = null;
   }
@@ -547,12 +542,12 @@ export class TextInput extends ThemedWidget {
     const lineStart = this._lineStart();
     if (lineStart === 0) return;
     // Fallback: no render cache yet; use cell-space arithmetic for wide-char correctness.
-    const col = this._preferredColumn ?? asCellCol(cellLen(this.value.slice(lineStart, this.cursorPosition)));
+    const col = this._preferredColumn ?? this._shownCells(this.value.slice(lineStart, this.cursorPosition));
     const prevLineEnd = lineStart - 1;
     let prevLineStart: number = prevLineEnd;
     while (prevLineStart > 0 && this.value[prevLineStart - 1] !== "\n") prevLineStart--;
     const prevLineContent = this.value.slice(prevLineStart, prevLineEnd);
-    this.cursorPosition = asCodeUnit(prevLineStart + cellColToCodeUnitOffset(prevLineContent, asCellCol(Math.min(col, cellLen(prevLineContent)))));
+    this.cursorPosition = asCodeUnit(prevLineStart + this._offsetAtShownCell(prevLineContent, col));
     this._preferredColumn = col;
   }
 
@@ -569,12 +564,12 @@ export class TextInput extends ThemedWidget {
     if (lineEnd === this.value.length) return;
     const lineStart = this._lineStart();
     // Fallback: no render cache yet; use cell-space arithmetic for wide-char correctness.
-    const col = this._preferredColumn ?? asCellCol(cellLen(this.value.slice(lineStart, this.cursorPosition)));
+    const col = this._preferredColumn ?? this._shownCells(this.value.slice(lineStart, this.cursorPosition));
     const nextLineStart = lineEnd + 1;
     let nextLineEnd: number = nextLineStart;
     while (nextLineEnd < this.value.length && this.value[nextLineEnd] !== "\n") nextLineEnd++;
     const nextLineContent = this.value.slice(nextLineStart, nextLineEnd);
-    this.cursorPosition = asCodeUnit(nextLineStart + cellColToCodeUnitOffset(nextLineContent, asCellCol(Math.min(col, cellLen(nextLineContent)))));
+    this.cursorPosition = asCodeUnit(nextLineStart + this._offsetAtShownCell(nextLineContent, col));
     this._preferredColumn = col;
   }
 
@@ -594,11 +589,11 @@ export class TextInput extends ThemedWidget {
     const rows = this._visualRows!;
     const target = rows[targetIdx]!;
     const nextIsContinuation = targetIdx + 1 < rows.length && rows[targetIdx + 1]!.isContinuation;
-    const contentCellWidth = asCellCol(cellLen(target.content));
+    const contentCellWidth = this._shownCells(target.content);
     const capCells = nextIsContinuation
       ? asCellCol(Math.max(0, contentCellWidth - 1))
       : contentCellWidth;
-    return cellColToCodeUnitOffset(target.content, asCellCol(Math.min(col, capCells)));
+    return this._offsetAtShownCell(target.content, asCellCol(Math.min(col, capCells)));
   }
 
   // Locate which cached visual row the cursor sits on. Returns the row index
@@ -617,7 +612,7 @@ export class TextInput extends ThemedWidget {
     const rows = this._visualRows!;
     const idx = this._cursorVisualRow();
     const row = rows[idx]!;
-    return asCellCol(cellLen(row.content.slice(0, this.cursorPosition - row.valueStart)));
+    return this._shownCells(row.content.slice(0, this.cursorPosition - row.valueStart));
   }
 
   @action moveLineStart(): void {
@@ -845,6 +840,7 @@ export class TextInput extends ThemedWidget {
   }
 
   protected draw(options: RenderOptions): Iterable<Segment> {
+    this._drawn = { asciiOnly: options.asciiOnly ?? false };
     if (this._multiline) return this._renderMultiline(options);
     return this._renderSingleLine(options);
   }
@@ -868,12 +864,30 @@ export class TextInput extends ThemedWidget {
     return graphemes(text).map(this._shownAs(options)).join("");
   }
 
+  // The cells a stretch of `value` took in the last render.
+  private _shownCells(text: string): CellCol {
+    return asCellCol(cellLen(this._shown(text, this._drawn)));
+  }
+
+  // The end of the glyphs of `text` whose cells in the last render lie wholly
+  // left of `col`, so a column inside a wide glyph lands before it.
+  private _offsetAtShownCell(text: string, col: CellCol): CodePoint {
+    const shownAs = this._shownAs(this._drawn);
+    let at = 0;
+    let cells = 0;
+    for (const g of graphemes(text)) {
+      cells += cellLen(shownAs(g));
+      if (cells > col) break;
+      at += g.length;
+    }
+    return asCodePoint(at);
+  }
+
   private _renderSingleLine(options: RenderOptions): Segment[] {
     const showPlaceholder = this.focused && this.value.length === 0 && this.placeholder.length > 0;
 
     // The cursor's column is the width of the shown text before it, whatever
     // the mode — a placeholder is shown only over an empty value.
-    this._singleLineAsciiOnly = options.asciiOnly ?? false;
     const shown = (text: string): string => this._shown(text, options);
     const rawDisplay = showPlaceholder ? this.placeholder : shown(this.value);
 
@@ -928,7 +942,7 @@ export class TextInput extends ThemedWidget {
     // *and* cursor projection from the same array. Vertical motion reads
     // from the cache so Up/Down step through whatever the user actually
     // sees, including soft-wrap continuations.
-    const visualRows = this._computeVisualRows(options.maxWidth);
+    const visualRows = this._computeVisualRows(options);
     this._visualRows = visualRows;
 
     // Scroll window: keep `_scrollStart` (the viewport's top row) stable
@@ -1002,6 +1016,7 @@ export class TextInput extends ThemedWidget {
         : asCellCol(options.maxWidth);
       this._emitRowContent(
         segments,
+        options,
         row,
         rowIdx === cursorRow && showCursor,
         contentStyle,
@@ -1023,6 +1038,7 @@ export class TextInput extends ThemedWidget {
 
   private _emitRowContent(
     out: Segment[],
+    options: RenderOptions,
     row: VisualRow,
     cursorOnRow: boolean,
     contentStyle: Style,
@@ -1030,60 +1046,41 @@ export class TextInput extends ThemedWidget {
     indicator?: { ch: string; style: Style },
     rowPrintWidth?: CellCol,
   ): void {
-    const content = row.content;
-    // cursorCol is a code-unit offset into row.content; both cursorPosition
-    // and valueStart are CodePoint, so their difference lands on a code-point
-    // boundary within content and is safe for string slicing.
-    const cursorCol: number = cursorOnRow ? this.cursorPosition - row.valueStart : -1;
-
-    // Fast path: no indicator on this row. Let the wrapper pad to width.
-    if (indicator === undefined) {
-      if (!cursorOnRow) {
-        if (content.length > 0) out.push(new Segment(content, contentStyle));
-        return;
-      }
-      const before = content.slice(0, cursorCol);
-      const nextCp = nextGrapheme(content, asCodePoint(cursorCol));
-      const at = content.slice(cursorCol, nextCp) || " ";
-      const after = content.slice(nextCp);
-      if (before.length > 0) out.push(new Segment(before, contentStyle));
-      out.push(new Segment(at, cursorStyle));
-      if (after.length > 0) out.push(new Segment(after, contentStyle));
-      return;
-    }
-
-    // Indicator path: reserve the indicator's cells at the end of the row so
-    // wide characters never collide with it. Content fills [0, contentCellWidth)
-    // cells; the indicator occupies the remaining cells.
-    const indicatorWidth = asCellCol(cellLen(indicator.ch));
-    const contentCellWidth = asCellCol(Math.max(0, rowPrintWidth! - indicatorWidth));
-
-    // Clip row content to the non-indicator region and pad to exact cell width.
-    const [visibleContent] = splitText(content, contentCellWidth);
-    const paddedContent = setCellSize(visibleContent, contentCellWidth);
-
-    // Map the code-unit cursor offset to a cell column within this row.
-    const cursorCellColInRow = cursorOnRow && cursorCol >= 0
-      ? cellLen(content.slice(0, cursorCol))
+    const shown = this._shown(row.content, options);
+    // An indicator's cells are reserved at the end of the row, so wide glyphs
+    // never collide with it: the content is cut to the cells before it and
+    // padded out to them. With no indicator the wrapper pads the row.
+    const contentCellWidth = indicator === undefined
+      ? Infinity
+      : Math.max(0, rowPrintWidth! - cellLen(indicator.ch));
+    const display = indicator === undefined
+      ? shown
+      : setCellSize(splitText(shown, asCellCol(contentCellWidth))[0], asCellCol(contentCellWidth));
+    // cursorPosition and valueStart are both cluster boundaries, so the
+    // cursor's offset into the row is one too, and the shown cells before it
+    // are its column.
+    const cursorCell = cursorOnRow
+      ? cellLen(this._shown(row.content.slice(0, this.cursorPosition - row.valueStart), options))
       : -1;
 
-    if (cursorCellColInRow >= 0 && cursorCellColInRow < contentCellWidth) {
-      const [before, rest] = splitText(paddedContent, asCellCol(cursorCellColInRow));
+    if (cursorCell >= 0 && cursorCell < contentCellWidth) {
+      const [before, rest] = splitText(display, asCellCol(cursorCell));
       const firstCh = rest.slice(0, nextGrapheme(rest, asCodePoint(0)));
       const at = firstCh || " ";
       const after = rest.slice(firstCh.length);
       if (before.length > 0) out.push(new Segment(before, contentStyle));
       out.push(new Segment(at, cursorStyle));
       if (after.length > 0) out.push(new Segment(after, contentStyle));
-    } else {
-      if (paddedContent.length > 0) out.push(new Segment(paddedContent, contentStyle));
+    } else if (display.length > 0) {
+      out.push(new Segment(display, contentStyle));
     }
-    out.push(new Segment(indicator.ch, indicator.style));
+    if (indicator !== undefined) out.push(new Segment(indicator.ch, indicator.style));
   }
 
-  private _computeVisualRows(maxWidth: number): VisualRow[] {
-    const firstWidth = asCellCol(Math.max(1, maxWidth));
+  private _computeVisualRows(options: RenderOptions): VisualRow[] {
+    const firstWidth = asCellCol(Math.max(1, options.maxWidth));
     const continuationWidth = asCellCol(Math.max(1, firstWidth - this._markerWidth));
+    const shownAs = this._shownAs(options);
 
     const rows: VisualRow[] = [];
     const lines = this.value.split("\n");
@@ -1091,15 +1088,30 @@ export class TextInput extends ThemedWidget {
     for (let li = 0; li < lines.length; li++) {
       const line = lines[li]!;
       if (this._wrap !== undefined) {
-        const wrapRows = this._wrap(line, { firstWidth, continuationWidth });
+        // `lineOffset[s]` is where offset `s` of the line as shown falls in
+        // `line`: a glyph shown as itself maps code unit for code unit, and
+        // every offset inside a stand-in falls at the start of its glyph, so
+        // a row the strategy ends there draws the glyph on the next row.
+        let shownLine = "";
+        const lineOffset: number[] = [];
+        let at = 0;
+        for (const g of graphemes(line)) {
+          const s = shownAs(g);
+          for (let i = 0; i < s.length; i++) lineOffset.push(s === g ? at + i : at);
+          shownLine += s;
+          at += g.length;
+        }
+        lineOffset.push(at);
+        const wrapRows = this._wrap(shownLine, { firstWidth, continuationWidth });
         if (wrapRows.length === 0) {
           rows.push({ content: "", valueStart: asCodePoint(pos), isContinuation: false });
         } else {
           for (let ri = 0; ri < wrapRows.length; ri++) {
             const wr = wrapRows[ri]!;
+            const start = lineOffset[wr.start]!;
             rows.push({
-              content: wr.content,
-              valueStart: asCodePoint(pos + wr.start),
+              content: line.slice(start, lineOffset[wr.end]!),
+              valueStart: asCodePoint(pos + start),
               isContinuation: ri > 0,
             });
           }
@@ -1112,9 +1124,13 @@ export class TextInput extends ThemedWidget {
     return rows;
   }
 
-  measure(_options: RenderOptions): { minimum: number; maximum: number } {
+  measure(options: RenderOptions): { minimum: number; maximum: number } {
     const minimum = MIN_CONTENT_WIDTH + 2;
-    const maximum = Math.max(minimum, Math.max(cellLen(this.value), cellLen(this.placeholder)) + 2);
+    // The widest line as drawn: a multi-line value draws each logical line on
+    // rows of its own, a single-line one draws its breaks as glyphs.
+    const lines = this._multiline ? this.value.split("\n") : [this.value];
+    const widest = lines.reduce((w, line) => Math.max(w, cellLen(this._shown(line, options))), 0);
+    const maximum = Math.max(minimum, Math.max(widest, cellLen(this.placeholder)) + 2);
     return { minimum, maximum };
   }
 

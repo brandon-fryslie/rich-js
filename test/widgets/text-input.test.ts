@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { autorun } from "mobx";
 import { TextInput, charGreedyWrap, type WrapStrategy, type WrapRow } from "../../src/widgets/text-input.js";
-import { asCodePoint, asCellCol, cellLen, type CodePoint } from "../../src/core/cells.js";
+import { asCodePoint, asCellCol, cellLen } from "../../src/core/cells.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 import { Segment } from "../../src/core/segment.js";
@@ -9,6 +9,7 @@ import { Style } from "../../src/core/style.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import { ColorSpec } from "../../src/core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
+import { expectLinearTime } from "../suite/linear-time.js";
 
 // What every widget draws a disabled cell in.
 const MUTED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-muted")!);
@@ -336,6 +337,25 @@ describe("TextInput", () => {
       const text = renderText(t);
       expect(text).toContain("••••••");
       expect(text).not.toContain("secret");
+    });
+
+    it("password mode masks every line of a multi-line value", () => {
+      const t = new TextInput({ value: "abc\nde", password: true, multiline: true });
+      expect(renderText(t).split("\n").map((r) => r.trimEnd())).toEqual(["•••", "••"]);
+    });
+
+    it("password mode wraps by its masks, one per glyph however many code units the glyph takes", () => {
+      const options = { maxWidth: 4 };
+      const t = new TextInput({ value: "😀".repeat(6), password: true, multiline: true, wrap: charGreedyWrap });
+      t.cursorPosition = asCodePoint(t.value.length);
+      expect(rowsText(t, options).split("\n").map((r) => r.trimEnd())).toEqual(["••••", "↳ ••"]);
+      t.handleKey(upEvent());
+      expect(t.cursorPosition).toBe("😀".length * 2);
+    });
+
+    it("password mode measures a mask per glyph, whatever the glyph's cells", () => {
+      const masked = new TextInput({ value: "あ".repeat(30), password: true });
+      expect(masked.measure(RENDER)).toEqual(new TextInput({ value: "a".repeat(30) }).measure(RENDER));
     });
 
     it("shows placeholder when focused and value is empty", () => {
@@ -706,11 +726,11 @@ describe("TextInput", () => {
       const strategy: WrapStrategy = (line, { firstWidth, continuationWidth }) => {
         called++;
         // Break at every 4 chars regardless of width.
-        const rows: { content: string; start: CodePoint }[] = [];
+        const rows: WrapRow[] = [];
         let p = 0;
         while (p < line.length) {
           const take = Math.min(4, line.length - p);
-          rows.push({ content: line.slice(p, p + take), start: asCodePoint(p) });
+          rows.push({ start: asCodePoint(p), end: asCodePoint(p + take) });
           p += take;
         }
         // Reference unused params so the type isn't dropped.
@@ -982,13 +1002,12 @@ describe("TextInput", () => {
     // alone can't produce. `templateAtomWrap` in the demo does produce it
     // (leading whitespace becomes a 2-char head row).
     const tinyHeadWrap: WrapStrategy = (line, { continuationWidth }) => {
-      if (line.length === 0) return [{ content: "", start: asCodePoint(0) }];
-      if (line.length === 1) return [{ content: line, start: asCodePoint(0) }];
-      const out: WrapRow[] = [{ content: line[0]!, start: asCodePoint(0) }];
+      if (line.length <= 1) return [{ start: asCodePoint(0), end: asCodePoint(line.length) }];
+      const out: WrapRow[] = [{ start: asCodePoint(0), end: asCodePoint(1) }];
       let p = 1;
       while (p < line.length) {
         const take = Math.min(continuationWidth, line.length - p);
-        out.push({ content: line.slice(p, p + take), start: asCodePoint(p) });
+        out.push({ start: asCodePoint(p), end: asCodePoint(p + take) });
         p += take;
       }
       return out;
@@ -1089,56 +1108,39 @@ describe("TextInput", () => {
   });
 
   describe("charGreedyWrap", () => {
+    // The stretch of the line each row draws.
+    const wrapped = (line: string, firstWidth: number, continuationWidth: number): string[] =>
+      charGreedyWrap(line, { firstWidth: asCellCol(firstWidth), continuationWidth: asCellCol(continuationWidth) })
+        .map((row) => line.slice(row.start, row.end));
+
     it("returns one row for an empty line", () => {
-      const rows = charGreedyWrap("", { firstWidth: asCellCol(10), continuationWidth: asCellCol(8) });
-      expect(rows).toHaveLength(1);
-      expect(rows[0]!.content).toBe("");
-      expect(rows[0]!.start).toBe(0);
+      expect(wrapped("", 10, 8)).toEqual([""]);
     });
 
     it("splits at firstWidth then at continuationWidth", () => {
-      const rows = charGreedyWrap("0123456789abcdefghij", { firstWidth: asCellCol(10), continuationWidth: asCellCol(5) });
-      expect(rows[0]!.content).toBe("0123456789");
-      expect(rows[0]!.start).toBe(0);
-      expect(rows[1]!.content).toBe("abcde");
-      expect(rows[1]!.start).toBe(10);
-      expect(rows[2]!.content).toBe("fghij");
-      expect(rows[2]!.start).toBe(15);
+      expect(wrapped("0123456789abcdefghij", 10, 5)).toEqual(["0123456789", "abcde", "fghij"]);
     });
 
     it("returns a single row when line fits in firstWidth", () => {
-      const rows = charGreedyWrap("short", { firstWidth: asCellCol(10), continuationWidth: asCellCol(8) });
-      expect(rows).toHaveLength(1);
-      expect(rows[0]!.content).toBe("short");
+      expect(wrapped("short", 10, 8)).toEqual(["short"]);
     });
 
     // Wide-char (CJK) tests — each CJK character is 1 code unit but 2 cells.
     it("does not overflow budget for wide chars (CJK)", () => {
       // "AAあ" = 3 code units, 4 cells.  Budget of 3 cells → "AA" (2 cells) fits,
       // "あ" (2 cells) does not; it must go to the next row.
-      const rows = charGreedyWrap("AAあ", { firstWidth: asCellCol(3), continuationWidth: asCellCol(3) });
-      expect(rows).toHaveLength(2);
-      expect(rows[0]!.content).toBe("AA");
-      expect(rows[1]!.content).toBe("あ");
-      // start values are code-unit offsets: "AA" starts at 0, "あ" starts at 2
-      expect(rows[0]!.start).toBe(0);
-      expect(rows[1]!.start).toBe(2);
+      expect(wrapped("AAあ", 3, 3)).toEqual(["AA", "あ"]);
     });
 
     it("places a leading wide char on its own row when budget is 2 cells", () => {
       // "あAA" — wide char first.  Budget 2 → "あ" fits (2 cells), then "AA".
-      const rows = charGreedyWrap("あAA", { firstWidth: asCellCol(2), continuationWidth: asCellCol(2) });
-      expect(rows).toHaveLength(2);
-      expect(rows[0]!.content).toBe("あ");
-      expect(rows[1]!.content).toBe("AA");
+      expect(wrapped("あAA", 2, 2)).toEqual(["あ", "AA"]);
     });
 
     it("force-takes a wide char when budget is 1 cell (no infinite loop)", () => {
       // Degenerate: budget too narrow for the wide char.  Force-take to avoid
       // an infinite loop.
-      const rows = charGreedyWrap("あ", { firstWidth: asCellCol(1), continuationWidth: asCellCol(1) });
-      expect(rows).toHaveLength(1);
-      expect(rows[0]!.content).toBe("あ");
+      expect(wrapped("あ", 1, 1)).toEqual(["あ"]);
     });
   });
 
@@ -1326,6 +1328,65 @@ describe("TextInput", () => {
       const t = new TextInput({ value: "a\u200bb" });
       expect(renderText(t)).toContain("a◌b");
       expect(rowsText(t, { ...RENDER, asciiOnly: true })).toContain("a?b");
+    });
+
+    // Where the cursor is drawn: the row it is on, and the cells before it there.
+    const cursorCell = (t: TextInput, options: RenderOptions): { row: number; column: number } => {
+      const rows = Segment.splitLines(t.render(options));
+      const row = rows.findIndex((r) => r.some((seg) => seg.style?.reverse));
+      const at = rows[row]!.findIndex((seg) => seg.style?.reverse);
+      expect(cellLen(rows[row]![at]!.text)).toBe(1);
+      return { row, column: cellLen(rows[row]!.slice(0, at).map((seg) => seg.text).join("")) };
+    };
+
+    it("has a column of its own in a multi-line value, wrapped or not", () => {
+      for (const wrap of [undefined, charGreedyWrap]) {
+        for (const glyph of ["​", " ", " ", "\t"]) {
+          const t = new TextInput({ value: `a${glyph}b`, multiline: true, wrap, cursorStyle: CURSOR });
+          t.focus();
+          expect(renderText(t)).toBe("a◌b");
+          const columns: number[] = [];
+          for (let stop = 0; stop <= 3; stop++) {
+            const { row, column } = cursorCell(t, RENDER);
+            expect(row).toBe(0);
+            columns.push(column);
+            const before = t.cursorPosition;
+            t.handleMouse({ ...mouseDownAt(column), y: row });
+            expect(t.cursorPosition).toBe(before);
+            t.handleKey(rightEvent());
+          }
+          expect(columns).toEqual([0, 1, 2, 3]);
+        }
+      }
+    });
+
+    it("is a cell the wrap budget counts, so it wraps instead of overflowing its row", () => {
+      const options = { maxWidth: 4 };
+      const t = new TextInput({ value: "abcd​e", multiline: true, wrap: charGreedyWrap, cursorStyle: CURSOR });
+      t.focus();
+      expect(rowsText(t, options).split("\n").map((r) => r.trimEnd())).toEqual(["abcd", "↳ ◌e"]);
+      const stops: { row: number; column: number }[] = [];
+      for (let stop = 0; stop <= 6; stop++) {
+        stops.push(cursorCell(t, options));
+        t.handleKey(rightEvent());
+      }
+      expect(stops).toEqual([
+        { row: 0, column: 0 }, { row: 0, column: 1 }, { row: 0, column: 2 }, { row: 0, column: 3 },
+        { row: 1, column: 2 }, { row: 1, column: 3 }, { row: 1, column: 4 },
+      ]);
+    });
+
+    it("is measured as the one cell it is drawn as", () => {
+      const thirty = new TextInput({ value: "a".repeat(30) }).measure(RENDER);
+      expect(new TextInput({ value: "​".repeat(30) }).measure(RENDER)).toEqual(thirty);
+      expect(new TextInput({ value: "​".repeat(30), multiline: true }).measure(RENDER)).toEqual(thirty);
+    });
+
+    it("wraps a long line in time linear in its length", () => {
+      expectLinearTime((n) => {
+        const t = new TextInput({ value: "ab😀​".repeat(n), multiline: true, wrap: charGreedyWrap });
+        rowsText(t, RENDER);
+      }, 4000);
     });
 
     it("is drawn as ↵ when it breaks a line, or ~ where only ASCII is drawable", () => {
