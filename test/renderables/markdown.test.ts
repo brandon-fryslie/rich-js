@@ -586,6 +586,23 @@ describe("Markdown", () => {
     expect(rows("x \\<span> y", 40)[0]).toBe("x <span> y");
     expect(rows("x \\*a\\* y \\[a](b)", 40)[0]).toBe("x *a* y [a](b)");
     expect(rows("x \\\\ \\a y", 40)[0]).toBe("x \\ \\a y");
+    expect(rows("[a](u\\)v)", 40, { hyperlinks: false })[0]).toBe("a (u)v)");
+    expect(segment("[a](http://x/\\_y)", "a").style?.link).toBe("http://x/_y");
+    expect(segment("![p](a\\_b.png)", "p").style?.link).toBe("a_b.png");
+  });
+
+  it("closes emphasis on no delimiter inside an escape, a code span, inline HTML or a link, as Rich does", () => {
+    const italic = (source: string): string[] =>
+      collectSegments(new Markdown(source, { hyperlinks: false }), { maxWidth: 80 })
+        .filter((s) => s.style?.italic)
+        .map((s) => s.text);
+    expect(italic("*a \\* b*")).toEqual(["a * b"]);
+    expect(italic("*a <b title='*'>c*")).toEqual(["a c"]);
+    expect(rows("*a `*` b*", 40)[0]).toBe("a * b");
+    expect(italic("*a `*` b*")).toEqual(expect.arrayContaining(["a ", " b"]));
+    expect(rows("*[a*](http://u) b*", 40)[0]).toBe("a* b");
+    expect(rows("**a <b x='**'> c**", 40)[0]).toBe("a  c");
+    expect(segment("**a <b x='**'> c**", "a  c").style?.bold).toBe(true);
   });
 
   it("takes no lazy line into a container that ends in an HTML block", () => {

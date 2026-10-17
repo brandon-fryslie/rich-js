@@ -570,12 +570,11 @@ type Inline =
   | { kind: "html"; end: number };
 
 const TICKS = /`+/y;
-const STRONG = /\*\*(.+?)\*\*/y;
-const EMPHASIS = /\*(.+?)\*/y;
 const ANGLED_DESTINATION = /\(\s*<([^<>\n]*)>/y;
 const LINK_TAIL = /\s*(?:"[^"]*"|'[^']*'|\([^()]*\))?\s*\)/y;
 /** A backslash escape, as markdown-it reads one: the ASCII punctuation character after it, standing for itself. */
 const ESCAPE = /\\([!-\/:-@[-`{-~])/y;
+const ESCAPES = new RegExp(ESCAPE.source, "g");
 /** Inline HTML, as markdown-it-py's HTML_TAG_RE reads it: a tag, a comment, a processing instruction, a declaration or a CDATA section. */
 const HTML_TAG = new RegExp(
   [
@@ -615,7 +614,8 @@ function bracketPairs(text: string): ReadonlyMap<number, number> {
  * The `(destination "title")` of a link opening at `open`, as CommonMark reads
  * it: a destination in angle brackets, or a run of non-space characters whose
  * parentheses balance — so a URL may itself hold `(…)` — then an optional
- * quoted title, then the `)`. The destination and the index past the `)`.
+ * quoted title, then the `)`. The destination, its backslash escapes read, and
+ * the index past the `)`.
  */
 function linkDestination(text: string, open: number): { url: string; end: number } | undefined {
   if (text[open] !== "(") return undefined;
@@ -637,7 +637,22 @@ function linkDestination(text: string, open: number): { url: string; end: number
     url = text.slice(from, i);
   }
   const tail = matchAt(LINK_TAIL, text, i);
-  return tail ? { url, end: i + tail[0].length } : undefined;
+  return tail ? { url: url.replace(ESCAPES, "$1"), end: i + tail[0].length } : undefined;
+}
+
+/**
+ * The index of the `delimiter` that closes emphasis whose text starts at
+ * `from`, after at least one character of it. Every other inline construct
+ * binds tighter than emphasis, as CommonMark has it, so a delimiter inside an
+ * escape, a code span, inline HTML or a link closes nothing.
+ */
+function emphasisClose(text: string, from: number, delimiter: string, brackets: ReadonlyMap<number, number>): number | undefined {
+  for (let i = from; i < text.length; ) {
+    if (i > from && text.startsWith(delimiter, i)) return i;
+    const tighter = text[i] === "*" ? undefined : inlineAt(text, i, brackets);
+    i = tighter ? tighter.end : i + 1;
+  }
+  return undefined;
 }
 
 /** The inline construct opening at `i` in `text`, if one does; `brackets` is `text`'s `bracketPairs`. */
@@ -653,11 +668,17 @@ function inlineAt(text: string, i: number, brackets: ReadonlyMap<number, number>
         : { kind: "literal", text: ticks, end: i + ticks.length };
     }
     case "*": {
-      const strong = matchAt(STRONG, text, i);
-      const emphasis = strong ?? matchAt(EMPHASIS, text, i);
-      return emphasis
-        ? { kind: "emphasis", style: strong ? "bold" : "italic", inner: emphasis[1]!, end: i + emphasis[0].length }
-        : undefined;
+      const strong = text.startsWith("**", i) ? emphasisClose(text, i + 2, "**", brackets) : undefined;
+      const delimiter = strong === undefined ? "*" : "**";
+      const close = strong ?? emphasisClose(text, i + 1, "*", brackets);
+      return close === undefined
+        ? undefined
+        : {
+            kind: "emphasis",
+            style: strong === undefined ? "italic" : "bold",
+            inner: text.slice(i + delimiter.length, close),
+            end: close + delimiter.length,
+          };
     }
     case "\\": {
       const escape = matchAt(ESCAPE, text, i);
