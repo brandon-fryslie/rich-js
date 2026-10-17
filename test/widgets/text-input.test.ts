@@ -439,10 +439,12 @@ describe("TextInput", () => {
       ["a value", { value: "abcdefghijklmnop" }],
       ["a placeholder over an empty value", { placeholder: "abcdefghijklmnop" }],
       ["glyphs of zero cells", { value: "a" + "\u200b".repeat(20) + "b" }],
-      ["a password of wide glyphs", { value: "あ".repeat(20), password: true }],
+      ["wide glyphs", { value: "あ".repeat(20) }],
+      ["a password of wide glyphs, masked a cell each", { value: "あ".repeat(20), password: true }],
       ["multi-line", { value: "ab\nx\nabcdefghijklmnop", multiline: true }],
       ["multi-line glyphs of zero cells", { value: "ab\na" + "\u200b".repeat(20) + "b", multiline: true }],
-      ["a multi-line password of wide glyphs", { value: "あ\n" + "あ".repeat(20), password: true, multiline: true }],
+      ["multi-line wide glyphs", { value: "あ\n" + "あ".repeat(20), multiline: true }],
+      ["a multi-line password of wide glyphs, masked a cell each", { value: "あ\n" + "あ".repeat(20), password: true, multiline: true }],
     ])("reports as its maximum the width it draws, nothing cut at that width: %s", (_, options) => {
       const t = new TextInput(options);
       t.focused = true;
@@ -453,10 +455,34 @@ describe("TextInput", () => {
       expect(rowsText(t, { maxWidth: maximum })).toBe(unbounded);
     });
 
-    it("keeps the cursor's cell in view at the end of a value wider than the field", () => {
-      const t = new TextInput({ value: "a".repeat(30) + "XYZ" });
+    const CURSOR = new Style({ reverse: true });
+    const cursorText = (t: TextInput, options: RenderOptions): string[] =>
+      [...t.render(options)].filter((s) => s.style?.reverse).map((s) => s.text);
+
+    it("leaves a scroll arrow its cell past the cursor's at the end of the widest line", () => {
+      const t = new TextInput({ value: "b\nabcdefghijklmnop", multiline: true, maxRows: 1, cursorStyle: CURSOR });
       t.focused = true;
-      expect(rowsText(t, { maxWidth: 22 })).toBe(`[${"a".repeat(16)}XYZ ]`);
+      t.cursorPosition = asCodePoint(t.value.length);
+      const { maximum } = t.measure(RENDER);
+      expect(rowsText(t, { maxWidth: maximum })).toBe("abcdefghijklmnop ▲");
+      expect(cursorText(t, { maxWidth: maximum })).toEqual([" "]);
+    });
+
+    // The field is 20 cells wide at a width of 22.
+    it.each([
+      ["at the end of narrow glyphs", "a".repeat(30) + "XYZ", 33, `[${"a".repeat(16)}XYZ ]`, " "],
+      ["at the end of wide glyphs", "あ".repeat(20), 20, `[${"あ".repeat(9)}  ]`, " "],
+      ["where the viewport's start would cut a wide glyph", "a" + "あ".repeat(20), 21, `[${"あ".repeat(9)}  ]`, " "],
+      ["on a wide glyph at the field's last cells", "a".repeat(30) + "あb", 30, `[${"a".repeat(18)}あ]`, "あ"],
+    ])("keeps the cursor's glyph in view in a value wider than the field: %s", (_, value, at, row, cursor) => {
+      const t = new TextInput({ value, cursorStyle: CURSOR });
+      t.focused = true;
+      t.cursorPosition = asCodePoint(at);
+      expect(rowsText(t, { maxWidth: 22 })).toBe(row);
+      expect(cursorText(t, { maxWidth: 22 })).toEqual([cursor]);
+      // Unfocused, it draws the same cells, so focus never shifts the text.
+      t.focused = false;
+      expect(rowsText(t, { maxWidth: 22 })).toBe(row);
     });
   });
 

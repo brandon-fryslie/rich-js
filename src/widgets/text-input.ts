@@ -70,6 +70,7 @@ import {
   cellLen,
   setCellSize,
   splitText,
+  cellFitEnd,
   cellStepFrom,
   asCellCol,
   asCodePoint,
@@ -900,21 +901,22 @@ export class TextInput extends ThemedWidget {
     const rawDisplay = showPlaceholder ? this.placeholder : shown(this.value);
 
     const rawCellWidth = asCellCol(cellLen(rawDisplay));
-    const cursorCellCol = asCellCol(cellLen(shown(this.value.slice(0, this.cursorPosition))));
+    const beforeCursor = shown(this.value.slice(0, this.cursorPosition));
+    const cursorCellCol = asCellCol(cellLen(beforeCursor));
+    // The cursor's glyph, or the one cell past the text's end.
+    const cursorCells = Math.max(1, cellLen(shown(this.value.slice(this.cursorPosition, nextGrapheme(this.value, this.cursorPosition)))));
     const maxAvailable = asCellCol(Math.max(MIN_CONTENT_WIDTH, options.maxWidth - 2));
     const contentWidth = asCellCol(Math.min(maxAvailable, singleLineExtent(rawCellWidth, cursorCellCol)));
 
-    // Slide viewport (in cells) to keep the cursor's cell visible when content
-    // overflows — at the end of the text, that is the cell past its last glyph.
-    const startCell = asCellCol(Math.max(0, cursorCellCol + 1 - contentWidth));
+    // The viewport (in cells) starts where the most of the text before the
+    // cursor that fits beside the cursor's glyph begins: a glyph boundary, so
+    // a wide glyph is never cut, and the cursor's glyph always in view.
+    const startCell = asCellCol(cursorCellCol - cellLen(cellFitEnd(beforeCursor, asCellCol(contentWidth - cursorCells))));
+    this._singleLineViewportStart = startCell;
     const [, afterStart] = splitText(rawDisplay, startCell);
-    // splitText snaps backward when startCell falls mid-wide-char, so afterStart
-    // may start 1 cell earlier than requested. actualStartCell is the real offset.
-    const actualStartCell = asCellCol(rawCellWidth - cellLen(afterStart));
-    this._singleLineViewportStart = actualStartCell;
     const [visible] = splitText(afterStart, contentWidth);
     const display = setCellSize(visible, contentWidth);
-    const cursorDisplayCellCol = asCellCol(cursorCellCol - actualStartCell);
+    const cursorDisplayCellCol = asCellCol(cursorCellCol - startCell);
 
     const bracketStyle = this.disabled
       ? new Style(this.disabledInk)
@@ -928,7 +930,7 @@ export class TextInput extends ThemedWidget {
 
     const segments: Segment[] = [new Segment("[", bracketStyle)];
 
-    if (this.focused && !this.disabled && cursorDisplayCellCol >= 0 && cursorDisplayCellCol < contentWidth) {
+    if (this.focused && !this.disabled) {
       const [before, rest] = splitText(display, cursorDisplayCellCol);
       const firstCh = rest.slice(0, nextGrapheme(rest, asCodePoint(0)));
       const at = firstCh || " ";
@@ -992,11 +994,9 @@ export class TextInput extends ThemedWidget {
     // collides with the arrow. Only emitted in `"arrows"` mode; other modes
     // leave the content area untouched and rely on the host to surface scroll
     // state externally (e.g. Panel border accessory).
-    const scrollable = this._maxRows !== undefined && total > this._maxRows;
-    const arrowsMode = this._scrollIndicator === "arrows";
-    const canScrollUp = arrowsMode && scrollable && this._scrollStart > 0;
-    const canScrollDown =
-      arrowsMode && scrollable && this._scrollStart + this._maxRows! < total;
+    const arrows = this._drawsArrows(total);
+    const canScrollUp = arrows && this._scrollStart > 0;
+    const canScrollDown = arrows && this._scrollStart + this._maxRows! < total;
     const indicatorStyle = this.indicatorStyleOverride ?? new Style(ink(this.theme, "text-primary", "background"));
 
     const segments: Segment[] = [];
@@ -1042,6 +1042,11 @@ export class TextInput extends ThemedWidget {
       segments.push(new Segment(setCellSize("", asCellCol(options.maxWidth)), contentStyle));
     }
     return segments;
+  }
+
+  // Whether `rows` visual rows draw a scroll arrow in the last cell of a row.
+  private _drawsArrows(rows: number): boolean {
+    return this._scrollIndicator === "arrows" && this._maxRows !== undefined && rows > this._maxRows;
   }
 
   private _emitRowContent(
@@ -1135,17 +1140,19 @@ export class TextInput extends ThemedWidget {
   measure(options: RenderOptions): { minimum: number; maximum: number } {
     const minimum = MIN_CONTENT_WIDTH + 2;
     const shownCells = (line: string): number => cellLen(this._shown(line, options));
-    // The widest the value draws, its cursor at the end of a line included: a
+    // The widest the value draws, its cursor at the end of a line included. A
     // multi-line value draws each logical line on rows of its own, with no
-    // brackets and no placeholder; a single-line one draws its breaks as
-    // glyphs between brackets, and its placeholder over an empty value.
-    const maximum = this._multiline
-      ? this.value.split("\n").reduce((w, line) => Math.max(w, shownCells(line) + 1), minimum)
-      : singleLineExtent(
-        this.value === "" ? cellLen(this.placeholder) : shownCells(this.value),
-        shownCells(this.value),
-      ) + 2;
-    return { minimum, maximum };
+    // brackets and no placeholder, and a scroll arrow's cell past each line
+    // when its lines outnumber the rows.
+    if (this._multiline) {
+      const lines = this.value.split("\n");
+      const arrowCells = this._drawsArrows(lines.length) ? 1 : 0;
+      return { minimum, maximum: lines.reduce((w, line) => Math.max(w, shownCells(line) + 1 + arrowCells), minimum) };
+    }
+    // A single-line value draws its breaks as glyphs between brackets, and its
+    // placeholder over an empty value.
+    const valueCells = shownCells(this.value);
+    return { minimum, maximum: singleLineExtent(this.value === "" ? cellLen(this.placeholder) : valueCells, valueCells) + 2 };
   }
 
   /**
