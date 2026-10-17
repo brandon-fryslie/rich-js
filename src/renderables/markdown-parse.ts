@@ -102,7 +102,7 @@ export type Inline =
  * is indented less than any block, as markdown-it reads it, but an `"item"`
  * line keeps its indentation for a list item, which markdown-it measures from
  * the container of the innermost list it sits in: that container's margin is
- * the line's.
+ * the line's, and may be a table's header row (`headerLine`).
  */
 interface Line {
   readonly text: string;
@@ -351,6 +351,16 @@ function alignments(line: Line): CellAlign[] | undefined {
 }
 
 /**
+ * Whether `line` may be a table's header row: a `tableLine`, or a line lazy
+ * only to list items. markdown-it tries a table at a list item's lazy line to
+ * end the paragraph open before it, and measures it against the item, which
+ * it is short of, so it is never code; a quote's lazy line is never tried.
+ */
+function headerLine(line: Line): boolean {
+  return line.lazy === "item" || tableLine(line);
+}
+
+/**
  * The columns of the table opening at `start`, if one does, as markdown-it
  * reads one: a header row with a pipe in it, then a delimiter row naming as
  * many columns.
@@ -358,7 +368,7 @@ function alignments(line: Line): CellAlign[] | undefined {
 function tableAt(lines: Lines, start: number): TableColumn<string>[] | undefined {
   const head = lines.at(start)!;
   const delimiter = lines.at(start + 1);
-  if (delimiter === undefined || !tableLine(head) || !body(head).includes("|")) return undefined;
+  if (delimiter === undefined || !headerLine(head) || !body(head).includes("|")) return undefined;
   const aligns = alignments(delimiter);
   if (!aligns) return undefined;
   const headers = rowCells(body(head));
