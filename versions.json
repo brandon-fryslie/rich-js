@@ -4,15 +4,22 @@
     {
       "version": "pr-441",
       "ref": "refs/pull/441/merge",
-      "sha": "a2adddd9398f4a6fdcf78713701bd3a7c6b90a10",
-      "timestamp": "2026-10-17T13:52:22.365Z",
+      "sha": "e47bb29f8f8b5d0bccc4057a1de02a9e97da598b",
+      "timestamp": "2026-10-17T14:08:57.699Z",
       "commits": [
         {
-          "sha": "a2adddd9398f4a6fdcf78713701bd3a7c6b90a10",
+          "sha": "e47bb29f8f8b5d0bccc4057a1de02a9e97da598b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T13:50:42Z",
-          "message": "Merge 8da5d8f8860c4a8ef4f06ec89849a5bfb56f2ee1 into e10e9e8e09e2ca2535bfa727caa10a617c647fea\n"
+          "timestamp": "2026-10-17T14:07:10Z",
+          "message": "Merge c2a8c9d511dbda192f1aaafcf642fde443329aa3 into e10e9e8e09e2ca2535bfa727caa10a617c647fea\n"
+        },
+        {
+          "sha": "c2a8c9d511dbda192f1aaafcf642fde443329aa3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T08:07:05-06:00",
+          "message": "Markdown reads a definition's destination in the text markdown-it holds for it, ending with its own line (rich-unfiled-791c.1dvo)\n\nA backslash escaping the destination's line ending took the destination on\ninto the lines read ahead, or left the definition unended, where markdown-it\nends the definition there: \"[a]: x\\\\\\ny\" defines x%5C and leaves y a paragraph.\n"
         },
         {
           "sha": "8da5d8f8860c4a8ef4f06ec89849a5bfb56f2ee1",
