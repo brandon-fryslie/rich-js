@@ -13,8 +13,13 @@ const PY_SPACE = new RegExp(`^${PY_WHITESPACE}$`);
 /** Python's `str.strip`, a scan in from each end, so a run of interior whitespace costs one pass, as it does there. */
 export function pyStrip(text: string): string {
   let start = 0;
+  while (start < text.length && PY_SPACE.test(text[start]!)) start++;
+  return pyRstrip(text.slice(start));
+}
+
+/** Python's `str.rstrip`, a scan in from the end — not a `+$` pattern, which retries from every cell of an interior run. */
+export function pyRstrip(text: string): string {
   let end = text.length;
-  while (start < end && PY_SPACE.test(text[start]!)) start++;
-  while (end > start && PY_SPACE.test(text[end - 1]!)) end--;
-  return text.slice(start, end);
+  while (end > 0 && PY_SPACE.test(text[end - 1]!)) end--;
+  return text.slice(0, end);
 }

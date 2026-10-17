@@ -9,11 +9,14 @@
  * not at all.
  */
 
-import { cellLen, expandTabs, parseTabSize } from "../core/cells.js";
+import { cellLen } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { RichText, resolveStyle } from "../core/text.js";
 import { Rule } from "./rule.js";
+import { Padding } from "./padding.js";
+import { pyRstrip } from "./python-space.js";
+import { Syntax } from "./syntax.js";
 import { Table } from "./table.js";
 import { parseMarkdown, type CellAlign, type Inline, type MdToken } from "./markdown-parse.js";
 import { SIMPLE } from "../core/box.js";
@@ -22,7 +25,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawable, getStyle, groundedStyle, stackedHeight } from "../core/protocol.js";
+import { drawable, getStyle, groundedStyle, stackedHeight, withCellWidth } from "../core/protocol.js";
 
 export interface MarkdownOptions {
   /** The style of `inline code`: a theme name or a style definition. Default `markdown.code`. */
@@ -353,9 +356,6 @@ function inline(
   };
 }
 
-/** The tab stop code is drawn with, as Rich's `Syntax` draws it. */
-const CODE_TAB_SIZE = parseTabSize(8);
-
 const NO_GUTTER = new Segment("");
 
 /**
@@ -394,13 +394,12 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
     }
 
     case "code_block": {
-      const codeStyle = groundedStyle(options, getStyle(options, "markdown.code"));
-      // Tabs expanded here, as `Syntax` expands them, since a terminal would
-      // count a raw one from its own column 0 and not the code's.
-      for (const line of expandTabs(token.code, CODE_TAB_SIZE).text.split("\n")) {
-        yield new Segment(line, codeStyle);
-        yield Segment.line();
-      }
+      // Rich's CodeBlock: the code, its trailing whitespace dropped, handed to
+      // `Syntax` word-wrapped inside a padding of one cell all round — every
+      // cell of the block, padding and all, in the code's style.
+      const style = groundedStyle(options, getStyle(options, "markdown.code"));
+      const syntax = new Syntax(pyRstrip(token.code), "text", { wordWrap: true });
+      yield* new Padding(syntax, 1, { style }).render(options);
       break;
     }
 
@@ -476,8 +475,8 @@ export class Markdown implements Renderable, Measurable {
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
-    // Every block below is one of a stack.
-    const options = { ...rawOptions, height: stackedHeight(rawOptions.height) };
+    // The width parsed once, for every block below, each one of a stack.
+    const options = { ...withCellWidth(rawOptions), height: stackedHeight(rawOptions.height) };
     // Rich's `new_line`: set by each element as it exits, read before anything is drawn.
     let newLine = false;
     for (const step of documentSteps(this.parsed, options, this)) {
