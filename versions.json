@@ -2,6 +2,49 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-416",
+      "ref": "refs/pull/416/merge",
+      "sha": "4ba31ddc678b6150bd99e22673be7b4b80a38ba7",
+      "timestamp": "2026-10-17T02:25:44.899Z",
+      "commits": [
+        {
+          "sha": "4ba31ddc678b6150bd99e22673be7b4b80a38ba7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T02:23:58Z",
+          "message": "Merge 35cfbbf15a6f60f12ea6135d48414e6cbd07e0f4 into 8ea70430cce91b045edf9750e63fb7041f59c1a0\n"
+        },
+        {
+          "sha": "35cfbbf15a6f60f12ea6135d48414e6cbd07e0f4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:23:53-06:00",
+          "message": "The shape-card spec finds the Effect shape block by its interface line\n\ndocs/effects.md's shape block is `interface Effect {` now that an effect may say when its frame next changes; the spec looked for `type Effect =` and found no card.\n"
+        },
+        {
+          "sha": "5e9c78209cac60466a847dfefb5c274c3f2375c5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:10:08-06:00",
+          "message": "The stepped-ink cost test samples the step's first frame as it samples the rest\n\nCI failed its one-sample assertion by 0.7%: a lone first-frame timing against a median of 59. Nine fresh signals' first frames are taken and their median compared, so one sample's jitter decides nothing. The contract asserted is unchanged.\n"
+        },
+        {
+          "sha": "7ef478d18b8469b8875ad3a1142b5bca43fde0b5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:05:01-06:00",
+          "message": "systemClock.at ticks only once the clock reads the time\n\nReview (medium, post-rebase) on PR #416.\n\nA platform timer is due by the event loop's millisecond-truncated time,\nso it ran while performance.now() still read under the time asked for,\nby up to most of a millisecond. A Live waking at a frame's end then drew\nthe old frame again and waited again, at every boundary. The wait is now\nrounded up and a timer that ran early is armed again for the remainder,\nin the clock, once, for every host.\n\nStyle.toString's docstring claimed a round-trip through parse; meta,\nanchor and nextChange have no spelling, so it now says it is the look.\n"
+        },
+        {
+          "sha": "9c2c75e6e8edf05ee7414af116e7594bd5eefdfd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:49:38-06:00",
+          "message": "A host can ask when what it draws next changes (rich-animation-xi28.6rs)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-421",
       "ref": "refs/pull/421/merge",
       "sha": "75b147c14984b07ae93e4cb8e0c5228c069ac803",
@@ -71,42 +114,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T20:13:43-06:00",
           "message": "Markdown reads an HTML block where markdown-it does and draws it as Rich does, not at all (rich-unfiled-791c.e5pf) (#419)\n\n* Markdown reads an HTML block where markdown-it does and draws it as Rich does, not at all (rich-unfiled-791c.e5pf)\n\nCommonMark's seven HTML block kinds, matched as markdown-it matches them.\nEvery kind but a lone tag ends a paragraph, a table body and a lazy\ncontinuation, through opensBlock. The block is kept as a token that draws\nnothing, so a container ending in one does not read as ending in the\nparagraph before it.\n\n* An HTML block's end is the closing line or a blank one, named once; the table cites markdown-it-py (rich-unfiled-791c.e5pf)"
-        }
-      ]
-    },
-    {
-      "version": "pr-416",
-      "ref": "refs/pull/416/merge",
-      "sha": "b36bef8ac14011c915299e2aa46566c4d81750fa",
-      "timestamp": "2026-10-17T02:11:27.349Z",
-      "commits": [
-        {
-          "sha": "b36bef8ac14011c915299e2aa46566c4d81750fa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T02:10:15Z",
-          "message": "Merge 5e9c78209cac60466a847dfefb5c274c3f2375c5 into 16207a80e721a726df2bf517e2bd4e8648c9a3fe\n"
-        },
-        {
-          "sha": "5e9c78209cac60466a847dfefb5c274c3f2375c5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:10:08-06:00",
-          "message": "The stepped-ink cost test samples the step's first frame as it samples the rest\n\nCI failed its one-sample assertion by 0.7%: a lone first-frame timing against a median of 59. Nine fresh signals' first frames are taken and their median compared, so one sample's jitter decides nothing. The contract asserted is unchanged.\n"
-        },
-        {
-          "sha": "7ef478d18b8469b8875ad3a1142b5bca43fde0b5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:05:01-06:00",
-          "message": "systemClock.at ticks only once the clock reads the time\n\nReview (medium, post-rebase) on PR #416.\n\nA platform timer is due by the event loop's millisecond-truncated time,\nso it ran while performance.now() still read under the time asked for,\nby up to most of a millisecond. A Live waking at a frame's end then drew\nthe old frame again and waited again, at every boundary. The wait is now\nrounded up and a timer that ran early is armed again for the remainder,\nin the clock, once, for every host.\n\nStyle.toString's docstring claimed a round-trip through parse; meta,\nanchor and nextChange have no spelling, so it now says it is the look.\n"
-        },
-        {
-          "sha": "9c2c75e6e8edf05ee7414af116e7594bd5eefdfd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T19:49:38-06:00",
-          "message": "A host can ask when what it draws next changes (rich-animation-xi28.6rs)\n"
         }
       ]
     }
