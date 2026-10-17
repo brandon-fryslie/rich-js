@@ -4,15 +4,29 @@
     {
       "version": "pr-437",
       "ref": "refs/pull/437/merge",
-      "sha": "065857f23a684f47e1f1c4ea5a30ac50166b16a0",
-      "timestamp": "2026-10-17T11:24:46.795Z",
+      "sha": "c919f5f722e17ccdc8a3672cabe773a32fe07c46",
+      "timestamp": "2026-10-17T11:33:05.445Z",
       "commits": [
         {
-          "sha": "065857f23a684f47e1f1c4ea5a30ac50166b16a0",
+          "sha": "c919f5f722e17ccdc8a3672cabe773a32fe07c46",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T11:23:06Z",
-          "message": "Merge db6a124f18fdac859b2d97f541e4fe82b3a9b05d into 52e5742120d6ef1684d983c3cb4fca2df709e7ec\n"
+          "timestamp": "2026-10-17T11:31:36Z",
+          "message": "Merge 80a3c865448362a0cda0456b5373aa1ac2f4bebf into 52e5742120d6ef1684d983c3cb4fca2df709e7ec\n"
+        },
+        {
+          "sha": "80a3c865448362a0cda0456b5373aa1ac2f4bebf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T05:31:31-06:00",
+          "message": "Markdown's renderTokens keeps its own doc comment above it\n"
+        },
+        {
+          "sha": "c3508d7683cee18b1c509ed8ff6148729b6a8b9c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T05:30:47-06:00",
+          "message": "Markdown pads an item's and a quote's rows to their width, as Rich's render_lines does\n\nA rule's blank row inside an item was left short of the width, where Rich's\nrender_lines pads every row of a container's content in its style.\n"
         },
         {
           "sha": "db6a124f18fdac859b2d97f541e4fe82b3a9b05d",
