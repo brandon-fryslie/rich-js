@@ -409,6 +409,21 @@ describe("Markdown", () => {
     expect(rows("1. a\n1. b\n1. c", 80)).toEqual(["", " 1 a", " 2 b", " 3 c", ""]);
   });
 
+  it("reads a number closed by ')' as an ordered item, and a change of delimiter as a new list, as Rich does", () => {
+    expect(rows("3) a\n4) b", 80)).toEqual(["", " 3 a", " 4 b", ""]);
+    expect(rows("10) a\n11) b", 80)).toEqual(["", " 10 a", " 11 b", ""]);
+    expect(rows("1) a\n\n2) b", 80)).toEqual(["", " 1 a", " 2 b", ""]);
+    expect(rows("1. a\n2) b", 80)).toEqual(["", " 1 a", "", " 2 b", ""]);
+    expect(rows("1) a\n2. b", 80)).toEqual(["", " 1 a", "", " 2 b", ""]);
+    expect(rows("- a\n1) b", 80)).toEqual(["", " • a", "", " 1 b", ""]);
+    // Under a paragraph only a 1 opens a list, whichever the delimiter.
+    expect(rows("x\n1) b", 80)).toEqual(["x", "", " 1 b", ""]);
+    expect(rows("x\n2) b", 80)).toEqual(["x 2) b", ""]);
+    // No space after the marker, or ten digits, is text.
+    expect(rows("1)a", 80)).toEqual(["1)a", ""]);
+    expect(rows("1234567890) a", 80)).toEqual(["1234567890) a", ""]);
+  });
+
   it("right-aligns a list's numbers in a column sized for one past the last, as Rich does", () => {
     // Ten columns' worth for nine items from 1 — Rich sizes the column by
     // `last_number`, one past the last.
