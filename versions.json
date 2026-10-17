@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-418",
+      "ref": "refs/pull/418/merge",
+      "sha": "80d0f8f3944ecb8a9e68cf476ff1ccb959b0886d",
+      "timestamp": "2026-10-17T01:28:21.206Z",
+      "commits": [
+        {
+          "sha": "80d0f8f3944ecb8a9e68cf476ff1ccb959b0886d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:26:41-06:00",
+          "message": "Merge 15ff3c08dda91ca1a03a1707e432b416999b87ea into c483773d7f7576f512bf4466d571500f6c1e5ffe\n"
+        },
+        {
+          "sha": "15ff3c08dda91ca1a03a1707e432b416999b87ea",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:26:35-06:00",
+          "message": "Frames prepares its sequence once, not once a frame (rich-unfiled-791c.cxcp)\n\nFrameSequence is the frames prepared once — beat, width, each frame set\ninto a line and padded — and Frames is that sequence at a t, finding only\nthe index. Spinner holds two prepared sequences and builds nothing per\nframe. new Frames over 90 frames: 25.95 µs before, 0.12 µs after (0.13 µs\nover 1 frame).\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c483773d7f7576f512bf4466d571500f6c1e5ffe",
