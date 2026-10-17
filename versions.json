@@ -4,15 +4,22 @@
     {
       "version": "pr-435",
       "ref": "refs/pull/435/merge",
-      "sha": "e289b84d1badf7e3f8cd30a1629330f9e598afca",
-      "timestamp": "2026-10-17T10:11:52.582Z",
+      "sha": "c3298d4e095ba0c46840074582862e7bb5b45333",
+      "timestamp": "2026-10-17T10:20:19.614Z",
       "commits": [
         {
-          "sha": "e289b84d1badf7e3f8cd30a1629330f9e598afca",
+          "sha": "c3298d4e095ba0c46840074582862e7bb5b45333",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T04:10:09-06:00",
-          "message": "Merge 195f5d8ada427c98431675ce5f24a5bd51845a32 into c38ba2233d92bf1f620d4446caaeab2b0d89b071\n"
+          "timestamp": "2026-10-17T10:19:12Z",
+          "message": "Merge 74c149174e656dd21bed3282386fa7e146bde35b into c38ba2233d92bf1f620d4446caaeab2b0d89b071\n"
+        },
+        {
+          "sha": "74c149174e656dd21bed3282386fa7e146bde35b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T04:19:07-06:00",
+          "message": "Markdown reads Python's whitespace in headings, code spans and HTML blocks, as markdown-it-py does (rich-unfiled-791c.gk3c)\n\nReview fixes: an ATX heading opens at the end of the line as at a space or\ntab, and its text may hold U+2028/U+2029; a paragraph keeps the indentation\npast its container's margin, so a code span crossing a line ending keeps it,\nthe inline line-ending and escape rules dropping it everywhere else; HTML\ntag patterns read Python's \\s. Python's str.strip has one home,\nsrc/renderables/python-space.ts, shared with markdown-url.ts.\n"
         },
         {
           "sha": "195f5d8ada427c98431675ce5f24a5bd51845a32",
