@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-456",
+      "ref": "refs/pull/456/merge",
+      "sha": "64cdbe566f580296694b24864842a9f5edad77f1",
+      "timestamp": "2026-10-17T20:04:43.004Z",
+      "commits": [
+        {
+          "sha": "64cdbe566f580296694b24864842a9f5edad77f1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T14:03:18-06:00",
+          "message": "Merge cf4fb6421564b69947df8e4b369228b23da5c73e into cb1d60d1859bb48b0d9a30276394234c1265bcb0\n"
+        },
+        {
+          "sha": "cf4fb6421564b69947df8e4b369228b23da5c73e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T14:03:14-06:00",
+          "message": "TextInput shows a zero-cell glyph as a one-cell stand-in, so every cursor stop moves the drawn cursor (rich-unfiled-791c.k697)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "cb1d60d1859bb48b0d9a30276394234c1265bcb0",
