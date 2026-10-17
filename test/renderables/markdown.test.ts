@@ -429,45 +429,36 @@ describe("Markdown", () => {
   });
 
   it("reads long lazy and deeply nested hard-wrapped text in time linear in its length", () => {
-    const wrapped = Array.from({ length: 2000 }, (_, n) => `word${n}`).join("\n");
-    const started = performance.now();
-    rows(`> ${wrapped}`, 80);
-    rows(`- - - ${wrapped}`, 80);
-    rows(`text ${"[1, ".repeat(5000)}`, 80);
-    // The quadratic reader took over a second for a tenth of this input; linear takes milliseconds.
-    expect(performance.now() - started).toBeLessThan(1000);
+    const wrapped = (lines: number) => Array.from({ length: lines }, (_, n) => `word${n}`).join("\n");
+    // The quadratic reader this replaced took 18, 229 and 15 times as long, in order, for four times the input.
+    // Only reading is timed here and below: drawing a long paragraph wraps in quadratic time of its own (rich-unfiled-791c.vzmy).
+    expectLinearTime((lines) => new Markdown(`> ${wrapped(lines)}`), 8000);
+    expectLinearTime((lines) => new Markdown(`- - - ${wrapped(lines)}`), 6000);
+    expectLinearTime((brackets) => new Markdown(`text ${"[1, ".repeat(brackets)}`), 20_000);
   });
 
   it("reads a run of quotes in time linear in its length, whether each takes its lazy line or not", () => {
-    const started = performance.now();
-    new Markdown("> # h\nx\n".repeat(4000));
-    // Copying every line a quote might take before reading it took eight seconds here.
-    new Markdown("> a\nb\n".repeat(4000));
-    // Reading a quote again for each lazy line it took took nine seconds here.
-    expect(performance.now() - started).toBeLessThan(1000);
+    // Copying every line a quote might take before reading it took 17 times as long for four times the quotes.
+    expectLinearTime((quotes) => new Markdown("> # h\nx\n".repeat(quotes)), 4000);
+    // Reading a quote again for each lazy line it took took 15 times as long.
+    expectLinearTime((quotes) => new Markdown("> a\nb\n".repeat(quotes)), 6000);
   });
 
   it("reads a paragraph behind unclosed brackets in time linear in its length", () => {
-    const started = performance.now();
-    new Markdown("[".repeat(19) + "a".repeat(2_000_000));
-    // A label scan stepping a character at a time, once per bracket, took ten seconds here.
-    expect(performance.now() - started).toBeLessThan(1000);
+    // Brackets and text grow together: a label scan stepping a character at a time, once per bracket, took 23 times as long.
+    expectLinearTime((brackets) => new Markdown("[".repeat(brackets) + "a".repeat(300_000 * brackets)), 4);
   });
 
   it("reads a long run of spaces in time linear in its length", () => {
-    const started = performance.now();
-    new Markdown(`a${" ".repeat(100_000)}b`);
-    // Scanning ahead from each space for a line ending took over four seconds here.
-    expect(performance.now() - started).toBeLessThan(1000);
+    // Scanning ahead from each space for a line ending took 19 times as long for four times the spaces.
+    expectLinearTime((spaces) => new Markdown(`a${" ".repeat(spaces)}b`), 2_000_000);
   });
 
   it("reads a run of unclosed links in time linear in its length", () => {
-    const started = performance.now();
-    rows("[*a](".repeat(20_000), 80);
-    // A destination scanned to the end of the text from every `](` took fourteen seconds here.
-    rows(`[a](b${" ".repeat(100_000)}x`, 80);
-    // A tail splitting the space after a destination every way it could took six seconds here.
-    expect(performance.now() - started).toBeLessThan(1000);
+    // A destination scanned to the end of the text from every `](` took 13 times as long for four times the links.
+    expectLinearTime((links) => new Markdown("[*a](".repeat(links)), 20_000);
+    // A tail splitting the space after a destination every way it could took 14 times as long.
+    expectLinearTime((spaces) => new Markdown(`[a](b${" ".repeat(spaces)}x`), 1_000_000);
   });
 
   // --- Lists hold blocks, as CommonMark reads them ---
@@ -1036,10 +1027,9 @@ describe("Markdown", () => {
   });
 
   it("strips a URL's whitespace in one pass, however long a run of it the URL holds", () => {
-    // Linear takes ~10 ms here; the backtracking strip it replaced took ~10 s.
-    const started = performance.now();
-    expect(linkHref(`http://e.com/${"\u3000".repeat(100_000)}x`)).toBe(`http://e.com/${"%E3%80%80".repeat(100_000)}x`);
-    expect(performance.now() - started).toBeLessThan(1000);
+    expect(linkHref(`http://e.com/${"\u3000".repeat(3)}x`)).toBe(`http://e.com/${"%E3%80%80".repeat(3)}x`);
+    // The backtracking strip this replaced took 20 times as long for four times the whitespace.
+    expectLinearTime((spaces) => linkHref(`http://e.com/${"\u3000".repeat(spaces)}x`), 200_000);
   });
 
   it("draws no link to a script, a file, or data that is not an image, as markdown-it refuses one", () => {

@@ -11,6 +11,7 @@ import { Console } from "../../src/core/console.js";
 import { Prompt } from "../../src/renderables/prompt.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { renderToString } from "../../src/core/render.js";
+import { expectLinearTime } from "../suite/linear-time.js";
 import type { MarkupTagContext } from "../../src/core/markup.js";
 
 // [LAW:behavior-not-structure] Tests assert handler invocation, attribute
@@ -35,26 +36,23 @@ describe("MarkupRegistry", () => {
     expect(text).toBe("bar\n");
   });
 
-  // Selecting each pair's tokens by filtering the whole list took 12s here;
-  // selecting them by position takes milliseconds.
+  // Selecting each pair's tokens by filtering the whole list took 14 times as
+  // long for four times the pairs; selecting them by position is linear.
   it("renders many plugin pairs in time proportional to the string", () => {
     const registry = new MarkupRegistry();
     registry.register("click", (ctx) => ctx.children);
-    const began = performance.now();
-    const out = renderMarkup("[click]a[/click]".repeat(20_000), { registry });
-    expect(performance.now() - began).toBeLessThan(2000);
-    expect(out.plain).toBe("a".repeat(20_000));
+    expect(renderMarkup("[click]a[/click]".repeat(3), { registry }).plain).toBe("aaa");
+    expectLinearTime((pairs) => renderMarkup("[click]a[/click]".repeat(pairs), { registry }), 20_000);
   });
 
   // Moving each unclosed tag's content out to the tag around it when it closed
-  // ran out of memory here: every close copied all the tags inside it had written.
+  // copied every tag inside it had written, and took 18 times as long for four
+  // times the tags.
   it("renders many unclosed plugin tags in time proportional to the string", () => {
     const registry = new MarkupRegistry();
     registry.register("click", (ctx) => ctx.children);
-    const began = performance.now();
-    const out = renderMarkup("[click]a".repeat(20_000), { registry });
-    expect(performance.now() - began).toBeLessThan(2000);
-    expect(out.plain).toBe("a".repeat(20_000));
+    expect(renderMarkup("[click]a".repeat(3), { registry }).plain).toBe("aaa");
+    expectLinearTime((tags) => renderMarkup("[click]a".repeat(tags), { registry }), 40_000);
   });
 
   it("halves a backslash run on either side of a plugin pair's boundaries", () => {
