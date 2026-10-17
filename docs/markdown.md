@@ -53,6 +53,12 @@ either. A backslash before a punctuation character writes that character as itse
 draws `<span>`.
 
 An image is drawn as Rich draws it: a picture glyph, then its alt text, linked to the image.
+An autolink — `<https://example.com>`, or `<name@example.com>`, which links to
+`mailto:name@example.com` — is drawn as a link whose text is the address as written, its escapes
+decoded for reading. Every link's URL is made an href as markdown-it makes one: an `http`,
+`https` or `mailto` host punycoded, and the rest percent-encoded. A `javascript:`, `vbscript:`
+or `file:` URL, or a `data:` one that is not an image, is no link, and its source is drawn as
+written.
 
 ## Tables
 

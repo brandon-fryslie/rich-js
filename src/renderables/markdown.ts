@@ -18,6 +18,7 @@ import { Style } from "../core/style.js";
 import { RichText, resolveStyle } from "../core/text.js";
 import { Rule } from "./rule.js";
 import { Table } from "./table.js";
+import { linkHref, normalizeLinkText } from "./markdown-url.js";
 import { SIMPLE } from "../core/box.js";
 import type {
   Renderable,
@@ -565,11 +566,16 @@ type Inline =
   | { kind: "code"; code: string; end: number }
   | { kind: "emphasis"; style: "bold" | "italic"; inner: string; end: number }
   | { kind: "link"; inner: string; url: string; end: number }
+  | { kind: "autolink"; text: string; url: string; end: number }
   | { kind: "image"; alt: string; src: string; end: number }
   | { kind: "literal"; text: string; end: number }
   | { kind: "html"; end: number };
 
 const TICKS = /`+/y;
+/** markdown-it's autolink, the text between `<` and the first `>`: a URI, scheme first, or an email address. */
+const AUTOLINK_URI = /^[a-zA-Z][a-zA-Z0-9+.\-]{1,31}:[^<>\x00-\x20]*$/;
+const AUTOLINK_EMAIL =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 const ANGLED_DESTINATION = /\(\s*<([^<>\n]*)>/y;
 const LINK_TAIL = /\s*(?:"[^"]*"|'[^']*'|\([^()]*\))?\s*\)/y;
 /** A backslash escape, as markdown-it reads one: the ASCII punctuation character after it, standing for itself. */
@@ -618,8 +624,9 @@ function bracketPairs(text: string): ReadonlyMap<number, number> {
  * The `(destination "title")` of a link opening at `open`, as CommonMark reads
  * it: a destination in angle brackets, or a run of non-space characters whose
  * parentheses balance — so a URL may itself hold `(…)` — then an optional
- * quoted title, then the `)`. The destination, its backslash escapes read, and
- * the index past the `)`.
+ * quoted title, then the `)`. The destination, its backslash escapes read and
+ * then made an href as markdown-it makes one, and the index past the `)` — or
+ * nothing, where markdown-it refuses that href, and the brackets are no link.
  */
 function linkDestination(text: string, open: number): { url: string; end: number } | undefined {
   if (text[open] !== "(") return undefined;
@@ -641,7 +648,9 @@ function linkDestination(text: string, open: number): { url: string; end: number
     url = text.slice(from, i);
   }
   const tail = matchAt(LINK_TAIL, text, i);
-  return tail ? { url: url.replace(ESCAPES, "$1"), end: i + tail[0].length } : undefined;
+  if (!tail) return undefined;
+  const href = linkHref(url.replace(ESCAPES, "$1"));
+  return href === undefined ? undefined : { url: href, end: i + tail[0].length };
 }
 
 /**
@@ -657,6 +666,23 @@ function emphasisClose(text: string, from: number, delimiter: string, brackets: 
     i = tighter ? tighter.end : i + 1;
   }
   return undefined;
+}
+
+/**
+ * The autolink whose `<` is at `i` in `text`, as markdown-it reads one: the
+ * text up to the first `>`, holding no `<`, a URI or an email address that
+ * links to `mailto:` it — and so long as markdown-it accepts that href.
+ */
+function autolinkAt(text: string, i: number): Inline | undefined {
+  const close = text.indexOf(">", i + 1);
+  const content = text.slice(i + 1, close);
+  if (close === -1 || content.includes("<")) return undefined;
+  const href = AUTOLINK_URI.test(content)
+    ? linkHref(content)
+    : AUTOLINK_EMAIL.test(content)
+      ? linkHref(`mailto:${content}`)
+      : undefined;
+  return href === undefined ? undefined : { kind: "autolink", text: normalizeLinkText(content), url: href, end: close + 1 };
 }
 
 /** The inline construct opening at `i` in `text`, if one does; `brackets` is `text`'s `bracketPairs`. */
@@ -689,8 +715,9 @@ function inlineAt(text: string, i: number, brackets: ReadonlyMap<number, number>
       return escape ? { kind: "literal", text: escape[1]!, end: i + escape[0].length } : undefined;
     }
     case "<": {
+      // markdown-it tries an autolink before inline HTML.
       const tag = matchAt(HTML_TAG, text, i);
-      return tag ? { kind: "html", end: i + tag[0].length } : undefined;
+      return autolinkAt(text, i) ?? (tag ? { kind: "html", end: i + tag[0].length } : undefined);
     }
     case "!":
     case "[": {
@@ -721,10 +748,28 @@ function styled(text: string, style: string | Style, settings: InlineSettings, o
 }
 
 /**
- * `text` as inline Markdown appended to `result`: code spans, emphasis, links
- * and images, the text inside emphasis, links and images parsed the same way,
- * a backslash escape as the character it escapes, inline HTML as nothing, and
- * everything else as it is.
+ * `label` linked to `url`, appended to `result` as Rich draws a link: the
+ * label is the link, or without hyperlinks the URL is written out after it,
+ * and it is still the link, for a terminal that can click it.
+ */
+function appendLink(result: RichText, label: RichText, url: string, settings: InlineSettings): void {
+  const link = new RichText("", { style: new Style({ link: url }) });
+  if (settings.hyperlinks) {
+    result.append(link.append(new RichText("", { style: "markdown.link_url" }).append(label)));
+  } else {
+    result
+      .append(new RichText("", { style: "markdown.link" }).append(label))
+      .append(" (")
+      .append(link.append(url, "markdown.link_url"))
+      .append(")");
+  }
+}
+
+/**
+ * `text` as inline Markdown appended to `result`: code spans, emphasis,
+ * links, autolinks and images, the text inside emphasis, links and images
+ * parsed the same way, a backslash escape as the character it escapes, inline
+ * HTML as nothing, and everything else as it is.
  */
 function appendInline(result: RichText, text: string, settings: InlineSettings, options: RenderOptions): void {
   const brackets = bracketPairs(text);
@@ -749,21 +794,13 @@ function appendInline(result: RichText, text: string, settings: InlineSettings, 
       case "emphasis":
         result.append(styled(found.inner, found.style, settings, options));
         break;
-      case "link": {
-        // As Rich draws it: without hyperlinks the URL is written out, and it
-        // is still the link, for a terminal that can click it.
-        const link = new RichText("", { style: new Style({ link: found.url }) });
-        if (settings.hyperlinks) {
-          result.append(link.append(styled(found.inner, "markdown.link_url", settings, options)));
-        } else {
-          result
-            .append(styled(found.inner, "markdown.link", settings, options))
-            .append(" (")
-            .append(link.append(found.url, "markdown.link_url"))
-            .append(")");
-        }
+      case "link":
+        appendLink(result, styled(found.inner, "", settings, options), found.url, settings);
         break;
-      }
+      case "autolink":
+        // Its text is the URL as written, never parsed as Markdown.
+        appendLink(result, new RichText("").append(found.text), found.url, settings);
+        break;
       case "image": {
         // Rich's ImageItem: a picture glyph, then the alt text — or, with
         // none, the image's file name — linked to the image, then a space.
