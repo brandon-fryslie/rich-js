@@ -880,6 +880,14 @@ describe("Markdown", () => {
     expect(rows("> - a\n>\n   >   b", 40)).toEqual(["", "▌  • a", "▌    b", ""]);
     expect(rows("> - a\n>\n\t>   b", 40)).toEqual(["", "▌  • a", "▌    b", ""]);
     expect(rows("> 1. a\n>\n     >    b", 40)).toEqual(["", "▌  1 a", "▌    b", ""]);
+    // With no blank line between, where the line's text sits in the source decides nothing either.
+    // Each item is a heading so no paragraph is open: after a paragraph, a line short of the item
+    // continues it lazily ("> - a\n   > z" is "▌  • a z"), and which container holds it goes untested.
+    expect(rows("> - # h\n   > z", 40)).toEqual(["", "▌  •                 h", "▌ z", ""]);
+    expect(rows("> - # h\n  >  z", 40)).toEqual(["", "▌  •                 h", "▌ z", ""]);
+    expect(rows("> 1. # h\n     >   z", 40)).toEqual(["", "▌  1                 h", "▌ z", ""]);
+    expect(rows("> - # h\n  >   z", 40)).toEqual(["", "▌  •                 h", "▌    z", ""]);
+    expect(rows("> 1. # h\n >    z", 40)).toEqual(["", "▌  1                 h", "▌    z", ""]);
   });
 
   it("ends a definition at a backslash that escapes its destination's line ending, as Rich does", () => {
