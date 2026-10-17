@@ -4,15 +4,22 @@
     {
       "version": "pr-433",
       "ref": "refs/pull/433/merge",
-      "sha": "a8af1e5191d900af3fae0bac81a62b76b770d1ff",
-      "timestamp": "2026-10-17T09:03:44.511Z",
+      "sha": "e3ad49eb6b445500be80caa81dada13bc987da3f",
+      "timestamp": "2026-10-17T09:16:53.866Z",
       "commits": [
         {
-          "sha": "a8af1e5191d900af3fae0bac81a62b76b770d1ff",
+          "sha": "e3ad49eb6b445500be80caa81dada13bc987da3f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T03:01:57-06:00",
-          "message": "Merge 4fc9e3b497b711739c9d42ddc017b4fb634e1aa9 into 46b9cb0fcec7fc7ded042069681859e8bba40944\n"
+          "timestamp": "2026-10-17T09:15:09Z",
+          "message": "Merge 564da50cc204c3fb91dbcb767a89b6087c54fbca into 46b9cb0fcec7fc7ded042069681859e8bba40944\n"
+        },
+        {
+          "sha": "564da50cc204c3fb91dbcb767a89b6087c54fbca",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T03:15:05-06:00",
+          "message": "Tie balancePairs' openers bottom to Marker; say tilde fences are Rich's, not ours yet (rich-unfiled-791c.2xa8)\n"
         },
         {
           "sha": "4fc9e3b497b711739c9d42ddc017b4fb634e1aa9",
