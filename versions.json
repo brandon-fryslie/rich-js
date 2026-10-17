@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-450",
+      "ref": "refs/pull/450/merge",
+      "sha": "c83d06a0449ee5404f6bef6671a075a87011b049",
+      "timestamp": "2026-10-17T17:50:14.028Z",
+      "commits": [
+        {
+          "sha": "c83d06a0449ee5404f6bef6671a075a87011b049",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T11:48:44-06:00",
+          "message": "Merge a4958bc04b9f4ebc9cca38ab62789efd6bcd853d into 78549e209bdc9065772de829a95368a235d2e849\n"
+        },
+        {
+          "sha": "a4958bc04b9f4ebc9cca38ab62789efd6bcd853d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T11:48:40-06:00",
+          "message": "Markdown's quoted list item holds a line by its indentation past its own `>`, pinned against Rich (rich-unfiled-791c.yr79)\n\n\"> - # h\\n   > z\" is the heading item, then \"▌ z\" in Rich 15: the line's\ntext is past the item's content column in the source, but not past its own\n`>`. #449 (78549e209) already measures it so; these pin the case with no\nblank line before the line, both ways round.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "78549e209bdc9065772de829a95368a235d2e849",
