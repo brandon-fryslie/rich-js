@@ -160,11 +160,12 @@ describe("Markdown", () => {
     expect(rows("# x\t#\t", 80)).toEqual(h1("x"));
     expect(rows("# x ####### ", 80)).toEqual(h1("x"));
     expect(rows("## x ###", 80)).toEqual(["x", ""]);
-    expect(rows("> ## x ##", 80)).toEqual(["", "\u258c x", ""]);
+    expect(rows("> ## x ##", 80)).toEqual(["", "▌ x", ""]);
     // Only the last run is cut, and only a closing run: text after a # keeps it.
     expect(rows("# x # #", 80)).toEqual(h1("x #"));
     expect(rows("# x  #  y #", 80)).toEqual(h1("x  #  y"));
-    // No space or tab before the run \u2014 a letter, an escape, a no-break space after it \u2014 and it is text.
+    // A run closes only with a space or tab before it and nothing but spaces and tabs after it. A letter or
+    // an escape before it, or anything else after it — a letter, a no-break space — and it is text.
     expect(rows("# x#", 80)).toEqual(h1("x#"));
     expect(rows("# #x", 80)).toEqual(h1("#x"));
     expect(rows("# x \\#", 80)).toEqual(h1("x #"));
