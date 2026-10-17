@@ -4,15 +4,22 @@
     {
       "version": "pr-430",
       "ref": "refs/pull/430/merge",
-      "sha": "839810f8b3b2ff5f6946cf861aba47bd5da2fb6b",
-      "timestamp": "2026-10-17T06:13:54.293Z",
+      "sha": "fe3efd4290d50b09b92fbfc6720b290dd8fcd9dc",
+      "timestamp": "2026-10-17T06:30:36.530Z",
       "commits": [
         {
-          "sha": "839810f8b3b2ff5f6946cf861aba47bd5da2fb6b",
+          "sha": "fe3efd4290d50b09b92fbfc6720b290dd8fcd9dc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T00:12:08-06:00",
-          "message": "Merge 26ea8db57f1d2cb2c78c2330eed534d24ac188ff into fb1cfcf8753344cab2d664b8d924f459c135e366\n"
+          "timestamp": "2026-10-17T06:29:10Z",
+          "message": "Merge 94836b24777fcbc86a7e468002ced146ebf3551f into fb1cfcf8753344cab2d664b8d924f459c135e366\n"
+        },
+        {
+          "sha": "94836b24777fcbc86a7e468002ced146ebf3551f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T00:29:05-06:00",
+          "message": "Markdown image review: pin Rich 15's inline HTML, plain exit steps, docs line in words (rich-unfiled-791c.vke3)\n"
         },
         {
           "sha": "26ea8db57f1d2cb2c78c2330eed534d24ac188ff",
