@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-416",
+      "ref": "refs/pull/416/merge",
+      "sha": "32bc4a1c4ba5c2956ea4f5acd073e080a5a8f40b",
+      "timestamp": "2026-10-17T02:06:48.528Z",
+      "commits": [
+        {
+          "sha": "32bc4a1c4ba5c2956ea4f5acd073e080a5a8f40b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T02:05:06Z",
+          "message": "Merge 7ef478d18b8469b8875ad3a1142b5bca43fde0b5 into 16207a80e721a726df2bf517e2bd4e8648c9a3fe\n"
+        },
+        {
+          "sha": "7ef478d18b8469b8875ad3a1142b5bca43fde0b5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:05:01-06:00",
+          "message": "systemClock.at ticks only once the clock reads the time\n\nReview (medium, post-rebase) on PR #416.\n\nA platform timer is due by the event loop's millisecond-truncated time,\nso it ran while performance.now() still read under the time asked for,\nby up to most of a millisecond. A Live waking at a frame's end then drew\nthe old frame again and waited again, at every boundary. The wait is now\nrounded up and a timer that ran early is armed again for the remainder,\nin the clock, once, for every host.\n\nStyle.toString's docstring claimed a round-trip through parse; meta,\nanchor and nextChange have no spelling, so it now says it is the look.\n"
+        },
+        {
+          "sha": "9c2c75e6e8edf05ee7414af116e7594bd5eefdfd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:49:38-06:00",
+          "message": "A host can ask when what it draws next changes (rich-animation-xi28.6rs)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-420",
       "ref": "refs/pull/420/merge",
       "sha": "2cc2f1184ee0d0c129024f85bc35c19ee9e021a3",
@@ -49,28 +78,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T19:50:18-06:00",
           "message": "Markdown reads an HTML block where markdown-it does and draws it as Rich does, not at all (rich-unfiled-791c.e5pf)\n\nCommonMark's seven HTML block kinds, matched as markdown-it matches them.\nEvery kind but a lone tag ends a paragraph, a table body and a lazy\ncontinuation, through opensBlock. The block is kept as a token that draws\nnothing, so a container ending in one does not read as ending in the\nparagraph before it.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-416",
-      "ref": "refs/pull/416/merge",
-      "sha": "7b15512c4062b7b10bc0760b48aa5bef4c73d7d6",
-      "timestamp": "2026-10-17T01:56:39.130Z",
-      "commits": [
-        {
-          "sha": "7b15512c4062b7b10bc0760b48aa5bef4c73d7d6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T01:55:01Z",
-          "message": "Merge 9c2c75e6e8edf05ee7414af116e7594bd5eefdfd into 16207a80e721a726df2bf517e2bd4e8648c9a3fe\n"
-        },
-        {
-          "sha": "9c2c75e6e8edf05ee7414af116e7594bd5eefdfd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T19:49:38-06:00",
-          "message": "A host can ask when what it draws next changes (rich-animation-xi28.6rs)\n"
         }
       ]
     },
