@@ -153,6 +153,21 @@ describe("Markdown", () => {
     expect(rows("one  \ntwo\\\nthree\nfour", 80)).toEqual(["one", "two", "three four", ""]);
   });
 
+  // Each row is Rich 14's drawing of the source: the inline pass reads each line ending, as markdown-it's does.
+  it.each<[string, string[]]>([
+    // An escaped backslash breaks nothing, and an escaped space is no part of two trailing spaces.
+    ["x\\\\\ny", ["x\\ y", ""]],
+    ["a\\  \nb", ["a\\  b", ""]],
+    // A code span's line ending is a space, its trailing spaces kept.
+    ["x `a  \nb` y", ["x a   b y", ""]],
+    ["x `a \nb` y", ["x a  b y", ""]],
+    ["[a](\nu) z", ["a (u) z", ""]],
+    ["a\t\nb", ["a        b", ""]],
+    ["![a\nb](u) z", ["🌆 a", "b  z", ""]],
+  ])("reads the line endings of %j as markdown-it does", (source, expected) => {
+    expect(rows(source, 80, { hyperlinks: false })).toEqual(expected);
+  });
+
   it("keeps a quote's paragraph break at a bare > line without leaking the marker", () => {
     expect(rows("> a\n>\n>b", 80)).toEqual(["▎ a", "▎", "▎ b", ""]);
   });
@@ -248,6 +263,13 @@ describe("Markdown", () => {
     rows(`- - - ${wrapped}`, 80);
     rows(`text ${"[1, ".repeat(5000)}`, 80);
     // The quadratic reader took over a second for a tenth of this input; linear takes milliseconds.
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
+  it("reads a long run of spaces in time linear in its length", () => {
+    const started = performance.now();
+    new Markdown(`a${" ".repeat(100_000)}b`);
+    // Scanning ahead from each space for a line ending took over four seconds here.
     expect(performance.now() - started).toBeLessThan(1000);
   });
 
@@ -792,6 +814,54 @@ describe("Markdown", () => {
     expect(rows("*[a*](http://u) b*", 40)[0]).toBe("a* b");
     expect(rows("**a <b x='**'> c**", 40)[0]).toBe("a  c");
     expect(segment("**a <b x='**'> c**", "a  c").style?.bold).toBe(true);
+  });
+
+  /** `markdown`'s first row, and each segment of it drawn bold or italic, with `B` for bold and `I` for italic. */
+  function emphasis(markdown: string): [string, [string, string][]] {
+    const segments = collectSegments(new Markdown(markdown, { hyperlinks: false }), { maxWidth: 80 });
+    const styled = segments
+      .filter((s) => s.style?.bold || s.style?.italic)
+      .map((s): [string, string] => [s.text, `${s.style?.bold ? "B" : ""}${s.style?.italic ? "I" : ""}`]);
+    return [rows(markdown, 80, { hyperlinks: false })[0]!, styled];
+  }
+
+  // Each row is Rich 14's drawing of the source, with markdown-it-py 4.2.
+  it.each<[string, string, [string, string][]]>([
+    ["x _a_ y", "x a y", [["a", "I"]]],
+    ["x __a__ y", "x a y", [["a", "B"]]],
+    // A `*` before a space opens nothing, and one after a space closes nothing.
+    ["a * b*", "a * b*", []],
+    ["x *a b * c", "x *a b * c", []],
+    // A `*` opens and closes inside a word; a `_` does neither.
+    ["*foo*bar", "foobar", [["foo", "I"]]],
+    ["π*a*π", "πaπ", [["a", "I"]]],
+    ["snake_case_name", "snake_case_name", []],
+    ["_foo_bar", "_foo_bar", []],
+    ["foo_bar_", "foo_bar_", []],
+    ["π_a_π", "π_a_π", []],
+    // Punctuation is Unicode's, and a run next to it flanks only from a space or more punctuation.
+    ['a**"b"**', 'a**"b"**', []],
+    ["a_“b”_c", "a_“b”_c", []],
+    ["_(_a_)_", "(a)", [["(", "I"], ["a", "I"], [")", "I"]]],
+    ["a *b* c", "a b c", [["b", "I"]]],
+    // The rule of 3: a run that can both open and close does not pair where the lengths sum to a multiple of 3.
+    ["*foo**bar*", "foo**bar", [["foo**bar", "I"]]],
+    ["*foo**bar**baz*", "foobarbaz", [["foo", "I"], ["bar", "BI"], ["baz", "I"]]],
+    ["foo******bar*********baz", "foobar***baz", [["bar", "B"]]],
+    ["***a***", "a", [["a", "BI"]]],
+    ["**a*", "*a", [["a", "I"]]],
+    ["*a**", "a*", [["a", "I"]]],
+    ["__foo, __bar__, baz__", "foo, bar, baz", [["foo, ", "B"], ["bar", "B"], [", baz", "B"]]],
+    // Pairs nest, a marker pairs only with its own kind, and a link's label pairs only within itself.
+    ["*a _b* c_", "a _b c_", [["a _b", "I"]]],
+    ["_a*_b*", "_a*_b*", []],
+    ["[_a_](u)b_", "a (u)b_", []],
+    // A run reads the backslash of a hard break as the punctuation it is, and an escaped one as no break.
+    ["foo.*\\\nbar*", "foo.", [["bar", "I"]]],
+    ['a "*\\\nb*', 'a "', [["b", "I"]]],
+    ["x\\\\\n*a*", "x\\ a", [["a", "I"]]],
+  ])("pairs the delimiters of %j as markdown-it's flanking rules do", (source, row, styled) => {
+    expect(emphasis(source)).toEqual([row, styled]);
   });
 
   it("takes no lazy line into a container that ends in an HTML block", () => {
