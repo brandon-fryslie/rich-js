@@ -819,6 +819,33 @@ describe("Markdown", () => {
     expect(rows("> - -|-\n\t===", 80)).toEqual(["", "▌  • -|- ===", ""]);
   });
 
+  it("reads a line lazy to a quote's container as indented less than any block, as Rich does", () => {
+    // Rich 15's own rows: the inner quote ends at the block the line opens, and the outer quote with it.
+    const ended = (line: string) => ["", "▌ ▌ b", "", "", ` ${line}`, "", ""];
+    expect(rows("> > b\n    ---", 40)).toEqual(ended("---"));
+    expect(rows("> > b\n\t<!-- c -->", 40)).toEqual(ended("<!-- c -->"));
+    expect(rows("> > b\n    ```", 40)).toEqual(ended("```"));
+    expect(rows("> > b\n    # h", 40)).toEqual(ended("# h"));
+    expect(rows("> > b\n    - c", 40)).toEqual(ended("- c"));
+    expect(rows("> > > b\n    ---", 40)).toEqual(["", "▌ ▌ ▌ b", "", "", " ---", "", ""]);
+    // A line lazy to a list item is short of its indentation too.
+    expect(rows("100. > b\n    ---", 40)).toEqual(["", " 100 ▌ b", "", "", " ---", "", ""]);
+    // Text it continues, and a quote directly under it reads it at its own indentation.
+    expect(rows("> > b\n    c", 40)).toEqual(["", "▌ ▌ b c", ""]);
+    expect(rows("> b\n    ---", 40)).toEqual(["", "▌ b ---", ""]);
+    expect(rows("> - a\n    ---", 40)).toEqual(["", "▌  • a ---", ""]);
+  });
+
+  it("takes a `>` line after a quote's first however far it is indented, as Rich does", () => {
+    expect(rows("> a\n    > b", 40)).toEqual(["", "▌ a b", ""]);
+    expect(rows("> a\n\t> b", 40)).toEqual(["", "▌ a b", ""]);
+    expect(rows("> a\n    >", 40)).toEqual(["", "▌ a", ""]);
+    expect(rows("- > a\n      > b", 40)).toEqual(["", " • ▌ a b", ""]);
+    expect(rows("> > b\n    > c", 40)).toEqual(["", "▌ ▌ b c", ""]);
+    // Only a quote's first line must sit less than a code indent in.
+    expect(rows("    > a", 40)).toEqual(["", " > a", "", ""]);
+  });
+
   it("ends a definition at a backslash that escapes its destination's line ending, as Rich does", () => {
     // markdown-it reads a destination in the text it holds, which ends with the destination's line.
     expect(rows("[a]: x\\\ny\n\n[a]", 40, { hyperlinks: false })).toEqual(["y", "", "a (x%5C)", ""]);

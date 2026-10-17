@@ -587,16 +587,21 @@ function* itemLines(item: ItemStart, lines: Lines, start: number): Generator<Lin
 /**
  * The lines of the quote opening at `start`: its `>` lines with the marker
  * blanked, and each unmarked line after one with text a lazy continuation line.
+ * markdown-it's quote takes a `>` line after its first however far it is
+ * indented. A line already lazy where the quote sits is short of its
+ * container's indentation, so the quote reads it as markdown-it does, indented
+ * less than any block: never a `>` line of its own, and opening whatever block
+ * its text starts, however far it is indented.
  */
 function* quoteLines(lines: Lines, start: number): Generator<Line> {
   // Whether the line before has text, which a lazy line must come after.
   let text = false;
   for (let j = start, line = lines.at(j); line !== undefined; line = lines.at(++j)) {
-    if (startsWith(line, QUOTE)) {
+    if (!line.lazy && QUOTE.test(body(line))) {
       const inQuote = quoted(line);
       text = !isBlank(inQuote);
       yield inQuote;
-    } else if (text && continuesText(line)) yield { ...line, lazy: true };
+    } else if (text && continuesText(line.lazy ? { ...line, margin: leadEnd(line) } : line)) yield { ...line, lazy: true };
     else return;
   }
 }
