@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-416",
+      "ref": "refs/pull/416/merge",
+      "sha": "7b15512c4062b7b10bc0760b48aa5bef4c73d7d6",
+      "timestamp": "2026-10-17T01:56:39.130Z",
+      "commits": [
+        {
+          "sha": "7b15512c4062b7b10bc0760b48aa5bef4c73d7d6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T01:55:01Z",
+          "message": "Merge 9c2c75e6e8edf05ee7414af116e7594bd5eefdfd into 16207a80e721a726df2bf517e2bd4e8648c9a3fe\n"
+        },
+        {
+          "sha": "9c2c75e6e8edf05ee7414af116e7594bd5eefdfd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:49:38-06:00",
+          "message": "A host can ask when what it draws next changes (rich-animation-xi28.6rs)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-419",
       "ref": "refs/pull/419/merge",
       "sha": "8a7ab8a9989a63e47dd0cb38aaa5137db33072e8",
@@ -42,35 +64,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T19:42:12-06:00",
           "message": "Frames prepares its sequence once, not once a frame (rich-unfiled-791c.cxcp) (#418)\n\n* Frames prepares its sequence once, not once a frame (rich-unfiled-791c.cxcp)\n\nFrameSequence is the frames prepared once — beat, width, each frame set\ninto a line and padded — and Frames is that sequence at a t, finding only\nthe index. Spinner holds two prepared sequences and builds nothing per\nframe. new Frames over 90 frames: 25.95 µs before, 0.12 µs after (0.13 µs\nover 1 frame).\n\n* Review: comments name FrameSequence where the split moved the work (rich-unfiled-791c.cxcp)"
-        }
-      ]
-    },
-    {
-      "version": "pr-416",
-      "ref": "refs/pull/416/merge",
-      "sha": "6347eab42d6e5993401cb7c34f4220cdd358e0dd",
-      "timestamp": "2026-10-17T01:35:53.027Z",
-      "commits": [
-        {
-          "sha": "6347eab42d6e5993401cb7c34f4220cdd358e0dd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T01:34:13Z",
-          "message": "Merge 2f07765b16f6f2eea251e1731222ed11a5769204 into c483773d7f7576f512bf4466d571500f6c1e5ffe\n"
-        },
-        {
-          "sha": "2f07765b16f6f2eea251e1731222ed11a5769204",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T19:34:09-06:00",
-          "message": "A spinner's next change and a Live's next frame are on the host's timeline\n\nReview (high) on PR #416.\n\nSpinner scaled t by speed before Frames, so its nextChange stamp was on\nthe scaled timeline: speed 2 said interval when the frame turns at half\nthat, and a negative speed said a time in the past. The holds are now\nscaled instead — interval over |speed|, the frames reversed for a\nnegative one — so Frames stamps host time and nothing maps back. Speed 0\nis refused: an infinite hold is not a beat. The negative-speed test had\npinned frame 0 at exactly t = 0, an instant-wide sliver of the old wrap.\n\nLive armed the next wake from a second clock read after the paint, so the\nrate stretched by what each frame cost to draw, and a change that fell\ndue during the paint was deferred a whole interval. The wake is now\nmeasured from the frame's own t; Clock.at fires at once for a past time.\n\nThe option doc says the next frame is a frame interval after the last one\ndrawn, a manual refresh included; frameClock's header says at() wakes\nnothing unless something runs every() on it.\n\nRejected with evidence: a stamp-only Style failing isNull on the SGR hot\npath. Bench (120-col row, 600 frames at 1/60 s, truecolor), p50 ms\nmaster → branch: shimmer 0.145 → 0.139, pulse 0.114 → 0.114, sparkle\n0.309 → 0.179, wheel 0.112 → 0.110.\n"
-        },
-        {
-          "sha": "7ade01c4e45a44bb501d0e5595afd6cea0ac411a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T19:12:43-06:00",
-          "message": "A host can ask when what it draws next changes (rich-animation-xi28.6rs)\n\nEvery animated primitive stamps its cells with the moment what they show\nnext changes, on `Style.nextChange`, which rides up through every container\nas the anchor does and writes no byte. `Segment.nextChange` reads the\nsoonest off a composed frame: a `Frames` answers the next frame's start,\n`Effected` what its effect says — a stepped signal and `onBeat` their next\nstep (`Beat.end`), a transition `t` until it is done and never after, a\nplain loop `t` itself — and still content never, as `Infinity`.\n\n`Effect` is now an interface: the call, and an optional `nextChange(t)`;\n`withNextChange` attaches one, `nextChangeOf` is the one reading of an\nabsent one. `Clock.at(time, tick)` is the one-shot a host waits on, and\n`Live` arms it after each frame — at the frame's next change or the rate's\nnext frame, whichever is sooner — so it draws each frame of a sequence held\nshorter than its interval instead of a sample of them.\n\nThe showcase's brand carries a flash that declares its own schedule, and\nits tagline counts down to the gauge's next step.\n"
         }
       ]
     }
