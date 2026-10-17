@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-444",
+      "ref": "refs/pull/444/merge",
+      "sha": "ebf10e528c3ae99314dc86628ca12a733bbfb0ba",
+      "timestamp": "2026-10-17T15:14:55.257Z",
+      "commits": [
+        {
+          "sha": "ebf10e528c3ae99314dc86628ca12a733bbfb0ba",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T09:13:08-06:00",
+          "message": "Merge dd47e85716b66ef2c2b5ecf616b33ae82eee2172 into 097acd5b614a07f0050f33fd1e95e483f8e674ed\n"
+        },
+        {
+          "sha": "dd47e85716b66ef2c2b5ecf616b33ae82eee2172",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T09:13:03-06:00",
+          "message": "Markdown cuts an ATX heading's closing #s, as markdown-it does (rich-unfiled-791c.4op8)\n\nA run of # at the end of a heading line, spaces and tabs after it allowed,\nis cut when a space or tab comes before it: '# x #' draws 'x', '# x#' keeps\nits '#', and '# #' is an empty heading. Pinned against Rich 15.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "097acd5b614a07f0050f33fd1e95e483f8e674ed",
