@@ -344,7 +344,7 @@ function* guttered(draw: (options: RenderOptions) => Iterable<Segment>, options:
 function inline(
   text: readonly Inline[],
   settings: InlineSettings,
-  justify: Justify | undefined,
+  justify: Justify,
   style?: Style,
 ): (options: RenderOptions) => Iterable<Segment> {
   return function* (options) {
@@ -372,8 +372,9 @@ function* renderLines(tokens: readonly MdToken[], options: RenderOptions, settin
 /**
  * Each block in `tokens`, every row it draws ended, body text placed by
  * `settings.justify`. A heading keeps its own placement whatever `settings`
- * or `options` say — Rich's: an h1 centred, every other level left — and its
- * style stops where its text does.
+ * or `options` say — Rich's `Heading.LEVEL_ALIGN`: an h1 centred, every other
+ * level left, each row padded to the width — and its style stops where its
+ * text does.
  */
 function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, settings: BlockSettings): Iterable<Segment> {
   for (const token of tokens) yield* renderBlock(token, options, settings);
@@ -382,9 +383,8 @@ function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, setti
 function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSettings): Iterable<Segment> {
   switch (token.type) {
     case "heading": {
-      const style = headingStyle(options, token.level);
-      const draw = inline(token.text, settings, token.level === 1 ? "center" : undefined, style);
-      yield* guttered(draw, { ...options, justify: undefined }, NO_GUTTER, NO_GUTTER);
+      const draw = inline(token.text, settings, token.level === 1 ? "center" : "left", headingStyle(options, token.level));
+      yield* guttered(draw, options, NO_GUTTER, NO_GUTTER);
       break;
     }
 

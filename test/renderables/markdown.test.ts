@@ -1137,18 +1137,36 @@ describe("Markdown", () => {
   it("places body text left when no justify is given, whatever it is rendered with", () => {
     const md = new Markdown("## Head\n\nbody");
     const text = collectText(md, { maxWidth: 12, justify: "right" });
-    expect(text.split("\n")).toEqual(["Head", "", "body        ", ""]);
+    expect(text.split("\n")).toEqual(["Head        ", "", "body        ", ""]);
   });
 
   it("centres an h1 and leaves h2 and below left, whatever justify says", () => {
     for (const justify of [undefined, "left", "right", "full"] as const) {
       const out = collectText(new Markdown("# Title\n## Sub\n###### Six", { justify }), { maxWidth: 20, justify });
-      expect(out.split("\n")).toEqual(["       Title        ", "", "Sub", "", "Six", ""]);
+      expect(out.split("\n")).toEqual(["       Title        ", "", "Sub                 ", "", "Six                 ", ""]);
     }
   });
 
   it("centres each row of a wrapped h1", () => {
     expect(rows("# one two three", 9)).toEqual([" one two", "  three", ""]);
+  });
+
+  // Rich 15, console.render at width 12, untrimmed.
+  it("pads every row of an h2 and below to the width, as Rich's Heading does", () => {
+    const untrimmed = (markdown: string) => collectText(new Markdown(markdown), { maxWidth: 12 }).split("\n");
+    expect(untrimmed("## Head")).toEqual(["Head        ", ""]);
+    expect(untrimmed("###### Six")).toEqual(["Six         ", ""]);
+    expect(untrimmed("## one two three")).toEqual(["one two     ", "three       ", ""]);
+    expect(untrimmed("> ## Head")).toEqual(["", "▌ Head    ", ""]);
+    expect(untrimmed("- ## Head")).toEqual(["", " • Head     ", ""]);
+  });
+
+  // Rich 15: [('one two ', h2), ('    ', none), ('three', h2), ('       ', none)].
+  it("styles an h2's text, a wrapped row's kept space included, and not the padding that fills each row", () => {
+    const rows = Segment.splitLines(collectSegments(new Markdown("## one two three"), { maxWidth: 12 }));
+    const styled = (s: Segment) => s.style !== undefined && !s.style.isNull;
+    const drawn = rows.map((row) => row.filter((s) => s.text !== "").map((s) => [s.text, styled(s)]));
+    expect(drawn).toEqual([[["one two ", true], ["    ", false]], [["three", true], ["       ", false]]]);
   });
 
   it("styles a heading's text and not the padding that centres it", () => {
