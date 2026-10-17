@@ -4,8 +4,8 @@
  * Its view is a `Spinner` whose label is the message, as Rich's is, so the
  * message is drawn the way the spinner draws its label: a string is markup
  * under the console that draws it. The `Live` hands each frame its time, and
- * the spinner is built for it, so the frame is the clock's, not the
- * platform's. [LAW:no-ambient-temporal-coupling]
+ * the spinner is asked for its frame at it, so the frame is the clock's, not
+ * the platform's. [LAW:no-ambient-temporal-coupling]
  */
 
 import type { Clock } from "../core/clock.js";
@@ -27,16 +27,16 @@ export interface StatusOptions {
 
 export class Status {
   private _live: Live;
-  private _message: string | RichText;
+  private _spinner: Spinner;
   private _console: Console;
 
   constructor(message: string | RichText, options?: StatusOptions) {
     this._console = options?.console ?? new Console();
-    this._message = message;
-    const spinner = options?.spinner ?? "dots";
-    const speed = options?.speed;
-    const style = options?.spinnerStyle ?? "status.spinner";
-    this._live = new Live((t) => new Spinner(spinner, this._message, { t, speed, style }), {
+    this._spinner = new Spinner(options?.spinner ?? "dots", message, {
+      speed: options?.speed,
+      style: options?.spinnerStyle ?? "status.spinner",
+    });
+    this._live = new Live((t) => this._spinner.at(t), {
       console: this._console,
       clock: options?.clock,
       transient: true,
@@ -49,11 +49,11 @@ export class Status {
   }
 
   get message(): string | RichText {
-    return this._message;
+    return this._spinner.text;
   }
 
   set message(value: string | RichText) {
-    this._message = value;
+    this._spinner.text = value;
   }
 
   start(): void {
@@ -65,7 +65,7 @@ export class Status {
   }
 
   update(message: string | RichText): void {
-    this._message = message;
+    this._spinner.text = message;
     this._live.refresh();
   }
 }

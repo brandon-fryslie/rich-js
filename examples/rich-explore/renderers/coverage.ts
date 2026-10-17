@@ -358,7 +358,7 @@ export class CoverageRenderable implements Renderable {
 
     // ── 21. Spinner (the frame for a handed time, no Live) ───────────
     items.push(new Rule("[bold cyan]Spinner", { style: "bold cyan" }));
-    items.push(new Spinner("dots", "the frame at t = 0.5 s, with no Live", { t: 0.5 }));
+    items.push(new Spinner("dots", "the frame at t = 0.5 s, with no Live").at(0.5));
 
     // ── 22. Table built from explicit Columns ────────────────────────
     items.push(new Rule("[bold cyan]Table + Column", { style: "bold cyan" }));

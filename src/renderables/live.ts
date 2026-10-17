@@ -37,7 +37,7 @@ import type { Unsubscribe } from "../core/subscription.js";
  * the frame's time in seconds on the Live's clock, as an `App`'s view is
  * (`host/app.ts`). A renderable is the view that is the same at every `t` —
  * a table mutated in place between frames — and a function is what a frame
- * drawn for a time needs: `(t) => new Spinner("dots", "working", { t })`.
+ * drawn for a time needs: `(t) => spinner.at(t)`.
  * [LAW:no-ambient-temporal-coupling] The Live reads its clock once a frame
  * and hands the time down as data, so nothing it draws reads one.
  */

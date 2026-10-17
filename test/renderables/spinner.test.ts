@@ -20,39 +20,44 @@ function collectSegments(r: Renderable, opts: RenderOptions): Segment[] {
 
 const DOTS = SPINNERS["dots"]!.frames;
 /** The `dots` frame drawn at `t`, bare. */
-const frameAt = (t: number, speed = 1): string => collectText(new Spinner("dots", "", { t, speed }), { maxWidth: 80 }).trim();
+const frameAt = (t: number, speed = 1): string => collectText(new Spinner("dots", "", { speed }).at(t), { maxWidth: 80 }).trim();
 
 describe("Spinner", () => {
   describe("construction", () => {
     it("constructs with a known spinner name", () => {
-      const s = new Spinner("dots", "", { t: 0 });
-      expect(s.name).toBe("dots");
+      expect(new Spinner("dots").name).toBe("dots");
     });
 
     it("throws for unknown spinner name", () => {
-      expect(() => new Spinner("nonexistent_spinner_xyz", "", { t: 0 })).toThrow();
+      expect(() => new Spinner("nonexistent_spinner_xyz")).toThrow();
     });
 
-    it("refuses a time that is not a finite number of seconds, where it is drawn", () => {
-      expect(() => collectText(new Spinner("dots", "", { t: NaN }), { maxWidth: 80 })).toThrow(RangeError);
+    it("refuses a speed that is not finite, where it is given", () => {
+      expect(() => new Spinner("dots", "", { speed: Infinity })).toThrow(RangeError);
+      expect(() => new Spinner("dots", "", { speed: NaN })).toThrow(RangeError);
+    });
+
+    it("refuses a time that is not a finite number of seconds, where it is given", () => {
+      expect(() => new Spinner("dots").at(NaN)).toThrow(RangeError);
+      expect(() => new Spinner("dots").at(Infinity)).toThrow(RangeError);
     });
   });
 
   describe("properties", () => {
     it(".frames has length > 0", () => {
-      expect(new Spinner("dots", "", { t: 0 }).frames.length).toBeGreaterThan(0);
+      expect(new Spinner("dots").frames.length).toBeGreaterThan(0);
     });
 
     it(".interval is > 0", () => {
-      expect(new Spinner("dots", "", { t: 0 }).interval).toBeGreaterThan(0);
+      expect(new Spinner("dots").interval).toBeGreaterThan(0);
     });
 
     it(".speed defaults to 1.0", () => {
-      expect(new Spinner("dots", "", { t: 0 }).speed).toBe(1);
+      expect(new Spinner("dots").speed).toBe(1);
     });
 
     it(".speed can be set via options", () => {
-      expect(new Spinner("dots", "", { t: 0, speed: 2 }).speed).toBe(2);
+      expect(new Spinner("dots", "", { speed: 2 }).speed).toBe(2);
     });
   });
 
@@ -88,8 +93,8 @@ describe("Spinner", () => {
     });
 
     it("draws the same bytes for the same t, however many times", () => {
-      const once = collectText(new Spinner("dots", "load", { t: 123456.789 }), { maxWidth: 80 });
-      expect(collectText(new Spinner("dots", "load", { t: 123456.789 }), { maxWidth: 80 })).toBe(once);
+      const once = collectText(new Spinner("dots", "load").at(123456.789), { maxWidth: 80 });
+      expect(collectText(new Spinner("dots", "load").at(123456.789), { maxWidth: 80 })).toBe(once);
     });
 
     it("at twice the speed, turns twice as fast", () => {
@@ -109,7 +114,7 @@ describe("Spinner", () => {
     // The reference's Spinner is a `Text`, so it ends its own line and a
     // `Group` stacks what follows it below rather than beside it.
     it("stacks below itself in a Group", () => {
-      const group = new Group(new Spinner("dots", "hi", { t: 0 }), new RichText("after"));
+      const group = new Group(new Spinner("dots", "hi").at(0), new RichText("after"));
       const lines = Segment.splitLines([...group.render({ maxWidth: 80 })]).map((line) =>
         line.map((segment) => segment.text).join(""),
       );
@@ -117,24 +122,25 @@ describe("Spinner", () => {
     });
 
     it("renders a single spinner frame without text", () => {
-      const s = new Spinner("dots", "", { t: 0 });
+      const s = new Spinner("dots", "").at(0);
       const text = collectText(s, { maxWidth: 80 });
       expect(text).toBe(`${DOTS[0]}\n`);
     });
 
     it("renders spinner frame + text when text is provided", () => {
-      expect(collectText(new Spinner("dots", "Loading...", { t: 0 }), { maxWidth: 80 })).toBe("⠋ Loading...\n");
+      expect(collectText(new Spinner("dots", "Loading...").at(0), { maxWidth: 80 })).toBe("⠋ Loading...\n");
     });
 
     it("applies style option to spinner frame segments", () => {
-      const segs = collectSegments(new Spinner("dots", "", { t: 0, style: "bold red" }), { maxWidth: 80 });
+      const segs = collectSegments(new Spinner("dots", "", { style: "bold red" }).at(0), { maxWidth: 80 });
       expect(segs[0]!.text).toBe(DOTS[0]);
       expect(segs[0]!.style?.bold).toBe(true);
     });
 
     it("stands in the line spinner on an ASCII-only output, at the same t", () => {
       const line = SPINNERS["line"]!;
-      const at = (t: number): string => collectText(new Spinner("dots", "", { t }), { maxWidth: 80, asciiOnly: true }).trim();
+      const spinner = new Spinner("dots");
+      const at = (t: number): string => collectText(spinner.at(t), { maxWidth: 80, asciiOnly: true }).trim();
       expect(at(0)).toBe(line.frames[0]);
       expect(at((line.interval / 1000) * 1.5)).toBe(line.frames[1]);
     });
@@ -142,58 +148,59 @@ describe("Spinner", () => {
 
   describe("label", () => {
     it("draws a string label's markup as styles, as Rich's Text.from_markup does", () => {
-      const segs = collectSegments(new Spinner("dots", "[bold]hi[/]", { t: 0 }), { maxWidth: 80 });
+      const segs = collectSegments(new Spinner("dots", "[bold]hi[/]").at(0), { maxWidth: 80 });
       expect(segs.map((s) => s.text).join("")).toBe("⠋ hi\n");
       expect(segs.find((s) => s.text === "hi")?.style?.bold).toBe(true);
     });
 
     it("draws a string label's brackets when the options turn markup off", () => {
-      expect(collectText(new Spinner("dots", "[bold]hi[/]", { t: 0 }), { maxWidth: 80, markup: false })).toBe("⠋ [bold]hi[/]\n");
+      expect(collectText(new Spinner("dots", "[bold]hi[/]").at(0), { maxWidth: 80, markup: false })).toBe("⠋ [bold]hi[/]\n");
     });
 
     it("leaves the label unhighlighted, as Rich's Text label is", () => {
-      const segs = collectSegments(new Spinner("dots", "3 files", { t: 0 }), { maxWidth: 80, highlighter: new ReprHighlighter() });
+      const segs = collectSegments(new Spinner("dots", "3 files").at(0), { maxWidth: 80, highlighter: new ReprHighlighter() });
       expect(segs.every((s) => s.style === undefined || s.text.startsWith("⠋"))).toBe(true);
     });
 
     it("keeps the frame's style off the label", () => {
-      const segs = collectSegments(new Spinner("dots", "hi", { t: 0, style: "red" }), { maxWidth: 80 });
+      const segs = collectSegments(new Spinner("dots", "hi", { style: "red" }).at(0), { maxWidth: 80 });
       expect(segs.find((s) => s.text.includes("hi"))?.style?.color).toBeUndefined();
     });
 
     it("draws a label that draws nothing as no label, with no trailing space", () => {
-      expect(collectText(new Spinner("dots", "[bold][/]", { t: 0 }), { maxWidth: 80 })).toBe("⠋\n");
+      expect(collectText(new Spinner("dots", "[bold][/]").at(0), { maxWidth: 80 })).toBe("⠋\n");
     });
 
     it("draws a RichText label changed in place as changed, as Rich's kept Text does", () => {
       const label = new RichText("hello");
-      const s = new Spinner("dots", label, { t: 0 });
+      const s = new Spinner("dots", label).at(0);
       label.append(" world");
       expect(collectText(s, { maxWidth: 80 })).toBe("⠋ hello world\n");
     });
 
     it("wraps a long label with its frame when drawn as a line of its own", () => {
-      expect(collectText(new Spinner("dots", "a very long label", { t: 0 }), { maxWidth: 10 })).toBe("⠋ a very \nlong label\n");
+      expect(collectText(new Spinner("dots", "a very long label").at(0), { maxWidth: 10 })).toBe("⠋ a very \nlong label\n");
     });
   });
 
   describe("measurement", () => {
     it("minimum > 0", () => {
-      expect(new Spinner("dots", "", { t: 0 }).measure({ maxWidth: 80 }).minimum).toBeGreaterThan(0);
+      expect(new Spinner("dots", "").at(0).measure({ maxWidth: 80 }).minimum).toBeGreaterThan(0);
     });
 
     it("minimum > 0 with text", () => {
-      expect(new Spinner("dots", "Loading...", { t: 0 }).measure({ maxWidth: 80 }).minimum).toBeGreaterThan(0);
+      expect(new Spinner("dots", "Loading...").at(0).measure({ maxWidth: 80 }).minimum).toBeGreaterThan(0);
     });
 
     it("never offers a column less than its widest frame, spaces inside it or not", () => {
-      const s = new Spinner("bouncingBall", "a b", { t: 0 });
+      const s = new Spinner("bouncingBall", "a b");
       const widest = Math.max(...s.frames.map((frame) => [...frame].length));
-      expect(s.measure({ maxWidth: 80 }).minimum).toBe(widest);
+      expect(s.at(0).measure({ maxWidth: 80 }).minimum).toBe(widest);
     });
 
     it("measures the same at every t, so a column holding it never moves as it turns", () => {
-      const measures = [0, 0.1, 0.33, 7].map((t) => new Spinner("bouncingBall", "go", { t }).measure({ maxWidth: 80 }));
+      const spinner = new Spinner("bouncingBall", "go");
+      const measures = [0, 0.1, 0.33, 7].map((t) => spinner.at(t).measure({ maxWidth: 80 }));
       for (const m of measures) expect(m).toEqual(measures[0]);
     });
   });

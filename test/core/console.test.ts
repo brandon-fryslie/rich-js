@@ -1766,7 +1766,7 @@ describe("Console theme resolution", () => {
       },
     },
     { label: "Padding", name: "my.pad", make: (name) => new Padding(new RichText("x"), 1, { style: name }) },
-    { label: "Spinner", name: "my.spinner", make: (name) => new Spinner("dots", "load", { t: 0, style: name }) },
+    { label: "Spinner", name: "my.spinner", make: (name) => new Spinner("dots", "load", { style: name }).at(0) },
     { label: "ProgressBar", name: "bar.complete", make: () => new ProgressBar({ total: 100, completed: 50 }) },
     { label: "TaskProgressColumn", name: "progress.percentage", make: () => progressOf(new TaskProgressColumn()) },
     { label: "TimeRemainingColumn", name: "progress.remaining", make: () => progressOf(new TimeRemainingColumn()) },

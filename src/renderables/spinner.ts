@@ -1,6 +1,6 @@
 /**
- * Spinner — a named spinner's frame for the time it is handed, with an
- * optional label after it.
+ * Spinner — a named spinner, asked for its frame at a time, with an optional
+ * label after it.
  *
  * A spinner is `Frames` (`./frames.ts`) over one entry of the named spinner
  * data (`core/spinnerData.ts`): each frame held for the spinner's interval,
@@ -10,8 +10,16 @@
  * it and not a second way of turning frames. Custom frames are `Frames`
  * directly. [LAW:one-source-of-truth]
  *
- * [LAW:no-ambient-temporal-coupling] `t` is a constructor argument, as
- * `Frames`'s and `Effected`'s are, never a clock read: whoever draws frames
+ * It is built once and asked for each frame, as Rich's `Spinner` is built
+ * once and has `render(time)` called on it: the name is parsed and the
+ * frames are prepared where the spinner is given, and `at(t)` is what draws,
+ * so a `Status` or `SpinnerColumn` holding one pays for the name and the
+ * frames once, not once a frame, and a bad name fails at the call that gave
+ * it. [LAW:parse-dont-validate]
+ *
+ * [LAW:no-ambient-temporal-coupling] A Spinner draws nothing on its own:
+ * only `at(t)` is a renderable, so a spinner cannot be drawn without being
+ * handed its time, and nothing here reads a clock. Whoever draws frames
  * hands each one its time (`core/clock.ts`) — `SpinnerColumn` the task's
  * `time`, a `Live` the frame's time on its clock — as Rich's `Spinner.render`
  * is handed `console.get_time()` or `task.get_time()`. So the same `t` draws
@@ -34,21 +42,32 @@ import type {
 } from "../core/protocol.js";
 import { drawable } from "../core/protocol.js";
 import { EmbeddedText } from "./embed.js";
-import { Frames } from "./frames.js";
+import { Frames, type Frame } from "./frames.js";
 
-const spinnerGlyphs = ({ frames }: SpinnerData): string => frames.join("");
+/** A spinner's data with its frames prepared for `Frames`, each styled and held for the interval. */
+interface Sequence {
+  readonly data: SpinnerData;
+  readonly frames: readonly Frame[];
+}
+
+const sequence = (data: SpinnerData, style: string | Style): Sequence => ({
+  data,
+  frames: data.frames.map((frame) => ({
+    text: new RichText("", { end: "" }).append(frame, style),
+    seconds: data.interval / 1000,
+  })),
+});
+
+const sequenceGlyphs = ({ data }: Sequence): string => data.frames.join("");
 
 export interface SpinnerOptions {
-  /** The moment to draw, in seconds. */
-  t: number;
   /** Multiplies the spinner's rate; negative runs it backwards. Defaults to 1. */
   speed?: number;
   style?: string | Style;
 }
 
-export class Spinner implements Renderable, Measurable {
+export class Spinner {
   readonly name: string;
-  readonly t: number;
   readonly speed: number;
   readonly style: string | Style;
   /**
@@ -58,21 +77,30 @@ export class Spinner implements Renderable, Measurable {
    * whatever the console says — and a `RichText` changed in place draws as
    * changed, as the `Text` Rich keeps does. [LAW:single-enforcer]
    */
-  readonly text: string | RichText;
+  text: string | RichText;
   private readonly _data: SpinnerData;
+  // The named data's frames, and the `line` spinner's that stand in for them
+  // on an ASCII-only output: prepared once, which is drawn chosen at `at`.
+  private readonly _named: Sequence;
+  private readonly _ascii: Sequence;
 
-  constructor(name: string | undefined, text: string | RichText, options: SpinnerOptions) {
+  constructor(name?: string, text: string | RichText = "", options?: SpinnerOptions) {
     const spinnerName = name ?? DEFAULT_SPINNER;
     const data = SPINNERS[spinnerName];
     if (!data) {
       throw new Error(`Unknown spinner: "${spinnerName}"`);
     }
+    const speed = options?.speed ?? 1;
+    if (!Number.isFinite(speed)) {
+      throw new RangeError(`Spinner speed must be finite, got ${speed}`);
+    }
     this.name = spinnerName;
     this.text = text;
-    this.t = options.t;
-    this.speed = options.speed ?? 1;
-    this.style = options.style ?? NULL_STYLE;
+    this.speed = speed;
+    this.style = options?.style ?? NULL_STYLE;
     this._data = data;
+    this._named = sequence(data, this.style);
+    this._ascii = sequence(LINE_SPINNER, this.style);
   }
 
   get frames(): readonly string[] {
@@ -85,26 +113,34 @@ export class Spinner implements Renderable, Measurable {
   }
 
   /**
-   * The frames this output can draw, at `t`: the `line` spinner stands in for
-   * any other on an ASCII-only one, so the data is chosen where the output is
-   * known and the frames are built from it here.
+   * The frame in progress at `t` seconds and the label, as one renderable:
+   * the line wrapped to the width and ended, as the reference's `Text` is —
+   * printed, stacked in a `Group`, or laid out in a `Progress` cell alike.
+   * The frames this output can draw are chosen where the output is known.
    */
-  private _frames(options: RenderOptions): Frames {
-    const { frames, interval } = drawable(options, this._data, LINE_SPINNER, spinnerGlyphs);
-    const seconds = interval / 1000;
-    return new Frames(
-      frames.map((frame) => ({ text: new RichText("", { end: "" }).append(frame, this.style), seconds })),
-      { t: this.t * this.speed },
-    );
+  at(t: number): Renderable & Measurable {
+    if (!Number.isFinite(t)) {
+      throw new RangeError(`Spinner.at needs a finite t, got ${t}`);
+    }
+    const scaled = t * this.speed;
+    const frames = (options: RenderOptions): Frames =>
+      new Frames(drawable(options, this._named, this._ascii, sequenceGlyphs).frames, { t: scaled });
+    return {
+      render: (options) => this._render(frames(options), options),
+      // Measured at the frames' one width, the widest frame's, so a column
+      // holding it never narrows as it turns, and never offered less than
+      // that frame: a frame is one picture, which the reference's `Text`
+      // measure would let wrap apart at its spaces.
+      measure: (options) => {
+        const drawn = frames(options);
+        const { minimum, maximum } = this._line(drawn, options).measure(options);
+        return { minimum: Math.max(minimum, Math.min(drawn.width, maximum)), maximum };
+      },
+    };
   }
 
-  /**
-   * The frame and its label as one line wrapped to the width and ended, as
-   * the reference's `Text` is — printed, stacked in a `Group`, or laid out in
-   * a `Progress` cell alike.
-   */
-  *render(options: RenderOptions): Iterable<Segment> {
-    yield* this._line(this._frames(options), options).render(options);
+  private *_render(frames: Frames, options: RenderOptions): Iterable<Segment> {
+    yield* this._line(frames, options).render(options);
     yield Segment.line();
   }
 
@@ -121,17 +157,5 @@ export class Spinner implements Renderable, Measurable {
     const label = new EmbeddedText(this.text).text({ ...options, highlight: false });
     if (label.plain !== "") line.append(" ").append(label);
     return line;
-  }
-
-  /**
-   * Measured at the frames' one width, the widest frame's, so a column
-   * holding it never narrows as it turns, and never offered less than that
-   * frame: a frame is one picture, which the reference's `Text` measure would
-   * let wrap apart at its spaces.
-   */
-  measure(options: RenderOptions): { minimum: number; maximum: number } {
-    const frames = this._frames(options);
-    const { minimum, maximum } = this._line(frames, options).measure(options);
-    return { minimum: Math.max(minimum, Math.min(frames.width, maximum)), maximum };
   }
 }
