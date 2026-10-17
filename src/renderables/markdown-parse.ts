@@ -142,6 +142,12 @@ class Lines {
 
 /** An ATX heading's opening: one to six `#`, then a space, a tab or the end of the line. */
 const HEADING = /^#{1,6}(?=[ \t]|$)/;
+/**
+ * An ATX heading's closing sequence, as markdown-it cuts one: a run of `#` at
+ * the end of the line, spaces and tabs after it allowed, with a space or tab
+ * before it — so `# x#` keeps its `#` and `# #` is an empty heading.
+ */
+const HEADING_CLOSE = /(?<=[ \t])#+[ \t]*$/;
 /** A thematic break: three or more of one of `*`, `-` or `_`, spaces and tabs between them allowed. */
 const RULE = /^(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/;
 const SETEXT = /^(=+|-+)[ \t]*$/;
@@ -709,7 +715,7 @@ function tokenize(lines: Lines, level: number): { tokens: Block[]; end: number }
     // Heading
     const headingMatch = HEADING.exec(body(line));
     if (headingMatch) {
-      tokens.push({ type: "heading", level: headingMatch[0].length, text: pyStrip(body(line).slice(headingMatch[0].length)) });
+      tokens.push({ type: "heading", level: headingMatch[0].length, text: pyStrip(body(line).slice(headingMatch[0].length).replace(HEADING_CLOSE, "")) });
       i++;
       continue;
     }
