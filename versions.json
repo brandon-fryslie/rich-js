@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-423",
+      "ref": "refs/pull/423/merge",
+      "sha": "c766b9761c44f4978a2c56db0e07faeddf4455a6",
+      "timestamp": "2026-10-17T03:18:30.676Z",
+      "commits": [
+        {
+          "sha": "c766b9761c44f4978a2c56db0e07faeddf4455a6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T21:17:06-06:00",
+          "message": "Merge 7511a34535590f9a287dbbe226c862a6a2e4cda1 into 90f21fa5ea0b2b773042b9e24670e5e031012d96\n"
+        },
+        {
+          "sha": "7511a34535590f9a287dbbe226c862a6a2e4cda1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:36:30-06:00",
+          "message": "chore(release): 0.24.0\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "90f21fa5ea0b2b773042b9e24670e5e031012d96",
@@ -13,28 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T21:16:44-06:00",
           "message": "An effect's next change is asked with the frame it draws (rich-animation-xi28.3an) (#425)\n\n* An effect's next change is asked with the frame it draws (rich-animation-xi28.3an)\n\nEffect.nextChange took only t, so stillOnSlots — identity at the\nsixteen-colour depths — answered t and a Live repainted still content at\nits rate. The signature mirrors the first stage, (t, drawn), and Effected\nstamps after it has measured the frame, with the one measure.\n\nonBeat answered the hold's end whatever the inner effect said: a beat\nover a done transition said a time where the inner said never. It now\nanswers the first hold start at or after the inner's next change from the\nhold's start, and never when the inner says never.\n\nwithNextChange takes an Effect and says its answer replaces the inner's;\nconfined hands its narrowed frame to both stages. Live reads the soonest\nchange off its rows without flattening them.\n\nThe showcase's flash is a composer over the hue walk, answering the\nsooner of its own next flash and the walk's step, in place of two nested\nEffected and a heading that spelled the signal's next step.\n\nFound by /code-review high on release PR #423; lands before v0.24.0 is\ntagged, since the signature is public.\n\n* The docs say what onBeat answers, and one measure is pinned\n\nReview (high) on PR #425. docs/effects.md and docs/easing.md stated the old onBeat contract; a test pins that both stages and the answer get the one Drawn; the showcase flash hands back the inner frame while dark; onBeat's header says its answer is read off the inner's, never a comparison of frames."
-        }
-      ]
-    },
-    {
-      "version": "pr-423",
-      "ref": "refs/pull/423/merge",
-      "sha": "fe31a76c71a208662cf135c0e5d755a69e990695",
-      "timestamp": "2026-10-17T02:38:21.371Z",
-      "commits": [
-        {
-          "sha": "fe31a76c71a208662cf135c0e5d755a69e990695",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:36:34-06:00",
-          "message": "Merge ae941b7d4ad1d5050ec9e4e8a53bfc71c7d43135 into 63efd6e5f1b953f3ff5c4dfef4ebc23d7fd33cd2\n"
-        },
-        {
-          "sha": "ae941b7d4ad1d5050ec9e4e8a53bfc71c7d43135",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:36:30-06:00",
-          "message": "chore(release): 0.24.0\n"
         }
       ]
     }
