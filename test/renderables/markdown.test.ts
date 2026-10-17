@@ -511,6 +511,51 @@ describe("Markdown", () => {
     ]);
   });
 
+  // --- HTML blocks ---
+
+  // Rich 14's own output for each source at 40 columns, but for the blank Rich
+  // draws before every block after the first, which this renderer leaves to
+  // the source's own blank lines — as the table test above sets it aside.
+
+  it("draws an HTML block as Rich does, not at all, and ends a paragraph at one", () => {
+    expect(rows("para one\n<div>\nhello\n</div>\n\nafter", 40)).toEqual(["para one", "", "after", ""]);
+  });
+
+  it("ends a paragraph at every kind of HTML block but a lone tag, which continues it", () => {
+    const kinds = [
+      ["<script>", "</script>"],
+      ["<!-- c", "-->"],
+      ["<?php", "?>"],
+      ["<!DOCTYPE html", ">"],
+      ["<![CDATA[", "]]>"],
+    ];
+    for (const [open, close] of kinds) expect(rows(`para\n${open}\nbody\n${close}\n\nafter`, 40)).toEqual(["para", "", "after", ""]);
+    // The sixth kind, a block-level element, ends at a blank line instead of a closing one.
+    expect(rows('para\n<DIV class="x">\nbody\n\nafter', 40)).toEqual(["para", "", "after", ""]);
+    // Any other tag alone on a line opens a block only where no paragraph is open,
+    // and neither it nor a lowercase `<!doctype`, which markdown-it-py does not
+    // read as a declaration, ends one. Rich drops both as inline HTML; this
+    // renderer draws them as text until it reads that (rich-unfiled-791c.5r6q).
+    expect(rows("para\n<span>\nafter", 40)).toEqual(["para <span> after", ""]);
+    expect(rows("para\n<!doctype html>\nafter", 40)).toEqual(["para <!doctype html> after", ""]);
+    expect(rows("<span>\nhello\n\nafter", 40)).toEqual(["", "after", ""]);
+  });
+
+  it("runs an HTML block to the line that closes its kind, or to the end without one", () => {
+    // A blank line inside `<pre>` does not end it; the line after `</pre>` is a paragraph.
+    expect(rows("<pre>\nx\n\ny\n</pre>\nafter", 40)).toEqual(["after", ""]);
+    expect(rows("a\n\n<!-- open\n\nstill", 40)).toEqual(["a", "", ""]);
+  });
+
+  it("ends a table at an HTML block, as markdown-it does", () => {
+    expect(rows("| a |\n| - |\n| 1 |\n<!-- c -->\nafter", 40)).toEqual(["", " a", " ─", " 1", "", "after", ""]);
+  });
+
+  it("takes no lazy line into a container that ends in an HTML block", () => {
+    expect(rows("> q\n> <div>\nlazy", 40)).toEqual(["▎ q", "lazy", ""]);
+    expect(rows("- item\n  <!-- c -->\nlazy", 40)).toEqual(["  • item", "lazy", ""]);
+  });
+
   // --- Measurement ---
 
   it("measurement returns valid values", () => {

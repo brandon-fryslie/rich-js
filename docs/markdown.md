@@ -44,6 +44,11 @@ is text — continuing the parent's paragraph, or indented code after a blank li
 list counts on from its first number, right-aligned so every item hangs at one column. Tabs in
 the indentation reach the stops of 4 they reach in the source, however deep the line is nested.
 
+An HTML block — a line opening with `<div>`, `<!--`, `<pre>` or another of CommonMark's
+HTML block starts — is read where markdown-it reads one and drawn as Rich draws it: not at all.
+It ends the paragraph or table above it, as a heading does; a lone tag of any other name, such
+as `<span>`, does not.
+
 An image is drawn as Rich draws it: a picture glyph, then its alt text, linked to the image.
 
 ## Tables
