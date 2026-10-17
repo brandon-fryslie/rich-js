@@ -1193,10 +1193,22 @@ describe("Markdown", () => {
     expect(rows("a|b\n-|-\n1|2", 30)).toEqual(["", "", " a  b", " ────", " 1  2", "", ""]);
     // A delimiter row naming another count of columns is no table: this is a setext heading.
     expect(rows("a | b\n---", 30)).toEqual(["a | b", ""]);
-    // A lazy line is only ever paragraph text.
+    // A quote's lazy line is only ever paragraph text.
     expect(rows("> a | b\n> more\n--|--", 30)).toEqual(["", "▌ a | b more --|--", ""]);
     // A table ends a paragraph, and a line that opens a block ends the table.
     expect(rows("| a |\n|---|\n| 1 |\n> q", 30)).toEqual(["", "", " a", " ─", " 1", "", "", "▌ q", ""]);
+  });
+
+  it("ends a list item's paragraph at a lazy header row over a delimiter row the item holds, as markdown-it does", () => {
+    // The item ends at the header row, short of it, and the table opens where the item sat.
+    expect(rows("- a\n| x |\n  | - |", 30)).toEqual(["", " • a", "", "", " x", " ─", "", ""]);
+    expect(rows("1. a\n| x |\n   | - |\n| y |", 30)).toEqual(["", " 1 a", "", "", " x", " ─", " y", "", ""]);
+    // The delimiter row the item does not hold leaves the header row lazy text.
+    expect(rows("- a\n| x |\n| - |", 30)).toEqual(["", " • a | x | | - |", ""]);
+    // An inner item's delimiter row is code where the table would open, so there the two are a paragraph.
+    expect(rows("- a\n  - b\n| x |\n    | - |", 30)).toEqual(["", " • a", "    • b", "", "| x | | - |", ""]);
+    // A quote's lazy line inside an item is never a header row.
+    expect(rows("- > a\n| x |\n  | - |", 30)).toEqual(["", " • ▌ a | x | | - |", ""]);
   });
 
   it("ends a table at the row that fills out more than markdown-it's 65536 empty cells", () => {
