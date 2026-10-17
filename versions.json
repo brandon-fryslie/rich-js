@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-448",
-      "ref": "refs/pull/448/merge",
-      "sha": "4ba7a9adecdcdfd7c8329ceed2bde3ac888d60ac",
-      "timestamp": "2026-10-17T16:45:49.180Z",
-      "commits": [
-        {
-          "sha": "4ba7a9adecdcdfd7c8329ceed2bde3ac888d60ac",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T16:44:06Z",
-          "message": "Merge 78e450ddfe587c248a364ac0d63d4918de496425 into 30864c3491ff1b10e0f4942c10ab067373c567dc\n"
-        },
-        {
-          "sha": "78e450ddfe587c248a364ac0d63d4918de496425",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T10:44:02-06:00",
-          "message": "Markdown hands a quote's content a cell count, never a negative width (rich-unfiled-791c.hlmh)\n\nReview fixes: the quote's narrowed width goes through cellCount, so a quote at width 0 or 1 no longer passes guttered a negative maxWidth. The quote table's test titles name their options, so the two justify rows are told apart, and the older bar test it duplicated is gone. The one-cell floor in guttered that departs from Rich at narrow widths is rich-unfiled-791c.jra3.\n"
-        },
-        {
-          "sha": "c3aba3af1ef567f518d6a5497ede199adb6dc473",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T10:38:51-06:00",
-          "message": "Markdown lays a quote's content out four cells short of the width, as Rich's BlockQuote does (rich-unfiled-791c.hlmh)\n\nA quote's text now wraps, rules and justifies at the width less four beside its two-cell bar, so its rows end two cells short, byte for byte with Rich 15's output for wrapped text, a rule, justify and a nested quote.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "30864c3491ff1b10e0f4942c10ab067373c567dc",
-      "timestamp": "2026-10-17T16:24:41.019Z",
+      "sha": "b8d074f344bd5b65e6a7b86db5df90837d394e0d",
+      "timestamp": "2026-10-17T16:53:38.323Z",
       "commits": [
         {
-          "sha": "30864c3491ff1b10e0f4942c10ab067373c567dc",
+          "sha": "b8d074f344bd5b65e6a7b86db5df90837d394e0d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T10:22:58-06:00",
-          "message": "Markdown ends a list at the second blank line after an empty item, as markdown-it does (rich-unfiled-791c.tx0u) (#447)\n\n* Markdown ends a list at the second blank line after an empty item, as markdown-it does (rich-unfiled-791c.tx0u)\n\nmarkdown-it's list rule, for an item whose content is empty and whose next\nline is blank, skips to the line two past it without tokenizing and checks\nthat line for the next item, skipping no more blank lines. '-\\n\\n\\n- a' is\ntwo lists there; it was one here. Pinned against Rich 15 (markdown-it-py 4.2).\n\n* Markdown measures the step past an empty item from where the item ends (rich-unfiled-791c.tx0u)\n\nReview: both branches now count from `end`, one blank line skipped after an\nempty item and all of them after any other. Container cases are pinned with\nordered items, where one list and two number differently; bullets draw the\nsame either way in Rich.\n\n* Markdown takes markdown-it's empty-item step only when the marker line has no content (rich-unfiled-791c.tx0u)\n\nThe previous commit decided it from the line where the item ends, so an item\nwhose content starts on its second line ('1.\\n   foo\\n\\n\\n1. b') stepped over\none blank line and split the list. It is markdown-it's condition again: the\nline after the marker is blank, and the step lands two lines on."
+          "timestamp": "2026-10-17T10:51:58-06:00",
+          "message": "Markdown lays a quote's content out four cells short of the width, as Rich's BlockQuote does (rich-unfiled-791c.hlmh) (#448)\n\n* Markdown lays a quote's content out four cells short of the width, as Rich's BlockQuote does (rich-unfiled-791c.hlmh)\n\nA quote's text now wraps, rules and justifies at the width less four beside its two-cell bar, so its rows end two cells short, byte for byte with Rich 15's output for wrapped text, a rule, justify and a nested quote.\n\n* Markdown hands a quote's content a cell count, never a negative width (rich-unfiled-791c.hlmh)\n\nReview fixes: the quote's narrowed width goes through cellCount, so a quote at width 0 or 1 no longer passes guttered a negative maxWidth. The quote table's test titles name their options, so the two justify rows are told apart, and the older bar test it duplicated is gone. The one-cell floor in guttered that departs from Rich at narrow widths is rich-unfiled-791c.jra3."
         }
       ]
     }
