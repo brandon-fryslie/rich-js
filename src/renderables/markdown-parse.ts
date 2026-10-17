@@ -24,9 +24,8 @@ interface TableColumn<Text> {
   readonly align: CellAlign;
 }
 
-/** A list item: the blank lines that separated it from the item before, and its blocks. */
+/** A list item: its blocks. */
 interface ListItem<Text = readonly Inline[]> {
-  readonly gap: number;
   readonly children: readonly MdToken<Text>[];
 }
 
@@ -54,6 +53,7 @@ export type MdToken<Text = readonly Inline[]> =
    * as markdown-it's would: `open` where the last line skipped has text.
    */
   | { type: "unread"; open: boolean }
+  /** A blank line: kept, though nothing draws it, so a container ending in one does not end in the paragraph before it. */
   | { type: "blank" };
 
 /** The element markdown-it makes of a pair of delimiters. */
@@ -448,14 +448,15 @@ function swallowsRest(children: readonly MdToken<string>[]): boolean {
 }
 
 /**
- * The list opened at `start`, at `level`: each item holding its blocks, and
- * the blank lines that separated it from the item before — and, where an item
- * swallowed the rest of `lines`, the `unread` they are, ending where they do.
+ * The list opened at `start`, at `level`: each item holding its blocks — and,
+ * where an item swallowed the rest of `lines`, the `unread` they are, ending
+ * where they do.
  */
 function list(first: ItemStart, level: number, lines: readonly Line[], start: number): { tokens: MdToken<string>[]; next: number } {
-  const items: { gap: number; children: MdToken<string>[] }[] = [];
+  const items: { children: MdToken<string>[] }[] = [];
   let i = start;
-  let gap = 0;
+  // Where the last item's lines end.
+  let end = start;
   let swallowed = false;
   for (
     let item: ItemStart | undefined = first;
@@ -465,18 +466,15 @@ function list(first: ItemStart, level: number, lines: readonly Line[], start: nu
     // A list and its item each nest a level, as markdown-it's tokens do.
     const { inner, next } = itemLines(item, level + 2, lines, i);
     const children = tokenize(inner, level + 2);
-    items.push({ gap, children });
+    items.push({ children });
     swallowed = swallowsRest(children);
-    const end = swallowed ? lines.length : next;
-    let after = end;
-    while (after < lines.length && isBlank(lines[after]!)) after++;
-    gap = after - end;
-    i = after;
+    end = swallowed ? lines.length : next;
+    for (i = end; i < lines.length && isBlank(lines[i]!); i++);
   }
   const token: MdToken<string> = { type: "list", start: first.bullet === undefined ? first.start : undefined, items };
   if (swallowed) return { tokens: [token, { type: "unread", open: !isBlank(lines[lines.length - 1]!) }], next: lines.length };
   // The blank lines after the last item belong to whatever follows the list.
-  return { tokens: [token], next: i - gap };
+  return { tokens: [token], next: end };
 }
 
 /**

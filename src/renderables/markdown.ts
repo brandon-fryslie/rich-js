@@ -95,9 +95,9 @@ function headingStyle(options: RenderOptions, level: number): Style {
 /**
  * `inlines` appended to `result` as Rich draws each: emphasis and code in
  * their styles, inline HTML as nothing, an image as nothing where it sits —
- * `imagesAhead` draws it — and text as it is. A link's text is the link; or,
- * without hyperlinks, nothing is, and its text is written plain with the URL
- * after it, for a reader who cannot click it.
+ * `drawImage` draws it, ahead of the block — and text as it is. A link's text
+ * is the link; or, without hyperlinks, nothing is, and its text is written
+ * plain with the URL after it, for a reader who cannot click it.
  */
 function appendInline(result: RichText, inlines: readonly Inline[], settings: InlineSettings, options: RenderOptions): void {
   // Rich's style stack: each open construct's style laid over the styles it
@@ -178,14 +178,24 @@ function appendInline(result: RichText, inlines: readonly Inline[], settings: In
   }
 }
 
+/** An image, with the styles of every construct it sits in and the link it sits in, if any. */
+interface Image {
+  readonly alt: string;
+  readonly src: string;
+  readonly styles: readonly (string | Style)[];
+  readonly link: string | undefined;
+}
+
 /**
- * What Rich's render loop meets in a block, in its order: an image, with the
- * styles of every construct it sits in and the link it sits in, if any; and
- * each element exiting, with its `new_line` — whether Rich puts a newline
- * ahead of whatever it draws next.
+ * What Rich's render loop meets, in its order: an image, drawn the moment it
+ * is met; a block at the top of the document, drawn as it exits; and each
+ * element exiting, with its `new_line` — whether Rich puts a blank row ahead
+ * of whatever it draws next. That flag is the only source of blank rows
+ * between blocks: Rich reads no blank line of the source.
  */
 type Step =
-  | { kind: "image"; alt: string; src: string; styles: readonly (string | Style)[]; link: string | undefined }
+  | { kind: "image"; image: Image }
+  | { kind: "block"; token: MdToken }
   | { kind: "exit"; newLine: boolean };
 
 interface Enclosing {
@@ -195,7 +205,14 @@ interface Enclosing {
 
 const EXIT: Step = { kind: "exit", newLine: true };
 
+/**
+ * The steps in a block's text. An image is an element, Rich's `ImageItem`,
+ * which sets no `new_line`. Text with no inlines is one too: markdown-it
+ * leaves an empty inline token unflattened, and Rich exits it as an element
+ * it draws nothing for.
+ */
 function* inlineSteps(inlines: readonly Inline[], within: Enclosing, settings: InlineSettings): Iterable<Step> {
+  if (inlines.length === 0) yield EXIT;
   // The styles of each open construct, innermost last, as Rich's style stack holds them.
   const styles = [...within.styles];
   // Each construct's frame is how many styles it entered, and the link it sits in.
@@ -215,7 +232,10 @@ function* inlineSteps(inlines: readonly Inline[], within: Enclosing, settings: I
   };
   for (const step of walk(inlines, { entered: 0, link: within.link }, open)) {
     if (step.kind === "leave") styles.length -= step.frame.entered;
-    else if (step.inline.kind === "image") yield { kind: "image", alt: step.inline.alt, src: step.inline.src, styles: [...styles], link: step.within.link };
+    else if (step.inline.kind === "image") {
+      yield { kind: "image", image: { alt: step.inline.alt, src: step.inline.src, styles: [...styles], link: step.within.link } };
+      yield { kind: "exit", newLine: false };
+    }
   }
 }
 
@@ -272,31 +292,31 @@ function* stepsInside(token: MdToken, within: Enclosing, options: RenderOptions,
 }
 
 /**
- * Every image in `token`, drawn ahead of it as Rich draws one: the moment its
- * render loop meets it, at the full width, ending no row — so the block's own
- * first row, or the next image, carries on after it. Rich checks `new_line`
- * before everything it draws; the blank tokens between blocks stand for the
- * check ahead of each block's first image, and every check after one is drawn
- * here, the last ahead of the block itself.
+ * The steps of the whole document. Rich draws a block at the top of it as it
+ * exits, so a block is drawn where its exit is — and a blank line or content
+ * left unread, which exit nothing, draw nothing.
  */
-function* imagesAhead(token: MdToken, options: RenderOptions, settings: InlineSettings): Iterable<Segment> {
-  // Undefined until the first image: until then the check is the blank tokens'.
-  let newLine: boolean | undefined;
-  for (const step of stepsInside(token, { styles: [], link: undefined }, options, settings)) {
-    if (step.kind === "exit") {
-      if (newLine !== undefined) newLine = step.newLine;
-      continue;
+function* documentSteps(tokens: readonly MdToken[], options: RenderOptions, settings: InlineSettings): Iterable<Step> {
+  for (const token of tokens) {
+    yield* stepsInside(token, { styles: [], link: undefined }, options, settings);
+    for (const exit of exitSteps(token)) {
+      yield { kind: "block", token };
+      yield exit;
     }
-    if (newLine) yield Segment.line();
-    // Rich's ImageItem: a picture glyph, then the alt text in the styles it
-    // sits in — or, with none, the image's file name, unstyled — linked to the
-    // link it sits in or else to the image, then a space.
-    const title = step.alt ? step.styles.reduce((alt, style) => alt.stylize(style), new RichText(step.alt)) : new RichText(step.src.replace(/\/+$/, "").split("/").pop() ?? "");
-    if (settings.hyperlinks) title.stylize(new Style({ link: step.link || step.src || undefined }));
-    yield* new RichText("", { end: "" }).append(drawable(options, "🌆 ", "")).append(title).append(" ").render(options);
-    newLine = false;
   }
-  if (newLine) yield Segment.line();
+}
+
+/**
+ * An image drawn as Rich's `ImageItem` draws one: a picture glyph, then the
+ * alt text in the styles it sits in — or, with none, the image's file name,
+ * unstyled — linked to the link it sits in or else to the image, then a
+ * space, at the full width, ending no row — so whatever is drawn next carries
+ * on after it.
+ */
+function drawImage(image: Image, options: RenderOptions, settings: InlineSettings): Iterable<Segment> {
+  const title = image.alt ? image.styles.reduce((alt, style) => alt.stylize(style), new RichText(image.alt)) : new RichText(image.src.replace(/\/+$/, "").split("/").pop() ?? "");
+  if (settings.hyperlinks) title.stylize(new Style({ link: image.link || image.src || undefined }));
+  return new RichText("", { end: "" }).append(drawable(options, "🌆 ", "")).append(title).append(" ").render(options);
 }
 
 /**
@@ -386,8 +406,10 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
     }
 
     case "hr": {
+      // Rich's HorizontalRule: the rule, then a blank row of its own.
       const rule = new Rule(undefined, { style: "markdown.hr" });
       yield* rule.render(options);
+      yield Segment.line();
       break;
     }
 
@@ -400,7 +422,6 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
       const width = start === undefined ? 3 : String(start + token.items.length).length + 2;
       const hang = new Segment(" ".repeat(width), markerStyle);
       for (const [n, item] of token.items.entries()) {
-        yield* Array.from({ length: item.gap }, () => Segment.line());
         const marker = start === undefined ? drawable(options, " • ", " * ") : `${String(start + n).padStart(width - 1)} `;
         const body = (inner: RenderOptions) => renderTokens(item.children, inner, settings);
         yield* guttered(body, options, new Segment(marker, markerStyle), hang, getStyle(options, "markdown.item"));
@@ -432,11 +453,8 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
 
     case "html_block":
     case "unread":
-      // Rich draws nothing for either.
-      break;
-
     case "blank":
-      yield Segment.line();
+      // Rich draws nothing for any of them.
       break;
   }
 }
@@ -462,9 +480,15 @@ export class Markdown implements Renderable, Measurable {
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     // Every block below is one of a stack.
     const options = { ...rawOptions, height: stackedHeight(rawOptions.height) };
-    for (const token of this.parsed) {
-      yield* imagesAhead(token, options, this);
-      yield* renderBlock(token, options, this);
+    // Rich's `new_line`: set by each element as it exits, read before anything is drawn.
+    let newLine = false;
+    for (const step of documentSteps(this.parsed, options, this)) {
+      if (step.kind === "exit") {
+        newLine = step.newLine;
+        continue;
+      }
+      if (newLine) yield Segment.line();
+      yield* step.kind === "image" ? drawImage(step.image, options, this) : renderBlock(step.token, options, this);
     }
   }
 
