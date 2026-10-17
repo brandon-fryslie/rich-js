@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-422",
+      "ref": "refs/pull/422/merge",
+      "sha": "a2a36a6d9f14a3ae403c7e01a26ce9a40c5e37ba",
+      "timestamp": "2026-10-17T02:42:42.474Z",
+      "commits": [
+        {
+          "sha": "a2a36a6d9f14a3ae403c7e01a26ce9a40c5e37ba",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T02:41:12Z",
+          "message": "Merge 78a5aefb8b20def7b1d3e0b8fad3142c1415de32 into 63efd6e5f1b953f3ff5c4dfef4ebc23d7fd33cd2\n"
+        },
+        {
+          "sha": "78a5aefb8b20def7b1d3e0b8fad3142c1415de32",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:41:08-06:00",
+          "message": "claude-sessions reads a JSONL line as a record only when it holds an object (rich-demos-k78j.zs7)\n\nA line holding JSON that is not an object (null, 42, []) was cast to a\nrecord: a null line failed the whole session's load in readRecords, and in\nthe scanner's title window it failed the project scan. jsonlRecord is now\nthe one reading of a line as a record, shared by loader and scanner, and a\nline it rejects is counted as skipped.\n\nThe status line says \"1 line\" / \"1 block\", and the clean-file test asserts\nthe loaded status rather than the absence of \"skipped\".\n"
+        },
+        {
+          "sha": "01e26ac3f4117cbc033ec697518cb2ee4b5577b6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:36:09-06:00",
+          "message": "claude-sessions counts a line skipped only when a record failed to parse (rich-demos-k78j.zs7)\n\nloadSession counted every blank line as skipped, so the newline that ends\nevery JSONL file showed as '(1 lines skipped)' on every session opened in\nNode. A blank line carries no record; only a non-blank line that fails to\nparse is now counted.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-421",
       "ref": "refs/pull/421/merge",
       "sha": "a815ccaae030f0b1a0465d6c3af35c86051708d1",
@@ -56,28 +85,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T20:36:30-06:00",
           "message": "chore(release): 0.24.0\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-422",
-      "ref": "refs/pull/422/merge",
-      "sha": "fa8e1b4a1159c7573289663e6e6888e1b6d4ad9e",
-      "timestamp": "2026-10-17T02:37:57.287Z",
-      "commits": [
-        {
-          "sha": "fa8e1b4a1159c7573289663e6e6888e1b6d4ad9e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:36:20-06:00",
-          "message": "Merge 01e26ac3f4117cbc033ec697518cb2ee4b5577b6 into 63efd6e5f1b953f3ff5c4dfef4ebc23d7fd33cd2\n"
-        },
-        {
-          "sha": "01e26ac3f4117cbc033ec697518cb2ee4b5577b6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:36:09-06:00",
-          "message": "claude-sessions counts a line skipped only when a record failed to parse (rich-demos-k78j.zs7)\n\nloadSession counted every blank line as skipped, so the newline that ends\nevery JSONL file showed as '(1 lines skipped)' on every session opened in\nNode. A blank line carries no record; only a non-blank line that fails to\nparse is now counted.\n"
         }
       ]
     },
