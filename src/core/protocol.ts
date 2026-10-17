@@ -5,7 +5,7 @@
 
 import type { Segment } from "./segment.js";
 import { cellCount } from "./cells.js";
-import { DEFAULT_THEME, type Style, type StyleSyntaxError, type Theme } from "./style.js";
+import { DEFAULT_THEME, Style, type StyleSyntaxError, type Theme } from "./style.js";
 import { ColorDepth, type ColorSpec } from "./color.js";
 // [LAW:one-way-deps] exception: the one upward edge between core's tiers, and
 // type-only. A render option that highlights the text being rendered, when
@@ -237,6 +237,9 @@ export function getStyle(options: RenderOptions, style: string | Style): Style {
   return (options.theme ?? DEFAULT_THEME).resolve(style);
 }
 
+/** The terminal's own foreground on its own background. */
+const TERMINAL_GROUND = Style.parse("default on default");
+
 /**
  * `style` as the depth the render is encoded at can draw it. A style that
  * paints its own ground in fixed colours chose its ink and ground as a pair;
@@ -245,7 +248,10 @@ export function getStyle(options: RenderOptions, style: string | Style): Style {
  * every bundled theme. So where the depth would turn a fixed colour of the
  * pair into a slot, the pair is dropped and the run is drawn on the
  * terminal's own foreground and background, which its theme does make
- * readable; its attributes still set it apart. A style whose colours are
+ * readable; its attributes still set it apart. Both are named, not left
+ * unset, so the colour of whatever the run sits in — a quote, a link — does
+ * not show through: Rich's code keeps its own colours inside a quote, and the
+ * terminal's are the ones it keeps here. A style whose colours are
  * slots already (`white on blue`), or that paints no ground (`bold magenta`),
  * was written for the terminal's own colours and is drawn as written. Rich
  * draws a highlighted line number the same way below 256 colours
@@ -256,7 +262,7 @@ export function groundedStyle(options: RenderOptions, style: Style): Style {
   const lost = (written: ColorSpec | undefined, shown: ColorSpec | undefined): boolean =>
     written?.fixedValue !== undefined && shown?.fixedValue === undefined;
   const pairLost = style.bgcolor !== undefined && (lost(style.color, drawn.color) || lost(style.bgcolor, drawn.bgcolor));
-  return pairLost ? style.withoutColor : style;
+  return pairLost ? style.add(TERMINAL_GROUND) : style;
 }
 
 /**

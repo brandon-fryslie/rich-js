@@ -1783,6 +1783,7 @@ describe("Console theme resolution", () => {
     { label: "Markdown bullet", name: "markdown.item.bullet", make: () => new Markdown("- a") },
     { label: "Markdown number", name: "markdown.item.number", make: () => new Markdown("1. a") },
     { label: "Markdown list item", name: "markdown.item", make: () => new Markdown("- a") },
+    { label: "Markdown block quote", name: "markdown.block_quote", make: () => new Markdown("> a") },
     { label: "Markdown table border", name: "markdown.table.border", make: () => new Markdown("| a |\n|---|\n| 1 |") },
     { label: "Markdown table header", name: "markdown.table.header", make: () => new Markdown("| a |\n|---|\n| 1 |") },
     { label: "Traceback", name: "traceback.exc_type", make: () => new Traceback(new Error("boom")) },

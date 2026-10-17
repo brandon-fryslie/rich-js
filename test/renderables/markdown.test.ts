@@ -778,14 +778,21 @@ describe("Markdown", () => {
 
   it("draws code on the terminal's own colours at 16 colours, where a fixed ground cannot be promised", () => {
     const code = DEFAULT_THEME.resolve("markdown.code");
-    const drawn = (colorSystem: ColorDepth) =>
-      collectSegments(new Markdown("Use `code` here\n\n```\nblock\n```"), { maxWidth: 80, colorSystem })
+    const drawn = (markdown: string, colorSystem: ColorDepth) =>
+      collectSegments(new Markdown(markdown), { maxWidth: 80, colorSystem })
         .filter((s) => s.text === "code" || s.text === "block")
         .map((s) => s.style);
     // Bold, as Rich's own `markdown.code` is, so code stays set apart once its colours go.
     expect(code.bold).toBe(true);
-    expect(drawn(ColorDepth.STANDARD)).toEqual([code.withoutColor, code.withoutColor]);
-    expect(drawn(ColorDepth.EIGHT_BIT)).toEqual([code, code]);
+    const grounded = code.add(Style.parse("default on default"));
+    expect(drawn("Use `code` here\n\n```\nblock\n```", ColorDepth.STANDARD)).toEqual([grounded, grounded]);
+    expect(drawn("Use `code` here\n\n```\nblock\n```", ColorDepth.EIGHT_BIT)).toEqual([code, code]);
+    // In a quote too: the quote's magenta lies under its blocks, and code keeps its own colours over it.
+    const quoted = DEFAULT_THEME.resolve("markdown.block_quote");
+    expect(drawn("> Use `code` here\n>\n> ```\n> block\n> ```", ColorDepth.STANDARD)).toEqual([
+      quoted.add(grounded),
+      quoted.add(grounded),
+    ]);
   });
 
   it("draws an inline code style written in the terminal's own colours as written at 16 colours", () => {
