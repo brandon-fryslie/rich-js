@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Syntax, type SyntaxLanguage, type SyntaxOptions } from "../../src/renderables/syntax.js";
 import { Segment } from "../../src/core/segment.js";
-import { DEFAULT_THEME, Theme } from "../../src/core/style.js";
+import { DEFAULT_THEME, Style, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
@@ -171,8 +171,9 @@ describe("Syntax", () => {
     const number = (colorSystem: ColorDepth) =>
       [...s.render({ maxWidth: 80, colorSystem })].find((seg) => seg.text.trim() === "2")!.style!;
     const highlight = DEFAULT_THEME.resolve("syntax.line_number.highlight");
-    expect(number(ColorDepth.STANDARD)).toEqual(highlight.withoutColor);
-    expect(number(ColorDepth.WINDOWS)).toEqual(highlight.withoutColor);
+    const grounded = highlight.add(Style.parse("default on default"));
+    expect(number(ColorDepth.STANDARD)).toEqual(grounded);
+    expect(number(ColorDepth.WINDOWS)).toEqual(grounded);
     expect(number(ColorDepth.EIGHT_BIT)).toEqual(highlight);
   });
 

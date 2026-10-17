@@ -88,8 +88,8 @@ function linkStyles(url: string): (string | Style)[] {
   return [new Style({ link: url }), "markdown.link_url"];
 }
 
-/** The style a quote lays under everything it holds. */
-const QUOTE_STYLE = Style.parse("dim italic");
+/** The style a quote draws its bar in and lays under everything it holds. */
+const QUOTE_STYLE = "markdown.block_quote";
 
 function headingStyle(options: RenderOptions, level: number): Style {
   return getStyle(options, `markdown.h${Math.min(level, 4)}`);
@@ -429,8 +429,11 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
     }
 
     case "blockquote": {
-      const bar = new Segment(drawable(options, "▎ ", "| "), getStyle(options, "markdown.hr"));
-      const body = (inner: RenderOptions) => renderLines(token.children, inner, settings, QUOTE_STYLE);
+      // Rich's BlockQuote: the bar and everything the quote holds in the one
+      // style.
+      const style = getStyle(options, QUOTE_STYLE);
+      const bar = new Segment(drawable(options, "▌ ", "| "), style);
+      const body = (inner: RenderOptions) => renderLines(token.children, inner, settings, style);
       yield* guttered(body, options, bar, bar);
       break;
     }
