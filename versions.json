@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-436",
+      "ref": "refs/pull/436/merge",
+      "sha": "4a44ab86fccc9deab6349334c0448ee535780d50",
+      "timestamp": "2026-10-17T10:37:46.359Z",
+      "commits": [
+        {
+          "sha": "4a44ab86fccc9deab6349334c0448ee535780d50",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T04:36:36-06:00",
+          "message": "Merge 932b969eb336bb95abeacc2eceaeb86e94596145 into e80c374ab721ffe013fd22089a39821927c4670c\n"
+        },
+        {
+          "sha": "932b969eb336bb95abeacc2eceaeb86e94596145",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T04:36:32-06:00",
+          "message": "Markdown opens and closes fenced code as markdown-it's fence rule does, as Rich does (rich-unfiled-791c.fxsx)\n\nA fence opens on three or more backticks whose info string holds no\nbacktick, or three or more tildes with any info string, and closes only on\na run of the same marker at least as long followed by spaces and tabs.\nChecked token-for-token against markdown-it-py 4.2 over 3000 fuzzed\nsources: 790 diffs before, 0 after.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e80c374ab721ffe013fd22089a39821927c4670c",
