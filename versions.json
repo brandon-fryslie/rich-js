@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-461",
+      "ref": "refs/pull/461/merge",
+      "sha": "8bac158dcf95ce90fab98fb117737008495178dd",
+      "timestamp": "2026-10-17T23:04:26.813Z",
+      "commits": [
+        {
+          "sha": "8bac158dcf95ce90fab98fb117737008495178dd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T17:03:15-06:00",
+          "message": "Merge 819d0242d55f5cb486a6b3e5b599f9c42eceea5a into 8ce16bbe0165aabfff0945e23c6a45465b35c7aa\n"
+        },
+        {
+          "sha": "819d0242d55f5cb486a6b3e5b599f9c42eceea5a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T17:03:09-06:00",
+          "message": "Multi-line TextInput shows a zero-cell glyph as a one-cell stand-in, so every cursor stop draws a visible cell (rich-unfiled-791c.bynu)\n\nRows stay slices of value; drawing, hit-testing and vertical motion measure\nthem through the same shown-as function single-line uses, and the wrap\nstrategy receives the line as shown so its budget counts the stand-ins. A\nmulti-line password field now masks its text as single-line does.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "8ce16bbe0165aabfff0945e23c6a45465b35c7aa",
