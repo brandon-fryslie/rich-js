@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-449",
+      "ref": "refs/pull/449/merge",
+      "sha": "101a0d32046a90cc771f7cbe9c6845109cf03cca",
+      "timestamp": "2026-10-17T17:00:04.042Z",
+      "commits": [
+        {
+          "sha": "101a0d32046a90cc771f7cbe9c6845109cf03cca",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T10:58:13-06:00",
+          "message": "Merge ad21519eb88c4ff9f9b5ce41f615611735b5884d into b8d074f344bd5b65e6a7b86db5df90837d394e0d\n"
+        },
+        {
+          "sha": "ad21519eb88c4ff9f9b5ce41f615611735b5884d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T10:57:32-06:00",
+          "message": "Markdown reads a line lazy to a quote's container as indented less than any block, as markdown-it does (rich-unfiled-791c.emsm)\n\nmarkdown-it gives a quote's lazy line sCount -1, and a list item's lazy line\nsits short of the item's indentation, so a quote inside either checks its\nterminators on that line as indented less than four. \"> > b\\n    ---\" is the\nquote \"b\", then indented code at the top level, in Rich 15; it was \"b ---\"\nhere. Same for a fence, an HTML block, a heading and a list item.\n\nmarkdown-it's quote also takes a `>` line after its first at any indentation\n(\"> a\\n    > b\" is one quote, \"a b\"), which the same function read as text.\nPinned against Rich 15 (markdown-it-py 4.2).\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b8d074f344bd5b65e6a7b86db5df90837d394e0d",
