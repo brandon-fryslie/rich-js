@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-461",
-      "ref": "refs/pull/461/merge",
-      "sha": "f536915df83bab310b80e5c92ce67c215047245b",
-      "timestamp": "2026-10-17T23:19:06.182Z",
-      "commits": [
-        {
-          "sha": "f536915df83bab310b80e5c92ce67c215047245b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T23:17:20Z",
-          "message": "Merge ccd1418e7b6f04c9eb12f312d25424071ce1c246 into 8ce16bbe0165aabfff0945e23c6a45465b35c7aa\n"
-        },
-        {
-          "sha": "ccd1418e7b6f04c9eb12f312d25424071ce1c246",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T17:17:15-06:00",
-          "message": "A wrap row names the stretch of the line it draws, mapped back to the value in one pass, and TextInput measures the cells it draws (rich-unfiled-791c.bynu)\n\nWrapRow is { start, end } in place of { content, start }. Since the\nstrategy started receiving the line as shown, the widget drew the matching\nstretch of `value` and read only content's length, so a row whose content\nwas not a stretch of its line (a hyphen added at a break) drew repeated\nglyphs. The type no longer admits such a row.\n\nThe shown-to-line offset table is built once per line, not walked from\nthe start for every row end: the guard read 16x for 4x input against the\nwalk. It also maps a stand-in of any length, not only one code unit.\n\nmeasure() takes the widest shown line, so a zero-cell glyph counts its\none cell, a password counts a mask per glyph, and a multi-line value is\nas wide as its widest line.\n"
-        },
-        {
-          "sha": "819d0242d55f5cb486a6b3e5b599f9c42eceea5a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T17:03:09-06:00",
-          "message": "Multi-line TextInput shows a zero-cell glyph as a one-cell stand-in, so every cursor stop draws a visible cell (rich-unfiled-791c.bynu)\n\nRows stay slices of value; drawing, hit-testing and vertical motion measure\nthem through the same shown-as function single-line uses, and the wrap\nstrategy receives the line as shown so its budget counts the stand-ins. A\nmulti-line password field now masks its text as single-line does.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "8ce16bbe0165aabfff0945e23c6a45465b35c7aa",
-      "timestamp": "2026-10-17T22:57:06.649Z",
+      "sha": "773c9cda93ddffceb299125ec88f43a1b655d55c",
+      "timestamp": "2026-10-17T23:30:55.075Z",
       "commits": [
         {
-          "sha": "8ce16bbe0165aabfff0945e23c6a45465b35c7aa",
+          "sha": "773c9cda93ddffceb299125ec88f43a1b655d55c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T16:55:16-06:00",
-          "message": "Complexity guards assert how their time grows, on the thread's CPU time, instead of a wall-clock budget (rich-unfiled-791c.xrxj) (#460)\n\n* Complexity guards assert how their time grows, on the thread's CPU time, instead of a wall-clock budget (rich-unfiled-791c.xrxj)\n\nThe ten remaining guards that timed one run against a 1 s or 2 s budget\nnow assert growth through expectLinearTime, one call per workload so a\nquadratic one cannot hide behind a larger linear one beside it. Each was\nrun against the super-linear code it guards: the commit before its fix,\nor, where that code only ever existed mid-PR, a reconstruction (the RUN\nand TRAILING_RUN_RE lookbehinds dropped, a whole-list filter per plugin\npair, a quote re-read per lazy line). Every one read 13-229x for 4x.\nJSONHighlighter was never quadratic on any of the runs but digits; its\ncases stay as the contract the describe states.\n\nexpectLinearTime now reads process.threadCpuUsage, not performance.now.\nInside the full suite a linear highlighter's larger run took two to three\ntimes as long as alone while its smaller one did not, reading 8.8-10.9x:\na run shorter than a scheduler slice escapes oversubscription that a\nlonger one pays for its whole length, so a wall-clock ratio does not\ncancel load. Three full-suite runs green after the change.\n\nThe Markdown guards time parsing only. Drawing a long paragraph is\nquadratic in Segment.divide, filed as rich-unfiled-791c.vzmy.\n\n* Complexity guards: devEngines asks for the Node with threadCpuUsage, a self-test pins that time off the CPU is not counted, full-size output checks are back, and near-floor sizes are doubled (rich-unfiled-791c.xrxj)\n\nReview (high) of #460: process.threadCpuUsage exists from Node 22.19 / 23.9,\nwhich devEngines (^22.18.0 || >=23.6.0) did not require; the self-tests only\nsimulated load with CPU work both clocks count, so reverting to wall time stayed\ngreen; the 3-element output checks dropped the at-scale correctness the\nbudget tests had; four smaller runs sat under 15 ms of CPU here, about 2x the\nfloor on a runner twice as fast."
+          "timestamp": "2026-10-17T17:29:10-06:00",
+          "message": "Multi-line TextInput shows a zero-cell glyph as a one-cell stand-in, so every cursor stop draws a visible cell (rich-unfiled-791c.bynu) (#461)\n\n* Multi-line TextInput shows a zero-cell glyph as a one-cell stand-in, so every cursor stop draws a visible cell (rich-unfiled-791c.bynu)\n\nRows stay slices of value; drawing, hit-testing and vertical motion measure\nthem through the same shown-as function single-line uses, and the wrap\nstrategy receives the line as shown so its budget counts the stand-ins. A\nmulti-line password field now masks its text as single-line does.\n\n* A wrap row names the stretch of the line it draws, mapped back to the value in one pass, and TextInput measures the cells it draws (rich-unfiled-791c.bynu)\n\nWrapRow is { start, end } in place of { content, start }. Since the\nstrategy started receiving the line as shown, the widget drew the matching\nstretch of `value` and read only content's length, so a row whose content\nwas not a stretch of its line (a hyphen added at a break) drew repeated\nglyphs. The type no longer admits such a row.\n\nThe shown-to-line offset table is built once per line, not walked from\nthe start for every row end: the guard read 16x for 4x input against the\nwalk. It also maps a stand-in of any length, not only one code unit.\n\nmeasure() takes the widest shown line, so a zero-cell glyph counts its\none cell, a password counts a mask per glyph, and a multi-line value is\nas wide as its widest line."
         }
       ]
     }
