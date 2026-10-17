@@ -200,12 +200,15 @@ describe("steppedInk — at the host's rate, whatever it is", () => {
     const median = (xs: number[]): number => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
     frame(identity, 0);
     for (const base of [0, 1e6]) {
-      // A signal built here, so the first frame at each base is the one that runs the search.
+      // A signal built fresh runs the search on its first frame at `base`;
+      // the first frame is sampled as the frames inside the step are, over
+      // several fresh signals, so one sample's jitter decides nothing.
+      const firsts = Array.from({ length: 9 }, () => frame(steppedInk(STEPS), base));
       const fresh = steppedInk(STEPS);
-      const first = frame(fresh, base);
+      frame(fresh, base);
       const samples = Array.from({ length: 59 }, (_, i) => ({ untouched: frame(identity, base + (i + 1) / 60), signal: frame(fresh, base + (i + 1) / 60) }));
       const inside = median(samples.map((s) => s.signal));
-      expect(inside).toBeLessThanOrEqual(first);
+      expect(inside).toBeLessThanOrEqual(median(firsts));
       expect(inside).toBeLessThanOrEqual(2 * median(samples.map((s) => s.untouched)));
     }
   });
