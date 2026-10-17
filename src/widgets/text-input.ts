@@ -3,7 +3,8 @@
  *
  * Two modes:
  *   - single-line (default): Enter submits; newlines in value are rendered
- *                            as a literal `↵` glyph if they ever appear.
+ *                            as a literal `↵` glyph if they ever appear, and
+ *                            any other glyph of zero cells as `◌`.
  *   - multi-line  (`multiline: true`): Enter inserts a `\n`; `value` may
  *                            contain logical line breaks; Up/Down navigate
  *                            between logical lines preserving column intent.
@@ -240,12 +241,15 @@ export interface TextInputOptions {
 }
 
 const MIN_CONTENT_WIDTH = 8;
-// Each glyph and its ASCII stand-in are one code unit and one cell, so the
-// display string maps 1:1 onto `value` and hit-testing needs no render options.
+// What one line shows in place of a glyph of `value`; each is one cell.
 const NEWLINE_GLYPH = "↵";
 const ASCII_NEWLINE_GLYPH = "~";
 const MASK_GLYPH = "•";
 const ASCII_MASK_GLYPH = "*";
+// The dotted circle Unicode draws for a mark with no base to sit on; `?` is the
+// ASCII replacement character.
+const ZERO_CELL_GLYPH = "◌";
+const ASCII_ZERO_CELL_GLYPH = "?";
 
 // Text a key may insert: anything but the C0 controls, DEL and the C1
 // controls, which a terminal reads as escape sequences (U+009B is CSI).
@@ -846,12 +850,19 @@ export class TextInput extends ThemedWidget {
   }
 
   // [LAW:dataflow-not-control-flow] How a stretch of `value` is shown in one
-  // line derives from mode: one mask cell per glyph, or `\n` as a visible
-  // glyph. The render and the click hit-test both read it.
+  // line derives glyph by glyph from mode: a mask cell in password mode, else
+  // the glyph itself — or, for a glyph of zero cells, a stand-in of one cell.
+  // Every glyph then has a column of its own, so each cursor stop draws the
+  // cursor somewhere new. The render and the click hit-test both read it.
   private _shown(text: string, options: { readonly asciiOnly?: boolean }): string {
-    return this._password
-      ? drawable(options, MASK_GLYPH, ASCII_MASK_GLYPH).repeat(graphemes(text).length)
-      : text.replace(/\n/g, drawable(options, NEWLINE_GLYPH, ASCII_NEWLINE_GLYPH));
+    const mask = drawable(options, MASK_GLYPH, ASCII_MASK_GLYPH);
+    const newline = drawable(options, NEWLINE_GLYPH, ASCII_NEWLINE_GLYPH);
+    const zeroCell = drawable(options, ZERO_CELL_GLYPH, ASCII_ZERO_CELL_GLYPH);
+    const shownAs = (g: string): string =>
+      this._password ? mask
+        : cellLen(g) > 0 ? g
+        : g.includes("\n") ? newline : zeroCell;
+    return graphemes(text).map(shownAs).join("");
   }
 
   private _renderSingleLine(options: RenderOptions): Segment[] {

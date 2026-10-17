@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { autorun } from "mobx";
 import { TextInput, charGreedyWrap, type WrapStrategy, type WrapRow } from "../../src/widgets/text-input.js";
-import { asCodePoint, asCellCol, type CodePoint } from "../../src/core/cells.js";
+import { asCodePoint, asCellCol, cellLen, type CodePoint } from "../../src/core/cells.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 import { Segment } from "../../src/core/segment.js";
@@ -1294,6 +1294,38 @@ describe("TextInput", () => {
       t.cursorPosition = asCodePoint(t.value.length);
       t.transposeChars();
       expect(t.value).toBe("👍🏽a");
+    });
+  });
+
+  describe("a glyph of zero cells", () => {
+    const CURSOR = new Style({ reverse: true });
+
+    it("has a column of its own, so every cursor stop moves the cursor", () => {
+      for (const glyph of ["\u200b", "\u2028", "\u2029", "\t"]) {
+        const t = new TextInput({ value: `a${glyph}b`, cursorStyle: CURSOR });
+        t.focus();
+        t.handleKey(homeEvent());
+        const columns: number[] = [];
+        for (let stop = 0; stop <= 3; stop++) {
+          const segments = [...t.render(RENDER)];
+          const at = segments.findIndex((seg) => seg.style?.reverse);
+          expect(cellLen(segments[at]!.text)).toBe(1);
+          const column = cellLen(segments.slice(0, at).map((seg) => seg.text).join(""));
+          columns.push(column);
+          // A click on the cell the cursor is drawn in puts it back there.
+          const before = t.cursorPosition;
+          t.handleMouse(mouseDownAt(column));
+          expect(t.cursorPosition).toBe(before);
+          t.handleKey(rightEvent());
+        }
+        expect(columns).toEqual([1, 2, 3, 4]);
+      }
+    });
+
+    it("is drawn as ◌, or ? where only ASCII is drawable", () => {
+      const t = new TextInput({ value: "a\u200bb" });
+      expect(renderText(t)).toContain("a◌b");
+      expect(rowsText(t, { ...RENDER, asciiOnly: true })).toContain("a?b");
     });
   });
 
