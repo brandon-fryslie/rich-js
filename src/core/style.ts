@@ -832,6 +832,9 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   // sink into grey11. Bold, as Rich's is: at 16 colours a renderable draws it
   // without its pair (`groundedStyle`), and bold is what still marks code.
   "markdown.code": Style.parse("bold dark_turquoise on grey11"),
+  "markdown.em": Style.parse("italic"),
+  "markdown.strong": Style.parse("bold"),
+  "markdown.s": Style.parse("strike"),
   "markdown.hr": Style.parse("yellow"),
   "markdown.item": NULL_STYLE,
   "markdown.item.bullet": Style.parse("bold"),

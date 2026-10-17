@@ -900,12 +900,12 @@ describe("Markdown", () => {
     expect(segment("**a <b x='**'> c**", " c").style?.bold).toBe(true);
   });
 
-  /** `markdown`'s first row, and each segment of it drawn bold or italic, with `B` for bold and `I` for italic. */
+  /** `markdown`'s first row, and each segment of it drawn bold, italic or struck through, with `B`, `I` and `S` for each. */
   function emphasis(markdown: string): [string, [string, string][]] {
     const segments = collectSegments(new Markdown(markdown, { hyperlinks: false }), { maxWidth: 80 });
     const styled = segments
-      .filter((s) => s.style?.bold || s.style?.italic)
-      .map((s): [string, string] => [s.text, `${s.style?.bold ? "B" : ""}${s.style?.italic ? "I" : ""}`]);
+      .filter((s) => s.style?.bold || s.style?.italic || s.style?.strike)
+      .map((s): [string, string] => [s.text, `${s.style?.bold ? "B" : ""}${s.style?.italic ? "I" : ""}${s.style?.strike ? "S" : ""}`]);
     return [rows(markdown, 80, { hyperlinks: false })[0]!, styled];
   }
 
@@ -946,6 +946,48 @@ describe("Markdown", () => {
     ["x\\\\\n*a*", "x\\ a", [["a", "I"]]],
   ])("pairs the delimiters of %j as markdown-it's flanking rules do", (source, row, styled) => {
     expect(emphasis(source)).toEqual([row, styled]);
+  });
+
+  // Each row is Rich 14's drawing of the source, with markdown-it-py 4.2. Rich
+  // reads a line opening with `~~~` as a fence, which ours does not yet
+  // (rich-unfiled-791c.fxsx), so the odd runs sit after text.
+  it.each<[string, string, [string, string][]]>([
+    ["x ~~a~~ y", "x a y", [["a", "S"]]],
+    // One `~` strikes nothing; a `~` run flanks as a `*` run does, inside a word too.
+    ["~a~", "~a~", []],
+    ["~~a~b~~", "a~b", [["a~b", "S"]]],
+    ["a~~b~~c", "abc", [["b", "S"]]],
+    ["~~ a~~", "~~ a~~", []],
+    ["x~~(a)~~y", "x~~(a)~~y", []],
+    // Tildes pair two at a time; an odd run's spare `~` is text, moved past the run that closes.
+    ["x ~~~a~~~", "x ~a~", [["a", "S"]]],
+    ["x ~~a~~~", "x a~", [["a", "S"]]],
+    ["x ~~~~~a~~~", "x ~~~a~", [["a", "S"]]],
+    ["foo~~~~bar~~", "foo~~bar", [["bar", "S"]]],
+    // An escaped `~` is no spare and stays where it is written.
+    ["~~a\\~~~", "a~", [["a~", "S"]]],
+    ["~~a\\~~b~~", "a~~b", [["a~~b", "S"]]],
+    // Two pairs nested tight are struck once, never merged as `**` merges into strong.
+    ["x ~~~~a~~~~", "x a", [["a", "S"]]],
+    // Strikethrough nests with emphasis, and pairs only with its own kind.
+    ["**~~a~~**", "a", [["a", "BS"]]],
+    ["~~_a_~~", "a", [["a", "IS"]]],
+    ["~~a *b~~ c*", "a *b c*", [["a *b", "S"]]],
+    ["*a~~b*~~", "a~~b~~", [["a~~b", "I"]]],
+    ["~~a `~~` b~~", "a ~~ b", [["a ", "S"], ["~~", "BS"], [" b", "S"]]],
+  ])("strikes through the ~~ pairs of %j as Rich does", (source, row, styled) => {
+    expect(emphasis(source)).toEqual([row, styled]);
+  });
+
+  it("draws emphasis in markdown.em, strong in markdown.strong and strikethrough in markdown.s", () => {
+    const theme = new Theme({ "markdown.em": "red", "markdown.strong": "green", "markdown.s": "blue" });
+    const segs = collectSegments(new Markdown("*a* **b** ~~c~~"), { maxWidth: 40, theme });
+    const colorOf = (text: string) => segs.find((s) => s.text === text)?.style?.color?.name;
+    expect([colorOf("a"), colorOf("b"), colorOf("c")]).toEqual(["red", "green", "blue"]);
+    // Rich's defaults.
+    expect(["markdown.em", "markdown.strong", "markdown.s"].map((name) => DEFAULT_THEME.resolve(name))).toEqual(
+      ["italic", "bold", "strike"].map((style) => Style.parse(style)),
+    );
   });
 
   it("takes no lazy line into a container that ends in an HTML block", () => {
