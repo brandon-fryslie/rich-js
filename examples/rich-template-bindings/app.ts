@@ -468,16 +468,24 @@ const themeGridItem = new StaticItem({
     const tmpl = noticeRow.input.value;
     const swatchTmpl =
       `{{ "██" | fg (color "primary") }}{{ "██" | fg (color "accent") }}{{ "██" | fg (color "success") }}{{ "██" | fg (color "warning") }}{{ "██" | fg (color "error") }}`;
-    const segs: Segment[] = [];
-    for (let i = 0; i < GALLERY_THEMES.length; i++) {
-      const [name, engine] = GALLERY_THEMES[i]!;
-      segs.push(new Segment(`  ${name.padEnd(22)}`, dimStyle));
-      segs.push(...Segment.adjustLineLength(renderTemplate(engine, swatchTmpl, {}, { ...opts, maxWidth: 14 }), 14));
-      segs.push(new Segment("  "));
-      segs.push(...Segment.adjustLineLength(renderTemplate(engine, tmpl, {}, { ...opts, maxWidth: opts.maxWidth - 42 }), opts.maxWidth - 42));
-      if (i < GALLERY_THEMES.length - 1) segs.push(new Segment("\n"));
-    }
-    return segs;
+    // The notice is several lines; each sits in the notice column, under the
+    // theme's name and swatch rather than back at the left edge.
+    const noticeWidth = opts.maxWidth - 42;
+    const under = new Segment(" ".repeat(40));
+    return GALLERY_THEMES.flatMap(([name, engine]) => {
+      const head = [
+        new Segment(`  ${name.padEnd(22)}`, dimStyle),
+        ...Segment.adjustLineLength(renderTemplate(engine, swatchTmpl, {}, { ...opts, maxWidth: 14 }), 14),
+        new Segment("  "),
+      ];
+      const notice = Segment.splitLines(renderTemplate(engine, tmpl, {}, { ...opts, maxWidth: noticeWidth }));
+      // An emptied template still leaves the theme its row.
+      return (notice.length > 0 ? notice : [[]]).flatMap((line, row) => [
+        ...(row === 0 ? head : [under]),
+        ...Segment.adjustLineLength(line, noticeWidth),
+        new Segment("\n"),
+      ]);
+    });
   },
 });
 

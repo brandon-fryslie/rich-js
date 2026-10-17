@@ -28,6 +28,9 @@ interface Size { readonly cols: number; readonly rows: number }
 /** Starts a demo on `host`; the function it returns stops it, settling once it has. */
 type Demo = (host: ScriptedHost) => () => Promise<void>;
 
+/** The keys to type, read off the screen the demo first paints. */
+type Keys = (first: readonly string[]) => readonly string[];
+
 const ROOMY: Size = { cols: 240, rows: 200 };
 const PAGE_DOWN = "\x1b[6~";
 
@@ -39,7 +42,7 @@ const cardSize = (demo: string): Size => {
 const painted = () => new Promise((resolve) => setTimeout(resolve));
 
 /** The screen after the demo first paints, and again after each of `keys`. */
-async function screens(demo: Demo, size: Size, keys: readonly string[]): Promise<string[][]> {
+async function screens(demo: Demo, size: Size, keys: Keys): Promise<string[][]> {
   const host = scriptedHost(size);
   const term = new xterm.Terminal({ ...size, allowProposedApi: true });
   let fed = 0;
@@ -53,31 +56,36 @@ async function screens(demo: Demo, size: Size, keys: readonly string[]): Promise
   };
   const stop = demo(host);
   const shown = [await read()];
-  for (const key of keys) {
+  for (const key of keys(shown[0]!)) {
     host.type(key);
     shown.push(await read());
   }
   await stop();
+  term.dispose();
   return shown;
 }
 
 const BOX_RUN = /[─-╿]+/;
+// A box's top border, where its title sits, or a rule.
+const TITLE_ROW = /^[╭┌┏╔─━═]/;
 
-/** The runs of words on the rows of `screen` that a too-narrow terminal cuts rather than wraps. */
-function unwrappedWords(screen: readonly string[]): string[] {
-  return screen.flatMap((line) => {
-    const row = line.trimStart();
-    const boxed = BOX_RUN.test(row);
-    if (boxed && !row.startsWith("╭") && !row.startsWith("─")) return [];
-    return row.split(BOX_RUN).map((words) => words.trim()).filter((words) => words !== "");
-  });
+/** The rows of `screen` that a too-narrow terminal cuts rather than wraps. */
+function unwrappedRows(screen: readonly string[]): string[] {
+  return screen.map((line) => line.trimStart()).filter((row) => !BOX_RUN.test(row) || TITLE_ROW.test(row));
 }
 
-/** Every run of words the roomy screens show that no screen at `size` shows whole. */
-async function cut(demo: Demo, size: Size, keys: readonly string[]): Promise<string[]> {
-  const roomy = (await screens(demo, ROOMY, keys)).flatMap(unwrappedWords);
-  const shown = (await screens(demo, size, keys)).flat();
-  return [...new Set(roomy)].filter((words) => !shown.some((line) => line.includes(words)));
+const wordRuns = (row: string): string[] => row.split(BOX_RUN).map((words) => words.trim()).filter((words) => words !== "");
+
+/**
+ * Every run of words on the roomy screens' unwrapped rows that no unwrapped
+ * row at `size` shows whole. Only those rows are searched: the same words in a
+ * panel body elsewhere on screen do not make a cut row whole.
+ */
+async function cut(demo: Demo, size: Size, keys: Keys): Promise<string[]> {
+  const roomy = (await screens(demo, ROOMY, keys)).flatMap(unwrappedRows).flatMap(wordRuns);
+  expect(roomy, "the demo painted no rows to compare").not.toEqual([]);
+  const shown = (await screens(demo, size, keys)).flatMap(unwrappedRows);
+  return [...new Set(roomy)].filter((words) => !shown.some((row) => row.includes(words)));
 }
 
 const templateBindings: Demo = (host) => {
@@ -88,9 +96,13 @@ const templateBindings: Demo = (host) => {
   };
 };
 
-// Four pages down from wherever it starts shows all five sections: the
-// section on show outlives a run, and paging wraps.
-const EVERY_SECTION = [PAGE_DOWN, PAGE_DOWN, PAGE_DOWN, PAGE_DOWN];
+// One page fewer than the header's §n/N count shows every section from
+// wherever it starts: the section on show outlives a run, and paging wraps.
+const EVERY_SECTION: Keys = (first) => {
+  const header = /§\d+\/(\d+)/.exec(first.join("\n"));
+  if (header === null) throw new Error("rich-template-bindings drew no §n/N section header");
+  return Array.from({ length: Number(header[1]) - 1 }, () => PAGE_DOWN);
+};
 
 it("every row of rich-template-bindings reads whole in its card's terminal", async () => {
   expect(await cut(templateBindings, cardSize("rich-template-bindings"), EVERY_SECTION)).toEqual([]);
@@ -110,5 +122,8 @@ it("every row of dropdown-demo reads whole in its card's terminal", async () => 
       return done;
     };
   };
-  expect(await cut(dropdownDemo, cardSize("dropdown-demo"), [])).toEqual([]);
+  // The status row widens with the numbers it reads out; picking the long
+  // list's last item makes it as wide as it gets.
+  const lastOfLongList: Keys = () => ["\t", "\r", ...Array.from({ length: 17 }, () => "\x1b[B"), "\r"];
+  expect(await cut(dropdownDemo, cardSize("dropdown-demo"), lastOfLongList)).toEqual([]);
 });
