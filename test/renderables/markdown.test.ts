@@ -426,7 +426,7 @@ describe("Markdown", () => {
     ["```\ncode\n```` \nafter", ["code", "after", ""]],
     ["```\ncode\n```\t\n- after", ["code", " • after", ""]],
     ["```\ncode\n``` x\n```\nafter", ["code", "``` x", "after", ""]],
-    ["```\ncode\n``` \n- after\n```", ["code", "```", "- after", ""]],
+    ["```\ncode\n```\u00a0\n- after\n```", ["code", "```", "- after", ""]],
     ["```\ncode\n    ```\nafter", ["code", "    ```", "after", ""]],
   ])("opens and closes the fence in %j as markdown-it does, as Rich does", (source, expected) => {
     expect(rows(source, 80)).toEqual(expected);

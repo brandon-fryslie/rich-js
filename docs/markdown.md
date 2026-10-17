@@ -107,8 +107,10 @@ console.print(new Markdown(`| Subpath | Installs | Size |
 
 ## Code blocks
 
-A fenced code block is drawn line for line in the `markdown.code` style, bold cyan on a
-dark background, with its indentation kept. At sixteen colours code is drawn bold in the
+A fenced code block opens on three or more backticks or tildes and closes on a run of the
+same character at least as long; left unclosed, it runs to the end of the document, or of
+the quote or list item it sits in. It is drawn line for line in the `markdown.code` style,
+bold cyan on a dark background, with its indentation kept. At sixteen colours code is drawn bold in the
 terminal's own colours instead, since no fixed background reads in every terminal theme
 there. The language tag after the opening fence is read
 but not used: `Markdown` does no per-language highlighting. For highlighted code, render
