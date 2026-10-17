@@ -899,6 +899,7 @@ const WHITESPACE = /^[\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]$/;
 const PUNCTUATION = /^[\p{P}\p{S}]$/u;
 
 const TICKS = /`+/y;
+const TICK_RUNS = /`+/g;
 const LINE_INDENT = /[ \t]*/y;
 /** markdown-it's autolink: `<`, then text holding no `<` up to the first `>`. */
 const AUTOLINK = /<([^<>]*)>/y;
@@ -1006,20 +1007,22 @@ function unescapeAll(text: string): string {
 }
 
 /**
- * markdown-it's link-label scan — `parseLinkLabel` stepping over the text a
- * token at a time with `skipToken` — and the cache those steps share across
- * one block's text, with the document's `definitions` a label is resolved
- * against. A link's label may hold no link: a `[` it meets that
+ * markdown-it's inline state, as much of it as outlives one construct: the
+ * document's `definitions` a label is resolved against, each text's backtick
+ * runs, and the link-label scan — `parseLinkLabel` stepping over the text a
+ * token at a time with `skipToken` — with the cache those steps share across
+ * one block's text. A link's label may hold no link: a `[` it meets that
  * opens one refuses the label, so only the innermost of nested links links.
  * Each `[` the scan meets is tried as a link one level deeper, and at
  * `MAX_NESTING` a step lands past the end of the text, as markdown-it's does —
  * which is what keeps the scan shallow and, with the cache, linear in a run of
  * brackets however long.
  */
-class LinkLabels {
+class InlineState {
   // markdown-it's `state.cache`: where a step from a position lands, kept
   // whatever level it was taken at and whatever text it was taken in, as there.
   private readonly steps = new Map<number, number>();
+  private readonly backticks = new Map<string, BacktickRuns>();
 
   constructor(readonly definitions: Definitions) {}
 
@@ -1028,7 +1031,7 @@ class LinkLabels {
    * scanned at `level` — or nothing, where no `]` does or, for a link's
    * label, where the label holds a link.
    */
-  close(text: string, open: number, level: number, refusesLinks: boolean): number | undefined {
+  labelClose(text: string, open: number, level: number, refusesLinks: boolean): number | undefined {
     let depth = 1;
     for (let i = open + 1; i < text.length; ) {
       if (text[i] === "]" && --depth === 0) return i;
@@ -1050,6 +1053,44 @@ class LinkLabels {
     const next = level >= MAX_NESTING ? text.length + 1 : (inlineAt(text, i, this, level + 1)?.end ?? textRunEnd(text, i));
     this.steps.set(i, next);
     return next;
+  }
+
+  /** Where the first whole run of `length` backticks at or after `from` in `text` starts, if one does: the closer of a code span `length` long. */
+  codeClose(text: string, from: number, length: number): number | undefined {
+    let runs = this.backticks.get(text);
+    if (runs === undefined) this.backticks.set(text, (runs = new BacktickRuns(text)));
+    return runs.after(from, length);
+  }
+}
+
+/**
+ * Every whole backtick run in a text, read once: markdown-it-py's backticks
+ * rule keeps `state.backticks` so that an opener with no closer does not
+ * rescan the rest of the text, and a run of openers each left unclosed reads
+ * the text once, not once each.
+ */
+class BacktickRuns {
+  // Where each run starts, by its length, in order.
+  private readonly starts = new Map<number, number[]>();
+
+  constructor(text: string) {
+    for (const run of text.matchAll(TICK_RUNS)) {
+      const starts = this.starts.get(run[0].length);
+      if (starts) starts.push(run.index);
+      else this.starts.set(run[0].length, [run.index]);
+    }
+  }
+
+  /** Where the first run of `length` at or after `from` starts, if one does. */
+  after(from: number, length: number): number | undefined {
+    const starts = this.starts.get(length) ?? [];
+    let low = 0;
+    for (let high = starts.length; low < high; ) {
+      const middle = (low + high) >> 1;
+      if (starts[middle]! < from) low = middle + 1;
+      else high = middle;
+    }
+    return starts[low];
   }
 }
 
@@ -1104,11 +1145,11 @@ function linkDestination(text: string, open: number): LinkTarget | { resume: num
  * a reference also where that inline form is refused, read from where the
  * refusal leaves it. markdown-it's image rule takes no reference there.
  */
-function linkTarget(text: string, open: number, close: number, labels: LinkLabels, level: number, image: boolean): LinkTarget | undefined {
-  if (text[close + 1] !== "(") return reference(text, open, close, close + 1, labels, level);
+function linkTarget(text: string, open: number, close: number, state: InlineState, level: number, image: boolean): LinkTarget | undefined {
+  if (text[close + 1] !== "(") return reference(text, open, close, close + 1, state, level);
   const destination = linkDestination(text, close + 1);
   if (destination === undefined || "url" in destination) return destination;
-  return image ? undefined : reference(text, open, close, destination.resume, labels, level);
+  return image ? undefined : reference(text, open, close, destination.resume, state, level);
 }
 
 /**
@@ -1118,10 +1159,10 @@ function linkTarget(text: string, open: number, close: number, labels: LinkLabel
  * `close`, a collapsed or shortcut reference. The url its definition gives, and
  * the index past the reference; nothing where no definition has its label.
  */
-function reference(text: string, open: number, close: number, from: number, labels: LinkLabels, level: number): LinkTarget | undefined {
-  const fullClose = text[from] === "[" ? labels.close(text, from, level, false) : undefined;
+function reference(text: string, open: number, close: number, from: number, state: InlineState, level: number): LinkTarget | undefined {
+  const fullClose = text[from] === "[" ? state.labelClose(text, from, level, false) : undefined;
   const full = fullClose === undefined ? "" : text.slice(from + 1, fullClose);
-  const url = labels.definitions.get(normalizeReference(full || text.slice(open + 1, close)));
+  const url = state.definitions.get(normalizeReference(full || text.slice(open + 1, close)));
   return url === undefined ? undefined : { url, end: fullClose === undefined ? close + 1 : fullClose + 1 };
 }
 
@@ -1352,19 +1393,17 @@ function nextLine(text: string, from: number): number {
   return from + matchAt(LINE_INDENT, text, from)![0].length;
 }
 
-/** The inline construct opening at `i` in `text`, if one does, read at `level` with `labels` scanning a link's label. */
-function inlineAt(text: string, i: number, labels: LinkLabels, level: number): InlineMatch | undefined {
+/** The inline construct opening at `i` in `text`, if one does, read at `level` in `state`. */
+function inlineAt(text: string, i: number, state: InlineState, level: number): InlineMatch | undefined {
   switch (text[i]) {
     case "`": {
       const ticks = matchAt(TICKS, text, i)![0];
-      const close = new RegExp(`(?<!\`)${ticks}(?!\`)`, "g");
-      close.lastIndex = i + ticks.length;
-      const found = close.exec(text);
-      if (!found) return { kind: "text", text: ticks, end: i + ticks.length };
+      const close = state.codeClose(text, i + ticks.length, ticks.length);
+      if (close === undefined) return { kind: "text", text: ticks, end: i + ticks.length };
       // A code span's line endings are spaces, and a space each side pads it unless `str.strip` empties it, as markdown-it-py's backticks rule has them. markdown-it in JS strips by `/^ (.+) $/` and so pads an all-space span too.
-      const code = text.slice(i + ticks.length, found.index).replaceAll("\n", " ");
+      const code = text.slice(i + ticks.length, close).replaceAll("\n", " ");
       const padded = code.startsWith(" ") && code.endsWith(" ") && pyStrip(code) !== "";
-      return { kind: "code", code: padded ? code.slice(1, -1) : code, end: found.index + ticks.length };
+      return { kind: "code", code: padded ? code.slice(1, -1) : code, end: close + ticks.length };
     }
     case "*":
     case "_":
@@ -1398,9 +1437,9 @@ function inlineAt(text: string, i: number, labels: LinkLabels, level: number): I
       const image = text[i] === "!";
       const open = image ? i + 1 : i;
       if (text[open] !== "[") return undefined;
-      const close = labels.close(text, open, level, !image);
+      const close = state.labelClose(text, open, level, !image);
       if (close === undefined) return undefined;
-      const target = linkTarget(text, open, close, labels, level, image);
+      const target = linkTarget(text, open, close, state, level, image);
       if (!target) return undefined;
       return image
         ? { kind: "image", alt: text.slice(open + 1, close), src: target.url, end: target.end }
@@ -1419,14 +1458,14 @@ function inlineAt(text: string, i: number, labels: LinkLabels, level: number): I
  * it there; `level` is how many links the text sits in, where a label scan
  * starts counting.
  */
-function inlines(text: string, from: number, labels: LinkLabels, level: number): Inline[] {
+function inlines(text: string, from: number, state: InlineState, level: number): Inline[] {
   const pieces: Inline[] = [];
   const delimiters: Delimiter[] = [];
   // The pieces that are an odd `~` run's lone `~`.
   const lone = new Set<number>();
   let plain = from;
   for (let i = from; i < text.length; ) {
-    const found = inlineAt(text, i, labels, level);
+    const found = inlineAt(text, i, state, level);
     if (!found) {
       i++;
       continue;
@@ -1443,7 +1482,7 @@ function inlines(text: string, from: number, labels: LinkLabels, level: number):
         delimiters.push({ marker: found.marker, length: found.length, piece: pieces.length, open: found.canOpen, close: found.canClose, end: -1 });
         pieces.push({ kind: "text", text: found.unit });
       }
-    } else pieces.push(matched(found, text, labels, level));
+    } else pieces.push(matched(found, text, state, level));
     i = plain = found.end;
   }
   if (plain < text.length) pieces.push({ kind: "text", text: text.slice(plain) });
@@ -1453,7 +1492,7 @@ function inlines(text: string, from: number, labels: LinkLabels, level: number):
 
 /** `text` read into inlines from its start, its references resolved against `definitions`. */
 function parseInline(text: string, definitions: Definitions): Inline[] {
-  return inlines(text, 0, new LinkLabels(definitions), 0);
+  return inlines(text, 0, new InlineState(definitions), 0);
 }
 
 /**
@@ -1463,10 +1502,10 @@ function parseInline(text: string, definitions: Definitions): Inline[] {
  * markdown-it's `posMax` does, so a run at the label's end borders the end of
  * the text, as `scanDelims` reads it, and not the `]`.
  */
-function matched(found: Exclude<InlineMatch, DelimiterRun | { kind: "line_ending" }>, text: string, labels: LinkLabels, level: number): Inline {
+function matched(found: Exclude<InlineMatch, DelimiterRun | { kind: "line_ending" }>, text: string, state: InlineState, level: number): Inline {
   switch (found.kind) {
     case "link":
-      return { kind: "link", children: inlines(text.slice(0, found.close), found.label, labels, level + 1), url: found.url };
+      return { kind: "link", children: inlines(text.slice(0, found.close), found.label, state, level + 1), url: found.url };
     case "autolink":
       return { kind: "autolink", text: normalizeLinkText(found.source), url: found.url };
     case "code":
