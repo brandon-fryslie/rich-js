@@ -4,15 +4,22 @@
     {
       "version": "pr-432",
       "ref": "refs/pull/432/merge",
-      "sha": "7487bffb7c0c0083f638a4e3ae69123a92cb2ecb",
-      "timestamp": "2026-10-17T07:58:21.729Z",
+      "sha": "1002c6d6c82c0f3b057ab35697f4c3da82315d46",
+      "timestamp": "2026-10-17T08:15:17.896Z",
       "commits": [
         {
-          "sha": "7487bffb7c0c0083f638a4e3ae69123a92cb2ecb",
+          "sha": "1002c6d6c82c0f3b057ab35697f4c3da82315d46",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T01:57:08-06:00",
-          "message": "Merge 1650f8c6fabe70aab765164053b2f3f2846fe9dd into 069182e44a05717b4034ba0857c8f315a5691244\n"
+          "timestamp": "2026-10-17T08:13:35Z",
+          "message": "Merge 1e87c833e59106d2ea2beb7348e43719c9e9d29f into 069182e44a05717b4034ba0857c8f315a5691244\n"
+        },
+        {
+          "sha": "1e87c833e59106d2ea2beb7348e43719c9e9d29f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T02:13:31-06:00",
+          "message": "Markdown leaves an empty item at maxNesting unread, and keeps line endings their own tokens, as markdown-it does (rich-unfiled-791c.gwww)\n\nAn item with no text past the cap took every line after it: markdown-it\nskips blank lines before it checks the level, so empty content has nothing\nleft unread. Soft and hard breaks are now Inline variants, so the\nfragments_join merge no longer swallows them and segments match Rich's.\n"
         },
         {
           "sha": "1650f8c6fabe70aab765164053b2f3f2846fe9dd",
