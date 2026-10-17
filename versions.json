@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "a0bcc2657e174c20029d0319b407c10bf1198379",
+      "timestamp": "2026-10-17T00:16:46.747Z",
+      "commits": [
+        {
+          "sha": "a0bcc2657e174c20029d0319b407c10bf1198379",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T18:15:05-06:00",
+          "message": "claude-sessions opens a real session on its first message (rich-demos-k78j.iuf) (#409)\n\n* claude-sessions opens a real session on its first message (rich-demos-k78j.iuf)\n\nClaude Code now writes mode, attachment and a dozen other session-state\nrecords the parser did not know, so it drew each as an \"unknown record type\"\nerror panel ahead of the conversation. Every type found across two weeks of\nreal transcripts is now named in RECORD_TYPES (data/parser.ts) as drawn or\nhidden. A hidden record shown with H is a rule naming its type, not an error;\na type the table does not name is still drawn as an error, so it reaches the\nreader.\n\nThe card's staging script took its own list of drawn types; it now derives\nthem from RECORD_TYPES, so the card and the Node script draw the same records.\nThe staged data it writes is unchanged.\n\n* The parser draws exactly the record types the table calls drawn (rich-demos-k78j.iuf)\n\nReview of #409: the table's drawn half was read only by the staging script;\nemitBlocks still decided by hand. DRAWN_RECORD_TYPES is now a typed tuple\nemitBlocks dispatches over exhaustively, so a type added there does not\ncompile until it is drawn. dropHidden hands on RecordLines, typed records,\nso the casts and the dead '?' fallback downstream go. A drawn-type record\nwith no message is reported malformed, not unknown. Older sessions' summary\nrecords are hidden. The staged-types test was circular (staging filters\nby the same table) and is replaced by a type on TITLE_TYPES.\n\nFollow-up, unverified: rich-demos-k78j.5d7 (queued_command attachments).\n\n* A prompt sent while a turn ran is drawn as the human turn it is (rich-demos-k78j.iuf)\n\nReview of #409 (medium): Claude Code files a queued prompt as\nattachment/queued_command with no user record (shape read from Claude Code\n2.1.289's own constructor; 85 such records in 200 local transcripts), and\nhiding attachment hid it. The parser's first step now reads each line as\nthe record it stands for, keeping the written line as the block's source,\nand staging keeps exactly the records isDrawnRecord names instead of its\nown type set. Closes rich-demos-k78j.5d7.\n\n* One literal names each record type once; staging reads records as the parser does (rich-demos-k78j.iuf)\n\nReview of #409 (escalation high): the drawn and hidden lists could name one\ntype twice, the later silently winning; RECORD_USE is one object literal, so\na duplicate key does not compile. Staging keeps only the attachment fields\nthe viewer reads (shownAttachment, as shownMessage) and budgets a record as\nreadRecord reads it, so a tag-wrapped queued prompt gets KEEP. A tool call's\nresult source is its written parts, not the read copy.\n\nNot taken: re-staging the card's sessions (needs the owner's ~/.claude);\nrich-demos-k78j.mk1 filed for the pre-existing H-view message split."
+        }
+      ]
+    },
+    {
       "version": "pr-408",
       "ref": "refs/pull/408/merge",
       "sha": "4b0dc70414e1246dc9c1ced5e6301c5c4e57f3be",
@@ -20,64 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T18:09:02-06:00",
           "message": "A transition settles its last cell as it is done, on any element (rich-unfiled-791c.7b9h)\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "2232273a5417c6b00538f6f2c74d9120f6d3f366",
-      "timestamp": "2026-10-17T00:09:28.182Z",
-      "commits": [
-        {
-          "sha": "2232273a5417c6b00538f6f2c74d9120f6d3f366",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:07:49-06:00",
-          "message": "Colour steps on a beat as a signal, and any effect samples on one (rich-animation-xi28.bjo) (#410)\n\n* Colour steps on a beat as a signal, and any effect samples on one (rich-animation-xi28.bjo)\n\nsteppedInk(steps) is an Effect whose ink steps through colours on a beat,\none a hold, looping, for the time it is handed. Each step's ink is written\nas the colour nearest the step's that the depth draws and that reads on the\ncell's ground at the catalogue's floor (floorOf: resting contrast or AA,\nwhichever is lower), measured as Effected writes it; in truecolor through\nensureContrast, the slide readableOn makes, below it the nearest indexed\ncolour, so at sixteen colours it steps slot to slot where the loops hold\nstill. The search is memoized per ink, ground and step, so a frame inside a\nstep redoes none.\n\nonBeat(effect, beat) samples any effect at Beat.start(t), new on Beat: the\nmoment the hold in progress began, bit-identical for every t inside it. A\nshort-curve wheel on beat([1]) is a hue walk a step a second.\n\nstepped <seconds> <color> ... joins frames in animationFuncs: the colour in\nprogress as a colour value, so it nests in fg and readableOn.\n\nEffectCell carries reverse, so a cell and its colours make its Pair.\n\n* Beat.start lands in the hold at reads, and a template hold is refused in the function's own words\n\nReview (high): for holds not exact in binary, the pass's start plus the hold's\ncould round an ulp under the boundary, so at(start(t)) was the hold before for\nnearly half of all samples; start now walks up to the first float at places in\nthe hold, and a sweep pins it. steppedInk snapshots its colours as beat does\nits holds. The template pairs parser refuses a non-positive hold itself, so the\nauthor reads the engine's 'error calling stepped' and no stray 'beat'. The cost\ntest builds a fresh signal per base so the first frame is a real search."
-        }
-      ]
-    },
-    {
-      "version": "pr-409",
-      "ref": "refs/pull/409/merge",
-      "sha": "c303f202c85a501984e6924c7d2bf24d27608768",
-      "timestamp": "2026-10-17T00:05:33.451Z",
-      "commits": [
-        {
-          "sha": "c303f202c85a501984e6924c7d2bf24d27608768",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T00:04:10Z",
-          "message": "Merge b392f6c6e8ef8ab93b472cc3ed4d74161238e6df into be55d8d03e743ffc840c4d98afbdebb22d195f8b\n"
-        },
-        {
-          "sha": "b392f6c6e8ef8ab93b472cc3ed4d74161238e6df",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:04:05-06:00",
-          "message": "One literal names each record type once; staging reads records as the parser does (rich-demos-k78j.iuf)\n\nReview of #409 (escalation high): the drawn and hidden lists could name one\ntype twice, the later silently winning; RECORD_USE is one object literal, so\na duplicate key does not compile. Staging keeps only the attachment fields\nthe viewer reads (shownAttachment, as shownMessage) and budgets a record as\nreadRecord reads it, so a tag-wrapped queued prompt gets KEEP. A tool call's\nresult source is its written parts, not the read copy.\n\nNot taken: re-staging the card's sessions (needs the owner's ~/.claude);\nrich-demos-k78j.mk1 filed for the pre-existing H-view message split.\n"
-        },
-        {
-          "sha": "88dd5122ab34bcbe5dd662c13fee4c46c23da44f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T17:57:46-06:00",
-          "message": "A prompt sent while a turn ran is drawn as the human turn it is (rich-demos-k78j.iuf)\n\nReview of #409 (medium): Claude Code files a queued prompt as\nattachment/queued_command with no user record (shape read from Claude Code\n2.1.289's own constructor; 85 such records in 200 local transcripts), and\nhiding attachment hid it. The parser's first step now reads each line as\nthe record it stands for, keeping the written line as the block's source,\nand staging keeps exactly the records isDrawnRecord names instead of its\nown type set. Closes rich-demos-k78j.5d7.\n"
-        },
-        {
-          "sha": "b6f3429721f406b9dacf60458bd657ef87df07db",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T17:47:20-06:00",
-          "message": "The parser draws exactly the record types the table calls drawn (rich-demos-k78j.iuf)\n\nReview of #409: the table's drawn half was read only by the staging script;\nemitBlocks still decided by hand. DRAWN_RECORD_TYPES is now a typed tuple\nemitBlocks dispatches over exhaustively, so a type added there does not\ncompile until it is drawn. dropHidden hands on RecordLines, typed records,\nso the casts and the dead '?' fallback downstream go. A drawn-type record\nwith no message is reported malformed, not unknown. Older sessions' summary\nrecords are hidden. The staged-types test was circular (staging filters\nby the same table) and is replaced by a type on TITLE_TYPES.\n\nFollow-up, unverified: rich-demos-k78j.5d7 (queued_command attachments).\n"
-        },
-        {
-          "sha": "ce11584e3f928588b2944462807f3aefae78bafe",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T17:38:02-06:00",
-          "message": "claude-sessions opens a real session on its first message (rich-demos-k78j.iuf)\n\nClaude Code now writes mode, attachment and a dozen other session-state\nrecords the parser did not know, so it drew each as an \"unknown record type\"\nerror panel ahead of the conversation. Every type found across two weeks of\nreal transcripts is now named in RECORD_TYPES (data/parser.ts) as drawn or\nhidden. A hidden record shown with H is a rule naming its type, not an error;\na type the table does not name is still drawn as an error, so it reaches the\nreader.\n\nThe card's staging script took its own list of drawn types; it now derives\nthem from RECORD_TYPES, so the card and the Node script draw the same records.\nThe staged data it writes is unchanged.\n"
         }
       ]
     }
