@@ -103,9 +103,10 @@ export type Inline =
  * columns of the quote around it, so `lead` may disagree with where `text`'s
  * leading whitespace ends. markdown-it reads both, each where it does: `lead`
  * for how far the line is indented and where its text sits, `text`'s own
- * stops for the indentation a block cuts off it (`dropColumns`). `written` is
- * `text` with the list markers it sits behind as written, not blanked: what
- * that cut leaves of one where it stops before it. A `lazy`
+ * stops for the indentation a block cuts off it (`dropColumns`). Its first
+ * `marked` characters hold the list markers it sits behind, which read as
+ * spaces for its columns and its indentation and stay as written in what that
+ * cut leaves of one it stops before the end of. A `lazy`
  * line was taken in short of its container's marker or indentation, as a
  * lazy continuation line: it continues a paragraph or a definition open
  * before it, and where none is, the container ends at it. It is `"quote"` once
@@ -117,7 +118,7 @@ export type Inline =
  */
 interface Line {
   readonly text: string;
-  readonly written: string;
+  readonly marked: number;
   readonly quoteStart: number;
   readonly margin: number;
   readonly lead: number;
@@ -126,7 +127,7 @@ interface Line {
 
 /** A line of the source as the top level holds it. */
 function sourceLine(text: string): Line {
-  return { text, written: text, quoteStart: 0, margin: 0, lead: advance(0, LEAD.exec(text)![0]), lazy: false };
+  return { text, marked: 0, quoteStart: 0, margin: 0, lead: advance(0, LEAD.exec(text)![0]), lazy: false };
 }
 
 /**
@@ -262,7 +263,8 @@ function indentOf(line: Line): number {
 
 /** `line` from its first character that is not leading whitespace. */
 function body(line: Line): string {
-  return line.text.slice(LEAD.exec(line.text)![0].length);
+  const unmarked = line.text.slice(line.marked);
+  return unmarked.slice(LEAD.exec(unmarked)![0].length);
 }
 
 function isBlank(line: Line): boolean {
@@ -283,12 +285,14 @@ function dropColumns(line: Line, n: number): string {
   const to = line.margin + n;
   let col = 0;
   let i = 0;
-  for (; i < line.text.length && col < to && (line.text[i] === " " || line.text[i] === "\t"); i++) {
-    const next = advance(col, line.text[i]!);
-    if (next > to) return " ".repeat(next - to) + line.written.slice(i + 1);
+  for (; i < line.text.length && col < to; i++) {
+    const ch = i < line.marked && line.text[i] !== "\t" ? " " : line.text[i]!;
+    if (ch !== " " && ch !== "\t") break;
+    const next = advance(col, ch);
+    if (next > to) return " ".repeat(next - to) + line.text.slice(i + 1);
     col = next;
   }
-  return line.written.slice(i);
+  return line.text.slice(i);
 }
 
 /**
@@ -322,23 +326,11 @@ function itemStart(line: Line): ItemStart | undefined {
   const markerEnd = line.lead + m[0].length;
   const spaced = advance(markerEnd, spacing) - markerEnd;
   const content = rest === "" || spaced > CODE_INDENT ? markerEnd + 1 : markerEnd + spaced;
-  const leadLength = line.text.length - text.length;
-  const lead = line.text.slice(0, leadLength);
   return {
     marker: m[1] === undefined ? { bullet: m[0] } : { delimiter: m[0].slice(-1), start: parseInt(m[1], 10) },
     indent: content - line.margin,
     margin: line.margin,
-    first:
-      rest === ""
-        ? undefined
-        : {
-            ...line,
-            text: lead + " ".repeat(m[0].length) + after,
-            written: line.written.slice(0, leadLength) + m[0] + after,
-            margin: content,
-            lead: markerEnd + spaced,
-            lazy: false,
-          },
+    first: rest === "" ? undefined : { ...line, marked: line.text.length - after.length, margin: content, lead: markerEnd + spaced, lazy: false },
   };
 }
 
@@ -428,7 +420,7 @@ function quoted(line: Line): Line {
   const whole = after[0] === " " || (after[0] === "\t" && marked % 4 === 3);
   const rest = whole ? after.slice(1) : after;
   const text = " ".repeat(start) + rest;
-  return { text, written: text, quoteStart: start, margin: start, lead: start + advance(marked, ws) - marked - space, lazy: false };
+  return { text, marked: 0, quoteStart: start, margin: start, lead: start + advance(marked, ws) - marked - space, lazy: false };
 }
 
 /** The kind of HTML block `line` opens, if it opens one: the first kind whose opening it matches, as markdown-it tries them in order. */
@@ -770,7 +762,7 @@ function tokenize(lines: Lines, level: number): { tokens: Block[]; end: number }
     if (columns) {
       const rows: string[][] = [];
       let autocompleted = 0;
-      for (let row = lines.at((i += 2)); row !== undefined && pyStrip(row.text) !== "" && tableLine(row) && !opensBlock(row); row = lines.at(++i)) {
+      for (let row = lines.at((i += 2)); row !== undefined && pyStrip(row.text.slice(row.marked)) !== "" && tableLine(row) && !opensBlock(row); row = lines.at(++i)) {
         const cells = rowCells(body(row));
         autocompleted += columns.length - cells.length;
         if (autocompleted > MAX_AUTOCOMPLETED_CELLS) break;
