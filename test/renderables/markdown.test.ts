@@ -353,6 +353,8 @@ describe("Markdown", () => {
     ["p1\n\np2 ![i](p.png) q", ["p1", "", "🌆 i p2  q", ""]],
     ["# h ![i](p.png) t", ["🌆 i                   h  t", ""]],
     ["[x ![img](a.png) y](http://out) c", ["🌆 img x  y c", ""]],
+    // Rich 15 skips inline HTML; Rich 14 drew it as an element, which broke the image's row.
+    ["a ![i](p.png) <b>x</b> c", ["🌆 i a  x c", ""]],
     // A table's cells are elements of their own, so each image after the
     // first, and the table itself, starts a row.
     ["| h ![i](p.png) |\n|---|\n| c ![j](q.png) |", ["🌆 i", "🌆 j", "", " h", " ──", " c", "", ""]],

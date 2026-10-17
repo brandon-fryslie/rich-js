@@ -27,7 +27,7 @@ interface TableColumn<Text> {
 }
 
 /** A list item: the blank lines that separated it from the item before, its marker, and its blocks. */
-export interface ListItem<Text = readonly Inline[]> {
+interface ListItem<Text = readonly Inline[]> {
   readonly gap: number;
   readonly marker: ItemMarker;
   readonly children: readonly MdToken<Text>[];

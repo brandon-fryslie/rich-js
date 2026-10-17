@@ -165,16 +165,8 @@ function* inlineSteps(inlines: readonly Inline[], within: Enclosing, settings: I
  * `new_line` but a rule, which draws its own blank row after it, and a blank
  * token is no element.
  */
-function* exitStep(token: MdToken): Iterable<Step> {
-  switch (token.type) {
-    case "hr":
-      yield { kind: "exit", newLine: false };
-      break;
-    case "blank":
-      break;
-    default:
-      yield EXIT;
-  }
+function exitSteps(token: MdToken): readonly Step[] {
+  return token.type === "blank" ? [] : [{ kind: "exit", newLine: token.type !== "hr" }];
 }
 
 /**
@@ -186,7 +178,7 @@ function* stepsInside(token: MdToken, within: Enclosing, options: RenderOptions,
   const children = function* (blocks: readonly MdToken[], inner: Enclosing): Iterable<Step> {
     for (const child of blocks) {
       yield* stepsInside(child, inner, options, settings);
-      yield* exitStep(child);
+      yield* exitSteps(child);
     }
   };
   switch (token.type) {
