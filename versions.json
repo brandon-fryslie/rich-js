@@ -4,15 +4,22 @@
     {
       "version": "pr-436",
       "ref": "refs/pull/436/merge",
-      "sha": "4a44ab86fccc9deab6349334c0448ee535780d50",
-      "timestamp": "2026-10-17T10:37:46.359Z",
+      "sha": "ee040323de650c25c7ab182577e5378199111258",
+      "timestamp": "2026-10-17T10:45:26.833Z",
       "commits": [
         {
-          "sha": "4a44ab86fccc9deab6349334c0448ee535780d50",
+          "sha": "ee040323de650c25c7ab182577e5378199111258",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T04:36:36-06:00",
-          "message": "Merge 932b969eb336bb95abeacc2eceaeb86e94596145 into e80c374ab721ffe013fd22089a39821927c4670c\n"
+          "timestamp": "2026-10-17T10:43:43Z",
+          "message": "Merge 029f02f36430a5774671328730c2a74a66811204 into e80c374ab721ffe013fd22089a39821927c4670c\n"
+        },
+        {
+          "sha": "029f02f36430a5774671328730c2a74a66811204",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T04:43:38-06:00",
+          "message": "Markdown docs name tilde fences and the closing rule; the no-break-space test row is spelled as an escape (rich-unfiled-791c.fxsx)\n"
         },
         {
           "sha": "932b969eb336bb95abeacc2eceaeb86e94596145",
