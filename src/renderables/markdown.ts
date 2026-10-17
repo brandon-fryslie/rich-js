@@ -322,15 +322,9 @@ function drawImage(image: Image, options: RenderOptions, settings: InlineSetting
  * column however wide the gutter, so a row may overrun its width but no gutter
  * swallows what it introduces.
  */
-function* guttered(
-  draw: (options: RenderOptions) => Iterable<Segment>,
-  options: RenderOptions,
-  first: Segment,
-  rest: Segment,
-  style?: Style,
-): Iterable<Segment> {
+function* guttered(draw: (options: RenderOptions) => Iterable<Segment>, options: RenderOptions, first: Segment, rest: Segment): Iterable<Segment> {
   const width = Math.max(1, options.maxWidth - cellLen(first.text));
-  const rows = Segment.splitLines(Segment.applyStyle([...draw({ ...options, maxWidth: width })], style));
+  const rows = Segment.splitLines(draw({ ...options, maxWidth: width }));
   for (const [row, line] of rows.entries()) {
     yield row === 0 ? first : rest;
     yield* line;
@@ -370,6 +364,17 @@ const NO_GUTTER = new Segment("");
  * or `options` say — Rich's: an h1 centred, every other level left — and its
  * style stops where its text does.
  */
+/**
+ * `tokens` drawn as Rich's `render_lines` draws a quote's or an item's
+ * content: in `style`, every row padded to the width in it and ended.
+ */
+function* renderLines(tokens: readonly MdToken[], options: RenderOptions, settings: BlockSettings, style: Style): Iterable<Segment> {
+  for (const line of Segment.splitLines(Segment.applyStyle(renderTokens(tokens, options, settings), style))) {
+    yield* Segment.adjustLineLength(line, options.maxWidth, style);
+    yield Segment.line();
+  }
+}
+
 function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, settings: BlockSettings): Iterable<Segment> {
   for (const token of tokens) yield* renderBlock(token, options, settings);
 }
@@ -417,16 +422,16 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
       const hang = new Segment(" ".repeat(width), markerStyle);
       for (const [n, item] of token.items.entries()) {
         const marker = start === undefined ? drawable(options, " • ", " * ") : `${String(start + n).padStart(width - 1)} `;
-        const body = (inner: RenderOptions) => renderTokens(item, inner, settings);
-        yield* guttered(body, options, new Segment(marker, markerStyle), hang, getStyle(options, "markdown.item"));
+        const body = (inner: RenderOptions) => renderLines(item, inner, settings, getStyle(options, "markdown.item"));
+        yield* guttered(body, options, new Segment(marker, markerStyle), hang);
       }
       break;
     }
 
     case "blockquote": {
       const bar = new Segment(drawable(options, "▎ ", "| "), getStyle(options, "markdown.hr"));
-      const body = (inner: RenderOptions) => renderTokens(token.children, inner, settings);
-      yield* guttered(body, options, bar, bar, QUOTE_STYLE);
+      const body = (inner: RenderOptions) => renderLines(token.children, inner, settings, QUOTE_STYLE);
+      yield* guttered(body, options, bar, bar);
       break;
     }
 

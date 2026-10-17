@@ -531,6 +531,12 @@ describe("Markdown", () => {
     expect(rows("---\n# ![i](p.png)", 40)).toEqual([rule, "", "🌆 i", ""]);
   });
 
+  it("pads every row of an item to its width, a rule's blank row included, as Rich's render_lines does", () => {
+    // Rich 15 at width 20, trailing spaces kept.
+    const text = collectText(new Markdown("- a\n\n  ---\n\n  b"), { maxWidth: 20 }).split("\n");
+    expect(text).toEqual(["", ` • a${" ".repeat(16)}`, `   ${"─".repeat(17)}`, " ".repeat(20), `   b${" ".repeat(16)}`, ""]);
+  });
+
   it("draws an image in a list ahead of the whole list, as Rich does", () => {
     // Rich 14: ["text", "", "🌆 i", " • a", " • b", "", "after", ""].
     expect(rows("text\n\n- a\n- b ![i](p.png)\n\nafter", 40)).toEqual(["text", "", "🌆 i", " • a", " • b", "", "after", ""]);
