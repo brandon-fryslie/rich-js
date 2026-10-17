@@ -338,6 +338,11 @@ describe("TextInput", () => {
       expect(text).not.toContain("secret");
     });
 
+    it("password mode masks every line of a multi-line value", () => {
+      const t = new TextInput({ value: "abc\nde", password: true, multiline: true });
+      expect(renderText(t).split("\n").map((r) => r.trimEnd())).toEqual(["•••", "••"]);
+    });
+
     it("shows placeholder when focused and value is empty", () => {
       const t = new TextInput({ placeholder: "enter name" });
       t.focus();
@@ -1326,6 +1331,52 @@ describe("TextInput", () => {
       const t = new TextInput({ value: "a\u200bb" });
       expect(renderText(t)).toContain("a◌b");
       expect(rowsText(t, { ...RENDER, asciiOnly: true })).toContain("a?b");
+    });
+
+    // Where the cursor is drawn: the row it is on, and the cells before it there.
+    const cursorCell = (t: TextInput, options: RenderOptions): { row: number; column: number } => {
+      const rows = Segment.splitLines(t.render(options));
+      const row = rows.findIndex((r) => r.some((seg) => seg.style?.reverse));
+      const at = rows[row]!.findIndex((seg) => seg.style?.reverse);
+      expect(cellLen(rows[row]![at]!.text)).toBe(1);
+      return { row, column: cellLen(rows[row]!.slice(0, at).map((seg) => seg.text).join("")) };
+    };
+
+    it("has a column of its own in a multi-line value, wrapped or not", () => {
+      for (const wrap of [undefined, charGreedyWrap]) {
+        for (const glyph of ["​", " ", " ", "\t"]) {
+          const t = new TextInput({ value: `a${glyph}b`, multiline: true, wrap, cursorStyle: CURSOR });
+          t.focus();
+          expect(renderText(t)).toBe("a◌b");
+          const columns: number[] = [];
+          for (let stop = 0; stop <= 3; stop++) {
+            const { row, column } = cursorCell(t, RENDER);
+            expect(row).toBe(0);
+            columns.push(column);
+            const before = t.cursorPosition;
+            t.handleMouse({ ...mouseDownAt(column), y: row });
+            expect(t.cursorPosition).toBe(before);
+            t.handleKey(rightEvent());
+          }
+          expect(columns).toEqual([0, 1, 2, 3]);
+        }
+      }
+    });
+
+    it("is a cell the wrap budget counts, so it wraps instead of overflowing its row", () => {
+      const options = { maxWidth: 4 };
+      const t = new TextInput({ value: "abcd​e", multiline: true, wrap: charGreedyWrap, cursorStyle: CURSOR });
+      t.focus();
+      expect(rowsText(t, options).split("\n").map((r) => r.trimEnd())).toEqual(["abcd", "↳ ◌e"]);
+      const stops: { row: number; column: number }[] = [];
+      for (let stop = 0; stop <= 6; stop++) {
+        stops.push(cursorCell(t, options));
+        t.handleKey(rightEvent());
+      }
+      expect(stops).toEqual([
+        { row: 0, column: 0 }, { row: 0, column: 1 }, { row: 0, column: 2 }, { row: 0, column: 3 },
+        { row: 1, column: 2 }, { row: 1, column: 3 }, { row: 1, column: 4 },
+      ]);
     });
 
     it("is drawn as ↵ when it breaks a line, or ~ where only ASCII is drawable", () => {
