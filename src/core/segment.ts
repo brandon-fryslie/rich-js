@@ -157,8 +157,11 @@ export class Segment {
     postStyle?: Style,
   ): Iterable<Segment> {
     // Applying no style is the identity, so the segments pass through as they
-    // are instead of each being copied into an equal one.
-    if (!style && !postStyle) {
+    // are instead of each being copied into an equal one. A null style — a
+    // theme's plain entry, such as `markdown.item` — is no style.
+    const pre = style?.isNull ? undefined : style;
+    const post = postStyle?.isNull ? undefined : postStyle;
+    if (!pre && !post) {
       yield* segments;
       return;
     }
@@ -168,8 +171,8 @@ export class Segment {
         continue;
       }
       let s = segment.style;
-      if (style) s = style.add(s);
-      if (postStyle) s = s ? s.add(postStyle) : postStyle;
+      if (pre) s = pre.add(s);
+      if (post) s = s ? s.add(post) : post;
       yield new Segment(segment.text, s, segment.control);
     }
   }

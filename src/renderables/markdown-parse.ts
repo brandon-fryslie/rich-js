@@ -15,9 +15,6 @@
 import { linkHref, normalizeLinkText } from "./markdown-url.js";
 import { namedReference } from "./html-entities.js";
 
-/** What a list item's gutter opens with: a bullet, or its number in the list, padded to the list's widest. */
-export type ItemMarker = { readonly kind: "bullet" } | { readonly kind: "number"; readonly label: string };
-
 /** Where a table column's cells sit, from the colons on its delimiter cell. None is GFM's no alignment, which Rich leaves to its column: left. */
 export type CellAlign = "left" | "center" | "right" | undefined;
 
@@ -26,10 +23,9 @@ interface TableColumn<Text> {
   readonly align: CellAlign;
 }
 
-/** A list item: the blank lines that separated it from the item before, its marker, and its blocks. */
+/** A list item: the blank lines that separated it from the item before, and its blocks. */
 interface ListItem<Text = readonly Inline[]> {
   readonly gap: number;
-  readonly marker: ItemMarker;
   readonly children: readonly MdToken<Text>[];
 }
 
@@ -43,7 +39,8 @@ export type MdToken<Text = readonly Inline[]> =
   | { type: "paragraph"; text: Text }
   | { type: "code_block"; code: string }
   | { type: "hr" }
-  | { type: "list"; items: readonly ListItem<Text>[] }
+  /** `start` is an ordered list's first number, as its source writes it; a bullet list has none. */
+  | { type: "list"; start: number | undefined; items: readonly ListItem<Text>[] }
   | { type: "blockquote"; children: readonly MdToken<Text>[] }
   /** Each row holds one cell per column: a short row filled out with empty cells, a long one cut. */
   | { type: "table"; columns: readonly TableColumn<Text>[]; rows: readonly (readonly Text[])[] }
@@ -103,7 +100,6 @@ const DELIMITER_CELL = /^:?-+:?$/;
 const MAX_AUTOCOMPLETED_CELLS = 0x10000;
 /** Indentation that makes a line indented code when it opens a block, as CommonMark counts it. */
 const CODE_INDENT = 4;
-const BLANK_LINE: Line = { text: "", margin: 0, lazy: false };
 
 /**
  * One of CommonMark's seven kinds of HTML block (4.6), as markdown-it-py —
@@ -394,9 +390,7 @@ function itemLines(item: ItemStart, lines: readonly Line[], start: number): { in
 
 /**
  * The list opened at `start`: each item holding its blocks, and the blank
- * lines that separated it from the item before. Numbers
- * count on from the first item's, as Rich draws them, right-aligned to the
- * widest so every item hangs at one column.
+ * lines that separated it from the item before.
  */
 function list(first: ItemStart, lines: readonly Line[], start: number): { token: MdToken<string>; next: number } {
   const items: { gap: number; children: MdToken<string>[] }[] = [];
@@ -408,7 +402,7 @@ function list(first: ItemStart, lines: readonly Line[], start: number): { token:
     item = i < lines.length ? itemStart(lines[i]!) : undefined
   ) {
     const { inner, next } = itemLines(item, lines, i);
-    items.push({ gap, children: tokenize(inner.length === 0 ? [BLANK_LINE] : inner) });
+    items.push({ gap, children: tokenize(inner) });
     let after = next;
     while (after < lines.length && isBlank(lines[after]!)) after++;
     gap = after - next;
@@ -416,10 +410,7 @@ function list(first: ItemStart, lines: readonly Line[], start: number): { token:
   }
   // The blank lines after the last item belong to whatever follows the list.
   const next = i - gap;
-  const width = String(first.start + items.length - 1).length + 1;
-  const marker = (n: number): ItemMarker =>
-    first.bullet === undefined ? { kind: "number", label: `${first.start + n}.`.padStart(width) } : { kind: "bullet" };
-  return { token: { type: "list", items: items.map((item, n) => ({ ...item, marker: marker(n) })) }, next };
+  return { token: { type: "list", start: first.bullet === undefined ? first.start : undefined, items }, next };
 }
 
 function tokenize(lines: readonly Line[]): MdToken<string>[] {

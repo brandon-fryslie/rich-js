@@ -833,6 +833,9 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   // without its pair (`groundedStyle`), and bold is what still marks code.
   "markdown.code": Style.parse("bold dark_turquoise on grey11"),
   "markdown.hr": Style.parse("yellow"),
+  "markdown.item": NULL_STYLE,
+  "markdown.item.bullet": Style.parse("bold"),
+  "markdown.item.number": Style.parse("cyan"),
   "markdown.link": Style.parse("bright_blue"),
   "markdown.link_url": Style.parse("blue"),
   "markdown.table.border": Style.parse("cyan"),

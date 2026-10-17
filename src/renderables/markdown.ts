@@ -331,15 +331,22 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
       break;
     }
 
-    case "list":
-      for (const item of token.items) {
+    case "list": {
+      // Rich's ListItem: a bullet, or the number with no dot, right-aligned in
+      // a column sized for the number one past the last item's — Rich's
+      // `last_number` — and the hang under it in the marker's style.
+      const { start } = token;
+      const markerStyle = getStyle(options, start === undefined ? "markdown.item.bullet" : "markdown.item.number");
+      const width = start === undefined ? 3 : String(start + token.items.length).length + 2;
+      const hang = new Segment(" ".repeat(width), markerStyle);
+      for (const [n, item] of token.items.entries()) {
         yield* Array.from({ length: item.gap }, () => Segment.line());
-        const marker = item.marker.kind === "number" ? `${item.marker.label} ` : drawable(options, "  • ", "  * ");
-        const hang = new Segment(" ".repeat(cellLen(marker)));
+        const marker = start === undefined ? drawable(options, " • ", " * ") : `${String(start + n).padStart(width - 1)} `;
         const body = (inner: RenderOptions) => renderTokens(item.children, inner, settings);
-        yield* guttered(body, options, new Segment(marker), hang);
+        yield* guttered(body, options, new Segment(marker, markerStyle), hang, getStyle(options, "markdown.item"));
       }
       break;
+    }
 
     case "blockquote": {
       const bar = new Segment(drawable(options, "▎ ", "| "), getStyle(options, "markdown.hr"));

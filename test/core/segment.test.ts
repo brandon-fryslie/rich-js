@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Segment, ControlType } from "../../src/core/segment.js";
 import { asCellCol } from "../../src/core/cells.js";
-import { Style } from "../../src/core/style.js";
+import { NULL_STYLE, Style } from "../../src/core/style.js";
 import type { ControlCode } from "../../src/core/segment.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -271,6 +271,13 @@ describe("Segment.applyStyle()", () => {
     const result = collect(Segment.applyStyle([seg]));
     expect(result[0]!.text).toBe("hello");
     expect(result[0]!.style?.bold).toBe(true);
+  });
+
+  it("treats a null style as no style, leaving an unstyled segment unstyled", () => {
+    const seg = new Segment("hello");
+    const result = collect(Segment.applyStyle([seg], NULL_STYLE, NULL_STYLE));
+    expect(result[0]!.text).toBe("hello");
+    expect(result[0]!.style).toBeUndefined();
   });
 });
 
