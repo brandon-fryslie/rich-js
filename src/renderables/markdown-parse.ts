@@ -654,7 +654,11 @@ function list(first: ItemStart, level: number, lines: Lines, start: number): { t
     items.push(children);
     swallowed = swallowsRest(children);
     end = swallowed ? lines.count() : next;
-    for (i = end; lines.at(i) !== undefined && isBlank(lines.at(i)!); i++);
+    // An empty item with a blank line after it sends markdown-it's list rule two
+    // lines on, past no more blank lines, so a second blank line ends the list.
+    const after = lines.at(i + 1);
+    if (item.first === undefined && (after === undefined || isBlank(after))) i += 2;
+    else for (i = end; lines.at(i) !== undefined && isBlank(lines.at(i)!); i++);
   }
   const token: Block = { type: "list", start: "start" in first.marker ? first.marker.start : undefined, items };
   if (swallowed) return { tokens: [token, { type: "unread" }], next: end };
