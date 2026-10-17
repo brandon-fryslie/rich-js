@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-421",
+      "ref": "refs/pull/421/merge",
+      "sha": "75b147c14984b07ae93e4cb8e0c5228c069ac803",
+      "timestamp": "2026-10-17T02:22:06.990Z",
+      "commits": [
+        {
+          "sha": "75b147c14984b07ae93e4cb8e0c5228c069ac803",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:20:44-06:00",
+          "message": "Merge 276cf9594a35dbd493844381961f3b9d1f3fa27a into 8ea70430cce91b045edf9750e63fb7041f59c1a0\n"
+        },
+        {
+          "sha": "276cf9594a35dbd493844381961f3b9d1f3fa27a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:20:40-06:00",
+          "message": "Markdown drops inline HTML where Rich does, and reads backslash escapes (rich-unfiled-791c.5r6q)\n\nmarkdown-it-py's HTML_TAG_RE — a tag, comment, processing instruction,\ndeclaration or CDATA section — is read inline and drawn as nothing. The\nblock kind for a lone tag and the inline rule now share one tag grammar.\n\nThe escape rule comes with it: markdown-it reads '\\<' at the backslash\nbefore html_inline sees the '<', so without it '\\<span>' would draw '\\'\nwhere Rich draws '<span>'.\n\nUnclosed openers scan to the end of the text from every '<', as\nmarkdown-it-py's own regex does.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-420",
       "ref": "refs/pull/420/merge",
       "sha": "51235a7ec702f3bd9a0783f0e5ae08a61283fdd3",
