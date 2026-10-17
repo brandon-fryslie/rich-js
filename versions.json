@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-462",
-      "ref": "refs/pull/462/merge",
-      "sha": "927f0db2d992446b53271ebc28a38aa495a33e4b",
-      "timestamp": "2026-10-17T23:46:06.777Z",
-      "commits": [
-        {
-          "sha": "927f0db2d992446b53271ebc28a38aa495a33e4b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T23:44:36Z",
-          "message": "Merge b020dc0828aef79e5e810b9ac65ec45cdb09534d into 773c9cda93ddffceb299125ec88f43a1b655d55c\n"
-        },
-        {
-          "sha": "b020dc0828aef79e5e810b9ac65ec45cdb09534d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T17:44:31-06:00",
-          "message": "TextInput's viewport starts at a glyph boundary, so a wide glyph never pushes the cursor out of view, and multi-line measure leaves a scroll arrow its cell (rich-unfiled-791c.dn30)\n"
-        },
-        {
-          "sha": "8c6d778fcb951d68a7ec6a734c7c1a9cdc961f90",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T17:35:10-06:00",
-          "message": "TextInput measures the width it draws, the cursor's cell at the end included, and keeps that cell in view when the value overflows (rich-unfiled-791c.dn30)\n\nThe single-line field sizes its content as its text plus, past the text's\nend, the cell the cursor stands on. measure() left that cell out, so a field\nlaid out at its measured width hid its cursor whenever the cursor sat at the\nend, and the viewport's scroll clamp did the same to any value wider than\nthe field: typing at the end of a long value showed no cursor. Both now read\none derivation, singleLineExtent.\n\nA multi-line value measured as if it drew brackets and a placeholder; it\ndraws neither, so its maximum is its widest line shown plus its cursor's\ncell.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "773c9cda93ddffceb299125ec88f43a1b655d55c",
-      "timestamp": "2026-10-17T23:30:55.075Z",
+      "sha": "2b1c5dc78fc6f349f4256240f7f0c8e2d27927d4",
+      "timestamp": "2026-10-17T23:57:55.120Z",
       "commits": [
         {
-          "sha": "773c9cda93ddffceb299125ec88f43a1b655d55c",
+          "sha": "2b1c5dc78fc6f349f4256240f7f0c8e2d27927d4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T17:29:10-06:00",
-          "message": "Multi-line TextInput shows a zero-cell glyph as a one-cell stand-in, so every cursor stop draws a visible cell (rich-unfiled-791c.bynu) (#461)\n\n* Multi-line TextInput shows a zero-cell glyph as a one-cell stand-in, so every cursor stop draws a visible cell (rich-unfiled-791c.bynu)\n\nRows stay slices of value; drawing, hit-testing and vertical motion measure\nthem through the same shown-as function single-line uses, and the wrap\nstrategy receives the line as shown so its budget counts the stand-ins. A\nmulti-line password field now masks its text as single-line does.\n\n* A wrap row names the stretch of the line it draws, mapped back to the value in one pass, and TextInput measures the cells it draws (rich-unfiled-791c.bynu)\n\nWrapRow is { start, end } in place of { content, start }. Since the\nstrategy started receiving the line as shown, the widget drew the matching\nstretch of `value` and read only content's length, so a row whose content\nwas not a stretch of its line (a hyphen added at a break) drew repeated\nglyphs. The type no longer admits such a row.\n\nThe shown-to-line offset table is built once per line, not walked from\nthe start for every row end: the guard read 16x for 4x input against the\nwalk. It also maps a stand-in of any length, not only one code unit.\n\nmeasure() takes the widest shown line, so a zero-cell glyph counts its\none cell, a password counts a mask per glyph, and a multi-line value is\nas wide as its widest line."
+          "timestamp": "2026-10-17T17:56:10-06:00",
+          "message": "TextInput measures the width it draws, the cursor's cell at the end included (rich-unfiled-791c.dn30) (#462)\n\n* TextInput measures the width it draws, the cursor's cell at the end included, and keeps that cell in view when the value overflows (rich-unfiled-791c.dn30)\n\nThe single-line field sizes its content as its text plus, past the text's\nend, the cell the cursor stands on. measure() left that cell out, so a field\nlaid out at its measured width hid its cursor whenever the cursor sat at the\nend, and the viewport's scroll clamp did the same to any value wider than\nthe field: typing at the end of a long value showed no cursor. Both now read\none derivation, singleLineExtent.\n\nA multi-line value measured as if it drew brackets and a placeholder; it\ndraws neither, so its maximum is its widest line shown plus its cursor's\ncell.\n\n* TextInput's viewport starts at a glyph boundary, so a wide glyph never pushes the cursor out of view, and multi-line measure leaves a scroll arrow its cell (rich-unfiled-791c.dn30)"
         }
       ]
     }
