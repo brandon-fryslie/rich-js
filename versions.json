@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-460",
+      "ref": "refs/pull/460/merge",
+      "sha": "aeec013407815ca098bcfecd64ab61e289aabda9",
+      "timestamp": "2026-10-17T22:33:50.980Z",
+      "commits": [
+        {
+          "sha": "aeec013407815ca098bcfecd64ab61e289aabda9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T16:32:02-06:00",
+          "message": "Merge 211f4fd78803a88b7e7b35bfcd6ebdc0554b8555 into 881996066e0b1638c18a3849029197ca919f1305\n"
+        },
+        {
+          "sha": "211f4fd78803a88b7e7b35bfcd6ebdc0554b8555",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T16:31:58-06:00",
+          "message": "Complexity guards assert how their time grows, on the thread's CPU time, instead of a wall-clock budget (rich-unfiled-791c.xrxj)\n\nThe ten remaining guards that timed one run against a 1 s or 2 s budget\nnow assert growth through expectLinearTime, one call per workload so a\nquadratic one cannot hide behind a larger linear one beside it. Each was\nrun against the super-linear code it guards: the commit before its fix,\nor, where that code only ever existed mid-PR, a reconstruction (the RUN\nand TRAILING_RUN_RE lookbehinds dropped, a whole-list filter per plugin\npair, a quote re-read per lazy line). Every one read 13-229x for 4x.\nJSONHighlighter was never quadratic on any of the runs but digits; its\ncases stay as the contract the describe states.\n\nexpectLinearTime now reads process.threadCpuUsage, not performance.now.\nInside the full suite a linear highlighter's larger run took two to three\ntimes as long as alone while its smaller one did not, reading 8.8-10.9x:\na run shorter than a scheduler slice escapes oversubscription that a\nlonger one pays for its whole length, so a wall-clock ratio does not\ncancel load. Three full-suite runs green after the change.\n\nThe Markdown guards time parsing only. Drawing a long paragraph is\nquadratic in Segment.divide, filed as rich-unfiled-791c.vzmy.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "881996066e0b1638c18a3849029197ca919f1305",
