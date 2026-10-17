@@ -5,6 +5,7 @@ import { Segment } from "../../src/core/segment.js";
 import { DEFAULT_THEME, Style, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import { expectLinearTime } from "../suite/linear-time.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -901,10 +902,8 @@ describe("Markdown", () => {
 
   it("reads a definition's label or title left open across many lines in time linear in their number", () => {
     for (const opening of ["[a", '[a]: /u "']) {
-      const started = performance.now();
-      new Markdown(opening + "x\n".repeat(200_000));
-      // Text grown a line at a time, and read after each, took over five seconds here.
-      expect(performance.now() - started).toBeLessThan(2000);
+      // Text grown a line at a time, and read after each — definitionAt with `run *= 2` removed — took fourteen times as long for four times the lines.
+      expectLinearTime((lines) => new Markdown(opening + "x\n".repeat(lines)), 25_000);
     }
   });
 

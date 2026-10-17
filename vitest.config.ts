@@ -32,8 +32,9 @@ const publishedAsSource = Object.entries(PUBLISHED_PATHS).map(([name, [file]]) =
 // vitest's 5s default under a full suite's load, and the per-file allowances
 // that chased them missed each new file until it flaked. A hang still fails, at
 // 30s. A test whose work is a different size by nature — a whole docs page run
-// through the examples plugin, a complexity guard that must finish in 2s —
-// states its own budget beside it. A test that runs out its time says, on its
+// through the examples plugin — states its own timeout beside it. A complexity
+// guard should state no time at all, but how its time grows:
+// test/suite/linear-time.ts. A test that runs out its time says, on its
 // failure, whether it was waiting or the machine was slow: test/suite/timeout-report.ts.
 const HANG_MS = 30_000;
 
