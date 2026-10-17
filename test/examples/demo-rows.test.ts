@@ -122,8 +122,18 @@ it("every row of dropdown-demo reads whole in its card's terminal", async () => 
       return done;
     };
   };
-  // The status row widens with the numbers it reads out; picking the long
-  // list's last item makes it as wide as it gets.
-  const lastOfLongList: Keys = () => ["\t", "\r", ...Array.from({ length: 17 }, () => "\x1b[B"), "\r"];
-  expect(await cut(dropdownDemo, cardSize("dropdown-demo"), lastOfLongList)).toEqual([]);
+  // Two rows widen with what they read out. Picking the long list's last item
+  // makes the status row as wide as it gets; the key echo grows with its
+  // claimed-space count and with the key it names. Every screen is read, so
+  // each wide echo is checked: backspace, plain and with meta, and pagedown
+  // with every modifier held.
+  const widest: Keys = () => [
+    "\t", "\r", ...Array.from({ length: 17 }, () => "\x1b[B"), "\r",
+    "\t", "\t", " ".repeat(100), "\x7f", "\x1b\x7f", "\x1b[6;8~",
+  ];
+  const roomy = (await screens(dropdownDemo, ROOMY, widest)).map((screen) => screen.join("\n"));
+  expect(roomy.at(-1), "the keys never reached the key echo's widest state").toContain(
+    `key=pagedown char="" shift ctrl meta  spaces claimed: 100`,
+  );
+  expect(await cut(dropdownDemo, cardSize("dropdown-demo"), widest)).toEqual([]);
 });

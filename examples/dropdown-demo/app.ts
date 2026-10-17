@@ -62,9 +62,8 @@ class KeyEchoWidget extends WidgetBase {
 
   @action
   handleKey(event: KeyEvent): void {
-    this.lastKey =
-      `key=${event.key} char=${JSON.stringify(event.character)} ` +
-      `shift=${event.shift} ctrl=${event.ctrl} meta=${event.meta}`;
+    const held = (["shift", "ctrl", "meta"] as const).filter((modifier) => event[modifier]);
+    this.lastKey = [`key=${event.key}`, `char=${JSON.stringify(event.character)}`, ...held].join(" ");
     // Claim only the space bar, so Tab still reaches focus traversal.
     if (event.key !== "space") return;
     this.claimed += 1;
