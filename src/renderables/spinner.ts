@@ -8,7 +8,7 @@
  * the interval; the beat, the width every frame draws at and which frame `t`
  * lands on are the frames primitive's, so a spinner is one more sequence on
  * it and not a second way of turning frames. Custom frames are a `FrameSequence`
- * directly. [LAW:one-source-of-truth]
+ * drawn through `Frames` directly. [LAW:one-source-of-truth]
  *
  * It is built once and asked for each frame, as Rich's `Spinner` is built
  * once and has `render(time)` called on it: the name is parsed and the

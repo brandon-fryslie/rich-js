@@ -22,10 +22,11 @@
  * The sequence and the moment are two values, because only one of them
  * changes from frame to frame. A `FrameSequence` is the frames prepared once
  * — the beat, the one width, each frame set into a line and padded — and a
- * `Frames` is that sequence at a `t`, whose only work is finding the index:
- * a host holds the sequence and asks it for a frame, as `Spinner` holds its
- * two, so a draw costs the same over ninety frames as over one. The sequence
- * is a value the host keeps, not a memo here: nothing is looked up by key.
+ * `Frames` is that sequence at a `t`, whose work is one frame's — finding
+ * which, and copying it: a host holds the sequence and asks it for a frame,
+ * as `Spinner` holds its two, so a draw costs the same over ninety frames as
+ * over one. The sequence is a value the host keeps, not a memo here: nothing
+ * is looked up by key.
  *
  * Every frame is drawn at one width, the widest frame's, each padded on the
  * right to it, so whatever sits beside the frames never moves as they turn;
