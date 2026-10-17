@@ -115,18 +115,19 @@ const CODE_TAB_SIZE = parseTabSize(8);
 const BLANK_LINE: Line = { text: "", margin: 0, lazy: false };
 
 /**
- * One of CommonMark's seven kinds of HTML block (4.6), as markdown-it matches
- * it: the line that opens one, the line that closes it — kept in the block
- * unless it is the blank line two of the kinds end at — and whether it may
- * interrupt a paragraph, which the seventh, a lone tag of any name, may not.
+ * One of CommonMark's seven kinds of HTML block (4.6), as markdown-it-py —
+ * the markdown-it Rich runs — matches it: the line that opens one, where it
+ * ends, and whether it may interrupt a paragraph, which the seventh, a lone
+ * tag of any name, may not. The first five end on the line that closes them,
+ * kept in the block; the last two at a blank line, left to what follows.
  */
 interface HtmlBlockKind {
   readonly start: RegExp;
-  readonly end: RegExp;
+  readonly end: RegExp | "blank";
   readonly interrupts: boolean;
 }
 
-/** The block-level element names an HTML block of the sixth kind opens with, as CommonMark 0.31.2 lists them. */
+/** The block-level element names an HTML block of the sixth kind opens with, as markdown-it-py lists them. */
 const HTML_BLOCK_NAMES =
   "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|" +
   "fieldset|figcaption|figure|footer|form|frame|frameset|h1|h2|h3|h4|h5|h6|head|header|hr|html|iframe|legend|li|link|" +
@@ -137,12 +138,13 @@ const HTML_BLOCKS: readonly HtmlBlockKind[] = [
   { start: /^<(?:script|pre|style|textarea)(?=\s|>|$)/i, end: /<\/(?:script|pre|style|textarea)>/i, interrupts: true },
   { start: /^<!--/, end: /-->/, interrupts: true },
   { start: /^<\?/, end: /\?>/, interrupts: true },
+  // Uppercase only, as markdown-it-py has it, where markdown-it in JS and CommonMark 0.31 take `<!doctype` too.
   { start: /^<![A-Z]/, end: />/, interrupts: true },
   { start: /^<!\[CDATA\[/, end: /\]\]>/, interrupts: true },
-  { start: new RegExp(String.raw`^<\/?(?:${HTML_BLOCK_NAMES})(?=\s|\/?>|$)`, "i"), end: /^$/, interrupts: true },
+  { start: new RegExp(String.raw`^<\/?(?:${HTML_BLOCK_NAMES})(?=\s|\/?>|$)`, "i"), end: "blank", interrupts: true },
   {
     start: new RegExp(String.raw`^(?:<[A-Za-z][A-Za-z0-9-]*${HTML_ATTRIBUTE}*\s*\/?>|<\/[A-Za-z][A-Za-z0-9-]*\s*>)\s*$`),
-    end: /^$/,
+    end: "blank",
     interrupts: false,
   },
 ];
@@ -532,8 +534,10 @@ function tokenize(lines: readonly Line[]): MdToken[] {
     // container when none does; a closing blank line is left to what follows
     const html = htmlBlockAt(line);
     if (html) {
-      while (i < lines.length && !html.end.test(body(lines[i]!))) i++;
-      if (i < lines.length && !isBlank(lines[i]!)) i++;
+      const { end } = html;
+      const closes = end === "blank" ? isBlank : (closing: Line) => end.test(body(closing));
+      while (i < lines.length && !closes(lines[i]!)) i++;
+      if (i < lines.length && end !== "blank") i++;
       tokens.push({ type: "html_block" });
       continue;
     }

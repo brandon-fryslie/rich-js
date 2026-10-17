@@ -532,8 +532,12 @@ describe("Markdown", () => {
     for (const [open, close] of kinds) expect(rows(`para\n${open}\nbody\n${close}\n\nafter`, 40)).toEqual(["para", "", "after", ""]);
     // The sixth kind, a block-level element, ends at a blank line instead of a closing one.
     expect(rows('para\n<DIV class="x">\nbody\n\nafter', 40)).toEqual(["para", "", "after", ""]);
-    // Any other tag alone on a line opens a block only where no paragraph is open.
-    expect(rows("para\n<span>\nafter", 40)[0]).toMatch(/^para .*after$/);
+    // Any other tag alone on a line opens a block only where no paragraph is open,
+    // and neither it nor a lowercase `<!doctype`, which markdown-it-py does not
+    // read as a declaration, ends one. Rich drops both as inline HTML; this
+    // renderer draws them as text until it reads that (rich-unfiled-791c.5r6q).
+    expect(rows("para\n<span>\nafter", 40)).toEqual(["para <span> after", ""]);
+    expect(rows("para\n<!doctype html>\nafter", 40)).toEqual(["para <!doctype html> after", ""]);
     expect(rows("<span>\nhello\n\nafter", 40)).toEqual(["", "after", ""]);
   });
 
