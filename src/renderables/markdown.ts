@@ -413,9 +413,10 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
     }
 
     case "list": {
-      // Rich's ListItem: a bullet, or the number with no dot, right-aligned in
-      // a column sized for the number one past the last item's — Rich's
-      // `last_number` — and the hang under it in the marker's style.
+      // Rich's ListItem: a bullet, or the number without its `.` or `)`,
+      // right-aligned in a column sized for the number one past the last
+      // item's — Rich's `last_number` — and the hang under it in the marker's
+      // style.
       const { start } = token;
       const markerStyle = getStyle(options, start === undefined ? "markdown.item.bullet" : "markdown.item.number");
       const width = start === undefined ? 3 : String(start + token.items.length).length + 2;

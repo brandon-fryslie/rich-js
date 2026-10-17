@@ -153,7 +153,7 @@ const SETEXT = /^(=+|-+)[ \t]*$/;
  */
 const FENCE = /^(`{3,}(?=[^`]*$)|~{3,})/;
 const QUOTE = /^>/;
-const ITEM_MARKER = /^(?:[*+-]|(\d{1,9})\.)/;
+const ITEM_MARKER = /^(?:[*+-]|(\d{1,9})[.)])/;
 /**
  * A line's leading space and tab: CommonMark's whitespace, and the only
  * whitespace markdown-it's block pass reads — what indents a line, what makes
@@ -273,11 +273,11 @@ function dropColumns(line: Line, n: number): string {
  * the item is indented — and `first` is the marker line as a line of the
  * item, absent when the item opens with a blank line. An item opening with a
  * blank line, or with indented code, has its content column one space past
- * the marker.
+ * the marker. `marker` is CommonMark's two kinds: a bullet, or an ordered
+ * item's number and the delimiter that closes it, `.` or `)`.
  */
 interface ItemStart {
-  readonly bullet: string | undefined;
-  readonly start: number;
+  readonly marker: { readonly bullet: string } | { readonly delimiter: string; readonly start: number };
   readonly content: number;
   readonly first: Line | undefined;
 }
@@ -295,8 +295,7 @@ function itemStart(line: Line): ItemStart | undefined {
   const content = rest === "" || spaced > CODE_INDENT ? markerEnd + 1 : markerEnd + spaced;
   const lead = line.text.slice(0, line.text.length - text.length);
   return {
-    bullet: m[1] === undefined ? m[0] : undefined,
-    start: m[1] === undefined ? 0 : parseInt(m[1], 10),
+    marker: m[1] === undefined ? { bullet: m[0] } : { delimiter: m[0].slice(-1), start: parseInt(m[1], 10) },
     content,
     first: rest === "" ? undefined : { text: lead + " ".repeat(m[0].length) + after, margin: content, lazy: false },
   };
@@ -350,9 +349,14 @@ function tableAt(lines: Lines, start: number): TableColumn<string>[] | undefined
   return headers.length === aligns.length ? headers.map((header, n) => ({ header, align: aligns[n] })) : undefined;
 }
 
-/** Whether two item starts belong to one list: the same bullet character, or both numbered. */
+/**
+ * Whether two item starts belong to one list: the same bullet, or numbers with
+ * the same delimiter — markdown-it's marker character, the two kinds' characters
+ * never coinciding.
+ */
 function sameList(a: ItemStart, b: ItemStart): boolean {
-  return a.bullet === b.bullet;
+  const markerChar = ({ marker }: ItemStart) => ("bullet" in marker ? marker.bullet : marker.delimiter);
+  return markerChar(a) === markerChar(b);
 }
 
 /**
@@ -391,7 +395,7 @@ function opensBlock(line: Line): boolean {
 function endsParagraph(line: Line): boolean {
   if (underline(line)) return true;
   const item = itemStart(line);
-  return item ? item.first !== undefined && (item.bullet !== undefined || item.start === 1) : opensBlock(line);
+  return item ? item.first !== undefined && ("bullet" in item.marker || item.marker.start === 1) : opensBlock(line);
 }
 
 /** The setext underline `line` is — a line of `=` or `-` under a paragraph — if it is one. A lazy line never is. */
@@ -646,7 +650,7 @@ function list(first: ItemStart, level: number, lines: Lines, start: number): { t
     end = swallowed ? lines.count() : next;
     for (i = end; lines.at(i) !== undefined && isBlank(lines.at(i)!); i++);
   }
-  const token: Block = { type: "list", start: first.bullet === undefined ? first.start : undefined, items };
+  const token: Block = { type: "list", start: "start" in first.marker ? first.marker.start : undefined, items };
   if (swallowed) return { tokens: [token, { type: "unread" }], next: end };
   // The blank lines after the last item belong to whatever follows the list.
   return { tokens: [token], next: end };

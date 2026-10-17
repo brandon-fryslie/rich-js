@@ -41,13 +41,14 @@ quote, holds blocks of its own — paragraphs, fenced code, quotes, nested lists
 the column its text starts at, and draws them under its hang. A nested list's marker sits at
 its parent's text column or up to three columns past it; four or more past it, and the marker
 is text — continuing the parent's paragraph, or indented code after a blank line. Markers are
-drawn as Rich draws them: a bullet in `markdown.item.bullet`, bold, and a number with no dot in
-`markdown.item.number`, cyan. A numbered list counts on from its first number, right-aligned in
-a column as wide as the number one past its last item, Rich's sizing, so every item hangs at
-one column; an empty item is counted and draws nothing. The item's blocks are drawn in
-`markdown.item`, which the default theme leaves plain. A quote draws a `▌` bar down its left
-side in `markdown.block_quote`, magenta, and lays that style under everything it holds, as
-Rich's does; a block inside it that has a style of its own, code or a rule, draws in that.
+drawn as Rich draws them: a bullet in `markdown.item.bullet`, bold, and a number without its
+`.` or `)` in `markdown.item.number`, cyan. A numbered list counts on from its first number,
+right-aligned in a column as wide as the number one past its last item, Rich's sizing, so
+every item hangs at one column; an empty item is counted and draws nothing. The item's blocks
+are drawn in `markdown.item`, which the default theme leaves plain. A quote draws a `▌` bar
+down its left side in `markdown.block_quote`, magenta, and lays that style under everything it
+holds, as Rich's does; a block inside it that has a style of its own, code or a rule, draws in
+that.
 Tabs in the indentation reach the stops of 4 they reach in the source, however deep the line
 is nested.
 Blocks nest only as deep as markdown-it reads them, 20 levels — a quote counts one, a list and
