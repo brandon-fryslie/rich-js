@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-427",
-      "ref": "refs/pull/427/merge",
-      "sha": "389988d4b9225d6d8271e25eb18ae4ab07604917",
-      "timestamp": "2026-10-17T04:30:17.679Z",
-      "commits": [
-        {
-          "sha": "389988d4b9225d6d8271e25eb18ae4ab07604917",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T04:28:38Z",
-          "message": "Merge 4a7b73e8862ab19b41a1a077f4f6ae0a9eee7e55 into 34b047be217c1802bf9a623d11c6423ad6907f14\n"
-        },
-        {
-          "sha": "4a7b73e8862ab19b41a1a077f4f6ae0a9eee7e55",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T22:28:33-06:00",
-          "message": "docs: say how a numeric reference reads in text and in a URL; name DEL among the refused codes (rich-unfiled-791c.krtk)\n"
-        },
-        {
-          "sha": "72da61830e083b26e15752acfc8d396e0b02b320",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T22:20:35-06:00",
-          "message": "Markdown draws a character reference as the characters it names, as Rich does (rich-unfiled-791c.krtk)\n\nInline text decodes named, decimal and hex references by markdown-it's entity\nrule, an invalid numeric one as U+FFFD; a link's destination goes through\nmarkdown-it's unescapeAll before its href is made, so [a](&#x6A;avascript:x)\nis refused as Rich refuses it. The named table is HTML5's, generated from\nPython's html.entities.html5 by scripts/html-entities.py.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "34b047be217c1802bf9a623d11c6423ad6907f14",
-      "timestamp": "2026-10-17T04:12:32.669Z",
+      "sha": "a101d7093e3bae012dbf39b525ce5d2715535cf6",
+      "timestamp": "2026-10-17T04:39:44.251Z",
       "commits": [
         {
-          "sha": "34b047be217c1802bf9a623d11c6423ad6907f14",
+          "sha": "a101d7093e3bae012dbf39b525ce5d2715535cf6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T22:11:25-06:00",
-          "message": "Markdown draws an autolink as Rich does, and makes every link's href as markdown-it does (rich-unfiled-791c.95jg) (#426)\n\n* Markdown draws an autolink as Rich does, and makes every link's href as markdown-it does (rich-unfiled-791c.95jg)\n\n`<http://e.com>` and `<a@b.co>` now draw as links whose text is the address,\nan email linking to mailto:. Links, images and autolinks all take their href\nfrom src/renderables/markdown-url.ts, a port of markdown-it-py's\nnormalizeLink / normalizeLinkText / validateLink with the mdurl and punycode\npieces they stand on — so a javascript:, vbscript:, file: or non-image data:\nURL is no link, as in Rich. Tests pinned against Rich 14 output.\n\n* Markdown draws an image's alt text and an unhyperlinked label as Rich does, and scans an autolink in one pass (rich-unfiled-791c.95jg)\n\nReview (high): Rich draws alt text as written and a link label without\nhyperlinks as plain text in markdown.link; both pinned against Rich 14.\nautolinkAt stops at the first < or >, as markdown-it does, and an\nautolink's display text is decoded only when drawn.\n\n* Markdown strips a link's whitespace in one pass, as Python's str.strip does (rich-unfiled-791c.95jg)\n\nReview (medium): the trailing alternative of PY_STRIP backtracked over\nevery interior whitespace run, so a URL holding 200k U+3000 took 43 s;\npyStrip scans in from each end and takes 25 ms.\n\n* Markdown links nothing without hyperlinks and nothing to an empty URL, as Rich does (rich-unfiled-791c.95jg)\n\nReview (high, escalation): Rich attaches no link when hyperlinks is\nfalse, and its Style reads an empty link as none, so Style now takes an\nempty URL as no link. mdurl's protocol is matched as Python's\nIGNORECASE matches it, which folds four non-ASCII letters into [a-z]."
+          "timestamp": "2026-10-16T22:37:55-06:00",
+          "message": "Markdown draws a character reference as the characters it names, as Rich does (rich-unfiled-791c.krtk) (#427)\n\n* Markdown draws a character reference as the characters it names, as Rich does (rich-unfiled-791c.krtk)\n\nInline text decodes named, decimal and hex references by markdown-it's entity\nrule, an invalid numeric one as U+FFFD; a link's destination goes through\nmarkdown-it's unescapeAll before its href is made, so [a](&#x6A;avascript:x)\nis refused as Rich refuses it. The named table is HTML5's, generated from\nPython's html.entities.html5 by scripts/html-entities.py.\n\n* docs: say how a numeric reference reads in text and in a URL; name DEL among the refused codes (rich-unfiled-791c.krtk)"
         }
       ]
     }
