@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-450",
-      "ref": "refs/pull/450/merge",
-      "sha": "dba07fe59cc75c59534678afccb1d388c34c6675",
-      "timestamp": "2026-10-17T17:53:24.016Z",
-      "commits": [
-        {
-          "sha": "dba07fe59cc75c59534678afccb1d388c34c6675",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T17:51:38Z",
-          "message": "Merge 818c5aa2d6a249630b1801efe1b1020d1f3ce782 into 78549e209bdc9065772de829a95368a235d2e849\n"
-        },
-        {
-          "sha": "818c5aa2d6a249630b1801efe1b1020d1f3ce782",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T11:51:33-06:00",
-          "message": "Pin a quote's line one cell short of the item, and why the items are headings (rich-unfiled-791c.yr79)\n"
-        },
-        {
-          "sha": "a4958bc04b9f4ebc9cca38ab62789efd6bcd853d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T11:48:40-06:00",
-          "message": "Markdown's quoted list item holds a line by its indentation past its own `>`, pinned against Rich (rich-unfiled-791c.yr79)\n\n\"> - # h\\n   > z\" is the heading item, then \"▌ z\" in Rich 15: the line's\ntext is past the item's content column in the source, but not past its own\n`>`. #449 (78549e209) already measures it so; these pin the case with no\nblank line before the line, both ways round.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "78549e209bdc9065772de829a95368a235d2e849",
-      "timestamp": "2026-10-17T17:44:25.855Z",
+      "sha": "2805501974fe293ba3804ccc2042281e66b8c92d",
+      "timestamp": "2026-10-17T18:04:44.319Z",
       "commits": [
         {
-          "sha": "78549e209bdc9065772de829a95368a235d2e849",
+          "sha": "2805501974fe293ba3804ccc2042281e66b8c92d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T11:43:14-06:00",
-          "message": "Markdown reads a line short of its container as indented less than any block, as markdown-it does (rich-unfiled-791c.emsm) (#449)\n\n* Markdown reads a line lazy to a quote's container as indented less than any block, as markdown-it does (rich-unfiled-791c.emsm)\n\nmarkdown-it gives a quote's lazy line sCount -1, and a list item's lazy line\nsits short of the item's indentation, so a quote inside either checks its\nterminators on that line as indented less than four. \"> > b\\n    ---\" is the\nquote \"b\", then indented code at the top level, in Rich 15; it was \"b ---\"\nhere. Same for a fence, an HTML block, a heading and a list item.\n\nmarkdown-it's quote also takes a `>` line after its first at any indentation\n(\"> a\\n    > b\" is one quote, \"a b\"), which the same function read as text.\nPinned against Rich 15 (markdown-it-py 4.2).\n\n* Markdown indents a quote's line from its own `>`, wherever the `>` sits, as markdown-it does (rich-unfiled-791c.emsm)\n\nA list item's indent is now counted past each line's own margin, not as a\nsource column fixed by its first line, so a quote's `>` lines indented\ndifferently from its first are read against the item as markdown-it reads them.\n\n* Markdown reads a list item on a line lazy only to list items where the line sits, as markdown-it does (rich-unfiled-791c.emsm)\n\nA line lazy to a quote is indented less than any block; one lazy only to list\nitems keeps its indentation, and markdown-it's list refuses an item on it a\ncode indent past the list's container. Line.lazy now says which.\n\n* Markdown reads a line short of a list item as indented less than any block, as markdown-it does (rich-unfiled-791c.emsm, rich-unfiled-791c.w3t9)\n\nAn item's paragraph now reads the line it would take lazily the way a quote\ndoes, and a lazy line carries the margin of the innermost list's container,\nmarkdown-it's listIndent, which a list item on it is measured from."
+          "timestamp": "2026-10-17T12:03:05-06:00",
+          "message": "Markdown's quoted list item holds a line by its indentation past its own `>`, pinned against Rich (rich-unfiled-791c.yr79) (#450)\n\n* Markdown's quoted list item holds a line by its indentation past its own `>`, pinned against Rich (rich-unfiled-791c.yr79)\n\n\"> - # h\\n   > z\" is the heading item, then \"▌ z\" in Rich 15: the line's\ntext is past the item's content column in the source, but not past its own\n`>`. #449 (78549e209) already measures it so; these pin the case with no\nblank line before the line, both ways round.\n\n* Pin a quote's line one cell short of the item, and why the items are headings (rich-unfiled-791c.yr79)"
         }
       ]
     }
