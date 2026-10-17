@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-434",
-      "ref": "refs/pull/434/merge",
-      "sha": "6c9517be3e3ac77c69dd3ef16e1475deefd894cf",
-      "timestamp": "2026-10-17T09:54:05.612Z",
-      "commits": [
-        {
-          "sha": "6c9517be3e3ac77c69dd3ef16e1475deefd894cf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T09:52:17Z",
-          "message": "Merge 41302b7b9ca665ae0cb8f1b9ffc5bf34a19ac542 into cc9b29be5cdb285c77ffb53030f9d4a5f63b1ea5\n"
-        },
-        {
-          "sha": "41302b7b9ca665ae0cb8f1b9ffc5bf34a19ac542",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T03:52:12-06:00",
-          "message": "Markdown reads a link's tail in linear time and a lone CR as a line ending, as markdown-it does (rich-unfiled-791c.jlqz)\n\nReview (high) fixes: the space after a destination is skipped once, as\nmarkdown-it's link rule does, instead of split two ways by one regex — 100k\nspaces took six seconds; one LINK_SPACE pattern is now the only definition\nof link space; parseMarkdown ends a line at \\r as markdown-it normalizes it.\n"
-        },
-        {
-          "sha": "2225fcb9cd5954b34d04cbf08245d814df611f7e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T03:41:33-06:00",
-          "message": "Markdown reads a link's destination and title as markdown-it does, as Rich does (rich-unfiled-791c.jlqz)\n\nlinkDestination scanned a bare destination to the end of the text for every\n`](` whose brackets matched, with no nesting cap, so `[*a](` repeated 20000\ntimes took 14 s. destinationAt is now markdown-it's parseLinkDestination: at\nmost 32 parentheses open and all of them closed, ended only by an ASCII space\nor control character or a backslash-space, and an angled destination that\nhonours escapes and is no destination without its `>`. LINK_TAIL is the link\nrule's tail: a title only after a space, backslash escapes in it, markdown-it's\nspace rather than Unicode's. Every case is pinned to Rich 15's output.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "cc9b29be5cdb285c77ffb53030f9d4a5f63b1ea5",
-      "timestamp": "2026-10-17T09:36:42.699Z",
+      "sha": "c38ba2233d92bf1f620d4446caaeab2b0d89b071",
+      "timestamp": "2026-10-17T10:02:36.241Z",
       "commits": [
         {
-          "sha": "cc9b29be5cdb285c77ffb53030f9d4a5f63b1ea5",
+          "sha": "c38ba2233d92bf1f620d4446caaeab2b0d89b071",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T03:35:00-06:00",
-          "message": "Markdown strikes ~~text~~ through, as Rich does (rich-unfiled-791c.2xa8) (#433)\n\n* Markdown strikes ~~text~~ through, as Rich does (rich-unfiled-791c.2xa8)\n\nRich enables markdown-it's strikethrough rule. A ~ run is a third marker in\nthe one balancePairs pass: tildes taken two at a time with the rule of 3 off,\nan odd run's spare ~ moved past the run that closes as strikethrough's\npostProcess moves it. Emphasis now names the element markdown-it makes,\nem/strong/s, and draws in Rich's markdown.em, markdown.strong and markdown.s.\n\n* Tie balancePairs' openers bottom to Marker; say tilde fences are Rich's, not ours yet (rich-unfiled-791c.2xa8)"
+          "timestamp": "2026-10-17T04:00:52-06:00",
+          "message": "Markdown reads a link's destination and title as markdown-it does, as Rich does (rich-unfiled-791c.jlqz) (#434)\n\n* Markdown reads a link's destination and title as markdown-it does, as Rich does (rich-unfiled-791c.jlqz)\n\nlinkDestination scanned a bare destination to the end of the text for every\n`](` whose brackets matched, with no nesting cap, so `[*a](` repeated 20000\ntimes took 14 s. destinationAt is now markdown-it's parseLinkDestination: at\nmost 32 parentheses open and all of them closed, ended only by an ASCII space\nor control character or a backslash-space, and an angled destination that\nhonours escapes and is no destination without its `>`. LINK_TAIL is the link\nrule's tail: a title only after a space, backslash escapes in it, markdown-it's\nspace rather than Unicode's. Every case is pinned to Rich 15's output.\n\n* Markdown reads a link's tail in linear time and a lone CR as a line ending, as markdown-it does (rich-unfiled-791c.jlqz)\n\nReview (high) fixes: the space after a destination is skipped once, as\nmarkdown-it's link rule does, instead of split two ways by one regex — 100k\nspaces took six seconds; one LINK_SPACE pattern is now the only definition\nof link space; parseMarkdown ends a line at \\r as markdown-it normalizes it."
         }
       ]
     }
