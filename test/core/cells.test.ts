@@ -58,6 +58,29 @@ describe("cellLen", () => {
     expect(cellLen("a\u2029\u0301")).toBe(1);
   });
 
+  // Each width below is Rich's: uv run --with 'rich==15' python -c 'from rich.cells import cell_len; print(cell_len("a\u00adb"))'
+  it("counts each code point string-width folds into its cluster's first, as Rich's cell_len does", () => {
+    expect(cellLen("\u0915\u093e")).toBe(1); // a Spacing_Mark gets no cell
+    expect(cellLen("\u3042\u302e")).toBe(2);
+    expect(cellLen("\u0915\u094d\u0937")).toBe(2); // a conjunct is both its consonants
+    expect(cellLen("\u0d4e\u0d15")).toBe(2); // a Prepend letter and its base
+    expect(cellLen("\u0600a")).toBe(2); // a Prepended_Concatenation_Mark
+    expect(cellLen("\u0e01\u0e33")).toBe(2); // Thai sara am
+  });
+
+  it("gives Hangul jamo and the soft hyphen Rich's cells", () => {
+    expect(cellLen("a\u00adb")).toBe(3);
+    expect(cellLen("\u115fa")).toBe(3); // the choseong filler is wide
+    expect(cellLen("a\u1161")).toBe(1); // a jungseong alone adds nothing
+    expect(cellLen("\u1100\u1161\u11a8")).toBe(2);
+  });
+
+  it("measures a string as the sum of its grapheme clusters", () => {
+    const text = "\u0915\u094d\u0937\u093f \u0e01\u0e33 \u0600\u0661 \u1100\u1161\u11a8 a\u00adb";
+    expect(cellLen(text)).toBe(15);
+    expect(graphemes(text).reduce((n, g) => n + cellLen(g), 0)).toBe(15);
+  });
+
   it("returns width >= 1 for emoji characters", () => {
     // Emoji are typically 2 cells wide, but at minimum 1
     expect(cellLen("😀")).toBeGreaterThanOrEqual(1);

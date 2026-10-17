@@ -8,16 +8,36 @@ import { Memo } from "./memo.js";
 
 const cellLenMemo = new Memo<number>();
 
-// U+2028 and U+2029, which string-width gives a cell each and Rich none. Each is
-// a grapheme cluster of its own (Grapheme_Cluster_Break=Control), so measuring
-// it as NUL — another Control, which string-width gives none — leaves the
-// clusters string-width cuts the rest of the text into exactly as they were.
-const SEPARATORS = /[\u2028\u2029]/g;
+// The code points string-width measures otherwise than Rich's cell_len, grouped
+// by the cells Rich gives each. string-width sizes a grapheme cluster by its
+// first visible code point plus any Spacing_Mark after it; Rich sums a width per
+// code point. So they part on
+//   none — a Spacing_Mark (string-width adds its cell, as VTE does; terminals
+//          differ, and Rich is the reference here), a Hangul jungseong or
+//          jongseong (only an L+V syllable is one block to string-width), the
+//          line and paragraph separators, and an InCB=Linker virama, which
+//          joins a conjunct into one cluster whose second consonant
+//          string-width does not count;
+//   one  — a Prepend letter, a Prepended_Concatenation_Mark, Thai and Lao sara
+//          am (the cluster's other letter goes uncounted), and the soft hyphen
+//          (Default_Ignorable to string-width);
+//   two  — the Hangul choseong filler, also Default_Ignorable.
+// The list is what two sweeps of 0..0x10FFFF against Rich 15 on Unicode 17 find,
+// each code point measured between two letters and between two consonants.
+const RICH_WIDTHS =
+  /([\p{Mc}\u1160-\u11FF\uD7B0-\uD7FF\u2028\u2029\u094D\u09CD\u0ACD\u0B4D\u0C4D\u0D4D\u1039\u17D2\u1A60\u1BAB\uAAF6\u{10A3F}\u{11133}\u{113D0}\u{1193E}\u{11A47}\u{11A99}\u{11F42}])|([\u00AD\u0600-\u0605\u06DD\u070F\u0890\u0891\u08E2\u0D4E\u0E33\u0EB3\u{110BD}\u{110CD}\u{111C2}\u{111C3}\u{113D1}\u{1193F}\u{11941}\u{11A84}-\u{11A89}\u{11D46}\u{11F02}])|\u115F/gu;
 
 // [LAW:one-source-of-truth] the single authority for cell width: string-width,
-// but for the separators above
+// but for the code points above, which count Rich's cells and are measured as
+// NUL. A Control is a cluster of its own that string-width gives nothing, so
+// what is left of the text is sized as the letters it holds.
 function measure(text: string): number {
-  return stringWidth(text.replace(SEPARATORS, "\0"));
+  let rich = 0;
+  const rest = text.replace(RICH_WIDTHS, (_, none?: string, one?: string) => {
+    rich += none ? 0 : one ? 1 : 2;
+    return "\0";
+  });
+  return stringWidth(rest) + rich;
 }
 
 /**
