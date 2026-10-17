@@ -616,8 +616,8 @@ function matchAt(re: RegExp, text: string, i: number): RegExpExecArray | null {
 
 /**
  * The character a numeric reference to `code` names, unless markdown-it's
- * `isValidEntityCode` refuses it: a surrogate, a noncharacter, a C0 or C1
- * control other than tab, line feed, form feed and carriage return, or
+ * `isValidEntityCode` refuses it: a surrogate, a noncharacter, DEL, a C0 or
+ * C1 control other than tab, line feed, form feed and carriage return, or
  * anything past U+10FFFF.
  */
 function referencedCharacter(code: number): string | undefined {
