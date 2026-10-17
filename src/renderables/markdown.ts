@@ -19,6 +19,7 @@ import { RichText, resolveStyle } from "../core/text.js";
 import { Rule } from "./rule.js";
 import { Table } from "./table.js";
 import { linkHref, normalizeLinkText } from "./markdown-url.js";
+import { namedReference } from "./html-entities.js";
 import { SIMPLE } from "../core/box.js";
 import type {
   Renderable,
@@ -582,7 +583,18 @@ const ANGLED_DESTINATION = /\(\s*<([^<>\n]*)>/y;
 const LINK_TAIL = /\s*(?:"[^"]*"|'[^']*'|\([^()]*\))?\s*\)/y;
 /** A backslash escape, as markdown-it reads one: the ASCII punctuation character after it, standing for itself. */
 const ESCAPE = /\\([!-\/:-@[-`{-~])/y;
-const ESCAPES = new RegExp(ESCAPE.source, "g");
+/** A numeric character reference, as markdown-it reads one in text: up to seven decimal digits, or up to six hex. */
+const NUMERIC_REFERENCE = /&#([xX][0-9a-fA-F]{1,6}|[0-9]{1,7});/y;
+/** A named character reference, as markdown-it reads one in text: a letter, then one to 31 letters or digits. */
+const NAMED_REFERENCE = /&([A-Za-z][A-Za-z0-9]{1,31});/y;
+/**
+ * A backslash escape or a character reference, as markdown-it's `unescapeAll`
+ * reads them in a link's destination: the reference read more widely than in
+ * text, a name or a `#` then one to 31 letters or digits.
+ */
+const UNESCAPE_ALL = new RegExp(`${ESCAPE.source}|&[A-Za-z#][A-Za-z0-9]{1,31};`, "g");
+/** A numeric reference as `unescapeAll` reads one: up to eight digits of either base. */
+const DESTINATION_NUMERIC = /^&#([xX][0-9a-fA-F]{1,8}|[0-9]{1,8});$/;
 /** Inline HTML, as markdown-it-py's HTML_TAG_RE reads it: a tag, a comment, a processing instruction, a declaration or a CDATA section. */
 const HTML_TAG = new RegExp(
   [
@@ -600,6 +612,62 @@ const HTML_TAG = new RegExp(
 function matchAt(re: RegExp, text: string, i: number): RegExpExecArray | null {
   re.lastIndex = i;
   return re.exec(text);
+}
+
+/**
+ * The character a numeric reference to `code` names, unless markdown-it's
+ * `isValidEntityCode` refuses it: a surrogate, a noncharacter, a C0 or C1
+ * control other than tab, line feed, form feed and carriage return, or
+ * anything past U+10FFFF.
+ */
+function referencedCharacter(code: number): string | undefined {
+  const refused =
+    (code >= 0xd800 && code <= 0xdfff) ||
+    (code >= 0xfdd0 && code <= 0xfdef) ||
+    (code & 0xfffe) === 0xfffe ||
+    code <= 0x08 ||
+    code === 0x0b ||
+    (code >= 0x0e && code <= 0x1f) ||
+    (code >= 0x7f && code <= 0x9f) ||
+    code > 0x10ffff;
+  return refused ? undefined : String.fromCodePoint(code);
+}
+
+/** The code point a numeric reference's `digits` name: hex after an `x`, decimal without one. */
+function referencedCode(digits: string): number {
+  return /^[xX]/.test(digits) ? parseInt(digits.slice(1), 16) : parseInt(digits, 10);
+}
+
+/**
+ * The character reference at `i` in text, as markdown-it's entity rule reads
+ * one: a numeric reference as the character it names, or U+FFFD where that is
+ * no character it accepts, and a named one only where HTML names it.
+ */
+function referenceAt(text: string, i: number): Inline | undefined {
+  const numeric = matchAt(NUMERIC_REFERENCE, text, i);
+  if (numeric) {
+    const chars = referencedCharacter(referencedCode(numeric[1]!)) ?? "\uFFFD";
+    return { kind: "literal", text: chars, end: i + numeric[0].length };
+  }
+  const named = matchAt(NAMED_REFERENCE, text, i);
+  if (!named) return undefined;
+  const chars = namedReference(named[1]!);
+  return chars === undefined ? undefined : { kind: "literal", text: chars, end: i + named[0].length };
+}
+
+/**
+ * markdown-it's `unescapeAll`, which a link's destination is read through:
+ * each backslash escape as the character it escapes, and each reference
+ * `UNESCAPE_ALL` finds as the characters it names — a reference naming
+ * nothing, or no character `isValidEntityCode` accepts, left as written.
+ */
+function unescapeAll(text: string): string {
+  return text.replace(UNESCAPE_ALL, (whole: string, escaped: string | undefined) => {
+    if (escaped !== undefined) return escaped;
+    const numeric = DESTINATION_NUMERIC.exec(whole);
+    const chars = numeric ? referencedCharacter(referencedCode(numeric[1]!)) : namedReference(whole.slice(1, -1));
+    return chars ?? whole;
+  });
 }
 
 /**
@@ -627,9 +695,10 @@ function bracketPairs(text: string): ReadonlyMap<number, number> {
  * The `(destination "title")` of a link opening at `open`, as CommonMark reads
  * it: a destination in angle brackets, or a run of non-space characters whose
  * parentheses balance — so a URL may itself hold `(…)` — then an optional
- * quoted title, then the `)`. The destination, its backslash escapes read and
- * then made an href as markdown-it makes one, and the index past the `)` — or
- * nothing, where markdown-it refuses that href, and the brackets are no link.
+ * quoted title, then the `)`. The destination, its backslash escapes and
+ * character references read and then made an href as markdown-it makes one,
+ * and the index past the `)` — or nothing, where markdown-it refuses that
+ * href, and the brackets are no link.
  */
 function linkDestination(text: string, open: number): { url: string; end: number } | undefined {
   if (text[open] !== "(") return undefined;
@@ -652,7 +721,7 @@ function linkDestination(text: string, open: number): { url: string; end: number
   }
   const tail = matchAt(LINK_TAIL, text, i);
   if (!tail) return undefined;
-  const href = linkHref(url.replace(ESCAPES, "$1"));
+  const href = linkHref(unescapeAll(url));
   return href === undefined ? undefined : { url: href, end: i + tail[0].length };
 }
 
@@ -713,6 +782,8 @@ function inlineAt(text: string, i: number, brackets: ReadonlyMap<number, number>
             end: close + delimiter.length,
           };
     }
+    case "&":
+      return referenceAt(text, i);
     case "\\": {
       const escape = matchAt(ESCAPE, text, i);
       return escape ? { kind: "literal", text: escape[1]!, end: i + escape[0].length } : undefined;
@@ -768,8 +839,9 @@ function appendLink(result: RichText, label: RichText, url: string, settings: In
 /**
  * `text` as inline Markdown appended to `result`: code spans, emphasis,
  * links, autolinks and images, the text inside emphasis and links parsed the
- * same way, a backslash escape as the character it escapes, inline
- * HTML as nothing, and everything else as it is.
+ * same way, a backslash escape as the character it escapes, a character
+ * reference as the characters it names, inline HTML as nothing, and
+ * everything else as it is.
  */
 function appendInline(result: RichText, text: string, settings: InlineSettings, options: RenderOptions): void {
   const brackets = bracketPairs(text);

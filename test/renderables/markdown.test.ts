@@ -726,6 +726,60 @@ describe("Markdown", () => {
     expect(segment("![p](a\\_b.png)", "p").style?.link).toBe("a_b.png");
   });
 
+  // Each case below is Rich 14's own output for its source.
+
+  it("draws a named, decimal or hex character reference as the characters it names, as Rich does", () => {
+    expect(rows("x &amp; &copy; &#65; y", 80)[0]).toBe("x & © A y");
+    expect(rows("&#x41; &#X41; &#x1F600; &NotEqualTilde; &AMP;", 80)[0]).toBe("A A 😀 ≂̸ &");
+    expect(rows("&lt;b&gt;bold&lt;/b&gt; &lt;http://e.com&gt;", 80)[0]).toBe("<b>bold</b> <http://e.com>");
+    expect(rows("a&#10;b c&#9;d e&Tab;f", 80)).toEqual(["a", "b c     d e     f", ""]);
+    expect(segment("**&copy;**", "©").style?.bold).toBe(true);
+    expect(links("[&copy; x](u)")).toEqual([["© x", "u"]]);
+    expect(rows("# &copy; head", 80)[0]!.trim()).toBe("© head");
+    expect(rows("| a &amp; | b |\n|---|---|\n| &lt; | &#124; |", 80).slice(1, 4)).toEqual([" a &  b", " ──────", " <    |"]);
+  });
+
+  it("draws U+FFFD for a numeric reference to no character markdown-it accepts, and too many digits as written", () => {
+    expect(rows("&#0; &#xD800; &#1114112; &#x110000; &#99999999; &#x1234567; &#; &#x;", 80)[0]).toBe(
+      "� � � � &#99999999; &#x1234567; &#; &#x;",
+    );
+  });
+
+  it("draws a reference HTML does not name as written, whatever an object's prototype holds", () => {
+    expect(rows("&foo; &a; &amp &constructor; &toString; &hasOwnProperty; & alone &;", 80)[0]).toBe(
+      "&foo; &a; &amp &constructor; &toString; &hasOwnProperty; & alone &;",
+    );
+  });
+
+  it("reads a decoded reference as text, never as a delimiter, and leaves one in a code span, after an escape, in an autolink or in an image's alt text as written", () => {
+    expect(rows("&#42;a&#42; *a&#42; b*", 80)[0]).toBe("*a* a* b");
+    expect(segment("*a&#42; b*", "a* b").style?.italic).toBe(true);
+    expect(rows("`&amp;` \\&amp; &#92;*x*", 80)[0]).toBe("&amp; &amp; \\x");
+    expect(links("<http://e.com/?a&amp;b>")).toEqual([["http://e.com/?a&amp;b", "http://e.com/?a&amp;b"]]);
+    expect(links("![&amp; *i*](x.png)")).toEqual([["&amp; *i*", "x.png"]]);
+  });
+
+  it("decodes the references in a link's destination before making its href, as markdown-it's unescapeAll does", () => {
+    expect(rows("[a](&#x6A;avascript:x) b", 80)[0]).toBe("[a](javascript:x) b");
+    expect(links("[a](&#x6A;avascript:x)")).toEqual([]);
+    expect(links("[b](http://x?a=1&amp;amp;b=2) [c](<&amp;x>) [d](&#0;y) [e](&foo;z) [f](u \"&amp;\")")).toEqual([
+      ["b", "http://x?a=1&amp;b=2"],
+      ["c", "&x"],
+      ["d", "&#0;y"],
+      ["e", "&foo;z"],
+      ["f", "u"],
+    ]);
+    // Eight digits of either base, where text takes seven decimal or six hex.
+    expect(links("[a](\\&amp;) [b](&#x26;amp;) [c](&#X41;) [d](&#x00000041;) [e](&#000000065;)")).toEqual([
+      ["a", "&amp;"],
+      ["b", "&amp;"],
+      ["c", "A"],
+      ["d", "A"],
+      ["e", "&#000000065;"],
+    ]);
+    expect(links("![](a&amp;b.png)")).toEqual([["a&b.png", "a&b.png"]]);
+  });
+
   it("closes emphasis on no delimiter inside an escape, a code span, inline HTML or a link, as Rich does", () => {
     const italic = (source: string): string[] =>
       collectSegments(new Markdown(source, { hyperlinks: false }), { maxWidth: 80 })
