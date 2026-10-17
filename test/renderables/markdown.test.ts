@@ -212,6 +212,11 @@ describe("Markdown", () => {
     expectLinearTime((openers) => new Markdown("\\``x ".repeat(openers)), 25_000);
   });
 
+  it("reads a paragraph of links that each hold a code span in time linear in its length", () => {
+    // Each link's label is read from its own cut of the text; indexing the backticks of every cut afresh read the text once per link.
+    expectLinearTime((links) => new Markdown("[`a`](u) ".repeat(links)), 16_000);
+  });
+
   it("keeps a paragraph line's indentation in a code span that crosses its line ending", () => {
     expect(rows("foo\n    bar `x\n  y`", 80)).toEqual(["foo bar x   y", ""]);
     expect(rows("> foo\n>     bar `x\n>   y`", 80)).toEqual(["", "▌ foo bar x   y", ""]);

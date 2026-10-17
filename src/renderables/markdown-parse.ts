@@ -1008,10 +1008,12 @@ function unescapeAll(text: string): string {
 
 /**
  * markdown-it's inline state, as much of it as outlives one construct: the
- * document's `definitions` a label is resolved against, each text's backtick
- * runs, and the link-label scan — `parseLinkLabel` stepping over the text a
- * token at a time with `skipToken` — with the cache those steps share across
- * one block's text. A link's label may hold no link: a `[` it meets that
+ * document's `definitions` a label is resolved against, the backtick runs of
+ * one block's text, and the link-label scan — `parseLinkLabel` stepping over
+ * the text a token at a time with `skipToken` — with the cache those steps
+ * share across that text. Every text the state is handed is that block's text
+ * or a link's label cut from its start at the label's `]`, so a position means
+ * the same character in each. A link's label may hold no link: a `[` it meets that
  * opens one refuses the label, so only the innermost of nested links links.
  * Each `[` the scan meets is tried as a link one level deeper, and at
  * `MAX_NESTING` a step lands past the end of the text, as markdown-it's does —
@@ -1022,9 +1024,11 @@ class InlineState {
   // markdown-it's `state.cache`: where a step from a position lands, kept
   // whatever level it was taken at and whatever text it was taken in, as there.
   private readonly steps = new Map<number, number>();
-  private readonly backticks = new Map<string, BacktickRuns>();
+  private readonly backticks: BacktickRuns;
 
-  constructor(readonly definitions: Definitions) {}
+  constructor(readonly definitions: Definitions, text: string) {
+    this.backticks = new BacktickRuns(text);
+  }
 
   /**
    * The index of the `]` closing the label whose `[` is at `open` in `text`,
@@ -1055,11 +1059,13 @@ class InlineState {
     return next;
   }
 
-  /** Where the first whole run of `length` backticks at or after `from` in `text` starts, if one does: the closer of a code span `length` long. */
+  /**
+   * Where the first whole run of `length` backticks at or after `from` in `text` starts, if one does: the closer of a code span `length` long.
+   * A label's cut falls on a `]`, never inside a run, so the runs of `text` are the block's runs that start before its end.
+   */
   codeClose(text: string, from: number, length: number): number | undefined {
-    let runs = this.backticks.get(text);
-    if (runs === undefined) this.backticks.set(text, (runs = new BacktickRuns(text)));
-    return runs.after(from, length);
+    const close = this.backticks.after(from, length);
+    return close !== undefined && close < text.length ? close : undefined;
   }
 }
 
@@ -1492,7 +1498,7 @@ function inlines(text: string, from: number, state: InlineState, level: number):
 
 /** `text` read into inlines from its start, its references resolved against `definitions`. */
 function parseInline(text: string, definitions: Definitions): Inline[] {
-  return inlines(text, 0, new InlineState(definitions), 0);
+  return inlines(text, 0, new InlineState(definitions, text), 0);
 }
 
 /**
