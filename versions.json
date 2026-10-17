@@ -4,15 +4,22 @@
     {
       "version": "pr-441",
       "ref": "refs/pull/441/merge",
-      "sha": "04d6fafe6d4aa86972dd5a1fb140e04dcf16efb4",
-      "timestamp": "2026-10-17T13:29:40.846Z",
+      "sha": "a2adddd9398f4a6fdcf78713701bd3a7c6b90a10",
+      "timestamp": "2026-10-17T13:52:22.365Z",
       "commits": [
         {
-          "sha": "04d6fafe6d4aa86972dd5a1fb140e04dcf16efb4",
+          "sha": "a2adddd9398f4a6fdcf78713701bd3a7c6b90a10",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T07:28:04-06:00",
-          "message": "Merge f58d39b3c4f6fe09f8669c1232368ced635e1cdc into e10e9e8e09e2ca2535bfa727caa10a617c647fea\n"
+          "timestamp": "2026-10-17T13:50:42Z",
+          "message": "Merge 8da5d8f8860c4a8ef4f06ec89849a5bfb56f2ee1 into e10e9e8e09e2ca2535bfa727caa10a617c647fea\n"
+        },
+        {
+          "sha": "8da5d8f8860c4a8ef4f06ec89849a5bfb56f2ee1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T07:50:37-06:00",
+          "message": "Markdown reads a container's lines as its block pass reaches them, so a run of quotes reads in linear time (rich-unfiled-791c.1dvo)\n\nA quote copied every line it might take before reading any, so a run of\nquotes each followed by a lazy line it did not take read the rest of the\ndocument once per quote: 8 s for 32 KB. Containers now read through Lines,\nmade on demand from their parent's, and a definition's continuation shares\nthe one has-text-opens-no-block predicate a lazy line does.\n"
         },
         {
           "sha": "f58d39b3c4f6fe09f8669c1232368ced635e1cdc",
