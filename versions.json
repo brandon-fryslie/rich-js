@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-442",
-      "ref": "refs/pull/442/merge",
-      "sha": "77ec83245cf13e27a05dbf6c94f2ca470af8a33d",
-      "timestamp": "2026-10-17T14:36:11.871Z",
-      "commits": [
-        {
-          "sha": "77ec83245cf13e27a05dbf6c94f2ca470af8a33d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T14:34:41Z",
-          "message": "Merge 66d240245709e3a93def813d83e501727f3128fb into 277380518996438a7258f30d1de3f99182d3df1f\n"
-        },
-        {
-          "sha": "66d240245709e3a93def813d83e501727f3128fb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T08:34:36-06:00",
-          "message": "runsOn takes a fractional delay as Node does, truncated, so a 1.9 ms timer stays one of the body's own jobs (rich-unfiled-791c.ffob)\n\nThe runsOn descriptions — programTimers' header, the settled message, the\nfirst test's name — now state the rule as it is: a timer still set, or a\nlonger one fired since the body returned.\n"
-        },
-        {
-          "sha": "10ace6241f883e08a3d42fc3b319ea5a32e66641",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T08:25:54-06:00",
-          "message": "runsOn counts a program timer that fires before its 1 ms check, so a stalled loop no longer hides a timer left set (rich-unfiled-791c.ffob)\n\nThe 1 ms check is armed as the body returns, and any program timer over\n1 ms that fires after that has run on past the body, whether or not the\ncheck has fired yet. Timers of 1 ms remain the body's queued jobs, since\nsame-delay timers fire in the order they were set.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "277380518996438a7258f30d1de3f99182d3df1f",
-      "timestamp": "2026-10-17T14:20:19.288Z",
+      "sha": "876ed63e43cd10a85cb34ed9fe936de820d81f0f",
+      "timestamp": "2026-10-17T14:47:30.394Z",
       "commits": [
         {
-          "sha": "277380518996438a7258f30d1de3f99182d3df1f",
+          "sha": "876ed63e43cd10a85cb34ed9fe936de820d81f0f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T08:18:26-06:00",
-          "message": "Markdown reads link reference definitions and resolves reference links against them, as Rich does (rich-unfiled-791c.1dvo) (#441)\n\n* Markdown reads link reference definitions and resolves reference links against them, as Rich does (rich-unfiled-791c.1dvo)\n\nA definition is a block-pass mark the inline pass collects, first label wins,\nand full, collapsed and shortcut links and images resolve against it, with the\nlink rule's fallback from a refused inline form. Containers now take lazy\nlines as markdown-it's do and end where their own block pass stops, replacing\nthe speculative open-paragraph check, so a definition can take a lazy title.\n\n* Markdown reads a container's lines as its block pass reaches them, so a run of quotes reads in linear time (rich-unfiled-791c.1dvo)\n\nA quote copied every line it might take before reading any, so a run of\nquotes each followed by a lazy line it did not take read the rest of the\ndocument once per quote: 8 s for 32 KB. Containers now read through Lines,\nmade on demand from their parent's, and a definition's continuation shares\nthe one has-text-opens-no-block predicate a lazy line does.\n\n* Markdown reads a definition's destination in the text markdown-it holds for it, ending with its own line (rich-unfiled-791c.1dvo)\n\nA backslash escaping the destination's line ending took the destination on\ninto the lines read ahead, or left the definition unended, where markdown-it\nends the definition there: \"[a]: x\\\\\\ny\" defines x%5C and leaves y a paragraph."
+          "timestamp": "2026-10-17T08:46:19-06:00",
+          "message": "runsOn counts a program timer that fires before its 1 ms check, so a stalled loop no longer hides a timer left set (rich-unfiled-791c.ffob) (#442)\n\n* runsOn counts a program timer that fires before its 1 ms check, so a stalled loop no longer hides a timer left set (rich-unfiled-791c.ffob)\n\nThe 1 ms check is armed as the body returns, and any program timer over\n1 ms that fires after that has run on past the body, whether or not the\ncheck has fired yet. Timers of 1 ms remain the body's queued jobs, since\nsame-delay timers fire in the order they were set.\n\n* runsOn takes a fractional delay as Node does, truncated, so a 1.9 ms timer stays one of the body's own jobs (rich-unfiled-791c.ffob)\n\nThe runsOn descriptions — programTimers' header, the settled message, the\nfirst test's name — now state the rule as it is: a timer still set, or a\nlonger one fired since the body returned."
         }
       ]
     }
