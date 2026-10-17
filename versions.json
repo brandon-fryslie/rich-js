@@ -4,15 +4,22 @@
     {
       "version": "pr-437",
       "ref": "refs/pull/437/merge",
-      "sha": "e360f375d6fef111c137d7dd9d33e9c66a13056b",
-      "timestamp": "2026-10-17T11:13:44.312Z",
+      "sha": "065857f23a684f47e1f1c4ea5a30ac50166b16a0",
+      "timestamp": "2026-10-17T11:24:46.795Z",
       "commits": [
         {
-          "sha": "e360f375d6fef111c137d7dd9d33e9c66a13056b",
+          "sha": "065857f23a684f47e1f1c4ea5a30ac50166b16a0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T05:11:41-06:00",
-          "message": "Merge b00034a9a158ed2644a4d6f082aa62eb52aa90f2 into 52e5742120d6ef1684d983c3cb4fca2df709e7ec\n"
+          "timestamp": "2026-10-17T11:23:06Z",
+          "message": "Merge db6a124f18fdac859b2d97f541e4fe82b3a9b05d into 52e5742120d6ef1684d983c3cb4fca2df709e7ec\n"
+        },
+        {
+          "sha": "db6a124f18fdac859b2d97f541e4fe82b3a9b05d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T05:23:02-06:00",
+          "message": "Markdown's renderer never sees the block pass's blank and unread marks\n\nThey decide only where a container ends; the inline pass now drops them, so\nevery token the renderer meets is an element Rich exits, and a top-level\nblock is drawn where its exit is with no per-token test. A list item is its\nblocks, without a wrapper.\n"
         },
         {
           "sha": "b00034a9a158ed2644a4d6f082aa62eb52aa90f2",
