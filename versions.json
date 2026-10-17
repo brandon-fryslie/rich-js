@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "5ac97fcea4985359b587249d56eae2edd68037f5",
+      "timestamp": "2026-10-17T03:30:20.923Z",
+      "commits": [
+        {
+          "sha": "5ac97fcea4985359b587249d56eae2edd68037f5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T21:28:36-06:00",
+          "message": "chore(release): 0.24.0 (#423)"
+        }
+      ]
+    },
+    {
       "version": "pr-426",
       "ref": "refs/pull/426/merge",
       "sha": "542a2c661c5230b41fd6a72210540f703db75a76",
@@ -20,21 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T21:26:19-06:00",
           "message": "Markdown draws an autolink as Rich does, and makes every link's href as markdown-it does (rich-unfiled-791c.95jg)\n\n`<http://e.com>` and `<a@b.co>` now draw as links whose text is the address,\nan email linking to mailto:. Links, images and autolinks all take their href\nfrom src/renderables/markdown-url.ts, a port of markdown-it-py's\nnormalizeLink / normalizeLinkText / validateLink with the mdurl and punycode\npieces they stand on — so a javascript:, vbscript:, file: or non-image data:\nURL is no link, as in Rich. Tests pinned against Rich 14 output.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "90f21fa5ea0b2b773042b9e24670e5e031012d96",
-      "timestamp": "2026-10-17T03:18:07.566Z",
-      "commits": [
-        {
-          "sha": "90f21fa5ea0b2b773042b9e24670e5e031012d96",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T21:16:44-06:00",
-          "message": "An effect's next change is asked with the frame it draws (rich-animation-xi28.3an) (#425)\n\n* An effect's next change is asked with the frame it draws (rich-animation-xi28.3an)\n\nEffect.nextChange took only t, so stillOnSlots — identity at the\nsixteen-colour depths — answered t and a Live repainted still content at\nits rate. The signature mirrors the first stage, (t, drawn), and Effected\nstamps after it has measured the frame, with the one measure.\n\nonBeat answered the hold's end whatever the inner effect said: a beat\nover a done transition said a time where the inner said never. It now\nanswers the first hold start at or after the inner's next change from the\nhold's start, and never when the inner says never.\n\nwithNextChange takes an Effect and says its answer replaces the inner's;\nconfined hands its narrowed frame to both stages. Live reads the soonest\nchange off its rows without flattening them.\n\nThe showcase's flash is a composer over the hue walk, answering the\nsooner of its own next flash and the walk's step, in place of two nested\nEffected and a heading that spelled the signal's next step.\n\nFound by /code-review high on release PR #423; lands before v0.24.0 is\ntagged, since the signature is public.\n\n* The docs say what onBeat answers, and one measure is pinned\n\nReview (high) on PR #425. docs/effects.md and docs/easing.md stated the old onBeat contract; a test pins that both stages and the answer get the one Drawn; the showcase flash hands back the inner frame while dark; onBeat's header says its answer is read off the inner's, never a comparison of frames."
         }
       ]
     }
