@@ -4,15 +4,22 @@
     {
       "version": "pr-448",
       "ref": "refs/pull/448/merge",
-      "sha": "c572f001e0160b6cd7e775e4fafd8259ca5c53d2",
-      "timestamp": "2026-10-17T16:40:47.790Z",
+      "sha": "4ba7a9adecdcdfd7c8329ceed2bde3ac888d60ac",
+      "timestamp": "2026-10-17T16:45:49.180Z",
       "commits": [
         {
-          "sha": "c572f001e0160b6cd7e775e4fafd8259ca5c53d2",
+          "sha": "4ba7a9adecdcdfd7c8329ceed2bde3ac888d60ac",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T10:38:55-06:00",
-          "message": "Merge c3aba3af1ef567f518d6a5497ede199adb6dc473 into 30864c3491ff1b10e0f4942c10ab067373c567dc\n"
+          "timestamp": "2026-10-17T16:44:06Z",
+          "message": "Merge 78e450ddfe587c248a364ac0d63d4918de496425 into 30864c3491ff1b10e0f4942c10ab067373c567dc\n"
+        },
+        {
+          "sha": "78e450ddfe587c248a364ac0d63d4918de496425",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T10:44:02-06:00",
+          "message": "Markdown hands a quote's content a cell count, never a negative width (rich-unfiled-791c.hlmh)\n\nReview fixes: the quote's narrowed width goes through cellCount, so a quote at width 0 or 1 no longer passes guttered a negative maxWidth. The quote table's test titles name their options, so the two justify rows are told apart, and the older bar test it duplicated is gone. The one-cell floor in guttered that departs from Rich at narrow widths is rich-unfiled-791c.jra3.\n"
         },
         {
           "sha": "c3aba3af1ef567f518d6a5497ede199adb6dc473",
