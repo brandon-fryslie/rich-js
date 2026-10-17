@@ -811,8 +811,8 @@ function tokenize(lines: Lines, level: number): { tokens: Block[]; end: number }
       continue;
     }
 
-    // Blockquote: Markdown of its own — its `>` lines with the marker blanked,
-    // and each unmarked line after one with text a lazy continuation line,
+    // Blockquote: Markdown of its own — its `>` lines from the quote's content
+    // on, and each unmarked line after one with text a lazy continuation line,
     // up to where its own block pass stops
     if (startsWith(line, QUOTE)) {
       const { tokens: children, end } = tokenize(new Lines(quoteLines(lines, i)), level + 1);
