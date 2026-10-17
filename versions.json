@@ -4,15 +4,22 @@
     {
       "version": "pr-459",
       "ref": "refs/pull/459/merge",
-      "sha": "cac539a9535fd45b7a1502560bd018dd68a449d9",
-      "timestamp": "2026-10-17T21:24:01.271Z",
+      "sha": "3c3c2b61763b2012b231469ae29d86181cc566f7",
+      "timestamp": "2026-10-17T21:35:55.335Z",
       "commits": [
         {
-          "sha": "cac539a9535fd45b7a1502560bd018dd68a449d9",
+          "sha": "3c3c2b61763b2012b231469ae29d86181cc566f7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T15:22:18-06:00",
-          "message": "Merge 3aa0ce51ec98a5eebb1d5386af3adfdeebf3e0fa into a565e0c8a331452feb6027fb72f91ea9390c3f86\n"
+          "timestamp": "2026-10-17T21:34:11Z",
+          "message": "Merge 0dc6078ca93e2caa9c06aacb6b94d4b5a3b03a2e into a565e0c8a331452feb6027fb72f91ea9390c3f86\n"
+        },
+        {
+          "sha": "0dc6078ca93e2caa9c06aacb6b94d4b5a3b03a2e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T15:34:06-06:00",
+          "message": "A Line holds its text once, as written, and how many leading characters are list markers, not a blanked copy beside it (rich-unfiled-791c.g10i)\n\ntext and written had to stay aligned character for character, and nothing\nheld them to it; a spread replacing one would have desynchronised\ndropColumns. The markers now read as spaces wherever columns are counted.\n"
         },
         {
           "sha": "3aa0ce51ec98a5eebb1d5386af3adfdeebf3e0fa",
