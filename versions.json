@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-446",
+      "ref": "refs/pull/446/merge",
+      "sha": "8615f30fbc422f281c5d76cf9aebca8413785d87",
+      "timestamp": "2026-10-17T15:46:28.121Z",
+      "commits": [
+        {
+          "sha": "8615f30fbc422f281c5d76cf9aebca8413785d87",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T09:44:44-06:00",
+          "message": "Merge 2905c7487b6415fdd8a1904c3f4243116e122307 into 7cbff35d5b7f0fb69b94af97d20d215c466f220f\n"
+        },
+        {
+          "sha": "2905c7487b6415fdd8a1904c3f4243116e122307",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T09:44:40-06:00",
+          "message": "cellLen gives U+2028 and U+2029 no cells, as Rich's cell_len does (rich-unfiled-791c.xvwv)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "7cbff35d5b7f0fb69b94af97d20d215c466f220f",
