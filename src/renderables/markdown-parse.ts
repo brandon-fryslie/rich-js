@@ -46,6 +46,12 @@ export type MdToken<Text = readonly Inline[]> =
   | { type: "table"; columns: readonly TableColumn<Text>[]; rows: readonly (readonly Text[])[] }
   /** Kept, though nothing draws it, so a container ending in one does not end in the paragraph before it. */
   | { type: "html_block" }
+  /**
+   * A container's content past `MAX_NESTING`, which markdown-it skips unread.
+   * Kept, though nothing draws it, so a line after it continues the container
+   * as markdown-it's would: `open` where the content's last line has text.
+   */
+  | { type: "unread"; open: boolean }
   | { type: "blank" };
 
 /**
@@ -100,6 +106,15 @@ const DELIMITER_CELL = /^:?-+:?$/;
 const MAX_AUTOCOMPLETED_CELLS = 0x10000;
 /** Indentation that makes a line indented code when it opens a block, as CommonMark counts it. */
 const CODE_INDENT = 4;
+/**
+ * markdown-it's `maxNesting`, 20 in the commonmark preset Rich parses with: how
+ * deep its blocks nest — a quote one level, a list and its item one each —
+ * and how deep it follows a link label holding a bracket holding another.
+ * Past it the block parser reads nothing more of a container, and the label
+ * scan stops looking, so neither pass recurses further however deep the
+ * source goes.
+ */
+const MAX_NESTING = 20;
 
 /**
  * One of CommonMark's seven kinds of HTML block (4.6), as markdown-it-py —
@@ -329,6 +344,8 @@ function endsInParagraph(tokens: readonly MdToken<string>[]): boolean {
       return endsInParagraph(last.items[last.items.length - 1]!.children);
     case "blockquote":
       return endsInParagraph(last.children);
+    case "unread":
+      return last.open;
     default:
       return false;
   }
@@ -343,10 +360,10 @@ function endsInParagraph(tokens: readonly MdToken<string>[]): boolean {
  * counts from — ends the container rather than continuing it. A line after a
  * lazy continuation finds that paragraph still open, so `afterLazy` answers
  * without reading `inner` again: a container's lazy lines cost one read of
- * it, not one each.
+ * it, not one each. `level` is the container's content's, as `tokenize` takes it.
  */
-function continuesLazily(inner: readonly Line[], line: Line, afterLazy: boolean): boolean {
-  return !isBlank(line) && !opensBlock(line) && (afterLazy || endsInParagraph(tokenize(inner)));
+function continuesLazily(inner: readonly Line[], level: number, line: Line, afterLazy: boolean): boolean {
+  return !isBlank(line) && !opensBlock(line) && (afterLazy || endsInParagraph(tokenize(inner, level)));
 }
 
 /**
@@ -369,9 +386,9 @@ function continuation(lines: readonly Line[], start: number): { text: string; ne
  * blank, indented to the content column, or a lazy continuation — and the
  * index of the line that ended it. Blank lines trailing the item are left to
  * whatever follows it, and an item that opens with a blank line ends at the
- * next one: it is empty.
+ * next one: it is empty. `level` is the item's content's.
  */
-function itemLines(item: ItemStart, lines: readonly Line[], start: number): { inner: Line[]; next: number } {
+function itemLines(item: ItemStart, level: number, lines: readonly Line[], start: number): { inner: Line[]; next: number } {
   const inner = item.first === undefined ? [] : [item.first];
   let lazy = false;
   let i = start + 1;
@@ -380,7 +397,7 @@ function itemLines(item: ItemStart, lines: readonly Line[], start: number): { in
     const blank = isBlank(line);
     if (blank && inner.length === 0) break;
     const held = blank || leadEnd(line) >= item.content;
-    lazy = !held && continuesLazily(inner, line, lazy);
+    lazy = !held && continuesLazily(inner, level, line, lazy);
     if (!held && !lazy) break;
     inner.push(held ? { text: line.text, margin: item.content, lazy: false } : { ...line, lazy: true });
   }
@@ -389,10 +406,23 @@ function itemLines(item: ItemStart, lines: readonly Line[], start: number): { in
 }
 
 /**
- * The list opened at `start`: each item holding its blocks, and the blank
- * lines that separated it from the item before.
+ * Whether a list item holding `children` swallows the rest of the lines its
+ * list sits in, as markdown-it's does when its content is past `MAX_NESTING`:
+ * an item's block pass is handed every line to the end of the enclosing quote
+ * or document and stops at the first line short of its indentation, and the
+ * pass that skips unread content skips to that end. An item whose last block
+ * is a list ending in such an item swallows them too.
  */
-function list(first: ItemStart, lines: readonly Line[], start: number): { token: MdToken<string>; next: number } {
+function swallowsRest(children: readonly MdToken<string>[]): boolean {
+  const last = children[children.length - 1];
+  return last?.type === "unread" || (last?.type === "list" && swallowsRest(last.items[last.items.length - 1]!.children));
+}
+
+/**
+ * The list opened at `start`, at `level`: each item holding its blocks, and
+ * the blank lines that separated it from the item before.
+ */
+function list(first: ItemStart, level: number, lines: readonly Line[], start: number): { token: MdToken<string>; next: number } {
   const items: { gap: number; children: MdToken<string>[] }[] = [];
   let i = start;
   let gap = 0;
@@ -401,11 +431,14 @@ function list(first: ItemStart, lines: readonly Line[], start: number): { token:
     item && sameList(first, item);
     item = i < lines.length ? itemStart(lines[i]!) : undefined
   ) {
-    const { inner, next } = itemLines(item, lines, i);
-    items.push({ gap, children: tokenize(inner) });
-    let after = next;
+    // A list and its item each nest a level, as markdown-it's tokens do.
+    const { inner, next } = itemLines(item, level + 2, lines, i);
+    const children = tokenize(inner, level + 2);
+    items.push({ gap, children });
+    const end = swallowsRest(children) ? lines.length : next;
+    let after = end;
     while (after < lines.length && isBlank(lines[after]!)) after++;
-    gap = after - next;
+    gap = after - end;
     i = after;
   }
   // The blank lines after the last item belong to whatever follows the list.
@@ -413,7 +446,12 @@ function list(first: ItemStart, lines: readonly Line[], start: number): { token:
   return { token: { type: "list", start: first.bullet === undefined ? first.start : undefined, items }, next };
 }
 
-function tokenize(lines: readonly Line[]): MdToken<string>[] {
+/**
+ * `lines` read into blocks at `level`, how deep in containers they sit. At
+ * `MAX_NESTING` markdown-it's block pass reads nothing, and neither does this.
+ */
+function tokenize(lines: readonly Line[], level: number): MdToken<string>[] {
+  if (level >= MAX_NESTING) return [{ type: "unread", open: lines.length > 0 && !isBlank(lines[lines.length - 1]!) }];
   const tokens: MdToken<string>[] = [];
   let i = 0;
 
@@ -488,18 +526,18 @@ function tokenize(lines: readonly Line[]): MdToken<string>[] {
       for (; i < lines.length; i++) {
         const next = lines[i]!;
         const marked = startsWith(next, QUOTE);
-        lazy = !marked && continuesLazily(inner, next, lazy);
+        lazy = !marked && continuesLazily(inner, level + 1, next, lazy);
         if (!marked && !lazy) break;
         inner.push(marked ? quoted(next) : { ...next, lazy: true });
       }
-      tokens.push({ type: "blockquote", children: tokenize(inner) });
+      tokens.push({ type: "blockquote", children: tokenize(inner, level + 1) });
       continue;
     }
 
     // List: its items, each Markdown of its own, as a quote is
     const item = itemStart(line);
     if (item) {
-      const { token, next } = list(item, lines, i);
+      const { token, next } = list(item, level, lines, i);
       tokens.push(token);
       i = next;
       continue;
@@ -680,24 +718,48 @@ function unescapeAll(text: string): string {
 }
 
 /**
- * Each `[` in `text` that a `]` closes, to the index of that `]`: brackets
- * nest, a backslash escapes the character after it, and a bracket inside a
- * code span, an autolink or inline HTML, which bind tighter than a link, is
- * not one. One
- * pass, so a run of text full of brackets that close nothing costs no more
- * than one without.
+ * markdown-it's link-label scan — `parseLinkLabel` stepping over the text a
+ * token at a time with `skipToken` — and the cache those steps share across
+ * one block's text. A link's label may hold no link: a `[` it meets that
+ * opens one refuses the label, so only the innermost of nested links links.
+ * Each `[` the scan meets is tried as a link one level deeper, and at
+ * `MAX_NESTING` a step lands past the end of the text, as markdown-it's does —
+ * which is what keeps the scan shallow and, with the cache, linear in a run of
+ * brackets however long.
  */
-function bracketPairs(text: string): ReadonlyMap<number, number> {
-  const pairs = new Map<number, number>();
-  const open: number[] = [];
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] === "\\") i++;
-    else if (text[i] === "[") open.push(i);
-    else if (text[i] === "]" && open.length > 0) pairs.set(open.pop()!, i);
-    // Neither construct reads the brackets, so the pairs found so far serve.
-    else if (text[i] === "`" || text[i] === "<") i = (inlineAt(text, i, pairs)?.end ?? i + 1) - 1;
+class LinkLabels {
+  // markdown-it's `state.cache`: where a step from a position lands, kept
+  // whatever level it was taken at and whatever text it was taken in, as there.
+  private readonly steps = new Map<number, number>();
+
+  /**
+   * The index of the `]` closing the label whose `[` is at `open` in `text`,
+   * scanned at `level` — or nothing, where no `]` does or, for a link's
+   * label, where the label holds a link.
+   */
+  close(text: string, open: number, level: number, refusesLinks: boolean): number | undefined {
+    let depth = 1;
+    for (let i = open + 1; i < text.length; ) {
+      if (text[i] === "]" && --depth === 0) return i;
+      const next = this.step(text, i, level);
+      if (text[i] === "[") {
+        // A `[` stepped over alone is text; one that took more opened a link.
+        if (next === i + 1) depth++;
+        else if (refusesLinks) return undefined;
+      }
+      i = next;
+    }
+    return undefined;
   }
-  return pairs;
+
+  /** Where markdown-it's `skipToken` lands from `i` in `text` at `level`: past the construct opening there, if one does, tried a level deeper. */
+  private step(text: string, i: number, level: number): number {
+    const cached = this.steps.get(i);
+    if (cached !== undefined) return cached;
+    const next = level >= MAX_NESTING ? text.length + 1 : (inlineAt(text, i, this, level + 1)?.end ?? i + 1);
+    this.steps.set(i, next);
+    return next;
+  }
 }
 
 /**
@@ -818,7 +880,8 @@ function balancePairs(delimiters: readonly Delimiter[]): void {
  * markdown-it's emphasis `postProcess` makes them: innermost pair first, a pair
  * strong where the pair enclosing it is of the same marker and touches it at
  * both ends, so the two are spent as one, and italic otherwise. A delimiter
- * left unpaired is the text it is.
+ * left unpaired is the text it is, joined to the text beside it as
+ * markdown-it's `fragments_join` joins it, so a run of text is one piece.
  */
 function emphasized(pieces: readonly Inline[], delimiters: readonly Delimiter[]): Inline[] {
   const roles = new Map<number, "bold" | "italic" | "close" | "spent">();
@@ -856,8 +919,12 @@ function emphasized(pieces: readonly Inline[], delimiters: readonly Delimiter[])
       }
       case "spent":
         break;
-      case undefined:
-        open.at(-1)!.push(piece);
+      case undefined: {
+        const into = open.at(-1)!;
+        const last = into.at(-1);
+        if (piece.kind === "text" && last?.kind === "text") into[into.length - 1] = { kind: "text", text: last.text + piece.text };
+        else into.push(piece);
+      }
     }
   }
   return open[0]!;
@@ -880,8 +947,8 @@ function autolinkAt(text: string, i: number): InlineMatch | undefined {
   return href === undefined ? undefined : { kind: "autolink", source, url: href, end: i + angled[0].length };
 }
 
-/** The inline construct opening at `i` in `text`, if one does; `brackets` is `text`'s `bracketPairs`. */
-function inlineAt(text: string, i: number, brackets: ReadonlyMap<number, number>): InlineMatch | undefined {
+/** The inline construct opening at `i` in `text`, if one does, read at `level` with `labels` scanning a link's label. */
+function inlineAt(text: string, i: number, labels: LinkLabels, level: number): InlineMatch | undefined {
   switch (text[i]) {
     case "`": {
       const ticks = matchAt(TICKS, text, i)![0];
@@ -923,7 +990,8 @@ function inlineAt(text: string, i: number, brackets: ReadonlyMap<number, number>
     case "[": {
       const image = text[i] === "!";
       const open = image ? i + 1 : i;
-      const close = brackets.get(open);
+      if (text[open] !== "[") return undefined;
+      const close = labels.close(text, open, level, !image);
       if (close === undefined) return undefined;
       const destination = linkDestination(text, close + 1);
       if (!destination) return undefined;
@@ -941,14 +1009,15 @@ function inlineAt(text: string, i: number, brackets: ReadonlyMap<number, number>
  * pass reads it: each construct `inlineAt` finds, the text between them as it
  * is, and its delimiters then paired into emphasis. `text` runs on before
  * `from` as the block's own text does, so a delimiter run reads what borders
- * it there; `brackets` is that text's `bracketPairs`.
+ * it there; `level` is how many links the text sits in, and past
+ * `MAX_NESTING` markdown-it reads no construct, only characters.
  */
-function inlines(text: string, from: number, brackets: ReadonlyMap<number, number>): Inline[] {
+function inlines(text: string, from: number, labels: LinkLabels, level: number): Inline[] {
   const pieces: Inline[] = [];
   const delimiters: Delimiter[] = [];
   let plain = from;
   for (let i = from; i < text.length; ) {
-    const found = inlineAt(text, i, brackets);
+    const found = level < MAX_NESTING ? inlineAt(text, i, labels, level) : undefined;
     if (!found) {
       i++;
       continue;
@@ -964,7 +1033,7 @@ function inlines(text: string, from: number, brackets: ReadonlyMap<number, numbe
         delimiters.push({ marker: found.marker, length: found.length, piece: pieces.length, open: found.canOpen, close: found.canClose, end: -1 });
         pieces.push({ kind: "text", text: found.marker });
       }
-    } else pieces.push(matched(found, text, brackets));
+    } else pieces.push(matched(found, text, labels, level));
     i = plain = found.end;
   }
   if (plain < text.length) pieces.push({ kind: "text", text: text.slice(plain) });
@@ -974,7 +1043,7 @@ function inlines(text: string, from: number, brackets: ReadonlyMap<number, numbe
 
 /** `text` read into inlines from its start. */
 function parseInline(text: string): Inline[] {
-  return inlines(text, 0, bracketPairs(text));
+  return inlines(text, 0, new LinkLabels(), 0);
 }
 
 /**
@@ -984,10 +1053,10 @@ function parseInline(text: string): Inline[] {
  * markdown-it's `posMax` does, so a run at the label's end borders the end of
  * the text, as `scanDelims` reads it, and not the `]`.
  */
-function matched(found: Exclude<InlineMatch, DelimiterRun | { kind: "line_ending" }>, text: string, brackets: ReadonlyMap<number, number>): Inline {
+function matched(found: Exclude<InlineMatch, DelimiterRun | { kind: "line_ending" }>, text: string, labels: LinkLabels, level: number): Inline {
   switch (found.kind) {
     case "link":
-      return { kind: "link", children: inlines(text.slice(0, found.close), found.label, brackets), url: found.url };
+      return { kind: "link", children: inlines(text.slice(0, found.close), found.label, labels, level + 1), url: found.url };
     case "autolink":
       return { kind: "autolink", text: normalizeLinkText(found.source), url: found.url };
     case "code":
@@ -1025,5 +1094,5 @@ function inlined(token: MdToken<string>): MdToken {
 /** `source` read as Markdown: its blocks, and the text in each read into inlines. */
 export function parseMarkdown(source: string): MdToken[] {
   const lines = source.split(/\r?\n/).map((text): Line => ({ text, margin: 0, lazy: false }));
-  return tokenize(lines).map(inlined);
+  return tokenize(lines, 0).map(inlined);
 }
