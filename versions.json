@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-446",
-      "ref": "refs/pull/446/merge",
-      "sha": "0e2d5680c09c9aa1cc0b18c00d0bf690995ef556",
-      "timestamp": "2026-10-17T15:53:06.414Z",
-      "commits": [
-        {
-          "sha": "0e2d5680c09c9aa1cc0b18c00d0bf690995ef556",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T15:51:50Z",
-          "message": "Merge bde1f698e72f369c9339f97c856c5b2f22cdd7f5 into 7cbff35d5b7f0fb69b94af97d20d215c466f220f\n"
-        },
-        {
-          "sha": "bde1f698e72f369c9339f97c856c5b2f22cdd7f5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T09:51:45-06:00",
-          "message": "cellLen's test asserts a separator parts its neighbours, not the substitution that does it; measure carries the width-authority claim (rich-unfiled-791c.xvwv)\n"
-        },
-        {
-          "sha": "2905c7487b6415fdd8a1904c3f4243116e122307",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T09:44:40-06:00",
-          "message": "cellLen gives U+2028 and U+2029 no cells, as Rich's cell_len does (rich-unfiled-791c.xvwv)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "7cbff35d5b7f0fb69b94af97d20d215c466f220f",
-      "timestamp": "2026-10-17T15:42:26.813Z",
+      "sha": "201b6f5593ae0b66c16cd9cfc6557b6525788690",
+      "timestamp": "2026-10-17T16:02:28.535Z",
       "commits": [
         {
-          "sha": "7cbff35d5b7f0fb69b94af97d20d215c466f220f",
+          "sha": "201b6f5593ae0b66c16cd9cfc6557b6525788690",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T09:40:58-06:00",
-          "message": "Markdown strips a code span's padding space from each side, as markdown-it does (rich-unfiled-791c.3kln) (#445)\n\n* Markdown strips a code span's padding space from each side, as markdown-it does (rich-unfiled-791c.3kln)\n\nA code span whose text starts and ends with a space and is not all\nwhitespace, as Python's str.strip reads it, loses one space from each end:\n'a ` b ` c' draws 'a b c'. '`  `' is kept whole, and a no-break space or a\ntab pads nothing. Pinned against Rich 15 (markdown-it-py 4.2.0).\n\n* Pin a tab as no padding and an all-whitespace span with a tab, write invisible characters as escapes, and name markdown-it-py's strip rule (rich-unfiled-791c.3kln)"
+          "timestamp": "2026-10-17T10:01:11-06:00",
+          "message": "cellLen gives U+2028 and U+2029 no cells, as Rich's cell_len does (rich-unfiled-791c.xvwv) (#446)\n\n* cellLen gives U+2028 and U+2029 no cells, as Rich's cell_len does (rich-unfiled-791c.xvwv)\n\n* cellLen's test asserts a separator parts its neighbours, not the substitution that does it; measure carries the width-authority claim (rich-unfiled-791c.xvwv)"
         }
       ]
     }
