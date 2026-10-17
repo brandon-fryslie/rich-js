@@ -479,7 +479,8 @@ describe("Markdown", () => {
   });
 
   it("owes no newline after a rule, as Rich's render loop does not", () => {
-    // Rich 15: ["🌆 i ▌ x", "▌ " + 38×"-", "▌", ""].
+    // Rich 15: ["🌆 i ▌ x", "▌ " + 36×"-", "▌", ""]. The bar is rich-unfiled-791c.rm6p's;
+    // the rule's two extra cells are the quote width, rich-unfiled-791c.hlmh's.
     expect(rows("> x ![i](p.png)\n>\n> ***", 40)).toEqual(["🌆 i ▎ x", `▎ ${"-".repeat(38)}`, "▎", ""]);
   });
 
