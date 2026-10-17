@@ -98,9 +98,11 @@ export type Inline =
  * line was taken in short of its container's marker or indentation, as a
  * lazy continuation line: it continues a paragraph or a definition open
  * before it, and where none is, the container ends at it. It is `"quote"` once
- * any quote has taken it so, which markdown-it marks indented less than any
- * block, and `"item"` while only list items have, which leaves it the
- * indentation it has.
+ * any quote has taken it so, and `"item"` while only list items have. Either
+ * is indented less than any block, as markdown-it reads it, but an `"item"`
+ * line keeps its indentation for a list item, which markdown-it measures from
+ * the container of the innermost list it sits in: that container's margin is
+ * the line's.
  */
 interface Line {
   readonly text: string;
@@ -283,12 +285,15 @@ function dropColumns(line: Line, n: number): string {
  * as a line of the item, absent when the item opens with a blank line. An item
  * opening with a blank line, or with indented code, has its content one space
  * past the marker. The indent is counted from each line's own margin, as
- * markdown-it counts a quote's lines from each one's own `>`. `marker` is CommonMark's two kinds: a bullet, or an ordered
- * item's number and the delimiter that closes it, `.` or `)`.
+ * markdown-it counts a quote's lines from each one's own `>`; `margin` is the
+ * marker line's, the list's container's — markdown-it's `listIndent`.
+ * `marker` is CommonMark's two kinds: a bullet, or an ordered item's number
+ * and the delimiter that closes it, `.` or `)`.
  */
 interface ItemStart {
   readonly marker: { readonly bullet: string } | { readonly delimiter: string; readonly start: number };
   readonly indent: number;
+  readonly margin: number;
   readonly first: Line | undefined;
 }
 
@@ -307,6 +312,7 @@ function itemStart(line: Line): ItemStart | undefined {
   return {
     marker: m[1] === undefined ? { bullet: m[0] } : { delimiter: m[0].slice(-1), start: parseInt(m[1], 10) },
     indent: content - line.margin,
+    margin: line.margin,
     first: rest === "" ? undefined : { text: lead + " ".repeat(m[0].length) + after, margin: content, lazy: false },
   };
 }
@@ -572,6 +578,7 @@ function titleAt(text: string, start: number, takeLines: () => string): { end: n
 function* itemLines(item: ItemStart, lines: Lines, start: number): Generator<Line> {
   const held = (line: Line): boolean => !line.lazy && indentOf(line) >= item.indent;
   const inItem = (line: Line): Line => ({ text: line.text, margin: line.margin + item.indent, lazy: false });
+  const short = (line: Line): Line => ({ text: line.text, margin: item.margin, lazy: "item" });
   // Whether the item holds a line with text yet, which a blank line or a lazy one must come after.
   let text = item.first !== undefined;
   if (item.first !== undefined) yield item.first;
@@ -582,17 +589,19 @@ function* itemLines(item: ItemStart, lines: Lines, start: number): Generator<Lin
     if (line === undefined || (after > i && !(text && held(line)))) return;
     for (; i < after; i++) yield inItem(lines.at(i)!);
     if (held(line)) yield inItem(line);
-    else if (text && continuesText(line)) yield { ...line, lazy: line.lazy || "item" };
+    // A quote's lazy line the item's paragraph takes whatever it holds; any other is lazy to the item.
+    else if (text && line.lazy === "quote") yield line;
+    else if (text && continuesText(outdented(short(line)))) yield short(line);
     else return;
     text = true;
   }
 }
 
 /**
- * A lazy `line` as a quote inside its container reads it, indented less than
- * any block. A line lazy only to list items keeps its indentation for a list
- * item, which markdown-it's list refuses at a line short of the item and a code
- * indent past the list's container.
+ * A lazy `line` as a block inside its container reads it, indented less than
+ * any block — but a list item on an `"item"` line, which markdown-it's list
+ * refuses at a line short of the item and a code indent past the list's
+ * container.
  */
 function outdented(line: Line): Line {
   const read = { ...line, margin: leadEnd(line) };
