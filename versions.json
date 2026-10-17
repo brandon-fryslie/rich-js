@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-413",
+      "ref": "refs/pull/413/merge",
+      "sha": "f8fecfacd7fa13fac006ce54cd02b3ba814925fd",
+      "timestamp": "2026-10-17T00:34:28.618Z",
+      "commits": [
+        {
+          "sha": "f8fecfacd7fa13fac006ce54cd02b3ba814925fd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T18:32:40-06:00",
+          "message": "Merge f324f7575abcd619004ed81d3afbf64fcfc0d744 into b0579cc17713b904935e040bba4b01e744eb3f74\n"
+        },
+        {
+          "sha": "f324f7575abcd619004ed81d3afbf64fcfc0d744",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T18:32:34-06:00",
+          "message": "effects-feel measures every loop's contrast at 1 fps, not 30 (rich-unfiled-791c.2iki)\n\nThe demo paints on a wall-clock rate, so its frames cost the same each\nsecond however loaded the machine is, and the contrast measuring gets\nwhat is left. At 30 fps under a full suite that was little: 7.4-10.6 s\nlocally, 21 s of 30 on CI. At 1 fps, 4.1-5.2 s under the full suite\n(three runs), 2.0 s alone (was 2.8 s).\n"
+        }
+      ]
+    },
+    {
       "version": "pr-411",
       "ref": "refs/pull/411/merge",
       "sha": "b73ba05b5c7973bd033f2456be98bbb043f37ac0",
