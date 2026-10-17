@@ -22,6 +22,7 @@ import {
   EASES,
   EFFECT_CATALOGUE,
   Effected,
+  FrameSequence,
   Frames,
   Layout,
   Live,
@@ -163,10 +164,12 @@ project.add("[magenta]renderables").add("table.ts");
  * hue wheel a step a second: a wheel that would take six seconds to turn,
  * sampled once a second.
  */
-const CHEVRONS = ["›", "››", "›››"].map((glyphs) => ({
-  text: new RichText(glyphs, { style: Style.parse("bold #cdd6f4 on #313244") }),
-  seconds: 1,
-}));
+const CHEVRONS = new FrameSequence(
+  ["›", "››", "›››"].map((glyphs) => ({
+    text: new RichText(glyphs, { style: Style.parse("bold #cdd6f4 on #313244") }),
+    seconds: 1,
+  })),
+);
 const SIGNAL = steppedInk([
   { color: new ColorRgba(255, 85, 85), seconds: 1 },
   { color: new ColorRgba(241, 250, 140), seconds: 1 },

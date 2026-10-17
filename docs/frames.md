@@ -4,49 +4,52 @@ Frames change *what* an element shows on a beat: a sequence of frames, each held
 
 Nothing here reads a clock. A `Frames` is drawn for a time `t` in seconds that its host hands in, so the same `t` always draws the same bytes, at one redraw a second or sixty.
 
+The frames and the moment are two values. A `FrameSequence` is the frames prepared to draw, built once and kept; `new Frames(sequence, { t })` is that sequence at one moment, and finding which frame `t` lands on is all it does, so a frame costs the same over ninety frames as over one.
+
 ## A sequence of frames
 
-Each frame is a `RichText`, free to carry its own style, and its hold in seconds. Draw the sequence for a moment and it shows the frame in progress then, counted from the first frame at `t = 0` and wrapping every period:
+Each frame is a `RichText`, free to carry its own style, and its hold in seconds. Ask the sequence for a moment and it hands back the frame in progress then, counted from the first frame at `t = 0` and wrapping every period:
 
 ```typescript
-import { Frames, RichText, Style } from "@promptctl/rich-js";
+import { FrameSequence, RichText, Style } from "@promptctl/rich-js";
 
-const chevrons = ["›", "››", "›››"].map((glyphs, i) => ({
-  text: new RichText(glyphs, { style: Style.parse(["green", "yellow", "red"][i]!) }),
-  seconds: 1,
-}));
+const chevrons = new FrameSequence(
+  ["›", "››", "›››"].map((glyphs, i) => ({
+    text: new RichText(glyphs, { style: Style.parse(["green", "yellow", "red"][i]!) }),
+    seconds: 1,
+  })),
+);
 
 for (const t of [0, 1.5, 2.2, 3]) {
-  const gauge = new Frames(chevrons, { t });
-  console.print(`t=${t}s  effort ${gauge.text().plain} max`);
+  console.print(`t=${t}s  effort ${chevrons.text(t).plain} max`);
 }
 ```
 
-Every frame draws at one width, the widest frame's, padded on the right, so whatever sits beside the frames never moves as they turn; `width` says what that is. A frame is a fragment of a line: it ends no line of its own, a newline inside one becomes a space, and it measures at exactly its width; a slot forced narrower crops it, and never folds or wraps it onto a second line.
+Every frame draws at one width, the widest frame's, padded on the right, so whatever sits beside the frames never moves as they turn; the sequence's `width` says what that is. A frame is a fragment of a line: it ends no line of its own, a newline inside one becomes a space, and it measures at exactly its width; a slot forced narrower crops it, and never folds or wraps it onto a second line.
 
-`text()` is the frame in progress as a `RichText` of its own, a copy, for a line assembled from pieces; `Frames` is also a renderable, so it can be printed or set in a table cell directly. The holds are its `beat`, whose `period` is their sum.
+`text(t)` is the frame in progress as a `RichText` of its own, a copy, for a line assembled from pieces; `Frames` is the renderable, so it can be printed or set in a table cell directly. The holds are the sequence's `beat`, whose `period` is their sum.
 
 ## Holds are seconds
 
 A hold is a number of seconds, never a count of frames, so one sequence plays unchanged whatever the redraw rate. Redrawn sixty times a second, a one-second frame shows for exactly sixty frames. Redrawn once a second, as a status line is, the same sequence turns once a second: a frame held for less than a second is skipped, and a sequence whose period is a whole number of seconds shows one frame forever:
 
 ```typescript
-import { Frames, RichText } from "@promptctl/rich-js";
+import { FrameSequence, RichText } from "@promptctl/rich-js";
 
-const quarters = ["a", "b", "c", "d"].map((glyph) => ({ text: new RichText(glyph), seconds: 0.25 }));
+const quarters = new FrameSequence(["a", "b", "c", "d"].map((glyph) => ({ text: new RichText(glyph), seconds: 0.25 })));
 
-const onceASecond = [0, 1, 2, 3].map((t) => new Frames(quarters, { t }).text().plain);
-const sixtyASecond = Array.from({ length: 60 }, (_, i) => new Frames(quarters, { t: i / 60 }).text().plain);
+const onceASecond = [0, 1, 2, 3].map((t) => quarters.text(t).plain);
+const sixtyASecond = Array.from({ length: 60 }, (_, i) => quarters.text(i / 60).plain);
 
 console.print(`once a second:  ${onceASecond.join(" ")}`);
 console.print(`sixty a second: ${[...new Set(sixtyASecond)].join(" ")}`);
 ```
 
-`Frames` does not adapt to the rate: the rate belongs to whoever draws the frames, and so does the fix, which is holds that the host's rate can show. The [easing and phase vocabulary](/easing) is where the timing comes from, and the beat is part of it.
+A sequence does not adapt to the rate: the rate belongs to whoever draws the frames, and so does the fix, which is holds that the host's rate can show. The [easing and phase vocabulary](/easing) is where the timing comes from, and the beat is part of it.
 
 ## Spinners
 
-A `Spinner` is `Frames` over one of the named spinners — `dots`, `line`, `bouncingBall` and the rest of the cli-spinners set — each frame held for the spinner's interval, with an optional label after it. It is built once and asked for its frame at a time: `spinner.at(t)` is the renderable, the frame in progress at the time it is handed, as Rich's `Spinner.render(time)` is, and a spinner reads no clock. `speed` scales the time: `2` turns it twice as fast, and a negative speed runs it backwards.
+A `Spinner` is a `FrameSequence` over one of the named spinners — `dots`, `line`, `bouncingBall` and the rest of the cli-spinners set — each frame held for the spinner's interval, with an optional label after it. It is built once and asked for its frame at a time: `spinner.at(t)` is the renderable, the frame in progress at the time it is handed, as Rich's `Spinner.render(time)` is, and a spinner reads no clock. `speed` scales the time: `2` turns it twice as fast, and a negative speed runs it backwards.
 
 ```typescript
 import { Group, Spinner } from "@promptctl/rich-js";
@@ -62,13 +65,15 @@ A `Progress` hands its `SpinnerColumn` each frame's time on the progress's clock
 An effect wraps whatever is up: `Effected` around `Frames` lights the frame in progress and still changes no glyph.
 
 ```typescript
-import { CATPPUCCIN_MOCHA, EFFECT_CATALOGUE, Effected, Frames, RichText, Style } from "@promptctl/rich-js";
+import { CATPPUCCIN_MOCHA, EFFECT_CATALOGUE, Effected, FrameSequence, Frames, RichText, Style } from "@promptctl/rich-js";
 
 const theme = CATPPUCCIN_MOCHA;
-const frames = ["loading", "loading.", "loading..", "loading..."].map((text) => ({
-  text: new RichText(text, { style: Style.parse("bold") }),
-  seconds: 0.5,
-}));
+const frames = new FrameSequence(
+  ["loading", "loading.", "loading..", "loading..."].map((text) => ({
+    text: new RichText(text, { style: Style.parse("bold") }),
+    seconds: 0.5,
+  })),
+);
 const lit = EFFECT_CATALOGUE.loops.pulse({ z: 3 });
 
 for (const t of [0, 0.5, 1]) {

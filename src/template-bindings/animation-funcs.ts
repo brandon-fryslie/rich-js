@@ -11,9 +11,12 @@
  * the same fragment back; a host that redraws once a second or sixty times
  * a second registers the same functions.
  *
- * `frames <seconds> <frame> <seconds> <frame> …` is `Frames`
+ * `frames <seconds> <frame> <seconds> <frame> …` is a `FrameSequence`
  * (`renderables/frames.ts`) in a template: the frame in progress at the
- * moment, as a fragment at the width of the widest. `stepped <seconds>
+ * moment, as a fragment at the width of the widest. Its frames arrive as
+ * arguments on every evaluation, so the sequence is prepared on every one:
+ * a template has nowhere to keep it, and keeping it here would be the memo
+ * keyed on the arguments that `FrameSequence` is instead of. `stepped <seconds>
  * <color> <seconds> <color> …` is the colour in progress at the moment, a
  * colour value like every colour function's (`./color-funcs.ts`), so it
  * nests where a colour goes — `fg (stepped …)`, `readableOn (stepped …) $bg
@@ -26,7 +29,7 @@
 
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
 import { beat } from "../core/easing.js";
-import { Frames, type Frame } from "../renderables/frames.js";
+import { FrameSequence, type Frame } from "../renderables/frames.js";
 import { asColor } from "./color-funcs.js";
 import { asFragment } from "./helpers.js";
 
@@ -36,7 +39,7 @@ import { asFragment } from "./helpers.js";
  * as `value`'s input; what it cannot see is the pairing, or that a hold is
  * a positive number of seconds: both settled here, under the engine's
  * "error calling <function>" and nothing else, since a template author
- * knows neither `Frames` nor `beat`, which refuse the same hold in their
+ * knows neither `FrameSequence` nor `beat`, which refuse the same hold in their
  * own names. [LAW:parse-dont-validate]
  */
 function pairs<V>(what: string, tail: readonly unknown[], value: (v: unknown) => V): { seconds: number; value: V }[] {
@@ -65,7 +68,7 @@ export function animationFuncs(frameTime: () => number): FuncMap {
   const framesFunc: TemplateFunc = {
     fn: ((...tail: unknown[]) => {
       const frames: Frame[] = pairs("frame", tail, asFragment).map(({ seconds, value }) => ({ seconds, text: value }));
-      return new Frames(frames, { t: frameTime() }).text();
+      return new FrameSequence(frames).text(frameTime());
     }) as TemplateFunc["fn"],
     argTypes: ["float", "liftable"],
     arity: { kind: "alternating", minimum: 2 },

@@ -7,7 +7,7 @@ import { Segment } from "../../src/core/segment.js";
 import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { Effected, type Effect } from "../../src/renderables/effect.js";
-import { Frames, type Frame } from "../../src/renderables/frames.js";
+import { FrameSequence, Frames, type Frame } from "../../src/renderables/frames.js";
 import { Table } from "../../src/renderables/table.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 
@@ -21,8 +21,8 @@ const chevrons: Frame[] = CHEVRONS.map((glyph, i) => ({
   seconds: 1,
 }));
 
-const text = (frames: readonly Frame[], t: number): string => new Frames(frames, { t }).text().plain;
-const drawn = (frames: readonly Frame[], t: number, width = 10): string => renderToString(new Frames(frames, { t }), { width });
+const text = (frames: readonly Frame[], t: number): string => new FrameSequence(frames).text(t).plain;
+const drawn = (frames: readonly Frame[], t: number, width = 10): string => renderToString(new Frames(new FrameSequence(frames), { t }), { width });
 
 describe("Frames — the frame in progress at a handed time", () => {
   it("each chevron is one cell wide in a Nerd Font, as cellLen measures it", () => {
@@ -48,48 +48,70 @@ describe("Frames — the frame in progress at a handed time", () => {
       { text: new RichText("abc"), seconds: 1 },
       { text: new RichText("ab"), seconds: 1 },
     ];
-    const frames = (t: number): Frames => new Frames(uneven, { t });
-    expect(frames(0).width).toBe(3);
-    expect(frames(0).text().plain).toBe("a  ");
-    expect(frames(1).text().plain).toBe("abc");
-    expect(frames(2).text().plain).toBe("ab ");
+    const sequence = new FrameSequence(uneven);
+    expect(sequence.width).toBe(3);
+    expect(sequence.text(0).plain).toBe("a  ");
+    expect(sequence.text(1).plain).toBe("abc");
+    expect(sequence.text(2).plain).toBe("ab ");
     for (const t of [0, 1, 2]) {
-      expect(frames(t).text().cellLength).toBe(3);
-      expect(Measurement.get({ maxWidth: 80 }, frames(t))).toEqual(new Measurement(3, 3));
+      expect(sequence.text(t).cellLength).toBe(3);
+      expect(Measurement.get({ maxWidth: 80 }, new Frames(sequence, { t }))).toEqual(new Measurement(3, 3));
     }
   });
 
   it("a wide glyph counts its cells toward the width", () => {
-    const frames = new Frames([{ text: new RichText("漢"), seconds: 1 }, { text: new RichText("a"), seconds: 1 }], { t: 1 });
-    expect(frames.width).toBe(2);
-    expect(frames.text().plain).toBe("a ");
+    const sequence = new FrameSequence([{ text: new RichText("漢"), seconds: 1 }, { text: new RichText("a"), seconds: 1 }]);
+    expect(sequence.width).toBe(2);
+    expect(sequence.text(1).plain).toBe("a ");
   });
 
   it("ends no line of its own, so it sits inside a line among other cells", () => {
-    const segments = [...new Frames(chevrons, { t: 0 }).render({ maxWidth: 10 })];
+    const sequence = new FrameSequence(chevrons);
+    const segments = [...new Frames(sequence, { t: 0 }).render({ maxWidth: 10 })];
     expect(segments.map((s) => s.text).join("")).toBe(CHEVRONS[0]);
     expect(segments.some((s) => s.text.includes("\n"))).toBe(false);
-    const line = new RichText("effort ", { end: "" }).append(new Frames(chevrons, { t: 1 }).text()).append(" max");
+    const line = new RichText("effort ", { end: "" }).append(sequence.text(1)).append(" max");
     expect(line.plain).toBe(`effort ${CHEVRONS[1]} max`);
   });
 
   it("a frame of several lines is set into one", () => {
-    const frames = new Frames([{ text: new RichText("a\nb"), seconds: 1 }], { t: 0 });
-    expect(frames.text().plain).toBe("a b");
-    expect(frames.text().end).toBe("");
+    const sequence = new FrameSequence([{ text: new RichText("a\nb"), seconds: 1 }]);
+    expect(sequence.text(0).plain).toBe("a b");
+    expect(sequence.text(0).end).toBe("");
   });
 
   it("the text handed back is a copy: changing it changes no later frame", () => {
-    const frames = new Frames(chevrons, { t: 0 });
-    frames.text().plain = "x";
-    expect(frames.text().plain).toBe(CHEVRONS[0]);
+    const sequence = new FrameSequence(chevrons);
+    sequence.text(0).plain = "x";
+    expect(sequence.text(0).plain).toBe(CHEVRONS[0]);
+    expect(renderToString(new Frames(sequence, { t: 0 }), { width: 1 })).toContain(CHEVRONS[0]);
   });
 
   it("the frames handed in are the caller's: changing one later changes no draw", () => {
     const own = new RichText("a");
-    const frames = new Frames([{ text: own, seconds: 1 }], { t: 0 });
+    const sequence = new FrameSequence([{ text: own, seconds: 1 }]);
     own.plain = "b";
-    expect(frames.text().plain).toBe("a");
+    expect(sequence.text(0).plain).toBe("a");
+  });
+
+  it("reads the frames once, where the sequence is prepared, and never again for a frame drawn from it", () => {
+    let reads = 0;
+    const counted: Frame[] = chevrons.map((frame) => ({
+      get text() {
+        reads++;
+        return frame.text;
+      },
+      seconds: frame.seconds,
+    }));
+    const sequence = new FrameSequence(counted);
+    expect(reads).toBe(counted.length);
+    for (let i = 0; i < 60; i++) {
+      const frames = new Frames(sequence, { t: i / 60 });
+      renderToString(frames, { width: 10 });
+      Measurement.get({ maxWidth: 10 }, frames);
+      sequence.text(i / 60);
+    }
+    expect(reads).toBe(counted.length);
   });
 
   it("fits a table column at its width whichever frame is up", () => {
@@ -97,7 +119,7 @@ describe("Frames — the frame in progress at a handed time", () => {
       const table = Table.grid({ padding: 0 });
       table.addColumn("a");
       table.addColumn("b");
-      table.addRow(new Frames([{ text: new RichText("•"), seconds: 1 }, { text: new RichText("•••"), seconds: 1 }], { t }), "tail");
+      table.addRow(new Frames(new FrameSequence([{ text: new RichText("•"), seconds: 1 }, { text: new RichText("•••"), seconds: 1 }]), { t }), "tail");
       const [row] = Segment.splitLines([...table.render({ maxWidth: 40 })]);
       return row!.map((s) => s.text).join("").indexOf("tail");
     };
@@ -107,7 +129,8 @@ describe("Frames — the frame in progress at a handed time", () => {
 
   it("an effect lights whichever frame is up, by nesting, and still changes no glyph", () => {
     const lit: Effect = () => (colors) => ({ fg: new ColorRgba(255, 255, 0), bg: colors.bg });
-    const under = (t: number): string => renderToString(new Effected(new Frames(chevrons, { t }), lit, { t, key: "k", theme: DEFAULT_TERMINAL_THEME }), { width: 1 });
+    const sequence = new FrameSequence(chevrons);
+    const under = (t: number): string => renderToString(new Effected(new Frames(sequence, { t }), lit, { t, key: "k", theme: DEFAULT_TERMINAL_THEME }), { width: 1 });
     expect(under(0)).toContain(CHEVRONS[0]);
     expect(under(1)).toContain(CHEVRONS[1]);
     expect(under(0)).toContain("255;255;0");
@@ -145,8 +168,10 @@ describe("Frames — at the host's rate, whatever it is", () => {
   });
 
   it("refuses a t that is not finite, and a hold that is not a positive number of seconds", () => {
-    expect(() => new Frames(chevrons, { t: Number.NaN })).toThrow(/finite t/);
-    expect(() => new Frames([{ text: new RichText("a"), seconds: 0 }], { t: 0 })).toThrow(/positive number of seconds/);
-    expect(() => new Frames([], { t: 0 })).toThrow(/at least one hold/);
+    const sequence = new FrameSequence(chevrons);
+    expect(() => new Frames(sequence, { t: Number.NaN })).toThrow(/finite t/);
+    expect(() => sequence.text(Number.POSITIVE_INFINITY)).toThrow(/finite t/);
+    expect(() => new FrameSequence([{ text: new RichText("a"), seconds: 0 }])).toThrow(/positive number of seconds/);
+    expect(() => new FrameSequence([])).toThrow(/at least one hold/);
   });
 });

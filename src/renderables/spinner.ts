@@ -2,22 +2,22 @@
  * Spinner — a named spinner, asked for its frame at a time, with an optional
  * label after it.
  *
- * A spinner is `Frames` (`./frames.ts`) over one entry of the named spinner
+ * A spinner is a `FrameSequence` (`./frames.ts`) over one entry of the named spinner
  * data (`core/spinnerData.ts`): each frame held for the spinner's interval,
  * looping, the frame in progress at `t` drawn. The data names the frames and
  * the interval; the beat, the width every frame draws at and which frame `t`
  * lands on are the frames primitive's, so a spinner is one more sequence on
- * it and not a second way of turning frames. Custom frames are `Frames`
- * directly. [LAW:one-source-of-truth]
+ * it and not a second way of turning frames. Custom frames are a `FrameSequence`
+ * drawn through `Frames` directly. [LAW:one-source-of-truth]
  *
  * It is built once and asked for each frame, as Rich's `Spinner` is built
  * once and has `render(time)` called on it: the name is parsed and the
  * styled frames are prepared where the spinner is given, and `at(t)` is what
  * draws, so a `Status` or `SpinnerColumn` holding one pays for the name and
  * the styling once, and a bad name fails at the call that gave it.
- * [LAW:parse-dont-validate] What `Frames` makes of a sequence — its beat,
- * its width, each frame padded to it — is made again each time `at(t)` is
- * drawn or measured, since `Frames` takes its time at construction.
+ * [LAW:parse-dont-validate] What a `FrameSequence` makes of the frames —
+ * the beat, the width, each frame padded to it — is made there too, so a
+ * drawn frame costs only finding which one `t` lands on.
  *
  * [LAW:no-ambient-temporal-coupling] A Spinner draws nothing on its own:
  * only `at(t)` is a renderable, so a spinner cannot be drawn without being
@@ -46,23 +46,25 @@ import type {
 } from "../core/protocol.js";
 import { drawable } from "../core/protocol.js";
 import { EmbeddedText } from "./embed.js";
-import { Frames, type Frame } from "./frames.js";
+import { FrameSequence } from "./frames.js";
 
-/** A spinner's data with its frames prepared for `Frames`, each styled and held for the interval. */
+/** A spinner's frames prepared to draw, each styled and held for the interval, and the glyphs they spend. */
 interface Sequence {
-  readonly data: SpinnerData;
-  readonly frames: readonly Frame[];
+  readonly frames: FrameSequence;
+  readonly glyphs: string;
 }
 
 const sequence = (data: SpinnerData, style: string | Style): Sequence => ({
-  data,
-  frames: data.frames.map((frame) => ({
-    text: new RichText("", { end: "" }).append(frame, style),
-    seconds: data.interval / 1000,
-  })),
+  frames: new FrameSequence(
+    data.frames.map((frame) => ({
+      text: new RichText("", { end: "" }).append(frame, style),
+      seconds: data.interval / 1000,
+    })),
+  ),
+  glyphs: data.frames.join(""),
 });
 
-const sequenceGlyphs = ({ data }: Sequence): string => data.frames.join("");
+const sequenceGlyphs = ({ glyphs }: Sequence): string => glyphs;
 
 export interface SpinnerOptions {
   /** Multiplies the spinner's rate; negative runs it backwards. Defaults to 1. */
@@ -127,24 +129,24 @@ export class Spinner {
       throw new RangeError(`Spinner.at needs a finite t, got ${t}`);
     }
     const scaled = t * this.speed;
-    const frames = (options: RenderOptions): Frames =>
-      new Frames(drawable(options, this._named, this._ascii, sequenceGlyphs).frames, { t: scaled });
+    const frames = (options: RenderOptions): FrameSequence =>
+      drawable(options, this._named, this._ascii, sequenceGlyphs).frames;
     return {
-      render: (options) => this._render(frames(options), options),
+      render: (options) => this._render(frames(options), scaled, options),
       // Measured at the frames' one width, the widest frame's, so a column
       // holding it never narrows as it turns, and never offered less than
       // that frame: a frame is one picture, which the reference's `Text`
       // measure would let wrap apart at its spaces.
       measure: (options) => {
         const drawn = frames(options);
-        const { minimum, maximum } = this._line(drawn, options).measure(options);
+        const { minimum, maximum } = this._line(drawn, scaled, options).measure(options);
         return { minimum: Math.max(minimum, Math.min(drawn.width, maximum)), maximum };
       },
     };
   }
 
-  private *_render(frames: Frames, options: RenderOptions): Iterable<Segment> {
-    yield* this._line(frames, options).render(options);
+  private *_render(frames: FrameSequence, t: number, options: RenderOptions): Iterable<Segment> {
+    yield* this._line(frames, t, options).render(options);
     yield Segment.line();
   }
 
@@ -155,8 +157,8 @@ export class Spinner {
    * styles nothing — is no label, not a trailing space, as an empty `Text` is
    * falsy there.
    */
-  private _line(frames: Frames, options: RenderOptions): RichText {
-    const line = new RichText("", { end: "" }).append(frames.text());
+  private _line(frames: FrameSequence, t: number, options: RenderOptions): RichText {
+    const line = new RichText("", { end: "" }).append(frames.text(t));
     // Unhighlighted: Rich's label is a `Text` from the moment it is handed over, and a `Text` is never highlighted.
     const label = new EmbeddedText(this.text).text({ ...options, highlight: false });
     if (label.plain !== "") line.append(" ").append(label);
