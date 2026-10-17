@@ -97,16 +97,15 @@ import type { KeyEvent, WidgetMouseEvent } from "./types.js";
  * (continuation) sub-row uses `continuationWidth` (typically
  * `firstWidth - cellLen(continuationMarker)`).
  *
- * Each returned row carries:
- *   - `content` — the displayed text for that visual row (the widget prepends
- *     the continuation marker itself; the strategy never includes it).
- *   - `start`   — code-unit offset into the line as given where `content`
- *     begins, so the widget can map visual positions back to absolute `value`
- *     offsets for cursor projection.
+ * Each returned row is the stretch `[start, end)` of the line as given that
+ * the row draws; the widget draws the matching stretch of `value` and
+ * prepends the continuation marker itself.
  *
- * [LAW:types-are-the-program] Budget params are `CellCol`; `start` is
- * `CodePoint` (a `CodeUnit` on a code-point boundary) — the type system
- * prevents mixing these integer spaces inside a custom strategy.
+ * [LAW:types-are-the-program] A row names where it falls in the line rather
+ * than carrying text of its own, so it cannot draw anything the line does not
+ * hold. Budget params are `CellCol`; offsets are `CodePoint` (a `CodeUnit` on
+ * a code-point boundary) — the type system prevents mixing these integer
+ * spaces inside a custom strategy.
  *
  * Built-in: `charGreedyWrap` (break at any character at the width limit).
  * Custom: any function matching this signature. Template-aware wrapping
@@ -119,9 +118,10 @@ export type WrapStrategy = (
 ) => readonly WrapRow[];
 
 export interface WrapRow {
-  readonly content: string;
-  /** Code-point offset into the logical line where `content` begins. */
+  /** Offset into the line as given where the row begins. */
   readonly start: CodePoint;
+  /** Offset into the line as given where the row ends, exclusive. */
+  readonly end: CodePoint;
 }
 
 /**
@@ -150,7 +150,7 @@ interface VisualRow {
  * wide for the whole budget is force-taken — see `cellStepFrom`.
  */
 export const charGreedyWrap: WrapStrategy = (line, { firstWidth, continuationWidth }) => {
-  if (line.length === 0) return [{ content: "", start: asCodePoint(0) }];
+  if (line.length === 0) return [{ start: asCodePoint(0), end: asCodePoint(0) }];
   const rows: WrapRow[] = [];
   let pos: CodePoint = asCodePoint(0);
   let isFirst = true;
@@ -158,7 +158,7 @@ export const charGreedyWrap: WrapStrategy = (line, { firstWidth, continuationWid
     const cap = isFirst ? firstWidth : continuationWidth;
     if (cap <= 0) break;
     const end = cellStepFrom(line, pos, cap);
-    rows.push({ content: line.slice(pos, end), start: pos });
+    rows.push({ start: pos, end });
     pos = end;
     isFirst = false;
   }
@@ -356,7 +356,7 @@ export class TextInput extends ThemedWidget {
   private _singleLineViewportStart: CellCol = asCellCol(0);
   // How the last render could draw, so the hit-test and vertical motion
   // measure `value` as it was shown.
-  private _drawn: { readonly asciiOnly?: boolean } = {};
+  private _drawn: { readonly asciiOnly: boolean } = { asciiOnly: false };
 
   readonly multiline: boolean;
 
@@ -1088,30 +1088,29 @@ export class TextInput extends ThemedWidget {
     for (let li = 0; li < lines.length; li++) {
       const line = lines[li]!;
       if (this._wrap !== undefined) {
-        const glyphs = graphemes(line);
-        const wrapRows = this._wrap(glyphs.map(shownAs).join(""), { firstWidth, continuationWidth });
-        // Where an offset into the line as shown falls in `line`. A glyph is
-        // shown as itself or as a stand-in of one code unit, so an offset is
-        // at a glyph's start or inside a glyph shown as itself.
-        const lineOffset = (shownOffset: number): CodePoint => {
-          let at = 0;
-          let shownAt = 0;
-          for (const g of glyphs) {
-            const s = shownAs(g);
-            if (shownAt + s.length > shownOffset) break;
-            at += g.length;
-            shownAt += s.length;
-          }
-          return asCodePoint(at + shownOffset - shownAt);
-        };
+        // `lineOffset[s]` is where offset `s` of the line as shown falls in
+        // `line`: a glyph shown as itself maps code unit for code unit, and
+        // every offset inside a stand-in falls at the start of its glyph, so
+        // a row the strategy ends there draws the glyph on the next row.
+        let shownLine = "";
+        const lineOffset: number[] = [];
+        let at = 0;
+        for (const g of graphemes(line)) {
+          const s = shownAs(g);
+          for (let i = 0; i < s.length; i++) lineOffset.push(s === g ? at + i : at);
+          shownLine += s;
+          at += g.length;
+        }
+        lineOffset.push(at);
+        const wrapRows = this._wrap(shownLine, { firstWidth, continuationWidth });
         if (wrapRows.length === 0) {
           rows.push({ content: "", valueStart: asCodePoint(pos), isContinuation: false });
         } else {
           for (let ri = 0; ri < wrapRows.length; ri++) {
             const wr = wrapRows[ri]!;
-            const start = lineOffset(wr.start);
+            const start = lineOffset[wr.start]!;
             rows.push({
-              content: line.slice(start, lineOffset(wr.start + wr.content.length)),
+              content: line.slice(start, lineOffset[wr.end]!),
               valueStart: asCodePoint(pos + start),
               isContinuation: ri > 0,
             });
@@ -1125,9 +1124,13 @@ export class TextInput extends ThemedWidget {
     return rows;
   }
 
-  measure(_options: RenderOptions): { minimum: number; maximum: number } {
+  measure(options: RenderOptions): { minimum: number; maximum: number } {
     const minimum = MIN_CONTENT_WIDTH + 2;
-    const maximum = Math.max(minimum, Math.max(cellLen(this.value), cellLen(this.placeholder)) + 2);
+    // The widest line as drawn: a multi-line value draws each logical line on
+    // rows of its own, a single-line one draws its breaks as glyphs.
+    const lines = this._multiline ? this.value.split("\n") : [this.value];
+    const widest = lines.reduce((w, line) => Math.max(w, cellLen(this._shown(line, options))), 0);
+    const maximum = Math.max(minimum, Math.max(widest, cellLen(this.placeholder)) + 2);
     return { minimum, maximum };
   }
 
