@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-431",
-      "ref": "refs/pull/431/merge",
-      "sha": "acd40841825c555a354a4c057a64f10a9cad0b0f",
-      "timestamp": "2026-10-17T07:14:28.753Z",
-      "commits": [
-        {
-          "sha": "acd40841825c555a354a4c057a64f10a9cad0b0f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T07:12:49Z",
-          "message": "Merge 4ee594bc7f48e52a7dabc140c1394ced70faec7b into eb20388c8dc369bca189bda2283d901f2f84b058\n"
-        },
-        {
-          "sha": "4ee594bc7f48e52a7dabc140c1394ced70faec7b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T01:12:42-06:00",
-          "message": "A null style is no style to applyStyle; list theme names pinned through Console and documented (rich-unfiled-791c.s3d1)\n"
-        },
-        {
-          "sha": "7083b3f9b19cc05e2650e378da1fd47c09731221",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T01:04:43-06:00",
-          "message": "Markdown draws list markers as Rich does (rich-unfiled-791c.s3d1)\n\nA bullet is \" • \" in markdown.item.bullet (bold), a number is drawn with no\ndot in markdown.item.number (cyan), right-aligned in a column sized for the\nnumber one past the last item, as Rich's last_number sizes it; each hang is\nin its marker's style and the item's body in markdown.item. An empty item is\ncounted and draws nothing. The parser records the list's start number and\nleaves the drawing to the renderer.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "eb20388c8dc369bca189bda2283d901f2f84b058",
-      "timestamp": "2026-10-17T06:54:43.533Z",
+      "sha": "069182e44a05717b4034ba0857c8f315a5691244",
+      "timestamp": "2026-10-17T07:25:43.332Z",
       "commits": [
         {
-          "sha": "eb20388c8dc369bca189bda2283d901f2f84b058",
+          "sha": "069182e44a05717b4034ba0857c8f315a5691244",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T00:53:32-06:00",
-          "message": "Markdown draws an image ahead of its block, linked to an enclosing link, as Rich does (rich-unfiled-791c.vke3) (#430)\n\n* Markdown draws an image ahead of its block, linked to an enclosing link, as Rich does (rich-unfiled-791c.vke3)\n\nRich's render loop draws an image the moment it meets one, ahead of the\ntop-level block holding it, and links the alt text to the link it sits in.\nA list is now one token, so an image in any item is drawn ahead of the\nwhole list.\n\n* Markdown image review: pin Rich 15's inline HTML, plain exit steps, docs line in words (rich-unfiled-791c.vke3)"
+          "timestamp": "2026-10-17T01:24:30-06:00",
+          "message": "Markdown draws list markers as Rich does (rich-unfiled-791c.s3d1) (#431)\n\n* Markdown draws list markers as Rich does (rich-unfiled-791c.s3d1)\n\nA bullet is \" • \" in markdown.item.bullet (bold), a number is drawn with no\ndot in markdown.item.number (cyan), right-aligned in a column sized for the\nnumber one past the last item, as Rich's last_number sizes it; each hang is\nin its marker's style and the item's body in markdown.item. An empty item is\ncounted and draws nothing. The parser records the list's start number and\nleaves the drawing to the renderer.\n\n* A null style is no style to applyStyle; list theme names pinned through Console and documented (rich-unfiled-791c.s3d1)"
         }
       ]
     }
