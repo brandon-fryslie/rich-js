@@ -43,6 +43,7 @@ import {
   steppedInk,
   withCellWidth,
   withNextChange,
+  type Effect,
   type Renderable,
   type RenderOptions,
 } from "../../src/index.js";
@@ -181,36 +182,41 @@ const WALK = onBeat(EFFECT_CATALOGUE.loops.wheel({ z: 0 }, { seconds: 6, ease: E
 const THEME = DEFAULT_TERMINAL_THEME;
 
 /**
- * A flash on the name: for the first 0.3 s of every 10 s its ground lights
- * up white and fades back, and it rests dark the rest. An effect of the
- * dashboard's own, so it says itself when its frame next changes — every
- * frame while lit, and the next flash's start while dark — and a host
- * drawing it wakes for the flash and rests between, where `onBeat` would hold
- * one frame a hold and a transition runs once.
+ * A flash over an effect: for the first 0.3 s of every 10 s the ground
+ * lights up white and fades back over whatever `effect` draws, and the rest
+ * of the time `effect` draws alone. A composer of the dashboard's own, so it
+ * says itself when its frame next changes — every frame while lit, and while
+ * dark the sooner of the next flash and whatever `effect` answers for the
+ * frame it is drawing — and a host drawing it wakes for the flash and for
+ * the inner effect's steps, and rests between.
  */
 const FLASH_BEAT = beat([0.3, 9.7]);
-const FLASH = withNextChange(
-  (t) => {
-    const lit = FLASH_BEAT.at(t) === 0;
-    const left = lit ? 1 - (t - FLASH_BEAT.start(t)) / FLASH_BEAT.holds[0]! : 0;
-    const toward = (channel: number): number => Math.round(channel + (255 - channel) * left);
-    return (colors) => ({ fg: colors.fg, bg: new ColorRgba(toward(colors.bg.red), toward(colors.bg.green), toward(colors.bg.blue)) });
-  },
-  (t) => (FLASH_BEAT.at(t) === 0 ? t : FLASH_BEAT.end(t)),
-);
+function flashing(effect: Effect): Effect {
+  return withNextChange(
+    (t, drawn) => {
+      const under = effect(t, drawn);
+      const lit = FLASH_BEAT.at(t) === 0;
+      const left = lit ? 1 - (t - FLASH_BEAT.start(t)) / FLASH_BEAT.holds[0]! : 0;
+      const toward = (channel: number): number => Math.round(channel + (255 - channel) * left);
+      return (colors, cell) => {
+        const moved = under(colors, cell);
+        return { fg: moved.fg, bg: new ColorRgba(toward(moved.bg.red), toward(moved.bg.green), toward(moved.bg.blue)) };
+      };
+    },
+    (t, drawn) => (FLASH_BEAT.at(t) === 0 ? t : Math.min(FLASH_BEAT.end(t), nextChangeOf(effect, t, drawn))),
+  );
+}
+const BRAND = flashing(WALK);
 
 function heading(t: number): Renderable {
   const line = Table.grid({ padding: 0 });
   line.addColumn();
   line.addColumn();
   line.addColumn();
-  const brand = new Effected(new RichText("rich-js ", { style: Style.parse("bold #1e1e2e on #cba6f7"), end: "" }), WALK, { t, key: "brand", theme: THEME });
-  // The gauge's next step, read off the signal the way a host reads it off the frame.
-  const untilStep = (nextChangeOf(SIGNAL, t) - t).toFixed(1);
   line.addRow(
-    new Effected(brand, FLASH, { t, key: "brand-flash", theme: THEME }),
+    new Effected(new RichText("rich-js ", { style: Style.parse("bold #1e1e2e on #cba6f7"), end: "" }), BRAND, { t, key: "brand", theme: THEME }),
     new Effected(new Frames(CHEVRONS, { t }), SIGNAL, { t, key: "effort", theme: THEME }),
-    new RichText(` · beautiful terminal output for TypeScript · next step in ${untilStep} s`, { style: Style.parse("dim"), end: "" }),
+    new RichText(" · beautiful terminal output for TypeScript", { style: Style.parse("dim"), end: "" }),
   );
   return line;
 }

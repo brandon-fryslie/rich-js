@@ -171,7 +171,7 @@ export class Live {
     let said: Said | undefined;
     this._paint(() => {
       const { t, lines } = this._frame();
-      said = { t, nextChange: Segment.nextChange(lines.flat()) };
+      said = { t, nextChange: lines.reduce((soonest, row) => Math.min(soonest, Segment.nextChange(row)), Number.POSITIVE_INFINITY) };
       return lines;
     });
     this._wake(held, said ?? { t: this._clock.now(), nextChange: Number.POSITIVE_INFINITY });

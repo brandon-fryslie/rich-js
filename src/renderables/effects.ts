@@ -53,7 +53,7 @@ import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo } from "../core/memo.js";
 import { Oklch } from "../core/oklch.js";
 import { ensureContrast } from "../themes/colorMath.js";
-import { Effected, withNextChange, type Drawn, type Effect, type EffectCell, type Pair, type Placed } from "./effect.js";
+import { Effected, nextChangeOf, withNextChange, type Drawn, type Effect, type EffectCell, type Pair, type Placed } from "./effect.js";
 
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
@@ -233,9 +233,14 @@ export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string
  * meets the sixteen-colour terminal here. `atShares` does not: a progress
  * bar's pulse is the news that work is going on, and flashes a slot as
  * Rich's does; nor does `steppedInk`, a signal, which steps slot to slot.
+ * A frame held still never changes, and says so, so a host drawing the
+ * loop on such a terminal draws it once.
  */
 function stillOnSlots(loop: Effect): Effect {
-  return (t, drawn) => (onlySlots(drawn.depth) ? (colors) => colors : loop(t, drawn));
+  return withNextChange(
+    (t, drawn) => (onlySlots(drawn.depth) ? (colors) => colors : loop(t, drawn)),
+    (t, drawn) => (onlySlots(drawn.depth) ? Number.POSITIVE_INFINITY : nextChangeOf(loop, t, drawn)),
+  );
 }
 
 /** Whether `depth` writes nothing between the slots it has: the sixteen, at either sixteen-colour depth, or none. */

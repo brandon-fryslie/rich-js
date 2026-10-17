@@ -7,11 +7,11 @@ import type { CellColors, Drawn, EffectCell } from "@promptctl/rich-js";
 
 interface Effect {
   (t: number, drawn: Drawn): (colors: CellColors, cell: EffectCell) => CellColors;
-  readonly nextChange?: (t: number) => number;
+  readonly nextChange?: (t: number, drawn: Drawn) => number;
 }
 ```
 
-`Effected` calls the first stage once a frame and the second once for each cell of it, so whatever holds for the whole frame, such as where a band of light stands at `t`, is worked out once rather than once a cell. An effect that knows when its frame next changes says so in `nextChange`; a plain function is an effect that moves every frame. See [When the frame next changes](/frames#when-the-frame-next-changes).
+`Effected` calls the first stage once a frame and the second once for each cell of it, so whatever holds for the whole frame, such as where a band of light stands at `t`, is worked out once rather than once a cell. An effect that knows when its frame next changes says so in `nextChange`, asked with the same `t` and `drawn` as the first stage, so a loop that holds every cell still on a sixteen-colour terminal can say its frame never changes there; a plain function is an effect that moves every frame. See [When the frame next changes](/frames#when-the-frame-next-changes).
 
 ## Ready-made effects
 

@@ -154,29 +154,39 @@ export interface Drawn {
  * once a frame by the shape of the call, never by a cache asking whether this
  * cell's frame is the last one's.
  *
- * An effect that knows when its frame next changes says so in `nextChange`:
- * a stepped one its next step's start, a transition `t` until it is done
- * and `Infinity` after. A plain function is an effect that moves every
- * frame, and answers `t` (`nextChangeOf`): the one true answer for a frame
- * nothing has promised to hold, so a loop needs no second shape.
+ * An effect that knows when its frame next changes says so in `nextChange`,
+ * asked with the same `t` and `drawn` its first stage is: a stepped one its
+ * next step's start, a transition `t` until it is done and `Infinity` after,
+ * a loop that holds every cell still at the frame's depth `Infinity` there.
+ * [LAW:types-are-the-program] The answer is a fact about the frame, so it is
+ * asked with everything the frame is drawn from; an answer asked with `t`
+ * alone could not say that a frame is still because of its depth. A plain
+ * function is an effect that moves every frame, and answers `t`
+ * (`nextChangeOf`): the one true answer for a frame nothing has promised to
+ * hold, so a loop needs no second shape.
  */
 export interface Effect {
   (t: number, drawn: Drawn): (colors: CellColors, cell: EffectCell) => CellColors;
-  /** When the frame drawn at `t` next changes, in seconds on `t`'s timeline, never before `t`; absent, every frame. */
-  readonly nextChange?: (t: number) => number;
+  /** When the frame drawn at `t` of `drawn` next changes, in seconds on `t`'s timeline, never before `t`; absent, every frame. */
+  readonly nextChange?: (t: number, drawn: Drawn) => number;
 }
 
 /**
- * When `effect`'s frame at `t` next changes: what it says, or `t` for an
- * effect that says nothing. [LAW:single-enforcer] The one reading of an
- * absent `nextChange`, so no caller holds its own default.
+ * When `effect`'s frame at `t` of `drawn` next changes: what it says, or `t`
+ * for an effect that says nothing. [LAW:single-enforcer] The one reading of
+ * an absent `nextChange`, so no caller holds its own default.
  */
-export function nextChangeOf(effect: Effect, t: number): number {
-  return effect.nextChange?.(t) ?? t;
+export function nextChangeOf(effect: Effect, t: number, drawn: Drawn): number {
+  return effect.nextChange?.(t, drawn) ?? t;
 }
 
-/** An effect drawing as `effect` does, with `nextChange` as its answer to when its frame next changes; `effect` itself is left as it was. */
-export function withNextChange(effect: (t: number, drawn: Drawn) => (colors: CellColors, cell: EffectCell) => CellColors, nextChange: (t: number) => number): Effect {
+/**
+ * An effect drawing as `effect` does, with `nextChange` as its answer to when
+ * its frame next changes, in place of whatever `effect` answered; `effect`
+ * itself is left as it was. A composer whose answer depends on the inner
+ * effect's reads it with `nextChangeOf`, as `onBeat` and `confined` do.
+ */
+export function withNextChange(effect: Effect, nextChange: (t: number, drawn: Drawn) => number): Effect {
   return Object.assign((t: number, drawn: Drawn) => effect(t, drawn), { nextChange });
 }
 
@@ -219,19 +229,26 @@ export class Effected implements Renderable, Measurable {
     // With no colour output nothing the effect does is written, so the child
     // is what is shown, and it changes when the child says it does.
     if (options.colorSystem === null) return segments;
-    // What the effect draws at `t` is drawn until its next change, and the
-    // cells say so, under whatever the child already said (the sooner wins).
-    return Segment.applyStyle(this._moved(segments, options), new Style({ nextChange: nextChangeOf(this.effect, this.t) }));
+    return this._moved(segments, options);
   }
 
   private *_moved(segments: Iterable<Segment>, options: RenderOptions): Iterable<Segment> {
     // No depth named is no downgrade, as `drawnColors` reads it.
     const depth = options.colorSystem ?? ColorDepth.TRUECOLOR;
     // [LAW:one-source-of-truth] The frame is measured before any cell is
-    // handed to the effect, off the same looks its cells are drawn from.
+    // handed to the effect, off the same looks its cells are drawn from, and
+    // the one measure is what both stages and the effect's next change are
+    // asked with.
     const looked = looks(segments, depth, this.theme);
     const walked = walk(looked);
-    const frame = this.effect(this.t, measured(looked, () => walked, depth, this.theme));
+    const drawn = measured(looked, () => walked, depth, this.theme);
+    const frame = this.effect(this.t, drawn);
+    // What the effect draws at `t` is drawn until its next change, and the
+    // cells say so, under whatever the child already said (the sooner wins).
+    yield* Segment.applyStyle(this._recolored(walked, frame, depth), new Style({ nextChange: nextChangeOf(this.effect, this.t, drawn) }));
+  }
+
+  private *_recolored(walked: readonly Walked[], frame: ReturnType<Effect>, depth: ColorDepth): Iterable<Segment> {
     for (const { segment, look, glyphs } of walked) {
       if (look === undefined) {
         yield segment;
@@ -417,11 +434,25 @@ function measured(looked: readonly Looked[], walked: () => readonly Walked[], de
  * a turn once a second — and at one redraw a second a hold shorter than a
  * second is skipped, as frames are. [LAW:no-ambient-temporal-coupling] The
  * held time is a function of `t`, so the same `t` draws the same bytes at
- * any rate. The frame next changes when the hold ends (`Beat.end`), whatever
- * the sampled effect would have said in between.
+ * any rate. The frame next changes at a hold's start, and only one the
+ * sampled effect has moved by: the first hold start at or after what it
+ * answers for the frame held now (`Beat.end`). An effect that moves every
+ * frame makes the beat's own answer, the end of this hold; one that is done
+ * and says never leaves the beat saying never too, since the hold after this
+ * one would draw the same frame.
  */
 export function onBeat(effect: Effect, beat: Beat): Effect {
-  return withNextChange((t, drawn) => effect(beat.start(t), drawn), (t) => beat.end(t));
+  return withNextChange(
+    (t, drawn) => effect(beat.start(t), drawn),
+    (t, drawn) => {
+      const moved = nextChangeOf(effect, beat.start(t), drawn);
+      if (moved === Number.POSITIVE_INFINITY) return moved;
+      const end = beat.end(t);
+      // The hold boundaries after `t` are `end`, then each hold's end in turn;
+      // the frame turns at the first one the effect has moved by.
+      return moved <= end ? end : beat.start(moved) === moved ? moved : beat.end(moved);
+    },
+  );
 }
 
 /**
@@ -440,18 +471,20 @@ export function confined(effect: Effect, ...owners: readonly object[]): Effect {
   // [LAW:single-enforcer] One reading of which slots are owned, for the cells listed and the cells handed alike.
   const ownedOf = (cell: Placed) => colorsOwnedBy(cell.anchor, confinedTo);
   const any = ({ fg, bg }: { fg: boolean; bg: boolean }): boolean => fg || bg;
+  // The frame as the effect sees it: the owners' cells alone. [LAW:one-source-of-truth] One narrowing, handed to both stages.
+  const owned = (drawn: Drawn): Drawn => ({ ...drawn, cells: () => drawn.cells().filter((cell) => any(ownedOf(cell))) });
   // The owners' cells change when the effect's frame does.
   return withNextChange(
     (t, drawn) => {
-      const frame = effect(t, { ...drawn, cells: () => drawn.cells().filter((cell) => any(ownedOf(cell))) });
+      const frame = effect(t, owned(drawn));
       return (colors, cell) => {
-        const owned = ownedOf(cell);
-        if (!any(owned)) return colors;
+        const owns = ownedOf(cell);
+        if (!any(owns)) return colors;
         const moved = frame(colors, cell);
-        return { fg: owned.fg ? moved.fg : colors.fg, bg: owned.bg ? moved.bg : colors.bg };
+        return { fg: owns.fg ? moved.fg : colors.fg, bg: owns.bg ? moved.bg : colors.bg };
       };
     },
-    (t) => nextChangeOf(effect, t),
+    (t, drawn) => nextChangeOf(effect, t, owned(drawn)),
   );
 }
 

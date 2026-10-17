@@ -27,6 +27,7 @@ import {
   confined,
   onBeat,
   steppedInk,
+  withNextChange,
   type Effect,
   type Renderable,
 } from "../../src/index.js";
@@ -112,10 +113,37 @@ describe("what a host reads off a frame: when it next changes", () => {
     expect(nextChangeOf(lit(label, signal, 1e6 + 0.1))).toBeCloseTo(1e6 + 0.4, 6);
   });
 
-  it("an effect sampled on a beat changes when the hold ends, whatever the effect would say", () => {
+  it("an effect that moves every frame, sampled on a beat, changes when the hold ends", () => {
     const held = onBeat(drifting, beat([1]));
     expect(nextChangeOf(lit(label, held, 0.25))).toBe(1);
     expect(nextChangeOf(lit(label, held, 3))).toBe(4);
+  });
+
+  it("sampled on a beat, an effect changes at the first hold start it has moved by, and never once it is done", () => {
+    // Steps of 2.5 s sampled every second: the step at 2.5 shows from the hold at 3.
+    const signal = steppedInk([{ color: new ColorRgba(255, 85, 85), seconds: 2.5 }, { color: new ColorRgba(80, 250, 123), seconds: 2.5 }]);
+    const held = onBeat(signal, beat([1]));
+    expect(nextChangeOf(lit(label, held, 0.25))).toBe(3);
+    expect(nextChangeOf(lit(label, held, 2.5))).toBe(3);
+    expect(nextChangeOf(lit(label, held, 3.5))).toBe(5);
+    // A transition that is done draws one frame from then on, however often the beat samples it.
+    const fade = EFFECT_CATALOGUE.transitions.fade({ z: 0 }, { seconds: 2, ease: EASES.linear, swing: 0 });
+    expect(nextChangeOf(lit(label, onBeat(fade.effect, beat([1])), 0.5))).toBe(1);
+    expect(nextChangeOf(lit(label, onBeat(fade.effect, beat([1])), 2.5))).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("a catalogue loop holds every cell still at a sixteen-colour depth, and says its frame never changes there", () => {
+    const sixteen = { maxWidth: 40, colorSystem: ColorDepth.STANDARD };
+    for (const loop of Object.values(EFFECT_CATALOGUE.loops)) {
+      expect(nextChangeOf(lit(label, loop({ z: 0 }), 7.25), sixteen)).toBe(Number.POSITIVE_INFINITY);
+      expect(nextChangeOf(lit(label, loop({ z: 0 }), 7.25))).toBe(7.25);
+    }
+  });
+
+  it("the answer is asked with the frame, so a composer may answer from what the inner effect says of it", () => {
+    const stillUnder = (depth: ColorDepth): Effect => withNextChange(drifting, (t, drawn) => (drawn.depth === depth ? Number.POSITIVE_INFINITY : t));
+    expect(nextChangeOf(lit(label, stillUnder(ColorDepth.TRUECOLOR), 3))).toBe(Number.POSITIVE_INFINITY);
+    expect(nextChangeOf(lit(label, stillUnder(ColorDepth.EIGHT_BIT), 3))).toBe(3);
   });
 
   it("a transition changes every frame until it is done, and never after", () => {
