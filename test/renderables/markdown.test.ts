@@ -294,11 +294,9 @@ describe("Markdown", () => {
   });
 
   it("reads a line of the list's own bullets as a thematic break, not an item", () => {
-    const out = rows("* a\n* * *\n* b", 10);
-    expect(out[1]).toBe(" • a");
-    expect(out[3]).toMatch(/^─+$/);
-    expect(out[6]).toBe(" • b");
-    expect(rows("_ _ _", 5)[0]).toMatch(/^─+$/);
+    // Rich 15's own rows.
+    expect(rows("* a\n* * *\n* b", 10)).toEqual(["", " • a", "", "-".repeat(10), "", "", " • b", ""]);
+    expect(rows("_ _ _", 5)).toEqual(["-----", "", ""]);
   });
 
   it("reads a lazy line of `=` as paragraph text, never as an underline, and a lazy indented marker as text", () => {
@@ -481,10 +479,8 @@ describe("Markdown", () => {
   });
 
   it("owes no newline after a rule, as Rich's render loop does not", () => {
-    // Rich 15: ["🌆 i ▌ x", "▌ ---…", "▌", ""]; the rule's glyph is rich-unfiled-791c.x0d0's.
-    const out = rows("> x ![i](p.png)\n>\n> ***", 40);
-    expect([out[0], out[2], out[3]]).toEqual(["🌆 i ▎ x", "▎", ""]);
-    expect(out[1]).toMatch(/^▎ ─+$/);
+    // Rich 15: ["🌆 i ▌ x", "▌ " + 38×"-", "▌", ""].
+    expect(rows("> x ![i](p.png)\n>\n> ***", 40)).toEqual(["🌆 i ▎ x", `▎ ${"-".repeat(38)}`, "▎", ""]);
   });
 
   // --- Blank rows between blocks ---
@@ -523,8 +519,8 @@ describe("Markdown", () => {
   });
 
   it("draws a rule's own blank row after it, and none from the flag, as Rich does", () => {
-    // Rich 15 draws the rule in `-` (rich-unfiled-791c.x0d0); the rows around it are pinned.
-    const rule = "─".repeat(40);
+    // Rich 15's own rows, its HorizontalRule drawn in `-`.
+    const rule = "-".repeat(40);
     expect(rows("---\nx", 40)).toEqual([rule, "", "x", ""]);
     expect(rows("x\n\n\n---\n\n\ny", 40)).toEqual(["x", "", rule, "", "y", ""]);
     expect(rows("---\n#", 40)).toEqual([rule, "", "", "", ""]);
@@ -534,7 +530,7 @@ describe("Markdown", () => {
   it("pads every row of an item to its width, a rule's blank row included, as Rich's render_lines does", () => {
     // Rich 15 at width 20, trailing spaces kept.
     const text = collectText(new Markdown("- a\n\n  ---\n\n  b"), { maxWidth: 20 }).split("\n");
-    expect(text).toEqual(["", ` • a${" ".repeat(16)}`, `   ${"─".repeat(17)}`, " ".repeat(20), `   b${" ".repeat(16)}`, ""]);
+    expect(text).toEqual(["", ` • a${" ".repeat(16)}`, `   ${"-".repeat(17)}`, " ".repeat(20), `   b${" ".repeat(16)}`, ""]);
   });
 
   it("draws an image in a list ahead of the whole list, as Rich does", () => {
