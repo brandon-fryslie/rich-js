@@ -4,15 +4,22 @@
     {
       "version": "pr-432",
       "ref": "refs/pull/432/merge",
-      "sha": "1002c6d6c82c0f3b057ab35697f4c3da82315d46",
-      "timestamp": "2026-10-17T08:15:17.896Z",
+      "sha": "6b4b01050726788078af69d7f16251468d692b99",
+      "timestamp": "2026-10-17T08:23:24.249Z",
       "commits": [
         {
-          "sha": "1002c6d6c82c0f3b057ab35697f4c3da82315d46",
+          "sha": "6b4b01050726788078af69d7f16251468d692b99",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T08:13:35Z",
-          "message": "Merge 1e87c833e59106d2ea2beb7348e43719c9e9d29f into 069182e44a05717b4034ba0857c8f315a5691244\n"
+          "timestamp": "2026-10-17T08:21:35Z",
+          "message": "Merge 36ce00c1d1d16ee0e2edfdaa2a01528f0b6c34a9 into 069182e44a05717b4034ba0857c8f315a5691244\n"
+        },
+        {
+          "sha": "36ce00c1d1d16ee0e2edfdaa2a01528f0b6c34a9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T02:21:30-06:00",
+          "message": "Markdown ends a quote at a blank marked line after an item nested past maxNesting, as markdown-it does (rich-unfiled-791c.gwww)\n\nA list whose item swallowed the rest of its container's lines answered\nendsInParagraph from the item's own trimmed lines, so a quote ending in a\nblank marked line took the next line lazily and never drew it. The list now\nleaves an unread token for the lines it took, open by their real last line.\n"
         },
         {
           "sha": "1e87c833e59106d2ea2beb7348e43719c9e9d29f",
