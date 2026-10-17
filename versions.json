@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-442",
+      "ref": "refs/pull/442/merge",
+      "sha": "a1db160ac519cb0114312e550c43d044dcca55b1",
+      "timestamp": "2026-10-17T14:27:32.562Z",
+      "commits": [
+        {
+          "sha": "a1db160ac519cb0114312e550c43d044dcca55b1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T08:25:58-06:00",
+          "message": "Merge 10ace6241f883e08a3d42fc3b319ea5a32e66641 into 277380518996438a7258f30d1de3f99182d3df1f\n"
+        },
+        {
+          "sha": "10ace6241f883e08a3d42fc3b319ea5a32e66641",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T08:25:54-06:00",
+          "message": "runsOn counts a program timer that fires before its 1 ms check, so a stalled loop no longer hides a timer left set (rich-unfiled-791c.ffob)\n\nThe 1 ms check is armed as the body returns, and any program timer over\n1 ms that fires after that has run on past the body, whether or not the\ncheck has fired yet. Timers of 1 ms remain the body's queued jobs, since\nsame-delay timers fire in the order they were set.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "277380518996438a7258f30d1de3f99182d3df1f",
