@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "a18ac13dd9f616904fc9377df70f208eecf06e07",
+      "timestamp": "2026-10-17T03:11:47.684Z",
+      "commits": [
+        {
+          "sha": "a18ac13dd9f616904fc9377df70f208eecf06e07",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T21:10:07-06:00",
+          "message": "stepped-ink's frame-cost test counts the search's work instead of timing it (rich-unfiled-791c.2i8o) (#424)\n\n* stepped-ink's frame-cost test counts the search's work instead of timing it (rich-unfiled-791c.2i8o)\n\nThe wall-clock comparison failed on loaded GitHub runners with no code\nchange touching it. The property it pinned — a step's frames reuse the\nstep's search — is now asserted by counting Effected.shows calls: the\nstep's first frame makes some, every frame inside the step and the step's\nnext pass of the beat make none. Bypassing the memo in steppedInk fails it.\n\n* stepped-ink's frame-cost test plays both passes of the beat, so a cache kept per step is caught (rich-unfiled-791c.2i8o)"
+        }
+      ]
+    },
+    {
       "version": "pr-425",
       "ref": "refs/pull/425/merge",
       "sha": "c8e4cf8b0a8a510598672020734e2d189a90d19e",
@@ -27,50 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T20:57:09-06:00",
           "message": "An effect's next change is asked with the frame it draws (rich-animation-xi28.3an)\n\nEffect.nextChange took only t, so stillOnSlots — identity at the\nsixteen-colour depths — answered t and a Live repainted still content at\nits rate. The signature mirrors the first stage, (t, drawn), and Effected\nstamps after it has measured the frame, with the one measure.\n\nonBeat answered the hold's end whatever the inner effect said: a beat\nover a done transition said a time where the inner said never. It now\nanswers the first hold start at or after the inner's next change from the\nhold's start, and never when the inner says never.\n\nwithNextChange takes an Effect and says its answer replaces the inner's;\nconfined hands its narrowed frame to both stages. Live reads the soonest\nchange off its rows without flattening them.\n\nThe showcase's flash is a composer over the hue walk, answering the\nsooner of its own next flash and the walk's step, in place of two nested\nEffected and a heading that spelled the signal's next step.\n\nFound by /code-review high on release PR #423; lands before v0.24.0 is\ntagged, since the signature is public.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-424",
-      "ref": "refs/pull/424/merge",
-      "sha": "8bb3af03453d12c3cc3ff2e96123c3aec00ae51a",
-      "timestamp": "2026-10-17T03:00:01.942Z",
-      "commits": [
-        {
-          "sha": "8bb3af03453d12c3cc3ff2e96123c3aec00ae51a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T02:58:48Z",
-          "message": "Merge e58ab21d4b78186a5c943ff5d90c9bb5e5b3461f into 392c9836831bcf47617b692e821473171b927b45\n"
-        },
-        {
-          "sha": "e58ab21d4b78186a5c943ff5d90c9bb5e5b3461f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:58:43-06:00",
-          "message": "stepped-ink's frame-cost test plays both passes of the beat, so a cache kept per step is caught (rich-unfiled-791c.2i8o)\n"
-        },
-        {
-          "sha": "1f931912261606ca5f31571eed1af230ae9aa3cf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:52:25-06:00",
-          "message": "stepped-ink's frame-cost test counts the search's work instead of timing it (rich-unfiled-791c.2i8o)\n\nThe wall-clock comparison failed on loaded GitHub runners with no code\nchange touching it. The property it pinned — a step's frames reuse the\nstep's search — is now asserted by counting Effected.shows calls: the\nstep's first frame makes some, every frame inside the step and the step's\nnext pass of the beat make none. Bypassing the memo in steppedInk fails it.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "392c9836831bcf47617b692e821473171b927b45",
-      "timestamp": "2026-10-17T02:54:12.197Z",
-      "commits": [
-        {
-          "sha": "392c9836831bcf47617b692e821473171b927b45",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:52:26-06:00",
-          "message": "claude-sessions counts a line skipped only when it holds no record (rich-demos-k78j.zs7) (#422)\n\n* claude-sessions counts a line skipped only when a record failed to parse (rich-demos-k78j.zs7)\n\nloadSession counted every blank line as skipped, so the newline that ends\nevery JSONL file showed as '(1 lines skipped)' on every session opened in\nNode. A blank line carries no record; only a non-blank line that fails to\nparse is now counted.\n\n* claude-sessions reads a JSONL line as a record only when it holds an object (rich-demos-k78j.zs7)\n\nA line holding JSON that is not an object (null, 42, []) was cast to a\nrecord: a null line failed the whole session's load in readRecords, and in\nthe scanner's title window it failed the project scan. jsonlRecord is now\nthe one reading of a line as a record, shared by loader and scanner, and a\nline it rejects is counted as skipped.\n\nThe status line says \"1 line\" / \"1 block\", and the clean-file test asserts\nthe loaded status rather than the absence of \"skipped\"."
         }
       ]
     },
