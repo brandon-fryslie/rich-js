@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-462",
+      "ref": "refs/pull/462/merge",
+      "sha": "afb20f57946a00e04d8c496bb226277c35309f22",
+      "timestamp": "2026-10-17T23:36:57.852Z",
+      "commits": [
+        {
+          "sha": "afb20f57946a00e04d8c496bb226277c35309f22",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T17:35:15-06:00",
+          "message": "Merge 8c6d778fcb951d68a7ec6a734c7c1a9cdc961f90 into 773c9cda93ddffceb299125ec88f43a1b655d55c\n"
+        },
+        {
+          "sha": "8c6d778fcb951d68a7ec6a734c7c1a9cdc961f90",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T17:35:10-06:00",
+          "message": "TextInput measures the width it draws, the cursor's cell at the end included, and keeps that cell in view when the value overflows (rich-unfiled-791c.dn30)\n\nThe single-line field sizes its content as its text plus, past the text's\nend, the cell the cursor stands on. measure() left that cell out, so a field\nlaid out at its measured width hid its cursor whenever the cursor sat at the\nend, and the viewport's scroll clamp did the same to any value wider than\nthe field: typing at the end of a long value showed no cursor. Both now read\none derivation, singleLineExtent.\n\nA multi-line value measured as if it drew brackets and a placeholder; it\ndraws neither, so its maximum is its widest line shown plus its cursor's\ncell.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "773c9cda93ddffceb299125ec88f43a1b655d55c",
