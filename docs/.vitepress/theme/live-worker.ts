@@ -11,7 +11,7 @@
  * use `import.meta`. Importing this module does nothing, as package.json's
  * `"sideEffects": false` promises; a bundle of a bare import of it is empty.
  */
-import { runsOn, startInTerminal } from "../simulated-process.js";
+import { startInTerminal } from "../simulated-process.js";
 import type { Version } from "../hot-runtime.js";
 import type { FromWorker, ToWorker } from "./sandbox.js";
 
@@ -100,7 +100,7 @@ export function serve(): void {
               return replacement.ran;
             })
             .catch(crash);
-        return void returned.then(runsOn).then((on) => post({ kind: "settled", runsOn: on }), crash);
+        return void returned.then((ended) => ended.runsOn).then((on) => post({ kind: "settled", runsOn: on }), crash);
       }
     }
   };

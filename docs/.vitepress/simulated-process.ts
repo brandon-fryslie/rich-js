@@ -15,7 +15,7 @@
  * `console` in the program — the library bundled into it included — binds to
  * the stand-in, while the globals are never read, written or replaced. Its
  * timer functions are bound the same way, so the timers it leaves set are
- * counted (`runsOn`).
+ * counted (`Returned.runsOn`).
  * Swapping the globals for the length of a run was the alternative, and it
  * loses three ways: a `Progress` example keeps running on timers after the swap
  * is undone, two live examples on one page would each overwrite the other's
@@ -261,25 +261,47 @@ type Handler = (...args: unknown[]) => void;
 
 /**
  * A timer's delay as Node takes it: one below 1 ms, past 2^31 - 1 or not a
- * number is 1 ms. A browser runs a delay of 0 at 0, so a program run there
- * would order its timers otherwise than in Node, and `runsOn` would answer
- * otherwise in the build than on the page.
+ * number is 1 ms, and a fraction is truncated, so a delay of 1.5 is 1. A
+ * browser runs a delay of 0 at 0, so a program run there would order its
+ * timers otherwise than in Node, and `Returned.runsOn` would answer otherwise
+ * in the build than on the page.
  */
 const nodeDelay = (ms: number | undefined): number => {
   const delay = Number(ms);
-  return delay >= 1 && delay <= 2 ** 31 - 1 ? delay : 1;
+  return delay >= 1 && delay <= 2 ** 31 - 1 ? Math.trunc(delay) : 1;
 };
 
 /**
  * The program's timer functions: the host's, read at each call, with every
- * timer still set counted and every delay taken as Node takes it. A timeout
- * counts until it fires or is cleared, an interval until it is cleared. The
+ * timer still set tracked and every delay taken as Node takes it. A timeout
+ * is set until it fires or is cleared, an interval until it is cleared. The
  * host keeps one pool of ids for both and clears either through either, so
  * one clear serves both names.
+ *
+ * [LAW:one-source-of-truth] `returned` answers whether the program runs on
+ * past its body: once every job its body queued has run, a timer it set is
+ * still set, or a timer longer than 1 ms has fired since the body returned.
+ * Those jobs are its timers of 1 ms, Node's least delay (`nodeDelay`), and
+ * timers of one delay fire in the order they were set, so the 1 ms timer
+ * `returned` sets fires after every one of them, in Node and in a browser
+ * alike. The build (example-runner.ts) and the page's static run
+ * (theme/live-worker.ts) both read this, so a block the build drew is one an
+ * edit can draw.
+ *
+ * [LAW:no-ambient-temporal-coupling] Only that order is relied on, never a
+ * longer delay's: a program timer of 10 ms set 9 ms before its body returned
+ * (the body busy all that while) is due before the 1 ms one set on return.
+ * So any longer timer that fires once the body has returned has run on, and
+ * is counted as it fires rather than by whether it is still set.
  */
 function programTimers() {
   type Id = Parameters<typeof globalThis.clearTimeout>[0];
   const set = new Set<Id>();
+  let bodyReturned = false;
+  let ranOn = false;
+  const fired = (delay: number): void => {
+    ranOn ||= bodyReturned && delay > 1;
+  };
   const clear = (id: Id): void => {
     set.delete(id);
     globalThis.clearTimeout(id);
@@ -287,42 +309,39 @@ function programTimers() {
   const clearAll = (): void => set.forEach((id) => clear(id));
   return {
     setTimeout: (handler: Handler, ms?: number, ...args: unknown[]) => {
+      const delay = nodeDelay(ms);
       const id = globalThis.setTimeout(() => {
         set.delete(id);
+        fired(delay);
         handler(...args);
-      }, nodeDelay(ms));
+      }, delay);
       set.add(id);
       return id;
     },
     setInterval: (handler: Handler, ms?: number, ...args: unknown[]) => {
-      const id = globalThis.setInterval(() => handler(...args), nodeDelay(ms));
+      const delay = nodeDelay(ms);
+      const id = globalThis.setInterval(() => {
+        fired(delay);
+        handler(...args);
+      }, delay);
       set.add(id);
       return id;
     },
     clearTimeout: clear,
     clearInterval: clear,
-    anySet: () => set.size > 0,
+    returned: (): Returned => {
+      bodyReturned = true;
+      return { runsOn: new Promise((settle) => void globalThis.setTimeout(() => settle(ranOn || set.size > 0), 1)) };
+    },
     clearAll,
   };
 }
 
 /** A program whose body has returned, and what it left behind. */
 export interface Returned {
-  /** Whether a timer the program set is still set. */
-  readonly timersSet: () => boolean;
+  /** Settles, once every job the body queued has run, with whether the program runs on past its body (`programTimers`). */
+  readonly runsOn: Promise<boolean>;
 }
-
-/**
- * [LAW:one-source-of-truth] Whether a program that `returned` runs on past
- * its body: a timer it set is still set once every job its body queued has
- * run. Timers of one delay fire in the order they were set, and no program
- * delay is under 1 ms (`nodeDelay`), so the 1 ms timer this waits on fires
- * after every program timer of 1 ms, in Node and in a browser alike. The build
- * (example-runner.ts) and the page's static run (theme/live-worker.ts) both
- * ask this, so a block the build drew is one an edit can draw.
- */
-export const runsOn = (returned: Returned): Promise<boolean> =>
-  new Promise((settle) => void globalThis.setTimeout(() => settle(returned.timersSet()), 1));
 
 /** A program started in a terminal: how it is replaced in place, and its body settling. */
 export interface Started {
@@ -362,7 +381,7 @@ export function startInTerminal(program: string, terminal: SimulatedTerminal): S
   const returned = (async () => {
     const body = new AsyncFunction(...PARAMETERS, `"use strict"; {\n${program}\n}`);
     await body(process, programConsole(process), hot, timers.setTimeout, timers.setInterval, timers.clearTimeout, timers.clearInterval);
-    return { timersSet: timers.anySet };
+    return timers.returned();
   })();
   return { hot, returned };
 }

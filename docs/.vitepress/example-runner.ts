@@ -74,7 +74,7 @@ import {
   type ExampleContext,
   type ExampleProgram,
 } from "./example-program.js";
-import { runInTerminal, runsOn, type SimulatedTerminal } from "./simulated-process.js";
+import { runInTerminal, type SimulatedTerminal } from "./simulated-process.js";
 import { LIBRARY_BINDING } from "./live-library.js";
 import { standalonePrograms, type Checked, type Standalone } from "./example-slice.js";
 import { encodeProgram } from "./playground-hash.js";
@@ -343,7 +343,7 @@ async function bundleOnce(entry: Entry, shape: BundleShape): Promise<Bundled> {
   return { code: chunks[0]!.code, modules: chunks[0]!.moduleIds.filter((id) => id !== entry.file && !id.startsWith("\0")) };
 }
 
-/** How a run ended. One that finished says whether it runs on past its body (`runsOn`). */
+/** How a run ended. One that finished says whether it runs on past its body (`Returned.runsOn`). */
 type RunEnd = { readonly kind: "finished"; readonly runsOn: boolean } | { readonly kind: "threw"; readonly error: unknown } | { readonly kind: "stalled" };
 
 /**
@@ -410,7 +410,7 @@ async function capture(script: string, world: World): Promise<{ stream: string; 
   let timer: ReturnType<typeof setTimeout> | undefined;
   const end = await Promise.race([
     runInTerminal(`${worldScript(world)}\n${script}`, terminal).then(
-      async (returned): Promise<RunEnd> => ({ kind: "finished", runsOn: await runsOn(returned) }),
+      async (returned): Promise<RunEnd> => ({ kind: "finished", runsOn: await returned.runsOn }),
       (error: unknown): RunEnd => ({ kind: "threw", error: error ?? new Error("the example rejected with no reason") }),
     ),
     new Promise<RunEnd>((resolve) => {

@@ -49,9 +49,9 @@ export type FromWorker =
   | { readonly kind: "declined" }
   /**
    * The program's body has returned and every job it queued has run.
-   * `runsOn` says whether a timer it set is still set, so it runs on after
-   * this; a program with listeners set runs on too, and says so by
-   * `listening`.
+   * `runsOn` says whether it runs on past its body by its timers
+   * (`Returned.runsOn`); a program with listeners set runs on too, and says
+   * so by `listening`.
    */
   | { readonly kind: "settled"; readonly runsOn: boolean }
   /**
