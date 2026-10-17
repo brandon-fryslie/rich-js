@@ -4,15 +4,29 @@
     {
       "version": "pr-452",
       "ref": "refs/pull/452/merge",
-      "sha": "e2c17d884d5813ad477c34ce67d2e02c514032b3",
-      "timestamp": "2026-10-17T18:31:22.601Z",
+      "sha": "cc1e227c4dbc0292a3fcb3dd12e95e4fd66a6759",
+      "timestamp": "2026-10-17T18:38:48.163Z",
       "commits": [
         {
-          "sha": "e2c17d884d5813ad477c34ce67d2e02c514032b3",
+          "sha": "cc1e227c4dbc0292a3fcb3dd12e95e4fd66a6759",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T12:29:27-06:00",
-          "message": "Merge 2441c332918a9fb96a2ec437114283ee9d893464 into b1fa24188318044a9f20d366a7c45bf46d93dbea\n"
+          "timestamp": "2026-10-17T18:36:48Z",
+          "message": "Merge 30ace65f5f63b234273c3de6b21d591436f447da into b1fa24188318044a9f20d366a7c45bf46d93dbea\n"
+        },
+        {
+          "sha": "30ace65f5f63b234273c3de6b21d591436f447da",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T12:36:43-06:00",
+          "message": "vitest.config.ts states the complexity-guard rule as a rule, not as what every guard already does (rich-unfiled-791c.kulj)\n"
+        },
+        {
+          "sha": "961ca2d3d015537ffa14946c2b3b9fd1ad9c19c5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T12:35:38-06:00",
+          "message": "expectLinearTime reads the median ratio of back-to-back pairs and refuses a size too small to measure (rich-unfiled-791c.kulj)\n\nA separate fastest run per size let a load that arrived after the first\nsmall run inflate every large run: the ratio read the step, not the work.\nPairing cancels a load within each pair, and the median drops the one pair\na step or stall lands across, in either direction. A floor on the smaller\nrun's time fails a size where fixed costs would pass quadratic work.\n"
         },
         {
           "sha": "2441c332918a9fb96a2ec437114283ee9d893464",
