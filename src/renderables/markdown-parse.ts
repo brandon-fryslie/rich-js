@@ -56,9 +56,9 @@ export type MdToken<Text = readonly Inline[]> =
 
 /**
  * CommonMark's inlines, as one block's text reads: a code span, emphasis or a
- * link holding inlines of its own, an autolink, an image, inline HTML, and
- * text — a backslash escape and a character reference already the characters
- * they stand for.
+ * link holding inlines of its own, an autolink, an image, inline HTML, a line
+ * ending, and text — a backslash escape and a character reference already the
+ * characters they stand for.
  */
 export type Inline =
   | { kind: "text"; text: string }
@@ -69,7 +69,10 @@ export type Inline =
   | { kind: "autolink"; text: string; url: string }
   /** `alt` is as written, never read as Markdown. */
   | { kind: "image"; alt: string; src: string }
-  | { kind: "html" };
+  | { kind: "html" }
+  /** markdown-it's `softbreak` and `hardbreak`: tokens of their own, never joined to the text beside them. */
+  | { kind: "softbreak" }
+  | { kind: "hardbreak" };
 
 /**
  * A source line inside the container that holds it: the line as written, with
@@ -448,10 +451,12 @@ function list(first: ItemStart, level: number, lines: readonly Line[], start: nu
 
 /**
  * `lines` read into blocks at `level`, how deep in containers they sit. At
- * `MAX_NESTING` markdown-it's block pass reads nothing, and neither does this.
+ * `MAX_NESTING` markdown-it's block pass reads nothing, and neither does this:
+ * it skips blank lines before it checks the level, so only content with text
+ * in it is left unread.
  */
 function tokenize(lines: readonly Line[], level: number): MdToken<string>[] {
-  if (level >= MAX_NESTING) return [{ type: "unread", open: lines.length > 0 && !isBlank(lines[lines.length - 1]!) }];
+  if (level >= MAX_NESTING) return lines.every(isBlank) ? [] : [{ type: "unread", open: !isBlank(lines[lines.length - 1]!) }];
   const tokens: MdToken<string>[] = [];
   let i = 0;
 
@@ -583,6 +588,7 @@ type InlineMatch =
   | { kind: "image"; alt: string; src: string; end: number }
   | { kind: "text"; text: string; end: number }
   | { kind: "html"; end: number }
+  | { kind: "hardbreak"; end: number }
   /** A line ending, soft or hard by the spaces before it, which are the text before it. */
   | { kind: "line_ending"; end: number };
 
@@ -881,7 +887,8 @@ function balancePairs(delimiters: readonly Delimiter[]): void {
  * strong where the pair enclosing it is of the same marker and touches it at
  * both ends, so the two are spent as one, and italic otherwise. A delimiter
  * left unpaired is the text it is, joined to the text beside it as
- * markdown-it's `fragments_join` joins it, so a run of text is one piece.
+ * markdown-it's `fragments_join` joins it, so a run of text between line
+ * endings is one piece.
  */
 function emphasized(pieces: readonly Inline[], delimiters: readonly Delimiter[]): Inline[] {
   const roles = new Map<number, "bold" | "italic" | "close" | "spent">();
@@ -972,7 +979,7 @@ function inlineAt(text: string, i: number, labels: LinkLabels, level: number): I
       // hard, and one before anything else takes that character with it, the
       // pair standing as written unless it escapes — so a space after it
       // counts toward no hard break.
-      if (text[i + 1] === "\n") return { kind: "text", text: "\n", end: i + 2 };
+      if (text[i + 1] === "\n") return { kind: "hardbreak", end: i + 2 };
       const escape = matchAt(ESCAPE, text, i);
       if (escape) return { kind: "text", text: escape[1]!, end: i + escape[0].length };
       if (i + 1 === text.length) return undefined;
@@ -1009,15 +1016,15 @@ function inlineAt(text: string, i: number, labels: LinkLabels, level: number): I
  * pass reads it: each construct `inlineAt` finds, the text between them as it
  * is, and its delimiters then paired into emphasis. `text` runs on before
  * `from` as the block's own text does, so a delimiter run reads what borders
- * it there; `level` is how many links the text sits in, and past
- * `MAX_NESTING` markdown-it reads no construct, only characters.
+ * it there; `level` is how many links the text sits in, where a label scan
+ * starts counting.
  */
 function inlines(text: string, from: number, labels: LinkLabels, level: number): Inline[] {
   const pieces: Inline[] = [];
   const delimiters: Delimiter[] = [];
   let plain = from;
   for (let i = from; i < text.length; ) {
-    const found = level < MAX_NESTING ? inlineAt(text, i, labels, level) : undefined;
+    const found = inlineAt(text, i, labels, level);
     if (!found) {
       i++;
       continue;
@@ -1027,7 +1034,7 @@ function inlines(text: string, from: number, labels: LinkLabels, level: number):
     let kept = i;
     if (found.kind === "line_ending") while (kept > plain && text[kept - 1] === " ") kept--;
     if (plain < kept) pieces.push({ kind: "text", text: text.slice(plain, kept) });
-    if (found.kind === "line_ending") pieces.push({ kind: "text", text: i - kept >= 2 ? "\n" : " " });
+    if (found.kind === "line_ending") pieces.push({ kind: i - kept >= 2 ? "hardbreak" : "softbreak" });
     else if (found.kind === "delimiters") {
       for (let k = 0; k < found.length; k++) {
         delimiters.push({ marker: found.marker, length: found.length, piece: pieces.length, open: found.canOpen, close: found.canClose, end: -1 });
@@ -1067,6 +1074,8 @@ function matched(found: Exclude<InlineMatch, DelimiterRun | { kind: "line_ending
       return { kind: "text", text: found.text };
     case "html":
       return { kind: "html" };
+    case "hardbreak":
+      return { kind: "hardbreak" };
   }
 }
 

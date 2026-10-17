@@ -881,6 +881,9 @@ describe("Markdown", () => {
         .filter((s) => s.style?.italic)
         .map((s) => s.text);
     expect(italic("*a \\* b*")).toEqual(["a * b"]);
+    // A line ending is a token of its own, as markdown-it's softbreak and hardbreak are.
+    expect(italic("*a\nb*")).toEqual(["a", " ", "b"]);
+    expect(italic("*a  \nb*")).toEqual(["a", "b"]);
     // Rich 14's segments: the tag between the two runs of text splits them.
     expect(italic("*a <b title='*'>c*")).toEqual(["a ", "c"]);
     expect(rows("*a `*` b*", 40)[0]).toBe("a * b");
@@ -975,6 +978,11 @@ describe("Markdown", () => {
     ["p\n\n" + "- ".repeat(10) + "x\n\nafter", ["p", "", ""]],
     ["p\n\n" + "- ".repeat(10) + "x\n- second", ["p", "", ""]],
     ["p\n\n> " + "- ".repeat(10) + "x\n> y\n\nafter", ["p", "", "", "after", ""]],
+    // An empty item that deep leaves nothing unread, so it takes no line after it.
+    ["p\n\n" + "- + ".repeat(5).trimEnd() + "\n- next", ["p", "", " • next", ""]],
+    ["p\n\n" + "- + ".repeat(5).trimEnd() + "\n\nafter", ["p", "", "", "after", ""]],
+    ["p\n\n" + "- + ".repeat(5) + "\n  x\n\nafter", ["p", "", " • x", "", "after", ""]],
+    ["p\n\n> " + "- + ".repeat(5).trimEnd() + "\n> after", ["p", "", "▎ after", ""]],
   ])("reads the blocks of %j no deeper than markdown-it does, as Rich does", (source, expected) => {
     expect(rows(source, 200)).toEqual(expected);
   });

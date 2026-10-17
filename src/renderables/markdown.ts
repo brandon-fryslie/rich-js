@@ -143,6 +143,13 @@ function appendInline(result: RichText, inlines: readonly Inline[], settings: In
       case "text":
         write(inline.text);
         break;
+      // Rich writes a soft break as a space and a hard one as a newline.
+      case "softbreak":
+        write(" ");
+        break;
+      case "hardbreak":
+        write("\n");
+        break;
       case "code":
         write(inline.code, [groundedStyle(options, resolveStyle(options, settings.inlineCodeStyle))]);
         break;
@@ -209,6 +216,8 @@ function* inlineSteps(inlines: readonly Inline[], within: Enclosing, settings: I
         break;
       }
       case "text":
+      case "softbreak":
+      case "hardbreak":
       case "code":
       case "autolink":
       case "html":

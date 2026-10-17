@@ -49,7 +49,7 @@ one column; an empty item is counted and draws nothing. The item's blocks are dr
 the indentation reach the stops of 4 they reach in the source, however deep the line is nested.
 Blocks nest only as deep as markdown-it reads them, 20 levels — a quote counts one, a list and
 its item one each. Past that a container's content is not drawn, and a list item that deep
-takes every line after it, to the end of the quote or document it sits in.
+with text in it takes every line after it, to the end of the quote or document it sits in.
 
 An HTML block — a line opening with `<div>`, `<!--`, `<pre>` or another of CommonMark's
 HTML block starts — is read where markdown-it reads one and drawn as Rich draws it: not at all.
