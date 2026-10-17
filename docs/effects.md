@@ -113,10 +113,10 @@ The loops are ambience, and nothing in them jumps. `steppedInk` is a signal, and
 The ground stays as the cell draws it, and the words stay readable on it. Each step's ink is written as the colour nearest the step's that the output's depth can draw and that reads on the cell's ground at the floor every loop here keeps: the cell's resting contrast, or WCAG AA if it rested above that, measured on the colours the terminal is sent. In truecolor that is the step itself, or its hue at the lightness nearest it that clears the floor. Below truecolor it is the nearest colour the depth has an index for, so on a sixteen-colour terminal the ink steps from slot to slot, where the loops hold still. The search runs once for each ink, ground and step, so every frame inside a step costs what any frame does.
 
 ```typescript
-import { CATPPUCCIN_MOCHA, ColorRgba, Effected, Frames, RichText, Style, steppedInk } from "@promptctl/rich-js";
+import { CATPPUCCIN_MOCHA, ColorRgba, Effected, FrameSequence, Frames, RichText, Style, steppedInk } from "@promptctl/rich-js";
 
 const theme = CATPPUCCIN_MOCHA;
-const chevrons = ["›", "››", "›››"].map((glyphs) => ({ text: new RichText(glyphs, { style: Style.parse("bold on #313244") }), seconds: 1 }));
+const chevrons = new FrameSequence(["›", "››", "›››"].map((glyphs) => ({ text: new RichText(glyphs, { style: Style.parse("bold on #313244") }), seconds: 1 })));
 const signal = steppedInk([
   { color: new ColorRgba(255, 85, 85), seconds: 1 },
   { color: new ColorRgba(241, 250, 140), seconds: 1 },

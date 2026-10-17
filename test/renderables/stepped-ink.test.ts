@@ -9,6 +9,7 @@ import {
   ColorRgba,
   DEFAULT_TERMINAL_THEME,
   Effected,
+  FrameSequence,
   Frames,
   Oklch,
   RichText,
@@ -134,9 +135,9 @@ describe("steppedInk — each step's ink reads on its ground, as drawn, at every
   });
 
   it("composes with Frames by nesting: the glyphs turn and the ink steps, and no glyph changes", () => {
-    const frames = ["›", "››", "›››"].map((glyphs) => ({ text: new RichText(glyphs, { style: Style.parse("bold on #1e1e2e") }), seconds: 1 }));
+    const sequence = new FrameSequence(["›", "››", "›››"].map((glyphs) => ({ text: new RichText(glyphs, { style: Style.parse("bold on #1e1e2e") }), seconds: 1 })));
     for (const [t, glyphs] of [[0, "›"], [1, "››"], [2.5, "›››"], [3, "›"]] as const) {
-      const segments = lit(new Frames(frames, { t }), t, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA);
+      const segments = lit(new Frames(sequence, { t }), t, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA);
       expect(segments.map((s) => s.text).join("").trimEnd()).toBe(glyphs);
       expect(pairOf(segments, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA).fg.hex).toBe(BRIGHT[Math.floor(t) % 3]!.hex);
     }

@@ -26,7 +26,7 @@
 
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
 import { beat } from "../core/easing.js";
-import { Frames, type Frame } from "../renderables/frames.js";
+import { FrameSequence, type Frame } from "../renderables/frames.js";
 import { asColor } from "./color-funcs.js";
 import { asFragment } from "./helpers.js";
 
@@ -65,7 +65,7 @@ export function animationFuncs(frameTime: () => number): FuncMap {
   const framesFunc: TemplateFunc = {
     fn: ((...tail: unknown[]) => {
       const frames: Frame[] = pairs("frame", tail, asFragment).map(({ seconds, value }) => ({ seconds, text: value }));
-      return new Frames(frames, { t: frameTime() }).text();
+      return new FrameSequence(frames).text(frameTime());
     }) as TemplateFunc["fn"],
     argTypes: ["float", "liftable"],
     arity: { kind: "alternating", minimum: 2 },

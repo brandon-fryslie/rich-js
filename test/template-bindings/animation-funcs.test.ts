@@ -3,7 +3,7 @@ import { createEngine, type Engine } from "@promptctl/go-template-js";
 import { renderToString } from "../../src/core/render.js";
 import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
-import { Frames, type Frame } from "../../src/renderables/frames.js";
+import { FrameSequence, type Frame } from "../../src/renderables/frames.js";
 import { animationFuncs, richTextFuncs } from "../../src/template-bindings/index.js";
 
 // [LAW:behavior-not-structure] The binding's contract: a template evaluated
@@ -34,7 +34,7 @@ describe("frames in a template", () => {
       const fragments = compiled({});
       expect(fragments).toHaveLength(1);
       expect(renderToString(RichText.fromFragments(fragments), { width: 10 })).toBe(
-        renderToString(new Frames(chevrons, { t }).text(), { width: 10 }),
+        renderToString(new FrameSequence(chevrons).text(t), { width: 10 }),
       );
     }
   });
