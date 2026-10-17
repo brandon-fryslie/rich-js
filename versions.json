@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-453",
+      "ref": "refs/pull/453/merge",
+      "sha": "e3377aadcdbc2b5247816e9bd5530f7c4d7ffab9",
+      "timestamp": "2026-10-17T18:55:53.856Z",
+      "commits": [
+        {
+          "sha": "e3377aadcdbc2b5247816e9bd5530f7c4d7ffab9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T12:54:07-06:00",
+          "message": "Merge 06a26499c9b04bbd64719789b4b1e14efaf8e759 into 22d93098b8edd39f866456973f718a35f0e81562\n"
+        },
+        {
+          "sha": "06a26499c9b04bbd64719789b4b1e14efaf8e759",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T12:54:03-06:00",
+          "message": "Markdown reads each text's backtick runs once instead of rescanning for every unclosed opener (rich-unfiled-791c.lbtu)\n\ninlineAt's code case compiled a RegExp per backtick run and scanned to the\nend of the text for a closer of that length, so a paragraph of openers no\nrun closes took time quadratic in its length: `\\``x ` repeated 32,000 times\ntook 4.5 s. InlineState (formerly LinkLabels — it now holds more of\nmarkdown-it's inline state than the label scan) indexes each text's whole\nruns by length once, and an opener looks up the first run of its length\nafter it: 15 ms for the same input.\n\nA differential run of 200,000 random inputs (116,673 with code spans,\nescaped partial openers and link labels among them) against the previous\nreader found no difference in output.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "22d93098b8edd39f866456973f718a35f0e81562",
