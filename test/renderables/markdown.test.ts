@@ -122,7 +122,7 @@ describe("Markdown", () => {
     expect(rows("<div>\n\u00a0\nx", 80)).toEqual([""]);
     // The line ends the indented code, and the paragraph it opens takes the
     // next indented line, which cannot interrupt it.
-    expect(rows("    code\n\u00a0\n    more", 80)).toEqual(["code", "", "more", ""]);
+    expect(rows("    code\n\u00a0\n    more", 80)).toEqual(["", " code", "", "", "more", ""]);
   });
 
   it("opens a heading or a list item only at a space or tab after its marker", () => {
@@ -238,7 +238,7 @@ describe("Markdown", () => {
   });
 
   it("draws a fenced block inside a quote line for line", () => {
-    expect(rows("> ```\n> a = 1\n> b = 2\n> ```", 80)).toEqual(["", "▎ a = 1", "▎ b = 2", ""]);
+    expect(rows("> ```\n> a = 1\n> b = 2\n> ```", 80)).toEqual(["", "▎", "▎  a = 1", "▎  b = 2", "▎", ""]);
   });
 
   it("ends a quote at an unmarked line after a bare >, and lazily continues its open paragraph", () => {
@@ -276,16 +276,36 @@ describe("Markdown", () => {
 
   it("reads a tab after a quote's marker as the space it may take, then indentation", () => {
     expect(rows(">\tfoo", 20)).toEqual(["", "▎ foo", ""]);
-    expect(rows(">\t\tfoo", 20)).toEqual(["", "▎   foo", ""]);
+    expect(rows(">\t\tfoo", 20)).toEqual(["", "▎", "▎    foo", "▎", ""]);
   });
 
   it("draws a tab in code as spaces to the code's own stops, never a raw tab", () => {
-    expect(rows("- a\n\n  ```\n  \tx\n  ```", 20)).toEqual(["", " • a", "           x", ""]);
-    expect(rows("    \tx", 20)).toEqual(["        x", ""]);
+    expect(rows("- a\n\n  ```\n  \tx\n  ```", 20)).toEqual(["", " • a", "", "        x", "", ""]);
+    expect(rows("    \tx", 20)).toEqual(["", "     x", "", ""]);
+  });
+
+  it("draws a code block as Rich's Syntax does: word-wrapped inside a margin of one cell, its trailing whitespace dropped", () => {
+    const full = (markdown: string, maxWidth: number) => collectText(new Markdown(markdown), { maxWidth }).split("\n");
+    // Rich 15's rows, trailing spaces and all.
+    expect(full("```\naaa bbb ccc ddd eee fff ggg\n```", 20)).toEqual([" ".repeat(20), " aaa bbb ccc ddd    ", " eee fff ggg        ", " ".repeat(20), ""]);
+    expect(full("```\n" + "x".repeat(20) + "\n```", 12)).toEqual([" ".repeat(12), " xxxxxxxxxx ", " xxxxxxxxxx ", " ".repeat(12), ""]);
+    expect(full("```\n```", 6)).toEqual(["      ", "      ", "      ", ""]);
+    expect(full("```\n\t\tx\ty\n```", 16)).toEqual([" ".repeat(16), "         x   y  ", " ".repeat(16), ""]);
+    // Python's whitespace, not JavaScript's: NEL and U+001F go, U+FEFF stays.
+    expect(full("```\nx \u0085\u001f\n\n```", 6)).toEqual(["      ", " x    ", "      ", ""]);
+    expect(full("```\nx﻿\n```", 6)).toEqual(["      ", " x﻿    ", "      ", ""]);
+    // With no width left for the code, only the margin is drawn.
+    expect(full("```\nab\n```", 2)).toEqual(["  ", "  ", ""]);
+    expect(full("```\nab\n```", 1)).toEqual([" ", " ", ""]);
+  });
+
+  it("draws every cell of a code block, its margin included, in the code's style", () => {
+    const styles = collectSegments(new Markdown("```\nab\n```"), { maxWidth: 6 }).filter((s) => s.text !== "\n").map((s) => s.style);
+    expect(styles).toEqual(styles.map(() => DEFAULT_THEME.resolve("markdown.code")));
   });
 
   it("opens a fence or a quote indented up to three columns inside an item", () => {
-    expect(rows("- step\n\n    ```\n    npm i\n    ```", 20)).toEqual(["", " • step", "   npm i", ""]);
+    expect(rows("- step\n\n    ```\n    npm i\n    ```", 20)).toEqual(["", " • step", "", "    npm i", "", ""]);
     expect(rows("- a\n   > q", 20)).toEqual(["", " • a", "   ▎ q", ""]);
   });
 
@@ -352,8 +372,10 @@ describe("Markdown", () => {
     expect(rows("- step:\n  ```sh\n  npm i\n  npm test\n  ```", 80)).toEqual([
       "",
       " • step:",
-      "   npm i",
-      "   npm test",
+      "",
+      "    npm i",
+      "    npm test",
+      "",
       "",
     ]);
   });
@@ -392,7 +414,7 @@ describe("Markdown", () => {
   });
 
   it("reads a marker four columns in as indented code, not a list", () => {
-    expect(rows("    - not a list", 80)).toEqual(["- not a list", ""]);
+    expect(rows("    - not a list", 80)).toEqual(["", " - not a list", "", ""]);
   });
 
   it("reads an empty item as an item, and draws nothing for it, as Rich does", () => {
@@ -409,27 +431,26 @@ describe("Markdown", () => {
 
   it("ends a list item at an unindented line once no paragraph is open", () => {
     expect(rows("- a\n\nafter", 80)).toEqual(["", " • a", "", "after", ""]);
-    expect(rows("- ```\n  code\nafter", 80)).toEqual(["", " • code", "", "after", ""]);
+    expect(rows("- ```\n  code\nafter", 80)).toEqual(["", " •", "    code", "", "", "after", ""]);
   });
 
-  // markdown-it-py 4.2's fence tokens for every case below; the rows leave out
-  // the padding Rich's Syntax draws around a code block (rich-unfiled-791c.ct7i).
+  // markdown-it-py 4.2's fence tokens, and Rich 15's rows, for every case below.
   it.each<[string, string[]]>([
     // A backtick fence's info string holds no backtick; a tilde fence's holds anything.
     ["```_ xaa`", ["```_ xaa`", ""]],
     ["para\n```a`\nmore", ["para ```a` more", ""]],
-    ["~~~a~~~", ["", ""]],
-    ["~~~~a~~ b~~", ["", ""]],
-    ["~~~ `x`\ncode\n~~~\nafter", ["code", "", "after", ""]],
-    ["para\n~~~\ncode\n~~~", ["para", "", "code", ""]],
+    ["~~~a~~~", ["", "", "", ""]],
+    ["~~~~a~~ b~~", ["", "", "", ""]],
+    ["~~~ `x`\ncode\n~~~\nafter", ["", " code", "", "", "after", ""]],
+    ["para\n~~~\ncode\n~~~", ["para", "", "", " code", "", ""]],
     // Only a run of the opener's marker at least as long closes it, then only spaces and tabs.
-    ["````\ncode\n```\nmore\n````\nafter", ["code", "```", "more", "", "after", ""]],
-    ["```\ncode\n~~~\n```\nafter", ["code", "~~~", "", "after", ""]],
-    ["```\ncode\n```` \nafter", ["code", "", "after", ""]],
-    ["```\ncode\n```\t\n- after", ["code", "", " • after", ""]],
-    ["```\ncode\n``` x\n```\nafter", ["code", "``` x", "", "after", ""]],
-    ["```\ncode\n```\u00a0\n- after\n```", ["code", "```", "- after", ""]],
-    ["```\ncode\n    ```\nafter", ["code", "    ```", "after", ""]],
+    ["````\ncode\n```\nmore\n````\nafter", ["", " code", " ```", " more", "", "", "after", ""]],
+    ["```\ncode\n~~~\n```\nafter", ["", " code", " ~~~", "", "", "after", ""]],
+    ["```\ncode\n```` \nafter", ["", " code", "", "", "after", ""]],
+    ["```\ncode\n```\t\n- after", ["", " code", "", "", " • after", ""]],
+    ["```\ncode\n``` x\n```\nafter", ["", " code", " ``` x", "", "", "after", ""]],
+    ["```\ncode\n```\u00a0\n- after\n```", ["", " code", " ```", " - after", "", ""]],
+    ["```\ncode\n    ```\nafter", ["", " code", "     ```", " after", "", ""]],
   ])("opens and closes the fence in %j as markdown-it does, as Rich does", (source, expected) => {
     expect(rows(source, 80)).toEqual(expected);
   });

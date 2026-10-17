@@ -9,11 +9,12 @@
  * not at all.
  */
 
-import { cellLen, expandTabs, parseTabSize } from "../core/cells.js";
+import { cellLen } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { RichText, resolveStyle } from "../core/text.js";
 import { Rule } from "./rule.js";
+import { Syntax } from "./syntax.js";
 import { Table } from "./table.js";
 import { parseMarkdown, type CellAlign, type Inline, type MdToken } from "./markdown-parse.js";
 import { SIMPLE } from "../core/box.js";
@@ -353,8 +354,11 @@ function inline(
   };
 }
 
-/** The tab stop code is drawn with, as Rich's `Syntax` draws it. */
-const CODE_TAB_SIZE = parseTabSize(8);
+/**
+ * What Python's `str.rstrip` strips: `str.isspace`, which is not JavaScript's
+ * `\s` — it takes the four separator controls and NEL, and leaves U+FEFF.
+ */
+const TRAILING_PYTHON_SPACE = /[\t-\r\x1c-\x20\x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+$/;
 
 const NO_GUTTER = new Segment("");
 
@@ -394,13 +398,26 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
     }
 
     case "code_block": {
-      const codeStyle = groundedStyle(options, getStyle(options, "markdown.code"));
-      // Tabs expanded here, as `Syntax` expands them, since a terminal would
-      // count a raw one from its own column 0 and not the code's.
-      for (const line of expandTabs(token.code, CODE_TAB_SIZE).text.split("\n")) {
-        yield new Segment(line, codeStyle);
+      // Rich's CodeBlock: the code, its trailing whitespace dropped, handed to
+      // `Syntax` word-wrapped, then a margin of one cell all round it — every
+      // cell of the block, margin and all, in the code's style.
+      const style = groundedStyle(options, getStyle(options, "markdown.code"));
+      const width = Math.max(0, options.maxWidth - 2);
+      const syntax = new Syntax(token.code.replace(TRAILING_PYTHON_SPACE, ""), "text", { wordWrap: true });
+      const margin = new Segment(" ", style);
+      const blank = new Segment(" ".repeat(options.maxWidth), style);
+      // In no width at all Rich draws no row of the code, only the margin's.
+      const lines = width > 0 ? Segment.splitLines(Segment.applyStyle(syntax.render({ ...options, maxWidth: width }), style)) : [];
+      yield blank;
+      yield Segment.line();
+      for (const line of lines) {
+        yield margin;
+        yield* Segment.adjustLineLength(line, width, style);
+        yield margin;
         yield Segment.line();
       }
+      yield blank;
+      yield Segment.line();
       break;
     }
 
