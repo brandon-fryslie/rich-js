@@ -102,7 +102,7 @@ export type Inline =
  * is indented less than any block, as markdown-it reads it, but an `"item"`
  * line keeps its indentation for a list item, which markdown-it measures from
  * the container of the innermost list it sits in: that container's margin is
- * the line's.
+ * the line's, and may be a table's header row (`headerLine`).
  */
 interface Line {
   readonly text: string;

@@ -1207,6 +1207,8 @@ describe("Markdown", () => {
     expect(rows("- a\n| x |\n| - |", 30)).toEqual(["", " • a | x | | - |", ""]);
     // An inner item's delimiter row is code where the table would open, so there the two are a paragraph.
     expect(rows("- a\n  - b\n| x |\n    | - |", 30)).toEqual(["", " • a", "    • b", "", "| x | | - |", ""]);
+    // A definition waiting on its destination ends at the header row too, and is paragraph text.
+    expect(rows("- [a]:\n| x |\n  | - |\n\n[a]", 30)).toEqual(["", " • [a]:", "", "", " x", " ─", "", "", "[a]", ""]);
     // A quote's lazy line inside an item is never a header row.
     expect(rows("- > a\n| x |\n  | - |", 30)).toEqual(["", " • ▌ a | x | | - |", ""]);
   });
