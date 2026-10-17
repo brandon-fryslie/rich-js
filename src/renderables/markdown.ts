@@ -405,8 +405,9 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
     }
 
     case "hr": {
-      // Rich's HorizontalRule: the rule, then a blank row of its own.
-      const rule = new Rule(undefined, { style: "markdown.hr" });
+      // Rich's HorizontalRule: the rule, drawn in `-` rather than Rule's own
+      // glyph, then a blank row of its own.
+      const rule = new Rule(undefined, { characters: "-", style: "markdown.hr" });
       yield* rule.render(options);
       yield Segment.line();
       break;
