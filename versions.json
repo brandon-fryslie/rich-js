@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-431",
+      "ref": "refs/pull/431/merge",
+      "sha": "163b64202c3cd70a702a0cac0b44fa5e6f64401e",
+      "timestamp": "2026-10-17T07:06:29.470Z",
+      "commits": [
+        {
+          "sha": "163b64202c3cd70a702a0cac0b44fa5e6f64401e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T01:04:48-06:00",
+          "message": "Merge 7083b3f9b19cc05e2650e378da1fd47c09731221 into eb20388c8dc369bca189bda2283d901f2f84b058\n"
+        },
+        {
+          "sha": "7083b3f9b19cc05e2650e378da1fd47c09731221",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T01:04:43-06:00",
+          "message": "Markdown draws list markers as Rich does (rich-unfiled-791c.s3d1)\n\nA bullet is \" • \" in markdown.item.bullet (bold), a number is drawn with no\ndot in markdown.item.number (cyan), right-aligned in a column sized for the\nnumber one past the last item, as Rich's last_number sizes it; each hang is\nin its marker's style and the item's body in markdown.item. An empty item is\ncounted and draws nothing. The parser records the list's start number and\nleaves the drawing to the renderer.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "eb20388c8dc369bca189bda2283d901f2f84b058",
