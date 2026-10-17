@@ -888,7 +888,7 @@ function delimiterRun(text: string, i: number): DelimiterRun | undefined {
  * closer like this one already failed to find, so the pass is linear.
  */
 function balancePairs(delimiters: readonly Delimiter[]): void {
-  const openersBottom = { "*": [-1, -1, -1, -1, -1, -1], _: [-1, -1, -1, -1, -1, -1], "~": [-1, -1, -1, -1, -1, -1] };
+  const openersBottom: Record<Marker, number[]> = { "*": [-1, -1, -1, -1, -1, -1], _: [-1, -1, -1, -1, -1, -1], "~": [-1, -1, -1, -1, -1, -1] };
   const jumps: number[] = [];
   let headerIdx = 0;
   let lastPiece = -2;

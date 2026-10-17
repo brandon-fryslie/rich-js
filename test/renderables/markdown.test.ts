@@ -948,8 +948,9 @@ describe("Markdown", () => {
     expect(emphasis(source)).toEqual([row, styled]);
   });
 
-  // Each row is Rich 14's drawing of the source, with markdown-it-py 4.2. A
-  // line opening with `~~~` is a fence, so the odd runs sit after text.
+  // Each row is Rich 14's drawing of the source, with markdown-it-py 4.2. Rich
+  // reads a line opening with `~~~` as a fence, which ours does not yet
+  // (rich-unfiled-791c.fxsx), so the odd runs sit after text.
   it.each<[string, string, [string, string][]]>([
     ["x ~~a~~ y", "x a y", [["a", "S"]]],
     // One `~` strikes nothing; a `~` run flanks as a `*` run does, inside a word too.
