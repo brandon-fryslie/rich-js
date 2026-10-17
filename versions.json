@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-422",
+      "ref": "refs/pull/422/merge",
+      "sha": "fa8e1b4a1159c7573289663e6e6888e1b6d4ad9e",
+      "timestamp": "2026-10-17T02:37:57.287Z",
+      "commits": [
+        {
+          "sha": "fa8e1b4a1159c7573289663e6e6888e1b6d4ad9e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:36:20-06:00",
+          "message": "Merge 01e26ac3f4117cbc033ec697518cb2ee4b5577b6 into 63efd6e5f1b953f3ff5c4dfef4ebc23d7fd33cd2\n"
+        },
+        {
+          "sha": "01e26ac3f4117cbc033ec697518cb2ee4b5577b6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:36:09-06:00",
+          "message": "claude-sessions counts a line skipped only when a record failed to parse (rich-demos-k78j.zs7)\n\nloadSession counted every blank line as skipped, so the newline that ends\nevery JSONL file showed as '(1 lines skipped)' on every session opened in\nNode. A blank line carries no record; only a non-blank line that fails to\nparse is now counted.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "63efd6e5f1b953f3ff5c4dfef4ebc23d7fd33cd2",
