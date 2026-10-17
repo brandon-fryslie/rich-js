@@ -21,7 +21,7 @@ export interface RawLine {
 export interface LoadResult {
   readonly path: string;
   readonly lines: ReadonlyArray<RawLine>;
-  readonly skipped: number;            // unparseable / blank lines skipped
+  readonly skipped: number;            // non-blank lines that failed to parse
 }
 
 export function loadSession(fs: FileSystem, path: string): LoadResult {
@@ -31,10 +31,9 @@ export function loadSession(fs: FileSystem, path: string): LoadResult {
   let skipped = 0;
   for (let i = 0; i < rawLines.length; i++) {
     const raw = rawLines[i]!;
-    if (raw.trim() === "") {
-      skipped++;
-      continue;
-    }
+    // A blank line carries no record — every JSONL file ends in one — so
+    // nothing was lost and it is not counted as skipped.
+    if (raw.trim() === "") continue;
     try {
       const parsed = JSON.parse(raw) as Record<string, unknown>;
       lines.push({ lineNumber: i + 1, raw, parsed });

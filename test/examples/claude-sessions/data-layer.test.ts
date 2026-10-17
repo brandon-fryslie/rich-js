@@ -13,6 +13,7 @@ import {
 import { scanProjects } from "../../../examples/claude-sessions/data/scanner.js";
 import { loadSession } from "../../../examples/claude-sessions/data/loader.js";
 import { searchGlobal } from "../../../examples/claude-sessions/data/global-search.js";
+import { initialState, openSelectedSession } from "../../../examples/claude-sessions/state.js";
 import { STAGED_HOME } from "../../../examples/claude-sessions/staging/projects.js";
 
 const FIRST_LINE = JSON.stringify({
@@ -49,7 +50,7 @@ const OTHER_SESSION_CONTENT = `${JSON.stringify({
   message: { role: "user", content: "different topic" },
 })}\n`;
 
-function buildTree(): MemoryTree {
+function buildTree(sessionContent = SESSION_CONTENT): MemoryTree {
   return {
     home: "/home/demo",
     root: {
@@ -66,7 +67,7 @@ function buildTree(): MemoryTree {
                   children: {
                     "fixture-session.jsonl": {
                       kind: "file",
-                      content: SESSION_CONTENT,
+                      content: sessionContent,
                       mtime: new Date("2026-05-25T12:00:15Z"),
                     },
                   },
@@ -156,16 +157,28 @@ describe("scanProjects against MemoryFileSystem", () => {
 });
 
 describe("loadSession against MemoryFileSystem", () => {
-  it("parses JSONL lines and tracks skipped blanks", () => {
+  it("parses every line of a well-formed file ending in a newline, and skips none", () => {
     const fs = new MemoryFileSystem(buildTree());
     const result = loadSession(
       fs,
       "/home/demo/.claude/projects/-home-demo-rich-js/fixture-session.jsonl",
     );
     expect(result.lines).toHaveLength(2);
-    expect(result.skipped).toBe(1); // trailing newline yields one empty line
+    expect(result.skipped).toBe(0);
     expect((result.lines[0]?.parsed as { type?: string }).type).toBe("user");
     expect((result.lines[1]?.parsed as { type?: string }).type).toBe("assistant");
+    expect(openSelectedSession(initialState(fs)).statusMessage).not.toMatch(/skipped/);
+  });
+
+  it("reports a malformed line as one line skipped", () => {
+    const fs = new MemoryFileSystem(buildTree(`${FIRST_LINE}\n{"type":"assistant",\n${SECOND_LINE}\n`));
+    const result = loadSession(
+      fs,
+      "/home/demo/.claude/projects/-home-demo-rich-js/fixture-session.jsonl",
+    );
+    expect(result.lines.map((line) => line.lineNumber)).toEqual([1, 3]);
+    expect(result.skipped).toBe(1);
+    expect(openSelectedSession(initialState(fs)).statusMessage).toMatch(/\(1 lines skipped\)$/);
   });
 
   it("propagates read errors so the demo can surface them as status", () => {
