@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-428",
-      "ref": "refs/pull/428/merge",
-      "sha": "a29d307f385e932b3b8177024d0895bdf04c5cba",
-      "timestamp": "2026-10-17T04:51:43.271Z",
-      "commits": [
-        {
-          "sha": "a29d307f385e932b3b8177024d0895bdf04c5cba",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T04:50:01Z",
-          "message": "Merge f1399211fb0db9222c9e1e7a84c9b551ce99ac83 into a101d7093e3bae012dbf39b525ce5d2715535cf6\n"
-        },
-        {
-          "sha": "f1399211fb0db9222c9e1e7a84c9b551ce99ac83",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T22:49:57-06:00",
-          "message": "A Markdown's parsed tree cannot be changed after it is read: token children are readonly (rich-unfiled-791c.y1ta)\n"
-        },
-        {
-          "sha": "6e5984873a004f5e07101a3e76326142635f00a8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T22:45:03-06:00",
-          "message": "Markdown parses its source once, when it is made, as Rich does (rich-unfiled-791c.y1ta)\n\nThe parse moves to src/renderables/markdown-parse.ts: the block pass, then\nan inline pass reading each block's text into a tree of inlines, as\nmarkdown-it makes its two passes. Nothing in it reads a RenderOptions, so\nthe constructor runs it and render only walks the tokens — a Live redrawing\na Markdown every frame no longer pays the whole parse, the quadratic inline\nHTML scan included, once a frame.\n\ntest/renderables/markdown-parse-once.test.ts counts parseMarkdown calls\nacross a construction and three renders at two widths; making render parse\nagain fails it.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "a101d7093e3bae012dbf39b525ce5d2715535cf6",
-      "timestamp": "2026-10-17T04:39:44.251Z",
+      "sha": "06e92939529a05253185707d6c0f5725a228b312",
+      "timestamp": "2026-10-17T05:03:11.537Z",
       "commits": [
         {
-          "sha": "a101d7093e3bae012dbf39b525ce5d2715535cf6",
+          "sha": "06e92939529a05253185707d6c0f5725a228b312",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T22:37:55-06:00",
-          "message": "Markdown draws a character reference as the characters it names, as Rich does (rich-unfiled-791c.krtk) (#427)\n\n* Markdown draws a character reference as the characters it names, as Rich does (rich-unfiled-791c.krtk)\n\nInline text decodes named, decimal and hex references by markdown-it's entity\nrule, an invalid numeric one as U+FFFD; a link's destination goes through\nmarkdown-it's unescapeAll before its href is made, so [a](&#x6A;avascript:x)\nis refused as Rich refuses it. The named table is HTML5's, generated from\nPython's html.entities.html5 by scripts/html-entities.py.\n\n* docs: say how a numeric reference reads in text and in a URL; name DEL among the refused codes (rich-unfiled-791c.krtk)"
+          "timestamp": "2026-10-16T23:01:42-06:00",
+          "message": "Markdown parses its source once, when it is made, as Rich does (rich-unfiled-791c.y1ta) (#428)\n\n* Markdown parses its source once, when it is made, as Rich does (rich-unfiled-791c.y1ta)\n\nThe parse moves to src/renderables/markdown-parse.ts: the block pass, then\nan inline pass reading each block's text into a tree of inlines, as\nmarkdown-it makes its two passes. Nothing in it reads a RenderOptions, so\nthe constructor runs it and render only walks the tokens — a Live redrawing\na Markdown every frame no longer pays the whole parse, the quadratic inline\nHTML scan included, once a frame.\n\ntest/renderables/markdown-parse-once.test.ts counts parseMarkdown calls\nacross a construction and three renders at two widths; making render parse\nagain fails it.\n\n* A Markdown's parsed tree cannot be changed after it is read: token children are readonly (rich-unfiled-791c.y1ta)"
         }
       ]
     }
