@@ -280,6 +280,13 @@ describe("Markdown", () => {
     expect(performance.now() - started).toBeLessThan(1000);
   });
 
+  it("reads a run of unclosed links in time linear in its length", () => {
+    const started = performance.now();
+    rows("[*a](".repeat(20_000), 80);
+    // A destination scanned to the end of the text from every `](` took fourteen seconds here.
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
   it("keeps an item's text when its gutter is as wide as the width", () => {
     expect(rows("- hi", 3)).toEqual([" • h", "   i", ""]);
   });
@@ -432,6 +439,40 @@ describe("Markdown", () => {
 
   it("leaves brackets that are not a link as they are", () => {
     expect(rows("[a] (b) and [c](d", 80)).toEqual(["[a] (b) and [c](d", ""]);
+  });
+
+  // Each case below is Rich 15's own first row for its source, without hyperlinks.
+  it.each([
+    // A bare destination holds at most 32 parentheses open, and must close them all.
+    [`[a](${"(".repeat(32)}x${")".repeat(32)})`, `a (${"(".repeat(32)}x${")".repeat(32)})`],
+    [`[a](${"(".repeat(33)}x${")".repeat(33)})`, `[a](${"(".repeat(33)}x${")".repeat(33)})`],
+    ["[a]((b )", "[a]((b )"],
+    ["[a]((b)", "[a]((b)"],
+    // Only an ASCII space or control ends one, and a backslash before a space ends it too.
+    ["[a](b\u00a0c)", "a (b%C2%A0c)"],
+    ["[a](b\u3000c)", "a (b%E3%80%80c)"],
+    ["[a](b\\ c)", "[a](b\\ c)"],
+    ["[a](\\()", "a (()"],
+    // An angled one ends at its first unescaped `>`, and is no destination without one.
+    ["[a](<b)", "[a](<b)"],
+    ["[a](<a\\>b>)", "a (a%3Eb)"],
+    // A title follows only after a space, and a backslash in it takes the next character.
+    ['[a](<b>"t")', '[a]("t")'],
+    ['[a](b "t\\"u")', "a (b)"],
+    ["[a](b (t\\(u))", "a (b)"],
+    ["[a](b (t(u)))", "[a](b (t(u)))"],
+    ['[a](b "t"\u00a0)', '[a](b "t"\u00a0)'],
+  ])("reads the link in %j as Rich does", (source, expected) => {
+    expect(rows(source, 80, { hyperlinks: false })[0]).toBe(expected);
+  });
+
+  it("reads no link where an ASCII control character sits in or after its destination, as Rich does", () => {
+    // Rich draws these as they are written; the port strips C0 controls from
+    // drawn text (core/text.ts), so only whether they link is pinned here.
+    expect(links("[a](b\u0001c)")).toEqual([]);
+    expect(links("[a](b\u007fc)")).toEqual([]);
+    expect(links("[a](\u000b)")).toEqual([]);
+    expect(links("[a](b\u000b)")).toEqual([]);
   });
 
   /** Each run of drawn text that is a link, and the href it links to. */

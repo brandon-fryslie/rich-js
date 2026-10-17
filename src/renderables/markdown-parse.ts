@@ -651,8 +651,16 @@ const AUTOLINK = /<([^<>]*)>/y;
 const AUTOLINK_URI = /^[a-zA-Z][a-zA-Z0-9+.\-]{1,31}:[^<>\x00-\x20]*$/;
 const AUTOLINK_EMAIL =
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-const ANGLED_DESTINATION = /\(\s*<([^<>\n]*)>/y;
-const LINK_TAIL = /\s*(?:"[^"]*"|'[^']*'|\([^()]*\))?\s*\)/y;
+/**
+ * What follows a link's destination, as markdown-it's link rule reads it: a
+ * title only after space, in `"`, `'` or `(…)` as `parseLinkTitle` reads one —
+ * a backslash taking the character after it, and a `(` refusing a `(…)` title —
+ * then space, then the `)`. Space is markdown-it's here, a space, tab or line
+ * ending, not Unicode's.
+ */
+const LINK_TAIL = /(?:[ \t\n]+(?:"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|\((?:\\[\s\S]|[^()\\])*\))?[ \t\n]*)?\)/y;
+/** How many parentheses markdown-it's `parseLinkDestination` lets a bare destination hold open: one more and it reads none. */
+const MAX_DESTINATION_NESTING = 32;
 /** A backslash escape, as markdown-it reads one: the ASCII punctuation character after it, standing for itself. */
 const ESCAPE = /\\([!-\/:-@[-`{-~])/y;
 /** A numeric character reference, as markdown-it reads one in text: up to seven decimal digits, or up to six hex. */
@@ -804,37 +812,64 @@ function textRunEnd(text: string, i: number): number {
 }
 
 /**
- * The `(destination "title")` of a link opening at `open`, as CommonMark reads
- * it: a destination in angle brackets, or a run of non-space characters whose
- * parentheses balance — so a URL may itself hold `(…)` — then an optional
- * quoted title, then the `)`. The destination, its backslash escapes and
- * character references read and then made an href as markdown-it makes one,
- * and the index past the `)` — or nothing, where markdown-it refuses that
- * href, and the brackets are no link.
+ * The `(destination "title")` of a link opening at `open`, as markdown-it's
+ * link rule reads it: space, the destination `destinationAt` reads, then the
+ * `LINK_TAIL`. The destination, its backslash escapes and character
+ * references read and then made an href as markdown-it makes one, and the
+ * index past the `)` — or nothing, where markdown-it refuses either, and the
+ * brackets are no link.
  */
 function linkDestination(text: string, open: number): { url: string; end: number } | undefined {
   if (text[open] !== "(") return undefined;
-  const angled = matchAt(ANGLED_DESTINATION, text, open);
-  let i: number;
-  let url: string;
-  if (angled) {
-    url = angled[1]!;
-    i = open + angled[0].length;
-  } else {
-    i = open + 1;
-    while (text[i] === " " || text[i] === "\t" || text[i] === "\n") i++;
-    const from = i;
-    for (let depth = 0; i < text.length && !/\s/.test(text[i]!) && !(text[i] === ")" && depth === 0); i++) {
-      if (text[i] === "\\") i++;
-      else if (text[i] === "(") depth++;
-      else if (text[i] === ")") depth--;
-    }
-    url = text.slice(from, i);
-  }
-  const tail = matchAt(LINK_TAIL, text, i);
+  let start = open + 1;
+  while (text[start] === " " || text[start] === "\t" || text[start] === "\n") start++;
+  const destination = destinationAt(text, start);
+  if (!destination) return undefined;
+  const tail = matchAt(LINK_TAIL, text, destination.end);
   if (!tail) return undefined;
-  const href = linkHref(unescapeAll(url));
-  return href === undefined ? undefined : { url: href, end: i + tail[0].length };
+  const href = linkHref(unescapeAll(destination.raw));
+  return href === undefined ? undefined : { url: href, end: destination.end + tail[0].length };
+}
+
+/**
+ * The link destination at `start` in `text`, as markdown-it's
+ * `parseLinkDestination` reads one, its escapes still in it, and the index
+ * past it. In angle brackets it is anything up to the `>` but a line ending or
+ * a `<`; bare, it runs to a space or an ASCII control character, or a `)` it
+ * did not open, and its parentheses must balance and nest no deeper than
+ * `MAX_DESTINATION_NESTING` — the cap that keeps a run of `](` from each
+ * scanning to the end of the text. A backslash takes the character after it,
+ * but for a space, which ends a bare destination before the backslash.
+ *
+ * An empty bare destination reads as `""`, where markdown-it reads none and
+ * then takes the `)` it stopped at all the same: the link it makes has an
+ * empty href either way, and no title can follow, since the space before it
+ * was skipped before the destination.
+ */
+function destinationAt(text: string, start: number): { raw: string; end: number } | undefined {
+  if (text[start] === "<") {
+    for (let i = start + 1; i < text.length; i++) {
+      if (text[i] === "\n" || text[i] === "<") return undefined;
+      if (text[i] === ">") return { raw: text.slice(start + 1, i), end: i + 1 };
+      if (text[i] === "\\") i++;
+    }
+    return undefined;
+  }
+  let level = 0;
+  let i = start;
+  for (; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code <= 0x20 || code === 0x7f) break;
+    if (code === 0x5c && i + 1 < text.length) {
+      if (text[i + 1] === " ") break;
+      i++;
+    } else if (code === 0x28 && ++level > MAX_DESTINATION_NESTING) return undefined;
+    else if (code === 0x29) {
+      if (level === 0) break;
+      level--;
+    }
+  }
+  return level === 0 ? { raw: text.slice(start, i), end: i } : undefined;
 }
 
 /** The character before `i` in `text`, a surrogate pair whole, or a space at its start, as `scanDelims` reads the line. */
