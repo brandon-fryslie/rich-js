@@ -151,10 +151,8 @@ describe("package.json#engines.node", () => {
    * the docs are allowed to repeat, and the one that goes red if it stops
    * being true.
    */
-  it("is the floor string-width holds up, and string-width is the only thing holding it", () => {
-    const floor = treeFloor(TREE);
-    expect(floor.kind).toBe("bound");
-    expect(floor.kind === "bound" && floor.by).toEqual(["string-width"]);
+  it("is a floor no installed package holds up, so it is src/'s own claim", () => {
+    expect(treeFloor(TREE)).toEqual({ kind: "unconstrained" });
     expect(DECLARED).toBe(">=20");
   });
 });

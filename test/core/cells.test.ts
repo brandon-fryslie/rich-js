@@ -59,7 +59,7 @@ describe("cellLen", () => {
   });
 
   // Each width below is Rich's: uv run --with 'rich==15' python -c 'from rich.cells import cell_len; print(cell_len("a\u00adb"))'
-  it("counts each code point string-width folds into its cluster's first, as Rich's cell_len does", () => {
+  it("counts every code point of a cluster, not only its first, as Rich's cell_len does", () => {
     expect(cellLen("\u0915\u093e")).toBe(1); // a Spacing_Mark gets no cell
     expect(cellLen("\u3042\u302e")).toBe(2);
     expect(cellLen("\u0915\u094d\u0937")).toBe(2); // a conjunct is both its consonants
@@ -73,6 +73,22 @@ describe("cellLen", () => {
     expect(cellLen("\u115fa")).toBe(3); // the choseong filler is wide
     expect(cellLen("a\u1161")).toBe(1); // a jungseong alone adds nothing
     expect(cellLen("\u1100\u1161\u11a8")).toBe(2);
+  });
+
+  it("lets a ZWJ take the code point after it into its glyph, and VS16 widen the one before, as Rich does", () => {
+    expect(cellLen("\u0915\u094d\u200d\u0937")).toBe(1); // a half-form conjunct
+    expect(cellLen("\u{1f468}\u200d\u{1f469}\u200d\u{1f467}")).toBe(2);
+    expect(cellLen("\u2764")).toBe(1);
+    expect(cellLen("\u2764\ufe0f")).toBe(2);
+    expect(cellLen("1\ufe0f\u20e3")).toBe(2);
+  });
+
+  it("keeps a ZWJ or VS16 inside its own cluster, where Rich lets it reach across", () => {
+    // Rich gives each 1 cell more: its ZWJ swallows the `b` of the next cluster,
+    // and its VS16 widens the heart a cluster back. Summed by cluster, which
+    // every cut between clusters needs, they measure as drawn.
+    expect(cellLen("a\u200db")).toBe(2);
+    expect(cellLen("\u2764\u1161\ufe0f")).toBe(1);
   });
 
   it("measures a string as the sum of its grapheme clusters", () => {

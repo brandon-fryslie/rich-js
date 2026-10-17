@@ -133,9 +133,6 @@
     "vitepress": "^1.6.4",
     "vitest": "^5.0.0"
   },
-  "dependencies": {
-    "string-width": "^8.2.2"
-  },
   "peerDependencies": {
     "@promptctl/go-template-js": "^0.10.0",
     "mobx": "^7.0.3"

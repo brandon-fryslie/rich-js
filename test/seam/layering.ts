@@ -89,8 +89,8 @@ export const CORE_LAYER: Layer = {
  * Every import in `sf` that resolves to a file outside `layerDir`.
  *
  * Specifiers this repository does not own — `node:*`, packages — resolve to
- * `null` and are not edges out of the layer at all: `core/` depending on
- * `string-width` says nothing about the direction of `src/`.
+ * `null` and are not edges out of the layer at all: `core/` depending on a
+ * package says nothing about the direction of `src/`.
  */
 export function outboundEdges(
   sf: ts.SourceFile,

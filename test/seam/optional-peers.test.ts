@@ -106,8 +106,8 @@ describe("the published surface declares what it needs", () => {
  * breaking it would look like.
  */
 describe("what each published subpath costs to install", () => {
-  it("charges the main barrel nothing but its hard dependencies", () => {
-    expect(packagesFor("@promptctl/rich-js")).toEqual(["string-width"]);
+  it("charges the main barrel nothing", () => {
+    expect(packagesFor("@promptctl/rich-js")).toEqual([]);
   });
 
   /**
