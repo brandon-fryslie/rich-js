@@ -6,8 +6,8 @@
  * item are both containers, their lines tokenized as Markdown of their own
  * once the container's marker or indentation is cut off, and drawn beside a
  * gutter — the quote's bar, the item's marker then its hang. A table, which
- * CommonMark has none of, is read as GFM reads one. Where CommonMark leaves the
- * drawing open, Rich's is followed.
+ * CommonMark has none of, is read as markdown-it — Rich's parser — reads one.
+ * Where CommonMark leaves the drawing open, Rich's is followed.
  */
 
 import { cellLen, expandTabs, parseTabSize } from "../core/cells.js";
@@ -99,6 +99,12 @@ const BLOCK_STARTS = [HEADING, FENCE, QUOTE, RULE];
 /** A line that may be a table's delimiter row, screened as markdown-it screens one: pipes, dashes, colons and space only, and not a dash then a space, which opens a list item. */
 const DELIMITER_ROW = /^(?!-[ \t])[-:|][-:| \t]+$/;
 const DELIMITER_CELL = /^:?-+:?$/;
+/**
+ * How many empty cells a table's short rows may be filled out with before the
+ * table ends, as markdown-it caps them: a header of many columns over many
+ * one-cell rows would otherwise grow a few kilobytes of source into millions of cells.
+ */
+const MAX_AUTOCOMPLETED_CELLS = 0x10000;
 /** Indentation that makes a line indented code when it opens a block, as CommonMark counts it. */
 const CODE_INDENT = 4;
 /** The tab stop code is drawn with, as Rich's `Syntax` draws it. */
@@ -187,8 +193,13 @@ function itemStart(line: Line): ItemStart | undefined {
   };
 }
 
+/** Whether `line` may be a table's row: a line of its container's own, neither lazy paragraph text nor indented code. */
+function tableLine(line: Line): boolean {
+  return !line.lazy && indentOf(line) < CODE_INDENT;
+}
+
 /**
- * A table row's cells, as GFM splits one: at every `|` no backslash escapes,
+ * A table row's cells, as markdown-it splits one: at every `|` no backslash escapes,
  * a pipe at either end of the row closing it rather than opening an empty
  * cell, and each cell trimmed. An escaped `\|` is a `|` in its cell, inside a
  * code span too.
@@ -209,26 +220,25 @@ function rowCells(row: string): string[] {
 /** The alignment of each column `line` declares, if it is a table's delimiter row: a run of dashes per column, a colon on the side its cells sit. */
 function alignments(line: Line): CellAlign[] | undefined {
   const text = body(line);
-  if (line.lazy || indentOf(line) >= CODE_INDENT || !DELIMITER_ROW.test(text)) return undefined;
+  if (!tableLine(line) || !DELIMITER_ROW.test(text)) return undefined;
   const cells = rowCells(text);
   if (!cells.every((cell) => DELIMITER_CELL.test(cell))) return undefined;
   return cells.map((cell) => (cell.endsWith(":") ? (cell.startsWith(":") ? "center" : "right") : cell.startsWith(":") ? "left" : undefined));
 }
 
 /**
- * The columns of the table opening at `start`, if one does, as GFM reads one:
- * a header row with a pipe in it, then a delimiter row naming as many columns.
- * A lazy line is only ever paragraph text, so neither row may be one.
+ * The columns of the table opening at `start`, if one does, as markdown-it
+ * reads one: a header row with a pipe in it, then a delimiter row naming as
+ * many columns.
  */
 function tableAt(lines: readonly Line[], start: number): TableColumn[] | undefined {
   const head = lines[start]!;
   const delimiter = lines[start + 1];
-  if (delimiter === undefined || head.lazy || indentOf(head) >= CODE_INDENT || !body(head).includes("|")) return undefined;
+  if (delimiter === undefined || !tableLine(head) || !body(head).includes("|")) return undefined;
   const aligns = alignments(delimiter);
+  if (!aligns) return undefined;
   const headers = rowCells(body(head));
-  return aligns && headers.length > 0 && headers.length === aligns.length
-    ? headers.map((header, n) => ({ header, align: aligns[n] }))
-    : undefined;
+  return headers.length === aligns.length ? headers.map((header, n) => ({ header, align: aligns[n] })) : undefined;
 }
 
 /** Whether two item starts belong to one list: the same bullet character, or both numbered. */
@@ -404,8 +414,11 @@ function tokenize(lines: readonly Line[]): MdToken[] {
     const columns = tableAt(lines, i);
     if (columns) {
       const rows: string[][] = [];
-      for (i += 2; i < lines.length && !isBlank(lines[i]!) && !lines[i]!.lazy && indentOf(lines[i]!) < CODE_INDENT && !opensBlock(lines[i]!); i++) {
+      let autocompleted = 0;
+      for (i += 2; i < lines.length && !isBlank(lines[i]!) && tableLine(lines[i]!) && !opensBlock(lines[i]!); i++) {
         const cells = rowCells(body(lines[i]!));
+        autocompleted += columns.length - cells.length;
+        if (autocompleted > MAX_AUTOCOMPLETED_CELLS) break;
         rows.push(columns.map((_, n) => cells[n] ?? ""));
       }
       tokens.push({ type: "table", columns, rows });

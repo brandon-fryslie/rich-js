@@ -48,8 +48,11 @@ An image is drawn as Rich draws it: a picture glyph, then its alt text, linked t
 
 ## Tables
 
-A pipe table is read as [GitHub Flavored Markdown](https://github.github.com/gfm/#tables-extension-)
-reads one and drawn as Rich draws it, as a [`Table`](./tables): the header row in
+A pipe table is read as Rich reads one, with [markdown-it](https://github.com/markdown-it/markdown-it)'s
+take on [GitHub's table extension](https://github.github.com/gfm/#tables-extension-), and drawn
+as Rich draws it, as a [`Table`](./tables). The two parsers part on where a table may start:
+markdown-it tries a header row before any other block, so `# Name | Size` over a delimiter row
+is a table's header where GitHub draws a heading. The header row is drawn in
 `markdown.table.header`, the borders in `markdown.table.border`, and each cell's inline
 Markdown kept. A colon in the delimiter row places the column's cells — `:---` left, `:---:`
 centred, `---:` right. A short row is filled out with empty cells and a long one is cut to

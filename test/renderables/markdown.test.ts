@@ -486,6 +486,18 @@ describe("Markdown", () => {
     expect(rows("| a |\n|---|\n| 1 |\n> q", 30)).toEqual(["", " a", " ─", " 1", "", "▎ q", ""]);
   });
 
+  it("ends a table at the row that fills out more than markdown-it's 65536 empty cells", () => {
+    // 257 columns over one-cell rows: each row fills out 256, so the 256th row
+    // reaches 65536 and is kept, and the 257th passes it and is paragraph text.
+    // Wide enough that every column has room to show its cell.
+    const lastRows = (bodyRows: number) =>
+      rows([`|${" h |".repeat(257)}`, `|${"---|".repeat(257)}`, ...Array<string>(bodyRows).fill("| a |"), "stop"].join("\n"), 1100)
+        .slice(-4)
+        .map((row) => row.trimEnd());
+    expect(lastRows(255)).toEqual([" a", " stop", "", ""]);
+    expect(lastRows(256)).toEqual([" a", "", "stop", ""]);
+  });
+
   it("draws a table inside a list item, under its hang", () => {
     expect(rows("- x\n\n  | a | b |\n  |---|---|\n  | 1 | 2 |", 30)).toEqual([
       "  • x",
