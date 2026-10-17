@@ -1780,6 +1780,8 @@ describe("Console theme resolution", () => {
       name: "markdown.link",
       make: () => new Markdown("[a](https://example.com)", { hyperlinks: false }),
     },
+    { label: "Markdown table border", name: "markdown.table.border", make: () => new Markdown("| a |\n|---|\n| 1 |") },
+    { label: "Markdown table header", name: "markdown.table.header", make: () => new Markdown("| a |\n|---|\n| 1 |") },
     { label: "Traceback", name: "traceback.exc_type", make: () => new Traceback(new Error("boom")) },
     { label: "Syntax keyword", name: "syntax.keyword", make: () => new Syntax("return", "javascript") },
     { label: "Syntax line number", name: "syntax.line_number", make: () => new Syntax("x", "text", { lineNumbers: true }) },

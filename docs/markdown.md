@@ -1,6 +1,6 @@
 # Markdown
 
-`Markdown` renders Markdown-formatted text in the terminal with styled headings, lists, emphasis, quotes, rules and code blocks.
+`Markdown` renders Markdown-formatted text in the terminal with styled headings, lists, emphasis, quotes, tables, rules and code blocks.
 
 ## Basic usage
 
@@ -45,6 +45,26 @@ list counts on from its first number, right-aligned so every item hangs at one c
 the indentation reach the stops of 4 they reach in the source, however deep the line is nested.
 
 An image is drawn as Rich draws it: a picture glyph, then its alt text, linked to the image.
+
+## Tables
+
+A pipe table is read as [GitHub Flavored Markdown](https://github.github.com/gfm/#tables-extension-)
+reads one and drawn as Rich draws it, as a [`Table`](./tables): the header row in
+`markdown.table.header`, the borders in `markdown.table.border`, and each cell's inline
+Markdown kept. A colon in the delimiter row places the column's cells — `:---` left, `:---:`
+centred, `---:` right. A short row is filled out with empty cells and a long one is cut to
+the header's columns; `\|` puts a pipe inside a cell.
+
+```typescript
+import { Console, Markdown } from "@promptctl/rich-js";
+
+const console = new Console({ width: 48 });
+
+console.print(new Markdown(`| Subpath | Installs | Size |
+|:--------|:--------:|-----:|
+| \`./widgets\` | **mobx** | 41 kB |
+| \`./host\` | nothing | 9 kB |`));
+```
 
 ## Code blocks
 
