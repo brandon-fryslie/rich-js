@@ -311,6 +311,8 @@ describe("Markdown", () => {
     const bold = segment(md, "bold").style;
     expect(bold?.bold).toBe(true);
     expect(bold?.link).toBe("https://x");
+    // Without hyperlinks, Rich writes the label's text plain in markdown.link.
+    expect(segment(md, "bold docs", { hyperlinks: false }).style?.bold).toBeFalsy();
   });
 
   it("draws an image as Rich does: a picture, then its alt text linked to the image", () => {
@@ -318,6 +320,11 @@ describe("Markdown", () => {
     expect(segment("![logo](a.png)", "logo").style?.link).toBe("a.png");
     expect(rows("![logo](a.png)", 80, { hyperlinks: false })).toEqual(["🌆 logo", ""]);
     expect(rows("![](img/a.png)", 80)).toEqual(["🌆 a.png", ""]);
+  });
+
+  it("draws an image's alt text as written, never parsed as Markdown, as Rich does", () => {
+    expect(rows("![**a** `c` <a@b.co> \\*b &amp; [y]](q)", 80)[0]).toBe("🌆 **a** `c` <a@b.co> \\*b &amp; [y]");
+    expect(links("![<http://x>](y)")).toEqual([["<http://x>", "y"]]);
   });
 
   it("leaves brackets that are not a link as they are", () => {
@@ -361,6 +368,7 @@ describe("Markdown", () => {
     ]);
     expect(segment("**<http://e.com>**", "http://e.com").style?.bold).toBe(true);
     expect(rows("`<http://e.com>`", 80)[0]).toBe("<http://e.com>");
+    expect(rows("[a <http://x> b](u)", 80, { hyperlinks: false })[0]).toBe("a http://x (http://x) b (u)");
   });
 
   it("leaves a `<` that opens no autolink as it is", () => {

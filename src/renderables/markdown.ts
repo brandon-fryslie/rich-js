@@ -566,13 +566,15 @@ type Inline =
   | { kind: "code"; code: string; end: number }
   | { kind: "emphasis"; style: "bold" | "italic"; inner: string; end: number }
   | { kind: "link"; inner: string; url: string; end: number }
-  | { kind: "autolink"; text: string; url: string; end: number }
+  | { kind: "autolink"; source: string; url: string; end: number }
   | { kind: "image"; alt: string; src: string; end: number }
   | { kind: "literal"; text: string; end: number }
   | { kind: "html"; end: number };
 
 const TICKS = /`+/y;
-/** markdown-it's autolink, the text between `<` and the first `>`: a URI, scheme first, or an email address. */
+/** markdown-it's autolink: `<`, then text holding no `<` up to the first `>`. */
+const AUTOLINK = /<([^<>]*)>/y;
+/** What an autolink's text must be: a URI, scheme first, or an email address. */
 const AUTOLINK_URI = /^[a-zA-Z][a-zA-Z0-9+.\-]{1,31}:[^<>\x00-\x20]*$/;
 const AUTOLINK_EMAIL =
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
@@ -603,7 +605,8 @@ function matchAt(re: RegExp, text: string, i: number): RegExpExecArray | null {
 /**
  * Each `[` in `text` that a `]` closes, to the index of that `]`: brackets
  * nest, a backslash escapes the character after it, and a bracket inside a
- * code span or inline HTML, which bind tighter than a link, is not one. One
+ * code span, an autolink or inline HTML, which bind tighter than a link, is
+ * not one. One
  * pass, so a run of text full of brackets that close nothing costs no more
  * than one without.
  */
@@ -657,7 +660,7 @@ function linkDestination(text: string, open: number): { url: string; end: number
  * The index of the `delimiter` that closes emphasis whose text starts at
  * `from`, after at least one character of it. Every other inline construct
  * binds tighter than emphasis, as CommonMark has it, so a delimiter inside an
- * escape, a code span, inline HTML or a link closes nothing.
+ * escape, a code span, an autolink, inline HTML or a link closes nothing.
  */
 function emphasisClose(text: string, from: number, delimiter: string, brackets: ReadonlyMap<number, number>): number | undefined {
   for (let i = from; i < text.length; ) {
@@ -674,15 +677,15 @@ function emphasisClose(text: string, from: number, delimiter: string, brackets: 
  * links to `mailto:` it — and so long as markdown-it accepts that href.
  */
 function autolinkAt(text: string, i: number): Inline | undefined {
-  const close = text.indexOf(">", i + 1);
-  const content = text.slice(i + 1, close);
-  if (close === -1 || content.includes("<")) return undefined;
-  const href = AUTOLINK_URI.test(content)
-    ? linkHref(content)
-    : AUTOLINK_EMAIL.test(content)
-      ? linkHref(`mailto:${content}`)
+  const angled = matchAt(AUTOLINK, text, i);
+  if (!angled) return undefined;
+  const source = angled[1]!;
+  const href = AUTOLINK_URI.test(source)
+    ? linkHref(source)
+    : AUTOLINK_EMAIL.test(source)
+      ? linkHref(`mailto:${source}`)
       : undefined;
-  return href === undefined ? undefined : { kind: "autolink", text: normalizeLinkText(content), url: href, end: close + 1 };
+  return href === undefined ? undefined : { kind: "autolink", source, url: href, end: i + angled[0].length };
 }
 
 /** The inline construct opening at `i` in `text`, if one does; `brackets` is `text`'s `bracketPairs`. */
@@ -716,8 +719,10 @@ function inlineAt(text: string, i: number, brackets: ReadonlyMap<number, number>
     }
     case "<": {
       // markdown-it tries an autolink before inline HTML.
+      const autolink = autolinkAt(text, i);
+      if (autolink) return autolink;
       const tag = matchAt(HTML_TAG, text, i);
-      return autolinkAt(text, i) ?? (tag ? { kind: "html", end: i + tag[0].length } : undefined);
+      return tag ? { kind: "html", end: i + tag[0].length } : undefined;
     }
     case "!":
     case "[": {
@@ -749,8 +754,9 @@ function styled(text: string, style: string | Style, settings: InlineSettings, o
 
 /**
  * `label` linked to `url`, appended to `result` as Rich draws a link: the
- * label is the link, or without hyperlinks the URL is written out after it,
- * and it is still the link, for a terminal that can click it.
+ * label is the link, or without hyperlinks the label's text is written plain
+ * and the URL after it, and that is still the link, for a terminal that can
+ * click it.
  */
 function appendLink(result: RichText, label: RichText, url: string, settings: InlineSettings): void {
   const link = new RichText("", { style: new Style({ link: url }) });
@@ -758,7 +764,7 @@ function appendLink(result: RichText, label: RichText, url: string, settings: In
     result.append(link.append(new RichText("", { style: "markdown.link_url" }).append(label)));
   } else {
     result
-      .append(new RichText("", { style: "markdown.link" }).append(label))
+      .append(label.plain, "markdown.link")
       .append(" (")
       .append(link.append(url, "markdown.link_url"))
       .append(")");
@@ -767,8 +773,8 @@ function appendLink(result: RichText, label: RichText, url: string, settings: In
 
 /**
  * `text` as inline Markdown appended to `result`: code spans, emphasis,
- * links, autolinks and images, the text inside emphasis, links and images
- * parsed the same way, a backslash escape as the character it escapes, inline
+ * links, autolinks and images, the text inside emphasis and links parsed the
+ * same way, a backslash escape as the character it escapes, inline
  * HTML as nothing, and everything else as it is.
  */
 function appendInline(result: RichText, text: string, settings: InlineSettings, options: RenderOptions): void {
@@ -799,14 +805,15 @@ function appendInline(result: RichText, text: string, settings: InlineSettings, 
         break;
       case "autolink":
         // Its text is the URL as written, never parsed as Markdown.
-        appendLink(result, new RichText("").append(found.text), found.url, settings);
+        appendLink(result, new RichText(normalizeLinkText(found.source)), found.url, settings);
         break;
       case "image": {
-        // Rich's ImageItem: a picture glyph, then the alt text — or, with
-        // none, the image's file name — linked to the image, then a space.
+        // Rich's ImageItem: a picture glyph, then the alt text as written,
+        // never parsed as Markdown — or, with none, the image's file name —
+        // linked to the image, then a space.
         const title = found.alt || (found.src.replace(/\/+$/, "").split("/").pop() ?? "");
         const link = settings.hyperlinks ? new Style({ link: found.src }) : "";
-        result.append(drawable(options, "🌆 ", "")).append(styled(title, link, settings, options)).append(" ");
+        result.append(drawable(options, "🌆 ", "")).append(title, link).append(" ");
         break;
       }
     }
