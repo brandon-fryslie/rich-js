@@ -4,15 +4,22 @@
     {
       "version": "pr-427",
       "ref": "refs/pull/427/merge",
-      "sha": "be8c30a7a97b403fc5605ffa153a89cf67bf111d",
-      "timestamp": "2026-10-17T04:22:29.183Z",
+      "sha": "389988d4b9225d6d8271e25eb18ae4ab07604917",
+      "timestamp": "2026-10-17T04:30:17.679Z",
       "commits": [
         {
-          "sha": "be8c30a7a97b403fc5605ffa153a89cf67bf111d",
+          "sha": "389988d4b9225d6d8271e25eb18ae4ab07604917",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T22:20:39-06:00",
-          "message": "Merge 72da61830e083b26e15752acfc8d396e0b02b320 into 34b047be217c1802bf9a623d11c6423ad6907f14\n"
+          "timestamp": "2026-10-17T04:28:38Z",
+          "message": "Merge 4a7b73e8862ab19b41a1a077f4f6ae0a9eee7e55 into 34b047be217c1802bf9a623d11c6423ad6907f14\n"
+        },
+        {
+          "sha": "4a7b73e8862ab19b41a1a077f4f6ae0a9eee7e55",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T22:28:33-06:00",
+          "message": "docs: say how a numeric reference reads in text and in a URL; name DEL among the refused codes (rich-unfiled-791c.krtk)\n"
         },
         {
           "sha": "72da61830e083b26e15752acfc8d396e0b02b320",
