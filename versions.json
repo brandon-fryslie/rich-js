@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-459",
+      "ref": "refs/pull/459/merge",
+      "sha": "cac539a9535fd45b7a1502560bd018dd68a449d9",
+      "timestamp": "2026-10-17T21:24:01.271Z",
+      "commits": [
+        {
+          "sha": "cac539a9535fd45b7a1502560bd018dd68a449d9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T15:22:18-06:00",
+          "message": "Merge 3aa0ce51ec98a5eebb1d5386af3adfdeebf3e0fa into a565e0c8a331452feb6027fb72f91ea9390c3f86\n"
+        },
+        {
+          "sha": "3aa0ce51ec98a5eebb1d5386af3adfdeebf3e0fa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T15:22:14-06:00",
+          "message": "Markdown counts a tab after a nested quote's `>` from the content of the quote around it, as markdown-it does (rich-unfiled-791c.g10i)\n\nmarkdown-it resets bsCount at each `>` to the column past it measured from\nthe enclosing quote's content, not cumulatively, so past the second `>` its\ntab stops are not the source's. It also measures the whitespace after a `>`\nin the enclosing quote's columns while cutting indentation in the new\nquote's, so the two can disagree. A Line now carries both: `lead` (sCount)\nand `text` re-based on the quote's content (bsCount), plus `written` so a\ncut that stops before an item's marker keeps the marker, as getLines does.\n\nA differential fuzz of 6000 nested-quote inputs against Rich 15 went from\n1661 differing to 15, none newly wrong; the 15 are rich-unfiled-791c.jlk3.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a565e0c8a331452feb6027fb72f91ea9390c3f86",
