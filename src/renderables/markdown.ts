@@ -88,9 +88,6 @@ function linkStyles(url: string): (string | Style)[] {
   return [new Style({ link: url }), "markdown.link_url"];
 }
 
-/** The style a quote lays under everything it holds. */
-const QUOTE_STYLE = Style.parse("dim italic");
-
 function headingStyle(options: RenderOptions, level: number): Style {
   return getStyle(options, `markdown.h${Math.min(level, 4)}`);
 }
@@ -276,7 +273,7 @@ function* stepsInside(token: MdToken, within: Enclosing, options: RenderOptions,
       }
       break;
     case "blockquote":
-      yield* children(token.children, { ...within, styles: [...within.styles, QUOTE_STYLE] });
+      yield* children(token.children, { ...within, styles: [...within.styles, "markdown.block_quote"] });
       break;
     case "table":
       for (const cell of [...token.columns.map(({ header }) => header), ...token.rows.flat()]) {
@@ -429,8 +426,11 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
     }
 
     case "blockquote": {
-      const bar = new Segment(drawable(options, "▎ ", "| "), getStyle(options, "markdown.hr"));
-      const body = (inner: RenderOptions) => renderLines(token.children, inner, settings, QUOTE_STYLE);
+      // Rich's BlockQuote: the bar and everything the quote holds in the one
+      // `markdown.block_quote` style.
+      const style = getStyle(options, "markdown.block_quote");
+      const bar = new Segment(drawable(options, "▌ ", "| "), style);
+      const body = (inner: RenderOptions) => renderLines(token.children, inner, settings, style);
       yield* guttered(body, options, bar, bar);
       break;
     }

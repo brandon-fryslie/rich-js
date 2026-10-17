@@ -45,7 +45,9 @@ drawn as Rich draws them: a bullet in `markdown.item.bullet`, bold, and a number
 `markdown.item.number`, cyan. A numbered list counts on from its first number, right-aligned in
 a column as wide as the number one past its last item, Rich's sizing, so every item hangs at
 one column; an empty item is counted and draws nothing. The item's blocks are drawn in
-`markdown.item`, which the default theme leaves plain. Tabs in
+`markdown.item`, which the default theme leaves plain. A quote draws a `▌` bar down its left
+side and draws its bar and everything it holds in `markdown.block_quote`, magenta, as Rich's
+does. Tabs in
 the indentation reach the stops of 4 they reach in the source, however deep the line is nested.
 Blocks nest only as deep as markdown-it reads them, 20 levels — a quote counts one, a list and
 its item one each. Past that a container's content is not drawn, and a list item that deep

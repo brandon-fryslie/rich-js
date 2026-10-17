@@ -835,6 +835,7 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "markdown.em": Style.parse("italic"),
   "markdown.strong": Style.parse("bold"),
   "markdown.s": Style.parse("strike"),
+  "markdown.block_quote": Style.parse("magenta"),
   "markdown.hr": Style.parse("yellow"),
   "markdown.item": NULL_STYLE,
   "markdown.item.bullet": Style.parse("bold"),

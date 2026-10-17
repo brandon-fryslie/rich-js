@@ -83,12 +83,17 @@ describe("Markdown", () => {
     expect(text).toContain("Click here");
   });
 
-  it("renders blockquotes with indented border", () => {
-    const md = new Markdown("> A quote");
-    const text = collectText(md, { maxWidth: 80 });
-    expect(text).toContain("A quote");
-    // Blockquotes have a vertical bar indicator
-    expect(text).toContain("\u258e"); // left block element used as border
+  it("draws a quote's bar, and everything it holds, in markdown.block_quote, as Rich's BlockQuote does", () => {
+    // Rich 15, '> a\n> > b': every bar, a and b all magenta; '> *e*': e italic magenta.
+    const styled = (markdown: string, theme?: Theme) =>
+      collectSegments(new Markdown(markdown), { maxWidth: 20, theme })
+        .filter((s) => s.text.trim() !== "")
+        .map((s): [string, string | undefined] => [s.text.trim(), s.style?.color?.name]);
+    expect(styled("> a\n> > b")).toEqual([["▌", "magenta"], ["a", "magenta"], ["▌", "magenta"], ["▌", "magenta"], ["b", "magenta"]]);
+    expect(styled("> a", new Theme({ "markdown.block_quote": "green" }))).toEqual([["▌", "green"], ["a", "green"]]);
+    const e = collectSegments(new Markdown("> *e*"), { maxWidth: 20 }).find((s) => s.text === "e")?.style;
+    expect(e).toEqual(Style.parse("magenta italic"));
+    expect(DEFAULT_THEME.resolve("markdown.block_quote")).toEqual(Style.parse("magenta"));
   });
 
   it("renders horizontal rules as line separator", () => {
@@ -116,7 +121,7 @@ describe("Markdown", () => {
 
   it("reads a line of no-break spaces as text, not as a blank line", () => {
     expect(rows("q\n\u00a0\n_*__", 80)).toEqual(["q \u00a0 *_", ""]);
-    expect(rows("> a\n\u00a0\nb", 80)).toEqual(["", "▎ a \u00a0 b", ""]);
+    expect(rows("> a\n\u00a0\nb", 80)).toEqual(["", "▌ a \u00a0 b", ""]);
     expect(rows("- a\n\u00a0\n- b", 80)).toEqual(["", " • a", " • b", ""]);
     // An HTML block runs to a blank line; Rich draws none of it.
     expect(rows("<div>\n\u00a0\nx", 80)).toEqual([""]);
@@ -150,7 +155,7 @@ describe("Markdown", () => {
 
   it("keeps a paragraph line's indentation in a code span that crosses its line ending", () => {
     expect(rows("foo\n    bar `x\n  y`", 80)).toEqual(["foo bar x   y", ""]);
-    expect(rows("> foo\n>     bar `x\n>   y`", 80)).toEqual(["", "▎ foo bar x   y", ""]);
+    expect(rows("> foo\n>     bar `x\n>   y`", 80)).toEqual(["", "▌ foo bar x   y", ""]);
     expect(rows("a\\\n   b", 80)).toEqual(["a", "b", ""]);
   });
 
@@ -184,7 +189,7 @@ describe("Markdown", () => {
   });
 
   it("draws a quote's bar down every row it wraps to, with its lines joined", () => {
-    expect(rows("> one two\n> three four", 12)).toEqual(["", "▎ one two", "▎ three four", ""]);
+    expect(rows("> one two\n> three four", 12)).toEqual(["", "▌ one two", "▌ three four", ""]);
   });
 
   it("keeps every row inside its width when a list runs into a paragraph", () => {
@@ -224,28 +229,28 @@ describe("Markdown", () => {
 
   // Rich draws the blocks inside a container one under the next, with no row between them.
   it("ends a quote's paragraph at a bare > line without leaking the marker", () => {
-    expect(rows("> a\n>\n>b", 80)).toEqual(["", "▎ a", "▎ b", ""]);
+    expect(rows("> a\n>\n>b", 80)).toEqual(["", "▌ a", "▌ b", ""]);
   });
 
   it("draws the blocks inside a quote as blocks, beside its bar", () => {
     expect(rows("> - a\n> - b\n> soft\n>\n> para two", 80)).toEqual([
       "",
-      "▎  • a",
-      "▎  • b soft",
-      "▎ para two",
+      "▌  • a",
+      "▌  • b soft",
+      "▌ para two",
       "",
     ]);
   });
 
   it("draws a fenced block inside a quote, its padding inside the quote's bar", () => {
-    expect(rows("> ```\n> a = 1\n> b = 2\n> ```", 80)).toEqual(["", "▎", "▎  a = 1", "▎  b = 2", "▎", ""]);
+    expect(rows("> ```\n> a = 1\n> b = 2\n> ```", 80)).toEqual(["", "▌", "▌  a = 1", "▌  b = 2", "▌", ""]);
   });
 
   it("ends a quote at an unmarked line after a bare >, and lazily continues its open paragraph", () => {
-    expect(rows("> quoted\n>\nNot quoted", 80)).toEqual(["", "▎ quoted", "", "Not quoted", ""]);
-    expect(rows("> the total was\nthat year", 80)).toEqual(["", "▎ the total was that year", ""]);
+    expect(rows("> quoted\n>\nNot quoted", 80)).toEqual(["", "▌ quoted", "", "Not quoted", ""]);
+    expect(rows("> the total was\nthat year", 80)).toEqual(["", "▌ the total was that year", ""]);
     // Outside the quote no paragraph is open, so an item opens whatever it counts from.
-    expect(rows("> the total was\n2024. That year", 80)).toEqual(["", "▎ the total was", "", " 2024 That year", ""]);
+    expect(rows("> the total was\n2024. That year", 80)).toEqual(["", "▌ the total was", "", " 2024 That year", ""]);
   });
 
   it("leaves a list item's wrapped line that starts with a number other than 1 in the item", () => {
@@ -275,8 +280,8 @@ describe("Markdown", () => {
   });
 
   it("reads a tab after a quote's marker as the space it may take, then indentation", () => {
-    expect(rows(">\tfoo", 20)).toEqual(["", "▎ foo", ""]);
-    expect(rows(">\t\tfoo", 20)).toEqual(["", "▎", "▎    foo", "▎", ""]);
+    expect(rows(">\tfoo", 20)).toEqual(["", "▌ foo", ""]);
+    expect(rows(">\t\tfoo", 20)).toEqual(["", "▌", "▌    foo", "▌", ""]);
   });
 
   it("draws a tab in code as spaces to the code's own stops, never a raw tab", () => {
@@ -312,7 +317,7 @@ describe("Markdown", () => {
 
   it("opens a fence or a quote indented up to three columns inside an item", () => {
     expect(rows("- step\n\n    ```\n    npm i\n    ```", 20)).toEqual(["", " • step", "", "    npm i", "", ""]);
-    expect(rows("- a\n   > q", 20)).toEqual(["", " • a", "   ▎ q", ""]);
+    expect(rows("- a\n   > q", 20)).toEqual(["", " • a", "   ▌ q", ""]);
   });
 
   it("continues a parent's text with a marker indented four columns past it, as CommonMark does", () => {
@@ -326,9 +331,9 @@ describe("Markdown", () => {
   });
 
   it("reads a lazy line of `=` as paragraph text, never as an underline, and a lazy indented marker as text", () => {
-    expect(rows("> foo\n===", 20)).toEqual(["", "▎ foo ===", ""]);
+    expect(rows("> foo\n===", 20)).toEqual(["", "▌ foo ===", ""]);
     expect(rows("- foo\n===", 20)).toEqual(["", " • foo ===", ""]);
-    expect(rows("> foo\n    - bar", 20)).toEqual(["", "▎ foo - bar", ""]);
+    expect(rows("> foo\n    - bar", 20)).toEqual(["", "▌ foo - bar", ""]);
   });
 
   it("reads a line of `=` on its own as text", () => {
@@ -387,7 +392,7 @@ describe("Markdown", () => {
   });
 
   it("draws a quote inside a list item under its hang", () => {
-    expect(rows("- item\n  > quoted", 80)).toEqual(["", " • item", "   ▎ quoted", ""]);
+    expect(rows("- item\n  > quoted", 80)).toEqual(["", " • item", "   ▌ quoted", ""]);
   });
 
   it("makes a number short of the content column a sibling, numbered on from the first", () => {
@@ -506,9 +511,9 @@ describe("Markdown", () => {
   });
 
   it("owes no newline after a rule, as Rich's render loop does not", () => {
-    // Rich 15: ["🌆 i ▌ x", "▌ " + 36×"-", "▌", ""]. The bar is rich-unfiled-791c.rm6p's;
-    // the rule's two extra cells are the quote width, rich-unfiled-791c.hlmh's.
-    expect(rows("> x ![i](p.png)\n>\n> ***", 40)).toEqual(["🌆 i ▎ x", `▎ ${"-".repeat(38)}`, "▎", ""]);
+    // Rich 15: ["🌆 i ▌ x", "▌ " + 36×"-", "▌", ""]. The rule's two extra
+    // cells are the quote width, rich-unfiled-791c.hlmh's.
+    expect(rows("> x ![i](p.png)\n>\n> ***", 40)).toEqual(["🌆 i ▌ x", `▌ ${"-".repeat(38)}`, "▌", ""]);
   });
 
   // --- Blank rows between blocks ---
@@ -525,12 +530,12 @@ describe("Markdown", () => {
     // A list, a quote or a table draws as it closes, after the blocks inside it set the flag.
     ["- a", ["", " • a", ""]],
     ["x\n- a", ["x", "", " • a", ""]],
-    ["> q", ["", "▎ q", ""]],
-    ["x\n> q", ["x", "", "▎ q", ""]],
+    ["> q", ["", "▌ q", ""]],
+    ["x\n> q", ["x", "", "▌ q", ""]],
     ["| a |\n|---|\n|  |", ["", "", " a", " ─", "", "", ""]],
     // Inside a container the blocks stack with no row between them.
     ["- a\n\n\n- b", ["", " • a", " • b", ""]],
-    ["> a\n>\n>\n> b", ["", "▎ a", "▎ b", ""]],
+    ["> a\n>\n>\n> b", ["", "▌ a", "▌ b", ""]],
     // An image draws the moment it is met, the flag checked ahead of it.
     ["- a\n\n  ![i](p.png)", ["", "🌆 i", " • a", "", ""]],
     ["- a\n- b ![i](p.png)", ["", "🌆 i", " • a", " • b", ""]],
@@ -583,7 +588,8 @@ describe("Markdown", () => {
     expect(segment("**[![i](p.png)](http://o)**", "i").style).toEqual(
       Style.parse("bold").add(DEFAULT_THEME.resolve("markdown.link_url")).add(new Style({ link: "http://o" })),
     );
-    expect(segment("> x ![i](p.png)", "i").style?.italic).toBe(true);
+    // Rich 15: 'magenta link p.png'.
+    expect(segment("> x ![i](p.png)", "i").style).toEqual(Style.parse("magenta").add(new Style({ link: "p.png" })));
     expect(segment("*![](d/a.png)*", "a.png").style).toEqual(new Style({ link: "d/a.png" }));
   });
 
@@ -834,7 +840,7 @@ describe("Markdown", () => {
       "",
       " •      item",
       "",
-      "▎      quote",
+      "▌      quote",
       "",
     ]);
   });
@@ -917,9 +923,9 @@ describe("Markdown", () => {
     // A delimiter row naming another count of columns is no table: this is a setext heading.
     expect(rows("a | b\n---", 30)).toEqual(["a | b", ""]);
     // A lazy line is only ever paragraph text.
-    expect(rows("> a | b\n> more\n--|--", 30)).toEqual(["", "▎ a | b more --|--", ""]);
+    expect(rows("> a | b\n> more\n--|--", 30)).toEqual(["", "▌ a | b more --|--", ""]);
     // A table ends a paragraph, and a line that opens a block ends the table.
-    expect(rows("| a |\n|---|\n| 1 |\n> q", 30)).toEqual(["", "", " a", " ─", " 1", "", "", "▎ q", ""]);
+    expect(rows("| a |\n|---|\n| 1 |\n> q", 30)).toEqual(["", "", " a", " ─", " 1", "", "", "▌ q", ""]);
   });
 
   it("ends a table at the row that fills out more than markdown-it's 65536 empty cells", () => {
@@ -1196,7 +1202,7 @@ describe("Markdown", () => {
   });
 
   it("takes no lazy line into a container that ends in an HTML block", () => {
-    expect(rows("> q\n> <div>\nlazy", 40)).toEqual(["", "▎ q", "", "lazy", ""]);
+    expect(rows("> q\n> <div>\nlazy", 40)).toEqual(["", "▌ q", "", "lazy", ""]);
     expect(rows("- item\n  <!-- c -->\nlazy", 40)).toEqual(["", " • item", "", "lazy", ""]);
   });
 
@@ -1221,9 +1227,8 @@ describe("Markdown", () => {
     expect(rows("[".repeat(depth) + "x" + "](u)".repeat(depth), 200, { hyperlinks: false })).toEqual([row, ""]);
   });
 
-  // The quote's bar is the port's own: Rich 14 draws ▌.
   it.each([
-    ["p\n\n" + ">".repeat(19) + " x\ny", ["p", "", "▎ ".repeat(19) + "x y", ""]],
+    ["p\n\n" + ">".repeat(19) + " x\ny", ["p", "", "▌ ".repeat(19) + "x y", ""]],
     // At 20 levels a quote's content, and the lazy line after it, are read as nothing.
     ["p\n\n" + ">".repeat(20) + " x\ny\n\nafter", ["p", "", "", "after", ""]],
     ["p\n\n" + ">".repeat(21) + " x\n\nafter", ["p", "", "", "after", ""]],
@@ -1236,14 +1241,14 @@ describe("Markdown", () => {
     ["p\n\n" + "- + ".repeat(5).trimEnd() + "\n- next", ["p", "", " • next", ""]],
     ["p\n\n" + "- + ".repeat(5).trimEnd() + "\n\nafter", ["p", "", "", "after", ""]],
     ["p\n\n" + "- + ".repeat(5) + "\n  x\n\nafter", ["p", "", " • x", "", "after", ""]],
-    ["p\n\n> " + "- + ".repeat(5).trimEnd() + "\n> after", ["p", "", "▎ after", ""]],
+    ["p\n\n> " + "- + ".repeat(5).trimEnd() + "\n> after", ["p", "", "▌ after", ""]],
   ])("reads the blocks of %j no deeper than markdown-it does, as Rich does", (source, expected) => {
     expect(rows(source, 200)).toEqual(expected);
   });
 
   it("ends a quote at a blank marked line after an item it nests 20 levels deep, as Rich does", () => {
     expect(rows("> " + "- ".repeat(10) + "x\n>\nb", 200)).toEqual(["", "", "b", ""]);
-    expect(rows("> > " + "- ".repeat(9) + "x\n> >\n> b\nc", 200)).toEqual(["", "▎ b c", ""]);
+    expect(rows("> > " + "- ".repeat(9) + "x\n> >\n> b\nc", 200)).toEqual(["", "▌ b c", ""]);
   });
 
   it("draws Markdown nested ten thousand levels deep, as Rich does", () => {
