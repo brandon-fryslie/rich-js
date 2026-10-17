@@ -4,15 +4,22 @@
     {
       "version": "pr-434",
       "ref": "refs/pull/434/merge",
-      "sha": "1fff6109b3f0187c4349c155a148d84ad265c227",
-      "timestamp": "2026-10-17T09:42:48.505Z",
+      "sha": "6c9517be3e3ac77c69dd3ef16e1475deefd894cf",
+      "timestamp": "2026-10-17T09:54:05.612Z",
       "commits": [
         {
-          "sha": "1fff6109b3f0187c4349c155a148d84ad265c227",
+          "sha": "6c9517be3e3ac77c69dd3ef16e1475deefd894cf",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T03:41:37-06:00",
-          "message": "Merge 2225fcb9cd5954b34d04cbf08245d814df611f7e into cc9b29be5cdb285c77ffb53030f9d4a5f63b1ea5\n"
+          "timestamp": "2026-10-17T09:52:17Z",
+          "message": "Merge 41302b7b9ca665ae0cb8f1b9ffc5bf34a19ac542 into cc9b29be5cdb285c77ffb53030f9d4a5f63b1ea5\n"
+        },
+        {
+          "sha": "41302b7b9ca665ae0cb8f1b9ffc5bf34a19ac542",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T03:52:12-06:00",
+          "message": "Markdown reads a link's tail in linear time and a lone CR as a line ending, as markdown-it does (rich-unfiled-791c.jlqz)\n\nReview (high) fixes: the space after a destination is skipped once, as\nmarkdown-it's link rule does, instead of split two ways by one regex — 100k\nspaces took six seconds; one LINK_SPACE pattern is now the only definition\nof link space; parseMarkdown ends a line at \\r as markdown-it normalizes it.\n"
         },
         {
           "sha": "2225fcb9cd5954b34d04cbf08245d814df611f7e",
