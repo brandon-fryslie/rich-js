@@ -544,15 +544,53 @@ function tokenize(lines: readonly Line[]): MdToken<string>[] {
   return tokens;
 }
 
-/** One inline construct found at a position in a run of text, and the index just past it: emphasis and a link with their text not yet read. */
+/**
+ * One inline construct found at a position in a run of text, and the index
+ * just past it: a link with its label not yet read, and a delimiter run not
+ * yet paired.
+ */
 type InlineMatch =
   | { kind: "code"; code: string; end: number }
-  | { kind: "emphasis"; style: "bold" | "italic"; inner: string; end: number }
-  | { kind: "link"; inner: string; url: string; end: number }
+  | DelimiterRun
+  /** The label is the text from `label` up to the `]` at `close`. */
+  | { kind: "link"; label: number; close: number; url: string; end: number }
   | { kind: "autolink"; source: string; url: string; end: number }
   | { kind: "image"; alt: string; src: string; end: number }
   | { kind: "text"; text: string; end: number }
   | { kind: "html"; end: number };
+
+/**
+ * A run of one emphasis marker, as markdown-it's `scanDelims` reads it: whether
+ * it can open emphasis, close it, or both, decided once by what borders it.
+ */
+interface DelimiterRun {
+  readonly kind: "delimiters";
+  readonly marker: "*" | "_";
+  readonly length: number;
+  readonly canOpen: boolean;
+  readonly canClose: boolean;
+  readonly end: number;
+}
+
+/**
+ * One character of a delimiter run, as markdown-it's emphasis rule records
+ * each: `piece` is where it sits among its text's pieces, and `end` the index
+ * of the delimiter `balancePairs` closes it with, or -1 for none. Pairing
+ * spends `open` and `close` as it goes.
+ */
+interface Delimiter {
+  readonly marker: "*" | "_";
+  readonly length: number;
+  readonly piece: number;
+  open: boolean;
+  close: boolean;
+  end: number;
+}
+
+/** markdown-it's `isWhiteSpace`: Unicode's space separators, and tab, line feed, vertical tab, form feed and carriage return. */
+const WHITESPACE = /^[\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]$/;
+/** markdown-it's `isPunctChar`, which takes in all of ASCII's punctuation: Unicode's punctuation and symbols. */
+const PUNCTUATION = /^[\p{P}\p{S}]$/u;
 
 const TICKS = /`+/y;
 /** markdown-it's autolink: `<`, then text holding no `<` up to the first `>`. */
@@ -707,19 +745,133 @@ function linkDestination(text: string, open: number): { url: string; end: number
   return href === undefined ? undefined : { url: href, end: i + tail[0].length };
 }
 
+/** The character before `i` in `text`, a surrogate pair whole, or a space at its start, as `scanDelims` reads the line. */
+function charBefore(text: string, i: number): string {
+  if (i === 0) return " ";
+  return i >= 2 && text.codePointAt(i - 2)! > 0xffff ? text.slice(i - 2, i) : text[i - 1]!;
+}
+
 /**
- * The index of the `delimiter` that closes emphasis whose text starts at
- * `from`, after at least one character of it. Every other inline construct
- * binds tighter than emphasis, as CommonMark has it, so a delimiter inside an
- * escape, a code span, an autolink, inline HTML or a link closes nothing.
+ * The run of `*` or `_` starting at `i` in `text`, as markdown-it's
+ * `scanDelims` reads it. A run is left-flanking where what follows it is no
+ * space, and is punctuation only if what precedes it is a space or
+ * punctuation too; right-flanking is the mirror. A `*` run opens where it is
+ * left-flanking and closes where it is right-flanking; a `_` run may not do
+ * either inside a word.
  */
-function emphasisClose(text: string, from: number, delimiter: string, brackets: ReadonlyMap<number, number>): number | undefined {
-  for (let i = from; i < text.length; ) {
-    if (i > from && text.startsWith(delimiter, i)) return i;
-    const tighter = text[i] === "*" ? undefined : inlineAt(text, i, brackets);
-    i = tighter ? tighter.end : i + 1;
+function delimiterRun(text: string, i: number): DelimiterRun {
+  const marker = text[i] as "*" | "_";
+  let end = i;
+  while (text[end] === marker) end++;
+  const before = charBefore(text, i);
+  const after = end < text.length ? String.fromCodePoint(text.codePointAt(end)!) : " ";
+  const [spaceBefore, spaceAfter] = [WHITESPACE.test(before), WHITESPACE.test(after)];
+  const [punctBefore, punctAfter] = [PUNCTUATION.test(before), PUNCTUATION.test(after)];
+  const left = !spaceAfter && (!punctAfter || spaceBefore || punctBefore);
+  const right = !spaceBefore && (!punctBefore || spaceAfter || punctAfter);
+  const inWord = marker === "*";
+  return {
+    kind: "delimiters",
+    marker,
+    length: end - i,
+    canOpen: left && (inWord || !right || punctBefore),
+    canClose: right && (inWord || !left || punctAfter),
+    end,
+  };
+}
+
+/**
+ * Each delimiter that can close paired with the nearest one before it that
+ * can open, as markdown-it's `balance_pairs` pairs them, so the pairs nest:
+ * the same marker, never one of its own run, and not where either can do both
+ * and the runs' lengths sum to a multiple of 3, unless both lengths are.
+ * `jumps` skips what a pairing has enclosed and `openersBottom` the openers a
+ * closer like this one already failed to find, so the pass is linear.
+ */
+function balancePairs(delimiters: readonly Delimiter[]): void {
+  const openersBottom = { "*": [-1, -1, -1, -1, -1, -1], _: [-1, -1, -1, -1, -1, -1] };
+  const jumps: number[] = [];
+  let headerIdx = 0;
+  let lastPiece = -2;
+  for (const [closerIdx, closer] of delimiters.entries()) {
+    jumps.push(0);
+    // headerIdx is the first delimiter of the closer's own run.
+    if (delimiters[headerIdx]!.marker !== closer.marker || lastPiece !== closer.piece - 1) headerIdx = closerIdx;
+    lastPiece = closer.piece;
+    if (!closer.close) continue;
+    const bottom = (closer.open ? 3 : 0) + (closer.length % 3);
+    let openerIdx = headerIdx - jumps[headerIdx]! - 1;
+    let newBottom = openerIdx;
+    for (; openerIdx > openersBottom[closer.marker][bottom]!; openerIdx -= jumps[openerIdx]! + 1) {
+      const opener = delimiters[openerIdx]!;
+      if (opener.marker !== closer.marker || !opener.open || opener.end >= 0) continue;
+      const oddMatch =
+        (opener.close || closer.open) &&
+        (opener.length + closer.length) % 3 === 0 &&
+        (opener.length % 3 !== 0 || closer.length % 3 !== 0);
+      if (oddMatch) continue;
+      const lastJump = openerIdx > 0 && !delimiters[openerIdx - 1]!.open ? jumps[openerIdx - 1]! + 1 : 0;
+      jumps[closerIdx] = closerIdx - openerIdx + lastJump;
+      jumps[openerIdx] = lastJump;
+      closer.open = false;
+      opener.end = closerIdx;
+      opener.close = false;
+      newBottom = -1;
+      lastPiece = -2;
+      break;
+    }
+    if (newBottom !== -1) openersBottom[closer.marker][bottom] = newBottom;
   }
-  return undefined;
+}
+
+/**
+ * `pieces` with each pair of delimiters `balancePairs` made into emphasis, as
+ * markdown-it's emphasis `postProcess` makes them: innermost pair first, a pair
+ * strong where the pair enclosing it is of the same marker and touches it at
+ * both ends, so the two are spent as one, and italic otherwise. A delimiter
+ * left unpaired is the text it is.
+ */
+function emphasized(pieces: readonly Inline[], delimiters: readonly Delimiter[]): Inline[] {
+  const roles = new Map<number, "bold" | "italic" | "close" | "spent">();
+  for (let i = delimiters.length - 1; i >= 0; i--) {
+    const opener = delimiters[i]!;
+    if (opener.end < 0) continue;
+    const closer = delimiters[opener.end]!;
+    const outer = delimiters[i - 1];
+    const strong =
+      outer !== undefined &&
+      outer.end === opener.end + 1 &&
+      outer.marker === opener.marker &&
+      outer.piece === opener.piece - 1 &&
+      delimiters[opener.end + 1]!.piece === closer.piece + 1;
+    roles.set(opener.piece, strong ? "bold" : "italic").set(closer.piece, "close");
+    if (strong) {
+      roles.set(outer.piece, "spent").set(delimiters[opener.end + 1]!.piece, "spent");
+      i--;
+    }
+  }
+  const open: Inline[][] = [[]];
+  const styles: ("bold" | "italic")[] = [];
+  for (const [p, piece] of pieces.entries()) {
+    const role = roles.get(p);
+    switch (role) {
+      case "bold":
+      case "italic":
+        styles.push(role);
+        open.push([]);
+        break;
+      case "close": {
+        const children = open.pop()!;
+        open.at(-1)!.push({ kind: "emphasis", style: styles.pop()!, children });
+        break;
+      }
+      case "spent":
+        break;
+      case undefined:
+        open.at(-1)!.push(piece);
+    }
+  }
+  return open[0]!;
 }
 
 /**
@@ -751,19 +903,9 @@ function inlineAt(text: string, i: number, brackets: ReadonlyMap<number, number>
         ? { kind: "code", code: text.slice(i + ticks.length, found.index), end: found.index + ticks.length }
         : { kind: "text", text: ticks, end: i + ticks.length };
     }
-    case "*": {
-      const strong = text.startsWith("**", i) ? emphasisClose(text, i + 2, "**", brackets) : undefined;
-      const delimiter = strong === undefined ? "*" : "**";
-      const close = strong ?? emphasisClose(text, i + 1, "*", brackets);
-      return close === undefined
-        ? undefined
-        : {
-            kind: "emphasis",
-            style: strong === undefined ? "italic" : "bold",
-            inner: text.slice(i + delimiter.length, close),
-            end: close + delimiter.length,
-          };
-    }
+    case "*":
+    case "_":
+      return delimiterRun(text, i);
     case "&":
       return referenceAt(text, i);
     case "\\": {
@@ -782,44 +924,63 @@ function inlineAt(text: string, i: number, brackets: ReadonlyMap<number, number>
       const image = text[i] === "!";
       const open = image ? i + 1 : i;
       const close = brackets.get(open);
-      const destination = close === undefined ? undefined : linkDestination(text, close + 1);
+      if (close === undefined) return undefined;
+      const destination = linkDestination(text, close + 1);
       if (!destination) return undefined;
-      const label = text.slice(open + 1, close);
       return image
-        ? { kind: "image", alt: label, src: destination.url, end: destination.end }
-        : { kind: "link", inner: label, url: destination.url, end: destination.end };
+        ? { kind: "image", alt: text.slice(open + 1, close), src: destination.url, end: destination.end }
+        : { kind: "link", label: open + 1, close, url: destination.url, end: destination.end };
     }
     default:
       return undefined;
   }
 }
 
-/** `text` read into inlines: each construct `inlineAt` finds, the text inside emphasis and a link read the same way, and the text between them as it is. */
-function parseInline(text: string): Inline[] {
-  const brackets = bracketPairs(text);
-  const inlines: Inline[] = [];
-  let plain = 0;
-  for (let i = 0; i < text.length; ) {
+/**
+ * `text` from `from` to its end read into inlines, as markdown-it's inline
+ * pass reads it: each construct `inlineAt` finds, the text between them as it
+ * is, and its delimiters then paired into emphasis. `text` runs on before
+ * `from` as the block's own text does, so a delimiter run reads what borders
+ * it there; `brackets` is that text's `bracketPairs`.
+ */
+function inlines(text: string, from: number, brackets: ReadonlyMap<number, number>): Inline[] {
+  const pieces: Inline[] = [];
+  const delimiters: Delimiter[] = [];
+  let plain = from;
+  for (let i = from; i < text.length; ) {
     const found = inlineAt(text, i, brackets);
     if (!found) {
       i++;
       continue;
     }
-    if (plain < i) inlines.push({ kind: "text", text: text.slice(plain, i) });
-    inlines.push(matched(found));
+    if (plain < i) pieces.push({ kind: "text", text: text.slice(plain, i) });
+    if (found.kind === "delimiters") {
+      for (let k = 0; k < found.length; k++) {
+        delimiters.push({ marker: found.marker, length: found.length, piece: pieces.length, open: found.canOpen, close: found.canClose, end: -1 });
+        pieces.push({ kind: "text", text: found.marker });
+      }
+    } else pieces.push(matched(found, text, brackets));
     i = plain = found.end;
   }
-  if (plain < text.length) inlines.push({ kind: "text", text: text.slice(plain) });
-  return inlines;
+  if (plain < text.length) pieces.push({ kind: "text", text: text.slice(plain) });
+  balancePairs(delimiters);
+  return emphasized(pieces, delimiters);
 }
 
-/** The inline `found` is, the text inside it read into inlines of its own. */
-function matched(found: InlineMatch): Inline {
+/** `text` read into inlines from its start. */
+function parseInline(text: string): Inline[] {
+  return inlines(text, 0, bracketPairs(text));
+}
+
+/**
+ * The inline `found` in `text` is, a link's label read into inlines of its
+ * own: the block's text up to the label's `]`, so the delimiters inside it
+ * pair only with each other, as markdown-it's are.
+ */
+function matched(found: Exclude<InlineMatch, DelimiterRun>, text: string, brackets: ReadonlyMap<number, number>): Inline {
   switch (found.kind) {
-    case "emphasis":
-      return { kind: "emphasis", style: found.style, children: parseInline(found.inner) };
     case "link":
-      return { kind: "link", children: parseInline(found.inner), url: found.url };
+      return { kind: "link", children: inlines(text.slice(0, found.close), found.label, brackets), url: found.url };
     case "autolink":
       return { kind: "autolink", text: normalizeLinkText(found.source), url: found.url };
     case "code":
