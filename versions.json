@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-460",
-      "ref": "refs/pull/460/merge",
-      "sha": "255899f7d68fc8c361adf6eb7b7d5548ab01835d",
-      "timestamp": "2026-10-17T22:48:36.797Z",
-      "commits": [
-        {
-          "sha": "255899f7d68fc8c361adf6eb7b7d5548ab01835d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T22:46:52Z",
-          "message": "Merge 1fe683513427c6695db5283cbddd736130f80df4 into 881996066e0b1638c18a3849029197ca919f1305\n"
-        },
-        {
-          "sha": "1fe683513427c6695db5283cbddd736130f80df4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T16:46:47-06:00",
-          "message": "Complexity guards: devEngines asks for the Node with threadCpuUsage, a self-test pins that time off the CPU is not counted, full-size output checks are back, and near-floor sizes are doubled (rich-unfiled-791c.xrxj)\n\nReview (high) of #460: process.threadCpuUsage exists from Node 22.19 / 23.9,\nwhich devEngines (^22.18.0 || >=23.6.0) did not require; the self-tests only\nsimulated load with CPU work both clocks count, so reverting to wall time stayed\ngreen; the 3-element output checks dropped the at-scale correctness the\nbudget tests had; four smaller runs sat under 15 ms of CPU here, about 2x the\nfloor on a runner twice as fast.\n"
-        },
-        {
-          "sha": "211f4fd78803a88b7e7b35bfcd6ebdc0554b8555",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T16:31:58-06:00",
-          "message": "Complexity guards assert how their time grows, on the thread's CPU time, instead of a wall-clock budget (rich-unfiled-791c.xrxj)\n\nThe ten remaining guards that timed one run against a 1 s or 2 s budget\nnow assert growth through expectLinearTime, one call per workload so a\nquadratic one cannot hide behind a larger linear one beside it. Each was\nrun against the super-linear code it guards: the commit before its fix,\nor, where that code only ever existed mid-PR, a reconstruction (the RUN\nand TRAILING_RUN_RE lookbehinds dropped, a whole-list filter per plugin\npair, a quote re-read per lazy line). Every one read 13-229x for 4x.\nJSONHighlighter was never quadratic on any of the runs but digits; its\ncases stay as the contract the describe states.\n\nexpectLinearTime now reads process.threadCpuUsage, not performance.now.\nInside the full suite a linear highlighter's larger run took two to three\ntimes as long as alone while its smaller one did not, reading 8.8-10.9x:\na run shorter than a scheduler slice escapes oversubscription that a\nlonger one pays for its whole length, so a wall-clock ratio does not\ncancel load. Three full-suite runs green after the change.\n\nThe Markdown guards time parsing only. Drawing a long paragraph is\nquadratic in Segment.divide, filed as rich-unfiled-791c.vzmy.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "881996066e0b1638c18a3849029197ca919f1305",
-      "timestamp": "2026-10-17T21:40:33.264Z",
+      "sha": "8ce16bbe0165aabfff0945e23c6a45465b35c7aa",
+      "timestamp": "2026-10-17T22:57:06.649Z",
       "commits": [
         {
-          "sha": "881996066e0b1638c18a3849029197ca919f1305",
+          "sha": "8ce16bbe0165aabfff0945e23c6a45465b35c7aa",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T15:39:09-06:00",
-          "message": "Markdown counts a tab after a nested quote's `>` from the content of the quote around it, as markdown-it does (rich-unfiled-791c.g10i) (#459)\n\n* Markdown counts a tab after a nested quote's `>` from the content of the quote around it, as markdown-it does (rich-unfiled-791c.g10i)\n\nmarkdown-it resets bsCount at each `>` to the column past it measured from\nthe enclosing quote's content, not cumulatively, so past the second `>` its\ntab stops are not the source's. It also measures the whitespace after a `>`\nin the enclosing quote's columns while cutting indentation in the new\nquote's, so the two can disagree. A Line now carries both: `lead` (sCount)\nand `text` re-based on the quote's content (bsCount), plus `written` so a\ncut that stops before an item's marker keeps the marker, as getLines does.\n\nA differential fuzz of 6000 nested-quote inputs against Rich 15 went from\n1661 differing to 15, none newly wrong; the 15 are rich-unfiled-791c.jlk3.\n\n* A Line holds its text once, as written, and how many leading characters are list markers, not a blanked copy beside it (rich-unfiled-791c.g10i)\n\ntext and written had to stay aligned character for character, and nothing\nheld them to it; a spread replacing one would have desynchronised\ndropColumns. The markers now read as spaces wherever columns are counted.\n\n* The blockquote comment says a quote reads its `>` lines from its content on, as quoted() now builds them (rich-unfiled-791c.g10i)"
+          "timestamp": "2026-10-17T16:55:16-06:00",
+          "message": "Complexity guards assert how their time grows, on the thread's CPU time, instead of a wall-clock budget (rich-unfiled-791c.xrxj) (#460)\n\n* Complexity guards assert how their time grows, on the thread's CPU time, instead of a wall-clock budget (rich-unfiled-791c.xrxj)\n\nThe ten remaining guards that timed one run against a 1 s or 2 s budget\nnow assert growth through expectLinearTime, one call per workload so a\nquadratic one cannot hide behind a larger linear one beside it. Each was\nrun against the super-linear code it guards: the commit before its fix,\nor, where that code only ever existed mid-PR, a reconstruction (the RUN\nand TRAILING_RUN_RE lookbehinds dropped, a whole-list filter per plugin\npair, a quote re-read per lazy line). Every one read 13-229x for 4x.\nJSONHighlighter was never quadratic on any of the runs but digits; its\ncases stay as the contract the describe states.\n\nexpectLinearTime now reads process.threadCpuUsage, not performance.now.\nInside the full suite a linear highlighter's larger run took two to three\ntimes as long as alone while its smaller one did not, reading 8.8-10.9x:\na run shorter than a scheduler slice escapes oversubscription that a\nlonger one pays for its whole length, so a wall-clock ratio does not\ncancel load. Three full-suite runs green after the change.\n\nThe Markdown guards time parsing only. Drawing a long paragraph is\nquadratic in Segment.divide, filed as rich-unfiled-791c.vzmy.\n\n* Complexity guards: devEngines asks for the Node with threadCpuUsage, a self-test pins that time off the CPU is not counted, full-size output checks are back, and near-floor sizes are doubled (rich-unfiled-791c.xrxj)\n\nReview (high) of #460: process.threadCpuUsage exists from Node 22.19 / 23.9,\nwhich devEngines (^22.18.0 || >=23.6.0) did not require; the self-tests only\nsimulated load with CPU work both clocks count, so reverting to wall time stayed\ngreen; the 3-element output checks dropped the at-scale correctness the\nbudget tests had; four smaller runs sat under 15 ms of CPU here, about 2x the\nfloor on a runner twice as fast."
         }
       ]
     }
