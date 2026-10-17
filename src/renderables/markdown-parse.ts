@@ -26,6 +26,13 @@ interface TableColumn<Text> {
   readonly align: CellAlign;
 }
 
+/** A list item: the blank lines that separated it from the item before, its marker, and its blocks. */
+interface ListItem<Text = readonly Inline[]> {
+  readonly gap: number;
+  readonly marker: ItemMarker;
+  readonly children: readonly MdToken<Text>[];
+}
+
 /**
  * A block, its text as `Text`: the source's own text after the block pass,
  * and that text read into inlines after the inline pass, which is what
@@ -36,7 +43,7 @@ export type MdToken<Text = readonly Inline[]> =
   | { type: "paragraph"; text: Text }
   | { type: "code_block"; code: string }
   | { type: "hr" }
-  | { type: "list_item"; marker: ItemMarker; children: readonly MdToken<Text>[] }
+  | { type: "list"; items: readonly ListItem<Text>[] }
   | { type: "blockquote"; children: readonly MdToken<Text>[] }
   /** Each row holds one cell per column: a short row filled out with empty cells, a long one cut. */
   | { type: "table"; columns: readonly TableColumn<Text>[]; rows: readonly (readonly Text[])[] }
@@ -322,7 +329,8 @@ function endsInParagraph(tokens: readonly MdToken<string>[]): boolean {
   switch (last?.type) {
     case "paragraph":
       return true;
-    case "list_item":
+    case "list":
+      return endsInParagraph(last.items[last.items.length - 1]!.children);
     case "blockquote":
       return endsInParagraph(last.children);
     default:
@@ -385,12 +393,12 @@ function itemLines(item: ItemStart, lines: readonly Line[], start: number): { in
 }
 
 /**
- * The list opened at `start`: each item as a token holding its blocks, and
- * between items the blank lines that separated them in the source. Numbers
+ * The list opened at `start`: each item holding its blocks, and the blank
+ * lines that separated it from the item before. Numbers
  * count on from the first item's, as Rich draws them, right-aligned to the
  * widest so every item hangs at one column.
  */
-function list(first: ItemStart, lines: readonly Line[], start: number): { tokens: MdToken<string>[]; next: number } {
+function list(first: ItemStart, lines: readonly Line[], start: number): { token: MdToken<string>; next: number } {
   const items: { gap: number; children: MdToken<string>[] }[] = [];
   let i = start;
   let gap = 0;
@@ -409,15 +417,9 @@ function list(first: ItemStart, lines: readonly Line[], start: number): { tokens
   // The blank lines after the last item belong to whatever follows the list.
   const next = i - gap;
   const width = String(first.start + items.length - 1).length + 1;
-  const tokens = items.flatMap(({ gap: blanks, children }, n): MdToken<string>[] => [
-    ...Array.from({ length: blanks }, (): MdToken<string> => ({ type: "blank" })),
-    {
-      type: "list_item",
-      marker: first.bullet === undefined ? { kind: "number", label: `${first.start + n}.`.padStart(width) } : { kind: "bullet" },
-      children,
-    },
-  ]);
-  return { tokens, next };
+  const marker = (n: number): ItemMarker =>
+    first.bullet === undefined ? { kind: "number", label: `${first.start + n}.`.padStart(width) } : { kind: "bullet" };
+  return { token: { type: "list", items: items.map((item, n) => ({ ...item, marker: marker(n) })) }, next };
 }
 
 function tokenize(lines: readonly Line[]): MdToken<string>[] {
@@ -506,8 +508,8 @@ function tokenize(lines: readonly Line[]): MdToken<string>[] {
     // List: its items, each Markdown of its own, as a quote is
     const item = itemStart(line);
     if (item) {
-      const { tokens: items, next } = list(item, lines, i);
-      tokens.push(...items);
+      const { token, next } = list(item, lines, i);
+      tokens.push(token);
       i = next;
       continue;
     }
@@ -1014,7 +1016,8 @@ function inlined(token: MdToken<string>): MdToken {
     case "heading":
     case "paragraph":
       return { ...token, text: parseInline(token.text) };
-    case "list_item":
+    case "list":
+      return { ...token, items: token.items.map((item) => ({ ...item, children: item.children.map(inlined) })) };
     case "blockquote":
       return { ...token, children: token.children.map(inlined) };
     case "table":

@@ -60,6 +60,23 @@ function styled(inlines: readonly Inline[], style: string | Style, settings: Inl
   return result;
 }
 
+/** `text` inside each of `styles`, outermost first, as Rich stacks the styles of the constructs it sits in. */
+function nested(text: RichText, styles: readonly (string | Style)[]): RichText {
+  return styles.reduceRight((inner, style) => new RichText("", { style }).append(inner), text);
+}
+
+/** The styles Rich enters for a link with hyperlinks on, outermost first. */
+function linkStyles(url: string): (string | Style)[] {
+  return [new Style({ link: url }), "markdown.link_url"];
+}
+
+/** The style a quote lays under everything it holds. */
+const QUOTE_STYLE = Style.parse("dim italic");
+
+function headingStyle(options: RenderOptions, level: number): Style {
+  return getStyle(options, `markdown.h${Math.min(level, 4)}`);
+}
+
 /**
  * `label` linked to `url`, appended to `result` as Rich draws a link: the
  * label is the link, or without hyperlinks nothing is, and the label's text
@@ -67,13 +84,16 @@ function styled(inlines: readonly Inline[], style: string | Style, settings: Inl
  */
 function appendLink(result: RichText, label: RichText, url: string, settings: InlineSettings): void {
   if (settings.hyperlinks) {
-    result.append(new RichText("", { style: new Style({ link: url }) }).append(new RichText("", { style: "markdown.link_url" }).append(label)));
+    result.append(nested(label, linkStyles(url)));
   } else {
     result.append(label.plain, "markdown.link").append(" (").append(url, "markdown.link_url").append(")");
   }
 }
 
-/** `inlines` appended to `result` as Rich draws each: inline HTML as nothing, and text as it is. */
+/**
+ * `inlines` appended to `result` as Rich draws each: inline HTML as nothing,
+ * an image as nothing where it sits — `imagesAhead` draws it — and text as it is.
+ */
 function appendInline(result: RichText, inlines: readonly Inline[], settings: InlineSettings, options: RenderOptions): void {
   for (const inline of inlines) {
     switch (inline.kind) {
@@ -84,6 +104,7 @@ function appendInline(result: RichText, inlines: readonly Inline[], settings: In
         result.append(inline.code, groundedStyle(options, resolveStyle(options, settings.inlineCodeStyle)));
         break;
       case "html":
+      case "image":
         break;
       case "emphasis":
         result.append(styled(inline.children, inline.style, settings, options));
@@ -94,16 +115,128 @@ function appendInline(result: RichText, inlines: readonly Inline[], settings: In
       case "autolink":
         appendLink(result, new RichText(inline.text), inline.url, settings);
         break;
-      case "image": {
-        // Rich's ImageItem: a picture glyph, then the alt text — or, with
-        // none, the image's file name — linked to the image, then a space.
-        const title = inline.alt || (inline.src.replace(/\/+$/, "").split("/").pop() ?? "");
-        const link = settings.hyperlinks ? new Style({ link: inline.src }) : "";
-        result.append(drawable(options, "🌆 ", "")).append(title, link).append(" ");
-        break;
-      }
     }
   }
+}
+
+/**
+ * What Rich's render loop meets in a block, in its order: an image, with the
+ * styles of every construct it sits in and the link it sits in, if any; and
+ * each element exiting, with its `new_line` — whether Rich puts a newline
+ * ahead of whatever it draws next.
+ */
+type Step =
+  | { kind: "image"; alt: string; src: string; styles: readonly (string | Style)[]; link: string | undefined }
+  | { kind: "exit"; newLine: boolean };
+
+interface Enclosing {
+  readonly styles: readonly (string | Style)[];
+  readonly link: string | undefined;
+}
+
+const EXIT: Step = { kind: "exit", newLine: true };
+
+function* inlineSteps(inlines: readonly Inline[], within: Enclosing, settings: InlineSettings): Iterable<Step> {
+  for (const inline of inlines) {
+    switch (inline.kind) {
+      case "image":
+        yield { kind: "image", alt: inline.alt, src: inline.src, ...within };
+        break;
+      case "emphasis":
+        yield* inlineSteps(inline.children, { ...within, styles: [...within.styles, inline.style] }, settings);
+        break;
+      case "link": {
+        // Without hyperlinks Rich enters no style for a link, and an image in one is linked to nothing.
+        const styles = settings.hyperlinks ? [...within.styles, ...linkStyles(inline.url)] : within.styles;
+        yield* inlineSteps(inline.children, { styles, link: inline.url }, settings);
+        break;
+      }
+      case "text":
+      case "code":
+      case "autolink":
+      case "html":
+        break;
+    }
+  }
+}
+
+/**
+ * The step Rich takes exiting `token`'s element: every element sets
+ * `new_line` but a rule, which draws its own blank row after it, and a blank
+ * token is no element.
+ */
+function exitSteps(token: MdToken): readonly Step[] {
+  return token.type === "blank" ? [] : [{ kind: "exit", newLine: token.type !== "hr" }];
+}
+
+/**
+ * The steps inside `token`, up to and not including its own exit: Rich
+ * checks `new_line` ahead of drawing a block before it exits it. A table's
+ * cells are elements of their own, the header's first.
+ */
+function* stepsInside(token: MdToken, within: Enclosing, options: RenderOptions, settings: InlineSettings): Iterable<Step> {
+  const children = function* (blocks: readonly MdToken[], inner: Enclosing): Iterable<Step> {
+    for (const child of blocks) {
+      yield* stepsInside(child, inner, options, settings);
+      yield* exitSteps(child);
+    }
+  };
+  switch (token.type) {
+    case "paragraph":
+      yield* inlineSteps(token.text, within, settings);
+      break;
+    case "heading":
+      yield* inlineSteps(token.text, { ...within, styles: [...within.styles, headingStyle(options, token.level)] }, settings);
+      break;
+    case "list":
+      for (const item of token.items) {
+        yield* children(item.children, within);
+        yield EXIT;
+      }
+      break;
+    case "blockquote":
+      yield* children(token.children, { ...within, styles: [...within.styles, QUOTE_STYLE] });
+      break;
+    case "table":
+      for (const cell of [...token.columns.map(({ header }) => header), ...token.rows.flat()]) {
+        yield* inlineSteps(cell, within, settings);
+        yield EXIT;
+      }
+      break;
+    case "code_block":
+    case "html_block":
+    case "hr":
+    case "blank":
+      break;
+  }
+}
+
+/**
+ * Every image in `token`, drawn ahead of it as Rich draws one: the moment its
+ * render loop meets it, at the full width, ending no row — so the block's own
+ * first row, or the next image, carries on after it. Rich checks `new_line`
+ * before everything it draws; the blank tokens between blocks stand for the
+ * check ahead of each block's first image, and every check after one is drawn
+ * here, the last ahead of the block itself.
+ */
+function* imagesAhead(token: MdToken, options: RenderOptions, settings: InlineSettings): Iterable<Segment> {
+  // Undefined until the first image: until then the check is the blank tokens'.
+  let newLine: boolean | undefined;
+  for (const step of stepsInside(token, { styles: [], link: undefined }, options, settings)) {
+    if (step.kind === "exit") {
+      if (newLine !== undefined) newLine = step.newLine;
+      continue;
+    }
+    if (newLine) yield Segment.line();
+    // Rich's ImageItem: a picture glyph, then the alt text in the styles it
+    // sits in — or, with none, the image's file name, unstyled — linked to the
+    // link it sits in or else to the image, then a space.
+    const title = step.alt ? nested(new RichText(step.alt), step.styles) : new RichText(step.src.replace(/\/+$/, "").split("/").pop() ?? "");
+    if (settings.hyperlinks) title.stylize(new Style({ link: step.link || step.src || undefined }));
+    yield* new RichText("", { end: "" }).append(drawable(options, "🌆 ", "")).append(title).append(" ").render(options);
+    newLine = false;
+  }
+  if (newLine) yield Segment.line();
 }
 
 /**
@@ -164,75 +297,79 @@ const NO_GUTTER = new Segment("");
  * style stops where its text does.
  */
 function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, settings: BlockSettings): Iterable<Segment> {
-  for (const token of tokens) {
-    switch (token.type) {
-      case "heading": {
-        const style = getStyle(options, `markdown.h${Math.min(token.level, 4)}`);
-        const draw = inline(token.text, settings, token.level === 1 ? "center" : undefined, style);
-        yield* guttered(draw, { ...options, justify: undefined }, NO_GUTTER, NO_GUTTER);
-        break;
-      }
+  for (const token of tokens) yield* renderBlock(token, options, settings);
+}
 
-      case "paragraph": {
-        yield* guttered(inline(token.text, settings, settings.justify), options, NO_GUTTER, NO_GUTTER);
-        break;
-      }
-
-      case "code_block": {
-        const codeStyle = groundedStyle(options, getStyle(options, "markdown.code"));
-        // Tabs expanded here, as `Syntax` expands them, since a terminal would
-        // count a raw one from its own column 0 and not the code's.
-        for (const line of expandTabs(token.code, CODE_TAB_SIZE).text.split("\n")) {
-          yield new Segment(line, codeStyle);
-          yield Segment.line();
-        }
-        break;
-      }
-
-      case "hr": {
-        const rule = new Rule(undefined, { style: "markdown.hr" });
-        yield* rule.render(options);
-        break;
-      }
-
-      case "list_item": {
-        const marker = token.marker.kind === "number" ? `${token.marker.label} ` : drawable(options, "  • ", "  * ");
-        const hang = new Segment(" ".repeat(cellLen(marker)));
-        const body = (inner: RenderOptions) => renderTokens(token.children, inner, settings);
-        yield* guttered(body, options, new Segment(marker), hang);
-        break;
-      }
-
-      case "blockquote": {
-        const bar = new Segment(drawable(options, "▎ ", "| "), getStyle(options, "markdown.hr"));
-        const body = (inner: RenderOptions) => renderTokens(token.children, inner, settings);
-        yield* guttered(body, options, bar, bar, Style.parse("dim italic"));
-        break;
-      }
-
-      case "table": {
-        // Rich's TableElement: each cell inline Markdown placed by its
-        // column's alignment, the header's in `markdown.table.header` on top.
-        const cell = (text: readonly Inline[], justify: CellAlign): RichText => {
-          const content = new RichText("", { justify });
-          appendInline(content, text, settings, options);
-          return content;
-        };
-        const table = new Table({ box: SIMPLE, padEdge: false, style: "markdown.table.border", showEdge: true, collapsePadding: true });
-        for (const { header, align } of token.columns) table.addColumn(cell(header, align).stylize("markdown.table.header"));
-        for (const row of token.rows) table.addRow(...row.map((text, n) => cell(text, token.columns[n]!.align)));
-        yield* table.render(options);
-        break;
-      }
-
-      case "html_block":
-        // Rich draws nothing for one.
-        break;
-
-      case "blank":
-        yield Segment.line();
-        break;
+function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSettings): Iterable<Segment> {
+  switch (token.type) {
+    case "heading": {
+      const style = headingStyle(options, token.level);
+      const draw = inline(token.text, settings, token.level === 1 ? "center" : undefined, style);
+      yield* guttered(draw, { ...options, justify: undefined }, NO_GUTTER, NO_GUTTER);
+      break;
     }
+
+    case "paragraph": {
+      yield* guttered(inline(token.text, settings, settings.justify), options, NO_GUTTER, NO_GUTTER);
+      break;
+    }
+
+    case "code_block": {
+      const codeStyle = groundedStyle(options, getStyle(options, "markdown.code"));
+      // Tabs expanded here, as `Syntax` expands them, since a terminal would
+      // count a raw one from its own column 0 and not the code's.
+      for (const line of expandTabs(token.code, CODE_TAB_SIZE).text.split("\n")) {
+        yield new Segment(line, codeStyle);
+        yield Segment.line();
+      }
+      break;
+    }
+
+    case "hr": {
+      const rule = new Rule(undefined, { style: "markdown.hr" });
+      yield* rule.render(options);
+      break;
+    }
+
+    case "list":
+      for (const item of token.items) {
+        yield* Array.from({ length: item.gap }, () => Segment.line());
+        const marker = item.marker.kind === "number" ? `${item.marker.label} ` : drawable(options, "  • ", "  * ");
+        const hang = new Segment(" ".repeat(cellLen(marker)));
+        const body = (inner: RenderOptions) => renderTokens(item.children, inner, settings);
+        yield* guttered(body, options, new Segment(marker), hang);
+      }
+      break;
+
+    case "blockquote": {
+      const bar = new Segment(drawable(options, "▎ ", "| "), getStyle(options, "markdown.hr"));
+      const body = (inner: RenderOptions) => renderTokens(token.children, inner, settings);
+      yield* guttered(body, options, bar, bar, QUOTE_STYLE);
+      break;
+    }
+
+    case "table": {
+      // Rich's TableElement: each cell inline Markdown placed by its
+      // column's alignment, the header's in `markdown.table.header` on top.
+      const cell = (text: readonly Inline[], justify: CellAlign): RichText => {
+        const content = new RichText("", { justify });
+        appendInline(content, text, settings, options);
+        return content;
+      };
+      const table = new Table({ box: SIMPLE, padEdge: false, style: "markdown.table.border", showEdge: true, collapsePadding: true });
+      for (const { header, align } of token.columns) table.addColumn(cell(header, align).stylize("markdown.table.header"));
+      for (const row of token.rows) table.addRow(...row.map((text, n) => cell(text, token.columns[n]!.align)));
+      yield* table.render(options);
+      break;
+    }
+
+    case "html_block":
+      // Rich draws nothing for one.
+      break;
+
+    case "blank":
+      yield Segment.line();
+      break;
   }
 }
 
@@ -257,7 +394,10 @@ export class Markdown implements Renderable, Measurable {
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     // Every block below is one of a stack.
     const options = { ...rawOptions, height: stackedHeight(rawOptions.height) };
-    yield* renderTokens(this.parsed, options, this);
+    for (const token of this.parsed) {
+      yield* imagesAhead(token, options, this);
+      yield* renderBlock(token, options, this);
+    }
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
