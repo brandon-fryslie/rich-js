@@ -350,6 +350,15 @@ describe("Markdown", () => {
     expect(performance.now() - started).toBeLessThan(1000);
   });
 
+  it("reads a run of quotes in time linear in its length, whether each takes its lazy line or not", () => {
+    const started = performance.now();
+    new Markdown("> # h\nx\n".repeat(4000));
+    // Copying every line a quote might take before reading it took eight seconds here.
+    new Markdown("> a\nb\n".repeat(4000));
+    // Reading a quote again for each lazy line it took took nine seconds here.
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
   it("reads a paragraph behind unclosed brackets in time linear in its length", () => {
     const started = performance.now();
     new Markdown("[".repeat(19) + "a".repeat(2_000_000));

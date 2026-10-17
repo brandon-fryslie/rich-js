@@ -105,6 +105,41 @@ interface Line {
   readonly lazy: boolean;
 }
 
+/**
+ * A container's lines, each made the first time its block pass reads it, as
+ * markdown-it's block pass reads a container's lines in place. A container
+ * costs the lines its block pass reads, not every line it might take: a quote
+ * whose block pass stops at the first lazy continuation line it does not take
+ * reads that line, not the rest of the document after it.
+ */
+class Lines {
+  private readonly made: Line[] = [];
+
+  constructor(private readonly source: Iterator<Line, unknown>) {}
+
+  /** The line at `i`, or nothing where the container ends before it. */
+  at(i: number): Line | undefined {
+    while (this.made.length <= i) {
+      const next = this.source.next();
+      if (next.done) return undefined;
+      this.made.push(next.value);
+    }
+    return this.made[i];
+  }
+
+  /** The lines from `start` up to `end`. */
+  slice(start: number, end: number): Line[] {
+    this.at(end - 1);
+    return this.made.slice(start, end);
+  }
+
+  /** How many lines the container holds, every one of them made. */
+  count(): number {
+    while (this.at(this.made.length) !== undefined);
+    return this.made.length;
+  }
+}
+
 /** An ATX heading's opening: one to six `#`, then a space, a tab or the end of the line. */
 const HEADING = /^#{1,6}(?=[ \t]|$)/;
 /** A thematic break: three or more of one of `*`, `-` or `_`, spaces and tabs between them allowed. */
@@ -305,9 +340,9 @@ function alignments(line: Line): CellAlign[] | undefined {
  * reads one: a header row with a pipe in it, then a delimiter row naming as
  * many columns.
  */
-function tableAt(lines: readonly Line[], start: number): TableColumn<string>[] | undefined {
-  const head = lines[start]!;
-  const delimiter = lines[start + 1];
+function tableAt(lines: Lines, start: number): TableColumn<string>[] | undefined {
+  const head = lines.at(start)!;
+  const delimiter = lines.at(start + 1);
   if (delimiter === undefined || !tableLine(head) || !body(head).includes("|")) return undefined;
   const aligns = alignments(delimiter);
   if (!aligns) return undefined;
@@ -365,15 +400,16 @@ function underline(line: Line | undefined): RegExpExecArray | null {
 }
 
 /**
- * Whether `line`, short of a container's marker or indentation, may still
- * belong to it as a lazy continuation line, as markdown-it's containers take
- * one: any line with text that opens no block of its own. A line outside the
- * container is read without the paragraph under it, so any list item —
- * whatever it counts from — ends the container rather than continuing it.
- * Whether a paragraph or a definition open before it takes the line is the
- * container's own block pass to find, which ends the container where neither does.
+ * Whether `line` has text and opens no block of its own: what a container
+ * takes short of its marker or indentation as a lazy continuation line, and
+ * what a definition reads on through, as markdown-it's `getNextLine` hands one
+ * over. A line outside a container is read without the paragraph under it, so
+ * any list item — whatever it counts from — ends the container rather than
+ * continuing it. Whether a paragraph or a definition open before a lazy line
+ * takes it is the container's own block pass to find, which ends the
+ * container where neither does.
  */
-function lazyContinuation(line: Line): boolean {
+function continuesText(line: Line): boolean {
   return !isBlank(line) && !opensBlock(line);
 }
 
@@ -386,9 +422,9 @@ function lazyContinuation(line: Line): boolean {
  * it after a line ending and keeps it in a code span, as is whether a line
  * ending breaks soft or hard, since an escape or a code span decides it.
  */
-function continuation(lines: readonly Line[], start: number): { text: string; next: number } {
+function continuation(lines: Lines, start: number): { text: string; next: number } {
   let i = start + 1;
-  for (; i < lines.length && !isBlank(lines[i]!) && !endsParagraph(lines[i]!) && !tableAt(lines, i); i++);
+  for (let line = lines.at(i); line !== undefined && !isBlank(line) && !endsParagraph(line) && !tableAt(lines, i); line = lines.at(++i));
   return { text: pyStrip(lines.slice(start, i).map((line) => dropColumns(line, 0)).join("\n")), next: i };
 }
 
@@ -414,20 +450,20 @@ const WHITESPACE_RUN = new RegExp(`${PY_WHITESPACE}+`, "g");
  * without it, ending with its destination's line. `next` is the index of the
  * line after it.
  */
-function definitionAt(lines: readonly Line[], start: number): { label: string; url: string; next: number } | undefined {
-  if (!body(lines[start]!).startsWith("[")) return undefined;
+function definitionAt(lines: Lines, start: number): { label: string; url: string; next: number } | undefined {
+  if (!body(lines.at(start)!).startsWith("[")) return undefined;
   // The definition's text so far, each line from its first character that is
   // not leading whitespace and ended by its line ending. markdown-it takes a
   // line on only as a read reaches the end of the last; this takes them on in
   // runs that double, which changes nothing — every read that reaches the end
   // takes more on — but copies the text of a definition running over n lines
   // log n times rather than n.
-  let text = `${body(lines[start]!)}\n`;
+  let text = `${body(lines.at(start)!)}\n`;
   let taken = start + 1;
   let run = 1;
   const takeLines = (): string => {
     const more: string[] = [];
-    for (; more.length < run && taken < lines.length && continuesDefinition(lines, taken); taken++) more.push(`${body(lines[taken]!)}\n`);
+    for (; more.length < run && continuesDefinition(lines, taken); taken++) more.push(`${body(lines.at(taken)!)}\n`);
     run *= 2;
     return (text += more.join(""));
   };
@@ -473,10 +509,11 @@ function definitionAt(lines: readonly Line[], start: number): { label: string; u
 
 /**
  * Whether the line at `at` continues a definition, as markdown-it's
- * `getNextLine` hands one over: it has text, and opens no block of its own.
+ * `getNextLine` hands one over: text, and not a table's header row.
  */
-function continuesDefinition(lines: readonly Line[], at: number): boolean {
-  return !isBlank(lines[at]!) && !opensBlock(lines[at]!) && !tableAt(lines, at);
+function continuesDefinition(lines: Lines, at: number): boolean {
+  const line = lines.at(at);
+  return line !== undefined && continuesText(line) && !tableAt(lines, at);
 }
 
 /** The character that closes a link title, by the one that opens it. */
@@ -503,30 +540,58 @@ function titleAt(text: string, start: number, takeLines: () => string): { end: n
 }
 
 /**
- * The list item opened at `start`, at `level`: its blocks, read from every
- * line after it that is blank, indented to the content column, or a lazy
- * continuation line, up to where its own block pass stops — and the index of
- * the line that ended it. Blank lines trailing the item are left to whatever
- * follows it, and an item that opens with a blank line ends at the next one:
- * it is empty.
+ * The lines of the list item opened at `start`: its first line's text, then
+ * every line after it indented to the content column, each line with text in
+ * it short of that a lazy continuation line, and each blank line with a line
+ * indented to the content column after it. Blank lines trailing the item are
+ * left to whatever follows it, and an item that opens with a blank line ends
+ * at the next one: it is empty.
  */
-function listItem(item: ItemStart, level: number, lines: readonly Line[], start: number): { children: Block[]; next: number } {
-  const inner = item.first === undefined ? [] : [item.first];
-  // Where `inner`'s first line sits in `lines`.
-  const from = item.first === undefined ? start + 1 : start;
-  for (let i = start + 1; i < lines.length; i++) {
-    const line = lines[i]!;
-    const blank = isBlank(line);
-    if (blank && inner.length === 0) break;
-    if (blank || (!line.lazy && leadEnd(line) >= item.content)) inner.push({ text: line.text, margin: item.content, lazy: false });
-    else if (lazyContinuation(line)) inner.push({ ...line, lazy: true });
-    else break;
+function* itemLines(item: ItemStart, lines: Lines, start: number): Generator<Line> {
+  const held = (line: Line): boolean => !line.lazy && leadEnd(line) >= item.content;
+  const inItem = (line: Line): Line => ({ text: line.text, margin: item.content, lazy: false });
+  // Whether the item holds a line with text yet, which a blank line or a lazy one must come after.
+  let text = item.first !== undefined;
+  if (item.first !== undefined) yield item.first;
+  for (let i = start + 1; ; i++) {
+    let line = lines.at(i);
+    let after = i;
+    while (line !== undefined && isBlank(line)) line = lines.at(++after);
+    if (line === undefined || (after > i && !(text && held(line)))) return;
+    for (; i < after; i++) yield inItem(lines.at(i)!);
+    if (held(line)) yield inItem(line);
+    else if (text && continuesText(line)) yield { ...line, lazy: true };
+    else return;
+    text = true;
   }
-  while (inner.length > 0 && isBlank(inner[inner.length - 1]!)) inner.pop();
-  const { tokens, end } = tokenize(inner, level);
-  let taken = end;
-  while (taken > 0 && isBlank(inner[taken - 1]!)) taken--;
-  return { children: tokens, next: from + taken };
+}
+
+/**
+ * The lines of the quote opening at `start`: its `>` lines with the marker
+ * blanked, and each unmarked line after one with text a lazy continuation line.
+ */
+function* quoteLines(lines: Lines, start: number): Generator<Line> {
+  // Whether the line before has text, which a lazy line must come after.
+  let text = false;
+  for (let j = start, line = lines.at(j); line !== undefined; line = lines.at(++j)) {
+    if (startsWith(line, QUOTE)) {
+      const inQuote = quoted(line);
+      text = !isBlank(inQuote);
+      yield inQuote;
+    } else if (text && continuesText(line)) yield { ...line, lazy: true };
+    else return;
+  }
+}
+
+/**
+ * The list item opened at `start`, at `level`: its blocks, read from its
+ * lines up to where its own block pass stops — and the index of the line
+ * that ended it.
+ */
+function listItem(item: ItemStart, level: number, lines: Lines, start: number): { children: Block[]; next: number } {
+  const { tokens, end } = tokenize(new Lines(itemLines(item, lines, start)), level);
+  // An item with no text on its first line holds its lines from the line after it.
+  return { children: tokens, next: (item.first === undefined ? start + 1 : start) + end };
 }
 
 /**
@@ -555,7 +620,7 @@ function swallowsRest(children: readonly Block[]): boolean {
  * where an item swallowed the rest of `lines`, the `unread` they are, ending
  * where they do.
  */
-function list(first: ItemStart, level: number, lines: readonly Line[], start: number): { tokens: Block[]; next: number } {
+function list(first: ItemStart, level: number, lines: Lines, start: number): { tokens: Block[]; next: number } {
   const items: Block[][] = [];
   let i = start;
   // Where the last item's lines end.
@@ -564,17 +629,17 @@ function list(first: ItemStart, level: number, lines: readonly Line[], start: nu
   for (
     let item: ItemStart | undefined = first;
     item && sameList(first, item);
-    item = i < lines.length ? itemStart(lines[i]!) : undefined
+    item = lines.at(i) === undefined ? undefined : itemStart(lines.at(i)!)
   ) {
     // A list and its item each nest a level, as markdown-it's tokens do.
     const { children, next } = listItem(item, level + 2, lines, i);
     items.push(children);
     swallowed = swallowsRest(children);
-    end = swallowed ? lines.length : next;
-    for (i = end; i < lines.length && isBlank(lines[i]!); i++);
+    end = swallowed ? lines.count() : next;
+    for (i = end; lines.at(i) !== undefined && isBlank(lines.at(i)!); i++);
   }
   const token: Block = { type: "list", start: first.bullet === undefined ? first.start : undefined, items };
-  if (swallowed) return { tokens: [token, { type: "unread" }], next: lines.length };
+  if (swallowed) return { tokens: [token, { type: "unread" }], next: end };
   // The blank lines after the last item belong to whatever follows the list.
   return { tokens: [token], next: end };
 }
@@ -588,19 +653,18 @@ function list(first: ItemStart, level: number, lines: readonly Line[], start: nu
  * it skips blank lines and stops at a lazy one before it checks the level, so
  * only content with text in it is left unread.
  */
-function tokenize(lines: readonly Line[], level: number): { tokens: Block[]; end: number } {
+function tokenize(lines: Lines, level: number): { tokens: Block[]; end: number } {
   const tokens: Block[] = [];
   let i = 0;
 
-  while (i < lines.length) {
-    const line = lines[i]!;
+  for (let line = lines.at(i); line !== undefined; line = lines.at(i)) {
 
     if (isBlank(line)) {
       i++;
       continue;
     }
     if (line.lazy) break;
-    if (level >= MAX_NESTING) return { tokens: [{ type: "unread" }], end: lines.length };
+    if (level >= MAX_NESTING) return { tokens: [{ type: "unread" }], end: lines.count() };
 
     // Table: before every other block, as markdown-it tries it, so a header
     // row that reads as a heading or a list item is still a header. Its body
@@ -609,8 +673,8 @@ function tokenize(lines: readonly Line[], level: number): { tokens: Block[]; end
     if (columns) {
       const rows: string[][] = [];
       let autocompleted = 0;
-      for (i += 2; i < lines.length && pyStrip(lines[i]!.text) !== "" && tableLine(lines[i]!) && !opensBlock(lines[i]!); i++) {
-        const cells = rowCells(body(lines[i]!));
+      for (let row = lines.at((i += 2)); row !== undefined && pyStrip(row.text) !== "" && tableLine(row) && !opensBlock(row); row = lines.at(++i)) {
+        const cells = rowCells(body(row));
         autocompleted += columns.length - cells.length;
         if (autocompleted > MAX_AUTOCOMPLETED_CELLS) break;
         rows.push(columns.map((_, n) => cells[n] ?? ""));
@@ -622,8 +686,8 @@ function tokenize(lines: readonly Line[], level: number): { tokens: Block[]; end
     // Indented code: its lines, and the blank lines between them, with the indent cut off
     if (indentOf(line) >= CODE_INDENT) {
       let end = i + 1;
-      for (let j = end; j < lines.length && (isBlank(lines[j]!) || (!lines[j]!.lazy && indentOf(lines[j]!) >= CODE_INDENT)); j++) {
-        if (!isBlank(lines[j]!)) end = j + 1;
+      for (let j = end, code = lines.at(j); code !== undefined && (isBlank(code) || (!code.lazy && indentOf(code) >= CODE_INDENT)); code = lines.at(++j)) {
+        if (!isBlank(code)) end = j + 1;
       }
       tokens.push({ type: "code_block", code: lines.slice(i, end).map((code) => dropColumns(code, CODE_INDENT)).join("\n") });
       i = end;
@@ -652,8 +716,8 @@ function tokenize(lines: readonly Line[], level: number): { tokens: Block[]; end
       const indent = indentOf(line);
       const close = closingFence(fence[1]!);
       const codeLines: string[] = [];
-      for (i++; i < lines.length && !lines[i]!.lazy && !startsWith(lines[i]!, close); i++) codeLines.push(dropColumns(lines[i]!, indent));
-      if (i < lines.length && !lines[i]!.lazy) i++; // skip the closing fence
+      for (let code = lines.at(++i); code !== undefined && !code.lazy && !startsWith(code, close); code = lines.at(++i)) codeLines.push(dropColumns(code, indent));
+      if (lines.at(i)?.lazy === false) i++; // skip the closing fence
       tokens.push({ type: "code_block", code: codeLines.join("\n") });
       continue;
     }
@@ -662,14 +726,7 @@ function tokenize(lines: readonly Line[], level: number): { tokens: Block[]; end
     // and each unmarked line after one with text a lazy continuation line,
     // up to where its own block pass stops
     if (startsWith(line, QUOTE)) {
-      const inner: Line[] = [];
-      for (let j = i; j < lines.length; j++) {
-        const next = lines[j]!;
-        if (startsWith(next, QUOTE)) inner.push(quoted(next));
-        else if (!isBlank(inner[inner.length - 1]!) && lazyContinuation(next)) inner.push({ ...next, lazy: true });
-        else break;
-      }
-      const { tokens: children, end } = tokenize(inner, level + 1);
+      const { tokens: children, end } = tokenize(new Lines(quoteLines(lines, i)), level + 1);
       tokens.push({ type: "blockquote", children });
       i += end;
       continue;
@@ -698,15 +755,15 @@ function tokenize(lines: readonly Line[], level: number): { tokens: Block[]; end
     if (html) {
       const { end } = html;
       const closes = end === "blank" ? isBlank : (closing: Line) => end.test(body(closing));
-      while (i < lines.length && !lines[i]!.lazy && !closes(lines[i]!)) i++;
-      if (i < lines.length && !lines[i]!.lazy && end !== "blank") i++;
+      for (let at = lines.at(i); at !== undefined && !at.lazy && !closes(at); at = lines.at(++i));
+      if (lines.at(i)?.lazy === false && end !== "blank") i++;
       tokens.push({ type: "html_block" });
       continue;
     }
 
     // Paragraph, or a setext heading when a line of `=` or `-` underlines it
     const { text, next } = continuation(lines, i);
-    const setext = underline(lines[next]);
+    const setext = underline(lines.at(next));
     tokens.push(
       setext
         ? { type: "heading", level: setext[1]!.startsWith("=") ? 1 : 2, text }
@@ -1422,6 +1479,6 @@ function inlinedBlock(token: Exclude<Block, BlockMark>, definitions: Definitions
 /** `source` read as Markdown: its blocks, and the text in each read into inlines. A line ends at `\r\n`, `\r` or `\n`, as markdown-it normalizes them. */
 export function parseMarkdown(source: string): MdToken[] {
   const lines = source.split(/\r\n?|\n/).map((text): Line => ({ text, margin: 0, lazy: false }));
-  const { tokens } = tokenize(lines, 0);
+  const { tokens } = tokenize(new Lines(lines.values()), 0);
   return inlined(tokens, definitionsIn(tokens));
 }
