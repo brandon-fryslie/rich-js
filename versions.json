@@ -4,15 +4,22 @@
     {
       "version": "pr-439",
       "ref": "refs/pull/439/merge",
-      "sha": "40eecdebc922aec1f3ec6500b05d4d0b8194078d",
-      "timestamp": "2026-10-17T12:07:29.224Z",
+      "sha": "fcc63bfb808d9973a58fc7b63b2dfeb5dc597a24",
+      "timestamp": "2026-10-17T12:21:16.568Z",
       "commits": [
         {
-          "sha": "40eecdebc922aec1f3ec6500b05d4d0b8194078d",
+          "sha": "fcc63bfb808d9973a58fc7b63b2dfeb5dc597a24",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T06:06:13-06:00",
-          "message": "Merge d0d10e80ee188d06fea1484017d6729269b93197 into fba9dcd11dd39b4f64f188a0b1a7bf8c1af4a160\n"
+          "timestamp": "2026-10-17T12:19:54Z",
+          "message": "Merge e7f1c631d19277e344340b2ba331bc67313b598f into fba9dcd11dd39b4f64f188a0b1a7bf8c1af4a160\n"
+        },
+        {
+          "sha": "e7f1c631d19277e344340b2ba331bc67313b598f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T06:19:48-06:00",
+          "message": "Markdown pads a code block with Padding and strips it in one pass (rich-unfiled-791c.ct7i review)\n\nThe trailing-whitespace regex was quadratic in an interior run; pyRstrip\nscans from the end over the one PY_WHITESPACE set. The hand-built margin\nis Padding, so at widths under three the code keeps a column before the\npadding does, as every Padding does. The width is parsed once at the top\nof Markdown.render.\n"
         },
         {
           "sha": "d0d10e80ee188d06fea1484017d6729269b93197",
