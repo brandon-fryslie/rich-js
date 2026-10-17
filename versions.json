@@ -4,15 +4,22 @@
     {
       "version": "pr-462",
       "ref": "refs/pull/462/merge",
-      "sha": "afb20f57946a00e04d8c496bb226277c35309f22",
-      "timestamp": "2026-10-17T23:36:57.852Z",
+      "sha": "927f0db2d992446b53271ebc28a38aa495a33e4b",
+      "timestamp": "2026-10-17T23:46:06.777Z",
       "commits": [
         {
-          "sha": "afb20f57946a00e04d8c496bb226277c35309f22",
+          "sha": "927f0db2d992446b53271ebc28a38aa495a33e4b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T17:35:15-06:00",
-          "message": "Merge 8c6d778fcb951d68a7ec6a734c7c1a9cdc961f90 into 773c9cda93ddffceb299125ec88f43a1b655d55c\n"
+          "timestamp": "2026-10-17T23:44:36Z",
+          "message": "Merge b020dc0828aef79e5e810b9ac65ec45cdb09534d into 773c9cda93ddffceb299125ec88f43a1b655d55c\n"
+        },
+        {
+          "sha": "b020dc0828aef79e5e810b9ac65ec45cdb09534d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T17:44:31-06:00",
+          "message": "TextInput's viewport starts at a glyph boundary, so a wide glyph never pushes the cursor out of view, and multi-line measure leaves a scroll arrow its cell (rich-unfiled-791c.dn30)\n"
         },
         {
           "sha": "8c6d778fcb951d68a7ec6a734c7c1a9cdc961f90",
