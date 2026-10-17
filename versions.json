@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-429",
+      "ref": "refs/pull/429/merge",
+      "sha": "73e3edc0d9a1a8bb6ada85f9768262dbf62623a9",
+      "timestamp": "2026-10-17T05:14:34.938Z",
+      "commits": [
+        {
+          "sha": "73e3edc0d9a1a8bb6ada85f9768262dbf62623a9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T23:12:48-06:00",
+          "message": "Merge fdc8a3bee284d5d40f25c2cf96fd127409276488 into 06e92939529a05253185707d6c0f5725a228b312\n"
+        },
+        {
+          "sha": "fdc8a3bee284d5d40f25c2cf96fd127409276488",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T23:12:44-06:00",
+          "message": "Markdown pairs * and _ emphasis by markdown-it's flanking rules, as Rich does (rich-unfiled-791c.ljiy)\n\nEmphasis was found by scanning forward for a closing *, which knew nothing\nof _, of flanking, or of the rule of 3. The scan now records each * or _\nrun as a delimiter whose can-open and can-close are read once from what\nborders it (scanDelims), pairs them in markdown-it's balance_pairs pass,\nand makes strong and em from the pairs as its emphasis postProcess does.\nA link's label is read from the block's own text up to its ], so its\ndelimiters see what precedes them and pair only with each other.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "06e92939529a05253185707d6c0f5725a228b312",
