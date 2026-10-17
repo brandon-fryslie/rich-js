@@ -49,8 +49,9 @@ are drawn in `markdown.item`, which the default theme leaves plain. A quote draw
 down its left side in `markdown.block_quote`, magenta, and lays that style under everything it
 holds, as Rich's does; a block inside it that has a style of its own, code or a rule, draws in
 that.
-Tabs in the indentation reach the stops of 4 they reach in the source, however deep the line
-is nested.
+Tabs in the indentation reach stops of 4 as markdown-it counts them: from the source's column
+0, but in a quote inside another quote from where an outer quote's content starts, so there a
+tab may reach a stop the source does not give it.
 Blocks nest only as deep as markdown-it reads them, 20 levels — a quote counts one, a list and
 its item one each. Past that a container's content is not drawn, and a list item that deep
 with text in it takes every line after it, to the end of the quote or document it sits in.

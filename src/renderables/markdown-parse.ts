@@ -90,11 +90,22 @@ export type Inline =
   | { kind: "hardbreak" };
 
 /**
- * A source line inside the container that holds it: the line as written, with
- * every container marker it sat behind blanked to spaces so its columns are
- * still the source's, and `margin`, the column its container's content starts
- * at. Columns are counted from the source's column 0, so a tab reaches the
- * stop it reaches in the source however deep the line is nested. A `lazy`
+ * A source line inside the container that holds it, in markdown-it's columns:
+ * `text` is the line from its innermost quote's content on, behind
+ * `quoteStart` spaces — that content's column — and a tab in it reaches the
+ * next stop of 4 from column 0, as markdown-it's `bsCount` has it. `margin`
+ * is the column its container's content starts at, and `lead` the column its
+ * leading whitespace ends at, as the quote that took the line measured it.
+ * Outside any quote these are the source's columns. A quote counts its own
+ * columns from the content start of the quote around it, not from the
+ * source's column 0, so past the second `>` a tab may reach a stop the source
+ * does not give it; and it measures the whitespace after its `>` in the
+ * columns of the quote around it, so `lead` may disagree with where `text`'s
+ * leading whitespace ends. markdown-it reads both, each where it does: `lead`
+ * for how far the line is indented and where its text sits, `text`'s own
+ * stops for the indentation a block cuts off it (`dropColumns`). `written` is
+ * `text` with the list markers it sits behind as written, not blanked: what
+ * that cut leaves of one where it stops before it. A `lazy`
  * line was taken in short of its container's marker or indentation, as a
  * lazy continuation line: it continues a paragraph or a definition open
  * before it, and where none is, the container ends at it. It is `"quote"` once
@@ -106,8 +117,16 @@ export type Inline =
  */
 interface Line {
   readonly text: string;
+  readonly written: string;
+  readonly quoteStart: number;
   readonly margin: number;
+  readonly lead: number;
   readonly lazy: false | "quote" | "item";
+}
+
+/** A line of the source as the top level holds it. */
+function sourceLine(text: string): Line {
+  return { text, written: text, quoteStart: 0, margin: 0, lead: advance(0, LEAD.exec(text)![0]), lazy: false };
 }
 
 /**
@@ -236,14 +255,9 @@ function advance(from: number, ws: string): number {
   return [...ws].reduce((col, ch) => (ch === "\t" ? col + 4 - (col % 4) : col + 1), from);
 }
 
-/** The column `line`'s leading whitespace ends at. */
-function leadEnd(line: Line): number {
-  return advance(0, LEAD.exec(line.text)![0]);
-}
-
 /** How far `line` is indented inside its container. */
 function indentOf(line: Line): number {
-  return Math.max(0, leadEnd(line) - line.margin);
+  return Math.max(0, line.lead - line.margin);
 }
 
 /** `line` from its first character that is not leading whitespace. */
@@ -271,10 +285,10 @@ function dropColumns(line: Line, n: number): string {
   let i = 0;
   for (; i < line.text.length && col < to && (line.text[i] === " " || line.text[i] === "\t"); i++) {
     const next = advance(col, line.text[i]!);
-    if (next > to) return " ".repeat(next - to) + line.text.slice(i + 1);
+    if (next > to) return " ".repeat(next - to) + line.written.slice(i + 1);
     col = next;
   }
-  return line.text.slice(i);
+  return line.written.slice(i);
 }
 
 /**
@@ -305,15 +319,26 @@ function itemStart(line: Line): ItemStart | undefined {
   const spacing = LEAD.exec(after)![0];
   const rest = after.slice(spacing.length);
   if (spacing === "" && rest !== "") return undefined;
-  const markerEnd = leadEnd(line) + m[0].length;
+  const markerEnd = line.lead + m[0].length;
   const spaced = advance(markerEnd, spacing) - markerEnd;
   const content = rest === "" || spaced > CODE_INDENT ? markerEnd + 1 : markerEnd + spaced;
-  const lead = line.text.slice(0, line.text.length - text.length);
+  const leadLength = line.text.length - text.length;
+  const lead = line.text.slice(0, leadLength);
   return {
     marker: m[1] === undefined ? { bullet: m[0] } : { delimiter: m[0].slice(-1), start: parseInt(m[1], 10) },
     indent: content - line.margin,
     margin: line.margin,
-    first: rest === "" ? undefined : { text: lead + " ".repeat(m[0].length) + after, margin: content, lazy: false },
+    first:
+      rest === ""
+        ? undefined
+        : {
+            ...line,
+            text: lead + " ".repeat(m[0].length) + after,
+            written: line.written.slice(0, leadLength) + m[0] + after,
+            margin: content,
+            lead: markerEnd + spaced,
+            lazy: false,
+          },
   };
 }
 
@@ -386,14 +411,24 @@ function sameList(a: ItemStart, b: ItemStart): boolean {
 }
 
 /**
- * A `>` line as a line of its quote: the marker blanked, and the quote's
- * content starting past it and the one column of space that may follow it —
- * one column of a tab, when a tab follows it.
+ * A `>` line as a line of its quote, as markdown-it's blockquote reads one:
+ * the quote's content starts past the marker and the one column of space that
+ * may follow it — one column of a tab, when a tab follows it, the rest of the
+ * tab left in the content unless that column was all of it. The whitespace
+ * after the marker is measured in `line`'s own columns, and the content is
+ * then counted from where the content of `line`'s quote starts, not from
+ * `line`'s column 0.
  */
 function quoted(line: Line): Line {
-  const at = line.text.length - body(line).length;
-  const spaced = /[ \t]/.test(line.text[at + 1] ?? "");
-  return { text: `${line.text.slice(0, at)} ${line.text.slice(at + 1)}`, margin: leadEnd(line) + 1 + (spaced ? 1 : 0), lazy: false };
+  const after = body(line).slice(1);
+  const ws = LEAD.exec(after)![0];
+  const marked = line.lead + 1;
+  const space = ws === "" ? 0 : 1;
+  const start = line.lead - line.quoteStart + 1 + space;
+  const whole = after[0] === " " || (after[0] === "\t" && marked % 4 === 3);
+  const rest = whole ? after.slice(1) : after;
+  const text = " ".repeat(start) + rest;
+  return { text, written: text, quoteStart: start, margin: start, lead: start + advance(marked, ws) - marked - space, lazy: false };
 }
 
 /** The kind of HTML block `line` opens, if it opens one: the first kind whose opening it matches, as markdown-it tries them in order. */
@@ -587,8 +622,8 @@ function titleAt(text: string, start: number, takeLines: () => string): { end: n
  */
 function* itemLines(item: ItemStart, lines: Lines, start: number): Generator<Line> {
   const held = (line: Line): boolean => !line.lazy && indentOf(line) >= item.indent;
-  const inItem = (line: Line): Line => ({ text: line.text, margin: line.margin + item.indent, lazy: false });
-  const short = (line: Line): Line => ({ text: line.text, margin: item.margin, lazy: "item" });
+  const inItem = (line: Line): Line => ({ ...line, margin: line.margin + item.indent, lazy: false });
+  const short = (line: Line): Line => ({ ...line, margin: item.margin, lazy: "item" });
   // Whether the item holds a line with text yet, which a blank line or a lazy one must come after.
   let text = item.first !== undefined;
   if (item.first !== undefined) yield item.first;
@@ -614,7 +649,7 @@ function* itemLines(item: ItemStart, lines: Lines, start: number): Generator<Lin
  * container.
  */
 function outdented(line: Line): Line {
-  const read = { ...line, margin: leadEnd(line) };
+  const read = { ...line, margin: line.lead };
   return line.lazy === "item" && itemStart(read) !== undefined ? line : read;
 }
 
@@ -1586,7 +1621,7 @@ function inlinedBlock(token: Exclude<Block, BlockMark>, definitions: Definitions
 
 /** `source` read as Markdown: its blocks, and the text in each read into inlines. A line ends at `\r\n`, `\r` or `\n`, as markdown-it normalizes them. */
 export function parseMarkdown(source: string): MdToken[] {
-  const lines = source.split(/\r\n?|\n/).map((text): Line => ({ text, margin: 0, lazy: false }));
+  const lines = source.split(/\r\n?|\n/).map(sourceLine);
   const { tokens } = tokenize(new Lines(lines.values()), 0);
   return inlined(tokens, definitionsIn(tokens));
 }
