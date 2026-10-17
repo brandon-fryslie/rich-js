@@ -351,7 +351,7 @@ describe("runInTerminal", () => {
 
   const ran = async (program: string) => (await runInTerminal(program, terminal(75))).runsOn;
 
-  it("says a program runs on while a timer it set is still set once its body's jobs have run", async () => {
+  it("says a program runs on when a timer it set is still set once its body's jobs have run", async () => {
     expect(await ran("setTimeout(() => {}, 0); await Promise.resolve();")).toBe(false);
     expect(await ran("clearInterval(setInterval(() => {}, 5)); clearTimeout(setTimeout(() => {}, 5));")).toBe(false);
     expect(await ran("setTimeout(() => {}, 20);")).toBe(true);
@@ -368,8 +368,9 @@ describe("runInTerminal", () => {
     const stall = "const until = performance.now() + 30;\nwhile (performance.now() < until);";
     expect(await ran(`setTimeout(() => {}, 10);\n${stall}`)).toBe(true);
     expect(await ran(`const id = setInterval(() => clearInterval(id), 10);\n${stall}`)).toBe(true);
-    // A 1 ms timer is still one of the jobs the body queued.
+    // A 1 ms timer is still one of the jobs the body queued, and so is a fractional one Node truncates to 1 ms.
     expect(await ran(`setTimeout(() => {}, 0);\n${stall}`)).toBe(false);
+    expect(await ran(`setTimeout(() => {}, 1.9);\n${stall}`)).toBe(false);
   });
 
   it("hands process.exit to the terminal", async () => {

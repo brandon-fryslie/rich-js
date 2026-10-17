@@ -261,34 +261,36 @@ type Handler = (...args: unknown[]) => void;
 
 /**
  * A timer's delay as Node takes it: one below 1 ms, past 2^31 - 1 or not a
- * number is 1 ms. A browser runs a delay of 0 at 0, so a program run there
- * would order its timers otherwise than in Node, and `Returned.runsOn` would
- * answer otherwise in the build than on the page.
+ * number is 1 ms, and a fraction is truncated, so a delay of 1.5 is 1. A
+ * browser runs a delay of 0 at 0, so a program run there would order its
+ * timers otherwise than in Node, and `Returned.runsOn` would answer otherwise
+ * in the build than on the page.
  */
 const nodeDelay = (ms: number | undefined): number => {
   const delay = Number(ms);
-  return delay >= 1 && delay <= 2 ** 31 - 1 ? delay : 1;
+  return delay >= 1 && delay <= 2 ** 31 - 1 ? Math.trunc(delay) : 1;
 };
 
 /**
  * The program's timer functions: the host's, read at each call, with every
- * timer still set counted and every delay taken as Node takes it. A timeout
- * counts until it fires or is cleared, an interval until it is cleared. The
+ * timer still set tracked and every delay taken as Node takes it. A timeout
+ * is set until it fires or is cleared, an interval until it is cleared. The
  * host keeps one pool of ids for both and clears either through either, so
  * one clear serves both names.
  *
  * [LAW:one-source-of-truth] `returned` answers whether the program runs on
- * past its body: a timer it set is still set once every job its body queued
- * has run. Those jobs are its timers of 1 ms, Node's least delay
- * (`nodeDelay`), and timers of one delay fire in the order they were set, so
- * the 1 ms timer `returned` sets fires after every one of them, in Node and in
- * a browser alike. The build (example-runner.ts) and the page's static run
+ * past its body: once every job its body queued has run, a timer it set is
+ * still set, or a timer longer than 1 ms has fired since the body returned.
+ * Those jobs are its timers of 1 ms, Node's least delay (`nodeDelay`), and
+ * timers of one delay fire in the order they were set, so the 1 ms timer
+ * `returned` sets fires after every one of them, in Node and in a browser
+ * alike. The build (example-runner.ts) and the page's static run
  * (theme/live-worker.ts) both read this, so a block the build drew is one an
  * edit can draw.
  *
  * [LAW:no-ambient-temporal-coupling] Only that order is relied on, never a
- * longer delay's: a program timer of 10 ms set just before its body returned
- * is due before the 1 ms one whenever the loop stalls 9 ms on the way to it.
+ * longer delay's: a program timer of 10 ms set 9 ms before its body returned
+ * (the body busy all that while) is due before the 1 ms one set on return.
  * So any longer timer that fires once the body has returned has run on, and
  * is counted as it fires rather than by whether it is still set.
  */
