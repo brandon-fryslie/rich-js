@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-439",
+      "ref": "refs/pull/439/merge",
+      "sha": "40eecdebc922aec1f3ec6500b05d4d0b8194078d",
+      "timestamp": "2026-10-17T12:07:29.224Z",
+      "commits": [
+        {
+          "sha": "40eecdebc922aec1f3ec6500b05d4d0b8194078d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T06:06:13-06:00",
+          "message": "Merge d0d10e80ee188d06fea1484017d6729269b93197 into fba9dcd11dd39b4f64f188a0b1a7bf8c1af4a160\n"
+        },
+        {
+          "sha": "d0d10e80ee188d06fea1484017d6729269b93197",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T06:06:08-06:00",
+          "message": "Markdown draws a code block inside Syntax's margin, as Rich does (rich-unfiled-791c.ct7i)\n\nRich's CodeBlock hands the code, rstripped, to Syntax(word_wrap=True,\npadding=1). The block now draws through our Syntax the same way: word-wrapped\nat width-2, tab stops of 4 (was 8), and a one-cell margin of the code's style\non every side. Trailing whitespace is Python's str.isspace set, not JS's \\s.\nPinned against Rich 15 rows, including widths 1 and 2 where Rich draws only\nthe margin.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "fba9dcd11dd39b4f64f188a0b1a7bf8c1af4a160",
