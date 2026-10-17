@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-444",
-      "ref": "refs/pull/444/merge",
-      "sha": "b764bdeb101d3250f99df85d85d5e44f8c97b4ce",
-      "timestamp": "2026-10-17T15:17:30.194Z",
-      "commits": [
-        {
-          "sha": "b764bdeb101d3250f99df85d85d5e44f8c97b4ce",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T15:16:14Z",
-          "message": "Merge 0f180e8291ac413f70447aad2e7a3101d524ff64 into 097acd5b614a07f0050f33fd1e95e483f8e674ed\n"
-        },
-        {
-          "sha": "0f180e8291ac413f70447aad2e7a3101d524ff64",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T09:16:10-06:00",
-          "message": "Markdown heading test: the closing-run comment states both conditions, in real characters (rich-unfiled-791c.4op8)\n"
-        },
-        {
-          "sha": "dd47e85716b66ef2c2b5ecf616b33ae82eee2172",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T09:13:03-06:00",
-          "message": "Markdown cuts an ATX heading's closing #s, as markdown-it does (rich-unfiled-791c.4op8)\n\nA run of # at the end of a heading line, spaces and tabs after it allowed,\nis cut when a space or tab comes before it: '# x #' draws 'x', '# x#' keeps\nits '#', and '# #' is an empty heading. Pinned against Rich 15.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "097acd5b614a07f0050f33fd1e95e483f8e674ed",
-      "timestamp": "2026-10-17T15:08:20.051Z",
+      "sha": "2666c650b9d20477d70b711db4424bb90706e356",
+      "timestamp": "2026-10-17T15:25:52.803Z",
       "commits": [
         {
-          "sha": "097acd5b614a07f0050f33fd1e95e483f8e674ed",
+          "sha": "2666c650b9d20477d70b711db4424bb90706e356",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T09:07:00-06:00",
-          "message": "Markdown reads a number closed by ')' as an ordered item, as markdown-it does (rich-unfiled-791c.zhwr) (#443)\n\n* Markdown reads a number closed by ')' as an ordered item, as markdown-it does (rich-unfiled-791c.zhwr)\n\nAn item start now carries markdown-it's marker character — the bullet, or\na number's delimiter — and two items share a list when it matches, so a\n'.' list and a ')' list split as a '-' list and a '*' list do.\n\n* ItemStart's marker is CommonMark's two kinds, so a bullet cannot carry a number; nested and quoted delimiter changes pinned (rich-unfiled-791c.zhwr review)"
+          "timestamp": "2026-10-17T09:24:09-06:00",
+          "message": "Markdown cuts an ATX heading's closing #s, as markdown-it does (rich-unfiled-791c.4op8) (#444)\n\n* Markdown cuts an ATX heading's closing #s, as markdown-it does (rich-unfiled-791c.4op8)\n\nA run of # at the end of a heading line, spaces and tabs after it allowed,\nis cut when a space or tab comes before it: '# x #' draws 'x', '# x#' keeps\nits '#', and '# #' is an empty heading. Pinned against Rich 15.\n\n* Markdown heading test: the closing-run comment states both conditions, in real characters (rich-unfiled-791c.4op8)"
         }
       ]
     }
