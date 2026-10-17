@@ -4,15 +4,22 @@
     {
       "version": "pr-447",
       "ref": "refs/pull/447/merge",
-      "sha": "0490990bf3385123f4ec1b1e7584655d070fb54e",
-      "timestamp": "2026-10-17T16:07:50.851Z",
+      "sha": "5868494f330bad1e76b549492724bed4f996248a",
+      "timestamp": "2026-10-17T16:14:55.609Z",
       "commits": [
         {
-          "sha": "0490990bf3385123f4ec1b1e7584655d070fb54e",
+          "sha": "5868494f330bad1e76b549492724bed4f996248a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T10:06:01-06:00",
-          "message": "Merge d8638285662d1c150d8bcc02d72f493cdc57b1f5 into 201b6f5593ae0b66c16cd9cfc6557b6525788690\n"
+          "timestamp": "2026-10-17T16:13:09Z",
+          "message": "Merge 0f1f2b2b3abf88ae2439465000e129c9426334fa into 201b6f5593ae0b66c16cd9cfc6557b6525788690\n"
+        },
+        {
+          "sha": "0f1f2b2b3abf88ae2439465000e129c9426334fa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T10:13:04-06:00",
+          "message": "Markdown measures the step past an empty item from where the item ends (rich-unfiled-791c.tx0u)\n\nReview: both branches now count from `end`, one blank line skipped after an\nempty item and all of them after any other. Container cases are pinned with\nordered items, where one list and two number differently; bullets draw the\nsame either way in Rich.\n"
         },
         {
           "sha": "d8638285662d1c150d8bcc02d72f493cdc57b1f5",
