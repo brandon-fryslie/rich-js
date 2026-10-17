@@ -359,12 +359,6 @@ const CODE_TAB_SIZE = parseTabSize(8);
 const NO_GUTTER = new Segment("");
 
 /**
- * Each block in `tokens`, every row it draws ended, body text placed by
- * `settings.justify`. A heading keeps its own placement whatever `settings`
- * or `options` say — Rich's: an h1 centred, every other level left — and its
- * style stops where its text does.
- */
-/**
  * `tokens` drawn as Rich's `render_lines` draws a quote's or an item's
  * content: in `style`, every row padded to the width in it and ended.
  */
@@ -375,6 +369,12 @@ function* renderLines(tokens: readonly MdToken[], options: RenderOptions, settin
   }
 }
 
+/**
+ * Each block in `tokens`, every row it draws ended, body text placed by
+ * `settings.justify`. A heading keeps its own placement whatever `settings`
+ * or `options` say — Rich's: an h1 centred, every other level left — and its
+ * style stops where its text does.
+ */
 function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, settings: BlockSettings): Iterable<Segment> {
   for (const token of tokens) yield* renderBlock(token, options, settings);
 }
