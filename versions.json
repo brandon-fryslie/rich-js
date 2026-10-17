@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-426",
-      "ref": "refs/pull/426/merge",
-      "sha": "4948ff597e59953625f0c01c1e512895c2ce91a9",
-      "timestamp": "2026-10-17T04:03:51.782Z",
-      "commits": [
-        {
-          "sha": "4948ff597e59953625f0c01c1e512895c2ce91a9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T04:02:21Z",
-          "message": "Merge 4a29970aacc27e85f1c5495907ed38474aa7b160 into 5ac97fcea4985359b587249d56eae2edd68037f5\n"
-        },
-        {
-          "sha": "4a29970aacc27e85f1c5495907ed38474aa7b160",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T22:02:16-06:00",
-          "message": "Markdown links nothing without hyperlinks and nothing to an empty URL, as Rich does (rich-unfiled-791c.95jg)\n\nReview (high, escalation): Rich attaches no link when hyperlinks is\nfalse, and its Style reads an empty link as none, so Style now takes an\nempty URL as no link. mdurl's protocol is matched as Python's\nIGNORECASE matches it, which folds four non-ASCII letters into [a-z].\n"
-        },
-        {
-          "sha": "5b99c4bb64fee858963d2a6920c105e3ddbcccc2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T21:50:13-06:00",
-          "message": "Markdown strips a link's whitespace in one pass, as Python's str.strip does (rich-unfiled-791c.95jg)\n\nReview (medium): the trailing alternative of PY_STRIP backtracked over\nevery interior whitespace run, so a URL holding 200k U+3000 took 43 s;\npyStrip scans in from each end and takes 25 ms.\n"
-        },
-        {
-          "sha": "ebec152dc8d8ebadd9ed4e58974aec892ceb8f75",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T21:38:56-06:00",
-          "message": "Markdown draws an image's alt text and an unhyperlinked label as Rich does, and scans an autolink in one pass (rich-unfiled-791c.95jg)\n\nReview (high): Rich draws alt text as written and a link label without\nhyperlinks as plain text in markdown.link; both pinned against Rich 14.\nautolinkAt stops at the first < or >, as markdown-it does, and an\nautolink's display text is decoded only when drawn.\n"
-        },
-        {
-          "sha": "c4c78cf0511cad1bb6b84a8e564c346a4ba1a2a3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T21:26:19-06:00",
-          "message": "Markdown draws an autolink as Rich does, and makes every link's href as markdown-it does (rich-unfiled-791c.95jg)\n\n`<http://e.com>` and `<a@b.co>` now draw as links whose text is the address,\nan email linking to mailto:. Links, images and autolinks all take their href\nfrom src/renderables/markdown-url.ts, a port of markdown-it-py's\nnormalizeLink / normalizeLinkText / validateLink with the mdurl and punycode\npieces they stand on — so a javascript:, vbscript:, file: or non-image data:\nURL is no link, as in Rich. Tests pinned against Rich 14 output.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "5ac97fcea4985359b587249d56eae2edd68037f5",
-      "timestamp": "2026-10-17T03:30:20.923Z",
+      "sha": "34b047be217c1802bf9a623d11c6423ad6907f14",
+      "timestamp": "2026-10-17T04:12:32.669Z",
       "commits": [
         {
-          "sha": "5ac97fcea4985359b587249d56eae2edd68037f5",
+          "sha": "34b047be217c1802bf9a623d11c6423ad6907f14",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T21:28:36-06:00",
-          "message": "chore(release): 0.24.0 (#423)"
+          "timestamp": "2026-10-16T22:11:25-06:00",
+          "message": "Markdown draws an autolink as Rich does, and makes every link's href as markdown-it does (rich-unfiled-791c.95jg) (#426)\n\n* Markdown draws an autolink as Rich does, and makes every link's href as markdown-it does (rich-unfiled-791c.95jg)\n\n`<http://e.com>` and `<a@b.co>` now draw as links whose text is the address,\nan email linking to mailto:. Links, images and autolinks all take their href\nfrom src/renderables/markdown-url.ts, a port of markdown-it-py's\nnormalizeLink / normalizeLinkText / validateLink with the mdurl and punycode\npieces they stand on — so a javascript:, vbscript:, file: or non-image data:\nURL is no link, as in Rich. Tests pinned against Rich 14 output.\n\n* Markdown draws an image's alt text and an unhyperlinked label as Rich does, and scans an autolink in one pass (rich-unfiled-791c.95jg)\n\nReview (high): Rich draws alt text as written and a link label without\nhyperlinks as plain text in markdown.link; both pinned against Rich 14.\nautolinkAt stops at the first < or >, as markdown-it does, and an\nautolink's display text is decoded only when drawn.\n\n* Markdown strips a link's whitespace in one pass, as Python's str.strip does (rich-unfiled-791c.95jg)\n\nReview (medium): the trailing alternative of PY_STRIP backtracked over\nevery interior whitespace run, so a URL holding 200k U+3000 took 43 s;\npyStrip scans in from each end and takes 25 ms.\n\n* Markdown links nothing without hyperlinks and nothing to an empty URL, as Rich does (rich-unfiled-791c.95jg)\n\nReview (high, escalation): Rich attaches no link when hyperlinks is\nfalse, and its Style reads an empty link as none, so Style now takes an\nempty URL as no link. mdurl's protocol is matched as Python's\nIGNORECASE matches it, which folds four non-ASCII letters into [a-z]."
         }
       ]
     }
