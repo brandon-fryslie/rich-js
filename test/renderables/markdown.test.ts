@@ -834,6 +834,13 @@ describe("Markdown", () => {
     expect(rows("> > b\n    c", 40)).toEqual(["", "▌ ▌ b c", ""]);
     expect(rows("> b\n    ---", 40)).toEqual(["", "▌ b ---", ""]);
     expect(rows("> - a\n    ---", 40)).toEqual(["", "▌  • a ---", ""]);
+    // A list item on a line lazy only to list items sits where the line does: a code indent past the list, it is text.
+    expect(rows("1.   > b\n    - c", 40)).toEqual(["", " 1 ▌ b - c", ""]);
+    expect(rows("1.   > b\n    1. ", 40)).toEqual(["", " 1 ▌ b 1.", ""]);
+    expect(rows("10.   > b\n \t- c", 40)).toEqual(["", " 10 ▌ b - c", ""]);
+    expect(rows("1.   > b\n   - c", 40)).toEqual(["", " 1 ▌ b", "", " • c", ""]);
+    // Lazy to a quote on the way, it is indented less than any block again.
+    expect(rows("> 1.   > b\n    - c", 40)).toEqual(["", "▌  1 ▌ b", "", "", " - c", "", ""]);
   });
 
   it("takes a `>` line after a quote's first however far it is indented, as Rich does", () => {

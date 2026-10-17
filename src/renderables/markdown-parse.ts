@@ -97,12 +97,15 @@ export type Inline =
  * stop it reaches in the source however deep the line is nested. A `lazy`
  * line was taken in short of its container's marker or indentation, as a
  * lazy continuation line: it continues a paragraph or a definition open
- * before it, and where none is, the container ends at it.
+ * before it, and where none is, the container ends at it. It is `"quote"` once
+ * any quote has taken it so, which markdown-it marks indented less than any
+ * block, and `"item"` while only list items have, which leaves it the
+ * indentation it has.
  */
 interface Line {
   readonly text: string;
   readonly margin: number;
-  readonly lazy: boolean;
+  readonly lazy: false | "quote" | "item";
 }
 
 /**
@@ -579,10 +582,21 @@ function* itemLines(item: ItemStart, lines: Lines, start: number): Generator<Lin
     if (line === undefined || (after > i && !(text && held(line)))) return;
     for (; i < after; i++) yield inItem(lines.at(i)!);
     if (held(line)) yield inItem(line);
-    else if (text && continuesText(line)) yield { ...line, lazy: true };
+    else if (text && continuesText(line)) yield { ...line, lazy: line.lazy || "item" };
     else return;
     text = true;
   }
+}
+
+/**
+ * A lazy `line` as a quote inside its container reads it, indented less than
+ * any block. A line lazy only to list items keeps its indentation for a list
+ * item, which markdown-it's list refuses at a line short of the item and a code
+ * indent past the list's container.
+ */
+function outdented(line: Line): Line {
+  const read = { ...line, margin: leadEnd(line) };
+  return line.lazy === "item" && itemStart(read) !== undefined ? line : read;
 }
 
 /**
@@ -592,7 +606,8 @@ function* itemLines(item: ItemStart, lines: Lines, start: number): Generator<Lin
  * indented. A line already lazy where the quote sits is short of its
  * container's indentation, so the quote reads it as markdown-it does, indented
  * less than any block: never a `>` line of its own, and opening whatever block
- * its text starts, however far it is indented.
+ * its text starts, however far it is indented — but a list item on a line lazy
+ * only to items, which markdown-it's list opens only where the line sits.
  */
 function* quoteLines(lines: Lines, start: number): Generator<Line> {
   // Whether the line before has text, which a lazy line must come after.
@@ -602,7 +617,7 @@ function* quoteLines(lines: Lines, start: number): Generator<Line> {
       const inQuote = quoted(line);
       text = !isBlank(inQuote);
       yield inQuote;
-    } else if (text && continuesText(line.lazy ? { ...line, margin: leadEnd(line) } : line)) yield { ...line, lazy: true };
+    } else if (text && continuesText(line.lazy ? outdented(line) : line)) yield { ...line, lazy: "quote" };
     else return;
   }
 }
