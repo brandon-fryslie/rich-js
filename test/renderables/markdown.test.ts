@@ -153,6 +153,28 @@ describe("Markdown", () => {
     expect(rows("# a\u2029", 80)).toEqual([`${" ".repeat(39)}a`, ""]);
   });
 
+  it("cuts an ATX heading's closing #s where a space or tab comes before them, as Rich does", () => {
+    const h1 = (text: string) => [`${" ".repeat(40 - Math.ceil(text.length / 2))}${text}`, ""];
+    expect(rows("# x #", 80)).toEqual(h1("x"));
+    expect(rows("# x ##  ", 80)).toEqual(h1("x"));
+    expect(rows("# x\t#\t", 80)).toEqual(h1("x"));
+    expect(rows("# x ####### ", 80)).toEqual(h1("x"));
+    expect(rows("## x ###", 80)).toEqual(["x", ""]);
+    expect(rows("> ## x ##", 80)).toEqual(["", "\u258c x", ""]);
+    // Only the last run is cut, and only a closing run: text after a # keeps it.
+    expect(rows("# x # #", 80)).toEqual(h1("x #"));
+    expect(rows("# x  #  y #", 80)).toEqual(h1("x  #  y"));
+    // No space or tab before the run \u2014 a letter, an escape, a no-break space after it \u2014 and it is text.
+    expect(rows("# x#", 80)).toEqual(h1("x#"));
+    expect(rows("# #x", 80)).toEqual(h1("#x"));
+    expect(rows("# x \\#", 80)).toEqual(h1("x #"));
+    expect(rows("# \\##", 80)).toEqual(h1("##"));
+    expect(rows("# x #\u00a0", 80)).toEqual(h1("x #"));
+    // A heading of nothing but its closing run is empty.
+    for (const md of ["# #", "# ###", "#\t#", "#  #  ", "##### #####"]) expect(rows(md, 80)).toEqual(["", "", ""]);
+    expect(rows("para\n# #", 80)).toEqual(["para", "", "", ""]);
+  });
+
   it("keeps a paragraph line's indentation in a code span that crosses its line ending", () => {
     expect(rows("foo\n    bar `x\n  y`", 80)).toEqual(["foo bar x   y", ""]);
     expect(rows("> foo\n>     bar `x\n>   y`", 80)).toEqual(["", "▌ foo bar x   y", ""]);
