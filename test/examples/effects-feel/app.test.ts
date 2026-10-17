@@ -188,7 +188,7 @@ describe("a strip under a pulse", () => {
   it("spans the columns it draws", () => {
     const strip = drawnSubject(stripSubject(CATPPUCCIN_MOCHA), options);
     const rows = [...strip.renderable.render(options)].map((segment) => segment.text).join("").split("\n");
-    expect(strip.span).toBe(Math.max(...rows.map(cellLen)));
+    expect(strip.options.maxWidth).toBe(Math.max(...rows.map(cellLen)));
   });
 
   /** What `subject` draws its words in, as `Effected` measures it. */

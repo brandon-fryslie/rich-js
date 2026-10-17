@@ -27,6 +27,7 @@ import {
   type Effect,
   type EffectCell,
   type Pair,
+  type Placed,
   type Renderable,
   type Segment,
   type TerminalTheme,
@@ -75,8 +76,10 @@ const frame = (own: ReadonlySet<string>, fills: ReadonlySet<string> = new Set(),
   depth: ColorDepth.TRUECOLOR,
   theme: CATPPUCCIN_MOCHA,
 });
-/** A frame an effect that reads nothing of it is handed. */
+/** A frame of `cells` whose element sets no colours of its own: one a loop reads only the cells of. */
 const NOTHING = frame(new Set());
+/** `NOTHING`, listing `listed` instead: an element where those cells are. */
+const listing = (listed: readonly Placed[]): Drawn => ({ ...NOTHING, cells: () => listed });
 /** An effect's frames at each moment, every one drawing the same `Drawn`. */
 type On = (t: number) => ReturnType<Effect>;
 /** `effect` in frames that draw `drawn`. */
@@ -86,7 +89,7 @@ const inkOn = new Map([[ink.hex, 1]]);
 /** `loop` on the ink at its whole share. */
 const onInk = (loop: Loop): Effect => atShares(loop, () => inkOn);
 /** `color` under `loop` at a cell and moment, at its whole share. */
-const under = (loop: Loop, color: ColorRgba, cell: EffectCell, t: number): ColorRgba => loop.touch(color, loop.field(t)(cell));
+const under = (loop: Loop, color: ColorRgba, cell: EffectCell, t: number): ColorRgba => loop.touch(color, loop.field(t, NOTHING)(cell));
 /** Every cell of `cells` in `effect`'s frame at `t`. */
 const at = (effect: Effect, t: number): CellColors[] => {
   const shown = effect(t, NOTHING);
@@ -109,12 +112,12 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
 
   it.each([0, 11.3, 22.6, 82.14])("pulse at the start of its period, at z %s", (z) => {
     const breath = pulse(curve(3, 0.2), sun, z);
-    expect(cells.map(breath.field(0))).toEqual(cells.map(() => 0));
+    expect(cells.map(breath.field(0, NOTHING))).toEqual(cells.map(() => 0));
     expect(drawn(onInk(breath), 0)).toBe(untouched);
   });
 
   it("shimmer before its band enters the row", () => {
-    expect(drawn(onInk(shimmer(curve(2, 0.7), 30, 8, sun, 0)), 0)).toBe(untouched);
+    expect(drawn(onInk(shimmer(curve(2, 0.7), 8, sun, 0)), 0)).toBe(untouched);
   });
 
   it("fade-in once it has settled", () => {
@@ -214,7 +217,7 @@ describe("the wheel", () => {
 describe("the loops move", () => {
   it.each([0, 11.3, 22.6])("pulse warms toward its light and settles back to rest, over and over, at z %s", (z) => {
     const beat = pulse(curve(8, 0.4), sun, z);
-    const series = Array.from({ length: 1200 }, (_, i) => beat.field(i / 4)(cells[0]!));
+    const series = Array.from({ length: 1200 }, (_, i) => beat.field(i / 4, NOTHING)(cells[0]!));
     expect(Math.max(...series)).toBeGreaterThan(0.4 * 0.7 * 0.9);
     expect(Math.max(...series)).toBeLessThanOrEqual(0.4);
     // Back at rest between beats, again and again: a run of rest after each.
@@ -226,15 +229,15 @@ describe("the loops move", () => {
 
   it("the element glows as one: every cell at once", () => {
     const beat = pulse(curve(8, 0.4), sun, 0);
-    for (const t of [3, 17.5, 90]) expect(new Set(cells.map(beat.field(t))).size).toBe(1);
+    for (const t of [3, 17.5, 90]) expect(new Set(cells.map(beat.field(t, NOTHING))).size).toBe(1);
   });
 
   it("each element keeps a time of its own, and no beat is the last again", () => {
     const [a, b] = [pulse(curve(43, 0.5), sun, 3.7), pulse(curve(43, 0.5), sun, 7.4)];
-    const apart = Array.from({ length: 400 }, (_, i) => Math.abs(a.field(i * 2)(cells[0]!) - b.field(i * 2)(cells[0]!)));
+    const apart = Array.from({ length: 400 }, (_, i) => Math.abs(a.field(i * 2, NOTHING)(cells[0]!) - b.field(i * 2, NOTHING)(cells[0]!)));
     expect(Math.max(...apart)).toBeGreaterThan(0.2);
     // Beats differ in depth: the tops of the first dozen are not one height.
-    const tops = Array.from({ length: 12 }, (_, n) => Math.max(...Array.from({ length: 80 }, (_, i) => a.field(((n + i / 80) * 43) / 0.9)(cells[0]!))));
+    const tops = Array.from({ length: 12 }, (_, n) => Math.max(...Array.from({ length: 80 }, (_, i) => a.field(((n + i / 80) * 43) / 0.9, NOTHING)(cells[0]!))));
     expect(Math.max(...tops) - Math.min(...tops)).toBeGreaterThan(0.01);
   });
 
@@ -250,7 +253,7 @@ describe("the loops move", () => {
   });
 
   it("sparkle lights a few cells at a time, each at its own strength", () => {
-    const fireflies = onInk(sparkle(curve(22, 0.5), 40, EFFECT_LIGHTS.firefly, 0));
+    const fireflies = onInk(sparkle(curve(22, 0.5), EFFECT_LIGHTS.firefly, 0));
     // Lit as an eye sees it: more than a just-noticeable difference from the
     // ink. A halo's faint edge changes a byte without lighting the cell.
     const moments = Array.from({ length: 60 }, (_, t) =>
@@ -268,8 +271,8 @@ describe("the loops move", () => {
     // Over two minutes, and lit within them: two dark elements draw alike
     // whatever their fireflies would have done.
     const at = (z: number) => {
-      const loop = sparkle(curve(22, 0.5), 40, EFFECT_LIGHTS.firefly, z);
-      return Array.from({ length: 120 }, (_, t) => cells.map(loop.field(t))).flat();
+      const loop = sparkle(curve(22, 0.5), EFFECT_LIGHTS.firefly, z);
+      return Array.from({ length: 120 }, (_, t) => cells.map(loop.field(t, NOTHING))).flat();
     };
     expect(Math.max(...at(0))).toBeGreaterThan(0.25);
     expect(at(0)).not.toEqual(at(11.3));
@@ -278,13 +281,13 @@ describe("the loops move", () => {
   it("shimmer lights only the columns under its band", () => {
     const band = 8;
     const P = 2;
-    const loop = shimmer(curve(P, 0.7), 40, band, sun, 0);
+    const loop = shimmer(curve(P, 0.7), band, sun, 0);
     // Each unbroken run of lit columns clear of both ends of the row is a band
     // standing wholly on it, or two overlapping: a band lights the columns
     // strictly within `band` of its centre, so one alone, its centre between
     // two columns, lights 2·band, and that is the run seen most often. The row
     // is never lit end to end.
-    const rows = Array.from({ length: 400 }, (_, i) => cells.map(loop.field(i * 0.1)).map((w) => (w > 0 ? "x" : " ")).join(""));
+    const rows = Array.from({ length: 400 }, (_, i) => cells.map(loop.field(i * 0.1, NOTHING)).map((w) => (w > 0 ? "x" : " ")).join(""));
     const runs = rows.flatMap((row) =>
       row
         .slice(1, -1)
@@ -301,9 +304,9 @@ describe("the loops move", () => {
 
   it("shimmer's passes come unevenly, as the sun goes in and out", () => {
     const P = 10;
-    const loop = shimmer(curve(P, 0.7), 40, 8, sun, 0);
+    const loop = shimmer(curve(P, 0.7), 8, sun, 0);
     // Whether any light is on the row, second by second, over sixty periods.
-    const on = Array.from({ length: 60 * P }, (_, t) => cells.map(loop.field(t)).some((w) => w > 0));
+    const on = Array.from({ length: 60 * P }, (_, t) => cells.map(loop.field(t, NOTHING)).some((w) => w > 0));
     // The lengths of the unbroken runs where the light is `want`.
     const spells = (want: boolean): number[] =>
       on
@@ -324,12 +327,29 @@ describe("the loops move", () => {
     expect(Math.max(...lit)).toBeGreaterThan(2 * P);
   });
 
+  it.each([
+    ["shimmer", shimmer(curve(2, 0.7), 8, sun, 0)],
+    ["sparkle", sparkle(curve(22, 0.5), EFFECT_LIGHTS.firefly, 0)],
+  ])("%s lights every column of an element where its frame lists it, far from the screen's corner", (_, loop) => {
+    // Three rows of forty columns, a hundred columns in and three rows down:
+    // a padded or confined element. A width the caller stated would have
+    // the light cross columns 0 to 40 and never reach it.
+    const element = Array.from({ length: 120 }, (_, i): EffectCell => ({ row: 3 + (i % 3), col: 100 + Math.floor(i / 3), seed: 0, terminal: written, reverse: false, anchor: undefined }));
+    const lit = new Set<number>();
+    for (let t = 0; t < 400; t += 0.5) {
+      const field = loop.field(t, listing(element));
+      for (const cell of element) if (field(cell) > 0) lit.add(cell.col);
+    }
+    expect(lit.size).toBe(40);
+  });
+
   it("shimmer draws a colour wherever the noise peaks", () => {
     // Perlin noise reaches 0.9997 under a caustic's ripple at row 15, column
     // 59, t 114.5, where a crest of 1 − hypot(noise, 0.12) went below zero and
     // its power was NaN.
-    const glint = shimmer(curve(48, 1), 400, 400, sun, 0);
-    expect(Number.isFinite(glint.field(114.5)({ row: 15, col: 59, seed: 0, terminal: written, reverse: false, anchor: undefined }))).toBe(true);
+    const glint = shimmer(curve(48, 1), 400, sun, 0);
+    const wide = listing([0, 399].map((col) => ({ row: 0, col, anchor: undefined })));
+    expect(Number.isFinite(glint.field(114.5, wide)({ row: 15, col: 59, seed: 0, terminal: written, reverse: false, anchor: undefined }))).toBe(true);
   });
 
   it("onColors and the wheel treat the terminal's colour as one outside the set, whatever its hex", () => {
@@ -365,7 +385,7 @@ describe("the loops move", () => {
 });
 
 describe("the catalogue makes every effect one way, by name", () => {
-  const element = { span: 29, z: 0 };
+  const element = { z: 0 };
   const untouched = bytes(subject);
   /** Moments across `seconds`, where any loop has moved by. */
   const across = (seconds: number): number[] => Array.from({ length: 12 }, (_, i) => ((i + 1) / 12) * seconds);
@@ -468,7 +488,7 @@ describe("the transitions run start to end", () => {
     const element = new RichText(text, { style: look, noWrap: true });
     const draw = onGround(ground);
     const { seconds } = EFFECT_CURVES[name];
-    const transition = EFFECT_CATALOGUE.transitions[name]({ span: text.length, z: 0 });
+    const transition = EFFECT_CATALOGUE.transitions[name]({ z: 0 });
     const at = (t: number) => draw(element, transition.effect, t);
     // It starts moving at once and is still moving shortly before done, which is when it stops.
     expect(at(seconds / 8)).not.toBe(at(0));
@@ -482,7 +502,7 @@ describe("the transitions run start to end", () => {
     const strip = new Strip(items, JOINERS.powerline);
     const draw = onGround("#1e1e2e");
     const { seconds } = EFFECT_CURVES.dissolve;
-    const leaving = confined(EFFECT_CATALOGUE.transitions.dissolve({ span: 6, z: 0 }).effect, items[1]!);
+    const leaving = confined(EFFECT_CATALOGUE.transitions.dissolve({ z: 0 }).effect, items[1]!);
     expect(draw(strip, leaving, seconds - 2)).not.toBe(draw(strip, leaving, seconds));
     expect(draw(strip, leaving, 1e6)).toBe(draw(strip, leaving, seconds));
   });
@@ -491,7 +511,7 @@ describe("the transitions run start to end", () => {
     const element = new Padding(new RichText("x", { style: "#33354e on #ff7825", noWrap: true }), [0, 10]);
     const draw = onGround(DEFAULT_TERMINAL_THEME.backgroundColor.hex);
     const { seconds } = EFFECT_CURVES.fade;
-    const { effect } = EFFECT_CATALOGUE.transitions.fade({ span: 21, z });
+    const { effect } = EFFECT_CATALOGUE.transitions.fade({ z });
     // What the glyph, ten cells in, is drawn in: the padding's bytes move too, with nothing in them to see.
     const glyph = (t: number): string => {
       let drawn = "";
@@ -607,9 +627,9 @@ describe("the loops never jump", () => {
   // The curves as the demo runs them with no flags.
   const curves = EFFECT_CURVES;
   const loops = {
-    pulse: (_span: number, z: number) => pulse(curves.pulse, sun, z),
-    shimmer: (span: number, z: number) => shimmer(curves.shimmer, span, SHIMMER_WIDTH, sun, z),
-    sparkle: (span: number, z: number) => sparkle(curves.sparkle, span, EFFECT_LIGHTS.firefly, z),
+    pulse: (z: number) => pulse(curves.pulse, sun, z),
+    shimmer: (z: number) => shimmer(curves.shimmer, SHIMMER_WIDTH, sun, z),
+    sparkle: (z: number) => sparkle(curves.sparkle, EFFECT_LIGHTS.firefly, z),
   };
   // No loop repeats, so any watch is a sample of the moves it makes: five
   // minutes passed loops that jumped later on. Half an hour is a status
@@ -622,18 +642,19 @@ describe("the loops never jump", () => {
   // and 47.2, first.
   const WATCHED = 1800;
   const ELEMENTS = [
-    { span: 104, z: 0, offset: 0 },
-    { span: 240, z: 22.6, offset: 0.5 },
+    { columns: 104, z: 0, offset: 0 },
+    { columns: 240, z: 22.6, offset: 0.5 },
   ];
   it.each(Object.entries(loops))("%s moves no cell more than the bar between frames at 1 fps", (_, loop) => {
     let worst = 0;
-    for (const { span, z, offset } of ELEMENTS) {
-      const strip: EffectCell[] = Array.from({ length: 2 * span }, (_, i) => ({ row: i % 2, col: Math.floor(i / 2), seed: 0, terminal: written, reverse: false, anchor: undefined }));
+    for (const { columns, z, offset } of ELEMENTS) {
+      const strip: EffectCell[] = Array.from({ length: 2 * columns }, (_, i) => ({ row: i % 2, col: Math.floor(i / 2), seed: 0, terminal: written, reverse: false, anchor: undefined }));
       for (const color of fills) {
-        const move = loop(span, z);
+        const move = loop(z);
+        const element = listing(strip);
         // A frame at a time, as a screen draws them.
         const frame = (t: number): ColorRgba[] => {
-          const field = move.field(t);
+          const field = move.field(t, element);
           return strip.map((cell) => move.touch(color, field(cell)));
         };
         let last = frame(offset);
@@ -671,7 +692,7 @@ describe("on a sixteen-colour terminal a loop holds still", () => {
       const seconds = EFFECT_CURVES[name as LoopName].seconds;
       const write = (renderable: Renderable): string => renderToString(renderable, { width: 20, colorSystem });
       const moved = elements.flatMap((element, e) => {
-        const effect = make({ span: 10, z: 7 });
+        const effect = make({ z: 7 });
         const rest = write(element);
         const t = Array.from({ length: seconds + 1 }, (_, t) => t).find((t) => write(new Effected(element, effect, { t, key: "k", theme })) !== rest);
         return t === undefined ? [] : [`element ${e} at t=${t}`];
@@ -744,7 +765,6 @@ describe("a loop lit on what Effected draws", () => {
       }),
   );
   const strip = new Strip(items, JOINERS.powerline);
-  const span = strip.measure(options).maximum;
 
   /** Each cell of `renderable` as the screen shows it: its glyph, its ink and ground, and whether it is lettering. */
   function cellsOf(renderable: Renderable): { glyph: string; fg: ColorRgba; bg: ColorRgba; lettered: boolean }[] {
@@ -762,7 +782,7 @@ describe("a loop lit on what Effected draws", () => {
   const rest = cellsOf(strip);
 
   it("shimmer lights a strip with no pairs computed by the caller, and every word still reads", () => {
-    const lit = onColors(shimmer({ ...EFFECT_CURVES.shimmer, swing: 1 }, span, SHIMMER_WIDTH, sun, 0));
+    const lit = onColors(shimmer({ ...EFFECT_CURVES.shimmer, swing: 1 }, SHIMMER_WIDTH, sun, 0));
     let moved = 0;
     for (let t = 0; t < 4 * EFFECT_CURVES.shimmer.seconds; t += 3) {
       const now = cellsOf(new Effected(strip, lit, { t, key: "strip", theme }));
@@ -903,7 +923,7 @@ describe("every loop keeps its words legible at every depth, the whole of its pe
     const seconds = EFFECT_CURVES[name as LoopName].seconds;
     const failures = elements.flatMap(([label, element]) => {
       const rest = screen(element, depth, theme);
-      const effect = make({ span: 40, z: 7 });
+      const effect = make({ z: 7 });
       for (let t = 0; t <= seconds; t++) {
         const now = screen(new Effected(element, effect, { t, key: label, theme }), depth, theme);
         const under = rest.findIndex((was, i) => was.word && contrastRatio(now[i]!.fg, now[i]!.bg) < Math.min(contrastRatio(was.fg, was.bg), AA) - slack);
@@ -921,7 +941,7 @@ describe("every loop keeps its words legible at every depth, the whole of its pe
   it("the wheel at truecolor moves no cell more than the bar between frames at 1 fps", () => {
     const theme = DEFAULT_TERMINAL_THEME;
     const failures = elements.flatMap(([label, element]) => {
-      const effect = EFFECT_CATALOGUE.loops.wheel({ span: 40, z: 7 });
+      const effect = EFFECT_CATALOGUE.loops.wheel({ z: 7 });
       const at = (t: number) => screen(new Effected(element, effect, { t, key: label, theme }), "truecolor", theme);
       let last = at(0);
       for (let t = 1; t <= EFFECT_CURVES.wheel.seconds; t++) {

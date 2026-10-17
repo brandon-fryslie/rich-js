@@ -69,7 +69,7 @@ const frames = ["loading", "loading.", "loading..", "loading..."].map((text) => 
   text: new RichText(text, { style: Style.parse("bold") }),
   seconds: 0.5,
 }));
-const lit = EFFECT_CATALOGUE.loops.pulse({ span: 10, z: 3 });
+const lit = EFFECT_CATALOGUE.loops.pulse({ z: 3 });
 
 for (const t of [0, 0.5, 1]) {
   console.print(new Effected(new Frames(frames, { t }), lit, { t, key: "loading", theme }));

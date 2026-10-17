@@ -66,9 +66,9 @@ const PLAYABLE = { shimmer, pulse, sparkle, wheel, fadeIn, dissolveOut };
  * demo's subjects as the demo does (`scene` and `view` in app.ts).
  */
 const PLAYED: Readonly<Record<EffectName, { readonly fn: keyof typeof PLAYABLE; readonly play: string }>> = {
-  shimmer: { fn: "shimmer", play: `play((s) => onColors(shimmer(CURVE, s.span, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, s.z)), ${LOOPING});` },
+  shimmer: { fn: "shimmer", play: `play((s) => onColors(shimmer(CURVE, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, s.z)), ${LOOPING});` },
   pulse: { fn: "pulse", play: `play((s) => pulsedOn(s, (z) => pulse(CURVE, EFFECT_LIGHTS.sun, z)), ${LOOPING});` },
-  sparkle: { fn: "sparkle", play: `play((s) => onColors(sparkle(CURVE, s.span, EFFECT_LIGHTS.firefly, s.z)), ${LOOPING});` },
+  sparkle: { fn: "sparkle", play: `play((s) => onColors(sparkle(CURVE, EFFECT_LIGHTS.firefly, s.z)), ${LOOPING});` },
   wheel: { fn: "wheel", play: `play((s) => wheel(CURVE, s.z), ${LOOPING});` },
   fade: { fn: "fadeIn", play: `play((s) => fadeIn(CURVE, s.z).effect, ${REPLAYING});` },
   dissolve: { fn: "dissolveOut", play: `play((s) => dissolveOut(CURVE, s.z).effect, ${REPLAYING});` },
