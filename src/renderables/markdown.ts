@@ -321,13 +321,13 @@ function drawImage(image: Image, options: RenderOptions, settings: InlineSetting
  * its rows ended. The first row's gutter is `first` and every later row's is
  * `rest`, so a list item's text hangs clear of its bullet and a quote's bar
  * runs its full height. A block with no gutter passes two empty segments:
- * every block is laid out the same way. What is drawn keeps at least one
- * column however wide the gutter, so a row may overrun its width but no gutter
- * swallows what it introduces.
+ * every block is laid out the same way. Left less than one column, `draw`
+ * draws no rows and so no gutter either, as Rich's `Console.render` renders
+ * nothing at a width under one — however deep the block is nested.
  */
 function* guttered(draw: (options: RenderOptions) => Iterable<Segment>, options: RenderOptions, first: Segment, rest: Segment): Iterable<Segment> {
-  const width = Math.max(1, options.maxWidth - cellLen(first.text));
-  const rows = Segment.splitLines(draw({ ...options, maxWidth: width }));
+  const width = options.maxWidth - cellLen(first.text);
+  const rows = Segment.splitLines(width < 1 ? [] : draw({ ...options, maxWidth: width }));
   for (const [row, line] of rows.entries()) {
     yield row === 0 ? first : rest;
     yield* line;

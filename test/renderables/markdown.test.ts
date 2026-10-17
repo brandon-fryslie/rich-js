@@ -456,10 +456,6 @@ describe("Markdown", () => {
     expect(performance.now() - started).toBeLessThan(1000);
   });
 
-  it("keeps an item's text when its gutter is as wide as the width", () => {
-    expect(rows("- hi", 3)).toEqual(["", " • h", "   i", ""]);
-  });
-
   // --- Lists hold blocks, as CommonMark reads them ---
 
   it("keeps a fence inside a list item, line for line under its hang", () => {
@@ -1159,6 +1155,23 @@ describe("Markdown", () => {
     expect(untrimmed("## one two three")).toEqual(["one two     ", "three       ", ""]);
     expect(untrimmed("> ## Head")).toEqual(["", "▌ Head    ", ""]);
     expect(untrimmed("- ## Head")).toEqual(["", " • Head     ", ""]);
+  });
+
+  // Rich 15, console.render at each width, untrimmed: up to the first width
+  // that leaves a quote's or an item's content a column, nothing is drawn.
+  it("draws a quote or an item left no column for its content as nothing, as Rich does", () => {
+    const untrimmed = (markdown: string, maxWidth: number) => collectText(new Markdown(markdown), { maxWidth }).split("\n");
+    const one = (gutter: string, hang: string) => [gutter + "o", ...[..."ne two"].map((c) => hang + c)];
+    for (const maxWidth of [1, 2, 3, 4]) expect(untrimmed("> one two", maxWidth)).toEqual(["", ""]);
+    expect(untrimmed("> one two", 5)).toEqual(["", ...one("▌ ", "▌ "), ""]);
+    for (const [markdown, marker] of [["- one two", " • "], ["1. one two", " 1 "]]) {
+      for (const maxWidth of [1, 2, 3]) expect(untrimmed(markdown!, maxWidth)).toEqual(["", ""]);
+      expect(untrimmed(markdown!, 4)).toEqual(["", ...one(marker!, "   "), ""]);
+    }
+    expect(untrimmed("- > one two", 7)).toEqual(["", ""]);
+    expect(untrimmed("- > one two", 8)).toEqual(["", ...one(" • ▌ ", "   ▌ ").map((row) => row + "  "), ""]);
+    expect(untrimmed("> - one two", 7)).toEqual(["", ""]);
+    expect(untrimmed("> - one two", 8)).toEqual(["", ...one("▌  • ", "▌    "), ""]);
   });
 
   // Rich 15: [('one two ', h2), ('    ', none), ('three', h2), ('       ', none)].
