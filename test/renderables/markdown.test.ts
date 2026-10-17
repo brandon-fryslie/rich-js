@@ -410,6 +410,28 @@ describe("Markdown", () => {
     expect(rows("- ```\n  code\nafter", 80)).toEqual([" • code", "after", ""]);
   });
 
+  // markdown-it-py 4.2's fence tokens for every case below; the rows leave out
+  // the padding Rich's Syntax draws around a code block (rich-unfiled-791c.ct7i).
+  it.each<[string, string[]]>([
+    // A backtick fence's info string holds no backtick; a tilde fence's holds anything.
+    ["```_ xaa`", ["```_ xaa`", ""]],
+    ["para\n```a`\nmore", ["para ```a` more", ""]],
+    ["~~~a~~~", ["", ""]],
+    ["~~~~a~~ b~~", ["", ""]],
+    ["~~~ `x`\ncode\n~~~\nafter", ["code", "after", ""]],
+    ["para\n~~~\ncode\n~~~", ["para", "code", ""]],
+    // Only a run of the opener's marker at least as long closes it, then only spaces and tabs.
+    ["````\ncode\n```\nmore\n````\nafter", ["code", "```", "more", "after", ""]],
+    ["```\ncode\n~~~\n```\nafter", ["code", "~~~", "after", ""]],
+    ["```\ncode\n```` \nafter", ["code", "after", ""]],
+    ["```\ncode\n```\t\n- after", ["code", " • after", ""]],
+    ["```\ncode\n``` x\n```\nafter", ["code", "``` x", "after", ""]],
+    ["```\ncode\n``` \n- after\n```", ["code", "```", "- after", ""]],
+    ["```\ncode\n    ```\nafter", ["code", "    ```", "after", ""]],
+  ])("opens and closes the fence in %j as markdown-it does, as Rich does", (source, expected) => {
+    expect(rows(source, 80)).toEqual(expected);
+  });
+
   // --- Inline links and images, as Rich draws them ---
 
   it("keeps parentheses that balance inside a link's URL", () => {
