@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-452",
+      "ref": "refs/pull/452/merge",
+      "sha": "e2c17d884d5813ad477c34ce67d2e02c514032b3",
+      "timestamp": "2026-10-17T18:31:22.601Z",
+      "commits": [
+        {
+          "sha": "e2c17d884d5813ad477c34ce67d2e02c514032b3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T12:29:27-06:00",
+          "message": "Merge 2441c332918a9fb96a2ec437114283ee9d893464 into b1fa24188318044a9f20d366a7c45bf46d93dbea\n"
+        },
+        {
+          "sha": "2441c332918a9fb96a2ec437114283ee9d893464",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T12:29:22-06:00",
+          "message": "A Markdown linearity test compares time at two sizes instead of against a wall-clock budget (rich-unfiled-791c.kulj)\n\nThe definition test parsed 200 000 lines against a 2 s budget; linear took\n0.9 s alone and crossed 2 s once under a loaded full suite. expectLinearTime\n(test/suite/linear-time.ts) times the work at n and 4n, fastest of three each,\nand requires under 8x: the real parse grows 4.0x, the quadratic one it was\nwritten against (definitionAt's line runs not doubling) 14x at 25 000 lines.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b1fa24188318044a9f20d366a7c45bf46d93dbea",
