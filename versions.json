@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-416",
+      "ref": "refs/pull/416/merge",
+      "sha": "7a5c5203485cbc7ecf6895dc7bcd380d1477c787",
+      "timestamp": "2026-10-17T01:14:05.177Z",
+      "commits": [
+        {
+          "sha": "7a5c5203485cbc7ecf6895dc7bcd380d1477c787",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:12:58-06:00",
+          "message": "Merge 7ade01c4e45a44bb501d0e5595afd6cea0ac411a into 07805a292885f45fde1b670d2a6b446ddd48a0e4\n"
+        },
+        {
+          "sha": "7ade01c4e45a44bb501d0e5595afd6cea0ac411a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:12:43-06:00",
+          "message": "A host can ask when what it draws next changes (rich-animation-xi28.6rs)\n\nEvery animated primitive stamps its cells with the moment what they show\nnext changes, on `Style.nextChange`, which rides up through every container\nas the anchor does and writes no byte. `Segment.nextChange` reads the\nsoonest off a composed frame: a `Frames` answers the next frame's start,\n`Effected` what its effect says — a stepped signal and `onBeat` their next\nstep (`Beat.end`), a transition `t` until it is done and never after, a\nplain loop `t` itself — and still content never, as `Infinity`.\n\n`Effect` is now an interface: the call, and an optional `nextChange(t)`;\n`withNextChange` attaches one, `nextChangeOf` is the one reading of an\nabsent one. `Clock.at(time, tick)` is the one-shot a host waits on, and\n`Live` arms it after each frame — at the frame's next change or the rate's\nnext frame, whichever is sooner — so it draws each frame of a sequence held\nshorter than its interval instead of a sample of them.\n\nThe showcase's brand carries a flash that declares its own schedule, and\nits tagline counts down to the gauge's next step.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-415",
       "ref": "refs/pull/415/merge",
       "sha": "086e61c026c7b7f65527fa7faaf496c0ad0f1803",
