@@ -36,9 +36,9 @@
  * offering a seam nobody needs on the one question it exists to answer.
  *
  * WHAT THIS CANNOT SEE, and it is the same shape of blindness `optional-peers.ts`
- * names: a consumer does not install from our lockfile. They resolve `^8.2.0`
- * themselves and may land on a `string-width` newer than ours, declaring a
- * floor we have never read. This rule checks the tree *we* resolved, which is
+ * names: a consumer does not install from our lockfile. They resolve each
+ * dependency's range themselves and may land on a version newer than ours,
+ * declaring a floor we have never read. This rule checks the tree *we* resolved, which is
  * the best available evidence and not the consumer's. What it therefore proves
  * is narrower than "the floor is right for everyone": it proves the floor was
  * not copied from somewhere outside the install tree, which is the failure that

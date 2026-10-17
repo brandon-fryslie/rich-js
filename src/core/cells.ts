@@ -1,23 +1,55 @@
 /**
- * Terminal cell width calculation.
- * Handles ASCII, CJK (double-width), and emoji characters.
+ * Terminal cell width calculation: Rich's `cell_len`, ported.
  */
 
-import stringWidth from "string-width";
+import { codePointWidth, widensToEmoji } from "./cell-widths.js";
 import { Memo } from "./memo.js";
 
 const cellLenMemo = new Memo<number>();
 
-// U+2028 and U+2029, which string-width gives a cell each and Rich none. Each is
-// a grapheme cluster of its own (Grapheme_Cluster_Break=Control), so measuring
-// it as NUL — another Control, which string-width gives none — leaves the
-// clusters string-width cuts the rest of the text into exactly as they were.
-const SEPARATORS = /[\u2028\u2029]/g;
+const ZWJ = 0x200d;
+const VS16 = 0xfe0f;
+const JOINERS = /[\u200d\ufe0f]/;
+const PRINTABLE_ASCII = /^[ -~]*$/;
 
-// [LAW:one-source-of-truth] the single authority for cell width: string-width,
-// but for the separators above
+// Rich's `cell_len` over a run of text: each code point the cells Rich's table
+// gives it, but that a ZWJ takes the code point after it into the glyph before
+// so neither adds a cell, and VS16 widens the last code point measured to two
+// cells when the table lists it as one that emoji presentation widens.
+function richCells(text: string): number {
+  let cells = 0;
+  let widenable = false;
+  let joined = false;
+  for (const ch of text) {
+    const codePoint = ch.codePointAt(0)!;
+    if (joined) {
+      joined = false;
+    } else if (codePoint === ZWJ) {
+      joined = true;
+    } else if (codePoint === VS16) {
+      cells += widenable ? 1 : 0;
+      widenable = false;
+    } else {
+      const width = codePointWidth(codePoint);
+      cells += width;
+      widenable = width > 0 ? widensToEmoji(codePoint) : widenable;
+    }
+  }
+  return cells;
+}
+
+// [LAW:one-source-of-truth] the single authority for cell width. A string is
+// the sum of its grapheme clusters, each measured as Rich measures it, so a cut
+// between clusters splits the width exactly; the two part only where a ZWJ or
+// VS16 reaches across a cluster boundary, as in `a` ZWJ `b`, which Rich counts
+// as one cell and two clusters count as two. Without either, every code point
+// counts alone and no segmentation is needed.
 function measure(text: string): number {
-  return stringWidth(text.replace(SEPARATORS, "\0"));
+  if (PRINTABLE_ASCII.test(text)) return text.length;
+  if (!JOINERS.test(text)) return richCells(text);
+  let cells = 0;
+  for (const { segment } of graphemeSegmenter().segment(text)) cells += richCells(segment);
+  return cells;
 }
 
 /**
@@ -206,19 +238,22 @@ export function splitAtCells(line: string, cuts: readonly CellCol[]): string[] {
 let segmenter: Intl.Segmenter | undefined;
 let lastSegmented: { text: string; segments: Intl.Segments } | undefined;
 
+function graphemeSegmenter(): Intl.Segmenter {
+  return (segmenter ??= new Intl.Segmenter(undefined, { granularity: "grapheme" }));
+}
+
 /** The grapheme segmentation of `text`, reusing the last one when it is the same string. */
 function segmentsOf(text: string): Intl.Segments {
   if (lastSegmented?.text !== text) {
-    segmenter ??= new Intl.Segmenter(undefined, { granularity: "grapheme" });
-    lastSegmented = { text, segments: segmenter.segment(text) };
+    lastSegmented = { text, segments: graphemeSegmenter().segment(text) };
   }
   return lastSegmented.segments;
 }
 
 /**
- * The grapheme clusters of `text`, in order: the unit `string-width` measures,
- * and so the unit `cellLen` of a whole string is the sum of. Summing `cellLen`
- * over code points instead disagrees with it on every glyph built from several:
+ * The grapheme clusters of `text`, in order: the unit `cellLen` of a whole
+ * string is the sum of. Summing `cellLen` over code points instead disagrees
+ * with it on every glyph built from several:
  * `❤️` is 1 + 0 by code point and 2 as a cluster, `👨‍👩‍👧` is 6 and 2, and a cut
  * between two of its code points leaves half a glyph.
  */
