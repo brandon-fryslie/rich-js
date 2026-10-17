@@ -107,12 +107,16 @@ export type RawRecord = {
   isApiErrorMessage?: boolean;
   error?: string;
   promptId?: string;
-  subtype?: string;
-  durationMs?: number;
-  content?: string;
-  commandRun?: { command: string; args: string };
-  hookCount?: number;
-  hookErrors?: string[];
+  // A system record's own fields, as unchecked as the JSON they came from:
+  // systemEvent reads each one.
+  subtype?: unknown;
+  durationMs?: unknown;
+  content?: unknown;
+  commandRun?: unknown;
+  hookCount?: unknown;
+  hookErrors?: unknown;
+  preventedContinuation?: unknown;
+  stopReason?: unknown;
   message?: MessageShape;
   toolUseResult?: { agentId?: string } | unknown;
   sourceToolAssistantUUID?: string;
@@ -202,9 +206,43 @@ interface Joined {
   readonly parts: readonly RecordLine[];
 }
 
-/** The text inside the first `<name>…</name>` in `content`, trimmed; "" when it has none. */
+/**
+ * The text inside the first `<name>…</name>` in `content`, trimmed; "" when it
+ * has none. One whose closing tag is gone runs to the end of `content`: the
+ * stager cuts a long record short, and the cut keeps what it says it lost.
+ */
 function tagged(content: string, name: string): string {
-  return content.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`))?.[1]?.trim() ?? "";
+  return content.match(new RegExp(`<${name}>([\\s\\S]*?)(?:</${name}>|$)`))?.[1]?.trim() ?? "";
+}
+
+/** A record that runs a slash command is these tags and nothing else. */
+const COMMAND = /^(?:\s*<command-(name|message|args)>[\s\S]*?<\/command-\1>)+\s*$/;
+
+/** The command line `content`'s command tags spell — "/btw How are docs built?" — or "" when it has none. */
+function commandTags(content: string): string {
+  return `${tagged(content, "command-name")} ${tagged(content, "command-args")}`.trim();
+}
+
+/** The command line of a record that runs a slash command; "" for any other text. */
+function commandLine(content: string): string {
+  return COMMAND.test(content) ? commandTags(content) : "";
+}
+
+/** The text a user or system record carries; "" for any other. */
+function contentOf(r: RawRecord): string {
+  return r.type === "user" ? extractTextFromContent(r.message?.content) : r.type === "system" ? asString(r.content) : "";
+}
+
+/** The command line an output record names in `commandRun`; "" when it names none. */
+function ranCommand(run: unknown): string {
+  if (typeof run !== "object" || run === null) return "";
+  const { command, args } = run as Record<string, unknown>;
+  return `/${asString(command)} ${asString(args)}`.trim();
+}
+
+/** `values` as lines of text, the empty ones left out; a value that is not a list is a list of one. */
+function linesOf(...values: unknown[]): string {
+  return values.flatMap((v) => (Array.isArray(v) ? v : [v])).map(asString).filter((s) => s !== "").join("\n");
 }
 
 /**
@@ -215,24 +253,25 @@ function tagged(content: string, name: string): string {
  * reaches the reader.
  */
 function systemEvent(r: RawRecord): Pick<SystemBlock, "subtype" | "label" | "text" | "durationMs"> {
-  const subtype = r.subtype ?? "system";
-  const content = r.content ?? "";
-  const durationMs = r.durationMs ?? null;
+  const subtype = typeof r.subtype === "string" ? r.subtype : "system";
+  const content = asString(r.content);
+  const durationMs = typeof r.durationMs === "number" ? r.durationMs : null;
   switch (subtype) {
     case "turn_duration":
       return { subtype, label: "turn", text: "", durationMs };
-    // A command's own record carries `commandRun` and its output; an older one
-    // carries the command line, as tags, in its content.
+    // The command line is the tags of the record that ran the command, which
+    // joinCommandRecords sets ahead of its output; an output record with no such
+    // record ahead of it names its command in `commandRun`.
     case "local_command": {
-      const command = r.commandRun
-        ? `/${r.commandRun.command} ${r.commandRun.args}`
-        : `${tagged(content, "command-name")} ${tagged(content, "command-args")}`;
-      const output = [tagged(content, "local-command-stdout"), tagged(content, "local-command-stderr")].filter((s) => s !== "");
-      return { subtype, label: command.trim() || "local command", text: output.join("\n"), durationMs };
+      const command = commandTags(content) || ranCommand(r.commandRun);
+      const output = linesOf(tagged(content, "local-command-stdout"), tagged(content, "local-command-stderr"));
+      return { subtype, label: command || "local command", text: output, durationMs };
     }
     case "stop_hook_summary": {
-      const hooks = r.hookCount ?? 0;
-      return { subtype, label: `${hooks} stop hook${hooks === 1 ? "" : "s"}`, text: (r.hookErrors ?? []).join("\n"), durationMs };
+      const n = r.hookCount;
+      const hooks = typeof n === "number" ? `${n} stop hook${n === 1 ? "" : "s"}` : "stop hooks";
+      const prevented = r.preventedContinuation === true ? " · prevented continuation" : "";
+      return { subtype, label: hooks + prevented, text: linesOf(r.hookErrors, r.stopReason), durationMs };
     }
     default:
       return { subtype, label: subtype.replaceAll("_", " "), text: content, durationMs };
@@ -299,6 +338,33 @@ function joinMessageRecords(records: ReadonlyArray<Joined>): Joined[] {
     const blocks = (record: RawRecord) => (Array.isArray(record.message?.content) ? record.message.content : []);
     out[out.length - 1] = {
       line: { ...line, parsed: { ...r, uuid: prevRec.uuid, parentUuid: prevRec.parentUuid, message: { ...r.message!, content: [...blocks(prevRec), ...blocks(r)] } } },
+      parts: [...prev.parts, ...next.parts],
+    };
+  }
+  return out;
+}
+
+/**
+ * Step 2b: join a slash command's records. Claude Code writes the command line
+ * — as a user record, or a `local_command` one when it ran mid-turn — and then
+ * a `local_command` record of the command's output whose parent it is, so the
+ * two are one command: the output record, holding the line's tags ahead of its
+ * own, under the line's uuid and parent.
+ */
+function joinCommandRecords(records: ReadonlyArray<Joined>): Joined[] {
+  const out: Joined[] = [];
+  for (const next of records) {
+    const r = next.line.parsed;
+    const prev = out[out.length - 1];
+    const output = prev !== undefined && r.type === "system" && r.subtype === "local_command"
+      && r.parentUuid === prev.line.parsed.uuid && commandLine(contentOf(prev.line.parsed)) !== "";
+    if (!output) {
+      out.push(next);
+      continue;
+    }
+    const ran = prev.line.parsed;
+    out[out.length - 1] = {
+      line: { ...next.line, parsed: { ...r, uuid: ran.uuid, parentUuid: ran.parentUuid, content: `${contentOf(ran)}\n${asString(r.content)}` } },
       parts: [...prev.parts, ...next.parts],
     };
   }
@@ -463,9 +529,9 @@ function emitBlocks(joined: ReadonlyArray<Joined>): Block[] {
       }
       // Tool results that didn't get paired (orphan) — show as a generic
       // human block with the raw text so the user isn't confused
-      const text = typeof r.message.content === "string"
-        ? r.message.content
-        : extractTextFromContent(r.message.content);
+      // A prompt that runs a slash command reads as the command line it runs.
+      const said = extractTextFromContent(r.message.content);
+      const text = commandLine(said) || said;
       // Skip empty content
       if (text.trim().length === 0 && !isToolResultContent(r.message.content)) {
         continue;
@@ -499,5 +565,5 @@ export function parseBlocks(
   opts?: ParseOptions,
 ): Block[] {
   const showHidden = opts?.showHidden === true;
-  return emitBlocks(joinMessageRecords(readRecords(lines, showHidden)));
+  return emitBlocks(joinCommandRecords(joinMessageRecords(readRecords(lines, showHidden))));
 }

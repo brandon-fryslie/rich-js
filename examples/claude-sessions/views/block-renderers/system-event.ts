@@ -1,4 +1,4 @@
-import { Rule, Align, RichText, Group } from "@promptctl/rich-js";
+import { Rule, Align, RichText, Group, decodeAnsi } from "@promptctl/rich-js";
 import type { Renderable } from "@promptctl/rich-js";
 import type { SystemBlock } from "../../data/types.js";
 import { emoji, highlightSearch, truncate } from "./_common.js";
@@ -26,7 +26,8 @@ export function renderSystem(block: SystemBlock, opts: RenderOpts): Renderable {
   highlightSearch(title, opts.searchQuery);
   // Wrap in Align to exercise the Align renderable
   const rule = new Align(new Rule(title, { style, characters: "─" }), "center");
-  const text = new RichText(opts.isExpanded ? block.text : truncate(block.text, TEXT_PREVIEW_LINES), { style: "dim", end: "" });
+  // A command's output carries the escape codes it was printed with.
+  const text = decodeAnsi(opts.isExpanded ? block.text : truncate(block.text, TEXT_PREVIEW_LINES), { style, end: "" });
   highlightSearch(text, opts.searchQuery);
   return new Group(rule, ...(block.text === "" ? [] : [text]));
 }

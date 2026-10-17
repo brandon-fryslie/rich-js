@@ -64,7 +64,7 @@ const TITLE_TYPES = new Set<string>(["custom-title", "ai-title"] satisfies Hidde
 const SHOWN_FIELDS = new Set([
   "type", "uuid", "parentUuid", "timestamp", "message", "subtype", "content", "level",
   "isMeta", "isSidechain", "isApiErrorMessage", "durationMs", "error", "promptId", "slug", "customTitle", "aiTitle",
-  "commandRun", "hookCount", "hookErrors",
+  "commandRun", "hookCount", "hookErrors", "preventedContinuation", "stopReason",
 ]);
 
 /** A record as the viewer reads it: its shown fields, its message as `shownMessage` has it, a queued prompt's attachment, and its result's `agentId`. */
