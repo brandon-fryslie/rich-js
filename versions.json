@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-415",
+      "ref": "refs/pull/415/merge",
+      "sha": "a5b36ed4e4fe8f2ec85c8b7099d0fe7bf67cc2c8",
+      "timestamp": "2026-10-17T01:09:00.966Z",
+      "commits": [
+        {
+          "sha": "a5b36ed4e4fe8f2ec85c8b7099d0fe7bf67cc2c8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T01:07:11Z",
+          "message": "Merge 22706457c045e22ab7b9f67c4988bee7d636d467 into 07805a292885f45fde1b670d2a6b446ddd48a0e4\n"
+        },
+        {
+          "sha": "22706457c045e22ab7b9f67c4988bee7d636d467",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:07:06-06:00",
+          "message": "sparkle keeps its fireflies on a lattice that a width change cannot move (rich-unfiled-791c.c8g5)\n\nReview of PR #415 found sparkle re-deriving its firefly count and stride from\neach frame's width, so an element gaining one column could add a firefly\nmid-flash or slide every home on a narrow one (0.21 of a 0.95 swing, measured).\nFireflies now sit one per PER columns along lattice rows ROWS apart, laid from\nthe element's first column and top row; the frame's extent only bounds which\nslots are worked out, and a cell asks only the fireflies whose light can reach\nit. A tall element is lit on every row, as the doc now says.\n\nextent is a loop rather than a reduce allocating a tuple per value.\n"
+        },
+        {
+          "sha": "99809fd1474caa5c0ac6323735d9c8395dfa9028",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T18:56:18-06:00",
+          "message": "shimmer and sparkle cross the element where its frame lists cells (rich-unfiled-791c.c8g5)\n\nA loop's Field is now handed the frame's Drawn, as a transition's Visibility\nalready is, and shimmer and sparkle read the element's columns (and sparkle\nits rows) off Drawn.cells each frame. EffectTarget.span, the caller-stated\nsecond source for that fact, is gone, as are the span arguments of shimmer\nand sparkle and DrawnSubject.span in effects-feel.\n\nA padded, wrapped or confined element was crossed at columns 0..span; it is\nnow crossed where it shows. Fireflies keep homes a fixed stride from the\nelement's first column, so an element that gains a column gains a firefly at\nmost rather than reshuffling every home.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "07805a292885f45fde1b670d2a6b446ddd48a0e4",
@@ -13,28 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T19:03:34-06:00",
           "message": "The key echo names only the modifiers held and reads whole at its widest (rich-demos-k78j.4jr) (#414)\n\nThe echo spelled shift=false ctrl=false meta=false on every key, which pushed the row past the 100-column card after 100 claimed spaces and a Backspace. It now names only held modifiers; the widest row is 79 cells plus the claimed count. The row test asserts it reached that state and checks backspace, meta-backspace and fully-modified pagedown."
-        }
-      ]
-    },
-    {
-      "version": "pr-415",
-      "ref": "refs/pull/415/merge",
-      "sha": "75930fa534806de00fe3bd1682fca4194b3001b2",
-      "timestamp": "2026-10-17T00:58:04.082Z",
-      "commits": [
-        {
-          "sha": "75930fa534806de00fe3bd1682fca4194b3001b2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:56:22-06:00",
-          "message": "Merge 99809fd1474caa5c0ac6323735d9c8395dfa9028 into 351a8b6393360a36a3efecad7eb25b1260e520b7\n"
-        },
-        {
-          "sha": "99809fd1474caa5c0ac6323735d9c8395dfa9028",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:56:18-06:00",
-          "message": "shimmer and sparkle cross the element where its frame lists cells (rich-unfiled-791c.c8g5)\n\nA loop's Field is now handed the frame's Drawn, as a transition's Visibility\nalready is, and shimmer and sparkle read the element's columns (and sparkle\nits rows) off Drawn.cells each frame. EffectTarget.span, the caller-stated\nsecond source for that fact, is gone, as are the span arguments of shimmer\nand sparkle and DrawnSubject.span in effects-feel.\n\nA padded, wrapped or confined element was crossed at columns 0..span; it is\nnow crossed where it shows. Fireflies keep homes a fixed stride from the\nelement's first column, so an element that gains a column gains a firefly at\nmost rather than reshuffling every home.\n"
         }
       ]
     }
