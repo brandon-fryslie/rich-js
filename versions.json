@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-437",
-      "ref": "refs/pull/437/merge",
-      "sha": "c919f5f722e17ccdc8a3672cabe773a32fe07c46",
-      "timestamp": "2026-10-17T11:33:05.445Z",
-      "commits": [
-        {
-          "sha": "c919f5f722e17ccdc8a3672cabe773a32fe07c46",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T11:31:36Z",
-          "message": "Merge 80a3c865448362a0cda0456b5373aa1ac2f4bebf into 52e5742120d6ef1684d983c3cb4fca2df709e7ec\n"
-        },
-        {
-          "sha": "80a3c865448362a0cda0456b5373aa1ac2f4bebf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T05:31:31-06:00",
-          "message": "Markdown's renderTokens keeps its own doc comment above it\n"
-        },
-        {
-          "sha": "c3508d7683cee18b1c509ed8ff6148729b6a8b9c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T05:30:47-06:00",
-          "message": "Markdown pads an item's and a quote's rows to their width, as Rich's render_lines does\n\nA rule's blank row inside an item was left short of the width, where Rich's\nrender_lines pads every row of a container's content in its style.\n"
-        },
-        {
-          "sha": "db6a124f18fdac859b2d97f541e4fe82b3a9b05d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T05:23:02-06:00",
-          "message": "Markdown's renderer never sees the block pass's blank and unread marks\n\nThey decide only where a container ends; the inline pass now drops them, so\nevery token the renderer meets is an element Rich exits, and a top-level\nblock is drawn where its exit is with no per-token test. A list item is its\nblocks, without a wrapper.\n"
-        },
-        {
-          "sha": "b00034a9a158ed2644a4d6f082aa62eb52aa90f2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T05:11:37-06:00",
-          "message": "Markdown draws a blank row where Rich's new_line puts one, not one per blank source line (rich-unfiled-791c.mk71)\n\nRich reads no blank line of the source: every element it exits sets\nnew_line (a rule and an image clear it), and a blank row goes ahead of\nwhatever it draws next while it is set. The renderer now walks the\ndocument in Rich's order — images as met, top-level blocks as they exit —\nand that flag is the only source of blank rows. Blank tokens and list\nitem gaps draw nothing; a rule draws its own blank row after it.\n\nAlso matches Rich for an empty quote (rich-unfiled-791c.erhp): no row,\nand the row its exit puts ahead of the next block.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "52e5742120d6ef1684d983c3cb4fca2df709e7ec",
-      "timestamp": "2026-10-17T10:54:29.862Z",
+      "sha": "52b080b99044a21665ee34e05265ca8b7bf11115",
+      "timestamp": "2026-10-17T11:44:50.676Z",
       "commits": [
         {
-          "sha": "52e5742120d6ef1684d983c3cb4fca2df709e7ec",
+          "sha": "52b080b99044a21665ee34e05265ca8b7bf11115",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T04:53:06-06:00",
-          "message": "Markdown opens and closes fenced code as markdown-it's fence rule does, as Rich does (rich-unfiled-791c.fxsx) (#436)\n\n* Markdown opens and closes fenced code as markdown-it's fence rule does, as Rich does (rich-unfiled-791c.fxsx)\n\nA fence opens on three or more backticks whose info string holds no\nbacktick, or three or more tildes with any info string, and closes only on\na run of the same marker at least as long followed by spaces and tabs.\nChecked token-for-token against markdown-it-py 4.2 over 3000 fuzzed\nsources: 790 diffs before, 0 after.\n\n* Markdown docs name tilde fences and the closing rule; the no-break-space test row is spelled as an escape (rich-unfiled-791c.fxsx)"
+          "timestamp": "2026-10-17T05:43:07-06:00",
+          "message": "Markdown draws a blank row where Rich's new_line puts one (rich-unfiled-791c.mk71) (#437)\n\n* Markdown draws a blank row where Rich's new_line puts one, not one per blank source line (rich-unfiled-791c.mk71)\n\nRich reads no blank line of the source: every element it exits sets\nnew_line (a rule and an image clear it), and a blank row goes ahead of\nwhatever it draws next while it is set. The renderer now walks the\ndocument in Rich's order — images as met, top-level blocks as they exit —\nand that flag is the only source of blank rows. Blank tokens and list\nitem gaps draw nothing; a rule draws its own blank row after it.\n\nAlso matches Rich for an empty quote (rich-unfiled-791c.erhp): no row,\nand the row its exit puts ahead of the next block.\n\n* Markdown's renderer never sees the block pass's blank and unread marks\n\nThey decide only where a container ends; the inline pass now drops them, so\nevery token the renderer meets is an element Rich exits, and a top-level\nblock is drawn where its exit is with no per-token test. A list item is its\nblocks, without a wrapper.\n\n* Markdown pads an item's and a quote's rows to their width, as Rich's render_lines does\n\nA rule's blank row inside an item was left short of the width, where Rich's\nrender_lines pads every row of a container's content in its style.\n\n* Markdown's renderTokens keeps its own doc comment above it"
         }
       ]
     }
