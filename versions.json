@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-414",
+      "ref": "refs/pull/414/merge",
+      "sha": "dc48835341944339ca7abc7fec6909a6ee37fdf5",
+      "timestamp": "2026-10-17T00:54:25.161Z",
+      "commits": [
+        {
+          "sha": "dc48835341944339ca7abc7fec6909a6ee37fdf5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T00:52:38Z",
+          "message": "Merge a9f14fd318adcbb71bcb7b2df4f89e6aa5206c2c into 351a8b6393360a36a3efecad7eb25b1260e520b7\n"
+        },
+        {
+          "sha": "a9f14fd318adcbb71bcb7b2df4f89e6aa5206c2c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T18:52:20-06:00",
+          "message": "The key echo names only the modifiers held, and keeps saying what it counts (rich-demos-k78j.4jr)\n\nThe echo spelled shift=false ctrl=false meta=false on every key, and that,\nnot the label, was what pushed the row past 100 columns. The widest echo is\nnow 79 cells plus the claimed count. The row test asserts it reached that\nstate, and reads backspace and a fully-modified pagedown on their own screens.\n"
+        },
+        {
+          "sha": "39a1b41d345e694dd7aa8dd6505403ba2fa6e064",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T18:46:39-06:00",
+          "message": "The dropdown demo's key echo reads whole at its widest (rich-demos-k78j.4jr)\n\nAfter 100 claimed spaces, backspace drew the row at 101 cells and the card\ncut it. The counter's label is now 'claimed', which leaves room for a count\nof up to ten digits, and the row test drives that state.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "351a8b6393360a36a3efecad7eb25b1260e520b7",
@@ -13,28 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T18:48:19-06:00",
           "message": "effects-feel measures every loop's contrast at 1 fps, not 30 (rich-unfiled-791c.2iki) (#413)\n\n* effects-feel measures every loop's contrast at 1 fps, not 30 (rich-unfiled-791c.2iki)\n\nThe demo paints on a wall-clock rate, so its frames cost the same each\nsecond however loaded the machine is, and the contrast measuring gets\nwhat is left. At 30 fps under a full suite that was little: 7.4-10.6 s\nlocally, 21 s of 30 on CI. At 1 fps, 4.1-5.2 s under the full suite\n(three runs), 2.0 s alone (was 2.8 s).\n\n* effects-feel: each loop's measured line asserted by name, the wait bounded by the test's own budget (rich-unfiled-791c.2iki)\n\nReview (high): counting 'worst contrast' matches >= 5 counted frames, not\nloops; at 1 fps a machine that measures every loop between two ticks\npaints the four lines once and fails. The 30_000 wait copied HANG_MS."
-        }
-      ]
-    },
-    {
-      "version": "pr-414",
-      "ref": "refs/pull/414/merge",
-      "sha": "f519ebf3829023e40adfb9c08515ba925418776f",
-      "timestamp": "2026-10-17T00:48:13.422Z",
-      "commits": [
-        {
-          "sha": "f519ebf3829023e40adfb9c08515ba925418776f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:46:46-06:00",
-          "message": "Merge 39a1b41d345e694dd7aa8dd6505403ba2fa6e064 into 1088ce2b193856fb5acf0a4c8e8d6fc303115ecc\n"
-        },
-        {
-          "sha": "39a1b41d345e694dd7aa8dd6505403ba2fa6e064",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:46:39-06:00",
-          "message": "The dropdown demo's key echo reads whole at its widest (rich-demos-k78j.4jr)\n\nAfter 100 claimed spaces, backspace drew the row at 101 cells and the card\ncut it. The counter's label is now 'claimed', which leaves room for a count\nof up to ten digits, and the row test drives that state.\n"
         }
       ]
     }
