@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-430",
-      "ref": "refs/pull/430/merge",
-      "sha": "fe3efd4290d50b09b92fbfc6720b290dd8fcd9dc",
-      "timestamp": "2026-10-17T06:30:36.530Z",
-      "commits": [
-        {
-          "sha": "fe3efd4290d50b09b92fbfc6720b290dd8fcd9dc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T06:29:10Z",
-          "message": "Merge 94836b24777fcbc86a7e468002ced146ebf3551f into fb1cfcf8753344cab2d664b8d924f459c135e366\n"
-        },
-        {
-          "sha": "94836b24777fcbc86a7e468002ced146ebf3551f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T00:29:05-06:00",
-          "message": "Markdown image review: pin Rich 15's inline HTML, plain exit steps, docs line in words (rich-unfiled-791c.vke3)\n"
-        },
-        {
-          "sha": "26ea8db57f1d2cb2c78c2330eed534d24ac188ff",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T00:12:02-06:00",
-          "message": "Markdown draws an image ahead of its block, linked to an enclosing link, as Rich does (rich-unfiled-791c.vke3)\n\nRich's render loop draws an image the moment it meets one, ahead of the\ntop-level block holding it, and links the alt text to the link it sits in.\nA list is now one token, so an image in any item is drawn ahead of the\nwhole list.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "fb1cfcf8753344cab2d664b8d924f459c135e366",
-      "timestamp": "2026-10-17T05:59:38.635Z",
+      "sha": "eb20388c8dc369bca189bda2283d901f2f84b058",
+      "timestamp": "2026-10-17T06:54:43.533Z",
       "commits": [
         {
-          "sha": "fb1cfcf8753344cab2d664b8d924f459c135e366",
+          "sha": "eb20388c8dc369bca189bda2283d901f2f84b058",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T23:58:04-06:00",
-          "message": "Markdown pairs * and _ emphasis by markdown-it's flanking rules, as Rich does (rich-unfiled-791c.ljiy) (#429)\n\n* Markdown pairs * and _ emphasis by markdown-it's flanking rules, as Rich does (rich-unfiled-791c.ljiy)\n\nEmphasis was found by scanning forward for a closing *, which knew nothing\nof _, of flanking, or of the rule of 3. The scan now records each * or _\nrun as a delimiter whose can-open and can-close are read once from what\nborders it (scanDelims), pairs them in markdown-it's balance_pairs pass,\nand makes strong and em from the pairs as its emphasis postProcess does.\nA link's label is read from the block's own text up to its ], so its\ndelimiters see what precedes them and pair only with each other.\n\n* Markdown reads each line ending in the inline pass, as markdown-it does (rich-unfiled-791c.ljiy)\n\nThe block pass decided hard breaks and dropped a break's backslash before\nthe inline pass ran, so a delimiter run before `\\`+newline read whitespace\nwhere markdown-it's scanDelims reads punctuation, and `x\\\\` at a line's end\nbroke hard where markdown-it escapes the backslash. Paragraph lines now\njoin at their line endings; the inline pass reads each as markdown-it's\nnewline and escape rules do, which also gives a code span's line ending\nas a space and an image's alt its newline, as Rich draws them.\n\n* Markdown reads a line ending by the text before it, as markdown-it's newline rule does (rich-unfiled-791c.ljiy)\n\nMatching a line ending ahead from every space scanned each run of spaces\nonce per space; 100k spaces took over four seconds. The line ending is now\nthe construct, and the spaces ending the pending text decide soft or hard."
+          "timestamp": "2026-10-17T00:53:32-06:00",
+          "message": "Markdown draws an image ahead of its block, linked to an enclosing link, as Rich does (rich-unfiled-791c.vke3) (#430)\n\n* Markdown draws an image ahead of its block, linked to an enclosing link, as Rich does (rich-unfiled-791c.vke3)\n\nRich's render loop draws an image the moment it meets one, ahead of the\ntop-level block holding it, and links the alt text to the link it sits in.\nA list is now one token, so an image in any item is drawn ahead of the\nwhole list.\n\n* Markdown image review: pin Rich 15's inline HTML, plain exit steps, docs line in words (rich-unfiled-791c.vke3)"
         }
       ]
     }
