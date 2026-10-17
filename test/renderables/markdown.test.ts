@@ -819,6 +819,69 @@ describe("Markdown", () => {
     expect(rows("> - -|-\n\t===", 80)).toEqual(["", "▌  • -|- ===", ""]);
   });
 
+  it("reads a line lazy to a quote's container as indented less than any block, as Rich does", () => {
+    // Rich 15's own rows: the inner quote ends at the block the line opens, and the outer quote with it.
+    const ended = (line: string) => ["", "▌ ▌ b", "", "", ` ${line}`, "", ""];
+    expect(rows("> > b\n    ---", 40)).toEqual(ended("---"));
+    expect(rows("> > b\n\t<!-- c -->", 40)).toEqual(ended("<!-- c -->"));
+    expect(rows("> > b\n    ```", 40)).toEqual(ended("```"));
+    expect(rows("> > b\n    # h", 40)).toEqual(ended("# h"));
+    expect(rows("> > b\n    - c", 40)).toEqual(ended("- c"));
+    expect(rows("> > > b\n    ---", 40)).toEqual(["", "▌ ▌ ▌ b", "", "", " ---", "", ""]);
+    // A line lazy to a list item is short of its indentation too.
+    expect(rows("100. > b\n    ---", 40)).toEqual(["", " 100 ▌ b", "", "", " ---", "", ""]);
+    // Text it continues, and a quote directly under it reads it at its own indentation.
+    expect(rows("> > b\n    c", 40)).toEqual(["", "▌ ▌ b c", ""]);
+    expect(rows("> b\n    ---", 40)).toEqual(["", "▌ b ---", ""]);
+    expect(rows("> - a\n    ---", 40)).toEqual(["", "▌  • a ---", ""]);
+    // A list item on a line lazy only to list items sits where the line does: a code indent past the list, it is text.
+    expect(rows("1.   > b\n    - c", 40)).toEqual(["", " 1 ▌ b - c", ""]);
+    expect(rows("1.   > b\n    1. ", 40)).toEqual(["", " 1 ▌ b 1.", ""]);
+    expect(rows("10.   > b\n \t- c", 40)).toEqual(["", " 10 ▌ b - c", ""]);
+    expect(rows("1.   > b\n   - c", 40)).toEqual(["", " 1 ▌ b", "", " • c", ""]);
+    // Lazy to a quote on the way, it is indented less than any block again.
+    expect(rows("> 1.   > b\n    - c", 40)).toEqual(["", "▌  1 ▌ b", "", "", " - c", "", ""]);
+  });
+
+  it("reads a line short of a list item as indented less than any block, as Rich does", () => {
+    // Rich 15's own rows: the item ends at the block the line opens, which the top level reads as indented code.
+    expect(rows("100. a\n    ---", 40)).toEqual(["", " 100 a", "", "", " ---", "", ""]);
+    expect(rows("  1. d\n    # h", 40)).toEqual(["", " 1 d", "", "", " # h", "", ""]);
+    expect(rows("  2. f\n\t---", 40)).toEqual(["", " 2 f", "", "", " ---", "", ""]);
+    expect(rows("  1. d\n    ```", 40)).toEqual(["", " 1 d", "", "", " ```", "", ""]);
+    expect(rows("  1. d\n    <!-- x -->", 40)).toEqual(["", " 1 d", "", "", " <!-- x -->", "", ""]);
+    expect(rows("  -    a\n      > b", 40)).toEqual(["", " • a", "", "", "   > b", "", ""]);
+    // A list item on it is measured from the innermost list's container: a code indent past it, it is text.
+    expect(rows("100. a\n    - c", 40)).toEqual(["", " 100 a - c", ""]);
+    expect(rows("1.   - a\n    - c", 40)).toEqual(["", " 1  • a", "", "", " - c", "", ""]);
+    expect(rows("  -    - c\n    - c", 40)).toEqual(["", " •  • c", "", "", " - c", "", ""]);
+    expect(rows("1.   - > b\n    - c", 40)).toEqual(["", " 1  • ▌ b", "", "", " - c", "", ""]);
+    expect(rows("1.   1.    - c\n    > - c", 40)).toEqual(["", " 1  1  • c", "", "", " > - c", "", ""]);
+  });
+
+  it("takes a `>` line after a quote's first however far it is indented, as Rich does", () => {
+    expect(rows("> a\n    > b", 40)).toEqual(["", "▌ a b", ""]);
+    expect(rows("> a\n\t> b", 40)).toEqual(["", "▌ a b", ""]);
+    expect(rows("> a\n    >", 40)).toEqual(["", "▌ a", ""]);
+    expect(rows("- > a\n      > b", 40)).toEqual(["", " • ▌ a b", ""]);
+    expect(rows("> > b\n    > c", 40)).toEqual(["", "▌ ▌ b c", ""]);
+    // Only a quote's first line must sit less than a code indent in.
+    expect(rows("    > a", 40)).toEqual(["", " > a", "", ""]);
+  });
+
+  it("indents a quote's line from its own `>`, wherever the `>` sits, as Rich does", () => {
+    // The item's lines are measured past each one's marker: short of the item, the line is the quote's.
+    expect(rows("> - a\n>\n    > b", 40)).toEqual(["", "▌  • a", "▌ b", ""]);
+    expect(rows("> - a\n>\n  > b", 40)).toEqual(["", "▌  • a", "▌ b", ""]);
+    expect(rows("> - a\n>\n \t> b", 40)).toEqual(["", "▌  • a", "▌ b", ""]);
+    expect(rows("- a\n\n  > - b\n  >\n      > c", 40)).toEqual(["", " • a", "   ▌  • b", "   ▌ c", ""]);
+    // Indented to the item past its marker, the line is the item's, not code.
+    expect(rows("> - a\n>\n      >   b", 40)).toEqual(["", "▌  • a", "▌    b", ""]);
+    expect(rows("> - a\n>\n   >   b", 40)).toEqual(["", "▌  • a", "▌    b", ""]);
+    expect(rows("> - a\n>\n\t>   b", 40)).toEqual(["", "▌  • a", "▌    b", ""]);
+    expect(rows("> 1. a\n>\n     >    b", 40)).toEqual(["", "▌  1 a", "▌    b", ""]);
+  });
+
   it("ends a definition at a backslash that escapes its destination's line ending, as Rich does", () => {
     // markdown-it reads a destination in the text it holds, which ends with the destination's line.
     expect(rows("[a]: x\\\ny\n\n[a]", 40, { hyperlinks: false })).toEqual(["y", "", "a (x%5C)", ""]);

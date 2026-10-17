@@ -97,12 +97,17 @@ export type Inline =
  * stop it reaches in the source however deep the line is nested. A `lazy`
  * line was taken in short of its container's marker or indentation, as a
  * lazy continuation line: it continues a paragraph or a definition open
- * before it, and where none is, the container ends at it.
+ * before it, and where none is, the container ends at it. It is `"quote"` once
+ * any quote has taken it so, and `"item"` while only list items have. Either
+ * is indented less than any block, as markdown-it reads it, but an `"item"`
+ * line keeps its indentation for a list item, which markdown-it measures from
+ * the container of the innermost list it sits in: that container's margin is
+ * the line's.
  */
 interface Line {
   readonly text: string;
   readonly margin: number;
-  readonly lazy: boolean;
+  readonly lazy: false | "quote" | "item";
 }
 
 /**
@@ -274,17 +279,21 @@ function dropColumns(line: Line, n: number): string {
 
 /**
  * A list item's opening line, read as CommonMark reads it: a bullet or a
- * number at most three columns in, not a thematic break. `content` is the
- * item's content column — where its text starts, and how far every line of
- * the item is indented — and `first` is the marker line as a line of the
- * item, absent when the item opens with a blank line. An item opening with a
- * blank line, or with indented code, has its content column one space past
- * the marker. `marker` is CommonMark's two kinds: a bullet, or an ordered
- * item's number and the delimiter that closes it, `.` or `)`.
+ * number at most three columns in, not a thematic break. `indent` is how far
+ * into its container the item's content starts — where its text starts, and
+ * how far every line of the item is indented — and `first` is the marker line
+ * as a line of the item, absent when the item opens with a blank line. An item
+ * opening with a blank line, or with indented code, has its content one space
+ * past the marker. The indent is counted from each line's own margin, as
+ * markdown-it counts a quote's lines from each one's own `>`; `margin` is the
+ * marker line's, the list's container's — markdown-it's `listIndent`.
+ * `marker` is CommonMark's two kinds: a bullet, or an ordered item's number
+ * and the delimiter that closes it, `.` or `)`.
  */
 interface ItemStart {
   readonly marker: { readonly bullet: string } | { readonly delimiter: string; readonly start: number };
-  readonly content: number;
+  readonly indent: number;
+  readonly margin: number;
   readonly first: Line | undefined;
 }
 
@@ -302,7 +311,8 @@ function itemStart(line: Line): ItemStart | undefined {
   const lead = line.text.slice(0, line.text.length - text.length);
   return {
     marker: m[1] === undefined ? { bullet: m[0] } : { delimiter: m[0].slice(-1), start: parseInt(m[1], 10) },
-    content,
+    indent: content - line.margin,
+    margin: line.margin,
     first: rest === "" ? undefined : { text: lead + " ".repeat(m[0].length) + after, margin: content, lazy: false },
   };
 }
@@ -566,8 +576,9 @@ function titleAt(text: string, start: number, takeLines: () => string): { end: n
  * at the next one: it is empty.
  */
 function* itemLines(item: ItemStart, lines: Lines, start: number): Generator<Line> {
-  const held = (line: Line): boolean => !line.lazy && leadEnd(line) >= item.content;
-  const inItem = (line: Line): Line => ({ text: line.text, margin: item.content, lazy: false });
+  const held = (line: Line): boolean => !line.lazy && indentOf(line) >= item.indent;
+  const inItem = (line: Line): Line => ({ text: line.text, margin: line.margin + item.indent, lazy: false });
+  const short = (line: Line): Line => ({ text: line.text, margin: item.margin, lazy: "item" });
   // Whether the item holds a line with text yet, which a blank line or a lazy one must come after.
   let text = item.first !== undefined;
   if (item.first !== undefined) yield item.first;
@@ -578,25 +589,44 @@ function* itemLines(item: ItemStart, lines: Lines, start: number): Generator<Lin
     if (line === undefined || (after > i && !(text && held(line)))) return;
     for (; i < after; i++) yield inItem(lines.at(i)!);
     if (held(line)) yield inItem(line);
-    else if (text && continuesText(line)) yield { ...line, lazy: true };
+    // A quote's lazy line the item's paragraph takes whatever it holds; any other is lazy to the item.
+    else if (text && line.lazy === "quote") yield line;
+    else if (text && continuesText(outdented(short(line)))) yield short(line);
     else return;
     text = true;
   }
 }
 
 /**
+ * A lazy `line` as a block inside its container reads it, indented less than
+ * any block — but a list item on an `"item"` line, which markdown-it's list
+ * refuses at a line short of the item and a code indent past the list's
+ * container.
+ */
+function outdented(line: Line): Line {
+  const read = { ...line, margin: leadEnd(line) };
+  return line.lazy === "item" && itemStart(read) !== undefined ? line : read;
+}
+
+/**
  * The lines of the quote opening at `start`: its `>` lines with the marker
  * blanked, and each unmarked line after one with text a lazy continuation line.
+ * markdown-it's quote takes a `>` line after its first however far it is
+ * indented. A line already lazy where the quote sits is short of its
+ * container's indentation, so the quote reads it as markdown-it does, indented
+ * less than any block: never a `>` line of its own, and opening whatever block
+ * its text starts, however far it is indented — but a list item on a line lazy
+ * only to items, which markdown-it's list opens only where the line sits.
  */
 function* quoteLines(lines: Lines, start: number): Generator<Line> {
   // Whether the line before has text, which a lazy line must come after.
   let text = false;
   for (let j = start, line = lines.at(j); line !== undefined; line = lines.at(++j)) {
-    if (startsWith(line, QUOTE)) {
+    if (!line.lazy && QUOTE.test(body(line))) {
       const inQuote = quoted(line);
       text = !isBlank(inQuote);
       yield inQuote;
-    } else if (text && continuesText(line)) yield { ...line, lazy: true };
+    } else if (text && continuesText(line.lazy ? outdented(line) : line)) yield { ...line, lazy: "quote" };
     else return;
   }
 }
