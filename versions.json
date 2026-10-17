@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-432",
+      "ref": "refs/pull/432/merge",
+      "sha": "7487bffb7c0c0083f638a4e3ae69123a92cb2ecb",
+      "timestamp": "2026-10-17T07:58:21.729Z",
+      "commits": [
+        {
+          "sha": "7487bffb7c0c0083f638a4e3ae69123a92cb2ecb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T01:57:08-06:00",
+          "message": "Merge 1650f8c6fabe70aab765164053b2f3f2846fe9dd into 069182e44a05717b4034ba0857c8f315a5691244\n"
+        },
+        {
+          "sha": "1650f8c6fabe70aab765164053b2f3f2846fe9dd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T01:57:04-06:00",
+          "message": "Markdown nests no deeper than markdown-it's maxNesting, as Rich does (rich-unfiled-791c.gwww)\n\nDeep nesting overflowed the stack: `>` and list markers recursed per\nlevel, link labels nested per `[`, and inline rendering recursed per\nemphasis level. Each now follows Rich:\n\n- Blocks stop at markdown-it's maxNesting (20; a quote one level, a list\n  and its item one each). Past it a container's content is an `unread`\n  token that draws nothing, and a list item that deep takes every line to\n  the end of its quote or document, as markdown-it's does.\n- Link labels are scanned as markdown-it's parseLinkLabel/skipToken scans\n  them, with its per-position cache and its level cap. A link whose label\n  holds a link is refused (rich-unfiled-791c.ii92), and a run of brackets\n  parses in linear time.\n- Inline rendering walks the inline tree with a stack and appends each run\n  of text in one combined style, as Rich's style stack does, so 10,000\n  levels of emphasis render in linear time. Adjacent text joins as\n  markdown-it's fragments_join joins it.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "069182e44a05717b4034ba0857c8f315a5691244",
