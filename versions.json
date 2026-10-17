@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-443",
-      "ref": "refs/pull/443/merge",
-      "sha": "a08a6ad51b6e5412055ed241bcd3cf9556431957",
-      "timestamp": "2026-10-17T14:56:59.761Z",
-      "commits": [
-        {
-          "sha": "a08a6ad51b6e5412055ed241bcd3cf9556431957",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T14:55:41Z",
-          "message": "Merge 7e41cbebc2eaa52fd17f31657249a5e5e78b6f49 into 876ed63e43cd10a85cb34ed9fe936de820d81f0f\n"
-        },
-        {
-          "sha": "7e41cbebc2eaa52fd17f31657249a5e5e78b6f49",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T08:55:37-06:00",
-          "message": "ItemStart's marker is CommonMark's two kinds, so a bullet cannot carry a number; nested and quoted delimiter changes pinned (rich-unfiled-791c.zhwr review)\n"
-        },
-        {
-          "sha": "9c21a975fb1e35389a7d86bd4ecef2feb8a9fb37",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T08:50:10-06:00",
-          "message": "Markdown reads a number closed by ')' as an ordered item, as markdown-it does (rich-unfiled-791c.zhwr)\n\nAn item start now carries markdown-it's marker character — the bullet, or\na number's delimiter — and two items share a list when it matches, so a\n'.' list and a ')' list split as a '-' list and a '*' list do.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "876ed63e43cd10a85cb34ed9fe936de820d81f0f",
-      "timestamp": "2026-10-17T14:47:30.394Z",
+      "sha": "097acd5b614a07f0050f33fd1e95e483f8e674ed",
+      "timestamp": "2026-10-17T15:08:20.051Z",
       "commits": [
         {
-          "sha": "876ed63e43cd10a85cb34ed9fe936de820d81f0f",
+          "sha": "097acd5b614a07f0050f33fd1e95e483f8e674ed",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T08:46:19-06:00",
-          "message": "runsOn counts a program timer that fires before its 1 ms check, so a stalled loop no longer hides a timer left set (rich-unfiled-791c.ffob) (#442)\n\n* runsOn counts a program timer that fires before its 1 ms check, so a stalled loop no longer hides a timer left set (rich-unfiled-791c.ffob)\n\nThe 1 ms check is armed as the body returns, and any program timer over\n1 ms that fires after that has run on past the body, whether or not the\ncheck has fired yet. Timers of 1 ms remain the body's queued jobs, since\nsame-delay timers fire in the order they were set.\n\n* runsOn takes a fractional delay as Node does, truncated, so a 1.9 ms timer stays one of the body's own jobs (rich-unfiled-791c.ffob)\n\nThe runsOn descriptions — programTimers' header, the settled message, the\nfirst test's name — now state the rule as it is: a timer still set, or a\nlonger one fired since the body returned."
+          "timestamp": "2026-10-17T09:07:00-06:00",
+          "message": "Markdown reads a number closed by ')' as an ordered item, as markdown-it does (rich-unfiled-791c.zhwr) (#443)\n\n* Markdown reads a number closed by ')' as an ordered item, as markdown-it does (rich-unfiled-791c.zhwr)\n\nAn item start now carries markdown-it's marker character — the bullet, or\na number's delimiter — and two items share a list when it matches, so a\n'.' list and a ')' list split as a '-' list and a '*' list do.\n\n* ItemStart's marker is CommonMark's two kinds, so a bullet cannot carry a number; nested and quoted delimiter changes pinned (rich-unfiled-791c.zhwr review)"
         }
       ]
     }
