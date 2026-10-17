@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-451",
-      "ref": "refs/pull/451/merge",
-      "sha": "5939cc5ea832728c2dca40b793851dd2832e4764",
-      "timestamp": "2026-10-17T18:14:56.258Z",
-      "commits": [
-        {
-          "sha": "5939cc5ea832728c2dca40b793851dd2832e4764",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T18:13:43Z",
-          "message": "Merge 6f7e20002d5475f724028a67aaefba9b649422fb into 2805501974fe293ba3804ccc2042281e66b8c92d\n"
-        },
-        {
-          "sha": "6f7e20002d5475f724028a67aaefba9b649422fb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T12:13:39-06:00",
-          "message": "Pin a definition ending at a list item's lazy header row; Line names headerLine (review)\n"
-        },
-        {
-          "sha": "13b143ec67bb894a228f979f210effc384f555db",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T12:07:30-06:00",
-          "message": "Markdown ends a list item's paragraph at a lazy table header row, as markdown-it does (rich-unfiled-791c.qabg)\n\nRich 15 draws \"- a\\n| x |\\n  | - |\" as the item \"a\", then a table headed\n\"x\"; ours folded both lines into the item's paragraph. markdown-it tries a\ntable at an item's lazy line as a paragraph terminator, needing only the\ndelimiter row to be held by the item, and never counts the lazy header as\ncode. A quote's lazy line it never tries, so `headerLine` admits only\nlines lazy to items.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "2805501974fe293ba3804ccc2042281e66b8c92d",
-      "timestamp": "2026-10-17T18:04:44.319Z",
+      "sha": "b1fa24188318044a9f20d366a7c45bf46d93dbea",
+      "timestamp": "2026-10-17T18:24:29.103Z",
       "commits": [
         {
-          "sha": "2805501974fe293ba3804ccc2042281e66b8c92d",
+          "sha": "b1fa24188318044a9f20d366a7c45bf46d93dbea",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T12:03:05-06:00",
-          "message": "Markdown's quoted list item holds a line by its indentation past its own `>`, pinned against Rich (rich-unfiled-791c.yr79) (#450)\n\n* Markdown's quoted list item holds a line by its indentation past its own `>`, pinned against Rich (rich-unfiled-791c.yr79)\n\n\"> - # h\\n   > z\" is the heading item, then \"▌ z\" in Rich 15: the line's\ntext is past the item's content column in the source, but not past its own\n`>`. #449 (78549e209) already measures it so; these pin the case with no\nblank line before the line, both ways round.\n\n* Pin a quote's line one cell short of the item, and why the items are headings (rich-unfiled-791c.yr79)"
+          "timestamp": "2026-10-17T12:22:42-06:00",
+          "message": "Markdown ends a list item's paragraph at a lazy table header row, as markdown-it does (rich-unfiled-791c.qabg) (#451)\n\n* Markdown ends a list item's paragraph at a lazy table header row, as markdown-it does (rich-unfiled-791c.qabg)\n\nRich 15 draws \"- a\\n| x |\\n  | - |\" as the item \"a\", then a table headed\n\"x\"; ours folded both lines into the item's paragraph. markdown-it tries a\ntable at an item's lazy line as a paragraph terminator, needing only the\ndelimiter row to be held by the item, and never counts the lazy header as\ncode. A quote's lazy line it never tries, so `headerLine` admits only\nlines lazy to items.\n\n* Pin a definition ending at a list item's lazy header row; Line names headerLine (review)"
         }
       ]
     }
