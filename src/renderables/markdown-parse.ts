@@ -100,7 +100,13 @@ const HEADING = /^#{1,6}(?=[ \t]|$)/;
 /** A thematic break: three or more of one of `*`, `-` or `_`, spaces and tabs between them allowed. */
 const RULE = /^(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/;
 const SETEXT = /^(=+|-+)[ \t]*$/;
-const FENCE = /^```(\w*)/;
+/**
+ * A code fence's opening, as markdown-it's fence rule reads one: three or more
+ * backticks, the info string after them holding no backtick, or three or more
+ * tildes, the info string free to hold anything. The run is captured whole, so
+ * its closing can be read off it.
+ */
+const FENCE = /^(`{3,}(?=[^`]*$)|~{3,})/;
 const QUOTE = /^>/;
 const ITEM_MARKER = /^(?:[*+-]|(\d{1,9})\.)/;
 /**
@@ -421,6 +427,14 @@ function itemLines(item: ItemStart, level: number, lines: readonly Line[], start
 }
 
 /**
+ * The line that closes the fence opened by the run `open`: a run of the same
+ * marker at least as long, then nothing but spaces and tabs.
+ */
+function closingFence(open: string): RegExp {
+  return new RegExp(`^${open}${open[0]}*[ \\t]*$`);
+}
+
+/**
  * Whether a list item holding `children` swallows the rest of the lines its
  * list sits in, as markdown-it's does when its content is past `MAX_NESTING`:
  * an item's block pass is handed every line to the end of the enclosing quote
@@ -529,12 +543,15 @@ function tokenize(lines: readonly Line[], level: number): MdToken<string>[] {
       continue;
     }
 
-    // Fenced code block: its lines with the fence's own indentation cut off
-    if (startsWith(line, FENCE)) {
+    // Fenced code block: its lines with the fence's own indentation cut off,
+    // to a closing fence or to the end of its container
+    const fence = FENCE.exec(body(line));
+    if (fence) {
       const indent = indentOf(line);
+      const close = closingFence(fence[1]!);
       const codeLines: string[] = [];
-      for (i++; i < lines.length && !startsWith(lines[i]!, FENCE); i++) codeLines.push(dropColumns(lines[i]!, indent));
-      i++; // skip closing ```
+      for (i++; i < lines.length && !startsWith(lines[i]!, close); i++) codeLines.push(dropColumns(lines[i]!, indent));
+      i++; // skip the closing fence
       tokens.push({ type: "code_block", code: codeLines.join("\n") });
       continue;
     }
