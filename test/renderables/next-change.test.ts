@@ -28,6 +28,7 @@ import {
   onBeat,
   steppedInk,
   withNextChange,
+  type Drawn,
   type Effect,
   type Renderable,
 } from "../../src/index.js";
@@ -138,6 +139,23 @@ describe("what a host reads off a frame: when it next changes", () => {
       expect(nextChangeOf(lit(label, loop({ z: 0 }), 7.25), sixteen)).toBe(Number.POSITIVE_INFINITY);
       expect(nextChangeOf(lit(label, loop({ z: 0 }), 7.25))).toBe(7.25);
     }
+  });
+
+  it("both stages and the answer are asked with the one measure of the frame", () => {
+    const seen: Drawn[] = [];
+    const watching: Effect = withNextChange(
+      (_t, drawn) => {
+        seen.push(drawn);
+        return (colors) => colors;
+      },
+      (t, drawn) => {
+        seen.push(drawn);
+        return t;
+      },
+    );
+    [...lit(label, watching, 1).render(OPTIONS)];
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).toBe(seen[1]);
   });
 
   it("the answer is asked with the frame, so a composer may answer from what the inner effect says of it", () => {

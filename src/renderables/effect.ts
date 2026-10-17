@@ -439,7 +439,10 @@ function measured(looked: readonly Looked[], walked: () => readonly Walked[], de
  * answers for the frame held now (`Beat.end`). An effect that moves every
  * frame makes the beat's own answer, the end of this hold; one that is done
  * and says never leaves the beat saying never too, since the hold after this
- * one would draw the same frame.
+ * one would draw the same frame. The answer is read off what the effect
+ * says, never off a comparison of frames: an effect that steps and is back
+ * on the same colour by the next hold still turns the beat there, an early
+ * answer the contract allows.
  */
 export function onBeat(effect: Effect, beat: Beat): Effect {
   return withNextChange(
