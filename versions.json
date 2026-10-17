@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "22d93098b8edd39f866456973f718a35f0e81562",
-      "timestamp": "2026-10-17T18:47:46.294Z",
+      "sha": "0abcc9482e3af85fee5d0b392753bde41d46680a",
+      "timestamp": "2026-10-17T19:05:09.285Z",
       "commits": [
         {
-          "sha": "22d93098b8edd39f866456973f718a35f0e81562",
+          "sha": "0abcc9482e3af85fee5d0b392753bde41d46680a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T12:46:01-06:00",
-          "message": "A Markdown linearity test compares time at two sizes instead of against a wall-clock budget (rich-unfiled-791c.kulj) (#452)\n\n* A Markdown linearity test compares time at two sizes instead of against a wall-clock budget (rich-unfiled-791c.kulj)\n\nThe definition test parsed 200 000 lines against a 2 s budget; linear took\n0.9 s alone and crossed 2 s once under a loaded full suite. expectLinearTime\n(test/suite/linear-time.ts) times the work at n and 4n, fastest of three each,\nand requires under 8x: the real parse grows 4.0x, the quadratic one it was\nwritten against (definitionAt's line runs not doubling) 14x at 25 000 lines.\n\n* expectLinearTime reads the median ratio of back-to-back pairs and refuses a size too small to measure (rich-unfiled-791c.kulj)\n\nA separate fastest run per size let a load that arrived after the first\nsmall run inflate every large run: the ratio read the step, not the work.\nPairing cancels a load within each pair, and the median drops the one pair\na step or stall lands across, in either direction. A floor on the smaller\nrun's time fails a size where fixed costs would pass quadratic work.\n\n* vitest.config.ts states the complexity-guard rule as a rule, not as what every guard already does (rich-unfiled-791c.kulj)"
+          "timestamp": "2026-10-17T13:03:49-06:00",
+          "message": "Markdown reads each text's backtick runs once instead of rescanning for every unclosed opener (rich-unfiled-791c.lbtu) (#453)\n\n* Markdown reads each text's backtick runs once instead of rescanning for every unclosed opener (rich-unfiled-791c.lbtu)\n\ninlineAt's code case compiled a RegExp per backtick run and scanned to the\nend of the text for a closer of that length, so a paragraph of openers no\nrun closes took time quadratic in its length: `\\``x ` repeated 32,000 times\ntook 4.5 s. InlineState (formerly LinkLabels — it now holds more of\nmarkdown-it's inline state than the label scan) indexes each text's whole\nruns by length once, and an opener looks up the first run of its length\nafter it: 15 ms for the same input.\n\nA differential run of 200,000 random inputs (116,673 with code spans,\nescaped partial openers and link labels among them) against the previous\nreader found no difference in output.\n\n* Markdown indexes a block's backtick runs once and shares them with every link label cut from it (rich-unfiled-791c.lbtu)\n\nKeying the index by text built a fresh one for each link's sliced label,\nso a paragraph of [`a`](u) links took quadratic time and memory. A label\nis cut at its ']', never inside a run, so the block's runs bound by the\nlabel's length are the label's runs."
         }
       ]
     }
