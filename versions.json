@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-416",
+      "ref": "refs/pull/416/merge",
+      "sha": "6347eab42d6e5993401cb7c34f4220cdd358e0dd",
+      "timestamp": "2026-10-17T01:35:53.027Z",
+      "commits": [
+        {
+          "sha": "6347eab42d6e5993401cb7c34f4220cdd358e0dd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T01:34:13Z",
+          "message": "Merge 2f07765b16f6f2eea251e1731222ed11a5769204 into c483773d7f7576f512bf4466d571500f6c1e5ffe\n"
+        },
+        {
+          "sha": "2f07765b16f6f2eea251e1731222ed11a5769204",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:34:09-06:00",
+          "message": "A spinner's next change and a Live's next frame are on the host's timeline\n\nReview (high) on PR #416.\n\nSpinner scaled t by speed before Frames, so its nextChange stamp was on\nthe scaled timeline: speed 2 said interval when the frame turns at half\nthat, and a negative speed said a time in the past. The holds are now\nscaled instead — interval over |speed|, the frames reversed for a\nnegative one — so Frames stamps host time and nothing maps back. Speed 0\nis refused: an infinite hold is not a beat. The negative-speed test had\npinned frame 0 at exactly t = 0, an instant-wide sliver of the old wrap.\n\nLive armed the next wake from a second clock read after the paint, so the\nrate stretched by what each frame cost to draw, and a change that fell\ndue during the paint was deferred a whole interval. The wake is now\nmeasured from the frame's own t; Clock.at fires at once for a past time.\n\nThe option doc says the next frame is a frame interval after the last one\ndrawn, a manual refresh included; frameClock's header says at() wakes\nnothing unless something runs every() on it.\n\nRejected with evidence: a stamp-only Style failing isNull on the SGR hot\npath. Bench (120-col row, 600 frames at 1/60 s, truecolor), p50 ms\nmaster → branch: shimmer 0.145 → 0.139, pulse 0.114 → 0.114, sparkle\n0.309 → 0.179, wheel 0.112 → 0.110.\n"
+        },
+        {
+          "sha": "7ade01c4e45a44bb501d0e5595afd6cea0ac411a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:12:43-06:00",
+          "message": "A host can ask when what it draws next changes (rich-animation-xi28.6rs)\n\nEvery animated primitive stamps its cells with the moment what they show\nnext changes, on `Style.nextChange`, which rides up through every container\nas the anchor does and writes no byte. `Segment.nextChange` reads the\nsoonest off a composed frame: a `Frames` answers the next frame's start,\n`Effected` what its effect says — a stepped signal and `onBeat` their next\nstep (`Beat.end`), a transition `t` until it is done and never after, a\nplain loop `t` itself — and still content never, as `Infinity`.\n\n`Effect` is now an interface: the call, and an optional `nextChange(t)`;\n`withNextChange` attaches one, `nextChangeOf` is the one reading of an\nabsent one. `Clock.at(time, tick)` is the one-shot a host waits on, and\n`Live` arms it after each frame — at the frame's next change or the rate's\nnext frame, whichever is sooner — so it draws each frame of a sequence held\nshorter than its interval instead of a sample of them.\n\nThe showcase's brand carries a flash that declares its own schedule, and\nits tagline counts down to the gauge's next step.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-417",
       "ref": "refs/pull/417/merge",
       "sha": "4f6910fd132217101873a2186ac2eb3f4392bbec",
@@ -71,28 +100,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T19:18:26-06:00",
           "message": "shimmer and sparkle cross the element where its frame lists cells (rich-unfiled-791c.c8g5) (#415)\n\n* shimmer and sparkle cross the element where its frame lists cells (rich-unfiled-791c.c8g5)\n\nA loop's Field is now handed the frame's Drawn, as a transition's Visibility\nalready is, and shimmer and sparkle read the element's columns (and sparkle\nits rows) off Drawn.cells each frame. EffectTarget.span, the caller-stated\nsecond source for that fact, is gone, as are the span arguments of shimmer\nand sparkle and DrawnSubject.span in effects-feel.\n\nA padded, wrapped or confined element was crossed at columns 0..span; it is\nnow crossed where it shows. Fireflies keep homes a fixed stride from the\nelement's first column, so an element that gains a column gains a firefly at\nmost rather than reshuffling every home.\n\n* sparkle keeps its fireflies on a lattice that a width change cannot move (rich-unfiled-791c.c8g5)\n\nReview of PR #415 found sparkle re-deriving its firefly count and stride from\neach frame's width, so an element gaining one column could add a firefly\nmid-flash or slide every home on a narrow one (0.21 of a 0.95 swing, measured).\nFireflies now sit one per PER columns along lattice rows ROWS apart, laid from\nthe element's first column and top row; the frame's extent only bounds which\nslots are worked out, and a cell asks only the fireflies whose light can reach\nit. A tall element is lit on every row, as the doc now says.\n\nextent is a loop rather than a reduce allocating a tuple per value.\n\n* sparkle's doc says which edge a width change leaves its fireflies still on (rich-unfiled-791c.c8g5)"
-        }
-      ]
-    },
-    {
-      "version": "pr-416",
-      "ref": "refs/pull/416/merge",
-      "sha": "7a5c5203485cbc7ecf6895dc7bcd380d1477c787",
-      "timestamp": "2026-10-17T01:14:05.177Z",
-      "commits": [
-        {
-          "sha": "7a5c5203485cbc7ecf6895dc7bcd380d1477c787",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T19:12:58-06:00",
-          "message": "Merge 7ade01c4e45a44bb501d0e5595afd6cea0ac411a into 07805a292885f45fde1b670d2a6b446ddd48a0e4\n"
-        },
-        {
-          "sha": "7ade01c4e45a44bb501d0e5595afd6cea0ac411a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T19:12:43-06:00",
-          "message": "A host can ask when what it draws next changes (rich-animation-xi28.6rs)\n\nEvery animated primitive stamps its cells with the moment what they show\nnext changes, on `Style.nextChange`, which rides up through every container\nas the anchor does and writes no byte. `Segment.nextChange` reads the\nsoonest off a composed frame: a `Frames` answers the next frame's start,\n`Effected` what its effect says — a stepped signal and `onBeat` their next\nstep (`Beat.end`), a transition `t` until it is done and never after, a\nplain loop `t` itself — and still content never, as `Infinity`.\n\n`Effect` is now an interface: the call, and an optional `nextChange(t)`;\n`withNextChange` attaches one, `nextChangeOf` is the one reading of an\nabsent one. `Clock.at(time, tick)` is the one-shot a host waits on, and\n`Live` arms it after each frame — at the frame's next change or the rate's\nnext frame, whichever is sooner — so it draws each frame of a sequence held\nshorter than its interval instead of a sample of them.\n\nThe showcase's brand carries a flash that declares its own schedule, and\nits tagline counts down to the gauge's next step.\n"
         }
       ]
     }
