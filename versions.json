@@ -4,15 +4,22 @@
     {
       "version": "pr-440",
       "ref": "refs/pull/440/merge",
-      "sha": "69aac69d3596ad1462a01ce68def9cb470be0b11",
-      "timestamp": "2026-10-17T12:41:11.597Z",
+      "sha": "b1ddaae259f699d8b6a7ea74f3aafc561442809b",
+      "timestamp": "2026-10-17T12:58:08.795Z",
       "commits": [
         {
-          "sha": "69aac69d3596ad1462a01ce68def9cb470be0b11",
+          "sha": "b1ddaae259f699d8b6a7ea74f3aafc561442809b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T06:39:24-06:00",
-          "message": "Merge 1f58249487c4e830e3b34e8f0e935c475791a44a into 65828614a6d5ab5be20c7600447523ffb649be1f\n"
+          "timestamp": "2026-10-17T12:56:21Z",
+          "message": "Merge d47cc0d138fb3d0372e28d263b68551f5f7b7838 into 65828614a6d5ab5be20c7600447523ffb649be1f\n"
+        },
+        {
+          "sha": "d47cc0d138fb3d0372e28d263b68551f5f7b7838",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T06:56:16-06:00",
+          "message": "Grounded code keeps the terminal's colours inside a quote (rich-unfiled-791c.rm6p)\n\nReview of #440 (high): at 16 colours `groundedStyle` dropped code's colours to\nunset, so the quote's new magenta showed through and code in a quote drew bold\nmagenta, against docs/markdown.md's \"in the terminal's own colours\". It now\nnames `default on default`, which is what its header already promised; Rich's\ncode likewise keeps its own colours over a quote's.\n\nThe quote's style name is one constant again for the bar, its body and its\nimages' alt text; the docs say the style lies under the quote's blocks rather\nthan colouring all of them; console.test's theme table gains the name.\n"
         },
         {
           "sha": "1f58249487c4e830e3b34e8f0e935c475791a44a",
