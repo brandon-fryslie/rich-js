@@ -846,6 +846,19 @@ describe("Markdown", () => {
     expect(rows("    > a", 40)).toEqual(["", " > a", "", ""]);
   });
 
+  it("indents a quote's line from its own `>`, wherever the `>` sits, as Rich does", () => {
+    // The item's lines are measured past each one's marker: short of the item, the line is the quote's.
+    expect(rows("> - a\n>\n    > b", 40)).toEqual(["", "▌  • a", "▌ b", ""]);
+    expect(rows("> - a\n>\n  > b", 40)).toEqual(["", "▌  • a", "▌ b", ""]);
+    expect(rows("> - a\n>\n \t> b", 40)).toEqual(["", "▌  • a", "▌ b", ""]);
+    expect(rows("- a\n\n  > - b\n  >\n      > c", 40)).toEqual(["", " • a", "   ▌  • b", "   ▌ c", ""]);
+    // Indented to the item past its marker, the line is the item's, not code.
+    expect(rows("> - a\n>\n      >   b", 40)).toEqual(["", "▌  • a", "▌    b", ""]);
+    expect(rows("> - a\n>\n   >   b", 40)).toEqual(["", "▌  • a", "▌    b", ""]);
+    expect(rows("> - a\n>\n\t>   b", 40)).toEqual(["", "▌  • a", "▌    b", ""]);
+    expect(rows("> 1. a\n>\n     >    b", 40)).toEqual(["", "▌  1 a", "▌    b", ""]);
+  });
+
   it("ends a definition at a backslash that escapes its destination's line ending, as Rich does", () => {
     // markdown-it reads a destination in the text it holds, which ends with the destination's line.
     expect(rows("[a]: x\\\ny\n\n[a]", 40, { hyperlinks: false })).toEqual(["y", "", "a (x%5C)", ""]);

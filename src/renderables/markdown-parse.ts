@@ -274,17 +274,18 @@ function dropColumns(line: Line, n: number): string {
 
 /**
  * A list item's opening line, read as CommonMark reads it: a bullet or a
- * number at most three columns in, not a thematic break. `content` is the
- * item's content column — where its text starts, and how far every line of
- * the item is indented — and `first` is the marker line as a line of the
- * item, absent when the item opens with a blank line. An item opening with a
- * blank line, or with indented code, has its content column one space past
- * the marker. `marker` is CommonMark's two kinds: a bullet, or an ordered
+ * number at most three columns in, not a thematic break. `indent` is how far
+ * into its container the item's content starts — where its text starts, and
+ * how far every line of the item is indented — and `first` is the marker line
+ * as a line of the item, absent when the item opens with a blank line. An item
+ * opening with a blank line, or with indented code, has its content one space
+ * past the marker. The indent is counted from each line's own margin, as
+ * markdown-it counts a quote's lines from each one's own `>`. `marker` is CommonMark's two kinds: a bullet, or an ordered
  * item's number and the delimiter that closes it, `.` or `)`.
  */
 interface ItemStart {
   readonly marker: { readonly bullet: string } | { readonly delimiter: string; readonly start: number };
-  readonly content: number;
+  readonly indent: number;
   readonly first: Line | undefined;
 }
 
@@ -302,7 +303,7 @@ function itemStart(line: Line): ItemStart | undefined {
   const lead = line.text.slice(0, line.text.length - text.length);
   return {
     marker: m[1] === undefined ? { bullet: m[0] } : { delimiter: m[0].slice(-1), start: parseInt(m[1], 10) },
-    content,
+    indent: content - line.margin,
     first: rest === "" ? undefined : { text: lead + " ".repeat(m[0].length) + after, margin: content, lazy: false },
   };
 }
@@ -566,8 +567,8 @@ function titleAt(text: string, start: number, takeLines: () => string): { end: n
  * at the next one: it is empty.
  */
 function* itemLines(item: ItemStart, lines: Lines, start: number): Generator<Line> {
-  const held = (line: Line): boolean => !line.lazy && leadEnd(line) >= item.content;
-  const inItem = (line: Line): Line => ({ text: line.text, margin: item.content, lazy: false });
+  const held = (line: Line): boolean => !line.lazy && indentOf(line) >= item.indent;
+  const inItem = (line: Line): Line => ({ text: line.text, margin: line.margin + item.indent, lazy: false });
   // Whether the item holds a line with text yet, which a blank line or a lazy one must come after.
   let text = item.first !== undefined;
   if (item.first !== undefined) yield item.first;
