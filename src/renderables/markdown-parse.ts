@@ -47,9 +47,10 @@ export type MdToken<Text = readonly Inline[]> =
   /** Kept, though nothing draws it, so a container ending in one does not end in the paragraph before it. */
   | { type: "html_block" }
   /**
-   * A container's content past `MAX_NESTING`, which markdown-it skips unread.
+   * A container's content past `MAX_NESTING`, which markdown-it skips unread,
+   * or the lines after a list whose item that deep took every one of them.
    * Kept, though nothing draws it, so a line after it continues the container
-   * as markdown-it's would: `open` where the content's last line has text.
+   * as markdown-it's would: `open` where the last line skipped has text.
    */
   | { type: "unread"; open: boolean }
   | { type: "blank" };
@@ -414,18 +415,19 @@ function itemLines(item: ItemStart, level: number, lines: readonly Line[], start
  * an item's block pass is handed every line to the end of the enclosing quote
  * or document and stops at the first line short of its indentation, and the
  * pass that skips unread content skips to that end. An item whose last block
- * is a list ending in such an item swallows them too.
+ * is a list that swallowed them ends in the `unread` that list leaves, and so
+ * swallows them too.
  */
 function swallowsRest(children: readonly MdToken<string>[]): boolean {
-  const last = children[children.length - 1];
-  return last?.type === "unread" || (last?.type === "list" && swallowsRest(last.items[last.items.length - 1]!.children));
+  return children[children.length - 1]?.type === "unread";
 }
 
 /**
  * The list opened at `start`, at `level`: each item holding its blocks, and
- * the blank lines that separated it from the item before.
+ * the blank lines that separated it from the item before — and, where an item
+ * swallowed the rest of `lines`, the `unread` they are, ending where they do.
  */
-function list(first: ItemStart, level: number, lines: readonly Line[], start: number): { token: MdToken<string>; next: number } {
+function list(first: ItemStart, level: number, lines: readonly Line[], start: number): { tokens: MdToken<string>[]; next: number } {
   const items: { gap: number; children: MdToken<string>[] }[] = [];
   let i = start;
   let gap = 0;
@@ -444,9 +446,10 @@ function list(first: ItemStart, level: number, lines: readonly Line[], start: nu
     gap = after - end;
     i = after;
   }
+  const token: MdToken<string> = { type: "list", start: first.bullet === undefined ? first.start : undefined, items };
+  if (swallowsRest(items[items.length - 1]!.children)) return { tokens: [token, { type: "unread", open: !isBlank(lines[lines.length - 1]!) }], next: lines.length };
   // The blank lines after the last item belong to whatever follows the list.
-  const next = i - gap;
-  return { token: { type: "list", start: first.bullet === undefined ? first.start : undefined, items }, next };
+  return { tokens: [token], next: i - gap };
 }
 
 /**
@@ -542,8 +545,8 @@ function tokenize(lines: readonly Line[], level: number): MdToken<string>[] {
     // List: its items, each Markdown of its own, as a quote is
     const item = itemStart(line);
     if (item) {
-      const { token, next } = list(item, level, lines, i);
-      tokens.push(token);
+      const { tokens: listed, next } = list(item, level, lines, i);
+      tokens.push(...listed);
       i = next;
       continue;
     }

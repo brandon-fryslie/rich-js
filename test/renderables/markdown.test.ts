@@ -987,6 +987,12 @@ describe("Markdown", () => {
     expect(rows(source, 200)).toEqual(expected);
   });
 
+  // Only the drawn text is asserted: Rich draws a blank row for the quote that the port does not (rich-unfiled-791c.erhp).
+  it("ends a quote at a blank marked line after an item it nests 20 levels deep, as Rich does", () => {
+    expect(rows("> " + "- ".repeat(10) + "x\n>\nb", 200)).toContain("b");
+    expect(rows("> > " + "- ".repeat(9) + "x\n> >\n> b\nc", 200)).toContain("▎ b c");
+  });
+
   it("draws Markdown nested ten thousand levels deep, as Rich does", () => {
     const depth = 10_000;
     expect(rows(">".repeat(depth) + " x", 80)).toEqual([""]);
