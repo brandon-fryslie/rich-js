@@ -6,8 +6,19 @@
 import stringWidth from "string-width";
 import { Memo } from "./memo.js";
 
-// [LAW:one-source-of-truth] string-width is the single authority for cell width
 const cellLenMemo = new Memo<number>();
+
+// U+2028 and U+2029, which string-width gives a cell each and Rich none. Each is
+// a grapheme cluster of its own (Grapheme_Cluster_Break=Control), so measuring
+// it as NUL — another Control, which string-width gives none — leaves the
+// clusters string-width cuts the rest of the text into exactly as they were.
+const SEPARATORS = /[\u2028\u2029]/g;
+
+// [LAW:one-source-of-truth] the single authority for cell width: string-width,
+// but for the separators above
+function measure(text: string): number {
+  return stringWidth(text.replace(SEPARATORS, "\0"));
+}
 
 /**
  * Returns the terminal cell width of a string.
@@ -15,7 +26,7 @@ const cellLenMemo = new Memo<number>();
 export function cellLen(text: string): number {
   if (text.length === 0) return 0;
   // Short strings recur (words, cells, labels); a long one is rarely measured twice.
-  return text.length <= 64 ? cellLenMemo.get(text, stringWidth) : stringWidth(text);
+  return text.length <= 64 ? cellLenMemo.get(text, measure) : measure(text);
 }
 
 // ── Branded number spaces ────────────────────────────────────────────────────

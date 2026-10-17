@@ -47,6 +47,17 @@ describe("cellLen", () => {
     expect(cellLen("a中b")).toBe(4); // 1 + 2 + 1
   });
 
+  it("gives a line or paragraph separator no cells, as Rich's cell_len does", () => {
+    // uv run --with 'rich>=14' python -c 'from rich.cells import cell_len; print(cell_len("a\u2028b"), cell_len("\u2029"))' → 2 0
+    expect(cellLen("a\u2028b")).toBe(2);
+    expect(cellLen("a\u2029b")).toBe(2);
+    expect(cellLen("\u2028\u2029")).toBe(0);
+    // A cluster of its own that adds nothing: the jamo either side, one syllable
+    // without it, measure apart — as Rich's do, 2 + 0 there.
+    expect(cellLen("\u1100\u2028\u1161")).toBe(cellLen("\u1100") + cellLen("\u1161"));
+    expect(cellLen("a\u2029\u0301")).toBe(1);
+  });
+
   it("returns width >= 1 for emoji characters", () => {
     // Emoji are typically 2 cells wide, but at minimum 1
     expect(cellLen("😀")).toBeGreaterThanOrEqual(1);
