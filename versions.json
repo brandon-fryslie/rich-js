@@ -4,15 +4,22 @@
     {
       "version": "pr-415",
       "ref": "refs/pull/415/merge",
-      "sha": "a5b36ed4e4fe8f2ec85c8b7099d0fe7bf67cc2c8",
-      "timestamp": "2026-10-17T01:09:00.966Z",
+      "sha": "086e61c026c7b7f65527fa7faaf496c0ad0f1803",
+      "timestamp": "2026-10-17T01:11:09.304Z",
       "commits": [
         {
-          "sha": "a5b36ed4e4fe8f2ec85c8b7099d0fe7bf67cc2c8",
+          "sha": "086e61c026c7b7f65527fa7faaf496c0ad0f1803",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T01:07:11Z",
-          "message": "Merge 22706457c045e22ab7b9f67c4988bee7d636d467 into 07805a292885f45fde1b670d2a6b446ddd48a0e4\n"
+          "timestamp": "2026-10-17T01:09:21Z",
+          "message": "Merge f0cf5e55a65c21940573e978f836926d51173148 into 07805a292885f45fde1b670d2a6b446ddd48a0e4\n"
+        },
+        {
+          "sha": "f0cf5e55a65c21940573e978f836926d51173148",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:09:16-06:00",
+          "message": "sparkle's doc says which edge a width change leaves its fireflies still on (rich-unfiled-791c.c8g5)\n"
         },
         {
           "sha": "22706457c045e22ab7b9f67c4988bee7d636d467",
