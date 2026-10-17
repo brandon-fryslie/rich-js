@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Markdown, type MarkdownOptions } from "../../src/renderables/markdown.js";
+import { linkHref } from "../../src/renderables/markdown-url.js";
 import { Segment } from "../../src/core/segment.js";
 import { DEFAULT_THEME, Style } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
@@ -426,6 +427,13 @@ describe("Markdown", () => {
     // A byte that is no part of well-formed UTF-8 reads as U+FFFD.
     expect(links("<http://e.com/%E2%82>")).toEqual([["http://e.com/��", "http://e.com/%E2%82"]]);
     expect(links("<http://e.com/%C0%80%ED%A0%80%F4%90%80%80>")[0]![0]).toBe(`http://e.com/${"�".repeat(9)}`);
+  });
+
+  it("strips a URL's whitespace in one pass, however long a run of it the URL holds", () => {
+    // Linear takes ~10 ms here; the backtracking strip it replaced took ~10 s.
+    const started = performance.now();
+    expect(linkHref(`http://e.com/${"\u3000".repeat(100_000)}x`)).toBe(`http://e.com/${"%E3%80%80".repeat(100_000)}x`);
+    expect(performance.now() - started).toBeLessThan(1000);
   });
 
   it("draws no link to a script, a file, or data that is not an image, as markdown-it refuses one", () => {

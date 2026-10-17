@@ -21,9 +21,18 @@ interface Url {
   hash: string;
 }
 
-/** What Python's `str.strip` strips: everything `str.isspace` holds true of. */
+/** What Python's `str.strip` strips: everything `str.isspace` holds true of, every one of it a single UTF-16 unit. */
 const PY_WHITESPACE = String.raw`[\t-\r\x1c-\x20\x85\xa0  -     　]`;
-const PY_STRIP = new RegExp(`^${PY_WHITESPACE}+|${PY_WHITESPACE}+$`, "g");
+const PY_SPACE = new RegExp(`^${PY_WHITESPACE}$`);
+/** Python's `str.strip`, a scan in from each end, so a run of interior whitespace costs one pass, as it does there. */
+function pyStrip(text: string): string {
+  let start = 0;
+  let end = text.length;
+  while (start < end && PY_SPACE.test(text[start]!)) start++;
+  while (end > start && PY_SPACE.test(text[end - 1]!)) end--;
+  return text.slice(start, end);
+}
+
 const PROTOCOL = /^[a-z0-9.+-]+:/i;
 const PORT = /:[0-9]*$/;
 const HOST_ENDING_CHARS = "/?#";
@@ -44,7 +53,7 @@ function firstOf(text: string, chars: string): number {
 /** mdurl's `parse(url, slashes_denote_host=True)`, the one way markdown-it calls it. */
 function parse(url: string): Url {
   const result: Url = { protocol: "", slashes: false, auth: "", hostname: "", port: "", pathname: "", search: "", hash: "" };
-  let rest = url.replace(PY_STRIP, "");
+  let rest = pyStrip(url);
   result.protocol = PROTOCOL.exec(rest)?.[0] ?? "";
   rest = rest.slice(result.protocol.length);
   const hostless = result.protocol === "javascript:";
@@ -321,7 +330,7 @@ const GOOD_DATA = /^data:image\/(?:gif|png|jpeg|webp);/;
  */
 export function linkHref(destination: string): string | undefined {
   const href = encode(recodeHostname(destination, toAscii));
-  const scheme = href.replace(PY_STRIP, "").toLowerCase();
+  const scheme = pyStrip(href).toLowerCase();
   return BAD_PROTOCOL.test(scheme) && !GOOD_DATA.test(scheme) ? undefined : href;
 }
 
