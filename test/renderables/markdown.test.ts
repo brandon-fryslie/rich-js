@@ -902,7 +902,7 @@ describe("Markdown", () => {
 
   it("reads a definition's label or title left open across many lines in time linear in their number", () => {
     for (const opening of ["[a", '[a]: /u "']) {
-      // Text grown a line at a time, and read after each, took fifteen times as long for four times the lines.
+      // Text grown a line at a time, and read after each — definitionAt with `run *= 2` removed — took fourteen times as long for four times the lines.
       expectLinearTime((lines) => new Markdown(opening + "x\n".repeat(lines)), 25_000);
     }
   });

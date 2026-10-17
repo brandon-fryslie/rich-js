@@ -10,15 +10,29 @@ function spin(steps: number): number {
 
 describe("expectLinearTime", () => {
   it("fails work that grows with the square of its input", () => {
-    expect(() => expectLinearTime((n) => spin(n * n), 2_000)).toThrow(/^2000: [\d.]+ ms; 8000: [\d.]+ ms/);
+    expect(() => expectLinearTime((n) => spin(n * n), 5_000)).toThrow(/^5000 vs 20000: /);
   });
 
-  it("passes linear work that the machine stalls in the middle of", () => {
+  it("fails quadratic work when a run at the smaller size stalls", () => {
+    let calls = 0;
+    expect(() =>
+      expectLinearTime((n) => {
+        // The first run, at the smaller size, waits out a busy machine.
+        if (++calls === 1) spin(1e8);
+        spin(n * n);
+      }, 5_000),
+    ).toThrow(/^5000 vs 20000: /);
+  });
+
+  it("passes linear work when the machine turns busy partway through", () => {
     let calls = 0;
     expectLinearTime((n) => {
-      // The first run at the larger size waits out a busy machine.
-      if (++calls === 2) spin(4e8);
-      spin(n);
-    }, 5_000_000);
+      // From the first run at the larger size on, every run takes three times as long.
+      spin(++calls === 1 ? n : 3 * n);
+    }, 20_000_000);
+  });
+
+  it("fails work too small to measure its growth", () => {
+    expect(() => expectLinearTime((n) => spin(n * n), 10)).toThrow(/too fast to measure growth/);
   });
 });
