@@ -218,6 +218,14 @@ function tagged(content: string, name: string): string {
 /** A record that runs a slash command is these tags and nothing else. */
 const COMMAND = /^(?:\s*<command-(name|message|args)>[\s\S]*?<\/command-\1>)+\s*$/;
 
+/** What a command record says besides its command line: its content, command tags gone and output tags unwrapped. */
+function commandOutput(content: string): string {
+  return content
+    .replace(/<command-(name|message|args)>[\s\S]*?<\/command-\1>/g, "")
+    .replace(/<local-command-std(?:out|err)>|<\/local-command-std(?:out|err)>/g, (tag) => (tag.startsWith("</") ? "\n" : ""))
+    .trim();
+}
+
 /** The command line `content`'s command tags spell — "/btw How are docs built?" — or "" when it has none. */
 function commandTags(content: string): string {
   return `${tagged(content, "command-name")} ${tagged(content, "command-args")}`.trim();
@@ -264,8 +272,7 @@ function systemEvent(r: RawRecord): Pick<SystemBlock, "subtype" | "label" | "tex
     // record ahead of it names its command in `commandRun`.
     case "local_command": {
       const command = commandTags(content) || ranCommand(r.commandRun);
-      const output = linesOf(tagged(content, "local-command-stdout"), tagged(content, "local-command-stderr"));
-      return { subtype, label: command || "local command", text: output, durationMs };
+      return { subtype, label: command || "local command", text: commandOutput(content), durationMs };
     }
     case "stop_hook_summary": {
       const n = r.hookCount;
@@ -349,21 +356,24 @@ function joinMessageRecords(records: ReadonlyArray<Joined>): Joined[] {
  * — as a user record, or a `local_command` one when it ran mid-turn — and then
  * a `local_command` record of the command's output whose parent it is, so the
  * two are one command: the output record, holding the line's tags ahead of its
- * own, under the line's uuid and parent.
+ * own, under the line's uuid and parent, where the line stood. They are found
+ * by that parent link, not by sitting together, so a hidden record written
+ * between them joins or splits nothing whether hidden records are shown or not.
  */
 function joinCommandRecords(records: ReadonlyArray<Joined>): Joined[] {
   const out: Joined[] = [];
+  const at = new Map<string, number>();
   for (const next of records) {
     const r = next.line.parsed;
-    const prev = out[out.length - 1];
-    const output = prev !== undefined && r.type === "system" && r.subtype === "local_command"
-      && r.parentUuid === prev.line.parsed.uuid && commandLine(contentOf(prev.line.parsed)) !== "";
-    if (!output) {
+    const i = r.type === "system" && r.subtype === "local_command" && typeof r.parentUuid === "string" ? at.get(r.parentUuid) : undefined;
+    const prev = i === undefined ? undefined : out[i];
+    if (i === undefined || prev === undefined || commandLine(contentOf(prev.line.parsed)) === "") {
+      if (typeof r.uuid === "string") at.set(r.uuid, out.length);
       out.push(next);
       continue;
     }
     const ran = prev.line.parsed;
-    out[out.length - 1] = {
+    out[i] = {
       line: { ...next.line, parsed: { ...r, uuid: ran.uuid, parentUuid: ran.parentUuid, content: `${contentOf(ran)}\n${asString(r.content)}` } },
       parts: [...prev.parts, ...next.parts],
     };

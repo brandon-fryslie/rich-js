@@ -83,7 +83,23 @@ describe("claude-sessions system records", () => {
   });
 
   it("draws a record whose fields are not the types Claude Code writes, not a failed session", () => {
-    expect(drawn({ subtype: "local_command", content: ["not", "text"], durationMs: "soon" })).toEqual(["⚫ local command"]);
+    expect(drawn({ subtype: "local_command", content: ["not", "text"], durationMs: "soon" })).toEqual(["⚫ local command", '["not","text"]']);
+  });
+
+  it("keeps what a command record says outside its output tags", () => {
+    expect(drawn({ subtype: "local_command", content: "Set model to opus", commandRun: { command: "model", args: "opus" } }))
+      .toEqual(["⚫ /model opus", "Set model to opus"]);
+  });
+
+  it("joins a command to its output across a hidden record, shown or not", () => {
+    const lines = session(
+      { type: "user", message: { role: "user", content: CLEAR } },
+      { type: "file-history-snapshot", uuid: "snap", parentUuid: null },
+      { type: "system", subtype: "local_command", parentUuid: "r0", content: "<local-command-stdout></local-command-stdout>" },
+    );
+    const kinds = (showHidden: boolean) => parseBlocks(lines, { showHidden }).map((b) => (b.kind === "system" ? b.label : b.kind));
+    expect(kinds(false)).toEqual(["/clear"]);
+    expect(kinds(true)).toEqual(["/clear", "record"]);
   });
 
   it("draws a slash command once: the prompt that ran it and its output are one block", () => {
