@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-447",
-      "ref": "refs/pull/447/merge",
-      "sha": "e0eb64ee4422ec1e7e4a3f88ec5b963958b7f2b1",
-      "timestamp": "2026-10-17T16:19:12.197Z",
-      "commits": [
-        {
-          "sha": "e0eb64ee4422ec1e7e4a3f88ec5b963958b7f2b1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T16:17:38Z",
-          "message": "Merge 4272daea00dbcaf252dd4d5bb83847f2664404d7 into 201b6f5593ae0b66c16cd9cfc6557b6525788690\n"
-        },
-        {
-          "sha": "4272daea00dbcaf252dd4d5bb83847f2664404d7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T10:17:33-06:00",
-          "message": "Markdown takes markdown-it's empty-item step only when the marker line has no content (rich-unfiled-791c.tx0u)\n\nThe previous commit decided it from the line where the item ends, so an item\nwhose content starts on its second line ('1.\\n   foo\\n\\n\\n1. b') stepped over\none blank line and split the list. It is markdown-it's condition again: the\nline after the marker is blank, and the step lands two lines on.\n"
-        },
-        {
-          "sha": "0f1f2b2b3abf88ae2439465000e129c9426334fa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T10:13:04-06:00",
-          "message": "Markdown measures the step past an empty item from where the item ends (rich-unfiled-791c.tx0u)\n\nReview: both branches now count from `end`, one blank line skipped after an\nempty item and all of them after any other. Container cases are pinned with\nordered items, where one list and two number differently; bullets draw the\nsame either way in Rich.\n"
-        },
-        {
-          "sha": "d8638285662d1c150d8bcc02d72f493cdc57b1f5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T10:05:56-06:00",
-          "message": "Markdown ends a list at the second blank line after an empty item, as markdown-it does (rich-unfiled-791c.tx0u)\n\nmarkdown-it's list rule, for an item whose content is empty and whose next\nline is blank, skips to the line two past it without tokenizing and checks\nthat line for the next item, skipping no more blank lines. '-\\n\\n\\n- a' is\ntwo lists there; it was one here. Pinned against Rich 15 (markdown-it-py 4.2).\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "201b6f5593ae0b66c16cd9cfc6557b6525788690",
-      "timestamp": "2026-10-17T16:02:28.535Z",
+      "sha": "30864c3491ff1b10e0f4942c10ab067373c567dc",
+      "timestamp": "2026-10-17T16:24:41.019Z",
       "commits": [
         {
-          "sha": "201b6f5593ae0b66c16cd9cfc6557b6525788690",
+          "sha": "30864c3491ff1b10e0f4942c10ab067373c567dc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T10:01:11-06:00",
-          "message": "cellLen gives U+2028 and U+2029 no cells, as Rich's cell_len does (rich-unfiled-791c.xvwv) (#446)\n\n* cellLen gives U+2028 and U+2029 no cells, as Rich's cell_len does (rich-unfiled-791c.xvwv)\n\n* cellLen's test asserts a separator parts its neighbours, not the substitution that does it; measure carries the width-authority claim (rich-unfiled-791c.xvwv)"
+          "timestamp": "2026-10-17T10:22:58-06:00",
+          "message": "Markdown ends a list at the second blank line after an empty item, as markdown-it does (rich-unfiled-791c.tx0u) (#447)\n\n* Markdown ends a list at the second blank line after an empty item, as markdown-it does (rich-unfiled-791c.tx0u)\n\nmarkdown-it's list rule, for an item whose content is empty and whose next\nline is blank, skips to the line two past it without tokenizing and checks\nthat line for the next item, skipping no more blank lines. '-\\n\\n\\n- a' is\ntwo lists there; it was one here. Pinned against Rich 15 (markdown-it-py 4.2).\n\n* Markdown measures the step past an empty item from where the item ends (rich-unfiled-791c.tx0u)\n\nReview: both branches now count from `end`, one blank line skipped after an\nempty item and all of them after any other. Container cases are pinned with\nordered items, where one list and two number differently; bullets draw the\nsame either way in Rich.\n\n* Markdown takes markdown-it's empty-item step only when the marker line has no content (rich-unfiled-791c.tx0u)\n\nThe previous commit decided it from the line where the item ends, so an item\nwhose content starts on its second line ('1.\\n   foo\\n\\n\\n1. b') stepped over\none blank line and split the list. It is markdown-it's condition again: the\nline after the marker is blank, and the step lands two lines on."
         }
       ]
     }
