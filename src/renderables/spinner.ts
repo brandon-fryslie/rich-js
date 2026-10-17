@@ -12,20 +12,24 @@
  *
  * It is built once and asked for each frame, as Rich's `Spinner` is built
  * once and has `render(time)` called on it: the name is parsed and the
- * frames are prepared where the spinner is given, and `at(t)` is what draws,
- * so a `Status` or `SpinnerColumn` holding one pays for the name and the
- * frames once, not once a frame, and a bad name fails at the call that gave
- * it. [LAW:parse-dont-validate]
+ * styled frames are prepared where the spinner is given, and `at(t)` is what
+ * draws, so a `Status` or `SpinnerColumn` holding one pays for the name and
+ * the styling once, and a bad name fails at the call that gave it.
+ * [LAW:parse-dont-validate] What `Frames` makes of a sequence — its beat,
+ * its width, each frame padded to it — is made again each time `at(t)` is
+ * drawn or measured, since `Frames` takes its time at construction.
  *
  * [LAW:no-ambient-temporal-coupling] A Spinner draws nothing on its own:
  * only `at(t)` is a renderable, so a spinner cannot be drawn without being
  * handed its time, and nothing here reads a clock. Whoever draws frames
  * hands each one its time (`core/clock.ts`) — `SpinnerColumn` the task's
  * `time`, a `Live` the frame's time on its clock — as Rich's `Spinner.render`
- * is handed `console.get_time()` or `task.get_time()`. So the same `t` draws
- * the same bytes at one redraw a second or sixty, a `Progress` on a
- * hand-moved clock turns its spinners on that clock, and a draw costs the
- * same at `t = 0` and `t = 10⁶`. `speed` scales the time, as Rich's does:
+ * is handed `console.get_time()` or `task.get_time()`. `t` is the clock's
+ * time, as `App` and `Task.time` hand it, where Rich's spinner counts from
+ * its first draw: here nothing is kept between frames, so the same `t` draws
+ * the same bytes at one redraw a second or sixty, two spinners on one clock
+ * agree at every `t`, a `Progress` on a hand-moved clock turns its spinners
+ * on that clock, and a draw costs the same at `t = 0` and `t = 10⁶`. `speed` scales the time, as Rich's does:
  * the frame at `t` is the frame the beat has at `t × speed`, so a negative
  * speed runs the sequence backwards, through the beat's wrap before zero.
  */
