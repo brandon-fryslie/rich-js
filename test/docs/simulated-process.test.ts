@@ -10,7 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import stripAnsi from "strip-ansi";
 import { cellLen, Console } from "../../src/index.js";
-import { runInTerminal, runsOn, type SimulatedTerminal } from "../../docs/.vitepress/simulated-process.js";
+import { runInTerminal, type SimulatedTerminal } from "../../docs/.vitepress/simulated-process.js";
 import { bundleExample } from "../../docs/.vitepress/example-runner.js";
 import { REPO_ROOT } from "../../scripts/repo-facts.js";
 import { resolve } from "node:path";
@@ -349,8 +349,9 @@ describe("runInTerminal", () => {
     );
   });
 
+  const ran = async (program: string) => (await runInTerminal(program, terminal(75))).runsOn;
+
   it("says a program runs on while a timer it set is still set once its body's jobs have run", async () => {
-    const ran = async (program: string) => runsOn(await runInTerminal(program, terminal(75)));
     expect(await ran("setTimeout(() => {}, 0); await Promise.resolve();")).toBe(false);
     expect(await ran("clearInterval(setInterval(() => {}, 5)); clearTimeout(setTimeout(() => {}, 5));")).toBe(false);
     expect(await ran("setTimeout(() => {}, 20);")).toBe(true);
@@ -360,6 +361,15 @@ describe("runInTerminal", () => {
     expect(await ran("const id = setInterval(() => {}, 5);\nglobalThis.setTimeout(() => clearInterval(id), 30);")).toBe(true);
     // The host's own timers are not the program's.
     expect(await ran("globalThis.setTimeout(() => {}, 20);")).toBe(false);
+  });
+
+  it("says a program runs on by the timers it set, however long the loop stalls before it is asked", async () => {
+    // The body holds the event loop past its own timer's delay, so that timer is due before any check of the host's could fire.
+    const stall = "const until = performance.now() + 30;\nwhile (performance.now() < until);";
+    expect(await ran(`setTimeout(() => {}, 10);\n${stall}`)).toBe(true);
+    expect(await ran(`const id = setInterval(() => clearInterval(id), 10);\n${stall}`)).toBe(true);
+    // A 1 ms timer is still one of the jobs the body queued.
+    expect(await ran(`setTimeout(() => {}, 0);\n${stall}`)).toBe(false);
   });
 
   it("hands process.exit to the terminal", async () => {
