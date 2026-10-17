@@ -209,7 +209,7 @@ describe("Markdown", () => {
 
   it("reads a paragraph of code spans left open in time linear in its length", () => {
     // Each escape leaves a lone backtick that no whole run closes; scanning the rest of the text for each took fifteen times as long for four times the openers.
-    expectLinearTime((openers) => new Markdown("\\``x ".repeat(openers)), 25_000);
+    expectLinearTime((openers) => new Markdown("\\``x ".repeat(openers)), 50_000);
   });
 
   it("reads a paragraph of links that each hold a code span in time linear in its length", () => {
@@ -1027,7 +1027,7 @@ describe("Markdown", () => {
   });
 
   it("strips a URL's whitespace in one pass, however long a run of it the URL holds", () => {
-    expect(linkHref(`http://e.com/${"\u3000".repeat(3)}x`)).toBe(`http://e.com/${"%E3%80%80".repeat(3)}x`);
+    expect(linkHref(`http://e.com/${"\u3000".repeat(100_000)}x`)).toBe(`http://e.com/${"%E3%80%80".repeat(100_000)}x`);
     // The backtracking strip this replaced took 20 times as long for four times the whitespace.
     expectLinearTime((spaces) => linkHref(`http://e.com/${"\u3000".repeat(spaces)}x`), 200_000);
   });

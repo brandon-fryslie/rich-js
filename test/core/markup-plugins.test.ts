@@ -41,7 +41,7 @@ describe("MarkupRegistry", () => {
   it("renders many plugin pairs in time proportional to the string", () => {
     const registry = new MarkupRegistry();
     registry.register("click", (ctx) => ctx.children);
-    expect(renderMarkup("[click]a[/click]".repeat(3), { registry }).plain).toBe("aaa");
+    expect(renderMarkup("[click]a[/click]".repeat(20_000), { registry }).plain).toBe("a".repeat(20_000));
     expectLinearTime((pairs) => renderMarkup("[click]a[/click]".repeat(pairs), { registry }), 20_000);
   });
 
@@ -51,7 +51,7 @@ describe("MarkupRegistry", () => {
   it("renders many unclosed plugin tags in time proportional to the string", () => {
     const registry = new MarkupRegistry();
     registry.register("click", (ctx) => ctx.children);
-    expect(renderMarkup("[click]a".repeat(3), { registry }).plain).toBe("aaa");
+    expect(renderMarkup("[click]a".repeat(20_000), { registry }).plain).toBe("a".repeat(20_000));
     expectLinearTime((tags) => renderMarkup("[click]a".repeat(tags), { registry }), 40_000);
   });
 

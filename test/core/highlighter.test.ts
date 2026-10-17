@@ -212,10 +212,10 @@ describe("highlighting a long run takes one pass over it", () => {
   it.each([
     ["letters with no ( after them", (n: number) => "a".repeat(n), 100_000, 4_000_000],
     ["digits ending in a letter", (n: number) => "1".repeat(n) + "a", 100_000, 1_000_000],
-    ["a negative number's digits", (n: number) => "-" + "1".repeat(n), 100_000, 6_000_000],
+    ["a negative number's digits", (n: number) => "-" + "1".repeat(n), 100_000, 12_000_000],
     ["dots", (n: number) => ".".repeat(n), 50_000, 2_000_000],
     ["< with no > after it", (n: number) => "<".repeat(n), 200_000, 2_000_000],
-    ["a < before a name with no > after it", (n: number) => "<" + "a".repeat(n), 100_000, 4_000_000],
+    ["a < before a name with no > after it", (n: number) => "<" + "a".repeat(n), 100_000, 8_000_000],
   ])("%s", (_name, input, reprSize, jsonSize) => {
     expectLinearTime((n) => new ReprHighlighter().call(input(n)), reprSize);
     expectLinearTime((n) => new JSONHighlighter().call(input(n)), jsonSize);

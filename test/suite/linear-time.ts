@@ -16,10 +16,12 @@
  * three times as long as alone and its smaller run no longer, which read as
  * ten times for four times the input. CPU time counts only what the thread
  * ran. What load still does to it — a cache shared with other work, a clock
- * that changes speed — slows both runs of a pair, and a stall, or a load that
- * starts or stops partway, lands across at most one pair; the median of the
- * pairs' ratios drops that pair in either direction: a small run that stalled
- * cannot pass quadratic work, and a large one cannot fail linear work.
+ * that changes speed, collection the thread does itself while the
+ * collector's helper threads wait for a core — slows both runs of a pair, and
+ * a stall, or a load that starts or stops partway, lands across at most one
+ * pair; the median of the pairs' ratios drops that pair in either direction:
+ * a small run that stalled cannot pass quadratic work, and a large one cannot
+ * fail linear work.
  *
  * Four times the input takes four times as long when the work is linear and
  * sixteen when it is quadratic; the bar sits between them, at eight. A size
@@ -39,7 +41,11 @@ const PAIRS = 5;
 /** The least time the smaller input's fastest run may take to count as a measurement. */
 const FLOOR_MS = 5;
 
-/** The milliseconds of CPU time this thread spends on `work`. */
+/**
+ * The milliseconds of CPU time this thread spends on `work`. Node has had
+ * `process.threadCpuUsage` since 22.19 and 23.9, which is why
+ * `package.json#devEngines` asks for those.
+ */
 function timed(work: () => void): number {
   const started = process.threadCpuUsage();
   work();

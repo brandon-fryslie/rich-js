@@ -113,7 +113,7 @@ describe("escape()", () => {
   it("reads a long backslash run in linear time", () => {
     const run = (length: number) => "\\".repeat(length);
     expectLinearTime((length) => escape(`${run(length)}x`), 2_000_000);
-    expectLinearTime((length) => escape(`${run(length)}[0`), 2_000_000);
+    expectLinearTime((length) => escape(`${run(length)}[0`), 4_000_000);
     expectLinearTime((length) => renderBuiltin(`${run(length)}x`), 1_000_000);
   });
 

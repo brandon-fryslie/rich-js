@@ -36,6 +36,17 @@ describe("expectLinearTime", () => {
     }, 60_000_000);
   });
 
+  it("passes linear work when every run at the larger size waits off the CPU", () => {
+    const blocked = new Int32Array(new SharedArrayBuffer(4));
+    expectLinearTime((n) => {
+      const started = performance.now();
+      spin(n);
+      // Each larger run then waits twice its own length without running, as a thread preempted on a busy machine does;
+      // in wall time every pair reads twelve, and the work would fail.
+      if (n > 60_000_000) Atomics.wait(blocked, 0, 0, 2 * (performance.now() - started));
+    }, 60_000_000);
+  });
+
   it("passes linear work when a run at the larger size stalls", () => {
     let calls = 0;
     expectLinearTime((n) => {
