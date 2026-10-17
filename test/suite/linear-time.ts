@@ -6,11 +6,22 @@
  * measures the runner's load as much as the code: a linear parse that takes
  * 0.9 s alone took over 2 s inside a loaded full suite and failed. What sets
  * linear apart from quadratic is how the time grows, so this times the same
- * work at two sizes, back to back, and reads the ratio of each pair. A load
- * that slows both runs of a pair cancels in its ratio. A stall, or a load that
- * starts or stops partway, lands across at most one pair, and the median of
- * the pairs' ratios drops that pair in either direction: a small run that
- * stalled cannot pass quadratic work, and a large one cannot fail linear work.
+ * work at two sizes, back to back, and reads the ratio of each pair.
+ *
+ * The time is the CPU time of the thread running the work, not wall time. On
+ * a machine with more runnable threads than cores, a run that fits in one
+ * scheduler slice gets a whole core while a longer one is preempted for its
+ * whole length, so the wall-clock ratio grows with the load and does not
+ * cancel: inside the full suite a linear highlighter's larger run took two to
+ * three times as long as alone and its smaller run no longer, which read as
+ * ten times for four times the input. CPU time counts only what the thread
+ * ran. What load still does to it — a cache shared with other work, a clock
+ * that changes speed, collection the thread does itself while the
+ * collector's helper threads wait for a core — slows both runs of a pair, and
+ * a stall, or a load that starts or stops partway, lands across at most one
+ * pair; the median of the pairs' ratios drops that pair in either direction:
+ * a small run that stalled cannot pass quadratic work, and a large one cannot
+ * fail linear work.
  *
  * Four times the input takes four times as long when the work is linear and
  * sixteen when it is quadratic; the bar sits between them, at eight. A size
@@ -30,10 +41,16 @@ const PAIRS = 5;
 /** The least time the smaller input's fastest run may take to count as a measurement. */
 const FLOOR_MS = 5;
 
+/**
+ * The milliseconds of CPU time this thread spends on `work`. Node has had
+ * `process.threadCpuUsage` since 22.19 and 23.9, which is why
+ * `package.json#devEngines` asks for those.
+ */
 function timed(work: () => void): number {
-  const started = performance.now();
+  const started = process.threadCpuUsage();
   work();
-  return performance.now() - started;
+  const { user, system } = process.threadCpuUsage(started);
+  return (user + system) / 1000;
 }
 
 /** Fails unless `run(FACTOR * size)` takes less than `BAR` times as long as `run(size)`. */

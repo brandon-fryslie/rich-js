@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Tag, MarkupError, MarkupSyntaxError, escape, MarkupRegistry, renderMarkup } from "../../src/core/markup.js";
 import { cellLen } from "../../src/core/cells.js";
 import type { Style } from "../../src/core/style.js";
+import { expectLinearTime } from "../suite/linear-time.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -106,14 +107,14 @@ describe("escape()", () => {
     expect(renderBuiltin(escape("[link=http://evil") + escape("]click")).spans).toEqual([]);
   });
 
-  // A quadratic scan takes tens of seconds here; a linear one, milliseconds.
+  // Matching a run from any backslash but its first rescans it from each one: without the lookbehind
+  // on RUN the first and last took 17 times as long for four times the run, and without the one on
+  // TRAILING_RUN_RE the first two did.
   it("reads a long backslash run in linear time", () => {
-    const run = "\\".repeat(200_000);
-    const began = performance.now();
-    escape(`${run}x`);
-    escape(`${run}[0`);
-    renderBuiltin(`${run}x`);
-    expect(performance.now() - began).toBeLessThan(2000);
+    const run = (length: number) => "\\".repeat(length);
+    expectLinearTime((length) => escape(`${run(length)}x`), 2_000_000);
+    expectLinearTime((length) => escape(`${run(length)}[0`), 4_000_000);
+    expectLinearTime((length) => renderBuiltin(`${run(length)}x`), 1_000_000);
   });
 
   it("doubles a trailing backslash run that nothing follows, which the grammar cannot avoid", () => {

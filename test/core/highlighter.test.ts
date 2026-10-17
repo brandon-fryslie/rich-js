@@ -8,6 +8,7 @@ import {
 } from "../../src/core/highlighter.js";
 import { DEFAULT_STYLES } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
+import { expectLinearTime } from "../suite/linear-time.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -204,24 +205,20 @@ describe("ReprHighlighter", () => {
 // --- Cost on long runs ---
 
 // Each text is one long run that no pattern can match whole. A pattern that
-// rescans the run from each of its characters costs seconds here (100k cells:
-// ~5s for the letters, ~70s for the digits); one pass costs milliseconds, so
-// the bound only separates linear from quadratic.
+// rescans the run from each of its characters took 10 to 17 times as long for
+// four times the run; one pass grows with it. Each highlighter is given a run
+// long enough to measure, which for JSONHighlighter's simpler patterns is longer.
 describe("highlighting a long run takes one pass over it", () => {
-  const N = 100_000;
   it.each([
-    ["letters with no ( after them", "a".repeat(N)],
-    ["digits ending in a letter", "1".repeat(N) + "a"],
-    ["a negative number's digits", "-" + "1".repeat(N)],
-    ["dots", ".".repeat(N)],
-    ["< with no > after it", "<".repeat(N)],
-    ["a < before a name with no > after it", "<" + "a".repeat(N)],
-  ])("%s", (_name, input) => {
-    for (const ctor of [ReprHighlighter, JSONHighlighter]) {
-      const started = performance.now();
-      new ctor().call(input);
-      expect(performance.now() - started, ctor.name).toBeLessThan(1000);
-    }
+    ["letters with no ( after them", (n: number) => "a".repeat(n), 100_000, 4_000_000],
+    ["digits ending in a letter", (n: number) => "1".repeat(n) + "a", 100_000, 1_000_000],
+    ["a negative number's digits", (n: number) => "-" + "1".repeat(n), 100_000, 12_000_000],
+    ["dots", (n: number) => ".".repeat(n), 50_000, 2_000_000],
+    ["< with no > after it", (n: number) => "<".repeat(n), 200_000, 2_000_000],
+    ["a < before a name with no > after it", (n: number) => "<" + "a".repeat(n), 100_000, 8_000_000],
+  ])("%s", (_name, input, reprSize, jsonSize) => {
+    expectLinearTime((n) => new ReprHighlighter().call(input(n)), reprSize);
+    expectLinearTime((n) => new JSONHighlighter().call(input(n)), jsonSize);
   });
 });
 
