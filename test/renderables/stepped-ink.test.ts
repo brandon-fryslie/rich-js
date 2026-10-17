@@ -1,7 +1,7 @@
 // steppedInk: a signal whose ink steps through colours on a beat, legible on
 // its ground at every depth, at one redraw a second and at sixty.
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CATPPUCCIN_LATTE,
   CATPPUCCIN_MOCHA,
@@ -29,7 +29,8 @@ import {
 
 // [LAW:behavior-not-structure] What is asserted is what a terminal is sent:
 // which colour each cell's ink is written in, at which handed time, and how
-// it reads against the ground it is drawn on.
+// it reads against the ground it is drawn on. What a frame costs no byte
+// shows, so the one test of it counts the search at the call it weighs through.
 
 const AA = 4.5;
 
@@ -160,6 +161,8 @@ describe("steppedInk — each step's ink reads on its ground, as drawn, at every
 });
 
 describe("steppedInk — at the host's rate, whatever it is", () => {
+  afterEach(() => vi.restoreAllMocks());
+
   // On Mocha's base every step reads as itself, so the ink written is the step's own colour.
   const chevrons = word(Style.parse("bold #cdd6f4 on #1e1e2e"));
   const inkAt = (effect: ReturnType<typeof steppedInk>, t: number): string =>
@@ -184,32 +187,24 @@ describe("steppedInk — at the host's rate, whatever it is", () => {
     expect(new Set(Array.from({ length: 60 }, (_, i) => inkAt(quarters, i / 60))).size).toBe(4);
   });
 
-  it("a frame inside a step costs no more than the step's first, and no more than twice an untouched frame, at t = 0 and far from it", () => {
-    // 256 colours: the search weighs every colour the depth has an index for,
-    // and the first frame of a step is the only one that runs it. A frame
-    // inside the step is measured against the identity effect's, sampled in
-    // turn with it, so a loaded box slows both alike: on a quiet one the
-    // signal's frame is about 1.3× identity's, pulse's about 1.8×.
+  it("a frame inside a step redoes none of the step's search, nor does the step's next pass of the beat, at t = 0 and far from it", () => {
+    // Counted, not timed: a stopwatch races whatever else the runner is
+    // doing. The search weighs each colour it may write as `Effected.shows`
+    // draws it, so its calls are the work, and a frame making none redid
+    // none. At 256 colours it weighs every colour the depth has an index for.
     const row = new RichText("›".repeat(120), { style: Style.parse("bold #cdd6f4 on #313244"), end: "", noWrap: true });
-    const identity: Effect = () => (colors) => colors;
-    const frame = (effect: Effect, t: number): number => {
-      const began = performance.now();
+    const weighed = vi.spyOn(Effected, "shows");
+    const searched = (effect: Effect, t: number): boolean => {
+      weighed.mockClear();
       renderToString(new Effected(row, effect, { t, key: "row", theme: CATPPUCCIN_MOCHA }), { width: 120, colorSystem: ColorDepth.EIGHT_BIT });
-      return performance.now() - began;
+      return weighed.mock.calls.length > 0;
     };
-    const median = (xs: number[]): number => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
-    frame(identity, 0);
     for (const base of [0, 1e6]) {
-      // A signal built fresh runs the search on its first frame at `base`;
-      // the first frame is sampled as the frames inside the step are, over
-      // several fresh signals, so one sample's jitter decides nothing.
-      const firsts = Array.from({ length: 9 }, () => frame(steppedInk(STEPS), base));
       const fresh = steppedInk(STEPS);
-      frame(fresh, base);
-      const samples = Array.from({ length: 59 }, (_, i) => ({ untouched: frame(identity, base + (i + 1) / 60), signal: frame(fresh, base + (i + 1) / 60) }));
-      const inside = median(samples.map((s) => s.signal));
-      expect(inside).toBeLessThanOrEqual(median(firsts));
-      expect(inside).toBeLessThanOrEqual(2 * median(samples.map((s) => s.untouched)));
+      // One beat at sixty frames a second, from `from`: which frames searched.
+      const pass = (from: number): boolean[] => Array.from({ length: 180 }, (_, i) => searched(fresh, base + from + i / 60));
+      expect(pass(0)).toEqual(Array.from({ length: 180 }, (_, i) => i % 60 === 0));
+      expect(pass(3)).toEqual(Array.from({ length: 180 }, () => false));
     }
   });
 });
