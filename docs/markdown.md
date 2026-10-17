@@ -47,7 +47,10 @@ the indentation reach the stops of 4 they reach in the source, however deep the 
 An HTML block — a line opening with `<div>`, `<!--`, `<pre>` or another of CommonMark's
 HTML block starts — is read where markdown-it reads one and drawn as Rich draws it: not at all.
 It ends the paragraph or table above it, as a heading does; a lone tag of any other name, such
-as `<span>`, does not.
+as `<span>`, does not, and is that paragraph's inline HTML instead. Inline HTML — a tag, a
+comment, a processing instruction, a declaration or a CDATA section inside text — is not drawn
+either. A backslash before a punctuation character writes that character as itself, so `\<span>`
+draws `<span>`.
 
 An image is drawn as Rich draws it: a picture glyph, then its alt text, linked to the image.
 

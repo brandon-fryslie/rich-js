@@ -534,10 +534,9 @@ describe("Markdown", () => {
     expect(rows('para\n<DIV class="x">\nbody\n\nafter', 40)).toEqual(["para", "", "after", ""]);
     // Any other tag alone on a line opens a block only where no paragraph is open,
     // and neither it nor a lowercase `<!doctype`, which markdown-it-py does not
-    // read as a declaration, ends one. Rich drops both as inline HTML; this
-    // renderer draws them as text until it reads that (rich-unfiled-791c.5r6q).
-    expect(rows("para\n<span>\nafter", 40)).toEqual(["para <span> after", ""]);
-    expect(rows("para\n<!doctype html>\nafter", 40)).toEqual(["para <!doctype html> after", ""]);
+    // read as a declaration block, ends one: both are the paragraph's inline HTML.
+    expect(rows("para\n<span>\nafter", 40)).toEqual(["para  after", ""]);
+    expect(rows("para\n<!doctype html>\nafter", 40)).toEqual(["para  after", ""]);
     expect(rows("<span>\nhello\n\nafter", 40)).toEqual(["", "after", ""]);
   });
 
@@ -549,6 +548,67 @@ describe("Markdown", () => {
 
   it("ends a table at an HTML block, as markdown-it does", () => {
     expect(rows("| a |\n| - |\n| 1 |\n<!-- c -->\nafter", 40)).toEqual(["", " a", " ─", " 1", "", "after", ""]);
+  });
+
+  it("draws inline HTML as Rich does, not at all, wherever inline Markdown is read", () => {
+    const dropped = [
+      "a <b>bold</b> c",
+      "x <a href=\"q\" title='t'/> y",
+      "x <span\nclass=\"a\"> y",
+      "x </b > y",
+      "x <!-- a -- b --> y",
+      "x <!---> y",
+      "x <?php echo ?> y",
+      "x <!doctype a> y",
+      "x <![CDATA[ z ]]> y",
+    ];
+    expect(dropped.map((source) => rows(source, 40)[0])).toEqual([
+      "a bold c",
+      "x  y",
+      "x  y",
+      "x  y",
+      "x  y",
+      "x  y",
+      "x  y",
+      "x  y",
+      "x  y",
+    ]);
+    expect(rows("[a <i>b</i>](http://u) c", 40)[0]).toBe("a b c");
+    // A bracket inside a tag or a code span, which bind tighter, opens or closes no link.
+    for (const source of ["[a <b x=']'>](u) c", "[a <!-- ] -->](u) c"]) {
+      expect(rows(source, 40, { hyperlinks: false })[0]).toBe("a  (u) c");
+    }
+    expect(rows("[`]`](u) c", 40, { hyperlinks: false })[0]).toBe("] (u) c");
+    expect(rows("x <b x='['> [y](u)", 40, { hyperlinks: false })[0]).toBe("x  y (u)");
+    expect(rows("| a | b |\n| - | - |\n| 1 | 2 |\n<span>", 40)).toEqual(["", " a  b", " ────", " 1  2", "", "", ""]);
+  });
+
+  it("leaves text that is not HTML as it is: a `<` no tag follows, an unclosed construct, a code span", () => {
+    for (const source of ["x <3 y", "x < b> y", "x <a b='c> y", "x <!-- a --- y", "x <? never y"]) expect(rows(source, 40)[0]).toBe(source);
+    expect(rows("`<b>` x", 40)[0]).toBe("<b> x");
+  });
+
+  it("draws a backslash-escaped punctuation character as itself, and any other backslash as written", () => {
+    expect(rows("x \\<span> y", 40)[0]).toBe("x <span> y");
+    expect(rows("x \\*a\\* y \\[a](b)", 40)[0]).toBe("x *a* y [a](b)");
+    expect(rows("x \\\\ \\a y", 40)[0]).toBe("x \\ \\a y");
+    expect(rows("[a](u\\)v)", 40, { hyperlinks: false })[0]).toBe("a (u)v)");
+    expect(segment("[a](http://x/\\_y)", "a").style?.link).toBe("http://x/_y");
+    expect(segment("![p](a\\_b.png)", "p").style?.link).toBe("a_b.png");
+  });
+
+  it("closes emphasis on no delimiter inside an escape, a code span, inline HTML or a link, as Rich does", () => {
+    const italic = (source: string): string[] =>
+      collectSegments(new Markdown(source, { hyperlinks: false }), { maxWidth: 80 })
+        .filter((s) => s.style?.italic)
+        .map((s) => s.text);
+    expect(italic("*a \\* b*")).toEqual(["a * b"]);
+    expect(italic("*a <b title='*'>c*")).toEqual(["a c"]);
+    expect(rows("*a `*` b*", 40)[0]).toBe("a * b");
+    expect(italic("*a `*` b*")).toEqual(expect.arrayContaining(["a ", " b"]));
+    expect(rows("*[a*](http://u) b*", 40)[0]).toBe("a* b");
+    expect(rows("**a <b x='**'> c**", 40)[0]).toBe("a  c");
+    expect(segment("**a <b x='**'> c**", "a  c").style?.bold).toBe(true);
   });
 
   it("takes no lazy line into a container that ends in an HTML block", () => {
