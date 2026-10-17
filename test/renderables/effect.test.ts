@@ -54,7 +54,10 @@ describe("Effected — the identity effect", () => {
     const segments = [...effected(fixed(new Segment("ab")), () => (c) => (seen.push(c), c)).render({ maxWidth: 10 })];
     expect(seen).toEqual([DEFAULTS, DEFAULTS]);
     expect(segments).toHaveLength(1);
-    expect(segments[0]!.style).toBeUndefined();
+    // Written as it was: no byte but the glyphs. What the segment gains is
+    // when the frame next changes — now, for an effect that promises no hold.
+    expect(renderToString(fixed(...segments), { colorSystem: ColorDepth.TRUECOLOR })).toBe("ab");
+    expect(segments[0]!.style?.nextChange).toBe(0);
   });
 
   it("hands a cell the colours on screen: an ANSI colour from the theme, swapped under reverse", () => {
@@ -144,8 +147,9 @@ describe("Effected — segments are cut only where colours change", () => {
       for (const colorSystem of [ColorDepth.EIGHT_BIT, ColorDepth.STANDARD]) {
         const segment = new Segment("abcdef", style === undefined ? undefined : Style.parse(style));
         const segments = [...effected(fixed(segment), nudge).render({ maxWidth: 10, colorSystem })];
-        expect(segments, `${style} at ${colorSystem}`).toEqual([segment]);
-        expect(segments[0]).toBe(segment);
+        // One run, written as the segment was.
+        expect(segments.map((s) => s.text), `${style} at ${colorSystem}`).toEqual(["abcdef"]);
+        expect(renderToString(fixed(...segments), { colorSystem })).toBe(renderToString(fixed(segment), { colorSystem }));
       }
     }
   });

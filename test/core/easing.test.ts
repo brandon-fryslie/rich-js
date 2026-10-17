@@ -291,6 +291,58 @@ describe("beat — holds in seconds, the hold in progress out, no clock read", (
     expect(() => beat([1]).start(Number.NaN)).toThrow(/Beat.start needs a finite t, got NaN/);
   });
 
+  // rich-animation-xi28.6rs: `end` is when what is drawn on the beat at `t`
+  // next changes — what a host asks before drawing again.
+  it("end is when the hold in progress ends: the next hold's start, into the next pass from the last, before zero too", () => {
+    const b = beat([1, 0.5, 2.5]);
+    expect(b.end(0)).toBe(1);
+    expect(b.end(0.99)).toBe(1);
+    expect(b.end(1)).toBe(1.5);
+    expect(b.end(1.4)).toBe(1.5);
+    expect(b.end(1.5)).toBe(4);
+    expect(b.end(3.9)).toBe(4);
+    expect(b.end(4)).toBe(5);
+    expect(b.end(5.2)).toBe(5.5);
+    expect(b.end(-0.5)).toBe(0);
+    expect(b.end(-3.9)).toBe(-3);
+  });
+
+  it("every t inside one hold answers the same end, to the bit, far from zero too", () => {
+    const b = beat([0.1, 0.1, 0.1]);
+    for (const base of [0, 1e6, 1e9]) {
+      const inside = Array.from({ length: 60 }, (_, i) => b.end(base + 0.11 + (i / 60) * 0.08));
+      expect(new Set(inside).size).toBe(1);
+      expect(inside[0]).toBeCloseTo(base + 0.2, 6);
+    }
+  });
+
+  it("end and at agree at every sample: end is after t, the hold in progress at it is the next, and it is its own start", () => {
+    for (const holds of [[0.1, 0.1, 0.1], [0.3, 0.2, 0.1], [1.1, 0.9], [1]]) {
+      const b = beat(holds);
+      const wrong: number[] = [];
+      for (let k = 0; k < 20_000; k++) {
+        const t = (k / 20_000) * 50 - 5;
+        const ended = b.end(t);
+        const next = (b.at(t) + 1) % holds.length;
+        if (!(ended > t) || b.at(ended) !== next || b.start(ended) !== ended) wrong.push(t);
+      }
+      expect(wrong, `holds ${holds.join(",")}`).toEqual([]);
+    }
+  });
+
+  it("sampled once a second, end says the next change comes before the next sample for quarter-second holds, and at it for whole ones", () => {
+    const quarters = beat([0.25, 0.25, 0.25, 0.25]);
+    const seconds = beat([1, 1, 1]);
+    for (const t of [0, 1, 2, 3, 1e6]) {
+      expect(quarters.end(t)).toBeCloseTo(t + 0.25, 6);
+      expect(seconds.end(t)).toBe(t + 1);
+    }
+  });
+
+  it("end refuses a t that is not finite", () => {
+    expect(() => beat([1]).end(Number.POSITIVE_INFINITY)).toThrow(/Beat.end needs a finite t, got Infinity/);
+  });
+
   it("refuses no holds, and a hold that is not a positive number of seconds", () => {
     expect(() => beat([])).toThrow(/at least one hold/);
     expect(() => beat([1, 0])).toThrow(/beat hold 1 must be a positive number of seconds, got 0/);

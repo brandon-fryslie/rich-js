@@ -29,9 +29,21 @@
  * its first draw: here nothing is kept between frames, so the same `t` draws
  * the same bytes at one redraw a second or sixty, two spinners on one clock
  * agree at every `t`, a `Progress` on a hand-moved clock turns its spinners
- * on that clock, and a draw costs the same at `t = 0` and `t = 10⁶`. `speed` scales the time, as Rich's does:
- * the frame at `t` is the frame the beat has at `t × speed`, so a negative
- * speed runs the sequence backwards, through the beat's wrap before zero.
+ * on that clock, and a draw costs the same at `t = 0` and `t = 10⁶`.
+ *
+ * `speed` scales the holds, not the time: at speed 2 each frame is held half
+ * the interval, and a negative speed is the frames in reverse order, each held
+ * the interval over the speed's size. [LAW:one-source-of-truth] Rich scales
+ * the time instead, `t × speed` into the beat. At a positive speed the frame
+ * drawn is the same; but when the frame next changes (`Style.nextChange`) is
+ * a time on the host's timeline, and a beat over scaled time answers on the
+ * scaled one — so the sequence is scaled where it is built, and the
+ * `FrameSequence` stamps host time with nothing to map back. Backwards, this is the plain
+ * reversed sequence from `t = 0`, where Rich's `int()` truncation holds
+ * frame 0 for a first interval and then counts down: a departure, made so a
+ * negative speed is one more sequence on the beat and not a second rule
+ * about time. A speed of zero would hold a frame forever, which is not a
+ * beat, and is refused where it is given.
  */
 
 import { Segment } from "../core/segment.js";
@@ -48,26 +60,24 @@ import { drawable } from "../core/protocol.js";
 import { EmbeddedText } from "./embed.js";
 import { FrameSequence } from "./frames.js";
 
-/** A spinner's frames prepared to draw, each styled and held for the interval, and the glyphs they spend. */
+/** A spinner's frames prepared to draw, each styled and held for the interval over the speed, in the order the speed's sign runs them, and the glyphs they spend. */
 interface Sequence {
   readonly frames: FrameSequence;
   readonly glyphs: string;
 }
 
-const sequence = (data: SpinnerData, style: string | Style): Sequence => ({
-  frames: new FrameSequence(
-    data.frames.map((frame) => ({
-      text: new RichText("", { end: "" }).append(frame, style),
-      seconds: data.interval / 1000,
-    })),
-  ),
-  glyphs: data.frames.join(""),
-});
+const sequence = (data: SpinnerData, style: string | Style, speed: number): Sequence => {
+  const frames = data.frames.map((frame) => ({
+    text: new RichText("", { end: "" }).append(frame, style),
+    seconds: data.interval / 1000 / Math.abs(speed),
+  }));
+  return { frames: new FrameSequence(speed < 0 ? frames.reverse() : frames), glyphs: data.frames.join("") };
+};
 
 const sequenceGlyphs = ({ glyphs }: Sequence): string => glyphs;
 
 export interface SpinnerOptions {
-  /** Multiplies the spinner's rate; negative runs it backwards. Defaults to 1. */
+  /** Multiplies the spinner's rate; negative runs it backwards; zero is refused. Defaults to 1. */
   speed?: number;
   style?: string | Style;
 }
@@ -97,16 +107,18 @@ export class Spinner {
       throw new Error(`Unknown spinner: "${spinnerName}"`);
     }
     const speed = options?.speed ?? 1;
-    if (!Number.isFinite(speed)) {
-      throw new RangeError(`Spinner speed must be finite, got ${speed}`);
+    // [LAW:parse-dont-validate] A hold is a positive number of seconds, so the
+    // speed it is divided by is finite and not zero, settled here.
+    if (!Number.isFinite(speed) || speed === 0) {
+      throw new RangeError(`Spinner speed must be finite and not zero, got ${speed}`);
     }
     this.name = spinnerName;
     this.text = text;
     this.speed = speed;
     this.style = options?.style ?? NULL_STYLE;
     this._data = data;
-    this._named = sequence(data, this.style);
-    this._ascii = sequence(LINE_SPINNER, this.style);
+    this._named = sequence(data, this.style, speed);
+    this._ascii = sequence(LINE_SPINNER, this.style, speed);
   }
 
   get frames(): readonly string[] {
@@ -128,18 +140,17 @@ export class Spinner {
     if (!Number.isFinite(t)) {
       throw new RangeError(`Spinner.at needs a finite t, got ${t}`);
     }
-    const scaled = t * this.speed;
     const frames = (options: RenderOptions): FrameSequence =>
       drawable(options, this._named, this._ascii, sequenceGlyphs).frames;
     return {
-      render: (options) => this._render(frames(options), scaled, options),
+      render: (options) => this._render(frames(options), t, options),
       // Measured at the frames' one width, the widest frame's, so a column
       // holding it never narrows as it turns, and never offered less than
       // that frame: a frame is one picture, which the reference's `Text`
       // measure would let wrap apart at its spaces.
       measure: (options) => {
         const drawn = frames(options);
-        const { minimum, maximum } = this._line(drawn, scaled, options).measure(options);
+        const { minimum, maximum } = this._line(drawn, t, options).measure(options);
         return { minimum: Math.max(minimum, Math.min(drawn.width, maximum)), maximum };
       },
     };

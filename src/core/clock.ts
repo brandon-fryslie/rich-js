@@ -59,15 +59,32 @@ export interface Clock {
   now(): number;
   /** Call `tick` once a frame at `rate` until the returned function is called. */
   every(rate: FrameRate, tick: () => void): Unsubscribe;
+  /**
+   * Call `tick` once, when this clock reads `time` — as soon as it can for a
+   * time already past — unless the returned function is called first. What
+   * a host that knows when its frame next changes (`Segment.nextChange`)
+   * waits on. A `time` further off than a timer can wait, about 24.8 days,
+   * throws, as `frameRate` refuses the rate.
+   */
+  at(time: number, tick: () => void): Unsubscribe;
 }
 
-/** The platform's monotonic clock and its interval timer. */
+/** The platform's monotonic clock and its timers. */
 export function systemClock(): Clock {
+  const now = (): number => performance.now() / 1000;
   return {
-    now: () => performance.now() / 1000,
+    now,
     every: (rate, tick) => {
       const timer = setInterval(tick, rate.interval * 1000);
       return () => clearInterval(timer);
+    },
+    at: (time, tick) => {
+      const wait = time - now();
+      if (!(wait <= LONGEST_INTERVAL)) {
+        throw new RangeError(`a clock waits at most ${LONGEST_INTERVAL} s, not until ${time} s from ${now()} s`);
+      }
+      const timer = setTimeout(tick, Math.max(0, wait) * 1000);
+      return () => clearTimeout(timer);
     },
   };
 }

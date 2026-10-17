@@ -101,7 +101,7 @@ const stopAnimating = app.animate();
 
 `frameRate` takes any positive, finite number of frames a second, so `frameRate(0.5)` paints once every two seconds; anything else throws. The rate is 30 frames a second unless you give one, and `app.rate` reads it and sets it: an animation under way goes on at the new rate from its next frame. Nothing the view draws reads a clock: an [effect](/effects) is sampled at the `t` it is handed, so the same view runs at 30 frames a second and at one every two seconds.
 
-`clock` is what the app reads the time from and ticks on. `systemClock()` — the platform's monotonic clock and interval timer — is the default. Pass your own `Clock` in a test, with a `now()` and an `every(rate, tick)` whose time you move by hand, to count frames with no real timer.
+`clock` is what the app reads the time from and ticks on. `systemClock()` — the platform's monotonic clock and timers — is the default. Pass your own `Clock` in a test, with a `now()`, an `every(rate, tick)` and an `at(time, tick)` — one tick when the clock reads `time`, which a [`Live`](/live#auto-refresh) waits on until its frame next changes — whose time you move by hand, to count frames with no real timer.
 
 ## Two surfaces
 

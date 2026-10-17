@@ -2,14 +2,14 @@
  * A `Clock` whose time the test moves by hand: `advance` runs every tick that
  * falls due on the way, in time order, with `now()` reading each tick's own
  * moment — so frames are counted with no real timer, and `timers()` says
- * whether anything was left ticking.
+ * whether anything was left waiting.
  */
 
 import type { Clock, FrameRate } from "../../src/core/clock.js";
 
 export interface FakeClock extends Clock {
   advance(seconds: number): void;
-  /** How many `every` timers are still running. */
+  /** How many timers — `every` and `at` alike — are still running. */
   timers(): number;
 }
 
@@ -18,7 +18,8 @@ export interface FakeClock extends Clock {
 const SLACK = 1e-9;
 
 interface Timer {
-  readonly rate: FrameRate;
+  /** Seconds from one tick to the next for an `every` timer; `undefined` for an `at`, which ticks once. */
+  readonly interval: number | undefined;
   readonly tick: () => void;
   due: number;
 }
@@ -28,18 +29,21 @@ export function fakeClock(start = 0): FakeClock {
   const running = new Set<Timer>();
   const next = (until: number): Timer | undefined =>
     [...running].filter((timer) => timer.due <= until + SLACK).sort((a, b) => a.due - b.due)[0];
+  const add = (timer: Timer): (() => void) => {
+    running.add(timer);
+    return () => running.delete(timer);
+  };
   return {
     now: () => now,
-    every(rate, tick) {
-      const timer: Timer = { rate, tick, due: now + rate.interval };
-      running.add(timer);
-      return () => running.delete(timer);
-    },
+    every: (rate: FrameRate, tick) => add({ interval: rate.interval, tick, due: now + rate.interval }),
+    // A time already past is due now, as the platform's timer fires at once.
+    at: (time, tick) => add({ interval: undefined, tick, due: Math.max(now, time) }),
     advance(seconds) {
       const until = now + seconds;
       for (let timer = next(until); timer !== undefined; timer = next(until)) {
         now = timer.due;
-        timer.due += timer.rate.interval;
+        if (timer.interval === undefined) running.delete(timer);
+        else timer.due += timer.interval;
         timer.tick();
       }
       now = until;

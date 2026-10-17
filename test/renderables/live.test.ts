@@ -3,7 +3,9 @@ import xterm from "@xterm/headless";
 import { Console } from "../../src/core/console.js";
 import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
+import { Style } from "../../src/core/style.js";
 import type { Renderable } from "../../src/core/protocol.js";
+import { FrameSequence, Frames } from "../../src/renderables/frames.js";
 import { Live, type LiveOptions } from "../../src/renderables/live.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Progress } from "../../src/renderables/progress.js";
@@ -435,6 +437,113 @@ describe("Live refresh rate", () => {
     expect(times).toEqual([10.5, 11]);
     expect(chunks.join("")).toContain("later t=11");
     expect(chunks.join("")).toContain("t=10.5");
+  });
+
+  // rich-animation-xi28.6rs: a Live draws each frame of what it shows, not a
+  // sample of them — it reads when the frame next changes off the frame it
+  // drew and wakes then, or at its rate, whichever is sooner.
+  it("draws each frame of a sequence whose holds are shorter than its interval, in order, none skipped", () => {
+    const clock = fakeClock();
+    const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
+    const seq = new FrameSequence(["a", "b", "c"].map((glyph) => ({ text: new RichText(glyph), seconds: 0.1 })));
+    const drawn: { t: number; frame: string }[] = [];
+    const display = new Live(
+      (t) => {
+        const frame = new Frames(seq, { t });
+        drawn.push({ t, frame: seq.text(t).plain });
+        return frame;
+      },
+      { console: target, clock, refreshPerSecond: 4 },
+    );
+    display.start();
+    clock.advance(1);
+    display.stop();
+    // The first frame at the rate, with nothing drawn yet to say sooner; then
+    // every frame start; last, the final frame `stop()` draws at the clock's now.
+    expect(drawn.map(({ t }) => t).map((t) => Math.round(t * 1000))).toEqual([250, 300, 400, 500, 600, 700, 800, 900, 1000, 1000]);
+    expect(drawn.slice(0, -1).map(({ frame }) => frame).join("")).toBe("cabcabcab");
+    expect(clock.timers()).toBe(0);
+  });
+
+  it("draws content that changes every frame at its rate, not faster", () => {
+    const clock = fakeClock();
+    const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
+    const times: number[] = [];
+    const moving = (t: number): Renderable => ({ render: () => [new Segment("x", new Style({ nextChange: t }))] });
+    const display = new Live(
+      (t) => {
+        times.push(t);
+        return moving(t);
+      },
+      { console: target, clock, refreshPerSecond: 4 },
+    );
+    display.start();
+    clock.advance(1);
+    expect(times).toEqual([0.25, 0.5, 0.75, 1]);
+    display.stop();
+  });
+
+  // A frame costs time to draw. The next one is measured from the frame's
+  // own time, not from when the paint finished, so the rate holds however
+  // heavy the frame — and a change that fell due while it was painting is
+  // drawn at once, not a whole interval late.
+  it("holds its rate when a frame costs time to draw", () => {
+    const clock = fakeClock();
+    const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
+    const times: number[] = [];
+    const display = new Live(
+      (t) => {
+        times.push(t);
+        clock.advance(0.1);
+        return new RichText("heavy");
+      },
+      { console: target, clock, refreshPerSecond: 4, autoRefresh: true },
+    );
+    display.start();
+    clock.advance(0.9);
+    expect(times).toEqual([0.25, 0.5, 0.75]);
+    display.stop();
+  });
+
+  it("draws a change that fell due while the frame was being drawn at once", () => {
+    const clock = fakeClock();
+    const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
+    const times: number[] = [];
+    // A frame that changes 0.02 s after it is drawn and costs 0.025 s to draw.
+    const display = new Live(
+      (t) => {
+        times.push(t);
+        clock.advance(0.025);
+        return { render: () => [new Segment("x", new Style({ nextChange: t + 0.02 }))] };
+      },
+      { console: target, clock, refreshPerSecond: 4 },
+    );
+    display.start();
+    clock.advance(0.4);
+    // The first frame at the rate; from then on each frame as soon as the one before is drawn, never a rate interval apart.
+    expect(times[0]).toBe(0.25);
+    expect(times.length).toBeGreaterThan(5);
+    for (let i = 1; i < times.length; i++) expect(times[i]! - times[i - 1]!).toBeCloseTo(0.025, 9);
+    display.stop();
+  });
+
+  it("wakes for a change that comes before the rate's next frame, then returns to the rate", () => {
+    const clock = fakeClock();
+    const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
+    const times: number[] = [];
+    // A frame that changes 0.3 s after it is drawn, then holds.
+    const settled = (t: number): Renderable => ({ render: () => [new Segment("x", new Style({ nextChange: t <= 1 ? 1.3 : Number.POSITIVE_INFINITY }))] });
+    const display = new Live(
+      (t) => {
+        times.push(t);
+        return settled(t);
+      },
+      { console: target, clock, refreshPerSecond: 1 },
+    );
+    display.start();
+    clock.advance(4);
+    expect(times).toEqual([1, 1.3, 2.3, 3.3]);
+    display.stop();
   });
 });
 

@@ -192,6 +192,12 @@ export interface Beat {
    * effect handed it draws the same frame throughout.
    */
   start(t: number): number;
+  /**
+   * When the hold in progress at `t` ends, in seconds on `t`'s own timeline:
+   * the start of the next hold, the first moment `at` places in it, so it is
+   * always after `t`. What is drawn on this beat at `t` is drawn until then.
+   */
+  end(t: number): number;
 }
 
 /**
@@ -254,34 +260,44 @@ export function beat(holds: readonly number[]): Beat {
     while (starts[i]! > into) i--;
     return i;
   };
+  // Where hold `i` of pass `pass` begins: the pass's start plus the hold's,
+  // two integers and two constants, so every `t` in the hold builds the one
+  // float. That sum can land an ulp or two under the boundary when the holds
+  // are not exact in binary — a tenth of a second is not — and `at` would
+  // then read it as the hold before, so it is walked up to the first float
+  // `at` places in the hold. The walk is a function of the pass and the hold
+  // alone, so every `t` in the hold still answers one float.
+  const boundary = (what: string, pass: number, i: number, t: number): number => {
+    let began = pass * period + starts[i]!;
+    for (let walked = 0; index(wrapSeconds(what, began, period)) !== i; walked++) {
+      // The sum is off by the rounding of two operations, under the few
+      // ulps allowed here; a walk that long means the hold is narrower
+      // than the floats around `t` are apart, so no float starts it.
+      if (walked === ULPS_OF_ROUNDING) throw new RangeError(`${what}: hold ${i} (${own[i]} s) is finer than time resolves near t = ${t}`);
+      began = nextUp(began);
+    }
+    return began;
+  };
+  // Which pass `t` is in, as a whole number: `t - into` is a whole number of
+  // periods but for rounding, which `round` takes off; carrying `starts[i]`
+  // out of `t` itself would leave each sample its own rounding.
+  const pass = (t: number, into: number): number => Math.round((t - into) / period);
   return {
     holds: own,
     period,
     at(t) {
       return index(wrapSeconds("Beat.at", t, period));
     },
-    // Which pass `t` is in, as a whole number, then that pass's start plus
-    // the hold's: two integers and two constants, so every `t` in the hold
-    // builds the one float. `t - into` is a whole number of periods but for
-    // rounding, which `round` takes off; carrying `starts[i]` out of `t`
-    // itself would leave each sample its own rounding. That sum can land an
-    // ulp or two under the boundary when the holds are not exact in binary
-    // — a tenth of a second is not — and `at` would then read it as the
-    // hold before, so it is walked up to the first float `at` places in
-    // the hold. The walk is a function of the pass and the hold alone, so
-    // every `t` in the hold still answers one float.
     start(t) {
       const into = wrapSeconds("Beat.start", t, period);
+      return boundary("Beat.start", pass(t, into), index(into), t);
+    },
+    // The next hold's start, in the next pass when this hold is the last.
+    end(t) {
+      const into = wrapSeconds("Beat.end", t, period);
       const i = index(into);
-      let began = Math.round((t - into) / period) * period + starts[i]!;
-      for (let walked = 0; index(wrapSeconds("Beat.start", began, period)) !== i; walked++) {
-        // The sum is off by the rounding of two operations, under the few
-        // ulps allowed here; a walk that long means the hold is narrower
-        // than the floats around `t` are apart, so no float starts it.
-        if (walked === ULPS_OF_ROUNDING) throw new RangeError(`Beat.start: hold ${i} (${own[i]} s) is finer than time resolves near t = ${t}`);
-        began = nextUp(began);
-      }
-      return began;
+      const last = i === own.length - 1;
+      return boundary("Beat.end", pass(t, into) + (last ? 1 : 0), last ? 0 : i + 1, t);
     },
   };
 }
