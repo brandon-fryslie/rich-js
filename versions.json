@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-458",
-      "ref": "refs/pull/458/merge",
-      "sha": "42e5373cb72c51f9bddfd66e9f6371bc0df73063",
-      "timestamp": "2026-10-17T21:03:06.387Z",
-      "commits": [
-        {
-          "sha": "42e5373cb72c51f9bddfd66e9f6371bc0df73063",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T21:01:22Z",
-          "message": "Merge a320bb2bf347fb8920ebd3c9992c87e7591b8094 into 6a52f2a2e14d9e01e7258147790317a20194dcba\n"
-        },
-        {
-          "sha": "a320bb2bf347fb8920ebd3c9992c87e7591b8094",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T15:01:17-06:00",
-          "message": "Markdown draws nothing under one column wherever Rich's Console.render would, the document included, and measures from 0 (rich-unfiled-791c.jra3)\n"
-        },
-        {
-          "sha": "d5fe8a22877f6f8cb967390a2804164267079071",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T14:53:22-06:00",
-          "message": "Markdown draws a quote or list item left no column for its content as nothing, as Rich does (rich-unfiled-791c.jra3)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "6a52f2a2e14d9e01e7258147790317a20194dcba",
-      "timestamp": "2026-10-17T20:51:39.640Z",
+      "sha": "a565e0c8a331452feb6027fb72f91ea9390c3f86",
+      "timestamp": "2026-10-17T21:11:14.212Z",
       "commits": [
         {
-          "sha": "6a52f2a2e14d9e01e7258147790317a20194dcba",
+          "sha": "a565e0c8a331452feb6027fb72f91ea9390c3f86",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T14:49:54-06:00",
-          "message": "Markdown pads an h2 and below to the width, as Rich's Heading does (rich-unfiled-791c.y0tl) (#457)\n\n* Markdown pads an h2 and below to the width, as Rich's Heading does (rich-unfiled-791c.y0tl)\n\nRich 15's Heading.LEVEL_ALIGN gives every level a justify: h1 center, the\nrest left, so each row is padded to the width in the base style, not the\nheading's. The heading case passed undefined for every level but 1, so\nthose rows ended at their text. With every level explicit, the\noptions.justify override beside it was dead and is gone.\n\n* Markdown's h2 padding test pins where a wrapped row's style stops, against Rich 15 (rich-unfiled-791c.y0tl)"
+          "timestamp": "2026-10-17T15:09:28-06:00",
+          "message": "Markdown draws a quote or list item left no column for its content as nothing, as Rich does (rich-unfiled-791c.jra3) (#458)\n\n* Markdown draws a quote or list item left no column for its content as nothing, as Rich does (rich-unfiled-791c.jra3)\n\n* Markdown draws nothing under one column wherever Rich's Console.render would, the document included, and measures from 0 (rich-unfiled-791c.jra3)"
         }
       ]
     }
