@@ -428,15 +428,61 @@ describe("TextInput", () => {
       expect(minimum).toBe(10);
     });
 
-    it("maximum tracks max(value.length, placeholder.length) + 2 with floor at minimum", () => {
-      const empty = new TextInput();
-      expect(empty.measure(RENDER).maximum).toBe(10);
+    it("reports a maximum at the floor for an input that draws narrower", () => {
+      expect(new TextInput().measure(RENDER).maximum).toBe(10);
+      expect(new TextInput({ value: "ab\ncd", multiline: true }).measure(RENDER).maximum).toBe(10);
+    });
 
-      const longer = new TextInput({ value: "abcdefghijklmnop" });
-      expect(longer.measure(RENDER).maximum).toBe(18);
+    // Each focused, with the cursor at the end of its widest line: the widest
+    // the input draws.
+    it.each([
+      ["a value", { value: "abcdefghijklmnop" }],
+      ["a placeholder over an empty value", { placeholder: "abcdefghijklmnop" }],
+      ["glyphs of zero cells", { value: "a" + "\u200b".repeat(20) + "b" }],
+      ["wide glyphs", { value: "あ".repeat(20) }],
+      ["a password of wide glyphs, masked a cell each", { value: "あ".repeat(20), password: true }],
+      ["multi-line", { value: "ab\nx\nabcdefghijklmnop", multiline: true }],
+      ["multi-line glyphs of zero cells", { value: "ab\na" + "\u200b".repeat(20) + "b", multiline: true }],
+      ["multi-line wide glyphs", { value: "あ\n" + "あ".repeat(20), multiline: true }],
+      ["a multi-line password of wide glyphs, masked a cell each", { value: "あ\n" + "あ".repeat(20), password: true, multiline: true }],
+    ])("reports as its maximum the width it draws, nothing cut at that width: %s", (_, options) => {
+      const t = new TextInput(options);
+      t.focused = true;
+      t.cursorPosition = asCodePoint(t.value.length);
+      const unbounded = rowsText(t, { maxWidth: 200 });
+      const { maximum } = t.measure(RENDER);
+      expect(Math.max(...unbounded.split("\n").map(cellLen))).toBe(maximum);
+      expect(rowsText(t, { maxWidth: maximum })).toBe(unbounded);
+    });
 
-      const placeholderOnly = new TextInput({ placeholder: "abcdefghijklmnop" });
-      expect(placeholderOnly.measure(RENDER).maximum).toBe(18);
+    const CURSOR = new Style({ reverse: true });
+    const cursorText = (t: TextInput, options: RenderOptions): string[] =>
+      [...t.render(options)].filter((s) => s.style?.reverse).map((s) => s.text);
+
+    it("leaves a scroll arrow its cell past the cursor's at the end of the widest line", () => {
+      const t = new TextInput({ value: "b\nabcdefghijklmnop", multiline: true, maxRows: 1, cursorStyle: CURSOR });
+      t.focused = true;
+      t.cursorPosition = asCodePoint(t.value.length);
+      const { maximum } = t.measure(RENDER);
+      expect(rowsText(t, { maxWidth: maximum })).toBe("abcdefghijklmnop ▲");
+      expect(cursorText(t, { maxWidth: maximum })).toEqual([" "]);
+    });
+
+    // The field is 20 cells wide at a width of 22.
+    it.each([
+      ["at the end of narrow glyphs", "a".repeat(30) + "XYZ", 33, `[${"a".repeat(16)}XYZ ]`, " "],
+      ["at the end of wide glyphs", "あ".repeat(20), 20, `[${"あ".repeat(9)}  ]`, " "],
+      ["where the viewport's start would cut a wide glyph", "a" + "あ".repeat(20), 21, `[${"あ".repeat(9)}  ]`, " "],
+      ["on a wide glyph at the field's last cells", "a".repeat(30) + "あb", 30, `[${"a".repeat(18)}あ]`, "あ"],
+    ])("keeps the cursor's glyph in view in a value wider than the field: %s", (_, value, at, row, cursor) => {
+      const t = new TextInput({ value, cursorStyle: CURSOR });
+      t.focused = true;
+      t.cursorPosition = asCodePoint(at);
+      expect(rowsText(t, { maxWidth: 22 })).toBe(row);
+      expect(cursorText(t, { maxWidth: 22 })).toEqual([cursor]);
+      // Unfocused, it draws the same cells, so focus never shifts the text.
+      t.focused = false;
+      expect(rowsText(t, { maxWidth: 22 })).toBe(row);
     });
   });
 
@@ -1377,9 +1423,10 @@ describe("TextInput", () => {
     });
 
     it("is measured as the one cell it is drawn as", () => {
-      const thirty = new TextInput({ value: "a".repeat(30) }).measure(RENDER);
-      expect(new TextInput({ value: "​".repeat(30) }).measure(RENDER)).toEqual(thirty);
-      expect(new TextInput({ value: "​".repeat(30), multiline: true }).measure(RENDER)).toEqual(thirty);
+      for (const multiline of [false, true]) {
+        const thirty = new TextInput({ value: "a".repeat(30), multiline }).measure(RENDER);
+        expect(new TextInput({ value: "​".repeat(30), multiline }).measure(RENDER)).toEqual(thirty);
+      }
     });
 
     it("wraps a long line in time linear in its length", () => {
