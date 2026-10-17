@@ -36,8 +36,8 @@ export type MdToken<Text = readonly Inline[]> =
   | { type: "paragraph"; text: Text }
   | { type: "code_block"; code: string }
   | { type: "hr" }
-  | { type: "list_item"; marker: ItemMarker; children: MdToken<Text>[] }
-  | { type: "blockquote"; children: MdToken<Text>[] }
+  | { type: "list_item"; marker: ItemMarker; children: readonly MdToken<Text>[] }
+  | { type: "blockquote"; children: readonly MdToken<Text>[] }
   /** Each row holds one cell per column: a short row filled out with empty cells, a long one cut. */
   | { type: "table"; columns: readonly TableColumn<Text>[]; rows: readonly (readonly Text[])[] }
   /** Kept, though nothing draws it, so a container ending in one does not end in the paragraph before it. */
