@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-448",
+      "ref": "refs/pull/448/merge",
+      "sha": "c572f001e0160b6cd7e775e4fafd8259ca5c53d2",
+      "timestamp": "2026-10-17T16:40:47.790Z",
+      "commits": [
+        {
+          "sha": "c572f001e0160b6cd7e775e4fafd8259ca5c53d2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T10:38:55-06:00",
+          "message": "Merge c3aba3af1ef567f518d6a5497ede199adb6dc473 into 30864c3491ff1b10e0f4942c10ab067373c567dc\n"
+        },
+        {
+          "sha": "c3aba3af1ef567f518d6a5497ede199adb6dc473",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T10:38:51-06:00",
+          "message": "Markdown lays a quote's content out four cells short of the width, as Rich's BlockQuote does (rich-unfiled-791c.hlmh)\n\nA quote's text now wraps, rules and justifies at the width less four beside its two-cell bar, so its rows end two cells short, byte for byte with Rich 15's output for wrapped text, a rule, justify and a nested quote.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "30864c3491ff1b10e0f4942c10ab067373c567dc",
