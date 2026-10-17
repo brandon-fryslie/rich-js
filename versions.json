@@ -4,37 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "a0bcc2657e174c20029d0319b407c10bf1198379",
-      "timestamp": "2026-10-17T00:16:46.747Z",
+      "sha": "b0579cc17713b904935e040bba4b01e744eb3f74",
+      "timestamp": "2026-10-17T00:23:19.990Z",
       "commits": [
         {
-          "sha": "a0bcc2657e174c20029d0319b407c10bf1198379",
+          "sha": "b0579cc17713b904935e040bba4b01e744eb3f74",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:15:05-06:00",
-          "message": "claude-sessions opens a real session on its first message (rich-demos-k78j.iuf) (#409)\n\n* claude-sessions opens a real session on its first message (rich-demos-k78j.iuf)\n\nClaude Code now writes mode, attachment and a dozen other session-state\nrecords the parser did not know, so it drew each as an \"unknown record type\"\nerror panel ahead of the conversation. Every type found across two weeks of\nreal transcripts is now named in RECORD_TYPES (data/parser.ts) as drawn or\nhidden. A hidden record shown with H is a rule naming its type, not an error;\na type the table does not name is still drawn as an error, so it reaches the\nreader.\n\nThe card's staging script took its own list of drawn types; it now derives\nthem from RECORD_TYPES, so the card and the Node script draw the same records.\nThe staged data it writes is unchanged.\n\n* The parser draws exactly the record types the table calls drawn (rich-demos-k78j.iuf)\n\nReview of #409: the table's drawn half was read only by the staging script;\nemitBlocks still decided by hand. DRAWN_RECORD_TYPES is now a typed tuple\nemitBlocks dispatches over exhaustively, so a type added there does not\ncompile until it is drawn. dropHidden hands on RecordLines, typed records,\nso the casts and the dead '?' fallback downstream go. A drawn-type record\nwith no message is reported malformed, not unknown. Older sessions' summary\nrecords are hidden. The staged-types test was circular (staging filters\nby the same table) and is replaced by a type on TITLE_TYPES.\n\nFollow-up, unverified: rich-demos-k78j.5d7 (queued_command attachments).\n\n* A prompt sent while a turn ran is drawn as the human turn it is (rich-demos-k78j.iuf)\n\nReview of #409 (medium): Claude Code files a queued prompt as\nattachment/queued_command with no user record (shape read from Claude Code\n2.1.289's own constructor; 85 such records in 200 local transcripts), and\nhiding attachment hid it. The parser's first step now reads each line as\nthe record it stands for, keeping the written line as the block's source,\nand staging keeps exactly the records isDrawnRecord names instead of its\nown type set. Closes rich-demos-k78j.5d7.\n\n* One literal names each record type once; staging reads records as the parser does (rich-demos-k78j.iuf)\n\nReview of #409 (escalation high): the drawn and hidden lists could name one\ntype twice, the later silently winning; RECORD_USE is one object literal, so\na duplicate key does not compile. Staging keeps only the attachment fields\nthe viewer reads (shownAttachment, as shownMessage) and budgets a record as\nreadRecord reads it, so a tag-wrapped queued prompt gets KEEP. A tool call's\nresult source is its written parts, not the read copy.\n\nNot taken: re-staging the card's sessions (needs the owner's ~/.claude);\nrich-demos-k78j.mk1 filed for the pre-existing H-view message split."
-        }
-      ]
-    },
-    {
-      "version": "pr-408",
-      "ref": "refs/pull/408/merge",
-      "sha": "4b0dc70414e1246dc9c1ced5e6301c5c4e57f3be",
-      "timestamp": "2026-10-17T00:13:12.792Z",
-      "commits": [
-        {
-          "sha": "4b0dc70414e1246dc9c1ced5e6301c5c4e57f3be",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T00:10:44Z",
-          "message": "Merge 463adc4d8aeb6c310db3b1175d53e86e20e4d427 into 2232273a5417c6b00538f6f2c74d9120f6d3f366\n"
-        },
-        {
-          "sha": "463adc4d8aeb6c310db3b1175d53e86e20e4d427",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:09:02-06:00",
-          "message": "A transition settles its last cell as it is done, on any element (rich-unfiled-791c.7b9h)\n"
+          "timestamp": "2026-10-16T18:21:38-06:00",
+          "message": "A transition settles its last cell as it is done, on any element (rich-unfiled-791c.7b9h) (#408)"
         }
       ]
     }
