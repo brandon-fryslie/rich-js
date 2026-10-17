@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-449",
-      "ref": "refs/pull/449/merge",
-      "sha": "bc20f09d44b0641760c43d138db2c222dbdc0c0c",
-      "timestamp": "2026-10-17T17:33:40.984Z",
-      "commits": [
-        {
-          "sha": "bc20f09d44b0641760c43d138db2c222dbdc0c0c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T17:31:46Z",
-          "message": "Merge a13c88c75c0bf159066446876f82228df96c89cd into b8d074f344bd5b65e6a7b86db5df90837d394e0d\n"
-        },
-        {
-          "sha": "a13c88c75c0bf159066446876f82228df96c89cd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T11:31:40-06:00",
-          "message": "Markdown reads a line short of a list item as indented less than any block, as markdown-it does (rich-unfiled-791c.emsm, rich-unfiled-791c.w3t9)\n\nAn item's paragraph now reads the line it would take lazily the way a quote\ndoes, and a lazy line carries the margin of the innermost list's container,\nmarkdown-it's listIndent, which a list item on it is measured from.\n"
-        },
-        {
-          "sha": "44988c861885130136378dd6d3aef3b15aae7fe1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T11:21:33-06:00",
-          "message": "Markdown reads a list item on a line lazy only to list items where the line sits, as markdown-it does (rich-unfiled-791c.emsm)\n\nA line lazy to a quote is indented less than any block; one lazy only to list\nitems keeps its indentation, and markdown-it's list refuses an item on it a\ncode indent past the list's container. Line.lazy now says which.\n"
-        },
-        {
-          "sha": "544a49b1e9ff6fd4296ba8ea012f4df5fe98c490",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T11:10:06-06:00",
-          "message": "Markdown indents a quote's line from its own `>`, wherever the `>` sits, as markdown-it does (rich-unfiled-791c.emsm)\n\nA list item's indent is now counted past each line's own margin, not as a\nsource column fixed by its first line, so a quote's `>` lines indented\ndifferently from its first are read against the item as markdown-it reads them.\n"
-        },
-        {
-          "sha": "ad21519eb88c4ff9f9b5ce41f615611735b5884d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T10:57:32-06:00",
-          "message": "Markdown reads a line lazy to a quote's container as indented less than any block, as markdown-it does (rich-unfiled-791c.emsm)\n\nmarkdown-it gives a quote's lazy line sCount -1, and a list item's lazy line\nsits short of the item's indentation, so a quote inside either checks its\nterminators on that line as indented less than four. \"> > b\\n    ---\" is the\nquote \"b\", then indented code at the top level, in Rich 15; it was \"b ---\"\nhere. Same for a fence, an HTML block, a heading and a list item.\n\nmarkdown-it's quote also takes a `>` line after its first at any indentation\n(\"> a\\n    > b\" is one quote, \"a b\"), which the same function read as text.\nPinned against Rich 15 (markdown-it-py 4.2).\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "b8d074f344bd5b65e6a7b86db5df90837d394e0d",
-      "timestamp": "2026-10-17T16:53:38.323Z",
+      "sha": "78549e209bdc9065772de829a95368a235d2e849",
+      "timestamp": "2026-10-17T17:44:25.855Z",
       "commits": [
         {
-          "sha": "b8d074f344bd5b65e6a7b86db5df90837d394e0d",
+          "sha": "78549e209bdc9065772de829a95368a235d2e849",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T10:51:58-06:00",
-          "message": "Markdown lays a quote's content out four cells short of the width, as Rich's BlockQuote does (rich-unfiled-791c.hlmh) (#448)\n\n* Markdown lays a quote's content out four cells short of the width, as Rich's BlockQuote does (rich-unfiled-791c.hlmh)\n\nA quote's text now wraps, rules and justifies at the width less four beside its two-cell bar, so its rows end two cells short, byte for byte with Rich 15's output for wrapped text, a rule, justify and a nested quote.\n\n* Markdown hands a quote's content a cell count, never a negative width (rich-unfiled-791c.hlmh)\n\nReview fixes: the quote's narrowed width goes through cellCount, so a quote at width 0 or 1 no longer passes guttered a negative maxWidth. The quote table's test titles name their options, so the two justify rows are told apart, and the older bar test it duplicated is gone. The one-cell floor in guttered that departs from Rich at narrow widths is rich-unfiled-791c.jra3."
+          "timestamp": "2026-10-17T11:43:14-06:00",
+          "message": "Markdown reads a line short of its container as indented less than any block, as markdown-it does (rich-unfiled-791c.emsm) (#449)\n\n* Markdown reads a line lazy to a quote's container as indented less than any block, as markdown-it does (rich-unfiled-791c.emsm)\n\nmarkdown-it gives a quote's lazy line sCount -1, and a list item's lazy line\nsits short of the item's indentation, so a quote inside either checks its\nterminators on that line as indented less than four. \"> > b\\n    ---\" is the\nquote \"b\", then indented code at the top level, in Rich 15; it was \"b ---\"\nhere. Same for a fence, an HTML block, a heading and a list item.\n\nmarkdown-it's quote also takes a `>` line after its first at any indentation\n(\"> a\\n    > b\" is one quote, \"a b\"), which the same function read as text.\nPinned against Rich 15 (markdown-it-py 4.2).\n\n* Markdown indents a quote's line from its own `>`, wherever the `>` sits, as markdown-it does (rich-unfiled-791c.emsm)\n\nA list item's indent is now counted past each line's own margin, not as a\nsource column fixed by its first line, so a quote's `>` lines indented\ndifferently from its first are read against the item as markdown-it reads them.\n\n* Markdown reads a list item on a line lazy only to list items where the line sits, as markdown-it does (rich-unfiled-791c.emsm)\n\nA line lazy to a quote is indented less than any block; one lazy only to list\nitems keeps its indentation, and markdown-it's list refuses an item on it a\ncode indent past the list's container. Line.lazy now says which.\n\n* Markdown reads a line short of a list item as indented less than any block, as markdown-it does (rich-unfiled-791c.emsm, rich-unfiled-791c.w3t9)\n\nAn item's paragraph now reads the line it would take lazily the way a quote\ndoes, and a lazy line carries the margin of the innermost list's container,\nmarkdown-it's listIndent, which a list item on it is measured from."
         }
       ]
     }
