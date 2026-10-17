@@ -4,15 +4,22 @@
     {
       "version": "pr-449",
       "ref": "refs/pull/449/merge",
-      "sha": "101a0d32046a90cc771f7cbe9c6845109cf03cca",
-      "timestamp": "2026-10-17T17:00:04.042Z",
+      "sha": "5c9b559a470b57910b7b63c7134c246b2010f1f1",
+      "timestamp": "2026-10-17T17:12:07.690Z",
       "commits": [
         {
-          "sha": "101a0d32046a90cc771f7cbe9c6845109cf03cca",
+          "sha": "5c9b559a470b57910b7b63c7134c246b2010f1f1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T10:58:13-06:00",
-          "message": "Merge ad21519eb88c4ff9f9b5ce41f615611735b5884d into b8d074f344bd5b65e6a7b86db5df90837d394e0d\n"
+          "timestamp": "2026-10-17T17:10:10Z",
+          "message": "Merge 544a49b1e9ff6fd4296ba8ea012f4df5fe98c490 into b8d074f344bd5b65e6a7b86db5df90837d394e0d\n"
+        },
+        {
+          "sha": "544a49b1e9ff6fd4296ba8ea012f4df5fe98c490",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T11:10:06-06:00",
+          "message": "Markdown indents a quote's line from its own `>`, wherever the `>` sits, as markdown-it does (rich-unfiled-791c.emsm)\n\nA list item's indent is now counted past each line's own margin, not as a\nsource column fixed by its first line, so a quote's `>` lines indented\ndifferently from its first are read against the item as markdown-it reads them.\n"
         },
         {
           "sha": "ad21519eb88c4ff9f9b5ce41f615611735b5884d",
