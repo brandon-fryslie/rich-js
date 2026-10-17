@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-424",
+      "ref": "refs/pull/424/merge",
+      "sha": "7caf5a64f6577e2b41f1b53a24f02b30144d6794",
+      "timestamp": "2026-10-17T02:53:54.280Z",
+      "commits": [
+        {
+          "sha": "7caf5a64f6577e2b41f1b53a24f02b30144d6794",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:52:29-06:00",
+          "message": "Merge 1f931912261606ca5f31571eed1af230ae9aa3cf into 392c9836831bcf47617b692e821473171b927b45\n"
+        },
+        {
+          "sha": "1f931912261606ca5f31571eed1af230ae9aa3cf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:52:25-06:00",
+          "message": "stepped-ink's frame-cost test counts the search's work instead of timing it (rich-unfiled-791c.2i8o)\n\nThe wall-clock comparison failed on loaded GitHub runners with no code\nchange touching it. The property it pinned — a step's frames reuse the\nstep's search — is now asserted by counting Effected.shows calls: the\nstep's first frame makes some, every frame inside the step and the step's\nnext pass of the beat make none. Bypassing the memo in steppedInk fails it.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d06dc96d348fb9d0fb45efd63a773fd3303f4445",
@@ -13,35 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T20:48:31-06:00",
           "message": "Markdown drops inline HTML where Rich does, and reads backslash escapes (rich-unfiled-791c.5r6q) (#421)\n\n* Markdown drops inline HTML where Rich does, and reads backslash escapes (rich-unfiled-791c.5r6q)\n\nmarkdown-it-py's HTML_TAG_RE — a tag, comment, processing instruction,\ndeclaration or CDATA section — is read inline and drawn as nothing. The\nblock kind for a lone tag and the inline rule now share one tag grammar.\n\nThe escape rule comes with it: markdown-it reads '\\<' at the backslash\nbefore html_inline sees the '<', so without it '\\<span>' would draw '\\'\nwhere Rich draws '<span>'.\n\nUnclosed openers scan to the end of the text from every '<', as\nmarkdown-it-py's own regex does.\n\n* Emphasis closes outside every tighter construct, and link destinations read escapes (rich-unfiled-791c.5r6q)\n\n* Link brackets inside a code span or inline HTML pair with nothing (rich-unfiled-791c.5r6q)"
-        }
-      ]
-    },
-    {
-      "version": "pr-422",
-      "ref": "refs/pull/422/merge",
-      "sha": "a2a36a6d9f14a3ae403c7e01a26ce9a40c5e37ba",
-      "timestamp": "2026-10-17T02:42:42.474Z",
-      "commits": [
-        {
-          "sha": "a2a36a6d9f14a3ae403c7e01a26ce9a40c5e37ba",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T02:41:12Z",
-          "message": "Merge 78a5aefb8b20def7b1d3e0b8fad3142c1415de32 into 63efd6e5f1b953f3ff5c4dfef4ebc23d7fd33cd2\n"
-        },
-        {
-          "sha": "78a5aefb8b20def7b1d3e0b8fad3142c1415de32",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:41:08-06:00",
-          "message": "claude-sessions reads a JSONL line as a record only when it holds an object (rich-demos-k78j.zs7)\n\nA line holding JSON that is not an object (null, 42, []) was cast to a\nrecord: a null line failed the whole session's load in readRecords, and in\nthe scanner's title window it failed the project scan. jsonlRecord is now\nthe one reading of a line as a record, shared by loader and scanner, and a\nline it rejects is counted as skipped.\n\nThe status line says \"1 line\" / \"1 block\", and the clean-file test asserts\nthe loaded status rather than the absence of \"skipped\".\n"
-        },
-        {
-          "sha": "01e26ac3f4117cbc033ec697518cb2ee4b5577b6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:36:09-06:00",
-          "message": "claude-sessions counts a line skipped only when a record failed to parse (rich-demos-k78j.zs7)\n\nloadSession counted every blank line as skipped, so the newline that ends\nevery JSONL file showed as '(1 lines skipped)' on every session opened in\nNode. A blank line carries no record; only a non-blank line that fails to\nparse is now counted.\n"
         }
       ]
     },
