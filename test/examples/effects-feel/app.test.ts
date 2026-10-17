@@ -28,7 +28,7 @@ import { shares } from "../../../src/renderables/effects.js";
 import { JOIN } from "../../../src/core/strip.js";
 import { drawnSubject, stripSubject, textSubject } from "../../../examples/effects-feel/subjects.js";
 import { parseSettings } from "../../../examples/effects-feel/settings.js";
-import { envAtDepth } from "../../../examples/effects-feel/vocabulary.js";
+import { LOOPS, TRANSITIONS, envAtDepth } from "../../../examples/effects-feel/vocabulary.js";
 import { scriptedHost } from "../../host/scripted-host.js";
 
 const HAND_BACK = "\x1b[?1049l";
@@ -46,6 +46,9 @@ const shown = (host: { output(): string }, text: string | RegExp, timeout = 5000
 
 const FIRST_FRAME = "effects feel";
 
+/** A loop's line once its contrast has been measured. */
+const measured = (loop: string): RegExp => new RegExp(`${loop} .*worst contrast \\d+\\.\\d\\d:1 over \\d+s \\(at rest \\d+\\.\\d\\d:1\\)`);
+
 describe("effects-feel", () => {
   it.each([["q"], ["\x03"]])("stops on %j and hands the terminal back", async (key) => {
     const { host, demo } = started();
@@ -56,10 +59,10 @@ describe("effects-feel", () => {
     expect(host.raw()).toBe(false);
   });
 
-  it("draws every effect, with the worst contrast of each loop measured between the frames", async () => {
-    // At the rate Claude Code draws at. Frames cost the same each second
-    // however loaded the machine is; the measuring gets what is left, and at
-    // 30 a second under a loaded suite there was little left.
+  it("draws every effect, with the worst contrast of each loop measured between the frames", async ({ task }) => {
+    // Frames cost the same each second however loaded the machine is; the
+    // measuring gets what is left, and at 30 a second under a loaded suite
+    // there was little left. 1 is the rate Claude Code draws at.
     const { host, demo } = started(["--fps", "1"]);
     await shown(host, FIRST_FRAME);
     // The first frame is up before any loop's contrast is, since measuring
@@ -67,12 +70,13 @@ describe("effects-feel", () => {
     // the demo is not allowed to do.
     expect(host.output()).toContain("measuring contrast…");
     // Measuring every loop is a second or two of work spread between the frames; more under a loaded suite.
-    await shown(host, /wheel .*worst contrast \d+\.\d\d:1 over \d+s \(at rest \d+\.\d\d:1\)/, 30_000);
+    // The test's own budget is the hang detector; this wait only must not end first.
+    await shown(host, measured("wheel"), task.timeout);
     host.type("q");
     await demo.done;
     const out = host.output();
-    for (const name of ["shimmer", "pulse", "sparkle", "wheel", "fade", "dissolve"]) expect(out).toContain(name);
-    expect(out.match(/worst contrast \d+\.\d\d:1 over \d+s \(at rest \d+\.\d\d:1\)/g)?.length).toBeGreaterThanOrEqual(5);
+    for (const name of TRANSITIONS) expect(out).toContain(name);
+    for (const loop of LOOPS) expect(out).toMatch(measured(loop));
   });
 
   it("says no colour is drawn when there is none to measure", async () => {
