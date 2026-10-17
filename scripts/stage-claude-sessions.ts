@@ -28,6 +28,7 @@
 import { existsSync, readdirSync, readFileSync, statSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { homedir, hostname, userInfo } from "node:os";
 import path from "node:path";
+import { isDrawnRecord, readRecord, type HiddenRecordType, type RawRecord } from "../examples/claude-sessions/data/parser.ts";
 import { REPO_ROOT } from "./repo-facts.ts";
 
 const SESSIONS: Readonly<Record<string, readonly string[]>> = {
@@ -53,26 +54,27 @@ const KEEP_PROSE: Keep = { lines: 12, chars: 900 };
  * What the viewer draws: the records it renders (data/parser.ts), the title
  * records its sidebar names a session by (data/scanner.ts), and, on each, the
  * fields it reads. Everything else in a record — the envelope repeated on
- * every line, the hook and skill listings in `attachment` records, a tool's
+ * every line, the hook and skill listings in the `attachment` records that
+ * are not a queued prompt, a tool's
  * result held a second time in `toolUseResult` — is weight the card cannot
  * carry and the reader never sees; of `toolUseResult` only the `agentId` a
  * subagent call is drilled into by is kept.
  */
-const SHOWN_TYPES = new Set(["user", "assistant", "system", "custom-title", "ai-title"]);
-const TITLE_TYPES = new Set(["custom-title", "ai-title"]);
+const TITLE_TYPES = new Set<string>(["custom-title", "ai-title"] satisfies HiddenRecordType[]);
 const SHOWN_FIELDS = new Set([
   "type", "uuid", "parentUuid", "timestamp", "message", "subtype", "content", "level",
   "isMeta", "isSidechain", "isApiErrorMessage", "durationMs", "error", "promptId", "slug", "customTitle", "aiTitle",
 ]);
 
-/** A record as the viewer reads it: its shown fields, its message as `shownMessage` has it, and its result's `agentId`. */
+/** A record as the viewer reads it: its shown fields, its message as `shownMessage` has it, a queued prompt's attachment, and its result's `agentId`. */
 function shownRecord(record: Record<string, unknown>): Record<string, unknown> {
   const kept = Object.fromEntries(Object.entries(record).filter(([key]) => SHOWN_FIELDS.has(key)));
-  const { message, toolUseResult } = record;
+  const { message, attachment, toolUseResult } = record;
   const agentId = typeof toolUseResult === "object" && toolUseResult !== null ? (toolUseResult as { agentId?: unknown }).agentId : undefined;
   return {
     ...kept,
     ...(typeof message === "object" && message !== null ? { message: shownMessage(message as Record<string, unknown>) } : {}),
+    ...(typeof attachment === "object" && attachment !== null ? { attachment: shownAttachment(attachment as Record<string, unknown>) } : {}),
     ...(typeof agentId === "string" ? { toolUseResult: { agentId } } : {}),
   };
 }
@@ -91,7 +93,7 @@ function shownRecords(text: string): Record<string, unknown>[] {
   const lastOfType = new Map(records.flatMap((r, i) => (TITLE_TYPES.has(String(r["type"])) ? [[String(r["type"]), i] as const] : [])));
   const shown = records.filter((record, i) => {
     const type = String(record["type"]);
-    return SHOWN_TYPES.has(type) && (!TITLE_TYPES.has(type) || lastOfType.get(type) === i);
+    return TITLE_TYPES.has(type) ? lastOfType.get(type) === i : isDrawnRecord(record);
   });
   const kept = new Set(shown.map((r) => r["uuid"]).filter((uuid): uuid is string => typeof uuid === "string"));
   const nearestKept = (uuid: string | null): string | null => {
@@ -117,6 +119,12 @@ function shownMessage(message: Record<string, unknown>): Record<string, unknown>
     Object.entries({ id, role, model, stop_reason, content, usage: tokens && { input_tokens: tokens.input_tokens, output_tokens: tokens.output_tokens } })
       .filter(([, v]) => v !== undefined),
   );
+}
+
+/** A queued prompt's attachment as the viewer reads it (data/parser.ts, readRecord): its kind, the prompt, and whether it is meta. */
+function shownAttachment(attachment: Record<string, unknown>): Record<string, unknown> {
+  const { type, prompt, isMeta } = attachment;
+  return Object.fromEntries(Object.entries({ type, prompt, isMeta }).filter(([, v]) => v !== undefined));
 }
 
 const HOME = homedir();
@@ -179,7 +187,7 @@ function trim(text: string, keep: Keep): string {
  * harness output wrapped in a tag (`<bash-stdout>`, `<task-notification>`, …).
  */
 function keepOf(record: Record<string, unknown>, inherited: Keep): Keep {
-  const { type, isMeta, message } = record;
+  const { type, isMeta, message } = readRecord(record as RawRecord);
   if (type === "tool_use" || type === "tool_result" || type === "system" || isMeta === true) return KEEP;
   const content = typeof message === "object" && message !== null ? (message as { content?: unknown }).content : undefined;
   return typeof content === "string" && content.startsWith("<") ? KEEP : inherited;

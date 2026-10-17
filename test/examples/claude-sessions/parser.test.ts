@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { MemoryFileSystem } from "../../../examples/_capabilities/memory-file-system.js";
 import type { RawLine } from "../../../examples/claude-sessions/data/loader.js";
-import { parseBlocks } from "../../../examples/claude-sessions/data/parser.js";
+import { HIDDEN_RECORD_TYPES, isDrawnRecord, parseBlocks } from "../../../examples/claude-sessions/data/parser.js";
 import { blockIndexOf, initialState, jumpToParent, selectedBlock, toggleHidden, type AppState } from "../../../examples/claude-sessions/state.js";
 
 function lines(records: readonly Record<string, unknown>[]): RawLine[] {
@@ -122,6 +122,43 @@ describe("parseBlocks", () => {
       expect(shown.blocks.length).toBeGreaterThan(state.blocks.length);
       expect(selectedBlock(shown)).toMatchObject({ kind: "assistant", text: "One file." });
       expect(selectedBlock(toggleHidden(shown))).toMatchObject({ kind: "assistant", text: "One file." });
+    });
+  });
+
+  describe("the record types Claude Code writes", () => {
+    const session = (types: readonly string[]) => lines([
+      ...types.map((type, i) => ({ type, uuid: `h${i}`, parentUuid: i === 0 ? null : `h${i - 1}`, timestamp: "2026-10-16T22:00:00Z" })),
+      { type: "user", uuid: "p0", parentUuid: `h${types.length - 1}`, timestamp: "2026-10-16T22:00:01Z", message: { role: "user", content: "Start." } },
+    ]);
+
+    it("opens a session on its first message, past every record it keeps out", () => {
+      expect(parseBlocks(session(HIDDEN_RECORD_TYPES))).toMatchObject([{ kind: "human", text: "Start." }]);
+    });
+
+    it("draws a kept-out record by its type, not as an error, when hidden records are shown", () => {
+      const blocks = parseBlocks(session(["mode", "attachment"]), { showHidden: true });
+      expect(blocks.map((block) => [block.kind, "recordType" in block ? block.recordType : null])).toEqual([["record", "mode"], ["record", "attachment"], ["human", null]]);
+    });
+
+    it("draws a type nobody has seen as an error, so it still reaches the reader", () => {
+      const read = session(["not-yet-written"]);
+      expect(parseBlocks(read)[0]).toMatchObject({ kind: "error", errorType: "not-yet-written", source: [read[0]] });
+    });
+
+    it("draws a prompt sent while a turn ran, filed as an attachment, as the human turn it is", () => {
+      const queued = (uuid: string, attachment: Record<string, unknown>) => ({ type: "attachment", uuid, parentUuid: "p0", timestamp: "2026-10-16T22:00:02Z", attachment });
+      const read = lines([
+        { type: "user", uuid: "p0", parentUuid: null, timestamp: "2026-10-16T22:00:01Z", message: { role: "user", content: "Start." } },
+        queued("q0", { type: "queued_command", prompt: "Also run lint.", isMeta: false }),
+        queued("q1", { type: "hook_blocking_error", hookName: "Stop" }),
+      ]);
+      expect(parseBlocks(read)).toMatchObject([{ kind: "human", text: "Start." }, { kind: "human", text: "Also run lint.", isMeta: false, source: [read[1]] }]);
+      expect(read.map((line) => isDrawnRecord(line.parsed))).toEqual([true, true, false]);
+    });
+
+    it("draws a known type it cannot read as malformed, not as unknown", () => {
+      const read = lines([{ type: "user", uuid: "u0", parentUuid: null, timestamp: "2026-10-16T22:00:00Z" }]);
+      expect(parseBlocks(read)).toMatchObject([{ kind: "error", errorType: "user", text: "(user record without a message)", source: [read[0]] }]);
     });
   });
 });

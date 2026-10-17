@@ -5,9 +5,10 @@
  *   raw lines → drop hidden types → dedup streaming chunks
  *              → consume tool_use+tool_result pairs → emit Blocks
  *
- * The parser is intentionally lenient: any line whose shape is unfamiliar
- * is either dropped (when its `type` is in HIDDEN_TYPES) or rendered as a
- * synthetic ErrorBlock so the user can still inspect it via raw view.
+ * The parser is intentionally lenient: a record of a type `RECORD_TYPES` keeps
+ * out of the conversation is dropped, or drawn as a RecordBlock when hidden
+ * records are shown, and one of a type it does not name is drawn as a synthetic
+ * ErrorBlock so the user can still inspect it via raw view.
  */
 
 import type { RawLine } from "./loader.js";
@@ -21,16 +22,57 @@ import type {
   ErrorBlock,
 } from "./types.js";
 
-const HIDDEN_TYPES = new Set([
-  "file-history-snapshot",
-  "progress",
-  "queue-operation",
-  "last-prompt",
-  "pr-link",
-  "custom-title",
-  "ai-title",
-  "agent-name",
-]);
+/**
+ * What the viewer does with each record type Claude Code writes: draws it as
+ * the conversation, or keeps it out — session state, titles, file history,
+ * hook output — until hidden records are shown (`H`). A type it does not name
+ * is one this table does not know: it is drawn as an error, so the reader
+ * still sees it and the table's gap is visible. One literal, so a type cannot
+ * be named twice: a duplicate key does not compile.
+ *
+ * [LAW:one-source-of-truth] emitBlocks draws exactly the drawn types: its
+ * dispatch over them is exhaustive, so a type made drawn here does not compile
+ * until it is drawn. A record's type is the one readRecord reads it as.
+ */
+const RECORD_USE = {
+  user: "drawn",
+  assistant: "drawn",
+  system: "drawn",
+  "agent-name": "hidden",
+  "ai-title": "hidden",
+  "artifact-autoreact-ledger": "hidden",
+  "artifact-comment-monitor": "hidden",
+  "atis-latch": "hidden",
+  attachment: "hidden",
+  "bridge-session": "hidden",
+  "continued-in": "hidden",
+  "cost-state": "hidden",
+  "custom-title": "hidden",
+  "file-history-delta": "hidden",
+  "file-history-snapshot": "hidden",
+  "fork-context-ref": "hidden",
+  "frame-link": "hidden",
+  "history-suppression": "hidden",
+  "last-prompt": "hidden",
+  mode: "hidden",
+  "permission-mode": "hidden",
+  "pr-link": "hidden",
+  progress: "hidden",
+  "queue-operation": "hidden",
+  relocated: "hidden",
+  summary: "hidden",
+  "worktree-state": "hidden",
+} as const satisfies Record<string, "drawn" | "hidden">;
+type RecordType = keyof typeof RECORD_USE;
+export type DrawnRecordType = { [T in RecordType]: (typeof RECORD_USE)[T] extends "drawn" ? T : never }[RecordType];
+export type HiddenRecordType = Exclude<RecordType, DrawnRecordType>;
+
+const RECORD_TYPES: ReadonlyMap<string, "drawn" | "hidden"> = new Map(Object.entries(RECORD_USE));
+export const HIDDEN_RECORD_TYPES = [...RECORD_TYPES].flatMap(([type, use]) => (use === "hidden" ? [type] : []));
+
+function isDrawn(type: string): type is DrawnRecordType {
+  return RECORD_TYPES.get(type) === "drawn";
+}
 
 interface AssistantContent {
   type: string;
@@ -56,8 +98,8 @@ interface MessageShape {
   };
 }
 
-interface RawRecord {
-  type?: string;
+export type RawRecord = {
+  type: string;
   uuid?: string;
   parentUuid?: string | null;
   timestamp?: string;
@@ -70,6 +112,12 @@ interface RawRecord {
   message?: MessageShape;
   toolUseResult?: { agentId?: string } | unknown;
   sourceToolAssistantUUID?: string;
+  attachment?: { type?: string; prompt?: string | AssistantContent[]; isMeta?: boolean };
+};
+
+/** A line readRecords kept: one with a `type`, read as a record from there on. */
+interface RecordLine extends RawLine {
+  readonly parsed: RawRecord;
 }
 
 /**
@@ -140,16 +188,49 @@ function flattenToolResultText(c: AssistantContent): string {
 }
 
 /**
- * Step 1: drop hidden types (unless showHidden is true).
- * Lines without a `type` are always dropped — they're not renderable.
+ * A record as the parser reads it, and the lines it was read from (`parts`),
+ * verbatim, so each block can say exactly which records it is drawn from
+ * (`source`) and the raw view shows what Claude Code wrote.
  */
-function dropHidden(lines: ReadonlyArray<RawLine>, showHidden: boolean): RawLine[] {
-  const out: RawLine[] = [];
+interface Joined {
+  readonly line: RecordLine;
+  /** The records the line was read from, first to last, as written. */
+  readonly parts: readonly RecordLine[];
+}
+
+/**
+ * A record as what it is. Claude Code files a prompt the user sent while a
+ * turn ran as an `attachment` of type `queued_command`, with no user record of
+ * its own, so that one is read as the user record it stands for.
+ */
+export function readRecord(r: RawRecord): RawRecord {
+  const a = r.attachment;
+  if (r.type !== "attachment" || a?.type !== "queued_command") return r;
+  return { ...r, type: "user", isMeta: a.isMeta, message: { role: "user", content: a.prompt } };
+}
+
+/**
+ * Whether the viewer draws `record` in the conversation.
+ * [LAW:one-source-of-truth] scripts/stage-claude-sessions.ts stages the card's
+ * sessions by it, so the card and the Node script draw the same records.
+ */
+export function isDrawnRecord(record: Record<string, unknown>): boolean {
+  return typeof record["type"] === "string" && isDrawn(readRecord(record as RawRecord).type);
+}
+
+/**
+ * Step 1: read each line as its record, dropping hidden types (unless
+ * showHidden is true). Lines without a `type` are always dropped — they're
+ * not renderable.
+ */
+function readRecords(lines: ReadonlyArray<RawLine>, showHidden: boolean): Joined[] {
+  const out: Joined[] = [];
   for (const line of lines) {
-    const r = line.parsed as RawRecord;
-    if (typeof r.type !== "string") continue;
-    if (!showHidden && HIDDEN_TYPES.has(r.type)) continue;
-    out.push(line);
+    if (typeof line.parsed["type"] !== "string") continue;
+    const written = line as RecordLine;
+    const read: RecordLine = { ...written, parsed: readRecord(written.parsed) };
+    if (!showHidden && RECORD_TYPES.get(read.parsed.type) === "hidden") continue;
+    out.push({ line: read, parts: [written] });
   }
   return out;
 }
@@ -161,39 +242,31 @@ function dropHidden(lines: ReadonlyArray<RawLine>, showHidden: boolean): RawLine
  * assistant lines sharing an id are one message: its content is theirs in
  * order, its parent is the first one's, and the rest of it (stop_reason,
  * usage) is the last one's.
- *
- * The joined line keeps the records it was joined from (`parts`), verbatim,
- * so each block can say exactly which records it is drawn from (`source`).
  */
-interface Joined {
-  readonly line: RawLine;
-  /** The records the line was joined from, first to last, as read. */
-  readonly parts: readonly RawLine[];
-}
-
-function joinMessageRecords(lines: ReadonlyArray<RawLine>): Joined[] {
+function joinMessageRecords(records: ReadonlyArray<Joined>): Joined[] {
   const out: Joined[] = [];
-  for (const line of lines) {
-    const r = line.parsed as RawRecord;
+  for (const next of records) {
+    const { line } = next;
+    const r = line.parsed;
     const prev = out[out.length - 1];
-    const prevRec = prev?.line.parsed as RawRecord | undefined;
+    const prevRec = prev?.line.parsed;
     const id = r.type === "assistant" ? r.message?.id : undefined;
     if (prev === undefined || id === undefined || prevRec?.type !== "assistant" || prevRec.message?.id !== id) {
-      out.push({ line, parts: [line] });
+      out.push(next);
       continue;
     }
     const blocks = (record: RawRecord) => (Array.isArray(record.message?.content) ? record.message.content : []);
     out[out.length - 1] = {
       line: { ...line, parsed: { ...r, uuid: prevRec.uuid, parentUuid: prevRec.parentUuid, message: { ...r.message!, content: [...blocks(prevRec), ...blocks(r)] } } },
-      parts: [...prev.parts, line],
+      parts: [...prev.parts, ...next.parts],
     };
   }
   return out;
 }
 
 /** Whether `line` is the record that carries the tool call `toolUseId`. */
-function carriesToolUse(line: RawLine, toolUseId: string): boolean {
-  const content = (line.parsed as RawRecord).message?.content;
+function carriesToolUse(line: RecordLine, toolUseId: string): boolean {
+  const content = line.parsed.message?.content;
   return Array.isArray(content) && content.some((c) => c.type === "tool_use" && c.id === toolUseId);
 }
 
@@ -212,7 +285,7 @@ function emitBlocks(joined: ReadonlyArray<Joined>): Block[] {
   // Pre-index tool_results by tool_use_id → { lineIndex, content }
   const resultIndex = new Map<string, { lineIndex: number; content: AssistantContent }>();
   for (let i = 0; i < lines.length; i++) {
-    const r = lines[i]!.parsed as RawRecord;
+    const r = lines[i]!.parsed;
     if (r.type === "user" && isToolResultContent(r.message?.content)) {
       const map = toolResultsByUseId(r.message!.content as AssistantContent[]);
       for (const [id, content] of map) {
@@ -225,13 +298,25 @@ function emitBlocks(joined: ReadonlyArray<Joined>): Block[] {
     if (consumedResultIndices.has(i)) continue;
     const line = lines[i]!;
     const parts = joined[i]!.parts;
-    const r = line.parsed as RawRecord;
+    const r = line.parsed;
     const uuid = r.uuid ?? `line-${line.lineNumber}`;
     const parentUuid = r.parentUuid ?? null;
     const timestamp = r.timestamp ?? "";
+    const error = (errorType: string, text: string): ErrorBlock => ({ kind: "error", uuid, parentUuid, timestamp, source: parts, errorType, text });
+    const recordType = r.type;
+
+    // A hidden record reaches here only when hidden records are shown, and is
+    // drawn by its type; one of a type RECORD_TYPES does not name is an error,
+    // so the reader can still inspect it via raw view.
+    if (!isDrawn(recordType)) {
+      out.push(RECORD_TYPES.has(recordType)
+        ? { kind: "record", uuid, parentUuid, timestamp, source: parts, recordType }
+        : error(recordType, `(unknown record type: ${recordType})`));
+      continue;
+    }
 
     // System turn-duration → SystemBlock
-    if (r.type === "system") {
+    if (recordType === "system") {
       const block: SystemBlock = {
         kind: "system",
         uuid,
@@ -246,23 +331,20 @@ function emitBlocks(joined: ReadonlyArray<Joined>): Block[] {
     }
 
     // API error assistant message
-    if (r.type === "assistant" && r.isApiErrorMessage) {
+    if (recordType === "assistant" && r.isApiErrorMessage) {
       const text = extractTextFromContent(r.message?.content);
-      const block: ErrorBlock = {
-        kind: "error",
-        uuid,
-        parentUuid,
-        timestamp,
-        source: parts,
-        errorType: r.error ?? "error",
-        text: text || asString(r.error) || "(unknown error)",
-      };
-      out.push(block);
+      out.push(error(r.error ?? "error", text || asString(r.error) || "(unknown error)"));
+      continue;
+    }
+
+    // A known type that is not what Claude Code writes for it: malformed, not unknown.
+    if (!r.message) {
+      out.push(error(recordType, `(${recordType} record without a message)`));
       continue;
     }
 
     // Assistant message
-    if (r.type === "assistant" && r.message) {
+    if (recordType === "assistant") {
       const content = r.message.content;
       const text = extractTextFromContent(content);
       const toolUses: AssistantContent[] = Array.isArray(content)
@@ -299,10 +381,10 @@ function emitBlocks(joined: ReadonlyArray<Joined>): Block[] {
         // answered, the one that answered it — each verbatim, and each where a
         // lookup by its uuid finds this block.
         const madeBy = parts.find((part) => carriesToolUse(part, toolUseId)) ?? line;
-        const source = resolved ? [madeBy, joined[resolved.lineIndex]!.line] : [madeBy];
-        const parentOf = (madeBy.parsed as RawRecord).parentUuid ?? null;
+        const source = resolved ? [madeBy, ...joined[resolved.lineIndex]!.parts] : [madeBy];
+        const parentOf = madeBy.parsed.parentUuid ?? null;
 
-        const agentId = extractAgentId(resolved ? (lines[resolved.lineIndex]!.parsed as RawRecord) : undefined, resolved?.content);
+        const agentId = extractAgentId(resolved ? lines[resolved.lineIndex]!.parsed : undefined, resolved?.content);
         if (SUBAGENT_TOOLS.has(toolName) || agentId !== null) {
           const input = (tu.input ?? {}) as Record<string, unknown>;
           const text = (...keys: string[]) => keys.map((key) => input[key]).find((v): v is string => typeof v === "string");
@@ -343,7 +425,7 @@ function emitBlocks(joined: ReadonlyArray<Joined>): Block[] {
     }
 
     // User message
-    if (r.type === "user" && r.message) {
+    if (recordType === "user") {
       // Skip pure tool_result messages — they were consumed above
       if (isToolResultContent(r.message.content) && consumedResultIndices.has(i)) {
         continue;
@@ -371,17 +453,7 @@ function emitBlocks(joined: ReadonlyArray<Joined>): Block[] {
       continue;
     }
 
-    // Unknown type — synthesize an Error block so user can inspect via raw view
-    const fallback: ErrorBlock = {
-      kind: "error",
-      uuid,
-      parentUuid,
-      timestamp,
-      source: parts,
-      errorType: r.type ?? "unknown",
-      text: `(unknown record type: ${r.type ?? "?"})`,
-    };
-    out.push(fallback);
+    recordType satisfies never;
   }
 
   return out;
@@ -396,5 +468,5 @@ export function parseBlocks(
   opts?: ParseOptions,
 ): Block[] {
   const showHidden = opts?.showHidden === true;
-  return emitBlocks(joinMessageRecords(dropHidden(lines, showHidden)));
+  return emitBlocks(joinMessageRecords(readRecords(lines, showHidden)));
 }
