@@ -1161,11 +1161,12 @@ describe("Markdown", () => {
     expect(untrimmed("- ## Head")).toEqual(["", " • Head     ", ""]);
   });
 
-  it("styles an h2's text and not the padding that fills its row", () => {
-    const segs = collectSegments(new Markdown("## Head"), { maxWidth: 12 });
-    const padding = segs.filter((s) => s.text.trim() === "" && s.text !== "\n" && s.text !== "");
-    expect(padding.map((s) => s.text).join("")).toBe(" ".repeat(8));
-    expect(padding.every((s) => s.style === undefined || s.style.isNull)).toBe(true);
+  // Rich 15: [('one two ', h2), ('    ', none), ('three', h2), ('       ', none)].
+  it("styles an h2's text, a wrapped row's kept space included, and not the padding that fills each row", () => {
+    const rows = Segment.splitLines(collectSegments(new Markdown("## one two three"), { maxWidth: 12 }));
+    const styled = (s: Segment) => s.style !== undefined && !s.style.isNull;
+    const drawn = rows.map((row) => row.filter((s) => s.text !== "").map((s) => [s.text, styled(s)]));
+    expect(drawn).toEqual([[["one two ", true], ["    ", false]], [["three", true], ["       ", false]]]);
   });
 
   it("styles a heading's text and not the padding that centres it", () => {
