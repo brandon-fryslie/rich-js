@@ -7,11 +7,11 @@ import type { CellColors, Drawn, EffectCell } from "@promptctl/rich-js";
 
 interface Effect {
   (t: number, drawn: Drawn): (colors: CellColors, cell: EffectCell) => CellColors;
-  readonly nextChange?: (t: number) => number;
+  readonly nextChange?: (t: number, drawn: Drawn) => number;
 }
 ```
 
-`Effected` calls the first stage once a frame and the second once for each cell of it, so whatever holds for the whole frame, such as where a band of light stands at `t`, is worked out once rather than once a cell. An effect that knows when its frame next changes says so in `nextChange`; a plain function is an effect that moves every frame. See [When the frame next changes](/frames#when-the-frame-next-changes).
+`Effected` calls the first stage once a frame and the second once for each cell of it, so whatever holds for the whole frame, such as where a band of light stands at `t`, is worked out once rather than once a cell. An effect that knows when its frame next changes says so in `nextChange`, asked with the same `t` and `drawn` as the first stage, so a loop that holds every cell still on a sixteen-colour terminal can say its frame never changes there; a plain function is an effect that moves every frame. See [When the frame next changes](/frames#when-the-frame-next-changes).
 
 ## Ready-made effects
 
@@ -135,7 +135,7 @@ for (const t of [0, 1, 2, 3]) {
 
 ### Sampled on a beat
 
-`onBeat(effect, beat)` samples any effect once a hold: within a hold it draws the frame at the hold's start, and at each hold's start it moves on. A `wheel` given a short curve and sampled once a second becomes a hue walk that turns a step at a time; sampled sixty times a second it still turns once a second, since the beat is seconds. At one redraw a second a hold shorter than a second is skipped, as a frame is. The frame [next changes](/frames#when-the-frame-next-changes) when the hold ends, whatever the sampled effect would have said in between.
+`onBeat(effect, beat)` samples any effect once a hold: within a hold it draws the frame at the hold's start, and at each hold's start it moves on. A `wheel` given a short curve and sampled once a second becomes a hue walk that turns a step at a time; sampled sixty times a second it still turns once a second, since the beat is seconds. At one redraw a second a hold shorter than a second is skipped, as a frame is. The frame [next changes](/frames#when-the-frame-next-changes) at a hold's start, the first one the sampled effect has moved by: an effect that moves every frame turns the beat at the end of this hold, one whose next step falls two holds on turns it there, and one that is done and says never leaves the beat saying never.
 
 ```typescript
 import { CATPPUCCIN_MOCHA, EASES, EFFECT_CATALOGUE, Effected, RichText, Style, beat, onBeat } from "@promptctl/rich-js";
