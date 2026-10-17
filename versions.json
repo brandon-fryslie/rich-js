@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-432",
-      "ref": "refs/pull/432/merge",
-      "sha": "5fda78da67353e5abaa76ba8dac4ff883109861c",
-      "timestamp": "2026-10-17T08:41:31.003Z",
-      "commits": [
-        {
-          "sha": "5fda78da67353e5abaa76ba8dac4ff883109861c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T08:39:46Z",
-          "message": "Merge 0013082cd4d39b922df2d6c22d7e63e8e6320f9f into 069182e44a05717b4034ba0857c8f315a5691244\n"
-        },
-        {
-          "sha": "0013082cd4d39b922df2d6c22d7e63e8e6320f9f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T02:39:42-06:00",
-          "message": "Markdown's label scan crosses plain text in one step, and walk owns each container's frame (rich-unfiled-791c.gwww)\n\nLinkLabels.step stepped a character at a time, so a paragraph behind 19\nunclosed brackets cost 19 times its length: 9.7s for 2M characters, against\n20ms before. It now steps over a run of plain text whole, as markdown-it's\ntext rule does. walk takes an open per container and hands its frame back on\nleave, so the two consumers no longer keep stacks paired with it by hand and a\nnew container kind fails to compile until both draw it.\n"
-        },
-        {
-          "sha": "36ce00c1d1d16ee0e2edfdaa2a01528f0b6c34a9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T02:21:30-06:00",
-          "message": "Markdown ends a quote at a blank marked line after an item nested past maxNesting, as markdown-it does (rich-unfiled-791c.gwww)\n\nA list whose item swallowed the rest of its container's lines answered\nendsInParagraph from the item's own trimmed lines, so a quote ending in a\nblank marked line took the next line lazily and never drew it. The list now\nleaves an unread token for the lines it took, open by their real last line.\n"
-        },
-        {
-          "sha": "1e87c833e59106d2ea2beb7348e43719c9e9d29f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T02:13:31-06:00",
-          "message": "Markdown leaves an empty item at maxNesting unread, and keeps line endings their own tokens, as markdown-it does (rich-unfiled-791c.gwww)\n\nAn item with no text past the cap took every line after it: markdown-it\nskips blank lines before it checks the level, so empty content has nothing\nleft unread. Soft and hard breaks are now Inline variants, so the\nfragments_join merge no longer swallows them and segments match Rich's.\n"
-        },
-        {
-          "sha": "1650f8c6fabe70aab765164053b2f3f2846fe9dd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T01:57:04-06:00",
-          "message": "Markdown nests no deeper than markdown-it's maxNesting, as Rich does (rich-unfiled-791c.gwww)\n\nDeep nesting overflowed the stack: `>` and list markers recursed per\nlevel, link labels nested per `[`, and inline rendering recursed per\nemphasis level. Each now follows Rich:\n\n- Blocks stop at markdown-it's maxNesting (20; a quote one level, a list\n  and its item one each). Past it a container's content is an `unread`\n  token that draws nothing, and a list item that deep takes every line to\n  the end of its quote or document, as markdown-it's does.\n- Link labels are scanned as markdown-it's parseLinkLabel/skipToken scans\n  them, with its per-position cache and its level cap. A link whose label\n  holds a link is refused (rich-unfiled-791c.ii92), and a run of brackets\n  parses in linear time.\n- Inline rendering walks the inline tree with a stack and appends each run\n  of text in one combined style, as Rich's style stack does, so 10,000\n  levels of emphasis render in linear time. Adjacent text joins as\n  markdown-it's fragments_join joins it.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "069182e44a05717b4034ba0857c8f315a5691244",
-      "timestamp": "2026-10-17T07:25:43.332Z",
+      "sha": "46b9cb0fcec7fc7ded042069681859e8bba40944",
+      "timestamp": "2026-10-17T08:51:44.873Z",
       "commits": [
         {
-          "sha": "069182e44a05717b4034ba0857c8f315a5691244",
+          "sha": "46b9cb0fcec7fc7ded042069681859e8bba40944",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T01:24:30-06:00",
-          "message": "Markdown draws list markers as Rich does (rich-unfiled-791c.s3d1) (#431)\n\n* Markdown draws list markers as Rich does (rich-unfiled-791c.s3d1)\n\nA bullet is \" • \" in markdown.item.bullet (bold), a number is drawn with no\ndot in markdown.item.number (cyan), right-aligned in a column sized for the\nnumber one past the last item, as Rich's last_number sizes it; each hang is\nin its marker's style and the item's body in markdown.item. An empty item is\ncounted and draws nothing. The parser records the list's start number and\nleaves the drawing to the renderer.\n\n* A null style is no style to applyStyle; list theme names pinned through Console and documented (rich-unfiled-791c.s3d1)"
+          "timestamp": "2026-10-17T02:50:29-06:00",
+          "message": "Markdown nests no deeper than markdown-it's maxNesting, as Rich does (rich-unfiled-791c.gwww) (#432)\n\n* Markdown nests no deeper than markdown-it's maxNesting, as Rich does (rich-unfiled-791c.gwww)\n\nDeep nesting overflowed the stack: `>` and list markers recursed per\nlevel, link labels nested per `[`, and inline rendering recursed per\nemphasis level. Each now follows Rich:\n\n- Blocks stop at markdown-it's maxNesting (20; a quote one level, a list\n  and its item one each). Past it a container's content is an `unread`\n  token that draws nothing, and a list item that deep takes every line to\n  the end of its quote or document, as markdown-it's does.\n- Link labels are scanned as markdown-it's parseLinkLabel/skipToken scans\n  them, with its per-position cache and its level cap. A link whose label\n  holds a link is refused (rich-unfiled-791c.ii92), and a run of brackets\n  parses in linear time.\n- Inline rendering walks the inline tree with a stack and appends each run\n  of text in one combined style, as Rich's style stack does, so 10,000\n  levels of emphasis render in linear time. Adjacent text joins as\n  markdown-it's fragments_join joins it.\n\n* Markdown leaves an empty item at maxNesting unread, and keeps line endings their own tokens, as markdown-it does (rich-unfiled-791c.gwww)\n\nAn item with no text past the cap took every line after it: markdown-it\nskips blank lines before it checks the level, so empty content has nothing\nleft unread. Soft and hard breaks are now Inline variants, so the\nfragments_join merge no longer swallows them and segments match Rich's.\n\n* Markdown ends a quote at a blank marked line after an item nested past maxNesting, as markdown-it does (rich-unfiled-791c.gwww)\n\nA list whose item swallowed the rest of its container's lines answered\nendsInParagraph from the item's own trimmed lines, so a quote ending in a\nblank marked line took the next line lazily and never drew it. The list now\nleaves an unread token for the lines it took, open by their real last line.\n\n* Markdown's label scan crosses plain text in one step, and walk owns each container's frame (rich-unfiled-791c.gwww)\n\nLinkLabels.step stepped a character at a time, so a paragraph behind 19\nunclosed brackets cost 19 times its length: 9.7s for 2M characters, against\n20ms before. It now steps over a run of plain text whole, as markdown-it's\ntext rule does. walk takes an open per container and hands its frame back on\nleave, so the two consumers no longer keep stacks paired with it by hand and a\nnew container kind fails to compile until both draw it."
         }
       ]
     }
