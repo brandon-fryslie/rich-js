@@ -4,15 +4,22 @@
     {
       "version": "pr-442",
       "ref": "refs/pull/442/merge",
-      "sha": "a1db160ac519cb0114312e550c43d044dcca55b1",
-      "timestamp": "2026-10-17T14:27:32.562Z",
+      "sha": "77ec83245cf13e27a05dbf6c94f2ca470af8a33d",
+      "timestamp": "2026-10-17T14:36:11.871Z",
       "commits": [
         {
-          "sha": "a1db160ac519cb0114312e550c43d044dcca55b1",
+          "sha": "77ec83245cf13e27a05dbf6c94f2ca470af8a33d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T08:25:58-06:00",
-          "message": "Merge 10ace6241f883e08a3d42fc3b319ea5a32e66641 into 277380518996438a7258f30d1de3f99182d3df1f\n"
+          "timestamp": "2026-10-17T14:34:41Z",
+          "message": "Merge 66d240245709e3a93def813d83e501727f3128fb into 277380518996438a7258f30d1de3f99182d3df1f\n"
+        },
+        {
+          "sha": "66d240245709e3a93def813d83e501727f3128fb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T08:34:36-06:00",
+          "message": "runsOn takes a fractional delay as Node does, truncated, so a 1.9 ms timer stays one of the body's own jobs (rich-unfiled-791c.ffob)\n\nThe runsOn descriptions — programTimers' header, the settled message, the\nfirst test's name — now state the rule as it is: a timer still set, or a\nlonger one fired since the body returned.\n"
         },
         {
           "sha": "10ace6241f883e08a3d42fc3b319ea5a32e66641",
