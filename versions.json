@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-440",
+      "ref": "refs/pull/440/merge",
+      "sha": "69aac69d3596ad1462a01ce68def9cb470be0b11",
+      "timestamp": "2026-10-17T12:41:11.597Z",
+      "commits": [
+        {
+          "sha": "69aac69d3596ad1462a01ce68def9cb470be0b11",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T06:39:24-06:00",
+          "message": "Merge 1f58249487c4e830e3b34e8f0e935c475791a44a into 65828614a6d5ab5be20c7600447523ffb649be1f\n"
+        },
+        {
+          "sha": "1f58249487c4e830e3b34e8f0e935c475791a44a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T06:39:20-06:00",
+          "message": "Markdown draws a quote's bar as ▌ in markdown.block_quote, as Rich does (rich-unfiled-791c.rm6p)\n\nRich's BlockQuote draws its bar and the blocks it holds in the one\nmarkdown.block_quote style (magenta). The port drew the bar ▎ in\nmarkdown.hr and the body in a hardcoded dim italic; both now read the\none theme entry, so a theme restyles the whole quote.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "65828614a6d5ab5be20c7600447523ffb649be1f",
