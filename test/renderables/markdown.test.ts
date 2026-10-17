@@ -380,7 +380,7 @@ describe("Markdown", () => {
   });
 
   it("parses the width once, as every renderable does, before a code block draws in it", () => {
-    expect(rows("```\nab\n```", -1)).toEqual(["", "", "", ""]);
+    expect(rows("```\nab\n```", -1)).toEqual([""]);
     expect(rows("```\nab\n```", 4.5)).toEqual(["", " ab", "", ""]);
   });
 
@@ -454,10 +454,6 @@ describe("Markdown", () => {
     rows(`[a](b${" ".repeat(100_000)}x`, 80);
     // A tail splitting the space after a destination every way it could took six seconds here.
     expect(performance.now() - started).toBeLessThan(1000);
-  });
-
-  it("keeps an item's text when its gutter is as wide as the width", () => {
-    expect(rows("- hi", 3)).toEqual(["", " • h", "   i", ""]);
   });
 
   // --- Lists hold blocks, as CommonMark reads them ---
@@ -1161,6 +1157,30 @@ describe("Markdown", () => {
     expect(untrimmed("- ## Head")).toEqual(["", " • Head     ", ""]);
   });
 
+  // Rich 15, console.render at each width, untrimmed: up to the first width
+  // that leaves a quote's or an item's content a column, nothing is drawn.
+  it("draws a quote or an item left no column for its content as nothing, as Rich does", () => {
+    const untrimmed = (markdown: string, maxWidth: number) => collectText(new Markdown(markdown), { maxWidth }).split("\n");
+    const one = (gutter: string, hang: string) => [gutter + "o", ...[..."ne two"].map((c) => hang + c)];
+    for (const maxWidth of [1, 2, 3, 4]) expect(untrimmed("> one two", maxWidth)).toEqual(["", ""]);
+    expect(untrimmed("> one two", 5)).toEqual(["", ...one("▌ ", "▌ "), ""]);
+    for (const [markdown, marker] of [["- one two", " • "], ["1. one two", " 1 "]] as const) {
+      for (const maxWidth of [1, 2, 3]) expect(untrimmed(markdown, maxWidth)).toEqual(["", ""]);
+      expect(untrimmed(markdown, 4)).toEqual(["", ...one(marker, "   "), ""]);
+    }
+    expect(untrimmed("- > one two", 7)).toEqual(["", ""]);
+    expect(untrimmed("- > one two", 8)).toEqual(["", ...one(" • ▌ ", "   ▌ ").map((row) => row + "  "), ""]);
+    expect(untrimmed("> - one two", 7)).toEqual(["", ""]);
+    expect(untrimmed("> - one two", 8)).toEqual(["", ...one("▌  • ", "▌    "), ""]);
+  });
+
+  // Rich 15, console.render at width 0: an empty string for each.
+  it("draws a document at no width as nothing, the rows between its blocks included, as Rich does", () => {
+    for (const markdown of ["# Head\n\npara", "---", "> a\n\nb"]) {
+      expect(collectText(new Markdown(markdown), { maxWidth: 0 })).toBe("");
+    }
+  });
+
   // Rich 15: [('one two ', h2), ('    ', none), ('three', h2), ('       ', none)].
   it("styles an h2's text, a wrapped row's kept space included, and not the padding that fills each row", () => {
     const rows = Segment.splitLines(collectSegments(new Markdown("## one two three"), { maxWidth: 12 }));
@@ -1587,11 +1607,9 @@ describe("Markdown", () => {
 
   // --- Measurement ---
 
-  it("measurement returns valid values", () => {
-    const md = new Markdown("# Hello");
-    const m = md.measure({ maxWidth: 80 });
-    expect(m.minimum).toBeGreaterThan(0);
-    expect(m.maximum).toBeLessThanOrEqual(80);
+  // Rich 15: Measurement.get on a Markdown, which has no __rich_measure__.
+  it("measures as nothing up to the width, as Rich does", () => {
+    expect(new Markdown("- one two").measure({ maxWidth: 20 })).toEqual({ minimum: 0, maximum: 20 });
   });
 
   // --- Construction ---

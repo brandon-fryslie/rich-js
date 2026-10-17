@@ -321,13 +321,11 @@ function drawImage(image: Image, options: RenderOptions, settings: InlineSetting
  * its rows ended. The first row's gutter is `first` and every later row's is
  * `rest`, so a list item's text hangs clear of its bullet and a quote's bar
  * runs its full height. A block with no gutter passes two empty segments:
- * every block is laid out the same way. What is drawn keeps at least one
- * column however wide the gutter, so a row may overrun its width but no gutter
- * swallows what it introduces.
+ * every block is laid out the same way. A gutter that leaves its content no
+ * column draws nothing beside it, since that content draws no rows.
  */
 function* guttered(draw: (options: RenderOptions) => Iterable<Segment>, options: RenderOptions, first: Segment, rest: Segment): Iterable<Segment> {
-  const width = Math.max(1, options.maxWidth - cellLen(first.text));
-  const rows = Segment.splitLines(draw({ ...options, maxWidth: width }));
+  const rows = Segment.splitLines(draw({ ...options, maxWidth: options.maxWidth - cellLen(first.text) }));
   for (const [row, line] of rows.entries()) {
     yield row === 0 ? first : rest;
     yield* line;
@@ -380,7 +378,17 @@ function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, setti
   for (const token of tokens) yield* renderBlock(token, options, settings);
 }
 
+/**
+ * Rich's `Console.render`, which the document and every element in it is
+ * drawn through, draws nothing under one column — however deep the element
+ * is nested.
+ */
+function drawsNothing(options: RenderOptions): boolean {
+  return options.maxWidth < 1;
+}
+
 function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSettings): Iterable<Segment> {
+  if (drawsNothing(options)) return;
   switch (token.type) {
     case "heading": {
       const draw = inline(token.text, settings, token.level === 1 ? "center" : "left", headingStyle(options, token.level));
@@ -482,6 +490,7 @@ export class Markdown implements Renderable, Measurable {
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     // The width parsed once, for every block below, each one of a stack.
     const options = { ...withCellWidth(rawOptions), height: stackedHeight(rawOptions.height) };
+    if (drawsNothing(options)) return;
     // Rich's `new_line`: set by each element as it exits, read before anything is drawn.
     let newLine = false;
     for (const step of documentSteps(this.parsed, options, this)) {
@@ -495,6 +504,7 @@ export class Markdown implements Renderable, Measurable {
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return { minimum: 1, maximum: options.maxWidth };
+    // Rich's Markdown has no `__rich_measure__`, so Rich measures it as nothing up to the width.
+    return { minimum: 0, maximum: options.maxWidth };
   }
 }
