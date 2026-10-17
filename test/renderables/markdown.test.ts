@@ -142,6 +142,23 @@ describe("Markdown", () => {
     expect(rows("| a |\n|---|\n\u00a0b\u00a0\n\u00a0\nz", 80)).toEqual(["", " a", " ─", " b", "", "z", ""]);
   });
 
+  it("opens an ATX heading at a space, a tab or the end of the line after its #s", () => {
+    for (const md of ["para\n#", "para\n# ", "para\n#  "]) expect(rows(md, 80)).toEqual(["para", "", ""]);
+    // A paragraph separator is no line ending to markdown-it, which splits lines at \\n alone.
+    expect(rows("# a\u2029", 80)).toEqual([`${" ".repeat(39)}a`, ""]);
+  });
+
+  it("keeps a paragraph line's indentation in a code span that crosses its line ending", () => {
+    expect(rows("foo\n    bar `x\n  y`", 80)).toEqual(["foo bar x   y", ""]);
+    expect(rows("> foo\n>     bar `x\n>   y`", 80)).toEqual(["▎ foo bar x   y", ""]);
+    expect(rows("a\\\n   b", 80)).toEqual(["a", "b", ""]);
+  });
+
+  it("reads whitespace in an HTML block's tag as Python's re does", () => {
+    expect(rows("<a>\u0085\nx", 80)).toEqual([""]);
+    expect(rows("<div\ufeff\nx", 80)).toEqual(["<div\ufeff x", ""]);
+  });
+
   it("keeps a list item's continuation lines in the item, hanging under its text", () => {
     const md = "- alpha beta gamma\n  delta epsilon\n- zeta";
     expect(rows(md, 18)).toEqual([" • alpha beta", "   gamma delta", "   epsilon", " • zeta", ""]);

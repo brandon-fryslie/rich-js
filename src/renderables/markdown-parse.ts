@@ -13,6 +13,7 @@
  */
 
 import { linkHref, normalizeLinkText } from "./markdown-url.js";
+import { PY_WHITESPACE, pyStrip } from "./python-space.js";
 import { namedReference } from "./html-entities.js";
 
 /** Where a table column's cells sit, from the colons on its delimiter cell. None is GFM's no alignment, which Rich leaves to its column: left. */
@@ -94,7 +95,8 @@ interface Line {
   readonly lazy: boolean;
 }
 
-const HEADING = /^(#{1,6})[ \t]+(.+)$/;
+/** An ATX heading's opening: one to six `#`, then a space, a tab or the end of the line. */
+const HEADING = /^#{1,6}(?=[ \t]|$)/;
 /** A thematic break: three or more of one of `*`, `-` or `_`, spaces and tabs between them allowed. */
 const RULE = /^(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/;
 const SETEXT = /^(=+|-+)[ \t]*$/;
@@ -107,13 +109,6 @@ const ITEM_MARKER = /^(?:[*+-]|(\d{1,9})\.)/;
  * one blank. A no-break space or any other Unicode space is text to it.
  */
 const LEAD = /^[ \t]*/;
-/**
- * Every character Python's `str.isspace` accepts, which `str.strip` trims:
- * what markdown-it-py — the markdown-it Rich runs — strips the content of a
- * paragraph, a heading and a table cell of. Not JavaScript's `trim`, which
- * also strips U+FEFF and keeps U+001C–U+001F and U+0085.
- */
-const PYTHON_SPACE = /[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]/;
 const BLOCK_STARTS = [HEADING, FENCE, QUOTE, RULE];
 /** A line that may be a table's delimiter row, screened as markdown-it screens one: pipes, dashes, colons and space only, and not a dash then a space, which opens a list item. */
 const DELIMITER_ROW = /^(?!-[ \t])[-:|][-:| \t]+$/;
@@ -156,19 +151,19 @@ const HTML_BLOCK_NAMES =
   "main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|" +
   "title|tr|track|ul";
 // The tag grammar of markdown-it-py's common/html_re, shared by the HTML block a lone tag opens and the inline HTML it reads in text.
-const HTML_ATTRIBUTE = String.raw`(?:\s+[a-zA-Z_:][a-zA-Z0-9:._-]*(?:\s*=\s*(?:[^"'=<>\`\x00-\x20]+|'[^']*'|"[^"]*"))?)`;
-const HTML_OPEN_TAG = String.raw`<[A-Za-z][A-Za-z0-9-]*${HTML_ATTRIBUTE}*\s*\/?>`;
-const HTML_CLOSE_TAG = String.raw`<\/[A-Za-z][A-Za-z0-9-]*\s*>`;
+const HTML_ATTRIBUTE = String.raw`(?:${PY_WHITESPACE}+[a-zA-Z_:][a-zA-Z0-9:._-]*(?:${PY_WHITESPACE}*=${PY_WHITESPACE}*(?:[^"'=<>\`\x00-\x20]+|'[^']*'|"[^"]*"))?)`;
+const HTML_OPEN_TAG = String.raw`<[A-Za-z][A-Za-z0-9-]*${HTML_ATTRIBUTE}*${PY_WHITESPACE}*\/?>`;
+const HTML_CLOSE_TAG = String.raw`<\/[A-Za-z][A-Za-z0-9-]*${PY_WHITESPACE}*>`;
 const HTML_BLOCKS: readonly HtmlBlockKind[] = [
-  { start: /^<(?:script|pre|style|textarea)(?=\s|>|$)/i, end: /<\/(?:script|pre|style|textarea)>/i, interrupts: true },
+  { start: new RegExp(String.raw`^<(?:script|pre|style|textarea)(?=${PY_WHITESPACE}|>|$)`, "i"), end: /<\/(?:script|pre|style|textarea)>/i, interrupts: true },
   { start: /^<!--/, end: /-->/, interrupts: true },
   { start: /^<\?/, end: /\?>/, interrupts: true },
   // Uppercase only, as markdown-it-py has it, where markdown-it in JS and CommonMark 0.31 take `<!doctype` too.
   { start: /^<![A-Z]/, end: />/, interrupts: true },
   { start: /^<!\[CDATA\[/, end: /\]\]>/, interrupts: true },
-  { start: new RegExp(String.raw`^<\/?(?:${HTML_BLOCK_NAMES})(?=\s|\/?>|$)`, "i"), end: "blank", interrupts: true },
+  { start: new RegExp(String.raw`^<\/?(?:${HTML_BLOCK_NAMES})(?=${PY_WHITESPACE}|\/?>|$)`, "i"), end: "blank", interrupts: true },
   {
-    start: new RegExp(String.raw`^(?:${HTML_OPEN_TAG}|${HTML_CLOSE_TAG})\s*$`),
+    start: new RegExp(String.raw`^(?:${HTML_OPEN_TAG}|${HTML_CLOSE_TAG})${PY_WHITESPACE}*$`),
     end: "blank",
     interrupts: false,
   },
@@ -196,15 +191,6 @@ function body(line: Line): string {
 
 function isBlank(line: Line): boolean {
   return body(line) === "";
-}
-
-/** `text` stripped as Python's `str.strip` strips it, of `PYTHON_SPACE` at both ends. */
-function strip(text: string): string {
-  let from = 0;
-  let to = text.length;
-  while (from < to && PYTHON_SPACE.test(text[from]!)) from++;
-  while (to > from && PYTHON_SPACE.test(text[to - 1]!)) to--;
-  return text.slice(from, to);
 }
 
 /** Whether `line` sits less than a code indent into its container and its text matches `re`. */
@@ -278,7 +264,7 @@ function tableLine(line: Line): boolean {
  */
 function rowCells(row: string): string[] {
   const cells = [""];
-  for (const ch of strip(row)) {
+  for (const ch of pyStrip(row)) {
     const last = cells.length - 1;
     if (ch !== "|") cells[last] += ch;
     else if (cells[last]!.endsWith("\\")) cells[last] = `${cells[last]!.slice(0, -1)}|`;
@@ -286,7 +272,7 @@ function rowCells(row: string): string[] {
   }
   const from = cells[0] === "" ? 1 : 0;
   const to = cells.length > from && cells[cells.length - 1] === "" ? -1 : undefined;
-  return cells.slice(from, to).map(strip);
+  return cells.slice(from, to).map(pyStrip);
 }
 
 /** The alignment of each column `line` declares, if it is a table's delimiter row: a run of dashes per column, a colon on the side its cells sit. */
@@ -398,15 +384,16 @@ function continuesLazily(inner: readonly Line[], level: number, line: Line, afte
 /**
  * The text of the paragraph begun at `start`, every line after it up to a
  * blank, a line that ends a paragraph or a table's header row, and the index of the line that ended
- * it. The lines are joined at their line endings as written, each with its
- * own indentation dropped, as markdown-it's paragraph content is: whether a
- * line ending breaks soft or hard is the inline pass's to read, since an
- * escape or a code span decides it.
+ * it. The lines are joined at their line endings as written, each cut only
+ * to its container's margin, as markdown-it's `getLines` cuts paragraph
+ * content: the indentation past it is the inline pass's to read, which drops
+ * it after a line ending and keeps it in a code span, as is whether a line
+ * ending breaks soft or hard, since an escape or a code span decides it.
  */
 function continuation(lines: readonly Line[], start: number): { text: string; next: number } {
   let i = start + 1;
   for (; i < lines.length && !isBlank(lines[i]!) && !endsParagraph(lines[i]!) && !tableAt(lines, i); i++);
-  return { text: strip(lines.slice(start, i).map(body).join("\n")), next: i };
+  return { text: pyStrip(lines.slice(start, i).map((line) => dropColumns(line, 0)).join("\n")), next: i };
 }
 
 /**
@@ -501,12 +488,12 @@ function tokenize(lines: readonly Line[], level: number): MdToken<string>[] {
 
     // Table: before every other block, as markdown-it tries it, so a header
     // row that reads as a heading or a list item is still a header. Its body
-    // rows run to a line `strip` empties or a line that opens a block.
+    // rows run to a line `pyStrip` empties or a line that opens a block.
     const columns = tableAt(lines, i);
     if (columns) {
       const rows: string[][] = [];
       let autocompleted = 0;
-      for (i += 2; i < lines.length && strip(lines[i]!.text) !== "" && tableLine(lines[i]!) && !opensBlock(lines[i]!); i++) {
+      for (i += 2; i < lines.length && pyStrip(lines[i]!.text) !== "" && tableLine(lines[i]!) && !opensBlock(lines[i]!); i++) {
         const cells = rowCells(body(lines[i]!));
         autocompleted += columns.length - cells.length;
         if (autocompleted > MAX_AUTOCOMPLETED_CELLS) break;
@@ -530,7 +517,7 @@ function tokenize(lines: readonly Line[], level: number): MdToken<string>[] {
     // Heading
     const headingMatch = HEADING.exec(body(line));
     if (headingMatch) {
-      tokens.push({ type: "heading", level: headingMatch[1]!.length, text: strip(headingMatch[2]!) });
+      tokens.push({ type: "heading", level: headingMatch[0].length, text: pyStrip(body(line).slice(headingMatch[0].length)) });
       i++;
       continue;
     }
@@ -665,6 +652,7 @@ const WHITESPACE = /^[\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]$/;
 const PUNCTUATION = /^[\p{P}\p{S}]$/u;
 
 const TICKS = /`+/y;
+const LINE_INDENT = /[ \t]*/y;
 /** markdown-it's autolink: `<`, then text holding no `<` up to the first `>`. */
 const AUTOLINK = /<([^<>]*)>/y;
 /** What an autolink's text must be: a URI, scheme first, or an email address. */
@@ -1073,6 +1061,11 @@ function autolinkAt(text: string, i: number): InlineMatch | undefined {
   return href === undefined ? undefined : { kind: "autolink", source, url: href, end: i + angled[0].length };
 }
 
+/** Where the text of the line starting at `from` starts: past its spaces and tabs, which markdown-it's newline and escape rules skip after a line ending. */
+function nextLine(text: string, from: number): number {
+  return from + matchAt(LINE_INDENT, text, from)![0].length;
+}
+
 /** The inline construct opening at `i` in `text`, if one does, read at `level` with `labels` scanning a link's label. */
 function inlineAt(text: string, i: number, labels: LinkLabels, level: number): InlineMatch | undefined {
   switch (text[i]) {
@@ -1093,13 +1086,13 @@ function inlineAt(text: string, i: number, labels: LinkLabels, level: number): I
     case "&":
       return referenceAt(text, i);
     case "\n":
-      return { kind: "line_ending", end: i + 1 };
+      return { kind: "line_ending", end: nextLine(text, i + 1) };
     case "\\": {
       // markdown-it's escape rule: a backslash before a line ending breaks it
       // hard, and one before anything else takes that character with it, the
       // pair standing as written unless it escapes — so a space after it
       // counts toward no hard break.
-      if (text[i + 1] === "\n") return { kind: "hardbreak", end: i + 2 };
+      if (text[i + 1] === "\n") return { kind: "hardbreak", end: nextLine(text, i + 2) };
       const escape = matchAt(ESCAPE, text, i);
       if (escape) return { kind: "text", text: escape[1]!, end: i + escape[0].length };
       if (i + 1 === text.length) return undefined;

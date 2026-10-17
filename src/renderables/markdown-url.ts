@@ -9,6 +9,8 @@
  * markdown-it keeps the capital, and refuses outright what markdown-it reads.
  */
 
+import { pyStrip } from "./python-space.js";
+
 /** A URL as mdurl's `parse` splits one; an absent part is empty. */
 interface Url {
   protocol: string;
@@ -19,18 +21,6 @@ interface Url {
   pathname: string;
   search: string;
   hash: string;
-}
-
-/** What Python's `str.strip` strips: everything `str.isspace` holds true of, every one of it a single UTF-16 unit. */
-const PY_WHITESPACE = String.raw`[\t-\r\x1c-\x20\x85\xa0  -     　]`;
-const PY_SPACE = new RegExp(`^${PY_WHITESPACE}$`);
-/** Python's `str.strip`, a scan in from each end, so a run of interior whitespace costs one pass, as it does there. */
-function pyStrip(text: string): string {
-  let start = 0;
-  let end = text.length;
-  while (start < end && PY_SPACE.test(text[start]!)) start++;
-  while (end > start && PY_SPACE.test(text[end - 1]!)) end--;
-  return text.slice(start, end);
 }
 
 /** mdurl's protocol, `[a-z0-9.+-]+:` under Python's IGNORECASE, which also folds İ, ı, ſ and K (Kelvin) into `[a-z]`. */
