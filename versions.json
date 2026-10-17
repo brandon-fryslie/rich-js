@@ -4,15 +4,22 @@
     {
       "version": "pr-429",
       "ref": "refs/pull/429/merge",
-      "sha": "e803fafad54f12e732de4db6dc63ceb4c723cdbd",
-      "timestamp": "2026-10-17T05:39:58.048Z",
+      "sha": "3367fa7df90481162a9fff093255906d4eaa6ffb",
+      "timestamp": "2026-10-17T05:47:44.443Z",
       "commits": [
         {
-          "sha": "e803fafad54f12e732de4db6dc63ceb4c723cdbd",
+          "sha": "3367fa7df90481162a9fff093255906d4eaa6ffb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T05:38:17Z",
-          "message": "Merge b6908bc96da9791f079f05fc229ebfe1f33f5269 into 06e92939529a05253185707d6c0f5725a228b312\n"
+          "timestamp": "2026-10-17T05:46:03Z",
+          "message": "Merge e2c5f62ef9d56e43556b2cf3ac5cf7e9e811ed79 into 06e92939529a05253185707d6c0f5725a228b312\n"
+        },
+        {
+          "sha": "e2c5f62ef9d56e43556b2cf3ac5cf7e9e811ed79",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T23:45:58-06:00",
+          "message": "Markdown reads a line ending by the text before it, as markdown-it's newline rule does (rich-unfiled-791c.ljiy)\n\nMatching a line ending ahead from every space scanned each run of spaces\nonce per space; 100k spaces took over four seconds. The line ending is now\nthe construct, and the spaces ending the pending text decide soft or hard.\n"
         },
         {
           "sha": "b6908bc96da9791f079f05fc229ebfe1f33f5269",
