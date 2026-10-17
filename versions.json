@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "8ea70430cce91b045edf9750e63fb7041f59c1a0",
+      "timestamp": "2026-10-17T02:15:28.627Z",
+      "commits": [
+        {
+          "sha": "8ea70430cce91b045edf9750e63fb7041f59c1a0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:13:43-06:00",
+          "message": "Markdown reads an HTML block where markdown-it does and draws it as Rich does, not at all (rich-unfiled-791c.e5pf) (#419)\n\n* Markdown reads an HTML block where markdown-it does and draws it as Rich does, not at all (rich-unfiled-791c.e5pf)\n\nCommonMark's seven HTML block kinds, matched as markdown-it matches them.\nEvery kind but a lone tag ends a paragraph, a table body and a lazy\ncontinuation, through opensBlock. The block is kept as a token that draws\nnothing, so a container ending in one does not read as ending in the\nparagraph before it.\n\n* An HTML block's end is the closing line or a blank one, named once; the table cites markdown-it-py (rich-unfiled-791c.e5pf)"
+        }
+      ]
+    },
+    {
       "version": "pr-416",
       "ref": "refs/pull/416/merge",
       "sha": "b36bef8ac14011c915299e2aa46566c4d81750fa",
@@ -56,57 +71,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T20:00:30-06:00",
           "message": "claude-sessions names every system record it draws (rich-demos-k78j.0d5)\n\nA system record's rule was titled by its duration, which only turn_duration\nrecords carry, so every slash command and stop hook drew as an empty '⚫ —'.\nThe parser now reads what each record says: a turn and how long it took, a\ncommand's command line over its output, how many stop hooks ran over their\nerrors, and any other subtype by its name over its content.\n\nThe card's sessions are re-staged so they carry the fields that reading needs.\nThe re-run also brings in what the stager already keeps and the committed\nstaging predated: ten queued prompts, and the assistant records under them.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-419",
-      "ref": "refs/pull/419/merge",
-      "sha": "3c1235cf92a0efced1560431f4e73c89b089ecd4",
-      "timestamp": "2026-10-17T02:00:06.175Z",
-      "commits": [
-        {
-          "sha": "3c1235cf92a0efced1560431f4e73c89b089ecd4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T01:58:33Z",
-          "message": "Merge 084f3197a4135127d2858910ac523e2bd05229bc into 16207a80e721a726df2bf517e2bd4e8648c9a3fe\n"
-        },
-        {
-          "sha": "084f3197a4135127d2858910ac523e2bd05229bc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T19:58:27-06:00",
-          "message": "An HTML block's end is the closing line or a blank one, named once; the table cites markdown-it-py (rich-unfiled-791c.e5pf)\n"
-        },
-        {
-          "sha": "0cf105ef382dc868b69868a95df1a1f73f427f24",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T19:50:18-06:00",
-          "message": "Markdown reads an HTML block where markdown-it does and draws it as Rich does, not at all (rich-unfiled-791c.e5pf)\n\nCommonMark's seven HTML block kinds, matched as markdown-it matches them.\nEvery kind but a lone tag ends a paragraph, a table body and a lazy\ncontinuation, through opensBlock. The block is kept as a token that draws\nnothing, so a container ending in one does not read as ending in the\nparagraph before it.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "16207a80e721a726df2bf517e2bd4e8648c9a3fe",
-      "timestamp": "2026-10-17T01:44:37.347Z",
-      "commits": [
-        {
-          "sha": "16207a80e721a726df2bf517e2bd4e8648c9a3fe",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T19:42:43-06:00",
-          "message": "Markdown draws a GFM pipe table as Rich's Table (rich-demos-k78j.5yo) (#417)\n\n* Markdown draws a GFM pipe table as Rich's Table (rich-demos-k78j.5yo)\n\nA header row, then a delimiter row naming as many columns, is a table, read\nas markdown-it reads one: tried before every other block, able to end a\nparagraph, its body running to a blank line or a line that opens a block.\nEach cell keeps its inline Markdown and sits where its delimiter's colons\nput it; the header is drawn in markdown.table.header and the borders in\nmarkdown.table.border, the styles and Table settings Rich uses.\n\nPinned against Rich 14's own output. Column widths are Table's, which\ndivides a squeezed width differently from Rich on purpose (table.ts\nheader), so a wide table wraps its cells at other columns than Rich's.\n\n* A Markdown table is read as markdown-it reads one, capped as it caps (rich-demos-k78j.5yo)\n\nReview of PR 417: the page and comments said GFM, but the parser is\nmarkdown-it's, which tries a table before any other block where GitHub\ndoes not. Body rows now stop at markdown-it's 65536 filled-out cells,\none predicate says which lines may be table rows, and a header row is\nsplit only once its delimiter row is one."
-        },
-        {
-          "sha": "79a43ab0b453d93f18772fc59344533d3639bcd9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T19:42:12-06:00",
-          "message": "Frames prepares its sequence once, not once a frame (rich-unfiled-791c.cxcp) (#418)\n\n* Frames prepares its sequence once, not once a frame (rich-unfiled-791c.cxcp)\n\nFrameSequence is the frames prepared once — beat, width, each frame set\ninto a line and padded — and Frames is that sequence at a t, finding only\nthe index. Spinner holds two prepared sequences and builds nothing per\nframe. new Frames over 90 frames: 25.95 µs before, 0.12 µs after (0.13 µs\nover 1 frame).\n\n* Review: comments name FrameSequence where the split moved the work (rich-unfiled-791c.cxcp)"
         }
       ]
     }
