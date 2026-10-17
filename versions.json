@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-419",
+      "ref": "refs/pull/419/merge",
+      "sha": "8a7ab8a9989a63e47dd0cb38aaa5137db33072e8",
+      "timestamp": "2026-10-17T01:52:02.806Z",
+      "commits": [
+        {
+          "sha": "8a7ab8a9989a63e47dd0cb38aaa5137db33072e8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:50:23-06:00",
+          "message": "Merge 0cf105ef382dc868b69868a95df1a1f73f427f24 into 16207a80e721a726df2bf517e2bd4e8648c9a3fe\n"
+        },
+        {
+          "sha": "0cf105ef382dc868b69868a95df1a1f73f427f24",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:50:18-06:00",
+          "message": "Markdown reads an HTML block where markdown-it does and draws it as Rich does, not at all (rich-unfiled-791c.e5pf)\n\nCommonMark's seven HTML block kinds, matched as markdown-it matches them.\nEvery kind but a lone tag ends a paragraph, a table body and a lazy\ncontinuation, through opensBlock. The block is kept as a token that draws\nnothing, so a container ending in one does not read as ending in the\nparagraph before it.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "16207a80e721a726df2bf517e2bd4e8648c9a3fe",
