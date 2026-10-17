@@ -198,6 +198,25 @@ describe("Markdown", () => {
     expect(rows("a ` \ufeff ` c", 80)).toEqual(["a \ufeff c", ""]);
   });
 
+  it("closes a code span at the next run exactly as long as its opener, as markdown-it-py does", () => {
+    expect(rows("a ``x`y```z`` b", 80)).toEqual(["a x`y```z b", ""]);
+    // A run no later run matches in length is text, and the runs after it still pair.
+    expect(rows("a ``` `x` b", 80)).toEqual(["a ``` x b", ""]);
+    // An escape takes one backtick off a run, and what is left opens a span as long as it is.
+    expect(rows("a \\``x` b", 80)).toEqual(["a `x b", ""]);
+    expect(rows("a \\```x`` b", 80)).toEqual(["a `x b", ""]);
+  });
+
+  it("reads a paragraph of code spans left open in time linear in its length", () => {
+    // Each escape leaves a lone backtick that no whole run closes; scanning the rest of the text for each took fifteen times as long for four times the openers.
+    expectLinearTime((openers) => new Markdown("\\``x ".repeat(openers)), 25_000);
+  });
+
+  it("reads a paragraph of links that each hold a code span in time linear in its length", () => {
+    // Each link's label is read from its own cut of the text; indexing the backticks of every cut afresh read the text once per link.
+    expectLinearTime((links) => new Markdown("[`a`](u) ".repeat(links)), 16_000);
+  });
+
   it("keeps a paragraph line's indentation in a code span that crosses its line ending", () => {
     expect(rows("foo\n    bar `x\n  y`", 80)).toEqual(["foo bar x   y", ""]);
     expect(rows("> foo\n>     bar `x\n>   y`", 80)).toEqual(["", "▌ foo bar x   y", ""]);
