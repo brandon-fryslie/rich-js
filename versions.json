@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-415",
+      "ref": "refs/pull/415/merge",
+      "sha": "75930fa534806de00fe3bd1682fca4194b3001b2",
+      "timestamp": "2026-10-17T00:58:04.082Z",
+      "commits": [
+        {
+          "sha": "75930fa534806de00fe3bd1682fca4194b3001b2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T18:56:22-06:00",
+          "message": "Merge 99809fd1474caa5c0ac6323735d9c8395dfa9028 into 351a8b6393360a36a3efecad7eb25b1260e520b7\n"
+        },
+        {
+          "sha": "99809fd1474caa5c0ac6323735d9c8395dfa9028",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T18:56:18-06:00",
+          "message": "shimmer and sparkle cross the element where its frame lists cells (rich-unfiled-791c.c8g5)\n\nA loop's Field is now handed the frame's Drawn, as a transition's Visibility\nalready is, and shimmer and sparkle read the element's columns (and sparkle\nits rows) off Drawn.cells each frame. EffectTarget.span, the caller-stated\nsecond source for that fact, is gone, as are the span arguments of shimmer\nand sparkle and DrawnSubject.span in effects-feel.\n\nA padded, wrapped or confined element was crossed at columns 0..span; it is\nnow crossed where it shows. Fireflies keep homes a fixed stride from the\nelement's first column, so an element that gains a column gains a firefly at\nmost rather than reshuffling every home.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-414",
       "ref": "refs/pull/414/merge",
       "sha": "dc48835341944339ca7abc7fec6909a6ee37fdf5",
