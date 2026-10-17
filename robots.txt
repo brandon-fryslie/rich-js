@@ -1,2 +1,3 @@
 User-agent: *
+Disallow: /rich-js/pr-411/
 Disallow: /rich-js/pr-412/
