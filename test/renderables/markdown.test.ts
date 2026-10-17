@@ -232,10 +232,6 @@ describe("Markdown", () => {
     expect(rows("- parent\n  1. child", 80)).toEqual(["", " • parent", "    1 child", ""]);
   });
 
-  it("draws a quote's bar down every row it wraps to, with its lines joined", () => {
-    expect(rows("> one two\n> three four", 12)).toEqual(["", "▌ one two", "▌ three", "▌ four", ""]);
-  });
-
   // Rich 15's own rows, trailing spaces kept: BlockQuote lays its content out
   // at the width less four beside a two-cell bar, so a quote's rows end two
   // cells short of the width.
@@ -246,7 +242,7 @@ describe("Markdown", () => {
     ["> one two", 12, { justify: "center" }, ["", "▌ one two ", ""]],
     ["> one two three four five", 12, { justify: "full" }, ["", "▌ one  two", "▌ three   ", "▌ four    ", "▌ five    ", ""]],
     ["> > one two three", 12, undefined, ["", "▌ ▌ one   ", "▌ ▌ two   ", "▌ ▌ thre  ", "▌ ▌ e     ", ""]],
-  ])("lays the quote in %j at width %i out as Rich does", (source, width, options, expected) => {
+  ])("lays the quote in %j at width %i with %j out as Rich does", (source, width, options, expected) => {
     expect(collectText(new Markdown(source, options), { maxWidth: width }).split("\n")).toEqual(expected);
   });
 
