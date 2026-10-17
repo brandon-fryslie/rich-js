@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-457",
-      "ref": "refs/pull/457/merge",
-      "sha": "74fa3b2c226aa34c7e66227a045d74592ea56db0",
-      "timestamp": "2026-10-17T20:40:41.142Z",
-      "commits": [
-        {
-          "sha": "74fa3b2c226aa34c7e66227a045d74592ea56db0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T20:38:51Z",
-          "message": "Merge 5fb43f1c5b4d9918a8546dd61ee453d531dae41c into fa691f9ee1dfe5a503fb62db0b12bc6b9519ffe3\n"
-        },
-        {
-          "sha": "5fb43f1c5b4d9918a8546dd61ee453d531dae41c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T14:38:46-06:00",
-          "message": "Markdown's h2 padding test pins where a wrapped row's style stops, against Rich 15 (rich-unfiled-791c.y0tl)\n"
-        },
-        {
-          "sha": "58c7abb4ab1cd95dc4871b2c789f0d03be2ba041",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T14:26:36-06:00",
-          "message": "Markdown pads an h2 and below to the width, as Rich's Heading does (rich-unfiled-791c.y0tl)\n\nRich 15's Heading.LEVEL_ALIGN gives every level a justify: h1 center, the\nrest left, so each row is padded to the width in the base style, not the\nheading's. The heading case passed undefined for every level but 1, so\nthose rows ended at their text. With every level explicit, the\noptions.justify override beside it was dead and is gone.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "fa691f9ee1dfe5a503fb62db0b12bc6b9519ffe3",
-      "timestamp": "2026-10-17T20:22:49.784Z",
+      "sha": "6a52f2a2e14d9e01e7258147790317a20194dcba",
+      "timestamp": "2026-10-17T20:51:39.640Z",
       "commits": [
         {
-          "sha": "fa691f9ee1dfe5a503fb62db0b12bc6b9519ffe3",
+          "sha": "6a52f2a2e14d9e01e7258147790317a20194dcba",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T14:21:06-06:00",
-          "message": "TextInput shows a zero-cell glyph as a one-cell stand-in, so every cursor stop moves the drawn cursor (rich-unfiled-791c.k697) (#456)\n\n* TextInput shows a zero-cell glyph as a one-cell stand-in, so every cursor stop moves the drawn cursor (rich-unfiled-791c.k697)\n\n* TextInput's hit-test maps each glyph through one shown-as function instead of re-segmenting it, and a line break's ↵ is pinned (rich-unfiled-791c.k697)"
+          "timestamp": "2026-10-17T14:49:54-06:00",
+          "message": "Markdown pads an h2 and below to the width, as Rich's Heading does (rich-unfiled-791c.y0tl) (#457)\n\n* Markdown pads an h2 and below to the width, as Rich's Heading does (rich-unfiled-791c.y0tl)\n\nRich 15's Heading.LEVEL_ALIGN gives every level a justify: h1 center, the\nrest left, so each row is padded to the width in the base style, not the\nheading's. The heading case passed undefined for every level but 1, so\nthose rows ended at their text. With every level explicit, the\noptions.justify override beside it was dead and is gone.\n\n* Markdown's h2 padding test pins where a wrapped row's style stops, against Rich 15 (rich-unfiled-791c.y0tl)"
         }
       ]
     }
