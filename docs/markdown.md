@@ -50,7 +50,12 @@ It ends the paragraph or table above it, as a heading does; a lone tag of any ot
 as `<span>`, does not, and is that paragraph's inline HTML instead. Inline HTML — a tag, a
 comment, a processing instruction, a declaration or a CDATA section inside text — is not drawn
 either. A backslash before a punctuation character writes that character as itself, so `\<span>`
-draws `<span>`.
+draws `<span>`. A character reference — `&amp;`, `&#65;`, `&#x41;` — draws the character it
+names, in text and in a link's URL, but not in a code span, an autolink or an image's alt text;
+a name HTML does not have is drawn as written. The two places read a numeric one as markdown-it
+does, differently: text takes up to seven decimal digits or six hex and draws `�` for a code
+that is no character — `&#0;`, a surrogate, a control, past U+10FFFF — where a URL takes up to
+eight digits of either base and leaves that code as written.
 
 An image is drawn as Rich draws it: a picture glyph, then its alt text as written, never parsed
 as Markdown, linked to the image.
