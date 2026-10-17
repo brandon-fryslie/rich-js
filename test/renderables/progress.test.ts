@@ -19,6 +19,7 @@ import type { RenderOptions } from "../../src/core/protocol.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { renderToString } from "../../src/core/render.js";
 import { fakeClock } from "../core/fake-clock.js";
+import { SPINNERS } from "../../src/core/spinnerData.js";
 
 const OPTS: RenderOptions = {
   maxWidth: 80,
@@ -217,7 +218,8 @@ describe("SpinnerColumn (rich-progress-sy9s)", () => {
       forceTerminal: true,
       theme,
     });
-    const progress = new Progress(column, new TextColumn("end"), { console });
+    // On a clock at zero, so the frame drawn is the first.
+    const progress = new Progress(column, new TextColumn("end"), { console, clock: fakeClock() });
     const id = progress.addTask("x", task);
     for (const completed of updates) progress.updateTask(id, { completed });
     console.print(progress);
@@ -273,11 +275,52 @@ describe("SpinnerColumn (rich-progress-sy9s)", () => {
       forceTerminal: true,
     });
     const column = new SpinnerColumn("bouncingBar", { finishedText: new RichText("ok", { justify }) });
-    const progress = new Progress(column, new TextColumn("end"), { console });
+    const progress = new Progress(column, new TextColumn("end"), { console, clock: fakeClock() });
     progress.addTask("a", { total: 10 });
     progress.updateTask(progress.addTask("b", { total: 10 }), { completed: 10 });
     console.print(progress);
     expect(chunks.join("")).toBe(expected);
+  });
+
+  // rich-animation-xi28.6k9: the spinner turns on the progress's clock, as
+  // Rich's `self.spinner.render(task.get_time())`, never on the platform's.
+  it("draws the frame for the clock's time: moved every 1/60 s, each dots frame shows for 4 or 5 samples, in order, none skipped", () => {
+    const dots = SPINNERS["dots"]!.frames;
+    const clock = fakeClock();
+    const progress = new Progress(new SpinnerColumn("dots", { style: "none" }), { console: new Console({ file: { write: () => {} } }), clock });
+    progress.addTask("x", { total: 10 });
+    const frame = (): string => renderToString(progress, { width: 10 }).trim();
+    const samples: string[] = [];
+    for (let i = 0; i < 240; i++) {
+      samples.push(frame());
+      clock.advance(1 / 60);
+    }
+    const runs: { frame: string; length: number }[] = [];
+    for (const sample of samples) {
+      const last = runs.at(-1);
+      if (last?.frame === sample) last.length++;
+      else runs.push({ frame: sample, length: 1 });
+    }
+    expect(runs[0]!.frame).toBe(dots[0]);
+    expect(runs.length).toBeGreaterThan(40);
+    for (const run of runs.slice(1, -1)) expect([4, 5]).toContain(run.length);
+    for (let i = 1; i < runs.length; i++) {
+      expect(dots.indexOf(runs[i]!.frame)).toBe((dots.indexOf(runs[i - 1]!.frame) + 1) % dots.length);
+    }
+  });
+
+  it("draws the frame for the clock's time at one redraw a second too", () => {
+    const dots = SPINNERS["dots"]!.frames;
+    const clock = fakeClock(0.5);
+    const progress = new Progress(new SpinnerColumn("dots", { style: "none" }), { console: new Console({ file: { write: () => {} } }), clock });
+    progress.addTask("x", { total: 10 });
+    const frame = (): string => renderToString(progress, { width: 10 }).trim();
+    // 80 ms frames, an 800 ms period: half-seconds land 0.5, 0.7 and 0.1 s into a pass.
+    expect(frame()).toBe(dots[6]);
+    clock.advance(1);
+    expect(frame()).toBe(dots[8]);
+    clock.advance(1);
+    expect(frame()).toBe(dots[1]);
   });
 
   it("keeps its own copy of a finished text the caller goes on to change", () => {

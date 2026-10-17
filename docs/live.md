@@ -149,6 +149,24 @@ try {
 }
 ```
 
+## A view drawn for a time
+
+Nothing a `Live` draws reads a clock. In place of a renderable, hand it a view — a function asked for the renderable once per frame with the frame's time `t`, in seconds on the `Live`'s clock — and whatever is drawn for a time, a [`Spinner`](/frames#spinners), [`Frames`](/frames) or an [effect](/effects), is built for that `t`. The same `t` draws the same bytes at four frames a second or sixty, and a `Live` on a hand-moved `Clock` draws the frames for that clock's time:
+
+```typescript live
+import { Live, Spinner } from "@promptctl/rich-js";
+
+const live = new Live((t) => new Spinner("dots", `working for [bold]${t.toFixed(1)}[/] s`, { t }), { refreshPerSecond: 12.5, console });
+live.start();
+try {
+  await sleep(3000);
+} finally {
+  live.stop();
+}
+```
+
+A renderable passed instead is the view that is the same at every `t`; `update()` takes either.
+
 ## When a frame fails to render
 
 `Live` renders each frame in full before it writes anything, so a renderable whose `render` throws leaves the last good frame on the terminal, and the error goes to whoever called `refresh()`. The renderable stays installed, so every later frame, the timer's included, fails the same way until `update` replaces it. If the auto-refresh timer is what called it, there is no caller: `Live` stops, shows the cursor and leaves the alternate screen, then lets the error go on uncaught; after that `refresh()` draws nothing and `stop()` has nothing left to do. If the final frame `stop()` draws throws, `stop()` hands the terminal back the same way and then rethrows.

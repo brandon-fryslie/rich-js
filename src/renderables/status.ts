@@ -1,11 +1,14 @@
 /**
  * Status — displays a spinner animation with a status message.
  *
- * Its renderable is a `Spinner` whose label is the message, as Rich's is, so
- * the message is drawn the way the spinner draws its label: a string is markup
- * under the console that draws it.
+ * Its view is a `Spinner` whose label is the message, as Rich's is, so the
+ * message is drawn the way the spinner draws its label: a string is markup
+ * under the console that draws it. The `Live` hands each frame its time, and
+ * the spinner is built for it, so the frame is the clock's, not the
+ * platform's. [LAW:no-ambient-temporal-coupling]
  */
 
+import type { Clock } from "../core/clock.js";
 import type { Style } from "../core/style.js";
 import type { RichText } from "../core/text.js";
 import { Console } from "../core/console.js";
@@ -18,21 +21,24 @@ export interface StatusOptions {
   /** The spinner's frame style; the message styles itself with its markup. */
   spinnerStyle?: string | Style;
   console?: Console;
+  /** What the frames are timed and drawn on. The platform's, unless given. */
+  clock?: Clock;
 }
 
 export class Status {
   private _live: Live;
-  private _spinner: Spinner;
+  private _message: string | RichText;
   private _console: Console;
 
   constructor(message: string | RichText, options?: StatusOptions) {
     this._console = options?.console ?? new Console();
-    this._spinner = new Spinner(options?.spinner ?? "dots", message, {
-      speed: options?.speed,
-      style: options?.spinnerStyle ?? "status.spinner",
-    });
-    this._live = new Live(this._spinner, {
+    this._message = message;
+    const spinner = options?.spinner ?? "dots";
+    const speed = options?.speed;
+    const style = options?.spinnerStyle ?? "status.spinner";
+    this._live = new Live((t) => new Spinner(spinner, this._message, { t, speed, style }), {
       console: this._console,
+      clock: options?.clock,
       transient: true,
       refreshPerSecond: 12.5,
     });
@@ -43,11 +49,11 @@ export class Status {
   }
 
   get message(): string | RichText {
-    return this._spinner.text;
+    return this._message;
   }
 
   set message(value: string | RichText) {
-    this._spinner.text = value;
+    this._message = value;
   }
 
   start(): void {
@@ -59,7 +65,7 @@ export class Status {
   }
 
   update(message: string | RichText): void {
-    this._spinner.text = message;
-    this._live.update(this._spinner, { refresh: true });
+    this._message = message;
+    this._live.refresh();
   }
 }

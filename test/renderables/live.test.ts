@@ -413,6 +413,29 @@ describe("Live refresh rate", () => {
     display.stop();
     expect(clock.timers()).toBe(0);
   });
+
+  // rich-animation-xi28.6k9: a view is asked for each frame with the frame's
+  // time on the Live's clock, as an App's is, so what it draws reads none.
+  it("asks a view for each frame with the frame's time on its clock", () => {
+    const chunks: string[] = [];
+    const clock = fakeClock(10);
+    const times: number[] = [];
+    const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: (s: string) => void chunks.push(s) } });
+    const display = new Live(
+      (t) => {
+        times.push(t);
+        return new RichText(`t=${t}`);
+      },
+      { console: target, clock, refreshPerSecond: 2 },
+    );
+    display.start();
+    clock.advance(1);
+    display.update((t) => new RichText(`later t=${t}`), { refresh: true });
+    display.stop();
+    expect(times).toEqual([10.5, 11]);
+    expect(chunks.join("")).toContain("later t=11");
+    expect(chunks.join("")).toContain("t=10.5");
+  });
 });
 
 // A file, a pipe, a CI log: what Rich's Live writes there is what was printed,

@@ -137,7 +137,7 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
   RichText: { ends: "own-line", build: () => text("x") },
   Rule: { ends: "own-line", build: () => new Rule("t") },
   Slider: { ends: "own-line", build: () => new Slider() },
-  Spinner: { ends: "own-line", build: () => new Spinner("dots", "hi") },
+  Spinner: { ends: "own-line", build: () => new Spinner("dots", "hi", { t: 0 }) },
   StaticItem: { ends: "own-line", build: () => new StaticItem({ id: "s", render: text("x") }) },
   Strip: { ends: "own-line", build: () => new Strip([text("a")], JOINERS.plain) },
   Syntax: { ends: "own-line", build: () => new Syntax("x = 1", "python") },
