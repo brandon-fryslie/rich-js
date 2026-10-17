@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-411",
-      "ref": "refs/pull/411/merge",
-      "sha": "b55afa10f69a5ab9f4b451287ceefd92c71eca05",
-      "timestamp": "2026-10-17T00:41:57.110Z",
-      "commits": [
-        {
-          "sha": "b55afa10f69a5ab9f4b451287ceefd92c71eca05",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T00:40:15Z",
-          "message": "Merge e5d88258014d9c5cf1d02ec6c234b3a3de3d0f81 into b0579cc17713b904935e040bba4b01e744eb3f74\n"
-        },
-        {
-          "sha": "e5d88258014d9c5cf1d02ec6c234b3a3de3d0f81",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:39:56-06:00",
-          "message": "A Spinner is built once and asked for its frame at a time\n\nReview of #411: constructing a Spinner per frame moved the name parse, the\nspeed check and the frame preparation onto the per-frame path, so a bad name\nfailed inside Live's tick instead of at the call that gave it. Spinner now\npersists, as Rich's does, and at(t) is the renderable: the name is parsed and\nthe frames prepared once where the spinner is given, speed is refused there,\nt is refused in at(t), and Status and SpinnerColumn hold one spinner each.\nSpinner is no longer itself a Renderable, so it cannot be drawn without a t.\n"
-        },
-        {
-          "sha": "0a93477df774ed55f168934671f039ca8dc688c5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:24:25-06:00",
-          "message": "A Spinner draws the frame for the time it is handed (rich-animation-xi28.6k9)\n\nSpinner read Date.now() in its constructor and on every draw, so a Progress\non a hand-moved Clock turned its spinners on real time, against\ncore/clock.ts's rule that nothing rendered reads a clock. It is now Frames\nover the named spinner data, drawn at a `t` its host hands in, scaled by\n`speed`, as Rich's Spinner.render(time) is handed console.get_time() or\ntask.get_time(). SpinnerColumn builds one at task.time; Live takes a\nrenderable or a `(t) => Renderable` view and reads its clock once a frame\nto hand `t` in, as App does; Status is that view over its message and takes\na `clock`, so a test can drive it.\n"
-        }
-      ]
-    },
-    {
       "version": "pr-413",
       "ref": "refs/pull/413/merge",
       "sha": "4ac098d7ad0a2a6720abccffff3d5d26c8d83d0c",
@@ -56,35 +27,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T18:32:34-06:00",
           "message": "effects-feel measures every loop's contrast at 1 fps, not 30 (rich-unfiled-791c.2iki)\n\nThe demo paints on a wall-clock rate, so its frames cost the same each\nsecond however loaded the machine is, and the contrast measuring gets\nwhat is left. At 30 fps under a full suite that was little: 7.4-10.6 s\nlocally, 21 s of 30 on CI. At 1 fps, 4.1-5.2 s under the full suite\n(three runs), 2.0 s alone (was 2.8 s).\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-412",
-      "ref": "refs/pull/412/merge",
-      "sha": "67864008ea55623b5920a097aac7f60662d3b156",
-      "timestamp": "2026-10-17T00:35:01.645Z",
-      "commits": [
-        {
-          "sha": "67864008ea55623b5920a097aac7f60662d3b156",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T00:33:22Z",
-          "message": "Merge 96a6052f77546ab1d2e23532895bacb14f997044 into b0579cc17713b904935e040bba4b01e744eb3f74\n"
-        },
-        {
-          "sha": "96a6052f77546ab1d2e23532895bacb14f997044",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:33:17-06:00",
-          "message": "The theme grid's notice reads whole, and the row test searches only rows that can be cut (rich-demos-k78j.4jr)\n\nEach notice line now sits in the notice column instead of the two lines\nbeing cropped as one; at 100 columns every theme had lost 'see incident'.\nThe test missed it because a phrase counted as shown when it appeared in any\npanel body. It now compares unwrapped rows to unwrapped rows, fails when the\nroomy run paints nothing, pages by the header's section count, reads titles\nfrom any box corner, and drives the dropdown status row to its widest.\n"
-        },
-        {
-          "sha": "46ea750964a379653a5e0dfb34736258c3cea0c5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:24:22-06:00",
-          "message": "Two demos' rows read whole in their card's terminal (rich-demos-k78j.4jr)\n\nrich-template-bindings: every editor-panel title now fits the 34 cells a\nhalf-row panel gives it in an 80-column terminal (44 at the card's 100), and\nthe nav hint fits 80 columns instead of losing \"Ctrl+C: exit\". At the card\nsize five titles were cut, not the three the checkpoint counted.\n\ndropdown-demo: the pointer readout moves to its own row; beside the three\ndropdowns' state it ran the status to 114 cells.\n\ntest/examples/demo-rows.test.ts runs each demo in a roomy headless xterm and\nin its card's, and fails on any title, rule or unboxed row the roomy screens\nshow that the card's do not show whole. It fails on the pre-fix demos with\nevery cut above.\n"
         }
       ]
     },
