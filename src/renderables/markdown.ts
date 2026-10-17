@@ -49,20 +49,35 @@ interface BlockSettings extends InlineSettings {
   readonly justify: Justify;
 }
 
-/**
- * `inlines` in `style`: a text of its own whose style sits under every style
- * inside it, so appended where it goes it draws as Rich draws a nested
- * construct — the inner style on top.
- */
-function styled(inlines: readonly Inline[], style: string | Style, settings: InlineSettings, options: RenderOptions): RichText {
-  const result = new RichText("", { style });
-  appendInline(result, inlines, settings, options);
-  return result;
-}
+/** An inline holding inlines of its own. */
+type Container = Extract<Inline, { readonly children: readonly Inline[] }>;
 
-/** `text` inside each of `styles`, outermost first, as Rich stacks the styles of the constructs it sits in. */
-function nested(text: RichText, styles: readonly (string | Style)[]): RichText {
-  return styles.reduceRight((inner, style) => new RichText("", { style }).append(inner), text);
+/** A step of `walk`: an inline holding none, met inside its innermost container's frame, or the end of the container whose frame that was. */
+type WalkStep<Frame> =
+  | { readonly kind: "leaf"; readonly inline: Exclude<Inline, Container>; readonly within: Frame }
+  | { readonly kind: "leave"; readonly frame: Frame };
+
+/**
+ * Every inline in `inlines` holding none, in document order, inside the
+ * frame `open` makes for each container it sits in as `walk` reaches it —
+ * `root` outside them all — and each container's `leave` after its last. A
+ * loop over a stack, not recursion: emphasis nests as deep as its source
+ * does, and Rich, walking markdown-it's flat token stream, draws ten thousand
+ * levels of it.
+ */
+function* walk<Frame>(inlines: readonly Inline[], root: Frame, open: (container: Container, within: Frame) => Frame): Iterable<WalkStep<Frame>> {
+  const stack = [{ inlines, next: 0, frame: root }];
+  while (stack.length > 0) {
+    const top = stack[stack.length - 1]!;
+    const inline = top.inlines[top.next++];
+    if (inline === undefined) {
+      stack.pop();
+      if (stack.length > 0) yield { kind: "leave", frame: top.frame };
+      continue;
+    }
+    if ("children" in inline) stack.push({ inlines: inline.children, next: 0, frame: open(inline, top.frame) });
+    else yield { kind: "leaf", inline, within: top.frame };
+  }
 }
 
 /** The styles Rich enters for a link with hyperlinks on, outermost first. */
@@ -78,43 +93,87 @@ function headingStyle(options: RenderOptions, level: number): Style {
 }
 
 /**
- * `label` linked to `url`, appended to `result` as Rich draws a link: the
- * label is the link, or without hyperlinks nothing is, and the label's text
- * is written plain with the URL after it, for a reader who cannot click it.
- */
-function appendLink(result: RichText, label: RichText, url: string, settings: InlineSettings): void {
-  if (settings.hyperlinks) {
-    result.append(nested(label, linkStyles(url)));
-  } else {
-    result.append(label.plain, "markdown.link").append(" (").append(url, "markdown.link_url").append(")");
-  }
-}
-
-/**
- * `inlines` appended to `result` as Rich draws each: inline HTML as nothing,
- * an image as nothing where it sits — `imagesAhead` draws it — and text as it is.
+ * `inlines` appended to `result` as Rich draws each: emphasis and code in
+ * their styles, inline HTML as nothing, an image as nothing where it sits —
+ * `imagesAhead` draws it — and text as it is. A link's text is the link; or,
+ * without hyperlinks, nothing is, and its text is written plain with the URL
+ * after it, for a reader who cannot click it.
  */
 function appendInline(result: RichText, inlines: readonly Inline[], settings: InlineSettings, options: RenderOptions): void {
-  for (const inline of inlines) {
+  // Rich's style stack: each open construct's style laid over the styles it
+  // sits in, so every piece of text takes one span, the style on top, and a
+  // nest ten thousand deep costs one combination a level.
+  const stack = [Style.null()];
+  // Inside a link drawn without hyperlinks, whose text is styled whole as it closes, nothing is styled.
+  let plain = false;
+  // The style on top with `styles` laid over it.
+  const over = (styles: readonly (string | Style)[]): Style =>
+    styles.reduce<Style>((under, style) => under.add(resolveStyle(options, style)), stack[stack.length - 1]!);
+  // The text from `start` to the end in the style on top, with `styles` over it.
+  const paint = (start: number, styles: readonly (string | Style)[] = []): void => {
+    if (!plain) result.stylize(over(styles), start);
+  };
+  const write = (text: string, styles?: readonly (string | Style)[]): void => {
+    const start = result.length;
+    result.append(text);
+    paint(start, styles);
+  };
+  const enter = (styles: readonly (string | Style)[]): (() => void) => {
+    stack.push(over(styles));
+    return () => stack.pop();
+  };
+  // A link to `url` opened here: its text is the link, or without hyperlinks
+  // is written plain, in `markdown.link`, with the URL after it when it closes.
+  const openLink = (url: string): (() => void) => {
+    if (settings.hyperlinks) return enter(linkStyles(url));
+    const [start, outer] = [result.length, plain];
+    plain = true;
+    return () => {
+      plain = outer;
+      paint(start, ["markdown.link"]);
+      write(" (");
+      write(url, ["markdown.link_url"]);
+      write(")");
+    };
+  };
+  // Each construct's frame is what closing it does.
+  const open = (container: Container): (() => void) => {
+    switch (container.kind) {
+      case "emphasis":
+        return enter([container.style]);
+      case "link":
+        return openLink(container.url);
+    }
+  };
+  for (const step of walk(inlines, () => {}, open)) {
+    if (step.kind === "leave") {
+      step.frame();
+      continue;
+    }
+    const inline = step.inline;
     switch (inline.kind) {
       case "text":
-        result.append(inline.text);
+        write(inline.text);
+        break;
+      // Rich writes a soft break as a space and a hard one as a newline.
+      case "softbreak":
+        write(" ");
+        break;
+      case "hardbreak":
+        write("\n");
         break;
       case "code":
-        result.append(inline.code, groundedStyle(options, resolveStyle(options, settings.inlineCodeStyle)));
+        write(inline.code, [groundedStyle(options, resolveStyle(options, settings.inlineCodeStyle))]);
         break;
       case "html":
       case "image":
         break;
-      case "emphasis":
-        result.append(styled(inline.children, inline.style, settings, options));
+      case "autolink": {
+        const close = openLink(inline.url);
+        write(inline.text);
+        close();
         break;
-      case "link":
-        appendLink(result, styled(inline.children, "", settings, options), inline.url, settings);
-        break;
-      case "autolink":
-        appendLink(result, new RichText(inline.text), inline.url, settings);
-        break;
+      }
     }
   }
 }
@@ -137,36 +196,36 @@ interface Enclosing {
 const EXIT: Step = { kind: "exit", newLine: true };
 
 function* inlineSteps(inlines: readonly Inline[], within: Enclosing, settings: InlineSettings): Iterable<Step> {
-  for (const inline of inlines) {
-    switch (inline.kind) {
-      case "image":
-        yield { kind: "image", alt: inline.alt, src: inline.src, ...within };
-        break;
+  // The styles of each open construct, innermost last, as Rich's style stack holds them.
+  const styles = [...within.styles];
+  // Each construct's frame is how many styles it entered, and the link it sits in.
+  type Frame = { readonly entered: number; readonly link: string | undefined };
+  const open = (container: Container, outer: Frame): Frame => {
+    switch (container.kind) {
       case "emphasis":
-        yield* inlineSteps(inline.children, { ...within, styles: [...within.styles, inline.style] }, settings);
-        break;
+        styles.push(container.style);
+        return { entered: 1, link: outer.link };
       case "link": {
         // Without hyperlinks Rich enters no style for a link, and an image in one is linked to nothing.
-        const styles = settings.hyperlinks ? [...within.styles, ...linkStyles(inline.url)] : within.styles;
-        yield* inlineSteps(inline.children, { styles, link: inline.url }, settings);
-        break;
+        const entered = settings.hyperlinks ? linkStyles(container.url) : [];
+        styles.push(...entered);
+        return { entered: entered.length, link: container.url };
       }
-      case "text":
-      case "code":
-      case "autolink":
-      case "html":
-        break;
     }
+  };
+  for (const step of walk(inlines, { entered: 0, link: within.link }, open)) {
+    if (step.kind === "leave") styles.length -= step.frame.entered;
+    else if (step.inline.kind === "image") yield { kind: "image", alt: step.inline.alt, src: step.inline.src, styles: [...styles], link: step.within.link };
   }
 }
 
 /**
  * The step Rich takes exiting `token`'s element: every element sets
- * `new_line` but a rule, which draws its own blank row after it, and a blank
- * token is no element.
+ * `new_line` but a rule, which draws its own blank row after it, and neither
+ * a blank token nor unread content is an element.
  */
 function exitSteps(token: MdToken): readonly Step[] {
-  return token.type === "blank" ? [] : [{ kind: "exit", newLine: token.type !== "hr" }];
+  return token.type === "blank" || token.type === "unread" ? [] : [{ kind: "exit", newLine: token.type !== "hr" }];
 }
 
 /**
@@ -207,6 +266,7 @@ function* stepsInside(token: MdToken, within: Enclosing, options: RenderOptions,
     case "html_block":
     case "hr":
     case "blank":
+    case "unread":
       break;
   }
 }
@@ -231,7 +291,7 @@ function* imagesAhead(token: MdToken, options: RenderOptions, settings: InlineSe
     // Rich's ImageItem: a picture glyph, then the alt text in the styles it
     // sits in — or, with none, the image's file name, unstyled — linked to the
     // link it sits in or else to the image, then a space.
-    const title = step.alt ? nested(new RichText(step.alt), step.styles) : new RichText(step.src.replace(/\/+$/, "").split("/").pop() ?? "");
+    const title = step.alt ? step.styles.reduce((alt, style) => alt.stylize(style), new RichText(step.alt)) : new RichText(step.src.replace(/\/+$/, "").split("/").pop() ?? "");
     if (settings.hyperlinks) title.stylize(new Style({ link: step.link || step.src || undefined }));
     yield* new RichText("", { end: "" }).append(drawable(options, "🌆 ", "")).append(title).append(" ").render(options);
     newLine = false;
@@ -371,7 +431,8 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
     }
 
     case "html_block":
-      // Rich draws nothing for one.
+    case "unread":
+      // Rich draws nothing for either.
       break;
 
     case "blank":

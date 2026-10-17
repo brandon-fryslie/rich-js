@@ -266,6 +266,13 @@ describe("Markdown", () => {
     expect(performance.now() - started).toBeLessThan(1000);
   });
 
+  it("reads a paragraph behind unclosed brackets in time linear in its length", () => {
+    const started = performance.now();
+    new Markdown("[".repeat(19) + "a".repeat(2_000_000));
+    // A label scan stepping a character at a time, once per bracket, took ten seconds here.
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
   it("reads a long run of spaces in time linear in its length", () => {
     const started = performance.now();
     new Markdown(`a${" ".repeat(100_000)}b`);
@@ -881,12 +888,16 @@ describe("Markdown", () => {
         .filter((s) => s.style?.italic)
         .map((s) => s.text);
     expect(italic("*a \\* b*")).toEqual(["a * b"]);
-    expect(italic("*a <b title='*'>c*")).toEqual(["a c"]);
+    // A line ending is a token of its own, as markdown-it's softbreak and hardbreak are.
+    expect(italic("*a\nb*")).toEqual(["a", " ", "b"]);
+    expect(italic("*a  \nb*")).toEqual(["a", "b"]);
+    // Rich 14's segments: the tag between the two runs of text splits them.
+    expect(italic("*a <b title='*'>c*")).toEqual(["a ", "c"]);
     expect(rows("*a `*` b*", 40)[0]).toBe("a * b");
     expect(italic("*a `*` b*")).toEqual(expect.arrayContaining(["a ", " b"]));
     expect(rows("*[a*](http://u) b*", 40)[0]).toBe("a* b");
     expect(rows("**a <b x='**'> c**", 40)[0]).toBe("a  c");
-    expect(segment("**a <b x='**'> c**", "a  c").style?.bold).toBe(true);
+    expect(segment("**a <b x='**'> c**", " c").style?.bold).toBe(true);
   });
 
   /** `markdown`'s first row, and each segment of it drawn bold or italic, with `B` for bold and `I` for italic. */
@@ -940,6 +951,66 @@ describe("Markdown", () => {
   it("takes no lazy line into a container that ends in an HTML block", () => {
     expect(rows("> q\n> <div>\nlazy", 40)).toEqual(["▎ q", "lazy", ""]);
     expect(rows("- item\n  <!-- c -->\nlazy", 40)).toEqual([" • item", "lazy", ""]);
+  });
+
+  // --- Nesting, as deep as markdown-it reads it ---
+
+  // Each case below is Rich 14's own output for its source.
+
+  it("refuses a link whose text holds a link, so only the inner one links, as Rich does", () => {
+    expect(rows("[a [b](v) c](u)", 80, { hyperlinks: false })).toEqual(["[a b (v) c](u)", ""]);
+    expect(links("[a [b](v) c](u)")).toEqual([["b", "v"]]);
+    expect(rows("[a [b [c](u) d](v) e](w)", 80)).toEqual(["[a [b c d](v) e](w)", ""]);
+    // An image's alt text may hold a link.
+    expect(rows("![a [b](v) c](u)", 80)).toEqual(["🌆 a [b](v) c", ""]);
+  });
+
+  it.each([
+    [20, "[".repeat(19) + "x (u)" + "](u)".repeat(19)],
+    // One bracket past maxNesting, markdown-it's scan leaps past the end of the text and no bracket links.
+    [21, "[".repeat(21) + "x" + "](u)".repeat(21)],
+    [22, "[".repeat(21) + "x (u)" + "](u)".repeat(21)],
+  ])("follows %i nested link brackets only as deep as markdown-it does, as Rich does", (depth, row) => {
+    expect(rows("[".repeat(depth) + "x" + "](u)".repeat(depth), 200, { hyperlinks: false })).toEqual([row, ""]);
+  });
+
+  // The quote's bar is the port's own: Rich 14 draws ▌.
+  it.each([
+    ["p\n\n" + ">".repeat(19) + " x\ny", ["p", "", "▎ ".repeat(19) + "x y", ""]],
+    // At 20 levels a quote's content, and the lazy line after it, are read as nothing.
+    ["p\n\n" + ">".repeat(20) + " x\ny\n\nafter", ["p", "", "", "after", ""]],
+    ["p\n\n" + ">".repeat(21) + " x\n\nafter", ["p", "", "", "after", ""]],
+    ["p\n\n" + "- ".repeat(9) + "x\n\nafter", ["p", "", " • ".repeat(9) + "x", "", "after", ""]],
+    // An item 20 levels deep takes every line to the end of the quote it sits in, or of the document.
+    ["p\n\n" + "- ".repeat(10) + "x\n\nafter", ["p", "", ""]],
+    ["p\n\n" + "- ".repeat(10) + "x\n- second", ["p", "", ""]],
+    ["p\n\n> " + "- ".repeat(10) + "x\n> y\n\nafter", ["p", "", "", "after", ""]],
+    // An empty item that deep leaves nothing unread, so it takes no line after it.
+    ["p\n\n" + "- + ".repeat(5).trimEnd() + "\n- next", ["p", "", " • next", ""]],
+    ["p\n\n" + "- + ".repeat(5).trimEnd() + "\n\nafter", ["p", "", "", "after", ""]],
+    ["p\n\n" + "- + ".repeat(5) + "\n  x\n\nafter", ["p", "", " • x", "", "after", ""]],
+    ["p\n\n> " + "- + ".repeat(5).trimEnd() + "\n> after", ["p", "", "▎ after", ""]],
+  ])("reads the blocks of %j no deeper than markdown-it does, as Rich does", (source, expected) => {
+    expect(rows(source, 200)).toEqual(expected);
+  });
+
+  // Only the drawn text is asserted: Rich draws a blank row for the quote that the port does not (rich-unfiled-791c.erhp).
+  it("ends a quote at a blank marked line after an item it nests 20 levels deep, as Rich does", () => {
+    expect(rows("> " + "- ".repeat(10) + "x\n>\nb", 200)).toContain("b");
+    expect(rows("> > " + "- ".repeat(9) + "x\n> >\n> b\nc", 200)).toContain("▎ b c");
+  });
+
+  it("draws Markdown nested ten thousand levels deep, as Rich does", () => {
+    const depth = 10_000;
+    expect(rows(">".repeat(depth) + " x", 80)).toEqual([""]);
+    expect(rows("- ".repeat(depth) + "x", 80)).toEqual([""]);
+    expect(rows("[".repeat(depth) + "x" + "](u)".repeat(depth), 50_000, { hyperlinks: false })).toEqual([
+      "[".repeat(depth - 1) + "x (u)" + "](u)".repeat(depth - 1),
+      "",
+    ]);
+    const emphasis = "*a ".repeat(depth) + "x" + " a*".repeat(depth);
+    expect(rows(emphasis, 80).join(" ").trim()).toBe("a ".repeat(depth) + "x" + " a".repeat(depth));
+    expect(collectSegments(new Markdown(emphasis), { maxWidth: 50_000 }).find((s) => s.text.includes("x"))?.style?.italic).toBe(true);
   });
 
   // --- Measurement ---

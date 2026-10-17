@@ -47,6 +47,9 @@ a column as wide as the number one past its last item, Rich's sizing, so every i
 one column; an empty item is counted and draws nothing. The item's blocks are drawn in
 `markdown.item`, which the default theme leaves plain. Tabs in
 the indentation reach the stops of 4 they reach in the source, however deep the line is nested.
+Blocks nest only as deep as markdown-it reads them, 20 levels — a quote counts one, a list and
+its item one each. Past that a container's content is not drawn, and a list item that deep
+with text in it takes every line after it, to the end of the quote or document it sits in.
 
 An HTML block — a line opening with `<div>`, `<!--`, `<pre>` or another of CommonMark's
 HTML block starts — is read where markdown-it reads one and drawn as Rich draws it: not at all.
@@ -72,7 +75,8 @@ decoded for reading. Every link's URL is made an href as markdown-it makes one: 
 after a lowercase `http:`, `https:` or `mailto:`, or after a bare `//`, and the rest
 percent-encoded. A `javascript:`, `vbscript:`
 or `file:` URL, or a `data:` one that is not an image, is no link, and its source is drawn as
-written.
+written. A link whose text holds another link is no link, as markdown-it refuses it, so only the
+inner one links; an image's alt text may hold one.
 
 ## Tables
 
