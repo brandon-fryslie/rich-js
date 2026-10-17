@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-433",
+      "ref": "refs/pull/433/merge",
+      "sha": "a8af1e5191d900af3fae0bac81a62b76b770d1ff",
+      "timestamp": "2026-10-17T09:03:44.511Z",
+      "commits": [
+        {
+          "sha": "a8af1e5191d900af3fae0bac81a62b76b770d1ff",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T03:01:57-06:00",
+          "message": "Merge 4fc9e3b497b711739c9d42ddc017b4fb634e1aa9 into 46b9cb0fcec7fc7ded042069681859e8bba40944\n"
+        },
+        {
+          "sha": "4fc9e3b497b711739c9d42ddc017b4fb634e1aa9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T03:01:53-06:00",
+          "message": "Markdown strikes ~~text~~ through, as Rich does (rich-unfiled-791c.2xa8)\n\nRich enables markdown-it's strikethrough rule. A ~ run is a third marker in\nthe one balancePairs pass: tildes taken two at a time with the rule of 3 off,\nan odd run's spare ~ moved past the run that closes as strikethrough's\npostProcess moves it. Emphasis now names the element markdown-it makes,\nem/strong/s, and draws in Rich's markdown.em, markdown.strong and markdown.s.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "46b9cb0fcec7fc7ded042069681859e8bba40944",
