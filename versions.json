@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-435",
+      "ref": "refs/pull/435/merge",
+      "sha": "e289b84d1badf7e3f8cd30a1629330f9e598afca",
+      "timestamp": "2026-10-17T10:11:52.582Z",
+      "commits": [
+        {
+          "sha": "e289b84d1badf7e3f8cd30a1629330f9e598afca",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T04:10:09-06:00",
+          "message": "Merge 195f5d8ada427c98431675ce5f24a5bd51845a32 into c38ba2233d92bf1f620d4446caaeab2b0d89b071\n"
+        },
+        {
+          "sha": "195f5d8ada427c98431675ce5f24a5bd51845a32",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T04:10:04-06:00",
+          "message": "Markdown reads only spaces and tabs as block whitespace, as markdown-it does (rich-unfiled-791c.gk3c)\n\nA no-break space at a line's edge was dropped and a line of them read as\nblank, because the block pass trimmed with JavaScript's trim. markdown-it\nreads only space and tab there (isStrSpace): isBlank is now a line with\nnothing past its LEAD, a continuation line loses only that, and a heading\nneeds a space or tab after its #s. What markdown-it-py strips a paragraph,\na heading and a table cell of is Python's str.strip, not trim — U+FEFF\nkept, U+0085 and U+001C–U+001F taken — so strip() over PYTHON_SPACE is\nthat one definition, and a table's body ends at a row it empties. Indented\ncode ends at its last non-blank line rather than popping trimmed strings.\nEvery case is pinned to Rich 15's output.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c38ba2233d92bf1f620d4446caaeab2b0d89b071",
