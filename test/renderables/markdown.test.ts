@@ -574,6 +574,12 @@ describe("Markdown", () => {
       "x  y",
     ]);
     expect(rows("[a <i>b</i>](http://u) c", 40)[0]).toBe("a b c");
+    // A bracket inside a tag or a code span, which bind tighter, opens or closes no link.
+    for (const source of ["[a <b x=']'>](u) c", "[a <!-- ] -->](u) c"]) {
+      expect(rows(source, 40, { hyperlinks: false })[0]).toBe("a  (u) c");
+    }
+    expect(rows("[`]`](u) c", 40, { hyperlinks: false })[0]).toBe("] (u) c");
+    expect(rows("x <b x='['> [y](u)", 40, { hyperlinks: false })[0]).toBe("x  y (u)");
     expect(rows("| a | b |\n| - | - |\n| 1 | 2 |\n<span>", 40)).toEqual(["", " a  b", " ────", " 1  2", "", "", ""]);
   });
 

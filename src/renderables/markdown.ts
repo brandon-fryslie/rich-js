@@ -596,8 +596,10 @@ function matchAt(re: RegExp, text: string, i: number): RegExpExecArray | null {
 
 /**
  * Each `[` in `text` that a `]` closes, to the index of that `]`: brackets
- * nest, and a backslash escapes the character after it. One pass, so a run of
- * text full of brackets that close nothing costs no more than one without.
+ * nest, a backslash escapes the character after it, and a bracket inside a
+ * code span or inline HTML, which bind tighter than a link, is not one. One
+ * pass, so a run of text full of brackets that close nothing costs no more
+ * than one without.
  */
 function bracketPairs(text: string): ReadonlyMap<number, number> {
   const pairs = new Map<number, number>();
@@ -606,6 +608,8 @@ function bracketPairs(text: string): ReadonlyMap<number, number> {
     if (text[i] === "\\") i++;
     else if (text[i] === "[") open.push(i);
     else if (text[i] === "]" && open.length > 0) pairs.set(open.pop()!, i);
+    // Neither construct reads the brackets, so the pairs found so far serve.
+    else if (text[i] === "`" || text[i] === "<") i = (inlineAt(text, i, pairs)?.end ?? i + 1) - 1;
   }
   return pairs;
 }
