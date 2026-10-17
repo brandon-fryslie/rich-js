@@ -416,6 +416,9 @@ describe("Markdown", () => {
     expect(rows("1. a\n2) b", 80)).toEqual(["", " 1 a", "", " 2 b", ""]);
     expect(rows("1) a\n2. b", 80)).toEqual(["", " 1 a", "", " 2 b", ""]);
     expect(rows("- a\n1) b", 80)).toEqual(["", " • a", "", " 1 b", ""]);
+    // Inside an item, or a quote, the change of delimiter still opens a new list, counting from its own number.
+    expect(rows("1) a\n   1. b\n   5) c", 80)).toEqual(["", " 1 a", "    1 b", "    5 c", ""]);
+    expect(rows("> 1) a\n> 2) b\n> 7. c", 80)).toEqual(["", "▌  1 a", "▌  2 b", "▌  7 c", ""]);
     // Under a paragraph only a 1 opens a list, whichever the delimiter.
     expect(rows("x\n1) b", 80)).toEqual(["x", "", " 1 b", ""]);
     expect(rows("x\n2) b", 80)).toEqual(["x 2) b", ""]);
