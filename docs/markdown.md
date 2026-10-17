@@ -85,6 +85,14 @@ or `file:` URL, or a `data:` one that is not an image, is no link, and its sourc
 written. A link whose text holds another link is no link, as markdown-it refuses it, so only the
 inner one links; an image's alt text may hold one.
 
+A reference link — `[text][label]`, `[label][]` or `[label]`, and an image written the same way
+after its `!` — links to the URL its label's definition gives: a line `[label]: url "title"`
+anywhere in the document, a quote or a list item included, which draws nothing. Labels match as
+markdown-it matches them — stripped, each run of whitespace one space, case-folded — so
+`[Foo  Bar][]` finds `[foo bar]: /url`, and the first definition of a label wins. A definition
+cannot interrupt a paragraph, so a line of one under paragraph text is that text; brackets whose
+label nothing defines are drawn as written.
+
 ## Tables
 
 A pipe table is read as Rich reads one, with [markdown-it](https://github.com/markdown-it/markdown-it)'s

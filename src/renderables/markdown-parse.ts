@@ -40,24 +40,27 @@ export type MdToken<Text = readonly Inline[], Mark = never> =
   | { type: "blockquote"; children: readonly MdToken<Text, Mark>[] }
   /** Each row holds one cell per column: a short row filled out with empty cells, a long one cut. */
   | { type: "table"; columns: readonly TableColumn<Text>[]; rows: readonly (readonly Text[])[] }
-  /** Kept, though nothing draws it, so a container ending in one does not end in the paragraph before it. */
+  /** Kept, though nothing draws it, as Rich exits it like any other block. */
   | { type: "html_block" }
   | Mark;
 
 /**
- * What the block pass keeps that markdown-it makes no token of, for the
- * reads that decide where a container ends; the inline pass drops each.
+ * What the block pass keeps that markdown-it makes no token of; the inline
+ * pass drops each.
  */
 type BlockMark =
   /**
    * A container's content past `MAX_NESTING`, which markdown-it skips unread,
-   * or the lines after a list whose item that deep took every one of them, so
-   * a line after it continues the container as markdown-it's would: `open`
-   * where the last line skipped has text.
+   * or the lines after a list whose item that deep took every one of them —
+   * kept so the item holding that list takes them too.
    */
-  | { type: "unread"; open: boolean }
-  /** A blank line, so a container ending in one does not end in the paragraph before it. */
-  | { type: "blank" };
+  | { type: "unread" }
+  /**
+   * A link reference definition (CommonMark 4.7), drawn as nothing: `label`
+   * as `normalizeReference` makes it, and the href it defines. markdown-it
+   * keeps them in its `env` instead; `definitionsIn` reads them back out.
+   */
+  | { type: "definition"; label: string; url: string };
 
 /** A block as the block pass reads it. */
 type Block = MdToken<string, BlockMark>;
@@ -92,8 +95,9 @@ export type Inline =
  * still the source's, and `margin`, the column its container's content starts
  * at. Columns are counted from the source's column 0, so a tab reaches the
  * stop it reaches in the source however deep the line is nested. A `lazy`
- * line was taken in short of its container's marker or indentation, as
- * CommonMark's paragraph continuation text, and is only ever that.
+ * line was taken in short of its container's marker or indentation, as a
+ * lazy continuation line: it continues a paragraph or a definition open
+ * before it, and where none is, the container ends at it.
  */
 interface Line {
   readonly text: string;
@@ -350,7 +354,6 @@ function opensBlock(line: Line): boolean {
  * underline.
  */
 function endsParagraph(line: Line): boolean {
-  if (line.lazy) return false;
   if (underline(line)) return true;
   const item = itemStart(line);
   return item ? item.first !== undefined && (item.bullet !== undefined || item.start === 1) : opensBlock(line);
@@ -361,36 +364,17 @@ function underline(line: Line | undefined): RegExpExecArray | null {
   return line && !line.lazy && indentOf(line) < CODE_INDENT ? SETEXT.exec(body(line)) : null;
 }
 
-/** Whether the last block of `tokens`, followed into the containers it closes, is a paragraph still open. */
-function endsInParagraph(tokens: readonly Block[]): boolean {
-  const last = tokens[tokens.length - 1];
-  switch (last?.type) {
-    case "paragraph":
-      return true;
-    case "list":
-      return endsInParagraph(last.items[last.items.length - 1]!);
-    case "blockquote":
-      return endsInParagraph(last.children);
-    case "unread":
-      return last.open;
-    default:
-      return false;
-  }
-}
-
 /**
- * Whether `line`, short of a container's marker or indentation, still
- * belongs to it as a lazy continuation: CommonMark's paragraph continuation
- * text, which continues the paragraph open at the end of the container's
- * `inner` lines and opens no block of its own. Outside the container a line
- * is read without the paragraph under it, so any list item — whatever it
- * counts from — ends the container rather than continuing it. A line after a
- * lazy continuation finds that paragraph still open, so `afterLazy` answers
- * without reading `inner` again: a container's lazy lines cost one read of
- * it, not one each. `level` is the container's content's, as `tokenize` takes it.
+ * Whether `line`, short of a container's marker or indentation, may still
+ * belong to it as a lazy continuation line, as markdown-it's containers take
+ * one: any line with text that opens no block of its own. A line outside the
+ * container is read without the paragraph under it, so any list item —
+ * whatever it counts from — ends the container rather than continuing it.
+ * Whether a paragraph or a definition open before it takes the line is the
+ * container's own block pass to find, which ends the container where neither does.
  */
-function continuesLazily(inner: readonly Line[], level: number, line: Line, afterLazy: boolean): boolean {
-  return !isBlank(line) && !opensBlock(line) && (afterLazy || endsInParagraph(tokenize(inner, level)));
+function lazyContinuation(line: Line): boolean {
+  return !isBlank(line) && !opensBlock(line);
 }
 
 /**
@@ -409,27 +393,140 @@ function continuation(lines: readonly Line[], start: number): { text: string; ne
 }
 
 /**
- * The lines of the list item opened at `start` — every line after it that is
- * blank, indented to the content column, or a lazy continuation — and the
- * index of the line that ended it. Blank lines trailing the item are left to
- * whatever follows it, and an item that opens with a blank line ends at the
- * next one: it is empty. `level` is the item's content's.
+ * markdown-it's `normalizeReference`, which makes a definition's label and a
+ * reference's the same key where CommonMark matches them: stripped, each run
+ * of whitespace one space, as Python reads whitespace, then case-folded as
+ * `lower().upper()` folds it.
  */
-function itemLines(item: ItemStart, level: number, lines: readonly Line[], start: number): { inner: Line[]; next: number } {
+function normalizeReference(label: string): string {
+  return pyStrip(label).replace(WHITESPACE_RUN, " ").toLowerCase().toUpperCase();
+}
+
+const WHITESPACE_RUN = new RegExp(`${PY_WHITESPACE}+`, "g");
+
+/**
+ * The link reference definition opening at `start`, if one does, as
+ * markdown-it's reference rule reads it: `[label]:`, space, a destination, and
+ * a title only if space came before it, each of them free to run onto the
+ * lines after it that `getNextLine` hands over — up to a blank line, or a line
+ * that opens a block of its own. The title and the space after it must end
+ * the line; where a title is followed by more, the definition is read again
+ * without it, ending with its destination's line. `next` is the index of the
+ * line after it.
+ */
+function definitionAt(lines: readonly Line[], start: number): { label: string; url: string; next: number } | undefined {
+  if (!body(lines[start]!).startsWith("[")) return undefined;
+  // The definition's text so far, each line from its first character that is
+  // not leading whitespace and ended by its line ending. markdown-it takes a
+  // line on only as a read reaches the end of the last; this takes them on in
+  // runs that double, which changes nothing — every read that reaches the end
+  // takes more on — but copies the text of a definition running over n lines
+  // log n times rather than n.
+  let text = `${body(lines[start]!)}\n`;
+  let taken = start + 1;
+  let run = 1;
+  const takeLines = (): string => {
+    const more: string[] = [];
+    for (; more.length < run && taken < lines.length && continuesDefinition(lines, taken); taken++) more.push(`${body(lines[taken]!)}\n`);
+    run *= 2;
+    return (text += more.join(""));
+  };
+  // markdown-it's space between the parts: spaces and tabs, and line endings, taking lines on at each.
+  const spaceEnd = (from: number): number => {
+    let i = from;
+    for (; i < text.length && (text[i] === " " || text[i] === "\t" || text[i] === "\n"); i++) if (i === text.length - 1) takeLines();
+    return i;
+  };
+
+  // The label: up to the first `]` no backslash escapes, with no `[` in it.
+  let labelEnd = 1;
+  for (; labelEnd < text.length && text[labelEnd] !== "]"; labelEnd++) {
+    if (text[labelEnd] === "[") return undefined;
+    if (text[labelEnd] === "\\") labelEnd++;
+    if (labelEnd === text.length - 1) takeLines();
+  }
+  if (text[labelEnd + 1] !== ":") return undefined;
+
+  const destinationStart = spaceEnd(labelEnd + 2);
+  const destination = destinationAt(text, destinationStart);
+  // An empty destination outside angle brackets is none, as markdown-it's `parseLinkDestination` reads it.
+  if (destination === undefined || destination.end === destinationStart) return undefined;
+  const url = linkHref(unescapeAll(destination.raw));
+  if (url === undefined) return undefined;
+
+  const titleStart = spaceEnd(destination.end);
+  const title = titleStart > destination.end ? titleAt(text, titleStart, takeLines) : undefined;
+  // The definition ends at its line's end, past the spaces and tabs there.
+  const lineEnd = (from: number): number => from + matchAt(LINE_INDENT, text, from)![0].length;
+  let end = lineEnd(title?.end ?? destination.end);
+  // markdown-it gives up only a title with text in it for what follows it on its line, so an empty one followed by more ends no definition.
+  if (text[end] !== "\n" && title?.text === true) end = lineEnd(destination.end);
+  if (text[end] !== "\n") return undefined;
+
+  const label = normalizeReference(text.slice(1, labelEnd));
+  if (label === "") return undefined;
+  // The line after it: one past the line its end is on.
+  let next = start + 1;
+  for (let i = text.indexOf("\n"); i < end; i = text.indexOf("\n", i + 1)) next++;
+  return { label, url, next };
+}
+
+/**
+ * Whether the line at `at` continues a definition, as markdown-it's
+ * `getNextLine` hands one over: it has text, and opens no block of its own.
+ */
+function continuesDefinition(lines: readonly Line[], at: number): boolean {
+  return !isBlank(lines[at]!) && !opensBlock(lines[at]!) && !tableAt(lines, at);
+}
+
+/** The character that closes a link title, by the one that opens it. */
+const TITLE_CLOSE: Readonly<Record<string, string>> = { '"': '"', "'": "'", "(": ")" };
+
+/**
+ * The link title opening at `start` in `text`, as markdown-it's
+ * `parseLinkTitle` reads one in a definition: in `"`, `'` or `(…)`, a
+ * backslash taking the character after it and a `(` refusing a `(…)` title,
+ * reading on to the lines `takeLines` takes on — handing back the text grown
+ * by them, or as it was where it takes none — until it closes. `end` is the
+ * index past it, and `text` whether it holds any.
+ */
+function titleAt(text: string, start: number, takeLines: () => string): { end: number; text: boolean } | undefined {
+  const close = TITLE_CLOSE[text[start]!];
+  if (close === undefined) return undefined;
+  for (let i = start + 1; ; i++) {
+    if (i === text.length) text = takeLines();
+    if (i === text.length) return undefined;
+    if (text[i] === close) return { end: i + 1, text: i > start + 1 };
+    if (text[i] === "(" && close === ")") return undefined;
+    if (text[i] === "\\") i++;
+  }
+}
+
+/**
+ * The list item opened at `start`, at `level`: its blocks, read from every
+ * line after it that is blank, indented to the content column, or a lazy
+ * continuation line, up to where its own block pass stops — and the index of
+ * the line that ended it. Blank lines trailing the item are left to whatever
+ * follows it, and an item that opens with a blank line ends at the next one:
+ * it is empty.
+ */
+function listItem(item: ItemStart, level: number, lines: readonly Line[], start: number): { children: Block[]; next: number } {
   const inner = item.first === undefined ? [] : [item.first];
-  let lazy = false;
-  let i = start + 1;
-  for (; i < lines.length; i++) {
+  // Where `inner`'s first line sits in `lines`.
+  const from = item.first === undefined ? start + 1 : start;
+  for (let i = start + 1; i < lines.length; i++) {
     const line = lines[i]!;
     const blank = isBlank(line);
     if (blank && inner.length === 0) break;
-    const held = blank || leadEnd(line) >= item.content;
-    lazy = !held && continuesLazily(inner, level, line, lazy);
-    if (!held && !lazy) break;
-    inner.push(held ? { text: line.text, margin: item.content, lazy: false } : { ...line, lazy: true });
+    if (blank || (!line.lazy && leadEnd(line) >= item.content)) inner.push({ text: line.text, margin: item.content, lazy: false });
+    else if (lazyContinuation(line)) inner.push({ ...line, lazy: true });
+    else break;
   }
-  for (; inner.length > 0 && isBlank(inner[inner.length - 1]!); i--) inner.pop();
-  return { inner, next: i };
+  while (inner.length > 0 && isBlank(inner[inner.length - 1]!)) inner.pop();
+  const { tokens, end } = tokenize(inner, level);
+  let taken = end;
+  while (taken > 0 && isBlank(inner[taken - 1]!)) taken--;
+  return { children: tokens, next: from + taken };
 }
 
 /**
@@ -470,39 +567,40 @@ function list(first: ItemStart, level: number, lines: readonly Line[], start: nu
     item = i < lines.length ? itemStart(lines[i]!) : undefined
   ) {
     // A list and its item each nest a level, as markdown-it's tokens do.
-    const { inner, next } = itemLines(item, level + 2, lines, i);
-    const children = tokenize(inner, level + 2);
+    const { children, next } = listItem(item, level + 2, lines, i);
     items.push(children);
     swallowed = swallowsRest(children);
     end = swallowed ? lines.length : next;
     for (i = end; i < lines.length && isBlank(lines[i]!); i++);
   }
   const token: Block = { type: "list", start: first.bullet === undefined ? first.start : undefined, items };
-  if (swallowed) return { tokens: [token, { type: "unread", open: !isBlank(lines[lines.length - 1]!) }], next: lines.length };
+  if (swallowed) return { tokens: [token, { type: "unread" }], next: lines.length };
   // The blank lines after the last item belong to whatever follows the list.
   return { tokens: [token], next: end };
 }
 
 /**
- * `lines` read into blocks at `level`, how deep in containers they sit. At
+ * `lines` read into blocks at `level`, how deep in containers they sit, and
+ * the index of the line the read stopped at: the first lazy continuation
+ * line no block before it took, where markdown-it's block pass stops at a
+ * line short of its container's indentation, or else the end. At
  * `MAX_NESTING` markdown-it's block pass reads nothing, and neither does this:
- * it skips blank lines before it checks the level, so only content with text
- * in it is left unread.
+ * it skips blank lines and stops at a lazy one before it checks the level, so
+ * only content with text in it is left unread.
  */
-function tokenize(lines: readonly Line[], level: number): Block[] {
-  if (level >= MAX_NESTING) return lines.every(isBlank) ? [] : [{ type: "unread", open: !isBlank(lines[lines.length - 1]!) }];
+function tokenize(lines: readonly Line[], level: number): { tokens: Block[]; end: number } {
   const tokens: Block[] = [];
   let i = 0;
 
   while (i < lines.length) {
     const line = lines[i]!;
 
-    // Blank line
     if (isBlank(line)) {
-      tokens.push({ type: "blank" });
       i++;
       continue;
     }
+    if (line.lazy) break;
+    if (level >= MAX_NESTING) return { tokens: [{ type: "unread" }], end: lines.length };
 
     // Table: before every other block, as markdown-it tries it, so a header
     // row that reads as a heading or a list item is still a header. Its body
@@ -524,7 +622,7 @@ function tokenize(lines: readonly Line[], level: number): Block[] {
     // Indented code: its lines, and the blank lines between them, with the indent cut off
     if (indentOf(line) >= CODE_INDENT) {
       let end = i + 1;
-      for (let j = end; j < lines.length && (isBlank(lines[j]!) || indentOf(lines[j]!) >= CODE_INDENT); j++) {
+      for (let j = end; j < lines.length && (isBlank(lines[j]!) || (!lines[j]!.lazy && indentOf(lines[j]!) >= CODE_INDENT)); j++) {
         if (!isBlank(lines[j]!)) end = j + 1;
       }
       tokens.push({ type: "code_block", code: lines.slice(i, end).map((code) => dropColumns(code, CODE_INDENT)).join("\n") });
@@ -554,25 +652,26 @@ function tokenize(lines: readonly Line[], level: number): Block[] {
       const indent = indentOf(line);
       const close = closingFence(fence[1]!);
       const codeLines: string[] = [];
-      for (i++; i < lines.length && !startsWith(lines[i]!, close); i++) codeLines.push(dropColumns(lines[i]!, indent));
-      i++; // skip the closing fence
+      for (i++; i < lines.length && !lines[i]!.lazy && !startsWith(lines[i]!, close); i++) codeLines.push(dropColumns(lines[i]!, indent));
+      if (i < lines.length && !lines[i]!.lazy) i++; // skip the closing fence
       tokens.push({ type: "code_block", code: codeLines.join("\n") });
       continue;
     }
 
     // Blockquote: Markdown of its own — its `>` lines with the marker blanked,
-    // and any unmarked line lazily continuing the paragraph open inside it
+    // and each unmarked line after one with text a lazy continuation line,
+    // up to where its own block pass stops
     if (startsWith(line, QUOTE)) {
       const inner: Line[] = [];
-      let lazy = false;
-      for (; i < lines.length; i++) {
-        const next = lines[i]!;
-        const marked = startsWith(next, QUOTE);
-        lazy = !marked && continuesLazily(inner, level + 1, next, lazy);
-        if (!marked && !lazy) break;
-        inner.push(marked ? quoted(next) : { ...next, lazy: true });
+      for (let j = i; j < lines.length; j++) {
+        const next = lines[j]!;
+        if (startsWith(next, QUOTE)) inner.push(quoted(next));
+        else if (!isBlank(inner[inner.length - 1]!) && lazyContinuation(next)) inner.push({ ...next, lazy: true });
+        else break;
       }
-      tokens.push({ type: "blockquote", children: tokenize(inner, level + 1) });
+      const { tokens: children, end } = tokenize(inner, level + 1);
+      tokens.push({ type: "blockquote", children });
+      i += end;
       continue;
     }
 
@@ -585,14 +684,22 @@ function tokenize(lines: readonly Line[], level: number): Block[] {
       continue;
     }
 
+    // Link reference definition
+    const definition = definitionAt(lines, i);
+    if (definition) {
+      tokens.push({ type: "definition", label: definition.label, url: definition.url });
+      i = definition.next;
+      continue;
+    }
+
     // HTML block: to the line that closes its kind, or to the end of its
     // container when none does; a closing blank line is left to what follows
     const html = htmlBlockAt(line);
     if (html) {
       const { end } = html;
       const closes = end === "blank" ? isBlank : (closing: Line) => end.test(body(closing));
-      while (i < lines.length && !closes(lines[i]!)) i++;
-      if (i < lines.length && end !== "blank") i++;
+      while (i < lines.length && !lines[i]!.lazy && !closes(lines[i]!)) i++;
+      if (i < lines.length && !lines[i]!.lazy && end !== "blank") i++;
       tokens.push({ type: "html_block" });
       continue;
     }
@@ -608,7 +715,7 @@ function tokenize(lines: readonly Line[], level: number): Block[] {
     i = setext ? next + 1 : next;
   }
 
-  return tokens;
+  return { tokens, end: i };
 }
 
 /**
@@ -782,7 +889,8 @@ function unescapeAll(text: string): string {
 /**
  * markdown-it's link-label scan — `parseLinkLabel` stepping over the text a
  * token at a time with `skipToken` — and the cache those steps share across
- * one block's text. A link's label may hold no link: a `[` it meets that
+ * one block's text, with the document's `definitions` a label is resolved
+ * against. A link's label may hold no link: a `[` it meets that
  * opens one refuses the label, so only the innermost of nested links links.
  * Each `[` the scan meets is tried as a link one level deeper, and at
  * `MAX_NESTING` a step lands past the end of the text, as markdown-it's does —
@@ -793,6 +901,8 @@ class LinkLabels {
   // markdown-it's `state.cache`: where a step from a position lands, kept
   // whatever level it was taken at and whatever text it was taken in, as there.
   private readonly steps = new Map<number, number>();
+
+  constructor(readonly definitions: Definitions) {}
 
   /**
    * The index of the `]` closing the label whose `[` is at `open` in `text`,
@@ -840,24 +950,60 @@ function textRunEnd(text: string, i: number): number {
   return end;
 }
 
+/** Where a link or an image links, and the index past what says so. */
+interface LinkTarget {
+  readonly url: string;
+  readonly end: number;
+}
+
 /**
- * The `(destination "title")` of a link opening at `open`, as markdown-it's
- * link rule reads it: space, the destination `destinationAt` reads, a title
- * only if space came before it, space, then the `)`. The destination, its
- * backslash escapes and character references read and then made an href as
- * markdown-it makes one, and the index past the `)` — or nothing, where
- * markdown-it refuses either, and the brackets are no link.
+ * The `(destination "title")` opening at `open`, as markdown-it's link rule
+ * reads it: space, the destination `destinationAt` reads, a title only if
+ * space came before it, space, then the `)`. The destination, its backslash
+ * escapes and character references read and then made an href as markdown-it
+ * makes one, and the index past the `)`. Where markdown-it refuses either,
+ * `resume` is one past where its read stopped, which is where its link rule
+ * looks for a reference's label instead; and where only space follows the
+ * `(`, there is nothing, and the brackets before it are neither.
  */
-function linkDestination(text: string, open: number): { url: string; end: number } | undefined {
-  if (text[open] !== "(") return undefined;
-  const destination = destinationAt(text, linkSpaceEnd(text, open + 1));
-  if (!destination) return undefined;
+function linkDestination(text: string, open: number): LinkTarget | { resume: number } | undefined {
+  const start = linkSpaceEnd(text, open + 1);
+  if (start >= text.length) return undefined;
+  const destination = destinationAt(text, start);
+  const href = destination && linkHref(unescapeAll(destination.raw));
+  if (destination === undefined || href === undefined) return { resume: start + 1 };
   let i = linkSpaceEnd(text, destination.end);
   const title = i > destination.end ? matchAt(LINK_TITLE, text, i) : null;
   if (title) i = linkSpaceEnd(text, i + title[0].length);
-  if (text[i] !== ")") return undefined;
-  const href = linkHref(unescapeAll(destination.raw));
-  return href === undefined ? undefined : { url: href, end: i + 1 };
+  return text[i] === ")" ? { url: href, end: i + 1 } : { resume: i + 1 };
+}
+
+/**
+ * Where the link or image whose label opens at `open` and closes at `close`
+ * links, as markdown-it's link and image rules read it: the
+ * `(destination "title")` after it, or else a reference — and, for a link,
+ * a reference also where that inline form is refused, read from where the
+ * refusal leaves it. markdown-it's image rule takes no reference there.
+ */
+function linkTarget(text: string, open: number, close: number, labels: LinkLabels, level: number, image: boolean): LinkTarget | undefined {
+  if (text[close + 1] !== "(") return reference(text, open, close, close + 1, labels, level);
+  const destination = linkDestination(text, close + 1);
+  if (destination === undefined || "url" in destination) return destination;
+  return image ? undefined : reference(text, open, close, destination.resume, labels, level);
+}
+
+/**
+ * The definition a reference names, as markdown-it's link and image rules
+ * resolve one: a full reference's own label, in the brackets at `from` — or,
+ * where those are empty or no brackets close there, the label from `open` to
+ * `close`, a collapsed or shortcut reference. The url its definition gives, and
+ * the index past the reference; nothing where no definition has its label.
+ */
+function reference(text: string, open: number, close: number, from: number, labels: LinkLabels, level: number): LinkTarget | undefined {
+  const fullClose = text[from] === "[" ? labels.close(text, from, level, false) : undefined;
+  const full = fullClose === undefined ? "" : text.slice(from + 1, fullClose);
+  const url = labels.definitions.get(normalizeReference(full || text.slice(open + 1, close)));
+  return url === undefined ? undefined : { url, end: fullClose === undefined ? close + 1 : fullClose + 1 };
 }
 
 /** The index past the `LINK_SPACE` at `i` in `text`. */
@@ -1134,11 +1280,11 @@ function inlineAt(text: string, i: number, labels: LinkLabels, level: number): I
       if (text[open] !== "[") return undefined;
       const close = labels.close(text, open, level, !image);
       if (close === undefined) return undefined;
-      const destination = linkDestination(text, close + 1);
-      if (!destination) return undefined;
+      const target = linkTarget(text, open, close, labels, level, image);
+      if (!target) return undefined;
       return image
-        ? { kind: "image", alt: text.slice(open + 1, close), src: destination.url, end: destination.end }
-        : { kind: "link", label: open + 1, close, url: destination.url, end: destination.end };
+        ? { kind: "image", alt: text.slice(open + 1, close), src: target.url, end: target.end }
+        : { kind: "link", label: open + 1, close, url: target.url, end: target.end };
     }
     default:
       return undefined;
@@ -1185,9 +1331,9 @@ function inlines(text: string, from: number, labels: LinkLabels, level: number):
   return emphasized(pieces, delimiters, lone);
 }
 
-/** `text` read into inlines from its start. */
-function parseInline(text: string): Inline[] {
-  return inlines(text, 0, new LinkLabels(), 0);
+/** `text` read into inlines from its start, its references resolved against `definitions`. */
+function parseInline(text: string, definitions: Definitions): Inline[] {
+  return inlines(text, 0, new LinkLabels(definitions), 0);
 }
 
 /**
@@ -1216,26 +1362,57 @@ function matched(found: Exclude<InlineMatch, DelimiterRun | { kind: "line_ending
   }
 }
 
+/**
+ * Each label's href: a document's link reference definitions, keyed by the
+ * label as `normalizeReference` makes it, as markdown-it's `env.references`.
+ */
+type Definitions = ReadonlyMap<string, string>;
+
+/**
+ * The link reference definitions among `tokens` and every container they
+ * hold, in the order the source gives them, each label defined by the first
+ * definition of it, as markdown-it keeps them.
+ */
+function definitionsIn(tokens: readonly Block[], into: Map<string, string> = new Map()): Map<string, string> {
+  for (const token of tokens) {
+    switch (token.type) {
+      case "definition":
+        if (!into.has(token.label)) into.set(token.label, token.url);
+        break;
+      case "list":
+        for (const item of token.items) definitionsIn(item, into);
+        break;
+      case "blockquote":
+        definitionsIn(token.children, into);
+        break;
+    }
+  }
+  return into;
+}
+
 /** The blocks among `tokens`, their marks dropped, with their text read into inlines: markdown-it's inline pass. */
-function inlined(tokens: readonly Block[]): MdToken[] {
-  return tokens.filter((token): token is Exclude<Block, BlockMark> => token.type !== "blank" && token.type !== "unread").map(inlinedBlock);
+function inlined(tokens: readonly Block[], definitions: Definitions): MdToken[] {
+  return tokens
+    .filter((token): token is Exclude<Block, BlockMark> => token.type !== "unread" && token.type !== "definition")
+    .map((token) => inlinedBlock(token, definitions));
 }
 
 /** `token` with its text, and the text of every block inside it, read into inlines. */
-function inlinedBlock(token: Exclude<Block, BlockMark>): MdToken {
+function inlinedBlock(token: Exclude<Block, BlockMark>, definitions: Definitions): MdToken {
+  const parse = (text: string): Inline[] => parseInline(text, definitions);
   switch (token.type) {
     case "heading":
     case "paragraph":
-      return { ...token, text: parseInline(token.text) };
+      return { ...token, text: parse(token.text) };
     case "list":
-      return { ...token, items: token.items.map(inlined) };
+      return { ...token, items: token.items.map((item) => inlined(item, definitions)) };
     case "blockquote":
-      return { ...token, children: inlined(token.children) };
+      return { ...token, children: inlined(token.children, definitions) };
     case "table":
       return {
         ...token,
-        columns: token.columns.map((column) => ({ ...column, header: parseInline(column.header) })),
-        rows: token.rows.map((row) => row.map(parseInline)),
+        columns: token.columns.map((column) => ({ ...column, header: parse(column.header) })),
+        rows: token.rows.map((row) => row.map(parse)),
       };
     default:
       return token;
@@ -1245,5 +1422,6 @@ function inlinedBlock(token: Exclude<Block, BlockMark>): MdToken {
 /** `source` read as Markdown: its blocks, and the text in each read into inlines. A line ends at `\r\n`, `\r` or `\n`, as markdown-it normalizes them. */
 export function parseMarkdown(source: string): MdToken[] {
   const lines = source.split(/\r\n?|\n/).map((text): Line => ({ text, margin: 0, lazy: false }));
-  return inlined(tokenize(lines, 0));
+  const { tokens } = tokenize(lines, 0);
+  return inlined(tokens, definitionsIn(tokens));
 }
