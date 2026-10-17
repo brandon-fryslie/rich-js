@@ -79,11 +79,22 @@ export function systemClock(): Clock {
       return () => clearInterval(timer);
     },
     at: (time, tick) => {
-      const wait = time - now();
-      if (!(wait <= LONGEST_INTERVAL)) {
+      if (!(time - now() <= LONGEST_INTERVAL)) {
         throw new RangeError(`a clock waits at most ${LONGEST_INTERVAL} s, not until ${time} s from ${now()} s`);
       }
-      const timer = setTimeout(tick, Math.max(0, wait) * 1000);
+      // [LAW:single-enforcer] A platform timer is due by a whole millisecond
+      // of the event loop's own time, truncated, so it can run while this
+      // clock still reads under `time` — by most of a millisecond. The
+      // contract is the clock's reading, and it is held here, once, for every
+      // host: the wait is rounded up, and a timer that runs early is armed
+      // again for what remains, so `tick` runs when `now()` has reached
+      // `time` and not before. A host re-drawing at a frame's end would
+      // otherwise draw the old frame again and wait again, every boundary.
+      let timer: ReturnType<typeof setTimeout>;
+      const arm = (): void => {
+        timer = setTimeout(() => (now() < time ? arm() : tick()), Math.ceil(Math.max(0, time - now()) * 1000));
+      };
+      arm();
       return () => clearTimeout(timer);
     },
   };

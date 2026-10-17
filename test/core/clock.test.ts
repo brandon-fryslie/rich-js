@@ -38,6 +38,28 @@ describe("systemClock().at", () => {
     expect(ticks).toHaveLength(1);
   });
 
+  // A platform timer is due by the event loop's millisecond-truncated time,
+  // so it can run while `performance.now()` still reads under the time asked
+  // for. The clock's contract is its own reading: a timer that ran early
+  // waits again for the remainder.
+  it("does not tick while the clock still reads under the time, however early the timer runs", () => {
+    vi.useFakeTimers();
+    const clock = systemClock();
+    const asked = clock.now() + 0.5;
+    // The loop's timer fires at 500 ms; the high-resolution clock reads 499.4 ms then.
+    const lagging = vi.spyOn(performance, "now").mockImplementation(() => asked * 1000 - 0.6);
+    let ticked = 0;
+    clock.at(asked, () => ticked++);
+    vi.advanceTimersByTime(500);
+    expect(ticked).toBe(0);
+    lagging.mockImplementation(() => asked * 1000 + 0.1);
+    vi.advanceTimersByTime(1);
+    expect(ticked).toBe(1);
+    vi.advanceTimersByTime(1000);
+    expect(ticked).toBe(1);
+    lagging.mockRestore();
+  });
+
   it("ticks as soon as it can for a time already past", () => {
     vi.useFakeTimers();
     const clock = systemClock();

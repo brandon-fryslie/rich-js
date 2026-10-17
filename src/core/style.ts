@@ -363,7 +363,11 @@ export class Style {
   }
 
   /**
-   * Serializes to a canonical string that round-trips through `Style.parse()`.
+   * The look as a canonical string that round-trips through `Style.parse()`:
+   * colours, attributes and the link, which is all a style string can spell.
+   * What a style carries beyond its look — `meta`, `anchor`, `nextChange` —
+   * has no spelling and is not here, so two styles that differ only there
+   * read alike; `equals` tells them apart.
    */
   toString(): string {
     if (this.isNull) return "none";
