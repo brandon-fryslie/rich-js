@@ -4,15 +4,22 @@
     {
       "version": "pr-454",
       "ref": "refs/pull/454/merge",
-      "sha": "d39d42cda3710615883216835d668ecc183fa557",
-      "timestamp": "2026-10-17T19:09:44.169Z",
+      "sha": "ab9f5b0a8ec01065b1f8b9d495e3d526aad4a60d",
+      "timestamp": "2026-10-17T19:14:10.436Z",
       "commits": [
         {
-          "sha": "d39d42cda3710615883216835d668ecc183fa557",
+          "sha": "ab9f5b0a8ec01065b1f8b9d495e3d526aad4a60d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T13:08:25-06:00",
-          "message": "Merge 9461b1a278d90f648ac1a5f9228392b9b5de0b01 into 0abcc9482e3af85fee5d0b392753bde41d46680a\n"
+          "timestamp": "2026-10-17T19:12:15Z",
+          "message": "Merge 30ed31e3fc8ee9f20b353b16b69ab1fada4c18ec into 0abcc9482e3af85fee5d0b392753bde41d46680a\n"
+        },
+        {
+          "sha": "30ed31e3fc8ee9f20b353b16b69ab1fada4c18ec",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T13:12:10-06:00",
+          "message": "expectLinearTime's own tests pin that a stalled larger run cannot fail linear work, and the floor comment names only the sizes that measure growth (rich-unfiled-791c.acoa)\n"
         },
         {
           "sha": "9461b1a278d90f648ac1a5f9228392b9b5de0b01",
