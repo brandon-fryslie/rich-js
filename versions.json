@@ -4,15 +4,22 @@
     {
       "version": "pr-460",
       "ref": "refs/pull/460/merge",
-      "sha": "aeec013407815ca098bcfecd64ab61e289aabda9",
-      "timestamp": "2026-10-17T22:33:50.980Z",
+      "sha": "255899f7d68fc8c361adf6eb7b7d5548ab01835d",
+      "timestamp": "2026-10-17T22:48:36.797Z",
       "commits": [
         {
-          "sha": "aeec013407815ca098bcfecd64ab61e289aabda9",
+          "sha": "255899f7d68fc8c361adf6eb7b7d5548ab01835d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T16:32:02-06:00",
-          "message": "Merge 211f4fd78803a88b7e7b35bfcd6ebdc0554b8555 into 881996066e0b1638c18a3849029197ca919f1305\n"
+          "timestamp": "2026-10-17T22:46:52Z",
+          "message": "Merge 1fe683513427c6695db5283cbddd736130f80df4 into 881996066e0b1638c18a3849029197ca919f1305\n"
+        },
+        {
+          "sha": "1fe683513427c6695db5283cbddd736130f80df4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T16:46:47-06:00",
+          "message": "Complexity guards: devEngines asks for the Node with threadCpuUsage, a self-test pins that time off the CPU is not counted, full-size output checks are back, and near-floor sizes are doubled (rich-unfiled-791c.xrxj)\n\nReview (high) of #460: process.threadCpuUsage exists from Node 22.19 / 23.9,\nwhich devEngines (^22.18.0 || >=23.6.0) did not require; the self-tests only\nsimulated load with CPU work both clocks count, so reverting to wall time stayed\ngreen; the 3-element output checks dropped the at-scale correctness the\nbudget tests had; four smaller runs sat under 15 ms of CPU here, about 2x the\nfloor on a runner twice as fast.\n"
         },
         {
           "sha": "211f4fd78803a88b7e7b35bfcd6ebdc0554b8555",
