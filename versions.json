@@ -2,24 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-423",
-      "ref": "refs/pull/423/merge",
-      "sha": "c766b9761c44f4978a2c56db0e07faeddf4455a6",
-      "timestamp": "2026-10-17T03:18:30.676Z",
+      "version": "pr-426",
+      "ref": "refs/pull/426/merge",
+      "sha": "542a2c661c5230b41fd6a72210540f703db75a76",
+      "timestamp": "2026-10-17T03:28:46.642Z",
       "commits": [
         {
-          "sha": "c766b9761c44f4978a2c56db0e07faeddf4455a6",
+          "sha": "542a2c661c5230b41fd6a72210540f703db75a76",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T21:17:06-06:00",
-          "message": "Merge 7511a34535590f9a287dbbe226c862a6a2e4cda1 into 90f21fa5ea0b2b773042b9e24670e5e031012d96\n"
+          "timestamp": "2026-10-16T21:26:24-06:00",
+          "message": "Merge c4c78cf0511cad1bb6b84a8e564c346a4ba1a2a3 into 90f21fa5ea0b2b773042b9e24670e5e031012d96\n"
         },
         {
-          "sha": "7511a34535590f9a287dbbe226c862a6a2e4cda1",
+          "sha": "c4c78cf0511cad1bb6b84a8e564c346a4ba1a2a3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:36:30-06:00",
-          "message": "chore(release): 0.24.0\n"
+          "timestamp": "2026-10-16T21:26:19-06:00",
+          "message": "Markdown draws an autolink as Rich does, and makes every link's href as markdown-it does (rich-unfiled-791c.95jg)\n\n`<http://e.com>` and `<a@b.co>` now draw as links whose text is the address,\nan email linking to mailto:. Links, images and autolinks all take their href\nfrom src/renderables/markdown-url.ts, a port of markdown-it-py's\nnormalizeLink / normalizeLinkText / validateLink with the mdurl and punycode\npieces they stand on — so a javascript:, vbscript:, file: or non-image data:\nURL is no link, as in Rich. Tests pinned against Rich 14 output.\n"
         }
       ]
     },
