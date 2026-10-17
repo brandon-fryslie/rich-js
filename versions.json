@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "d06dc96d348fb9d0fb45efd63a773fd3303f4445",
+      "timestamp": "2026-10-17T02:50:01.899Z",
+      "commits": [
+        {
+          "sha": "d06dc96d348fb9d0fb45efd63a773fd3303f4445",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:48:31-06:00",
+          "message": "Markdown drops inline HTML where Rich does, and reads backslash escapes (rich-unfiled-791c.5r6q) (#421)\n\n* Markdown drops inline HTML where Rich does, and reads backslash escapes (rich-unfiled-791c.5r6q)\n\nmarkdown-it-py's HTML_TAG_RE — a tag, comment, processing instruction,\ndeclaration or CDATA section — is read inline and drawn as nothing. The\nblock kind for a lone tag and the inline rule now share one tag grammar.\n\nThe escape rule comes with it: markdown-it reads '\\<' at the backslash\nbefore html_inline sees the '<', so without it '\\<span>' would draw '\\'\nwhere Rich draws '<span>'.\n\nUnclosed openers scan to the end of the text from every '<', as\nmarkdown-it-py's own regex does.\n\n* Emphasis closes outside every tighter construct, and link destinations read escapes (rich-unfiled-791c.5r6q)\n\n* Link brackets inside a code span or inline HTML pair with nothing (rich-unfiled-791c.5r6q)"
+        }
+      ]
+    },
+    {
       "version": "pr-422",
       "ref": "refs/pull/422/merge",
       "sha": "a2a36a6d9f14a3ae403c7e01a26ce9a40c5e37ba",
@@ -31,42 +46,6 @@
       ]
     },
     {
-      "version": "pr-421",
-      "ref": "refs/pull/421/merge",
-      "sha": "a815ccaae030f0b1a0465d6c3af35c86051708d1",
-      "timestamp": "2026-10-17T02:41:33.421Z",
-      "commits": [
-        {
-          "sha": "a815ccaae030f0b1a0465d6c3af35c86051708d1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T02:39:57Z",
-          "message": "Merge 956f2163e6ba695255dfa19103cf0888c2261491 into 63efd6e5f1b953f3ff5c4dfef4ebc23d7fd33cd2\n"
-        },
-        {
-          "sha": "956f2163e6ba695255dfa19103cf0888c2261491",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:37:51-06:00",
-          "message": "Link brackets inside a code span or inline HTML pair with nothing (rich-unfiled-791c.5r6q)\n"
-        },
-        {
-          "sha": "909a60f3ceb95a197e02fe072e83457803d15bb8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:30:19-06:00",
-          "message": "Emphasis closes outside every tighter construct, and link destinations read escapes (rich-unfiled-791c.5r6q)\n"
-        },
-        {
-          "sha": "18adab0933501aacb4e2168b255bae67eedf013c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:20:40-06:00",
-          "message": "Markdown drops inline HTML where Rich does, and reads backslash escapes (rich-unfiled-791c.5r6q)\n\nmarkdown-it-py's HTML_TAG_RE — a tag, comment, processing instruction,\ndeclaration or CDATA section — is read inline and drawn as nothing. The\nblock kind for a lone tag and the inline rule now share one tag grammar.\n\nThe escape rule comes with it: markdown-it reads '\\<' at the backslash\nbefore html_inline sees the '<', so without it '\\<span>' would draw '\\'\nwhere Rich draws '<span>'.\n\nUnclosed openers scan to the end of the text from every '<', as\nmarkdown-it-py's own regex does.\n"
-        }
-      ]
-    },
-    {
       "version": "pr-423",
       "ref": "refs/pull/423/merge",
       "sha": "fe31a76c71a208662cf135c0e5d755a69e990695",
@@ -85,21 +64,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T20:36:30-06:00",
           "message": "chore(release): 0.24.0\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "63efd6e5f1b953f3ff5c4dfef4ebc23d7fd33cd2",
-      "timestamp": "2026-10-17T02:37:03.589Z",
-      "commits": [
-        {
-          "sha": "63efd6e5f1b953f3ff5c4dfef4ebc23d7fd33cd2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:35:24-06:00",
-          "message": "A host can ask when what it draws next changes (rich-animation-xi28.6rs) (#416)\n\n* A host can ask when what it draws next changes (rich-animation-xi28.6rs)\n\n* systemClock.at ticks only once the clock reads the time\n\nReview (medium, post-rebase) on PR #416.\n\nA platform timer is due by the event loop's millisecond-truncated time,\nso it ran while performance.now() still read under the time asked for,\nby up to most of a millisecond. A Live waking at a frame's end then drew\nthe old frame again and waited again, at every boundary. The wait is now\nrounded up and a timer that ran early is armed again for the remainder,\nin the clock, once, for every host.\n\nStyle.toString's docstring claimed a round-trip through parse; meta,\nanchor and nextChange have no spelling, so it now says it is the look.\n\n* The stepped-ink cost test samples the step's first frame as it samples the rest\n\nCI failed its one-sample assertion by 0.7%: a lone first-frame timing against a median of 59. Nine fresh signals' first frames are taken and their median compared, so one sample's jitter decides nothing. The contract asserted is unchanged.\n\n* The shape-card spec finds the Effect shape block by its interface line\n\ndocs/effects.md's shape block is `interface Effect {` now that an effect may say when its frame next changes; the spec looked for `type Effect =` and found no card."
         }
       ]
     }
