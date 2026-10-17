@@ -424,7 +424,7 @@ const PUSH_TMPL =
   {{ " feat/measurements " | style $branch }} → {{ "tighten widget measure() contract" | fg $topic }}
   {{ "more" | style $linkfx | link "https://example.com/run/41" }}`;
 
-const pushRow = makeDemoRow("edit any $var (spec or colour) → every reference updates", PUSH_TMPL, tokyoEngine);
+const pushRow = makeDemoRow("edit a $var → every use updates", PUSH_TMPL, tokyoEngine);
 
 const pushPanelItem = new StaticItem({
   id: uid("push-panel"),
@@ -460,7 +460,7 @@ const NOTICE_TMPL =
 {{ " ⚠ HEADS UP " | fg (contrastOn $bg) | bg $bg }}  {{ "deploy paused" | fg (color "warning") | style $badge }}  {{ "30s ago" | dim }}
 {{ "  retries exhausted — " | fg (color "warning-muted") }}{{ "see incident" | fg (color "accent") | style $linkfx | link "https://example.com/incident/8" }}`;
 
-const noticeRow = makeDemoRow("edit $bg → contrast + bg shift together", NOTICE_TMPL, GALLERY_THEMES[0]![1]);
+const noticeRow = makeDemoRow("edit $bg → ink and bg both shift", NOTICE_TMPL, GALLERY_THEMES[0]![1]);
 
 const themeGridItem = new StaticItem({
   id: uid("theme-grid"),
@@ -582,13 +582,11 @@ const NO_PALETTE_TMPL =
 {{ "  base  " | bg $base | fg (contrastOn $base) }}{{ "  darken 3  " | bg (darken $base 3) | fg (contrastOn (darken $base 3)) }}{{ "  hue +120  " | bg (shiftHue $base 120) | fg (contrastOn (shiftHue $base 120)) }}`;
 
 const secColorValues = makeSection("Colour values — compute · name · paint", [
-  makeDemoRow("no sinks registered → colours print as hex", CALC_TMPL, gruvboxCalcEngine),
-  makeDemoRow("same expressions, painted (contrastOn ink)", SWATCH_TMPL, gruvboxEngine),
-  makeDemoRow("contrastOn vs readableOn",                   READABLE_TMPL, gruvboxEngine),
-  makeDemoRow("readableOnFunc — floor measured at 256 colours",
-                                                            READABLE_TMPL, gruvbox256Engine),
-  makeDemoRow("createRichTextEngine() — no palette, literals only",
-                                                            NO_PALETTE_TMPL, themelessEngine),
+  makeDemoRow("no sinks → colours print as hex", CALC_TMPL,     gruvboxCalcEngine),
+  makeDemoRow("the same, painted (contrastOn)",  SWATCH_TMPL,   gruvboxEngine),
+  makeDemoRow("contrastOn vs readableOn",        READABLE_TMPL, gruvboxEngine),
+  makeDemoRow("readableOnFunc at 256 colours",   READABLE_TMPL, gruvbox256Engine),
+  makeDemoRow("createRichTextEngine() — literals", NO_PALETTE_TMPL, themelessEngine),
 ]);
 
 // ─── §5 — Frames (content on a beat) ───────────────────────────────────────
@@ -618,9 +616,9 @@ const SIGNAL_TMPL =
 {{ "effort " | dim }}{{ frames 1 "›" 1 "››" 1 "›››" | fg $ink | bg $bg | bold }}{{ " max" | dim }}`;
 
 const secFrames = makeSection("Frames — content on a beat, drawn for the frame's time", [
-  makeDemoRow("one-second frames, each its own colour, one width", GAUGE_TMPL, animatedEngine),
+  makeDemoRow("one-second frames at one width", GAUGE_TMPL, animatedEngine),
   makeDemoRow("holds are seconds, and may differ", BEAT_TMPL, animatedEngine),
-  makeDemoRow("stepped — a colour on a beat, kept readable on its ground", SIGNAL_TMPL, animatedEngine),
+  makeDemoRow("stepped colour, kept readable", SIGNAL_TMPL, animatedEngine),
 ]);
 
 // ─── Section list ──────────────────────────────────────────────────────────
@@ -644,7 +642,7 @@ const appTitleItem = new StaticItem({
 
 const navHintItem = new StaticItem({
   id: "nav-hint",
-  render: () => [new Segment("  PgUp/PgDn: sections  ·  Tab: focus  ·  arrows/Ctrl+A·E·U·K·etc: edit  ·  Ctrl+C: exit", dimStyle)],
+  render: () => [new Segment("  PgUp/PgDn: sections · Tab: focus · arrows/Ctrl+A·E·U·K: edit · Ctrl+C: exit", dimStyle)],
 });
 
 const headerSpacer = makeSpacerItem();
