@@ -4,15 +4,22 @@
     {
       "version": "pr-444",
       "ref": "refs/pull/444/merge",
-      "sha": "ebf10e528c3ae99314dc86628ca12a733bbfb0ba",
-      "timestamp": "2026-10-17T15:14:55.257Z",
+      "sha": "b764bdeb101d3250f99df85d85d5e44f8c97b4ce",
+      "timestamp": "2026-10-17T15:17:30.194Z",
       "commits": [
         {
-          "sha": "ebf10e528c3ae99314dc86628ca12a733bbfb0ba",
+          "sha": "b764bdeb101d3250f99df85d85d5e44f8c97b4ce",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T09:13:08-06:00",
-          "message": "Merge dd47e85716b66ef2c2b5ecf616b33ae82eee2172 into 097acd5b614a07f0050f33fd1e95e483f8e674ed\n"
+          "timestamp": "2026-10-17T15:16:14Z",
+          "message": "Merge 0f180e8291ac413f70447aad2e7a3101d524ff64 into 097acd5b614a07f0050f33fd1e95e483f8e674ed\n"
+        },
+        {
+          "sha": "0f180e8291ac413f70447aad2e7a3101d524ff64",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T09:16:10-06:00",
+          "message": "Markdown heading test: the closing-run comment states both conditions, in real characters (rich-unfiled-791c.4op8)\n"
         },
         {
           "sha": "dd47e85716b66ef2c2b5ecf616b33ae82eee2172",
