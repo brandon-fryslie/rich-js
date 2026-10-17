@@ -107,8 +107,7 @@ describe("Markdown", () => {
     expect(rows("one two\nthree four\n  five", 80)).toEqual(["one two three four five", ""]);
   });
 
-  // Rich 15 (markdown-it-py 4.2) for every case below; a leading row Rich
-  // draws ahead of a list, quote or table is rich-unfiled-791c.mk71's.
+  // Rich 15 (markdown-it-py 4.2) for every case below.
   it("keeps a no-break space at a line ending, where only spaces and tabs break softly", () => {
     expect(rows("q $__\u00a0\nab", 80)).toEqual(["q $__\u00a0 ab", ""]);
     expect(rows("a\n\u00a0b", 80)).toEqual(["a \u00a0b", ""]);
@@ -117,13 +116,13 @@ describe("Markdown", () => {
 
   it("reads a line of no-break spaces as text, not as a blank line", () => {
     expect(rows("q\n\u00a0\n_*__", 80)).toEqual(["q \u00a0 *_", ""]);
-    expect(rows("> a\n\u00a0\nb", 80)).toEqual(["▎ a \u00a0 b", ""]);
-    expect(rows("- a\n\u00a0\n- b", 80)).toEqual([" • a", " • b", ""]);
+    expect(rows("> a\n\u00a0\nb", 80)).toEqual(["", "▎ a \u00a0 b", ""]);
+    expect(rows("- a\n\u00a0\n- b", 80)).toEqual(["", " • a", " • b", ""]);
     // An HTML block runs to a blank line; Rich draws none of it.
     expect(rows("<div>\n\u00a0\nx", 80)).toEqual([""]);
     // The line ends the indented code, and the paragraph it opens takes the
     // next indented line, which cannot interrupt it.
-    expect(rows("    code\n\u00a0\n    more", 80)).toEqual(["code", "more", ""]);
+    expect(rows("    code\n\u00a0\n    more", 80)).toEqual(["code", "", "more", ""]);
   });
 
   it("opens a heading or a list item only at a space or tab after its marker", () => {
@@ -139,18 +138,19 @@ describe("Markdown", () => {
       "",
     ]);
     expect(rows("#  \u00a0x\u00a0", 80)).toEqual([`${" ".repeat(39)}x`, ""]);
-    expect(rows("| a |\n|---|\n\u00a0b\u00a0\n\u00a0\nz", 80)).toEqual(["", " a", " ─", " b", "", "z", ""]);
+    expect(rows("| a |\n|---|\n\u00a0b\u00a0\n\u00a0\nz", 80)).toEqual(["", "", " a", " ─", " b", "", "", "z", ""]);
   });
 
   it("opens an ATX heading at a space, a tab or the end of the line after its #s", () => {
-    for (const md of ["para\n#", "para\n# ", "para\n#  "]) expect(rows(md, 80)).toEqual(["para", "", ""]);
+    // markdown-it's empty heading holds an empty inline token, which Rich exits as an element of its own.
+    for (const md of ["para\n#", "para\n# ", "para\n#  "]) expect(rows(md, 80)).toEqual(["para", "", "", ""]);
     // A paragraph separator is no line ending to markdown-it, which splits lines at \\n alone.
     expect(rows("# a\u2029", 80)).toEqual([`${" ".repeat(39)}a`, ""]);
   });
 
   it("keeps a paragraph line's indentation in a code span that crosses its line ending", () => {
     expect(rows("foo\n    bar `x\n  y`", 80)).toEqual(["foo bar x   y", ""]);
-    expect(rows("> foo\n>     bar `x\n>   y`", 80)).toEqual(["▎ foo bar x   y", ""]);
+    expect(rows("> foo\n>     bar `x\n>   y`", 80)).toEqual(["", "▎ foo bar x   y", ""]);
     expect(rows("a\\\n   b", 80)).toEqual(["a", "b", ""]);
   });
 
@@ -161,13 +161,15 @@ describe("Markdown", () => {
 
   it("keeps a list item's continuation lines in the item, hanging under its text", () => {
     const md = "- alpha beta gamma\n  delta epsilon\n- zeta";
-    expect(rows(md, 18)).toEqual([" • alpha beta", "   gamma delta", "   epsilon", " • zeta", ""]);
+    expect(rows(md, 18)).toEqual(["", " • alpha beta", "   gamma delta", "   epsilon", " • zeta", ""]);
   });
 
   it("ends every list item on its own row", () => {
     expect(rows("- Item A\n- Item B\n1. First\n2. Second", 80)).toEqual([
+      "",
       " • Item A",
       " • Item B",
+      "",
       " 1 First",
       " 2 Second",
       "",
@@ -176,13 +178,13 @@ describe("Markdown", () => {
 
   it("draws a nested list under its parent's text, however far the source indents it", () => {
     for (const md of ["- parent\n  - child", "- parent\n    - child"]) {
-      expect(rows(md, 80)).toEqual([" • parent", "    • child", ""]);
+      expect(rows(md, 80)).toEqual(["", " • parent", "    • child", ""]);
     }
-    expect(rows("- parent\n  1. child", 80)).toEqual([" • parent", "    1 child", ""]);
+    expect(rows("- parent\n  1. child", 80)).toEqual(["", " • parent", "    1 child", ""]);
   });
 
   it("draws a quote's bar down every row it wraps to, with its lines joined", () => {
-    expect(rows("> one two\n> three four", 12)).toEqual(["▎ one two", "▎ three four", ""]);
+    expect(rows("> one two\n> three four", 12)).toEqual(["", "▎ one two", "▎ three four", ""]);
   });
 
   it("keeps every row inside its width when a list runs into a paragraph", () => {
@@ -190,7 +192,7 @@ describe("Markdown", () => {
     // tail is lost rather than wrapped.
     const out = rows("- first item\n  continues here\nand runs on\n\nafter the gap", 16);
     expect(out.every((row) => row.length <= 16)).toBe(true);
-    expect(out).toEqual([" • first item", "   continues", "   here and runs", "   on", "", "after the gap", ""]);
+    expect(out).toEqual(["", " • first item", "   continues", "   here and runs", "   on", "", "after the gap", ""]);
   });
 
   it("leaves a wrapped line that starts with a number other than 1 in its paragraph", () => {
@@ -198,7 +200,7 @@ describe("Markdown", () => {
   });
 
   it("reads a paragraph underlined with = or - as a heading, not a rule", () => {
-    expect(rows("Title\n===\nSub\n---\nbody", 11)).toEqual(["   Title", "Sub", "body", ""]);
+    expect(rows("Title\n===\nSub\n---\nbody", 11)).toEqual(["   Title", "", "Sub", "", "body", ""]);
   });
 
   it("keeps a hard line break, from two trailing spaces or a backslash", () => {
@@ -220,88 +222,89 @@ describe("Markdown", () => {
     expect(rows(source, 80, { hyperlinks: false })).toEqual(expected);
   });
 
-  it("keeps a quote's paragraph break at a bare > line without leaking the marker", () => {
-    expect(rows("> a\n>\n>b", 80)).toEqual(["▎ a", "▎", "▎ b", ""]);
+  // Rich draws the blocks inside a container one under the next, with no row between them.
+  it("ends a quote's paragraph at a bare > line without leaking the marker", () => {
+    expect(rows("> a\n>\n>b", 80)).toEqual(["", "▎ a", "▎ b", ""]);
   });
 
   it("draws the blocks inside a quote as blocks, beside its bar", () => {
     expect(rows("> - a\n> - b\n> soft\n>\n> para two", 80)).toEqual([
+      "",
       "▎  • a",
       "▎  • b soft",
-      "▎",
       "▎ para two",
       "",
     ]);
   });
 
   it("draws a fenced block inside a quote line for line", () => {
-    expect(rows("> ```\n> a = 1\n> b = 2\n> ```", 80)).toEqual(["▎ a = 1", "▎ b = 2", ""]);
+    expect(rows("> ```\n> a = 1\n> b = 2\n> ```", 80)).toEqual(["", "▎ a = 1", "▎ b = 2", ""]);
   });
 
   it("ends a quote at an unmarked line after a bare >, and lazily continues its open paragraph", () => {
-    expect(rows("> quoted\n>\nNot quoted", 80)).toEqual(["▎ quoted", "▎", "Not quoted", ""]);
-    expect(rows("> the total was\nthat year", 80)).toEqual(["▎ the total was that year", ""]);
+    expect(rows("> quoted\n>\nNot quoted", 80)).toEqual(["", "▎ quoted", "", "Not quoted", ""]);
+    expect(rows("> the total was\nthat year", 80)).toEqual(["", "▎ the total was that year", ""]);
     // Outside the quote no paragraph is open, so an item opens whatever it counts from.
-    expect(rows("> the total was\n2024. That year", 80)).toEqual(["▎ the total was", " 2024 That year", ""]);
+    expect(rows("> the total was\n2024. That year", 80)).toEqual(["", "▎ the total was", "", " 2024 That year", ""]);
   });
 
   it("leaves a list item's wrapped line that starts with a number other than 1 in the item", () => {
-    expect(rows("- item\n  2024. That year", 80)).toEqual([" • item 2024. That year", ""]);
+    expect(rows("- item\n  2024. That year", 80)).toEqual(["", " • item 2024. That year", ""]);
   });
 
   it("starts a sibling item at the marker's own column whatever it counts from", () => {
-    expect(rows("1. a\n2. b", 80)).toEqual([" 1 a", " 2 b", ""]);
+    expect(rows("1. a\n2. b", 80)).toEqual(["", " 1 a", " 2 b", ""]);
   });
 
-  it("draws an empty quote's bar", () => {
-    expect(rows("1. x\n\n>", 80)).toEqual([" 1 x", "", "▎", ""]);
+  it("draws an empty quote as no row, and the row ahead of it", () => {
+    expect(rows("1. x\n\n>", 80)).toEqual(["", " 1 x", "", ""]);
   });
 
   it("reads CRLF line endings as line endings", () => {
-    expect(rows("## Title\r\n- item\r\n- next", 80)).toEqual(["Title", " • item", " • next", ""]);
+    expect(rows("## Title\r\n- item\r\n- next", 80)).toEqual(["Title", "", " • item", " • next", ""]);
   });
 
   it("indents a tab-nested item by the columns the tab spans, never a raw tab", () => {
     const out = rows("- parent\n\t- child text", 20);
-    expect(out).toEqual([" • parent", "    • child text", ""]);
+    expect(out).toEqual(["", " • parent", "    • child text", ""]);
   });
 
   it("counts a tab inside an item from the source's column 0, not the item's", () => {
-    expect(rows("- a\n\n  \tb", 20)).toEqual([" • a", "", "   b", ""]);
-    expect(rows("- parent\n  \t- child", 20)).toEqual([" • parent", "    • child", ""]);
+    expect(rows("- a\n\n  \tb", 20)).toEqual(["", " • a", "   b", ""]);
+    expect(rows("- parent\n  \t- child", 20)).toEqual(["", " • parent", "    • child", ""]);
   });
 
   it("reads a tab after a quote's marker as the space it may take, then indentation", () => {
-    expect(rows(">\tfoo", 20)).toEqual(["▎ foo", ""]);
-    expect(rows(">\t\tfoo", 20)).toEqual(["▎   foo", ""]);
+    expect(rows(">\tfoo", 20)).toEqual(["", "▎ foo", ""]);
+    expect(rows(">\t\tfoo", 20)).toEqual(["", "▎   foo", ""]);
   });
 
   it("draws a tab in code as spaces to the code's own stops, never a raw tab", () => {
-    expect(rows("- a\n\n  ```\n  \tx\n  ```", 20)).toEqual([" • a", "", "           x", ""]);
+    expect(rows("- a\n\n  ```\n  \tx\n  ```", 20)).toEqual(["", " • a", "           x", ""]);
     expect(rows("    \tx", 20)).toEqual(["        x", ""]);
   });
 
   it("opens a fence or a quote indented up to three columns inside an item", () => {
-    expect(rows("- step\n\n    ```\n    npm i\n    ```", 20)).toEqual([" • step", "", "   npm i", ""]);
-    expect(rows("- a\n   > q", 20)).toEqual([" • a", "   ▎ q", ""]);
+    expect(rows("- step\n\n    ```\n    npm i\n    ```", 20)).toEqual(["", " • step", "   npm i", ""]);
+    expect(rows("- a\n   > q", 20)).toEqual(["", " • a", "   ▎ q", ""]);
   });
 
   it("continues a parent's text with a marker indented four columns past it, as CommonMark does", () => {
-    expect(rows("- parent\n      - child", 40)).toEqual([" • parent - child", ""]);
+    expect(rows("- parent\n      - child", 40)).toEqual(["", " • parent - child", ""]);
   });
 
   it("reads a line of the list's own bullets as a thematic break, not an item", () => {
     const out = rows("* a\n* * *\n* b", 10);
-    expect(out[0]).toBe(" • a");
-    expect(out[1]).toMatch(/^─+$/);
-    expect(out[2]).toBe(" • b");
+    expect(out[1]).toBe(" • a");
+    expect(out[3]).toMatch(/^─+$/);
+    expect(out[6]).toBe(" • b");
     expect(rows("_ _ _", 5)[0]).toMatch(/^─+$/);
   });
 
   it("reads a lazy line of `=` as paragraph text, never as an underline, and a lazy indented marker as text", () => {
-    expect(rows("> foo\n===", 20)).toEqual(["▎ foo ===", ""]);
-    expect(rows("- foo\n===", 20)).toEqual([" • foo ===", ""]);
-    expect(rows("> foo\n    - bar", 20)).toEqual(["▎ foo - bar", ""]);
+    expect(rows("> foo\n===", 20)).toEqual(["", "▎ foo ===", ""]);
+    expect(rows("- foo\n===", 20)).toEqual(["", " • foo ===", ""]);
+    expect(rows("> foo\n    - bar", 20)).toEqual(["", "▎ foo - bar", ""]);
   });
 
   it("reads a line of `=` on its own as text", () => {
@@ -342,13 +345,14 @@ describe("Markdown", () => {
   });
 
   it("keeps an item's text when its gutter is as wide as the width", () => {
-    expect(rows("- hi", 3)).toEqual([" • h", "   i", ""]);
+    expect(rows("- hi", 3)).toEqual(["", " • h", "   i", ""]);
   });
 
   // --- Lists hold blocks, as CommonMark reads them ---
 
   it("keeps a fence inside a list item, line for line under its hang", () => {
     expect(rows("- step:\n  ```sh\n  npm i\n  npm test\n  ```", 80)).toEqual([
+      "",
       " • step:",
       "   npm i",
       "   npm test",
@@ -357,20 +361,20 @@ describe("Markdown", () => {
   });
 
   it("draws a quote inside a list item under its hang", () => {
-    expect(rows("- item\n  > quoted", 80)).toEqual([" • item", "   ▎ quoted", ""]);
+    expect(rows("- item\n  > quoted", 80)).toEqual(["", " • item", "   ▎ quoted", ""]);
   });
 
   it("makes a number short of the content column a sibling, numbered on from the first", () => {
-    expect(rows("1. a\n  5. b", 80)).toEqual([" 1 a", " 2 b", ""]);
-    expect(rows("1. a\n1. b\n1. c", 80)).toEqual([" 1 a", " 2 b", " 3 c", ""]);
+    expect(rows("1. a\n  5. b", 80)).toEqual(["", " 1 a", " 2 b", ""]);
+    expect(rows("1. a\n1. b\n1. c", 80)).toEqual(["", " 1 a", " 2 b", " 3 c", ""]);
   });
 
   it("right-aligns a list's numbers in a column sized for one past the last, as Rich does", () => {
-    // Rich 15: ["", "  9 a", " 10 b more", ""], and ten columns' worth for nine
-    // items from 1 — Rich sizes the column by `last_number`, one past the last.
-    expect(rows("9. a\n10. b\n    more", 80)).toEqual(["  9 a", " 10 b more", ""]);
-    expect(rows(Array.from({ length: 9 }, (_, n) => `${n + 1}. x`).join("\n"), 80)[0]).toBe("  1 x");
-    expect(rows("7. a\n8. b", 80)).toEqual([" 7 a", " 8 b", ""]);
+    // Ten columns' worth for nine items from 1 — Rich sizes the column by
+    // `last_number`, one past the last.
+    expect(rows("9. a\n10. b\n    more", 80)).toEqual(["", "  9 a", " 10 b more", ""]);
+    expect(rows(Array.from({ length: 9 }, (_, n) => `${n + 1}. x`).join("\n"), 80)[1]).toBe("  1 x");
+    expect(rows("7. a\n8. b", 80)).toEqual(["", " 7 a", " 8 b", ""]);
   });
 
   it("draws a bullet and its hang in markdown.item.bullet, a number and its hang in markdown.item.number, and the item in markdown.item", () => {
@@ -394,20 +398,20 @@ describe("Markdown", () => {
   });
 
   it("reads an empty item as an item, and draws nothing for it, as Rich does", () => {
-    // Rich 15: ["", " • x", ""] and ["", " 2 x", ""] — the leading row is
-    // rich-unfiled-791c.mk71's.
-    expect(rows("- \n- x", 80)).toEqual([" • x", ""]);
-    expect(rows("1.  \n2. x", 80)).toEqual([" 2 x", ""]);
-    expect(rows("- a\n-\n- b", 80)).toEqual([" • a", " • b", ""]);
+    expect(rows("- \n- x", 80)).toEqual(["", " • x", ""]);
+    expect(rows("1.  \n2. x", 80)).toEqual(["", " 2 x", ""]);
+    expect(rows("- a\n-\n- b", 80)).toEqual(["", " • a", " • b", ""]);
+    // A loose list's empty item stacks no row on either side of it.
+    expect(rows("- a\n\n-\n\n- b", 80)).toEqual(["", " • a", " • b", ""]);
   });
 
-  it("keeps a loose item's later paragraphs in the item", () => {
-    expect(rows("- one\n\n  two\n\n- three", 80)).toEqual([" • one", "", "   two", "", " • three", ""]);
+  it("keeps a loose item's later paragraphs in the item, with no row between them, as Rich draws them", () => {
+    expect(rows("- one\n\n  two\n\n- three", 80)).toEqual(["", " • one", "   two", " • three", ""]);
   });
 
   it("ends a list item at an unindented line once no paragraph is open", () => {
-    expect(rows("- a\n\nafter", 80)).toEqual([" • a", "", "after", ""]);
-    expect(rows("- ```\n  code\nafter", 80)).toEqual([" • code", "after", ""]);
+    expect(rows("- a\n\nafter", 80)).toEqual(["", " • a", "", "after", ""]);
+    expect(rows("- ```\n  code\nafter", 80)).toEqual(["", " • code", "", "after", ""]);
   });
 
   // markdown-it-py 4.2's fence tokens for every case below; the rows leave out
@@ -418,14 +422,14 @@ describe("Markdown", () => {
     ["para\n```a`\nmore", ["para ```a` more", ""]],
     ["~~~a~~~", ["", ""]],
     ["~~~~a~~ b~~", ["", ""]],
-    ["~~~ `x`\ncode\n~~~\nafter", ["code", "after", ""]],
-    ["para\n~~~\ncode\n~~~", ["para", "code", ""]],
+    ["~~~ `x`\ncode\n~~~\nafter", ["code", "", "after", ""]],
+    ["para\n~~~\ncode\n~~~", ["para", "", "code", ""]],
     // Only a run of the opener's marker at least as long closes it, then only spaces and tabs.
-    ["````\ncode\n```\nmore\n````\nafter", ["code", "```", "more", "after", ""]],
-    ["```\ncode\n~~~\n```\nafter", ["code", "~~~", "after", ""]],
-    ["```\ncode\n```` \nafter", ["code", "after", ""]],
-    ["```\ncode\n```\t\n- after", ["code", " • after", ""]],
-    ["```\ncode\n``` x\n```\nafter", ["code", "``` x", "after", ""]],
+    ["````\ncode\n```\nmore\n````\nafter", ["code", "```", "more", "", "after", ""]],
+    ["```\ncode\n~~~\n```\nafter", ["code", "~~~", "", "after", ""]],
+    ["```\ncode\n```` \nafter", ["code", "", "after", ""]],
+    ["```\ncode\n```\t\n- after", ["code", "", " • after", ""]],
+    ["```\ncode\n``` x\n```\nafter", ["code", "``` x", "", "after", ""]],
     ["```\ncode\n```\u00a0\n- after\n```", ["code", "```", "- after", ""]],
     ["```\ncode\n    ```\nafter", ["code", "    ```", "after", ""]],
   ])("opens and closes the fence in %j as markdown-it does, as Rich does", (source, expected) => {
@@ -477,9 +481,60 @@ describe("Markdown", () => {
   });
 
   it("owes no newline after a rule, as Rich's render loop does not", () => {
-    // Rich 14: ["🌆 i ▌ x", "▌ ---…", "▌", ""]. Only the first row is pinned: the
-    // quote's bar, and the rows of the rule, are the port's own.
-    expect(rows("> x ![i](p.png)\n>\n> ***", 40)[0]).toBe("🌆 i ▎ x");
+    // Rich 15: ["🌆 i ▌ x", "▌ ---…", "▌", ""]; the rule's glyph is rich-unfiled-791c.x0d0's.
+    const out = rows("> x ![i](p.png)\n>\n> ***", 40);
+    expect([out[0], out[2], out[3]]).toEqual(["🌆 i ▎ x", "▎", ""]);
+    expect(out[1]).toMatch(/^▎ ─+$/);
+  });
+
+  // --- Blank rows between blocks ---
+
+  // Rich 15's own output for each source at width 40. Rich reads no blank line
+  // of the source: every element it exits sets `new_line` but a rule and an
+  // image, and a blank row goes ahead of whatever it draws next while it is set.
+  it.each<[string, string[]]>([
+    ["a\n\nb", ["a", "", "b", ""]],
+    ["a\n\n\nb", ["a", "", "b", ""]],
+    ["a\n  \n\nb", ["a", "", "b", ""]],
+    ["a\n\t\n \nb", ["a", "", "b", ""]],
+    ["## h\nb", ["h", "", "b", ""]],
+    // A list, a quote or a table draws as it closes, after the blocks inside it set the flag.
+    ["- a", ["", " • a", ""]],
+    ["x\n- a", ["x", "", " • a", ""]],
+    ["> q", ["", "▎ q", ""]],
+    ["x\n> q", ["x", "", "▎ q", ""]],
+    ["| a |\n|---|\n|  |", ["", "", " a", " ─", "", "", ""]],
+    // Inside a container the blocks stack with no row between them.
+    ["- a\n\n\n- b", ["", " • a", " • b", ""]],
+    ["> a\n>\n>\n> b", ["", "▎ a", "▎ b", ""]],
+    // An image draws the moment it is met, the flag checked ahead of it.
+    ["- a\n\n  ![i](p.png)", ["", "🌆 i", " • a", "", ""]],
+    ["- a\n- b ![i](p.png)", ["", "🌆 i", " • a", " • b", ""]],
+    // An empty heading holds an empty inline token, an element of its own, which sets the flag.
+    ["#", ["", "", ""]],
+    // An empty quote draws no row, and the flag its exit sets still puts one ahead of the next block.
+    [">", [""]],
+    [">\nb", ["", "b", ""]],
+    ["p\n\n>\n\nb", ["p", "", "", "b", ""]],
+    ["> " + "- ".repeat(10) + "x\n> y\nb", ["", ""]],
+    ["p\n\n" + ">".repeat(20) + " x\n" + ">".repeat(20) + "\ny", ["p", "", "", "y", ""]],
+  ])("draws the blank rows in %j as Rich does", (source, expected) => {
+    expect(rows(source, 40)).toEqual(expected);
+  });
+
+  it("draws a rule's own blank row after it, and none from the flag, as Rich does", () => {
+    // Rich 15 draws the rule in `-` (rich-unfiled-791c.x0d0); the rows around it are pinned.
+    const rule = "─".repeat(40);
+    expect(rows("---\nx", 40)).toEqual([rule, "", "x", ""]);
+    expect(rows("x\n\n\n---\n\n\ny", 40)).toEqual(["x", "", rule, "", "y", ""]);
+    expect(rows("---\n#", 40)).toEqual([rule, "", "", "", ""]);
+    expect(rows("---\n# ![i](p.png)", 40)).toEqual([rule, "", "🌆 i", ""]);
+  });
+
+  it("pads every row of an item to its width, a rule's blank row included, as Rich's render_lines does", () => {
+    // Rich 15 at width 20, trailing spaces kept.
+    const text = collectText(new Markdown("- a\n\n  ---\n\n  b"), { maxWidth: 20 }).split("\n");
+    expect(text).toEqual(["", ` • a${" ".repeat(16)}`, `   ${"─".repeat(17)}`, " ".repeat(20), `   b${" ".repeat(16)}`, ""]);
   });
 
   it("draws an image in a list ahead of the whole list, as Rich does", () => {
@@ -547,7 +602,7 @@ describe("Markdown", () => {
 
   it("ends a line at a lone carriage return, as Rich does", () => {
     expect(rows("a\r\rb", 80)).toEqual(["a", "", "b", ""]);
-    expect(rows("- x\r- y", 80)).toEqual([" • x", " • y", ""]);
+    expect(rows("- x\r- y", 80)).toEqual(["", " • x", " • y", ""]);
   });
 
   it("reads no link where an ASCII control character sits in or after its destination, as Rich does", () => {
@@ -769,7 +824,7 @@ describe("Markdown", () => {
   it("centres an h1 and leaves h2 and below left, whatever justify says", () => {
     for (const justify of [undefined, "left", "right", "full"] as const) {
       const out = collectText(new Markdown("# Title\n## Sub\n###### Six", { justify }), { maxWidth: 20, justify });
-      expect(out.split("\n")).toEqual(["       Title        ", "Sub", "Six", ""]);
+      expect(out.split("\n")).toEqual(["       Title        ", "", "Sub", "", "Six", ""]);
     }
   });
 
@@ -811,6 +866,7 @@ describe("Markdown", () => {
     expect(rows(md, 40)).toEqual([
       "Intro text",
       "",
+      "",
       " Left         Centre  Right  Plain",
       " ─────────────────────────────────",
       " a             bold    code  x | y",
@@ -832,14 +888,14 @@ describe("Markdown", () => {
 
   it("reads a table where markdown-it does, and leaves one where it does not", () => {
     // A header row is tried before any other block, so a quote's marker is a cell.
-    expect(rows("> a | b\n--|--", 30)).toEqual(["", " > a  b", " ──────", "", ""]);
-    expect(rows("a|b\n-|-\n1|2", 30)).toEqual(["", " a  b", " ────", " 1  2", "", ""]);
+    expect(rows("> a | b\n--|--", 30)).toEqual(["", "", " > a  b", " ──────", "", ""]);
+    expect(rows("a|b\n-|-\n1|2", 30)).toEqual(["", "", " a  b", " ────", " 1  2", "", ""]);
     // A delimiter row naming another count of columns is no table: this is a setext heading.
     expect(rows("a | b\n---", 30)).toEqual(["a | b", ""]);
     // A lazy line is only ever paragraph text.
-    expect(rows("> a | b\n> more\n--|--", 30)).toEqual(["▎ a | b more --|--", ""]);
+    expect(rows("> a | b\n> more\n--|--", 30)).toEqual(["", "▎ a | b more --|--", ""]);
     // A table ends a paragraph, and a line that opens a block ends the table.
-    expect(rows("| a |\n|---|\n| 1 |\n> q", 30)).toEqual(["", " a", " ─", " 1", "", "▎ q", ""]);
+    expect(rows("| a |\n|---|\n| 1 |\n> q", 30)).toEqual(["", "", " a", " ─", " 1", "", "", "▎ q", ""]);
   });
 
   it("ends a table at the row that fills out more than markdown-it's 65536 empty cells", () => {
@@ -851,13 +907,13 @@ describe("Markdown", () => {
         .slice(-4)
         .map((row) => row.trimEnd());
     expect(lastRows(255)).toEqual([" a", " stop", "", ""]);
-    expect(lastRows(256)).toEqual([" a", "", "stop", ""]);
+    expect(lastRows(256)).toEqual(["", "", "stop", ""]);
   });
 
   it("draws a table inside a list item, under its hang", () => {
     expect(rows("- x\n\n  | a | b |\n  |---|---|\n  | 1 | 2 |", 30)).toEqual([
-      " • x",
       "",
+      " • x",
       "",
       "    a  b",
       "    ────",
@@ -869,12 +925,12 @@ describe("Markdown", () => {
 
   // --- HTML blocks ---
 
-  // Rich 14's own output for each source at 40 columns, but for the blank Rich
-  // draws before every block after the first, which this renderer leaves to
-  // the source's own blank lines — as the table test above sets it aside.
+  // Rich 14's own output for each source at 40 columns. An HTML block is an
+  // element Rich draws nothing for, so the blank row ahead of it is drawn and
+  // the one ahead of the block after it as well.
 
   it("draws an HTML block as Rich does, not at all, and ends a paragraph at one", () => {
-    expect(rows("para one\n<div>\nhello\n</div>\n\nafter", 40)).toEqual(["para one", "", "after", ""]);
+    expect(rows("para one\n<div>\nhello\n</div>\n\nafter", 40)).toEqual(["para one", "", "", "after", ""]);
   });
 
   it("ends a paragraph at every kind of HTML block but a lone tag, which continues it", () => {
@@ -885,9 +941,9 @@ describe("Markdown", () => {
       ["<!DOCTYPE html", ">"],
       ["<![CDATA[", "]]>"],
     ];
-    for (const [open, close] of kinds) expect(rows(`para\n${open}\nbody\n${close}\n\nafter`, 40)).toEqual(["para", "", "after", ""]);
+    for (const [open, close] of kinds) expect(rows(`para\n${open}\nbody\n${close}\n\nafter`, 40)).toEqual(["para", "", "", "after", ""]);
     // The sixth kind, a block-level element, ends at a blank line instead of a closing one.
-    expect(rows('para\n<DIV class="x">\nbody\n\nafter', 40)).toEqual(["para", "", "after", ""]);
+    expect(rows('para\n<DIV class="x">\nbody\n\nafter', 40)).toEqual(["para", "", "", "after", ""]);
     // Any other tag alone on a line opens a block only where no paragraph is open,
     // and neither it nor a lowercase `<!doctype`, which markdown-it-py does not
     // read as a declaration block, ends one: both are the paragraph's inline HTML.
@@ -898,12 +954,12 @@ describe("Markdown", () => {
 
   it("runs an HTML block to the line that closes its kind, or to the end without one", () => {
     // A blank line inside `<pre>` does not end it; the line after `</pre>` is a paragraph.
-    expect(rows("<pre>\nx\n\ny\n</pre>\nafter", 40)).toEqual(["after", ""]);
+    expect(rows("<pre>\nx\n\ny\n</pre>\nafter", 40)).toEqual(["", "after", ""]);
     expect(rows("a\n\n<!-- open\n\nstill", 40)).toEqual(["a", "", ""]);
   });
 
   it("ends a table at an HTML block, as markdown-it does", () => {
-    expect(rows("| a |\n| - |\n| 1 |\n<!-- c -->\nafter", 40)).toEqual(["", " a", " ─", " 1", "", "after", ""]);
+    expect(rows("| a |\n| - |\n| 1 |\n<!-- c -->\nafter", 40)).toEqual(["", "", " a", " ─", " 1", "", "", "", "after", ""]);
   });
 
   it("draws inline HTML as Rich does, not at all, wherever inline Markdown is read", () => {
@@ -936,7 +992,7 @@ describe("Markdown", () => {
     }
     expect(rows("[`]`](u) c", 40, { hyperlinks: false })[0]).toBe("] (u) c");
     expect(rows("x <b x='['> [y](u)", 40, { hyperlinks: false })[0]).toBe("x  y (u)");
-    expect(rows("| a | b |\n| - | - |\n| 1 | 2 |\n<span>", 40)).toEqual(["", " a  b", " ────", " 1  2", "", "", ""]);
+    expect(rows("| a | b |\n| - | - |\n| 1 | 2 |\n<span>", 40)).toEqual(["", "", " a  b", " ────", " 1  2", "", "", ""]);
   });
 
   it("leaves text that is not HTML as it is: a `<` no tag follows, an unclosed construct, a code span", () => {
@@ -963,7 +1019,7 @@ describe("Markdown", () => {
     expect(segment("**&copy;**", "©").style?.bold).toBe(true);
     expect(links("[&copy; x](u)")).toEqual([["© x", "u"]]);
     expect(rows("# &copy; head", 80)[0]!.trim()).toBe("© head");
-    expect(rows("| a &amp; | b |\n|---|---|\n| &lt; | &#124; |", 80).slice(1, 4)).toEqual([" a &  b", " ──────", " <    |"]);
+    expect(rows("| a &amp; | b |\n|---|---|\n| &lt; | &#124; |", 80).slice(2, 5)).toEqual([" a &  b", " ──────", " <    |"]);
   });
 
   it("draws U+FFFD for a numeric reference to no character markdown-it accepts, and too many digits as written", () => {
@@ -1116,8 +1172,8 @@ describe("Markdown", () => {
   });
 
   it("takes no lazy line into a container that ends in an HTML block", () => {
-    expect(rows("> q\n> <div>\nlazy", 40)).toEqual(["▎ q", "lazy", ""]);
-    expect(rows("- item\n  <!-- c -->\nlazy", 40)).toEqual([" • item", "lazy", ""]);
+    expect(rows("> q\n> <div>\nlazy", 40)).toEqual(["", "▎ q", "", "lazy", ""]);
+    expect(rows("- item\n  <!-- c -->\nlazy", 40)).toEqual(["", " • item", "", "lazy", ""]);
   });
 
   // --- Nesting, as deep as markdown-it reads it ---
@@ -1161,16 +1217,15 @@ describe("Markdown", () => {
     expect(rows(source, 200)).toEqual(expected);
   });
 
-  // Only the drawn text is asserted: Rich draws a blank row for the quote that the port does not (rich-unfiled-791c.erhp).
   it("ends a quote at a blank marked line after an item it nests 20 levels deep, as Rich does", () => {
-    expect(rows("> " + "- ".repeat(10) + "x\n>\nb", 200)).toContain("b");
-    expect(rows("> > " + "- ".repeat(9) + "x\n> >\n> b\nc", 200)).toContain("▎ b c");
+    expect(rows("> " + "- ".repeat(10) + "x\n>\nb", 200)).toEqual(["", "", "b", ""]);
+    expect(rows("> > " + "- ".repeat(9) + "x\n> >\n> b\nc", 200)).toEqual(["", "▎ b c", ""]);
   });
 
   it("draws Markdown nested ten thousand levels deep, as Rich does", () => {
     const depth = 10_000;
-    expect(rows(">".repeat(depth) + " x", 80)).toEqual([""]);
-    expect(rows("- ".repeat(depth) + "x", 80)).toEqual([""]);
+    expect(rows(">".repeat(depth) + " x", 80)).toEqual(["", ""]);
+    expect(rows("- ".repeat(depth) + "x", 80)).toEqual(["", ""]);
     expect(rows("[".repeat(depth) + "x" + "](u)".repeat(depth), 50_000, { hyperlinks: false })).toEqual([
       "[".repeat(depth - 1) + "x (u)" + "](u)".repeat(depth - 1),
       "",
