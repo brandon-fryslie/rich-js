@@ -94,14 +94,26 @@ interface Line {
   readonly lazy: boolean;
 }
 
-const HEADING = /^(#{1,6})\s+(.+)$/;
+const HEADING = /^(#{1,6})[ \t]+(.+)$/;
 /** A thematic break: three or more of one of `*`, `-` or `_`, spaces and tabs between them allowed. */
 const RULE = /^(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/;
 const SETEXT = /^(=+|-+)[ \t]*$/;
 const FENCE = /^```(\w*)/;
 const QUOTE = /^>/;
 const ITEM_MARKER = /^(?:[*+-]|(\d{1,9})\.)/;
+/**
+ * A line's leading space and tab: CommonMark's whitespace, and the only
+ * whitespace markdown-it's block pass reads — what indents a line, what makes
+ * one blank. A no-break space or any other Unicode space is text to it.
+ */
 const LEAD = /^[ \t]*/;
+/**
+ * Every character Python's `str.isspace` accepts, which `str.strip` trims:
+ * what markdown-it-py — the markdown-it Rich runs — strips the content of a
+ * paragraph, a heading and a table cell of. Not JavaScript's `trim`, which
+ * also strips U+FEFF and keeps U+001C–U+001F and U+0085.
+ */
+const PYTHON_SPACE = /[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]/;
 const BLOCK_STARTS = [HEADING, FENCE, QUOTE, RULE];
 /** A line that may be a table's delimiter row, screened as markdown-it screens one: pipes, dashes, colons and space only, and not a dash then a space, which opens a list item. */
 const DELIMITER_ROW = /^(?!-[ \t])[-:|][-:| \t]+$/;
@@ -183,7 +195,16 @@ function body(line: Line): string {
 }
 
 function isBlank(line: Line): boolean {
-  return line.text.trim() === "";
+  return body(line) === "";
+}
+
+/** `text` stripped as Python's `str.strip` strips it, of `PYTHON_SPACE` at both ends. */
+function strip(text: string): string {
+  let from = 0;
+  let to = text.length;
+  while (from < to && PYTHON_SPACE.test(text[from]!)) from++;
+  while (to > from && PYTHON_SPACE.test(text[to - 1]!)) to--;
+  return text.slice(from, to);
 }
 
 /** Whether `line` sits less than a code indent into its container and its text matches `re`. */
@@ -252,12 +273,12 @@ function tableLine(line: Line): boolean {
 /**
  * A table row's cells, as markdown-it splits one: at every `|` no backslash escapes,
  * a pipe at either end of the row closing it rather than opening an empty
- * cell, and each cell trimmed. An escaped `\|` is a `|` in its cell, inside a
+ * cell, and the row and each cell stripped. An escaped `\|` is a `|` in its cell, inside a
  * code span too.
  */
 function rowCells(row: string): string[] {
   const cells = [""];
-  for (const ch of row.trim()) {
+  for (const ch of strip(row)) {
     const last = cells.length - 1;
     if (ch !== "|") cells[last] += ch;
     else if (cells[last]!.endsWith("\\")) cells[last] = `${cells[last]!.slice(0, -1)}|`;
@@ -265,7 +286,7 @@ function rowCells(row: string): string[] {
   }
   const from = cells[0] === "" ? 1 : 0;
   const to = cells.length > from && cells[cells.length - 1] === "" ? -1 : undefined;
-  return cells.slice(from, to).map((cell) => cell.trim());
+  return cells.slice(from, to).map(strip);
 }
 
 /** The alignment of each column `line` declares, if it is a table's delimiter row: a run of dashes per column, a colon on the side its cells sit. */
@@ -383,10 +404,9 @@ function continuesLazily(inner: readonly Line[], level: number, line: Line, afte
  * escape or a code span decides it.
  */
 function continuation(lines: readonly Line[], start: number): { text: string; next: number } {
-  const parts = [lines[start]!.text];
   let i = start + 1;
-  for (; i < lines.length && !isBlank(lines[i]!) && !endsParagraph(lines[i]!) && !tableAt(lines, i); i++) parts.push(lines[i]!.text);
-  return { text: parts.map((part) => part.trimStart()).join("\n").trimEnd(), next: i };
+  for (; i < lines.length && !isBlank(lines[i]!) && !endsParagraph(lines[i]!) && !tableAt(lines, i); i++);
+  return { text: strip(lines.slice(start, i).map(body).join("\n")), next: i };
 }
 
 /**
@@ -481,12 +501,12 @@ function tokenize(lines: readonly Line[], level: number): MdToken<string>[] {
 
     // Table: before every other block, as markdown-it tries it, so a header
     // row that reads as a heading or a list item is still a header. Its body
-    // rows run to a blank line or a line that opens a block.
+    // rows run to a line `strip` empties or a line that opens a block.
     const columns = tableAt(lines, i);
     if (columns) {
       const rows: string[][] = [];
       let autocompleted = 0;
-      for (i += 2; i < lines.length && !isBlank(lines[i]!) && tableLine(lines[i]!) && !opensBlock(lines[i]!); i++) {
+      for (i += 2; i < lines.length && strip(lines[i]!.text) !== "" && tableLine(lines[i]!) && !opensBlock(lines[i]!); i++) {
         const cells = rowCells(body(lines[i]!));
         autocompleted += columns.length - cells.length;
         if (autocompleted > MAX_AUTOCOMPLETED_CELLS) break;
@@ -498,19 +518,19 @@ function tokenize(lines: readonly Line[], level: number): MdToken<string>[] {
 
     // Indented code: its lines, and the blank lines between them, with the indent cut off
     if (indentOf(line) >= CODE_INDENT) {
-      const code: string[] = [];
-      for (; i < lines.length && (isBlank(lines[i]!) || indentOf(lines[i]!) >= CODE_INDENT); i++) {
-        code.push(dropColumns(lines[i]!, CODE_INDENT));
+      let end = i + 1;
+      for (let j = end; j < lines.length && (isBlank(lines[j]!) || indentOf(lines[j]!) >= CODE_INDENT); j++) {
+        if (!isBlank(lines[j]!)) end = j + 1;
       }
-      for (; code[code.length - 1]!.trim() === ""; i--) code.pop();
-      tokens.push({ type: "code_block", code: code.join("\n") });
+      tokens.push({ type: "code_block", code: lines.slice(i, end).map((code) => dropColumns(code, CODE_INDENT)).join("\n") });
+      i = end;
       continue;
     }
 
     // Heading
     const headingMatch = HEADING.exec(body(line));
     if (headingMatch) {
-      tokens.push({ type: "heading", level: headingMatch[1]!.length, text: headingMatch[2]! });
+      tokens.push({ type: "heading", level: headingMatch[1]!.length, text: strip(headingMatch[2]!) });
       i++;
       continue;
     }

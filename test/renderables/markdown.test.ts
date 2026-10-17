@@ -107,6 +107,41 @@ describe("Markdown", () => {
     expect(rows("one two\nthree four\n  five", 80)).toEqual(["one two three four five", ""]);
   });
 
+  // Rich 15 (markdown-it-py 4.2) for every case below; a leading row Rich
+  // draws ahead of a list, quote or table is rich-unfiled-791c.mk71's.
+  it("keeps a no-break space at a line ending, where only spaces and tabs break softly", () => {
+    expect(rows("q $__\u00a0\nab", 80)).toEqual(["q $__\u00a0 ab", ""]);
+    expect(rows("a\n\u00a0b", 80)).toEqual(["a \u00a0b", ""]);
+    expect(rows("a\n\t b", 80)).toEqual(["a b", ""]);
+  });
+
+  it("reads a line of no-break spaces as text, not as a blank line", () => {
+    expect(rows("q\n\u00a0\n_*__", 80)).toEqual(["q \u00a0 *_", ""]);
+    expect(rows("> a\n\u00a0\nb", 80)).toEqual(["▎ a \u00a0 b", ""]);
+    expect(rows("- a\n\u00a0\n- b", 80)).toEqual([" • a", " • b", ""]);
+    // An HTML block runs to a blank line; Rich draws none of it.
+    expect(rows("<div>\n\u00a0\nx", 80)).toEqual([""]);
+    // The line ends the indented code, and the paragraph it opens takes the
+    // next indented line, which cannot interrupt it.
+    expect(rows("    code\n\u00a0\n    more", 80)).toEqual(["code", "more", ""]);
+  });
+
+  it("opens a heading or a list item only at a space or tab after its marker", () => {
+    expect(rows("#\u00a0x", 80)).toEqual(["#\u00a0x", ""]);
+    expect(rows("-\u00a0a", 80)).toEqual(["-\u00a0a", ""]);
+  });
+
+  it("strips a paragraph, a heading and a table cell as Python's str.strip does", () => {
+    expect(rows("\u00a0a\u00a0", 80)).toEqual(["a", ""]);
+    // `rows` trims as JavaScript does, which would take the U+FEFF Python keeps.
+    expect(collectText(new Markdown("\ufeffa\ufeff"), { maxWidth: 80 }).split("\n").map((row) => row.replace(/ +$/, ""))).toEqual([
+      "\ufeffa\ufeff",
+      "",
+    ]);
+    expect(rows("#  \u00a0x\u00a0", 80)).toEqual([`${" ".repeat(39)}x`, ""]);
+    expect(rows("| a |\n|---|\n\u00a0b\u00a0\n\u00a0\nz", 80)).toEqual(["", " a", " ─", " b", "", "z", ""]);
+  });
+
   it("keeps a list item's continuation lines in the item, hanging under its text", () => {
     const md = "- alpha beta gamma\n  delta epsilon\n- zeta";
     expect(rows(md, 18)).toEqual([" • alpha beta", "   gamma delta", "   epsilon", " • zeta", ""]);
