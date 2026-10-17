@@ -52,8 +52,9 @@ describe("cellLen", () => {
     expect(cellLen("a\u2028b")).toBe(2);
     expect(cellLen("a\u2029b")).toBe(2);
     expect(cellLen("\u2028\u2029")).toBe(0);
-    // Measured as a cluster of its own, so it neither joins nor splits its neighbours'.
-    expect(cellLen("\u1100\u2028\u1161")).toBe(cellLen("\u1100\u0000\u1161"));
+    // A cluster of its own that adds nothing: the jamo either side, one syllable
+    // without it, measure apart — as Rich's do, 2 + 0 there.
+    expect(cellLen("\u1100\u2028\u1161")).toBe(cellLen("\u1100") + cellLen("\u1161"));
     expect(cellLen("a\u2029\u0301")).toBe(1);
   });
 

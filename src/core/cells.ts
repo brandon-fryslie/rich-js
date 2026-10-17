@@ -6,7 +6,6 @@
 import stringWidth from "string-width";
 import { Memo } from "./memo.js";
 
-// [LAW:one-source-of-truth] string-width is the single authority for cell width
 const cellLenMemo = new Memo<number>();
 
 // U+2028 and U+2029, which string-width gives a cell each and Rich none. Each is
@@ -15,6 +14,8 @@ const cellLenMemo = new Memo<number>();
 // clusters string-width cuts the rest of the text into exactly as they were.
 const SEPARATORS = /[\u2028\u2029]/g;
 
+// [LAW:one-source-of-truth] the single authority for cell width: string-width,
+// but for the separators above
 function measure(text: string): number {
   return stringWidth(text.replace(SEPARATORS, "\0"));
 }
