@@ -284,6 +284,8 @@ describe("Markdown", () => {
     const started = performance.now();
     rows("[*a](".repeat(20_000), 80);
     // A destination scanned to the end of the text from every `](` took fourteen seconds here.
+    rows(`[a](b${" ".repeat(100_000)}x`, 80);
+    // A tail splitting the space after a destination every way it could took six seconds here.
     expect(performance.now() - started).toBeLessThan(1000);
   });
 
@@ -462,8 +464,16 @@ describe("Markdown", () => {
     ["[a](b (t\\(u))", "a (b)"],
     ["[a](b (t(u)))", "[a](b (t(u)))"],
     ['[a](b "t"\u00a0)', '[a](b "t"\u00a0)'],
+    // A lone carriage return is a line ending, so it is space between a destination and its title.
+    ['[a](b\r"t")', "a (b)"],
+    ["[a](b\r)", "a (b)"],
   ])("reads the link in %j as Rich does", (source, expected) => {
     expect(rows(source, 80, { hyperlinks: false })[0]).toBe(expected);
+  });
+
+  it("ends a line at a lone carriage return, as Rich does", () => {
+    expect(rows("a\r\rb", 80)).toEqual(["a", "", "b", ""]);
+    expect(rows("- x\r- y", 80)).toEqual([" • x", " • y", ""]);
   });
 
   it("reads no link where an ASCII control character sits in or after its destination, as Rich does", () => {
