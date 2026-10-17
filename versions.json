@@ -4,15 +4,22 @@
     {
       "version": "pr-416",
       "ref": "refs/pull/416/merge",
-      "sha": "32bc4a1c4ba5c2956ea4f5acd073e080a5a8f40b",
-      "timestamp": "2026-10-17T02:06:48.528Z",
+      "sha": "b36bef8ac14011c915299e2aa46566c4d81750fa",
+      "timestamp": "2026-10-17T02:11:27.349Z",
       "commits": [
         {
-          "sha": "32bc4a1c4ba5c2956ea4f5acd073e080a5a8f40b",
+          "sha": "b36bef8ac14011c915299e2aa46566c4d81750fa",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T02:05:06Z",
-          "message": "Merge 7ef478d18b8469b8875ad3a1142b5bca43fde0b5 into 16207a80e721a726df2bf517e2bd4e8648c9a3fe\n"
+          "timestamp": "2026-10-17T02:10:15Z",
+          "message": "Merge 5e9c78209cac60466a847dfefb5c274c3f2375c5 into 16207a80e721a726df2bf517e2bd4e8648c9a3fe\n"
+        },
+        {
+          "sha": "5e9c78209cac60466a847dfefb5c274c3f2375c5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:10:08-06:00",
+          "message": "The stepped-ink cost test samples the step's first frame as it samples the rest\n\nCI failed its one-sample assertion by 0.7%: a lone first-frame timing against a median of 59. Nine fresh signals' first frames are taken and their median compared, so one sample's jitter decides nothing. The contract asserted is unchanged.\n"
         },
         {
           "sha": "7ef478d18b8469b8875ad3a1142b5bca43fde0b5",
