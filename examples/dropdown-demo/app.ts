@@ -169,9 +169,19 @@ export function runDemo(host: TerminalHost): Promise<void> {
         if (i > 0) out.push(new Segment("  |  ", dimStyle));
         out.push(...statusFragment(dd));
       }
-      out.push(new Segment("  |  ", dimStyle), new Segment("pointer: ", labelStyle), new Segment(underPointer.get()));
       return out;
     },
+  });
+
+  // Its own row: beside the three dropdowns it takes the status past the
+  // card's hundred columns, which cuts the readout off.
+  const pointerItem = new StaticItem({
+    id: "static-pointer",
+    render: (_options) => [
+      new Segment("▸ ", sectionStyle),
+      new Segment("pointer: ", labelStyle),
+      new Segment(underPointer.get()),
+    ],
   });
 
   const cheatSheetItem = new StaticItem({
@@ -200,7 +210,7 @@ export function runDemo(host: TerminalHost): Promise<void> {
     ),
   });
 
-  // The body flows down from the top; the status rows hold the bottom two
+  // The body flows down from the top; the status rows hold the bottom three
   // rows of the screen, whatever its height.
   const body = new Group(
     headerItem,
@@ -224,7 +234,7 @@ export function runDemo(host: TerminalHost): Promise<void> {
     overlayItem,
   );
   const view = new Layout();
-  view.splitColumn(new Layout(body), new Layout(new Group(statusItem, cheatSheetItem), { size: 2 }));
+  view.splitColumn(new Layout(body), new Layout(new Group(statusItem, pointerItem, cheatSheetItem), { size: 3 }));
 
   const app = new WidgetApp({ host, surface: "alternate", view: () => view });
   app.onMouse(
