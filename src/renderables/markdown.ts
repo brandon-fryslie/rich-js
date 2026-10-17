@@ -6,8 +6,9 @@
  * item are both containers, their lines tokenized as Markdown of their own
  * once the container's marker or indentation is cut off, and drawn beside a
  * gutter — the quote's bar, the item's marker then its hang. A table, which
- * CommonMark has none of, is read as markdown-it — Rich's parser — reads one.
- * Where CommonMark leaves the drawing open, Rich's is followed.
+ * CommonMark has none of, and an HTML block are read as markdown-it — Rich's
+ * parser — reads them. Where CommonMark leaves the drawing open, Rich's is
+ * followed: an HTML block is drawn as Rich draws it, not at all.
  */
 
 import { cellLen, expandTabs, parseTabSize } from "../core/cells.js";
@@ -69,6 +70,8 @@ type MdToken =
   | { type: "blockquote"; children: MdToken[] }
   /** Each row holds one cell per column: a short row filled out with empty cells, a long one cut. */
   | { type: "table"; columns: readonly TableColumn[]; rows: readonly (readonly string[])[] }
+  /** Kept, though nothing draws it, so a container ending in one does not end in the paragraph before it. */
+  | { type: "html_block" }
   | { type: "blank" };
 
 /**
@@ -110,6 +113,39 @@ const CODE_INDENT = 4;
 /** The tab stop code is drawn with, as Rich's `Syntax` draws it. */
 const CODE_TAB_SIZE = parseTabSize(8);
 const BLANK_LINE: Line = { text: "", margin: 0, lazy: false };
+
+/**
+ * One of CommonMark's seven kinds of HTML block (4.6), as markdown-it matches
+ * it: the line that opens one, the line that closes it — kept in the block
+ * unless it is the blank line two of the kinds end at — and whether it may
+ * interrupt a paragraph, which the seventh, a lone tag of any name, may not.
+ */
+interface HtmlBlockKind {
+  readonly start: RegExp;
+  readonly end: RegExp;
+  readonly interrupts: boolean;
+}
+
+/** The block-level element names an HTML block of the sixth kind opens with, as CommonMark 0.31.2 lists them. */
+const HTML_BLOCK_NAMES =
+  "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|" +
+  "fieldset|figcaption|figure|footer|form|frame|frameset|h1|h2|h3|h4|h5|h6|head|header|hr|html|iframe|legend|li|link|" +
+  "main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|" +
+  "title|tr|track|ul";
+const HTML_ATTRIBUTE = String.raw`(?:\s+[a-zA-Z_:][a-zA-Z0-9:._-]*(?:\s*=\s*(?:[^"'=<>\`\x00-\x20]+|'[^']*'|"[^"]*"))?)`;
+const HTML_BLOCKS: readonly HtmlBlockKind[] = [
+  { start: /^<(?:script|pre|style|textarea)(?=\s|>|$)/i, end: /<\/(?:script|pre|style|textarea)>/i, interrupts: true },
+  { start: /^<!--/, end: /-->/, interrupts: true },
+  { start: /^<\?/, end: /\?>/, interrupts: true },
+  { start: /^<![A-Z]/, end: />/, interrupts: true },
+  { start: /^<!\[CDATA\[/, end: /\]\]>/, interrupts: true },
+  { start: new RegExp(String.raw`^<\/?(?:${HTML_BLOCK_NAMES})(?=\s|\/?>|$)`, "i"), end: /^$/, interrupts: true },
+  {
+    start: new RegExp(String.raw`^(?:<[A-Za-z][A-Za-z0-9-]*${HTML_ATTRIBUTE}*\s*\/?>|<\/[A-Za-z][A-Za-z0-9-]*\s*>)\s*$`),
+    end: /^$/,
+    interrupts: false,
+  },
+];
 
 /** The column `ws` ends at when it starts at column `from`, a tab reaching the next stop of 4 as CommonMark counts it. */
 function advance(from: number, ws: string): number {
@@ -257,13 +293,19 @@ function quoted(line: Line): Line {
   return { text: `${line.text.slice(0, at)} ${line.text.slice(at + 1)}`, margin: leadEnd(line) + 1 + (spaced ? 1 : 0), lazy: false };
 }
 
+/** The kind of HTML block `line` opens, if it opens one: the first kind whose opening it matches, as markdown-it tries them in order. */
+function htmlBlockAt(line: Line): HtmlBlockKind | undefined {
+  return HTML_BLOCKS.find((kind) => startsWith(line, kind.start));
+}
+
 /**
- * Whether `line` opens a block of its own — a heading, a fence, a quote, a
- * rule or a list item. A line that does not is text, and under an open
+ * Whether `line` opens a block of its own that may cut short the block before
+ * it — a heading, a fence, a quote, a rule, a list item or an HTML block of
+ * any kind but a lone tag. A line that does not is text, and under an open
  * paragraph it continues that paragraph.
  */
 function opensBlock(line: Line): boolean {
-  return BLOCK_STARTS.some((re) => startsWith(line, re)) || itemStart(line) !== undefined;
+  return BLOCK_STARTS.some((re) => startsWith(line, re)) || itemStart(line) !== undefined || htmlBlockAt(line)?.interrupts === true;
 }
 
 /**
@@ -483,6 +525,16 @@ function tokenize(lines: readonly Line[]): MdToken[] {
       const { tokens: items, next } = list(item, lines, i);
       tokens.push(...items);
       i = next;
+      continue;
+    }
+
+    // HTML block: to the line that closes its kind, or to the end of its
+    // container when none does; a closing blank line is left to what follows
+    const html = htmlBlockAt(line);
+    if (html) {
+      while (i < lines.length && !html.end.test(body(lines[i]!))) i++;
+      if (i < lines.length && !isBlank(lines[i]!)) i++;
+      tokens.push({ type: "html_block" });
       continue;
     }
 
@@ -781,6 +833,10 @@ function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, setti
         yield* table.render(options);
         break;
       }
+
+      case "html_block":
+        // Rich draws nothing for one.
+        break;
 
       case "blank":
         yield Segment.line();
