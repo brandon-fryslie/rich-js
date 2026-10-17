@@ -58,7 +58,9 @@ that is no character — `&#0;`, a surrogate, a control, past U+10FFFF — where
 eight digits of either base and leaves that code as written.
 
 An image is drawn as Rich draws it: a picture glyph, then its alt text as written, never parsed
-as Markdown, linked to the image.
+as Markdown, linked to the link it sits in or else to the image. It is drawn ahead of the block
+it sits in, not where it sits — ahead of the whole list, quote or table that holds it — and the
+block carries on along the image's row, so `a ![logo](a.png) b` draws as `🌆 logo a  b`.
 An autolink — `<https://example.com>`, or `<name@example.com>`, which links to
 `mailto:name@example.com` — is drawn as a link whose text is the address as written, its escapes
 decoded for reading. Every link's URL is made an href as markdown-it makes one: the host punycoded

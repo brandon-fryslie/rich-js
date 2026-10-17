@@ -345,6 +345,54 @@ describe("Markdown", () => {
     expect(rows("![](img/a.png)", 80)).toEqual(["🌆 a.png", ""]);
   });
 
+  // Each case below is Rich 14's own output for its source, at width 40: every
+  // image in a block drawn ahead of the block, where Rich's render loop meets it.
+  it.each([
+    ["a ![i](p.png) b", ["🌆 i a  b", ""]],
+    ["a ![i](p.png) b ![j](q.png) c", ["🌆 i 🌆 j a  b  c", ""]],
+    ["p1\n\np2 ![i](p.png) q", ["p1", "", "🌆 i p2  q", ""]],
+    ["# h ![i](p.png) t", ["🌆 i                   h  t", ""]],
+    ["[x ![img](a.png) y](http://out) c", ["🌆 img x  y c", ""]],
+    // A table's cells are elements of their own, so each image after the
+    // first, and the table itself, starts a row.
+    ["| h ![i](p.png) |\n|---|\n| c ![j](q.png) |", ["🌆 i", "🌆 j", "", " h", " ──", " c", "", ""]],
+  ])("draws the images in %j ahead of their block, as Rich does", (source, expected) => {
+    expect(rows(source, 40)).toEqual(expected);
+  });
+
+  it("owes no newline after a rule, as Rich's render loop does not", () => {
+    // Rich 14: ["🌆 i ▌ x", "▌ ---…", "▌", ""]. Only the first row is pinned: the
+    // quote's bar, and the rows of the rule, are the port's own.
+    expect(rows("> x ![i](p.png)\n>\n> ***", 40)[0]).toBe("🌆 i ▎ x");
+  });
+
+  it("draws an image in a list ahead of the whole list, as Rich does", () => {
+    // Rich 14: ["text", "", "🌆 i", " • a", " • b", "", "after", ""] — its list
+    // markers are rich-unfiled-791c.s3d1's.
+    expect(rows("text\n\n- a\n- b ![i](p.png)\n\nafter", 40)).toEqual(["text", "", "🌆 i", "  • a", "  • b", "", "after", ""]);
+  });
+
+  it("links an image inside a link to the link, as Rich does", () => {
+    expect(rows("[![img](a.png)](http://out) c", 80)).toEqual(["🌆 img  c", ""]);
+    expect(links("[![img](a.png)](http://out) c")).toEqual([["img", "http://out"]]);
+    expect(links("[x ![img](a.png) y](http://out) c")).toEqual([["img", "http://out"], ["x  y", "http://out"]]);
+    // Without hyperlinks the image takes nothing from the link, and the link's text loses it.
+    expect(rows("[![img](a.png)](http://out) c", 80, { hyperlinks: false })).toEqual(["🌆 img  (http://out) c", ""]);
+    expect(links("[![img](a.png)](http://out) c", { hyperlinks: false })).toEqual([]);
+  });
+
+  it("draws an image's alt text in the styles it sits in, and its file name and glyph in none, as Rich does", () => {
+    const alt = segment("*a ![i](p.png) b*", "i").style;
+    expect(alt?.italic).toBe(true);
+    expect(alt?.link).toBe("p.png");
+    expect(segment("*a ![i](p.png) b*", "🌆 ").style).toBeUndefined();
+    expect(segment("**[![i](p.png)](http://o)**", "i").style).toEqual(
+      Style.parse("bold").add(DEFAULT_THEME.resolve("markdown.link_url")).add(new Style({ link: "http://o" })),
+    );
+    expect(segment("> x ![i](p.png)", "i").style?.italic).toBe(true);
+    expect(segment("*![](d/a.png)*", "a.png").style).toEqual(new Style({ link: "d/a.png" }));
+  });
+
   it("draws an image's alt text as written, never parsed as Markdown, as Rich does", () => {
     expect(rows("![**a** `c` <a@b.co> \\*b &amp; [y]](q)", 80)[0]).toBe("🌆 **a** `c` <a@b.co> \\*b &amp; [y]");
     expect(links("![<http://x>](y)")).toEqual([["<http://x>", "y"]]);
