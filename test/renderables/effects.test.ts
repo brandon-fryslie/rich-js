@@ -343,6 +343,36 @@ describe("the loops move", () => {
     expect(lit.size).toBe(40);
   });
 
+  /** An element `rows` deep and `columns` wide, drawn from row `top` and column `left`. */
+  const block = (rows: number, columns: number, top = 0, left = 0): EffectCell[] =>
+    Array.from({ length: rows * columns }, (_, i) => ({ row: top + Math.floor(i / columns), col: left + (i % columns), seed: 0, terminal: written, reverse: false, anchor: undefined }));
+
+  it.each([
+    ["a column", block(3, 28, 2, 50)],
+    ["a row", block(4, 27, 2, 50)],
+  ])("sparkle moves no light already on an element that gains %s", (_, grown) => {
+    // A status line that streams one more character, or wraps onto one more
+    // row, keeps every firefly it had where it was: 27 to 28 columns once
+    // turned three fireflies into four, one of them mid-flash.
+    const loop = sparkle(curve(22, 0.5), EFFECT_LIGHTS.firefly, 0);
+    const element = block(3, 27, 2, 50);
+    for (let t = 0; t < 200; t += 0.5) {
+      const [was, now] = [loop.field(t, listing(element)), loop.field(t, listing(grown))];
+      expect(element.map(now)).toEqual(element.map(was));
+    }
+  });
+
+  it("sparkle lights every row of a tall element", () => {
+    const loop = sparkle(curve(22, 0.5), EFFECT_LIGHTS.firefly, 0);
+    const element = block(10, 40);
+    const lit = new Set<number>();
+    for (let t = 0; t < 400; t += 0.5) {
+      const field = loop.field(t, listing(element));
+      for (const cell of element) if (field(cell) > 0) lit.add(cell.row);
+    }
+    expect(lit.size).toBe(10);
+  });
+
   it("shimmer draws a colour wherever the noise peaks", () => {
     // Perlin noise reaches 0.9997 under a caustic's ripple at row 15, column
     // 59, t 114.5, where a crest of 1 − hypot(noise, 0.12) went below zero and

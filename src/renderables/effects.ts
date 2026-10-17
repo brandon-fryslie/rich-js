@@ -509,9 +509,12 @@ export function shimmer(curve: Curve, width: number, glow: ColorRgba, z: number)
 
 /**
  * Sparkle, as fireflies. Swing: how far into the firefly's `light` a glow
- * goes at its brightest, 0–1. About one firefly to every `PER` columns of
- * the element, as wide and as deep as the cells a frame lists
- * (`Drawn.cells`), each keeping near a home of its own. A firefly flashes — kindles,
+ * goes at its brightest, 0–1. Fireflies keep to a lattice laid from the
+ * element's first column and top row as a frame lists its cells
+ * (`Drawn.cells`): one every `PER` columns along a row of the lattice, a row
+ * of the lattice every `ROWS` rows, each firefly near a home of its own.
+ * The lattice does not hang on how wide or deep the element is, so one that
+ * gains or loses a column or a row moves no firefly already over it. A firefly flashes — kindles,
  * drifts a few cells glowing, slowing as it fades — then flies on in the
  * dark and flashes again somewhere a few cells off, the way fireflies at
  * dusk are seen: a short lit stroke, then gone, each time a little
@@ -524,70 +527,77 @@ export function shimmer(curve: Curve, width: number, glow: ColorRgba, z: number)
  */
 export function sparkle(curve: Curve, glow: ColorRgba, z: number): Loop {
   requireCurve(curve);
-  // The fewest fireflies an element has, and the columns a firefly has to
-  // itself on one wide enough to have more.
-  const FEWEST = 3;
+  // The columns a firefly has to itself along a row of the lattice, and the
+  // rows between two rows of it: more than a halo's reach, so a one-row
+  // element is lit by one row of fireflies.
   const PER = 8;
+  const ROWS = 3;
   const HALO = 5;
   // How far from home a flash may begin, and how far the brightest drifts while lit.
   const HOP = 5;
   const GLIDE = 5;
   const TURN = curve.seconds;
-  // Firefly `i`, its home in strides from the element's first column: `PER`
-  // columns, or a third of an element too narrow for `FEWEST` of those. On a
-  // wide element a column more adds a firefly at most and moves none already
-  // there; on a narrow one it slides each home a fraction of a column.
-  const firefly = (i: number) => ({
-    home: i + 0.5 + 0.7 * noise(i * 1.7 + 0.2, 0.3, 0.5 + z),
-    z: i * 4.9 + 0.3 + z,
+  // How far from its slot's middle a firefly's light can reach a cell: its
+  // home's jitter, a hop, a glide, its wander, and its halo; across rows,
+  // its wander and its halo, which counts a row as two columns.
+  const REACH = 0.7 * PER + HOP + GLIDE + 1.5 + HALO;
+  const REACH_ROWS = 0.6 + HALO / 2;
+  // The firefly of slot `i` along lattice row `k` at `t`, from the element's
+  // first column and top row: where it is, and how bright. Flash `n` is one
+  // event: whether it comes, how bright, when in its turn and where are its
+  // own. Between flashes the firefly is dark, so where it moves to is never
+  // seen moving.
+  const firefly = (i: number, k: number, t: number, left: number, top: number): { x: number; y: number; glow: number } => {
+    const id = i * 4.9 + k * 31.7 + 0.3 + z;
+    const home = i + 0.5 + 0.7 * noise(i * 1.7 + 0.2, 0.3 + k * 2.9, 0.5 + z);
     // Out of step with every other firefly from the first moment.
-    offset: hash(i, 0.7 + z) * TURN,
-  });
-  // Where every firefly of an element `columns` wide is at `t`, and how
-  // bright, from its first column and its middle row.
-  const fliesAt = (t: number, columns: number, left: number, middle: number): { x: number; y: number; glow: number }[] => {
-    const stride = Math.min(PER, columns / FEWEST);
-    return Array.from({ length: Math.max(FEWEST, Math.round(columns / PER)) }, (_, i) => {
-      const fly = firefly(i);
-      // Flash `n` is one event: whether it comes, how bright, when in
-      // its turn and where are its own. Between flashes the firefly
-      // is dark, so where it moves to is never seen moving.
-      const u = t + fly.offset;
-      const n = Math.floor(u / TURN);
-      // A dark turn is a flash with no light: it keeps its length, so
-      // every flash is timed alike.
-      const lit = hash(n, fly.z + 1) < 0.15 ? 0 : 1;
-      const k = 0.5 + 0.5 * hash(n, fly.z + 2);
-      const at = hash(n, fly.z + 3) * (1 - lasts(FLASH, k));
-      const s = u / TURN - n - at;
-      // While it glows it drifts a few cells one way or the other, as
-      // fast as it is bright: quickest at its height, slowing as it
-      // fades — the lit stroke a firefly draws on the dusk. A brighter
-      // flash lasts longer and draws a longer stroke at the same pace.
-      return {
-        x:
-          left +
-          fly.home * stride +
-          HOP * (2 * hash(n, fly.z + 4) - 1) +
-          GLIDE * k * (2 * hash(n, fly.z + 5) - 1) * given(FLASH, s, k) +
-          1.5 * noise(fly.z, 0.1, t * 0.035),
-        y: middle + 0.6 * noise(fly.z, 2.2, t * 0.035),
-        glow: lit * swell(FLASH, s, k),
-      };
-    });
+    const u = t + hash(i + k * 1013, 0.7 + z) * TURN;
+    const n = Math.floor(u / TURN);
+    // A dark turn is a flash with no light: it keeps its length, so
+    // every flash is timed alike.
+    const lit = hash(n, id + 1) < 0.15 ? 0 : 1;
+    const strength = 0.5 + 0.5 * hash(n, id + 2);
+    const at = hash(n, id + 3) * (1 - lasts(FLASH, strength));
+    const s = u / TURN - n - at;
+    // While it glows it drifts a few cells one way or the other, as
+    // fast as it is bright: quickest at its height, slowing as it
+    // fades — the lit stroke a firefly draws on the dusk. A brighter
+    // flash lasts longer and draws a longer stroke at the same pace.
+    return {
+      x:
+        left +
+        home * PER +
+        HOP * (2 * hash(n, id + 4) - 1) +
+        GLIDE * strength * (2 * hash(n, id + 5) - 1) * given(FLASH, s, strength) +
+        1.5 * noise(id, 0.1, t * 0.035),
+      y: top + k * ROWS + 0.6 * noise(id, 2.2, t * 0.035),
+      glow: lit * swell(FLASH, s, strength),
+    };
   };
   const field: Field = (t, drawn) => {
     // [LAW:one-source-of-truth] The element is where its frame lists cells,
     // never a width its caller states: a padded, wrapped or confined element
-    // has its fireflies over it.
+    // has its fireflies over it. Its extent only bounds which slots are
+    // worked out; where each firefly is never depends on it.
     const cells = drawn.cells();
     const [left, right] = extent(cells.map((cell) => cell.col));
     const [top, bottom] = extent(cells.map((cell) => cell.row));
-    const flies = fliesAt(t, right - left + 1, left, (top + bottom) / 2);
+    const slot = (col: number): number => (col - left) / PER - 0.5;
+    const band = (row: number): number => (row - top) / ROWS;
+    const [i0, i1] = [Math.ceil(slot(left - REACH)), Math.floor(slot(right + REACH))];
+    const [k0, k1] = [Math.ceil(band(top - REACH_ROWS)), Math.floor(band(bottom + REACH_ROWS))];
+    const flies = Array.from({ length: k1 - k0 + 1 }, (_, k) => Array.from({ length: i1 - i0 + 1 }, (_, i) => firefly(i0 + i, k0 + k, t, left, top)));
     return (cell) => {
-      // Where two halos overlap the brighter wins, so light never doubles up.
+      // A cell is asked only of the fireflies whose light can reach it, and
+      // where two halos overlap the brighter wins, so light never doubles up.
       let shine = 0;
-      for (const fly of flies) shine = Math.max(shine, fly.glow * bump(Math.hypot(cell.col - fly.x, 2 * (cell.row - fly.y)) / HALO));
+      const [ia, ib] = [Math.max(i0, Math.ceil(slot(cell.col - REACH))), Math.min(i1, Math.floor(slot(cell.col + REACH)))];
+      const [ka, kb] = [Math.max(k0, Math.ceil(band(cell.row - REACH_ROWS))), Math.min(k1, Math.floor(band(cell.row + REACH_ROWS)))];
+      for (let k = ka; k <= kb; k++)
+        for (let i = ia; i <= ib; i++) {
+          const fly = flies[k - k0]![i - i0]!;
+          shine = Math.max(shine, fly.glow * bump(Math.hypot(cell.col - fly.x, 2 * (cell.row - fly.y)) / HALO));
+        }
       return curve.swing * curve.ease(shine);
     };
   };
@@ -716,7 +726,13 @@ function ownChange(curve: Curve, place: (cell: Placed) => number): (cells: reado
 
 /** The least and greatest of `values`; of none, a frame with no cell to place, both 0. */
 function extent(values: readonly number[]): readonly [number, number] {
-  return values.reduce<readonly [number, number]>(([lo, hi], v) => [Math.min(lo, v), Math.max(hi, v)], [values[0] ?? 0, values[0] ?? 0]);
+  let lo = values[0] ?? 0;
+  let hi = lo;
+  for (const v of values) {
+    lo = Math.min(lo, v);
+    hi = Math.max(hi, v);
+  }
+  return [lo, hi];
 }
 
 /**
