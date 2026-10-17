@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-430",
+      "ref": "refs/pull/430/merge",
+      "sha": "839810f8b3b2ff5f6946cf861aba47bd5da2fb6b",
+      "timestamp": "2026-10-17T06:13:54.293Z",
+      "commits": [
+        {
+          "sha": "839810f8b3b2ff5f6946cf861aba47bd5da2fb6b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T00:12:08-06:00",
+          "message": "Merge 26ea8db57f1d2cb2c78c2330eed534d24ac188ff into fb1cfcf8753344cab2d664b8d924f459c135e366\n"
+        },
+        {
+          "sha": "26ea8db57f1d2cb2c78c2330eed534d24ac188ff",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T00:12:02-06:00",
+          "message": "Markdown draws an image ahead of its block, linked to an enclosing link, as Rich does (rich-unfiled-791c.vke3)\n\nRich's render loop draws an image the moment it meets one, ahead of the\ntop-level block holding it, and links the alt text to the link it sits in.\nA list is now one token, so an image in any item is drawn ahead of the\nwhole list.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "fb1cfcf8753344cab2d664b8d924f459c135e366",
