@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-433",
-      "ref": "refs/pull/433/merge",
-      "sha": "e3ad49eb6b445500be80caa81dada13bc987da3f",
-      "timestamp": "2026-10-17T09:16:53.866Z",
-      "commits": [
-        {
-          "sha": "e3ad49eb6b445500be80caa81dada13bc987da3f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T09:15:09Z",
-          "message": "Merge 564da50cc204c3fb91dbcb767a89b6087c54fbca into 46b9cb0fcec7fc7ded042069681859e8bba40944\n"
-        },
-        {
-          "sha": "564da50cc204c3fb91dbcb767a89b6087c54fbca",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T03:15:05-06:00",
-          "message": "Tie balancePairs' openers bottom to Marker; say tilde fences are Rich's, not ours yet (rich-unfiled-791c.2xa8)\n"
-        },
-        {
-          "sha": "4fc9e3b497b711739c9d42ddc017b4fb634e1aa9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T03:01:53-06:00",
-          "message": "Markdown strikes ~~text~~ through, as Rich does (rich-unfiled-791c.2xa8)\n\nRich enables markdown-it's strikethrough rule. A ~ run is a third marker in\nthe one balancePairs pass: tildes taken two at a time with the rule of 3 off,\nan odd run's spare ~ moved past the run that closes as strikethrough's\npostProcess moves it. Emphasis now names the element markdown-it makes,\nem/strong/s, and draws in Rich's markdown.em, markdown.strong and markdown.s.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "46b9cb0fcec7fc7ded042069681859e8bba40944",
-      "timestamp": "2026-10-17T08:51:44.873Z",
+      "sha": "cc9b29be5cdb285c77ffb53030f9d4a5f63b1ea5",
+      "timestamp": "2026-10-17T09:36:42.699Z",
       "commits": [
         {
-          "sha": "46b9cb0fcec7fc7ded042069681859e8bba40944",
+          "sha": "cc9b29be5cdb285c77ffb53030f9d4a5f63b1ea5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T02:50:29-06:00",
-          "message": "Markdown nests no deeper than markdown-it's maxNesting, as Rich does (rich-unfiled-791c.gwww) (#432)\n\n* Markdown nests no deeper than markdown-it's maxNesting, as Rich does (rich-unfiled-791c.gwww)\n\nDeep nesting overflowed the stack: `>` and list markers recursed per\nlevel, link labels nested per `[`, and inline rendering recursed per\nemphasis level. Each now follows Rich:\n\n- Blocks stop at markdown-it's maxNesting (20; a quote one level, a list\n  and its item one each). Past it a container's content is an `unread`\n  token that draws nothing, and a list item that deep takes every line to\n  the end of its quote or document, as markdown-it's does.\n- Link labels are scanned as markdown-it's parseLinkLabel/skipToken scans\n  them, with its per-position cache and its level cap. A link whose label\n  holds a link is refused (rich-unfiled-791c.ii92), and a run of brackets\n  parses in linear time.\n- Inline rendering walks the inline tree with a stack and appends each run\n  of text in one combined style, as Rich's style stack does, so 10,000\n  levels of emphasis render in linear time. Adjacent text joins as\n  markdown-it's fragments_join joins it.\n\n* Markdown leaves an empty item at maxNesting unread, and keeps line endings their own tokens, as markdown-it does (rich-unfiled-791c.gwww)\n\nAn item with no text past the cap took every line after it: markdown-it\nskips blank lines before it checks the level, so empty content has nothing\nleft unread. Soft and hard breaks are now Inline variants, so the\nfragments_join merge no longer swallows them and segments match Rich's.\n\n* Markdown ends a quote at a blank marked line after an item nested past maxNesting, as markdown-it does (rich-unfiled-791c.gwww)\n\nA list whose item swallowed the rest of its container's lines answered\nendsInParagraph from the item's own trimmed lines, so a quote ending in a\nblank marked line took the next line lazily and never drew it. The list now\nleaves an unread token for the lines it took, open by their real last line.\n\n* Markdown's label scan crosses plain text in one step, and walk owns each container's frame (rich-unfiled-791c.gwww)\n\nLinkLabels.step stepped a character at a time, so a paragraph behind 19\nunclosed brackets cost 19 times its length: 9.7s for 2M characters, against\n20ms before. It now steps over a run of plain text whole, as markdown-it's\ntext rule does. walk takes an open per container and hands its frame back on\nleave, so the two consumers no longer keep stacks paired with it by hand and a\nnew container kind fails to compile until both draw it."
+          "timestamp": "2026-10-17T03:35:00-06:00",
+          "message": "Markdown strikes ~~text~~ through, as Rich does (rich-unfiled-791c.2xa8) (#433)\n\n* Markdown strikes ~~text~~ through, as Rich does (rich-unfiled-791c.2xa8)\n\nRich enables markdown-it's strikethrough rule. A ~ run is a third marker in\nthe one balancePairs pass: tildes taken two at a time with the rule of 3 off,\nan odd run's spare ~ moved past the run that closes as strikethrough's\npostProcess moves it. Emphasis now names the element markdown-it makes,\nem/strong/s, and draws in Rich's markdown.em, markdown.strong and markdown.s.\n\n* Tie balancePairs' openers bottom to Marker; say tilde fences are Rich's, not ours yet (rich-unfiled-791c.2xa8)"
         }
       ]
     }
