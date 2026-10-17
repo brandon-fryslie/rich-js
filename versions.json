@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-438",
-      "ref": "refs/pull/438/merge",
-      "sha": "8328cb864e626fb630005717d93bab1e9e43df6b",
-      "timestamp": "2026-10-17T11:54:57.038Z",
-      "commits": [
-        {
-          "sha": "8328cb864e626fb630005717d93bab1e9e43df6b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T11:53:18Z",
-          "message": "Merge 691792fc97c1dfa965eacf79cdb8eedd15b32318 into 52b080b99044a21665ee34e05265ca8b7bf11115\n"
-        },
-        {
-          "sha": "691792fc97c1dfa965eacf79cdb8eedd15b32318",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T05:53:13-06:00",
-          "message": "The quote-rule test quotes Rich's 36 dashes and names the tickets that own its divergences (rich-unfiled-791c.x0d0)\n"
-        },
-        {
-          "sha": "7aa1adf77e844b187efef5c93964a78bf3301d83",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T05:46:31-06:00",
-          "message": "Markdown draws a rule in -, as Rich's HorizontalRule does (rich-unfiled-791c.x0d0)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "52b080b99044a21665ee34e05265ca8b7bf11115",
-      "timestamp": "2026-10-17T11:44:50.676Z",
+      "sha": "fba9dcd11dd39b4f64f188a0b1a7bf8c1af4a160",
+      "timestamp": "2026-10-17T11:58:55.616Z",
       "commits": [
         {
-          "sha": "52b080b99044a21665ee34e05265ca8b7bf11115",
+          "sha": "fba9dcd11dd39b4f64f188a0b1a7bf8c1af4a160",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T05:43:07-06:00",
-          "message": "Markdown draws a blank row where Rich's new_line puts one (rich-unfiled-791c.mk71) (#437)\n\n* Markdown draws a blank row where Rich's new_line puts one, not one per blank source line (rich-unfiled-791c.mk71)\n\nRich reads no blank line of the source: every element it exits sets\nnew_line (a rule and an image clear it), and a blank row goes ahead of\nwhatever it draws next while it is set. The renderer now walks the\ndocument in Rich's order — images as met, top-level blocks as they exit —\nand that flag is the only source of blank rows. Blank tokens and list\nitem gaps draw nothing; a rule draws its own blank row after it.\n\nAlso matches Rich for an empty quote (rich-unfiled-791c.erhp): no row,\nand the row its exit puts ahead of the next block.\n\n* Markdown's renderer never sees the block pass's blank and unread marks\n\nThey decide only where a container ends; the inline pass now drops them, so\nevery token the renderer meets is an element Rich exits, and a top-level\nblock is drawn where its exit is with no per-token test. A list item is its\nblocks, without a wrapper.\n\n* Markdown pads an item's and a quote's rows to their width, as Rich's render_lines does\n\nA rule's blank row inside an item was left short of the width, where Rich's\nrender_lines pads every row of a container's content in its style.\n\n* Markdown's renderTokens keeps its own doc comment above it"
+          "timestamp": "2026-10-17T05:57:09-06:00",
+          "message": "Markdown draws a rule in -, as Rich's HorizontalRule does (rich-unfiled-791c.x0d0) (#438)\n\n* Markdown draws a rule in -, as Rich's HorizontalRule does (rich-unfiled-791c.x0d0)\n\n* The quote-rule test quotes Rich's 36 dashes and names the tickets that own its divergences (rich-unfiled-791c.x0d0)"
         }
       ]
     }
