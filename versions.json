@@ -4,15 +4,22 @@
     {
       "version": "pr-456",
       "ref": "refs/pull/456/merge",
-      "sha": "64cdbe566f580296694b24864842a9f5edad77f1",
-      "timestamp": "2026-10-17T20:04:43.004Z",
+      "sha": "ea95e59aab6bc542a9725a8a1d53a1a7c3a65c31",
+      "timestamp": "2026-10-17T20:15:04.887Z",
       "commits": [
         {
-          "sha": "64cdbe566f580296694b24864842a9f5edad77f1",
+          "sha": "ea95e59aab6bc542a9725a8a1d53a1a7c3a65c31",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T14:03:18-06:00",
-          "message": "Merge cf4fb6421564b69947df8e4b369228b23da5c73e into cb1d60d1859bb48b0d9a30276394234c1265bcb0\n"
+          "timestamp": "2026-10-17T20:13:13Z",
+          "message": "Merge 9a5dc9b64514356a7f3074c7691d2bb92fe8f98d into cb1d60d1859bb48b0d9a30276394234c1265bcb0\n"
+        },
+        {
+          "sha": "9a5dc9b64514356a7f3074c7691d2bb92fe8f98d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T14:13:08-06:00",
+          "message": "TextInput's hit-test maps each glyph through one shown-as function instead of re-segmenting it, and a line break's ↵ is pinned (rich-unfiled-791c.k697)\n"
         },
         {
           "sha": "cf4fb6421564b69947df8e4b369228b23da5c73e",
