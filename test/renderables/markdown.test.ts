@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Markdown, type MarkdownOptions } from "../../src/renderables/markdown.js";
 import { linkHref } from "../../src/renderables/markdown-url.js";
 import { Segment } from "../../src/core/segment.js";
-import { DEFAULT_THEME, Style } from "../../src/core/style.js";
+import { DEFAULT_THEME, Style, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
@@ -73,8 +73,8 @@ describe("Markdown", () => {
     const text = collectText(md, { maxWidth: 80 });
     expect(text).toContain("First");
     expect(text).toContain("Second");
-    expect(text).toContain("1.");
-    expect(text).toContain("2.");
+    expect(text).toContain(" 1 First");
+    expect(text).toContain(" 2 Second");
   });
 
   it("renders links", () => {
@@ -109,24 +109,24 @@ describe("Markdown", () => {
 
   it("keeps a list item's continuation lines in the item, hanging under its text", () => {
     const md = "- alpha beta gamma\n  delta epsilon\n- zeta";
-    expect(rows(md, 18)).toEqual(["  • alpha beta", "    gamma delta", "    epsilon", "  • zeta", ""]);
+    expect(rows(md, 18)).toEqual([" • alpha beta", "   gamma delta", "   epsilon", " • zeta", ""]);
   });
 
   it("ends every list item on its own row", () => {
     expect(rows("- Item A\n- Item B\n1. First\n2. Second", 80)).toEqual([
-      "  • Item A",
-      "  • Item B",
-      "1. First",
-      "2. Second",
+      " • Item A",
+      " • Item B",
+      " 1 First",
+      " 2 Second",
       "",
     ]);
   });
 
   it("draws a nested list under its parent's text, however far the source indents it", () => {
     for (const md of ["- parent\n  - child", "- parent\n    - child"]) {
-      expect(rows(md, 80)).toEqual(["  • parent", "      • child", ""]);
+      expect(rows(md, 80)).toEqual([" • parent", "    • child", ""]);
     }
-    expect(rows("- parent\n  1. child", 80)).toEqual(["  • parent", "    1. child", ""]);
+    expect(rows("- parent\n  1. child", 80)).toEqual([" • parent", "    1 child", ""]);
   });
 
   it("draws a quote's bar down every row it wraps to, with its lines joined", () => {
@@ -138,7 +138,7 @@ describe("Markdown", () => {
     // tail is lost rather than wrapped.
     const out = rows("- first item\n  continues here\nand runs on\n\nafter the gap", 16);
     expect(out.every((row) => row.length <= 16)).toBe(true);
-    expect(out).toEqual(["  • first item", "    continues", "    here and", "    runs on", "", "after the gap", ""]);
+    expect(out).toEqual([" • first item", "   continues", "   here and runs", "   on", "", "after the gap", ""]);
   });
 
   it("leaves a wrapped line that starts with a number other than 1 in its paragraph", () => {
@@ -174,8 +174,8 @@ describe("Markdown", () => {
 
   it("draws the blocks inside a quote as blocks, beside its bar", () => {
     expect(rows("> - a\n> - b\n> soft\n>\n> para two", 80)).toEqual([
-      "▎   • a",
-      "▎   • b soft",
+      "▎  • a",
+      "▎  • b soft",
       "▎",
       "▎ para two",
       "",
@@ -190,33 +190,33 @@ describe("Markdown", () => {
     expect(rows("> quoted\n>\nNot quoted", 80)).toEqual(["▎ quoted", "▎", "Not quoted", ""]);
     expect(rows("> the total was\nthat year", 80)).toEqual(["▎ the total was that year", ""]);
     // Outside the quote no paragraph is open, so an item opens whatever it counts from.
-    expect(rows("> the total was\n2024. That year", 80)).toEqual(["▎ the total was", "2024. That year", ""]);
+    expect(rows("> the total was\n2024. That year", 80)).toEqual(["▎ the total was", " 2024 That year", ""]);
   });
 
   it("leaves a list item's wrapped line that starts with a number other than 1 in the item", () => {
-    expect(rows("- item\n  2024. That year", 80)).toEqual(["  • item 2024. That year", ""]);
+    expect(rows("- item\n  2024. That year", 80)).toEqual([" • item 2024. That year", ""]);
   });
 
   it("starts a sibling item at the marker's own column whatever it counts from", () => {
-    expect(rows("1. a\n2. b", 80)).toEqual(["1. a", "2. b", ""]);
+    expect(rows("1. a\n2. b", 80)).toEqual([" 1 a", " 2 b", ""]);
   });
 
-  it("draws an empty item's bullet and an empty quote's bar", () => {
-    expect(rows("1.  \n2. x\n\n>", 80)).toEqual(["1.", "2. x", "", "▎", ""]);
+  it("draws an empty quote's bar", () => {
+    expect(rows("1. x\n\n>", 80)).toEqual([" 1 x", "", "▎", ""]);
   });
 
   it("reads CRLF line endings as line endings", () => {
-    expect(rows("## Title\r\n- item\r\n- next", 80)).toEqual(["Title", "  • item", "  • next", ""]);
+    expect(rows("## Title\r\n- item\r\n- next", 80)).toEqual(["Title", " • item", " • next", ""]);
   });
 
   it("indents a tab-nested item by the columns the tab spans, never a raw tab", () => {
     const out = rows("- parent\n\t- child text", 20);
-    expect(out).toEqual(["  • parent", "      • child text", ""]);
+    expect(out).toEqual([" • parent", "    • child text", ""]);
   });
 
   it("counts a tab inside an item from the source's column 0, not the item's", () => {
-    expect(rows("- a\n\n  \tb", 20)).toEqual(["  • a", "", "    b", ""]);
-    expect(rows("- parent\n  \t- child", 20)).toEqual(["  • parent", "      • child", ""]);
+    expect(rows("- a\n\n  \tb", 20)).toEqual([" • a", "", "   b", ""]);
+    expect(rows("- parent\n  \t- child", 20)).toEqual([" • parent", "    • child", ""]);
   });
 
   it("reads a tab after a quote's marker as the space it may take, then indentation", () => {
@@ -225,30 +225,30 @@ describe("Markdown", () => {
   });
 
   it("draws a tab in code as spaces to the code's own stops, never a raw tab", () => {
-    expect(rows("- a\n\n  ```\n  \tx\n  ```", 20)).toEqual(["  • a", "", "            x", ""]);
+    expect(rows("- a\n\n  ```\n  \tx\n  ```", 20)).toEqual([" • a", "", "           x", ""]);
     expect(rows("    \tx", 20)).toEqual(["        x", ""]);
   });
 
   it("opens a fence or a quote indented up to three columns inside an item", () => {
-    expect(rows("- step\n\n    ```\n    npm i\n    ```", 20)).toEqual(["  • step", "", "    npm i", ""]);
-    expect(rows("- a\n   > q", 20)).toEqual(["  • a", "    ▎ q", ""]);
+    expect(rows("- step\n\n    ```\n    npm i\n    ```", 20)).toEqual([" • step", "", "   npm i", ""]);
+    expect(rows("- a\n   > q", 20)).toEqual([" • a", "   ▎ q", ""]);
   });
 
   it("continues a parent's text with a marker indented four columns past it, as CommonMark does", () => {
-    expect(rows("- parent\n      - child", 40)).toEqual(["  • parent - child", ""]);
+    expect(rows("- parent\n      - child", 40)).toEqual([" • parent - child", ""]);
   });
 
   it("reads a line of the list's own bullets as a thematic break, not an item", () => {
     const out = rows("* a\n* * *\n* b", 10);
-    expect(out[0]).toBe("  • a");
+    expect(out[0]).toBe(" • a");
     expect(out[1]).toMatch(/^─+$/);
-    expect(out[2]).toBe("  • b");
+    expect(out[2]).toBe(" • b");
     expect(rows("_ _ _", 5)[0]).toMatch(/^─+$/);
   });
 
   it("reads a lazy line of `=` as paragraph text, never as an underline, and a lazy indented marker as text", () => {
     expect(rows("> foo\n===", 20)).toEqual(["▎ foo ===", ""]);
-    expect(rows("- foo\n===", 20)).toEqual(["  • foo ===", ""]);
+    expect(rows("- foo\n===", 20)).toEqual([" • foo ===", ""]);
     expect(rows("> foo\n    - bar", 20)).toEqual(["▎ foo - bar", ""]);
   });
 
@@ -274,48 +274,69 @@ describe("Markdown", () => {
   });
 
   it("keeps an item's text when its gutter is as wide as the width", () => {
-    expect(rows("- hi", 3)).toEqual(["  • h", "    i", ""]);
+    expect(rows("- hi", 3)).toEqual([" • h", "   i", ""]);
   });
 
   // --- Lists hold blocks, as CommonMark reads them ---
 
   it("keeps a fence inside a list item, line for line under its hang", () => {
     expect(rows("- step:\n  ```sh\n  npm i\n  npm test\n  ```", 80)).toEqual([
-      "  • step:",
-      "    npm i",
-      "    npm test",
+      " • step:",
+      "   npm i",
+      "   npm test",
       "",
     ]);
   });
 
   it("draws a quote inside a list item under its hang", () => {
-    expect(rows("- item\n  > quoted", 80)).toEqual(["  • item", "    ▎ quoted", ""]);
+    expect(rows("- item\n  > quoted", 80)).toEqual([" • item", "   ▎ quoted", ""]);
   });
 
   it("makes a number short of the content column a sibling, numbered on from the first", () => {
-    expect(rows("1. a\n  5. b", 80)).toEqual(["1. a", "2. b", ""]);
-    expect(rows("1. a\n1. b\n1. c", 80)).toEqual(["1. a", "2. b", "3. c", ""]);
+    expect(rows("1. a\n  5. b", 80)).toEqual([" 1 a", " 2 b", ""]);
+    expect(rows("1. a\n1. b\n1. c", 80)).toEqual([" 1 a", " 2 b", " 3 c", ""]);
   });
 
-  it("right-aligns a list's numbers so every item hangs at one column", () => {
-    expect(rows("9. a\n10. b\n    more", 80)).toEqual([" 9. a", "10. b more", ""]);
+  it("right-aligns a list's numbers in a column sized for one past the last, as Rich does", () => {
+    // Rich 15: ["", "  9 a", " 10 b more", ""], and ten columns' worth for nine
+    // items from 1 — Rich sizes the column by `last_number`, one past the last.
+    expect(rows("9. a\n10. b\n    more", 80)).toEqual(["  9 a", " 10 b more", ""]);
+    expect(rows(Array.from({ length: 9 }, (_, n) => `${n + 1}. x`).join("\n"), 80)[0]).toBe("  1 x");
+    expect(rows("7. a\n8. b", 80)).toEqual([" 7 a", " 8 b", ""]);
+  });
+
+  it("draws a bullet and its hang in markdown.item.bullet, a number and its hang in markdown.item.number, and the item in markdown.item", () => {
+    const theme = new Theme({ "markdown.item.bullet": "red", "markdown.item.number": "green", "markdown.item": "italic" });
+    const segs = collectSegments(new Markdown("- a b\n\n1. c d"), { maxWidth: 5, theme });
+    const styleOf = (text: string) => segs.filter((s) => s.text === text).map((s) => s.style?.color?.name);
+    expect(styleOf(" • ")).toEqual(["red"]);
+    expect(styleOf(" 1 ")).toEqual(["green"]);
+    expect(styleOf("   ")).toEqual(["red", "green"]);
+    expect(segs.filter((s) => /[a-d]/.test(s.text)).every((s) => s.style?.italic)).toBe(true);
+    // Rich's defaults.
+    expect(DEFAULT_THEME.resolve("markdown.item.bullet")).toEqual(Style.parse("bold"));
+    expect(DEFAULT_THEME.resolve("markdown.item.number")).toEqual(Style.parse("cyan"));
   });
 
   it("reads a marker four columns in as indented code, not a list", () => {
     expect(rows("    - not a list", 80)).toEqual(["- not a list", ""]);
   });
 
-  it("reads an empty item as an item", () => {
-    expect(rows("- \n- x", 80)).toEqual(["  •", "  • x", ""]);
+  it("reads an empty item as an item, and draws nothing for it, as Rich does", () => {
+    // Rich 15: ["", " • x", ""] and ["", " 2 x", ""] — the leading row is
+    // rich-unfiled-791c.mk71's.
+    expect(rows("- \n- x", 80)).toEqual([" • x", ""]);
+    expect(rows("1.  \n2. x", 80)).toEqual([" 2 x", ""]);
+    expect(rows("- a\n-\n- b", 80)).toEqual([" • a", " • b", ""]);
   });
 
   it("keeps a loose item's later paragraphs in the item", () => {
-    expect(rows("- one\n\n  two\n\n- three", 80)).toEqual(["  • one", "", "    two", "", "  • three", ""]);
+    expect(rows("- one\n\n  two\n\n- three", 80)).toEqual([" • one", "", "   two", "", " • three", ""]);
   });
 
   it("ends a list item at an unindented line once no paragraph is open", () => {
-    expect(rows("- a\n\nafter", 80)).toEqual(["  • a", "", "after", ""]);
-    expect(rows("- ```\n  code\nafter", 80)).toEqual(["  • code", "after", ""]);
+    expect(rows("- a\n\nafter", 80)).toEqual([" • a", "", "after", ""]);
+    expect(rows("- ```\n  code\nafter", 80)).toEqual([" • code", "after", ""]);
   });
 
   // --- Inline links and images, as Rich draws them ---
@@ -369,9 +390,8 @@ describe("Markdown", () => {
   });
 
   it("draws an image in a list ahead of the whole list, as Rich does", () => {
-    // Rich 14: ["text", "", "🌆 i", " • a", " • b", "", "after", ""] — its list
-    // markers are rich-unfiled-791c.s3d1's.
-    expect(rows("text\n\n- a\n- b ![i](p.png)\n\nafter", 40)).toEqual(["text", "", "🌆 i", "  • a", "  • b", "", "after", ""]);
+    // Rich 14: ["text", "", "🌆 i", " • a", " • b", "", "after", ""].
+    expect(rows("text\n\n- a\n- b ![i](p.png)\n\nafter", 40)).toEqual(["text", "", "🌆 i", " • a", " • b", "", "after", ""]);
   });
 
   it("links an image inside a link to the link, as Rich does", () => {
@@ -598,7 +618,7 @@ describe("Markdown", () => {
       "",
       "        body",
       "",
-      "  •     item",
+      " •      item",
       "",
       "▎      quote",
       "",
@@ -701,12 +721,12 @@ describe("Markdown", () => {
 
   it("draws a table inside a list item, under its hang", () => {
     expect(rows("- x\n\n  | a | b |\n  |---|---|\n  | 1 | 2 |", 30)).toEqual([
-      "  • x",
+      " • x",
       "",
       "",
-      "     a  b",
-      "     ────",
-      "     1  2",
+      "    a  b",
+      "    ────",
+      "    1  2",
       "",
       "",
     ]);
@@ -916,7 +936,7 @@ describe("Markdown", () => {
 
   it("takes no lazy line into a container that ends in an HTML block", () => {
     expect(rows("> q\n> <div>\nlazy", 40)).toEqual(["▎ q", "lazy", ""]);
-    expect(rows("- item\n  <!-- c -->\nlazy", 40)).toEqual(["  • item", "lazy", ""]);
+    expect(rows("- item\n  <!-- c -->\nlazy", 40)).toEqual([" • item", "lazy", ""]);
   });
 
   // --- Measurement ---

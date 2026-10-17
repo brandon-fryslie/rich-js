@@ -40,8 +40,11 @@ Blocks are read as [CommonMark](https://spec.commonmark.org/) reads them. A list
 quote, holds blocks of its own — paragraphs, fenced code, quotes, nested lists — indented to
 the column its text starts at, and draws them under its hang. A nested list's marker sits at
 its parent's text column or up to three columns past it; four or more past it, and the marker
-is text — continuing the parent's paragraph, or indented code after a blank line. A numbered
-list counts on from its first number, right-aligned so every item hangs at one column. Tabs in
+is text — continuing the parent's paragraph, or indented code after a blank line. Markers are
+drawn as Rich draws them: a bullet in `markdown.item.bullet`, bold, and a number with no dot in
+`markdown.item.number`, cyan. A numbered list counts on from its first number, right-aligned in
+a column as wide as the number one past its last item, Rich's sizing, so every item hangs at
+one column; an empty item is counted and draws nothing. Tabs in
 the indentation reach the stops of 4 they reach in the source, however deep the line is nested.
 
 An HTML block — a line opening with `<div>`, `<!--`, `<pre>` or another of CommonMark's
