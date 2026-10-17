@@ -551,7 +551,9 @@ type InlineMatch =
   | { kind: "autolink"; source: string; url: string; end: number }
   | { kind: "image"; alt: string; src: string; end: number }
   | { kind: "text"; text: string; end: number }
-  | { kind: "html"; end: number };
+  | { kind: "html"; end: number }
+  /** A line ending, soft or hard by the spaces before it, which are the text before it. */
+  | { kind: "line_ending"; end: number };
 
 /**
  * A run of one emphasis marker, as markdown-it's `scanDelims` reads it: whether
@@ -586,8 +588,6 @@ const WHITESPACE = /^[\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]$/;
 /** markdown-it's `isPunctChar`, which takes in all of ASCII's punctuation: Unicode's punctuation and symbols. */
 const PUNCTUATION = /^[\p{P}\p{S}]$/u;
 
-/** A line ending and the spaces before it, as markdown-it's newline rule reads one: a hard break after two spaces or more, a soft one otherwise. */
-const LINE_ENDING = /( *)\n/y;
 const TICKS = /`+/y;
 /** markdown-it's autolink: `<`, then text holding no `<` up to the first `>`. */
 const AUTOLINK = /<([^<>]*)>/y;
@@ -905,11 +905,8 @@ function inlineAt(text: string, i: number, brackets: ReadonlyMap<number, number>
       return delimiterRun(text, i);
     case "&":
       return referenceAt(text, i);
-    case " ":
-    case "\n": {
-      const ending = matchAt(LINE_ENDING, text, i);
-      return ending ? { kind: "text", text: ending[1]!.length >= 2 ? "\n" : " ", end: i + ending[0].length } : undefined;
-    }
+    case "\n":
+      return { kind: "line_ending", end: i + 1 };
     case "\\": {
       // markdown-it's escape rule: a backslash before a line ending breaks it
       // hard, and one before anything else takes that character with it, the
@@ -963,8 +960,13 @@ function inlines(text: string, from: number, brackets: ReadonlyMap<number, numbe
       i++;
       continue;
     }
-    if (plain < i) pieces.push({ kind: "text", text: text.slice(plain, i) });
-    if (found.kind === "delimiters") {
+    // markdown-it's newline rule: the spaces ending the text before a line
+    // ending are dropped, and two or more of them make the break hard.
+    let kept = i;
+    if (found.kind === "line_ending") while (kept > plain && text[kept - 1] === " ") kept--;
+    if (plain < kept) pieces.push({ kind: "text", text: text.slice(plain, kept) });
+    if (found.kind === "line_ending") pieces.push({ kind: "text", text: i - kept >= 2 ? "\n" : " " });
+    else if (found.kind === "delimiters") {
       for (let k = 0; k < found.length; k++) {
         delimiters.push({ marker: found.marker, length: found.length, piece: pieces.length, open: found.canOpen, close: found.canClose, end: -1 });
         pieces.push({ kind: "text", text: found.marker });
@@ -989,7 +991,7 @@ function parseInline(text: string): Inline[] {
  * markdown-it's `posMax` does, so a run at the label's end borders the end of
  * the text, as `scanDelims` reads it, and not the `]`.
  */
-function matched(found: Exclude<InlineMatch, DelimiterRun>, text: string, brackets: ReadonlyMap<number, number>): Inline {
+function matched(found: Exclude<InlineMatch, DelimiterRun | { kind: "line_ending" }>, text: string, brackets: ReadonlyMap<number, number>): Inline {
   switch (found.kind) {
     case "link":
       return { kind: "link", children: inlines(text.slice(0, found.close), found.label, brackets), url: found.url };

@@ -266,6 +266,13 @@ describe("Markdown", () => {
     expect(performance.now() - started).toBeLessThan(1000);
   });
 
+  it("reads a long run of spaces in time linear in its length", () => {
+    const started = performance.now();
+    new Markdown(`a${" ".repeat(100_000)}b`);
+    // Scanning ahead from each space for a line ending took over four seconds here.
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
   it("keeps an item's text when its gutter is as wide as the width", () => {
     expect(rows("- hi", 3)).toEqual(["  • h", "    i", ""]);
   });
