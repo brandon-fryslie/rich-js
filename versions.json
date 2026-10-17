@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-420",
+      "ref": "refs/pull/420/merge",
+      "sha": "2cc2f1184ee0d0c129024f85bc35c19ee9e021a3",
+      "timestamp": "2026-10-17T02:02:09.751Z",
+      "commits": [
+        {
+          "sha": "2cc2f1184ee0d0c129024f85bc35c19ee9e021a3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:00:34-06:00",
+          "message": "Merge 4e5abd36cd86b94f3a24443507f19c3db57917d2 into 16207a80e721a726df2bf517e2bd4e8648c9a3fe\n"
+        },
+        {
+          "sha": "4e5abd36cd86b94f3a24443507f19c3db57917d2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:00:30-06:00",
+          "message": "claude-sessions names every system record it draws (rich-demos-k78j.0d5)\n\nA system record's rule was titled by its duration, which only turn_duration\nrecords carry, so every slash command and stop hook drew as an empty '⚫ —'.\nThe parser now reads what each record says: a turn and how long it took, a\ncommand's command line over its output, how many stop hooks ran over their\nerrors, and any other subtype by its name over its content.\n\nThe card's sessions are re-staged so they carry the fields that reading needs.\nThe re-run also brings in what the stager already keeps and the committed\nstaging predated: ten queued prompts, and the assistant records under them.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-419",
       "ref": "refs/pull/419/merge",
       "sha": "3c1235cf92a0efced1560431f4e73c89b089ecd4",
