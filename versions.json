@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-441",
+      "ref": "refs/pull/441/merge",
+      "sha": "04d6fafe6d4aa86972dd5a1fb140e04dcf16efb4",
+      "timestamp": "2026-10-17T13:29:40.846Z",
+      "commits": [
+        {
+          "sha": "04d6fafe6d4aa86972dd5a1fb140e04dcf16efb4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T07:28:04-06:00",
+          "message": "Merge f58d39b3c4f6fe09f8669c1232368ced635e1cdc into e10e9e8e09e2ca2535bfa727caa10a617c647fea\n"
+        },
+        {
+          "sha": "f58d39b3c4f6fe09f8669c1232368ced635e1cdc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T07:27:38-06:00",
+          "message": "Markdown reads link reference definitions and resolves reference links against them, as Rich does (rich-unfiled-791c.1dvo)\n\nA definition is a block-pass mark the inline pass collects, first label wins,\nand full, collapsed and shortcut links and images resolve against it, with the\nlink rule's fallback from a refused inline form. Containers now take lazy\nlines as markdown-it's do and end where their own block pass stops, replacing\nthe speculative open-paragraph check, so a definition can take a lazy title.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e10e9e8e09e2ca2535bfa727caa10a617c647fea",
