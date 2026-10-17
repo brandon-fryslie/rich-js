@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-457",
+      "ref": "refs/pull/457/merge",
+      "sha": "7d475cf1e8fde13392e378fcb9f2286ba30c80cb",
+      "timestamp": "2026-10-17T20:27:56.078Z",
+      "commits": [
+        {
+          "sha": "7d475cf1e8fde13392e378fcb9f2286ba30c80cb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T14:26:40-06:00",
+          "message": "Merge 58c7abb4ab1cd95dc4871b2c789f0d03be2ba041 into fa691f9ee1dfe5a503fb62db0b12bc6b9519ffe3\n"
+        },
+        {
+          "sha": "58c7abb4ab1cd95dc4871b2c789f0d03be2ba041",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T14:26:36-06:00",
+          "message": "Markdown pads an h2 and below to the width, as Rich's Heading does (rich-unfiled-791c.y0tl)\n\nRich 15's Heading.LEVEL_ALIGN gives every level a justify: h1 center, the\nrest left, so each row is padded to the width in the base style, not the\nheading's. The heading case passed undefined for every level but 1, so\nthose rows ended at their text. With every level explicit, the\noptions.justify override beside it was dead and is gone.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "fa691f9ee1dfe5a503fb62db0b12bc6b9519ffe3",
