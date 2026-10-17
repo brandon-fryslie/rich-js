@@ -47,7 +47,6 @@ import { Panel } from "../../src/renderables/panel.js";
 import { Progress } from "../../src/renderables/progress.js";
 import { ProgressBar } from "../../src/renderables/progressBar.js";
 import { Rule } from "../../src/renderables/rule.js";
-import { Spinner } from "../../src/renderables/spinner.js";
 import { Syntax } from "../../src/renderables/syntax.js";
 import { Table } from "../../src/renderables/table.js";
 import { Traceback } from "../../src/renderables/traceback.js";
@@ -137,7 +136,6 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
   RichText: { ends: "own-line", build: () => text("x") },
   Rule: { ends: "own-line", build: () => new Rule("t") },
   Slider: { ends: "own-line", build: () => new Slider() },
-  Spinner: { ends: "own-line", build: () => new Spinner("dots", "hi") },
   StaticItem: { ends: "own-line", build: () => new StaticItem({ id: "s", render: text("x") }) },
   Strip: { ends: "own-line", build: () => new Strip([text("a")], JOINERS.plain) },
   Syntax: { ends: "own-line", build: () => new Syntax("x = 1", "python") },

@@ -1,8 +1,39 @@
 /**
- * Spinner — animated terminal spinner with optional text label.
+ * Spinner — a named spinner, asked for its frame at a time, with an optional
+ * label after it.
+ *
+ * A spinner is `Frames` (`./frames.ts`) over one entry of the named spinner
+ * data (`core/spinnerData.ts`): each frame held for the spinner's interval,
+ * looping, the frame in progress at `t` drawn. The data names the frames and
+ * the interval; the beat, the width every frame draws at and which frame `t`
+ * lands on are the frames primitive's, so a spinner is one more sequence on
+ * it and not a second way of turning frames. Custom frames are `Frames`
+ * directly. [LAW:one-source-of-truth]
+ *
+ * It is built once and asked for each frame, as Rich's `Spinner` is built
+ * once and has `render(time)` called on it: the name is parsed and the
+ * styled frames are prepared where the spinner is given, and `at(t)` is what
+ * draws, so a `Status` or `SpinnerColumn` holding one pays for the name and
+ * the styling once, and a bad name fails at the call that gave it.
+ * [LAW:parse-dont-validate] What `Frames` makes of a sequence — its beat,
+ * its width, each frame padded to it — is made again each time `at(t)` is
+ * drawn or measured, since `Frames` takes its time at construction.
+ *
+ * [LAW:no-ambient-temporal-coupling] A Spinner draws nothing on its own:
+ * only `at(t)` is a renderable, so a spinner cannot be drawn without being
+ * handed its time, and nothing here reads a clock. Whoever draws frames
+ * hands each one its time (`core/clock.ts`) — `SpinnerColumn` the task's
+ * `time`, a `Live` the frame's time on its clock — as Rich's `Spinner.render`
+ * is handed `console.get_time()` or `task.get_time()`. `t` is the clock's
+ * time, as `App` and `Task.time` hand it, where Rich's spinner counts from
+ * its first draw: here nothing is kept between frames, so the same `t` draws
+ * the same bytes at one redraw a second or sixty, two spinners on one clock
+ * agree at every `t`, a `Progress` on a hand-moved clock turns its spinners
+ * on that clock, and a draw costs the same at `t = 0` and `t = 10⁶`. `speed` scales the time, as Rich's does:
+ * the frame at `t` is the frame the beat has at `t × speed`, so a negative
+ * speed runs the sequence backwards, through the beat's wrap before zero.
  */
 
-import { cellLen } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { RichText } from "../core/text.js";
@@ -15,15 +46,31 @@ import type {
 } from "../core/protocol.js";
 import { drawable } from "../core/protocol.js";
 import { EmbeddedText } from "./embed.js";
+import { Frames, type Frame } from "./frames.js";
 
-const spinnerGlyphs = ({ frames }: SpinnerData): string => frames.join("");
+/** A spinner's data with its frames prepared for `Frames`, each styled and held for the interval. */
+interface Sequence {
+  readonly data: SpinnerData;
+  readonly frames: readonly Frame[];
+}
+
+const sequence = (data: SpinnerData, style: string | Style): Sequence => ({
+  data,
+  frames: data.frames.map((frame) => ({
+    text: new RichText("", { end: "" }).append(frame, style),
+    seconds: data.interval / 1000,
+  })),
+});
+
+const sequenceGlyphs = ({ data }: Sequence): string => data.frames.join("");
 
 export interface SpinnerOptions {
+  /** Multiplies the spinner's rate; negative runs it backwards. Defaults to 1. */
   speed?: number;
   style?: string | Style;
 }
 
-export class Spinner implements Renderable, Measurable {
+export class Spinner {
   readonly name: string;
   readonly speed: number;
   readonly style: string | Style;
@@ -36,8 +83,10 @@ export class Spinner implements Renderable, Measurable {
    */
   text: string | RichText;
   private readonly _data: SpinnerData;
-  private _frameIndex: number;
-  private _lastUpdate: number;
+  // The named data's frames, and the `line` spinner's that stand in for them
+  // on an ASCII-only output: prepared once, which is drawn chosen at `at`.
+  private readonly _named: Sequence;
+  private readonly _ascii: Sequence;
 
   constructor(name?: string, text: string | RichText = "", options?: SpinnerOptions) {
     const spinnerName = name ?? DEFAULT_SPINNER;
@@ -45,81 +94,72 @@ export class Spinner implements Renderable, Measurable {
     if (!data) {
       throw new Error(`Unknown spinner: "${spinnerName}"`);
     }
+    const speed = options?.speed ?? 1;
+    if (!Number.isFinite(speed)) {
+      throw new RangeError(`Spinner speed must be finite, got ${speed}`);
+    }
     this.name = spinnerName;
     this.text = text;
-    this.speed = options?.speed ?? 1;
+    this.speed = speed;
     this.style = options?.style ?? NULL_STYLE;
     this._data = data;
-    this._frameIndex = 0;
-    this._lastUpdate = Date.now();
+    this._named = sequence(data, this.style);
+    this._ascii = sequence(LINE_SPINNER, this.style);
   }
 
   get frames(): readonly string[] {
     return this._data.frames;
   }
 
+  /** Milliseconds each frame is held, as the spinner data gives it. */
   get interval(): number {
     return this._data.interval;
   }
 
-  /** Advance the frame count by the time elapsed, and return it. */
-  private _advance(): number {
-    const now = Date.now();
-    // Whole frames passed at this speed; a negative speed steps backwards, as
-    // Rich's does, so the index wraps with a modulo that is never negative.
-    const steps = Math.trunc(((now - this._lastUpdate) * this.speed) / this.interval);
-    if (steps !== 0) {
-      const count = this._data.frames.length;
-      this._frameIndex = (((this._frameIndex + steps) % count) + count) % count;
-      this._lastUpdate = now;
-    }
-    return this._frameIndex;
-  }
-
-  /** The frames this output can draw: the `line` spinner stands in for any other on an ASCII-only one. */
-  private _drawnFrames(options: RenderOptions): readonly string[] {
-    return drawable(options, this._data, LINE_SPINNER, spinnerGlyphs).frames;
-  }
-
   /**
-   * The current frame and its label as one line wrapped to the width and
-   * ended, as the reference's `Text` is — printed, stacked in a `Group`, or
-   * laid out in a `Progress` cell alike.
+   * The frame in progress at `t` seconds and the label, as one renderable:
+   * the line wrapped to the width and ended, as the reference's `Text` is —
+   * printed, stacked in a `Group`, or laid out in a `Progress` cell alike.
+   * The frames this output can draw are chosen where the output is known.
    */
-  *render(options: RenderOptions): Iterable<Segment> {
-    yield* this._currentLine(options).render(options);
+  at(t: number): Renderable & Measurable {
+    if (!Number.isFinite(t)) {
+      throw new RangeError(`Spinner.at needs a finite t, got ${t}`);
+    }
+    const scaled = t * this.speed;
+    const frames = (options: RenderOptions): Frames =>
+      new Frames(drawable(options, this._named, this._ascii, sequenceGlyphs).frames, { t: scaled });
+    return {
+      render: (options) => this._render(frames(options), options),
+      // Measured at the frames' one width, the widest frame's, so a column
+      // holding it never narrows as it turns, and never offered less than
+      // that frame: a frame is one picture, which the reference's `Text`
+      // measure would let wrap apart at its spaces.
+      measure: (options) => {
+        const drawn = frames(options);
+        const { minimum, maximum } = this._line(drawn, options).measure(options);
+        return { minimum: Math.max(minimum, Math.min(drawn.width, maximum)), maximum };
+      },
+    };
+  }
+
+  private *_render(frames: Frames, options: RenderOptions): Iterable<Segment> {
+    yield* this._line(frames, options).render(options);
     yield Segment.line();
   }
 
-  private _currentLine(options: RenderOptions): RichText {
-    const frames = this._drawnFrames(options);
-    return this._line(frames[this._advance() % frames.length]!, options);
-  }
-
   /**
-   * `frame` and the label as one text, as Rich's `Text.assemble(frame, " ",
-   * text)`: a long label wraps as one line with its frame. A label that draws
-   * nothing — the default `""`, or markup that styles nothing — is no label,
-   * not a trailing space, as an empty `Text` is falsy there.
+   * The frame in progress and the label as one text, as Rich's
+   * `Text.assemble(frame, " ", text)`: a long label wraps as one line with its
+   * frame. A label that draws nothing — the default `""`, or markup that
+   * styles nothing — is no label, not a trailing space, as an empty `Text` is
+   * falsy there.
    */
-  private _line(frame: string, options: RenderOptions): RichText {
-    const line = new RichText("", { end: "" }).append(frame, this.style);
+  private _line(frames: Frames, options: RenderOptions): RichText {
+    const line = new RichText("", { end: "" }).append(frames.text());
     // Unhighlighted: Rich's label is a `Text` from the moment it is handed over, and a `Text` is never highlighted.
     const label = new EmbeddedText(this.text).text({ ...options, highlight: false });
     if (label.plain !== "") line.append(" ").append(label);
     return line;
-  }
-
-  /**
-   * Measured at its widest frame, so a column holding it never narrows as it
-   * turns, and never offered less than that frame: a frame is one picture,
-   * which the reference's `Text` measure would let wrap apart at its spaces.
-   */
-  measure(options: RenderOptions): { minimum: number; maximum: number } {
-    const frames = this._drawnFrames(options);
-    const widths = frames.map((frame) => cellLen(frame));
-    const frameWidth = Math.max(...widths);
-    const { minimum, maximum } = this._line(frames[widths.indexOf(frameWidth)]!, options).measure(options);
-    return { minimum: Math.max(minimum, Math.min(frameWidth, maximum)), maximum };
   }
 }

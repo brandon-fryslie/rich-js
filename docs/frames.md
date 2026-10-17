@@ -44,6 +44,19 @@ console.print(`sixty a second: ${[...new Set(sixtyASecond)].join(" ")}`);
 
 `Frames` does not adapt to the rate: the rate belongs to whoever draws the frames, and so does the fix, which is holds that the host's rate can show. The [easing and phase vocabulary](/easing) is where the timing comes from, and the beat is part of it.
 
+## Spinners
+
+A `Spinner` is `Frames` over one of the named spinners — `dots`, `line`, `bouncingBall` and the rest of the cli-spinners set — each frame held for the spinner's interval, with an optional label after it. It is built once and asked for its frame at a time: `spinner.at(t)` is the renderable, the frame in progress at the time it is handed, as Rich's `Spinner.render(time)` is, and a spinner reads no clock. `speed` scales the time: `2` turns it twice as fast, and a negative speed runs it backwards.
+
+```typescript
+import { Group, Spinner } from "@promptctl/rich-js";
+
+const spinner = new Spinner("dots", "working", { style: "cyan" });
+console.print(new Group(...[0, 0.1, 0.2, 0.3].map((t) => spinner.at(t))));
+```
+
+A `Progress` hands its `SpinnerColumn` each frame's time on the progress's clock, and a `Live` hands it to [a view](/live#a-view-drawn-for-a-time); a `Status` is that view over its message.
+
 ## Lit by an effect
 
 An effect wraps whatever is up: `Effected` around `Frames` lights the frame in progress and still changes no glyph.

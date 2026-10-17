@@ -32,6 +32,23 @@ import { FinalFramePainter, SurfacePainter, type FrameSource, type Painter, type
 import { fitHeight, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 
+/**
+ * What a Live draws: a renderable, or a view asked for one each frame with
+ * the frame's time in seconds on the Live's clock, as an `App`'s view is
+ * (`host/app.ts`). A renderable is the view that is the same at every `t` —
+ * a table mutated in place between frames — and a function is what a frame
+ * drawn for a time needs: `(t) => spinner.at(t)`.
+ * [LAW:no-ambient-temporal-coupling] The Live reads its clock once a frame
+ * and hands the time down as data, so nothing it draws reads one.
+ */
+export type LiveView = Renderable | ((t: number) => Renderable);
+
+// [LAW:parse-dont-validate] The one shape Live holds: a renderable becomes
+// the view that answers it at every t, where it is given, so no frame asks
+// which it was.
+const viewOf = (view: LiveView | undefined): ((t: number) => Renderable) | undefined =>
+  view === undefined || typeof view === "function" ? view : () => view;
+
 export interface LiveOptions {
   /** Frames a second while auto-refreshing: positive and finite, fractional included. */
   refreshPerSecond?: number;
@@ -48,7 +65,7 @@ export interface LiveOptions {
 }
 
 export class Live {
-  private _renderable: Renderable | undefined;
+  private _view: ((t: number) => Renderable) | undefined;
   private _console: Console;
   private readonly _rate: FrameRate;
   private readonly _clock: Clock;
@@ -62,8 +79,8 @@ export class Live {
   // flag to disagree with it.
   private _held: Unsubscribe | null;
 
-  constructor(renderable?: Renderable, options?: LiveOptions) {
-    this._renderable = renderable;
+  constructor(view?: LiveView, options?: LiveOptions) {
+    this._view = viewOf(view);
     this._console = options?.console ?? new Console();
     // [LAW:parse-dont-validate] Parsed whether or not it auto-refreshes, so a
     // rate that could never tick is refused where it is given.
@@ -88,10 +105,6 @@ export class Live {
    */
   get console(): Console {
     return this._console;
-  }
-
-  get renderable(): Renderable | undefined {
-    return this._renderable;
   }
 
   start(): void {
@@ -134,9 +147,9 @@ export class Live {
     }
   }
 
-  update(renderable?: Renderable, options?: { refresh?: boolean }): void {
-    if (renderable !== undefined) {
-      this._renderable = renderable;
+  update(view?: LiveView, options?: { refresh?: boolean }): void {
+    if (view !== undefined) {
+      this._view = viewOf(view);
     }
     if (options?.refresh) {
       this.refresh();
@@ -152,7 +165,10 @@ export class Live {
   }
 
   private _frame(): Segment[][] {
-    if (!this._renderable) return [];
+    if (!this._view) return [];
+    // [LAW:effects-at-boundaries] One read of the clock a frame, handed to
+    // the view as the frame's time.
+    const renderable = this._view(this._clock.now());
     // [LAW:dataflow-not-control-flow] Both modes render under the terminal's
     // rows and differ only in what those rows are: the alternate screen is a
     // region the frame stands in, and an inline frame keeps its natural height
@@ -160,7 +176,7 @@ export class Live {
     // back — its overflow policy, then `fitHeight`, which pads only a region.
     const options = this._console.options;
     const height = this._painter.height(options.height.rows);
-    const lines = Segment.splitLines(this._renderable.render({ ...options, height }));
+    const lines = Segment.splitLines(renderable.render({ ...options, height }));
     return fitHeight(this._overflow(lines, height.rows), height);
   }
 

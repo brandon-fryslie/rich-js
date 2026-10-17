@@ -284,7 +284,7 @@ export interface SpinnerColumnOptions {
 
 export class SpinnerColumn implements ProgressColumn {
   readonly tableColumn: ColumnOptions = {};
-  private _spinner: Spinner;
+  private readonly _spinner: Spinner;
   private _finishedText: RichText;
 
   constructor(spinnerName?: string, options?: SpinnerColumnOptions) {
@@ -298,8 +298,10 @@ export class SpinnerColumn implements ProgressColumn {
     this._finishedText = typeof finishedText === "string" ? readStr(finishedText, true) : finishedText.copy();
   }
 
+  // Rich's `self.spinner.render(task.get_time())`: the frame for the time the
+  // task is drawn at, which `Progress` read off its clock once for the frame.
   render(task: Task): Renderable {
-    return finished(task) ? this._finishedText : this._spinner;
+    return finished(task) ? this._finishedText : this._spinner.at(task.time);
   }
 }
 

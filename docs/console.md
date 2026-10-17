@@ -518,7 +518,10 @@ status.stop();
 The message is markup, as a string handed to `print` is. Pass `spinner: "dots"`
 or any named spinner to change the animation, and `spinnerStyle` to color it
 (`status.spinner` from the theme by default). Assigning to `status.message`
-updates the text in place while the spinner runs.
+updates the text in place while the spinner runs. The spinner turns on the
+`clock` the status is given — the platform's unless you pass a
+[`Clock`](/app#animating-at-a-frame-rate) — and reads none of its own, so a
+test can move it by hand.
 
 ## Console style
 

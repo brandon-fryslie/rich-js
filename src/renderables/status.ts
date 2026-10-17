@@ -1,11 +1,14 @@
 /**
  * Status — displays a spinner animation with a status message.
  *
- * Its renderable is a `Spinner` whose label is the message, as Rich's is, so
- * the message is drawn the way the spinner draws its label: a string is markup
- * under the console that draws it.
+ * Its view is a `Spinner` whose label is the message, as Rich's is, so the
+ * message is drawn the way the spinner draws its label: a string is markup
+ * under the console that draws it. The `Live` hands each frame its time, and
+ * the spinner is asked for its frame at it, so the frame is the clock's, not
+ * the platform's. [LAW:no-ambient-temporal-coupling]
  */
 
+import type { Clock } from "../core/clock.js";
 import type { Style } from "../core/style.js";
 import type { RichText } from "../core/text.js";
 import { Console } from "../core/console.js";
@@ -18,6 +21,8 @@ export interface StatusOptions {
   /** The spinner's frame style; the message styles itself with its markup. */
   spinnerStyle?: string | Style;
   console?: Console;
+  /** What the frames are timed and drawn on. The platform's, unless given. */
+  clock?: Clock;
 }
 
 export class Status {
@@ -31,8 +36,9 @@ export class Status {
       speed: options?.speed,
       style: options?.spinnerStyle ?? "status.spinner",
     });
-    this._live = new Live(this._spinner, {
+    this._live = new Live((t) => this._spinner.at(t), {
       console: this._console,
+      clock: options?.clock,
       transient: true,
       refreshPerSecond: 12.5,
     });
@@ -60,6 +66,6 @@ export class Status {
 
   update(message: string | RichText): void {
     this._spinner.text = message;
-    this._live.update(this._spinner, { refresh: true });
+    this._live.refresh();
   }
 }

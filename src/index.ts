@@ -325,7 +325,7 @@ export type { ColumnsOptions } from "./renderables/columns.js";
 export { FlexStrip } from "./renderables/flexStrip.js";
 export type { FlexStripOptions, FlexAlign } from "./renderables/flexStrip.js";
 export { Live } from "./renderables/live.js";
-export type { LiveOptions } from "./renderables/live.js";
+export type { LiveOptions, LiveView } from "./renderables/live.js";
 export { Status } from "./renderables/status.js";
 export type { StatusOptions } from "./renderables/status.js";
 export {
