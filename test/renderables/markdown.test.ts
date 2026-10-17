@@ -507,7 +507,6 @@ describe("Markdown", () => {
     expect(rows("- a\n\n-\n\n- b", 80)).toEqual(["", " • a", " • b", ""]);
   });
 
-  // Rich 15 (markdown-it-py 4.2) for every case below.
   it("ends a list at the second blank line after an empty item, as Rich does", () => {
     // markdown-it's list rule reads the line two past an empty item followed by a blank one, skipping no more.
     expect(rows("-\n\n- a", 80)).toEqual(["", " • a", ""]);
@@ -516,6 +515,11 @@ describe("Markdown", () => {
     expect(rows("-\n\t\n\n- a", 80)).toEqual(["", "", " • a", ""]);
     expect(rows("1.\n\n\n2. a", 80)).toEqual(["", "", " 2 a", ""]);
     expect(rows("- a\n\n-\n\n\n- b", 80)).toEqual(["", " • a", "", " • b", ""]);
+    // Inside a container too; a second list numbers from its own start, where the first would go on.
+    expect(rows("> 1.\n>\n>\n> 1. a", 80)).toEqual(["", "▌  1 a", ""]);
+    expect(rows("> 1.\n>\n> 1. a", 80)).toEqual(["", "▌  2 a", ""]);
+    expect(rows("- 1.\n\n\n  1. b", 80)).toEqual(["", " •  1 b", ""]);
+    expect(rows("- 1.\n\n  1. b", 80)).toEqual(["", " •  2 b", ""]);
   });
 
   it("keeps a loose item's later paragraphs in the item, with no row between them, as Rich draws them", () => {
