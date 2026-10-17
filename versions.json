@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-451",
+      "ref": "refs/pull/451/merge",
+      "sha": "7bc312171847cb46695bc0289a2a09212a152940",
+      "timestamp": "2026-10-17T18:08:53.767Z",
+      "commits": [
+        {
+          "sha": "7bc312171847cb46695bc0289a2a09212a152940",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T12:07:36-06:00",
+          "message": "Merge 13b143ec67bb894a228f979f210effc384f555db into 2805501974fe293ba3804ccc2042281e66b8c92d\n"
+        },
+        {
+          "sha": "13b143ec67bb894a228f979f210effc384f555db",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T12:07:30-06:00",
+          "message": "Markdown ends a list item's paragraph at a lazy table header row, as markdown-it does (rich-unfiled-791c.qabg)\n\nRich 15 draws \"- a\\n| x |\\n  | - |\" as the item \"a\", then a table headed\n\"x\"; ours folded both lines into the item's paragraph. markdown-it tries a\ntable at an item's lazy line as a paragraph terminator, needing only the\ndelimiter row to be held by the item, and never counts the lazy header as\ncode. A quote's lazy line it never tries, so `headerLine` admits only\nlines lazy to items.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "2805501974fe293ba3804ccc2042281e66b8c92d",
