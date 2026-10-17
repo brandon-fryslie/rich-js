@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-417",
+      "ref": "refs/pull/417/merge",
+      "sha": "e47a4d7c8cea511836f6ba3624d9903bcf776209",
+      "timestamp": "2026-10-17T01:17:43.610Z",
+      "commits": [
+        {
+          "sha": "e47a4d7c8cea511836f6ba3624d9903bcf776209",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:16:05-06:00",
+          "message": "Merge 2f104598b990357120d67b4e9d512f92a3c6957b into 07805a292885f45fde1b670d2a6b446ddd48a0e4\n"
+        },
+        {
+          "sha": "2f104598b990357120d67b4e9d512f92a3c6957b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:15:45-06:00",
+          "message": "Markdown draws a GFM pipe table as Rich's Table (rich-demos-k78j.5yo)\n\nA header row, then a delimiter row naming as many columns, is a table, read\nas markdown-it reads one: tried before every other block, able to end a\nparagraph, its body running to a blank line or a line that opens a block.\nEach cell keeps its inline Markdown and sits where its delimiter's colons\nput it; the header is drawn in markdown.table.header and the borders in\nmarkdown.table.border, the styles and Table settings Rich uses.\n\nPinned against Rich 14's own output. Column widths are Table's, which\ndivides a squeezed width differently from Rich on purpose (table.ts\nheader), so a wide table wraps its cells at other columns than Rich's.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-416",
       "ref": "refs/pull/416/merge",
       "sha": "7a5c5203485cbc7ecf6895dc7bcd380d1477c787",
