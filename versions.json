@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-427",
+      "ref": "refs/pull/427/merge",
+      "sha": "be8c30a7a97b403fc5605ffa153a89cf67bf111d",
+      "timestamp": "2026-10-17T04:22:29.183Z",
+      "commits": [
+        {
+          "sha": "be8c30a7a97b403fc5605ffa153a89cf67bf111d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T22:20:39-06:00",
+          "message": "Merge 72da61830e083b26e15752acfc8d396e0b02b320 into 34b047be217c1802bf9a623d11c6423ad6907f14\n"
+        },
+        {
+          "sha": "72da61830e083b26e15752acfc8d396e0b02b320",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T22:20:35-06:00",
+          "message": "Markdown draws a character reference as the characters it names, as Rich does (rich-unfiled-791c.krtk)\n\nInline text decodes named, decimal and hex references by markdown-it's entity\nrule, an invalid numeric one as U+FFFD; a link's destination goes through\nmarkdown-it's unescapeAll before its href is made, so [a](&#x6A;avascript:x)\nis refused as Rich refuses it. The named table is HTML5's, generated from\nPython's html.entities.html5 by scripts/html-entities.py.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "34b047be217c1802bf9a623d11c6423ad6907f14",
