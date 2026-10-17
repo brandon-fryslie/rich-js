@@ -84,7 +84,6 @@ const FENCE = /^```(\w*)/;
 const QUOTE = /^>/;
 const ITEM_MARKER = /^(?:[*+-]|(\d{1,9})\.)/;
 const LEAD = /^[ \t]*/;
-const HARD_BREAK = /(?: {2,}|\\)$/;
 const BLOCK_STARTS = [HEADING, FENCE, QUOTE, RULE];
 /** A line that may be a table's delimiter row, screened as markdown-it screens one: pipes, dashes, colons and space only, and not a dash then a space, which opens a list item. */
 const DELIMITER_ROW = /^(?!-[ \t])[-:|][-:| \t]+$/;
@@ -349,21 +348,16 @@ function continuesLazily(inner: readonly Line[], line: Line, afterLazy: boolean)
 /**
  * The text of the paragraph begun at `start`, every line after it up to a
  * blank, a line that ends a paragraph or a table's header row, and the index of the line that ended
- * it. Soft-broken lines are joined by one space, as a Markdown renderer
- * reflows them, with their own indentation dropped; a line ending in two
- * spaces or a backslash breaks hard, and its break is kept.
+ * it. The lines are joined at their line endings as written, each with its
+ * own indentation dropped, as markdown-it's paragraph content is: whether a
+ * line ending breaks soft or hard is the inline pass's to read, since an
+ * escape or a code span decides it.
  */
 function continuation(lines: readonly Line[], start: number): { text: string; next: number } {
   const parts = [lines[start]!.text];
   let i = start + 1;
   for (; i < lines.length && !isBlank(lines[i]!) && !endsParagraph(lines[i]!) && !tableAt(lines, i); i++) parts.push(lines[i]!.text);
-  const text = parts
-    .map((part, n) => {
-      const words = (n === parts.length - 1 ? part : part.replace(HARD_BREAK, "")).trim();
-      return n === 0 ? words : (HARD_BREAK.test(parts[n - 1]!) ? "\n" : " ") + words;
-    })
-    .join("");
-  return { text, next: i };
+  return { text: parts.map((part) => part.trimStart()).join("\n").trimEnd(), next: i };
 }
 
 /**
@@ -592,6 +586,8 @@ const WHITESPACE = /^[\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]$/;
 /** markdown-it's `isPunctChar`, which takes in all of ASCII's punctuation: Unicode's punctuation and symbols. */
 const PUNCTUATION = /^[\p{P}\p{S}]$/u;
 
+/** A line ending and the spaces before it, as markdown-it's newline rule reads one: a hard break after two spaces or more, a soft one otherwise. */
+const LINE_ENDING = /( *)\n/y;
 const TICKS = /`+/y;
 /** markdown-it's autolink: `<`, then text holding no `<` up to the first `>`. */
 const AUTOLINK = /<([^<>]*)>/y;
@@ -730,7 +726,7 @@ function linkDestination(text: string, open: number): { url: string; end: number
     i = open + angled[0].length;
   } else {
     i = open + 1;
-    while (text[i] === " ") i++;
+    while (text[i] === " " || text[i] === "\t" || text[i] === "\n") i++;
     const from = i;
     for (let depth = 0; i < text.length && !/\s/.test(text[i]!) && !(text[i] === ")" && depth === 0); i++) {
       if (text[i] === "\\") i++;
@@ -899,8 +895,9 @@ function inlineAt(text: string, i: number, brackets: ReadonlyMap<number, number>
       const close = new RegExp(`(?<!\`)${ticks}(?!\`)`, "g");
       close.lastIndex = i + ticks.length;
       const found = close.exec(text);
+      // A code span's line endings are spaces, as markdown-it's backticks rule has them.
       return found
-        ? { kind: "code", code: text.slice(i + ticks.length, found.index), end: found.index + ticks.length }
+        ? { kind: "code", code: text.slice(i + ticks.length, found.index).replaceAll("\n", " "), end: found.index + ticks.length }
         : { kind: "text", text: ticks, end: i + ticks.length };
     }
     case "*":
@@ -908,9 +905,22 @@ function inlineAt(text: string, i: number, brackets: ReadonlyMap<number, number>
       return delimiterRun(text, i);
     case "&":
       return referenceAt(text, i);
+    case " ":
+    case "\n": {
+      const ending = matchAt(LINE_ENDING, text, i);
+      return ending ? { kind: "text", text: ending[1]!.length >= 2 ? "\n" : " ", end: i + ending[0].length } : undefined;
+    }
     case "\\": {
+      // markdown-it's escape rule: a backslash before a line ending breaks it
+      // hard, and one before anything else takes that character with it, the
+      // pair standing as written unless it escapes — so a space after it
+      // counts toward no hard break.
+      if (text[i + 1] === "\n") return { kind: "text", text: "\n", end: i + 2 };
       const escape = matchAt(ESCAPE, text, i);
-      return escape ? { kind: "text", text: escape[1]!, end: i + escape[0].length } : undefined;
+      if (escape) return { kind: "text", text: escape[1]!, end: i + escape[0].length };
+      if (i + 1 === text.length) return undefined;
+      const next = String.fromCodePoint(text.codePointAt(i + 1)!);
+      return { kind: "text", text: `\\${next}`, end: i + 1 + next.length };
     }
     case "<": {
       // markdown-it tries an autolink before inline HTML.
@@ -975,7 +985,9 @@ function parseInline(text: string): Inline[] {
 /**
  * The inline `found` in `text` is, a link's label read into inlines of its
  * own: the block's text up to the label's `]`, so the delimiters inside it
- * pair only with each other, as markdown-it's are.
+ * pair only with each other, as markdown-it's are. The text ends where
+ * markdown-it's `posMax` does, so a run at the label's end borders the end of
+ * the text, as `scanDelims` reads it, and not the `]`.
  */
 function matched(found: Exclude<InlineMatch, DelimiterRun>, text: string, brackets: ReadonlyMap<number, number>): Inline {
   switch (found.kind) {

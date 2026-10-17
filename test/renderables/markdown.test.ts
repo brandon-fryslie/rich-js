@@ -153,6 +153,21 @@ describe("Markdown", () => {
     expect(rows("one  \ntwo\\\nthree\nfour", 80)).toEqual(["one", "two", "three four", ""]);
   });
 
+  // Each row is Rich 14's drawing of the source: the inline pass reads each line ending, as markdown-it's does.
+  it.each<[string, string[]]>([
+    // An escaped backslash breaks nothing, and an escaped space is no part of two trailing spaces.
+    ["x\\\\\ny", ["x\\ y", ""]],
+    ["a\\  \nb", ["a\\  b", ""]],
+    // A code span's line ending is a space, its trailing spaces kept.
+    ["x `a  \nb` y", ["x a   b y", ""]],
+    ["x `a \nb` y", ["x a  b y", ""]],
+    ["[a](\nu) z", ["a (u) z", ""]],
+    ["a\t\nb", ["a        b", ""]],
+    ["![a\nb](u) z", ["🌆 a", "b  z", ""]],
+  ])("reads the line endings of %j as markdown-it does", (source, expected) => {
+    expect(rows(source, 80, { hyperlinks: false })).toEqual(expected);
+  });
+
   it("keeps a quote's paragraph break at a bare > line without leaking the marker", () => {
     expect(rows("> a\n>\n>b", 80)).toEqual(["▎ a", "▎", "▎ b", ""]);
   });
@@ -834,6 +849,10 @@ describe("Markdown", () => {
     ["*a _b* c_", "a _b c_", [["a _b", "I"]]],
     ["_a*_b*", "_a*_b*", []],
     ["[_a_](u)b_", "a (u)b_", []],
+    // A run reads the backslash of a hard break as the punctuation it is, and an escaped one as no break.
+    ["foo.*\\\nbar*", "foo.", [["bar", "I"]]],
+    ['a "*\\\nb*', 'a "', [["b", "I"]]],
+    ["x\\\\\n*a*", "x\\ a", [["a", "I"]]],
   ])("pairs the delimiters of %j as markdown-it's flanking rules do", (source, row, styled) => {
     expect(emphasis(source)).toEqual([row, styled]);
   });
