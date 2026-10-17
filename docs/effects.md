@@ -56,7 +56,11 @@ The shares keep the words readable. `Effected` measures every ink and ground pai
 
 ### What a frame knows
 
-`drawn` is the same for every cell of a frame. It describes the cells the element draws words in: those whose glyph is not blank and that a strip's joiner did not draw, since a powerline seam's ink is the fill beside it, not words.
+`drawn` is the same for every cell of a frame.
+
+- `cells()` lists every cell the element shows something in, a glyph, a ground other than the terminal's or a line its style draws, each with its `row`, `col` and `anchor`, listed before any cell is handed. A blank cell on the terminal's ground that draws no line is still handed to the effect, but not listed. Under `confined` it is only the cells the owners drew. A transition uses it to spread its order over the cells that can be seen to move.
+
+The rest describes the cells the element draws words in: those whose glyph is not blank and that a strip's joiner did not draw, since a powerline seam's ink is the fill beside it, not words.
 
 - `pairs` is every distinct ink and ground of those cells as the screen shows them, each with the `terminal` flags a cell carries and `reverse`, whether its style writes the ink in the ground's slot.
 - `colors` is the colours the element sets itself in those cells, by hex. `fills` is those of them that are a cell's ground.
@@ -89,7 +93,7 @@ To move every item but one, name all the others in one call: `confined(onColors(
 
 ### A transition says when it is done
 
-`fadeIn` and `dissolveOut` return a `Transition`: the `effect` to draw, and `done(t)`, true from the moment every cell has arrived or gone, its curve's `seconds` after it began. A caller stops drawing an element that has dissolved, or drops the effect from one that has faded in, when `done` says so:
+`fadeIn` and `dissolveOut` return a `Transition`: the `effect` to draw, and `done(t)`, true from the moment every cell has arrived or gone, its curve's `seconds` after it began. The order is spread over the cells the element shows something in, so on any element, and under `confined` on one item of many, the first cell starts at 0 and the last settles at `seconds`. A cell's start is settled in the first frame that lists it, so make one transition for each element: if an element gains cells as it moves, only the new ones are spread over the order it has then, and a cell that has gone never comes back. A caller stops drawing an element that has dissolved, or drops the effect from one that has faded in, when `done` says so:
 
 ```typescript
 import { EFFECT_CATALOGUE } from "@promptctl/rich-js";
@@ -99,6 +103,8 @@ console.print([10, 29.9, 30].map((t) => `${t}s: ${leaving.done(t) ? "gone" : "le
 ```
 
 Both blend toward the background of the `theme` given to `Effected`, the terminal the frame is drawn on: the library never asks the terminal what that is.
+
+The bytes can stop changing a little before `done`. Near its end, an ease that flattens out, such as the default `ease-in-out`, moves a cell by less than one step of a colour channel, so nothing new is written. In truecolor that is within about a second on an element of several cells. An element of one cell takes the whole duration over its change, so its flat tail is longer. Below truecolor a colour is written as the nearest one the depth has, and the last change lands when the curve passes halfway between the last two of them. That depends on the colours, and at 256 colours a fade can finish visibly several seconds early. `done` is when the curve ends, not when the bytes stop.
 
 ### A signal steps
 

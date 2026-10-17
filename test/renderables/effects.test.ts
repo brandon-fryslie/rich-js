@@ -20,6 +20,8 @@ import {
   JOINERS,
   TOKYO_NIGHT,
   Strip,
+  Padding,
+  confined,
   type CellColors,
   type Drawn,
   type Effect,
@@ -64,8 +66,9 @@ const cells: EffectCell[] = Array.from({ length: 40 }, (_, col) => ({ row: 0, co
 const sameColor = (a: ColorRgba, b: ColorRgba): boolean => a.red === b.red && a.green === b.green && a.blue === b.blue;
 const distance = (a: ColorRgba, b: ColorRgba): number => Oklch.fromRgba(a).deltaE(Oklch.fromRgba(b));
 const sun = EFFECT_LIGHTS.sun;
-/** A frame whose element sets `own` colours, `fills` of them as grounds: what an effect handed it reads. */
+/** A frame of `cells` whose element sets `own` colours, `fills` of them as grounds: what an effect handed it reads. */
 const frame = (own: ReadonlySet<string>, fills: ReadonlySet<string> = new Set(), pairs: readonly Pair[] = []): Drawn => ({
+  cells: () => cells,
   pairs,
   colors: own,
   fills,
@@ -435,7 +438,8 @@ describe("the transitions run start to end", () => {
     const dissolve = curve(30, 1);
     const effect = dissolveOut(dissolve, 0).effect;
     const wide: EffectCell[] = Array.from({ length: 120 }, (_, col) => ({ row: 0, col, seed: 0, terminal: written, reverse: false, anchor: undefined }));
-    const shown = (cell: EffectCell, t: number): number => distance(effect(t, NOTHING)(colors, cell).fg, terminalGround);
+    const of = { ...NOTHING, cells: () => wide };
+    const shown = (cell: EffectCell, t: number): number => distance(effect(t, of)(colors, cell).fg, terminalGround);
     const risen = wide.filter((cell) => {
       const series = Array.from({ length: 600 }, (_, i) => shown(cell, i * 0.05));
       return series.some((v, i) => i > 0 && v - series[i - 1]! > 0.002);
@@ -444,8 +448,89 @@ describe("the transitions run start to end", () => {
     expect(risen.length).toBeGreaterThan(5);
     expect(risen.length).toBeLessThan(wide.length * 0.8);
     // Every cell rises from the first, whole, to the last, gone.
-    for (const cell of wide) expect(sameColor(effect(dissolve.seconds, NOTHING)(colors, cell).fg, terminalGround)).toBe(true);
-    for (const cell of wide) expect(sameColor(effect(0, NOTHING)(colors, cell).fg, ink)).toBe(true);
+    for (const cell of wide) expect(sameColor(effect(dissolve.seconds, of)(colors, cell).fg, terminalGround)).toBe(true);
+    for (const cell of wide) expect(sameColor(effect(0, of)(colors, cell).fg, ink)).toBe(true);
+  });
+
+  /** Draws a frame on a terminal whose ground a transition leaves to or arrives from. */
+  const onGround = (ground: string) => {
+    const theme = { ...CATPPUCCIN_MOCHA, backgroundColor: ColorSpec.parse(ground).getTruecolor() };
+    return (renderable: Renderable, effect: Effect, t: number): string =>
+      renderToString(new Effected(renderable, effect, { t, key: "p", theme }), { width: 40, colorSystem: ColorDepth.TRUECOLOR });
+  };
+
+  it.each([
+    ["fade", " ◆ probe a ", "#33354e on #ff7825", "#eff1f5"],
+    ["dissolve", " ◆ probe a ", "#1a1b26 on #ffb277", "#1a1b26"],
+    ["fade", "x", "#33354e on #ff7825", "#eff1f5"],
+    ["dissolve", "x", "#1a1b26 on #ffb277", "#1a1b26"],
+  ] as const)("a %s over %j moves until its done, however few cells it has", (name, text, look, ground) => {
+    const element = new RichText(text, { style: look, noWrap: true });
+    const draw = onGround(ground);
+    const { seconds } = EFFECT_CURVES[name];
+    const transition = EFFECT_CATALOGUE.transitions[name]({ span: text.length, z: 0 });
+    const at = (t: number) => draw(element, transition.effect, t);
+    // It starts moving at once and is still moving shortly before done, which is when it stops.
+    expect(at(seconds / 8)).not.toBe(at(0));
+    expect(at(seconds - 3)).not.toBe(at(seconds));
+    expect([transition.done(seconds - 3), transition.done(seconds)]).toEqual([false, true]);
+    expect(at(1e6)).toBe(at(seconds));
+  });
+
+  it("a transition confined to one item of a strip moves that item until its done", () => {
+    const items = ["#1e66f5", "#40a02b", "#d20f39"].map((fill) => new RichText(" item ", { style: `white on ${fill}`, end: "", noWrap: true }));
+    const strip = new Strip(items, JOINERS.powerline);
+    const draw = onGround("#1e1e2e");
+    const { seconds } = EFFECT_CURVES.dissolve;
+    const leaving = confined(EFFECT_CATALOGUE.transitions.dissolve({ span: 6, z: 0 }).effect, items[1]!);
+    expect(draw(strip, leaving, seconds - 2)).not.toBe(draw(strip, leaving, seconds));
+    expect(draw(strip, leaving, 1e6)).toBe(draw(strip, leaving, seconds));
+  });
+
+  it.each([0, 1, 2, 3, 4, 5, 6])("a fade at z %d over an element padded on the terminal's ground moves its glyph until it is done", (z) => {
+    const element = new Padding(new RichText("x", { style: "#33354e on #ff7825", noWrap: true }), [0, 10]);
+    const draw = onGround(DEFAULT_TERMINAL_THEME.backgroundColor.hex);
+    const { seconds } = EFFECT_CURVES.fade;
+    const { effect } = EFFECT_CATALOGUE.transitions.fade({ span: 21, z });
+    // What the glyph, ten cells in, is drawn in: the padding's bytes move too, with nothing in them to see.
+    const glyph = (t: number): string => {
+      let drawn = "";
+      const reading: Effect = (at, frame) => {
+        const moved = effect(at, frame);
+        return (colors, cell) => {
+          const out = moved(colors, cell);
+          if (cell.col === 10) drawn = `${out.fg.hex}/${out.bg.hex}`;
+          return out;
+        };
+      };
+      draw(element, reading, t);
+      return drawn;
+    };
+    expect(glyph(seconds - 3)).not.toBe(glyph(seconds));
+  });
+
+  it.each([0, 1, 2, 3, 4, 5, 6])("a cell a fade at z %d has moved never goes back when the element gains cells as it moves", (z) => {
+    const { effect } = fadeIn(curve(20, 1), z);
+    const placed = (n: number): EffectCell[] => Array.from({ length: n }, (_, col) => ({ row: 0, col, seed: 0, terminal: written, reverse: false, anchor: undefined }));
+    const [narrow, wide] = [placed(3), placed(12)];
+    // The element gains its other columns halfway through; its first three are read throughout.
+    const shown = (t: number): number[] => narrow.map((cell) => distance(effect(t, { ...NOTHING, cells: () => (t < 10 ? narrow : wide) })(colors, cell).fg, terminalGround));
+    const series = Array.from({ length: 81 }, (_, i) => shown(i * 0.25));
+    for (const [i, now] of series.entries()) {
+      for (const [col, v] of now.entries()) if (i > 0) expect(v).toBeGreaterThanOrEqual(series[i - 1]![col]! - 1e-9);
+    }
+    expect(series.at(-1)!.every((v) => v > 0)).toBe(true);
+  });
+
+  it.each([0, 1, 2, 3, 4, 5, 6])("a cell a fade at z %d hands before it shows is spread over the order the element has once it does", (z) => {
+    const placed = (n: number): EffectCell[] => Array.from({ length: n }, (_, col) => ({ row: 0, col, seed: 0, terminal: written, reverse: false, anchor: undefined }));
+    const [narrow, grown] = [placed(3), placed(6)];
+    const late = grown[5]!;
+    const { effect } = fadeIn(curve(20, 1), z);
+    // Handed while blank, listed by no frame yet.
+    effect(2, { ...NOTHING, cells: () => narrow })(colors, late);
+    const fresh = fadeIn(curve(20, 1), z).effect;
+    expect(effect(8, { ...NOTHING, cells: () => grown })(colors, late).fg.hex).toBe(fresh(8, { ...NOTHING, cells: () => grown })(colors, late).fg.hex);
   });
 
   it("swing below 1 stops short of invisible", () => {

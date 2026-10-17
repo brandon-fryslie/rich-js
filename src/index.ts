@@ -281,7 +281,7 @@ export type { Env } from "./core/env.js";
 // Renderables
 export { Constrain } from "./renderables/constrain.js";
 export { Effected, confined, drawnOf, onBeat } from "./renderables/effect.js";
-export type { CellColors, Drawn, Effect, EffectCell, EffectedOptions, Pair } from "./renderables/effect.js";
+export type { CellColors, Drawn, Effect, EffectCell, EffectedOptions, Pair, Placed } from "./renderables/effect.js";
 export {
   EFFECT_CATALOGUE,
   EFFECT_CURVES,
