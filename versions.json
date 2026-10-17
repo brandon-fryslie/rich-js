@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "07805a292885f45fde1b670d2a6b446ddd48a0e4",
+      "timestamp": "2026-10-17T01:05:24.369Z",
+      "commits": [
+        {
+          "sha": "07805a292885f45fde1b670d2a6b446ddd48a0e4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T19:03:34-06:00",
+          "message": "The key echo names only the modifiers held and reads whole at its widest (rich-demos-k78j.4jr) (#414)\n\nThe echo spelled shift=false ctrl=false meta=false on every key, which pushed the row past the 100-column card after 100 claimed spaces and a Backspace. It now names only held modifiers; the widest row is 79 cells plus the claimed count. The row test asserts it reached that state and checks backspace, meta-backspace and fully-modified pagedown."
+        }
+      ]
+    },
+    {
       "version": "pr-415",
       "ref": "refs/pull/415/merge",
       "sha": "75930fa534806de00fe3bd1682fca4194b3001b2",
@@ -20,50 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T18:56:18-06:00",
           "message": "shimmer and sparkle cross the element where its frame lists cells (rich-unfiled-791c.c8g5)\n\nA loop's Field is now handed the frame's Drawn, as a transition's Visibility\nalready is, and shimmer and sparkle read the element's columns (and sparkle\nits rows) off Drawn.cells each frame. EffectTarget.span, the caller-stated\nsecond source for that fact, is gone, as are the span arguments of shimmer\nand sparkle and DrawnSubject.span in effects-feel.\n\nA padded, wrapped or confined element was crossed at columns 0..span; it is\nnow crossed where it shows. Fireflies keep homes a fixed stride from the\nelement's first column, so an element that gains a column gains a firefly at\nmost rather than reshuffling every home.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-414",
-      "ref": "refs/pull/414/merge",
-      "sha": "dc48835341944339ca7abc7fec6909a6ee37fdf5",
-      "timestamp": "2026-10-17T00:54:25.161Z",
-      "commits": [
-        {
-          "sha": "dc48835341944339ca7abc7fec6909a6ee37fdf5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T00:52:38Z",
-          "message": "Merge a9f14fd318adcbb71bcb7b2df4f89e6aa5206c2c into 351a8b6393360a36a3efecad7eb25b1260e520b7\n"
-        },
-        {
-          "sha": "a9f14fd318adcbb71bcb7b2df4f89e6aa5206c2c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:52:20-06:00",
-          "message": "The key echo names only the modifiers held, and keeps saying what it counts (rich-demos-k78j.4jr)\n\nThe echo spelled shift=false ctrl=false meta=false on every key, and that,\nnot the label, was what pushed the row past 100 columns. The widest echo is\nnow 79 cells plus the claimed count. The row test asserts it reached that\nstate, and reads backspace and a fully-modified pagedown on their own screens.\n"
-        },
-        {
-          "sha": "39a1b41d345e694dd7aa8dd6505403ba2fa6e064",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:46:39-06:00",
-          "message": "The dropdown demo's key echo reads whole at its widest (rich-demos-k78j.4jr)\n\nAfter 100 claimed spaces, backspace drew the row at 101 cells and the card\ncut it. The counter's label is now 'claimed', which leaves room for a count\nof up to ten digits, and the row test drives that state.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "351a8b6393360a36a3efecad7eb25b1260e520b7",
-      "timestamp": "2026-10-17T00:49:34.125Z",
-      "commits": [
-        {
-          "sha": "351a8b6393360a36a3efecad7eb25b1260e520b7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T18:48:19-06:00",
-          "message": "effects-feel measures every loop's contrast at 1 fps, not 30 (rich-unfiled-791c.2iki) (#413)\n\n* effects-feel measures every loop's contrast at 1 fps, not 30 (rich-unfiled-791c.2iki)\n\nThe demo paints on a wall-clock rate, so its frames cost the same each\nsecond however loaded the machine is, and the contrast measuring gets\nwhat is left. At 30 fps under a full suite that was little: 7.4-10.6 s\nlocally, 21 s of 30 on CI. At 1 fps, 4.1-5.2 s under the full suite\n(three runs), 2.0 s alone (was 2.8 s).\n\n* effects-feel: each loop's measured line asserted by name, the wait bounded by the test's own budget (rich-unfiled-791c.2iki)\n\nReview (high): counting 'worst contrast' matches >= 5 counted frames, not\nloops; at 1 fps a machine that measures every loop between two ticks\npaints the four lines once and fails. The 30_000 wait copied HANG_MS."
         }
       ]
     }
