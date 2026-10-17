@@ -4,15 +4,22 @@
     {
       "version": "pr-449",
       "ref": "refs/pull/449/merge",
-      "sha": "0ad7360e5f78bba0c25714dd56dd879f627c5a50",
-      "timestamp": "2026-10-17T17:23:25.994Z",
+      "sha": "bc20f09d44b0641760c43d138db2c222dbdc0c0c",
+      "timestamp": "2026-10-17T17:33:40.984Z",
       "commits": [
         {
-          "sha": "0ad7360e5f78bba0c25714dd56dd879f627c5a50",
+          "sha": "bc20f09d44b0641760c43d138db2c222dbdc0c0c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T17:21:38Z",
-          "message": "Merge 44988c861885130136378dd6d3aef3b15aae7fe1 into b8d074f344bd5b65e6a7b86db5df90837d394e0d\n"
+          "timestamp": "2026-10-17T17:31:46Z",
+          "message": "Merge a13c88c75c0bf159066446876f82228df96c89cd into b8d074f344bd5b65e6a7b86db5df90837d394e0d\n"
+        },
+        {
+          "sha": "a13c88c75c0bf159066446876f82228df96c89cd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T11:31:40-06:00",
+          "message": "Markdown reads a line short of a list item as indented less than any block, as markdown-it does (rich-unfiled-791c.emsm, rich-unfiled-791c.w3t9)\n\nAn item's paragraph now reads the line it would take lazily the way a quote\ndoes, and a lazy line carries the margin of the innermost list's container,\nmarkdown-it's listIndent, which a list item on it is measured from.\n"
         },
         {
           "sha": "44988c861885130136378dd6d3aef3b15aae7fe1",
