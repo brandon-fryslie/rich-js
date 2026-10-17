@@ -1301,10 +1301,10 @@ describe("TextInput", () => {
     const CURSOR = new Style({ reverse: true });
 
     it("has a column of its own, so every cursor stop moves the cursor", () => {
-      for (const glyph of ["\u200b", "\u2028", "\u2029", "\t"]) {
+      for (const glyph of ["\u200b", "\u2028", "\u2029", "\t", "\n"]) {
         const t = new TextInput({ value: `a${glyph}b`, cursorStyle: CURSOR });
         t.focus();
-        t.handleKey(homeEvent());
+        t.cursorPosition = asCodePoint(0);
         const columns: number[] = [];
         for (let stop = 0; stop <= 3; stop++) {
           const segments = [...t.render(RENDER)];
@@ -1326,6 +1326,12 @@ describe("TextInput", () => {
       const t = new TextInput({ value: "a\u200bb" });
       expect(renderText(t)).toContain("a◌b");
       expect(rowsText(t, { ...RENDER, asciiOnly: true })).toContain("a?b");
+    });
+
+    it("is drawn as ↵ when it breaks a line, or ~ where only ASCII is drawable", () => {
+      const t = new TextInput({ value: "a\nb" });
+      expect(renderText(t)).toContain("a↵b");
+      expect(rowsText(t, { ...RENDER, asciiOnly: true })).toContain("a~b");
     });
   });
 

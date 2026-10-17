@@ -499,11 +499,11 @@ export class TextInput extends ThemedWidget {
       const relX = asCellCol(Math.max(0, event.x - 1) + this._singleLineViewportStart);
       // The glyphs of `value` whose shown cells lie wholly left of the click,
       // shown as the last render showed them.
-      const drawn = { asciiOnly: this._singleLineAsciiOnly };
+      const shownAs = this._shownAs({ asciiOnly: this._singleLineAsciiOnly });
       let at = 0;
       let col = 0;
       for (const g of graphemes(this.value)) {
-        const w = cellLen(this._shown(g, drawn));
+        const w = cellLen(shownAs(g));
         if (col + w > relX) break;
         col += w;
         at += g.length;
@@ -854,15 +854,18 @@ export class TextInput extends ThemedWidget {
   // the glyph itself — or, for a glyph of zero cells, a stand-in of one cell.
   // Every glyph then has a column of its own, so each cursor stop draws the
   // cursor somewhere new. The render and the click hit-test both read it.
-  private _shown(text: string, options: { readonly asciiOnly?: boolean }): string {
+  private _shownAs(options: { readonly asciiOnly?: boolean }): (glyph: string) => string {
     const mask = drawable(options, MASK_GLYPH, ASCII_MASK_GLYPH);
     const newline = drawable(options, NEWLINE_GLYPH, ASCII_NEWLINE_GLYPH);
     const zeroCell = drawable(options, ZERO_CELL_GLYPH, ASCII_ZERO_CELL_GLYPH);
-    const shownAs = (g: string): string =>
+    return (g) =>
       this._password ? mask
         : cellLen(g) > 0 ? g
-        : g.includes("\n") ? newline : zeroCell;
-    return graphemes(text).map(shownAs).join("");
+        : g === "\n" ? newline : zeroCell;
+  }
+
+  private _shown(text: string, options: { readonly asciiOnly?: boolean }): string {
+    return graphemes(text).map(this._shownAs(options)).join("");
   }
 
   private _renderSingleLine(options: RenderOptions): Segment[] {
