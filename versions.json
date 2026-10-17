@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "3bcf167a4e05b64dcc58876730c11a90c222b9af",
+      "timestamp": "2026-10-17T02:32:09.066Z",
+      "commits": [
+        {
+          "sha": "3bcf167a4e05b64dcc58876730c11a90c222b9af",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-16T20:30:27-06:00",
+          "message": "claude-sessions names every system record it draws (rich-demos-k78j.0d5) (#420)\n\n* claude-sessions names every system record it draws (rich-demos-k78j.0d5)\n\nA system record's rule was titled by its duration, which only turn_duration\nrecords carry, so every slash command and stop hook drew as an empty '⚫ —'.\nThe parser now reads what each record says: a turn and how long it took, a\ncommand's command line over its output, how many stop hooks ran over their\nerrors, and any other subtype by its name over its content.\n\nThe card's sessions are re-staged so they carry the fields that reading needs.\nThe re-run also brings in what the stager already keeps and the committed\nstaging predated: ten queued prompts, and the assistant records under them.\n\n* claude-sessions draws a slash command once, and a system record's fields as read (rich-demos-k78j.0d5)\n\nReview of #420. A slash command is the record that runs it and the\nlocal_command record of its output, whose parent it is; the parser now joins\nthe two as it joins one message's chunks, so /clear and /login draw once, and a\nprompt that runs a command with no output reads as its command line instead of\nraw tags. Command tags have one reader for both record kinds.\n\nA system record's own fields are typed unknown, as the JSON is, so each is read\nby what it holds: a malformed one draws instead of failing the session, a\nmissing hook count is not claimed as zero, and a stop hook that prevented\ncontinuation shows its reason (the stager now keeps preventedContinuation and\nstopReason; re-staging added only those two fields). Output cut short by the\nstager keeps its text, output carrying escape codes is decoded, and the body\nfollows selection like the title.\n\n* claude-sessions joins a command by its parent link and keeps all it says (rich-demos-k78j.0d5)\n\nMedium review of #420. A local_command record's text is its content with the\ncommand tags gone and the output tags unwrapped, so text outside those tags is\ndrawn rather than dropped. The record that runs a command and its output are\njoined by the output's parentUuid instead of adjacency, so showing hidden\nrecords no longer splits a command into two blocks."
+        }
+      ]
+    },
+    {
       "version": "pr-421",
       "ref": "refs/pull/421/merge",
       "sha": "c266d79371c79ceeb103357ff0a85b9bfdf1717a",
@@ -70,21 +85,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T19:49:38-06:00",
           "message": "A host can ask when what it draws next changes (rich-animation-xi28.6rs)\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "8ea70430cce91b045edf9750e63fb7041f59c1a0",
-      "timestamp": "2026-10-17T02:15:28.627Z",
-      "commits": [
-        {
-          "sha": "8ea70430cce91b045edf9750e63fb7041f59c1a0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-16T20:13:43-06:00",
-          "message": "Markdown reads an HTML block where markdown-it does and draws it as Rich does, not at all (rich-unfiled-791c.e5pf) (#419)\n\n* Markdown reads an HTML block where markdown-it does and draws it as Rich does, not at all (rich-unfiled-791c.e5pf)\n\nCommonMark's seven HTML block kinds, matched as markdown-it matches them.\nEvery kind but a lone tag ends a paragraph, a table body and a lazy\ncontinuation, through opensBlock. The block is kept as a token that draws\nnothing, so a container ending in one does not read as ending in the\nparagraph before it.\n\n* An HTML block's end is the closing line or a blank one, named once; the table cites markdown-it-py (rich-unfiled-791c.e5pf)"
         }
       ]
     }
