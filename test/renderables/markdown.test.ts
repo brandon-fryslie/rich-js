@@ -266,6 +266,13 @@ describe("Markdown", () => {
     expect(performance.now() - started).toBeLessThan(1000);
   });
 
+  it("reads a paragraph behind unclosed brackets in time linear in its length", () => {
+    const started = performance.now();
+    new Markdown("[".repeat(19) + "a".repeat(2_000_000));
+    // A label scan stepping a character at a time, once per bracket, took ten seconds here.
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
   it("reads a long run of spaces in time linear in its length", () => {
     const started = performance.now();
     new Markdown(`a${" ".repeat(100_000)}b`);

@@ -49,29 +49,34 @@ interface BlockSettings extends InlineSettings {
   readonly justify: Justify;
 }
 
-/** A step of `walk`: an inline met, or the end of the children of the construct last met that has them. */
-type WalkStep = { readonly kind: "enter"; readonly inline: Inline } | { readonly kind: "leave" };
+/** An inline holding inlines of its own. */
+type Container = Extract<Inline, { readonly children: readonly Inline[] }>;
 
-const LEAVE: WalkStep = { kind: "leave" };
+/** A step of `walk`: an inline holding none, met inside its innermost container's frame, or the end of the container whose frame that was. */
+type WalkStep<Frame> =
+  | { readonly kind: "leaf"; readonly inline: Exclude<Inline, Container>; readonly within: Frame }
+  | { readonly kind: "leave"; readonly frame: Frame };
 
 /**
- * Every inline in `inlines` in document order, a construct's children right
- * after it and closed by a `leave`. A loop over a stack, not recursion:
- * emphasis nests as deep as its source does, and Rich, walking markdown-it's
- * flat token stream, draws ten thousand levels of it.
+ * Every inline in `inlines` holding none, in document order, inside the
+ * frame `open` makes for each container it sits in as `walk` reaches it —
+ * `root` outside them all — and each container's `leave` after its last. A
+ * loop over a stack, not recursion: emphasis nests as deep as its source
+ * does, and Rich, walking markdown-it's flat token stream, draws ten thousand
+ * levels of it.
  */
-function* walk(inlines: readonly Inline[]): Iterable<WalkStep> {
-  const open = [{ inlines, next: 0 }];
-  while (open.length > 0) {
-    const top = open[open.length - 1]!;
+function* walk<Frame>(inlines: readonly Inline[], root: Frame, open: (container: Container, within: Frame) => Frame): Iterable<WalkStep<Frame>> {
+  const stack = [{ inlines, next: 0, frame: root }];
+  while (stack.length > 0) {
+    const top = stack[stack.length - 1]!;
     const inline = top.inlines[top.next++];
     if (inline === undefined) {
-      open.pop();
-      if (open.length > 0) yield LEAVE;
+      stack.pop();
+      if (stack.length > 0) yield { kind: "leave", frame: top.frame };
       continue;
     }
-    yield { kind: "enter", inline };
-    if (inline.kind === "emphasis" || inline.kind === "link") open.push({ inlines: inline.children, next: 0 });
+    if ("children" in inline) stack.push({ inlines: inline.children, next: 0, frame: open(inline, top.frame) });
+    else yield { kind: "leaf", inline, within: top.frame };
   }
 }
 
@@ -99,8 +104,6 @@ function appendInline(result: RichText, inlines: readonly Inline[], settings: In
   // sits in, so every piece of text takes one span, the style on top, and a
   // nest ten thousand deep costs one combination a level.
   const stack = [Style.null()];
-  // What closing each open construct does, innermost last.
-  const closes: (() => void)[] = [];
   // Inside a link drawn without hyperlinks, whose text is styled whole as it closes, nothing is styled.
   let plain = false;
   // The style on top with `styles` laid over it.
@@ -133,9 +136,18 @@ function appendInline(result: RichText, inlines: readonly Inline[], settings: In
       write(")");
     };
   };
-  for (const step of walk(inlines)) {
+  // Each construct's frame is what closing it does.
+  const open = (container: Container): (() => void) => {
+    switch (container.kind) {
+      case "emphasis":
+        return enter([container.style]);
+      case "link":
+        return openLink(container.url);
+    }
+  };
+  for (const step of walk(inlines, () => {}, open)) {
     if (step.kind === "leave") {
-      closes.pop()!();
+      step.frame();
       continue;
     }
     const inline = step.inline;
@@ -155,12 +167,6 @@ function appendInline(result: RichText, inlines: readonly Inline[], settings: In
         break;
       case "html":
       case "image":
-        break;
-      case "emphasis":
-        closes.push(enter([inline.style]));
-        break;
-      case "link":
-        closes.push(openLink(inline.url));
         break;
       case "autolink": {
         const close = openLink(inline.url);
@@ -190,39 +196,26 @@ interface Enclosing {
 const EXIT: Step = { kind: "exit", newLine: true };
 
 function* inlineSteps(inlines: readonly Inline[], within: Enclosing, settings: InlineSettings): Iterable<Step> {
-  // The styles and link of each open construct, innermost last, as Rich's style stack holds them.
+  // The styles of each open construct, innermost last, as Rich's style stack holds them.
   const styles = [...within.styles];
-  const enclosing = [{ entered: 0, link: within.link }];
-  for (const step of walk(inlines)) {
-    if (step.kind === "leave") {
-      styles.length -= enclosing.pop()!.entered;
-      continue;
-    }
-    const inline = step.inline;
-    const { link } = enclosing[enclosing.length - 1]!;
-    switch (inline.kind) {
-      case "image":
-        yield { kind: "image", alt: inline.alt, src: inline.src, styles: [...styles], link };
-        break;
+  // Each construct's frame is how many styles it entered, and the link it sits in.
+  type Frame = { readonly entered: number; readonly link: string | undefined };
+  const open = (container: Container, outer: Frame): Frame => {
+    switch (container.kind) {
       case "emphasis":
-        styles.push(inline.style);
-        enclosing.push({ entered: 1, link });
-        break;
+        styles.push(container.style);
+        return { entered: 1, link: outer.link };
       case "link": {
         // Without hyperlinks Rich enters no style for a link, and an image in one is linked to nothing.
-        const entered = settings.hyperlinks ? linkStyles(inline.url) : [];
+        const entered = settings.hyperlinks ? linkStyles(container.url) : [];
         styles.push(...entered);
-        enclosing.push({ entered: entered.length, link: inline.url });
-        break;
+        return { entered: entered.length, link: container.url };
       }
-      case "text":
-      case "softbreak":
-      case "hardbreak":
-      case "code":
-      case "autolink":
-      case "html":
-        break;
     }
+  };
+  for (const step of walk(inlines, { entered: 0, link: within.link }, open)) {
+    if (step.kind === "leave") styles.length -= step.frame.entered;
+    else if (step.inline.kind === "image") yield { kind: "image", alt: step.inline.alt, src: step.inline.src, styles: [...styles], link: step.within.link };
   }
 }
 

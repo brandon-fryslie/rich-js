@@ -431,6 +431,7 @@ function list(first: ItemStart, level: number, lines: readonly Line[], start: nu
   const items: { gap: number; children: MdToken<string>[] }[] = [];
   let i = start;
   let gap = 0;
+  let swallowed = false;
   for (
     let item: ItemStart | undefined = first;
     item && sameList(first, item);
@@ -440,14 +441,15 @@ function list(first: ItemStart, level: number, lines: readonly Line[], start: nu
     const { inner, next } = itemLines(item, level + 2, lines, i);
     const children = tokenize(inner, level + 2);
     items.push({ gap, children });
-    const end = swallowsRest(children) ? lines.length : next;
+    swallowed = swallowsRest(children);
+    const end = swallowed ? lines.length : next;
     let after = end;
     while (after < lines.length && isBlank(lines[after]!)) after++;
     gap = after - end;
     i = after;
   }
   const token: MdToken<string> = { type: "list", start: first.bullet === undefined ? first.start : undefined, items };
-  if (swallowsRest(items[items.length - 1]!.children)) return { tokens: [token, { type: "unread", open: !isBlank(lines[lines.length - 1]!) }], next: lines.length };
+  if (swallowed) return { tokens: [token, { type: "unread", open: !isBlank(lines[lines.length - 1]!) }], next: lines.length };
   // The blank lines after the last item belong to whatever follows the list.
   return { tokens: [token], next: i - gap };
 }
@@ -765,10 +767,26 @@ class LinkLabels {
   private step(text: string, i: number, level: number): number {
     const cached = this.steps.get(i);
     if (cached !== undefined) return cached;
-    const next = level >= MAX_NESTING ? text.length + 1 : (inlineAt(text, i, this, level + 1)?.end ?? i + 1);
+    const next = level >= MAX_NESTING ? text.length + 1 : (inlineAt(text, i, this, level + 1)?.end ?? textRunEnd(text, i));
     this.steps.set(i, next);
     return next;
   }
+}
+
+/** Every character `inlineAt` opens a construct at, and the `]` a link label ends at. */
+const STEP_STOPS = new Set(["`", "*", "_", "&", "\n", "\\", "<", "!", "[", "]"]);
+
+/**
+ * Where markdown-it's `text` rule leaves a step from `i` in `text` that opens
+ * nothing: past the whole run of characters that cannot, so a label scan
+ * crosses a paragraph of plain text in one step, or past `i` alone where it
+ * is a character that could and did not.
+ */
+function textRunEnd(text: string, i: number): number {
+  if (STEP_STOPS.has(text[i]!)) return i + 1;
+  let end = i + 1;
+  while (end < text.length && !STEP_STOPS.has(text[end]!)) end++;
+  return end;
 }
 
 /**
