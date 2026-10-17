@@ -4,15 +4,22 @@
     {
       "version": "pr-438",
       "ref": "refs/pull/438/merge",
-      "sha": "dffaa3bcdb7773d1d7c3a44f8a34ab785cacf4ac",
-      "timestamp": "2026-10-17T11:47:48.343Z",
+      "sha": "8328cb864e626fb630005717d93bab1e9e43df6b",
+      "timestamp": "2026-10-17T11:54:57.038Z",
       "commits": [
         {
-          "sha": "dffaa3bcdb7773d1d7c3a44f8a34ab785cacf4ac",
+          "sha": "8328cb864e626fb630005717d93bab1e9e43df6b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T05:46:35-06:00",
-          "message": "Merge 7aa1adf77e844b187efef5c93964a78bf3301d83 into 52b080b99044a21665ee34e05265ca8b7bf11115\n"
+          "timestamp": "2026-10-17T11:53:18Z",
+          "message": "Merge 691792fc97c1dfa965eacf79cdb8eedd15b32318 into 52b080b99044a21665ee34e05265ca8b7bf11115\n"
+        },
+        {
+          "sha": "691792fc97c1dfa965eacf79cdb8eedd15b32318",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T05:53:13-06:00",
+          "message": "The quote-rule test quotes Rich's 36 dashes and names the tickets that own its divergences (rich-unfiled-791c.x0d0)\n"
         },
         {
           "sha": "7aa1adf77e844b187efef5c93964a78bf3301d83",
