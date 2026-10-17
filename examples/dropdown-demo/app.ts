@@ -76,7 +76,7 @@ class KeyEchoWidget extends WidgetBase {
     return [
       new Segment(`${label}: `, new Style({ dim: !this.focused })),
       new Segment(this.lastKey),
-      new Segment(`  spaces claimed: ${this.claimed}`, new Style({ dim: true })),
+      new Segment(`  claimed: ${this.claimed}`, new Style({ dim: true })),
     ];
   }
 

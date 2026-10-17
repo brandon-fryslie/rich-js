@@ -122,8 +122,12 @@ it("every row of dropdown-demo reads whole in its card's terminal", async () => 
       return done;
     };
   };
-  // The status row widens with the numbers it reads out; picking the long
-  // list's last item makes it as wide as it gets.
-  const lastOfLongList: Keys = () => ["\t", "\r", ...Array.from({ length: 17 }, () => "\x1b[B"), "\r"];
-  expect(await cut(dropdownDemo, cardSize("dropdown-demo"), lastOfLongList)).toEqual([]);
+  // Two rows widen with the numbers they read out. Picking the long list's
+  // last item makes the status row as wide as it gets; the key echo grows with
+  // its claimed-space count, and backspace is the longest key name it echoes.
+  const widest: Keys = () => [
+    "\t", "\r", ...Array.from({ length: 17 }, () => "\x1b[B"), "\r",
+    "\t", "\t", " ".repeat(100), "\x7f",
+  ];
+  expect(await cut(dropdownDemo, cardSize("dropdown-demo"), widest)).toEqual([]);
 });
