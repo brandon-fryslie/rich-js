@@ -4,32 +4,32 @@
     {
       "version": "pr-421",
       "ref": "refs/pull/421/merge",
-      "sha": "e5707d637bd7407709b1f987c9692606f4052b1b",
-      "timestamp": "2026-10-17T02:39:32.906Z",
+      "sha": "a815ccaae030f0b1a0465d6c3af35c86051708d1",
+      "timestamp": "2026-10-17T02:41:33.421Z",
       "commits": [
         {
-          "sha": "e5707d637bd7407709b1f987c9692606f4052b1b",
+          "sha": "a815ccaae030f0b1a0465d6c3af35c86051708d1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T02:37:56Z",
-          "message": "Merge a6f288c5c19eb9ff018489562fa1b3c987ea83f9 into 63efd6e5f1b953f3ff5c4dfef4ebc23d7fd33cd2\n"
+          "timestamp": "2026-10-17T02:39:57Z",
+          "message": "Merge 956f2163e6ba695255dfa19103cf0888c2261491 into 63efd6e5f1b953f3ff5c4dfef4ebc23d7fd33cd2\n"
         },
         {
-          "sha": "a6f288c5c19eb9ff018489562fa1b3c987ea83f9",
+          "sha": "956f2163e6ba695255dfa19103cf0888c2261491",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T20:37:51-06:00",
           "message": "Link brackets inside a code span or inline HTML pair with nothing (rich-unfiled-791c.5r6q)\n"
         },
         {
-          "sha": "09ab24660bfcd45af356afbf71a9ab623eaf3f15",
+          "sha": "909a60f3ceb95a197e02fe072e83457803d15bb8",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T20:30:19-06:00",
           "message": "Emphasis closes outside every tighter construct, and link destinations read escapes (rich-unfiled-791c.5r6q)\n"
         },
         {
-          "sha": "276cf9594a35dbd493844381961f3b9d1f3fa27a",
+          "sha": "18adab0933501aacb4e2168b255bae67eedf013c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-16T20:20:40-06:00",
