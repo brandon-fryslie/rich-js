@@ -8,7 +8,8 @@
  * gutter — the quote's bar, the item's marker then its hang. A table, which
  * CommonMark has none of, and an HTML block are read as markdown-it — Rich's
  * parser — reads them. Where CommonMark leaves the drawing open, Rich's is
- * followed: an HTML block is drawn as Rich draws it, not at all.
+ * followed: HTML, a block of it or a tag inline, is drawn as Rich draws it,
+ * not at all.
  */
 
 import { cellLen, expandTabs, parseTabSize } from "../core/cells.js";
@@ -133,7 +134,10 @@ const HTML_BLOCK_NAMES =
   "fieldset|figcaption|figure|footer|form|frame|frameset|h1|h2|h3|h4|h5|h6|head|header|hr|html|iframe|legend|li|link|" +
   "main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|" +
   "title|tr|track|ul";
+// The tag grammar of markdown-it-py's common/html_re, shared by the HTML block a lone tag opens and the inline HTML it reads in text.
 const HTML_ATTRIBUTE = String.raw`(?:\s+[a-zA-Z_:][a-zA-Z0-9:._-]*(?:\s*=\s*(?:[^"'=<>\`\x00-\x20]+|'[^']*'|"[^"]*"))?)`;
+const HTML_OPEN_TAG = String.raw`<[A-Za-z][A-Za-z0-9-]*${HTML_ATTRIBUTE}*\s*\/?>`;
+const HTML_CLOSE_TAG = String.raw`<\/[A-Za-z][A-Za-z0-9-]*\s*>`;
 const HTML_BLOCKS: readonly HtmlBlockKind[] = [
   { start: /^<(?:script|pre|style|textarea)(?=\s|>|$)/i, end: /<\/(?:script|pre|style|textarea)>/i, interrupts: true },
   { start: /^<!--/, end: /-->/, interrupts: true },
@@ -143,7 +147,7 @@ const HTML_BLOCKS: readonly HtmlBlockKind[] = [
   { start: /^<!\[CDATA\[/, end: /\]\]>/, interrupts: true },
   { start: new RegExp(String.raw`^<\/?(?:${HTML_BLOCK_NAMES})(?=\s|\/?>|$)`, "i"), end: "blank", interrupts: true },
   {
-    start: new RegExp(String.raw`^(?:<[A-Za-z][A-Za-z0-9-]*${HTML_ATTRIBUTE}*\s*\/?>|<\/[A-Za-z][A-Za-z0-9-]*\s*>)\s*$`),
+    start: new RegExp(String.raw`^(?:${HTML_OPEN_TAG}|${HTML_CLOSE_TAG})\s*$`),
     end: "blank",
     interrupts: false,
   },
@@ -562,13 +566,28 @@ type Inline =
   | { kind: "emphasis"; style: "bold" | "italic"; inner: string; end: number }
   | { kind: "link"; inner: string; url: string; end: number }
   | { kind: "image"; alt: string; src: string; end: number }
-  | { kind: "literal"; text: string; end: number };
+  | { kind: "literal"; text: string; end: number }
+  | { kind: "html"; end: number };
 
 const TICKS = /`+/y;
 const STRONG = /\*\*(.+?)\*\*/y;
 const EMPHASIS = /\*(.+?)\*/y;
 const ANGLED_DESTINATION = /\(\s*<([^<>\n]*)>/y;
 const LINK_TAIL = /\s*(?:"[^"]*"|'[^']*'|\([^()]*\))?\s*\)/y;
+/** A backslash escape, as markdown-it reads one: the ASCII punctuation character after it, standing for itself. */
+const ESCAPE = /\\([!-\/:-@[-`{-~])/y;
+/** Inline HTML, as markdown-it-py's HTML_TAG_RE reads it: a tag, a comment, a processing instruction, a declaration or a CDATA section. */
+const HTML_TAG = new RegExp(
+  [
+    HTML_OPEN_TAG,
+    HTML_CLOSE_TAG,
+    String.raw`<!---?>|<!--(?:[^-]|-[^-]|--[^>])*-->`,
+    String.raw`<[?][\s\S]*?[?]>`,
+    String.raw`<![A-Za-z][^>]*>`,
+    String.raw`<!\[CDATA\[[\s\S]*?\]\]>`,
+  ].join("|"),
+  "y",
+);
 
 /** `re`, a sticky pattern, matched exactly at `i` in `text`. */
 function matchAt(re: RegExp, text: string, i: number): RegExpExecArray | null {
@@ -640,6 +659,14 @@ function inlineAt(text: string, i: number, brackets: ReadonlyMap<number, number>
         ? { kind: "emphasis", style: strong ? "bold" : "italic", inner: emphasis[1]!, end: i + emphasis[0].length }
         : undefined;
     }
+    case "\\": {
+      const escape = matchAt(ESCAPE, text, i);
+      return escape ? { kind: "literal", text: escape[1]!, end: i + escape[0].length } : undefined;
+    }
+    case "<": {
+      const tag = matchAt(HTML_TAG, text, i);
+      return tag ? { kind: "html", end: i + tag[0].length } : undefined;
+    }
     case "!":
     case "[": {
       const image = text[i] === "!";
@@ -671,7 +698,8 @@ function styled(text: string, style: string | Style, settings: InlineSettings, o
 /**
  * `text` as inline Markdown appended to `result`: code spans, emphasis, links
  * and images, the text inside emphasis, links and images parsed the same way,
- * and everything else as it is.
+ * a backslash escape as the character it escapes, inline HTML as nothing, and
+ * everything else as it is.
  */
 function appendInline(result: RichText, text: string, settings: InlineSettings, options: RenderOptions): void {
   const brackets = bracketPairs(text);
@@ -689,6 +717,9 @@ function appendInline(result: RichText, text: string, settings: InlineSettings, 
         break;
       case "literal":
         result.append(found.text);
+        break;
+      case "html":
+        // Rich draws nothing for inline HTML.
         break;
       case "emphasis":
         result.append(styled(found.inner, found.style, settings, options));
