@@ -4,15 +4,22 @@
     {
       "version": "pr-474",
       "ref": "refs/pull/474/merge",
-      "sha": "9e77bdb8a6a2a2cda202c17d7896d7d046c5b171",
-      "timestamp": "2026-10-18T07:28:20.334Z",
+      "sha": "a8181713e017c8fdd8e9bc8504f970b000e90b76",
+      "timestamp": "2026-10-18T07:39:30.799Z",
       "commits": [
         {
-          "sha": "9e77bdb8a6a2a2cda202c17d7896d7d046c5b171",
+          "sha": "a8181713e017c8fdd8e9bc8504f970b000e90b76",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T01:26:31-06:00",
-          "message": "Merge f510480cb9983a634350ca4b27ccd8672088ff87 into 2fc520a9c916e8b7f685b805eeceaf5984de0344\n"
+          "timestamp": "2026-10-18T07:37:42Z",
+          "message": "Merge 1a7608da4091f310978d8516367825369b83584c into 2fc520a9c916e8b7f685b805eeceaf5984de0344\n"
+        },
+        {
+          "sha": "1a7608da4091f310978d8516367825369b83584c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-18T01:37:37-06:00",
+          "message": "A ratio column's declared width is held to the table as any declared width is, and the even cut is described as Rich's is (rich-unfiled-791c.py6q)\n\nHigh review of PR #474. A ratio column with a width wider than the table took\nevery cell of the even cut and left a declared neighbour none; Rich 15 holds\nit with with_maximum(max_width) and draws [14, 3] at width 20. One declared()\nnow holds every declared width. The prose promised no column is cut to nothing\nwhile another keeps cells; Rich's ratio_reduce does exactly that, so the prose\nchanges, not the cut. Two new golden sweeps pin wrap-first-then-even order.\n"
         },
         {
           "sha": "f510480cb9983a634350ca4b27ccd8672088ff87",
