@@ -1,0 +1,341 @@
+one-column 2
+┌┐
+││
+└┘
+
+one-column 3
+┌─┐
+│ │
+└─┘
+
+one-column 4
+┌──┐
+│  │
+└──┘
+
+one-column 5
+┌───┐
+│ … │
+└───┘
+
+one-column 6
+┌────┐
+│ ab │
+└────┘
+
+two-columns 3
+┌┬┐
+│││
+└┴┘
+
+two-columns 4
+┌─┬┐
+│ ││
+└─┴┘
+
+two-columns 5
+┌─┬─┐
+│ │ │
+└─┴─┘
+
+two-columns 6
+┌─┬──┐
+│ │  │
+└─┴──┘
+
+two-columns 7
+┌──┬──┐
+│  │  │
+└──┴──┘
+
+two-columns 8
+┌──┬───┐
+│  │ … │
+└──┴───┘
+
+two-columns 9
+┌───┬───┐
+│ … │ … │
+└───┴───┘
+
+two-columns 10
+┌────┬───┐
+│ ab │ … │
+└────┴───┘
+
+two-columns 11
+┌────┬────┐
+│ ab │ cd │
+└────┴────┘
+
+two-columns-header 3
+┏┳┓
+┃┃┃
+┡╇┩
+│││
+└┴┘
+
+two-columns-header 4
+┏━┳┓
+┃ ┃┃
+┡━╇┩
+│ ││
+└─┴┘
+
+two-columns-header 5
+┏━┳━┓
+┃ ┃ ┃
+┡━╇━┩
+│ │ │
+└─┴─┘
+
+two-columns-header 6
+┏━┳━━┓
+┃ ┃  ┃
+┡━╇━━┩
+│ │  │
+└─┴──┘
+
+two-columns-header 7
+┏━━┳━━┓
+┃  ┃  ┃
+┡━━╇━━┩
+│  │  │
+└──┴──┘
+
+two-columns-header 8
+┏━━┳━━━┓
+┃  ┃ … ┃
+┡━━╇━━━┩
+│  │ … │
+└──┴───┘
+
+two-columns-header 9
+┏━━━┳━━━┓
+┃ … ┃ … ┃
+┡━━━╇━━━┩
+│ … │ … │
+└───┴───┘
+
+two-columns-header 10
+┏━━━━┳━━━┓
+┃ h0 ┃ … ┃
+┡━━━━╇━━━┩
+│ ab │ … │
+└────┴───┘
+
+two-columns-header 11
+┏━━━━┳━━━━┓
+┃ h0 ┃ h1 ┃
+┡━━━━╇━━━━┩
+│ ab │ cd │
+└────┴────┘
+
+three-columns-uneven 4
+┌┬┬┐
+││││
+└┴┴┘
+
+three-columns-uneven 5
+┌┬─┬┐
+││ ││
+└┴─┴┘
+
+three-columns-uneven 6
+┌─┬┬─┐
+│ ││ │
+└─┴┴─┘
+
+three-columns-uneven 7
+┌─┬─┬─┐
+│ │ │ │
+└─┴─┴─┘
+
+three-columns-uneven 8
+┌─┬──┬─┐
+│ │  │ │
+└─┴──┴─┘
+
+three-columns-uneven 9
+┌──┬─┬──┐
+│  │ │  │
+└──┴─┴──┘
+
+three-columns-uneven 10
+┌──┬──┬──┐
+│  │  │  │
+└──┴──┴──┘
+
+three-columns-uneven 11
+┌──┬───┬──┐
+│  │   │  │
+└──┴───┴──┘
+
+three-columns-uneven 12
+┌───┬───┬──┐
+│   │   │  │
+└───┴───┴──┘
+
+three-columns-uneven 13
+┌───┬───┬───┐
+│   │   │   │
+└───┴───┴───┘
+
+three-columns-uneven 14
+┌───┬───┬────┐
+│   │   │    │
+└───┴───┴────┘
+
+three-columns-uneven 15
+┌────┬───┬────┐
+│    │   │    │
+└────┴───┴────┘
+
+three-columns-uneven 16
+┌────┬────┬────┐
+│    │    │    │
+└────┴────┴────┘
+
+three-columns-uneven 17
+┌────┬─────┬────┐
+│    │  b  │    │
+└────┴─────┴────┘
+
+three-columns-uneven 18
+┌─────┬─────┬────┐
+│  …  │  b  │    │
+└─────┴─────┴────┘
+
+three-columns-uneven 19
+┌─────┬─────┬─────┐
+│  …  │  b  │  …  │
+│     │     │  …  │
+└─────┴─────┴─────┘
+
+three-columns-uneven 20
+┌─────┬─────┬──────┐
+│  …  │  b  │  g…  │
+│     │     │  r…  │
+└─────┴─────┴──────┘
+
+three-columns-uneven 21
+┌──────┬─────┬──────┐
+│  a…  │  b  │  g…  │
+│      │     │  r…  │
+└──────┴─────┴──────┘
+
+three-columns-uneven 22
+┌───────┬─────┬──────┐
+│  al…  │  b  │  g…  │
+│       │     │  r…  │
+└───────┴─────┴──────┘
+
+three-columns-uneven 23
+┌───────┬─────┬───────┐
+│  al…  │  b  │  ga…  │
+│       │     │  ray  │
+└───────┴─────┴───────┘
+
+three-columns-uneven 24
+┌───────┬─────┬────────┐
+│  al…  │  b  │  gam…  │
+│       │     │  ray   │
+└───────┴─────┴────────┘
+
+three-columns-uneven 25
+┌────────┬─────┬────────┐
+│  alp…  │  b  │  gam…  │
+│        │     │  ray   │
+└────────┴─────┴────────┘
+
+three-columns-uneven 26
+┌─────────┬─────┬────────┐
+│  alpha  │  b  │  gam…  │
+│         │     │  ray   │
+└─────────┴─────┴────────┘
+
+three-columns-uneven 27
+┌─────────┬─────┬─────────┐
+│  alpha  │  b  │  gamma  │
+│         │     │  ray    │
+└─────────┴─────┴─────────┘
+
+three-columns-uneven 28
+┌─────────┬─────┬──────────┐
+│  alpha  │  b  │  gamma   │
+│         │     │  ray     │
+└─────────┴─────┴──────────┘
+
+three-columns-uneven 29
+┌─────────┬─────┬───────────┐
+│  alpha  │  b  │  gamma    │
+│         │     │  ray      │
+└─────────┴─────┴───────────┘
+
+three-columns-uneven 30
+┌─────────┬─────┬────────────┐
+│  alpha  │  b  │  gamma     │
+│         │     │  ray       │
+└─────────┴─────┴────────────┘
+
+three-columns-uneven 31
+┌─────────┬─────┬─────────────┐
+│  alpha  │  b  │  gamma ray  │
+└─────────┴─────┴─────────────┘
+
+padded-all-sides 3
+┌┬┐
+│││
+└┴┘
+
+padded-all-sides 4
+┌─┬┐
+│ ││
+│ ││
+└─┴┘
+
+padded-all-sides 5
+┌─┬─┐
+│ │ │
+│ │ │
+└─┴─┘
+
+padded-all-sides 6
+┌─┬──┐
+│ │  │
+│ │  │
+└─┴──┘
+
+padded-all-sides 7
+┌──┬──┐
+│  │  │
+│  │  │
+└──┴──┘
+
+padded-all-sides 8
+┌──┬───┐
+│  │   │
+│  │ … │
+│  │   │
+└──┴───┘
+
+padded-all-sides 9
+┌───┬───┐
+│   │   │
+│ … │ … │
+│   │   │
+└───┴───┘
+
+padded-all-sides 10
+┌────┬───┐
+│    │   │
+│ ab │ … │
+│    │   │
+└────┴───┘
+
+padded-all-sides 11
+┌────┬────┐
+│    │    │
+│ ab │ cd │
+│    │    │
+└────┴────┘

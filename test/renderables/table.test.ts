@@ -902,30 +902,32 @@ describe("Table stays inside the width it is given", () => {
     expect(collectLines(t, { maxWidth: 12 })).toContain("|abcd|a    |");
   });
 
-  it("spends its last cells on content rather than on padding", () => {
-    // 2 edges + 1 divider + 2 content cells = 5; a sixth cell cannot buy the
-    // padding both columns would need, so it goes to a column instead.
+  it("pays a cell's padding before its content, as Rich does", () => {
+    // Python Rich 15, `render_lines` at each width. A cell is its padding and
+    // then its content, so one too narrow for both sides draws blank, and the
+    // first content cell arrives once a cell holds its padding and one more.
     const t = new Table({ box: ASCII, showHeader: false, padding: [0, 1] });
     t.addColumn(undefined, { overflow: "crop" });
     t.addColumn(undefined, { overflow: "crop" });
     t.addRow("ab", "cd");
-    // The ladder: content first, then one side of the padding, then the other.
-    expect(collectLines(t, { maxWidth: 6 })).toContain("|ab|c|");
-    expect(collectLines(t, { maxWidth: 7 })).toContain("| a| c|");
+    expect(collectLines(t, { maxWidth: 6 })).toContain("| |  |");
+    expect(collectLines(t, { maxWidth: 7 })).toContain("|  |  |");
     expect(collectLines(t, { maxWidth: 9 })).toContain("| a | c |");
   });
 
-  it("drops the columns a width cannot seat rather than overflowing", () => {
+  it("draws a column it collapsed to nothing, and drops one whose divider does not fit", () => {
     const t = new Table({ box: ASCII, showHeader: false, padding: 0 });
     t.addColumn();
     t.addColumn();
     t.addColumn();
     t.addRow("a", "b", "c");
-    // 2 edges + 3 cells + 2 dividers needs 7; at 6 the last column is dropped
-    // rather than drawn past the frame, and the freed cell stays unspent
-    // because both survivors are already at their natural width.
-    expect(collectLines(t, { maxWidth: 6 })).toContain("|a|b|");
+    // 2 edges + 3 cells + 2 dividers needs 7; at 6 the last column is drawn
+    // with no cell, as Python Rich 15 draws it.
+    expect(collectLines(t, { maxWidth: 6 })).toContain("|a|b||");
     expect(collectLines(t, { maxWidth: 7 })).toContain("|a|b|c|");
+    // At 3 the edges and one divider are all there is: the third column's
+    // divider would cross the frame, so that column is not drawn.
+    expect(collectLines(t, { maxWidth: 3 })).toEqual(["+-+", "|||", "+-+"]);
   });
 
   it("gives a width-0 column no content cell, only its padding and divider", () => {
@@ -933,8 +935,7 @@ describe("Table stays inside the width it is given", () => {
     t.addColumn(undefined, { width: 0 });
     t.addColumn();
     t.addRow("hidden", "shown");
-    // A spacer asks for nothing, so the seating pass seats it at nothing — the
-    // two cells are its padding.
+    // A spacer asks for nothing but its padding — the two cells.
     expect(collectLines(t, { maxWidth: 20 })).toContain("|  | shown |");
   });
 
@@ -1005,8 +1006,7 @@ describe("Table stays inside the width it is given", () => {
 
   it("treats a NaN declared width as zero rather than poisoning the budget", () => {
     // NaN fails every comparison, so `budget -= NaN` does not merely mis-size
-    // this column — it disables the seating loop's `budget < cost` check for
-    // every column after it.
+    // this column — it poisons every share of the budget handed out after it.
     const t = new Table({ box: ASCII, showHeader: false });
     t.addColumn(undefined, { width: NaN });
     t.addColumn();
@@ -1600,7 +1600,8 @@ describe("Table cells wrap before the overflow method sees them", () => {
     g.addColumn("", { noWrap: true });
     g.addColumn("", { noWrap: true });
     g.addRow("xxxx", "yy", "zz");
-    expect(collectLines(g, { maxWidth: 4 })).toEqual(["x………"]);
+    // Python Rich 15's row: each column measured no wider than the table, then cut evenly.
+    expect(collectLines(g, { maxWidth: 4 })).toEqual(["xx……"]);
   });
 
   it("reports its column minimums to a parent that squeezes it", () => {
