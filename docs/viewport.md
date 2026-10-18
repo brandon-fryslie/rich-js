@@ -110,7 +110,7 @@ console.print(new Panel(previews.of("README.md"), { title: "README.md" }));
 
 ## Scrollbar
 
-Pass `scrollbar` to draw one down the right edge. The content renders narrower by the scrollbar's gutter, one cell for `SCROLLBAR`.
+Pass `scrollbar` to draw one down the right edge. The content renders narrower by the scrollbar's gutter, one cell for `SCROLLBAR`. A viewport no wider than its gutter draws only the scrollbar. Its content has no column and is not drawn, so the viewport keeps the content's length from the last render that drew it, and the offset and thumb stay where they were.
 
 ```typescript
 import { SCROLLBAR, Viewport } from "@promptctl/rich-js";

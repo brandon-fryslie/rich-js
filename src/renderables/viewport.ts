@@ -39,6 +39,7 @@ import { NULL_STYLE } from "../core/style.js";
 import type { Style } from "../core/style.js";
 import {
   drawable,
+  drawsNothing,
   fitHeight,
   getStyle,
   regionRows,
@@ -200,7 +201,11 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
     const gutter = this.gutter;
     const contentWidth = this.contentWidth(options.maxWidth);
     const lines = Segment.splitLines(render(this.content, { ...options, maxWidth: contentWidth }));
-    const extent: Extent = { rows: viewRows(height, this.rows, lines.length), lines: lines.length };
+    // Content handed no column is held, not drawn, so this render learns its
+    // rows but not its length: the length is the one last drawn, and an
+    // offset clamped against the nothing that came back would reset.
+    const length = drawsNothing({ maxWidth: contentWidth }) ? this._extent.lines : lines.length;
+    const extent: Extent = { rows: viewRows(height, this.rows, lines.length), lines: length };
     const followed = this._followed;
     const wasShown = followed.start >= this._offset && followed.end <= this._offset + this._extent.rows;
     this._extent = extent;

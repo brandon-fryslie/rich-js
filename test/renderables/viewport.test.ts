@@ -331,6 +331,18 @@ describe("the scrollbar", () => {
     expect(rows(new Viewport(numbered(2), { scrollbar: SCROLLBAR }), undefined, 0)).toEqual([]);
   });
 
+  // Held, the content tells this render nothing about its length, so the
+  // offset is clamped against the length last drawn rather than against none.
+  it("keeps its offset and its thumb across a render that hands its content no column", () => {
+    const viewport = new Viewport(numbered(20), { scrollbar: SCROLLBAR });
+    viewport.scrollTo(10);
+    const drawn = bar(viewport, region(5));
+    expect(viewport.offset).toBe(10);
+    expect(bar(viewport, region(5), 1)).toBe(drawn);
+    expect(viewport.offset).toBe(10);
+    expect(shown(viewport, region(5))[0]).toMatch(/^10 /);
+  });
+
   it("resolves its styles against the theme it renders for", () => {
     const theme = new Theme({ "scrollbar.thumb": "red", "scrollbar.track": "blue" });
     const segments = [...new Viewport(numbered(8), { rows: 4, scrollbar: SCROLLBAR }).render({ maxWidth: 4, theme })];

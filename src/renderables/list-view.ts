@@ -18,7 +18,7 @@
 
 import { Segment } from "../core/segment.js";
 import { Measurement, measureRenderables } from "../core/measure.js";
-import { render, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { drawsNothing, render, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import type { Viewport } from "./viewport.js";
 
@@ -76,8 +76,10 @@ export class ListView implements Renderable, Measurable, Composite {
     };
     // A range reaching past either end is clamped by the viewport, which holds
     // its offset to the lines that exist. Followed, not ensured: the wheel can
-    // scroll away from the selection until the selection moves.
-    this.viewport.follow(start - this.context, end + this.context);
+    // scroll away from the selection until the selection moves. Items handed
+    // no column are held, not drawn, and cover no lines, so they name no range
+    // and the one last followed stands; followed, it would read as a move.
+    if (!drawsNothing(options)) this.viewport.follow(start - this.context, end + this.context);
     yield* render(this.viewport, bounded);
   }
 

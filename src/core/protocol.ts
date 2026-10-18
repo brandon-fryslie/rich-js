@@ -329,6 +329,19 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
 }
 
 /**
+ * `options` as a measurement is asked with. A `measure` that renders to learn
+ * its shape draws nothing on the frame, so it reports nothing to `onPresent` —
+ * one that did would put a widget in the view at the moment a container
+ * measured it, and keep one the frame then cropped away.
+ *
+ * [LAW:single-enforcer] Every measurement starts here: `Measurement.get` and
+ * `withBoundedWidth` ask through it, and each `measure` passes it on.
+ */
+export function measuring(options: RenderOptions): RenderOptions {
+  return { ...options, onPresent: undefined };
+}
+
+/**
  * The options a renderable should *lay out against*: `withCellWidth`, with an
  * unbounded offer resolved to the renderable's own natural width.
  *
@@ -363,19 +376,6 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
  * rather than zero, and saying so names the cause — where `String.repeat` and
  * `new Array` only ever name their own argument.
  */
-/**
- * `options` as a measurement is asked with. A `measure` that renders to learn
- * its shape draws nothing on the frame, so it reports nothing to `onPresent` —
- * one that did would put a widget in the view at the moment a container
- * measured it, and keep one the frame then cropped away.
- *
- * [LAW:single-enforcer] Every measurement starts here: `Measurement.get` and
- * `withBoundedWidth` ask through it, and each `measure` passes it on.
- */
-export function measuring(options: RenderOptions): RenderOptions {
-  return { ...options, onPresent: undefined };
-}
-
 export function withBoundedWidth(
   options: RenderOptions,
   self: Measurable,
