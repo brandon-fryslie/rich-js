@@ -75,9 +75,12 @@ export class WidgetApp implements FrameSource {
       ...options,
       view: (t) => ({ render: (renderOptions) => this.compose(() => view(t), renderOptions) }),
     });
-    this.focus = new DefaultFocusManager(() => {
-      const owners = ownersOn(this.app.frame);
-      return this.widgets.filter((widget) => owners.has(widget));
+    this.focus = new DefaultFocusManager({
+      present: () => this.widgets,
+      onScreen: () => {
+        const owners = ownersOn(this.app.frame);
+        return this.widgets.filter((widget) => owners.has(widget));
+      },
     });
     this.focusManager = this.focus;
     this.router = new EventRouter({ source: this, focusOnClick });
@@ -87,7 +90,7 @@ export class WidgetApp implements FrameSource {
     this.app.onMouse((event) => this.router.mouse(event));
     this.app.onWheel((wheel) => this.router.wheel(wheel));
     this.app.onPaint(() => {
-      this.focus.settle(this.widgets);
+      this.focus.settle();
       this.router.framePainted();
     });
     // [LAW:single-enforcer] `settle` judges every focus move, so every move

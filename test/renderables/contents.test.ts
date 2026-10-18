@@ -171,6 +171,30 @@ const ROWS: Record<string, Row> = {
   Slider: { holds: "nothing", make: () => new Slider({ value: 50 }), why: "draws its track" },
 };
 
+/**
+ * Containers in a configuration that changes what their `render` draws, held
+ * to the same rule as their `ROWS` entry.
+ */
+const VARIANTS: Record<string, Extract<Row, { holds: "probes" }>> = {
+  "Table without its header": {
+    holds: "probes",
+    make: (p) => {
+      const table = new Table({ showHeader: false });
+      table.addColumn(p("head-1"));
+      table.addRow(p("cell-1-1"));
+      return table;
+    },
+  },
+  "Tree with its root hidden": {
+    holds: "probes",
+    make: (p) => {
+      const tree = new Tree(p("root"), { hideRoot: true });
+      tree.add(p("first"));
+      return tree;
+    },
+  },
+};
+
 /** Every report `render` makes for `renderable` at `maxWidth`. */
 function reports(renderable: Renderable, maxWidth: number): [Renderable, Presence][] {
   const heard: [Renderable, Presence][] = [];
@@ -198,7 +222,7 @@ describe("contents", () => {
     expect(Object.keys(ROWS).sort()).toEqual(exportedRenderables().map((cls) => cls.name).sort());
   });
 
-  for (const [name, row] of Object.entries(ROWS)) {
+  for (const [name, row] of [...Object.entries(ROWS), ...Object.entries(VARIANTS)]) {
     if (row.holds === "nothing") {
       it(`${name}, handed no column, is held and holds nothing (${row.why})`, () => {
         const renderable = row.make();

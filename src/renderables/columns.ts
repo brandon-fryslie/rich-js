@@ -102,8 +102,8 @@ export class Columns implements Renderable, Measurable, Composite {
     yield* render(this._grid(options), options);
   }
 
-  // The items, in the order they were given: the grid they are drawn in is
-  // laid out for a width, and the items are all it holds of anyone's.
+  // The items, in the order they were given. Laid out column-first, the grid
+  // draws them in an order its width decides, and handed no column it has none.
   contents(): Iterable<Renderable> {
     return this.renderables;
   }

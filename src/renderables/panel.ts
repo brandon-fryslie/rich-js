@@ -249,6 +249,12 @@ export class Panel implements Renderable, Measurable, Composite {
     yield* this._renderBottomBorder(options, box, geometry, border);
   }
 
+  // The body is the one thing a panel draws through `render`: its title and
+  // subtitle are text it builds.
+  *contents(): Iterable<Renderable> {
+    yield this._body;
+  }
+
   /**
    * The body's rows, held to the region as Rich's `render_lines` holds them —
    * padded below, cropped from the bottom — and each exactly `spanWidth`
@@ -260,12 +266,6 @@ export class Panel implements Renderable, Measurable, Composite {
    * because a `bottomRightAccessory` thunk reads state the content's render
    * populates.
    */
-  // The body is the one thing a panel draws through `render`: its title and
-  // subtitle are text it builds.
-  *contents(): Iterable<Renderable> {
-    yield this._body;
-  }
-
   private _renderBody(options: RenderOptions, spanWidth: number): Segment[][] {
     // Two border rows are the panel's own, and the vertical padding is the
     // body's. Handed on as a region, the rest is the panel's to shape, which

@@ -22,9 +22,17 @@ class StubWidget extends WidgetBase {
   }
 }
 
+/** A focus manager over a view that holds `present`, of which `onScreen` have a cell on the frame. */
+function managerOf(
+  present: () => readonly StubWidget[],
+  onScreen: () => readonly StubWidget[] = present,
+): DefaultFocusManager {
+  return new DefaultFocusManager({ present, onScreen });
+}
+
 /** A focus manager over `shown`, standing for the widgets on the frame. */
 function over(...shown: StubWidget[]): DefaultFocusManager {
-  return new DefaultFocusManager(() => shown);
+  return managerOf(() => shown);
 }
 
 describe("DefaultFocusManager", () => {
@@ -48,7 +56,7 @@ describe("DefaultFocusManager", () => {
       const a = new StubWidget("a", false);
       const b = new StubWidget("b");
       const fm = over(a, b);
-      fm.settle([a, b]);
+      fm.settle();
       expect(fm.current).toBe(b);
       expect(b.focused).toBe(true);
     });
@@ -58,7 +66,7 @@ describe("DefaultFocusManager", () => {
       const b = new StubWidget("b");
       const fm = over(a, b);
       fm.focus(b);
-      fm.settle([a, b]);
+      fm.settle();
       expect(fm.current).toBe(b);
     });
 
@@ -66,10 +74,10 @@ describe("DefaultFocusManager", () => {
       const a = new StubWidget("a");
       const b = new StubWidget("b");
       const shown = [a, b];
-      const fm = new DefaultFocusManager(() => shown);
+      const fm = managerOf(() => shown);
       fm.focus(b);
       shown.pop();
-      fm.settle(shown);
+      fm.settle();
       expect(fm.current).toBe(a);
       expect(b.focused).toBe(false);
     });
@@ -78,10 +86,10 @@ describe("DefaultFocusManager", () => {
       const a = new StubWidget("a");
       const b = new StubWidget("b");
       const shown = [a, b];
-      const fm = new DefaultFocusManager(() => shown);
+      const fm = managerOf(() => [a, b], () => shown);
       fm.focus(b);
       shown.pop();
-      fm.settle([a, b]);
+      fm.settle();
       expect(fm.current).toBe(b);
       expect(b.focused).toBe(true);
     });
@@ -92,17 +100,17 @@ describe("DefaultFocusManager", () => {
       const fm = over(a, b);
       fm.focus(b);
       b.setDisabled(true);
-      fm.settle([a, b]);
+      fm.settle();
       expect(fm.current).toBe(a);
     });
 
     it("drops focus when nothing on screen can take it", () => {
       const a = new StubWidget("a");
       const shown = [a];
-      const fm = new DefaultFocusManager(() => shown);
-      fm.settle(shown);
+      const fm = managerOf(() => shown);
+      fm.settle();
       shown.pop();
-      fm.settle(shown);
+      fm.settle();
       expect(fm.current).toBeNull();
       expect(a.focused).toBe(false);
     });
@@ -130,7 +138,7 @@ describe("DefaultFocusManager", () => {
       const b = new StubWidget("b");
       const c = new StubWidget("c");
       const fm = over(a, b, c);
-      fm.settle([a, b, c]);
+      fm.settle();
 
       fm.prev();
       expect(fm.current).toBe(c); // wraps to last
@@ -143,7 +151,7 @@ describe("DefaultFocusManager", () => {
       const b = new StubWidget("b", false);
       const c = new StubWidget("c");
       const fm = over(a, b, c);
-      fm.settle([a, b, c]);
+      fm.settle();
 
       fm.next();
       expect(fm.current).toBe(c); // skipped b
@@ -156,11 +164,25 @@ describe("DefaultFocusManager", () => {
       const b = new StubWidget("b");
       const c = new StubWidget("c");
       const fm = over(a, b, c);
-      fm.settle([a, b, c]);
+      fm.settle();
 
       b.setDisabled(true);
       fm.next(); // a -> skip b -> c
       expect(fm.current).toBe(c);
+    });
+
+    it("moves from a widget the view holds on no cell to its neighbours in document order", () => {
+      const a = new StubWidget("a");
+      const b = new StubWidget("b");
+      const c = new StubWidget("c");
+      const fm = managerOf(() => [a, b, c], () => [a, c]);
+
+      fm.focus(b);
+      fm.next();
+      expect(fm.current).toBe(c);
+      fm.focus(b);
+      fm.prev();
+      expect(fm.current).toBe(a);
     });
 
     it("no-ops when no focusable widgets exist", () => {
@@ -175,7 +197,7 @@ describe("DefaultFocusManager", () => {
       const a = new StubWidget("a");
       const b = new StubWidget("b");
       const fm = over(a, b);
-      fm.settle([a, b]);
+      fm.settle();
 
       fm.focus(b);
       expect(fm.current).toBe(b);
@@ -196,7 +218,7 @@ describe("DefaultFocusManager", () => {
       const a = new StubWidget("a");
       const b = new StubWidget("b", false);
       const fm = over(a, b);
-      fm.settle([a, b]);
+      fm.settle();
 
       fm.focus(b);
       expect(fm.current).toBe(a); // unchanged
@@ -206,7 +228,7 @@ describe("DefaultFocusManager", () => {
       const a = new StubWidget("a");
       const b = new StubWidget("b");
       const fm = over(a, b);
-      fm.settle([a, b]);
+      fm.settle();
 
       b.setDisabled(true);
       fm.focus(b);
@@ -230,8 +252,8 @@ describe("DefaultFocusManager", () => {
       const a = new Counting("a");
       const b = new Counting("b");
       const shown = [a, b];
-      const fm = new DefaultFocusManager(() => shown);
-      fm.settle([a, b]); // focuses a → a.focusCount = 1
+      const fm = managerOf(() => shown);
+      fm.settle(); // focuses a → a.focusCount = 1
 
       expect(a.focusCount).toBe(1);
       expect(a.blurCount).toBe(0);
@@ -243,7 +265,7 @@ describe("DefaultFocusManager", () => {
       expect(b.blurCount).toBe(0);
 
       shown.length = 0;
-      fm.settle([]); // nothing drawn: b blurs once
+      fm.settle(); // nothing drawn: b blurs once
       expect(b.blurCount).toBe(1);
     });
   });
@@ -253,15 +275,15 @@ describe("DefaultFocusManager", () => {
       const a = new StubWidget("a");
       const b = new StubWidget("b");
       const shown = [a, b];
-      const fm = new DefaultFocusManager(() => shown);
+      const fm = managerOf(() => shown);
       const changes: (InteractiveWidget | null)[] = [];
       fm.onChange((current) => changes.push(current));
 
-      fm.settle([a, b]);
-      fm.settle([a, b]);
+      fm.settle();
+      fm.settle();
       fm.next();
       shown.length = 0;
-      fm.settle([]);
+      fm.settle();
 
       // settle → a, settle again → no change (a stays), next → b, nothing
       // drawn → null
@@ -275,7 +297,7 @@ describe("DefaultFocusManager", () => {
       const unsub = fm.onChange((current) => changes.push(current));
 
       unsub();
-      fm.settle([a]);
+      fm.settle();
       expect(changes).toHaveLength(0);
     });
   });

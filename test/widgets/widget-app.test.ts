@@ -239,6 +239,25 @@ describe("WidgetApp focus", () => {
     expect(b.focused).toBe(true);
   });
 
+  it("moves Tab from a widget its container hands no column to the one after it", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const a = new Checkbox({ label: "a", id: "a" });
+    const b = new Checkbox({ label: "b", id: "b" });
+    const c = new Checkbox({ label: "c", id: "c" });
+    const view = new Layout();
+    view.splitRow(new Layout(a, { size: 5 }), new Layout(b), new Layout(c, { size: 5 }));
+    const app = start(host, () => view);
+    await tick();
+    host.type(TAB);
+    expect(app.focusManager.current).toBe(b);
+
+    host.resize({ cols: 10, rows: 4 });
+    await tick();
+    expect(app.present).toContainEqual({ widget: b, presence: "held" });
+    host.type(TAB);
+    expect(app.focusManager.current).toBe(c);
+  });
+
   it("moves focus off a widget no frame draws, though nothing had focus", async () => {
     const host = scriptedHost({ cols: 20, rows: 4 });
     const never = new Checkbox({ label: "never", id: "never" });

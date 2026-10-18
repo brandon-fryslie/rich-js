@@ -405,12 +405,13 @@ export interface Measurable {
 
 /**
  * A container: a renderable that draws other renderables. `contents` is what
- * its `render` hands to `render`, in that order, decided as the render decides
- * it — and so it is how a container handed no column still reports what it
- * holds (`render`). It takes no options: what a container holds may depend on
- * its state (a hidden `Layout` holds nothing) but never on a width, because
- * under one column there is none. It is pure, and yields only renderables:
- * text a container builds from a string it holds holds nothing.
+ * its `render` hands to `render`, in that order where the order is not a
+ * width's, decided as the render decides it — and so it is how a container
+ * handed no column still reports what it holds (`render`). It takes no
+ * options: what a container holds may depend on its state (a hidden `Layout`
+ * holds nothing) but never on a width, because under one column there is none.
+ * It commits no state, and yields only renderables: text a container builds
+ * from a string it holds holds nothing.
  *
  * [LAW:one-source-of-truth] A second description of each container's
  * traversal, so `test/renderables/contents.test.ts` holds every exported

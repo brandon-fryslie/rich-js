@@ -569,6 +569,11 @@ export interface TableOptions {
   highlight?: boolean;
 }
 
+// A row's cell in column `index`: a column the row is short of draws a blank one.
+function cellAt(row: { readonly cells: readonly Renderable[] }, index: number): Renderable {
+  return row.cells[index] ?? new EmbeddedText(undefined);
+}
+
 export class Table implements Renderable, Measurable, Composite {
   private _columns: Column[];
   private _rows: Array<{ cells: Renderable[]; endSection?: boolean }>;
@@ -1048,6 +1053,18 @@ export class Table implements Renderable, Measurable, Composite {
     return [!this.padEdge && first ? 0 : top, !this.padEdge && last ? 0 : collapsed];
   }
 
+  // Every cell `render` draws, in the order it draws them: row by row, the
+  // header and footer when it shows them.
+  *contents(): Iterable<Renderable> {
+    if (this.showHeader) yield* this._columns.map((c) => c.header);
+    for (const row of this._rows) yield* this._rowCells(row);
+    if (this.showFooter) yield* this._columns.map((c) => c.footer);
+  }
+
+  private _rowCells(row: { readonly cells: readonly Renderable[] }): Renderable[] {
+    return this._columns.map((_, index) => cellAt(row, index));
+  }
+
   /**
    * Every cell column `index` draws, in draw order.
    *
@@ -1059,22 +1076,9 @@ export class Table implements Renderable, Measurable, Composite {
    * footer wider than its column — a totals row, exactly — was cut to `…`.
    * A flag is the whole membership rule; nothing here asks after content.
    */
-  // Every cell `render` draws, in the order it draws them: row by row, the
-  // header and footer when it shows them.
-  *contents(): Iterable<Renderable> {
-    if (this.showHeader) yield* this._columns.map((c) => c.header);
-    for (const row of this._rows) yield* this._rowCells(row);
-    if (this.showFooter) yield* this._columns.map((c) => c.footer);
-  }
-
-  // One cell per column: a column the row is short of draws a blank one.
-  private _rowCells(row: { readonly cells: readonly Renderable[] }): Renderable[] {
-    return this._columns.map((_, index) => row.cells[index] ?? new EmbeddedText(undefined));
-  }
-
   private *_columnCells(col: Column, index: number): Iterable<Renderable> {
     if (this.showHeader) yield col.header;
-    for (const row of this._rows) yield row.cells[index] ?? new EmbeddedText(undefined);
+    for (const row of this._rows) yield cellAt(row, index);
     if (this.showFooter) yield col.footer;
   }
 
