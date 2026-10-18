@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-469",
+      "ref": "refs/pull/469/merge",
+      "sha": "780d7a17ffe6a96a933836c9636581ac2c5d1ee7",
+      "timestamp": "2026-10-18T04:07:30.623Z",
+      "commits": [
+        {
+          "sha": "780d7a17ffe6a96a933836c9636581ac2c5d1ee7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T22:05:38-06:00",
+          "message": "Merge d9ca3165090fadd5880cdd9ad176c873c30651d8 into ceb10734548abfec6408a76a1a317090681e68a9\n"
+        },
+        {
+          "sha": "d9ca3165090fadd5880cdd9ad176c873c30651d8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T22:05:34-06:00",
+          "message": "A Table cell pays its padding before its content, so one too narrow for its padding draws blank, as Rich's does (rich-unfiled-791c.gxf4)\n\nThe width is divided over whole cells, padding included, and each cell is\nmeasured and drawn through Padding, as Rich's _get_cells wraps it. The seat\nand padding-level passes are gone; a column the width leaves no cell draws\nas nothing between its dividers. table-squeeze.golden.txt pins Rich 15's\nrows at every width from the frame to the content.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ceb10734548abfec6408a76a1a317090681e68a9",
