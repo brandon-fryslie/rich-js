@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-466",
+      "ref": "refs/pull/466/merge",
+      "sha": "3a76a985750e67964ef82eb75b03823a0312fc42",
+      "timestamp": "2026-10-18T02:29:49.091Z",
+      "commits": [
+        {
+          "sha": "3a76a985750e67964ef82eb75b03823a0312fc42",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T20:28:31-06:00",
+          "message": "Merge ceb6c955542a3796e2dcd6ae49b3083f29cec4b6 into 9c6945f91ce460f095462ec717c70e928b7f6811\n"
+        },
+        {
+          "sha": "ceb6c955542a3796e2dcd6ae49b3083f29cec4b6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T20:28:18-06:00",
+          "message": "Segment.divide cuts each segment once at every cut inside it, so wrapping a long line is linear in its length (rich-unfiled-791c.vzmy)\n\ncutCells takes every position in one walk; Segment.cutAt applies it with each\npiece's anchor shifted, and splitCells is its one-cut case. The Markdown\nlinearity guards now time drawing, not only reading.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "9c6945f91ce460f095462ec717c70e928b7f6811",
