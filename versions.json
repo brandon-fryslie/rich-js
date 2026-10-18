@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-467",
+      "ref": "refs/pull/467/merge",
+      "sha": "32151fdc9399ca09a3736124dd1f14f16674191f",
+      "timestamp": "2026-10-18T03:09:53.542Z",
+      "commits": [
+        {
+          "sha": "32151fdc9399ca09a3736124dd1f14f16674191f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T21:08:35-06:00",
+          "message": "Merge 1b944b2619ad259811cce9c7ae9a278fc298a2e9 into 534656cf6b82f96769a822eab71a2b9c457248f4\n"
+        },
+        {
+          "sha": "1b944b2619ad259811cce9c7ae9a278fc298a2e9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T21:08:30-06:00",
+          "message": "Markdown draws <kbd> text in markdown.kbd, its close popping Rich's style stack as Rich 15's does (rich-unfiled-791c.k2zi)\n\nInline HTML carries its tag as written, and one rule, kbdTags, serves both\ninline passes. An image reads its link off the style stack as Rich's\nImageItem does, replacing the separately tracked link.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "534656cf6b82f96769a822eab71a2b9c457248f4",
