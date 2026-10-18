@@ -905,15 +905,19 @@ describe("Table stays inside the width it is given", () => {
     expect(collectLines(t, { maxWidth: 12 })).toContain("|abcd|a    |");
   });
 
-  it("holds a ratio column's declared width to the table, so a declared neighbour keeps its even share", () => {
-    const t = new Table({ box: ASCII, showHeader: false, padding: [0, 1] });
-    t.addColumn("A", { ratio: 1, width: 30 });
-    t.addColumn("B", { width: 4 });
-    t.addRow("abcdefghijklmnopqrstuvwxyz", "x");
-    // Python Rich 15 draws this row at width 20. Unheld, the 32-cell floor
-    // took every cell of the even cut and left the declared column none.
-    expect(collectLines(t, { maxWidth: 20 })).toContain("| abcdefghijk… | x |");
-  });
+  // Python Rich 15 draws the `width` row at width 20. Unheld, the 32-cell floor
+  // took every cell of the even cut and left the declared column none. A
+  // `minWidth` floor is this port's, and is held the same way.
+  it.each<ColumnOptions>([{ ratio: 1, width: 30 }, { ratio: 1, minWidth: 30, noWrap: true }])(
+    "holds a ratio column's floor %o to the table, so a declared neighbour keeps its even share",
+    (ratioColumn) => {
+      const t = new Table({ box: ASCII, showHeader: false, padding: [0, 1] });
+      t.addColumn("A", ratioColumn);
+      t.addColumn("B", { width: 4 });
+      t.addRow("abcdefghijklmnopqrstuvwxyz", "x");
+      expect(collectLines(t, { maxWidth: 20 })).toContain("| abcdefghijk… | x |");
+    },
+  );
 
   it("pays a cell's padding before its content, as Rich does", () => {
     // Python Rich 15, `render_lines` at each width. A cell is its padding and

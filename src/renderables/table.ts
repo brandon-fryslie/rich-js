@@ -945,21 +945,23 @@ export class Table implements Renderable, Measurable, Composite {
     // the reference's `column.width or 1`, reading `minWidth` where there is
     // no `width` — bid for in cells like any content column, so a squeezed
     // table still pays it. A `width` beside a `ratio` is that floor, as the
-    // reference's `flex_minimum` reads it, held to the frame as any declared
+    // reference's `flex_minimum` reads it, held to the frame as a declared
     // width is.
     // [LAW:one-source-of-truth] `columnShare` decides first, so a column that
     // `Column.flexible` calls elastic is one the division shares out.
     const pad = left + right;
     const padded = (content: number): number => demandCells(content + pad);
-    // [LAW:single-enforcer] A declared width, held to the width inside the
-    // frame — the reference's `with_maximum(max_width)` on a fixed-width
-    // column's measurement — so an even cut starts from what the table can
-    // hold, whether the width is a column's whole sizing or a ratio's floor.
-    const declared = (width: number): number => Math.min(padded(demandCells(width)), options.maxWidth);
+    // [LAW:single-enforcer] A width a column insists on, held to the width
+    // inside the frame — the reference's `with_maximum(max_width)` on a
+    // fixed-width column's measurement — so an even cut starts from what the
+    // table can hold. It holds a declared width and every ratio floor; a
+    // content column's `minWidth` is not held, as the reference clamps to
+    // `min_width` after `with_maximum`.
+    const held = (width: number): number => Math.min(padded(demandCells(width)), options.maxWidth);
     const share = columnShare(col);
     if (share > 0) {
       const floor = Math.max(1, demandCells(col.width ?? col.minWidth ?? 0));
-      const bid = col.width === undefined ? padded(floor) : declared(floor);
+      const bid = held(floor);
       return {
         minimum: bid,
         want: bid,
@@ -973,7 +975,7 @@ export class Table implements Renderable, Measurable, Composite {
     if (col.width !== undefined) {
       // [LAW:single-enforcer] floored where it is parsed, the same rule
       // `normalizePadding` applies to a negative padding side.
-      const bid = declared(col.width);
+      const bid = held(col.width);
       return {
         minimum: bid,
         want: bid,
