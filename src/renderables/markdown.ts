@@ -18,7 +18,7 @@ import { Padding } from "./padding.js";
 import { pyRstrip } from "./python-space.js";
 import { Syntax } from "./syntax.js";
 import { Table } from "./table.js";
-import { parseMarkdown, type CellAlign, type Inline, type MdToken } from "./markdown-parse.js";
+import { parseMarkdown, type CellAlign, type HeadingLevel, type Inline, type MdToken } from "./markdown-parse.js";
 import { SIMPLE } from "../core/box.js";
 import type {
   Renderable,
@@ -91,7 +91,7 @@ function linkStyles(url: string): (string | Style)[] {
 /** The style a quote draws its bar in and lays under everything it holds. */
 const QUOTE_STYLE = "markdown.block_quote";
 
-function headingStyle(options: RenderOptions, level: number): Style {
+function headingStyle(options: RenderOptions, level: HeadingLevel): Style {
   return getStyle(options, `markdown.h${level}`);
 }
 

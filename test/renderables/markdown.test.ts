@@ -36,10 +36,11 @@ describe("Markdown", () => {
   });
 
   it("styles each heading level from its own theme key", () => {
-    const theme = new Theme({ "markdown.h4": "red", "markdown.h5": "green", "markdown.h6": "blue" });
-    const color = (source: string, text: string) =>
-      collectSegments(new Markdown(source), { maxWidth: 20, theme }).find((s) => s.text === text)?.style?.color?.name;
-    expect([color("#### a", "a"), color("##### b", "b"), color("###### c", "c")]).toEqual(["red", "green", "blue"]);
+    const colors = ["red", "green", "blue", "cyan", "magenta", "yellow"];
+    const theme = new Theme(Object.fromEntries(colors.map((c, i) => [`markdown.h${i + 1}`, c])));
+    const color = (level: number) =>
+      collectSegments(new Markdown(`${"#".repeat(level)} t`), { maxWidth: 20, theme }).find((s) => s.text === "t")?.style?.color?.name;
+    expect([1, 2, 3, 4, 5, 6].map(color)).toEqual(colors);
   });
 
   it("renders bold text", () => {

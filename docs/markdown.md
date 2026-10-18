@@ -49,6 +49,8 @@ are drawn in `markdown.item`, which the default theme leaves plain. A quote draw
 down its left side in `markdown.block_quote`, magenta, and lays that style under everything it
 holds, as Rich's does; a block inside it that has a style of its own, code or a rule, draws in
 that.
+A heading is drawn in its own level's style, `markdown.h1` to `markdown.h6`, and a rule in
+`markdown.hr`, as Rich draws them.
 Tabs in the indentation reach stops of 4 as markdown-it counts them: from the source's column
 0, but in a quote inside another quote from where an outer quote's content starts, so there a
 tab may reach a stop the source does not give it.
