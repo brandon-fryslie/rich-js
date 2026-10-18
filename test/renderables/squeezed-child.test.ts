@@ -19,6 +19,7 @@
  *     from rich.tree import Tree
  *     from rich.layout import Layout
  *     from rich.markdown import Markdown
+ *     from rich.align import Align
  *     import json, sys
  *     def tree():
  *         t = Tree("root"); t.add("leaf"); return t
@@ -33,6 +34,7 @@
  *         ("layout", layout, 1, 2),
  *         ("markdown-quote", lambda: Markdown("> ab"), 4, None),
  *         ("markdown-list", lambda: Markdown("- ab"), 3, None),
+ *         ("align-empty", lambda: Align(Text(""), "center"), 20, None),
  *     ]
  *     c = Console(width=80, no_color=True, force_terminal=False, legacy_windows=False)
  *     rows = []
@@ -50,6 +52,7 @@ import { readFileSync } from "node:fs";
 import { render, type Renderable } from "../../src/core/protocol.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
+import { Align } from "../../src/renderables/align.js";
 import { Constrain } from "../../src/renderables/constrain.js";
 import { Layout } from "../../src/renderables/layout.js";
 import { Markdown } from "../../src/renderables/markdown.js";
@@ -78,6 +81,7 @@ const MAKE: Record<string, () => Renderable> = {
   },
   "markdown-quote": () => new Markdown("> ab"),
   "markdown-list": () => new Markdown("- ab"),
+  "align-empty": () => new Align(new RichText(""), "center"),
 };
 
 describe("a container that leaves its child no column", () => {

@@ -6,5 +6,6 @@
   ["tree", 4, null, ["root"]],
   ["layout", 1, 2, ["a", "b"]],
   ["markdown-quote", 4, null, [""]],
-  ["markdown-list", 3, null, [""]]
+  ["markdown-list", 3, null, [""]],
+  ["align-empty", 20, null, []]
 ]
