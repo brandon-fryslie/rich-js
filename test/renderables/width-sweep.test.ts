@@ -365,10 +365,12 @@ describe("width sweep", () => {
           const lines = renderAt(config, width);
           const widths = lines.map(cellLen);
 
+          // Under one column a child draws nothing, as Rich's `Console.render`
+          // does, so a container whose whole width is its child's may too.
           expect(
             lines.length,
             `emitted no line at all at maxWidth ${width}, which no bound on line width can catch`,
-          ).toBeGreaterThan(0);
+          ).toBeGreaterThanOrEqual(width === 0 ? 0 : 1);
 
           expect(
             Math.max(...widths),

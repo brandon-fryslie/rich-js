@@ -18,7 +18,7 @@ import type {
   OverflowMethod,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawsNothing, getStyle, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { getStyle, render, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
 
 // --- Width division ---
@@ -1169,7 +1169,7 @@ export class Table implements Renderable, Measurable {
         noWrap: col.noWrap,
         height: stackedHeight(options.height),
       };
-      return drawsNothing(cellOptions) ? [] : Segment.splitLines(padded.render(cellOptions));
+      return Segment.splitLines(render(padded, cellOptions));
     });
     const maxLines = cellLines.reduce((most, lines) => Math.max(most, lines.length), 1);
     // How many blank lines stand above each cell's content. A header sits on
@@ -1249,7 +1249,7 @@ export class Table implements Renderable, Measurable {
     // lines, and `end="!!"` runs on into the top border there too. Splitting
     // and re-ending each line moved a non-newline `end` onto the title's own
     // row, wider than the table.
-    yield* source.render({
+    yield* render(source, {
       ...options,
       maxWidth: tableWidth,
       justify,

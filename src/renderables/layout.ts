@@ -16,6 +16,7 @@ import {
   withBoundedWidth,
   withCellWidth,
 } from "../core/protocol.js";
+import { render } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
 import { cellCount } from "../core/cells.js";
 import type { CellCol } from "../core/cells.js";
@@ -45,7 +46,7 @@ function paneLines(
   rows: number | undefined,
 ): Segment[][] {
   const height = rows === undefined ? stackedHeight(options.height) : { rows, exact: true };
-  return fitHeight(Segment.splitLines(pane.render({ ...options, height })), height);
+  return fitHeight(Segment.splitLines(render(pane, { ...options, height })), height);
 }
 
 export class Layout implements Renderable, Measurable {
@@ -169,7 +170,7 @@ export class Layout implements Renderable, Measurable {
       // ended, as the split paths below end theirs: a leaf stacked in a
       // `Group` is still a region of lines.
       if (this._renderable) {
-        const lines = fitHeight(Segment.splitLines(this._renderable.render(options)), options.height);
+        const lines = fitHeight(Segment.splitLines(render(this._renderable, options)), options.height);
         for (const line of lines) {
           yield* Segment.adjustLineLength(line, options.maxWidth);
           yield Segment.line();

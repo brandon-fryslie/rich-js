@@ -23,7 +23,7 @@ import { Segment } from "./segment.js";
 import { RichText, stripControlChars } from "./text.js";
 import { ReprHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
-import { drawable } from "./protocol.js";
+import { drawable, render } from "./protocol.js";
 import type {
   Renderable,
   Measurable,
@@ -771,7 +771,7 @@ export class Pretty implements Renderable, Measurable {
   *render(options: RenderOptions): Iterable<Segment> {
     // `toText` has no `end`, for callers that set it inside a line; rendered,
     // a `Pretty` is a block of its own, as the reference's is.
-    yield* this.toText(options).render(options);
+    yield* render(this.toText(options), options);
     yield Segment.line();
   }
 

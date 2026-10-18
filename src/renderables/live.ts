@@ -29,7 +29,7 @@ import { frameRate, systemClock, type Clock, type FrameRate } from "../core/cloc
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
 import { FinalFramePainter, SurfacePainter, type FrameSource, type Painter, type Screen } from "../core/paint.js";
-import { fitHeight, type Renderable } from "../core/protocol.js";
+import { fitHeight, render, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 
 /**
@@ -217,7 +217,7 @@ export class Live {
     // back — its overflow policy, then `fitHeight`, which pads only a region.
     const options = this._console.options;
     const height = this._painter.height(options.height.rows);
-    const lines = Segment.splitLines(renderable.render({ ...options, height }));
+    const lines = Segment.splitLines(render(renderable, { ...options, height }));
     return { t, lines: fitHeight(this._overflow(lines, height.rows), height) };
   }
 

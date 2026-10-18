@@ -25,7 +25,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawable, drawsNothing, getStyle, groundedStyle, stackedHeight, withCellWidth } from "../core/protocol.js";
+import { drawable, getStyle, groundedStyle, render, stackedHeight, withCellWidth } from "../core/protocol.js";
 
 export interface MarkdownOptions {
   /** The style of `inline code`: a theme name or a style definition. Default `markdown.code`. */
@@ -346,19 +346,19 @@ function drawImage(image: Image, options: RenderOptions, settings: InlineSetting
   const style = image.styles.reduce<Style>((under, over) => under.add(resolveStyle(options, over)), Style.null());
   const title = image.alt ? new RichText(image.alt).stylize(style) : new RichText(image.src.replace(/\/+$/, "").split("/").pop() ?? "");
   if (settings.hyperlinks) title.stylize(new Style({ link: style.link || image.src || undefined }));
-  return new RichText("", { end: "" }).append(drawable(options, "🌆 ", "")).append(title).append(" ").render(options);
+  return render(new RichText("", { end: "" }).append(drawable(options, "🌆 ", "")).append(title).append(" "), options);
 }
 
 /**
- * What `draw` renders in what is left of the width beside a gutter, each of
+ * What `content` renders in what is left of the width beside a gutter, each of
  * its rows ended. The first row's gutter is `first` and every later row's is
  * `rest`, so a list item's text hangs clear of its bullet and a quote's bar
  * runs its full height. A block with no gutter passes two empty segments:
  * every block is laid out the same way. A gutter that leaves its content no
  * column draws nothing beside it, since that content draws no rows.
  */
-function* guttered(draw: (options: RenderOptions) => Iterable<Segment>, options: RenderOptions, first: Segment, rest: Segment): Iterable<Segment> {
-  const rows = Segment.splitLines(draw({ ...options, maxWidth: options.maxWidth - cellLen(first.text) }));
+function* guttered(content: Renderable, options: RenderOptions, first: Segment, rest: Segment): Iterable<Segment> {
+  const rows = Segment.splitLines(render(content, { ...options, maxWidth: options.maxWidth - cellLen(first.text) }));
   for (const [row, line] of rows.entries()) {
     yield row === 0 ? first : rest;
     yield* line;
@@ -377,13 +377,15 @@ function inline(
   settings: InlineSettings,
   justify: Justify,
   style?: Style,
-): (options: RenderOptions) => Iterable<Segment> {
-  return function* (options) {
-    const body = new RichText("", { end: "", style });
-    appendInline(body, text, settings, options);
-    // `append` lays the body's base style down as the first span.
-    yield* new RichText("", { end: "", justify }).append(body).render(options);
-    yield Segment.line();
+): Renderable {
+  return {
+    *render(options) {
+      const body = new RichText("", { end: "", style });
+      appendInline(body, text, settings, options);
+      // `append` lays the body's base style down as the first span.
+      yield* render(new RichText("", { end: "", justify }).append(body), options);
+      yield Segment.line();
+    },
   };
 }
 
@@ -412,7 +414,6 @@ function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, setti
 }
 
 function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSettings): Iterable<Segment> {
-  if (drawsNothing(options)) return;
   switch (token.type) {
     case "heading": {
       const draw = inline(token.text, settings, token.level === 1 ? "center" : "left", headingStyle(options, token.level));
@@ -431,7 +432,7 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
       // cell of the block, padding and all, in the code's style.
       const style = groundedStyle(options, getStyle(options, "markdown.code"));
       const syntax = new Syntax(pyRstrip(token.code), "text", { wordWrap: true });
-      yield* new Padding(syntax, 1, { style }).render(options);
+      yield* render(new Padding(syntax, 1, { style }), options);
       break;
     }
 
@@ -439,7 +440,7 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
       // Rich's HorizontalRule: the rule, drawn in `-` rather than Rule's own
       // glyph, then a blank row of its own.
       const rule = new Rule(undefined, { characters: "-", style: "markdown.hr" });
-      yield* rule.render(options);
+      yield* render(rule, options);
       yield Segment.line();
       break;
     }
@@ -455,7 +456,7 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
       const hang = new Segment(" ".repeat(width), markerStyle);
       for (const [n, item] of token.items.entries()) {
         const marker = start === undefined ? drawable(options, " • ", " * ") : `${String(start + n).padStart(width - 1)} `;
-        const body = (inner: RenderOptions) => renderLines(item, inner, settings, getStyle(options, "markdown.item"));
+        const body = { render: (inner: RenderOptions) => renderLines(item, inner, settings, getStyle(options, "markdown.item")) };
         yield* guttered(body, options, new Segment(marker, markerStyle), hang);
       }
       break;
@@ -467,7 +468,7 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
       // bar of two, so every row of a quote ends two cells short.
       const style = getStyle(options, QUOTE_STYLE);
       const bar = new Segment(drawable(options, "▌ ", "| "), style);
-      const body = (inner: RenderOptions) => renderLines(token.children, inner, settings, style);
+      const body = { render: (inner: RenderOptions) => renderLines(token.children, inner, settings, style) };
       yield* guttered(body, { ...options, maxWidth: cellCount(options.maxWidth - 2) }, bar, bar);
       break;
     }
@@ -483,7 +484,7 @@ function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSet
       const table = new Table({ box: SIMPLE, padEdge: false, style: "markdown.table.border", showEdge: true, collapsePadding: true });
       for (const { header, align } of token.columns) table.addColumn(cell(header, align).stylize("markdown.table.header"));
       for (const row of token.rows) table.addRow(...row.map((text, n) => cell(text, token.columns[n]!.align)));
-      yield* table.render(options);
+      yield* render(table, options);
       break;
     }
 
@@ -514,7 +515,6 @@ export class Markdown implements Renderable, Measurable {
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     // The width parsed once, for every block below, each one of a stack.
     const options = { ...withCellWidth(rawOptions), height: stackedHeight(rawOptions.height) };
-    if (drawsNothing(options)) return;
     // Rich's `new_line`: set by each element as it exits, read before anything is drawn.
     let newLine = false;
     for (const step of documentSteps(this.parsed, options, this)) {

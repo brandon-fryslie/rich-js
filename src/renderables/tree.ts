@@ -12,7 +12,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawable, getStyle, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { drawable, getStyle, render, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
 
 /**
@@ -190,9 +190,9 @@ export class Tree implements Renderable, Measurable {
    * [LAW:single-enforcer] Tree also owns its row boundaries here rather than
    * depending on label renderables to invent trailing newlines: the label's
    * output is cut into lines and every line ends where Tree ends it. A label
-   * that emits nothing still holds its row, and one that ends in a newline of
-   * its own gets the blank row that line is, as in Rich — padded to the label's
-   * width when the label is justified.
+   * that emits nothing — one left no column among them — has no row, and one
+   * that ends in a newline of its own gets the blank row that line is, as in
+   * Rich — padded to the label's width when the label is justified.
    *
    * The node's style sits under the label's own, as Rich's `Styled` puts it, so
    * markup in the label still wins; its background alone reaches under the
@@ -219,8 +219,7 @@ export class Tree implements Renderable, Measurable {
     // guides were fitted into. No highlighter: a label is drawn plain, as
     // Rich's `Tree` hands its labels `highlight=False`.
     const labelOptions = { ...options, highlight: false, maxWidth: width, height: stackedHeight(options.height) };
-    const lines = Segment.splitLines(Segment.applyStyle(Segment.cropLines(row.label.render(labelOptions), width), style));
-    if (lines.length === 0) lines.push([]);
+    const lines = Segment.splitLines(Segment.applyStyle(Segment.cropLines(render(row.label, labelOptions), width), style));
     for (let i = 0; i < lines.length; i++) {
       let left: number = options.maxWidth;
       for (let g = 0; g < row.guides.length; g++) {

@@ -4,7 +4,7 @@ import { linkHref } from "../../src/renderables/markdown-url.js";
 import { Segment } from "../../src/core/segment.js";
 import { DEFAULT_THEME, Style, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
-import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import { render, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { expectLinearTime } from "../suite/linear-time.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -1244,7 +1244,7 @@ describe("Markdown", () => {
   // Rich 15, console.render at width 0: an empty string for each.
   it("draws a document at no width as nothing, the rows between its blocks included, as Rich does", () => {
     for (const markdown of ["# Head\n\npara", "---", "> a\n\nb"]) {
-      expect(collectText(new Markdown(markdown), { maxWidth: 0 })).toBe("");
+      expect([...render(new Markdown(markdown), { maxWidth: 0 })]).toEqual([]);
     }
   });
 

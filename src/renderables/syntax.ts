@@ -21,6 +21,7 @@ import {
   type Renderable,
   type RenderOptions,
 } from "../core/protocol.js";
+import { render } from "../core/protocol.js";
 
 export interface SyntaxOptions {
   lineNumbers?: boolean;
@@ -184,7 +185,7 @@ export class Syntax implements Renderable, Measurable {
       const lineNo = first + i;
       const style = this.highlightLines.has(lineNo) ? highlightStyle : numberStyle;
       // Terminated, so an empty line is one empty row rather than none.
-      const rows = Segment.splitLines([...textLines[i]!.render(lineOptions), Segment.line()]);
+      const rows = Segment.splitLines([...render(textLines[i]!, lineOptions), Segment.line()]);
       for (let row = 0; row < rows.length; row++) {
         if (this.lineNumbers) {
           // A wrapped line's continuation rows keep the gutter, unnumbered.

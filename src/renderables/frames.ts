@@ -46,6 +46,7 @@
 
 import { beat, type Beat } from "../core/easing.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import { render } from "../core/protocol.js";
 import type { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import type { RichText } from "../core/text.js";
@@ -114,7 +115,7 @@ export class Frames implements Renderable, Measurable {
   }
 
   render(options: RenderOptions): Iterable<Segment> {
-    return this._shown.render(options);
+    return render(this._shown, options);
   }
 
   /**

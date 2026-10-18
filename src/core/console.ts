@@ -31,7 +31,7 @@ import type {
   RenderOptions,
   StyleErrorHandler,
 } from "./protocol.js";
-import { isRenderable } from "./protocol.js";
+import { isRenderable, render } from "./protocol.js";
 import type { Unsubscribe } from "./subscription.js";
 
 // --- Types ---
@@ -233,7 +233,7 @@ class TextRun implements Renderable, Measurable {
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield* this.text.render(options);
+    yield* render(this.text, options);
     yield this.end;
   }
 
@@ -644,7 +644,7 @@ export class Console {
     const drawBlock = (block: PrintBlock): { lines: Segment[][]; closed: boolean } => {
       const renderable = block.kind === "text" ? new TextRun(block.items, terminator) : block.renderable;
       if (align) return { lines: placeBlock(renderable, align, renderOpts), closed: true };
-      const drawn = [...renderable.render(renderOpts)];
+      const drawn = [...render(renderable, renderOpts)];
       // A text run's last segment is always its `end`, yielded even when
       // empty, and `splitLines` drops the empty line after a final break only
       // when nothing follows it — so the run is closed exactly when `end` is.
@@ -692,7 +692,7 @@ export class Console {
     time.stylize("log.time");
     const width = Math.min(time.cellLength, options.maxWidth - 1);
     const { rows, cropWidth } = this._draw(args, { ...options, maxWidth: options.maxWidth - width });
-    const [stampLine = []] = Segment.splitLines(time.render({ ...options, maxWidth: time.cellLength }));
+    const [stampLine = []] = Segment.splitLines(render(time, { ...options, maxWidth: time.cellLength }));
     const styled = (cell: Segment[]): Segment[] => [...Segment.applyStyle(cell, this._style)];
     const stamp = styled(Segment.adjustLineLength(stampLine, width));
     const blank = styled([new Segment(" ".repeat(width))]);
@@ -713,7 +713,7 @@ export class Console {
   // into this constructor, which made a second map of one shape — identical
   // then, free to drift the moment `Rule` grew an option.
   rule(title?: string, options?: RuleOptions): void {
-    const segments = [...new Rule(title, options).render(this.options)];
+    const segments = [...render(new Rule(title, options), this.options)];
     this._writeSegments(segments);
   }
 

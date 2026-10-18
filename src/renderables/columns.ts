@@ -18,7 +18,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { render, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { cellCount } from "../core/cells.js";
 import { EmbeddedText, embed } from "./embed.js";
 import { Constrain } from "./constrain.js";
@@ -98,7 +98,7 @@ export class Columns implements Renderable, Measurable {
     // single column is laid out. An unbounded width reaches the same place by
     // the same route, which is why the parse here is the bounded one.
     const options = withBoundedWidth(rawOptions, this);
-    yield* this._grid(options).render(options);
+    yield* render(this._grid(options), options);
   }
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {

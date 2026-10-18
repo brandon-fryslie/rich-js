@@ -42,6 +42,7 @@ import { RichText } from "../core/text.js";
 import { Style } from "../core/style.js";
 import { Segment } from "../core/segment.js";
 import type { RenderOptions } from "../core/protocol.js";
+import { render } from "../core/protocol.js";
 import { richTextStyleFuncs } from "./style-funcs.js";
 import { colorFuncs, type DrawnAt } from "./color-funcs.js";
 
@@ -159,7 +160,7 @@ export function renderTemplate(
     return [new Segment(errorLine(e, maxWidth), safeErrorStyle(errorStyle))];
   }
   return Array.from(
-    text.render({ isTerminal: true, ...renderOptions, maxWidth }),
+    render(text, { isTerminal: true, ...renderOptions, maxWidth }),
   );
 }
 

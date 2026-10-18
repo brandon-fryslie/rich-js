@@ -56,7 +56,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawable } from "../core/protocol.js";
+import { drawable, render } from "../core/protocol.js";
 import { EmbeddedText } from "./embed.js";
 import { FrameSequence } from "./frames.js";
 
@@ -157,7 +157,7 @@ export class Spinner {
   }
 
   private *_render(frames: FrameSequence, t: number, options: RenderOptions): Iterable<Segment> {
-    yield* this._line(frames, t, options).render(options);
+    yield* render(this._line(frames, t, options), options);
     yield Segment.line();
   }
 
