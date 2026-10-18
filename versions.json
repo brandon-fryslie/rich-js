@@ -4,15 +4,22 @@
     {
       "version": "pr-469",
       "ref": "refs/pull/469/merge",
-      "sha": "a4355b2cb7294f2ed26f05e1ac268b540802ca29",
-      "timestamp": "2026-10-18T04:37:25.351Z",
+      "sha": "90a2825b0c9ac365eda62719a420130f5a750070",
+      "timestamp": "2026-10-18T04:50:10.293Z",
       "commits": [
         {
-          "sha": "a4355b2cb7294f2ed26f05e1ac268b540802ca29",
+          "sha": "90a2825b0c9ac365eda62719a420130f5a750070",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T04:35:38Z",
-          "message": "Merge a71ff72cc356637193c83177ee683ef9fb748ffe into ceb10734548abfec6408a76a1a317090681e68a9\n"
+          "timestamp": "2026-10-18T04:48:14Z",
+          "message": "Merge a7d5149e1bde0793945a4cbb9d652c32f7d3daf6 into ceb10734548abfec6408a76a1a317090681e68a9\n"
+        },
+        {
+          "sha": "a7d5149e1bde0793945a4cbb9d652c32f7d3daf6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T22:48:10-06:00",
+          "message": "Table's width division drops reduceToFit's dead kept field and derives each column's padding once (rich-unfiled-791c.gxf4)\n\nReview pass (escalation high) on PR #469: no wrapable column holds a\nreservation, so kept was always 0; _cellRange takes the padding pair\n_columnDemands already derived; the docs name reservations in the payment\norder and claim only the even cut among them.\n"
         },
         {
           "sha": "a71ff72cc356637193c83177ee683ef9fb748ffe",
