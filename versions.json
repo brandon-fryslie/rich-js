@@ -4,15 +4,22 @@
     {
       "version": "pr-469",
       "ref": "refs/pull/469/merge",
-      "sha": "780d7a17ffe6a96a933836c9636581ac2c5d1ee7",
-      "timestamp": "2026-10-18T04:07:30.623Z",
+      "sha": "b3e2387751e30df0d8c5286b5eefa5df5561e2b3",
+      "timestamp": "2026-10-18T04:26:19.065Z",
       "commits": [
         {
-          "sha": "780d7a17ffe6a96a933836c9636581ac2c5d1ee7",
+          "sha": "b3e2387751e30df0d8c5286b5eefa5df5561e2b3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T22:05:38-06:00",
-          "message": "Merge d9ca3165090fadd5880cdd9ad176c873c30651d8 into ceb10734548abfec6408a76a1a317090681e68a9\n"
+          "timestamp": "2026-10-18T04:24:34Z",
+          "message": "Merge 40844feb971f9d340d2d979cd18dce350e31d71e into ceb10734548abfec6408a76a1a317090681e68a9\n"
+        },
+        {
+          "sha": "40844feb971f9d340d2d979cd18dce350e31d71e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T22:24:29-06:00",
+          "message": "A rowless Table column measures Rich's unpadded minimum, and the squeeze golden pins grid, width, noWrap and padding modes (rich-unfiled-791c.gxf4)\n\nReview pass (high) on PR #469: an empty column's minimum is Rich's bare 1,\nnot 1 plus padding; the docs no longer say a sub-frame table draws bare\ncontent; two stale comments follow the padded widths; the Rich-generated\ngolden now covers declared width, noWrap, collapsePadding, padEdge: false\nand Table.grid.\n"
         },
         {
           "sha": "d9ca3165090fadd5880cdd9ad176c873c30651d8",
