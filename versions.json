@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-467",
-      "ref": "refs/pull/467/merge",
-      "sha": "6de2d6428e84dc225fa436868d0006d24859fed7",
-      "timestamp": "2026-10-18T03:21:41.730Z",
-      "commits": [
-        {
-          "sha": "6de2d6428e84dc225fa436868d0006d24859fed7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T03:20:16Z",
-          "message": "Merge f61839d39af73b3daf850303dcb9f0c8b8ef39f3 into 534656cf6b82f96769a822eab71a2b9c457248f4\n"
-        },
-        {
-          "sha": "f61839d39af73b3daf850303dcb9f0c8b8ef39f3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T21:20:11-06:00",
-          "message": "Markdown's <kbd> says it ends with its block, where Rich's stack carries it on; walk drops its dead root (rich-unfiled-791c.k2zi)\n"
-        },
-        {
-          "sha": "1b944b2619ad259811cce9c7ae9a278fc298a2e9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T21:08:30-06:00",
-          "message": "Markdown draws <kbd> text in markdown.kbd, its close popping Rich's style stack as Rich 15's does (rich-unfiled-791c.k2zi)\n\nInline HTML carries its tag as written, and one rule, kbdTags, serves both\ninline passes. An image reads its link off the style stack as Rich's\nImageItem does, replacing the separately tracked link.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "534656cf6b82f96769a822eab71a2b9c457248f4",
-      "timestamp": "2026-10-18T03:01:56.456Z",
+      "sha": "336da3c128dde6fb1bee1115de633ff729a4d8e7",
+      "timestamp": "2026-10-18T03:24:00.845Z",
       "commits": [
         {
-          "sha": "534656cf6b82f96769a822eab71a2b9c457248f4",
+          "sha": "336da3c128dde6fb1bee1115de633ff729a4d8e7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T21:00:07-06:00",
-          "message": "Segment.divide cuts each segment once at every cut inside it, so wrapping a long line is linear (rich-unfiled-791c.vzmy) (#466)\n\n* Segment.divide cuts each segment once at every cut inside it, so wrapping a long line is linear in its length (rich-unfiled-791c.vzmy)\n\ncutCells takes every position in one walk; Segment.cutAt applies it with each\npiece's anchor shifted, and splitCells is its one-cut case. The Markdown\nlinearity guards now time drawing, not only reading.\n\n* cutCells stops at its last cut, cutAt is private, and Markdown's draw guards are named for and sized to what they time (rich-unfiled-791c.vzmy)\n\nA single cut near the start of a long segment walked and segmented all of it:\nsplitCells(80) on 1,000,000 ASCII characters took 131 ms, 0.45 ms now. cutAt has\ntwo callers that keep its cuts in range, so it is private rather than a public\nmethod with an unchecked precondition. The million-space link guard reads at\nits old size and draws at 50,000: drawing it at a million took 9.4 s.\n\n* cutCells says its positions stop one short of the text's width, where the last piece comes from (rich-unfiled-791c.vzmy)"
+          "timestamp": "2026-10-17T21:22:43-06:00",
+          "message": "Markdown draws <kbd> text in markdown.kbd, as Rich 15 does (rich-unfiled-791c.k2zi) (#467)\n\n* Markdown draws <kbd> text in markdown.kbd, its close popping Rich's style stack as Rich 15's does (rich-unfiled-791c.k2zi)\n\nInline HTML carries its tag as written, and one rule, kbdTags, serves both\ninline passes. An image reads its link off the style stack as Rich's\nImageItem does, replacing the separately tracked link.\n\n* Markdown's <kbd> says it ends with its block, where Rich's stack carries it on; walk drops its dead root (rich-unfiled-791c.k2zi)"
         }
       ]
     }
