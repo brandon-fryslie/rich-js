@@ -287,12 +287,11 @@ function layoutTable(
     seated++;
   }
 
-  // Every column's minimum is paid next, and a budget too small for them all
-  // cuts them in the reference's order: the columns that may wrap first, then
-  // every column evenly, a declared width and a `noWrap` column alike — never
-  // one of them to nothing while another keeps its whole width, and never the
-  // table's frame. The rest of what each column wanted comes only after. A
-  // table whose columns all fit leaves this budget partly unspent.
+  // Every column's minimum is paid next, a declared width and a `noWrap`
+  // column alike, and a budget too small for them all cuts them in the
+  // reference's order, `reduceToFit`'s — never the table's frame. The rest of
+  // what each column wanted comes only after. A table whose columns all fit
+  // leaves this budget partly unspent.
   const seatedDemands = demands.slice(0, seated);
   const spent = (granted: readonly number[]): number =>
     granted.reduce((sum, width) => sum + width, 0);
@@ -302,11 +301,10 @@ function layoutTable(
     budget,
     seatedDemands.map((demand) => ({ want: demand.minimum, wrapable: demand.wrapable })),
   );
-  const afterNeeded = holding(needed);
   const beyond = distribute(
     budget - spent(needed),
     seatedDemands.map((demand, index) => ({
-      want: Math.max(0, demand.want - afterNeeded[index]!),
+      want: Math.max(0, demand.want - needed[index]!),
       weight: demand.weight,
     })),
   );
@@ -314,11 +312,10 @@ function layoutTable(
   // The unspent part goes first to the columns with nothing to size to, each
   // alike, up to its `fill` — the reference's `Measurement(1, max_width)`, a
   // maximum of the whole offer that no content measured.
-  const afterWant = holding(wanted);
   const filled = distribute(
     budget - spent(wanted),
     seatedDemands.map((demand, index) => ({
-      want: Math.max(0, demand.fill - afterWant[index]!),
+      want: Math.max(0, demand.fill - wanted[index]!),
       weight: demand.fill > 0 ? 1 : 0,
     })),
   );
@@ -947,18 +944,25 @@ export class Table implements Renderable, Measurable, Composite {
     // here a ratio is honoured either way. Its bounded part is its floor —
     // the reference's `column.width or 1`, reading `minWidth` where there is
     // no `width` — bid for in cells like any content column, so a squeezed
-    // table still pays it. A `width` beside a `ratio` is that floor, not a
-    // reservation, as the reference's `flex_minimum` reads it.
+    // table still pays it. A `width` beside a `ratio` is that floor, as the
+    // reference's `flex_minimum` reads it, held to the frame as any declared
+    // width is.
     // [LAW:one-source-of-truth] `columnShare` decides first, so a column that
     // `Column.flexible` calls elastic is one the division shares out.
     const pad = left + right;
     const padded = (content: number): number => demandCells(content + pad);
+    // [LAW:single-enforcer] A declared width, held to the width inside the
+    // frame — the reference's `with_maximum(max_width)` on a fixed-width
+    // column's measurement — so an even cut starts from what the table can
+    // hold, whether the width is a column's whole sizing or a ratio's floor.
+    const declared = (width: number): number => Math.min(padded(demandCells(width)), options.maxWidth);
     const share = columnShare(col);
     if (share > 0) {
       const floor = Math.max(1, demandCells(col.width ?? col.minWidth ?? 0));
+      const bid = col.width === undefined ? padded(floor) : declared(floor);
       return {
-        minimum: padded(floor),
-        want: padded(floor),
+        minimum: bid,
+        want: bid,
         weight: floor,
         fill: 0,
         ratio: share,
@@ -968,13 +972,11 @@ export class Table implements Renderable, Measurable, Composite {
     }
     if (col.width !== undefined) {
       // [LAW:single-enforcer] floored where it is parsed, the same rule
-      // `normalizePadding` applies to a negative padding side. Held to the
-      // width inside the frame, the reference's `with_maximum(max_width)`, so
-      // an even cut starts from what the table can hold.
-      const declared = Math.min(padded(demandCells(col.width)), options.maxWidth);
+      // `normalizePadding` applies to a negative padding side.
+      const bid = declared(col.width);
       return {
-        minimum: declared,
-        want: declared,
+        minimum: bid,
+        want: bid,
         weight: 0,
         fill: 0,
         ratio: 0,
@@ -995,7 +997,7 @@ export class Table implements Renderable, Measurable, Composite {
     // One deliberate divergence: Rich stretches declared-width columns as
     // well, so `width: 6` under `expand` renders 21 cells wide — an option
     // quietly meaning something else, the defect rich-justify-0cr exists to
-    // remove. A reservation's stretch is zero above.
+    // remove. A declared width's stretch is zero above.
     //
     // A column with no cell at all — no rows, and neither header nor footer
     // drawn — has nothing to size to, which is not sizing to nothing. The

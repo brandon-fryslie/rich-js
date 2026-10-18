@@ -163,12 +163,14 @@ columns and it still renders at 13 — unless it is built with [`expand`](#sizin
 Wide columns are cropped by their own `overflow` mode, so a column squeezed to a
 single cell of content shows only what that mode can fit in one cell.
 
-A column with an explicit `width` and no `ratio` is a reservation rather than a bid: it is paid
-ahead of the elastic share, so its neighbours give up their width first. It comes
-out of what the frame and the dividers leave, and it may not wrap, so a width too
-small for it once the wrapping columns have given up their cells cuts it evenly
-with every column that may not wrap — the other reservations and each `noWrap`
-column alike, as Rich does. Columns
+A column with an explicit `width` and no `ratio` is a minimum rather than a bid: it
+never competes on weight for a share, so its neighbours that may wrap give up their
+width first. It comes out of what the frame and the dividers leave, and it may not
+wrap, so a width too small for it once the wrapping columns have given up their
+cells cuts it evenly with every column that may not wrap — the other declared
+widths and each `noWrap` column alike, as Rich does. Each gives up an equal share
+of what is still over, never more than it holds, so a narrow one can be cut to
+nothing while a wider one keeps cells. Columns
 with a `ratio` sit at the other end — they take whatever the bounded columns
 leave, split by Rich's rule: each ratio column's share, padding included,
 rounded up, so the spare cells go to the leftmost, and never below the column's

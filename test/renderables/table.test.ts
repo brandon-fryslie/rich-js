@@ -896,12 +896,23 @@ describe("Table stays inside the width it is given", () => {
     t.addColumn("Fixed", { width: 4 });
     t.addColumn("Elastic");
     t.addRow("abcd", "a much longer cell than the other one");
-    // 2 edges + 1 divider + the reserved 4 leaves 5 for the elastic column,
+    // 2 edges + 1 divider + the declared 4 leaves 5 for the elastic column,
     // which is far wider naturally and would win every cell if a declared
-    // width competed on weight instead of being reserved ahead of the bidding.
+    // width competed on weight. It is a minimum that may not wrap, and the
+    // elastic column may, so the squeeze collapses the elastic column first.
     // The elastic cell wraps down its five cells rather than ellipsizing on
     // one, so the first body line is what pins the split.
     expect(collectLines(t, { maxWidth: 12 })).toContain("|abcd|a    |");
+  });
+
+  it("holds a ratio column's declared width to the table, so a declared neighbour keeps its even share", () => {
+    const t = new Table({ box: ASCII, showHeader: false, padding: [0, 1] });
+    t.addColumn("A", { ratio: 1, width: 30 });
+    t.addColumn("B", { width: 4 });
+    t.addRow("abcdefghijklmnopqrstuvwxyz", "x");
+    // Python Rich 15 draws this row at width 20. Unheld, the 32-cell floor
+    // took every cell of the even cut and left the declared column none.
+    expect(collectLines(t, { maxWidth: 20 })).toContain("| abcdefghijk… | x |");
   });
 
   it("pays a cell's padding before its content, as Rich does", () => {
