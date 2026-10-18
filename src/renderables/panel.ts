@@ -11,13 +11,13 @@ import { Measurement } from "../core/measure.js";
 import { RichText } from "../core/text.js";
 import { cutLabel, drawLabel, embed, inlineLabel, type InlineLabel } from "./embed.js";
 import type { PaddingDimensions } from "./padding.js";
-import { normalizePadding } from "./padding.js";
+import { normalizePadding, Padding } from "./padding.js";
 import type {
   Renderable,
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawable, fitHeight, getStyle, insetHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { drawable, drawsNothing, getStyle, insetHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 /**
  * A lazily-resolved border accessory. Strings render inline in the
@@ -64,40 +64,33 @@ export interface PanelOptions {
 }
 
 /**
- * How one requested outer width divides into frame columns, padding and
- * content canvas.
+ * How one requested outer width divides into the two frame columns and the
+ * span between them, where the body — the content inside its padding — is
+ * drawn.
  *
- * [LAW:one-source-of-truth] Every row a panel emits — both borders, the
- * padding rows, the content rows — is measured from this one division, so
- * they cannot disagree about where the frame sits. The fields are cell counts
- * that sum to exactly the requested width, which is what makes "no emitted
- * line exceeds the width we were given" true by construction rather than by
- * a clamp at each site. It is also why the width-1 crash cannot come back:
- * there is no subtraction left that can go negative.
+ * [LAW:one-source-of-truth] Every row a panel emits — both borders and every
+ * body row — is measured from this one division, so they cannot disagree
+ * about where the frame sits. The fields are cell counts that sum to exactly
+ * the requested width, which is what makes "no emitted line exceeds the width
+ * we were given" true by construction rather than by a clamp at each site,
+ * and why the width-1 crash cannot come back: there is no subtraction left
+ * that can go negative. That is also the one place this departs from Rich,
+ * whose panel at width 1 draws both corners anyway, two cells wide.
  *
- * Cells are handed out in priority order — the two frame columns, then a
- * first cell of content, then the configured padding, then the remainder
- * back to content. Content outranking padding is the reason a squeezed panel
- * keeps showing something down to width 3, instead of spending its last
- * cells on blank padding with nothing left to pad.
+ * Padding is not divided here. The body is a `Padding`, as Rich's is, so the
+ * padding is paid however `Padding` pays it — in full, with content left no
+ * column drawn as nothing.
  */
 interface PanelGeometry {
   /** Width of the left frame column: 1, or 0 below the width to afford it. */
   readonly left: number;
   /** Width of the right frame column: 1, or 0 below the width to afford it. */
   readonly right: number;
-  readonly padLeft: number;
-  readonly contentWidth: number;
-  readonly padRight: number;
-  /** padLeft + contentWidth + padRight — the span between the frame columns. */
+  /** The cells between the frame columns, which the body is drawn across. */
   readonly spanWidth: number;
 }
 
-function layoutPanel(
-  outerWidth: number,
-  padding: readonly [number, number, number, number],
-): PanelGeometry {
-  const [, padRightWanted, , padLeftWanted] = padding;
+function layoutPanel(outerWidth: number): PanelGeometry {
   // Panel's one division point, and the width reaching it is not always one
   // this file produced: `_getPanelWidth` derives the fit-mode width from
   // `Measurement.get` on an arbitrary `Measurable`, so a renderable reporting a
@@ -112,30 +105,12 @@ function layoutPanel(
 
   const left = take(1);
   const right = take(1);
-  const firstContentCell = take(1);
-  const padLeft = take(padLeftWanted);
-  const padRight = take(padRightWanted);
-  const contentWidth = firstContentCell + budget;
-
-  return {
-    left,
-    right,
-    padLeft,
-    contentWidth,
-    padRight,
-    spanWidth: padLeft + contentWidth + padRight,
-  };
+  return { left, right, spanWidth: budget };
 }
 
-/**
- * Every cell of a panel that is not content canvas. Read off the geometry
- * rather than recomputed as `2 + padLeft + padRight`, because the two differ
- * exactly where this panel is squeezed: a width that cannot afford its right
- * frame column or its padding does not spend cells on them, and a measurement
- * that assumed it did would report a minimum larger than its own maximum.
- */
-function frameOverhead(geometry: PanelGeometry): number {
-  return geometry.left + geometry.right + geometry.padLeft + geometry.padRight;
+/** The cells a panel's frame takes from the width it is given. */
+function frameWidth(geometry: PanelGeometry): number {
+  return geometry.left + geometry.right;
 }
 
 /**
@@ -220,6 +195,13 @@ export class Panel implements Renderable, Measurable {
   readonly padding: [number, number, number, number];
   private readonly _titleLabel: InlineLabel | undefined;
   private readonly _subtitleLabel: InlineLabel | undefined;
+  /**
+   * What the frame is drawn around: the content inside its padding, on the
+   * panel's ground. Rich's `Panel` draws its body as this same `Padding`, so
+   * how a squeezed width divides between padding and content is answered once,
+   * by `Padding`, for both.
+   */
+  private readonly _body: Padding;
 
   constructor(
     content: string | RichText | Renderable,
@@ -239,6 +221,7 @@ export class Panel implements Renderable, Measurable {
     this.subtitleStyle = options?.subtitleStyle;
     this.width = options?.width;
     this.padding = normalizePadding(options?.padding ?? [0, 1, 0, 1]);
+    this._body = new Padding(this.renderable, this.padding, { style: this.style });
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
@@ -248,100 +231,44 @@ export class Panel implements Renderable, Measurable {
     // on, as Rich's is: the frame's style is the border style laid over it,
     // and the content is rendered on top of it. Applied to the padding alone,
     // "white on dark_blue" drew a blue ring with a hole where the text was.
-    const style = getStyle(options, this.style);
-    const borderStyle = style.add(getStyle(options, this.borderStyle));
+    const borderStyle = getStyle(options, this.style).add(getStyle(options, this.borderStyle));
     const border = borderStyle.isNull ? undefined : borderStyle;
-    const contentStyle = style.isNull ? undefined : style;
 
-    const geometry = layoutPanel(this._getPanelWidth(options), this.padding);
-    const [padTop, , padBottom] = this.padding;
-
-    const contentLines = this._renderContent(options, geometry.contentWidth, contentStyle);
+    const geometry = layoutPanel(this._getPanelWidth(options));
+    const bodyLines = this._renderBody(options, geometry.spanWidth);
 
     yield* this._renderTopBorder(options, box, geometry, border);
-
-    for (let i = 0; i < padTop; i++) {
-      yield* this._renderPaddingRow(box, geometry, border, contentStyle);
+    const frame = box.getContentChars("row");
+    for (const line of bodyLines) {
+      yield new Segment(frame.left.repeat(geometry.left), border);
+      yield* line;
+      yield new Segment(frame.right.repeat(geometry.right), border);
+      yield Segment.line();
     }
-
-    for (const line of contentLines) {
-      yield* this._renderRow(box, geometry, line, border, contentStyle);
-    }
-
-    for (let i = 0; i < padBottom; i++) {
-      yield* this._renderPaddingRow(box, geometry, border, contentStyle);
-    }
-
     yield* this._renderBottomBorder(options, box, geometry, border);
   }
 
   /**
-   * The wrapped renderable's lines, laid out on a canvas `contentWidth` cells
-   * wide. Below width 3 a panel is all frame and the canvas holds no lines —
-   * but the render still happens, because a `bottomRightAccessory` thunk
-   * fires at every width and reads state this render populates.
+   * The body's rows, each exactly `spanWidth` cells — `Padding` makes every
+   * row its block's width, cropping content that ignored its canvas. A span
+   * of no cells draws no rows at all, padding rows included, as Rich's
+   * `Console.render` draws nothing under one column. The render happens
+   * before either border is drawn, because a `bottomRightAccessory` thunk
+   * reads state the content's render populates.
    */
-  private _renderContent(
-    options: RenderOptions,
-    contentWidth: number,
-    style: Style | undefined,
-  ): Segment[][] {
-    // Two border rows and the vertical padding are the panel's own. Handed on
-    // as a region, the rest is the panel's to shape, which is what stretches
-    // its frame down a pane and keeps its bottom border inside one.
-    const [padTop, , padBottom] = this.padding;
-    const height = insetHeight(options.height, 2 + padTop + padBottom);
-    // No highlighter: what the panel holds is drawn plain, as Rich's `Panel`
-    // hands its body `highlight=False`.
-    const innerOptions: RenderOptions = { ...options, highlight: false, maxWidth: contentWidth, height };
-    const lines = fitHeight(
-      Segment.splitLines([...Segment.applyStyle(this.renderable.render(innerOptions), style)]),
-      height,
-    );
-    return contentWidth === 0 ? [] : lines;
-  }
-
-  /**
-   * One row of the panel body, cut where Rich cuts it: frame column, left
-   * padding, the content line made exactly `contentWidth` wide, right padding,
-   * frame column — each its own segment, so each its own SGR run.
-   *
-   * [LAW:single-enforcer] `adjustLineLength` is the one place the content's
-   * width is decided: content that rendered wider than its canvas (a `Table`
-   * at its natural width, say) is cropped back to it, and a short line is
-   * filled out to it, so the right padding always starts at the same column.
-   */
-  private *_renderRow(
-    box: Box,
-    geometry: PanelGeometry,
-    line: Segment[],
-    border: Style | undefined,
-    contentStyle: Style | undefined,
-  ): Iterable<Segment> {
-    const frame = box.getContentChars("row");
-    yield new Segment(frame.left.repeat(geometry.left), border);
-    yield new Segment(" ".repeat(geometry.padLeft), contentStyle);
-    yield* Segment.adjustLineLength(line, geometry.contentWidth, contentStyle);
-    yield new Segment(" ".repeat(geometry.padRight), contentStyle);
-    yield new Segment(frame.right.repeat(geometry.right), border);
-    yield Segment.line();
-  }
-
-  /**
-   * A row of vertical padding: one blank run across the whole span, as Rich's
-   * `Padding` draws its blank lines, not a content row with nothing in it.
-   */
-  private *_renderPaddingRow(
-    box: Box,
-    geometry: PanelGeometry,
-    border: Style | undefined,
-    contentStyle: Style | undefined,
-  ): Iterable<Segment> {
-    const frame = box.getContentChars("row");
-    yield new Segment(frame.left.repeat(geometry.left), border);
-    yield new Segment(" ".repeat(geometry.spanWidth), contentStyle);
-    yield new Segment(frame.right.repeat(geometry.right), border);
-    yield Segment.line();
+  private _renderBody(options: RenderOptions, spanWidth: number): Segment[][] {
+    // Two border rows are the panel's own, and the vertical padding is the
+    // body's. Handed on as a region, the rest is the panel's to shape, which
+    // is what stretches its frame down a pane and keeps its bottom border
+    // inside one. No highlighter: what the panel holds is drawn plain, as
+    // Rich's `Panel` hands its body `highlight=False`.
+    const bodyOptions: RenderOptions = {
+      ...options,
+      highlight: false,
+      maxWidth: spanWidth,
+      height: insetHeight(options.height, 2),
+    };
+    return drawsNothing(bodyOptions) ? [] : Segment.splitLines(this._body.render(bodyOptions));
   }
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
@@ -358,22 +285,19 @@ export class Panel implements Renderable, Measurable {
       return { minimum: width, maximum: width };
     }
     const content = this._contentRange(options);
-    const overhead = frameOverhead(layoutPanel(options.maxWidth, this.padding));
+    const [, padRight, , padLeft] = this.padding;
+    const overhead = frameWidth(layoutPanel(options.maxWidth)) + padLeft + padRight;
     const maximum = Math.min(options.maxWidth, Math.max(content.maximum, this._labelWidth(options) + overhead));
     return { minimum: Math.min(content.minimum, maximum), maximum };
   }
 
-  /** The content plus its own frame, both read off the division it will render against. */
+  /** The body plus the frame around it, both read off the division it will render against. */
   private _contentRange(options: RenderOptions): { minimum: number; maximum: number } {
-    const geometry = layoutPanel(options.maxWidth, this.padding);
-    const overhead = frameOverhead(geometry);
-    const measurement = Measurement.get(
-      { ...options, maxWidth: geometry.contentWidth },
-      this.renderable,
-    );
+    const geometry = layoutPanel(options.maxWidth);
+    const measurement = Measurement.get({ ...options, maxWidth: geometry.spanWidth }, this._body);
     return {
-      minimum: measurement.minimum + overhead,
-      maximum: Math.min(options.maxWidth, measurement.maximum + overhead),
+      minimum: measurement.minimum + frameWidth(geometry),
+      maximum: measurement.maximum + frameWidth(geometry),
     };
   }
 

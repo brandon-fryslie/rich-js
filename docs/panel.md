@@ -40,21 +40,22 @@ console.print(Panel.fit("hi", { title: "[bold orchid]a long title[/bold orchid]"
 
 A Panel never emits a line wider than the width it is given, however narrow that
 gets — a one-column terminal, or a `Layout` split that squeezes the panel below
-its natural size. It gives up its cells in a fixed order: the two frame columns
-first, then a cell of content, then the padding, and only then does content grow
-again. So content stays visible down to width 3, and the padding is what
-disappears on the way there. Here the four widths sit side by side in [`Columns`](./columns):
+its natural size. As in Rich, the body inside the frame is a [`Padding`](./padding):
+the two frame columns come first, then the padding in full, and the content gets
+whatever is left. A width that leaves the content no column draws the frame
+alone — around blank rows, where the padding has some. Here the default padding
+of one cell a side is squeezed from width 4, where only the frame fits, to
+width 9, where the content is whole, the widths side by side in [`Columns`](./columns):
 
 ```typescript
-const narrow = [3, 4, 5, 6].map((width) =>
+const narrow = [4, 5, 7, 9].map((width) =>
   new Panel("[bold dark_orange]hello[/bold dark_orange]", { width, borderStyle: "deep_sky_blue3" }),
 );
 console.print(new Columns(narrow));
 ```
 
-Width 3 is the narrowest panel that can show anything: at width 2 the two frame
-columns are the whole panel, and at width 1 only the left one fits, so the panel
-renders as a bare frame with no content rows.
+At width 2 the two frame columns are the whole panel. At width 1 only the left
+one fits, where Rich draws both corners into the one column, two cells wide.
 
 Content that renders wider than the space it was given is cropped to the frame
 rather than allowed to burst it — a `Table` at its natural width inside a
