@@ -4,15 +4,22 @@
     {
       "version": "pr-474",
       "ref": "refs/pull/474/merge",
-      "sha": "a8181713e017c8fdd8e9bc8504f970b000e90b76",
-      "timestamp": "2026-10-18T07:39:30.799Z",
+      "sha": "9033f7747c44b0ea90ed303f5cef14ad88e7c64e",
+      "timestamp": "2026-10-18T07:46:41.447Z",
       "commits": [
         {
-          "sha": "a8181713e017c8fdd8e9bc8504f970b000e90b76",
+          "sha": "9033f7747c44b0ea90ed303f5cef14ad88e7c64e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T07:37:42Z",
-          "message": "Merge 1a7608da4091f310978d8516367825369b83584c into 2fc520a9c916e8b7f685b805eeceaf5984de0344\n"
+          "timestamp": "2026-10-18T07:44:32Z",
+          "message": "Merge d173bd0094fdc1bf9946aaf0c977963206c685dd into 2fc520a9c916e8b7f685b805eeceaf5984de0344\n"
+        },
+        {
+          "sha": "d173bd0094fdc1bf9946aaf0c977963206c685dd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-18T01:44:27-06:00",
+          "message": "Every ratio floor is held to the table, its minWidth included (rich-unfiled-791c.py6q)\n\nMedium review of PR #474: a noWrap ratio column flooring at minWidth: 30 still\ntook every cell of the even cut from a declared neighbour. Rich's expand path,\nthe model this port's ratio follows, ignores min_width there and keeps the\ndeclared column whole; holding the floor brings the cut to [14, 3] and drops\nthe width-or-minWidth branch.\n"
         },
         {
           "sha": "1a7608da4091f310978d8516367825369b83584c",
