@@ -391,17 +391,73 @@ describe("Panel", () => {
       expect(() => collectLines(new Panel("hello"), { maxWidth: 1 })).not.toThrow();
     });
 
-    // Width 3 is the narrowest panel with a content cell between its frame
-    // columns — the panel spends its cells on content before padding.
-    it("keeps showing content down to width 3", () => {
-      const lines = collectLines(new Panel("hello"), { maxWidth: 3 });
-      expect(lines.join("")).toContain("h");
+    // Rich 15's rows, from `console.render(Panel(Text("ab"), padding=…),
+    // options.update(width=W))` at every width from 2 to the first that fits
+    // the content. Rich draws a panel's body through `Padding`, so the sides
+    // are paid in full and content left no column draws as nothing — the
+    // frame alone, or the frame around blank padding rows.
+    const richRows: Array<{ padding: PaddingDimensions; title?: string; expand?: boolean; rows: Record<number, string[]> }> = [
+      { padding: [0, 1], rows: {
+        2: ["╭╮", "╰╯"], 3: ["╭─╮", "╰─╯"], 4: ["╭──╮", "╰──╯"],
+        5: ["╭───╮", "│ a │", "│ b │", "╰───╯"], 6: ["╭────╮", "│ ab │", "╰────╯"] } },
+      { padding: [1, 1], rows: {
+        2: ["╭╮", "╰╯"], 3: ["╭─╮", "│ │", "│ │", "╰─╯"], 4: ["╭──╮", "│  │", "│  │", "╰──╯"],
+        5: ["╭───╮", "│   │", "│ a │", "│ b │", "│   │", "╰───╯"], 6: ["╭────╮", "│    │", "│ ab │", "│    │", "╰────╯"] } },
+      { padding: [0, 2], rows: {
+        2: ["╭╮", "╰╯"], 3: ["╭─╮", "╰─╯"], 4: ["╭──╮", "╰──╯"], 5: ["╭───╮", "╰───╯"], 6: ["╭────╮", "╰────╯"],
+        7: ["╭─────╮", "│  a  │", "│  b  │", "╰─────╯"], 8: ["╭──────╮", "│  ab  │", "╰──────╯"] } },
+      { padding: [1, 0, 0, 3], rows: {
+        2: ["╭╮", "╰╯"], 3: ["╭─╮", "│ │", "╰─╯"], 4: ["╭──╮", "│  │", "╰──╯"], 5: ["╭───╮", "│   │", "╰───╯"],
+        6: ["╭────╮", "│    │", "│   a│", "│   b│", "╰────╯"], 7: ["╭─────╮", "│     │", "│   ab│", "╰─────╯"] } },
+      { padding: 0, rows: {
+        2: ["╭╮", "╰╯"], 3: ["╭─╮", "│a│", "│b│", "╰─╯"], 4: ["╭──╮", "│ab│", "╰──╯"] } },
+      { padding: [0, 1], title: "T", rows: {
+        2: ["╭╮", "╰╯"], 3: ["╭─╮", "╰─╯"], 4: ["╭──╮", "╰──╯"],
+        5: ["╭─ ─╮", "│ a │", "│ b │", "╰───╯"], 6: ["╭─ T─╮", "│ ab │", "╰────╯"] } },
+      { padding: [0, 2], expand: false, rows: {
+        2: ["╭╮", "╰╯"], 3: ["╭─╮", "╰─╯"], 4: ["╭──╮", "╰──╯"], 5: ["╭───╮", "╰───╯"], 6: ["╭────╮", "╰────╯"],
+        7: ["╭─────╮", "│  a  │", "│  b  │", "╰─────╯"], 8: ["╭──────╮", "│  ab  │", "╰──────╯"] } },
+    ];
+    for (const { padding, title, expand, rows } of richRows) {
+      it(`pays its padding before its content, as Rich does: ${JSON.stringify({ padding, title, expand })}`, () => {
+        const panel = new Panel(new RichText("ab"), { padding, title, expand });
+        for (const [width, expected] of Object.entries(rows)) {
+          expect(collectLines(panel, { maxWidth: Number(width) }), `maxWidth ${width}`).toEqual(expected);
+        }
+      });
+    }
+
+    // The one width Rich's rows are not the target: Rich draws both corners
+    // into one column, two cells wide, and a panel never overflows its width.
+    it("draws only its left frame column at width 1", () => {
+      expect(collectLines(new Panel(new RichText("ab"), { padding: [1, 1] }), { maxWidth: 1 })).toEqual(["╭", "╰"]);
     });
 
+    // Rich 15's `console.render_lines(Panel(Text("ab"), padding=…),
+    // options.update(width=W, height=H))`: the body is held to the region at
+    // every width, the ones that leave the content no column included, and
+    // padding taller than the region is cropped from the bottom.
+    const richRegionRows: Array<{ padding: PaddingDimensions; width: number; rows: number; expected: string[] }> = [
+      { padding: [0, 1], width: 1, rows: 6, expected: ["╭", "│", "│", "│", "│", "╰"] },
+      { padding: [0, 1], width: 2, rows: 6, expected: ["╭╮", "││", "││", "││", "││", "╰╯"] },
+      { padding: [0, 1], width: 3, rows: 6, expected: ["╭─╮", "│ │", "│ │", "│ │", "│ │", "╰─╯"] },
+      { padding: [0, 1], width: 5, rows: 6, expected: ["╭───╮", "│ a │", "│ b │", "│   │", "│   │", "╰───╯"] },
+      { padding: [2, 1], width: 8, rows: 3, expected: ["╭──────╮", "│      │", "╰──────╯"] },
+      { padding: [2, 1], width: 8, rows: 5, expected: ["╭──────╮", "│      │", "│      │", "│      │", "╰──────╯"] },
+    ];
+    for (const { padding, width, rows, expected } of richRegionRows) {
+      it(`fills a region of ${rows} rows at width ${width} with padding ${JSON.stringify(padding)}, as Rich does`, () => {
+        const panel = new Panel(new RichText("ab"), { padding });
+        expect(collectLines(panel, { maxWidth: width, height: { rows, exact: true } })).toEqual(expected);
+      });
+    }
+
     // A `bottomRightAccessory` thunk reads state that the wrapped renderable
-    // populates during its own render, so the content has to render every
-    // frame — including the widths where the frame leaves nowhere to show it.
-    it("renders content every frame, so a stateful accessory sees this one", () => {
+    // populates during its own render, so it resolves after the content has
+    // rendered for the frame. Where the content is left no column it is not
+    // rendered at all — Rich's `Console.render` under one column — and the
+    // thunk reads the last frame that drew it.
+    it("resolves the accessory after the content renders, and renders no content left no column", () => {
       let frames = 0;
       const counting: Renderable = {
         *render(_options: RenderOptions) {
@@ -414,10 +470,10 @@ describe("Panel", () => {
         bottomRightAccessory: () => `#${frames}`,
       });
 
-      for (let width = 1; width <= 6; width++) {
+      for (let width = 1; width <= 8; width++) {
         const before = frames;
         collectLines(panel, { maxWidth: width });
-        expect(frames, `content did not render at maxWidth ${width}`).toBe(before + 1);
+        expect(frames, `content render count at maxWidth ${width}`).toBe(width < 5 ? before : before + 1);
       }
 
       const lines = collectLines(panel, { maxWidth: 30 });

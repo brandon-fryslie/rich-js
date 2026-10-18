@@ -1160,7 +1160,8 @@ export class TextInput extends ThemedWidget {
    * scroll, else `undefined`. X is the cursor's 1-indexed visual row; Y is
    * the total visual row count. Reads cached state populated by the most
    * recent `render()` — call from a `Panel.bottomRightAccessory` thunk so
-   * it evaluates after content has been rendered for the current frame.
+   * it evaluates after content has been rendered for the current frame;
+   * `BorderAccessory` names the widths where it has not.
    *
    * Returns `undefined` when:
    *   - `scrollIndicator` is not `"indices"`, or
