@@ -29,6 +29,9 @@
  *         ("no-pad-edge", "table", dict(padding=(0, 1), pad_edge=False), [{}, {}], ["ab", "cd"]),
  *         ("grid", "grid", dict(padding=(0, 1)), [{}, {}, {}], ["ab", "cd", "ef"]),
  *         ("grid-no-wrap", "grid", dict(padding=0), [dict(no_wrap=True)] * 3, ["xxxx", "yy", "zz"]),
+ *         ("no-wrap-beside-declared-width", "table", dict(padding=(0, 1)), [dict(no_wrap=True), dict(width=4)], ["abcdef", "x"]),
+ *         ("wrap-declared-no-wrap", "table", dict(padding=(0, 1)), [{}, dict(width=4), dict(no_wrap=True)], ["abc def ghi", "x", "abcdef"]),
+ *         ("declared-between-no-wraps", "table", dict(padding=(0, 1)), [dict(no_wrap=True), dict(width=4), dict(no_wrap=True)], ["abcdefghijklmnop", "x", "yyyyyyyy"]),
  *     ]
  *     c = Console(width=80, no_color=True, force_terminal=False, legacy_windows=False)
  *     blocks = []
@@ -71,6 +74,9 @@ const CASES: readonly (readonly [string, "table" | "grid", TableOptions, readonl
   ["no-pad-edge", "table", { padding: [0, 1], padEdge: false }, [{}, {}], ["ab", "cd"]],
   ["grid", "grid", { padding: [0, 1] }, [{}, {}, {}], ["ab", "cd", "ef"]],
   ["grid-no-wrap", "grid", { padding: 0 }, [{ noWrap: true }, { noWrap: true }, { noWrap: true }], ["xxxx", "yy", "zz"]],
+  ["no-wrap-beside-declared-width", "table", { padding: [0, 1] }, [{ noWrap: true }, { width: 4 }], ["abcdef", "x"]],
+  ["wrap-declared-no-wrap", "table", { padding: [0, 1] }, [{}, { width: 4 }, { noWrap: true }], ["abc def ghi", "x", "abcdef"]],
+  ["declared-between-no-wraps", "table", { padding: [0, 1] }, [{ noWrap: true }, { width: 4 }, { noWrap: true }], ["abcdefghijklmnop", "x", "yyyyyyyy"]],
 ];
 
 function table(

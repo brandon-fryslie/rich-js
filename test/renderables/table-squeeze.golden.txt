@@ -777,3 +777,409 @@ xxxxyy…
 
 grid-no-wrap 8
 xxxxyyzz
+
+no-wrap-beside-declared-width 3
+┌┬┐
+│││
+└┴┘
+
+no-wrap-beside-declared-width 4
+┌─┬┐
+│ ││
+└─┴┘
+
+no-wrap-beside-declared-width 5
+┌─┬─┐
+│ │ │
+└─┴─┘
+
+no-wrap-beside-declared-width 6
+┌─┬──┐
+│ │  │
+└─┴──┘
+
+no-wrap-beside-declared-width 7
+┌──┬──┐
+│  │  │
+└──┴──┘
+
+no-wrap-beside-declared-width 8
+┌───┬──┐
+│ … │  │
+└───┴──┘
+
+no-wrap-beside-declared-width 9
+┌───┬───┐
+│ … │ x │
+└───┴───┘
+
+no-wrap-beside-declared-width 10
+┌────┬───┐
+│ a… │ x │
+└────┴───┘
+
+no-wrap-beside-declared-width 11
+┌─────┬───┐
+│ ab… │ x │
+└─────┴───┘
+
+no-wrap-beside-declared-width 12
+┌──────┬───┐
+│ abc… │ x │
+└──────┴───┘
+
+no-wrap-beside-declared-width 13
+┌──────┬────┐
+│ abc… │ x  │
+└──────┴────┘
+
+no-wrap-beside-declared-width 14
+┌──────┬─────┐
+│ abc… │ x   │
+└──────┴─────┘
+
+no-wrap-beside-declared-width 15
+┌───────┬─────┐
+│ abcd… │ x   │
+└───────┴─────┘
+
+no-wrap-beside-declared-width 16
+┌────────┬─────┐
+│ abcdef │ x   │
+└────────┴─────┘
+
+no-wrap-beside-declared-width 17
+┌────────┬──────┐
+│ abcdef │ x    │
+└────────┴──────┘
+
+wrap-declared-no-wrap 4
+┌┬┬┐
+││││
+└┴┴┘
+
+wrap-declared-no-wrap 5
+┌┬─┬┐
+││ ││
+└┴─┴┘
+
+wrap-declared-no-wrap 6
+┌┬─┬─┐
+││ │ │
+└┴─┴─┘
+
+wrap-declared-no-wrap 7
+┌┬─┬──┐
+││ │  │
+└┴─┴──┘
+
+wrap-declared-no-wrap 8
+┌┬──┬──┐
+││  │  │
+└┴──┴──┘
+
+wrap-declared-no-wrap 9
+┌┬───┬──┐
+││ x │  │
+└┴───┴──┘
+
+wrap-declared-no-wrap 10
+┌┬───┬───┐
+││ x │ … │
+└┴───┴───┘
+
+wrap-declared-no-wrap 11
+┌┬───┬────┐
+││ x │ a… │
+└┴───┴────┘
+
+wrap-declared-no-wrap 12
+┌┬───┬─────┐
+││ x │ ab… │
+└┴───┴─────┘
+
+wrap-declared-no-wrap 13
+┌┬────┬─────┐
+││ x  │ ab… │
+└┴────┴─────┘
+
+wrap-declared-no-wrap 14
+┌┬────┬──────┐
+││ x  │ abc… │
+└┴────┴──────┘
+
+wrap-declared-no-wrap 15
+┌┬────┬───────┐
+││ x  │ abcd… │
+└┴────┴───────┘
+
+wrap-declared-no-wrap 16
+┌┬─────┬───────┐
+││ x   │ abcd… │
+└┴─────┴───────┘
+
+wrap-declared-no-wrap 17
+┌┬──────┬───────┐
+││ x    │ abcd… │
+└┴──────┴───────┘
+
+wrap-declared-no-wrap 18
+┌┬──────┬────────┐
+││ x    │ abcdef │
+└┴──────┴────────┘
+
+wrap-declared-no-wrap 19
+┌─┬──────┬────────┐
+│ │ x    │ abcdef │
+└─┴──────┴────────┘
+
+wrap-declared-no-wrap 20
+┌──┬──────┬────────┐
+│  │ x    │ abcdef │
+└──┴──────┴────────┘
+
+wrap-declared-no-wrap 21
+┌───┬──────┬────────┐
+│ … │ x    │ abcdef │
+│ … │      │        │
+│ … │      │        │
+└───┴──────┴────────┘
+
+wrap-declared-no-wrap 22
+┌────┬──────┬────────┐
+│ a… │ x    │ abcdef │
+│ d… │      │        │
+│ g… │      │        │
+└────┴──────┴────────┘
+
+wrap-declared-no-wrap 23
+┌─────┬──────┬────────┐
+│ abc │ x    │ abcdef │
+│ def │      │        │
+│ ghi │      │        │
+└─────┴──────┴────────┘
+
+wrap-declared-no-wrap 24
+┌──────┬──────┬────────┐
+│ abc  │ x    │ abcdef │
+│ def  │      │        │
+│ ghi  │      │        │
+└──────┴──────┴────────┘
+
+wrap-declared-no-wrap 25
+┌───────┬──────┬────────┐
+│ abc   │ x    │ abcdef │
+│ def   │      │        │
+│ ghi   │      │        │
+└───────┴──────┴────────┘
+
+wrap-declared-no-wrap 26
+┌────────┬──────┬────────┐
+│ abc    │ x    │ abcdef │
+│ def    │      │        │
+│ ghi    │      │        │
+└────────┴──────┴────────┘
+
+wrap-declared-no-wrap 27
+┌─────────┬──────┬────────┐
+│ abc def │ x    │ abcdef │
+│ ghi     │      │        │
+└─────────┴──────┴────────┘
+
+wrap-declared-no-wrap 28
+┌──────────┬──────┬────────┐
+│ abc def  │ x    │ abcdef │
+│ ghi      │      │        │
+└──────────┴──────┴────────┘
+
+wrap-declared-no-wrap 29
+┌───────────┬──────┬────────┐
+│ abc def   │ x    │ abcdef │
+│ ghi       │      │        │
+└───────────┴──────┴────────┘
+
+wrap-declared-no-wrap 30
+┌────────────┬──────┬────────┐
+│ abc def    │ x    │ abcdef │
+│ ghi        │      │        │
+└────────────┴──────┴────────┘
+
+wrap-declared-no-wrap 31
+┌─────────────┬──────┬────────┐
+│ abc def ghi │ x    │ abcdef │
+└─────────────┴──────┴────────┘
+
+declared-between-no-wraps 4
+┌┬┬┐
+││││
+└┴┴┘
+
+declared-between-no-wraps 5
+┌┬─┬┐
+││ ││
+└┴─┴┘
+
+declared-between-no-wraps 6
+┌─┬┬─┐
+│ ││ │
+└─┴┴─┘
+
+declared-between-no-wraps 7
+┌─┬─┬─┐
+│ │ │ │
+└─┴─┴─┘
+
+declared-between-no-wraps 8
+┌─┬──┬─┐
+│ │  │ │
+└─┴──┴─┘
+
+declared-between-no-wraps 9
+┌──┬─┬──┐
+│  │ │  │
+└──┴─┴──┘
+
+declared-between-no-wraps 10
+┌──┬──┬──┐
+│  │  │  │
+└──┴──┴──┘
+
+declared-between-no-wraps 11
+┌───┬──┬──┐
+│ … │  │  │
+└───┴──┴──┘
+
+declared-between-no-wraps 12
+┌───┬──┬───┐
+│ … │  │ … │
+└───┴──┴───┘
+
+declared-between-no-wraps 13
+┌────┬─┬────┐
+│ a… │ │ y… │
+└────┴─┴────┘
+
+declared-between-no-wraps 14
+┌─────┬┬─────┐
+│ ab… ││ yy… │
+└─────┴┴─────┘
+
+declared-between-no-wraps 15
+┌──────┬┬─────┐
+│ abc… ││ yy… │
+└──────┴┴─────┘
+
+declared-between-no-wraps 16
+┌───────┬┬─────┐
+│ abcd… ││ yy… │
+└───────┴┴─────┘
+
+declared-between-no-wraps 17
+┌────────┬┬─────┐
+│ abcde… ││ yy… │
+└────────┴┴─────┘
+
+declared-between-no-wraps 18
+┌─────────┬┬─────┐
+│ abcdef… ││ yy… │
+└─────────┴┴─────┘
+
+declared-between-no-wraps 19
+┌──────────┬┬─────┐
+│ abcdefg… ││ yy… │
+└──────────┴┴─────┘
+
+declared-between-no-wraps 20
+┌───────────┬┬─────┐
+│ abcdefgh… ││ yy… │
+└───────────┴┴─────┘
+
+declared-between-no-wraps 21
+┌────────────┬┬─────┐
+│ abcdefghi… ││ yy… │
+└────────────┴┴─────┘
+
+declared-between-no-wraps 22
+┌─────────────┬┬─────┐
+│ abcdefghij… ││ yy… │
+└─────────────┴┴─────┘
+
+declared-between-no-wraps 23
+┌─────────────┬─┬─────┐
+│ abcdefghij… │ │ yy… │
+└─────────────┴─┴─────┘
+
+declared-between-no-wraps 24
+┌─────────────┬──┬─────┐
+│ abcdefghij… │  │ yy… │
+└─────────────┴──┴─────┘
+
+declared-between-no-wraps 25
+┌──────────────┬──┬─────┐
+│ abcdefghijk… │  │ yy… │
+└──────────────┴──┴─────┘
+
+declared-between-no-wraps 26
+┌──────────────┬──┬──────┐
+│ abcdefghijk… │  │ yyy… │
+└──────────────┴──┴──────┘
+
+declared-between-no-wraps 27
+┌──────────────┬──┬───────┐
+│ abcdefghijk… │  │ yyyy… │
+└──────────────┴──┴───────┘
+
+declared-between-no-wraps 28
+┌───────────────┬──┬───────┐
+│ abcdefghijkl… │  │ yyyy… │
+└───────────────┴──┴───────┘
+
+declared-between-no-wraps 29
+┌───────────────┬───┬───────┐
+│ abcdefghijkl… │ x │ yyyy… │
+└───────────────┴───┴───────┘
+
+declared-between-no-wraps 30
+┌───────────────┬────┬───────┐
+│ abcdefghijkl… │ x  │ yyyy… │
+└───────────────┴────┴───────┘
+
+declared-between-no-wraps 31
+┌────────────────┬────┬───────┐
+│ abcdefghijklm… │ x  │ yyyy… │
+└────────────────┴────┴───────┘
+
+declared-between-no-wraps 32
+┌────────────────┬────┬────────┐
+│ abcdefghijklm… │ x  │ yyyyy… │
+└────────────────┴────┴────────┘
+
+declared-between-no-wraps 33
+┌────────────────┬────┬─────────┐
+│ abcdefghijklm… │ x  │ yyyyyy… │
+└────────────────┴────┴─────────┘
+
+declared-between-no-wraps 34
+┌─────────────────┬────┬─────────┐
+│ abcdefghijklmn… │ x  │ yyyyyy… │
+└─────────────────┴────┴─────────┘
+
+declared-between-no-wraps 35
+┌─────────────────┬─────┬─────────┐
+│ abcdefghijklmn… │ x   │ yyyyyy… │
+└─────────────────┴─────┴─────────┘
+
+declared-between-no-wraps 36
+┌─────────────────┬──────┬─────────┐
+│ abcdefghijklmn… │ x    │ yyyyyy… │
+└─────────────────┴──────┴─────────┘
+
+declared-between-no-wraps 37
+┌──────────────────┬──────┬─────────┐
+│ abcdefghijklmnop │ x    │ yyyyyy… │
+└──────────────────┴──────┴─────────┘
+
+declared-between-no-wraps 38
+┌──────────────────┬──────┬──────────┐
+│ abcdefghijklmnop │ x    │ yyyyyyyy │
+└──────────────────┴──────┴──────────┘
