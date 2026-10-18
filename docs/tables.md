@@ -120,13 +120,13 @@ does, so a column with its own `width` keeps it: a table whose every column
 declares one is as wide as those columns, not 40, where Rich would stretch them.
 
 A cell is its padding and then its content, and the width is divided over
-whole cells, padding included, as Rich divides it: the two outer border columns,
-then the divider in front of each column, then every column's narrowest whole
-cell, and only then the rest of what each column wants. So a cell pays its
-padding before its content, and one too narrow for its padding draws blank. A
-column the width leaves no cell is drawn as nothing between its dividers, and a
-column whose divider the width cannot hold is dropped rather than drawn outside
-the frame. The same three-column table, declared at seven widths and set side
+whole cells, padding included, as Rich's are: the two outer border columns,
+then the divider in front of each column, then every declared column
+[`width`](#column-options), then every column's narrowest whole cell, and only
+then the rest of what each column wants. So a cell pays its padding before its
+content, and one too narrow for its padding draws blank. A column the width
+leaves no cell is drawn as nothing between its dividers, and a column whose
+divider the width cannot hold is dropped rather than drawn outside the frame. The same three-column table, declared at seven widths and set side
 by side in a grid:
 
 ```typescript
@@ -166,7 +166,7 @@ single cell of content shows only what that mode can fit in one cell.
 A column with an explicit `width` and no `ratio` is a reservation rather than a bid: it is paid
 ahead of the elastic share, so its neighbours give up their width first. It comes
 out of what the frame and the dividers leave, so a width too small to
-cover every reservation shrinks reserved columns too, evenly, as Rich does. Columns
+cover every reservation cuts the reserved columns evenly among themselves. Columns
 with a `ratio` sit at the other end — they take whatever the bounded columns
 leave, split by Rich's rule: each ratio column's share, padding included,
 rounded up, so the spare cells go to the leftmost, and never below the column's

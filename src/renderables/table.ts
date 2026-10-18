@@ -185,19 +185,18 @@ function distribute(total: number, demands: readonly Bid[]): number[] {
  * column evenly (`ratio_reduce(excess, [1] * n, widths, widths)`). Wants that
  * fit come back as they are.
  *
- * A column's width is its want plus the `kept` cells — its reservation — the
- * table paid it first and it never gives up. One divergence: the reference's
+ * One divergence: the reference's
  * even cut runs once, and where a column too narrow to give its share leaves
  * cells over, the table draws past its width. Here the cut repeats over the
  * columns with cells left, so the table fits. Each round either fits or
  * empties a column, so it ends.
  */
-function reduceToFit(budget: number, demands: readonly { want: number; kept: number; wrapable: boolean }[]): number[] {
+function reduceToFit(budget: number, demands: readonly { want: number; wrapable: boolean }[]): number[] {
   let wants = demands.map(({ want }) => want);
   const excess = (): number => wants.reduce((sum, want) => sum + want, 0) - budget;
   for (let over = excess(); over > 0; over = excess()) {
     // A column with nothing left to give, or that may not wrap, is out of the round.
-    const widths = wants.map((want, index) => (demands[index]!.wrapable && want > 0 ? demands[index]!.kept + want : 0));
+    const widths = wants.map((want, index) => (demands[index]!.wrapable && want > 0 ? want : 0));
     const widest = Math.max(...widths);
     if (widest === 0) break;
     const next = Math.max(...widths.map((width) => (width === widest ? 0 : width)));
@@ -292,7 +291,7 @@ function layoutTable(
   const seatedDemands = demands.slice(0, seated);
   const reserved = reduceToFit(
     budget,
-    seatedDemands.map((demand) => ({ want: demand.reserved, kept: 0, wrapable: false })),
+    seatedDemands.map((demand) => ({ want: demand.reserved, wrapable: false })),
   ).map(take);
 
   // What is left to apportion is the rest of what each column wanted: its
@@ -306,7 +305,6 @@ function layoutTable(
     budget,
     seatedDemands.map((demand, index) => ({
       want: Math.max(0, demand.minimum - reserved[index]!),
-      kept: reserved[index]!,
       wrapable: demand.wrapable,
     })),
   );
@@ -917,10 +915,11 @@ export class Table implements Renderable, Measurable {
    * mode gets its own path through the width division.
    *
    * Cells are measured against the width left once the frame is paid, as the
-   * reference's `_measure_column` measures them. Padding and the floor are laid
-   * over whichever sizing the column has: they are the same for all three.
-   * Padding is part of every width the demand names, because the reference
-   * measures a cell wrapped in its `Padding`.
+   * reference's `_measure_column` measures them. Padding is part of every
+   * width the demand names, because the reference measures a cell wrapped in
+   * its `Padding`, and each sizing adds it where the reference does — a
+   * rowless column's minimum is the one width it never reaches. The floor is
+   * laid over whichever sizing the column has.
    */
   private _columnDemands(options: RenderOptions, outerWidth: number): ColumnDemand[] {
     const frame = this._frame();
@@ -929,8 +928,7 @@ export class Table implements Renderable, Measurable {
       maxWidth: Math.max(0, outerWidth - frame.edge * 2 - frame.divider * Math.max(0, this._columns.length - 1)),
     };
     return this._columns.map((col, index) => {
-      const [left, right] = this._columnPadding(index);
-      const sizing = this._columnSizing(col, index, inner, left + right);
+      const sizing = this._columnSizing(col, index, inner, this._columnPadding(index));
       const floor = sizing.want === 0 ? 1 : 0;
       return { ...sizing, minimum: sizing.minimum + floor, want: sizing.want + floor, floor };
     });
@@ -940,7 +938,7 @@ export class Table implements Renderable, Measurable {
     col: Column,
     index: number,
     options: RenderOptions,
-    pad: number,
+    [left, right]: readonly [left: number, right: number],
   ): Omit<ColumnDemand, "floor"> {
     // A flexible column takes its share of whatever the bounded columns
     // leave; every other column asks for its natural width, whether or not a
@@ -954,6 +952,7 @@ export class Table implements Renderable, Measurable {
     // reservation, as the reference's `flex_minimum` reads it.
     // [LAW:one-source-of-truth] `columnShare` decides first, so a column that
     // `Column.flexible` calls elastic is one the division shares out.
+    const pad = left + right;
     const padded = (content: number): number => demandCells(content + pad);
     const share = columnShare(col);
     if (share > 0) {
@@ -986,7 +985,7 @@ export class Table implements Renderable, Measurable {
         wrapable: false,
       };
     }
-    const range = this._cellRange(col, index, options);
+    const range = this._cellRange(col, index, options, [left, right]);
     const natural = demandCells(this._bounded(col, range?.maximum ?? padded(1), pad));
     // `expand` is a stretch rather than a larger want: the column still
     // competes for its natural width like any other, and only the cells left
@@ -1077,8 +1076,8 @@ export class Table implements Renderable, Measurable {
     col: Column,
     index: number,
     options: RenderOptions,
+    [left, right]: readonly [left: number, right: number],
   ): { minimum: number; maximum: number } | undefined {
-    const [left, right] = this._columnPadding(index);
     let range: { minimum: number; maximum: number } | undefined;
     for (const cell of this._columnCells(col, index)) {
       // The stamped cell, so the width a column asks for is the width its text
