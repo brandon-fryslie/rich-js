@@ -460,9 +460,10 @@ describe("Markdown", () => {
     expect(rows("para\n\n===", 20)).toEqual(["para", "", "===", ""]);
   });
 
-  it("reads long lazy and deeply nested hard-wrapped text in time linear in its length", () => {
+  it("reads and draws long lazy and deeply nested hard-wrapped text in time linear in its length", () => {
     const wrapped = (lines: number) => Array.from({ length: lines }, (_, n) => `word${n}`).join("\n");
-    // The quadratic reader this replaced took 18, 229 and 15 times as long, in order, for four times the input.
+    // The quadratic reader this replaced took 18, 229 and 15 times as long, in order, for four times the input,
+    // and a quadratic Segment.divide made drawing each of them quadratic too.
     expectLinearTime((lines) => rows(`> ${wrapped(lines)}`, 80), 8000);
     expectLinearTime((lines) => rows(`- - - ${wrapped(lines)}`, 80), 6000);
     expectLinearTime((brackets) => rows(`text ${"[1, ".repeat(brackets)}`, 80), 20_000);
@@ -485,11 +486,13 @@ describe("Markdown", () => {
     expectLinearTime((spaces) => new Markdown(`a${" ".repeat(spaces)}b`), 2_000_000);
   });
 
-  it("reads a run of unclosed links in time linear in its length", () => {
+  it("reads and draws a run of unclosed links in time linear in its length", () => {
     // A destination scanned to the end of the text from every `](` took 13 times as long for four times the links.
     expectLinearTime((links) => rows("[*a](".repeat(links), 80), 20_000);
-    // A tail splitting the space after a destination every way it could took 14 times as long.
-    expectLinearTime((spaces) => rows(`[a](b${" ".repeat(spaces)}x`, 80), 1_000_000);
+    // A tail splitting the space after a destination every way it could took 14 times as long. Drawing is
+    // timed at a smaller size: it is linear too, but slow enough that the reader's size would take seconds.
+    expectLinearTime((spaces) => new Markdown(`[a](b${" ".repeat(spaces)}x`), 1_000_000);
+    expectLinearTime((spaces) => rows(`[a](b${" ".repeat(spaces)}x`, 80), 50_000);
   });
 
   // --- Lists hold blocks, as CommonMark reads them ---

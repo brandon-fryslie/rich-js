@@ -177,9 +177,11 @@ export function splitText(
  * as wide as the distance between its cuts. `positions` are non-decreasing and
  * fall inside `text`, between 0 and its width.
  *
- * One walk over `text` however many positions there are: cutting what is left
- * again at every position re-measures and copies the rest each time, which is
- * quadratic in a long enough string.
+ * One walk over `text` however many positions there are, ending at the last
+ * of them: cutting what is left again at every position re-measures and copies
+ * the rest each time, which is quadratic in a long enough string, and walking
+ * past the last position makes one cut near the start of a long string pay for
+ * all of it.
  */
 export function cutCells(text: string, positions: readonly CellCol[]): string[] {
   const pieces: string[] = [];
@@ -189,7 +191,8 @@ export function cutCells(text: string, positions: readonly CellCol[]): string[] 
   let at = 0;
   let col = 0;
   let next = 0;
-  for (const glyph of graphemes(text)) {
+  for (const glyph of clustersFrom(text, asCodePoint(0))) {
+    if (next === positions.length) break;
     const end = col + cellLen(glyph);
     // The first cell of this glyph no piece has taken yet.
     let from = col;

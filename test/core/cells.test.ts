@@ -11,6 +11,7 @@ import {
   graphemes,
   asCodePoint,
   splitAtCells,
+  cutCells,
   cellColToCodeUnitOffset,
   graphemeBoundary,
   nextGrapheme,
@@ -404,6 +405,22 @@ describe("splitAtCells", () => {
   it("counts a glyph of several code points by the cells it takes", () => {
     expect(splitAtCells("👍🏽a漢", [asCellCol(2), asCellCol(3)])).toEqual(["👍🏽", "a", "漢"]);
   });
+});
+
+describe("cutCells", () => {
+  const cases: [string, number[], string[]][] = [
+    ["abc", [], ["abc"]],
+    ["abc", [1, 1], ["a", "", "bc"]],
+    ["a漢b", [1, 2], ["a", " ", " b"]],
+    ["a漢b", [2, 2, 3], ["a ", "", " ", "b"]],
+    ["a👨‍👩‍👧b", [1, 2, 3], ["a", " ", " ", "b"]],
+    ["e\u0301x", [1], ["e\u0301", "x"]],
+  ];
+  for (const [text, positions, pieces] of cases) {
+    it(`cuts ${JSON.stringify(text)} at ${JSON.stringify(positions)} into pieces as wide as the distance between cuts`, () => {
+      expect(cutCells(text, positions.map(asCellCol))).toEqual(pieces);
+    });
+  }
 });
 
 describe("cellColToCodeUnitOffset", () => {

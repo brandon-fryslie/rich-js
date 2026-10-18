@@ -83,9 +83,9 @@ export class Segment {
    * [LAW:single-enforcer] Each piece but the first starts that many cells
    * further into whatever drew it, and its anchor says so; see `./anchor.ts`.
    */
-  cutAt(positions: readonly [CellCol]): [Segment, Segment];
-  cutAt(positions: readonly CellCol[]): Segment[];
-  cutAt(positions: readonly CellCol[]): Segment[] {
+  private cutAt(positions: readonly [CellCol]): [Segment, Segment];
+  private cutAt(positions: readonly CellCol[]): Segment[];
+  private cutAt(positions: readonly CellCol[]): Segment[] {
     return cutCells(this.text, positions).map((text, piece) =>
       new Segment(text, piece === 0 ? this.style : this.style?.shiftedBy(positions[piece - 1]!)),
     );
