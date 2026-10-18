@@ -4,15 +4,22 @@
     {
       "version": "pr-472",
       "ref": "refs/pull/472/merge",
-      "sha": "60335ffdabff7e95c92f099063cd2b62a2f32f61",
-      "timestamp": "2026-10-18T06:32:01.741Z",
+      "sha": "b63d9f37e0d1911a018da6f945e970d7f1f3c9d9",
+      "timestamp": "2026-10-18T06:44:13.861Z",
       "commits": [
         {
-          "sha": "60335ffdabff7e95c92f099063cd2b62a2f32f61",
+          "sha": "b63d9f37e0d1911a018da6f945e970d7f1f3c9d9",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T00:30:17-06:00",
-          "message": "Merge 43e08e982e4f7486e49af402ac4c19c3b134c7df into 8e8e8942c7eac7d44155827652a53e1ac999d07f\n"
+          "timestamp": "2026-10-18T06:42:29Z",
+          "message": "Merge d4f589f67e96d1df423750c567924b043cfe5dd5 into 8e8e8942c7eac7d44155827652a53e1ac999d07f\n"
+        },
+        {
+          "sha": "d4f589f67e96d1df423750c567924b043cfe5dd5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-18T00:42:24-06:00",
+          "message": "Tab from a widget held on no column moves to its neighbour in document order; review fixes (rich-widgets-hmk1.kvc)\n\nThe focus manager reads the view's document order and its on-screen widgets\nfrom one FocusView, so settle takes no argument and next/prev step from the\ncurrent widget's place in the view rather than its place on screen.\n\nAlso: Panel's and Table's moved JSDocs back onto their members, one cellAt for\nTable's blank-cell fallback, Composite says it commits no state rather than\nthat it is pure, and contents.test holds Table without its header and Tree with\nits root hidden.\n"
         },
         {
           "sha": "43e08e982e4f7486e49af402ac4c19c3b134c7df",
