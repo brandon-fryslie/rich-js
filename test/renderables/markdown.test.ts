@@ -403,10 +403,16 @@ describe("Markdown", () => {
     // Python's whitespace, not JavaScript's: NEL and U+001F go, U+FEFF stays.
     expect(full("```\nx \u0085\u001f\n\n```", 6)).toEqual(["      ", " x    ", "      ", ""]);
     expect(full("```\nx﻿\n```", 6)).toEqual(["      ", " x﻿    ", "      ", ""]);
-    // Squeezed, the code keeps a column before the padding does, as every
-    // Padding does; Rich draws only the padding's rows here.
-    expect(full("```\nab\n```", 2)).toEqual(["  ", " a", " b", "  ", ""]);
-    expect(full("```\nab\n```", 1)).toEqual([" ", "a", "b", " ", ""]);
+  });
+
+  // Rich 15, console.render at each width, texts joined: up to the first width
+  // that leaves the code a column, only the padding's rows are drawn.
+  it("draws a code block too narrow for its padding as the padding's rows alone, as Rich does", () => {
+    const full = (markdown: string, maxWidth: number) => collectText(new Markdown(markdown), { maxWidth });
+    const top = ["", " \n \n", "  \n  \n", "   \n c \n o \n d \n e \n   \n", "    \n co \n de \n    \n", "     \n cod \n e   \n     \n", "      \n code \n      \n"];
+    for (let maxWidth = 1; maxWidth <= 6; maxWidth++) expect(full("```\ncode\n```", maxWidth)).toBe(top[maxWidth]);
+    const item = ["", "\n", "\n", "\n", "\n •  \n    \n", "\n •   \n     \n", "\n •    \n    c \n    o \n    d \n    e \n      \n", "\n •     \n    co \n    de \n       \n", "\n •      \n    cod \n    e   \n        \n", "\n •       \n    code \n         \n"];
+    for (let maxWidth = 1; maxWidth <= 9; maxWidth++) expect(full("- ```\n  code\n  ```", maxWidth)).toBe(item[maxWidth]);
   });
 
   it("parses the width once, as every renderable does, before a code block draws in it", () => {

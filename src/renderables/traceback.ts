@@ -19,8 +19,8 @@
 import { Segment } from "../core/segment.js";
 import { RichText } from "../core/text.js";
 import { Pretty, UNSEEN_DATA_BOUNDS } from "../core/pretty.js";
-import type { Renderable, RenderOptions } from "../core/protocol.js";
-import { layoutPadding } from "./padding.js";
+import { drawsNothing, type Renderable, type RenderOptions } from "../core/protocol.js";
+import { paddedContentWidth } from "./padding.js";
 
 export interface TracebackOptions {
   suppress?: string[];
@@ -302,10 +302,10 @@ export class Traceback implements Renderable {
     // frame of its own. The width is divided as `Padding` divides it; the rows
     // are not padded out on the right, as `Padding`'s are, because trailing
     // blanks on every line of a crash report are bytes nobody asked for.
-    const { left, contentWidth } = layoutPadding(options.maxWidth, 2, 0);
-    const indent = new Segment(" ".repeat(left));
-    for (const entry of entries) {
-      for (const line of Segment.splitLines(entry.render({ ...options, maxWidth: contentWidth }))) {
+    const frameOptions = { ...options, maxWidth: paddedContentWidth(options.maxWidth, 2, 0) };
+    const indent = new Segment("  ");
+    for (const entry of drawsNothing(frameOptions) ? [] : entries) {
+      for (const line of Segment.splitLines(entry.render(frameOptions))) {
         yield indent;
         yield* line;
         yield Segment.line();
