@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-469",
-      "ref": "refs/pull/469/merge",
-      "sha": "90a2825b0c9ac365eda62719a420130f5a750070",
-      "timestamp": "2026-10-18T04:50:10.293Z",
-      "commits": [
-        {
-          "sha": "90a2825b0c9ac365eda62719a420130f5a750070",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T04:48:14Z",
-          "message": "Merge a7d5149e1bde0793945a4cbb9d652c32f7d3daf6 into ceb10734548abfec6408a76a1a317090681e68a9\n"
-        },
-        {
-          "sha": "a7d5149e1bde0793945a4cbb9d652c32f7d3daf6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T22:48:10-06:00",
-          "message": "Table's width division drops reduceToFit's dead kept field and derives each column's padding once (rich-unfiled-791c.gxf4)\n\nReview pass (escalation high) on PR #469: no wrapable column holds a\nreservation, so kept was always 0; _cellRange takes the padding pair\n_columnDemands already derived; the docs name reservations in the payment\norder and claim only the even cut among them.\n"
-        },
-        {
-          "sha": "a71ff72cc356637193c83177ee683ef9fb748ffe",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T22:35:33-06:00",
-          "message": "A Table too narrow for its declared widths cuts them evenly, as Rich does (rich-unfiled-791c.gxf4)\n\nReview pass (medium) on PR #469: reservations were paid in column order, so a\nsecond width: 6 column beside a width: 4 one drew nothing at width 9 where Rich\ndraws both. Reservations now go through reduceToFit's even cut, each held to\nthe width inside the frame first (Rich's with_maximum), and the squeeze golden\npins two declared widths at every width from 5 to 17.\n"
-        },
-        {
-          "sha": "40844feb971f9d340d2d979cd18dce350e31d71e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T22:24:29-06:00",
-          "message": "A rowless Table column measures Rich's unpadded minimum, and the squeeze golden pins grid, width, noWrap and padding modes (rich-unfiled-791c.gxf4)\n\nReview pass (high) on PR #469: an empty column's minimum is Rich's bare 1,\nnot 1 plus padding; the docs no longer say a sub-frame table draws bare\ncontent; two stale comments follow the padded widths; the Rich-generated\ngolden now covers declared width, noWrap, collapsePadding, padEdge: false\nand Table.grid.\n"
-        },
-        {
-          "sha": "d9ca3165090fadd5880cdd9ad176c873c30651d8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T22:05:34-06:00",
-          "message": "A Table cell pays its padding before its content, so one too narrow for its padding draws blank, as Rich's does (rich-unfiled-791c.gxf4)\n\nThe width is divided over whole cells, padding included, and each cell is\nmeasured and drawn through Padding, as Rich's _get_cells wraps it. The seat\nand padding-level passes are gone; a column the width leaves no cell draws\nas nothing between its dividers. table-squeeze.golden.txt pins Rich 15's\nrows at every width from the frame to the content.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "ceb10734548abfec6408a76a1a317090681e68a9",
-      "timestamp": "2026-10-18T03:54:19.830Z",
+      "sha": "77143831488b913433234cc4785db4c01d516b19",
+      "timestamp": "2026-10-18T05:01:16.591Z",
       "commits": [
         {
-          "sha": "ceb10734548abfec6408a76a1a317090681e68a9",
+          "sha": "77143831488b913433234cc4785db4c01d516b19",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T21:52:32-06:00",
-          "message": "Panel draws its body through Padding, so a width too narrow for its padding draws only its frame, as Rich's does (rich-unfiled-791c.lbr8) (#468)\n\n* Panel draws its body through Padding, so a width too narrow for its padding draws only its frame, as Rich's does (rich-unfiled-791c.lbr8)\n\nRich renders a Panel's content as Padding(renderable, padding) at width - 2.\nlayoutPanel seated a first content cell before the padding, so the library\ndivided padding two opposite ways after rich-unfiled-791c.sk1p. The geometry\nis now the two frame columns and the span; Padding owns the rest.\n\nContent left no column is no longer rendered, so a bottomRightAccessory thunk\nat those widths reads the last frame that drew it. Width 1 still draws one\nframe column where Rich overflows to two.\n\n* Panel holds its body to the region at every width and owns its padding once (rich-unfiled-791c.lbr8)\n\nReview fixes: a span of no cells draws empty rows inside a region and padding\ntaller than the region is cropped, as Rich's render_lines does; padding is read\nback from the body rather than kept beside it; the accessory contract names the\nwidths where content does not render."
+          "timestamp": "2026-10-17T22:59:58-06:00",
+          "message": "A Table cell pays its padding before its content, so one too narrow for its padding draws blank, as Rich's does (rich-unfiled-791c.gxf4) (#469)\n\n* A Table cell pays its padding before its content, so one too narrow for its padding draws blank, as Rich's does (rich-unfiled-791c.gxf4)\n\nThe width is divided over whole cells, padding included, and each cell is\nmeasured and drawn through Padding, as Rich's _get_cells wraps it. The seat\nand padding-level passes are gone; a column the width leaves no cell draws\nas nothing between its dividers. table-squeeze.golden.txt pins Rich 15's\nrows at every width from the frame to the content.\n\n* A rowless Table column measures Rich's unpadded minimum, and the squeeze golden pins grid, width, noWrap and padding modes (rich-unfiled-791c.gxf4)\n\nReview pass (high) on PR #469: an empty column's minimum is Rich's bare 1,\nnot 1 plus padding; the docs no longer say a sub-frame table draws bare\ncontent; two stale comments follow the padded widths; the Rich-generated\ngolden now covers declared width, noWrap, collapsePadding, padEdge: false\nand Table.grid.\n\n* A Table too narrow for its declared widths cuts them evenly, as Rich does (rich-unfiled-791c.gxf4)\n\nReview pass (medium) on PR #469: reservations were paid in column order, so a\nsecond width: 6 column beside a width: 4 one drew nothing at width 9 where Rich\ndraws both. Reservations now go through reduceToFit's even cut, each held to\nthe width inside the frame first (Rich's with_maximum), and the squeeze golden\npins two declared widths at every width from 5 to 17.\n\n* Table's width division drops reduceToFit's dead kept field and derives each column's padding once (rich-unfiled-791c.gxf4)\n\nReview pass (escalation high) on PR #469: no wrapable column holds a\nreservation, so kept was always 0; _cellRange takes the padding pair\n_columnDemands already derived; the docs name reservations in the payment\norder and claim only the even cut among them."
         }
       ]
     }
