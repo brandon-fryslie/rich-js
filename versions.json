@@ -4,15 +4,22 @@
     {
       "version": "pr-469",
       "ref": "refs/pull/469/merge",
-      "sha": "b3e2387751e30df0d8c5286b5eefa5df5561e2b3",
-      "timestamp": "2026-10-18T04:26:19.065Z",
+      "sha": "a4355b2cb7294f2ed26f05e1ac268b540802ca29",
+      "timestamp": "2026-10-18T04:37:25.351Z",
       "commits": [
         {
-          "sha": "b3e2387751e30df0d8c5286b5eefa5df5561e2b3",
+          "sha": "a4355b2cb7294f2ed26f05e1ac268b540802ca29",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T04:24:34Z",
-          "message": "Merge 40844feb971f9d340d2d979cd18dce350e31d71e into ceb10734548abfec6408a76a1a317090681e68a9\n"
+          "timestamp": "2026-10-18T04:35:38Z",
+          "message": "Merge a71ff72cc356637193c83177ee683ef9fb748ffe into ceb10734548abfec6408a76a1a317090681e68a9\n"
+        },
+        {
+          "sha": "a71ff72cc356637193c83177ee683ef9fb748ffe",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T22:35:33-06:00",
+          "message": "A Table too narrow for its declared widths cuts them evenly, as Rich does (rich-unfiled-791c.gxf4)\n\nReview pass (medium) on PR #469: reservations were paid in column order, so a\nsecond width: 6 column beside a width: 4 one drew nothing at width 9 where Rich\ndraws both. Reservations now go through reduceToFit's even cut, each held to\nthe width inside the frame first (Rich's with_maximum), and the squeeze golden\npins two declared widths at every width from 5 to 17.\n"
         },
         {
           "sha": "40844feb971f9d340d2d979cd18dce350e31d71e",
