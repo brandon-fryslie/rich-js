@@ -170,22 +170,47 @@ export function splitText(
 }
 
 /**
- * Cuts `text` into exactly `position` cells and the rest, as the reference's
- * `Segment.split_cells` does: a wide glyph the cut goes through fits neither
- * side, so it leaves a space in each of its cells, where `splitText` keeps it
- * whole on the right. Every other character lands on exactly one side.
- * `position` must fall inside `text`, between 0 and its width.
+ * Cuts `text` at each of `positions`, as the reference's `Segment.split_cells`
+ * cuts at one: a wide glyph a cut goes through fits neither side, so it leaves
+ * a space in each of its cells, where `splitText` keeps it whole on the right.
+ * Every other character lands in exactly one piece, so each piece is exactly
+ * as wide as the distance between its cuts. `positions` are non-decreasing and
+ * fall inside `text`: from 0 to one short of its width.
+ *
+ * One walk over `text` however many positions there are, ending at the last
+ * of them: cutting what is left again at every position re-measures and copies
+ * the rest each time, which is quadratic in a long enough string, and walking
+ * past the last position makes one cut near the start of a long string pay for
+ * all of it.
  */
-export function cutCells(text: string, position: CellCol): [string, string] {
-  const head = cellFit(text, position);
-  // Cells of the glyph the cut goes through that lie left of it; 0 when the
-  // cut falls between glyphs, and then there is no such glyph.
-  const straddle = position - cellLen(head);
-  const [glyph = ""] = straddle > 0 ? clustersFrom(text, asCodePoint(head.length)) : [];
-  return [
-    head + " ".repeat(straddle),
-    " ".repeat(cellLen(glyph) - straddle) + text.slice(head.length + glyph.length),
-  ];
+export function cutCells(text: string, positions: readonly CellCol[]): string[] {
+  const pieces: string[] = [];
+  // The current piece is `lead` blank cells, then `text` from `start` to `at`.
+  let start = 0;
+  let lead = 0;
+  let at = 0;
+  let col = 0;
+  let next = 0;
+  for (const glyph of clustersFrom(text, asCodePoint(0))) {
+    if (next === positions.length) break;
+    const end = col + cellLen(glyph);
+    // The first cell of this glyph no piece has taken yet.
+    let from = col;
+    for (; next < positions.length && positions[next]! < end; next++) {
+      const cut = positions[next]!;
+      pieces.push(" ".repeat(lead) + text.slice(start, at) + " ".repeat(cut - from));
+      lead = 0;
+      // A cut between glyphs leaves this one to the next piece; a cut through
+      // it blanks it, and the pieces after the cut start past it.
+      start = cut === col ? at : at + glyph.length;
+      from = cut;
+    }
+    if (from > col) lead = end - from;
+    at += glyph.length;
+    col = end;
+  }
+  pieces.push(" ".repeat(lead) + text.slice(start));
+  return pieces;
 }
 
 /**

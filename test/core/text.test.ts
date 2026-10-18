@@ -5,6 +5,7 @@ import { Segment } from "../../src/core/segment.js";
 import { cellLen } from "../../src/core/cells.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import { baseStyleOf } from "./base-style.js";
+import { expectLinearTime } from "../suite/linear-time.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -1130,6 +1131,17 @@ describe("RichText.render() cost tracks the number of spans, not its square", ()
     collect(large.text.render({ maxWidth: 1000 }));
 
     expect(large.reads()).toBeLessThan(small.reads() * 3);
+  });
+});
+
+describe("RichText.render() wraps a long line in time linear in its length", () => {
+  // Cutting what was left of the segment again at every row took 10 times as long for four times the text, with spaces or without.
+  it("folds a word with no spaces", () => {
+    expectLinearTime((n) => collect(new RichText("ab".repeat(n)).render({ maxWidth: 80 })), 32_000);
+  });
+
+  it("wraps words", () => {
+    expectLinearTime((n) => collect(new RichText("text " + "x1, ".repeat(n)).render({ maxWidth: 80 })), 8000);
   });
 });
 

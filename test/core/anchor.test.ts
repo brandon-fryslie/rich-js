@@ -221,6 +221,11 @@ describe("cutting an anchored segment", () => {
     expect([anchor.col, anchor.inner!.col]).toEqual([3, 2]);
   });
 
+  it("starts every piece of a cut at many cells where it lies in the whole", () => {
+    const pieces = Segment.divide([segment], [1, 3, 5]).flat();
+    expect(pieces.map((p) => [p.text, p.style!.anchor!.col])).toEqual([["a", 0], ["b ", 1], [" c", 3], ["d", 5]]);
+  });
+
   it("leaves an unanchored segment's style as it was", () => {
     const style = Style.parse("bold");
     const [, right] = new Segment("abcd", style).splitCells(asCellCol(2));
