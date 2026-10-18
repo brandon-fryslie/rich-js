@@ -4,15 +4,22 @@
     {
       "version": "pr-475",
       "ref": "refs/pull/475/merge",
-      "sha": "d142451f02a350a63f40e64bbd3172aecaa2f140",
-      "timestamp": "2026-10-18T08:02:37.202Z",
+      "sha": "f77e05c7cec875d40481468e6c552080420f707e",
+      "timestamp": "2026-10-18T08:08:02.947Z",
       "commits": [
         {
-          "sha": "d142451f02a350a63f40e64bbd3172aecaa2f140",
+          "sha": "f77e05c7cec875d40481468e6c552080420f707e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T02:00:44-06:00",
-          "message": "Merge 53a9ea3ed9a32fd857a3d8a5a78af62ac8724cdc into c287c8e2141b1e96cc3ced15dee341b2b9d66d9d\n"
+          "timestamp": "2026-10-18T08:06:21Z",
+          "message": "Merge 5042b2fee285f791e1e3eedc8eb2d51e23fe2a9c into c287c8e2141b1e96cc3ced15dee341b2b9d66d9d\n"
+        },
+        {
+          "sha": "5042b2fee285f791e1e3eedc8eb2d51e23fe2a9c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-18T02:06:15-06:00",
+          "message": "expectLinearTime returns the size it measured at, so its own stall tests fail rather than pass vacuously when a faster runner grows the size (rich-unfiled-791c.sx9g)\n\nThe unmeasurable message says to pass a larger size again: linear work given\na size more than 64 times too small fails with it too. The escalation tests\npin the sizes tried to the x4 sequence.\n"
         },
         {
           "sha": "53a9ea3ed9a32fd857a3d8a5a78af62ac8724cdc",
