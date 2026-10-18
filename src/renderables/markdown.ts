@@ -25,7 +25,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawable, getStyle, groundedStyle, stackedHeight, withCellWidth } from "../core/protocol.js";
+import { drawable, drawsNothing, getStyle, groundedStyle, stackedHeight, withCellWidth } from "../core/protocol.js";
 
 export interface MarkdownOptions {
   /** The style of `inline code`: a theme name or a style definition. Default `markdown.code`. */
@@ -376,15 +376,6 @@ function* renderLines(tokens: readonly MdToken[], options: RenderOptions, settin
  */
 function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, settings: BlockSettings): Iterable<Segment> {
   for (const token of tokens) yield* renderBlock(token, options, settings);
-}
-
-/**
- * Rich's `Console.render`, which the document and every element in it is
- * drawn through, draws nothing under one column — however deep the element
- * is nested.
- */
-function drawsNothing(options: RenderOptions): boolean {
-  return options.maxWidth < 1;
 }
 
 function* renderBlock(token: MdToken, options: RenderOptions, settings: BlockSettings): Iterable<Segment> {

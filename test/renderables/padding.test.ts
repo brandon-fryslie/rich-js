@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Padding } from "../../src/renderables/padding.js";
 import { Segment } from "../../src/core/segment.js";
 import { Style } from "../../src/core/style.js";
+import { RichText } from "../../src/core/text.js";
 import type { Renderable, Measurable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -189,5 +190,22 @@ describe("Padding", () => {
     const m = padded.measure({ maxWidth: 40 });
     // inner max is 2, horizontal pad is 4, total max = 6
     expect(m.maximum).toBe(6);
+  });
+
+  // Rich 15, Padding(Text("ab"), sides) at widths 1 to 5 — console.render's
+  // texts joined, and Measurement.get's minimum, here equal to its maximum.
+  // The sides are paid in full, and a width that leaves the text no column
+  // draws only the padding's rows and measures as the whole width.
+  it.each([
+    [1, [[" \n \n", 1], ["  \n  \n", 2], ["   \n a \n b \n   \n", 3], ["    \n ab \n    \n", 4], ["     \n ab  \n     \n", 4]]],
+    [[0, 2], [["", 1], ["", 2], ["", 3], ["", 4], ["  a  \n  b  \n", 5]]],
+    [[1, 2, 0, 3], [[" \n", 1], ["  \n", 2], ["   \n", 3], ["    \n", 4], ["     \n", 5]]],
+  ] as const)("divides the width as Rich's Padding does, sides %j", (sides, widths) => {
+    const padded = new Padding(new RichText("ab"), typeof sides === "number" ? sides : [...sides]);
+    widths.forEach(([text, measured], i) => {
+      const maxWidth = i + 1;
+      expect(collectSegments(padded, { maxWidth }).map((s) => s.text).join("")).toBe(text);
+      expect(padded.measure({ maxWidth })).toEqual({ minimum: measured, maximum: measured });
+    });
   });
 });

@@ -12,7 +12,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { fitHeight, getStyle, insetHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { drawsNothing, fitHeight, getStyle, insetHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { embed } from "./embed.js";
 
 export type PaddingDimensions =
@@ -57,47 +57,14 @@ export function normalizePadding(
   return [side(sides[0]), side(sides[1]), side(sides[2]), side(sides[3])];
 }
 
-/** The three spans of a padded row, summing to exactly the requested width. */
-interface PaddingGeometry {
-  readonly left: number;
-  readonly contentWidth: number;
-  readonly right: number;
-}
-
 /**
- * Divides the requested width once into the three spans a padded row is made
- * of, in the order they are worth spending cells on.
- *
- * The three used to be derived separately and disagree where it matters:
- * `render` took the canvas as `Math.max(1, maxWidth - left - right)`, which
- * clamps *up*, so a padding of 1 inside a 2-cell request drew 3-cell content
- * rows beside 2-cell blank rows — an open frame the terminal then soft-wraps.
- * Content takes its first cell before padding takes any, for the reason
- * `layoutPanel` gives: a squeeze should cost you the decoration, not the thing
- * being decorated.
+ * The width a padding leaves its content: what the request holds once both
+ * sides are paid for, as Rich's `Padding` divides it. The sides are paid in
+ * full, so a request too narrow for them leaves the content no column, and it
+ * is drawn as nothing — Rich's `Console.render` under one column.
  */
-export function layoutPadding(
-  outerWidth: number,
-  leftWanted: number,
-  rightWanted: number,
-): PaddingGeometry {
-  let budget: number = cellCount(outerWidth);
-  const take = (want: number): number => {
-    const got = Math.min(want, budget);
-    budget -= got;
-    return got;
-  };
-
-  const firstContentCell = take(1);
-  const left = take(leftWanted);
-  const right = take(rightWanted);
-
-  return { left, contentWidth: firstContentCell + budget, right };
-}
-
-/** The full width of a padded row — the division, added back up. */
-function rowWidth(geometry: PaddingGeometry): number {
-  return geometry.left + geometry.contentWidth + geometry.right;
+export function paddedContentWidth(outerWidth: number, left: number, right: number): number {
+  return cellCount(cellCount(outerWidth) - left - right);
 }
 
 export class Padding implements Renderable, Measurable {
@@ -132,11 +99,11 @@ export class Padding implements Renderable, Measurable {
     // rows instead left the content rows ragged under a full-width blank row,
     // and a `style` ground with holes down its right-hand side.
     const width = this.expand ? options.maxWidth : Measurement.get(options, this).maximum;
-    const geometry = layoutPadding(width, this.left, this.right);
+    const contentWidth = paddedContentWidth(width, this.left, this.right);
 
     const innerOptions: RenderOptions = {
       ...options,
-      maxWidth: geometry.contentWidth,
+      maxWidth: contentWidth,
       height: insetHeight(options.height, this.top + this.bottom),
     };
 
@@ -146,41 +113,38 @@ export class Padding implements Renderable, Measurable {
     // The style is the ground the content is drawn on, not only the spaces
     // around it — Rich's `render_lines(..., style=style)`. Applied to the
     // padding alone, a background left a hole behind the content.
-    const segments = [...Segment.applyStyle(this.renderable.render(innerOptions), style)];
-    const lines = fitHeight(Segment.splitLines(segments), innerOptions.height);
-    // Zero-length spans need no branch to suppress: the wire boundary drops
-    // empty segments, so a padding the width could not afford emits nothing.
-    const leftPad = new Segment(" ".repeat(geometry.left), style);
-    const rightPad = new Segment(" ".repeat(geometry.right), style);
-    const blankLine = new Segment(" ".repeat(rowWidth(geometry)), style);
+    const drawn = drawsNothing(innerOptions)
+      ? []
+      : Segment.splitLines(Segment.applyStyle(this.renderable.render(innerOptions), style));
+    const lines = fitHeight(drawn, innerOptions.height);
+    const leftPad = new Segment(" ".repeat(this.left), style);
+    const rightPad = new Segment(" ".repeat(this.right), style);
 
-    for (let i = 0; i < this.top; i++) {
-      yield blankLine;
-      yield Segment.line();
-    }
-
+    for (let i = 0; i < this.top; i++) yield* row([]);
+    // Every row is the block's width: content rows pad and crop the content to
+    // its canvas — a child that ignored the canvas it was handed (a Table at
+    // its natural width) would otherwise burst the padding — and the row to
+    // the block, so the rows a region asks for under sides the width cannot
+    // hold are cut at its edge rather than drawn past it.
     for (const line of lines) {
-      yield leftPad;
-      // Crops as well as pads: a child that ignored the canvas it was handed
-      // (a Table at its natural width) would otherwise burst the padding.
-      yield* Segment.adjustLineLength(line, geometry.contentWidth, style);
-      yield rightPad;
-      yield Segment.line();
+      yield* row([leftPad, ...Segment.adjustLineLength(line, contentWidth, style), rightPad]);
     }
+    for (let i = 0; i < this.bottom; i++) yield* row([]);
 
-    for (let i = 0; i < this.bottom; i++) {
-      yield blankLine;
+    function* row(cells: Segment[]): Iterable<Segment> {
+      yield* Segment.adjustLineLength(cells, width, style);
       yield Segment.line();
     }
   }
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
     const options = withCellWidth(rawOptions);
-    const geometry = layoutPadding(options.maxWidth, this.left, this.right);
-    const overhead = geometry.left + geometry.right;
+    const overhead = this.left + this.right;
 
+    // Content left no column measures as nothing, so the padding asks for the
+    // whole offer — Rich's `Padding.__rich_measure__`.
     const measurement = Measurement.get(
-      { ...options, maxWidth: geometry.contentWidth },
+      { ...options, maxWidth: paddedContentWidth(options.maxWidth, this.left, this.right) },
       this.renderable,
     );
     // The ceiling is what was offered, and it wins over what the child asks

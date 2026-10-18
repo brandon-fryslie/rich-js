@@ -290,6 +290,16 @@ export function withCellWidth(options: RenderOptions): RenderOptions {
 }
 
 /**
+ * Rich's `Console.render`, which every renderable is drawn through there:
+ * under one column there is nothing to draw, so nothing is. Here a container
+ * calls its child's `render` itself, so a container that can leave its child
+ * no column asks this first.
+ */
+export function drawsNothing(options: { readonly maxWidth: number }): boolean {
+  return options.maxWidth < 1;
+}
+
+/**
  * The options a renderable should *lay out against*: `withCellWidth`, with an
  * unbounded offer resolved to the renderable's own natural width.
  *

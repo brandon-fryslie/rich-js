@@ -151,6 +151,17 @@ describe("Traceback", () => {
     ].join("\n"));
   });
 
+  // The frames' indent is Padding's left side, paid in full: a report too
+  // narrow to set a column in from its edge draws no frame, as a Padding too
+  // narrow for its sides draws no content.
+  it("draws no frame where the width leaves none a column beside the indent", () => {
+    const error = new Error("x");
+    error.stack = ["Error: x", "    at f (/a.ts:1:1)"].join("\n");
+    const frames = (maxWidth: number) => collectText(new Traceback(error), { maxWidth }).split("\n").filter((row) => row.startsWith("  "));
+    expect(frames(2)).toEqual([]);
+    expect(frames(3)).toEqual(["  f", "  /", "  a", "  .", "  t", "  s", "  :", "  1"]);
+  });
+
   // --- V8 frame shapes ---
 
   it.each([
