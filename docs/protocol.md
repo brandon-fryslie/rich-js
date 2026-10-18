@@ -4,17 +4,17 @@ Any object can opt into rich formatting by implementing the `Renderable` interfa
 
 ## The render protocol
 
-A renderable has one method, `render`, which is handed the space it may draw in and yields the `Segment`s that draw it. It rarely builds those segments by hand: to show markup, a `Table`, a `Panel` or any other renderable inside yours, render the child with the options you were given and yield what it yields with `yield*`:
+A renderable has one method, `render`, which is handed the space it may draw in and yields the `Segment`s that draw it. It rarely builds those segments by hand: to show markup, a `Table`, a `Panel` or any other renderable inside yours, draw the child with `render(child, options)`, passing the options you were given, and yield what it yields with `yield*`. `render` is Rich's `Console.render`: under one column it draws nothing, as the library does for every child it draws, so a child you squeeze to no width leaves no stray rows behind:
 
 ```typescript
 import type { Renderable, RenderOptions } from "@promptctl/rich-js";
-import { ROUNDED, Segment, Table, renderMarkup } from "@promptctl/rich-js";
+import { ROUNDED, Segment, Table, render, renderMarkup } from "@promptctl/rich-js";
 
 class UserReport implements Renderable {
   constructor(private users: Array<{ name: string; score: number }>) {}
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield* renderMarkup(`[bold magenta]User Report[/] [dim]width: ${options.maxWidth}[/]`).render(options);
+    yield* render(renderMarkup(`[bold magenta]User Report[/] [dim]width: ${options.maxWidth}[/]`), options);
 
     const table = new Table({ box: ROUNDED, borderStyle: "blue" });
     table.addColumn("Name");
@@ -22,9 +22,9 @@ class UserReport implements Renderable {
     for (const user of this.users) {
       table.addRow(`[cyan]${user.name}`, `[bold green]${user.score}`);
     }
-    yield* table.render(options);
+    yield* render(table, options);
 
-    yield* renderMarkup(`[dim italic]${this.users.length} users total[/]`).render(options);
+    yield* render(renderMarkup(`[dim italic]${this.users.length} users total[/]`), options);
   }
 }
 
@@ -37,7 +37,7 @@ console.print(new UserReport([
 The `render` method:
 - Receives `RenderOptions` with `maxWidth` and other context, including `colorSystem`, the depth the output will be encoded at, for a renderable that decides on the colours the terminal will draw
 - Returns an iterable of `Segment`s — a generator is recommended
-- Draws a child renderable (markup rendered with `renderMarkup`, a `Table`, a `Panel`, another custom renderable) by passing it `options` and yielding its segments with `yield*`
+- Draws a child renderable (markup rendered with `renderMarkup`, a `Table`, a `Panel`, another custom renderable) through `render(child, options)` and yields its segments with `yield*`
 
 ## Low-level rendering
 
@@ -145,6 +145,7 @@ import {
   RichText,
   Segment,
   cellLen,
+  render,
   withBoundedWidth,
   withCellWidth,
 } from "@promptctl/rich-js";
@@ -170,7 +171,7 @@ class MyWidget implements Renderable, Measurable {
     const options = withBoundedWidth(rawOptions, this);
     // Render within options.maxWidth cells, and pass `options` — not
     // `rawOptions` — to anything you render inside yourself.
-    yield* new RichText(this.lines.join("\n"), { style: "cyan" }).render(options);
+    yield* render(new RichText(this.lines.join("\n"), { style: "cyan" }), options);
   }
 }
 
@@ -188,7 +189,7 @@ console.print(new Panel(new MyWidget(["measured from its content,", "so the fram
 
 `options.maxWidth` is a count of terminal cells — the widest line the renderable may occupy. Every line you emit must fit inside it. A renderable that overruns its width corrupts the layout of whatever contains it, and the parent has no chance to correct it afterwards.
 
-`maxWidth` is typed `number`, and a custom renderable receives whatever the caller wrote, so read it as a count rather than assuming a clean integer. A negative width and `NaN` both mean zero cells; a fractional width is floored, so 10.5 is ten cells and the half is never drawn. Zero is a real request — render an empty line, not your natural width.
+`maxWidth` is typed `number`, and a custom renderable receives whatever the caller wrote, so read it as a count rather than assuming a clean integer. A negative width and `NaN` both mean zero cells; a fractional width is floored, so 10.5 is ten cells and the half is never drawn. Zero is a real request, never a cue to draw your natural width. Drawn through `render`, as a console, `renderToString` and every built-in container draw, a renderable is never asked for it: under one column `render` draws nothing.
 
 `withCellWidth` is that rule, and calling it is how you get the answer rather than reimplementing it. It returns the options with `maxWidth` replaced, which is the reason it hands back options rather than a number: the raw value would otherwise stay in the object you forward to a child renderable or to `Measurement.get`, and be re-read there. Every built-in `measure()` begins this way, and every built-in `render()` begins with `withBoundedWidth`, which is the same parse plus the answer to an unbounded offer.
 
@@ -219,7 +220,7 @@ Four functions carry the rules, so a renderable that composes children calls the
 
 ```typescript
 import type { Renderable, RenderOptions } from "@promptctl/rich-js";
-import { Layout, Panel, Segment, Style, fitHeight, insetHeight } from "@promptctl/rich-js";
+import { Layout, Panel, Segment, Style, fitHeight, insetHeight, render } from "@promptctl/rich-js";
 
 // A title row, and a body in the rows it leaves.
 class Titled implements Renderable {
@@ -229,7 +230,7 @@ class Titled implements Renderable {
     yield new Segment(this.title, Style.parse("bold magenta"));
     yield Segment.line();
     const height = insetHeight(options.height, 1);
-    const lines = Segment.splitLines(this.body.render({ ...options, height }));
+    const lines = Segment.splitLines(render(this.body, { ...options, height }));
     for (const line of fitHeight(lines, height)) {
       yield* line;
       yield Segment.line();

@@ -34,12 +34,14 @@ describe("every render of a Renderable goes through protocol's render", () => {
         `export function direct(child: Renderable, options: RenderOptions) { return child.render(options); }`,
         `export function through(child: Renderable, options: RenderOptions) { return render(child, options); }`,
         `export function sgr(style: Style) { return style.render("x"); }`,
+        `export function optional(child: Renderable | undefined, options: RenderOptions) { return child?.render(options); }`,
       ].join("\n"),
     );
     const protocol = path.join(REPO_ROOT, "src/core/protocol.ts");
     const calls = directRenderCalls(program([fixture, protocol]), [fixture, protocol]);
     expect(calls.map((c) => [path.basename(c.file), c.line, c.text])).toEqual([
       ["fixture.ts", 3, "child.render(options)"],
+      ["fixture.ts", 6, "child?.render(options)"],
     ]);
   });
 });

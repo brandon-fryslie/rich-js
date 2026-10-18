@@ -44,6 +44,11 @@ function renderableType(program: ts.Program, checker: ts.TypeChecker): ts.Type {
   return checker.getDeclaredTypeOfSymbol(renderable);
 }
 
+/** An optional chain's receiver (`child?.render`) is judged by what it is when present. */
+function receiverType(checker: ts.TypeChecker, receiver: ts.Expression): ts.Type {
+  return checker.getNonNullableType(checker.getTypeAtLocation(receiver));
+}
+
 function insideEnforcer(node: ts.Node): boolean {
   if (repoRelative(node.getSourceFile().fileName) !== ENFORCER.file) return false;
   for (let at: ts.Node | undefined = node; at; at = at.parent) {
@@ -65,7 +70,7 @@ export function directRenderCalls(program: ts.Program, files: readonly string[])
         ts.isCallExpression(node) &&
         ts.isPropertyAccessExpression(node.expression) &&
         node.expression.name.text === "render" &&
-        checker.isTypeAssignableTo(checker.getTypeAtLocation(node.expression.expression), renderable) &&
+        checker.isTypeAssignableTo(receiverType(checker, node.expression.expression), renderable) &&
         !insideEnforcer(node)
       ) {
         found.push({
