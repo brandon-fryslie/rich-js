@@ -11,13 +11,13 @@ import { Measurement } from "../core/measure.js";
 import { RichText } from "../core/text.js";
 import { cutLabel, drawLabel, embed, inlineLabel, type InlineLabel } from "./embed.js";
 import type { PaddingDimensions } from "./padding.js";
-import { normalizePadding, Padding } from "./padding.js";
+import { Padding } from "./padding.js";
 import type {
   Renderable,
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawable, drawsNothing, getStyle, insetHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { drawable, drawsNothing, fitHeight, getStyle, insetHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 /**
  * A lazily-resolved border accessory. Strings render inline in the
@@ -27,7 +27,9 @@ import { drawable, drawsNothing, getStyle, insetHeight, withBoundedWidth, withCe
  * A function form is evaluated at render time, *after* content has been
  * rendered for the current frame — use this when the accessory mirrors
  * state that the wrapped renderable populates during its own `render()`
- * (e.g. a widget's post-render scroll position).
+ * (e.g. a widget's post-render scroll position). A width that leaves the
+ * content no column does not render it, as Rich's does not, and the thunk
+ * then reads the state of the last frame that did.
  */
 export type BorderAccessory =
   | string
@@ -73,8 +75,8 @@ export interface PanelOptions {
  * about where the frame sits. The fields are cell counts that sum to exactly
  * the requested width, which is what makes "no emitted line exceeds the width
  * we were given" true by construction rather than by a clamp at each site,
- * and why the width-1 crash cannot come back: there is no subtraction left
- * that can go negative. That is also the one place this departs from Rich,
+ * and why the width-1 crash cannot come back: each frame column takes at most
+ * the cells left to it, so no subtraction can go negative. That is also the one place this departs from Rich,
  * whose panel at width 1 draws both corners anyway, two cells wide.
  *
  * Padding is not divided here. The body is a `Padding`, as Rich's is, so the
@@ -96,16 +98,10 @@ function layoutPanel(outerWidth: number): PanelGeometry {
   // `Measurement.get` on an arbitrary `Measurable`, so a renderable reporting a
   // negative maximum arrives here unparsed and reaches `repeat` as a negative
   // count.
-  let budget: number = cellCount(outerWidth);
-  const take = (want: number): number => {
-    const got = Math.min(want, budget);
-    budget -= got;
-    return got;
-  };
-
-  const left = take(1);
-  const right = take(1);
-  return { left, right, spanWidth: budget };
+  const width = cellCount(outerWidth);
+  const left = Math.min(1, width);
+  const right = Math.min(1, width - left);
+  return { left, right, spanWidth: width - left - right };
 }
 
 /** The cells a panel's frame takes from the width it is given. */
@@ -192,7 +188,6 @@ export class Panel implements Renderable, Measurable {
   readonly titleStyle: string | Style | undefined;
   readonly subtitleStyle: string | Style | undefined;
   readonly width: number | undefined;
-  readonly padding: [number, number, number, number];
   private readonly _titleLabel: InlineLabel | undefined;
   private readonly _subtitleLabel: InlineLabel | undefined;
   /**
@@ -202,6 +197,12 @@ export class Panel implements Renderable, Measurable {
    * by `Padding`, for both.
    */
   private readonly _body: Padding;
+
+  /** The padding inside the frame, top, right, bottom, left — the body's, read back. */
+  get padding(): readonly [number, number, number, number] {
+    const body = this._body;
+    return [body.top, body.right, body.bottom, body.left];
+  }
 
   constructor(
     content: string | RichText | Renderable,
@@ -220,8 +221,7 @@ export class Panel implements Renderable, Measurable {
     this.titleStyle = options?.titleStyle;
     this.subtitleStyle = options?.subtitleStyle;
     this.width = options?.width;
-    this.padding = normalizePadding(options?.padding ?? [0, 1, 0, 1]);
-    this._body = new Padding(this.renderable, this.padding, { style: this.style });
+    this._body = new Padding(this.renderable, options?.padding ?? [0, 1, 0, 1], { style: this.style });
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
@@ -249,12 +249,15 @@ export class Panel implements Renderable, Measurable {
   }
 
   /**
-   * The body's rows, each exactly `spanWidth` cells — `Padding` makes every
-   * row its block's width, cropping content that ignored its canvas. A span
-   * of no cells draws no rows at all, padding rows included, as Rich's
-   * `Console.render` draws nothing under one column. The render happens
-   * before either border is drawn, because a `bottomRightAccessory` thunk
-   * reads state the content's render populates.
+   * The body's rows, held to the region as Rich's `render_lines` holds them —
+   * padded below, cropped from the bottom — and each exactly `spanWidth`
+   * cells: `Padding` makes every row its block's width, cropping content that
+   * ignored its canvas. A span of no cells renders nothing, as Rich's
+   * `Console.render` renders nothing under one column, so outside a region it
+   * draws no rows, padding rows included, and inside one the frame stands
+   * around empty rows. The render happens before either border is drawn,
+   * because a `bottomRightAccessory` thunk reads state the content's render
+   * populates.
    */
   private _renderBody(options: RenderOptions, spanWidth: number): Segment[][] {
     // Two border rows are the panel's own, and the vertical padding is the
@@ -268,7 +271,8 @@ export class Panel implements Renderable, Measurable {
       maxWidth: spanWidth,
       height: insetHeight(options.height, 2),
     };
-    return drawsNothing(bodyOptions) ? [] : Segment.splitLines(this._body.render(bodyOptions));
+    const lines = drawsNothing(bodyOptions) ? [] : Segment.splitLines(this._body.render(bodyOptions));
+    return fitHeight(lines, bodyOptions.height);
   }
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
@@ -285,8 +289,7 @@ export class Panel implements Renderable, Measurable {
       return { minimum: width, maximum: width };
     }
     const content = this._contentRange(options);
-    const [, padRight, , padLeft] = this.padding;
-    const overhead = frameWidth(layoutPanel(options.maxWidth)) + padLeft + padRight;
+    const overhead = frameWidth(layoutPanel(options.maxWidth)) + this._body.left + this._body.right;
     const maximum = Math.min(options.maxWidth, Math.max(content.maximum, this._labelWidth(options) + overhead));
     return { minimum: Math.min(content.minimum, maximum), maximum };
   }
@@ -347,9 +350,8 @@ export class Panel implements Renderable, Measurable {
     geometry: PanelGeometry,
     border: Style | undefined,
   ): Iterable<Segment> {
-    // Resolve the right accessory *now*. Function form evaluates after
-    // content has been rendered (Panel.render collects content segments
-    // before yielding any borders), so the thunk sees fresh widget state.
+    // Resolve the right accessory *now*, after the body has rendered —
+    // `BorderAccessory` owns what a thunk sees.
     const accessory = this._resolveAccessory(this.bottomRightAccessory);
     const accessoryDisplay = accessory === undefined
       ? ""

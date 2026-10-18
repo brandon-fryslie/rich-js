@@ -433,6 +433,25 @@ describe("Panel", () => {
       expect(collectLines(new Panel(new RichText("ab"), { padding: [1, 1] }), { maxWidth: 1 })).toEqual(["╭", "╰"]);
     });
 
+    // Rich 15's `console.render_lines(Panel(Text("ab"), padding=…),
+    // options.update(width=W, height=H))`: the body is held to the region at
+    // every width, the ones that leave the content no column included, and
+    // padding taller than the region is cropped from the bottom.
+    const richRegionRows: Array<{ padding: PaddingDimensions; width: number; rows: number; expected: string[] }> = [
+      { padding: [0, 1], width: 1, rows: 6, expected: ["╭", "│", "│", "│", "│", "╰"] },
+      { padding: [0, 1], width: 2, rows: 6, expected: ["╭╮", "││", "││", "││", "││", "╰╯"] },
+      { padding: [0, 1], width: 3, rows: 6, expected: ["╭─╮", "│ │", "│ │", "│ │", "│ │", "╰─╯"] },
+      { padding: [0, 1], width: 5, rows: 6, expected: ["╭───╮", "│ a │", "│ b │", "│   │", "│   │", "╰───╯"] },
+      { padding: [2, 1], width: 8, rows: 3, expected: ["╭──────╮", "│      │", "╰──────╯"] },
+      { padding: [2, 1], width: 8, rows: 5, expected: ["╭──────╮", "│      │", "│      │", "│      │", "╰──────╯"] },
+    ];
+    for (const { padding, width, rows, expected } of richRegionRows) {
+      it(`fills a region of ${rows} rows at width ${width} with padding ${JSON.stringify(padding)}, as Rich does`, () => {
+        const panel = new Panel(new RichText("ab"), { padding });
+        expect(collectLines(panel, { maxWidth: width, height: { rows, exact: true } })).toEqual(expected);
+      });
+    }
+
     // A `bottomRightAccessory` thunk reads state that the wrapped renderable
     // populates during its own render, so it resolves after the content has
     // rendered for the frame. Where the content is left no column it is not
