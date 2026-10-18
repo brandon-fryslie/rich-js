@@ -107,10 +107,7 @@ export abstract class WidgetBase implements InteractiveWidget {
   // and a click past the end of a short row still reaches it; every row ends
   // in a newline, so a blank last row survives the next `splitLines`. The
   // padding stands on `ground`, whatever the widget draws its own cells on.
-  // Reporting itself before it draws is what puts a widget ahead of the
-  // widgets nested in it in document order — the order focus traverses.
   render(options: RenderOptions): Iterable<Segment> {
-    options.onDraw?.(this);
     const drawn = Segment.splitLines(this.draw(options));
     const [width] = Segment.getShape(drawn);
     const lines = Segment.anchorLines(drawn.map((line) => Segment.adjustLineLength(line, width, this.ground)), this);

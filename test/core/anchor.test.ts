@@ -4,7 +4,7 @@ import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { asCellCol } from "../../src/core/cells.js";
 import type { Anchor } from "../../src/core/anchor.js";
-import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import { render, type Presence, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { Align } from "../../src/renderables/align.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { Group } from "../../src/renderables/group.js";
@@ -25,8 +25,7 @@ import { SCROLLBAR, Viewport } from "../../src/renderables/viewport.js";
 class Owner implements Renderable {
   constructor(readonly lines: string[]) {}
 
-  render(options: RenderOptions): Iterable<Segment> {
-    options.onDraw?.(this);
+  render(): Iterable<Segment> {
     const stamped = Segment.anchorLines(this.lines.map((l) => [new Segment(l)]), this);
     return stamped.flatMap((line) => [...line, Segment.line()]);
   }
@@ -183,15 +182,15 @@ describe("a cell's anchor names what its owner drew there, through every contain
   });
 });
 
-// `RenderOptions.onDraw` is how a runtime learns document order — the order
+// `RenderOptions.onPresent` is how a runtime learns document order — the order
 // focus moves in — and no container is told about it either.
-describe("an owner is told of as it draws, through every container", () => {
+describe("an owner is reported drawn as it draws, through every container", () => {
   for (const [name, wrap] of cases) {
     it(name, () => {
       const owner = new Owner(["abcdef", "ghi", "jklmnop"]);
-      const heard: object[] = [];
-      [...wrap(owner).render({ ...OPTIONS, onDraw: (drawn) => heard.push(drawn) })];
-      expect(heard).toContain(owner);
+      const heard: [Renderable, Presence][] = [];
+      [...render(wrap(owner), { ...OPTIONS, onPresent: (drawn, presence) => heard.push([drawn, presence]) })];
+      expect(heard).toContainEqual([owner, "drawn"]);
     });
   }
 });

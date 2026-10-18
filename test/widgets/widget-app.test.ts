@@ -19,9 +19,10 @@ import { Columns } from "../../src/renderables/columns.js";
 import { Layout } from "../../src/renderables/layout.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Group } from "../../src/renderables/group.js";
-import { Viewport } from "../../src/renderables/viewport.js";
+import { SCROLLBAR, Viewport } from "../../src/renderables/viewport.js";
+import { TextInput, charGreedyWrap } from "../../src/widgets/text-input.js";
 import { RichText } from "../../src/core/text.js";
-import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import { render, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import type { Segment } from "../../src/core/segment.js";
 import type { WidgetMouseEvent } from "../../src/widgets/types.js";
 import { Style, Theme } from "../../src/core/style.js";
@@ -212,6 +213,51 @@ describe("WidgetApp focus", () => {
     expect(b.focused).toBe(true);
   });
 
+  it.each([
+    ["bare", (widget: Renderable): Renderable => widget],
+    ["in a Panel", (widget: Renderable): Renderable => new Panel(widget)],
+  ])("keeps focus on a widget its container hands no column for the moment (%s)", async (_, wrap) => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const a = new Checkbox({ label: "a", id: "a" });
+    const b = new Checkbox({ label: "b", id: "b" });
+    const view = new Layout();
+    view.splitRow(new Layout(wrap(a), { size: 1 }), new Layout(wrap(b)));
+    const app = start(host, () => view);
+    await tick();
+    host.type(TAB);
+    expect(app.focusManager.current).toBe(b);
+
+    host.resize({ cols: 1, rows: 4 });
+    await tick();
+    expect(app.present).toContainEqual({ widget: b, presence: "held" });
+    expect(app.focusManager.current).toBe(b);
+    expect(app.focusManager.widgets).not.toContain(b);
+
+    host.resize({ cols: 20, rows: 4 });
+    await tick();
+    expect(app.present).toContainEqual({ widget: b, presence: "drawn" });
+    expect(b.focused).toBe(true);
+  });
+
+  it("moves Tab from a widget its container hands no column to the one after it", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const a = new Checkbox({ label: "a", id: "a" });
+    const b = new Checkbox({ label: "b", id: "b" });
+    const c = new Checkbox({ label: "c", id: "c" });
+    const view = new Layout();
+    view.splitRow(new Layout(a, { size: 5 }), new Layout(b), new Layout(c, { size: 5 }));
+    const app = start(host, () => view);
+    await tick();
+    host.type(TAB);
+    expect(app.focusManager.current).toBe(b);
+
+    host.resize({ cols: 10, rows: 4 });
+    await tick();
+    expect(app.present).toContainEqual({ widget: b, presence: "held" });
+    host.type(TAB);
+    expect(app.focusManager.current).toBe(c);
+  });
+
   it("moves focus off a widget no frame draws, though nothing had focus", async () => {
     const host = scriptedHost({ cols: 20, rows: 4 });
     const never = new Checkbox({ label: "never", id: "never" });
@@ -352,7 +398,7 @@ describe("WidgetApp pointer", () => {
     const ok = new Button({ label: "ok", id: "ok" });
     class WithPopup extends Checkbox {
       renderOverlay(options: RenderOptions): Iterable<Segment> {
-        return ok.render(options);
+        return render(ok, options);
       }
     }
     const owner = new WithPopup({ label: "owner", id: "owner" });
@@ -793,5 +839,75 @@ describe("WidgetApp and the wheel", () => {
     host.type(DOWN + UP);
     expect(heard).toEqual([1, -1]);
     expect(host.passed()).toEqual([-1]);
+  });
+});
+
+// A pane handed no column holds what is in it without drawing it, so nothing
+// in it that keeps state while it renders commits that state at a width that
+// is not shown. Drawn at one column instead, both of these lost their place.
+describe("WidgetApp across a pane squeezed to no column", () => {
+  const squeezed = (pane: Renderable): Layout => {
+    const view = new Layout();
+    view.splitRow(new Layout(text("x"), { size: 1 }), new Layout(pane));
+    return view;
+  };
+
+  it("keeps a viewport's offset", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const lines = Array.from({ length: 100 }, (_, i) => `line ${i}`).join("\n");
+    const viewport = new Viewport(new RichText(lines), { scrollbar: SCROLLBAR });
+    const app = start(host, () => squeezed(viewport));
+    await tick();
+    viewport.scrollTo(40);
+    app.refresh();
+    await tick();
+    expect(viewport.offset).toBe(40);
+
+    host.resize({ cols: 1, rows: 4 });
+    await tick();
+    host.resize({ cols: 20, rows: 4 });
+    await tick();
+    expect(viewport.offset).toBe(40);
+  });
+
+  it("paints no overlay for a held widget, and paints it again once the widget is back", async () => {
+    // The terminal keeps ten columns, so an overlay painted there would show.
+    const host = scriptedHost({ cols: 30, rows: 6 });
+    const dropdown = new Dropdown({ options: ["Red", "Green", "Blue"], selectedIndex: 0, id: "dd" });
+    const view = new Layout();
+    view.splitRow(new Layout(text("x"), { size: 10 }), new Layout(dropdown));
+    const app = start(host, () => view);
+    await tick();
+    const header = cellOf(app, "Red");
+    host.type(click(header.x, header.y));
+    await tick();
+    expect(rows(app).join("\n")).toContain("Green");
+
+    host.resize({ cols: 10, rows: 6 });
+    await tick();
+    expect(dropdown.expanded).toBe(true);
+    expect(rows(app).join("\n")).not.toContain("Green");
+
+    host.resize({ cols: 30, rows: 6 });
+    await tick();
+    expect(rows(app).join("\n")).toContain("Green");
+  });
+
+  it("keeps a multiline text input's scroll window", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const value = Array.from({ length: 10 }, (_, i) => `line ${i}`).join("\n");
+    const input = new TextInput({ multiline: true, wrap: charGreedyWrap, maxRows: 2, value });
+    const app = start(host, () => squeezed(input));
+    await tick();
+    host.type("\x1b[B".repeat(5) + "\x1b[A");
+    await tick();
+    const shown = rows(app);
+    expect(shown.join("\n")).toContain("line 4");
+
+    host.resize({ cols: 1, rows: 4 });
+    await tick();
+    host.resize({ cols: 20, rows: 4 });
+    await tick();
+    expect(rows(app)).toEqual(shown);
   });
 });

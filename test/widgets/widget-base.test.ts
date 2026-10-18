@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Segment } from "../../src/core/segment.js";
-import type { RenderOptions } from "../../src/core/protocol.js";
+import { render, type RenderOptions } from "../../src/core/protocol.js";
 import type {
   InteractiveWidget,
   KeyEvent,
@@ -117,16 +117,16 @@ describe("WidgetBase", () => {
     expect(submits).toHaveLength(1);
   });
 
-  it("reports itself to onDraw before the widgets nested in its output", () => {
+  it("is reported to onPresent before the widgets nested in its output", () => {
     // Document order — the order focus moves in — is the order these calls arrive.
     const inner = new TextWidget("in");
     const outer = new (class extends StubWidget {
       protected override draw(options: RenderOptions): Iterable<Segment> {
-        return inner.render(options);
+        return render(inner, options);
       }
     })();
     const heard: object[] = [];
-    [...outer.render({ maxWidth: 80, onDraw: (owner) => heard.push(owner) })];
+    [...render(outer, { maxWidth: 80, onPresent: (owner) => heard.push(owner) })];
     expect(heard).toEqual([outer, inner]);
   });
 

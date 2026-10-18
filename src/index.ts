@@ -175,6 +175,8 @@ export type {
   Height,
   Renderable,
   Measurable,
+  Composite,
+  Presence,
   StyleErrorHandler,
 } from "./core/protocol.js";
 export type { Unsubscribe } from "./core/subscription.js";

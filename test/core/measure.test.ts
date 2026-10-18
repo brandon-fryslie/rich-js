@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { Measurement, measureRenderables } from "../../src/core/measure.js";
-import type { Measurable, RenderOptions } from "../../src/core/protocol.js";
+import { render, type Measurable, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -214,17 +214,17 @@ describe("Measurement.get()", () => {
 // --- measureRenderables ---
 
 describe("measuring draws nothing", () => {
-  it("asks a measure that renders without telling onDraw of any owner", () => {
-    const owner = {};
-    const told: object[] = [];
+  it("asks a measure that renders without reporting what it renders to onPresent", () => {
+    const drawn: Renderable = { render: () => [] };
+    const told: Renderable[] = [];
     const rendersToMeasure: Measurable = {
       measure(options) {
-        options.onDraw?.(owner);
+        [...render(drawn, options)];
         return { minimum: 1, maximum: 1 };
       },
     };
 
-    Measurement.get({ maxWidth: 10, onDraw: (o) => told.push(o) }, rendersToMeasure);
+    Measurement.get({ maxWidth: 10, onPresent: (r) => told.push(r) }, rendersToMeasure);
 
     expect(told).toEqual([]);
   });

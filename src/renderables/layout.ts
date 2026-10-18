@@ -5,6 +5,7 @@
 import { Segment } from "../core/segment.js";
 import { embed } from "./embed.js";
 import type {
+  Composite,
   Renderable,
   Measurable,
   RenderOptions,
@@ -49,7 +50,7 @@ function paneLines(
   return fitHeight(Segment.splitLines(render(pane, { ...options, height })), height);
 }
 
-export class Layout implements Renderable, Measurable {
+export class Layout implements Renderable, Measurable, Composite {
   name: string | undefined;
   visible: boolean;
   private _ratio!: Weight;
@@ -187,6 +188,17 @@ export class Layout implements Renderable, Measurable {
     } else {
       yield* this._renderColumn(visibleChildren, options);
     }
+  }
+
+  // What `render` draws, decided as it decides it: nothing when hidden, a
+  // leaf's content, or the visible panes of a split.
+  *contents(): Iterable<Renderable> {
+    if (!this.visible) return;
+    if (this._isLeaf) {
+      if (this._renderable) yield this._renderable;
+      return;
+    }
+    yield* this._children.filter((c) => c.visible);
   }
 
   private *_renderColumn(

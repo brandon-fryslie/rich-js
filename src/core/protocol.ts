@@ -95,15 +95,22 @@ export interface RenderOptions {
    */
   onStyleError?: StyleErrorHandler;
   /**
-   * Told of each owner that stamps its output (`core/anchor`) as it starts to
-   * render, so the calls arrive in document order: a container's children in
-   * the order it renders them, an owner before the owners nested in it. A
-   * container forwards it by passing its options on, which every container
-   * does. An owner rendered twice is told twice. A render made to measure is
-   * not drawing and is not told (`measuring`).
+   * Told of every renderable `render` is asked for, as it is asked, so the
+   * calls arrive in document order: a container before what it holds, its
+   * contents in the order it renders them. `"drawn"` is a renderable drawn at
+   * the width it was handed; `"held"` is one handed no column, which is still
+   * in the view but has nothing drawn for it (`render`). A renderable rendered
+   * twice is told twice. A render made to measure is not drawing and is not
+   * told (`measuring`).
    */
-  onDraw?: (owner: object) => void;
+  onPresent?: (renderable: Renderable, presence: Presence) => void;
 }
+
+/**
+ * Whether a renderable the view holds was drawn, or held: in the view, handed
+ * no column, and so not drawn (`render`).
+ */
+export type Presence = "drawn" | "held";
 
 /** Whether `text` is all ASCII — what an `asciiOnly` output can draw. */
 export const isAscii = (text: string): boolean => /^[\x00-\x7F]*$/.test(text);
@@ -304,9 +311,21 @@ export function drawsNothing(options: { readonly maxWidth: number }): boolean {
  * and `test/seam/render-calls.test.ts` fails on one that does not. Before
  * this, each container asked `drawsNothing` itself, and the ones that forgot
  * drew a child handed no column anyway.
+ *
+ * It is also the one reporter of what the view holds (`onPresent`). Under one
+ * column a renderable is held, not drawn: what it holds (`Composite`) is
+ * walked and reported held in turn, and nothing renders, so no renderable
+ * that keeps state while it renders — a `Viewport`'s offset, a `TextInput`'s
+ * scroll window — ever commits it at a width that is not shown. The walk runs
+ * whether or not anyone listens. Drawing the squeezed subtree at one column
+ * instead, and dropping what it drew, did commit that state.
  */
 export function render(renderable: Renderable, options: RenderOptions): Iterable<Segment> {
-  return drawsNothing(options) ? [] : renderable.render(options);
+  const presence: Presence = drawsNothing(options) ? "held" : "drawn";
+  options.onPresent?.(renderable, presence);
+  if (presence === "drawn") return renderable.render(options);
+  if (isComposite(renderable)) for (const content of renderable.contents()) render(content, options);
+  return [];
 }
 
 /**
@@ -346,15 +365,15 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
  */
 /**
  * `options` as a measurement is asked with. A `measure` that renders to learn
- * its shape draws nothing on the frame, so it reports no owner to `onDraw` —
- * one that did would put a widget in document order at the moment a
- * container measured it, and keep one the frame then cropped away.
+ * its shape draws nothing on the frame, so it reports nothing to `onPresent` —
+ * one that did would put a widget in the view at the moment a container
+ * measured it, and keep one the frame then cropped away.
  *
  * [LAW:single-enforcer] Every measurement starts here: `Measurement.get` and
  * `withBoundedWidth` ask through it, and each `measure` passes it on.
  */
 export function measuring(options: RenderOptions): RenderOptions {
-  return { ...options, onDraw: undefined };
+  return { ...options, onPresent: undefined };
 }
 
 export function withBoundedWidth(
@@ -382,6 +401,27 @@ export interface Renderable {
 
 export interface Measurable {
   measure(options: RenderOptions): { minimum: number; maximum: number };
+}
+
+/**
+ * A container: a renderable that draws other renderables. `contents` is what
+ * its `render` hands to `render`, in that order where the order is not a
+ * width's, decided as the render decides it — and so it is how a container
+ * handed no column still reports what it holds (`render`). It takes no
+ * options: what a container holds may depend on its state (a hidden `Layout`
+ * holds nothing) but never on a width, because under one column there is none.
+ * It commits no state, and yields only renderables: text a container builds
+ * from a string it holds holds nothing.
+ *
+ * [LAW:one-source-of-truth] A second description of each container's
+ * traversal, so `test/renderables/contents.test.ts` holds every exported
+ * renderable's `contents` to what its `render` reports.
+ *
+ * A consumer's container that does not implement it reports nothing it holds
+ * while it is handed no column.
+ */
+export interface Composite {
+  contents(): Iterable<Renderable>;
 }
 
 /**
@@ -419,4 +459,8 @@ export function isScrollable(obj: object): obj is Scrollable {
     "scrollBy" in obj &&
     typeof (obj as Scrollable).scrollBy === "function"
   );
+}
+
+export function isComposite(obj: object): obj is Composite {
+  return "contents" in obj && typeof (obj as Composite).contents === "function";
 }

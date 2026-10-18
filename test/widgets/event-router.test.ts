@@ -95,8 +95,8 @@ function paint(widgets: readonly StubWidget[]): Segment[][] {
 
 function makeHarness(initial: StubWidget[] = []): Harness {
   let widgets = initial;
-  const fm = new DefaultFocusManager(() => widgets);
-  fm.settle(widgets);
+  const fm = new DefaultFocusManager({ present: () => widgets, onScreen: () => widgets });
+  fm.settle();
 
   const source: FrameSource = {
     focusManager: fm,
@@ -131,7 +131,7 @@ function makeHarness(initial: StubWidget[] = []): Harness {
     mouseEvents,
     setWidgets: (next) => {
       widgets = next;
-      fm.settle(widgets);
+      fm.settle();
     },
   };
 }

@@ -13,6 +13,7 @@ import type { PaddingDimensions } from "./padding.js";
 import { Padding, normalizePadding } from "./padding.js";
 import { exactWeights, ratioDistribute, ratioReduce } from "./ratio.js";
 import type {
+  Composite,
   Renderable,
   Measurable,
   OverflowMethod,
@@ -568,7 +569,12 @@ export interface TableOptions {
   highlight?: boolean;
 }
 
-export class Table implements Renderable, Measurable {
+// A row's cell in column `index`: a column the row is short of draws a blank one.
+function cellAt(row: { readonly cells: readonly Renderable[] }, index: number): Renderable {
+  return row.cells[index] ?? new EmbeddedText(undefined);
+}
+
+export class Table implements Renderable, Measurable, Composite {
   private _columns: Column[];
   private _rows: Array<{ cells: Renderable[]; endSection?: boolean }>;
   readonly box: Box | null;
@@ -757,7 +763,7 @@ export class Table implements Renderable, Measurable {
     // Data rows
     for (let rowIdx = 0; rowIdx < this._rows.length; rowIdx++) {
       const row = this._rows[rowIdx]!;
-      const rowCells = this._columns.map((_, colIdx) => row.cells[colIdx] ?? new EmbeddedText(undefined));
+      const rowCells = this._rowCells(row);
 
       const rowStyle = stripes[rowIdx % stripes.length] ?? NULL_STYLE;
       const cellStyles = columnStyles.map((s) => s.add(rowStyle));
@@ -1047,6 +1053,18 @@ export class Table implements Renderable, Measurable {
     return [!this.padEdge && first ? 0 : top, !this.padEdge && last ? 0 : collapsed];
   }
 
+  // Every cell `render` draws, in the order it draws them: row by row, the
+  // header and footer when it shows them.
+  *contents(): Iterable<Renderable> {
+    if (this.showHeader) yield* this._columns.map((c) => c.header);
+    for (const row of this._rows) yield* this._rowCells(row);
+    if (this.showFooter) yield* this._columns.map((c) => c.footer);
+  }
+
+  private _rowCells(row: { readonly cells: readonly Renderable[] }): Renderable[] {
+    return this._columns.map((_, index) => cellAt(row, index));
+  }
+
   /**
    * Every cell column `index` draws, in draw order.
    *
@@ -1060,7 +1078,7 @@ export class Table implements Renderable, Measurable {
    */
   private *_columnCells(col: Column, index: number): Iterable<Renderable> {
     if (this.showHeader) yield col.header;
-    for (const row of this._rows) yield row.cells[index] ?? new EmbeddedText(undefined);
+    for (const row of this._rows) yield cellAt(row, index);
     if (this.showFooter) yield col.footer;
   }
 

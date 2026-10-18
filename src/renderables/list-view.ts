@@ -19,7 +19,7 @@
 import { Segment } from "../core/segment.js";
 import { Measurement, measureRenderables } from "../core/measure.js";
 import { render, withBoundedWidth, withCellWidth } from "../core/protocol.js";
-import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import type { Viewport } from "./viewport.js";
 
 export interface ListViewOptions {
@@ -37,7 +37,7 @@ function lineCount(name: string, value: number): number {
   return value;
 }
 
-export class ListView implements Renderable, Measurable {
+export class ListView implements Renderable, Measurable, Composite {
   readonly gap: number;
   readonly context: number;
 
@@ -79,6 +79,11 @@ export class ListView implements Renderable, Measurable {
     // scroll away from the selection until the selection moves.
     this.viewport.follow(start - this.context, end + this.context);
     yield* render(this.viewport, bounded);
+  }
+
+  *contents(): Iterable<Renderable> {
+    yield* this.items;
+    yield this.viewport;
   }
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {

@@ -13,6 +13,14 @@ import type {
 } from "./types.js";
 import type { Unsubscribe } from "../core/subscription.js";
 
+/** What focus follows: the frame a `WidgetApp` just painted. */
+export interface FocusView {
+  /** Every widget the view holds, in document order, whether or not it has a cell on screen. */
+  present(): readonly InteractiveWidget[];
+  /** The widgets with a cell on the frame on screen, in document order. */
+  onScreen(): readonly InteractiveWidget[];
+}
+
 export class DefaultFocusManager implements FocusManager {
   @observableRef
   accessor currentWidget: InteractiveWidget | null = null;
@@ -20,40 +28,28 @@ export class DefaultFocusManager implements FocusManager {
   private readonly changeHandlers = new Set<(current: InteractiveWidget | null) => void>();
 
   /**
-   * `onScreen` is the widgets on the frame on screen, in document order.
-   *
-   * [LAW:one-source-of-truth] It is asked every time rather than kept: a list
-   * of the widgets held here would be a second picture of the frame, and
-   * wrong from the next paint.
+   * [LAW:one-source-of-truth] The view is asked every time rather than kept:
+   * a list of the widgets held here would be a second picture of the frame,
+   * and wrong from the next paint.
    */
-  constructor(private readonly onScreen: () => readonly InteractiveWidget[]) {}
+  constructor(private readonly view: FocusView) {}
 
   get current(): InteractiveWidget | null {
     return this.currentWidget;
   }
 
   get widgets(): readonly InteractiveWidget[] {
-    return this.onScreen().filter(takesFocus);
+    return this.view.onScreen().filter(takesFocus);
   }
 
   @action
   next(): void {
-    const focusable = this.widgets;
-    if (focusable.length === 0) return;
-
-    const currentIdx = this.currentWidget ? focusable.indexOf(this.currentWidget) : -1;
-    const nextIdx = (currentIdx + 1) % focusable.length;
-    this.setFocus(focusable[nextIdx]!);
+    this.step(this.view.present());
   }
 
   @action
   prev(): void {
-    const focusable = this.widgets;
-    if (focusable.length === 0) return;
-
-    const currentIdx = this.currentWidget ? focusable.indexOf(this.currentWidget) : -1;
-    const prevIdx = currentIdx <= 0 ? focusable.length - 1 : currentIdx - 1;
-    this.setFocus(focusable[prevIdx]!);
+    this.step([...this.view.present()].reverse());
   }
 
   // A widget not on screen yet can take focus: an app that is about to show
@@ -66,21 +62,22 @@ export class DefaultFocusManager implements FocusManager {
 
   /**
    * Put focus where the frame just painted lets it rest: it stays on a widget
-   * the view drew (`drawn`) that can take it, and otherwise moves to the first
-   * one on screen that can, or to none.
+   * the view holds (`present`) that can take it, and otherwise moves to the
+   * first one on screen that can, or to none.
    *
-   * Drawn, not on screen: a widget cropped for the moment — the terminal
-   * shrank, a viewport scrolled, an overlay covers it — is still in the view,
-   * and keeps focus and whatever focus holds, like a half-typed filter.
+   * In the view, not on screen: a widget cropped for the moment — the
+   * terminal shrank, a viewport scrolled, an overlay covers it, its container
+   * handed it no column — is still in the view, and keeps focus and whatever
+   * focus holds, like a half-typed filter.
    *
    * [LAW:single-enforcer] The one place focus follows the frame — onto the
-   * first widget when the app starts, off a widget that stopped being drawn
+   * first widget when the app starts, off a widget that left the view
    * or was disabled.
    */
   @action
-  settle(drawn: readonly InteractiveWidget[]): void {
+  settle(): void {
     const current = this.currentWidget;
-    if (current && takesFocus(current) && drawn.includes(current)) return;
+    if (current && takesFocus(current) && this.view.present().includes(current)) return;
     const first = this.widgets[0];
     if (first) this.setFocus(first);
     else this.clear();
@@ -103,6 +100,16 @@ export class DefaultFocusManager implements FocusManager {
   }
 
   // --- Private ---
+
+  // To the first widget Tab moves between that follows the focused one in
+  // `order`, wrapping. It is found by its place in the view, not among those
+  // on screen, so Tab from a widget on no cell moves to its neighbour.
+  private step(order: readonly InteractiveWidget[]): void {
+    const tabbable = new Set(this.widgets);
+    const at = this.currentWidget ? order.indexOf(this.currentWidget) : -1;
+    const target = [...order.slice(at + 1), ...order.slice(0, at + 1)].find((widget) => tabbable.has(widget));
+    if (target) this.setFocus(target);
+  }
 
   // No focus is where `settle` leaves an app with nothing to focus, and only
   // there: anywhere else the next frame would put focus back on the first
