@@ -55,20 +55,20 @@ interface BlockSettings extends InlineSettings {
 /** An inline holding inlines of its own. */
 type Container = Extract<Inline, { readonly children: readonly Inline[] }>;
 
-/** A step of `walk`: an inline holding none, met inside its innermost container's frame, or the end of the container whose frame that was. */
+/** A step of `walk`: an inline holding none, or the end of the container whose frame that was. */
 type WalkStep<Frame> =
-  | { readonly kind: "leaf"; readonly inline: Exclude<Inline, Container>; readonly within: Frame }
+  | { readonly kind: "leaf"; readonly inline: Exclude<Inline, Container> }
   | { readonly kind: "leave"; readonly frame: Frame };
 
 /**
- * Every inline in `inlines` holding none, in document order, inside the
- * frame `open` makes for each container it sits in as `walk` reaches it —
- * `root` outside them all — and each container's `leave` after its last. A
+ * Every inline in `inlines` holding none, in document order, and each
+ * container's `leave` after its last, carrying the frame `open` made for it
+ * as `walk` reached it — `root` outside them all. A
  * loop over a stack, not recursion: emphasis nests as deep as its source
  * does, and Rich, walking markdown-it's flat token stream, draws ten thousand
  * levels of it.
  */
-function* walk<Frame>(inlines: readonly Inline[], root: Frame, open: (container: Container, within: Frame) => Frame): Iterable<WalkStep<Frame>> {
+function* walk<Frame>(inlines: readonly Inline[], root: Frame, open: (container: Container) => Frame): Iterable<WalkStep<Frame>> {
   const stack = [{ inlines, next: 0, frame: root }];
   while (stack.length > 0) {
     const top = stack[stack.length - 1]!;
@@ -78,8 +78,8 @@ function* walk<Frame>(inlines: readonly Inline[], root: Frame, open: (container:
       if (stack.length > 0) yield { kind: "leave", frame: top.frame };
       continue;
     }
-    if ("children" in inline) stack.push({ inlines: inline.children, next: 0, frame: open(inline, top.frame) });
-    else yield { kind: "leaf", inline, within: top.frame };
+    if ("children" in inline) stack.push({ inlines: inline.children, next: 0, frame: open(inline) });
+    else yield { kind: "leaf", inline };
   }
 }
 
@@ -87,6 +87,29 @@ function* walk<Frame>(inlines: readonly Inline[], root: Frame, open: (container:
 function linkStyles(url: string): (string | Style)[] {
   return [new Style({ link: url }), "markdown.link_url"];
 }
+
+/**
+ * Rich's one inline HTML tag that draws: `<kbd>` exactly as written pushes
+ * `entry()` onto `stack`, and `</kbd>` pops the top of it — whatever is
+ * there, as Rich's style stack pops, so a close that crosses an emphasis
+ * ends that emphasis's style and the emphasis ends the key's. A close with no
+ * `<kbd>` open pops nothing, where Rich's stack runs dry and raises; every
+ * other tag draws nothing.
+ */
+function kbdTags<T>(stack: T[], entry: () => T): (tag: string) => void {
+  let open = 0;
+  return (tag) => {
+    if (tag === "<kbd>") {
+      open++;
+      stack.push(entry());
+    } else if (tag === "</kbd>" && open > 0) {
+      open--;
+      stack.pop();
+    }
+  };
+}
+
+const KBD_STYLE = "markdown.kbd";
 
 /** The style a quote draws its bar in and lays under everything it holds. */
 const QUOTE_STYLE = "markdown.block_quote";
@@ -96,9 +119,9 @@ function headingStyle(options: RenderOptions, level: HeadingLevel): Style {
 }
 
 /**
- * `inlines` appended to `result` as Rich draws each: emphasis and code in
- * their styles, inline HTML as nothing, an image as nothing where it sits —
- * `drawImage` draws it, ahead of the block — and text as it is. A link's text
+ * `inlines` appended to `result` as Rich draws each: emphasis, code and
+ * `<kbd>` in their styles, other inline HTML as nothing, an image as nothing
+ * where it sits — `drawImage` draws it, ahead of the block — and text as it is. A link's text
  * is the link; or, without hyperlinks, nothing is, and its text is written
  * plain with the URL after it, for a reader who cannot click it.
  */
@@ -112,6 +135,7 @@ function appendInline(result: RichText, inlines: readonly Inline[], settings: In
   // The style on top with `styles` laid over it.
   const over = (styles: readonly (string | Style)[]): Style =>
     styles.reduce<Style>((under, style) => under.add(resolveStyle(options, style)), stack[stack.length - 1]!);
+  const kbd = kbdTags(stack, () => over([KBD_STYLE]));
   // The text from `start` to the end in the style on top, with `styles` over it.
   const paint = (start: number, styles: readonly (string | Style)[] = []): void => {
     if (!plain) result.stylize(over(styles), start);
@@ -169,6 +193,8 @@ function appendInline(result: RichText, inlines: readonly Inline[], settings: In
         write(inline.code, [groundedStyle(options, resolveStyle(options, settings.inlineCodeStyle))]);
         break;
       case "html":
+        kbd(inline.content);
+        break;
       case "image":
         break;
       case "autolink": {
@@ -181,12 +207,14 @@ function appendInline(result: RichText, inlines: readonly Inline[], settings: In
   }
 }
 
-/** An image, with the styles of every construct it sits in and the link it sits in, if any. */
+/** The styles of every construct something sits in, outermost first. */
+type Enclosing = readonly (string | Style)[];
+
+/** An image, with the styles of every construct it sits in. */
 interface Image {
   readonly alt: string;
   readonly src: string;
-  readonly styles: readonly (string | Style)[];
-  readonly link: string | undefined;
+  readonly styles: Enclosing;
 }
 
 /**
@@ -201,11 +229,6 @@ type Step =
   | { kind: "block"; token: MdToken }
   | { kind: "exit"; newLine: boolean };
 
-interface Enclosing {
-  readonly styles: readonly (string | Style)[];
-  readonly link: string | undefined;
-}
-
 const EXIT: Step = { kind: "exit", newLine: true };
 
 /**
@@ -216,27 +239,28 @@ const EXIT: Step = { kind: "exit", newLine: true };
  */
 function* inlineSteps(inlines: readonly Inline[], within: Enclosing, settings: InlineSettings): Iterable<Step> {
   if (inlines.length === 0) yield EXIT;
-  // The styles of each open construct, innermost last, as Rich's style stack holds them.
-  const styles = [...within.styles];
-  // Each construct's frame is how many styles it entered, and the link it sits in.
-  type Frame = { readonly entered: number; readonly link: string | undefined };
-  const open = (container: Container, outer: Frame): Frame => {
+  // Rich's style stack: what each open construct entered, innermost last, one entry each as Rich pushes one.
+  const stack: Enclosing[] = [within];
+  const kbd = kbdTags(stack, () => [KBD_STYLE]);
+  // Each construct's frame is how many entries it pushed.
+  const open = (container: Container): number => {
     switch (container.kind) {
       case "emphasis":
-        styles.push(`markdown.${container.tag}`);
-        return { entered: 1, link: outer.link };
+        stack.push([`markdown.${container.tag}`]);
+        return 1;
       case "link": {
-        // Without hyperlinks Rich enters no style for a link, and an image in one is linked to nothing.
-        const entered = settings.hyperlinks ? linkStyles(container.url) : [];
-        styles.push(...entered);
-        return { entered: entered.length, link: container.url };
+        // Without hyperlinks Rich enters no style for a link.
+        const entered = settings.hyperlinks ? [linkStyles(container.url)] : [];
+        stack.push(...entered);
+        return entered.length;
       }
     }
   };
-  for (const step of walk(inlines, { entered: 0, link: within.link }, open)) {
-    if (step.kind === "leave") styles.length -= step.frame.entered;
+  for (const step of walk(inlines, 0, open)) {
+    if (step.kind === "leave") stack.length -= step.frame;
+    else if (step.inline.kind === "html") kbd(step.inline.content);
     else if (step.inline.kind === "image") {
-      yield { kind: "image", image: { alt: step.inline.alt, src: step.inline.src, styles: [...styles], link: step.within.link } };
+      yield { kind: "image", image: { alt: step.inline.alt, src: step.inline.src, styles: stack.flat() } };
       yield { kind: "exit", newLine: false };
     }
   }
@@ -267,7 +291,7 @@ function* stepsInside(token: MdToken, within: Enclosing, options: RenderOptions,
       yield* inlineSteps(token.text, within, settings);
       break;
     case "heading":
-      yield* inlineSteps(token.text, { ...within, styles: [...within.styles, headingStyle(options, token.level)] }, settings);
+      yield* inlineSteps(token.text, [...within, headingStyle(options, token.level)], settings);
       break;
     case "list":
       for (const item of token.items) {
@@ -276,7 +300,7 @@ function* stepsInside(token: MdToken, within: Enclosing, options: RenderOptions,
       }
       break;
     case "blockquote":
-      yield* children(token.children, { ...within, styles: [...within.styles, QUOTE_STYLE] });
+      yield* children(token.children, [...within, QUOTE_STYLE]);
       break;
     case "table":
       for (const cell of [...token.columns.map(({ header }) => header), ...token.rows.flat()]) {
@@ -297,7 +321,7 @@ function* stepsInside(token: MdToken, within: Enclosing, options: RenderOptions,
  */
 function* documentSteps(tokens: readonly MdToken[], options: RenderOptions, settings: InlineSettings): Iterable<Step> {
   for (const token of tokens) {
-    yield* stepsInside(token, { styles: [], link: undefined }, options, settings);
+    yield* stepsInside(token, [], options, settings);
     yield { kind: "block", token };
     yield exitStep(token);
   }
@@ -306,13 +330,15 @@ function* documentSteps(tokens: readonly MdToken[], options: RenderOptions, sett
 /**
  * An image drawn as Rich's `ImageItem` draws one: a picture glyph, then the
  * alt text in the styles it sits in — or, with none, the image's file name,
- * unstyled — linked to the link it sits in or else to the image, then a
+ * unstyled — linked to the link those styles carry or else to the image, then a
  * space, at the full width, ending no row — so whatever is drawn next carries
  * on after it.
  */
 function drawImage(image: Image, options: RenderOptions, settings: InlineSettings): Iterable<Segment> {
-  const title = image.alt ? image.styles.reduce((alt, style) => alt.stylize(style), new RichText(image.alt)) : new RichText(image.src.replace(/\/+$/, "").split("/").pop() ?? "");
-  if (settings.hyperlinks) title.stylize(new Style({ link: image.link || image.src || undefined }));
+  // Rich reads the link off its style stack, so a link a crossed `</kbd>` left open still holds.
+  const style = image.styles.reduce<Style>((under, over) => under.add(resolveStyle(options, over)), Style.null());
+  const title = image.alt ? new RichText(image.alt).stylize(style) : new RichText(image.src.replace(/\/+$/, "").split("/").pop() ?? "");
+  if (settings.hyperlinks) title.stylize(new Style({ link: style.link || image.src || undefined }));
   return new RichText("", { end: "" }).append(drawable(options, "🌆 ", "")).append(title).append(" ").render(options);
 }
 
