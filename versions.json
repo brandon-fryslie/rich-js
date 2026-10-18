@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-463",
-      "ref": "refs/pull/463/merge",
-      "sha": "f31a925c7bee84252fffbcd6308db706f3891b45",
-      "timestamp": "2026-10-18T00:13:10.382Z",
-      "commits": [
-        {
-          "sha": "f31a925c7bee84252fffbcd6308db706f3891b45",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T00:11:25Z",
-          "message": "Merge 24bd255d225edfb8c44181bc1447d0d1f433eeec into 2b1c5dc78fc6f349f4256240f7f0c8e2d27927d4\n"
-        },
-        {
-          "sha": "24bd255d225edfb8c44181bc1447d0d1f433eeec",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T18:11:20-06:00",
-          "message": "HeadingLevel's comment sits on it and names setext headings; MdToken keeps its own (rich-unfiled-791c.n0a3)\n"
-        },
-        {
-          "sha": "7cf5f8abc03663ee8f169365fcc174a8d35ff521",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T18:09:47-06:00",
-          "message": "Heading level is typed 1-6 at the parser, every level's own key and the rule's are pinned, and the docs name them (rich-unfiled-791c.n0a3)\n"
-        },
-        {
-          "sha": "dd108ac574ac8239ee4989de3dc4ff608af6b37c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T18:02:15-06:00",
-          "message": "Markdown draws headings, rules and link URLs in Rich 15's styles, each heading level from its own key (rich-unfiled-791c.n0a3)\n\nmarkdown.h2-h4, hr and link_url now match rich.default_styles in Rich 15,\nand h5/h6 exist. headingStyle read markdown.h${min(level, 4)}, so a theme\nsetting h5 or h6 did nothing; it now reads markdown.h${level}, as Rich's\nHeading reads markdown.{tag}. A test pins h1-h6, the rule and both link\nURL forms against Rich 15's rendered segments.\n\nKeys Rich defines that this renderer never reads (h7, paragraph, text,\nemph, code_block, list, h1.border) are not added. markdown.kbd is a real\ngap in behaviour, filed as rich-unfiled-791c.k2zi.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "2b1c5dc78fc6f349f4256240f7f0c8e2d27927d4",
-      "timestamp": "2026-10-17T23:57:55.120Z",
+      "sha": "f624313ade91bb59d5ed6f6217198033b3d024a0",
+      "timestamp": "2026-10-18T00:25:01.789Z",
       "commits": [
         {
-          "sha": "2b1c5dc78fc6f349f4256240f7f0c8e2d27927d4",
+          "sha": "f624313ade91bb59d5ed6f6217198033b3d024a0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T17:56:10-06:00",
-          "message": "TextInput measures the width it draws, the cursor's cell at the end included (rich-unfiled-791c.dn30) (#462)\n\n* TextInput measures the width it draws, the cursor's cell at the end included, and keeps that cell in view when the value overflows (rich-unfiled-791c.dn30)\n\nThe single-line field sizes its content as its text plus, past the text's\nend, the cell the cursor stands on. measure() left that cell out, so a field\nlaid out at its measured width hid its cursor whenever the cursor sat at the\nend, and the viewport's scroll clamp did the same to any value wider than\nthe field: typing at the end of a long value showed no cursor. Both now read\none derivation, singleLineExtent.\n\nA multi-line value measured as if it drew brackets and a placeholder; it\ndraws neither, so its maximum is its widest line shown plus its cursor's\ncell.\n\n* TextInput's viewport starts at a glyph boundary, so a wide glyph never pushes the cursor out of view, and multi-line measure leaves a scroll arrow its cell (rich-unfiled-791c.dn30)"
+          "timestamp": "2026-10-17T18:23:07-06:00",
+          "message": "Markdown draws headings, rules and link URLs in Rich 15's styles, each heading level from its own key (rich-unfiled-791c.n0a3) (#463)\n\n* Markdown draws headings, rules and link URLs in Rich 15's styles, each heading level from its own key (rich-unfiled-791c.n0a3)\n\nmarkdown.h2-h4, hr and link_url now match rich.default_styles in Rich 15,\nand h5/h6 exist. headingStyle read markdown.h${min(level, 4)}, so a theme\nsetting h5 or h6 did nothing; it now reads markdown.h${level}, as Rich's\nHeading reads markdown.{tag}. A test pins h1-h6, the rule and both link\nURL forms against Rich 15's rendered segments.\n\nKeys Rich defines that this renderer never reads (h7, paragraph, text,\nemph, code_block, list, h1.border) are not added. markdown.kbd is a real\ngap in behaviour, filed as rich-unfiled-791c.k2zi.\n\n* Heading level is typed 1-6 at the parser, every level's own key and the rule's are pinned, and the docs name them (rich-unfiled-791c.n0a3)\n\n* HeadingLevel's comment sits on it and names setext headings; MdToken keeps its own (rich-unfiled-791c.n0a3)"
         }
       ]
     }
