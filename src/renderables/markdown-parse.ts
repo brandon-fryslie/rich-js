@@ -24,15 +24,15 @@ interface TableColumn<Text> {
   readonly align: CellAlign;
 }
 
+/** A heading's level: an ATX heading's count of `#`s, or 1 and 2 for a setext heading's `=` and `-`. */
+export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
+
 /**
  * A block, its text as `Text`: the source's own text after the block pass,
  * and that text read into inlines after the inline pass, which is what
  * `parseMarkdown` hands back. `Mark` is what the block pass keeps besides:
  * none, once the inline pass has dropped its marks.
  */
-/** A heading's level: the `#`s an ATX heading opens with, at most six. */
-export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
-
 export type MdToken<Text = readonly Inline[], Mark = never> =
   | { type: "heading"; level: HeadingLevel; text: Text }
   | { type: "paragraph"; text: Text }
