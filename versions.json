@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-475",
-      "ref": "refs/pull/475/merge",
-      "sha": "f77e05c7cec875d40481468e6c552080420f707e",
-      "timestamp": "2026-10-18T08:08:02.947Z",
-      "commits": [
-        {
-          "sha": "f77e05c7cec875d40481468e6c552080420f707e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T08:06:21Z",
-          "message": "Merge 5042b2fee285f791e1e3eedc8eb2d51e23fe2a9c into c287c8e2141b1e96cc3ced15dee341b2b9d66d9d\n"
-        },
-        {
-          "sha": "5042b2fee285f791e1e3eedc8eb2d51e23fe2a9c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T02:06:15-06:00",
-          "message": "expectLinearTime returns the size it measured at, so its own stall tests fail rather than pass vacuously when a faster runner grows the size (rich-unfiled-791c.sx9g)\n\nThe unmeasurable message says to pass a larger size again: linear work given\na size more than 64 times too small fails with it too. The escalation tests\npin the sizes tried to the x4 sequence.\n"
-        },
-        {
-          "sha": "53a9ea3ed9a32fd857a3d8a5a78af62ac8724cdc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T02:00:40-06:00",
-          "message": "expectLinearTime takes a larger size itself when the smaller run is under the floor, so a faster runner cannot fail linear work (rich-unfiled-791c.sx9g)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "c287c8e2141b1e96cc3ced15dee341b2b9d66d9d",
-      "timestamp": "2026-10-18T07:58:30.470Z",
+      "sha": "620c4bba5485ddedfe2eb22dc88e797567e8a370",
+      "timestamp": "2026-10-18T08:19:35.074Z",
       "commits": [
         {
-          "sha": "c287c8e2141b1e96cc3ced15dee341b2b9d66d9d",
+          "sha": "620c4bba5485ddedfe2eb22dc88e797567e8a370",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T01:56:46-06:00",
-          "message": "A declared width and a noWrap column too wide for the table are cut evenly together, as Rich's are (rich-unfiled-791c.py6q) (#474)\n\n* A declared width and a noWrap column too wide for the table are cut evenly together, as Rich's last-resort ratio_reduce cuts them (rich-unfiled-791c.py6q)\n\nlayoutTable paid every reservation before any minimum, so a noWrap column\nbeside a declared width gave up all its cells alone. A declared width is now\na minimum that weighs nothing, and the one minimum pass cuts the wrapping\ncolumns first and then every column evenly. Pinned against Rich 15 in\ntable-squeeze.golden.txt.\n\n* A ratio column's declared width is held to the table as any declared width is, and the even cut is described as Rich's is (rich-unfiled-791c.py6q)\n\nHigh review of PR #474. A ratio column with a width wider than the table took\nevery cell of the even cut and left a declared neighbour none; Rich 15 holds\nit with with_maximum(max_width) and draws [14, 3] at width 20. One declared()\nnow holds every declared width. The prose promised no column is cut to nothing\nwhile another keeps cells; Rich's ratio_reduce does exactly that, so the prose\nchanges, not the cut. Two new golden sweeps pin wrap-first-then-even order.\n\n* Every ratio floor is held to the table, its minWidth included (rich-unfiled-791c.py6q)\n\nMedium review of PR #474: a noWrap ratio column flooring at minWidth: 30 still\ntook every cell of the even cut from a declared neighbour. Rich's expand path,\nthe model this port's ratio follows, ignores min_width there and keeps the\ndeclared column whole; holding the floor brings the cut to [14, 3] and drops\nthe width-or-minWidth branch."
+          "timestamp": "2026-10-18T02:18:09-06:00",
+          "message": "expectLinearTime takes a larger size itself when the smaller run is under the floor, so a faster runner cannot fail linear work (rich-unfiled-791c.sx9g) (#475)\n\n* expectLinearTime takes a larger size itself when the smaller run is under the floor, so a faster runner cannot fail linear work (rich-unfiled-791c.sx9g)\n\n* expectLinearTime returns the size it measured at, so its own stall tests fail rather than pass vacuously when a faster runner grows the size (rich-unfiled-791c.sx9g)\n\nThe unmeasurable message says to pass a larger size again: linear work given\na size more than 64 times too small fails with it too. The escalation tests\npin the sizes tried to the x4 sequence."
         }
       ]
     }
