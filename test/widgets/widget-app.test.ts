@@ -870,6 +870,29 @@ describe("WidgetApp across a pane squeezed to no column", () => {
     expect(viewport.offset).toBe(40);
   });
 
+  it("paints no overlay for a held widget, and paints it again once the widget is back", async () => {
+    // The terminal keeps ten columns, so an overlay painted there would show.
+    const host = scriptedHost({ cols: 30, rows: 6 });
+    const dropdown = new Dropdown({ options: ["Red", "Green", "Blue"], selectedIndex: 0, id: "dd" });
+    const view = new Layout();
+    view.splitRow(new Layout(text("x"), { size: 10 }), new Layout(dropdown));
+    const app = start(host, () => view);
+    await tick();
+    const header = cellOf(app, "Red");
+    host.type(click(header.x, header.y));
+    await tick();
+    expect(rows(app).join("\n")).toContain("Green");
+
+    host.resize({ cols: 10, rows: 6 });
+    await tick();
+    expect(dropdown.expanded).toBe(true);
+    expect(rows(app).join("\n")).not.toContain("Green");
+
+    host.resize({ cols: 30, rows: 6 });
+    await tick();
+    expect(rows(app).join("\n")).toContain("Green");
+  });
+
   it("keeps a multiline text input's scroll window", async () => {
     const host = scriptedHost({ cols: 20, rows: 4 });
     const value = Array.from({ length: 10 }, (_, i) => `line ${i}`).join("\n");
