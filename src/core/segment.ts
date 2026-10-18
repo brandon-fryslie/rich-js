@@ -72,11 +72,23 @@ export class Segment {
     const len = this.cellLength;
     if (position >= len) return [this, new Segment("")];
     if (position <= 0) return [new Segment(""), this];
-    const [leftText, rightText] = cutCells(this.text, position);
-    return [
-      new Segment(leftText, this.style),
-      new Segment(rightText, this.style?.shiftedBy(position)),
-    ];
+    return this.cutAt([position]);
+  }
+
+  /**
+   * Cuts at each of `positions`, non-decreasing and inside this segment's
+   * cells: one piece more than there are positions, each exactly as wide as
+   * the distance between its cuts, the way `splitCells` cuts at one.
+   *
+   * [LAW:single-enforcer] Each piece but the first starts that many cells
+   * further into whatever drew it, and its anchor says so; see `./anchor.ts`.
+   */
+  cutAt(positions: readonly [CellCol]): [Segment, Segment];
+  cutAt(positions: readonly CellCol[]): Segment[];
+  cutAt(positions: readonly CellCol[]): Segment[] {
+    return cutCells(this.text, positions).map((text, piece) =>
+      new Segment(text, piece === 0 ? this.style : this.style?.shiftedBy(positions[piece - 1]!)),
+    );
   }
 
   // --- Static factories ---
@@ -447,7 +459,15 @@ export class Segment {
   }
 
   /**
-   * Divides segments at cell positions. Yields arrays of segments for each section.
+   * Divides segments at cell positions: a section ending at each cut, and the
+   * cells after the last cut when there are any. A segment wider than zero
+   * that starts at a cut opens the section after it; one with no cells stays
+   * in the section it ends.
+   *
+   * One walk, and each segment is cut once at every cut that falls inside it:
+   * cutting what is left of it again at each cut re-measures and copies the
+   * rest every time, so a long line wrapped into many rows took time quadratic
+   * in its length.
    */
   static divide(
     segments: Segment[],
@@ -455,43 +475,26 @@ export class Segment {
   ): Segment[][] {
     if (cuts.length === 0) return [segments];
 
-    const result: Segment[][] = [];
-    let segmentIndex = 0;
-    let cellOffset = 0;
-    let currentSegment = segments[segmentIndex];
-
-    for (const cut of cuts) {
-      const section: Segment[] = [];
-
-      while (currentSegment && cellOffset + currentSegment.cellLength <= cut) {
-        section.push(currentSegment);
-        cellOffset += currentSegment.cellLength;
-        segmentIndex++;
-        currentSegment = segments[segmentIndex];
+    const sections: Segment[][] = [[]];
+    let offset = 0;
+    let next = 0;
+    for (const segment of segments) {
+      const end = offset + segment.cellLength;
+      const inside: CellCol[] = [];
+      for (; next < cuts.length && cuts[next]! < end; next++) {
+        const cut = cuts[next]!;
+        if (cut <= offset) sections.push([]);
+        else inside.push(asCellCol(cut - offset));
       }
-
-      if (currentSegment && !currentSegment.isControl && cellOffset < cut) {
-        const splitAt = asCellCol(cut - cellOffset);
-        const [left, right] = currentSegment.splitCells(splitAt);
-        if (left.hasText) section.push(left);
-        cellOffset += left.cellLength;
-        currentSegment = right;
-      }
-
-      result.push(section);
+      const [head, ...rest] = inside.length === 0 ? [segment] : segment.cutAt(inside);
+      sections[sections.length - 1]!.push(head!);
+      // A piece between two cuts at one cell has no text: the section it is holds nothing.
+      for (const piece of rest) sections.push(piece.hasText ? [piece] : []);
+      offset = end;
     }
-
-    // Remaining segments
-    const tail: Segment[] = [];
-    if (currentSegment?.hasText) tail.push(currentSegment);
-    segmentIndex++;
-    while (segmentIndex < segments.length) {
-      tail.push(segments[segmentIndex]!);
-      segmentIndex++;
-    }
-    if (tail.length > 0) result.push(tail);
-
-    return result;
+    for (; next < cuts.length; next++) sections.push([]);
+    if (sections[sections.length - 1]!.length === 0) sections.pop();
+    return sections;
   }
 
   // --- Layout helpers ---

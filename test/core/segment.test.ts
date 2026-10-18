@@ -624,6 +624,21 @@ describe("Segment.divide()", () => {
     expect(result.map(texts)).toEqual([["ab "], [" cd"]]);
   });
 
+  it("blanks a wide glyph cut twice into a cell for each piece it spans", () => {
+    expect(Segment.divide([new Segment("a漢b")], [2, 2, 3]).map(texts)).toEqual([["a "], [], [" "], ["b"]]);
+  });
+
+  it("keeps a segment with no cells in the section a cut at its offset ends", () => {
+    const zero = new Segment("");
+    const result = Segment.divide([new Segment("abc"), zero, new Segment("def")], [3]);
+    expect(result.map(texts)).toEqual([["abc", ""], ["def"]]);
+    expect(result[0]![1]).toBe(zero);
+  });
+
+  it("yields an empty section for each cut past the end, and no section after them", () => {
+    expect(Segment.divide([new Segment("abc")], [3, 5]).map(texts)).toEqual([["abc"], []]);
+  });
+
   it("yields an empty section when cut is at position 0", () => {
     const segs = [new Segment("hello")];
     const result = Segment.divide(segs, [0, 3]);
