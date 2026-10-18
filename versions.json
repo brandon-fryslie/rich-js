@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-473",
-      "ref": "refs/pull/473/merge",
-      "sha": "4f3b1c5c42f4e35eabf00aaa83573a547046aa4a",
-      "timestamp": "2026-10-18T07:17:33.309Z",
-      "commits": [
-        {
-          "sha": "4f3b1c5c42f4e35eabf00aaa83573a547046aa4a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T07:15:50Z",
-          "message": "Merge 557f350de7b0aad4870da8a42a57e040a5aac7ef into c74a7d09088ea43560669f0392df3fd69e4fc93e\n"
-        },
-        {
-          "sha": "557f350de7b0aad4870da8a42a57e040a5aac7ef",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T01:15:46-06:00",
-          "message": "A Viewport render that holds its content commits nothing: offset, followed range and queued moves wait for a render that draws (rich-widgets-hmk1.0ix)\n\nReview of #473: a held render kept the last length but took its rows from\nthe empty render, so under a ceiling or no height the follow re-ensure moved\nthe offset, canScrollBy reported moves past the last full view, queued moves\nresolved while nothing was shown, and the gutter drew zero rows.\n"
-        },
-        {
-          "sha": "f93151750df987a8d3b7b80bb138964bf10ea60e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T01:08:35-06:00",
-          "message": "A Viewport whose content is handed no column keeps its offset, and a ListView keeps its wheel position (rich-widgets-hmk1.0ix)\n\nLaw pass over presence and render-time state. A Viewport drawn no wider\nthan its gutter held its content and clamped its offset against the\nnothing that came back, resetting it to 0; it now keeps the length the\nlast drawing render found. A ListView whose items were held followed the\nempty range they named, which read as a selection move and undid the\nwheel. Also reattaches withBoundedWidth's doc comment, which measuring\nhad been inserted below.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "c74a7d09088ea43560669f0392df3fd69e4fc93e",
-      "timestamp": "2026-10-18T07:02:52.745Z",
+      "sha": "2fc520a9c916e8b7f685b805eeceaf5984de0344",
+      "timestamp": "2026-10-18T07:20:40.743Z",
       "commits": [
         {
-          "sha": "c74a7d09088ea43560669f0392df3fd69e4fc93e",
+          "sha": "2fc520a9c916e8b7f685b805eeceaf5984de0344",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T01:01:09-06:00",
-          "message": "A widget its container hands no column is held in the view, not drawn, so it keeps focus and nothing renders for it (rich-widgets-hmk1.kvc) (#472)\n\n* A widget its container hands no column is held in the view, not drawn, so it keeps focus and nothing renders for it (rich-widgets-hmk1.kvc)\n\nprotocol's render is the one reporter of what the view holds: RenderOptions.onDraw,\ncalled by WidgetBase, becomes onPresent(renderable, \"drawn\" | \"held\"), called by\nrender for every renderable it is asked for. Under one column a renderable is held:\nrender walks the Composite.contents() of what it holds, reports each held, and\nrenders nothing, so a Viewport's offset or a TextInput's scroll window is never\ncommitted at a width that is not shown.\n\nEvery exported container implements Composite. The method is contents(), not the\nchildren() the seam named, because Tree.children and Layout.children are already\nRich's names for subtrees and panes. test/renderables/contents.test.ts holds each\nexported renderable's contents() to what its render draws.\n\nWidgetApp settles focus over the widgets the frame holds, drawn or held, and exposes\nthem as WidgetApp.present.\n\n* Tab from a widget held on no column moves to its neighbour in document order; review fixes (rich-widgets-hmk1.kvc)\n\nThe focus manager reads the view's document order and its on-screen widgets\nfrom one FocusView, so settle takes no argument and next/prev step from the\ncurrent widget's place in the view rather than its place on screen.\n\nAlso: Panel's and Table's moved JSDocs back onto their members, one cellAt for\nTable's blank-cell fallback, Composite says it commits no state rather than\nthat it is pure, and contents.test holds Table without its header and Tree with\nits root hidden.\n\n* A held widget paints no overlay, pinned with the terminal wide enough to show one (rich-widgets-hmk1.kvc)"
+          "timestamp": "2026-10-18T01:18:49-06:00",
+          "message": "A Viewport whose content is handed no column keeps its offset, and a ListView keeps its wheel position (rich-widgets-hmk1.0ix) (#473)\n\n* A Viewport whose content is handed no column keeps its offset, and a ListView keeps its wheel position (rich-widgets-hmk1.0ix)\n\nLaw pass over presence and render-time state. A Viewport drawn no wider\nthan its gutter held its content and clamped its offset against the\nnothing that came back, resetting it to 0; it now keeps the length the\nlast drawing render found. A ListView whose items were held followed the\nempty range they named, which read as a selection move and undid the\nwheel. Also reattaches withBoundedWidth's doc comment, which measuring\nhad been inserted below.\n\n* A Viewport render that holds its content commits nothing: offset, followed range and queued moves wait for a render that draws (rich-widgets-hmk1.0ix)\n\nReview of #473: a held render kept the last length but took its rows from\nthe empty render, so under a ceiling or no height the follow re-ensure moved\nthe offset, canScrollBy reported moves past the last full view, queued moves\nresolved while nothing was shown, and the gutter drew zero rows."
         }
       ]
     }
