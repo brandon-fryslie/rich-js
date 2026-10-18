@@ -47,7 +47,9 @@ describe("Markdown", () => {
     expect(drawn("<kbd>a</kbd> b <kbd >c</kbd> d")).toEqual([["a", "bold bright_yellow"], [" b c d", "none"]]);
     // A close crossing an emphasis's ends the emphasis's style, and the emphasis ends the key's.
     expect(drawn("*e <kbd>K* f</kbd> g")).toEqual([["e", "italic"], ["K", "bold italic bright_yellow"], [" f", "italic"], [" g", "none"]]);
-    expect(drawn("a <kbd>x b\n\nnext")).toEqual([["a", "none"], ["x b", "bold bright_yellow"], ["next", "none"]]);
+    // A key left open ends with its block or cell, where Rich's carries on and leaves `next` in the heading's style.
+    expect(drawn("# H <kbd>K\n\nnext")).toEqual([["H", "bold underline"], ["K", "bold underline bright_yellow"], ["next", "none"]]);
+    expect(drawn("| a | b |\n|---|---|\n| <kbd>x | y |").filter(([t]) => "xy".includes(t!))).toEqual([["x", "bold bright_yellow"], ["y", "none"]]);
     expect(drawn("a <kbd>![alt](http://i) b</kbd> c", false)).toEqual([["🌆", "none"], ["alt", "bold bright_yellow"], ["a", "none"], [" b", "bold bright_yellow"], [" c", "none"]]);
     // The link a crossed close leaves open is the image's link too.
     expect(drawn("[a <kbd>b](http://u) ![i](http://j) c</kbd> d")).toEqual([
@@ -58,7 +60,7 @@ describe("Markdown", () => {
       [" c", "underline blue link http://u"],
       [" d", "none"],
     ]);
-    // Rich's stack runs dry on a close with no key open, and raises; this one pops nothing.
+    // A close with no key open in its block pops nothing, where Rich's stack runs dry and raises.
     expect(drawn("*a </kbd> b*")).toEqual([["a", "italic"], [" b", "italic"]]);
   });
 

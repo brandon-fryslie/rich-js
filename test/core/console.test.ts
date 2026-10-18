@@ -1781,6 +1781,7 @@ describe("Console theme resolution", () => {
       name: "markdown.link",
       make: () => new Markdown("[a](https://example.com)", { hyperlinks: false }),
     },
+    { label: "Markdown kbd", name: "markdown.kbd", make: () => new Markdown("<kbd>k</kbd>") },
     { label: "Markdown bullet", name: "markdown.item.bullet", make: () => new Markdown("- a") },
     { label: "Markdown number", name: "markdown.item.number", make: () => new Markdown("1. a") },
     { label: "Markdown list item", name: "markdown.item", make: () => new Markdown("- a") },

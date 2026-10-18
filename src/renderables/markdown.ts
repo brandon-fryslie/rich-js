@@ -63,19 +63,21 @@ type WalkStep<Frame> =
 /**
  * Every inline in `inlines` holding none, in document order, and each
  * container's `leave` after its last, carrying the frame `open` made for it
- * as `walk` reached it — `root` outside them all. A
- * loop over a stack, not recursion: emphasis nests as deep as its source
- * does, and Rich, walking markdown-it's flat token stream, draws ten thousand
- * levels of it.
+ * as `walk` reached it. A loop over a stack, not recursion: emphasis nests as
+ * deep as its source does, and Rich, walking markdown-it's flat token stream,
+ * draws ten thousand levels of it.
  */
-function* walk<Frame>(inlines: readonly Inline[], root: Frame, open: (container: Container) => Frame): Iterable<WalkStep<Frame>> {
-  const stack = [{ inlines, next: 0, frame: root }];
-  while (stack.length > 0) {
-    const top = stack[stack.length - 1]!;
+function* walk<Frame>(inlines: readonly Inline[], open: (container: Container) => Frame): Iterable<WalkStep<Frame>> {
+  // The containers open here, innermost last; `outside` is the level outside them all.
+  const outside = { inlines, next: 0 };
+  const stack: { readonly inlines: readonly Inline[]; next: number; readonly frame: Frame }[] = [];
+  for (;;) {
+    const top = stack[stack.length - 1] ?? outside;
     const inline = top.inlines[top.next++];
     if (inline === undefined) {
-      stack.pop();
-      if (stack.length > 0) yield { kind: "leave", frame: top.frame };
+      const left = stack.pop();
+      if (left === undefined) return;
+      yield { kind: "leave", frame: left.frame };
       continue;
     }
     if ("children" in inline) stack.push({ inlines: inline.children, next: 0, frame: open(inline) });
@@ -92,9 +94,14 @@ function linkStyles(url: string): (string | Style)[] {
  * Rich's one inline HTML tag that draws: `<kbd>` exactly as written pushes
  * `entry()` onto `stack`, and `</kbd>` pops the top of it — whatever is
  * there, as Rich's style stack pops, so a close that crosses an emphasis
- * ends that emphasis's style and the emphasis ends the key's. A close with no
- * `<kbd>` open pops nothing, where Rich's stack runs dry and raises; every
- * other tag draws nothing.
+ * ends that emphasis's style and the emphasis ends the key's. Every other tag
+ * draws nothing. `stack` is one block's, or one table cell's: a key left open
+ * ends with it, and a close with no key open in it pops nothing. Rich's one
+ * stack spans the document, so there a key left open styles every block after
+ * it, a block's own close pops the key's entry and leaves the block's style
+ * behind for the rest, and a stray close pops whatever is left or, with
+ * nothing left, raises. An HTML parser closes an inline element where its
+ * block ends, and that is the reading kept here.
  */
 function kbdTags<T>(stack: T[], entry: () => T): (tag: string) => void {
   let open = 0;
@@ -172,7 +179,7 @@ function appendInline(result: RichText, inlines: readonly Inline[], settings: In
         return openLink(container.url);
     }
   };
-  for (const step of walk(inlines, () => {}, open)) {
+  for (const step of walk(inlines, open)) {
     if (step.kind === "leave") {
       step.frame();
       continue;
@@ -256,7 +263,7 @@ function* inlineSteps(inlines: readonly Inline[], within: Enclosing, settings: I
       }
     }
   };
-  for (const step of walk(inlines, 0, open)) {
+  for (const step of walk(inlines, open)) {
     if (step.kind === "leave") stack.length -= step.frame;
     else if (step.inline.kind === "html") kbd(step.inline.content);
     else if (step.inline.kind === "image") {
