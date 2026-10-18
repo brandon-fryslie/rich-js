@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-465",
-      "ref": "refs/pull/465/merge",
-      "sha": "93808379b05ed215e13c3d9a571eca51c01c3352",
-      "timestamp": "2026-10-18T02:09:18.223Z",
-      "commits": [
-        {
-          "sha": "93808379b05ed215e13c3d9a571eca51c01c3352",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T02:07:34Z",
-          "message": "Merge 85bc7a737867ec4cd06fc31188a3854e59e5ff5e into ddd6a1a404637bd9a491d5c9ab0c2ac995e38415\n"
-        },
-        {
-          "sha": "85bc7a737867ec4cd06fc31188a3854e59e5ff5e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T20:07:29-06:00",
-          "message": "Markdown's Line and ItemStart docs say which frame a list container's margin is counted in (rich-unfiled-791c.jlk3)\n"
-        },
-        {
-          "sha": "aa0cff48112f6ff42cdb071dc33d4422de92d57a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T19:12:01-06:00",
-          "message": "Markdown measures a list item's line under a `>` from that line's own quote, as markdown-it does (rich-unfiled-791c.jlk3)\n\nmarkdown-it's listIndent and sCount count from each line's own quote content.\nA line short of an item took the marker line's margin as an absolute column,\nso a `>` at another column read as lazy text: \"> -    a\\n    > - b\" drew one\nitem \"a - b\" where Rich draws two. ItemStart now carries `listIndent`, the\ncontainer's margin past the marker line's quote content, and a short line\nadds it to its own `quoteStart`.\n\nKeeping the short line's own margin instead fixes this shape but breaks\nnested lists whose line is lazy to an outer item; the last case in the test\npins that.\n\nDifferential against markdown-it-py on 60k random quote/list/table inputs:\n0 regressions, 5 fixed, none left differing outside tables.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "ddd6a1a404637bd9a491d5c9ab0c2ac995e38415",
-      "timestamp": "2026-10-18T00:51:36.002Z",
+      "sha": "9c6945f91ce460f095462ec717c70e928b7f6811",
+      "timestamp": "2026-10-18T02:20:42.704Z",
       "commits": [
         {
-          "sha": "ddd6a1a404637bd9a491d5c9ab0c2ac995e38415",
+          "sha": "9c6945f91ce460f095462ec717c70e928b7f6811",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T18:49:35-06:00",
-          "message": "Padding pays its sides in full and draws content left no column as nothing, as Rich's does (rich-unfiled-791c.sk1p) (#464)\n\n* Padding pays its sides in full and draws content left no column as nothing, as Rich's does, so a narrow Markdown code block draws only its padding rows (rich-unfiled-791c.sk1p)\n\n* Measurement.get asks drawsNothing whether an offer under one column measures as nothing, so measuring and drawing share one threshold (rich-unfiled-791c.sk1p)"
+          "timestamp": "2026-10-17T20:18:56-06:00",
+          "message": "Markdown measures a list item's line under a `>` from that line's own quote, as markdown-it does (rich-unfiled-791c.jlk3) (#465)\n\n* Markdown measures a list item's line under a `>` from that line's own quote, as markdown-it does (rich-unfiled-791c.jlk3)\n\nmarkdown-it's listIndent and sCount count from each line's own quote content.\nA line short of an item took the marker line's margin as an absolute column,\nso a `>` at another column read as lazy text: \"> -    a\\n    > - b\" drew one\nitem \"a - b\" where Rich draws two. ItemStart now carries `listIndent`, the\ncontainer's margin past the marker line's quote content, and a short line\nadds it to its own `quoteStart`.\n\nKeeping the short line's own margin instead fixes this shape but breaks\nnested lists whose line is lazy to an outer item; the last case in the test\npins that.\n\nDifferential against markdown-it-py on 60k random quote/list/table inputs:\n0 regressions, 5 fixed, none left differing outside tables.\n\n* Markdown's Line and ItemStart docs say which frame a list container's margin is counted in (rich-unfiled-791c.jlk3)"
         }
       ]
     }
