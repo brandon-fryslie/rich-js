@@ -12,7 +12,7 @@
  */
 
 import { Segment } from "../core/segment.js";
-import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent } from "./types.js";
@@ -29,22 +29,24 @@ export interface StaticItemOptions {
   measure?: Measurable["measure"];
 }
 
-export class StaticItem extends WidgetBase {
+export class StaticItem extends WidgetBase implements Composite {
   readonly id: string;
   readonly focusable = false;
 
-  private readonly renderFn: (options: RenderOptions) => Iterable<Segment>;
+  // The body as a renderable either way: a function is one that holds nothing.
+  private readonly body: Renderable;
   private readonly measureFn: Measurable["measure"] | undefined;
 
   constructor(options: StaticItemOptions) {
     super();
     this.id = options.id;
     const r = options.render;
-    this.renderFn =
-      typeof r === "function"
-        ? (opts: RenderOptions) => r(opts)
-        : (opts: RenderOptions) => render(r, opts);
+    this.body = typeof r === "function" ? { render: r } : r;
     this.measureFn = options.measure;
+  }
+
+  *contents(): Iterable<Renderable> {
+    yield this.body;
   }
 
   // Static items don't respond to keys. WidgetBase.handleMouse / handleFocus
@@ -52,7 +54,7 @@ export class StaticItem extends WidgetBase {
   handleKey(_event: KeyEvent): void {}
 
   protected draw(options: RenderOptions): Iterable<Segment> {
-    return this.renderFn(options);
+    return render(this.body, options);
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
@@ -62,7 +64,7 @@ export class StaticItem extends WidgetBase {
     // values too, not just the "\n" sentinel segment. Walking segments and
     // testing `seg.text === "\n"` miscounts widths for any renderable
     // that emits "a\nb" as a single segment.
-    const segments = Array.from(this.renderFn(options));
+    const segments = Array.from(render(this.body, options));
     const lines = Segment.splitLines(segments);
     let max = 0;
     for (const line of lines) {

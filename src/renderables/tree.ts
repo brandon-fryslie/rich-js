@@ -8,6 +8,7 @@ import { Style, NULL_STYLE } from "../core/style.js";
 import { RichText } from "../core/text.js";
 import { embed } from "./embed.js";
 import type {
+  Composite,
   Renderable,
   Measurable,
   RenderOptions,
@@ -93,7 +94,7 @@ function labelWidth(options: RenderOptions, label: Renderable): number {
   return Measurement.get(options, label).maximum;
 }
 
-export class Tree implements Renderable, Measurable {
+export class Tree implements Renderable, Measurable, Composite {
   readonly label: Renderable;
   readonly children: Tree[];
   expanded: boolean;
@@ -128,6 +129,12 @@ export class Tree implements Renderable, Measurable {
     for (const row of this._walk()) {
       yield* this._renderRow(options, row);
     }
+  }
+
+  // Every label `render` draws, from the same walk. Not `children`, which is
+  // the subtrees, as Rich names them.
+  *contents(): Iterable<Renderable> {
+    for (const row of this._walk()) yield row.label;
   }
 
   /**

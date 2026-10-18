@@ -39,6 +39,34 @@ The `render` method:
 - Returns an iterable of `Segment`s — a generator is recommended
 - Draws a child renderable (markup rendered with `renderMarkup`, a `Table`, a `Panel`, another custom renderable) through `render(child, options)` and yields its segments with `yield*`
 
+## Containers and what they hold
+
+`render` reports every renderable it is asked for to `options.onPresent`, as it is asked, so whoever draws the frame learns what is in the view in document order: a container before what it holds, its children in the order it draws them. That is how a [`WidgetApp`](/widgets) finds its widgets. A renderable handed no column is reported `"held"` rather than `"drawn"`: it is in the view, and nothing is drawn for it.
+
+`render` cannot see inside a container without drawing it, so a container says what it holds by implementing `Composite`. Its `contents()` yields what its `render` draws through `render`, chosen the way `render` chooses it, and takes no options: under one column there is no width to choose by. Text the container builds for itself, like the label below, holds nothing and is not part of it. Every built-in container implements `Composite`. A container that does not reports nothing it holds while it has no column, so in a `WidgetApp` a widget inside it loses focus while it is squeezed to nothing.
+
+```typescript
+import type { Composite, Renderable, RenderOptions } from "@promptctl/rich-js";
+import { RichText, Segment, render } from "@promptctl/rich-js";
+
+class Labelled implements Renderable, Composite {
+  constructor(private label: string, private body: Renderable) {}
+
+  *render(options: RenderOptions): Iterable<Segment> {
+    yield* render(new RichText(this.label, { style: "bold" }), options);
+    yield* render(this.body, options);
+  }
+
+  *contents(): Iterable<Renderable> {
+    yield this.body;
+  }
+}
+
+console.print(new Labelled("Status", new RichText("all systems nominal")));
+```
+
+A held renderable is never rendered, and neither is anything it holds. So a renderable that keeps state as it renders, as a `Viewport` keeps its scroll offset, never has that state changed at a width that is not shown.
+
 ## Low-level rendering
 
 The segments do not have to come from a child. For complete character-level control, build them yourself — each `Segment` is a text string paired with an optional style:

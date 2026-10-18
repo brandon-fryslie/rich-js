@@ -13,7 +13,7 @@ export type { StaticItemOptions } from "./static-item.js";
 
 export { WidgetBase } from "./widget-base.js";
 export { WidgetApp } from "./widget-app.js";
-export type { WidgetAppOptions } from "./widget-app.js";
+export type { WidgetAppOptions, WidgetPresence } from "./widget-app.js";
 export { Button } from "./button.js";
 export type { ButtonVariant, ButtonOptions } from "./button.js";
 export { Checkbox } from "./checkbox.js";

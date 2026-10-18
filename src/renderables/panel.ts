@@ -13,6 +13,7 @@ import { cutLabel, drawLabel, embed, inlineLabel, type InlineLabel } from "./emb
 import type { PaddingDimensions } from "./padding.js";
 import { Padding } from "./padding.js";
 import type {
+  Composite,
   Renderable,
   Measurable,
   RenderOptions,
@@ -176,7 +177,7 @@ function borderRow(
   ];
 }
 
-export class Panel implements Renderable, Measurable {
+export class Panel implements Renderable, Measurable, Composite {
   readonly renderable: Renderable;
   readonly box: Box;
   readonly title: string | RichText | undefined;
@@ -259,6 +260,12 @@ export class Panel implements Renderable, Measurable {
    * because a `bottomRightAccessory` thunk reads state the content's render
    * populates.
    */
+  // The body is the one thing a panel draws through `render`: its title and
+  // subtitle are text it builds.
+  *contents(): Iterable<Renderable> {
+    yield this._body;
+  }
+
   private _renderBody(options: RenderOptions, spanWidth: number): Segment[][] {
     // Two border rows are the panel's own, and the vertical padding is the
     // body's. Handed on as a region, the rest is the panel's to shape, which

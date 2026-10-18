@@ -5,13 +5,14 @@
 import { Segment } from "../core/segment.js";
 import { Measurement } from "../core/measure.js";
 import type {
+  Composite,
   Renderable,
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 
-export class Constrain implements Renderable, Measurable {
+export class Constrain implements Renderable, Measurable, Composite {
   readonly renderable: Renderable;
   readonly width: number | undefined;
 
@@ -33,6 +34,10 @@ export class Constrain implements Renderable, Measurable {
     };
 
     yield* render(this.renderable, innerOptions);
+  }
+
+  *contents(): Iterable<Renderable> {
+    yield this.renderable;
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {

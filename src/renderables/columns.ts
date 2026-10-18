@@ -14,6 +14,7 @@ import { Measurement } from "../core/measure.js";
 import type { PaddingDimensions } from "./padding.js";
 import { normalizePadding } from "./padding.js";
 import type {
+  Composite,
   Renderable,
   Measurable,
   RenderOptions,
@@ -63,7 +64,7 @@ interface Layout {
   readonly widest: number;
 }
 
-export class Columns implements Renderable, Measurable {
+export class Columns implements Renderable, Measurable, Composite {
   renderables: (Renderable & Partial<Measurable>)[];
   readonly expand: boolean;
   readonly equal: boolean;
@@ -99,6 +100,12 @@ export class Columns implements Renderable, Measurable {
     // the same route, which is why the parse here is the bounded one.
     const options = withBoundedWidth(rawOptions, this);
     yield* render(this._grid(options), options);
+  }
+
+  // The items, in the order they were given: the grid they are drawn in is
+  // laid out for a width, and the items are all it holds of anyone's.
+  contents(): Iterable<Renderable> {
+    return this.renderables;
   }
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {

@@ -12,7 +12,7 @@ import { Spinner } from "./spinner.js";
 import { Live } from "./live.js";
 import { systemClock, type Clock } from "../core/clock.js";
 import { Table, type ColumnOptions } from "./table.js";
-import type { Renderable, RenderOptions } from "../core/protocol.js";
+import type { Composite, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 
 // --- Task ---
@@ -369,7 +369,7 @@ export interface ProgressOptions {
   clock?: Clock;
 }
 
-export class Progress implements Renderable {
+export class Progress implements Renderable, Composite {
   private _columns: ProgressColumn[];
   private _tasks: Map<number, TaskState>;
   private _nextId: number;
@@ -499,7 +499,17 @@ export class Progress implements Renderable {
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    // Rich's `make_tasks_table`: each column laid out as it says.
+    yield* render(this._table(), options);
+  }
+
+  // What each column renders for each task is what the table holds, and so is
+  // all a progress display holds.
+  *contents(): Iterable<Renderable> {
+    yield this._table();
+  }
+
+  // Rich's `make_tasks_table`: each column laid out as it says.
+  private _table(): Table {
     const table = Table.grid({ expand: this.expand });
     for (const col of this._columns) {
       table.addColumn(undefined, col.tableColumn);
@@ -520,8 +530,7 @@ export class Progress implements Renderable {
       };
       table.addRow(...this._columns.map((col) => col.render(task)));
     }
-
-    yield* render(table, options);
+    return table;
   }
 }
 

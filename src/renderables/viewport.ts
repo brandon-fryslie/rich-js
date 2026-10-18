@@ -46,6 +46,7 @@ import {
   withCellWidth,
 } from "../core/protocol.js";
 import type {
+  Composite,
   Height,
   Measurable,
   Renderable,
@@ -102,7 +103,7 @@ export interface ViewportOptions {
   scrollbar?: Scrollbar;
 }
 
-export class Viewport implements Renderable, Measurable, Scrollable {
+export class Viewport implements Renderable, Measurable, Scrollable, Composite {
   /**
    * What the viewport shows. Replace it to show new content from the same
    * scroll position — a view rebuilt every frame keeps one `Viewport`.
@@ -188,6 +189,10 @@ export class Viewport implements Renderable, Measurable, Scrollable {
   /** The cells the scrollbar's gutter takes beside the content. */
   get gutter(): number {
     return gutterWidth(this.scrollbar);
+  }
+
+  *contents(): Iterable<Renderable> {
+    yield this.content;
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {

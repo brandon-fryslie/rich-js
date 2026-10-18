@@ -55,7 +55,7 @@ import { ColorDepth, ColorSpec, SURFACE_BLACK, type ColorRgba, type TerminalThem
 import type { Beat } from "../core/easing.js";
 import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
-import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { JOIN, colorsOwnedBy } from "../core/strip.js";
@@ -207,7 +207,7 @@ export interface EffectedOptions {
   readonly theme: TerminalTheme;
 }
 
-export class Effected implements Renderable, Measurable {
+export class Effected implements Renderable, Measurable, Composite {
   readonly t: number;
   readonly key: string;
   readonly theme: TerminalTheme;
@@ -231,6 +231,10 @@ export class Effected implements Renderable, Measurable {
     // is what is shown, and it changes when the child says it does.
     if (options.colorSystem === null) return segments;
     return this._moved(segments, options);
+  }
+
+  *contents(): Iterable<Renderable> {
+    yield this.renderable;
   }
 
   private *_moved(segments: Iterable<Segment>, options: RenderOptions): Iterable<Segment> {

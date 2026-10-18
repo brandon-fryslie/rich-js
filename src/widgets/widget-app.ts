@@ -7,8 +7,10 @@
  * `Table` cell — and nothing lays it out a second time. Everything added here
  * reads the frame the view drew:
  *
- * - Focus moves in document order: the order widgets start to render in
- *   (`RenderOptions.onDraw`), among those with a cell on the frame on screen.
+ * - Focus moves in document order: the order the view reports its widgets in
+ *   (`RenderOptions.onPresent`), among those with a cell on the frame on screen.
+ *   A widget its container hands no column is reported held, not drawn: it is
+ *   in the view, so it keeps focus, and it has no cell, so Tab passes it.
  *   Not reading order — in a `Layout` split into columns, reading order
  *   zigzags between the columns row by row.
  * - Overlays are painted over the view's frame, in document order, directly
@@ -26,7 +28,7 @@
 
 import { Reaction } from "mobx";
 import { Segment } from "../core/segment.js";
-import type { Renderable, RenderOptions } from "../core/protocol.js";
+import type { Presence, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { App, type AppOptions, type AppPhase, type Wheel } from "../host/app.js";
@@ -51,6 +53,12 @@ export interface WidgetAppOptions extends AppOptions {
   readonly focusOnClick?: boolean;
 }
 
+/** A widget the view reported for a frame, and whether it was drawn or held. */
+export interface WidgetPresence {
+  readonly widget: WidgetBase;
+  readonly presence: Presence;
+}
+
 export class WidgetApp implements FrameSource {
   readonly focusManager: FocusManager;
   private readonly focus: DefaultFocusManager;
@@ -58,8 +66,7 @@ export class WidgetApp implements FrameSource {
   private readonly router: EventRouter;
   // Paints the next frame when anything the last one read changes.
   private readonly reaction: Reaction;
-  // The widgets the view drew for the frame on screen, in document order.
-  private drawn: readonly WidgetBase[] = [];
+  private _present: readonly WidgetPresence[] = [];
 
   constructor(options: WidgetAppOptions) {
     const { view, focusOnClick = true } = options;
@@ -70,7 +77,7 @@ export class WidgetApp implements FrameSource {
     });
     this.focus = new DefaultFocusManager(() => {
       const owners = ownersOn(this.app.frame);
-      return this.drawn.filter((widget) => owners.has(widget));
+      return this.widgets.filter((widget) => owners.has(widget));
     });
     this.focusManager = this.focus;
     this.router = new EventRouter({ source: this, focusOnClick });
@@ -80,7 +87,7 @@ export class WidgetApp implements FrameSource {
     this.app.onMouse((event) => this.router.mouse(event));
     this.app.onWheel((wheel) => this.router.wheel(wheel));
     this.app.onPaint(() => {
-      this.focus.settle(this.drawn);
+      this.focus.settle(this.widgets);
       this.router.framePainted();
     });
     // [LAW:single-enforcer] `settle` judges every focus move, so every move
@@ -90,6 +97,19 @@ export class WidgetApp implements FrameSource {
 
   get phase(): AppPhase {
     return this.app.phase;
+  }
+
+  /**
+   * The widgets the view reported for the frame on screen, in document order,
+   * each drawn or held (`RenderOptions.onPresent`). A held widget is one its
+   * container handed no column: in the view, with no cell on the frame.
+   */
+  get present(): readonly WidgetPresence[] {
+    return this._present;
+  }
+
+  private get widgets(): readonly WidgetBase[] {
+    return this._present.map(({ widget }) => widget);
   }
 
   /** The rows on screen now, as painted: what a pointer event lands on. */
@@ -162,24 +182,26 @@ export class WidgetApp implements FrameSource {
   }
 
   private compose(view: () => Renderable, options: RenderOptions): Segment[] {
-    const drawn = new Set<WidgetBase>();
-    // [LAW:parse-dont-validate] An owner is any object; only a `WidgetBase`
-    // reports itself as a widget, so this is where `object` becomes one.
-    const onDraw = (owner: object): void => {
-      if (owner instanceof WidgetBase) drawn.add(owner);
+    // Each widget once, where it was first reported; drawn anywhere, it is drawn.
+    const present = new Map<WidgetBase, Presence>();
+    // [LAW:parse-dont-validate] What the view reports is any renderable; only
+    // a `WidgetBase` is a widget, so this is where a renderable becomes one.
+    const onPresent = (renderable: Renderable, presence: Presence): void => {
+      if (renderable instanceof WidgetBase) present.set(renderable, present.get(renderable) === "drawn" ? "drawn" : presence);
     };
     // The view, its render and the overlays are all tracked, so an observable
     // any of them reads — a label, `focused`, the state that picks what the
     // view shows — paints the next frame when it changes.
-    // An overlay reports what it draws too: a widget in it is on the frame,
-    // and visiting `drawn` in insertion order paints its overlay in turn.
-    const drawing = { ...options, onDraw };
+    // An overlay reports what it draws too: a widget in it is in the view,
+    // and visiting `present` in report order paints its overlay in turn. A
+    // held widget has no footprint on the frame, and so paints none.
+    const drawing = { ...options, onPresent };
     const lines = tracked(this.reaction, () => {
       const base = Segment.splitLines(render(view(), drawing));
-      for (const widget of drawn) paintOverlay(base, widget, drawing);
+      for (const widget of present.keys()) paintOverlay(base, widget, drawing);
       return base;
     });
-    this.drawn = [...drawn];
+    this._present = [...present].map(([widget, presence]) => ({ widget, presence }));
     return lines.flatMap((line) => [...line, Segment.line()]);
   }
 }

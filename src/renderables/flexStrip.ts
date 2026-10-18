@@ -18,6 +18,7 @@
 
 import { Segment } from "../core/segment.js";
 import type {
+  Composite,
   Renderable,
   Measurable,
   RenderOptions,
@@ -78,7 +79,7 @@ function computeSlotFills(
 }
 
 export class FlexStrip<T extends StyledRenderable = StyledRenderable>
-  implements Renderable, Measurable
+  implements Renderable, Measurable, Composite
 {
   readonly items: readonly T[];
   readonly joiner: Joiner<T> | undefined;
@@ -90,6 +91,11 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
     this.joiner = options?.joiner;
     this.gap = options?.gap ?? 0;
     this.align = options?.align ?? "left";
+  }
+
+  // The items; a join is drawn from what the joiner emits for it, not held.
+  contents(): Iterable<Renderable> {
+    return this.items;
   }
 
   *render(options: RenderOptions): Iterable<Segment> {

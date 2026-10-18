@@ -6,13 +6,14 @@
 import type { Segment } from "../core/segment.js";
 import { type Measurement, measureRenderables } from "../core/measure.js";
 import type {
+  Composite,
   Measurable,
   Renderable,
   RenderOptions,
 } from "../core/protocol.js";
 import { render, stackedHeight } from "../core/protocol.js";
 
-export class Group implements Renderable, Measurable {
+export class Group implements Renderable, Measurable, Composite {
   readonly renderables: Renderable[];
 
   constructor(...renderables: Renderable[]) {
@@ -29,5 +30,9 @@ export class Group implements Renderable, Measurable {
   /** As wide as its widest member: the reference's `measure_renderables`. */
   measure(options: RenderOptions): Measurement {
     return measureRenderables(options, this.renderables);
+  }
+
+  contents(): Iterable<Renderable> {
+    return this.renderables;
   }
 }

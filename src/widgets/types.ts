@@ -132,7 +132,7 @@ export function hasOverlay(value: object): value is OverlayRenderable {
 
 // Which widget has focus, and what Tab means. The widgets it moves between are
 // the ones on the frame on screen that can take focus, in document order
-// (`RenderOptions.onDraw`): nothing registers with it.
+// (`RenderOptions.onPresent`): nothing registers with it.
 export interface FocusManager {
   readonly current: InteractiveWidget | null;
   /** The widgets Tab moves between, in the order it moves. */
