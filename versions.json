@@ -4,15 +4,22 @@
     {
       "version": "pr-472",
       "ref": "refs/pull/472/merge",
-      "sha": "b63d9f37e0d1911a018da6f945e970d7f1f3c9d9",
-      "timestamp": "2026-10-18T06:44:13.861Z",
+      "sha": "a2e0e184193b1dc9b3e82081b0fb2a7bc19d4887",
+      "timestamp": "2026-10-18T06:51:16.858Z",
       "commits": [
         {
-          "sha": "b63d9f37e0d1911a018da6f945e970d7f1f3c9d9",
+          "sha": "a2e0e184193b1dc9b3e82081b0fb2a7bc19d4887",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T06:42:29Z",
-          "message": "Merge d4f589f67e96d1df423750c567924b043cfe5dd5 into 8e8e8942c7eac7d44155827652a53e1ac999d07f\n"
+          "timestamp": "2026-10-18T00:49:31-06:00",
+          "message": "Merge 1a6aec6be5ff364b6ee796043fb8b1744c0a4857 into 8e8e8942c7eac7d44155827652a53e1ac999d07f\n"
+        },
+        {
+          "sha": "1a6aec6be5ff364b6ee796043fb8b1744c0a4857",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-18T00:49:27-06:00",
+          "message": "A held widget paints no overlay, pinned with the terminal wide enough to show one (rich-widgets-hmk1.kvc)\n"
         },
         {
           "sha": "d4f589f67e96d1df423750c567924b043cfe5dd5",
