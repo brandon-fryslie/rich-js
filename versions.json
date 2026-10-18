@@ -4,15 +4,22 @@
     {
       "version": "pr-470",
       "ref": "refs/pull/470/merge",
-      "sha": "91af6acab9002f1df25cb99982cf425f6abded57",
-      "timestamp": "2026-10-18T05:34:45.809Z",
+      "sha": "56c7846da808d219008370ce8e494ebb1e13533d",
+      "timestamp": "2026-10-18T05:37:30.984Z",
       "commits": [
         {
-          "sha": "91af6acab9002f1df25cb99982cf425f6abded57",
+          "sha": "56c7846da808d219008370ce8e494ebb1e13533d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T05:32:57Z",
-          "message": "Merge d2b9c4eb85b414682456fb176550da2ddd069dca into 77143831488b913433234cc4785db4c01d516b19\n"
+          "timestamp": "2026-10-18T05:35:43Z",
+          "message": "Merge b1b13a6b68e952ca40f9432fa99fec0fcc8499e1 into 77143831488b913433234cc4785db4c01d516b19\n"
+        },
+        {
+          "sha": "b1b13a6b68e952ca40f9432fa99fec0fcc8499e1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T23:35:39-06:00",
+          "message": "A tree label that draws nothing has no row, as Rich 15's; the comment no longer says only a squeezed one (rich-unfiled-791c.wyrk review)\n"
         },
         {
           "sha": "d2b9c4eb85b414682456fb176550da2ddd069dca",
