@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-470",
+      "ref": "refs/pull/470/merge",
+      "sha": "e0e6eed2ea93c5f7ad4f6d41a72aa7e3012b077c",
+      "timestamp": "2026-10-18T05:14:44.309Z",
+      "commits": [
+        {
+          "sha": "e0e6eed2ea93c5f7ad4f6d41a72aa7e3012b077c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T23:12:56-06:00",
+          "message": "Merge 8fce1f48ec5cc6723e87b3025a8970bc6a221932 into 77143831488b913433234cc4785db4c01d516b19\n"
+        },
+        {
+          "sha": "8fce1f48ec5cc6723e87b3025a8970bc6a221932",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T23:12:51-06:00",
+          "message": "Every child is drawn through protocol's render, so one handed no column draws nothing, as under Rich's Console.render (rich-unfiled-791c.wyrk)\n\nrender(renderable, options) in src/core/protocol.ts is the one place the\nunder-one-column rule is kept; every src/ call of a Renderable's render goes\nthrough it, and test/seam/render-calls.test.ts fails on one that does not.\nThe drawsNothing checks in Padding, Panel, Table, Traceback and Markdown are\ngone. Tree no longer holds a row for a label that drew nothing, as Rich's\ndoes not. squeezed-child.golden.json pins Rich 15's rows for Padding, Panel,\nConstrain, Tree, Layout and Markdown at a width that leaves the child none.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "77143831488b913433234cc4785db4c01d516b19",
