@@ -27,8 +27,12 @@
  * sixteen when it is quadratic; the bar sits between them, at eight. A size
  * small enough that fixed costs swamp the work reads as no growth at all and
  * would pass quadratic work silently, so a smaller run that finishes under a
- * floor fails as unmeasurable. Load only lengthens a run, so it cannot trip
- * the floor; a faster machine can, and the fix is a larger size.
+ * floor is not a measurement. Load only lengthens a run, so it cannot trip
+ * the floor; a faster machine can, and the fix is a larger size — which the
+ * helper takes itself, four times larger each time, rather than leaving a
+ * size picked on one runner to fail on the next one that is faster. Work
+ * still under the floor after that many tries does not grow with its size
+ * at all, and fails as unmeasurable.
  */
 import { expect } from "vitest";
 
@@ -40,6 +44,8 @@ const BAR = 8;
 const PAIRS = 5;
 /** The least time the smaller input's fastest run may take to count as a measurement. */
 const FLOOR_MS = 5;
+/** How many times a size under the floor is made `FACTOR` times larger before the work fails as unmeasurable. */
+const GROWTHS = 3;
 
 /**
  * The milliseconds of CPU time this thread spends on `work`. Node has had
@@ -53,14 +59,23 @@ function timed(work: () => void): number {
   return (user + system) / 1000;
 }
 
-/** Fails unless `run(FACTOR * size)` takes less than `BAR` times as long as `run(size)`. */
+/**
+ * Fails unless `run(FACTOR * size)` takes less than `BAR` times as long as `run(size)`,
+ * at the first of `size`, `FACTOR * size`, … whose smaller run clears the floor.
+ */
 export function expectLinearTime(run: (size: number) => void, size: number): void {
-  const pairs = Array.from({ length: PAIRS }, () => {
-    const small = timed(() => run(size));
-    return { small, large: timed(() => run(FACTOR * size)) };
-  });
-  const timings = `${size} vs ${FACTOR * size}: ${pairs.map((p) => `${p.small.toFixed(1)}/${p.large.toFixed(1)} ms`).join(", ")}`;
-  expect(Math.min(...pairs.map((p) => p.small)), `too fast to measure growth, pass a larger size; ${timings}`).toBeGreaterThanOrEqual(FLOOR_MS);
-  const ratios = pairs.map((p) => p.large / p.small).sort((a, b) => a - b);
-  expect(ratios[Math.floor(PAIRS / 2)], timings).toBeLessThan(BAR);
+  for (let growths = 0; ; growths++, size *= FACTOR) {
+    const pairs = Array.from({ length: PAIRS }, () => {
+      const small = timed(() => run(size));
+      return { small, large: timed(() => run(FACTOR * size)) };
+    });
+    const timings = `${size} vs ${FACTOR * size}: ${pairs.map((p) => `${p.small.toFixed(1)}/${p.large.toFixed(1)} ms`).join(", ")}`;
+    if (Math.min(...pairs.map((p) => p.small)) < FLOOR_MS) {
+      if (growths < GROWTHS) continue;
+      expect.fail(`too fast to measure growth even ${FACTOR ** GROWTHS} times larger; ${timings}`);
+    }
+    const ratios = pairs.map((p) => p.large / p.small).sort((a, b) => a - b);
+    expect(ratios[Math.floor(PAIRS / 2)], timings).toBeLessThan(BAR);
+    return;
+  }
 }

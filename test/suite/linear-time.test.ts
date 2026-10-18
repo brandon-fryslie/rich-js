@@ -57,7 +57,11 @@ describe("expectLinearTime", () => {
     }, 60_000_000);
   });
 
-  it("fails work too small to measure its growth", () => {
-    expect(() => expectLinearTime((n) => spin(n * n), 10)).toThrow(/too fast to measure growth/);
+  it("fails quadratic work given a size too small to measure, at a size large enough", () => {
+    expect(() => expectLinearTime((n) => spin(n * n), 500)).toThrow(/^(?!500 vs)\d+ vs \d+: /);
+  });
+
+  it("fails work that does not grow with its size as unmeasurable", () => {
+    expect(() => expectLinearTime(() => spin(1000), 10)).toThrow(/too fast to measure growth even 64 times larger/);
   });
 });
