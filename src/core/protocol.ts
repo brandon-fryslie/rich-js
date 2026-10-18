@@ -100,7 +100,8 @@ export interface RenderOptions {
    * the order it renders them, an owner before the owners nested in it. A
    * container forwards it by passing its options on, which every container
    * does. An owner rendered twice is told twice. A render made to measure is
-   * not drawing and is not told (`measuring`).
+   * not drawing and is not told (`measuring`); an owner handed no column is
+   * still in the view, and is (`render`).
    */
   onDraw?: (owner: object) => void;
 }
@@ -306,7 +307,18 @@ export function drawsNothing(options: { readonly maxWidth: number }): boolean {
  * drew a child handed no column anyway.
  */
 export function render(renderable: Renderable, options: RenderOptions): Iterable<Segment> {
-  return drawsNothing(options) ? [] : renderable.render(options);
+  if (!drawsNothing(options)) return renderable.render(options);
+  // The owners a renderable handed no column holds are still told (`onDraw`):
+  // they are in the view, cropped to no column for the moment as a frame too
+  // short crops a row, and a widget squeezed out of its pane keeps focus as
+  // one scrolled out of sight does (`FocusManager.settle`). So it is drawn at
+  // one column, the narrowest anything is drawn at, and the output dropped —
+  // drained, since a renderable may draw lazily and an owner is told as it
+  // starts to. Not at the width it was handed, where Rich stops because
+  // content asked to fit nothing can recurse without end. With no one
+  // listening there is no one to tell, and no reason to run the content.
+  if (options.onDraw !== undefined) for (const _ of renderable.render({ ...options, maxWidth: 1 })) continue;
+  return [];
 }
 
 /**

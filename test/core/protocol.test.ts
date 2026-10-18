@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, type Renderable } from "../../src/core/protocol.js";
+import { render, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { Segment } from "../../src/core/segment.js";
 
 // A renderable that draws regardless of its width, so what `render` lets
@@ -12,6 +12,29 @@ describe("render", () => {
     for (const maxWidth of [0, 0.5, -3, Number.NaN]) {
       expect([...render(drawsAnyway, { maxWidth })], `maxWidth ${maxWidth}`).toEqual([]);
     }
+  });
+
+  it("still tells the owners a renderable handed no column holds, nested and lazy ones included", () => {
+    const inner = { *render(options: RenderOptions) { options.onDraw?.(this); yield new Segment("y"); } };
+    const outer: Renderable = {
+      render(options) {
+        options.onDraw?.(this);
+        return [...render(inner, options), new Segment("x")];
+      },
+    };
+    for (const maxWidth of [0, -3, Number.NaN]) {
+      const told: object[] = [];
+      const drawn = [...render(outer, { maxWidth, onDraw: (owner) => told.push(owner) })];
+      expect(drawn, `maxWidth ${maxWidth}`).toEqual([]);
+      expect(told, `maxWidth ${maxWidth}`).toEqual([outer, inner]);
+    }
+  });
+
+  it("runs nothing under one column when no one is told of owners", () => {
+    const ran: number[] = [];
+    const counts: Renderable = { render: (options) => (ran.push(options.maxWidth), []) };
+    expect([...render(counts, { maxWidth: 0 })]).toEqual([]);
+    expect(ran).toEqual([]);
   });
 
   it("draws the renderable from one column up", () => {
