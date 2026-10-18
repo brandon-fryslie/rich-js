@@ -2,75 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-472",
-      "ref": "refs/pull/472/merge",
-      "sha": "a2e0e184193b1dc9b3e82081b0fb2a7bc19d4887",
-      "timestamp": "2026-10-18T06:51:16.858Z",
-      "commits": [
-        {
-          "sha": "a2e0e184193b1dc9b3e82081b0fb2a7bc19d4887",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T00:49:31-06:00",
-          "message": "Merge 1a6aec6be5ff364b6ee796043fb8b1744c0a4857 into 8e8e8942c7eac7d44155827652a53e1ac999d07f\n"
-        },
-        {
-          "sha": "1a6aec6be5ff364b6ee796043fb8b1744c0a4857",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T00:49:27-06:00",
-          "message": "A held widget paints no overlay, pinned with the terminal wide enough to show one (rich-widgets-hmk1.kvc)\n"
-        },
-        {
-          "sha": "d4f589f67e96d1df423750c567924b043cfe5dd5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T00:42:24-06:00",
-          "message": "Tab from a widget held on no column moves to its neighbour in document order; review fixes (rich-widgets-hmk1.kvc)\n\nThe focus manager reads the view's document order and its on-screen widgets\nfrom one FocusView, so settle takes no argument and next/prev step from the\ncurrent widget's place in the view rather than its place on screen.\n\nAlso: Panel's and Table's moved JSDocs back onto their members, one cellAt for\nTable's blank-cell fallback, Composite says it commits no state rather than\nthat it is pure, and contents.test holds Table without its header and Tree with\nits root hidden.\n"
-        },
-        {
-          "sha": "43e08e982e4f7486e49af402ac4c19c3b134c7df",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T00:30:11-06:00",
-          "message": "A widget its container hands no column is held in the view, not drawn, so it keeps focus and nothing renders for it (rich-widgets-hmk1.kvc)\n\nprotocol's render is the one reporter of what the view holds: RenderOptions.onDraw,\ncalled by WidgetBase, becomes onPresent(renderable, \"drawn\" | \"held\"), called by\nrender for every renderable it is asked for. Under one column a renderable is held:\nrender walks the Composite.contents() of what it holds, reports each held, and\nrenders nothing, so a Viewport's offset or a TextInput's scroll window is never\ncommitted at a width that is not shown.\n\nEvery exported container implements Composite. The method is contents(), not the\nchildren() the seam named, because Tree.children and Layout.children are already\nRich's names for subtrees and panes. test/renderables/contents.test.ts holds each\nexported renderable's contents() to what its render draws.\n\nWidgetApp settles focus over the widgets the frame holds, drawn or held, and exposes\nthem as WidgetApp.present.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-471",
-      "ref": "refs/pull/471/merge",
-      "sha": "130889014ab489cb9d2a13fc274916b454750d92",
-      "timestamp": "2026-10-18T06:00:37.334Z",
-      "commits": [
-        {
-          "sha": "130889014ab489cb9d2a13fc274916b454750d92",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T23:58:46-06:00",
-          "message": "Merge 07529c4872c97ed103ec09bbd1d49ed77af8c0dc into 8e8e8942c7eac7d44155827652a53e1ac999d07f\n"
-        },
-        {
-          "sha": "07529c4872c97ed103ec09bbd1d49ed77af8c0dc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T23:58:42-06:00",
-          "message": "A widget its container hands no column keeps focus, as one the frame crops does (rich-unfiled-791c.pf3y)\n\nUnder one column protocol's render draws nothing, as Rich's Console.render\ndoes, and so never reached the widgets inside: FocusManager.settle saw a\nwidget squeezed out of its pane as gone from the view and moved focus to the\nfirst one. Now render still tells onDraw of the owners a renderable handed no\ncolumn holds, by drawing it at one column and dropping the output, and only\nwhen someone listens.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "8e8e8942c7eac7d44155827652a53e1ac999d07f",
-      "timestamp": "2026-10-18T05:52:49.119Z",
+      "sha": "c74a7d09088ea43560669f0392df3fd69e4fc93e",
+      "timestamp": "2026-10-18T07:02:52.745Z",
       "commits": [
         {
-          "sha": "8e8e8942c7eac7d44155827652a53e1ac999d07f",
+          "sha": "c74a7d09088ea43560669f0392df3fd69e4fc93e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T23:51:11-06:00",
-          "message": "Every child is drawn through protocol's render, so one handed no column draws nothing, as under Rich's Console.render (rich-unfiled-791c.wyrk) (#470)\n\n* Every child is drawn through protocol's render, so one handed no column draws nothing, as under Rich's Console.render (rich-unfiled-791c.wyrk)\n\nrender(renderable, options) in src/core/protocol.ts is the one place the\nunder-one-column rule is kept; every src/ call of a Renderable's render goes\nthrough it, and test/seam/render-calls.test.ts fails on one that does not.\nThe drawsNothing checks in Padding, Panel, Table, Traceback and Markdown are\ngone. Tree no longer holds a row for a label that drew nothing, as Rich's\ndoes not. squeezed-child.golden.json pins Rich 15's rows for Padding, Panel,\nConstrain, Tree, Layout and Markdown at a width that leaves the child none.\n\n* render is exported and the protocol page draws children through it; the render-calls gate sees an optional-chained receiver (rich-unfiled-791c.wyrk review)\n\n* An empty block placed by Align draws no row, pinned against Rich 15 (rich-unfiled-791c.wyrk review)\n\n* A tree label that draws nothing has no row, as Rich 15's; the comment no longer says only a squeezed one (rich-unfiled-791c.wyrk review)"
+          "timestamp": "2026-10-18T01:01:09-06:00",
+          "message": "A widget its container hands no column is held in the view, not drawn, so it keeps focus and nothing renders for it (rich-widgets-hmk1.kvc) (#472)\n\n* A widget its container hands no column is held in the view, not drawn, so it keeps focus and nothing renders for it (rich-widgets-hmk1.kvc)\n\nprotocol's render is the one reporter of what the view holds: RenderOptions.onDraw,\ncalled by WidgetBase, becomes onPresent(renderable, \"drawn\" | \"held\"), called by\nrender for every renderable it is asked for. Under one column a renderable is held:\nrender walks the Composite.contents() of what it holds, reports each held, and\nrenders nothing, so a Viewport's offset or a TextInput's scroll window is never\ncommitted at a width that is not shown.\n\nEvery exported container implements Composite. The method is contents(), not the\nchildren() the seam named, because Tree.children and Layout.children are already\nRich's names for subtrees and panes. test/renderables/contents.test.ts holds each\nexported renderable's contents() to what its render draws.\n\nWidgetApp settles focus over the widgets the frame holds, drawn or held, and exposes\nthem as WidgetApp.present.\n\n* Tab from a widget held on no column moves to its neighbour in document order; review fixes (rich-widgets-hmk1.kvc)\n\nThe focus manager reads the view's document order and its on-screen widgets\nfrom one FocusView, so settle takes no argument and next/prev step from the\ncurrent widget's place in the view rather than its place on screen.\n\nAlso: Panel's and Table's moved JSDocs back onto their members, one cellAt for\nTable's blank-cell fallback, Composite says it commits no state rather than\nthat it is pure, and contents.test holds Table without its header and Tree with\nits root hidden.\n\n* A held widget paints no overlay, pinned with the terminal wide enough to show one (rich-widgets-hmk1.kvc)"
         }
       ]
     }
