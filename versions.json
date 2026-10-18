@@ -4,15 +4,22 @@
     {
       "version": "pr-463",
       "ref": "refs/pull/463/merge",
-      "sha": "9fdbedaaf2fca3450236d18417a11a268c9a04d5",
-      "timestamp": "2026-10-18T00:04:08.967Z",
+      "sha": "8a72e57cb0d895b5d394c0b172a4e09df5d224e6",
+      "timestamp": "2026-10-18T00:11:23.920Z",
       "commits": [
         {
-          "sha": "9fdbedaaf2fca3450236d18417a11a268c9a04d5",
+          "sha": "8a72e57cb0d895b5d394c0b172a4e09df5d224e6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T18:02:22-06:00",
-          "message": "Merge dd108ac574ac8239ee4989de3dc4ff608af6b37c into 2b1c5dc78fc6f349f4256240f7f0c8e2d27927d4\n"
+          "timestamp": "2026-10-18T00:09:51Z",
+          "message": "Merge 7cf5f8abc03663ee8f169365fcc174a8d35ff521 into 2b1c5dc78fc6f349f4256240f7f0c8e2d27927d4\n"
+        },
+        {
+          "sha": "7cf5f8abc03663ee8f169365fcc174a8d35ff521",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T18:09:47-06:00",
+          "message": "Heading level is typed 1-6 at the parser, every level's own key and the rule's are pinned, and the docs name them (rich-unfiled-791c.n0a3)\n"
         },
         {
           "sha": "dd108ac574ac8239ee4989de3dc4ff608af6b37c",
