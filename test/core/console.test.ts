@@ -1772,6 +1772,7 @@ describe("Console theme resolution", () => {
     { label: "TimeRemainingColumn", name: "progress.remaining", make: () => progressOf(new TimeRemainingColumn()) },
     { label: "TimeElapsedColumn", name: "progress.elapsed", make: () => progressOf(new TimeElapsedColumn()) },
     { label: "Markdown heading", name: "markdown.h1", make: () => new Markdown("# Title") },
+    { label: "Markdown rule", name: "markdown.hr", make: () => new Markdown("---") },
     { label: "Markdown inline code", name: "markdown.code", make: () => new Markdown("run `ls`") },
     { label: "Markdown inlineCodeStyle", name: "my.code", make: (name) => new Markdown("run `ls`", { inlineCodeStyle: name }) },
     { label: "Markdown link", name: "markdown.link_url", make: () => new Markdown("[a](https://example.com)") },

@@ -24,6 +24,9 @@ interface TableColumn<Text> {
   readonly align: CellAlign;
 }
 
+/** A heading's level: an ATX heading's count of `#`s, or 1 and 2 for a setext heading's `=` and `-`. */
+export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
+
 /**
  * A block, its text as `Text`: the source's own text after the block pass,
  * and that text read into inlines after the inline pass, which is what
@@ -31,7 +34,7 @@ interface TableColumn<Text> {
  * none, once the inline pass has dropped its marks.
  */
 export type MdToken<Text = readonly Inline[], Mark = never> =
-  | { type: "heading"; level: number; text: Text }
+  | { type: "heading"; level: HeadingLevel; text: Text }
   | { type: "paragraph"; text: Text }
   | { type: "code_block"; code: string }
   | { type: "hr" }
@@ -786,7 +789,8 @@ function tokenize(lines: Lines, level: number): { tokens: Block[]; end: number }
     // Heading
     const headingMatch = HEADING.exec(body(line));
     if (headingMatch) {
-      tokens.push({ type: "heading", level: headingMatch[0].length, text: pyStrip(body(line).slice(headingMatch[0].length).replace(HEADING_CLOSE, "")) });
+      // [LAW:parse-dont-validate] `HEADING` matches one to six `#`s, so its length is a level.
+      tokens.push({ type: "heading", level: headingMatch[0].length as HeadingLevel, text: pyStrip(body(line).slice(headingMatch[0].length).replace(HEADING_CLOSE, "")) });
       i++;
       continue;
     }
