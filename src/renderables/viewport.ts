@@ -19,9 +19,9 @@
  * against exists before a render: the rows come from the budget the render is
  * handed, and the content's length from rendering it at the width it is handed.
  * So `scrollTo`, `scrollBy` and `ensureVisible` do not move anything when they
- * are called. Each queues a move, and the next render resolves the queue in
- * call order, clamping after every move, against the rows and length that
- * render found. Calling an operation before the first render, or three of them
+ * are called. Each queues a move, and the next render that draws the content
+ * resolves the queue in call order, clamping after every move, against the
+ * rows and length that render found. Calling an operation before the first render, or three of them
  * between two renders, is the same code path as calling one.
  *
  * Every cell of its rows, gutter included, is stamped as its own
@@ -201,25 +201,20 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
     const gutter = this.gutter;
     const contentWidth = this.contentWidth(options.maxWidth);
     const lines = Segment.splitLines(render(this.content, { ...options, maxWidth: contentWidth }));
-    // Content handed no column is held, not drawn, so this render learns its
-    // rows but not its length: the length is the one last drawn, and an
-    // offset clamped against the nothing that came back would reset.
-    const length = drawsNothing({ maxWidth: contentWidth }) ? this._extent.lines : lines.length;
-    const extent: Extent = { rows: viewRows(height, this.rows, lines.length), lines: length };
-    const followed = this._followed;
-    const wasShown = followed.start >= this._offset && followed.end <= this._offset + this._extent.rows;
-    this._extent = extent;
-    if (!Number.isNaN(followed.rows) && followed.rows !== extent.rows && wasShown) {
-      this.ensureVisible(followed.start, followed.end);
-    }
-    if (!Number.isNaN(followed.start)) this._followed = { ...followed, rows: extent.rows };
-    this._offset = this.resolve(extent);
-    this._moves = [];
+    // [LAW:no-ambient-temporal-coupling] Content handed no column is held, not
+    // drawn, so this render learns its budget but not the content's length. It
+    // commits nothing: the offset, the followed range and the queued moves wait
+    // for a render that draws, and this one draws the scrollbar against the
+    // length the last one found.
+    const held = drawsNothing({ maxWidth: contentWidth });
+    const length = held ? this._extent.lines : lines.length;
+    const extent: Extent = { rows: viewRows(height, this.rows, length), lines: length };
+    const offset = held ? clampOffset(this._offset, extent) : this.commit(extent);
 
-    const shown = fitHeight(lines.slice(this._offset, this._offset + extent.rows), { rows: extent.rows, exact: true });
-    // [LAW:no-ambient-temporal-coupling] The thumb is drawn from the offset
-    // this render just resolved, not from `offset` as it stood before it.
-    const thumb = thumbRows(extent, this._offset);
+    const shown = fitHeight(lines.slice(offset, offset + extent.rows), { rows: extent.rows, exact: true });
+    // The thumb is drawn from the offset this render resolved, not from
+    // `offset` as it stood before it.
+    const thumb = thumbRows(extent, offset);
     // The content's cells and the gutter's drawn cells sum to the offer: a
     // gutter wider than the whole offer is drawn cropped to it.
     const drawn = Math.min(gutter, options.maxWidth);
@@ -242,6 +237,25 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
       yield* line;
       yield Segment.line();
     }
+  }
+
+  /**
+   * What a render that drew the content found, made the viewport's: `extent`
+   * is the rows and length the next move is clamped against, a followed range
+   * that was in view is kept in view if the rows changed, and the queued moves
+   * resolve into the offset this returns.
+   */
+  private commit(extent: Extent): number {
+    const followed = this._followed;
+    const wasShown = followed.start >= this._offset && followed.end <= this._offset + this._extent.rows;
+    this._extent = extent;
+    if (!Number.isNaN(followed.rows) && followed.rows !== extent.rows && wasShown) {
+      this.ensureVisible(followed.start, followed.end);
+    }
+    if (!Number.isNaN(followed.start)) this._followed = { ...followed, rows: extent.rows };
+    this._offset = this.resolve(extent);
+    this._moves = [];
+    return this._offset;
   }
 
   /**

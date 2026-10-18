@@ -331,16 +331,49 @@ describe("the scrollbar", () => {
     expect(rows(new Viewport(numbered(2), { scrollbar: SCROLLBAR }), undefined, 0)).toEqual([]);
   });
 
-  // Held, the content tells this render nothing about its length, so the
-  // offset is clamped against the length last drawn rather than against none.
-  it("keeps its offset and its thumb across a render that hands its content no column", () => {
-    const viewport = new Viewport(numbered(20), { scrollbar: SCROLLBAR });
-    viewport.scrollTo(10);
-    const drawn = bar(viewport, region(5));
-    expect(viewport.offset).toBe(10);
-    expect(bar(viewport, region(5), 1)).toBe(drawn);
-    expect(viewport.offset).toBe(10);
-    expect(shown(viewport, region(5))[0]).toMatch(/^10 /);
+  // Held, the content tells a render nothing about its length, so that render
+  // commits nothing: it draws the scrollbar the last drawn render left.
+  describe("across a render that hands its content no column", () => {
+    it("keeps its offset and its thumb, under a region, a ceiling or no height", () => {
+      for (const height of [region(5), ceiling(5), undefined]) {
+        const viewport = new Viewport(numbered(20), { scrollbar: SCROLLBAR });
+        viewport.scrollTo(10);
+        const drawn = rows(viewport, height);
+        const offset = viewport.offset;
+        expect(bar(viewport, height, 1)).toBe(drawn.map((row) => row.slice(-1)).join(""));
+        expect(viewport.offset).toBe(offset);
+        expect(rows(viewport, height)).toEqual(drawn);
+      }
+    });
+
+    it("keeps a followed range where the last drawn render left it", () => {
+      const viewport = new Viewport(numbered(20), { scrollbar: SCROLLBAR });
+      viewport.scrollTo(10);
+      shown(viewport, ceiling(5));
+      viewport.follow(12, 13);
+      shown(viewport, ceiling(5));
+      shown(viewport, ceiling(5), 1);
+      expect(viewport.offset).toBe(10);
+      expect(shown(viewport, ceiling(5))[0]).toMatch(/^10 /);
+    });
+
+    it("reports no move past the last full view the last drawn render found", () => {
+      const viewport = new Viewport(numbered(20), { scrollbar: SCROLLBAR });
+      viewport.scrollTo(15);
+      shown(viewport, ceiling(5));
+      shown(viewport, ceiling(5), 1);
+      expect(viewport.canScrollBy(1)).toBe(false);
+    });
+
+    it("leaves a move queued meanwhile for the next render that draws the content", () => {
+      const viewport = new Viewport(numbered(20), { scrollbar: SCROLLBAR });
+      viewport.scrollTo(10);
+      const drawn = bar(viewport, region(5));
+      viewport.scrollTo(0);
+      expect(bar(viewport, region(5), 1)).toBe(drawn);
+      expect(viewport.offset).toBe(10);
+      expect(shown(viewport, region(5))[0]).toMatch(/^0 /);
+    });
   });
 
   it("resolves its styles against the theme it renders for", () => {
