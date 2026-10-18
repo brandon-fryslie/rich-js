@@ -166,7 +166,7 @@ single cell of content shows only what that mode can fit in one cell.
 A column with an explicit `width` and no `ratio` is a reservation rather than a bid: it is paid
 ahead of the elastic share, so its neighbours give up their width first. It comes
 out of what the frame and the dividers leave, so a width too small to
-cover every reservation shrinks reserved columns too, in column order. Columns
+cover every reservation shrinks reserved columns too, evenly, as Rich does. Columns
 with a `ratio` sit at the other end — they take whatever the bounded columns
 leave, split by Rich's rule: each ratio column's share, padding included,
 rounded up, so the spare cells go to the leftmost, and never below the column's

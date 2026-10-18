@@ -285,11 +285,15 @@ function layoutTable(
     seated++;
   }
 
-  // Reservations are paid in column order. A budget too small to cover them
-  // all runs out partway, which costs the trailing columns their width but
-  // never costs the table its frame.
+  // Reservations are paid next, and a budget too small to cover them all cuts
+  // them evenly, as the reference's last-resort `ratio_reduce` cuts columns
+  // that may not wrap — never one column to nothing while another keeps its
+  // whole width, and never the table's frame.
   const seatedDemands = demands.slice(0, seated);
-  const reserved = seatedDemands.map((demand) => take(demand.reserved));
+  const reserved = reduceToFit(
+    budget,
+    seatedDemands.map((demand) => ({ want: demand.reserved, kept: 0, wrapable: false })),
+  ).map(take);
 
   // What is left to apportion is the rest of what each column wanted: its
   // minimum first, for every column, and only then the width past it. A table
@@ -967,8 +971,10 @@ export class Table implements Renderable, Measurable {
     }
     if (col.width !== undefined) {
       // [LAW:single-enforcer] floored where it is parsed, the same rule
-      // `normalizePadding` applies to a negative padding side.
-      const declared = padded(demandCells(col.width));
+      // `normalizePadding` applies to a negative padding side. Held to the
+      // width inside the frame, the reference's `with_maximum(max_width)`, so
+      // an even cut starts from what the table can hold.
+      const declared = Math.min(padded(demandCells(col.width)), options.maxWidth);
       return {
         reserved: declared,
         minimum: declared,
