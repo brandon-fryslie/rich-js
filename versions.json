@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-464",
+      "ref": "refs/pull/464/merge",
+      "sha": "d04f8bbc975aaca119719d68fcac5fc07211629a",
+      "timestamp": "2026-10-18T00:33:56.446Z",
+      "commits": [
+        {
+          "sha": "d04f8bbc975aaca119719d68fcac5fc07211629a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T18:32:38-06:00",
+          "message": "Merge 31317bc4eabcd44681da26b5271585b9ad126dc9 into f624313ade91bb59d5ed6f6217198033b3d024a0\n"
+        },
+        {
+          "sha": "31317bc4eabcd44681da26b5271585b9ad126dc9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T18:32:34-06:00",
+          "message": "Padding pays its sides in full and draws content left no column as nothing, as Rich's does, so a narrow Markdown code block draws only its padding rows (rich-unfiled-791c.sk1p)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f624313ade91bb59d5ed6f6217198033b3d024a0",
