@@ -116,8 +116,10 @@ export type Inline =
  * any quote has taken it so, and `"item"` while only list items have. Either
  * is indented less than any block, as markdown-it reads it, but an `"item"`
  * line keeps its indentation for a list item, which markdown-it measures from
- * the container of the innermost list it sits in: that container's margin is
- * the line's, and may be a table's header row (`headerLine`).
+ * the container of the innermost list it sits in. Its margin is where that
+ * container starts, as far past the line's own `quoteStart` as it starts past
+ * the list's marker line's (`ItemStart.listIndent`). An `"item"` line may be a
+ * table's header row (`headerLine`).
  */
 interface Line {
   readonly text: string;
@@ -306,10 +308,11 @@ function dropColumns(line: Line, n: number): string {
  * as a line of the item, absent when the item opens with a blank line. An item
  * opening with a blank line, or with indented code, has its content one space
  * past the marker. The indent is counted from each line's own margin, as
- * markdown-it counts a quote's lines from each one's own `>`, and so is
- * `listIndent`, markdown-it's: how far the list's container starts past the
- * marker line's quote content, which a line short of the item is measured
- * from past its own.
+ * markdown-it counts a quote's lines from each one's own `>`. `listIndent` is
+ * markdown-it's: how far past the marker line's `quoteStart` the list's
+ * container starts. It is counted from the quote and not from column 0
+ * because a later line under a `>` at another column starts that container
+ * as far past its own `quoteStart`.
  * `marker` is CommonMark's two kinds: a bullet, or an ordered item's number
  * and the delimiter that closes it, `.` or `)`.
  */

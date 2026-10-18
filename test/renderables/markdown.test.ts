@@ -394,6 +394,7 @@ describe("Markdown", () => {
     expect(rows(">\t -\ta\n \t>\t - b", 40)).toEqual(["", "▌  • a", "▌  • b", ""]);
     expect(rows(">  -\ta\n    > - b", 40)).toEqual(["", "▌  • a", "▌  • b", ""]);
     // A line short of the inner list measures from that list's container, not from the outer item it is lazy to.
+    // Master passes this too: it is here to refuse the fix that keeps a short line's own margin, which breaks it.
     expect(rows("-\n\t-    *   >#1.\n\t  *     >\t\nb \n", 40)).toEqual(["", " •  •  • ▌ #1.", "", "    *     >", "", "", "b", ""]);
   });
 
