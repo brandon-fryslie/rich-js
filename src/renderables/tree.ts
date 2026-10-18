@@ -190,7 +190,7 @@ export class Tree implements Renderable, Measurable {
    * [LAW:single-enforcer] Tree also owns its row boundaries here rather than
    * depending on label renderables to invent trailing newlines: the label's
    * output is cut into lines and every line ends where Tree ends it. A label
-   * that emits nothing — one left no column among them — has no row, and one
+   * that emits nothing — one left no column, say — has no row, and one
    * that ends in a newline of its own gets the blank row that line is, as in
    * Rich — padded to the label's width when the label is justified.
    *

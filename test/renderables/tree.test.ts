@@ -321,4 +321,14 @@ describe("Tree", () => {
     tree.add(new RichText("kid\n"));
     expect(collectLines(tree, { maxWidth: 40 })).toEqual(["root", "└── kid", "    "]);
   });
+
+  // Python Rich 15 at width 20: a label that yields nothing has no row, and an
+  // empty text with no end still yields its one empty line, so it keeps one.
+  it("gives a label that draws nothing no row, and an empty text its row, as Rich does", () => {
+    const tree = new Tree("root");
+    tree.add({ render: () => [] });
+    tree.add(new RichText("", { end: "" }));
+    tree.add("leaf");
+    expect(collectLines(tree, { maxWidth: 20 })).toEqual(["root", "├── ", "└── leaf"]);
+  });
 });
