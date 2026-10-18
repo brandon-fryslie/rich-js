@@ -306,15 +306,17 @@ function dropColumns(line: Line, n: number): string {
  * as a line of the item, absent when the item opens with a blank line. An item
  * opening with a blank line, or with indented code, has its content one space
  * past the marker. The indent is counted from each line's own margin, as
- * markdown-it counts a quote's lines from each one's own `>`; `margin` is the
- * marker line's, the list's container's — markdown-it's `listIndent`.
+ * markdown-it counts a quote's lines from each one's own `>`, and so is
+ * `listIndent`, markdown-it's: how far the list's container starts past the
+ * marker line's quote content, which a line short of the item is measured
+ * from past its own.
  * `marker` is CommonMark's two kinds: a bullet, or an ordered item's number
  * and the delimiter that closes it, `.` or `)`.
  */
 interface ItemStart {
   readonly marker: { readonly bullet: string } | { readonly delimiter: string; readonly start: number };
   readonly indent: number;
-  readonly margin: number;
+  readonly listIndent: number;
   readonly first: Line | undefined;
 }
 
@@ -332,7 +334,7 @@ function itemStart(line: Line): ItemStart | undefined {
   return {
     marker: m[1] === undefined ? { bullet: m[0] } : { delimiter: m[0].slice(-1), start: parseInt(m[1], 10) },
     indent: content - line.margin,
-    margin: line.margin,
+    listIndent: line.margin - line.quoteStart,
     first: rest === "" ? undefined : { ...line, marked: line.text.length - after.length, margin: content, lead: markerEnd + spaced, lazy: false },
   };
 }
@@ -618,7 +620,7 @@ function titleAt(text: string, start: number, takeLines: () => string): { end: n
 function* itemLines(item: ItemStart, lines: Lines, start: number): Generator<Line> {
   const held = (line: Line): boolean => !line.lazy && indentOf(line) >= item.indent;
   const inItem = (line: Line): Line => ({ ...line, margin: line.margin + item.indent, lazy: false });
-  const short = (line: Line): Line => ({ ...line, margin: item.margin, lazy: "item" });
+  const short = (line: Line): Line => ({ ...line, margin: line.quoteStart + item.listIndent, lazy: "item" });
   // Whether the item holds a line with text yet, which a blank line or a lazy one must come after.
   let text = item.first !== undefined;
   if (item.first !== undefined) yield item.first;

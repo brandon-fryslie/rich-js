@@ -388,6 +388,15 @@ describe("Markdown", () => {
     expect(rows("  > >  \t>\t 1. a", 40)).toEqual(["", "▌ ▌ ▌  1 . a", ""]);
   });
 
+  it("measures a list item's line under a `>` from that line's own quote, as Rich does", () => {
+    // Rich 15's rows. The second `>` sits at another column than the first, so the line is a new item, not lazy text.
+    expect(rows("> -    a\n    > - b", 40)).toEqual(["", "▌  • a", "▌  • b", ""]);
+    expect(rows(">\t -\ta\n \t>\t - b", 40)).toEqual(["", "▌  • a", "▌  • b", ""]);
+    expect(rows(">  -\ta\n    > - b", 40)).toEqual(["", "▌  • a", "▌  • b", ""]);
+    // A line short of the inner list measures from that list's container, not from the outer item it is lazy to.
+    expect(rows("-\n\t-    *   >#1.\n\t  *     >\t\nb \n", 40)).toEqual(["", " •  •  • ▌ #1.", "", "    *     >", "", "", "b", ""]);
+  });
+
   it("draws a tab in code as spaces to the code's own stops, never a raw tab", () => {
     expect(rows("- a\n\n  ```\n  \tx\n  ```", 20)).toEqual(["", " • a", "", "        x", "", ""]);
     expect(rows("    \tx", 20)).toEqual(["", "     x", "", ""]);
