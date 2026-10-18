@@ -777,3 +777,78 @@ xxxxyy…
 
 grid-no-wrap 8
 xxxxyyzz
+
+no-wrap-beside-declared-width 3
+┌┬┐
+│││
+└┴┘
+
+no-wrap-beside-declared-width 4
+┌─┬┐
+│ ││
+└─┴┘
+
+no-wrap-beside-declared-width 5
+┌─┬─┐
+│ │ │
+└─┴─┘
+
+no-wrap-beside-declared-width 6
+┌─┬──┐
+│ │  │
+└─┴──┘
+
+no-wrap-beside-declared-width 7
+┌──┬──┐
+│  │  │
+└──┴──┘
+
+no-wrap-beside-declared-width 8
+┌───┬──┐
+│ … │  │
+└───┴──┘
+
+no-wrap-beside-declared-width 9
+┌───┬───┐
+│ … │ x │
+└───┴───┘
+
+no-wrap-beside-declared-width 10
+┌────┬───┐
+│ a… │ x │
+└────┴───┘
+
+no-wrap-beside-declared-width 11
+┌─────┬───┐
+│ ab… │ x │
+└─────┴───┘
+
+no-wrap-beside-declared-width 12
+┌──────┬───┐
+│ abc… │ x │
+└──────┴───┘
+
+no-wrap-beside-declared-width 13
+┌──────┬────┐
+│ abc… │ x  │
+└──────┴────┘
+
+no-wrap-beside-declared-width 14
+┌──────┬─────┐
+│ abc… │ x   │
+└──────┴─────┘
+
+no-wrap-beside-declared-width 15
+┌───────┬─────┐
+│ abcd… │ x   │
+└───────┴─────┘
+
+no-wrap-beside-declared-width 16
+┌────────┬─────┐
+│ abcdef │ x   │
+└────────┴─────┘
+
+no-wrap-beside-declared-width 17
+┌────────┬──────┐
+│ abcdef │ x    │
+└────────┴──────┘

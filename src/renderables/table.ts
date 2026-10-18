@@ -25,15 +25,18 @@ import { Measurement } from "../core/measure.js";
 // --- Width division ---
 
 /**
- * What one column asks of the width division: cells it takes off the top,
- * cells it would use if the table were not squeezed, how hard it pulls when
- * the cells run short, its share of the cells left once every column has what
- * it wanted, and whether it grows into whatever the shares leave.
+ * What one column asks of the width division: cells it cannot give up
+ * without cutting its content, cells it would use if the table were not
+ * squeezed, how hard it pulls when the cells run short, its share of the cells
+ * left once every column has what it wanted, and whether it grows into
+ * whatever the shares leave.
  *
- * A declared `width` is a reservation rather than a bid — it is paid before
- * anyone competes, because a column told to be four cells wide is not asking
- * for a proportional share of four. A plain column reserves nothing and both
- * wants and weighs its natural content width. A ratio column wants its floor —
+ * A declared `width` is a minimum rather than a bid — its whole want, weighing
+ * nothing, because a column told to be four cells wide is not asking for a
+ * proportional share of four. It may not wrap, so a squeezed table cuts it
+ * only where it cuts a `noWrap` column, and evenly with one, as the
+ * reference's last-resort `ratio_reduce` does. A plain column both wants and
+ * weighs its natural content width. A ratio column wants its floor —
  * its `width`, else its `minWidth`, else one cell — and takes its `ratio` of
  * what the bounded columns leave: a pass of its own, because a ratio is a proportion and a `weight` is a count of cells, and
  * weighing one against the other let `ratio: 100` truncate a neighbour the
@@ -66,7 +69,6 @@ import { Measurement } from "../core/measure.js";
  * columns with `maximum or 0`.
  */
 interface ColumnDemand {
-  readonly reserved: number;
   readonly minimum: number;
   readonly want: number;
   readonly weight: number;
@@ -235,7 +237,7 @@ interface TableFrame {
  * each site.
  *
  * Cells are handed out in priority order — the pair of edge columns, then the
- * divider before each column, then reservations, then every column's minimum,
+ * divider before each column, then every column's minimum,
  * then the rest of what each wants. What is divided is a cell's whole width,
  * its padding included, as the reference's `_calculate_column_widths` divides
  * it, and a cell pays its padding before its content: a column squeezed below
@@ -285,29 +287,20 @@ function layoutTable(
     seated++;
   }
 
-  // Reservations are paid next, and a budget too small to cover them all cuts
-  // them evenly, as the reference's last-resort `ratio_reduce` cuts columns
-  // that may not wrap — never one column to nothing while another keeps its
-  // whole width, and never the table's frame.
+  // Every column's minimum is paid next, and a budget too small for them all
+  // cuts them in the reference's order: the columns that may wrap first, then
+  // every column evenly, a declared width and a `noWrap` column alike — never
+  // one of them to nothing while another keeps its whole width, and never the
+  // table's frame. The rest of what each column wanted comes only after. A
+  // table whose columns all fit leaves this budget partly unspent.
   const seatedDemands = demands.slice(0, seated);
-  const reserved = reduceToFit(
-    budget,
-    seatedDemands.map((demand) => ({ want: demand.reserved, wrapable: false })),
-  ).map(take);
-
-  // What is left to apportion is the rest of what each column wanted: its
-  // minimum first, for every column, and only then the width past it. A table
-  // whose columns all fit leaves this budget partly unspent.
   const spent = (granted: readonly number[]): number =>
     granted.reduce((sum, width) => sum + width, 0);
   const holding = (...passes: ReadonlyArray<readonly number[]>): number[] =>
-    reserved.map((start, index) => passes.reduce((sum, granted) => sum + granted[index]!, start));
+    seatedDemands.map((_, index) => passes.reduce((sum, granted) => sum + granted[index]!, 0));
   const needed = reduceToFit(
     budget,
-    seatedDemands.map((demand, index) => ({
-      want: Math.max(0, demand.minimum - reserved[index]!),
-      wrapable: demand.wrapable,
-    })),
+    seatedDemands.map((demand) => ({ want: demand.minimum, wrapable: demand.wrapable })),
   );
   const afterNeeded = holding(needed);
   const beyond = distribute(
@@ -964,7 +957,6 @@ export class Table implements Renderable, Measurable, Composite {
     if (share > 0) {
       const floor = Math.max(1, demandCells(col.width ?? col.minWidth ?? 0));
       return {
-        reserved: 0,
         minimum: padded(floor),
         want: padded(floor),
         weight: floor,
@@ -981,7 +973,6 @@ export class Table implements Renderable, Measurable, Composite {
       // an even cut starts from what the table can hold.
       const declared = Math.min(padded(demandCells(col.width)), options.maxWidth);
       return {
-        reserved: declared,
         minimum: declared,
         want: declared,
         weight: 0,
@@ -1020,7 +1011,6 @@ export class Table implements Renderable, Measurable, Composite {
     // that keeps its content whole — the reference leaves `no_wrap` columns out
     // of the ones it collapses.
     return {
-      reserved: 0,
       minimum: col.noWrap ? natural : Math.min(natural, demandCells(this._bounded(col, range?.minimum ?? 1, pad))),
       want: natural,
       weight: natural,
