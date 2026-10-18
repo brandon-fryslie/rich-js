@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-466",
-      "ref": "refs/pull/466/merge",
-      "sha": "373697031a86a6cbf36d424e4f3fc1ccadb8a2ca",
-      "timestamp": "2026-10-18T02:49:53.631Z",
-      "commits": [
-        {
-          "sha": "373697031a86a6cbf36d424e4f3fc1ccadb8a2ca",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T02:48:10Z",
-          "message": "Merge 15a10f034c626f07f2eb8d4c18a2f2762def6386 into 9c6945f91ce460f095462ec717c70e928b7f6811\n"
-        },
-        {
-          "sha": "15a10f034c626f07f2eb8d4c18a2f2762def6386",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T20:48:06-06:00",
-          "message": "cutCells says its positions stop one short of the text's width, where the last piece comes from (rich-unfiled-791c.vzmy)\n"
-        },
-        {
-          "sha": "1b7c88cdc0d78d2b5efd5c55bc4e103bf99f6922",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T20:37:28-06:00",
-          "message": "cutCells stops at its last cut, cutAt is private, and Markdown's draw guards are named for and sized to what they time (rich-unfiled-791c.vzmy)\n\nA single cut near the start of a long segment walked and segmented all of it:\nsplitCells(80) on 1,000,000 ASCII characters took 131 ms, 0.45 ms now. cutAt has\ntwo callers that keep its cuts in range, so it is private rather than a public\nmethod with an unchecked precondition. The million-space link guard reads at\nits old size and draws at 50,000: drawing it at a million took 9.4 s.\n"
-        },
-        {
-          "sha": "ceb6c955542a3796e2dcd6ae49b3083f29cec4b6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T20:28:18-06:00",
-          "message": "Segment.divide cuts each segment once at every cut inside it, so wrapping a long line is linear in its length (rich-unfiled-791c.vzmy)\n\ncutCells takes every position in one walk; Segment.cutAt applies it with each\npiece's anchor shifted, and splitCells is its one-cut case. The Markdown\nlinearity guards now time drawing, not only reading.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "9c6945f91ce460f095462ec717c70e928b7f6811",
-      "timestamp": "2026-10-18T02:20:42.704Z",
+      "sha": "534656cf6b82f96769a822eab71a2b9c457248f4",
+      "timestamp": "2026-10-18T03:01:56.456Z",
       "commits": [
         {
-          "sha": "9c6945f91ce460f095462ec717c70e928b7f6811",
+          "sha": "534656cf6b82f96769a822eab71a2b9c457248f4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T20:18:56-06:00",
-          "message": "Markdown measures a list item's line under a `>` from that line's own quote, as markdown-it does (rich-unfiled-791c.jlk3) (#465)\n\n* Markdown measures a list item's line under a `>` from that line's own quote, as markdown-it does (rich-unfiled-791c.jlk3)\n\nmarkdown-it's listIndent and sCount count from each line's own quote content.\nA line short of an item took the marker line's margin as an absolute column,\nso a `>` at another column read as lazy text: \"> -    a\\n    > - b\" drew one\nitem \"a - b\" where Rich draws two. ItemStart now carries `listIndent`, the\ncontainer's margin past the marker line's quote content, and a short line\nadds it to its own `quoteStart`.\n\nKeeping the short line's own margin instead fixes this shape but breaks\nnested lists whose line is lazy to an outer item; the last case in the test\npins that.\n\nDifferential against markdown-it-py on 60k random quote/list/table inputs:\n0 regressions, 5 fixed, none left differing outside tables.\n\n* Markdown's Line and ItemStart docs say which frame a list container's margin is counted in (rich-unfiled-791c.jlk3)"
+          "timestamp": "2026-10-17T21:00:07-06:00",
+          "message": "Segment.divide cuts each segment once at every cut inside it, so wrapping a long line is linear (rich-unfiled-791c.vzmy) (#466)\n\n* Segment.divide cuts each segment once at every cut inside it, so wrapping a long line is linear in its length (rich-unfiled-791c.vzmy)\n\ncutCells takes every position in one walk; Segment.cutAt applies it with each\npiece's anchor shifted, and splitCells is its one-cut case. The Markdown\nlinearity guards now time drawing, not only reading.\n\n* cutCells stops at its last cut, cutAt is private, and Markdown's draw guards are named for and sized to what they time (rich-unfiled-791c.vzmy)\n\nA single cut near the start of a long segment walked and segmented all of it:\nsplitCells(80) on 1,000,000 ASCII characters took 131 ms, 0.45 ms now. cutAt has\ntwo callers that keep its cuts in range, so it is private rather than a public\nmethod with an unchecked precondition. The million-space link guard reads at\nits old size and draws at 50,000: drawing it at a million took 9.4 s.\n\n* cutCells says its positions stop one short of the text's width, where the last piece comes from (rich-unfiled-791c.vzmy)"
         }
       ]
     }
