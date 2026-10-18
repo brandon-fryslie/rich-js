@@ -129,4 +129,14 @@ describe("a list rebuilt every frame", () => {
     expect(frame(0)).toEqual(["d0", "e0"]);
     expect(frame(1)).toEqual(["b0", "c0"]);
   });
+
+  it("keeps where the wheel left it across a frame that hands its items no column", () => {
+    const viewport = new Viewport(new RichText(""), { scrollbar: SCROLLBAR });
+    const frame = (maxWidth: number) => shown(new ListView(viewport, items(1, 1, 1, 1, 1), 0), 2, maxWidth);
+    frame(10);
+    viewport.scrollBy(3);
+    expect(frame(10)[0]).toMatch(/^d0/);
+    frame(1);
+    expect(frame(10)[0]).toMatch(/^d0/);
+  });
 });
