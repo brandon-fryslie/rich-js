@@ -4,15 +4,22 @@
     {
       "version": "pr-468",
       "ref": "refs/pull/468/merge",
-      "sha": "8588effc1e28b469826d8c548440773cf5ff68b6",
-      "timestamp": "2026-10-18T03:32:27.766Z",
+      "sha": "c6186982cf6d4facc34d335dd9f2cf042c161602",
+      "timestamp": "2026-10-18T03:42:45.039Z",
       "commits": [
         {
-          "sha": "8588effc1e28b469826d8c548440773cf5ff68b6",
+          "sha": "c6186982cf6d4facc34d335dd9f2cf042c161602",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T21:30:45-06:00",
-          "message": "Merge b39e52fce1fadb3c86b52c80a7777ba6c28e8c1d into 336da3c128dde6fb1bee1115de633ff729a4d8e7\n"
+          "timestamp": "2026-10-18T03:41:01Z",
+          "message": "Merge 03aa4eca17b532ced8995ff182c8c6626b91b0d2 into 336da3c128dde6fb1bee1115de633ff729a4d8e7\n"
+        },
+        {
+          "sha": "03aa4eca17b532ced8995ff182c8c6626b91b0d2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T21:40:56-06:00",
+          "message": "Panel holds its body to the region at every width and owns its padding once (rich-unfiled-791c.lbr8)\n\nReview fixes: a span of no cells draws empty rows inside a region and padding\ntaller than the region is cropped, as Rich's render_lines does; padding is read\nback from the body rather than kept beside it; the accessory contract names the\nwidths where content does not render.\n"
         },
         {
           "sha": "b39e52fce1fadb3c86b52c80a7777ba6c28e8c1d",
