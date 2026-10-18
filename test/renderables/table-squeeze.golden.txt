@@ -1,0 +1,779 @@
+one-column 2
+┌┐
+││
+└┘
+
+one-column 3
+┌─┐
+│ │
+└─┘
+
+one-column 4
+┌──┐
+│  │
+└──┘
+
+one-column 5
+┌───┐
+│ … │
+└───┘
+
+one-column 6
+┌────┐
+│ ab │
+└────┘
+
+two-columns 3
+┌┬┐
+│││
+└┴┘
+
+two-columns 4
+┌─┬┐
+│ ││
+└─┴┘
+
+two-columns 5
+┌─┬─┐
+│ │ │
+└─┴─┘
+
+two-columns 6
+┌─┬──┐
+│ │  │
+└─┴──┘
+
+two-columns 7
+┌──┬──┐
+│  │  │
+└──┴──┘
+
+two-columns 8
+┌──┬───┐
+│  │ … │
+└──┴───┘
+
+two-columns 9
+┌───┬───┐
+│ … │ … │
+└───┴───┘
+
+two-columns 10
+┌────┬───┐
+│ ab │ … │
+└────┴───┘
+
+two-columns 11
+┌────┬────┐
+│ ab │ cd │
+└────┴────┘
+
+two-columns-header 3
+┏┳┓
+┃┃┃
+┡╇┩
+│││
+└┴┘
+
+two-columns-header 4
+┏━┳┓
+┃ ┃┃
+┡━╇┩
+│ ││
+└─┴┘
+
+two-columns-header 5
+┏━┳━┓
+┃ ┃ ┃
+┡━╇━┩
+│ │ │
+└─┴─┘
+
+two-columns-header 6
+┏━┳━━┓
+┃ ┃  ┃
+┡━╇━━┩
+│ │  │
+└─┴──┘
+
+two-columns-header 7
+┏━━┳━━┓
+┃  ┃  ┃
+┡━━╇━━┩
+│  │  │
+└──┴──┘
+
+two-columns-header 8
+┏━━┳━━━┓
+┃  ┃ … ┃
+┡━━╇━━━┩
+│  │ … │
+└──┴───┘
+
+two-columns-header 9
+┏━━━┳━━━┓
+┃ … ┃ … ┃
+┡━━━╇━━━┩
+│ … │ … │
+└───┴───┘
+
+two-columns-header 10
+┏━━━━┳━━━┓
+┃ h0 ┃ … ┃
+┡━━━━╇━━━┩
+│ ab │ … │
+└────┴───┘
+
+two-columns-header 11
+┏━━━━┳━━━━┓
+┃ h0 ┃ h1 ┃
+┡━━━━╇━━━━┩
+│ ab │ cd │
+└────┴────┘
+
+three-columns-uneven 4
+┌┬┬┐
+││││
+└┴┴┘
+
+three-columns-uneven 5
+┌┬─┬┐
+││ ││
+└┴─┴┘
+
+three-columns-uneven 6
+┌─┬┬─┐
+│ ││ │
+└─┴┴─┘
+
+three-columns-uneven 7
+┌─┬─┬─┐
+│ │ │ │
+└─┴─┴─┘
+
+three-columns-uneven 8
+┌─┬──┬─┐
+│ │  │ │
+└─┴──┴─┘
+
+three-columns-uneven 9
+┌──┬─┬──┐
+│  │ │  │
+└──┴─┴──┘
+
+three-columns-uneven 10
+┌──┬──┬──┐
+│  │  │  │
+└──┴──┴──┘
+
+three-columns-uneven 11
+┌──┬───┬──┐
+│  │   │  │
+└──┴───┴──┘
+
+three-columns-uneven 12
+┌───┬───┬──┐
+│   │   │  │
+└───┴───┴──┘
+
+three-columns-uneven 13
+┌───┬───┬───┐
+│   │   │   │
+└───┴───┴───┘
+
+three-columns-uneven 14
+┌───┬───┬────┐
+│   │   │    │
+└───┴───┴────┘
+
+three-columns-uneven 15
+┌────┬───┬────┐
+│    │   │    │
+└────┴───┴────┘
+
+three-columns-uneven 16
+┌────┬────┬────┐
+│    │    │    │
+└────┴────┴────┘
+
+three-columns-uneven 17
+┌────┬─────┬────┐
+│    │  b  │    │
+└────┴─────┴────┘
+
+three-columns-uneven 18
+┌─────┬─────┬────┐
+│  …  │  b  │    │
+└─────┴─────┴────┘
+
+three-columns-uneven 19
+┌─────┬─────┬─────┐
+│  …  │  b  │  …  │
+│     │     │  …  │
+└─────┴─────┴─────┘
+
+three-columns-uneven 20
+┌─────┬─────┬──────┐
+│  …  │  b  │  g…  │
+│     │     │  r…  │
+└─────┴─────┴──────┘
+
+three-columns-uneven 21
+┌──────┬─────┬──────┐
+│  a…  │  b  │  g…  │
+│      │     │  r…  │
+└──────┴─────┴──────┘
+
+three-columns-uneven 22
+┌───────┬─────┬──────┐
+│  al…  │  b  │  g…  │
+│       │     │  r…  │
+└───────┴─────┴──────┘
+
+three-columns-uneven 23
+┌───────┬─────┬───────┐
+│  al…  │  b  │  ga…  │
+│       │     │  ray  │
+└───────┴─────┴───────┘
+
+three-columns-uneven 24
+┌───────┬─────┬────────┐
+│  al…  │  b  │  gam…  │
+│       │     │  ray   │
+└───────┴─────┴────────┘
+
+three-columns-uneven 25
+┌────────┬─────┬────────┐
+│  alp…  │  b  │  gam…  │
+│        │     │  ray   │
+└────────┴─────┴────────┘
+
+three-columns-uneven 26
+┌─────────┬─────┬────────┐
+│  alpha  │  b  │  gam…  │
+│         │     │  ray   │
+└─────────┴─────┴────────┘
+
+three-columns-uneven 27
+┌─────────┬─────┬─────────┐
+│  alpha  │  b  │  gamma  │
+│         │     │  ray    │
+└─────────┴─────┴─────────┘
+
+three-columns-uneven 28
+┌─────────┬─────┬──────────┐
+│  alpha  │  b  │  gamma   │
+│         │     │  ray     │
+└─────────┴─────┴──────────┘
+
+three-columns-uneven 29
+┌─────────┬─────┬───────────┐
+│  alpha  │  b  │  gamma    │
+│         │     │  ray      │
+└─────────┴─────┴───────────┘
+
+three-columns-uneven 30
+┌─────────┬─────┬────────────┐
+│  alpha  │  b  │  gamma     │
+│         │     │  ray       │
+└─────────┴─────┴────────────┘
+
+three-columns-uneven 31
+┌─────────┬─────┬─────────────┐
+│  alpha  │  b  │  gamma ray  │
+└─────────┴─────┴─────────────┘
+
+padded-all-sides 3
+┌┬┐
+│││
+└┴┘
+
+padded-all-sides 4
+┌─┬┐
+│ ││
+│ ││
+└─┴┘
+
+padded-all-sides 5
+┌─┬─┐
+│ │ │
+│ │ │
+└─┴─┘
+
+padded-all-sides 6
+┌─┬──┐
+│ │  │
+│ │  │
+└─┴──┘
+
+padded-all-sides 7
+┌──┬──┐
+│  │  │
+│  │  │
+└──┴──┘
+
+padded-all-sides 8
+┌──┬───┐
+│  │   │
+│  │ … │
+│  │   │
+└──┴───┘
+
+padded-all-sides 9
+┌───┬───┐
+│   │   │
+│ … │ … │
+│   │   │
+└───┴───┘
+
+padded-all-sides 10
+┌────┬───┐
+│    │   │
+│ ab │ … │
+│    │   │
+└────┴───┘
+
+padded-all-sides 11
+┌────┬────┐
+│    │    │
+│ ab │ cd │
+│    │    │
+└────┴────┘
+
+declared-width 3
+┌┬┐
+│││
+└┴┘
+
+declared-width 4
+┌┬─┐
+││ │
+└┴─┘
+
+declared-width 5
+┌┬──┐
+││  │
+└┴──┘
+
+declared-width 6
+┌┬───┐
+││ … │
+└┴───┘
+
+declared-width 7
+┌┬────┐
+││ g… │
+└┴────┘
+
+declared-width 8
+┌┬─────┐
+││ gh… │
+└┴─────┘
+
+declared-width 9
+┌┬──────┐
+││ ghi… │
+└┴──────┘
+
+declared-width 10
+┌─┬──────┐
+│ │ ghi… │
+└─┴──────┘
+
+declared-width 11
+┌──┬──────┐
+│  │ ghi… │
+└──┴──────┘
+
+declared-width 12
+┌───┬──────┐
+│ … │ ghi… │
+│ … │      │
+└───┴──────┘
+
+declared-width 13
+┌────┬──────┐
+│ a… │ ghi… │
+│ d… │      │
+└────┴──────┘
+
+declared-width 14
+┌─────┬──────┐
+│ abc │ ghi… │
+│ def │      │
+└─────┴──────┘
+
+declared-width 15
+┌──────┬──────┐
+│ abc  │ ghi… │
+│ def  │      │
+└──────┴──────┘
+
+declared-width 16
+┌───────┬──────┐
+│ abc   │ ghi… │
+│ def   │      │
+└───────┴──────┘
+
+declared-width 17
+┌────────┬──────┐
+│ abc    │ ghi… │
+│ def    │      │
+└────────┴──────┘
+
+declared-width 18
+┌─────────┬──────┐
+│ abc def │ ghi… │
+└─────────┴──────┘
+
+two-declared-widths 3
+┏┳┓
+┃┃┃
+┡╇┩
+│││
+└┴┘
+
+two-declared-widths 4
+┏━┳┓
+┃ ┃┃
+┡━╇┩
+│ ││
+└─┴┘
+
+two-declared-widths 5
+┏━┳━┓
+┃ ┃ ┃
+┡━╇━┩
+│ │ │
+└─┴─┘
+
+two-declared-widths 6
+┏━┳━━┓
+┃ ┃  ┃
+┡━╇━━┩
+│ │  │
+└─┴──┘
+
+two-declared-widths 7
+┏━━┳━━┓
+┃  ┃  ┃
+┡━━╇━━┩
+│  │  │
+└──┴──┘
+
+two-declared-widths 8
+┏━━━┳━━┓
+┃ … ┃  ┃
+┡━━━╇━━┩
+│ x │  │
+└───┴──┘
+
+two-declared-widths 9
+┏━━━┳━━━┓
+┃ … ┃ … ┃
+┡━━━╇━━━┩
+│ x │ y │
+└───┴───┘
+
+two-declared-widths 10
+┏━━━┳━━━━┓
+┃ … ┃ h1 ┃
+┡━━━╇━━━━┩
+│ x │ y  │
+└───┴────┘
+
+two-declared-widths 11
+┏━━━┳━━━━━┓
+┃ … ┃ h1  ┃
+┡━━━╇━━━━━┩
+│ x │ y   │
+└───┴─────┘
+
+two-declared-widths 12
+┏━━━━┳━━━━━┓
+┃ h0 ┃ h1  ┃
+┡━━━━╇━━━━━┩
+│ x  │ y   │
+└────┴─────┘
+
+two-declared-widths 13
+┏━━━━┳━━━━━━┓
+┃ h0 ┃ h1   ┃
+┡━━━━╇━━━━━━┩
+│ x  │ y    │
+└────┴──────┘
+
+two-declared-widths 14
+┏━━━━┳━━━━━━━┓
+┃ h0 ┃ h1    ┃
+┡━━━━╇━━━━━━━┩
+│ x  │ y     │
+└────┴───────┘
+
+two-declared-widths 15
+┏━━━━━┳━━━━━━━┓
+┃ h0  ┃ h1    ┃
+┡━━━━━╇━━━━━━━┩
+│ x   │ y     │
+└─────┴───────┘
+
+two-declared-widths 16
+┏━━━━━━┳━━━━━━━┓
+┃ h0   ┃ h1    ┃
+┡━━━━━━╇━━━━━━━┩
+│ x    │ y     │
+└──────┴───────┘
+
+two-declared-widths 17
+┏━━━━━━┳━━━━━━━━┓
+┃ h0   ┃ h1     ┃
+┡━━━━━━╇━━━━━━━━┩
+│ x    │ y      │
+└──────┴────────┘
+
+no-wrap 3
+┌┬┐
+│││
+└┴┘
+
+no-wrap 4
+┌─┬┐
+│ ││
+└─┴┘
+
+no-wrap 5
+┌──┬┐
+│  ││
+└──┴┘
+
+no-wrap 6
+┌───┬┐
+│ … ││
+└───┴┘
+
+no-wrap 7
+┌────┬┐
+│ a… ││
+└────┴┘
+
+no-wrap 8
+┌─────┬┐
+│ ab… ││
+└─────┴┘
+
+no-wrap 9
+┌──────┬┐
+│ abc… ││
+└──────┴┘
+
+no-wrap 10
+┌───────┬┐
+│ abc … ││
+└───────┴┘
+
+no-wrap 11
+┌────────┬┐
+│ abc d… ││
+└────────┴┘
+
+no-wrap 12
+┌─────────┬┐
+│ abc def ││
+└─────────┴┘
+
+no-wrap 13
+┌─────────┬─┐
+│ abc def │ │
+└─────────┴─┘
+
+no-wrap 14
+┌─────────┬──┐
+│ abc def │  │
+└─────────┴──┘
+
+no-wrap 15
+┌─────────┬───┐
+│ abc def │ … │
+│         │ … │
+└─────────┴───┘
+
+no-wrap 16
+┌─────────┬────┐
+│ abc def │ gh │
+│         │ ij │
+└─────────┴────┘
+
+no-wrap 17
+┌─────────┬─────┐
+│ abc def │ gh  │
+│         │ ij  │
+└─────────┴─────┘
+
+no-wrap 18
+┌─────────┬──────┐
+│ abc def │ gh   │
+│         │ ij   │
+└─────────┴──────┘
+
+no-wrap 19
+┌─────────┬───────┐
+│ abc def │ gh ij │
+└─────────┴───────┘
+
+collapse-padding 4
+┌┬┬┐
+││││
+└┴┴┘
+
+collapse-padding 5
+┌┬─┬┐
+││ ││
+└┴─┴┘
+
+collapse-padding 6
+┌─┬┬─┐
+│ ││ │
+└─┴┴─┘
+
+collapse-padding 7
+┌─┬─┬─┐
+│ │ │ │
+└─┴─┴─┘
+
+collapse-padding 8
+┌─┬──┬─┐
+│ │  │ │
+└─┴──┴─┘
+
+collapse-padding 9
+┌──┬──┬─┐
+│  │  │ │
+└──┴──┴─┘
+
+collapse-padding 10
+┌──┬──┬──┐
+│  │  │  │
+└──┴──┴──┘
+
+collapse-padding 11
+┌──┬──┬───┐
+│  │  │…  │
+└──┴──┴───┘
+
+collapse-padding 12
+┌───┬──┬───┐
+│   │  │…  │
+└───┴──┴───┘
+
+collapse-padding 13
+┌───┬───┬───┐
+│   │…  │…  │
+└───┴───┴───┘
+
+collapse-padding 14
+┌───┬────┬───┐
+│   │cd  │…  │
+└───┴────┴───┘
+
+collapse-padding 15
+┌────┬────┬───┐
+│    │cd  │…  │
+└────┴────┴───┘
+
+collapse-padding 16
+┌────┬────┬────┐
+│    │cd  │ef  │
+└────┴────┴────┘
+
+collapse-padding 17
+┌─────┬────┬────┐
+│  …  │cd  │ef  │
+└─────┴────┴────┘
+
+collapse-padding 18
+┌──────┬────┬────┐
+│  ab  │cd  │ef  │
+└──────┴────┴────┘
+
+no-pad-edge 3
+┌┬┐
+│││
+└┴┘
+
+no-pad-edge 4
+┌─┬┐
+│ ││
+└─┴┘
+
+no-pad-edge 5
+┌─┬─┐
+│ │ │
+└─┴─┘
+
+no-pad-edge 6
+┌─┬──┐
+│ │ …│
+└─┴──┘
+
+no-pad-edge 7
+┌──┬──┐
+│… │ …│
+└──┴──┘
+
+no-pad-edge 8
+┌───┬──┐
+│ab │ …│
+└───┴──┘
+
+no-pad-edge 9
+┌───┬───┐
+│ab │ cd│
+└───┴───┘
+
+grid 1
+ 
+
+grid 2
+ …
+
+grid 3
+  …
+
+grid 4
+ … …
+
+grid 5
+… … …
+
+grid 6
+… … ef
+
+grid 7
+ab … ef
+
+grid 8
+ab cd ef
+
+grid-no-wrap 1
+…
+
+grid-no-wrap 2
+……
+
+grid-no-wrap 3
+x……
+
+grid-no-wrap 4
+xx……
+
+grid-no-wrap 5
+xx………
+
+grid-no-wrap 6
+xx…yy…
+
+grid-no-wrap 7
+xxxxyy…
+
+grid-no-wrap 8
+xxxxyyzz

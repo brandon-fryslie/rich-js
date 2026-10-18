@@ -119,11 +119,14 @@ Rich would draw all 40 and let the terminal wrap them. It fills the way `expand`
 does, so a column with its own `width` keeps it: a table whose every column
 declares one is as wide as those columns, not 40, where Rich would stretch them.
 
-Cells go out in a fixed order — the two outer border columns, then one content
-cell for each column together with the divider in front of it, then the padding,
-and only then does content grow back toward its natural width. Columns fill from
-the left, and a column the width cannot seat is dropped rather than drawn outside
-the frame. The same three-column table, declared at seven widths and set side
+A cell is its padding and then its content, and the width is divided over
+whole cells, padding included, as Rich's are: the two outer border columns,
+then the divider in front of each column, then every declared column
+[`width`](#column-options), then every column's narrowest whole cell, and only
+then the rest of what each column wants. So a cell pays its padding before its
+content, and one too narrow for its padding draws blank. A column the width
+leaves no cell is drawn as nothing between its dividers, and a column whose
+divider the width cannot hold is dropped rather than drawn outside the frame. The same three-column table, declared at seven widths and set side
 by side in a grid:
 
 ```typescript
@@ -136,7 +139,7 @@ const abc = (width: number) => {
   return t;
 };
 
-const widths = [2, 3, 4, 5, 7, 10, 13];
+const widths = [2, 4, 7, 10, 11, 12, 13];
 const ladder = Table.grid();
 // Each grid column is wide enough for its label and for its table.
 for (const w of widths) ladder.addColumn("", { width: Math.max(w, 8) });
@@ -146,25 +149,24 @@ ladder.addRow(...widths.map(abc));
 console.print(ladder);
 ```
 
-Those are the widths at which a new step of that order completes. In between, a
-padding level is bought for every column at once or not at all, so the cells
-it cannot yet buy go to content instead: asked for 11, the table draws the
-10-cell rung with one more cell in its first column.
+Width 4 holds the frame and every divider, each cell empty. By 7 every cell has
+one blank and by 10 its full padding; from there content arrives a column at a
+time, the order Rich's collapse hands back the cells, until every column holds
+its content at 13.
 
 Width 2 is the narrowest table that keeps its frame; below it the border columns
-are dropped too, and the table renders as bare content. In the other direction a
+are dropped too, and what width is left goes to dividers before any cell, so no
+content is drawn. In the other direction a
 table with no declared width never grows past its natural width — offer it 200
 columns and it still renders at 13 — unless it is built with [`expand`](#sizing).
 
-Because the padding is bought before content grows back, a table between those
-two ladders spends cells on padding while its columns are still truncated. Wide
-columns are cropped by their own `overflow` mode, so a column squeezed to a
-single cell shows only what that mode can fit in one cell.
+Wide columns are cropped by their own `overflow` mode, so a column squeezed to a
+single cell of content shows only what that mode can fit in one cell.
 
 A column with an explicit `width` and no `ratio` is a reservation rather than a bid: it is paid
 ahead of the elastic share, so its neighbours give up their width first. It comes
-out of what the frame, the seats and the padding leave, so a width too small to
-cover every reservation shrinks reserved columns too, in column order. Columns
+out of what the frame and the dividers leave, so a width too small to
+cover every reservation cuts the reserved columns evenly among themselves. Columns
 with a `ratio` sit at the other end — they take whatever the bounded columns
 leave, split by Rich's rule: each ratio column's share, padding included,
 rounded up, so the spare cells go to the leftmost, and never below the column's
