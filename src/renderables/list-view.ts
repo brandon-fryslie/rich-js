@@ -18,7 +18,7 @@
 
 import { Segment } from "../core/segment.js";
 import { Measurement, measureRenderables } from "../core/measure.js";
-import { withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { render, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import type { Viewport } from "./viewport.js";
 
@@ -60,7 +60,7 @@ export class ListView implements Renderable, Measurable {
     const { height: _height, ...rest } = bounded;
     const options = { ...rest, maxWidth: this.viewport.contentWidth(rest.maxWidth) };
     const gap: Segment[][] = Array.from({ length: this.gap }, () => []);
-    const drawn = this.items.map((item) => Segment.splitLines(item.render(options)));
+    const drawn = this.items.map((item) => Segment.splitLines(render(item, options)));
     // The gap sits between items, so every item before the selected one
     // brings its lines and one gap.
     const start = drawn.slice(0, this.selected).reduce((total, item) => total + item.length + this.gap, 0);
@@ -78,7 +78,7 @@ export class ListView implements Renderable, Measurable {
     // its offset to the lines that exist. Followed, not ensured: the wheel can
     // scroll away from the selection until the selection moves.
     this.viewport.follow(start - this.context, end + this.context);
-    yield* this.viewport.render(bounded);
+    yield* render(this.viewport, bounded);
   }
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {

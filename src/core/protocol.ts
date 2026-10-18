@@ -289,14 +289,24 @@ export function withCellWidth(options: RenderOptions): RenderOptions {
   return { ...options, maxWidth: cellCount(options.maxWidth) };
 }
 
-/**
- * Rich's `Console.render`, which every renderable is drawn through there:
- * under one column there is nothing to draw, so nothing is. Here a container
- * calls its child's `render` itself, so a container that can leave its child
- * no column asks this first.
- */
+/** Under one column there is nothing to draw, or to measure. */
 export function drawsNothing(options: { readonly maxWidth: number }): boolean {
-  return options.maxWidth < 1;
+  return cellCount(options.maxWidth) < 1;
+}
+
+/**
+ * `renderable` drawn under `options`: Rich's `Console.render`, which every
+ * renderable there is drawn through, so under one column nothing is.
+ *
+ * [LAW:single-enforcer] The one place that rule is kept. Every call of a
+ * `Renderable`'s `render` in `src/` goes through here — a container drawing
+ * its child, a renderable drawing the text it built, a host drawing a frame —
+ * and `test/seam/render-calls.test.ts` fails on one that does not. Before
+ * this, each container asked `drawsNothing` itself, and the ones that forgot
+ * drew a child handed no column anyway.
+ */
+export function render(renderable: Renderable, options: RenderOptions): Iterable<Segment> {
+  return drawsNothing(options) ? [] : renderable.render(options);
 }
 
 /**

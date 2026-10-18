@@ -56,6 +56,7 @@ import type { Beat } from "../core/easing.js";
 import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { JOIN, colorsOwnedBy } from "../core/strip.js";
 import { Style } from "../core/style.js";
@@ -225,7 +226,7 @@ export class Effected implements Renderable, Measurable {
   }
 
   render(options: RenderOptions): Iterable<Segment> {
-    const segments = this.renderable.render(options);
+    const segments = render(this.renderable, options);
     // With no colour output nothing the effect does is written, so the child
     // is what is shown, and it changes when the child says it does.
     if (options.colorSystem === null) return segments;

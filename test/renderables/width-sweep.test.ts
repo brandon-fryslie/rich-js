@@ -365,10 +365,13 @@ describe("width sweep", () => {
           const lines = renderAt(config, width);
           const widths = lines.map(cellLen);
 
+          // Under one column the contract is protocol's `render`, which draws
+          // nothing (test/core/protocol.test.ts); a direct call there, as this
+          // sweep makes, promises no row count.
           expect(
             lines.length,
             `emitted no line at all at maxWidth ${width}, which no bound on line width can catch`,
-          ).toBeGreaterThan(0);
+          ).toBeGreaterThanOrEqual(width === 0 ? 0 : 1);
 
           expect(
             Math.max(...widths),

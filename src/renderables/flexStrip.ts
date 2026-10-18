@@ -22,6 +22,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
+import { render } from "../core/protocol.js";
 import { drawItem, drawJoin, type Joiner, type StyledRenderable } from "../core/strip.js";
 
 export type FlexAlign = "left" | "center" | "right" | "justify";
@@ -41,7 +42,7 @@ interface RenderedBlock {
 }
 
 function renderToBlock(r: Renderable, options: RenderOptions): RenderedBlock {
-  const segments = [...r.render(options)];
+  const segments = [...render(r, options)];
   let width = 0;
   for (const s of segments) width += s.cellLength;
   return { segments, width };

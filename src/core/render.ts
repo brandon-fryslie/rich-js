@@ -47,6 +47,7 @@ import type { ColorSystemName, DetectColorOptions, Destination } from "./color.j
 import type { Env } from "./env.js";
 import type { Segment } from "./segment.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
+import { render } from "./protocol.js";
 import { OSC8_CLOSE, osc8Open } from "./osc8.js";
 
 // [LAW:one-source-of-truth] Handed to the render unchanged, so their contract is
@@ -147,5 +148,5 @@ export function renderToString(
     colorSystem: destination.colorSystem,
   };
 
-  return segmentsToString(renderable.render(renderOptions), destination);
+  return segmentsToString(render(renderable, renderOptions), destination);
 }

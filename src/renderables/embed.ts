@@ -25,6 +25,7 @@
 import { cellCount, cellLen, setCellSize } from "../core/cells.js";
 import { activeHighlighter, readStr } from "../core/markup.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import type { Style, TextStyle } from "../core/style.js";
 import { RichText } from "../core/text.js";
@@ -75,7 +76,7 @@ export class EmbeddedText implements Renderable, Measurable {
   }
 
   render(options: RenderOptions): Iterable<Segment> {
-    return this.text(options).render(options);
+    return render(this.text(options), options);
   }
 
   /**
@@ -175,7 +176,7 @@ export function present(content: string | RichText | undefined): content is stri
  */
 export function drawLabel(text: RichText, options: RenderOptions, base: Style | undefined): Segment[] {
   text.overflow = "ignore";
-  return [...Segment.applyStyle(text.render(options), base)];
+  return [...Segment.applyStyle(render(text, options), base)];
 }
 
 /**

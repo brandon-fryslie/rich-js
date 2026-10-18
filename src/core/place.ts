@@ -21,6 +21,7 @@
 import { Segment } from "./segment.js";
 import { Measurement } from "./measure.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
+import { render } from "./protocol.js";
 
 export type Alignment = "left" | "center" | "right";
 
@@ -50,7 +51,7 @@ export function placeBlock(
   // what it actually drew.
   const width = Measurement.get(options, renderable).maximum;
   const drawn = Segment.splitLines(
-    renderable.render({ ...options, maxWidth: width, height: undefined }),
+    render(renderable, { ...options, maxWidth: width, height: undefined }),
   );
   const [blockWidth, height] = Segment.getShape(drawn);
   const [left, right] = PADS[align](Math.max(0, options.maxWidth - blockWidth));

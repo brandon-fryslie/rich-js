@@ -158,6 +158,7 @@ export {
 
 // Protocol
 export {
+  render,
   isRenderable,
   isMeasurable,
   withCellWidth,

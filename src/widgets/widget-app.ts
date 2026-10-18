@@ -27,6 +27,7 @@
 import { Reaction } from "mobx";
 import { Segment } from "../core/segment.js";
 import type { Renderable, RenderOptions } from "../core/protocol.js";
+import { render } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { App, type AppOptions, type AppPhase, type Wheel } from "../host/app.js";
 import { DefaultFocusManager } from "./focus-manager.js";
@@ -172,10 +173,10 @@ export class WidgetApp implements FrameSource {
     // view shows — paints the next frame when it changes.
     // An overlay reports what it draws too: a widget in it is on the frame,
     // and visiting `drawn` in insertion order paints its overlay in turn.
-    const render = { ...options, onDraw };
+    const drawing = { ...options, onDraw };
     const lines = tracked(this.reaction, () => {
-      const base = Segment.splitLines(view().render(render));
-      for (const widget of drawn) paintOverlay(base, widget, render);
+      const base = Segment.splitLines(render(view(), drawing));
+      for (const widget of drawn) paintOverlay(base, widget, drawing);
       return base;
     });
     this.drawn = [...drawn];

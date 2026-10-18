@@ -323,9 +323,12 @@ describe("the scrollbar", () => {
     expect(bar(viewport, region(10))).toBe("│││││┃┃┃┃┃");
   });
 
+  // Content handed no column draws no rows, as Rich's `Console.render` draws
+  // nothing under one column, so the bar stands beside the rows a height asks for.
   it("gives the scrollbar the only cell there is, and draws nothing into no width at all", () => {
-    expect(rows(new Viewport(numbered(2), { scrollbar: SCROLLBAR }), undefined, 1)).toEqual(["┃", "┃"]);
-    expect(rows(new Viewport(numbered(2), { scrollbar: SCROLLBAR }), undefined, 0)).toEqual(["", ""]);
+    expect(rows(new Viewport(numbered(2), { scrollbar: SCROLLBAR }), region(2), 1)).toEqual(["┃", "┃"]);
+    expect(rows(new Viewport(numbered(2), { scrollbar: SCROLLBAR }), undefined, 1)).toEqual([]);
+    expect(rows(new Viewport(numbered(2), { scrollbar: SCROLLBAR }), undefined, 0)).toEqual([]);
   });
 
   it("resolves its styles against the theme it renders for", () => {

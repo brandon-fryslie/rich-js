@@ -35,7 +35,7 @@ import { frameRate, systemClock, type Clock, type FrameRate } from "../core/cloc
 import { Console, type ConsoleOptions } from "../core/console.js";
 import { Segment } from "../core/segment.js";
 import { SurfacePainter, type Surface } from "../core/paint.js";
-import { fitHeight, type Renderable } from "../core/protocol.js";
+import { fitHeight, render, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { hostEnvironment } from "./host-environment.js";
 import { InputParser, keyName, parseKeyName, type KeyPress, type ScreenMouseEvent } from "./input.js";
@@ -450,7 +450,7 @@ export class App {
     const height = this.painter.height(options.height.rows);
     // [LAW:no-ambient-temporal-coupling] The frame owner reads the clock,
     // once a frame; the view is handed the time as data.
-    const lines = Segment.splitLines(this.view(this.clock.now()).render({ ...options, height }));
+    const lines = Segment.splitLines(render(this.view(this.clock.now()), { ...options, height }));
     // The app set the budget, so the app shapes what comes back: no deeper
     // than the terminal — a taller frame would scroll the rows the painter
     // goes back over — and, as a region, exactly that deep.

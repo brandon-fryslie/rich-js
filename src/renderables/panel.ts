@@ -17,7 +17,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawable, drawsNothing, fitHeight, getStyle, insetHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { drawable, fitHeight, getStyle, insetHeight, render, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 /**
  * A lazily-resolved border accessory. Strings render inline in the
@@ -271,7 +271,7 @@ export class Panel implements Renderable, Measurable {
       maxWidth: spanWidth,
       height: insetHeight(options.height, 2),
     };
-    const lines = drawsNothing(bodyOptions) ? [] : Segment.splitLines(this._body.render(bodyOptions));
+    const lines = Segment.splitLines(render(this._body, bodyOptions));
     return fitHeight(lines, bodyOptions.height);
   }
 

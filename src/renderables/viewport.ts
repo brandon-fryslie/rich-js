@@ -52,6 +52,7 @@ import type {
   RenderOptions,
   Scrollable,
 } from "../core/protocol.js";
+import { render } from "../core/protocol.js";
 
 /** What a render found: the rows it shows, and the lines of content behind them. */
 interface Extent {
@@ -193,7 +194,7 @@ export class Viewport implements Renderable, Measurable, Scrollable {
     const { height, ...options } = withBoundedWidth(rawOptions, this);
     const gutter = this.gutter;
     const contentWidth = this.contentWidth(options.maxWidth);
-    const lines = Segment.splitLines(this.content.render({ ...options, maxWidth: contentWidth }));
+    const lines = Segment.splitLines(render(this.content, { ...options, maxWidth: contentWidth }));
     const extent: Extent = { rows: viewRows(height, this.rows, lines.length), lines: lines.length };
     const followed = this._followed;
     const wasShown = followed.start >= this._offset && followed.end <= this._offset + this._extent.rows;

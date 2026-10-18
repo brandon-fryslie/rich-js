@@ -54,12 +54,14 @@ import {
   SPINNERS, DEFAULT_SPINNER,
   // Markup
   renderMarkup,
+  // Protocol
+  render,
 } from "@promptctl/rich-js";
 import type { Renderable, RenderOptions } from "@promptctl/rich-js";
 
 export class CoverageRenderable implements Renderable {
   *render(options: RenderOptions): Iterable<Segment> {
-    yield* new Group(...this.items(options)).render(options);
+    yield* render(new Group(...this.items(options)), options);
   }
 
   /** What the view shows, one Group item per row block, in order. */

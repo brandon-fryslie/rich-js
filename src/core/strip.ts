@@ -33,7 +33,7 @@ import { ColorDepth, ColorSpec, SURFACE_BLACK } from "./color.js";
 import { Oklch } from "./oklch.js";
 import { cellLen } from "./cells.js";
 import { fnv1a } from "./fnv1a.js";
-import { drawable, getStyle, isAscii, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
+import { drawable, getStyle, isAscii, render, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
 
 // --- StyledRenderable ---
 
@@ -124,7 +124,7 @@ export function colorsOwnedBy(anchor: Anchor | undefined, owners: ReadonlySet<ob
  */
 export function drawJoin<T extends StyledRenderable>(joiner: Joiner<T>, left: T | null, right: T | null, context: JoinContext): Renderable {
   const join = joiner.join(left, right, context);
-  return { render: (options) => Segment.anchorLines([[...join.render(options)]], JOIN)[0]! };
+  return { render: (options) => Segment.anchorLines([[...render(join, options)]], JOIN)[0]! };
 }
 
 /**
@@ -134,7 +134,7 @@ export function drawJoin<T extends StyledRenderable>(joiner: Joiner<T>, left: T 
  * item.
  */
 export function drawItem(item: StyledRenderable): Renderable {
-  return { render: (options) => Segment.anchorLines([[...item.render(options)]], item)[0]! };
+  return { render: (options) => Segment.anchorLines([[...render(item, options)]], item)[0]! };
 }
 
 // --- Strip ---
@@ -161,12 +161,12 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
     // `left` fills the canvas, and the first item would pad over the rest of
     // the row. Where the row sits in the width is its container's to say.
     const row: RenderOptions = { ...options, justify: undefined };
-    yield* drawJoin(this.joiner, null, items[0]!, { index: 0 }).render(row);
+    yield* render(drawJoin(this.joiner, null, items[0]!, { index: 0 }), row);
     for (let i = 0; i < items.length; i++) {
       const item = items[i]!;
-      yield* drawItem(item).render(row);
+      yield* render(drawItem(item), row);
       const next = i + 1 < items.length ? items[i + 1]! : null;
-      yield* drawJoin(this.joiner, item, next, { index: i + 1 }).render(row);
+      yield* render(drawJoin(this.joiner, item, next, { index: i + 1 }), row);
     }
 
     // [LAW:one-source-of-truth] `Strip`'s sibling `FlexStrip` ends every line
@@ -191,7 +191,7 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
    */
   measure(options: RenderOptions): { minimum: number; maximum: number } {
     let width = 0;
-    for (const segment of this.render(options)) width += segment.cellLength;
+    for (const segment of render(this, options)) width += segment.cellLength;
     return { minimum: width, maximum: width };
   }
 }

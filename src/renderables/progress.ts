@@ -13,6 +13,7 @@ import { Live } from "./live.js";
 import { systemClock, type Clock } from "../core/clock.js";
 import { Table, type ColumnOptions } from "./table.js";
 import type { Renderable, RenderOptions } from "../core/protocol.js";
+import { render } from "../core/protocol.js";
 
 // --- Task ---
 
@@ -520,7 +521,7 @@ export class Progress implements Renderable {
       table.addRow(...this._columns.map((col) => col.render(task)));
     }
 
-    yield* table.render(options);
+    yield* render(table, options);
   }
 }
 

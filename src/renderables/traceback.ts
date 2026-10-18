@@ -19,7 +19,7 @@
 import { Segment } from "../core/segment.js";
 import { RichText } from "../core/text.js";
 import { Pretty, UNSEEN_DATA_BOUNDS } from "../core/pretty.js";
-import { drawsNothing, type Renderable, type RenderOptions } from "../core/protocol.js";
+import { render, type Renderable, type RenderOptions } from "../core/protocol.js";
 import { paddedContentWidth } from "./padding.js";
 
 export interface TracebackOptions {
@@ -270,7 +270,7 @@ export class Traceback implements Renderable {
     // width that is left on that line rather than overrunning it.
     header.append(message({ ...options, maxWidth: Math.max(1, options.maxWidth - header.cellLength) }));
     header.append("\n\n");
-    yield* header.render(options);
+    yield* render(header, options);
 
     // A suppressed frame keeps its place and shows its file and line only: it
     // is the same frame with no function name to show.
@@ -304,8 +304,8 @@ export class Traceback implements Renderable {
     // blanks on every line of a crash report are bytes nobody asked for.
     const frameOptions = { ...options, maxWidth: paddedContentWidth(options.maxWidth, 2, 0) };
     const indent = new Segment("  ");
-    for (const entry of drawsNothing(frameOptions) ? [] : entries) {
-      for (const line of Segment.splitLines(entry.render(frameOptions))) {
+    for (const entry of entries) {
+      for (const line of Segment.splitLines(render(entry, frameOptions))) {
         yield indent;
         yield* line;
         yield Segment.line();

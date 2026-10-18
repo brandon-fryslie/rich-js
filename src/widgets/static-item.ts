@@ -13,6 +13,7 @@
 
 import { Segment } from "../core/segment.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import { render } from "../core/protocol.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent } from "./types.js";
 
@@ -42,7 +43,7 @@ export class StaticItem extends WidgetBase {
     this.renderFn =
       typeof r === "function"
         ? (opts: RenderOptions) => r(opts)
-        : (opts: RenderOptions) => r.render(opts);
+        : (opts: RenderOptions) => render(r, opts);
     this.measureFn = options.measure;
   }
 
