@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-472",
+      "ref": "refs/pull/472/merge",
+      "sha": "60335ffdabff7e95c92f099063cd2b62a2f32f61",
+      "timestamp": "2026-10-18T06:32:01.741Z",
+      "commits": [
+        {
+          "sha": "60335ffdabff7e95c92f099063cd2b62a2f32f61",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-18T00:30:17-06:00",
+          "message": "Merge 43e08e982e4f7486e49af402ac4c19c3b134c7df into 8e8e8942c7eac7d44155827652a53e1ac999d07f\n"
+        },
+        {
+          "sha": "43e08e982e4f7486e49af402ac4c19c3b134c7df",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-18T00:30:11-06:00",
+          "message": "A widget its container hands no column is held in the view, not drawn, so it keeps focus and nothing renders for it (rich-widgets-hmk1.kvc)\n\nprotocol's render is the one reporter of what the view holds: RenderOptions.onDraw,\ncalled by WidgetBase, becomes onPresent(renderable, \"drawn\" | \"held\"), called by\nrender for every renderable it is asked for. Under one column a renderable is held:\nrender walks the Composite.contents() of what it holds, reports each held, and\nrenders nothing, so a Viewport's offset or a TextInput's scroll window is never\ncommitted at a width that is not shown.\n\nEvery exported container implements Composite. The method is contents(), not the\nchildren() the seam named, because Tree.children and Layout.children are already\nRich's names for subtrees and panes. test/renderables/contents.test.ts holds each\nexported renderable's contents() to what its render draws.\n\nWidgetApp settles focus over the widgets the frame holds, drawn or held, and exposes\nthem as WidgetApp.present.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-471",
       "ref": "refs/pull/471/merge",
       "sha": "130889014ab489cb9d2a13fc274916b454750d92",
