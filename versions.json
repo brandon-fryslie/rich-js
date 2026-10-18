@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-468",
-      "ref": "refs/pull/468/merge",
-      "sha": "c6186982cf6d4facc34d335dd9f2cf042c161602",
-      "timestamp": "2026-10-18T03:42:45.039Z",
-      "commits": [
-        {
-          "sha": "c6186982cf6d4facc34d335dd9f2cf042c161602",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T03:41:01Z",
-          "message": "Merge 03aa4eca17b532ced8995ff182c8c6626b91b0d2 into 336da3c128dde6fb1bee1115de633ff729a4d8e7\n"
-        },
-        {
-          "sha": "03aa4eca17b532ced8995ff182c8c6626b91b0d2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T21:40:56-06:00",
-          "message": "Panel holds its body to the region at every width and owns its padding once (rich-unfiled-791c.lbr8)\n\nReview fixes: a span of no cells draws empty rows inside a region and padding\ntaller than the region is cropped, as Rich's render_lines does; padding is read\nback from the body rather than kept beside it; the accessory contract names the\nwidths where content does not render.\n"
-        },
-        {
-          "sha": "b39e52fce1fadb3c86b52c80a7777ba6c28e8c1d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T21:30:41-06:00",
-          "message": "Panel draws its body through Padding, so a width too narrow for its padding draws only its frame, as Rich's does (rich-unfiled-791c.lbr8)\n\nRich renders a Panel's content as Padding(renderable, padding) at width - 2.\nlayoutPanel seated a first content cell before the padding, so the library\ndivided padding two opposite ways after rich-unfiled-791c.sk1p. The geometry\nis now the two frame columns and the span; Padding owns the rest.\n\nContent left no column is no longer rendered, so a bottomRightAccessory thunk\nat those widths reads the last frame that drew it. Width 1 still draws one\nframe column where Rich overflows to two.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "336da3c128dde6fb1bee1115de633ff729a4d8e7",
-      "timestamp": "2026-10-18T03:24:00.845Z",
+      "sha": "ceb10734548abfec6408a76a1a317090681e68a9",
+      "timestamp": "2026-10-18T03:54:19.830Z",
       "commits": [
         {
-          "sha": "336da3c128dde6fb1bee1115de633ff729a4d8e7",
+          "sha": "ceb10734548abfec6408a76a1a317090681e68a9",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-17T21:22:43-06:00",
-          "message": "Markdown draws <kbd> text in markdown.kbd, as Rich 15 does (rich-unfiled-791c.k2zi) (#467)\n\n* Markdown draws <kbd> text in markdown.kbd, its close popping Rich's style stack as Rich 15's does (rich-unfiled-791c.k2zi)\n\nInline HTML carries its tag as written, and one rule, kbdTags, serves both\ninline passes. An image reads its link off the style stack as Rich's\nImageItem does, replacing the separately tracked link.\n\n* Markdown's <kbd> says it ends with its block, where Rich's stack carries it on; walk drops its dead root (rich-unfiled-791c.k2zi)"
+          "timestamp": "2026-10-17T21:52:32-06:00",
+          "message": "Panel draws its body through Padding, so a width too narrow for its padding draws only its frame, as Rich's does (rich-unfiled-791c.lbr8) (#468)\n\n* Panel draws its body through Padding, so a width too narrow for its padding draws only its frame, as Rich's does (rich-unfiled-791c.lbr8)\n\nRich renders a Panel's content as Padding(renderable, padding) at width - 2.\nlayoutPanel seated a first content cell before the padding, so the library\ndivided padding two opposite ways after rich-unfiled-791c.sk1p. The geometry\nis now the two frame columns and the span; Padding owns the rest.\n\nContent left no column is no longer rendered, so a bottomRightAccessory thunk\nat those widths reads the last frame that drew it. Width 1 still draws one\nframe column where Rich overflows to two.\n\n* Panel holds its body to the region at every width and owns its padding once (rich-unfiled-791c.lbr8)\n\nReview fixes: a span of no cells draws empty rows inside a region and padding\ntaller than the region is cropped, as Rich's render_lines does; padding is read\nback from the body rather than kept beside it; the accessory contract names the\nwidths where content does not render."
         }
       ]
     }
