@@ -155,7 +155,8 @@ time, the order Rich's collapse hands back the cells, until every column holds
 its content at 13.
 
 Width 2 is the narrowest table that keeps its frame; below it the border columns
-are dropped too, and the table renders as bare content. In the other direction a
+are dropped too, and what width is left goes to dividers before any cell, so no
+content is drawn. In the other direction a
 table with no declared width never grows past its natural width — offer it 200
 columns and it still renders at 13 — unless it is built with [`expand`](#sizing).
 

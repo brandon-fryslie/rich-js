@@ -36,8 +36,8 @@ import { Measurement } from "../core/measure.js";
  * its `width`, else its `minWidth`, else one cell — and takes its `ratio` of
  * what the bounded columns leave: a pass of its own, because a ratio is a proportion and a `weight` is a count of cells, and
  * weighing one against the other let `ratio: 100` truncate a neighbour the
- * table had room for. A column with no cell to measure wants one cell and
- * `fill`s up to its cap before any share is taken. `stretch` is false unless
+ * table had room for. A column with no cell to measure wants one cell and its
+ * padding, and `fill`s up to its cap before any share is taken. `stretch` is false unless
  * the table expands, and a table with a ratio column leaves nothing to stretch. Cells are left over only when
  * no column is short, so neither a share nor a stretch can widen one column
  * while another is still truncated.
@@ -999,16 +999,18 @@ export class Table implements Renderable, Measurable {
     // drawn — has nothing to size to, which is not sizing to nothing. The
     // reference measures it `Measurement(1, max_width)`: one cell of content,
     // and a maximum of the whole offer, so a rowless table fills it. Reading
-    // "no cells" as zero sized it to a two-cell box instead. The one cell is
-    // its want, so a `minWidth` is paid like any column's, and the offer is
-    // its `fill`, held to its `maxWidth`.
+    // "no cells" as zero sized it to a two-cell box instead. The one cell and
+    // its padding are its want, so a `minWidth` is paid like any column's,
+    // and the offer is its `fill`, held to its `maxWidth`. Its minimum is the
+    // reference's bare 1, unpadded: `_measure_column` adds the padding only to
+    // a declared width and to the `min_width`/`max_width` clamp.
     //
     // A column that may not wrap has no narrower width than its natural one
     // that keeps its content whole — the reference leaves `no_wrap` columns out
     // of the ones it collapses.
     return {
       reserved: 0,
-      minimum: col.noWrap ? natural : Math.min(natural, demandCells(this._bounded(col, range?.minimum ?? padded(1), pad))),
+      minimum: col.noWrap ? natural : Math.min(natural, demandCells(this._bounded(col, range?.minimum ?? 1, pad))),
       want: natural,
       weight: natural,
       fill: range === undefined ? demandCells(this._bounded(col, UNBOUNDED, pad)) : 0,
@@ -1098,7 +1100,7 @@ export class Table implements Renderable, Measurable {
    *
    * A bound is a count of cells, read by the rule every width is read by: NaN
    * and a negative are zero cells, so a NaN floor bounds nothing and a NaN
-   * ceiling is a ceiling of zero, as `width: NaN` is. A bare `Math.max` returns
+   * ceiling holds the column to its padding alone, as `width: NaN` does. A bare `Math.max` returns
    * NaN instead, and the column vanishes. [LAW:one-source-of-truth]
    */
   private _bounded(col: Column, natural: number, pad: number): number {

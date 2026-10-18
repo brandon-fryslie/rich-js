@@ -339,3 +339,336 @@ padded-all-sides 11
 │ ab │ cd │
 │    │    │
 └────┴────┘
+
+declared-width 3
+┌┬┐
+│││
+└┴┘
+
+declared-width 4
+┌┬─┐
+││ │
+└┴─┘
+
+declared-width 5
+┌┬──┐
+││  │
+└┴──┘
+
+declared-width 6
+┌┬───┐
+││ … │
+└┴───┘
+
+declared-width 7
+┌┬────┐
+││ g… │
+└┴────┘
+
+declared-width 8
+┌┬─────┐
+││ gh… │
+└┴─────┘
+
+declared-width 9
+┌┬──────┐
+││ ghi… │
+└┴──────┘
+
+declared-width 10
+┌─┬──────┐
+│ │ ghi… │
+└─┴──────┘
+
+declared-width 11
+┌──┬──────┐
+│  │ ghi… │
+└──┴──────┘
+
+declared-width 12
+┌───┬──────┐
+│ … │ ghi… │
+│ … │      │
+└───┴──────┘
+
+declared-width 13
+┌────┬──────┐
+│ a… │ ghi… │
+│ d… │      │
+└────┴──────┘
+
+declared-width 14
+┌─────┬──────┐
+│ abc │ ghi… │
+│ def │      │
+└─────┴──────┘
+
+declared-width 15
+┌──────┬──────┐
+│ abc  │ ghi… │
+│ def  │      │
+└──────┴──────┘
+
+declared-width 16
+┌───────┬──────┐
+│ abc   │ ghi… │
+│ def   │      │
+└───────┴──────┘
+
+declared-width 17
+┌────────┬──────┐
+│ abc    │ ghi… │
+│ def    │      │
+└────────┴──────┘
+
+declared-width 18
+┌─────────┬──────┐
+│ abc def │ ghi… │
+└─────────┴──────┘
+
+no-wrap 3
+┌┬┐
+│││
+└┴┘
+
+no-wrap 4
+┌─┬┐
+│ ││
+└─┴┘
+
+no-wrap 5
+┌──┬┐
+│  ││
+└──┴┘
+
+no-wrap 6
+┌───┬┐
+│ … ││
+└───┴┘
+
+no-wrap 7
+┌────┬┐
+│ a… ││
+└────┴┘
+
+no-wrap 8
+┌─────┬┐
+│ ab… ││
+└─────┴┘
+
+no-wrap 9
+┌──────┬┐
+│ abc… ││
+└──────┴┘
+
+no-wrap 10
+┌───────┬┐
+│ abc … ││
+└───────┴┘
+
+no-wrap 11
+┌────────┬┐
+│ abc d… ││
+└────────┴┘
+
+no-wrap 12
+┌─────────┬┐
+│ abc def ││
+└─────────┴┘
+
+no-wrap 13
+┌─────────┬─┐
+│ abc def │ │
+└─────────┴─┘
+
+no-wrap 14
+┌─────────┬──┐
+│ abc def │  │
+└─────────┴──┘
+
+no-wrap 15
+┌─────────┬───┐
+│ abc def │ … │
+│         │ … │
+└─────────┴───┘
+
+no-wrap 16
+┌─────────┬────┐
+│ abc def │ gh │
+│         │ ij │
+└─────────┴────┘
+
+no-wrap 17
+┌─────────┬─────┐
+│ abc def │ gh  │
+│         │ ij  │
+└─────────┴─────┘
+
+no-wrap 18
+┌─────────┬──────┐
+│ abc def │ gh   │
+│         │ ij   │
+└─────────┴──────┘
+
+no-wrap 19
+┌─────────┬───────┐
+│ abc def │ gh ij │
+└─────────┴───────┘
+
+collapse-padding 4
+┌┬┬┐
+││││
+└┴┴┘
+
+collapse-padding 5
+┌┬─┬┐
+││ ││
+└┴─┴┘
+
+collapse-padding 6
+┌─┬┬─┐
+│ ││ │
+└─┴┴─┘
+
+collapse-padding 7
+┌─┬─┬─┐
+│ │ │ │
+└─┴─┴─┘
+
+collapse-padding 8
+┌─┬──┬─┐
+│ │  │ │
+└─┴──┴─┘
+
+collapse-padding 9
+┌──┬──┬─┐
+│  │  │ │
+└──┴──┴─┘
+
+collapse-padding 10
+┌──┬──┬──┐
+│  │  │  │
+└──┴──┴──┘
+
+collapse-padding 11
+┌──┬──┬───┐
+│  │  │…  │
+└──┴──┴───┘
+
+collapse-padding 12
+┌───┬──┬───┐
+│   │  │…  │
+└───┴──┴───┘
+
+collapse-padding 13
+┌───┬───┬───┐
+│   │…  │…  │
+└───┴───┴───┘
+
+collapse-padding 14
+┌───┬────┬───┐
+│   │cd  │…  │
+└───┴────┴───┘
+
+collapse-padding 15
+┌────┬────┬───┐
+│    │cd  │…  │
+└────┴────┴───┘
+
+collapse-padding 16
+┌────┬────┬────┐
+│    │cd  │ef  │
+└────┴────┴────┘
+
+collapse-padding 17
+┌─────┬────┬────┐
+│  …  │cd  │ef  │
+└─────┴────┴────┘
+
+collapse-padding 18
+┌──────┬────┬────┐
+│  ab  │cd  │ef  │
+└──────┴────┴────┘
+
+no-pad-edge 3
+┌┬┐
+│││
+└┴┘
+
+no-pad-edge 4
+┌─┬┐
+│ ││
+└─┴┘
+
+no-pad-edge 5
+┌─┬─┐
+│ │ │
+└─┴─┘
+
+no-pad-edge 6
+┌─┬──┐
+│ │ …│
+└─┴──┘
+
+no-pad-edge 7
+┌──┬──┐
+│… │ …│
+└──┴──┘
+
+no-pad-edge 8
+┌───┬──┐
+│ab │ …│
+└───┴──┘
+
+no-pad-edge 9
+┌───┬───┐
+│ab │ cd│
+└───┴───┘
+
+grid 1
+ 
+
+grid 2
+ …
+
+grid 3
+  …
+
+grid 4
+ … …
+
+grid 5
+… … …
+
+grid 6
+… … ef
+
+grid 7
+ab … ef
+
+grid 8
+ab cd ef
+
+grid-no-wrap 1
+…
+
+grid-no-wrap 2
+……
+
+grid-no-wrap 3
+x……
+
+grid-no-wrap 4
+xx……
+
+grid-no-wrap 5
+xx………
+
+grid-no-wrap 6
+xx…yy…
+
+grid-no-wrap 7
+xxxxyy…
+
+grid-no-wrap 8
+xxxxyyzz

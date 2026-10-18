@@ -17,23 +17,27 @@
  *     from rich.table import Table
  *     import sys
  *     CASES = [
- *         ("one-column", dict(padding=(0, 1)), [["ab"]]),
- *         ("two-columns", dict(padding=(0, 1)), [["ab", "cd"]]),
- *         ("two-columns-header", dict(padding=(0, 1), show_header=True), [["ab", "cd"]]),
- *         ("three-columns-uneven", dict(padding=(0, 2)), [["alpha", "b", "gamma ray"]]),
- *         ("padded-all-sides", dict(padding=1), [["ab", "cd"]]),
+ *         ("one-column", "table", dict(padding=(0, 1)), [{}], ["ab"]),
+ *         ("two-columns", "table", dict(padding=(0, 1)), [{}, {}], ["ab", "cd"]),
+ *         ("two-columns-header", "table", dict(padding=(0, 1), show_header=True), [{}, {}], ["ab", "cd"]),
+ *         ("three-columns-uneven", "table", dict(padding=(0, 2)), [{}, {}, {}], ["alpha", "b", "gamma ray"]),
+ *         ("padded-all-sides", "table", dict(padding=1), [{}, {}], ["ab", "cd"]),
+ *         ("declared-width", "table", dict(padding=(0, 1)), [{}, dict(width=4)], ["abc def", "ghijkl"]),
+ *         ("no-wrap", "table", dict(padding=(0, 1)), [dict(no_wrap=True), {}], ["abc def", "gh ij"]),
+ *         ("collapse-padding", "table", dict(padding=(0, 2), collapse_padding=True), [{}, {}, {}], ["ab", "cd", "ef"]),
+ *         ("no-pad-edge", "table", dict(padding=(0, 1), pad_edge=False), [{}, {}], ["ab", "cd"]),
+ *         ("grid", "grid", dict(padding=(0, 1)), [{}, {}, {}], ["ab", "cd", "ef"]),
+ *         ("grid-no-wrap", "grid", dict(padding=0), [dict(no_wrap=True)] * 3, ["xxxx", "yy", "zz"]),
  *     ]
  *     c = Console(width=80, no_color=True, force_terminal=False, legacy_windows=False)
  *     blocks = []
- *     for name, opts, rows in CASES:
- *         opts = {"show_header": False, **opts}
- *         columns = len(rows[0])
+ *     for name, kind, opts, columns, row in CASES:
  *         def table():
- *             t = Table(**opts)
- *             for i in range(columns): t.add_column(f"h{i}")
- *             for row in rows: t.add_row(*row)
+ *             t = Table.grid(**opts) if kind == "grid" else Table(**{"show_header": False, **opts})
+ *             for i, column in enumerate(columns): t.add_column(f"h{i}", **column)
+ *             t.add_row(*row)
  *             return t
- *         frame = 2 + (columns - 1)
+ *         frame = max(1, 0 if kind == "grid" else 2 + (len(columns) - 1))
  *         natural = c.measure(table(), options=c.options.update(width=80)).maximum
  *         for width in range(frame, natural + 1):
  *             lines = c.render_lines(table(), c.options.update(width=width), pad=False)
@@ -48,34 +52,46 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { Segment } from "../../src/core/segment.js";
-import { Table, type TableOptions } from "../../src/renderables/table.js";
+import { Table, type ColumnOptions, type TableOptions } from "../../src/renderables/table.js";
 
 const GOLDEN = new URL("./table-squeeze.golden.txt", import.meta.url);
 
 // [LAW:one-source-of-truth] The same cases as the generator, in its order.
-const CASES: readonly (readonly [string, TableOptions, readonly string[]])[] = [
-  ["one-column", { padding: [0, 1] }, ["ab"]],
-  ["two-columns", { padding: [0, 1] }, ["ab", "cd"]],
-  ["two-columns-header", { padding: [0, 1], showHeader: true }, ["ab", "cd"]],
-  ["three-columns-uneven", { padding: [0, 2] }, ["alpha", "b", "gamma ray"]],
-  ["padded-all-sides", { padding: 1 }, ["ab", "cd"]],
+const CASES: readonly (readonly [string, "table" | "grid", TableOptions, readonly ColumnOptions[], readonly string[]])[] = [
+  ["one-column", "table", { padding: [0, 1] }, [{}], ["ab"]],
+  ["two-columns", "table", { padding: [0, 1] }, [{}, {}], ["ab", "cd"]],
+  ["two-columns-header", "table", { padding: [0, 1], showHeader: true }, [{}, {}], ["ab", "cd"]],
+  ["three-columns-uneven", "table", { padding: [0, 2] }, [{}, {}, {}], ["alpha", "b", "gamma ray"]],
+  ["padded-all-sides", "table", { padding: 1 }, [{}, {}], ["ab", "cd"]],
+  ["declared-width", "table", { padding: [0, 1] }, [{}, { width: 4 }], ["abc def", "ghijkl"]],
+  ["no-wrap", "table", { padding: [0, 1] }, [{ noWrap: true }, {}], ["abc def", "gh ij"]],
+  ["collapse-padding", "table", { padding: [0, 2], collapsePadding: true }, [{}, {}, {}], ["ab", "cd", "ef"]],
+  ["no-pad-edge", "table", { padding: [0, 1], padEdge: false }, [{}, {}], ["ab", "cd"]],
+  ["grid", "grid", { padding: [0, 1] }, [{}, {}, {}], ["ab", "cd", "ef"]],
+  ["grid-no-wrap", "grid", { padding: 0 }, [{ noWrap: true }, { noWrap: true }, { noWrap: true }], ["xxxx", "yy", "zz"]],
 ];
 
-function table(options: TableOptions, row: readonly string[]): Table {
-  const t = new Table({ showHeader: false, ...options });
-  row.forEach((_, index) => t.addColumn(`h${index}`));
+function table(
+  kind: "table" | "grid",
+  options: TableOptions,
+  columns: readonly ColumnOptions[],
+  row: readonly string[],
+): Table {
+  const t = kind === "grid" ? Table.grid(options) : new Table({ showHeader: false, ...options });
+  columns.forEach((column, index) => t.addColumn(`h${index}`, column));
   t.addRow(...row);
   return t;
 }
 
 describe("a squeezed padded table", () => {
   it("draws the rows Python Rich draws at every width from its frame to its content", () => {
-    const rendered = CASES.flatMap(([name, options, row]) => {
-      const frame = 2 + (row.length - 1);
-      const natural = table(options, row).measure({ maxWidth: 80 }).maximum;
+    const rendered = CASES.flatMap(([name, kind, options, columns, row]) => {
+      const make = (): Table => table(kind, options, columns, row);
+      const frame = Math.max(1, kind === "grid" ? 0 : 2 + (columns.length - 1));
+      const natural = make().measure({ maxWidth: 80 }).maximum;
       return Array.from({ length: natural - frame + 1 }, (_, offset) => {
         const width = frame + offset;
-        const lines = Segment.splitLines([...table(options, row).render({ maxWidth: width })])
+        const lines = Segment.splitLines([...make().render({ maxWidth: width })])
           .map((line) => line.map((segment) => segment.text).join(""));
         return `${name} ${width}\n${lines.join("\n")}`;
       });

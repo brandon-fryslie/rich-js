@@ -514,8 +514,10 @@ describe("Table", () => {
     // The fill is a stretch on content of one cell, so the table still has a
     // natural width: a parent measuring it is told what it holds, not handed
     // back the offer, and an unbounded offer has something to fall back on.
+    // Its minimum is the reference's `Measurement(1, …)`, one cell with no
+    // padding, so Rich 15 measures this table's minimum at 5 too.
     it("measures its content, not the offer", () => {
-      expect(rowless([{}, {}]).measure({ maxWidth: 40 })).toEqual({ minimum: 9, maximum: 9 });
+      expect(rowless([{}, {}]).measure({ maxWidth: 40 })).toEqual({ minimum: 5, maximum: 9 });
     });
 
     it("renders at an unbounded offer", () => {
