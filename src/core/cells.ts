@@ -175,7 +175,7 @@ export function splitText(
  * a space in each of its cells, where `splitText` keeps it whole on the right.
  * Every other character lands in exactly one piece, so each piece is exactly
  * as wide as the distance between its cuts. `positions` are non-decreasing and
- * fall inside `text`, between 0 and its width.
+ * fall inside `text`: from 0 to one short of its width.
  *
  * One walk over `text` however many positions there are, ending at the last
  * of them: cutting what is left again at every position re-measures and copies
