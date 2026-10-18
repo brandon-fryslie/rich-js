@@ -92,7 +92,7 @@ function linkStyles(url: string): (string | Style)[] {
 const QUOTE_STYLE = "markdown.block_quote";
 
 function headingStyle(options: RenderOptions, level: number): Style {
-  return getStyle(options, `markdown.h${Math.min(level, 4)}`);
+  return getStyle(options, `markdown.h${level}`);
 }
 
 /**

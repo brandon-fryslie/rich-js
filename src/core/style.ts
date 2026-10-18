@@ -825,9 +825,11 @@ export const DEFAULT_STYLES: Record<string, Style> = {
 
   // Markdown
   "markdown.h1": Style.parse("bold underline"),
-  "markdown.h2": Style.parse("bold"),
-  "markdown.h3": Style.parse("bold dim"),
-  "markdown.h4": Style.parse("bold dim italic"),
+  "markdown.h2": Style.parse("underline magenta"),
+  "markdown.h3": Style.parse("bold magenta"),
+  "markdown.h4": Style.parse("italic magenta"),
+  "markdown.h5": Style.parse("italic"),
+  "markdown.h6": Style.parse("dim"),
   // A fixed cyan, not the theme's: `cyan` is dark enough on some themes to
   // sink into grey11. Bold, as Rich's is: at 16 colours a renderable draws it
   // without its pair (`groundedStyle`), and bold is what still marks code.
@@ -836,12 +838,12 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "markdown.strong": Style.parse("bold"),
   "markdown.s": Style.parse("strike"),
   "markdown.block_quote": Style.parse("magenta"),
-  "markdown.hr": Style.parse("yellow"),
+  "markdown.hr": Style.parse("dim"),
   "markdown.item": NULL_STYLE,
   "markdown.item.bullet": Style.parse("bold"),
   "markdown.item.number": Style.parse("cyan"),
   "markdown.link": Style.parse("bright_blue"),
-  "markdown.link_url": Style.parse("blue"),
+  "markdown.link_url": Style.parse("underline blue"),
   "markdown.table.border": Style.parse("cyan"),
   "markdown.table.header": Style.parse("not bold cyan"),
 

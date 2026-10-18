@@ -20,11 +20,26 @@ function collectSegments(r: Renderable, opts: RenderOptions): Segment[] {
 describe("Markdown", () => {
   // --- Supported Elements ---
 
-  it("renders headings as bold, sized by level", () => {
-    const md = new Markdown("# Title\n## Subtitle");
-    const text = collectText(md, { maxWidth: 80 });
-    expect(text).toContain("Title");
-    expect(text).toContain("Subtitle");
+  it("draws each heading level, a rule and a link URL in Rich 15's styles", () => {
+    // Rich 15's segments for each source, as `str(segment.style)`.
+    const styleOf = (source: string, text: string, options?: MarkdownOptions) =>
+      collectSegments(new Markdown(source, options), { maxWidth: 20 }).find((s) => s.text === text)?.style;
+    expect(styleOf("# H1", "H1")).toEqual(Style.parse("bold underline"));
+    expect(styleOf("## H2", "H2")).toEqual(Style.parse("underline magenta"));
+    expect(styleOf("### H3", "H3")).toEqual(Style.parse("bold magenta"));
+    expect(styleOf("#### H4", "H4")).toEqual(Style.parse("italic magenta"));
+    expect(styleOf("##### H5", "H5")).toEqual(Style.parse("italic"));
+    expect(styleOf("###### H6", "H6")).toEqual(Style.parse("dim"));
+    expect(styleOf("---", "-".repeat(20))).toEqual(Style.parse("dim"));
+    expect(styleOf("[x](http://o)", "x")).toEqual(Style.parse("underline blue").add(new Style({ link: "http://o" })));
+    expect(styleOf("[x](http://o)", "http://o", { hyperlinks: false })).toEqual(Style.parse("underline blue"));
+  });
+
+  it("styles each heading level from its own theme key", () => {
+    const theme = new Theme({ "markdown.h4": "red", "markdown.h5": "green", "markdown.h6": "blue" });
+    const color = (source: string, text: string) =>
+      collectSegments(new Markdown(source), { maxWidth: 20, theme }).find((s) => s.text === text)?.style?.color?.name;
+    expect([color("#### a", "a"), color("##### b", "b"), color("###### c", "c")]).toEqual(["red", "green", "blue"]);
   });
 
   it("renders bold text", () => {
