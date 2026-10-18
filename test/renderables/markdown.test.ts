@@ -35,6 +35,35 @@ describe("Markdown", () => {
     expect(styleOf("[x](http://o)", "http://o", { hyperlinks: false })).toEqual(Style.parse("underline blue"));
   });
 
+  it("draws <kbd> text in markdown.kbd, its close popping Rich's style stack as Rich 15's does", () => {
+    // Rich 15 at width 30, each non-blank segment as (text right-trimmed, `str(segment.style)`).
+    const drawn = (source: string, hyperlinks = true) =>
+      collectSegments(new Markdown(source, { hyperlinks }), { maxWidth: 30 })
+        .filter((s) => s.text.trim())
+        .map((s) => [s.text.trimEnd(), String(s.style ?? "none")]);
+    expect(drawn("Press <kbd>Ctrl</kbd> now")).toEqual([["Press", "none"], ["Ctrl", "bold bright_yellow"], [" now", "none"]]);
+    expect(drawn("# H <kbd>K</kbd>")).toEqual([["H", "bold underline"], ["K", "bold underline bright_yellow"]]);
+    // The tag as written: `<kbd >` is other inline HTML.
+    expect(drawn("<kbd>a</kbd> b <kbd >c</kbd> d")).toEqual([["a", "bold bright_yellow"], [" b c d", "none"]]);
+    // A close crossing an emphasis's ends the emphasis's style, and the emphasis ends the key's.
+    expect(drawn("*e <kbd>K* f</kbd> g")).toEqual([["e", "italic"], ["K", "bold italic bright_yellow"], [" f", "italic"], [" g", "none"]]);
+    // A key left open ends with its block or cell, where Rich's carries on and leaves `next` in the heading's style.
+    expect(drawn("# H <kbd>K\n\nnext")).toEqual([["H", "bold underline"], ["K", "bold underline bright_yellow"], ["next", "none"]]);
+    expect(drawn("| a | b |\n|---|---|\n| <kbd>x | y |").filter(([t]) => "xy".includes(t!))).toEqual([["x", "bold bright_yellow"], ["y", "none"]]);
+    expect(drawn("a <kbd>![alt](http://i) b</kbd> c", false)).toEqual([["🌆", "none"], ["alt", "bold bright_yellow"], ["a", "none"], [" b", "bold bright_yellow"], [" c", "none"]]);
+    // The link a crossed close leaves open is the image's link too.
+    expect(drawn("[a <kbd>b](http://u) ![i](http://j) c</kbd> d")).toEqual([
+      ["🌆", "none"],
+      ["i", "underline blue link http://u"],
+      ["a", "underline blue link http://u"],
+      ["b", "bold underline bright_yellow link http://u"],
+      [" c", "underline blue link http://u"],
+      [" d", "none"],
+    ]);
+    // A close with no key open in its block pops nothing, where Rich's stack runs dry and raises.
+    expect(drawn("*a </kbd> b*")).toEqual([["a", "italic"], [" b", "italic"]]);
+  });
+
   it("styles each heading level from its own theme key", () => {
     const colors = ["red", "green", "blue", "cyan", "magenta", "yellow"];
     const theme = new Theme(Object.fromEntries(colors.map((c, i) => [`markdown.h${i + 1}`, c])));

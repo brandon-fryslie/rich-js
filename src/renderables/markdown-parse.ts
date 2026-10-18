@@ -87,7 +87,8 @@ export type Inline =
   | { kind: "autolink"; text: string; url: string }
   /** `alt` is as written, never read as Markdown. */
   | { kind: "image"; alt: string; src: string }
-  | { kind: "html" }
+  /** `content` is the tag as written, markdown-it's `html_inline` content. */
+  | { kind: "html"; content: string }
   /** markdown-it's `softbreak` and `hardbreak`: tokens of their own, never joined to the text beside them. */
   | { kind: "softbreak" }
   | { kind: "hardbreak" };
@@ -886,7 +887,7 @@ type InlineMatch =
   | { kind: "autolink"; source: string; url: string; end: number }
   | { kind: "image"; alt: string; src: string; end: number }
   | { kind: "text"; text: string; end: number }
-  | { kind: "html"; end: number }
+  | { kind: "html"; content: string; end: number }
   | { kind: "hardbreak"; end: number }
   /** A line ending, soft or hard by the spaces before it, which are the text before it. */
   | { kind: "line_ending"; end: number };
@@ -1472,7 +1473,7 @@ function inlineAt(text: string, i: number, state: InlineState, level: number): I
       const autolink = autolinkAt(text, i);
       if (autolink) return autolink;
       const tag = matchAt(HTML_TAG, text, i);
-      return tag ? { kind: "html", end: i + tag[0].length } : undefined;
+      return tag ? { kind: "html", content: tag[0], end: i + tag[0].length } : undefined;
     }
     case "!":
     case "[": {
@@ -1557,7 +1558,7 @@ function matched(found: Exclude<InlineMatch, DelimiterRun | { kind: "line_ending
     case "text":
       return { kind: "text", text: found.text };
     case "html":
-      return { kind: "html" };
+      return { kind: "html", content: found.content };
     case "hardbreak":
       return { kind: "hardbreak" };
   }
