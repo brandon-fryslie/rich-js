@@ -30,9 +30,11 @@
  * floor is not a measurement. Load only lengthens a run, so it cannot trip
  * the floor; a faster machine can, and the fix is a larger size — which the
  * helper takes itself, four times larger each time, rather than leaving a
- * size picked on one runner to fail on the next one that is faster. Work
- * still under the floor after that many tries does not grow with its size
- * at all, and fails as unmeasurable.
+ * size picked on one runner to fail on the next one that is faster. It
+ * returns the size it measured at, so a test whose premise is that size can
+ * say so. Work still under the floor after that many tries fails as
+ * unmeasurable: either it does not grow with its size, or the size it was
+ * given is too small even for that, and the fix is again a larger size.
  */
 import { expect } from "vitest";
 
@@ -61,9 +63,10 @@ function timed(work: () => void): number {
 
 /**
  * Fails unless `run(FACTOR * size)` takes less than `BAR` times as long as `run(size)`,
- * at the first of `size`, `FACTOR * size`, … whose smaller run clears the floor.
+ * at the first of `size`, `FACTOR * size`, … whose smaller run clears the floor, and
+ * returns that size.
  */
-export function expectLinearTime(run: (size: number) => void, size: number): void {
+export function expectLinearTime(run: (size: number) => void, size: number): number {
   for (let growths = 0; ; growths++, size *= FACTOR) {
     const pairs = Array.from({ length: PAIRS }, () => {
       const small = timed(() => run(size));
@@ -72,10 +75,10 @@ export function expectLinearTime(run: (size: number) => void, size: number): voi
     const timings = `${size} vs ${FACTOR * size}: ${pairs.map((p) => `${p.small.toFixed(1)}/${p.large.toFixed(1)} ms`).join(", ")}`;
     if (Math.min(...pairs.map((p) => p.small)) < FLOOR_MS) {
       if (growths < GROWTHS) continue;
-      expect.fail(`too fast to measure growth even ${FACTOR ** GROWTHS} times larger; ${timings}`);
+      expect.fail(`too fast to measure growth even ${FACTOR ** GROWTHS} times larger, pass a larger size; ${timings}`);
     }
     const ratios = pairs.map((p) => p.large / p.small).sort((a, b) => a - b);
     expect(ratios[Math.floor(PAIRS / 2)], timings).toBeLessThan(BAR);
-    return;
+    return size;
   }
 }
