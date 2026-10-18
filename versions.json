@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-471",
+      "ref": "refs/pull/471/merge",
+      "sha": "130889014ab489cb9d2a13fc274916b454750d92",
+      "timestamp": "2026-10-18T06:00:37.334Z",
+      "commits": [
+        {
+          "sha": "130889014ab489cb9d2a13fc274916b454750d92",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T23:58:46-06:00",
+          "message": "Merge 07529c4872c97ed103ec09bbd1d49ed77af8c0dc into 8e8e8942c7eac7d44155827652a53e1ac999d07f\n"
+        },
+        {
+          "sha": "07529c4872c97ed103ec09bbd1d49ed77af8c0dc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-17T23:58:42-06:00",
+          "message": "A widget its container hands no column keeps focus, as one the frame crops does (rich-unfiled-791c.pf3y)\n\nUnder one column protocol's render draws nothing, as Rich's Console.render\ndoes, and so never reached the widgets inside: FocusManager.settle saw a\nwidget squeezed out of its pane as gone from the view and moved focus to the\nfirst one. Now render still tells onDraw of the owners a renderable handed no\ncolumn holds, by drawing it at one column and dropping the output, and only\nwhen someone listens.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "8e8e8942c7eac7d44155827652a53e1ac999d07f",
