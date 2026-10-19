@@ -142,12 +142,18 @@ describe("scroll", () => {
   it("keeps a frame's word on when it changes when the frame has no cells at the window's left edge or before it", () => {
     const nothing: Renderable & Measurable = { render: () => [], measure: () => ({ minimum: 0, maximum: 0 }) };
     const entering = new Stamped(nothing, new Style({ nextChange: 5 }));
-    const content = new Group(new RichText("hello"), entering);
+    const content = new Group(entering, new RichText("hello"), new RichText("world"), entering);
     expect(Segment.nextChange(draw(content))).toBe(5);
-    for (const col of [0, 3]) {
-      const frame = scroll(content, { width: 6, height: 3, col: Animation.constant(col) }).at(0);
+    for (const [col, row] of [[0, 0], [3, 0], [9, 0], [0, 2], [0, 3], [-9, 9]] as const) {
+      const frame = scroll(content, { width: 3, height: 1, col: Animation.constant(col), row: Animation.constant(row) }).at(0);
       expect(Segment.nextChange(draw(frame))).toBe(5);
     }
+    expect(Segment.nextChange(draw(scroll(entering, { width: 6, height: 1 }).at(0)))).toBe(5);
+  });
+
+  it("writes nothing of the content left of its window, a combining mark included", () => {
+    const marked = new RichText("aébcdef");
+    expect(at(3, 0, marked, { width: 3, height: 1 })).toEqual(["cde"]);
   });
 
   it("refuses a slot that is not a positive whole number of cells", () => {

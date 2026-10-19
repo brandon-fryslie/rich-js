@@ -39,6 +39,7 @@ import { Measurement } from "../core/measure.js";
 import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { measuring, render, withBoundedWidth } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
+import { Style } from "../core/style.js";
 
 /** The slot a scroll draws, and how far the content is moved in it. */
 export interface ScrollOptions {
@@ -97,16 +98,19 @@ class ScrollFrame implements Renderable, Measurable, Composite {
     const options = withBoundedWidth(rawOptions, this);
     // The slot is cropped to the room it is given, as a `Panel` of a declared width is.
     const width = Math.min(this.width, options.maxWidth);
-    const lines = Segment.splitLines(render(this.content, { ...options, maxWidth: naturalWidth(this.content, options), height: undefined }));
+    // At least the one column a render draws at, so content of no width still draws its word on when it changes.
+    const drawn = [...render(this.content, { ...options, maxWidth: Math.max(1, naturalWidth(this.content, options)), height: undefined })];
+    const lines = Segment.splitLines(drawn);
     const blank = Math.min(width, Math.max(0, -this.col));
     const start = Math.max(0, this.col);
+    // [LAW:one-source-of-truth] What the window shows is cut from the whole content, so it may change
+    // when anything in the content does — a row above the slot entering pushes every row down. That
+    // one answer rides a cell of no width on the first row, and the cut throws the rest away.
+    yield new Segment("", new Style({ nextChange: Segment.nextChange(drawn) }));
     for (let r = 0; r < this.height; r++) {
       const line = lines[this.row + r] ?? [];
-      const [left = [], shown = []] = Segment.divide(line, [start, start + width - blank]);
-      // A segment of no cells left of the window draws nothing there, but may be a frame's only word
-      // on when it changes (`Stamped`), so it is kept; it costs the window no cell.
-      const uncelled = left.filter((segment) => segment.cellLength === 0 && !segment.isControl);
-      yield* Segment.adjustLineLength([...uncelled, new Segment(" ".repeat(blank)), ...shown], width);
+      const shown = Segment.divide(line, [start, start + width - blank])[1] ?? [];
+      yield* Segment.adjustLineLength([new Segment(" ".repeat(blank)), ...shown], width);
       yield Segment.line();
     }
   }
