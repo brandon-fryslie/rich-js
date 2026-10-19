@@ -4,15 +4,22 @@
     {
       "version": "pr-492",
       "ref": "refs/pull/492/merge",
-      "sha": "c4ebb9f1dc79951c3ed8a64784093e825fee5b49",
-      "timestamp": "2026-10-19T23:09:16.172Z",
+      "sha": "ef861bc397b20ec64c69052c3b021b825c83771b",
+      "timestamp": "2026-10-19T23:16:44.094Z",
       "commits": [
         {
-          "sha": "c4ebb9f1dc79951c3ed8a64784093e825fee5b49",
+          "sha": "ef861bc397b20ec64c69052c3b021b825c83771b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T23:07:15Z",
-          "message": "Merge 1cb918c2310eb1254c2fef7da0b61b24560a128a into f772ebd134433012ebb20badeb5560e1d6e6a46e\n"
+          "timestamp": "2026-10-19T23:14:34Z",
+          "message": "Merge 143360d4be2f6497cd07fcdb8d867c38bb7b4eee into f772ebd134433012ebb20badeb5560e1d6e6a46e\n"
+        },
+        {
+          "sha": "143360d4be2f6497cd07fcdb8d867c38bb7b4eee",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T17:14:29-06:00",
+          "message": "A reduced sequence keeps both parts on time; a reduced element wakes its host when gone (rich-animation-42lg.a38)\n\nMedium review of #492: sequence is a general combinator, so skipping `first`\ndropped content (a loading text before results). It is now each part reduced\nwith the switch kept; a transition says its own end. A lifecycle reduced shows\nnothing once told to leave but still says it changes when `gone`, so a host\npruning on gone(t) drops it on time. The template frames/stepped refuse a\nnon-finite frameTime() under reduced motion as with motion.\n"
         },
         {
           "sha": "1cb918c2310eb1254c2fef7da0b61b24560a128a",
