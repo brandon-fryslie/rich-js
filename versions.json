@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-483",
-      "ref": "refs/pull/483/merge",
-      "sha": "32a88c30bfe921dc34d5027d17dc70b53e06d2be",
-      "timestamp": "2026-10-19T14:00:53.335Z",
-      "commits": [
-        {
-          "sha": "32a88c30bfe921dc34d5027d17dc70b53e06d2be",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T13:59:00Z",
-          "message": "Merge eccf9790af0a20b2836ba9e41656fec1286a2aa4 into 7ffba4c23bb23c04bda2d38ba48ab580fff4a6b0\n"
-        },
-        {
-          "sha": "eccf9790af0a20b2836ba9e41656fec1286a2aa4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T07:58:52-06:00",
-          "message": "Glyph effects: a changed cell stands apart from its neighbours, one ink test for both wrappers, zero-width cells are no text, eases settle (rich-animation-42lg.je5 review)\n\nstandsApart replaces keepsLines: only changed texts are asked, by grapheme count beside their neighbours, so a child splitting a cluster across segments draws as it did and a leading combining mark is caught. inked() in effect.ts is the one blank test for Effected and the glyph effects. typewriter/scramble settle the handed ease so the last cell lands. caseWave's band covers a wide glyph by any column. SCRAMBLE_GLYPHS spreads an ASCII string, so the module does nothing on import. stars wake once a life: step 1.5, life 1, the same frames.\n"
-        },
-        {
-          "sha": "204699194750586716551d28d04b60fddcb50546",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T07:48:16-06:00",
-          "message": "A blank cell has width: a byte-order mark takes no particle (rich-animation-42lg.je5 review)\n"
-        },
-        {
-          "sha": "afebbbb1e4dea19585af9a4558bd62cb36987d5e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T07:45:22-06:00",
-          "message": "Glyph effects: a cell may not join its neighbour, text is typed and not margins, whole-row drift, z checked and read by the wave (rich-animation-42lg.je5 review)\n\nLine widths are checked after a frame, so a trailing joiner or leading combining mark that fuses across cells throws. Typewriter and scramble pace over each row's text, not the padding round it. One isBlank for scramble and particles; a wide blank takes a particle and a space. particles' drift is a whole number of rows. Every catalogue effect, colour and glyph, refuses a z that is not finite (requireZ). caseWave takes z and starts its pass there. stepped builds its beat once. The demo replays transitions on a Timeline from each run's start, so the frame's nextChange is on the Live's clock.\n"
-        },
-        {
-          "sha": "1222697f8eb68bd4f281d4cc3489153590c49d12",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T07:27:38-06:00",
-          "message": "A glyph effect types, scrambles and rains on what an element draws (rich-animation-42lg.je5)\n\nGlyphEffected is Effected's glyph half: a GlyphEffect is handed every cell\nan element draws (DrawnGlyphs: the cells, blanks included, and whether the\noutput is ASCII-only) and gives an Animation of a per-cell map to the text\neach cell shows. One enforcer holds that text to the cell's width with no\nline break or control character; an unchanged segment is yielded as it was.\nIt writes at every depth, no colour included, and nests with Effected.\n\nThe catalogue: typewriter and scramble (transitions through the one\ntransition() helper, now generic), caseWave, and particles with rain and\nstars as two specs of it, each with an ASCII set drawn under asciiOnly.\n\nEffected's grapheme walk and seed are now walkGlyphs and cellSeed, shared.\n\nbeat: a boundary is walked until at() places it in its hold and its pass.\nWith one hold the old predicate was always true, so beat([0.06]).nextChange(3.3)\nanswered 3.3 itself while placing 3.3 in the previous pass.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "7ffba4c23bb23c04bda2d38ba48ab580fff4a6b0",
-      "timestamp": "2026-10-19T13:07:57.420Z",
+      "sha": "427530527fc3b4060986eb7ed76aefe8f7e963b4",
+      "timestamp": "2026-10-19T14:09:15.262Z",
       "commits": [
         {
-          "sha": "7ffba4c23bb23c04bda2d38ba48ab580fff4a6b0",
+          "sha": "427530527fc3b4060986eb7ed76aefe8f7e963b4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T07:06:32-06:00",
-          "message": "Live and App play a view on a timeline and wake on its next change (rich-animation-42lg.04v) (#481)\n\n* WIP: Live and App draw a View through a Timeline and wake on the frame's next change (rich-animation-42lg.04v)\n\nSource only; lint green, tests not yet run or written, docs untouched.\n\n* Live and App on a timeline: tests at 1 and 60 fps, and the docs (rich-animation-42lg.04v)\n\nPause, seek, resume, double speed and reverse on a hand-moved clock; a tween view in an App ticks until it arrives with no animate(); a held sequence wakes once at its switch. docs/animation.md gains the section on playing in a host; live.md and app.md name the timeline and the Animation view.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Name the backwards edge case where the test sits (rich-animation-42lg.04v)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A renderable view is off the timeline; the default timeline starts when the host is made (rich-animation-42lg.04v)\n\nReview fixes: a renderable's cell stamps are read on the host's clock and\npausing holds none of it; a paused timeline stops an App's animate() ticking\nas it stops a Live; systemClock().at waits out a hold longer than a timer\nholds instead of throwing; docs say a Live draws at its rate throughout and\nan App's rate does not cap a held frame's wake; view is in CLAUDE.md's tiers.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Backwards, a frame whose cells move answers t; update re-arms a paused Live (rich-animation-42lg.04v)\n\nMedium-pass fixes: an animation view's moving cells no longer freeze an App\nrun backwards until the view's own lastChange; a view handed over by\nupdate() after a pause is drawn by the auto-refresh; a renderable reading\nits own clock belongs off the timeline, said in view.ts and the docs.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A drawn frame says whether it is silent or held; each host reads its policy off it (rich-animation-42lg.04v)\n\nEscalation-pass fixes: HostView tags a view renderable, function or\nanimation, and DrawnView carries silent (may change unsaid, so a Live polls\nit) and held (drawn for a paused time, so an App's animate() rests), which\nreplaces frozen() and the second derivation it made. A Live polls renderable\nand function views at its rate, paused included, and draws an animation only\nwhen it says; update() arms a wake only when none is due sooner, so updates\nfaster than the rate no longer put the frame off. WidgetApp gains clock and\ntimeline.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-10-19T08:07:26-06:00",
+          "message": "A glyph effect types, scrambles and rains on what an element draws (rich-animation-42lg.je5) (#483)\n\n* A glyph effect types, scrambles and rains on what an element draws (rich-animation-42lg.je5)\n\nGlyphEffected is Effected's glyph half: a GlyphEffect is handed every cell\nan element draws (DrawnGlyphs: the cells, blanks included, and whether the\noutput is ASCII-only) and gives an Animation of a per-cell map to the text\neach cell shows. One enforcer holds that text to the cell's width with no\nline break or control character; an unchanged segment is yielded as it was.\nIt writes at every depth, no colour included, and nests with Effected.\n\nThe catalogue: typewriter and scramble (transitions through the one\ntransition() helper, now generic), caseWave, and particles with rain and\nstars as two specs of it, each with an ASCII set drawn under asciiOnly.\n\nEffected's grapheme walk and seed are now walkGlyphs and cellSeed, shared.\n\nbeat: a boundary is walked until at() places it in its hold and its pass.\nWith one hold the old predicate was always true, so beat([0.06]).nextChange(3.3)\nanswered 3.3 itself while placing 3.3 in the previous pass.\n\n* Glyph effects: a cell may not join its neighbour, text is typed and not margins, whole-row drift, z checked and read by the wave (rich-animation-42lg.je5 review)\n\nLine widths are checked after a frame, so a trailing joiner or leading combining mark that fuses across cells throws. Typewriter and scramble pace over each row's text, not the padding round it. One isBlank for scramble and particles; a wide blank takes a particle and a space. particles' drift is a whole number of rows. Every catalogue effect, colour and glyph, refuses a z that is not finite (requireZ). caseWave takes z and starts its pass there. stepped builds its beat once. The demo replays transitions on a Timeline from each run's start, so the frame's nextChange is on the Live's clock.\n\n* A blank cell has width: a byte-order mark takes no particle (rich-animation-42lg.je5 review)\n\n* Glyph effects: a changed cell stands apart from its neighbours, one ink test for both wrappers, zero-width cells are no text, eases settle (rich-animation-42lg.je5 review)\n\nstandsApart replaces keepsLines: only changed texts are asked, by grapheme count beside their neighbours, so a child splitting a cluster across segments draws as it did and a leading combining mark is caught. inked() in effect.ts is the one blank test for Effected and the glyph effects. typewriter/scramble settle the handed ease so the last cell lands. caseWave's band covers a wide glyph by any column. SCRAMBLE_GLYPHS spreads an ASCII string, so the module does nothing on import. stars wake once a life: step 1.5, life 1, the same frames."
         }
       ]
     }
