@@ -11,15 +11,17 @@
  * one it is drawing.
  *
  * The slot is what the window is. It measures as its width whatever the
- * content, and draws exactly its rows of its width at every offset, so what
- * sits beside it never moves. An offset before or past the content shows
- * blank cells rather than stopping at an edge: that is what lets a marquee
- * enter from the right and a slide-in arrive from outside the slot.
+ * content, and draws exactly its rows of its width at every offset — cropped
+ * only to a narrower room it is given — so what sits beside it never moves.
+ * An offset before or past the content shows blank cells rather than stopping
+ * at an edge: that is what lets a marquee enter from the right and a slide-in
+ * arrive from outside the slot.
  *
- * The content is drawn at an unbounded width, its own natural one, and no
- * height, its own length, because the content wider and taller than the slot
- * is the thing being windowed. Content that should wrap to the slot instead
- * is `new Constrain(content, width)`, composed rather than asked for.
+ * The content is drawn at its own natural width and no height, its own
+ * length, because the content wider and taller than the slot is the thing
+ * being windowed. Content that should wrap to the slot instead, or that has
+ * no natural width because it fills whatever it is given, is
+ * `new Constrain(content, width)`, composed rather than asked for.
  *
  * [LAW:single-enforcer] A row is cut at the window's edges by
  * `Segment.divide`, the one place a line is cut at a column: a wide glyph a
@@ -33,8 +35,9 @@
  */
 
 import { Animation } from "../core/animation.js";
+import { Measurement } from "../core/measure.js";
 import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
-import { render } from "../core/protocol.js";
+import { measuring, render, withBoundedWidth } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 
 /** The slot a scroll draws, and how far the content is moved in it. */
@@ -57,7 +60,27 @@ export function scroll(content: Renderable, options: ScrollOptions): Animation<R
   for (const [name, n] of [["width", width], ["height", height]] as const) {
     if (!(Number.isInteger(n) && n > 0)) throw new RangeError(`scroll: ${name} must be a positive whole number of cells, got ${n}`);
   }
-  return Animation.map(Animation.all([col, row]), ([c, r]) => new ScrollFrame(content, width, height, Math.round(c), Math.round(r)));
+  return Animation.map(Animation.all([col, row]), ([c, r]) => new ScrollFrame(content, width, height, cells("col", c), cells("row", r)));
+}
+
+/** `offset` rounded to the nearest cell. [LAW:no-silent-failure] One that is not finite has no cell to move to, and says so rather than drawing a blank slot. */
+function cells(name: string, offset: number): number {
+  if (!Number.isFinite(offset)) throw new RangeError(`scroll: ${name} must be a finite number of cells, got ${offset}`);
+  return Math.round(offset);
+}
+
+/**
+ * The width `content` is drawn at: its own natural one. [LAW:no-silent-failure]
+ * Content that takes whatever width it is offered — a `Rule`, a renderable
+ * with no `measure` — has none, and is refused by name rather than drawn at
+ * an unbounded width it cannot fill.
+ */
+function naturalWidth(content: Renderable, options: RenderOptions): number {
+  const natural = Measurement.get(measuring({ ...options, maxWidth: Number.POSITIVE_INFINITY }), content).maximum;
+  if (!Number.isFinite(natural)) {
+    throw new RangeError("scroll: the content has no natural width — it fills whatever width it is given; give it one with new Constrain(content, width)");
+  }
+  return natural;
 }
 
 /** One frame of a scroll: `content`'s cells from column `col` and row `row`, `width` by `height` of them, blank where it has none. */
@@ -70,14 +93,17 @@ class ScrollFrame implements Renderable, Measurable, Composite {
     readonly row: number,
   ) {}
 
-  *render(options: RenderOptions): Iterable<Segment> {
-    const lines = Segment.splitLines(render(this.content, { ...options, maxWidth: Number.POSITIVE_INFINITY, height: undefined }));
-    const blank = Math.max(0, -this.col);
+  *render(rawOptions: RenderOptions): Iterable<Segment> {
+    const options = withBoundedWidth(rawOptions, this);
+    // The slot is cropped to the room it is given, as a `Panel` of a declared width is.
+    const width = Math.min(this.width, options.maxWidth);
+    const lines = Segment.splitLines(render(this.content, { ...options, maxWidth: naturalWidth(this.content, options), height: undefined }));
+    const blank = Math.min(width, Math.max(0, -this.col));
     const start = Math.max(0, this.col);
     for (let r = 0; r < this.height; r++) {
       const line = lines[this.row + r] ?? [];
-      const shown = Segment.divide(line, [start, start + this.width - blank])[1] ?? [];
-      yield* Segment.adjustLineLength([new Segment(" ".repeat(blank)), ...shown], this.width);
+      const shown = Segment.divide(line, [start, start + width - blank])[1] ?? [];
+      yield* Segment.adjustLineLength([new Segment(" ".repeat(blank)), ...shown], width);
       yield Segment.line();
     }
   }

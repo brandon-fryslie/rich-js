@@ -142,7 +142,7 @@ export function frameAt(animation: Animation<Renderable>, t: number): Renderable
  * cell of no width, which writes no byte, so a frame of no cells — an
  * element not yet entered — still says when it changes.
  */
-class Stamped implements Renderable, Measurable, Composite {
+export class Stamped implements Renderable, Measurable, Composite {
   constructor(
     readonly frame: Renderable,
     readonly stamp: Style,

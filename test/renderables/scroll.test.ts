@@ -3,7 +3,7 @@ import { Animation } from "../../src/core/animation.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { EASES, Phase } from "../../src/core/easing.js";
 import { Measurement } from "../../src/core/measure.js";
-import { render, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
+import { render, type Measurable, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { segmentsToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
@@ -13,6 +13,7 @@ import { drawView, hostView } from "../../src/core/view.js";
 import { Constrain } from "../../src/renderables/constrain.js";
 import { frameAt } from "../../src/renderables/frames.js";
 import { Group } from "../../src/renderables/group.js";
+import { Rule } from "../../src/renderables/rule.js";
 import { scroll } from "../../src/renderables/scroll.js";
 
 const OPTIONS: RenderOptions = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR };
@@ -78,7 +79,10 @@ describe("scroll", () => {
 
   it("keeps each cell's anchor naming its column in the content, so a moving window is hit-tested to its owner", () => {
     const owner = {};
-    const anchored: Renderable = { render: () => Segment.anchorLines([[new Segment("abcdefghij")]], owner).flatMap((line) => [...line, Segment.line()]) };
+    const anchored: Renderable & Measurable = {
+      render: () => Segment.anchorLines([[new Segment("abcdefghij")]], owner).flatMap((line) => [...line, Segment.line()]),
+      measure: () => ({ minimum: 10, maximum: 10 }),
+    };
     for (const col of [-3, 0, 4]) {
       const lines = Segment.splitLines(draw(scroll(anchored, { width: 6, height: 1, col: Animation.constant(col) }).at(0)));
       for (let x = 0; x < 6; x++) {
@@ -111,6 +115,27 @@ describe("scroll", () => {
     expect(slide.nextChange(2)).toBe(Number.POSITIVE_INFINITY);
     expect(rows(draw(slide.at(0)))).toEqual(["      "]);
     expect(rows(draw(slide.at(2)))).toEqual(["abcdef"]);
+  });
+
+  it("is cropped to a room narrower than its slot, never spilling past it", () => {
+    const frame = scroll(LINE, { width: 10, height: 2 }).at(0);
+    expect(Measurement.get({ ...OPTIONS, maxWidth: 4 }, frame)).toEqual(new Measurement(4, 4));
+    expect(rows(draw(frame, { ...OPTIONS, maxWidth: 4 }))).toEqual(["abcd", "    "]);
+  });
+
+  it("refuses content with no natural width by name, and draws it once constrained to one", () => {
+    const rule = new Rule();
+    expect(() => draw(scroll(rule, { width: 6, height: 1 }).at(0))).toThrow(/no natural width.*Constrain/);
+    expect(at(0, 0, new Constrain(rule, 8))).toEqual([rule.characters.repeat(6)]);
+  });
+
+  it("refuses an offset that is not a finite number of cells, and blanks one any distance outside", () => {
+    for (const bad of [Number.NaN, Number.NEGATIVE_INFINITY]) {
+      expect(() => scroll(LINE, { width: 6, height: 1, col: Animation.constant(bad) }).at(0)).toThrow(/col must be a finite/);
+      expect(() => scroll(LINE, { width: 6, height: 1, row: Animation.constant(bad) }).at(0)).toThrow(/row must be a finite/);
+    }
+    expect(at(-1e12)).toEqual(["      "]);
+    expect(at(1e12)).toEqual(["      "]);
   });
 
   it("refuses a slot that is not a positive whole number of cells", () => {
