@@ -4,15 +4,22 @@
     {
       "version": "pr-479",
       "ref": "refs/pull/479/merge",
-      "sha": "580fd0d0724eee24e1effe53fa0a7376c5012fe2",
-      "timestamp": "2026-10-19T09:11:05.873Z",
+      "sha": "75778a1fc8b9e5311552458394c308eee176d023",
+      "timestamp": "2026-10-19T09:27:54.313Z",
       "commits": [
         {
-          "sha": "580fd0d0724eee24e1effe53fa0a7376c5012fe2",
+          "sha": "75778a1fc8b9e5311552458394c308eee176d023",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T03:09:36-06:00",
-          "message": "Merge ef239a7bf489fbca77b02c261d5c4d423abecf97 into 535b1b6a1628aa46150aacf8c4e972fd6bfbe541\n"
+          "timestamp": "2026-10-19T09:26:17Z",
+          "message": "Merge d6c1c815074070f51bbb5cf8ad11b3312a663d07 into 535b1b6a1628aa46150aacf8c4e972fd6bfbe541\n"
+        },
+        {
+          "sha": "d6c1c815074070f51bbb5cf8ad11b3312a663d07",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T03:26:04-06:00",
+          "message": "A timeline's host moment is a search across clocks, and a frame is stamped where it is drawn (rich-animation-42lg.kjt)\n\nReview findings, high pass. Timeline.run threw for any animation time far from\nthe host's or any slow rate, backwards above all: a host float is a step of\n`rate` on the animation's clock, so the floats between the sum and the first\none past an edge are as many as the two clocks' resolutions are apart, which\nthe eight-ulp walk for a sum on one clock cannot cover. `firstReaching` in\neasing.ts brackets and halves to the exact float; `played` is one shape for\nboth directions, with the host time refused once at entry.\n\nFrameSequence.at stamped its cells with nextChange on its own clock, so a\nsequence run on a timeline, or after an Animation.sequence switch, handed a\nhost a stamp it could not read; Spinner was re-stamping over it, overwriting\na label's earlier word. `at` is now the frame alone and `frameAt` stamps it\nwhere a host time is known — Frames, Spinner, the template `frames` function\n— so Style.withNextChange and the re-stamping loop go. Spinner's copy of the\nrate check goes too; the timeline is the one enforcer. A paused timeline\nrefuses a non-finite host time at seek like every other operation.\n"
         },
         {
           "sha": "ef239a7bf489fbca77b02c261d5c4d423abecf97",
