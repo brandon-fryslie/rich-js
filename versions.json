@@ -4,15 +4,29 @@
     {
       "version": "pr-476",
       "ref": "refs/pull/476/merge",
-      "sha": "f3dce867182a5b7fe12f1ea2dc541c1b554690f7",
-      "timestamp": "2026-10-19T06:40:21.817Z",
+      "sha": "e50fef2e097df7a3d3b12100bf06165cd46ae9db",
+      "timestamp": "2026-10-19T06:51:59.245Z",
       "commits": [
         {
-          "sha": "f3dce867182a5b7fe12f1ea2dc541c1b554690f7",
+          "sha": "e50fef2e097df7a3d3b12100bf06165cd46ae9db",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T00:38:34-06:00",
-          "message": "Merge e486726a5396ef835b684112251b146b10509fca into 620c4bba5485ddedfe2eb22dc88e797567e8a370\n"
+          "timestamp": "2026-10-19T06:49:32Z",
+          "message": "Merge ab2b40c05296f8ec941baf2e50cc85f468799ef7 into 620c4bba5485ddedfe2eb22dc88e797567e8a370\n"
+        },
+        {
+          "sha": "ab2b40c05296f8ec941baf2e50cc85f468799ef7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T00:49:27-06:00",
+          "message": "claude-sessions parser's header names the joins ahead of dropping hidden records (rich-demos-k78j.mk1)\n"
+        },
+        {
+          "sha": "a85254272955128e24f50171d86b354a9ebb87d2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T00:48:09-06:00",
+          "message": "claude-sessions joins a message's records across hidden records only, and drops hidden ones after the joins (rich-demos-k78j.mk1)\n\nJoining by id carried a message across drawn records — a call's result, a\nskill's meta text — so the conversation was drawn out of the order it was\nwritten: an early call showed the last call's time, meta landed below later\ncalls, jump-to-parent moved down. A drawn record parts a message again; only\na hidden one is passed over. Hidden records are now read and joined like any\nother and dropped after the joins, so H changes what is drawn, never how.\nOver 300 local transcripts the structure with H on and off now agrees in all\n300; on master 2 disagreed.\n"
         },
         {
           "sha": "e486726a5396ef835b684112251b146b10509fca",
