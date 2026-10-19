@@ -209,6 +209,36 @@ console.print(`done at 2s: ${change.done(2)}, next change ${moving.nextChange(2)
 
 To watch both run, run `npm run transitions` in a checkout of this repository.
 
+## Enter and exit: an element arriving, staying and leaving
+
+A row added to a table, a line appended to a log, a panel closing: each is one element that arrives, stays, and leaves, and whoever holds it must know when it is gone so it can drop it. `lifecycle(element, { enter, exit, key, theme }, entered)` is that element on the host's clock, as an `Animation` of what it draws. `enter` and `exit` are transitions made for this element alone, such as `fadeIn` and `dissolveOut`. `entered` is the host time it arrived. `lifecycle.leave(at)` is the same element told to leave at host time `at`, a new value like a timeline operation's. Until it is told, its `left` is `Infinity`.
+
+Both times are handed in, never read, so a host that says "leave at 5" and asks for the frame at 6 gets the element one second into leaving. At host time `t` it draws:
+
+- before `entered`, nothing — a timeline run backwards asks for those times;
+- arriving, the element through `enter`, handed the time since it entered;
+- staying, the element itself, byte for byte, until it is told to leave;
+- leaving, through `exit`, handed the time since it was told, over whatever arriving would draw then, so an element told to leave before it has arrived leaves from where it is;
+- once `exit` is done, nothing, for good: `gone(t)` is true, and the host drops it.
+
+It changes every frame while it arrives or leaves, and holds still while it stays and once it is gone, so a host still holding a gone element wakes for nothing. Its cells say so even with no colour output, where the transitions write no colour:
+
+```typescript
+import { DEFAULT_TERMINAL_THEME, EASES, RichText, dissolveOut, fadeIn, lifecycle } from "@promptctl/rich-js";
+
+const curve = { seconds: 1, ease: EASES.linear, swing: 1 };
+const line = new RichText("compiling 214 modules", { style: "bold cyan" });
+const shown = lifecycle(line, { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "line", theme: DEFAULT_TERMINAL_THEME }, 0).leave(3);
+
+for (const t of [0, 0.5, 1, 2, 3.5, 4]) {
+  const next = shown.nextChange(t);
+  console.print(shown.at(t));
+  console.print(`t=${t}s  gone ${shown.gone(t)}  next change ${next === t ? "every frame" : next === Infinity ? "never" : `at ${next}s`}`);
+}
+```
+
+A list whose items come and go is the lifecycles it holds, each dropped once it is gone. Laid out together, as `Animation.all(items)` mapped to a `Group`, the list says when it changes as the soonest of its items does. To watch a log whose lines arrive and leave, run `npm run lifecycle` in a checkout of this repository.
+
 ## Playback: a timeline
 
 Because every animation is a pure function of its time, pausing, reversing, scrubbing and speeding one up are not things done to the animation: they are a change in which time it is asked for. A `Timeline` is that map from the host's clock to animation time, as a value — an animation time at a host time and a rate in animation seconds per host second, or, paused, one animation time at every host time. Every operation takes a timeline and a host time and gives a timeline back, so a paused timeline resumed later maps the moment it resumes to the time it froze at, and nothing here reads a clock.
