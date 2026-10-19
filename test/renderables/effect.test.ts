@@ -316,6 +316,11 @@ describe("Effected — attributes", () => {
     expect(out.map((s) => [s.text, s.style?.italic, s.style?.reverse, s.style?.link, s.style?.bgcolor, s.style?.anchor])).toEqual([["ab", true, undefined, undefined, undefined, anchored.anchor]]);
   });
 
+  it("refuses a frame that returns no attributes, naming the look it should return", () => {
+    const colorsOnly: Effect = () => Animation.constant<EffectFrame>((look) => ({ fg: look.fg, bg: RED }) as CellLook);
+    expect(() => [...effected(fixed(new Segment("ab")), colorsOnly).render({ maxWidth: 10 })]).toThrow(/\{ \.\.\.look, fg, bg \}.*no attributes/);
+  });
+
   it("has no reverse to move: the colours are where a swap is made", () => {
     // @ts-expect-error reverse is not an attribute a look carries
     const swapped: CellLook["attributes"] = { ...PLAIN, reverse: true };

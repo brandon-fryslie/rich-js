@@ -269,7 +269,7 @@ export class Effected implements Renderable, Measurable, Composite {
       // that neighbour was.
       const runs: { text: string; cells: number; colors: CellColors; attributes: CellAttributes; drawn: DrawnColors }[] = [];
       for (const { glyph, cell } of glyphs) {
-        const moved = cell === undefined ? from : frame(from, { ...cell, seed: cellSeed(this.key, cell.row, cell.col), terminal, reverse: pair.reverse });
+        const moved = cell === undefined ? from : returned(frame(from, { ...cell, seed: cellSeed(this.key, cell.row, cell.col), terminal, reverse: pair.reverse }));
         // Back from the screen to the style's slots: the same swap undoes itself.
         const colors = onScreen(moved, pair.reverse);
         const last = runs[runs.length - 1];
@@ -578,6 +578,20 @@ function slotWritesAlike(a: ColorSpec | undefined, b: ColorSpec | undefined, for
 
 function written(spec: ColorSpec | undefined, foreground: boolean): string {
   return spec?.getAnsiCodes(foreground).join(";") ?? "";
+}
+
+/**
+ * The look a frame returned, refused at once when it carries no attributes.
+ * [LAW:no-silent-failure] A frame written before an effect moved attributes
+ * returns `{ fg, bg }`, and the effects playground runs a visitor's frame with
+ * its types stripped, not checked; unrefused, it fails as a TypeError in run
+ * merging that names neither the frame nor the contract.
+ */
+function returned(look: CellLook): CellLook {
+  if (look.attributes === undefined) {
+    throw new TypeError("an effect frame returns the look it was handed with its changes, { ...look, fg, bg }: this one returned no attributes");
+  }
+  return look;
 }
 
 /** The attributes a look carries: `ATTRIBUTE_NAMES` but `reverse`. */
