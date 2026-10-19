@@ -4,15 +4,29 @@
     {
       "version": "pr-490",
       "ref": "refs/pull/490/merge",
-      "sha": "d9e138340380b1e7a91f56840667a8111a6c6e35",
-      "timestamp": "2026-10-19T20:10:35.914Z",
+      "sha": "618806c16402b2e120eee5d541fdea84bc7739bb",
+      "timestamp": "2026-10-19T20:20:16.317Z",
       "commits": [
         {
-          "sha": "d9e138340380b1e7a91f56840667a8111a6c6e35",
+          "sha": "618806c16402b2e120eee5d541fdea84bc7739bb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T14:08:56-06:00",
-          "message": "Merge 8ea82c507b26d671d91bf97bd2a8776610e9c9c6 into da13b2a3a8d9a444d940d282e186761a08191686\n"
+          "timestamp": "2026-10-19T20:17:54Z",
+          "message": "Merge 5d70f14b4f6c7c030763a7b55b5919014a350297 into da13b2a3a8d9a444d940d282e186761a08191686\n"
+        },
+        {
+          "sha": "5d70f14b4f6c7c030763a7b55b5919014a350297",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T14:17:49-06:00",
+          "message": "The stagger tests say why they may stagger lifecycles (rich-animation-42lg.h4r)\n"
+        },
+        {
+          "sha": "68b419a3b607e0a68f949de1364bb4983f246138",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T14:16:46-06:00",
+          "message": "A stagger starts its earliest child at 0, and a lifecycle is staggered by its own entered (rich-animation-42lg.h4r)\n\nReview (high) on #490:\n- A negative delay now starts the last child at 0: origins shift by the lowest of them.\n- The span (delay times the last index) is refused by the delay's name when it overflows.\n- Animation.all folds instead of spreading into Math.min/max, which throws past the engine's argument limit.\n- Docs and the timeline header stagger a loop, not lifecycles: a lifecycle's turn is its entered, on the host clock its leave and gone take.\n- Tests pin answers exactly (nextDown, now one helper for three suites) instead of against the implementation's own expression.\n"
         },
         {
           "sha": "8ea82c507b26d671d91bf97bd2a8776610e9c9c6",
