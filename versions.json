@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-493",
+      "ref": "refs/pull/493/merge",
+      "sha": "7c7b4230abe1c1271434fcb90bc758095e8922e2",
+      "timestamp": "2026-10-19T23:57:24.795Z",
+      "commits": [
+        {
+          "sha": "7c7b4230abe1c1271434fcb90bc758095e8922e2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T17:55:31-06:00",
+          "message": "Merge 71dd51d6df0f84c760a4e87fc8e8129200dd55a9 into 5cac7dcb8d47c475525384d4737e0da368771a82\n"
+        },
+        {
+          "sha": "71dd51d6df0f84c760a4e87fc8e8129200dd55a9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T17:55:13-06:00",
+          "message": "Templates get the animation toolbox: tween, loop, glyphs, on a host-handed timeline (rich-animation-42lg.zck)\n\nanimationFuncs(frameTime, options) now draws every function on a Timeline\nthe host hands in as a getter (the host's own clock when omitted), so a\ndaemon pauses, reverses or scrubs a session's animations with nothing\nrecompiled, and a frame's stamp is carried back onto the host's clock by\nTimeline.run rather than left on the mapped one. One helper reads the time,\nthe timeline and reduced motion for every function.\n\nNew functions, each an exact arity of typed slots:\n- tween <seconds> <ease> <start> <from> <to>: a number, ease by name\n- loop <seconds> <start>: the way through a period, 0 to 1\n- glyphs <name> <start> <fragment>: a catalogue glyph effect on a fragment\n\nA colour tween and a ramp scroll are a tween and a loop read through ramp,\nnot new functions: ColorRamp is the one blender. glyphs runs on the\nunrendered RichText (reglyphText), sharing Reglyphed's walk and contract\nchecks. options also carries asciiOnly, for the glyphs an effect picks.\n\nDocs: template-bindings \"Animating a template\"; pointers from animation.md.\nDemo: §6 Motion in rich-template-bindings, motion and reduced side by side.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "5cac7dcb8d47c475525384d4737e0da368771a82",
