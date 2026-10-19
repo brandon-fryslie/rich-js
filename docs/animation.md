@@ -183,6 +183,32 @@ for (const t of [0.6, 1.1, 1.6]) {
 
 To watch every one move, run `npm run glyph-effects` in a checkout of this repository.
 
+## A transition from one renderable to another
+
+A fade-in or a dissolve is one element arriving or leaving. When the same slot changes from one renderable to another — a status going from "building" to "done", a number becoming a different number — `crossfade(curve)` and `wipe(curve)` draw the change instead of a cut. Each is a `Transition` like the others, so it says when it is `done`, and its value is a `Change`: handed the renderable drawn until now, the one drawn from now on and the terminal they are drawn on, it gives an `Animation` of what to draw, from `t = 0` on its own clock.
+
+Every cell goes through the terminal's ground on its way. Until it is halfway it shows the old renderable, fading out, and from then the new one, fading in, so no cell jumps from one glyph to another. A crossfade turns every cell together. A wipe sends a front across the columns from left to right, with the new renderable behind it and a soft edge six columns wide, or as many as its second argument says.
+
+The change is drawn at the new renderable's size from its first frame. The old one is cut or padded to the new one's rows, so what sits beside it moves once, at the cut, and never while the change runs. It moves every frame until it is done, then it is the new renderable itself, byte for byte, and never changes again. A change shorter than the gap between frames is seen at its end:
+
+```typescript
+import { DEFAULT_TERMINAL_THEME, EASES, RichText, wipe } from "@promptctl/rich-js";
+
+const change = wipe({ seconds: 2, ease: EASES.linear, swing: 1 });
+const moving = change.effect({
+  from: new RichText("building the project", { style: "yellow" }),
+  to: new RichText("done: 1,204 tests passed", { style: "green" }),
+  theme: DEFAULT_TERMINAL_THEME,
+});
+
+for (const t of [0, 0.5, 1, 1.5, 2]) {
+  console.print(moving.at(t));
+}
+console.print(`done at 2s: ${change.done(2)}, next change ${moving.nextChange(2)}`);
+```
+
+To watch both run, run `npm run transitions` in a checkout of this repository.
+
 ## Playback: a timeline
 
 Because every animation is a pure function of its time, pausing, reversing, scrubbing and speeding one up are not things done to the animation: they are a change in which time it is asked for. A `Timeline` is that map from the host's clock to animation time, as a value — an animation time at a host time and a rate in animation seconds per host second, or, paused, one animation time at every host time. Every operation takes a timeline and a host time and gives a timeline back, so a paused timeline resumed later maps the moment it resumes to the time it froze at, and nothing here reads a clock.
