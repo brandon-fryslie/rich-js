@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-476",
-      "ref": "refs/pull/476/merge",
-      "sha": "e50fef2e097df7a3d3b12100bf06165cd46ae9db",
-      "timestamp": "2026-10-19T06:51:59.245Z",
-      "commits": [
-        {
-          "sha": "e50fef2e097df7a3d3b12100bf06165cd46ae9db",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T06:49:32Z",
-          "message": "Merge ab2b40c05296f8ec941baf2e50cc85f468799ef7 into 620c4bba5485ddedfe2eb22dc88e797567e8a370\n"
-        },
-        {
-          "sha": "ab2b40c05296f8ec941baf2e50cc85f468799ef7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T00:49:27-06:00",
-          "message": "claude-sessions parser's header names the joins ahead of dropping hidden records (rich-demos-k78j.mk1)\n"
-        },
-        {
-          "sha": "a85254272955128e24f50171d86b354a9ebb87d2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T00:48:09-06:00",
-          "message": "claude-sessions joins a message's records across hidden records only, and drops hidden ones after the joins (rich-demos-k78j.mk1)\n\nJoining by id carried a message across drawn records — a call's result, a\nskill's meta text — so the conversation was drawn out of the order it was\nwritten: an early call showed the last call's time, meta landed below later\ncalls, jump-to-parent moved down. A drawn record parts a message again; only\na hidden one is passed over. Hidden records are now read and joined like any\nother and dropped after the joins, so H changes what is drawn, never how.\nOver 300 local transcripts the structure with H on and off now agrees in all\n300; on master 2 disagreed.\n"
-        },
-        {
-          "sha": "e486726a5396ef835b684112251b146b10509fca",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T00:38:28-06:00",
-          "message": "claude-sessions joins one assistant message by its id, not by its records sitting together (rich-demos-k78j.mk1)\n\nClaude Code runs a tool while the message that called it is still\nstreaming, so the call's result, a skill's meta text, or a hidden\ngoal_status attachment can land between two records of one message.\nJoining by adjacency split the message there, and a hidden record split\nit only while hidden records were shown. Of the 500 most recent local\ntranscripts, 14 parsed to a different conversation with H on; none do now.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "620c4bba5485ddedfe2eb22dc88e797567e8a370",
-      "timestamp": "2026-10-18T08:19:35.074Z",
+      "sha": "28f2883d9710f9915f5d8ef0375d2c0991749a26",
+      "timestamp": "2026-10-19T07:00:37.155Z",
       "commits": [
         {
-          "sha": "620c4bba5485ddedfe2eb22dc88e797567e8a370",
+          "sha": "28f2883d9710f9915f5d8ef0375d2c0991749a26",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-18T02:18:09-06:00",
-          "message": "expectLinearTime takes a larger size itself when the smaller run is under the floor, so a faster runner cannot fail linear work (rich-unfiled-791c.sx9g) (#475)\n\n* expectLinearTime takes a larger size itself when the smaller run is under the floor, so a faster runner cannot fail linear work (rich-unfiled-791c.sx9g)\n\n* expectLinearTime returns the size it measured at, so its own stall tests fail rather than pass vacuously when a faster runner grows the size (rich-unfiled-791c.sx9g)\n\nThe unmeasurable message says to pass a larger size again: linear work given\na size more than 64 times too small fails with it too. The escalation tests\npin the sizes tried to the x4 sequence."
+          "timestamp": "2026-10-19T00:58:51-06:00",
+          "message": "claude-sessions joins one assistant message by its id, not by its records sitting together (rich-demos-k78j.mk1) (#476)\n\n* claude-sessions joins one assistant message by its id, not by its records sitting together (rich-demos-k78j.mk1)\n\nClaude Code runs a tool while the message that called it is still\nstreaming, so the call's result, a skill's meta text, or a hidden\ngoal_status attachment can land between two records of one message.\nJoining by adjacency split the message there, and a hidden record split\nit only while hidden records were shown. Of the 500 most recent local\ntranscripts, 14 parsed to a different conversation with H on; none do now.\n\n* claude-sessions joins a message's records across hidden records only, and drops hidden ones after the joins (rich-demos-k78j.mk1)\n\nJoining by id carried a message across drawn records — a call's result, a\nskill's meta text — so the conversation was drawn out of the order it was\nwritten: an early call showed the last call's time, meta landed below later\ncalls, jump-to-parent moved down. A drawn record parts a message again; only\na hidden one is passed over. Hidden records are now read and joined like any\nother and dropped after the joins, so H changes what is drawn, never how.\nOver 300 local transcripts the structure with H on and off now agrees in all\n300; on master 2 disagreed.\n\n* claude-sessions parser's header names the joins ahead of dropping hidden records (rich-demos-k78j.mk1)"
         }
       ]
     }
