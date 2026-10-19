@@ -37,14 +37,14 @@
  * frame at the time the timeline maps the host's to. [LAW:one-source-of-truth]
  * When the frame next changes (`Style.nextChange`) is a time on the host's
  * timeline, and the sequence answers on its own, so the timeline carries the
- * answer back and the drawn cells are stamped with that rather than the
- * sequence's own. Backwards, the frames count down from the last at `t = 0`,
+ * answer back and the drawn cells are stamped with that (`frameAt`), where
+ * the host's time is known. Backwards, the frames count down from the last at `t = 0`,
  * a negative time landing in the last frame of the pass before, where Rich's
  * `int()` truncation holds frame 0 for a first interval and then counts
  * down: a departure, made so a negative speed is the one timeline run
  * backwards and not a second rule about time. A speed of zero would hold a
- * frame forever, which a paused timeline is and a rate is not, and is
- * refused where it is given.
+ * frame forever, which a paused timeline is and a rate is not, and the
+ * timeline refuses it.
  */
 
 import type { Animation } from "../core/animation.js";
@@ -61,7 +61,7 @@ import type {
 } from "../core/protocol.js";
 import { drawable, render } from "../core/protocol.js";
 import { EmbeddedText } from "./embed.js";
-import { FrameSequence } from "./frames.js";
+import { FrameSequence, frameAt } from "./frames.js";
 
 /** A spinner's frames prepared to draw, each styled and held for the interval, run on the spinner's timeline, and the glyphs they spend. */
 interface Sequence {
@@ -111,11 +111,8 @@ export class Spinner implements Animation<Renderable & Measurable> {
       throw new Error(`Unknown spinner: "${spinnerName}"`);
     }
     const speed = options?.speed ?? 1;
-    // [LAW:parse-dont-validate] A rate is finite and not zero, settled where
-    // the timeline is built, in the spinner's name.
-    if (!Number.isFinite(speed) || speed === 0) {
-      throw new RangeError(`Spinner speed must be finite and not zero, got ${speed}`);
-    }
+    // [LAW:single-enforcer] A rate is finite and not zero, and the timeline
+    // refuses one that is not where it is built.
     const timeline = Timeline.play(0, speed);
     this.name = spinnerName;
     this.text = text;
@@ -176,16 +173,8 @@ export class Spinner implements Animation<Renderable & Measurable> {
     return Math.max(this._named.played.lastChange(t), this._ascii.played.lastChange(t));
   }
 
-  /**
-   * The line, every cell stamped with when this sequence turns on the host's
-   * clock in place of the stamp the frame arrived with, which is on the
-   * spinner's own timeline: a time the host cannot read. [LAW:one-source-of-truth]
-   */
   private *_render({ played }: Sequence, t: number, options: RenderOptions): Iterable<Segment> {
-    const turns = played.nextChange(t);
-    for (const segment of render(this._line(played, t, options), options)) {
-      yield segment.style === undefined ? segment : new Segment(segment.text, segment.style.withNextChange(turns), segment.control);
-    }
+    yield* render(this._line(played, t, options), options);
     yield Segment.line();
   }
 
@@ -197,7 +186,8 @@ export class Spinner implements Animation<Renderable & Measurable> {
    * falsy there.
    */
   private _line(played: Animation<RichText>, t: number, options: RenderOptions): RichText {
-    const line = new RichText("", { end: "" }).append(played.at(t));
+    // The frame's cells say when it turns on the host's clock, the label's keep their own word.
+    const line = new RichText("", { end: "" }).append(frameAt(played, t));
     // Unhighlighted: Rich's label is a `Text` from the moment it is handed over, and a `Text` is never highlighted.
     const label = new EmbeddedText(this.text).text({ ...options, highlight: false });
     if (label.plain !== "") line.append(" ").append(label);

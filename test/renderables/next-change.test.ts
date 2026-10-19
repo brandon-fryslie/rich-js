@@ -34,6 +34,7 @@ import {
 } from "../../src/index.js";
 import { animationFuncs, richTextFuncs } from "../../src/template-bindings/index.js";
 import { SPINNERS } from "../../src/core/spinnerData.js";
+import { frameAt } from "../../src/renderables/frames.js";
 
 // [LAW:behavior-not-structure] What is asserted is the answer a host reads
 // off a rendered frame, never which object put it there.
@@ -78,9 +79,14 @@ describe("what a host reads off a frame: when it next changes", () => {
     expect(nextChangeOf(new Frames(nothing, { t: 1.5 }))).toBe(Number.POSITIVE_INFINITY);
   });
 
-  it("the frame as text, appended into a line, still says when it turns", () => {
-    const line = new RichText("effort ", { end: "" }).append(frames([1, 1]).at(0.3)).append(" max");
+  it("the frame drawn at a time, appended into a line, still says when it turns", () => {
+    const line = new RichText("effort ", { end: "" }).append(frameAt(frames([1, 1]), 0.3)).append(" max");
     expect(nextChangeOf(line)).toBe(1);
+  });
+
+  it("a spinner's label keeps an earlier word of its own on when it changes", () => {
+    const label = new RichText("soon", { end: "" }).stylize(new Style({ nextChange: 0.001 }));
+    expect(nextChangeOf(new Spinner("dots", label).at(0))).toBe(0.001);
   });
 
   it("a spinner's frame changes at the end of its interval, scaled by its speed", () => {

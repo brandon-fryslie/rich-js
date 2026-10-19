@@ -76,6 +76,8 @@ describe("pause, resume, seek and rate are values in and values out", () => {
     expect(held.playing).toBe(false);
     expect(Timeline.at(held, 1e6)).toBe(7);
     expect(() => Timeline.seek(playing, 11.5, NEVER)).toThrow(/Timeline.seek time must be a finite number of seconds/);
+    // A paused timeline has no use for the host time and refuses a bad one all the same.
+    expect(() => Timeline.seek(Timeline.pause(playing, 11.5), Number.NaN, 7)).toThrow(/Timeline host time must be a finite number of seconds/);
   });
 
   it("a new rate bends the map from the host time it is set at, with no jump", () => {
@@ -201,6 +203,43 @@ describe("Timeline.run: an animation on host time", () => {
         for (const [h, seen] of slow) expect(fast.get(h), `rate ${rate} base ${base} h ${h}`).toEqual(seen);
         for (const h of slow.keys()) expect(holdsBetween(run, h), `rate ${rate} base ${base} h ${h}`).toBe(true);
       }
+    }
+  });
+
+  it("answers far from the origin and at a slow rate, where a host float is many of the animation's or a fraction of one, either way", () => {
+    // Host floats near 0.5 are finer than animation floats near 1000 by
+    // thousands, and at a rate of 0.01 each host float is a hundredth of an
+    // animation one: the host moment is a search, not a walk of a few ulps.
+    const far = [1000, 1e6];
+    for (const rate of [1, -1, 0.01, -0.01, 1 / 3, -1 / 3]) {
+      for (const time of far) {
+        const run = Timeline.run(Timeline.seek(Timeline.play(0, rate), 0, time), signal);
+        for (const h of [0.5, 7.25]) {
+          const next = run.nextChange(h);
+          const last = run.lastChange(h);
+          expect(next, `rate ${rate} time ${time} h ${h}`).toBeGreaterThanOrEqual(h);
+          expect(last, `rate ${rate} time ${time} h ${h}`).toBeLessThanOrEqual(h);
+          expect(run.at(next), `rate ${rate} time ${time} h ${h}`).not.toBe(run.at(h));
+          expect(holdsBetween(run, h), `rate ${rate} time ${time} h ${h}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("the host moment is exact to the float: the float before it still draws the old value", () => {
+    const double = new Float64Array(1);
+    const bits = new BigUint64Array(double.buffer);
+    // The float under a positive `x`, read through its bits.
+    const nextDown = (x: number): number => {
+      double[0] = x;
+      bits[0] = bits[0]! - 1n;
+      return double[0]!;
+    };
+    for (const rate of [1, -1, 0.01, -1 / 3]) {
+      const run = Timeline.run(Timeline.seek(Timeline.play(0, rate), 0, 1000), signal);
+      const next = run.nextChange(0.5);
+      expect(run.at(next)).not.toBe(run.at(0.5));
+      expect(run.at(nextDown(next))).toBe(run.at(0.5));
     }
   });
 

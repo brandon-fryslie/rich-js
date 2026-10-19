@@ -484,6 +484,38 @@ export function walkUp(sum: number, reached: (x: number) => boolean, finer: () =
   return x;
 }
 
+/**
+ * The least float at which `reached` holds, `reached` being false up to some
+ * float and true from it on, found from `near`, a guess at it on either
+ * side. Where `walkUp` carries a sum onto a boundary on its own clock, and
+ * an ulp or two is all rounding can cost, this carries a moment across
+ * clocks (`./timeline.ts`): a host float is a step of `rate` on the
+ * animation's clock, so the host floats between the guess and the first one
+ * past the boundary are as many as the two clocks' resolutions are apart,
+ * which no cap bounds and is no error. The bracket is found by doubling the
+ * step out from `near`, and halved to two adjacent floats, so the answer is
+ * exact to the float and the cost is logarithmic in that distance.
+ */
+export function firstReaching(near: number, reached: (x: number) => boolean): number {
+  let lo = near;
+  let hi = near;
+  // Out from `near` until the bracket is `lo` short of the boundary and `hi` past it.
+  for (let step = nextUp(Math.abs(near)) - Math.abs(near); reached(lo); step *= 2) {
+    hi = lo;
+    lo = near - step;
+  }
+  for (let step = nextUp(Math.abs(near)) - Math.abs(near); !reached(hi); step *= 2) {
+    lo = hi;
+    hi = near + step;
+  }
+  for (;;) {
+    const mid = lo + (hi - lo) / 2;
+    if (mid <= lo || mid >= hi) return hi;
+    if (reached(mid)) hi = mid;
+    else lo = mid;
+  }
+}
+
 /** `holds` as a `Beat`; a beat with no hold, or a hold that is not a positive number of seconds, throws. */
 export function beat(holds: readonly number[]): Beat {
   if (holds.length === 0) throw new RangeError("a beat needs at least one hold");

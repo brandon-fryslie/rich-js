@@ -23,11 +23,14 @@
  * mapped time drops under where the value began — the animation's
  * `lastChange` — so a reversed loop turns exactly at its hold boundaries,
  * and a reversed one-shot changes at its switch and never before its start.
- * Paused, nothing changes: never, and never did. The host moment is the sum
- * `origin + (edge - time) / rate` walked up to the first float the map
- * carries past the edge (`walkUp`), as `Beat` carries a hold's start, so a
- * host drawing at the answer draws the new value. A value moving at the
- * mapped time changes at the host time itself, with no walk to take.
+ * Paused, nothing changes: never, and never did. The host moment is the
+ * first host float the map carries past the edge, searched out from the sum
+ * `origin + (edge - time) / rate` (`firstReaching`): a host float is a step
+ * of `rate` on the animation's clock, so the floats between that sum and
+ * the first one past the edge are as many as the two clocks' resolutions
+ * are apart — unbounded, far from the origin or at a slow rate — which is
+ * why it is a search and not the ulp walk a sum on one clock takes. A value
+ * moving at the mapped time changes at the host time itself.
  *
  * [LAW:no-ambient-temporal-coupling] Nothing here reads a clock. The host
  * time is an argument everywhere, and a timeline is built from one the host
@@ -36,7 +39,7 @@
  */
 
 import type { Animation } from "./animation.js";
-import { walkUp } from "./easing.js";
+import { firstReaching } from "./easing.js";
 
 /**
  * A map from host time to animation time. Playing, it is `time` at `origin`
@@ -67,6 +70,9 @@ function finiteSeconds(what: string, seconds: number): number {
   return seconds;
 }
 
+/** [LAW:single-enforcer] A host time is a finite number of seconds, refused once, at every operation that takes one. */
+const hostTime = (host: number): number => finiteSeconds("Timeline host time", host);
+
 /**
  * [LAW:parse-dont-validate] A rate is a finite number other than zero,
  * settled where it is given: a rate of zero would be a second way to hold a
@@ -77,57 +83,41 @@ function playbackRate(rate: number): number {
   return rate;
 }
 
-/** `timeline` with `time` at host time `host`, at `rate`, held as it was. */
+/** `timeline` with `time` at host time `host`, at `rate`, held as it was. A paused timeline keeps no origin, and refuses a host time it cannot use all the same. */
 function anchored(timeline: Timeline, host: number, time: number, rate: number): Timeline {
-  return timeline.playing ? { playing: true, origin: finiteSeconds("Timeline host time", host), time, rate } : { playing: false, time, rate };
+  const origin = hostTime(host);
+  return timeline.playing ? { playing: true, origin, time, rate } : { playing: false, time, rate };
 }
 
 /** `animation` asked at the time `playing` maps each host time to, saying on host time when it changes. */
 function played<T>(animation: Animation<T>, { origin, time, rate }: Timeline & { playing: true }): Animation<T> {
-  const mapped = (host: number): number => time + rate * (finiteSeconds("Timeline host time", host) - origin);
-  // The first host moment the map carries past `edge`, an animation time:
-  // the sum walked up until `past` holds of the mapped time, so a host
-  // drawing then draws the far side. An edge at infinity is `never`.
-  const hostOf = (edge: number, past: (mapped: number) => boolean, never: number, host: number): number =>
-    Number.isFinite(edge)
-      ? walkUp(
-          origin + (edge - time) / rate,
-          (x) => past(mapped(x)),
-          () => `Timeline: a change at ${edge} s on the animation's timeline is finer than host time resolves near ${host} s at rate ${rate}`,
-        )
-      : never;
-  const at = (host: number): T => animation.at(mapped(host));
-  if (rate > 0) {
-    return {
-      at,
-      nextChange(host) {
-        const t = mapped(host);
-        const next = animation.nextChange(t);
-        return next <= t ? host : Math.max(host, hostOf(next, (x) => x >= next, Number.POSITIVE_INFINITY, host));
-      },
-      lastChange(host) {
-        const t = mapped(host);
-        const last = animation.lastChange(t);
-        return last >= t ? host : Math.min(host, hostOf(last, (x) => x >= last, Number.NEGATIVE_INFINITY, host));
-      },
-    };
-  }
-  // Backwards, the host runs down the animation's timeline: it next sees a
-  // change when the mapped time drops under where the value began, and the
-  // value it sees began when the mapped time dropped under where the value
-  // ends. A hold is `[lastChange, nextChange)`, so the far side is strictly
-  // under either edge.
+  const mapped = (host: number): number => time + rate * (host - origin);
+  const forward = rate > 0;
+  // Forwards, the host next sees the animation's own next change, and the
+  // value began when the animation says it did; backwards, it next sees a
+  // change where the value began, and the value began where the animation
+  // says it ends. A hold is `[lastChange, nextChange)`, so the far side of
+  // an edge is at it going up and strictly under it coming down.
+  const ahead = forward ? (t: number) => animation.nextChange(t) : (t: number) => animation.lastChange(t);
+  const behind = forward ? (t: number) => animation.lastChange(t) : (t: number) => animation.nextChange(t);
+  const past = forward ? (t: number, edge: number) => t >= edge : (t: number, edge: number) => t < edge;
+  // The first host moment the map carries past `edge`, an animation time;
+  // an edge at infinity is never reached, forwards or backwards.
+  const hostOf = (edge: number): number =>
+    Number.isFinite(edge) ? firstReaching(origin + (edge - time) / rate, (host) => past(mapped(host), edge)) : forward ? edge : -edge;
   return {
-    at,
+    at: (host) => animation.at(mapped(hostTime(host))),
     nextChange(host) {
-      const t = mapped(host);
-      const last = animation.lastChange(t);
-      return last >= t ? host : Math.max(host, hostOf(last, (x) => x < last, Number.POSITIVE_INFINITY, host));
+      const h = hostTime(host);
+      const t = mapped(h);
+      const edge = ahead(t);
+      return edge === t ? h : Math.max(h, hostOf(edge));
     },
     lastChange(host) {
-      const t = mapped(host);
-      const next = animation.nextChange(t);
-      return next <= t ? host : Math.min(host, hostOf(next, (x) => x < next, Number.NEGATIVE_INFINITY, host));
+      const h = hostTime(host);
+      const t = mapped(h);
+      const edge = behind(t);
+      return edge === t ? h : Math.min(h, hostOf(edge));
     },
   };
 }
@@ -140,7 +130,7 @@ export const Timeline = {
 
   /** The animation time at host time `host`. */
   at(timeline: Timeline, host: number): number {
-    const h = finiteSeconds("Timeline host time", host);
+    const h = hostTime(host);
     return timeline.playing ? timeline.time + timeline.rate * (h - timeline.origin) : timeline.time;
   },
 
@@ -151,7 +141,7 @@ export const Timeline = {
 
   /** `timeline` playing from `host` at the animation time it maps `host` to, at its rate. Resuming a playing timeline is the same map. */
   resume(timeline: Timeline, host: number): Timeline {
-    return { playing: true, origin: finiteSeconds("Timeline host time", host), time: Timeline.at(timeline, host), rate: timeline.rate };
+    return { playing: true, origin: hostTime(host), time: Timeline.at(timeline, host), rate: timeline.rate };
   },
 
   /** `timeline` with the animation at `time` at host time `host`, playing or held as it was. */
@@ -168,7 +158,10 @@ export const Timeline = {
    * `animation` on host time: its value at the time `timeline` maps each
    * host time to, changing at the host moment the mapped time reaches the
    * animation's own answer — backwards, when it drops under where the value
-   * began. Paused, the value never changes and never did.
+   * began. Paused, the value never changes and never did. The value is the
+   * animation's own, on no clock: what a drawn value's cells say about when
+   * they change is stamped by whoever draws it at a host time
+   * (`../renderables/frames.ts`, `frameAt`), never carried in from here.
    */
   run<T>(timeline: Timeline, animation: Animation<T>): Animation<T> {
     if (timeline.playing) return played(animation, timeline);

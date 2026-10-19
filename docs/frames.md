@@ -65,7 +65,7 @@ for (const t of [0, 1, 2]) {
 }
 ```
 
-The stamp is the sequence's `nextChange(t)`, the answer every [animation](/animation) gives, and an [effect](/effects) stamps its frame the same way. Still content never changes, so it carries no stamp and the answer is `Infinity`. The stamp survives `at(t)` and whatever the frame is appended into, so a line assembled from fragments — a template's output among them — still says when it turns.
+The stamp is the sequence's `nextChange(t)`, the answer every [animation](/animation) gives, and an [effect](/effects) stamps its frame the same way. Still content never changes, so it carries no stamp and the answer is `Infinity`. The stamp is put on by whoever draws the frame at a host time — a `Frames`, a `Spinner`, the template [`frames` function](/template-bindings) — and survives whatever the frame is appended into, so a line assembled from fragments still says when it turns. `at(t)` alone is the frame and no stamp: the time a sequence is asked for may be one a [timeline](/animation#playback-a-timeline) mapped from the host's, and a stamp made there would be on a clock the host cannot read.
 
 A host that draws once a second can read from the answers alone that it is skipping frames: at each `t` the quarters above change at `t + 0.25`, before its next draw at `t + 1`, while the chevrons change exactly at it. A host drawing sixty times a second sees the next change never come before its next frame. A [`Live`](/live#auto-refresh) reads the answer off every frame it draws and wakes then, so it draws each frame of a sequence rather than a sample of them.
 

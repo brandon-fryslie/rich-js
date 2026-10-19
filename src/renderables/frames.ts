@@ -34,7 +34,10 @@
  * rides up through every container to whoever holds the composed frame
  * (`Segment.nextChange`), so a host drawing at `t` knows when to draw again,
  * and one drawing slower than the frames turn can see that it is skipping
- * them.
+ * them. The stamp is put on by whoever draws the frame at a host time
+ * (`frameAt`) — a `Frames`, a `Spinner`, the template `frames` function —
+ * and the sequence's `at` hands over the frame alone, because the time a
+ * sequence is asked for may be one a `Timeline` mapped from the host's.
  *
  * Every frame is drawn at one width, the widest frame's, each padded on the
  * right to it, so whatever sits beside the frames never moves as they turn;
@@ -86,15 +89,12 @@ export class FrameSequence implements Animation<RichText> {
 
   /**
    * The frame in progress at `t`, at `width` cells, ending no line: a copy,
-   * the caller's to change, its every cell — padding included — stamped with
-   * when it gives way to the next, `nextChange(t)`, so a blank frame among
-   * drawn ones still turns. [LAW:one-source-of-truth] The stamp is that one
-   * answer carried on the cells (`Segment.nextChange`), so a container
-   * holding the frame passes it up without asking the sequence. `beat.at`
+   * the caller's to change, carrying no word on when it changes — that is
+   * `frameAt`'s, stamped by whoever draws it at a host time. `beat.at`
    * refuses a `t` that is not finite.
    */
   at(t: number): RichText {
-    return this._shown[this.beat.at(t)]!.copy().stylize(new Style({ nextChange: this.nextChange(t) }));
+    return this._shown[this.beat.at(t)]!.copy();
   }
 
   /** When the frame in progress at `t` gives way to the next: the beat's answer, its holds being the frames'. */
@@ -106,6 +106,21 @@ export class FrameSequence implements Animation<RichText> {
   lastChange(t: number): number {
     return this.beat.lastChange(t);
   }
+}
+
+/**
+ * The frame `animation` shows at host time `t`, its every cell — padding
+ * included, so a blank frame among drawn ones still turns — stamped with when
+ * it gives way to the next, `animation.nextChange(t)`. [LAW:one-source-of-truth]
+ * The stamp is that one answer carried on the cells (`Segment.nextChange`),
+ * so a container holding the frame passes it up without asking the
+ * animation; and it is put on here, where the host's time is known, and not
+ * in the animation's `at`, whose own time a `Timeline` or an
+ * `Animation.sequence` may have mapped from the host's — a stamp made there
+ * would be a moment on a clock the host cannot read.
+ */
+export function frameAt(animation: Animation<RichText>, t: number): RichText {
+  return animation.at(t).stylize(new Style({ nextChange: animation.nextChange(t) }));
 }
 
 export interface FramesOptions {
@@ -123,7 +138,7 @@ export class Frames implements Renderable, Measurable {
   constructor(sequence: FrameSequence, options: FramesOptions) {
     this.sequence = sequence;
     this.t = options.t;
-    this._shown = sequence.at(options.t);
+    this._shown = frameAt(sequence, options.t);
   }
 
   render(options: RenderOptions): Iterable<Segment> {

@@ -103,6 +103,6 @@ A `Spinner`'s `speed` is a timeline its frames run on, so a spinner drawn backwa
 
 ## How a host knows when to draw again
 
-An animation whose value is drawn as cells carries its answer on every cell it draws: the cell's `Style` is stamped with `nextChange`, the stamp rides up through any container as an anchor does and writes no byte, and whoever holds the composed frame reads the soonest with `Segment.nextChange`. That is how a [`Live`](/live#auto-refresh) knows when to wake without asking each piece of its view what it holds — [Frames](/frames#when-the-frame-next-changes) shows it at work.
+Whoever draws an animation's value as cells at a host time stamps every cell it draws with the animation's `nextChange` at that time: the stamp is on the cell's `Style`, rides up through any container as an anchor does and writes no byte, and whoever holds the composed frame reads the soonest with `Segment.nextChange`. The animation's `at` hands over the value alone, so a value a timeline asked for at a mapped time is stamped on the host's clock, not the timeline's. That is how a [`Live`](/live#auto-refresh) knows when to wake without asking each piece of its view what it holds — [Frames](/frames#when-the-frame-next-changes) shows it at work.
 
 An animation of a value that is never drawn as cells — a number, a colour — has no cell to carry a stamp, so its `nextChange` is the only way it says when to look again.

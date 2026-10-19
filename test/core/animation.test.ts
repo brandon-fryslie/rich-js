@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Animation, ColorDepth, FrameSequence, RichText, Segment, Spinner, beat, type Beat } from "../../src/index.js";
+import { Animation, ColorDepth, FrameSequence, RichText, Segment, Spinner, Timeline, beat, type Beat } from "../../src/index.js";
+import { frameAt } from "../../src/renderables/frames.js";
 
 // [LAW:behavior-not-structure] What is asserted is the contract a host reads:
 // the value at a time, and that it holds from `t` until `nextChange(t)` and
@@ -208,19 +209,34 @@ describe("the instances already in the tree", () => {
     expect([0, 1, 1.5, 2.9].map((t) => b.lastChange(t))).toEqual([0, 1, 1.5, 2.5]);
   });
 
-  it("a frame sequence is an animation of the frame shown, and every cell of the frame carries its answer", () => {
+  it("a frame sequence is an animation of the frame shown, on no clock: the frame drawn at a host time carries its answer, the frame alone carries none", () => {
     const frames: Animation<RichText> = new FrameSequence([
       { text: new RichText("a"), seconds: 1 },
       { text: new RichText("bb"), seconds: 0.5 },
     ]);
+    const stampsOf = (shown: RichText): (number | undefined)[] =>
+      [...shown.render({ maxWidth: 10 })].filter((s) => s.text !== "").map((s) => s.style?.nextChange);
     for (const t of [0, 0.7, 1, 1.2, 1e6 + 0.1]) {
       const shown = frames.at(t);
-      const stamps = [...shown.render({ maxWidth: 10 })].filter((s) => s.text !== "").map((s) => s.style?.nextChange);
-      expect(stamps.length).toBeGreaterThan(0);
-      for (const stamp of stamps) expect(stamp).toBe(frames.nextChange(t));
+      for (const stamp of stampsOf(shown)) expect(stamp ?? Number.POSITIVE_INFINITY).toBe(Number.POSITIVE_INFINITY);
+      const drawn = stampsOf(frameAt(frames, t));
+      expect(drawn.length).toBeGreaterThan(0);
+      for (const stamp of drawn) expect(stamp).toBe(frames.nextChange(t));
       expect(frames.lastChange(t)).toBeLessThanOrEqual(t);
       expect(frames.at(frames.lastChange(t)).plain).toBe(shown.plain);
     }
+  });
+
+  it("a frame sequence run on a timeline, or after a switch, is stamped on the host's clock where it is drawn", () => {
+    const frames = new FrameSequence([
+      { text: new RichText("a"), seconds: 0.1 },
+      { text: new RichText("b"), seconds: 0.1 },
+    ]);
+    const fast = Timeline.run(Timeline.play(0, 4), frames);
+    expect(Segment.nextChange(frameAt(fast, 0).render({ maxWidth: 10 }))).toBeCloseTo(0.025, 12);
+    expect(fast.at(0.03).plain).toBe("b");
+    const later = Animation.sequence(Animation.constant(new RichText("-")), 2, frames);
+    expect(Segment.nextChange(frameAt(later, 2.05).render({ maxWidth: 10 }))).toBeCloseTo(2.1, 12);
   });
 
   it("a spinner is an animation of the spinner drawn, never answering after the frame it drew turns, on any output", () => {
