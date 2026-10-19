@@ -147,6 +147,30 @@ for (const t of [0, 1, 2, 3]) {
 }
 ```
 
+### A ramp across an element
+
+`gradient(ramp, colors?)` lays a [`ColorRamp`](/easing#in-a-color-ramp) across the element: each lit cell's ink is the ramp's colour at the cell's column, the leftmost cell reading the first stop and the rightmost the last. The ramp is an [animation](/animation#a-ramp-that-moves) of a ramp, so `ramp.moving(…)` scrolls it along the element and turns its hues, and a still gradient is `Animation.constant(ramp)`. The frame changes when the ramp does: every frame for a loop, never again once a tween settles it.
+
+Lit cells are those whose ink is one of `colors`, named as a style names them and matched as the screen shows them at the output's depth, or by default every colour the element sets itself. A named colour must be opaque, and a misspelt or translucent one is refused when the gradient is made. Below truecolor, every ink that lands on the same palette colour as a named one is lit with it. A terminal-supplied ink is never lit. Naming a rule's line colour paints the line and leaves its title, and naming a panel's border colour paints the border and leaves its body. A ramp colour that would not read on the cell's ground is written as the nearest colour that does, the same check `steppedInk` makes. On a sixteen-colour terminal, or with no colour, a gradient holds every cell as drawn, as the loops do.
+
+```typescript
+import { Animation, CATPPUCCIN_MOCHA, ColorRamp, ColorRgba, EASES, Effected, Panel, Phase, RichText, gradient } from "@promptctl/rich-js";
+
+const hues = new ColorRamp(EASES.linear, [
+  { at: 0, color: new ColorRgba(255, 120, 100) },
+  { at: 0.5, color: new ColorRgba(110, 190, 255) },
+  { at: 1, color: new ColorRgba(255, 120, 100) },
+]);
+const flowing = gradient(hues.moving({ scroll: Animation.continuous(Phase.loop(4)) }), ["#a6e3a1"]);
+const panel = new Panel(new RichText("the words keep their own colour", { style: "#cdd6f4" }), { borderStyle: "#a6e3a1", width: 40 });
+
+for (const t of [0, 1, 2]) {
+  console.print(new Effected(panel, flowing, { t, key: "status", theme: CATPPUCCIN_MOCHA }));
+}
+```
+
+To watch a gradient move on a rule and a panel border, run `npm run gradient-effects` in a checkout of this repository.
+
 ### Sampled on a beat
 
 `onBeat(effect, beat)` samples any effect once a hold: within a hold it draws the frame at the hold's start, and at each hold's start it moves on. A `wheel` given a short curve and sampled once a second becomes a hue walk that turns a step at a time; sampled sixty times a second it still turns once a second, since the beat is seconds. At one redraw a second a hold shorter than a second is skipped, as a frame is. The frame [next changes](/frames#when-the-frame-next-changes) at a hold's start, the first one the sampled effect has moved by: an effect that moves every frame turns the beat at the end of this hold, one whose next step falls two holds on turns it there, and one that is done and says never leaves the beat saying never.

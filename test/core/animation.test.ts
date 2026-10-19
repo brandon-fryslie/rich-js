@@ -95,7 +95,7 @@ describe("Animation.all", () => {
   });
 
   it("of none is nothing, never changing", () => {
-    const none = Animation.all<number>([]);
+    const none = Animation.all<number[]>([]);
     expect(none.at(3)).toEqual([]);
     expect(none.nextChange(3)).toBe(NEVER);
     expect(none.lastChange(3)).toBe(ALWAYS);

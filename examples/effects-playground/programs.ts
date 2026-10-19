@@ -35,7 +35,9 @@ const IMPORTED_AS: Readonly<Record<string, string>> = {
   "../core/color.js": "@promptctl/rich-js",
   "../core/easing.js": "@promptctl/rich-js",
   "../core/oklch.js": "@promptctl/rich-js",
+  "../core/style.js": "@promptctl/rich-js",
   "../themes/colorMath.js": "@promptctl/rich-js",
+  "../themes/ramp.js": "@promptctl/rich-js",
   "./effect.js": "@promptctl/rich-js",
 };
 
@@ -129,23 +131,36 @@ export function effectProgram(effect: EffectName, sources: Sources): string {
     pending.push(...namesIn(statement));
   }
 
-  const imports = files.flatMap((f) =>
-    f.statements.filter(ts.isImportDeclaration).flatMap((statement) => {
+  const d = EFFECT_DEFAULTS[effect];
+  const curve = `const CURVE: Curve = { seconds: ${d.seconds}, ease: EASES["${d.ease}"], swing: ${d.swing} };`;
+  // [LAW:one-source-of-truth] A program imports what it reaches, as it carries
+  // the declarations it reaches: a name the library's files import for an
+  // effect this one is not would be noise above the constants a reader edits.
+  const used = new Set([...reached, ts.createSourceFile("lines.ts", `${play}\n${curve}`, ts.ScriptTarget.Latest, true)].flatMap((node) => [...namesIn(node)]));
+  const kept = new Map<string, string[]>();
+  for (const f of files) {
+    for (const statement of f.statements.filter(ts.isImportDeclaration)) {
       const from = (statement.moduleSpecifier as ts.StringLiteral).text;
-      if (f === file && Object.hasOwn(CUT_FROM, from)) return [];
+      if (f === file && Object.hasOwn(CUT_FROM, from)) continue;
       const as = IMPORTED_AS[from];
       if (as === undefined) throw new Error(`${f.fileName}: imports ${from}, which a playground program has no name for`);
-      return [f.text.slice(statement.getStart(), statement.getEnd()).replace(JSON.stringify(from), JSON.stringify(as))];
-    }),
-  );
-  const d = EFFECT_DEFAULTS[effect];
+      const clause = statement.importClause;
+      const named = clause?.namedBindings;
+      if (clause === undefined || clause.name !== undefined || named === undefined || !ts.isNamedImports(named)) {
+        throw new Error(`${f.fileName}: imports ${from} other than by name, which a playground program cannot carry`);
+      }
+      for (const element of named.elements.filter((e) => used.has(e.name.text))) {
+        const name = element.propertyName === undefined ? element.name.text : `${element.propertyName.text} as ${element.name.text}`;
+        kept.set(as, [...(kept.get(as) ?? []), `${clause.isTypeOnly || element.isTypeOnly ? "type " : ""}${name}`]);
+      }
+    }
+  }
   return [
-    ...imports,
-    // `EASES`, which the curve below names, comes with `effects.ts`'s own imports.
+    ...[...kept].map(([as, names]) => `import { ${names.join(", ")} } from "${as}";`),
     `import { play, pulsedOn } from "${KIT_MODULE}";`,
     "",
     `// ${effect}: its curve, at the library's defaults (EFFECT_CURVES).`,
-    `const CURVE: Curve = { seconds: ${d.seconds}, ease: EASES["${d.ease}"], swing: ${d.swing} };`,
+    curve,
     "",
     "// How it plays: frames a second, and how far each moves curve time, what CURVE.seconds is measured in.",
     `const FPS = ${RUN_DEFAULTS.fps};`,

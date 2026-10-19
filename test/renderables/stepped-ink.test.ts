@@ -187,11 +187,12 @@ describe("steppedInk — at the host's rate, whatever it is", () => {
     expect(new Set(Array.from({ length: 60 }, (_, i) => inkAt(quarters, i / 60))).size).toBe(4);
   });
 
-  it("a frame inside a step redoes none of the step's search, nor does the step's next pass of the beat, at t = 0 and far from it", () => {
+  it("the search runs once for the pair it reads on: no frame inside a step, no later step, nor the beat's next pass redoes it, at t = 0 and far from it", () => {
     // Counted, not timed: a stopwatch races whatever else the runner is
     // doing. The search weighs each colour it may write as `Effected.shows`
     // draws it, so its calls are the work, and a frame making none redid
-    // none. At 256 colours it weighs every colour the depth has an index for.
+    // none. At 256 colours it weighs every colour the depth has an index for,
+    // once for each pair: which of them read there is the same for every step.
     const row = new RichText("›".repeat(120), { style: Style.parse("bold #cdd6f4 on #313244"), end: "", noWrap: true });
     const weighed = vi.spyOn(Effected, "shows");
     const searched = (effect: Effect, t: number): boolean => {
@@ -203,7 +204,7 @@ describe("steppedInk — at the host's rate, whatever it is", () => {
       const fresh = steppedInk(STEPS);
       // One beat at sixty frames a second, from `from`: which frames searched.
       const pass = (from: number): boolean[] => Array.from({ length: 180 }, (_, i) => searched(fresh, base + from + i / 60));
-      expect(pass(0)).toEqual(Array.from({ length: 180 }, (_, i) => i % 60 === 0));
+      expect(pass(0)).toEqual(Array.from({ length: 180 }, (_, i) => i === 0));
       expect(pass(3)).toEqual(Array.from({ length: 180 }, () => false));
     }
   });

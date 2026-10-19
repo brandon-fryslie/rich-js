@@ -20,22 +20,42 @@
  * theme colors passes through perceptually even steps rather than the muddy
  * midpoints of an sRGB blend.
  *
+ * A ramp also carries how far it has been moved: `scroll`, in spans, how
+ * far its colours have travelled along it, and `hue`, in turns, how far
+ * they are rotated round the OKLCH hue circle. A moved ramp is still a
+ * `ColorRamp`, so anything that reads a ramp reads a moving one frame by
+ * frame (`moving`) with nothing new to learn. [LAW:one-type-per-behavior]
+ *
  * [LAW:one-way-deps] Imports `core/color`, `core/easing`, `core/oklch`,
- * and for `over`, `core/animation` and `core/tween`; nothing here knows
- * what a palette is. Resolving stop *names* is the template binding's
+ * `core/animation` for `over` and `moving`, and `core/tween` for `over`; nothing
+ * here knows what a palette is. Resolving stop *names* is the template binding's
  * job (`paletteFuncs`), which hands this module resolved colors.
  */
 
 import { Animation } from "../core/animation.js";
 import type { ColorRgba } from "../core/color.js";
 import { EASES, type Ease } from "../core/easing.js";
-import { Oklch } from "../core/oklch.js";
+import { IDENTITY, Oklch } from "../core/oklch.js";
 import { tween } from "../core/tween.js";
 
 /** One stop: the color the ramp is exactly `color` at position `at`. */
 export interface ColorStop {
   readonly at: number;
   readonly color: ColorRgba;
+}
+
+/**
+ * How a ramp moves over time, each part an `Animation<number>` that is
+ * `Animation.constant(0)` when not given. `scroll` is in spans: at 1 the
+ * colours have travelled the whole way from the first stop to the last and
+ * wrapped back, so `Animation.continuous(Phase.loop(seconds))` scrolls once
+ * every `seconds`. `hue` is in turns, CSS's `turn`: at 1 every hue has gone
+ * once round the circle. A one-shot that settles is a `tween` to where it
+ * rests.
+ */
+export interface RampMotion {
+  readonly scroll?: Animation<number>;
+  readonly hue?: Animation<number>;
 }
 
 /**
@@ -54,10 +74,19 @@ export interface ColorStop {
  * same way).
  */
 export class ColorRamp {
+  /** How far the colours have moved along the span, in spans, in [0, 1). */
+  readonly scroll: number;
+  /** How far every hue is rotated in OKLCH, in turns, in [0, 1). */
+  readonly hue: number;
+
   constructor(
     readonly ease: Ease,
     readonly stops: readonly ColorStop[],
+    scroll = 0,
+    hue = 0,
   ) {
+    this.scroll = turnOf("scroll", scroll);
+    this.hue = turnOf("hue", hue);
     if (stops.length === 0) {
       throw new RangeError("a ColorRamp needs at least one stop");
     }
@@ -90,11 +119,30 @@ export class ColorRamp {
    * `jump-start`/`jump-both` steps, which jump at the start of the interval as
    * CSS defines them. An ease that overshoots [0, 1] holds the end colors
    * where it does: a ramp never paints outside its stops.
+   *
+   * A scrolled ramp reads, inside its span, the colour `scroll` spans behind
+   * `value`, wrapped back round the span as a repeating gradient does —
+   * seamless when the first and last stops are one colour; outside the span
+   * its end colours hold, however far it has scrolled. A rotated ramp turns
+   * the colour read by `hue` at its own lightness and chroma. Unmoved, every
+   * read keeps the exactness above.
    */
   at(value: number): ColorRgba {
     if (!Number.isFinite(value)) {
       throw new RangeError(`ColorRamp.at needs a finite value, got ${value}`);
     }
+    const first = (this.stops[0] as ColorStop).at;
+    const last = (this.stops[this.stops.length - 1] as ColorStop).at;
+    const span = last - first;
+    const inside = first <= value && value <= last;
+    const moved = inside ? value - this.scroll * span : value;
+    const read = this.unmoved(inside && moved < first ? moved + span : moved);
+    // Exact when unrotated: the OKLCH round trip can land a channel one off.
+    return this.hue === 0 ? read : Oklch.fromRgba(read).applyKey({ ...IDENTITY, hueShift: 360 * this.hue }).toRgba();
+  }
+
+  /** The colour at `value` with the ramp unmoved: the stops and the ease alone. */
+  private unmoved(value: number): ColorRgba {
     const stops = this.stops;
     // The last stop at or below `value`; -1 when `value` is below them all.
     let lower = -1;
@@ -128,4 +176,33 @@ export class ColorRamp {
     const last = (this.stops[this.stops.length - 1] as ColorStop).at;
     return Animation.map(tween(first, last, { seconds, ease: EASES.linear }), (value) => this.at(value));
   }
+
+  /**
+   * This ramp moving: at `t`, scrolled by `motion.scroll` and rotated by
+   * `motion.hue` at `t`, on top of however far it was already moved, and
+   * changing when either does — so a loop moves every frame and a ramp a
+   * tween settles never changes again once it arrives.
+   * [LAW:one-source-of-truth] When it next changes is `Animation.all`'s
+   * answer over the two parts; nothing here says it a second time. Whether
+   * the depth it is drawn at can show the move is decided where it is drawn
+   * (`gradient`, through `stillOnSlots`).
+   */
+  moving(motion: RampMotion): Animation<ColorRamp> {
+    const still = Animation.constant(0);
+    return Animation.map(Animation.all([motion.scroll ?? still, motion.hue ?? still] as const), ([scroll, hue]) =>
+      new ColorRamp(this.ease, this.stops, this.scroll + scroll, this.hue + hue));
+  }
+}
+
+/**
+ * `v` as a fraction of one turn, in [0, 1): a whole turn is no turn, and a
+ * negative one counts back from a whole turn. A value so close under a whole
+ * turn that the fraction rounds to it is the turn itself. [LAW:single-enforcer]
+ * The constructor reads both moves through here, so a non-finite one fails
+ * here, loudly, naming which.
+ */
+function turnOf(what: string, v: number): number {
+  if (!Number.isFinite(v)) throw new RangeError(`ColorRamp ${what} must be finite, got ${v}`);
+  const into = v - Math.floor(v);
+  return into < 1 ? into : 0;
 }
