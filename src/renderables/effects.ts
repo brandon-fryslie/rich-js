@@ -749,6 +749,8 @@ function order(z: number): (cell: Placed) => number {
  */
 export interface Transition<E = Effect> {
   readonly effect: E;
+  /** How long it runs: done from this many seconds on its own clock. */
+  readonly seconds: number;
   done(t: number): boolean;
 }
 
@@ -770,6 +772,7 @@ export function transition<D, F>(seconds: number, effect: (drawn: D) => Animatio
         lastChange: (t) => (done(t) ? seconds : moving.lastChange(t)),
       };
     },
+    seconds,
     done,
   };
 }
