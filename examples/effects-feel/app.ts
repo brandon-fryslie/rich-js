@@ -47,6 +47,7 @@ import {
   RichText,
   Style,
   contrastRatio,
+  Timeline,
   frameRate,
   systemClock,
   type Clock,
@@ -227,37 +228,34 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
 }
 
 /**
- * The demo's own time: `step` designed seconds a frame — so a change of
- * step bends the time from that frame and never jumps it — running on
- * without end, since no loop ever comes back round and a time wound back
- * would jump every one of them. What comes round is the `cycle`: one full
- * pass of every loop, counted so the transitions can replay at each.
+ * The demo's own time: a `Timeline` over the frame count, `step` designed
+ * seconds a frame — so a change of step bends the time from that frame and
+ * never jumps it, and a pause holds it — running on without end, since no
+ * loop ever comes back round and a time wound back would jump every one of
+ * them. What comes round is the `cycle`: one full pass of every loop,
+ * counted so the transitions can replay at each.
  */
 class Pace {
-  private step: number;
-  // The demo time at the last change of step, and the frame then.
-  private base = 0;
-  private mark: number;
-  // Every step the pace has had, so the frame a cycle began on is known even
-  // when the step has changed since.
-  private readonly past: { base: number; mark: number; step: number }[] = [];
+  private timeline: Timeline;
+  // Every timeline the pace has run on, so the frame a cycle began on is
+  // known even when the step has changed since.
+  private readonly past: Timeline[] = [];
 
   constructor(frame: number, step: number, private readonly cycle: number) {
-    this.mark = frame;
-    this.step = step;
+    this.timeline = Timeline.play(frame, step);
   }
 
-  /** The frames since the cycle `at(frame)` is in began, whatever steps it was run at. */
+  /** The frames since the cycle `at(frame)` is in began, whatever steps it was run at; a pause's frames count. */
   framesIn(frame: number): number {
     const { began } = this.at(frame);
-    const segments = [...this.past, { base: this.base, mark: this.mark, step: this.step }];
-    const into = [...segments].reverse().find((s) => s.base <= began) ?? segments[0]!;
-    return frame - Math.round(into.mark + (began - into.base) / into.step);
+    const played = [...this.past, this.timeline].filter((s) => s.playing);
+    const into = [...played].reverse().find((s) => s.time <= began) ?? played[0]!;
+    return frame - Math.round(into.origin + (began - into.time) / into.rate);
   }
 
   /** The demo time at `frame`, which cycle it is in (from 0), and when that cycle began. */
   at(frame: number): { t: number; cycle: number; began: number } {
-    const t = this.base + (frame - this.mark) * this.step;
+    const t = Timeline.at(this.timeline, frame);
     const cycle = Math.floor(t / this.cycle);
     return { t, cycle, began: cycle * this.cycle };
   }
@@ -269,15 +267,26 @@ class Pace {
 
   /** How many frames one cycle takes at the current step. */
   get frames(): number {
-    return Math.ceil(this.cycle / this.step);
+    return Math.ceil(this.cycle / this.timeline.rate);
+  }
+
+  get paused(): boolean {
+    return !this.timeline.playing;
   }
 
   /** From `frame` on, each frame moves demo time by `step`. */
   set(frame: number, step: number): void {
-    this.past.push({ base: this.base, mark: this.mark, step: this.step });
-    this.base = this.now(frame);
-    this.mark = frame;
-    this.step = step;
+    this.move(Timeline.withRate(this.timeline, frame, step));
+  }
+
+  /** Held from `frame` on if it was running, running from it if it was held. */
+  toggle(frame: number): void {
+    this.move(this.paused ? Timeline.resume(this.timeline, frame) : Timeline.pause(this.timeline, frame));
+  }
+
+  private move(next: Timeline): void {
+    this.past.push(this.timeline);
+    this.timeline = next;
   }
 }
 
@@ -357,10 +366,10 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     return new Padding(
       new Group(
         new RichText(
-          `effects feel · ${fps.perSecond} fps · rate ×${rate} · magnitude ×${magnitude} · ${settings.depth} · ${theme.palette.name} (${theme.palette.dark ? "dark" : "light"}) · cycle ${nth + 1} · frame ${pace.framesIn(frame)} of ${pace.frames}`,
+          `effects feel · ${fps.perSecond} fps · rate ×${rate}${pace.paused ? " (paused)" : ""} · magnitude ×${magnitude} · ${settings.depth} · ${theme.palette.name} (${theme.palette.dark ? "dark" : "light"}) · cycle ${nth + 1} · frame ${pace.framesIn(frame)} of ${pace.frames}`,
           { style: shown.heading, noWrap: true },
         ),
-        new RichText("f fade-in · d dissolve · n/p theme · </> fps · -/+ rate · [/] magnitude · q quits", { style: shown.quiet, noWrap: true }),
+        new RichText("f fade-in · d dissolve · n/p theme · </> fps · -/+ rate · space pauses · [/] magnitude · q quits", { style: shown.quiet, noWrap: true }),
         new RichText(""),
         ...LOOPS.flatMap((loop) => row(t, loop, contrast[loop], loops[loop])),
         ...transitionRow(t - fadeStart, "fade", "f"),
@@ -407,6 +416,10 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     pace.set(frames.now(), STEP * rate);
     app.refresh();
   };
+  const pause = (): void => {
+    pace.toggle(frames.now());
+    app.refresh();
+  };
   const keys: Record<string, () => void> = {
     f: () => (fadeStart = replay()),
     d: () => (dissolveStart = replay()),
@@ -419,6 +432,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     "+": () => scaleRate(2),
     "=": () => scaleRate(2),
     "-": () => scaleRate(0.5),
+    " ": pause,
     "]": () => magnify(1),
     "[": () => magnify(-1),
     q: () => app.stop(),

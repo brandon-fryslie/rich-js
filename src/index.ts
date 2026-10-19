@@ -113,6 +113,9 @@ export type { Beat, Ease, Spring, SpringOptions, StepPosition } from "./core/eas
 // A value for a time, and when it next changes: the one type every kind of
 // motion is an instance of — beats, frame sequences, spinners, effects.
 export { Animation } from "./core/animation.js";
+// The map from the host's clock to the time an animation is asked for:
+// pause, reverse, scrub and speed, once, above every kind of motion.
+export { Timeline } from "./core/timeline.js";
 // The time source and timer whoever draws frames is handed, and the one
 // parser of the rate it ticks at.
 export { frameRate, systemClock } from "./core/clock.js";
@@ -320,7 +323,7 @@ export { ProgressBar } from "./renderables/progressBar.js";
 export type { ProgressBarOptions } from "./renderables/progressBar.js";
 export { Spinner } from "./renderables/spinner.js";
 export type { SpinnerOptions } from "./renderables/spinner.js";
-export { FrameSequence, Frames } from "./renderables/frames.js";
+export { FrameSequence, Frames, frameAt } from "./renderables/frames.js";
 export type { Frame, FramesOptions } from "./renderables/frames.js";
 export { Table, Column } from "./renderables/table.js";
 export type { TableOptions, ColumnOptions } from "./renderables/table.js";

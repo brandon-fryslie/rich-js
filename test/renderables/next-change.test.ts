@@ -26,6 +26,7 @@ import {
   Table,
   beat,
   confined,
+  frameAt,
   onBeat,
   steppedInk,
   type Drawn,
@@ -78,9 +79,14 @@ describe("what a host reads off a frame: when it next changes", () => {
     expect(nextChangeOf(new Frames(nothing, { t: 1.5 }))).toBe(Number.POSITIVE_INFINITY);
   });
 
-  it("the frame as text, appended into a line, still says when it turns", () => {
-    const line = new RichText("effort ", { end: "" }).append(frames([1, 1]).at(0.3)).append(" max");
+  it("the frame drawn at a time, appended into a line, still says when it turns", () => {
+    const line = new RichText("effort ", { end: "" }).append(frameAt(frames([1, 1]), 0.3)).append(" max");
     expect(nextChangeOf(line)).toBe(1);
+  });
+
+  it("a spinner's label keeps an earlier word of its own on when it changes", () => {
+    const label = new RichText("soon", { end: "" }).stylize(new Style({ nextChange: 0.001 }));
+    expect(nextChangeOf(new Spinner("dots", label).at(0))).toBe(0.001);
   });
 
   it("a spinner's frame changes at the end of its interval, scaled by its speed", () => {
@@ -149,6 +155,7 @@ describe("what a host reads off a frame: when it next changes", () => {
       return {
         at: (t) => (asked.push(`at ${t}`), (colors) => colors),
         nextChange: (t) => (asked.push(`nextChange ${t}`), t),
+        lastChange: (t) => (asked.push(`lastChange ${t}`), t),
       };
     };
     [...lit(label, watching, 1).render(OPTIONS)];
@@ -159,7 +166,7 @@ describe("what a host reads off a frame: when it next changes", () => {
   it("the answer is made from the frame, so a composer may answer from what the inner effect says of it", () => {
     const stillUnder = (depth: ColorDepth): Effect => (drawn) => {
       const moving = drifting(drawn);
-      return { at: (t) => moving.at(t), nextChange: (t) => (drawn.depth === depth ? Number.POSITIVE_INFINITY : t) };
+      return { at: (t) => moving.at(t), nextChange: (t) => (drawn.depth === depth ? Number.POSITIVE_INFINITY : t), lastChange: (t) => moving.lastChange(t) };
     };
     expect(nextChangeOf(lit(label, stillUnder(ColorDepth.TRUECOLOR), 3))).toBe(Number.POSITIVE_INFINITY);
     expect(nextChangeOf(lit(label, stillUnder(ColorDepth.EIGHT_BIT), 3))).toBe(3);

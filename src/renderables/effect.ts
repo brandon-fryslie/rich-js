@@ -410,7 +410,7 @@ function measured(looked: readonly Looked[], walked: () => readonly Walked[], de
 
 /**
  * `effect` sampled and held on `beat`: drawn at the moment the hold in
- * progress began (`Beat.start`), so within a hold every frame is the frame
+ * progress began (`Beat.lastChange`), so within a hold every frame is the frame
  * at its start, and at each hold's start it moves on. A continuous effect
  * given a short curve becomes one that steps — a `wheel` turning a sixth of
  * a turn once a second — and at one redraw a second a hold shorter than a
@@ -430,15 +430,18 @@ export function onBeat(effect: Effect, beat: Beat): Effect {
   return (drawn) => {
     const sampled = effect(drawn);
     return {
-      at: (t) => sampled.at(beat.start(t)),
+      at: (t) => sampled.at(beat.lastChange(t)),
       nextChange(t) {
-        const moved = sampled.nextChange(beat.start(t));
+        const moved = sampled.nextChange(beat.lastChange(t));
         if (moved === Number.POSITIVE_INFINITY) return moved;
         const end = beat.nextChange(t);
         // The hold boundaries after `t` are `end`, then each hold's end in turn;
         // the frame turns at the first one the effect has moved by.
-        return moved <= end ? end : beat.start(moved) === moved ? moved : beat.nextChange(moved);
+        return moved <= end ? end : beat.lastChange(moved) === moved ? moved : beat.nextChange(moved);
       },
+      // The frame held now began at this hold's start at the latest: an early
+      // answer where the effect had not moved by it, which the contract allows.
+      lastChange: (t) => beat.lastChange(t),
     };
   };
 }

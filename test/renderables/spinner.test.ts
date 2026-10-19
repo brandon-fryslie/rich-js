@@ -102,9 +102,9 @@ describe("Spinner", () => {
       expect(frameAt(hold * 1.5, 2)).toBe(DOTS[3]);
     });
 
-    it("steps backwards at a negative speed, from the last frame, each held the interval", () => {
+    it("steps backwards at a negative speed: its timeline run down from the first frame's start at t = 0, each held the interval", () => {
       const hold = SPINNERS["dots"]!.interval / 1000;
-      expect(frameAt(0, -1)).toBe(DOTS[9]);
+      expect(frameAt(0, -1)).toBe(DOTS[0]);
       expect(frameAt(hold * 0.5, -1)).toBe(DOTS[9]);
       expect(frameAt(hold * 1.5, -1)).toBe(DOTS[8]);
       expect(frameAt(hold * 0.25, -2)).toBe(DOTS[9]);

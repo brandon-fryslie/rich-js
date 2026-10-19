@@ -682,7 +682,12 @@ function transition(curve: Curve, effect: Effect): Transition {
   return {
     effect: (drawn) => {
       const moving = effect(drawn);
-      return { at: (t) => moving.at(t), nextChange: (t) => (done(t) ? Number.POSITIVE_INFINITY : moving.nextChange(t)) };
+      return {
+        at: (t) => moving.at(t),
+        nextChange: (t) => (done(t) ? Number.POSITIVE_INFINITY : moving.nextChange(t)),
+        // Done, the frame settled when the transition did; until then it is the effect's.
+        lastChange: (t) => (done(t) ? curve.seconds : moving.lastChange(t)),
+      };
     },
     done,
   };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Animation, ColorDepth, FrameSequence, RichText, Segment, Spinner, beat, type Beat } from "../../src/index.js";
+import { Animation, ColorDepth, FrameSequence, RichText, Segment, Spinner, Timeline, beat, frameAt, type Beat } from "../../src/index.js";
 
 // [LAW:behavior-not-structure] What is asserted is the contract a host reads:
 // the value at a time, and that it holds from `t` until `nextChange(t)` and
@@ -15,22 +15,43 @@ function holdsUntilNext<T>(animation: Animation<T>, t: number, samples = 16): bo
   return Array.from({ length: samples }, (_, i) => t + (span * i) / samples).every((u) => u >= next || animation.at(u) === animation.at(t));
 }
 
+const ALWAYS = Number.NEGATIVE_INFINITY;
+
+const DOUBLE = new Float64Array(1);
+const BITS = new BigUint64Array(DOUBLE.buffer);
+/** The float under a positive `x`, read through its bits. */
+function nextDown(x: number): number {
+  DOUBLE[0] = x;
+  BITS[0] = BITS[0]! - 1n;
+  return DOUBLE[0]!;
+}
+
+/** Whether `animation` has held `at(t)` over `[lastChange(t), t]`, sampled at `samples` points inside; the answer is never after `t`. */
+function heldSinceLast<T>(animation: Animation<T>, t: number, samples = 16): boolean {
+  const last = animation.lastChange(t);
+  if (last > t) return false;
+  const span = Number.isFinite(last) ? t - last : 10;
+  return Array.from({ length: samples }, (_, i) => t - (span * i) / samples).every((u) => animation.at(u) === animation.at(t));
+}
+
 describe("Animation.constant", () => {
-  it("is its value at every time and never changes", () => {
+  it("is its value at every time, never changes and always was", () => {
     const still = Animation.constant("x");
     for (const t of [-5, 0, 0.3, 1e6]) {
       expect(still.at(t)).toBe("x");
       expect(still.nextChange(t)).toBe(NEVER);
+      expect(still.lastChange(t)).toBe(ALWAYS);
     }
   });
 });
 
 describe("Animation.continuous", () => {
-  it("is its function's value, and moves at every moment", () => {
+  it("is its function's value, and moves at every moment, both ways", () => {
     const rising = Animation.continuous((t) => 2 * t);
     for (const t of [-1, 0, 0.25, 1e6]) {
       expect(rising.at(t)).toBe(2 * t);
       expect(rising.nextChange(t)).toBe(t);
+      expect(rising.lastChange(t)).toBe(t);
     }
   });
 });
@@ -42,6 +63,7 @@ describe("Animation.map", () => {
     for (const t of [0, 0.99, 1, 1.4, 1.5, 1e6 + 1.2]) {
       expect(named.at(t)).toBe(["a", "b"][b.at(t)]);
       expect(named.nextChange(t)).toBe(b.nextChange(t));
+      expect(named.lastChange(t)).toBe(b.lastChange(t));
     }
   });
 
@@ -59,18 +81,24 @@ describe("Animation.all", () => {
     for (const t of [0, 0.4, 0.6, 2.9, 1e6 + 0.1]) {
       expect(both.at(t)).toEqual([slow.at(t), fast.at(t), 9]);
       expect(both.nextChange(t)).toBe(Math.min(slow.nextChange(t), fast.nextChange(t)));
+      expect(both.lastChange(t)).toBe(Math.max(slow.lastChange(t), fast.lastChange(t)));
     }
   });
 
   it("holds still while every part does, and moves while any part moves", () => {
-    expect(Animation.all([Animation.constant(1), Animation.constant(2)]).nextChange(4)).toBe(NEVER);
-    expect(Animation.all([Animation.constant(1), Animation.continuous((t) => t)]).nextChange(4)).toBe(4);
+    const still = Animation.all([Animation.constant(1), Animation.constant(2)]);
+    expect(still.nextChange(4)).toBe(NEVER);
+    expect(still.lastChange(4)).toBe(ALWAYS);
+    const moving = Animation.all([Animation.constant(1), Animation.continuous((t) => t)]);
+    expect(moving.nextChange(4)).toBe(4);
+    expect(moving.lastChange(4)).toBe(4);
   });
 
   it("of none is nothing, never changing", () => {
     const none = Animation.all<number>([]);
     expect(none.at(3)).toEqual([]);
     expect(none.nextChange(3)).toBe(NEVER);
+    expect(none.lastChange(3)).toBe(ALWAYS);
   });
 });
 
@@ -109,7 +137,35 @@ describe("Animation.sequence", () => {
           const next = steps.nextChange(t);
           expect(next, `t = ${t}`).toBeGreaterThan(t);
           expect(steps.at(next), `t = ${t}`).not.toBe(steps.at(t));
+          // Never late: the float before the answer still shows the old value.
+          expect(steps.at(nextDown(next)), `t = ${t}`).toBe(steps.at(t));
           expect(holdsUntilNext(steps, t), `t = ${t}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("before the switch it became what it is when the first part did; after, at the switch or when the next part did since, whichever is later", () => {
+    expect(Animation.sequence(first, 2, then).lastChange(1)).toBe(1);
+    expect(Animation.sequence(Animation.constant("a"), 2, then).lastChange(1)).toBe(ALWAYS);
+    expect(Animation.sequence(beat([0.5]), 2, beat([1])).lastChange(1.2)).toBe(1);
+    expect(Animation.sequence(first, 2, Animation.constant("done")).lastChange(9)).toBe(2);
+    expect(Animation.sequence(first, 2, Animation.constant("done")).lastChange(2)).toBe(2);
+    expect(Animation.sequence(Animation.constant(-1), 2, beat([1, 0.5])).lastChange(3.2)).toBe(3);
+    expect(Animation.sequence(Animation.constant(-1), 2, beat([1, 0.5])).lastChange(2.4)).toBe(2);
+    expect(Animation.sequence(first, 2, then).lastChange(3)).toBe(3);
+  });
+
+  it("answers the first moment the next part's value shows, to the float, far from zero and on holds not exact in binary", () => {
+    for (const seconds of [0.1, 0.3, 2.7]) {
+      const steps = Animation.sequence(Animation.constant(-1), seconds, beat([0.1, 0.2, 0.3]));
+      for (const base of [0, 1e3, 1e6]) {
+        for (let i = 0; i < 30; i++) {
+          const t = base + seconds + i * 0.037;
+          const last = steps.lastChange(t);
+          expect(last, `t = ${t}`).toBeLessThanOrEqual(t);
+          expect(steps.at(last), `t = ${t}`).toBe(steps.at(t));
+          expect(heldSinceLast(steps, t), `t = ${t}`).toBe(true);
         }
       }
     }
@@ -122,6 +178,7 @@ describe("Animation.sequence", () => {
     const visit = Animation.sequence(arrive, 1, Animation.sequence(stay, 3, leave));
     expect([0.5, 1, 3.9, 4, 4.5].map((t) => visit.at(t))).toEqual(["arriving", "here", "here", "leaving 0", "leaving 0.5"]);
     expect([0.5, 2, 4.5].map((t) => visit.nextChange(t))).toEqual([1, 4, 4.5]);
+    expect([0.5, 2, 4.5].map((t) => visit.lastChange(t))).toEqual([ALWAYS, 1, 4.5]);
   });
 
   it("refuses a first part that is not a positive number of seconds", () => {
@@ -133,14 +190,14 @@ describe("Animation.sequence", () => {
 
 describe("an animation is pure: sampled once a second or sixty times, it is the same at every time both see", () => {
   const visit = Animation.sequence(Animation.map(beat([0.25, 0.5]), (i) => `step ${i}`), 3, Animation.continuous((t) => `after ${Math.floor(t * 10)}`));
-  const sampled = (rate: number, seconds: number): Map<number, [string, number]> =>
-    new Map(Array.from({ length: seconds * rate + 1 }, (_, i) => i / rate).map((t) => [t, [visit.at(t), visit.nextChange(t)]]));
+  const sampled = (rate: number, seconds: number): Map<number, [string, number, number]> =>
+    new Map(Array.from({ length: seconds * rate + 1 }, (_, i) => i / rate).map((t) => [t, [visit.at(t), visit.nextChange(t), visit.lastChange(t)]]));
 
   it("the same value and the same answer at every second, whichever rate asked and in whichever order", () => {
     const slow = sampled(1, 8);
     const fast = sampled(60, 8);
     for (const [t, seen] of slow) expect(fast.get(t), `t = ${t}`).toEqual(seen);
-    const backwards = [...slow.keys()].reverse().map((t) => [visit.at(t), visit.nextChange(t)]);
+    const backwards = [...slow.keys()].reverse().map((t) => [visit.at(t), visit.nextChange(t), visit.lastChange(t)]);
     expect(backwards.reverse()).toEqual([...slow.values()]);
   });
 
@@ -150,6 +207,7 @@ describe("an animation is pure: sampled once a second or sixty times, it is the 
     const far = 0.75 * 1_333_333;
     expect(b.at(far + 0.3)).toBe(b.at(0.3));
     expect(b.nextChange(far + 0.3) - far).toBeCloseTo(b.nextChange(0.3), 6);
+    expect(b.lastChange(far + 0.3) - far).toBeCloseTo(b.lastChange(0.3), 6);
   });
 });
 
@@ -158,19 +216,76 @@ describe("the instances already in the tree", () => {
     const b: Animation<number> = beat([1, 0.5]) satisfies Beat;
     expect([0, 1, 1.5].map((t) => b.at(t))).toEqual([0, 1, 0]);
     expect([0, 1, 1.5].map((t) => b.nextChange(t))).toEqual([1, 1.5, 2.5]);
+    expect([0, 1, 1.5, 2.9].map((t) => b.lastChange(t))).toEqual([0, 1, 1.5, 2.5]);
   });
 
-  it("a frame sequence is an animation of the frame shown, and every cell of the frame carries its answer", () => {
+  it("a frame sequence is an animation of the frame shown, on no clock: the frame drawn at a host time carries its answer, the frame alone carries none", () => {
     const frames: Animation<RichText> = new FrameSequence([
       { text: new RichText("a"), seconds: 1 },
       { text: new RichText("bb"), seconds: 0.5 },
     ]);
+    const stampsOf = (shown: RichText): (number | undefined)[] =>
+      [...shown.render({ maxWidth: 10 })].filter((s) => s.text !== "").map((s) => s.style?.nextChange);
     for (const t of [0, 0.7, 1, 1.2, 1e6 + 0.1]) {
       const shown = frames.at(t);
-      const stamps = [...shown.render({ maxWidth: 10 })].filter((s) => s.text !== "").map((s) => s.style?.nextChange);
-      expect(stamps.length).toBeGreaterThan(0);
-      for (const stamp of stamps) expect(stamp).toBe(frames.nextChange(t));
+      for (const stamp of stampsOf(shown)) expect(stamp ?? Number.POSITIVE_INFINITY).toBe(Number.POSITIVE_INFINITY);
+      const drawn = stampsOf(frameAt(frames, t));
+      expect(drawn.length).toBeGreaterThan(0);
+      for (const stamp of drawn) expect(stamp).toBe(frames.nextChange(t));
+      expect(frames.lastChange(t)).toBeLessThanOrEqual(t);
+      expect(frames.at(frames.lastChange(t)).plain).toBe(shown.plain);
     }
+  });
+
+  it("a frame sequence run on a timeline, or after a switch, is stamped on the host's clock where it is drawn", () => {
+    const frames = new FrameSequence([
+      { text: new RichText("a"), seconds: 0.1 },
+      { text: new RichText("b"), seconds: 0.1 },
+    ]);
+    const fast = Timeline.run(Timeline.play(0, 4), frames);
+    expect(Segment.nextChange(frameAt(fast, 0).render({ maxWidth: 10 }))).toBeCloseTo(0.025, 12);
+    expect(fast.at(0.03).plain).toBe("b");
+    const later = Animation.sequence(Animation.constant(new RichText("-")), 2, frames);
+    expect(Segment.nextChange(frameAt(later, 2.05).render({ maxWidth: 10 }))).toBeCloseTo(2.1, 12);
+  });
+
+  it("stamps a copy: an animation handing back the one text it holds keeps it unstamped, so no draw outlives its moment", () => {
+    const texts = [new RichText("x"), new RichText("y")];
+    const shared = Animation.map(beat([1, 1]), (i) => texts[i]!);
+    for (const t of [0.5, 2.5, 4.5]) expect(Segment.nextChange(frameAt(shared, t).render({ maxWidth: 10 }))).toBe(t + 0.5);
+    for (const text of texts) expect(text.spans).toEqual([]);
+  });
+
+  it("a sum that rounds over the moment the next part's change shows is walked back onto it", () => {
+    // 2.45 + 0.7 rounds to 3.1500000000000004, a float after the change showed at 3.15.
+    const steps = Animation.sequence(Animation.constant("before"), 0.7, Animation.map(beat([0.3, 0.05]), (i) => `y${i}`));
+    expect(steps.at(3.144)).toBe("y1");
+    expect(steps.nextChange(3.144)).toBe(3.15);
+    expect(steps.at(3.15)).toBe("y0");
+  });
+
+  it("an edge every finite host float is past, or none is, is always or never, not a hang", () => {
+    const settled: Animation<string> = { at: () => "a", nextChange: () => Number.POSITIVE_INFINITY, lastChange: () => -Number.MAX_VALUE };
+    expect(Timeline.run(Timeline.play(0, 1), settled).lastChange(0)).toBe(Number.NEGATIVE_INFINITY);
+    const pending: Animation<string> = { at: () => "a", nextChange: () => Number.MAX_VALUE, lastChange: () => Number.NEGATIVE_INFINITY };
+    expect(Timeline.run(Timeline.play(0, 1), pending).nextChange(0)).toBe(Number.MAX_VALUE);
+    expect(Timeline.run(Timeline.play(0, 0.5), pending).nextChange(0)).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("a paused run refuses a host time that is not finite, as a playing one does", () => {
+    const paused = Timeline.run(Timeline.pause(Timeline.play(0), 1), beat([1]));
+    expect(() => paused.nextChange(Number.NaN)).toThrow(/Timeline host time must be a finite number of seconds/);
+    expect(() => paused.lastChange(Number.POSITIVE_INFINITY)).toThrow(/Timeline host time must be a finite number of seconds/);
+  });
+
+  it("an edge no host float reaches at this rate is never, not a hang", () => {
+    const crawl = Timeline.run(Timeline.play(0, 1e-310), beat([1]));
+    expect(crawl.nextChange(0.5)).toBe(Number.POSITIVE_INFINITY);
+    // The start of the hold is within reach: host 0, to the floats the
+    // product of a subnormal rate and a host time resolves.
+    const began = crawl.lastChange(0.5);
+    expect(began).toBeLessThanOrEqual(0);
+    expect(began).toBeGreaterThan(-1e-12);
   });
 
   it("a spinner is an animation of the spinner drawn, never answering after the frame it drew turns, on any output", () => {

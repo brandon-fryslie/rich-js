@@ -14,6 +14,14 @@
  * there (`Segment.nextChange`); a value that is not drawn — a number, a
  * colour — has `nextChange` as its only way to say when to look again.
  *
+ * `lastChange(t)` is the other end of the same hold: the last moment, never
+ * after `t`, at which the value may have become `at(t)` — `-Infinity` if it
+ * always was, `t` while it moves. Together they bound the hold, `[lastChange(t),
+ * nextChange(t))`, and the answer may be narrower than the truth and never
+ * wider. It is what a host running the animation backwards reads
+ * (`./timeline.ts`): run down the timeline, the value next changes where it
+ * began. An animation that cannot say answers `t` here too.
+ *
  * The instances already in the tree: a `Beat` is an animation of which hold
  * is in progress (`./easing.ts`), a `FrameSequence` of the frame shown and a
  * `Spinner` of the spinner drawn (`../renderables/`), and an `Effect` is, for
@@ -33,7 +41,7 @@
  * its author doing anything.
  */
 
-import { positiveSeconds, walkUp } from "./easing.js";
+import { firstReaching, positiveSeconds } from "./easing.js";
 
 /** A value of `T` at a time in seconds, and the first moment that value may change. */
 export interface Animation<T> {
@@ -41,12 +49,14 @@ export interface Animation<T> {
   at(t: number): T;
   /** The first moment, never before `t`, at which the value may stop being `at(t)`: `t` while it moves, `Infinity` once it never will. */
   nextChange(t: number): number;
+  /** The last moment, never after `t`, at which the value may have become `at(t)`: `t` while it moves, `-Infinity` if it always was. */
+  lastChange(t: number): number;
 }
 
 export const Animation = {
   /** `value` at every time, never changing. */
   constant<T>(value: T): Animation<T> {
-    return { at: () => value, nextChange: () => Number.POSITIVE_INFINITY };
+    return { at: () => value, nextChange: () => Number.POSITIVE_INFINITY, lastChange: () => Number.NEGATIVE_INFINITY };
   },
 
   /**
@@ -54,7 +64,7 @@ export const Animation = {
    * that cannot say when it holds still is, so a host draws it every frame.
    */
   continuous<T>(at: (t: number) => T): Animation<T> {
-    return { at, nextChange: (t) => t };
+    return { at, nextChange: (t) => t, lastChange: (t) => t };
   },
 
   /**
@@ -62,7 +72,7 @@ export const Animation = {
    * maps alike make an early answer, which the contract allows.
    */
   map<T, U>(animation: Animation<T>, f: (value: T) => U): Animation<U> {
-    return { at: (t) => f(animation.at(t)), nextChange: (t) => animation.nextChange(t) };
+    return { at: (t) => f(animation.at(t)), nextChange: (t) => animation.nextChange(t), lastChange: (t) => animation.lastChange(t) };
   },
 
   /**
@@ -74,6 +84,7 @@ export const Animation = {
     return {
       at: (t) => animations.map((animation) => animation.at(t)),
       nextChange: (t) => Math.min(...animations.map((animation) => animation.nextChange(t))),
+      lastChange: (t) => Math.max(...animations.map((animation) => animation.lastChange(t))),
     };
   },
 
@@ -85,16 +96,25 @@ export const Animation = {
    */
   sequence<T>(first: Animation<T>, seconds: number, then: Animation<T>): Animation<T> {
     positiveSeconds("Animation.sequence seconds", seconds);
+    // `then`'s moment `local`, on its own clock, carried back onto this
+    // timeline: the first moment whose time since the switch reaches
+    // `local`, which the sum `local + seconds` can round to either side of —
+    // under it, where `at` still shows the old value, or over it, a float
+    // after the change showed.
+    const carried = (local: number): number => (Number.isFinite(local) ? firstReaching(local + seconds, (x) => x - seconds >= local) : local);
     return {
       at: (t) => (t - seconds >= 0 ? then.at(t - seconds) : first.at(t)),
       nextChange(t) {
         const into = t - seconds;
         if (into < 0) return Math.min(first.nextChange(t), seconds);
-        const local = then.nextChange(into);
-        // `local + seconds` can round under the first moment whose time since
-        // the switch reaches `local`, where `at` still shows the old value.
-        const moment = walkUp(local + seconds, (x) => x - seconds >= local, () => `Animation.sequence: no time resolves ${local} s after a switch at ${seconds} s`);
-        return Math.max(t, moment);
+        return Math.max(t, carried(then.nextChange(into)));
+      },
+      // After the switch the value became what it is at the switch or when
+      // `then`'s did since, whichever is later; before it, when `first`'s did.
+      lastChange(t) {
+        const into = t - seconds;
+        if (into < 0) return first.lastChange(t);
+        return Math.min(t, Math.max(seconds, carried(then.lastChange(into))));
       },
     };
   },

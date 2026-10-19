@@ -418,9 +418,10 @@ export interface Beat {
    * When the hold in progress at `t` began, in seconds on `t`'s own
    * timeline: what a sample-and-hold on this beat reads at `t`. Every `t`
    * inside one hold of one pass answers the same number, to the bit, so an
-   * effect handed it draws the same frame throughout.
+   * effect handed it draws the same frame throughout. With `nextChange`,
+   * the two ends of the hold, as every `Animation` answers them.
    */
-  start(t: number): number;
+  lastChange(t: number): number;
   /**
    * When the hold in progress at `t` ends, in seconds on `t`'s own timeline:
    * the start of the next hold, the first moment `at` places in it, so it is
@@ -483,6 +484,45 @@ export function walkUp(sum: number, reached: (x: number) => boolean, finer: () =
   return x;
 }
 
+/**
+ * The least float at which `reached` holds, `reached` being false up to some
+ * float and true from it on, found from `near`, a guess at it on either
+ * side. Where `walkUp` carries a sum onto a boundary on its own clock, and
+ * an ulp or two is all rounding can cost, this carries a moment across
+ * clocks (`./timeline.ts`): a host float is a step of `rate` on the
+ * animation's clock, so the host floats between the guess and the first one
+ * past the boundary are as many as the two clocks' resolutions are apart,
+ * which no cap bounds and is no error. The bracket is found by doubling the
+ * step out from `near`, and halved to two adjacent floats, so the answer is
+ * exact to the float and the cost is logarithmic in that distance.
+ */
+export function firstReaching(near: number, reached: (x: number) => boolean): number {
+  // [LAW:no-silent-failure] A step out from an infinite guess is NaN, and a
+  // bracket of NaN never closes.
+  if (!Number.isFinite(near)) throw new RangeError(`firstReaching needs a finite guess, got ${near}`);
+  let lo = near;
+  let hi = near;
+  // Out from `near` until the bracket is `lo` short of the boundary and
+  // `hi` past it, within the finite floats: reached at the least of them,
+  // it is reached always; not reached at the greatest, never.
+  for (let step = nextUp(Math.abs(near)) - Math.abs(near); reached(lo); step *= 2) {
+    if (lo === -Number.MAX_VALUE) return Number.NEGATIVE_INFINITY;
+    hi = lo;
+    lo = Math.max(near - step, -Number.MAX_VALUE);
+  }
+  for (let step = nextUp(Math.abs(near)) - Math.abs(near); !reached(hi); step *= 2) {
+    if (hi === Number.MAX_VALUE) return Number.POSITIVE_INFINITY;
+    lo = hi;
+    hi = Math.min(near + step, Number.MAX_VALUE);
+  }
+  for (;;) {
+    const mid = lo + (hi - lo) / 2;
+    if (mid <= lo || mid >= hi) return hi;
+    if (reached(mid)) hi = mid;
+    else lo = mid;
+  }
+}
+
 /** `holds` as a `Beat`; a beat with no hold, or a hold that is not a positive number of seconds, throws. */
 export function beat(holds: readonly number[]): Beat {
   if (holds.length === 0) throw new RangeError("a beat needs at least one hold");
@@ -532,9 +572,9 @@ export function beat(holds: readonly number[]): Beat {
     at(t) {
       return index(wrapSeconds("Beat.at", t, period));
     },
-    start(t) {
-      const into = wrapSeconds("Beat.start", t, period);
-      return boundary("Beat.start", pass(t, into), index(into), t);
+    lastChange(t) {
+      const into = wrapSeconds("Beat.lastChange", t, period);
+      return boundary("Beat.lastChange", pass(t, into), index(into), t);
     },
     // The next hold's start, in the next pass when this hold is the last.
     nextChange(t) {
