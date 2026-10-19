@@ -4,15 +4,22 @@
     {
       "version": "pr-491",
       "ref": "refs/pull/491/merge",
-      "sha": "b13c2ef0c00c0fa210806cf941262b4efb1ea613",
-      "timestamp": "2026-10-19T20:51:05.034Z",
+      "sha": "fa81d744a5a5afa6fb2ae13ee8a41b87dc76fa22",
+      "timestamp": "2026-10-19T22:19:26.521Z",
       "commits": [
         {
-          "sha": "b13c2ef0c00c0fa210806cf941262b4efb1ea613",
+          "sha": "fa81d744a5a5afa6fb2ae13ee8a41b87dc76fa22",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T20:49:02Z",
-          "message": "Merge 4fa491311652e421f9783c05de27dd0799c76910 into f2addf714f39c64f144079ba616c271ce47c3bca\n"
+          "timestamp": "2026-10-19T22:17:24Z",
+          "message": "Merge f10b25bb23fedc0889770eeb534c000067bfd08e into f2addf714f39c64f144079ba616c271ce47c3bca\n"
+        },
+        {
+          "sha": "f10b25bb23fedc0889770eeb534c000067bfd08e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T16:17:19-06:00",
+          "message": "Tree.measure: a label wants at least one column, so a label of no width keeps its row (rich-animation-42lg.8qh review)\n"
         },
         {
           "sha": "4fa491311652e421f9783c05de27dd0799c76910",
