@@ -393,6 +393,13 @@ describe("a child that draws no rows", () => {
     expect(collectLines(tree, { maxWidth: 40 })).toEqual(["build", "└── └── inner"]);
   });
 
+  it("is told apart from a label of no width, which draws its row and is measured with it", () => {
+    const tree = new Tree("a");
+    tree.add("");
+    const { maximum } = tree.measure({ maxWidth: 40 });
+    expect(collectLines(tree, { maxWidth: maximum })).toEqual(["a", "└── "]);
+  });
+
   it("leaves what draws beneath it on its own branch, not its sibling's", () => {
     const tree = new Tree("build");
     tree.add("a");

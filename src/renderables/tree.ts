@@ -311,13 +311,15 @@ export class Tree implements Renderable, Measurable, Composite {
     // mode drew a 40-cell frame around nine cells of tree, and an unbounded
     // offer came back unbounded. A row the walk does not draw wants nothing,
     // and whether a label draws a row is asked at the width it wants, no more
-    // than the offer leaves it: no wider than the tree, drawn at what this
-    // reports, hands it. A label with no width of its own under no offer
-    // cannot be asked at any width; it takes its row, and the tree reports
-    // the unbounded width `withBoundedWidth` refuses by name.
+    // than the offer leaves it: the width the tree, drawn at what this
+    // reports, hands it. A label wants at least one column, as its row does,
+    // because under one column nothing draws — a label of no width included.
+    // A label with no width of its own under no offer cannot be asked at any
+    // width; it takes its row, and the tree reports the unbounded width
+    // `withBoundedWidth` refuses by name.
     const widths = new Map<Renderable, number>();
     const widthOf = (label: Renderable): number => {
-      const width = widths.get(label) ?? labelWidth(parsed, label);
+      const width = widths.get(label) ?? Math.max(1, labelWidth(parsed, label));
       widths.set(label, width);
       return width;
     };
