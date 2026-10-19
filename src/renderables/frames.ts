@@ -51,11 +51,12 @@
 
 import type { Animation } from "../core/animation.js";
 import { beat, type Beat } from "../core/easing.js";
-import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import { Measurement } from "../core/measure.js";
+import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
-import type { Segment } from "../core/segment.js";
+import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import type { RichText } from "../core/text.js";
+import { RichText } from "../core/text.js";
 import { setIntoLine } from "./embed.js";
 
 /** One frame: what it shows, and how long it is held, in seconds. */
@@ -121,9 +122,44 @@ export class FrameSequence implements Animation<RichText> {
  * caller's to change: an animation may hand back the one `RichText` it
  * holds, as `Animation.constant` does, and a stamp on that would outlive
  * the draw it was true for.
+ *
+ * Any animation of a renderable is drawn here the same way — a `scroll`
+ * drawn inside a function view — and only what is stamped differs by the
+ * frame's type: a `RichText` is a stamped copy, so it
+ * can still be appended into a line, and any other renderable is drawn with
+ * its segments stamped.
  */
-export function frameAt(animation: Animation<RichText>, t: number): RichText {
-  return animation.at(t).copy().stylize(new Style({ nextChange: animation.nextChange(t) }));
+export function frameAt(animation: Animation<RichText>, t: number): RichText;
+export function frameAt(animation: Animation<Renderable>, t: number): Renderable;
+export function frameAt(animation: Animation<Renderable>, t: number): Renderable {
+  const stamp = new Style({ nextChange: animation.nextChange(t) });
+  const frame = animation.at(t);
+  return frame instanceof RichText ? frame.copy().stylize(stamp) : new Stamped(frame, stamp);
+}
+
+/**
+ * A frame drawn with every segment carrying `stamp`. The stamp also rides a
+ * cell of no width, which writes no byte, so a frame of no cells — an
+ * element not yet entered — still says when it changes.
+ */
+class Stamped implements Renderable, Measurable, Composite {
+  constructor(
+    readonly frame: Renderable,
+    readonly stamp: Style,
+  ) {}
+
+  *render(options: RenderOptions): Iterable<Segment> {
+    yield new Segment("", this.stamp);
+    yield* Segment.applyStyle(render(this.frame, options), this.stamp);
+  }
+
+  *contents(): Iterable<Renderable> {
+    yield this.frame;
+  }
+
+  measure(options: RenderOptions): { minimum: number; maximum: number } {
+    return Measurement.get(options, this.frame);
+  }
 }
 
 export interface FramesOptions {

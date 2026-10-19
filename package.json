@@ -79,6 +79,7 @@
     "gradient-effects": "node scripts/build-demos.ts && node dist-demo/examples/gradient-effects/index.js",
     "transitions": "node scripts/build-demos.ts && node dist-demo/examples/transitions/index.js",
     "lifecycle": "node scripts/build-demos.ts && node dist-demo/examples/lifecycle/index.js",
+    "scroll": "node scripts/build-demos.ts && node dist-demo/examples/scroll/index.js",
     "viewport": "node scripts/build-demos.ts && node dist-demo/examples/rich-viewport/main.js",
     "markup-plugins": "node scripts/build-demos.ts && node dist-demo/examples/rich-markup-plugins/main.js",
     "demo-inputs": "node scripts/build-demos.ts && node dist-demo/examples/rich-config/main.js",
