@@ -35,7 +35,7 @@ describe("parseSettings", () => {
     [["--fps", "fast"], /--fps must be a number/],
     [["--depth", "8"], /--depth must be one of truecolor, 256, 16, none/],
     [["--ground", "grey"], /--ground must be one of dark, light/],
-    [["--shimmer-ease", "bounce"], /--shimmer-ease: RangeError: unknown ease "bounce"/],
+    [["--shimmer-ease", "smooth"], /--shimmer-ease: RangeError: unknown ease "smooth"/],
     [["--pulse-swing="], /--pulse-swing must be a number from 0 to 1, got ""/],
     [["--shimmer-swing", " "], /--shimmer-swing must be a number/],
     [["--fps", "0x1"], /--fps must be a number/],

@@ -13,15 +13,26 @@
  *   built-ins are CSS's easing functions (CSS Easing Functions Level 1):
  *   `linear`, `cubic-bezier()` with its named curves, and `steps()` with its
  *   jump terms, plus `sine` for pulses — a half-cosine, so a `pingPong`
- *   through it brightens and dims with no corner at either end.
+ *   through it brightens and dims with no corner at either end — and the
+ *   physics-flavoured curves a cursor snapping, a counter settling or a
+ *   panel sliding in want: `spring`, a damped harmonic oscillator released
+ *   toward its rest, which is the one of them with parameters and so the one
+ *   that also says how long it takes; `bounce`, `back-in`, `back-out` and
+ *   `elastic`, Robert Penner's curves at the constants every animation
+ *   library since has shipped. An ease that leaves [0, 1] — a spring or a
+ *   back curve overshooting its rest — is still an ease: a `ColorRamp` holds
+ *   its end colours where it does, and an effect's `Curve` saturates at its
+ *   swing, so the overshoot is read by what can show it (a position, a
+ *   count) and clipped by what cannot.
  *
  * [LAW:no-ambient-temporal-coupling] Nothing here reads a clock. `t` is an
  * argument; whoever draws frames owns the clock and samples these at
  * whatever rate it likes, so the same `t` always gives the same progress.
  *
  * [LAW:one-type-per-behavior] An ease is a plain function value. CSS's named
- * curves are four instances of `cubicBezier`, not four implementations, and
- * `ColorRamp` and every effect take the same `Ease`.
+ * curves are four instances of `cubicBezier`, not four implementations, the
+ * spring in `EASES` is one `spring()`, and `ColorRamp` and every effect take
+ * the same `Ease`.
  *
  * Tier 0 of `src/core/`: imports nothing, so `themes/` and every later
  * `core/` module reach it downhill. [LAW:one-way-deps]
@@ -130,10 +141,197 @@ const stepEnd: Ease = steps(1, "jump-end");
 const sine: Ease = (x) => (1 - Math.cos(Math.PI * x)) / 2;
 
 /**
+ * The curve `shape` over (0, 1) as an ease that has arrived: its argument
+ * held to [0, 1], as `cubicBezier` and `steps` hold theirs, and exactly 1 at
+ * 1. Every physics curve below is one, because each is 1 at its end only in
+ * the limit or up to a rounding — a spring settles to within `SPRING_REST`,
+ * the elastic's ringing never quite stops, a back curve's cubic lands an ulp
+ * off — and a count or a width eased by it must land on its target, not a
+ * thousandth or an ulp short. [LAW:single-enforcer] The one place that rule
+ * lives.
+ */
+const settled = (shape: (p: number) => number): Ease => (x) => {
+  const p = Math.min(1, Math.max(0, x));
+  return p === 1 ? 1 : shape(p);
+};
+
+/**
+ * A spring's physics: the mass on it, the stiffness of its coil and the
+ * damping it moves against, in the units every animation library spells them
+ * in (React Spring, Framer Motion), whose defaults these are — a spring that
+ * overshoots once and settles in about a second and a half.
+ */
+export interface SpringOptions {
+  /** The restoring force per unit of displacement; stiffer snaps faster. Positive. Defaults to 100. */
+  readonly stiffness?: number;
+  /** The force against the motion per unit of velocity; more settles sooner and overshoots less. Positive. Defaults to 10. */
+  readonly damping?: number;
+  /** What the spring moves; heavier is slower and overshoots further. Positive. Defaults to 1. */
+  readonly mass?: number;
+}
+
+/**
+ * A spring as an ease, and how long it takes: the ease is the spring's
+ * position over `seconds`, read as progress — released at rest a unit from
+ * where it is going, at 1 when it has settled there — so `{ ...spring(…),
+ * swing }` is an effect's `Curve`, and `Phase.once(start, seconds)` through
+ * the ease is the spring on a timeline. Unlike every other ease, a spring's
+ * duration is not the caller's to choose: how long it rings is a fact about
+ * its physics, which is why this is the one ease that comes with its seconds.
+ */
+export interface Spring {
+  readonly ease: Ease;
+  /** How long the spring takes to settle, in seconds: its settling time to within `SPRING_REST`. */
+  readonly seconds: number;
+}
+
+/**
+ * How close to its rest a spring must come to count as settled: one part in a
+ * thousand of the way it moves, under a colour channel's step (1/255) and
+ * under any cell, so what rounds the spring's value to show it draws the rest
+ * from there on.
+ */
+export const SPRING_REST = 0.001;
+
+const DEFAULT_SPRING: Required<SpringOptions> = { stiffness: 100, damping: 10, mass: 1 };
+
+/**
+ * A damped harmonic oscillator, `m·x″ = −k·x − c·x′`, released at rest one
+ * unit from its equilibrium: the spring every animation library means. Its
+ * progress at `s` seconds is `1 − displacement(s)`, the closed-form solution
+ * of that equation in the regime its damping ratio `ζ = c / 2√(k·m)` puts it
+ * in — ringing past its rest for `ζ < 1`, creeping up to it for `ζ ≥ 1` — and
+ * its `seconds` is its settling time: the first moment after which the
+ * displacement stays within `SPRING_REST`. For a ringing spring that is read
+ * off the decay envelope, the way control theory defines settling time; for
+ * one that creeps the displacement only falls, so it is where it crosses.
+ * Both are found once here, so a sample costs an exponential and a cosine
+ * whatever `x` is. [LAW:no-ambient-temporal-coupling]
+ *
+ * The ease is exactly 1 at `x = 1` (`settled`): settled means at rest.
+ */
+export function spring(options: SpringOptions = {}): Spring {
+  const { stiffness, damping, mass } = { ...DEFAULT_SPRING, ...options };
+  for (const [name, v] of [["stiffness", stiffness], ["damping", damping], ["mass", mass]] as const) {
+    if (!(Number.isFinite(v) && v > 0)) throw new RangeError(`spring ${name} must be a positive, finite number, got ${v}`);
+  }
+  const w0 = Math.sqrt(stiffness / mass);
+  const zeta = damping / (2 * Math.sqrt(stiffness * mass));
+  const decay = zeta * w0;
+  const { displacement, seconds } = zeta < 1 ? ringing(w0, zeta, decay) : creeping(w0, zeta, decay);
+  return { seconds, ease: settled((p) => 1 - displacement(p * seconds)) };
+}
+
+/** The closed-form displacement of a spring, and its settling time. */
+interface SpringMotion {
+  readonly displacement: (s: number) => number;
+  readonly seconds: number;
+}
+
+/**
+ * Underdamped: `e^(−ζω₀s)·(cos ω_d s + (ζω₀/ω_d) sin ω_d s)` at the damped
+ * frequency `ω_d = ω₀√(1 − ζ²)`. The bracket is bounded by `√(1 + (ζω₀/ω_d)²)`,
+ * so the envelope is under `SPRING_REST` from `ln(bound / SPRING_REST) / ζω₀`.
+ */
+function ringing(w0: number, zeta: number, decay: number): SpringMotion {
+  const wd = w0 * Math.sqrt(1 - zeta * zeta);
+  const ratio = decay / wd;
+  return {
+    displacement: (s) => Math.exp(-decay * s) * (Math.cos(wd * s) + ratio * Math.sin(wd * s)),
+    seconds: Math.log(Math.hypot(1, ratio) / SPRING_REST) / decay,
+  };
+}
+
+/**
+ * Critically damped (`ζ = 1`): `e^(−ω₀s)·(1 + ω₀s)`. Overdamped (`ζ > 1`):
+ * two decaying exponentials at `ζω₀ ∓ ω₀√(ζ² − 1)`, written as such rather
+ * than as `cosh + sinh` so neither grows before the other cancels it. Both
+ * only fall, so the settling time is where the displacement crosses
+ * `SPRING_REST`, found by bisection between zero and a bound the slower
+ * exponential alone puts it under.
+ */
+function creeping(w0: number, zeta: number, decay: number): SpringMotion {
+  const { displacement, far } = zeta === 1 ? critical(w0) : overdamped(w0, zeta, decay);
+  let lo = 0;
+  let hi = far;
+  for (let i = 0; i < 64; i++) {
+    const mid = (lo + hi) / 2;
+    if (displacement(mid) > SPRING_REST) lo = mid;
+    else hi = mid;
+  }
+  return { displacement, seconds: hi };
+}
+
+/** A falling displacement, and a time `far` by which it is under `SPRING_REST`. */
+interface Falling {
+  readonly displacement: (s: number) => number;
+  readonly far: number;
+}
+
+/** `(1 + u)·e^(−u)` in `u = ω₀s`, which is under 10⁻³ from u ≈ 9.24. */
+function critical(w0: number): Falling {
+  return { displacement: (s) => Math.exp(-w0 * s) * (1 + w0 * s), far: 10 / w0 };
+}
+
+/** The slower exponential alone bounds the sum, since the faster one's weight `1 − ratio` is negative. */
+function overdamped(w0: number, zeta: number, decay: number): Falling {
+  const wh = w0 * Math.sqrt(zeta * zeta - 1);
+  const ratio = decay / wh;
+  return {
+    displacement: (s) => ((1 + ratio) * Math.exp(-(decay - wh) * s) + (1 - ratio) * Math.exp(-(decay + wh) * s)) / 2,
+    far: Math.log((1 + ratio) / (2 * SPRING_REST)) / (decay - wh),
+  };
+}
+
+/**
+ * Robert Penner's bounce (his `easeOutBounce`): a ball dropped onto its rest,
+ * four parabolic arcs each a quarter the height of the last, the constants
+ * his and every library's since. Each arc is the same parabola,
+ * `7.5625·(x − centre)² + floor`, set over its own span of `x`; the spans
+ * are in elevenths of 2.75, where the first arc meets the ground.
+ */
+const BOUNCE_ARCS: readonly { readonly until: number; readonly centre: number; readonly floor: number }[] = [
+  { until: 1 / 2.75, centre: 0, floor: 0 },
+  { until: 2 / 2.75, centre: 1.5 / 2.75, floor: 0.75 },
+  { until: 2.5 / 2.75, centre: 2.25 / 2.75, floor: 0.9375 },
+  { until: Number.POSITIVE_INFINITY, centre: 2.625 / 2.75, floor: 0.984375 },
+];
+const bounce: Ease = settled((p) => {
+  // The last arc's `until` is unbounded, so an arc is always found.
+  const arc = BOUNCE_ARCS.find(({ until }) => p < until)!;
+  return 7.5625 * (p - arc.centre) ** 2 + arc.floor;
+});
+
+/**
+ * Penner's back curves: a cubic that pulls back past its start before going
+ * (`back-in`), or overshoots its end before settling (`back-out`), by his
+ * overshoot constant 1.70158 — about a tenth of the way. His `(c + 1)·x³ −
+ * c·x²` is written as `x³ + c·x²·(x − 1)`, the same cubic with the overshoot
+ * term a product that is exactly zero at both ends, so the curve starts on 0
+ * and lands on 1 to the bit.
+ */
+const BACK_OVERSHOOT = 1.70158;
+const backIn: Ease = settled((p) => p ** 3 + BACK_OVERSHOOT * p ** 2 * (p - 1));
+const backOut: Ease = settled((p) => {
+  const q = p - 1;
+  return 1 + q ** 3 + BACK_OVERSHOOT * q ** 2 * (q + 1);
+});
+
+/**
+ * Penner's elastic (his `easeOutElastic`): overshoots its end and rings back
+ * through it, each swing half the last, with a period of 0.3 of the way —
+ * `2^(−10x)·sin((10x − 0.75)·2π/3) + 1`.
+ */
+const ELASTIC_PERIOD = (2 * Math.PI) / 3;
+const elastic: Ease = settled((p) => 2 ** (-10 * p) * Math.sin((10 * p - 0.75) * ELASTIC_PERIOD) + 1);
+
+/**
  * Every built-in ease by the name a template spells it with — CSS's keyword
  * names, plus `sine`, plus `step`: the spelling `ColorRamp` used before this
  * vocabulary existed, kept so every template written against it renders the
- * same. It is CSS's `step-end`, the same function value.
+ * same. It is CSS's `step-end`, the same function value. Then the
+ * physics-flavoured curves: `spring` is the default `spring()`, whose
+ * `seconds` are `DEFAULT_SPRING`'s; the rest are Penner's at his constants.
  */
 export const EASES = {
   linear,
@@ -145,6 +343,11 @@ export const EASES = {
   "step-end": stepEnd,
   step: stepEnd,
   sine,
+  spring: spring().ease,
+  bounce,
+  "back-in": backIn,
+  "back-out": backOut,
+  elastic,
 } as const satisfies Record<string, Ease>;
 
 export type EaseName = keyof typeof EASES;
