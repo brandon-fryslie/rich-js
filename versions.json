@@ -4,15 +4,22 @@
     {
       "version": "pr-488",
       "ref": "refs/pull/488/merge",
-      "sha": "0f8c925aaf3d780f3c19192a0f41e3680df78bfa",
-      "timestamp": "2026-10-19T18:03:19.309Z",
+      "sha": "4fb9bd77163a1dd21f845f34445d2b8b19f124b0",
+      "timestamp": "2026-10-19T18:10:30.278Z",
       "commits": [
         {
-          "sha": "0f8c925aaf3d780f3c19192a0f41e3680df78bfa",
+          "sha": "4fb9bd77163a1dd21f845f34445d2b8b19f124b0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T18:01:34Z",
-          "message": "Merge 09efcdb43927a20b0826b7bbd230f2b4f371b16e into 69219f4b28141b668966b8cba625d70c65ae88b3\n"
+          "timestamp": "2026-10-19T18:09:03Z",
+          "message": "Merge 137f053d6fd3be8bf5e579ac7b09377161080328 into 69219f4b28141b668966b8cba625d70c65ae88b3\n"
+        },
+        {
+          "sha": "137f053d6fd3be8bf5e579ac7b09377161080328",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T12:08:56-06:00",
+          "message": "A scroll's frame carries the soonest change of all its content, and draws content of no width (rich-animation-42lg.re8)\n\nEscalation review (high) of PR #488: the left-of-window filter missed rows above\nand below and cells to the right, and leaked combining marks; content of natural\nwidth 0 was held at maxWidth 0 and drew no stamp.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "09efcdb43927a20b0826b7bbd230f2b4f371b16e",
