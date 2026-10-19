@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-486",
+      "ref": "refs/pull/486/merge",
+      "sha": "bd69ec9aac3e960e9941ec74b9be95c231cc16c6",
+      "timestamp": "2026-10-19T16:28:52.054Z",
+      "commits": [
+        {
+          "sha": "bd69ec9aac3e960e9941ec74b9be95c231cc16c6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T10:27:00-06:00",
+          "message": "Merge 1cbca0139007ce204e7efe27b2023e943697fd30 into f7e79321c380fabf3b499a21087952caa9cd8c26\n"
+        },
+        {
+          "sha": "1cbca0139007ce204e7efe27b2023e943697fd30",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T10:26:49-06:00",
+          "message": "A change from one renderable to another crossfades or wipes instead of cutting (rich-animation-42lg.kyt)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f7e79321c380fabf3b499a21087952caa9cd8c26",
