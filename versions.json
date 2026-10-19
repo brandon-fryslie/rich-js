@@ -4,15 +4,22 @@
     {
       "version": "pr-489",
       "ref": "refs/pull/489/merge",
-      "sha": "97f617f26fc0746ccc8f03e73de2cb3995f08ce8",
-      "timestamp": "2026-10-19T19:34:17.039Z",
+      "sha": "a34b6324a82f52a99e3bdd712aa13d6eb5ecc07a",
+      "timestamp": "2026-10-19T19:47:05.592Z",
       "commits": [
         {
-          "sha": "97f617f26fc0746ccc8f03e73de2cb3995f08ce8",
+          "sha": "a34b6324a82f52a99e3bdd712aa13d6eb5ecc07a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T19:32:22Z",
-          "message": "Merge 43971778f4ad0fbc4aa1b88f932763fb05962a32 into 4243346c52c64c49f3b253bcd07221ba490f85ed\n"
+          "timestamp": "2026-10-19T19:45:10Z",
+          "message": "Merge 409fd5dc84623309ef1f43ad9d7e53ee20bf982a into 4243346c52c64c49f3b253bcd07221ba490f85ed\n"
+        },
+        {
+          "sha": "409fd5dc84623309ef1f43ad9d7e53ee20bf982a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T13:45:02-06:00",
+          "message": "A crop keeps every piece of no cells, and one function makes every stamp (rich-animation-42lg.uv8 review)\n\nadjustLineLength keeps an empty piece at the cut again. frames.ts builds every\nstamp style through stamp(). The transitions demo stamps its change through\nframeAt, and the docs name the stamping renderables in one place.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "43971778f4ad0fbc4aa1b88f932763fb05962a32",
