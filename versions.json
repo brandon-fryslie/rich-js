@@ -4,15 +4,22 @@
     {
       "version": "pr-480",
       "ref": "refs/pull/480/merge",
-      "sha": "575c588663d2eb85edeb32ad1efae7285ee89ad3",
-      "timestamp": "2026-10-19T11:30:24.962Z",
+      "sha": "5fffb0d6937a1cf962e3eff04749e557748414ec",
+      "timestamp": "2026-10-19T11:34:47.699Z",
       "commits": [
         {
-          "sha": "575c588663d2eb85edeb32ad1efae7285ee89ad3",
+          "sha": "5fffb0d6937a1cf962e3eff04749e557748414ec",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T05:28:06-06:00",
-          "message": "Merge 3984340fca79aec59e364c81b2eae5922a1aee5d into ca537fab9636aab58062b777b513dfc25d8e5573\n"
+          "timestamp": "2026-10-19T11:32:55Z",
+          "message": "Merge 7cc9144101826c416b9537d14d8a7a893da69d4c into ca537fab9636aab58062b777b513dfc25d8e5573\n"
+        },
+        {
+          "sha": "7cc9144101826c416b9537d14d8a7a893da69d4c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T05:32:49-06:00",
+          "message": "tween's doc says what an ease that jumps at 0 shows, and ramp's header names its imports (review high)\n"
         },
         {
           "sha": "3984340fca79aec59e364c81b2eae5922a1aee5d",
