@@ -67,6 +67,55 @@ for (const t of [0, 0.5, 1, 2.9, 3]) {
 }
 ```
 
+## A tween: a value moving to its target
+
+`tween(from, to, timing)` is a number eased from `from` to `to` over `timing` — an ease and its seconds, the pair `spring()` returns and an effect's `Curve` carries — and held at `to` from then on. It is what a progress bar's fill, a counter or a width is handed so it moves to its new value instead of jumping, and it is the first animation here of a value that is never drawn as cells, so its `nextChange` is its only way of saying when to look again: until `0` before it begins, every frame while it moves, never once it has arrived. It begins at `0` on its own clock; starting it later is `Animation.sequence`'s job, or a timeline's.
+
+A tween lands on its target exactly, whatever the ease, and an ease that overshoots is shown as it is — a count eased by `back-out` passes its value and comes back. A tween shorter than the gap between a host's frames is simply seen at its end, never mid-way, which is correct at one frame a second and at sixty:
+
+```typescript
+import { EASES, spring, tween } from "@promptctl/rich-js";
+
+const fill = tween(0, 100, { seconds: 2, ease: EASES["ease-out"] });
+const settle = spring({ stiffness: 300, damping: 20 });
+const count = tween(0, 50, settle);
+
+for (const t of [0, 0.5, 1, 2, 3]) {
+  const next = fill.nextChange(t);
+  console.print(`t=${t}s  fill ${fill.at(t).toFixed(1).padStart(5)}%  count ${count.at(t).toFixed(1).padStart(5)}  fill next change ${next === t ? "every frame" : next === Infinity ? "never" : `at ${next}s`}`);
+}
+console.print(`the spring settles on 50 at ${settle.seconds.toFixed(2)}s: ${count.at(settle.seconds)}`);
+```
+
+A tween keeps nothing from one call to the next, so retargeting it is not a change to it. A tween whose target moves at `t₁` is the old tween until `t₁`, then a new one built from the old one's value there, which is why it starts from where it is and not from its original `from`:
+
+```typescript
+import { Animation, EASES, tween } from "@promptctl/rich-js";
+
+const timing = { seconds: 2, ease: EASES.linear };
+const first = tween(0, 100, timing);
+const retargetedAt = 1;
+const fill = Animation.sequence(first, retargetedAt, tween(first.at(retargetedAt), 20, timing));
+
+for (const t of [0.5, 1, 2, 3]) console.print(`t=${t}s  ${fill.at(t)}`);
+```
+
+Over colours, a tween is a [`ColorRamp`](/easing#in-a-color-ramp) read over time: `ramp.over(seconds)` crosses the ramp's span of positions at a steady rate in `seconds` and holds at its last stop, each colour along the way the ramp's own. A colour tween is a two-stop ramp over its seconds, the ramp's ease shaping the move, and a ramp of more stops over time is a sweep through all of them — the blending stays the ramp's, in OKLCH, and nothing here blends a second time:
+
+```typescript
+import { ColorRamp, ColorRgba, EASES } from "@promptctl/rich-js";
+
+const fade = new ColorRamp(EASES["ease-in-out"], [
+  { at: 0, color: new ColorRgba(220, 38, 38) },
+  { at: 1, color: new ColorRgba(22, 163, 74) },
+]).over(2);
+
+for (const t of [0, 0.5, 1, 1.5, 2]) {
+  const hex = fade.at(t).hex;
+  console.print(`t=${t}s  [on ${hex}]      [/] ${hex}  next change ${fade.nextChange(t) === t ? "every frame" : "never"}`);
+}
+```
+
 ## Playback: a timeline
 
 Because every animation is a pure function of its time, pausing, reversing, scrubbing and speeding one up are not things done to the animation: they are a change in which time it is asked for. A `Timeline` is that map from the host's clock to animation time, as a value — an animation time at a host time and a rate in animation seconds per host second, or, paused, one animation time at every host time. Every operation takes a timeline and a host time and gives a timeline back, so a paused timeline resumed later maps the moment it resumes to the time it froze at, and nothing here reads a clock.

@@ -20,14 +20,17 @@
  * theme colors passes through perceptually even steps rather than the muddy
  * midpoints of an sRGB blend.
  *
- * [LAW:one-way-deps] Imports `core/color`, `core/easing` and `core/oklch`
- * only; nothing here knows what a palette is. Resolving stop *names* is the template binding's
+ * [LAW:one-way-deps] Imports `core/color`, `core/easing`, `core/oklch`,
+ * and for `over`, `core/animation` and `core/tween`; nothing here knows
+ * what a palette is. Resolving stop *names* is the template binding's
  * job (`paletteFuncs`), which hands this module resolved colors.
  */
 
+import { Animation } from "../core/animation.js";
 import type { ColorRgba } from "../core/color.js";
-import type { Ease } from "../core/easing.js";
+import { EASES, type Ease } from "../core/easing.js";
 import { Oklch } from "../core/oklch.js";
+import { tween } from "../core/tween.js";
 
 /** One stop: the color the ramp is exactly `color` at position `at`. */
 export interface ColorStop {
@@ -106,5 +109,23 @@ export class ColorRamp {
     if (t <= 0) return from.color;
     if (t >= 1) return to.color;
     return Oklch.fromRgba(from.color).mix(Oklch.fromRgba(to.color), t).toRgba();
+  }
+
+  /**
+   * This ramp read over time: its span of positions, from the first stop's
+   * to the last's, crossed at a steady rate in `seconds` and held at the last
+   * stop from then on, each colour along the way the ramp's own. A colour
+   * tween is a two-stop ramp over its seconds — the ramp's ease shaping the
+   * move, so `new ColorRamp(ease, [{ at: 0, color: a }, { at: 1, color: b
+   * }]).over(seconds)` is `a` eased to `b` — and a ramp of more stops over
+   * time is a sweep through all of them. [LAW:one-source-of-truth] The
+   * blending is `at`'s; what time adds is `tween`'s (`core/tween.ts`), so a
+   * host sampling once a second or sixty times reads the stop colours byte
+   * for byte where `at` paints them.
+   */
+  over(seconds: number): Animation<ColorRgba> {
+    const first = (this.stops[0] as ColorStop).at;
+    const last = (this.stops[this.stops.length - 1] as ColorStop).at;
+    return Animation.map(tween(first, last, { seconds, ease: EASES.linear }), (value) => this.at(value));
   }
 }

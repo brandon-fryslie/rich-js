@@ -44,6 +44,7 @@ import {
   spring,
   steps,
   Style,
+  tween,
   SVG_EXPORT_THEME,
   TerminalTheme,
   TEXTUAL_ANSI,
@@ -362,6 +363,24 @@ export function section5ColorRefs(out: Console): void {
   }
   out.print(bold("    Phase — seconds → progress; t = 0 … 2 s in quarter seconds:"));
   out.print(pulseRow);
+  out.print(blank());
+
+  // A tween is the one-shot: a number eased to its target over seconds and
+  // held there, and a ramp read over time is the same for a colour. The
+  // spring's seconds are its own, so the count lands when the physics says.
+  const settle = spring({ stiffness: 300, damping: 20 });
+  const count = tween(0, 100, settle);
+  const fade = pulseRamp.over(2);
+  const countRow = new RichText(`      ${`tween(0, 100, spring) ${settle.seconds.toFixed(2)}s`.padEnd(28)}`);
+  const fadeRow = new RichText(`      ${"ramp.over(2s) · sine".padEnd(28)}`);
+  for (let quarter = 0; quarter <= 8; quarter++) {
+    const t = quarter / 4;
+    countRow.append(` ${count.at(t).toFixed(0).padStart(3)} `, bgFgStyle(fade.at(t), fg, bg));
+    fadeRow.append("     ", bgFgStyle(fade.at(t), fg, bg));
+  }
+  out.print(bold("    tween — a value eased to its target; t = 0 … 2 s in quarter seconds:"));
+  out.print(countRow);
+  out.print(fadeRow);
   out.print(blank());
 
   // Effected — the same phase driving a per-cell effect over a finished

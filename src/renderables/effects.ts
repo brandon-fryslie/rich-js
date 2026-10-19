@@ -49,7 +49,7 @@
 
 import { Animation } from "../core/animation.js";
 import { ColorDepth, ColorRgba, ColorSpec, contrastRatio, relativeLuminance, type TerminalTheme } from "../core/color.js";
-import { EASES, Phase, beat, type Ease } from "../core/easing.js";
+import { EASES, Phase, beat, type Timing } from "../core/easing.js";
 import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo } from "../core/memo.js";
 import { Oklch } from "../core/oklch.js";
@@ -265,12 +265,14 @@ function touchedAt(touch: Touch, color: ColorRgba, w: number): ColorRgba {
   return w === 0 ? color : touch(color, w);
 }
 
-/** How the curves below are tuned: one period (or duration), ease and swing. */
-export interface Curve {
-  /** Seconds: a looping effect's period, a transition's duration. */
-  readonly seconds: number;
-  /** Intensity in [0, 1] to the fraction of `swing` applied. One that overshoots, as a CSS `cubic-bezier` may, saturates: an effect never acts past its swing. */
-  readonly ease: Ease;
+/**
+ * How the curves below are tuned: a `Timing` — seconds, a looping effect's
+ * period or a transition's duration, and an ease, intensity in [0, 1] to
+ * the fraction of `swing` applied; one that overshoots, as a CSS
+ * `cubic-bezier` may, saturates, since an effect never acts past its swing —
+ * and the swing itself.
+ */
+export interface Curve extends Timing {
   /** How far the move goes at full intensity, in [0, 1]; what 1 means is the effect's. */
   readonly swing: number;
 }
