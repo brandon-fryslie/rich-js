@@ -158,6 +158,17 @@ describe("RichText construction", () => {
     expect(codes.filter((code) => !kept(code))).toEqual(codes.filter((code) => stripped.has(code)));
   });
 
+  it("strips the bidi embeddings, overrides and isolates, and keeps the marks", () => {
+    // Every code point Unicode gives Bidi_Control, and the characters just
+    // outside the two stripped ranges: only the nine that open a direction
+    // state go.
+    const STRIPS = [0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069];
+    const KEEPS = [0x061c, 0x200e, 0x200f, 0x2029, 0x202f, 0x2065, 0x206a];
+    const kept = (code: number): boolean => new RichText(`a${String.fromCodePoint(code)}b`).plain.length === 3;
+    expect([...STRIPS, ...KEEPS].filter(kept)).toEqual(KEEPS);
+    expect(new RichText().append("x\u202Ey").plain).toBe("xy");
+  });
+
   it("drops a carriage return from content set by the constructor, the plain setter and append, as Rich's Text does", () => {
     expect(new RichText("a\r\nb").plain).toBe("a\nb");
     expect(new RichText().append("a\r\nb").plain).toBe("a\nb");

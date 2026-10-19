@@ -14,8 +14,13 @@ import type { Renderable, Measurable, OverflowMethod, RenderOptions } from "./pr
 // `STRIP_CONTROL_CODES` (BEL, BS, VT, FF, CR); the rest of the set is the
 // port's extension, so no C0 byte of content can start an escape sequence or
 // move the cursor on the wire. C1 controls (U+0080–U+009F) pass, as in Rich.
+// The bidi embeddings and overrides (U+202A–U+202E) and isolates
+// (U+2066–U+2069) go too, also the port's extension: each opens a direction
+// state the terminal carries past the text, so one left unclosed in content
+// reverses whatever is drawn after it on the line. The marks (LRM, RLM, ALM)
+// open no state and pass, since right-to-left text needs them.
 // [LAW:single-enforcer] Single place where control chars are sanitized
-const CONTROL_CHARS_RE = /[\x00-\x08\x0B-\x1F\x7F]/g;
+const CONTROL_CHARS_RE = /[\x00-\x08\x0B-\x1F\x7F\u202A-\u202E\u2066-\u2069]/g;
 
 export function stripControlChars(text: string): string {
   return text.replace(CONTROL_CHARS_RE, "");
