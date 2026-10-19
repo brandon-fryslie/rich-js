@@ -325,26 +325,32 @@ function readRecords(lines: ReadonlyArray<RawLine>, showHidden: boolean): Joined
 /**
  * Step 2: join one assistant message's records. Claude Code writes each
  * content block of a message — its thinking, its text, each tool call — as a
- * record of its own, every one carrying the message's id, so consecutive
- * assistant lines sharing an id are one message: its content is theirs in
- * order, its parent is the first one's, and the rest of it (stop_reason,
- * usage) is the last one's.
+ * record of its own, every one carrying the message's id, so the assistant
+ * records sharing an id are one message, where its first record stood: its
+ * content is theirs in order, its uuid and parent are the first one's, and the
+ * rest of it (stop_reason, usage) is the last one's. They are found by that id,
+ * not by sitting together: Claude Code runs a tool while the message is still
+ * streaming, so a call's result, and whatever is written with it, can land
+ * between two of the message's records — and a hidden record there would
+ * otherwise split the message only while hidden records are shown.
  */
 function joinMessageRecords(records: ReadonlyArray<Joined>): Joined[] {
   const out: Joined[] = [];
+  const at = new Map<string, number>();
   for (const next of records) {
-    const { line } = next;
-    const r = line.parsed;
-    const prev = out[out.length - 1];
-    const prevRec = prev?.line.parsed;
+    const r = next.line.parsed;
     const id = r.type === "assistant" ? r.message?.id : undefined;
-    if (prev === undefined || id === undefined || prevRec?.type !== "assistant" || prevRec.message?.id !== id) {
+    const i = id === undefined ? undefined : at.get(id);
+    const prev = i === undefined ? undefined : out[i];
+    if (i === undefined || prev === undefined) {
+      if (id !== undefined) at.set(id, out.length);
       out.push(next);
       continue;
     }
+    const first = prev.line.parsed;
     const blocks = (record: RawRecord) => (Array.isArray(record.message?.content) ? record.message.content : []);
-    out[out.length - 1] = {
-      line: { ...line, parsed: { ...r, uuid: prevRec.uuid, parentUuid: prevRec.parentUuid, message: { ...r.message!, content: [...blocks(prevRec), ...blocks(r)] } } },
+    out[i] = {
+      line: { ...next.line, parsed: { ...r, uuid: first.uuid, parentUuid: first.parentUuid, message: { ...r.message!, content: [...blocks(first), ...blocks(r)] } } },
       parts: [...prev.parts, ...next.parts],
     };
   }

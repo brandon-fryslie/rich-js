@@ -61,6 +61,36 @@ describe("parseBlocks", () => {
     expect(selectedBlock(jumpToParent(state))).toMatchObject({ kind: "tool-call", toolUseId: "t1" });
   });
 
+  it("joins a message across a record written between its records, hidden records shown or not", () => {
+    const read = lines([
+      part("a1", { type: "thinking", thinking: "check the branch" }, "tool_use"),
+      { type: "attachment", uuid: "g1", parentUuid: "a1", attachment: { type: "goal_status", met: false } },
+      part("a2", { type: "text", text: "Checking the branch." }, "tool_use", "g1"),
+      part("a3", { type: "tool_use", id: "t1", name: "Bash", input: { command: "git status" } }, "tool_use", "a2"),
+    ]);
+    const kinds = (showHidden: boolean) => parseBlocks(read, { showHidden }).map((block) => block.kind);
+    expect(kinds(false)).toEqual(["assistant", "tool-call"]);
+    expect(kinds(true)).toEqual(["assistant", "tool-call", "record"]);
+    for (const showHidden of [false, true]) {
+      expect(parseBlocks(read, { showHidden })[0]).toMatchObject({ kind: "assistant", uuid: "a1", source: [read[0], read[2]] });
+    }
+  });
+
+  it("joins a message whose calls ran while it streamed: each call's result lands between them", () => {
+    const blocks = parseBlocks(lines([
+      part("a1", { type: "tool_use", id: "t1", name: "Skill", input: { skill: "laws:code" } }, "tool_use"),
+      { type: "user", uuid: "r1", parentUuid: "a1", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "t1", content: "Launching skill" }] } },
+      { type: "user", uuid: "m1", parentUuid: "r1", isMeta: true, message: { role: "user", content: [{ type: "text", text: "Base directory for this skill" }] } },
+      part("a2", { type: "tool_use", id: "t2", name: "Bash", input: { command: "ls" } }, "tool_use", "m1"),
+      { type: "user", uuid: "r2", parentUuid: "a2", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "t2", content: "a.ts" }] } },
+    ]));
+    expect(blocks).toMatchObject([
+      { kind: "tool-call", toolUseId: "t1", result: "Launching skill" },
+      { kind: "tool-call", toolUseId: "t2", result: "a.ts" },
+      { kind: "human", isMeta: true },
+    ]);
+  });
+
   it("reads a call to the Agent tool, and to its old name Task, as a subagent", () => {
     const call = (id: string, name: string) => part(`a-${id}`, { type: "tool_use", id, name, input: { subagent_type: "Explore", description: "find it", prompt: "look" } }, "tool_use");
     const blocks = parseBlocks(lines([
