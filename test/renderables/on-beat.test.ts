@@ -2,6 +2,7 @@
 // hold's start — at one redraw a second and at sixty.
 
 import { describe, expect, it } from "vitest";
+import { cellAttributes } from "../../src/renderables/effect.js";
 import {
   Animation,
   CATPPUCCIN_MOCHA,
@@ -20,7 +21,7 @@ import {
 } from "../../src/index.js";
 
 /** The attributes of a cell whose style sets none. */
-const { reverse: _reverse, ...PLAIN } = Style.null().attributes;
+const PLAIN = cellAttributes(Style.null());
 
 // [LAW:behavior-not-structure] What is asserted is the colour a terminal is
 // sent at each handed time: held within a hold, moved at each hold's start.

@@ -28,7 +28,7 @@ const PANELS: readonly [string, Effect][] = [
   ["blink", EFFECT_CATALOGUE.attributes.blink({ z })],
   ["bold pulse", EFFECT_CATALOGUE.attributes.boldPulse({ z })],
   ["underline, slow", blink({ attribute: "underline", off: 1, on: 1 })],
-  ["italic, quick", blink({ ...ATTRIBUTE_DEFAULTS.boldPulse, attribute: "italic", off: 0.2, on: 0.2 })],
+  ["italic, as bold pulses", blink({ ...ATTRIBUTE_DEFAULTS.boldPulse, attribute: "italic" })],
 ];
 
 function view(t: number): Columns {

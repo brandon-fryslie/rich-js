@@ -165,7 +165,7 @@ for (const t of [0, 0.5, 1, 2.5]) {
 
 To edit and tune each effect's code while it runs, open the [effects playground](/effects-playground). To watch every effect at any frame rate, colour depth and theme, run `npm run effects-feel` in a checkout of this repository.
 
-An effect changes colours, never glyphs. To type, scramble or rain on what an element draws, use a [glyph effect](/animation#a-glyph-effect-text-typed-scrambled-and-rained-on), which works the same way and nests with an effect over the same element.
+An effect changes colours and attributes, never glyphs. To type, scramble or rain on what an element draws, use a [glyph effect](/animation#a-glyph-effect-text-typed-scrambled-and-rained-on), which works the same way and nests with an effect over the same element.
 
 ### An attribute on a beat
 
@@ -187,7 +187,7 @@ Under `confined`, a cell's attributes go with its ink: a seam cell between two i
 
 ## Writing an effect
 
-`Effected` wraps any renderable and draws it with its cells' colours passed through an effect at one moment:
+`Effected` wraps any renderable and draws it with its cells' looks — colours and attributes — passed through an effect at one moment:
 
 ```typescript
 import { Animation, ColorRgba, ColorRamp, DEFAULT_TERMINAL_THEME, EASES, Effected, Phase, RichText, type Effect } from "@promptctl/rich-js";

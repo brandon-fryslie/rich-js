@@ -262,7 +262,9 @@ export class Style {
    * on, off, or unset — and every other field as it was.
    */
   withAttributes(attributes: Partial<Attributes>): Style {
-    return this.with(attributes);
+    // Only the attribute names are read: a wider object — a `Style`, say —
+    // satisfies the type and must not carry its colours or anchor in with it.
+    return this.with(Object.fromEntries(ATTRIBUTE_NAMES.filter((name) => name in attributes).map((name) => [name, attributes[name]])));
   }
 
 

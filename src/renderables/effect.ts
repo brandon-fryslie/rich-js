@@ -288,7 +288,8 @@ export class Effected implements Renderable, Measurable, Composite {
       }
       let offset = 0;
       for (const run of runs) {
-        const shifted = base.shiftedBy(offset).withAttributes(run.attributes);
+        const placed = base.shiftedBy(offset);
+        const shifted = sameAttributes(run.attributes, attributes) ? placed : placed.withAttributes(cellAttributes(run.attributes));
         const style = writesAlike(run.drawn, wire) ? shifted : shifted.add(Style.fromColor(run.drawn.color, run.drawn.bgcolor));
         yield new Segment(run.text, style);
         offset += run.cells;
@@ -365,8 +366,7 @@ function looks(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalTh
     const slots = { fg: (wire.color ?? DEFAULT).getTruecolor(theme, true), bg: (wire.bgcolor ?? DEFAULT).getTruecolor(theme, false) };
     const reverse = style.reverse === true;
     const terminal = onScreen({ fg: wire.color?.isDefault ?? true, bg: wire.bgcolor?.isDefault ?? true }, reverse);
-    const { reverse: _swap, ...attributes } = style.attributes;
-    return { segment, look: { style, wire, slots, pair: { ...onScreen(slots, reverse), terminal, reverse }, attributes } };
+    return { segment, look: { style, wire, slots, pair: { ...onScreen(slots, reverse), terminal, reverse }, attributes: cellAttributes(style) } };
   });
 }
 
@@ -583,8 +583,17 @@ function written(spec: ColorSpec | undefined, foreground: boolean): string {
 /** The attributes a look carries: `ATTRIBUTE_NAMES` but `reverse`. */
 const MOVED = ATTRIBUTE_NAMES.filter((name): name is Exclude<AttributeName, "reverse"> => name !== "reverse");
 
+/**
+ * The attributes a look carries, read off anything that sets them — a
+ * `Style`, or a look a frame returned with more on it than `CellAttributes`
+ * names. [LAW:one-source-of-truth] The one place `reverse` is left out.
+ */
+export function cellAttributes(of: CellAttributes): CellAttributes {
+  return Object.fromEntries(MOVED.map((name) => [name, of[name]])) as CellAttributes;
+}
+
 function sameAttributes(a: CellAttributes, b: CellAttributes): boolean {
-  return MOVED.every((name) => a[name] === b[name]);
+  return a === b || MOVED.every((name) => a[name] === b[name]);
 }
 
 function sameColors(a: CellColors, b: CellColors): boolean {

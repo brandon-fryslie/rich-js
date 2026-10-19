@@ -1153,7 +1153,9 @@ export const ATTRIBUTE_DEFAULTS = {
 
 /**
  * What a catalogue effect is made for: the element it is drawn on, at `z` in
- * the noise, so two elements under one effect do not move in lockstep. How
+ * the noise, so two elements under one effect drawn from noise do not move in
+ * lockstep. An effect on a beat alone (a blink) draws no noise, and keeps
+ * every element in step, as a terminal's own blink does. How
  * wide the element is, the effect reads off each frame (`Drawn.cells`).
  */
 export interface EffectTarget {

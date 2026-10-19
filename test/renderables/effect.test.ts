@@ -10,7 +10,7 @@ import { Segment } from "../../src/core/segment.js";
 import { JOINERS, Strip } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
-import { Effected, confined, drawnOf, type CellLook, type Effect, type EffectCell, type EffectFrame } from "../../src/renderables/effect.js";
+import { Effected, cellAttributes, confined, drawnOf, type CellLook, type Effect, type EffectCell, type EffectFrame } from "../../src/renderables/effect.js";
 import { blink } from "../../src/renderables/effects.js";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { Group } from "../../src/renderables/group.js";
@@ -24,7 +24,7 @@ import { Oklch } from "../../src/core/oklch.js";
 
 const THEME = DEFAULT_TERMINAL_THEME;
 /** The attributes of a cell whose style sets none. */
-const { reverse: _reverse, ...PLAIN } = Style.null().attributes;
+const PLAIN = cellAttributes(Style.null());
 const DEFAULTS: CellLook = { fg: THEME.foregroundColor, bg: THEME.backgroundColor, attributes: PLAIN };
 const RED = new ColorRgba(255, 0, 0);
 const BLUE = new ColorRgba(0, 0, 255);
@@ -307,6 +307,13 @@ describe("Effected — attributes", () => {
     const same = setFrom(0, { bold: true });
     const child = fixed(new Segment("ab", Style.parse("bold red")));
     expect(renderToString(effected(child, same), AT)).toBe(renderToString(child, AT));
+  });
+
+  it("moves only the attributes a look names, whatever else the frame's attributes carry", () => {
+    const anchored = Style.parse("red").withAnchor({ owner: {}, row: 0, col: 0, inner: undefined });
+    const wide: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, attributes: Style.parse("italic reverse on blue").withLink("https://x.test") }));
+    const out = [...effected(fixed(new Segment("ab", anchored)), wide).render({ maxWidth: 10 })];
+    expect(out.map((s) => [s.text, s.style?.italic, s.style?.reverse, s.style?.link, s.style?.bgcolor, s.style?.anchor])).toEqual([["ab", true, undefined, undefined, undefined, anchored.anchor]]);
   });
 
   it("has no reverse to move: the colours are where a swap is made", () => {

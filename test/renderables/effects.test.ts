@@ -2,6 +2,7 @@
 // transitions start and end where they say they do.
 
 import { describe, expect, it } from "vitest";
+import { cellAttributes } from "../../src/renderables/effect.js";
 import {
   Animation,
   ColorDepth,
@@ -66,7 +67,7 @@ const curve = (seconds: number, swing: number): Curve => ({ seconds, ease: EASES
 const ink = new ColorRgba(205, 214, 244);
 const ground = new ColorRgba(30, 30, 46);
 /** The attributes of a cell whose style sets none. */
-const { reverse: _reverse, ...PLAIN } = Style.null().attributes;
+const PLAIN = cellAttributes(Style.null());
 const colors: CellLook = { fg: ink, bg: ground, attributes: PLAIN };
 /** Neither colour the terminal's: both are the subject's own. */
 const written = { fg: false, bg: false };
