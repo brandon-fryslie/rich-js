@@ -92,6 +92,12 @@ describe("GlyphEffected — what it may not change", () => {
     }
   });
 
+  it("refuses text that joins the cell beside it into one character, naming the line", () => {
+    // Alone, "😀\u200d" is two cells, as the emoji it replaces; beside the next emoji it is one cluster, and the line would shrink.
+    const joining: GlyphEffect = () => Animation.constant<GlyphFrame>((cell) => (cell.col === 0 ? "😀\u200d" : cell.glyph));
+    expect(() => [...glyphed(fixed(new Segment("😀😀x")), joining).render({ maxWidth: 10 })]).toThrow(/line 0 from 5 cells wide to 3/);
+  });
+
   it("keeps every cell's anchor, link and meta", () => {
     const owner = {};
     const base = Style.null().withLink("https://example.com").add(Style.fromMeta({ id: 7 }));

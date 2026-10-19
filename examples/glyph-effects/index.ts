@@ -18,44 +18,56 @@ import {
   Live,
   Panel,
   RichText,
+  Timeline,
   caseWave,
   particles,
   scramble,
   typewriter,
   type GlyphEffect,
   type GlyphTransition,
+  type Timing,
 } from "../../src/index.js";
 
 const WIDTH = 34;
 const SKY = Array.from({ length: 4 }, (_, row) => (row === 1 ? "   a quiet night".padEnd(WIDTH - 4) : " ".repeat(WIDTH - 4))).join("\n");
 const LINE = "the quick brown fox jumps";
 
-/** A loop drawn at `t`, or a transition drawn at `t` within its run and a second's rest, again and again. */
-type Shown = { readonly effect: GlyphEffect } | { readonly transition: GlyphTransition; readonly seconds: number };
+/** A loop, or a transition made at its timing, played and a second's rest, again and again. */
+type Shown = { readonly effect: GlyphEffect } | { readonly make: (timing: Timing) => GlyphTransition; readonly timing: Timing };
 
-function at(shown: Shown, t: number): { effect: GlyphEffect; t: number } {
-  return "effect" in shown ? { effect: shown.effect, t } : { effect: shown.transition.effect, t: t % (shown.seconds + 1) };
+/**
+ * What `shown` draws at the `Live`'s time `t`. A transition plays on a
+ * timeline from the start of the run `t` is in, so the frame says when it
+ * next changes on the `Live`'s clock — and, at rest, that it changes when
+ * the next run starts.
+ */
+function at(shown: Shown, t: number): GlyphEffect {
+  if ("effect" in shown) return shown.effect;
+  const period = shown.timing.seconds + 1;
+  const start = Math.floor(t / period) * period;
+  const { effect } = shown.make(shown.timing);
+  return (drawn) => {
+    const run = Timeline.run(Timeline.play(start), effect(drawn));
+    return { ...run, nextChange: (host) => Math.min(run.nextChange(host), start + period) };
+  };
 }
 
 const z = 0.4;
 const PANELS: readonly [string, string, Shown][] = [
-  ["typewriter", LINE, { transition: GLYPH_EFFECT_CATALOGUE.transitions.typewriter({ z }), seconds: GLYPH_DEFAULTS.typewriter.seconds }],
-  ["scramble", LINE, { transition: GLYPH_EFFECT_CATALOGUE.transitions.scramble({ z }), seconds: GLYPH_DEFAULTS.scramble.seconds }],
+  ["typewriter", LINE, { make: (timing) => GLYPH_EFFECT_CATALOGUE.transitions.typewriter({ z }, timing), timing: GLYPH_DEFAULTS.typewriter }],
+  ["scramble", LINE, { make: (timing) => GLYPH_EFFECT_CATALOGUE.transitions.scramble({ z }, timing), timing: GLYPH_DEFAULTS.scramble }],
   ["wave", LINE, { effect: GLYPH_EFFECT_CATALOGUE.loops.wave({ z }) }],
   ["rain", SKY, { effect: GLYPH_EFFECT_CATALOGUE.loops.rain({ z }) }],
   ["stars", SKY, { effect: GLYPH_EFFECT_CATALOGUE.loops.stars({ z }) }],
-  ["typewriter, easing out", LINE, { transition: typewriter({ seconds: 3, ease: EASES["ease-out"] }), seconds: 3 }],
-  ["scramble, slow", LINE, { transition: scramble({ seconds: 5, ease: EASES.linear }, z), seconds: 5 }],
-  ["wave, wide and slow", LINE, { effect: caseWave({ step: 0.15, width: 6 }) }],
+  ["typewriter, easing out", LINE, { make: typewriter, timing: { seconds: 3, ease: EASES["ease-out"] } }],
+  ["scramble, slow", LINE, { make: (timing) => scramble(timing, z), timing: { seconds: 5, ease: EASES.linear } }],
+  ["wave, wide and slow", LINE, { effect: caseWave({ step: 0.15, width: 6 }, z) }],
   ["snow", SKY, { effect: particles({ ...GLYPH_DEFAULTS.rain, glyphs: "*·", ascii: "*.", step: 0.4, density: 0.05 }, z) }],
 ];
 
 function view(t: number): Columns {
   return new Columns(
-    PANELS.map(([title, text, shown]) => {
-      const drawn = at(shown, t);
-      return new Panel(new GlyphEffected(new RichText(text), drawn.effect, { t: drawn.t, key: title }), { title, width: WIDTH });
-    }),
+    PANELS.map(([title, text, shown]) => new Panel(new GlyphEffected(new RichText(text), at(shown, t), { t, key: title }), { title, width: WIDTH })),
   );
 }
 

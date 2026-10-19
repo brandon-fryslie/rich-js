@@ -613,6 +613,17 @@ describe("the transitions run start to end", () => {
   });
 });
 
+describe("a place in the noise is checked when its effect is made", () => {
+  it.each([Number.NaN, Number.POSITIVE_INFINITY])("a z of %s is refused, naming the effect", (z) => {
+    expect(() => pulse(curve(4, 1), sun, z)).toThrow(/pulse z must be a finite place in the noise/);
+    expect(() => shimmer(curve(4, 1), 3, sun, z)).toThrow(/shimmer z/);
+    expect(() => sparkle(curve(4, 1), sun, z)).toThrow(/sparkle z/);
+    expect(() => wheel(curve(4, 1), z)).toThrow(/wheel z/);
+    expect(() => fadeIn(curve(4, 1), z)).toThrow(/fadeIn z/);
+    expect(() => dissolveOut(curve(4, 1), z)).toThrow(/dissolveOut z/);
+  });
+});
+
 describe("a curve is checked when its effect is made", () => {
   it.each([1.5, -0.1, Number.NaN])("a swing of %s, outside [0, 1], is refused", (swing) => {
     for (const make of [() => pulse(curve(4, swing), sun, 0), () => fadeIn(curve(4, swing), 0), () => wheel(curve(4, swing), 0)]) {

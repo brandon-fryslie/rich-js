@@ -284,6 +284,15 @@ function requireCurve(curve: Curve): void {
 }
 
 /**
+ * Throws, naming `what`, unless `z` is a finite place in the noise. Noise at
+ * a place that is not a number is not a number, which no effect could tell
+ * from a dim cell or an empty sky. [LAW:no-silent-failure]
+ */
+export function requireZ(what: string, z: number): void {
+  if (!Number.isFinite(z)) throw new RangeError(`${what} z must be a finite place in the noise, got ${z}`);
+}
+
+/**
  * Each effect's curve as it was signed off. Every loop's period is a prime
  * number of seconds, so no two loops come back into step within a sitting.
  * The periods are long on purpose: at one frame a second a loop's colour
@@ -400,6 +409,7 @@ const FLASH: SwellShape = [[0.24, 1], [0.6, 0]];
  */
 export function pulse(curve: Curve, glow: ColorRgba, z: number): Loop {
   requireCurve(curve);
+  requireZ("pulse", z);
   // How much quicker or slower than `curve.seconds` this element beats.
   const rate = 0.9 + 0.2 * hash(z, 3.1);
   // How far, in beats, the rhythm wanders ahead and behind its metronome. Noise's
@@ -449,6 +459,7 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
  */
 export function shimmer(curve: Curve, width: number, glow: ColorRgba, z: number): Loop {
   requireCurve(curve);
+  requireZ("shimmer", z);
   const P = curve.seconds;
   // Passes are events on slots of half a period. Whether slot `j` holds one,
   // and how bright, is the sky's: slow noise over the slots, so sunny and
@@ -536,6 +547,7 @@ export function shimmer(curve: Curve, width: number, glow: ColorRgba, z: number)
  */
 export function sparkle(curve: Curve, glow: ColorRgba, z: number): Loop {
   requireCurve(curve);
+  requireZ("sparkle", z);
   // The columns a firefly has to itself along a row of the lattice, and the
   // rows between two rows of it: more than a halo's reach, so a one-row
   // element is lit by one row of fireflies.
@@ -772,6 +784,7 @@ function extent(values: readonly number[]): readonly [number, number] {
  */
 export function fadeIn(curve: Curve, z: number): Transition {
   requireCurve(curve);
+  requireZ("fadeIn", z);
   const risen = ownChange(curve, order(1.7 + z));
   return transition(
     curve.seconds,
@@ -803,6 +816,7 @@ const DISSOLVE_SHAPE = { depth: 0.4, from: 0.5, to: 0.95, maskFrom: 0.35, maskTo
  */
 export function dissolveOut(curve: Curve, z: number): Transition {
   requireCurve(curve);
+  requireZ("dissolveOut", z);
   const eddy = order(9.3 + z);
   const faded = ownChange(curve, order(4.2 + z));
   const { depth, from, to, maskFrom, maskTo, late } = DISSOLVE_SHAPE;
@@ -857,6 +871,7 @@ const STRAY = 180;
  */
 export function wheel(curve: Curve, z: number): Effect {
   requireCurve(curve);
+  requireZ("wheel", z);
   const P = curve.seconds;
   // A segment's seed, from the colour it is.
   const seed = (hex: string): number => hash(Number.parseInt(hex.slice(1), 16) * 1e-4, 17.3 + z);

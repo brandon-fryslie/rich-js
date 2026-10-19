@@ -132,13 +132,13 @@ for (const t of [0, 0.5, 1, 1.5, 2]) {
 console.print(`done at 2s: ${typing.done(2)}`);
 ```
 
-A glyph effect changes what a cell shows, never which cells exist, where they are or who drew them. The text it returns for a cell must be exactly as wide as the glyph it replaces and hold no line break or control character, or the render throws and names the cell. So nothing beside the element ever moves, and a wide glyph like `漢` is blanked as two spaces or scrambled as two narrow glyphs, never cut in half. A cell that comes back unchanged is drawn byte for byte as it was, and a changed cell keeps its link and its owner. Glyphs are written at every colour depth, so a glyph effect moves even with no colour output, where a colour effect does nothing.
+A glyph effect changes what a cell shows, never which cells exist, where they are or who drew them. The text it returns for a cell must be exactly as wide as the glyph it replaces, hold no line break or control character, and not join the cell beside it into one character, as a trailing zero-width joiner would. Otherwise the render throws and names the cell or the line. So nothing beside the element ever moves, and a wide glyph like `漢` is blanked as two spaces or scrambled as two narrow glyphs, never cut in half. A cell that comes back unchanged is drawn byte for byte as it was, and a changed cell keeps its link and its owner. Glyphs are written at every colour depth, so a glyph effect moves even with no colour output, where a colour effect does nothing.
 
 The catalogue, `GLYPH_EFFECT_CATALOGUE`, has two transitions, which run once and say when they are `done`, and three loops:
 
-- `typewriter(timing)`: every cell blank until it is typed, in reading order, the last at `timing.seconds`, its ease setting the pace.
+- `typewriter(timing)`: the element's text blank until it is typed, in reading order, the last cell at `timing.seconds`, its ease setting the pace. The spaces between words are typed; the padding round the text is not, so no time is spent on it.
 - `scramble(timing, z)`: random glyphs, a new one each fifteenth of a second, resolving to the words in reading order. Blanks stay blank, so the words keep their shape.
-- `caseWave({ step, width })`: a band of swapped case crossing the element one column a `step`.
+- `caseWave({ step, width }, z)`: a band of swapped case crossing the element one column a `step`.
 - `particles(spec, z)`: particles on the element's blank cells, never over its words. `rain` falls a row a step, and `stars` are drawn afresh each life. Both are values of the one `particles` function, and their specs are in `GLYPH_DEFAULTS`. Each spec names an ASCII set too, which is drawn instead on an output that draws ASCII alone.
 
 A transition moves every frame until it is done, then never. A loop moves in steps, because a cell shows one glyph or another, and its `nextChange` is when its next step begins. A glyph effect and a colour effect compose by nesting: the outer wrapper is drawn over what the inner one drew, so here a wave of capitals crosses a line that is turning red:
@@ -148,7 +148,7 @@ import { Animation, ColorRgba, DEFAULT_TERMINAL_THEME, Effected, GlyphEffected, 
 
 const red = new ColorRgba(220, 38, 38);
 const reddening: Effect = () => Animation.continuous((t) => (colors) => ({ fg: t >= 1 ? red : colors.fg, bg: colors.bg }));
-const wave = caseWave({ step: 0.25, width: 3 });
+const wave = caseWave({ step: 0.25, width: 3 }, 0);
 
 for (const t of [0.6, 1.1, 1.6]) {
   const glyphs = new GlyphEffected(new RichText("a wave of capitals"), wave, { t, key: "wave" });

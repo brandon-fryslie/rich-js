@@ -32,8 +32,10 @@
  *
  * - It changes what a cell shows, never which cells exist, where they are or
  *   who drew them. The text it returns for a cell is exactly as many cells
- *   wide (`cellLen`) and carries no line break or control character, or the
- *   render throws naming both [LAW:single-enforcer]. So what sits beside the
+ *   wide (`cellLen`), carries no line break or control character, and does
+ *   not join its neighbour into one grapheme cluster, so every line is as
+ *   wide as it was, or the render throws naming the cell or the line
+ *   [LAW:single-enforcer]. So what sits beside the
  *   element never moves, and a wide glyph is changed whole — blanked as two
  *   spaces, scrambled as two one-cell glyphs — never cut.
  * - A segment whose every glyph comes back as it was is yielded as it was,
@@ -59,8 +61,8 @@ import { cellSeed, walkGlyphs, type Placed } from "./effect.js";
 
 /**
  * A cell of the element a glyph effect wraps: the glyph it shows, where it
- * sits and who drew it, its place in reading order among the cells handed —
- * what a typewriter types by — and its seed, a number in [0, 1) that is the
+ * sits and who drew it, its place in reading order among the cells handed
+ * (`DrawnGlyphs.cells[index]` is this cell), and its seed, a number in [0, 1) that is the
  * same for that cell on every frame, as an `EffectCell`'s is.
  */
 export interface GlyphCell extends Placed {
@@ -130,6 +132,7 @@ export class GlyphEffected implements Renderable, Measurable, Composite {
       const shown = placed[i]!.map(({ glyph, cell }) => (cell === undefined ? glyph : shows(frame, cell)));
       return shown.every((text, j) => text === placed[i]![j]!.glyph) ? segment : new Segment(shown.join(""), segment.style);
     });
+    keepsLines(segments, changed);
     return Segment.applyStyle(changed, new Style({ nextChange: animation.nextChange(this.t) }));
   }
 
@@ -161,4 +164,29 @@ function shows(frame: GlyphFrame, cell: GlyphCell): string {
     );
   }
   return text;
+}
+
+/**
+ * `after` draws every line of `before` exactly as wide, or this throws naming
+ * the line. Each cell's text being as wide as its glyph is `shows`'s check;
+ * this is the half no one cell can see: a text that joins its neighbour into
+ * one grapheme cluster — a trailing zero-width joiner, a leading combining
+ * mark — is the right width alone and narrower beside it, so everything after
+ * it on the line would move.
+ */
+function keepsLines(before: readonly Segment[], after: readonly Segment[]): void {
+  const lines = (segments: readonly Segment[]): string[] =>
+    segments
+      .map((segment) => (segment.isControl ? "" : segment.text))
+      .join("")
+      .split("\n");
+  const now = lines(after);
+  lines(before).forEach((line, row) => {
+    if (cellLen(now[row]!) !== cellLen(line)) {
+      throw new RangeError(
+        `a glyph effect turned line ${row} from ${cellLen(line)} cells wide to ${cellLen(now[row]!)}: ` +
+          `${JSON.stringify(now[row])} joins a cell's text into its neighbour's`,
+      );
+    }
+  });
 }
