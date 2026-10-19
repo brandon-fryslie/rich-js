@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-487",
-      "ref": "refs/pull/487/merge",
-      "sha": "21bd2be778d4d9522aec605e4b84994d1a204ec3",
-      "timestamp": "2026-10-19T17:16:44.337Z",
-      "commits": [
-        {
-          "sha": "21bd2be778d4d9522aec605e4b84994d1a204ec3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T17:14:44Z",
-          "message": "Merge 83105f780d3041870dc3459fa698552296fd0947 into 5157249a44e547de45928a7e5ee14b4780ef417d\n"
-        },
-        {
-          "sha": "83105f780d3041870dc3459fa698552296fd0947",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T11:14:37-06:00",
-          "message": "A lifecycle's frame says when it changes even with no cells; Transition loses seconds (rich-animation-42lg.588)\n\nBefore it entered the frame had no cell to carry its stamp, so a function view never woke to show it arrive; the stamp now also rides a zero-width cell. doneAt searches from the start, so Transition no longer carries a seconds that could disagree with done.\n"
-        },
-        {
-          "sha": "88fb17d84b0ed3c260abff30bb13a4183c4b6250",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T11:02:50-06:00",
-          "message": "An element enters, stays, leaves, and the host knows when it is gone (rich-animation-42lg.588)\n\nlifecycle(element, { enter, exit, key, theme }, entered) is an Animation<Renderable> on the host's clock; leave(at) tells it to leave and gone(t) says when to drop it. Every boundary is read through the transition's own done, carried onto host time by firstReaching. Transition gains seconds.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "5157249a44e547de45928a7e5ee14b4780ef417d",
-      "timestamp": "2026-10-19T16:53:24.917Z",
+      "sha": "69219f4b28141b668966b8cba625d70c65ae88b3",
+      "timestamp": "2026-10-19T17:28:10.695Z",
       "commits": [
         {
-          "sha": "5157249a44e547de45928a7e5ee14b4780ef417d",
+          "sha": "69219f4b28141b668966b8cba625d70c65ae88b3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T10:51:05-06:00",
-          "message": "A change from one renderable to another crossfades or wipes instead of cutting (rich-animation-42lg.kyt) (#486)\n\n* A change from one renderable to another crossfades or wipes instead of cutting (rich-animation-42lg.kyt)\n\n* Review: a change frame says it moves with no colour output; draws from then to, as contents names them; the demo opens on its first state (rich-animation-42lg.kyt)\n\n* Review: a change ends its last row as the new renderable does (rich-animation-42lg.kyt)"
+          "timestamp": "2026-10-19T11:26:32-06:00",
+          "message": "An element enters, stays, leaves, and the host knows when it is gone (rich-animation-42lg.588) (#487)\n\n* An element enters, stays, leaves, and the host knows when it is gone (rich-animation-42lg.588)\n\nlifecycle(element, { enter, exit, key, theme }, entered) is an Animation<Renderable> on the host's clock; leave(at) tells it to leave and gone(t) says when to drop it. Every boundary is read through the transition's own done, carried onto host time by firstReaching. Transition gains seconds.\n\n* A lifecycle's frame says when it changes even with no cells; Transition loses seconds (rich-animation-42lg.588)\n\nBefore it entered the frame had no cell to carry its stamp, so a function view never woke to show it arrive; the stamp now also rides a zero-width cell. doneAt searches from the start, so Transition no longer carries a seconds that could disagree with done."
         }
       ]
     }
