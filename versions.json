@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-484",
-      "ref": "refs/pull/484/merge",
-      "sha": "5a9c4f199d80e3e6d6fb669600f54b92c5aa060f",
-      "timestamp": "2026-10-19T14:43:04.067Z",
-      "commits": [
-        {
-          "sha": "5a9c4f199d80e3e6d6fb669600f54b92c5aa060f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T14:41:10Z",
-          "message": "Merge 737de8564f71c8b73ad139bab7ac76a480dd1353 into 427530527fc3b4060986eb7ed76aefe8f7e963b4\n"
-        },
-        {
-          "sha": "737de8564f71c8b73ad139bab7ac76a480dd1353",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T08:41:04-06:00",
-          "message": "A frame that returns no attributes is refused, naming the look it owes (review: rich-animation-42lg.0wr)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "8149ac3415d187d9a0e8d931c487b34ad53e55cd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T08:36:37-06:00",
-          "message": "An effect moves only the attributes a look names (review: rich-animation-42lg.0wr)\n\nwithAttributes reads ATTRIBUTE_NAMES off its argument; Effected picks the\nlook's attributes through cellAttributes, the one place reverse is left out,\nand skips the extra Style when a run's attributes are the segment's own.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "c51e6a1f67ae6694bf533219807d27e4f89c0068",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T08:26:05-06:00",
-          "message": "An effect moves a cell's attributes, not only its colours (rich-animation-42lg.0wr)\n\nAn effect's frame maps a cell's look — its colours and its text attributes,\nall but reverse — rather than its colours alone, so confined, onBeat,\nAnimation.all and nesting take an attribute effect with no second copy.\nEffected cuts a run where the attributes change too, and a cell whose look\ncomes back as drawn is still written byte for byte as it was.\n\nblink(spec) sets an attribute on the second hold of a two-hold beat; the\ncatalogue's new attributes section makes a blink (conceal) and a bold pulse\nfrom it. Style gains attributes / withAttributes.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "427530527fc3b4060986eb7ed76aefe8f7e963b4",
-      "timestamp": "2026-10-19T14:09:15.262Z",
+      "sha": "ff9aa9bd76e6c9cb2c49daba84f3d30d67b70cdf",
+      "timestamp": "2026-10-19T14:52:09.565Z",
       "commits": [
         {
-          "sha": "427530527fc3b4060986eb7ed76aefe8f7e963b4",
+          "sha": "ff9aa9bd76e6c9cb2c49daba84f3d30d67b70cdf",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T08:07:26-06:00",
-          "message": "A glyph effect types, scrambles and rains on what an element draws (rich-animation-42lg.je5) (#483)\n\n* A glyph effect types, scrambles and rains on what an element draws (rich-animation-42lg.je5)\n\nGlyphEffected is Effected's glyph half: a GlyphEffect is handed every cell\nan element draws (DrawnGlyphs: the cells, blanks included, and whether the\noutput is ASCII-only) and gives an Animation of a per-cell map to the text\neach cell shows. One enforcer holds that text to the cell's width with no\nline break or control character; an unchanged segment is yielded as it was.\nIt writes at every depth, no colour included, and nests with Effected.\n\nThe catalogue: typewriter and scramble (transitions through the one\ntransition() helper, now generic), caseWave, and particles with rain and\nstars as two specs of it, each with an ASCII set drawn under asciiOnly.\n\nEffected's grapheme walk and seed are now walkGlyphs and cellSeed, shared.\n\nbeat: a boundary is walked until at() places it in its hold and its pass.\nWith one hold the old predicate was always true, so beat([0.06]).nextChange(3.3)\nanswered 3.3 itself while placing 3.3 in the previous pass.\n\n* Glyph effects: a cell may not join its neighbour, text is typed and not margins, whole-row drift, z checked and read by the wave (rich-animation-42lg.je5 review)\n\nLine widths are checked after a frame, so a trailing joiner or leading combining mark that fuses across cells throws. Typewriter and scramble pace over each row's text, not the padding round it. One isBlank for scramble and particles; a wide blank takes a particle and a space. particles' drift is a whole number of rows. Every catalogue effect, colour and glyph, refuses a z that is not finite (requireZ). caseWave takes z and starts its pass there. stepped builds its beat once. The demo replays transitions on a Timeline from each run's start, so the frame's nextChange is on the Live's clock.\n\n* A blank cell has width: a byte-order mark takes no particle (rich-animation-42lg.je5 review)\n\n* Glyph effects: a changed cell stands apart from its neighbours, one ink test for both wrappers, zero-width cells are no text, eases settle (rich-animation-42lg.je5 review)\n\nstandsApart replaces keepsLines: only changed texts are asked, by grapheme count beside their neighbours, so a child splitting a cluster across segments draws as it did and a leading combining mark is caught. inked() in effect.ts is the one blank test for Effected and the glyph effects. typewriter/scramble settle the handed ease so the last cell lands. caseWave's band covers a wide glyph by any column. SCRAMBLE_GLYPHS spreads an ASCII string, so the module does nothing on import. stars wake once a life: step 1.5, life 1, the same frames."
+          "timestamp": "2026-10-19T08:50:39-06:00",
+          "message": "An effect moves a cell's attributes, not only its colours (rich-animation-42lg.0wr) (#484)\n\n* An effect moves a cell's attributes, not only its colours (rich-animation-42lg.0wr)\n\nAn effect's frame maps a cell's look — its colours and its text attributes,\nall but reverse — rather than its colours alone, so confined, onBeat,\nAnimation.all and nesting take an attribute effect with no second copy.\nEffected cuts a run where the attributes change too, and a cell whose look\ncomes back as drawn is still written byte for byte as it was.\n\nblink(spec) sets an attribute on the second hold of a two-hold beat; the\ncatalogue's new attributes section makes a blink (conceal) and a bold pulse\nfrom it. Style gains attributes / withAttributes.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* An effect moves only the attributes a look names (review: rich-animation-42lg.0wr)\n\nwithAttributes reads ATTRIBUTE_NAMES off its argument; Effected picks the\nlook's attributes through cellAttributes, the one place reverse is left out,\nand skips the extra Style when a run's attributes are the segment's own.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A frame that returns no attributes is refused, naming the look it owes (review: rich-animation-42lg.0wr)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
