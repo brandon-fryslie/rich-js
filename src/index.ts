@@ -119,6 +119,9 @@ export { tween } from "./core/tween.js";
 // The map from the host's clock to the time an animation is asked for:
 // pause, reverse, scrub and speed, once, above every kind of motion.
 export { Timeline } from "./core/timeline.js";
+// What a host — a Live, an App — draws: a renderable, a renderable for a
+// time, or an animation of one, which says when what it draws changes.
+export type { View } from "./core/view.js";
 // The time source and timer whoever draws frames is handed, and the one
 // parser of the rate it ticks at.
 export { frameRate, systemClock } from "./core/clock.js";
@@ -337,7 +340,7 @@ export type { ColumnsOptions } from "./renderables/columns.js";
 export { FlexStrip } from "./renderables/flexStrip.js";
 export type { FlexStripOptions, FlexAlign } from "./renderables/flexStrip.js";
 export { Live } from "./renderables/live.js";
-export type { LiveOptions, LiveView } from "./renderables/live.js";
+export type { LiveOptions } from "./renderables/live.js";
 export { Status } from "./renderables/status.js";
 export type { StatusOptions } from "./renderables/status.js";
 export {

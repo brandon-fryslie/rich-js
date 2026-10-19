@@ -31,6 +31,7 @@ import { Segment } from "../core/segment.js";
 import type { Presence, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
+import { viewAnimation } from "../core/view.js";
 import { App, type AppOptions, type AppPhase, type Wheel } from "../host/app.js";
 import { DefaultFocusManager } from "./focus-manager.js";
 import { EventRouter } from "./event-router.js";
@@ -69,11 +70,19 @@ export class WidgetApp implements FrameSource {
   private _present: readonly WidgetPresence[] = [];
 
   constructor(options: WidgetAppOptions) {
-    const { view, focusOnClick = true } = options;
+    const { focusOnClick = true } = options;
     this.reaction = new Reaction("WidgetApp", () => this.app.refresh());
+    // The view is asked for its renderable inside `compose`, where what it
+    // reads is tracked, whichever shape it was given; when it changes is its
+    // own to say, as it would be to the App.
+    const view = viewAnimation(options.view);
     this.app = new App({
       ...options,
-      view: (t) => ({ render: (renderOptions) => this.compose(() => view(t), renderOptions) }),
+      view: {
+        at: (t) => ({ render: (renderOptions) => this.compose(() => view.at(t), renderOptions) }),
+        nextChange: (t) => view.nextChange(t),
+        lastChange: (t) => view.lastChange(t),
+      },
     });
     this.focus = new DefaultFocusManager({
       present: () => this.widgets,

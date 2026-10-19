@@ -25,31 +25,21 @@
  * suspend, and a second owner of the console's writes.
  */
 
+import type { Animation } from "../core/animation.js";
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
 import { FinalFramePainter, SurfacePainter, type FrameSource, type Painter, type Screen } from "../core/paint.js";
 import { fitHeight, render, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
+import { Timeline } from "../core/timeline.js";
+import { drawView, viewAnimation, type DrawnView, type View } from "../core/view.js";
 
-/**
- * What a Live draws: a renderable, or a view asked for one each frame with
- * the frame's time in seconds on the Live's clock, as an `App`'s view is
- * (`host/app.ts`). A renderable is the view that is the same at every `t` —
- * a table mutated in place between frames — and a function is what a frame
- * drawn for a time needs: `(t) => spinner.at(t)`.
- * [LAW:no-ambient-temporal-coupling] The Live reads its clock once a frame
- * and hands the time down as data, so nothing it draws reads one.
- */
-export type LiveView = Renderable | ((t: number) => Renderable);
+// Nothing: what a Live made with no view draws until `update` gives it one.
+const NOTHING: Renderable = { render: () => [] };
 
-// [LAW:parse-dont-validate] The one shape Live holds: a renderable becomes
-// the view that answers it at every t, where it is given, so no frame asks
-// which it was.
-const viewOf = (view: LiveView | undefined): ((t: number) => Renderable) | undefined =>
-  view === undefined || typeof view === "function" ? view : () => view;
-
-// What a drawn frame said: its time on the Live's clock, and when what it shows next changes (`Segment.nextChange`).
+// When a frame drawn at host time `t` next changes, on the Live's clock: what
+// `_wake` is armed from — a `DrawnView`, or what nothing drawn says.
 interface Said {
   readonly t: number;
   readonly nextChange: number;
@@ -66,6 +56,12 @@ export interface LiveOptions {
   refreshPerSecond?: number;
   /** What the auto-refresh waits on. The platform's, unless given. */
   clock?: Clock;
+  /**
+   * The map from the clock to the time the view is drawn for (`Timeline`).
+   * Playing from 0 at the clock's own pace — the view's `t` is the clock's —
+   * unless given; `live.timeline` reads and replaces it.
+   */
+  timeline?: Timeline;
   autoRefresh?: boolean;
   transient?: boolean;
   console?: Console;
@@ -77,10 +73,11 @@ export interface LiveOptions {
 }
 
 export class Live {
-  private _view: ((t: number) => Renderable) | undefined;
+  private _view: Animation<Renderable>;
   private _console: Console;
   private readonly _rate: FrameRate;
   private readonly _clock: Clock;
+  private _timeline: Timeline;
   private _autoRefresh: boolean;
   private _transient: boolean;
   private _verticalOverflow: "crop" | "ellipsis" | "visible";
@@ -92,13 +89,14 @@ export class Live {
   // flag to disagree with it.
   private _held: Unsubscribe | null;
 
-  constructor(view?: LiveView, options?: LiveOptions) {
-    this._view = viewOf(view);
+  constructor(view?: View, options?: LiveOptions) {
+    this._view = viewAnimation(view ?? NOTHING);
     this._console = options?.console ?? new Console();
     // [LAW:parse-dont-validate] Parsed whether or not it auto-refreshes, so a
     // rate that could never tick is refused where it is given.
     this._rate = frameRate(options?.refreshPerSecond ?? 4);
     this._clock = options?.clock ?? systemClock();
+    this._timeline = options?.timeline ?? Timeline.play(0);
     this._autoRefresh = options?.autoRefresh !== false;
     this._transient = options?.transient ?? false;
     this._verticalOverflow = options?.verticalOverflow ?? "ellipsis";
@@ -118,6 +116,27 @@ export class Live {
    */
   get console(): Console {
     return this._console;
+  }
+
+  /** The clock the auto-refresh waits on: where the host time a `Timeline` operation takes is read. */
+  get clock(): Clock {
+    return this._clock;
+  }
+
+  /** The map from the clock to the time the view is drawn for. */
+  get timeline(): Timeline {
+    return this._timeline;
+  }
+
+  /**
+   * Replace the timeline and draw the frame for the time it now maps the
+   * clock's now to, so a seek shows where it sought, once. Paused, the frame
+   * then holds — the auto-refresh waits on nothing until the timeline plays
+   * again — while `refresh()` and `update(…, { refresh: true })` still draw.
+   */
+  set timeline(timeline: Timeline) {
+    this._timeline = timeline;
+    this.refresh();
   }
 
   start(): void {
@@ -148,9 +167,9 @@ export class Live {
     }
   }
 
-  update(view?: LiveView, options?: { refresh?: boolean }): void {
+  update(view?: View, options?: { refresh?: boolean }): void {
     if (view !== undefined) {
-      this._view = viewOf(view);
+      this._view = viewAnimation(view);
     }
     if (options?.refresh) {
       this.refresh();
@@ -170,9 +189,9 @@ export class Live {
     // frame not drawn has said nothing.
     let said: Said | undefined;
     this._paint(() => {
-      const { t, lines } = this._frame();
-      said = { t, nextChange: lines.reduce((soonest, row) => Math.min(soonest, Segment.nextChange(row)), Number.POSITIVE_INFINITY) };
-      return lines;
+      const drawn = this._frame();
+      said = drawn;
+      return drawn.lines;
     });
     this._wake(held, said ?? { t: this._clock.now(), nextChange: Number.POSITIVE_INFINITY });
   }
@@ -183,11 +202,13 @@ export class Live {
   // reading of the clock, so the rate does not stretch by what a frame cost
   // to draw, and a change that fell due while it was drawn is drawn at once
   // (`Clock.at` fires now for a time already past). Content that changes
-  // every frame answers `t` itself, and is drawn at the rate.
+  // every frame answers `t` itself, and is drawn at the rate. A paused
+  // timeline draws one frame at every host time, so nothing is waited on:
+  // the frame holds until the timeline plays, or a caller draws.
   private _wake(held: Unsubscribe, { t, nextChange }: Said): void {
     this._waking?.();
     this._waking = undefined;
-    if (!this._autoRefresh) return;
+    if (!this._autoRefresh || !this._timeline.playing) return;
     const at = Math.min(t + this._rate.interval, nextChange > t ? nextChange : Number.POSITIVE_INFINITY);
     // No caller is on the stack to run `stop()` for a frame that throws
     // here, and in Node the throw ends the process — so the terminal is
@@ -203,13 +224,11 @@ export class Live {
     });
   }
 
-  // The frame at the clock's now, with that time: the one the view was handed, and the one the next wake is measured from.
-  private _frame(): { t: number; lines: Segment[][] } {
+  // The frame at the clock's now, drawn for the time the timeline maps it to,
+  // with when it next changes on the clock: what the next wake is measured from.
+  private _frame(): DrawnView {
     // [LAW:effects-at-boundaries] One read of the clock a frame, handed to
     // the view as the frame's time.
-    const t = this._clock.now();
-    if (!this._view) return { t, lines: [] };
-    const renderable = this._view(t);
     // [LAW:dataflow-not-control-flow] Both modes render under the terminal's
     // rows and differ only in what those rows are: the alternate screen is a
     // region the frame stands in, and an inline frame keeps its natural height
@@ -217,8 +236,10 @@ export class Live {
     // back — its overflow policy, then `fitHeight`, which pads only a region.
     const options = this._console.options;
     const height = this._painter.height(options.height.rows);
-    const lines = Segment.splitLines(render(renderable, { ...options, height }));
-    return { t, lines: fitHeight(this._overflow(lines, height.rows), height) };
+    return drawView(this._view, this._timeline, this._clock.now(), (renderable) => {
+      const lines = Segment.splitLines(render(renderable, { ...options, height }));
+      return fitHeight(this._overflow(lines, height.rows), height);
+    });
   }
 
   // What the console writes goes where the frame was, and the frame is painted
