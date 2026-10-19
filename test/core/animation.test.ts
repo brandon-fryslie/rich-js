@@ -17,6 +17,15 @@ function holdsUntilNext<T>(animation: Animation<T>, t: number, samples = 16): bo
 
 const ALWAYS = Number.NEGATIVE_INFINITY;
 
+const DOUBLE = new Float64Array(1);
+const BITS = new BigUint64Array(DOUBLE.buffer);
+/** The float under a positive `x`, read through its bits. */
+function nextDown(x: number): number {
+  DOUBLE[0] = x;
+  BITS[0] = BITS[0]! - 1n;
+  return DOUBLE[0]!;
+}
+
 /** Whether `animation` has held `at(t)` over `[lastChange(t), t]`, sampled at `samples` points inside; the answer is never after `t`. */
 function heldSinceLast<T>(animation: Animation<T>, t: number, samples = 16): boolean {
   const last = animation.lastChange(t);
@@ -128,6 +137,8 @@ describe("Animation.sequence", () => {
           const next = steps.nextChange(t);
           expect(next, `t = ${t}`).toBeGreaterThan(t);
           expect(steps.at(next), `t = ${t}`).not.toBe(steps.at(t));
+          // Never late: the float before the answer still shows the old value.
+          expect(steps.at(nextDown(next)), `t = ${t}`).toBe(steps.at(t));
           expect(holdsUntilNext(steps, t), `t = ${t}`).toBe(true);
         }
       }
@@ -243,6 +254,28 @@ describe("the instances already in the tree", () => {
     const shared = Animation.map(beat([1, 1]), (i) => texts[i]!);
     for (const t of [0.5, 2.5, 4.5]) expect(Segment.nextChange(frameAt(shared, t).render({ maxWidth: 10 }))).toBe(t + 0.5);
     for (const text of texts) expect(text.spans).toEqual([]);
+  });
+
+  it("a sum that rounds over the moment the next part's change shows is walked back onto it", () => {
+    // 2.45 + 0.7 rounds to 3.1500000000000004, a float after the change showed at 3.15.
+    const steps = Animation.sequence(Animation.constant("before"), 0.7, Animation.map(beat([0.3, 0.05]), (i) => `y${i}`));
+    expect(steps.at(3.144)).toBe("y1");
+    expect(steps.nextChange(3.144)).toBe(3.15);
+    expect(steps.at(3.15)).toBe("y0");
+  });
+
+  it("an edge every finite host float is past, or none is, is always or never, not a hang", () => {
+    const settled: Animation<string> = { at: () => "a", nextChange: () => Number.POSITIVE_INFINITY, lastChange: () => -Number.MAX_VALUE };
+    expect(Timeline.run(Timeline.play(0, 1), settled).lastChange(0)).toBe(Number.NEGATIVE_INFINITY);
+    const pending: Animation<string> = { at: () => "a", nextChange: () => Number.MAX_VALUE, lastChange: () => Number.NEGATIVE_INFINITY };
+    expect(Timeline.run(Timeline.play(0, 1), pending).nextChange(0)).toBe(Number.MAX_VALUE);
+    expect(Timeline.run(Timeline.play(0, 0.5), pending).nextChange(0)).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("a paused run refuses a host time that is not finite, as a playing one does", () => {
+    const paused = Timeline.run(Timeline.pause(Timeline.play(0), 1), beat([1]));
+    expect(() => paused.nextChange(Number.NaN)).toThrow(/Timeline host time must be a finite number of seconds/);
+    expect(() => paused.lastChange(Number.POSITIVE_INFINITY)).toThrow(/Timeline host time must be a finite number of seconds/);
   });
 
   it("an edge no host float reaches at this rate is never, not a hang", () => {

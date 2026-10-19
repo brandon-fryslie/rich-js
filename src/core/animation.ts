@@ -41,7 +41,7 @@
  * its author doing anything.
  */
 
-import { positiveSeconds, walkUp } from "./easing.js";
+import { firstReaching, positiveSeconds } from "./easing.js";
 
 /** A value of `T` at a time in seconds, and the first moment that value may change. */
 export interface Animation<T> {
@@ -97,12 +97,11 @@ export const Animation = {
   sequence<T>(first: Animation<T>, seconds: number, then: Animation<T>): Animation<T> {
     positiveSeconds("Animation.sequence seconds", seconds);
     // `then`'s moment `local`, on its own clock, carried back onto this
-    // timeline: `local + seconds` can round under the first moment whose time
-    // since the switch reaches `local`, where `at` still shows the old value.
-    const carried = (local: number): number =>
-      Number.isFinite(local)
-        ? walkUp(local + seconds, (x) => x - seconds >= local, () => `Animation.sequence: no time resolves ${local} s after a switch at ${seconds} s`)
-        : local;
+    // timeline: the first moment whose time since the switch reaches
+    // `local`, which the sum `local + seconds` can round to either side of —
+    // under it, where `at` still shows the old value, or over it, a float
+    // after the change showed.
+    const carried = (local: number): number => (Number.isFinite(local) ? firstReaching(local + seconds, (x) => x - seconds >= local) : local);
     return {
       at: (t) => (t - seconds >= 0 ? then.at(t - seconds) : first.at(t)),
       nextChange(t) {

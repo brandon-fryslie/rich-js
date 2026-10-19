@@ -171,8 +171,8 @@ export const Timeline = {
     if (timeline.playing) return played(animation, timeline);
     return {
       at: (host) => animation.at(Timeline.at(timeline, host)),
-      nextChange: () => Number.POSITIVE_INFINITY,
-      lastChange: () => Number.NEGATIVE_INFINITY,
+      nextChange: (host) => (hostTime(host), Number.POSITIVE_INFINITY),
+      lastChange: (host) => (hostTime(host), Number.NEGATIVE_INFINITY),
     };
   },
 };

@@ -502,14 +502,18 @@ export function firstReaching(near: number, reached: (x: number) => boolean): nu
   if (!Number.isFinite(near)) throw new RangeError(`firstReaching needs a finite guess, got ${near}`);
   let lo = near;
   let hi = near;
-  // Out from `near` until the bracket is `lo` short of the boundary and `hi` past it.
+  // Out from `near` until the bracket is `lo` short of the boundary and
+  // `hi` past it, within the finite floats: reached at the least of them,
+  // it is reached always; not reached at the greatest, never.
   for (let step = nextUp(Math.abs(near)) - Math.abs(near); reached(lo); step *= 2) {
+    if (lo === -Number.MAX_VALUE) return Number.NEGATIVE_INFINITY;
     hi = lo;
-    lo = near - step;
+    lo = Math.max(near - step, -Number.MAX_VALUE);
   }
   for (let step = nextUp(Math.abs(near)) - Math.abs(near); !reached(hi); step *= 2) {
+    if (hi === Number.MAX_VALUE) return Number.POSITIVE_INFINITY;
     lo = hi;
-    hi = near + step;
+    hi = Math.min(near + step, Number.MAX_VALUE);
   }
   for (;;) {
     const mid = lo + (hi - lo) / 2;
