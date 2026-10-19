@@ -72,11 +72,13 @@ describe("what a host reads off a frame: when it next changes", () => {
     expect(nextChangeOf(new Panel(new RichText("still")))).toBe(Number.POSITIVE_INFINITY);
   });
 
-  it("a blank frame among drawn ones still turns, and a sequence of nothing never changes", () => {
+  it("a blank frame among drawn ones still turns, and so does a frame of no cells", () => {
     const blink = new FrameSequence([{ text: new RichText("x"), seconds: 1 }, { text: new RichText(""), seconds: 1 }]);
     expect(nextChangeOf(new Frames(blink, { t: 1.5 }))).toBe(2);
+    // An empty frame draws its one piece of no width, which carries the stamp: the
+    // sequence turns at 2 whatever it draws there, an early answer the contract allows.
     const nothing = new FrameSequence([{ text: new RichText(""), seconds: 1 }, { text: new RichText(""), seconds: 1 }]);
-    expect(nextChangeOf(new Frames(nothing, { t: 1.5 }))).toBe(Number.POSITIVE_INFINITY);
+    expect(nextChangeOf(new Frames(nothing, { t: 1.5 }))).toBe(2);
   });
 
   it("the frame drawn at a time, appended into a line, still says when it turns", () => {
@@ -86,21 +88,21 @@ describe("what a host reads off a frame: when it next changes", () => {
 
   it("a spinner's label keeps an earlier word of its own on when it changes", () => {
     const label = new RichText("soon", { end: "" }).stylize(new Style({ nextChange: 0.001 }));
-    expect(nextChangeOf(new Spinner("dots", label).at(0))).toBe(0.001);
+    expect(nextChangeOf(new Spinner("dots", label).drawnAt(0))).toBe(0.001);
   });
 
   it("a spinner's frame changes at the end of its interval, scaled by its speed", () => {
     const interval = SPINNERS["dots"]!.interval / 1000;
     const spinner = new Spinner("dots", "working");
-    expect(nextChangeOf(spinner.at(0))).toBeCloseTo(interval, 9);
-    expect(nextChangeOf(spinner.at(interval * 2.5))).toBeCloseTo(interval * 3, 9);
+    expect(nextChangeOf(spinner.drawnAt(0))).toBeCloseTo(interval, 9);
+    expect(nextChangeOf(spinner.drawnAt(interval * 2.5))).toBeCloseTo(interval * 3, 9);
     // The answer is on the host's timeline whatever the speed: at twice the
     // speed each frame is held half the interval, and backwards is still
     // forwards in time.
-    expect(nextChangeOf(new Spinner("dots", "", { speed: 2 }).at(0))).toBeCloseTo(interval / 2, 9);
-    expect(nextChangeOf(new Spinner("dots", "", { speed: 2 }).at(interval * 1.2))).toBeCloseTo(interval * 1.5, 9);
-    expect(nextChangeOf(new Spinner("dots", "", { speed: -1 }).at(interval * 2.5))).toBeCloseTo(interval * 3, 9);
-    expect(nextChangeOf(new Spinner("dots", "", { speed: 0.5 }).at(interval * 2.5))).toBeCloseTo(interval * 4, 9);
+    expect(nextChangeOf(new Spinner("dots", "", { speed: 2 }).drawnAt(0))).toBeCloseTo(interval / 2, 9);
+    expect(nextChangeOf(new Spinner("dots", "", { speed: 2 }).drawnAt(interval * 1.2))).toBeCloseTo(interval * 1.5, 9);
+    expect(nextChangeOf(new Spinner("dots", "", { speed: -1 }).drawnAt(interval * 2.5))).toBeCloseTo(interval * 3, 9);
+    expect(nextChangeOf(new Spinner("dots", "", { speed: 0.5 }).drawnAt(interval * 2.5))).toBeCloseTo(interval * 4, 9);
   });
 
   it("a loop changes every frame: the answer is t itself, and a catalogue loop is a loop", () => {

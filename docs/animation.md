@@ -221,7 +221,7 @@ Both times are handed in, never read, so a host that says "leave at 5" and asks 
 - leaving, through `exit`, handed the time since it was told, over whatever arriving would draw then, so an element told to leave before it has arrived leaves from where it is;
 - once `exit` is done, nothing, for good: `gone(t)` is true, and the host drops it.
 
-It changes every frame while it arrives or leaves, and holds still while it stays and once it is gone, so a host still holding a gone element wakes for nothing. Its cells say so even with no colour output, where the transitions write no colour:
+While it arrives or leaves it changes when its transition does — every frame for a fade, once a hold for one on a beat (`onBeat(fadeIn(curve, 0), beat([0.25]))` arrives a quarter of a second at a time, and a host wakes on those quarters) — and it holds still while it stays and once it is gone, so a host still holding a gone element wakes for nothing. A transition says when its frame changes whatever the element draws, so this holds even with no colour output, where the transitions write no colour. Drawn inside a function view, the frame says so through `frameAt(shown, t)`:
 
 ```typescript
 import { DEFAULT_TERMINAL_THEME, EASES, RichText, dissolveOut, fadeIn, lifecycle } from "@promptctl/rich-js";
@@ -297,7 +297,7 @@ say("resumed at 100", Timeline.resume(paused, 100), 101);
 say("sought to 2.5", Timeline.seek(playing, 11.5, 2.5), 11.5);
 ```
 
-A `Spinner`'s `speed` is a timeline its frames run on, so a spinner drawn backwards at twice the speed still stamps its cells with when it turns next on the host's clock.
+A `Spinner`'s `speed` is a timeline its frames run on, so a spinner drawn backwards at twice the speed with `drawnAt(t)` still says, on its cells, when it turns next on the host's clock.
 
 ## Playing in a Live or an App
 
@@ -321,6 +321,8 @@ console.print(recording.exportText());
 
 ## How a host knows when to draw again
 
-Whoever draws an animation's value as cells at a host time stamps every cell it draws with the animation's `nextChange` at that time: the stamp is on the cell's `Style`, rides up through any container as an anchor does and writes no byte, and whoever holds the composed frame reads the soonest with `Segment.nextChange`. The animation's `at` hands over the value alone, so a value a timeline asked for at a mapped time is stamped on the host's clock, not the timeline's. That is how a [`Live`](/live#auto-refresh) knows when to wake without asking each piece of its view what it holds — [Frames](/frames#when-the-frame-next-changes) shows it at work.
+Whoever draws an animation's value as cells at a host time stamps every cell it draws with the animation's `nextChange` at that time: the stamp is on the cell's `Style`, rides up through any container as an anchor does and writes no byte, and whoever holds the composed frame reads the soonest with `Segment.nextChange`. That is how a [`Live`](/live#auto-refresh) knows when to wake without asking each piece of its view what it holds — [Frames](/frames#when-the-frame-next-changes) shows it at work.
+
+Only a renderable built for the time the host draws at stamps: `frameAt(animation, t)`, a `Frames`, a spinner's `drawnAt`, the template [`frames` function](/template-bindings), and an [`Effected`](/effects) or a `GlyphEffected`, whose answer is made from what the element draws, so a loop that holds still at the output's depth says it never changes there. Nothing an animation's `at` returns carries a stamp of its own — not a scroll's frame, a change's, a lifecycle's or a spinner's — because the time it is asked for may be one a timeline, a sequence or a lifecycle mapped from the host's, and a stamp made there would be a moment on a clock the host cannot read. What the frame does over time is the animation's `nextChange`, which every one of those maps carries back, so a change under a paused timeline says it never changes, and a lifecycle arriving on a beat wakes its host on the beats. A renderable that reads a clock of its own, a `Progress`, stamps the host's clock and belongs off the timeline.
 
 An animation of a value that is never drawn as cells — a number, a colour — has no cell to carry a stamp, so its `nextChange` is the only way it says when to look again.

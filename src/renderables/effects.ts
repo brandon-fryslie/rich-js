@@ -53,7 +53,7 @@
 
 import { Animation } from "../core/animation.js";
 import { ColorDepth, ColorRgba, ColorSpec, contrastRatio, relativeLuminance, type TerminalTheme } from "../core/color.js";
-import { EASES, Phase, beat, type Timing } from "../core/easing.js";
+import { EASES, Phase, beat, type Beat, type Timing } from "../core/easing.js";
 import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo } from "../core/memo.js";
 import { Oklch } from "../core/oklch.js";
@@ -744,12 +744,25 @@ function order(z: number): (cell: Placed) => number {
  * draws it at the time since it began. `done(t)` is true from the moment
  * every cell has arrived or gone, so the caller knows when to stop drawing an
  * element that is leaving, or to drop the effect from one that has arrived.
- * Until then the effect's frame changes every frame, and from then never:
- * its `nextChange` is `done` read as a time. [LAW:one-source-of-truth]
+ *
+ * `schedule` is when its frame next changes on that clock, whatever the
+ * element draws: what a caller drawing the transition inside an animation —
+ * a lifecycle — says its frame does, since the frame it hands over carries
+ * no word of its own (`stampFrame`, `./frames.ts`). Until done it changes
+ * every frame, or on each hold of a beat (`onBeat`), and from then never.
+ * [LAW:one-source-of-truth] `done` is that schedule read as a fact — done
+ * from the first moment it never changes again — so no transition carries
+ * two answers to when it is over.
  */
-export interface Transition<E = Effect> {
-  readonly effect: E;
-  done(t: number): boolean;
+export class Transition<E = Effect> {
+  constructor(
+    readonly effect: E,
+    readonly schedule: Animation<unknown>,
+  ) {}
+
+  done(t: number): boolean {
+    return this.schedule.nextChange(t) === Number.POSITIVE_INFINITY;
+  }
 }
 
 /**
@@ -759,19 +772,47 @@ export interface Transition<E = Effect> {
  * glyph effect (`./glyph-effects.ts`) alike.
  */
 export function transition<D, F>(seconds: number, effect: (drawn: D) => Animation<F>): Transition<(drawn: D) => Animation<F>> {
-  const done = (t: number): boolean => t >= seconds;
-  return {
-    effect: (drawn) => {
+  // Moving every frame until `seconds`, then never: the sequence carries the switch.
+  const schedule = Animation.sequence(Animation.continuous(() => undefined), seconds, Animation.constant(undefined));
+  const ran: Transition<(drawn: D) => Animation<F>> = new Transition(
+    (drawn) => {
       const moving = effect(drawn);
       return {
         at: (t) => moving.at(t),
-        nextChange: (t) => (done(t) ? Number.POSITIVE_INFINITY : moving.nextChange(t)),
+        nextChange: (t): number => (ran.done(t) ? Number.POSITIVE_INFINITY : moving.nextChange(t)),
         // Done, the frame settled when the transition did; until then it is the effect's.
-        lastChange: (t) => (done(t) ? seconds : moving.lastChange(t)),
+        lastChange: (t) => (ran.done(t) ? schedule.lastChange(t) : moving.lastChange(t)),
       };
     },
-    done,
-  };
+    schedule,
+  );
+  return ran;
+}
+
+/**
+ * `effect` sampled and held on `beat`: drawn at the moment the hold in
+ * progress began (`Beat.lastChange`), so within a hold every frame is the frame
+ * at its start, and at each hold's start it moves on. A continuous effect
+ * given a short curve becomes one that steps — a `wheel` turning a sixth of
+ * a turn once a second — and at one redraw a second a hold shorter than a
+ * second is skipped, as frames are. [LAW:no-ambient-temporal-coupling] The
+ * held time is a function of `t`, so the same `t` draws the same bytes at
+ * any rate. The frame next changes at a hold's start, and only one the
+ * sampled effect has moved by (`Animation.onBeat`): an effect that moves
+ * every frame turns the beat at the end of this hold, and one that is done
+ * and says never leaves the beat saying never too.
+ *
+ * A transition steps the same way, its schedule with it, so a fade-in on a
+ * beat arrives a hold at a time and is done at the first hold that starts
+ * after it was: an element arriving through it wakes its host on the beats.
+ */
+export function onBeat(effect: Effect, beat: Beat): Effect;
+export function onBeat<E extends (drawn: never) => Animation<unknown>>(transition: Transition<E>, beat: Beat): Transition<E>;
+export function onBeat(stepped: Effect | Transition<(drawn: never) => Animation<unknown>>, beat: Beat): Effect | Transition<(drawn: never) => Animation<unknown>> {
+  // [LAW:types-are-the-program] An effect is a function and a transition an object: the representation is the discriminator.
+  if (typeof stepped === "function") return (drawn) => Animation.onBeat(stepped(drawn), beat);
+  const { effect, schedule } = stepped;
+  return new Transition((drawn: never) => Animation.onBeat(effect(drawn), beat), Animation.onBeat(schedule, beat));
 }
 
 /**

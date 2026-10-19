@@ -6,13 +6,12 @@ import { Measurement } from "../../src/core/measure.js";
 import { render, type Measurable, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { segmentsToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
-import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { Timeline } from "../../src/core/timeline.js";
 import { tween } from "../../src/core/tween.js";
 import { drawView, hostView } from "../../src/core/view.js";
 import { Constrain } from "../../src/renderables/constrain.js";
-import { frameAt, Stamped } from "../../src/renderables/frames.js";
+import { frameAt } from "../../src/renderables/frames.js";
 import { Group } from "../../src/renderables/group.js";
 import { Rule } from "../../src/renderables/rule.js";
 import { scroll } from "../../src/renderables/scroll.js";
@@ -141,7 +140,7 @@ describe("scroll", () => {
 
   it("keeps a frame's word on when it changes when the frame has no cells at the window's left edge or before it", () => {
     const nothing: Renderable & Measurable = { render: () => [], measure: () => ({ minimum: 0, maximum: 0 }) };
-    const entering = new Stamped(nothing, new Style({ nextChange: 5 }));
+    const entering = frameAt({ at: () => nothing, nextChange: () => 5, lastChange: () => Number.NEGATIVE_INFINITY }, 0);
     const content = new Group(entering, new RichText("hello"), new RichText("world"), entering);
     expect(Segment.nextChange(draw(content))).toBe(5);
     for (const [col, row] of [[0, 0], [3, 0], [9, 0], [0, 2], [0, 3], [-9, 9]] as const) {
@@ -164,7 +163,7 @@ describe("scroll", () => {
 
   it("drawn through frameAt, every cell carries when it next changes, and a frame of no cells still does", () => {
     const marquee = scroll(LINE, { width: 6, height: 2, col: Animation.continuous((t) => t) });
-    const cells = draw(frameAt(marquee, 3)).filter((s) => s.text !== "\n");
+    const cells = draw(frameAt(marquee, 3)).filter((s) => !s.isControl && s.text !== "\n");
     expect(cells.length).toBeGreaterThan(1);
     for (const segment of cells) expect(segment.style?.nextChange).toBe(3);
     const empty = Animation.map(Animation.continuous((t) => t), (): Renderable => ({ render: () => [] }));

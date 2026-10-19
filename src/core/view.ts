@@ -57,8 +57,11 @@ import { Timeline } from "./timeline.js";
 
 /**
  * What a host draws: a renderable as it is now, a renderable for a time —
- * `(t) => spinner.at(t)` — or an animation of one, which says itself when
- * what it draws changes. `t` is in seconds on the host's timeline.
+ * `(t) => spinner.drawnAt(t)`, whose cells say when it next changes — or an
+ * animation of one, which says itself when what it draws changes. An
+ * animation's `at(t)` says nothing of when it changes (`frameAt` stamps it),
+ * so a function view returning one never wakes. `t` is in seconds on the
+ * host's timeline.
  */
 export type View = Renderable | ((t: number) => Renderable) | Animation<Renderable>;
 

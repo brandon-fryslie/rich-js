@@ -11,8 +11,13 @@
  * (`leave`), as every `Timeline` operation is. [LAW:no-ambient-temporal-coupling]
  *
  * Each half is a `Transition` on its own clock from 0, handed the time since
- * its moment, so `transition`'s `done` stays the one rule for where a one-shot
- * ends and nothing here measures progress itself. The exit veils whatever the
+ * its moment, and its schedule carried onto the host's clock by
+ * `Timeline.run` is that half's hold — every frame for a fade, once a hold
+ * for one on a beat — so the transition's schedule, and `done` read off it,
+ * stays the one rule for where a one-shot ends and when its frame changes,
+ * and nothing here measures progress itself. The frames carry no word of
+ * their own on when they change (`./frames.ts`): drawn at a host time, the
+ * host reads the hold through `frameAt`. The exit veils whatever the
  * arrival draws, so an element told to leave while it is still arriving leaves
  * from where it is, never shown whole first. [LAW:dataflow-not-control-flow]
  *
@@ -22,14 +27,13 @@
  * backwards — it draws nothing too, but is not gone.
  */
 
-import type { Animation } from "../core/animation.js";
+import { Animation } from "../core/animation.js";
 import type { TerminalTheme } from "../core/color.js";
 import { firstReaching } from "../core/easing.js";
 import type { Measurable, Renderable } from "../core/protocol.js";
-import { Style } from "../core/style.js";
-import { Effected } from "./effect.js";
+import { Timeline } from "../core/timeline.js";
+import { Recolored } from "./effect.js";
 import type { Transition } from "./effects.js";
-import { Stamped } from "./frames.js";
 
 /** How an element arrives and leaves, and what it is drawn on. */
 export interface LifecycleOptions {
@@ -79,30 +83,32 @@ function life(element: Renderable, options: LifecycleOptions, entered: number, l
   const { enter, exit, key, theme } = options;
   const arrived = doneAt(enter, entered);
   const goneAt = doneAt(exit, left);
+  // The arrival's schedule on the host's clock: when its frame next changes, and since when it has been what it is.
+  const arriving = Timeline.run(Timeline.play(entered), enter.schedule);
   // What the element draws by `t` if it is not leaving: arriving through `enter`, then itself.
-  const shown = (t: number): Renderable => (t < arrived ? new Effected(element, enter.effect, { t: t - entered, key, theme }) : element);
+  const shown = (t: number): Renderable => (t < arrived ? new Recolored(element, enter.effect, { t: t - entered, key, theme }) : element);
+  const held = (schedule: Animation<unknown>, t: number) => ({ last: schedule.lastChange(t), next: schedule.nextChange(t) });
   // [LAW:one-source-of-truth] Each phase's frame and its hold, side by side, so the two cannot disagree.
+  // The frames say nothing of when they change — the hold does — so drawn at a host time (`frameAt`) the host reads the hold.
   const phase = (t: number): { readonly frame: Renderable; readonly last: number; readonly next: number } => {
     if (t < entered) return { frame: NOTHING, last: Number.NEGATIVE_INFINITY, next: entered };
     if (t >= goneAt) return { frame: NOTHING, last: goneAt, next: Number.POSITIVE_INFINITY };
-    if (t >= left) return { frame: new Effected(shown(t), exit.effect, { t: t - left, key, theme }), last: t, next: t };
-    if (t < arrived) return { frame: shown(t), last: t, next: t };
+    // Leaving veils whatever arriving draws, so both schedules count; once arrived, the arrival's never changes again.
+    if (t >= left) {
+      const leaving = Animation.all([arriving, Timeline.run(Timeline.play(left), exit.schedule)]);
+      return { frame: new Recolored(shown(t), exit.effect, { t: t - left, key, theme }), ...held(leaving, t) };
+    }
+    if (t < arrived) return { frame: shown(t), ...held(arriving, t) };
     return { frame: element, last: arrived, next: left };
   };
   return {
     entered,
     left,
-    // The frame says when it next changes itself: with no colour output an
-    // `Effected` hands its child's cells back unstamped, and the cut from
-    // leaving to gone changes no colour, so a host drawing it inside a
-    // function view would otherwise never wake for it.
-    at(t) {
-      const { frame, next } = phase(t);
-      return new Stamped(frame, new Style({ nextChange: next }));
-    },
+    at: (t) => phase(t).frame,
     nextChange: (t) => phase(t).next,
     lastChange: (t) => phase(t).last,
-    gone: (t) => exit.done(t - left),
+    // [LAW:one-source-of-truth] The moment `phase` draws nothing from, so an element not yet told to leave is never asked its exit at -Infinity.
+    gone: (t) => t >= goneAt,
     leave(at) {
       if (Number.isFinite(left)) throw new RangeError(`lifecycle: already told to leave at ${left}, told again at ${at}`);
       if (!(Number.isFinite(at) && at >= entered)) throw new RangeError(`lifecycle: leave must be a finite time from entered (${entered}) on, got ${at}`);

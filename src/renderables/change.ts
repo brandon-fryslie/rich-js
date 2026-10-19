@@ -27,8 +27,7 @@ import { Measurement } from "../core/measure.js";
 import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
-import { Style } from "../core/style.js";
-import { Effected } from "./effect.js";
+import { Recolored } from "./effect.js";
 import { requireCurve, transition, veiled, type Curve, type Transition } from "./effects.js";
 
 /** What a change is between: the renderable drawn until now, the one drawn from now on, and the terminal whose ground the change passes through. */
@@ -114,10 +113,9 @@ class ChangeFrame implements Renderable, Measurable, Composite {
       ...splice(Segment.adjustLineLength(before[row] ?? [], lengths[row]!), line, (col) => at(row, col) >= 0.5),
       ...(row < after.length - 1 || ended ? [Segment.line()] : []),
     ]);
-    // Which side each cell is drawn from moves every frame whether or not a colour is written, so the rows say so themselves.
-    const spliced = [...Segment.applyStyle(rows, new Style({ nextChange: this.t }))];
+    // The frame says nothing of when it changes: the change's own animation says it moves every frame.
     const veil = veiled(() => (cell) => shows(at(cell.row, cell.col)), this.swing);
-    return render(new Effected({ render: () => spliced }, veil, { t: this.t, key: "change", theme: this.theme }), options);
+    return render(new Recolored({ render: () => rows }, veil, { t: this.t, key: "change", theme: this.theme }), options);
   }
 
   *contents(): Iterable<Renderable> {

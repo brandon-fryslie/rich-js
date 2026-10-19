@@ -8,7 +8,7 @@
  * and what sits beside it moves once, at the cut, never while it changes.
  */
 
-import { CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, crossfade, wipe, type Change, type Renderable, type Transition } from "../../src/index.js";
+import { CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, Timeline, crossfade, frameAt, wipe, type Change, type Renderable, type Transition } from "../../src/index.js";
 
 const EVERY = 3;
 const STATES = [
@@ -26,8 +26,9 @@ function view(t: number): Renderable {
   const k = Math.floor(t / EVERY);
   const to = STATES[k % STATES.length]!;
   // The first state is shown as it is: nothing came before it to change from.
+  // Each change plays from its cut on the Live's clock, and `frameAt` stamps the frame on that clock.
   const shown = (change: Transition<Change>): Renderable =>
-    k === 0 ? to : change.effect({ from: STATES[(k - 1) % STATES.length]!, to, theme: CATPPUCCIN_MOCHA }).at(t - k * EVERY);
+    k === 0 ? to : frameAt(Timeline.run(Timeline.play(k * EVERY), change.effect({ from: STATES[(k - 1) % STATES.length]!, to, theme: CATPPUCCIN_MOCHA })), t);
   return new Group(...CHANGES.map(([name, change]) => new Panel(shown(change), { title: name, width: 40, borderStyle: "#585b70" })));
 }
 

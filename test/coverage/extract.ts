@@ -39,7 +39,8 @@ export type ExportKind = "value" | "type";
  * Identity of a declaration: the source file and the name under which it
  * is declared there. Two `SymbolOrigin`s are equal iff their `key` matches.
  * `kind` is derived from the same resolved symbol, so it cannot disagree
- * with the identity it travels with.
+ * with the identity it travels with — narrowed to `"type"` where every entry
+ * exposes a value declaration with `export type`, which binds no runtime name.
  */
 export interface SymbolOrigin {
   readonly file: string;
@@ -177,7 +178,9 @@ export function collectPublicExports(
       out.push({
         entry,
         exposedAs: sym.name,
-        origin,
+        // A class exported with `export type` binds nothing at runtime, so no
+        // demo's import can name it as a value: from this entry it is a type.
+        origin: typeOnlyExport(sym) ? { ...origin, kind: "type" } : origin,
         symbol: resolveAlias(sym, checker),
       });
     }
@@ -353,6 +356,11 @@ function isBodyOrInitializer(node: ts.Node): boolean {
   );
 }
 
+/** Whether an entry module exposes `sym` with `export type`, so it binds no runtime name there. */
+function typeOnlyExport(sym: ts.Symbol): boolean {
+  return (sym.declarations ?? []).some((d) => ts.isExportSpecifier(d) && (d.isTypeOnly || d.parent.parent.isTypeOnly));
+}
+
 /**
  * Follow `SymbolFlags.Alias` chains to the original declaration symbol.
  * Returns `(file, name, kind)` of the first declaration on the resolved
@@ -419,6 +427,8 @@ export function groupByOrigin(rows: readonly PublicExport[]): Map<string, Origin
     const existing = out.get(k);
     if (existing) {
       existing.exposures.push({ entry: r.entry, exposedAs: r.exposedAs });
+      // A value from any entry is a value: some demo's import can bind it there.
+      if (r.origin.kind === "value") existing.origin = r.origin;
     } else {
       out.set(k, { origin: r.origin, exposures: [{ entry: r.entry, exposedAs: r.exposedAs }] });
     }

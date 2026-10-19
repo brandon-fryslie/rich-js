@@ -257,7 +257,7 @@ describe("a spinner's speed is a timeline", () => {
   const interval = SPINNERS["dots"]!.interval / 1000;
   const frames = SPINNERS["dots"]!.frames;
   const shown = (spinner: Spinner, t: number): { frame: string; next: number } => {
-    const segments = [...spinner.at(t).render({ maxWidth: 40 })];
+    const segments = [...spinner.drawnAt(t).render({ maxWidth: 40 })];
     return { frame: segments.map((s) => s.text).join("").trim(), next: Segment.nextChange(segments) };
   };
 

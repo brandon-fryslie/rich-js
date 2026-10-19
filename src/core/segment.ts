@@ -59,6 +59,11 @@ export class Segment {
     return this.control !== undefined;
   }
 
+  /** Whether this is a `Segment.carrier`: a control of no codes. */
+  get isCarrier(): boolean {
+    return this.control?.length === 0;
+  }
+
   /**
    * Splits at a cell position. Returns [left, right]: the first `position`
    * cells and the rest, so the two halves are exactly as wide as this one —
@@ -96,6 +101,18 @@ export class Segment {
   private static _line: Segment | undefined;
   static line(): Segment {
     return (Segment._line ??= new Segment("\n"));
+  }
+
+  /**
+   * A segment that draws no cell, writes no byte and opens no row, whose
+   * `style` says something of the frame it rides in — when it next changes
+   * (`Style.nextChange`) — so a frame of no cells can still say it. A control
+   * of no codes: everything that reads cells or text passes it by as it
+   * passes any control, and `splitLines` keeps it off a row of its own. Rich
+   * has none; an empty piece of text is a row there and here.
+   */
+  static carrier(style: Style): Segment {
+    return new Segment("", style, []);
   }
 
   // --- Static transformations ---
@@ -233,9 +250,12 @@ export class Segment {
       }
     }
 
-    if (currentLine.length > 0) {
-      lines.push(currentLine);
-    }
+    // A run after the last break of nothing but carriers (`Segment.carrier`)
+    // is no row: it joins the line the break ended. A carrier cannot see the
+    // break drawn before it, so whether it opens a row is decided here, once.
+    const last = lines[lines.length - 1];
+    if (last !== undefined && currentLine.every((segment) => segment.isCarrier)) last.push(...currentLine);
+    else if (currentLine.length > 0) lines.push(currentLine);
 
     return lines;
   }
@@ -257,7 +277,10 @@ export class Segment {
       return [...line, new Segment(" ".repeat(width - currentWidth), style)];
     }
 
-    // Crop to width
+    // Crop to width: the cells past it go, and every piece of no cells stays —
+    // a control, or an empty piece of text, writes nothing there, and may be
+    // all that says when its frame changes (`Style.nextChange`). Not the
+    // reference, which stops at the cut.
     const result: Segment[] = [];
     let remaining = width;
     for (const segment of line) {
@@ -269,11 +292,10 @@ export class Segment {
       if (segWidth <= remaining) {
         result.push(segment);
         remaining -= segWidth;
-      } else {
+      } else if (remaining > 0) {
         const [left] = segment.splitCells(asCellCol(remaining));
         result.push(left);
         remaining = 0;
-        break;
       }
     }
     return result;
