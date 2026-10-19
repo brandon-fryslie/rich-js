@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "44a314288bc0188ec6d3efaffaf0e191ff115d08",
+      "timestamp": "2026-10-19T08:40:58.309Z",
+      "commits": [
+        {
+          "sha": "44a314288bc0188ec6d3efaffaf0e191ff115d08",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T02:39:05-06:00",
+          "message": "Spring, bounce and overshoot curves join the easing vocabulary (rich-animation-42lg.4zu) (#477)\n\n* Spring, bounce and overshoot curves join the easing vocabulary (rich-animation-42lg.4zu)\n\n`spring({ stiffness, damping, mass })` is a damped harmonic oscillator as an\n`Ease`, and since how long a spring rings is a fact about its physics, it\ncomes with the `seconds` it settles in (to within `SPRING_REST`), so\n`{ ...spring(…), swing }` is an effect's `Curve`. Beside it, Penner's\n`bounce`, `back-in`, `back-out` and `elastic` at his constants. All five are\nnamed in `EASES` and parse by name. One `settled` wrapper holds every physics\nease to [0, 1] and to exactly 1 at its end, so a count eased by one lands on\nits target.\n\nPinned against the integrated equation of motion in every damping regime\nand against Penner's values at the quarter points; sampled through\n`Phase.once` at one frame a second and sixty.\n\n* A spring's seconds is the true settling time, found as one crossing in either regime, and every built-in ease is settled (rich-animation-42lg.4zu)\n\nReview findings on PR #477. The ringing spring's seconds was the decay-envelope bound, which is later than the first moment the displacement stays within SPRING_REST — ten percent at the defaults, without bound as ζ → 1⁻, and a step at ζ = 1. The extrema of a spring released at rest sit at kπ/ω_d, so the last crossing brackets exactly and the same bisection the creeping regime uses finds it: one crossing() for both. The overdamped slow rate is written without the subtraction that cancelled to zero for a huge ζ and gave seconds: Infinity and an ease of NaN. cubicBezier, steps, linear and sine go through settled(), so the [0, 1]-argument clamp has one home as its comment claimed. The one-frame-and-sixty test compared a value to itself; it now asserts what its title says. positive() is the one positive-finite check spring and positiveSeconds share. The header's first sentence, the Ease doc, the elastic's decay ratio (2^-1.5 a swing, not a half), and the claim that a stiffer spring settles sooner (the decay is c/2m; it does not) are corrected.\n\n* The Eases intro names the physics curves its fence prints, and a stiffer spring settles in about the same time (rich-animation-42lg.4zu)"
+        }
+      ]
+    },
+    {
       "version": "pr-478",
       "ref": "refs/pull/478/merge",
       "sha": "90556de8d7a28f92dcdd1be8626a83e8ba155176",
@@ -27,57 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-19T02:00:37-06:00",
           "message": "An animation is one type: a value for a time, and when it next changes (rich-animation-42lg.8yz)\n\n`Animation<T>` (src/core/animation.ts) is `at(t)` and `nextChange(t)`, with\n`constant`, `continuous`, `map` and `sequence`. The existing motion is now\ninstances of it rather than a second notion of \"when it next changes\":\n\n- `Beat.end` is `Beat.nextChange`, so a beat is an `Animation<number>`.\n- `FrameSequence.text(t)` is `at(t)`, plus `nextChange(t)`; its cells are\n  stamped with that one answer.\n- `Spinner` gains `nextChange(t)`: the sooner of its two sequences, since the\n  output picks which one draws.\n- `Effect` is `(drawn) => Animation<EffectFrame>`. `withNextChange` and\n  `nextChangeOf` are gone; `onBeat`, `confined`, `steppedInk` and\n  `stillOnSlots` are built on the animation (steppedInk is the beat mapped to\n  inks).\n\n`sequence` carries the next part's change back onto the shared timeline\nthrough `walkUp`, the float walk `beat` already used, now shared from\neasing.ts. docs/animation.md is the toolbox's page; effects, frames and easing\npoint at it.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-477",
-      "ref": "refs/pull/477/merge",
-      "sha": "c996ebd0588096f200b563ef4dd1689693f0a383",
-      "timestamp": "2026-10-19T08:28:47.190Z",
-      "commits": [
-        {
-          "sha": "c996ebd0588096f200b563ef4dd1689693f0a383",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T08:27:28Z",
-          "message": "Merge ec1dda2e4e515bb89a56d7dc198aa31c2f5af380 into 28f2883d9710f9915f5d8ef0375d2c0991749a26\n"
-        },
-        {
-          "sha": "ec1dda2e4e515bb89a56d7dc198aa31c2f5af380",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T02:21:16-06:00",
-          "message": "The Eases intro names the physics curves its fence prints, and a stiffer spring settles in about the same time (rich-animation-42lg.4zu)\n"
-        },
-        {
-          "sha": "a2e54af33fd088e642324e86f600c468372ca338",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T02:15:47-06:00",
-          "message": "A spring's seconds is the true settling time, found as one crossing in either regime, and every built-in ease is settled (rich-animation-42lg.4zu)\n\nReview findings on PR #477. The ringing spring's seconds was the decay-envelope bound, which is later than the first moment the displacement stays within SPRING_REST — ten percent at the defaults, without bound as ζ → 1⁻, and a step at ζ = 1. The extrema of a spring released at rest sit at kπ/ω_d, so the last crossing brackets exactly and the same bisection the creeping regime uses finds it: one crossing() for both. The overdamped slow rate is written without the subtraction that cancelled to zero for a huge ζ and gave seconds: Infinity and an ease of NaN. cubicBezier, steps, linear and sine go through settled(), so the [0, 1]-argument clamp has one home as its comment claimed. The one-frame-and-sixty test compared a value to itself; it now asserts what its title says. positive() is the one positive-finite check spring and positiveSeconds share. The header's first sentence, the Ease doc, the elastic's decay ratio (2^-1.5 a swing, not a half), and the claim that a stiffer spring settles sooner (the decay is c/2m; it does not) are corrected.\n"
-        },
-        {
-          "sha": "a3bfbd96870cbbc4e56099ae60b81f10e3dea503",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T01:57:19-06:00",
-          "message": "Spring, bounce and overshoot curves join the easing vocabulary (rich-animation-42lg.4zu)\n\n`spring({ stiffness, damping, mass })` is a damped harmonic oscillator as an\n`Ease`, and since how long a spring rings is a fact about its physics, it\ncomes with the `seconds` it settles in (to within `SPRING_REST`), so\n`{ ...spring(…), swing }` is an effect's `Curve`. Beside it, Penner's\n`bounce`, `back-in`, `back-out` and `elastic` at his constants. All five are\nnamed in `EASES` and parse by name. One `settled` wrapper holds every physics\nease to [0, 1] and to exactly 1 at its end, so a count eased by one lands on\nits target.\n\nPinned against the integrated equation of motion in every damping regime\nand against Penner's values at the quarter points; sampled through\n`Phase.once` at one frame a second and sixty.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "28f2883d9710f9915f5d8ef0375d2c0991749a26",
-      "timestamp": "2026-10-19T07:00:37.155Z",
-      "commits": [
-        {
-          "sha": "28f2883d9710f9915f5d8ef0375d2c0991749a26",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T00:58:51-06:00",
-          "message": "claude-sessions joins one assistant message by its id, not by its records sitting together (rich-demos-k78j.mk1) (#476)\n\n* claude-sessions joins one assistant message by its id, not by its records sitting together (rich-demos-k78j.mk1)\n\nClaude Code runs a tool while the message that called it is still\nstreaming, so the call's result, a skill's meta text, or a hidden\ngoal_status attachment can land between two records of one message.\nJoining by adjacency split the message there, and a hidden record split\nit only while hidden records were shown. Of the 500 most recent local\ntranscripts, 14 parsed to a different conversation with H on; none do now.\n\n* claude-sessions joins a message's records across hidden records only, and drops hidden ones after the joins (rich-demos-k78j.mk1)\n\nJoining by id carried a message across drawn records — a call's result, a\nskill's meta text — so the conversation was drawn out of the order it was\nwritten: an early call showed the last call's time, meta landed below later\ncalls, jump-to-parent moved down. A drawn record parts a message again; only\na hidden one is passed over. Hidden records are now read and joined like any\nother and dropped after the joins, so H changes what is drawn, never how.\nOver 300 local transcripts the structure with H on and off now agrees in all\n300; on master 2 disagreed.\n\n* claude-sessions parser's header names the joins ahead of dropping hidden records (rich-demos-k78j.mk1)"
         }
       ]
     }
