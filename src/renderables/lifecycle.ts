@@ -68,13 +68,13 @@ export function lifecycle(element: Renderable, options: LifecycleOptions, entere
 
 /**
  * The first host moment `transition`, begun at host time `start`, is done:
- * its own `done` read on host time, never the sum `start + seconds`, which can
+ * its own `done` read on host time, never a sum `start + seconds`, which can
  * round to either side of it, as `Animation.sequence` carries its switch.
  * [LAW:single-enforcer] Since `x - start` never falls as `x` rises, a host time
  * is at or past this moment exactly when `done` holds there.
  */
 function doneAt(transition: Transition, start: number): number {
-  return Number.isFinite(start) ? firstReaching(start + transition.seconds, (x) => transition.done(x - start)) : start;
+  return Number.isFinite(start) ? firstReaching(start, (x) => transition.done(x - start)) : start;
 }
 
 function life(element: Renderable, options: LifecycleOptions, entered: number, left: number): Lifecycle {
@@ -114,6 +114,8 @@ function life(element: Renderable, options: LifecycleOptions, entered: number, l
  * changes. With no colour output an `Effected` hands its child's cells back
  * unstamped, and the cut from leaving to gone changes no colour, so the frame
  * says it itself or a host drawing it inside a function view never wakes for it.
+ * Before it entered there are no cells to stamp, so the stamp also rides a
+ * cell of no width, which writes no byte.
  */
 class LifecycleFrame implements Renderable, Measurable, Composite {
   constructor(
@@ -121,8 +123,10 @@ class LifecycleFrame implements Renderable, Measurable, Composite {
     readonly nextChange: number,
   ) {}
 
-  render(options: RenderOptions): Iterable<Segment> {
-    return Segment.applyStyle(render(this.frame, options), new Style({ nextChange: this.nextChange }));
+  *render(options: RenderOptions): Iterable<Segment> {
+    const stamp = new Style({ nextChange: this.nextChange });
+    yield new Segment("", stamp);
+    yield* Segment.applyStyle(render(this.frame, options), stamp);
   }
 
   *contents(): Iterable<Renderable> {

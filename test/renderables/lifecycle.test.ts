@@ -55,7 +55,7 @@ describe("a lifecycle", () => {
     for (const t of [5, 6, 6.9]) expect(said(t)).toEqual([t, t]);
     for (const t of [7, 100]) {
       expect(said(t)).toEqual([7, Number.POSITIVE_INFINITY]);
-      expect(draw(life.at(t))).toEqual([]);
+      expect(bytes(draw(life.at(t)))).toBe("");
       expect(Measurement.get(OPTIONS, life.at(t))).toEqual(new Measurement(0, 0));
     }
   });
@@ -86,8 +86,8 @@ describe("a lifecycle", () => {
       const goneAt = life.lastChange(left + 10);
       const before = below(goneAt);
       expect([life.gone(before), life.gone(goneAt)]).toEqual([false, true]);
-      expect(draw(life.at(goneAt))).toEqual([]);
-      expect(draw(life.at(before))).not.toEqual([]);
+      expect(bytes(draw(life.at(goneAt)))).toBe("");
+      expect(bytes(draw(life.at(before)))).not.toBe("");
       expect([life.nextChange(before), life.nextChange(goneAt)]).toEqual([before, Number.POSITIVE_INFINITY]);
     }
   });
@@ -105,7 +105,17 @@ describe("a lifecycle", () => {
     const life = made().leave(5);
     expect(text(draw(life.at(4), PLAIN))).toBe(`${line.plain}\n`);
     for (const t of [5, 6, 6.9]) expect(Segment.nextChange(draw(life.at(t), PLAIN))).toBe(t);
-    expect(draw(life.at(7), PLAIN)).toEqual([]);
+    expect(text(draw(life.at(7), PLAIN))).toBe("");
+    expect(Segment.nextChange(draw(life.at(7), PLAIN))).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("before it entered draws no byte, yet its frame says when it enters, so a function view wakes for it", () => {
+    const life = made().leave(5);
+    for (const options of [OPTIONS, PLAIN]) {
+      const drawn = draw(new Group(life.at(0.5)), options);
+      expect(bytes(drawn)).toBe("");
+      expect(Segment.nextChange(drawn)).toBe(1);
+    }
   });
 
   it("refuses a second telling to leave, and a leaving before it entered", () => {
