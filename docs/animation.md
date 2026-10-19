@@ -150,6 +150,26 @@ say("sought to 2.5", Timeline.seek(playing, 11.5, 2.5), 11.5);
 
 A `Spinner`'s `speed` is a timeline its frames run on, so a spinner drawn backwards at twice the speed still stamps its cells with when it turns next on the host's clock.
 
+## Playing in a Live or an App
+
+A [`Live`](/live#a-view-drawn-for-a-time) and an [`App`](/app#animating-at-a-frame-rate) each hold a timeline, playing from 0 when the host is made, at the clock's pace, unless the `timeline` option gives another. Each frame, the host reads its clock once, draws its view for the time the timeline maps that moment to, and carries what the frame says about when it changes back onto the clock through `Timeline.run`. So pausing, reversing, scrubbing and speeding up what a host shows means replacing `host.timeline`, and `host.clock` is where the host time those operations take is read. Replacing it draws one frame for the new time. A paused timeline then holds that frame: the host waits on nothing for an animation until the timeline plays again, though `refresh()` still draws. A function view may also read state, so a `Live` still polls it at its rate, drawn at the held time. A renderable view is never handed a time, so it is off the timeline: what its cells say is on the host's clock, and pausing holds none of it. A renderable that reads a clock of its own, such as a `Progress`, belongs there and not inside a function view, whose cells are read on the timeline's clock.
+
+The view can be an `Animation` of a renderable as well as a renderable or a function of the time. That is how a value that is never drawn as cells tells the host when to look again: a tween mapped to the bar that shows it moves every frame until it arrives, then never again, and the host draws exactly that long. An `App` needs no `animate()` for it, and a held sequence wakes the host once, at its switch. Here a `Live` on a paused timeline is sought to a moment and drawn there. Its console is not interactive, so it writes the frame once, at `stop()`, and the recording is printed below:
+
+```typescript
+import { Animation, Console, EASES, Live, RichText, Timeline, tween } from "@promptctl/rich-js";
+
+const width = tween(0, 20, { ease: EASES.linear, seconds: 2 });
+const bar = Animation.map(width, (w) => new RichText(`${"█".repeat(Math.round(w)).padEnd(20, "·")} ${w.toFixed(1)}`));
+
+const recording = new Console({ forceInteractive: false, record: true, width: 40, file: { write: () => {} } });
+const live = new Live(bar, { console: recording, timeline: Timeline.pause(Timeline.play(0), 0) });
+live.start();
+live.timeline = Timeline.seek(live.timeline, live.clock.now(), 1.5);
+live.stop();
+console.print(recording.exportText());
+```
+
 ## How a host knows when to draw again
 
 Whoever draws an animation's value as cells at a host time stamps every cell it draws with the animation's `nextChange` at that time: the stamp is on the cell's `Style`, rides up through any container as an anchor does and writes no byte, and whoever holds the composed frame reads the soonest with `Segment.nextChange`. The animation's `at` hands over the value alone, so a value a timeline asked for at a mapped time is stamped on the host's clock, not the timeline's. That is how a [`Live`](/live#auto-refresh) knows when to wake without asking each piece of its view what it holds — [Frames](/frames#when-the-frame-next-changes) shows it at work.

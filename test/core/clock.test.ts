@@ -79,9 +79,24 @@ describe("systemClock().at", () => {
     expect(ticked).toBe(0);
   });
 
-  it("refuses a time further off than a timer can wait, and one that is not a time", () => {
+  // A slowed timeline stretches a three-second hold to a month: further off
+  // than one platform timer holds, waited out in turns rather than refused.
+  it("waits out a time further off than a timer can hold, and does not tick before it", () => {
+    vi.useFakeTimers();
     const clock = systemClock();
-    expect(() => clock.at(clock.now() + 2 ** 31 / 1000 + 1, () => {})).toThrow(RangeError);
+    const month = 30 * 86_400;
+    let ticked = 0;
+    clock.at(clock.now() + month, () => ticked++);
+    vi.advanceTimersByTime(month * 1000 - 1);
+    expect(ticked).toBe(0);
+    // A turn's remainder is rounded up to a whole millisecond, as every wait is.
+    vi.advanceTimersByTime(2);
+    expect(ticked).toBe(1);
+  });
+
+  it("refuses a time that is not a finite number of seconds", () => {
+    const clock = systemClock();
     expect(() => clock.at(Number.NaN, () => {})).toThrow(RangeError);
+    expect(() => clock.at(Number.POSITIVE_INFINITY, () => {})).toThrow(RangeError);
   });
 });

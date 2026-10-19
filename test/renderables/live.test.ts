@@ -10,7 +10,10 @@ import { Live, type LiveOptions } from "../../src/renderables/live.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Progress } from "../../src/renderables/progress.js";
 import { Status } from "../../src/renderables/status.js";
-import { fakeClock } from "../core/fake-clock.js";
+import { fakeClock, type FakeClock } from "../core/fake-clock.js";
+import { Animation } from "../../src/core/animation.js";
+import { Timeline } from "../../src/core/timeline.js";
+import type { View } from "../../src/core/view.js";
 
 const SHOW_CURSOR = "\x1b[0m\x1b[?25h";
 const EXIT_ALT_SCREEN = "\x1b[?1049l";
@@ -418,7 +421,10 @@ describe("Live refresh rate", () => {
 
   // rich-animation-xi28.6k9: a view is asked for each frame with the frame's
   // time on the Live's clock, as an App's is, so what it draws reads none.
-  it("asks a view for each frame with the frame's time on its clock", () => {
+  // The default timeline plays from 0 when the Live is made, so on a clock
+  // that began long before — the platform's reads from process start — what
+  // the view is handed is the time the Live has been showing it.
+  it("asks a view for each frame with the time since the Live was made, on a clock that began before it", () => {
     const chunks: string[] = [];
     const clock = fakeClock(10);
     const times: number[] = [];
@@ -434,9 +440,9 @@ describe("Live refresh rate", () => {
     clock.advance(1);
     display.update((t) => new RichText(`later t=${t}`), { refresh: true });
     display.stop();
-    expect(times).toEqual([10.5, 11]);
-    expect(chunks.join("")).toContain("later t=11");
-    expect(chunks.join("")).toContain("t=10.5");
+    expect(times).toEqual([0.5, 1]);
+    expect(chunks.join("")).toContain("later t=1");
+    expect(chunks.join("")).toContain("t=0.5");
   });
 
   // rich-animation-xi28.6rs: a Live draws each frame of what it shows, not a
@@ -656,5 +662,192 @@ describe("The console a display makes for itself", () => {
       expect(new Progress().console.isInteractive).toBe(detected);
       expect(new Status("working").console.isInteractive).toBe(detected);
     }
+  });
+});
+
+// rich-animation-42lg.04v: a Live draws its view at the time its timeline
+// maps the clock to, and wakes when what it drew says it changes, carried
+// back onto the clock — faster, backwards, or not at all.
+describe("Live on a timeline", () => {
+  /** A Live of `view` on `clock` at `perSecond`, and every frame's text with the time it was drawn for. */
+  function playing(view: ((t: number) => Renderable) | Animation<Renderable>, perSecond: number, clock: FakeClock, timeline?: Timeline): { display: Live; drawn: { t: number; text: string }[] } {
+    const drawn: { t: number; text: string }[] = [];
+    const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
+    const record = (t: number, renderable: Renderable): Renderable => {
+      drawn.push({ t, text: renderable instanceof RichText ? renderable.plain : "?" });
+      return renderable;
+    };
+    // The view of the shape it was given, so a function stays a function.
+    const recorded: View =
+      typeof view === "function"
+        ? (t) => record(t, view(t))
+        : { at: (t) => record(t, view.at(t)), nextChange: (t) => view.nextChange(t), lastChange: (t) => view.lastChange(t) };
+    return { display: new Live(recorded, { console: target, clock, refreshPerSecond: perSecond, timeline }), drawn };
+  }
+  const word = (text: string): Renderable => new RichText(text);
+  // "A" until 3 s, then "B" for good.
+  const switching = (): Animation<Renderable> => Animation.sequence(Animation.constant(word("A")), 3, Animation.constant(word("B")));
+
+  it.each([1, 60])("at %s fps, draws each frame for the time a timeline at twice the clock's pace maps it to", (perSecond) => {
+    const clock = fakeClock();
+    const { display, drawn } = playing((t) => word(`t=${t}`), perSecond, clock, Timeline.play(0, 2));
+    display.start();
+    clock.advance(3);
+    display.stop();
+    // A frame a tick, then the one stop() draws at the clock's now.
+    expect(drawn).toHaveLength(3 * perSecond + 1);
+    drawn.slice(0, -1).forEach(({ t }, i) => expect(t).toBeCloseTo((2 * (i + 1)) / perSecond, 9));
+    expect(drawn.at(-1)!.t).toBe(6);
+  });
+
+  it.each([1, 60])("at %s fps, draws a held view's switch at the clock moment the timeline reaches it", (perSecond) => {
+    const clock = fakeClock();
+    const { display, drawn } = playing(switching(), perSecond, clock, Timeline.play(0, 2));
+    display.start();
+    clock.advance(3);
+    display.stop();
+    // The switch at 3 is host 1.5: drawn there, and nothing before it shows B.
+    const first = drawn.findIndex(({ text }) => text === "B");
+    expect(drawn[first]!.t).toBeCloseTo(3, 9);
+    expect(drawn.slice(0, first).every(({ text }) => text === "A")).toBe(true);
+  });
+
+  // An animation says everything it changes, so once it holds for good the
+  // auto-refresh waits on nothing: the frame that stop() draws is the next.
+  it("at 1 fps wakes for a switch between two frames, then waits on nothing once the view holds for good", () => {
+    const clock = fakeClock();
+    const { display, drawn } = playing(switching(), 1, clock, Timeline.play(0, 2));
+    display.start();
+    clock.advance(3);
+    expect(clock.timers()).toBe(0);
+    display.stop();
+    expect(drawn.map(({ t, text }) => `${text}@${t}`)).toEqual(["A@2", "B@3", "B@6"]);
+  });
+
+  // A function view may read state the Live cannot see, so the auto-refresh
+  // polls it at the rate even paused; each frame is drawn at the held time.
+  it.each([1, 60])("at %s fps, paused, still polls a function view at its rate, each frame at the held time", (perSecond) => {
+    const clock = fakeClock();
+    const { display, drawn } = playing((t) => word(`t=${t}`), perSecond, clock);
+    display.start();
+    clock.advance(1);
+    display.timeline = Timeline.pause(display.timeline, clock.now());
+    const paused = drawn.length;
+    clock.advance(2);
+    expect(drawn.length - paused).toBe(2 * perSecond);
+    expect(drawn.slice(paused).every(({ t }) => t === 1)).toBe(true);
+    display.stop();
+  });
+
+  it.each([1, 60])("at %s fps, draws a view updated faster than the rate at the rate", (perSecond) => {
+    const clock = fakeClock();
+    const { display } = playing((t) => word(`t=${t}`), perSecond, clock);
+    let renders = 0;
+    display.start();
+    // Five updates a frame, none of which draws.
+    for (let i = 0; i < 10; i++) {
+      clock.advance(1 / perSecond / 5);
+      display.update({ render: () => (renders++, [new Segment("row")]) });
+    }
+    expect(renders).toBe(2);
+    display.stop();
+  });
+
+  it.each([1, 60])("at %s fps, started on a paused timeline, draws an animation's frame once, by the rate", (perSecond) => {
+    const clock = fakeClock();
+    const { display, drawn } = playing(Animation.continuous((t) => word(`t=${t}`)), perSecond, clock, Timeline.pause(Timeline.play(0), 0));
+    display.start();
+    clock.advance(2);
+    expect(drawn.map(({ t }) => t)).toEqual([0]);
+    expect(clock.timers()).toBe(0);
+    display.stop();
+  });
+
+  it.each([1, 60])("at %s fps, paused, draws an animation's held frame once and then nothing, with no timer left", (perSecond) => {
+    const clock = fakeClock();
+    const { display, drawn } = playing(Animation.continuous((t) => word(`t=${t}`)), perSecond, clock);
+    display.start();
+    clock.advance(1);
+    const before = drawn.length;
+    display.timeline = Timeline.pause(display.timeline, clock.now());
+    expect(drawn).toHaveLength(before + 1);
+    expect(drawn.at(-1)!.t).toBe(1);
+    expect(clock.timers()).toBe(0);
+    clock.advance(5);
+    expect(drawn).toHaveLength(before + 1);
+    // A caller still draws a paused Live, at its held time.
+    display.refresh();
+    expect(drawn.at(-1)!.t).toBe(1);
+    display.stop();
+  });
+
+  it.each([1, 60])("at %s fps, a seek while paused draws the sought time once, and resuming plays on from it", (perSecond) => {
+    const clock = fakeClock();
+    const { display, drawn } = playing(Animation.continuous((t) => word(`t=${t}`)), perSecond, clock, Timeline.pause(Timeline.play(0), 0));
+    display.start();
+    display.timeline = Timeline.seek(display.timeline, clock.now(), 7);
+    expect(drawn.map(({ t }) => t)).toEqual([7]);
+    clock.advance(2);
+    expect(drawn).toHaveLength(1);
+
+    display.timeline = Timeline.resume(display.timeline, clock.now());
+    clock.advance(1);
+    // The resumed frame, then a tick's worth for the second that followed.
+    expect(drawn).toHaveLength(2 + perSecond);
+    expect(drawn.at(-1)!.t).toBeCloseTo(8, 9);
+    display.stop();
+  });
+
+  it("run backwards, shows the earlier value from the first moment under the switch, not a frame later", () => {
+    const clock = fakeClock();
+    const { display, drawn } = playing(switching(), 1, clock, Timeline.seek(Timeline.play(0, -1), 0, 5.5));
+    display.start();
+    clock.advance(3);
+    display.stop();
+    // The first frame at the rate, at 4.5, says B began at the switch; time 3
+    // is host 2.5, and A is drawn the first moment after it. A frame landing
+    // exactly on 3 would be drawn at the rate instead: there
+    // `lastChange(3) === 3`, which the Animation contract reads as moving.
+    const first = drawn.findIndex(({ text }) => text === "A");
+    expect(drawn.slice(0, first).map(({ t }) => t)).toEqual([4.5]);
+    expect(drawn[first]!.t).toBeLessThan(3);
+    expect(drawn[first]!.t).toBeCloseTo(3, 9);
+  });
+
+  // A renderable mutated in place is off the timeline: pausing the timeline
+  // holds what is drawn for a time, and a table's new row is not that.
+  it.each([1, 60])("at %s fps, paused, still refreshes a renderable view at its rate", (perSecond) => {
+    const clock = fakeClock();
+    let renders = 0;
+    const counted: Renderable = { render: () => (renders++, [new Segment("row")]) };
+    const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
+    const display = new Live(counted, { console: target, clock, refreshPerSecond: perSecond });
+    display.start();
+    display.timeline = Timeline.pause(display.timeline, clock.now());
+    const paused = renders;
+    clock.advance(2);
+    expect(renders - paused).toBe(2 * perSecond);
+    display.stop();
+  });
+
+  it.each([1, 60])("at %s fps, paused, refreshes a renderable handed over by update at its rate", (perSecond) => {
+    const clock = fakeClock();
+    const { display } = playing(switching(), perSecond, clock);
+    display.start();
+    display.timeline = Timeline.pause(display.timeline, clock.now());
+    let renders = 0;
+    display.update({ render: () => (renders++, [new Segment("row")]) });
+    clock.advance(2);
+    expect(renders).toBe(2 * perSecond);
+    display.stop();
+  });
+
+  it("run backwards, draws a view that says nothing itself at its rate", () => {
+    const clock = fakeClock();
+    const { display, drawn } = playing((t) => word(`t=${t}`), 4, clock, Timeline.seek(Timeline.play(0, -1), 0, 10));
+    display.start();
+    clock.advance(1);
+    display.stop();
+    expect(drawn.map(({ t }) => t)).toEqual([9.75, 9.5, 9.25, 9, 9]);
   });
 });

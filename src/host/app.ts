@@ -35,8 +35,10 @@ import { frameRate, systemClock, type Clock, type FrameRate } from "../core/cloc
 import { Console, type ConsoleOptions } from "../core/console.js";
 import { Segment } from "../core/segment.js";
 import { SurfacePainter, type Surface } from "../core/paint.js";
-import { fitHeight, render, type Renderable } from "../core/protocol.js";
+import { fitHeight, render } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
+import { Timeline } from "../core/timeline.js";
+import { drawView, hostView, undrawn, type FrameSays, type HostView, type View } from "../core/view.js";
 import { hostEnvironment } from "./host-environment.js";
 import { InputParser, keyName, parseKeyName, type KeyPress, type ScreenMouseEvent } from "./input.js";
 import type { TerminalHost } from "./terminal-host.js";
@@ -72,15 +74,28 @@ export interface AppOptions extends DrawOptions {
   readonly host: TerminalHost;
   readonly surface: Surface;
   /**
-   * The app's root renderable, asked for once per frame, so a view of the
-   * app's state is drawn from the state as it is at that frame. `t` is the
-   * frame's time in seconds on the app's `clock`, which is what an effect is
-   * sampled at.
+   * What the app draws: a renderable, a function asked for one once per
+   * frame — so a view of the app's state is drawn from the state as it is at
+   * that frame — or an `Animation` of one, which says when what it draws
+   * changes, so the app knows when to paint again. `t` is the frame's time in
+   * seconds on the app's `timeline`, which is what an effect is sampled at.
    */
-  readonly view: (t: number) => Renderable;
+  readonly view: View;
   /** What the app reads the time from and ticks on. The platform's, unless given. */
   readonly clock?: Clock;
-  /** How often the app paints while something is animating. 30 frames a second, unless given. */
+  /**
+   * The map from the clock to the time the view is drawn for (`Timeline`).
+   * Playing from 0 when the host is made, at the clock's pace, unless given
+   * — so a tween in the view starts when the host is made, not when the clock
+   * began; `app.timeline` reads and replaces it.
+   */
+  readonly timeline?: Timeline;
+  /**
+   * How often the app paints while what it shows moves every moment — an
+   * `animate()` held, or a frame that says it moves. A frame held until a
+   * moment is painted at that moment, whatever the rate. 30 frames a second,
+   * unless given.
+   */
   readonly rate?: FrameRate;
   /**
    * The keys that stop the app, by `keyName`, heard before any `onKey`
@@ -126,13 +141,19 @@ const isWheelTurn = (event: ScreenMouseEvent): event is WheelTurn => event.type 
 export class App {
   private readonly host: TerminalHost;
   private readonly surface: Surface;
-  private readonly view: (t: number) => Renderable;
-  private readonly clock: Clock;
+  private readonly view: HostView;
+  private readonly _clock: Clock;
+  private _timeline: Timeline;
   private _rate: FrameRate;
   // What is animating now: one token per `animate()` not yet released.
   private readonly animations = new Set<object>();
   // The timer painting frames, and the rate it was started at.
   private ticking: { readonly rate: FrameRate; readonly stop: Unsubscribe } | null = null;
+  // What the frame on screen says about when it changes, on the clock.
+  // Before a frame, nothing.
+  private said: FrameSays = undrawn(0);
+  // The one wait for the frame's `nextChange`, armed after each frame.
+  private waking: Unsubscribe | null = null;
   // [LAW:one-source-of-truth] The host is the console's whole environment:
   // its size, its colours, where bytes go. Every frame renders with this
   // console's options and is encoded for its destination.
@@ -159,8 +180,9 @@ export class App {
     );
     this.surface = options.surface;
     this.painter = new SurfacePainter(options.surface, (bytes) => this.host.write(bytes));
-    this.view = options.view;
-    this.clock = options.clock ?? systemClock();
+    this.view = hostView(options.view);
+    this._clock = options.clock ?? systemClock();
+    this._timeline = options.timeline ?? Timeline.play(this._clock.now());
     this._rate = options.rate ?? DEFAULT_RATE;
     this.quitKeys = new Set((options.quitKeys ?? DEFAULT_QUIT_KEYS).map(parseKeyName));
     this.console = new Console({ ...drawOptions(options), environment: hostEnvironment(options.host) });
@@ -170,7 +192,28 @@ export class App {
     return this._phase;
   }
 
-  /** How often the app paints while something is animating. */
+  /** The clock the app reads the time from: where the host time a `Timeline` operation takes is read. */
+  get clock(): Clock {
+    return this._clock;
+  }
+
+  /** The map from the clock to the time the view is drawn for. */
+  get timeline(): Timeline {
+    return this._timeline;
+  }
+
+  /**
+   * Replace the timeline and paint the frame for the time it now maps the
+   * clock's now to, so a seek shows where it sought, once. Paused, the frame
+   * then holds: nothing drawn for a held time changes, so the app waits on
+   * nothing until the timeline plays again, and paints when asked.
+   */
+  set timeline(timeline: Timeline) {
+    this._timeline = timeline;
+    this.refresh();
+  }
+
+  /** How often the app paints while what it shows moves every moment. */
   get rate(): FrameRate {
     return this._rate;
   }
@@ -253,12 +296,16 @@ export class App {
   }
 
   /**
-   * Paint at the app's `rate` until the returned function is called: what an
-   * effect sampled at the frame's time asks for while it moves. The app ticks
-   * while anything is animating and it holds the terminal, and stops when
-   * nothing is, so a still app paints only when asked. The animation's first
-   * frame does not wait out an interval: at one frame every two seconds, that
-   * would hold its start off screen for two.
+   * Paint at the app's `rate` until the returned function is called: what a
+   * view that moves without saying so asks for — one computing from `t` what
+   * no animation stamps. A view that does say so needs none of this: the app
+   * ticks at its rate while the frame says it moves (`nextChange` at the
+   * frame's own time), wakes once when the frame says it holds until a
+   * moment, and paints only when asked once it says it never changes. The
+   * app ticks while anything is animating and it holds the terminal, and
+   * stops when nothing is. The animation's first frame does not wait out an
+   * interval: at one frame every two seconds, that would hold its start off
+   * screen for two.
    */
   animate(): Unsubscribe {
     const animation = {};
@@ -418,19 +465,26 @@ export class App {
   }
 
   // [LAW:single-enforcer] Whether the clock is ticking, and at what rate,
-  // follows from the phase, what is animating and the rate, and is brought
-  // in line with them here alone, after every change to any — so a timer
-  // runs exactly while a running app has something animating, at the rate
-  // the app has now, and none outlives the app.
+  // and whether a wake is armed for the frame's next change, follow from the
+  // phase, what is animating, the rate and what the frame on screen says,
+  // and are brought in line with them here alone, after every change to any
+  // — so a timer runs exactly while a running app has something moving — a
+  // frame that says it moves, or an `animate()` its frame was not drawn for
+  // a paused timeline's held time under — at the rate the app has now, a wake is armed exactly while a running app
+  // shows a frame held until a moment, and none outlives the app.
   private tick(): void {
-    const wanted = this._phase === "running" && this.animations.size > 0;
+    const running = this._phase === "running";
+    const { t, nextChange, held } = this.said;
+    const wanted = running && ((this.animations.size > 0 && !held) || nextChange === t);
     if (this.ticking !== null && (!wanted || this.ticking.rate.perSecond !== this._rate.perSecond)) {
       this.ticking.stop();
       this.ticking = null;
     }
     if (wanted && this.ticking === null) {
-      this.ticking = { rate: this._rate, stop: this.clock.every(this._rate, () => this.paint()) };
+      this.ticking = { rate: this._rate, stop: this._clock.every(this._rate, () => this.paint()) };
     }
+    this.waking?.();
+    this.waking = running && t < nextChange && nextChange < Number.POSITIVE_INFINITY ? this._clock.at(nextChange, () => this.paint()) : null;
   }
 
   // [LAW:no-silent-failure] A frame that throws ends the app with that
@@ -449,17 +503,18 @@ export class App {
     const options = this.console.options;
     const height = this.painter.height(options.height.rows);
     // [LAW:no-ambient-temporal-coupling] The frame owner reads the clock,
-    // once a frame; the view is handed the time as data.
-    const lines = Segment.splitLines(render(this.view(this.clock.now()), { ...options, height }));
-    // The app set the budget, so the app shapes what comes back: no deeper
-    // than the terminal — a taller frame would scroll the rows the painter
-    // goes back over — and, as a region, exactly that deep.
-    const frame = this.painter.paint(
-      () => fitHeight(lines.slice(0, height.rows), height),
-      { rows: height.rows, cols: options.maxWidth },
-      this.console.destination,
+    // once a frame; the view is handed the time the timeline maps it to, as
+    // data, and what the frame says about when it changes comes back on the
+    // clock. The app set the budget, so the app shapes what comes back: no
+    // deeper than the terminal — a taller frame would scroll the rows the
+    // painter goes back over — and, as a region, exactly that deep.
+    const drawn = drawView(this.view, this._timeline, this._clock.now(), (renderable) =>
+      fitHeight(Segment.splitLines(render(renderable, { ...options, height })).slice(0, height.rows), height),
     );
+    const frame = this.painter.paint(() => drawn.lines, { rows: height.rows, cols: options.maxWidth }, this.console.destination);
     this._frame = frame;
+    this.said = drawn;
+    this.tick();
     for (const handler of [...this.paintHandlers]) handler(frame);
   }
 }

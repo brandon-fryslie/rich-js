@@ -23,6 +23,10 @@ import { Style, Theme } from "../../src/core/style.js";
 import { NullHighlighter } from "../../src/core/highlighter.js";
 import { frameRate } from "../../src/core/clock.js";
 import { fakeClock, type FakeClock } from "../core/fake-clock.js";
+import { Animation } from "../../src/core/animation.js";
+import { EASES } from "../../src/core/easing.js";
+import { Timeline } from "../../src/core/timeline.js";
+import { tween } from "../../src/core/tween.js";
 
 // Pointer reporting belongs to the alternate surface: it is switched on with
 // the buffer and off before it, so no exit path leaves one without the other.
@@ -405,16 +409,16 @@ describe("App frame clock", () => {
     expect(times).toHaveLength(1 + 30);
   });
 
-  it("paints one frame every two seconds at 0.5 fps, each handed its time on the clock", () => {
+  it("paints one frame every two seconds at 0.5 fps, each handed the time since the app was made", () => {
     const clock = fakeClock(100);
     const { target, times } = clocked(0.5, clock);
     void target.run();
     target.animate();
 
     clock.advance(1.9);
-    expect(times).toEqual([100]);
+    expect(times).toEqual([0]);
     clock.advance(4.1);
-    expect(times).toEqual([100, 102, 104, 106]);
+    expect(times).toEqual([0, 2, 4, 6]);
   });
 
   it("goes on at a new rate from the next frame when rate is set mid-animation", () => {
@@ -549,6 +553,166 @@ describe("App frame clock", () => {
 
     await expect(running).rejects.toThrow("frame broke");
     expect(frames).toBe(3);
+    expect(clock.timers()).toBe(0);
+  });
+});
+
+// rich-animation-42lg.04v: an app draws its view at the time its timeline
+// maps the clock to, and paints when what it drew says it changes — so a
+// view built on a value animation needs no `animate()` to move.
+describe("App on a timeline", () => {
+  /** An app on `clock` at `perSecond` drawing `animation`, and every value it was drawn with, at the time it was drawn for. */
+  function playing(animation: Animation<number>, perSecond: number, clock: FakeClock, timeline?: Timeline): { target: App; drawn: { t: number; value: number }[] } {
+    const drawn: { t: number; value: number }[] = [];
+    const view: Animation<Renderable> = {
+      at: (t) => {
+        const value = animation.at(t);
+        drawn.push({ t, value });
+        return text(`${value}`);
+      },
+      nextChange: (t) => animation.nextChange(t),
+      lastChange: (t) => animation.lastChange(t),
+    };
+    return { target: new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(perSecond), view, timeline }), drawn };
+  }
+  // 0 to 10 over a second.
+  const growing = (): Animation<number> => tween(0, 10, { ease: EASES.linear, seconds: 1 });
+
+  it.each([1, 60])("at %s fps, paints a tween at its rate while it moves and stops on arriving, with nothing animate()d", (perSecond) => {
+    const clock = fakeClock();
+    const { target, drawn } = playing(growing(), perSecond, clock);
+    void target.run();
+    clock.advance(3);
+    // Every frame until the first at or past the end, which shows it arrived.
+    expect(drawn.slice(0, -1).every(({ t }) => t < 1)).toBe(true);
+    expect(drawn.at(-1)).toEqual({ t: expect.closeTo(1, 9), value: 10 });
+    expect(drawn.length).toBeGreaterThanOrEqual(perSecond + 1);
+    expect(clock.timers()).toBe(0);
+    expect(rows(target)[0]).toBe("10");
+  });
+
+  it.each([1, 60])("at %s fps, wakes once for a held sequence's switch, and not at the rate", (perSecond) => {
+    const clock = fakeClock();
+    const { target, drawn } = playing(Animation.sequence(Animation.constant(1), 2.5, Animation.constant(2)), perSecond, clock);
+    void target.run();
+    clock.advance(5);
+    expect(drawn).toEqual([
+      { t: 0, value: 1 },
+      { t: 2.5, value: 2 },
+    ]);
+    expect(clock.timers()).toBe(0);
+  });
+
+  it.each([1, 60])("at %s fps, paused, paints the held frame once with no timer left, and resumed, moves on to arrive", async (perSecond) => {
+    const clock = fakeClock();
+    const { target, drawn } = playing(growing(), perSecond, clock);
+    void target.run();
+    clock.advance(0.5);
+    const before = drawn.length;
+
+    target.timeline = Timeline.pause(target.timeline, clock.now());
+    await tick();
+    expect(drawn).toHaveLength(before + 1);
+    expect(drawn.at(-1)).toEqual({ t: 0.5, value: 5 });
+    expect(clock.timers()).toBe(0);
+    clock.advance(5);
+    expect(drawn).toHaveLength(before + 1);
+
+    target.timeline = Timeline.resume(target.timeline, clock.now());
+    await tick();
+    expect(drawn.at(-1)).toEqual({ t: 0.5, value: 5 });
+    clock.advance(1);
+    expect(drawn.at(-1)!.value).toBe(10);
+    expect(clock.timers()).toBe(0);
+  });
+
+  it("paints a seek while paused once, at the sought time", async () => {
+    const clock = fakeClock();
+    const { target, drawn } = playing(growing(), 60, clock, Timeline.pause(Timeline.play(0), 0));
+    void target.run();
+    expect(drawn).toEqual([{ t: 0, value: 0 }]);
+    target.timeline = Timeline.seek(target.timeline, clock.now(), 0.25);
+    await tick();
+    clock.advance(2);
+    expect(drawn).toEqual([
+      { t: 0, value: 0 },
+      { t: 0.25, value: 2.5 },
+    ]);
+    expect(clock.timers()).toBe(0);
+  });
+
+  it.each([1, 60])("at %s fps, paused, paints nothing for an animate() held until the timeline plays again", async (perSecond) => {
+    const clock = fakeClock();
+    const { target, drawn } = playing(Animation.constant(1), perSecond, clock);
+    void target.run();
+    target.animate();
+    clock.advance(1);
+    target.timeline = Timeline.pause(target.timeline, clock.now());
+    await tick();
+    const held = drawn.length;
+    clock.advance(3);
+    expect(drawn).toHaveLength(held);
+    expect(clock.timers()).toBe(0);
+
+    target.timeline = Timeline.resume(target.timeline, clock.now());
+    await tick();
+    clock.advance(1);
+    expect(drawn.length).toBeGreaterThanOrEqual(held + perSecond);
+  });
+
+  // A renderable is never handed a time, so what its cells say is on the
+  // only clock it can read, the app's — a Progress stamps its spinner there.
+  it("wakes a renderable view at the clock moment its cells say, whatever the timeline does", async () => {
+    const clock = fakeClock(100);
+    let draws = 0;
+    const stamped: Renderable = {
+      render: () => {
+        draws += 1;
+        return [new Segment("x", new Style({ nextChange: Math.floor(clock.now()) + 1 }))];
+      },
+    };
+    const target = new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(1), view: stamped, timeline: Timeline.play(0, -3) });
+    void target.run();
+    clock.advance(2.5);
+    // Drawn at 100, then at 101 and 102, as its cells said.
+    expect(draws).toBe(3);
+    target.timeline = Timeline.pause(target.timeline, clock.now());
+    await tick();
+    clock.advance(2);
+    // The frame the pause paints, then 103 and 104: pausing holds nothing off the timeline.
+    expect(draws).toBe(6);
+  });
+
+  // An animation's frame whose cells move — an effect over a tween that has
+  // arrived — cannot say since when, so backwards it is painted at the rate,
+  // not frozen until the tween's end comes round.
+  it.each([1, 60])("at %s fps, run backwards, paints an animation's frame at its rate while its cells move", (perSecond) => {
+    const clock = fakeClock();
+    const times: number[] = [];
+    const settled: Animation<Renderable> = {
+      at: (t) => {
+        times.push(t);
+        return { render: () => [new Segment("x", new Style({ nextChange: t }))] };
+      },
+      nextChange: () => Number.POSITIVE_INFINITY,
+      lastChange: () => 2,
+    };
+    const timeline = Timeline.seek(Timeline.play(0, -1), 0, 10);
+    const target = new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(perSecond), view: settled, timeline });
+    void target.run();
+    clock.advance(1);
+    expect(times).toHaveLength(1 + perSecond);
+    expect(times.at(-1)).toBeCloseTo(9, 9);
+  });
+
+  it("run backwards, paints a tween back to where it began and stops there", () => {
+    const clock = fakeClock();
+    const { target, drawn } = playing(growing(), 10, clock, Timeline.seek(Timeline.play(0, -1), 0, 1));
+    void target.run();
+    clock.advance(3);
+    expect(drawn[0]).toEqual({ t: 1, value: 10 });
+    expect(drawn.at(-1)!.value).toBe(0);
+    expect(drawn.slice(0, -1).every(({ t }) => t > 0)).toBe(true);
     expect(clock.timers()).toBe(0);
   });
 });

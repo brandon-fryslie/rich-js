@@ -80,7 +80,9 @@ The root renders at the terminal's width, with the terminal's rows as its [heigh
 
 ## Animating at a frame rate
 
-`view` is handed the frame's time, `t`, in seconds on the app's `clock`. An app paints at its `rate` while something is animating: `animate()` starts that, and the function it returns ends it. Once nothing is animating the app stops ticking and paints only when asked again, and a stopped or suspended app never ticks.
+`view` is handed the frame's time, `t`, in seconds since the app was made: the app's `clock` read through its [timeline](/animation#playing-in-a-live-or-an-app), which plays from then at the clock's pace unless the `timeline` option gives another. An app paints at its `rate` while something is animating: `animate()` starts that, and the function it returns ends it. Once nothing is animating the app stops ticking and paints only when asked again, and a stopped or suspended app never ticks.
+
+A view can also be a renderable, drawn as it is and never handed a `t`, or an [`Animation`](/animation) of one, which says when what it draws changes. Such a view needs no `animate()`. The app paints at its rate while the frame says it moves, wakes once when the frame says it holds until a moment — however soon that is, whatever the rate — and stops when it says it never changes. Setting `app.timeline` paints one frame for the new time. A paused timeline then leaves nothing ticking for a function or an animation until it plays again, `animate()` included, since what it moves is drawn at the held time. A renderable is off the timeline, so pausing holds none of it.
 
 ```ts silent
 import { RichText, frameRate, systemClock } from "@promptctl/rich-js";
