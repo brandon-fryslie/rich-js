@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-489",
-      "ref": "refs/pull/489/merge",
-      "sha": "a34b6324a82f52a99e3bdd712aa13d6eb5ecc07a",
-      "timestamp": "2026-10-19T19:47:05.592Z",
-      "commits": [
-        {
-          "sha": "a34b6324a82f52a99e3bdd712aa13d6eb5ecc07a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T19:45:10Z",
-          "message": "Merge 409fd5dc84623309ef1f43ad9d7e53ee20bf982a into 4243346c52c64c49f3b253bcd07221ba490f85ed\n"
-        },
-        {
-          "sha": "409fd5dc84623309ef1f43ad9d7e53ee20bf982a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T13:45:02-06:00",
-          "message": "A crop keeps every piece of no cells, and one function makes every stamp (rich-animation-42lg.uv8 review)\n\nadjustLineLength keeps an empty piece at the cut again. frames.ts builds every\nstamp style through stamp(). The transitions demo stamps its change through\nframeAt, and the docs name the stamping renderables in one place.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "43971778f4ad0fbc4aa1b88f932763fb05962a32",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T13:32:17-06:00",
-          "message": "An element is gone when it stops drawing, and a crop keeps every control (rich-animation-42lg.uv8 review)\n\ngone reads the goneAt phase draws from, so a stepped exit is never asked\nabout -Infinity before leave. adjustLineLength keeps controls past its cut,\nso a carrier after a cropped row still says when its frame changes.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "3be80ff203d929414ce022dee13eedc093ff1742",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T13:22:04-06:00",
-          "message": "A frame of no cells says when it changes on a carrier that opens no row (rich-animation-42lg.uv8 review)\n\nsplitLines no longer guesses a carrier from its style: Segment.carrier is a\ncontrol of no codes, so a stamp at Infinity, an empty text frame and a\nchange's line end all keep the rows they have unstamped.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "c42d1c199de5fd6c601f374af23206fc4051a8e4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T13:04:18-06:00",
-          "message": "A frame says when it changes on the host's clock, stamped in one place (rich-animation-42lg.uv8)\n\nOnly a renderable built for the draw site's t stamps (stampFrame: frameAt,\nFrames, Spinner.drawnAt, Effected, GlyphEffected). Nothing an animation's at\nreturns carries a stamp; its change reaches the host through nextChange.\nTransition holds one schedule and done is read off it; Animation.onBeat is\nthe one stepping rule; lifecycle's holds are Timeline.run of the schedules.\nA bare-stamp carrier after a line break takes no row; an empty text frame\nkeeps its stamp.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "4243346c52c64c49f3b253bcd07221ba490f85ed",
-      "timestamp": "2026-10-19T18:23:11.401Z",
+      "sha": "da13b2a3a8d9a444d940d282e186761a08191686",
+      "timestamp": "2026-10-19T19:58:05.375Z",
       "commits": [
         {
-          "sha": "4243346c52c64c49f3b253bcd07221ba490f85ed",
+          "sha": "da13b2a3a8d9a444d940d282e186761a08191686",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T12:21:17-06:00",
-          "message": "A window over wider content moves with time: scroll, marquee and slide (rich-animation-42lg.re8) (#488)\n\n* A window over wider content moves with time: scroll, marquee and slide (rich-animation-42lg.re8)\n\nscroll(content, { width, height, col, row }) is an Animation<Renderable>\nof a fixed slot over content drawn at its natural size, each offset an\nAnimation<number>. frameAt now draws any renderable's animation with its\ncells stamped at the host's time.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A scroll draws its content at its natural width, crops to its room, and refuses a non-finite offset; one stamped frame (rich-animation-42lg.re8)\n\nReview (high) of PR #488: content drawn at maxWidth Infinity threw on a Rule;\nthe slot spilled past a narrower room; a NaN offset drew a blank slot.\nLifecycleFrame folded into frameAt's Stamped, so the stamp wrapper has one copy.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A scroll keeps a cell-less frame's change stamp left of its window; the demo's slide comes from the left as it says (rich-animation-42lg.re8)\n\nReview (medium) of PR #488.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A scroll's frame carries the soonest change of all its content, and draws content of no width (rich-animation-42lg.re8)\n\nEscalation review (high) of PR #488: the left-of-window filter missed rows above\nand below and cells to the right, and leaked combining marks; content of natural\nwidth 0 was held at maxWidth 0 and drew no stamp.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-10-19T13:56:48-06:00",
+          "message": "A frame says when it changes on the host's clock, stamped in one place (rich-animation-42lg.uv8) (#489)\n\n* A frame says when it changes on the host's clock, stamped in one place (rich-animation-42lg.uv8)\n\nOnly a renderable built for the draw site's t stamps (stampFrame: frameAt,\nFrames, Spinner.drawnAt, Effected, GlyphEffected). Nothing an animation's at\nreturns carries a stamp; its change reaches the host through nextChange.\nTransition holds one schedule and done is read off it; Animation.onBeat is\nthe one stepping rule; lifecycle's holds are Timeline.run of the schedules.\nA bare-stamp carrier after a line break takes no row; an empty text frame\nkeeps its stamp.\n\n* A frame of no cells says when it changes on a carrier that opens no row (rich-animation-42lg.uv8 review)\n\nsplitLines no longer guesses a carrier from its style: Segment.carrier is a\ncontrol of no codes, so a stamp at Infinity, an empty text frame and a\nchange's line end all keep the rows they have unstamped.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* An element is gone when it stops drawing, and a crop keeps every control (rich-animation-42lg.uv8 review)\n\ngone reads the goneAt phase draws from, so a stepped exit is never asked\nabout -Infinity before leave. adjustLineLength keeps controls past its cut,\nso a carrier after a cropped row still says when its frame changes.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A crop keeps every piece of no cells, and one function makes every stamp (rich-animation-42lg.uv8 review)\n\nadjustLineLength keeps an empty piece at the cut again. frames.ts builds every\nstamp style through stamp(). The transitions demo stamps its change through\nframeAt, and the docs name the stamping renderables in one place.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
