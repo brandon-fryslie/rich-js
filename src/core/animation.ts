@@ -85,8 +85,10 @@ export const Animation = {
       // [LAW:types-are-the-program] Each value at its own place in the tuple,
       // which `map` cannot say of its array.
       at: (t) => animations.map((animation: Animation<unknown>) => animation.at(t)) as unknown as T,
-      nextChange: (t) => Math.min(...animations.map((animation) => animation.nextChange(t))),
-      lastChange: (t) => Math.max(...animations.map((animation) => animation.lastChange(t))),
+      // A fold, not a spread: a stagger over a table's rows is a list as long
+      // as the table, past what an engine takes as arguments.
+      nextChange: (t) => animations.reduce((soonest: number, animation: Animation<unknown>) => Math.min(soonest, animation.nextChange(t)), Number.POSITIVE_INFINITY),
+      lastChange: (t) => animations.reduce((latest: number, animation: Animation<unknown>) => Math.max(latest, animation.lastChange(t)), Number.NEGATIVE_INFINITY),
     };
   },
 

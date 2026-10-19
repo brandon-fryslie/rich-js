@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Animation, ColorDepth, FrameSequence, RichText, Segment, Spinner, Timeline, beat, frameAt, type Beat } from "../../src/index.js";
+import { nextDown } from "./next-down.js";
 
 // [LAW:behavior-not-structure] What is asserted is the contract a host reads:
 // the value at a time, and that it holds from `t` until `nextChange(t)` and
@@ -16,15 +17,6 @@ function holdsUntilNext<T>(animation: Animation<T>, t: number, samples = 16): bo
 }
 
 const ALWAYS = Number.NEGATIVE_INFINITY;
-
-const DOUBLE = new Float64Array(1);
-const BITS = new BigUint64Array(DOUBLE.buffer);
-/** The float under a positive `x`, read through its bits. */
-function nextDown(x: number): number {
-  DOUBLE[0] = x;
-  BITS[0] = BITS[0]! - 1n;
-  return DOUBLE[0]!;
-}
 
 /** Whether `animation` has held `at(t)` over `[lastChange(t), t]`, sampled at `samples` points inside; the answer is never after `t`. */
 function heldSinceLast<T>(animation: Animation<T>, t: number, samples = 16): boolean {

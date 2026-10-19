@@ -32,13 +32,26 @@
  * why it is a search and not the ulp walk a sum on one clock takes. A value
  * moving at the mapped time changes at the host time itself.
  *
+ * A stagger — a Group's children pulsing in sequence, a light walking down
+ * a Table's rows — is the same map once per child: `stagger` runs each
+ * child's animation on a timeline playing from its index times the delay,
+ * and the group changes when the soonest child does, each child's answer
+ * carried onto the group's clock by `run`. Before its turn a child is asked
+ * for a time before 0, which is its own business: a loop is shifted in
+ * phase. Tree, Table, Group and Layout take the children's frames as they
+ * take any renderables, through `Animation.map`, so none of them knows a
+ * stagger exists. [LAW:composability] A lifecycle is not staggered here: it
+ * carries its turn as `entered`, on the host's clock its `leave` and `gone`
+ * take, so moving it onto a shifted clock would lose them
+ * ([LAW:one-source-of-truth] for when it arrives).
+ *
  * [LAW:no-ambient-temporal-coupling] Nothing here reads a clock. The host
  * time is an argument everywhere, and a timeline is built from one the host
  * hands in, so the same host time maps to the same animation time at one
  * sample a second or sixty.
  */
 
-import type { Animation } from "./animation.js";
+import { Animation } from "./animation.js";
 import { firstReaching } from "./easing.js";
 
 /**
@@ -174,5 +187,21 @@ export const Timeline = {
       nextChange: (host) => (hostTime(host), Number.POSITIVE_INFINITY),
       lastChange: (host) => (hostTime(host), Number.NEGATIVE_INFINITY),
     };
+  },
+
+  /**
+   * Every one of `animations` at once, each on a timeline playing from its
+   * index times `delay` seconds after the earliest, their values in order, on
+   * a clock of the stagger's own from 0. It changes when the soonest of them
+   * does, on that clock (`Animation.all` of `run`s). A delay of 0 starts them
+   * together and a negative one starts the last at 0 and the first last.
+   */
+  stagger<T>(animations: readonly Animation<T>[], delay: number): Animation<readonly T[]> {
+    finiteSeconds("Timeline.stagger delay", delay);
+    const span = finiteSeconds("Timeline.stagger delay times the last index", Math.max(0, animations.length - 1) * delay);
+    // [LAW:dataflow-not-control-flow] Whichever way the cascade runs, every
+    // origin is shifted by the lowest of them, so the earliest child plays from 0.
+    const earliest = Math.min(0, span);
+    return Animation.all(animations.map((animation, i) => Timeline.run(Timeline.play(i * delay - earliest), animation)));
   },
 };

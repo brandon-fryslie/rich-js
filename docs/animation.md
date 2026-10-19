@@ -274,6 +274,7 @@ Because every animation is a pure function of its time, pausing, reversing, scru
 - `Timeline.seek(timeline, host, time)` puts the animation at `time` at host time `host`, playing or held as it was.
 - `Timeline.withRate(timeline, host, rate)` changes the rate from `host` on, with no jump.
 - `Timeline.at(timeline, host)` is the animation time at a host time.
+- `Timeline.stagger(animations, delay)` runs each animation on a timeline offset by its index times `delay` ([below](#a-stagger-one-animation-across-children)).
 
 `Timeline.run(timeline, animation)` is the animation on host time: its value at the mapped time, and its `nextChange` carried back onto the host's clock — forwards, the host moment the mapped time reaches the animation's own answer; backwards, the moment it drops under where the value began, which is what `lastChange` is for; paused, never. A host reads the answer in its own seconds whatever the rate:
 
@@ -298,6 +299,31 @@ say("sought to 2.5", Timeline.seek(playing, 11.5, 2.5), 11.5);
 ```
 
 A `Spinner`'s `speed` is a timeline its frames run on, so a spinner drawn backwards at twice the speed with `drawnAt(t)` still says, on its cells, when it turns next on the host's clock.
+
+## A stagger: one animation across children
+
+Most motion looks right in cascade: a group's children pulsing in sequence, a light walking down a list. `Timeline.stagger(animations, delay)` is every one of `animations` at once, each on a timeline playing from its index times `delay` seconds after the earliest, their values in order. It is `Animation.all` of `Timeline.run`s, so it changes when the soonest child does, with each child's answer carried onto the stagger's clock, and it holds still in a gap between one child settling and the next one starting. The stagger runs on its own clock from 0, and its earliest child starts there: a delay of 0 starts them together, and a negative one starts the last child at 0 and the first last.
+
+Before its turn, a child is asked for a time before 0. What that shows is the child's own business, and a loop is shifted in phase, which is what a staggered pulse is. Playing, pausing or reversing the whole group is one more timeline run over it.
+
+A [lifecycle](#enter-and-exit-an-element-arriving-staying-and-leaving) is staggered by its own `entered` instead: rows arriving one after another are `Animation.all` of lifecycles entered at each row's index times the delay. Its `leave` and `gone` take the host's clock, so it has to stay on that clock, not move onto one shifted by its index.
+
+No container knows that a stagger exists. A `Group`, a `Table`'s rows, a `Tree`'s children and a `Layout`'s panes take the children's frames the way they take any renderables, through `Animation.map`, and the frame drawn with `frameAt` says when it changes as the stagger does:
+
+```typescript
+import { Animation, Group, RichText, Timeline, beat, frameAt } from "@promptctl/rich-js";
+
+const steps = ["resolving dependencies", "compiling 214 modules", "bundling the browser build"];
+// Lit for half a second, dim for a second, looping: half a second apart, the light walks down the list.
+const lit = steps.map((step) => Animation.map(beat([0.5, 1]), (hold) => new RichText(step, { style: hold === 0 ? "bold cyan" : "dim" })));
+const log = Animation.map(Timeline.stagger(lit, 0.5), (frames) => new Group(...frames));
+
+for (const t of [0.2, 0.7, 1.2]) {
+  const next = log.nextChange(t);
+  console.print(frameAt(log, t));
+  console.print(`t=${t}s  next change at ${next}s`);
+}
+```
 
 ## Playing in a Live or an App
 
