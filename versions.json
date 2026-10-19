@@ -4,15 +4,22 @@
     {
       "version": "pr-488",
       "ref": "refs/pull/488/merge",
-      "sha": "f49d42b9c956f27f4f52b28c55f28256fbe5d5c3",
-      "timestamp": "2026-10-19T17:56:35.705Z",
+      "sha": "0f8c925aaf3d780f3c19192a0f41e3680df78bfa",
+      "timestamp": "2026-10-19T18:03:19.309Z",
       "commits": [
         {
-          "sha": "f49d42b9c956f27f4f52b28c55f28256fbe5d5c3",
+          "sha": "0f8c925aaf3d780f3c19192a0f41e3680df78bfa",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T17:54:39Z",
-          "message": "Merge 25d707e3456123bd1243e181b311a27bbc64b693 into 69219f4b28141b668966b8cba625d70c65ae88b3\n"
+          "timestamp": "2026-10-19T18:01:34Z",
+          "message": "Merge 09efcdb43927a20b0826b7bbd230f2b4f371b16e into 69219f4b28141b668966b8cba625d70c65ae88b3\n"
+        },
+        {
+          "sha": "09efcdb43927a20b0826b7bbd230f2b4f371b16e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T12:01:28-06:00",
+          "message": "A scroll keeps a cell-less frame's change stamp left of its window; the demo's slide comes from the left as it says (rich-animation-42lg.re8)\n\nReview (medium) of PR #488.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "25d707e3456123bd1243e181b311a27bbc64b693",
