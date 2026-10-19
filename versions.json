@@ -4,15 +4,22 @@
     {
       "version": "pr-492",
       "ref": "refs/pull/492/merge",
-      "sha": "d8a10f542e838398995bff1fc4d38fb2a58870af",
-      "timestamp": "2026-10-19T22:47:27.607Z",
+      "sha": "c4ebb9f1dc79951c3ed8a64784093e825fee5b49",
+      "timestamp": "2026-10-19T23:09:16.172Z",
       "commits": [
         {
-          "sha": "d8a10f542e838398995bff1fc4d38fb2a58870af",
+          "sha": "c4ebb9f1dc79951c3ed8a64784093e825fee5b49",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T16:45:47-06:00",
-          "message": "Merge 244afe4c1f85ad7a03e3d9cb6bc16ebb9e8738ec into f772ebd134433012ebb20badeb5560e1d6e6a46e\n"
+          "timestamp": "2026-10-19T23:07:15Z",
+          "message": "Merge 1cb918c2310eb1254c2fef7da0b61b24560a128a into f772ebd134433012ebb20badeb5560e1d6e6a46e\n"
+        },
+        {
+          "sha": "1cb918c2310eb1254c2fef7da0b61b24560a128a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T17:07:10-06:00",
+          "message": "Reduced motion keeps content on time: an animation reduced is an animation (rich-animation-42lg.a38)\n\nThe high review of #492 showed a time-free rest() cannot say when content\nshows: a lifecycle told to leave later drew as already gone, and a function\nview pinned at view(0) froze the lifecycle demo on its first line.\nAnimation<T>.rest(): T becomes reduced(): Animation<T> — the motion taken\nout, what shows and when kept. Function views are asked at the real t.\n\nAlso: a reduced sequence wakes nothing at its switch; drawView's since-when\nreads the reduced animation, so a reversed timeline is never told to look\nagain; renderToString takes reducedMotion; one finiteTime refusal in\ncore/easing serves every \"needs a finite t\".\n"
         },
         {
           "sha": "244afe4c1f85ad7a03e3d9cb6bc16ebb9e8738ec",
