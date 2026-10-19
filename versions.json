@@ -2,39 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-482",
-      "ref": "refs/pull/482/merge",
-      "sha": "97a2a190de11679f6c80534a7759b77d4502a26b",
-      "timestamp": "2026-10-19T12:12:45.577Z",
-      "commits": [
-        {
-          "sha": "97a2a190de11679f6c80534a7759b77d4502a26b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T06:10:47-06:00",
-          "message": "Merge 55701de48512516df3128b3185f88b250ff0aa78 into e53ed2bfba9d380397076a0cc9f7280a683fe591\n"
-        },
-        {
-          "sha": "55701de48512516df3128b3185f88b250ff0aa78",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T06:10:39-06:00",
-          "message": "Text strips the bidi controls that open a direction state, so content cannot reverse the rest of its line (0.24.1)\n\nU+202A-U+202E (embeddings, overrides) and U+2066-U+2069 (isolates) join the C0 set in stripControlChars, the one sanitizer every Text passes. An unclosed U+202E in content reversed whatever the terminal drew after it on the line; cc-candybar measured one in a lit ticket description reaching the bar (brandon-unfiled-3248.qum). The marks (LRM, RLM, ALM) open no state and pass.\n"
-        }
-      ]
-    },
-    {
       "version": "pr-481",
       "ref": "refs/pull/481/merge",
-      "sha": "f9223c6e3d37eda16568a9588a8f6b6098d50799",
-      "timestamp": "2026-10-19T12:04:28.061Z",
+      "sha": "f78c7e433b97bc0afad96df2f5a51ba5d666b703",
+      "timestamp": "2026-10-19T12:21:14.282Z",
       "commits": [
         {
-          "sha": "f9223c6e3d37eda16568a9588a8f6b6098d50799",
+          "sha": "f78c7e433b97bc0afad96df2f5a51ba5d666b703",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T12:03:02Z",
-          "message": "Merge 4b95ec7830efae016b16ed8f8f34d873bf4a709b into e53ed2bfba9d380397076a0cc9f7280a683fe591\n"
+          "timestamp": "2026-10-19T12:19:54Z",
+          "message": "Merge a06bf9d0af50e29ab4631e897a907ce19bb79104 into e53ed2bfba9d380397076a0cc9f7280a683fe591\n"
+        },
+        {
+          "sha": "a06bf9d0af50e29ab4631e897a907ce19bb79104",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T06:19:42-06:00",
+          "message": "A renderable view is off the timeline; the default timeline starts when the host is made (rich-animation-42lg.04v)\n\nReview fixes: a renderable's cell stamps are read on the host's clock and\npausing holds none of it; a paused timeline stops an App's animate() ticking\nas it stops a Live; systemClock().at waits out a hold longer than a timer\nholds instead of throwing; docs say a Live draws at its rate throughout and\nan App's rate does not cap a held frame's wake; view is in CLAUDE.md's tiers.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "4b95ec7830efae016b16ed8f8f34d873bf4a709b",
@@ -56,6 +41,28 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-19T05:53:44-06:00",
           "message": "WIP: Live and App draw a View through a Timeline and wake on the frame's next change (rich-animation-42lg.04v)\n\nSource only; lint green, tests not yet run or written, docs untouched.\n"
+        }
+      ]
+    },
+    {
+      "version": "pr-482",
+      "ref": "refs/pull/482/merge",
+      "sha": "97a2a190de11679f6c80534a7759b77d4502a26b",
+      "timestamp": "2026-10-19T12:12:45.577Z",
+      "commits": [
+        {
+          "sha": "97a2a190de11679f6c80534a7759b77d4502a26b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T06:10:47-06:00",
+          "message": "Merge 55701de48512516df3128b3185f88b250ff0aa78 into e53ed2bfba9d380397076a0cc9f7280a683fe591\n"
+        },
+        {
+          "sha": "55701de48512516df3128b3185f88b250ff0aa78",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T06:10:39-06:00",
+          "message": "Text strips the bidi controls that open a direction state, so content cannot reverse the rest of its line (0.24.1)\n\nU+202A-U+202E (embeddings, overrides) and U+2066-U+2069 (isolates) join the C0 set in stripControlChars, the one sanitizer every Text passes. An unclosed U+202E in content reversed whatever the terminal drew after it on the line; cc-candybar measured one in a lit ticket description reaching the bar (brandon-unfiled-3248.qum). The marks (LRM, RLM, ALM) open no state and pass.\n"
         }
       ]
     },
