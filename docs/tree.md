@@ -53,7 +53,7 @@ console.print(tree);
 
 This is the key power — any renderable can be a node label, not just strings.
 
-A label that draws nothing, such as an [element](/animation#enter-and-exit-an-element-arriving-staying-and-leaving) that has not arrived yet or is already gone, gets no row. It also takes no place among its siblings, so the branch ends at the last child that draws a row. Rich ends the branch at the last child in the list, whatever it draws, so there a fork can lead to nothing.
+A label that draws nothing, such as an [element](/animation#enter-and-exit-an-element-arriving-staying-and-leaving) that has not arrived yet or is already gone, gets no row. A child whose subtree draws no row at all also takes no place among its siblings, so the branch ends at the last child that draws a row; one whose own label draws nothing keeps its place for the children beneath it that do. Rich ends the branch at the last child in the list, whatever it draws, so there a fork can lead to nothing.
 
 ## Styles
 

@@ -306,6 +306,23 @@ describe("Segment.filterControl()", () => {
   });
 });
 
+// --- Segment.splitRows() ---
+
+describe("Segment.splitRows()", () => {
+  const carrier = Segment.carrier(new Style({ nextChange: 3 }));
+
+  it("draws no row for output of nothing, or of nothing but carriers, and passes the carriers on", () => {
+    expect(Segment.splitRows([])).toEqual({ lines: [], carriers: [] });
+    expect(Segment.splitRows([carrier, carrier])).toEqual({ lines: [], carriers: [carrier, carrier] });
+  });
+
+  it("cuts any other output as splitLines does, its carriers kept on the rows", () => {
+    const segments = [carrier, new Segment("a\nb")];
+    expect(Segment.splitRows(segments)).toEqual({ lines: Segment.splitLines(segments), carriers: [] });
+    expect(Segment.splitRows([new Segment("")]).lines).toHaveLength(1);
+  });
+});
+
 // --- Segment.splitLines() ---
 
 describe("Segment.splitLines()", () => {

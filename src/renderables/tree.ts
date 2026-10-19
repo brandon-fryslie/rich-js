@@ -87,6 +87,9 @@ type Drawn = Readonly<ReturnType<typeof Segment.splitRows>>;
 /** What a label drew when nothing was drawn. */
 const NOTHING_DRAWN: Drawn = { lines: [], carriers: [] };
 
+/** A row a label is known to draw, unread. */
+const A_ROW: Drawn = { lines: [[]], carriers: [] };
+
 /**
  * A label drawn for its place in the tree: under `styles`, the stack its row
  * resolves, with `columns` of guide before it. The walk is handed one, so
@@ -309,27 +312,23 @@ export class Tree implements Renderable, Measurable, Composite {
     // The widest row the walk emits, not the offer. Reported as the offer, a
     // tree told any parent that asked "I want all of it" — so `Panel` in fit
     // mode drew a 40-cell frame around nine cells of tree, and an unbounded
-    // offer came back unbounded. A row the walk does not draw wants nothing,
-    // and whether a label draws a row is asked at the width it wants, no more
-    // than the offer leaves it: the width the tree, drawn at what this
-    // reports, hands it. A label wants at least one column, as its row does,
-    // because under one column nothing draws — a label of no width included.
-    // A label with no width of its own under no offer cannot be asked at any
-    // width; it takes its row, and the tree reports the unbounded width
-    // `withBoundedWidth` refuses by name.
+    // offer came back unbounded. A row the walk does not draw wants nothing.
+    // A label that wants cells draws them, so only one that wants none can
+    // draw no row, and only that one is drawn to ask — in the one column it
+    // wants, as its row does, because under one column nothing draws. A label
+    // of no width that does draw is a blank row, as wide as its guides and that
+    // column: the width the tree, drawn at what this reports, hands it.
     const widths = new Map<Renderable, number>();
     const widthOf = (label: Renderable): number => {
-      const width = widths.get(label) ?? Math.max(1, labelWidth(parsed, label));
+      const width = widths.get(label) ?? labelWidth(parsed, label);
       widths.set(label, width);
       return width;
     };
-    const draw: DrawLabel = (label, _styles, columns) => {
-      const width = Math.min(labelRoom(parsed, columns), widthOf(label));
-      return Number.isFinite(width) ? Segment.splitRows([...drawLabel(parsed, label, width)]) : { lines: [[]], carriers: [] };
-    };
+    const draw: DrawLabel = (label, _styles, columns) =>
+      widthOf(label) > 0 ? A_ROW : Segment.splitRows([...drawLabel(parsed, label, Math.min(labelRoom(parsed, columns), 1))]);
     let natural = 0;
     for (const row of this._walk(draw).filter(isDrawn)) {
-      natural = Math.max(natural, row.guides.length * GUIDE_CELLS + widthOf(row.label));
+      natural = Math.max(natural, row.guides.length * GUIDE_CELLS + Math.max(1, widthOf(row.label)));
     }
 
     const maximum = Math.min(natural, ceiling);

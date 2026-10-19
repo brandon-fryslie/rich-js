@@ -262,9 +262,9 @@ export class Segment {
 
   /**
    * `segments` cut into the rows they draw, as `splitLines` cuts them — but
-   * output of nothing but carriers, which `splitLines` has no earlier row to
-   * join to, is no row at all, and its carriers come back beside the rows to
-   * be passed on. For a container whose child may take no place: a frame of no
+   * output of nothing, or of nothing but carriers, which `splitLines` has no
+   * earlier row to join to, is no row at all, and its carriers come back
+   * beside the rows to be passed on. For a container whose child may take no place: a frame of no
    * cells still says when it changes, as a lifecycle not yet entered does.
    */
   static splitRows(segments: Segment[]): { lines: Segment[][]; carriers: Segment[] } {
