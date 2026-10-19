@@ -4,15 +4,22 @@
     {
       "version": "pr-484",
       "ref": "refs/pull/484/merge",
-      "sha": "7ae02a7a7a3786c7067fb704909e0b7271b3d1fd",
-      "timestamp": "2026-10-19T14:27:36.632Z",
+      "sha": "550d75693608f52a489d9dbe66e8912a8cd9e8ec",
+      "timestamp": "2026-10-19T14:38:42.522Z",
       "commits": [
         {
-          "sha": "7ae02a7a7a3786c7067fb704909e0b7271b3d1fd",
+          "sha": "550d75693608f52a489d9dbe66e8912a8cd9e8ec",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T08:26:16-06:00",
-          "message": "Merge c51e6a1f67ae6694bf533219807d27e4f89c0068 into 427530527fc3b4060986eb7ed76aefe8f7e963b4\n"
+          "timestamp": "2026-10-19T14:36:42Z",
+          "message": "Merge 8149ac3415d187d9a0e8d931c487b34ad53e55cd into 427530527fc3b4060986eb7ed76aefe8f7e963b4\n"
+        },
+        {
+          "sha": "8149ac3415d187d9a0e8d931c487b34ad53e55cd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T08:36:37-06:00",
+          "message": "An effect moves only the attributes a look names (review: rich-animation-42lg.0wr)\n\nwithAttributes reads ATTRIBUTE_NAMES off its argument; Effected picks the\nlook's attributes through cellAttributes, the one place reverse is left out,\nand skips the extra Style when a run's attributes are the segment's own.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "c51e6a1f67ae6694bf533219807d27e4f89c0068",
