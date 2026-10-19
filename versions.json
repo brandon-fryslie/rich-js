@@ -4,15 +4,22 @@
     {
       "version": "pr-484",
       "ref": "refs/pull/484/merge",
-      "sha": "550d75693608f52a489d9dbe66e8912a8cd9e8ec",
-      "timestamp": "2026-10-19T14:38:42.522Z",
+      "sha": "5a9c4f199d80e3e6d6fb669600f54b92c5aa060f",
+      "timestamp": "2026-10-19T14:43:04.067Z",
       "commits": [
         {
-          "sha": "550d75693608f52a489d9dbe66e8912a8cd9e8ec",
+          "sha": "5a9c4f199d80e3e6d6fb669600f54b92c5aa060f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T14:36:42Z",
-          "message": "Merge 8149ac3415d187d9a0e8d931c487b34ad53e55cd into 427530527fc3b4060986eb7ed76aefe8f7e963b4\n"
+          "timestamp": "2026-10-19T14:41:10Z",
+          "message": "Merge 737de8564f71c8b73ad139bab7ac76a480dd1353 into 427530527fc3b4060986eb7ed76aefe8f7e963b4\n"
+        },
+        {
+          "sha": "737de8564f71c8b73ad139bab7ac76a480dd1353",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T08:41:04-06:00",
+          "message": "A frame that returns no attributes is refused, naming the look it owes (review: rich-animation-42lg.0wr)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "8149ac3415d187d9a0e8d931c487b34ad53e55cd",
