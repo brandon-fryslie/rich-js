@@ -30,6 +30,10 @@ export enum ControlType {
 
 export type ControlCode = [ControlType, ...unknown[]];
 
+/** A cell of no width that says nothing but when its frame changes: no text, no control, a style that is a bare stamp. */
+const isCarrier = (segment: Segment): boolean =>
+  !segment.isControl && segment.text === "" && segment.style !== undefined && segment.style.equals(new Style({ nextChange: segment.style.nextChange }));
+
 // --- Segment ---
 
 export class Segment {
@@ -233,9 +237,15 @@ export class Segment {
       }
     }
 
-    if (currentLine.length > 0) {
-      lines.push(currentLine);
-    }
+    // A run after the last break of nothing but carriers — cells of no width
+    // whose style says only when their frame changes (`Style.nextChange`) — is
+    // no row: it joins the line the break ended. A carrier cannot see the
+    // break drawn before it, so whether it opens a row is decided here, once.
+    // An empty piece of text is a row, as Rich's `split_lines` has it: its
+    // style is the text's, or none, never a bare stamp.
+    const last = lines[lines.length - 1];
+    if (last !== undefined && currentLine.every(isCarrier)) last.push(...currentLine);
+    else if (currentLine.length > 0) lines.push(currentLine);
 
     return lines;
   }

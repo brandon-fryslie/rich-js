@@ -41,7 +41,7 @@
  * its author doing anything.
  */
 
-import { firstReaching, positiveSeconds } from "./easing.js";
+import { firstReaching, positiveSeconds, type Beat } from "./easing.js";
 
 /** A value of `T` at a time in seconds, and the first moment that value may change. */
 export interface Animation<T> {
@@ -87,6 +87,35 @@ export const Animation = {
       at: (t) => animations.map((animation: Animation<unknown>) => animation.at(t)) as unknown as T,
       nextChange: (t) => Math.min(...animations.map((animation) => animation.nextChange(t))),
       lastChange: (t) => Math.max(...animations.map((animation) => animation.lastChange(t))),
+    };
+  },
+
+  /**
+   * `animation` sampled once a hold of `beat`: within a hold, its value at
+   * the hold's start, and at each hold's start it moves on. It changes at the
+   * first hold's start the sampled animation has moved by: the end of this
+   * hold for one that moves every moment, the hold its next change falls in
+   * for one that holds longer, and never for one that never changes again.
+   * The answer is read off what the animation says, never a comparison of
+   * values, so one that is back on the same value by the next hold still
+   * turns the beat there, an early answer the contract allows.
+   * [LAW:one-source-of-truth] The one stepping rule, for an effect's frames
+   * and a transition's schedule alike.
+   */
+  onBeat<T>(animation: Animation<T>, beat: Beat): Animation<T> {
+    return {
+      at: (t) => animation.at(beat.lastChange(t)),
+      nextChange(t) {
+        const moved = animation.nextChange(beat.lastChange(t));
+        if (moved === Number.POSITIVE_INFINITY) return moved;
+        const end = beat.nextChange(t);
+        // The hold boundaries after `t` are `end`, then each hold's end in turn;
+        // the value turns at the first one the animation has moved by.
+        return moved <= end ? end : beat.lastChange(moved) === moved ? moved : beat.nextChange(moved);
+      },
+      // The value held now began at this hold's start at the latest: an early
+      // answer where the animation had not moved by it, which the contract allows.
+      lastChange: (t) => beat.lastChange(t),
     };
   },
 

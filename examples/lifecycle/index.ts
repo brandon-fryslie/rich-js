@@ -9,7 +9,7 @@
  * nothing from then on.
  */
 
-import { CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, dissolveOut, fadeIn, lifecycle, type Lifecycle, type Renderable } from "../../src/index.js";
+import { CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, dissolveOut, fadeIn, frameAt, lifecycle, type Lifecycle, type Renderable } from "../../src/index.js";
 
 const EVERY = 1.2;
 const STAYS = 4;
@@ -40,7 +40,7 @@ function view(t: number): Renderable {
   // Append every line due by `t`, and drop every line gone by it.
   for (; next * EVERY <= t; next++) log.push(appended(next, next * EVERY));
   log = log.filter((line) => !line.gone(t));
-  return new Panel(new Group(...log.map((line) => line.at(t))), { title: `build log · ${log.length} shown`, width: 44, borderStyle: "#585b70" });
+  return new Panel(new Group(...log.map((line) => frameAt(line, t))), { title: `build log · ${log.length} shown`, width: 44, borderStyle: "#585b70" });
 }
 
 const live = new Live(view, { refreshPerSecond: 30 });

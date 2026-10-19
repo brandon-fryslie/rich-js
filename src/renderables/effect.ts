@@ -46,7 +46,7 @@
  * - A cell whose colours come back unchanged keeps its original `ColorSpec`,
  *   one whose attributes come back as its style set them keeps them, and a
  *   segment whose every cell is unchanged is yielded with its look as
- *   it was, so the identity effect is byte-identical; what it gains is when
+ *   it was, so the identity effect is byte-identical; what an `Effected` gains is when
  *   the frame next changes (`Style.nextChange`), which writes no byte.
  *   Neighbouring cells the output depth
  *   writes alike stay one segment: a segment is cut only where the written
@@ -66,7 +66,6 @@ import { drawnBy, shiftAnchor, type Anchor } from "../core/anchor.js";
 import { Animation } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK, type ColorRgba, type TerminalTheme } from "../core/color.js";
-import type { Beat } from "../core/easing.js";
 import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
 import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
@@ -74,6 +73,7 @@ import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { JOIN, colorsOwnedBy } from "../core/strip.js";
 import { ATTRIBUTE_NAMES, Style, type AttributeName, type Attributes } from "../core/style.js";
+import { stampFrame } from "./frames.js";
 
 /**
  * A cell's foreground and background as they appear on screen — the glyph's
@@ -209,7 +209,21 @@ export interface EffectedOptions {
   readonly theme: TerminalTheme;
 }
 
-export class Effected implements Renderable, Measurable, Composite {
+/** A frame an effect drew at a moment, and when the effect says it next changes there. */
+interface Moved {
+  readonly segments: Iterable<Segment>;
+  readonly nextChange: number;
+}
+
+/**
+ * `renderable` with its cells' looks passed through `effect` at `t`, saying
+ * nothing of when that changes: the frame an animation's `at` hands over,
+ * whose `t` is a time the animation may have mapped — a lifecycle's time
+ * since it entered — and whose change reaches the host through the
+ * animation's own `nextChange`. [LAW:one-type-per-behavior] Drawn at a draw
+ * site's `t` instead, it is an `Effected`.
+ */
+export class Recolored implements Renderable, Measurable, Composite {
   readonly t: number;
   readonly key: string;
   readonly theme: TerminalTheme;
@@ -228,18 +242,19 @@ export class Effected implements Renderable, Measurable, Composite {
   }
 
   render(options: RenderOptions): Iterable<Segment> {
-    const segments = render(this.renderable, options);
-    // With no colour output nothing the effect does is written, so the child
-    // is what is shown, and it changes when the child says it does.
-    if (options.colorSystem === null) return segments;
-    return this._moved(segments, options);
+    return this.moved(options).segments;
   }
 
   *contents(): Iterable<Renderable> {
     yield this.renderable;
   }
 
-  private *_moved(segments: Iterable<Segment>, options: RenderOptions): Iterable<Segment> {
+  /** The frame the effect draws at `t`, and when it says that next changes. */
+  protected moved(options: RenderOptions): Moved {
+    const segments = render(this.renderable, options);
+    // With no colour output nothing the effect does is written, so the child
+    // is what is shown, and it changes when the child says it does.
+    if (options.colorSystem === null) return { segments, nextChange: Number.POSITIVE_INFINITY };
     // No depth named is no downgrade, as `drawnColors` reads it.
     const depth = options.colorSystem ?? ColorDepth.TRUECOLOR;
     // [LAW:one-source-of-truth] The frame is measured before any cell is
@@ -248,9 +263,7 @@ export class Effected implements Renderable, Measurable, Composite {
     const looked = looks(segments, depth, this.theme);
     const walked = walk(looked);
     const animation = this.effect(measured(looked, () => walked, depth, this.theme));
-    // What the effect draws at `t` is drawn until its next change, and the
-    // cells say so, under whatever the child already said (the sooner wins).
-    yield* Segment.applyStyle(this._recolored(walked, animation.at(this.t), depth), new Style({ nextChange: animation.nextChange(this.t) }));
+    return { segments: this._recolored(walked, animation.at(this.t), depth), nextChange: animation.nextChange(this.t) };
   }
 
   private *_recolored(walked: readonly Walked[], frame: EffectFrame, depth: ColorDepth): Iterable<Segment> {
@@ -323,7 +336,20 @@ export class Effected implements Renderable, Measurable, Composite {
     const moved = movedSpecs(from, to, depth, this.theme);
     return { color: moved.fg ?? wire.color, bgcolor: moved.bg ?? wire.bgcolor };
   }
+}
 
+/**
+ * A `Recolored` drawn at the draw site's `t`, its cells saying when the
+ * effect's frame next changes there (`stampFrame`), under whatever the child
+ * already said: what a host drawing it for that `t` — a function view —
+ * wakes on. The answer is made from what the element draws, so a loop that
+ * holds still at the output's depth says it never changes there.
+ */
+export class Effected extends Recolored {
+  override render(options: RenderOptions): Iterable<Segment> {
+    const { segments, nextChange } = this.moved(options);
+    return stampFrame(segments, nextChange);
+  }
 }
 
 /**
@@ -460,44 +486,6 @@ function measured(looked: readonly Looked[], walked: () => readonly Walked[], de
     fills: new Set(own("bg")),
     depth,
     theme,
-  };
-}
-
-/**
- * `effect` sampled and held on `beat`: drawn at the moment the hold in
- * progress began (`Beat.lastChange`), so within a hold every frame is the frame
- * at its start, and at each hold's start it moves on. A continuous effect
- * given a short curve becomes one that steps — a `wheel` turning a sixth of
- * a turn once a second — and at one redraw a second a hold shorter than a
- * second is skipped, as frames are. [LAW:no-ambient-temporal-coupling] The
- * held time is a function of `t`, so the same `t` draws the same bytes at
- * any rate. The frame next changes at a hold's start, and only one the
- * sampled effect has moved by: the first hold start at or after what it
- * answers for the frame held now (`Beat.nextChange`). An effect that moves
- * every frame makes the beat's own answer, the end of this hold; one that is
- * done and says never leaves the beat saying never too, since the hold after
- * this one would draw the same frame. The answer is read off what the effect
- * says, never off a comparison of frames: an effect that steps and is back
- * on the same colour by the next hold still turns the beat there, an early
- * answer the contract allows.
- */
-export function onBeat(effect: Effect, beat: Beat): Effect {
-  return (drawn) => {
-    const sampled = effect(drawn);
-    return {
-      at: (t) => sampled.at(beat.lastChange(t)),
-      nextChange(t) {
-        const moved = sampled.nextChange(beat.lastChange(t));
-        if (moved === Number.POSITIVE_INFINITY) return moved;
-        const end = beat.nextChange(t);
-        // The hold boundaries after `t` are `end`, then each hold's end in turn;
-        // the frame turns at the first one the effect has moved by.
-        return moved <= end ? end : beat.lastChange(moved) === moved ? moved : beat.nextChange(moved);
-      },
-      // The frame held now began at this hold's start at the latest: an early
-      // answer where the effect had not moved by it, which the contract allows.
-      lastChange: (t) => beat.lastChange(t),
-    };
   };
 }
 

@@ -10,6 +10,7 @@ import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
 import { dissolveOut, fadeIn } from "../../src/renderables/effects.js";
+import { frameAt } from "../../src/renderables/frames.js";
 import { Group } from "../../src/renderables/group.js";
 import { Live } from "../../src/renderables/live.js";
 import { lifecycle, type Lifecycle } from "../../src/renderables/lifecycle.js";
@@ -44,19 +45,19 @@ describe("a lifecycle", () => {
   it("draws nothing before it entered, moves while it arrives, is the element while it stays, moves while it leaves, then draws nothing", () => {
     const life = made().leave(5);
     const said = (t: number) => [life.lastChange(t), life.nextChange(t)];
-    expect(text(draw(life.at(0.5)))).toBe("");
+    expect(text(draw(frameAt(life, 0.5)))).toBe("");
     expect(said(0.5)).toEqual([Number.NEGATIVE_INFINITY, 1]);
     for (const t of [1, 2, 2.9]) expect(said(t)).toEqual([t, t]);
     for (const t of [3, 4, 4.9]) {
       expect(said(t)).toEqual([3, 5]);
-      expect(bytes(draw(life.at(t)))).toBe(bytes(draw(line)));
-      expect(Segment.nextChange(draw(life.at(t)))).toBe(5);
+      expect(bytes(draw(frameAt(life, t)))).toBe(bytes(draw(line)));
+      expect(Segment.nextChange(draw(frameAt(life, t)))).toBe(5);
     }
     for (const t of [5, 6, 6.9]) expect(said(t)).toEqual([t, t]);
     for (const t of [7, 100]) {
       expect(said(t)).toEqual([7, Number.POSITIVE_INFINITY]);
-      expect(bytes(draw(life.at(t)))).toBe("");
-      expect(Measurement.get(OPTIONS, life.at(t))).toEqual(new Measurement(0, 0));
+      expect(bytes(draw(frameAt(life, t)))).toBe("");
+      expect(Measurement.get(OPTIONS, frameAt(life, t))).toEqual(new Measurement(0, 0));
     }
   });
 
@@ -86,8 +87,8 @@ describe("a lifecycle", () => {
       const goneAt = life.lastChange(left + 10);
       const before = below(goneAt);
       expect([life.gone(before), life.gone(goneAt)]).toEqual([false, true]);
-      expect(bytes(draw(life.at(goneAt)))).toBe("");
-      expect(bytes(draw(life.at(before)))).not.toBe("");
+      expect(bytes(draw(frameAt(life, goneAt)))).toBe("");
+      expect(bytes(draw(frameAt(life, before)))).not.toBe("");
       expect([life.nextChange(before), life.nextChange(goneAt)]).toEqual([before, Number.POSITIVE_INFINITY]);
     }
   });
@@ -103,16 +104,16 @@ describe("a lifecycle", () => {
 
   it("with no colour output, still says it moves while it leaves and that it is gone after", () => {
     const life = made().leave(5);
-    expect(text(draw(life.at(4), PLAIN))).toBe(`${line.plain}\n`);
-    for (const t of [5, 6, 6.9]) expect(Segment.nextChange(draw(life.at(t), PLAIN))).toBe(t);
-    expect(text(draw(life.at(7), PLAIN))).toBe("");
-    expect(Segment.nextChange(draw(life.at(7), PLAIN))).toBe(Number.POSITIVE_INFINITY);
+    expect(text(draw(frameAt(life, 4), PLAIN))).toBe(`${line.plain}\n`);
+    for (const t of [5, 6, 6.9]) expect(Segment.nextChange(draw(frameAt(life, t), PLAIN))).toBe(t);
+    expect(text(draw(frameAt(life, 7), PLAIN))).toBe("");
+    expect(Segment.nextChange(draw(frameAt(life, 7), PLAIN))).toBe(Number.POSITIVE_INFINITY);
   });
 
   it("before it entered draws no byte, yet its frame says when it enters, so a function view wakes for it", () => {
     const life = made().leave(5);
     for (const options of [OPTIONS, PLAIN]) {
-      const drawn = draw(new Group(life.at(0.5)), options);
+      const drawn = draw(new Group(frameAt(life, 0.5)), options);
       expect(bytes(drawn)).toBe("");
       expect(Segment.nextChange(drawn)).toBe(1);
     }

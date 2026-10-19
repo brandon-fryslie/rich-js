@@ -110,7 +110,7 @@ To move every item but one, name all the others in one call: `confined(onColors(
 
 ### A transition says when it is done
 
-`fadeIn` and `dissolveOut` return a `Transition`: the `effect` to draw, and `done(t)`, true from the moment every cell has arrived or gone, its curve's `seconds` after it began. The order is spread over the cells the element shows something in, so on any element, and under `confined` on one item of many, the first cell starts at 0 and the last settles at `seconds`. A cell's start is settled in the first frame that lists it, so make one transition for each element: if an element gains cells as it moves, only the new ones are spread over the order it has then, and a cell that has gone never comes back. A caller stops drawing an element that has dissolved, or drops the effect from one that has faded in, when `done` says so:
+`fadeIn` and `dissolveOut` return a `Transition`: the `effect` to draw, its `schedule` — an [animation](/animation) of when its frame next changes, whatever the element draws — and `done(t)`, read off that schedule: true from the moment it never changes again, when every cell has arrived or gone, its curve's `seconds` after it began. The order is spread over the cells the element shows something in, so on any element, and under `confined` on one item of many, the first cell starts at 0 and the last settles at `seconds`. A cell's start is settled in the first frame that lists it, so make one transition for each element: if an element gains cells as it moves, only the new ones are spread over the order it has then, and a cell that has gone never comes back. A caller stops drawing an element that has dissolved, or drops the effect from one that has faded in, when `done` says so:
 
 ```typescript
 import { EFFECT_CATALOGUE } from "@promptctl/rich-js";
@@ -174,6 +174,8 @@ To watch a gradient move on a rule and a panel border, run `npm run gradient-eff
 ### Sampled on a beat
 
 `onBeat(effect, beat)` samples any effect once a hold: within a hold it draws the frame at the hold's start, and at each hold's start it moves on. A `wheel` given a short curve and sampled once a second becomes a hue walk that turns a step at a time; sampled sixty times a second it still turns once a second, since the beat is seconds. At one redraw a second a hold shorter than a second is skipped, as a frame is. The frame [next changes](/frames#when-the-frame-next-changes) at a hold's start, the first one the sampled effect has moved by: an effect that moves every frame turns the beat at the end of this hold, one whose next step falls two holds on turns it there, and one that is done and says never leaves the beat saying never.
+
+`onBeat(transition, beat)` steps a transition the same way, its schedule with it: `onBeat(fadeIn(curve, 0), beat([0.25]))` fades in a quarter of a second at a time and is done at the first hold that starts once the fade is, so an element [arriving](/animation#enter-and-exit-an-element-arriving-staying-and-leaving) through it wakes its host on the quarters, not every frame.
 
 ```typescript
 import { CATPPUCCIN_MOCHA, EASES, EFFECT_CATALOGUE, Effected, RichText, Style, beat, onBeat } from "@promptctl/rich-js";

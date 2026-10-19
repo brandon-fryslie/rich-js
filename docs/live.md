@@ -153,13 +153,13 @@ try {
 
 ## A view drawn for a time
 
-Nothing a `Live` draws reads a clock. In place of a renderable, hand it a view — a function asked for the renderable once per frame with the frame's time `t`, in seconds on the `Live`'s clock — and whatever is drawn for a time — a [`Spinner`](/frames#spinners) asked for its frame at it, [`Frames`](/frames) over a sequence the view holds, or an [effect](/effects) built for it — is drawn for that `t`. The same `t` draws the same bytes at four frames a second or sixty, and a `Live` on a hand-moved `Clock` draws the frames for that clock's time:
+Nothing a `Live` draws reads a clock. In place of a renderable, hand it a view — a function asked for the renderable once per frame with the frame's time `t`, in seconds on the `Live`'s clock — and whatever is drawn for a time — a [`Spinner`](/frames#spinners) drawn at it, [`Frames`](/frames) over a sequence the view holds, an [effect](/effects) built for it, or any [animation](/animation) drawn at it with `frameAt` — is drawn for that `t`, its cells saying when it next changes. The same `t` draws the same bytes at four frames a second or sixty, and a `Live` on a hand-moved `Clock` draws the frames for that clock's time:
 
 ```typescript live
 import { Live, Spinner } from "@promptctl/rich-js";
 
 const spinner = new Spinner("dots", "working");
-const live = new Live((t) => spinner.at(t), { refreshPerSecond: 12.5, console });
+const live = new Live((t) => spinner.drawnAt(t), { refreshPerSecond: 12.5, console });
 live.start();
 try {
   await sleep(3000);

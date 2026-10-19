@@ -295,7 +295,7 @@ export type { Env } from "./core/env.js";
 
 // Renderables
 export { Constrain } from "./renderables/constrain.js";
-export { Effected, confined, drawnOf, onBeat } from "./renderables/effect.js";
+export { Effected, confined, drawnOf } from "./renderables/effect.js";
 export type { CellAttributes, CellColors, CellLook, Drawn, Effect, EffectCell, EffectedOptions, EffectFrame, Pair, Placed } from "./renderables/effect.js";
 export {
   ATTRIBUTE_DEFAULTS,
@@ -306,6 +306,7 @@ export {
   dissolveOut,
   fadeIn,
   gradient,
+  onBeat,
   onColors,
   pulse,
   shimmer,

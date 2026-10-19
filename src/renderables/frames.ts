@@ -34,10 +34,19 @@
  * rides up through every container to whoever holds the composed frame
  * (`Segment.nextChange`), so a host drawing at `t` knows when to draw again,
  * and one drawing slower than the frames turn can see that it is skipping
- * them. The stamp is put on by whoever draws the frame at a host time
- * (`frameAt`) — a `Frames`, a `Spinner`, the template `frames` function —
- * and the sequence's `at` hands over the frame alone, because the time a
- * sequence is asked for may be one a `Timeline` mapped from the host's.
+ * them.
+ *
+ * The rule this module owns, for every animation of a renderable: a stamp is
+ * put on only by a renderable built for the time the host draws at, through
+ * `stampFrame` — `frameAt`, a `Frames`, a spinner's `drawnAt`, an `Effected`,
+ * a `GlyphEffected`, the template `frames` function. Nothing an animation's
+ * `at` returns carries a stamp of its own — a sequence's frame, a scroll's,
+ * a change's, a lifecycle's, a spinner's — because the time an animation is
+ * asked for may be one a `Timeline`, an `Animation.sequence` or a lifecycle
+ * mapped from the host's, and a stamp made there would be a moment on a
+ * clock the host cannot read. What such a frame does over time is the
+ * animation's `nextChange`, which every one of those maps carries back.
+ * [LAW:single-enforcer]
  *
  * Every frame is drawn at one width, the widest frame's, each padded on the
  * right to it, so whatever sits beside the frames never moves as they turn;
@@ -55,7 +64,7 @@ import { Measurement } from "../core/measure.js";
 import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
-import { Style } from "../core/style.js";
+import { Style, layerStyle } from "../core/style.js";
 import { RichText } from "../core/text.js";
 import { setIntoLine } from "./embed.js";
 
@@ -132,25 +141,43 @@ export class FrameSequence implements Animation<RichText> {
 export function frameAt(animation: Animation<RichText>, t: number): RichText;
 export function frameAt(animation: Animation<Renderable>, t: number): Renderable;
 export function frameAt(animation: Animation<Renderable>, t: number): Renderable {
-  const stamp = new Style({ nextChange: animation.nextChange(t) });
+  const nextChange = animation.nextChange(t);
   const frame = animation.at(t);
-  return frame instanceof RichText ? frame.copy().stylize(stamp) : new Stamped(frame, stamp);
+  if (!(frame instanceof RichText)) return new Stamped(frame, nextChange);
+  // On the base style, which an empty text still draws as its one piece of no width.
+  const stamped = frame.copy();
+  stamped.style = layerStyle(stamped.style, new Style({ nextChange }));
+  return stamped;
 }
 
 /**
- * A frame drawn with every segment carrying `stamp`. The stamp also rides a
- * cell of no width, which writes no byte, so a frame of no cells — an
- * element not yet entered — still says when it changes.
+ * `segments`, every one carrying `nextChange` under whatever it already said
+ * (the sooner wins). [LAW:single-enforcer] The one place a time is chosen for
+ * drawn cells: whoever calls it was built for the draw site's `t` and hands
+ * its own animation's answer at that `t`. Nothing an animation's `at`
+ * returns calls it — a frame asked for at a time a `Timeline` or a
+ * lifecycle mapped would say a moment on a clock the host cannot read — so
+ * what an animation's frame does over time reaches the host through the
+ * animation's own `nextChange`, which every clock map already carries.
  */
-export class Stamped implements Renderable, Measurable, Composite {
+export function stampFrame(segments: Iterable<Segment>, nextChange: number): Iterable<Segment> {
+  return Segment.applyStyle(segments, new Style({ nextChange }));
+}
+
+/**
+ * An animation's frame drawn at the draw site's `t`, stamped with when it
+ * changes there (`stampFrame`). The stamp also rides a cell of no width that
+ * writes no byte, drawn first, because an animation's frame of no cells — an
+ * element not yet entered — may have cells later, and must say when.
+ */
+class Stamped implements Renderable, Measurable, Composite {
   constructor(
     readonly frame: Renderable,
-    readonly stamp: Style,
+    readonly nextChange: number,
   ) {}
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield new Segment("", this.stamp);
-    yield* Segment.applyStyle(render(this.frame, options), this.stamp);
+    yield* stampFrame([new Segment(""), ...render(this.frame, options)], this.nextChange);
   }
 
   *contents(): Iterable<Renderable> {

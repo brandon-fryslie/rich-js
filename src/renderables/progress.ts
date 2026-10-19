@@ -302,7 +302,7 @@ export class SpinnerColumn implements ProgressColumn {
   // Rich's `self.spinner.render(task.get_time())`: the frame for the time the
   // task is drawn at, which `Progress` read off its clock once for the frame.
   render(task: Task): Renderable {
-    return finished(task) ? this._finishedText : this._spinner.at(task.time);
+    return finished(task) ? this._finishedText : this._spinner.drawnAt(task.time);
   }
 }
 

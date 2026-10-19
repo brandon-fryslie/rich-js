@@ -41,8 +41,8 @@
  *   so the identity effect is byte-identical. A changed segment keeps its
  *   style whole, link, meta and anchor included; no cell has moved, so the
  *   anchor's offsets are still true and hit testing still finds the owner.
- * - Every cell carries when the frame next changes (`Style.nextChange`),
- *   under whatever the child said, as under `Effected`.
+ * - Drawn as a `GlyphEffected`, every cell carries when the frame next changes (`Style.nextChange`),
+ *   under whatever the child said, as under `Effected`; drawn as a `Reglyphed`, inside an animation's `at`, none.
  *
  * Positions are the child's own: row and column count from the top-left of
  * what the child drew.
@@ -54,7 +54,7 @@ import { Measurement } from "../core/measure.js";
 import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
-import { Style } from "../core/style.js";
+import { stampFrame } from "./frames.js";
 import { stripControlChars } from "../core/text.js";
 import { cellSeed, walkGlyphs, type Placed } from "./effect.js";
 
@@ -101,7 +101,13 @@ export interface GlyphEffectedOptions {
   readonly key: string;
 }
 
-export class GlyphEffected implements Renderable, Measurable, Composite {
+/**
+ * `renderable` with its cells' glyphs passed through `effect` at `t`, saying
+ * nothing of when that changes: the frame an animation's `at` hands over, as
+ * a `Recolored` is (`./effect.ts`). [LAW:one-type-per-behavior] Drawn at a
+ * draw site's `t` instead, it is a `GlyphEffected`.
+ */
+export class Reglyphed implements Renderable, Measurable, Composite {
   readonly t: number;
   readonly key: string;
 
@@ -118,6 +124,11 @@ export class GlyphEffected implements Renderable, Measurable, Composite {
   }
 
   render(options: RenderOptions): Iterable<Segment> {
+    return this.moved(options).segments;
+  }
+
+  /** The frame the effect draws at `t`, and when it says that next changes. */
+  protected moved(options: RenderOptions): { readonly segments: Segment[]; readonly nextChange: number } {
     const segments = [...render(this.renderable, options)];
     let index = 0;
     // Each segment's glyphs, each with its cell as the effect is handed it: one walk, one count of reading order.
@@ -132,7 +143,7 @@ export class GlyphEffected implements Renderable, Measurable, Composite {
     const changed = segments.map((segment, i) =>
       shown[i]!.every((text, j) => text === placed[i]![j]!.glyph) ? segment : new Segment(shown[i]!.join(""), segment.style),
     );
-    return Segment.applyStyle(changed, new Style({ nextChange: animation.nextChange(this.t) }));
+    return { segments: changed, nextChange: animation.nextChange(this.t) };
   }
 
   *contents(): Iterable<Renderable> {
@@ -141,6 +152,18 @@ export class GlyphEffected implements Renderable, Measurable, Composite {
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
     return Measurement.get(options, this.renderable);
+  }
+}
+
+/**
+ * A `Reglyphed` drawn at the draw site's `t`, its cells saying when the glyph
+ * effect's frame next changes there (`stampFrame`), under whatever the child
+ * already said, as an `Effected`'s do.
+ */
+export class GlyphEffected extends Reglyphed {
+  override render(options: RenderOptions): Iterable<Segment> {
+    const { segments, nextChange } = this.moved(options);
+    return stampFrame(segments, nextChange);
   }
 }
 

@@ -37,8 +37,9 @@
  * frame at the time the timeline maps the host's to. [LAW:one-source-of-truth]
  * When the frame next changes (`Style.nextChange`) is a time on the host's
  * timeline, and the sequence answers on its own, so the timeline carries the
- * answer back and the drawn cells are stamped with that (`frameAt`), where
- * the host's time is known. Backwards, the frames count down from the last at `t = 0`,
+ * answer back. `at` hands over the frame alone, as every animation's does
+ * (`./frames.ts`); `drawnAt`, drawn where the host's time is known, stamps
+ * the cells with that answer for the frames the output draws. Backwards, the frames count down from the last at `t = 0`,
  * a negative time landing in the last frame of the pass before, where Rich's
  * `int()` truncation holds frame 0 for a first interval and then counts
  * down: a departure, made so a negative speed is the one timeline run
@@ -61,7 +62,7 @@ import type {
 } from "../core/protocol.js";
 import { drawable, render } from "../core/protocol.js";
 import { EmbeddedText } from "./embed.js";
-import { FrameSequence, frameAt } from "./frames.js";
+import { FrameSequence, stampFrame } from "./frames.js";
 
 /** A spinner's frames prepared to draw, each styled and held for the interval, run on the spinner's timeline, and the glyphs they spend. */
 interface Sequence {
@@ -137,14 +138,32 @@ export class Spinner implements Animation<Renderable & Measurable> {
    * the line wrapped to the width and ended, as the reference's `Text` is —
    * printed, stacked in a `Group`, or laid out in a `Progress` cell alike.
    * The frames this output can draw are chosen where the output is known.
+   * The frame says nothing of when it turns — `t` may be a time a timeline
+   * mapped — so drawn at a host time it is `drawnAt`'s, or `frameAt`'s.
    */
   at(t: number): Renderable & Measurable {
+    return this._frame(t, (sequence, options) => this._render(sequence, t, options));
+  }
+
+  /**
+   * The spinner drawn at host time `t`, its cells saying when it turns on the
+   * host's clock (`stampFrame`) — exactly, for the frames the output draws,
+   * where `nextChange` must answer for both and `frameAt` stamps that
+   * earlier answer. What a host drawing a spinner for its own time — a
+   * `Status`, a `Progress` column — hands over.
+   */
+  drawnAt(t: number): Renderable & Measurable {
+    return this._frame(t, (sequence, options) => stampFrame(this._render(sequence, t, options), sequence.played.nextChange(t)));
+  }
+
+  /** The spinner's frame at `t`, drawn by `draw` with the frames the output can draw. */
+  private _frame(t: number, draw: (sequence: Sequence, options: RenderOptions) => Iterable<Segment>): Renderable & Measurable {
     if (!Number.isFinite(t)) {
       throw new RangeError(`Spinner.at needs a finite t, got ${t}`);
     }
     const drawn = (options: RenderOptions): Sequence => drawable(options, this._named, this._ascii, sequenceGlyphs);
     return {
-      render: (options) => this._render(drawn(options), t, options),
+      render: (options) => draw(drawn(options), options),
       // Measured at the frames' one width, the widest frame's, so a column
       // holding it never narrows as it turns, and never offered less than
       // that frame: a frame is one picture, which the reference's `Text`
@@ -186,8 +205,8 @@ export class Spinner implements Animation<Renderable & Measurable> {
    * falsy there.
    */
   private _line(played: Animation<RichText>, t: number, options: RenderOptions): RichText {
-    // The frame's cells say when it turns on the host's clock, the label's keep their own word.
-    const line = new RichText("", { end: "" }).append(frameAt(played, t));
+    // The frame alone, saying nothing of when it turns: whoever draws the spinner at a host time stamps it (`frameAt`).
+    const line = new RichText("", { end: "" }).append(played.at(t));
     // Unhighlighted: Rich's label is a `Text` from the moment it is handed over, and a `Text` is never highlighted.
     const label = new EmbeddedText(this.text).text({ ...options, highlight: false });
     if (label.plain !== "") line.append(" ").append(label);

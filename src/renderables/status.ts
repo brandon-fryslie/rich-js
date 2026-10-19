@@ -36,7 +36,7 @@ export class Status {
       speed: options?.speed,
       style: options?.spinnerStyle ?? "status.spinner",
     });
-    this._live = new Live((t) => this._spinner.at(t), {
+    this._live = new Live((t) => this._spinner.drawnAt(t), {
       console: this._console,
       clock: options?.clock,
       transient: true,
