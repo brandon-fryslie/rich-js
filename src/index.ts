@@ -135,7 +135,7 @@ export {
   NULL_STYLE,
   DEFAULT_STYLES,
 } from "./core/style.js";
-export type { StyleOptions, TextStyle, LayeredStyle } from "./core/style.js";
+export type { Attributes, StyleOptions, TextStyle, LayeredStyle } from "./core/style.js";
 
 export {
   Segment,
@@ -296,11 +296,13 @@ export type { Env } from "./core/env.js";
 // Renderables
 export { Constrain } from "./renderables/constrain.js";
 export { Effected, confined, drawnOf, onBeat } from "./renderables/effect.js";
-export type { CellColors, Drawn, Effect, EffectCell, EffectedOptions, EffectFrame, Pair, Placed } from "./renderables/effect.js";
+export type { CellAttributes, CellColors, CellLook, Drawn, Effect, EffectCell, EffectedOptions, EffectFrame, Pair, Placed } from "./renderables/effect.js";
 export {
+  ATTRIBUTE_DEFAULTS,
   EFFECT_CATALOGUE,
   EFFECT_CURVES,
   EFFECT_LIGHTS,
+  blink,
   dissolveOut,
   fadeIn,
   onColors,
@@ -310,7 +312,7 @@ export {
   steppedInk,
   wheel,
 } from "./renderables/effects.js";
-export type { ColorStep, Curve, EffectTarget, Field, Loop, LoopName, Touch, Transition, TransitionName } from "./renderables/effects.js";
+export type { AttributeLoopName, Blink, ColorStep, Curve, EffectTarget, Field, Loop, LoopName, Touch, Transition, TransitionName } from "./renderables/effects.js";
 export { GlyphEffected } from "./renderables/glyph-effect.js";
 export type { DrawnGlyphs, GlyphCell, GlyphEffect, GlyphEffectedOptions, GlyphFrame } from "./renderables/glyph-effect.js";
 export { GLYPH_DEFAULTS, GLYPH_EFFECT_CATALOGUE, caseWave, particles, scramble, typewriter } from "./renderables/glyph-effects.js";

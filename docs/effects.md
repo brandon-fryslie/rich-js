@@ -1,11 +1,11 @@
 # Effects
 
-An effect changes the colours of a renderable's cells over time: a highlight sweeping through text, a pulse that brightens and dims, a fade. It is an [animation](/animation): given what the whole element draws in a frame, it returns an `Animation` whose value at a time `t` in seconds is a function from each cell's colours and where the cell is to the cell's new colours:
+An effect changes how a renderable's cells look over time: a highlight sweeping through text, a pulse that brightens and dims, a fade, a word that blinks. It is an [animation](/animation): given what the whole element draws in a frame, it returns an `Animation` whose value at a time `t` in seconds is a function from each cell's look and where the cell is to the cell's new look. A look is the cell's colours as the screen shows them, `fg` and `bg`, and its text attributes, `attributes` — bold, dim, italic, underline and the rest, each on, off or unset as the cell's style has it:
 
 ```typescript shape
-import type { Animation, CellColors, Drawn, EffectCell } from "@promptctl/rich-js";
+import type { Animation, CellLook, Drawn, EffectCell } from "@promptctl/rich-js";
 
-type EffectFrame = (colors: CellColors, cell: EffectCell) => CellColors;
+type EffectFrame = (look: CellLook, cell: EffectCell) => CellLook;
 type Effect = (drawn: Drawn) => Animation<EffectFrame>;
 ```
 
@@ -16,10 +16,10 @@ import { Animation, CATPPUCCIN_MOCHA, ColorRgba, Effected, RichText, type Effect
 
 // The ink brightens toward white across one second, then starts again.
 const brighten: Effect = () =>
-  Animation.continuous((t) => ({ fg, bg }) => {
+  Animation.continuous((t) => (look) => {
     const w = t % 1;
     const toward = (c: number): number => Math.round(c + (255 - c) * w);
-    return { fg: new ColorRgba(toward(fg.red), toward(fg.green), toward(fg.blue)), bg };
+    return { ...look, fg: new ColorRgba(toward(look.fg.red), toward(look.fg.green), toward(look.fg.blue)) };
   });
 
 for (const t of [0, 0.5, 0.9]) {
@@ -167,6 +167,24 @@ To edit and tune each effect's code while it runs, open the [effects playground]
 
 An effect changes colours, never glyphs. To type, scramble or rain on what an element draws, use a [glyph effect](/animation#a-glyph-effect-text-typed-scrambled-and-rained-on), which works the same way and nests with an effect over the same element.
 
+### An attribute on a beat
+
+An effect moves a cell's attributes the way it moves its colours, by returning a look with them changed. `blink` is the one ready-made shape: given an attribute and two holds in seconds, `off` then `on`, it leaves every cell as drawn for `off` and sets the attribute for `on`, round and round. Off, its frame is the identity, so those frames are byte for byte what the element drew; it changes only when its beat does, so a host draws it twice a pass and rests between. `ATTRIBUTE_DEFAULTS` holds its two specs, and `EFFECT_CATALOGUE.attributes` makes them by name: `blink`, the words hidden (`conceal`) half of each second as a terminal's own blink does, and `boldPulse`, bold for the last three tenths of each second.
+
+```typescript
+import { ColorDepth, DEFAULT_TERMINAL_THEME, EFFECT_CATALOGUE, Effected, RichText, renderToString } from "@promptctl/rich-js";
+
+const pulsing = EFFECT_CATALOGUE.attributes.boldPulse({ z: 0 });
+const word = new RichText("ready");
+
+for (const t of [0, 0.69, 0.7, 0.99, 1]) {
+  const drawn = renderToString(new Effected(word, pulsing, { t, key: "ready", theme: DEFAULT_TERMINAL_THEME }), { colorSystem: ColorDepth.TRUECOLOR });
+  console.print(`t=${t}s  ${drawn.includes("\x1b[1m") ? "bold" : "as drawn"}`);
+}
+```
+
+Under `confined`, a cell's attributes go with its ink: a seam cell between two items is bold when the item that drew its glyph is. To watch them blink, run `npm run attribute-effects` in a checkout of this repository.
+
 ## Writing an effect
 
 `Effected` wraps any renderable and draws it with its cells' colours passed through an effect at one moment:
@@ -181,13 +199,13 @@ const label = "  thinking about colour  ";
 const shimmer: Effect = () =>
   Animation.continuous((t) => {
     const centre = sweep(t) * label.length;
-    return (colors, cell) => {
+    return (look, cell) => {
       const weight = Math.max(0, 1 - Math.abs(cell.col - centre) / 4);
       const toward = new ColorRamp(EASES.linear, [
-        { at: 0, color: colors.fg },
+        { at: 0, color: look.fg },
         { at: 1, color: highlight },
       ]);
-      return { fg: toward.at(weight), bg: colors.bg };
+      return { ...look, fg: toward.at(weight) };
     };
   });
 
@@ -204,14 +222,15 @@ Nothing in an effect reads a clock. Whoever draws frames builds the view for eac
 
 - `row` and `col` count from the top-left of what the wrapped renderable drew, so a sweep crosses the element, not the screen. A wide glyph is one cell to the effect, at the column of its first half, and is never cut.
 - `seed` is a number in `[0, 1)` that stays the same for that cell on every frame, for effects that vary cell by cell. It is derived from the `key` option and the cell's position, so two elements showing the same text under different keys do not move in lockstep.
-- `colors` are what the screen shows: the glyph's colour and the colour behind it, so under `reverse` they are the style's two colours swapped. A cell that sets no colour of its own, or names one of the sixteen ANSI colours, is handed that colour from the `theme` option, a `TerminalTheme`. The terminal's real palette is never queried, so the caller supplies it.
+- The look's `fg` and `bg` are what the screen shows: the glyph's colour and the colour behind it, so under `reverse` they are the style's two colours swapped. A cell that sets no colour of its own, or names one of the sixteen ANSI colours, is handed that colour from the `theme` option, a `TerminalTheme`. The terminal's real palette is never queried, so the caller supplies it.
 - `terminal` says, for `fg` and `bg` as the screen shows them, whether that colour is the terminal's own: one the style leaves unset or sets to `default`. Resolved through the theme, it can have the same hex as a colour the element wrote; `terminal` is what tells the two apart. `onColors` and `wheel` never move a colour the terminal supplies.
-- `reverse` says whether the cell's style swaps its two slots, so the ink is written in the ground's slot. With `colors` and `terminal` it is the cell's `Pair`, the shape `drawn.pairs` lists.
+- `reverse` says whether the cell's style swaps its two slots, so the ink is written in the ground's slot. With the look's colours and `terminal` it is the cell's `Pair`, the shape `drawn.pairs` lists.
+- The look's `attributes` are the cell's text attributes as its style sets them: each `true`, `false` or `undefined`, and an unset one lets a style laid beneath show through, as it does with no effect. `reverse` is not among them: whether the two colours are swapped is what decides which one the screen shows as ink, so an effect swaps them by moving the colours.
 - `anchor` is who drew the cell, and where it sits in their output, as `Segment.anchorAt` reads it off a frame, or `undefined` for a cell no owner stamped. `confined` reads it.
 
 ## What an effect cannot change
 
-An effect changes how cells look, never which cells exist or who drew them. Text, links, and the anchors that let a click or Tab reach a widget all pass through, so a button under an effect still takes clicks. A cell whose colours come back unchanged is drawn exactly as before: the identity effect, `() => Animation.constant((colors) => colors)`, produces byte-identical output. Neighbouring cells of one segment that the terminal is sent alike stay one segment: below truecolor, two colours that land on one palette index are one run, and a cell moved too little for the depth to show keeps the colour it was written in, none included. Cells from two segments stay two, as the wrapped renderable drew them.
+An effect changes how cells look, never which cells exist or who drew them. Text, links, and the anchors that let a click or Tab reach a widget all pass through, so a button under an effect still takes clicks. A cell whose look comes back unchanged is drawn exactly as before: the identity effect, `() => Animation.constant((look) => look)`, produces byte-identical output. Neighbouring cells of one segment that the terminal is sent alike stay one segment: below truecolor, two colours that land on one palette index are one run, and a cell moved too little for the depth to show keeps the colour it was written in, none included. Cells from two segments stay two, as the wrapped renderable drew them.
 
 With no colour output at all, an effect has nothing to change, and the wrapped renderable draws as it would without it.
 

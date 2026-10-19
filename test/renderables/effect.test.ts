@@ -10,7 +10,8 @@ import { Segment } from "../../src/core/segment.js";
 import { JOINERS, Strip } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
-import { Effected, confined, drawnOf, type CellColors, type Effect, type EffectCell, type EffectFrame } from "../../src/renderables/effect.js";
+import { Effected, confined, drawnOf, type CellLook, type Effect, type EffectCell, type EffectFrame } from "../../src/renderables/effect.js";
+import { blink } from "../../src/renderables/effects.js";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { Group } from "../../src/renderables/group.js";
 import { Panel } from "../../src/renderables/panel.js";
@@ -22,13 +23,15 @@ import { CATPPUCCIN_MOCHA, DEFAULT_TERMINAL_THEME } from "../../src/themes/termi
 import { Oklch } from "../../src/core/oklch.js";
 
 const THEME = DEFAULT_TERMINAL_THEME;
-const DEFAULTS: CellColors = { fg: THEME.foregroundColor, bg: THEME.backgroundColor };
+/** The attributes of a cell whose style sets none. */
+const { reverse: _reverse, ...PLAIN } = Style.null().attributes;
+const DEFAULTS: CellLook = { fg: THEME.foregroundColor, bg: THEME.backgroundColor, attributes: PLAIN };
 const RED = new ColorRgba(255, 0, 0);
 const BLUE = new ColorRgba(0, 0, 255);
 
 const identity: Effect = () => Animation.constant<EffectFrame>((colors) => colors);
 /** A different foreground on every column: the effect that splits most. */
-const perColumn: Effect = () => Animation.continuous(() => (colors, cell) => ({ fg: new ColorRgba((cell.col * 37) % 256, 0, 0), bg: colors.bg }));
+const perColumn: Effect = () => Animation.continuous(() => (colors, cell) => ({ ...colors, fg: new ColorRgba((cell.col * 37) % 256, 0, 0) }));
 
 function effected(child: Renderable, effect: Effect, t = 0, key = "k"): Effected {
   return new Effected(child, effect, { t, key, theme: THEME });
@@ -51,7 +54,7 @@ describe("Effected — the identity effect", () => {
   });
 
   it("leaves an unstyled cell unstyled though it saw the default colours", () => {
-    const seen: CellColors[] = [];
+    const seen: CellLook[] = [];
     const segments = [...effected(fixed(new Segment("ab")), () => Animation.continuous(() => (c) => (seen.push(c), c))).render({ maxWidth: 10 })];
     expect(seen).toEqual([DEFAULTS, DEFAULTS]);
     expect(segments).toHaveLength(1);
@@ -62,26 +65,26 @@ describe("Effected — the identity effect", () => {
   });
 
   it("hands a cell the colours on screen: an ANSI colour from the theme, swapped under reverse", () => {
-    const seen: CellColors[] = [];
+    const seen: CellLook[] = [];
     const record: Effect = () => Animation.continuous(() => (c) => (seen.push(c), c));
     const red = THEME.ansiColors.get(1);
     [...effected(fixed(new Segment("a", Style.parse("red")), new Segment("b", Style.parse("reverse red"))), record).render({ maxWidth: 10 })];
     expect(seen).toEqual([
-      { fg: red, bg: THEME.backgroundColor },
-      { fg: THEME.backgroundColor, bg: red },
+      { fg: red, bg: THEME.backgroundColor, attributes: PLAIN },
+      { fg: THEME.backgroundColor, bg: red, attributes: PLAIN },
     ]);
   });
 
   it("writes a reversed cell's new glyph colour into the slot the screen draws the glyph from", () => {
-    const glyphBlue: Effect = () => Animation.continuous(() => (c) => ({ fg: BLUE, bg: c.bg }));
+    const glyphBlue: Effect = () => Animation.continuous(() => (c) => ({ ...c, fg: BLUE }));
     const [segment] = [...effected(fixed(new Segment("a", Style.parse("reverse red"))), glyphBlue).render({ maxWidth: 10 })];
     expect(segment!.style?.bgcolor?.getTruecolor()).toEqual(BLUE);
     expect(segment!.style?.color?.name).toBe("red");
   });
 
   it("keeps a translucent glyph the colour it showed when only the ground moves", () => {
-    const seen: CellColors[] = [];
-    const groundGreen: Effect = () => Animation.continuous(() => (c) => (seen.push(c), { fg: c.fg, bg: new ColorRgba(0, 255, 0) }));
+    const seen: CellLook[] = [];
+    const groundGreen: Effect = () => Animation.continuous(() => (c) => (seen.push(c), { ...c, bg: new ColorRgba(0, 255, 0) }));
     const [segment] = [
       ...effected(fixed(new Segment("a", Style.parse("#ff000080 on blue"))), groundGreen).render({ maxWidth: 10 }),
     ];
@@ -106,7 +109,7 @@ describe("Effected — the identity effect", () => {
   });
 
   it("hands a cell the colour its depth writes, not the one it names", () => {
-    const seen: CellColors[] = [];
+    const seen: CellLook[] = [];
     const record: Effect = () => Animation.continuous(() => (c) => (seen.push(c), c));
     const style = Style.parse("#ff8800");
     [...effected(fixed(new Segment("a", style)), record).render({ maxWidth: 10, colorSystem: ColorDepth.STANDARD })];
@@ -117,7 +120,7 @@ describe("Effected — the identity effect", () => {
 
 describe("Effected — segments are cut only where colours change", () => {
   it("keeps a segment whole when every cell gets the same new colours", () => {
-    const flat: Effect = () => Animation.continuous(() => () => ({ fg: RED, bg: BLUE }));
+    const flat: Effect = () => Animation.continuous(() => (c) => ({ ...c, fg: RED, bg: BLUE }));
     const segments = [...effected(fixed(new Segment("abcdef", Style.parse("bold"))), flat).render({ maxWidth: 10 })];
     expect(segments.map((s) => s.text)).toEqual(["abcdef"]);
     expect(segments[0]!.style?.bold).toBe(true);
@@ -131,7 +134,7 @@ describe("Effected — segments are cut only where colours change", () => {
   });
 
   it("keeps cells whole that the output depth writes alike, though the effect gave each its own colour", () => {
-    const nearBlack: Effect = () => Animation.continuous(() => (colors, cell) => ({ fg: new ColorRgba(cell.col + 1, 0, 0), bg: colors.bg }));
+    const nearBlack: Effect = () => Animation.continuous(() => (colors, cell) => ({ ...colors, fg: new ColorRgba(cell.col + 1, 0, 0) }));
     for (const colorSystem of [ColorDepth.EIGHT_BIT, ColorDepth.STANDARD]) {
       const segments = [...effected(fixed(new Segment("abcdef")), nearBlack).render({ maxWidth: 10, colorSystem })];
       expect(segments.map((s) => s.text)).toEqual(["abcdef"]);
@@ -143,7 +146,7 @@ describe("Effected — segments are cut only where colours change", () => {
     // colour, a theme slot, a cube or grey-ramp entry, white. No depth below
     // truecolor can show the move, so none is written.
     const near = (c: ColorRgba) => new ColorRgba(c.red > 127 ? c.red - 1 : c.red + 1, c.green, c.blue);
-    const nudge: Effect = () => Animation.continuous(() => (colors, cell) => (cell.col % 2 === 0 ? colors : { fg: near(colors.fg), bg: near(colors.bg) }));
+    const nudge: Effect = () => Animation.continuous(() => (colors, cell) => (cell.col % 2 === 0 ? colors : { ...colors, fg: near(colors.fg), bg: near(colors.bg) }));
     for (const style of [undefined, "red", "#ff0000", "#ffffff", "#808080", "#ff00ff on #ff0000"]) {
       for (const colorSystem of [ColorDepth.EIGHT_BIT, ColorDepth.STANDARD]) {
         const segment = new Segment("abcdef", style === undefined ? undefined : Style.parse(style));
@@ -158,6 +161,7 @@ describe("Effected — segments are cut only where colours change", () => {
   it("leaves a cell with no colour of its own showing a style laid beneath, however little it was moved", () => {
     // Every ground moves visibly; one glyph is nudged and rounds back to the default colour it was handed.
     const greenWithNudge: Effect = () => Animation.continuous(() => (colors, cell) => ({
+      ...colors,
       fg: cell.col === 0 ? new ColorRgba(colors.fg.red - 3, colors.fg.green, colors.fg.blue) : colors.fg,
       bg: new ColorRgba(0, 215, 0),
     }));
@@ -224,8 +228,8 @@ describe("Effected — positions and seeds", () => {
 
 describe("Effected — composition", () => {
   it("nesting two effects draws what calling one after the other draws", () => {
-    const warm: Effect = () => Animation.continuous(() => (c, cell) => ({ fg: new ColorRgba(255, (cell.col * 40) % 256, 0), bg: c.bg }));
-    const ground: Effect = () => Animation.continuous((t) => (c, cell) => ({ fg: c.fg, bg: new ColorRgba(0, 0, (cell.row * 90 + t) % 256) }));
+    const warm: Effect = () => Animation.continuous(() => (c, cell) => ({ ...c, fg: new ColorRgba(255, (cell.col * 40) % 256, 0) }));
+    const ground: Effect = () => Animation.continuous((t) => (c, cell) => ({ ...c, bg: new ColorRgba(0, 0, (cell.row * 90 + t) % 256) }));
     const both: Effect = (drawn) =>
       Animation.map(Animation.all([warm(drawn), ground(drawn)]), (frames): EffectFrame => (c, cell) => frames.reduce((moved, frame) => frame(moved, cell), c));
     expect(renderToString(effected(effected(styled, warm, 7), ground, 7), { width: 30 })).toBe(
@@ -260,14 +264,81 @@ describe("Effected — what it may not change", () => {
   });
 });
 
+describe("Effected — attributes", () => {
+  const AT = { colorSystem: ColorDepth.TRUECOLOR } as const;
+  /** `attributes` set on every cell at or right of `from`. */
+  const setFrom = (from: number, attributes: Partial<CellLook["attributes"]>): Effect => () =>
+    Animation.constant<EffectFrame>((look, cell) => (cell.col >= from ? { ...look, attributes: { ...look.attributes, ...attributes } } : look));
+
+  it("hands a cell the attributes its style sets, all but reverse", () => {
+    const seen: CellLook[] = [];
+    const record: Effect = () => Animation.continuous(() => (c) => (seen.push(c), c));
+    [...effected(fixed(new Segment("a", Style.parse("bold reverse not italic"))), record).render({ maxWidth: 10 })];
+    expect(seen[0]!.attributes).toEqual({ ...PLAIN, bold: true, italic: false });
+    expect("reverse" in seen[0]!.attributes).toBe(false);
+  });
+
+  it("cuts a segment only where the attributes change, keeping its link, meta and every anchor", () => {
+    const owner = {};
+    const base = Style.parse("red").withLink("https://example.com").add(Style.fromMeta({ id: 7 }));
+    const lines = Segment.anchorLines([[new Segment("abcd", base)]], owner);
+    const out = [...effected(fixed(...lines[0]!), setFrom(2, { bold: true, underline: true })).render({ maxWidth: 10 })];
+    expect(out.map((s) => [s.text, s.style?.bold, s.style?.underline, s.style?.color?.name, s.style?.link, s.style?.meta])).toEqual([
+      ["ab", undefined, undefined, "red", "https://example.com", { id: 7 }],
+      ["cd", true, true, "red", "https://example.com", { id: 7 }],
+    ]);
+    for (let x = 0; x < 4; x++) expect(Segment.anchorAt([out], x, 0)).toEqual(Segment.anchorAt(lines, x, 0));
+  });
+
+  it("turns an attribute off, and unsets one so a style laid beneath shows through", () => {
+    const off = [...effected(fixed(new Segment("ab", Style.parse("bold"))), setFrom(0, { bold: false })).render({ maxWidth: 10 })];
+    expect(renderToString(fixed(...off), AT)).not.toContain("\x1b[1m");
+    const unset = [...effected(fixed(new Segment("ab", Style.parse("bold"))), setFrom(0, { bold: undefined })).render({ maxWidth: 10 })];
+    expect([...Segment.applyStyle(unset, Style.parse("not bold"))].map((s) => s.style?.bold)).toEqual([false]);
+  });
+
+  it("moves attributes and colours of one cell together, as one run", () => {
+    const both: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, fg: RED, attributes: { ...look.attributes, italic: true } }));
+    const out = [...effected(fixed(new Segment("ab")), both).render({ maxWidth: 10 })];
+    expect(out.map((s) => [s.text, s.style?.italic, s.style?.color?.getTruecolor().hex])).toEqual([["ab", true, RED.hex]]);
+  });
+
+  it("writes a cell whose attributes come back as its style set them as it was", () => {
+    const same = setFrom(0, { bold: true });
+    const child = fixed(new Segment("ab", Style.parse("bold red")));
+    expect(renderToString(effected(child, same), AT)).toBe(renderToString(child, AT));
+  });
+
+  it("has no reverse to move: the colours are where a swap is made", () => {
+    // @ts-expect-error reverse is not an attribute a look carries
+    const swapped: CellLook["attributes"] = { ...PLAIN, reverse: true };
+    expect(swapped).toBeDefined();
+  });
+
+  it("draws the same bytes for the same t, sampled once a second or sixty times, and at a millionth second as at the first", () => {
+    const pulse = blink({ attribute: "bold", off: 0.7, on: 0.3 });
+    const draw = (t: number): string => renderToString(effected(styled, pulse, t), { width: 30, ...AT });
+    const sixty = new Map(Array.from({ length: 121 }, (_, i) => [i / 60, draw(i / 60)] as const));
+    for (const t of [0, 1, 2]) expect(draw(t)).toBe(sixty.get(t));
+    expect(draw(1e6)).toBe(draw(0));
+    expect(draw(1e6 + 0.8)).toBe(draw(0.8));
+    expect(draw(0.8)).not.toBe(draw(0));
+  });
+
+  it("passes the child through untouched when the output carries no colour, since no attribute is written there", () => {
+    const segments = [...styled.render({ maxWidth: 30, colorSystem: null })];
+    expect([...effected(styled, setFrom(0, { bold: true })).render({ maxWidth: 30, colorSystem: null })]).toEqual(segments);
+  });
+});
+
 describe("Effected — below truecolor", () => {
   /** OKLCH lightness up by `dl`: the smallest move a pulse makes as it leaves 0. */
   const lighter = (c: ColorRgba, dl: number): ColorRgba => {
     const o = Oklch.fromRgba(c);
     return new Oklch(o.l + dl, o.c, o.h, o.alpha).toRgba();
   };
-  const nudge: Effect = () => Animation.continuous(() => (c) => ({ fg: lighter(c.fg, 0.01), bg: lighter(c.bg, 0.01) }));
-  const nudgeGround: Effect = () => Animation.continuous(() => (c) => ({ fg: c.fg, bg: lighter(c.bg, 0.01) }));
+  const nudge: Effect = () => Animation.continuous(() => (c) => ({ ...c, fg: lighter(c.fg, 0.01), bg: lighter(c.bg, 0.01) }));
+  const nudgeGround: Effect = () => Animation.continuous(() => (c) => ({ ...c, bg: lighter(c.bg, 0.01) }));
   const onMocha = (child: Renderable, effect: Effect): Effected =>
     new Effected(child, effect, { t: 0, key: "k", theme: CATPPUCCIN_MOCHA });
   const ansi = { width: 10, colorSystem: "ansi" } as const;
@@ -302,19 +373,19 @@ describe("Effected — below truecolor", () => {
 
   it("lays a translucent colour on its ground before rounding it", () => {
     // White at a tenth over Mocha's near-black ground is still near-black: the default ground, not a bright slot.
-    const veil: Effect = () => Animation.continuous(() => (c) => ({ fg: new ColorRgba(255, 255, 255, 0.1), bg: c.bg }));
+    const veil: Effect = () => Animation.continuous(() => (c) => ({ ...c, fg: new ColorRgba(255, 255, 255, 0.1) }));
     expect(renderToString(onMocha(fixed(new Segment("x")), veil), ansi)).toMatch(/\x1b\[(30|90|39)m/);
   });
 
   it("lays a translucent ground where the writer lays one, so one colour draws one way", () => {
     const half = new ColorRgba(255, 0, 0, 0.5);
     const truecolor = { width: 10, colorSystem: "truecolor" } as const;
-    const tinted = renderToString(onMocha(fixed(new Segment("x")), () => Animation.continuous(() => (c) => ({ fg: c.fg, bg: half }))), truecolor);
+    const tinted = renderToString(onMocha(fixed(new Segment("x")), () => Animation.continuous(() => (c) => ({ ...c, bg: half }))), truecolor);
     expect(tinted).toBe(renderToString(fixed(new Segment("x", new Style({ bgcolor: ColorSpec.fromRgba(half) }))), truecolor));
   });
 
   it("draws a moved colour in the slot whose colour under the theme is nearest", () => {
-    const toMochaRed: Effect = () => Animation.continuous(() => (c) => ({ fg: CATPPUCCIN_MOCHA.ansiColors.get(1), bg: c.bg }));
+    const toMochaRed: Effect = () => Animation.continuous(() => (c) => ({ ...c, fg: CATPPUCCIN_MOCHA.ansiColors.get(1) }));
     expect(renderToString(onMocha(fixed(new Segment("x")), toMochaRed), ansi)).toContain("\x1b[31m");
   });
 });
@@ -326,7 +397,7 @@ describe("Effected — a thousand frames parse nothing", () => {
     const colorParse = vi.spyOn(ColorSpec, "parse");
     const styleParse = vi.spyOn(Style, "parse");
     const child = fixed(new Segment("frame", new Style({ color: ColorSpec.fromRgba(RED) })));
-    const moving: Effect = () => Animation.continuous((t) => (c, cell) => ({ fg: new ColorRgba(t % 256, cell.col, Math.floor(t / 256)), bg: c.bg }));
+    const moving: Effect = () => Animation.continuous((t) => (c, cell) => ({ ...c, fg: new ColorRgba(t % 256, cell.col, Math.floor(t / 256)) }));
     for (let t = 0; t < 1000; t++) [...effected(child, moving, t).render({ maxWidth: 10 })];
     expect(colorParse).not.toHaveBeenCalled();
     expect(styleParse).not.toHaveBeenCalled();
@@ -421,7 +492,7 @@ describe("Drawn.cells — the cells an effect is handed, listed before it is han
 describe("confined — an effect on its owners' cells", () => {
   const FILL = Style.parse("white on #3050a0");
   const AT = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false };
-  const repaint: Effect = () => Animation.continuous(() => () => ({ fg: RED, bg: BLUE }));
+  const repaint: Effect = () => Animation.continuous(() => (c) => ({ ...c, fg: RED, bg: BLUE }));
   /** Two items with one fill, so no colour tells them apart. */
   const twins = (): RichText[] => ["one", "two"].map((label) => new RichText(` ${label} `, { style: FILL, end: "", noWrap: true }));
   /** Every cell of a frame, row by row, as the bytes that draw it. */
@@ -471,6 +542,16 @@ describe("confined — an effect on its owners' cells", () => {
     const items = trio();
     // lead, " x ", the arrow into the item, " x ", the arrow out of it, " x ", tail
     expect(movedSides(new Strip(items, JOINERS.powerline), items[1]!)).toEqual(["", "", "", "", "bg", "fgbg", "fgbg", "fgbg", "fg", "", "", "", ""]);
+  });
+
+  it("gives a cell's attributes to whoever owns its ink", () => {
+    const items = trio();
+    const bolden: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, attributes: { ...look.attributes, bold: true } }));
+    const bold = [...effected(new Strip(items, JOINERS.powerline), confined(bolden, items[1]!)).render({ maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR })].flatMap((s) =>
+      [...graphemes(s.text)].filter((glyph) => glyph !== "\n").map(() => s.style?.bold === true),
+    );
+    // As `movedSides` above: the arrow into the item is drawn in the item's fill as its ground only, so it stays as it was.
+    expect(bold).toEqual([false, false, false, false, false, true, true, true, true, false, false, false, false]);
   });
 
   it("moves two owners' colours, the whole seam between them, and only their side of the seam beside a third", () => {

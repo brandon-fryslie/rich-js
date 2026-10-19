@@ -1,20 +1,28 @@
 /**
- * Effected — a renderable whose finished cells' colours pass through an
- * effect at a moment `t`.
+ * Effected — a renderable whose finished cells' looks — colours and text
+ * attributes — pass through an effect at a moment `t`.
  *
  * An effect is, for what an element draws in a frame, an `Animation`
  * (`core/animation.ts`) of what is done to its cells: its value at `t` is a
- * function from a cell's colours and where the cell is to the cell's new
- * colours (`EffectFrame`), and it says when that next changes as every
+ * function from a cell's look and where the cell is to the cell's new look
+ * (`EffectFrame`), and it says when that next changes as every
  * animation does. Whatever holds for the whole frame is worked out once, in
  * the effect and its `at(t)`, and every cell of the frame is handed to the
  * function `at(t)` returns, but for those a wrapper keeps back: `confined`
  * hands over only the cells its owners drew, so an effect never counts on
- * seeing them all. Shimmer, pulse, fade and dissolve are all this one shape,
- * differing by what the function does with its inputs
- * [LAW:one-type-per-behavior]; two effects stack by nesting one wrapper in
- * another, which is the same as calling one after the other but for what the
- * outer one measures: the inner one's output.
+ * seeing them all. Shimmer, pulse, fade, dissolve and a blinking attribute
+ * are all this one shape, differing by what the function does with its
+ * inputs [LAW:one-type-per-behavior]; two effects stack by nesting one
+ * wrapper in another, which is the same as calling one after the other but
+ * for what the outer one measures: the inner one's output.
+ *
+ * A cell's look is one value, its colours and its attributes together
+ * (`CellLook`), rather than an attribute stage beside the colour one, so
+ * everything that takes an `Effect` — `confined`, `onBeat`,
+ * `Animation.all`, nesting over a glyph effect — takes one that moves
+ * attributes with no second copy of itself. `reverse` is the one attribute
+ * a look leaves out (`CellAttributes`): it decides which of a style's slots
+ * a colour on screen is in, and a swap of the two is already a colour move.
  *
  * What the element draws (`Drawn`) — the cells the effect will be handed,
  * and the colours of its words — is measured here, in the render, off the
@@ -36,16 +44,19 @@
  *   segment's link and meta and carries its anchor shifted to the run's first
  *   cell (`Style.shiftedBy`), so hit testing still finds the owner.
  * - A cell whose colours come back unchanged keeps its original `ColorSpec`,
- *   and a segment whose every cell is unchanged is yielded with its look as
+ *   one whose attributes come back as its style set them keeps them, and a
+ *   segment whose every cell is unchanged is yielded with its look as
  *   it was, so the identity effect is byte-identical; what it gains is when
  *   the frame next changes (`Style.nextChange`), which writes no byte.
  *   Neighbouring cells the output depth
  *   writes alike stay one segment: a segment is cut only where the written
- *   colours change, so two colours that land on one index are one run.
+ *   colours or the attributes change, so two colours that land on one index
+ *   are one run.
  * - New colours are built with `ColorSpec.fromRgba`, never parsed from a
  *   string, so no frame adds an entry to a parse cache.
- * - With no colour output (`colorSystem: null`) there is nothing for an
- *   effect to change, and the child's segments pass through untouched.
+ * - With no colour output (`colorSystem: null`) no style is written at all,
+ *   attributes included, so there is nothing for an effect to change, and
+ *   the child's segments pass through untouched.
  *
  * Positions are the child's own: row and column count from the top-left of
  * what the child drew, so a sweep crosses the element, not the screen.
@@ -62,7 +73,7 @@ import type { Composite, Measurable, Renderable, RenderOptions } from "../core/p
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { JOIN, colorsOwnedBy } from "../core/strip.js";
-import { Style } from "../core/style.js";
+import { ATTRIBUTE_NAMES, Style, type AttributeName, type Attributes } from "../core/style.js";
 
 /**
  * A cell's foreground and background as they appear on screen — the glyph's
@@ -72,6 +83,18 @@ import { Style } from "../core/style.js";
 export interface CellColors {
   readonly fg: ColorRgba;
   readonly bg: ColorRgba;
+}
+
+/**
+ * The text attributes an effect moves: every one a style sets but
+ * `reverse`, each on, off or unset as the cell's style has it. An unset
+ * one lets a style laid beneath show through, as it does undrawn.
+ */
+export type CellAttributes = Omit<Attributes, "reverse">;
+
+/** What an effect moves in a cell: its colours as the screen shows them, and its attributes. */
+export interface CellLook extends CellColors {
+  readonly attributes: CellAttributes;
 }
 
 /**
@@ -151,8 +174,8 @@ export interface Drawn {
   readonly theme: TerminalTheme;
 }
 
-/** What an effect does to the cells of one frame: each cell's colours and where it is in, its colours out. Return `colors` to leave a cell be. */
-export type EffectFrame = (colors: CellColors, cell: EffectCell) => CellColors;
+/** What an effect does to the cells of one frame: each cell's look and where it is in, its look out. Return `look` to leave a cell be. */
+export type EffectFrame = (look: CellLook, cell: EffectCell) => CellLook;
 
 /**
  * For an element drawing `drawn`, the animation of what is done to its cells.
@@ -236,34 +259,36 @@ export class Effected implements Renderable, Measurable, Composite {
         yield segment;
         continue;
       }
-      const { style: base, wire, slots, pair } = look;
+      const { style: base, wire, slots, pair, attributes } = look;
       const { terminal } = pair;
-      const from: CellColors = { fg: pair.fg, bg: pair.bg };
+      const from: CellLook = { fg: pair.fg, bg: pair.bg, attributes };
       // [LAW:one-source-of-truth] A run is cells the wire writes alike: each
       // cell is drawn at the output depth first and merged on the colours that
-      // writes, so two truecolors landing on one index stay one run. A cell
-      // the effect gave its neighbour's colours is drawn as that neighbour was.
-      const runs: { text: string; cells: number; colors: CellColors; drawn: DrawnColors }[] = [];
+      // writes and on its attributes, so two truecolors landing on one index
+      // stay one run. A cell the effect gave its neighbour's look is drawn as
+      // that neighbour was.
+      const runs: { text: string; cells: number; colors: CellColors; attributes: CellAttributes; drawn: DrawnColors }[] = [];
       for (const { glyph, cell } of glyphs) {
+        const moved = cell === undefined ? from : frame(from, { ...cell, seed: cellSeed(this.key, cell.row, cell.col), terminal, reverse: pair.reverse });
         // Back from the screen to the style's slots: the same swap undoes itself.
-        const colors = cell === undefined ? slots : onScreen(frame(from, { ...cell, seed: cellSeed(this.key, cell.row, cell.col), terminal, reverse: pair.reverse }), pair.reverse);
+        const colors = onScreen(moved, pair.reverse);
         const last = runs[runs.length - 1];
         const writes = last !== undefined && sameColors(last.colors, colors) ? last.drawn : this.respec(wire, slots, colors, depth);
-        if (last !== undefined && writesAlike(last.drawn, writes)) {
+        if (last !== undefined && writesAlike(last.drawn, writes) && sameAttributes(last.attributes, moved.attributes)) {
           last.text += glyph;
           last.cells += cellLen(glyph);
           last.colors = colors;
         } else {
-          runs.push({ text: glyph, cells: cellLen(glyph), colors, drawn: writes });
+          runs.push({ text: glyph, cells: cellLen(glyph), colors, attributes: moved.attributes, drawn: writes });
         }
       }
-      if (runs.every((run) => writesAlike(run.drawn, wire))) {
+      if (runs.every((run) => writesAlike(run.drawn, wire) && sameAttributes(run.attributes, attributes))) {
         yield segment;
         continue;
       }
       let offset = 0;
       for (const run of runs) {
-        const shifted = base.shiftedBy(offset);
+        const shifted = base.shiftedBy(offset).withAttributes(run.attributes);
         const style = writesAlike(run.drawn, wire) ? shifted : shifted.add(Style.fromColor(run.drawn.color, run.drawn.bgcolor));
         yield new Segment(run.text, style);
         offset += run.cells;
@@ -327,6 +352,8 @@ interface Look {
   readonly slots: CellColors;
   /** The slots as the screen shows them, `reverse` applied. */
   readonly pair: Pair;
+  /** The attributes an effect is handed, as the style sets them. */
+  readonly attributes: CellAttributes;
 }
 
 /** Each of `segments` with how it is drawn at `depth` on `theme`; a control segment draws nothing. */
@@ -338,7 +365,8 @@ function looks(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalTh
     const slots = { fg: (wire.color ?? DEFAULT).getTruecolor(theme, true), bg: (wire.bgcolor ?? DEFAULT).getTruecolor(theme, false) };
     const reverse = style.reverse === true;
     const terminal = onScreen({ fg: wire.color?.isDefault ?? true, bg: wire.bgcolor?.isDefault ?? true }, reverse);
-    return { segment, look: { style, wire, slots, pair: { ...onScreen(slots, reverse), terminal, reverse } } };
+    const { reverse: _swap, ...attributes } = style.attributes;
+    return { segment, look: { style, wire, slots, pair: { ...onScreen(slots, reverse), terminal, reverse }, attributes } };
   });
 }
 
@@ -493,11 +521,12 @@ export function confined(effect: Effect, ...owners: readonly object[]): Effect {
   const owned = (drawn: Drawn): Drawn => ({ ...drawn, cells: () => drawn.cells().filter((cell) => any(ownedOf(cell))) });
   // The owners' cells change when the effect's frame does.
   return (drawn) =>
-    Animation.map(effect(owned(drawn)), (frame): EffectFrame => (colors, cell) => {
+    Animation.map(effect(owned(drawn)), (frame): EffectFrame => (look, cell) => {
       const owns = ownedOf(cell);
-      if (!any(owns)) return colors;
-      const moved = frame(colors, cell);
-      return { fg: owns.fg ? moved.fg : colors.fg, bg: owns.bg ? moved.bg : colors.bg };
+      if (!any(owns)) return look;
+      const moved = frame(look, cell);
+      // An attribute is drawn on the glyph, in its ink, so it moves with whoever owns the ink.
+      return { fg: owns.fg ? moved.fg : look.fg, bg: owns.bg ? moved.bg : look.bg, attributes: owns.fg ? moved.attributes : look.attributes };
     });
 }
 
@@ -549,6 +578,13 @@ function slotWritesAlike(a: ColorSpec | undefined, b: ColorSpec | undefined, for
 
 function written(spec: ColorSpec | undefined, foreground: boolean): string {
   return spec?.getAnsiCodes(foreground).join(";") ?? "";
+}
+
+/** The attributes a look carries: `ATTRIBUTE_NAMES` but `reverse`. */
+const MOVED = ATTRIBUTE_NAMES.filter((name): name is Exclude<AttributeName, "reverse"> => name !== "reverse");
+
+function sameAttributes(a: CellAttributes, b: CellAttributes): boolean {
+  return MOVED.every((name) => a[name] === b[name]);
 }
 
 function sameColors(a: CellColors, b: CellColors): boolean {

@@ -75,6 +75,7 @@
     "strip": "node scripts/build-demos.ts && node dist-demo/examples/rich-strip/main.js",
     "effects-feel": "node scripts/build-demos.ts && node dist-demo/examples/effects-feel/index.js",
     "glyph-effects": "node scripts/build-demos.ts && node dist-demo/examples/glyph-effects/index.js",
+    "attribute-effects": "node scripts/build-demos.ts && node dist-demo/examples/attribute-effects/index.js",
     "viewport": "node scripts/build-demos.ts && node dist-demo/examples/rich-viewport/main.js",
     "markup-plugins": "node scripts/build-demos.ts && node dist-demo/examples/rich-markup-plugins/main.js",
     "demo-inputs": "node scripts/build-demos.ts && node dist-demo/examples/rich-config/main.js",

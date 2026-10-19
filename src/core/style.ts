@@ -41,6 +41,12 @@ export const ATTRIBUTE_NAMES = [
 
 export type AttributeName = (typeof ATTRIBUTE_NAMES)[number];
 
+/**
+ * Each text attribute as a style sets it: on, off, or unset — and an unset
+ * one lets a style laid beneath (`Style.add`) show through.
+ */
+export type Attributes = { readonly [A in AttributeName]: boolean | undefined };
+
 // The SGR parameter that turns each attribute on. `ansi.ts` reads it back.
 export const ATTRIBUTE_SGR: Record<AttributeName, number> = {
   bold: 1,
@@ -243,6 +249,20 @@ export class Style {
    */
   withAnchor(anchor: Anchor | undefined): Style {
     return this.with({ anchor });
+  }
+
+  /** The style's text attributes, each as it sets it. */
+  get attributes(): Attributes {
+    // [LAW:one-source-of-truth] Keyed by `ATTRIBUTE_NAMES`, whose every name is a key here: the cast is that list's own claim.
+    return Object.fromEntries(ATTRIBUTE_NAMES.map((name) => [name, this[name]])) as Attributes;
+  }
+
+  /**
+   * The same style with each attribute `attributes` names set as it says —
+   * on, off, or unset — and every other field as it was.
+   */
+  withAttributes(attributes: Partial<Attributes>): Style {
+    return this.with(attributes);
   }
 
 
