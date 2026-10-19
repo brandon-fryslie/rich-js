@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-476",
+      "ref": "refs/pull/476/merge",
+      "sha": "f3dce867182a5b7fe12f1ea2dc541c1b554690f7",
+      "timestamp": "2026-10-19T06:40:21.817Z",
+      "commits": [
+        {
+          "sha": "f3dce867182a5b7fe12f1ea2dc541c1b554690f7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T00:38:34-06:00",
+          "message": "Merge e486726a5396ef835b684112251b146b10509fca into 620c4bba5485ddedfe2eb22dc88e797567e8a370\n"
+        },
+        {
+          "sha": "e486726a5396ef835b684112251b146b10509fca",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T00:38:28-06:00",
+          "message": "claude-sessions joins one assistant message by its id, not by its records sitting together (rich-demos-k78j.mk1)\n\nClaude Code runs a tool while the message that called it is still\nstreaming, so the call's result, a skill's meta text, or a hidden\ngoal_status attachment can land between two records of one message.\nJoining by adjacency split the message there, and a hidden record split\nit only while hidden records were shown. Of the 500 most recent local\ntranscripts, 14 parsed to a different conversation with H on; none do now.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "620c4bba5485ddedfe2eb22dc88e797567e8a370",
