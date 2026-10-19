@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-479",
-      "ref": "refs/pull/479/merge",
-      "sha": "48517352af3ec44edda9e6ff2afd41ae187072ad",
-      "timestamp": "2026-10-19T11:07:22.559Z",
-      "commits": [
-        {
-          "sha": "48517352af3ec44edda9e6ff2afd41ae187072ad",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T11:06:00Z",
-          "message": "Merge 2c767a512ee8ff3094b6ed43e8bfa696fe54d9f0 into 535b1b6a1628aa46150aacf8c4e972fd6bfbe541\n"
-        },
-        {
-          "sha": "2c767a512ee8ff3094b6ed43e8bfa696fe54d9f0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T05:05:52-06:00",
-          "message": "firstReaching stays within the finite floats, and a sequence's carried moment is searched both ways (rich-animation-42lg.kjt)\n\nReview findings, escalation high. The downward bracket could step onto\n-Infinity and bisect NaN forever; the search now clamps to the finite floats\nand answers always or never at either end. Animation.sequence carried a\nmoment by walking up from a sum that can round over the change as well as\nunder it, so nextChange was a float late on about one time in forty; it is\nthe same search now, and the test asserts the float before the answer still\nshows the old value. A paused run refuses a non-finite host time like a\nplaying one. A stray file `1` left at the root by the last commit is gone.\n"
-        },
-        {
-          "sha": "29e41fb798d64839bd4d0349c0daf5a7d10ff29d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T04:50:29-06:00",
-          "message": "frameAt is public and stamps a copy, and an edge past the host's clock is never (rich-animation-42lg.kjt)\n\nReview findings, medium pass. `frameAt` is exported from the main barrel\nand the showcase blinks a cursor through it, since a line assembled from\n`sequence.at(t)` lost its stamp when the stamp moved off `at`. It stamps a\ncopy: an animation may hand back the one text it holds, as\n`Animation.constant` does, and a stamp on that outlived its draw. A sum\nthat overflows the host's clock — a subnormal rate, an edge 1e308 host\nseconds off — is the never it signs, not a bracket of NaN that never closes;\n`firstReaching` refuses an infinite guess outright.\n"
-        },
-        {
-          "sha": "d6c1c815074070f51bbb5cf8ad11b3312a663d07",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T03:26:04-06:00",
-          "message": "A timeline's host moment is a search across clocks, and a frame is stamped where it is drawn (rich-animation-42lg.kjt)\n\nReview findings, high pass. Timeline.run threw for any animation time far from\nthe host's or any slow rate, backwards above all: a host float is a step of\n`rate` on the animation's clock, so the floats between the sum and the first\none past an edge are as many as the two clocks' resolutions are apart, which\nthe eight-ulp walk for a sum on one clock cannot cover. `firstReaching` in\neasing.ts brackets and halves to the exact float; `played` is one shape for\nboth directions, with the host time refused once at entry.\n\nFrameSequence.at stamped its cells with nextChange on its own clock, so a\nsequence run on a timeline, or after an Animation.sequence switch, handed a\nhost a stamp it could not read; Spinner was re-stamping over it, overwriting\na label's earlier word. `at` is now the frame alone and `frameAt` stamps it\nwhere a host time is known — Frames, Spinner, the template `frames` function\n— so Style.withNextChange and the re-stamping loop go. Spinner's copy of the\nrate check goes too; the timeline is the one enforcer. A paused timeline\nrefuses a non-finite host time at seek like every other operation.\n"
-        },
-        {
-          "sha": "ef239a7bf489fbca77b02c261d5c4d423abecf97",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T03:06:02-06:00",
-          "message": "A timeline maps host time to animation time: pause, reverse, scrub, speed (rich-animation-42lg.kjt)\n\nA `Timeline` in `src/core/` is the map from the host's clock to the time an\nanimation is asked for, as a value: play, pause, resume, seek, a rate —\nnegative to reverse — each a timeline in and a timeline out, with no clock\nread. `Timeline.run` is an animation on host time whose `nextChange` is\ncarried back onto the host's clock, the argument `Spinner`'s speed scaled\nits holds for, now made once above the type; `Spinner`'s speed is a timeline.\n\nReversing exactly needs the other end of a hold, so `Animation` answers\n`lastChange(t)` beside `nextChange(t)`: the last moment the value may have\nbecome `at(t)`, which `Beat.start` already was and is now named for. Every\ncombinator and instance answers it. The spinner's drawn cells are restamped\nwith the host's answer (`Style.withNextChange`), since the frame's own\nstamp is on the spinner's timeline.\n\neffects-feel's hand-rolled `Pace` is a timeline over the frame count, and\nspace now pauses it.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "535b1b6a1628aa46150aacf8c4e972fd6bfbe541",
-      "timestamp": "2026-10-19T09:01:03.849Z",
+      "sha": "ca537fab9636aab58062b777b513dfc25d8e5573",
+      "timestamp": "2026-10-19T11:19:28.534Z",
       "commits": [
         {
-          "sha": "535b1b6a1628aa46150aacf8c4e972fd6bfbe541",
+          "sha": "ca537fab9636aab58062b777b513dfc25d8e5573",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T02:59:08-06:00",
-          "message": "An animation is one type: a value for a time, and when it next changes (rich-animation-42lg.8yz) (#478)\n\n* An animation is one type: a value for a time, and when it next changes (rich-animation-42lg.8yz)\n\n`Animation<T>` (src/core/animation.ts) is `at(t)` and `nextChange(t)`, with\n`constant`, `continuous`, `map` and `sequence`. The existing motion is now\ninstances of it rather than a second notion of \"when it next changes\":\n\n- `Beat.end` is `Beat.nextChange`, so a beat is an `Animation<number>`.\n- `FrameSequence.text(t)` is `at(t)`, plus `nextChange(t)`; its cells are\n  stamped with that one answer.\n- `Spinner` gains `nextChange(t)`: the sooner of its two sequences, since the\n  output picks which one draws.\n- `Effect` is `(drawn) => Animation<EffectFrame>`. `withNextChange` and\n  `nextChangeOf` are gone; `onBeat`, `confined`, `steppedInk` and\n  `stillOnSlots` are built on the animation (steppedInk is the beat mapped to\n  inks).\n\n`sequence` carries the next part's change back onto the shared timeline\nthrough `walkUp`, the float walk `beat` already used, now shared from\neasing.ts. docs/animation.md is the toolbox's page; effects, frames and easing\npoint at it.\n\n* Animation.all: several animations at once, changing when the soonest does; review fixes (rich-animation-42lg.8yz)\n\npulsedOn and the composition test drew a stack of effects through\nAnimation.continuous, which threw away each part's own answer: a pulse\nheld still on a sixteen-colour terminal still woke its host every frame.\nAlso: the e2e shape card looked for the removed 'interface Effect {',\ndocs/effects.md described a nextChange on the effect itself, and three\ntest names spoke of the retired two-stage Effect.\n\n* CLAUDE.md names the animation module's combinators by role, not by a list that drifts (rich-animation-42lg.8yz)"
+          "timestamp": "2026-10-19T05:17:47-06:00",
+          "message": "A timeline maps host time to animation time: pause, reverse, scrub, speed (rich-animation-42lg.kjt) (#479)\n\n* A timeline maps host time to animation time: pause, reverse, scrub, speed (rich-animation-42lg.kjt)\n\nA `Timeline` in `src/core/` is the map from the host's clock to the time an\nanimation is asked for, as a value: play, pause, resume, seek, a rate —\nnegative to reverse — each a timeline in and a timeline out, with no clock\nread. `Timeline.run` is an animation on host time whose `nextChange` is\ncarried back onto the host's clock, the argument `Spinner`'s speed scaled\nits holds for, now made once above the type; `Spinner`'s speed is a timeline.\n\nReversing exactly needs the other end of a hold, so `Animation` answers\n`lastChange(t)` beside `nextChange(t)`: the last moment the value may have\nbecome `at(t)`, which `Beat.start` already was and is now named for. Every\ncombinator and instance answers it. The spinner's drawn cells are restamped\nwith the host's answer (`Style.withNextChange`), since the frame's own\nstamp is on the spinner's timeline.\n\neffects-feel's hand-rolled `Pace` is a timeline over the frame count, and\nspace now pauses it.\n\n* A timeline's host moment is a search across clocks, and a frame is stamped where it is drawn (rich-animation-42lg.kjt)\n\nReview findings, high pass. Timeline.run threw for any animation time far from\nthe host's or any slow rate, backwards above all: a host float is a step of\n`rate` on the animation's clock, so the floats between the sum and the first\none past an edge are as many as the two clocks' resolutions are apart, which\nthe eight-ulp walk for a sum on one clock cannot cover. `firstReaching` in\neasing.ts brackets and halves to the exact float; `played` is one shape for\nboth directions, with the host time refused once at entry.\n\nFrameSequence.at stamped its cells with nextChange on its own clock, so a\nsequence run on a timeline, or after an Animation.sequence switch, handed a\nhost a stamp it could not read; Spinner was re-stamping over it, overwriting\na label's earlier word. `at` is now the frame alone and `frameAt` stamps it\nwhere a host time is known — Frames, Spinner, the template `frames` function\n— so Style.withNextChange and the re-stamping loop go. Spinner's copy of the\nrate check goes too; the timeline is the one enforcer. A paused timeline\nrefuses a non-finite host time at seek like every other operation.\n\n* frameAt is public and stamps a copy, and an edge past the host's clock is never (rich-animation-42lg.kjt)\n\nReview findings, medium pass. `frameAt` is exported from the main barrel\nand the showcase blinks a cursor through it, since a line assembled from\n`sequence.at(t)` lost its stamp when the stamp moved off `at`. It stamps a\ncopy: an animation may hand back the one text it holds, as\n`Animation.constant` does, and a stamp on that outlived its draw. A sum\nthat overflows the host's clock — a subnormal rate, an edge 1e308 host\nseconds off — is the never it signs, not a bracket of NaN that never closes;\n`firstReaching` refuses an infinite guess outright.\n\n* firstReaching stays within the finite floats, and a sequence's carried moment is searched both ways (rich-animation-42lg.kjt)\n\nReview findings, escalation high. The downward bracket could step onto\n-Infinity and bisect NaN forever; the search now clamps to the finite floats\nand answers always or never at either end. Animation.sequence carried a\nmoment by walking up from a sum that can round over the change as well as\nunder it, so nextChange was a float late on about one time in forty; it is\nthe same search now, and the test asserts the float before the answer still\nshows the old value. A paused run refuses a non-finite host time like a\nplaying one. A stray file `1` left at the root by the last commit is gone."
         }
       ]
     }
