@@ -4,15 +4,22 @@
     {
       "version": "pr-489",
       "ref": "refs/pull/489/merge",
-      "sha": "671aaa0612d12947080c4bec9ba901daf399be2d",
-      "timestamp": "2026-10-19T19:06:30.736Z",
+      "sha": "22ae9201102f183cd51868559605620c9354ef06",
+      "timestamp": "2026-10-19T19:24:03.929Z",
       "commits": [
         {
-          "sha": "671aaa0612d12947080c4bec9ba901daf399be2d",
+          "sha": "22ae9201102f183cd51868559605620c9354ef06",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T13:04:32-06:00",
-          "message": "Merge c42d1c199de5fd6c601f374af23206fc4051a8e4 into 4243346c52c64c49f3b253bcd07221ba490f85ed\n"
+          "timestamp": "2026-10-19T19:22:11Z",
+          "message": "Merge 3be80ff203d929414ce022dee13eedc093ff1742 into 4243346c52c64c49f3b253bcd07221ba490f85ed\n"
+        },
+        {
+          "sha": "3be80ff203d929414ce022dee13eedc093ff1742",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T13:22:04-06:00",
+          "message": "A frame of no cells says when it changes on a carrier that opens no row (rich-animation-42lg.uv8 review)\n\nsplitLines no longer guesses a carrier from its style: Segment.carrier is a\ncontrol of no codes, so a stamp at Infinity, an empty text frame and a\nchange's line end all keep the rows they have unstamped.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "c42d1c199de5fd6c601f374af23206fc4051a8e4",
