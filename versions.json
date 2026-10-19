@@ -4,15 +4,22 @@
     {
       "version": "pr-483",
       "ref": "refs/pull/483/merge",
-      "sha": "e4080da6f2a2acf0e40f683ae78fb87b7bf2c1d3",
-      "timestamp": "2026-10-19T13:50:23.779Z",
+      "sha": "32a88c30bfe921dc34d5027d17dc70b53e06d2be",
+      "timestamp": "2026-10-19T14:00:53.335Z",
       "commits": [
         {
-          "sha": "e4080da6f2a2acf0e40f683ae78fb87b7bf2c1d3",
+          "sha": "32a88c30bfe921dc34d5027d17dc70b53e06d2be",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T13:48:23Z",
-          "message": "Merge 204699194750586716551d28d04b60fddcb50546 into 7ffba4c23bb23c04bda2d38ba48ab580fff4a6b0\n"
+          "timestamp": "2026-10-19T13:59:00Z",
+          "message": "Merge eccf9790af0a20b2836ba9e41656fec1286a2aa4 into 7ffba4c23bb23c04bda2d38ba48ab580fff4a6b0\n"
+        },
+        {
+          "sha": "eccf9790af0a20b2836ba9e41656fec1286a2aa4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T07:58:52-06:00",
+          "message": "Glyph effects: a changed cell stands apart from its neighbours, one ink test for both wrappers, zero-width cells are no text, eases settle (rich-animation-42lg.je5 review)\n\nstandsApart replaces keepsLines: only changed texts are asked, by grapheme count beside their neighbours, so a child splitting a cluster across segments draws as it did and a leading combining mark is caught. inked() in effect.ts is the one blank test for Effected and the glyph effects. typewriter/scramble settle the handed ease so the last cell lands. caseWave's band covers a wide glyph by any column. SCRAMBLE_GLYPHS spreads an ASCII string, so the module does nothing on import. stars wake once a life: step 1.5, life 1, the same frames.\n"
         },
         {
           "sha": "204699194750586716551d28d04b60fddcb50546",
