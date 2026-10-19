@@ -84,10 +84,30 @@ describe("a frame says when it changes on the host's clock", () => {
     expect(Segment.nextChange(drawn.flat())).toBe(3);
   });
 
-  it("an empty text frame keeps its stamp and writes the bytes an unstamped one does", () => {
-    const blink: Animation<RichText> = { at: () => new RichText(""), nextChange: () => 2, lastChange: () => 1 };
-    const drawn = draw(new Group(frameAt(blink, 1.5)));
-    expect(Segment.nextChange(drawn)).toBe(2);
-    expect(bytes(drawn)).toBe(bytes(draw(new Group(new RichText("")))));
+  it("an element takes no row before it enters or once it is gone, though gone it never changes again", () => {
+    const life = lifecycle(new RichText("x"), { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "x", theme }, 10).leave(100);
+    const alone = lines(new Group(new RichText("top"))).length;
+    for (const t of [5, 200]) expect(lines(new Group(new RichText("top"), frameAt(life, t))).length).toBe(alone);
+    expect(life.nextChange(200)).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("a change ends its last row as the renderable it changes to does, whatever that ends with", () => {
+    const pending = lifecycle(new RichText("x"), { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "x", theme }, 10);
+    const to = new Group(new RichText("bbb"), frameAt(pending, 0));
+    const moving = crossfade(curve).effect({ from: new RichText("aaa"), to, theme });
+    const rows = (renderable: Renderable) => lines(new Group(renderable, new RichText("next"))).length;
+    expect(rows(frameAt(moving, 1))).toBe(rows(to));
+  });
+
+  it("an empty text frame keeps its stamp and writes the bytes and rows an unstamped one does", () => {
+    for (const end of ["\n", ""]) {
+      const frame = new RichText("", { end });
+      const blink: Animation<RichText> = { at: () => frame, nextChange: () => 2, lastChange: () => 1 };
+      const stamped = new Group(new RichText("top"), frameAt(blink, 1.5));
+      const plain = new Group(new RichText("top"), frame);
+      expect(Segment.nextChange(draw(stamped))).toBe(2);
+      expect(bytes(draw(stamped))).toBe(bytes(draw(plain)));
+      expect(lines(stamped).length).toBe(lines(plain).length);
+    }
   });
 });

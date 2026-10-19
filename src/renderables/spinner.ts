@@ -142,7 +142,7 @@ export class Spinner implements Animation<Renderable & Measurable> {
    * mapped — so drawn at a host time it is `drawnAt`'s, or `frameAt`'s.
    */
   at(t: number): Renderable & Measurable {
-    return this._frame(t, (sequence, options) => this._render(sequence, t, options));
+    return this._frame("Spinner.at", t, (sequence, options) => this._render(sequence, t, options));
   }
 
   /**
@@ -153,13 +153,13 @@ export class Spinner implements Animation<Renderable & Measurable> {
    * `Status`, a `Progress` column — hands over.
    */
   drawnAt(t: number): Renderable & Measurable {
-    return this._frame(t, (sequence, options) => stampFrame(this._render(sequence, t, options), sequence.played.nextChange(t)));
+    return this._frame("Spinner.drawnAt", t, (sequence, options) => stampFrame(this._render(sequence, t, options), sequence.played.nextChange(t)));
   }
 
   /** The spinner's frame at `t`, drawn by `draw` with the frames the output can draw. */
-  private _frame(t: number, draw: (sequence: Sequence, options: RenderOptions) => Iterable<Segment>): Renderable & Measurable {
+  private _frame(method: string, t: number, draw: (sequence: Sequence, options: RenderOptions) => Iterable<Segment>): Renderable & Measurable {
     if (!Number.isFinite(t)) {
-      throw new RangeError(`Spinner.at needs a finite t, got ${t}`);
+      throw new RangeError(`${method} needs a finite t, got ${t}`);
     }
     const drawn = (options: RenderOptions): Sequence => drawable(options, this._named, this._ascii, sequenceGlyphs);
     return {

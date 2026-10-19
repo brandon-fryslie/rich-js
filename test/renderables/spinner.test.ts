@@ -40,6 +40,7 @@ describe("Spinner", () => {
     it("refuses a time that is not a finite number of seconds, where it is given", () => {
       expect(() => new Spinner("dots").at(NaN)).toThrow(RangeError);
       expect(() => new Spinner("dots").at(Infinity)).toThrow(RangeError);
+      expect(() => new Spinner("dots").drawnAt(NaN)).toThrow(/Spinner.drawnAt needs a finite t, got NaN/);
     });
   });
 

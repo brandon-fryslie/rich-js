@@ -356,6 +356,11 @@ function isBodyOrInitializer(node: ts.Node): boolean {
   );
 }
 
+/** Whether an entry module exposes `sym` with `export type`, so it binds no runtime name there. */
+function typeOnlyExport(sym: ts.Symbol): boolean {
+  return (sym.declarations ?? []).some((d) => ts.isExportSpecifier(d) && (d.isTypeOnly || d.parent.parent.isTypeOnly));
+}
+
 /**
  * Follow `SymbolFlags.Alias` chains to the original declaration symbol.
  * Returns `(file, name, kind)` of the first declaration on the resolved
@@ -368,11 +373,6 @@ function isBodyOrInitializer(node: ts.Node): boolean {
  * runtime?" Classes and enums carry it alongside their type side and are
  * therefore values; interfaces and type aliases do not.
  */
-/** Whether an entry module exposes `sym` with `export type`, so it binds no runtime name there. */
-function typeOnlyExport(sym: ts.Symbol): boolean {
-  return (sym.declarations ?? []).some((d) => ts.isExportSpecifier(d) && (d.isTypeOnly || d.parent.parent.isTypeOnly));
-}
-
 function resolveOrigin(sym: ts.Symbol, checker: ts.TypeChecker): SymbolOrigin | null {
   const s = resolveAlias(sym, checker);
   const decl = s.declarations?.[0];

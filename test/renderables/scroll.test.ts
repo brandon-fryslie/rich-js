@@ -163,7 +163,7 @@ describe("scroll", () => {
 
   it("drawn through frameAt, every cell carries when it next changes, and a frame of no cells still does", () => {
     const marquee = scroll(LINE, { width: 6, height: 2, col: Animation.continuous((t) => t) });
-    const cells = draw(frameAt(marquee, 3)).filter((s) => s.text !== "\n");
+    const cells = draw(frameAt(marquee, 3)).filter((s) => !s.isControl && s.text !== "\n");
     expect(cells.length).toBeGreaterThan(1);
     for (const segment of cells) expect(segment.style?.nextChange).toBe(3);
     const empty = Animation.map(Animation.continuous((t) => t), (): Renderable => ({ render: () => [] }));

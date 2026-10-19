@@ -106,7 +106,7 @@ class ScrollFrame implements Renderable, Measurable, Composite {
     // [LAW:one-source-of-truth] What the window shows is cut from the whole content, so it may change
     // when anything in the content does — a row above the slot entering pushes every row down. That
     // one answer rides a cell of no width on the first row, and the cut throws the rest away.
-    yield new Segment("", new Style({ nextChange: Segment.nextChange(drawn) }));
+    yield Segment.carrier(new Style({ nextChange: Segment.nextChange(drawn) }));
     for (let r = 0; r < this.height; r++) {
       const line = lines[this.row + r] ?? [];
       const shown = Segment.divide(line, [start, start + width - blank])[1] ?? [];

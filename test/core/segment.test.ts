@@ -316,6 +316,17 @@ describe("Segment.splitLines()", () => {
     expect(texts(lines[0]!)).toEqual(["hello", " world"]);
   });
 
+  it("counts an empty piece after the last break as a row, whatever its style, and a carrier as none", () => {
+    for (const style of [undefined, Style.null(), new Style({ nextChange: 3 })]) {
+      expect(Segment.splitLines([new Segment("a\n"), new Segment("", style)])).toHaveLength(2);
+    }
+    const carrier = Segment.carrier(new Style({ nextChange: 3 }));
+    const lines = Segment.splitLines([new Segment("a\n"), carrier]);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain(carrier);
+    expect(Segment.splitLines([carrier])).toEqual([[carrier]]);
+  });
+
   it("splits at newline within a single segment", () => {
     const lines = Segment.splitLines([new Segment("hello\nworld")]);
     expect(lines).toHaveLength(2);

@@ -56,7 +56,7 @@ import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { stampFrame } from "./frames.js";
 import { stripControlChars } from "../core/text.js";
-import { cellSeed, walkGlyphs, type Placed } from "./effect.js";
+import { cellSeed, walkGlyphs, type Moved, type Placed } from "./effect.js";
 
 /**
  * A cell of the element a glyph effect wraps: the glyph it shows, where it
@@ -128,7 +128,7 @@ export class Reglyphed implements Renderable, Measurable, Composite {
   }
 
   /** The frame the effect draws at `t`, and when it says that next changes. */
-  protected moved(options: RenderOptions): { readonly segments: Segment[]; readonly nextChange: number } {
+  protected moved(options: RenderOptions): Moved {
     const segments = [...render(this.renderable, options)];
     let index = 0;
     // Each segment's glyphs, each with its cell as the effect is handed it: one walk, one count of reading order.

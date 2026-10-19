@@ -166,9 +166,9 @@ export function stampFrame(segments: Iterable<Segment>, nextChange: number): Ite
 
 /**
  * An animation's frame drawn at the draw site's `t`, stamped with when it
- * changes there (`stampFrame`). The stamp also rides a cell of no width that
- * writes no byte, drawn first, because an animation's frame of no cells — an
- * element not yet entered — may have cells later, and must say when.
+ * changes there (`stampFrame`), led by a `Segment.carrier` of the same time,
+ * because an animation's frame of no cells — an element not yet entered — may
+ * have cells later, and must say when.
  */
 class Stamped implements Renderable, Measurable, Composite {
   constructor(
@@ -177,7 +177,8 @@ class Stamped implements Renderable, Measurable, Composite {
   ) {}
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield* stampFrame([new Segment(""), ...render(this.frame, options)], this.nextChange);
+    yield Segment.carrier(new Style({ nextChange: this.nextChange }));
+    yield* stampFrame(render(this.frame, options), this.nextChange);
   }
 
   *contents(): Iterable<Renderable> {

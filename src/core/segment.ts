@@ -30,10 +30,6 @@ export enum ControlType {
 
 export type ControlCode = [ControlType, ...unknown[]];
 
-/** A cell of no width that says nothing but when its frame changes: no text, no control, a style that is a bare stamp. */
-const isCarrier = (segment: Segment): boolean =>
-  !segment.isControl && segment.text === "" && segment.style !== undefined && segment.style.equals(new Style({ nextChange: segment.style.nextChange }));
-
 // --- Segment ---
 
 export class Segment {
@@ -61,6 +57,11 @@ export class Segment {
 
   get isControl(): boolean {
     return this.control !== undefined;
+  }
+
+  /** Whether this is a `Segment.carrier`: a control of no codes. */
+  get isCarrier(): boolean {
+    return this.control?.length === 0;
   }
 
   /**
@@ -100,6 +101,18 @@ export class Segment {
   private static _line: Segment | undefined;
   static line(): Segment {
     return (Segment._line ??= new Segment("\n"));
+  }
+
+  /**
+   * A segment that draws no cell, writes no byte and opens no row, whose
+   * `style` says something of the frame it rides in — when it next changes
+   * (`Style.nextChange`) — so a frame of no cells can still say it. A control
+   * of no codes: everything that reads cells or text passes it by as it
+   * passes any control, and `splitLines` keeps it off a row of its own. Rich
+   * has none; an empty piece of text is a row there and here.
+   */
+  static carrier(style: Style): Segment {
+    return new Segment("", style, []);
   }
 
   // --- Static transformations ---
@@ -237,14 +250,11 @@ export class Segment {
       }
     }
 
-    // A run after the last break of nothing but carriers — cells of no width
-    // whose style says only when their frame changes (`Style.nextChange`) — is
-    // no row: it joins the line the break ended. A carrier cannot see the
+    // A run after the last break of nothing but carriers (`Segment.carrier`)
+    // is no row: it joins the line the break ended. A carrier cannot see the
     // break drawn before it, so whether it opens a row is decided here, once.
-    // An empty piece of text is a row, as Rich's `split_lines` has it: its
-    // style is the text's, or none, never a bare stamp.
     const last = lines[lines.length - 1];
-    if (last !== undefined && currentLine.every(isCarrier)) last.push(...currentLine);
+    if (last !== undefined && currentLine.every((segment) => segment.isCarrier)) last.push(...currentLine);
     else if (currentLine.length > 0) lines.push(currentLine);
 
     return lines;

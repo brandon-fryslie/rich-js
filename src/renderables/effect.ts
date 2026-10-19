@@ -210,7 +210,7 @@ export interface EffectedOptions {
 }
 
 /** A frame an effect drew at a moment, and when the effect says it next changes there. */
-interface Moved {
+export interface Moved {
   readonly segments: Iterable<Segment>;
   readonly nextChange: number;
 }
