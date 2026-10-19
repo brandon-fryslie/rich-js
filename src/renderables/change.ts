@@ -27,6 +27,7 @@ import { Measurement } from "../core/measure.js";
 import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
+import { Style } from "../core/style.js";
 import { Effected } from "./effect.js";
 import { requireCurve, transition, veiled, type Curve, type Transition } from "./effects.js";
 
@@ -100,15 +101,18 @@ class ChangeFrame implements Renderable, Measurable, Composite {
   ) {}
 
   render(options: RenderOptions): Iterable<Segment> {
-    const after = Segment.splitLines(render(this.to, options));
-    const lengths = after.map((line) => Segment.getLineLength(line));
-    // [LAW:one-source-of-truth] The new renderable's rows are the shape of every frame.
+    // Drawn in the order `contents` names them.
     const before = Segment.splitLines(render(this.from, options));
+    const after = Segment.splitLines(render(this.to, options));
+    // [LAW:one-source-of-truth] The new renderable's rows are the shape of every frame.
+    const lengths = after.map((line) => Segment.getLineLength(line));
     const width = Math.max(0, ...lengths);
     const at = this.progress(this.t, width);
-    const spliced = after.flatMap((line, row) => [...splice(Segment.adjustLineLength(before[row] ?? [], lengths[row]!), line, (col) => at(row, col) >= 0.5), Segment.line()]);
+    const rows = after.flatMap((line, row) => [...splice(Segment.adjustLineLength(before[row] ?? [], lengths[row]!), line, (col) => at(row, col) >= 0.5), Segment.line()]);
+    // Which side each cell is drawn from moves every frame whether or not a colour is written, so the rows say so themselves.
+    const spliced = [...Segment.applyStyle(rows, new Style({ nextChange: this.t }))];
     const veil = veiled(() => (cell) => shows(at(cell.row, cell.col)), this.swing);
-    return render(new Effected(new Rows(spliced), veil, { t: this.t, key: "change", theme: this.theme }), options);
+    return render(new Effected({ render: () => spliced }, veil, { t: this.t, key: "change", theme: this.theme }), options);
   }
 
   *contents(): Iterable<Renderable> {
@@ -134,13 +138,4 @@ function splice(before: Segment[], after: Segment[], isAfter: (col: number) => b
   const to = Segment.divide(after, cuts);
   const starts = [0, ...cuts];
   return starts.flatMap((start, i) => (isAfter(start) ? (to[i] ?? []) : (from[i] ?? [])));
-}
-
-/** Rows already drawn, drawn as they are. */
-class Rows implements Renderable {
-  constructor(readonly segments: readonly Segment[]) {}
-
-  render(): Iterable<Segment> {
-    return this.segments;
-  }
 }

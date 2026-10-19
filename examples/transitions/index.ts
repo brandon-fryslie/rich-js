@@ -24,13 +24,11 @@ const CHANGES: readonly [string, Transition<Change>][] = [
 
 function view(t: number): Renderable {
   const k = Math.floor(t / EVERY);
-  const from = STATES[(k + STATES.length - 1) % STATES.length]!;
   const to = STATES[k % STATES.length]!;
-  return new Group(
-    ...CHANGES.map(([name, change]) =>
-      new Panel(change.effect({ from, to, theme: CATPPUCCIN_MOCHA }).at(t - k * EVERY), { title: name, width: 40, borderStyle: "#585b70" }),
-    ),
-  );
+  // The first state is shown as it is: nothing came before it to change from.
+  const shown = (change: Transition<Change>): Renderable =>
+    k === 0 ? to : change.effect({ from: STATES[(k - 1) % STATES.length]!, to, theme: CATPPUCCIN_MOCHA }).at(t - k * EVERY);
+  return new Group(...CHANGES.map(([name, change]) => new Panel(shown(change), { title: name, width: 40, borderStyle: "#585b70" })));
 }
 
 const live = new Live(view, { refreshPerSecond: 30 });

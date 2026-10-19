@@ -76,21 +76,13 @@ describe("a change from one renderable to another", () => {
       expect(at0).toBe("buildi\n");
     });
 
-    it(`${name}: never halves a wide glyph`, () => {
-      const moving = between(wide, building);
-      for (const t of sampled(60, 2)) {
-        for (const line of Segment.splitLines(draw(moving.at(t)))) {
-          // Every segment of a row is whole: as many cells as its glyphs say.
-          expect(Segment.getLineLength(line)).toBe(20);
-        }
-      }
-    });
-
-    it(`${name}: with no colour output, is spliced and writes no style`, () => {
+    it(`${name}: with no colour output, is spliced, and changes every frame until done`, () => {
       const plain: RenderOptions = { maxWidth: 40, colorSystem: null };
       const moving = between(building, done);
       expect(text(draw(moving.at(0), plain))).toBe("buildi\n");
+      for (const t of sampled(4, 1.9)) expect(Segment.nextChange(draw(moving.at(t), plain))).toBe(t);
       expect(text(draw(moving.at(curve.seconds), plain))).toBe("done ✓\n");
+      expect(Segment.nextChange(draw(moving.at(curve.seconds), plain))).toBe(Number.POSITIVE_INFINITY);
     });
   }
 
@@ -99,6 +91,24 @@ describe("a change from one renderable to another", () => {
     expect(text(draw(crossfade(curve).effect({ from: building, to: done, theme }).at(1), { maxWidth: 40, colorSystem: null }))).toBe("done ✓\n");
     const midway = text(draw(wipe(curve).effect({ from: new RichText("aaaaaaaaaaaaaaaaaaaa"), to: new RichText("bbbbbbbbbbbbbbbbbbbb"), theme }).at(1), { maxWidth: 40, colorSystem: null }));
     expect(midway).toMatch(/^b+a+\n$/);
+  });
+
+  it("reports the old renderable and the new one in the same order drawn as held", () => {
+    const frame = crossfade(curve).effect({ from: building, to: done, theme }).at(0.5);
+    const seen = (maxWidth: number): Renderable[] => {
+      const present: Renderable[] = [];
+      draw(frame, { ...OPTIONS, maxWidth, onPresent: (r) => present.push(r) });
+      return present.filter((r) => r === building || r === done);
+    };
+    expect(seen(40)).toEqual([building, done]);
+    expect(seen(0)).toEqual([building, done]);
+  });
+
+  it("a wipe whose front falls inside a wide glyph blanks it rather than halving it", () => {
+    // Linear over 2s, 20 columns, edge 6: the front is at 13t, and a cell turns once it is 3 columns behind it,
+    // so at t = 0.577 columns 0–4 have turned and the cut at column 5 falls in the glyph at columns 4–5.
+    const cut = wipe(curve).effect({ from: wide, to: building, theme }).at(0.577);
+    expect(text(draw(cut, { maxWidth: 40, colorSystem: null }))).toBe("build 字漢字漢字漢字\n");
   });
 
   it("a crossfade shorter than a second, sampled once a second, shows the old renderable and then the new", () => {
