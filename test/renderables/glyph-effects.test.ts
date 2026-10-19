@@ -85,6 +85,11 @@ describe("typewriter", () => {
     expect(draw(typing.effect, lines("  ab  ", "  cd  "), 1).text).toBe("  ab  \n      ");
     expect(draw(typing.effect, lines("a b"), 2 / 3).text).toBe("a  ");
   });
+
+  it("is whole at its seconds under an ease that stops short of 1", () => {
+    const short = typewriter({ seconds: 2, ease: (p) => 0.99999 * p });
+    expect(draw(short.effect, lines("abcd"), 2).text).toBe("abcd");
+  });
 });
 
 describe("scramble", () => {
@@ -109,6 +114,12 @@ describe("scramble", () => {
   it("needs a finite z", () => {
     expect(() => scramble({ seconds: 2, ease: EASES.linear }, Number.NaN)).toThrow(/scramble z must be a finite place in the noise/);
   });
+
+  it("leaves a glyph no cell wide as it is, and spends no time on it", () => {
+    const shown = draw(scrambling.effect, lines(" \uFEFFab"), 1).text;
+    expect(shown.slice(0, 3)).toBe(" \uFEFFa");
+    expect(shown.slice(3)).not.toBe("b");
+  });
 });
 
 describe("caseWave", () => {
@@ -131,6 +142,13 @@ describe("caseWave", () => {
     const text = lines("abcdefghijklmnop");
     const passes = [0.1, 0.9].map((place) => Array.from({ length: 18 }, (_, k) => draw(caseWave({ step: 0.1, width: 2 }, place), text, (k + 0.5) * 0.1).text));
     expect(passes[0]).not.toEqual(passes[1]);
+  });
+
+  it("swaps a wide glyph when the band covers either of its columns", () => {
+    const fullwidth = lines("ＡＢＣ");
+    const pass = Array.from({ length: 8 }, (_, k) => draw(wave, fullwidth, (k + 0.5) * 0.1).text);
+    // Six columns and the band's two: the band covers some column of each glyph on three steps of every pass.
+    for (const glyph of ["ａ", "ｂ", "ｃ"]) expect(pass.filter((text) => text.includes(glyph))).toHaveLength(3);
   });
 
   it("leaves a glyph whose swapped case is another width", () => {

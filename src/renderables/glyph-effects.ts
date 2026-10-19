@@ -21,9 +21,10 @@
 
 import { Animation } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
-import { EASES, Phase, beat, positiveSeconds, type Timing } from "../core/easing.js";
+import { EASES, Phase, beat, positiveSeconds, settled, type Timing } from "../core/easing.js";
 import { hash } from "../core/noise.js";
 import { drawable, isAscii } from "../core/protocol.js";
+import { inked } from "./effect.js";
 import { requireZ, transition, type EffectTarget, type Transition } from "./effects.js";
 import type { DrawnGlyphs, GlyphCell, GlyphEffect, GlyphFrame } from "./glyph-effect.js";
 
@@ -36,29 +37,20 @@ function blank(glyph: string): string {
 }
 
 /**
- * Whether `glyph` is a blank cell: a space at least one cell wide. A
- * zero-width glyph that trims away, as a byte-order mark does, holds no cell
- * a particle could take. [LAW:one-source-of-truth] The one test of a blank
- * cell, so the words a scramble keeps the shape of are the words particles
- * pass behind.
- */
-function isBlank(glyph: string): boolean {
-  return cellLen(glyph) > 0 && glyph.trim() === "";
-}
-
-/**
- * The text among `cells`: each row from its first glyph that is not blank to
- * its last, the blanks between words in it and the margins round it not, as
- * a typewriter types and not as a renderable pads. Each cell's place in it,
- * in reading order, by `index`, and how many cells it is.
+ * The text among `cells`: each row from its first inked glyph to its last,
+ * the blanks between words in it and the margins round it not, as a
+ * typewriter types and not as a renderable pads. A glyph no cell wide — a
+ * byte-order mark, a mark a child split from its letter — takes no time and
+ * is no place in it. Each cell's place, in reading order, by `index`, and
+ * how many places there are.
  */
 function text(cells: readonly GlyphCell[]): { readonly length: number; readonly place: ReadonlyMap<number, number> } {
   const ends = new Map<number, { first: number; last: number }>();
-  for (const cell of cells.filter((c) => !isBlank(c.glyph))) ends.set(cell.row, { first: ends.get(cell.row)?.first ?? cell.index, last: cell.index });
+  for (const cell of cells.filter((c) => inked(c.glyph))) ends.set(cell.row, { first: ends.get(cell.row)?.first ?? cell.index, last: cell.index });
   const place = new Map<number, number>();
   for (const cell of cells) {
     const row = ends.get(cell.row);
-    if (row !== undefined && cell.index >= row.first && cell.index <= row.last) place.set(cell.index, place.size);
+    if (row !== undefined && cell.index >= row.first && cell.index <= row.last && cellLen(cell.glyph) > 0) place.set(cell.index, place.size);
   }
   return { length: place.size, place };
 }
@@ -93,10 +85,12 @@ function stepped(seconds: number): <F>(frame: (step: number) => F) => Animation<
  */
 export function typewriter(timing: Timing): GlyphTransition {
   const phase = Phase.once(0, timing.seconds);
+  // Settled, so the last cell is typed at the seconds whatever ease was handed.
+  const ease = settled(timing.ease);
   return transition(timing.seconds, ({ cells }: DrawnGlyphs) => {
     const { length, place } = text(cells);
     return Animation.continuous((t): GlyphFrame => {
-      const typed = arrived(length, timing.ease(phase(t)));
+      const typed = arrived(length, ease(phase(t)));
       // A margin has no place, and is blank already.
       return (cell) => ((place.get(cell.index) ?? -1) < typed ? cell.glyph : blank(cell.glyph));
     });
@@ -104,7 +98,7 @@ export function typewriter(timing: Timing): GlyphTransition {
 }
 
 /** What a scrambled cell shows: one-cell glyphs, none that reads as a blank. */
-const SCRAMBLE_GLYPHS = graphemes("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#$%&*+<=>?@");
+const SCRAMBLE_GLYPHS = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#$%&*+<=>?@"];
 
 /** How long a scrambled glyph holds before the next, in seconds. */
 const FLICKER = 1 / 15;
@@ -119,15 +113,16 @@ const FLICKER = 1 / 15;
 export function scramble(timing: Timing, z: number): GlyphTransition {
   requireZ("scramble", z);
   const phase = Phase.once(0, timing.seconds);
+  // Settled, so the last cell resolves at the seconds whatever ease was handed.
+  const ease = settled(timing.ease);
   const flicker = stepped(FLICKER)((step) => step);
   return transition(timing.seconds, ({ cells }: DrawnGlyphs) => {
     const { length, place } = text(cells);
     return Animation.continuous((t): GlyphFrame => {
-      const resolved = arrived(length, timing.ease(phase(t)));
+      const resolved = arrived(length, ease(phase(t)));
       const step = flicker.at(t);
       return (cell) => {
-        // A cell that is not blank is in the text, so it has a place.
-        if (isBlank(cell.glyph) || place.get(cell.index)! < resolved) return cell.glyph;
+        if (!inked(cell.glyph) || (place.get(cell.index) ?? -1) < resolved) return cell.glyph;
         const pick = (i: number): string => SCRAMBLE_GLYPHS[Math.floor(hash(cell.seed * 7919 + i, z + step * 0.618) * SCRAMBLE_GLYPHS.length)]!;
         return Array.from({ length: cellLen(cell.glyph) }, (_, i) => pick(i)).join("");
       };
@@ -169,7 +164,8 @@ export function caseWave({ step, width }: CaseWave, z: number): GlyphEffect {
     return steps((s): GlyphFrame => {
       // The column just past the band's right edge; it enters at the left.
       const lead = (((s + start) % span) + span) % span;
-      return (cell) => (cell.col >= lead - width && cell.col < lead ? swapCase(cell.glyph) : cell.glyph);
+      // A wide glyph is in the band if any of its columns is.
+      return (cell) => (cell.col < lead && cell.col + cellLen(cell.glyph) > lead - width ? swapCase(cell.glyph) : cell.glyph);
     });
   };
 }
@@ -218,7 +214,8 @@ export function particles(spec: Particles, z: number): GlyphEffect {
       const life = Number.isFinite(spec.life) ? Math.floor(s / spec.life) : 0;
       const fallen = spec.drift * s;
       return (cell) => {
-        if (!isBlank(cell.glyph)) return cell.glyph;
+        // A particle takes a blank cell, never ink, nor a glyph no cell wide.
+        if (inked(cell.glyph) || cellLen(cell.glyph) === 0) return cell.glyph;
         const from = cell.row - fallen;
         const field = z + 1.37 * cell.col + 0.71 * life;
         // A particle is one cell; a wide blank keeps the rest of its width blank.
@@ -240,7 +237,7 @@ export const GLYPH_DEFAULTS = {
   scramble: { seconds: 2.5, ease: EASES["ease-in"] },
   wave: { step: 0.06, width: 3 },
   rain: { glyphs: "│╎", ascii: "|:", density: 0.06, step: 0.08, drift: 1, life: Number.POSITIVE_INFINITY },
-  stars: { glyphs: "·+*", ascii: ".+*", density: 0.04, step: 0.25, drift: 0, life: 6 },
+  stars: { glyphs: "·+*", ascii: ".+*", density: 0.04, step: 1.5, drift: 0, life: 1 },
 } as const satisfies { readonly [K in GlyphTransitionName]: Timing } & { readonly wave: CaseWave; readonly rain: Particles; readonly stars: Particles };
 
 /**

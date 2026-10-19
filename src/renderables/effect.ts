@@ -385,6 +385,15 @@ export function walkGlyphs(segments: readonly Segment[]): (readonly WalkedGlyph[
   });
 }
 
+/**
+ * Whether `text` draws ink: anything but blanks. [LAW:one-source-of-truth]
+ * The one test, so the words a colour effect lights are the words a glyph
+ * effect (`./glyph-effects.ts`) scrambles and its particles pass behind.
+ */
+export function inked(text: string): boolean {
+  return text.trim() !== "";
+}
+
 /** `looked` with each segment's glyphs placed, by the one walk. */
 function walk(looked: readonly Looked[]): Walked[] {
   const placed = walkGlyphs(looked.map(({ segment }) => segment));
@@ -410,9 +419,9 @@ function measured(looked: readonly Looked[], walked: () => readonly Walked[], de
       if (look === undefined) return [];
       // A blank glyph shows its ground, and any line its style draws in its ink.
       const blankShows = look.pair.bg.hex !== ground || drawsLines(look.style);
-      return glyphs.flatMap(({ glyph, cell }) => (cell !== undefined && (glyph.trim() !== "" || blankShows) ? [cell] : []));
+      return glyphs.flatMap(({ glyph, cell }) => (cell !== undefined && (inked(glyph) || blankShows) ? [cell] : []));
     });
-  const words = looked.flatMap(({ segment, look }) => (look !== undefined && segment.text.trim() !== "" && !drawnBy(look.style.anchor, JOIN) ? [look.pair] : []));
+  const words = looked.flatMap(({ segment, look }) => (look !== undefined && inked(segment.text) && !drawnBy(look.style.anchor, JOIN) ? [look.pair] : []));
   const pairs = [...new Map(words.map((pair): [string, Pair] => [`${pair.fg.hex}/${pair.bg.hex}/${pair.terminal.fg}/${pair.terminal.bg}/${pair.reverse}`, pair])).values()];
   // [LAW:one-source-of-truth] A slot the terminal fills is no colour of the element's, whatever its hex.
   const own = (slot: "fg" | "bg"): string[] => pairs.flatMap((pair) => (pair.terminal[slot] ? [] : [pair[slot].hex]));

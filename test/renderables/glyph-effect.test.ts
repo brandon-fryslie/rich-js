@@ -92,10 +92,19 @@ describe("GlyphEffected — what it may not change", () => {
     }
   });
 
-  it("refuses text that joins the cell beside it into one character, naming the line", () => {
+  it("refuses text that joins the cell beside it into one character, naming the cell", () => {
     // Alone, "😀\u200d" is two cells, as the emoji it replaces; beside the next emoji it is one cluster, and the line would shrink.
     const joining: GlyphEffect = () => Animation.constant<GlyphFrame>((cell) => (cell.col === 0 ? "😀\u200d" : cell.glyph));
-    expect(() => [...glyphed(fixed(new Segment("😀😀x")), joining).render({ maxWidth: 10 })]).toThrow(/line 0 from 5 cells wide to 3/);
+    expect(() => [...glyphed(fixed(new Segment("😀😀x")), joining).render({ maxWidth: 10 })]).toThrow(/at row 0, column 0 .* joins the cell beside it/);
+    // A leading combining mark is one cell wide alone, and draws on the glyph before it.
+    const marking: GlyphEffect = () => Animation.constant<GlyphFrame>((cell) => (cell.col === 1 ? "\u0301x" : cell.glyph));
+    expect(() => [...glyphed(fixed(new Segment("ab")), marking).render({ maxWidth: 10 })]).toThrow(/at row 0, column 1 .* joins the cell beside it/);
+  });
+
+  it("draws a child that splits one character across two segments, as the child drew it", () => {
+    const split = fixed(new Segment("ab👨\u200d"), new Segment("👩cd"));
+    const out = [...glyphed(split, blanked).render({ maxWidth: 20 })].map((s) => s.text).join("");
+    expect(out).toBe(" ".repeat(8));
   });
 
   it("keeps every cell's anchor, link and meta", () => {

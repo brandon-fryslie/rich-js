@@ -140,7 +140,7 @@ export function steps(n: number, position: StepPosition = "jump-end"): Ease {
  * and a count or a width eased by it must land on its target, not a
  * thousandth or an ulp short.
  */
-const settled = (shape: (p: number) => number): Ease => (x) => {
+export const settled = (shape: (p: number) => number): Ease => (x) => {
   const p = Math.min(1, Math.max(0, x));
   return p === 1 ? 1 : shape(p);
 };

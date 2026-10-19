@@ -33,9 +33,8 @@
  * - It changes what a cell shows, never which cells exist, where they are or
  *   who drew them. The text it returns for a cell is exactly as many cells
  *   wide (`cellLen`), carries no line break or control character, and does
- *   not join its neighbour into one grapheme cluster, so every line is as
- *   wide as it was, or the render throws naming the cell or the line
- *   [LAW:single-enforcer]. So what sits beside the
+ *   not join the cell beside it into one grapheme cluster, or the render
+ *   throws naming the cell [LAW:single-enforcer]. So what sits beside the
  *   element never moves, and a wide glyph is changed whole — blanked as two
  *   spaces, scrambled as two one-cell glyphs — never cut.
  * - A segment whose every glyph comes back as it was is yielded as it was,
@@ -50,7 +49,7 @@
  */
 
 import type { Animation } from "../core/animation.js";
-import { cellLen } from "../core/cells.js";
+import { cellLen, graphemes } from "../core/cells.js";
 import { Measurement } from "../core/measure.js";
 import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
@@ -128,11 +127,11 @@ export class GlyphEffected implements Renderable, Measurable, Composite {
     const cells = placed.flatMap((glyphs) => glyphs.flatMap(({ cell }) => (cell === undefined ? [] : [cell])));
     const animation = this.effect({ cells, asciiOnly: options.asciiOnly === true });
     const frame = animation.at(this.t);
-    const changed = segments.map((segment, i) => {
-      const shown = placed[i]!.map(({ glyph, cell }) => (cell === undefined ? glyph : shows(frame, cell)));
-      return shown.every((text, j) => text === placed[i]![j]!.glyph) ? segment : new Segment(shown.join(""), segment.style);
-    });
-    keepsLines(segments, changed);
+    const shown = placed.map((glyphs) => glyphs.map(({ glyph, cell }) => (cell === undefined ? glyph : shows(frame, cell))));
+    standsApart(placed.flat(), shown.flat());
+    const changed = segments.map((segment, i) =>
+      shown[i]!.every((text, j) => text === placed[i]![j]!.glyph) ? segment : new Segment(shown[i]!.join(""), segment.style),
+    );
     return Segment.applyStyle(changed, new Style({ nextChange: animation.nextChange(this.t) }));
   }
 
@@ -167,25 +166,26 @@ function shows(frame: GlyphFrame, cell: GlyphCell): string {
 }
 
 /**
- * `after` draws every line of `before` exactly as wide, or this throws naming
- * the line. Each cell's text being as wide as its glyph is `shows`'s check;
- * this is the half no one cell can see: a text that joins its neighbour into
- * one grapheme cluster — a trailing zero-width joiner, a leading combining
- * mark — is the right width alone and narrower beside it, so everything after
- * it on the line would move.
+ * Every text `frame` changed, in `shown`, stands apart from the texts beside
+ * it on its line: joined to them, it splits into as many grapheme clusters as
+ * it and they do alone, or this throws naming the cell. Each text being as
+ * wide as its glyph is `shows`'s check; this is the half no one cell can
+ * see — a trailing zero-width joiner that fuses with the next emoji, or a
+ * leading combining mark that draws on the glyph before it, is right alone
+ * and wrong beside its neighbour. Only a changed text is asked, so a child
+ * that splits a cluster across its own segments is drawn as it drew it.
  */
-function keepsLines(before: readonly Segment[], after: readonly Segment[]): void {
-  const lines = (segments: readonly Segment[]): string[] =>
-    segments
-      .map((segment) => (segment.isControl ? "" : segment.text))
-      .join("")
-      .split("\n");
-  const now = lines(after);
-  lines(before).forEach((line, row) => {
-    if (cellLen(now[row]!) !== cellLen(line)) {
+function standsApart(placed: readonly { readonly glyph: string; readonly cell: GlyphCell | undefined }[], shown: readonly string[]): void {
+  // A line break is no cell, and nothing joins across it.
+  const beside = (j: number): string => (placed[j]?.cell === undefined ? "" : shown[j]!);
+  shown.forEach((text, i) => {
+    const { glyph, cell } = placed[i]!;
+    if (cell === undefined || text === glyph) return;
+    const [before, after] = [beside(i - 1), beside(i + 1)];
+    if (graphemes(before + text + after).length !== graphemes(before).length + graphemes(text).length + graphemes(after).length) {
       throw new RangeError(
-        `a glyph effect turned line ${row} from ${cellLen(line)} cells wide to ${cellLen(now[row]!)}: ` +
-          `${JSON.stringify(now[row])} joins a cell's text into its neighbour's`,
+        `a glyph effect turned ${JSON.stringify(glyph)} at row ${cell.row}, column ${cell.col} into ${JSON.stringify(text)}, ` +
+          `which joins the cell beside it into one character`,
       );
     }
   });
