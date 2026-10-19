@@ -253,7 +253,7 @@ for (const scheme of ["light", "dark"] as const) {
 }
 
 for (const [marker, path, code, note] of [
-  ["shape", "effects.html", "interface Effect {", "This is a shape to implement, not a complete program."],
+  ["shape", "effects.html", "type Effect = (drawn: Drawn)", "This is a shape to implement, not a complete program."],
   ["node", "console.html", "nodeAsk);", "It needs a real Node process"],
 ] as const) {
   test(`a ${marker} block is the same card, read-only, with its note`, async ({ page }) => {

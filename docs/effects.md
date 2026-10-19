@@ -121,7 +121,7 @@ console.print([10, 29.9, 30].map((t) => `${t}s: ${leaving.done(t) ? "gone" : "le
 
 Both blend toward the background of the `theme` given to `Effected`, the terminal the frame is drawn on: the library never asks the terminal what that is.
 
-A transition's frame [changes](/frames#when-the-frame-next-changes) every frame until it is done and never after: its effect's `nextChange` is `done` read as a time, `t` before it and `Infinity` from it, so a host drawing the element can stop waking for it without asking `done` itself.
+A transition's frame [changes](/frames#when-the-frame-next-changes) every frame until it is done and never after: the [animation](/animation) its effect returns answers `nextChange` with `t` before `done` and `Infinity` from it, so a host drawing the element can stop waking for it without asking `done` itself.
 
 The bytes can stop changing a little before `done`. Near its end, an ease that flattens out, such as the default `ease-in-out`, moves a cell by less than one step of a colour channel, so nothing new is written. In truecolor that is within about a second on an element of several cells. An element of one cell takes the whole duration over its change, so its flat tail is longer. Below truecolor a colour is written as the nearest one the depth has, and the last change lands when the curve passes halfway between the last two of them. That depends on the colours, and at 256 colours a fade can finish visibly several seconds early. `done` is when the curve ends, not when the bytes stop.
 

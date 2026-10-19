@@ -28,7 +28,7 @@
  *
  * [LAW:one-type-per-behavior] The combinators here are the ones every kind
  * of motion is built from — a constant, a value moving every moment, a map
- * over the value, and one animation after another — and each says how
+ * over the value, several at once, and one animation after another — and each says how
  * `nextChange` composes, so an animation built from them answers it without
  * its author doing anything.
  */
@@ -63,6 +63,18 @@ export const Animation = {
    */
   map<T, U>(animation: Animation<T>, f: (value: T) => U): Animation<U> {
     return { at: (t) => f(animation.at(t)), nextChange: (t) => animation.nextChange(t) };
+  },
+
+  /**
+   * Every one of `animations` at once, their values in order, changing when
+   * the soonest of them does — so a stack of effects drawn together holds
+   * still exactly while each of them does. None never changes.
+   */
+  all<T>(animations: readonly Animation<T>[]): Animation<T[]> {
+    return {
+      at: (t) => animations.map((animation) => animation.at(t)),
+      nextChange: (t) => Math.min(...animations.map((animation) => animation.nextChange(t))),
+    };
   },
 
   /**

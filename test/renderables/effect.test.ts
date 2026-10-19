@@ -227,10 +227,7 @@ describe("Effected — composition", () => {
     const warm: Effect = () => Animation.continuous(() => (c, cell) => ({ fg: new ColorRgba(255, (cell.col * 40) % 256, 0), bg: c.bg }));
     const ground: Effect = () => Animation.continuous((t) => (c, cell) => ({ fg: c.fg, bg: new ColorRgba(0, 0, (cell.row * 90 + t) % 256) }));
     const both: Effect = (drawn) =>
-      Animation.continuous((t) => {
-        const [first, then] = [warm(drawn).at(t), ground(drawn).at(t)];
-        return (c, cell) => then(first(c, cell), cell);
-      });
+      Animation.map(Animation.all([warm(drawn), ground(drawn)]), (frames): EffectFrame => (c, cell) => frames.reduce((moved, frame) => frame(moved, cell), c));
     expect(renderToString(effected(effected(styled, warm, 7), ground, 7), { width: 30 })).toBe(
       renderToString(effected(styled, both, 7), { width: 30 }),
     );
@@ -381,7 +378,7 @@ describe("Effected — widgets under an effect", () => {
 });
 
 describe("Drawn.cells — the cells an effect is handed, listed before it is handed any", () => {
-  it("lists every cell the second stage is handed, a wide glyph once at its first column and a newline as none", () => {
+  it("lists every cell its frame is handed, a wide glyph once at its first column and a newline as none", () => {
     const listed: string[] = [];
     const handed: string[] = [];
     const recording: Effect = (drawn) => {
@@ -483,7 +480,7 @@ describe("confined — an effect on its owners' cells", () => {
     expect(movedSides(new Strip(items, JOINERS.powerline), items[0]!, items[1]!)).toEqual(["fg", "fgbg", "fgbg", "fgbg", "fgbg", "fgbg", "fgbg", "fgbg", "fg", "", "", "", ""]);
   });
 
-  it("hands the effect only the cells one of its owners drew, under one first stage a frame", () => {
+  it("hands the effect only the cells one of its owners drew, calling the effect once a frame", () => {
     const items = trio();
     const frames: number[] = [];
     const listed: number[] = [];
@@ -502,7 +499,7 @@ describe("confined — an effect on its owners' cells", () => {
     expect(frames).toEqual([0]);
     // the arrow into the second item, " x ", the arrow into the third, " x ", tail
     expect(handed).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12]);
-    // and tells the first stage which, before it hands any
+    // and lists them to the effect, before its frame is handed any
     expect(listed).toEqual(handed);
   });
 

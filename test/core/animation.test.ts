@@ -52,6 +52,28 @@ describe("Animation.map", () => {
   });
 });
 
+describe("Animation.all", () => {
+  it("is every value in order, changing when the soonest of them does", () => {
+    const [slow, fast] = [beat([3]), beat([0.5, 0.25])];
+    const both = Animation.all([slow, fast, Animation.constant(9)]);
+    for (const t of [0, 0.4, 0.6, 2.9, 1e6 + 0.1]) {
+      expect(both.at(t)).toEqual([slow.at(t), fast.at(t), 9]);
+      expect(both.nextChange(t)).toBe(Math.min(slow.nextChange(t), fast.nextChange(t)));
+    }
+  });
+
+  it("holds still while every part does, and moves while any part moves", () => {
+    expect(Animation.all([Animation.constant(1), Animation.constant(2)]).nextChange(4)).toBe(NEVER);
+    expect(Animation.all([Animation.constant(1), Animation.continuous((t) => t)]).nextChange(4)).toBe(4);
+  });
+
+  it("of none is nothing, never changing", () => {
+    const none = Animation.all<number>([]);
+    expect(none.at(3)).toEqual([]);
+    expect(none.nextChange(3)).toBe(NEVER);
+  });
+});
+
 describe("Animation.sequence", () => {
   const first = Animation.continuous((t) => `first ${t}`);
   const then = Animation.continuous((t) => `then ${t}`);

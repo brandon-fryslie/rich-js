@@ -23,11 +23,12 @@ An answer may be early — a host then draws a frame that looks like the last on
 
 ## Building one
 
-Four pieces build every animation, and each says how `nextChange` composes, so an animation built from them answers it without its author doing anything:
+Five pieces build every animation, and each says how `nextChange` composes, so an animation built from them answers it without its author doing anything:
 
 - `Animation.constant(value)` is `value` at every time, and never changes.
 - `Animation.continuous((t) => value)` is the function's value, moving at every moment.
 - `Animation.map(animation, f)` is the value through `f`, changing when the source does.
+- `Animation.all([a, b, …])` is every one's value at once, in order, changing when the soonest of them does — so several effects drawn as one hold still exactly while each of them does.
 - `Animation.sequence(first, seconds, then)` is `first` until `seconds`, then `then`, handed the time since it began, so each part runs on its own clock from 0.
 
 Here a light arrives, holds, and then blinks on a [beat](/easing):
