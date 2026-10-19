@@ -394,13 +394,13 @@ export function section5ColorRefs(out: Console): void {
   const shimmer: Effect = () =>
     Animation.continuous((t) => {
       const centre = indent.length + sweep(t) * label.length;
-      return (colors, cell) => {
+      return (look, cell) => {
         const weight = Math.max(0, 1 - Math.abs(cell.col - centre) / 4);
         const toward = new ColorRamp(EASES.linear, [
-          { at: 0, color: colors.fg },
+          { at: 0, color: look.fg },
           { at: 1, color: highlight },
         ]);
-        return { fg: toward.at(weight), bg: colors.bg };
+        return { ...look, fg: toward.at(weight) };
       };
     });
   out.print(bold("    Effected — a per-cell effect sampled at t = 0, 0.5, 1 s:"));

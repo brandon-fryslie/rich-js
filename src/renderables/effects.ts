@@ -1,7 +1,7 @@
 /**
  * The effect catalogue: shimmer, pulse, sparkle and wheel, which loop for as
- * long as they are drawn, and fade-in and dissolve-out, which run once and
- * are done. Each is an `Effect` for `Effected` (`./effect.ts`); the defaults
+ * long as they are drawn, fade-in and dissolve-out, which run once and are
+ * done, and a blink and a bold pulse, which move an attribute on a beat. Each is an `Effect` for `Effected` (`./effect.ts`); the defaults
  * in `EFFECT_CURVES` are the ones signed off by eye in the effects-feel demo
  * (`npm run effects-feel`), at 30 fps and at one frame a second, and
  * `EFFECT_CATALOGUE` makes every one of them at those, by name, one way.
@@ -54,7 +54,7 @@ import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo } from "../core/memo.js";
 import { Oklch } from "../core/oklch.js";
 import { ensureContrast } from "../themes/colorMath.js";
-import { Effected, type Drawn, type Effect, type EffectCell, type EffectFrame, type Pair, type Placed } from "./effect.js";
+import { Effected, type CellAttributes, type Drawn, type Effect, type EffectCell, type EffectFrame, type Pair, type Placed } from "./effect.js";
 
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
@@ -217,11 +217,11 @@ export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string
     const shared = share(drawn);
     return Animation.continuous((t): EffectFrame => {
       const field = loop.field(t, drawn);
-      return ({ fg, bg }, cell) => {
+      return (look, cell) => {
         const w = Math.round(clamp01(field(cell)) * LEVELS) / LEVELS;
         const moved = (color: ColorRgba, terminal: boolean): ColorRgba =>
           touchedAt(loop.touch, color, (terminal ? 0 : (shared.get(color.hex) ?? 0)) * w);
-        return { fg: moved(fg, cell.terminal.fg), bg: moved(bg, cell.terminal.bg) };
+        return { ...look, fg: moved(look.fg, cell.terminal.fg), bg: moved(look.bg, cell.terminal.bg) };
       };
     });
   };
@@ -240,7 +240,7 @@ export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string
  * loop on such a terminal draws it once.
  */
 function stillOnSlots(loop: Effect): Effect {
-  return (drawn) => (onlySlots(drawn.depth) ? Animation.constant<EffectFrame>((colors) => colors) : loop(drawn));
+  return (drawn) => (onlySlots(drawn.depth) ? Animation.constant<EffectFrame>((look) => look) : loop(drawn));
 }
 
 /** Whether `depth` writes nothing between the slots it has: the sixteen, at either sixteen-colour depth, or none. */
@@ -647,11 +647,11 @@ export function veiled(visibility: Visibility, swing: number): Effect {
     const ground = Oklch.fromRgba(drawn.theme.backgroundColor);
     return Animation.continuous((t): EffectFrame => {
       const shows = visibility(t, drawn);
-      return (colors, cell) => {
+      return (look, cell) => {
         const hidden = swing * (1 - clamp01(shows(cell)));
-        if (hidden === 0) return colors;
-        const bg = blend(Oklch.fromRgba(colors.bg), ground, hidden);
-        return { fg: blend(Oklch.fromRgba(colors.fg), bg, hidden).toRgba(), bg: bg.toRgba() };
+        if (hidden === 0) return look;
+        const bg = blend(Oklch.fromRgba(look.bg), ground, hidden);
+        return { ...look, fg: blend(Oklch.fromRgba(look.fg), bg, hidden).toRgba(), bg: bg.toRgba() };
       };
     });
   };
@@ -918,7 +918,7 @@ export function wheel(curve: Curve, z: number): Effect {
       return (shown, cell) => {
         const mine = { fg: own(cell.terminal.fg, shown.fg), bg: own(cell.terminal.bg, shown.bg) };
         const turn = (color: ColorRgba, ours: boolean, other: ColorRgba, theirs: boolean): ColorRgba => (ours ? write(color, segmentOf(color, other, theirs)) : color);
-        return { fg: turn(shown.fg, mine.fg, shown.bg, mine.bg), bg: turn(shown.bg, mine.bg, shown.fg, mine.fg) };
+        return { ...shown, fg: turn(shown.fg, mine.fg, shown.bg, mine.bg), bg: turn(shown.bg, mine.bg, shown.fg, mine.fg) };
       };
     });
   });
@@ -1091,9 +1091,9 @@ export function steppedInk(steps: readonly ColorStep[]): Effect {
     settled.set(theme, memo);
     return Animation.map(rhythm, (i): EffectFrame => {
       const step = inks[i]!;
-      return (colors, cell) => {
-        const pair: Pair = { ...colors, terminal: cell.terminal, reverse: cell.reverse };
-        return { fg: memo.get(`${depth} ${pairKey(pair)} ${step.hex}`, () => legibleInk(step, pair, depth, theme)), bg: colors.bg };
+      return (look, cell) => {
+        const pair: Pair = { fg: look.fg, bg: look.bg, terminal: cell.terminal, reverse: cell.reverse };
+        return { ...look, fg: memo.get(`${depth} ${pairKey(pair)} ${step.hex}`, () => legibleInk(step, pair, depth, theme)) };
       };
     });
   };
@@ -1116,8 +1116,46 @@ function legibleInk(step: ColorRgba, pair: Pair, depth: ColorDepth, theme: Termi
 }
 
 /**
+ * A text attribute turned on and off on a beat: each pass, the cell as its
+ * element drew it for `off` seconds, then with `attribute` on for `on`.
+ */
+export interface Blink {
+  readonly attribute: keyof CellAttributes;
+  readonly off: number;
+  readonly on: number;
+}
+
+/**
+ * `spec.attribute` blinking: off, the cell as drawn, so that hold's frame is
+ * the identity and writes the element's own bytes; on, the attribute set.
+ * It changes when its beat does, at a hold's end, and never between.
+ * A blink and a bold pulse are this one function at two specs
+ * (`ATTRIBUTE_DEFAULTS`) [LAW:one-type-per-behavior].
+ */
+export function blink({ attribute, off, on }: Blink): Effect {
+  const rhythm = beat([off, on]);
+  const frames: readonly EffectFrame[] = [(look) => look, (look) => ({ ...look, attributes: { ...look.attributes, [attribute]: true } })];
+  return () => Animation.map(rhythm, (i) => frames[i]!);
+}
+
+/** The names of the effects that move an attribute. */
+export type AttributeLoopName = "blink" | "boldPulse";
+
+/**
+ * Each attribute effect's spec: a blink hides the words for half of each
+ * second, as a terminal's own blink does, and a bold pulse holds them bold
+ * for the last three tenths of each second.
+ */
+export const ATTRIBUTE_DEFAULTS = {
+  blink: { attribute: "conceal", off: 0.5, on: 0.5 },
+  boldPulse: { attribute: "bold", off: 0.7, on: 0.3 },
+} as const satisfies Readonly<Record<AttributeLoopName, Blink>>;
+
+/**
  * What a catalogue effect is made for: the element it is drawn on, at `z` in
- * the noise, so two elements under one effect do not move in lockstep. How
+ * the noise, so two elements under one effect drawn from noise do not move in
+ * lockstep. An effect on a beat alone (a blink) draws no noise, and keeps
+ * every element in step, as a terminal's own blink does. How
  * wide the element is, the effect reads off each frame (`Drawn.cells`).
  */
 export interface EffectTarget {
@@ -1144,6 +1182,7 @@ export type TransitionName = "fade" | "dissolve";
 export const EFFECT_CATALOGUE: {
   readonly loops: Readonly<Record<LoopName, (element: EffectTarget, curve?: Curve) => Effect>>;
   readonly transitions: Readonly<Record<TransitionName, (element: EffectTarget, curve?: Curve) => Transition>>;
+  readonly attributes: Readonly<Record<AttributeLoopName, (element: EffectTarget) => Effect>>;
 } = {
   loops: {
     shimmer: (element, curve = EFFECT_CURVES.shimmer) => onColors(shimmer(curve, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, element.z)),
@@ -1154,5 +1193,9 @@ export const EFFECT_CATALOGUE: {
   transitions: {
     fade: (element, curve = EFFECT_CURVES.fade) => fadeIn(curve, element.z),
     dissolve: (element, curve = EFFECT_CURVES.dissolve) => dissolveOut(curve, element.z),
+  },
+  attributes: {
+    blink: () => blink(ATTRIBUTE_DEFAULTS.blink),
+    boldPulse: () => blink(ATTRIBUTE_DEFAULTS.boldPulse),
   },
 };

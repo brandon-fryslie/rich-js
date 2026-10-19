@@ -129,7 +129,7 @@ describe("Frames — the frame in progress at a handed time", () => {
   });
 
   it("an effect lights whichever frame is up, by nesting, and still changes no glyph", () => {
-    const lit: Effect = () => Animation.continuous(() => (colors) => ({ fg: new ColorRgba(255, 255, 0), bg: colors.bg }));
+    const lit: Effect = () => Animation.continuous(() => (colors) => ({ ...colors, fg: new ColorRgba(255, 255, 0) }));
     const sequence = new FrameSequence(chevrons);
     const under = (t: number): string => renderToString(new Effected(new Frames(sequence, { t }), lit, { t, key: "k", theme: DEFAULT_TERMINAL_THEME }), { width: 1 });
     expect(under(0)).toContain(CHEVRONS[0]);

@@ -53,7 +53,7 @@ for (const t of [0, 0.5, 1, 2.5, 3, 3.6]) {
 
 - A `Beat` (`beat([…])`, from the [easing vocabulary](/easing)) is an animation of which hold is in progress: `at(t)` is its index, `lastChange(t)` when the hold began, `nextChange(t)` when it ends.
 - A `FrameSequence` is an animation of the frame shown, and a `Spinner` of the spinner drawn ([Frames](/frames)).
-- An `Effect` is, for what an element draws in a frame, an animation of what is done to its cells: `effect(drawn)` is an `Animation` whose value at `t` maps each cell's colours to new ones ([Effects](/effects)).
+- An `Effect` is, for what an element draws in a frame, an animation of what is done to its cells: `effect(drawn)` is an `Animation` whose value at `t` maps each cell's look — its colours and its attributes — to a new one ([Effects](/effects)). A blink is one: `blink({ attribute: "bold", off: 0.7, on: 0.3 })` is a beat mapped to a frame that sets bold in its second hold and leaves every cell as drawn in its first ([Effects](/effects#an-attribute-on-a-beat)).
 
 Because a beat is an animation, a signal that steps through colours is that beat mapped to colours:
 
@@ -147,7 +147,7 @@ A transition moves every frame until it is done, then never. A loop moves in ste
 import { Animation, ColorRgba, DEFAULT_TERMINAL_THEME, Effected, GlyphEffected, RichText, caseWave, type Effect } from "@promptctl/rich-js";
 
 const red = new ColorRgba(220, 38, 38);
-const reddening: Effect = () => Animation.continuous((t) => (colors) => ({ fg: t >= 1 ? red : colors.fg, bg: colors.bg }));
+const reddening: Effect = () => Animation.continuous((t) => (look) => ({ ...look, fg: t >= 1 ? red : look.fg }));
 const wave = caseWave({ step: 0.25, width: 3 }, 0);
 
 for (const t of [0.6, 1.1, 1.6]) {

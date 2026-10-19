@@ -46,7 +46,7 @@ const nextChangeOf = (renderable: Renderable, options: Parameters<Renderable["re
 const lit = (child: Renderable, effect: Effect, t: number): Effected => new Effected(child, effect, { t, key: "k", theme: THEME });
 const label = new RichText(" rich-js ", { style: Style.parse("#1e1e2e on #89b4fa"), end: "", noWrap: true });
 /** A loop that moves every frame: a continuous function of t, promising no hold. */
-const drifting: Effect = () => Animation.continuous((t) => (colors) => ({ fg: new ColorRgba(Math.floor(t * 50) % 256, 0, 0), bg: colors.bg }));
+const drifting: Effect = () => Animation.continuous((t) => (colors) => ({ ...colors, fg: new ColorRgba(Math.floor(t * 50) % 256, 0, 0) }));
 
 describe("what a host reads off a frame: when it next changes", () => {
   it("still content never changes: text, a panel, a table", () => {

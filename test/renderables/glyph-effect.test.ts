@@ -138,7 +138,7 @@ describe("GlyphEffected — what it may not change", () => {
 
 describe("GlyphEffected — under a colour effect", () => {
   it("has its changed glyphs drawn in the colours the colour effect moves them to", () => {
-    const red: Effect = () => Animation.constant<EffectFrame>((colors) => ({ fg: new ColorRgba(255, 0, 0), bg: colors.bg }));
+    const red: Effect = () => Animation.constant<EffectFrame>((colors) => ({ ...colors, fg: new ColorRgba(255, 0, 0) }));
     const upper: GlyphEffect = () => Animation.constant<GlyphFrame>((cell) => cell.glyph.toUpperCase());
     const both = new Effected(glyphed(fixed(new Segment("ab")), upper), red, { t: 0, key: "k", theme: DEFAULT_TERMINAL_THEME });
     expect(renderToString(both, { colorSystem: "truecolor" })).toBe(renderToString(fixed(new Segment("AB", Style.parse("#ff0000"))), { colorSystem: "truecolor" }));

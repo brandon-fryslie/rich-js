@@ -2,6 +2,7 @@
 // transitions start and end where they say they do.
 
 import { describe, expect, it } from "vitest";
+import { cellAttributes } from "../../src/renderables/effect.js";
 import {
   Animation,
   ColorDepth,
@@ -24,6 +25,7 @@ import {
   Padding,
   confined,
   type CellColors,
+  type CellLook,
   type Drawn,
   type Effect,
   type EffectCell,
@@ -38,11 +40,13 @@ import { CATPPUCCIN_LATTE, CATPPUCCIN_MOCHA } from "../../src/index.js";
 import { drawnBy } from "../../src/core/anchor.js";
 import { JOIN } from "../../src/core/strip.js";
 import {
+  ATTRIBUTE_DEFAULTS,
   EFFECT_CATALOGUE,
   EFFECT_CURVES,
   EFFECT_LIGHTS,
   SHIMMER_WIDTH,
   atShares,
+  blink,
   dissolveOut,
   fadeIn,
   light,
@@ -52,6 +56,7 @@ import {
   shimmer,
   sparkle,
   wheel,
+  type AttributeLoopName,
   type Curve,
   type Loop,
   type LoopName,
@@ -61,7 +66,9 @@ const curve = (seconds: number, swing: number): Curve => ({ seconds, ease: EASES
 
 const ink = new ColorRgba(205, 214, 244);
 const ground = new ColorRgba(30, 30, 46);
-const colors: CellColors = { fg: ink, bg: ground };
+/** The attributes of a cell whose style sets none. */
+const PLAIN = cellAttributes(Style.null());
+const colors: CellLook = { fg: ink, bg: ground, attributes: PLAIN };
 /** Neither colour the terminal's: both are the subject's own. */
 const written = { fg: false, bg: false };
 const cells: EffectCell[] = Array.from({ length: 40 }, (_, col) => ({ row: 0, col, seed: (col * 0.6180339) % 1, terminal: written, reverse: false, anchor: undefined }));
@@ -149,7 +156,7 @@ describe("the wheel", () => {
     const P = 907;
     const round = on(wheel(curve(P, 0), 0), frame(own, grounds));
     for (const fill of fills) {
-      const at = (t: number) => round(t)({ fg: ink, bg: fill }, cell).bg;
+      const at = (t: number) => round(t)({ fg: ink, bg: fill, attributes: PLAIN }, cell).bg;
       // A quarter of the way round, a quarter turn; at the end, back.
       // To a degree or so: the sRGB round trip lands a step off.
       expect(Math.abs(turned(fill, at(P / 4)) - 90)).toBeLessThan(2);
@@ -164,10 +171,10 @@ describe("the wheel", () => {
   it("turns a cell's ink and fill together, and leaves the terminal's colour alone", () => {
     const round = on(wheel(curve(907, 0.25), 0), frame(own, grounds));
     const shown = round(300);
-    const { fg, bg } = shown({ fg: ink, bg: fills[0]! }, cell);
+    const { fg, bg } = shown({ fg: ink, bg: fills[0]!, attributes: PLAIN }, cell);
     // The same turn, to a degree or so: the sRGB round trip lands a step off.
     expect(Math.abs(turned(ink, fg) - turned(fills[0]!, bg))).toBeLessThan(2);
-    const text = shown({ fg: ink, bg: ground }, cell);
+    const text = shown({ fg: ink, bg: ground, attributes: PLAIN }, cell);
     expect(text.bg).toBe(ground);
     expect(turned(ink, text.fg)).toBeGreaterThan(0);
   });
@@ -176,13 +183,13 @@ describe("the wheel", () => {
     const round = on(wheel(curve(907, 0.25), 0), frame(own, grounds));
     const [a, b] = [fills[0]!, fills[1]!];
     const shown = round(300);
-    const cellA = shown({ fg: ink, bg: a }, cell).bg;
-    const cellB = shown({ fg: ink, bg: b }, { ...cell, col: 12 }).bg;
-    const cap = shown({ fg: a, bg: b }, { ...cell, col: 11 });
+    const cellA = shown({ fg: ink, bg: a, attributes: PLAIN }, cell).bg;
+    const cellB = shown({ fg: ink, bg: b, attributes: PLAIN }, { ...cell, col: 12 }).bg;
+    const cap = shown({ fg: a, bg: b, attributes: PLAIN }, { ...cell, col: 11 });
     expect(cap.fg.hex).toBe(cellA.hex);
     expect(cap.bg.hex).toBe(cellB.hex);
     // The last cap, onto the terminal's ground, keeps its cell's colour too.
-    expect(shown({ fg: b, bg: ground }, { ...cell, col: 20 }).fg.hex).toBe(cellB.hex);
+    expect(shown({ fg: b, bg: ground, attributes: PLAIN }, { ...cell, col: 20 }).fg.hex).toBe(cellB.hex);
   });
 
   it("lets each segment stray from the shared turn by its own amount, within the swing", () => {
@@ -191,7 +198,7 @@ describe("the wheel", () => {
     const round = on(wheel(curve(P, swing), 0), frame(own, grounds));
     const shown = round(P / 2);
     const strays = fills.map((fill) => {
-      const got = turned(fill, shown({ fg: ink, bg: fill }, cell).bg);
+      const got = turned(fill, shown({ fg: ink, bg: fill, attributes: PLAIN }, cell).bg);
       return ((got - 180 + 540) % 360) - 180;
     });
     // Apart from one another, and none past half a turn times the swing.
@@ -205,9 +212,9 @@ describe("the wheel", () => {
     let worst = 0;
     for (const fill of fills) {
       // From the first frame: the turn starts from the palette as drawn.
-      let last = round(0)({ fg: ink, bg: fill }, cell);
+      let last = round(0)({ fg: ink, bg: fill, attributes: PLAIN }, cell);
       for (let t = 1; t < 1800; t++) {
-        const next = round(t)({ fg: ink, bg: fill }, cell);
+        const next = round(t)({ fg: ink, bg: fill, attributes: PLAIN }, cell);
         worst = Math.max(worst, Oklch.fromRgba(last.bg).deltaE(Oklch.fromRgba(next.bg)), Oklch.fromRgba(last.fg).deltaE(Oklch.fromRgba(next.fg)));
         last = next;
       }
@@ -441,6 +448,23 @@ describe("the catalogue makes every effect one way, by name", () => {
     expect([seconds - 0.01, seconds].map((t) => make(element).done(t))).toEqual([false, true]);
     expect(make(element, curve(2, 1)).done(2)).toBe(true);
   });
+
+  it.each(Object.entries(EFFECT_CATALOGUE.attributes))("%s is its spec's blink: the element as drawn for off, the attribute for on", (name, make) => {
+    const { attribute, off, on } = ATTRIBUTE_DEFAULTS[name as AttributeLoopName];
+    const effect = make(element);
+    expect([0, off / 2, off + on, off + on + off / 2].map((t) => drawn(effect, t))).toEqual([untouched, untouched, untouched, untouched]);
+    const lit = [...new Effected(subject, effect, { t: off + on / 2, key: "test", theme: CATPPUCCIN_MOCHA }).render({ maxWidth: 60, colorSystem: ColorDepth.TRUECOLOR })];
+    // A line break is no cell, so nothing sets it.
+    expect(lit.filter((segment) => segment.text !== "\n").every((segment) => segment.style?.[attribute] === true)).toBe(true);
+  });
+
+  it.each(Object.entries(ATTRIBUTE_DEFAULTS))("a %s next changes when its beat turns, and only then", (_name, spec) => {
+    const frames = blink(spec)(NOTHING);
+    expect([0, spec.off / 2, spec.off, spec.off + spec.on / 2].map((t) => frames.nextChange(t))).toEqual([spec.off, spec.off, spec.off + spec.on, spec.off + spec.on]);
+    // A pass a million seconds in is answered as the first one is: nothing walks through time.
+    const late = 1e6 * (spec.off + spec.on);
+    expect(frames.nextChange(late + spec.off / 2) - late).toBeCloseTo(spec.off, 6);
+  });
 });
 
 describe("the transitions run start to end", () => {
@@ -470,7 +494,7 @@ describe("the transitions run start to end", () => {
 
   it("a cell with a fill of its own arrives from the terminal's ground, fill and ink together", () => {
     const fill = new ColorRgba(137, 180, 250);
-    const filled = (effect: Effect, t: number) => effect(NOTHING).at(t)({ fg: ink, bg: fill }, cells[0]!);
+    const filled = (effect: Effect, t: number) => effect(NOTHING).at(t)({ fg: ink, bg: fill, attributes: PLAIN }, cells[0]!);
     const fade = curve(2, 1);
     const start = filled(fadeIn(fade, 0).effect, 0);
     expect([start.fg.hex, start.bg.hex]).toEqual([terminalGround.hex, terminalGround.hex]);
@@ -767,7 +791,7 @@ describe("a cell under light still reads", () => {
     for (const { fg, bg, terminal } of pairs) {
       const floor = Math.min(contrastRatio(fg, bg), AA);
       for (let w = 0; w <= 1; w += 0.05) {
-        const lit = effect(drawn).at(w)({ fg, bg }, { ...cells[0]!, terminal });
+        const lit = effect(drawn).at(w)({ fg, bg, attributes: PLAIN }, { ...cells[0]!, terminal });
         expect(contrastRatio(lit.fg, lit.bg)).toBeGreaterThanOrEqual(floor - 0.02);
       }
     }
