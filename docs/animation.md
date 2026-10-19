@@ -306,7 +306,7 @@ Most motion looks right in cascade: a group's children pulsing in sequence, a li
 
 Before its turn, a child is asked for a time before 0. What that shows is the child's own business, and a loop is shifted in phase, which is what a staggered pulse is. Playing, pausing or reversing the whole group is one more timeline run over it.
 
-A [lifecycle](#enter-and-exit-an-element-arriving-staying-and-leaving) is staggered by its own `entered` instead: rows arriving one after another are `Animation.all` of lifecycles entered at each row's index times the delay. Its `leave` and `gone` take the host's clock, so it has to stay on that clock, not move onto one shifted by its index.
+A [lifecycle](#enter-and-exit-an-element-arriving-staying-and-leaving) is staggered by its own `entered` instead: rows arriving one after another are `Animation.all` of lifecycles entered at each row's index times the delay. Its `leave` and `gone` take the host's clock, so it has to stay on that clock, not move onto one shifted by its index. A row that has not arrived yet, or is gone, draws nothing, and a [`Tree`](/tree#labels) ends its branch at the last child that does draw.
 
 No container knows that a stagger exists. A `Group`, a `Table`'s rows, a `Tree`'s children and a `Layout`'s panes take the children's frames the way they take any renderables, through `Animation.map`, and the frame drawn with `frameAt` says when it changes as the stagger does:
 
