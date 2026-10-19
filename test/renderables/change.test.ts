@@ -71,6 +71,12 @@ describe("a change from one renderable to another", () => {
       }
     });
 
+    it(`${name}: ends its last row as the new renderable does`, () => {
+      const unended: Renderable = { render: () => [new Segment("abc")] };
+      const moving = between(building, unended);
+      for (const t of [0, 1.5, curve.seconds]) expect(text(draw(moving.at(t))).endsWith("\n")).toBe(false);
+    });
+
     it(`${name}: starts as the old renderable, in the new one's shape`, () => {
       const at0 = text(draw(between(building, done).at(0)));
       expect(at0).toBe("buildi\n");

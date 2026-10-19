@@ -103,12 +103,17 @@ class ChangeFrame implements Renderable, Measurable, Composite {
   render(options: RenderOptions): Iterable<Segment> {
     // Drawn in the order `contents` names them.
     const before = Segment.splitLines(render(this.from, options));
-    const after = Segment.splitLines(render(this.to, options));
-    // [LAW:one-source-of-truth] The new renderable's rows are the shape of every frame.
+    const drawn = [...render(this.to, options)];
+    const after = Segment.splitLines(drawn);
+    // [LAW:one-source-of-truth] The new renderable's rows are the shape of every frame, its last row ending as it ends.
     const lengths = after.map((line) => Segment.getLineLength(line));
+    const ended = drawn.filter((segment) => !segment.isControl).at(-1)?.text.endsWith("\n") ?? false;
     const width = Math.max(0, ...lengths);
     const at = this.progress(this.t, width);
-    const rows = after.flatMap((line, row) => [...splice(Segment.adjustLineLength(before[row] ?? [], lengths[row]!), line, (col) => at(row, col) >= 0.5), Segment.line()]);
+    const rows = after.flatMap((line, row) => [
+      ...splice(Segment.adjustLineLength(before[row] ?? [], lengths[row]!), line, (col) => at(row, col) >= 0.5),
+      ...(row < after.length - 1 || ended ? [Segment.line()] : []),
+    ]);
     // Which side each cell is drawn from moves every frame whether or not a colour is written, so the rows say so themselves.
     const spliced = [...Segment.applyStyle(rows, new Style({ nextChange: this.t }))];
     const veil = veiled(() => (cell) => shows(at(cell.row, cell.col)), this.swing);
