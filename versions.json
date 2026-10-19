@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-489",
+      "ref": "refs/pull/489/merge",
+      "sha": "671aaa0612d12947080c4bec9ba901daf399be2d",
+      "timestamp": "2026-10-19T19:06:30.736Z",
+      "commits": [
+        {
+          "sha": "671aaa0612d12947080c4bec9ba901daf399be2d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T13:04:32-06:00",
+          "message": "Merge c42d1c199de5fd6c601f374af23206fc4051a8e4 into 4243346c52c64c49f3b253bcd07221ba490f85ed\n"
+        },
+        {
+          "sha": "c42d1c199de5fd6c601f374af23206fc4051a8e4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T13:04:18-06:00",
+          "message": "A frame says when it changes on the host's clock, stamped in one place (rich-animation-42lg.uv8)\n\nOnly a renderable built for the draw site's t stamps (stampFrame: frameAt,\nFrames, Spinner.drawnAt, Effected, GlyphEffected). Nothing an animation's at\nreturns carries a stamp; its change reaches the host through nextChange.\nTransition holds one schedule and done is read off it; Animation.onBeat is\nthe one stepping rule; lifecycle's holds are Timeline.run of the schedules.\nA bare-stamp carrier after a line break takes no row; an empty text frame\nkeeps its stamp.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "4243346c52c64c49f3b253bcd07221ba490f85ed",
