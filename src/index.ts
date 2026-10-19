@@ -323,7 +323,7 @@ export { ProgressBar } from "./renderables/progressBar.js";
 export type { ProgressBarOptions } from "./renderables/progressBar.js";
 export { Spinner } from "./renderables/spinner.js";
 export type { SpinnerOptions } from "./renderables/spinner.js";
-export { FrameSequence, Frames } from "./renderables/frames.js";
+export { FrameSequence, Frames, frameAt } from "./renderables/frames.js";
 export type { Frame, FramesOptions } from "./renderables/frames.js";
 export { Table, Column } from "./renderables/table.js";
 export type { TableOptions, ColumnOptions } from "./renderables/table.js";

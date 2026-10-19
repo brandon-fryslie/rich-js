@@ -101,10 +101,14 @@ function played<T>(animation: Animation<T>, { origin, time, rate }: Timeline & {
   const ahead = forward ? (t: number) => animation.nextChange(t) : (t: number) => animation.lastChange(t);
   const behind = forward ? (t: number) => animation.lastChange(t) : (t: number) => animation.nextChange(t);
   const past = forward ? (t: number, edge: number) => t >= edge : (t: number, edge: number) => t < edge;
-  // The first host moment the map carries past `edge`, an animation time;
-  // an edge at infinity is never reached, forwards or backwards.
-  const hostOf = (edge: number): number =>
-    Number.isFinite(edge) ? firstReaching(origin + (edge - time) / rate, (host) => past(mapped(host), edge)) : forward ? edge : -edge;
+  // The first host moment the map carries past `edge`, an animation time.
+  // An edge at infinity, or one so far off at this rate that no host float
+  // reaches it, is never reached, forwards or backwards: the sum's own sign
+  // says which, as a host moment past either end of the host's clock.
+  const hostOf = (edge: number): number => {
+    const sum = origin + (edge - time) / rate;
+    return Number.isFinite(sum) ? firstReaching(sum, (host) => past(mapped(host), edge)) : sum;
+  };
   return {
     at: (host) => animation.at(mapped(hostTime(host))),
     nextChange(host) {

@@ -37,6 +37,7 @@ import {
   TextColumn,
   Tree,
   beat,
+  frameAt,
   onBeat,
   regionRows,
   steppedInk,
@@ -177,6 +178,13 @@ const SIGNAL = steppedInk([
   { color: new ColorRgba(80, 250, 123), seconds: 1 },
 ]);
 const WALK = onBeat(EFFECT_CATALOGUE.loops.wheel({ z: 0 }, { seconds: 6, ease: EASES.linear, swing: 0 }), beat([1]));
+// A cursor blinking after the tagline: a frame drawn into a line assembled
+// from pieces, stamped where the host's time is known (`frameAt`), so the
+// line says when it turns as a `Frames` does.
+const CURSOR = new FrameSequence([
+  { text: new RichText("▌", { style: Style.parse("dim") }), seconds: 0.5 },
+  { text: new RichText(" "), seconds: 0.5 },
+]);
 const THEME = DEFAULT_TERMINAL_THEME;
 
 /**
@@ -219,7 +227,7 @@ function heading(t: number): Renderable {
   line.addRow(
     new Effected(new RichText("rich-js ", { style: Style.parse("bold #1e1e2e on #cba6f7"), end: "" }), BRAND, { t, key: "brand", theme: THEME }),
     new Effected(new Frames(CHEVRONS, { t }), SIGNAL, { t, key: "effort", theme: THEME }),
-    new RichText(" · beautiful terminal output for TypeScript", { style: Style.parse("dim"), end: "" }),
+    new RichText(" · beautiful terminal output for TypeScript ", { style: Style.parse("dim"), end: "" }).append(frameAt(CURSOR, t)),
   );
   return line;
 }
@@ -238,7 +246,7 @@ right.splitColumn(
 );
 
 /** The dashboard as it stands `t` seconds in. */
-function frameAt(t: number): Layout {
+function dashboardAt(t: number): Layout {
   root.getByName("heading")!.update(new Panel(heading(t), { expand: true, borderStyle: "magenta" }));
   root.getByName("services")!.update(services(t));
   root.getByName("spectrum")!.update(new Panel(new Spectrum(t), { title: "Truecolor", borderStyle: "bright_black", expand: true, padding: 0 }));
@@ -252,7 +260,7 @@ function frameAt(t: number): Layout {
 const FRAMES_PER_SECOND = 12;
 const started = Date.now();
 const live = new Live(undefined, { altScreen: true, autoRefresh: false });
-const draw = (): void => live.update(frameAt((Date.now() - started) / 1000), { refresh: true });
+const draw = (): void => live.update(dashboardAt((Date.now() - started) / 1000), { refresh: true });
 live.start();
 draw();
 setInterval(draw, 1000 / FRAMES_PER_SECOND);

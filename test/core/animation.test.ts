@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Animation, ColorDepth, FrameSequence, RichText, Segment, Spinner, Timeline, beat, type Beat } from "../../src/index.js";
-import { frameAt } from "../../src/renderables/frames.js";
+import { Animation, ColorDepth, FrameSequence, RichText, Segment, Spinner, Timeline, beat, frameAt, type Beat } from "../../src/index.js";
 
 // [LAW:behavior-not-structure] What is asserted is the contract a host reads:
 // the value at a time, and that it holds from `t` until `nextChange(t)` and
@@ -237,6 +236,23 @@ describe("the instances already in the tree", () => {
     expect(fast.at(0.03).plain).toBe("b");
     const later = Animation.sequence(Animation.constant(new RichText("-")), 2, frames);
     expect(Segment.nextChange(frameAt(later, 2.05).render({ maxWidth: 10 }))).toBeCloseTo(2.1, 12);
+  });
+
+  it("stamps a copy: an animation handing back the one text it holds keeps it unstamped, so no draw outlives its moment", () => {
+    const texts = [new RichText("x"), new RichText("y")];
+    const shared = Animation.map(beat([1, 1]), (i) => texts[i]!);
+    for (const t of [0.5, 2.5, 4.5]) expect(Segment.nextChange(frameAt(shared, t).render({ maxWidth: 10 }))).toBe(t + 0.5);
+    for (const text of texts) expect(text.spans).toEqual([]);
+  });
+
+  it("an edge no host float reaches at this rate is never, not a hang", () => {
+    const crawl = Timeline.run(Timeline.play(0, 1e-310), beat([1]));
+    expect(crawl.nextChange(0.5)).toBe(Number.POSITIVE_INFINITY);
+    // The start of the hold is within reach: host 0, to the floats the
+    // product of a subnormal rate and a host time resolves.
+    const began = crawl.lastChange(0.5);
+    expect(began).toBeLessThanOrEqual(0);
+    expect(began).toBeGreaterThan(-1e-12);
   });
 
   it("a spinner is an animation of the spinner drawn, never answering after the frame it drew turns, on any output", () => {

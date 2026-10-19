@@ -26,6 +26,7 @@ import {
   Table,
   beat,
   confined,
+  frameAt,
   onBeat,
   steppedInk,
   type Drawn,
@@ -34,7 +35,6 @@ import {
 } from "../../src/index.js";
 import { animationFuncs, richTextFuncs } from "../../src/template-bindings/index.js";
 import { SPINNERS } from "../../src/core/spinnerData.js";
-import { frameAt } from "../../src/renderables/frames.js";
 
 // [LAW:behavior-not-structure] What is asserted is the answer a host reads
 // off a rendered frame, never which object put it there.

@@ -497,6 +497,9 @@ export function walkUp(sum: number, reached: (x: number) => boolean, finer: () =
  * exact to the float and the cost is logarithmic in that distance.
  */
 export function firstReaching(near: number, reached: (x: number) => boolean): number {
+  // [LAW:no-silent-failure] A step out from an infinite guess is NaN, and a
+  // bracket of NaN never closes.
+  if (!Number.isFinite(near)) throw new RangeError(`firstReaching needs a finite guess, got ${near}`);
   let lo = near;
   let hi = near;
   // Out from `near` until the bracket is `lo` short of the boundary and `hi` past it.

@@ -117,10 +117,13 @@ export class FrameSequence implements Animation<RichText> {
  * animation; and it is put on here, where the host's time is known, and not
  * in the animation's `at`, whose own time a `Timeline` or an
  * `Animation.sequence` may have mapped from the host's — a stamp made there
- * would be a moment on a clock the host cannot read.
+ * would be a moment on a clock the host cannot read. A copy is stamped, the
+ * caller's to change: an animation may hand back the one `RichText` it
+ * holds, as `Animation.constant` does, and a stamp on that would outlive
+ * the draw it was true for.
  */
 export function frameAt(animation: Animation<RichText>, t: number): RichText {
-  return animation.at(t).stylize(new Style({ nextChange: animation.nextChange(t) }));
+  return animation.at(t).copy().stylize(new Style({ nextChange: animation.nextChange(t) }));
 }
 
 export interface FramesOptions {

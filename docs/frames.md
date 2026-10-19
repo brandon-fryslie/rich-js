@@ -27,7 +27,7 @@ for (const t of [0, 1.5, 2.2, 3]) {
 
 Every frame draws at one width, the widest frame's, padded on the right, so whatever sits beside the frames never moves as they turn; the sequence's `width` says what that is. A frame is a fragment of a line: it ends no line of its own, a newline inside one becomes a space, and it measures at exactly its width; a slot forced narrower crops it, and never folds or wraps it onto a second line.
 
-A `FrameSequence` is an [animation](/animation) of the frame shown: `at(t)` is the frame in progress as a `RichText` of its own, a copy, for a line assembled from pieces, and `nextChange(t)` is when it gives way to the next. `Frames` is the renderable, so it can be printed or set in a table cell directly. The holds are the sequence's `beat`, whose `period` is their sum.
+A `FrameSequence` is an [animation](/animation) of the frame shown: `at(t)` is the frame in progress as a `RichText` of its own, a copy, and `nextChange(t)` is when it gives way to the next. `Frames` is the renderable, so it can be printed or set in a table cell directly; `frameAt(sequence, t)` is the frame for a line assembled from pieces, its cells [saying when it turns](#when-the-frame-next-changes). The holds are the sequence's `beat`, whose `period` is their sum.
 
 ## Holds are seconds
 
@@ -65,7 +65,7 @@ for (const t of [0, 1, 2]) {
 }
 ```
 
-The stamp is the sequence's `nextChange(t)`, the answer every [animation](/animation) gives, and an [effect](/effects) stamps its frame the same way. Still content never changes, so it carries no stamp and the answer is `Infinity`. The stamp is put on by whoever draws the frame at a host time — a `Frames`, a `Spinner`, the template [`frames` function](/template-bindings) — and survives whatever the frame is appended into, so a line assembled from fragments still says when it turns. `at(t)` alone is the frame and no stamp: the time a sequence is asked for may be one a [timeline](/animation#playback-a-timeline) mapped from the host's, and a stamp made there would be on a clock the host cannot read.
+The stamp is the sequence's `nextChange(t)`, the answer every [animation](/animation) gives, and an [effect](/effects) stamps its frame the same way. Still content never changes, so it carries no stamp and the answer is `Infinity`. The stamp is put on by whoever draws the frame at a host time — a `Frames`, a `Spinner`, the template [`frames` function](/template-bindings) — and survives whatever the frame is appended into; `frameAt(animation, t)` is that frame for a line assembled from fragments, a copy stamped, and the line still says when it turns. `at(t)` alone is the frame and no stamp: the time a sequence is asked for may be one a [timeline](/animation#playback-a-timeline) mapped from the host's, and a stamp made there would be on a clock the host cannot read.
 
 A host that draws once a second can read from the answers alone that it is skipping frames: at each `t` the quarters above change at `t + 0.25`, before its next draw at `t + 1`, while the chevrons change exactly at it. A host drawing sixty times a second sees the next change never come before its next frame. A [`Live`](/live#auto-refresh) reads the answer off every frame it draws and wakes then, so it draws each frame of a sequence rather than a sample of them.
 
