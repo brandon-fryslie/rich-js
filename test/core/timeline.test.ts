@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Animation, FrameSequence, RichText, Segment, Spinner, Timeline, beat } from "../../src/index.js";
 import { SPINNERS } from "../../src/core/spinnerData.js";
+import { nextDown } from "./next-down.js";
 
 // [LAW:behavior-not-structure] What is asserted is what a host sees through a
 // timeline: the animation time each host time maps to, the value there, and
@@ -227,14 +228,6 @@ describe("Timeline.run: an animation on host time", () => {
   });
 
   it("the host moment is exact to the float: the float before it still draws the old value", () => {
-    const double = new Float64Array(1);
-    const bits = new BigUint64Array(double.buffer);
-    // The float under a positive `x`, read through its bits.
-    const nextDown = (x: number): number => {
-      double[0] = x;
-      bits[0] = bits[0]! - 1n;
-      return double[0]!;
-    };
     for (const rate of [1, -1, 0.01, -1 / 3]) {
       const run = Timeline.run(Timeline.seek(Timeline.play(0, rate), 0, 1000), signal);
       const next = run.nextChange(0.5);

@@ -302,25 +302,26 @@ A `Spinner`'s `speed` is a timeline its frames run on, so a spinner drawn backwa
 
 ## A stagger: one animation across children
 
-Most motion looks right in cascade: a tree's nodes fading in one after another, a table's rows arriving with a beat between them. `Timeline.stagger(animations, delay)` is every one of `animations` at once, each on a timeline playing from its index times `delay` seconds, their values in order. It is `Animation.all` of `Timeline.run`s, so it changes when the soonest child does, with each child's answer carried onto the stagger's clock, and it holds still in a gap between one child settling and the next one starting. A delay of 0 starts them together, and a negative one starts the last child first.
+Most motion looks right in cascade: a group's children pulsing in sequence, a light walking down a list. `Timeline.stagger(animations, delay)` is every one of `animations` at once, each on a timeline playing from its index times `delay` seconds after the earliest, their values in order. It is `Animation.all` of `Timeline.run`s, so it changes when the soonest child does, with each child's answer carried onto the stagger's clock, and it holds still in a gap between one child settling and the next one starting. The stagger runs on its own clock from 0, and its earliest child starts there: a delay of 0 starts them together, and a negative one starts the last child at 0 and the first last.
 
-Before its turn, a child is asked for a time before 0. What that shows is the child's own business: a lifecycle draws nothing yet, and a loop is shifted in phase, which is what a staggered pulse is. The stagger runs on its own clock from 0. Playing, pausing or reversing the whole group is one more timeline run over it.
+Before its turn, a child is asked for a time before 0. What that shows is the child's own business, and a loop is shifted in phase, which is what a staggered pulse is. Playing, pausing or reversing the whole group is one more timeline run over it.
+
+A [lifecycle](#enter-and-exit-an-element-arriving-staying-and-leaving) is staggered by its own `entered` instead: rows arriving one after another are `Animation.all` of lifecycles entered at each row's index times the delay. Its `leave` and `gone` take the host's clock, so it has to stay on that clock, not move onto one shifted by its index.
 
 No container knows that a stagger exists. A `Group`, a `Table`'s rows, a `Tree`'s children and a `Layout`'s panes take the children's frames the way they take any renderables, through `Animation.map`, and the frame drawn with `frameAt` says when it changes as the stagger does:
 
 ```typescript
-import { Animation, DEFAULT_TERMINAL_THEME, EASES, Group, RichText, Timeline, dissolveOut, fadeIn, frameAt, lifecycle } from "@promptctl/rich-js";
+import { Animation, Group, RichText, Timeline, beat, frameAt } from "@promptctl/rich-js";
 
-const curve = { seconds: 0.4, ease: EASES.linear, swing: 1 };
-const steps = ["resolving dependencies", "compiling 214 modules", "bundling the browser build"].map((step, i) =>
-  lifecycle(new RichText(step, { style: "bold cyan" }), { enter: fadeIn(curve, i), exit: dissolveOut(curve, i), key: step, theme: DEFAULT_TERMINAL_THEME }, 0),
-);
-const log = Animation.map(Timeline.stagger(steps, 0.5), (frames) => new Group(...frames));
+const steps = ["resolving dependencies", "compiling 214 modules", "bundling the browser build"];
+// Lit for half a second, dim for a second, looping: half a second apart, the light walks down the list.
+const lit = steps.map((step) => Animation.map(beat([0.5, 1]), (hold) => new RichText(step, { style: hold === 0 ? "bold cyan" : "dim" })));
+const log = Animation.map(Timeline.stagger(lit, 0.5), (frames) => new Group(...frames));
 
-for (const t of [0.2, 0.45, 0.7, 1.2, 1.5]) {
+for (const t of [0.2, 0.7, 1.2]) {
   const next = log.nextChange(t);
   console.print(frameAt(log, t));
-  console.print(`t=${t}s  next change ${next === t ? "every frame" : next === Infinity ? "never" : `at ${next}s`}`);
+  console.print(`t=${t}s  next change at ${next}s`);
 }
 ```
 

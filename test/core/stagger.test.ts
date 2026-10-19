@@ -23,6 +23,7 @@ import {
   type Renderable,
   type RenderOptions,
 } from "../../src/index.js";
+import { nextDown } from "./next-down.js";
 
 // [LAW:behavior-not-structure] What is asserted is what a host sees of a
 // stagger: each child's value at its own offset, and the group's word on when
@@ -73,34 +74,45 @@ describe("Timeline.stagger", () => {
     const staggered = Timeline.stagger(children, delay);
     // At 0.8, row 0 turns at 1 and row 2 enters at 1.2, but row 1, 0.2 into its arrival, turns its first beat at 0.25 on its clock.
     const next = staggered.nextChange(0.8);
-    expect(next).toBe(Timeline.run(Timeline.play(delay), children[1]!).nextChange(0.8));
     expect(next).toBeCloseTo(0.85, 12);
     // Exact to the float: the frame before it is still row 1's frame of the last beat.
     const before = (x: number) => bytes(staggered.at(x)[1]!);
     expect(before(next)).not.toBe(before(0.8));
-    expect(before(next - Number.EPSILON)).toBe(before(0.8));
+    expect(before(nextDown(next))).toBe(before(0.8));
   });
 
   it("holds still between one child arriving and the next entering, and never changes once every child has arrived", () => {
     const staggered = Timeline.stagger(rows(0.4), 1);
     expect(staggered.nextChange(0.2)).toBe(0.2);
     expect(staggered.nextChange(0.6)).toBe(1);
-    expect(staggered.lastChange(0.6)).toBe(Timeline.run(Timeline.play(0), rows(0.4)[0]!).lastChange(0.6));
+    // Row 0 finished arriving at 0.4, and nothing has moved since.
+    expect(staggered.lastChange(0.6)).toBe(0.4);
     expect(staggered.nextChange(2.5)).toBe(Number.POSITIVE_INFINITY);
   });
 
-  it("run backwards, turns where the latest child became what it shows", () => {
-    // Host h asks the stagger for 3 - h: at host 1.4 it is at 1.6, row 1 arrived at 1.4 and row 2 not yet entered.
-    const backwards = Timeline.run(Timeline.seek(Timeline.play(0, -1), 0, 3), Timeline.stagger(rows(0.4), 1));
+  it("run backwards, turns exactly where the latest child became what it shows", () => {
+    const signal = Animation.map(beat([1, 1]), (i) => ["on", "off"][i]!);
+    // Host h asks the stagger for 3 - h: at host 1.4 the children are at 1.6, 1.1 and 0.6, and child 1 drops back under 1 first.
+    const backwards = Timeline.run(Timeline.seek(Timeline.play(0, -1), 0, 3), Timeline.stagger([signal, signal, signal], 0.5));
     const next = backwards.nextChange(1.4);
-    expect(next).toBeCloseTo(1.6, 12);
-    // Past it row 1 is arriving again — a float past it differs by less than a colour step, so a tenth on.
-    expect(bytes(backwards.at(next + 0.1)[1]!)).not.toBe(bytes(backwards.at(1.4)[1]!));
-    expect(bytes(backwards.at(1.59)[1]!)).toBe(bytes(backwards.at(1.4)[1]!));
+    expect(next).toBeCloseTo(1.5, 12);
+    expect(backwards.at(next)).not.toEqual(backwards.at(1.4));
+    expect(backwards.at(nextDown(next))).toEqual(backwards.at(1.4));
+  });
+
+  it("a negative delay starts the last child at 0 and the first last", () => {
+    const children = rows(1);
+    const staggered = Timeline.stagger(children, -0.5);
+    for (const t of sampled(60, 0, 3)) {
+      const drawn = staggered.at(t).map(bytes);
+      children.forEach((child, i) => expect(drawn[i]).toBe(bytes(child.at(t - (2 - i) * 0.5))));
+    }
+    expect(staggered.at(0).slice(0, 2).map(bytes)).toEqual(["", ""]);
   });
 
   it("refuses a delay that is not a finite number of seconds, by its name; an empty stagger never changes", () => {
-    for (const delay of [Number.NaN, Number.POSITIVE_INFINITY]) expect(() => Timeline.stagger(rows(1), delay)).toThrow(/Timeline\.stagger delay/);
+    // 1e308 is finite, but two of it is not: the last child's origin is refused by the delay's name too.
+    for (const delay of [Number.NaN, Number.POSITIVE_INFINITY, 1e308]) expect(() => Timeline.stagger(rows(1), delay)).toThrow(/Timeline\.stagger delay/);
     const none = Timeline.stagger<string>([], 0.5);
     expect([none.at(3), none.nextChange(3), none.lastChange(3)]).toEqual([[], Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]);
   });
