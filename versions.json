@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-479",
+      "ref": "refs/pull/479/merge",
+      "sha": "580fd0d0724eee24e1effe53fa0a7376c5012fe2",
+      "timestamp": "2026-10-19T09:11:05.873Z",
+      "commits": [
+        {
+          "sha": "580fd0d0724eee24e1effe53fa0a7376c5012fe2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T03:09:36-06:00",
+          "message": "Merge ef239a7bf489fbca77b02c261d5c4d423abecf97 into 535b1b6a1628aa46150aacf8c4e972fd6bfbe541\n"
+        },
+        {
+          "sha": "ef239a7bf489fbca77b02c261d5c4d423abecf97",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T03:06:02-06:00",
+          "message": "A timeline maps host time to animation time: pause, reverse, scrub, speed (rich-animation-42lg.kjt)\n\nA `Timeline` in `src/core/` is the map from the host's clock to the time an\nanimation is asked for, as a value: play, pause, resume, seek, a rate —\nnegative to reverse — each a timeline in and a timeline out, with no clock\nread. `Timeline.run` is an animation on host time whose `nextChange` is\ncarried back onto the host's clock, the argument `Spinner`'s speed scaled\nits holds for, now made once above the type; `Spinner`'s speed is a timeline.\n\nReversing exactly needs the other end of a hold, so `Animation` answers\n`lastChange(t)` beside `nextChange(t)`: the last moment the value may have\nbecome `at(t)`, which `Beat.start` already was and is now named for. Every\ncombinator and instance answers it. The spinner's drawn cells are restamped\nwith the host's answer (`Style.withNextChange`), since the frame's own\nstamp is on the spinner's timeline.\n\neffects-feel's hand-rolled `Pace` is a timeline over the frame count, and\nspace now pauses it.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "535b1b6a1628aa46150aacf8c4e972fd6bfbe541",
