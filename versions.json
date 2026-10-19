@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-480",
-      "ref": "refs/pull/480/merge",
-      "sha": "5fffb0d6937a1cf962e3eff04749e557748414ec",
-      "timestamp": "2026-10-19T11:34:47.699Z",
-      "commits": [
-        {
-          "sha": "5fffb0d6937a1cf962e3eff04749e557748414ec",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T11:32:55Z",
-          "message": "Merge 7cc9144101826c416b9537d14d8a7a893da69d4c into ca537fab9636aab58062b777b513dfc25d8e5573\n"
-        },
-        {
-          "sha": "7cc9144101826c416b9537d14d8a7a893da69d4c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T05:32:49-06:00",
-          "message": "tween's doc says what an ease that jumps at 0 shows, and ramp's header names its imports (review high)\n"
-        },
-        {
-          "sha": "3984340fca79aec59e364c81b2eae5922a1aee5d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T05:27:41-06:00",
-          "message": "A tween eases a value from one to another over seconds (rich-animation-42lg.bjh)\n\n`tween(from, to, timing)` in `src/core/tween.ts`: `from` before 0, eased\ntoward `to` through `Phase.once(0, seconds)`, held at `to` from then on,\nwith `nextChange` saying so — until 0, every frame, never. The blend is\n`(1 − p)·from + p·to`, exact at both ends where `from + (to − from)·p` is\nnot, so a count lands on its target whatever the ease.\n\n`Timing` is the ease-and-seconds pair, in `easing.ts`: what `spring()`\nreturns (replacing the `Spring` interface, the same shape under the name\nof its one producer) and what an effect's `Curve` now extends, so a spring\nis handed to a tween as it is.\n\nA colour tween is `ColorRamp.over(seconds)`: the ramp's span crossed at a\nsteady rate, each colour the ramp's own, so the blending stays in one\nplace. Retargeting is `Animation.sequence(old, t₁, tween(old.at(t₁), to,\ntiming))`, documented and tested, with no state kept.\n\n`docs/animation.md` gains the tween section; the colour studio demo gains\na tween row, which is what demonstrates the export to the coverage gate.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ca537fab9636aab58062b777b513dfc25d8e5573",
