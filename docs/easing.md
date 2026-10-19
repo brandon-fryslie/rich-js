@@ -6,7 +6,7 @@ Nothing here reads a clock. Time is an argument, so whoever draws the frames pic
 
 ## Eases
 
-An `Ease` is any function from `[0, 1]` to progress. The built-ins are CSS's easing functions, by the name CSS gives them, plus `sine`, a half-cosine that is flat at both ends, and `step`, the older spelling of `step-end`:
+An `Ease` is any function from `[0, 1]` to progress. The built-ins are CSS's easing functions, by the name CSS gives them, plus `sine`, a half-cosine that is flat at both ends, `step`, the older spelling of `step-end`, and the physics curves the next section describes:
 
 ```typescript
 import { EASES } from "@promptctl/rich-js";
@@ -36,6 +36,27 @@ for (const x of [0, 0.25, 0.5, 0.75, 1]) {
   console.print(`x=${x.toFixed(2)}  back=${back(x).toFixed(3)}  steps(3)=${thirds(x).toFixed(3)}`);
 }
 ```
+
+## Springs, bounces and overshoot
+
+A cursor snapping to its target, a counter settling on its value or a panel sliding in wants a curve CSS does not have: one that overshoots and comes back, or bounces. These are eases like the rest, so everything that takes an `Ease` — a ramp, an effect's `Curve`, the `ramp` template function by name — takes them with no change. An ease that leaves `[0, 1]` is read by what can show the overshoot, such as a position or a count; a `ColorRamp` holds its end colours where it does, and an effect saturates at its `swing`.
+
+`spring(options)` is a damped harmonic oscillator, released at rest a unit from where it is going, in the units every animation library spells springs in: `stiffness` (default 100), `damping` (10) and `mass` (1). Less damping rings past the rest and back; at or above critical damping the spring only creeps up to it. Unlike every other ease, a spring's duration is not yours to choose — how long it rings is a fact about its physics — so `spring` returns both the `ease` and the `seconds` it takes to settle within one part in a thousand, and `{ ...spring(options), swing }` is an effect's `Curve`. The ease is the spring's position over those seconds, and exactly 1 at the end:
+
+```typescript
+import { Phase, spring } from "@promptctl/rich-js";
+
+const snap = spring({ stiffness: 300, damping: 20 });
+const creep = spring({ stiffness: 300, damping: 40 });
+console.print(`snap settles in ${snap.seconds.toFixed(2)} s, creep in ${creep.seconds.toFixed(2)} s`);
+
+const phase = Phase.once(0, snap.seconds);
+for (const t of [0, 0.1, 0.2, 0.3, 0.5, snap.seconds]) {
+  console.print(`t=${t.toFixed(2)}s  snap=${snap.ease(phase(t)).toFixed(3)}  creep=${creep.ease(phase(t)).toFixed(3)}`);
+}
+```
+
+`EASES.spring` is the default spring's ease, so a template can spell it. Beside it are Robert Penner's curves, at the constants every animation library since has shipped: `bounce`, a ball dropped onto its rest in four shrinking arcs, never above 1; `back-in`, which pulls back past its start before going, and `back-out`, which overshoots its end by about a tenth before settling; and `elastic`, which overshoots and rings back through its end, each swing a little over a third of the last. Each is 0 at 0 and exactly 1 at 1.
 
 ## Phases
 

@@ -40,6 +40,7 @@ import {
   ROSE_PINE_MOON,
   SOLARIZED_DARK,
   SOLARIZED_LIGHT,
+  spring,
   steps,
   Style,
   SVG_EXPORT_THEME,
@@ -326,11 +327,15 @@ export function section5ColorRefs(out: Console): void {
   ];
   out.print(bold("    ColorRamp — a number → a colour, over the same stops, per ease:"));
   out.print(blurb("stops at 0 (surface), 50 (warning), 80 (error)"));
+  // A spring's duration is its physics' to say, so a stiff one is a short
+  // one: the ramp below is this spring sampled over its own settling time.
+  const stiff = spring({ stiffness: 400, damping: 12 });
   const eases = [
     ...Object.entries(EASES),
     ["steps(3)", steps(3)] as const,
     ["steps(3, jump-start)", steps(3, "jump-start")] as const,
     ["cubicBezier(.7,0,.3,1)", cubicBezier(0.7, 0, 0.3, 1)] as const,
+    [`spring(400, 12) ${stiff.seconds.toFixed(2)}s`, stiff.ease] as const,
   ];
   for (const [label, ease] of eases) {
     const ramp = new ColorRamp(ease, stops);

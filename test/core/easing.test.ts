@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { EASES, Phase, beat, cubicBezier, parseEase, steps, type Ease } from "../../src/core/easing.js";
+import { EASES, Phase, SPRING_REST, beat, cubicBezier, parseEase, spring, steps, type Ease, type SpringOptions } from "../../src/core/easing.js";
 
 /**
  * The CSS reference curve, straight from its definition: the cubic Bézier
@@ -93,6 +93,170 @@ describe("steps matches CSS's jump terms", () => {
     expect(() => steps(0)).toThrow(/whole number of steps ≥ 1/);
     expect(() => steps(2.5)).toThrow(/whole number of steps ≥ 1/);
     expect(() => steps(1, "jump-none")).toThrow(/whole number of steps ≥ 2/);
+  });
+});
+
+/**
+ * The spring reference, straight from its equation of motion: `m·x″ = −k·x −
+ * c·x′` from `x = −1` at rest, stepped by velocity Verlet at a fine step.
+ * Independent of the closed forms the implementation picks by damping
+ * regime, so a point on it is a point the ease must pass through, whichever
+ * regime it is in. Returns the position `1 + x` at each of `samples` evenly
+ * spaced moments up to `seconds`.
+ */
+function integrated({ stiffness, damping, mass }: Required<SpringOptions>, seconds: number, samples: number): number[] {
+  const dt = 1e-5;
+  const accel = (x: number, v: number): number => (-stiffness * x - damping * v) / mass;
+  let x = -1;
+  let v = 0;
+  let a = accel(x, v);
+  let t = 0;
+  const out: number[] = [];
+  for (let i = 0; i <= samples; i++) {
+    const until = (seconds * i) / samples;
+    while (t + dt <= until) {
+      x += v * dt + 0.5 * a * dt * dt;
+      const next = accel(x, v + a * dt);
+      v += 0.5 * (a + next) * dt;
+      a = next;
+      t += dt;
+    }
+    out.push(1 + x);
+  }
+  return out;
+}
+
+const SPRINGS: readonly [string, Required<SpringOptions>][] = [
+  ["the default, underdamped (ζ = 0.5)", { stiffness: 100, damping: 10, mass: 1 }],
+  ["critically damped (ζ = 1)", { stiffness: 100, damping: 20, mass: 1 }],
+  ["overdamped (ζ = 1.5)", { stiffness: 100, damping: 30, mass: 1 }],
+  ["heavy and stiff", { stiffness: 400, damping: 12, mass: 3 }],
+];
+
+describe("spring matches its equation of motion", () => {
+  for (const [label, options] of SPRINGS) {
+    it(`${label}: the ease over its seconds is the integrated oscillator`, () => {
+      const { ease, seconds } = spring(options);
+      const reference = integrated(options, seconds, 40);
+      // The last sample is the settled end, which the ease defines as 1.
+      reference.forEach((position, i) => {
+        expect(ease(i / 40), `x = ${i / 40}`).toBeCloseTo(i === 40 ? 1 : position, 3);
+      });
+    });
+
+    it(`${label}: is settled within SPRING_REST from its seconds on and not just before, and exactly 1 at the end`, () => {
+      const { ease, seconds } = spring(options);
+      expect(ease(1)).toBe(1);
+      // The settling time is the first moment the spring stays within rest,
+      // so just before it the spring is still outside, and after it never.
+      expect(Math.abs(1 - ease(0.99))).toBeGreaterThan(SPRING_REST);
+      const reference = integrated(options, seconds * 1.5, 150);
+      reference.slice(100).forEach((position, i) => expect(Math.abs(position - 1), `at ${seconds * (1 + i / 100)} s`).toBeLessThanOrEqual(SPRING_REST * 1.001));
+      expect(seconds).toBeGreaterThan(0);
+    });
+  }
+
+  it("a ringing spring overshoots its rest, a creeping one never does and only rises", () => {
+    const samples = Array.from({ length: 1001 }, (_, i) => i / 1000);
+    expect(Math.max(...samples.map(spring().ease))).toBeGreaterThan(1.1);
+    for (const options of [{ damping: 20 }, { damping: 30 }]) {
+      const { ease } = spring(options);
+      const values = samples.map(ease);
+      expect(Math.max(...values)).toBeLessThanOrEqual(1);
+      values.slice(1).forEach((v, i) => expect(v).toBeGreaterThanOrEqual(values[i]!));
+    }
+  });
+
+  it("the default spring settles in about a second and a quarter; heavier damping settles sooner, more mass later, and stiffness alone only quickens the swing", () => {
+    expect(spring().seconds).toBeCloseTo(1.27, 2);
+    expect(spring({ damping: 16 }).seconds).toBeLessThan(spring().seconds);
+    expect(spring({ mass: 3 }).seconds).toBeGreaterThan(spring().seconds);
+    // The decay is damping over mass, so a stiffer spring rings at the same
+    // envelope and settles within half a swing of the default — a swing being
+    // π/ω_d of its own — not sooner.
+    const stiff = spring({ stiffness: 400 });
+    expect(Math.abs(stiff.seconds - spring().seconds)).toBeLessThan(Math.PI / (Math.sqrt(400) * Math.sqrt(1 - 0.25 ** 2)));
+  });
+
+  it("the settling time is the true crossing, so it is continuous where ringing meets creeping, and finite however hard the damping", () => {
+    // A decay envelope grows without bound as ζ → 1⁻; the crossing does not.
+    expect(spring({ damping: 19.9999999 }).seconds).toBeCloseTo(spring({ damping: 20 }).seconds, 5);
+    const stiff = spring({ damping: 1e10 });
+    expect(Number.isFinite(stiff.seconds)).toBe(true);
+    expect(stiff.ease(0.5)).toBeGreaterThan(0.9);
+    expect(stiff.ease(0.5)).toBeLessThan(1);
+  });
+
+  it("holds its argument to [0, 1], as every ease does", () => {
+    const { ease } = spring();
+    expect(ease(-1)).toBe(0);
+    expect(ease(2)).toBe(1);
+  });
+
+  it("through Phase.once, a short spring is 0 at release and exactly 1 at every frame from its seconds on, sampled sixty times a second or once", () => {
+    const { ease, seconds } = spring({ stiffness: 900, damping: 30 });
+    expect(seconds).toBeLessThan(1);
+    const phase = Phase.once(0, seconds);
+    expect(ease(phase(0))).toBe(0);
+    const sixty = Array.from({ length: 181 }, (_, k) => k / 60);
+    const once = [1, 2, 3];
+    for (const t of [...sixty, ...once].filter((t) => t >= seconds)) expect(ease(phase(t)), `t = ${t}`).toBe(1);
+    // Something is seen moving at sixty frames a second: the first frame is
+    // already off its release and under its rest.
+    expect(ease(phase(1 / 60))).toBeGreaterThan(0);
+    expect(ease(phase(1 / 60))).toBeLessThan(1);
+  });
+
+  it("refuses physics that is not a positive, finite number", () => {
+    expect(() => spring({ stiffness: 0 })).toThrow(/spring stiffness must be a positive number, got 0/);
+    expect(() => spring({ damping: -1 })).toThrow(/spring damping/);
+    expect(() => spring({ mass: Number.NaN })).toThrow(/spring mass/);
+    expect(() => spring({ stiffness: Number.POSITIVE_INFINITY })).toThrow(/spring stiffness/);
+  });
+});
+
+describe("Penner's curves at his constants", () => {
+  // Reference values are Robert Penner's easing equations as every library
+  // ships them (easings.net lists the same formulas and constants), worked
+  // by hand at the quarter points.
+  const PENNER: readonly [keyof typeof EASES, [number, number, number, number, number]][] = [
+    ["bounce", [0, 0.47265625, 0.765625, 0.97265625, 1]],
+    ["back-in", [0, -0.0641365, -0.0876975, 0.1825903, 1]],
+    ["back-out", [0, 0.8174097, 1.0876975, 1.0641365, 1]],
+    ["elastic", [0, 0.9116117, 1.015625, 1.0055243, 1]],
+  ];
+  for (const [name, expected] of PENNER) {
+    it(`${name} at the quarter points`, () => {
+      [0, 0.25, 0.5, 0.75, 1].forEach((x, i) => expect(EASES[name](x), `x = ${x}`).toBeCloseTo(expected[i]!, 6));
+    });
+  }
+
+  it("bounce stays in [0, 1] and lands four times; the overshooting three leave it", () => {
+    const samples = Array.from({ length: 1001 }, (_, i) => i / 1000);
+    const bounced = samples.map(EASES.bounce);
+    expect(Math.min(...bounced)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...bounced)).toBeLessThanOrEqual(1);
+    // A landing is the end of an arc, where the ball touches its rest: the first arc meets it at 1/2.75, and the arcs after it halve in width.
+    for (const x of [1 / 2.75, 2 / 2.75, 2.5 / 2.75, 1]) expect(EASES.bounce(x), `landing at ${x}`).toBeCloseTo(1, 9);
+    // Between landings the ball is in the air, below its rest.
+    for (const x of [0.5 / 2.75, 1.5 / 2.75, 2.25 / 2.75, 2.625 / 2.75]) expect(EASES.bounce(x), `in the air at ${x}`).toBeLessThan(1);
+    expect(Math.min(...samples.map(EASES["back-in"]))).toBeLessThan(-0.09);
+    expect(Math.max(...samples.map(EASES["back-out"]))).toBeGreaterThan(1.09);
+    expect(Math.max(...samples.map(EASES.elastic))).toBeGreaterThan(1.3);
+  });
+
+  it("each is 0 at 0 and exactly 1 at 1, and holds its argument to [0, 1]", () => {
+    for (const name of ["bounce", "back-in", "back-out", "elastic", "spring"] as const) {
+      expect(EASES[name](0), name).toBe(0);
+      expect(EASES[name](1), name).toBe(1);
+      expect(EASES[name](-0.5), name).toBe(0);
+      expect(EASES[name](1.5), name).toBe(1);
+    }
+  });
+
+  it("the spring in EASES is the default spring()", () => {
+    const { ease } = spring();
+    for (const x of [0.1, 0.33, 0.5, 0.9]) expect(EASES.spring(x)).toBe(ease(x));
   });
 });
 

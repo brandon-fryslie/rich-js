@@ -108,8 +108,8 @@ export { ColorRamp } from "./themes/ramp.js";
 export type { ColorStop } from "./themes/ramp.js";
 // Progress in [0, 1]: phases turn seconds into it, eases reshape it. One
 // vocabulary for ramps and time-based effects alike, CSS's names throughout.
-export { EASES, Phase, beat, cubicBezier, parseEase, steps } from "./core/easing.js";
-export type { Beat, Ease, StepPosition } from "./core/easing.js";
+export { EASES, Phase, beat, cubicBezier, parseEase, spring, steps } from "./core/easing.js";
+export type { Beat, Ease, Spring, SpringOptions, StepPosition } from "./core/easing.js";
 // The time source and timer whoever draws frames is handed, and the one
 // parser of the rate it ticks at.
 export { frameRate, systemClock } from "./core/clock.js";
