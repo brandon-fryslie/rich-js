@@ -4,15 +4,22 @@
     {
       "version": "pr-479",
       "ref": "refs/pull/479/merge",
-      "sha": "6d9fcef474dc45d06358e1e796d621790b88ac88",
-      "timestamp": "2026-10-19T10:52:32.866Z",
+      "sha": "48517352af3ec44edda9e6ff2afd41ae187072ad",
+      "timestamp": "2026-10-19T11:07:22.559Z",
       "commits": [
         {
-          "sha": "6d9fcef474dc45d06358e1e796d621790b88ac88",
+          "sha": "48517352af3ec44edda9e6ff2afd41ae187072ad",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T10:50:37Z",
-          "message": "Merge 29e41fb798d64839bd4d0349c0daf5a7d10ff29d into 535b1b6a1628aa46150aacf8c4e972fd6bfbe541\n"
+          "timestamp": "2026-10-19T11:06:00Z",
+          "message": "Merge 2c767a512ee8ff3094b6ed43e8bfa696fe54d9f0 into 535b1b6a1628aa46150aacf8c4e972fd6bfbe541\n"
+        },
+        {
+          "sha": "2c767a512ee8ff3094b6ed43e8bfa696fe54d9f0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T05:05:52-06:00",
+          "message": "firstReaching stays within the finite floats, and a sequence's carried moment is searched both ways (rich-animation-42lg.kjt)\n\nReview findings, escalation high. The downward bracket could step onto\n-Infinity and bisect NaN forever; the search now clamps to the finite floats\nand answers always or never at either end. Animation.sequence carried a\nmoment by walking up from a sum that can round over the change as well as\nunder it, so nextChange was a float late on about one time in forty; it is\nthe same search now, and the test asserts the float before the answer still\nshows the old value. A paused run refuses a non-finite host time like a\nplaying one. A stray file `1` left at the root by the last commit is gone.\n"
         },
         {
           "sha": "29e41fb798d64839bd4d0349c0daf5a7d10ff29d",
