@@ -314,6 +314,8 @@ export {
   wheel,
 } from "./renderables/effects.js";
 export type { AttributeLoopName, Blink, ColorStep, Curve, EffectTarget, Field, Loop, LoopName, Touch, Transition, TransitionName } from "./renderables/effects.js";
+export { crossfade, wipe } from "./renderables/change.js";
+export type { Between, Change } from "./renderables/change.js";
 export { GlyphEffected } from "./renderables/glyph-effect.js";
 export type { DrawnGlyphs, GlyphCell, GlyphEffect, GlyphEffectedOptions, GlyphFrame } from "./renderables/glyph-effect.js";
 export { GLYPH_DEFAULTS, GLYPH_EFFECT_CATALOGUE, caseWave, particles, scramble, typewriter } from "./renderables/glyph-effects.js";

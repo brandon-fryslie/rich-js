@@ -339,7 +339,7 @@ export interface Curve extends Timing {
 }
 
 /** Throws, naming the field, unless `curve` has a positive, finite `seconds` and a `swing` in [0, 1]. */
-function requireCurve(curve: Curve): void {
+export function requireCurve(curve: Curve): void {
   if (!(Number.isFinite(curve.seconds) && curve.seconds > 0)) throw new RangeError(`curve: seconds must be a positive number of seconds, got ${curve.seconds}`);
   if (!(curve.swing >= 0 && curve.swing <= 1)) throw new RangeError(`curve: swing must be in [0, 1], got ${curve.swing}`);
 }
@@ -784,7 +784,7 @@ const OWN = 0.45;
  * A cell's own change in a transition: how far along the element's order it
  * starts, in [0, 1], and how far through the change it is at `t`, in [0, 1].
  */
-interface Change {
+interface CellChange {
   readonly along: number;
   progress(t: number): number;
 }
@@ -805,8 +805,8 @@ interface Change {
  * start. [LAW:no-ambient-temporal-coupling] The transition owns that record;
  * it is why a transition is made for one element.
  */
-function ownChange(curve: Curve, place: (cell: Placed) => number): (cells: readonly Placed[]) => (cell: Placed) => Change {
-  const changes = new Map<string, Change>();
+function ownChange(curve: Curve, place: (cell: Placed) => number): (cells: readonly Placed[]) => (cell: Placed) => CellChange {
+  const changes = new Map<string, CellChange>();
   const key = (cell: Placed): string => `${cell.row}:${cell.col}`;
   return (cells) => {
     const [first, last] = extent(cells.map(place));
@@ -814,7 +814,7 @@ function ownChange(curve: Curve, place: (cell: Placed) => number): (cells: reado
     // One phase a frame, shifted per cell, so no cell builds its own.
     const change = Phase.once(0, curve.seconds - stagger);
     // A share of the way from the first place to the last, held to the order for a cell the frame does not list.
-    const settled = (cell: Placed): Change => {
+    const settled = (cell: Placed): CellChange => {
       const along = last > first ? clamp01((place(cell) - first) / (last - first)) : 0;
       return { along, progress: (t) => change(t - along * stagger) };
     };

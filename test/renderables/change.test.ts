@@ -1,0 +1,121 @@
+import { describe, expect, it } from "vitest";
+import { ColorDepth } from "../../src/core/color.js";
+import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
+import { EASES } from "../../src/core/easing.js";
+import { Measurement } from "../../src/core/measure.js";
+import { render, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
+import { segmentsToString } from "../../src/core/render.js";
+import { Segment } from "../../src/core/segment.js";
+import { RichText } from "../../src/core/text.js";
+import { crossfade, wipe, type Change } from "../../src/renderables/change.js";
+import type { Transition } from "../../src/renderables/effects.js";
+
+const theme = DEFAULT_TERMINAL_THEME;
+const OPTIONS: RenderOptions = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR };
+const curve = { seconds: 2, ease: EASES.linear, swing: 1 };
+
+const building = new RichText("building the project", { style: "bold yellow" });
+const done = new RichText("done ✓", { style: "green" });
+const tall = new RichText("one\ntwo\nthree", { style: "cyan" });
+const wide = new RichText("漢字漢字漢字漢字漢字", { style: "magenta" });
+
+const draw = (renderable: Renderable, options: RenderOptions = OPTIONS): Segment[] => [...render(renderable, options)];
+const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
+const text = (segments: Segment[]): string => segments.map((s) => s.text).join("");
+const rows = (segments: Segment[]): number[] => Segment.splitLines(segments).map((line) => Segment.getLineLength(line));
+
+/** `rate` samples a second from 0 to `seconds`. */
+const sampled = (rate: number, seconds: number): number[] => Array.from({ length: Math.floor(seconds * rate) + 1 }, (_, i) => i / rate);
+
+const CHANGES: readonly [string, Transition<Change>][] = [
+  ["crossfade", crossfade(curve)],
+  ["wipe", wipe(curve)],
+];
+
+describe("a change from one renderable to another", () => {
+  for (const [name, change] of CHANGES) {
+    const between = (from: Renderable, to: Renderable) => change.effect({ from, to, theme });
+
+    it(`${name}: draws the same bytes for the same t at one frame a second and sixty`, () => {
+      const moving = between(building, done);
+      const slow = new Map(sampled(1, 3).map((t) => [t, bytes(draw(moving.at(t)))]));
+      for (const t of sampled(60, 3)) if (slow.has(t)) expect(bytes(draw(moving.at(t)))).toBe(slow.get(t));
+    });
+
+    it(`${name}: is drawn at the new renderable's shape from its first frame, whatever the old one's`, () => {
+      for (const [from, to] of [
+        [building, done],
+        [done, building],
+        [tall, done],
+        [done, tall],
+        [wide, done],
+        [done, wide],
+      ] as const) {
+        const moving = between(from, to);
+        const shape = rows(draw(to));
+        for (const t of sampled(60, 2.5)) {
+          expect(rows(draw(moving.at(t)))).toEqual(shape);
+          expect(Measurement.get(OPTIONS, moving.at(t))).toEqual(Measurement.get(OPTIONS, to));
+        }
+      }
+    });
+
+    it(`${name}: changes every frame until done, then is the new renderable and never changes`, () => {
+      const moving = between(building, done);
+      for (const t of sampled(60, 2.5)) {
+        const frame = draw(moving.at(t));
+        expect(change.done(t)).toBe(t >= curve.seconds);
+        expect(Segment.nextChange(frame)).toBe(t < curve.seconds ? t : Number.POSITIVE_INFINITY);
+        expect(moving.nextChange(t)).toBe(t < curve.seconds ? t : Number.POSITIVE_INFINITY);
+        if (t >= curve.seconds) expect(bytes(frame)).toBe(bytes(draw(done)));
+      }
+    });
+
+    it(`${name}: starts as the old renderable, in the new one's shape`, () => {
+      const at0 = text(draw(between(building, done).at(0)));
+      expect(at0).toBe("buildi\n");
+    });
+
+    it(`${name}: never halves a wide glyph`, () => {
+      const moving = between(wide, building);
+      for (const t of sampled(60, 2)) {
+        for (const line of Segment.splitLines(draw(moving.at(t)))) {
+          // Every segment of a row is whole: as many cells as its glyphs say.
+          expect(Segment.getLineLength(line)).toBe(20);
+        }
+      }
+    });
+
+    it(`${name}: with no colour output, is spliced and writes no style`, () => {
+      const plain: RenderOptions = { maxWidth: 40, colorSystem: null };
+      const moving = between(building, done);
+      expect(text(draw(moving.at(0), plain))).toBe("buildi\n");
+      expect(text(draw(moving.at(curve.seconds), plain))).toBe("done ✓\n");
+    });
+  }
+
+  it("a crossfade turns every cell at its half, and a wipe turns the left before the right", () => {
+    expect(text(draw(crossfade(curve).effect({ from: building, to: done, theme }).at(0.99), { maxWidth: 40, colorSystem: null }))).toBe("buildi\n");
+    expect(text(draw(crossfade(curve).effect({ from: building, to: done, theme }).at(1), { maxWidth: 40, colorSystem: null }))).toBe("done ✓\n");
+    const midway = text(draw(wipe(curve).effect({ from: new RichText("aaaaaaaaaaaaaaaaaaaa"), to: new RichText("bbbbbbbbbbbbbbbbbbbb"), theme }).at(1), { maxWidth: 40, colorSystem: null }));
+    expect(midway).toMatch(/^b+a+\n$/);
+  });
+
+  it("a crossfade shorter than a second, sampled once a second, shows the old renderable and then the new", () => {
+    const quick = crossfade({ seconds: 0.5, ease: EASES.linear, swing: 1 });
+    const moving = quick.effect({ from: building, to: done, theme });
+    expect(text(draw(moving.at(0)))).toBe("buildi\n");
+    for (const t of [1, 2]) {
+      expect(quick.done(t)).toBe(true);
+      expect(bytes(draw(moving.at(t)))).toBe(bytes(draw(done)));
+      expect(moving.nextChange(t)).toBe(Number.POSITIVE_INFINITY);
+    }
+  });
+
+  it("a cell passes through the terminal's ground at its half", () => {
+    const moving = crossfade(curve).effect({ from: building, to: done, theme });
+    const half = draw(moving.at(1)).filter((s) => s.text.trim() !== "");
+    const ground = theme.backgroundColor.hex;
+    for (const segment of half) expect(segment.style?.color?.getTruecolor(theme, true).hex).toBe(ground);
+  });
+});
