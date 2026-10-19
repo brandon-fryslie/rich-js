@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-492",
-      "ref": "refs/pull/492/merge",
-      "sha": "581122aee31a4d3c147d5b11fb023dc6173a76c4",
-      "timestamp": "2026-10-19T23:27:01.323Z",
-      "commits": [
-        {
-          "sha": "581122aee31a4d3c147d5b11fb023dc6173a76c4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T23:25:42Z",
-          "message": "Merge f63f372c69cda2f091ea9834590294f9e91cd9e8 into f772ebd134433012ebb20badeb5560e1d6e6a46e\n"
-        },
-        {
-          "sha": "f63f372c69cda2f091ea9834590294f9e91cd9e8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T17:25:37-06:00",
-          "message": "A one-shot reduced cuts to its end when it starts; a glyph loop reduced is the text as written (rich-animation-42lg.a38)\n\nEscalation review of #492. A reduced tween or transition was its end at every\ntime, so one scheduled later showed finished early; Animation.cut(before,\nafter) keeps the start and drops the motion. A stagger reduced has everyone\narrived, its offsets being choreography. caseWave and particles reduced draw\nthe text as written instead of a band or field frozen at step 0. The scroll\nmarquee starts from the line so its held loop shows it. CLAUDE.md names\nreduced() and the widened held.\n"
-        },
-        {
-          "sha": "143360d4be2f6497cd07fcdb8d867c38bb7b4eee",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T17:14:29-06:00",
-          "message": "A reduced sequence keeps both parts on time; a reduced element wakes its host when gone (rich-animation-42lg.a38)\n\nMedium review of #492: sequence is a general combinator, so skipping `first`\ndropped content (a loading text before results). It is now each part reduced\nwith the switch kept; a transition says its own end. A lifecycle reduced shows\nnothing once told to leave but still says it changes when `gone`, so a host\npruning on gone(t) drops it on time. The template frames/stepped refuse a\nnon-finite frameTime() under reduced motion as with motion.\n"
-        },
-        {
-          "sha": "1cb918c2310eb1254c2fef7da0b61b24560a128a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T17:07:10-06:00",
-          "message": "Reduced motion keeps content on time: an animation reduced is an animation (rich-animation-42lg.a38)\n\nThe high review of #492 showed a time-free rest() cannot say when content\nshows: a lifecycle told to leave later drew as already gone, and a function\nview pinned at view(0) froze the lifecycle demo on its first line.\nAnimation<T>.rest(): T becomes reduced(): Animation<T> — the motion taken\nout, what shows and when kept. Function views are asked at the real t.\n\nAlso: a reduced sequence wakes nothing at its switch; drawView's since-when\nreads the reduced animation, so a reversed timeline is never told to look\nagain; renderToString takes reducedMotion; one finiteTime refusal in\ncore/easing serves every \"needs a finite t\".\n"
-        },
-        {
-          "sha": "244afe4c1f85ad7a03e3d9cb6bc16ebb9e8738ec",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T16:45:35-06:00",
-          "message": "Reduced motion: one switch draws every animation at its rest (rich-animation-42lg.a38)\n\nAn Animation now says its rest() — a loop's first value, a one-shot's end —\nand every combinator says it once, so a transition rests at its new state, a\nlifecycle arrived (or gone once told to leave), a stagger with everyone\narrived. reducedMotion on Console (which a Live draws through), on App, and on\nanimationFuncs is the one switch; shownAt in core/view.ts is the one place it\nis read, by drawView and by every renderable built for the host's time.\ndrawView takes the render options once and hands them to its draw. Nothing\nreads the environment.\n\nNamed limit: a text frame a function view splices itself with frameAt, or a\nvalue it samples itself, is its own sample; at rest a function view is asked\nat 0. docs/animation.md#reduced-motion says so.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "f772ebd134433012ebb20badeb5560e1d6e6a46e",
-      "timestamp": "2026-10-19T22:27:46.770Z",
+      "sha": "5cac7dcb8d47c475525384d4737e0da368771a82",
+      "timestamp": "2026-10-19T23:38:48.940Z",
       "commits": [
         {
-          "sha": "f772ebd134433012ebb20badeb5560e1d6e6a46e",
+          "sha": "5cac7dcb8d47c475525384d4737e0da368771a82",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T16:25:45-06:00",
-          "message": "A Tree child that draws no rows takes no place among its siblings' guides (rich-animation-42lg.8qh) (#491)\n\n* A Tree child that draws no rows takes no place among its siblings' guides (rich-animation-42lg.8qh)\n\nThe walk now draws each label before it chooses the branch, so the last\nchild that draws a row ends it. A label yielding only carriers (a frameAt\nframe of no cells) draws no row and still passes its nextChange on.\nmeasure and contents read the same walk.\n\n* Tree: branch on a subtree's first drawn row; render and measure draw labels one way (rich-animation-42lg.8qh review)\n\n* Tree.measure: a label wants at least one column, so a label of no width keeps its row (rich-animation-42lg.8qh review)\n\n* Tree.measure draws only a label of no width to ask if it draws; splitRows tested; docs say subtree (rich-animation-42lg.8qh review)"
+          "timestamp": "2026-10-19T17:37:03-06:00",
+          "message": "Reduced motion: one switch draws every animation at its rest (rich-animation-42lg.a38) (#492)\n\n* Reduced motion: one switch draws every animation at its rest (rich-animation-42lg.a38)\n\nAn Animation now says its rest() — a loop's first value, a one-shot's end —\nand every combinator says it once, so a transition rests at its new state, a\nlifecycle arrived (or gone once told to leave), a stagger with everyone\narrived. reducedMotion on Console (which a Live draws through), on App, and on\nanimationFuncs is the one switch; shownAt in core/view.ts is the one place it\nis read, by drawView and by every renderable built for the host's time.\ndrawView takes the render options once and hands them to its draw. Nothing\nreads the environment.\n\nNamed limit: a text frame a function view splices itself with frameAt, or a\nvalue it samples itself, is its own sample; at rest a function view is asked\nat 0. docs/animation.md#reduced-motion says so.\n\n* Reduced motion keeps content on time: an animation reduced is an animation (rich-animation-42lg.a38)\n\nThe high review of #492 showed a time-free rest() cannot say when content\nshows: a lifecycle told to leave later drew as already gone, and a function\nview pinned at view(0) froze the lifecycle demo on its first line.\nAnimation<T>.rest(): T becomes reduced(): Animation<T> — the motion taken\nout, what shows and when kept. Function views are asked at the real t.\n\nAlso: a reduced sequence wakes nothing at its switch; drawView's since-when\nreads the reduced animation, so a reversed timeline is never told to look\nagain; renderToString takes reducedMotion; one finiteTime refusal in\ncore/easing serves every \"needs a finite t\".\n\n* A reduced sequence keeps both parts on time; a reduced element wakes its host when gone (rich-animation-42lg.a38)\n\nMedium review of #492: sequence is a general combinator, so skipping `first`\ndropped content (a loading text before results). It is now each part reduced\nwith the switch kept; a transition says its own end. A lifecycle reduced shows\nnothing once told to leave but still says it changes when `gone`, so a host\npruning on gone(t) drops it on time. The template frames/stepped refuse a\nnon-finite frameTime() under reduced motion as with motion.\n\n* A one-shot reduced cuts to its end when it starts; a glyph loop reduced is the text as written (rich-animation-42lg.a38)\n\nEscalation review of #492. A reduced tween or transition was its end at every\ntime, so one scheduled later showed finished early; Animation.cut(before,\nafter) keeps the start and drops the motion. A stagger reduced has everyone\narrived, its offsets being choreography. caseWave and particles reduced draw\nthe text as written instead of a band or field frozen at step 0. The scroll\nmarquee starts from the line so its held loop shows it. CLAUDE.md names\nreduced() and the widened held."
         }
       ]
     }
