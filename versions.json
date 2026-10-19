@@ -4,15 +4,22 @@
     {
       "version": "pr-479",
       "ref": "refs/pull/479/merge",
-      "sha": "75778a1fc8b9e5311552458394c308eee176d023",
-      "timestamp": "2026-10-19T09:27:54.313Z",
+      "sha": "6d9fcef474dc45d06358e1e796d621790b88ac88",
+      "timestamp": "2026-10-19T10:52:32.866Z",
       "commits": [
         {
-          "sha": "75778a1fc8b9e5311552458394c308eee176d023",
+          "sha": "6d9fcef474dc45d06358e1e796d621790b88ac88",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T09:26:17Z",
-          "message": "Merge d6c1c815074070f51bbb5cf8ad11b3312a663d07 into 535b1b6a1628aa46150aacf8c4e972fd6bfbe541\n"
+          "timestamp": "2026-10-19T10:50:37Z",
+          "message": "Merge 29e41fb798d64839bd4d0349c0daf5a7d10ff29d into 535b1b6a1628aa46150aacf8c4e972fd6bfbe541\n"
+        },
+        {
+          "sha": "29e41fb798d64839bd4d0349c0daf5a7d10ff29d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T04:50:29-06:00",
+          "message": "frameAt is public and stamps a copy, and an edge past the host's clock is never (rich-animation-42lg.kjt)\n\nReview findings, medium pass. `frameAt` is exported from the main barrel\nand the showcase blinks a cursor through it, since a line assembled from\n`sequence.at(t)` lost its stamp when the stamp moved off `at`. It stamps a\ncopy: an animation may hand back the one text it holds, as\n`Animation.constant` does, and a stamp on that outlived its draw. A sum\nthat overflows the host's clock — a subnormal rate, an edge 1e308 host\nseconds off — is the never it signs, not a bracket of NaN that never closes;\n`firstReaching` refuses an infinite guess outright.\n"
         },
         {
           "sha": "d6c1c815074070f51bbb5cf8ad11b3312a663d07",
