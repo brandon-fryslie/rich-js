@@ -4,15 +4,22 @@
     {
       "version": "pr-492",
       "ref": "refs/pull/492/merge",
-      "sha": "ef861bc397b20ec64c69052c3b021b825c83771b",
-      "timestamp": "2026-10-19T23:16:44.094Z",
+      "sha": "581122aee31a4d3c147d5b11fb023dc6173a76c4",
+      "timestamp": "2026-10-19T23:27:01.323Z",
       "commits": [
         {
-          "sha": "ef861bc397b20ec64c69052c3b021b825c83771b",
+          "sha": "581122aee31a4d3c147d5b11fb023dc6173a76c4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T23:14:34Z",
-          "message": "Merge 143360d4be2f6497cd07fcdb8d867c38bb7b4eee into f772ebd134433012ebb20badeb5560e1d6e6a46e\n"
+          "timestamp": "2026-10-19T23:25:42Z",
+          "message": "Merge f63f372c69cda2f091ea9834590294f9e91cd9e8 into f772ebd134433012ebb20badeb5560e1d6e6a46e\n"
+        },
+        {
+          "sha": "f63f372c69cda2f091ea9834590294f9e91cd9e8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T17:25:37-06:00",
+          "message": "A one-shot reduced cuts to its end when it starts; a glyph loop reduced is the text as written (rich-animation-42lg.a38)\n\nEscalation review of #492. A reduced tween or transition was its end at every\ntime, so one scheduled later showed finished early; Animation.cut(before,\nafter) keeps the start and drops the motion. A stagger reduced has everyone\narrived, its offsets being choreography. caseWave and particles reduced draw\nthe text as written instead of a band or field frozen at step 0. The scroll\nmarquee starts from the line so its held loop shows it. CLAUDE.md names\nreduced() and the widened held.\n"
         },
         {
           "sha": "143360d4be2f6497cd07fcdb8d867c38bb7b4eee",
