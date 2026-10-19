@@ -59,6 +59,12 @@ describe("tween", () => {
     expect(3.3 + (0.1 - 3.3)).not.toBe(0.1);
   });
 
+  it("an ease that jumps at the start of its interval shows the jump before it begins, as a ramp does", () => {
+    const jump = tween(0, 100, { seconds: 1, ease: EASES["step-start"] });
+    expect([jump.at(-1), jump.at(0), jump.at(0.5), jump.at(1)]).toEqual([100, 100, 100, 100]);
+    expect([jump.lastChange(-1), jump.nextChange(-1)]).toEqual([ALWAYS, 0]);
+  });
+
   it("shows an overshooting ease as it is, past the target and back", () => {
     const snap = tween(0, 100, { seconds: 1, ease: EASES["back-out"] });
     expect(Math.max(...sampled(60, 1).map((t) => snap.at(t)))).toBeGreaterThan(100);

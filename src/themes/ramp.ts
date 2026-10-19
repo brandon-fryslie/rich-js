@@ -20,8 +20,9 @@
  * theme colors passes through perceptually even steps rather than the muddy
  * midpoints of an sRGB blend.
  *
- * [LAW:one-way-deps] Imports `core/color`, `core/easing` and `core/oklch`
- * only; nothing here knows what a palette is. Resolving stop *names* is the template binding's
+ * [LAW:one-way-deps] Imports `core/color`, `core/easing`, `core/oklch`,
+ * and for `over`, `core/animation` and `core/tween`; nothing here knows
+ * what a palette is. Resolving stop *names* is the template binding's
  * job (`paletteFuncs`), which hands this module resolved colors.
  */
 

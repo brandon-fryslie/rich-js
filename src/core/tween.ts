@@ -5,9 +5,12 @@
  * value that is never drawn as cells, so its `nextChange` is its only way of
  * saying when to look again (`./animation.ts`).
  *
- * The value at `t` is `from` at `t ≤ 0`, the `Timing`'s ease of the way to
- * `to` through `Phase.once(0, seconds)` while it moves, and `to` from
- * `seconds` on — the one-shot phase every effect transition reads time
+ * The value at `t` is the `Timing`'s ease of the way from `from` to `to`
+ * through `Phase.once(0, seconds)`: `from` at `t ≤ 0` whenever the ease
+ * starts at 0, as every built-in does but `step-start` and the steps that
+ * jump at the start of their interval, which show their first jump before
+ * the tween begins, as `ColorRamp.at` does; `to` from `seconds` on. It is
+ * the one-shot phase every effect transition reads time
  * through, so there is no second rule about when a one-shot begins: it
  * begins at 0 on its own clock, and starting it later is `Animation.sequence`'s
  * or a `Timeline`'s job. [LAW:single-enforcer] An ease that overshoots is
@@ -36,7 +39,8 @@ import { Phase, type Timing } from "./easing.js";
 
 /**
  * `from` eased to `to` over `timing`, as an `Animation<number>`: moving from
- * 0 to `timing.seconds` on its own clock, `from` before, `to` after, and so
+ * 0 to `timing.seconds` on its own clock, the ease of 0 before (`from`, for
+ * every ease that starts at 0), `to` after, and so
  * seen at its end, never mid-way, by a host whose frames are further apart
  * than it is long. `from` and `to` must be finite; the seconds are checked
  * where every one-shot's are, in `Phase.once`.
