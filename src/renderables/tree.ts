@@ -78,29 +78,37 @@ interface Guide {
 }
 
 /**
- * What a label drew, cut into the lines it fills. A label that yields nothing
- * but carriers — a frame of no cells that still says when it changes, as a
- * lifecycle not yet entered does under `frameAt` — draws no row, and keeps
- * its carriers so the tree still passes that word on.
+ * What a label drew, as `Segment.splitRows` cuts it: a label that yields
+ * nothing but carriers — a lifecycle not yet entered, under `frameAt` — draws
+ * no row, and its carriers are kept so the tree still says when it changes.
  */
-interface Drawn {
-  readonly lines: Segment[][];
-  readonly carriers: Segment[];
-}
+type Drawn = Readonly<ReturnType<typeof Segment.splitRows>>;
 
-/** `segments` cut into the rows they draw, as `Drawn` says. */
-function cut(segments: Segment[]): Drawn {
-  return segments.every((segment) => segment.isCarrier)
-    ? { lines: [], carriers: segments }
-    : { lines: Segment.splitLines(segments), carriers: [] };
-}
+/** What a label drew when nothing was drawn. */
+const NOTHING_DRAWN: Drawn = { lines: [], carriers: [] };
 
 /**
  * A label drawn for its place in the tree: under `styles`, the stack its row
  * resolves, with `columns` of guide before it. The walk is handed one, so
- * `render` and `measure` read one walk each drawing labels its own way.
+ * `render` and `measure` read one walk each asking its own question of it.
  */
-type DrawLabel = (label: Renderable, styles: ReadonlyArray<string | Style>, columns: number) => Segment[];
+type DrawLabel = (label: Renderable, styles: ReadonlyArray<string | Style>, columns: number) => Drawn;
+
+/** The cells a row with `columns` of guide leaves its label. */
+const labelRoom = (options: RenderOptions, columns: number): number =>
+  Math.max(0, options.maxWidth - columns * GUIDE_CELLS);
+
+/**
+ * `label` drawn in `width` cells, as both `render` and `measure` draw it, so
+ * whether it draws a row is answered once. Cropped, so a label that ignores the
+ * width it is handed cannot push the row past the offer the guides were fitted
+ * into. No highlighter: a label is drawn plain, as Rich's `Tree` hands its
+ * labels `highlight=False`.
+ */
+function drawLabel(options: RenderOptions, label: Renderable, width: number): Iterable<Segment> {
+  const labelOptions = { ...options, highlight: false, maxWidth: width, height: stackedHeight(options.height) };
+  return Segment.cropLines(render(label, labelOptions), width);
+}
 
 /** One label, what it drew, and the guides that lead each of its lines. */
 interface TreeRow extends Drawn {
@@ -119,8 +127,8 @@ function labelWidth(options: RenderOptions, label: Renderable): number {
   return Measurement.get(options, label).maximum;
 }
 
-/** Whether any row of a subtree is drawn, so it takes a place among its siblings. */
-const draws = (rows: readonly TreeRow[]): boolean => rows.some((row) => row.lines.length > 0);
+/** Whether a row is drawn: a subtree with one takes a place among its siblings. */
+const isDrawn = (row: Drawn): boolean => row.lines.length > 0;
 
 export class Tree implements Renderable, Measurable, Composite {
   readonly label: Renderable;
@@ -164,17 +172,11 @@ export class Tree implements Renderable, Measurable, Composite {
     // were fixed for, and the same fix: divide the requested width once and
     // let every part read its share off the division.
     //
-    // The guides are cropped by `cellFit`; the label is cropped too, so a label
-    // that ignores the width it is handed cannot push the row past the offer
-    // the guides were fitted into. No highlighter: a label is drawn plain, as
-    // Rich's `Tree` hands its labels `highlight=False`. The node's style sits
-    // under the label's own, as Rich's `Styled` puts it, so markup in the
-    // label still wins.
-    const draw: DrawLabel = (label, styles, columns) => {
-      const width = Math.max(0, options.maxWidth - columns * GUIDE_CELLS);
-      const labelOptions = { ...options, highlight: false, maxWidth: width, height: stackedHeight(options.height) };
-      return [...Segment.applyStyle(Segment.cropLines(render(label, labelOptions), width), resolve(styles))];
-    };
+    // The guides are cropped by `cellFit`, the label by `drawLabel`. The
+    // node's style sits under the label's own, as Rich's `Styled` puts it, so
+    // markup in the label still wins.
+    const draw: DrawLabel = (label, styles, columns) =>
+      Segment.splitRows([...Segment.applyStyle(drawLabel(options, label, labelRoom(options, columns)), resolve(styles))]);
     for (const row of this._walk(draw)) {
       yield* this._renderRow(options, resolve, row);
     }
@@ -184,7 +186,7 @@ export class Tree implements Renderable, Measurable, Composite {
   // nothing: which labels the walk holds does not depend on what they draw.
   // Not `children`, which is the subtrees, as Rich names them.
   *contents(): Iterable<Renderable> {
-    for (const row of this._walk(() => [])) yield row.label;
+    for (const row of this._walk(() => NOTHING_DRAWN)) yield row.label;
   }
 
   /**
@@ -211,14 +213,17 @@ export class Tree implements Renderable, Measurable, Composite {
    *
    * [LAW:dataflow-not-control-flow] Every node, at every depth, is walked by
    * this one recursion: each child's rows get a branch column of their own,
-   * settled below the child's own row, so no depth is drawn by a rule of its
-   * own. A node's style and its guide style are handed down the same way, as
-   * one more entry on the stack its ancestors built.
+   * settled below the first of them drawn, so no depth is drawn by a rule of
+   * its own. A node's style and its guide style are handed down the same way,
+   * as one more entry on the stack its ancestors built.
    *
    * The branch is chosen once every child is drawn: a subtree that draws no row
    * takes no place among its siblings, so the last one that draws a row ends
-   * the branch. Rich chooses it from the children alone, and draws a fork over
-   * a last child that drew nothing — an element not yet arrived, or gone.
+   * the branch, and the branch stands on a subtree's first drawn row — a child
+   * that drew nothing above children that did leaves them on its branch, not
+   * the sibling's before it. Rich chooses it from the children alone, and
+   * draws a fork over a last child that drew nothing — an element not yet
+   * arrived, or gone.
    */
   private _rows(
     columns: number,
@@ -228,15 +233,16 @@ export class Tree implements Renderable, Measurable, Composite {
   ): TreeRow[] {
     const styles = [...inheritedStyles, this.style];
     const guideStyles = [...inheritedGuideStyles, this.guideStyle];
-    const own: TreeRow = { guides: [], label: this.label, styles, ...cut(draw(this.label, styles, columns)) };
+    const own: TreeRow = { guides: [], label: this.label, styles, ...draw(this.label, styles, columns) };
     const subtrees = this._subtrees(columns + 1, draw, guideStyles, styles);
-    const last = subtrees.reduce((found, rows, i) => (draws(rows) ? i : found), -1);
+    const firsts = subtrees.map((rows) => rows.findIndex(isDrawn));
+    const last = firsts.reduce((found, first, i) => (first >= 0 ? i : found), -1);
     const branched = subtrees.flatMap((rows, i) => {
       const branch: Guide = i < last
         ? { first: "fork", rest: "continue", styles: guideStyles }
         : { first: "end", rest: "space", styles: guideStyles };
       const settled: Guide = { ...branch, first: branch.rest };
-      return rows.map((row, r) => ({ ...row, guides: [r === 0 ? branch : settled, ...row.guides] }));
+      return rows.map((row, r) => ({ ...row, guides: [r === firsts[i] ? branch : settled, ...row.guides] }));
     });
     return [own, ...branched];
   }
@@ -304,16 +310,24 @@ export class Tree implements Renderable, Measurable, Composite {
     // tree told any parent that asked "I want all of it" — so `Panel` in fit
     // mode drew a 40-cell frame around nine cells of tree, and an unbounded
     // offer came back unbounded. A row the walk does not draw wants nothing,
-    // and whether a label draws a row is asked at the width it wants, at
-    // least one column and no more than the offer leaves it: the width the
-    // tree, drawn at what this reports, hands it.
+    // and whether a label draws a row is asked at the width it wants, no more
+    // than the offer leaves it: no wider than the tree, drawn at what this
+    // reports, hands it. A label with no width of its own under no offer
+    // cannot be asked at any width; it takes its row, and the tree reports
+    // the unbounded width `withBoundedWidth` refuses by name.
+    const widths = new Map<Renderable, number>();
+    const widthOf = (label: Renderable): number => {
+      const width = widths.get(label) ?? labelWidth(parsed, label);
+      widths.set(label, width);
+      return width;
+    };
     const draw: DrawLabel = (label, _styles, columns) => {
-      const width = Math.min(parsed.maxWidth - columns * GUIDE_CELLS, Math.max(1, labelWidth(parsed, label)));
-      return [...render(label, { ...parsed, highlight: false, maxWidth: width })];
+      const width = Math.min(labelRoom(parsed, columns), widthOf(label));
+      return Number.isFinite(width) ? Segment.splitRows([...drawLabel(parsed, label, width)]) : { lines: [[]], carriers: [] };
     };
     let natural = 0;
-    for (const row of this._walk(draw).filter((row) => row.lines.length > 0)) {
-      natural = Math.max(natural, row.guides.length * GUIDE_CELLS + labelWidth(parsed, row.label));
+    for (const row of this._walk(draw).filter(isDrawn)) {
+      natural = Math.max(natural, row.guides.length * GUIDE_CELLS + widthOf(row.label));
     }
 
     const maximum = Math.min(natural, ceiling);

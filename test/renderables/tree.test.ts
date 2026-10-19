@@ -390,7 +390,15 @@ describe("a child that draws no rows", () => {
     const tree = new Tree("build");
     tree.add(elements.before.at(t)).add("inner");
     tree.add(elements.gone.at(t));
-    expect(collectLines(tree, { maxWidth: 40 })).toEqual(["build", "    └── inner"]);
+    expect(collectLines(tree, { maxWidth: 40 })).toEqual(["build", "└── └── inner"]);
+  });
+
+  it("leaves what draws beneath it on its own branch, not its sibling's", () => {
+    const tree = new Tree("build");
+    tree.add("a");
+    tree.add(elements.before.at(t)).add("inner");
+    tree.add("c");
+    expect(collectLines(tree, { maxWidth: 40 })).toEqual(["build", "├── a", "├── └── inner", "└── c"]);
   });
 
   it("is not measured, so measure agrees with the rows render draws", () => {
