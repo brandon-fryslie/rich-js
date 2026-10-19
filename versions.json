@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-484",
+      "ref": "refs/pull/484/merge",
+      "sha": "7ae02a7a7a3786c7067fb704909e0b7271b3d1fd",
+      "timestamp": "2026-10-19T14:27:36.632Z",
+      "commits": [
+        {
+          "sha": "7ae02a7a7a3786c7067fb704909e0b7271b3d1fd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T08:26:16-06:00",
+          "message": "Merge c51e6a1f67ae6694bf533219807d27e4f89c0068 into 427530527fc3b4060986eb7ed76aefe8f7e963b4\n"
+        },
+        {
+          "sha": "c51e6a1f67ae6694bf533219807d27e4f89c0068",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T08:26:05-06:00",
+          "message": "An effect moves a cell's attributes, not only its colours (rich-animation-42lg.0wr)\n\nAn effect's frame maps a cell's look — its colours and its text attributes,\nall but reverse — rather than its colours alone, so confined, onBeat,\nAnimation.all and nesting take an attribute effect with no second copy.\nEffected cuts a run where the attributes change too, and a cell whose look\ncomes back as drawn is still written byte for byte as it was.\n\nblink(spec) sets an attribute on the second hold of a two-hold beat; the\ncatalogue's new attributes section makes a blink (conceal) and a bold pulse\nfrom it. Style gains attributes / withAttributes.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "427530527fc3b4060986eb7ed76aefe8f7e963b4",
