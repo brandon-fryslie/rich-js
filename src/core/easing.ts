@@ -559,11 +559,17 @@ export function beat(holds: readonly number[]): Beat {
   // are not exact in binary — a tenth of a second is not — and `at` would
   // then read it as the hold before, so it is walked up to the first float
   // `at` places in the hold. The walk is a function of the pass and the hold
-  // alone, so every `t` in the hold still answers one float.
-  const boundary = (what: string, pass: number, i: number, t: number): number =>
+  // alone, so every `t` in the hold still answers one float. It is walked
+  // until `at` places it in this hold of this pass: with one hold, every
+  // float is in hold 0, and only the pass tells the boundary from the float
+  // under it.
+  const boundary = (what: string, p: number, i: number, t: number): number =>
     walkUp(
-      pass * period + starts[i]!,
-      (began) => index(wrapSeconds(what, began, period)) === i,
+      p * period + starts[i]!,
+      (began) => {
+        const into = wrapSeconds(what, began, period);
+        return index(into) === i && pass(began, into) === p;
+      },
       () => `${what}: hold ${i} (${own[i]} s) is finer than time resolves near t = ${t}`,
     );
   // Which pass `t` is in, as a whole number: `t - into` is a whole number of

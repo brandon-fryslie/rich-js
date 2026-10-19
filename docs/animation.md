@@ -116,6 +116,48 @@ for (const t of [0, 0.5, 1, 1.5, 2]) {
 }
 ```
 
+## A glyph effect: text typed, scrambled and rained on
+
+An [effect](/effects) moves the colours of what an element draws. A `GlyphEffect` changes the glyphs instead, and it has the same shape. Handed every cell the element draws in a frame, it gives an `Animation` whose value at `t` maps each cell to the text it shows. Colour and glyph are not two kinds of animation: both are a per-cell map that changes with time. `GlyphEffected` wraps any renderable and draws it through a glyph effect at one moment:
+
+```typescript
+import { EASES, GlyphEffected, RichText, typewriter } from "@promptctl/rich-js";
+
+const typing = typewriter({ seconds: 2, ease: EASES.linear });
+const line = new RichText("typed one cell at a time");
+
+for (const t of [0, 0.5, 1, 1.5, 2]) {
+  console.print(new GlyphEffected(line, typing.effect, { t, key: "line" }));
+}
+console.print(`done at 2s: ${typing.done(2)}`);
+```
+
+A glyph effect changes what a cell shows, never which cells exist, where they are or who drew them. The text it returns for a cell must be exactly as wide as the glyph it replaces and hold no line break or control character, or the render throws and names the cell. So nothing beside the element ever moves, and a wide glyph like `漢` is blanked as two spaces or scrambled as two narrow glyphs, never cut in half. A cell that comes back unchanged is drawn byte for byte as it was, and a changed cell keeps its link and its owner. Glyphs are written at every colour depth, so a glyph effect moves even with no colour output, where a colour effect does nothing.
+
+The catalogue, `GLYPH_EFFECT_CATALOGUE`, has two transitions, which run once and say when they are `done`, and three loops:
+
+- `typewriter(timing)`: every cell blank until it is typed, in reading order, the last at `timing.seconds`, its ease setting the pace.
+- `scramble(timing, z)`: random glyphs, a new one each fifteenth of a second, resolving to the words in reading order. Blanks stay blank, so the words keep their shape.
+- `caseWave({ step, width })`: a band of swapped case crossing the element one column a `step`.
+- `particles(spec, z)`: particles on the element's blank cells, never over its words. `rain` falls a row a step, and `stars` are drawn afresh each life. Both are values of the one `particles` function, and their specs are in `GLYPH_DEFAULTS`. Each spec names an ASCII set too, which is drawn instead on an output that draws ASCII alone.
+
+A transition moves every frame until it is done, then never. A loop moves in steps, because a cell shows one glyph or another, and its `nextChange` is when its next step begins. A glyph effect and a colour effect compose by nesting: the outer wrapper is drawn over what the inner one drew, so here a wave of capitals crosses a line that is turning red:
+
+```typescript
+import { Animation, ColorRgba, DEFAULT_TERMINAL_THEME, Effected, GlyphEffected, RichText, caseWave, type Effect } from "@promptctl/rich-js";
+
+const red = new ColorRgba(220, 38, 38);
+const reddening: Effect = () => Animation.continuous((t) => (colors) => ({ fg: t >= 1 ? red : colors.fg, bg: colors.bg }));
+const wave = caseWave({ step: 0.25, width: 3 });
+
+for (const t of [0.6, 1.1, 1.6]) {
+  const glyphs = new GlyphEffected(new RichText("a wave of capitals"), wave, { t, key: "wave" });
+  console.print(new Effected(glyphs, reddening, { t, key: "wave", theme: DEFAULT_TERMINAL_THEME }));
+}
+```
+
+To watch every one move, run `npm run glyph-effects` in a checkout of this repository.
+
 ## Playback: a timeline
 
 Because every animation is a pure function of its time, pausing, reversing, scrubbing and speeding one up are not things done to the animation: they are a change in which time it is asked for. A `Timeline` is that map from the host's clock to animation time, as a value — an animation time at a host time and a rate in animation seconds per host second, or, paused, one animation time at every host time. Every operation takes a timeline and a host time and gives a timeline back, so a paused timeline resumed later maps the moment it resumes to the time it froze at, and nothing here reads a clock.

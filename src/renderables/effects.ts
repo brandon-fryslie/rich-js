@@ -674,13 +674,19 @@ function order(z: number): (cell: Placed) => number {
  * Until then the effect's frame changes every frame, and from then never:
  * its `nextChange` is `done` read as a time. [LAW:one-source-of-truth]
  */
-export interface Transition {
-  readonly effect: Effect;
+export interface Transition<E = Effect> {
+  readonly effect: E;
   done(t: number): boolean;
 }
 
-function transition(curve: Curve, effect: Effect): Transition {
-  const done = (t: number): boolean => t >= curve.seconds;
+/**
+ * `effect` run once over `seconds` as a `Transition`: what it draws until it
+ * is done, then held. [LAW:single-enforcer] The one rule for when a
+ * transition is done and what it answers after, for a colour effect and a
+ * glyph effect (`./glyph-effects.ts`) alike.
+ */
+export function transition<D, F>(seconds: number, effect: (drawn: D) => Animation<F>): Transition<(drawn: D) => Animation<F>> {
+  const done = (t: number): boolean => t >= seconds;
   return {
     effect: (drawn) => {
       const moving = effect(drawn);
@@ -688,7 +694,7 @@ function transition(curve: Curve, effect: Effect): Transition {
         at: (t) => moving.at(t),
         nextChange: (t) => (done(t) ? Number.POSITIVE_INFINITY : moving.nextChange(t)),
         // Done, the frame settled when the transition did; until then it is the effect's.
-        lastChange: (t) => (done(t) ? curve.seconds : moving.lastChange(t)),
+        lastChange: (t) => (done(t) ? seconds : moving.lastChange(t)),
       };
     },
     done,
@@ -768,7 +774,7 @@ export function fadeIn(curve: Curve, z: number): Transition {
   requireCurve(curve);
   const risen = ownChange(curve, order(1.7 + z));
   return transition(
-    curve,
+    curve.seconds,
     veiled((t, drawn) => {
       const of = risen(drawn.cells());
       return (cell) => curve.ease(of(cell).progress(t));
@@ -801,7 +807,7 @@ export function dissolveOut(curve: Curve, z: number): Transition {
   const faded = ownChange(curve, order(4.2 + z));
   const { depth, from, to, maskFrom, maskTo, late } = DISSOLVE_SHAPE;
   return transition(
-    curve,
+    curve.seconds,
     veiled((t, drawn) => {
       const of = faded(drawn.cells());
       return (cell) => {

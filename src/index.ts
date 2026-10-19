@@ -311,6 +311,10 @@ export {
   wheel,
 } from "./renderables/effects.js";
 export type { ColorStep, Curve, EffectTarget, Field, Loop, LoopName, Touch, Transition, TransitionName } from "./renderables/effects.js";
+export { GlyphEffected } from "./renderables/glyph-effect.js";
+export type { DrawnGlyphs, GlyphCell, GlyphEffect, GlyphEffectedOptions, GlyphFrame } from "./renderables/glyph-effect.js";
+export { GLYPH_DEFAULTS, GLYPH_EFFECT_CATALOGUE, caseWave, particles, scramble, typewriter } from "./renderables/glyph-effects.js";
+export type { CaseWave, GlyphLoopName, GlyphTransition, GlyphTransitionName, Particles } from "./renderables/glyph-effects.js";
 export { Align } from "./renderables/align.js";
 export type { Alignment } from "./core/place.js";
 export { Padding } from "./renderables/padding.js";

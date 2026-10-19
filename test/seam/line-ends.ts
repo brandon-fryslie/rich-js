@@ -39,6 +39,7 @@ import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 import { Constrain } from "../../src/renderables/constrain.js";
 import { Effected, type EffectFrame } from "../../src/renderables/effect.js";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
+import { GlyphEffected, type GlyphFrame } from "../../src/renderables/glyph-effect.js";
 import { FrameSequence, Frames } from "../../src/renderables/frames.js";
 import { Group } from "../../src/renderables/group.js";
 import { Layout } from "../../src/renderables/layout.js";
@@ -101,6 +102,11 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
         theme: DEFAULT_TERMINAL_THEME,
       }),
     why: "recolours its content's cells and adds none, so its last line is its content's",
+  },
+  GlyphEffected: {
+    ends: "content",
+    build: (content) => new GlyphEffected(content, () => Animation.constant<GlyphFrame>((cell) => cell.glyph), { t: 0, key: "content" }),
+    why: "changes its content's glyphs and adds no cell, so its last line is its content's",
   },
   Dropdown: { ends: "own-line", build: () => new Dropdown({ options: ["a", "b"] }) },
   Emoji: {
