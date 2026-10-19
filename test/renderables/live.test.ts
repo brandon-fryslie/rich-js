@@ -13,7 +13,7 @@ import { Status } from "../../src/renderables/status.js";
 import { fakeClock, type FakeClock } from "../core/fake-clock.js";
 import { Animation } from "../../src/core/animation.js";
 import { Timeline } from "../../src/core/timeline.js";
-import { viewAnimation, type View } from "../../src/core/view.js";
+import { functionView } from "../../src/core/view.js";
 
 const SHOW_CURSOR = "\x1b[0m\x1b[?25h";
 const EXIT_ALT_SCREEN = "\x1b[?1049l";
@@ -421,7 +421,10 @@ describe("Live refresh rate", () => {
 
   // rich-animation-xi28.6k9: a view is asked for each frame with the frame's
   // time on the Live's clock, as an App's is, so what it draws reads none.
-  it("asks a view for each frame with the frame's time on its clock", () => {
+  // The default timeline plays from 0 when the Live is made, so on a clock
+  // that began long before — the platform's reads from process start — what
+  // the view is handed is the time the Live has been showing it.
+  it("asks a view for each frame with the time since the Live was made, on a clock that began before it", () => {
     const chunks: string[] = [];
     const clock = fakeClock(10);
     const times: number[] = [];
@@ -437,9 +440,9 @@ describe("Live refresh rate", () => {
     clock.advance(1);
     display.update((t) => new RichText(`later t=${t}`), { refresh: true });
     display.stop();
-    expect(times).toEqual([10.5, 11]);
-    expect(chunks.join("")).toContain("later t=11");
-    expect(chunks.join("")).toContain("t=10.5");
+    expect(times).toEqual([0.5, 1]);
+    expect(chunks.join("")).toContain("later t=1");
+    expect(chunks.join("")).toContain("t=0.5");
   });
 
   // rich-animation-xi28.6rs: a Live draws each frame of what it shows, not a
@@ -667,10 +670,10 @@ describe("The console a display makes for itself", () => {
 // back onto the clock — faster, backwards, or not at all.
 describe("Live on a timeline", () => {
   /** A Live of `view` on `clock` at `perSecond`, and every frame's text with the time it was drawn for. */
-  function playing(view: View, perSecond: number, clock: FakeClock, timeline?: Timeline): { display: Live; drawn: { t: number; text: string }[] } {
+  function playing(view: ((t: number) => Renderable) | Animation<Renderable>, perSecond: number, clock: FakeClock, timeline?: Timeline): { display: Live; drawn: { t: number; text: string }[] } {
     const drawn: { t: number; text: string }[] = [];
     const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
-    const lifted = viewAnimation(view);
+    const lifted = typeof view === "function" ? functionView(view) : view;
     const recorded: Animation<Renderable> = {
       at: (t) => {
         const renderable = lifted.at(t);
@@ -767,6 +770,22 @@ describe("Live on a timeline", () => {
     expect(drawn.slice(0, first).map(({ t }) => t)).toEqual([4.5, 3.5]);
     expect(drawn[first]!.t).toBeLessThan(3);
     expect(drawn[first]!.t).toBeCloseTo(3, 9);
+  });
+
+  // A renderable mutated in place is off the timeline: pausing the timeline
+  // holds what is drawn for a time, and a table's new row is not that.
+  it.each([1, 60])("at %s fps, paused, still refreshes a renderable view at its rate", (perSecond) => {
+    const clock = fakeClock();
+    let renders = 0;
+    const counted: Renderable = { render: () => (renders++, [new Segment("row")]) };
+    const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
+    const display = new Live(counted, { console: target, clock, refreshPerSecond: perSecond });
+    display.start();
+    display.timeline = Timeline.pause(display.timeline, clock.now());
+    const paused = renders;
+    clock.advance(2);
+    expect(renders - paused).toBe(2 * perSecond);
+    display.stop();
   });
 
   it("run backwards, draws a view that says nothing itself at its rate", () => {

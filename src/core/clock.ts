@@ -63,8 +63,8 @@ export interface Clock {
    * Call `tick` once, when this clock reads `time` — as soon as it can for a
    * time already past — unless the returned function is called first. What
    * a host that knows when its frame next changes (`Segment.nextChange`)
-   * waits on. A `time` further off than a timer can wait, about 24.8 days,
-   * throws, as `frameRate` refuses the rate.
+   * waits on. A `time` that is not a finite number of seconds throws; one
+   * further off than a platform timer can wait is waited for in turns.
    */
   at(time: number, tick: () => void): Unsubscribe;
 }
@@ -79,9 +79,7 @@ export function systemClock(): Clock {
       return () => clearInterval(timer);
     },
     at: (time, tick) => {
-      if (!(time - now() <= LONGEST_INTERVAL)) {
-        throw new RangeError(`a clock waits at most ${LONGEST_INTERVAL} s, not until ${time} s from ${now()} s`);
-      }
+      if (!Number.isFinite(time)) throw new RangeError(`a clock waits until a finite number of seconds, not ${time}`);
       // [LAW:single-enforcer] A platform timer is due by a whole millisecond
       // of the event loop's own time, truncated, so it can run while this
       // clock still reads under `time` — by most of a millisecond. The
@@ -90,9 +88,12 @@ export function systemClock(): Clock {
       // again for what remains, so `tick` runs when `now()` has reached
       // `time` and not before. A host re-drawing at a frame's end would
       // otherwise draw the old frame again and wait again, every boundary.
+      // A wait longer than a timer holds is the same re-arming, one longest
+      // timer at a time, so a hold a slowed timeline stretches to months is
+      // waited out rather than refused.
       let timer: ReturnType<typeof setTimeout>;
       const arm = (): void => {
-        timer = setTimeout(() => (now() < time ? arm() : tick()), Math.ceil(Math.max(0, time - now()) * 1000));
+        timer = setTimeout(() => (now() < time ? arm() : tick()), Math.min(LONGEST_INTERVAL * 1000, Math.ceil(Math.max(0, time - now()) * 1000)));
       };
       arm();
       return () => clearTimeout(timer);

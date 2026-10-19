@@ -31,15 +31,14 @@
  * — a focused field in a `WidgetApp` included — can swallow them.
  */
 
-import type { Animation } from "../core/animation.js";
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { Console, type ConsoleOptions } from "../core/console.js";
 import { Segment } from "../core/segment.js";
 import { SurfacePainter, type Surface } from "../core/paint.js";
-import { fitHeight, render, type Renderable } from "../core/protocol.js";
+import { fitHeight, render } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { Timeline } from "../core/timeline.js";
-import { drawView, viewAnimation, type View } from "../core/view.js";
+import { drawView, frozen, hostView, type DrawnView, type HostView, type View } from "../core/view.js";
 import { hostEnvironment } from "./host-environment.js";
 import { InputParser, keyName, parseKeyName, type KeyPress, type ScreenMouseEvent } from "./input.js";
 import type { TerminalHost } from "./terminal-host.js";
@@ -86,11 +85,17 @@ export interface AppOptions extends DrawOptions {
   readonly clock?: Clock;
   /**
    * The map from the clock to the time the view is drawn for (`Timeline`).
-   * Playing from 0 at the clock's own pace — the view's `t` is the clock's —
-   * unless given; `app.timeline` reads and replaces it.
+   * Playing from 0 when the host is made, at the clock's pace, unless given
+   * — so a tween in the view starts when the host is made, not when the clock
+   * began; `app.timeline` reads and replaces it.
    */
   readonly timeline?: Timeline;
-  /** How often the app paints while something is animating. 30 frames a second, unless given. */
+  /**
+   * How often the app paints while what it shows moves every moment — an
+   * `animate()` held, or a frame that says it moves. A frame held until a
+   * moment is painted at that moment, whatever the rate. 30 frames a second,
+   * unless given.
+   */
   readonly rate?: FrameRate;
   /**
    * The keys that stop the app, by `keyName`, heard before any `onKey`
@@ -136,7 +141,7 @@ const isWheelTurn = (event: ScreenMouseEvent): event is WheelTurn => event.type 
 export class App {
   private readonly host: TerminalHost;
   private readonly surface: Surface;
-  private readonly view: Animation<Renderable>;
+  private readonly view: HostView;
   private readonly _clock: Clock;
   private _timeline: Timeline;
   private _rate: FrameRate;
@@ -146,7 +151,7 @@ export class App {
   private ticking: { readonly rate: FrameRate; readonly stop: Unsubscribe } | null = null;
   // When the frame on screen next changes, on the clock, and the time it was
   // drawn at: `t` itself while it moves. Before a frame, nothing changes.
-  private said: { readonly t: number; readonly nextChange: number } = { t: 0, nextChange: Number.POSITIVE_INFINITY };
+  private said: Pick<DrawnView, "t" | "nextChange"> = { t: 0, nextChange: Number.POSITIVE_INFINITY };
   // The one wait for the frame's `nextChange`, armed after each frame.
   private waking: Unsubscribe | null = null;
   // [LAW:one-source-of-truth] The host is the console's whole environment:
@@ -175,9 +180,9 @@ export class App {
     );
     this.surface = options.surface;
     this.painter = new SurfacePainter(options.surface, (bytes) => this.host.write(bytes));
-    this.view = viewAnimation(options.view);
+    this.view = hostView(options.view);
     this._clock = options.clock ?? systemClock();
-    this._timeline = options.timeline ?? Timeline.play(0);
+    this._timeline = options.timeline ?? Timeline.play(this._clock.now());
     this._rate = options.rate ?? DEFAULT_RATE;
     this.quitKeys = new Set((options.quitKeys ?? DEFAULT_QUIT_KEYS).map(parseKeyName));
     this.console = new Console({ ...drawOptions(options), environment: hostEnvironment(options.host) });
@@ -208,7 +213,7 @@ export class App {
     this.refresh();
   }
 
-  /** How often the app paints while something is animating. */
+  /** How often the app paints while what it shows moves every moment. */
   get rate(): FrameRate {
     return this._rate;
   }
@@ -469,7 +474,7 @@ export class App {
   private tick(): void {
     const running = this._phase === "running";
     const { t, nextChange } = this.said;
-    const wanted = running && (this.animations.size > 0 || nextChange === t);
+    const wanted = running && !frozen(this.view, this._timeline) && (this.animations.size > 0 || nextChange === t);
     if (this.ticking !== null && (!wanted || this.ticking.rate.perSecond !== this._rate.perSecond)) {
       this.ticking.stop();
       this.ticking = null;

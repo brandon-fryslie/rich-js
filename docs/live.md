@@ -168,9 +168,9 @@ try {
 }
 ```
 
-A renderable passed instead is the view that is the same at every `t`. An [`Animation`](/animation) of a renderable is the third kind of view: it says itself when what it draws changes, so a tween mapped to the bar that shows it is drawn every frame while it moves and not after. `update()` takes any of the three.
+A renderable passed instead is drawn as it is at each frame, and is never handed a `t`. An [`Animation`](/animation) of a renderable is the third kind of view: it says itself when what it draws changes, so a frame held until a switch is drawn at the switch, between two of the rate's frames. The auto-refresh still draws at its rate throughout, as it does for every view. `update()` takes any of the three.
 
-`t` is the `Live`'s clock read through its [timeline](/animation#playing-in-a-live-or-an-app), which plays at the clock's own pace unless the `timeline` option gives another. Setting `live.timeline` to a paused, sought, reversed or faster one draws one frame for its new time. Paused, the auto-refresh then draws nothing until the timeline plays again, and `refresh()` still draws the held frame.
+`t` is the time since the `Live` was made, read off its clock through its [timeline](/animation#playing-in-a-live-or-an-app), which plays from then at the clock's pace unless the `timeline` option gives another. Setting `live.timeline` to a paused, sought, reversed or faster one draws one frame for its new time. Paused, the auto-refresh then draws nothing for a function or an animation until the timeline plays again, and `refresh()` still draws the held frame. A renderable is off the timeline, so pausing holds none of it.
 
 ## When a frame fails to render
 

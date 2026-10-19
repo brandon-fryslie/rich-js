@@ -25,7 +25,6 @@
  * suspend, and a second owner of the console's writes.
  */
 
-import type { Animation } from "../core/animation.js";
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
@@ -33,17 +32,14 @@ import { FinalFramePainter, SurfacePainter, type FrameSource, type Painter, type
 import { fitHeight, render, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { Timeline } from "../core/timeline.js";
-import { drawView, viewAnimation, type DrawnView, type View } from "../core/view.js";
+import { drawView, frozen, hostView, type DrawnView, type HostView, type View } from "../core/view.js";
 
 // Nothing: what a Live made with no view draws until `update` gives it one.
 const NOTHING: Renderable = { render: () => [] };
 
 // When a frame drawn at host time `t` next changes, on the Live's clock: what
 // `_wake` is armed from — a `DrawnView`, or what nothing drawn says.
-interface Said {
-  readonly t: number;
-  readonly nextChange: number;
-}
+type Said = Pick<DrawnView, "t" | "nextChange">;
 
 export interface LiveOptions {
   /**
@@ -58,8 +54,9 @@ export interface LiveOptions {
   clock?: Clock;
   /**
    * The map from the clock to the time the view is drawn for (`Timeline`).
-   * Playing from 0 at the clock's own pace — the view's `t` is the clock's —
-   * unless given; `live.timeline` reads and replaces it.
+   * Playing from 0 when the host is made, at the clock's pace, unless given
+   * — so a tween in the view starts when the host is made, not when the clock
+   * began; `live.timeline` reads and replaces it.
    */
   timeline?: Timeline;
   autoRefresh?: boolean;
@@ -73,7 +70,7 @@ export interface LiveOptions {
 }
 
 export class Live {
-  private _view: Animation<Renderable>;
+  private _view: HostView;
   private _console: Console;
   private readonly _rate: FrameRate;
   private readonly _clock: Clock;
@@ -90,13 +87,13 @@ export class Live {
   private _held: Unsubscribe | null;
 
   constructor(view?: View, options?: LiveOptions) {
-    this._view = viewAnimation(view ?? NOTHING);
+    this._view = hostView(view ?? NOTHING);
     this._console = options?.console ?? new Console();
     // [LAW:parse-dont-validate] Parsed whether or not it auto-refreshes, so a
     // rate that could never tick is refused where it is given.
     this._rate = frameRate(options?.refreshPerSecond ?? 4);
     this._clock = options?.clock ?? systemClock();
-    this._timeline = options?.timeline ?? Timeline.play(0);
+    this._timeline = options?.timeline ?? Timeline.play(this._clock.now());
     this._autoRefresh = options?.autoRefresh !== false;
     this._transient = options?.transient ?? false;
     this._verticalOverflow = options?.verticalOverflow ?? "ellipsis";
@@ -169,7 +166,7 @@ export class Live {
 
   update(view?: View, options?: { refresh?: boolean }): void {
     if (view !== undefined) {
-      this._view = viewAnimation(view);
+      this._view = hostView(view);
     }
     if (options?.refresh) {
       this.refresh();
@@ -202,13 +199,15 @@ export class Live {
   // reading of the clock, so the rate does not stretch by what a frame cost
   // to draw, and a change that fell due while it was drawn is drawn at once
   // (`Clock.at` fires now for a time already past). Content that changes
-  // every frame answers `t` itself, and is drawn at the rate. A paused
-  // timeline draws one frame at every host time, so nothing is waited on:
-  // the frame holds until the timeline plays, or a caller draws.
+  // every frame answers `t` itself, and is drawn at the rate. A view held
+  // still by a paused timeline draws one frame at every host time, so
+  // nothing is waited on: the frame holds until the timeline plays, or a
+  // caller draws. A renderable is off the timeline, and refreshes at the
+  // rate whatever the timeline does.
   private _wake(held: Unsubscribe, { t, nextChange }: Said): void {
     this._waking?.();
     this._waking = undefined;
-    if (!this._autoRefresh || !this._timeline.playing) return;
+    if (!this._autoRefresh || frozen(this._view, this._timeline)) return;
     const at = Math.min(t + this._rate.interval, nextChange > t ? nextChange : Number.POSITIVE_INFINITY);
     // No caller is on the stack to run `stop()` for a frame that throws
     // here, and in Node the throw ends the process — so the terminal is

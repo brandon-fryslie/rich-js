@@ -409,16 +409,16 @@ describe("App frame clock", () => {
     expect(times).toHaveLength(1 + 30);
   });
 
-  it("paints one frame every two seconds at 0.5 fps, each handed its time on the clock", () => {
+  it("paints one frame every two seconds at 0.5 fps, each handed the time since the app was made", () => {
     const clock = fakeClock(100);
     const { target, times } = clocked(0.5, clock);
     void target.run();
     target.animate();
 
     clock.advance(1.9);
-    expect(times).toEqual([100]);
+    expect(times).toEqual([0]);
     clock.advance(4.1);
-    expect(times).toEqual([100, 102, 104, 106]);
+    expect(times).toEqual([0, 2, 4, 6]);
   });
 
   it("goes on at a new rate from the next frame when rate is set mid-animation", () => {
@@ -639,6 +639,48 @@ describe("App on a timeline", () => {
       { t: 0.25, value: 2.5 },
     ]);
     expect(clock.timers()).toBe(0);
+  });
+
+  it.each([1, 60])("at %s fps, paused, paints nothing for an animate() held until the timeline plays again", async (perSecond) => {
+    const clock = fakeClock();
+    const { target, drawn } = playing(Animation.constant(1), perSecond, clock);
+    void target.run();
+    target.animate();
+    clock.advance(1);
+    target.timeline = Timeline.pause(target.timeline, clock.now());
+    await tick();
+    const held = drawn.length;
+    clock.advance(3);
+    expect(drawn).toHaveLength(held);
+    expect(clock.timers()).toBe(0);
+
+    target.timeline = Timeline.resume(target.timeline, clock.now());
+    await tick();
+    clock.advance(1);
+    expect(drawn.length).toBeGreaterThanOrEqual(held + perSecond);
+  });
+
+  // A renderable is never handed a time, so what its cells say is on the
+  // only clock it can read, the app's — a Progress stamps its spinner there.
+  it("wakes a renderable view at the clock moment its cells say, whatever the timeline does", async () => {
+    const clock = fakeClock(100);
+    let draws = 0;
+    const stamped: Renderable = {
+      render: () => {
+        draws += 1;
+        return [new Segment("x", new Style({ nextChange: Math.floor(clock.now()) + 1 }))];
+      },
+    };
+    const target = new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(1), view: stamped, timeline: Timeline.play(0, -3) });
+    void target.run();
+    clock.advance(2.5);
+    // Drawn at 100, then at 101 and 102, as its cells said.
+    expect(draws).toBe(3);
+    target.timeline = Timeline.pause(target.timeline, clock.now());
+    await tick();
+    clock.advance(2);
+    // The frame the pause paints, then 103 and 104: pausing holds nothing off the timeline.
+    expect(draws).toBe(6);
   });
 
   it("run backwards, paints a tween back to where it began and stops there", () => {
