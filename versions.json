@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-477",
+      "ref": "refs/pull/477/merge",
+      "sha": "77ab826dee6dfabaa9d600914206e9f286e32c16",
+      "timestamp": "2026-10-19T08:02:55.991Z",
+      "commits": [
+        {
+          "sha": "77ab826dee6dfabaa9d600914206e9f286e32c16",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T02:00:59-06:00",
+          "message": "Merge a3bfbd96870cbbc4e56099ae60b81f10e3dea503 into 28f2883d9710f9915f5d8ef0375d2c0991749a26\n"
+        },
+        {
+          "sha": "a3bfbd96870cbbc4e56099ae60b81f10e3dea503",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T01:57:19-06:00",
+          "message": "Spring, bounce and overshoot curves join the easing vocabulary (rich-animation-42lg.4zu)\n\n`spring({ stiffness, damping, mass })` is a damped harmonic oscillator as an\n`Ease`, and since how long a spring rings is a fact about its physics, it\ncomes with the `seconds` it settles in (to within `SPRING_REST`), so\n`{ ...spring(…), swing }` is an effect's `Curve`. Beside it, Penner's\n`bounce`, `back-in`, `back-out` and `elastic` at his constants. All five are\nnamed in `EASES` and parse by name. One `settled` wrapper holds every physics\nease to [0, 1] and to exactly 1 at its end, so a count eased by one lands on\nits target.\n\nPinned against the integrated equation of motion in every damping regime\nand against Penner's values at the quarter points; sampled through\n`Phase.once` at one frame a second and sixty.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "28f2883d9710f9915f5d8ef0375d2c0991749a26",
