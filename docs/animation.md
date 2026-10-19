@@ -116,6 +116,31 @@ for (const t of [0, 0.5, 1, 1.5, 2]) {
 }
 ```
 
+## A ramp that moves
+
+A `ColorRamp` carries how far it has been moved: `scroll`, in spans, how far its colours have travelled along it from the first stop to the last, and `hue`, in turns, how far every colour is rotated round the OKLCH hue circle at its own lightness and chroma. Both are constructor arguments after the stops, and both default to 0. A scrolled ramp reads, inside its span, the colour that far behind, wrapped round as a repeating gradient. It has no seam when its first and last stops are one colour. Outside its span its end colours hold. Unmoved, every read is the ramp's own, stop colours byte for byte.
+
+`ramp.moving({ scroll, hue })` is that ramp as an `Animation<ColorRamp>`: at each `t`, moved by both parts at `t`, on top of however far it was already moved. Each part is an `Animation<number>`, or 0 when not given. Both are fractions, so a phase plugs straight in. `Animation.continuous(Phase.loop(4))` scrolls the whole span every four seconds, and a `tween` to a quarter turn rotates the hues and settles. When the moving ramp next changes is the combinators' answer: every frame while a loop runs, and never again once every part has settled.
+
+```typescript
+import { Animation, ColorRamp, ColorRgba, EASES, Phase, tween } from "@promptctl/rich-js";
+
+const hues = new ColorRamp(EASES.linear, [
+  { at: 0, color: new ColorRgba(255, 120, 100) },
+  { at: 0.5, color: new ColorRgba(110, 190, 255) },
+  { at: 1, color: new ColorRgba(255, 120, 100) },
+]);
+const moving = hues.moving({ scroll: Animation.continuous(Phase.loop(4)), hue: tween(0, 0.25, { seconds: 2, ease: EASES["ease-out"] }) });
+
+for (const t of [0, 1, 2, 3]) {
+  const ramp = moving.at(t);
+  const swatches = [0, 0.25, 0.5, 0.75].map((v) => `[on ${ramp.at(v).hex}]    [/]`).join("");
+  console.print(`t=${t}s  ${swatches}  scroll ${ramp.scroll.toFixed(2)}  hue ${ramp.hue.toFixed(2)}  next change ${moving.nextChange(t) === t ? "every frame" : "never"}`);
+}
+```
+
+Anything that reads a ramp reads a moved one, since it is still a `ColorRamp`. Laid across what an element draws, it is the [`gradient` effect](/effects#a-ramp-across-an-element): a rule's line or a panel's border that flows and turns. A gradient holds still on a sixteen-colour terminal, where a move would be a jump between slots. That is decided where the gradient is drawn, from the depth the output is written at.
+
 ## A glyph effect: text typed, scrambled and rained on
 
 An [effect](/effects) moves the colours of what an element draws. A `GlyphEffect` changes the glyphs instead, and it has the same shape. Handed every cell the element draws in a frame, it gives an `Animation` whose value at `t` maps each cell to the text it shows. Colour and glyph are not two kinds of animation: both are a per-cell map that changes with time. `GlyphEffected` wraps any renderable and draws it through a glyph effect at one moment:

@@ -105,7 +105,7 @@ export {
 // gradient (or, with the `step` ease, a threshold cascade) stays inside the
 // theme system instead of being computed beside it.
 export { ColorRamp } from "./themes/ramp.js";
-export type { ColorStop } from "./themes/ramp.js";
+export type { ColorStop, RampMotion } from "./themes/ramp.js";
 // Progress in [0, 1]: phases turn seconds into it, eases reshape it. One
 // vocabulary for ramps and time-based effects alike, CSS's names throughout.
 export { EASES, Phase, beat, cubicBezier, parseEase, spring, steps } from "./core/easing.js";
@@ -305,6 +305,7 @@ export {
   blink,
   dissolveOut,
   fadeIn,
+  gradient,
   onColors,
   pulse,
   shimmer,

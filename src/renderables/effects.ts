@@ -53,8 +53,10 @@ import { EASES, Phase, beat, type Timing } from "../core/easing.js";
 import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo } from "../core/memo.js";
 import { Oklch } from "../core/oklch.js";
+import { Style } from "../core/style.js";
 import { ensureContrast } from "../themes/colorMath.js";
-import { Effected, type CellAttributes, type Drawn, type Effect, type EffectCell, type EffectFrame, type Pair, type Placed } from "./effect.js";
+import type { ColorRamp } from "../themes/ramp.js";
+import { Effected, type CellAttributes, type CellLook, type Drawn, type Effect, type EffectCell, type EffectFrame, type Pair, type Placed } from "./effect.js";
 
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
@@ -208,6 +210,46 @@ function pairKey({ fg, bg, terminal, reverse }: Pair): string {
 }
 
 /**
+ * A ramp laid across the element: each lit cell's ink is the colour `ramp`
+ * shows at `t` at the cell's column, the element's leftmost cell reading
+ * the ramp's first stop and its rightmost its last, each at its cell's
+ * centre — or, where that colour would not read on the cell's ground, the
+ * nearest that does (`legibleInks`, as `steppedInk` writes its steps). A
+ * ramp that moves (`ColorRamp.moving`) scrolls along the element and turns
+ * its hues, and the frame changes when the ramp does — every frame for a
+ * loop, never again once a tween settles; a still one is
+ * `Animation.constant(ramp)`. Lit cells are those whose ink is one of
+ * `colors`, named as a style names them (`"#a6e3a1"`, `"bright_green"`) and
+ * matched as the screen shows them at the frame's depth — by default every
+ * colour the element sets itself — never an ink the terminal supplies: a
+ * rule's line by its colour and not its title, a panel's border and not its
+ * body. The element is where its frame lists
+ * cells, as the fireflies read it, so a padded or confined element has the
+ * ramp across what it shows. On a sixteen-colour terminal nothing moves
+ * (`stillOnSlots`): a gradient there is jumps between slots, and the cells
+ * hold as drawn.
+ */
+export function gradient(ramp: Animation<ColorRamp>, colors?: readonly string[]): Effect {
+  const legible = legibleInks();
+  // [LAW:one-source-of-truth] A colour named as a style spells it is lit
+  // wherever a cell shows it, so it is resolved as `Effected` resolves a
+  // cell's ink: drawn at the frame's depth, then read on its terminal.
+  const shown = (spec: string, { depth, theme }: Drawn): string =>
+    (Style.fromColor(ColorSpec.parse(spec)).drawnColors(depth).color ?? ColorSpec.default()).getTruecolor(theme, true).hex;
+  return stillOnSlots((drawn) => {
+    const lit = colors === undefined ? drawn.colors : new Set(colors.map((spec) => shown(spec, drawn)));
+    const inkOn = legible(drawn);
+    const [left, right] = extent(drawn.cells().map((cell) => cell.col));
+    return Animation.map(ramp, (now): EffectFrame => {
+      const first = now.stops[0]!.at;
+      const span = now.stops[now.stops.length - 1]!.at - first;
+      const along = (col: number): ColorRgba => now.at(first + (span * (col - left + 0.5)) / (right - left + 1));
+      return (look, cell) => (cell.terminal.fg || !lit.has(look.fg.hex) ? look : { ...look, fg: inkOn(along(cell.col), look, cell) });
+    });
+  });
+}
+
+/**
  * A loop as an `Effect` on colours by hex, each touched at the share
  * `share` gives it of the cell's strength in a frame drawing what `Drawn`
  * says; a colour it gives none, and one the terminal supplies, stays as it is.
@@ -232,7 +274,7 @@ export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string
  * sixteen ANSI slots, or no colour, a move that shows at all is a jump to
  * another slot, and a light on an element never jumps — so there it
  * holds every cell still, and anywhere else it moves. [LAW:single-enforcer]
- * `onColors` and `wheel` draw through this, so every loop in the catalogue
+ * `onColors`, `wheel` and `gradient` draw through this, so every loop in the catalogue
  * meets the sixteen-colour terminal here. `atShares` does not: a progress
  * bar's pulse is the news that work is going on, and flashes a slot as
  * Rich's does; nor does `steppedInk`, a signal, which steps slot to slot.
@@ -1085,34 +1127,60 @@ export function steppedInk(steps: readonly ColorStep[]): Effect {
   // A copy, as `beat` keeps of the holds: what the signal plays stays what
   // `steps` said whatever the caller does to its array.
   const inks = steps.map((step) => step.color);
-  const settled = new WeakMap<TerminalTheme, Memo<ColorRgba>>();
-  return ({ depth, theme }) => {
-    const memo = settled.get(theme) ?? new Memo<ColorRgba>();
-    settled.set(theme, memo);
+  const legible = legibleInks();
+  return (drawn) => {
+    const inkOn = legible(drawn);
     return Animation.map(rhythm, (i): EffectFrame => {
       const step = inks[i]!;
-      return (look, cell) => {
-        const pair: Pair = { fg: look.fg, bg: look.bg, terminal: cell.terminal, reverse: cell.reverse };
-        return { ...look, fg: memo.get(`${depth} ${pairKey(pair)} ${step.hex}`, () => legibleInk(step, pair, depth, theme)) };
-      };
+      return (look, cell) => ({ ...look, fg: inkOn(step, look, cell) });
     });
   };
 }
 
 /**
- * The colour nearest `step` the depth writes that reads on `pair`'s ground
- * at `pair`'s floor, as `Effected` writes it (`shows`), or `pair`'s own ink
- * when none does. [LAW:one-source-of-truth] Measured the way `shares` and
- * `wheel` measure: the written colours, at the catalogue's floor.
+ * `legibleInk` for the frame `Drawn` describes, of an ink on a cell's look:
+ * settled once for each terminal, depth, pair and ink, so a frame drawing
+ * what an earlier one drew redoes no search. [LAW:single-enforcer] Every
+ * effect that writes an ink of the caller's choosing writes it through
+ * here — `steppedInk`'s steps and `gradient`'s ramp alike — so none of them
+ * leaves a word unreadable. Below truecolor which of the depth's colours
+ * read on a pair does not depend on the ink, so it is settled once for each
+ * pair: a ramp, whose every frame offers inks no frame offered before,
+ * then costs a nearest-colour scan a cell, not a contrast test of the whole
+ * palette.
  */
-function legibleInk(step: ColorRgba, pair: Pair, depth: ColorDepth, theme: TerminalTheme): ColorRgba {
+function legibleInks(): (drawn: Drawn) => (ink: ColorRgba, look: CellLook, cell: EffectCell) => ColorRgba {
+  const settled = new WeakMap<TerminalTheme, { readonly inks: Memo<ColorRgba>; readonly readable: Memo<readonly Measured[]> }>();
+  return ({ depth, theme }) => {
+    const memo = settled.get(theme) ?? { inks: new Memo<ColorRgba>(), readable: new Memo<readonly Measured[]>() };
+    settled.set(theme, memo);
+    return (ink, look, cell) => {
+      const pair: Pair = { fg: look.fg, bg: look.bg, terminal: cell.terminal, reverse: cell.reverse };
+      const key = `${depth} ${pairKey(pair)}`;
+      const readableOf = (offered: readonly Measured[]): readonly Measured[] => readableOn(pair, offered, depth, theme);
+      return memo.inks.get(`${key} ${ink.hex}`, () => {
+        const offered =
+          depth === ColorDepth.TRUECOLOR
+            ? readableOf([ink, ensureContrast(ink, pair.bg, floorOf(pair, depth))].map(measured))
+            : memo.readable.get(key, () => readableOf(measuredIndexed(depth, theme)));
+        return nearestOf(ink, offered)?.color ?? pair.fg;
+      });
+    };
+  };
+}
+
+/**
+ * Of `offered`, the colours that read on `pair`'s ground at `pair`'s floor,
+ * as `Effected` writes them (`shows`). [LAW:one-source-of-truth] Measured the
+ * way `shares` and `wheel` measure: the written colours, at the catalogue's
+ * floor. An ink none of them is nearest stays `pair`'s own.
+ */
+function readableOn(pair: Pair, offered: readonly Measured[], depth: ColorDepth, theme: TerminalTheme): readonly Measured[] {
   const floor = floorOf(pair, depth);
-  const offered = depth === ColorDepth.TRUECOLOR ? [step, ensureContrast(step, pair.bg, floor)].map(measured) : measuredIndexed(depth, theme);
-  const reads = ({ color }: Measured): boolean => {
+  return offered.filter(({ color }) => {
     const shown = Effected.shows(pair, { fg: color, bg: pair.bg }, depth, theme);
     return contrastRatio(shown.fg, shown.bg) >= floor;
-  };
-  return nearestOf(step, offered.filter(reads))?.color ?? pair.fg;
+  });
 }
 
 /**

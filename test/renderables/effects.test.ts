@@ -23,7 +23,13 @@ import {
   TOKYO_NIGHT,
   Strip,
   Padding,
+  Panel,
+  Phase,
+  Rule,
+  ColorRamp,
+  tween,
   confined,
+  gradient,
   type CellColors,
   type CellLook,
   type Drawn,
@@ -39,6 +45,7 @@ import {
 import { CATPPUCCIN_LATTE, CATPPUCCIN_MOCHA } from "../../src/index.js";
 import { drawnBy } from "../../src/core/anchor.js";
 import { JOIN } from "../../src/core/strip.js";
+import { Segment as SegmentOps } from "../../src/core/segment.js";
 import {
   ATTRIBUTE_DEFAULTS,
   EFFECT_CATALOGUE,
@@ -1018,5 +1025,108 @@ describe("every loop keeps its words legible at every depth, the whole of its pe
       return [];
     });
     expect(failures).toEqual([]);
+  });
+});
+
+describe("gradient: a ramp laid across an element", () => {
+  const coral = new ColorRgba(255, 120, 100);
+  const sky = new ColorRgba(110, 190, 255);
+  const hues = new ColorRamp(EASES.linear, [
+    { at: 0, color: coral },
+    { at: 0.5, color: sky },
+    { at: 1, color: coral },
+  ]);
+  const still = Animation.constant(hues);
+  const scrolling = hues.moving({ scroll: Animation.continuous(Phase.loop(4)) });
+  const onTerminalGround = { fg: false, bg: true };
+  const line = new ColorRgba(166, 227, 161);
+  // A line on the terminal's ground across every cell, as a rule draws it.
+  const ruleFrame = (depth: ColorDepth): Drawn => ({ ...frame(new Set([line.hex])), depth });
+  const lineLook: CellLook = { fg: line, bg: CATPPUCCIN_MOCHA.backgroundColor, attributes: PLAIN };
+  const lineCell = (col: number): EffectCell => ({ ...cells[col]!, terminal: onTerminalGround });
+  const along = (ramp: ColorRamp, col: number): ColorRgba => ramp.at((col + 0.5) / cells.length);
+
+  it("paints each lit cell the ramp's colour at its column, first stop at the left and last at the right", () => {
+    const shown = gradient(still)(ruleFrame(ColorDepth.TRUECOLOR)).at(0);
+    for (const col of [0, 10, 20, 39]) expect(shown(lineLook, lineCell(col)).fg.hex, `col ${col}`).toBe(along(hues, col).hex);
+  });
+
+  it("leaves a cell whose ink is not lit, or is the terminal's, as it was", () => {
+    const shown = gradient(still)(ruleFrame(ColorDepth.TRUECOLOR)).at(0);
+    const title: CellLook = { ...lineLook, fg: ink };
+    expect(shown(title, lineCell(5))).toBe(title);
+    expect(shown(lineLook, { ...lineCell(5), terminal: { fg: true, bg: true } })).toBe(lineLook);
+  });
+
+  it("writes a stop that would not read on the cell's ground as the nearest colour that does", () => {
+    const dusk = new ColorRgba(40, 40, 60);
+    const dark = gradient(Animation.constant(new ColorRamp(EASES.linear, [{ at: 0, color: dusk }])));
+    const painted = dark(ruleFrame(ColorDepth.TRUECOLOR)).at(0)(lineLook, lineCell(3)).fg;
+    expect(painted.hex).not.toBe(dusk.hex);
+    expect(contrastRatio(painted, lineLook.bg)).toBeGreaterThanOrEqual(Math.min(contrastRatio(line, lineLook.bg), 4.5) - 0.02);
+  });
+
+  it("scrolls along the element as its ramp moves, and changes every frame while it loops", () => {
+    const effect = gradient(scrolling)(ruleFrame(ColorDepth.TRUECOLOR));
+    expect(effect.at(1)(lineLook, lineCell(20)).fg.hex).toBe(along(scrolling.at(1), 20).hex);
+    expect(effect.at(1)(lineLook, lineCell(20)).fg.hex).not.toBe(effect.at(0)(lineLook, lineCell(20)).fg.hex);
+    expect(effect.nextChange(1)).toBe(1);
+  });
+
+  it("never changes again once a tween settles its ramp", () => {
+    const settling = gradient(hues.moving({ hue: tween(0, 0.25, { seconds: 2, ease: EASES.linear }) }))(ruleFrame(ColorDepth.TRUECOLOR));
+    expect(settling.nextChange(1)).toBe(1);
+    expect(settling.nextChange(2)).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it.each([["ansi", ColorDepth.STANDARD], ["windows", ColorDepth.WINDOWS], ["no colour", ColorDepth.DEFAULT]] as const)(
+    "on %s holds every cell as drawn and never changes",
+    (_, depth) => {
+      const effect = gradient(scrolling)(ruleFrame(depth));
+      expect(effect.nextChange(0)).toBe(Number.POSITIVE_INFINITY);
+      for (const t of [0, 1.5, 1e6]) expect(effect.at(t)(lineLook, lineCell(7))).toEqual(lineLook);
+    },
+  );
+
+  describe("over a Rule and a Panel", () => {
+    const lineSpec = "#a6e3a1";
+    const lit = [lineSpec];
+    const rule = new Rule(new RichText("status", { style: Style.parse("#cdd6f4") }), { style: lineSpec });
+    const panel = new Panel(new RichText("body", { style: Style.parse("#cdd6f4") }), { borderStyle: lineSpec, width: 20 });
+    const draw = (element: Renderable, t: number, colorSystem: ColorDepth | null) =>
+      renderToString(new Effected(element, gradient(scrolling, lit), { t, key: "k", theme: CATPPUCCIN_MOCHA }), { width: 20, colorSystem });
+
+    it.each([["rule", rule], ["panel", panel]] as const)("the %s's line moves and its words do not", (_, element) => {
+      const segments = [...new Effected(element, gradient(scrolling, lit), { t: 1, key: "k", theme: CATPPUCCIN_MOCHA }).render({ maxWidth: 20, colorSystem: ColorDepth.TRUECOLOR })];
+      const plain = [...element.render({ maxWidth: 20, colorSystem: ColorDepth.TRUECOLOR })];
+      const word = (all: readonly Segment[]) => all.find((s) => /status|body/.test(s.text))?.style?.color?.value?.hex;
+      expect(word(plain)).toBe("#cdd6f4");
+      expect(word(segments)).toBe(word(plain));
+      expect(draw(element, 1, ColorDepth.TRUECOLOR)).not.toBe(renderToString(element, { width: 20, colorSystem: ColorDepth.TRUECOLOR }));
+      expect(SegmentOps.nextChange(segments)).toBe(1);
+    });
+
+    it("finds the line by the colour its style names at 256 colours too, where the screen shows a palette colour", () => {
+      for (const element of [rule, panel]) {
+        const rest = renderToString(element, { width: 20, colorSystem: ColorDepth.EIGHT_BIT });
+        expect(draw(element, 1, ColorDepth.EIGHT_BIT)).not.toBe(rest);
+      }
+    });
+
+    it.each([["ansi", ColorDepth.STANDARD], ["windows", ColorDepth.WINDOWS], ["no colour", null]] as const)(
+      "on %s draws the rule and the panel byte for byte as without it, at every t",
+      (_, colorSystem) => {
+        for (const element of [rule, panel]) {
+          const rest = renderToString(element, { width: 20, colorSystem });
+          for (const t of [0, 0.5, 2.25, 1e6]) expect(draw(element, t, colorSystem)).toBe(rest);
+        }
+      },
+    );
+
+    it("draws the same bytes at a shared t whether sampled once a second or sixty times", () => {
+      const once = [0, 1, 2, 3].map((t) => draw(panel, t, ColorDepth.TRUECOLOR));
+      const sixty = Array.from({ length: 3 * 60 + 1 }, (_, i) => draw(panel, (i * 60) / 3600, ColorDepth.TRUECOLOR));
+      expect([0, 60, 120, 180].map((i) => sixty[i])).toEqual(once);
+    });
   });
 });
