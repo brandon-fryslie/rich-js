@@ -68,7 +68,7 @@ export function animationFuncs(frameTime: () => number): FuncMap {
   const framesFunc: TemplateFunc = {
     fn: ((...tail: unknown[]) => {
       const frames: Frame[] = pairs("frame", tail, asFragment).map(({ seconds, value }) => ({ seconds, text: value }));
-      return new FrameSequence(frames).text(frameTime());
+      return new FrameSequence(frames).at(frameTime());
     }) as TemplateFunc["fn"],
     argTypes: ["float", "liftable"],
     arity: { kind: "alternating", minimum: 2 },

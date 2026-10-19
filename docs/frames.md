@@ -21,13 +21,13 @@ const chevrons = new FrameSequence(
 );
 
 for (const t of [0, 1.5, 2.2, 3]) {
-  console.print(`t=${t}s  effort ${chevrons.text(t).plain} max`);
+  console.print(`t=${t}s  effort ${chevrons.at(t).plain} max`);
 }
 ```
 
 Every frame draws at one width, the widest frame's, padded on the right, so whatever sits beside the frames never moves as they turn; the sequence's `width` says what that is. A frame is a fragment of a line: it ends no line of its own, a newline inside one becomes a space, and it measures at exactly its width; a slot forced narrower crops it, and never folds or wraps it onto a second line.
 
-`text(t)` is the frame in progress as a `RichText` of its own, a copy, for a line assembled from pieces; `Frames` is the renderable, so it can be printed or set in a table cell directly. The holds are the sequence's `beat`, whose `period` is their sum.
+A `FrameSequence` is an [animation](/animation) of the frame shown: `at(t)` is the frame in progress as a `RichText` of its own, a copy, for a line assembled from pieces, and `nextChange(t)` is when it gives way to the next. `Frames` is the renderable, so it can be printed or set in a table cell directly. The holds are the sequence's `beat`, whose `period` is their sum.
 
 ## Holds are seconds
 
@@ -38,8 +38,8 @@ import { FrameSequence, RichText } from "@promptctl/rich-js";
 
 const quarters = new FrameSequence(["a", "b", "c", "d"].map((glyph) => ({ text: new RichText(glyph), seconds: 0.25 })));
 
-const onceASecond = [0, 1, 2, 3].map((t) => quarters.text(t).plain);
-const sixtyASecond = Array.from({ length: 60 }, (_, i) => quarters.text(i / 60).plain);
+const onceASecond = [0, 1, 2, 3].map((t) => quarters.at(t).plain);
+const sixtyASecond = Array.from({ length: 60 }, (_, i) => quarters.at(i / 60).plain);
 
 console.print(`once a second:  ${onceASecond.join(" ")}`);
 console.print(`sixty a second: ${[...new Set(sixtyASecond)].join(" ")}`);
@@ -65,13 +65,13 @@ for (const t of [0, 1, 2]) {
 }
 ```
 
-Every animated primitive answers the same question: an [effect](/effects) stamps its frame too, a stepped signal and an effect sampled on a beat at their next step's start, a loop at `t` itself since it moves every frame, a transition at `t` until it is `done` and never after. Still content never changes, so it carries no stamp and the answer is `Infinity`. The stamp survives `text(t)` and whatever the frame is appended into, so a line assembled from fragments — a template's output among them — still says when it turns.
+The stamp is the sequence's `nextChange(t)`, the answer every [animation](/animation) gives, and an [effect](/effects) stamps its frame the same way. Still content never changes, so it carries no stamp and the answer is `Infinity`. The stamp survives `at(t)` and whatever the frame is appended into, so a line assembled from fragments — a template's output among them — still says when it turns.
 
 A host that draws once a second can read from the answers alone that it is skipping frames: at each `t` the quarters above change at `t + 0.25`, before its next draw at `t + 1`, while the chevrons change exactly at it. A host drawing sixty times a second sees the next change never come before its next frame. A [`Live`](/live#auto-refresh) reads the answer off every frame it draws and wakes then, so it draws each frame of a sequence rather than a sample of them.
 
 ## Spinners
 
-A `Spinner` is a `FrameSequence` over one of the named spinners — `dots`, `line`, `bouncingBall` and the rest of the cli-spinners set — each frame held for the spinner's interval, with an optional label after it. It is built once and asked for its frame at a time: `spinner.at(t)` is the renderable, the frame in progress at the time it is handed, as Rich's `Spinner.render(time)` is, and a spinner reads no clock. `speed` scales the holds: `2` holds each frame half as long, and a negative speed runs the frames backwards.
+A `Spinner` is an [animation](/animation) built on a `FrameSequence` over one of the named spinners — `dots`, `line`, `bouncingBall` and the rest of the cli-spinners set — each frame held for the spinner's interval, with an optional label after it. It is built once and asked for its frame at a time: `spinner.at(t)` is the renderable, the frame in progress at the time it is handed, as Rich's `Spinner.render(time)` is, and a spinner reads no clock. `speed` scales the holds: `2` holds each frame half as long, and a negative speed runs the frames backwards.
 
 ```typescript
 import { Group, Spinner } from "@promptctl/rich-js";

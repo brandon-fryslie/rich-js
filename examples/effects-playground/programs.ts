@@ -31,6 +31,7 @@ const KIT_MODULE = "./kit.js";
 
 /** What `effects.ts` imports from modules whose names the package exports, by the name a program imports them under instead. */
 const IMPORTED_AS: Readonly<Record<string, string>> = {
+  "../core/animation.js": "@promptctl/rich-js",
   "../core/color.js": "@promptctl/rich-js",
   "../core/easing.js": "@promptctl/rich-js",
   "../core/oklch.js": "@promptctl/rich-js",

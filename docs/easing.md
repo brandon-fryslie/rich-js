@@ -73,7 +73,7 @@ for (const t of [0, 0.5, 1, 1.5, 2]) {
 
 To run the cells of one effect on the same curve but shifted in time, add a per-cell offset to `t` before the phase sees it: `phase(t + offset)`.
 
-A `Beat` is holds in seconds, played in order and looped: `at(t)` is the index of the hold in progress, `start(t)` is the moment that hold began on `t`'s own timeline, `end(t)` is the moment it ends — the next hold's start, always after `t`, which is when a [frame](/frames#when-the-frame-next-changes) held on the beat gives way to the next — and `period` is their sum. With equal holds `at` is `steps(n)` read as an index; the holds may differ. [Frames](/frames) are drawn on one, and expose it as `beat`; `onBeat` samples any [effect](/effects#sampled-on-a-beat) at `start(t)`, so the effect holds within a hold and moves at each one's start.
+A `Beat` is holds in seconds, played in order and looped: `at(t)` is the index of the hold in progress, `start(t)` is the moment that hold began on `t`'s own timeline, `nextChange(t)` is the moment it ends — the next hold's start, always after `t`, which is when a [frame](/frames#when-the-frame-next-changes) held on the beat gives way to the next — and `period` is their sum. With `at`, that makes a beat an [animation](/animation) of the hold in progress. With equal holds `at` is `steps(n)` read as an index; the holds may differ. [Frames](/frames) are drawn on one, and expose it as `beat`; `onBeat` samples any [effect](/effects#sampled-on-a-beat) at `start(t)`, so the effect holds within a hold and moves at each one's start.
 
 ## In a color ramp
 

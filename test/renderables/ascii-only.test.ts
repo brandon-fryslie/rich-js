@@ -23,6 +23,7 @@ import { renderToString } from "../../src/core/render.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import {
   Align,
+  Animation,
   BarColumn,
   JOINERS,
   Columns,
@@ -55,6 +56,7 @@ import {
   Viewport,
   ListView,
   SCROLLBAR,
+  type EffectFrame,
 } from "../../src/index.js";
 import {
   Button,
@@ -94,7 +96,7 @@ const ROWS: Record<string, Row> = {
   Effected: {
     draws: "glyphs",
     make: () =>
-      new Effected(panel(), () => (c) => c, {
+      new Effected(panel(), () => Animation.constant<EffectFrame>((c) => c), {
         t: 0,
         key: "panel",
         theme: DEFAULT_TERMINAL_THEME,

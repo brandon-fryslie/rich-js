@@ -46,6 +46,7 @@
  * beat, and is refused where it is given.
  */
 
+import type { Animation } from "../core/animation.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { RichText } from "../core/text.js";
@@ -82,7 +83,7 @@ export interface SpinnerOptions {
   style?: string | Style;
 }
 
-export class Spinner {
+export class Spinner implements Animation<Renderable & Measurable> {
   readonly name: string;
   readonly speed: number;
   readonly style: string | Style;
@@ -156,6 +157,17 @@ export class Spinner {
     };
   }
 
+  /**
+   * When the spinner drawn at `t` next turns: the sooner of its two
+   * sequences' answers, since which one is drawn is the output's to choose
+   * and the line spinner that stands in on an ASCII-only output keeps its own
+   * interval. An early answer, on the output that draws the other one, which
+   * the contract allows; the drawn cells carry the exact one.
+   */
+  nextChange(t: number): number {
+    return Math.min(this._named.frames.nextChange(t), this._ascii.frames.nextChange(t));
+  }
+
   private *_render(frames: FrameSequence, t: number, options: RenderOptions): Iterable<Segment> {
     yield* render(this._line(frames, t, options), options);
     yield Segment.line();
@@ -169,7 +181,7 @@ export class Spinner {
    * falsy there.
    */
   private _line(frames: FrameSequence, t: number, options: RenderOptions): RichText {
-    const line = new RichText("", { end: "" }).append(frames.text(t));
+    const line = new RichText("", { end: "" }).append(frames.at(t));
     // Unhighlighted: Rich's label is a `Text` from the moment it is handed over, and a `Text` is never highlighted.
     const label = new EmbeddedText(this.text).text({ ...options, highlight: false });
     if (label.plain !== "") line.append(" ").append(label);

@@ -47,13 +47,14 @@
  * (`examples/effects-playground/programs.ts`), on the published library.
  */
 
+import { Animation } from "../core/animation.js";
 import { ColorDepth, ColorRgba, ColorSpec, contrastRatio, relativeLuminance, type TerminalTheme } from "../core/color.js";
 import { EASES, Phase, beat, type Ease } from "../core/easing.js";
 import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo } from "../core/memo.js";
 import { Oklch } from "../core/oklch.js";
 import { ensureContrast } from "../themes/colorMath.js";
-import { Effected, nextChangeOf, withNextChange, type Drawn, type Effect, type EffectCell, type Pair, type Placed } from "./effect.js";
+import { Effected, type Drawn, type Effect, type EffectCell, type EffectFrame, type Pair, type Placed } from "./effect.js";
 
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
@@ -212,15 +213,17 @@ function pairKey({ fg, bg, terminal, reverse }: Pair): string {
  * says; a colour it gives none, and one the terminal supplies, stays as it is.
  */
 export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string, number>): Effect {
-  return (t, drawn) => {
+  return (drawn) => {
     const shared = share(drawn);
-    const field = loop.field(t, drawn);
-    return ({ fg, bg }, cell) => {
-      const w = Math.round(clamp01(field(cell)) * LEVELS) / LEVELS;
-      const moved = (color: ColorRgba, terminal: boolean): ColorRgba =>
-        touchedAt(loop.touch, color, (terminal ? 0 : (shared.get(color.hex) ?? 0)) * w);
-      return { fg: moved(fg, cell.terminal.fg), bg: moved(bg, cell.terminal.bg) };
-    };
+    return Animation.continuous((t): EffectFrame => {
+      const field = loop.field(t, drawn);
+      return ({ fg, bg }, cell) => {
+        const w = Math.round(clamp01(field(cell)) * LEVELS) / LEVELS;
+        const moved = (color: ColorRgba, terminal: boolean): ColorRgba =>
+          touchedAt(loop.touch, color, (terminal ? 0 : (shared.get(color.hex) ?? 0)) * w);
+        return { fg: moved(fg, cell.terminal.fg), bg: moved(bg, cell.terminal.bg) };
+      };
+    });
   };
 }
 
@@ -237,10 +240,7 @@ export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string
  * loop on such a terminal draws it once.
  */
 function stillOnSlots(loop: Effect): Effect {
-  return withNextChange(
-    (t, drawn) => (onlySlots(drawn.depth) ? (colors) => colors : loop(t, drawn)),
-    (t, drawn) => (onlySlots(drawn.depth) ? Number.POSITIVE_INFINITY : nextChangeOf(loop, t, drawn)),
-  );
+  return (drawn) => (onlySlots(drawn.depth) ? Animation.constant<EffectFrame>((colors) => colors) : loop(drawn));
 }
 
 /** Whether `depth` writes nothing between the slots it has: the sixteen, at either sixteen-colour depth, or none. */
@@ -628,17 +628,18 @@ export type Visibility = (t: number, drawn: Drawn) => (cell: EffectCell) => numb
  * hiding — 1 reaches fully invisible. A cell wholly shown is returned as it was.
  */
 export function veiled(visibility: Visibility, swing: number): Effect {
-  return (t, drawn) => {
-    const { theme } = drawn;
-    const shows = visibility(t, drawn);
+  return (drawn) => {
     // [LAW:one-source-of-truth] The ground is the terminal `Effected` draws on, never a second one handed here.
-    const ground = Oklch.fromRgba(theme.backgroundColor);
-    return (colors, cell) => {
-      const hidden = swing * (1 - clamp01(shows(cell)));
-      if (hidden === 0) return colors;
-      const bg = blend(Oklch.fromRgba(colors.bg), ground, hidden);
-      return { fg: blend(Oklch.fromRgba(colors.fg), bg, hidden).toRgba(), bg: bg.toRgba() };
-    };
+    const ground = Oklch.fromRgba(drawn.theme.backgroundColor);
+    return Animation.continuous((t): EffectFrame => {
+      const shows = visibility(t, drawn);
+      return (colors, cell) => {
+        const hidden = swing * (1 - clamp01(shows(cell)));
+        if (hidden === 0) return colors;
+        const bg = blend(Oklch.fromRgba(colors.bg), ground, hidden);
+        return { fg: blend(Oklch.fromRgba(colors.fg), bg, hidden).toRgba(), bg: bg.toRgba() };
+      };
+    });
   };
 }
 
@@ -678,7 +679,13 @@ export interface Transition {
 
 function transition(curve: Curve, effect: Effect): Transition {
   const done = (t: number): boolean => t >= curve.seconds;
-  return { effect: withNextChange(effect, (t) => (done(t) ? Number.POSITIVE_INFINITY : t)), done };
+  return {
+    effect: (drawn) => {
+      const moving = effect(drawn);
+      return { at: (t) => moving.at(t), nextChange: (t) => (done(t) ? Number.POSITIVE_INFINITY : moving.nextChange(t)) };
+    },
+    done,
+  };
 }
 
 /**
@@ -850,7 +857,7 @@ export function wheel(curve: Curve, z: number): Effect {
   };
   // A turned colour's bounds rest on what a frame draws, never on `t`: settled once for each.
   const settled = new WeakMap<TerminalTheme, Memo<ReadonlyMap<string, Bounds>>>();
-  return stillOnSlots((t, drawn) => {
+  return stillOnSlots((drawn) => {
     const { colors, fills, depth, theme } = drawn;
     // Whether a slot shows one of the element's colours: never the terminal's, whatever its hex.
     const own = (terminal: boolean, color: ColorRgba): boolean => !terminal && colors.has(color.hex);
@@ -869,21 +876,23 @@ export function wheel(curve: Curve, z: number): Effect {
     // 256 colours writes a turned colour as one it has an index for; truecolor
     // as one of the two either side of its luminance.
     const indexed = measuredIndexed(depth, theme);
-    const written = new Map<string, ColorRgba>();
-    const choose = (color: ColorRgba, segment: string): ColorRgba => {
-      const turn = hueTurned(color, turned(segment, t));
-      return nearestWithin(turn.looks, color, depth === ColorDepth.TRUECOLOR ? turn.either.map(measured) : indexed, bounds.get(keyOf(color, segment)) ?? UNBOUNDED);
-    };
-    const write = (color: ColorRgba, segment: string): ColorRgba => {
-      const found = written.get(keyOf(color, segment)) ?? choose(color, segment);
-      written.set(keyOf(color, segment), found);
-      return found;
-    };
-    return (shown, cell) => {
-      const mine = { fg: own(cell.terminal.fg, shown.fg), bg: own(cell.terminal.bg, shown.bg) };
-      const turn = (color: ColorRgba, ours: boolean, other: ColorRgba, theirs: boolean): ColorRgba => (ours ? write(color, segmentOf(color, other, theirs)) : color);
-      return { fg: turn(shown.fg, mine.fg, shown.bg, mine.bg), bg: turn(shown.bg, mine.bg, shown.fg, mine.fg) };
-    };
+    return Animation.continuous((t): EffectFrame => {
+      const written = new Map<string, ColorRgba>();
+      const choose = (color: ColorRgba, segment: string): ColorRgba => {
+        const turn = hueTurned(color, turned(segment, t));
+        return nearestWithin(turn.looks, color, depth === ColorDepth.TRUECOLOR ? turn.either.map(measured) : indexed, bounds.get(keyOf(color, segment)) ?? UNBOUNDED);
+      };
+      const write = (color: ColorRgba, segment: string): ColorRgba => {
+        const found = written.get(keyOf(color, segment)) ?? choose(color, segment);
+        written.set(keyOf(color, segment), found);
+        return found;
+      };
+      return (shown, cell) => {
+        const mine = { fg: own(cell.terminal.fg, shown.fg), bg: own(cell.terminal.bg, shown.bg) };
+        const turn = (color: ColorRgba, ours: boolean, other: ColorRgba, theirs: boolean): ColorRgba => (ours ? write(color, segmentOf(color, other, theirs)) : color);
+        return { fg: turn(shown.fg, mine.fg, shown.bg, mine.bg), bg: turn(shown.bg, mine.bg, shown.fg, mine.fg) };
+      };
+    });
   });
 }
 
@@ -1039,7 +1048,7 @@ export interface ColorStep {
  * The search is settled once for each ink, ground and step, so a frame
  * inside a step redoes none, and nor does a later pass of the beat: at sixty
  * frames a second a one-second step is sixty identical frames, and the
- * frame says it changes next when the step ends (`Beat.end`).
+ * frame changes when the beat does: the signal is the beat mapped to inks.
  * [LAW:no-ambient-temporal-coupling] The beat is `core/easing.ts`'s, and
  * nothing here reads a clock.
  */
@@ -1049,18 +1058,17 @@ export function steppedInk(steps: readonly ColorStep[]): Effect {
   // `steps` said whatever the caller does to its array.
   const inks = steps.map((step) => step.color);
   const settled = new WeakMap<TerminalTheme, Memo<ColorRgba>>();
-  return withNextChange(
-    (t, { depth, theme }) => {
-      const step = inks[rhythm.at(t)]!;
-      const memo = settled.get(theme) ?? new Memo<ColorRgba>();
-      settled.set(theme, memo);
+  return ({ depth, theme }) => {
+    const memo = settled.get(theme) ?? new Memo<ColorRgba>();
+    settled.set(theme, memo);
+    return Animation.map(rhythm, (i): EffectFrame => {
+      const step = inks[i]!;
       return (colors, cell) => {
         const pair: Pair = { ...colors, terminal: cell.terminal, reverse: cell.reverse };
         return { fg: memo.get(`${depth} ${pairKey(pair)} ${step.hex}`, () => legibleInk(step, pair, depth, theme)), bg: colors.bg };
       };
-    },
-    (t) => rhythm.end(t),
-  );
+    });
+  };
 }
 
 /**

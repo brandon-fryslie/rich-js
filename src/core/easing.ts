@@ -394,7 +394,8 @@ function positive(what: string, v: number, unit = ""): void {
   if (!(Number.isFinite(v) && v > 0)) throw new RangeError(`${what} must be a positive number${unit}, got ${v}`);
 }
 
-function positiveSeconds(what: string, seconds: number): void {
+/** Throws, naming `what`, unless `seconds` is a positive, finite number of seconds. */
+export function positiveSeconds(what: string, seconds: number): void {
   positive(what, seconds, " of seconds");
 }
 
@@ -424,8 +425,10 @@ export interface Beat {
    * When the hold in progress at `t` ends, in seconds on `t`'s own timeline:
    * the start of the next hold, the first moment `at` places in it, so it is
    * always after `t`. What is drawn on this beat at `t` is drawn until then.
+   * With `at`, this makes a beat an `Animation` of the hold in progress
+   * (`./animation.ts`).
    */
-  end(t: number): number;
+  nextChange(t: number): number;
 }
 
 /**
@@ -459,8 +462,26 @@ function nextUp(x: number): number {
 }
 const DOUBLE = new Float64Array(1);
 const BITS = new BigUint64Array(DOUBLE.buffer);
-/** How many ulps the two roundings in `Beat.start`'s sum can put it under the hold's boundary; a walk past this is a hold too fine for the time. */
+/** How many ulps the roundings in a sum naming a boundary can put it under that boundary; a walk past this is a boundary finer than time resolves there. */
 const ULPS_OF_ROUNDING = 8;
+
+/**
+ * The first float from `sum` up at which `reached` holds: a time built as a
+ * sum to land on a boundary — where a hold begins, where an animation's next
+ * part changes — that rounding put an ulp or two under it, walked up to the
+ * first moment on the far side. [LAW:single-enforcer] The one walk, so every
+ * boundary a time is carried onto is the moment the change shows, to the
+ * float. A walk longer than rounding can cost throws `finer()`'s message: the
+ * boundary is narrower than the floats around it are apart.
+ */
+export function walkUp(sum: number, reached: (x: number) => boolean, finer: () => string): number {
+  let x = sum;
+  for (let walked = 0; !reached(x); walked++) {
+    if (walked === ULPS_OF_ROUNDING) throw new RangeError(finer());
+    x = nextUp(x);
+  }
+  return x;
+}
 
 /** `holds` as a `Beat`; a beat with no hold, or a hold that is not a positive number of seconds, throws. */
 export function beat(holds: readonly number[]): Beat {
@@ -495,17 +516,12 @@ export function beat(holds: readonly number[]): Beat {
   // then read it as the hold before, so it is walked up to the first float
   // `at` places in the hold. The walk is a function of the pass and the hold
   // alone, so every `t` in the hold still answers one float.
-  const boundary = (what: string, pass: number, i: number, t: number): number => {
-    let began = pass * period + starts[i]!;
-    for (let walked = 0; index(wrapSeconds(what, began, period)) !== i; walked++) {
-      // The sum is off by the rounding of two operations, under the few
-      // ulps allowed here; a walk that long means the hold is narrower
-      // than the floats around `t` are apart, so no float starts it.
-      if (walked === ULPS_OF_ROUNDING) throw new RangeError(`${what}: hold ${i} (${own[i]} s) is finer than time resolves near t = ${t}`);
-      began = nextUp(began);
-    }
-    return began;
-  };
+  const boundary = (what: string, pass: number, i: number, t: number): number =>
+    walkUp(
+      pass * period + starts[i]!,
+      (began) => index(wrapSeconds(what, began, period)) === i,
+      () => `${what}: hold ${i} (${own[i]} s) is finer than time resolves near t = ${t}`,
+    );
   // Which pass `t` is in, as a whole number: `t - into` is a whole number of
   // periods but for rounding, which `round` takes off; carrying `starts[i]`
   // out of `t` itself would leave each sample its own rounding.
@@ -521,11 +537,11 @@ export function beat(holds: readonly number[]): Beat {
       return boundary("Beat.start", pass(t, into), index(into), t);
     },
     // The next hold's start, in the next pass when this hold is the last.
-    end(t) {
-      const into = wrapSeconds("Beat.end", t, period);
+    nextChange(t) {
+      const into = wrapSeconds("Beat.nextChange", t, period);
       const i = index(into);
       const last = i === own.length - 1;
-      return boundary("Beat.end", pass(t, into) + (last ? 1 : 0), last ? 0 : i + 1, t);
+      return boundary("Beat.nextChange", pass(t, into) + (last ? 1 : 0), last ? 0 : i + 1, t);
     },
   };
 }

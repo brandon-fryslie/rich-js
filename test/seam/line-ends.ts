@@ -25,6 +25,7 @@
  * their content through.
  */
 
+import { Animation } from "../../src/core/animation.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
@@ -36,7 +37,7 @@ import { Align } from "../../src/renderables/align.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 import { Constrain } from "../../src/renderables/constrain.js";
-import { Effected } from "../../src/renderables/effect.js";
+import { Effected, type EffectFrame } from "../../src/renderables/effect.js";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { FrameSequence, Frames } from "../../src/renderables/frames.js";
 import { Group } from "../../src/renderables/group.js";
@@ -94,7 +95,7 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
   Effected: {
     ends: "content",
     build: (content) =>
-      new Effected(content, () => (c) => c, {
+      new Effected(content, () => Animation.constant<EffectFrame>((c) => c), {
         t: 0,
         key: "content",
         theme: DEFAULT_TERMINAL_THEME,

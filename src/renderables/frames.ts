@@ -21,18 +21,20 @@
  *
  * The sequence and the moment are two values, because only one of them
  * changes from frame to frame. A `FrameSequence` is the frames prepared once
- * — the beat, the one width, each frame set into a line and padded — and a
- * `Frames` is that sequence at a `t`, whose work is one frame's — finding
- * which, and copying it: a host holds the sequence and asks it for a frame,
- * as `Spinner` holds its two, so a draw costs the same over ninety frames as
- * over one. The sequence is a value the host keeps, not a memo here: nothing
- * is looked up by key.
+ * — the beat, the one width, each frame set into a line and padded — and an
+ * `Animation` of the frame shown (`core/animation.ts`); a `Frames` is that
+ * sequence at a `t`, whose work is one frame's — finding which, and copying
+ * it: a host holds the sequence and asks it for a frame, as `Spinner` holds
+ * its two, so a draw costs the same over ninety frames as over one. The
+ * sequence is a value the host keeps, not a memo here: nothing is looked up
+ * by key.
  *
  * The frame drawn is drawn until the next begins, and its cells say so: they
- * are stamped with that moment (`Style.nextChange`), which rides up through
- * every container to whoever holds the composed frame (`Segment.nextChange`),
- * so a host drawing at `t` knows when to draw again, and one drawing slower
- * than the frames turn can see that it is skipping them.
+ * are stamped with the sequence's `nextChange` (`Style.nextChange`), which
+ * rides up through every container to whoever holds the composed frame
+ * (`Segment.nextChange`), so a host drawing at `t` knows when to draw again,
+ * and one drawing slower than the frames turn can see that it is skipping
+ * them.
  *
  * Every frame is drawn at one width, the widest frame's, each padded on the
  * right to it, so whatever sits beside the frames never moves as they turn;
@@ -44,6 +46,7 @@
  * children do.
  */
 
+import type { Animation } from "../core/animation.js";
 import { beat, type Beat } from "../core/easing.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
@@ -59,7 +62,7 @@ export interface Frame {
 }
 
 /** A sequence of frames prepared to be drawn: built once, asked for the frame at a time. */
-export class FrameSequence {
+export class FrameSequence implements Animation<RichText> {
   /** Which frame is in progress when: the holds are the frames' seconds, in order. */
   readonly beat: Beat;
   /** The width every frame draws at: the widest frame's, in cells. */
@@ -84,15 +87,19 @@ export class FrameSequence {
   /**
    * The frame in progress at `t`, at `width` cells, ending no line: a copy,
    * the caller's to change, its every cell — padding included — stamped with
-   * when it gives way to the next, `beat.end(t)`, so a blank frame among
-   * drawn ones still turns. [LAW:one-source-of-truth] The stamp is the one
-   * answer to when the frame changes, read off the cells
-   * (`Segment.nextChange`): a sequence of nothing has no cell to carry one,
-   * and a field saying a time would disagree with cells saying never.
-   * `beat.at` refuses a `t` that is not finite.
+   * when it gives way to the next, `nextChange(t)`, so a blank frame among
+   * drawn ones still turns. [LAW:one-source-of-truth] The stamp is that one
+   * answer carried on the cells (`Segment.nextChange`), so a container
+   * holding the frame passes it up without asking the sequence. `beat.at`
+   * refuses a `t` that is not finite.
    */
-  text(t: number): RichText {
-    return this._shown[this.beat.at(t)]!.copy().stylize(new Style({ nextChange: this.beat.end(t) }));
+  at(t: number): RichText {
+    return this._shown[this.beat.at(t)]!.copy().stylize(new Style({ nextChange: this.nextChange(t) }));
+  }
+
+  /** When the frame in progress at `t` gives way to the next: the beat's answer, its holds being the frames'. */
+  nextChange(t: number): number {
+    return this.beat.nextChange(t);
   }
 }
 
@@ -111,7 +118,7 @@ export class Frames implements Renderable, Measurable {
   constructor(sequence: FrameSequence, options: FramesOptions) {
     this.sequence = sequence;
     this.t = options.t;
-    this._shown = sequence.text(options.t);
+    this._shown = sequence.at(options.t);
   }
 
   render(options: RenderOptions): Iterable<Segment> {

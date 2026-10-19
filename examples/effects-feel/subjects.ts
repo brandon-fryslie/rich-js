@@ -10,6 +10,7 @@
  */
 
 import {
+  Animation,
   ColorDepth,
   ColorRgba,
   ColorSpec,
@@ -22,6 +23,7 @@ import {
   ensureContrast,
   onColors,
   type Effect,
+  type EffectFrame,
   type Loop,
   type Measurable,
   type Renderable,
@@ -114,8 +116,9 @@ export function textSubject(theme: TerminalTheme, depth: ColorDepth): Subject {
  */
 export function pulsedOn(subject: DrawnSubject, pulseAt: (z: number) => Loop): Effect {
   const effects = subject.pulsed.map((element, n) => confined(onColors(pulseAt(subject.z + 3.7 * (n + 1))), element));
-  return (t, drawn) => {
-    const frames = effects.map((effect) => effect(t, drawn));
-    return (colors, cell) => frames.reduce((moved, frame) => frame(moved, cell), colors);
-  };
+  return (drawn) =>
+    Animation.map(
+      Animation.all(effects.map((effect) => effect(drawn))),
+      (frames): EffectFrame => (colors, cell) => frames.reduce((moved, frame) => frame(moved, cell), colors),
+    );
 }

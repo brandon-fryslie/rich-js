@@ -1,17 +1,31 @@
 # Effects
 
-An effect changes the colours of a renderable's cells over time: a highlight sweeping through text, a pulse that brightens and dims, a fade. It is one pure function in two stages. The first is given a time `t` in seconds and what the whole element draws in that frame, and returns the second, which is given each cell's colours and where the cell is, and returns the cell's new colours:
+An effect changes the colours of a renderable's cells over time: a highlight sweeping through text, a pulse that brightens and dims, a fade. It is an [animation](/animation): given what the whole element draws in a frame, it returns an `Animation` whose value at a time `t` in seconds is a function from each cell's colours and where the cell is to the cell's new colours:
 
 ```typescript shape
-import type { CellColors, Drawn, EffectCell } from "@promptctl/rich-js";
+import type { Animation, CellColors, Drawn, EffectCell } from "@promptctl/rich-js";
 
-interface Effect {
-  (t: number, drawn: Drawn): (colors: CellColors, cell: EffectCell) => CellColors;
-  readonly nextChange?: (t: number, drawn: Drawn) => number;
-}
+type EffectFrame = (colors: CellColors, cell: EffectCell) => CellColors;
+type Effect = (drawn: Drawn) => Animation<EffectFrame>;
 ```
 
-`Effected` calls the first stage once a frame and the second once for each cell of it, so whatever holds for the whole frame, such as where a band of light stands at `t`, is worked out once rather than once a cell. An effect that knows when its frame next changes says so in `nextChange`, asked with the same `t` and `drawn` as the first stage, so a loop that holds every cell still on a sixteen-colour terminal can say its frame never changes there; a plain function is an effect that moves every frame. See [When the frame next changes](/frames#when-the-frame-next-changes).
+`Effected` makes the animation and asks it for the frame at `t` once a frame, then calls that frame once for each cell, so whatever holds for the whole frame, such as where a band of light stands at `t`, is worked out once rather than once a cell. The animation's `nextChange` is when the frame next changes, and since the animation is made from what the element draws, a loop that holds every cell still on a sixteen-colour terminal can say its frame never changes there. A loop that moves every frame is `Animation.continuous`:
+
+```typescript
+import { Animation, CATPPUCCIN_MOCHA, ColorRgba, Effected, RichText, type Effect } from "@promptctl/rich-js";
+
+// The ink brightens toward white across one second, then starts again.
+const brighten: Effect = () =>
+  Animation.continuous((t) => ({ fg, bg }) => {
+    const w = t % 1;
+    const toward = (c: number): number => Math.round(c + (255 - c) * w);
+    return { fg: new ColorRgba(toward(fg.red), toward(fg.green), toward(fg.blue)), bg };
+  });
+
+for (const t of [0, 0.5, 0.9]) {
+  console.print(new Effected(new RichText("brightening", { style: "#5f87d7" }), brighten, { t, key: "brighten", theme: CATPPUCCIN_MOCHA }));
+}
+```
 
 ## Ready-made effects
 
@@ -107,7 +121,7 @@ console.print([10, 29.9, 30].map((t) => `${t}s: ${leaving.done(t) ? "gone" : "le
 
 Both blend toward the background of the `theme` given to `Effected`, the terminal the frame is drawn on: the library never asks the terminal what that is.
 
-A transition's frame [changes](/frames#when-the-frame-next-changes) every frame until it is done and never after: its effect's `nextChange` is `done` read as a time, `t` before it and `Infinity` from it, so a host drawing the element can stop waking for it without asking `done` itself.
+A transition's frame [changes](/frames#when-the-frame-next-changes) every frame until it is done and never after: the [animation](/animation) its effect returns answers `nextChange` with `t` before `done` and `Infinity` from it, so a host drawing the element can stop waking for it without asking `done` itself.
 
 The bytes can stop changing a little before `done`. Near its end, an ease that flattens out, such as the default `ease-in-out`, moves a cell by less than one step of a colour channel, so nothing new is written. In truecolor that is within about a second on an element of several cells. An element of one cell takes the whole duration over its change, so its flat tail is longer. Below truecolor a colour is written as the nearest one the depth has, and the last change lands when the curve passes halfway between the last two of them. That depends on the colours, and at 256 colours a fade can finish visibly several seconds early. `done` is when the curve ends, not when the bytes stop.
 
@@ -156,23 +170,24 @@ To edit and tune each effect's code while it runs, open the [effects playground]
 `Effected` wraps any renderable and draws it with its cells' colours passed through an effect at one moment:
 
 ```typescript
-import { ColorRgba, ColorRamp, DEFAULT_TERMINAL_THEME, EASES, Effected, Phase, RichText, type Effect } from "@promptctl/rich-js";
+import { Animation, ColorRgba, ColorRamp, DEFAULT_TERMINAL_THEME, EASES, Effected, Phase, RichText, type Effect } from "@promptctl/rich-js";
 
 const highlight = new ColorRgba(255, 214, 102);
 const sweep = Phase.loop(1.5);
 const label = "  thinking about colour  ";
 
-const shimmer: Effect = (t) => {
-  const centre = sweep(t) * label.length;
-  return (colors, cell) => {
-    const weight = Math.max(0, 1 - Math.abs(cell.col - centre) / 4);
-    const toward = new ColorRamp(EASES.linear, [
-      { at: 0, color: colors.fg },
-      { at: 1, color: highlight },
-    ]);
-    return { fg: toward.at(weight), bg: colors.bg };
-  };
-};
+const shimmer: Effect = () =>
+  Animation.continuous((t) => {
+    const centre = sweep(t) * label.length;
+    return (colors, cell) => {
+      const weight = Math.max(0, 1 - Math.abs(cell.col - centre) / 4);
+      const toward = new ColorRamp(EASES.linear, [
+        { at: 0, color: colors.fg },
+        { at: 1, color: highlight },
+      ]);
+      return { fg: toward.at(weight), bg: colors.bg };
+    };
+  });
 
 for (const t of [0, 0.5, 1]) {
   console.print(new Effected(new RichText(label), shimmer, { t, key: "thinking", theme: DEFAULT_TERMINAL_THEME }));
@@ -194,7 +209,7 @@ Nothing in an effect reads a clock. Whoever draws frames builds the view for eac
 
 ## What an effect cannot change
 
-An effect changes how cells look, never which cells exist or who drew them. Text, links, and the anchors that let a click or Tab reach a widget all pass through, so a button under an effect still takes clicks. A cell whose colours come back unchanged is drawn exactly as before: the identity effect `() => (colors) => colors` produces byte-identical output. Neighbouring cells of one segment that the terminal is sent alike stay one segment: below truecolor, two colours that land on one palette index are one run, and a cell moved too little for the depth to show keeps the colour it was written in, none included. Cells from two segments stay two, as the wrapped renderable drew them.
+An effect changes how cells look, never which cells exist or who drew them. Text, links, and the anchors that let a click or Tab reach a widget all pass through, so a button under an effect still takes clicks. A cell whose colours come back unchanged is drawn exactly as before: the identity effect, `() => Animation.constant((colors) => colors)`, produces byte-identical output. Neighbouring cells of one segment that the terminal is sent alike stay one segment: below truecolor, two colours that land on one palette index are one run, and a cell moved too little for the depth to show keeps the colour it was written in, none included. Cells from two segments stay two, as the wrapped renderable drew them.
 
 With no colour output at all, an effect has nothing to change, and the wrapped renderable draws as it would without it.
 

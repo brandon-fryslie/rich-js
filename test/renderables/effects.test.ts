@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  Animation,
   ColorDepth,
   ColorRgba,
   ColorSpec,
@@ -26,6 +27,7 @@ import {
   type Drawn,
   type Effect,
   type EffectCell,
+  type EffectFrame,
   type Pair,
   type Placed,
   type Renderable,
@@ -81,9 +83,9 @@ const NOTHING = frame(new Set());
 /** `NOTHING`, listing `listed` instead: an element where those cells are. */
 const listing = (listed: readonly Placed[]): Drawn => ({ ...NOTHING, cells: () => listed });
 /** An effect's frames at each moment, every one drawing the same `Drawn`. */
-type On = (t: number) => ReturnType<Effect>;
+type On = (t: number) => EffectFrame;
 /** `effect` in frames that draw `drawn`. */
-const on = (effect: Effect, drawn: Drawn): On => (t) => effect(t, drawn);
+const on = (effect: Effect, drawn: Drawn): On => (t) => effect(drawn).at(t);
 /** The ink at its whole share: the subject every curve here is tried on. */
 const inkOn = new Map([[ink.hex, 1]]);
 /** `loop` on the ink at its whole share. */
@@ -92,7 +94,7 @@ const onInk = (loop: Loop): Effect => atShares(loop, () => inkOn);
 const under = (loop: Loop, color: ColorRgba, cell: EffectCell, t: number): ColorRgba => loop.touch(color, loop.field(t, NOTHING)(cell));
 /** Every cell of `cells` in `effect`'s frame at `t`. */
 const at = (effect: Effect, t: number): CellColors[] => {
-  const shown = effect(t, NOTHING);
+  const shown = effect(NOTHING).at(t);
   return cells.map((cell) => shown(colors, cell));
 };
 
@@ -468,7 +470,7 @@ describe("the transitions run start to end", () => {
 
   it("a cell with a fill of its own arrives from the terminal's ground, fill and ink together", () => {
     const fill = new ColorRgba(137, 180, 250);
-    const filled = (effect: Effect, t: number) => effect(t, NOTHING)({ fg: ink, bg: fill }, cells[0]!);
+    const filled = (effect: Effect, t: number) => effect(NOTHING).at(t)({ fg: ink, bg: fill }, cells[0]!);
     const fade = curve(2, 1);
     const start = filled(fadeIn(fade, 0).effect, 0);
     expect([start.fg.hex, start.bg.hex]).toEqual([terminalGround.hex, terminalGround.hex]);
@@ -479,8 +481,8 @@ describe("the transitions run start to end", () => {
   it("the ground a cell arrives from and leaves to is that of the terminal the frame is drawn on", () => {
     const latte = { ...NOTHING, theme: CATPPUCCIN_LATTE };
     const ground = CATPPUCCIN_LATTE.backgroundColor.hex;
-    const arriving = fadeIn(curve(2, 1), 0).effect(0, latte)(colors, cells[0]!);
-    const gone = dissolveOut(curve(2, 1), 0).effect(2, latte)(colors, cells[0]!);
+    const arriving = fadeIn(curve(2, 1), 0).effect(latte).at(0)(colors, cells[0]!);
+    const gone = dissolveOut(curve(2, 1), 0).effect(latte).at(2)(colors, cells[0]!);
     expect([arriving.fg.hex, arriving.bg.hex, gone.fg.hex, gone.bg.hex]).toEqual([ground, ground, ground, ground]);
   });
 
@@ -489,7 +491,7 @@ describe("the transitions run start to end", () => {
     const effect = dissolveOut(dissolve, 0).effect;
     const wide: EffectCell[] = Array.from({ length: 120 }, (_, col) => ({ row: 0, col, seed: 0, terminal: written, reverse: false, anchor: undefined }));
     const of = { ...NOTHING, cells: () => wide };
-    const shown = (cell: EffectCell, t: number): number => distance(effect(t, of)(colors, cell).fg, terminalGround);
+    const shown = (cell: EffectCell, t: number): number => distance(effect(of).at(t)(colors, cell).fg, terminalGround);
     const risen = wide.filter((cell) => {
       const series = Array.from({ length: 600 }, (_, i) => shown(cell, i * 0.05));
       return series.some((v, i) => i > 0 && v - series[i - 1]! > 0.002);
@@ -498,8 +500,8 @@ describe("the transitions run start to end", () => {
     expect(risen.length).toBeGreaterThan(5);
     expect(risen.length).toBeLessThan(wide.length * 0.8);
     // Every cell rises from the first, whole, to the last, gone.
-    for (const cell of wide) expect(sameColor(effect(dissolve.seconds, of)(colors, cell).fg, terminalGround)).toBe(true);
-    for (const cell of wide) expect(sameColor(effect(0, of)(colors, cell).fg, ink)).toBe(true);
+    for (const cell of wide) expect(sameColor(effect(of).at(dissolve.seconds)(colors, cell).fg, terminalGround)).toBe(true);
+    for (const cell of wide) expect(sameColor(effect(of).at(0)(colors, cell).fg, ink)).toBe(true);
   });
 
   /** Draws a frame on a terminal whose ground a transition leaves to or arrives from. */
@@ -545,14 +547,12 @@ describe("the transitions run start to end", () => {
     // What the glyph, ten cells in, is drawn in: the padding's bytes move too, with nothing in them to see.
     const glyph = (t: number): string => {
       let drawn = "";
-      const reading: Effect = (at, frame) => {
-        const moved = effect(at, frame);
-        return (colors, cell) => {
+      const reading: Effect = (frame) =>
+        Animation.map(effect(frame), (moved): EffectFrame => (colors, cell) => {
           const out = moved(colors, cell);
           if (cell.col === 10) drawn = `${out.fg.hex}/${out.bg.hex}`;
           return out;
-        };
-      };
+        });
       draw(element, reading, t);
       return drawn;
     };
@@ -564,7 +564,7 @@ describe("the transitions run start to end", () => {
     const placed = (n: number): EffectCell[] => Array.from({ length: n }, (_, col) => ({ row: 0, col, seed: 0, terminal: written, reverse: false, anchor: undefined }));
     const [narrow, wide] = [placed(3), placed(12)];
     // The element gains its other columns halfway through; its first three are read throughout.
-    const shown = (t: number): number[] => narrow.map((cell) => distance(effect(t, { ...NOTHING, cells: () => (t < 10 ? narrow : wide) })(colors, cell).fg, terminalGround));
+    const shown = (t: number): number[] => narrow.map((cell) => distance(effect({ ...NOTHING, cells: () => (t < 10 ? narrow : wide) }).at(t)(colors, cell).fg, terminalGround));
     const series = Array.from({ length: 81 }, (_, i) => shown(i * 0.25));
     for (const [i, now] of series.entries()) {
       for (const [col, v] of now.entries()) if (i > 0) expect(v).toBeGreaterThanOrEqual(series[i - 1]![col]! - 1e-9);
@@ -578,9 +578,9 @@ describe("the transitions run start to end", () => {
     const late = grown[5]!;
     const { effect } = fadeIn(curve(20, 1), z);
     // Handed while blank, listed by no frame yet.
-    effect(2, { ...NOTHING, cells: () => narrow })(colors, late);
+    effect({ ...NOTHING, cells: () => narrow }).at(2)(colors, late);
     const fresh = fadeIn(curve(20, 1), z).effect;
-    expect(effect(8, { ...NOTHING, cells: () => grown })(colors, late).fg.hex).toBe(fresh(8, { ...NOTHING, cells: () => grown })(colors, late).fg.hex);
+    expect(effect({ ...NOTHING, cells: () => grown }).at(8)(colors, late).fg.hex).toBe(fresh({ ...NOTHING, cells: () => grown }).at(8)(colors, late).fg.hex);
   });
 
   it("swing below 1 stops short of invisible", () => {
@@ -623,7 +623,7 @@ describe("a curve is checked when its effect is made", () => {
   it("a loop's field past 1, from an ease that overshoots, is drawn at full strength and no further", () => {
     const loop: Loop = { touch: light(sun), field: () => () => 1.3 };
     const full: Loop = { touch: light(sun), field: () => () => 1 };
-    expect(onInk(loop)(0, NOTHING)(colors, cells[0]!)).toEqual(onInk(full)(0, NOTHING)(colors, cells[0]!));
+    expect(onInk(loop)(NOTHING).at(0)(colors, cells[0]!)).toEqual(onInk(full)(NOTHING).at(0)(colors, cells[0]!));
   });
 });
 
@@ -756,7 +756,7 @@ describe("a cell under light still reads", () => {
     for (const { fg, bg, terminal } of pairs) {
       const floor = Math.min(contrastRatio(fg, bg), AA);
       for (let w = 0; w <= 1; w += 0.05) {
-        const lit = effect(w, drawn)({ fg, bg }, { ...cells[0]!, terminal });
+        const lit = effect(drawn).at(w)({ fg, bg }, { ...cells[0]!, terminal });
         expect(contrastRatio(lit.fg, lit.bg)).toBeGreaterThanOrEqual(floor - 0.02);
       }
     }

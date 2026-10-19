@@ -23,6 +23,7 @@ import { NULL_STYLE, type Style } from "../../src/core/style.js";
 import type { StyledRenderable } from "../../src/core/strip.js";
 import {
   Align,
+  Animation,
   Columns,
   Constrain,
   DEFAULT_TERMINAL_THEME,
@@ -50,6 +51,7 @@ import {
   Traceback,
   Tree,
   Viewport,
+  type EffectFrame,
 } from "../../src/index.js";
 import {
   Button,
@@ -94,7 +96,7 @@ const ROWS: Record<string, Row> = {
   Constrain: { holds: "probes", make: (p) => new Constrain(p("a"), 20) },
   Effected: {
     holds: "probes",
-    make: (p) => new Effected(p("a"), () => (c) => c, { t: 0, key: "probe", theme: DEFAULT_TERMINAL_THEME }),
+    make: (p) => new Effected(p("a"), () => Animation.constant<EffectFrame>((c) => c), { t: 0, key: "probe", theme: DEFAULT_TERMINAL_THEME }),
   },
   Align: { holds: "probes", make: (p) => new Align(p("a")) },
   Padding: { holds: "probes", make: (p) => new Padding(p("a"), 1) },

@@ -34,7 +34,7 @@ describe("frames in a template", () => {
       const fragments = compiled({});
       expect(fragments).toHaveLength(1);
       expect(renderToString(RichText.fromFragments(fragments), { width: 10 })).toBe(
-        renderToString(new FrameSequence(chevrons).text(t), { width: 10 }),
+        renderToString(new FrameSequence(chevrons).at(t), { width: 10 }),
       );
     }
   });
