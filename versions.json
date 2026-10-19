@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-488",
-      "ref": "refs/pull/488/merge",
-      "sha": "4fb9bd77163a1dd21f845f34445d2b8b19f124b0",
-      "timestamp": "2026-10-19T18:10:30.278Z",
-      "commits": [
-        {
-          "sha": "4fb9bd77163a1dd21f845f34445d2b8b19f124b0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T18:09:03Z",
-          "message": "Merge 137f053d6fd3be8bf5e579ac7b09377161080328 into 69219f4b28141b668966b8cba625d70c65ae88b3\n"
-        },
-        {
-          "sha": "137f053d6fd3be8bf5e579ac7b09377161080328",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T12:08:56-06:00",
-          "message": "A scroll's frame carries the soonest change of all its content, and draws content of no width (rich-animation-42lg.re8)\n\nEscalation review (high) of PR #488: the left-of-window filter missed rows above\nand below and cells to the right, and leaked combining marks; content of natural\nwidth 0 was held at maxWidth 0 and drew no stamp.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "09efcdb43927a20b0826b7bbd230f2b4f371b16e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T12:01:28-06:00",
-          "message": "A scroll keeps a cell-less frame's change stamp left of its window; the demo's slide comes from the left as it says (rich-animation-42lg.re8)\n\nReview (medium) of PR #488.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "25d707e3456123bd1243e181b311a27bbc64b693",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T11:54:34-06:00",
-          "message": "A scroll draws its content at its natural width, crops to its room, and refuses a non-finite offset; one stamped frame (rich-animation-42lg.re8)\n\nReview (high) of PR #488: content drawn at maxWidth Infinity threw on a Rule;\nthe slot spilled past a narrower room; a NaN offset drew a blank slot.\nLifecycleFrame folded into frameAt's Stamped, so the stamp wrapper has one copy.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "f56aa62129509ffa943ffb9d5083cfd73d37378c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T11:40:22-06:00",
-          "message": "A window over wider content moves with time: scroll, marquee and slide (rich-animation-42lg.re8)\n\nscroll(content, { width, height, col, row }) is an Animation<Renderable>\nof a fixed slot over content drawn at its natural size, each offset an\nAnimation<number>. frameAt now draws any renderable's animation with its\ncells stamped at the host's time.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "69219f4b28141b668966b8cba625d70c65ae88b3",
-      "timestamp": "2026-10-19T17:28:10.695Z",
+      "sha": "4243346c52c64c49f3b253bcd07221ba490f85ed",
+      "timestamp": "2026-10-19T18:23:11.401Z",
       "commits": [
         {
-          "sha": "69219f4b28141b668966b8cba625d70c65ae88b3",
+          "sha": "4243346c52c64c49f3b253bcd07221ba490f85ed",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T11:26:32-06:00",
-          "message": "An element enters, stays, leaves, and the host knows when it is gone (rich-animation-42lg.588) (#487)\n\n* An element enters, stays, leaves, and the host knows when it is gone (rich-animation-42lg.588)\n\nlifecycle(element, { enter, exit, key, theme }, entered) is an Animation<Renderable> on the host's clock; leave(at) tells it to leave and gone(t) says when to drop it. Every boundary is read through the transition's own done, carried onto host time by firstReaching. Transition gains seconds.\n\n* A lifecycle's frame says when it changes even with no cells; Transition loses seconds (rich-animation-42lg.588)\n\nBefore it entered the frame had no cell to carry its stamp, so a function view never woke to show it arrive; the stamp now also rides a zero-width cell. doneAt searches from the start, so Transition no longer carries a seconds that could disagree with done."
+          "timestamp": "2026-10-19T12:21:17-06:00",
+          "message": "A window over wider content moves with time: scroll, marquee and slide (rich-animation-42lg.re8) (#488)\n\n* A window over wider content moves with time: scroll, marquee and slide (rich-animation-42lg.re8)\n\nscroll(content, { width, height, col, row }) is an Animation<Renderable>\nof a fixed slot over content drawn at its natural size, each offset an\nAnimation<number>. frameAt now draws any renderable's animation with its\ncells stamped at the host's time.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A scroll draws its content at its natural width, crops to its room, and refuses a non-finite offset; one stamped frame (rich-animation-42lg.re8)\n\nReview (high) of PR #488: content drawn at maxWidth Infinity threw on a Rule;\nthe slot spilled past a narrower room; a NaN offset drew a blank slot.\nLifecycleFrame folded into frameAt's Stamped, so the stamp wrapper has one copy.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A scroll keeps a cell-less frame's change stamp left of its window; the demo's slide comes from the left as it says (rich-animation-42lg.re8)\n\nReview (medium) of PR #488.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A scroll's frame carries the soonest change of all its content, and draws content of no width (rich-animation-42lg.re8)\n\nEscalation review (high) of PR #488: the left-of-window filter missed rows above\nand below and cells to the right, and leaked combining marks; content of natural\nwidth 0 was held at maxWidth 0 and drew no stamp.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
