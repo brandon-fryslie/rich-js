@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-491",
+      "ref": "refs/pull/491/merge",
+      "sha": "0d12caedb4c508b4fff8da6e16e07127a6cace44",
+      "timestamp": "2026-10-19T20:43:06.410Z",
+      "commits": [
+        {
+          "sha": "0d12caedb4c508b4fff8da6e16e07127a6cace44",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T14:41:03-06:00",
+          "message": "Merge ebfd4a7872aa41c21970fa36e50ebc03351b551d into f2addf714f39c64f144079ba616c271ce47c3bca\n"
+        },
+        {
+          "sha": "ebfd4a7872aa41c21970fa36e50ebc03351b551d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T14:40:51-06:00",
+          "message": "A Tree child that draws no rows takes no place among its siblings' guides (rich-animation-42lg.8qh)\n\nThe walk now draws each label before it chooses the branch, so the last\nchild that draws a row ends it. A label yielding only carriers (a frameAt\nframe of no cells) draws no row and still passes its nextChange on.\nmeasure and contents read the same walk.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f2addf714f39c64f144079ba616c271ce47c3bca",
