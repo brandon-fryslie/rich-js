@@ -61,7 +61,7 @@ describe("parseBlocks", () => {
     expect(selectedBlock(jumpToParent(state))).toMatchObject({ kind: "tool-call", toolUseId: "t1" });
   });
 
-  it("joins a message across a record written between its records, hidden records shown or not", () => {
+  it("joins a message across a hidden record written between its records, hidden records shown or not", () => {
     const read = lines([
       part("a1", { type: "thinking", thinking: "check the branch" }, "tool_use"),
       { type: "attachment", uuid: "g1", parentUuid: "a1", attachment: { type: "goal_status", met: false } },
@@ -76,19 +76,21 @@ describe("parseBlocks", () => {
     }
   });
 
-  it("joins a message whose calls ran while it streamed: each call's result lands between them", () => {
-    const blocks = parseBlocks(lines([
+  it("keeps a message's records apart when a drawn record was written between them, in the order they were written", () => {
+    const read = lines([
       part("a1", { type: "tool_use", id: "t1", name: "Skill", input: { skill: "laws:code" } }, "tool_use"),
       { type: "user", uuid: "r1", parentUuid: "a1", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "t1", content: "Launching skill" }] } },
       { type: "user", uuid: "m1", parentUuid: "r1", isMeta: true, message: { role: "user", content: [{ type: "text", text: "Base directory for this skill" }] } },
+      { type: "progress", uuid: "g1", parentUuid: "m1" },
       part("a2", { type: "tool_use", id: "t2", name: "Bash", input: { command: "ls" } }, "tool_use", "m1"),
       { type: "user", uuid: "r2", parentUuid: "a2", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "t2", content: "a.ts" }] } },
-    ]));
-    expect(blocks).toMatchObject([
-      { kind: "tool-call", toolUseId: "t1", result: "Launching skill" },
-      { kind: "tool-call", toolUseId: "t2", result: "a.ts" },
-      { kind: "human", isMeta: true },
     ]);
+    expect(parseBlocks(read)).toMatchObject([
+      { kind: "tool-call", toolUseId: "t1", result: "Launching skill" },
+      { kind: "human", uuid: "m1", isMeta: true },
+      { kind: "tool-call", toolUseId: "t2", result: "a.ts" },
+    ]);
+    expect(parseBlocks(read, { showHidden: true }).map((block) => block.kind)).toEqual(["tool-call", "human", "record", "tool-call"]);
   });
 
   it("reads a call to the Agent tool, and to its old name Task, as a subagent", () => {
