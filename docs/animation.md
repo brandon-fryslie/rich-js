@@ -239,6 +239,32 @@ for (const t of [0, 0.5, 1, 2, 3.5, 4]) {
 
 A list whose items come and go is the lifecycles it holds, each dropped once it is gone. Laid out together, as `Animation.all(items)` mapped to a `Group`, the list says when it changes as the soonest of its items does. To watch a log whose lines arrive and leave, run `npm run lifecycle` in a checkout of this repository.
 
+## Scroll, marquee and slide
+
+A long line panning across a fixed width, a log tail stepping down, a panel sliding into place: each is a window over content wider or taller than its slot, with the content's offset in the slot moving with time. `scroll(content, { width, height, col, row })` is that window as an `Animation` of what it draws. `col` is how many cells of the content sit left of the slot, and `row` how many rows sit above it. Each is an `Animation<number>`, 0 when not given, and is rounded to the nearest cell. A marquee, a scroll and a slide are the same window with a different offset handed in: a looping phase across a span, a beat, or a tween to 0.
+
+The window is its slot. It measures as its width and draws exactly its rows of its width at every offset, cropped only to a narrower room it is given, so nothing beside it moves. An offset before or past the content shows blank cells instead of stopping at an edge, which is how a marquee enters from the right and a slide-in arrives from outside the slot. The content is drawn at its own natural width and length. Content that should wrap to the slot instead goes in a `Constrain` of the slot's width, and so does content with no natural width of its own, such as a `Rule`, which fills whatever it is given; the scroll refuses that content by name rather than draw it at an unbounded width. An offset that is not a finite number is refused the same way. A wide glyph cut by an edge is blanked, never halved, and each cell keeps its anchor in the content, so hit-testing finds its owner through a moving window. When it next changes is when either offset does: every frame while a marquee runs, on each beat of a stepped scroll, and never once a slide-in has arrived. A frame it draws also carries the soonest change of anything in its content, shown or not, because an element entering above the slot moves every row in it.
+
+```typescript
+import { Animation, EASES, Phase, RichText, cellLen, scroll, tween } from "@promptctl/rich-js";
+
+const news = "every motion is one Animation ·";
+const marquee = scroll(new RichText(news, { style: "bold yellow" }), {
+  width: 16,
+  height: 1,
+  col: Animation.continuous((t) => Phase.loop(4)(t) * (cellLen(news) + 16) - 16),
+});
+const slide = scroll(new RichText("arrived", { style: "green" }), { width: 16, height: 1, col: tween(-16, 0, { seconds: 1, ease: EASES["ease-out"] }) });
+
+for (const t of [0, 0.5, 1, 2, 3]) {
+  console.print(marquee.at(t));
+  console.print(slide.at(t));
+  console.print(`t=${t}s  slide next change ${slide.nextChange(t) === t ? "every frame" : "never"}`);
+}
+```
+
+Drawn inside a function view, a scroll's frame says when it changes through `frameAt(animation, t)`, which stamps its cells with the animation's `nextChange` at the host's time. To watch a marquee, a log tail and a slide-in, run `npm run scroll` in a checkout of this repository.
+
 ## Playback: a timeline
 
 Because every animation is a pure function of its time, pausing, reversing, scrubbing and speeding one up are not things done to the animation: they are a change in which time it is asked for. A `Timeline` is that map from the host's clock to animation time, as a value — an animation time at a host time and a rate in animation seconds per host second, or, paused, one animation time at every host time. Every operation takes a timeline and a host time and gives a timeline back, so a paused timeline resumed later maps the moment it resumes to the time it froze at, and nothing here reads a clock.

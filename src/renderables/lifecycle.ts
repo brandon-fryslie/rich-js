@@ -25,13 +25,11 @@
 import type { Animation } from "../core/animation.js";
 import type { TerminalTheme } from "../core/color.js";
 import { firstReaching } from "../core/easing.js";
-import { Measurement } from "../core/measure.js";
-import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
-import { render } from "../core/protocol.js";
-import { Segment } from "../core/segment.js";
+import type { Measurable, Renderable } from "../core/protocol.js";
 import { Style } from "../core/style.js";
 import { Effected } from "./effect.js";
 import type { Transition } from "./effects.js";
+import { Stamped } from "./frames.js";
 
 /** How an element arrives and leaves, and what it is drawn on. */
 export interface LifecycleOptions {
@@ -94,9 +92,13 @@ function life(element: Renderable, options: LifecycleOptions, entered: number, l
   return {
     entered,
     left,
+    // The frame says when it next changes itself: with no colour output an
+    // `Effected` hands its child's cells back unstamped, and the cut from
+    // leaving to gone changes no colour, so a host drawing it inside a
+    // function view would otherwise never wake for it.
     at(t) {
       const { frame, next } = phase(t);
-      return new LifecycleFrame(frame, next);
+      return new Stamped(frame, new Style({ nextChange: next }));
     },
     nextChange: (t) => phase(t).next,
     lastChange: (t) => phase(t).last,
@@ -107,33 +109,4 @@ function life(element: Renderable, options: LifecycleOptions, entered: number, l
       return life(element, options, entered, at);
     },
   };
-}
-
-/**
- * A lifecycle's frame: what it draws, its cells stamped with when it next
- * changes. With no colour output an `Effected` hands its child's cells back
- * unstamped, and the cut from leaving to gone changes no colour, so the frame
- * says it itself or a host drawing it inside a function view never wakes for it.
- * Before it entered there are no cells to stamp, so the stamp also rides a
- * cell of no width, which writes no byte.
- */
-class LifecycleFrame implements Renderable, Measurable, Composite {
-  constructor(
-    readonly frame: Renderable,
-    readonly nextChange: number,
-  ) {}
-
-  *render(options: RenderOptions): Iterable<Segment> {
-    const stamp = new Style({ nextChange: this.nextChange });
-    yield new Segment("", stamp);
-    yield* Segment.applyStyle(render(this.frame, options), stamp);
-  }
-
-  *contents(): Iterable<Renderable> {
-    yield this.frame;
-  }
-
-  measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return Measurement.get(options, this.frame);
-  }
 }
