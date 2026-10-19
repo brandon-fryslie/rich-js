@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-485",
-      "ref": "refs/pull/485/merge",
-      "sha": "9660a2c65ebb15878ef0b8fc79ab2435f5106b8b",
-      "timestamp": "2026-10-19T15:40:22.560Z",
-      "commits": [
-        {
-          "sha": "9660a2c65ebb15878ef0b8fc79ab2435f5106b8b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T15:37:53Z",
-          "message": "Merge fd286646fefbbbb63d34339526d56ff5108083a9 into ff9aa9bd76e6c9cb2c49daba84f3d30d67b70cdf\n"
-        },
-        {
-          "sha": "fd286646fefbbbb63d34339526d56ff5108083a9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T09:37:45-06:00",
-          "message": "A gradient's colours are parsed when it is made, and Animation.all keeps each value's type (rich-animation-42lg.ptj)\n"
-        },
-        {
-          "sha": "697c22044b4f68fef4f4315a7cdedaebeccb4e81",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T09:27:28-06:00",
-          "message": "A playground program imports only what it reaches (rich-animation-42lg.ptj)\n\neffects.ts's new imports (Style, ColorRamp) were copied into every program,\npushing the editable constants under the editor's drawn lines and failing the\nplayground's e2e specs. Programs now keep the import names their reached\ndeclarations use, one line per module.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "9b369e5a4126d67d41b81bec7d0d048b5d156215",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T09:18:48-06:00",
-          "message": "A colour ramp moves: scrolls along its span and rotates its hue (rich-animation-42lg.ptj)\n\nColorRamp carries scroll (spans) and hue (turns), wrapped into [0, 1) in the\nconstructor; unmoved, every read is exactly what it was. ramp.moving({ scroll,\nhue }) is an Animation<ColorRamp> built from Animation.all and map, so a loop\nmoves every frame and a ramp a tween settles never changes again.\n\ngradient(ramp, colors?) lays an Animation<ColorRamp> across what an element\ndraws: each lit cell's ink is the ramp's colour at its column, written through\nlegibleInks, now the one path for an ink of the caller's choosing (steppedInk\nshares it). Lit colours are named as a style names them and matched as the\nscreen shows them at the frame's depth. stillOnSlots holds it still at sixteen\ncolours. Below truecolor which palette colours read on a pair is settled once\nper pair, which took an 80-wide panel at 256 colours from 16 ms to 1.5 ms a\nframe.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "ff9aa9bd76e6c9cb2c49daba84f3d30d67b70cdf",
-      "timestamp": "2026-10-19T14:52:09.565Z",
+      "sha": "f7e79321c380fabf3b499a21087952caa9cd8c26",
+      "timestamp": "2026-10-19T16:19:28.245Z",
       "commits": [
         {
-          "sha": "ff9aa9bd76e6c9cb2c49daba84f3d30d67b70cdf",
+          "sha": "f7e79321c380fabf3b499a21087952caa9cd8c26",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T08:50:39-06:00",
-          "message": "An effect moves a cell's attributes, not only its colours (rich-animation-42lg.0wr) (#484)\n\n* An effect moves a cell's attributes, not only its colours (rich-animation-42lg.0wr)\n\nAn effect's frame maps a cell's look — its colours and its text attributes,\nall but reverse — rather than its colours alone, so confined, onBeat,\nAnimation.all and nesting take an attribute effect with no second copy.\nEffected cuts a run where the attributes change too, and a cell whose look\ncomes back as drawn is still written byte for byte as it was.\n\nblink(spec) sets an attribute on the second hold of a two-hold beat; the\ncatalogue's new attributes section makes a blink (conceal) and a bold pulse\nfrom it. Style gains attributes / withAttributes.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* An effect moves only the attributes a look names (review: rich-animation-42lg.0wr)\n\nwithAttributes reads ATTRIBUTE_NAMES off its argument; Effected picks the\nlook's attributes through cellAttributes, the one place reverse is left out,\nand skips the extra Style when a run's attributes are the segment's own.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A frame that returns no attributes is refused, naming the look it owes (review: rich-animation-42lg.0wr)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-10-19T10:17:27-06:00",
+          "message": "A colour ramp moves: scrolls along its span and rotates its hue (rich-animation-42lg.ptj) (#485)\n\n* A colour ramp moves: scrolls along its span and rotates its hue (rich-animation-42lg.ptj)\n\nColorRamp carries scroll (spans) and hue (turns), wrapped into [0, 1) in the\nconstructor; unmoved, every read is exactly what it was. ramp.moving({ scroll,\nhue }) is an Animation<ColorRamp> built from Animation.all and map, so a loop\nmoves every frame and a ramp a tween settles never changes again.\n\ngradient(ramp, colors?) lays an Animation<ColorRamp> across what an element\ndraws: each lit cell's ink is the ramp's colour at its column, written through\nlegibleInks, now the one path for an ink of the caller's choosing (steppedInk\nshares it). Lit colours are named as a style names them and matched as the\nscreen shows them at the frame's depth. stillOnSlots holds it still at sixteen\ncolours. Below truecolor which palette colours read on a pair is settled once\nper pair, which took an 80-wide panel at 256 colours from 16 ms to 1.5 ms a\nframe.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A playground program imports only what it reaches (rich-animation-42lg.ptj)\n\neffects.ts's new imports (Style, ColorRamp) were copied into every program,\npushing the editable constants under the editor's drawn lines and failing the\nplayground's e2e specs. Programs now keep the import names their reached\ndeclarations use, one line per module.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A gradient's colours are parsed when it is made, and Animation.all keeps each value's type (rich-animation-42lg.ptj)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
