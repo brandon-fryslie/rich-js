@@ -48,7 +48,7 @@
  * what the child drew.
  */
 
-import type { Animation } from "../core/animation.js";
+import { Animation } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { Measurement } from "../core/measure.js";
 import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
@@ -57,7 +57,7 @@ import { Segment } from "../core/segment.js";
 import { stampFrame } from "./frames.js";
 import { shownAt } from "../core/view.js";
 import { finiteTime } from "../core/easing.js";
-import { stripControlChars } from "../core/text.js";
+import { stripControlChars, type RichText } from "../core/text.js";
 import { cellSeed, walkGlyphs, type Moved, type Placed } from "./effect.js";
 
 /**
@@ -129,16 +129,10 @@ export class Reglyphed implements Renderable, Measurable, Composite {
   /** The frame the effect draws at `t`, and when it says that next changes. */
   protected moved(options: RenderOptions): Moved {
     const segments = [...render(this.renderable, options)];
-    let index = 0;
-    // Each segment's glyphs, each with its cell as the effect is handed it: one walk, one count of reading order.
-    const placed = walkGlyphs(segments).map((glyphs) =>
-      glyphs.map(({ glyph, cell }) => ({ glyph, cell: cell && { ...cell, glyph, index: index++, seed: cellSeed(this.key, cell.row, cell.col) } })),
-    );
-    const cells = placed.flatMap((glyphs) => glyphs.flatMap(({ cell }) => (cell === undefined ? [] : [cell])));
+    const { placed, cells } = placeGlyphs(segments, this.key);
     const animation = this.effect({ cells, asciiOnly: options.asciiOnly === true });
     const { value: frame, nextChange } = shownAt(animation, this.t, options);
-    const shown = placed.map((glyphs) => glyphs.map(({ glyph, cell }) => (cell === undefined ? glyph : shows(frame, cell))));
-    standsApart(placed.flat(), shown.flat());
+    const shown = showGlyphs(placed, frame);
     const changed = segments.map((segment, i) =>
       shown[i]!.every((text, j) => text === placed[i]![j]!.glyph) ? segment : new Segment(shown[i]!.join(""), segment.style),
     );
@@ -164,6 +158,70 @@ export class GlyphEffected extends Reglyphed {
     const { segments, nextChange } = this.moved(options);
     return stampFrame(segments, nextChange);
   }
+}
+
+/** A glyph of what was drawn, and its cell as an effect is handed it; a line break has none. */
+type PlacedGlyph = { readonly glyph: string; readonly cell: GlyphCell | undefined };
+
+/**
+ * Each segment's glyphs, each with its cell as the effect is handed it, and
+ * every cell in reading order. [LAW:one-source-of-truth] One walk, one count
+ * of reading order, for a rendered frame and a text alike.
+ */
+function placeGlyphs(segments: readonly Segment[], key: string): { placed: PlacedGlyph[][]; cells: GlyphCell[] } {
+  let index = 0;
+  const placed = walkGlyphs(segments).map((glyphs) =>
+    glyphs.map(({ glyph, cell }) => ({ glyph, cell: cell && { ...cell, glyph, index: index++, seed: cellSeed(key, cell.row, cell.col) } })),
+  );
+  return { placed, cells: placed.flatMap((glyphs) => glyphs.flatMap(({ cell }) => (cell === undefined ? [] : [cell]))) };
+}
+
+/** What `frame` shows for each placed glyph, held to the contract (`shows`, `standsApart`). */
+function showGlyphs(placed: readonly (readonly PlacedGlyph[])[], frame: GlyphFrame): string[][] {
+  const shown = placed.map((glyphs) => glyphs.map(({ glyph, cell }) => (cell === undefined ? glyph : shows(frame, cell))));
+  standsApart(placed.flat(), shown.flat());
+  return shown;
+}
+
+/**
+ * `text` with its glyphs passed through `effect`, before any render: the
+ * glyph half of a template fragment (`../template-bindings/animation-funcs.ts`),
+ * which is spliced into a line and drawn under a theme it does not know yet,
+ * so it cannot be rendered to cells first as `Reglyphed` renders its child.
+ * The cells are the text's own lines, at its own columns; the contract is
+ * the one `Reglyphed` is held to, through the same checks. The text keeps
+ * its every style and span, each moved to where its glyphs now sit, and a
+ * frame that changes nothing hands the text back as it was. What it says of
+ * when it changes is the effect's, unstamped: whoever draws it at a time
+ * stamps it (`textFrameAt`).
+ */
+export function reglyphText(text: RichText, effect: GlyphEffect, options: { readonly key: string; readonly asciiOnly: boolean }): Animation<RichText> {
+  const { placed, cells } = placeGlyphs([new Segment(text.plain)], options.key);
+  return Animation.map(effect({ cells, asciiOnly: options.asciiOnly }), (frame) => rewritten(text, placed[0]!, showGlyphs(placed, frame)[0]!));
+}
+
+/**
+ * `text` with each of its `glyphs` written as `shown` says, every span moved
+ * with the glyphs it covers. An offset inside a glyph — a span edge between
+ * a letter and its mark — lands as far into the written glyph as it can.
+ */
+function rewritten(text: RichText, glyphs: readonly PlacedGlyph[], shown: readonly string[]): RichText {
+  if (shown.every((s, i) => s === glyphs[i]!.glyph)) return text;
+  // Where each glyph starts, before and after, with one more entry for the end.
+  const from = [0];
+  const to = [0];
+  glyphs.forEach(({ glyph }, i) => {
+    from.push(from[i]! + glyph.length);
+    to.push(to[i]! + shown[i]!.length);
+  });
+  const moved = (offset: number): number => {
+    let i = 0;
+    while (i + 1 < from.length && from[i + 1]! <= offset) i++;
+    return i === glyphs.length ? to[i]! : to[i]! + Math.min(offset - from[i]!, shown[i]!.length);
+  };
+  const result = text.blankCopy(shown.join(""));
+  for (const span of text.spans) result.stylize(span.style, moved(span.start), moved(span.end));
+  return result;
 }
 
 /** Line breaks and tabs, which `stripControlChars` leaves for a text's own lines and which no cell may hold. */
@@ -197,7 +255,7 @@ function shows(frame: GlyphFrame, cell: GlyphCell): string {
  * and wrong beside its neighbour. Only a changed text is asked, so a child
  * that splits a cluster across its own segments is drawn as it drew it.
  */
-function standsApart(placed: readonly { readonly glyph: string; readonly cell: GlyphCell | undefined }[], shown: readonly string[]): void {
+function standsApart(placed: readonly PlacedGlyph[], shown: readonly string[]): void {
   // A line break is no cell, and nothing joins across it.
   const beside = (j: number): string => (placed[j]?.cell === undefined ? "" : shown[j]!);
   shown.forEach((text, i) => {

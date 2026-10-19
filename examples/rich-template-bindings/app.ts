@@ -61,6 +61,7 @@ import type { TerminalHost } from "@promptctl/rich-js/host";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import {
   animationFuncs,
+  type AnimationFuncsOptions,
   richTextFuncs,
   createRichTextEngine,
   paletteFuncs,
@@ -141,14 +142,14 @@ function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<Rich
 // read when one is evaluated, never captured when it is built.
 let frameTime = 0;
 
-function makeAnimatedEngine(theme: TerminalTheme): Engine<RichText> {
+function makeAnimatedEngine(theme: TerminalTheme, options: AnimationFuncsOptions = {}): Engine<RichText> {
   return createEngine<RichText>({
     fromString: (s) => new RichText(s),
     toString: (rt) => rt.plain,
     funcs: {
       ...richTextFuncs(),
       ...paletteFuncs(() => theme.palette),
-      ...animationFuncs(() => frameTime),
+      ...animationFuncs(() => frameTime, options),
     },
   });
 }
@@ -156,6 +157,8 @@ function makeAnimatedEngine(theme: TerminalTheme): Engine<RichText> {
 const gruvboxEngine    = makeEngine(GRUVBOX);
 const gruvbox256Engine = makeEngineDrawnAt(GRUVBOX, ColorDepth.EIGHT_BIT);
 const animatedEngine   = makeAnimatedEngine(TOKYO_NIGHT);
+// The same functions told the reader wants no motion: every animation drawn reduced.
+const reducedEngine    = makeAnimatedEngine(TOKYO_NIGHT, { reducedMotion: true });
 const tokyoEngine      = makeEngine(TOKYO_NIGHT);
 const gruvboxCalcEngine = makeCalculatorEngine(GRUVBOX);
 
@@ -325,10 +328,11 @@ function buildRowSegments(
   input: TextInput,
   label: string,
   engine: Engine<RichText>,
+  scope: () => unknown,
   options: RenderOptions,
 ): Segment[] {
   const outputRenderable: Renderable = {
-    render: (opts) => renderTemplate(engine, input.value, {}, opts),
+    render: (opts) => renderTemplate(engine, input.value, scope(), opts),
   };
   const borderStyle = input.focused ? cyanStyle : dimStyle;
 
@@ -352,7 +356,7 @@ interface DemoRow {
   spacer: StaticItem;
 }
 
-function makeDemoRow(label: string, template: string, engine: Engine<RichText>): DemoRow {
+function makeDemoRow(label: string, template: string, engine: Engine<RichText>, scope: () => unknown = () => ({})): DemoRow {
   const input = new TextInput({
     value: template,
     id: uid("ti"),
@@ -364,7 +368,7 @@ function makeDemoRow(label: string, template: string, engine: Engine<RichText>):
   });
   const combinedItem = new StaticItem({
     id: uid("row"),
-    render: (opts) => buildRowSegments(input, label, engine, opts),
+    render: (opts) => buildRowSegments(input, label, engine, scope, opts),
   });
 
   return { combinedItem, input, spacer: makeSpacerItem() };
@@ -629,11 +633,46 @@ const secFrames = makeSection("Frames — content on a beat, drawn for the frame
   makeDemoRow("stepped colour, kept readable", SIGNAL_TMPL, animatedEngine),
 ]);
 
+// ─── §6 — Motion (tween, loop, glyphs) ─────────────────────────────────────
+//
+// `tween <seconds> <ease> <start> <from> <to>` is a number on its way to a
+// target and `loop <seconds> <start>` the way through a period, each from a
+// moment the template names; both are numbers, so a `$` variable carries
+// either into `ramp`, and a ramp read at a moving number is a moving colour.
+// `glyphs <name> <start>` runs a glyph effect over the piped fragment. Here
+// every row's `.since` is the start of the current four-second cycle, the
+// way a statusline's state would say when its value last changed.
+
+const TWEEN_TMPL =
+`{{- $muted := "dim" -}}
+{{- $pct := 85 | tween 0.8 "back-out" .since 20 -}}
+{{- $ink := ramp $pct "linear" 0 "success" 50 "warning" 100 "error" -}}
+{{ "context " | style $muted }}{{ "■■■" | fg $ink }} {{ printf "%3.0f%%" $pct | fg $ink | bold }}{{ " used" | style $muted }}`;
+
+// A loop started a step later per cell: the ramp's colours travel the row.
+const SCROLL_TMPL =
+`{{- define "cell" -}}{{- $p := loop 2 . -}}{{- $ink := ramp $p "linear" 0 "primary" 0.5 "accent" 1 "primary" -}}{{ "██" | fg $ink }}{{- end -}}
+{{ template "cell" 0 }}{{ template "cell" 0.15 }}{{ template "cell" 0.3 }}{{ template "cell" 0.45 }}{{ template "cell" 0.6 }}{{ template "cell" 0.75 }}`;
+
+const GLYPHS_TMPL =
+`{{- $muted := "dim" -}}
+{{ "deploying " | glyphs "typewriter" .since | bold }}{{ "watching " | glyphs "wave" 0 | style $muted }}{{ "resolved" | glyphs "scramble" .since | style $muted }}`;
+
+const cycle = (): { since: number } => ({ since: Math.floor(frameTime / 4) * 4 });
+
+const secMotion = makeSection("Motion — tween, loop and glyphs, from a moment the template names", [
+  makeDemoRow("a tween, read through a ramp", TWEEN_TMPL, animatedEngine, cycle),
+  makeDemoRow("a ramp scrolling", SCROLL_TMPL, animatedEngine, cycle),
+  makeDemoRow("glyph effects on fragments", GLYPHS_TMPL, animatedEngine, cycle),
+  makeDemoRow("the tween, reduced motion", TWEEN_TMPL, reducedEngine, cycle),
+  makeDemoRow("the glyphs, reduced motion", GLYPHS_TMPL, reducedEngine, cycle),
+]);
+
 // ─── Section list ──────────────────────────────────────────────────────────
 
-const SECTIONS: Section[] = [secPush, secThemeMatrix, secRamps, secColorValues, secFrames];
+const SECTIONS: Section[] = [secPush, secThemeMatrix, secRamps, secColorValues, secFrames, secMotion];
 
-const SECTION_NAMES = ["Push", "Theme Matrix", "Ramps", "Colour Values", "Frames"];
+const SECTION_NAMES = ["Push", "Theme Matrix", "Ramps", "Colour Values", "Frames", "Motion"];
 
 // ─── Always-visible header ─────────────────────────────────────────────────
 
@@ -679,11 +718,11 @@ export function runDemo(host: TerminalHost): DemoHandle {
     },
   });
 
-  // The frames section moves on its own, so the app ticks while it is on
-  // show and only then: every other section paints when a key changes it.
+  // The frames and motion sections move on their own, so the app ticks while
+  // one is on show and only then: every other section paints when a key changes it.
   let animating: (() => void) | undefined;
   const animateIf = (shown: Section): void => {
-    const wanted = shown === secFrames;
+    const wanted = shown === secFrames || shown === secMotion;
     if (wanted && animating === undefined) animating = app.animate();
     if (!wanted && animating !== undefined) {
       animating();

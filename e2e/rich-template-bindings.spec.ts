@@ -9,7 +9,7 @@ import { card, cardRows } from "./card-screen.js";
 
 const screen = async (page: Page) => (await cardRows(page)).join("\n");
 const LOADED = { timeout: 20_000 };
-const SECTIONS = ["Push — pipes", "Theme matrix —", "Ramps —", "Colour values —"];
+const SECTIONS = ["Push — pipes", "Theme matrix —", "Ramps —", "Colour values —", "Frames —", "Motion —"];
 
 test.beforeEach(async ({ page }) => {
   await page.goto("demos/rich-template-bindings.html");

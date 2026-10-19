@@ -119,6 +119,8 @@ for (const t of [0, 0.5, 1, 1.5, 2]) {
 }
 ```
 
+A template has a tween too, `tween`, and a colour tween is a ramp read at it ([Animating a template](/template-bindings#animating-a-template)).
+
 ## A ramp that moves
 
 A `ColorRamp` carries how far it has been moved: `scroll`, in spans, how far its colours have travelled along it from the first stop to the last, and `hue`, in turns, how far every colour is rotated round the OKLCH hue circle at its own lightness and chroma. Both are constructor arguments after the stops, and both default to 0. A scrolled ramp reads, inside its span, the colour that far behind, wrapped round as a repeating gradient. It has no seam when its first and last stops are one colour. Outside its span its end colours hold. Unmoved, every read is the ramp's own, stop colours byte for byte.
@@ -300,6 +302,8 @@ say("paused at 11.5", paused, 100);
 say("resumed at 100", Timeline.resume(paused, 100), 101);
 say("sought to 2.5", Timeline.seek(playing, 11.5, 2.5), 11.5);
 ```
+
+The template functions draw on a timeline the host hands in the same way, so pausing a template's animations is one value too ([Animating a template](/template-bindings#pausing-reversing-and-reduced-motion)).
 
 A `Spinner`'s `speed` is a timeline its frames run on, so a spinner drawn backwards at twice the speed with `drawnAt(t)` still says, on its cells, when it turns next on the host's clock.
 

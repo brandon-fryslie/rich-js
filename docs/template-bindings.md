@@ -41,7 +41,7 @@ The functions ship in two groups, split by exactly one question — does it need
 
 `paletteFuncs(getPalette)` is the two that do: `color`, which turns a palette variable name into a color, and `ramp`, whose stops are palette names. It is the only registration that knows a palette exists.
 
-A third, `animationFuncs(frameTime)`, answers a different question: what moment is the template drawn for? It registers `frames`, which draws the frame in progress at the time `frameTime()` reports when the template is evaluated, and `stepped`, the colour in progress at that time, a colour value like any other; a host that redraws on its own clock hands that clock's time in. `animationFuncs(frameTime, { reducedMotion: true })` draws both [reduced](/animation#reduced-motion), the first frame and the first colour at every moment. [Frames](/frames#in-a-template) shows both in use.
+A third, `animationFuncs(frameTime)`, answers a different question: what moment is the template drawn for? A host that redraws on its own clock hands that clock's time in, and `tween`, `loop`, `glyphs`, `frames` and `stepped` draw for it. [Animating a template](#animating-a-template) covers them.
 
 `createRichTextEngine()` wires up `richTextFuncs()` alone — it cannot supply a palette. Once you want theme colors, build the engine yourself and merge both maps:
 
@@ -243,6 +243,72 @@ console.print(RichText.fromFragments(compiled({})));
 An unknown name throws, carrying near-miss suggestions drawn from the live palette. In a template that surfaces as an evaluation error at the exact call site — the signal an author, or an agent editing a config file, needs in order to fix it.
 
 Passing a palette name where a color belongs is the other common slip, and it names its own fix. `darken "primary" 2` reports that `darken` expected a color and tells you to wrap it: `darken (color "primary") 2`.
+
+## Animating a template
+
+`animationFuncs(frameTime)` registers the functions that draw for a moment in time. The host owns the clock: `frameTime()` is read each time a template is evaluated, so a template compiled once shows each redraw's moment, and a host that redraws once a second sees the same thing at each of its frames as a host that redraws sixty times a second. Every duration is in seconds.
+
+- `tween <seconds> <ease> <start> <from> <to>` is a number eased from `from` to `to` over `seconds`, starting at the moment `start`, and held at `to` afterwards. The ease is any name in `EASES`, physics curves such as `"spring"` and `"back-out"` included. Pipe the target into it: `.pct | tween 0.4 "ease-out" .changedAt .was` eases from the old value to the new one, starting when your state says the value changed.
+- `loop <seconds> <start>` is the way through a period, rising from 0 towards 1 and starting again, measured from `start`. Give a row of cells starts a step apart and the same motion travels along the row.
+- `glyphs <name> <start>` passes the piped fragment through a [glyph effect](/animation#a-glyph-effect-text-typed-scrambled-and-rained-on), starting at `start`, with the catalogue's defaults. The names are `"typewriter"`, `"scramble"`, `"wave"`, `"rain"` and `"stars"`.
+- `frames` and `stepped` step through a sequence of fragments or colours ([Frames](/frames#in-a-template)).
+
+`tween` and `loop` return numbers, so they work anywhere a number does. Save one in a `$` variable and hand it to `ramp`: a ramp read at a tween is a colour tween, blended in OKLCH like every ramp, and a ramp read at a loop cycles through its colours. Here a context gauge eases to its new reading, its colour moving with it, while a label types itself in:
+
+```typescript
+import { createEngine } from "@promptctl/go-template-js";
+import { Console, RichText, GRUVBOX } from "@promptctl/rich-js";
+import { animationFuncs, paletteFuncs, richTextFuncs } from "@promptctl/rich-js/template-bindings";
+
+const console = new Console();
+let frameTime = 0;
+const engine = createEngine<RichText>({
+  fromString: (s) => new RichText(s),
+  toString: (rt) => rt.plain,
+  funcs: { ...richTextFuncs(), ...paletteFuncs(() => GRUVBOX.palette), ...animationFuncs(() => frameTime) },
+});
+
+const gauge = engine.compile(`{{- $muted := "dim" -}}
+{{- $pct := .pct | tween 0.6 "ease-out" .changedAt .was -}}
+{{- $ink := ramp $pct "linear" 0 "success" 50 "warning" 100 "error" -}}
+{{ "context " | glyphs "typewriter" .changedAt | style $muted }}{{ "■■■" | fg $ink }} {{ printf "%3.0f%%" $pct | fg $ink | bold }}{{ " used" | style $muted }}`);
+
+const state = { pct: 85, was: 20, changedAt: 10 };
+for (frameTime of [10, 10.2, 10.4, 10.6, 11, 12]) {
+  console.print(RichText.fromFragments(gauge(state)));
+}
+```
+
+The tween changes with every frame and the typewriter stops changing once the text is typed. A fragment says when it will next change: `frames` and `glyphs` mark each cell they draw with that moment, so a host that schedules redraws from it knows when to look again. A number or a colour has no cells to mark. A host already redraws a template on its own clock, since a template can change with your state too, so a cell coloured by a moving value is still drawn on time.
+
+### Pausing, reversing and reduced motion
+
+The second argument hands in what a template has no render options to tell it. `timeline` is a getter for the [timeline](/animation#playback-a-timeline) every function is drawn on. It defaults to the host's own clock. Return a paused timeline to freeze a session's animations, or a reversed one to run them backwards, with nothing recompiled; a frame drawn on a paused timeline says it will never change. `reducedMotion: true` draws every animation [reduced](/animation#reduced-motion): a tween jumps to its target when it starts, a loop holds at its start, and a typewriter shows its text whole. `asciiOnly: true` makes the glyphs an effect picks for itself, such as rain, ASCII:
+
+```typescript
+import { createEngine } from "@promptctl/go-template-js";
+import { Console, RichText, Timeline } from "@promptctl/rich-js";
+import { animationFuncs, richTextFuncs } from "@promptctl/rich-js/template-bindings";
+
+const console = new Console();
+let host = 0;
+let timeline = Timeline.play(0);
+const engine = createEngine<RichText>({
+  fromString: (s) => new RichText(s),
+  toString: (rt) => rt.plain,
+  funcs: { ...richTextFuncs(), ...animationFuncs(() => host, { timeline: () => timeline }) },
+});
+
+const spinner = engine.compile(`{{- $beat := 0.25 -}}
+{{ frames $beat "◐" $beat "◓" $beat "◑" $beat "◒" }} syncing`);
+
+const draw = (label: string) => console.print(`${label.padEnd(16)}`, RichText.fromFragments(spinner({})));
+for (host of [0, 0.25, 0.5]) draw(`playing ${host}s`);
+timeline = Timeline.pause(timeline, 0.5);
+for (host of [0.75, 5]) draw(`paused ${host}s`);
+timeline = Timeline.withRate(Timeline.resume(timeline, 5), 5, -1);
+for (host of [5.25, 5.5]) draw(`reversed ${host}s`);
+```
 
 ## Rendering to segments
 
