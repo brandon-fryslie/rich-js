@@ -720,6 +720,14 @@ It is a property of the terminal, not of any one renderable, so no renderable
 takes an option of its own for it. `renderToString` takes the same
 `asciiOnly` option, and so does an [`App`](./app).
 
+## Reduced motion
+
+`reducedMotion: true` draws every animation this console prints, and every
+frame of a `Live` drawn through it, at rest: a spinner on its first frame, a
+fade arrived, a typewriter done, and nothing asks to be drawn again. A
+terminal cannot report the preference, so the program hands it in;
+[Animation](/animation#reduced-motion) says what each kind rests at.
+
 ## Environment variables
 
 | Variable | Effect |

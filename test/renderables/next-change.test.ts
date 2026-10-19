@@ -158,6 +158,7 @@ describe("what a host reads off a frame: when it next changes", () => {
         at: (t) => (asked.push(`at ${t}`), (colors) => colors),
         nextChange: (t) => (asked.push(`nextChange ${t}`), t),
         lastChange: (t) => (asked.push(`lastChange ${t}`), t),
+        rest: () => (asked.push("rest"), (colors) => colors),
       };
     };
     [...lit(label, watching, 1).render(OPTIONS)];
@@ -168,7 +169,12 @@ describe("what a host reads off a frame: when it next changes", () => {
   it("the answer is made from the frame, so a composer may answer from what the inner effect says of it", () => {
     const stillUnder = (depth: ColorDepth): Effect => (drawn) => {
       const moving = drifting(drawn);
-      return { at: (t) => moving.at(t), nextChange: (t) => (drawn.depth === depth ? Number.POSITIVE_INFINITY : t), lastChange: (t) => moving.lastChange(t) };
+      return {
+        at: (t) => moving.at(t),
+        nextChange: (t) => (drawn.depth === depth ? Number.POSITIVE_INFINITY : t),
+        lastChange: (t) => moving.lastChange(t),
+        rest: () => moving.rest(),
+      };
     };
     expect(nextChangeOf(lit(label, stillUnder(ColorDepth.TRUECOLOR), 3))).toBe(Number.POSITIVE_INFINITY);
     expect(nextChangeOf(lit(label, stillUnder(ColorDepth.EIGHT_BIT), 3))).toBe(3);

@@ -434,6 +434,8 @@ export interface Beat {
    * (`./animation.ts`).
    */
   nextChange(t: number): number;
+  /** The hold a beat rests on, as a loop does at its first: 0. */
+  rest(): number;
 }
 
 /**
@@ -593,6 +595,7 @@ export function beat(holds: readonly number[]): Beat {
       const last = i === own.length - 1;
       return boundary("Beat.nextChange", pass(t, into) + (last ? 1 : 0), last ? 0 : i + 1, t);
     },
+    rest: () => 0,
   };
 }
 

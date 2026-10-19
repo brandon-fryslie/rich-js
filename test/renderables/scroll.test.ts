@@ -140,7 +140,7 @@ describe("scroll", () => {
 
   it("keeps a frame's word on when it changes when the frame has no cells at the window's left edge or before it", () => {
     const nothing: Renderable & Measurable = { render: () => [], measure: () => ({ minimum: 0, maximum: 0 }) };
-    const entering = frameAt({ at: () => nothing, nextChange: () => 5, lastChange: () => Number.NEGATIVE_INFINITY }, 0);
+    const entering = frameAt({ at: () => nothing, nextChange: () => 5, lastChange: () => Number.NEGATIVE_INFINITY, rest: () => nothing }, 0);
     const content = new Group(entering, new RichText("hello"), new RichText("world"), entering);
     expect(Segment.nextChange(draw(content))).toBe(5);
     for (const [col, row] of [[0, 0], [3, 0], [9, 0], [0, 2], [0, 3], [-9, 9]] as const) {
@@ -173,7 +173,7 @@ describe("scroll", () => {
   describe("drawn inside a function view through frameAt, on a nested timeline", () => {
     const host = Timeline.play(0);
     const drawn = (timeline: Timeline, animation: Animation<Renderable>, t: number) =>
-      drawView(hostView((time: number) => new Group(frameAt(Timeline.run(timeline, animation), time))), host, t, (r) => Segment.splitLines(draw(r)));
+      drawView(hostView((time: number) => new Group(frameAt(Timeline.run(timeline, animation), time))), host, t, OPTIONS, (r) => Segment.splitLines(draw(r)));
     const slide = scroll(LINE, { width: 6, height: 1, col: tween(-6, 0, { seconds: 2, ease: EASES.linear }) });
 
     it("at twice the speed, a slide-in says it moves until the host moment it arrives, and never after", () => {

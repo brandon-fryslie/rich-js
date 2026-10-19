@@ -681,7 +681,7 @@ describe("Live on a timeline", () => {
     const recorded: View =
       typeof view === "function"
         ? (t) => record(t, view(t))
-        : { at: (t) => record(t, view.at(t)), nextChange: (t) => view.nextChange(t), lastChange: (t) => view.lastChange(t) };
+        : { at: (t) => record(t, view.at(t)), nextChange: (t) => view.nextChange(t), lastChange: (t) => view.lastChange(t), rest: () => view.rest() };
     return { display: new Live(recorded, { console: target, clock, refreshPerSecond: perSecond, timeline }), drawn };
   }
   const word = (text: string): Renderable => new RichText(text);

@@ -74,6 +74,7 @@ import { Segment } from "../core/segment.js";
 import { JOIN, colorsOwnedBy } from "../core/strip.js";
 import { ATTRIBUTE_NAMES, Style, type AttributeName, type Attributes } from "../core/style.js";
 import { stampFrame } from "./frames.js";
+import { shownAt } from "../core/view.js";
 
 /**
  * A cell's foreground and background as they appear on screen — the glyph's
@@ -263,7 +264,8 @@ export class Recolored implements Renderable, Measurable, Composite {
     const looked = looks(segments, depth, this.theme);
     const walked = walk(looked);
     const animation = this.effect(measured(looked, () => walked, depth, this.theme));
-    return { segments: this._recolored(walked, animation.at(this.t), depth), nextChange: animation.nextChange(this.t) };
+    const { value: frame, nextChange } = shownAt(animation, this.t, options);
+    return { segments: this._recolored(walked, frame, depth), nextChange };
   }
 
   private *_recolored(walked: readonly Walked[], frame: EffectFrame, depth: ColorDepth): Iterable<Segment> {

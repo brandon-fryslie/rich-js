@@ -22,6 +22,14 @@
  * (`./timeline.ts`): run down the timeline, the value next changes where it
  * began. An animation that cannot say answers `t` here too.
  *
+ * `rest()` is what it looks like when it is not moving: a loop at its first
+ * value, a one-shot at its last, a transition at its new state, a stagger
+ * with everyone arrived. Terminals have no `prefers-reduced-motion`, so a
+ * host is told (`reducedMotion`, `./protocol.ts`), and under it draws every
+ * animation's rest and wakes for none of them. It is the one place the
+ * preference is honoured for every kind at once, because every kind is this
+ * type, and each combinator says its rest so a built animation answers it too.
+ *
  * The instances already in the tree: a `Beat` is an animation of which hold
  * is in progress (`./easing.ts`), a `FrameSequence` of the frame shown and a
  * `Spinner` of the spinner drawn (`../renderables/`), and an `Effect` is, for
@@ -51,20 +59,24 @@ export interface Animation<T> {
   nextChange(t: number): number;
   /** The last moment, never after `t`, at which the value may have become `at(t)`: `t` while it moves, `-Infinity` if it always was. */
   lastChange(t: number): number;
+  /** The value when it is not moving — a loop's first, a one-shot's last — drawn in its place under reduced motion. */
+  rest(): T;
 }
 
 export const Animation = {
   /** `value` at every time, never changing. */
   constant<T>(value: T): Animation<T> {
-    return { at: () => value, nextChange: () => Number.POSITIVE_INFINITY, lastChange: () => Number.NEGATIVE_INFINITY };
+    return { at: () => value, nextChange: () => Number.POSITIVE_INFINITY, lastChange: () => Number.NEGATIVE_INFINITY, rest: () => value };
   },
 
   /**
    * The value `at` gives, taken to move at every moment: what an animation
    * that cannot say when it holds still is, so a host draws it every frame.
+   * It rests at its first value, as a loop does; a one-shot built on it says
+   * its own end (`transition`, `../renderables/effects.ts`).
    */
   continuous<T>(at: (t: number) => T): Animation<T> {
-    return { at, nextChange: (t) => t, lastChange: (t) => t };
+    return { at, nextChange: (t) => t, lastChange: (t) => t, rest: () => at(0) };
   },
 
   /**
@@ -72,13 +84,19 @@ export const Animation = {
    * maps alike make an early answer, which the contract allows.
    */
   map<T, U>(animation: Animation<T>, f: (value: T) => U): Animation<U> {
-    return { at: (t) => f(animation.at(t)), nextChange: (t) => animation.nextChange(t), lastChange: (t) => animation.lastChange(t) };
+    return {
+      at: (t) => f(animation.at(t)),
+      nextChange: (t) => animation.nextChange(t),
+      lastChange: (t) => animation.lastChange(t),
+      rest: () => f(animation.rest()),
+    };
   },
 
   /**
    * Every one of `animations` at once, their values in order, changing when
    * the soonest of them does — so a stack of effects drawn together holds
-   * still exactly while each of them does. None never changes.
+   * still exactly while each of them does, and rest each at its own rest —
+   * a stagger with every child arrived. None never changes.
    */
   all<const T extends readonly unknown[]>(animations: { readonly [K in keyof T]: Animation<T[K]> }): Animation<T> {
     return {
@@ -89,6 +107,7 @@ export const Animation = {
       // as the table, past what an engine takes as arguments.
       nextChange: (t) => animations.reduce((soonest: number, animation: Animation<unknown>) => Math.min(soonest, animation.nextChange(t)), Number.POSITIVE_INFINITY),
       lastChange: (t) => animations.reduce((latest: number, animation: Animation<unknown>) => Math.max(latest, animation.lastChange(t)), Number.NEGATIVE_INFINITY),
+      rest: () => animations.map((animation: Animation<unknown>) => animation.rest()) as unknown as T,
     };
   },
 
@@ -118,6 +137,7 @@ export const Animation = {
       // The value held now began at this hold's start at the latest: an early
       // answer where the animation had not moved by it, which the contract allows.
       lastChange: (t) => beat.lastChange(t),
+      rest: () => animation.rest(),
     };
   },
 
@@ -126,6 +146,7 @@ export const Animation = {
    * each part on its own clock from 0, as every effect is. Before the switch
    * the value next changes when `first`'s does or at the switch, whichever is
    * sooner; after it, when `then`'s does, carried back onto this timeline.
+   * It ends in `then`, so it rests where `then` does.
    */
   sequence<T>(first: Animation<T>, seconds: number, then: Animation<T>): Animation<T> {
     positiveSeconds("Animation.sequence seconds", seconds);
@@ -149,6 +170,7 @@ export const Animation = {
         if (into < 0) return first.lastChange(t);
         return Math.min(t, Math.max(seconds, carried(then.lastChange(into))));
       },
+      rest: () => then.rest(),
     };
   },
 };

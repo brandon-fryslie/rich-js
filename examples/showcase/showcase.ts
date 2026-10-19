@@ -214,6 +214,8 @@ function flashing(effect: Effect): Effect {
       },
       nextChange: (t) => (FLASH_BEAT.at(t) === 0 ? t : Math.min(FLASH_BEAT.nextChange(t), inner.nextChange(t))),
       lastChange: (t) => (FLASH_BEAT.at(t) === 0 ? t : Math.max(FLASH_BEAT.lastChange(t), inner.lastChange(t))),
+      // At rest there is no flash: a flash is news, and a reader who asked for no motion gets the effect alone, resting.
+      rest: () => inner.rest(),
     };
   };
 }

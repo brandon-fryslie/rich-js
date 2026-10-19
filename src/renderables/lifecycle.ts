@@ -107,6 +107,8 @@ function life(element: Renderable, options: LifecycleOptions, entered: number, l
     at: (t) => phase(t).frame,
     nextChange: (t) => phase(t).next,
     lastChange: (t) => phase(t).last,
+    // Arrived and staying, or gone once told to leave: an element at rest has no arrival or exit to show.
+    rest: () => (Number.isFinite(left) ? NOTHING : element),
     // [LAW:one-source-of-truth] The moment `phase` draws nothing from, so an element not yet told to leave is never asked its exit at -Infinity.
     gone: (t) => t >= goneAt,
     leave(at) {

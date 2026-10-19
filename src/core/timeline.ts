@@ -136,6 +136,7 @@ function played<T>(animation: Animation<T>, { origin, time, rate }: Timeline & {
       const edge = behind(t);
       return edge === t ? h : Math.min(h, hostOf(edge));
     },
+    rest: () => animation.rest(),
   };
 }
 
@@ -179,6 +180,7 @@ export const Timeline = {
    * animation's own, on no clock: what a drawn value's cells say about when
    * they change is stamped by whoever draws it at a host time
    * (`../renderables/frames.ts`, `frameAt`), never carried in from here.
+   * It rests where the animation does: a timeline maps time, and a rest has none.
    */
   run<T>(timeline: Timeline, animation: Animation<T>): Animation<T> {
     if (timeline.playing) return played(animation, timeline);
@@ -186,6 +188,7 @@ export const Timeline = {
       at: (host) => animation.at(Timeline.at(timeline, host)),
       nextChange: (host) => (hostTime(host), Number.POSITIVE_INFINITY),
       lastChange: (host) => (hostTime(host), Number.NEGATIVE_INFINITY),
+      rest: () => animation.rest(),
     };
   },
 

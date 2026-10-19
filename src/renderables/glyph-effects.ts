@@ -73,6 +73,7 @@ function stepped(seconds: number): <F>(frame: (step: number) => F) => Animation<
     at: (t) => frame(Math.round(pace.lastChange(t) / seconds)),
     nextChange: (t) => pace.nextChange(t),
     lastChange: (t) => pace.lastChange(t),
+    rest: () => frame(0),
   });
 }
 

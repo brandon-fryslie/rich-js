@@ -29,7 +29,7 @@ const draw = (renderable: Renderable): Segment[] => [...render(renderable, OPTIO
 const lines = (renderable: Renderable): Segment[][] => Segment.splitLines(draw(renderable));
 const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
 /** What a function view of `view` drawn at host time `t` on a playing timeline says. */
-const wakes = (view: (t: number) => Renderable, t: number): number => drawView(hostView(view), Timeline.play(0), t, lines).nextChange;
+const wakes = (view: (t: number) => Renderable, t: number): number => drawView(hostView(view), Timeline.play(0), t, OPTIONS, lines).nextChange;
 
 describe("a frame says when it changes on the host's clock", () => {
   it("a paused timeline over a change mid-way says it never changes, whatever the change's cells would say", () => {
@@ -79,7 +79,7 @@ describe("a frame says when it changes on the host's clock", () => {
   });
 
   it("a frame with no cells takes no row of its own, and still says when it changes", () => {
-    const empty: Animation<Renderable> = { at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY };
+    const empty: Animation<Renderable> = { at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, rest: () => new Group() };
     const drawn = lines(new Group(new RichText("a"), frameAt(empty, 0)));
     expect(drawn.length).toBe(lines(new Group(new RichText("a"))).length);
     expect(Segment.nextChange(drawn.flat())).toBe(3);
@@ -90,7 +90,7 @@ describe("a frame says when it changes on the host's clock", () => {
   });
 
   it("a frame with no cells still says when it changes after the row before it is cropped", () => {
-    const empty: Animation<Renderable> = { at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY };
+    const empty: Animation<Renderable> = { at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, rest: () => new Group() };
     const wide = new RichText("x".repeat(30), { noWrap: true, overflow: "crop" });
     const cropped = Segment.splitAndCropLines(draw(new Group(wide, frameAt(empty, 0))), 5);
     expect(Segment.nextChange(cropped.flat())).toBe(3);
@@ -118,7 +118,7 @@ describe("a frame says when it changes on the host's clock", () => {
   it("an empty text frame keeps its stamp and writes the bytes and rows an unstamped one does", () => {
     for (const end of ["\n", ""]) {
       const frame = new RichText("", { end });
-      const blink: Animation<RichText> = { at: () => frame, nextChange: () => 2, lastChange: () => 1 };
+      const blink: Animation<RichText> = { at: () => frame, nextChange: () => 2, lastChange: () => 1, rest: () => frame };
       const stamped = new Group(new RichText("top"), frameAt(blink, 1.5));
       const plain = new Group(new RichText("top"), frame);
       expect(Segment.nextChange(draw(stamped))).toBe(2);

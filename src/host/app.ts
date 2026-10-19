@@ -56,7 +56,7 @@ export type AppPhase = "idle" | "running" | "suspended" | "stopped";
 // console declares them. This list is both the type and what is copied: the
 // host alone decides the console's size, colours and sink, so no other
 // property of the options object reaches it, whatever the object carries.
-const DRAW_OPTIONS = ["asciiOnly", "theme", "onStyleError", "markup", "highlight", "highlighter"] as const;
+const DRAW_OPTIONS = ["asciiOnly", "reducedMotion", "theme", "onStyleError", "markup", "highlight", "highlighter"] as const;
 type DrawOption = (typeof DRAW_OPTIONS)[number];
 type DrawOptions = Readonly<Pick<ConsoleOptions, DrawOption>>;
 
@@ -508,8 +508,8 @@ export class App {
     // clock. The app set the budget, so the app shapes what comes back: no
     // deeper than the terminal — a taller frame would scroll the rows the
     // painter goes back over — and, as a region, exactly that deep.
-    const drawn = drawView(this.view, this._timeline, this._clock.now(), (renderable) =>
-      fitHeight(Segment.splitLines(render(renderable, { ...options, height })).slice(0, height.rows), height),
+    const drawn = drawView(this.view, this._timeline, this._clock.now(), { ...options, height }, (renderable, under) =>
+      fitHeight(Segment.splitLines(render(renderable, under)).slice(0, height.rows), height),
     );
     const frame = this.painter.paint(() => drawn.lines, { rows: height.rows, cols: options.maxWidth }, this.console.destination);
     this._frame = frame;

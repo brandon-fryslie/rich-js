@@ -63,6 +63,7 @@ import type {
 import { drawable, render } from "../core/protocol.js";
 import { EmbeddedText } from "./embed.js";
 import { FrameSequence, stampFrame } from "./frames.js";
+import { shownAt } from "../core/view.js";
 
 /** A spinner's frames prepared to draw, each styled and held for the interval, run on the spinner's timeline, and the glyphs they spend. */
 interface Sequence {
@@ -80,6 +81,11 @@ const sequence = (data: SpinnerData, style: string | Style, timeline: Timeline):
 };
 
 const sequenceGlyphs = ({ glyphs }: Sequence): string => glyphs;
+
+/** Throws, naming `method`, unless `t` is finite: a spinner is drawn at a moment. */
+function finiteTime(method: string, t: number): void {
+  if (!Number.isFinite(t)) throw new RangeError(`${method} needs a finite t, got ${t}`);
+}
 
 export interface SpinnerOptions {
   /** Multiplies the spinner's rate; negative runs it backwards; zero is refused. Defaults to 1. */
@@ -142,35 +148,46 @@ export class Spinner implements Animation<Renderable & Measurable> {
    * mapped — so drawn at a host time it is `drawnAt`'s, or `frameAt`'s.
    */
   at(t: number): Renderable & Measurable {
-    return this._frame("Spinner.at", t, (sequence, options) => this._render(sequence, t, options));
+    finiteTime("Spinner.at", t);
+    return this._frame((played) => ({ value: played.at(t) }));
+  }
+
+  /** The spinner at rest: its first frame and the label, saying nothing of when it turns, as `at`'s does not. */
+  rest(): Renderable & Measurable {
+    return this._frame((played) => ({ value: played.rest() }));
   }
 
   /**
    * The spinner drawn at host time `t`, its cells saying when it turns on the
    * host's clock (`stampFrame`) — exactly, for the frames the output draws,
    * where `nextChange` must answer for both and `frameAt` stamps that
-   * earlier answer. What a host drawing a spinner for its own time — a
-   * `Status`, a `Progress` column — hands over.
+   * earlier answer. Under reduced motion it is the spinner at rest, which
+   * never turns (`shownAt`). What a host drawing a spinner for its own time
+   * — a `Status`, a `Progress` column — hands over.
    */
   drawnAt(t: number): Renderable & Measurable {
-    return this._frame("Spinner.drawnAt", t, (sequence, options) => stampFrame(this._render(sequence, t, options), sequence.played.nextChange(t)));
+    finiteTime("Spinner.drawnAt", t);
+    return this._frame((played, options) => shownAt(played, t, options));
   }
 
-  /** The spinner's frame at `t`, drawn by `draw` with the frames the output can draw. */
-  private _frame(method: string, t: number, draw: (sequence: Sequence, options: RenderOptions) => Iterable<Segment>): Renderable & Measurable {
-    if (!Number.isFinite(t)) {
-      throw new RangeError(`${method} needs a finite t, got ${t}`);
-    }
+  /** The frame `choose` picks from the frames the output can draw, and the label, saying when it turns if `choose` says. */
+  private _frame(
+    choose: (played: Animation<RichText>, options: RenderOptions) => { readonly value: RichText; readonly nextChange?: number },
+  ): Renderable & Measurable {
     const drawn = (options: RenderOptions): Sequence => drawable(options, this._named, this._ascii, sequenceGlyphs);
     return {
-      render: (options) => draw(drawn(options), options),
+      render: (options) => {
+        const { value, nextChange } = choose(drawn(options).played, options);
+        const segments = this._render(value, options);
+        return nextChange === undefined ? segments : stampFrame(segments, nextChange);
+      },
       // Measured at the frames' one width, the widest frame's, so a column
       // holding it never narrows as it turns, and never offered less than
       // that frame: a frame is one picture, which the reference's `Text`
       // measure would let wrap apart at its spaces.
       measure: (options) => {
         const { frames, played } = drawn(options);
-        const { minimum, maximum } = this._line(played, t, options).measure(options);
+        const { minimum, maximum } = this._line(choose(played, options).value, options).measure(options);
         return { minimum: Math.max(minimum, Math.min(frames.width, maximum)), maximum };
       },
     };
@@ -192,8 +209,8 @@ export class Spinner implements Animation<Renderable & Measurable> {
     return Math.max(this._named.played.lastChange(t), this._ascii.played.lastChange(t));
   }
 
-  private *_render({ played }: Sequence, t: number, options: RenderOptions): Iterable<Segment> {
-    yield* render(this._line(played, t, options), options);
+  private *_render(frame: RichText, options: RenderOptions): Iterable<Segment> {
+    yield* render(this._line(frame, options), options);
     yield Segment.line();
   }
 
@@ -204,9 +221,9 @@ export class Spinner implements Animation<Renderable & Measurable> {
    * styles nothing — is no label, not a trailing space, as an empty `Text` is
    * falsy there.
    */
-  private _line(played: Animation<RichText>, t: number, options: RenderOptions): RichText {
+  private _line(frame: RichText, options: RenderOptions): RichText {
     // The frame alone, saying nothing of when it turns: `drawnAt` stamps it, for a spinner drawn at a host time.
-    const line = new RichText("", { end: "" }).append(played.at(t));
+    const line = new RichText("", { end: "" }).append(frame);
     // Unhighlighted: Rich's label is a `Text` from the moment it is handed over, and a `Text` is never highlighted.
     const label = new EmbeddedText(this.text).text({ ...options, highlight: false });
     if (label.plain !== "") line.append(" ").append(label);

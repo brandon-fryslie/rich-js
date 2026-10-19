@@ -29,7 +29,9 @@
 
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
 import { beat } from "../core/easing.js";
-import { FrameSequence, frameAt, type Frame } from "../renderables/frames.js";
+import type { Motion } from "../core/protocol.js";
+import { shownAt } from "../core/view.js";
+import { FrameSequence, textFrameAt, type Frame } from "../renderables/frames.js";
 import { asColor } from "./color-funcs.js";
 import { asFragment } from "./helpers.js";
 
@@ -62,13 +64,16 @@ function pairs<V>(what: string, tail: readonly unknown[], value: (v: unknown) =>
  * reports when the template is evaluated: seconds on the host's own
  * timeline, from whatever zero it counts from. The functions exist whatever
  * `frameTime` returns, so a template compiles once and is evaluated at every
- * moment the host draws.
+ * moment the host draws. Under `motion.reducedMotion` each draws its rest —
+ * the first frame, the first colour — at every moment, and a frame says it
+ * never changes: a template has no render options, so the host hands the
+ * reader's preference in here, beside its time.
  */
-export function animationFuncs(frameTime: () => number): FuncMap {
+export function animationFuncs(frameTime: () => number, motion: Motion = {}): FuncMap {
   const framesFunc: TemplateFunc = {
     fn: ((...tail: unknown[]) => {
       const frames: Frame[] = pairs("frame", tail, asFragment).map(({ seconds, value }) => ({ seconds, text: value }));
-      return frameAt(new FrameSequence(frames), frameTime());
+      return textFrameAt(new FrameSequence(frames), frameTime(), motion);
     }) as TemplateFunc["fn"],
     argTypes: ["float", "liftable"],
     arity: { kind: "alternating", minimum: 2 },
@@ -77,7 +82,7 @@ export function animationFuncs(frameTime: () => number): FuncMap {
   const steppedFunc: TemplateFunc = {
     fn: ((...tail: unknown[]) => {
       const steps = pairs("color", tail, (v) => asColor(v as string, "stepped"));
-      return steps[beat(steps.map((step) => step.seconds)).at(frameTime())]!.value.hex;
+      return steps[shownAt(beat(steps.map((step) => step.seconds)), frameTime(), motion).value]!.value.hex;
     }) as TemplateFunc["fn"],
     argTypes: ["float", "string"],
     arity: { kind: "alternating", minimum: 2 },

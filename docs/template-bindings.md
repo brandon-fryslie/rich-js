@@ -41,7 +41,7 @@ The functions ship in two groups, split by exactly one question — does it need
 
 `paletteFuncs(getPalette)` is the two that do: `color`, which turns a palette variable name into a color, and `ramp`, whose stops are palette names. It is the only registration that knows a palette exists.
 
-A third, `animationFuncs(frameTime)`, answers a different question: what moment is the template drawn for? It registers `frames`, which draws the frame in progress at the time `frameTime()` reports when the template is evaluated, and `stepped`, the colour in progress at that time, a colour value like any other; a host that redraws on its own clock hands that clock's time in. [Frames](/frames#in-a-template) shows both in use.
+A third, `animationFuncs(frameTime)`, answers a different question: what moment is the template drawn for? It registers `frames`, which draws the frame in progress at the time `frameTime()` reports when the template is evaluated, and `stepped`, the colour in progress at that time, a colour value like any other; a host that redraws on its own clock hands that clock's time in. `animationFuncs(frameTime, { reducedMotion: true })` draws both [at rest](/animation#reduced-motion), the first frame and the first colour at every moment. [Frames](/frames#in-a-template) shows both in use.
 
 `createRichTextEngine()` wires up `richTextFuncs()` alone — it cannot supply a palette. Once you want theme colors, build the engine yourself and merge both maps:
 
