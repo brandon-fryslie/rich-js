@@ -2,8 +2,8 @@
  * parser.ts — turns raw JSONL records into a clean Block[] for the viewer.
  *
  * Pipeline (each step is a pure data transformation):
- *   raw lines → drop hidden types → dedup streaming chunks
- *              → consume tool_use+tool_result pairs → emit Blocks
+ *   raw lines → join a message's chunks, and a command's records
+ *              → drop hidden types → consume tool_use+tool_result pairs → emit Blocks
  *
  * The parser is intentionally lenient: a record of a type `RECORD_TYPES` keeps
  * out of the conversation is dropped, or drawn as a RecordBlock when hidden
