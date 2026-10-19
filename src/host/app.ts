@@ -38,7 +38,7 @@ import { SurfacePainter, type Surface } from "../core/paint.js";
 import { fitHeight, render } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { Timeline } from "../core/timeline.js";
-import { drawView, frozen, hostView, type DrawnView, type HostView, type View } from "../core/view.js";
+import { drawView, hostView, undrawn, type FrameSays, type HostView, type View } from "../core/view.js";
 import { hostEnvironment } from "./host-environment.js";
 import { InputParser, keyName, parseKeyName, type KeyPress, type ScreenMouseEvent } from "./input.js";
 import type { TerminalHost } from "./terminal-host.js";
@@ -149,9 +149,9 @@ export class App {
   private readonly animations = new Set<object>();
   // The timer painting frames, and the rate it was started at.
   private ticking: { readonly rate: FrameRate; readonly stop: Unsubscribe } | null = null;
-  // When the frame on screen next changes, on the clock, and the time it was
-  // drawn at: `t` itself while it moves. Before a frame, nothing changes.
-  private said: Pick<DrawnView, "t" | "nextChange"> = { t: 0, nextChange: Number.POSITIVE_INFINITY };
+  // What the frame on screen says about when it changes, on the clock.
+  // Before a frame, nothing.
+  private said: FrameSays = undrawn(0);
   // The one wait for the frame's `nextChange`, armed after each frame.
   private waking: Unsubscribe | null = null;
   // [LAW:one-source-of-truth] The host is the console's whole environment:
@@ -468,13 +468,14 @@ export class App {
   // and whether a wake is armed for the frame's next change, follow from the
   // phase, what is animating, the rate and what the frame on screen says,
   // and are brought in line with them here alone, after every change to any
-  // — so a timer runs exactly while a running app has something moving, at
-  // the rate the app has now, a wake is armed exactly while a running app
+  // — so a timer runs exactly while a running app has something moving — a
+  // frame that says it moves, or an `animate()` its frame was not drawn for
+  // a paused timeline's held time under — at the rate the app has now, a wake is armed exactly while a running app
   // shows a frame held until a moment, and none outlives the app.
   private tick(): void {
     const running = this._phase === "running";
-    const { t, nextChange } = this.said;
-    const wanted = running && !frozen(this.view, this._timeline) && (this.animations.size > 0 || nextChange === t);
+    const { t, nextChange, held } = this.said;
+    const wanted = running && ((this.animations.size > 0 && !held) || nextChange === t);
     if (this.ticking !== null && (!wanted || this.ticking.rate.perSecond !== this._rate.perSecond)) {
       this.ticking.stop();
       this.ticking = null;

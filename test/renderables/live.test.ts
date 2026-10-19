@@ -13,7 +13,7 @@ import { Status } from "../../src/renderables/status.js";
 import { fakeClock, type FakeClock } from "../core/fake-clock.js";
 import { Animation } from "../../src/core/animation.js";
 import { Timeline } from "../../src/core/timeline.js";
-import { functionView } from "../../src/core/view.js";
+import type { View } from "../../src/core/view.js";
 
 const SHOW_CURSOR = "\x1b[0m\x1b[?25h";
 const EXIT_ALT_SCREEN = "\x1b[?1049l";
@@ -673,16 +673,15 @@ describe("Live on a timeline", () => {
   function playing(view: ((t: number) => Renderable) | Animation<Renderable>, perSecond: number, clock: FakeClock, timeline?: Timeline): { display: Live; drawn: { t: number; text: string }[] } {
     const drawn: { t: number; text: string }[] = [];
     const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
-    const lifted = typeof view === "function" ? functionView(view) : view;
-    const recorded: Animation<Renderable> = {
-      at: (t) => {
-        const renderable = lifted.at(t);
-        drawn.push({ t, text: renderable instanceof RichText ? renderable.plain : "?" });
-        return renderable;
-      },
-      nextChange: (t) => lifted.nextChange(t),
-      lastChange: (t) => lifted.lastChange(t),
+    const record = (t: number, renderable: Renderable): Renderable => {
+      drawn.push({ t, text: renderable instanceof RichText ? renderable.plain : "?" });
+      return renderable;
     };
+    // The view of the shape it was given, so a function stays a function.
+    const recorded: View =
+      typeof view === "function"
+        ? (t) => record(t, view(t))
+        : { at: (t) => record(t, view.at(t)), nextChange: (t) => view.nextChange(t), lastChange: (t) => view.lastChange(t) };
     return { display: new Live(recorded, { console: target, clock, refreshPerSecond: perSecond, timeline }), drawn };
   }
   const word = (text: string): Renderable => new RichText(text);
@@ -713,18 +712,60 @@ describe("Live on a timeline", () => {
     expect(drawn.slice(0, first).every(({ text }) => text === "A")).toBe(true);
   });
 
-  it("at 1 fps wakes for a switch between two frames, then returns to its rate", () => {
+  // An animation says everything it changes, so once it holds for good the
+  // auto-refresh waits on nothing: the frame that stop() draws is the next.
+  it("at 1 fps wakes for a switch between two frames, then waits on nothing once the view holds for good", () => {
     const clock = fakeClock();
     const { display, drawn } = playing(switching(), 1, clock, Timeline.play(0, 2));
     display.start();
     clock.advance(3);
+    expect(clock.timers()).toBe(0);
     display.stop();
-    expect(drawn.map(({ t, text }) => `${text}@${t}`)).toEqual(["A@2", "B@3", "B@5", "B@6"]);
+    expect(drawn.map(({ t, text }) => `${text}@${t}`)).toEqual(["A@2", "B@3", "B@6"]);
   });
 
-  it.each([1, 60])("at %s fps, paused, draws the held frame once and then nothing, with no timer left", (perSecond) => {
+  // A function view may read state the Live cannot see, so the auto-refresh
+  // polls it at the rate even paused; each frame is drawn at the held time.
+  it.each([1, 60])("at %s fps, paused, still polls a function view at its rate, each frame at the held time", (perSecond) => {
     const clock = fakeClock();
     const { display, drawn } = playing((t) => word(`t=${t}`), perSecond, clock);
+    display.start();
+    clock.advance(1);
+    display.timeline = Timeline.pause(display.timeline, clock.now());
+    const paused = drawn.length;
+    clock.advance(2);
+    expect(drawn.length - paused).toBe(2 * perSecond);
+    expect(drawn.slice(paused).every(({ t }) => t === 1)).toBe(true);
+    display.stop();
+  });
+
+  it.each([1, 60])("at %s fps, draws a view updated faster than the rate at the rate", (perSecond) => {
+    const clock = fakeClock();
+    const { display } = playing((t) => word(`t=${t}`), perSecond, clock);
+    let renders = 0;
+    display.start();
+    // Five updates a frame, none of which draws.
+    for (let i = 0; i < 10; i++) {
+      clock.advance(1 / perSecond / 5);
+      display.update({ render: () => (renders++, [new Segment("row")]) });
+    }
+    expect(renders).toBe(2);
+    display.stop();
+  });
+
+  it.each([1, 60])("at %s fps, started on a paused timeline, draws an animation's frame once, by the rate", (perSecond) => {
+    const clock = fakeClock();
+    const { display, drawn } = playing(Animation.continuous((t) => word(`t=${t}`)), perSecond, clock, Timeline.pause(Timeline.play(0), 0));
+    display.start();
+    clock.advance(2);
+    expect(drawn.map(({ t }) => t)).toEqual([0]);
+    expect(clock.timers()).toBe(0);
+    display.stop();
+  });
+
+  it.each([1, 60])("at %s fps, paused, draws an animation's held frame once and then nothing, with no timer left", (perSecond) => {
+    const clock = fakeClock();
+    const { display, drawn } = playing(Animation.continuous((t) => word(`t=${t}`)), perSecond, clock);
     display.start();
     clock.advance(1);
     const before = drawn.length;
@@ -742,7 +783,7 @@ describe("Live on a timeline", () => {
 
   it.each([1, 60])("at %s fps, a seek while paused draws the sought time once, and resuming plays on from it", (perSecond) => {
     const clock = fakeClock();
-    const { display, drawn } = playing((t) => word(`t=${t}`), perSecond, clock, Timeline.pause(Timeline.play(0), 0));
+    const { display, drawn } = playing(Animation.continuous((t) => word(`t=${t}`)), perSecond, clock, Timeline.pause(Timeline.play(0), 0));
     display.start();
     display.timeline = Timeline.seek(display.timeline, clock.now(), 7);
     expect(drawn.map(({ t }) => t)).toEqual([7]);
@@ -763,11 +804,12 @@ describe("Live on a timeline", () => {
     display.start();
     clock.advance(3);
     display.stop();
-    // Time 3 is host 2.5, between two frames; A is drawn the first moment after it.
-    // A frame landing exactly on 3 would be drawn at the rate instead: there
+    // The first frame at the rate, at 4.5, says B began at the switch; time 3
+    // is host 2.5, and A is drawn the first moment after it. A frame landing
+    // exactly on 3 would be drawn at the rate instead: there
     // `lastChange(3) === 3`, which the Animation contract reads as moving.
     const first = drawn.findIndex(({ text }) => text === "A");
-    expect(drawn.slice(0, first).map(({ t }) => t)).toEqual([4.5, 3.5]);
+    expect(drawn.slice(0, first).map(({ t }) => t)).toEqual([4.5]);
     expect(drawn[first]!.t).toBeLessThan(3);
     expect(drawn[first]!.t).toBeCloseTo(3, 9);
   });

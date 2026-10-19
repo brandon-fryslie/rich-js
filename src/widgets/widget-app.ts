@@ -31,7 +31,9 @@ import { Segment } from "../core/segment.js";
 import type { Presence, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
-import { hostView, mapView } from "../core/view.js";
+import type { Clock } from "../core/clock.js";
+import type { Timeline } from "../core/timeline.js";
+import { mapView } from "../core/view.js";
 import { App, type AppOptions, type AppPhase, type Wheel } from "../host/app.js";
 import { DefaultFocusManager } from "./focus-manager.js";
 import { EventRouter } from "./event-router.js";
@@ -77,7 +79,7 @@ export class WidgetApp implements FrameSource {
     // was, and when it changes is its own to say, as it would be to the App.
     this.app = new App({
       ...options,
-      view: mapView(hostView(options.view), (view) => ({ render: (renderOptions) => this.compose(view, renderOptions) })),
+      view: mapView(options.view, (view) => ({ render: (renderOptions) => this.compose(view, renderOptions) })),
     });
     this.focus = new DefaultFocusManager({
       present: () => this.widgets,
@@ -104,6 +106,20 @@ export class WidgetApp implements FrameSource {
 
   get phase(): AppPhase {
     return this.app.phase;
+  }
+
+  /** The clock the app reads the time from: where the host time a `Timeline` operation takes is read. */
+  get clock(): Clock {
+    return this.app.clock;
+  }
+
+  /** The map from the clock to the time the view is drawn for; setting it paints the frame for the new time, as `App.timeline` does. */
+  get timeline(): Timeline {
+    return this.app.timeline;
+  }
+
+  set timeline(timeline: Timeline) {
+    this.app.timeline = timeline;
   }
 
   /**
