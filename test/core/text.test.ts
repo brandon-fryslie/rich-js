@@ -158,6 +158,30 @@ describe("RichText construction", () => {
     expect(codes.filter((code) => !kept(code))).toEqual(codes.filter((code) => stripped.has(code)));
   });
 
+  it("strips the C1 controls and the stateful format controls, and keeps the bidi marks", () => {
+    const kept = (code: number): boolean => new RichText(`a${String.fromCodePoint(code)}b`).plain.length === 3;
+    const range = (from: number, to: number): number[] => Array.from({ length: to - from + 1 }, (_, i) => from + i);
+    // Unicode's own Bidi_Control set, less the three marks, which hold no state.
+    const MARKS = [0x061c, 0x200e, 0x200f];
+    const bidiControls = range(0, 0xffff).filter((code) => /\p{Bidi_Control}/u.test(String.fromCodePoint(code)));
+    expect(bidiControls.filter(kept)).toEqual(MARKS);
+    // Every C1 control, and the deprecated shaping and swapping switches.
+    expect(range(0x80, 0x9f).filter(kept)).toEqual([]);
+    expect(range(0x206a, 0x206f).filter(kept)).toEqual([]);
+    // The neighbours of each stripped range pass.
+    expect([0xa0, 0x2029, 0x202f, 0x2065, 0x2070].filter(kept)).toHaveLength(5);
+  });
+
+  it("sanitizes a pad character and a truncation marker as it sanitizes content", () => {
+    const padded = new RichText("ab").stylize("bold", 0, 2).pad(1, "\u202E");
+    expect(padded.plain).toBe("ab");
+    expect(padded.spans.map((s) => [s.start, s.end])).toEqual([[0, 2]]);
+    expect(new RichText("ab").padLeft(2, "\u202E").plain).toBe("ab");
+    expect(new RichText("ab").padRight(2, "\u009B").plain).toBe("ab");
+    expect(new RichText("abcdef").truncate(3, { marker: "\u202E" }).plain).toBe("abc");
+    expect(new RichText().append("x\u202Ey").plain).toBe("xy");
+  });
+
   it("drops a carriage return from content set by the constructor, the plain setter and append, as Rich's Text does", () => {
     expect(new RichText("a\r\nb").plain).toBe("a\nb");
     expect(new RichText().append("a\r\nb").plain).toBe("a\nb");

@@ -12,10 +12,20 @@ import type { Renderable, Measurable, OverflowMethod, RenderOptions } from "./pr
 
 // Every C0 control and DEL except \t and \n. Rich's `Text` strips only
 // `STRIP_CONTROL_CODES` (BEL, BS, VT, FF, CR); the rest of the set is the
-// port's extension, so no C0 byte of content can start an escape sequence or
-// move the cursor on the wire. C1 controls (U+0080–U+009F) pass, as in Rich.
-// [LAW:single-enforcer] Single place where control chars are sanitized
-const CONTROL_CHARS_RE = /[\x00-\x08\x0B-\x1F\x7F]/g;
+// port's extension, so no byte of content can start an escape sequence or move
+// the cursor on the wire: the C1 controls (U+0080–U+009F) go as well, since a
+// terminal reads U+009B as CSI and U+009D as OSC (TextInput refuses them for
+// the same reason). So do the format controls that hold state past the text,
+// also the port's extension: the bidi embeddings and overrides with their
+// closer PDF (U+202A–U+202E), the isolates with their closer PDI
+// (U+2066–U+2069), and the deprecated shaping and swapping switches
+// (U+206A–U+206F). An opener left unclosed in content reverses whatever is
+// drawn after it on the line, and a closer whose opener is gone closes
+// nothing of the text's own. The bidi marks (LRM, RLM, ALM) hold no state and
+// pass, since right-to-left text needs them.
+// [LAW:single-enforcer] Single place where control chars are sanitized: every
+// string that becomes part of a Text's characters passes here.
+const CONTROL_CHARS_RE = /[\x00-\x08\x0B-\x1F\x7F-\x9F\u202A-\u202E\u2066-\u206F]/g;
 
 export function stripControlChars(text: string): string {
   return text.replace(CONTROL_CHARS_RE, "");
@@ -554,10 +564,9 @@ export class RichText implements Renderable, Measurable {
   }
 
   pad(count: number, char?: string): this {
-    const c = char ?? " ";
-    const padding = c.repeat(count);
-    // Shift all spans to the right
-    this._spans = this._spans.map((s) => s.move(count));
+    const padding = stripControlChars(char ?? " ").repeat(count);
+    // Shift all spans right by what the left side gained.
+    this._spans = this._spans.map((s) => s.move(padding.length));
     this._text = padding + this._text + padding;
     return this;
   }
@@ -577,15 +586,14 @@ export class RichText implements Renderable, Measurable {
   }
 
   padLeft(count: number, char?: string): this {
-    const c = char ?? " ";
-    this._spans = this._spans.map((s) => s.move(count));
-    this._text = c.repeat(count) + this._text;
+    const padding = stripControlChars(char ?? " ").repeat(count);
+    this._spans = this._spans.map((s) => s.move(padding.length));
+    this._text = padding + this._text;
     return this;
   }
 
   padRight(count: number, char?: string): this {
-    const c = char ?? " ";
-    this._text += c.repeat(count);
+    this._text += stripControlChars(char ?? " ").repeat(count);
     return this;
   }
 
@@ -655,7 +663,7 @@ export class RichText implements Renderable, Measurable {
     // value, so width 0 and a marker wider than the width run the same walk
     // as every other call: what is drawn plus what is kept is `cells` wide.
     const cells = cellCount(width);
-    const marker = cellFit(options?.marker ?? "\u2026", cells);
+    const marker = cellFit(stripControlChars(options?.marker ?? "\u2026"), cells);
     const budget = asCellCol(cells - cellLen(marker));
 
     if (mode === "right") {

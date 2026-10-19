@@ -239,7 +239,9 @@ describe("Markdown", () => {
     expect(rows("a `   ` c", 80)).toEqual(["a     c", ""]);
     expect(rows("a ` \u00a0 ` c", 80)).toEqual(["a  \u00a0  c", ""]);
     expect(rows("a ` \t ` c", 80)).toEqual(["a         c", ""]);
-    expect(rows("a ` \u0085 ` c", 80)).toEqual(["a  \u0085  c", ""]);
+    // NEL is whitespace, so the span keeps its spaces; Text then strips it as
+    // the C1 control it is.
+    expect(rows("a ` \u0085 ` c", 80)).toEqual(["a    c", ""]);
     expect(rows("a ` \ufeff ` c", 80)).toEqual(["a \ufeff c", ""]);
   });
 
