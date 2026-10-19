@@ -4,15 +4,22 @@
     {
       "version": "pr-488",
       "ref": "refs/pull/488/merge",
-      "sha": "0def10c7a1f521c248407786a932c0de327f9187",
-      "timestamp": "2026-10-19T17:42:30.210Z",
+      "sha": "f49d42b9c956f27f4f52b28c55f28256fbe5d5c3",
+      "timestamp": "2026-10-19T17:56:35.705Z",
       "commits": [
         {
-          "sha": "0def10c7a1f521c248407786a932c0de327f9187",
+          "sha": "f49d42b9c956f27f4f52b28c55f28256fbe5d5c3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T11:40:32-06:00",
-          "message": "Merge f56aa62129509ffa943ffb9d5083cfd73d37378c into 69219f4b28141b668966b8cba625d70c65ae88b3\n"
+          "timestamp": "2026-10-19T17:54:39Z",
+          "message": "Merge 25d707e3456123bd1243e181b311a27bbc64b693 into 69219f4b28141b668966b8cba625d70c65ae88b3\n"
+        },
+        {
+          "sha": "25d707e3456123bd1243e181b311a27bbc64b693",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T11:54:34-06:00",
+          "message": "A scroll draws its content at its natural width, crops to its room, and refuses a non-finite offset; one stamped frame (rich-animation-42lg.re8)\n\nReview (high) of PR #488: content drawn at maxWidth Infinity threw on a Rule;\nthe slot spilled past a narrower room; a NaN offset drew a blank slot.\nLifecycleFrame folded into frameAt's Stamped, so the stamp wrapper has one copy.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "f56aa62129509ffa943ffb9d5083cfd73d37378c",
