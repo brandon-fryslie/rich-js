@@ -4,15 +4,22 @@
     {
       "version": "pr-487",
       "ref": "refs/pull/487/merge",
-      "sha": "c9490c48b40b0308b3497a6739c6091575ef4443",
-      "timestamp": "2026-10-19T17:04:36.143Z",
+      "sha": "21bd2be778d4d9522aec605e4b84994d1a204ec3",
+      "timestamp": "2026-10-19T17:16:44.337Z",
       "commits": [
         {
-          "sha": "c9490c48b40b0308b3497a6739c6091575ef4443",
+          "sha": "21bd2be778d4d9522aec605e4b84994d1a204ec3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T11:03:01-06:00",
-          "message": "Merge 88fb17d84b0ed3c260abff30bb13a4183c4b6250 into 5157249a44e547de45928a7e5ee14b4780ef417d\n"
+          "timestamp": "2026-10-19T17:14:44Z",
+          "message": "Merge 83105f780d3041870dc3459fa698552296fd0947 into 5157249a44e547de45928a7e5ee14b4780ef417d\n"
+        },
+        {
+          "sha": "83105f780d3041870dc3459fa698552296fd0947",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T11:14:37-06:00",
+          "message": "A lifecycle's frame says when it changes even with no cells; Transition loses seconds (rich-animation-42lg.588)\n\nBefore it entered the frame had no cell to carry its stamp, so a function view never woke to show it arrive; the stamp now also rides a zero-width cell. doneAt searches from the start, so Transition no longer carries a seconds that could disagree with done.\n"
         },
         {
           "sha": "88fb17d84b0ed3c260abff30bb13a4183c4b6250",
