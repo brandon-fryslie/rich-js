@@ -45,7 +45,7 @@ const tail = scroll(new Group(...LOG), {
 });
 
 const panel = new Panel(new RichText("slid in from the left, and holding", { style: "#a6e3a1" }), { width: WIDTH });
-const slide = scroll(panel, { width: WIDTH, height: 3, col: tween(-WIDTH, 0, { seconds: 1.5, ease: EASES["ease-out"] }) });
+const slide = scroll(panel, { width: WIDTH, height: 3, col: tween(WIDTH, 0, { seconds: 1.5, ease: EASES["ease-out"] }) });
 
 function view(t: number): Renderable {
   return new Group(frameAt(marquee, t), new RichText(""), frameAt(tail, t), new RichText(""), frameAt(slide, t));

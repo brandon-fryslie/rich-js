@@ -102,8 +102,11 @@ class ScrollFrame implements Renderable, Measurable, Composite {
     const start = Math.max(0, this.col);
     for (let r = 0; r < this.height; r++) {
       const line = lines[this.row + r] ?? [];
-      const shown = Segment.divide(line, [start, start + width - blank])[1] ?? [];
-      yield* Segment.adjustLineLength([new Segment(" ".repeat(blank)), ...shown], width);
+      const [left = [], shown = []] = Segment.divide(line, [start, start + width - blank]);
+      // A segment of no cells left of the window draws nothing there, but may be a frame's only word
+      // on when it changes (`Stamped`), so it is kept; it costs the window no cell.
+      const uncelled = left.filter((segment) => segment.cellLength === 0 && !segment.isControl);
+      yield* Segment.adjustLineLength([...uncelled, new Segment(" ".repeat(blank)), ...shown], width);
       yield Segment.line();
     }
   }

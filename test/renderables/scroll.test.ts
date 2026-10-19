@@ -6,12 +6,13 @@ import { Measurement } from "../../src/core/measure.js";
 import { render, type Measurable, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { segmentsToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
+import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { Timeline } from "../../src/core/timeline.js";
 import { tween } from "../../src/core/tween.js";
 import { drawView, hostView } from "../../src/core/view.js";
 import { Constrain } from "../../src/renderables/constrain.js";
-import { frameAt } from "../../src/renderables/frames.js";
+import { frameAt, Stamped } from "../../src/renderables/frames.js";
 import { Group } from "../../src/renderables/group.js";
 import { Rule } from "../../src/renderables/rule.js";
 import { scroll } from "../../src/renderables/scroll.js";
@@ -136,6 +137,17 @@ describe("scroll", () => {
     }
     expect(at(-1e12)).toEqual(["      "]);
     expect(at(1e12)).toEqual(["      "]);
+  });
+
+  it("keeps a frame's word on when it changes when the frame has no cells at the window's left edge or before it", () => {
+    const nothing: Renderable & Measurable = { render: () => [], measure: () => ({ minimum: 0, maximum: 0 }) };
+    const entering = new Stamped(nothing, new Style({ nextChange: 5 }));
+    const content = new Group(new RichText("hello"), entering);
+    expect(Segment.nextChange(draw(content))).toBe(5);
+    for (const col of [0, 3]) {
+      const frame = scroll(content, { width: 6, height: 3, col: Animation.constant(col) }).at(0);
+      expect(Segment.nextChange(draw(frame))).toBe(5);
+    }
   });
 
   it("refuses a slot that is not a positive whole number of cells", () => {
