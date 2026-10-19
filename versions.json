@@ -4,15 +4,22 @@
     {
       "version": "pr-485",
       "ref": "refs/pull/485/merge",
-      "sha": "a7a6480a06f028496e36fa7afde10d8da6ee02da",
-      "timestamp": "2026-10-19T15:29:39.528Z",
+      "sha": "9660a2c65ebb15878ef0b8fc79ab2435f5106b8b",
+      "timestamp": "2026-10-19T15:40:22.560Z",
       "commits": [
         {
-          "sha": "a7a6480a06f028496e36fa7afde10d8da6ee02da",
+          "sha": "9660a2c65ebb15878ef0b8fc79ab2435f5106b8b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T15:27:35Z",
-          "message": "Merge 697c22044b4f68fef4f4315a7cdedaebeccb4e81 into ff9aa9bd76e6c9cb2c49daba84f3d30d67b70cdf\n"
+          "timestamp": "2026-10-19T15:37:53Z",
+          "message": "Merge fd286646fefbbbb63d34339526d56ff5108083a9 into ff9aa9bd76e6c9cb2c49daba84f3d30d67b70cdf\n"
+        },
+        {
+          "sha": "fd286646fefbbbb63d34339526d56ff5108083a9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T09:37:45-06:00",
+          "message": "A gradient's colours are parsed when it is made, and Animation.all keeps each value's type (rich-animation-42lg.ptj)\n"
         },
         {
           "sha": "697c22044b4f68fef4f4315a7cdedaebeccb4e81",
