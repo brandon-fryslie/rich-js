@@ -4,15 +4,22 @@
     {
       "version": "pr-486",
       "ref": "refs/pull/486/merge",
-      "sha": "4be6116110291c4e9adab171293ad815d3d88758",
-      "timestamp": "2026-10-19T16:37:17.767Z",
+      "sha": "b9606b86d8812b5f4b474222724c386878c7c011",
+      "timestamp": "2026-10-19T16:41:22.255Z",
       "commits": [
         {
-          "sha": "4be6116110291c4e9adab171293ad815d3d88758",
+          "sha": "b9606b86d8812b5f4b474222724c386878c7c011",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T16:35:10Z",
-          "message": "Merge 43c2b68768c49092b472023ce0c7d194a225cb41 into f7e79321c380fabf3b499a21087952caa9cd8c26\n"
+          "timestamp": "2026-10-19T16:39:27Z",
+          "message": "Merge fcbf9da0ebf31c8de4240b3f3ba0514745d74492 into f7e79321c380fabf3b499a21087952caa9cd8c26\n"
+        },
+        {
+          "sha": "fcbf9da0ebf31c8de4240b3f3ba0514745d74492",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T10:39:20-06:00",
+          "message": "Review: a change ends its last row as the new renderable does (rich-animation-42lg.kyt)\n"
         },
         {
           "sha": "43c2b68768c49092b472023ce0c7d194a225cb41",
