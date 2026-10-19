@@ -65,6 +65,14 @@ describe("tween", () => {
     expect([jump.lastChange(-1), jump.nextChange(-1)]).toEqual([ALWAYS, 0]);
   });
 
+  it("to where it already is, is the constant: exactly its value at every sample, never changing", () => {
+    const still = tween(0.1, 0.1, second);
+    expect(sampled(60, 3).every((t) => still.at(t) === 0.1)).toBe(true);
+    expect([still.lastChange(1), still.nextChange(1)]).toEqual([ALWAYS, NEVER]);
+    // The blend alone would not have held it: at some p, (1 − p)·0.1 + p·0.1 < 0.1.
+    expect(sampled(999, 1).some((p) => (1 - p) * 0.1 + p * 0.1 !== 0.1)).toBe(true);
+  });
+
   it("shows an overshooting ease as it is, past the target and back", () => {
     const snap = tween(0, 100, { seconds: 1, ease: EASES["back-out"] });
     expect(Math.max(...sampled(60, 1).map((t) => snap.at(t)))).toBeGreaterThan(100);
@@ -135,6 +143,12 @@ describe("ColorRamp.over", () => {
     expect(sweep.at(0).hex).toBe(red.hex);
     expect(sweep.at(5).hex).toBe(green.hex);
     expect(sweep.at(8).hex).toBe(blue.hex);
+  });
+
+  it("a ramp that is only a hard edge holds its last colour, never flickering across the edge", () => {
+    const edge = new ColorRamp(EASES.linear, [{ at: 0.1, color: red }, { at: 0.1, color: blue }]).over(1);
+    expect(sampled(999, 1).every((t) => edge.at(t).hex === blue.hex)).toBe(true);
+    expect(edge.nextChange(0.5)).toBe(NEVER);
   });
 
   it("draws the same colour for the same t at one sample a second and sixty", () => {

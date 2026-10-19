@@ -34,7 +34,7 @@
  * [LAW:one-way-deps]
  */
 
-import type { Animation } from "./animation.js";
+import { Animation } from "./animation.js";
 import { Phase, type Timing } from "./easing.js";
 
 /**
@@ -43,7 +43,10 @@ import { Phase, type Timing } from "./easing.js";
  * every ease that starts at 0), `to` after, and so
  * seen at its end, never mid-way, by a host whose frames are further apart
  * than it is long. `from` and `to` must be finite; the seconds are checked
- * where every one-shot's are, in `Phase.once`.
+ * where every one-shot's are, in `Phase.once`. A tween to where it already
+ * is is `Animation.constant(from)`, decided here once: the blend would land
+ * one ulp off `from` at some `p`, and a value that never moves is one that
+ * never changes, so a host is told not to look again. [LAW:parse-dont-validate]
  */
 export function tween(from: number, to: number, timing: Timing): Animation<number> {
   for (const [name, v] of [["from", from], ["to", to]] as const) {
@@ -51,6 +54,7 @@ export function tween(from: number, to: number, timing: Timing): Animation<numbe
   }
   const { ease, seconds } = timing;
   const phase = Phase.once(0, seconds);
+  if (from === to) return Animation.constant(from);
   return {
     at(t) {
       const p = ease(phase(t));
