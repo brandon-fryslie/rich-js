@@ -107,7 +107,8 @@ function life(element: Renderable, options: LifecycleOptions, entered: number, l
     at: (t) => phase(t).frame,
     nextChange: (t) => phase(t).next,
     lastChange: (t) => phase(t).last,
-    gone: (t) => exit.done(t - left),
+    // [LAW:one-source-of-truth] The moment `phase` draws nothing from, so an element not yet told to leave is never asked its exit at -Infinity.
+    gone: (t) => t >= goneAt,
     leave(at) {
       if (Number.isFinite(left)) throw new RangeError(`lifecycle: already told to leave at ${left}, told again at ${at}`);
       if (!(Number.isFinite(at) && at >= entered)) throw new RangeError(`lifecycle: leave must be a finite time from entered (${entered}) on, got ${at}`);

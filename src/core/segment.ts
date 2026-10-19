@@ -277,7 +277,9 @@ export class Segment {
       return [...line, new Segment(" ".repeat(width - currentWidth), style)];
     }
 
-    // Crop to width
+    // Crop to width: the cells past it go, and every control stays, since a
+    // control draws no cell — a carrier after the cut still says when its
+    // frame changes. Not the reference, which stops at the cut.
     const result: Segment[] = [];
     let remaining = width;
     for (const segment of line) {
@@ -285,6 +287,7 @@ export class Segment {
         result.push(segment);
         continue;
       }
+      if (remaining === 0) continue;
       const segWidth = segment.cellLength;
       if (segWidth <= remaining) {
         result.push(segment);
@@ -293,7 +296,6 @@ export class Segment {
         const [left] = segment.splitCells(asCellCol(remaining));
         result.push(left);
         remaining = 0;
-        break;
       }
     }
     return result;

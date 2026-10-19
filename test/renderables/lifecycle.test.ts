@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { Animation } from "../../src/core/animation.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { Console } from "../../src/core/console.js";
-import { EASES } from "../../src/core/easing.js";
+import { EASES, beat } from "../../src/core/easing.js";
 import { Measurement } from "../../src/core/measure.js";
 import { render, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { segmentsToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
-import { dissolveOut, fadeIn } from "../../src/renderables/effects.js";
+import { dissolveOut, fadeIn, onBeat } from "../../src/renderables/effects.js";
 import { frameAt } from "../../src/renderables/frames.js";
 import { Group } from "../../src/renderables/group.js";
 import { Live } from "../../src/renderables/live.js";
@@ -71,6 +71,13 @@ describe("a lifecycle", () => {
     expect(leaving.gone(7)).toBe(true);
     // Before it entered it draws nothing, but a timeline run backwards reaches it again: not gone.
     expect(leaving.gone(0)).toBe(false);
+  });
+
+  it("is never gone before it was told to leave, whatever its exit steps on", () => {
+    const stepped = lifecycle(new RichText("x"), { enter: fadeIn(curve, 0), exit: onBeat(dissolveOut(curve, 0), beat([0.25])), key: "x", theme }, 1);
+    expect([0, 5, 1e6].some((t) => stepped.gone(t))).toBe(false);
+    const leaving = stepped.leave(5);
+    expect(leaving.gone(leaving.lastChange(100))).toBe(true);
   });
 
   it("is gone, draws nothing and says so from one float on, wherever the sum of when it left and how long it takes rounds", () => {

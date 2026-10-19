@@ -84,6 +84,13 @@ describe("a frame says when it changes on the host's clock", () => {
     expect(Segment.nextChange(drawn.flat())).toBe(3);
   });
 
+  it("a frame with no cells still says when it changes after the row before it is cropped", () => {
+    const empty: Animation<Renderable> = { at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY };
+    const wide = new RichText("x".repeat(30), { noWrap: true, overflow: "crop" });
+    const cropped = Segment.splitAndCropLines(draw(new Group(wide, frameAt(empty, 0))), 5);
+    expect(Segment.nextChange(cropped.flat())).toBe(3);
+  });
+
   it("an element takes no row before it enters or once it is gone, though gone it never changes again", () => {
     const life = lifecycle(new RichText("x"), { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "x", theme }, 10).leave(100);
     const alone = lines(new Group(new RichText("top"))).length;
