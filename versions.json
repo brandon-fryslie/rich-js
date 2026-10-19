@@ -2,42 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-491",
-      "ref": "refs/pull/491/merge",
-      "sha": "fa81d744a5a5afa6fb2ae13ee8a41b87dc76fa22",
-      "timestamp": "2026-10-19T22:19:26.521Z",
-      "commits": [
-        {
-          "sha": "fa81d744a5a5afa6fb2ae13ee8a41b87dc76fa22",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T22:17:24Z",
-          "message": "Merge f10b25bb23fedc0889770eeb534c000067bfd08e into f2addf714f39c64f144079ba616c271ce47c3bca\n"
-        },
-        {
-          "sha": "f10b25bb23fedc0889770eeb534c000067bfd08e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T16:17:19-06:00",
-          "message": "Tree.measure: a label wants at least one column, so a label of no width keeps its row (rich-animation-42lg.8qh review)\n"
-        },
-        {
-          "sha": "4fa491311652e421f9783c05de27dd0799c76910",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T14:48:56-06:00",
-          "message": "Tree: branch on a subtree's first drawn row; render and measure draw labels one way (rich-animation-42lg.8qh review)\n"
-        },
-        {
-          "sha": "ebfd4a7872aa41c21970fa36e50ebc03351b551d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T14:40:51-06:00",
-          "message": "A Tree child that draws no rows takes no place among its siblings' guides (rich-animation-42lg.8qh)\n\nThe walk now draws each label before it chooses the branch, so the last\nchild that draws a row ends it. A label yielding only carriers (a frameAt\nframe of no cells) draws no row and still passes its nextChange on.\nmeasure and contents read the same walk.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f2addf714f39c64f144079ba616c271ce47c3bca",
