@@ -1,6 +1,7 @@
 /**
- * Easing and phase: the one vocabulary for "how far along" — every function
- * here returns progress in [0, 1].
+ * Easing and phase: the one vocabulary for "how far along" — a time in
+ * seconds becomes progress in [0, 1], and an ease reshapes that progress,
+ * usually but not always within [0, 1].
  *
  * Two kinds of curve, composed as `ease(phase(t))`:
  *
@@ -38,7 +39,7 @@
  * `core/` module reach it downhill. [LAW:one-way-deps]
  */
 
-/** Progress in, progress out: a reshaping of [0, 1]. */
+/** Progress in [0, 1] in, progress out: a reshaping of [0, 1] that may leave it, as a spring overshooting its rest does. */
 export type Ease = (x: number) => number;
 
 /** Time in seconds (plus any per-cell offset) in, progress in [0, 1] out. */
@@ -93,7 +94,7 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Eas
     }
     return s;
   };
-  return (x) => yAt(solve(Math.min(1, Math.max(0, x))));
+  return settled((p) => yAt(solve(p)));
 }
 
 /**
@@ -125,44 +126,42 @@ export function steps(n: number, position: StepPosition = "jump-end"): Ease {
     "jump-none": n - 1,
   }[position];
   const lift = jumpsAtStart ? 1 : 0;
-  return (x) => {
-    const p = Math.min(1, Math.max(0, x));
-    return Math.min(jumps, Math.floor(p * n) + lift) / jumps;
-  };
+  return settled((p) => Math.min(jumps, Math.floor(p * n) + lift) / jumps);
 }
 
-/** The identity ease: progress unchanged. */
-const linear: Ease = (x) => x;
-
-/** CSS `step-end`: 0 until the very end. */
-const stepEnd: Ease = steps(1, "jump-end");
-
-/** A half-cosine, flat at both ends: the curve a breathing pulse wants. */
-const sine: Ease = (x) => (1 - Math.cos(Math.PI * x)) / 2;
-
 /**
- * The curve `shape` over (0, 1) as an ease that has arrived: its argument
- * held to [0, 1], as `cubicBezier` and `steps` hold theirs, and exactly 1 at
- * 1. Every physics curve below is one, because each is 1 at its end only in
- * the limit or up to a rounding — a spring settles to within `SPRING_REST`,
- * the elastic's ringing never quite stops, a back curve's cubic lands an ulp
- * off — and a count or a width eased by it must land on its target, not a
- * thousandth or an ulp short. [LAW:single-enforcer] The one place that rule
- * lives.
+ * The curve `shape` over [0, 1) as an ease that has arrived: its argument
+ * held to [0, 1], and exactly 1 at 1. Every built-in ease is one, so the two
+ * halves of the `Ease` contract — an argument in [0, 1], the end landed on —
+ * are enforced here and nowhere else. [LAW:single-enforcer] The end matters
+ * because a curve is 1 at its end only in the limit or up to a rounding — a
+ * spring settles to within `SPRING_REST`, the elastic's ringing never quite
+ * stops, a back curve's cubic or a bezier's Newton step lands an ulp off —
+ * and a count or a width eased by it must land on its target, not a
+ * thousandth or an ulp short.
  */
 const settled = (shape: (p: number) => number): Ease => (x) => {
   const p = Math.min(1, Math.max(0, x));
   return p === 1 ? 1 : shape(p);
 };
 
+/** The identity ease: progress unchanged. */
+const linear: Ease = settled((p) => p);
+
+/** CSS `step-end`: 0 until the very end. */
+const stepEnd: Ease = steps(1, "jump-end");
+
+/** A half-cosine, flat at both ends: the curve a breathing pulse wants. */
+const sine: Ease = settled((p) => (1 - Math.cos(Math.PI * p)) / 2);
+
 /**
  * A spring's physics: the mass on it, the stiffness of its coil and the
  * damping it moves against, in the units every animation library spells them
  * in (React Spring, Framer Motion), whose defaults these are — a spring that
- * overshoots once and settles in about a second and a half.
+ * overshoots once and settles in about a second and a quarter.
  */
 export interface SpringOptions {
-  /** The restoring force per unit of displacement; stiffer snaps faster. Positive. Defaults to 100. */
+  /** The restoring force per unit of displacement; stiffer swings faster, though it settles no sooner, since the decay is the damping's over the mass's. Positive. Defaults to 100. */
   readonly stiffness?: number;
   /** The force against the motion per unit of velocity; more settles sooner and overshoots less. Positive. Defaults to 10. */
   readonly damping?: number;
@@ -181,7 +180,7 @@ export interface SpringOptions {
  */
 export interface Spring {
   readonly ease: Ease;
-  /** How long the spring takes to settle, in seconds: its settling time to within `SPRING_REST`. */
+  /** How long the spring takes to settle, in seconds: the first moment after which its displacement stays within `SPRING_REST`. */
   readonly seconds: number;
 }
 
@@ -202,19 +201,15 @@ const DEFAULT_SPRING: Required<SpringOptions> = { stiffness: 100, damping: 10, m
  * of that equation in the regime its damping ratio `ζ = c / 2√(k·m)` puts it
  * in — ringing past its rest for `ζ < 1`, creeping up to it for `ζ ≥ 1` — and
  * its `seconds` is its settling time: the first moment after which the
- * displacement stays within `SPRING_REST`. For a ringing spring that is read
- * off the decay envelope, the way control theory defines settling time; for
- * one that creeps the displacement only falls, so it is where it crosses.
- * Both are found once here, so a sample costs an exponential and a cosine
- * whatever `x` is. [LAW:no-ambient-temporal-coupling]
+ * displacement stays within `SPRING_REST`, found once here by `crossing` on
+ * the bracket each regime knows its last crossing lies in, so a sample costs
+ * an exponential and a cosine whatever `x` is. [LAW:no-ambient-temporal-coupling]
  *
  * The ease is exactly 1 at `x = 1` (`settled`): settled means at rest.
  */
 export function spring(options: SpringOptions = {}): Spring {
   const { stiffness, damping, mass } = { ...DEFAULT_SPRING, ...options };
-  for (const [name, v] of [["stiffness", stiffness], ["damping", damping], ["mass", mass]] as const) {
-    if (!(Number.isFinite(v) && v > 0)) throw new RangeError(`spring ${name} must be a positive, finite number, got ${v}`);
-  }
+  for (const [name, v] of [["stiffness", stiffness], ["damping", damping], ["mass", mass]] as const) positive(`spring ${name}`, v);
   const w0 = Math.sqrt(stiffness / mass);
   const zeta = damping / (2 * Math.sqrt(stiffness * mass));
   const decay = zeta * w0;
@@ -229,37 +224,55 @@ interface SpringMotion {
 }
 
 /**
+ * Where `|displacement|` falls through `SPRING_REST` between `lo` and `hi`,
+ * by bisection: the caller brackets the last such crossing, the displacement
+ * outside rest at `lo`, inside it at `hi` and falling in size between, and
+ * gets the settling time back to the bits 64 halvings leave.
+ * [LAW:single-enforcer] The one place the rest threshold is read against a
+ * motion.
+ */
+function crossing(displacement: (s: number) => number, lo: number, hi: number): number {
+  for (let i = 0; i < 64; i++) {
+    const mid = (lo + hi) / 2;
+    if (Math.abs(displacement(mid)) > SPRING_REST) lo = mid;
+    else hi = mid;
+  }
+  return hi;
+}
+
+/**
  * Underdamped: `e^(−ζω₀s)·(cos ω_d s + (ζω₀/ω_d) sin ω_d s)` at the damped
- * frequency `ω_d = ω₀√(1 − ζ²)`. The bracket is bounded by `√(1 + (ζω₀/ω_d)²)`,
- * so the envelope is under `SPRING_REST` from `ln(bound / SPRING_REST) / ζω₀`.
+ * frequency `ω_d = ω₀√(1 − ζ²)`. Released at rest, its velocity is
+ * `−(ω₀²/ω_d)·e^(−ζω₀s)·sin ω_d s`, so its extrema sit at `s_k = kπ/ω_d`,
+ * where `|displacement| = e^(−ζω₀·s_k)`, each the same fraction of the last.
+ * The first extremum inside rest is the `K` with `e^(−ζω₀·s_K) ≤ SPRING_REST`;
+ * the spring never leaves rest after it, and before it the displacement
+ * falls in size from the extremum at `s_(K−1)` to its zero at
+ * `(Kπ − atan(ω_d/ζω₀)) / ω_d`, so the settling time is the crossing in that
+ * bracket. The decay envelope control theory reads settling time off would
+ * put it later — by up to half a swing, and without bound as `ζ → 1` — so
+ * the true crossing is found instead, and `seconds` is continuous in `ζ`.
  */
 function ringing(w0: number, zeta: number, decay: number): SpringMotion {
   const wd = w0 * Math.sqrt(1 - zeta * zeta);
   const ratio = decay / wd;
-  return {
-    displacement: (s) => Math.exp(-decay * s) * (Math.cos(wd * s) + ratio * Math.sin(wd * s)),
-    seconds: Math.log(Math.hypot(1, ratio) / SPRING_REST) / decay,
-  };
+  const displacement = (s: number): number => Math.exp(-decay * s) * (Math.cos(wd * s) + ratio * Math.sin(wd * s));
+  const K = Math.ceil(Math.log(1 / SPRING_REST) / ((decay * Math.PI) / wd));
+  const extremum = ((K - 1) * Math.PI) / wd;
+  const zero = (K * Math.PI - Math.atan(1 / ratio)) / wd;
+  return { displacement, seconds: crossing(displacement, extremum, zero) };
 }
 
 /**
  * Critically damped (`ζ = 1`): `e^(−ω₀s)·(1 + ω₀s)`. Overdamped (`ζ > 1`):
- * two decaying exponentials at `ζω₀ ∓ ω₀√(ζ² − 1)`, written as such rather
- * than as `cosh + sinh` so neither grows before the other cancels it. Both
- * only fall, so the settling time is where the displacement crosses
- * `SPRING_REST`, found by bisection between zero and a bound the slower
- * exponential alone puts it under.
+ * two decaying exponentials at the rates `ζω₀ ∓ ω₀√(ζ² − 1)`, written as such
+ * rather than as `cosh + sinh` so neither grows before the other cancels it.
+ * Both only fall, so the settling time is the one crossing of `SPRING_REST`,
+ * bracketed between zero and a time the slower exponential alone puts it under.
  */
 function creeping(w0: number, zeta: number, decay: number): SpringMotion {
   const { displacement, far } = zeta === 1 ? critical(w0) : overdamped(w0, zeta, decay);
-  let lo = 0;
-  let hi = far;
-  for (let i = 0; i < 64; i++) {
-    const mid = (lo + hi) / 2;
-    if (displacement(mid) > SPRING_REST) lo = mid;
-    else hi = mid;
-  }
-  return { displacement, seconds: hi };
+  return { displacement, seconds: crossing(displacement, 0, far) };
 }
 
 /** A falling displacement, and a time `far` by which it is under `SPRING_REST`. */
@@ -273,13 +286,21 @@ function critical(w0: number): Falling {
   return { displacement: (s) => Math.exp(-w0 * s) * (1 + w0 * s), far: 10 / w0 };
 }
 
-/** The slower exponential alone bounds the sum, since the faster one's weight `1 − ratio` is negative. */
+/**
+ * The slower exponential alone bounds the sum, since the faster one's weight
+ * `1 − ratio` is negative. Its rate `ζω₀ − ω₀√(ζ² − 1)` is written as
+ * `ω₀ / (ζ + √(ζ² − 1))`, the same number without the subtraction, which for
+ * a large `ζ` cancels to zero and would make `far` infinite.
+ */
 function overdamped(w0: number, zeta: number, decay: number): Falling {
-  const wh = w0 * Math.sqrt(zeta * zeta - 1);
+  const root = Math.sqrt(zeta * zeta - 1);
+  const wh = w0 * root;
+  const slow = w0 / (zeta + root);
+  const fast = decay + wh;
   const ratio = decay / wh;
   return {
-    displacement: (s) => ((1 + ratio) * Math.exp(-(decay - wh) * s) + (1 - ratio) * Math.exp(-(decay + wh) * s)) / 2,
-    far: Math.log((1 + ratio) / (2 * SPRING_REST)) / (decay - wh),
+    displacement: (s) => ((1 + ratio) * Math.exp(-slow * s) + (1 - ratio) * Math.exp(-fast * s)) / 2,
+    far: Math.log((1 + ratio) / (2 * SPRING_REST)) / slow,
   };
 }
 
@@ -319,8 +340,9 @@ const backOut: Ease = settled((p) => {
 
 /**
  * Penner's elastic (his `easeOutElastic`): overshoots its end and rings back
- * through it, each swing half the last, with a period of 0.3 of the way —
- * `2^(−10x)·sin((10x − 0.75)·2π/3) + 1`.
+ * through it, with a period of 0.3 of the way under an amplitude of
+ * `2^(−10x)`, so each swing is `2^(−1.5)`, a little over a third, of the
+ * last — `2^(−10x)·sin((10x − 0.75)·2π/3) + 1`.
  */
 const ELASTIC_PERIOD = (2 * Math.PI) / 3;
 const elastic: Ease = settled((p) => 2 ** (-10 * p) * Math.sin((10 * p - 0.75) * ELASTIC_PERIOD) + 1);
@@ -367,10 +389,13 @@ export function parseEase(name: string): Ease {
   return EASES[name as EaseName];
 }
 
+/** `v` is a positive, finite number, or this throws naming `what`; `unit` is the number's noun, as in `" of seconds"`. [LAW:single-enforcer] */
+function positive(what: string, v: number, unit = ""): void {
+  if (!(Number.isFinite(v) && v > 0)) throw new RangeError(`${what} must be a positive number${unit}, got ${v}`);
+}
+
 function positiveSeconds(what: string, seconds: number): void {
-  if (!Number.isFinite(seconds) || seconds <= 0) {
-    throw new RangeError(`${what} must be a positive number of seconds, got ${seconds}`);
-  }
+  positive(what, seconds, " of seconds");
 }
 
 /**

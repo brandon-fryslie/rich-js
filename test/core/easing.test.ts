@@ -144,11 +144,12 @@ describe("spring matches its equation of motion", () => {
       });
     });
 
-    it(`${label}: is settled within SPRING_REST from its seconds on, and exactly 1 at the end`, () => {
+    it(`${label}: is settled within SPRING_REST from its seconds on and not just before, and exactly 1 at the end`, () => {
       const { ease, seconds } = spring(options);
       expect(ease(1)).toBe(1);
       // The settling time is the first moment the spring stays within rest,
       // so just before it the spring is still outside, and after it never.
+      expect(Math.abs(1 - ease(0.99))).toBeGreaterThan(SPRING_REST);
       const reference = integrated(options, seconds * 1.5, 150);
       reference.slice(100).forEach((position, i) => expect(Math.abs(position - 1), `at ${seconds * (1 + i / 100)} s`).toBeLessThanOrEqual(SPRING_REST * 1.001));
       expect(seconds).toBeGreaterThan(0);
@@ -166,11 +167,24 @@ describe("spring matches its equation of motion", () => {
     }
   });
 
-  it("the default spring settles in about a second and a half, and stiffer or heavier damping settles sooner", () => {
-    expect(spring().seconds).toBeCloseTo(1.41, 2);
-    expect(spring({ stiffness: 400 }).seconds).toBeLessThan(spring().seconds);
+  it("the default spring settles in about a second and a quarter; heavier damping settles sooner, more mass later, and stiffness alone only quickens the swing", () => {
+    expect(spring().seconds).toBeCloseTo(1.27, 2);
     expect(spring({ damping: 16 }).seconds).toBeLessThan(spring().seconds);
     expect(spring({ mass: 3 }).seconds).toBeGreaterThan(spring().seconds);
+    // The decay is damping over mass, so a stiffer spring rings at the same
+    // envelope and settles within half a swing of the default — a swing being
+    // π/ω_d of its own — not sooner.
+    const stiff = spring({ stiffness: 400 });
+    expect(Math.abs(stiff.seconds - spring().seconds)).toBeLessThan(Math.PI / (Math.sqrt(400) * Math.sqrt(1 - 0.25 ** 2)));
+  });
+
+  it("the settling time is the true crossing, so it is continuous where ringing meets creeping, and finite however hard the damping", () => {
+    // A decay envelope grows without bound as ζ → 1⁻; the crossing does not.
+    expect(spring({ damping: 19.9999999 }).seconds).toBeCloseTo(spring({ damping: 20 }).seconds, 5);
+    const stiff = spring({ damping: 1e10 });
+    expect(Number.isFinite(stiff.seconds)).toBe(true);
+    expect(stiff.ease(0.5)).toBeGreaterThan(0.9);
+    expect(stiff.ease(0.5)).toBeLessThan(1);
   });
 
   it("holds its argument to [0, 1], as every ease does", () => {
@@ -179,18 +193,22 @@ describe("spring matches its equation of motion", () => {
     expect(ease(2)).toBe(1);
   });
 
-  it("sampled through Phase.once at one frame a second and sixty, the same t gives the same progress, and a short spring once a second is seen settled", () => {
+  it("through Phase.once, a short spring is 0 at release and exactly 1 at every frame from its seconds on, sampled sixty times a second or once", () => {
     const { ease, seconds } = spring({ stiffness: 900, damping: 30 });
     expect(seconds).toBeLessThan(1);
     const phase = Phase.once(0, seconds);
-    for (let t = 0; t <= 3; t++) {
-      expect(ease(phase(t))).toBe(ease(phase(Math.round(t * 60) / 60)));
-      expect(t === 0 ? ease(phase(t)) : ease(phase(t))).toBe(t === 0 ? 0 : 1);
-    }
+    expect(ease(phase(0))).toBe(0);
+    const sixty = Array.from({ length: 181 }, (_, k) => k / 60);
+    const once = [1, 2, 3];
+    for (const t of [...sixty, ...once].filter((t) => t >= seconds)) expect(ease(phase(t)), `t = ${t}`).toBe(1);
+    // Something is seen moving at sixty frames a second: the first frame is
+    // already off its release and under its rest.
+    expect(ease(phase(1 / 60))).toBeGreaterThan(0);
+    expect(ease(phase(1 / 60))).toBeLessThan(1);
   });
 
   it("refuses physics that is not a positive, finite number", () => {
-    expect(() => spring({ stiffness: 0 })).toThrow(/spring stiffness must be a positive, finite number, got 0/);
+    expect(() => spring({ stiffness: 0 })).toThrow(/spring stiffness must be a positive number, got 0/);
     expect(() => spring({ damping: -1 })).toThrow(/spring damping/);
     expect(() => spring({ mass: Number.NaN })).toThrow(/spring mass/);
     expect(() => spring({ stiffness: Number.POSITIVE_INFINITY })).toThrow(/spring stiffness/);

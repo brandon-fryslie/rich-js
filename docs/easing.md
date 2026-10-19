@@ -56,7 +56,7 @@ for (const t of [0, 0.1, 0.2, 0.3, 0.5, snap.seconds]) {
 }
 ```
 
-`EASES.spring` is the default spring's ease, so a template can spell it. Beside it are Robert Penner's curves, at the constants every animation library since has shipped: `bounce`, a ball dropped onto its rest in four shrinking arcs, never above 1; `back-in`, which pulls back past its start before going, and `back-out`, which overshoots its end by about a tenth before settling; and `elastic`, which overshoots and rings back through its end, each swing half the last. Each is 0 at 0 and exactly 1 at 1.
+`EASES.spring` is the default spring's ease, so a template can spell it. Beside it are Robert Penner's curves, at the constants every animation library since has shipped: `bounce`, a ball dropped onto its rest in four shrinking arcs, never above 1; `back-in`, which pulls back past its start before going, and `back-out`, which overshoots its end by about a tenth before settling; and `elastic`, which overshoots and rings back through its end, each swing a little over a third of the last. Each is 0 at 0 and exactly 1 at 1.
 
 ## Phases
 
