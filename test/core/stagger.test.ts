@@ -38,7 +38,10 @@ const bytes = (renderable: Renderable): string => segmentsToString(draw(renderab
 /** `rate` samples a second from `from` to `to`. */
 const sampled = (rate: number, from: number, to: number): number[] => Array.from({ length: Math.floor((to - from) * rate) + 1 }, (_, i) => from + i / rate);
 
-/** Row `i` entering at 0 on its own clock through a fade-in over `seconds`, stepped on `steps` when given. */
+/**
+ * Row `i` entering at 0 on its own clock through a fade-in over `seconds`, stepped on `steps` when given.
+ * Used here only as an animation that moves and then holds: a host that will tell rows to leave staggers them by `entered` instead.
+ */
 const row = (i: number, seconds: number, steps?: number): Lifecycle => {
   const fade = fadeIn({ seconds, ease: EASES.linear, swing: 1 }, i);
   const enter = steps === undefined ? fade : onBeat(fade, beat([steps]));
