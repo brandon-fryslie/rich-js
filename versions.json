@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-482",
+      "ref": "refs/pull/482/merge",
+      "sha": "97a2a190de11679f6c80534a7759b77d4502a26b",
+      "timestamp": "2026-10-19T12:12:45.577Z",
+      "commits": [
+        {
+          "sha": "97a2a190de11679f6c80534a7759b77d4502a26b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T06:10:47-06:00",
+          "message": "Merge 55701de48512516df3128b3185f88b250ff0aa78 into e53ed2bfba9d380397076a0cc9f7280a683fe591\n"
+        },
+        {
+          "sha": "55701de48512516df3128b3185f88b250ff0aa78",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T06:10:39-06:00",
+          "message": "Text strips the bidi controls that open a direction state, so content cannot reverse the rest of its line (0.24.1)\n\nU+202A-U+202E (embeddings, overrides) and U+2066-U+2069 (isolates) join the C0 set in stripControlChars, the one sanitizer every Text passes. An unclosed U+202E in content reversed whatever the terminal drew after it on the line; cc-candybar measured one in a lit ticket description reaching the bar (brandon-unfiled-3248.qum). The marks (LRM, RLM, ALM) open no state and pass.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-481",
       "ref": "refs/pull/481/merge",
       "sha": "f9223c6e3d37eda16568a9588a8f6b6098d50799",
