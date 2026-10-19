@@ -170,6 +170,12 @@ export class Live {
     }
     if (options?.refresh) {
       this.refresh();
+    } else if (view !== undefined && this._held !== null) {
+      // The last wake was armed for what the old view said; a new view is
+      // drawn by the auto-refresh from now, as a frame not drawn says
+      // nothing — so a renderable handed over while an animation was paused
+      // is refreshed at the rate.
+      this._wake(this._held, { t: this._clock.now(), nextChange: Number.POSITIVE_INFINITY });
     }
   }
 

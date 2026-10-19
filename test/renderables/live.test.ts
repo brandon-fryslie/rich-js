@@ -788,6 +788,18 @@ describe("Live on a timeline", () => {
     display.stop();
   });
 
+  it.each([1, 60])("at %s fps, paused, refreshes a renderable handed over by update at its rate", (perSecond) => {
+    const clock = fakeClock();
+    const { display } = playing(switching(), perSecond, clock);
+    display.start();
+    display.timeline = Timeline.pause(display.timeline, clock.now());
+    let renders = 0;
+    display.update({ render: () => (renders++, [new Segment("row")]) });
+    clock.advance(2);
+    expect(renders).toBe(2 * perSecond);
+    display.stop();
+  });
+
   it("run backwards, draws a view that says nothing itself at its rate", () => {
     const clock = fakeClock();
     const { display, drawn } = playing((t) => word(`t=${t}`), 4, clock, Timeline.seek(Timeline.play(0, -1), 0, 10));

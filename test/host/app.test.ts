@@ -683,6 +683,28 @@ describe("App on a timeline", () => {
     expect(draws).toBe(6);
   });
 
+  // An animation's frame whose cells move — an effect over a tween that has
+  // arrived — cannot say since when, so backwards it is painted at the rate,
+  // not frozen until the tween's end comes round.
+  it.each([1, 60])("at %s fps, run backwards, paints an animation's frame at its rate while its cells move", (perSecond) => {
+    const clock = fakeClock();
+    const times: number[] = [];
+    const settled: Animation<Renderable> = {
+      at: (t) => {
+        times.push(t);
+        return { render: () => [new Segment("x", new Style({ nextChange: t }))] };
+      },
+      nextChange: () => Number.POSITIVE_INFINITY,
+      lastChange: () => 2,
+    };
+    const timeline = Timeline.seek(Timeline.play(0, -1), 0, 10);
+    const target = new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(perSecond), view: settled, timeline });
+    void target.run();
+    clock.advance(1);
+    expect(times).toHaveLength(1 + perSecond);
+    expect(times.at(-1)).toBeCloseTo(9, 9);
+  });
+
   it("run backwards, paints a tween back to where it began and stops there", () => {
     const clock = fakeClock();
     const { target, drawn } = playing(growing(), 10, clock, Timeline.seek(Timeline.play(0, -1), 0, 1));

@@ -33,7 +33,13 @@
  * and nothing says since when, so run backwards it is drawn at the host's
  * rate — a hold with one side known is a hold the host may leave any moment
  * in the other direction, and an early answer costs a frame where a late one
- * skips a change.
+ * skips a change. An animation's frame whose cells change is the same.
+ *
+ * A view on the timeline is drawn at the time it is handed, and its cells
+ * are stamped on that clock; a renderable inside it that reads a clock of
+ * its own — a `Progress` — stamps the host's instead, which the timeline
+ * would carry somewhere else. Hand such a renderable over as the view
+ * itself, off the timeline.
  *
  * Tier 4 of `src/core/`: `./animation.ts`, `./timeline.ts`, `./segment.ts`
  * and `./protocol.ts`, nothing else. [LAW:one-way-deps]
@@ -112,12 +118,17 @@ export function drawView(view: HostView, timeline: Timeline, host: number, draw:
   }
   const t = Timeline.at(timeline, host);
   const lines = draw(view.at(t));
+  const cells = cellsChange(lines);
   // The frame as the sample of the view it is, on the timeline's clock; the
-  // timeline says when the host's clock leaves its hold.
+  // timeline says when the host's clock leaves its hold. Cells say only when
+  // they next change, never since when, so a frame whose cells change at all
+  // cannot say when it began and answers `t`: run backwards, an effect still
+  // moving after its tween has arrived is drawn at the rate, not frozen
+  // until the tween's end comes round.
   const held: Animation<Segment[][]> = {
     at: () => lines,
-    nextChange: () => Math.min(view.nextChange(t), cellsChange(lines)),
-    lastChange: () => view.lastChange(t),
+    nextChange: () => Math.min(view.nextChange(t), cells),
+    lastChange: () => (cells < Number.POSITIVE_INFINITY ? t : view.lastChange(t)),
   };
   return { t: host, lines, nextChange: Timeline.run(timeline, held).nextChange(host) };
 }
