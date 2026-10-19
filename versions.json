@@ -4,15 +4,22 @@
     {
       "version": "pr-486",
       "ref": "refs/pull/486/merge",
-      "sha": "bd69ec9aac3e960e9941ec74b9be95c231cc16c6",
-      "timestamp": "2026-10-19T16:28:52.054Z",
+      "sha": "4be6116110291c4e9adab171293ad815d3d88758",
+      "timestamp": "2026-10-19T16:37:17.767Z",
       "commits": [
         {
-          "sha": "bd69ec9aac3e960e9941ec74b9be95c231cc16c6",
+          "sha": "4be6116110291c4e9adab171293ad815d3d88758",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T10:27:00-06:00",
-          "message": "Merge 1cbca0139007ce204e7efe27b2023e943697fd30 into f7e79321c380fabf3b499a21087952caa9cd8c26\n"
+          "timestamp": "2026-10-19T16:35:10Z",
+          "message": "Merge 43c2b68768c49092b472023ce0c7d194a225cb41 into f7e79321c380fabf3b499a21087952caa9cd8c26\n"
+        },
+        {
+          "sha": "43c2b68768c49092b472023ce0c7d194a225cb41",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T10:35:04-06:00",
+          "message": "Review: a change frame says it moves with no colour output; draws from then to, as contents names them; the demo opens on its first state (rich-animation-42lg.kyt)\n"
         },
         {
           "sha": "1cbca0139007ce204e7efe27b2023e943697fd30",
