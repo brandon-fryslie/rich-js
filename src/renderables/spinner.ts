@@ -205,7 +205,7 @@ export class Spinner implements Animation<Renderable & Measurable> {
    * falsy there.
    */
   private _line(played: Animation<RichText>, t: number, options: RenderOptions): RichText {
-    // The frame alone, saying nothing of when it turns: whoever draws the spinner at a host time stamps it (`frameAt`).
+    // The frame alone, saying nothing of when it turns: `drawnAt` stamps it, for a spinner drawn at a host time.
     const line = new RichText("", { end: "" }).append(played.at(t));
     // Unhighlighted: Rich's label is a `Text` from the moment it is handed over, and a `Text` is never highlighted.
     const label = new EmbeddedText(this.text).text({ ...options, highlight: false });

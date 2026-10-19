@@ -4,6 +4,7 @@ import { ColorDepth } from "../../src/core/color.js";
 import { EASES, beat, firstReaching } from "../../src/core/easing.js";
 import { render, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { segmentsToString } from "../../src/core/render.js";
+import { Style } from "../../src/core/style.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { Timeline } from "../../src/core/timeline.js";
@@ -82,6 +83,10 @@ describe("a frame says when it changes on the host's clock", () => {
     const drawn = lines(new Group(new RichText("a"), frameAt(empty, 0)));
     expect(drawn.length).toBe(lines(new Group(new RichText("a"))).length);
     expect(Segment.nextChange(drawn.flat())).toBe(3);
+    // Drawn alone there is no row before it to join, so its stamp rides one of its own.
+    const alone = lines(frameAt(empty, 0));
+    expect(alone.length).toBe(1);
+    expect(Segment.nextChange(alone.flat())).toBe(3);
   });
 
   it("a frame with no cells still says when it changes after the row before it is cropped", () => {
@@ -89,6 +94,10 @@ describe("a frame says when it changes on the host's clock", () => {
     const wide = new RichText("x".repeat(30), { noWrap: true, overflow: "crop" });
     const cropped = Segment.splitAndCropLines(draw(new Group(wide, frameAt(empty, 0))), 5);
     expect(Segment.nextChange(cropped.flat())).toBe(3);
+    const emptyText = new Segment("", new Style({ nextChange: 2 }));
+    for (const line of [[new Segment("ab"), emptyText, new Segment("cd")], [new Segment("abcd"), emptyText]]) {
+      expect(Segment.nextChange(Segment.adjustLineLength(line, 2))).toBe(2);
+    }
   });
 
   it("an element takes no row before it enters or once it is gone, though gone it never changes again", () => {
