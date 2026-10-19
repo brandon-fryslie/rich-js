@@ -80,9 +80,11 @@ export const Animation = {
    * the soonest of them does — so a stack of effects drawn together holds
    * still exactly while each of them does. None never changes.
    */
-  all<T>(animations: readonly Animation<T>[]): Animation<T[]> {
+  all<const T extends readonly unknown[]>(animations: { readonly [K in keyof T]: Animation<T[K]> }): Animation<T> {
     return {
-      at: (t) => animations.map((animation) => animation.at(t)),
+      // [LAW:types-are-the-program] Each value at its own place in the tuple,
+      // which `map` cannot say of its array.
+      at: (t) => animations.map((animation: Animation<unknown>) => animation.at(t)) as unknown as T,
       nextChange: (t) => Math.min(...animations.map((animation) => animation.nextChange(t))),
       lastChange: (t) => Math.max(...animations.map((animation) => animation.lastChange(t))),
     };

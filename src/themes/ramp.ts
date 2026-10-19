@@ -27,7 +27,7 @@
  * frame (`moving`) with nothing new to learn. [LAW:one-type-per-behavior]
  *
  * [LAW:one-way-deps] Imports `core/color`, `core/easing`, `core/oklch`,
- * and for `over` and `moving`, `core/animation` and `core/tween`; nothing
+ * `core/animation` for `over` and `moving`, and `core/tween` for `over`; nothing
  * here knows what a palette is. Resolving stop *names* is the template binding's
  * job (`paletteFuncs`), which hands this module resolved colors.
  */
@@ -184,13 +184,13 @@ export class ColorRamp {
    * tween settles never changes again once it arrives.
    * [LAW:one-source-of-truth] When it next changes is `Animation.all`'s
    * answer over the two parts; nothing here says it a second time. Whether
-   * the depth it is drawn at can show the move is decided where it is drawn,
-   * from the depth the render writes at (`rampAt`).
+   * the depth it is drawn at can show the move is decided where it is drawn
+   * (`gradient`, through `stillOnSlots`).
    */
   moving(motion: RampMotion): Animation<ColorRamp> {
     const still = Animation.constant(0);
-    return Animation.map(Animation.all([motion.scroll ?? still, motion.hue ?? still]), ([scroll, hue]) =>
-      new ColorRamp(this.ease, this.stops, this.scroll + (scroll as number), this.hue + (hue as number)));
+    return Animation.map(Animation.all([motion.scroll ?? still, motion.hue ?? still] as const), ([scroll, hue]) =>
+      new ColorRamp(this.ease, this.stops, this.scroll + scroll, this.hue + hue));
   }
 }
 

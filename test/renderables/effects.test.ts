@@ -1051,6 +1051,11 @@ describe("gradient: a ramp laid across an element", () => {
     for (const col of [0, 10, 20, 39]) expect(shown(lineLook, lineCell(col)).fg.hex, `col ${col}`).toBe(along(hues, col).hex);
   });
 
+  it("refuses, when it is made, a colour it cannot light: one misspelt, or one translucent", () => {
+    expect(() => gradient(still, ["#a6e3g1"])).toThrow(/a6e3g1/);
+    expect(() => gradient(still, ["#a6e3a180"])).toThrow(/translucent/);
+  });
+
   it("leaves a cell whose ink is not lit, or is the terminal's, as it was", () => {
     const shown = gradient(still)(ruleFrame(ColorDepth.TRUECOLOR)).at(0);
     const title: CellLook = { ...lineLook, fg: ink };

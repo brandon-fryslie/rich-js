@@ -1,7 +1,8 @@
 /**
  * The effect catalogue: shimmer, pulse, sparkle and wheel, which loop for as
  * long as they are drawn, fade-in and dissolve-out, which run once and are
- * done, and a blink and a bold pulse, which move an attribute on a beat. Each is an `Effect` for `Effected` (`./effect.ts`); the defaults
+ * done, a blink and a bold pulse, which move an attribute on a beat, and a
+ * gradient, which lays a colour ramp across an element and may move it. Each is an `Effect` for `Effected` (`./effect.ts`); the defaults
  * in `EFFECT_CURVES` are the ones signed off by eye in the effects-feel demo
  * (`npm run effects-feel`), at 30 fps and at one frame a second, and
  * `EFFECT_CATALOGUE` makes every one of them at those, by name, one way.
@@ -13,7 +14,10 @@
  * One effect here is not ambience but a signal, and keeps none of this on
  * purpose: `steppedInk` steps its ink through colours on a beat, the news
  * that something is at its limit, and jumps from slot to slot where the
- * loops hold still. What makes the loops' motions familiar is what every
+ * loops hold still. Nor is `gradient` a light: it paints an ink rather than
+ * lighting it, so it may darken one, and a ramp scrolled across it jumps
+ * where the ramp wraps unless its ends are one colour. Of the list below it
+ * keeps the words. What makes the loops' motions familiar is what every
  * curve of theirs keeps:
  *
  * - Nothing jumps. Every curve is continuous in time, built from smooth
@@ -219,9 +223,10 @@ function pairKey({ fg, bg, terminal, reverse }: Pair): string {
  * its hues, and the frame changes when the ramp does — every frame for a
  * loop, never again once a tween settles; a still one is
  * `Animation.constant(ramp)`. Lit cells are those whose ink is one of
- * `colors`, named as a style names them (`"#a6e3a1"`, `"bright_green"`) and
- * matched as the screen shows them at the frame's depth — by default every
- * colour the element sets itself — never an ink the terminal supplies: a
+ * `colors`, named as a style names them (`"#a6e3a1"`, `"bright_green"`),
+ * opaque, and matched as the screen shows them at the frame's depth — so
+ * below truecolor every ink that lands on the same palette colour is lit —
+ * by default every colour the element sets itself — never an ink the terminal supplies: a
  * rule's line by its colour and not its title, a panel's border and not its
  * body. The element is where its frame lists
  * cells, as the fireflies read it, so a padded or confined element has the
@@ -231,13 +236,16 @@ function pairKey({ fg, bg, terminal, reverse }: Pair): string {
  */
 export function gradient(ramp: Animation<ColorRamp>, colors?: readonly string[]): Effect {
   const legible = legibleInks();
+  // [LAW:parse-dont-validate] Parsed at the call, so a misspelt colour fails
+  // where it was written and not on some later frame.
+  const named = colors?.map(opaqueInk);
   // [LAW:one-source-of-truth] A colour named as a style spells it is lit
   // wherever a cell shows it, so it is resolved as `Effected` resolves a
   // cell's ink: drawn at the frame's depth, then read on its terminal.
-  const shown = (spec: string, { depth, theme }: Drawn): string =>
-    (Style.fromColor(ColorSpec.parse(spec)).drawnColors(depth).color ?? ColorSpec.default()).getTruecolor(theme, true).hex;
+  const shown = (spec: ColorSpec, { depth, theme }: Drawn): string =>
+    (Style.fromColor(spec).drawnColors(depth).color ?? ColorSpec.default()).getTruecolor(theme, true).hex;
   return stillOnSlots((drawn) => {
-    const lit = colors === undefined ? drawn.colors : new Set(colors.map((spec) => shown(spec, drawn)));
+    const lit = named === undefined ? drawn.colors : new Set(named.map((spec) => shown(spec, drawn)));
     const inkOn = legible(drawn);
     const [left, right] = extent(drawn.cells().map((cell) => cell.col));
     return Animation.map(ramp, (now): EffectFrame => {
@@ -247,6 +255,17 @@ export function gradient(ramp: Animation<ColorRamp>, colors?: readonly string[])
       return (look, cell) => (cell.terminal.fg || !lit.has(look.fg.hex) ? look : { ...look, fg: inkOn(along(cell.col), look, cell) });
     });
   });
+}
+
+/**
+ * `spec` parsed as an ink `gradient` lights. Opaque only: a translucent ink
+ * is drawn over the ground of each cell it is in, so it shows as no one
+ * colour to match, and naming one is refused here.
+ */
+function opaqueInk(spec: string): ColorSpec {
+  const parsed = ColorSpec.parse(spec);
+  if (parsed.value !== undefined && parsed.value.alpha < 1) throw new RangeError(`gradient lights opaque colours, and ${spec} is translucent`);
+  return parsed;
 }
 
 /**
@@ -1115,7 +1134,8 @@ export interface ColorStep {
  * that does (`stillOnSlots`). A cell whose ground no offered colour reads
  * on keeps the ink it rested in.
  *
- * The search is settled once for each ink, ground and step, so a frame
+ * The search is settled once for each ground and step — below truecolor,
+ * which colours read on a ground once for that ground — so a frame
  * inside a step redoes none, and nor does a later pass of the beat: at sixty
  * frames a second a one-second step is sixty identical frames, and the
  * frame changes when the beat does: the signal is the beat mapped to inks.
@@ -1157,12 +1177,12 @@ function legibleInks(): (drawn: Drawn) => (ink: ColorRgba, look: CellLook, cell:
     return (ink, look, cell) => {
       const pair: Pair = { fg: look.fg, bg: look.bg, terminal: cell.terminal, reverse: cell.reverse };
       const key = `${depth} ${pairKey(pair)}`;
-      const readableOf = (offered: readonly Measured[]): readonly Measured[] => readableOn(pair, offered, depth, theme);
+      const legibleOf = (offered: readonly Measured[]): readonly Measured[] => legibleAmong(pair, offered, depth, theme);
       return memo.inks.get(`${key} ${ink.hex}`, () => {
         const offered =
           depth === ColorDepth.TRUECOLOR
-            ? readableOf([ink, ensureContrast(ink, pair.bg, floorOf(pair, depth))].map(measured))
-            : memo.readable.get(key, () => readableOf(measuredIndexed(depth, theme)));
+            ? legibleOf([ink, ensureContrast(ink, pair.bg, floorOf(pair, depth))].map(measured))
+            : memo.readable.get(key, () => legibleOf(measuredIndexed(depth, theme)));
         return nearestOf(ink, offered)?.color ?? pair.fg;
       });
     };
@@ -1175,7 +1195,7 @@ function legibleInks(): (drawn: Drawn) => (ink: ColorRgba, look: CellLook, cell:
  * way `shares` and `wheel` measure: the written colours, at the catalogue's
  * floor. An ink none of them is nearest stays `pair`'s own.
  */
-function readableOn(pair: Pair, offered: readonly Measured[], depth: ColorDepth, theme: TerminalTheme): readonly Measured[] {
+function legibleAmong(pair: Pair, offered: readonly Measured[], depth: ColorDepth, theme: TerminalTheme): readonly Measured[] {
   const floor = floorOf(pair, depth);
   return offered.filter(({ color }) => {
     const shown = Effected.shows(pair, { fg: color, bg: pair.bg }, depth, theme);
