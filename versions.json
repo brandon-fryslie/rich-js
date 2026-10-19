@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-490",
+      "ref": "refs/pull/490/merge",
+      "sha": "d9e138340380b1e7a91f56840667a8111a6c6e35",
+      "timestamp": "2026-10-19T20:10:35.914Z",
+      "commits": [
+        {
+          "sha": "d9e138340380b1e7a91f56840667a8111a6c6e35",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T14:08:56-06:00",
+          "message": "Merge 8ea82c507b26d671d91bf97bd2a8776610e9c9c6 into da13b2a3a8d9a444d940d282e186761a08191686\n"
+        },
+        {
+          "sha": "8ea82c507b26d671d91bf97bd2a8776610e9c9c6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T14:08:45-06:00",
+          "message": "A stagger runs one animation across children, each offset by its index (rich-animation-42lg.h4r)\n\nTimeline.stagger(animations, delay) is Animation.all of Timeline.run, each\nchild on a timeline playing from index × delay. The group changes when the\nsoonest child does, and each child's answer is carried onto the stagger's\nclock. Group, Table rows, Tree children and Layout panes take the frames\nthrough Animation.map, and none of them changed.\n\nA Tree child that draws no rows still takes a fork guide. That is filed as\nrich-animation-42lg.8qh, and the docs example uses a Group.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "da13b2a3a8d9a444d940d282e186761a08191686",
