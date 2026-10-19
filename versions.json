@@ -2,46 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-482",
-      "ref": "refs/pull/482/merge",
-      "sha": "ba32454ca8529ba38d5c264f054b48c6036239f5",
-      "timestamp": "2026-10-19T12:24:31.219Z",
-      "commits": [
-        {
-          "sha": "ba32454ca8529ba38d5c264f054b48c6036239f5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T12:22:40Z",
-          "message": "Merge 0e87485451557e8c2feb9f0bea51038b634ab318 into e53ed2bfba9d380397076a0cc9f7280a683fe591\n"
-        },
-        {
-          "sha": "0e87485451557e8c2feb9f0bea51038b634ab318",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T06:22:35-06:00",
-          "message": "Text strips the C1 controls and the deprecated shaping switches too, and pad and truncate sanitize what they add\n\nThe high review: C1 (U+009B is CSI) passed Text while TextInput refused it; pad/padLeft/padRight's char and truncate's marker reached the text unsanitized; PDF and PDI close a state rather than open one; U+206A-U+206F hold state as the bidi controls do. The test derives the bidi set from \\p{Bidi_Control}. NEL in a code span is now stripped as the C1 control it is.\n"
-        },
-        {
-          "sha": "55701de48512516df3128b3185f88b250ff0aa78",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T06:10:39-06:00",
-          "message": "Text strips the bidi controls that open a direction state, so content cannot reverse the rest of its line (0.24.1)\n\nU+202A-U+202E (embeddings, overrides) and U+2066-U+2069 (isolates) join the C0 set in stripControlChars, the one sanitizer every Text passes. An unclosed U+202E in content reversed whatever the terminal drew after it on the line; cc-candybar measured one in a lit ticket description reaching the bar (brandon-unfiled-3248.qum). The marks (LRM, RLM, ALM) open no state and pass.\n"
-        }
-      ]
-    },
-    {
       "version": "pr-481",
       "ref": "refs/pull/481/merge",
-      "sha": "f78c7e433b97bc0afad96df2f5a51ba5d666b703",
-      "timestamp": "2026-10-19T12:21:14.282Z",
+      "sha": "f75b14ef8b0de0692fd11d6d04e26addfc9e7550",
+      "timestamp": "2026-10-19T12:30:24.118Z",
       "commits": [
         {
-          "sha": "f78c7e433b97bc0afad96df2f5a51ba5d666b703",
+          "sha": "f75b14ef8b0de0692fd11d6d04e26addfc9e7550",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T12:19:54Z",
-          "message": "Merge a06bf9d0af50e29ab4631e897a907ce19bb79104 into e53ed2bfba9d380397076a0cc9f7280a683fe591\n"
+          "timestamp": "2026-10-19T12:28:31Z",
+          "message": "Merge ebee6d7883a06f125a185c078450d45f6cdf1a2b into e53ed2bfba9d380397076a0cc9f7280a683fe591\n"
+        },
+        {
+          "sha": "ebee6d7883a06f125a185c078450d45f6cdf1a2b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T06:28:26-06:00",
+          "message": "Backwards, a frame whose cells move answers t; update re-arms a paused Live (rich-animation-42lg.04v)\n\nMedium-pass fixes: an animation view's moving cells no longer freeze an App\nrun backwards until the view's own lastChange; a view handed over by\nupdate() after a pause is drawn by the auto-refresh; a renderable reading\nits own clock belongs off the timeline, said in view.ts and the docs.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "a06bf9d0af50e29ab4631e897a907ce19bb79104",
@@ -70,6 +48,35 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-19T05:53:44-06:00",
           "message": "WIP: Live and App draw a View through a Timeline and wake on the frame's next change (rich-animation-42lg.04v)\n\nSource only; lint green, tests not yet run or written, docs untouched.\n"
+        }
+      ]
+    },
+    {
+      "version": "pr-482",
+      "ref": "refs/pull/482/merge",
+      "sha": "ba32454ca8529ba38d5c264f054b48c6036239f5",
+      "timestamp": "2026-10-19T12:24:31.219Z",
+      "commits": [
+        {
+          "sha": "ba32454ca8529ba38d5c264f054b48c6036239f5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T12:22:40Z",
+          "message": "Merge 0e87485451557e8c2feb9f0bea51038b634ab318 into e53ed2bfba9d380397076a0cc9f7280a683fe591\n"
+        },
+        {
+          "sha": "0e87485451557e8c2feb9f0bea51038b634ab318",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T06:22:35-06:00",
+          "message": "Text strips the C1 controls and the deprecated shaping switches too, and pad and truncate sanitize what they add\n\nThe high review: C1 (U+009B is CSI) passed Text while TextInput refused it; pad/padLeft/padRight's char and truncate's marker reached the text unsanitized; PDF and PDI close a state rather than open one; U+206A-U+206F hold state as the bidi controls do. The test derives the bidi set from \\p{Bidi_Control}. NEL in a code span is now stripped as the C1 control it is.\n"
+        },
+        {
+          "sha": "55701de48512516df3128b3185f88b250ff0aa78",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T06:10:39-06:00",
+          "message": "Text strips the bidi controls that open a direction state, so content cannot reverse the rest of its line (0.24.1)\n\nU+202A-U+202E (embeddings, overrides) and U+2066-U+2069 (isolates) join the C0 set in stripControlChars, the one sanitizer every Text passes. An unclosed U+202E in content reversed whatever the terminal drew after it on the line; cc-candybar measured one in a lit ticket description reaching the bar (brandon-unfiled-3248.qum). The marks (LRM, RLM, ALM) open no state and pass.\n"
         }
       ]
     },
