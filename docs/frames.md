@@ -71,7 +71,7 @@ A host that draws once a second can read from the answers alone that it is skipp
 
 ## Spinners
 
-A `Spinner` is an [animation](/animation) built on a `FrameSequence` over one of the named spinners — `dots`, `line`, `bouncingBall` and the rest of the cli-spinners set — each frame held for the spinner's interval, with an optional label after it. It is built once and asked for its frame at a time: `spinner.at(t)` is the renderable, the frame in progress at the time it is handed, as Rich's `Spinner.render(time)` is, and a spinner reads no clock. `speed` scales the holds: `2` holds each frame half as long, and a negative speed runs the frames backwards.
+A `Spinner` is an [animation](/animation) built on a `FrameSequence` over one of the named spinners — `dots`, `line`, `bouncingBall` and the rest of the cli-spinners set — each frame held for the spinner's interval, with an optional label after it. It is built once and asked for its frame at a time: `spinner.at(t)` is the renderable, the frame in progress at the time it is handed, as Rich's `Spinner.render(time)` is, and a spinner reads no clock. `speed` is a [timeline](/animation#playback-a-timeline) the frames run on from `t = 0`: `2` turns the spinner twice as fast, and a negative speed runs it backwards, and whichever way it turns, the cells it draws say when it turns next on the host's clock.
 
 ```typescript
 import { Group, Spinner } from "@promptctl/rich-js";

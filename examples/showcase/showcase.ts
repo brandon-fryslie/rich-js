@@ -197,7 +197,7 @@ function flashing(effect: Effect): Effect {
         const under = inner.at(t);
         // Dark, the frame is the inner effect's own.
         if (FLASH_BEAT.at(t) !== 0) return under;
-        const left = 1 - (t - FLASH_BEAT.start(t)) / FLASH_BEAT.holds[0]!;
+        const left = 1 - (t - FLASH_BEAT.lastChange(t)) / FLASH_BEAT.holds[0]!;
         const toward = (channel: number): number => Math.round(channel + (255 - channel) * left);
         return (colors, cell) => {
           const moved = under(colors, cell);
@@ -205,6 +205,7 @@ function flashing(effect: Effect): Effect {
         };
       },
       nextChange: (t) => (FLASH_BEAT.at(t) === 0 ? t : Math.min(FLASH_BEAT.nextChange(t), inner.nextChange(t))),
+      lastChange: (t) => (FLASH_BEAT.at(t) === 0 ? t : Math.max(FLASH_BEAT.lastChange(t), inner.lastChange(t))),
     };
   };
 }

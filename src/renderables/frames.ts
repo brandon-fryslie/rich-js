@@ -101,6 +101,11 @@ export class FrameSequence implements Animation<RichText> {
   nextChange(t: number): number {
     return this.beat.nextChange(t);
   }
+
+  /** When the frame in progress at `t` began: the beat's answer. */
+  lastChange(t: number): number {
+    return this.beat.lastChange(t);
+  }
 }
 
 export interface FramesOptions {

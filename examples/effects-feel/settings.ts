@@ -50,7 +50,7 @@ export const USAGE = [
   `  eases: ${Object.keys(EASES).join(", ")}`,
   "",
   "  keys: f replays the fade-in, d replays the dissolve, n/p the next/previous theme,",
-  "        < and > step the frame rate, - and + halve and double the rate,",
+  "        < and > step the frame rate, - and + halve and double the rate, space pauses and resumes,",
   "        [ and ] take a quarter off and add a quarter to the magnitude, every loop's swing, q or Ctrl-C quits",
   "  a frame is the unit of change: every frame moves every loop the same amount, whatever the",
   "  frame rate, and the rate scales that amount; the demo starts over after one cycle of frames",

@@ -418,9 +418,10 @@ export interface Beat {
    * When the hold in progress at `t` began, in seconds on `t`'s own
    * timeline: what a sample-and-hold on this beat reads at `t`. Every `t`
    * inside one hold of one pass answers the same number, to the bit, so an
-   * effect handed it draws the same frame throughout.
+   * effect handed it draws the same frame throughout. With `nextChange`,
+   * the two ends of the hold, as every `Animation` answers them.
    */
-  start(t: number): number;
+  lastChange(t: number): number;
   /**
    * When the hold in progress at `t` ends, in seconds on `t`'s own timeline:
    * the start of the next hold, the first moment `at` places in it, so it is
@@ -532,9 +533,9 @@ export function beat(holds: readonly number[]): Beat {
     at(t) {
       return index(wrapSeconds("Beat.at", t, period));
     },
-    start(t) {
-      const into = wrapSeconds("Beat.start", t, period);
-      return boundary("Beat.start", pass(t, into), index(into), t);
+    lastChange(t) {
+      const into = wrapSeconds("Beat.lastChange", t, period);
+      return boundary("Beat.lastChange", pass(t, into), index(into), t);
     },
     // The next hold's start, in the next pass when this hold is the last.
     nextChange(t) {

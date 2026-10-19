@@ -31,19 +31,20 @@
  * agree at every `t`, a `Progress` on a hand-moved clock turns its spinners
  * on that clock, and a draw costs the same at `t = 0` and `t = 10⁶`.
  *
- * `speed` scales the holds, not the time: at speed 2 each frame is held half
- * the interval, and a negative speed is the frames in reverse order, each held
- * the interval over the speed's size. [LAW:one-source-of-truth] Rich scales
- * the time instead, `t × speed` into the beat. At a positive speed the frame
- * drawn is the same; but when the frame next changes (`Style.nextChange`) is
- * a time on the host's timeline, and a beat over scaled time answers on the
- * scaled one — so the sequence is scaled where it is built, and the
- * `FrameSequence` stamps host time with nothing to map back. Backwards, this is the plain
- * reversed sequence from `t = 0`, where Rich's `int()` truncation holds
- * frame 0 for a first interval and then counts down: a departure, made so a
- * negative speed is one more sequence on the beat and not a second rule
- * about time. A speed of zero would hold a frame forever, which is not a
- * beat, and is refused where it is given.
+ * `speed` is a `Timeline` (`core/timeline.ts`) playing from `t = 0` at
+ * that rate, as Rich scales the time, `t × speed` into the beat: the frames
+ * are held for the interval the data gives, and the spinner is asked for the
+ * frame at the time the timeline maps the host's to. [LAW:one-source-of-truth]
+ * When the frame next changes (`Style.nextChange`) is a time on the host's
+ * timeline, and the sequence answers on its own, so the timeline carries the
+ * answer back and the drawn cells are stamped with that rather than the
+ * sequence's own. Backwards, the frames count down from the last at `t = 0`,
+ * a negative time landing in the last frame of the pass before, where Rich's
+ * `int()` truncation holds frame 0 for a first interval and then counts
+ * down: a departure, made so a negative speed is the one timeline run
+ * backwards and not a second rule about time. A speed of zero would hold a
+ * frame forever, which a paused timeline is and a rate is not, and is
+ * refused where it is given.
  */
 
 import type { Animation } from "../core/animation.js";
@@ -52,6 +53,7 @@ import { Style, NULL_STYLE } from "../core/style.js";
 import { RichText } from "../core/text.js";
 import { SPINNERS, DEFAULT_SPINNER, LINE_SPINNER } from "../core/spinnerData.js";
 import type { SpinnerData } from "../core/spinnerData.js";
+import { Timeline } from "../core/timeline.js";
 import type {
   Renderable,
   Measurable,
@@ -61,18 +63,19 @@ import { drawable, render } from "../core/protocol.js";
 import { EmbeddedText } from "./embed.js";
 import { FrameSequence } from "./frames.js";
 
-/** A spinner's frames prepared to draw, each styled and held for the interval over the speed, in the order the speed's sign runs them, and the glyphs they spend. */
+/** A spinner's frames prepared to draw, each styled and held for the interval, run on the spinner's timeline, and the glyphs they spend. */
 interface Sequence {
   readonly frames: FrameSequence;
+  /** The frames on host time: the one asked for the frame at a host time, and when it turns on the host's clock. */
+  readonly played: Animation<RichText>;
   readonly glyphs: string;
 }
 
-const sequence = (data: SpinnerData, style: string | Style, speed: number): Sequence => {
-  const frames = data.frames.map((frame) => ({
-    text: new RichText("", { end: "" }).append(frame, style),
-    seconds: data.interval / 1000 / Math.abs(speed),
-  }));
-  return { frames: new FrameSequence(speed < 0 ? frames.reverse() : frames), glyphs: data.frames.join("") };
+const sequence = (data: SpinnerData, style: string | Style, timeline: Timeline): Sequence => {
+  const frames = new FrameSequence(
+    data.frames.map((frame) => ({ text: new RichText("", { end: "" }).append(frame, style), seconds: data.interval / 1000 })),
+  );
+  return { frames, played: Timeline.run(timeline, frames), glyphs: data.frames.join("") };
 };
 
 const sequenceGlyphs = ({ glyphs }: Sequence): string => glyphs;
@@ -108,18 +111,19 @@ export class Spinner implements Animation<Renderable & Measurable> {
       throw new Error(`Unknown spinner: "${spinnerName}"`);
     }
     const speed = options?.speed ?? 1;
-    // [LAW:parse-dont-validate] A hold is a positive number of seconds, so the
-    // speed it is divided by is finite and not zero, settled here.
+    // [LAW:parse-dont-validate] A rate is finite and not zero, settled where
+    // the timeline is built, in the spinner's name.
     if (!Number.isFinite(speed) || speed === 0) {
       throw new RangeError(`Spinner speed must be finite and not zero, got ${speed}`);
     }
+    const timeline = Timeline.play(0, speed);
     this.name = spinnerName;
     this.text = text;
     this.speed = speed;
     this.style = options?.style ?? NULL_STYLE;
     this._data = data;
-    this._named = sequence(data, this.style, speed);
-    this._ascii = sequence(LINE_SPINNER, this.style, speed);
+    this._named = sequence(data, this.style, timeline);
+    this._ascii = sequence(LINE_SPINNER, this.style, timeline);
   }
 
   get frames(): readonly string[] {
@@ -141,35 +145,47 @@ export class Spinner implements Animation<Renderable & Measurable> {
     if (!Number.isFinite(t)) {
       throw new RangeError(`Spinner.at needs a finite t, got ${t}`);
     }
-    const frames = (options: RenderOptions): FrameSequence =>
-      drawable(options, this._named, this._ascii, sequenceGlyphs).frames;
+    const drawn = (options: RenderOptions): Sequence => drawable(options, this._named, this._ascii, sequenceGlyphs);
     return {
-      render: (options) => this._render(frames(options), t, options),
+      render: (options) => this._render(drawn(options), t, options),
       // Measured at the frames' one width, the widest frame's, so a column
       // holding it never narrows as it turns, and never offered less than
       // that frame: a frame is one picture, which the reference's `Text`
       // measure would let wrap apart at its spaces.
       measure: (options) => {
-        const drawn = frames(options);
-        const { minimum, maximum } = this._line(drawn, t, options).measure(options);
-        return { minimum: Math.max(minimum, Math.min(drawn.width, maximum)), maximum };
+        const { frames, played } = drawn(options);
+        const { minimum, maximum } = this._line(played, t, options).measure(options);
+        return { minimum: Math.max(minimum, Math.min(frames.width, maximum)), maximum };
       },
     };
   }
 
   /**
-   * When the spinner drawn at `t` next turns: the sooner of its two
-   * sequences' answers, since which one is drawn is the output's to choose
-   * and the line spinner that stands in on an ASCII-only output keeps its own
-   * interval. An early answer, on the output that draws the other one, which
-   * the contract allows; the drawn cells carry the exact one.
+   * When the spinner drawn at `t` next turns, on the host's clock: the
+   * sooner of its two sequences' answers, since which one is drawn is the
+   * output's to choose and the line spinner that stands in on an ASCII-only
+   * output keeps its own interval. An early answer, on the output that draws
+   * the other one, which the contract allows; the drawn cells carry the exact one.
    */
   nextChange(t: number): number {
-    return Math.min(this._named.frames.nextChange(t), this._ascii.frames.nextChange(t));
+    return Math.min(this._named.played.nextChange(t), this._ascii.played.nextChange(t));
   }
 
-  private *_render(frames: FrameSequence, t: number, options: RenderOptions): Iterable<Segment> {
-    yield* render(this._line(frames, t, options), options);
+  /** When the spinner drawn at `t` began to be drawn: the later of its two sequences' answers, by the same argument. */
+  lastChange(t: number): number {
+    return Math.max(this._named.played.lastChange(t), this._ascii.played.lastChange(t));
+  }
+
+  /**
+   * The line, every cell stamped with when this sequence turns on the host's
+   * clock in place of the stamp the frame arrived with, which is on the
+   * spinner's own timeline: a time the host cannot read. [LAW:one-source-of-truth]
+   */
+  private *_render({ played }: Sequence, t: number, options: RenderOptions): Iterable<Segment> {
+    const turns = played.nextChange(t);
+    for (const segment of render(this._line(played, t, options), options)) {
+      yield segment.style === undefined ? segment : new Segment(segment.text, segment.style.withNextChange(turns), segment.control);
+    }
     yield Segment.line();
   }
 
@@ -180,8 +196,8 @@ export class Spinner implements Animation<Renderable & Measurable> {
    * styles nothing — is no label, not a trailing space, as an empty `Text` is
    * falsy there.
    */
-  private _line(frames: FrameSequence, t: number, options: RenderOptions): RichText {
-    const line = new RichText("", { end: "" }).append(frames.at(t));
+  private _line(played: Animation<RichText>, t: number, options: RenderOptions): RichText {
+    const line = new RichText("", { end: "" }).append(played.at(t));
     // Unhighlighted: Rich's label is a `Text` from the moment it is handed over, and a `Text` is never highlighted.
     const label = new EmbeddedText(this.text).text({ ...options, highlight: false });
     if (label.plain !== "") line.append(" ").append(label);

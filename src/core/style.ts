@@ -245,6 +245,16 @@ export class Style {
     return this.with({ anchor });
   }
 
+  /**
+   * The same look, its cells next changing at `nextChange` instead: what a
+   * timeline stamps on cells drawn at the time it mapped the host's to, whose
+   * own stamp is on that timeline and not the host's (`renderables/spinner.ts`).
+   * Laying a style over it would keep the sooner of the two.
+   */
+  withNextChange(nextChange: number): Style {
+    return this.with({ nextChange });
+  }
+
 
   /**
    * This style on the cell `cells` to the right: its anchor shifted along its
