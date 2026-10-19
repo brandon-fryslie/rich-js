@@ -4,15 +4,22 @@
     {
       "version": "pr-491",
       "ref": "refs/pull/491/merge",
-      "sha": "0d12caedb4c508b4fff8da6e16e07127a6cace44",
-      "timestamp": "2026-10-19T20:43:06.410Z",
+      "sha": "b13c2ef0c00c0fa210806cf941262b4efb1ea613",
+      "timestamp": "2026-10-19T20:51:05.034Z",
       "commits": [
         {
-          "sha": "0d12caedb4c508b4fff8da6e16e07127a6cace44",
+          "sha": "b13c2ef0c00c0fa210806cf941262b4efb1ea613",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T14:41:03-06:00",
-          "message": "Merge ebfd4a7872aa41c21970fa36e50ebc03351b551d into f2addf714f39c64f144079ba616c271ce47c3bca\n"
+          "timestamp": "2026-10-19T20:49:02Z",
+          "message": "Merge 4fa491311652e421f9783c05de27dd0799c76910 into f2addf714f39c64f144079ba616c271ce47c3bca\n"
+        },
+        {
+          "sha": "4fa491311652e421f9783c05de27dd0799c76910",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T14:48:56-06:00",
+          "message": "Tree: branch on a subtree's first drawn row; render and measure draw labels one way (rich-animation-42lg.8qh review)\n"
         },
         {
           "sha": "ebfd4a7872aa41c21970fa36e50ebc03351b551d",
