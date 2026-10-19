@@ -5,6 +5,12 @@ import { Segment } from "../../src/core/segment.js";
 import { Style } from "../../src/core/style.js";
 import { Table } from "../../src/renderables/table.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import { EASES } from "../../src/core/easing.js";
+import { cellLen } from "../../src/core/cells.js";
+import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
+import { dissolveOut, fadeIn } from "../../src/renderables/effects.js";
+import { frameAt } from "../../src/renderables/frames.js";
+import { lifecycle } from "../../src/renderables/lifecycle.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -330,5 +336,69 @@ describe("Tree", () => {
     tree.add(new RichText("", { end: "" }));
     tree.add("leaf");
     expect(collectLines(tree, { maxWidth: 20 })).toEqual(["root", "├── ", "└── leaf"]);
+  });
+});
+
+// rich-animation-42lg.8qh: which sibling is last is decided by what draws a row,
+// not by how many children there are. Rich chooses it from the children alone
+// and draws `├──` over a last child that drew nothing.
+describe("a child that draws no rows", () => {
+  const curve = { seconds: 1, ease: EASES.linear, swing: 1 };
+  const life = (name: string, entered: number) =>
+    lifecycle(new RichText(name), { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: name, theme: DEFAULT_TERMINAL_THEME }, entered);
+  type Life = ReturnType<typeof life>;
+  // At t=3: `shown` arrived at 1, `before` enters at 5, `gone` finished leaving at 2.
+  const t = 3;
+  const elements = { shown: life("shown", 0), before: life("before", 5), gone: life("gone", 0).leave(1) };
+  // Drawn as the animation answers, and as `frameAt` stamps it: a frame of no cells that still says when it changes.
+  const draws = { unstamped: (l: Life) => l.at(t), stamped: (l: Life) => frameAt(l, t) };
+
+  for (const [how, drawn] of Object.entries(draws)) {
+    for (const absent of ["before", "gone"] as const) {
+      it(`takes no place as the last child, ${absent}, ${how}`, () => {
+        const tree = new Tree("build");
+        tree.add(drawn(elements.shown));
+        tree.add(drawn(elements[absent]));
+        expect(collectLines(tree, { maxWidth: 40 })).toEqual(["build", "└── shown"]);
+      });
+
+      it(`takes no place in the middle, ${absent}, ${how}`, () => {
+        const tree = new Tree("build");
+        tree.add(drawn(elements.shown));
+        tree.add(drawn(elements[absent]));
+        tree.add("after");
+        expect(collectLines(tree, { maxWidth: 40 })).toEqual(["build", "├── shown", "└── after"]);
+      });
+
+      it(`ends a hidden root's branch at the last child that draws, ${absent}, ${how}`, () => {
+        const tree = new Tree("build", { hideRoot: true });
+        tree.add(drawn(elements.shown)).add("inner");
+        tree.add(drawn(elements[absent]));
+        expect(collectLines(tree, { maxWidth: 40 })).toEqual(["shown", "└── inner"]);
+      });
+    }
+  }
+
+  it("still says when it changes, though it draws no row", () => {
+    const tree = new Tree("build");
+    tree.add(frameAt(elements.shown, t));
+    tree.add(frameAt(elements.before, t));
+    expect(Segment.nextChange(collectSegments(tree, { maxWidth: 40 }))).toBe(5);
+  });
+
+  it("keeps its place while something beneath it draws", () => {
+    const tree = new Tree("build");
+    tree.add(elements.before.at(t)).add("inner");
+    tree.add(elements.gone.at(t));
+    expect(collectLines(tree, { maxWidth: 40 })).toEqual(["build", "    └── inner"]);
+  });
+
+  it("is not measured, so measure agrees with the rows render draws", () => {
+    const tree = new Tree("a");
+    tree.add(elements.before.at(t)).add(frameAt(elements.gone, t));
+    expect(tree.measure({ maxWidth: 40 })).toEqual({ minimum: 1, maximum: 1 });
+    const lines = collectLines(tree, { maxWidth: Infinity });
+    expect(lines).toEqual(["a"]);
+    expect(Math.max(...lines.map((line) => cellLen(line)))).toBe(tree.measure({ maxWidth: 40 }).maximum);
   });
 });

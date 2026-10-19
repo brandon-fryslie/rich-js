@@ -53,6 +53,8 @@ console.print(tree);
 
 This is the key power — any renderable can be a node label, not just strings.
 
+A label that draws nothing, such as an [element](/animation#enter-and-exit-an-element-arriving-staying-and-leaving) that has not arrived yet or is already gone, gets no row. It also takes no place among its siblings, so the branch ends at the last child that draws a row. Rich ends the branch at the last child in the list, whatever it draws, so there a fork can lead to nothing.
+
 ## Styles
 
 Give a node a `style` and its label is drawn in it, along with every label beneath it. A deeper node's style refines its ancestors' rather than replacing them, and markup in a label still wins over the style it inherits:
