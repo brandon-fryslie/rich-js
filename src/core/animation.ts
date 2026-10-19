@@ -154,8 +154,9 @@ export const Animation = {
    * each part on its own clock from 0, as every effect is. Before the switch
    * the value next changes when `first`'s does or at the switch, whichever is
    * sooner; after it, when `then`'s does, carried back onto this timeline.
-   * Reduced, `first` is the motion into `then`, so it is skipped: `then`'s
-   * reduced form at its start until the switch, then on, as before.
+   * Reduced, each part is reduced and the switch kept, so what either shows
+   * shows on time; a one-shot that is the motion into what follows says its
+   * own end (`transition`, `../renderables/effects.ts`).
    */
   sequence<T>(first: Animation<T>, seconds: number, then: Animation<T>): Animation<T> {
     positiveSeconds("Animation.sequence seconds", seconds);
@@ -179,18 +180,7 @@ export const Animation = {
         if (into < 0) return first.lastChange(t);
         return Math.min(t, Math.max(seconds, carried(then.lastChange(into))));
       },
-      reduced: () => {
-        const after = then.reduced();
-        // `after` held at its start until the switch, so the switch itself
-        // changes nothing: only what `after` says, carried onto this clock.
-        const held: Animation<T> = {
-          at: (t) => after.at(Math.max(0, t - seconds)),
-          nextChange: (t) => Math.max(t, carried(after.nextChange(Math.max(0, t - seconds)))),
-          lastChange: (t) => (t < seconds ? Number.NEGATIVE_INFINITY : Math.min(t, Math.max(seconds, carried(after.lastChange(t - seconds))))),
-          reduced: () => held,
-        };
-        return held;
-      },
+      reduced: () => Animation.sequence(first.reduced(), seconds, then.reduced()),
     };
   },
 };

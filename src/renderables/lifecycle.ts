@@ -101,13 +101,14 @@ function life(element: Renderable, options: LifecycleOptions, entered: number, l
     if (t < arrived) return { frame: shown(t), ...held(arriving, t) };
     return { frame: element, last: arrived, next: left };
   };
-  // [LAW:dataflow-not-control-flow] The same three spans `phase` draws, the transitions gone from them.
+  // [LAW:dataflow-not-control-flow] The spans `phase` draws, the transitions gone from them: told to
+  // leave, nothing shows, and the moment it is `gone` is still one a host is woken for, so it drops it on time.
   const there = (t: number): { readonly frame: Renderable; readonly last: number; readonly next: number } =>
     t < entered
       ? { frame: NOTHING, last: Number.NEGATIVE_INFINITY, next: entered }
       : t < left
         ? { frame: element, last: entered, next: left }
-        : { frame: NOTHING, last: left, next: Number.POSITIVE_INFINITY };
+        : { frame: NOTHING, last: left, next: t < goneAt ? goneAt : Number.POSITIVE_INFINITY };
   const present: Animation<Renderable> = {
     at: (t) => there(t).frame,
     nextChange: (t) => there(t).next,

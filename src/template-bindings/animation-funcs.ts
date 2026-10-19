@@ -28,7 +28,7 @@
  */
 
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
-import { beat } from "../core/easing.js";
+import { beat, finiteTime } from "../core/easing.js";
 import type { Motion } from "../core/protocol.js";
 import { shownAt } from "../core/view.js";
 import { FrameSequence, textFrameAt, type Frame } from "../renderables/frames.js";
@@ -73,7 +73,7 @@ export function animationFuncs(frameTime: () => number, motion: Motion = {}): Fu
   const framesFunc: TemplateFunc = {
     fn: ((...tail: unknown[]) => {
       const frames: Frame[] = pairs("frame", tail, asFragment).map(({ seconds, value }) => ({ seconds, text: value }));
-      return textFrameAt(new FrameSequence(frames), frameTime(), motion);
+      return textFrameAt(new FrameSequence(frames), finiteTime("frames", frameTime()), motion);
     }) as TemplateFunc["fn"],
     argTypes: ["float", "liftable"],
     arity: { kind: "alternating", minimum: 2 },
@@ -82,7 +82,7 @@ export function animationFuncs(frameTime: () => number, motion: Motion = {}): Fu
   const steppedFunc: TemplateFunc = {
     fn: ((...tail: unknown[]) => {
       const steps = pairs("color", tail, (v) => asColor(v as string, "stepped"));
-      return steps[shownAt(beat(steps.map((step) => step.seconds)), frameTime(), motion).value]!.value.hex;
+      return steps[shownAt(beat(steps.map((step) => step.seconds)), finiteTime("stepped", frameTime()), motion).value]!.value.hex;
     }) as TemplateFunc["fn"],
     argTypes: ["float", "string"],
     arity: { kind: "alternating", minimum: 2 },

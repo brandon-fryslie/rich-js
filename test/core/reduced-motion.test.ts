@@ -66,9 +66,14 @@ describe("an animation reduced", () => {
     expect(still(beat([1, 2, 3]))).toBe(0);
     expect(still(frames("a", "b")).plain).toBe("a");
     expect(still(tween(0, 10, { seconds: 1, ease: EASES.linear }))).toBe(10);
-    expect(still(Animation.sequence(Animation.continuous(() => "moving"), 2, Animation.constant("arrived")))).toBe("arrived");
     expect(still(Animation.map(tween(0, 4, { seconds: 1, ease: EASES.linear }), (v) => v * 2))).toBe(8);
     expect(still(Animation.onBeat(Animation.continuous((t) => t), beat([0.5])))).toBe(0);
+  });
+
+  it("a sequence keeps each part on time, and wakes only at the switch", () => {
+    const reduced = Animation.sequence(Animation.continuous((t) => `loading ${t}`), 2, Animation.constant("results")).reduced();
+    expect([0, 1, 1.99, 2, 9].map((t) => reduced.at(t))).toEqual(["loading 0", "loading 0", "loading 0", "results", "results"]);
+    expect([0, 1, 2, 9].map((t) => reduced.nextChange(t))).toEqual([2, 2, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY]);
   });
 
   it("a timeline maps time and the motion stays gone, playing, reversed or paused", () => {
@@ -109,9 +114,14 @@ describe("an animation reduced", () => {
     const element = new RichText("line", { end: "" });
     const options = { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "line", theme };
     expect(still(lifecycle(element, options, -1))).toBe(element);
-    const reduced = lifecycle(element, options, 2).leave(5).reduced();
+    const life = lifecycle(element, options, 2).leave(5);
+    const reduced = life.reduced();
     expect([1, 2, 3, 4.99, 5, 9].map((t) => plain(reduced.at(t)))).toEqual(["", "line", "line", "line", "", ""]);
-    expect([1, 2, 3, 5, 9].map((t) => reduced.nextChange(t))).toEqual([2, 5, 5, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY]);
+    // Gone once the exit would have ended, which a host is woken for, so it can drop the element then.
+    expect([1, 2, 3].map((t) => reduced.nextChange(t))).toEqual([2, 5, 5]);
+    const goneAt = reduced.nextChange(5);
+    expect([life.gone(goneAt - 0.01), life.gone(goneAt)]).toEqual([false, true]);
+    expect([goneAt, 9].map((t) => reduced.nextChange(t))).toEqual([Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY]);
     expect(reduced.at(3)).toBe(element);
   });
 });
@@ -173,7 +183,7 @@ describe("a host under reduced motion", () => {
   it("a view reduced still shows and drops content on time, and wakes for exactly that", () => {
     const life = lifecycle(new RichText("toast", { end: "" }), { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "toast", theme }, 2).leave(5);
     expect([1, 3, 6].map((t) => text(drawnAt(life, REDUCED, t)).trim())).toEqual(["", "toast", ""]);
-    expect([1, 3, 6].map((t) => drawnAt(life, REDUCED, t).nextChange)).toEqual([2, 5, Number.POSITIVE_INFINITY]);
+    expect([1, 3, 8].map((t) => drawnAt(life, REDUCED, t).nextChange)).toEqual([2, 5, Number.POSITIVE_INFINITY]);
   });
 
   it("a function view is asked at the time, so what it computes from it stays on time", () => {
@@ -254,6 +264,13 @@ describe("a one-shot render under reduced motion", () => {
 });
 
 describe("the template animation functions under reduced motion", () => {
+  it("refuse a time that is not finite, as they do with motion", () => {
+    const funcs = animationFuncs(() => Number.NaN, { reducedMotion: true });
+    const engine = createEngine<RichText>({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: { ...richTextFuncs(), ...funcs } });
+    expect(() => engine.compile(`{{ frames 0.25 "a" 0.25 "b" }}`)({})).toThrow(/frames needs a finite t, got NaN/);
+    expect(() => engine.compile(`{{ stepped 0.5 "#ff0000" 0.5 "#00ff00" }}`)({})).toThrow(/stepped needs a finite t, got NaN/);
+  });
+
   it("draw the first frame and the first colour at every moment", () => {
     let frameTime = 0;
     const compiled = (reducedMotion: boolean) =>

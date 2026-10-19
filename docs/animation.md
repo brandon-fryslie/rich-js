@@ -35,7 +35,7 @@ Five pieces build every animation, and each says how `nextChange` and `lastChang
 - `Animation.all([a, b, …])` is every one's value at once, in order, changing when the soonest of them does — so several effects drawn as one hold still exactly while each of them does — and having become that when the latest of them did.
 - `Animation.sequence(first, seconds, then)` is `first` until `seconds`, then `then`, handed the time since it began, so each part runs on its own clock from 0.
 
-Each says its [reduced](#reduced-motion) form the same way: a constant is itself, a continuous animation holds its value at 0, as a loop holds its first, a mapped one is its source reduced through `f`, several at once are each reduced, and a sequence skips `first`, the motion into `then`, and is `then` reduced, as a one-shot holds its end.
+Each says its [reduced](#reduced-motion) form the same way: a constant is itself, a continuous animation holds its value at 0, as a loop holds its first, a mapped one is its source reduced through `f`, several at once are each reduced, and a sequence is each part reduced with the switch kept. A one-shot that leads into what follows, such as a transition, holds its end.
 
 Here a light arrives, holds, and then blinks on a [beat](/easing):
 
