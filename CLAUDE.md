@@ -84,7 +84,7 @@ Build order within `src/core/`. Each tier imports only from tiers above it, but 
 ```
 0   anchor · cell-widths · color · easing · env · fnv1a · memo · noise · selection · subscription
 1   animation · cells · clock · oklch · osc8 · style · wrap
-2   segment · timeline
+2   segment · timeline · tween
 3   box · protocol · export-lines
 4   measure · emoji · text · strip · render · export-html · export-svg
 5   markup · highlighter · ansi · place · paint
@@ -119,6 +119,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **easing** — progress in [0, 1]: `Ease` (CSS's `cubicBezier`/`steps` and their named curves in `EASES`, `parseEase` for a spelled name; the physics curves beside them — `spring`, a damped oscillator that also reports the seconds it settles in, and Penner's `bounce`, `back-in`, `back-out`, `elastic`) and `Phase` (`once`/`loop`/`pingPong`, seconds in, no clock read), plus `beat` — holds in seconds, looped, the hold in progress out, and when it began and ends — which `Frames` turns on. The one timing vocabulary `ColorRamp`, every effect and every frame sequence share.
 - **animation** — `Animation<T>`: a value for a time (`at(t)`), the first moment it may change (`nextChange(t)`) and the last moment it may have become that (`lastChange(t)`), and the combinators each saying how those moments compose. The one type anything that changes with time is: a `Beat`, a `FrameSequence`, a `Spinner`, and an `Effect` over what an element draws. `docs/animation.md` is its page.
 - **timeline** — `Timeline`: the map from the host's clock to the time an animation is asked for, as a value — play, pause, resume, seek, a rate, negative to reverse — and `Timeline.run`, an animation on host time whose `nextChange` is carried back onto the host's clock, backwards through `lastChange`. `Spinner`'s `speed` is one. Documented on `docs/animation.md`.
+- **tween** — `tween(from, to, timing)`: a number eased from one value to another over a `Timing` (`easing`'s ease-and-seconds pair, which `spring()` returns and an effect's `Curve` extends), then held — the first `Animation` of a value never drawn as cells. A colour tween is `ColorRamp.over(seconds)` in `themes/ramp.ts`, the ramp read over time; retargeting is `Animation.sequence` from the old tween's value. Documented on `docs/animation.md`.
 - **oklch** — perceptually-uniform polar colour space. sRGB ↔ OKLab ↔ OKLCH, reversible but for the final 0–255 quantization. This is where equal numeric deltas mean equal perceptual deltas, which is what transposition needs.
 - **style** — immutable `Style` descriptors (colours + text attributes + links). `Style.parse` (cached), `Style.add`. Includes `StyleStack`, `Theme`, `DEFAULT_STYLES`.
 - **segment** — atomic render unit `(text, style?, control?)`. Static methods (`applyStyle`, `splitLines`, `adjustLineLength`, `simplify`, `divide`) operate on `Segment[]` / `Segment[][]`.

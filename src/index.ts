@@ -109,10 +109,13 @@ export type { ColorStop } from "./themes/ramp.js";
 // Progress in [0, 1]: phases turn seconds into it, eases reshape it. One
 // vocabulary for ramps and time-based effects alike, CSS's names throughout.
 export { EASES, Phase, beat, cubicBezier, parseEase, spring, steps } from "./core/easing.js";
-export type { Beat, Ease, Spring, SpringOptions, StepPosition } from "./core/easing.js";
+export type { Beat, Ease, SpringOptions, StepPosition, Timing } from "./core/easing.js";
 // A value for a time, and when it next changes: the one type every kind of
 // motion is an instance of — beats, frame sequences, spinners, effects.
 export { Animation } from "./core/animation.js";
+// A number eased from one value to another over seconds, then held: the
+// value animation a fill, a counter or a width moves by instead of jumping.
+export { tween } from "./core/tween.js";
 // The map from the host's clock to the time an animation is asked for:
 // pause, reverse, scrub and speed, once, above every kind of motion.
 export { Timeline } from "./core/timeline.js";

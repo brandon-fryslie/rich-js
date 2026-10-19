@@ -170,17 +170,17 @@ export interface SpringOptions {
 }
 
 /**
- * A spring as an ease, and how long it takes: the ease is the spring's
- * position over `seconds`, read as progress — released at rest a unit from
- * where it is going, at 1 when it has settled there — so `{ ...spring(…),
- * swing }` is an effect's `Curve`, and `Phase.once(start, seconds)` through
- * the ease is the spring on a timeline. Unlike every other ease, a spring's
- * duration is not the caller's to choose: how long it rings is a fact about
- * its physics, which is why this is the one ease that comes with its seconds.
+ * An ease over a duration: CSS's timing function and duration as one value,
+ * the whole of what a one-shot move needs to know about time — a tween's
+ * (`./tween.ts`), a `spring()`'s, and the part of an effect's `Curve` that
+ * is not its swing. `Phase.once(start, seconds)` through `ease` is the move
+ * on a timeline. [LAW:one-type-per-behavior] One shape, so a spring is handed
+ * to a tween as it is, and a curve written for an effect times a tween.
  */
-export interface Spring {
+export interface Timing {
+  /** How the move is shaped, as progress in to progress out. */
   readonly ease: Ease;
-  /** How long the spring takes to settle, in seconds: the first moment after which its displacement stays within `SPRING_REST`. */
+  /** How long the move takes, in seconds. */
   readonly seconds: number;
 }
 
@@ -205,9 +205,13 @@ const DEFAULT_SPRING: Required<SpringOptions> = { stiffness: 100, damping: 10, m
  * the bracket each regime knows its last crossing lies in, so a sample costs
  * an exponential and a cosine whatever `x` is. [LAW:no-ambient-temporal-coupling]
  *
- * The ease is exactly 1 at `x = 1` (`settled`): settled means at rest.
+ * The ease is exactly 1 at `x = 1` (`settled`): settled means at rest. The
+ * `seconds` are the spring's to say, not the caller's: how long it rings is
+ * a fact about its physics, which is why this is the one ease that comes as
+ * a `Timing` — released at rest a unit from where it is going, at 1 when it
+ * has settled there.
  */
-export function spring(options: SpringOptions = {}): Spring {
+export function spring(options: SpringOptions = {}): Timing {
   const { stiffness, damping, mass } = { ...DEFAULT_SPRING, ...options };
   for (const [name, v] of [["stiffness", stiffness], ["damping", damping], ["mass", mass]] as const) positive(`spring ${name}`, v);
   const w0 = Math.sqrt(stiffness / mass);
