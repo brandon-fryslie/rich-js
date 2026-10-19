@@ -8,6 +8,7 @@
 import { createEngine } from "@promptctl/go-template-js";
 import { describe, expect, it } from "vitest";
 import {
+  Animation,
   CATPPUCCIN_MOCHA,
   ColorDepth,
   ColorRgba,
@@ -27,7 +28,6 @@ import {
   confined,
   onBeat,
   steppedInk,
-  withNextChange,
   type Drawn,
   type Effect,
   type Renderable,
@@ -44,8 +44,8 @@ const frames = (holds: readonly number[]): FrameSequence => new FrameSequence(ho
 const nextChangeOf = (renderable: Renderable, options: Parameters<Renderable["render"]>[0] = OPTIONS): number => Segment.nextChange(renderable.render(options));
 const lit = (child: Renderable, effect: Effect, t: number): Effected => new Effected(child, effect, { t, key: "k", theme: THEME });
 const label = new RichText(" rich-js ", { style: Style.parse("#1e1e2e on #89b4fa"), end: "", noWrap: true });
-/** A loop that moves every frame: a plain function of t, promising no hold. */
-const drifting: Effect = (t) => (colors) => ({ fg: new ColorRgba(Math.floor(t * 50) % 256, 0, 0), bg: colors.bg });
+/** A loop that moves every frame: a continuous function of t, promising no hold. */
+const drifting: Effect = () => Animation.continuous((t) => (colors) => ({ fg: new ColorRgba(Math.floor(t * 50) % 256, 0, 0), bg: colors.bg }));
 
 describe("what a host reads off a frame: when it next changes", () => {
   it("still content never changes: text, a panel, a table", () => {
@@ -79,7 +79,7 @@ describe("what a host reads off a frame: when it next changes", () => {
   });
 
   it("the frame as text, appended into a line, still says when it turns", () => {
-    const line = new RichText("effort ", { end: "" }).append(frames([1, 1]).text(0.3)).append(" max");
+    const line = new RichText("effort ", { end: "" }).append(frames([1, 1]).at(0.3)).append(" max");
     expect(nextChangeOf(line)).toBe(1);
   });
 
@@ -141,25 +141,26 @@ describe("what a host reads off a frame: when it next changes", () => {
     }
   });
 
-  it("both stages and the answer are asked with the one measure of the frame", () => {
+  it("the effect is made from the one measure of the frame, and both its frame and its answer are asked of what it made", () => {
     const seen: Drawn[] = [];
-    const watching: Effect = withNextChange(
-      (_t, drawn) => {
-        seen.push(drawn);
-        return (colors) => colors;
-      },
-      (t, drawn) => {
-        seen.push(drawn);
-        return t;
-      },
-    );
+    const asked: string[] = [];
+    const watching: Effect = (drawn) => {
+      seen.push(drawn);
+      return {
+        at: (t) => (asked.push(`at ${t}`), (colors) => colors),
+        nextChange: (t) => (asked.push(`nextChange ${t}`), t),
+      };
+    };
     [...lit(label, watching, 1).render(OPTIONS)];
-    expect(seen).toHaveLength(2);
-    expect(seen[0]).toBe(seen[1]);
+    expect(seen).toHaveLength(1);
+    expect([...asked].sort()).toEqual(["at 1", "nextChange 1"]);
   });
 
-  it("the answer is asked with the frame, so a composer may answer from what the inner effect says of it", () => {
-    const stillUnder = (depth: ColorDepth): Effect => withNextChange(drifting, (t, drawn) => (drawn.depth === depth ? Number.POSITIVE_INFINITY : t));
+  it("the answer is made from the frame, so a composer may answer from what the inner effect says of it", () => {
+    const stillUnder = (depth: ColorDepth): Effect => (drawn) => {
+      const moving = drifting(drawn);
+      return { at: (t) => moving.at(t), nextChange: (t) => (drawn.depth === depth ? Number.POSITIVE_INFINITY : t) };
+    };
     expect(nextChangeOf(lit(label, stillUnder(ColorDepth.TRUECOLOR), 3))).toBe(Number.POSITIVE_INFINITY);
     expect(nextChangeOf(lit(label, stillUnder(ColorDepth.EIGHT_BIT), 3))).toBe(3);
   });

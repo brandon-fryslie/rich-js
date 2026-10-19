@@ -2,24 +2,26 @@
  * Effected — a renderable whose finished cells' colours pass through an
  * effect at a moment `t`.
  *
- * An effect is one pure function in two stages: a time and what the element
- * draws in that frame in, a function of the frame out; and into that, a
- * cell's colours and where the cell is, the cell's new colours out. Whatever
- * holds for the whole frame is worked out in the first stage, once, and every
- * cell of the frame is handed to the second, but for those a wrapper keeps
- * back: `confined` hands over only the cells its owners drew, so a second
- * stage never counts on seeing them all. Shimmer, pulse, fade and
- * dissolve are all this one shape, differing by what the function does with
- * its inputs [LAW:one-type-per-behavior]; two effects stack by nesting one
- * wrapper in another, which is the same as calling one after the other but
- * for what the outer one measures: the inner one's output.
+ * An effect is, for what an element draws in a frame, an `Animation`
+ * (`core/animation.ts`) of what is done to its cells: its value at `t` is a
+ * function from a cell's colours and where the cell is to the cell's new
+ * colours (`EffectFrame`), and it says when that next changes as every
+ * animation does. Whatever holds for the whole frame is worked out once, in
+ * the effect and its `at(t)`, and every cell of the frame is handed to the
+ * function `at(t)` returns, but for those a wrapper keeps back: `confined`
+ * hands over only the cells its owners drew, so an effect never counts on
+ * seeing them all. Shimmer, pulse, fade and dissolve are all this one shape,
+ * differing by what the function does with its inputs
+ * [LAW:one-type-per-behavior]; two effects stack by nesting one wrapper in
+ * another, which is the same as calling one after the other but for what the
+ * outer one measures: the inner one's output.
  *
- * What the element draws (`Drawn`) — the cells the second stage will be
- * handed, and the colours of its words — is measured here, in the render, off
- * the same reading of each segment its cells are drawn from, and handed to the
- * effect's first stage, once a frame. It is what an effect keeping words legible is
- * settled against (`onColors`, `./effects.ts`), so no caller derives it a
- * second time from a render of its own.
+ * What the element draws (`Drawn`) — the cells the effect will be handed,
+ * and the colours of its words — is measured here, in the render, off the
+ * same reading of each segment its cells are drawn from, and handed to the
+ * effect once a frame. It is what an effect keeping words legible is settled
+ * against (`onColors`, `./effects.ts`), so no caller derives it a second time
+ * from a render of its own.
  *
  * [LAW:no-ambient-temporal-coupling] `t` is a constructor argument, not a
  * clock read. Whoever draws frames builds the view for each frame's `t`, so
@@ -50,6 +52,7 @@
  */
 
 import { drawnBy, shiftAnchor, type Anchor } from "../core/anchor.js";
+import { Animation } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK, type ColorRgba, type TerminalTheme } from "../core/color.js";
 import type { Beat } from "../core/easing.js";
@@ -128,7 +131,7 @@ export interface Drawn {
   /**
    * Every cell the element shows something in this frame — a glyph, a
    * ground that is not the terminal's, or a line its style draws — where it
-   * sits and who drew it, listed before the second stage is handed any: what
+   * sits and who drew it, listed before the effect is handed any: what
    * an effect spread over the element — a transition, which has its last cell
    * settle as it ends — is spread over. A blank cell on the terminal's ground
    * that draws no line is handed but not listed, since nothing in it shows.
@@ -148,48 +151,24 @@ export interface Drawn {
   readonly theme: TerminalTheme;
 }
 
+/** What an effect does to the cells of one frame: each cell's colours and where it is in, its colours out. Return `colors` to leave a cell be. */
+export type EffectFrame = (colors: CellColors, cell: EffectCell) => CellColors;
+
 /**
- * The frame at time `t`, in seconds, whose element draws `drawn`: each cell's
- * colours in that frame. Return `colors` to leave a cell be.
- * [LAW:types-are-the-program] Per-frame work is the outer stage, so it runs
- * once a frame by the shape of the call, never by a cache asking whether this
- * cell's frame is the last one's.
+ * For an element drawing `drawn`, the animation of what is done to its cells.
+ * [LAW:types-are-the-program] Per-frame work is `at(t)`, so it runs once a
+ * frame by the shape of the call, never by a cache asking whether this cell's
+ * frame is the last one's.
  *
- * An effect that knows when its frame next changes says so in `nextChange`,
- * asked with the same `t` and `drawn` its first stage is: a stepped one its
- * next step's start, a transition `t` until it is done and `Infinity` after,
- * a loop that holds every cell still at the frame's depth `Infinity` there.
- * [LAW:types-are-the-program] The answer is a fact about the frame, so it is
- * asked with everything the frame is drawn from; an answer asked with `t`
- * alone could not say that a frame is still because of its depth. A plain
- * function is an effect that moves every frame, and answers `t`
- * (`nextChangeOf`): the one true answer for a frame nothing has promised to
- * hold, so a loop needs no second shape.
+ * Its `nextChange` is when the frame next changes: a stepped effect its next
+ * step's start, a transition `t` until it is done and `Infinity` after, a
+ * loop that holds every cell still at the frame's depth `Infinity` there, and
+ * a loop that moves `t` (`Animation.continuous`). [LAW:types-are-the-program]
+ * The answer is a fact about the frame, so the animation is made from
+ * everything the frame is drawn from; one made from `t` alone could not say
+ * that a frame is still because of its depth.
  */
-export interface Effect {
-  (t: number, drawn: Drawn): (colors: CellColors, cell: EffectCell) => CellColors;
-  /** When the frame drawn at `t` of `drawn` next changes, in seconds on `t`'s timeline, never before `t`; absent, every frame. */
-  readonly nextChange?: (t: number, drawn: Drawn) => number;
-}
-
-/**
- * When `effect`'s frame at `t` of `drawn` next changes: what it says, or `t`
- * for an effect that says nothing. [LAW:single-enforcer] The one reading of
- * an absent `nextChange`, so no caller holds its own default.
- */
-export function nextChangeOf(effect: Effect, t: number, drawn: Drawn): number {
-  return effect.nextChange?.(t, drawn) ?? t;
-}
-
-/**
- * An effect drawing as `effect` does, with `nextChange` as its answer to when
- * its frame next changes, in place of whatever `effect` answered; `effect`
- * itself is left as it was. A composer whose answer depends on the inner
- * effect's reads it with `nextChangeOf`, as `onBeat` and `confined` do.
- */
-export function withNextChange(effect: Effect, nextChange: (t: number, drawn: Drawn) => number): Effect {
-  return Object.assign((t: number, drawn: Drawn) => effect(t, drawn), { nextChange });
-}
+export type Effect = (drawn: Drawn) => Animation<EffectFrame>;
 
 export interface EffectedOptions {
   /** The moment to draw, in seconds. */
@@ -242,18 +221,16 @@ export class Effected implements Renderable, Measurable, Composite {
     const depth = options.colorSystem ?? ColorDepth.TRUECOLOR;
     // [LAW:one-source-of-truth] The frame is measured before any cell is
     // handed to the effect, off the same looks its cells are drawn from, and
-    // the one measure is what both stages and the effect's next change are
-    // asked with.
+    // the one measure is what the effect's animation is made from.
     const looked = looks(segments, depth, this.theme);
     const walked = walk(looked);
-    const drawn = measured(looked, () => walked, depth, this.theme);
-    const frame = this.effect(this.t, drawn);
+    const animation = this.effect(measured(looked, () => walked, depth, this.theme));
     // What the effect draws at `t` is drawn until its next change, and the
     // cells say so, under whatever the child already said (the sooner wins).
-    yield* Segment.applyStyle(this._recolored(walked, frame, depth), new Style({ nextChange: nextChangeOf(this.effect, this.t, drawn) }));
+    yield* Segment.applyStyle(this._recolored(walked, animation.at(this.t), depth), new Style({ nextChange: animation.nextChange(this.t) }));
   }
 
-  private *_recolored(walked: readonly Walked[], frame: ReturnType<Effect>, depth: ColorDepth): Iterable<Segment> {
+  private *_recolored(walked: readonly Walked[], frame: EffectFrame, depth: ColorDepth): Iterable<Segment> {
     for (const { segment, look, glyphs } of walked) {
       if (look === undefined) {
         yield segment;
@@ -441,26 +418,29 @@ function measured(looked: readonly Looked[], walked: () => readonly Walked[], de
  * held time is a function of `t`, so the same `t` draws the same bytes at
  * any rate. The frame next changes at a hold's start, and only one the
  * sampled effect has moved by: the first hold start at or after what it
- * answers for the frame held now (`Beat.end`). An effect that moves every
- * frame makes the beat's own answer, the end of this hold; one that is done
- * and says never leaves the beat saying never too, since the hold after this
- * one would draw the same frame. The answer is read off what the effect
+ * answers for the frame held now (`Beat.nextChange`). An effect that moves
+ * every frame makes the beat's own answer, the end of this hold; one that is
+ * done and says never leaves the beat saying never too, since the hold after
+ * this one would draw the same frame. The answer is read off what the effect
  * says, never off a comparison of frames: an effect that steps and is back
  * on the same colour by the next hold still turns the beat there, an early
  * answer the contract allows.
  */
 export function onBeat(effect: Effect, beat: Beat): Effect {
-  return withNextChange(
-    (t, drawn) => effect(beat.start(t), drawn),
-    (t, drawn) => {
-      const moved = nextChangeOf(effect, beat.start(t), drawn);
-      if (moved === Number.POSITIVE_INFINITY) return moved;
-      const end = beat.end(t);
-      // The hold boundaries after `t` are `end`, then each hold's end in turn;
-      // the frame turns at the first one the effect has moved by.
-      return moved <= end ? end : beat.start(moved) === moved ? moved : beat.end(moved);
-    },
-  );
+  return (drawn) => {
+    const sampled = effect(drawn);
+    return {
+      at: (t) => sampled.at(beat.start(t)),
+      nextChange(t) {
+        const moved = sampled.nextChange(beat.start(t));
+        if (moved === Number.POSITIVE_INFINITY) return moved;
+        const end = beat.nextChange(t);
+        // The hold boundaries after `t` are `end`, then each hold's end in turn;
+        // the frame turns at the first one the effect has moved by.
+        return moved <= end ? end : beat.start(moved) === moved ? moved : beat.nextChange(moved);
+      },
+    };
+  };
 }
 
 /**
@@ -482,18 +462,13 @@ export function confined(effect: Effect, ...owners: readonly object[]): Effect {
   // The frame as the effect sees it: the owners' cells alone. [LAW:one-source-of-truth] One narrowing, handed to both stages.
   const owned = (drawn: Drawn): Drawn => ({ ...drawn, cells: () => drawn.cells().filter((cell) => any(ownedOf(cell))) });
   // The owners' cells change when the effect's frame does.
-  return withNextChange(
-    (t, drawn) => {
-      const frame = effect(t, owned(drawn));
-      return (colors, cell) => {
-        const owns = ownedOf(cell);
-        if (!any(owns)) return colors;
-        const moved = frame(colors, cell);
-        return { fg: owns.fg ? moved.fg : colors.fg, bg: owns.bg ? moved.bg : colors.bg };
-      };
-    },
-    (t, drawn) => nextChangeOf(effect, t, owned(drawn)),
-  );
+  return (drawn) =>
+    Animation.map(effect(owned(drawn)), (frame): EffectFrame => (colors, cell) => {
+      const owns = ownedOf(cell);
+      if (!any(owns)) return colors;
+      const moved = frame(colors, cell);
+      return { fg: owns.fg ? moved.fg : colors.fg, bg: owns.bg ? moved.bg : colors.bg };
+    });
 }
 
 /**

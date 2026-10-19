@@ -450,7 +450,7 @@ describe("Live refresh rate", () => {
     const display = new Live(
       (t) => {
         const frame = new Frames(seq, { t });
-        drawn.push({ t, frame: seq.text(t).plain });
+        drawn.push({ t, frame: seq.at(t).plain });
         return frame;
       },
       { console: target, clock, refreshPerSecond: 4 },

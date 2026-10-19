@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  Animation,
   CATPPUCCIN_MOCHA,
   ColorDepth,
   ColorRgba,
@@ -73,8 +74,8 @@ describe("onBeat — an effect sampled and held on a beat", () => {
   });
 
   it("the held time reaches the effect as a time: an effect that reads nothing of it is unchanged", () => {
-    const red: Effect = () => (colors) => ({ fg: new ColorRgba(255, 0, 0), bg: colors.bg });
+    const red: Effect = () => Animation.continuous(() => (colors) => ({ fg: new ColorRgba(255, 0, 0), bg: colors.bg }));
     const held = onBeat(red, beat([1]));
-    for (const t of [0, 0.3, 7.9]) expect(held(t, drawnOf([], ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA))({ fg: new ColorRgba(0, 0, 0), bg: new ColorRgba(0, 0, 0) }, { row: 0, col: 0, seed: 0, terminal: { fg: false, bg: false }, reverse: false, anchor: undefined }).fg.hex).toBe("#ff0000");
+    for (const t of [0, 0.3, 7.9]) expect(held(drawnOf([], ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA)).at(t)({ fg: new ColorRgba(0, 0, 0), bg: new ColorRgba(0, 0, 0) }, { row: 0, col: 0, seed: 0, terminal: { fg: false, bg: false }, reverse: false, anchor: undefined }).fg.hex).toBe("#ff0000");
   });
 });

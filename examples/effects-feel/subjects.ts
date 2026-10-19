@@ -10,6 +10,7 @@
  */
 
 import {
+  Animation,
   ColorDepth,
   ColorRgba,
   ColorSpec,
@@ -114,8 +115,11 @@ export function textSubject(theme: TerminalTheme, depth: ColorDepth): Subject {
  */
 export function pulsedOn(subject: DrawnSubject, pulseAt: (z: number) => Loop): Effect {
   const effects = subject.pulsed.map((element, n) => confined(onColors(pulseAt(subject.z + 3.7 * (n + 1))), element));
-  return (t, drawn) => {
-    const frames = effects.map((effect) => effect(t, drawn));
-    return (colors, cell) => frames.reduce((moved, frame) => frame(moved, cell), colors);
+  return (drawn) => {
+    const animations = effects.map((effect) => effect(drawn));
+    return Animation.continuous((t) => {
+      const frames = animations.map((animation) => animation.at(t));
+      return (colors, cell) => frames.reduce((moved, frame) => frame(moved, cell), colors);
+    });
   };
 }

@@ -37,12 +37,10 @@ import {
   TextColumn,
   Tree,
   beat,
-  nextChangeOf,
   onBeat,
   regionRows,
   steppedInk,
   withCellWidth,
-  withNextChange,
   type Effect,
   type Renderable,
   type RenderOptions,
@@ -192,20 +190,23 @@ const THEME = DEFAULT_TERMINAL_THEME;
  */
 const FLASH_BEAT = beat([0.3, 9.7]);
 function flashing(effect: Effect): Effect {
-  return withNextChange(
-    (t, drawn) => {
-      const under = effect(t, drawn);
-      // Dark, the frame is the inner effect's own.
-      if (FLASH_BEAT.at(t) !== 0) return under;
-      const left = 1 - (t - FLASH_BEAT.start(t)) / FLASH_BEAT.holds[0]!;
-      const toward = (channel: number): number => Math.round(channel + (255 - channel) * left);
-      return (colors, cell) => {
-        const moved = under(colors, cell);
-        return { fg: moved.fg, bg: new ColorRgba(toward(moved.bg.red), toward(moved.bg.green), toward(moved.bg.blue)) };
-      };
-    },
-    (t, drawn) => (FLASH_BEAT.at(t) === 0 ? t : Math.min(FLASH_BEAT.end(t), nextChangeOf(effect, t, drawn))),
-  );
+  return (drawn) => {
+    const inner = effect(drawn);
+    return {
+      at(t) {
+        const under = inner.at(t);
+        // Dark, the frame is the inner effect's own.
+        if (FLASH_BEAT.at(t) !== 0) return under;
+        const left = 1 - (t - FLASH_BEAT.start(t)) / FLASH_BEAT.holds[0]!;
+        const toward = (channel: number): number => Math.round(channel + (255 - channel) * left);
+        return (colors, cell) => {
+          const moved = under(colors, cell);
+          return { fg: moved.fg, bg: new ColorRgba(toward(moved.bg.red), toward(moved.bg.green), toward(moved.bg.blue)) };
+        };
+      },
+      nextChange: (t) => (FLASH_BEAT.at(t) === 0 ? t : Math.min(FLASH_BEAT.nextChange(t), inner.nextChange(t))),
+    };
+  };
 }
 const BRAND = flashing(WALK);
 
