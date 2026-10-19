@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-492",
+      "ref": "refs/pull/492/merge",
+      "sha": "d8a10f542e838398995bff1fc4d38fb2a58870af",
+      "timestamp": "2026-10-19T22:47:27.607Z",
+      "commits": [
+        {
+          "sha": "d8a10f542e838398995bff1fc4d38fb2a58870af",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T16:45:47-06:00",
+          "message": "Merge 244afe4c1f85ad7a03e3d9cb6bc16ebb9e8738ec into f772ebd134433012ebb20badeb5560e1d6e6a46e\n"
+        },
+        {
+          "sha": "244afe4c1f85ad7a03e3d9cb6bc16ebb9e8738ec",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T16:45:35-06:00",
+          "message": "Reduced motion: one switch draws every animation at its rest (rich-animation-42lg.a38)\n\nAn Animation now says its rest() — a loop's first value, a one-shot's end —\nand every combinator says it once, so a transition rests at its new state, a\nlifecycle arrived (or gone once told to leave), a stagger with everyone\narrived. reducedMotion on Console (which a Live draws through), on App, and on\nanimationFuncs is the one switch; shownAt in core/view.ts is the one place it\nis read, by drawView and by every renderable built for the host's time.\ndrawView takes the render options once and hands them to its draw. Nothing\nreads the environment.\n\nNamed limit: a text frame a function view splices itself with frameAt, or a\nvalue it samples itself, is its own sample; at rest a function view is asked\nat 0. docs/animation.md#reduced-motion says so.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f772ebd134433012ebb20badeb5560e1d6e6a46e",
