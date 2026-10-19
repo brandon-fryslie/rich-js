@@ -158,14 +158,27 @@ describe("RichText construction", () => {
     expect(codes.filter((code) => !kept(code))).toEqual(codes.filter((code) => stripped.has(code)));
   });
 
-  it("strips the bidi embeddings, overrides and isolates, and keeps the marks", () => {
-    // Every code point Unicode gives Bidi_Control, and the characters just
-    // outside the two stripped ranges: only the nine that open a direction
-    // state go.
-    const STRIPS = [0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069];
-    const KEEPS = [0x061c, 0x200e, 0x200f, 0x2029, 0x202f, 0x2065, 0x206a];
+  it("strips the C1 controls and the stateful format controls, and keeps the bidi marks", () => {
     const kept = (code: number): boolean => new RichText(`a${String.fromCodePoint(code)}b`).plain.length === 3;
-    expect([...STRIPS, ...KEEPS].filter(kept)).toEqual(KEEPS);
+    const range = (from: number, to: number): number[] => Array.from({ length: to - from + 1 }, (_, i) => from + i);
+    // Unicode's own Bidi_Control set, less the three marks, which hold no state.
+    const MARKS = [0x061c, 0x200e, 0x200f];
+    const bidiControls = range(0, 0xffff).filter((code) => /\p{Bidi_Control}/u.test(String.fromCodePoint(code)));
+    expect(bidiControls.filter(kept)).toEqual(MARKS);
+    // Every C1 control, and the deprecated shaping and swapping switches.
+    expect(range(0x80, 0x9f).filter(kept)).toEqual([]);
+    expect(range(0x206a, 0x206f).filter(kept)).toEqual([]);
+    // The neighbours of each stripped range pass.
+    expect([0xa0, 0x2029, 0x202f, 0x2065, 0x2070].filter(kept)).toHaveLength(5);
+  });
+
+  it("sanitizes a pad character and a truncation marker as it sanitizes content", () => {
+    const padded = new RichText("ab").stylize("bold", 0, 2).pad(1, "\u202E");
+    expect(padded.plain).toBe("ab");
+    expect(padded.spans.map((s) => [s.start, s.end])).toEqual([[0, 2]]);
+    expect(new RichText("ab").padLeft(2, "\u202E").plain).toBe("ab");
+    expect(new RichText("ab").padRight(2, "\u009B").plain).toBe("ab");
+    expect(new RichText("abcdef").truncate(3, { marker: "\u202E" }).plain).toBe("abc");
     expect(new RichText().append("x\u202Ey").plain).toBe("xy");
   });
 
