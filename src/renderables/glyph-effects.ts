@@ -36,12 +36,14 @@ function blank(glyph: string): string {
 }
 
 /**
- * Whether `glyph` shows nothing: a space of any width. [LAW:one-source-of-truth]
- * The one test of a blank cell, so the words a scramble keeps the shape of are
- * the words particles pass behind.
+ * Whether `glyph` is a blank cell: a space at least one cell wide. A
+ * zero-width glyph that trims away, as a byte-order mark does, holds no cell
+ * a particle could take. [LAW:one-source-of-truth] The one test of a blank
+ * cell, so the words a scramble keeps the shape of are the words particles
+ * pass behind.
  */
 function isBlank(glyph: string): boolean {
-  return glyph.trim() === "";
+  return cellLen(glyph) > 0 && glyph.trim() === "";
 }
 
 /**

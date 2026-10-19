@@ -197,4 +197,9 @@ describe("particles", () => {
     expect(narrow).toMatch(/^[│╎]{20}$/);
     expect(wide).toMatch(/^([│╎] ){10}$/);
   });
+
+  it("leaves a zero-width glyph that trims away, a byte-order mark, as it is", () => {
+    const dense = particles({ ...GLYPH_DEFAULTS.rain, density: 1 }, z);
+    expect(draw(dense, lines("a﻿  b"), 0).text).toMatch(/^a﻿[│╎]{2}b$/);
+  });
 });
