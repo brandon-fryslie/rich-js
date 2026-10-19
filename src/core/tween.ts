@@ -65,5 +65,7 @@ export function tween(from: number, to: number, timing: Timing): Animation<numbe
     // `seconds`, or always was before it began.
     nextChange: (t) => (t < 0 ? 0 : t < seconds ? t : Number.POSITIVE_INFINITY),
     lastChange: (t) => (t < 0 ? Number.NEGATIVE_INFINITY : t < seconds ? t : seconds),
+    // A one-shot, reduced, cuts from where it starts to where it arrives.
+    reduced: () => Animation.cut(from, to),
   };
 }

@@ -782,6 +782,8 @@ export function transition<D, F>(seconds: number, effect: (drawn: D) => Animatio
         nextChange: (t): number => (ran.done(t) ? Number.POSITIVE_INFINITY : moving.nextChange(t)),
         // Done, the frame settled when the transition did; until then it is the effect's.
         lastChange: (t) => (ran.done(t) ? schedule.lastChange(t) : moving.lastChange(t)),
+        // A one-shot, reduced, cuts from its start to its end, whatever the effect it runs would hold as a loop.
+        reduced: () => Animation.cut(moving.at(0), moving.at(seconds)),
       };
     },
     schedule,

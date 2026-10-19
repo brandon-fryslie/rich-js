@@ -241,8 +241,8 @@ export class Live {
     // back — its overflow policy, then `fitHeight`, which pads only a region.
     const options = this._console.options;
     const height = this._painter.height(options.height.rows);
-    return drawView(this._view, this._timeline, this._clock.now(), (renderable) => {
-      const lines = Segment.splitLines(render(renderable, { ...options, height }));
+    return drawView(this._view, this._timeline, this._clock.now(), { ...options, height }, (renderable, drawn) => {
+      const lines = Segment.splitLines(render(renderable, drawn));
       return fitHeight(this._overflow(lines, height.rows), height);
     });
   }

@@ -136,6 +136,7 @@ function played<T>(animation: Animation<T>, { origin, time, rate }: Timeline & {
       const edge = behind(t);
       return edge === t ? h : Math.min(h, hostOf(edge));
     },
+    reduced: () => played(animation.reduced(), { playing: true, origin, time, rate }),
   };
 }
 
@@ -179,6 +180,8 @@ export const Timeline = {
    * animation's own, on no clock: what a drawn value's cells say about when
    * they change is stamped by whoever draws it at a host time
    * (`../renderables/frames.ts`, `frameAt`), never carried in from here.
+   * Reduced, it is the animation reduced on the same timeline: what shows
+   * still follows the timeline, and only the motion is gone.
    */
   run<T>(timeline: Timeline, animation: Animation<T>): Animation<T> {
     if (timeline.playing) return played(animation, timeline);
@@ -186,6 +189,7 @@ export const Timeline = {
       at: (host) => animation.at(Timeline.at(timeline, host)),
       nextChange: (host) => (hostTime(host), Number.POSITIVE_INFINITY),
       lastChange: (host) => (hostTime(host), Number.NEGATIVE_INFINITY),
+      reduced: () => Timeline.run(timeline, animation.reduced()),
     };
   },
 
@@ -195,6 +199,8 @@ export const Timeline = {
    * a clock of the stagger's own from 0. It changes when the soonest of them
    * does, on that clock (`Animation.all` of `run`s). A delay of 0 starts them
    * together and a negative one starts the last at 0 and the first last.
+   * Reduced, the offsets are the cascade's choreography, which is motion: every
+   * child reduced at once, so from 0 everyone has arrived.
    */
   stagger<T>(animations: readonly Animation<T>[], delay: number): Animation<readonly T[]> {
     finiteSeconds("Timeline.stagger delay", delay);
@@ -202,6 +208,7 @@ export const Timeline = {
     // [LAW:dataflow-not-control-flow] Whichever way the cascade runs, every
     // origin is shifted by the lowest of them, so the earliest child plays from 0.
     const earliest = Math.min(0, span);
-    return Animation.all(animations.map((animation, i) => Timeline.run(Timeline.play(i * delay - earliest), animation)));
+    const cascade = Animation.all(animations.map((animation, i) => Timeline.run(Timeline.play(i * delay - earliest), animation)));
+    return { ...cascade, reduced: () => Animation.all(animations.map((animation) => animation.reduced())) };
   },
 };

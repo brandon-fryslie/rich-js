@@ -572,6 +572,7 @@ describe("App on a timeline", () => {
       },
       nextChange: (t) => animation.nextChange(t),
       lastChange: (t) => animation.lastChange(t),
+      reduced: () => Animation.map(animation.reduced(), (value) => text(`${value}`)),
     };
     return { target: new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(perSecond), view, timeline }), drawn };
   }
@@ -696,6 +697,7 @@ describe("App on a timeline", () => {
       },
       nextChange: () => Number.POSITIVE_INFINITY,
       lastChange: () => 2,
+      reduced: () => Animation.constant<Renderable>({ render: () => [new Segment("x")] }),
     };
     const timeline = Timeline.seek(Timeline.play(0, -1), 0, 10);
     const target = new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(perSecond), view: settled, timeline });

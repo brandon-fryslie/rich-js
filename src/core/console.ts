@@ -105,6 +105,15 @@ export interface ConsoleOptions {
    */
   asciiOnly?: boolean;
   /**
+   * The reader asked for reduced motion: every animation this console draws
+   * — through `print`, a `Live` or an `App` — is drawn with its motion taken
+   * out, waking its host only where content changes
+   * (`RenderOptions.reducedMotion`). A preference of the
+   * person at the terminal, which no terminal reports, so the program hands
+   * it in; nothing here reads the environment for it. Default false.
+   */
+  reducedMotion?: boolean;
+  /**
    * Static width (cells). Ignored when `getSize` is provided. Falls back to
    * the `COLUMNS` env var / the bound stream's `columns` / 80.
    */
@@ -382,6 +391,7 @@ export class Console {
   private _theme: Theme;
   private _onStyleError: StyleErrorHandler | undefined;
   private readonly _asciiOnly: boolean;
+  private readonly _reducedMotion: boolean;
   private _highlighter: Highlighter;
   private _recorded: Segment[];
   // [LAW:types-are-the-program] The capture state is carried in the *type*
@@ -426,6 +436,7 @@ export class Console {
     this._highlighter = options?.highlighter ?? new ReprHighlighter();
     this._onStyleError = options?.onStyleError;
     this._asciiOnly = options?.asciiOnly ?? false;
+    this._reducedMotion = options?.reducedMotion ?? false;
     this._recorded = [];
     this._capture = null;
     this._liveRegion = NO_LIVE_REGION;
@@ -492,6 +503,7 @@ export class Console {
       height: { rows: height, exact: false },
       isTerminal: this.isTerminal,
       asciiOnly: this._asciiOnly,
+      reducedMotion: this._reducedMotion,
       theme: this._theme,
       onStyleError: this._onStyleError,
       colorSystem: this._destination.colorSystem,

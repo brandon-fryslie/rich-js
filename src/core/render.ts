@@ -53,7 +53,7 @@ import { OSC8_CLOSE, osc8Open } from "./osc8.js";
 // [LAW:one-source-of-truth] Handed to the render unchanged, so their contract is
 // `RenderOptions`' and is not restated here.
 export interface RenderToStringOptions
-  extends Pick<RenderOptions, "asciiOnly" | "theme" | "onStyleError" | "highlight" | "highlighter"> {
+  extends Pick<RenderOptions, "asciiOnly" | "reducedMotion" | "theme" | "onStyleError" | "highlight" | "highlighter"> {
   /** Cell width to render into. Default 80. */
   width?: number;
   /**
@@ -139,6 +139,7 @@ export function renderToString(
     maxWidth: width,
     isTerminal: false,
     asciiOnly: options?.asciiOnly ?? false,
+    reducedMotion: options?.reducedMotion,
     theme: options?.theme,
     onStyleError: options?.onStyleError,
     highlight: options?.highlight,

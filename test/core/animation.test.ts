@@ -257,9 +257,9 @@ describe("the instances already in the tree", () => {
   });
 
   it("an edge every finite host float is past, or none is, is always or never, not a hang", () => {
-    const settled: Animation<string> = { at: () => "a", nextChange: () => Number.POSITIVE_INFINITY, lastChange: () => -Number.MAX_VALUE };
+    const settled: Animation<string> = { at: () => "a", nextChange: () => Number.POSITIVE_INFINITY, lastChange: () => -Number.MAX_VALUE, reduced: () => Animation.constant("a") };
     expect(Timeline.run(Timeline.play(0, 1), settled).lastChange(0)).toBe(Number.NEGATIVE_INFINITY);
-    const pending: Animation<string> = { at: () => "a", nextChange: () => Number.MAX_VALUE, lastChange: () => Number.NEGATIVE_INFINITY };
+    const pending: Animation<string> = { at: () => "a", nextChange: () => Number.MAX_VALUE, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant("a") };
     expect(Timeline.run(Timeline.play(0, 1), pending).nextChange(0)).toBe(Number.MAX_VALUE);
     expect(Timeline.run(Timeline.play(0, 0.5), pending).nextChange(0)).toBe(Number.POSITIVE_INFINITY);
   });

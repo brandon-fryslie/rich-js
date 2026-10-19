@@ -63,18 +63,22 @@ function arrived(n: number, p: number): number {
 /**
  * Steps of `seconds`, counted from 0 on the animation's own clock: for a
  * `frame` of each step, the animation holding it through the step and
- * changing at its end. [LAW:one-source-of-truth] The step and its two ends
+ * changing at its end, and reduced, `still`. [LAW:one-source-of-truth] The step and its two ends
  * are a `beat`'s, the one timing vocabulary, so a step boundary is the moment
  * the change shows. The beat is made once, for every frame drawn on it.
  */
-function stepped(seconds: number): <F>(frame: (step: number) => F) => Animation<F> {
+function stepped(seconds: number): <F>(frame: (step: number) => F, still: F) => Animation<F> {
   const pace = beat([seconds]);
-  return (frame) => ({
+  return (frame, still) => ({
     at: (t) => frame(Math.round(pace.lastChange(t) / seconds)),
     nextChange: (t) => pace.nextChange(t),
     lastChange: (t) => pace.lastChange(t),
+    reduced: () => Animation.constant(still),
   });
 }
+
+/** Every cell its own glyph: a glyph loop with its motion taken out — the text as written, no wave, no rain. */
+const AS_WRITTEN: GlyphFrame = (cell) => cell.glyph;
 
 /**
  * A typewriter: the element's text blank until it is typed, in reading
@@ -115,7 +119,7 @@ export function scramble(timing: Timing, z: number): GlyphTransition {
   const phase = Phase.once(0, timing.seconds);
   // Settled, so the last cell resolves at the seconds whatever ease was handed.
   const ease = settled(timing.ease);
-  const flicker = stepped(FLICKER)((step) => step);
+  const flicker = stepped(FLICKER)((step) => step, 0);
   return transition(timing.seconds, ({ cells }: DrawnGlyphs) => {
     const { length, place } = text(cells);
     return Animation.continuous((t): GlyphFrame => {
@@ -166,7 +170,7 @@ export function caseWave({ step, width }: CaseWave, z: number): GlyphEffect {
       const lead = (((s + start) % span) + span) % span;
       // A wide glyph is in the band if any of its columns is.
       return (cell) => (cell.col < lead && cell.col + cellLen(cell.glyph) > lead - width ? swapCase(cell.glyph) : cell.glyph);
-    });
+    }, AS_WRITTEN);
   };
 }
 
@@ -221,7 +225,7 @@ export function particles(spec: Particles, z: number): GlyphEffect {
         // A particle is one cell; a wide blank keeps the rest of its width blank.
         return hash(from, field) < spec.density ? drawn[Math.floor(hash(from, field + 3.1) * drawn.length)]! + blank(cell.glyph).slice(1) : cell.glyph;
       };
-    });
+    }, AS_WRITTEN);
   };
 }
 

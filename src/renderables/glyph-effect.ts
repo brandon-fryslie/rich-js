@@ -55,6 +55,8 @@ import type { Composite, Measurable, Renderable, RenderOptions } from "../core/p
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { stampFrame } from "./frames.js";
+import { shownAt } from "../core/view.js";
+import { finiteTime } from "../core/easing.js";
 import { stripControlChars } from "../core/text.js";
 import { cellSeed, walkGlyphs, type Moved, type Placed } from "./effect.js";
 
@@ -116,10 +118,7 @@ export class Reglyphed implements Renderable, Measurable, Composite {
     readonly effect: GlyphEffect,
     options: GlyphEffectedOptions,
   ) {
-    if (!Number.isFinite(options.t)) {
-      throw new RangeError(`GlyphEffected needs a finite t, got ${options.t}`);
-    }
-    this.t = options.t;
+    this.t = finiteTime("GlyphEffected", options.t);
     this.key = options.key;
   }
 
@@ -137,13 +136,13 @@ export class Reglyphed implements Renderable, Measurable, Composite {
     );
     const cells = placed.flatMap((glyphs) => glyphs.flatMap(({ cell }) => (cell === undefined ? [] : [cell])));
     const animation = this.effect({ cells, asciiOnly: options.asciiOnly === true });
-    const frame = animation.at(this.t);
+    const { value: frame, nextChange } = shownAt(animation, this.t, options);
     const shown = placed.map((glyphs) => glyphs.map(({ glyph, cell }) => (cell === undefined ? glyph : shows(frame, cell))));
     standsApart(placed.flat(), shown.flat());
     const changed = segments.map((segment, i) =>
       shown[i]!.every((text, j) => text === placed[i]![j]!.glyph) ? segment : new Segment(shown[i]!.join(""), segment.style),
     );
-    return { segments: changed, nextChange: animation.nextChange(this.t) };
+    return { segments: changed, nextChange };
   }
 
   *contents(): Iterable<Renderable> {

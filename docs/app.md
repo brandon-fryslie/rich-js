@@ -115,6 +115,10 @@ const stopAnimating = app.animate();
 
 `asciiOnly: true` paints every frame for a terminal that draws only ASCII: every glyph the library chooses, from borders to widget marks, is drawn in ASCII. It is the same switch as on a [`Console`](/console#ascii-only-terminals).
 
+## Reduced motion
+
+`reducedMotion: true` paints every animation with its motion taken out, and wakes only when content changes: the view, if it is an animation, as its `reduced()` form, which also stops an `animate()` held from painting at the rate, and everything drawn for the time inside any view where it is drawn. A function view is still painted at the rate while `animate()` is held, because what it computes from the time is its own. It is the same switch as on a [`Console`](/console#reduced-motion); [Animation](/animation#reduced-motion) says what each kind is reduced to.
+
 ## Style names and drawing options
 
 `theme`, `onStyleError`, `markup`, `highlight` and `highlighter` are the [`Console`](/console) options of the same names, and every frame is drawn with them, as `asciiOnly` is above. `theme` is the [`Theme`](/protocol#drawing-with-theme-names) a frame resolves style names against. Without one, a frame knows only the built-in names: a `RichText` styled with a name your theme adds draws plain, and `getStyle` throws for it. `onStyleError` [hears each style a frame drops](/style#reporting-dropped-styles), a name your theme lacks included:

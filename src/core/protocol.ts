@@ -95,6 +95,15 @@ export interface RenderOptions {
    */
   onStyleError?: StyleErrorHandler;
   /**
+   * The reader asked for reduced motion — CSS's `prefers-reduced-motion`,
+   * which a terminal has no way to report, so a host is told. A renderable
+   * built for the time the host draws at draws every animation reduced, its
+   * motion taken out and its content kept on time (`shownAt`,
+   * `./view.ts`; `Animation.reduced`, `./animation.ts`). Absent,
+   * everything moves. Nothing here reads it from the environment.
+   */
+  reducedMotion?: boolean;
+  /**
    * Told of every renderable `render` is asked for, as it is asked, so the
    * calls arrive in document order: a container before what it holds, its
    * contents in the order it renders them. `"drawn"` is a renderable drawn at
@@ -105,6 +114,9 @@ export interface RenderOptions {
    */
   onPresent?: (renderable: Renderable, presence: Presence) => void;
 }
+
+/** The one field of the render options that says whether the reader wants motion. */
+export type Motion = Pick<RenderOptions, "reducedMotion">;
 
 /**
  * Whether a renderable the view holds was drawn, or held: in the view, handed
@@ -324,7 +336,7 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
   const presence: Presence = drawsNothing(options) ? "held" : "drawn";
   options.onPresent?.(renderable, presence);
   if (presence === "drawn") return renderable.render(options);
-  if (isComposite(renderable)) for (const content of renderable.contents()) render(content, options);
+  if (isComposite(renderable)) for (const content of renderable.contents(options)) render(content, options);
   return [];
 }
 
@@ -421,7 +433,8 @@ export interface Measurable {
  * while it is handed no column.
  */
 export interface Composite {
-  contents(): Iterable<Renderable>;
+  /** What it holds as drawn under `options`: the one animation of a renderable drawn at a host time holds its reduced form's value under reduced motion. */
+  contents(options: RenderOptions): Iterable<Renderable>;
 }
 
 /**

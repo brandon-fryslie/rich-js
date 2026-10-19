@@ -58,11 +58,12 @@
  * children do.
  */
 
-import type { Animation } from "../core/animation.js";
-import { beat, type Beat } from "../core/easing.js";
+import { Animation } from "../core/animation.js";
+import { beat, finiteTime, type Beat } from "../core/easing.js";
 import { Measurement } from "../core/measure.js";
-import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import type { Composite, Measurable, Motion, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
+import { shownAt } from "../core/view.js";
 import { Segment } from "../core/segment.js";
 import { Style, layerStyle } from "../core/style.js";
 import { RichText } from "../core/text.js";
@@ -116,6 +117,11 @@ export class FrameSequence implements Animation<RichText> {
   lastChange(t: number): number {
     return this.beat.lastChange(t);
   }
+
+  /** The frames with their motion taken out: the beat's first frame, held, a copy as `at`'s is. */
+  reduced(): Animation<RichText> {
+    return Animation.map(this.beat.reduced(), (i) => this._shown[i]!.copy());
+  }
 }
 
 /**
@@ -136,18 +142,36 @@ export class FrameSequence implements Animation<RichText> {
  * drawn inside a function view — and only what is stamped differs by the
  * frame's type: a `RichText` is a stamped copy, so it
  * can still be appended into a line, and any other renderable is drawn with
- * its segments stamped.
+ * its segments stamped, chosen when it is drawn, so under reduced motion it
+ * draws the animation reduced (`shownAt`). A text frame cannot wait for the
+ * render options — it is spliced into a line before any exist — so it is
+ * the frame at `t`, the program's own sample, as `animation.at(t)` is, and
+ * moves under reduced motion too; `Frames` and `textFrameAt` are the text
+ * frames that know the preference.
  */
 export function frameAt(animation: Animation<RichText>, t: number): RichText;
 export function frameAt(animation: Animation<Renderable>, t: number): Renderable;
 export function frameAt(animation: Animation<Renderable>, t: number): Renderable {
-  const style = stamp(animation.nextChange(t));
   const frame = animation.at(t);
-  if (!(frame instanceof RichText)) return new Stamped(frame, style);
-  // On the base style, which an empty text still draws as its one piece of no width.
-  const stamped = frame.copy();
-  stamped.style = layerStyle(stamped.style, style);
+  return frame instanceof RichText ? stampedText(frame, animation.nextChange(t)) : new Stamped(animation, t);
+}
+
+/** `text` copied, its every cell saying it next changes at `nextChange`: on the base style, which an empty text still draws as its one piece of no width. */
+function stampedText(text: RichText, nextChange: number): RichText {
+  const stamped = text.copy();
+  stamped.style = layerStyle(stamped.style, stamp(nextChange));
   return stamped;
+}
+
+/**
+ * The text frame `animation` shows at host time `t` under `motion`
+ * (`shownAt`), stamped: what a caller that knows the reader's preference
+ * before any render — a `Frames`, the template `frames` function — splices
+ * into a line.
+ */
+export function textFrameAt(animation: Animation<RichText>, t: number, motion: Motion): RichText {
+  const { value, nextChange } = shownAt(animation, t, motion);
+  return stampedText(value, nextChange);
 }
 
 /**
@@ -170,28 +194,30 @@ export function stampFrame(segments: Iterable<Segment>, nextChange: number): Ite
 }
 
 /**
- * An animation's frame drawn at the draw site's `t`, every segment carrying
- * `style`, led by a `Segment.carrier` of it, because an animation's frame of
- * no cells — an element not yet entered — may have cells later, and must say
- * when.
+ * An animation's frame drawn at the draw site's `t`, chosen where the render
+ * options say whether the reader wants motion (`shownAt`), every segment
+ * carrying when it next changes, led by a `Segment.carrier` of it, because
+ * an animation's frame of no cells — an element not yet entered — may have
+ * cells later, and must say when.
  */
 class Stamped implements Renderable, Measurable, Composite {
   constructor(
-    readonly frame: Renderable,
-    readonly style: Style,
+    readonly animation: Animation<Renderable>,
+    readonly t: number,
   ) {}
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield Segment.carrier(this.style);
-    yield* Segment.applyStyle(render(this.frame, options), this.style);
+    const { value, nextChange } = shownAt(this.animation, this.t, options);
+    yield Segment.carrier(stamp(nextChange));
+    yield* stampFrame(render(value, options), nextChange);
   }
 
-  *contents(): Iterable<Renderable> {
-    yield this.frame;
+  *contents(options: RenderOptions): Iterable<Renderable> {
+    yield shownAt(this.animation, this.t, options).value;
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return Measurement.get(options, this.frame);
+    return Measurement.get(options, shownAt(this.animation, this.t, options).value);
   }
 }
 
@@ -204,17 +230,14 @@ export interface FramesOptions {
 export class Frames implements Renderable, Measurable {
   readonly sequence: FrameSequence;
   readonly t: number;
-  // The frame `t` lands on, found once, here, so a bad time fails at construction.
-  private readonly _shown: RichText;
 
   constructor(sequence: FrameSequence, options: FramesOptions) {
     this.sequence = sequence;
-    this.t = options.t;
-    this._shown = frameAt(sequence, options.t);
+    this.t = finiteTime("Frames", options.t);
   }
 
   render(options: RenderOptions): Iterable<Segment> {
-    return render(this._shown, options);
+    return render(textFrameAt(this.sequence, this.t, options), options);
   }
 
   /**
