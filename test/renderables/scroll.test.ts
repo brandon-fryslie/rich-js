@@ -140,7 +140,7 @@ describe("scroll", () => {
 
   it("keeps a frame's word on when it changes when the frame has no cells at the window's left edge or before it", () => {
     const nothing: Renderable & Measurable = { render: () => [], measure: () => ({ minimum: 0, maximum: 0 }) };
-    const entering = frameAt({ at: () => nothing, nextChange: () => 5, lastChange: () => Number.NEGATIVE_INFINITY, rest: () => nothing }, 0);
+    const entering = frameAt({ at: () => nothing, nextChange: () => 5, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(nothing) }, 0);
     const content = new Group(entering, new RichText("hello"), new RichText("world"), entering);
     expect(Segment.nextChange(draw(content))).toBe(5);
     for (const [col, row] of [[0, 0], [3, 0], [9, 0], [0, 2], [0, 3], [-9, 9]] as const) {

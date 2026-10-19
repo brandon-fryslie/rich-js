@@ -58,8 +58,8 @@
  * children do.
  */
 
-import type { Animation } from "../core/animation.js";
-import { beat, type Beat } from "../core/easing.js";
+import { Animation } from "../core/animation.js";
+import { beat, finiteTime, type Beat } from "../core/easing.js";
 import { Measurement } from "../core/measure.js";
 import type { Composite, Measurable, Motion, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
@@ -118,9 +118,9 @@ export class FrameSequence implements Animation<RichText> {
     return this.beat.lastChange(t);
   }
 
-  /** The frame the beat rests on, a copy as `at`'s is. */
-  rest(): RichText {
-    return this._shown[this.beat.rest()]!.copy();
+  /** The frames with their motion taken out: the beat's first frame, held, a copy as `at`'s is. */
+  reduced(): Animation<RichText> {
+    return Animation.map(this.beat.reduced(), (i) => this._shown[i]!.copy());
   }
 }
 
@@ -143,10 +143,11 @@ export class FrameSequence implements Animation<RichText> {
  * frame's type: a `RichText` is a stamped copy, so it
  * can still be appended into a line, and any other renderable is drawn with
  * its segments stamped, chosen when it is drawn, so under reduced motion it
- * draws the animation's rest (`shownAt`). A text frame cannot wait for the
+ * draws the animation reduced (`shownAt`). A text frame cannot wait for the
  * render options — it is spliced into a line before any exist — so it is
- * the frame at `t`, the program's own sample, as `animation.at(t)` is: a host
- * resting a function view asks it at 0 (`../core/view.ts`).
+ * the frame at `t`, the program's own sample, as `animation.at(t)` is, and
+ * moves under reduced motion too; `Frames` and `textFrameAt` are the text
+ * frames that know the preference.
  */
 export function frameAt(animation: Animation<RichText>, t: number): RichText;
 export function frameAt(animation: Animation<Renderable>, t: number): Renderable;
@@ -231,9 +232,8 @@ export class Frames implements Renderable, Measurable {
   readonly t: number;
 
   constructor(sequence: FrameSequence, options: FramesOptions) {
-    if (!Number.isFinite(options.t)) throw new RangeError(`Frames needs a finite t, got ${options.t}`);
     this.sequence = sequence;
-    this.t = options.t;
+    this.t = finiteTime("Frames", options.t);
   }
 
   render(options: RenderOptions): Iterable<Segment> {

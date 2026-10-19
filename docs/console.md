@@ -723,10 +723,12 @@ takes an option of its own for it. `renderToString` takes the same
 ## Reduced motion
 
 `reducedMotion: true` draws every animation this console prints, and every
-frame of a `Live` drawn through it, at rest: a spinner on its first frame, a
-fade arrived, a typewriter done, and nothing asks to be drawn again. A
-terminal cannot report the preference, so the program hands it in;
-[Animation](/animation#reduced-motion) says what each kind rests at.
+frame of a `Live` drawn through it, with its motion taken out: a spinner on
+its first frame, a fade arrived, a typewriter done, and an element shown
+from when it entered until it is told to leave. Nothing asks to be drawn
+again but a change of content. A terminal cannot report the preference, so
+the program hands it in, here or to `renderToString`;
+[Animation](/animation#reduced-motion) says what each kind is reduced to.
 
 ## Environment variables
 

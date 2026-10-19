@@ -158,7 +158,7 @@ describe("what a host reads off a frame: when it next changes", () => {
         at: (t) => (asked.push(`at ${t}`), (colors) => colors),
         nextChange: (t) => (asked.push(`nextChange ${t}`), t),
         lastChange: (t) => (asked.push(`lastChange ${t}`), t),
-        rest: () => (asked.push("rest"), (colors) => colors),
+        reduced: () => (asked.push("reduced"), Animation.constant((colors: Parameters<ReturnType<ReturnType<Effect>["at"]>>[0]) => colors)),
       };
     };
     [...lit(label, watching, 1).render(OPTIONS)];
@@ -173,7 +173,7 @@ describe("what a host reads off a frame: when it next changes", () => {
         at: (t) => moving.at(t),
         nextChange: (t) => (drawn.depth === depth ? Number.POSITIVE_INFINITY : t),
         lastChange: (t) => moving.lastChange(t),
-        rest: () => moving.rest(),
+        reduced: () => moving.reduced(),
       };
     };
     expect(nextChangeOf(lit(label, stillUnder(ColorDepth.TRUECOLOR), 3))).toBe(Number.POSITIVE_INFINITY);

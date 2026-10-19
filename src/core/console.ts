@@ -106,8 +106,9 @@ export interface ConsoleOptions {
   asciiOnly?: boolean;
   /**
    * The reader asked for reduced motion: every animation this console draws
-   * — through `print`, a `Live` or an `App` — is drawn at rest and never
-   * wakes its host (`RenderOptions.reducedMotion`). A preference of the
+   * — through `print`, a `Live` or an `App` — is drawn with its motion taken
+   * out, waking its host only where content changes
+   * (`RenderOptions.reducedMotion`). A preference of the
    * person at the terminal, which no terminal reports, so the program hands
    * it in; nothing here reads the environment for it. Default false.
    */

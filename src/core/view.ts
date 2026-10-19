@@ -78,12 +78,14 @@ export type HostView =
 /**
  * A function view as the animation it is on the timeline: asked each frame,
  * saying nothing itself — its cells say when it changes, and nothing says
- * since when. It rests asked at 0, as a loop does: what it reads from state is
- * still read, and every animation it hands a renderable built for the time
- * rests where that renderable draws (`shownAt`).
+ * since when. Reduced, it is itself, still asked at the time: what the
+ * program computes from `t` — a log it appends to, a clock it shows — is its
+ * own and stays on time, and every animation it hands a renderable built for
+ * the time is reduced where that renderable draws (`shownAt`).
  */
 export function functionView(view: (t: number) => Renderable): Animation<Renderable> {
-  return { at: view, nextChange: () => Number.POSITIVE_INFINITY, lastChange: (t) => t, rest: () => view(0) };
+  const asked: Animation<Renderable> = { at: view, nextChange: () => Number.POSITIVE_INFINITY, lastChange: (t) => t, reduced: () => asked };
+  return asked;
 }
 
 /** `view` as a host holds it. */
@@ -100,7 +102,11 @@ export function hostView(view: View): HostView {
 export function mapView(view: View, f: (renderable: () => Renderable) => Renderable): View {
   if (typeof view === "function") return (t) => f(() => view(t));
   if ("render" in view) return f(() => view);
-  return { at: (t) => f(() => view.at(t)), nextChange: (t) => view.nextChange(t), lastChange: (t) => view.lastChange(t), rest: () => f(() => view.rest()) };
+  return mapAnimation(view, f);
+}
+
+function mapAnimation(view: Animation<Renderable>, f: (renderable: () => Renderable) => Renderable): Animation<Renderable> {
+  return { at: (t) => f(() => view.at(t)), nextChange: (t) => view.nextChange(t), lastChange: (t) => view.lastChange(t), reduced: () => mapAnimation(view.reduced(), f) };
 }
 
 /** What a frame drawn at a time shows of an animation, and what that says. */
@@ -108,23 +114,25 @@ export interface Shown<T> {
   readonly value: T;
   /** The first moment, never before the time drawn at, the value may stop being this. */
   readonly nextChange: number;
-  /** Whether the value is the animation's rest: drawn under reduced motion, never moving. */
-  readonly resting: boolean;
+  /** The animation the value is drawn from: the one handed in, or under reduced motion its reduced form. */
+  readonly drawn: Animation<T>;
+  /** Whether it is the animation reduced: drawn under reduced motion, changing only where content does. */
+  readonly reduced: boolean;
 }
 
 /**
  * What a frame drawn at `t` shows of `animation` under `motion`, and when
- * that next changes: its value at `t` and its next change, or, under reduced
- * motion, its rest, which never changes. [LAW:single-enforcer] The one place
- * the preference is read: a host drawing its view (`drawView`), and every
- * renderable built for the time it draws at — `Effected`, `GlyphEffected`, a
- * spinner's `drawnAt`, a `Frames`, `frameAt`'s frame of a renderable, the
- * template functions — choose here, so a host told once rests every one.
+ * that changes: the animation's, or under reduced motion its reduced form's
+ * (`Animation.reduced`). [LAW:single-enforcer] The one place the preference
+ * is read: a host drawing its view (`drawView`), and every renderable built
+ * for the time it draws at — `Effected`, `GlyphEffected`, a spinner's
+ * `drawnAt`, a `Frames`, `frameAt`'s frame of a renderable, the template
+ * functions — choose here, so a host told once reduces every one.
  */
 export function shownAt<T>(animation: Animation<T>, t: number, motion: Motion): Shown<T> {
-  return motion.reducedMotion === true
-    ? { value: animation.rest(), nextChange: Number.POSITIVE_INFINITY, resting: true }
-    : { value: animation.at(t), nextChange: animation.nextChange(t), resting: false };
+  const reduced = motion.reducedMotion === true;
+  const drawn = reduced ? animation.reduced() : animation;
+  return { value: drawn.at(t), nextChange: drawn.nextChange(t), drawn, reduced };
 }
 
 /** What a frame drawn at host time `t` says about when it changes. */
@@ -142,9 +150,12 @@ export interface FrameSays {
   readonly silent: boolean;
   /**
    * Whether nothing on the timeline moves from this frame: drawn for the held
-   * time of a paused timeline, until it plays again, or at rest under reduced
-   * motion — what a program that said its view moves (`App.animate`) is not
-   * painted for meanwhile. A renderable is off the timeline, and is never held.
+   * time of a paused timeline, until it plays again, or an animation view
+   * reduced, which says itself every moment its content changes — what a
+   * program that said its view moves (`App.animate`) is not painted for
+   * meanwhile. A function view computes from `t` what no animation says, so
+   * reduced motion does not hold it. A renderable is off the timeline, and is
+   * never held.
    */
   readonly held: boolean;
 }
@@ -169,9 +180,9 @@ const cellsChange = (lines: Segment[][]): number =>
  * sooner of what it says and what its cells say, carried back through the
  * timeline. [LAW:one-source-of-truth] `options` is the one place the frame
  * reads the reader's preference for motion: under reduced motion a view on
- * the timeline is drawn at rest (`shownAt`), and every animation drawn for
- * the host's time inside any view rests where it is drawn, through the same
- * options handed on to `draw`.
+ * the timeline is drawn reduced (`shownAt`), and every animation drawn for
+ * the host's time inside any view is reduced where it is drawn, through the
+ * same options handed on to `draw`.
  */
 export function drawView(
   view: HostView,
@@ -198,9 +209,10 @@ export function drawView(
   const sample: Animation<Segment[][]> = {
     at: () => lines,
     nextChange: () => Math.min(shown.nextChange, cells),
-    lastChange: () => (cells < Number.POSITIVE_INFINITY ? t : animation.lastChange(t)),
-    rest: () => lines,
+    lastChange: () => (cells < Number.POSITIVE_INFINITY ? t : shown.drawn.lastChange(t)),
+    reduced: () => sample,
   };
   const nextChange = Timeline.run(timeline, sample).nextChange(host);
-  return { t: host, lines, nextChange, silent: view.kind === "function", held: !timeline.playing || shown.resting };
+  const silent = view.kind === "function";
+  return { t: host, lines, nextChange, silent, held: !timeline.playing || (shown.reduced && !silent) };
 }

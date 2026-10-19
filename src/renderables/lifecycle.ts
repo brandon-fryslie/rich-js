@@ -101,14 +101,27 @@ function life(element: Renderable, options: LifecycleOptions, entered: number, l
     if (t < arrived) return { frame: shown(t), ...held(arriving, t) };
     return { frame: element, last: arrived, next: left };
   };
+  // [LAW:dataflow-not-control-flow] The same three spans `phase` draws, the transitions gone from them.
+  const there = (t: number): { readonly frame: Renderable; readonly last: number; readonly next: number } =>
+    t < entered
+      ? { frame: NOTHING, last: Number.NEGATIVE_INFINITY, next: entered }
+      : t < left
+        ? { frame: element, last: entered, next: left }
+        : { frame: NOTHING, last: left, next: Number.POSITIVE_INFINITY };
+  const present: Animation<Renderable> = {
+    at: (t) => there(t).frame,
+    nextChange: (t) => there(t).next,
+    lastChange: (t) => there(t).last,
+    reduced: () => present,
+  };
   return {
     entered,
     left,
     at: (t) => phase(t).frame,
     nextChange: (t) => phase(t).next,
     lastChange: (t) => phase(t).last,
-    // Arrived and staying, or gone once told to leave: an element at rest has no arrival or exit to show.
-    rest: () => (Number.isFinite(left) ? NOTHING : element),
+    // Reduced, the element is there from when it entered until it is told to leave: no arrival or exit to show, and the times kept.
+    reduced: () => present,
     // [LAW:one-source-of-truth] The moment `phase` draws nothing from, so an element not yet told to leave is never asked its exit at -Infinity.
     gone: (t) => t >= goneAt,
     leave(at) {

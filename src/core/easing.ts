@@ -434,8 +434,28 @@ export interface Beat {
    * (`./animation.ts`).
    */
   nextChange(t: number): number;
-  /** The hold a beat rests on, as a loop does at its first: 0. */
-  rest(): number;
+  /** The beat with its motion taken out: its first hold, held for good, as a loop holds its first value. */
+  reduced(): Beat;
+}
+
+/** A beat of one hold that never ends: hold 0 at every time, never changing — what every beat is reduced to. */
+const STILL: Beat = {
+  holds: [Number.POSITIVE_INFINITY],
+  period: Number.POSITIVE_INFINITY,
+  at: () => 0,
+  lastChange: () => Number.NEGATIVE_INFINITY,
+  nextChange: () => Number.POSITIVE_INFINITY,
+  reduced: () => STILL,
+};
+
+/**
+ * `t`, unless it is not a finite number of seconds, which throws naming
+ * `what`. [LAW:single-enforcer] The one refusal of a moment to draw at, for
+ * every loop and beat that reads time and every renderable drawn at a time.
+ */
+export function finiteTime(what: string, t: number): number {
+  if (!Number.isFinite(t)) throw new RangeError(`${what} needs a finite t, got ${t}`);
+  return t;
 }
 
 /**
@@ -448,8 +468,7 @@ export interface Beat {
  * on the pass that begins there, and the answer is always under the period.
  */
 function wrapSeconds(what: string, t: number, period: number): number {
-  if (!Number.isFinite(t)) throw new RangeError(`${what} needs a finite t, got ${t}`);
-  const into = t % period;
+  const into = finiteTime(what, t) % period;
   if (into >= 0) return into;
   // A negative epsilon carried up rounds to the period itself; that is the
   // start of the next pass, never a point past the end of this one.
@@ -595,7 +614,7 @@ export function beat(holds: readonly number[]): Beat {
       const last = i === own.length - 1;
       return boundary("Beat.nextChange", pass(t, into) + (last ? 1 : 0), last ? 0 : i + 1, t);
     },
-    rest: () => 0,
+    reduced: () => STILL,
   };
 }
 

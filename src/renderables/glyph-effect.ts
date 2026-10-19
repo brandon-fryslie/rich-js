@@ -56,6 +56,7 @@ import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { stampFrame } from "./frames.js";
 import { shownAt } from "../core/view.js";
+import { finiteTime } from "../core/easing.js";
 import { stripControlChars } from "../core/text.js";
 import { cellSeed, walkGlyphs, type Moved, type Placed } from "./effect.js";
 
@@ -117,10 +118,7 @@ export class Reglyphed implements Renderable, Measurable, Composite {
     readonly effect: GlyphEffect,
     options: GlyphEffectedOptions,
   ) {
-    if (!Number.isFinite(options.t)) {
-      throw new RangeError(`GlyphEffected needs a finite t, got ${options.t}`);
-    }
-    this.t = options.t;
+    this.t = finiteTime("GlyphEffected", options.t);
     this.key = options.key;
   }
 

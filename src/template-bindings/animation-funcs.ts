@@ -64,7 +64,7 @@ function pairs<V>(what: string, tail: readonly unknown[], value: (v: unknown) =>
  * reports when the template is evaluated: seconds on the host's own
  * timeline, from whatever zero it counts from. The functions exist whatever
  * `frameTime` returns, so a template compiles once and is evaluated at every
- * moment the host draws. Under `motion.reducedMotion` each draws its rest —
+ * moment the host draws. Under `motion.reducedMotion` each draws reduced —
  * the first frame, the first colour — at every moment, and a frame says it
  * never changes: a template has no render options, so the host hands the
  * reader's preference in here, beside its time.

@@ -79,7 +79,7 @@ describe("a frame says when it changes on the host's clock", () => {
   });
 
   it("a frame with no cells takes no row of its own, and still says when it changes", () => {
-    const empty: Animation<Renderable> = { at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, rest: () => new Group() };
+    const empty: Animation<Renderable> = { at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) };
     const drawn = lines(new Group(new RichText("a"), frameAt(empty, 0)));
     expect(drawn.length).toBe(lines(new Group(new RichText("a"))).length);
     expect(Segment.nextChange(drawn.flat())).toBe(3);
@@ -90,7 +90,7 @@ describe("a frame says when it changes on the host's clock", () => {
   });
 
   it("a frame with no cells still says when it changes after the row before it is cropped", () => {
-    const empty: Animation<Renderable> = { at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, rest: () => new Group() };
+    const empty: Animation<Renderable> = { at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) };
     const wide = new RichText("x".repeat(30), { noWrap: true, overflow: "crop" });
     const cropped = Segment.splitAndCropLines(draw(new Group(wide, frameAt(empty, 0))), 5);
     expect(Segment.nextChange(cropped.flat())).toBe(3);
@@ -118,7 +118,7 @@ describe("a frame says when it changes on the host's clock", () => {
   it("an empty text frame keeps its stamp and writes the bytes and rows an unstamped one does", () => {
     for (const end of ["\n", ""]) {
       const frame = new RichText("", { end });
-      const blink: Animation<RichText> = { at: () => frame, nextChange: () => 2, lastChange: () => 1, rest: () => frame };
+      const blink: Animation<RichText> = { at: () => frame, nextChange: () => 2, lastChange: () => 1, reduced: () => Animation.constant(frame) };
       const stamped = new Group(new RichText("top"), frameAt(blink, 1.5));
       const plain = new Group(new RichText("top"), frame);
       expect(Segment.nextChange(draw(stamped))).toBe(2);

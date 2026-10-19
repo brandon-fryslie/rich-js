@@ -75,6 +75,7 @@ import { JOIN, colorsOwnedBy } from "../core/strip.js";
 import { ATTRIBUTE_NAMES, Style, type AttributeName, type Attributes } from "../core/style.js";
 import { stampFrame } from "./frames.js";
 import { shownAt } from "../core/view.js";
+import { finiteTime } from "../core/easing.js";
 
 /**
  * A cell's foreground and background as they appear on screen — the glyph's
@@ -234,10 +235,7 @@ export class Recolored implements Renderable, Measurable, Composite {
     readonly effect: Effect,
     options: EffectedOptions,
   ) {
-    if (!Number.isFinite(options.t)) {
-      throw new RangeError(`Effected needs a finite t, got ${options.t}`);
-    }
-    this.t = options.t;
+    this.t = finiteTime("Effected", options.t);
     this.key = options.key;
     this.theme = options.theme;
   }

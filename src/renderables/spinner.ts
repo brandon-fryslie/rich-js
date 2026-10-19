@@ -48,7 +48,7 @@
  * timeline refuses it.
  */
 
-import type { Animation } from "../core/animation.js";
+import { Animation } from "../core/animation.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { RichText } from "../core/text.js";
@@ -64,6 +64,7 @@ import { drawable, render } from "../core/protocol.js";
 import { EmbeddedText } from "./embed.js";
 import { FrameSequence, stampFrame } from "./frames.js";
 import { shownAt } from "../core/view.js";
+import { finiteTime } from "../core/easing.js";
 
 /** A spinner's frames prepared to draw, each styled and held for the interval, run on the spinner's timeline, and the glyphs they spend. */
 interface Sequence {
@@ -81,11 +82,6 @@ const sequence = (data: SpinnerData, style: string | Style, timeline: Timeline):
 };
 
 const sequenceGlyphs = ({ glyphs }: Sequence): string => glyphs;
-
-/** Throws, naming `method`, unless `t` is finite: a spinner is drawn at a moment. */
-function finiteTime(method: string, t: number): void {
-  if (!Number.isFinite(t)) throw new RangeError(`${method} needs a finite t, got ${t}`);
-}
 
 export interface SpinnerOptions {
   /** Multiplies the spinner's rate; negative runs it backwards; zero is refused. Defaults to 1. */
@@ -152,16 +148,16 @@ export class Spinner implements Animation<Renderable & Measurable> {
     return this._frame((played) => ({ value: played.at(t) }));
   }
 
-  /** The spinner at rest: its first frame and the label, saying nothing of when it turns, as `at`'s does not. */
-  rest(): Renderable & Measurable {
-    return this._frame((played) => ({ value: played.rest() }));
+  /** The spinner with its motion taken out: its first frame and the label, which never turn, so any time answers. */
+  reduced(): Animation<Renderable & Measurable> {
+    return Animation.constant(this._frame((played) => ({ value: played.reduced().at(0) })));
   }
 
   /**
    * The spinner drawn at host time `t`, its cells saying when it turns on the
    * host's clock (`stampFrame`) — exactly, for the frames the output draws,
    * where `nextChange` must answer for both and `frameAt` stamps that
-   * earlier answer. Under reduced motion it is the spinner at rest, which
+   * earlier answer. Under reduced motion it is the spinner reduced, which
    * never turns (`shownAt`). What a host drawing a spinner for its own time
    * — a `Status`, a `Progress` column — hands over.
    */

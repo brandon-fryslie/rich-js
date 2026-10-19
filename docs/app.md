@@ -117,7 +117,7 @@ const stopAnimating = app.animate();
 
 ## Reduced motion
 
-`reducedMotion: true` paints every animation at rest and wakes for none of them, an `animate()` held included: the view, if it is an animation, at its `rest()`, and everything drawn for the time inside any view where it is drawn. It is the same switch as on a [`Console`](/console#reduced-motion); [Animation](/animation#reduced-motion) says what each kind rests at.
+`reducedMotion: true` paints every animation with its motion taken out, and wakes only when content changes: the view, if it is an animation, as its `reduced()` form, which also stops an `animate()` held from painting at the rate, and everything drawn for the time inside any view where it is drawn. A function view is still painted at the rate while `animate()` is held, because what it computes from the time is its own. It is the same switch as on a [`Console`](/console#reduced-motion); [Animation](/animation#reduced-motion) says what each kind is reduced to.
 
 ## Style names and drawing options
 

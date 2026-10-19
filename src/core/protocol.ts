@@ -97,8 +97,9 @@ export interface RenderOptions {
   /**
    * The reader asked for reduced motion — CSS's `prefers-reduced-motion`,
    * which a terminal has no way to report, so a host is told. A renderable
-   * built for the time the host draws at draws every animation's rest and
-   * says it never changes (`shownAt`, `../renderables/frames.ts`). Absent,
+   * built for the time the host draws at draws every animation reduced, its
+   * motion taken out and its content kept on time (`shownAt`,
+   * `./view.ts`; `Animation.reduced`, `./animation.ts`). Absent,
    * everything moves. Nothing here reads it from the environment.
    */
   reducedMotion?: boolean;
@@ -432,7 +433,7 @@ export interface Measurable {
  * while it is handed no column.
  */
 export interface Composite {
-  /** What it holds as drawn under `options`: the one animation of a renderable drawn at a host time holds its rest under reduced motion. */
+  /** What it holds as drawn under `options`: the one animation of a renderable drawn at a host time holds its reduced form's value under reduced motion. */
   contents(options: RenderOptions): Iterable<Renderable>;
 }
 
