@@ -28,6 +28,7 @@ import {
   Constrain,
   DEFAULT_TERMINAL_THEME,
   Effected,
+  GlyphEffected,
   Emoji,
   FlexStrip,
   FrameSequence,
@@ -52,6 +53,7 @@ import {
   Tree,
   Viewport,
   type EffectFrame,
+  type GlyphFrame,
 } from "../../src/index.js";
 import {
   Button,
@@ -97,6 +99,10 @@ const ROWS: Record<string, Row> = {
   Effected: {
     holds: "probes",
     make: (p) => new Effected(p("a"), () => Animation.constant<EffectFrame>((c) => c), { t: 0, key: "probe", theme: DEFAULT_TERMINAL_THEME }),
+  },
+  GlyphEffected: {
+    holds: "probes",
+    make: (p) => new GlyphEffected(p("a"), () => Animation.constant<GlyphFrame>((cell) => cell.glyph), { t: 0, key: "probe" }),
   },
   Align: { holds: "probes", make: (p) => new Align(p("a")) },
   Padding: { holds: "probes", make: (p) => new Padding(p("a"), 1) },

@@ -246,7 +246,7 @@ export class Effected implements Renderable, Measurable, Composite {
       const runs: { text: string; cells: number; colors: CellColors; drawn: DrawnColors }[] = [];
       for (const { glyph, cell } of glyphs) {
         // Back from the screen to the style's slots: the same swap undoes itself.
-        const colors = cell === undefined ? slots : onScreen(frame(from, { ...cell, seed: this.seed(cell.row, cell.col), terminal, reverse: pair.reverse }), pair.reverse);
+        const colors = cell === undefined ? slots : onScreen(frame(from, { ...cell, seed: cellSeed(this.key, cell.row, cell.col), terminal, reverse: pair.reverse }), pair.reverse);
         const last = runs[runs.length - 1];
         const writes = last !== undefined && sameColors(last.colors, colors) ? last.drawn : this.respec(wire, slots, colors, depth);
         if (last !== undefined && writesAlike(last.drawn, writes)) {
@@ -298,10 +298,15 @@ export class Effected implements Renderable, Measurable, Composite {
     return { color: moved.fg ?? wire.color, bgcolor: moved.bg ?? wire.bgcolor };
   }
 
-  /** A cell's seed: FNV-1a of the key and the position, scaled into [0, 1). */
-  private seed(row: number, col: number): number {
-    return Number.parseInt(fnv1a(`${this.key}:${row}:${col}`), 16) / 0x1_0000_0000;
-  }
+}
+
+/**
+ * A cell's seed: FNV-1a of the element's key and the cell's position, scaled
+ * into [0, 1). [LAW:one-source-of-truth] One rule for a colour effect's seeds
+ * and a glyph effect's, so one element under both twinkles from one seed.
+ */
+export function cellSeed(key: string, row: number, col: number): number {
+  return Number.parseInt(fnv1a(`${key}:${row}:${col}`), 16) / 0x1_0000_0000;
 }
 
 const DEFAULT = ColorSpec.default();
@@ -343,34 +348,56 @@ interface Looked {
   readonly look: Look | undefined;
 }
 
-/** A segment with how it is drawn and each of its glyphs, placed where a cell is drawn — never a newline, which is no cell. */
+/** A glyph of a segment, placed where its cell is drawn — or none for a newline, which is no cell. */
+export interface WalkedGlyph {
+  readonly glyph: string;
+  readonly cell: Placed | undefined;
+}
+
+/** A segment with how it is drawn and each of its glyphs, placed. */
 interface Walked extends Looked {
-  readonly glyphs: readonly { readonly glyph: string; readonly cell: Placed | undefined }[];
+  readonly glyphs: readonly WalkedGlyph[];
 }
 
 /**
- * Each glyph of `looked`, where its cell sits: rows and columns from the
- * top-left of the output, a wide glyph one cell at its first column, and its
- * anchor shifted to that column as `Style.shiftedBy` shifts a run's.
- * [LAW:one-source-of-truth] The one walk: what `Drawn.cells` lists and what
- * the render hands the effect are read off it.
+ * Each glyph of each of `segments`, where its cell sits: rows and columns
+ * from the top-left of the output, a wide glyph one cell at its first
+ * column, and its anchor shifted to that column as `Style.shiftedBy` shifts
+ * a run's. A control segment draws nothing and has none.
+ * [LAW:one-source-of-truth] The one walk: what `Drawn.cells` lists, what the
+ * render hands a colour effect, and what a glyph effect (`./glyph-effect.ts`)
+ * is handed are all read off it.
  */
-function walk(looked: readonly Looked[]): Walked[] {
+export function walkGlyphs(segments: readonly Segment[]): (readonly WalkedGlyph[])[] {
   let row = 0;
   let col = 0;
-  return looked.map(({ segment, look }) => {
-    if (look === undefined) return { segment, look, glyphs: [] };
-    const anchor = look.style.anchor;
+  return segments.map((segment) => {
+    if (segment.isControl) return [];
+    const anchor = segment.style?.anchor;
     // Cells into the segment, as `base.shiftedBy` counts them in the render.
     let into = 0;
-    const glyphs = [...graphemes(segment.text)].map((glyph) => {
+    return [...graphemes(segment.text)].map((glyph) => {
       const cell = glyph === "\n" ? undefined : { row, col, anchor: anchor && shiftAnchor(anchor, into) };
       [row, col] = glyph === "\n" ? [row + 1, 0] : [row, col + cellLen(glyph)];
       into += cellLen(glyph);
       return { glyph, cell };
     });
-    return { segment, look, glyphs };
   });
+}
+
+/**
+ * Whether `text` draws ink: anything but blanks. [LAW:one-source-of-truth]
+ * The one test, so the words a colour effect lights are the words a glyph
+ * effect (`./glyph-effects.ts`) scrambles and its particles pass behind.
+ */
+export function inked(text: string): boolean {
+  return text.trim() !== "";
+}
+
+/** `looked` with each segment's glyphs placed, by the one walk. */
+function walk(looked: readonly Looked[]): Walked[] {
+  const placed = walkGlyphs(looked.map(({ segment }) => segment));
+  return looked.map((item, i) => ({ ...item, glyphs: placed[i]! }));
 }
 
 /** Whether `style` draws in its ink on a blank glyph: a line under, through or over it, or a frame round it. */
@@ -392,9 +419,9 @@ function measured(looked: readonly Looked[], walked: () => readonly Walked[], de
       if (look === undefined) return [];
       // A blank glyph shows its ground, and any line its style draws in its ink.
       const blankShows = look.pair.bg.hex !== ground || drawsLines(look.style);
-      return glyphs.flatMap(({ glyph, cell }) => (cell !== undefined && (glyph.trim() !== "" || blankShows) ? [cell] : []));
+      return glyphs.flatMap(({ glyph, cell }) => (cell !== undefined && (inked(glyph) || blankShows) ? [cell] : []));
     });
-  const words = looked.flatMap(({ segment, look }) => (look !== undefined && segment.text.trim() !== "" && !drawnBy(look.style.anchor, JOIN) ? [look.pair] : []));
+  const words = looked.flatMap(({ segment, look }) => (look !== undefined && inked(segment.text) && !drawnBy(look.style.anchor, JOIN) ? [look.pair] : []));
   const pairs = [...new Map(words.map((pair): [string, Pair] => [`${pair.fg.hex}/${pair.bg.hex}/${pair.terminal.fg}/${pair.terminal.bg}/${pair.reverse}`, pair])).values()];
   // [LAW:one-source-of-truth] A slot the terminal fills is no colour of the element's, whatever its hex.
   const own = (slot: "fg" | "bg"): string[] => pairs.flatMap((pair) => (pair.terminal[slot] ? [] : [pair[slot].hex]));

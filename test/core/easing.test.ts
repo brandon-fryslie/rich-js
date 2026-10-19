@@ -377,6 +377,19 @@ describe("beat — holds in seconds, the hold in progress out, no clock read", (
     expect(beat([1 / 3, 1 / 3, 1 / 3]).at(1 / 3)).toBe(1);
   });
 
+  it("with one hold, every hold's two ends bracket t, sampled sixty times a second", () => {
+    // 55 × 0.06 sums to 3.3, a float `at` places in pass 54: unwalked, the
+    // boundary was answered as t's next change while t was still before it.
+    for (const hold of [0.06, 0.08, 0.1]) {
+      const b = beat([hold]);
+      for (let i = 0; i < 600; i++) {
+        const t = i / 60;
+        expect(b.lastChange(t)).toBeLessThanOrEqual(t);
+        expect(b.nextChange(t)).toBeGreaterThan(t);
+      }
+    }
+  });
+
   it("refuses a t that is not finite, in at, and so does Phase.loop", () => {
     expect(() => beat([1, 1]).at(Number.NaN)).toThrow(/Beat.at needs a finite t, got NaN/);
     expect(() => beat([1, 1]).at(Number.POSITIVE_INFINITY)).toThrow(/finite t/);

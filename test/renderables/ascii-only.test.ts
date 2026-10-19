@@ -30,6 +30,9 @@ import {
   Constrain,
   DEFAULT_TERMINAL_THEME,
   Effected,
+  GLYPH_DEFAULTS,
+  GlyphEffected,
+  particles,
   FlexStrip,
   FrameSequence,
   Frames,
@@ -57,6 +60,7 @@ import {
   ListView,
   SCROLLBAR,
   type EffectFrame,
+  type GlyphFrame,
 } from "../../src/index.js";
 import {
   Button,
@@ -93,6 +97,16 @@ const ROWS: Record<string, Row> = {
   Pretty: { draws: "text", make: () => new Pretty({ a: [1, "two"] }), why: "draws the value it is handed" },
   JSONRenderable: { draws: "text", make: () => JSONRenderable.fromData({ a: 1 }), why: "draws the value it is handed" },
   Constrain: { draws: "glyphs", make: () => new Constrain(panel(), 20) },
+  GlyphEffected: {
+    draws: "glyphs",
+    // The panel's box proves the options reach the content; the rain over a
+    // blank line is the glyphs the effect chooses itself.
+    make: () =>
+      new Group(
+        new GlyphEffected(panel(), () => Animation.constant<GlyphFrame>((cell) => cell.glyph), { t: 0, key: "panel" }),
+        new GlyphEffected(new RichText(" ".repeat(20)), particles({ ...GLYPH_DEFAULTS.rain, density: 1 }, 0), { t: 0, key: "sky" }),
+      ),
+  },
   Effected: {
     draws: "glyphs",
     make: () =>
