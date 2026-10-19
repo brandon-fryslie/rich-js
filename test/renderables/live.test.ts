@@ -761,6 +761,8 @@ describe("Live on a timeline", () => {
     clock.advance(3);
     display.stop();
     // Time 3 is host 2.5, between two frames; A is drawn the first moment after it.
+    // A frame landing exactly on 3 would be drawn at the rate instead: there
+    // `lastChange(3) === 3`, which the Animation contract reads as moving.
     const first = drawn.findIndex(({ text }) => text === "A");
     expect(drawn.slice(0, first).map(({ t }) => t)).toEqual([4.5, 3.5]);
     expect(drawn[first]!.t).toBeLessThan(3);
