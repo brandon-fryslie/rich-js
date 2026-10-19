@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-488",
+      "ref": "refs/pull/488/merge",
+      "sha": "0def10c7a1f521c248407786a932c0de327f9187",
+      "timestamp": "2026-10-19T17:42:30.210Z",
+      "commits": [
+        {
+          "sha": "0def10c7a1f521c248407786a932c0de327f9187",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T11:40:32-06:00",
+          "message": "Merge f56aa62129509ffa943ffb9d5083cfd73d37378c into 69219f4b28141b668966b8cba625d70c65ae88b3\n"
+        },
+        {
+          "sha": "f56aa62129509ffa943ffb9d5083cfd73d37378c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T11:40:22-06:00",
+          "message": "A window over wider content moves with time: scroll, marquee and slide (rich-animation-42lg.re8)\n\nscroll(content, { width, height, col, row }) is an Animation<Renderable>\nof a fixed slot over content drawn at its natural size, each offset an\nAnimation<number>. frameAt now draws any renderable's animation with its\ncells stamped at the host's time.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "69219f4b28141b668966b8cba625d70c65ae88b3",
