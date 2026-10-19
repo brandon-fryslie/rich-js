@@ -2,8 +2,8 @@
  * parser.ts — turns raw JSONL records into a clean Block[] for the viewer.
  *
  * Pipeline (each step is a pure data transformation):
- *   raw lines → drop hidden types → dedup streaming chunks
- *              → consume tool_use+tool_result pairs → emit Blocks
+ *   raw lines → join a message's chunks, and a command's records
+ *              → drop hidden types → consume tool_use+tool_result pairs → emit Blocks
  *
  * The parser is intentionally lenient: a record of a type `RECORD_TYPES` keeps
  * out of the conversation is dropped, or drawn as a RecordBlock when hidden
@@ -306,45 +306,59 @@ export function isDrawnRecord(record: Record<string, unknown>): boolean {
 }
 
 /**
- * Step 1: read each line as its record, dropping hidden types (unless
- * showHidden is true). Lines without a `type` are always dropped — they're
- * not renderable.
+ * Step 1: read each line as its record. Lines without a `type` are dropped —
+ * they're not renderable. Hidden records are kept: they are read and joined
+ * past like any other, and dropped only after the joins, so showing them
+ * changes what is drawn and never how the rest is joined.
  */
-function readRecords(lines: ReadonlyArray<RawLine>, showHidden: boolean): Joined[] {
+function readRecords(lines: ReadonlyArray<RawLine>): Joined[] {
   const out: Joined[] = [];
   for (const line of lines) {
     if (typeof line.parsed["type"] !== "string") continue;
     const written = line as RecordLine;
-    const read: RecordLine = { ...written, parsed: readRecord(written.parsed) };
-    if (!showHidden && RECORD_TYPES.get(read.parsed.type) === "hidden") continue;
-    out.push({ line: read, parts: [written] });
+    out.push({ line: { ...written, parsed: readRecord(written.parsed) }, parts: [written] });
   }
   return out;
+}
+
+function isHidden(j: Joined): boolean {
+  return RECORD_TYPES.get(j.line.parsed.type) === "hidden";
 }
 
 /**
  * Step 2: join one assistant message's records. Claude Code writes each
  * content block of a message — its thinking, its text, each tool call — as a
  * record of its own, every one carrying the message's id, so consecutive
- * assistant lines sharing an id are one message: its content is theirs in
- * order, its parent is the first one's, and the rest of it (stop_reason,
- * usage) is the last one's.
+ * assistant records sharing an id are one message, where its first record
+ * stood: its content is theirs in order, its uuid and parent are the first
+ * one's, and the rest of it (stop_reason, usage) is the last one's. A hidden
+ * record written between them is passed over and lands after the message, so
+ * showing it splits nothing. A drawn one parts them: Claude Code runs a tool
+ * while the message is still streaming, so a call's result can land between
+ * two of its records, and the conversation is drawn in the order it was
+ * written.
  */
 function joinMessageRecords(records: ReadonlyArray<Joined>): Joined[] {
+  const messageOf = (j: Joined) => (j.line.parsed.type === "assistant" ? j.line.parsed.message?.id : undefined);
   const out: Joined[] = [];
+  let last: number | undefined;
   for (const next of records) {
-    const { line } = next;
-    const r = line.parsed;
-    const prev = out[out.length - 1];
-    const prevRec = prev?.line.parsed;
-    const id = r.type === "assistant" ? r.message?.id : undefined;
-    if (prev === undefined || id === undefined || prevRec?.type !== "assistant" || prevRec.message?.id !== id) {
+    if (isHidden(next)) {
       out.push(next);
       continue;
     }
+    const id = messageOf(next);
+    const prev = last === undefined ? undefined : out[last];
+    if (last === undefined || prev === undefined || id === undefined || messageOf(prev) !== id) {
+      last = out.length;
+      out.push(next);
+      continue;
+    }
+    const r = next.line.parsed;
+    const first = prev.line.parsed;
     const blocks = (record: RawRecord) => (Array.isArray(record.message?.content) ? record.message.content : []);
-    out[out.length - 1] = {
-      line: { ...line, parsed: { ...r, uuid: prevRec.uuid, parentUuid: prevRec.parentUuid, message: { ...r.message!, content: [...blocks(prevRec), ...blocks(r)] } } },
+    out[last] = {
+      line: { ...prev.line, parsed: { ...r, uuid: first.uuid, parentUuid: first.parentUuid, message: { ...r.message!, content: [...blocks(first), ...blocks(r)] } } },
       parts: [...prev.parts, ...next.parts],
     };
   }
@@ -374,7 +388,7 @@ function joinCommandRecords(records: ReadonlyArray<Joined>): Joined[] {
     }
     const ran = prev.line.parsed;
     out[i] = {
-      line: { ...next.line, parsed: { ...r, uuid: ran.uuid, parentUuid: ran.parentUuid, content: `${contentOf(ran)}\n${asString(r.content)}` } },
+      line: { ...prev.line, parsed: { ...r, uuid: ran.uuid, parentUuid: ran.parentUuid, content: `${contentOf(ran)}\n${asString(r.content)}` } },
       parts: [...prev.parts, ...next.parts],
     };
   }
@@ -574,6 +588,6 @@ export function parseBlocks(
   lines: ReadonlyArray<RawLine>,
   opts?: ParseOptions,
 ): Block[] {
-  const showHidden = opts?.showHidden === true;
-  return emitBlocks(joinCommandRecords(joinMessageRecords(readRecords(lines, showHidden))));
+  const joined = joinCommandRecords(joinMessageRecords(readRecords(lines)));
+  return emitBlocks(opts?.showHidden === true ? joined : joined.filter((j) => !isHidden(j)));
 }
