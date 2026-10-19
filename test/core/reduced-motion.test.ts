@@ -18,7 +18,7 @@ import { Effected } from "../../src/renderables/effect.js";
 import { dissolveOut, fadeIn, onColors, pulse } from "../../src/renderables/effects.js";
 import { Frames, FrameSequence, frameAt } from "../../src/renderables/frames.js";
 import { GlyphEffected } from "../../src/renderables/glyph-effect.js";
-import { typewriter } from "../../src/renderables/glyph-effects.js";
+import { caseWave, particles, typewriter } from "../../src/renderables/glyph-effects.js";
 import { Group } from "../../src/renderables/group.js";
 import { lifecycle } from "../../src/renderables/lifecycle.js";
 import { Live } from "../../src/renderables/live.js";
@@ -76,10 +76,17 @@ describe("an animation reduced", () => {
     expect([0, 1, 2, 9].map((t) => reduced.nextChange(t))).toEqual([2, 2, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY]);
   });
 
+  it("a one-shot cuts from its start to its end the moment it starts, and back again run backwards", () => {
+    const reduced = tween(0, 10, { seconds: 1, ease: EASES.linear }).reduced();
+    expect([-1, -0.01, 0, 0.5, 9].map((t) => reduced.at(t))).toEqual([0, 0, 10, 10, 10]);
+    expect([-1, 0, 9].map((t) => reduced.nextChange(t))).toEqual([0, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY]);
+  });
+
   it("a timeline maps time and the motion stays gone, playing, reversed or paused", () => {
     const moving = tween(0, 10, { seconds: 1, ease: EASES.linear });
     for (const timeline of [Timeline.play(5), Timeline.play(0, -2), Timeline.pause(Timeline.play(0), 0.5)]) {
-      expect(still(Timeline.run(timeline, moving))).toBe(10);
+      const reduced = Timeline.run(timeline, moving).reduced();
+      for (const host of SAMPLES) expect(reduced.at(host)).toBe(Timeline.at(timeline, host) < 0 ? 0 : 10);
     }
   });
 
@@ -110,6 +117,13 @@ describe("an animation reduced", () => {
     expect(plain(typed, FULL)).not.toBe("hello world");
   });
 
+  it("a glyph loop draws the text as written", () => {
+    const text = new RichText("hello world", { end: "" });
+    for (const effect of [caseWave({ step: 0.1, width: 3 }, 7), particles({ glyphs: "*", ascii: "*", density: 1, step: 0.2, drift: 1, life: Number.POSITIVE_INFINITY }, 3)]) {
+      expect(plain(new GlyphEffected(text, effect, { t: 0.7, key: "g" }), REDUCED)).toBe("hello world");
+    }
+  });
+
   it("an element is there from when it entered until it is told to leave, with no arrival or exit, and wakes only for those", () => {
     const element = new RichText("line", { end: "" });
     const options = { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "line", theme };
@@ -130,7 +144,7 @@ describe("an animation reduced", () => {
 function everything(): Animation<Renderable> {
   const bar = Animation.map(tween(0, 20, { seconds: 3, ease: EASES.linear }), (w) => new RichText("#".repeat(Math.round(w)), { end: "" }));
   const marquee = scroll(new RichText("a long line that scrolls past", { end: "" }), { width: 10, height: 1, col: Animation.continuous((t) => (t * 4) % 20) });
-  const change = Timeline.run(Timeline.play(1), crossfade(curve).effect({ from: new RichText("old", { end: "" }), to: new RichText("new", { end: "" }), theme }));
+  const change = Timeline.run(Timeline.play(0), crossfade(curve).effect({ from: new RichText("old", { end: "" }), to: new RichText("new", { end: "" }), theme }));
   const life = lifecycle(new RichText("arriving", { end: "" }), { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "l", theme }, 0);
   const cascade = Animation.map(Timeline.stagger([frames("1", "2"), frames("3", "4"), frames("5", "6")], 0.1), (shown) => new Group(...shown));
   return Animation.map(Animation.all([bar, marquee, change, life, cascade]), (parts) => new Group(...parts));

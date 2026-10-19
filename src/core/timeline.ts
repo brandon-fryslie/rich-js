@@ -199,6 +199,8 @@ export const Timeline = {
    * a clock of the stagger's own from 0. It changes when the soonest of them
    * does, on that clock (`Animation.all` of `run`s). A delay of 0 starts them
    * together and a negative one starts the last at 0 and the first last.
+   * Reduced, the offsets are the cascade's choreography, which is motion: every
+   * child reduced at once, so from 0 everyone has arrived.
    */
   stagger<T>(animations: readonly Animation<T>[], delay: number): Animation<readonly T[]> {
     finiteSeconds("Timeline.stagger delay", delay);
@@ -206,6 +208,7 @@ export const Timeline = {
     // [LAW:dataflow-not-control-flow] Whichever way the cascade runs, every
     // origin is shifted by the lowest of them, so the earliest child plays from 0.
     const earliest = Math.min(0, span);
-    return Animation.all(animations.map((animation, i) => Timeline.run(Timeline.play(i * delay - earliest), animation)));
+    const cascade = Animation.all(animations.map((animation, i) => Timeline.run(Timeline.play(i * delay - earliest), animation)));
+    return { ...cascade, reduced: () => Animation.all(animations.map((animation) => animation.reduced())) };
   },
 };

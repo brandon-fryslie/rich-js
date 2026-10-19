@@ -35,7 +35,7 @@ Five pieces build every animation, and each says how `nextChange` and `lastChang
 - `Animation.all([a, b, …])` is every one's value at once, in order, changing when the soonest of them does — so several effects drawn as one hold still exactly while each of them does — and having become that when the latest of them did.
 - `Animation.sequence(first, seconds, then)` is `first` until `seconds`, then `then`, handed the time since it began, so each part runs on its own clock from 0.
 
-Each says its [reduced](#reduced-motion) form the same way: a constant is itself, a continuous animation holds its value at 0, as a loop holds its first, a mapped one is its source reduced through `f`, several at once are each reduced, and a sequence is each part reduced with the switch kept. A one-shot that leads into what follows, such as a transition, holds its end.
+Each says its [reduced](#reduced-motion) form the same way: a constant is itself, a continuous animation holds its value at 0, as a loop holds its first, a mapped one is its source reduced through `f`, several at once are each reduced, and a sequence is each part reduced with the switch kept. A one-shot, such as a tween or a transition, cuts to its end when it starts.
 
 Here a light arrives, holds, and then blinks on a [beat](/easing):
 
@@ -255,7 +255,7 @@ const news = "every motion is one Animation ·";
 const marquee = scroll(new RichText(news, { style: "bold yellow" }), {
   width: 16,
   height: 1,
-  col: Animation.continuous((t) => Phase.loop(4)(t) * (cellLen(news) + 16) - 16),
+  col: Animation.continuous((t) => ((Phase.loop(4)(t) * (cellLen(news) + 16) + 16) % (cellLen(news) + 16)) - 16),
 });
 const slide = scroll(new RichText("arrived", { style: "green" }), { width: 16, height: 1, col: tween(-16, 0, { seconds: 1, ease: EASES["ease-out"] }) });
 
@@ -352,9 +352,9 @@ console.print(recording.exportText());
 
 Terminals have no `prefers-reduced-motion`, so the program hands the reader's preference in, once: `reducedMotion: true` on a [`Console`](/console), which a `Live` draws through, or on an `App`, and as `animationFuncs(frameTime, { reducedMotion: true })` for the [template functions](/template-bindings). Nothing reads it from the environment; a program that wants an environment variable to decide reads it itself.
 
-Under it every animation is drawn as its `reduced()` form: what it shows, and when it starts and stops showing it, are kept, and every moment of motion between is skipped. A loop holds its first value, a one-shot its end, a [transition](#a-transition-from-one-renderable-to-another) its new state, a [stagger](#a-stagger-one-animation-across-children) has every child arrived, and an [element](#enter-and-exit-an-element-arriving-staying-and-leaving) is there from when it entered until it is told to leave, with no fade either way. A [timeline](#playback-a-timeline) still maps the time, so what shows follows it. A host wakes only when content changes: never for a spinner or a fade, once each for an element arriving and leaving.
+Under it every animation is drawn as its `reduced()` form: what it shows, and when it starts and stops showing it, are kept, and every moment of motion between is skipped. A loop holds its value at 0, so a loop that should rest on something starts there; a glyph loop draws the text as written. A one-shot cuts from its start to its end the moment it starts (`Animation.cut(before, after)`), a [transition](#a-transition-from-one-renderable-to-another) to its new state, a [stagger](#a-stagger-one-animation-across-children) has every child arrived, and an [element](#enter-and-exit-an-element-arriving-staying-and-leaving) is there from when it entered until it is told to leave, with no fade either way. A [timeline](#playback-a-timeline) still maps the time, so what shows follows it. A host wakes only when content changes: never for a spinner or a fade, once each for an element arriving and leaving.
 
-A view that is an animation is drawn reduced. A function view is still asked for its frame at the time, so what the program computes from it — a log it appends to, an elapsed time — stays on time, and everything it builds for the time — an `Effected`, a `GlyphEffected`, a `Frames`, a spinner's `drawnAt`, `frameAt` of any renderable — is reduced where it is drawn. What the function samples itself is its own and still moves: `tween.at(t)`, or a text frame spliced into a line with `frameAt`. To have those reduced too, draw the text with a `Frames`, or hand the host the animation, mapped to what shows it.
+A view that is an animation is drawn reduced. A function view is still asked for its frame at the time, so what the program computes from it — a log it appends to, an elapsed time — stays on time, and everything it builds for the time — an `Effected`, a `GlyphEffected`, a `Frames`, a spinner's `drawnAt`, `frameAt` of any renderable — is reduced where it is drawn. `Animation.continuous` says its value is motion, so a clock or a counter computed from `t` belongs in a function view, where it stays on time. What the function samples itself is its own and still moves: `tween.at(t)`, or a text frame spliced into a line with `frameAt`. To have those reduced too, draw the text with a `Frames`, or hand the host the animation, mapped to what shows it.
 
 Here the same spinner and typewriter are drawn at three moments, with motion and reduced:
 

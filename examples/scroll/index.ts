@@ -33,7 +33,8 @@ const marquee = scroll(new RichText(NEWS, { style: "bold #f9e2af" }), {
   width: WIDTH,
   height: 1,
   // From just past the right edge to just past the left, every twelve seconds.
-  col: Animation.continuous((t) => Phase.loop(12)(t) * (cellLen(NEWS) + WIDTH) - WIDTH),
+  // From the line's start, so with motion reduced the loop holds it in view.
+  col: Animation.continuous((t) => ((Phase.loop(12)(t) * (cellLen(NEWS) + WIDTH) + WIDTH) % (cellLen(NEWS) + WIDTH)) - WIDTH),
 });
 
 const LOG = Array.from({ length: 12 }, (_, i) => new RichText(`${String(i + 1).padStart(2)}  build step ${i + 1} finished`, { style: "#89b4fa" }));

@@ -24,8 +24,8 @@
  *
  * `reduced()` is the same animation with its motion taken out: what it shows,
  * and when it starts and stops showing it, kept; every moment between two
- * values skipped. A loop holds its first value, a one-shot its end, a
- * transition its new state, a stagger has everyone arrived, and an element is
+ * values skipped. A loop holds its first value, a one-shot cuts to its end
+ * when it starts, a transition to its new state, a stagger has everyone arrived, and an element is
  * there from when it entered until it is told to leave. Terminals have no
  * `prefers-reduced-motion`, so a host is told (`reducedMotion`,
  * `./protocol.ts`), and under it draws every animation's reduced form, which
@@ -65,7 +65,7 @@ export interface Animation<T> {
   nextChange(t: number): number;
   /** The last moment, never after `t`, at which the value may have become `at(t)`: `t` while it moves, `-Infinity` if it always was. */
   lastChange(t: number): number;
-  /** This animation with its motion taken out — a loop at its first value, a one-shot at its end — drawn in its place under reduced motion. */
+  /** This animation with its motion taken out — a loop at its first value, a one-shot cut to its end — drawn in its place under reduced motion. */
   reduced(): Animation<T>;
 }
 
@@ -74,6 +74,20 @@ export const Animation = {
   constant<T>(value: T): Animation<T> {
     const still: Animation<T> = { at: () => value, nextChange: () => Number.POSITIVE_INFINITY, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => still };
     return still;
+  },
+
+  /**
+   * `before` until 0, then `after`: an instant change at 0 — a cut, what a
+   * one-shot is with its motion taken out, its start kept and its end at once.
+   */
+  cut<T>(before: T, after: T): Animation<T> {
+    const cut: Animation<T> = {
+      at: (t) => (t < 0 ? before : after),
+      nextChange: (t) => (t < 0 ? 0 : Number.POSITIVE_INFINITY),
+      lastChange: (t) => (t < 0 ? Number.NEGATIVE_INFINITY : 0),
+      reduced: () => cut,
+    };
+    return cut;
   },
 
   /**
