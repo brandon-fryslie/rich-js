@@ -161,7 +161,7 @@ const sine: Ease = settled((p) => (1 - Math.cos(Math.PI * p)) / 2);
  * overshoots once and settles in about a second and a quarter.
  */
 export interface SpringOptions {
-  /** The restoring force per unit of displacement; stiffer swings faster, though it settles no sooner, since the decay is the damping's over the mass's. Positive. Defaults to 100. */
+  /** The restoring force per unit of displacement; stiffer swings faster and settles in about the same time, since the decay is the damping's over the mass's. Positive. Defaults to 100. */
   readonly stiffness?: number;
   /** The force against the motion per unit of velocity; more settles sooner and overshoots less. Positive. Defaults to 10. */
   readonly damping?: number;

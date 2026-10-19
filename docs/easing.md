@@ -6,7 +6,7 @@ Nothing here reads a clock. Time is an argument, so whoever draws the frames pic
 
 ## Eases
 
-An `Ease` is any function from `[0, 1]` to progress. The built-ins are CSS's easing functions, by the name CSS gives them, plus `sine`, a half-cosine that is flat at both ends, and `step`, the older spelling of `step-end`:
+An `Ease` is any function from `[0, 1]` to progress. The built-ins are CSS's easing functions, by the name CSS gives them, plus `sine`, a half-cosine that is flat at both ends, `step`, the older spelling of `step-end`, and the physics curves the next section describes:
 
 ```typescript
 import { EASES } from "@promptctl/rich-js";
