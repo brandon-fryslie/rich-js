@@ -503,7 +503,7 @@ describe("Drawn.cells — the cells an effect is handed, listed before it is han
 
 describe("confined — an effect on its owners' cells", () => {
   const FILL = Style.parse("white on #3050a0");
-  const AT = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false };
+  const AT = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false };
   const repaint: Effect = () => Animation.continuous(() => (c) => ({ ...c, fg: RED, bg: BLUE }));
   /** Two items with one fill, so no colour tells them apart. */
   const twins = (): RichText[] => ["one", "two"].map((label) => new RichText(` ${label} `, { style: FILL, end: "", noWrap: true }));

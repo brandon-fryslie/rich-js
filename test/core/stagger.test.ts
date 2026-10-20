@@ -34,7 +34,7 @@ import { nextDown } from "./next-down.js";
 const OPTIONS: RenderOptions = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR, height: { rows: 6, exact: false } };
 const theme = DEFAULT_TERMINAL_THEME;
 const draw = (renderable: Renderable): Segment[] => [...render(renderable, OPTIONS)];
-const bytes = (renderable: Renderable): string => segmentsToString(draw(renderable), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
+const bytes = (renderable: Renderable): string => segmentsToString(draw(renderable), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
 
 /** `rate` samples a second from `from` to `to`. */
 const sampled = (rate: number, from: number, to: number): number[] => Array.from({ length: Math.floor((to - from) * rate) + 1 }, (_, i) => from + i / rate);

@@ -19,7 +19,7 @@ import { scroll } from "../../src/renderables/scroll.js";
 const OPTIONS: RenderOptions = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR };
 
 const draw = (renderable: Renderable, options: RenderOptions = OPTIONS): Segment[] => [...render(renderable, options)];
-const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
+const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
 const rows = (segments: Segment[]): string[] => Segment.splitLines(segments).map((line) => line.map((s) => s.text).join(""));
 const at = (col: number, row = 0, content: Renderable = LINE, size = { width: 6, height: 1 }): string[] =>
   rows(draw(scroll(content, { ...size, col: Animation.constant(col), row: Animation.constant(row) }).at(0)));

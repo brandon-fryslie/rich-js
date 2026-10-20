@@ -434,13 +434,32 @@ function terminalColorSystem(options: DetectColorOptions): ColorDepth | null {
 
 /**
  * Where segments are written, as everything the serializer (`segmentsToString`)
- * needs to know about it: the colour depth SGR is drawn at, and whether OSC 8
- * hyperlinks are emitted. The serializer takes this value whole, so a fact the
- * encoding comes to need joins it here rather than the serializer's signature.
+ * needs to know about it: the colour depth SGR is drawn at, whether OSC 8
+ * hyperlinks are emitted, and whether the reader there asked for reduced
+ * motion — under which the terminal's own blink is not asked for
+ * (`shownOn`, `./render.ts`). The serializer takes this value whole, so a
+ * fact the encoding comes to need joins it here rather than the serializer's
+ * signature.
  */
 export interface Destination {
   readonly colorSystem: ColorDepth | null;
   readonly hyperlinks: boolean;
+  /**
+   * The reader asked for reduced motion. A host draws for it with the same
+   * value as `RenderOptions.reducedMotion`, read off this field, so what is
+   * drawn and how it is encoded take one preference.
+   */
+  readonly reducedMotion: boolean;
+}
+
+/**
+ * What `resolveDestination` is told about where it writes beyond the colour
+ * spec: what detection probes, and the reader's preference for motion, which
+ * no spec or terminal reports, so the program hands it in. Absent, everything
+ * moves.
+ */
+export interface DestinationOptions extends DetectColorOptions {
+  reducedMotion?: boolean;
 }
 
 /**
@@ -455,19 +474,22 @@ export interface Destination {
  */
 export function resolveDestination(
   spec: ColorSystemName | ColorDepth | null,
-  options?: DetectColorOptions,
+  options: DestinationOptions = {},
 ): Destination {
+  const reducedMotion = options.reducedMotion ?? false;
   if (spec !== "auto") {
     return {
       colorSystem: typeof spec === "string" ? resolveColorSystem(spec) : spec,
       hyperlinks: true,
+      reducedMotion,
     };
   }
   return {
     colorSystem: detectColorSystem(options),
     hyperlinks:
-      (forcedColorSystem(envOf(options ?? {})) ?? null) !== null ||
-      terminalColorSystem(options ?? {}) !== null,
+      (forcedColorSystem(envOf(options)) ?? null) !== null ||
+      terminalColorSystem(options) !== null,
+    reducedMotion,
   };
 }
 

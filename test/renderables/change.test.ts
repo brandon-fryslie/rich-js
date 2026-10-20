@@ -21,7 +21,7 @@ const tall = new RichText("one\ntwo\nthree", { style: "cyan" });
 const wide = new RichText("漢字漢字漢字漢字漢字", { style: "magenta" });
 
 const draw = (renderable: Renderable, options: RenderOptions = OPTIONS): Segment[] => [...render(renderable, options)];
-const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
+const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
 const text = (segments: Segment[]): string => segments.map((s) => s.text).join("");
 const rows = (segments: Segment[]): number[] => Segment.splitLines(segments).map((line) => Segment.getLineLength(line));
 
