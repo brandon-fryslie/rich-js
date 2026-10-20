@@ -10,7 +10,7 @@ import { cellLen } from "../../src/core/cells.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
 import { dissolveOut, fadeIn } from "../../src/renderables/effects.js";
 import { frameAt } from "../../src/renderables/frames.js";
-import { lifecycle } from "../../src/renderables/lifecycle.js";
+import { lifecycle, throughColors } from "../../src/renderables/lifecycle.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -345,7 +345,7 @@ describe("Tree", () => {
 describe("a child that draws no rows", () => {
   const curve = { seconds: 1, ease: EASES.linear, swing: 1 };
   const life = (name: string, entered: number) =>
-    lifecycle(new RichText(name), { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: name, theme: DEFAULT_TERMINAL_THEME }, entered);
+    lifecycle(new RichText(name), { enter: throughColors(fadeIn(curve, 0), DEFAULT_TERMINAL_THEME), exit: throughColors(dissolveOut(curve, 0), DEFAULT_TERMINAL_THEME), key: name }, entered);
   type Life = ReturnType<typeof life>;
   // At t=3: `shown` arrived at 1, `before` enters at 5, `gone` finished leaving at 2.
   const t = 3;

@@ -1,6 +1,7 @@
 /**
- * lifecycle — a build log whose lines fade in as they are appended and
- * dissolve away four seconds later, playing in a `Live` for twenty seconds.
+ * lifecycle — a build log whose lines type themselves in as they are appended
+ * and leave four seconds later, dissolved, backspaced or scrambled away in
+ * turn, playing in a `Live` for twenty seconds.
  *
  * THIS IS A DEMO: `lifecycle` (`src/renderables/lifecycle.ts`), for seeing an
  * element arrive, stay, leave, and be dropped. Each line is appended at a time
@@ -9,7 +10,7 @@
  * nothing from then on.
  */
 
-import { CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, dissolveOut, fadeIn, frameAt, lifecycle, type Lifecycle, type Renderable } from "../../src/index.js";
+import { CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, backspace, dissolveOut, frameAt, lifecycle, scrambleOut, throughColors, throughGlyphs, typewriter, type Lifecycle, type Renderable } from "../../src/index.js";
 
 const EVERY = 1.2;
 const STAYS = 4;
@@ -22,7 +23,7 @@ const MESSAGES = [
   ["publishing the docs site", "#94e2d5"],
   ["done ✓", "bold #a6e3a1"],
 ] as const;
-const ENTER = { seconds: 0.8, ease: EASES["ease-out"], swing: 1 };
+const ENTER = { seconds: 0.8, ease: EASES["ease-out"] };
 const EXIT = { seconds: 1.2, ease: EASES["ease-in"], swing: 1 };
 
 /** The `i`th line appended to the log at time `at`, told to leave `STAYS` seconds later. */
@@ -30,7 +31,9 @@ function appended(i: number, at: number): Lifecycle {
   const [message, style] = MESSAGES[i % MESSAGES.length]!;
   const line = new RichText(`${String(i + 1).padStart(3)}  ${message}`, { style });
   // Each line its own transitions: a transition is made for one element.
-  return lifecycle(line, { enter: fadeIn(ENTER, i), exit: dissolveOut(EXIT, i), key: `line-${i}`, theme: CATPPUCCIN_MOCHA }, at).leave(at + STAYS);
+  const key = `line-${i}`;
+  const exits = [throughColors(dissolveOut(EXIT, i), CATPPUCCIN_MOCHA), throughGlyphs(backspace(EXIT)), throughGlyphs(scrambleOut(EXIT, i))];
+  return lifecycle(line, { enter: throughGlyphs(typewriter(ENTER)), exit: exits[i % exits.length]!, key }, at).leave(at + STAYS);
 }
 
 let log: Lifecycle[] = [];

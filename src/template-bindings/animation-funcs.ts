@@ -129,6 +129,8 @@ const GLYPH_EFFECTS: Readonly<Record<GlyphLoopName | GlyphTransitionName, (eleme
   ...GLYPH_EFFECT_CATALOGUE.loops,
   typewriter: (element) => GLYPH_EFFECT_CATALOGUE.transitions.typewriter(element).effect,
   scramble: (element) => GLYPH_EFFECT_CATALOGUE.transitions.scramble(element).effect,
+  backspace: (element) => GLYPH_EFFECT_CATALOGUE.transitions.backspace(element).effect,
+  scrambleOut: (element) => GLYPH_EFFECT_CATALOGUE.transitions.scrambleOut(element).effect,
 };
 
 /**

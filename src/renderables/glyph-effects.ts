@@ -1,6 +1,7 @@
 /**
  * The glyph effect catalogue: a typewriter and a scramble, which run once and
- * are done, and a wave of case changes, rain and stars, which loop for as
+ * are done, each with its way out for an element leaving (`backspace`,
+ * `scrambleOut`), and a wave of case changes, rain and stars, which loop for as
  * long as they are drawn. Each is a `GlyphEffect` for `GlyphEffected`
  * (`./glyph-effect.ts`), built as the colour catalogue's are
  * (`./effects.ts`): one function each over the one shape, made by name, one
@@ -8,7 +9,7 @@
  *
  * Where a colour loop glides, a glyph cannot: a cell shows one glyph or
  * another, so every loop here moves in steps, on a `beat`, and says when its
- * next step is. The two transitions are `Transition`s by the one rule the
+ * next step is. The transitions are `Transition`s by the one rule the
  * colour transitions follow (`transition`): they move every frame until
  * their seconds are up, and never after.
  *
@@ -125,10 +126,64 @@ export function scramble(timing: Timing, z: number): GlyphTransition {
     return Animation.continuous((t): GlyphFrame => {
       const resolved = arrived(length, ease(phase(t)));
       const step = flicker.at(t);
+      return (cell) => (!inked(cell.glyph) || (place.get(cell.index) ?? -1) < resolved ? cell.glyph : churned(cell, z, step));
+    });
+  });
+}
+
+/** `cell` scrambled at flicker `step`: a random one-cell glyph for each cell it is wide. */
+function churned(cell: GlyphCell, z: number, step: number): string {
+  const pick = (i: number): string => SCRAMBLE_GLYPHS[Math.floor(hash(cell.seed * 7919 + i, z + step * 0.618) * SCRAMBLE_GLYPHS.length)]!;
+  return Array.from({ length: cellLen(cell.glyph) }, (_, i) => pick(i)).join("");
+}
+
+/**
+ * A typewriter backwards, for an element leaving: its text whole, then erased
+ * from its last cell to its first, the first at `timing.seconds`, so the
+ * element ends blank and nothing is left to vanish when it goes.
+ */
+export function backspace(timing: Timing): GlyphTransition {
+  const phase = Phase.once(0, timing.seconds);
+  // Settled, so the first cell is erased at the seconds whatever ease was handed.
+  const ease = settled(timing.ease);
+  return transition(timing.seconds, ({ cells }: DrawnGlyphs) => {
+    const { length, place } = text(cells);
+    return Animation.continuous((t): GlyphFrame => {
+      const kept = length - arrived(length, ease(phase(t)));
+      // A margin has no place, and is blank already.
+      return (cell) => ((place.get(cell.index) ?? -1) < kept ? cell.glyph : blank(cell.glyph));
+    });
+  });
+}
+
+/** Of a `scrambleOut`'s seconds, the share each cell churns for between its own glyph and its blank. */
+const CHURN = 0.3;
+
+/**
+ * A scramble that decays, for an element leaving: its text whole, then each
+ * cell, in reading order, churning through random glyphs for a while before
+ * it is blank, the last blank at `timing.seconds`. A blank stays blank, as in
+ * `scramble`, so the words keep their shape until they are gone.
+ */
+export function scrambleOut(timing: Timing, z: number): GlyphTransition {
+  requireZ("scrambleOut", z);
+  const phase = Phase.once(0, timing.seconds);
+  // Settled, so the last cell is blank at the seconds whatever ease was handed.
+  const ease = settled(timing.ease);
+  const flicker = stepped(FLICKER)((step) => step, 0);
+  return transition(timing.seconds, ({ cells }: DrawnGlyphs) => {
+    const { length, place } = text(cells);
+    return Animation.continuous((t): GlyphFrame => {
+      const p = ease(phase(t));
+      // Two fronts in reading order, a churn's share of the seconds apart: past the first a cell churns, past the second it is blank.
+      const churning = arrived(length, p / (1 - CHURN));
+      const gone = arrived(length, (p - CHURN) / (1 - CHURN));
+      const step = flicker.at(t);
       return (cell) => {
-        if (!inked(cell.glyph) || (place.get(cell.index) ?? -1) < resolved) return cell.glyph;
-        const pick = (i: number): string => SCRAMBLE_GLYPHS[Math.floor(hash(cell.seed * 7919 + i, z + step * 0.618) * SCRAMBLE_GLYPHS.length)]!;
-        return Array.from({ length: cellLen(cell.glyph) }, (_, i) => pick(i)).join("");
+        // A margin or a glyph no cell wide has no place, and neither front reaches it.
+        const at = place.get(cell.index) ?? Number.POSITIVE_INFINITY;
+        if (at < gone) return blank(cell.glyph);
+        return !inked(cell.glyph) || at >= churning ? cell.glyph : churned(cell, z, step);
       };
     });
   });
@@ -233,12 +288,14 @@ export function particles(spec: Particles, z: number): GlyphEffect {
 export type GlyphLoopName = "wave" | "rain" | "stars";
 
 /** The names of the glyph effects that run once. */
-export type GlyphTransitionName = "typewriter" | "scramble";
+export type GlyphTransitionName = "typewriter" | "scramble" | "backspace" | "scrambleOut";
 
 /** Each catalogue glyph effect's defaults, as first drawn in `examples/glyph-effects`. */
 export const GLYPH_DEFAULTS = {
   typewriter: { seconds: 2, ease: EASES.linear },
   scramble: { seconds: 2.5, ease: EASES["ease-in"] },
+  backspace: { seconds: 1.5, ease: EASES.linear },
+  scrambleOut: { seconds: 2.5, ease: EASES["ease-out"] },
   wave: { step: 0.06, width: 3 },
   rain: { glyphs: "│╎", ascii: "|:", density: 0.06, step: 0.08, drift: 1, life: Number.POSITIVE_INFINITY },
   stars: { glyphs: "·+*", ascii: ".+*", density: 0.04, step: 1.5, drift: 0, life: 1 },
@@ -264,5 +321,7 @@ export const GLYPH_EFFECT_CATALOGUE: {
   transitions: {
     typewriter: (_element, timing = GLYPH_DEFAULTS.typewriter) => typewriter(timing),
     scramble: (element, timing = GLYPH_DEFAULTS.scramble) => scramble(timing, element.z),
+    backspace: (_element, timing = GLYPH_DEFAULTS.backspace) => backspace(timing),
+    scrambleOut: (element, timing = GLYPH_DEFAULTS.scrambleOut) => scrambleOut(timing, element.z),
   },
 };

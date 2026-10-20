@@ -166,10 +166,11 @@ console.print(`done at 2s: ${typing.done(2)}`);
 
 A glyph effect changes what a cell shows, never which cells exist, where they are or who drew them. The text it returns for a cell must be exactly as wide as the glyph it replaces, hold no line break or control character, and not join the cell beside it into one character, as a trailing zero-width joiner would. Otherwise the render throws and names the cell or the line. So nothing beside the element ever moves, and a wide glyph like `漢` is blanked as two spaces or scrambled as two narrow glyphs, never cut in half. A cell that comes back unchanged is drawn byte for byte as it was, and a changed cell keeps its link and its owner. Glyphs are written at every colour depth, so a glyph effect moves even with no colour output, where a colour effect does nothing.
 
-The catalogue, `GLYPH_EFFECT_CATALOGUE`, has two transitions, which run once and say when they are `done`, and three loops:
+The catalogue, `GLYPH_EFFECT_CATALOGUE`, has four transitions, which run once and say when they are `done` — two that bring text in and their two ways out, for an element [leaving](#enter-and-exit-an-element-arriving-staying-and-leaving) — and three loops:
 
 - `typewriter(timing)`: the element's text blank until it is typed, in reading order, the last cell at `timing.seconds`, its ease setting the pace. The spaces between words are typed; the padding round the text is not, so no time is spent on it.
 - `scramble(timing, z)`: random glyphs, a new one each fifteenth of a second, resolving to the words in reading order. Blanks stay blank, so the words keep their shape.
+- `backspace(timing)` and `scrambleOut(timing, z)`: the two ways out — the text erased from its last cell to its first, or each cell churning in reading order before it blanks — whole at 0 and blank at `timing.seconds`.
 - `caseWave({ step, width }, z)`: a band of swapped case crossing the element one column a `step`.
 - `particles(spec, z)`: particles on the element's blank cells, never over its words. `rain` falls a row a step, and `stars` are drawn afresh each life. Both are values of the one `particles` function, and their specs are in `GLYPH_DEFAULTS`. Each spec names an ASCII set too, which is drawn instead on an output that draws ASCII alone.
 
@@ -218,7 +219,7 @@ To watch both run, run `npm run transitions` in a checkout of this repository.
 
 ## Enter and exit: an element arriving, staying and leaving
 
-A row added to a table, a line appended to a log, a panel closing: each is one element that arrives, stays, and leaves, and whoever holds it must know when it is gone so it can drop it. `lifecycle(element, { enter, exit, key, theme }, entered)` is that element on the host's clock, as an `Animation` of what it draws. `enter` and `exit` are transitions made for this element alone, such as `fadeIn` and `dissolveOut`. `entered` is the host time it arrived. `lifecycle.leave(at)` is the same element told to leave at host time `at`, a new value like a timeline operation's. Until it is told, its `left` is `Infinity`.
+A row added to a table, a line appended to a log, a panel closing: each is one element that arrives, stays, and leaves, and whoever holds it must know when it is gone so it can drop it. `lifecycle(element, { enter, exit, key }, entered)` is that element on the host's clock, as an `Animation` of what it draws. `enter` and `exit` are its two halves, each a transition made for this element alone and bound to what draws it: `throughColors(transition, theme)` for a colour one, drawn on the terminal whose ground it arrives from and leaves to, and `throughGlyphs(transition)` for a [glyph](#a-glyph-effect-text-typed-scrambled-and-rained-on) one, which needs no theme and is written with no colour output too. An arrival starts from nothing — `fadeIn`, `typewriter`, `scramble` — and an exit ends at nothing — `dissolveOut`, `backspace`, `scrambleOut` — so the element is already out of sight when it is dropped. The two kinds mix, so a line can type itself in and dissolve out. `key` names the element for both halves' seeds. `entered` is the host time it arrived. `lifecycle.leave(at)` is the same element told to leave at host time `at`, a new value like a timeline operation's. Until it is told, its `left` is `Infinity`.
 
 Both times are handed in, never read, so a host that says "leave at 5" and asks for the frame at 6 gets the element one second into leaving. At host time `t` it draws:
 
@@ -228,14 +229,15 @@ Both times are handed in, never read, so a host that says "leave at 5" and asks 
 - leaving, through `exit`, handed the time since it was told, over whatever arriving would draw then, so an element told to leave before it has arrived leaves from where it is;
 - once `exit` is done, nothing, for good: `gone(t)` is true, and the host drops it.
 
-While it arrives or leaves it changes when its transition does — every frame for a fade, once a hold for one on a beat (`onBeat(fadeIn(curve, 0), beat([0.25]))` arrives a quarter of a second at a time, and a host wakes on those quarters) — and it holds still while it stays and once it is gone, so a host still holding a gone element wakes for nothing. A transition says when its frame changes whatever the element draws, so this holds even with no colour output, where the transitions write no colour. Drawn inside a function view, the frame says so through `frameAt(shown, t)`:
+While it arrives or leaves it changes when its transition does — every frame for a fade, once a hold for one on a beat (`onBeat(fadeIn(curve, 0), beat([0.25]))` arrives a quarter of a second at a time, and a host wakes on those quarters) — and it holds still while it stays and once it is gone, so a host still holding a gone element wakes for nothing. A transition says when its frame changes whatever the element draws, so this holds even with no colour output, where a colour half writes nothing. Drawn inside a function view, the frame says so through `frameAt(shown, t)`:
 
 ```typescript
-import { DEFAULT_TERMINAL_THEME, EASES, RichText, dissolveOut, fadeIn, lifecycle } from "@promptctl/rich-js";
+import { DEFAULT_TERMINAL_THEME, EASES, RichText, dissolveOut, lifecycle, throughColors, throughGlyphs, typewriter } from "@promptctl/rich-js";
 
-const curve = { seconds: 1, ease: EASES.linear, swing: 1 };
+const typing = { seconds: 1, ease: EASES.linear };
 const line = new RichText("compiling 214 modules", { style: "bold cyan" });
-const shown = lifecycle(line, { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "line", theme: DEFAULT_TERMINAL_THEME }, 0).leave(3);
+const halves = { enter: throughGlyphs(typewriter(typing)), exit: throughColors(dissolveOut({ ...typing, swing: 1 }, 0), DEFAULT_TERMINAL_THEME), key: "line" };
+const shown = lifecycle(line, halves, 0).leave(3);
 
 for (const t of [0, 0.5, 1, 2, 3.5, 4]) {
   const next = shown.nextChange(t);

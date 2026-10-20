@@ -5,7 +5,7 @@ import { EASES } from "../../src/core/easing.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { Segment } from "../../src/core/segment.js";
 import { GlyphEffected, type GlyphEffect, type GlyphFrame } from "../../src/renderables/glyph-effect.js";
-import { GLYPH_DEFAULTS, GLYPH_EFFECT_CATALOGUE, caseWave, particles, scramble, typewriter } from "../../src/renderables/glyph-effects.js";
+import { GLYPH_DEFAULTS, GLYPH_EFFECT_CATALOGUE, backspace, caseWave, particles, scramble, scrambleOut, typewriter } from "../../src/renderables/glyph-effects.js";
 
 /** A renderable yielding `lines` as fixed segments. */
 function lines(...rows: string[]): Renderable {
@@ -219,5 +219,38 @@ describe("particles", () => {
   it("leaves a zero-width glyph that trims away, a byte-order mark, as it is", () => {
     const dense = particles({ ...GLYPH_DEFAULTS.rain, density: 1 }, z);
     expect(draw(dense, lines("a﻿  b"), 0).text).toMatch(/^a﻿[│╎]{2}b$/);
+  });
+});
+
+describe("the ways out: backspace and scrambleOut", () => {
+  const timing = { seconds: 2, ease: EASES.linear };
+  const OUT: readonly [string, GlyphEffect][] = [
+    ["backspace", backspace(timing).effect],
+    ["scrambleOut", scrambleOut(timing, z).effect],
+  ];
+
+  for (const [name, effect] of OUT) {
+    it(`${name}: is the text whole at 0, a glyph no cell wide included, and blank at its seconds`, () => {
+      const text = "ab\uFEFFcd ef";
+      expect(draw(effect, lines(text), 0).text).toBe(text);
+      expect(draw(effect, words, 0).text).toBe("hello, wide 漢字 world");
+      expect(draw(effect, words, 2).text.trim()).toBe("");
+    });
+  }
+
+  it("backspace erases from the last cell to the first", () => {
+    expect(draw(OUT[0]![1], lines("abcd"), 1).text).toBe("ab  ");
+  });
+
+  it("scrambleOut churns a cell before it blanks it, in reading order, and keeps the blanks between words", () => {
+    const shown = draw(OUT[1]![1], lines("abcd efgh"), 1).text;
+    expect(shown.slice(0, 2)).toBe("  ");
+    expect(shown.slice(-2)).toBe("gh");
+    expect(shown[4]).toBe(" ");
+    expect(shown.slice(2, 4)).not.toBe("cd");
+  });
+
+  it("scrambleOut needs a finite z", () => {
+    expect(() => scrambleOut(timing, Number.NaN)).toThrow(/scrambleOut z must be a finite place in the noise/);
   });
 });
