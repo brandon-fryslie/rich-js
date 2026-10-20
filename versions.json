@@ -4,15 +4,22 @@
     {
       "version": "pr-500",
       "ref": "refs/pull/500/merge",
-      "sha": "055e4af484b35995db2a05641088e7e180b907c1",
-      "timestamp": "2026-10-20T05:53:02.669Z",
+      "sha": "3aef455b5dafdb1c933a089475743984c84bd554",
+      "timestamp": "2026-10-20T06:08:47.406Z",
       "commits": [
         {
-          "sha": "055e4af484b35995db2a05641088e7e180b907c1",
+          "sha": "3aef455b5dafdb1c933a089475743984c84bd554",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T23:51:08-06:00",
-          "message": "Merge a48817046e7c92df5ea7d71a4fa570e66ed15a72 into fe34cbf6fa8c51e338579c0ab209db047f293a58\n"
+          "timestamp": "2026-10-20T06:07:00Z",
+          "message": "Merge 681dda7adaf87f1b799b6dbe42a34527c3736cd7 into fe34cbf6fa8c51e338579c0ab209db047f293a58\n"
+        },
+        {
+          "sha": "681dda7adaf87f1b799b6dbe42a34527c3736cd7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-20T00:06:54-06:00",
+          "message": "The playground keeps what the reader did across a rebuild; WidgetApp forwards rate (rich-animation-42lg.bp9)\n\n/code-review high on PR #500:\n- WidgetApp forwards App's rate setter, so frame rate changes live\n  instead of rebuilding the app.\n- Widgets and the gallery outlive a session, so typed text, scroll and\n  focus survive a reduced-motion or colour-depth rebuild.\n- The run starts at the terminal's own colour environment; forcing a\n  depth is a step in the cycle.\n- Controls take the rows they draw, so at 80 columns the readout stays.\n- The scrub track draws in the cells it is given and stamps the window\n  it showed on its anchor owner, so a press seeks into the window on\n  screen.\n- The narrow marquee holds in view under reduced motion; the marching\n  ants walk clockwise by their place along the border.\n"
         },
         {
           "sha": "a48817046e7c92df5ea7d71a4fa570e66ed15a72",
