@@ -4,15 +4,22 @@
     {
       "version": "pr-495",
       "ref": "refs/pull/495/merge",
-      "sha": "964ce1f924928524e422543dc297dd91e5659afa",
-      "timestamp": "2026-10-20T01:43:36.302Z",
+      "sha": "4e6fd0c74882a44bd4f70fba9d11b30f28447f26",
+      "timestamp": "2026-10-20T02:02:28.833Z",
       "commits": [
         {
-          "sha": "964ce1f924928524e422543dc297dd91e5659afa",
+          "sha": "4e6fd0c74882a44bd4f70fba9d11b30f28447f26",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T19:42:01-06:00",
-          "message": "Merge 924be367a08abdc84fcd8a0ac776030583450982 into a507d798f135c9e10c52637804c26b6e15d7aaf4\n"
+          "timestamp": "2026-10-20T02:00:26Z",
+          "message": "Merge 7866ab143df02bc59144609d4b41cabe6523cf28 into a507d798f135c9e10c52637804c26b6e15d7aaf4\n"
+        },
+        {
+          "sha": "7866ab143df02bc59144609d4b41cabe6523cf28",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T20:00:21-06:00",
+          "message": "The caret restarts its blink on focus, a click, and a key the field handles (rich-animation-42lg.31p)\n\nReview of #495: a field Tab moved focus to, or a click placed the cursor\nin, could show no caret for up to half a second, and a key the field passed\non restarted the blink and repainted. Every event a widget hears now carries\nits time on the frame's clock (WidgetMouseEvent.time, WidgetFocusEvent.time;\nfocus(time)/blur(time)), stamped by the router and the focus manager from\nthe same frameTime keys already use. TextInput restarts from focus, a\nmouse_down, and a key it stops.\n\nThe blink runs away from its restart in either direction of time, so a\ntimeline played backwards also finds the caret lit just after a key.\n"
         },
         {
           "sha": "924be367a08abdc84fcd8a0ac776030583450982",
