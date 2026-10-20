@@ -27,15 +27,31 @@ An answer may be early — a host then draws a frame that looks like the last on
 
 ## Building one
 
-Five pieces build every animation, and each says how `nextChange` and `lastChange` compose, so an animation built from them answers them without its author doing anything:
+These pieces build every animation, and each says how `nextChange` and `lastChange` compose, so an animation built from them answers them without its author doing anything:
 
 - `Animation.constant(value)` is `value` at every time, and never changes.
 - `Animation.continuous((t) => value)` is the function's value, moving at every moment.
 - `Animation.map(animation, f)` is the value through `f`, changing when the source does.
 - `Animation.all([a, b, …])` is every one's value at once, in order, changing when the soonest of them does — so several effects drawn as one hold still exactly while each of them does — and having become that when the latest of them did.
 - `Animation.sequence(first, seconds, then)` is `first` until `seconds`, then `then`, handed the time since it began, so each part runs on its own clock from 0.
+- `Animation.repeat(period, nth)` is `nth(n)` through the `n`th turn of `period` seconds, handed the time since that turn began: a one-shot played again every `period`, a different one each turn if `nth` says so. Turns go on before 0 too, so a timeline run backwards past the start is still in one, and a turn begins on the same moment a [beat](/easing) or a `Phase.loop` of the same period does.
 
-Each says its [reduced](#reduced-motion) form the same way: a constant is itself, a continuous animation holds its value at 0, as a loop holds its first, a mapped one is its source reduced through `f`, several at once are each reduced, and a sequence is each part reduced with the switch kept. A one-shot, such as a tween or a transition, cuts to its end when it starts.
+Each says its [reduced](#reduced-motion) form the same way: a constant is itself, a continuous animation holds its value at 0, as a loop holds its first, a mapped one is its source reduced through `f`, several at once are each reduced, and a sequence or a repeat is each part reduced with its switches kept. A one-shot, such as a tween or a transition, cuts to its end when it starts.
+
+Here a counter moves to a new total every two seconds, each time from the last one, and before 0 it is still counting:
+
+```typescript
+import { Animation, EASES, tween } from "@promptctl/rich-js";
+
+const totals = [0, 120, 870, 430];
+const total = (n: number) => totals[((n % totals.length) + totals.length) % totals.length]!;
+const counting = Animation.repeat(2, (n) => tween(total(n - 1), total(n), { seconds: 1, ease: EASES["ease-out"] }));
+
+for (const t of [0.5, 1.5, 2, 2.5, 4.5, -0.5]) {
+  const next = counting.nextChange(t);
+  console.print(`t=${t}s  ${Math.round(counting.at(t)).toString().padStart(3)}  next change ${next === t ? "every frame" : `at ${next}s`}`);
+}
+```
 
 Here a light arrives, holds, and then blinks on a [beat](/easing):
 

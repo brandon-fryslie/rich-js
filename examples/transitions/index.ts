@@ -8,7 +8,7 @@
  * and what sits beside it moves once, at the cut, never while it changes.
  */
 
-import { CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, Timeline, crossfade, frameAt, wipe, type Change, type Renderable, type Transition } from "../../src/index.js";
+import { Animation, CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, crossfade, frameAt, wipe, type Change, type Renderable, type Transition } from "../../src/index.js";
 
 const EVERY = 3;
 const STATES = [
@@ -22,14 +22,25 @@ const CHANGES: readonly [string, Transition<Change>][] = [
   ["wipe", wipe({ seconds: 0.8, ease: EASES["ease-in-out"], swing: 1 })],
 ];
 
+/** Which of the states turn `n` shows, for a turn of either sign. */
+const cycled = (n: number): number => ((n % STATES.length) + STATES.length) % STATES.length;
+
+/**
+ * `change` played into each state every `EVERY` seconds, from the one before,
+ * each change made once. The first state is shown as it is: nothing came
+ * before it to change from.
+ */
+const changing = (change: Transition<Change>): Animation<Renderable> => {
+  const into = STATES.map((to, i) => change.effect({ from: STATES[cycled(i - 1)]!, to, theme: CATPPUCCIN_MOCHA }));
+  const first = Animation.constant<Renderable>(STATES[0]!);
+  return Animation.repeat(EVERY, (n) => (n === 0 ? first : into[cycled(n)]!));
+};
+
+const ROWS = CHANGES.map(([name, change]) => [name, changing(change)] as const);
+
+// `frameAt` stamps each frame with when the change next moves, on the Live's clock.
 function view(t: number): Renderable {
-  const k = Math.floor(t / EVERY);
-  const to = STATES[k % STATES.length]!;
-  // The first state is shown as it is: nothing came before it to change from.
-  // Each change plays from its cut on the Live's clock, and `frameAt` stamps the frame on that clock.
-  const shown = (change: Transition<Change>): Renderable =>
-    k === 0 ? to : frameAt(Timeline.run(Timeline.play(k * EVERY), change.effect({ from: STATES[(k - 1) % STATES.length]!, to, theme: CATPPUCCIN_MOCHA })), t);
-  return new Group(...CHANGES.map(([name, change]) => new Panel(shown(change), { title: name, width: 40, borderStyle: "#585b70" })));
+  return new Group(...ROWS.map(([name, changes]) => new Panel(frameAt(changes, t), { title: name, width: 40, borderStyle: "#585b70" })));
 }
 
 const live = new Live(view, { refreshPerSecond: 30 });
