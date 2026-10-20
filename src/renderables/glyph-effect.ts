@@ -189,7 +189,9 @@ function showGlyphs(placed: readonly (readonly PlacedGlyph[])[], frame: GlyphFra
  * which is spliced into a line and drawn under a theme it does not know yet,
  * so it cannot be rendered to cells first as `Reglyphed` renders its child.
  * The cells are the text's own lines, at its own columns; the contract is
- * the one `Reglyphed` is held to, through the same checks. The text keeps
+ * the one `Reglyphed` is held to, through the same checks, over the text's
+ * own glyphs: a neighbour spliced beside it later, a combining mark leading
+ * the next fragment say, is outside what either check can see. The text keeps
  * its every style and span, each moved to where its glyphs now sit, and a
  * frame that changes nothing hands the text back as it was. What it says of
  * when it changes is the effect's, unstamped: whoever draws it at a time

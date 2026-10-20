@@ -135,8 +135,9 @@ function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<Rich
   });
 }
 
-// The fourth shape: `animationFuncs(frameTime)` registers `frames`, which
-// draws for a moment, and the moment is the host's to hand in. The app hands
+// The fourth shape: `animationFuncs(frameTime, options)` registers `frames`,
+// `stepped`, `tween`, `loop` and `glyphs`, which draw for a moment, and the
+// moment is the host's to hand in. The app hands
 // its view each frame's time; the view notes it here, and every template
 // evaluated in that frame reads it — templates compile once, so the time is
 // read when one is evaluated, never captured when it is built.

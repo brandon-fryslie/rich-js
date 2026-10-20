@@ -248,7 +248,7 @@ Passing a palette name where a color belongs is the other common slip, and it na
 
 `animationFuncs(frameTime)` registers the functions that draw for a moment in time. The host owns the clock: `frameTime()` is read each time a template is evaluated, so a template compiled once shows each redraw's moment, and a host that redraws once a second sees the same thing at each of its frames as a host that redraws sixty times a second. Every duration is in seconds.
 
-- `tween <seconds> <ease> <start> <from> <to>` is a number eased from `from` to `to` over `seconds`, starting at the moment `start`, and held at `to` afterwards. The ease is any name in `EASES`, physics curves such as `"spring"` and `"back-out"` included. Pipe the target into it: `.pct | tween 0.4 "ease-out" .changedAt .was` eases from the old value to the new one, starting when your state says the value changed.
+- `tween <seconds> <ease> <start> <from> <to>` is a number eased from `from` to `to` over `seconds`, starting at the moment `start`, and held at `to` afterwards. Every `start` is a moment on the timeline the functions are drawn on, which is the host's own clock unless you hand one in (below); with one handed in, record a change at `Timeline.at(timeline, host)`, not at the host time. The ease is any name in `EASES`, physics curves such as `"spring"` and `"back-out"` included. Pipe the target into it: `.pct | tween 0.4 "ease-out" .changedAt .was` eases from the old value to the new one, starting when your state says the value changed.
 - `loop <seconds> <start>` is the way through a period, rising from 0 towards 1 and starting again, measured from `start`. Give a row of cells starts a step apart and the same motion travels along the row.
 - `glyphs <name> <start>` passes the piped fragment through a [glyph effect](/animation#a-glyph-effect-text-typed-scrambled-and-rained-on), starting at `start`, with the catalogue's defaults. The names are `"typewriter"`, `"scramble"`, `"wave"`, `"rain"` and `"stars"`.
 - `frames` and `stepped` step through a sequence of fragments or colours ([Frames](/frames#in-a-template)).
@@ -279,7 +279,7 @@ for (frameTime of [10, 10.2, 10.4, 10.6, 11, 12]) {
 }
 ```
 
-The tween changes with every frame and the typewriter stops changing once the text is typed. A fragment says when it will next change: `frames` and `glyphs` mark each cell they draw with that moment, so a host that schedules redraws from it knows when to look again. A number or a colour has no cells to mark. A host already redraws a template on its own clock, since a template can change with your state too, so a cell coloured by a moving value is still drawn on time.
+The tween changes with every frame and the typewriter stops changing once the text is typed. A fragment says when it will next change: `frames` and `glyphs` mark each cell they draw with that moment, so a host that schedules redraws from it knows when to look again. A number or a colour has no cells to mark, and the marks on a fragment cover its own glyphs, not a colour another function lays over them. A template is a function of your state, so its frame says it may change without saying so: a `Live`'s auto-refresh redraws it at its rate, and so does a host that evaluates the template on every tick. An [`App`](/app#animating-at-a-frame-rate) paints a function view only when asked or when a mark says so, so hold `app.animate()` while a `tween` or `loop` is on screen.
 
 ### Pausing, reversing and reduced motion
 

@@ -57,11 +57,13 @@
  * exact arity of typed slots, so a slot of the wrong kind fails at the gate.
  *
  * Only a fragment can say when it changes: `frames` and `glyphs` are stamped
- * (`textFrameAt`). A number or a colour carries no cells to stamp, and a
- * template evaluated every frame is a function view, which a host draws at
- * its own rate because a function may change without saying so (`drawView`,
- * `silent`) — so a cell painted by a moving value is redrawn on time, and
- * says nothing it does not know.
+ * (`textFrameAt`), and the stamp covers the fragment's own glyphs, not a
+ * colour another function lays over them. A number or a colour carries no
+ * cells to stamp, and a template evaluated every frame is a function view,
+ * whose frame says it may change without saying so (`drawView`, `silent`):
+ * a `Live` polls it at its rate, and an `App` paints it at its rate only
+ * while the program holds `animate()`. Nothing here claims a moment it does
+ * not know.
  */
 
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
