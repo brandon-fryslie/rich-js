@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-498",
+      "ref": "refs/pull/498/merge",
+      "sha": "31ebe9ea43baccc2e56a3ca6a99f3d84be7259b4",
+      "timestamp": "2026-10-20T04:10:20.466Z",
+      "commits": [
+        {
+          "sha": "31ebe9ea43baccc2e56a3ca6a99f3d84be7259b4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T22:08:57-06:00",
+          "message": "Merge f3c0d1a1f17749cddc5433fa21e3144a57c9b1a6 into 09ba4d86f87c8f804b5a22f47aad034dff953841\n"
+        },
+        {
+          "sha": "f3c0d1a1f17749cddc5433fa21e3144a57c9b1a6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T22:08:47-06:00",
+          "message": "A Progress is timed on the host that draws it (rich-animation-42lg.1t6)\n\nA Progress read its own clock inside render, so a frame drawn for one\nmoment got cells stamped for another, and a paused host could not hold it.\nNow every time a Progress keeps or draws at — a task's start, each update,\na finish, a refill's start, the frame — is one host's frameTime: its own\nLive, or the host given as `drawnBy` (a Live, an App, a WidgetApp).\n\nRenderOptions.frameTime becomes `frame: { time, host }`, so a frame's time\nalways comes with the host it belongs to, and a Progress drawn in a frame of\nany other host throws instead of showing elapsed time from another clock.\nA print reads the host's frameTime, so elapsed is right as it prints. Run\nbackwards, a task drawn before its start has not started, and speed spans\nthe earliest to the latest sample.\n\nBreaking: a default Progress inside another host's view now throws; give it\n`drawnBy`. The docs Group examples, showcase, rich-dash and rich-explore do,\nand e2e runs the three docs examples.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "09ba4d86f87c8f804b5a22f47aad034dff953841",
