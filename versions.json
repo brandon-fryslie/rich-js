@@ -4,15 +4,22 @@
     {
       "version": "pr-494",
       "ref": "refs/pull/494/merge",
-      "sha": "a149e0fce6f07dcab71b30a6f30f26d54c211de4",
-      "timestamp": "2026-10-20T00:48:00.172Z",
+      "sha": "904a6bef944df9b05b3bf43c81b61af6d87802f9",
+      "timestamp": "2026-10-20T01:00:40.306Z",
       "commits": [
         {
-          "sha": "a149e0fce6f07dcab71b30a6f30f26d54c211de4",
+          "sha": "904a6bef944df9b05b3bf43c81b61af6d87802f9",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T00:46:30Z",
-          "message": "Merge ce096c89f1972bdf79d3008a9125b9675e1c35c3 into 8c10c37cc9d14d9febf2d82d8d9f8f522d13022c\n"
+          "timestamp": "2026-10-20T00:59:10Z",
+          "message": "Merge 716db070497475d01b65dee5b966cc843d8c9a27 into 8c10c37cc9d14d9febf2d82d8d9f8f522d13022c\n"
+        },
+        {
+          "sha": "716db070497475d01b65dee5b966cc843d8c9a27",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T18:59:06-06:00",
+          "message": "A bar's colour is its task's count reaching its total, as Rich's is (rich-animation-42lg.k1g)\n\nReview (escalation high): keying on finishedTime drew an empty total, a task\nthat reached its total before it started, and a count taken back after\nfinishing in the wrong colour. ProgressBar.finished is a public field like\nthe others it reads, so changing it follows the class's own mutability.\n"
         },
         {
           "sha": "ce096c89f1972bdf79d3008a9125b9675e1c35c3",
