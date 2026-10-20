@@ -118,7 +118,7 @@ A bar jumps to a task's new count, as Rich's does. Give the `Progress` a `fill` 
 
 ```typescript live
 const progress = new Progress({ fill: spring({ stiffness: 120, damping: 14 }) });
-const task = progress.addTask("Downloading...", { total: 100 });
+const task = progress.addTask("Syncing...", { total: 100 });
 progress.start();
 for (const burst of [30, 15, 35, 20]) {
   await sleep(900);
