@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-497",
+      "ref": "refs/pull/497/merge",
+      "sha": "b5173c46d26c296455f41a95c757e14d535d421b",
+      "timestamp": "2026-10-20T03:18:31.456Z",
+      "commits": [
+        {
+          "sha": "b5173c46d26c296455f41a95c757e14d535d421b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T21:16:27-06:00",
+          "message": "Merge 700a5cd5ff57c7a0e3deb81c8fbb8492c425e12d into 194dc564c4de09242c804593eac4bf3fd3e7fcb0\n"
+        },
+        {
+          "sha": "700a5cd5ff57c7a0e3deb81c8fbb8492c425e12d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T21:16:17-06:00",
+          "message": "Reduced motion stops the terminal's blink attribute (rich-animation-42lg.xbt)\n\nA reduced-motion console still wrote SGR 5 for `[blink]`, which the\nterminal animates on its own. The reader's preference now lives on\n`Destination` (`reducedMotion`), resolved once by `resolveDestination`;\neach host's `RenderOptions.reducedMotion` reads it back from there.\n`shownOn` unsets blink and blink2 (`Style.reduced()`) for the one encoder\nand for a recording console, so print, Live/App frames, renderToString\nand the HTML/SVG/text exports all show the text steady. Drawing could not\ndo it: the console lays its print and base styles on after render.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "194dc564c4de09242c804593eac4bf3fd3e7fcb0",
