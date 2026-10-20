@@ -2,67 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-494",
-      "ref": "refs/pull/494/merge",
-      "sha": "77425e4f5f0636e10012ab46a0c69d7088a8bb89",
-      "timestamp": "2026-10-20T01:20:13.296Z",
-      "commits": [
-        {
-          "sha": "77425e4f5f0636e10012ab46a0c69d7088a8bb89",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T01:18:18Z",
-          "message": "Merge e4fe33b48e16859b070de34e3a4e742292996eb6 into 8c10c37cc9d14d9febf2d82d8d9f8f522d13022c\n"
-        },
-        {
-          "sha": "e4fe33b48e16859b070de34e3a4e742292996eb6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T19:18:13-06:00",
-          "message": "The eased-bar example names its own task, so the page's examples stay apart (rich-animation-42lg.k1g)\n\ne2e/live-examples.spec.ts finds the reduced-motion progress example by\n'progress.addTask(\"Downloading...\"'; the new example matched it too.\n"
-        },
-        {
-          "sha": "716db070497475d01b65dee5b966cc843d8c9a27",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T18:59:06-06:00",
-          "message": "A bar's colour is its task's count reaching its total, as Rich's is (rich-animation-42lg.k1g)\n\nReview (escalation high): keying on finishedTime drew an empty total, a task\nthat reached its total before it started, and a count taken back after\nfinishing in the wrong colour. ProgressBar.finished is a public field like\nthe others it reads, so changing it follows the class's own mutability.\n"
-        },
-        {
-          "sha": "ce096c89f1972bdf79d3008a9125b9675e1c35c3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T18:46:25-06:00",
-          "message": "updateTask's refresh keeps Live's view: the frame stays at Live's time (rich-animation-42lg.k1g)\n\nReview (medium): update(this, …) swapped the function view for the Progress\nrenderable, bringing back the second clock read and the busy redraw while a\nbar eased. The constructor is now the one place the view is set.\n"
-        },
-        {
-          "sha": "056f410f16b898c0199b79ed63c44c89b17f07a1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T18:41:44-06:00",
-          "message": "Progress draws at Live's frame time; a bar's colour is its task's (rich-animation-42lg.k1g)\n\nReview (high) fixes:\n- Progress hands Live a function view on a timeline that is its clock, so a\n  frame is drawn at the one time Live read for it. A second read inside the\n  frame stamped an easing bar a hair after the frame, which Live took for a\n  wake still to come and fired at once: ~700 writes a second at 10 fps.\n- ProgressBar takes `finished`; BarColumn passes the task's, so an ease that\n  overshoots the total neither finishes nor unfinishes the bar's colour.\n- A pulsing bar is drawn as the pulse directly, not from inside an\n  animation's `at` (frames.ts: nothing an `at` returns carries a stamp).\n"
-        },
-        {
-          "sha": "7328cc338efa457e6b5bc76af806a515ee826447",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T18:23:46-06:00",
-          "message": "A Progress bar eases toward its count over a fill timing, retargeted from where it is (rich-animation-42lg.k1g)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "8c10c37cc9d14d9febf2d82d8d9f8f522d13022c",
-      "timestamp": "2026-10-20T00:09:38.172Z",
+      "sha": "a507d798f135c9e10c52637804c26b6e15d7aaf4",
+      "timestamp": "2026-10-20T01:30:36.022Z",
       "commits": [
         {
-          "sha": "8c10c37cc9d14d9febf2d82d8d9f8f522d13022c",
+          "sha": "a507d798f135c9e10c52637804c26b6e15d7aaf4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T18:07:34-06:00",
-          "message": "Templates get the animation toolbox: tween, loop, glyphs, on a host-handed timeline (rich-animation-42lg.zck) (#493)\n\n* Templates get the animation toolbox: tween, loop, glyphs, on a host-handed timeline (rich-animation-42lg.zck)\n\nanimationFuncs(frameTime, options) now draws every function on a Timeline\nthe host hands in as a getter (the host's own clock when omitted), so a\ndaemon pauses, reverses or scrubs a session's animations with nothing\nrecompiled, and a frame's stamp is carried back onto the host's clock by\nTimeline.run rather than left on the mapped one. One helper reads the time,\nthe timeline and reduced motion for every function.\n\nNew functions, each an exact arity of typed slots:\n- tween <seconds> <ease> <start> <from> <to>: a number, ease by name\n- loop <seconds> <start>: the way through a period, 0 to 1\n- glyphs <name> <start> <fragment>: a catalogue glyph effect on a fragment\n\nA colour tween and a ramp scroll are a tween and a loop read through ramp,\nnot new functions: ColorRamp is the one blender. glyphs runs on the\nunrendered RichText (reglyphText), sharing Reglyphed's walk and contract\nchecks. options also carries asciiOnly, for the glyphs an effect picks.\n\nDocs: template-bindings \"Animating a template\"; pointers from animation.md.\nDemo: §6 Motion in rich-template-bindings, motion and reduced side by side.\n\n* Template animation docs say which hosts redraw a moving number, and on which clock a start is (rich-animation-42lg.zck review)\n\nAn App does not poll a silent function view, so a template's tween or loop\nmoves there only while animate() is held; the docs and module header claimed\nevery host redraws on time. A start is on the handed-in timeline's clock.\nreglyphText's checks see the text's own glyphs only. Demo comment lists the\nwhole toolbox."
+          "timestamp": "2026-10-19T19:28:43-06:00",
+          "message": "A Progress bar eases toward its count (rich-animation-42lg.k1g) (#494)\n\n* A Progress bar eases toward its count over a fill timing, retargeted from where it is (rich-animation-42lg.k1g)\n\n* Progress draws at Live's frame time; a bar's colour is its task's (rich-animation-42lg.k1g)\n\nReview (high) fixes:\n- Progress hands Live a function view on a timeline that is its clock, so a\n  frame is drawn at the one time Live read for it. A second read inside the\n  frame stamped an easing bar a hair after the frame, which Live took for a\n  wake still to come and fired at once: ~700 writes a second at 10 fps.\n- ProgressBar takes `finished`; BarColumn passes the task's, so an ease that\n  overshoots the total neither finishes nor unfinishes the bar's colour.\n- A pulsing bar is drawn as the pulse directly, not from inside an\n  animation's `at` (frames.ts: nothing an `at` returns carries a stamp).\n\n* updateTask's refresh keeps Live's view: the frame stays at Live's time (rich-animation-42lg.k1g)\n\nReview (medium): update(this, …) swapped the function view for the Progress\nrenderable, bringing back the second clock read and the busy redraw while a\nbar eased. The constructor is now the one place the view is set.\n\n* A bar's colour is its task's count reaching its total, as Rich's is (rich-animation-42lg.k1g)\n\nReview (escalation high): keying on finishedTime drew an empty total, a task\nthat reached its total before it started, and a count taken back after\nfinishing in the wrong colour. ProgressBar.finished is a public field like\nthe others it reads, so changing it follows the class's own mutability.\n\n* The eased-bar example names its own task, so the page's examples stay apart (rich-animation-42lg.k1g)\n\ne2e/live-examples.spec.ts finds the reduced-motion progress example by\n'progress.addTask(\"Downloading...\"'; the new example matched it too."
         }
       ]
     }
