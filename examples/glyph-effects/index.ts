@@ -10,6 +10,7 @@
  */
 
 import {
+  Animation,
   Columns,
   EASES,
   GLYPH_DEFAULTS,
@@ -18,7 +19,6 @@ import {
   Live,
   Panel,
   RichText,
-  Timeline,
   caseWave,
   particles,
   scramble,
@@ -36,20 +36,15 @@ const LINE = "the quick brown fox jumps";
 type Shown = { readonly effect: GlyphEffect } | { readonly make: (timing: Timing) => GlyphTransition; readonly timing: Timing };
 
 /**
- * What `shown` draws at the `Live`'s time `t`. A transition plays on a
- * timeline from the start of the run `t` is in, so the frame says when it
- * next changes on the `Live`'s clock — and, at rest, that it changes when
- * the next run starts.
+ * What `shown` draws: a loop as it is, and a transition played again every
+ * run of its seconds and a second's rest, so the frame says when it next
+ * changes on the `Live`'s clock — and, at rest, that it changes when the next
+ * run starts.
  */
-function at(shown: Shown, t: number): GlyphEffect {
+function played(shown: Shown): GlyphEffect {
   if ("effect" in shown) return shown.effect;
-  const period = shown.timing.seconds + 1;
-  const start = Math.floor(t / period) * period;
   const { effect } = shown.make(shown.timing);
-  return (drawn) => {
-    const run = Timeline.run(Timeline.play(start), effect(drawn));
-    return { ...run, nextChange: (host) => Math.min(run.nextChange(host), start + period) };
-  };
+  return (drawn) => Animation.repeat(shown.timing.seconds + 1, () => effect(drawn));
 }
 
 const z = 0.4;
@@ -69,7 +64,7 @@ const PANELS: readonly [string, string, Shown][] = [
 
 function view(t: number): Columns {
   return new Columns(
-    PANELS.map(([title, text, shown]) => new Panel(new GlyphEffected(new RichText(text), at(shown, t), { t, key: title }), { title, width: WIDTH })),
+    PANELS.map(([title, text, shown]) => new Panel(new GlyphEffected(new RichText(text), played(shown), { t, key: title }), { title, width: WIDTH })),
   );
 }
 

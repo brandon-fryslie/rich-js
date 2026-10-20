@@ -477,6 +477,20 @@ function wrapSeconds(what: string, t: number, period: number): number {
 }
 
 /**
+ * Which pass of a `period` `t` is in, as a whole number of either sign, and
+ * the seconds into it, read through the one wrap: what a `beat` and an
+ * `Animation.repeat` (`./animation.ts`) both ask, so the two agree on the
+ * pass of every float, a boundary included.
+ */
+export function passAt(what: string, t: number, period: number): { readonly pass: number; readonly into: number } {
+  const into = wrapSeconds(what, t, period);
+  // `t - into` is a whole number of periods but for rounding, which `round`
+  // takes off; carrying a pass's start out of `t` itself would leave each
+  // sample its own rounding.
+  return { pass: Math.round((t - into) / period), into };
+}
+
+/**
  * The float after `x`: one ulp up, away from zero for a positive `x` and
  * toward it for a negative one, read through the bits of the double.
  */
@@ -588,15 +602,11 @@ export function beat(holds: readonly number[]): Beat {
     walkUp(
       p * period + starts[i]!,
       (began) => {
-        const into = wrapSeconds(what, began, period);
-        return index(into) === i && pass(began, into) === p;
+        const { pass, into } = passAt(what, began, period);
+        return index(into) === i && pass === p;
       },
       () => `${what}: hold ${i} (${own[i]} s) is finer than time resolves near t = ${t}`,
     );
-  // Which pass `t` is in, as a whole number: `t - into` is a whole number of
-  // periods but for rounding, which `round` takes off; carrying `starts[i]`
-  // out of `t` itself would leave each sample its own rounding.
-  const pass = (t: number, into: number): number => Math.round((t - into) / period);
   return {
     holds: own,
     period,
@@ -604,15 +614,15 @@ export function beat(holds: readonly number[]): Beat {
       return index(wrapSeconds("Beat.at", t, period));
     },
     lastChange(t) {
-      const into = wrapSeconds("Beat.lastChange", t, period);
-      return boundary("Beat.lastChange", pass(t, into), index(into), t);
+      const { pass, into } = passAt("Beat.lastChange", t, period);
+      return boundary("Beat.lastChange", pass, index(into), t);
     },
     // The next hold's start, in the next pass when this hold is the last.
     nextChange(t) {
-      const into = wrapSeconds("Beat.nextChange", t, period);
+      const { pass, into } = passAt("Beat.nextChange", t, period);
       const i = index(into);
       const last = i === own.length - 1;
-      return boundary("Beat.nextChange", pass(t, into) + (last ? 1 : 0), last ? 0 : i + 1, t);
+      return boundary("Beat.nextChange", pass + (last ? 1 : 0), last ? 0 : i + 1, t);
     },
     reduced: () => STILL,
   };

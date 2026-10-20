@@ -55,7 +55,7 @@
  * its author doing anything.
  */
 
-import { firstReaching, positiveSeconds, type Beat } from "./easing.js";
+import { beat, firstReaching, passAt, positiveSeconds, type Beat } from "./easing.js";
 
 /** A value of `T` at a time in seconds, and the first moment that value may change. */
 export interface Animation<T> {
@@ -195,6 +195,53 @@ export const Animation = {
         return Math.min(t, Math.max(seconds, carried(then.lastChange(into))));
       },
       reduced: () => Animation.sequence(first.reduced(), seconds, then.reduced()),
+    };
+  },
+
+  /**
+   * `nth(n)` for every time in the `n`th turn, `[n·period, (n+1)·period)`,
+   * handed the time since that turn began — a one-shot played again every
+   * `period` seconds, a different one each turn if `nth` says so. `n` is any
+   * integer, so a timeline run back past 0 is in turn −1. Within a turn the
+   * value next changes when the turn's does or at the next turn, whichever is
+   * sooner, and became what it is when the turn's did or at this turn's start,
+   * whichever is later: run backwards, a host wakes where the turn began.
+   * Reduced, each turn is reduced and the turns kept, so a turn showing
+   * something new still shows it on time and a one-shot inside cuts to its
+   * end there. Nothing is walked through: a call reads only its turn.
+   */
+  repeat<T>(period: number, nth: (n: number) => Animation<T>): Animation<T> {
+    positiveSeconds("Animation.repeat period", period);
+    // [LAW:single-enforcer] Which turn a time is in, and how far into it, is
+    // `passAt`, the wrap a `beat` and `Phase.loop` read time through, so a
+    // repeat beside a loop of the same period turns on the same float; where
+    // a turn begins and the next begins are a one-hold beat's two ends.
+    const turns = beat([period]);
+    // The turn's moment `local`, on its own clock, carried onto this one: the
+    // first float the wrap places at or past `local` in turn `n`, or in a
+    // later turn, found as `sequence` carries its second part's.
+    const carried = (n: number, began: number, local: number): number =>
+      Number.isFinite(local)
+        ? firstReaching(began + local, (x) => {
+            const { pass, into } = passAt("Animation.repeat", x, period);
+            return pass > n || (pass === n && into >= local);
+          })
+        : local;
+    return {
+      at: (t) => {
+        const { pass, into } = passAt("Animation.repeat", t, period);
+        return nth(pass).at(into);
+      },
+      nextChange(t) {
+        const { pass, into } = passAt("Animation.repeat", t, period);
+        return Math.max(t, Math.min(turns.nextChange(t), carried(pass, turns.lastChange(t), nth(pass).nextChange(into))));
+      },
+      lastChange(t) {
+        const { pass, into } = passAt("Animation.repeat", t, period);
+        const began = turns.lastChange(t);
+        return Math.min(t, Math.max(began, carried(pass, began, nth(pass).lastChange(into))));
+      },
+      reduced: () => Animation.repeat(period, (n) => nth(n).reduced()),
     };
   },
 };

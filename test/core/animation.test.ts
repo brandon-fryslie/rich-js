@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Animation, ColorDepth, FrameSequence, RichText, Segment, Spinner, Timeline, beat, frameAt, type Beat } from "../../src/index.js";
+import { Animation, ColorDepth, EASES, FrameSequence, Phase, RichText, Segment, Spinner, Timeline, beat, frameAt, tween, type Beat } from "../../src/index.js";
 import { nextDown } from "./next-down.js";
 
 // [LAW:behavior-not-structure] What is asserted is the contract a host reads:
@@ -176,6 +176,108 @@ describe("Animation.sequence", () => {
   it("refuses a first part that is not a positive number of seconds", () => {
     for (const seconds of [0, -1, NEVER, Number.NaN]) {
       expect(() => Animation.sequence(first, seconds, then)).toThrow(/Animation.sequence seconds must be a positive number of seconds/);
+    }
+  });
+});
+
+describe("Animation.repeat", () => {
+  /** Turn `n` showing `n` throughout: every turn boundary is a change, and nothing else is. */
+  const turns = (period: number): Animation<number> => Animation.repeat(period, (n) => Animation.constant(n));
+
+  it("is the nth one-shot through the nth turn, each on its own clock from 0", () => {
+    const played = Animation.repeat(2, (n) => Animation.continuous((t) => `${n}:${t}`));
+    expect([0, 0.5, 2, 3.5, 6].map((t) => played.at(t))).toEqual(["0:0", "0:0.5", "1:0", "1:1.5", "3:0"]);
+  });
+
+  it("next changes when the turn's one-shot does or at the next turn, whichever is sooner", () => {
+    expect(turns(2).nextChange(0.5)).toBe(2);
+    expect(Animation.repeat(2, () => beat([0.5])).nextChange(1.2)).toBe(1.5);
+    expect(Animation.repeat(2, () => Animation.continuous((t) => t)).nextChange(3.2)).toBe(3.2);
+    expect(Animation.repeat(2, () => tween(0, 1, { seconds: 1, ease: EASES.linear })).nextChange(3.5)).toBe(4);
+  });
+
+  it("became what it is when the turn's one-shot did or at this turn's start, whichever is later", () => {
+    expect(turns(2).lastChange(3.5)).toBe(2);
+    expect(Animation.repeat(2, () => beat([0.5])).lastChange(3.2)).toBe(3);
+    expect(Animation.repeat(2, () => Animation.continuous((t) => t)).lastChange(3.2)).toBe(3.2);
+  });
+
+  it("has turns before 0, so a timeline run back past the start is still in one", () => {
+    expect([-0.5, -2, -2.5].map((t) => turns(2).at(t))).toEqual([-1, -1, -2]);
+    expect(turns(2).nextChange(-0.5)).toBe(0);
+    expect(turns(2).lastChange(-0.5)).toBe(-2);
+  });
+
+  it("answers each turn's boundary to the float both ways, far from zero and on periods not exact in binary", () => {
+    for (const period of [0.1, 0.3, 2.7]) {
+      const repeated = turns(period);
+      for (const base of [10, 1e3, 1e6]) {
+        for (let i = 0; i < 30; i++) {
+          const t = base + i * 0.037;
+          const next = repeated.nextChange(t);
+          expect(repeated.at(next), `t = ${t}`).toBe(repeated.at(t) + 1);
+          expect(repeated.at(nextDown(next)), `t = ${t}`).toBe(repeated.at(t));
+          const last = repeated.lastChange(t);
+          expect(repeated.at(last), `t = ${t}`).toBe(repeated.at(t));
+          expect(repeated.at(nextDown(last)), `t = ${t}`).toBe(repeated.at(t) - 1);
+          expect(holdsUntilNext(repeated, t) && heldSinceLast(repeated, t), `t = ${t}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("turns on the float a beat and a loop of the same period turn on, a period not exact in binary included", () => {
+    const period = 0.1;
+    const repeated = turns(period);
+    const pass = beat([period]);
+    const loop = Phase.loop(period);
+    for (const base of [10, 1e3, 1e6]) {
+      for (let i = 0; i < 40; i++) {
+        const inside = base + i * period + period / 2;
+        const begins = pass.nextChange(inside);
+        expect(repeated.nextChange(inside), `t = ${inside}`).toBe(begins);
+        expect(repeated.at(begins), `t = ${inside}`).toBe(repeated.at(inside) + 1);
+        expect(loop(begins), `t = ${inside}`).toBeLessThan(0.5);
+        expect(repeated.at(nextDown(begins)), `t = ${inside}`).toBe(repeated.at(inside));
+        expect(loop(nextDown(begins)), `t = ${inside}`).toBeGreaterThan(0.5);
+      }
+    }
+  });
+
+  it("run backwards on a timeline, wakes its host where the turn began", () => {
+    const repeated = turns(2);
+    // At animation time 5 at host 0, running back a second a second: turn 2 until host 1.
+    const backwards = Timeline.run(Timeline.seek(Timeline.play(0, -1), 0, 5), repeated);
+    expect(backwards.at(0.5)).toBe(2);
+    const wake = backwards.nextChange(0.5);
+    expect(backwards.at(wake)).toBe(1);
+    expect(backwards.at(nextDown(wake))).toBe(2);
+    expect(wake).toBeCloseTo(1, 12);
+  });
+
+  it("reduced, keeps every turn and cuts each one-shot inside to its end where the turn begins", () => {
+    const rising = Animation.repeat(3, (n) => tween(n, n + 1, { seconds: 1, ease: EASES.linear })).reduced();
+    expect([0, 0.5, 2.9, 3, 3.2].map((t) => rising.at(t))).toEqual([1, 1, 1, 2, 2]);
+    expect(rising.nextChange(3.2)).toBe(6);
+    expect(rising.lastChange(3.2)).toBe(3);
+  });
+
+  it("is the same sampled once a second or sixty times, and a million seconds in is a turn like the first", () => {
+    const pulse = Animation.repeat(1.5, () => Animation.map(beat([0.25, 0.5]), (i) => i));
+    const sampled = (rate: number): Map<number, [number, number, number]> =>
+      new Map(Array.from({ length: 8 * rate + 1 }, (_, i) => i / rate).map((t) => [t, [pulse.at(t), pulse.nextChange(t), pulse.lastChange(t)]]));
+    const slow = sampled(1);
+    const fast = sampled(60);
+    for (const [t, seen] of slow) expect(fast.get(t), `t = ${t}`).toEqual(seen);
+    const far = 1.5 * 666_666;
+    expect(pulse.at(far + 0.3)).toBe(pulse.at(0.3));
+    expect(pulse.nextChange(far + 0.3) - far).toBeCloseTo(pulse.nextChange(0.3), 6);
+    expect(pulse.lastChange(far + 0.3) - far).toBeCloseTo(pulse.lastChange(0.3), 6);
+  });
+
+  it("refuses a period that is not a positive number of seconds", () => {
+    for (const period of [0, -1, NEVER, Number.NaN]) {
+      expect(() => turns(period)).toThrow(/Animation.repeat period must be a positive number of seconds/);
     }
   });
 });
