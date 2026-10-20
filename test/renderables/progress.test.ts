@@ -12,6 +12,9 @@ import {
   type Task,
 } from "../../src/renderables/progress.js";
 import { Console } from "../../src/core/console.js";
+import { Animation } from "../../src/core/animation.js";
+import { EASES } from "../../src/core/easing.js";
+import { tween } from "../../src/core/tween.js";
 import { Theme } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
@@ -20,6 +23,7 @@ import { ColorDepth } from "../../src/core/color.js";
 import { renderToString } from "../../src/core/render.js";
 import { fakeClock } from "../core/fake-clock.js";
 import { SPINNERS } from "../../src/core/spinnerData.js";
+import { ProgressBar } from "../../src/renderables/progressBar.js";
 
 const OPTS: RenderOptions = {
   maxWidth: 80,
@@ -32,6 +36,7 @@ const fakeTask = (description: string): Task => ({
   description,
   total: 100,
   completed: 0,
+  fill: Animation.constant(0),
   visible: true,
   startTime: 0,
   time: 0,
@@ -342,11 +347,15 @@ describe("BarColumn pulses (rich-effects-fxiy.3rg)", () => {
   // `ProgressBar` one whose total is None, at the progress's `get_time()`.
   it("pulses a task not started or with no total, at the frame's moment on the progress's clock", () => {
     const bars = new BarColumn(20);
+    // Each task's bar as drawn, beside the bar Rich draws for it with and without a pulse.
     const pulses: ({ readonly t: number } | undefined)[] = [];
     const recorder: ProgressColumn = {
       tableColumn: {},
       render: (task) => {
-        pulses.push(bars.render(task).pulse);
+        const drawn = renderToString(bars.render(task), { width: 20 });
+        const as = (pulse: { readonly t: number } | undefined): string =>
+          renderToString(new ProgressBar({ total: task.total ?? 100, completed: task.completed, width: 20, pulse }), { width: 20 });
+        pulses.push(drawn === as(undefined) ? undefined : drawn === as({ t: task.time }) ? { t: task.time } : { t: NaN });
         return new RichText("");
       },
     };
@@ -588,5 +597,117 @@ describe("Progress counts", () => {
     progress.updateTask(id, { completed: 10, advance: 5 });
     const line = Segment.splitLines([...progress.render(OPTS)])[0]!.map((segment) => segment.text).join("");
     expect(line.trimEnd()).toBe("x  10/100");
+  });
+});
+
+describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => {
+  const quiet = (): Console => new Console({ file: { write: () => {} } });
+  const linear = { ease: EASES.linear, seconds: 1 };
+  // One bar, 10 cells, as Progress draws it at the clock's now: with no
+  // colour, so the back is blank and every bar glyph drawn is the fill.
+  const bar = (progress: Progress, options: Partial<RenderOptions> = {}): Segment[] =>
+    [...progress.render({ ...OPTS, maxWidth: 10, colorSystem: null, ...options })];
+  const filled = (segments: Segment[]): number => cellsOf(segments, "━");
+  function cellsOf(segments: Segment[], glyph: string): number {
+    return [...segments.map((segment) => segment.text).join("")].filter((c) => c === glyph).length;
+  }
+
+  it("jumps to the count without a fill timing, as Rich's bar does", () => {
+    const clock = fakeClock(10);
+    const progress = new Progress(new BarColumn(10), { console: quiet(), clock });
+    const id = progress.addTask("job", { total: 100 });
+    progress.updateTask(id, { completed: 50 });
+    expect(filled(bar(progress))).toBe(5);
+    expect(Segment.nextChange(bar(progress))).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("eases from where it was to the new count over the timing, then holds there", () => {
+    const clock = fakeClock(10);
+    const progress = new Progress(new BarColumn(10), { console: quiet(), clock, fill: linear });
+    const id = progress.addTask("job", { total: 100 });
+    progress.updateTask(id, { completed: 100 });
+    expect(filled(bar(progress))).toBe(0);
+    clock.advance(0.5);
+    expect(filled(bar(progress))).toBe(5);
+    clock.advance(0.5);
+    expect(filled(bar(progress))).toBe(10);
+  });
+
+  it("says it moves every frame while it eases, and nothing once it lands", () => {
+    const clock = fakeClock(10);
+    const progress = new Progress(new BarColumn(10), { console: quiet(), clock, fill: linear });
+    const id = progress.addTask("job", { total: 100 });
+    progress.updateTask(id, { completed: 60 });
+    clock.advance(0.25);
+    expect(Segment.nextChange(bar(progress))).toBe(10.25);
+    clock.advance(1);
+    expect(Segment.nextChange(bar(progress))).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("keeps a pulsing bar's own wake under the fill's", () => {
+    const clock = fakeClock(10);
+    const progress = new Progress(new BarColumn(10), { console: quiet(), clock, fill: linear });
+    progress.addTask("open-ended");
+    expect(Segment.nextChange(bar(progress, { colorSystem: ColorDepth.TRUECOLOR }))).toBeLessThan(Number.POSITIVE_INFINITY);
+  });
+
+  // Three updates inside one second. Drawn once a second or sixty times, the
+  // bar at a shared moment is the same bytes, and it is the tween retargeted
+  // from where it was at each update.
+  it("draws the same bar for the same moment at one frame a second and sixty, through a burst of retargets", () => {
+    const run = (fps: number): Map<number, string> => {
+      const clock = fakeClock(10);
+      const progress = new Progress(new BarColumn(10), { console: quiet(), clock, fill: linear });
+      const id = progress.addTask("job", { total: 100 });
+      const updates = new Map([[600, 30], [618, 90], [636, 40]]); // at 10.0s, 10.3s and 10.6s, in 60ths
+      const frames = new Map<number, string>();
+      for (let tick = 600; tick <= 780; tick++, clock.advance(1 / 60)) {
+        const to = updates.get(tick);
+        if (to !== undefined) progress.updateTask(id, { completed: to });
+        if (tick % (60 / fps) === 0) frames.set(tick, renderToString(progress, { width: 10 }).trimEnd());
+      }
+      return frames;
+    };
+    const slow = run(1);
+    const fast = run(60);
+    for (const [tick, frame] of slow) expect(frame).toBe(fast.get(tick));
+
+    const first = tween(0, 30, linear);
+    const second = Animation.sequence(first, 0.3, tween(first.at(0.3), 90, linear));
+    const third = Animation.sequence(second, 0.6, tween(second.at(0.6), 40, linear));
+    const expected = new ProgressBar({ total: 100, completed: third.at(1), width: 10 });
+    expect(slow.get(660)).toBe(renderToString(expected, { width: 10 }).trimEnd());
+  });
+
+  it("draws the new count at once under reduced motion", () => {
+    const clock = fakeClock(10);
+    const progress = new Progress(new BarColumn(10), { console: quiet(), clock, fill: linear });
+    const id = progress.addTask("job", { total: 100 });
+    progress.updateTask(id, { completed: 70 });
+    expect(filled(bar(progress, { reducedMotion: true }))).toBe(7);
+    expect(Segment.nextChange(bar(progress, { reducedMotion: true }))).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("leaves the bar at its count on the screen when stopped mid-ease", () => {
+    const clock = fakeClock(10);
+    const written: string[] = [];
+    const console = new Console({ forceInteractive: false, width: 10, colorSystem: null, file: { write: (s) => void written.push(String(s)) } });
+    const progress = new Progress(new BarColumn(10), { console, clock, fill: linear });
+    const id = progress.addTask("job", { total: 100 });
+    progress.start();
+    progress.updateTask(id, { completed: 100 });
+    progress.stop();
+    expect(written.join("")).toContain("━".repeat(10));
+  });
+
+  it("keeps the ease running through an update that leaves the count alone", () => {
+    const clock = fakeClock(10);
+    const progress = new Progress(new BarColumn(10), { console: quiet(), clock, fill: linear });
+    const id = progress.addTask("job", { total: 100 });
+    progress.updateTask(id, { completed: 100 });
+    clock.advance(0.5);
+    progress.updateTask(id, { description: "renamed" });
+    clock.advance(0.5);
+    expect(filled(bar(progress))).toBe(10);
   });
 });

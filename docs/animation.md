@@ -119,6 +119,8 @@ for (const t of [0, 0.5, 1, 1.5, 2]) {
 }
 ```
 
+A [`Progress`](/progress#easing-the-bar) given a `fill` timing eases each bar this way: every update retargets the bar's tween from where it is at that moment, on the `Progress` clock.
+
 A template has a tween too, `tween`, and a colour tween is a ramp read at it ([Animating a template](/template-bindings#animating-a-template)).
 
 ## A ramp that moves
