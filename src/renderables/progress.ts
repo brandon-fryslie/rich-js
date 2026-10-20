@@ -202,7 +202,7 @@ export class BarColumn implements ProgressColumn {
     if (task.startTime === undefined || task.total === undefined) {
       return new ProgressBar({ total, completed: task.completed, width: this.barWidth, pulse: { t: task.time } });
     }
-    const done = finished(task);
+    const done = task.completed >= total;
     const bars = Animation.map(task.fill, (completed) => new ProgressBar({ total, completed, width: this.barWidth, finished: done }));
     return frameAt(bars, task.time);
   }

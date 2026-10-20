@@ -738,6 +738,21 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
     expect(written.join("")).toContain("━".repeat(10));
   });
 
+  // Rich colours a bar finished when its count reaches its total, whenever
+  // and however it got there: an empty total, a task that reached it before
+  // it started, a count taken back after it finished.
+  it.each([
+    { name: "an empty total", total: 0, start: true, steps: [], completed: 0, done: true },
+    { name: "a count reached before the task started", total: 10, start: false, steps: [10, "start"], completed: 10, done: true },
+    { name: "a count taken back after finishing", total: 10, start: true, steps: [10, 3], completed: 3, done: false },
+  ] as const)("colours the bar by its count for $name", ({ total, start, steps, completed, done }) => {
+    const progress = new Progress(new BarColumn(10), { console: quiet(), clock: fakeClock(10) });
+    const id = progress.addTask("job", { total, start });
+    for (const step of steps) step === "start" ? progress.startTask(id) : progress.updateTask(id, { completed: step });
+    const expected = new ProgressBar({ total, completed, width: 10, finished: done });
+    expect(renderToString(progress, { width: 10 }).trimEnd()).toBe(renderToString(expected, { width: 10 }).trimEnd());
+  });
+
   it("keeps the ease running through an update that leaves the count alone", () => {
     const clock = fakeClock(10);
     const progress = new Progress(new BarColumn(10), { console: quiet(), clock, fill: linear });

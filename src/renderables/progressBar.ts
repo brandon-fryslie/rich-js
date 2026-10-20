@@ -57,7 +57,8 @@ export class ProgressBar implements Renderable, Measurable {
   completed: number;
   readonly width: number | undefined;
   readonly pulse: { readonly t: number } | undefined;
-  private readonly _finished: boolean | undefined;
+  /** Whether the work is done, as given; unset, `completed` reaching `total` at the moment the bar is drawn. */
+  finished: boolean | undefined;
   readonly style: string | Style;
   readonly completeStyle: string | Style;
   readonly finishedStyle: string | Style;
@@ -67,7 +68,7 @@ export class ProgressBar implements Renderable, Measurable {
     this.completed = options?.completed ?? 0;
     this.width = options?.width;
     this.pulse = options?.pulse;
-    this._finished = options?.finished;
+    this.finished = options?.finished;
     this.style = options?.style ?? "bar.back";
     this.completeStyle = options?.completeStyle ?? "bar.complete";
     this.finishedStyle = options?.finishedStyle ?? "bar.finished";
@@ -120,7 +121,7 @@ export class ProgressBar implements Renderable, Measurable {
   private *track(options: RenderOptions, width: number, completeHalves: number, back: Style): Iterable<Segment> {
     const barCount = Math.floor(completeHalves / 2);
     const halfBarCount = completeHalves % 2;
-    const isFinished = this._finished ?? this.completed >= this.total;
+    const isFinished = this.finished ?? this.completed >= this.total;
 
     const fill = getStyle(options, isFinished ? this.finishedStyle : this.completeStyle);
     const fillStyle = fill.isNull ? undefined : fill;
