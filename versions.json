@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-499",
+      "ref": "refs/pull/499/merge",
+      "sha": "d76b89206dd3ae4d7d6c465471d29e0eb0744629",
+      "timestamp": "2026-10-20T05:06:15.483Z",
+      "commits": [
+        {
+          "sha": "d76b89206dd3ae4d7d6c465471d29e0eb0744629",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T23:04:25-06:00",
+          "message": "Merge 5855519ca652b47a6d6bfccf08a4648fa3e4b3f0 into d40c05f67d3c9e043756066d02c79e73c64a59b8\n"
+        },
+        {
+          "sha": "5855519ca652b47a6d6bfccf08a4648fa3e4b3f0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T23:04:11-06:00",
+          "message": "An animation repeats: a one-shot played again every period (rich-animation-42lg.cjy)\n\nAnimation.repeat(period, nth) is nth(n) through the nth turn, on its own\nclock from 0, turns of either sign. The turn is read through the wrap a beat\nand Phase.loop already use (easing.ts passAt, which beat now reads too), so\na repeat turns on the same float as a loop of its period. glyph-effects and\ntransitions drop their hand-written copies, one of which never reported the\ncut into the previous turn when run backwards.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d40c05f67d3c9e043756066d02c79e73c64a59b8",
