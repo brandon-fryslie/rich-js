@@ -4,15 +4,22 @@
     {
       "version": "pr-496",
       "ref": "refs/pull/496/merge",
-      "sha": "41f308903a5085f6a583036d8c8dd3ca45ca6756",
-      "timestamp": "2026-10-20T02:45:54.944Z",
+      "sha": "287dde6733fc3f9db2be3924c7777fc56968a6d2",
+      "timestamp": "2026-10-20T02:55:34.290Z",
       "commits": [
         {
-          "sha": "41f308903a5085f6a583036d8c8dd3ca45ca6756",
+          "sha": "287dde6733fc3f9db2be3924c7777fc56968a6d2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T02:44:01Z",
-          "message": "Merge d7f6db303fc4da4c2b4b4c11958d40e2368016ef into fa6e3e004acd357b20198f87813597644570cf1c\n"
+          "timestamp": "2026-10-20T02:53:39Z",
+          "message": "Merge 0df82ac4eb6ba4c4907df2eb9ce9b499b7e83f0c into fa6e3e004acd357b20198f87813597644570cf1c\n"
+        },
+        {
+          "sha": "0df82ac4eb6ba4c4907df2eb9ce9b499b7e83f0c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T20:53:32-06:00",
+          "message": "The glyph ways out join the catalogue; scrambleOut keeps a glyph no cell wide (rich-animation-42lg.s91)\n\n/code-review medium: scrambleOut read an unplaced cell as -1, behind its\nblanking front from t=0, so a zero-width glyph was dropped before the element\nbegan to leave. An unplaced cell is now beyond both fronts. And the docs named\nbackspace and scrambleOut catalogue members while the catalogue did not hold\nthem; it does now, as the colour catalogue holds dissolve, so templates spell\nthem and the glyph-effects demo shows them.\n"
         },
         {
           "sha": "d7f6db303fc4da4c2b4b4c11958d40e2368016ef",
