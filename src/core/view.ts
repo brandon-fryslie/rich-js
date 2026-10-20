@@ -136,9 +136,9 @@ export function shownAt<T>(animation: Animation<T>, t: number, motion: Motion): 
 /**
  * A host's time, its clock read once: `now` on that clock; `epoch`, the
  * moment on it the host began; and `timeline`, the map a view on it is drawn
- * through. A host's timeline starts as `Timeline.play(epoch)`, and a
- * renderable, off it, is drawn for the seconds since `epoch` — the same time
- * until the timeline is paused, sought or re-rated, so a host whose view
+ * through. Handed none, a host's timeline starts as `Timeline.play(epoch)`,
+ * and a renderable, off it, is drawn for the seconds since `epoch` — the same
+ * time until the timeline is paused, sought, re-rated or replaced, so a host whose view
  * moves onto or off the timeline keeps one time, and so does every moment a
  * renderable that lives across frames kept on it.
  */
