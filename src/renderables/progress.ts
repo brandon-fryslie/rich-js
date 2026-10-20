@@ -10,9 +10,9 @@ import type { Style } from "../core/style.js";
 import { ProgressBar } from "./progressBar.js";
 import { Spinner } from "./spinner.js";
 import { Live } from "./live.js";
-import { systemClock, type Clock } from "../core/clock.js";
+import type { Clock } from "../core/clock.js";
 import { Table, type ColumnOptions } from "./table.js";
-import type { Composite, Renderable, RenderOptions } from "../core/protocol.js";
+import type { Composite, FrameHost, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { Animation } from "../core/animation.js";
 import type { Timing } from "../core/easing.js";
@@ -48,16 +48,16 @@ export interface Task {
    */
   fill: Animation<number>;
   visible: boolean;
-  /** When the task started, in seconds on its `Progress`'s clock; undefined until it has. */
+  /** When the task started, in seconds on its `Progress`'s host's time; undefined until it has, as of the frame being drawn. */
   startTime: number | undefined;
   /**
    * Rich's `Task.get_time()`: the moment the frame being drawn is drawn at, in
-   * seconds on its `Progress`'s clock, so a column animates without reading one.
+   * seconds on its `Progress`'s host's time, so a column animates without reading a clock.
    */
   time: number;
   /**
    * Rich's `Task.elapsed`: seconds since the task started, as of the frame
-   * being drawn — `Progress` reads its clock once a frame and hands columns
+   * being drawn — `Progress` takes the time once a frame and hands columns
    * the result, so no column reads a clock. Undefined until the task starts.
    */
   elapsed: number | undefined;
@@ -101,24 +101,29 @@ type TaskState = Omit<Task, "time" | "elapsed" | "speed"> & { readonly samples: 
  * Rich's `Progress.update` bookkeeping on its sample deque, in place: drop the
  * samples older than the period as of `now`, then add this update's if it
  * moved the task forward, keeping the newest `MAX_SAMPLES`. The samples are in
- * time order, so the stale ones are a prefix.
+ * the order the updates came, which is time order unless the host's timeline
+ * ran back between them, so the stale ones are found by time, not position.
  */
 function recordSample(samples: ProgressSample[], now: number, moved: number): void {
-  const firstFresh = samples.findIndex((sample) => sample.timestamp >= now - SPEED_ESTIMATE_PERIOD);
-  samples.splice(0, firstFresh === -1 ? samples.length : firstFresh);
-  if (moved > 0) samples.push({ timestamp: now, completed: moved });
-  samples.splice(0, samples.length - MAX_SAMPLES);
+  const fresh = samples.filter((sample) => sample.timestamp >= now - SPEED_ESTIMATE_PERIOD);
+  if (moved > 0) fresh.push({ timestamp: now, completed: moved });
+  samples.splice(0, samples.length, ...fresh.slice(-MAX_SAMPLES));
 }
 
 /**
  * Rich's `Task.speed` over a started task's samples: everything moved after
- * the first sample, over the time from the first to the last. No samples, or
- * none apart in time, is no speed.
+ * the earliest sample, over the time from the earliest to the latest — Rich's
+ * first and last, when time only ran forward, and never negative when it ran
+ * back. No samples, or none apart in time, is no speed.
  */
 function sampleSpeed(samples: readonly ProgressSample[]): number | undefined {
-  const span = (samples.at(-1)?.timestamp ?? 0) - (samples[0]?.timestamp ?? 0);
+  if (samples.length === 0) return undefined;
+  const times = samples.map((sample) => sample.timestamp);
+  const earliest = Math.min(...times);
+  const span = Math.max(...times) - earliest;
   if (span === 0) return undefined;
-  return samples.slice(1).reduce((sum, sample) => sum + sample.completed, 0) / span;
+  const moved = samples.reduce((sum, sample) => sum + sample.completed, 0) - samples[times.indexOf(earliest)]!.completed;
+  return moved / span;
 }
 
 /**
@@ -133,6 +138,16 @@ function finiteCount(field: "total" | "completed" | "advance" | "completed + adv
 }
 
 /** Rich's `Task.finished`. [LAW:one-source-of-truth] The one predicate every reader of "finished" asks. */
+/**
+ * When `task` started, if it has by `time`: a host whose timeline runs back
+ * draws moments before a start that was stamped later, and a task drawn for
+ * a moment before its start has not started.
+ */
+function startedBy(task: Pick<TaskState, "startTime">, time: number): number | undefined {
+  const { startTime } = task;
+  return startTime !== undefined && time >= startTime ? startTime : undefined;
+}
+
 function finished<T extends Pick<TaskState, "finishedTime">>(task: T): task is T & { finishedTime: number } {
   return task.finishedTime !== undefined;
 }
@@ -375,17 +390,17 @@ function formatTime(seconds: number): string {
 
 // --- Progress ---
 
-export interface ProgressOptions {
-  refreshPerSecond?: number;
-  autoRefresh?: boolean;
-  transient?: boolean;
+/**
+ * How a `Progress` is set up. It is drawn by one host, and every time it
+ * keeps or draws at is that host's `frameTime`: by its own `Live`, which the
+ * options for that `Live` configure, or, given `drawnBy`, by another host —
+ * which then does all the drawing, so none of them apply.
+ */
+export type ProgressOptions = ProgressDisplayOptions & (OwnLiveOptions | DrawnByOptions);
+
+interface ProgressDisplayOptions {
   expand?: boolean;
   console?: Console;
-  /**
-   * What tasks are timed by and frames are drawn on, Rich's `get_time`;
-   * defaults to the platform's monotonic clock. Handed on to the `Live`.
-   */
-  clock?: Clock;
   /**
    * How a bar's fill moves to a task's new count: eased over this timing
    * from wherever it is when the count changes, so a bar advancing in bursts
@@ -394,13 +409,44 @@ export interface ProgressOptions {
   fill?: Timing;
 }
 
+interface OwnLiveOptions {
+  drawnBy?: undefined;
+  refreshPerSecond?: number;
+  autoRefresh?: boolean;
+  transient?: boolean;
+  /**
+   * What its own `Live` ticks on, and so what tasks are timed by — Rich's
+   * `get_time`; defaults to the platform's monotonic clock.
+   */
+  clock?: Clock;
+}
+
+interface DrawnByOptions {
+  /**
+   * The host — a `Live`, an `App` — whose frames this `Progress` is drawn in:
+   * tasks are timed by its `frameTime`, so they hold while its timeline is
+   * paused and run back while it is reversed. Drawn in any other host's
+   * frame, the `Progress` throws.
+   */
+  drawnBy: FrameHost;
+  refreshPerSecond?: never;
+  autoRefresh?: never;
+  transient?: never;
+  clock?: never;
+}
+
 export class Progress implements Renderable, Composite {
   private _columns: ProgressColumn[];
   private _tasks: Map<number, TaskState>;
   private _nextId: number;
-  private _live: Live;
+  // [LAW:types-are-the-program] Its own Live, or none: a Progress another
+  // host draws has nothing of its own to start.
+  private readonly _live: Live | undefined;
   private _console: Console;
-  private readonly _clock: Clock;
+  // [LAW:one-source-of-truth] The one source of every time this display
+  // keeps or draws at, so a task's stamps and the frames it is drawn in are
+  // readings of one host.
+  private readonly _host: FrameHost;
   /** A task's fill after its count changes at `now`, from the value it shows then. */
   private readonly _refill: (from: number, to: number, now: number) => Animation<number>;
   readonly expand: boolean;
@@ -432,25 +478,27 @@ export class Progress implements Renderable, Composite {
     this._nextId = 1;
     this._console = opts.console ?? new Console();
     this.expand = opts.expand ?? false;
-    this._clock = opts.clock ?? systemClock();
     // [LAW:dataflow-not-control-flow] The option picks the rule once; an
     // update always refills through it. Eased, the tween starts at the
-    // update's moment on this clock, which only moves forward, so the fill it
-    // replaces is never asked for again and a task keeps one animation, not
-    // its history.
+    // update's moment, and the fill it replaces is never asked for again, so
+    // a task keeps one animation, not its history: a frame drawn for a
+    // moment before the update — a timeline run back — finds the new tween
+    // not yet begun, at the value the old one showed.
     const timing = opts.fill;
     this._refill = timing === undefined ? (_from, to) => Animation.constant(to) : (from, to, now) => Timeline.run(Timeline.play(now), tween(from, to, timing));
-    // [LAW:one-source-of-truth] The frame's time is the one Live read for it,
-    // on a timeline that is its clock: a second read here would land a moving
-    // bar's stamp after the frame, a moment Live takes for one still to come.
-    this._live = new Live((t) => this._table(t), {
-      console: this._console,
-      clock: this._clock,
-      timeline: Timeline.play(0),
-      refreshPerSecond: opts.refreshPerSecond ?? 10,
-      autoRefresh: opts.autoRefresh,
-      transient: opts.transient,
-    });
+    if (opts.drawnBy === undefined) {
+      this._live = new Live(this, {
+        console: this._console,
+        clock: opts.clock,
+        refreshPerSecond: opts.refreshPerSecond ?? 10,
+        autoRefresh: opts.autoRefresh,
+        transient: opts.transient,
+      });
+      this._host = this._live;
+    } else {
+      this._live = undefined;
+      this._host = opts.drawnBy;
+    }
   }
 
   get console(): Console {
@@ -480,7 +528,7 @@ export class Progress implements Renderable, Composite {
       completed: 0,
       fill: Animation.constant(0),
       visible: options?.visible !== false,
-      startTime: options?.start === false ? undefined : this._clock.now(),
+      startTime: options?.start === false ? undefined : this._host.frameTime,
       finishedTime: undefined,
       samples: [],
     };
@@ -500,7 +548,7 @@ export class Progress implements Renderable, Composite {
       options.completed === undefined
         ? finiteCount("completed + advance", task.completed + advance)
         : finiteCount("completed", options.completed);
-    const now = this._clock.now();
+    const now = this._host.frameTime;
     recordSample(task.samples, now, completed - task.completed);
     // A retarget is a change of count: an update that leaves it alone leaves
     // the ease running as it was, rather than restarting it from where it is.
@@ -508,13 +556,9 @@ export class Progress implements Renderable, Composite {
     task.completed = completed;
     if (options.description !== undefined) task.description = options.description;
     if (options.visible !== undefined) task.visible = options.visible;
-    if (
-      !finished(task) &&
-      task.startTime !== undefined &&
-      task.total !== undefined &&
-      task.completed >= task.total
-    ) {
-      task.finishedTime = now - task.startTime;
+    const startTime = startedBy(task, now);
+    if (!finished(task) && startTime !== undefined && task.total !== undefined && task.completed >= task.total) {
+      task.finishedTime = now - startTime;
     }
 
     if (options.refresh) {
@@ -525,11 +569,11 @@ export class Progress implements Renderable, Composite {
   startTask(taskId: number): void {
     const task = this._tasks.get(taskId);
     // Rich's `start_task`: a task already running keeps the time it started.
-    if (task) task.startTime ??= this._clock.now();
+    if (task) task.startTime ??= this._host.frameTime;
   }
 
   start(): void {
-    this._live.start();
+    this._ownLive("start").start();
   }
 
   /**
@@ -537,22 +581,45 @@ export class Progress implements Renderable, Composite {
    * after the hand-back is where the work got to, not a bar caught mid-ease.
    */
   stop(): void {
+    const live = this._ownLive("stop");
     for (const task of this._tasks.values()) task.fill = Animation.constant(task.completed);
-    this._live.stop();
+    live.stop();
   }
 
   refresh(): void {
-    this._live.refresh();
+    this._ownLive("refresh").refresh();
+  }
+
+  private _ownLive(asked: "start" | "stop" | "refresh"): Live {
+    if (this._live === undefined) {
+      throw new Error(`Progress.${asked}: this Progress is drawn by the host it was given (drawnBy); ${asked} that host instead`);
+    }
+    return this._live;
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield* render(this._table(this._clock.now()), options);
+    yield* render(this._drawn(options), options);
   }
 
   // What each column renders for each task is what the table holds, and so is
   // all a progress display holds.
-  *contents(): Iterable<Renderable> {
-    yield this._table(this._clock.now());
+  *contents(options: RenderOptions): Iterable<Renderable> {
+    yield this._drawn(options);
+  }
+
+  // Inside a frame, the time its host read for it: a second read here would
+  // land a moving bar's stamp a hair after the frame, a moment the host takes
+  // for one still to come. A frame is only ever this display's host's,
+  // because the tasks were stamped on that host's time and a frame of any
+  // other is drawn for a moment on a different clock. A print is drawn for no
+  // moment, so it is drawn for the one the program asks at, read as
+  // `updateTask` reads it.
+  private _drawn(options: RenderOptions): Table {
+    const { frame } = options;
+    if (frame !== undefined && frame.host !== this._host) {
+      throw new Error("a Progress was drawn in a frame of a host other than its own; give it that host as `drawnBy`");
+    }
+    return this._table(frame?.time ?? this._host.frameTime);
   }
 
   // Rich's `make_tasks_table`: each column laid out as it says, at `now` on
@@ -567,10 +634,11 @@ export class Progress implements Renderable, Composite {
     // as the task's `time` and `elapsed`.
     for (const { samples, ...state } of this._tasks.values()) {
       if (!state.visible) continue;
-      const { startTime } = state;
+      const startTime = startedBy(state, now);
       const started = startTime !== undefined;
       const task: Task = {
         ...state,
+        startTime,
         time: now,
         elapsed: started ? now - startTime : undefined,
         speed: started ? sampleSpeed(samples) : undefined,

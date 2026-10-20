@@ -190,6 +190,7 @@ export type {
   Composite,
   Presence,
   StyleErrorHandler,
+  FrameHost,
 } from "./core/protocol.js";
 export type { Unsubscribe } from "./core/subscription.js";
 

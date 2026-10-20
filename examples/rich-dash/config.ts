@@ -11,10 +11,10 @@
  * [LAW:effects-at-boundaries] `buildWidgets` takes a capability bag.
  * Each widget factory closes over exactly the capabilities it needs — the
  * sysinfo widget never sees the FileSystem, the notes widget never sees
- * SystemInfo, and the job widget needs neither.
+ * SystemInfo, and the job widget sees only the host that draws it.
  */
 
-import type { Clock } from "@promptctl/rich-js";
+import type { Clock, FrameHost } from "@promptctl/rich-js";
 import type { FileSystem } from "../_capabilities/file-system.js";
 import type { SystemInfo } from "../_capabilities/system-info.js";
 import type { LayoutSpec } from "./layout.js";
@@ -32,11 +32,12 @@ export interface DashboardCapabilities {
   readonly readmePath: string;
 }
 
-export function buildWidgets(caps: DashboardCapabilities): Widget[] {
+/** The widgets, for the dashboard's frames drawn by `host`. */
+export function buildWidgets(caps: DashboardCapabilities, host: FrameHost): Widget[] {
   return [
     sysinfoWidget(caps.sysinfo),
     notesWidget(caps.fs, caps.readmePath),
-    jobWidget,
+    jobWidget(host),
   ];
 }
 

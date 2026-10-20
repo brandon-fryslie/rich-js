@@ -165,7 +165,7 @@ function builtForTheTime(t: number): Renderable {
 
 describe("a host under reduced motion", () => {
   const drawnAt = (view: View, options: RenderOptions, t: number, timeline = Timeline.play(0)) =>
-    drawView(hostView(view), timeline, t, options, (renderable, under) => lines(renderable, under));
+    drawView(hostView(view), timeline, t, { frameTime: t }, options, (renderable, under) => lines(renderable, under));
   const text = (drawn: { lines: Segment[][] }): string =>
     segmentsToString(drawn.lines.flat(), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
 

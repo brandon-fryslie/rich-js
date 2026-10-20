@@ -173,7 +173,7 @@ describe("scroll", () => {
   describe("drawn inside a function view through frameAt, on a nested timeline", () => {
     const host = Timeline.play(0);
     const drawn = (timeline: Timeline, animation: Animation<Renderable>, t: number) =>
-      drawView(hostView((time: number) => new Group(frameAt(Timeline.run(timeline, animation), time))), host, t, OPTIONS, (r) => Segment.splitLines(draw(r)));
+      drawView(hostView((time: number) => new Group(frameAt(Timeline.run(timeline, animation), time))), host, t, { frameTime: t }, OPTIONS, (r) => Segment.splitLines(draw(r)));
     const slide = scroll(LINE, { width: 6, height: 1, col: tween(-6, 0, { seconds: 2, ease: EASES.linear }) });
 
     it("at twice the speed, a slide-in says it moves until the host moment it arrives, and never after", () => {

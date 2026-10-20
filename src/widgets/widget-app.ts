@@ -28,7 +28,7 @@
 
 import { Reaction } from "mobx";
 import { Segment } from "../core/segment.js";
-import type { Presence, Renderable, RenderOptions } from "../core/protocol.js";
+import type { FrameHost, Presence, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import type { Clock } from "../core/clock.js";
@@ -62,7 +62,7 @@ export interface WidgetPresence {
   readonly presence: Presence;
 }
 
-export class WidgetApp implements FrameSource {
+export class WidgetApp implements FrameSource, FrameHost {
   readonly focusManager: FocusManager;
   private readonly focus: DefaultFocusManager;
   private readonly app: App;
@@ -77,9 +77,15 @@ export class WidgetApp implements FrameSource {
     // The view is drawn inside `compose`, where what it reads is tracked,
     // whichever shape it was given; it stays on or off the timeline as it
     // was, and when it changes is its own to say, as it would be to the App.
+    // Its frames are its own, drawn for its `frameTime`: what draws in them
+    // is told this app is the host, not the App it paints through, so
+    // `drawnBy: widgetApp` names the host its frames carry.
     this.app = new App({
       ...options,
-      view: mapView(options.view, (view) => ({ render: (renderOptions) => this.compose(view, renderOptions) })),
+      view: mapView(options.view, (view) => ({
+        render: (renderOptions) =>
+          this.compose(view, { ...renderOptions, frame: renderOptions.frame && { time: renderOptions.frame.time, host: this } }),
+      })),
     });
     this.focus = new DefaultFocusManager({
       present: () => this.widgets,

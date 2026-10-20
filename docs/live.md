@@ -246,10 +246,11 @@ To show several renderables in one live region, put them in a `Group` and wrap t
 ```typescript live
 import { Group, Panel, Progress } from "@promptctl/rich-js";
 
+const live = new Live(undefined, { console });
 const status = new Panel("[bold]Starting[/]", { borderStyle: "cyan" });
-const progress = new Progress();
+const progress = new Progress({ drawnBy: live });
 
-const live = new Live(new Group(status, progress), { console });
+live.update(new Group(status, progress));
 live.start();
 try {
   await doWork(progress);
@@ -258,4 +259,4 @@ try {
 }
 ```
 
-The `Group` renders its members in order, and the one `Live` counts every line they produce — so each redraw covers the whole region.
+The `Group` renders its members in order, and the one `Live` counts every line they produce — so each redraw covers the whole region. The `Progress` is made for the `Live` that draws it, with [`drawnBy`](/progress#drawn-by-another-host), so its tasks are timed on that `Live`'s frames.

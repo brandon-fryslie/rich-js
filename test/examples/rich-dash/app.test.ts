@@ -5,7 +5,7 @@
  * vital that changes between any two snapshots, so the sysinfo widget reads it
  * once per tick, and counting the reads counts the ticks.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { MemoryFileSystem } from "../../../examples/_capabilities/memory-file-system.js";
 import type { SystemInfo } from "../../../examples/_capabilities/system-info.js";
 import { run } from "../../../examples/rich-dash/app.js";
@@ -79,5 +79,24 @@ describe("rich-dash", () => {
 
     running.stop();
     await running.done;
+  });
+
+  // The build pane's Progress is drawn by the app, so its tasks are timed on
+  // the app's frames: elapsed is seconds of playback, wherever the clock the
+  // dashboard is given starts.
+  it("shows the build's elapsed time in seconds of frames played", async () => {
+    // The longest run, then the shortest advance: the first stage is still
+    // running after three seconds, and it is the only one started.
+    const random = vi.spyOn(Math, "random").mockReturnValue(0.999);
+    const { clock, host, running } = dashboard(5000);
+    random.mockReturnValue(0);
+    await later();
+    clock.advance(3);
+    const elapsed = [...host.output().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "").matchAll(/\d+:\d\d:\d\d/g)].map(([face]) => face);
+    expect(elapsed.at(-1)).toBe("0:00:03");
+
+    running.stop();
+    await running.done;
+    random.mockRestore();
   });
 });

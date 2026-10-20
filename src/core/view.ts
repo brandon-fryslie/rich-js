@@ -51,7 +51,7 @@
  */
 
 import type { Animation } from "./animation.js";
-import type { Motion, Renderable, RenderOptions } from "./protocol.js";
+import type { FrameHost, Motion, Renderable, RenderOptions } from "./protocol.js";
 import { Segment } from "./segment.js";
 import { Timeline } from "./timeline.js";
 
@@ -140,7 +140,7 @@ export function shownAt<T>(animation: Animation<T>, t: number, motion: Motion): 
  * clock its cells are stamped on: the host's own for a renderable, off the
  * timeline; the time `timeline` maps it to for a view on it.
  * [LAW:single-enforcer] `drawView` draws at it and hands it to the frame as
- * `RenderOptions.frameTime`, and a host reads it here for anything heard
+ * `RenderOptions.frame`, and a host reads it here for anything heard
  * between frames — a key — so a moment a widget keeps and the frame it is
  * compared against are on one clock.
  */
@@ -195,18 +195,19 @@ const cellsChange = (lines: Segment[][]): number =>
  * reads the reader's preference for motion: under reduced motion a view on
  * the timeline is drawn reduced (`shownAt`), and every animation drawn for
  * the host's time inside any view is reduced where it is drawn, through the
- * same options handed on to `draw`, which carry the time the frame is
- * drawn for (`frameTime`).
+ * same options handed on to `draw`, which carry the frame: the time it is
+ * drawn for (`frameTime`) and `drawnBy`, the host whose time that is.
  */
 export function drawView(
   view: HostView,
   timeline: Timeline,
   host: number,
+  drawnBy: FrameHost,
   options: RenderOptions,
   draw: (renderable: Renderable, options: RenderOptions) => Segment[][],
 ): DrawnView {
   const t = frameTime(view, timeline, host);
-  const drawing = { ...options, frameTime: t };
+  const drawing: RenderOptions = { ...options, frame: { time: t, host: drawnBy } };
   if (view.kind === "renderable") {
     const lines = draw(view.renderable, drawing);
     return { t: host, lines, nextChange: Math.max(host, cellsChange(lines)), silent: true, held: false };

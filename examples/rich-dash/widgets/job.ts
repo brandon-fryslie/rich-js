@@ -3,9 +3,10 @@
  * instance: its real steps, each working through the real things that step
  * works through, and each run a different length, as runs are.
  *
- * `Progress` is reused as a pure Renderable: we never call `progress.start()`,
- * so its internal Live timer never fires. The dashboard's `App` drives
- * all painting; this widget just advances task counters in `tick`.
+ * The `Progress` is drawn by the dashboard's `App` (`drawnBy`), so it has no
+ * Live of its own and its tasks are timed on the app's frames: elapsed is the
+ * playback's seconds. The `App` drives all painting; this widget just
+ * advances task counters in `tick`.
  *
  * [LAW:single-enforcer] The dashboard's `App` owns the screen. We use
  * Progress for its rendering, not its scheduling.
@@ -33,6 +34,7 @@ import {
   stackedHeight,
   withBoundedWidth,
   withCellWidth,
+  type FrameHost,
   type Measurable,
   type Renderable,
   type RenderOptions,
@@ -96,14 +98,14 @@ const STAGE_PLAN: ReadonlyArray<{ readonly description: string; readonly items: 
 /** Ticks a stage takes per item: each run between three and nine, so no two runs are the same length. */
 const runLength = (items: number) => items * (3 + Math.floor(Math.random() * 7));
 
-function buildProgress(): { progress: Progress; stages: Stage[] } {
+function buildProgress(host: FrameHost): { progress: Progress; stages: Stage[] } {
   const progress = new Progress(
     new TextColumn("{task.description}"),
     new BarColumn(30),
     new TaskProgressColumn(),
     new MofNCompleteColumn(),
     new TimeElapsedColumn(),
-    { autoRefresh: false },
+    { drawnBy: host },
   );
   const stages: Stage[] = STAGE_PLAN.map((s) => {
     const total = runLength(s.items.length);
@@ -122,8 +124,8 @@ function buildProgress(): { progress: Progress; stages: Stage[] } {
 /** The index of the item a stage is on when it has done `completed` of its work. */
 const itemIndex = (stage: Stage, completed: number) => Math.min(stage.items.length - 1, Math.floor((completed / stage.total) * stage.items.length));
 
-function init(): JobState {
-  const built = buildProgress();
+function init(host: FrameHost): JobState {
+  const built = buildProgress(host);
   return { progress: built.progress, stages: built.stages, cursor: 0, log: ["build started"], rates: [] };
 }
 
@@ -132,9 +134,9 @@ function record(state: JobState, entry: string): void {
   state.log.splice(0, state.log.length - LOG_KEPT);
 }
 
-function tick(state: JobState): JobState {
+function tick(state: JobState, host: FrameHost): JobState {
   if (state.cursor >= state.stages.length) {
-    const fresh = buildProgress();
+    const fresh = buildProgress(host);
     state.progress = fresh.progress;
     state.stages = fresh.stages;
     state.cursor = 0;
@@ -258,11 +260,13 @@ function render(state: JobState): Renderable {
   return new JobPane([state.progress, new RateSparkline(state.rates)], new LogTail(state.log));
 }
 
-export const jobWidget = defineWidget<JobState>({
-  id: "job",
-  title: " build ",
-  borderStyle: "yellow",
-  init,
-  tick,
-  render,
-});
+/** The build pane, its `Progress` drawn by `host`. */
+export const jobWidget = (host: FrameHost) =>
+  defineWidget<JobState>({
+    id: "job",
+    title: " build ",
+    borderStyle: "yellow",
+    init: () => init(host),
+    tick: (state) => tick(state, host),
+    render,
+  });

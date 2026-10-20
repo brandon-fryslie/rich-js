@@ -12,7 +12,7 @@
  * the demo body has no environment-aware branches.
  */
 
-import { Layout, Panel, RichText, Style, frameRate, type Renderable } from "@promptctl/rich-js";
+import { Layout, Panel, RichText, Style, Timeline, frameRate, type Renderable } from "@promptctl/rich-js";
 import { App, keyName, type TerminalHost } from "@promptctl/rich-js/host";
 import { frameClock } from "../_capabilities/frame-clock.js";
 import { buildWidgets, LAYOUT, type DashboardCapabilities } from "./config.js";
@@ -79,19 +79,21 @@ export function run(host: TerminalHost, caps: DashboardCapabilities): Running {
   }
 
   const layout = buildLayout(LAYOUT);
-  const panes = bindPanes(layout, buildWidgets(caps));
-  // [LAW:no-ambient-temporal-coupling] The app owns the one frame timer and
-  // hands the view the frame number; the view shows each widget as it stands
-  // after that many ticks. A repaint between frames — a resize, a resume — is
-  // handed the same number and shows the same state, and a suspended app's
-  // timer is stopped, so its frames stop with it.
-  const clock = frameClock(caps.clock);
+  // [LAW:no-ambient-temporal-coupling] The app owns the one frame timer. Its
+  // clock counts frames, and its timeline reads them as the seconds they take,
+  // so the view is handed the time of the frame and shows each widget as it
+  // stands after that many ticks. A repaint between frames — a resize, a
+  // resume — is handed the same time and shows the same state, and a
+  // suspended app's timer is stopped, so its frames stop with it.
   let ticked = 0;
-  const view = (frame: number): Layout => {
-    for (; ticked < frame; ticked++) for (const pane of panes) pane.state = pane.widget.tick(pane.state);
+  const view = (t: number): Layout => {
+    for (const frame = Math.round(t * FPS); ticked < frame; ticked++) for (const pane of panes) pane.state = pane.widget.tick(pane.state);
     return draw(layout, panes);
   };
-  const app = new App({ host, surface: "alternate", view, clock, rate: frameRate(FPS) });
+  const app = new App({ host, surface: "alternate", view, clock: frameClock(caps.clock), timeline: Timeline.play(0, 1 / FPS), rate: frameRate(FPS) });
+  // The widgets are made for the app that draws them — the build pane's
+  // Progress is timed on its frames — and the app draws nothing until `run`.
+  const panes = bindPanes(layout, buildWidgets(caps, app));
 
   app.onKey((press) => {
     switch (KEYS[keyName(press)]) {

@@ -35,7 +35,7 @@ import { frameRate, systemClock, type Clock, type FrameRate } from "../core/cloc
 import { Console, type ConsoleOptions } from "../core/console.js";
 import { Segment } from "../core/segment.js";
 import { SurfacePainter, type Surface } from "../core/paint.js";
-import { fitHeight, render } from "../core/protocol.js";
+import { fitHeight, render, type FrameHost } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { Timeline } from "../core/timeline.js";
 import { drawView, frameTime, hostView, undrawn, type FrameSays, type HostView, type View } from "../core/view.js";
@@ -138,7 +138,7 @@ export type AppMouseEvent = Exclude<ScreenMouseEvent, WheelTurn>;
 
 const isWheelTurn = (event: ScreenMouseEvent): event is WheelTurn => event.type in WHEEL_LINES;
 
-export class App {
+export class App implements FrameHost {
   private readonly host: TerminalHost;
   private readonly surface: Surface;
   private readonly view: HostView;
@@ -233,7 +233,7 @@ export class App {
   }
 
   /**
-   * The time a frame drawn now is drawn for (`RenderOptions.frameTime`): the
+   * The time a frame drawn now is drawn for (`RenderOptions.frame`): the
    * clock's now, through the timeline for a view on it. What a moment heard
    * between frames — a key — is stamped with, so it is on the clock the
    * frame is.
@@ -518,7 +518,7 @@ export class App {
     // clock. The app set the budget, so the app shapes what comes back: no
     // deeper than the terminal — a taller frame would scroll the rows the
     // painter goes back over — and, as a region, exactly that deep.
-    const drawn = drawView(this.view, this._timeline, this._clock.now(), { ...options, height }, (renderable, under) =>
+    const drawn = drawView(this.view, this._timeline, this._clock.now(), this, { ...options, height }, (renderable, under) =>
       fitHeight(Segment.splitLines(render(renderable, under)).slice(0, height.rows), height),
     );
     const frame = this.painter.paint(() => drawn.lines, { rows: height.rows, cols: options.maxWidth }, this.console.destination);

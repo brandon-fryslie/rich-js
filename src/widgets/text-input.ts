@@ -1086,11 +1086,12 @@ export class TextInput extends ThemedWidget {
   // text around it, since the cursor is a colour pair and no attribute hides
   // it. The cell says when it next flips, which is when a host draws again.
   private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
-    const { value: lit, nextChange } = options.frameTime === undefined
+    const { frame } = options;
+    const { value: lit, nextChange } = frame === undefined
       ? CARET_UNTIMED
       : shownAt(
-          Timeline.run(Timeline.play(this._blinkFrom, options.frameTime < this._blinkFrom ? -1 : 1), CARET_BLINK),
-          options.frameTime,
+          Timeline.run(Timeline.play(this._blinkFrom, frame.time < this._blinkFrom ? -1 : 1), CARET_BLINK),
+          frame.time,
           options,
         );
     return stampFrame([new Segment(at, lit ? cursorStyle : contentStyle)], nextChange);
