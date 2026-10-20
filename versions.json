@@ -4,15 +4,22 @@
     {
       "version": "pr-497",
       "ref": "refs/pull/497/merge",
-      "sha": "b5173c46d26c296455f41a95c757e14d535d421b",
-      "timestamp": "2026-10-20T03:18:31.456Z",
+      "sha": "8937e330b2ec57c4dc3e805c95fd461fe536a8e3",
+      "timestamp": "2026-10-20T03:26:41.506Z",
       "commits": [
         {
-          "sha": "b5173c46d26c296455f41a95c757e14d535d421b",
+          "sha": "8937e330b2ec57c4dc3e805c95fd461fe536a8e3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T21:16:27-06:00",
-          "message": "Merge 700a5cd5ff57c7a0e3deb81c8fbb8492c425e12d into 194dc564c4de09242c804593eac4bf3fd3e7fcb0\n"
+          "timestamp": "2026-10-20T03:24:41Z",
+          "message": "Merge 18f5b139488eee0199d8054096e259a1c958b7db into 194dc564c4de09242c804593eac4bf3fd3e7fcb0\n"
+        },
+        {
+          "sha": "18f5b139488eee0199d8054096e259a1c958b7db",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T21:24:37-06:00",
+          "message": "Blink is taken out of what is painted and recorded, once (rich-animation-42lg.xbt)\n\nReview (high) fixes:\n- SurfacePainter.paint returns its rows as the destination shows them, so\n  App.frame and paint handlers carry no blink under reduced motion.\n- Console maps each write through shownOn once, then records and encodes it.\n- A hand-made encode takes the preference on its Destination (docs).\n- Stale descriptions of Destination in console.md, the destination getter\n  and render.ts's header name reducedMotion.\n- The test helper encodes with the preference it drew under.\n"
         },
         {
           "sha": "700a5cd5ff57c7a0e3deb81c8fbb8492c425e12d",
