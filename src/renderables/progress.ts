@@ -518,7 +518,7 @@ export class Progress implements Renderable, Composite {
     }
 
     if (options.refresh) {
-      this._live.update(this, { refresh: true });
+      this.refresh();
     }
   }
 

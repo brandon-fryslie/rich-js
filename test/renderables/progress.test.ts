@@ -646,7 +646,7 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
 
   // The platform's clock moves between any two reads of it, which a fake one
   // does not: this one reads a hair later every time it is asked.
-  it("redraws an easing bar at the refresh rate on a clock that moves between reads", () => {
+  it.each([false, true])("redraws an easing bar at the refresh rate on a clock that moves between reads (update refresh: %s)", (refresh) => {
     const inner = fakeClock(10);
     let reads = 0;
     const clock = { ...inner, now: () => inner.now() + ++reads * 1e-4 };
@@ -655,7 +655,7 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
     const progress = new Progress(new BarColumn(10), { console, clock, fill: { ease: EASES.linear, seconds: 2 }, refreshPerSecond: 10 });
     const id = progress.addTask("job", { total: 100 });
     progress.start();
-    progress.updateTask(id, { completed: 100 });
+    progress.updateTask(id, { completed: 100, refresh });
     const before = frames;
     inner.advance(1);
     expect(frames - before).toBeLessThanOrEqual(12);
