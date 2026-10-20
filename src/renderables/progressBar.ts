@@ -41,6 +41,12 @@ export interface ProgressBarOptions {
    * it, the bar shows `completed` of `total`.
    */
   pulse?: { readonly t: number };
+  /**
+   * Whether the work is done, which picks `finishedStyle` over
+   * `completeStyle`: `completed` reaching `total`, unless said. A bar drawing
+   * an eased fill says it, since the fill it draws is not the count.
+   */
+  finished?: boolean;
   style?: string | Style;
   completeStyle?: string | Style;
   finishedStyle?: string | Style;
@@ -51,6 +57,8 @@ export class ProgressBar implements Renderable, Measurable {
   completed: number;
   readonly width: number | undefined;
   readonly pulse: { readonly t: number } | undefined;
+  /** Whether the work is done, as given; unset, `completed` reaching `total` at the moment the bar is drawn. */
+  finished: boolean | undefined;
   readonly style: string | Style;
   readonly completeStyle: string | Style;
   readonly finishedStyle: string | Style;
@@ -60,6 +68,7 @@ export class ProgressBar implements Renderable, Measurable {
     this.completed = options?.completed ?? 0;
     this.width = options?.width;
     this.pulse = options?.pulse;
+    this.finished = options?.finished;
     this.style = options?.style ?? "bar.back";
     this.completeStyle = options?.completeStyle ?? "bar.complete";
     this.finishedStyle = options?.finishedStyle ?? "bar.finished";
@@ -112,7 +121,7 @@ export class ProgressBar implements Renderable, Measurable {
   private *track(options: RenderOptions, width: number, completeHalves: number, back: Style): Iterable<Segment> {
     const barCount = Math.floor(completeHalves / 2);
     const halfBarCount = completeHalves % 2;
-    const isFinished = this.completed >= this.total;
+    const isFinished = this.finished ?? this.completed >= this.total;
 
     const fill = getStyle(options, isFinished ? this.finishedStyle : this.completeStyle);
     const fillStyle = fill.isNull ? undefined : fill;

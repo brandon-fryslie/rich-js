@@ -14,6 +14,11 @@ import { systemClock, type Clock } from "../core/clock.js";
 import { Table, type ColumnOptions } from "./table.js";
 import type { Composite, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
+import { Animation } from "../core/animation.js";
+import type { Timing } from "../core/easing.js";
+import { Timeline } from "../core/timeline.js";
+import { tween } from "../core/tween.js";
+import { frameAt } from "./frames.js";
 
 // --- Task ---
 
@@ -36,6 +41,12 @@ export interface Task {
   description: string;
   total: number | undefined;
   completed: number;
+  /**
+   * The count a bar shows, over its `Progress`'s clock: `completed` itself,
+   * or moving to it after each update when the `Progress` was given a `fill`
+   * timing. `completed` stays the count; only the bar draws this.
+   */
+  fill: Animation<number>;
   visible: boolean;
   /** When the task started, in seconds on its `Progress`'s clock; undefined until it has. */
   startTime: number | undefined;
@@ -177,15 +188,23 @@ export class BarColumn implements ProgressColumn {
     this.barWidth = barWidth ?? 40;
   }
 
-  /** Rich's `BarColumn`: a task not yet started, or with no total to fill toward, pulses. */
-  render(task: Task): ProgressBar {
-    const pulsing = task.startTime === undefined || task.total === undefined;
-    return new ProgressBar({
-      total: task.total ?? 100,
-      completed: task.completed,
-      width: this.barWidth,
-      pulse: pulsing ? { t: task.time } : undefined,
-    });
+  /**
+   * Rich's `BarColumn`: a task not yet started, or with no total to fill
+   * toward, pulses, and a pulse draws no fill. Otherwise the bar is the
+   * task's `fill` drawn at the frame's time, every cell stamped with when the
+   * fill next moves, so a host draws while it eases and the bar asks for
+   * nothing once it lands. Its colour is the task's: an ease that overshoots
+   * the total does not finish the bar, and one that dips back does not
+   * unfinish it.
+   */
+  render(task: Task): Renderable {
+    const total = task.total ?? 100;
+    if (task.startTime === undefined || task.total === undefined) {
+      return new ProgressBar({ total, completed: task.completed, width: this.barWidth, pulse: { t: task.time } });
+    }
+    const done = task.completed >= total;
+    const bars = Animation.map(task.fill, (completed) => new ProgressBar({ total, completed, width: this.barWidth, finished: done }));
+    return frameAt(bars, task.time);
   }
 }
 
@@ -367,6 +386,12 @@ export interface ProgressOptions {
    * defaults to the platform's monotonic clock. Handed on to the `Live`.
    */
   clock?: Clock;
+  /**
+   * How a bar's fill moves to a task's new count: eased over this timing
+   * from wherever it is when the count changes, so a bar advancing in bursts
+   * reads as motion. Unset, the bar jumps to the count, as Rich's does.
+   */
+  fill?: Timing;
 }
 
 export class Progress implements Renderable, Composite {
@@ -376,6 +401,8 @@ export class Progress implements Renderable, Composite {
   private _live: Live;
   private _console: Console;
   private readonly _clock: Clock;
+  /** A task's fill after its count changes at `now`, from the value it shows then. */
+  private readonly _refill: (from: number, to: number, now: number) => Animation<number>;
   readonly expand: boolean;
 
   constructor(...columns: (ProgressColumn | ProgressOptions)[]) {
@@ -406,9 +433,20 @@ export class Progress implements Renderable, Composite {
     this._console = opts.console ?? new Console();
     this.expand = opts.expand ?? false;
     this._clock = opts.clock ?? systemClock();
-    this._live = new Live(this, {
+    // [LAW:dataflow-not-control-flow] The option picks the rule once; an
+    // update always refills through it. Eased, the tween starts at the
+    // update's moment on this clock, which only moves forward, so the fill it
+    // replaces is never asked for again and a task keeps one animation, not
+    // its history.
+    const timing = opts.fill;
+    this._refill = timing === undefined ? (_from, to) => Animation.constant(to) : (from, to, now) => Timeline.run(Timeline.play(now), tween(from, to, timing));
+    // [LAW:one-source-of-truth] The frame's time is the one Live read for it,
+    // on a timeline that is its clock: a second read here would land a moving
+    // bar's stamp after the frame, a moment Live takes for one still to come.
+    this._live = new Live((t) => this._table(t), {
       console: this._console,
       clock: this._clock,
+      timeline: Timeline.play(0),
       refreshPerSecond: opts.refreshPerSecond ?? 10,
       autoRefresh: opts.autoRefresh,
       transient: opts.transient,
@@ -440,6 +478,7 @@ export class Progress implements Renderable, Composite {
       description,
       total: options?.total === undefined ? undefined : finiteCount("total", options.total),
       completed: 0,
+      fill: Animation.constant(0),
       visible: options?.visible !== false,
       startTime: options?.start === false ? undefined : this._clock.now(),
       finishedTime: undefined,
@@ -463,6 +502,9 @@ export class Progress implements Renderable, Composite {
         : finiteCount("completed", options.completed);
     const now = this._clock.now();
     recordSample(task.samples, now, completed - task.completed);
+    // A retarget is a change of count: an update that leaves it alone leaves
+    // the ease running as it was, rather than restarting it from where it is.
+    if (completed !== task.completed) task.fill = this._refill(task.fill.at(now), completed, now);
     task.completed = completed;
     if (options.description !== undefined) task.description = options.description;
     if (options.visible !== undefined) task.visible = options.visible;
@@ -476,7 +518,7 @@ export class Progress implements Renderable, Composite {
     }
 
     if (options.refresh) {
-      this._live.update(this, { refresh: true });
+      this.refresh();
     }
   }
 
@@ -490,7 +532,12 @@ export class Progress implements Renderable, Composite {
     this._live.start();
   }
 
+  /**
+   * The final frame shows every bar at its count: what stays on the screen
+   * after the hand-back is where the work got to, not a bar caught mid-ease.
+   */
   stop(): void {
+    for (const task of this._tasks.values()) task.fill = Animation.constant(task.completed);
     this._live.stop();
   }
 
@@ -499,25 +546,25 @@ export class Progress implements Renderable, Composite {
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield* render(this._table(), options);
+    yield* render(this._table(this._clock.now()), options);
   }
 
   // What each column renders for each task is what the table holds, and so is
   // all a progress display holds.
   *contents(): Iterable<Renderable> {
-    yield this._table();
+    yield this._table(this._clock.now());
   }
 
-  // Rich's `make_tasks_table`: each column laid out as it says.
-  private _table(): Table {
+  // Rich's `make_tasks_table`: each column laid out as it says, at `now` on
+  // this display's clock.
+  private _table(now: number): Table {
     const table = Table.grid({ expand: this.expand });
     for (const col of this._columns) {
       table.addColumn(undefined, col.tableColumn);
     }
 
-    // [LAW:effects-at-boundaries] One read of the clock a frame, handed to
-    // every column as the task's `time` and `elapsed`.
-    const now = this._clock.now();
+    // [LAW:effects-at-boundaries] One moment a frame, handed to every column
+    // as the task's `time` and `elapsed`.
     for (const { samples, ...state } of this._tasks.values()) {
       if (!state.visible) continue;
       const { startTime } = state;

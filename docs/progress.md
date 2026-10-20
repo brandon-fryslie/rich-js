@@ -112,6 +112,22 @@ at 256 colours faintly, and at 16 colours as a flash of the slot nearest `bar.pu
 by default. On an output with no
 colour the pulse cannot be drawn, so a pulsing bar is blank.
 
+### Easing the bar
+
+A bar jumps to a task's new count, as Rich's does. Give the `Progress` a `fill` timing — an ease and its seconds, such as `spring()` returns — and each bar eases there from wherever it is when the count changes, so work that lands in bursts reads as motion. A count that changes again mid-ease starts the next ease from where the bar is, not from where it was heading. Only the bar eases; the percentage and the counts show the task's count as it is. Under [reduced motion](./animation#reduced-motion) the bar shows the new count at once, and `stop()` leaves every bar at its count, never mid-ease.
+
+```typescript live
+const progress = new Progress({ fill: spring({ stiffness: 120, damping: 14 }) });
+const task = progress.addTask("Syncing...", { total: 100 });
+progress.start();
+for (const burst of [30, 15, 35, 20]) {
+  await sleep(900);
+  progress.updateTask(task, { advance: burst });
+}
+await sleep(900);
+progress.stop();
+```
+
 ### Transient display
 
 Clear the progress display when it finishes (instead of leaving the final state):
