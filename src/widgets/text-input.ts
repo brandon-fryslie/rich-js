@@ -84,6 +84,11 @@ import {
   type CodeUnit,
 } from "../core/cells.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
+import { Animation } from "../core/animation.js";
+import { beat } from "../core/easing.js";
+import { Timeline } from "../core/timeline.js";
+import { shownAt } from "../core/view.js";
+import { stampFrame } from "../renderables/frames.js";
 import type { TerminalTheme } from "../core/color.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
@@ -287,12 +292,26 @@ function isWhitespace(c: string | undefined): boolean {
   return c !== undefined && WHITESPACE_RE.test(c);
 }
 
+/**
+ * The caret's blink, from the moment it restarts: lit for the first half
+ * second, so the caret is solid the moment a key lands, then dark for the
+ * next, on a `beat`. A loop, so with its motion taken out it holds lit.
+ */
+const CARET_BLINK: Animation<boolean> = Animation.map(beat([0.5, 0.5]), (hold) => hold === 0);
+
+/** The caret of a frame drawn for no moment — a `print` — which nothing moves: lit, and never changing. */
+const CARET_UNTIMED = { value: true, nextChange: Number.POSITIVE_INFINITY } as const;
+
 export class TextInput extends ThemedWidget {
   readonly id: string;
   readonly focusable = true;
 
   @observable private accessor _value: string;
   @observable private accessor _cursor: CodePoint;
+  // When the field last heard a key, on the frame's clock (`KeyEvent.time`):
+  // where the caret's blink restarts. The blink itself is a function of this
+  // and the time a frame is drawn for, so nothing about it is kept.
+  @observable private accessor _typedAt = 0;
 
   // [LAW:single-enforcer] Every write to either half of the pair passes
   // `graphemeBoundary`, so the cursor is a cluster boundary inside `value`
@@ -402,6 +421,7 @@ export class TextInput extends ThemedWidget {
   @action
   handleKey(event: KeyEvent): void {
     if (this.disabled) return;
+    this._typedAt = event.time;
 
     // ─── editing keys (modifier-conscious) ───
     if (event.key === "backspace") {
@@ -936,7 +956,7 @@ export class TextInput extends ThemedWidget {
       const at = firstCh || " ";
       const after = rest.slice(firstCh.length);
       if (before.length > 0) segments.push(new Segment(before, contentStyle));
-      segments.push(new Segment(at, cursorStyle));
+      segments.push(...this._caret(at, cursorStyle, contentStyle, options));
       if (after.length > 0) segments.push(new Segment(after, contentStyle));
     } else {
       segments.push(new Segment(display, contentStyle));
@@ -1044,6 +1064,18 @@ export class TextInput extends ThemedWidget {
     return segments;
   }
 
+  // The caret's cell for the frame `options` draws: the blink restarted at the
+  // last key, sampled at the frame's time (`shownAt`, so under reduced motion
+  // it holds lit). Lit, the cell is the cursor's; dark, it is drawn as the
+  // text around it, since the cursor is a colour pair and no attribute hides
+  // it. The cell says when it next flips, which is when a host draws again.
+  private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
+    const { value: lit, nextChange } = options.frameTime === undefined
+      ? CARET_UNTIMED
+      : shownAt(Timeline.run(Timeline.play(this._typedAt), CARET_BLINK), options.frameTime, options);
+    return stampFrame([new Segment(at, lit ? cursorStyle : contentStyle)], nextChange);
+  }
+
   // Whether `rows` visual rows draw a scroll arrow in the last cell of a row.
   private _drawsArrows(rows: number): boolean {
     return this._scrollIndicator === "arrows" && this._maxRows !== undefined && rows > this._maxRows;
@@ -1082,7 +1114,7 @@ export class TextInput extends ThemedWidget {
       const at = firstCh || " ";
       const after = rest.slice(firstCh.length);
       if (before.length > 0) out.push(new Segment(before, contentStyle));
-      out.push(new Segment(at, cursorStyle));
+      out.push(...this._caret(at, cursorStyle, contentStyle, options));
       if (after.length > 0) out.push(new Segment(after, contentStyle));
     } else if (display.length > 0) {
       out.push(new Segment(display, contentStyle));

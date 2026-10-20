@@ -16,7 +16,7 @@ const makeKey = (key: string): KeyEvent => new KeyEvent({
   shift: false,
   ctrl: false,
   meta: false,
-});
+}, 0);
 
 const enterEvent = () => makeKey("enter");
 const spaceEvent = () => makeKey("space");
@@ -31,7 +31,7 @@ const shiftTabEvent = () => new KeyEvent({
   shift: true,
   ctrl: false,
   meta: false,
-});
+}, 0);
 
 const charKey = (ch: string): KeyEvent => new KeyEvent({
   key: ch,
@@ -39,7 +39,7 @@ const charKey = (ch: string): KeyEvent => new KeyEvent({
   shift: false,
   ctrl: false,
   meta: false,
-});
+}, 0);
 
 const mouseUpAt = (x: number, y: number, over = true): WidgetMouseEvent => ({
   type: "mouse_up",
@@ -350,7 +350,7 @@ describe("Dropdown", () => {
       // doesn't need to know about the option flag.
       const d = new Dropdown({ options: ["alpha", "beta", "gamma"] });
       d.focus();
-      d.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: false, meta: false }));
+      d.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: false, meta: false }, 0));
       const segs = Segment.splitLines(d.render({ ...RENDER, asciiOnly: true }))[0]!;
       const text = segs.map((s) => s.text).join("");
       expect(text).toContain("|");
@@ -389,7 +389,7 @@ describe("Dropdown", () => {
       // open — visible state surviving a blur is a real-world bug.
       const d = new Dropdown({ options: ["alpha", "beta", "gamma"] });
       d.focus();
-      d.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: false, meta: false }));
+      d.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: false, meta: false }, 0));
       expect(d.expanded).toBe(true);
       expect(d.filter).toBe("a");
 

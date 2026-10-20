@@ -135,6 +135,19 @@ export function shownAt<T>(animation: Animation<T>, t: number, motion: Motion): 
   return { value: drawn.at(t), nextChange: drawn.nextChange(t), drawn, reduced };
 }
 
+/**
+ * The time a frame of `view` drawn at host time `host` is drawn for, on the
+ * clock its cells are stamped on: the host's own for a renderable, off the
+ * timeline; the time `timeline` maps it to for a view on it.
+ * [LAW:single-enforcer] `drawView` draws at it and hands it to the frame as
+ * `RenderOptions.frameTime`, and a host reads it here for anything heard
+ * between frames — a key — so a moment a widget keeps and the frame it is
+ * compared against are on one clock.
+ */
+export function frameTime(view: HostView, timeline: Timeline, host: number): number {
+  return view.kind === "renderable" ? host : Timeline.at(timeline, host);
+}
+
 /** What a frame drawn at host time `t` says about when it changes. */
 export interface FrameSays {
   /** The host time the frame was drawn at. */
@@ -182,7 +195,8 @@ const cellsChange = (lines: Segment[][]): number =>
  * reads the reader's preference for motion: under reduced motion a view on
  * the timeline is drawn reduced (`shownAt`), and every animation drawn for
  * the host's time inside any view is reduced where it is drawn, through the
- * same options handed on to `draw`.
+ * same options handed on to `draw`, which carry the time the frame is
+ * drawn for (`frameTime`).
  */
 export function drawView(
   view: HostView,
@@ -191,14 +205,15 @@ export function drawView(
   options: RenderOptions,
   draw: (renderable: Renderable, options: RenderOptions) => Segment[][],
 ): DrawnView {
+  const t = frameTime(view, timeline, host);
+  const drawing = { ...options, frameTime: t };
   if (view.kind === "renderable") {
-    const lines = draw(view.renderable, options);
+    const lines = draw(view.renderable, drawing);
     return { t: host, lines, nextChange: Math.max(host, cellsChange(lines)), silent: true, held: false };
   }
   const { animation } = view;
-  const t = Timeline.at(timeline, host);
   const shown = shownAt(animation, t, options);
-  const lines = draw(shown.value, options);
+  const lines = draw(shown.value, drawing);
   const cells = cellsChange(lines);
   // The frame as the sample of the view it is, on the timeline's clock; the
   // timeline says when the host's clock leaves its hold. Cells say only when

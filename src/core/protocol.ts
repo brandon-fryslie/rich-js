@@ -104,6 +104,16 @@ export interface RenderOptions {
    */
   reducedMotion?: boolean;
   /**
+   * The moment the frame is drawn for, in seconds, on the clock its cells'
+   * `nextChange` stamps are read on: the host's for a renderable view, the
+   * timeline's for a view on it (`frameTime`, `./view.ts`). It is how a
+   * renderable that lives across frames — a widget — draws for the time
+   * without being rebuilt each frame with one, and without reading a clock.
+   * Absent, the frame is drawn for no moment — a `print` — and nothing drawn
+   * from it moves.
+   */
+  frameTime?: number;
+  /**
    * Told of every renderable `render` is asked for, as it is asked, so the
    * calls arrive in document order: a container before what it holds, its
    * contents in the order it renders them. `"drawn"` is a renderable drawn at

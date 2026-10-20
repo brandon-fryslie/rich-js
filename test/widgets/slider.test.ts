@@ -16,7 +16,7 @@ const makeKey = (key: string): KeyEvent => new KeyEvent({
   shift: false,
   ctrl: false,
   meta: false,
-});
+}, 0);
 
 const leftEvent = () => makeKey("left");
 const rightEvent = () => makeKey("right");

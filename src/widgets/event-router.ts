@@ -119,7 +119,7 @@ export class EventRouter {
 
   /** Route a key the app heard. */
   key(press: KeyPress): void {
-    this.dispatchKey(new KeyEvent(press));
+    this.dispatchKey(new KeyEvent(press, this.source.frameTime));
   }
 
   /** Route a pointer event the app heard. */

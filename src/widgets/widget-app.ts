@@ -140,6 +140,11 @@ export class WidgetApp implements FrameSource {
     return this.app.frame;
   }
 
+  /** The time a frame drawn now is drawn for, as `App.frameTime` reads it. */
+  get frameTime(): number {
+    return this.app.frameTime;
+  }
+
   /**
    * Take the terminal, paint the first frame, and route input to its widgets
    * until the app stops — `App.run`, with the input.

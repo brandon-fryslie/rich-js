@@ -31,6 +31,29 @@ const bytes = (segments: Segment[]): string => segmentsToString(segments, { colo
 /** What a function view of `view` drawn at host time `t` on a playing timeline says. */
 const wakes = (view: (t: number) => Renderable, t: number): number => drawView(hostView(view), Timeline.play(0), t, OPTIONS, lines).nextChange;
 
+describe("a frame hands what it draws the time it is drawn for", () => {
+  // What a renderable drawing at `frameTime` would read, captured as it draws.
+  const handed = (view: Parameters<typeof hostView>[0], timeline: Timeline, host: number): number | undefined => {
+    let seen: number | undefined;
+    drawView(hostView(view), timeline, host, OPTIONS, (renderable, options) => {
+      seen = options.frameTime;
+      return lines(renderable);
+    });
+    return seen;
+  };
+  const probe = new RichText("x");
+
+  it("is the host's time for a renderable view, off the timeline", () => {
+    expect(handed(probe, Timeline.pause(Timeline.play(0), 1), 7)).toBe(7);
+  });
+
+  it("is the timeline's time for a function or an animation view, a paused one's held time included", () => {
+    expect(handed(() => probe, Timeline.play(2), 7)).toBe(5);
+    expect(handed(Animation.constant(probe), Timeline.play(2, 2), 7)).toBe(10);
+    expect(handed(() => probe, Timeline.pause(Timeline.play(0), 1), 7)).toBe(1);
+  });
+});
+
 describe("a frame says when it changes on the host's clock", () => {
   it("a paused timeline over a change mid-way says it never changes, whatever the change's cells would say", () => {
     const moving = crossfade(curve).effect({ from: new RichText("building"), to: new RichText("done"), theme });
