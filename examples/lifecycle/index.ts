@@ -1,6 +1,7 @@
 /**
  * lifecycle — a build log whose lines type themselves in as they are appended
- * and dissolve away four seconds later, playing in a `Live` for twenty seconds.
+ * and leave four seconds later, dissolved, backspaced or scrambled away in
+ * turn, playing in a `Live` for twenty seconds.
  *
  * THIS IS A DEMO: `lifecycle` (`src/renderables/lifecycle.ts`), for seeing an
  * element arrive, stay, leave, and be dropped. Each line is appended at a time
@@ -9,7 +10,7 @@
  * nothing from then on.
  */
 
-import { CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, dissolveOut, frameAt, lifecycle, throughColors, throughGlyphs, typewriter, type Lifecycle, type Renderable } from "../../src/index.js";
+import { CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, backspace, dissolveOut, frameAt, lifecycle, scrambleOut, throughColors, throughGlyphs, typewriter, type Lifecycle, type Renderable } from "../../src/index.js";
 
 const EVERY = 1.2;
 const STAYS = 4;
@@ -31,7 +32,8 @@ function appended(i: number, at: number): Lifecycle {
   const line = new RichText(`${String(i + 1).padStart(3)}  ${message}`, { style });
   // Each line its own transitions: a transition is made for one element.
   const key = `line-${i}`;
-  return lifecycle(line, { enter: throughGlyphs(typewriter(ENTER), key), exit: throughColors(dissolveOut(EXIT, i), CATPPUCCIN_MOCHA, key) }, at).leave(at + STAYS);
+  const exits = [throughColors(dissolveOut(EXIT, i), CATPPUCCIN_MOCHA), throughGlyphs(backspace(EXIT)), throughGlyphs(scrambleOut(EXIT, i))];
+  return lifecycle(line, { enter: throughGlyphs(typewriter(ENTER)), exit: exits[i % exits.length]!, key }, at).leave(at + STAYS);
 }
 
 let log: Lifecycle[] = [];

@@ -13,7 +13,7 @@ import { dissolveOut, fadeIn, onBeat } from "../../src/renderables/effects.js";
 import { frameAt } from "../../src/renderables/frames.js";
 import { Group } from "../../src/renderables/group.js";
 import { Live } from "../../src/renderables/live.js";
-import { scramble, typewriter } from "../../src/renderables/glyph-effects.js";
+import { backspace, scrambleOut, typewriter } from "../../src/renderables/glyph-effects.js";
 import { lifecycle, throughColors, throughGlyphs, type Lifecycle } from "../../src/renderables/lifecycle.js";
 import { fakeClock } from "../core/fake-clock.js";
 
@@ -32,7 +32,7 @@ const sampled = (rate: number, from: number, to: number): number[] => Array.from
 
 /** A line entering at 1 through a 2 s fade-in, told to leave at 5 through a 2 s dissolve: gone at 7. */
 const made = (element: Renderable = line, entered = 1): Lifecycle =>
-  lifecycle(element, { enter: throughColors(fadeIn(curve, 0), theme, "line"), exit: throughColors(dissolveOut(curve, 0), theme, "line") }, entered);
+  lifecycle(element, { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(dissolveOut(curve, 0), theme), key: "line" }, entered);
 
 describe("a lifecycle", () => {
   it("draws the same bytes for the same t at one frame a second and sixty", () => {
@@ -75,7 +75,7 @@ describe("a lifecycle", () => {
   });
 
   it("is never gone before it was told to leave, whatever its exit steps on", () => {
-    const stepped = lifecycle(new RichText("x"), { enter: throughColors(fadeIn(curve, 0), theme, "x"), exit: throughColors(onBeat(dissolveOut(curve, 0), beat([0.25])), theme, "x") }, 1);
+    const stepped = lifecycle(new RichText("x"), { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(onBeat(dissolveOut(curve, 0), beat([0.25])), theme), key: "x" }, 1);
     expect([0, 5, 1e6].some((t) => stepped.gone(t))).toBe(false);
     const leaving = stepped.leave(5);
     expect(leaving.gone(leaving.lastChange(100))).toBe(true);
@@ -91,7 +91,7 @@ describe("a lifecycle", () => {
     };
     const exit = { seconds: 0.7, ease: EASES.linear, swing: 1 };
     for (const left of [0.1, 0.2, 0.3, 1.1, 12345.678, 1e6 + 0.3]) {
-      const life = lifecycle(line, { enter: throughColors(fadeIn(curve, 0), theme, "line"), exit: throughColors(dissolveOut(exit, 0), theme, "line") }, 0).leave(left);
+      const life = lifecycle(line, { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(dissolveOut(exit, 0), theme), key: "line" }, 0).leave(left);
       const goneAt = life.lastChange(left + 10);
       const before = below(goneAt);
       expect([life.gone(before), life.gone(goneAt)]).toEqual([false, true]);
@@ -162,23 +162,39 @@ describe("a lifecycle", () => {
 describe("a lifecycle through glyph transitions", () => {
   const timing = { seconds: 2, ease: EASES.linear };
   /** The line typed in from 1 over 2 s, told to leave at 5 and scrambled away over 2 s: gone at 7. */
-  const typed = (exit = throughGlyphs(scramble(timing, 0), "line")): Lifecycle =>
-    lifecycle(line, { enter: throughGlyphs(typewriter(timing), "line"), exit }, 1).leave(5);
+  const typed = (exit = throughGlyphs(scrambleOut(timing, 0))): Lifecycle => lifecycle(line, { enter: throughGlyphs(typewriter(timing)), exit, key: "line" }, 1).leave(5);
   const shown = (life: Lifecycle, t: number, options = OPTIONS): string => text(draw(frameAt(life, t), options)).trimEnd();
+  /** How many of the line's inked cells still show their own glyph. */
+  const intact = (drawn: string): number => [...line.plain].filter((c, i) => c !== " " && drawn[i] === c).length;
+  /** How many of the line's inked cells are drawn blank. */
+  const blanked = (drawn: string): number => [...line.plain].filter((c, i) => c !== " " && (drawn[i] ?? " ") === " ").length;
 
   it("types itself in, stays whole, and is scrambled away until it is gone", () => {
     const life = typed();
     expect(shown(life, 1)).toBe("");
     expect(shown(life, 2)).toBe("a line append");
-    for (const t of [3, 4.9]) expect(bytes(draw(frameAt(life, t)))).toBe(bytes(draw(line)));
-    const leaving = shown(life, 5.5);
-    expect(leaving).not.toBe(line.plain);
-    expect(leaving.length).toBe(line.plain.length);
-    // A scramble keeps the blanks between words, so the words keep their shape.
-    expect([...leaving].map((c) => c === " ")).toEqual([...line.plain].map((c) => c === " "));
+    for (const t of [3, 4.9, 5]) expect(bytes(draw(frameAt(life, t)))).toBe(bytes(draw(line)));
+    // Leaving only ever takes the text away: its glyphs churn and then blank, never come back, all blank by the end.
+    const leaving = [5.25, 5.5, 6, 6.5, 6.99].map((t) => shown(life, t));
+    for (let i = 1; i < leaving.length; i++) {
+      expect(intact(leaving[i]!)).toBeLessThanOrEqual(intact(leaving[i - 1]!));
+      expect(blanked(leaving[i]!)).toBeGreaterThanOrEqual(blanked(leaving[i - 1]!));
+    }
+    expect(intact(leaving[0]!)).toBeLessThan(intact(line.plain));
+    expect(intact(leaving.at(-1)!)).toBe(0);
+    expect(blanked(leaving.at(-1)!)).toBe(blanked("") - 1);
+    // A scramble keeps the blanks between words, so the words keep their shape while they churn.
+    expect([...shown(life, 5.5)].map((c) => c === " ")).toEqual([...line.plain].map((c) => c === " "));
     expect(life.gone(6.99)).toBe(false);
     expect(life.gone(7)).toBe(true);
     expect(shown(life, 7)).toBe("");
+  });
+
+  it("can be backspaced away: erased from its last cell to its first, blank before it is gone", () => {
+    const life = typed(throughGlyphs(backspace(timing)));
+    expect(shown(life, 6)).toBe("a line append");
+    expect(shown(life, 6.99)).toBe("a");
+    expect(life.gone(7)).toBe(true);
   });
 
   it("says it moves every frame while it types and while it scrambles, and nothing between", () => {
@@ -196,10 +212,10 @@ describe("a lifecycle through glyph transitions", () => {
   });
 
   it("can type itself in and dissolve out: the exit's colours veil the glyphs the arrival left", () => {
-    const life = typed(throughColors(dissolveOut(curve, 0), theme, "line"));
+    const life = typed(throughColors(dissolveOut(curve, 0), theme));
     expect(shown(life, 2)).toBe("a line append");
     // Told to leave mid-type, it goes on typing under the dissolve: the exit veils whatever the arrival draws.
-    const early = lifecycle(line, { enter: throughGlyphs(typewriter(timing), "line"), exit: throughColors(dissolveOut(curve, 0), theme, "line") }, 1).leave(2);
+    const early = lifecycle(line, { enter: throughGlyphs(typewriter(timing)), exit: throughColors(dissolveOut(curve, 0), theme), key: "line" }, 1).leave(2);
     expect(shown(early, 2.5)).toBe("a line appended to");
     expect(bytes(draw(frameAt(early, 2.5)))).not.toBe(bytes(draw(frameAt(typed(), 2.5))));
     expect(shown(life, 6)).toBe(line.plain);

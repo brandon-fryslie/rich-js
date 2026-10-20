@@ -323,7 +323,7 @@ export { scroll } from "./renderables/scroll.js";
 export type { ScrollOptions } from "./renderables/scroll.js";
 export { GlyphEffected } from "./renderables/glyph-effect.js";
 export type { DrawnGlyphs, GlyphCell, GlyphEffect, GlyphEffectedOptions, GlyphFrame } from "./renderables/glyph-effect.js";
-export { GLYPH_DEFAULTS, GLYPH_EFFECT_CATALOGUE, caseWave, particles, scramble, typewriter } from "./renderables/glyph-effects.js";
+export { GLYPH_DEFAULTS, GLYPH_EFFECT_CATALOGUE, backspace, caseWave, particles, scramble, scrambleOut, typewriter } from "./renderables/glyph-effects.js";
 export type { CaseWave, GlyphLoopName, GlyphTransition, GlyphTransitionName, Particles } from "./renderables/glyph-effects.js";
 export { Align } from "./renderables/align.js";
 export type { Alignment } from "./core/place.js";
