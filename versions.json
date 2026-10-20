@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-499",
-      "ref": "refs/pull/499/merge",
-      "sha": "4e07c1c46ec4f4133fff1332bf2ec1a1b17a7a83",
-      "timestamp": "2026-10-20T05:23:13.605Z",
-      "commits": [
-        {
-          "sha": "4e07c1c46ec4f4133fff1332bf2ec1a1b17a7a83",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T05:21:14Z",
-          "message": "Merge b0c182ebceb89391912213b46906ac88c9ef011b into d40c05f67d3c9e043756066d02c79e73c64a59b8\n"
-        },
-        {
-          "sha": "b0c182ebceb89391912213b46906ac88c9ef011b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T23:21:10-06:00",
-          "message": "Review: each repeated turn made once, -0 turn named 0, playground kit repeats through Animation.repeat (rich-animation-42lg.cjy)\n"
-        },
-        {
-          "sha": "5855519ca652b47a6d6bfccf08a4648fa3e4b3f0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T23:04:11-06:00",
-          "message": "An animation repeats: a one-shot played again every period (rich-animation-42lg.cjy)\n\nAnimation.repeat(period, nth) is nth(n) through the nth turn, on its own\nclock from 0, turns of either sign. The turn is read through the wrap a beat\nand Phase.loop already use (easing.ts passAt, which beat now reads too), so\na repeat turns on the same float as a loop of its period. glyph-effects and\ntransitions drop their hand-written copies, one of which never reported the\ncut into the previous turn when run backwards.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "d40c05f67d3c9e043756066d02c79e73c64a59b8",
-      "timestamp": "2026-10-20T04:41:13.185Z",
+      "sha": "fe34cbf6fa8c51e338579c0ab209db047f293a58",
+      "timestamp": "2026-10-20T05:33:16.602Z",
       "commits": [
         {
-          "sha": "d40c05f67d3c9e043756066d02c79e73c64a59b8",
+          "sha": "fe34cbf6fa8c51e338579c0ab209db047f293a58",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T22:39:16-06:00",
-          "message": "A Progress is timed on the host that draws it (rich-animation-42lg.1t6) (#498)\n\n* A Progress is timed on the host that draws it (rich-animation-42lg.1t6)\n\nA Progress read its own clock inside render, so a frame drawn for one\nmoment got cells stamped for another, and a paused host could not hold it.\nNow every time a Progress keeps or draws at — a task's start, each update,\na finish, a refill's start, the frame — is one host's frameTime: its own\nLive, or the host given as `drawnBy` (a Live, an App, a WidgetApp).\n\nRenderOptions.frameTime becomes `frame: { time, host }`, so a frame's time\nalways comes with the host it belongs to, and a Progress drawn in a frame of\nany other host throws instead of showing elapsed time from another clock.\nA print reads the host's frameTime, so elapsed is right as it prints. Run\nbackwards, a task drawn before its start has not started, and speed spans\nthe earliest to the latest sample.\n\nBreaking: a default Progress inside another host's view now throws; give it\n`drawnBy`. The docs Group examples, showcase, rich-dash and rich-explore do,\nand e2e runs the three docs examples.\n\n* A Progress keeps one time across its host's view and stands as of each frame (rich-animation-42lg.1t6)\n\nHigh review of #498: a renderable view is drawn for its host's time since\nits epoch, where the default timeline plays from, so a Live made empty and\ngiven a view on the timeline keeps the time its tasks were stamped on.\ndrawView and frameTime take one HostTime. A Progress's finish is kept as a\nmoment and its speed counts only samples by the frame's time; under drawnBy\nit takes no console, refuses refresh before changing a task, and stop()\nsettles its bars instead of throwing.\n\n* HostTime says its one time holds for the timeline the host made itself (rich-animation-42lg.1t6)"
+          "timestamp": "2026-10-19T23:31:19-06:00",
+          "message": "An animation repeats: a one-shot played again every period (rich-animation-42lg.cjy) (#499)\n\n* An animation repeats: a one-shot played again every period (rich-animation-42lg.cjy)\n\nAnimation.repeat(period, nth) is nth(n) through the nth turn, on its own\nclock from 0, turns of either sign. The turn is read through the wrap a beat\nand Phase.loop already use (easing.ts passAt, which beat now reads too), so\na repeat turns on the same float as a loop of its period. glyph-effects and\ntransitions drop their hand-written copies, one of which never reported the\ncut into the previous turn when run backwards.\n\n* Review: each repeated turn made once, -0 turn named 0, playground kit repeats through Animation.repeat (rich-animation-42lg.cjy)"
         }
       ]
     }
