@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-496",
+      "ref": "refs/pull/496/merge",
+      "sha": "dbeae21112ec39477c739e74f46ac9b24ce68a33",
+      "timestamp": "2026-10-20T02:35:03.251Z",
+      "commits": [
+        {
+          "sha": "dbeae21112ec39477c739e74f46ac9b24ce68a33",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T20:32:57-06:00",
+          "message": "Merge 3cb074ee158b75b47dddf6514e9740e689a8678a into fa6e3e004acd357b20198f87813597644570cf1c\n"
+        },
+        {
+          "sha": "3cb074ee158b75b47dddf6514e9740e689a8678a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T20:32:52-06:00",
+          "message": "A lifecycle arrives and leaves through a glyph transition too (rich-animation-42lg.s91)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "fa6e3e004acd357b20198f87813597644570cf1c",
