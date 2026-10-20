@@ -13,7 +13,8 @@ import { dissolveOut, fadeIn, onBeat } from "../../src/renderables/effects.js";
 import { frameAt } from "../../src/renderables/frames.js";
 import { Group } from "../../src/renderables/group.js";
 import { Live } from "../../src/renderables/live.js";
-import { lifecycle, type Lifecycle } from "../../src/renderables/lifecycle.js";
+import { scramble, typewriter } from "../../src/renderables/glyph-effects.js";
+import { lifecycle, throughColors, throughGlyphs, type Lifecycle } from "../../src/renderables/lifecycle.js";
 import { fakeClock } from "../core/fake-clock.js";
 
 const theme = DEFAULT_TERMINAL_THEME;
@@ -31,7 +32,7 @@ const sampled = (rate: number, from: number, to: number): number[] => Array.from
 
 /** A line entering at 1 through a 2 s fade-in, told to leave at 5 through a 2 s dissolve: gone at 7. */
 const made = (element: Renderable = line, entered = 1): Lifecycle =>
-  lifecycle(element, { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "line", theme }, entered);
+  lifecycle(element, { enter: throughColors(fadeIn(curve, 0), theme, "line"), exit: throughColors(dissolveOut(curve, 0), theme, "line") }, entered);
 
 describe("a lifecycle", () => {
   it("draws the same bytes for the same t at one frame a second and sixty", () => {
@@ -74,7 +75,7 @@ describe("a lifecycle", () => {
   });
 
   it("is never gone before it was told to leave, whatever its exit steps on", () => {
-    const stepped = lifecycle(new RichText("x"), { enter: fadeIn(curve, 0), exit: onBeat(dissolveOut(curve, 0), beat([0.25])), key: "x", theme }, 1);
+    const stepped = lifecycle(new RichText("x"), { enter: throughColors(fadeIn(curve, 0), theme, "x"), exit: throughColors(onBeat(dissolveOut(curve, 0), beat([0.25])), theme, "x") }, 1);
     expect([0, 5, 1e6].some((t) => stepped.gone(t))).toBe(false);
     const leaving = stepped.leave(5);
     expect(leaving.gone(leaving.lastChange(100))).toBe(true);
@@ -90,7 +91,7 @@ describe("a lifecycle", () => {
     };
     const exit = { seconds: 0.7, ease: EASES.linear, swing: 1 };
     for (const left of [0.1, 0.2, 0.3, 1.1, 12345.678, 1e6 + 0.3]) {
-      const life = lifecycle(line, { enter: fadeIn(curve, 0), exit: dissolveOut(exit, 0), key: "line", theme }, 0).leave(left);
+      const life = lifecycle(line, { enter: throughColors(fadeIn(curve, 0), theme, "line"), exit: throughColors(dissolveOut(exit, 0), theme, "line") }, 0).leave(left);
       const goneAt = life.lastChange(left + 10);
       const before = below(goneAt);
       expect([life.gone(before), life.gone(goneAt)]).toEqual([false, true]);
@@ -155,5 +156,67 @@ describe("a lifecycle", () => {
     expect(clock.timers()).toBe(0);
     live.stop();
     expect(rendered).toBe(whenGone);
+  });
+});
+
+describe("a lifecycle through glyph transitions", () => {
+  const timing = { seconds: 2, ease: EASES.linear };
+  /** The line typed in from 1 over 2 s, told to leave at 5 and scrambled away over 2 s: gone at 7. */
+  const typed = (exit = throughGlyphs(scramble(timing, 0), "line")): Lifecycle =>
+    lifecycle(line, { enter: throughGlyphs(typewriter(timing), "line"), exit }, 1).leave(5);
+  const shown = (life: Lifecycle, t: number, options = OPTIONS): string => text(draw(frameAt(life, t), options)).trimEnd();
+
+  it("types itself in, stays whole, and is scrambled away until it is gone", () => {
+    const life = typed();
+    expect(shown(life, 1)).toBe("");
+    expect(shown(life, 2)).toBe("a line append");
+    for (const t of [3, 4.9]) expect(bytes(draw(frameAt(life, t)))).toBe(bytes(draw(line)));
+    const leaving = shown(life, 5.5);
+    expect(leaving).not.toBe(line.plain);
+    expect(leaving.length).toBe(line.plain.length);
+    // A scramble keeps the blanks between words, so the words keep their shape.
+    expect([...leaving].map((c) => c === " ")).toEqual([...line.plain].map((c) => c === " "));
+    expect(life.gone(6.99)).toBe(false);
+    expect(life.gone(7)).toBe(true);
+    expect(shown(life, 7)).toBe("");
+  });
+
+  it("says it moves every frame while it types and while it scrambles, and nothing between", () => {
+    const life = typed();
+    const said = (t: number) => [life.lastChange(t), life.nextChange(t)];
+    for (const t of [1, 2, 2.9, 5, 6, 6.9]) expect(said(t)).toEqual([t, t]);
+    expect(said(4)).toEqual([3, 5]);
+    expect(said(8)).toEqual([7, Number.POSITIVE_INFINITY]);
+  });
+
+  it("types itself in with no colour output too, since a glyph is written at every depth", () => {
+    const life = typed();
+    expect(shown(life, 2, PLAIN)).toBe("a line append");
+    expect(Segment.nextChange(draw(frameAt(life, 2), PLAIN))).toBe(2);
+  });
+
+  it("can type itself in and dissolve out: the exit's colours veil the glyphs the arrival left", () => {
+    const life = typed(throughColors(dissolveOut(curve, 0), theme, "line"));
+    expect(shown(life, 2)).toBe("a line append");
+    // Told to leave mid-type, it goes on typing under the dissolve: the exit veils whatever the arrival draws.
+    const early = lifecycle(line, { enter: throughGlyphs(typewriter(timing), "line"), exit: throughColors(dissolveOut(curve, 0), theme, "line") }, 1).leave(2);
+    expect(shown(early, 2.5)).toBe("a line appended to");
+    expect(bytes(draw(frameAt(early, 2.5)))).not.toBe(bytes(draw(frameAt(typed(), 2.5))));
+    expect(shown(life, 6)).toBe(line.plain);
+    expect(bytes(draw(frameAt(life, 6)))).not.toBe(bytes(draw(line)));
+    expect(life.gone(7)).toBe(true);
+  });
+
+  it("draws the same bytes for the same t at one frame a second and sixty", () => {
+    const slow = new Map(sampled(1, 0, 8).map((t) => [t, bytes(draw(typed().at(t)))]));
+    const fast = typed();
+    for (const t of sampled(60, 0, 8)) if (slow.has(t)) expect(bytes(draw(fast.at(t)))).toBe(slow.get(t));
+  });
+
+  it("reduced, is the element whole from when it entered until it is told to leave", () => {
+    const still = typed().reduced();
+    expect(text(draw(still.at(0.5)))).toBe("");
+    for (const t of [1, 2, 4.9]) expect(bytes(draw(still.at(t)))).toBe(bytes(draw(line)));
+    expect(text(draw(still.at(5.5)))).toBe("");
   });
 });

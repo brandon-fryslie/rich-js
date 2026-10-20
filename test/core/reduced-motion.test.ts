@@ -20,7 +20,7 @@ import { Frames, FrameSequence, frameAt } from "../../src/renderables/frames.js"
 import { GlyphEffected } from "../../src/renderables/glyph-effect.js";
 import { caseWave, particles, typewriter } from "../../src/renderables/glyph-effects.js";
 import { Group } from "../../src/renderables/group.js";
-import { lifecycle } from "../../src/renderables/lifecycle.js";
+import { lifecycle, throughColors } from "../../src/renderables/lifecycle.js";
 import { Live } from "../../src/renderables/live.js";
 import { scroll } from "../../src/renderables/scroll.js";
 import { Spinner } from "../../src/renderables/spinner.js";
@@ -126,7 +126,7 @@ describe("an animation reduced", () => {
 
   it("an element is there from when it entered until it is told to leave, with no arrival or exit, and wakes only for those", () => {
     const element = new RichText("line", { end: "" });
-    const options = { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "line", theme };
+    const options = { enter: throughColors(fadeIn(curve, 0), theme, "line"), exit: throughColors(dissolveOut(curve, 0), theme, "line") };
     expect(still(lifecycle(element, options, -1))).toBe(element);
     const life = lifecycle(element, options, 2).leave(5);
     const reduced = life.reduced();
@@ -145,7 +145,7 @@ function everything(): Animation<Renderable> {
   const bar = Animation.map(tween(0, 20, { seconds: 3, ease: EASES.linear }), (w) => new RichText("#".repeat(Math.round(w)), { end: "" }));
   const marquee = scroll(new RichText("a long line that scrolls past", { end: "" }), { width: 10, height: 1, col: Animation.continuous((t) => (t * 4) % 20) });
   const change = Timeline.run(Timeline.play(0), crossfade(curve).effect({ from: new RichText("old", { end: "" }), to: new RichText("new", { end: "" }), theme }));
-  const life = lifecycle(new RichText("arriving", { end: "" }), { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "l", theme }, 0);
+  const life = lifecycle(new RichText("arriving", { end: "" }), { enter: throughColors(fadeIn(curve, 0), theme, "l"), exit: throughColors(dissolveOut(curve, 0), theme, "l") }, 0);
   const cascade = Animation.map(Timeline.stagger([frames("1", "2"), frames("3", "4"), frames("5", "6")], 0.1), (shown) => new Group(...shown));
   return Animation.map(Animation.all([bar, marquee, change, life, cascade]), (parts) => new Group(...parts));
 }
@@ -158,7 +158,7 @@ function builtForTheTime(t: number): Renderable {
     new GlyphEffected(new RichText("typing out", { end: "" }), typewriter({ seconds: 2, ease: EASES.linear }).effect, { t, key: "g" }),
     new Frames(frames("◐", "◓", "◑", "◒"), { t }),
     new Spinner("dots", "working").drawnAt(t),
-    frameAt(lifecycle(new RichText("entering", { end: "" }), { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "e", theme }, 0), t),
+    frameAt(lifecycle(new RichText("entering", { end: "" }), { enter: throughColors(fadeIn(curve, 0), theme, "e"), exit: throughColors(dissolveOut(curve, 0), theme, "e") }, 0), t),
   );
 }
 
@@ -195,7 +195,7 @@ describe("a host under reduced motion", () => {
   });
 
   it("a view reduced still shows and drops content on time, and wakes for exactly that", () => {
-    const life = lifecycle(new RichText("toast", { end: "" }), { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "toast", theme }, 2).leave(5);
+    const life = lifecycle(new RichText("toast", { end: "" }), { enter: throughColors(fadeIn(curve, 0), theme, "toast"), exit: throughColors(dissolveOut(curve, 0), theme, "toast") }, 2).leave(5);
     expect([1, 3, 6].map((t) => text(drawnAt(life, REDUCED, t)).trim())).toEqual(["", "toast", ""]);
     expect([1, 3, 8].map((t) => drawnAt(life, REDUCED, t).nextChange)).toEqual([2, 5, Number.POSITIVE_INFINITY]);
   });

@@ -16,6 +16,7 @@ import {
   fadeIn,
   frameAt,
   lifecycle,
+  throughColors,
   onBeat,
   render,
   segmentsToString,
@@ -45,7 +46,7 @@ const sampled = (rate: number, from: number, to: number): number[] => Array.from
 const row = (i: number, seconds: number, steps?: number): Lifecycle => {
   const fade = fadeIn({ seconds, ease: EASES.linear, swing: 1 }, i);
   const enter = steps === undefined ? fade : onBeat(fade, beat([steps]));
-  return lifecycle(new RichText(`row ${i} arrived`, { style: "bold cyan" }), { enter, exit: dissolveOut({ seconds, ease: EASES.linear, swing: 1 }, i), key: `row-${i}`, theme }, 0);
+  return lifecycle(new RichText(`row ${i} arrived`, { style: "bold cyan" }), { enter: throughColors(enter, theme, `row-${i}`), exit: throughColors(dissolveOut({ seconds, ease: EASES.linear, swing: 1 }, i), theme, `row-${i}`) }, 0);
 };
 const rows = (seconds: number, steps?: number): Lifecycle[] => [0, 1, 2].map((i) => row(i, seconds, steps));
 

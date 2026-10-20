@@ -14,7 +14,7 @@ import { crossfade } from "../../src/renderables/change.js";
 import { dissolveOut, fadeIn, onBeat } from "../../src/renderables/effects.js";
 import { frameAt } from "../../src/renderables/frames.js";
 import { Group } from "../../src/renderables/group.js";
-import { lifecycle } from "../../src/renderables/lifecycle.js";
+import { lifecycle, throughColors } from "../../src/renderables/lifecycle.js";
 import { Spinner } from "../../src/renderables/spinner.js";
 
 // [LAW:behavior-not-structure] What is asserted is what a host reads: the
@@ -67,7 +67,7 @@ describe("a frame says when it changes on the host's clock", () => {
 
   it("a lifecycle arriving through a stepped fade wakes on the beats, on the host's clock", () => {
     const steps = beat([0.25]);
-    const life = lifecycle(new RichText("a line", { style: "cyan" }), { enter: onBeat(fadeIn(curve, 0), steps), exit: dissolveOut(curve, 0), key: "line", theme }, 5);
+    const life = lifecycle(new RichText("a line", { style: "cyan" }), { enter: throughColors(onBeat(fadeIn(curve, 0), steps), theme, "line"), exit: throughColors(dissolveOut(curve, 0), theme, "line") }, 5);
     // The first host moment the time since entering reaches the beat's edge.
     const edge = (local: number) => firstReaching(5 + local, (x) => x - 5 >= local);
     expect(Segment.nextChange(draw(frameAt(life, 5.1)))).toBe(edge(0.25));
@@ -82,7 +82,7 @@ describe("a frame says when it changes on the host's clock", () => {
   });
 
   it("nothing an animation's at returns says when it changes; the animation does, and frameAt carries it", () => {
-    const life = lifecycle(new RichText("a line"), { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "line", theme }, 1).leave(5);
+    const life = lifecycle(new RichText("a line"), { enter: throughColors(fadeIn(curve, 0), theme, "line"), exit: throughColors(dissolveOut(curve, 0), theme, "line") }, 1).leave(5);
     const moving = crossfade(curve).effect({ from: new RichText("building"), to: new RichText("done"), theme });
     const spinner = new Spinner("dots", "working");
     const animations: Animation<Renderable>[] = [life, moving, spinner];
@@ -97,7 +97,7 @@ describe("a frame says when it changes on the host's clock", () => {
   it("content that changes on its own still says so inside a lifecycle", () => {
     const blinking = Animation.continuous(() => new RichText("x"));
     const ticking: Renderable = { render: (options) => render(frameAt(blinking, 7.25), options) };
-    const life = lifecycle(ticking, { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "tick", theme }, 1);
+    const life = lifecycle(ticking, { enter: throughColors(fadeIn(curve, 0), theme, "tick"), exit: throughColors(dissolveOut(curve, 0), theme, "tick") }, 1);
     expect(Segment.nextChange(draw(frameAt(life, 4)))).toBe(7.25);
   });
 
@@ -124,14 +124,14 @@ describe("a frame says when it changes on the host's clock", () => {
   });
 
   it("an element takes no row before it enters or once it is gone, though gone it never changes again", () => {
-    const life = lifecycle(new RichText("x"), { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "x", theme }, 10).leave(100);
+    const life = lifecycle(new RichText("x"), { enter: throughColors(fadeIn(curve, 0), theme, "x"), exit: throughColors(dissolveOut(curve, 0), theme, "x") }, 10).leave(100);
     const alone = lines(new Group(new RichText("top"))).length;
     for (const t of [5, 200]) expect(lines(new Group(new RichText("top"), frameAt(life, t))).length).toBe(alone);
     expect(life.nextChange(200)).toBe(Number.POSITIVE_INFINITY);
   });
 
   it("a change ends its last row as the renderable it changes to does, whatever that ends with", () => {
-    const pending = lifecycle(new RichText("x"), { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "x", theme }, 10);
+    const pending = lifecycle(new RichText("x"), { enter: throughColors(fadeIn(curve, 0), theme, "x"), exit: throughColors(dissolveOut(curve, 0), theme, "x") }, 10);
     const to = new Group(new RichText("bbb"), frameAt(pending, 0));
     const moving = crossfade(curve).effect({ from: new RichText("aaa"), to, theme });
     const rows = (renderable: Renderable) => lines(new Group(renderable, new RichText("next"))).length;

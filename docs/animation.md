@@ -218,7 +218,7 @@ To watch both run, run `npm run transitions` in a checkout of this repository.
 
 ## Enter and exit: an element arriving, staying and leaving
 
-A row added to a table, a line appended to a log, a panel closing: each is one element that arrives, stays, and leaves, and whoever holds it must know when it is gone so it can drop it. `lifecycle(element, { enter, exit, key, theme }, entered)` is that element on the host's clock, as an `Animation` of what it draws. `enter` and `exit` are transitions made for this element alone, such as `fadeIn` and `dissolveOut`. `entered` is the host time it arrived. `lifecycle.leave(at)` is the same element told to leave at host time `at`, a new value like a timeline operation's. Until it is told, its `left` is `Infinity`.
+A row added to a table, a line appended to a log, a panel closing: each is one element that arrives, stays, and leaves, and whoever holds it must know when it is gone so it can drop it. `lifecycle(element, { enter, exit }, entered)` is that element on the host's clock, as an `Animation` of what it draws. `enter` and `exit` are its two halves, each a transition made for this element alone and bound to what draws it: `throughColors(transition, theme, key)` for a colour one such as `fadeIn` or `dissolveOut`, drawn on the terminal whose ground it arrives from and leaves to, and `throughGlyphs(transition, key)` for a [glyph](#a-glyph-effect-text-typed-scrambled-and-rained-on) one such as `typewriter` or `scramble`, which needs no theme and is written with no colour output too. The two mix, so a line can type itself in and dissolve out. `entered` is the host time it arrived. `lifecycle.leave(at)` is the same element told to leave at host time `at`, a new value like a timeline operation's. Until it is told, its `left` is `Infinity`.
 
 Both times are handed in, never read, so a host that says "leave at 5" and asks for the frame at 6 gets the element one second into leaving. At host time `t` it draws:
 
@@ -231,11 +231,12 @@ Both times are handed in, never read, so a host that says "leave at 5" and asks 
 While it arrives or leaves it changes when its transition does — every frame for a fade, once a hold for one on a beat (`onBeat(fadeIn(curve, 0), beat([0.25]))` arrives a quarter of a second at a time, and a host wakes on those quarters) — and it holds still while it stays and once it is gone, so a host still holding a gone element wakes for nothing. A transition says when its frame changes whatever the element draws, so this holds even with no colour output, where the transitions write no colour. Drawn inside a function view, the frame says so through `frameAt(shown, t)`:
 
 ```typescript
-import { DEFAULT_TERMINAL_THEME, EASES, RichText, dissolveOut, fadeIn, lifecycle } from "@promptctl/rich-js";
+import { DEFAULT_TERMINAL_THEME, EASES, RichText, dissolveOut, lifecycle, throughColors, throughGlyphs, typewriter } from "@promptctl/rich-js";
 
 const curve = { seconds: 1, ease: EASES.linear, swing: 1 };
 const line = new RichText("compiling 214 modules", { style: "bold cyan" });
-const shown = lifecycle(line, { enter: fadeIn(curve, 0), exit: dissolveOut(curve, 0), key: "line", theme: DEFAULT_TERMINAL_THEME }, 0).leave(3);
+const halves = { enter: throughGlyphs(typewriter(curve), "line"), exit: throughColors(dissolveOut(curve, 0), DEFAULT_TERMINAL_THEME, "line") };
+const shown = lifecycle(line, halves, 0).leave(3);
 
 for (const t of [0, 0.5, 1, 2, 3.5, 4]) {
   const next = shown.nextChange(t);
