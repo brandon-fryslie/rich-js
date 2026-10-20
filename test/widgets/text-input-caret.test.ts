@@ -17,6 +17,7 @@ import { Style } from "../../src/core/style.js";
 import { Segment } from "../../src/core/segment.js";
 import { render } from "../../src/core/protocol.js";
 import { Timeline } from "../../src/core/timeline.js";
+import { Group } from "../../src/renderables/group.js";
 import { scriptedHost, type ScriptedHost } from "../host/scripted-host.js";
 import { fakeClock, type FakeClock } from "../core/fake-clock.js";
 
@@ -39,7 +40,7 @@ function start(options: { reducedMotion?: boolean; focused?: boolean; view?: "fu
   const clock = fakeClock(0);
   const host = scriptedHost({ cols: 20, rows: 2 });
   const input = new TextInput({ value: "hello", cursorStyle: CARET });
-  if (focused) input.focus();
+  if (focused) input.focus(0);
   const app = new WidgetApp({ host, surface: "alternate", clock, reducedMotion, view: view === "function" ? () => input : input });
   let paints = 0;
   // Every frame the app paints moves the cursor home first.
@@ -112,6 +113,57 @@ describe("TextInput caret blink", () => {
     app.stop();
   });
 
+  it("is not restarted, or repainted, by a key the field passes on", async () => {
+    const { app, host, clock, lit, paints } = start();
+    clock.advance(0.7);
+    const before = paints();
+    host.type("\x07"); // Ctrl+G: no binding in the field
+    await tick();
+    expect(lit()).toBe(false);
+    expect(paints()).toBe(before);
+    app.stop();
+  });
+
+  it("is solid right after a click places the cursor", async () => {
+    const { app, host, clock, lit } = start();
+    clock.advance(0.7);
+    expect(lit()).toBe(false);
+    host.type("\x1b[<0;3;1M");
+    await tick();
+    expect(lit()).toBe(true);
+    app.stop();
+  });
+
+  it("is solid in a field the moment Tab moves focus to it", async () => {
+    const clock = fakeClock(0);
+    const host = scriptedHost({ cols: 20, rows: 2 });
+    const first = new TextInput({ value: "a", cursorStyle: CARET });
+    const second = new TextInput({ value: "b", cursorStyle: CARET });
+    const app = new WidgetApp({ host, surface: "alternate", clock, view: () => new Group(first, second) });
+    void app.run();
+    const litIn = (row: number): boolean => app.frame[row]!.some((s) => s.style?.reverse === true);
+    clock.advance(0.7);
+    expect(litIn(0)).toBe(false);
+    host.type("\t");
+    await tick();
+    expect(second.focused).toBe(true);
+    expect(litIn(1)).toBe(true);
+    app.stop();
+  });
+
+  it("is solid right after a key on a timeline played backwards", async () => {
+    const { app, host, clock, lit } = start();
+    clock.advance(0.7);
+    app.timeline = Timeline.withRate(app.timeline, clock.now(), -1);
+    host.type("a");
+    await tick();
+    clock.advance(0.2);
+    expect(lit()).toBe(true);
+    clock.advance(0.4);
+    expect(lit()).toBe(false);
+    app.stop();
+  });
+
   it("holds still on a paused timeline, and leaves nothing waiting", async () => {
     const { app, clock, lit, paints } = start();
     clock.advance(0.6);
@@ -156,7 +208,7 @@ describe("TextInput caret blink", () => {
 
   it("is solid and says nothing in a frame drawn for no moment", () => {
     const input = new TextInput({ value: "hi", cursorStyle: CARET });
-    input.focus();
+    input.focus(0);
     const segments = [...render(input, { maxWidth: 10 })];
     expect(segments.some((s) => s.style?.reverse === true)).toBe(true);
     expect(Segment.nextChange(segments)).toBe(Number.POSITIVE_INFINITY);

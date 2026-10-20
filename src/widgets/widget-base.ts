@@ -50,13 +50,13 @@ export abstract class WidgetBase implements InteractiveWidget {
   // participates in the same transition path the event router uses. There
   // is no second code path that flips `focused` directly from the outside.
   @action
-  focus(): void {
-    this.handleFocus({ type: "focus" });
+  focus(time: number): void {
+    this.handleFocus({ type: "focus", time });
   }
 
   @action
-  blur(): void {
-    this.handleFocus({ type: "blur" });
+  blur(time: number): void {
+    this.handleFocus({ type: "blur", time });
   }
 
   @action

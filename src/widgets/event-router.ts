@@ -218,6 +218,7 @@ export class EventRouter {
       x: event.x - target.originX,
       y: event.y - target.originY,
       over: drew(frame, target.widget, event.x, event.y),
+      time: this.source.frameTime,
     });
 
     if (event.type === "mouse_down") this.captured = target;

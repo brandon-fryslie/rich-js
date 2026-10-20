@@ -92,7 +92,7 @@ import { stampFrame } from "../renderables/frames.js";
 import type { TerminalTheme } from "../core/color.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
-import type { KeyEvent, WidgetMouseEvent } from "./types.js";
+import type { KeyEvent, WidgetFocusEvent, WidgetMouseEvent } from "./types.js";
 
 /**
  * A soft-wrap strategy. Given one logical line of text and cell-width budgets,
@@ -294,8 +294,8 @@ function isWhitespace(c: string | undefined): boolean {
 
 /**
  * The caret's blink, from the moment it restarts: lit for the first half
- * second, so the caret is solid the moment a key lands, then dark for the
- * next, on a `beat`. A loop, so with its motion taken out it holds lit.
+ * second, so the caret is solid the moment the field is touched, then dark
+ * for the next, on a `beat`. A loop, so with its motion taken out it holds lit.
  */
 const CARET_BLINK: Animation<boolean> = Animation.map(beat([0.5, 0.5]), (hold) => hold === 0);
 
@@ -308,10 +308,11 @@ export class TextInput extends ThemedWidget {
 
   @observable private accessor _value: string;
   @observable private accessor _cursor: CodePoint;
-  // When the field last heard a key, on the frame's clock (`KeyEvent.time`):
-  // where the caret's blink restarts. The blink itself is a function of this
-  // and the time a frame is drawn for, so nothing about it is kept.
-  @observable private accessor _typedAt = 0;
+  // When the field last took focus, a click, or a key it handled, on the
+  // frame's clock (each event's `time`): where the caret's blink restarts.
+  // The blink itself is a function of this and the time a frame is drawn
+  // for, so nothing about it is kept.
+  @observable private accessor _blinkFrom = 0;
 
   // [LAW:single-enforcer] Every write to either half of the pair passes
   // `graphemeBoundary`, so the cursor is a cluster boundary inside `value`
@@ -418,10 +419,22 @@ export class TextInput extends ThemedWidget {
 
   // --- Event handlers ---
 
+  // A key the field handles is one it stops; only that restarts the blink,
+  // so a key passing through to the app — Tab, Escape — moves nothing here.
   @action
   handleKey(event: KeyEvent): void {
+    this._edit(event);
+    if (event.stopped) this._blinkFrom = event.time;
+  }
+
+  @action
+  override handleFocus(event: WidgetFocusEvent): void {
+    super.handleFocus(event);
+    this._blinkFrom = event.time;
+  }
+
+  private _edit(event: KeyEvent): void {
     if (this.disabled) return;
-    this._typedAt = event.time;
 
     // ─── editing keys (modifier-conscious) ───
     if (event.key === "backspace") {
@@ -507,6 +520,7 @@ export class TextInput extends ThemedWidget {
   override handleMouse(event: WidgetMouseEvent): void {
     if (this.disabled) return;
     if (event.type !== "mouse_down") return;
+    this._blinkFrom = event.time;
 
     if (this._multiline) {
       // Multiline has no brackets; rows may have a leading continuation marker.
@@ -1065,14 +1079,20 @@ export class TextInput extends ThemedWidget {
   }
 
   // The caret's cell for the frame `options` draws: the blink restarted at the
-  // last key, sampled at the frame's time (`shownAt`, so under reduced motion
-  // it holds lit). Lit, the cell is the cursor's; dark, it is drawn as the
+  // last touch, sampled at the frame's time (`shownAt`, so under reduced
+  // motion it holds lit). It runs away from the restart in either direction
+  // of time, so a timeline played backwards also finds it lit just after a
+  // key. Lit, the cell is the cursor's; dark, it is drawn as the
   // text around it, since the cursor is a colour pair and no attribute hides
   // it. The cell says when it next flips, which is when a host draws again.
   private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
     const { value: lit, nextChange } = options.frameTime === undefined
       ? CARET_UNTIMED
-      : shownAt(Timeline.run(Timeline.play(this._typedAt), CARET_BLINK), options.frameTime, options);
+      : shownAt(
+          Timeline.run(Timeline.play(this._blinkFrom, options.frameTime < this._blinkFrom ? -1 : 1), CARET_BLINK),
+          options.frameTime,
+          options,
+        );
     return stampFrame([new Segment(at, lit ? cursorStyle : contentStyle)], nextChange);
   }
 

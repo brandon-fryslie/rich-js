@@ -87,6 +87,7 @@ export class WidgetApp implements FrameSource {
         const owners = ownersOn(this.app.frame);
         return this.widgets.filter((widget) => owners.has(widget));
       },
+      frameTime: () => this.frameTime,
     });
     this.focusManager = this.focus;
     this.router = new EventRouter({ source: this, focusOnClick });

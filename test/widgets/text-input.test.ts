@@ -77,6 +77,7 @@ const mouseDownAt = (x: number): WidgetMouseEvent => ({
   shift: false,
   ctrl: false,
   over: true,
+  time: 0,
 });
 
 const RENDER = { maxWidth: 80 };
@@ -360,7 +361,7 @@ describe("TextInput", () => {
 
     it("shows placeholder when focused and value is empty", () => {
       const t = new TextInput({ placeholder: "enter name" });
-      t.focus();
+      t.focus(0);
       const text = renderText(t);
       expect(text).toContain("enter name");
     });
@@ -373,7 +374,7 @@ describe("TextInput", () => {
 
     it("does not show placeholder when value is non-empty", () => {
       const t = new TextInput({ value: "x", placeholder: "enter name" });
-      t.focus();
+      t.focus(0);
       const text = renderText(t);
       expect(text).not.toContain("enter name");
       expect(text).toContain("x");
@@ -381,7 +382,7 @@ describe("TextInput", () => {
 
     it("renders one cursor cell when focused", () => {
       const t = new TextInput({ value: "ab" });
-      t.focus();
+      t.focus(0);
       const segments = Segment.splitLines(t.render(RENDER))[0]!;
       // cursor segment uses bgcolor=primary palette colour
       const cursorSeg = segments.find(
@@ -407,7 +408,7 @@ describe("TextInput", () => {
     it("emits the same total width focused vs unfocused", () => {
       const t = new TextInput({ value: "abc" });
       const before = renderText(t).length;
-      t.focus();
+      t.focus(0);
       const after = renderText(t).length;
       expect(before).toBe(after);
     });
@@ -415,7 +416,7 @@ describe("TextInput", () => {
     it("focused empty placeholder still produces a fixed width", () => {
       const t = new TextInput({ placeholder: "name" });
       const unfocused = renderText(t).length;
-      t.focus();
+      t.focus(0);
       const focused = renderText(t).length;
       expect(unfocused).toBe(focused);
     });
@@ -1200,7 +1201,7 @@ describe("TextInput", () => {
       describe(multiline ? "multi-line" : "single-line", () => {
         it("Right steps over a whole glyph, and Home, Right, Right lands before the next", () => {
           const t = new TextInput({ multiline, cursorStyle: CURSOR });
-          t.focus();
+          t.focus(0);
           // One key per code point, as the router sends them.
           for (const ch of "a👍🏽b") t.handleKey(printable(ch));
           expect(t.value).toBe("a👍🏽b");
@@ -1213,7 +1214,7 @@ describe("TextInput", () => {
 
         it("draws the cursor on a whole glyph, and inserts after it", () => {
           const t = new TextInput({ value: "👍🏽x", multiline, cursorStyle: CURSOR });
-          t.focus();
+          t.focus(0);
           t.handleKey(homeEvent());
           expect(cursorCells(t)).toEqual(["👍🏽"]);
           t.handleKey(rightEvent());
@@ -1296,7 +1297,7 @@ describe("TextInput", () => {
 
     it("a password mask is one cell per glyph, and a click lands between glyphs", () => {
       const t = new TextInput({ value: "a👍🏽b", password: true, cursorStyle: CURSOR });
-      t.focus();
+      t.focus(0);
       const drawn = [...t.render(RENDER)].map((seg) => seg.text).join("");
       expect([...drawn].filter((c) => c === "•")).toHaveLength(3);
       t.handleMouse(mouseDownAt(3));
@@ -1351,7 +1352,7 @@ describe("TextInput", () => {
     it("has a column of its own, so every cursor stop moves the cursor", () => {
       for (const glyph of ["\u200b", "\u2028", "\u2029", "\t", "\n"]) {
         const t = new TextInput({ value: `a${glyph}b`, cursorStyle: CURSOR });
-        t.focus();
+        t.focus(0);
         t.cursorPosition = asCodePoint(0);
         const columns: number[] = [];
         for (let stop = 0; stop <= 3; stop++) {
@@ -1389,7 +1390,7 @@ describe("TextInput", () => {
       for (const wrap of [undefined, charGreedyWrap]) {
         for (const glyph of ["​", " ", " ", "\t"]) {
           const t = new TextInput({ value: `a${glyph}b`, multiline: true, wrap, cursorStyle: CURSOR });
-          t.focus();
+          t.focus(0);
           expect(renderText(t)).toBe("a◌b");
           const columns: number[] = [];
           for (let stop = 0; stop <= 3; stop++) {
@@ -1409,7 +1410,7 @@ describe("TextInput", () => {
     it("is a cell the wrap budget counts, so it wraps instead of overflowing its row", () => {
       const options = { maxWidth: 4 };
       const t = new TextInput({ value: "abcd​e", multiline: true, wrap: charGreedyWrap, cursorStyle: CURSOR });
-      t.focus();
+      t.focus(0);
       expect(rowsText(t, options).split("\n").map((r) => r.trimEnd())).toEqual(["abcd", "↳ ◌e"]);
       const stops: { row: number; column: number }[] = [];
       for (let stop = 0; stop <= 6; stop++) {

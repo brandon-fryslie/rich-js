@@ -13,11 +13,13 @@ import type { KeyPress, ScreenMouseEvent } from "../host/input.js";
 
 // --- Event types ---
 
+// Every event a widget hears carries `time`: when it was heard, on the clock
+// the frame's cells are read on (`RenderOptions.frameTime`), so a widget
+// keeping the moment of its last interaction — a caret's blink restarting —
+// compares it with the frame it draws and never reads a clock.
+
 // [LAW:types-are-the-program] KeyEvent is a `KeyPress` the app heard, plus
-// when it was heard and the say over who else hears it. `time` is on the
-// clock the frame's cells are read on (`RenderOptions.frameTime`), so a
-// widget keeping the moment of its last key — a caret's blink restarting —
-// compares it with the frame it draws and never reads a clock. It carries a single mutable signal
+// when it was heard and the say over who else hears it. It carries a single mutable signal
 // (`stopped`) that participants in the dispatch chain set by calling
 // `stop()`. Treating it as an interface would force every handler to
 // shuttle a return value upward and the router to interpret it — the
@@ -65,10 +67,12 @@ export interface KeyHandlerOptions {
 // pointer, whatever widget it shows there.
 export type WidgetMouseEvent = Extract<ScreenMouseEvent, { type: "mouse_down" | "mouse_up" | "mouse_move" }> & {
   readonly over: boolean;
+  readonly time: number;
 };
 
 export interface WidgetFocusEvent {
-  type: "focus" | "blur";
+  readonly type: "focus" | "blur";
+  readonly time: number;
 }
 
 // --- InteractiveWidget ---
@@ -97,9 +101,9 @@ export interface InteractiveWidget extends Renderable, Measurable {
   handleMouse(event: WidgetMouseEvent): void;
   handleFocus(event: WidgetFocusEvent): void;
 
-  // Programmatic control
-  focus(): void;
-  blur(): void;
+  // Programmatic control. `time` is the focus event's (`WidgetFocusEvent`).
+  focus(time: number): void;
+  blur(time: number): void;
   setDisabled(value: boolean): void;
   setHovered(value: boolean): void;
 

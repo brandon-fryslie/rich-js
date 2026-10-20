@@ -14,8 +14,8 @@ const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: fa
 const spaceEvent = () => new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false }, 0);
 const escapeEvent = () => new KeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false }, 0);
 
-const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true };
-const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true };
+const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, time: 0 };
+const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, time: 0 };
 
 describe("Toggle", () => {
   it("constructs with defaults", () => {
@@ -88,7 +88,7 @@ describe("Toggle", () => {
 
     it("renders with underline when focused", () => {
       const tg = new Toggle({ label: "Go" });
-      tg.focus();
+      tg.focus(0);
       const segments = Segment.splitLines(tg.render({ maxWidth: 80 }))[0]!;
       expect(segments[0]!.style!.underline).toBe(true);
     });
@@ -102,7 +102,7 @@ describe("Toggle", () => {
     it("focus does not change width", () => {
       const tg = new Toggle({ label: "Go" });
       const normal = Segment.splitLines(tg.render({ maxWidth: 80 }))[0]!;
-      tg.focus();
+      tg.focus(0);
       const focused = Segment.splitLines(tg.render({ maxWidth: 80 }))[0]!;
       expect(normal[0]!.text.length).toBe(focused[0]!.text.length);
     });
@@ -167,7 +167,7 @@ describe("Toggle", () => {
       const tg = new Toggle({ label: "Go" });
       const before = tg.measure({ maxWidth: 80 });
       tg.handleKey(spaceEvent());
-      tg.focus();
+      tg.focus(0);
       const after = tg.measure({ maxWidth: 80 });
       expect(before).toEqual(after);
     });
@@ -267,9 +267,9 @@ describe("Toggle", () => {
   describe("state management", () => {
     it("focuses and blurs", () => {
       const tg = new Toggle({ label: "Go" });
-      tg.focus();
+      tg.focus(0);
       expect(tg.focused).toBe(true);
-      tg.blur();
+      tg.blur(0);
       expect(tg.focused).toBe(false);
     });
 
