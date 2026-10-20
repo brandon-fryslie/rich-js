@@ -190,14 +190,20 @@ export class BarColumn implements ProgressColumn {
 
   /**
    * Rich's `BarColumn`: a task not yet started, or with no total to fill
-   * toward, pulses. The bar is the task's `fill` drawn at the frame's time,
-   * every cell stamped with when the fill next moves, so a host draws while
-   * it eases and the bar asks for nothing once it lands; a pulse's own
-   * stamps still win, the sooner of two being the one a cell keeps.
+   * toward, pulses, and a pulse draws no fill. Otherwise the bar is the
+   * task's `fill` drawn at the frame's time, every cell stamped with when the
+   * fill next moves, so a host draws while it eases and the bar asks for
+   * nothing once it lands. Its colour is the task's: an ease that overshoots
+   * the total does not finish the bar, and one that dips back does not
+   * unfinish it.
    */
   render(task: Task): Renderable {
-    const pulse = task.startTime === undefined || task.total === undefined ? { t: task.time } : undefined;
-    const bars = Animation.map(task.fill, (completed) => new ProgressBar({ total: task.total ?? 100, completed, width: this.barWidth, pulse }));
+    const total = task.total ?? 100;
+    if (task.startTime === undefined || task.total === undefined) {
+      return new ProgressBar({ total, completed: task.completed, width: this.barWidth, pulse: { t: task.time } });
+    }
+    const done = finished(task);
+    const bars = Animation.map(task.fill, (completed) => new ProgressBar({ total, completed, width: this.barWidth, finished: done }));
     return frameAt(bars, task.time);
   }
 }
@@ -434,9 +440,13 @@ export class Progress implements Renderable, Composite {
     // its history.
     const timing = opts.fill;
     this._refill = timing === undefined ? (_from, to) => Animation.constant(to) : (from, to, now) => Timeline.run(Timeline.play(now), tween(from, to, timing));
-    this._live = new Live(this, {
+    // [LAW:one-source-of-truth] The frame's time is the one Live read for it,
+    // on a timeline that is its clock: a second read here would land a moving
+    // bar's stamp after the frame, a moment Live takes for one still to come.
+    this._live = new Live((t) => this._table(t), {
       console: this._console,
       clock: this._clock,
+      timeline: Timeline.play(0),
       refreshPerSecond: opts.refreshPerSecond ?? 10,
       autoRefresh: opts.autoRefresh,
       transient: opts.transient,
@@ -536,25 +546,25 @@ export class Progress implements Renderable, Composite {
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield* render(this._table(), options);
+    yield* render(this._table(this._clock.now()), options);
   }
 
   // What each column renders for each task is what the table holds, and so is
   // all a progress display holds.
   *contents(): Iterable<Renderable> {
-    yield this._table();
+    yield this._table(this._clock.now());
   }
 
-  // Rich's `make_tasks_table`: each column laid out as it says.
-  private _table(): Table {
+  // Rich's `make_tasks_table`: each column laid out as it says, at `now` on
+  // this display's clock.
+  private _table(now: number): Table {
     const table = Table.grid({ expand: this.expand });
     for (const col of this._columns) {
       table.addColumn(undefined, col.tableColumn);
     }
 
-    // [LAW:effects-at-boundaries] One read of the clock a frame, handed to
-    // every column as the task's `time` and `elapsed`.
-    const now = this._clock.now();
+    // [LAW:effects-at-boundaries] One moment a frame, handed to every column
+    // as the task's `time` and `elapsed`.
     for (const { samples, ...state } of this._tasks.values()) {
       if (!state.visible) continue;
       const { startTime } = state;

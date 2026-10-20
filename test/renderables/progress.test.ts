@@ -644,11 +644,49 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
     expect(Segment.nextChange(bar(progress))).toBe(Number.POSITIVE_INFINITY);
   });
 
-  it("keeps a pulsing bar's own wake under the fill's", () => {
+  // The platform's clock moves between any two reads of it, which a fake one
+  // does not: this one reads a hair later every time it is asked.
+  it("redraws an easing bar at the refresh rate on a clock that moves between reads", () => {
+    const inner = fakeClock(10);
+    let reads = 0;
+    const clock = { ...inner, now: () => inner.now() + ++reads * 1e-4 };
+    let frames = 0;
+    const console = new Console({ width: 10, colorSystem: null, forceTerminal: true, file: { write: () => void frames++ } });
+    const progress = new Progress(new BarColumn(10), { console, clock, fill: { ease: EASES.linear, seconds: 2 }, refreshPerSecond: 10 });
+    const id = progress.addTask("job", { total: 100 });
+    progress.start();
+    progress.updateTask(id, { completed: 100 });
+    const before = frames;
+    inner.advance(1);
+    expect(frames - before).toBeLessThanOrEqual(12);
+    progress.stop();
+  });
+
+  it("draws a pulsing bar as the pulse it is, with the pulse's own wake", () => {
     const clock = fakeClock(10);
     const progress = new Progress(new BarColumn(10), { console: quiet(), clock, fill: linear });
     progress.addTask("open-ended");
-    expect(Segment.nextChange(bar(progress, { colorSystem: ColorDepth.TRUECOLOR }))).toBeLessThan(Number.POSITIVE_INFINITY);
+    const pulse = new ProgressBar({ total: 100, width: 10, pulse: { t: 10 } });
+    expect(renderToString(progress, { width: 10 }).trimEnd()).toBe(renderToString(pulse, { width: 10 }).trimEnd());
+    const truecolor = { ...OPTS, maxWidth: 10, colorSystem: ColorDepth.TRUECOLOR };
+    expect(Segment.nextChange([...progress.render(truecolor)])).toBe(Segment.nextChange([...pulse.render(truecolor)]));
+  });
+
+  // A back-out ease toward 95 passes 100 on its way: the bar is drawn full,
+  // in the colour of work not yet done.
+  it("colours an overshooting bar by the task's count, not the fill it draws", () => {
+    const backOut = { ease: EASES["back-out"], seconds: 1 };
+    const clock = fakeClock(10);
+    const progress = new Progress(new BarColumn(10), { console: quiet(), clock, fill: backOut });
+    const id = progress.addTask("job", { total: 100 });
+    progress.updateTask(id, { completed: 95 });
+    const eased = tween(0, 95, backOut);
+    const peak = [...Array(100).keys()].map((i) => i / 100).reduce((a, b) => (eased.at(b) > eased.at(a) ? b : a));
+    expect(eased.at(peak)).toBeGreaterThan(100);
+    clock.advance(peak);
+    const drawn = (finished: boolean): string => renderToString(new ProgressBar({ total: 100, completed: eased.at(peak), width: 10, finished }), { width: 10 }).trimEnd();
+    expect(renderToString(progress, { width: 10 }).trimEnd()).toBe(drawn(false));
+    expect(drawn(false)).not.toBe(drawn(true));
   });
 
   // Three updates inside one second. Drawn once a second or sixty times, the
