@@ -39,16 +39,19 @@ type Shown = { readonly effect: GlyphEffect } | { readonly make: (timing: Timing
  * What `shown` draws: a loop as it is, and a transition played again every
  * run of its seconds and a second's rest, so the frame says when it next
  * changes on the `Live`'s clock — and, at rest, that it changes when the next
- * run starts.
+ * run starts. Every turn is the one transition, set up once for what is drawn.
  */
 function played(shown: Shown): GlyphEffect {
   if ("effect" in shown) return shown.effect;
   const { effect } = shown.make(shown.timing);
-  return (drawn) => Animation.repeat(shown.timing.seconds + 1, () => effect(drawn));
+  return (drawn) => {
+    const once = effect(drawn);
+    return Animation.repeat(shown.timing.seconds + 1, () => once);
+  };
 }
 
 const z = 0.4;
-const PANELS: readonly [string, string, Shown][] = [
+const SHOWN: readonly [string, string, Shown][] = [
   ["typewriter", LINE, { make: (timing) => GLYPH_EFFECT_CATALOGUE.transitions.typewriter({ z }, timing), timing: GLYPH_DEFAULTS.typewriter }],
   ["scramble", LINE, { make: (timing) => GLYPH_EFFECT_CATALOGUE.transitions.scramble({ z }, timing), timing: GLYPH_DEFAULTS.scramble }],
   ["backspace", LINE, { make: (timing) => GLYPH_EFFECT_CATALOGUE.transitions.backspace({ z }, timing), timing: GLYPH_DEFAULTS.backspace }],
@@ -62,10 +65,10 @@ const PANELS: readonly [string, string, Shown][] = [
   ["snow", SKY, { effect: particles({ ...GLYPH_DEFAULTS.rain, glyphs: "*·", ascii: "*.", step: 0.4, density: 0.05 }, z) }],
 ];
 
+const PANELS = SHOWN.map(([title, text, shown]) => [title, new RichText(text), played(shown)] as const);
+
 function view(t: number): Columns {
-  return new Columns(
-    PANELS.map(([title, text, shown]) => new Panel(new GlyphEffected(new RichText(text), played(shown), { t, key: title }), { title, width: WIDTH })),
-  );
+  return new Columns(PANELS.map(([title, text, effect]) => new Panel(new GlyphEffected(text, effect, { t, key: title }), { title, width: WIDTH })));
 }
 
 const live = new Live(view, { refreshPerSecond: 30 });

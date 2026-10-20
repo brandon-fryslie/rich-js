@@ -208,6 +208,10 @@ describe("Animation.repeat", () => {
     expect(turns(2).lastChange(-0.5)).toBe(-2);
   });
 
+  it("names turn 0 as 0, never -0, for a time the wrap carries onto it from below", () => {
+    for (const t of [-0, -1e-20]) expect(Object.is(turns(2).at(t), 0), `t = ${t}`).toBe(true);
+  });
+
   it("answers each turn's boundary to the float both ways, far from zero and on periods not exact in binary", () => {
     for (const period of [0.1, 0.3, 2.7]) {
       const repeated = turns(period);

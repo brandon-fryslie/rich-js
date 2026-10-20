@@ -486,8 +486,9 @@ export function passAt(what: string, t: number, period: number): { readonly pass
   const into = wrapSeconds(what, t, period);
   // `t - into` is a whole number of periods but for rounding, which `round`
   // takes off; carrying a pass's start out of `t` itself would leave each
-  // sample its own rounding.
-  return { pass: Math.round((t - into) / period), into };
+  // sample its own rounding. `+ 0` turns the `-0` a small negative `t` rounds
+  // to into pass 0, so the pass is a plain integer whoever reads it.
+  return { pass: Math.round((t - into) / period) + 0, into };
 }
 
 /**

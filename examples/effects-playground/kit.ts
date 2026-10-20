@@ -11,7 +11,7 @@
  * names.
  */
 
-import { CATPPUCCIN_MOCHA, ColorDepth, ColorSpec, Console, Effected, Group, Live, Padding, RichText, Style, frameRate, systemClock, type Effect } from "@promptctl/rich-js";
+import { Animation, CATPPUCCIN_MOCHA, ColorDepth, ColorSpec, Console, Effected, Group, Live, Padding, RichText, Style, frameRate, systemClock, type Effect } from "@promptctl/rich-js";
 import { drawnSubject, stripSubject, textSubject, type DrawnSubject } from "../effects-feel/subjects.js";
 
 export { pulsedOn, type DrawnSubject } from "../effects-feel/subjects.js";
@@ -49,8 +49,15 @@ export function play(make: Make, pace: Pace): void {
   const paper = Style.fromColor(ink, ColorSpec.fromRgba(THEME.backgroundColor));
 
   // Made once: settling a loop's shares is costly, and every frame reads them.
-  // A transition starting over is the same effect drawn from its own 0 again.
-  const effects = subjects.map((s) => make(s));
+  // A transition starting over is the same effect played again every turn.
+  const replayed = (effect: Effect): Effect =>
+    Number.isFinite(pace.every)
+      ? (drawn) => {
+          const once = effect(drawn);
+          return Animation.repeat(pace.every, () => once);
+        }
+      : effect;
+  const effects = subjects.map((s) => replayed(make(s)));
 
   const live = new Live(undefined, { console, altScreen: true, autoRefresh: false });
   // Carried as the last version left it; the first starts at 0.
@@ -61,9 +68,8 @@ export function play(make: Make, pace: Pace): void {
     data["clock"] = { frame, t };
   });
   const draw = (): void => {
-    const start = Number.isFinite(pace.every) ? Math.floor(t / pace.every) * pace.every : 0;
     const heading = new RichText(`frame ${frame} · curve time ${t.toFixed(2)} · ${pace.fps} fps`, { style: dim, noWrap: true });
-    const drawn = subjects.map((s, n) => new Effected(s.renderable, effects[n]!, { t: t - start, key: s.name, theme: THEME }));
+    const drawn = subjects.map((s, n) => new Effected(s.renderable, effects[n]!, { t, key: s.name, theme: THEME }));
     live.update(new Padding(new Group(heading, new RichText(""), ...drawn), [1, 2], { style: paper }), { refresh: true });
     t += pace.step;
     frame += 1;

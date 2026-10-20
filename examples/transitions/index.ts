@@ -22,14 +22,19 @@ const CHANGES: readonly [string, Transition<Change>][] = [
   ["wipe", wipe({ seconds: 0.8, ease: EASES["ease-in-out"], swing: 1 })],
 ];
 
-const state = (n: number): RichText => STATES[n % STATES.length]!;
+/** Which of the states turn `n` shows, for a turn of either sign. */
+const cycled = (n: number): number => ((n % STATES.length) + STATES.length) % STATES.length;
 
 /**
- * `change` played into each state every `EVERY` seconds, from the one before.
- * The first state is shown as it is: nothing came before it to change from.
+ * `change` played into each state every `EVERY` seconds, from the one before,
+ * each change made once. The first state is shown as it is: nothing came
+ * before it to change from.
  */
-const changing = (change: Transition<Change>): Animation<Renderable> =>
-  Animation.repeat(EVERY, (n) => (n === 0 ? Animation.constant(state(0)) : change.effect({ from: state(n - 1), to: state(n), theme: CATPPUCCIN_MOCHA })));
+const changing = (change: Transition<Change>): Animation<Renderable> => {
+  const into = STATES.map((to, i) => change.effect({ from: STATES[cycled(i - 1)]!, to, theme: CATPPUCCIN_MOCHA }));
+  const first = Animation.constant<Renderable>(STATES[0]!);
+  return Animation.repeat(EVERY, (n) => (n === 0 ? first : into[cycled(n)]!));
+};
 
 const ROWS = CHANGES.map(([name, change]) => [name, changing(change)] as const);
 

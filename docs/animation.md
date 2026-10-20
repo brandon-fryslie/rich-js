@@ -27,7 +27,7 @@ An answer may be early — a host then draws a frame that looks like the last on
 
 ## Building one
 
-Five pieces build every animation, and each says how `nextChange` and `lastChange` compose, so an animation built from them answers them without its author doing anything:
+These pieces build every animation, and each says how `nextChange` and `lastChange` compose, so an animation built from them answers them without its author doing anything:
 
 - `Animation.constant(value)` is `value` at every time, and never changes.
 - `Animation.continuous((t) => value)` is the function's value, moving at every moment.

@@ -50,7 +50,8 @@
  *
  * [LAW:one-type-per-behavior] The combinators here are the ones every kind
  * of motion is built from — a constant, a value moving every moment, a map
- * over the value, several at once, and one animation after another — and each says how
+ * over the value, several at once, one animation after another, and one
+ * played again every period — and each says how
  * `nextChange` composes, so an animation built from them answers it without
  * its author doing anything.
  */
