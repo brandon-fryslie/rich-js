@@ -4,15 +4,22 @@
     {
       "version": "pr-494",
       "ref": "refs/pull/494/merge",
-      "sha": "effac0ed404ad8d8a9df6b40ef11235da3cb6e4b",
-      "timestamp": "2026-10-20T00:25:49.886Z",
+      "sha": "a7b39aa98536117f20b8a1a7329d4a586b577232",
+      "timestamp": "2026-10-20T00:43:32.788Z",
       "commits": [
         {
-          "sha": "effac0ed404ad8d8a9df6b40ef11235da3cb6e4b",
+          "sha": "a7b39aa98536117f20b8a1a7329d4a586b577232",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T18:23:50-06:00",
-          "message": "Merge 7328cc338efa457e6b5bc76af806a515ee826447 into 8c10c37cc9d14d9febf2d82d8d9f8f522d13022c\n"
+          "timestamp": "2026-10-20T00:41:50Z",
+          "message": "Merge 056f410f16b898c0199b79ed63c44c89b17f07a1 into 8c10c37cc9d14d9febf2d82d8d9f8f522d13022c\n"
+        },
+        {
+          "sha": "056f410f16b898c0199b79ed63c44c89b17f07a1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T18:41:44-06:00",
+          "message": "Progress draws at Live's frame time; a bar's colour is its task's (rich-animation-42lg.k1g)\n\nReview (high) fixes:\n- Progress hands Live a function view on a timeline that is its clock, so a\n  frame is drawn at the one time Live read for it. A second read inside the\n  frame stamped an easing bar a hair after the frame, which Live took for a\n  wake still to come and fired at once: ~700 writes a second at 10 fps.\n- ProgressBar takes `finished`; BarColumn passes the task's, so an ease that\n  overshoots the total neither finishes nor unfinishes the bar's colour.\n- A pulsing bar is drawn as the pulse directly, not from inside an\n  animation's `at` (frames.ts: nothing an `at` returns carries a stamp).\n"
         },
         {
           "sha": "7328cc338efa457e6b5bc76af806a515ee826447",
