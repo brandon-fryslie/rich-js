@@ -4,15 +4,22 @@
     {
       "version": "pr-493",
       "ref": "refs/pull/493/merge",
-      "sha": "7c7b4230abe1c1271434fcb90bc758095e8922e2",
-      "timestamp": "2026-10-19T23:57:24.795Z",
+      "sha": "8c2d028aa7855e1eda92383f44299d4961e1957d",
+      "timestamp": "2026-10-20T00:06:18.739Z",
       "commits": [
         {
-          "sha": "7c7b4230abe1c1271434fcb90bc758095e8922e2",
+          "sha": "8c2d028aa7855e1eda92383f44299d4961e1957d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T17:55:31-06:00",
-          "message": "Merge 71dd51d6df0f84c760a4e87fc8e8129200dd55a9 into 5cac7dcb8d47c475525384d4737e0da368771a82\n"
+          "timestamp": "2026-10-20T00:04:39Z",
+          "message": "Merge d001442165608cc1be79b6c2b4e1684d8fda1bcb into 5cac7dcb8d47c475525384d4737e0da368771a82\n"
+        },
+        {
+          "sha": "d001442165608cc1be79b6c2b4e1684d8fda1bcb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T18:04:34-06:00",
+          "message": "Template animation docs say which hosts redraw a moving number, and on which clock a start is (rich-animation-42lg.zck review)\n\nAn App does not poll a silent function view, so a template's tween or loop\nmoves there only while animate() is held; the docs and module header claimed\nevery host redraws on time. A start is on the handed-in timeline's clock.\nreglyphText's checks see the text's own glyphs only. Demo comment lists the\nwhole toolbox.\n"
         },
         {
           "sha": "71dd51d6df0f84c760a4e87fc8e8129200dd55a9",
