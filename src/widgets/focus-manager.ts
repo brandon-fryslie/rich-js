@@ -19,6 +19,8 @@ export interface FocusView {
   present(): readonly InteractiveWidget[];
   /** The widgets with a cell on the frame on screen, in document order. */
   onScreen(): readonly InteractiveWidget[];
+  /** The time a frame drawn now is drawn for (`RenderOptions.frameTime`), which a focus change is stamped with. */
+  frameTime(): number;
 }
 
 export class DefaultFocusManager implements FocusManager {
@@ -120,7 +122,7 @@ export class DefaultFocusManager implements FocusManager {
     // [LAW:single-enforcer] WidgetBase.focus()/blur() route through
     // handleFocus; calling it here as well would dispatch twice and run any
     // subclass side effect (e.g. Dropdown clearing its filter) twice.
-    this.currentWidget.blur();
+    this.currentWidget.blur(this.view.frameTime());
     this.currentWidget = null;
     this.emitChange();
   }
@@ -130,9 +132,10 @@ export class DefaultFocusManager implements FocusManager {
     if (this.currentWidget === widget) return;
     // [LAW:single-enforcer] focus()/blur() already dispatch handleFocus —
     // see clear() for the rationale.
-    if (this.currentWidget) this.currentWidget.blur();
+    const time = this.view.frameTime();
+    if (this.currentWidget) this.currentWidget.blur(time);
     this.currentWidget = widget;
-    widget.focus();
+    widget.focus(time);
     this.emitChange();
   }
 

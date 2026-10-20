@@ -87,6 +87,7 @@ export class WidgetApp implements FrameSource {
         const owners = ownersOn(this.app.frame);
         return this.widgets.filter((widget) => owners.has(widget));
       },
+      frameTime: () => this.frameTime,
     });
     this.focusManager = this.focus;
     this.router = new EventRouter({ source: this, focusOnClick });
@@ -138,6 +139,11 @@ export class WidgetApp implements FrameSource {
   /** The rows on screen now, as painted: what a pointer event lands on. */
   get frame(): readonly (readonly Segment[])[] {
     return this.app.frame;
+  }
+
+  /** The time a frame drawn now is drawn for, as `App.frameTime` reads it. */
+  get frameTime(): number {
+    return this.app.frameTime;
   }
 
   /**

@@ -11,12 +11,12 @@ const MUTED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-
 
 // Factories — KeyEvent carries a mutable `stopped` flag, so each call site
 // must get a fresh instance.
-const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false });
-const spaceEvent = () => new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false });
-const escapeEvent = () => new KeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false });
+const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false }, 0);
+const spaceEvent = () => new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false }, 0);
+const escapeEvent = () => new KeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false }, 0);
 
-const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true };
-const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true };
+const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, time: 0 };
+const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, time: 0 };
 
 describe("Button", () => {
   it("constructs with defaults", () => {
@@ -68,7 +68,7 @@ describe("Button", () => {
 
     it("renders brackets when focused", () => {
       const btn = new Button({ label: "Go" });
-      btn.focus();
+      btn.focus(0);
       const segments = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]!;
       expect(segments).toHaveLength(1);
       expect(segments[0]!.text).toBe("[ Go ]");
@@ -83,7 +83,7 @@ describe("Button", () => {
     it("focus does not change width", () => {
       const btn = new Button({ label: "Go" });
       const normalSegs = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]!;
-      btn.focus();
+      btn.focus(0);
       const focusedSegs = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]!;
       expect(normalSegs[0]!.text.length).toBe(focusedSegs[0]!.text.length);
     });
@@ -137,7 +137,7 @@ describe("Button", () => {
 
     it("active + focused shows brackets and bold without inverting colours", () => {
       const btn = new Button({ label: "Go" });
-      btn.focus();
+      btn.focus(0);
       btn.setActive(true);
       const segments = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]!;
       expect(segments).toHaveLength(1);
@@ -234,9 +234,9 @@ describe("Button", () => {
   describe("state management", () => {
     it("focuses and blurs", () => {
       const btn = new Button({ label: "Go" });
-      btn.focus();
+      btn.focus(0);
       expect(btn.focused).toBe(true);
-      btn.blur();
+      btn.blur(0);
       expect(btn.focused).toBe(false);
     });
 

@@ -16,7 +16,7 @@ const makeKey = (key: string): KeyEvent => new KeyEvent({
   shift: false,
   ctrl: false,
   meta: false,
-});
+}, 0);
 
 const leftEvent = () => makeKey("left");
 const rightEvent = () => makeKey("right");
@@ -36,6 +36,7 @@ const mouseAt = (
   shift: false,
   ctrl: false,
   over: true,
+  time: 0,
 });
 
 const RENDER = { maxWidth: 80 };
@@ -270,7 +271,7 @@ describe("Slider", () => {
 
     it("focused adds underline to all segments", () => {
       const s = new Slider({ value: 50 });
-      s.focus();
+      s.focus(0);
       const segs = Segment.splitLines(s.render(RENDER))[0]!;
       expect(segs.every((seg) => seg.style?.underline === true)).toBe(true);
     });

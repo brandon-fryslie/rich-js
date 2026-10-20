@@ -38,7 +38,7 @@ import { SurfacePainter, type Surface } from "../core/paint.js";
 import { fitHeight, render } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { Timeline } from "../core/timeline.js";
-import { drawView, hostView, undrawn, type FrameSays, type HostView, type View } from "../core/view.js";
+import { drawView, frameTime, hostView, undrawn, type FrameSays, type HostView, type View } from "../core/view.js";
 import { hostEnvironment } from "./host-environment.js";
 import { InputParser, keyName, parseKeyName, type KeyPress, type ScreenMouseEvent } from "./input.js";
 import type { TerminalHost } from "./terminal-host.js";
@@ -230,6 +230,16 @@ export class App {
   /** The rows on screen now, as painted: what a pointer event lands on. */
   get frame(): readonly (readonly Segment[])[] {
     return this._frame;
+  }
+
+  /**
+   * The time a frame drawn now is drawn for (`RenderOptions.frameTime`): the
+   * clock's now, through the timeline for a view on it. What a moment heard
+   * between frames — a key — is stamped with, so it is on the clock the
+   * frame is.
+   */
+  get frameTime(): number {
+    return frameTime(this.view, this._timeline, this._clock.now());
   }
 
   /**

@@ -84,10 +84,15 @@ import {
   type CodeUnit,
 } from "../core/cells.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
+import { Animation } from "../core/animation.js";
+import { beat } from "../core/easing.js";
+import { Timeline } from "../core/timeline.js";
+import { shownAt } from "../core/view.js";
+import { stampFrame } from "../renderables/frames.js";
 import type { TerminalTheme } from "../core/color.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
-import type { KeyEvent, WidgetMouseEvent } from "./types.js";
+import type { KeyEvent, WidgetFocusEvent, WidgetMouseEvent } from "./types.js";
 
 /**
  * A soft-wrap strategy. Given one logical line of text and cell-width budgets,
@@ -287,12 +292,27 @@ function isWhitespace(c: string | undefined): boolean {
   return c !== undefined && WHITESPACE_RE.test(c);
 }
 
+/**
+ * The caret's blink, from the moment it restarts: lit for the first half
+ * second, so the caret is solid the moment the field is touched, then dark
+ * for the next, on a `beat`. A loop, so with its motion taken out it holds lit.
+ */
+const CARET_BLINK: Animation<boolean> = Animation.map(beat([0.5, 0.5]), (hold) => hold === 0);
+
+/** The caret of a frame drawn for no moment — a `print` — which nothing moves: lit, and never changing. */
+const CARET_UNTIMED = { value: true, nextChange: Number.POSITIVE_INFINITY } as const;
+
 export class TextInput extends ThemedWidget {
   readonly id: string;
   readonly focusable = true;
 
   @observable private accessor _value: string;
   @observable private accessor _cursor: CodePoint;
+  // When the field last took focus, a click, or a key it handled, on the
+  // frame's clock (each event's `time`): where the caret's blink restarts.
+  // The blink itself is a function of this and the time a frame is drawn
+  // for, so nothing about it is kept.
+  @observable private accessor _blinkFrom = 0;
 
   // [LAW:single-enforcer] Every write to either half of the pair passes
   // `graphemeBoundary`, so the cursor is a cluster boundary inside `value`
@@ -399,8 +419,21 @@ export class TextInput extends ThemedWidget {
 
   // --- Event handlers ---
 
+  // A key the field handles is one it stops; only that restarts the blink,
+  // so a key passing through to the app — Tab, Escape — moves nothing here.
   @action
   handleKey(event: KeyEvent): void {
+    this._edit(event);
+    if (event.stopped) this._blinkFrom = event.time;
+  }
+
+  @action
+  override handleFocus(event: WidgetFocusEvent): void {
+    super.handleFocus(event);
+    this._blinkFrom = event.time;
+  }
+
+  private _edit(event: KeyEvent): void {
     if (this.disabled) return;
 
     // ─── editing keys (modifier-conscious) ───
@@ -487,6 +520,7 @@ export class TextInput extends ThemedWidget {
   override handleMouse(event: WidgetMouseEvent): void {
     if (this.disabled) return;
     if (event.type !== "mouse_down") return;
+    this._blinkFrom = event.time;
 
     if (this._multiline) {
       // Multiline has no brackets; rows may have a leading continuation marker.
@@ -936,7 +970,7 @@ export class TextInput extends ThemedWidget {
       const at = firstCh || " ";
       const after = rest.slice(firstCh.length);
       if (before.length > 0) segments.push(new Segment(before, contentStyle));
-      segments.push(new Segment(at, cursorStyle));
+      segments.push(...this._caret(at, cursorStyle, contentStyle, options));
       if (after.length > 0) segments.push(new Segment(after, contentStyle));
     } else {
       segments.push(new Segment(display, contentStyle));
@@ -1044,6 +1078,24 @@ export class TextInput extends ThemedWidget {
     return segments;
   }
 
+  // The caret's cell for the frame `options` draws: the blink restarted at the
+  // last touch, sampled at the frame's time (`shownAt`, so under reduced
+  // motion it holds lit). It runs away from the restart in either direction
+  // of time, so a timeline played backwards also finds it lit just after a
+  // key. Lit, the cell is the cursor's; dark, it is drawn as the
+  // text around it, since the cursor is a colour pair and no attribute hides
+  // it. The cell says when it next flips, which is when a host draws again.
+  private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
+    const { value: lit, nextChange } = options.frameTime === undefined
+      ? CARET_UNTIMED
+      : shownAt(
+          Timeline.run(Timeline.play(this._blinkFrom, options.frameTime < this._blinkFrom ? -1 : 1), CARET_BLINK),
+          options.frameTime,
+          options,
+        );
+    return stampFrame([new Segment(at, lit ? cursorStyle : contentStyle)], nextChange);
+  }
+
   // Whether `rows` visual rows draw a scroll arrow in the last cell of a row.
   private _drawsArrows(rows: number): boolean {
     return this._scrollIndicator === "arrows" && this._maxRows !== undefined && rows > this._maxRows;
@@ -1082,7 +1134,7 @@ export class TextInput extends ThemedWidget {
       const at = firstCh || " ";
       const after = rest.slice(firstCh.length);
       if (before.length > 0) out.push(new Segment(before, contentStyle));
-      out.push(new Segment(at, cursorStyle));
+      out.push(...this._caret(at, cursorStyle, contentStyle, options));
       if (after.length > 0) out.push(new Segment(after, contentStyle));
     } else if (display.length > 0) {
       out.push(new Segment(display, contentStyle));

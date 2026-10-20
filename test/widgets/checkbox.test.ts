@@ -10,12 +10,12 @@ import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 const MUTED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-muted")!);
 
 // Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
-const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false });
-const spaceEvent = () => new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false });
-const escapeEvent = () => new KeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false });
+const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false }, 0);
+const spaceEvent = () => new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false }, 0);
+const escapeEvent = () => new KeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false }, 0);
 
-const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true };
-const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true };
+const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, time: 0 };
+const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, time: 0 };
 
 describe("Checkbox", () => {
   it("constructs with defaults", () => {
@@ -92,7 +92,7 @@ describe("Checkbox", () => {
 
     it("renders with underline when focused", () => {
       const cb = new Checkbox({ label: "Go" });
-      cb.focus();
+      cb.focus(0);
       const segments = Segment.splitLines(cb.render({ maxWidth: 80 }))[0]!;
       expect(segments[0]!.style!.underline).toBe(true);
     });
@@ -106,7 +106,7 @@ describe("Checkbox", () => {
     it("focus does not change width", () => {
       const cb = new Checkbox({ label: "Go" });
       const normalSegs = Segment.splitLines(cb.render({ maxWidth: 80 }))[0]!;
-      cb.focus();
+      cb.focus(0);
       const focusedSegs = Segment.splitLines(cb.render({ maxWidth: 80 }))[0]!;
       expect(normalSegs[0]!.text.length).toBe(focusedSegs[0]!.text.length);
     });
@@ -142,7 +142,7 @@ describe("Checkbox", () => {
       const cb = new Checkbox({ label: "Go" });
       const before = cb.measure({ maxWidth: 80 });
       cb.handleKey(spaceEvent());
-      cb.focus();
+      cb.focus(0);
       const after = cb.measure({ maxWidth: 80 });
       expect(before).toEqual(after);
     });
@@ -242,9 +242,9 @@ describe("Checkbox", () => {
   describe("state management", () => {
     it("focuses and blurs", () => {
       const cb = new Checkbox({ label: "Go" });
-      cb.focus();
+      cb.focus(0);
       expect(cb.focused).toBe(true);
-      cb.blur();
+      cb.blur(0);
       expect(cb.focused).toBe(false);
     });
 

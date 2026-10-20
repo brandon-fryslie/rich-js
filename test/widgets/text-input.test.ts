@@ -21,7 +21,7 @@ const makeKey = (key: string, character = ""): KeyEvent => new KeyEvent({
   shift: false,
   ctrl: false,
   meta: false,
-});
+}, 0);
 
 const ctrl = (key: string): KeyEvent => new KeyEvent({
   key,
@@ -29,7 +29,7 @@ const ctrl = (key: string): KeyEvent => new KeyEvent({
   shift: false,
   ctrl: true,
   meta: false,
-});
+}, 0);
 
 const alt = (key: string): KeyEvent => new KeyEvent({
   key,
@@ -37,7 +37,7 @@ const alt = (key: string): KeyEvent => new KeyEvent({
   shift: false,
   ctrl: false,
   meta: true,
-});
+}, 0);
 
 // [LAW:behavior-not-structure] The wrap/cursor-motion suites below are white-box
 // regression pins for a specific boundary bug, not contract tests: they read
@@ -58,7 +58,7 @@ const printable = (ch: string): KeyEvent => new KeyEvent({
   shift: false,
   ctrl: false,
   meta: false,
-});
+}, 0);
 
 const enterEvent = () => makeKey("enter", "\r");
 const escapeEvent = () => makeKey("escape", "\x1b");
@@ -77,6 +77,7 @@ const mouseDownAt = (x: number): WidgetMouseEvent => ({
   shift: false,
   ctrl: false,
   over: true,
+  time: 0,
 });
 
 const RENDER = { maxWidth: 80 };
@@ -166,7 +167,7 @@ describe("TextInput", () => {
 
     it("ignores ctrl-modified keys", () => {
       const t = new TextInput();
-      t.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: true, meta: false }));
+      t.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: true, meta: false }, 0));
       expect(t.value).toBe("");
     });
   });
@@ -360,7 +361,7 @@ describe("TextInput", () => {
 
     it("shows placeholder when focused and value is empty", () => {
       const t = new TextInput({ placeholder: "enter name" });
-      t.focus();
+      t.focus(0);
       const text = renderText(t);
       expect(text).toContain("enter name");
     });
@@ -373,7 +374,7 @@ describe("TextInput", () => {
 
     it("does not show placeholder when value is non-empty", () => {
       const t = new TextInput({ value: "x", placeholder: "enter name" });
-      t.focus();
+      t.focus(0);
       const text = renderText(t);
       expect(text).not.toContain("enter name");
       expect(text).toContain("x");
@@ -381,7 +382,7 @@ describe("TextInput", () => {
 
     it("renders one cursor cell when focused", () => {
       const t = new TextInput({ value: "ab" });
-      t.focus();
+      t.focus(0);
       const segments = Segment.splitLines(t.render(RENDER))[0]!;
       // cursor segment uses bgcolor=primary palette colour
       const cursorSeg = segments.find(
@@ -407,7 +408,7 @@ describe("TextInput", () => {
     it("emits the same total width focused vs unfocused", () => {
       const t = new TextInput({ value: "abc" });
       const before = renderText(t).length;
-      t.focus();
+      t.focus(0);
       const after = renderText(t).length;
       expect(before).toBe(after);
     });
@@ -415,7 +416,7 @@ describe("TextInput", () => {
     it("focused empty placeholder still produces a fixed width", () => {
       const t = new TextInput({ placeholder: "name" });
       const unfocused = renderText(t).length;
-      t.focus();
+      t.focus(0);
       const focused = renderText(t).length;
       expect(unfocused).toBe(focused);
     });
@@ -589,20 +590,20 @@ describe("TextInput", () => {
     it("Ctrl+Left / Ctrl+Right do word motion", () => {
       const t = new TextInput({ value: "foo bar baz" });
       t.cursorPosition = asCodePoint(11);
-      t.handleKey(new KeyEvent({ key: "left", character: "", shift: false, ctrl: true, meta: false }));
+      t.handleKey(new KeyEvent({ key: "left", character: "", shift: false, ctrl: true, meta: false }, 0));
       expect(t.cursorPosition).toBe(8);
-      t.handleKey(new KeyEvent({ key: "left", character: "", shift: false, ctrl: true, meta: false }));
+      t.handleKey(new KeyEvent({ key: "left", character: "", shift: false, ctrl: true, meta: false }, 0));
       expect(t.cursorPosition).toBe(4);
-      t.handleKey(new KeyEvent({ key: "right", character: "", shift: false, ctrl: true, meta: false }));
+      t.handleKey(new KeyEvent({ key: "right", character: "", shift: false, ctrl: true, meta: false }, 0));
       expect(t.cursorPosition).toBe(7);  // end of "bar"
     });
 
     it("Ctrl+Home / Ctrl+End jump to document bounds", () => {
       const t = new TextInput({ value: "line1\nline2\nline3", multiline: true });
       t.cursorPosition = asCodePoint(8);
-      t.handleKey(new KeyEvent({ key: "home", character: "", shift: false, ctrl: true, meta: false }));
+      t.handleKey(new KeyEvent({ key: "home", character: "", shift: false, ctrl: true, meta: false }, 0));
       expect(t.cursorPosition).toBe(0);
-      t.handleKey(new KeyEvent({ key: "end", character: "", shift: false, ctrl: true, meta: false }));
+      t.handleKey(new KeyEvent({ key: "end", character: "", shift: false, ctrl: true, meta: false }, 0));
       expect(t.cursorPosition).toBe(17);
     });
   });
@@ -628,7 +629,7 @@ describe("TextInput", () => {
     it("Alt+Backspace kills the previous word", () => {
       const t = new TextInput({ value: "foo bar baz" });
       t.cursorPosition = asCodePoint(11);
-      t.handleKey(new KeyEvent({ key: "backspace", character: "", shift: false, ctrl: false, meta: true }));
+      t.handleKey(new KeyEvent({ key: "backspace", character: "", shift: false, ctrl: false, meta: true }, 0));
       expect(t.value).toBe("foo bar ");
     });
   });
@@ -649,7 +650,7 @@ describe("TextInput", () => {
       const t = new TextInput({ value: "hi", multiline: true });
       const submits: InteractiveWidget[] = [];
       t.onSubmit((w) => submits.push(w));
-      t.handleKey(new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: true, meta: false }));
+      t.handleKey(new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: true, meta: false }, 0));
       expect(submits).toHaveLength(1);
       expect(t.value).toBe("hi");
     });
@@ -749,7 +750,7 @@ describe("TextInput", () => {
       // Render first so visual rows get cached.
       [...t.render(RENDER_NARROW)];
       t.cursorPosition = asCodePoint(13);            // on visual row 1 (continuation), col 3
-      t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }));
+      t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }, 0));
       // Visual row 0 at col 3 → cursorPosition = 3
       expect(t.cursorPosition).toBe(3);
     });
@@ -762,7 +763,7 @@ describe("TextInput", () => {
       });
       [...t.render(RENDER_NARROW)];
       t.cursorPosition = asCodePoint(4);             // visual row 0, col 4
-      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
+      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
       // Visual row 1 starts at value-offset 10; col 4 → 14
       expect(t.cursorPosition).toBe(14);
     });
@@ -787,7 +788,7 @@ describe("TextInput", () => {
       [...t.render({ maxWidth: 80 })];
       expect(called).toBeGreaterThan(0);
       t.cursorPosition = asCodePoint(0);
-      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
+      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
       // Visual row 1 starts at offset 4 (per the custom strategy)
       expect(t.cursorPosition).toBe(4);
     });
@@ -1017,7 +1018,7 @@ describe("TextInput", () => {
       });
       [...t.render(RENDER_NARROW)];
       t.cursorPosition = asCodePoint(3);
-      t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }));
+      t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }, 0));
       expect(t.cursorPosition).toBe(3);
     });
 
@@ -1029,7 +1030,7 @@ describe("TextInput", () => {
       });
       [...t.render(RENDER_NARROW)];
       t.cursorPosition = asCodePoint(13);
-      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
+      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
       expect(t.cursorPosition).toBe(13);
     });
 
@@ -1077,7 +1078,7 @@ describe("TextInput", () => {
       t.cursorPosition = asCodePoint(rows[1]!.valueStart + 5);
       expect(t["_cursorVisualRow"]()).toBe(1);
 
-      t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }));
+      t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }, 0));
 
       // Pre-fix: cursorPosition would be `rows[0].valueStart + 1 = 1`, which
       // equals `rows[1].valueStart` — the boundary — and `_cursorVisualRow`
@@ -1101,7 +1102,7 @@ describe("TextInput", () => {
 
       const positions: number[] = [t.cursorPosition];
       for (let i = 0; i < 3; i++) {
-        t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }));
+        t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }, 0));
         positions.push(t.cursorPosition);
       }
       // Three Ups from row 2: row 2 → row 1 → row 0 → (stuck at top, no further movement).
@@ -1128,7 +1129,7 @@ describe("TextInput", () => {
 
       // Park cursor on the row right above `head` at col 5.
       t.cursorPosition = asCodePoint(rows[head - 1]!.valueStart + 5);
-      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
+      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
 
       // Cursor should be on row `head` (valueStart), NOT at row `head+1`'s boundary.
       expect(t.cursorPosition).toBe(rows[head]!.valueStart);
@@ -1144,10 +1145,10 @@ describe("TextInput", () => {
       });
       [...t.render(RENDER_NARROW)];
       t.cursorPosition = asCodePoint(6);                 // col 6 on visual row 0 of line 1
-      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
+      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
       // Visual row 1 = "xy" (start=11, length 2) → clamped to col 2 → pos 13
       expect(t.cursorPosition).toBe(13);
-      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
+      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
       // Visual row 2 = "uvwxyz" (start=14, length 6) → preferred col 6 → pos 20
       expect(t.cursorPosition).toBe(20);
     });
@@ -1200,7 +1201,7 @@ describe("TextInput", () => {
       describe(multiline ? "multi-line" : "single-line", () => {
         it("Right steps over a whole glyph, and Home, Right, Right lands before the next", () => {
           const t = new TextInput({ multiline, cursorStyle: CURSOR });
-          t.focus();
+          t.focus(0);
           // One key per code point, as the router sends them.
           for (const ch of "a👍🏽b") t.handleKey(printable(ch));
           expect(t.value).toBe("a👍🏽b");
@@ -1213,7 +1214,7 @@ describe("TextInput", () => {
 
         it("draws the cursor on a whole glyph, and inserts after it", () => {
           const t = new TextInput({ value: "👍🏽x", multiline, cursorStyle: CURSOR });
-          t.focus();
+          t.focus(0);
           t.handleKey(homeEvent());
           expect(cursorCells(t)).toEqual(["👍🏽"]);
           t.handleKey(rightEvent());
@@ -1296,7 +1297,7 @@ describe("TextInput", () => {
 
     it("a password mask is one cell per glyph, and a click lands between glyphs", () => {
       const t = new TextInput({ value: "a👍🏽b", password: true, cursorStyle: CURSOR });
-      t.focus();
+      t.focus(0);
       const drawn = [...t.render(RENDER)].map((seg) => seg.text).join("");
       expect([...drawn].filter((c) => c === "•")).toHaveLength(3);
       t.handleMouse(mouseDownAt(3));
@@ -1351,7 +1352,7 @@ describe("TextInput", () => {
     it("has a column of its own, so every cursor stop moves the cursor", () => {
       for (const glyph of ["\u200b", "\u2028", "\u2029", "\t", "\n"]) {
         const t = new TextInput({ value: `a${glyph}b`, cursorStyle: CURSOR });
-        t.focus();
+        t.focus(0);
         t.cursorPosition = asCodePoint(0);
         const columns: number[] = [];
         for (let stop = 0; stop <= 3; stop++) {
@@ -1389,7 +1390,7 @@ describe("TextInput", () => {
       for (const wrap of [undefined, charGreedyWrap]) {
         for (const glyph of ["​", " ", " ", "\t"]) {
           const t = new TextInput({ value: `a${glyph}b`, multiline: true, wrap, cursorStyle: CURSOR });
-          t.focus();
+          t.focus(0);
           expect(renderText(t)).toBe("a◌b");
           const columns: number[] = [];
           for (let stop = 0; stop <= 3; stop++) {
@@ -1409,7 +1410,7 @@ describe("TextInput", () => {
     it("is a cell the wrap budget counts, so it wraps instead of overflowing its row", () => {
       const options = { maxWidth: 4 };
       const t = new TextInput({ value: "abcd​e", multiline: true, wrap: charGreedyWrap, cursorStyle: CURSOR });
-      t.focus();
+      t.focus(0);
       expect(rowsText(t, options).split("\n").map((r) => r.trimEnd())).toEqual(["abcd", "↳ ◌e"]);
       const stops: { row: number; column: number }[] = [];
       for (let stop = 0; stop <= 6; stop++) {

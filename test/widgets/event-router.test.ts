@@ -95,7 +95,7 @@ function paint(widgets: readonly StubWidget[]): Segment[][] {
 
 function makeHarness(initial: StubWidget[] = []): Harness {
   let widgets = initial;
-  const fm = new DefaultFocusManager({ present: () => widgets, onScreen: () => widgets });
+  const fm = new DefaultFocusManager({ present: () => widgets, onScreen: () => widgets, frameTime: () => 0 });
   fm.settle();
 
   const source: FrameSource = {
@@ -103,6 +103,7 @@ function makeHarness(initial: StubWidget[] = []): Harness {
     get frame() {
       return paint(widgets);
     },
+    frameTime: 0,
     refresh: () => {},
   };
 
@@ -710,7 +711,7 @@ describe("EventRouter — mouse parsing", () => {
     const h = makeHarness([a]);
     h.feed("\x1b[<0;7;4M"); // screen (6, 3)
     expect(a.mouseEvents).toEqual([
-      { type: "mouse_down", x: 2, y: 1, button: 0, shift: false, ctrl: false, over: true },
+      { type: "mouse_down", x: 2, y: 1, button: 0, shift: false, ctrl: false, over: true, time: 0 },
     ]);
     // Handlers registered with onMouse still see the screen position.
     expect(h.mouseEvents[0]).toMatchObject({ x: 6, y: 3 });

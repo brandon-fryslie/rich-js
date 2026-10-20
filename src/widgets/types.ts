@@ -13,8 +13,13 @@ import type { KeyPress, ScreenMouseEvent } from "../host/input.js";
 
 // --- Event types ---
 
+// Every event a widget hears carries `time`: when it was heard, on the clock
+// the frame's cells are read on (`RenderOptions.frameTime`), so a widget
+// keeping the moment of its last interaction — a caret's blink restarting —
+// compares it with the frame it draws and never reads a clock.
+
 // [LAW:types-are-the-program] KeyEvent is a `KeyPress` the app heard, plus
-// the say over who else hears it. It carries a single mutable signal
+// when it was heard and the say over who else hears it. It carries a single mutable signal
 // (`stopped`) that participants in the dispatch chain set by calling
 // `stop()`. Treating it as an interface would force every handler to
 // shuttle a return value upward and the router to interpret it — the
@@ -26,14 +31,16 @@ export class KeyEvent implements KeyPress {
   readonly shift: boolean;
   readonly ctrl: boolean;
   readonly meta: boolean;
+  readonly time: number;
   private _stopped = false;
 
-  constructor(init: KeyPress) {
+  constructor(init: KeyPress, time: number) {
     this.key = init.key;
     this.character = init.character;
     this.shift = init.shift;
     this.ctrl = init.ctrl;
     this.meta = init.meta;
+    this.time = time;
   }
 
   get stopped(): boolean { return this._stopped; }
@@ -60,10 +67,12 @@ export interface KeyHandlerOptions {
 // pointer, whatever widget it shows there.
 export type WidgetMouseEvent = Extract<ScreenMouseEvent, { type: "mouse_down" | "mouse_up" | "mouse_move" }> & {
   readonly over: boolean;
+  readonly time: number;
 };
 
 export interface WidgetFocusEvent {
-  type: "focus" | "blur";
+  readonly type: "focus" | "blur";
+  readonly time: number;
 }
 
 // --- InteractiveWidget ---
@@ -92,9 +101,9 @@ export interface InteractiveWidget extends Renderable, Measurable {
   handleMouse(event: WidgetMouseEvent): void;
   handleFocus(event: WidgetFocusEvent): void;
 
-  // Programmatic control
-  focus(): void;
-  blur(): void;
+  // Programmatic control. `time` is the focus event's (`WidgetFocusEvent`).
+  focus(time: number): void;
+  blur(time: number): void;
   setDisabled(value: boolean): void;
   setHovered(value: boolean): void;
 
@@ -150,10 +159,13 @@ export interface FocusManager {
 }
 
 // What EventRouter routes against: focus for keys, and the frame most
-// recently painted for the pointer (`widgetAt`). `refresh` paints the next
-// frame after a change no observable carries — a `Viewport` the wheel moved.
+// recently painted for the pointer (`widgetAt`). `frameTime` is the time a
+// frame drawn now would be drawn for, which a key is stamped with. `refresh`
+// paints the next frame after a change no observable carries — a `Viewport`
+// the wheel moved.
 export interface FrameSource {
   readonly focusManager: FocusManager;
   readonly frame: readonly (readonly Segment[])[];
+  readonly frameTime: number;
   refresh(): void;
 }

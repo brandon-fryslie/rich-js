@@ -4,7 +4,6 @@ import { render, type RenderOptions } from "../../src/core/protocol.js";
 import type {
   InteractiveWidget,
   KeyEvent,
-  WidgetFocusEvent,
 } from "../../src/widgets/types.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 
@@ -52,17 +51,17 @@ describe("WidgetBase", () => {
 
   it("focuses and blurs", () => {
     const widget = new StubWidget();
-    widget.focus();
+    widget.focus(0);
     expect(widget.focused).toBe(true);
-    widget.blur();
+    widget.blur(0);
     expect(widget.focused).toBe(false);
   });
 
   it("handles focus events", () => {
     const widget = new StubWidget();
-    widget.handleFocus({ type: "focus" } as WidgetFocusEvent);
+    widget.handleFocus({ type: "focus", time: 0 });
     expect(widget.focused).toBe(true);
-    widget.handleFocus({ type: "blur" } as WidgetFocusEvent);
+    widget.handleFocus({ type: "blur", time: 0 });
     expect(widget.focused).toBe(false);
   });
 

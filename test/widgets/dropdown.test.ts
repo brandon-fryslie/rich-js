@@ -16,7 +16,7 @@ const makeKey = (key: string): KeyEvent => new KeyEvent({
   shift: false,
   ctrl: false,
   meta: false,
-});
+}, 0);
 
 const enterEvent = () => makeKey("enter");
 const spaceEvent = () => makeKey("space");
@@ -31,7 +31,7 @@ const shiftTabEvent = () => new KeyEvent({
   shift: true,
   ctrl: false,
   meta: false,
-});
+}, 0);
 
 const charKey = (ch: string): KeyEvent => new KeyEvent({
   key: ch,
@@ -39,7 +39,7 @@ const charKey = (ch: string): KeyEvent => new KeyEvent({
   shift: false,
   ctrl: false,
   meta: false,
-});
+}, 0);
 
 const mouseUpAt = (x: number, y: number, over = true): WidgetMouseEvent => ({
   type: "mouse_up",
@@ -49,6 +49,7 @@ const mouseUpAt = (x: number, y: number, over = true): WidgetMouseEvent => ({
   shift: false,
   ctrl: false,
   over,
+  time: 0,
 });
 
 const RENDER = { maxWidth: 80 };
@@ -349,8 +350,8 @@ describe("Dropdown", () => {
       // through. The caret now comes from render() as data so headerText
       // doesn't need to know about the option flag.
       const d = new Dropdown({ options: ["alpha", "beta", "gamma"] });
-      d.focus();
-      d.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: false, meta: false }));
+      d.focus(0);
+      d.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: false, meta: false }, 0));
       const segs = Segment.splitLines(d.render({ ...RENDER, asciiOnly: true }))[0]!;
       const text = segs.map((s) => s.text).join("");
       expect(text).toContain("|");
@@ -377,7 +378,7 @@ describe("Dropdown", () => {
 
     it("focused adds underline to header row", () => {
       const d = new Dropdown({ options: ["a"] });
-      d.focus();
+      d.focus(0);
       const segs = Segment.splitLines(d.render(RENDER))[0]!;
       expect(segs.some((s) => s.style?.underline === true)).toBe(true);
     });
@@ -388,12 +389,12 @@ describe("Dropdown", () => {
       // dispatch, blur() would only flip `focused` and leave the overlay
       // open — visible state surviving a blur is a real-world bug.
       const d = new Dropdown({ options: ["alpha", "beta", "gamma"] });
-      d.focus();
-      d.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: false, meta: false }));
+      d.focus(0);
+      d.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: false, meta: false }, 0));
       expect(d.expanded).toBe(true);
       expect(d.filter).toBe("a");
 
-      d.blur();
+      d.blur(0);
       expect(d.focused).toBe(false);
       expect(d.expanded).toBe(false);
       expect(d.filter).toBe("");

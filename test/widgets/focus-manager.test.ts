@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/index.js";
-import type { KeyEvent, InteractiveWidget } from "../../src/widgets/index.js";
+import type { KeyEvent, InteractiveWidget, WidgetFocusEvent } from "../../src/widgets/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 
@@ -27,7 +27,7 @@ function managerOf(
   present: () => readonly StubWidget[],
   onScreen: () => readonly StubWidget[] = present,
 ): DefaultFocusManager {
-  return new DefaultFocusManager({ present, onScreen });
+  return new DefaultFocusManager({ present, onScreen, frameTime: () => 0 });
 }
 
 /** A focus manager over `shown`, standing for the widgets on the frame. */
@@ -236,14 +236,14 @@ describe("DefaultFocusManager", () => {
     });
 
     it("dispatches handleFocus exactly once per focus transition", () => {
-      // [LAW:single-enforcer] WidgetBase.focus()/blur() route through
+      // [LAW:single-enforcer] WidgetBase.focus(0)/blur() route through
       // handleFocus; FocusManager must not call handleFocus a second time
       // or every subclass override (Dropdown.handleFocus, custom widgets
       // that track focus counts, etc.) runs twice per transition.
       class Counting extends StubWidget {
         focusCount = 0;
         blurCount = 0;
-        override handleFocus(event: { type: "focus" | "blur" }): void {
+        override handleFocus(event: WidgetFocusEvent): void {
           super.handleFocus(event);
           if (event.type === "focus") this.focusCount++;
           else this.blurCount++;
