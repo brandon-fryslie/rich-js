@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-497",
-      "ref": "refs/pull/497/merge",
-      "sha": "8937e330b2ec57c4dc3e805c95fd461fe536a8e3",
-      "timestamp": "2026-10-20T03:26:41.506Z",
-      "commits": [
-        {
-          "sha": "8937e330b2ec57c4dc3e805c95fd461fe536a8e3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T03:24:41Z",
-          "message": "Merge 18f5b139488eee0199d8054096e259a1c958b7db into 194dc564c4de09242c804593eac4bf3fd3e7fcb0\n"
-        },
-        {
-          "sha": "18f5b139488eee0199d8054096e259a1c958b7db",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T21:24:37-06:00",
-          "message": "Blink is taken out of what is painted and recorded, once (rich-animation-42lg.xbt)\n\nReview (high) fixes:\n- SurfacePainter.paint returns its rows as the destination shows them, so\n  App.frame and paint handlers carry no blink under reduced motion.\n- Console maps each write through shownOn once, then records and encodes it.\n- A hand-made encode takes the preference on its Destination (docs).\n- Stale descriptions of Destination in console.md, the destination getter\n  and render.ts's header name reducedMotion.\n- The test helper encodes with the preference it drew under.\n"
-        },
-        {
-          "sha": "700a5cd5ff57c7a0e3deb81c8fbb8492c425e12d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T21:16:17-06:00",
-          "message": "Reduced motion stops the terminal's blink attribute (rich-animation-42lg.xbt)\n\nA reduced-motion console still wrote SGR 5 for `[blink]`, which the\nterminal animates on its own. The reader's preference now lives on\n`Destination` (`reducedMotion`), resolved once by `resolveDestination`;\neach host's `RenderOptions.reducedMotion` reads it back from there.\n`shownOn` unsets blink and blink2 (`Style.reduced()`) for the one encoder\nand for a recording console, so print, Live/App frames, renderToString\nand the HTML/SVG/text exports all show the text steady. Drawing could not\ndo it: the console lays its print and base styles on after render.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "194dc564c4de09242c804593eac4bf3fd3e7fcb0",
-      "timestamp": "2026-10-20T03:04:11.386Z",
+      "sha": "09ba4d86f87c8f804b5a22f47aad034dff953841",
+      "timestamp": "2026-10-20T03:39:02.959Z",
       "commits": [
         {
-          "sha": "194dc564c4de09242c804593eac4bf3fd3e7fcb0",
+          "sha": "09ba4d86f87c8f804b5a22f47aad034dff953841",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T21:02:07-06:00",
-          "message": "A lifecycle arrives and leaves through a glyph transition too (rich-animation-42lg.s91) (#496)\n\n* A lifecycle arrives and leaves through a glyph transition too (rich-animation-42lg.s91)\n\n* A glyph exit ends at nothing: backspace and scrambleOut (rich-animation-42lg.s91)\n\n/code-review high: typewriter and scramble only resolve toward the text, so\noffered as an exit they replayed the arrival — a jump to scrambled at\n`left`, the text reassembling, then gone. The glyph catalogue gains the two\nways out, each whole at 0 and blank at its seconds, and the test now samples\nthe whole exit and pins that it never gives a glyph back.\n\n`key` names the element, so it is the lifecycle's again, once for both\nhalves; a theme stays on the colour half, the only one with a ground.\nNot taken: `onBeat` over a lifted half is a compile error, not a silent one,\nand the docs apply it before lifting.\n\n* The glyph ways out join the catalogue; scrambleOut keeps a glyph no cell wide (rich-animation-42lg.s91)\n\n/code-review medium: scrambleOut read an unplaced cell as -1, behind its\nblanking front from t=0, so a zero-width glyph was dropped before the element\nbegan to leave. An unplaced cell is now beyond both fronts. And the docs named\nbackspace and scrambleOut catalogue members while the catalogue did not hold\nthem; it does now, as the colour catalogue holds dissolve, so templates spell\nthem and the glyph-effects demo shows them."
+          "timestamp": "2026-10-19T21:37:03-06:00",
+          "message": "Reduced motion stops the terminal's blink attribute (rich-animation-42lg.xbt) (#497)\n\n* Reduced motion stops the terminal's blink attribute (rich-animation-42lg.xbt)\n\nA reduced-motion console still wrote SGR 5 for `[blink]`, which the\nterminal animates on its own. The reader's preference now lives on\n`Destination` (`reducedMotion`), resolved once by `resolveDestination`;\neach host's `RenderOptions.reducedMotion` reads it back from there.\n`shownOn` unsets blink and blink2 (`Style.reduced()`) for the one encoder\nand for a recording console, so print, Live/App frames, renderToString\nand the HTML/SVG/text exports all show the text steady. Drawing could not\ndo it: the console lays its print and base styles on after render.\n\n* Blink is taken out of what is painted and recorded, once (rich-animation-42lg.xbt)\n\nReview (high) fixes:\n- SurfacePainter.paint returns its rows as the destination shows them, so\n  App.frame and paint handlers carry no blink under reduced motion.\n- Console maps each write through shownOn once, then records and encodes it.\n- A hand-made encode takes the preference on its Destination (docs).\n- Stale descriptions of Destination in console.md, the destination getter\n  and render.ts's header name reducedMotion.\n- The test helper encodes with the preference it drew under."
         }
       ]
     }
