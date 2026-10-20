@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-494",
+      "ref": "refs/pull/494/merge",
+      "sha": "effac0ed404ad8d8a9df6b40ef11235da3cb6e4b",
+      "timestamp": "2026-10-20T00:25:49.886Z",
+      "commits": [
+        {
+          "sha": "effac0ed404ad8d8a9df6b40ef11235da3cb6e4b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T18:23:50-06:00",
+          "message": "Merge 7328cc338efa457e6b5bc76af806a515ee826447 into 8c10c37cc9d14d9febf2d82d8d9f8f522d13022c\n"
+        },
+        {
+          "sha": "7328cc338efa457e6b5bc76af806a515ee826447",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T18:23:46-06:00",
+          "message": "A Progress bar eases toward its count over a fill timing, retargeted from where it is (rich-animation-42lg.k1g)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "8c10c37cc9d14d9febf2d82d8d9f8f522d13022c",
