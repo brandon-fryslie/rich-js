@@ -14,7 +14,7 @@ import type { KeyPress, ScreenMouseEvent } from "../host/input.js";
 // --- Event types ---
 
 // Every event a widget hears carries `time`: when it was heard, on the clock
-// the frame's cells are read on (`RenderOptions.frameTime`), so a widget
+// the frame's cells are read on (`RenderOptions.frame`), so a widget
 // keeping the moment of its last interaction — a caret's blink restarting —
 // compares it with the frame it draws and never reads a clock.
 

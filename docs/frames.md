@@ -80,7 +80,7 @@ const spinner = new Spinner("dots", "working", { style: "cyan" });
 console.print(new Group(...[0, 0.1, 0.2, 0.3].map((t) => spinner.at(t))));
 ```
 
-A `Progress` hands its `SpinnerColumn` each frame's time on the progress's clock, and a `Live` hands it to [a view](/live#a-view-drawn-for-a-time); a `Status` is that view over its message.
+A `Progress` hands its `SpinnerColumn` the time of each frame it is drawn in, and a `Live` hands it to [a view](/live#a-view-drawn-for-a-time); a `Status` is that view over its message.
 
 ## Lit by an effect
 

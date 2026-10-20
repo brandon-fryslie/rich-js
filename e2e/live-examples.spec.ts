@@ -257,6 +257,24 @@ test("a run's failure stays said through an edit that does not parse, and goes o
   expect(errors).toEqual([]);
 });
 
+// A Progress drawn in another host's frames is made for that host, and one
+// that is not throws as it is drawn — a failure only a run of the example
+// shows, since the page's build only type-checks a live example.
+for (const { path, code, shows } of [
+  { path: "live.html", code: "const progress = new Progress({ drawnBy: live });", shows: "Starting" },
+  { path: "progress.html", code: "live.update(new Group(downloadProgress, processProgress));", shows: "40/40" },
+  { path: "progress.html", code: "live.update(new Group(overallProgress, batchProgress));", shows: "Overall" },
+]) {
+  test(`a Progress drawn in another host's Live runs: ${path}, ${shows}`, async ({ page }) => {
+    const errors = await open(page, path);
+    const live = liveUnder(page, code);
+    await scrollTo(live);
+    await expect.poll(() => rows(live), { timeout: 15_000 }).toContain(shows);
+    await expect(page.locator(".rich-example", { hasText: code }).locator(".rich-example-failure")).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+}
+
 test("lines printed through live.console stay above the live display", async ({ page }) => {
   const errors = await open(page, "live.html");
   const live = liveUnder(page, "live.console.print(");

@@ -144,12 +144,16 @@ const JOBS = [
 
 const STEPS = 1000;
 
+// The one display every frame is drawn on, made first: the jobs' Progress is
+// drawn in its frames, and so is timed on them.
+const live = new Live(undefined, { altScreen: true, autoRefresh: false });
+
 const jobs = new Progress(
   new SpinnerColumn("dots"),
   new TextColumn("[progress.description]{task.description}"),
   new BarColumn(32),
   new TaskProgressColumn(),
-  { expand: true },
+  { expand: true, drawnBy: live },
 );
 const tasks = JOBS.map((job) => jobs.addTask(job.description, { total: STEPS }));
 
@@ -261,7 +265,6 @@ function dashboardAt(t: number): Layout {
 // the dashboard, not the empty screen Live starts on.
 const FRAMES_PER_SECOND = 12;
 const started = Date.now();
-const live = new Live(undefined, { altScreen: true, autoRefresh: false });
 const draw = (): void => live.update(dashboardAt((Date.now() - started) / 1000), { refresh: true });
 live.start();
 draw();

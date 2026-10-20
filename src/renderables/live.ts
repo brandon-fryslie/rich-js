@@ -29,10 +29,10 @@ import { frameRate, systemClock, type Clock, type FrameRate } from "../core/cloc
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
 import { FinalFramePainter, SurfacePainter, type FrameSource, type Painter, type Screen } from "../core/paint.js";
-import { fitHeight, render, type Renderable } from "../core/protocol.js";
+import { fitHeight, render, type FrameHost, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { Timeline } from "../core/timeline.js";
-import { drawView, hostView, undrawn, type DrawnView, type FrameSays, type HostView, type View } from "../core/view.js";
+import { drawView, frameTime, hostView, undrawn, type DrawnView, type FrameSays, type HostTime, type HostView, type View } from "../core/view.js";
 
 // Nothing: what a Live made with no view draws until `update` gives it one.
 const NOTHING: Renderable = { render: () => [] };
@@ -65,11 +65,14 @@ export interface LiveOptions {
   altScreen?: boolean;
 }
 
-export class Live {
+export class Live implements FrameHost {
   private _view: HostView;
   private _console: Console;
   private readonly _rate: FrameRate;
   private readonly _clock: Clock;
+  // The clock moment this host began: what its default timeline plays from,
+  // and what a renderable view is drawn for the time since (`HostTime`).
+  private readonly _epoch: number;
   private _timeline: Timeline;
   private _autoRefresh: boolean;
   private _transient: boolean;
@@ -90,7 +93,8 @@ export class Live {
     // rate that could never tick is refused where it is given.
     this._rate = frameRate(options?.refreshPerSecond ?? 4);
     this._clock = options?.clock ?? systemClock();
-    this._timeline = options?.timeline ?? Timeline.play(this._clock.now());
+    this._epoch = this._clock.now();
+    this._timeline = options?.timeline ?? Timeline.play(this._epoch);
     this._autoRefresh = options?.autoRefresh !== false;
     this._transient = options?.transient ?? false;
     this._verticalOverflow = options?.verticalOverflow ?? "ellipsis";
@@ -120,6 +124,15 @@ export class Live {
   /** The map from the clock to the time the view is drawn for. */
   get timeline(): Timeline {
     return this._timeline;
+  }
+
+  /** The time a frame drawn now is drawn for: the clock's now, through the timeline for a view on it. */
+  get frameTime(): number {
+    return frameTime(this._view, this._time());
+  }
+
+  private _time(): HostTime {
+    return { now: this._clock.now(), epoch: this._epoch, timeline: this._timeline };
   }
 
   /**
@@ -241,7 +254,7 @@ export class Live {
     // back — its overflow policy, then `fitHeight`, which pads only a region.
     const options = this._console.options;
     const height = this._painter.height(options.height.rows);
-    return drawView(this._view, this._timeline, this._clock.now(), { ...options, height }, (renderable, drawn) => {
+    return drawView(this._view, this._time(), this, { ...options, height }, (renderable, drawn) => {
       const lines = Segment.splitLines(render(renderable, drawn));
       return fitHeight(this._overflow(lines, height.rows), height);
     });

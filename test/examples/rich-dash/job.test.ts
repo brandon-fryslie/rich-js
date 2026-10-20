@@ -14,10 +14,11 @@ afterEach(() => vi.restoreAllMocks());
 describe("job widget log", () => {
   it("logs every item a stage works through, however far a tick advances", () => {
     const random = vi.spyOn(Math, "random").mockReturnValue(0); // the shortest run: three ticks an item
-    let state = jobWidget.init();
+    const job = jobWidget({ frameTime: 0 });
+    let state = job.init();
     random.mockReturnValue(0.999); // the longest advance a tick makes
-    const text = () => renderToString(jobWidget.render(state), { width: 200, colorSystem: null });
-    for (let i = 0; i < 500 && !text().includes("test:demos ok"); i++) state = jobWidget.tick(state);
+    const text = () => renderToString(job.render(state), { width: 200, colorSystem: null });
+    for (let i = 0; i < 500 && !text().includes("test:demos ok"); i++) state = job.tick(state);
 
     const lines = text().split("\n").map((line) => line.trim());
     const logged = (stage: string) => lines.filter((line) => line.startsWith(`${stage}  `) && !line.includes("━")).map((line) => line.slice(stage.length + 2));

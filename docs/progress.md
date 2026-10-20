@@ -146,7 +146,8 @@ const progress = new Progress({ refreshPerSecond: 2 });
 
 Tasks are timed, and frames drawn, on `clock` — `systemClock()` unless you pass a
 [`Clock`](/app#animating-at-a-frame-rate) of your own, which is how a test moves a
-task's time by hand.
+task's time by hand. A `Progress` drawn by another host is timed on that host's
+frames instead ([Drawn by another host](#drawn-by-another-host)).
 
 Disable auto-refresh and call manually:
 
@@ -280,10 +281,11 @@ import {
   BarColumn, MofNCompleteColumn, TimeRemainingColumn,
 } from "@promptctl/rich-js";
 
-const downloadProgress = new Progress(new BarColumn(), new MofNCompleteColumn());
-const processProgress  = new Progress(new BarColumn(), new TimeRemainingColumn());
+const live = new Live();
+const downloadProgress = new Progress(new BarColumn(), new MofNCompleteColumn(), { drawnBy: live });
+const processProgress  = new Progress(new BarColumn(), new TimeRemainingColumn(), { drawnBy: live });
 
-const live = new Live(new Group(downloadProgress, processProgress));
+live.update(new Group(downloadProgress, processProgress));
 live.start();
 try {
   // Each Progress takes its own tasks, drawn in its own columns.
@@ -302,10 +304,11 @@ try {
 The same shape gives you an overall bar above a per-batch bar. Create the batch task once, outside the loop, and re-label it each iteration — a fresh `addTask()` per batch would leave a finished row on screen for every batch you have run. A task's `total` is fixed when the task is created, so a bar that outlives batches of differing size counts percent rather than items:
 
 ```typescript live
-const overallProgress = new Progress(new TextColumn("{task.description}"), new BarColumn());
-const batchProgress   = new Progress(new TextColumn("{task.description}"), new BarColumn());
+const live = new Live();
+const overallProgress = new Progress(new TextColumn("{task.description}"), new BarColumn(), { drawnBy: live });
+const batchProgress   = new Progress(new TextColumn("{task.description}"), new BarColumn(), { drawnBy: live });
 
-const live = new Live(new Group(overallProgress, batchProgress));
+live.update(new Group(overallProgress, batchProgress));
 live.start();
 try {
   const overallTask = overallProgress.addTask("Overall", { total: batches.length });
@@ -326,6 +329,12 @@ try {
 }
 ```
 
-Do not call `start()` on any of them. A started `Progress` builds its own `Live` with its own refresh timer, and that timer knows nothing about the other display's output. To redraw, a `Live` moves the cursor up as many rows as it drew last, counting from wherever the cursor happens to sit, and paints its new frame from there — so the first display's next tick lands on the lines the second one just wrote and redraws itself in their place. Two started instances do not stack; the second one's bars are erased before you ever see them.
+Each `Progress` is made with `drawnBy: live`, so none has a `Live` of its own, and `start()` on one throws. Two started instances would not stack anyway: a `Live` redraws by moving the cursor up as many rows as it drew last, counting from wherever the cursor happens to sit, so the first display's next tick lands on the lines the second one just wrote and redraws itself in their place.
 
 See [Live Display](./live) for details.
+
+### Drawn by another host
+
+A `Progress` keeps the time of every task: when it started, when each update came, when it finished. It reads all of them, and the time each frame is drawn for, from one host. With no `drawnBy`, that host is the `Live` it builds for itself, on `clock`, so its times are the clock's. Given `drawnBy` — a `Live`, an `App` or a `WidgetApp` — it builds no `Live`, takes none of `console`, `clock`, `refreshPerSecond`, `autoRefresh` or `transient` — print through the host — and is timed on that host's frames: in a view on the host's [timeline](./animation#playback-a-timeline), a pause holds every bar, elapsed time and spinner, and a change of rate changes how fast elapsed time runs. Run backwards, a frame is drawn as the task stood at its moment: before its start it has not started, before it reached its total it has not finished, and its speed is taken over the updates that had come by then. `stop()` settles every bar at its count for the host's next frame; `start()`, `refresh()` and `console` belong to the host, and asking a `Progress` for them throws, as does an update with `refresh: true`. A `Progress` drawn in a frame of any host but its own throws, saying to give it that host.
+
+Printed, a `Progress` is drawn for no frame, so it is drawn for its host's time now: elapsed time is correct the moment it prints.

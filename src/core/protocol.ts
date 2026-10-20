@@ -25,6 +25,16 @@ import type { Highlighter } from "./highlighter.js";
  */
 export type OverflowMethod = "fold" | "crop" | "ellipsis" | "ignore";
 
+/**
+ * What draws frames — a `Live`, an `App` — as what draws in them sees it:
+ * the time a frame drawn now is drawn for, the host's clock read through its
+ * timeline for a view on it (`frameTime`, `./view.ts`). Not a `Clock`: under
+ * a paused timeline it holds, and under a reversed one it runs backwards.
+ */
+export interface FrameHost {
+  readonly frameTime: number;
+}
+
 export interface RenderOptions {
   /**
    * The cells this renderable may occupy. A count of cells, so a non-negative
@@ -104,15 +114,15 @@ export interface RenderOptions {
    */
   reducedMotion?: boolean;
   /**
-   * The moment the frame is drawn for, in seconds, on the clock its cells'
-   * `nextChange` stamps are read on: the host's for a renderable view, the
-   * timeline's for a view on it (`frameTime`, `./view.ts`). It is how a
-   * renderable that lives across frames — a widget — draws for the time
-   * without being rebuilt each frame with one, and without reading a clock.
-   * Absent, the frame is drawn for no moment — a `print` — and nothing drawn
-   * from it moves.
+   * The frame being drawn: `time`, the moment it is drawn for, in seconds, on
+   * the clock its cells' `nextChange` stamps are read on, and `host`, the
+   * host drawing it, whose `frameTime` that moment was. It is how a
+   * renderable that lives across frames — a widget, a `Progress` — draws for
+   * the time without being rebuilt each frame with one, and without reading
+   * a clock. Absent, the frame is drawn for no moment — a `print` — and
+   * nothing drawn from it moves.
    */
-  frameTime?: number;
+  frame?: { readonly time: number; readonly host: FrameHost };
   /**
    * Told of every renderable `render` is asked for, as it is asked, so the
    * calls arrive in document order: a container before what it holds, its

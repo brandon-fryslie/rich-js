@@ -1,6 +1,6 @@
 /**
  * Contract of `TextInput`'s caret blink: on the time the frame is drawn for
- * (`RenderOptions.frameTime`), restarted by the last key the field heard
+ * (`RenderOptions.frame`), restarted by the last key the field heard
  * (`KeyEvent.time`), and saying when it next flips so a host paints then and
  * not between.
  *

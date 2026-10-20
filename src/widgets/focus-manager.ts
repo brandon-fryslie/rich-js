@@ -19,7 +19,7 @@ export interface FocusView {
   present(): readonly InteractiveWidget[];
   /** The widgets with a cell on the frame on screen, in document order. */
   onScreen(): readonly InteractiveWidget[];
-  /** The time a frame drawn now is drawn for (`RenderOptions.frameTime`), which a focus change is stamped with. */
+  /** The time a frame drawn now is drawn for (`RenderOptions.frame`), which a focus change is stamped with. */
   frameTime(): number;
 }
 
