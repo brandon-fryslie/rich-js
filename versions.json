@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-500",
+      "ref": "refs/pull/500/merge",
+      "sha": "055e4af484b35995db2a05641088e7e180b907c1",
+      "timestamp": "2026-10-20T05:53:02.669Z",
+      "commits": [
+        {
+          "sha": "055e4af484b35995db2a05641088e7e180b907c1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T23:51:08-06:00",
+          "message": "Merge a48817046e7c92df5ea7d71a4fa570e66ed15a72 into fe34cbf6fa8c51e338579c0ab209db047f293a58\n"
+        },
+        {
+          "sha": "a48817046e7c92df5ea7d71a4fa570e66ed15a72",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T23:50:23-06:00",
+          "message": "The animation playground: every kind of motion on one timeline, in the card and in Node (rich-animation-42lg.bp9)\n\nA demo under examples/animation-playground/: every kind the epic built, each\nin a titled panel, with buttons to pause, reverse, scrub, change speed, step\nand seek, and three preferences — reduced motion, colour depth, frame rate —\neach of which rebuilds the WidgetApp over the same host, clock and timeline.\n`npm run animation-playground` runs main.js in Node; the card runs the same.\n\nOne-shots replay through Animation.repeat, each turn built once; the demo's\nown `cycle` combinator is gone. Playback state is the app's timeline alone.\nColour depth is a delegating TerminalHost whose env says FORCE_COLOR/NO_COLOR.\n\ntest/examples/animation-playground drives it through clicks on an xterm model\nof the screen with a fake clock: every kind draws at 0, 7.3 s and near 10^6 s;\npaused paints nothing; reverse and speed move the readout; the scrub bar seeks\nto the cell pressed; reduced motion holds the gallery still where full motion\nmoves it; sixteen colours writes no 38/48;2/5 and no colour writes no colour\nSGR at all.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "fe34cbf6fa8c51e338579c0ab209db047f293a58",
