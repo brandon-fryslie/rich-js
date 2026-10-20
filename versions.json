@@ -4,15 +4,22 @@
     {
       "version": "pr-496",
       "ref": "refs/pull/496/merge",
-      "sha": "dbeae21112ec39477c739e74f46ac9b24ce68a33",
-      "timestamp": "2026-10-20T02:35:03.251Z",
+      "sha": "41f308903a5085f6a583036d8c8dd3ca45ca6756",
+      "timestamp": "2026-10-20T02:45:54.944Z",
       "commits": [
         {
-          "sha": "dbeae21112ec39477c739e74f46ac9b24ce68a33",
+          "sha": "41f308903a5085f6a583036d8c8dd3ca45ca6756",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T20:32:57-06:00",
-          "message": "Merge 3cb074ee158b75b47dddf6514e9740e689a8678a into fa6e3e004acd357b20198f87813597644570cf1c\n"
+          "timestamp": "2026-10-20T02:44:01Z",
+          "message": "Merge d7f6db303fc4da4c2b4b4c11958d40e2368016ef into fa6e3e004acd357b20198f87813597644570cf1c\n"
+        },
+        {
+          "sha": "d7f6db303fc4da4c2b4b4c11958d40e2368016ef",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T20:43:56-06:00",
+          "message": "A glyph exit ends at nothing: backspace and scrambleOut (rich-animation-42lg.s91)\n\n/code-review high: typewriter and scramble only resolve toward the text, so\noffered as an exit they replayed the arrival — a jump to scrambled at\n`left`, the text reassembling, then gone. The glyph catalogue gains the two\nways out, each whole at 0 and blank at its seconds, and the test now samples\nthe whole exit and pins that it never gives a glyph back.\n\n`key` names the element, so it is the lifecycle's again, once for both\nhalves; a theme stays on the colour half, the only one with a ground.\nNot taken: `onBeat` over a lifted half is a compile error, not a silent one,\nand the docs apply it before lifting.\n"
         },
         {
           "sha": "3cb074ee158b75b47dddf6514e9740e689a8678a",
