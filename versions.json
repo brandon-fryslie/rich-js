@@ -4,15 +4,22 @@
     {
       "version": "pr-494",
       "ref": "refs/pull/494/merge",
-      "sha": "a7b39aa98536117f20b8a1a7329d4a586b577232",
-      "timestamp": "2026-10-20T00:43:32.788Z",
+      "sha": "a149e0fce6f07dcab71b30a6f30f26d54c211de4",
+      "timestamp": "2026-10-20T00:48:00.172Z",
       "commits": [
         {
-          "sha": "a7b39aa98536117f20b8a1a7329d4a586b577232",
+          "sha": "a149e0fce6f07dcab71b30a6f30f26d54c211de4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T00:41:50Z",
-          "message": "Merge 056f410f16b898c0199b79ed63c44c89b17f07a1 into 8c10c37cc9d14d9febf2d82d8d9f8f522d13022c\n"
+          "timestamp": "2026-10-20T00:46:30Z",
+          "message": "Merge ce096c89f1972bdf79d3008a9125b9675e1c35c3 into 8c10c37cc9d14d9febf2d82d8d9f8f522d13022c\n"
+        },
+        {
+          "sha": "ce096c89f1972bdf79d3008a9125b9675e1c35c3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T18:46:25-06:00",
+          "message": "updateTask's refresh keeps Live's view: the frame stays at Live's time (rich-animation-42lg.k1g)\n\nReview (medium): update(this, …) swapped the function view for the Progress\nrenderable, bringing back the second clock read and the busy redraw while a\nbar eased. The constructor is now the one place the view is set.\n"
         },
         {
           "sha": "056f410f16b898c0199b79ed63c44c89b17f07a1",
