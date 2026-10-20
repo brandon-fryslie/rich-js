@@ -31,7 +31,7 @@ import { Segment } from "../core/segment.js";
 import type { FrameHost, Presence, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
-import type { Clock } from "../core/clock.js";
+import type { Clock, FrameRate } from "../core/clock.js";
 import type { Timeline } from "../core/timeline.js";
 import { mapView } from "../core/view.js";
 import { App, type AppOptions, type AppPhase, type Wheel } from "../host/app.js";
@@ -127,6 +127,15 @@ export class WidgetApp implements FrameSource, FrameHost {
 
   set timeline(timeline: Timeline) {
     this.app.timeline = timeline;
+  }
+
+  /** How often the app paints while what it shows moves; setting it goes on at the new rate from the next frame, as `App.rate` does. */
+  get rate(): FrameRate {
+    return this.app.rate;
+  }
+
+  set rate(rate: FrameRate) {
+    this.app.rate = rate;
   }
 
   /**
