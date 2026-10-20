@@ -304,7 +304,7 @@ describe("glyphs in a template", () => {
   });
 
   it("refuses an effect it does not know, naming every one it does", () => {
-    expect(() => toolboxAt({ t: 0 }).parse(`{{ "x" | glyphs "melt" 0 }}`).evaluate({})).toThrow(/unknown glyph effect "melt"; expected one of "wave", "rain", "stars", "typewriter", "scramble"/);
+    expect(() => toolboxAt({ t: 0 }).parse(`{{ "x" | glyphs "melt" 0 }}`).evaluate({})).toThrow(/unknown glyph effect "melt"; expected one of "wave", "rain", "stars", "typewriter", "scramble", "backspace", "scrambleOut"/);
   });
 });
 

@@ -166,7 +166,7 @@ console.print(`done at 2s: ${typing.done(2)}`);
 
 A glyph effect changes what a cell shows, never which cells exist, where they are or who drew them. The text it returns for a cell must be exactly as wide as the glyph it replaces, hold no line break or control character, and not join the cell beside it into one character, as a trailing zero-width joiner would. Otherwise the render throws and names the cell or the line. So nothing beside the element ever moves, and a wide glyph like `漢` is blanked as two spaces or scrambled as two narrow glyphs, never cut in half. A cell that comes back unchanged is drawn byte for byte as it was, and a changed cell keeps its link and its owner. Glyphs are written at every colour depth, so a glyph effect moves even with no colour output, where a colour effect does nothing.
 
-The catalogue, `GLYPH_EFFECT_CATALOGUE`, has two transitions, which run once and say when they are `done`, and three loops; each transition has its way out beside it, for an element [leaving](#enter-and-exit-an-element-arriving-staying-and-leaving):
+The catalogue, `GLYPH_EFFECT_CATALOGUE`, has four transitions, which run once and say when they are `done` — two that bring text in and their two ways out, for an element [leaving](#enter-and-exit-an-element-arriving-staying-and-leaving) — and three loops:
 
 - `typewriter(timing)`: the element's text blank until it is typed, in reading order, the last cell at `timing.seconds`, its ease setting the pace. The spaces between words are typed; the padding round the text is not, so no time is spent on it.
 - `scramble(timing, z)`: random glyphs, a new one each fifteenth of a second, resolving to the words in reading order. Blanks stay blank, so the words keep their shape.

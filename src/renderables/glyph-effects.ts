@@ -180,7 +180,8 @@ export function scrambleOut(timing: Timing, z: number): GlyphTransition {
       const gone = arrived(length, (p - CHURN) / (1 - CHURN));
       const step = flicker.at(t);
       return (cell) => {
-        const at = place.get(cell.index) ?? -1;
+        // A margin or a glyph no cell wide has no place, and neither front reaches it.
+        const at = place.get(cell.index) ?? Number.POSITIVE_INFINITY;
         if (at < gone) return blank(cell.glyph);
         return !inked(cell.glyph) || at >= churning ? cell.glyph : churned(cell, z, step);
       };
@@ -287,12 +288,14 @@ export function particles(spec: Particles, z: number): GlyphEffect {
 export type GlyphLoopName = "wave" | "rain" | "stars";
 
 /** The names of the glyph effects that run once. */
-export type GlyphTransitionName = "typewriter" | "scramble";
+export type GlyphTransitionName = "typewriter" | "scramble" | "backspace" | "scrambleOut";
 
 /** Each catalogue glyph effect's defaults, as first drawn in `examples/glyph-effects`. */
 export const GLYPH_DEFAULTS = {
   typewriter: { seconds: 2, ease: EASES.linear },
   scramble: { seconds: 2.5, ease: EASES["ease-in"] },
+  backspace: { seconds: 1.5, ease: EASES.linear },
+  scrambleOut: { seconds: 2.5, ease: EASES["ease-out"] },
   wave: { step: 0.06, width: 3 },
   rain: { glyphs: "│╎", ascii: "|:", density: 0.06, step: 0.08, drift: 1, life: Number.POSITIVE_INFINITY },
   stars: { glyphs: "·+*", ascii: ".+*", density: 0.04, step: 1.5, drift: 0, life: 1 },
@@ -318,5 +321,7 @@ export const GLYPH_EFFECT_CATALOGUE: {
   transitions: {
     typewriter: (_element, timing = GLYPH_DEFAULTS.typewriter) => typewriter(timing),
     scramble: (element, timing = GLYPH_DEFAULTS.scramble) => scramble(timing, element.z),
+    backspace: (_element, timing = GLYPH_DEFAULTS.backspace) => backspace(timing),
+    scrambleOut: (element, timing = GLYPH_DEFAULTS.scrambleOut) => scrambleOut(timing, element.z),
   },
 };

@@ -56,6 +56,8 @@ const z = 0.4;
 const PANELS: readonly [string, string, Shown][] = [
   ["typewriter", LINE, { make: (timing) => GLYPH_EFFECT_CATALOGUE.transitions.typewriter({ z }, timing), timing: GLYPH_DEFAULTS.typewriter }],
   ["scramble", LINE, { make: (timing) => GLYPH_EFFECT_CATALOGUE.transitions.scramble({ z }, timing), timing: GLYPH_DEFAULTS.scramble }],
+  ["backspace", LINE, { make: (timing) => GLYPH_EFFECT_CATALOGUE.transitions.backspace({ z }, timing), timing: GLYPH_DEFAULTS.backspace }],
+  ["scramble out", LINE, { make: (timing) => GLYPH_EFFECT_CATALOGUE.transitions.scrambleOut({ z }, timing), timing: GLYPH_DEFAULTS.scrambleOut }],
   ["wave", LINE, { effect: GLYPH_EFFECT_CATALOGUE.loops.wave({ z }) }],
   ["rain", SKY, { effect: GLYPH_EFFECT_CATALOGUE.loops.rain({ z }) }],
   ["stars", SKY, { effect: GLYPH_EFFECT_CATALOGUE.loops.stars({ z }) }],
