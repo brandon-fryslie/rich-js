@@ -4,15 +4,22 @@
     {
       "version": "pr-494",
       "ref": "refs/pull/494/merge",
-      "sha": "904a6bef944df9b05b3bf43c81b61af6d87802f9",
-      "timestamp": "2026-10-20T01:00:40.306Z",
+      "sha": "77425e4f5f0636e10012ab46a0c69d7088a8bb89",
+      "timestamp": "2026-10-20T01:20:13.296Z",
       "commits": [
         {
-          "sha": "904a6bef944df9b05b3bf43c81b61af6d87802f9",
+          "sha": "77425e4f5f0636e10012ab46a0c69d7088a8bb89",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T00:59:10Z",
-          "message": "Merge 716db070497475d01b65dee5b966cc843d8c9a27 into 8c10c37cc9d14d9febf2d82d8d9f8f522d13022c\n"
+          "timestamp": "2026-10-20T01:18:18Z",
+          "message": "Merge e4fe33b48e16859b070de34e3a4e742292996eb6 into 8c10c37cc9d14d9febf2d82d8d9f8f522d13022c\n"
+        },
+        {
+          "sha": "e4fe33b48e16859b070de34e3a4e742292996eb6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T19:18:13-06:00",
+          "message": "The eased-bar example names its own task, so the page's examples stay apart (rich-animation-42lg.k1g)\n\ne2e/live-examples.spec.ts finds the reduced-motion progress example by\n'progress.addTask(\"Downloading...\"'; the new example matched it too.\n"
         },
         {
           "sha": "716db070497475d01b65dee5b966cc843d8c9a27",
