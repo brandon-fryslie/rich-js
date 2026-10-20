@@ -13,6 +13,8 @@ interface Animation<T> {
 
 Nothing here reads a clock. `t` is handed in by whoever draws, so the same `t` gives the same value at one redraw a second or sixty, nothing is kept from one call to the next, and a call costs the same a second in as a million seconds in.
 
+To watch every kind of motion on this page on one timeline — paused, reversed, scrubbed, at a quarter and four times the speed, with motion reduced, at sixteen colours and none, at one frame a second and sixty — run `npm run animation-playground` in a checkout of this repository, or open the [playground's demo page](/demos/animation-playground).
+
 ## When it next changes
 
 `nextChange(t)` is never before `t`, and its answer is one of three things:
