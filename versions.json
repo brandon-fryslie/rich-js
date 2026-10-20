@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-493",
-      "ref": "refs/pull/493/merge",
-      "sha": "8c2d028aa7855e1eda92383f44299d4961e1957d",
-      "timestamp": "2026-10-20T00:06:18.739Z",
-      "commits": [
-        {
-          "sha": "8c2d028aa7855e1eda92383f44299d4961e1957d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T00:04:39Z",
-          "message": "Merge d001442165608cc1be79b6c2b4e1684d8fda1bcb into 5cac7dcb8d47c475525384d4737e0da368771a82\n"
-        },
-        {
-          "sha": "d001442165608cc1be79b6c2b4e1684d8fda1bcb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T18:04:34-06:00",
-          "message": "Template animation docs say which hosts redraw a moving number, and on which clock a start is (rich-animation-42lg.zck review)\n\nAn App does not poll a silent function view, so a template's tween or loop\nmoves there only while animate() is held; the docs and module header claimed\nevery host redraws on time. A start is on the handed-in timeline's clock.\nreglyphText's checks see the text's own glyphs only. Demo comment lists the\nwhole toolbox.\n"
-        },
-        {
-          "sha": "71dd51d6df0f84c760a4e87fc8e8129200dd55a9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T17:55:13-06:00",
-          "message": "Templates get the animation toolbox: tween, loop, glyphs, on a host-handed timeline (rich-animation-42lg.zck)\n\nanimationFuncs(frameTime, options) now draws every function on a Timeline\nthe host hands in as a getter (the host's own clock when omitted), so a\ndaemon pauses, reverses or scrubs a session's animations with nothing\nrecompiled, and a frame's stamp is carried back onto the host's clock by\nTimeline.run rather than left on the mapped one. One helper reads the time,\nthe timeline and reduced motion for every function.\n\nNew functions, each an exact arity of typed slots:\n- tween <seconds> <ease> <start> <from> <to>: a number, ease by name\n- loop <seconds> <start>: the way through a period, 0 to 1\n- glyphs <name> <start> <fragment>: a catalogue glyph effect on a fragment\n\nA colour tween and a ramp scroll are a tween and a loop read through ramp,\nnot new functions: ColorRamp is the one blender. glyphs runs on the\nunrendered RichText (reglyphText), sharing Reglyphed's walk and contract\nchecks. options also carries asciiOnly, for the glyphs an effect picks.\n\nDocs: template-bindings \"Animating a template\"; pointers from animation.md.\nDemo: §6 Motion in rich-template-bindings, motion and reduced side by side.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "5cac7dcb8d47c475525384d4737e0da368771a82",
-      "timestamp": "2026-10-19T23:38:48.940Z",
+      "sha": "8c10c37cc9d14d9febf2d82d8d9f8f522d13022c",
+      "timestamp": "2026-10-20T00:09:38.172Z",
       "commits": [
         {
-          "sha": "5cac7dcb8d47c475525384d4737e0da368771a82",
+          "sha": "8c10c37cc9d14d9febf2d82d8d9f8f522d13022c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T17:37:03-06:00",
-          "message": "Reduced motion: one switch draws every animation at its rest (rich-animation-42lg.a38) (#492)\n\n* Reduced motion: one switch draws every animation at its rest (rich-animation-42lg.a38)\n\nAn Animation now says its rest() — a loop's first value, a one-shot's end —\nand every combinator says it once, so a transition rests at its new state, a\nlifecycle arrived (or gone once told to leave), a stagger with everyone\narrived. reducedMotion on Console (which a Live draws through), on App, and on\nanimationFuncs is the one switch; shownAt in core/view.ts is the one place it\nis read, by drawView and by every renderable built for the host's time.\ndrawView takes the render options once and hands them to its draw. Nothing\nreads the environment.\n\nNamed limit: a text frame a function view splices itself with frameAt, or a\nvalue it samples itself, is its own sample; at rest a function view is asked\nat 0. docs/animation.md#reduced-motion says so.\n\n* Reduced motion keeps content on time: an animation reduced is an animation (rich-animation-42lg.a38)\n\nThe high review of #492 showed a time-free rest() cannot say when content\nshows: a lifecycle told to leave later drew as already gone, and a function\nview pinned at view(0) froze the lifecycle demo on its first line.\nAnimation<T>.rest(): T becomes reduced(): Animation<T> — the motion taken\nout, what shows and when kept. Function views are asked at the real t.\n\nAlso: a reduced sequence wakes nothing at its switch; drawView's since-when\nreads the reduced animation, so a reversed timeline is never told to look\nagain; renderToString takes reducedMotion; one finiteTime refusal in\ncore/easing serves every \"needs a finite t\".\n\n* A reduced sequence keeps both parts on time; a reduced element wakes its host when gone (rich-animation-42lg.a38)\n\nMedium review of #492: sequence is a general combinator, so skipping `first`\ndropped content (a loading text before results). It is now each part reduced\nwith the switch kept; a transition says its own end. A lifecycle reduced shows\nnothing once told to leave but still says it changes when `gone`, so a host\npruning on gone(t) drops it on time. The template frames/stepped refuse a\nnon-finite frameTime() under reduced motion as with motion.\n\n* A one-shot reduced cuts to its end when it starts; a glyph loop reduced is the text as written (rich-animation-42lg.a38)\n\nEscalation review of #492. A reduced tween or transition was its end at every\ntime, so one scheduled later showed finished early; Animation.cut(before,\nafter) keeps the start and drops the motion. A stagger reduced has everyone\narrived, its offsets being choreography. caseWave and particles reduced draw\nthe text as written instead of a band or field frozen at step 0. The scroll\nmarquee starts from the line so its held loop shows it. CLAUDE.md names\nreduced() and the widened held."
+          "timestamp": "2026-10-19T18:07:34-06:00",
+          "message": "Templates get the animation toolbox: tween, loop, glyphs, on a host-handed timeline (rich-animation-42lg.zck) (#493)\n\n* Templates get the animation toolbox: tween, loop, glyphs, on a host-handed timeline (rich-animation-42lg.zck)\n\nanimationFuncs(frameTime, options) now draws every function on a Timeline\nthe host hands in as a getter (the host's own clock when omitted), so a\ndaemon pauses, reverses or scrubs a session's animations with nothing\nrecompiled, and a frame's stamp is carried back onto the host's clock by\nTimeline.run rather than left on the mapped one. One helper reads the time,\nthe timeline and reduced motion for every function.\n\nNew functions, each an exact arity of typed slots:\n- tween <seconds> <ease> <start> <from> <to>: a number, ease by name\n- loop <seconds> <start>: the way through a period, 0 to 1\n- glyphs <name> <start> <fragment>: a catalogue glyph effect on a fragment\n\nA colour tween and a ramp scroll are a tween and a loop read through ramp,\nnot new functions: ColorRamp is the one blender. glyphs runs on the\nunrendered RichText (reglyphText), sharing Reglyphed's walk and contract\nchecks. options also carries asciiOnly, for the glyphs an effect picks.\n\nDocs: template-bindings \"Animating a template\"; pointers from animation.md.\nDemo: §6 Motion in rich-template-bindings, motion and reduced side by side.\n\n* Template animation docs say which hosts redraw a moving number, and on which clock a start is (rich-animation-42lg.zck review)\n\nAn App does not poll a silent function view, so a template's tween or loop\nmoves there only while animate() is held; the docs and module header claimed\nevery host redraws on time. A start is on the handed-in timeline's clock.\nreglyphText's checks see the text's own glyphs only. Demo comment lists the\nwhole toolbox."
         }
       ]
     }
