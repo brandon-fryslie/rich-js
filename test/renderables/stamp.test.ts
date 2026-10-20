@@ -29,13 +29,13 @@ const draw = (renderable: Renderable): Segment[] => [...render(renderable, OPTIO
 const lines = (renderable: Renderable): Segment[][] => Segment.splitLines(draw(renderable));
 const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
 /** What a function view of `view` drawn at host time `t` on a playing timeline says. */
-const wakes = (view: (t: number) => Renderable, t: number): number => drawView(hostView(view), Timeline.play(0), t, { frameTime: t }, OPTIONS, lines).nextChange;
+const wakes = (view: (t: number) => Renderable, t: number): number => drawView(hostView(view), { now: t, epoch: 0, timeline: Timeline.play(0) }, { frameTime: t }, OPTIONS, lines).nextChange;
 
 describe("a frame hands what it draws the time it is drawn for", () => {
   // What a renderable drawing at the frame's time would read, captured as it draws.
   const handed = (view: Parameters<typeof hostView>[0], timeline: Timeline, host: number): number | undefined => {
     let seen: number | undefined;
-    drawView(hostView(view), timeline, host, { frameTime: host }, OPTIONS, (renderable, options) => {
+    drawView(hostView(view), { now: host, epoch: 0, timeline }, { frameTime: host }, OPTIONS, (renderable, options) => {
       seen = options.frame?.time;
       return lines(renderable);
     });

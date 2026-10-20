@@ -21,6 +21,7 @@ import { Segment } from "../../src/core/segment.js";
 import type { FrameHost, RenderOptions } from "../../src/core/protocol.js";
 import { Timeline } from "../../src/core/timeline.js";
 import { App } from "../../src/host/app.js";
+import { Live } from "../../src/renderables/live.js";
 import { WidgetApp } from "../../src/widgets/widget-app.js";
 import { scriptedHost } from "../host/scripted-host.js";
 import { ColorDepth } from "../../src/core/color.js";
@@ -320,8 +321,9 @@ describe("SpinnerColumn (rich-progress-sy9s)", () => {
 
   it("draws the frame for the clock's time at one redraw a second too", () => {
     const dots = SPINNERS["dots"]!.frames;
-    const clock = fakeClock(0.5);
+    const clock = fakeClock(0);
     const progress = new Progress(new SpinnerColumn("dots", { style: "none" }), { console: new Console({ file: { write: () => {} } }), clock });
+    clock.advance(0.5);
     progress.addTask("x", { total: 10 });
     const frame = (): string => renderToString(progress, { width: 10 }).trim();
     // 80 ms frames, an 800 ms period: half-seconds land 0.5, 0.7 and 0.1 s into a pass.
@@ -643,7 +645,7 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
     const id = progress.addTask("job", { total: 100 });
     progress.updateTask(id, { completed: 60 });
     clock.advance(0.25);
-    expect(Segment.nextChange(bar(progress))).toBe(10.25);
+    expect(Segment.nextChange(bar(progress))).toBe(0.25);
     clock.advance(1);
     expect(Segment.nextChange(bar(progress))).toBe(Number.POSITIVE_INFINITY);
   });
@@ -670,7 +672,7 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
     const clock = fakeClock(10);
     const progress = new Progress(new BarColumn(10), { console: quiet(), clock, fill: linear });
     progress.addTask("open-ended");
-    const pulse = new ProgressBar({ total: 100, width: 10, pulse: { t: 10 } });
+    const pulse = new ProgressBar({ total: 100, width: 10, pulse: { t: 0 } });
     expect(renderToString(progress, { width: 10 }).trimEnd()).toBe(renderToString(pulse, { width: 10 }).trimEnd());
     const truecolor = { ...OPTS, maxWidth: 10, colorSystem: ColorDepth.TRUECOLOR };
     expect(Segment.nextChange([...progress.render(truecolor)])).toBe(Segment.nextChange([...pulse.render(truecolor)]));
@@ -823,7 +825,34 @@ describe("a Progress is timed on the host that draws it (rich-animation-42lg.1t6
     const progress = timed(settable(0));
     expect(() => progress.start()).toThrow(/drawnBy/);
     expect(() => progress.refresh()).toThrow(/drawnBy/);
-    expect(() => progress.stop()).toThrow(/drawnBy/);
+    expect(() => progress.console).toThrow(/drawnBy/);
+  });
+
+  it("refuses to refresh an update before it changes the task", () => {
+    const host = settable(0);
+    const progress = new Progress(new MofNCompleteColumn(), { drawnBy: host });
+    const id = progress.addTask("job", { total: 10 });
+    expect(() => progress.updateTask(id, { advance: 3, refresh: true })).toThrow(/drawnBy/);
+    expect(elapsedOf(progress, { ...OPTS, frame: { time: 0, host } })).toBe("0/10");
+  });
+
+  it("settles every bar at its count when stopped, for the next frame its host draws", () => {
+    const host = settable(0);
+    const progress = new Progress(new BarColumn(10), { drawnBy: host, fill: { ease: EASES.linear, seconds: 2 } });
+    const id = progress.addTask("job", { total: 100 });
+    progress.updateTask(id, { completed: 100 });
+    progress.stop();
+    expect(elapsedOf(progress, { ...OPTS, frame: { time: 0, host } })).toBe("━".repeat(10));
+  });
+
+  it("has not finished a task when drawn for a moment before it reached its total", () => {
+    const host = settable(10);
+    const progress = timed(host);
+    const id = progress.addTask("job", { total: 1 });
+    host.time = 15;
+    progress.updateTask(id, { completed: 1 });
+    expect(elapsedOf(progress, { ...OPTS, frame: { time: 12, host } })).toBe("job 0:00:02");
+    expect(elapsedOf(progress, { ...OPTS, frame: { time: 30, host } })).toBe("job 0:00:05");
   });
 
   it("has not started a task when drawn for a moment before its start, and keeps time that ran back non-negative", () => {
@@ -836,7 +865,7 @@ describe("a Progress is timed on the host that draws it (rich-animation-42lg.1t6
     progress.updateTask(id, { completed: 40 });
     host.time = 12;
     progress.updateTask(id, { completed: 60 });
-    expect(elapsedOf(progress, { ...OPTS, frame: { time: 12, host } })).toBe("job 0:00:02 0:00:02");
+    expect(elapsedOf(progress, { ...OPTS, frame: { time: 12, host } })).toBe("job 0:00:02 -:--:--");
     host.time = 11;
     progress.updateTask(id, { completed: 100 });
     expect(progress.finished).toBe(true);
@@ -890,6 +919,18 @@ describe("a Progress is timed on the host that draws it (rich-animation-42lg.1t6
     await later();
     expect(rowsOf(app.frame)).toBe(held);
     app.stop();
+  });
+
+  // The Live is made first, with no view, so the Progress can name it; the
+  // view it is then given is on the timeline, and the time is the same one.
+  it("keeps its tasks' time when its Live's view moves onto the timeline", () => {
+    const clock = fakeClock(1000);
+    const live = new Live(undefined, { console: quiet(), clock });
+    const progress = timed(live);
+    progress.addTask("job");
+    clock.advance(3);
+    live.update(() => progress);
+    expect(elapsedOf(progress, { ...OPTS, frame: { time: live.frameTime, host: live } })).toBe("job 0:00:03");
   });
 
   it("is drawn by a WidgetApp it was made for", async () => {

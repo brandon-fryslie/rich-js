@@ -38,7 +38,7 @@ import { SurfacePainter, type Surface } from "../core/paint.js";
 import { fitHeight, render, type FrameHost } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { Timeline } from "../core/timeline.js";
-import { drawView, frameTime, hostView, undrawn, type FrameSays, type HostView, type View } from "../core/view.js";
+import { drawView, frameTime, hostView, undrawn, type FrameSays, type HostTime, type HostView, type View } from "../core/view.js";
 import { hostEnvironment } from "./host-environment.js";
 import { InputParser, keyName, parseKeyName, type KeyPress, type ScreenMouseEvent } from "./input.js";
 import type { TerminalHost } from "./terminal-host.js";
@@ -143,6 +143,9 @@ export class App implements FrameHost {
   private readonly surface: Surface;
   private readonly view: HostView;
   private readonly _clock: Clock;
+  // The clock moment this app began: what its default timeline plays from,
+  // and what a renderable view is drawn for the time since (`HostTime`).
+  private readonly _epoch: number;
   private _timeline: Timeline;
   private _rate: FrameRate;
   // What is animating now: one token per `animate()` not yet released.
@@ -182,7 +185,8 @@ export class App implements FrameHost {
     this.painter = new SurfacePainter(options.surface, (bytes) => this.host.write(bytes));
     this.view = hostView(options.view);
     this._clock = options.clock ?? systemClock();
-    this._timeline = options.timeline ?? Timeline.play(this._clock.now());
+    this._epoch = this._clock.now();
+    this._timeline = options.timeline ?? Timeline.play(this._epoch);
     this._rate = options.rate ?? DEFAULT_RATE;
     this.quitKeys = new Set((options.quitKeys ?? DEFAULT_QUIT_KEYS).map(parseKeyName));
     this.console = new Console({ ...drawOptions(options), environment: hostEnvironment(options.host) });
@@ -239,7 +243,11 @@ export class App implements FrameHost {
    * frame is.
    */
   get frameTime(): number {
-    return frameTime(this.view, this._timeline, this._clock.now());
+    return frameTime(this.view, this._time());
+  }
+
+  private _time(): HostTime {
+    return { now: this._clock.now(), epoch: this._epoch, timeline: this._timeline };
   }
 
   /**
@@ -518,7 +526,7 @@ export class App implements FrameHost {
     // clock. The app set the budget, so the app shapes what comes back: no
     // deeper than the terminal — a taller frame would scroll the rows the
     // painter goes back over — and, as a region, exactly that deep.
-    const drawn = drawView(this.view, this._timeline, this._clock.now(), this, { ...options, height }, (renderable, under) =>
+    const drawn = drawView(this.view, this._time(), this, { ...options, height }, (renderable, under) =>
       fitHeight(Segment.splitLines(render(renderable, under)).slice(0, height.rows), height),
     );
     const frame = this.painter.paint(() => drawn.lines, { rows: height.rows, cols: options.maxWidth }, this.console.destination);

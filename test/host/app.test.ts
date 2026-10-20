@@ -661,15 +661,15 @@ describe("App on a timeline", () => {
     expect(drawn.length).toBeGreaterThanOrEqual(held + perSecond);
   });
 
-  // A renderable is never handed a time, so what its cells say is on the
-  // only clock it can read, the app's — a Progress stamps its spinner there.
+  // A renderable view is off the timeline: its frames are drawn for the
+  // app's own time, the seconds since it began, and its cells are stamped on it.
   it("wakes a renderable view at the clock moment its cells say, whatever the timeline does", async () => {
     const clock = fakeClock(100);
     let draws = 0;
     const stamped: Renderable = {
-      render: () => {
+      render: ({ frame }) => {
         draws += 1;
-        return [new Segment("x", new Style({ nextChange: Math.floor(clock.now()) + 1 }))];
+        return [new Segment("x", new Style({ nextChange: Math.floor(frame!.time) + 1 }))];
       },
     };
     const target = new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(1), view: stamped, timeline: Timeline.play(0, -3) });
