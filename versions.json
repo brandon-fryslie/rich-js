@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-495",
-      "ref": "refs/pull/495/merge",
-      "sha": "4e6fd0c74882a44bd4f70fba9d11b30f28447f26",
-      "timestamp": "2026-10-20T02:02:28.833Z",
-      "commits": [
-        {
-          "sha": "4e6fd0c74882a44bd4f70fba9d11b30f28447f26",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T02:00:26Z",
-          "message": "Merge 7866ab143df02bc59144609d4b41cabe6523cf28 into a507d798f135c9e10c52637804c26b6e15d7aaf4\n"
-        },
-        {
-          "sha": "7866ab143df02bc59144609d4b41cabe6523cf28",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T20:00:21-06:00",
-          "message": "The caret restarts its blink on focus, a click, and a key the field handles (rich-animation-42lg.31p)\n\nReview of #495: a field Tab moved focus to, or a click placed the cursor\nin, could show no caret for up to half a second, and a key the field passed\non restarted the blink and repainted. Every event a widget hears now carries\nits time on the frame's clock (WidgetMouseEvent.time, WidgetFocusEvent.time;\nfocus(time)/blur(time)), stamped by the router and the focus manager from\nthe same frameTime keys already use. TextInput restarts from focus, a\nmouse_down, and a key it stops.\n\nThe blink runs away from its restart in either direction of time, so a\ntimeline played backwards also finds the caret lit just after a key.\n"
-        },
-        {
-          "sha": "924be367a08abdc84fcd8a0ac776030583450982",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T19:41:50-06:00",
-          "message": "TextInput's caret blinks on the frame's time, restarted by each key (rich-animation-42lg.31p)\n\nA frame now hands what it draws the time it is drawn for, as\nRenderOptions.frameTime: the host's time for a renderable view, the\ntimeline's for a view on it, from one function (frameTime in core/view.ts)\nthat drawView and App.frameTime share. A widget lives across frames and is\nnever rebuilt with a t, so this is how it draws for the time without\nreading a clock.\n\nKeyEvent carries the time it was heard on that same clock; TextInput keeps\nthe last one and draws its caret from the blink restarted there, lit for\nhalf a second and dark for half. The caret cell is stamped with its next\nflip, so App wakes at the flip and not between. Reduced motion holds it\nlit, a paused timeline holds it still, and a print draws it lit.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "a507d798f135c9e10c52637804c26b6e15d7aaf4",
-      "timestamp": "2026-10-20T01:30:36.022Z",
+      "sha": "fa6e3e004acd357b20198f87813597644570cf1c",
+      "timestamp": "2026-10-20T02:14:15.852Z",
       "commits": [
         {
-          "sha": "a507d798f135c9e10c52637804c26b6e15d7aaf4",
+          "sha": "fa6e3e004acd357b20198f87813597644570cf1c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T19:28:43-06:00",
-          "message": "A Progress bar eases toward its count (rich-animation-42lg.k1g) (#494)\n\n* A Progress bar eases toward its count over a fill timing, retargeted from where it is (rich-animation-42lg.k1g)\n\n* Progress draws at Live's frame time; a bar's colour is its task's (rich-animation-42lg.k1g)\n\nReview (high) fixes:\n- Progress hands Live a function view on a timeline that is its clock, so a\n  frame is drawn at the one time Live read for it. A second read inside the\n  frame stamped an easing bar a hair after the frame, which Live took for a\n  wake still to come and fired at once: ~700 writes a second at 10 fps.\n- ProgressBar takes `finished`; BarColumn passes the task's, so an ease that\n  overshoots the total neither finishes nor unfinishes the bar's colour.\n- A pulsing bar is drawn as the pulse directly, not from inside an\n  animation's `at` (frames.ts: nothing an `at` returns carries a stamp).\n\n* updateTask's refresh keeps Live's view: the frame stays at Live's time (rich-animation-42lg.k1g)\n\nReview (medium): update(this, …) swapped the function view for the Progress\nrenderable, bringing back the second clock read and the busy redraw while a\nbar eased. The constructor is now the one place the view is set.\n\n* A bar's colour is its task's count reaching its total, as Rich's is (rich-animation-42lg.k1g)\n\nReview (escalation high): keying on finishedTime drew an empty total, a task\nthat reached its total before it started, and a count taken back after\nfinishing in the wrong colour. ProgressBar.finished is a public field like\nthe others it reads, so changing it follows the class's own mutability.\n\n* The eased-bar example names its own task, so the page's examples stay apart (rich-animation-42lg.k1g)\n\ne2e/live-examples.spec.ts finds the reduced-motion progress example by\n'progress.addTask(\"Downloading...\"'; the new example matched it too."
+          "timestamp": "2026-10-19T20:12:20-06:00",
+          "message": "TextInput's caret blinks on the frame's time (rich-animation-42lg.31p) (#495)\n\n* TextInput's caret blinks on the frame's time, restarted by each key (rich-animation-42lg.31p)\n\nA frame now hands what it draws the time it is drawn for, as\nRenderOptions.frameTime: the host's time for a renderable view, the\ntimeline's for a view on it, from one function (frameTime in core/view.ts)\nthat drawView and App.frameTime share. A widget lives across frames and is\nnever rebuilt with a t, so this is how it draws for the time without\nreading a clock.\n\nKeyEvent carries the time it was heard on that same clock; TextInput keeps\nthe last one and draws its caret from the blink restarted there, lit for\nhalf a second and dark for half. The caret cell is stamped with its next\nflip, so App wakes at the flip and not between. Reduced motion holds it\nlit, a paused timeline holds it still, and a print draws it lit.\n\n* The caret restarts its blink on focus, a click, and a key the field handles (rich-animation-42lg.31p)\n\nReview of #495: a field Tab moved focus to, or a click placed the cursor\nin, could show no caret for up to half a second, and a key the field passed\non restarted the blink and repainted. Every event a widget hears now carries\nits time on the frame's clock (WidgetMouseEvent.time, WidgetFocusEvent.time;\nfocus(time)/blur(time)), stamped by the router and the focus manager from\nthe same frameTime keys already use. TextInput restarts from focus, a\nmouse_down, and a key it stops.\n\nThe blink runs away from its restart in either direction of time, so a\ntimeline played backwards also finds the caret lit just after a key."
         }
       ]
     }
