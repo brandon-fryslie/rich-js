@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-495",
+      "ref": "refs/pull/495/merge",
+      "sha": "964ce1f924928524e422543dc297dd91e5659afa",
+      "timestamp": "2026-10-20T01:43:36.302Z",
+      "commits": [
+        {
+          "sha": "964ce1f924928524e422543dc297dd91e5659afa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T19:42:01-06:00",
+          "message": "Merge 924be367a08abdc84fcd8a0ac776030583450982 into a507d798f135c9e10c52637804c26b6e15d7aaf4\n"
+        },
+        {
+          "sha": "924be367a08abdc84fcd8a0ac776030583450982",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T19:41:50-06:00",
+          "message": "TextInput's caret blinks on the frame's time, restarted by each key (rich-animation-42lg.31p)\n\nA frame now hands what it draws the time it is drawn for, as\nRenderOptions.frameTime: the host's time for a renderable view, the\ntimeline's for a view on it, from one function (frameTime in core/view.ts)\nthat drawView and App.frameTime share. A widget lives across frames and is\nnever rebuilt with a t, so this is how it draws for the time without\nreading a clock.\n\nKeyEvent carries the time it was heard on that same clock; TextInput keeps\nthe last one and draws its caret from the blink restarted there, lit for\nhalf a second and dark for half. The caret cell is stamped with its next\nflip, so App wakes at the flip and not between. Reduced motion holds it\nlit, a paused timeline holds it still, and a print draws it lit.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a507d798f135c9e10c52637804c26b6e15d7aaf4",
