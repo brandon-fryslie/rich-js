@@ -10,6 +10,7 @@ import { run } from "../../../examples/animation-playground/playground.js";
 import { KINDS } from "../../../examples/animation-playground/kinds.js";
 import { fakeClock, type FakeClock } from "../../core/fake-clock.js";
 import { scriptedHost, type ScriptedHost } from "../../host/scripted-host.js";
+import type { Env } from "../../../src/core/env.js";
 
 const painted = () => new Promise((resolve) => setTimeout(resolve));
 
@@ -35,9 +36,9 @@ afterEach(async () => {
   open = undefined;
 });
 
-async function playground(size = { cols: 120, rows: 40 }): Promise<Playground> {
+async function playground(size = { cols: 120, rows: 40 }, env: Env = { TERM: "xterm-256color" }): Promise<Playground> {
   const clock = fakeClock(100);
-  const host = scriptedHost(size);
+  const host: ScriptedHost = { ...scriptedHost(size), env };
   const term = new xterm.Terminal({ ...size, allowProposedApi: true });
   let fed = 0;
   let failure: unknown;
@@ -202,6 +203,72 @@ describe("animation playground", () => {
     from = p.host.output().length;
     await p.advance(3);
     expect(colourParameters(p.host.output().slice(from))).toEqual([]);
+  });
+
+  it("marches the border's ants clockwise: right along the top, left along the bottom", () => {
+    const kind = KINDS.find((k) => k.name === "marching border")!;
+    const drawn = (t: number): string[] =>
+      [...kind.draw(t).render({ maxWidth: 80, colorSystem: null })]
+        .map((s) => s.text)
+        .join("")
+        .split("\n")
+        .filter((line) => line !== "");
+    const [before, after] = [drawn(0.01), drawn(0.16)];
+    const [top, bottom] = [0, before.length - 1];
+    // Left of the title along the top, and the whole bottom edge between its corners.
+    expect(after[top]!.slice(2, 6)).toBe(before[top]!.slice(1, 5));
+    const width = before[bottom]!.length;
+    expect(after[bottom]!.slice(1, width - 2)).toBe(before[bottom]!.slice(2, width - 1));
+  });
+
+  it("with motion reduced, the narrow marquee holds its word in view", async () => {
+    const p = await playground({ cols: 120, rows: 90 });
+    await p.click("reduced motion");
+    const line = (await p.screen()).find((l) => l.includes("narrow marquee"));
+    expect(line).toMatch(/narrow marquee\s+hi/);
+  });
+
+  it("starts at the colours its terminal's environment says", async () => {
+    const p = await playground(undefined, { TERM: "xterm-256color", NO_COLOR: "1" });
+    expect((await p.screen()).join("\n")).toContain("terminal's own colours");
+    const from = p.host.output().length;
+    await p.advance(3);
+    expect(colourParameters(p.host.output().slice(from))).toEqual([]);
+  });
+
+  it("at eighty columns the controls wrap and push the gallery down, and the readout stays on screen", async () => {
+    const p = await playground({ cols: 80, rows: 30 });
+    const rows = await p.screen();
+    expect(rows.join("\n")).toMatch(/t = [\d,]+\.\d s/);
+    expect(rows.join("\n")).toContain("tween · a counter");
+    await p.click("+5 s");
+    expect(await p.time()).toBeCloseTo(5, 0);
+  });
+
+  it("keeps what was typed and the control in focus across a rebuild", async () => {
+    const p = await playground();
+    p.host.type("hello");
+    expect((await p.screen()).join("\n")).toContain("hello");
+    await p.click("reduced motion");
+    expect((await p.screen()).join("\n")).toContain("motion reduced");
+    expect((await p.screen()).join("\n")).toContain("hello");
+    // The focus is still on the button pressed: Enter presses it again, in the new app.
+    p.host.type("\r");
+    expect((await p.screen()).join("\n")).toContain("full motion");
+  });
+
+  it("a press on the scrub bar seeks into the window the frame on screen showed, not the one the time has since moved to", async () => {
+    const p = await playground();
+    await p.click("4×");
+    await p.click("frame rate");
+    await p.advance(7);
+    expect(await p.time()).toBeLessThan(30);
+    // Under a frame's interval: the timeline is past 30, the frame still shows the window from 0.
+    p.clock.advance(0.9);
+    const rows = await p.screen();
+    const row = rows.findIndex((line) => line.includes("●"));
+    await p.clickAt(rows[row]!.search(/[━●]/), row);
+    expect(await p.time()).toBeCloseTo(0.25, 0);
   });
 
   it("paints at one frame a second when asked, and quits", async () => {

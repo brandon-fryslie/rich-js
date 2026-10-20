@@ -140,9 +140,19 @@ const flowing = HUES.moving({ scroll: Animation.continuous(Phase.loop(4)), hue: 
 const BOX_GLYPHS = new Set("─│╭╮╰╯");
 /** Which of three steps the march is on, a step every 0.15 s: a loop, so reduced it holds at its first. */
 const marching = beat([0.15, 0.15, 0.15]);
-/** Every third cell of a border blank, the gaps walking one cell a step: marching ants. */
-const march: GlyphEffect = () =>
-  Animation.map(marching, (step) => (cell) => (BOX_GLYPHS.has(cell.glyph) && (cell.row + cell.col + 3 - step) % 3 === 0 ? " " : cell.glyph));
+/**
+ * Every third cell of a border blank, the gaps walking one cell a step
+ * clockwise: marching ants. A border cell is counted by its place along the
+ * border, from the top-left corner round, so every edge walks the same way.
+ */
+const march: GlyphEffect = ({ cells }) => {
+  const border = cells.filter((cell) => BOX_GLYPHS.has(cell.glyph));
+  const right = Math.max(...border.map((cell) => cell.col));
+  const bottom = Math.max(...border.map((cell) => cell.row));
+  const around = (row: number, col: number): number =>
+    row === 0 ? col : col === right ? right + row : row === bottom ? 2 * right + bottom - col : 2 * (right + bottom) - row;
+  return Animation.map(marching, (step) => (cell) => (BOX_GLYPHS.has(cell.glyph) && (around(cell.row, cell.col) + 3 - step) % 3 === 0 ? " " : cell.glyph));
+};
 
 // --- Glyph effects: text that arrives and leaves ---
 
@@ -269,7 +279,8 @@ const tabling = Animation.map(
 // --- The empty cases ---
 
 const nobody = Animation.map(Timeline.stagger<Renderable>([], 0.2), (children) => new Group(...children));
-const narrow = scroll(new RichText("hi", { style: "#f9e2af" }), { width: 12, height: 1, col: Animation.continuous((t) => Math.round(Phase.loop(4)(t) * 26) - 12) });
+// From the word's start, as the marquee is, so with motion reduced it holds in view.
+const narrow = scroll(new RichText("hi", { style: "#f9e2af" }), { width: 12, height: 1, col: Animation.continuous((t) => ((Math.round(Phase.loop(4)(t) * 26) + 12) % 26) - 12) });
 const same = new RichText("unchanged", { style: "#a6e3a1" });
 const sameFade = rotating(STAY, [crossfade(CHANGE).effect({ from: same, to: same, theme: THEME })]);
 const early = rotating(4, [

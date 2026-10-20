@@ -28,6 +28,8 @@ import type { WidgetMouseEvent } from "../../src/widgets/types.js";
 import { Style, Theme } from "../../src/core/style.js";
 import type { AppOptions } from "../../src/host/app.js";
 import { scriptedHost, type ScriptedHost } from "../host/scripted-host.js";
+import { fakeClock } from "../core/fake-clock.js";
+import { frameRate } from "../../src/core/clock.js";
 
 const TAB = "\t";
 const SHIFT_TAB = "\x1b[Z";
@@ -909,5 +911,32 @@ describe("WidgetApp across a pane squeezed to no column", () => {
     host.resize({ cols: 20, rows: 4 });
     await tick();
     expect(rows(app)).toEqual(shown);
+  });
+});
+
+describe("WidgetApp rate", () => {
+  it("goes on at a new rate from the next frame when rate is set mid-animation, as App does", () => {
+    const clock = fakeClock();
+    const times: number[] = [];
+    const app = new WidgetApp({
+      host: scriptedHost(),
+      surface: "alternate",
+      clock,
+      rate: frameRate(1),
+      view: (t) => {
+        times.push(t);
+        return new RichText(`t=${t}`);
+      },
+    });
+    void app.run();
+    app.animate();
+    clock.advance(2);
+    expect(times).toEqual([0, 1, 2]);
+
+    app.rate = frameRate(4);
+
+    clock.advance(1);
+    expect(app.rate.perSecond).toBe(4);
+    expect(times).toEqual([0, 1, 2, 2.25, 2.5, 2.75, 3]);
   });
 });
