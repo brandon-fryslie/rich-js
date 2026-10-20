@@ -4,15 +4,22 @@
     {
       "version": "pr-498",
       "ref": "refs/pull/498/merge",
-      "sha": "31ebe9ea43baccc2e56a3ca6a99f3d84be7259b4",
-      "timestamp": "2026-10-20T04:10:20.466Z",
+      "sha": "71e8df54a84a9cff850df91ac89db3e7e0a004ce",
+      "timestamp": "2026-10-20T04:23:37.889Z",
       "commits": [
         {
-          "sha": "31ebe9ea43baccc2e56a3ca6a99f3d84be7259b4",
+          "sha": "71e8df54a84a9cff850df91ac89db3e7e0a004ce",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-19T22:08:57-06:00",
-          "message": "Merge f3c0d1a1f17749cddc5433fa21e3144a57c9b1a6 into 09ba4d86f87c8f804b5a22f47aad034dff953841\n"
+          "timestamp": "2026-10-20T04:21:58Z",
+          "message": "Merge 951e0867c39a2897d78664100e7fef89d0870f1a into 09ba4d86f87c8f804b5a22f47aad034dff953841\n"
+        },
+        {
+          "sha": "951e0867c39a2897d78664100e7fef89d0870f1a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-19T22:21:53-06:00",
+          "message": "A Progress keeps one time across its host's view and stands as of each frame (rich-animation-42lg.1t6)\n\nHigh review of #498: a renderable view is drawn for its host's time since\nits epoch, where the default timeline plays from, so a Live made empty and\ngiven a view on the timeline keeps the time its tasks were stamped on.\ndrawView and frameTime take one HostTime. A Progress's finish is kept as a\nmoment and its speed counts only samples by the frame's time; under drawnBy\nit takes no console, refuses refresh before changing a task, and stop()\nsettles its bars instead of throwing.\n"
         },
         {
           "sha": "f3c0d1a1f17749cddc5433fa21e3144a57c9b1a6",
