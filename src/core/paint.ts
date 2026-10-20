@@ -16,7 +16,7 @@
 
 import type { Destination } from "./color.js";
 import type { Height } from "./protocol.js";
-import { segmentsToString } from "./render.js";
+import { segmentsToString, shownOn } from "./render.js";
 import { Segment } from "./segment.js";
 
 /**
@@ -156,10 +156,11 @@ export class SurfacePainter implements Painter {
    * Paint `frame` over the last frame, leaving the cursor on its last row,
    * and return it as painted. No row is wider than the screen, since one that
    * soft-wrapped would push every row below it down a row the next paint does
-   * not go back over.
+   * not go back over. The rows returned are what `destination` shows
+   * (`shownOn`): under reduced motion, nothing in them blinks.
    */
   paint(frame: FrameSource, screen: Screen, destination: Destination): Segment[][] {
-    const rows = fitRows(frame(), screen);
+    const rows = fitRows(frame(), screen).map((row) => row.map((segment) => shownOn(segment, destination)));
     this.write(SYNC_START + this.over(rows, screen, destination) + SYNC_END);
     return rows;
   }

@@ -466,8 +466,9 @@ export class Console {
   }
 
   /**
-   * Where this console writes: the colour depth it draws at and whether it
-   * emits OSC 8 hyperlinks, overrides applied — the value its output is
+   * Where this console writes: the colour depth it draws at, whether it
+   * emits OSC 8 hyperlinks, and whether its reader asked for reduced motion,
+   * overrides applied — the value its output is
    * encoded for, for anything that encodes on its behalf (`Live`).
    */
   get destination(): Destination {
@@ -802,12 +803,13 @@ export class Console {
   // same `segmentsToString` used by `renderToString`. Recording captures every
   // non-control segment for replay, as its destination shows it.
   private _writeSegments(segments: Segment[]): void {
+    const shown = segments.map((segment) => shownOn(segment, this._destination));
     if (this._record) {
-      for (const segment of segments) {
-        if (!segment.isControl) this._recorded.push(shownOn(segment, this._destination));
+      for (const segment of shown) {
+        if (!segment.isControl) this._recorded.push(segment);
       }
     }
-    const encoded = segmentsToString(segments, this._destination);
+    const encoded = segmentsToString(shown, this._destination);
     if (encoded.length > 0) this._write(encoded);
   }
 

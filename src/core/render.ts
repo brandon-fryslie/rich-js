@@ -40,6 +40,9 @@
  * removes a link — a hyperlink is not a colour, and a NO_COLOR terminal still
  * follows OSC 8. This is where the port departs from the reference, whose
  * `Style.render` returns bare text for a null colour system.
+ *
+ * The third fact, `reducedMotion`, changes the segment rather than its
+ * encoding: `shownOn` takes the style's blink out before it is encoded.
  */
 
 import { ColorDepth, resolveDestination } from "./color.js";

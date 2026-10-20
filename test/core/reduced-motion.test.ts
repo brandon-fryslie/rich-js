@@ -40,7 +40,7 @@ const curve = { seconds: 2, ease: EASES.linear, swing: 1 };
 const FULL: RenderOptions = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR };
 const REDUCED: RenderOptions = { ...FULL, reducedMotion: true };
 const bytes = (renderable: Renderable, options: RenderOptions): string =>
-  segmentsToString([...render(renderable, options)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
+  segmentsToString([...render(renderable, options)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: options.reducedMotion ?? false });
 const plain = (renderable: Renderable, options: RenderOptions = FULL): string => [...render(renderable, options)].map((s) => s.text).join("");
 const lines = (renderable: Renderable, options: RenderOptions): Segment[][] => Segment.splitLines([...render(renderable, options)]);
 
@@ -360,6 +360,22 @@ describe("the terminal's own blink under reduced motion", () => {
     };
     expect(app(true, "blink bold")).toBe(app(false, "bold"));
     expect(app(false, "blink bold")).toContain("\x1b[1;5m");
+  });
+
+  it("an App's frame and its paint handlers see the rows as written, with no blink", () => {
+    const painted = (reducedMotion: boolean): (Style | undefined)[] => {
+      const clock = fakeClock();
+      const target = new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(60), view: new RichText("ALERT", { style: "blink bold" }), reducedMotion });
+      const handed: (Style | undefined)[] = [];
+      target.onPaint((frame) => handed.push(...frame.flat().map((segment) => segment.style)));
+      void target.run();
+      clock.advance(1);
+      return [...target.frame.flat().map((segment) => segment.style), ...handed];
+    };
+    const reduced = painted(true).filter((style) => style !== undefined);
+    expect(reduced.length).toBeGreaterThan(0);
+    expect(reduced.some((style) => style.blink || style.blink2)).toBe(false);
+    expect(painted(false).some((style) => style?.blink)).toBe(true);
   });
 
   it("a recording console's exports show no blink", () => {
