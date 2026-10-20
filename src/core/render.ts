@@ -40,12 +40,15 @@
  * removes a link — a hyperlink is not a colour, and a NO_COLOR terminal still
  * follows OSC 8. This is where the port departs from the reference, whose
  * `Style.render` returns bare text for a null colour system.
+ *
+ * The third fact, `reducedMotion`, changes the segment rather than its
+ * encoding: `shownOn` takes the style's blink out before it is encoded.
  */
 
 import { ColorDepth, resolveDestination } from "./color.js";
-import type { ColorSystemName, DetectColorOptions, Destination } from "./color.js";
+import type { ColorSystemName, Destination, DestinationOptions } from "./color.js";
 import type { Env } from "./env.js";
-import type { Segment } from "./segment.js";
+import { Segment } from "./segment.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 import { render } from "./protocol.js";
 import { OSC8_CLOSE, osc8Open } from "./osc8.js";
@@ -88,12 +91,26 @@ export interface RenderToStringOptions
 const DEFAULT_WIDTH = 80;
 
 /**
+ * `segment` as `destination` shows it: under reduced motion its style
+ * `reduced()`, so the terminal is never asked to blink it.
+ *
+ * [LAW:single-enforcer] The one place reduced motion reaches a style's own
+ * motion. Drawing cannot do it: a console lays its print and base styles over
+ * what was drawn, after `render`. The encoder writes what this returns, and a
+ * recording console records it, so every export replays what was written.
+ */
+export function shownOn(segment: Segment, destination: Destination): Segment {
+  const style = destination.reducedMotion ? segment.style?.reduced() : segment.style;
+  return style === segment.style ? segment : new Segment(segment.text, style, segment.control);
+}
+
+/**
  * Encodes one segment as ANSI bytes for `destination`: the reference's
  * `Style.render` for that segment, and nothing for a control segment.
  */
 export function segmentToString(segment: Segment, destination: Destination): string {
   if (segment.isControl) return "";
-  const { text, style } = segment;
+  const { text, style } = shownOn(segment, destination);
   // As the reference's `if not text` and `if style:` — no pair around nothing.
   if (text.length === 0 || style === undefined) return text;
   // [LAW:one-type-per-behavior] Colour depth governs SGR only; hyperlinks are
@@ -119,19 +136,20 @@ export function renderToString(
   // [LAW:dataflow-not-control-flow] An absent spec is truecolor; an explicit
   // `null` stays null (`??` would collapse it).
   // [LAW:single-enforcer] Specs resolve through `resolveDestination`.
-  const detectOptions: DetectColorOptions = {};
-  if (options?.env !== undefined) detectOptions.env = options.env;
-  if (options?.isTTY !== undefined) detectOptions.isTTY = options.isTTY;
+  const destinationOptions: DestinationOptions = { reducedMotion: options?.reducedMotion };
+  if (options?.env !== undefined) destinationOptions.env = options.env;
+  if (options?.isTTY !== undefined) destinationOptions.isTTY = options.isTTY;
   const rawSpec = options?.colorSystem;
   const resolved = resolveDestination(
     rawSpec === undefined ? ColorDepth.TRUECOLOR : rawSpec,
-    detectOptions,
+    destinationOptions,
   );
   // [LAW:single-enforcer] This call's overrides are applied here, once, to
   // make the one destination everything below is drawn for. `noColor` is a
   // colour choice, so it overrides the depth and leaves hyperlinks to the
   // destination; an explicit `hyperlinks` overrides what the destination takes.
   const destination: Destination = {
+    ...resolved,
     colorSystem: options?.noColor ? null : resolved.colorSystem,
     hyperlinks: options?.hyperlinks ?? resolved.hyperlinks,
   };
@@ -139,7 +157,8 @@ export function renderToString(
     maxWidth: width,
     isTerminal: false,
     asciiOnly: options?.asciiOnly ?? false,
-    reducedMotion: options?.reducedMotion,
+    // [LAW:one-source-of-truth] What is drawn and how it is encoded take one preference.
+    reducedMotion: destination.reducedMotion,
     theme: options?.theme,
     onStyleError: options?.onStyleError,
     highlight: options?.highlight,

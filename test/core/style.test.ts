@@ -15,7 +15,7 @@ import * as terminalThemes from "../../src/themes/terminalThemes.js";
 
 // The bytes `style` draws `text` as, through the one encoder.
 const drawn = (style: Style, text: string, colorSystem = ColorDepth.TRUECOLOR): string =>
-  segmentToString(new Segment(text, style), { colorSystem, hyperlinks: true });
+  segmentToString(new Segment(text, style), { colorSystem, hyperlinks: true, reducedMotion: false });
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts (parse semantics, merge rules, render output), not implementation details (caches, internal fields)
 

@@ -49,7 +49,7 @@ describe("renderToString", () => {
     // the renderable's segment stream — `end` included, "\n" by default
     // (rich-text-5ai) — is the only source of truth.
     const text = new RichText("hi");
-    const fromSegments = segmentsToString([...text.render({ maxWidth: 80 })], { colorSystem: null, hyperlinks: true });
+    const fromSegments = segmentsToString([...text.render({ maxWidth: 80 })], { colorSystem: null, hyperlinks: true, reducedMotion: false });
     expect(renderToString(text, { colorSystem: null })).toBe(fromSegments);
     expect(fromSegments).toBe("hi\n");
   });
@@ -142,7 +142,7 @@ describe("renderToString", () => {
 // wraps that run.
 describe("segmentsToString", () => {
   const STYLE = Style.parse("white on red");
-  const TRUECOLOR = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true } as const;
+  const TRUECOLOR = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false } as const;
 
   it("writes each segment as its own run, even beside one with the same style", () => {
     const segs = [new Segment(" a ", STYLE), new Segment(" b ", STYLE), new Segment(" c ", STYLE)];
@@ -169,23 +169,23 @@ describe("segmentsToString", () => {
       new Segment("hi ", STYLE),
       new Segment("there", STYLE),
     ];
-    expect(segmentsToString(segs, { colorSystem: null, hyperlinks: true })).toBe("hi there");
+    expect(segmentsToString(segs, { colorSystem: null, hyperlinks: true, reducedMotion: false })).toBe("hi there");
   });
 
   it("keeps OSC 8 hyperlinks when colorSystem is null — colour depth governs SGR only", () => {
     const linked = new Style({ link: "https://example.com", color: "red" });
     const segs = [new Segment("click me", linked)];
-    const out = segmentsToString(segs, { colorSystem: null, hyperlinks: true });
+    const out = segmentsToString(segs, { colorSystem: null, hyperlinks: true, reducedMotion: false });
     expect(out).not.toMatch(/\x1b\[[0-9;]*m/);
     expect(osc8Opens(out)).toHaveLength(1);
-    expect(out).toBe(segmentsToString(segs, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true }).replace(/\x1b\[[0-9;]*m/g, ""));
+    expect(out).toBe(segmentsToString(segs, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false }).replace(/\x1b\[[0-9;]*m/g, ""));
   });
 
   it("strips OSC 8 hyperlinks when hyperlinks is false, at any colour depth", () => {
     const linked = new Style({ link: "https://example.com", color: "red" });
     const segs = [new Segment("click me", linked)];
-    expect(segmentsToString(segs, { colorSystem: null, hyperlinks: false })).toBe("click me");
-    expect(osc8Opens(segmentsToString(segs, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false }))).toHaveLength(0);
+    expect(segmentsToString(segs, { colorSystem: null, hyperlinks: false, reducedMotion: false })).toBe("click me");
+    expect(osc8Opens(segmentsToString(segs, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false }))).toHaveLength(0);
   });
 
   it("renderToString keeps links under colorSystem null and noColor", () => {
@@ -198,8 +198,8 @@ describe("segmentsToString", () => {
 
   it("agrees with segmentToString for a single segment (single-enforcer)", () => {
     const seg = new Segment("hi", STYLE);
-    expect(segmentToString(seg, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true })).toBe(
-      segmentsToString([seg], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true }),
+    expect(segmentToString(seg, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false })).toBe(
+      segmentsToString([seg], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false }),
     );
   });
 
@@ -220,8 +220,8 @@ describe("segmentsToString", () => {
       bgcolor: STYLE.bgcolor,
       link: "https://target.example",
     });
-    const outA = segmentsToString([new Segment("x", a)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
-    const outB = segmentsToString([new Segment("x", b)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
+    const outA = segmentsToString([new Segment("x", a)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
+    const outB = segmentsToString([new Segment("x", b)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
     expect(outA).toBe(outB);
   });
 
@@ -235,7 +235,7 @@ describe("segmentsToString", () => {
       new Segment("▸", new Style({ bold: true, link: url })),
       new Segment(" open", new Style({ link: url })),
     ];
-    const out = segmentsToString(segs, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
+    const out = segmentsToString(segs, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
     const open = { params: "id=3051f306", uri: url };
     expect(osc8Opens(out)).toEqual([open, open]);
   });
@@ -246,7 +246,7 @@ describe("segmentsToString", () => {
       new Segment("✕", new Style({ link: url })),
       new Segment(" between ", Style.parse("red")),
       new Segment("▾ menu", new Style({ bold: true, link: url })),
-    ], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
+    ], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
     const opens = osc8Opens(out);
     expect(opens).toHaveLength(2);
     expect(opens[1]).toEqual(opens[0]);
@@ -266,7 +266,7 @@ describe("OSC 8 wrap is escape-safe", () => {
   it("cannot be terminated early by a hostile URL routed through the markup parser", () => {
     const t = renderMarkup("[link=https://evil.example/\x1b\\BAD]click[/link]");
     const out = segmentsToString(
-      [...t.render({ maxWidth: 80 })], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
+      [...t.render({ maxWidth: 80 })], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
     const [open] = osc8Opens(out);
     expect(open).toBeDefined();
     // The URL slot must contain zero OSC terminators — otherwise an attacker
@@ -290,7 +290,7 @@ describe("OSC 8 wrap is escape-safe", () => {
     const dirtyStyle = new Style({ link: dirty });
     expect(dirtyStyle.link).toBe(dirty); // Style stays faithful (precondition)
     const out = segmentsToString(
-      [new Segment("click", dirtyStyle)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
+      [new Segment("click", dirtyStyle)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
     const [open] = osc8Opens(out);
     expect(open).toBeDefined();
     expect(open!.uri).toBe("https://evil.example/\\BAD");

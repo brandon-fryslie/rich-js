@@ -39,7 +39,7 @@ After construction, `Console` exposes information about the terminal:
 | `console.height` | Terminal rows (live terminal size) |
 | `console.isTerminal` | `true` when writing to a real TTY |
 | `console.colorSystem` | Detected color depth — a `ColorDepth`, or `null` for no color |
-| `console.destination` | What output is encoded for: `{ colorSystem, hyperlinks }`, the color depth plus whether OSC 8 links are written, with the constructor options applied — see [Environment variables](#environment-variables) |
+| `console.destination` | What output is encoded for: `{ colorSystem, hyperlinks, reducedMotion }`, the color depth, whether OSC 8 links are written, and whether blink is taken out, with the constructor options applied — see [Environment variables](#environment-variables) |
 
 `width` and `height` reflect the current terminal size — if the user resizes the window they update automatically.
 
@@ -726,7 +726,9 @@ takes an option of its own for it. `renderToString` takes the same
 frame of a `Live` drawn through it, with its motion taken out: a spinner on
 its first frame, a fade arrived, a typewriter done, and an element shown
 from when it entered until it is told to leave. Nothing asks to be drawn
-again but a change of content. A terminal cannot report the preference, so
+again but a change of content. Nothing blinks either: a `blink` or `blink2`
+style is written without it, wherever it came from, and the exports of a
+recording console show the text steady. A terminal cannot report the preference, so
 the program hands it in, here or to `renderToString`;
 [Animation](/animation#reduced-motion) says what each kind is reduced to.
 

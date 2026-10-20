@@ -30,7 +30,7 @@ export {
   WINDOWS_TABLE,
   ANSI_COLOR_NAMES,
 } from "./core/color.js";
-export type { ColorSystemName, DetectColorOptions, Destination } from "./core/color.js";
+export type { ColorSystemName, DetectColorOptions, Destination, DestinationOptions } from "./core/color.js";
 
 // Perceptually-uniform color space (manipulation, transposition).
 export {

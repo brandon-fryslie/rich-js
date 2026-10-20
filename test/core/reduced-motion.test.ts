@@ -6,6 +6,7 @@ import { EASES, beat } from "../../src/core/easing.js";
 import { render, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { segmentsToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
+import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { Timeline } from "../../src/core/timeline.js";
 import { tween } from "../../src/core/tween.js";
@@ -39,7 +40,7 @@ const curve = { seconds: 2, ease: EASES.linear, swing: 1 };
 const FULL: RenderOptions = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR };
 const REDUCED: RenderOptions = { ...FULL, reducedMotion: true };
 const bytes = (renderable: Renderable, options: RenderOptions): string =>
-  segmentsToString([...render(renderable, options)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
+  segmentsToString([...render(renderable, options)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: options.reducedMotion ?? false });
 const plain = (renderable: Renderable, options: RenderOptions = FULL): string => [...render(renderable, options)].map((s) => s.text).join("");
 const lines = (renderable: Renderable, options: RenderOptions): Segment[][] => Segment.splitLines([...render(renderable, options)]);
 
@@ -166,7 +167,7 @@ describe("a host under reduced motion", () => {
   const drawnAt = (view: View, options: RenderOptions, t: number, timeline = Timeline.play(0)) =>
     drawView(hostView(view), timeline, t, options, (renderable, under) => lines(renderable, under));
   const text = (drawn: { lines: Segment[][] }): string =>
-    segmentsToString(drawn.lines.flat(), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
+    segmentsToString(drawn.lines.flat(), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
 
   // An animation says itself every moment it changes, so reduced it is held; a
   // function computes from the time what no animation says, so it is not.
@@ -305,5 +306,93 @@ describe("the template animation functions under reduced motion", () => {
     }
     expect([...seen]).toHaveLength(1);
     expect(moving.size).toBeGreaterThan(1);
+  });
+});
+
+// [LAW:behavior-not-structure] Each output is held to what a reader sees: under
+// reduced motion, the same bytes as the same content never styled to blink;
+// with motion, the blink is still asked for.
+describe("the terminal's own blink under reduced motion", () => {
+  const SINK = { write: () => {} };
+  /** Everything a console writes for `draw`, at the standard depth on a terminal. */
+  function written(reducedMotion: boolean, draw: (console: Console) => void, style?: string): string {
+    const out: string[] = [];
+    const console = new Console({ width: 20, colorSystem: "ansi", forceTerminal: true, file: { write: (s: string) => void out.push(s) }, reducedMotion, style });
+    draw(console);
+    return out.join("");
+  }
+
+  it("a console print writes no blink, whether from markup, the print's style or the console's own", () => {
+    const cases: [string, (c: Console) => void, string | undefined, (c: Console) => void, string | undefined][] = [
+      ["markup", (c) => c.print("[blink]ALERT[/] [bold blink2]now[/]"), undefined, (c) => c.print("ALERT [bold]now[/]"), undefined],
+      ["print style", (c) => c.print("ALERT", { style: "blink bold" }), undefined, (c) => c.print("ALERT", { style: "bold" }), undefined],
+      ["console style", (c) => c.print("ALERT"), "blink2 red", (c) => c.print("ALERT"), "red"],
+    ];
+    for (const [, blinking, blinkingStyle, steady, steadyStyle] of cases) {
+      expect(written(true, blinking, blinkingStyle)).toBe(written(false, steady, steadyStyle));
+      expect(written(false, blinking, blinkingStyle)).toMatch(/\x1b\[(?:\d+;)*[56][;m]/);
+    }
+  });
+
+  it("renderToString writes no blink", () => {
+    const at = (reducedMotion: boolean, style: string): string => renderToString(new RichText("ALERT", { style }), { width: 10, colorSystem: "ansi", reducedMotion });
+    expect(at(true, "blink bold")).toBe(at(false, "bold"));
+    expect(at(false, "blink bold")).toContain("\x1b[1;5m");
+  });
+
+  it("a Live and an App paint no blink", () => {
+    const live = (reducedMotion: boolean, style: string): string =>
+      written(reducedMotion, (console) => {
+        const display = new Live(new RichText("ALERT", { style }), { console, clock: fakeClock(), refreshPerSecond: 60 });
+        display.start();
+        display.stop();
+      });
+    expect(live(true, "blink bold")).toBe(live(false, "bold"));
+    expect(live(false, "blink bold")).toContain("\x1b[1;5m");
+
+    const app = (reducedMotion: boolean, style: string): string => {
+      const host = scriptedHost();
+      const clock = fakeClock();
+      const target = new App({ host, surface: "alternate", clock, rate: frameRate(60), view: new RichText("ALERT", { style }), reducedMotion });
+      void target.run();
+      clock.advance(1);
+      return host.output();
+    };
+    expect(app(true, "blink bold")).toBe(app(false, "bold"));
+    expect(app(false, "blink bold")).toContain("\x1b[1;5m");
+  });
+
+  it("an App's frame and its paint handlers see the rows as written, with no blink", () => {
+    const painted = (reducedMotion: boolean): (Style | undefined)[] => {
+      const clock = fakeClock();
+      const target = new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(60), view: new RichText("ALERT", { style: "blink bold" }), reducedMotion });
+      const handed: (Style | undefined)[] = [];
+      target.onPaint((frame) => handed.push(...frame.flat().map((segment) => segment.style)));
+      void target.run();
+      clock.advance(1);
+      return [...target.frame.flat().map((segment) => segment.style), ...handed];
+    };
+    const reduced = painted(true).filter((style) => style !== undefined);
+    expect(reduced.length).toBeGreaterThan(0);
+    expect(reduced.some((style) => style.blink || style.blink2)).toBe(false);
+    expect(painted(false).some((style) => style?.blink)).toBe(true);
+  });
+
+  it("a recording console's exports show no blink", () => {
+    const recorded = (reducedMotion: boolean, markup: string): Console => {
+      const console = new Console({ width: 20, colorSystem: "truecolor", record: true, file: SINK, reducedMotion });
+      console.print(markup);
+      return console;
+    };
+    const exports = (console: Console): string[] => [console.exportHtml({ clear: false }), console.exportSvg({ clear: false }), console.exportText()];
+    expect(exports(recorded(true, "[blink red]ALERT[/] [bold blink2]now[/]"))).toEqual(exports(recorded(false, "[red]ALERT[/] [bold]now[/]")));
+    expect(recorded(false, "[blink]ALERT[/]").exportHtml()).not.toBe(recorded(false, "ALERT").exportHtml());
+  });
+
+  it("a style reduced keeps everything but its blink, and one that does not blink is itself", () => {
+    const blinking = Style.parse("bold blink blink2 red on blue link https://example.com");
+    expect(blinking.reduced().equals(Style.parse("bold red on blue link https://example.com"))).toBe(true);
+    const steady = Style.parse("bold red");
+    expect(steady.reduced()).toBe(steady);
   });
 });

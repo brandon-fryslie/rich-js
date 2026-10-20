@@ -21,7 +21,7 @@ import type { Highlighter } from "./highlighter.js";
 // orchestrator reaching down for `Rule`. `RuleOptions` rides the same edge
 // rather than being restated here; see `rule()`.
 import { Rule, type RuleOptions } from "../renderables/rule.js";
-import { segmentsToString } from "./render.js";
+import { segmentsToString, shownOn } from "./render.js";
 import { placeBlock, type Alignment } from "./place.js";
 import type {
   Height,
@@ -391,7 +391,6 @@ export class Console {
   private _theme: Theme;
   private _onStyleError: StyleErrorHandler | undefined;
   private readonly _asciiOnly: boolean;
-  private readonly _reducedMotion: boolean;
   private _highlighter: Highlighter;
   private _recorded: Segment[];
   // [LAW:types-are-the-program] The capture state is carried in the *type*
@@ -412,15 +411,14 @@ export class Console {
     // environment rather than the ambient process's.
     const resolved = resolveDestination(
       options?.colorSystem === undefined ? "auto" : options.colorSystem,
-      { isTTY: this._isTerminal, env: environment.env },
+      { isTTY: this._isTerminal, env: environment.env, reducedMotion: options?.reducedMotion },
     );
     // [LAW:single-enforcer] The console's one override, an explicit
     // `hyperlinks`, is applied here and nowhere else; every write encodes for
-    // this value whole.
-    this._destination = {
-      colorSystem: resolved.colorSystem,
-      hyperlinks: options?.hyperlinks ?? resolved.hyperlinks,
-    };
+    // this value whole. [LAW:one-source-of-truth] The reader's motion
+    // preference lives here too, and `options` reads it back from here, so
+    // what is drawn and how it is encoded take one preference.
+    this._destination = { ...resolved, hyperlinks: options?.hyperlinks ?? resolved.hyperlinks };
     this._getSize = resolveGetSize(options, environment, stream);
     this._getDatetime = options?.getDatetime ?? (() => new Date());
     // [LAW:no-ambient-temporal-coupling] The theme is assigned before the
@@ -436,7 +434,6 @@ export class Console {
     this._highlighter = options?.highlighter ?? new ReprHighlighter();
     this._onStyleError = options?.onStyleError;
     this._asciiOnly = options?.asciiOnly ?? false;
-    this._reducedMotion = options?.reducedMotion ?? false;
     this._recorded = [];
     this._capture = null;
     this._liveRegion = NO_LIVE_REGION;
@@ -469,8 +466,9 @@ export class Console {
   }
 
   /**
-   * Where this console writes: the colour depth it draws at and whether it
-   * emits OSC 8 hyperlinks, overrides applied — the value its output is
+   * Where this console writes: the colour depth it draws at, whether it
+   * emits OSC 8 hyperlinks, and whether its reader asked for reduced motion,
+   * overrides applied — the value its output is
    * encoded for, for anything that encodes on its behalf (`Live`).
    */
   get destination(): Destination {
@@ -503,7 +501,7 @@ export class Console {
       height: { rows: height, exact: false },
       isTerminal: this.isTerminal,
       asciiOnly: this._asciiOnly,
-      reducedMotion: this._reducedMotion,
+      reducedMotion: this._destination.reducedMotion,
       theme: this._theme,
       onStyleError: this._onStyleError,
       colorSystem: this._destination.colorSystem,
@@ -803,14 +801,15 @@ export class Console {
 
   // [LAW:single-enforcer] One encode call per write batch routes through the
   // same `segmentsToString` used by `renderToString`. Recording captures every
-  // non-control segment for replay.
+  // non-control segment for replay, as its destination shows it.
   private _writeSegments(segments: Segment[]): void {
+    const shown = segments.map((segment) => shownOn(segment, this._destination));
     if (this._record) {
-      for (const segment of segments) {
+      for (const segment of shown) {
         if (!segment.isControl) this._recorded.push(segment);
       }
     }
-    const encoded = segmentsToString(segments, this._destination);
+    const encoded = segmentsToString(shown, this._destination);
     if (encoded.length > 0) this._write(encoded);
   }
 

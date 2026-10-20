@@ -269,6 +269,15 @@ export class Style {
 
 
   /**
+   * This style with its motion taken out, what reduced motion draws: `blink`
+   * and `blink2`, the motion a terminal makes on its own, unset, and every
+   * other field as it was. A style that does not blink is its own.
+   */
+  reduced(): Style {
+    return this.blink || this.blink2 ? this.withAttributes({ blink: undefined, blink2: undefined }) : this;
+  }
+
+  /**
    * This style on the cell `cells` to the right: its anchor shifted along its
    * row, or the style itself when it has no anchor.
    */
