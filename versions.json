@@ -4,15 +4,22 @@
     {
       "version": "pr-509",
       "ref": "refs/pull/509/merge",
-      "sha": "d8969b5fe84bc40775825f16384de97df845b03f",
-      "timestamp": "2026-10-21T11:31:49.636Z",
+      "sha": "c5c8656dfd411dd61089c9da999dd208b89841be",
+      "timestamp": "2026-10-21T11:49:05.504Z",
       "commits": [
         {
-          "sha": "d8969b5fe84bc40775825f16384de97df845b03f",
+          "sha": "c5c8656dfd411dd61089c9da999dd208b89841be",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T11:29:49Z",
-          "message": "Merge f50364accb1f5c655df482a4894b65085ae30d3f into 7f5d4617f245065a5ef0121e937424adc5446d15\n"
+          "timestamp": "2026-10-21T11:46:46Z",
+          "message": "Merge 5771e8ffadb93ef6c90cb7672a38d68cd818cd45 into 7f5d4617f245065a5ef0121e937424adc5446d15\n"
+        },
+        {
+          "sha": "5771e8ffadb93ef6c90cb7672a38d68cd818cd45",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T05:46:41-06:00",
+          "message": "TextInput draws only the rows in view, and reads a click off its frame's settings (rich-protocol-9xcs.o76)\n\nEscalation high pass on PR #509:\n- Viewport.showingLines shows content of known length that draws only the lines a\n  frame shows; TextInput's frame costs O(maxRows) again (20k lines: ~175ms -> ~2ms).\n- The field's width comes from the rows in view, so a frame no longer measures the\n  whole value; graphemes() skips segmentation for printable ASCII, as cellLen does.\n- A frame's layout carries what it was drawn under and, single-line, the value it\n  showed, so a click maps through that frame alone.\n- Stale accessory-thunk test comment and WidgetBase stamping comment corrected.\n"
         },
         {
           "sha": "f50364accb1f5c655df482a4894b65085ae30d3f",
