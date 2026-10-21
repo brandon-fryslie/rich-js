@@ -4,15 +4,22 @@
     {
       "version": "pr-508",
       "ref": "refs/pull/508/merge",
-      "sha": "5e6448843d2825ae160d787f6c398203f0eaf5d4",
-      "timestamp": "2026-10-21T10:13:22.237Z",
+      "sha": "6f160ee6a4ac9b55b6f0f01388a8ac0ccd2c3f9e",
+      "timestamp": "2026-10-21T10:29:06.166Z",
       "commits": [
         {
-          "sha": "5e6448843d2825ae160d787f6c398203f0eaf5d4",
+          "sha": "6f160ee6a4ac9b55b6f0f01388a8ac0ccd2c3f9e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T04:11:22-06:00",
-          "message": "Merge 2cda365522d0560aaabba7f7fdebf502fbd7dd22 into a2b00949489b6a52adcc7fe2a33c1f8ad87c331e\n"
+          "timestamp": "2026-10-21T10:27:18Z",
+          "message": "Merge 903cfc12dd08eb8635e0118486a7e17068b086e7 into a2b00949489b6a52adcc7fe2a33c1f8ad87c331e\n"
+        },
+        {
+          "sha": "903cfc12dd08eb8635e0118486a7e17068b086e7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T04:27:13-06:00",
+          "message": "A viewport's commit survives a second draw in its pass (rich-protocol-9xcs.399)\n\nReview fixes from /code-review high:\n- A held draw commits nothing, so it no longer undoes the commit of a\n  draw earlier in the same pass.\n- Resolved moves leave the queue by identity, taken at draw time, so a\n  move queued after two draws resolved the same queue is not dropped.\n- afterPass effects run between passes even when the iteration that ends\n  a pass is stepped inside another render.\n- The module's ensureVisible is renamed bringIntoView, and the stale\n  ListView and ViewportPerKey comments are fixed.\n"
         },
         {
           "sha": "2cda365522d0560aaabba7f7fdebf502fbd7dd22",
