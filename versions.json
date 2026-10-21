@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-513",
+      "ref": "refs/pull/513/merge",
+      "sha": "1266e6a5f535c31c66b17390a02c2626641132b9",
+      "timestamp": "2026-10-21T14:11:49.431Z",
+      "commits": [
+        {
+          "sha": "1266e6a5f535c31c66b17390a02c2626641132b9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T08:09:44-06:00",
+          "message": "Merge 1d190ab2dfc8666b7c45c14c72fbcfa68d81c2b1 into c4d7da03b7f1113e3b00388a67f81ba33461bfbf\n"
+        },
+        {
+          "sha": "1d190ab2dfc8666b7c45c14c72fbcfa68d81c2b1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T08:09:38-06:00",
+          "message": "A colour transition's frame is worked out from its time and cells alone (rich-animation-27tq.ws0)\n\nownChange kept each cell's change in a closure Map, settled in the first\nframe that listed it, so a seek, reverse or scrub over an element whose\ncells changed drew a later frame's settlement for an earlier time, and one\ntransition on two elements shared one record keyed by row:col. The record\nand order()'s place cache are gone; each frame spreads its cells over the\norder it lists. Cost, kept on purpose: a cell of an element that grows mid\ntransition may move its start.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "7cd4dc5968184802d1d64f6fde97e45227d743f6",
