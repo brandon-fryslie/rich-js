@@ -2,45 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-503",
-      "ref": "refs/pull/503/merge",
-      "sha": "e0e71c099c9be6aa0faa6ec6ac4475bc1e895b85",
-      "timestamp": "2026-10-21T13:20:27.450Z",
+      "version": "pr-512",
+      "ref": "refs/pull/512/merge",
+      "sha": "d3179b609f11af3bae7c69bf36b12b44493a856d",
+      "timestamp": "2026-10-21T13:47:24.194Z",
       "commits": [
         {
-          "sha": "e0e71c099c9be6aa0faa6ec6ac4475bc1e895b85",
+          "sha": "d3179b609f11af3bae7c69bf36b12b44493a856d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T13:18:46Z",
-          "message": "Merge 71a66974ee96973af3f1f92954ac4454a86b743a into 7cd4dc5968184802d1d64f6fde97e45227d743f6\n"
+          "timestamp": "2026-10-21T07:45:21-06:00",
+          "message": "Merge 795194ea81c8cf6e9d6041d0089eebd17133ab99 into 476e7da56fc8861a88619c422973dbd6ab671ec1\n"
         },
         {
-          "sha": "71a66974ee96973af3f1f92954ac4454a86b743a",
+          "sha": "795194ea81c8cf6e9d6041d0089eebd17133ab99",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T07:18:41-06:00",
-          "message": "Rebase onto the escape: Spinner measures through protocol, held covers a pulsing bar (rich-animation-27tq.0tc)\n\nA held renderable is now drawn through render (#510), so the frame a printed\nProgress makes reaches what it holds as it reaches what it draws; _framed\nstays as the one moment a print is drawn for.\n"
-        },
-        {
-          "sha": "e52b69d7ab3dd71200dac21c2b8bd9b8e3974445",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T23:27:20-06:00",
-          "message": "Review: the template frames test names FrameSequence, not the removed Frames (rich-animation-27tq.0tc)\n"
-        },
-        {
-          "sha": "423bcbe2584ddc7207b9de754e86df2a30de59d8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T23:19:10-06:00",
-          "message": "Review: the pulse test reads what Progress draws; one clock in the showcase (rich-animation-27tq.0tc)\n\nThe BarColumn pulse test supplied its own frame and compared against a\nliteral 7.5; it now prints the Progress and compares each row to the bar\ndrawn in a frame for 7.5s. A test pins that, in a frame of its own host,\na Progress holds what it would draw. Spinner's placed renderable is built\nin the constructor after the sequences it closes over. The showcase draws\nthe dashboard at the Live's frame time, so the heading and the jobs share\none clock. Two doc sentences that described examples no longer present\nare corrected.\n"
-        },
-        {
-          "sha": "f69c3be52589f9463483f3bd090b903243da9fa6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T23:05:18-06:00",
-          "message": "An animation is drawn one way: placed (rich-animation-27tq.0tc)\n\nRemoves every public way to draw an animation at a time the caller names:\nframeAt and its Stamped renderable, the Frames class, Spinner.drawnAt, and\nProgressBar's pulse: { t }, now pulse: true. A FrameSequence, a Spinner and a\npulse are placed and draw at the frame's time.\n\nProgress draws its table in a frame of its own host's time when printed with\nnone, so the bars and spinners placed in it draw at the moment its tasks are\ndrawn at. Examples and docs place their animations; docs that played an effect\nover frames at sampled moments now play it in a live fence.\n"
+          "timestamp": "2026-10-21T07:45:07-06:00",
+          "message": "A frame's hold no cell carries is told, not drawn (rich-animation-27tq.5j9)\n\nA placed animation showing nothing led its output with Segment.carrier, and\na container that cut it into rows grew a blank row for it. No segment rule\ncan fix that: a child of no cells is zero rows, with nothing left to carry\nthe hold through. RenderOptions.onHold carries it instead, back the way the\nframe's time came in, so any container that hands a child its options hands\nback its hold. Segment.carrier, isCarrier, splitRows and Tree's carriers go.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         }
       ]
     },
