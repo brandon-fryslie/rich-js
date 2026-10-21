@@ -177,7 +177,7 @@ Multiline mode has a set of options for behaving like a textarea:
 | `wrap` | A `WrapStrategy` — a function receiving a logical line as the field shows it (a glyph of zero cells as `◌`, a password as its mask) and a `{ firstWidth, continuationWidth }` budget, returning a `WrapRow` per row to draw: the `start` and `end` offsets of the stretch of that line the row shows. Pass the built-in `charGreedyWrap` for a conventional textarea wrap, or write your own to break at token boundaries instead of mid-token. Unset, long lines overflow rather than wrap. |
 | `continuationMarker` | Prefix drawn on wrapped continuation rows. Defaults to `"↳ "`, whose width is subtracted from the wrap budget. |
 | `minRows` / `maxRows` | Pad to at least, and scroll within at most, this many visual rows. |
-| `scrollIndicator` | `"arrows"` (default) draws ▲/▼ in the content area; `"indices"` suppresses them and publishes `scrollIndicatorText` (`"[14/102]"`) for a [`Panel`](/panel) accessory to display; `"none"` draws nothing. |
+| `scrollIndicator` | `"arrows"` (default) draws ▲/▼ in the content area; `"indices"` suppresses them and publishes `scrollIndicatorText(frame)` (`"[14/102]"`), the position in a frame it is drawn in, for a [`Panel`](/panel) accessory to display: `bottomRightAccessory: (body) => input.scrollIndicatorText(body)`; `"none"` draws nothing. |
 | `indicatorStyle`, `cursorStyle`, `contentStyle` | [`Style`](/style) overrides for the arrows, the cursor cell, and the text. |
 
 `charGreedyWrap` breaks wherever the line stops fitting, treating wide characters as atomic:

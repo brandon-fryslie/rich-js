@@ -6,7 +6,11 @@ import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 import { Segment } from "../../src/core/segment.js";
 import { Style } from "../../src/core/style.js";
-import type { RenderOptions } from "../../src/core/protocol.js";
+import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import { Panel } from "../../src/renderables/panel.js";
+import { scrollTargetAt } from "../../src/widgets/hit.js";
+import { Padding } from "../../src/renderables/padding.js";
+import { ASCII } from "../../src/core/box.js";
 import { ColorSpec } from "../../src/core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 import { expectLinearTime } from "../suite/linear-time.js";
@@ -41,13 +45,22 @@ const alt = (key: string): KeyEvent => new KeyEvent({
 
 // [LAW:behavior-not-structure] The wrap/cursor-motion suites below are white-box
 // regression pins for a specific boundary bug, not contract tests: they read
-// `TextInput["_visualRows"]` and `TextInput["_cursorVisualRow"]()` to construct
+// the rows `TextInput["_rows"]` lays out at the width last drawn to construct
 // an exact row layout and assert which row the cursor resolved to. Bracket
 // access is the one sanctioned mechanism for such a reach in this repo — it
 // keeps every deliberate reach greppable and refuses to spread, where widening
 // `TextInput`'s public surface (and exporting the internal `VisualRow`) would
 // have shipped permanent API to satisfy a disposable test. Contract-level
 // assertions in this file go through `render()`, `value`, and `cursorPosition`.
+
+const rowsOf = (t: TextInput) => t["_rows"](t["_drawn"].get());
+// The row the cursor is on: the last that starts at or before it.
+const cursorRowOf = (t: TextInput): number => {
+  const rows = rowsOf(t);
+  let row = rows.length - 1;
+  while (row > 0 && rows[row]!.valueStart > t.cursorPosition) row--;
+  return row;
+};
 
 const upEvent = () => makeKey("up");
 const downEvent = () => makeKey("down");
@@ -401,7 +414,7 @@ describe("TextInput", () => {
     it("pads a short multiline row in the caller's contentStyle", () => {
       const contentStyle = new Style({ bgcolor: "blue" });
       const t = new TextInput({ value: "ab\nlonger line", multiline: true, contentStyle });
-      const firstRow = Segment.splitLines(t.render(RENDER))[0]!;
+      const firstRow = Segment.splitLines(t.render(RENDER))[0]!.filter((s) => s.cellLength > 0);
       expect(firstRow.map((s) => s.style?.bgcolor)).toEqual(firstRow.map(() => contentStyle.bgcolor));
     });
 
@@ -888,6 +901,28 @@ describe("TextInput", () => {
       expect(text).toContain("▼");
     });
 
+    it("the wheel scrolls a multi-line field, a click lands on the row it shows, and typing scrolls back to the caret", () => {
+      const t = new TextInput({ value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9", multiline: true, maxRows: 3, scrollIndicator: "none" });
+      t.focus(0);
+      const frame = (): Segment[][] => Segment.splitLines(t.render({ maxWidth: 20 }));
+      const shown = (): string[] => frame().map((row) => row.map((s) => s.text).join("").trimEnd());
+      expect(shown()).toEqual(["0", "1", "2"]);
+      // The wheel over the field finds its scroll, as it finds any viewport's.
+      const scroll = scrollTargetAt(frame(), 0, 0, 1)!;
+      expect(scroll).toBeDefined();
+      scroll.scrollBy(5);
+      expect(shown()).toEqual(["5", "6", "7"]);
+      // A click on the second row it shows lands on line 6.
+      t.handleMouse({ ...mouseDownAt(0), y: 1 });
+      expect(t.cursorPosition).toBe(t.value.indexOf("6"));
+      expect(shown()).toEqual(["5", "6", "7"]);
+      // Scrolled away from the caret, a key typed on its row brings it back.
+      scroll.scrollBy(-5);
+      expect(shown()).toEqual(["0", "1", "2"]);
+      t.handleKey(printable("x"));
+      expect(shown()).toEqual(["4", "5", "x6"]);
+    });
+
     it("scroll arrows: at bottom of scrollable content shows ▲ only (no ▼)", () => {
       const t = new TextInput({
         value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9",
@@ -932,6 +967,27 @@ describe("TextInput", () => {
       expect(text).not.toContain("▼");
     });
 
+    // The indicator of the frame `t` draws at `options`, read off that frame.
+    const indicatorOf = (t: TextInput, options: RenderOptions): string | undefined =>
+      t.scrollIndicatorText(Segment.splitLines(t.render(options)));
+
+    it("scrollIndicator='indices': counts the rows of the frame it labels, inside a Panel at any depth", () => {
+      // "abcdef", "↳ ghij", "k" at the 6 cells a 10-cell panel leaves; at 20, two rows.
+      const t = new TextInput({ value: "abcdefghij\nk", multiline: true, wrap: charGreedyWrap, maxRows: 1, scrollIndicator: "indices" });
+      t.cursorPosition = asCodePoint(t.value.length);
+      const bottom = (width: number, content: Renderable): string => {
+        const panel = new Panel(content, { box: ASCII, bottomRightAccessory: (body) => t.scrollIndicatorText(body) });
+        const lines = Segment.splitLines(panel.render({ maxWidth: width }))
+          .map((row) => row.map((s) => s.text).join(""));
+        return lines[lines.length - 1]!;
+      };
+      // Its first frame, before anything is kept from one, and a frame whose
+      // width changed, each count their own rows.
+      expect(bottom(10, t)).toContain("[3/3]");
+      expect(bottom(24, t)).toContain("[2/2]");
+      expect(bottom(10, new Padding(t, [0, 0]))).toContain("[3/3]");
+    });
+
     it("scrollIndicator='indices': suppresses arrows, exposes [X/Y] text", () => {
       const t = new TextInput({
         value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9",
@@ -939,16 +995,14 @@ describe("TextInput", () => {
         maxRows: 3,
         scrollIndicator: "indices",
       });
-      // First render populates the visual-row cache that the getter reads.
       const text = rowsText(t, { maxWidth: 20 });
       expect(text).not.toContain("▲");
       expect(text).not.toContain("▼");
       // Cursor defaults to 0 in multiline → row 1 of 10.
-      expect(t.scrollIndicatorText).toBe("[1/10]");
+      expect(indicatorOf(t, { maxWidth: 20 })).toBe("[1/10]");
       // Move cursor to end → row 10 of 10.
       t.cursorPosition = asCodePoint(t.value.length);
-      [...t.render({ maxWidth: 20 })];
-      expect(t.scrollIndicatorText).toBe("[10/10]");
+      expect(indicatorOf(t, { maxWidth: 20 })).toBe("[10/10]");
     });
 
     it("scrollIndicator='indices': returns undefined when nothing to scroll", () => {
@@ -958,8 +1012,7 @@ describe("TextInput", () => {
         maxRows: 5,
         scrollIndicator: "indices",
       });
-      [...t.render({ maxWidth: 20 })];
-      expect(t.scrollIndicatorText).toBeUndefined();
+      expect(indicatorOf(t, { maxWidth: 20 })).toBeUndefined();
     });
 
     it("scrollIndicator='none': no arrows, no text", () => {
@@ -972,7 +1025,7 @@ describe("TextInput", () => {
       const text = rowsText(t, { maxWidth: 20 });
       expect(text).not.toContain("▲");
       expect(text).not.toContain("▼");
-      expect(t.scrollIndicatorText).toBeUndefined();
+      expect(indicatorOf(t, { maxWidth: 20 })).toBeUndefined();
     });
 
     it("scrollIndicatorText is undefined in default 'arrows' mode", () => {
@@ -981,9 +1034,8 @@ describe("TextInput", () => {
         multiline: true,
         maxRows: 3,
       });
-      [...t.render({ maxWidth: 20 })];
       // Defaults to arrows; the indices text is only published in 'indices' mode.
-      expect(t.scrollIndicatorText).toBeUndefined();
+      expect(indicatorOf(t, { maxWidth: 20 })).toBeUndefined();
     });
 
     it("scroll arrows: full wrap budget — no column reserved when nothing to scroll", () => {
@@ -998,7 +1050,7 @@ describe("TextInput", () => {
         maxRows: 5,
       });
       [...t.render({ maxWidth: 20 })];
-      expect(t["_visualRows"]!.length).toBe(1);
+      expect(rowsOf(t).length).toBe(1);
     });
 
 
@@ -1067,7 +1119,7 @@ describe("TextInput", () => {
         wrap: tinyHeadWrap,
       });
       [...t.render({ maxWidth: 20 })];
-      const rows = t["_visualRows"]!;
+      const rows = rowsOf(t);
       // Expected shape: row 0 "a" (vs=0, len=1, cont=false),
       //                 row 1 long continuation (vs=1, ...).
       expect(rows[0]!.content).toBe("a");
@@ -1076,7 +1128,7 @@ describe("TextInput", () => {
 
       // Park cursor on the continuation row at col 5 (well past head.length=1).
       t.cursorPosition = asCodePoint(rows[1]!.valueStart + 5);
-      expect(t["_cursorVisualRow"]()).toBe(1);
+      expect(cursorRowOf(t)).toBe(1);
 
       t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }, 0));
 
@@ -1085,7 +1137,7 @@ describe("TextInput", () => {
       // would still report row 1. Post-fix: clamp to `length - 1 = 0`,
       // cursor lands at `rows[0].valueStart = 0`, unambiguously row 0.
       expect(t.cursorPosition).toBe(0);
-      expect(t["_cursorVisualRow"]()).toBe(0);
+      expect(cursorRowOf(t)).toBe(0);
     });
 
     it("repeated Up across the trap row makes progress every press (no stuck position)", () => {
@@ -1095,7 +1147,7 @@ describe("TextInput", () => {
         wrap: tinyHeadWrap,
       });
       [...t.render({ maxWidth: 20 })];
-      const rows = t["_visualRows"]!;
+      const rows = rowsOf(t);
       // rows: [row 0 "x"], [row 1 "a" head of line 1], [row 2 long cont], ...
       // Park cursor on row 2 (continuation) at col 5.
       t.cursorPosition = asCodePoint(rows[2]!.valueStart + 5);
@@ -1119,7 +1171,7 @@ describe("TextInput", () => {
         wrap: tinyHeadWrap,
       });
       [...t.render({ maxWidth: 20 })];
-      const rows = t["_visualRows"]!;
+      const rows = rowsOf(t);
       // From a row above the tinyHeadWrap line, Down at col 5 should land
       // unambiguously inside the head row (length 1), which means cursor
       // must clamp to col 0, not col 1 (the boundary).
@@ -1133,7 +1185,7 @@ describe("TextInput", () => {
 
       // Cursor should be on row `head` (valueStart), NOT at row `head+1`'s boundary.
       expect(t.cursorPosition).toBe(rows[head]!.valueStart);
-      expect(t["_cursorVisualRow"]()).toBe(head);
+      expect(cursorRowOf(t)).toBe(head);
     });
 
     it("preferred column survives motion through a short wrap row", () => {

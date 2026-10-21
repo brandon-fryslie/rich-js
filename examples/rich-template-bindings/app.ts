@@ -342,7 +342,7 @@ function buildRowSegments(
     new Layout(new Panel(input, {
       title: label,
       borderStyle,
-      bottomRightAccessory: () => input.scrollIndicatorText,
+      bottomRightAccessory: (body) => input.scrollIndicatorText(body),
     })),
     new Layout(new Panel(outputRenderable, { title: "output", borderStyle: dimStyle })),
   );
