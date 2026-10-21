@@ -2,28 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-512",
-      "ref": "refs/pull/512/merge",
-      "sha": "d3179b609f11af3bae7c69bf36b12b44493a856d",
-      "timestamp": "2026-10-21T13:47:24.194Z",
-      "commits": [
-        {
-          "sha": "d3179b609f11af3bae7c69bf36b12b44493a856d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T07:45:21-06:00",
-          "message": "Merge 795194ea81c8cf6e9d6041d0089eebd17133ab99 into 476e7da56fc8861a88619c422973dbd6ab671ec1\n"
-        },
-        {
-          "sha": "795194ea81c8cf6e9d6041d0089eebd17133ab99",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T07:45:07-06:00",
-          "message": "A frame's hold no cell carries is told, not drawn (rich-animation-27tq.5j9)\n\nA placed animation showing nothing led its output with Segment.carrier, and\na container that cut it into rows grew a blank row for it. No segment rule\ncan fix that: a child of no cells is zero rows, with nothing left to carry\nthe hold through. RenderOptions.onHold carries it instead, back the way the\nframe's time came in, so any container that hands a child its options hands\nback its hold. Segment.carrier, isCarrier, splitRows and Tree's carriers go.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "7cd4dc5968184802d1d64f6fde97e45227d743f6",
