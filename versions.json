@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-504",
+      "ref": "refs/pull/504/merge",
+      "sha": "2c1ea571409475c10a73c284d6f6a338f3f7b28f",
+      "timestamp": "2026-10-21T06:06:25.964Z",
+      "commits": [
+        {
+          "sha": "2c1ea571409475c10a73c284d6f6a338f3f7b28f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T00:04:26-06:00",
+          "message": "Merge 96b2b404601c0a3353b6070af4979d8f6efe9f53 into 0dcf5ac44f527aed4862a9e376cb6bca2a287dfb\n"
+        },
+        {
+          "sha": "96b2b404601c0a3353b6070af4979d8f6efe9f53",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T00:04:15-06:00",
+          "message": "A render that writes state throws, and a field cannot be written (rich-protocol-9xcs.94u)\n\nThe refusal epic rich-protocol-9xcs asks for, built from the design on\nrich-protocol-9xcs.rsn.\n\n- src/core/protocol.ts owns the render phase: a pass is one outermost\n  `render` or `measure` call and every step of what it returned, read\n  elsewhere through `activePass()`. New `measure(measurable, options)` is\n  the measure enforcer; `withBoundedWidth`, `Measurement.get` and every\n  direct `.measure(` call go through it, and test/seam/render-calls gains\n  the measure half.\n- src/core/state.ts: `State<T>`, whose `set` throws `RenderWriteError`\n  in a pass that did not make it (React's ownership line). rsn called it\n  `Cell`; \"cell\" is this library's terminal character cell.\n- test/seam/render-purity: nothing writable is reachable from a\n  renderable's fields, a class's statics or module scope, but through\n  `State`, `Memo` (never of a `State`) or a mobx accessor in src/widgets/.\n  The 231 locations that exist today are seeded, shrink-only, in\n  render-purity-debt.ts, each with what it becomes and why.\n\nOnly the iterator of the call that opens a pass is wrapped: wrapping every\nlevel cost ~30% of render time (Table in two Panels, 11.8 vs 9.1 ms);\nopener-only measures 8.9 ms.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-503",
       "ref": "refs/pull/503/merge",
       "sha": "3db94884306270211c6a920fc4263a363b3cd40c",
