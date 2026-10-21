@@ -4,15 +4,22 @@
     {
       "version": "pr-502",
       "ref": "refs/pull/502/merge",
-      "sha": "212552c2e979b2100e81b7125b9841edcfa85429",
-      "timestamp": "2026-10-21T04:26:39.279Z",
+      "sha": "c450045947ce9e1a814aa820032914a9d84366dc",
+      "timestamp": "2026-10-21T04:34:12.500Z",
       "commits": [
         {
-          "sha": "212552c2e979b2100e81b7125b9841edcfa85429",
+          "sha": "c450045947ce9e1a814aa820032914a9d84366dc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T22:24:53-06:00",
-          "message": "Merge 0d58151658e3f48d70d034ca34318dbb848c384e into 0a9235f3fff78186aae3f112960b8ac30fbb9a23\n"
+          "timestamp": "2026-10-21T04:32:20Z",
+          "message": "Merge d733a1e1ea4ce5cc6c0c99904385936b655b98ab into 0a9235f3fff78186aae3f112960b8ac30fbb9a23\n"
+        },
+        {
+          "sha": "d733a1e1ea4ce5cc6c0c99904385936b655b98ab",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-20T22:32:15-06:00",
+          "message": "Review: one OKLab conversion, the gallery test samples mid-phase near a million (rich-animation-42lg.6wt)\n\n- labOf is the one polar-to-OKLab spelling; deltaE and toRgba both use it.\n- The every-kind test asserts it is at 1 fps, and seeks half a second\n  after a frame so the draws near 10^6 s fall mid-phase, not on whole seconds.\n- kinds.ts: effected takes no identity-function mode; the border kinds use\n  aroundPanel, which names the panel once.\n"
         },
         {
           "sha": "0d58151658e3f48d70d034ca34318dbb848c384e",
