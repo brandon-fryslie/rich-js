@@ -183,6 +183,7 @@ export class Oklch {
     if (!Number.isFinite(alpha) || alpha < 0 || alpha > 1) {
       throw new RangeError(`Oklch.alpha must be a finite number in [0,1]; got ${alpha}`);
     }
+    this.#lab = labOf(c, h);
   }
 
   /** sRGB → linear → OKLab → polar. Pure; no I/O, no allocation beyond the result. */
@@ -348,23 +349,18 @@ export class Oklch {
    * Symmetric and pure.
    */
   deltaE(other: Oklch): number {
-    const [a, b] = this.#ab();
-    const [otherA, otherB] = other.#ab();
+    const [a, b] = this.#lab;
+    const [otherA, otherB] = other.#lab;
     return Math.hypot(this.l - other.l, a - otherA, b - otherB);
   }
 
   /**
-   * This colour's OKLab a and b, worked out on first ask and kept: a colour
-   * matched against a palette is measured against every entry, and each
-   * entry against every colour it is matched with, so the trigonometry is
-   * paid once a colour rather than once a comparison.
+   * This colour's OKLab a and b, kept with it: a colour matched against a
+   * palette is measured against every entry, and each entry against every
+   * colour it is matched with, so the trigonometry is paid once a colour
+   * rather than once a comparison.
    */
-  #ab(): readonly [number, number] {
-    this.#lab ??= labOf(this.c, this.h);
-    return this.#lab;
-  }
-
-  #lab: readonly [number, number] | undefined;
+  readonly #lab: readonly [number, number];
 
   /** Linear-sRGB coordinates for an explicit (l, C, h). Pure; `toRgba` passes
    * already-normalized values so this never sees out-of-range inputs. */

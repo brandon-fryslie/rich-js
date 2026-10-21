@@ -19,6 +19,7 @@
 
 import { asCellCol, cellColToCodeUnitOffset, cellLen, graphemes, splitAtCells } from "./cells.js";
 import { divideLine } from "./wrap.js";
+import { Memo } from "./memo.js";
 import { Segment } from "./segment.js";
 import { RichText, stripControlChars } from "./text.js";
 import { ReprHighlighter } from "./highlighter.js";
@@ -755,7 +756,7 @@ export class Pretty implements Renderable, Measurable {
   readonly indentGuides: boolean;
   readonly highlighter: Highlighter;
   // [LAW:no-shared-mutable-globals] A private memo, written only by `_cutString`.
-  private readonly cutStrings = new Map<string, string>();
+  private readonly cutStrings = new Memo<string>();
 
   constructor(data: unknown, options?: PrettyOptions) {
     this.data = data;
@@ -879,15 +880,12 @@ export class Pretty implements Renderable, Measurable {
    * memoised per value.
    */
   private _cutString(value: string, max: number): string {
-    let cut = this.cutStrings.get(value);
-    if (cut === undefined) {
+    return this.cutStrings.get(value, () => {
       const clusters = graphemes(value);
-      cut = clusters.length <= max
+      return clusters.length <= max
         ? quoted(value)
         : quoted(clusters.slice(0, max).join("")) + `+${clusters.length - max}`;
-      this.cutStrings.set(value, cut);
-    }
-    return cut;
+    });
   }
 
   /**

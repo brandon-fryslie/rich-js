@@ -24,6 +24,7 @@
 
 import { cellCount, cellLen, setCellSize } from "../core/cells.js";
 import { activeHighlighter, readStr } from "../core/markup.js";
+import { Memo } from "../core/memo.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { measure, render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
@@ -44,7 +45,7 @@ export class EmbeddedText implements Renderable, Measurable {
   // asked for. Parsing is the costly half of drawing a string, and a table
   // measures every cell more than once per print; read on every call, a
   // 500-row table of markup printed 75% slower.
-  private readonly _readings = new Map<boolean, RichText>();
+  private readonly _readings = new Memo<RichText>();
 
   constructor(content: unknown) {
     if (typeof content === "string") {
@@ -65,10 +66,9 @@ export class EmbeddedText implements Renderable, Measurable {
    */
   text(options: RenderOptions, base?: TextStyle): RichText {
     if (typeof this._source !== "string") return this._source.copy();
+    const source = this._source;
     const markup = options.markup !== false;
-    const reading = this._readings.get(markup) ?? readStr(this._source, markup);
-    this._readings.set(markup, reading);
-    const text = reading.copy();
+    const text = this._readings.get(markup ? "markup" : "plain", () => readStr(source, markup)).copy();
     const highlighter = activeHighlighter(options);
     if (base !== undefined && highlighter === undefined) text.style = base;
     highlighter?.highlight(text);

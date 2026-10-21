@@ -11,6 +11,10 @@ const ZWJ = 0x200d;
 const VS16 = 0xfe0f;
 const JOINERS = /[\u200d\ufe0f]/;
 const PRINTABLE_ASCII = /^[ -~]*$/;
+// Segmented afresh on every call: a cursor's step costs a few microseconds
+// even in 10k code units, and a cache of segmentations would hold native
+// memory for every string it kept.
+const SEGMENTER = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 // Rich's `cell_len` over a run of text: each code point the cells Rich's table
 // gives it, but that a ZWJ takes the code point after it into the glyph before
@@ -48,7 +52,7 @@ function measure(text: string): number {
   if (PRINTABLE_ASCII.test(text)) return text.length;
   if (!JOINERS.test(text)) return richCells(text);
   let cells = 0;
-  for (const { segment } of graphemeSegmenter().segment(text)) cells += richCells(segment);
+  for (const { segment } of SEGMENTER.segment(text)) cells += richCells(segment);
   return cells;
 }
 
@@ -225,15 +229,38 @@ export function cutCells(text: string, positions: readonly CellCol[]): string[] 
  */
 export function chopCells(text: string, maxWidth: CellCol): string[] {
   if (maxWidth <= 0 || text.length === 0) return [text];
+  return Array.from(cellRows(text, () => maxWidth), ({ start, end }) => text.slice(start, end));
+}
 
-  const lines: string[] = [];
-  let start = asCodePoint(0);
-  while (start < text.length) {
-    const end = cellStepFrom(text, start, maxWidth);
-    lines.push(text.slice(start, end));
-    start = end;
+/**
+ * `text` cut into rows in one walk over its clusters, row `i` holding as many
+ * whole glyphs as fit in `capOf(i)` cells. A row's first glyph is taken even
+ * when it is wider than the budget, overflowing it by its own width, so every
+ * row is past the last and a loop over the rows ends by construction.
+ *
+ * [LAW:single-enforcer] `cellFit` leaves its caller to choose between
+ * force-taking and skipping; this is that choice, made once. Made twice, the
+ * copies drifted — the textarea's soft wrap force-took, `chopCells` did
+ * neither and hung. And the rows are cut in one walk because a row at a time,
+ * each segmenting the text again, is quadratic in a long word.
+ */
+export function* cellRows(text: string, capOf: (row: number) => CellCol): Generator<{ start: CodePoint; end: CodePoint }> {
+  let row = 0;
+  let start = 0;
+  let at = 0;
+  let cells = 0;
+  for (const glyph of clustersFrom(text, asCodePoint(0))) {
+    const width = cellLen(glyph);
+    if (at > start && cells + width > capOf(row)) {
+      yield { start: asCodePoint(start), end: asCodePoint(at) };
+      row += 1;
+      start = at;
+      cells = 0;
+    }
+    cells += width;
+    at += glyph.length;
   }
-  return lines;
+  if (at > start) yield { start: asCodePoint(start), end: asCodePoint(at) };
 }
 
 /**
@@ -257,24 +284,6 @@ export function splitAtCells(line: string, cuts: readonly CellCol[]): string[] {
   return [...pieces, line.slice(start)];
 }
 
-// [LAW:no-shared-mutable-globals] Private memos, written only by `segmentsOf`:
-// the segmenter, and the segmentation of the last string walked, so a caller
-// stepping along one string does not re-segment the whole of it every step.
-let segmenter: Intl.Segmenter | undefined;
-let lastSegmented: { text: string; segments: Intl.Segments } | undefined;
-
-function graphemeSegmenter(): Intl.Segmenter {
-  return (segmenter ??= new Intl.Segmenter(undefined, { granularity: "grapheme" }));
-}
-
-/** The grapheme segmentation of `text`, reusing the last one when it is the same string. */
-function segmentsOf(text: string): Intl.Segments {
-  if (lastSegmented?.text !== text) {
-    lastSegmented = { text, segments: graphemeSegmenter().segment(text) };
-  }
-  return lastSegmented.segments;
-}
-
 /**
  * The grapheme clusters of `text`, in order: the unit `cellLen` of a whole
  * string is the sum of. Summing `cellLen` over code points instead disagrees
@@ -291,7 +300,7 @@ export function graphemes(text: string): string[] {
  * stops early pays only for the clusters it reads.
  */
 function* clustersFrom(text: string, start: CodePoint): Generator<string> {
-  const segments = segmentsOf(text);
+  const segments = SEGMENTER.segment(text);
   for (let at = start, s = segments.containing(at); s; s = segments.containing(at)) {
     const end = s.index + s.segment.length;
     yield text.slice(at, end);
@@ -344,23 +353,6 @@ export function cellFitFrom(text: string, startCU: CodePoint, cap: CellCol): Cod
 }
 
 /**
- * Like `cellFitFrom`, but for any `startCU` inside `text` the result is
- * strictly past it: a glyph too wide for `cap` is force-taken whole and
- * overflows `cap` by its own width. So a `while (i < text.length)` loop driven
- * by this terminates by construction, and the re-brand is honest — both
- * operands land on code-point boundaries, so their max does too.
- *
- * [LAW:single-enforcer] `cellFit` documents that its caller must choose between
- * force-taking and skipping; this is that choice, made once. It was made twice
- * before and the copies drifted — the textarea's soft wrap force-took,
- * `chopCells` did neither and hung.
- */
-export function cellStepFrom(text: string, startCU: CodePoint, cap: CellCol): CodePoint {
-  const [first = ""] = clustersFrom(text, startCU);
-  return asCodePoint(Math.max(cellFitFrom(text, startCU, cap), startCU + first.length));
-}
-
-/**
  * The code-unit offset a visual column falls at: the end of the largest
  * prefix of `content` within `cellCol` cells, so a column inside a wide glyph
  * lands before it. The inverse of `cellLen(content.slice(0, offset))`.
@@ -383,7 +375,7 @@ export function nextGrapheme(s: string, cu: CodePoint): CodePoint {
 /** `nextGrapheme` backwards: the start of the cluster ending at `cu`; 0 at the start. */
 export function prevGrapheme(s: string, cu: CodePoint): CodePoint {
   if (cu <= 0) return asCodePoint(0);
-  return asCodePoint(segmentsOf(s).containing(cu - 1)!.index);
+  return asCodePoint(SEGMENTER.segment(s).containing(cu - 1)!.index);
 }
 
 /**
@@ -394,7 +386,7 @@ export function prevGrapheme(s: string, cu: CodePoint): CodePoint {
  */
 export function graphemeBoundary(s: string, cu: CodeUnit): CodePoint {
   const at = Math.min(cu, s.length);
-  const cluster = segmentsOf(s).containing(at);
+  const cluster = SEGMENTER.segment(s).containing(at);
   return asCodePoint(cluster === undefined || cluster.index === at ? at : cluster.index + cluster.segment.length);
 }
 

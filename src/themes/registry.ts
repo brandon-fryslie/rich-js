@@ -3,12 +3,14 @@ import { Palette, drawnOn } from "./palette.js";
 import { ACCENT_KEYS, accentText } from "./buildPalette.js";
 import { THEMES, type ThemeName, type ThemePaletteData } from "./data/index.js";
 import { ANSI_SLOTS } from "./data/types.js";
+import { Memo } from "../core/memo.js";
 
 export type { ThemeName };
 
 const THEME_NAMES = Object.freeze(Object.keys(THEMES).sort() as readonly ThemeName[]);
 
-const cache = new Map<ThemeName, Palette>();
+// Fewer themes than a Memo holds, so it never clears and a name keeps one Palette.
+const cache = new Memo<Palette>();
 
 /**
  * Returns the static list of available theme names. Pure and synchronous.
@@ -30,12 +32,7 @@ export function getThemePalette(name: string): Palette | null;
 export function getThemePalette(name: string): Palette | null {
   if (!isThemeName(name)) return null;
 
-  const cached = cache.get(name);
-  if (cached !== undefined) return cached;
-
-  const palette = hydrate(THEMES[name]);
-  cache.set(name, palette);
-  return palette;
+  return cache.get(name, () => hydrate(THEMES[name]));
 }
 
 function isThemeName(name: string): name is ThemeName {

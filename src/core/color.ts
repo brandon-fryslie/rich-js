@@ -3,7 +3,7 @@
  */
 
 import type { Env } from "./env.js";
-import { Memo } from "./memo.js";
+import { Memo, WeakMemo } from "./memo.js";
 
 // --- ColorRgba ---
 
@@ -151,26 +151,22 @@ export function rgbDistance(a: ColorRgba, b: ColorRgba): number {
  * reports is the terminal's own.
  */
 export class ColorTable {
-  private readonly colors: ColorRgba[];
+  private readonly colors: readonly ColorRgba[];
+  /** Each entry's relative luminance. */
+  private readonly luminances: readonly number[];
   readonly firstIndex: number;
   // Keyed by colours a host computes without end (ramp stops, mixes), so bounded.
   private readonly matchMemo = new Memo<number>();
   private readonly readableMemo = new Memo<number>();
 
-  constructor(colors: ColorRgba[], firstIndex = 0) {
+  constructor(colors: readonly ColorRgba[], firstIndex = 0) {
     this.colors = colors;
+    this.luminances = colors.map(relativeLuminance);
     this.firstIndex = firstIndex;
   }
 
   get(index: number): ColorRgba {
     return this.colors[index - this.firstIndex]!;
-  }
-
-  private luminanceCache: readonly number[] | undefined;
-  /** Each entry's relative luminance, computed once per table. */
-  private luminances(): readonly number[] {
-    this.luminanceCache ??= this.colors.map(relativeLuminance);
-    return this.luminanceCache;
   }
 
   /** How many entries the table holds (terminal indices `firstIndex`…). */
@@ -223,7 +219,7 @@ export class ColorTable {
     let bestScore = -Infinity;
     for (let i = 0; i < this.colors.length; i++) {
       const c = this.colors[i]!;
-      const lc = this.luminances()[i]!;
+      const lc = this.luminances[i]!;
       const ratio = luminanceRatio(lc, lOn);
       const passes = ratio >= minRatio;
       // A passing entry scores by closeness; a failing one only by contrast,
@@ -531,7 +527,8 @@ export class ColorSpec {
   readonly number: number | undefined;
   readonly value: ColorRgba | undefined;
 
-  private downgradeCache = new Map<ColorDepth, ColorSpec>();
+  // Keyed by the depth's enum value.
+  private readonly downgrades = new Memo<ColorSpec>();
 
   constructor(
     name: string,
@@ -642,12 +639,7 @@ export class ColorSpec {
     if (this.type === ColorDepth.DEFAULT) return this;
     if (this.type === targetSystem || fidelity(this.type) < fidelity(targetSystem)) return this;
 
-    const cached = this.downgradeCache.get(targetSystem);
-    if (cached) return cached;
-
-    const result = this.performDowngrade(targetSystem);
-    this.downgradeCache.set(targetSystem, result);
-    return result;
+    return this.downgrades.get(String(targetSystem), () => this.performDowngrade(targetSystem));
   }
 
   /**
@@ -761,11 +753,7 @@ export class ColorSpec {
    * `matchOn` rounds to, but for the default, read off the same two tables.
    */
   static indexed(depth: ColorDepth, theme: TerminalTheme): readonly (readonly [ColorSpec, ColorRgba])[] {
-    const byDepth = indexedMemo.get(theme) ?? new Map<ColorDepth, readonly (readonly [ColorSpec, ColorRgba])[]>();
-    indexedMemo.set(theme, byDepth);
-    const listed = byDepth.get(depth) ?? listIndexed(depth, theme);
-    byDepth.set(depth, listed);
-    return listed;
+    return indexedMemo.get(theme, () => new Memo()).get(String(depth), () => listIndexed(depth, theme));
   }
 
   /**
@@ -821,7 +809,7 @@ function cubeCandidate(value: ColorRgba): [ColorSpec, ColorRgba] {
 }
 
 /** `ColorSpec.indexed`'s list, made once for each theme and depth. */
-const indexedMemo = new WeakMap<TerminalTheme, Map<ColorDepth, readonly (readonly [ColorSpec, ColorRgba])[]>>();
+const indexedMemo = new WeakMemo<TerminalTheme, Memo<readonly (readonly [ColorSpec, ColorRgba])[]>>();
 
 function listIndexed(depth: ColorDepth, theme: TerminalTheme): readonly (readonly [ColorSpec, ColorRgba])[] {
   const slots = (): (readonly [ColorSpec, ColorRgba])[] =>
@@ -1201,14 +1189,14 @@ export function downgradeTable(depth: ColorDepth.EIGHT_BIT | ColorDepth.STANDARD
  * `sideEffects: false` makes on its behalf — see
  * `test/seam/import-time-effects.ts`.
  */
-function withGrayAliases(names: Record<string, number>): Record<string, number> {
+function withGrayAliases(names: Readonly<Record<string, number>>): Readonly<Record<string, number>> {
   const aliases = Object.entries(names)
     .filter(([name]) => name.includes("grey"))
     .map(([name, index]) => [name.replace("grey", "gray"), index] as const);
   return { ...names, ...Object.fromEntries(aliases) };
 }
 
-export const ANSI_COLOR_NAMES: Record<string, number> = withGrayAliases({
+export const ANSI_COLOR_NAMES: Readonly<Record<string, number>> = withGrayAliases({
   // Standard 16
   black: 0,
   red: 1,

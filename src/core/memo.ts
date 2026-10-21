@@ -34,3 +34,20 @@ export class Memo<V extends NonNullable<unknown>> {
     return value;
   }
 }
+
+/**
+ * `Memo`'s contract for a key that is an object rather than a string: a
+ * value computed once per key, for as long as the key lives. Held weakly, so
+ * it needs no bound — a key a host stops holding takes its entry with it.
+ */
+export class WeakMemo<K extends object, V extends NonNullable<unknown>> {
+  private readonly entries = new WeakMap<K, V>();
+
+  get(key: K, compute: (key: K) => V): V {
+    const remembered = this.entries.get(key);
+    if (remembered !== undefined) return remembered;
+    const value = compute(key);
+    this.entries.set(key, value);
+    return value;
+  }
+}

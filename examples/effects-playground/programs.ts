@@ -113,8 +113,10 @@ export function effectProgram(effect: EffectName, sources: Sources): string {
     return ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   };
   const file = parse(EFFECTS_FILE);
-  // [LAW:one-source-of-truth] Every file's declarations, `effects.ts`'s first, so what a program carries is what the library has.
-  const files = [file, ...Object.values(CUT_FROM).map(parse)];
+  // [LAW:one-source-of-truth] Every file's declarations, so what a program carries is what the library has —
+  // the files `effects.ts` imports first, as a module's imports are evaluated before it, so a constant it
+  // builds from one of their classes (`measuredMemo`, a `WeakMemo`) finds the class declared.
+  const files = [...Object.values(CUT_FROM).map(parse), file];
   const statements = files.flatMap((f) => f.statements.filter((s) => !ts.isImportDeclaration(s)).map((s): [ts.SourceFile, ts.Statement] => [f, s]));
   const byName = new Map(statements.flatMap(([, s]) => declared(s).map((name): [string, ts.Statement] => [name, s])));
   const { fn, play } = PLAYED[effect];
