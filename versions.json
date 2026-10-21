@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-502",
+      "ref": "refs/pull/502/merge",
+      "sha": "212552c2e979b2100e81b7125b9841edcfa85429",
+      "timestamp": "2026-10-21T04:26:39.279Z",
+      "commits": [
+        {
+          "sha": "212552c2e979b2100e81b7125b9841edcfa85429",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-20T22:24:53-06:00",
+          "message": "Merge 0d58151658e3f48d70d034ca34318dbb848c384e into 0a9235f3fff78186aae3f112960b8ac30fbb9a23\n"
+        },
+        {
+          "sha": "0d58151658e3f48d70d034ca34318dbb848c384e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-20T22:24:40-06:00",
+          "message": "The every-kind playground test draws at the times it checks (rich-animation-42lg.6wt)\n\nThe test was named for three draws and made about 1,900: 32 seconds of\nclock at sixty frames a second, each frame the whole 120x90 gallery.\nIt now plays at the playground's one-frame-a-second rate, so the half\nminute is a frame a second. Locally 11.3 s -> 0.27 s; it timed out at\n30 s on CI.\n\nTwo costs in the frame itself, found on the way:\n\n- kinds.ts made every effect anew inside draw(t), so a gradient's\n  legible-ink memo started cold on every frame. Each effect is now made\n  once and drawn with frameAt.\n- Oklch.deltaE worked out four sines and cosines per comparison; a\n  colour matched against a 256-colour palette paid them per entry. Each\n  colour now keeps its OKLab a and b, by the same formula.\n\nGallery draw at 256 colours: 3.7 -> 2.6 ms, flat from t = 0 to 10^6.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "0a9235f3fff78186aae3f112960b8ac30fbb9a23",
