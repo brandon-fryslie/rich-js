@@ -4,15 +4,22 @@
     {
       "version": "pr-509",
       "ref": "refs/pull/509/merge",
-      "sha": "71a6c7f17df7654f6fdf6afb376b3f68c773433c",
-      "timestamp": "2026-10-21T11:25:03.687Z",
+      "sha": "d8969b5fe84bc40775825f16384de97df845b03f",
+      "timestamp": "2026-10-21T11:31:49.636Z",
       "commits": [
         {
-          "sha": "71a6c7f17df7654f6fdf6afb376b3f68c773433c",
+          "sha": "d8969b5fe84bc40775825f16384de97df845b03f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T11:23:01Z",
-          "message": "Merge 2603e2d40751662d3de288afeebe312134d1e5ae into 7f5d4617f245065a5ef0121e937424adc5446d15\n"
+          "timestamp": "2026-10-21T11:29:49Z",
+          "message": "Merge f50364accb1f5c655df482a4894b65085ae30d3f into 7f5d4617f245065a5ef0121e937424adc5446d15\n"
+        },
+        {
+          "sha": "f50364accb1f5c655df482a4894b65085ae30d3f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T05:29:44-06:00",
+          "message": "TextInput keeps a caret past a full row under arrows, and an arrow keeps its cell's place (rich-protocol-9xcs.o76)\n"
         },
         {
           "sha": "2603e2d40751662d3de288afeebe312134d1e5ae",
