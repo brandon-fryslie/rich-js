@@ -171,7 +171,8 @@ describe("a ListState", () => {
     const builds: Renderable = {
       *render() {
         const rows = new ListState<string>();
-        rows.push("a", "b");
+        rows.push("a");
+        rows.push("b");
         yield new Segment(rows.get().join(""));
       },
     };
@@ -181,7 +182,8 @@ describe("a ListState", () => {
   it("appends in place, and a replacement leaves a list already read as it was", () => {
     const rows = new ListState<number>();
     const read = rows.get();
-    rows.push(1, 2);
+    rows.push(1);
+    rows.push(2);
     expect(read).toEqual([1, 2]);
     rows.set([3]);
     expect(read).toEqual([1, 2]);

@@ -936,31 +936,43 @@ const WHITESPACE = pattern(/^[\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u202f\u205f\u
 /** markdown-it's `isPunctChar`, which takes in all of ASCII's punctuation: Unicode's punctuation and symbols. */
 const PUNCTUATION = pattern(/^[\p{P}\p{S}]$/u);
 
+declare const ANCHORED: unique symbol;
+/** A pattern that matches only at the start of what it reads, which `matchAt` reads from an index on. */
+type Anchored = Pattern & { readonly [ANCHORED]: true };
+
+function anchored(p: Pattern): Anchored {
+  // [LAW:no-silent-failure] Under `m`, `^` also matches after a line break, and the match would no longer be at the index.
+  if (p.flags.includes("m")) throw new TypeError(`/${p.source}/${p.flags}: a multiline pattern is not anchored to where it is read`);
+  return pattern(new RegExp(`^(?:${p.source})`, p.flags)) as Anchored;
+}
+
 const TICKS = pattern(/`+/);
-const LINE_INDENT = pattern(/[ \t]*/);
+const TICKS_AT = anchored(TICKS);
+const LINE_INDENT = anchored(pattern(/[ \t]*/));
 /** markdown-it's autolink: `<`, then text holding no `<` up to the first `>`. */
-const AUTOLINK = pattern(/<([^<>]*)>/);
+const AUTOLINK = anchored(pattern(/<([^<>]*)>/));
 /** What an autolink's text must be: a URI, scheme first, or an email address. */
 const AUTOLINK_URI = pattern(/^[a-zA-Z][a-zA-Z0-9+.\-]{1,31}:[^<>\x00-\x20]*$/);
 const AUTOLINK_EMAIL = pattern(
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,
 );
 /** Space as markdown-it's link rule skips it around a destination and title: a space, tab or line ending, not Unicode's. */
-const LINK_SPACE = pattern(/[ \t\n]*/);
+const LINK_SPACE = anchored(pattern(/[ \t\n]*/));
 /**
  * A link title, as markdown-it's `parseLinkTitle` reads one: in `"`, `'` or
  * `(…)`, a backslash taking the character after it, and a `(` refusing a
  * `(…)` title.
  */
-const LINK_TITLE = pattern(/"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|\((?:\\[\s\S]|[^()\\])*\)/);
+const LINK_TITLE = anchored(pattern(/"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|\((?:\\[\s\S]|[^()\\])*\)/));
 /** How many parentheses markdown-it's `parseLinkDestination` lets a bare destination hold open: one more and it reads none. */
 const MAX_DESTINATION_NESTING = 32;
 /** A backslash escape, as markdown-it reads one: the ASCII punctuation character after it, standing for itself. */
 const ESCAPE = pattern(/\\([!-\/:-@[-`{-~])/);
+const ESCAPE_AT = anchored(ESCAPE);
 /** A numeric character reference, as markdown-it reads one in text: up to seven decimal digits, or up to six hex. */
-const NUMERIC_REFERENCE = pattern(/&#([xX][0-9a-fA-F]{1,6}|[0-9]{1,7});/);
+const NUMERIC_REFERENCE = anchored(pattern(/&#([xX][0-9a-fA-F]{1,6}|[0-9]{1,7});/));
 /** A named character reference, as markdown-it reads one in text: a letter, then one to 31 letters or digits. */
-const NAMED_REFERENCE = pattern(/&([A-Za-z][A-Za-z0-9]{1,31});/);
+const NAMED_REFERENCE = anchored(pattern(/&([A-Za-z][A-Za-z0-9]{1,31});/));
 /**
  * A backslash escape or a character reference, as markdown-it's `unescapeAll`
  * reads them in a link's destination: the reference read more widely than in
@@ -970,8 +982,9 @@ const unescapes = (): RegExp => new RegExp(`${ESCAPE.source}|&[A-Za-z#][A-Za-z0-
 /** A numeric reference as `unescapeAll` reads one: up to eight digits of either base. */
 const DESTINATION_NUMERIC = pattern(/^&#([xX][0-9a-fA-F]{1,8}|[0-9]{1,8});$/);
 /** Inline HTML, as markdown-it-py's HTML_TAG_RE reads it: a tag, a comment, a processing instruction, a declaration or a CDATA section. */
-const HTML_TAG = pattern(
-  new RegExp(
+const HTML_TAG = anchored(
+  pattern(
+    new RegExp(
     [
       HTML_OPEN_TAG,
       HTML_CLOSE_TAG,
@@ -980,14 +993,13 @@ const HTML_TAG = pattern(
       String.raw`<![A-Za-z][^>]*>`,
       String.raw`<!\[CDATA\[[\s\S]*?\]\]>`,
     ].join("|"),
+    ),
   ),
 );
 
-/** `p` matched exactly at `i` in `text`, by a sticky regex this call owns. */
-function matchAt(p: Pattern, text: string, i: number): RegExpExecArray | null {
-  const re = new RegExp(p.source, `${p.flags}y`);
-  re.lastIndex = i;
-  return re.exec(text);
+/** `p` matched exactly at `i` in `text`: read from `i` on, so no regex keeps a cursor, and none is built per call. */
+function matchAt(p: Anchored, text: string, i: number): RegExpExecArray | null {
+  return p.exec(text.slice(i));
 }
 
 /**
@@ -1443,7 +1455,7 @@ function nextLine(text: string, from: number): number {
 function inlineAt(text: string, i: number, state: InlineState, level: number): InlineMatch | undefined {
   switch (text[i]) {
     case "`": {
-      const ticks = matchAt(TICKS, text, i)![0];
+      const ticks = matchAt(TICKS_AT, text, i)![0];
       const close = state.codeClose(text, i + ticks.length, ticks.length);
       if (close === undefined) return { kind: "text", text: ticks, end: i + ticks.length };
       // A code span's line endings are spaces, and a space each side pads it unless `str.strip` empties it, as markdown-it-py's backticks rule has them. markdown-it in JS strips by `/^ (.+) $/` and so pads an all-space span too.
@@ -1465,7 +1477,7 @@ function inlineAt(text: string, i: number, state: InlineState, level: number): I
       // pair standing as written unless it escapes — so a space after it
       // counts toward no hard break.
       if (text[i + 1] === "\n") return { kind: "hardbreak", end: nextLine(text, i + 2) };
-      const escape = matchAt(ESCAPE, text, i);
+      const escape = matchAt(ESCAPE_AT, text, i);
       if (escape) return { kind: "text", text: escape[1]!, end: i + escape[0].length };
       if (i + 1 === text.length) return undefined;
       const next = String.fromCodePoint(text.codePointAt(i + 1)!);

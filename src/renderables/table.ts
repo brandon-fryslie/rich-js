@@ -429,10 +429,10 @@ export interface ColumnOptions {
 const columnShare = (col: Column): number =>
   col.ratio !== undefined && col.ratio > 0 ? Math.min(col.ratio, UNBOUNDED) : 0;
 
-/** A row as `addRow` stamped it: its cells, and whether a section ends under it. */
+/** A row as `addRow` stamped it: its cells, and whether a section ends under it, which `addSection` may say later. */
 interface TableRow {
   readonly cells: readonly Renderable[];
-  readonly endSection: boolean;
+  readonly endSection: State<boolean>;
 }
 
 export class Column {
@@ -672,14 +672,12 @@ export class Table implements Renderable, Measurable, Composite {
       this.addColumn();
     }
 
-    this._rows.push({ cells: resolved, endSection });
+    this._rows.push({ cells: resolved, endSection: new State(endSection) });
     return this;
   }
 
   addSection(): this {
-    const rows = this._rows.get();
-    const last = rows.at(-1);
-    if (last !== undefined) this._rows.set([...rows.slice(0, -1), { ...last, endSection: true }]);
+    this._rows.get().at(-1)?.endSection.set(true);
     return this;
   }
 
@@ -755,7 +753,7 @@ export class Table implements Renderable, Measurable, Composite {
       yield* this._renderRow(options, rowCells, cellStyles, rowStyle, geometry, rowPadding(firstBody + rowIdx), box, "row", border);
 
       // Row separator
-      const showSep = this.showLines || row.endSection;
+      const showSep = this.showLines || row.endSection.get();
       if (showSep && box && rowIdx < this._rows.get().length - 1) {
         yield* box.getRow(geometry.cellWidths, "row", border, edge);
       }

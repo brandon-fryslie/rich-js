@@ -31,9 +31,9 @@ import type {
   RenderOptions,
   StyleErrorHandler,
 } from "./protocol.js";
-import { isRenderable, measure, render } from "./protocol.js";
+import { activePass, isRenderable, measure, render, type Pass } from "./protocol.js";
 import type { Unsubscribe } from "./subscription.js";
-import { ListState, State } from "./state.js";
+import { ListState, State, refuseRenderWrite } from "./state.js";
 
 // --- Types ---
 
@@ -401,6 +401,7 @@ export class Console {
   // non-empty" — `string | null` makes that unrepresentable.
   private readonly _capture = new State<string | null>(null);
   private readonly _liveRegion = new State<LiveRegion>(NO_LIVE_REGION);
+  private readonly _madeIn: Pass | undefined = activePass();
 
   constructor(options?: ConsoleOptions) {
     const environment = options?.environment ?? ambientEnvironment();
@@ -803,13 +804,18 @@ export class Console {
   private _writeSegments(segments: Segment[]): void {
     const shown = segments.map((segment) => shownOn(segment, this._destination));
     if (this._record) {
-      this._recorded.push(...shown.filter((segment) => !segment.isControl));
+      for (const segment of shown) {
+        if (!segment.isControl) this._recorded.push(segment);
+      }
     }
     const encoded = segmentsToString(shown, this._destination);
     if (encoded.length > 0) this._write(encoded);
   }
 
   private _write(text: string): void {
+    // [LAW:single-enforcer] Every write is refused during a render this console was not made in, whatever
+    // the console records or captures: output is an effect, and one made mid-frame lands inside the frame.
+    refuseRenderWrite(this._madeIn);
     // [LAW:types-are-the-program] `_capture !== null` is a discriminator
     // narrow on `string | null`, not a sentinel comparison — the type
     // carries the active/inactive state. The early return is what makes

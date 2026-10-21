@@ -364,13 +364,13 @@ export class RichText implements Renderable, Measurable {
         throw new Error("Style argument must not be provided when appending RichText");
       }
       const offset = this._text.get().length;
+      // Read before anything is appended, so a text appended to itself takes its spans as they were.
+      const moved = content._spans.get().map((span) => span.move(offset));
       this._text.set(this._text.get() + content._text.get());
       // Its base style becomes a span under its own spans, as the reference's
       // `append` does, so appended text looks as it did alone.
       this._addSpan(offset, this._text.get().length, content._format.get().style);
-      for (const span of content._spans.get()) {
-        this._spans.push(span.move(offset));
-      }
+      for (const span of moved) this._spans.push(span);
       return this;
     }
 

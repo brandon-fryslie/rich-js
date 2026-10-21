@@ -19,7 +19,7 @@ import type { Timing } from "../core/easing.js";
 import { Timeline } from "../core/timeline.js";
 import { tween } from "../core/tween.js";
 import { frameAt } from "./frames.js";
-import { State } from "../core/state.js";
+import { ListState, State } from "../core/state.js";
 
 // --- Task ---
 
@@ -457,8 +457,9 @@ export class Progress implements Renderable, Composite {
   private readonly _columns: readonly ProgressColumn[];
   // Rich's Progress adds and updates tasks between frames: each task is a
   // record replaced whole on update, so a frame reads one task as it stood.
-  private readonly _tasks = new State<ReadonlyMap<number, TaskState>>(new Map());
-  private readonly _nextId = new State(1);
+  // A task's id is its place in the list, from 1, so an update finds it
+  // without copying the others.
+  private readonly _tasks = new ListState<State<TaskState>>();
   // [LAW:types-are-the-program] Its own Live, or none: a Progress another
   // host draws has nothing of its own to start.
   private readonly _live: Live | undefined;
@@ -524,7 +525,7 @@ export class Progress implements Renderable, Composite {
 
   /** Rich's `Progress.finished`: every task finished, and so true with none. */
   get finished(): boolean {
-    return [...this._tasks.get().values()].every((state) => finished(taskAt(state, this._host.frameTime)));
+    return this._tasks.get().every((task) => finished(taskAt(task.get(), this._host.frameTime)));
   }
 
   static getDefaultColumns(): ProgressColumn[] {
@@ -537,9 +538,8 @@ export class Progress implements Renderable, Composite {
   }
 
   addTask(description: string, options?: TaskOptions): number {
-    const id = this._nextId.get();
-    this._nextId.set(id + 1);
-    this._putTask({
+    const id = this._tasks.get().length + 1;
+    this._tasks.push(new State<TaskState>({
       id,
       description,
       total: options?.total === undefined ? undefined : finiteCount("total", options.total),
@@ -549,17 +549,18 @@ export class Progress implements Renderable, Composite {
       startTime: options?.start === false ? undefined : this._host.frameTime,
       finishedAt: undefined,
       samples: [],
-    });
+    }));
     return id;
   }
 
-  private _putTask(task: TaskState): void {
-    this._tasks.set(new Map(this._tasks.get()).set(task.id, task));
+  private _task(taskId: number): State<TaskState> | undefined {
+    return this._tasks.get()[taskId - 1];
   }
 
   updateTask(taskId: number, options: TaskUpdateOptions): void {
-    const task = this._tasks.get().get(taskId);
-    if (!task) return;
+    const held = this._task(taskId);
+    if (!held) return;
+    const task = held.get();
 
     // Rich's order: `advance` is added, then a given `completed` overwrites it,
     // so `completed` wins when both come. Checked whole before any field is
@@ -572,7 +573,7 @@ export class Progress implements Renderable, Composite {
         : finiteCount("completed", options.completed);
     const now = this._host.frameTime;
     const reached = task.startTime !== undefined && task.total !== undefined && completed >= task.total;
-    this._putTask({
+    held.set({
       ...task,
       completed,
       // A retarget is a change of count: an update that leaves it alone leaves
@@ -589,9 +590,9 @@ export class Progress implements Renderable, Composite {
   }
 
   startTask(taskId: number): void {
-    const task = this._tasks.get().get(taskId);
+    const held = this._task(taskId);
     // Rich's `start_task`: a task already running keeps the time it started.
-    if (task) this._putTask({ ...task, startTime: task.startTime ?? this._host.frameTime });
+    if (held) held.set({ ...held.get(), startTime: held.get().startTime ?? this._host.frameTime });
   }
 
   start(): void {
@@ -604,7 +605,7 @@ export class Progress implements Renderable, Composite {
    * shows where the work got to, not a bar caught mid-ease.
    */
   stop(): void {
-    this._tasks.set(new Map([...this._tasks.get()].map(([id, task]) => [id, { ...task, fill: Animation.constant(task.completed) }])));
+    for (const task of this._tasks.get()) task.set({ ...task.get(), fill: Animation.constant(task.get().completed) });
     this._live?.stop();
   }
 
@@ -654,7 +655,8 @@ export class Progress implements Renderable, Composite {
 
     // [LAW:effects-at-boundaries] One moment a frame, handed to every column
     // as the task's `time` and `elapsed`.
-    for (const state of this._tasks.get().values()) {
+    for (const held of this._tasks.get()) {
+      const state = held.get();
       if (!state.visible) continue;
       const task = taskAt(state, now);
       table.addRow(...this._columns.map((col) => col.render(task)));

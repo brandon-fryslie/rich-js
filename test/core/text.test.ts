@@ -317,6 +317,17 @@ describe("RichText.append()", () => {
     ]);
   });
 
+  it("appends a text to itself with the spans it had", () => {
+    const t = new RichText("ab");
+    t.stylize("bold", 0, 1);
+    t.append(t);
+    expect(t.plain).toBe("abab");
+    expect(t.spans.map((span) => [span.start, span.end, String(span.style)])).toEqual([
+      [0, 1, "bold"],
+      [2, 3, "bold"],
+    ]);
+  });
+
   // Rich's `Text.append` takes the other text's characters and spans and
   // leaves its `end` behind, which is what lets a label keep its own end and
   // still sit inside a line, as `Spinner` sets one (rich-embed-1r2m).

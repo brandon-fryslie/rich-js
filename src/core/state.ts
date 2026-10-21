@@ -72,10 +72,10 @@ export class ListState<T> {
     return this.#items;
   }
 
-  push(...items: readonly T[]): void {
+  // One item, not a rest parameter: a caller spreading a long list into one overflows the call stack.
+  push(item: T): void {
     refuseRenderWrite(this.#owner);
-    // A loop, not a spread into `push`: a spread of a long list overflows the call stack.
-    for (const item of items) this.#items.push(item);
+    this.#items.push(item);
   }
 
   set(items: Iterable<T>): void {
