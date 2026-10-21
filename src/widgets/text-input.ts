@@ -87,15 +87,15 @@ import {
   type CodePoint,
   type CodeUnit,
 } from "../core/cells.js";
-import { afterPass, drawable, render, type Measurable, type Renderable, type RenderOptions } from "../core/protocol.js";
+import { afterPass, drawable, measure, render, type Measurable, type Renderable, type RenderOptions } from "../core/protocol.js";
 import { State } from "../core/state.js";
-import { Viewport } from "../renderables/viewport.js";
+import { EMPTY, Viewport } from "../renderables/viewport.js";
 import { Animation } from "../core/animation.js";
 import { beat } from "../core/easing.js";
 import { Timeline } from "../core/timeline.js";
 import { holdOf, shownAt, stampFrame } from "../core/animation.js";
 import type { Hold } from "../core/style.js";
-import type { Anchor } from "../core/anchor.js";
+import { levelOf, type Anchor } from "../core/anchor.js";
 import type { TerminalTheme } from "../core/color.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
@@ -166,13 +166,6 @@ function cursorRowIn(rows: readonly VisualRow[], cursor: CodePoint): number {
   return Math.max(0, row);
 }
 
-/** The anchor `owner` stamped on the cell at column `x` of row `y` of `lines`, at whatever depth. */
-function anchorOf(lines: readonly (readonly Segment[])[], x: number, y: number, owner: object): Anchor | undefined {
-  let a = Segment.anchorAt(lines, x, y);
-  while (a !== undefined && a.owner !== owner) a = a.inner;
-  return a;
-}
-
 /**
  * The content row `shown`'s first row draws: what a viewport showing content
  * stamped by `owner` scrolled it to. [LAW:no-silent-failure] Every content row
@@ -181,35 +174,45 @@ function anchorOf(lines: readonly (readonly Segment[])[], x: number, y: number, 
  */
 function shownRow(shown: readonly (readonly Segment[])[], owner: object): number {
   if (shown.length === 0) return 0;
-  const anchor = anchorOf(shown, 0, 0, owner);
+  const anchor = levelOf(Segment.anchorAt(shown, 0, 0), owner);
   if (anchor === undefined) throw new Error("TextInput: the viewport's first row carries no row of the field's content");
   return anchor.row;
 }
 
 /**
- * The rows one frame laid a field's value out in, as the owner its content
- * cells are stamped with: whoever holds the frame finds the very rows it shows
- * under any of them (`frameRows`).
+ * Where one frame laid a field's value out: on one line, the cell its window
+ * starts at; on rows, the visual rows and the first of them it shows.
  */
-class FrameRows {
-  constructor(readonly rows: readonly VisualRow[]) {}
+type Layout =
+  | { readonly kind: "line"; readonly startCell: CellCol }
+  | { readonly kind: "rows"; readonly rows: readonly VisualRow[]; readonly offset: number };
+
+/**
+ * [LAW:one-source-of-truth] A frame's layout, as the owner of every cell the
+ * field drew in it: a click and the scroll indicator read the layout of the
+ * frame they land on off its cells, never one a later frame kept.
+ */
+class Laid {
+  constructor(readonly layout: Layout) {}
 }
 
-/** The rows `field` laid its value out in, in the frame `lines` hold: off the first of its content cells. */
-function frameRows(lines: readonly (readonly Segment[])[], field: object): readonly VisualRow[] | undefined {
+/** The layout stamped on the cell `anchor` names, at whatever depth. */
+function layoutOn(anchor: Anchor | undefined): Layout | undefined {
+  let a = anchor;
+  while (a !== undefined && !(a.owner instanceof Laid)) a = a.inner;
+  return a === undefined ? undefined : (a.owner as Laid).layout;
+}
+
+/** The layout `field` drew in the frame `lines` hold: off the first of its cells. */
+function layoutIn(lines: readonly (readonly Segment[])[], field: object): Layout | undefined {
   for (const line of lines) {
     for (const segment of line) {
-      let a = segment.style?.anchor;
-      while (a !== undefined && a.owner !== field) a = a.inner;
-      while (a !== undefined && !(a.owner instanceof FrameRows)) a = a.inner;
-      if (a !== undefined) return (a.owner as FrameRows).rows;
+      const layout = layoutOn(levelOf(segment.style?.anchor, field));
+      if (layout !== undefined) return layout;
     }
   }
   return undefined;
 }
-
-/** A viewport's own content, never drawn: the field draws its rows through `showing`. */
-const EMPTY: Renderable = { *render(): Iterable<Segment> {} };
 
 /**
  * Character-greedy soft wrap. Breaks at any character once `firstWidth`
@@ -286,10 +289,11 @@ export interface TextInputOptions {
    *     area on the first/last visible row when scroll is possible in that
    *     direction. Fully self-contained — host needs no wiring.
    *   - `"indices"`: the widget suppresses in-content arrows and instead
-   *     publishes `scrollIndicatorText` (e.g. `"[14/102]"`) for the host
-   *     (typically a `Panel`'s `bottomRightAccessory`) to display in the
-   *     border. Useful when the surrounding chrome should carry the
-   *     indicator so widget content area stays untouched.
+   *     answers `scrollIndicatorText(frame)` (e.g. `"[14/102]"`) for a frame
+   *     it is drawn in, which a `Panel`'s `bottomRightAccessory` function
+   *     hands it, to display in the border. Useful when the surrounding
+   *     chrome should carry the indicator so widget content area stays
+   *     untouched.
    *   - `"none"`: no indicator at all.
    */
   scrollIndicator?: "arrows" | "indices" | "none";
@@ -480,7 +484,7 @@ export class TextInput extends ThemedWidget {
     this.cursorStyleOverride = options.cursorStyle;
     this.contentStyleOverride = options.contentStyle;
     this.multiline = this._multiline;
-    this._viewport = new Viewport(EMPTY, { rows: options.maxRows });
+    this._viewport = new Viewport(EMPTY);
   }
 
   // --- Event handlers ---
@@ -596,20 +600,22 @@ export class TextInput extends ThemedWidget {
     if (event.type !== "mouse_down") return;
     this._blinkFrom = event.time;
 
-    const drawn = this._drawn.get();
-    if (this._multiline) {
+    // [LAW:no-silent-failure] Every cell the field draws carries its frame's
+    // layout, so a press without one did not come off a frame it drew.
+    const layout = layoutOn(event.cell);
+    if (layout === undefined) throw new Error("TextInput: a press carries no layout of the frame it landed on");
+    if (layout.kind === "rows") {
       // Multiline has no brackets; rows may have a leading continuation marker.
-      // event.y is a row of the window the clicked frame showed, from the
-      // offset that frame drew; event.x is projected into the row's content.
-      const rows = this._rows(drawn);
-      const rawRowIdx = this._viewport.offset + event.y;
+      // event.y is a row of the window the clicked frame showed; event.x is
+      // projected into the row's content.
+      const rawRowIdx = layout.offset + event.y;
       // Clicks on minRows-padded empty rows (beyond the last real row) snap to end.
-      if (rawRowIdx >= rows.length) {
+      if (rawRowIdx >= layout.rows.length) {
         this.cursorPosition = asCodeUnit(this.value.length);
         this._preferredColumn.set(null);
         return;
       }
-      const row = rows[Math.max(0, rawRowIdx)]!;
+      const row = layout.rows[rawRowIdx]!;
       // Continuation rows start after the marker; non-continuation rows start at column 0.
       const contentXOff = asCellCol(row.isContinuation ? this._markerWidth : 0);
       const relX = asCellCol(Math.max(0, event.x - contentXOff));
@@ -618,7 +624,7 @@ export class TextInput extends ThemedWidget {
       // [LAW:types-are-the-program] relX is a cell-column offset into the full
       // display string: the click's column past the bracket, from where the
       // window the clicked frame showed begins.
-      const relX = asCellCol(Math.max(0, event.x - 1) + this._singleLine(drawn).startCell);
+      const relX = asCellCol(Math.max(0, event.x - 1) + layout.startCell);
       this.cursorPosition = this._offsetAtShownCell(this.value, relX);
     }
     this._preferredColumn.set(null);
@@ -875,7 +881,8 @@ export class TextInput extends ThemedWidget {
     const drawn: Drawn = { maxWidth: options.maxWidth, asciiOnly: options.asciiOnly ?? false };
     // [LAW:effects-at-boundaries] Kept once the frame is drawn, never while it is.
     afterPass(() => this._drawn.set(drawn));
-    return this._multiline ? this._renderMultiline(options, drawn) : this._renderSingleLine(options, drawn);
+    const { lines, layout } = this._multiline ? this._renderMultiline(options, drawn) : this._renderSingleLine(options, drawn);
+    return Segment.anchorLines(lines, new Laid(layout)).flatMap((line) => [...line, Segment.line()]);
   }
 
   // [LAW:dataflow-not-control-flow] How a stretch of `value` is shown in one
@@ -944,7 +951,7 @@ export class TextInput extends ThemedWidget {
     return this.focused && this.value.length === 0 && this.placeholder.length > 0;
   }
 
-  private _renderSingleLine(options: RenderOptions, drawn: Drawn): Segment[] {
+  private _renderSingleLine(options: RenderOptions, drawn: Drawn): { lines: Segment[][]; layout: Layout } {
     const { rawDisplay, contentWidth, startCell, cursorCellCol } = this._singleLine(drawn);
     const [, afterStart] = splitText(rawDisplay, startCell);
     const [visible] = splitText(afterStart, contentWidth);
@@ -976,10 +983,10 @@ export class TextInput extends ThemedWidget {
     }
 
     segments.push(new Segment("]", bracketStyle));
-    return segments;
+    return { lines: [segments], layout: { kind: "line", startCell } };
   }
 
-  private _renderMultiline(options: RenderOptions, drawn: Drawn): Segment[] {
+  private _renderMultiline(options: RenderOptions, drawn: Drawn): { lines: Segment[][]; layout: Layout } {
     // [LAW:dataflow-not-control-flow] Decompose `value` into visual rows once,
     // then drive both display and cursor projection from the same array.
     const visualRows = this._rows(drawn);
@@ -1000,15 +1007,16 @@ export class TextInput extends ThemedWidget {
       this._emitRowContent(line, options, row, rowIdx === cursorRow && showCursor, contentStyle, cursorStyle);
       return line;
     });
-    // The field is as wide as its widest row, a caret past a row's end
-    // included; an arrow sits in the last cell of the width offered.
-    const width = Math.max(arrows ? cellCount(options.maxWidth) : 0, ...lines.map((line) => Segment.getLineLength(line)));
+    // The field is as wide as it measures, held to the width offered — a blank
+    // field included — and wider where a row draws past that: a caret past the
+    // end of a full row. An arrow sits in the last cell of the width offered.
+    const drawnWidth = lines.reduce((w, line) => Math.max(w, Segment.getLineLength(line)), 0);
+    const width = arrows ? cellCount(options.maxWidth) : Math.max(drawnWidth, Math.min(options.maxWidth, measure(this, options).maximum));
     // Pad with empty rows when the value is shorter than `minRows`.
     const padRows = this._minRows !== undefined && this._maxRows === undefined ? Math.max(0, this._minRows - total) : 0;
     // Every row is padded to the width, so each has cells to stamp — a blank
-    // row included — and the stamp names its row of the content and the rows
-    // this frame laid out.
-    const owner = new FrameRows(visualRows);
+    // row included — and the stamp names its row of the content.
+    const owner = {};
     const content = Segment.anchorLines(
       [...lines, ...Array.from({ length: padRows }, (): Segment[] => [])].map((line) => Segment.adjustLineLength(line, width, contentStyle)),
       owner,
@@ -1018,33 +1026,34 @@ export class TextInput extends ThemedWidget {
       measure: () => ({ minimum: width, maximum: width }),
     };
 
-    // The viewport picks the window, `maxRows` tall whatever region the field
-    // is placed in, with the cursor's row followed.
+    // The viewport picks the window, at most `maxRows` tall whatever region the
+    // field is placed in, with the cursor's row followed.
     const shown = Segment.splitLines(render(
       this._viewport.showing(rowsRenderable, { start: cursorRow, end: cursorRow + 1 }),
-      { ...options, maxWidth: width, height: undefined },
+      { ...options, maxWidth: width, height: this._maxRows === undefined ? undefined : { rows: this._maxRows, exact: false } },
     ));
 
+    // The content row the window's first row shows: the offset this frame
+    // drew, read off what the viewport drew.
+    const offset = shownRow(shown, owner);
     // Scroll-direction arrows appear in the rightmost cell of the first/last
-    // visible row, *only* when scroll is actually possible in that direction,
-    // read from the offset this frame drew — the content row its first row
-    // shows. Only emitted in `"arrows"` mode; other modes leave the content
-    // area untouched and rely on the host to surface scroll state externally
-    // (e.g. Panel border accessory).
-    const offset = arrows ? shownRow(shown, owner) : 0;
+    // visible row, *only* when scroll is actually possible in that direction.
+    // Only emitted in `"arrows"` mode; other modes leave the content area
+    // untouched and rely on the host to surface scroll state externally (e.g.
+    // Panel border accessory).
     const indicatorStyle = this.indicatorStyleOverride ?? new Style(ink(this.theme, "text-primary", "background"));
     const arrowOn = (i: number): string | undefined =>
       !arrows ? undefined
         : i === 0 && offset > 0 ? drawable(options, "▲", "^")
         : i === shown.length - 1 && offset + shown.length < total ? drawable(options, "▼", "v")
         : undefined;
-    return shown.flatMap((line, i) => {
+    // The arrow's cells are reserved at the end of the row, so a wide glyph
+    // never collides with it: the row is cut to the cells before it.
+    const withArrows = shown.map((line, i) => {
       const arrow = arrowOn(i);
-      // The arrow's cells are reserved at the end of the row, so a wide glyph
-      // never collides with it: the row is cut to the cells before it.
-      const row = arrow === undefined ? line : [...Segment.adjustLineLength(line, width - cellLen(arrow), contentStyle), new Segment(arrow, indicatorStyle)];
-      return [...row, Segment.line()];
+      return arrow === undefined ? line : [...Segment.adjustLineLength(line, width - cellLen(arrow), contentStyle), new Segment(arrow, indicatorStyle)];
     });
+    return { lines: withArrows, layout: { kind: "rows", rows: visualRows, offset } };
   }
 
   // The caret's cell for the frame `options` draws: the blink restarted at the
@@ -1098,11 +1107,10 @@ export class TextInput extends ThemedWidget {
   // The visual rows `value` lays out into at `drawn`. A width that bounds
   // nothing wraps nothing, so before any frame they are the logical lines.
   private _rows(drawn: Drawn): VisualRow[] {
-    const options = drawn;
     const wrap = Number.isFinite(drawn.maxWidth) ? this._wrap : undefined;
-    const firstWidth = asCellCol(Math.max(1, options.maxWidth));
+    const firstWidth = asCellCol(Math.max(1, drawn.maxWidth));
     const continuationWidth = asCellCol(Math.max(1, firstWidth - this._markerWidth));
-    const shownAs = this._shownAs(options);
+    const shownAs = this._shownAs(drawn);
 
     const rows: VisualRow[] = [];
     const lines = this.value.split("\n");
@@ -1184,8 +1192,8 @@ export class TextInput extends ThemedWidget {
   scrollIndicatorText(frame: readonly (readonly Segment[])[]): string | undefined {
     if (this._scrollIndicator !== "indices") return undefined;
     if (this._maxRows === undefined) return undefined;
-    const rows = frameRows(frame, this);
-    if (rows === undefined || rows.length <= this._maxRows) return undefined;
-    return `[${cursorRowIn(rows, this.cursorPosition) + 1}/${rows.length}]`;
+    const layout = layoutIn(frame, this);
+    if (layout?.kind !== "rows" || layout.rows.length <= this._maxRows) return undefined;
+    return `[${cursorRowIn(layout.rows, this.cursorPosition) + 1}/${layout.rows.length}]`;
   }
 }

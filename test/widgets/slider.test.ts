@@ -36,6 +36,7 @@ const mouseAt = (
   shift: false,
   ctrl: false,
   over: true,
+  cell: undefined,
   time: 0,
 });
 

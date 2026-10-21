@@ -13,7 +13,7 @@ import type {
   KeyHandlerOptions,
   KeyHandlerPriority,
 } from "./types.js";
-import { drew, originOf, scrollTargetAt, widgetAt } from "./hit.js";
+import { cellOf, drew, originOf, scrollTargetAt, widgetAt } from "./hit.js";
 import type { Segment } from "../core/segment.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import type { KeyPress } from "../host/input.js";
@@ -218,6 +218,7 @@ export class EventRouter {
       x: event.x - target.originX,
       y: event.y - target.originY,
       over: drew(frame, target.widget, event.x, event.y),
+      cell: cellOf(frame, target.widget, event.x, event.y),
       time: this.source.frameTime,
     });
 

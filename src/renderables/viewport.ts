@@ -406,7 +406,8 @@ export class ViewportPerKey {
   }
 }
 
-const EMPTY: Renderable = { *render(): Iterable<Segment> {} };
+/** Content a viewport never draws, for one that shows content only through `showing`. */
+export const EMPTY: Renderable = { *render(): Iterable<Segment> {} };
 
 const scrollbarGlyphs = ({ thumb, track }: Scrollbar): string => thumb.glyph + track.glyph;
 

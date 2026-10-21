@@ -58,6 +58,15 @@ export function shiftAnchor(anchor: Anchor, cells: number): Anchor {
  * nested in its output.
  */
 export function drawnBy(anchor: Anchor | undefined, owner: object): boolean {
-  for (let level = anchor; level; level = level.inner) if (level.owner === owner) return true;
-  return false;
+  return levelOf(anchor, owner) !== undefined;
+}
+
+/**
+ * The level of `anchor` that `owner` stamped: the cell's place in `owner`'s
+ * output, with what `owner`'s own content stamped inside it.
+ */
+export function levelOf(anchor: Anchor | undefined, owner: object): Anchor | undefined {
+  let level = anchor;
+  while (level !== undefined && level.owner !== owner) level = level.inner;
+  return level;
 }
