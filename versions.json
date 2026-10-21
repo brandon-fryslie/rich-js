@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "e2df564cbf3927e63351f6111aba4d1f9729841d",
-      "timestamp": "2026-10-21T07:10:51.606Z",
+      "sha": "0d611fd63c5bae4dd370938698284332f73b405c",
+      "timestamp": "2026-10-21T07:44:03.764Z",
       "commits": [
         {
-          "sha": "e2df564cbf3927e63351f6111aba4d1f9729841d",
+          "sha": "0d611fd63c5bae4dd370938698284332f73b405c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T01:09:25-06:00",
-          "message": "Every cache a render fills is a Memo (rich-protocol-9xcs.5ar) (#505)\n\n* Every cache a render fills is a Memo (rich-protocol-9xcs.5ar)\n\nString-keyed caches move onto Memo, object-keyed ones onto WeakMemo (new,\nbeside it, sanctioned by the render-purity gate like Memo). Cheap lazy\nvalues become eager readonly fields. The cells.ts last-segmentation slot is\ngone: rows are cut in one walk (cellRows, replacing cellStepFrom), so no\ncaller re-segments a string per row. Their render-purity debt rows go.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* A word motion walks the value once (rich-protocol-9xcs.5ar)\n\nWith no segmentation cache in cells.ts, TextInput's four word motions,\nstepping prevGrapheme/nextGrapheme a cluster at a time, went quadratic in\nthe word they cross. Each is now one walk (clustersFrom / clustersBefore)\nthrough wordSpan; a linear-time test per motion fails on the old loops.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* A memo's key has its type, and cellFitEnd walks only what fits (rich-protocol-9xcs.5ar)\n\nMemo<V, K extends string> and WeakMemo<V, K>: the value first in both, so\nthe render-purity gate reads it from one position. The registry keys on\nThemeName, EmbeddedText on \"markup\" | \"plain\", ColorSpec on `${ColorDepth}`.\nThe registry's one-Palette-per-name is now a test across every theme.\ncellFitEnd walks clustersBefore instead of reversing the whole string.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-10-21T01:42:02-06:00",
+          "message": "A widget's observable refuses a write during render (rich-protocol-9xcs.sej) (#506)\n\n* A widget's observable refuses a write during render (rich-protocol-9xcs.sej)\n\nThe widgets' observable and observableRef decorators wrap mobx's with an\ninterceptor that refuses a write through State's one enforcer,\nrefuseRenderWrite. The render-purity gate sanctions only those accessors,\nwalks their values, and reports a raw mobx accessor as writable.\n\n* Widgets hold one observable, the reference; a Dropdown keeps its own options (rich-protocol-9xcs.sej)\n\nReview of PR #506, high pass:\n- Deep observable dropped: its contents were written past the interceptor.\n  Every widget field held a primitive, so observableRef is the whole set.\n- Dropdown.options copies on assignment, as observableShallow did.\n- docs/widgets.md no longer names RenderWriteError, which no entry exports.\n- Tests: a write in a measure, and in a WidgetApp overlay, throws.\n\n* docs/widgets: a view function's write is refused too (rich-protocol-9xcs.sej)"
         }
       ]
     },
