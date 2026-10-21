@@ -939,8 +939,23 @@ describe("TextInput", () => {
       const t = new TextInput({ value: "0123456789abcdef\n1\n2\n3", multiline: true, maxRows: 2 });
       t.focus(0);
       const rows = rowsText(t, { maxWidth: 10 }).split("\n");
-      expect(rows.map((row) => cellLen(row))).toEqual([10, 10]);
-      expect(rows[1]!.endsWith("▼")).toBe(true);
+      expect(cellLen(rows[1]!.slice(0, rows[1]!.indexOf("▼")))).toBe(9);
+    });
+
+    it("with arrows, a caret past the end of a full row is still drawn", () => {
+      const t = new TextInput({ value: "0123456789\n1\n2\n3", multiline: true, wrap: charGreedyWrap, maxRows: 2, cursorStyle: new Style({ reverse: true }) });
+      t.focus(0);
+      t.cursorPosition = asCodePoint(10);
+      const rows = Segment.splitLines(render(t, { maxWidth: 10 }));
+      expect(rows.some((row) => row.some((s) => s.style?.reverse))).toBe(true);
+    });
+
+    it("the wheel over a scroll arrow scrolls the field", () => {
+      const t = new TextInput({ value: "0\n1\n2\n3\n4\n5", multiline: true, maxRows: 2 });
+      const frame = Segment.splitLines(render(t, { maxWidth: 10 }));
+      expect(frame[1]!.map((s) => s.text).join("").endsWith("▼")).toBe(true);
+      expect(scrollTargetAt(frame, 9, 1, 1)).toBe(scrollTargetAt(frame, 0, 1, 1));
+      expect(scrollTargetAt(frame, 9, 1, 1)).toBeDefined();
     });
 
     it("the wheel scrolls a multi-line field, a click lands on the row it shows, and typing scrolls back to the caret", () => {

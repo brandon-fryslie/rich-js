@@ -1007,11 +1007,12 @@ export class TextInput extends ThemedWidget {
       this._emitRowContent(line, options, row, rowIdx === cursorRow && showCursor, contentStyle, cursorStyle);
       return line;
     });
-    // The field is as wide as it measures, held to the width offered — a blank
-    // field included — and wider where a row draws past that: a caret past the
-    // end of a full row. An arrow sits in the last cell of the width offered.
+    // The field is as wide as it measures held to the width offered — the
+    // whole offer when it draws arrows, which sit in its last cell — and wider
+    // where a row draws past that: a caret past the end of a full row.
     const drawnWidth = lines.reduce((w, line) => Math.max(w, Segment.getLineLength(line)), 0);
-    const width = arrows ? cellCount(options.maxWidth) : Math.max(drawnWidth, Math.min(options.maxWidth, measure(this, options).maximum));
+    const offered = cellCount(options.maxWidth);
+    const width = Math.max(drawnWidth, arrows ? offered : Math.min(offered, measure(this, options).maximum));
     // Pad with empty rows when the value is shorter than `minRows`.
     const padRows = this._minRows !== undefined && this._maxRows === undefined ? Math.max(0, this._minRows - total) : 0;
     // Every row is padded to the width, so each has cells to stamp — a blank
@@ -1047,11 +1048,16 @@ export class TextInput extends ThemedWidget {
         : i === 0 && offset > 0 ? drawable(options, "▲", "^")
         : i === shown.length - 1 && offset + shown.length < total ? drawable(options, "▼", "v")
         : undefined;
-    // The arrow's cells are reserved at the end of the row, so a wide glyph
-    // never collides with it: the row is cut to the cells before it.
+    // The arrow's cells are reserved at the end of the offer, so a wide glyph
+    // never collides with it: the row is cut to the cells before it. The arrow
+    // keeps the place of the cell it covers, the viewport's included, so the
+    // wheel over it scrolls the field.
     const withArrows = shown.map((line, i) => {
       const arrow = arrowOn(i);
-      return arrow === undefined ? line : [...Segment.adjustLineLength(line, width - cellLen(arrow), contentStyle), new Segment(arrow, indicatorStyle)];
+      if (arrow === undefined) return line;
+      const at = offered - cellLen(arrow);
+      const cell = indicatorStyle.withAnchor(Segment.anchorAt([line], at, 0));
+      return Segment.adjustLineLength([...Segment.adjustLineLength(line, at, contentStyle), new Segment(arrow, cell)], width, contentStyle);
     });
     return { lines: withArrows, layout: { kind: "rows", rows: visualRows, offset } };
   }
