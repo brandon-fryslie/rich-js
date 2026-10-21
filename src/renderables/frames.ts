@@ -47,7 +47,7 @@
 
 import { Animation, holdOf, placedRender, shownAt, stamp } from "../core/animation.js";
 import { beat, type Beat } from "../core/easing.js";
-import type { Motion, Renderable, RenderOptions } from "../core/protocol.js";
+import type { Motion, RenderOptions } from "../core/protocol.js";
 import type { Segment } from "../core/segment.js";
 import { layerStyle } from "../core/style.js";
 import { RichText } from "../core/text.js";

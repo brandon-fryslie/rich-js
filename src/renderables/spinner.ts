@@ -179,7 +179,7 @@ export class Spinner implements Animation<Renderable & Measurable> {
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return this._placed.measure(options);
+    return measure(this._placed, options);
   }
 
   /** The frame `choose` picks from the frames the output can draw, and the label, saying the hold it is in if `choose` says. */
