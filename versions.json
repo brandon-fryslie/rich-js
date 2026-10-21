@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-511",
+      "ref": "refs/pull/511/merge",
+      "sha": "e8b405b42dbdfcc2e06d789a8e1fc6504ba64472",
+      "timestamp": "2026-10-21T12:53:34.377Z",
+      "commits": [
+        {
+          "sha": "e8b405b42dbdfcc2e06d789a8e1fc6504ba64472",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T06:51:27-06:00",
+          "message": "Merge 2e4bb6be18b80b0bc094bd75c7db91ad247eb0ae into c3fc4bf64cba06ae4b5898b6815d91821d6918ff\n"
+        },
+        {
+          "sha": "2e4bb6be18b80b0bc094bd75c7db91ad247eb0ae",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T06:51:15-06:00",
+          "message": "A Viewport is scroll state; content is drawn through it with showing (rich-protocol-9xcs.tcy)\n\nViewport no longer takes content or renders itself: `new Viewport(options)`\nholds the scroll position, and `showing`/`showingLines` are the one way to\ndraw through it. The placeholder content half its callers built\n(`new RichText(\"\")`, `EMPTY`) is gone, and so is the content a ListView's\nviewport held and ignored.\n\nViewport drops out of the exported-renderable gates (held, ascii-only,\nline-ends); their ListView rows still draw through `showing`.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c3fc4bf64cba06ae4b5898b6815d91821d6918ff",
