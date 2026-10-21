@@ -514,7 +514,10 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
  * it draws is dropped, and everything it draws is reported held, whatever
  * width it hands it. What it tells of its hold (`onHold`) still reaches the
  * frame: an element not yet entered is held at no width, and must say when it
- * enters and takes some. It commits nothing, as a measurement commits nothing —
+ * enters and takes some. A motion held at no width therefore wakes its host
+ * for frames that look the same: when it next takes room is not a moment its
+ * hold can name, and an early answer costs a frame where a late one hides the
+ * element. It commits nothing, as a measurement commits nothing —
  * its effects (`afterPass`) are learned at a width nobody sees, so a
  * `Viewport` it shows content through keeps the scroll the last frame shown
  * left it.
