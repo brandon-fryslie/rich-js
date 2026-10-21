@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-502",
-      "ref": "refs/pull/502/merge",
-      "sha": "c450045947ce9e1a814aa820032914a9d84366dc",
-      "timestamp": "2026-10-21T04:34:12.500Z",
-      "commits": [
-        {
-          "sha": "c450045947ce9e1a814aa820032914a9d84366dc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T04:32:20Z",
-          "message": "Merge d733a1e1ea4ce5cc6c0c99904385936b655b98ab into 0a9235f3fff78186aae3f112960b8ac30fbb9a23\n"
-        },
-        {
-          "sha": "d733a1e1ea4ce5cc6c0c99904385936b655b98ab",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T22:32:15-06:00",
-          "message": "Review: one OKLab conversion, the gallery test samples mid-phase near a million (rich-animation-42lg.6wt)\n\n- labOf is the one polar-to-OKLab spelling; deltaE and toRgba both use it.\n- The every-kind test asserts it is at 1 fps, and seeks half a second\n  after a frame so the draws near 10^6 s fall mid-phase, not on whole seconds.\n- kinds.ts: effected takes no identity-function mode; the border kinds use\n  aroundPanel, which names the panel once.\n"
-        },
-        {
-          "sha": "0d58151658e3f48d70d034ca34318dbb848c384e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T22:24:40-06:00",
-          "message": "The every-kind playground test draws at the times it checks (rich-animation-42lg.6wt)\n\nThe test was named for three draws and made about 1,900: 32 seconds of\nclock at sixty frames a second, each frame the whole 120x90 gallery.\nIt now plays at the playground's one-frame-a-second rate, so the half\nminute is a frame a second. Locally 11.3 s -> 0.27 s; it timed out at\n30 s on CI.\n\nTwo costs in the frame itself, found on the way:\n\n- kinds.ts made every effect anew inside draw(t), so a gradient's\n  legible-ink memo started cold on every frame. Each effect is now made\n  once and drawn with frameAt.\n- Oklch.deltaE worked out four sines and cosines per comparison; a\n  colour matched against a 256-colour palette paid them per entry. Each\n  colour now keeps its OKLab a and b, by the same formula.\n\nGallery draw at 256 colours: 3.7 -> 2.6 ms, flat from t = 0 to 10^6.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "0a9235f3fff78186aae3f112960b8ac30fbb9a23",
-      "timestamp": "2026-10-21T04:17:14.189Z",
+      "sha": "0dcf5ac44f527aed4862a9e376cb6bca2a287dfb",
+      "timestamp": "2026-10-21T04:42:36.847Z",
       "commits": [
         {
-          "sha": "0a9235f3fff78186aae3f112960b8ac30fbb9a23",
+          "sha": "0dcf5ac44f527aed4862a9e376cb6bca2a287dfb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T22:15:44-06:00",
-          "message": "Animations and effects are placed like any renderable (rich-animation-27tq.50o) (#501)\n\n* Animations and effects are placed like any renderable (rich-animation-27tq.50o)\n\nAn Animation of renderables is a renderable: placed in any container — a\nPanel, a Table cell, a Group, a container written outside rich-js — it\ndraws at the frame's time (RenderOptions.frame; 0 when printed) and stamps\nits cells with its hold. The type carries the face exactly when the values\nare renderables, so Animation<number> is refused where a renderable goes.\n\n- core/animation: Timed<T> (the old interface) and the conditional\n  Animation<T>; Animation.of attaches the face (NoInfer on its return, so\n  an annotated `const a: Animation<Renderable> = Animation.of({...})`\n  infers from the literal). shownAt, stamp/stampFrame and the face\n  (placedRender/Measure/Contents, drawnAt) live here; tier 5.\n- A stamp is the whole hold: Style.lastChange beside nextChange, layered\n  as an intersection; Segment.lastChange reads it. Every stamper stamps\n  both ends (face, Effected/GlyphEffected, Spinner, textFrameAt, the\n  TextInput caret, ScrollFrame's carrier, frameAt).\n- Effected/GlyphEffected take no t: they are the animations, at(t) the\n  Recolored/Reglyphed value, with their exact face. Spinner and\n  FrameSequence are placed too.\n- Hosts: every view is on the timeline; HostView loses \"animation\",\n  FrameSays loses `silent` (every view is), held is a paused timeline.\n  A Live polls every view at its rate; a reduced view is no longer held.\n- Frame-clock rule: a placed animation inside another's value draws at\n  the frame's time (docs/animation.md, \"Placing one\").\n\ntest/renderables/placed.test.ts is the epic's proof: a user-declared Box\ncontainer holding a tween and an Effected gradient, drawn by an App, with\nPanel/Table/Columns/Layout/Group giving the same wakes.\n\n* Review fixes: frameAt is placement at a named time; a cell's hold is whole (rich-animation-27tq.50o)\n\n- frameAt's renderable draws the animation placed in a frame drawn for t,\n  so an Effected stamps its exact hold (a no-colour Progress pulse sleeps\n  again) and animations inside its value draw at t. drawnAt folded into\n  placedRender.\n- Animation.of copies every member, own and inherited, as own properties\n  (membersOf): a class instance keeps its methods, and a spread is whole.\n- Style carries one `hold` (both ends) instead of two optional fields: a\n  cell saying only nextChange claimed it always was, and a reversed\n  timeline never woke for it.\n- Timed and Hold exported from the main barrel."
+          "timestamp": "2026-10-20T22:40:48-06:00",
+          "message": "The every-kind playground test draws at the times it checks (rich-animation-42lg.6wt) (#502)\n\n* The every-kind playground test draws at the times it checks (rich-animation-42lg.6wt)\n\nThe test was named for three draws and made about 1,900: 32 seconds of\nclock at sixty frames a second, each frame the whole 120x90 gallery.\nIt now plays at the playground's one-frame-a-second rate, so the half\nminute is a frame a second. Locally 11.3 s -> 0.27 s; it timed out at\n30 s on CI.\n\nTwo costs in the frame itself, found on the way:\n\n- kinds.ts made every effect anew inside draw(t), so a gradient's\n  legible-ink memo started cold on every frame. Each effect is now made\n  once and drawn with frameAt.\n- Oklch.deltaE worked out four sines and cosines per comparison; a\n  colour matched against a 256-colour palette paid them per entry. Each\n  colour now keeps its OKLab a and b, by the same formula.\n\nGallery draw at 256 colours: 3.7 -> 2.6 ms, flat from t = 0 to 10^6.\n\n* Review: one OKLab conversion, the gallery test samples mid-phase near a million (rich-animation-42lg.6wt)\n\n- labOf is the one polar-to-OKLab spelling; deltaE and toRgba both use it.\n- The every-kind test asserts it is at 1 fps, and seeks half a second\n  after a frame so the draws near 10^6 s fall mid-phase, not on whole seconds.\n- kinds.ts: effected takes no identity-function mode; the border kinds use\n  aroundPanel, which names the panel once."
         }
       ]
     }
