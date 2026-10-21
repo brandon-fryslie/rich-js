@@ -34,7 +34,7 @@ import { ColorRamp } from "../../src/themes/ramp.js";
 import { CATPPUCCIN_MOCHA } from "../../src/themes/terminalThemes.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { Effected } from "../../src/renderables/effect.js";
-import { frameAt } from "../../src/renderables/frames.js";
+import { inFrame } from "./in-frame.js";
 import { gradient } from "../../src/renderables/effects.js";
 import { Group } from "../../src/renderables/group.js";
 import { Layout } from "../../src/renderables/layout.js";
@@ -252,18 +252,12 @@ describe("the type says which animations are placed", () => {
   });
 });
 
-describe("an animation drawn at a time it names (frameAt)", () => {
+describe("an animation drawn in a frame on an output of no colour", () => {
   const NO_COLOR: RenderOptions = { maxWidth: 40, colorSystem: null };
-  const drawn = (renderable: Renderable, options: RenderOptions = NO_COLOR) => [...render(renderable, options)];
+  const drawn = (renderable: Renderable) => [...render(renderable, NO_COLOR)];
 
-  it("stamps what the animation placed stamps: an effect where its colours cannot move says it never changes", () => {
-    for (const t of [0, 3, 30]) expect(Segment.nextChange(drawn(frameAt(ramped(), t)))).toBe(Number.POSITIVE_INFINITY);
-  });
-
-  it("draws every animation inside its value at the time it names, not the frame's", () => {
-    const framed = frameAt(Animation.constant<Renderable>(new Panel(counting())), 1.5);
-    const text = drawn(framed, { ...NO_COLOR, frame: { time: 0, host: { frameTime: 0 } } }).map((s) => s.text).join("");
-    expect(text).toContain("n=7.5");
+  it("an effect whose colours cannot move says it never changes", () => {
+    for (const t of [0, 3, 30]) expect(Segment.nextChange(drawn(inFrame(ramped(), t)))).toBe(Number.POSITIVE_INFINITY);
   });
 });
 

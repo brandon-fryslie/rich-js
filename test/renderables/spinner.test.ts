@@ -20,7 +20,7 @@ function collectSegments(r: Renderable, opts: RenderOptions): Segment[] {
 
 const DOTS = SPINNERS["dots"]!.frames;
 /** The `dots` frame drawn at `t`, bare. */
-const frameAt = (t: number, speed = 1): string => collectText(new Spinner("dots", "", { speed }).at(t), { maxWidth: 80 }).trim();
+const dotAt = (t: number, speed = 1): string => collectText(new Spinner("dots", "", { speed }).at(t), { maxWidth: 80 }).trim();
 
 describe("Spinner", () => {
   describe("construction", () => {
@@ -40,7 +40,6 @@ describe("Spinner", () => {
     it("refuses a time that is not a finite number of seconds, where it is given", () => {
       expect(() => new Spinner("dots").at(NaN)).toThrow(RangeError);
       expect(() => new Spinner("dots").at(Infinity)).toThrow(RangeError);
-      expect(() => new Spinner("dots").drawnAt(NaN)).toThrow(/Spinner.drawnAt needs a finite t, got NaN/);
     });
   });
 
@@ -65,14 +64,14 @@ describe("Spinner", () => {
   describe("the frame for the time it is handed", () => {
     it("draws the frame in progress at t, each held for the interval, looping, with no clock", () => {
       const hold = SPINNERS["dots"]!.interval / 1000;
-      expect(frameAt(0)).toBe(DOTS[0]);
-      expect(frameAt(hold * 1.5)).toBe(DOTS[1]);
-      expect(frameAt(hold * 9.5)).toBe(DOTS[9]);
-      expect(frameAt(hold * 10.5)).toBe(DOTS[0]);
+      expect(dotAt(0)).toBe(DOTS[0]);
+      expect(dotAt(hold * 1.5)).toBe(DOTS[1]);
+      expect(dotAt(hold * 9.5)).toBe(DOTS[9]);
+      expect(dotAt(hold * 10.5)).toBe(DOTS[0]);
     });
 
     it("sampled sixty times a second, shows each dots frame for 4 or 5 samples, in order, none skipped", () => {
-      const samples = Array.from({ length: 240 }, (_, i) => frameAt(i / 60));
+      const samples = Array.from({ length: 240 }, (_, i) => dotAt(i / 60));
       const runs: { frame: string; length: number }[] = [];
       for (const frame of samples) {
         const last = runs.at(-1);
@@ -88,9 +87,9 @@ describe("Spinner", () => {
 
     it("sampled once a second, draws the frame the beat has at that second", () => {
       // 80 ms frames, an 800 ms period: half-seconds land 0.5, 0.7 and 0.1 s into a pass.
-      expect(frameAt(0.5)).toBe(DOTS[6]);
-      expect(frameAt(1.5)).toBe(DOTS[8]);
-      expect(frameAt(2.5)).toBe(DOTS[1]);
+      expect(dotAt(0.5)).toBe(DOTS[6]);
+      expect(dotAt(1.5)).toBe(DOTS[8]);
+      expect(dotAt(2.5)).toBe(DOTS[1]);
     });
 
     it("draws the same bytes for the same t, however many times", () => {
@@ -100,16 +99,16 @@ describe("Spinner", () => {
 
     it("at twice the speed, turns twice as fast", () => {
       const hold = SPINNERS["dots"]!.interval / 1000;
-      expect(frameAt(hold * 1.5, 2)).toBe(DOTS[3]);
+      expect(dotAt(hold * 1.5, 2)).toBe(DOTS[3]);
     });
 
     it("steps backwards at a negative speed: its timeline run down from the first frame's start at t = 0, each held the interval", () => {
       const hold = SPINNERS["dots"]!.interval / 1000;
-      expect(frameAt(0, -1)).toBe(DOTS[0]);
-      expect(frameAt(hold * 0.5, -1)).toBe(DOTS[9]);
-      expect(frameAt(hold * 1.5, -1)).toBe(DOTS[8]);
-      expect(frameAt(hold * 0.25, -2)).toBe(DOTS[9]);
-      expect(frameAt(hold * 0.75, -2)).toBe(DOTS[8]);
+      expect(dotAt(0, -1)).toBe(DOTS[0]);
+      expect(dotAt(hold * 0.5, -1)).toBe(DOTS[9]);
+      expect(dotAt(hold * 1.5, -1)).toBe(DOTS[8]);
+      expect(dotAt(hold * 0.25, -2)).toBe(DOTS[9]);
+      expect(dotAt(hold * 0.75, -2)).toBe(DOTS[8]);
     });
 
     it("refuses a speed of zero, which would hold one frame forever", () => {

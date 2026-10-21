@@ -13,7 +13,6 @@ import type {
 } from "../core/protocol.js";
 import { drawable, getStyle, render } from "../core/protocol.js";
 import { Effected, type Effect } from "./effect.js";
-import { frameAt } from "./frames.js";
 import { EFFECT_CURVES, atShares, shimmer } from "./effects.js";
 import { State } from "../core/state.js";
 
@@ -37,12 +36,12 @@ export interface ProgressBarOptions {
   completed?: number;
   width?: number;
   /**
-   * Rich's pulse, for work whose end is not known, drawn as it is `t` seconds
-   * into whoever draws the frames' clock: the whole bar in its back style,
-   * with the library's `shimmer` carrying `bar.pulse` light along it. Without
-   * it, the bar shows `completed` of `total`.
+   * Rich's pulse, for work whose end is not known: the whole bar in its back
+   * style, with the library's `shimmer` carrying `bar.pulse` light along it,
+   * drawn at the time of the frame it is drawn in. Without it, the bar shows
+   * `completed` of `total`.
    */
-  pulse?: { readonly t: number };
+  pulse?: boolean;
   /**
    * Whether the work is done, which picks `finishedStyle` over
    * `completeStyle`: `completed` reaching `total`, unless said. A bar drawing
@@ -60,7 +59,7 @@ export class ProgressBar implements Renderable, Measurable {
   private readonly _completed: State<number>;
   private readonly _finished: State<boolean | undefined>;
   readonly width: number | undefined;
-  readonly pulse: { readonly t: number } | undefined;
+  readonly pulse: boolean;
   readonly style: string | Style;
   readonly completeStyle: string | Style;
   readonly finishedStyle: string | Style;
@@ -69,7 +68,7 @@ export class ProgressBar implements Renderable, Measurable {
     this._total = new State(options?.total ?? 100);
     this._completed = new State(options?.completed ?? 0);
     this.width = options?.width;
-    this.pulse = options?.pulse;
+    this.pulse = options?.pulse ?? false;
     this._finished = new State(options?.finished);
     this.style = options?.style ?? "bar.back";
     this.completeStyle = options?.completeStyle ?? "bar.complete";
@@ -105,7 +104,7 @@ export class ProgressBar implements Renderable, Measurable {
     // Never wider than offered, as Rich's `min(self.width or max_width, max_width)`.
     // [LAW:parse-dont-validate] parsed as a cell count, so a negative width draws nothing, as Python's `"━" * -2` is "".
     const width = cellCount(Math.min(this.width || options.maxWidth, options.maxWidth));
-    if (this.pulse === undefined) {
+    if (!this.pulse) {
       yield* this.track(options, width, this.completeHalves(width), getStyle(options, this.style));
       return;
     }
@@ -119,10 +118,10 @@ export class ProgressBar implements Renderable, Measurable {
     const style = getStyle(options, this.style);
     const ink = style.color?.isDefault === false ? style.color : ColorSpec.fromRgba((style.color ?? PULSE_BACK).getTruecolor(theme, true));
     const back = style.add(Style.fromColor(ink));
-    // [LAW:no-ambient-temporal-coupling] The moment is the caller's; the bar
+    // [LAW:no-ambient-temporal-coupling] The moment is the frame's; the bar
     // only says what it looks like then. An empty track, lit by the shimmer.
     const track: Renderable = { render: (o) => this.track(o, width, 0, back) };
-    yield* render(frameAt(new Effected(track, this.pulseEffect(options, back, depth, theme), { key: "progress-bar", theme }), this.pulse.t), options);
+    yield* render(new Effected(track, this.pulseEffect(options, back, depth, theme), { key: "progress-bar", theme }), options);
   }
 
   /**

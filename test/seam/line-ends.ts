@@ -40,7 +40,7 @@ import { Constrain } from "../../src/renderables/constrain.js";
 import { Effected, type EffectFrame } from "../../src/renderables/effect.js";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { GlyphEffected, type GlyphFrame } from "../../src/renderables/glyph-effect.js";
-import { FrameSequence, Frames } from "../../src/renderables/frames.js";
+import { FrameSequence } from "../../src/renderables/frames.js";
 import { Spinner } from "../../src/renderables/spinner.js";
 import { Group } from "../../src/renderables/group.js";
 import { Layout } from "../../src/renderables/layout.js";
@@ -115,15 +115,10 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
     why: "one glyph, set inside a line of text as the reference's Emoji is: it yields the character and nothing after it",
   },
   FlexStrip: { ends: "own-line", build: () => new FlexStrip([text("a")]) },
-  Frames: {
-    ends: "open",
-    build: () => new Frames(new FrameSequence([{ text: text("a"), seconds: 1 }]), { t: 0 }),
-    why: "the frame in progress, set inside a line among other cells — a gauge after a model name in a status line — so it ends no line of its own",
-  },
   FrameSequence: {
     ends: "open",
     build: () => new FrameSequence([{ text: text("a"), seconds: 1 }]),
-    why: "placed, the frame in progress at the frame's time, which is a line fragment as a `Frames` is",
+    why: "placed, the frame in progress at the frame's time, set inside a line among other cells — a gauge after a model name in a status line — so it ends no line of its own",
   },
   Group: { ends: "content", build: (content) => new Group(text("a"), content), why: "renders its content and nothing after it, as the reference's does: its last line is its content's" },
   JSONRenderable: { ends: "own-line", build: () => JSONRenderable.fromData({ a: 1 }) },

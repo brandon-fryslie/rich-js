@@ -9,7 +9,7 @@ import { EASES } from "../../src/core/easing.js";
 import { cellLen } from "../../src/core/cells.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
 import { dissolveOut, fadeIn } from "../../src/renderables/effects.js";
-import { frameAt } from "../../src/renderables/frames.js";
+import { inFrame } from "./in-frame.js";
 import { lifecycle, throughColors } from "../../src/renderables/lifecycle.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -350,8 +350,8 @@ describe("a child that draws no rows", () => {
   // At t=3: `shown` arrived at 1, `before` enters at 5, `gone` finished leaving at 2.
   const t = 3;
   const elements = { shown: life("shown", 0), before: life("before", 5), gone: life("gone", 0).leave(1) };
-  // Drawn as the animation answers, and as `frameAt` stamps it: a frame of no cells that still says when it changes.
-  const draws = { unstamped: (l: Life) => l.at(t), stamped: (l: Life) => frameAt(l, t) };
+  // Drawn as the animation answers, and placed in a frame for `t`, which stamps it: a frame of no cells that still says when it changes.
+  const draws = { unstamped: (l: Life) => l.at(t), stamped: (l: Life) => inFrame(l, t) };
 
   for (const [how, drawn] of Object.entries(draws)) {
     for (const absent of ["before", "gone"] as const) {
@@ -381,8 +381,8 @@ describe("a child that draws no rows", () => {
 
   it("still says when it changes, though it draws no row", () => {
     const tree = new Tree("build");
-    tree.add(frameAt(elements.shown, t));
-    tree.add(frameAt(elements.before, t));
+    tree.add(inFrame(elements.shown, t));
+    tree.add(inFrame(elements.before, t));
     expect(Segment.nextChange(collectSegments(tree, { maxWidth: 40 }))).toBe(5);
   });
 
@@ -410,7 +410,7 @@ describe("a child that draws no rows", () => {
 
   it("is not measured, so measure agrees with the rows render draws", () => {
     const tree = new Tree("a");
-    tree.add(elements.before.at(t)).add(frameAt(elements.gone, t));
+    tree.add(elements.before.at(t)).add(inFrame(elements.gone, t));
     expect(tree.measure({ maxWidth: 40 })).toEqual({ minimum: 1, maximum: 1 });
     const lines = collectLines(tree, { maxWidth: Infinity });
     expect(lines).toEqual(["a"]);

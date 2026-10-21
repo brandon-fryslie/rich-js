@@ -135,7 +135,7 @@ console.print(`[bold green]:check_mark: ${jobs.length} jobs done[/]`);
 
 The default refresh rate is 4 times per second. Tune it with `refreshPerSecond` — any positive, finite number, so `0.5` refreshes once every two seconds; anything else throws when the `Live` is constructed. `clock` is what the refresh waits on, `systemClock()` unless you pass a [`Clock`](/app#animating-at-a-frame-rate) of your own.
 
-The rate is how often `Live` draws on its own. A frame whose content says it changes sooner is drawn when it changes: after each frame `Live` reads [when what it drew next changes](/frames#when-the-frame-next-changes) off the frame itself and waits until then or until the rate's next frame, whichever comes first. So a `Live` at four frames a second still draws every frame of a `Frames` sequence held a tenth of a second each, and one showing a [spinner](/frames#spinners) turns it at the spinner's own interval, while a table mutated in place, which says nothing about when it changes, is drawn at the rate alone, and an effect that moves every frame is drawn at the rate and no faster. Or turn auto-refresh off and draw each frame yourself with `refresh()` — or with `update(newRenderable, { refresh: true })`. A frame is drawn only between `start()` and `stop()`; outside them `refresh()` draws nothing, because the screen is no longer `Live`'s:
+The rate is how often `Live` draws on its own. A frame whose content says it changes sooner is drawn when it changes: after each frame `Live` reads [when what it drew next changes](/frames#when-the-frame-next-changes) off the frame itself and waits until then or until the rate's next frame, whichever comes first. So a `Live` at four frames a second still draws every frame of a `FrameSequence` held a tenth of a second each, and one showing a [spinner](/frames#spinners) turns it at the spinner's own interval, while a table mutated in place, which says nothing about when it changes, is drawn at the rate alone, and an effect that moves every frame is drawn at the rate and no faster. Or turn auto-refresh off and draw each frame yourself with `refresh()` — or with `update(newRenderable, { refresh: true })`. A frame is drawn only between `start()` and `stop()`; outside them `refresh()` draws nothing, because the screen is no longer `Live`'s:
 
 ```typescript live
 const counter = new Panel("", { expand: false, borderStyle: "magenta" });
@@ -153,13 +153,13 @@ try {
 
 ## A view drawn for a time
 
-Nothing a `Live` draws reads a clock. In place of a renderable, hand it a view — a function asked for the renderable once per frame with the frame's time `t`, in seconds on the `Live`'s clock — and whatever is drawn for a time — a [`Spinner`](/frames#spinners) drawn at it, [`Frames`](/frames) over a sequence the view holds, an [effect](/effects) built for it, or any [animation](/animation) drawn at it with `frameAt` — is drawn for that `t`, as an animation placed in a renderable view is drawn for the frame's time, its cells saying when it next changes. The same `t` draws the same bytes at four frames a second or sixty, and a `Live` on a hand-moved `Clock` draws the frames for that clock's time:
+Nothing a `Live` draws reads a clock. In place of a renderable, hand it a view — a function asked for the renderable once per frame with the frame's time `t`, in seconds on the `Live`'s clock — and every [animation](/animation) placed in what it returns, such as a [`Spinner`](/frames#spinners), a [`FrameSequence`](/frames) or an [effect](/effects), draws at that `t`, its cells saying when it next changes. `t` is for what the program computes itself, such as an elapsed time. The same `t` draws the same bytes at four frames a second or sixty, and a `Live` on a hand-moved `Clock` draws the frames for that clock's time:
 
 ```typescript live
-import { Live, Spinner } from "@promptctl/rich-js";
+import { Group, Live, RichText, Spinner } from "@promptctl/rich-js";
 
 const spinner = new Spinner("dots", "working");
-const live = new Live((t) => spinner.drawnAt(t), { refreshPerSecond: 12.5, console });
+const live = new Live((t) => new Group(spinner, new RichText(`${t.toFixed(1)}s elapsed`)), { refreshPerSecond: 12.5, console });
 live.start();
 try {
   await sleep(3000);

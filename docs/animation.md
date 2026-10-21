@@ -368,10 +368,10 @@ Before its turn, a child is asked for a time before 0. What that shows is the ch
 
 A [lifecycle](#enter-and-exit-an-element-arriving-staying-and-leaving) is staggered by its own `entered` instead: rows arriving one after another are `Animation.all` of lifecycles entered at each row's index times the delay. Its `leave` and `gone` take the host's clock, so it has to stay on that clock, not move onto one shifted by its index. A row that has not arrived yet, or is gone, draws nothing, and a [`Tree`](/tree#labels) ends its branch at the last child that does draw.
 
-No container knows that a stagger exists. A `Group`, a `Table`'s rows, a `Tree`'s children and a `Layout`'s panes take the children's frames the way they take any renderables, through `Animation.map`, and placed, the frame says when it changes as the stagger does. Here each moment is drawn with `frameAt`, which draws an animation at a time it names itself rather than the frame's:
+No container knows that a stagger exists. A `Group`, a `Table`'s rows, a `Tree`'s children and a `Layout`'s panes take the children's frames the way they take any renderables, through `Animation.map`, and placed, the frame says when it changes as the stagger does. Here each moment is the stagger's value there, `log.at(t)`:
 
 ```typescript
-import { Animation, Group, RichText, Timeline, beat, frameAt } from "@promptctl/rich-js";
+import { Animation, Group, RichText, Timeline, beat } from "@promptctl/rich-js";
 
 const steps = ["resolving dependencies", "compiling 214 modules", "bundling the browser build"];
 // Lit for half a second, dim for a second, looping: half a second apart, the light walks down the list.
@@ -380,7 +380,7 @@ const log = Animation.map(Timeline.stagger(lit, 0.5), (frames) => new Group(...f
 
 for (const t of [0.2, 0.7, 1.2]) {
   const next = log.nextChange(t);
-  console.print(frameAt(log, t));
+  console.print(log.at(t));
   console.print(`t=${t}s  next change at ${next}s`);
 }
 ```
@@ -411,19 +411,20 @@ Terminals have no `prefers-reduced-motion`, so the program hands the reader's pr
 
 Under it every animation is drawn as its `reduced()` form: what it shows, and when it starts and stops showing it, are kept, and every moment of motion between is skipped. A loop holds its value at 0, so a loop that should rest on something starts there; a glyph loop draws the text as written. A one-shot cuts from its start to its end the moment it starts (`Animation.cut(before, after)`), a [transition](#a-transition-from-one-renderable-to-another) to its new state, a [stagger](#a-stagger-one-animation-across-children) has every child arrived, and an [element](#enter-and-exit-an-element-arriving-staying-and-leaving) is there from when it entered until it is told to leave, with no fade either way. A [timeline](#playback-a-timeline) still maps the time, so what shows follows it. A host wakes only when content changes: never for a spinner or a fade, once each for an element arriving and leaving. Text styled `blink` or `blink2` is written without it, because the terminal would blink it on its own. That holds for every output the preference reaches: a print, a `Live` or `App` frame, `renderToString`, and a recording console's exports. Segments encoded by hand — a template's, say — are written for the `Destination` they are given, so hand it the same preference: `resolveDestination("auto", { reducedMotion: true })`.
 
-Every animation placed in a view is drawn reduced where it is drawn. A function view is still asked for its frame at the time, so what the program computes from it — a log it appends to, an elapsed time — stays on time, and everything it builds for the time — an `Effected`, a `GlyphEffected`, a `Frames`, a spinner's `drawnAt`, `frameAt` of any renderable — is reduced where it is drawn. `Animation.continuous` says its value is motion, so a clock or a counter computed from `t` belongs in a function view, where it stays on time. What the function samples itself is its own and still moves: `tween.at(t)`, or a text frame spliced into a line with `frameAt`. To have those reduced too, draw the text with a `Frames`, or hand the host the animation, mapped to what shows it.
+Every animation placed in a view is drawn reduced where it is drawn. A function view is still asked for its frame at the time, so what the program computes from it — a log it appends to, an elapsed time — stays on time, and every animation placed in what it returns is reduced where it is drawn. `Animation.continuous` says its value is motion, so a clock or a counter computed from `t` belongs in a function view, where it stays on time. What the function samples itself with `at(t)` is its own and still moves; to have it reduced, place the animation instead, mapped to what shows it.
 
-Here the same spinner and typewriter are drawn at three moments, with motion and reduced:
+Here the same spinner and typewriter are drawn at three moments, with motion and reduced, each by a `Live` whose timeline is held there:
 
 ```typescript
-import { Console, EASES, GlyphEffected, RichText, Spinner, Table, typewriter } from "@promptctl/rich-js";
+import { Console, EASES, GlyphEffected, Group, Live, RichText, Spinner, Table, Timeline, typewriter } from "@promptctl/rich-js";
 
 const typing = typewriter({ seconds: 2, ease: EASES.linear });
-const spinner = new Spinner("dots", "building");
+const view = new Group(new Spinner("dots", "building"), new GlyphEffected(new RichText("hello, world"), typing.effect, { key: "greeting" }));
 const at = (reducedMotion: boolean, t: number): string => {
-  const drawn = new Console({ reducedMotion, record: true, width: 30, colorSystem: null, file: { write: () => {} } });
-  drawn.print(spinner.drawnAt(t));
-  drawn.print(new GlyphEffected(new RichText("hello, world"), typing.effect, { key: "greeting" }).at(t));
+  const drawn = new Console({ reducedMotion, forceInteractive: false, record: true, width: 30, colorSystem: null, file: { write: () => {} } });
+  const live = new Live(view, { console: drawn, timeline: Timeline.seek(Timeline.pause(Timeline.play(0), 0), 0, t) });
+  live.start();
+  live.stop();
   return drawn.exportText().trimEnd();
 };
 
@@ -439,7 +440,7 @@ console.print(table);
 
 Whoever draws an animation's value as cells at a time stamps every cell it draws with the hold the animation is in there: `nextChange` and `lastChange`, on the cell's `Style`. The stamp rides up through any container as an anchor does and writes no byte, and whoever holds the composed frame reads the soonest change with `Segment.nextChange` and the latest start with `Segment.lastChange`, which a host running its timeline backwards needs. A stamp laid over one a value's cells already carry keeps the sooner change and the later start, so a frame's hold is the intersection of its cells': narrower than the truth, never wider. That is how a [`Live`](/live#auto-refresh) knows when to wake without asking each piece of its view what it holds — [Frames](/frames#when-the-frame-next-changes) shows it at work.
 
-Every placed animation stamps, choosing its frame where it is drawn, so under [reduced motion](#reduced-motion) it draws its animation reduced and stamps only where content changes. An [`Effected`](/effects), a `GlyphEffected` and a `Spinner` stamp exactly: each knows when it next changes only once it has the output's depth, theme and `asciiOnly`, so a loop that holds still at the output's depth says it never changes there, and the host sleeps. So do the renderables drawn for a time they name — `frameAt(animation, t)`, a `Frames`, the template [`frames` function](/template-bindings). Nothing an animation's `at` returns carries a stamp of its own — not a scroll's frame, a change's, a lifecycle's or a spinner's — because the time it is asked for may be one a timeline, a sequence or a lifecycle mapped from the frame's: the placed animation stamps its own answers at the frame's time, which every one of those maps carries back, so a change under a paused timeline says it never changes, and a lifecycle arriving on a beat wakes its host on the beats.
+Every placed animation stamps, choosing its frame where it is drawn, so under [reduced motion](#reduced-motion) it draws its animation reduced and stamps only where content changes. An [`Effected`](/effects), a `GlyphEffected` and a `Spinner` stamp exactly: each knows when it next changes only once it has the output's depth, theme and `asciiOnly`, so a loop that holds still at the output's depth says it never changes there, and the host sleeps. So does the template [`frames` function](/template-bindings), whose frame is spliced into a line at the time it is handed. Nothing an animation's `at` returns carries a stamp of its own — not a scroll's frame, a change's, a lifecycle's or a spinner's — because the time it is asked for may be one a timeline, a sequence or a lifecycle mapped from the frame's: the placed animation stamps its own answers at the frame's time, which every one of those maps carries back, so a change under a paused timeline says it never changes, and a lifecycle arriving on a beat wakes its host on the beats.
 
 A renderable that lives from one frame to the next, such as a [widget](/widgets), is not rebuilt for each frame's `t`. It reads the time instead from its render options: `frame.time` is the moment the frame is drawn for, on the clock its stamps are read on, and `frame.host` is the host drawing it, whose `frameTime` that moment was. That is the timeline's time, for every view, so its stamps are on the clock the host reads them on, and pausing holds it. A `print` passes no `frame`, and nothing drawn from it moves. A `TextInput`'s blinking cursor is one. Every event a `WidgetApp` hands a widget — a key, a click, a change of focus — carries the same `frameTime` as its `time`, so the field restarts its blink there without reading a clock. A [`Progress`](/progress#drawn-by-another-host) is another: what it hears between frames is an update from the program, so it is made for one host and stamps each update with that host's `frameTime`, and a frame from any other host makes it throw, since its stamps would be on another clock.
 

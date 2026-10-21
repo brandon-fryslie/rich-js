@@ -899,15 +899,15 @@ describe("a loop lit on what Effected draws", () => {
     const glow = light(sun);
     const loop: Loop = { touch: (color, w) => (touches++, glow(color, w)), field: () => () => 0.5 };
     const lit = onColors(loop);
-    const frameAt = (t: number): number => {
+    const touchesAt = (t: number): number => {
       touches = 0;
       cellsOf(new Effected(strip, lit, { key: "strip", theme }).at(t));
       return touches;
     };
-    const first = frameAt(0);
+    const first = touchesAt(0);
     // The first frame settles every colour; after it, a frame touches each slot of each cell at most once.
-    expect(frameAt(1)).toBeLessThanOrEqual(2 * rest.length);
-    expect(first).toBeGreaterThan(10 * frameAt(2));
+    expect(touchesAt(1)).toBeLessThanOrEqual(2 * rest.length);
+    expect(first).toBeGreaterThan(10 * touchesAt(2));
   });
 });
 

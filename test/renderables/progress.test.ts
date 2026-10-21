@@ -29,6 +29,7 @@ import { renderToString, segmentsToString } from "../../src/core/render.js";
 import { fakeClock } from "../core/fake-clock.js";
 import { SPINNERS } from "../../src/core/spinnerData.js";
 import { ProgressBar } from "../../src/renderables/progressBar.js";
+import { inFrame } from "./in-frame.js";
 
 const OPTS: RenderOptions = {
   maxWidth: 80,
@@ -354,14 +355,15 @@ describe("BarColumn pulses (rich-effects-fxiy.3rg)", () => {
   it("pulses a task not started or with no total, at the frame's moment on the progress's clock", () => {
     const bars = new BarColumn(20);
     // Each task's bar as drawn, beside the bar Rich draws for it with and without a pulse.
-    const pulses: ({ readonly t: number } | undefined)[] = [];
+    // Each drawn in a frame for the task's time, as the progress draws its table.
+    const pulses: (number | undefined)[] = [];
     const recorder: ProgressColumn = {
       tableColumn: {},
       render: (task) => {
-        const drawn = renderToString(bars.render(task), { width: 20 });
-        const as = (pulse: { readonly t: number } | undefined): string =>
-          renderToString(new ProgressBar({ total: task.total ?? 100, completed: task.completed, width: 20, pulse }), { width: 20 });
-        pulses.push(drawn === as(undefined) ? undefined : drawn === as({ t: task.time }) ? { t: task.time } : { t: NaN });
+        const drawn = renderToString(inFrame(bars.render(task), task.time), { width: 20 });
+        const as = (pulse: boolean, t: number): string =>
+          renderToString(inFrame(new ProgressBar({ total: task.total ?? 100, completed: task.completed, width: 20, pulse }), t), { width: 20 });
+        pulses.push(drawn === as(false, task.time) ? undefined : drawn === as(true, 7.5) ? 7.5 : NaN);
         return new RichText("");
       },
     };
@@ -372,7 +374,7 @@ describe("BarColumn pulses (rich-effects-fxiy.3rg)", () => {
     progress.addTask("open-ended");
     clock.advance(7.5);
     [...progress.render(OPTS)];
-    expect(pulses).toEqual([undefined, { t: 7.5 }, { t: 7.5 }]);
+    expect(pulses).toEqual([undefined, 7.5, 7.5]);
   });
 
   it("moves a task with no total along as the clock does", () => {
@@ -672,7 +674,7 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
     const clock = fakeClock(10);
     const progress = new Progress(new BarColumn(10), { console: quiet(), clock, fill: linear });
     progress.addTask("open-ended");
-    const pulse = new ProgressBar({ total: 100, width: 10, pulse: { t: 0 } });
+    const pulse = inFrame(new ProgressBar({ total: 100, width: 10, pulse: true }), 0);
     expect(renderToString(progress, { width: 10 }).trimEnd()).toBe(renderToString(pulse, { width: 10 }).trimEnd());
     const truecolor = { ...OPTS, maxWidth: 10, colorSystem: ColorDepth.TRUECOLOR };
     expect(Segment.nextChange([...progress.render(truecolor)])).toBe(Segment.nextChange([...pulse.render(truecolor)]));

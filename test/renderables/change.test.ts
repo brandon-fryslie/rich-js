@@ -9,7 +9,7 @@ import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { crossfade, wipe, type Change } from "../../src/renderables/change.js";
 import type { Transition } from "../../src/renderables/effects.js";
-import { frameAt } from "../../src/renderables/frames.js";
+import { inFrame } from "./in-frame.js";
 
 const theme = DEFAULT_TERMINAL_THEME;
 const OPTIONS: RenderOptions = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR };
@@ -39,8 +39,8 @@ describe("a change from one renderable to another", () => {
 
     it(`${name}: draws the same bytes for the same t at one frame a second and sixty`, () => {
       const moving = between(building, done);
-      const slow = new Map(sampled(1, 3).map((t) => [t, bytes(draw(frameAt(moving, t)))]));
-      for (const t of sampled(60, 3)) if (slow.has(t)) expect(bytes(draw(frameAt(moving, t)))).toBe(slow.get(t));
+      const slow = new Map(sampled(1, 3).map((t) => [t, bytes(draw(inFrame(moving, t)))]));
+      for (const t of sampled(60, 3)) if (slow.has(t)) expect(bytes(draw(inFrame(moving, t)))).toBe(slow.get(t));
     });
 
     it(`${name}: is drawn at the new renderable's shape from its first frame, whatever the old one's`, () => {
@@ -55,8 +55,8 @@ describe("a change from one renderable to another", () => {
         const moving = between(from, to);
         const shape = rows(draw(to));
         for (const t of sampled(60, 2.5)) {
-          expect(rows(draw(frameAt(moving, t)))).toEqual(shape);
-          expect(Measurement.get(OPTIONS, frameAt(moving, t))).toEqual(Measurement.get(OPTIONS, to));
+          expect(rows(draw(inFrame(moving, t)))).toEqual(shape);
+          expect(Measurement.get(OPTIONS, inFrame(moving, t))).toEqual(Measurement.get(OPTIONS, to));
         }
       }
     });
@@ -64,7 +64,7 @@ describe("a change from one renderable to another", () => {
     it(`${name}: changes every frame until done, then is the new renderable and never changes`, () => {
       const moving = between(building, done);
       for (const t of sampled(60, 2.5)) {
-        const frame = draw(frameAt(moving, t));
+        const frame = draw(inFrame(moving, t));
         expect(change.done(t)).toBe(t >= curve.seconds);
         expect(Segment.nextChange(frame)).toBe(t < curve.seconds ? t : Number.POSITIVE_INFINITY);
         expect(moving.nextChange(t)).toBe(t < curve.seconds ? t : Number.POSITIVE_INFINITY);
@@ -75,7 +75,7 @@ describe("a change from one renderable to another", () => {
     it(`${name}: ends its last row as the new renderable does`, () => {
       const unended: Renderable = { render: () => [new Segment("abc")] };
       const moving = between(building, unended);
-      for (const t of [0, 1.5, curve.seconds]) expect(text(draw(frameAt(moving, t))).endsWith("\n")).toBe(false);
+      for (const t of [0, 1.5, curve.seconds]) expect(text(draw(inFrame(moving, t))).endsWith("\n")).toBe(false);
     });
 
     it(`${name}: starts as the old renderable, in the new one's shape`, () => {
@@ -86,10 +86,10 @@ describe("a change from one renderable to another", () => {
     it(`${name}: with no colour output, is spliced, and changes every frame until done`, () => {
       const plain: RenderOptions = { maxWidth: 40, colorSystem: null };
       const moving = between(building, done);
-      expect(text(draw(frameAt(moving, 0), plain))).toBe("buildi\n");
-      for (const t of sampled(4, 1.9)) expect(Segment.nextChange(draw(frameAt(moving, t), plain))).toBe(t);
-      expect(text(draw(frameAt(moving, curve.seconds), plain))).toBe("done ✓\n");
-      expect(Segment.nextChange(draw(frameAt(moving, curve.seconds), plain))).toBe(Number.POSITIVE_INFINITY);
+      expect(text(draw(inFrame(moving, 0), plain))).toBe("buildi\n");
+      for (const t of sampled(4, 1.9)) expect(Segment.nextChange(draw(inFrame(moving, t), plain))).toBe(t);
+      expect(text(draw(inFrame(moving, curve.seconds), plain))).toBe("done ✓\n");
+      expect(Segment.nextChange(draw(inFrame(moving, curve.seconds), plain))).toBe(Number.POSITIVE_INFINITY);
     });
   }
 
@@ -121,17 +121,17 @@ describe("a change from one renderable to another", () => {
   it("a crossfade shorter than a second, sampled once a second, shows the old renderable and then the new", () => {
     const quick = crossfade({ seconds: 0.5, ease: EASES.linear, swing: 1 });
     const moving = quick.effect({ from: building, to: done, theme });
-    expect(text(draw(frameAt(moving, 0)))).toBe("buildi\n");
+    expect(text(draw(inFrame(moving, 0)))).toBe("buildi\n");
     for (const t of [1, 2]) {
       expect(quick.done(t)).toBe(true);
-      expect(bytes(draw(frameAt(moving, t)))).toBe(bytes(draw(done)));
+      expect(bytes(draw(inFrame(moving, t)))).toBe(bytes(draw(done)));
       expect(moving.nextChange(t)).toBe(Number.POSITIVE_INFINITY);
     }
   });
 
   it("a cell passes through the terminal's ground at its half", () => {
     const moving = crossfade(curve).effect({ from: building, to: done, theme });
-    const half = draw(frameAt(moving, 1)).filter((s) => s.text.trim() !== "");
+    const half = draw(inFrame(moving, 1)).filter((s) => s.text.trim() !== "");
     const ground = theme.backgroundColor.hex;
     for (const segment of half) expect(segment.style?.color?.getTruecolor(theme, true).hex).toBe(ground);
   });

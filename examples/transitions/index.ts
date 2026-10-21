@@ -8,7 +8,7 @@
  * and what sits beside it moves once, at the cut, never while it changes.
  */
 
-import { Animation, CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, crossfade, frameAt, wipe, type Change, type Renderable, type Transition } from "../../src/index.js";
+import { Animation, CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, crossfade, wipe, type Change, type Renderable, type Transition } from "../../src/index.js";
 
 const EVERY = 3;
 const STATES = [
@@ -38,10 +38,8 @@ const changing = (change: Transition<Change>): Animation<Renderable> => {
 
 const ROWS = CHANGES.map(([name, change]) => [name, changing(change)] as const);
 
-// `frameAt` stamps each frame with when the change next moves, on the Live's clock.
-function view(t: number): Renderable {
-  return new Group(...ROWS.map(([name, changes]) => new Panel(frameAt(changes, t), { title: name, width: 40, borderStyle: "#585b70" })));
-}
+// Each change placed in its panel, drawn at the Live's time and saying when it next moves.
+const view = new Group(...ROWS.map(([name, changes]) => new Panel(changes, { title: name, width: 40, borderStyle: "#585b70" })));
 
 const live = new Live(view, { refreshPerSecond: 30 });
 live.start();

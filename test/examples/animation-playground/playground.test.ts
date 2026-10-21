@@ -11,6 +11,8 @@ import { KINDS } from "../../../examples/animation-playground/kinds.js";
 import { fakeClock, type FakeClock } from "../../core/fake-clock.js";
 import { scriptedHost, type ScriptedHost } from "../../host/scripted-host.js";
 import type { Env } from "../../../src/core/env.js";
+import { render } from "../../../src/core/protocol.js";
+import { inFrame } from "../../renderables/in-frame.js";
 
 const painted = () => new Promise((resolve) => setTimeout(resolve));
 
@@ -215,7 +217,7 @@ describe("animation playground", () => {
   it("marches the border's ants clockwise: right along the top, left along the bottom", () => {
     const kind = KINDS.find((k) => k.name === "marching border")!;
     const drawn = (t: number): string[] =>
-      [...kind.draw(t).render({ maxWidth: 80, colorSystem: null })]
+      [...render(inFrame(kind.view, t), { maxWidth: 80, colorSystem: null })]
         .map((s) => s.text)
         .join("")
         .split("\n")

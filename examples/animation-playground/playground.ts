@@ -28,7 +28,6 @@ import {
   Viewport,
   SCROLLBAR,
   beat,
-  frameAt,
   frameRate,
   render,
   type Anchor,
@@ -222,7 +221,7 @@ async function session(host: TerminalHost, clock: Clock, c: Controls, preference
       `${app.rate.perSecond} fps`,
       preferences.reducedMotion ? "motion reduced" : "full motion",
     ].join("  ·  ");
-    const gallery = c.gallery.showing(new Columns([...KINDS.map((kind) => kind.draw(t)), caret(c.input)], { padding: [0, 1] }));
+    const gallery = c.gallery.showing(new Columns([...KINDS.map((kind) => kind.view), caret(c.input)], { padding: [0, 1] }));
     return stacked(
       new Group(
         new RichText("animation playground — Tab moves between controls, Enter or a click presses, the wheel scrolls", { style: MUTED }),
@@ -230,10 +229,7 @@ async function session(host: TerminalHost, clock: Clock, c: Controls, preference
         row(c.motion, c.depth, c.fps, c.quit),
         row(
           new RichText(seconds(start), { style: MUTED }),
-          frameAt(
-            Animation.map(marker, (step) => track(start, step)),
-            t,
-          ),
+          Animation.map(marker, (step) => track(start, step)),
           new RichText(seconds(start + WINDOW), { style: MUTED }),
         ),
         new RichText(said, { style: TEXT }),

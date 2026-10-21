@@ -16,7 +16,6 @@ import {
   EFFECT_CATALOGUE,
   Effected,
   FrameSequence,
-  Frames,
   Group,
   Panel,
   RichText,
@@ -26,7 +25,6 @@ import {
   Table,
   beat,
   confined,
-  frameAt,
   onBeat,
   steppedInk,
   type Drawn,
@@ -60,50 +58,45 @@ describe("what a host reads off a frame: when it next changes", () => {
   it("frames change at the next frame's start, from any t, far from zero too", () => {
     const seq = frames([1, 0.5, 2.5]);
     for (const [t, next] of [[0, 1], [0.99, 1], [1, 1.5], [1.4, 1.5], [1.5, 4], [5.2, 5.5], [1e6, 1e6 + 1]] as const) {
-      expect(nextChangeOf(new Frames(seq, { t })), `t = ${t}`).toBe(next);
+      expect(nextChangeOf(inFrame(seq, t)), `t = ${t}`).toBe(next);
     }
   });
 
   it("the stamp rides through every container to whoever holds the composed frame", () => {
-    const inner = new Frames(frames([1, 1]), { t: 0.3 });
+    const inner = frames([1, 1]);
     const table = new Table();
     table.addColumn("gauge");
     table.addRow(new Panel(new Group(new RichText("effort"), inner)));
-    expect(nextChangeOf(table)).toBe(1);
+    expect(nextChangeOf(inFrame(table, 0.3))).toBe(1);
     expect(nextChangeOf(new Panel(new RichText("still")))).toBe(Number.POSITIVE_INFINITY);
   });
 
   it("a blank frame among drawn ones still turns, and so does a frame of no cells", () => {
     const blink = new FrameSequence([{ text: new RichText("x"), seconds: 1 }, { text: new RichText(""), seconds: 1 }]);
-    expect(nextChangeOf(new Frames(blink, { t: 1.5 }))).toBe(2);
+    expect(nextChangeOf(inFrame(blink, 1.5))).toBe(2);
     // An empty frame draws its one piece of no width, which carries the stamp: the
     // sequence turns at 2 whatever it draws there, an early answer the contract allows.
     const nothing = new FrameSequence([{ text: new RichText(""), seconds: 1 }, { text: new RichText(""), seconds: 1 }]);
-    expect(nextChangeOf(new Frames(nothing, { t: 1.5 }))).toBe(2);
-  });
-
-  it("the frame drawn at a time, appended into a line, still says when it turns", () => {
-    const line = new RichText("effort ", { end: "" }).append(frameAt(frames([1, 1]), 0.3)).append(" max");
-    expect(nextChangeOf(line)).toBe(1);
+    expect(nextChangeOf(inFrame(nothing, 1.5))).toBe(2);
   });
 
   it("a spinner's label keeps an earlier word of its own on when it changes", () => {
     const label = new RichText("soon", { end: "" }).stylize(new Style({ hold: { lastChange: 0, nextChange: 0.001 } }));
-    expect(nextChangeOf(new Spinner("dots", label).drawnAt(0))).toBe(0.001);
+    expect(nextChangeOf(inFrame(new Spinner("dots", label), 0))).toBe(0.001);
   });
 
   it("a spinner's frame changes at the end of its interval, scaled by its speed", () => {
     const interval = SPINNERS["dots"]!.interval / 1000;
     const spinner = new Spinner("dots", "working");
-    expect(nextChangeOf(spinner.drawnAt(0))).toBeCloseTo(interval, 9);
-    expect(nextChangeOf(spinner.drawnAt(interval * 2.5))).toBeCloseTo(interval * 3, 9);
+    expect(nextChangeOf(inFrame(spinner, 0))).toBeCloseTo(interval, 9);
+    expect(nextChangeOf(inFrame(spinner, interval * 2.5))).toBeCloseTo(interval * 3, 9);
     // The answer is on the host's timeline whatever the speed: at twice the
     // speed each frame is held half the interval, and backwards is still
     // forwards in time.
-    expect(nextChangeOf(new Spinner("dots", "", { speed: 2 }).drawnAt(0))).toBeCloseTo(interval / 2, 9);
-    expect(nextChangeOf(new Spinner("dots", "", { speed: 2 }).drawnAt(interval * 1.2))).toBeCloseTo(interval * 1.5, 9);
-    expect(nextChangeOf(new Spinner("dots", "", { speed: -1 }).drawnAt(interval * 2.5))).toBeCloseTo(interval * 3, 9);
-    expect(nextChangeOf(new Spinner("dots", "", { speed: 0.5 }).drawnAt(interval * 2.5))).toBeCloseTo(interval * 4, 9);
+    expect(nextChangeOf(inFrame(new Spinner("dots", "", { speed: 2 }), 0))).toBeCloseTo(interval / 2, 9);
+    expect(nextChangeOf(inFrame(new Spinner("dots", "", { speed: 2 }), interval * 1.2))).toBeCloseTo(interval * 1.5, 9);
+    expect(nextChangeOf(inFrame(new Spinner("dots", "", { speed: -1 }), interval * 2.5))).toBeCloseTo(interval * 3, 9);
+    expect(nextChangeOf(inFrame(new Spinner("dots", "", { speed: 0.5 }), interval * 2.5))).toBeCloseTo(interval * 4, 9);
   });
 
   it("a loop changes every frame: the answer is t itself, and a catalogue loop is a loop", () => {
@@ -197,7 +190,7 @@ describe("what a host reads off a frame: when it next changes", () => {
 
   it("an effect over frames changes at whichever comes first", () => {
     const signal = steppedInk([{ color: new ColorRgba(255, 85, 85), seconds: 0.4 }, { color: new ColorRgba(80, 250, 123), seconds: 0.4 }]);
-    const chevrons = new Frames(frames([1, 1, 1]), { t: 0 });
+    const chevrons = frames([1, 1, 1]);
     expect(nextChangeOf(lit(chevrons, signal, 0))).toBeCloseTo(0.4, 9);
     expect(nextChangeOf(lit(chevrons, onBeat(drifting, beat([3])), 0))).toBe(1);
   });
@@ -205,11 +198,11 @@ describe("what a host reads off a frame: when it next changes", () => {
   it("with no colour output an effect changes nothing, so the frame changes when its child does", () => {
     const none = { maxWidth: 40, colorSystem: null };
     expect(nextChangeOf(lit(label, drifting, 5), none)).toBe(Number.POSITIVE_INFINITY);
-    expect(nextChangeOf(lit(new Frames(frames([1, 1]), { t: 0.5 }), drifting, 0.5), none)).toBe(1);
+    expect(nextChangeOf(lit(frames([1, 1]), drifting, 0.5), none)).toBe(1);
   });
 
   it("writes no byte: the same frame with and without the stamp is the same bytes", () => {
-    const stamped = [...new Frames(frames([1, 1]), { t: 0 }).render(OPTIONS)];
+    const stamped = [...inFrame(frames([1, 1]), 0).render(OPTIONS)];
     const plain = [...new RichText("a", { end: "" }).render(OPTIONS)];
     expect(stamped.map((s) => s.text).join("")).toBe(plain.map((s) => s.text).join(""));
     expect(stamped.every((s) => s.style === undefined || s.style.toString() === "none")).toBe(true);
@@ -222,13 +215,13 @@ describe("what a host reads off a frame: when it next changes", () => {
     const seconds = frames([1, 1, 1]);
     for (const t of [0, 1, 2, 3]) {
       const nextDraw = t + 1;
-      expect(nextChangeOf(new Frames(quarters, { t }))).toBeLessThan(nextDraw);
-      expect(nextChangeOf(new Frames(seconds, { t }))).toBe(nextDraw);
+      expect(nextChangeOf(inFrame(quarters, t))).toBeLessThan(nextDraw);
+      expect(nextChangeOf(inFrame(seconds, t))).toBe(nextDraw);
     }
     // Sixty a second, nothing is skipped: the next change is never before the next draw.
     for (let i = 0; i < 60; i++) {
       const t = i / 60;
-      expect(nextChangeOf(new Frames(quarters, { t }))).toBeGreaterThanOrEqual(t + 1 / 60 - 1e-9);
+      expect(nextChangeOf(inFrame(quarters, t))).toBeGreaterThanOrEqual(t + 1 / 60 - 1e-9);
     }
   });
 
