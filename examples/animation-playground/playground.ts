@@ -224,7 +224,7 @@ async function session(host: TerminalHost, clock: Clock, c: Controls, preference
       `${app.rate.perSecond} fps`,
       preferences.reducedMotion ? "motion reduced" : "full motion",
     ].join("  ·  ");
-    c.gallery.content = new Columns([...KINDS.map((kind) => kind.draw(t)), caret(c.input)], { padding: [0, 1] });
+    const gallery = c.gallery.showing(new Columns([...KINDS.map((kind) => kind.draw(t)), caret(c.input)], { padding: [0, 1] }));
     return stacked(
       new Group(
         new RichText("animation playground — Tab moves between controls, Enter or a click presses, the wheel scrolls", { style: MUTED }),
@@ -240,7 +240,7 @@ async function session(host: TerminalHost, clock: Clock, c: Controls, preference
         ),
         new RichText(said, { style: TEXT }),
       ),
-      c.gallery,
+      gallery,
     );
   };
 

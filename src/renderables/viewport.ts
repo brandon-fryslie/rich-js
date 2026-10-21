@@ -24,6 +24,13 @@
  * rows and length that render found. Calling an operation before the first render, or three of them
  * between two renders, is the same code path as calling one.
  *
+ * A render changes nothing (`State`, `../core/state.ts`), so the render draws
+ * the offset it resolved without keeping it, and hands the keeping to its pass
+ * (`afterPass`): once the frame has been drawn whole, the offset, the rows and
+ * length it was clamped against, and the followed range become the viewport's,
+ * and the moves it resolved leave the queue. A measurement, which draws
+ * nothing anyone sees, keeps nothing.
+ *
  * Every cell of its rows, gutter included, is stamped as its own
  * (`Segment.anchorLines`), around whatever anchors its content drew. So the
  * composed frame names the viewport under any of its cells however deep it is
@@ -54,7 +61,8 @@ import type {
   RenderOptions,
   Scrollable,
 } from "../core/protocol.js";
-import { render } from "../core/protocol.js";
+import { afterPass, render } from "../core/protocol.js";
+import { ListState, State } from "../core/state.js";
 
 /** What a render found: the rows it shows, and the lines of content behind them. */
 interface Extent {
@@ -64,6 +72,32 @@ interface Extent {
 
 /** One requested change of offset, resolved against the extent the next render finds. */
 type Move = (offset: number, extent: Extent) => number;
+
+/** Lines `start` up to but not including `end` of the content. */
+interface Range {
+  readonly start: number;
+  readonly end: number;
+}
+
+/** The range a frame last followed (`showing`), and the rows the frame that last drew it showed. */
+interface Followed extends Range {
+  readonly rows: number;
+}
+
+/** What the viewport keeps from one frame to the next. */
+interface Scroll {
+  /** The first content line the last frame showed. */
+  readonly offset: number;
+  /** The rows and length the last frame found; the next move is clamped against them. */
+  readonly extent: Extent;
+  readonly followed: Followed;
+}
+
+/** A scroll with the moves queued against it: what a frame resolves. */
+interface Asked {
+  readonly scroll: Scroll;
+  readonly moves: readonly Move[];
+}
 
 /** How one part of a scrollbar draws each row it covers. */
 export interface ScrollbarPart {
@@ -105,32 +139,36 @@ export interface ViewportOptions {
 }
 
 export class Viewport implements Renderable, Measurable, Scrollable, Composite {
-  /**
-   * What the viewport shows. Replace it to show new content from the same
-   * scroll position — a view rebuilt every frame keeps one `Viewport`.
-   */
-  content: Renderable;
   readonly rows: number | undefined;
   readonly scrollbar: Scrollbar;
-  private _offset = 0;
-  // Nothing rendered, nothing shown: no move can take until the first render.
-  private _extent: Extent = { rows: 0, lines: 0 };
-  private _moves: Move[] = [];
-  // No range followed yet: NaN equals nothing, so the first `follow` moves.
-  private _followed = { start: NaN, end: NaN, rows: NaN };
+  private readonly _scroll = new State<Scroll>({
+    offset: 0,
+    // Nothing rendered, nothing shown: no move can take until the first render.
+    extent: { rows: 0, lines: 0 },
+    // No range followed yet: NaN equals nothing, so the first range followed moves.
+    followed: { start: NaN, end: NaN, rows: NaN },
+  });
+  private readonly _moves = new ListState<Move>();
 
-  constructor(content: Renderable, options: ViewportOptions = {}) {
-    this.content = content;
+  /**
+   * @param content What the viewport shows when it is drawn itself. A view
+   * rebuilt every frame shows new content through one kept viewport with
+   * `showing` instead.
+   */
+  constructor(
+    readonly content: Renderable,
+    options: ViewportOptions = {},
+  ) {
     this.rows = options.rows;
     this.scrollbar = options.scrollbar ?? NO_SCROLLBAR;
   }
 
   /**
-   * The first content line the last render showed. A move requested since is
-   * not reflected until the next render resolves it.
+   * The first content line the last frame showed. A move requested since is
+   * not reflected until the next frame resolves it.
    */
   get offset(): number {
-    return this._offset;
+    return this._scroll.get().offset;
   }
 
   /** Scroll so `line` is the first line shown. */
@@ -145,12 +183,13 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
 
   /**
    * Whether `scrollBy(lines)` would move the viewport from where the moves
-   * queued so far leave it, against the rows and length the last render
+   * queued so far leave it, against the rows and length the last frame
    * found.
    */
   canScrollBy(lines: number): boolean {
-    const offset = this.resolve(this._extent);
-    return clampOffset(offset + lines, this._extent) !== offset;
+    const { scroll, moves } = this.asked();
+    const offset = resolve(scroll.offset, moves, scroll.extent);
+    return clampOffset(offset + lines, scroll.extent) !== offset;
   }
 
   /**
@@ -160,23 +199,36 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
    * the viewport shows its first line at the top.
    */
   ensureVisible(start: number, end: number): void {
-    this._moves.push((offset, { rows }) => Math.min(start, Math.max(offset, end - rows)));
+    this._moves.push(ensureVisible({ start, end }));
   }
 
   /**
-   * `ensureVisible(start, end)`, when the range differs from the one the last
-   * `follow` named. A view rebuilt every frame calls this in every frame with
-   * its selection's lines, and the selection is brought into view when it
-   * moves — not on every frame, which would undo on its very render each
-   * scroll the mouse wheel queues. A followed range the last render showed
-   * whole stays shown when the row count changes: the same lines can fall off
-   * the bottom of a viewport that got shorter. One the wheel had scrolled
-   * away from stays away.
+   * `content` shown through this viewport from its scroll position: how a view
+   * rebuilt every frame keeps one `Viewport`, and its scroll, under content it
+   * builds anew. What it draws is anchored to this viewport, so the wheel finds
+   * it.
+   *
+   * `follow` is the lines of `content` to keep in view — a selection's — and
+   * is brought into view with `ensureVisible` when it differs from the range
+   * the last frame followed: when the selection moves, not on every frame,
+   * which would undo on its very render each scroll the mouse wheel queues. A
+   * followed range the last frame showed whole stays shown when the row count
+   * changes: the same lines can fall off the bottom of a viewport that got
+   * shorter. One the wheel had scrolled away from stays away. Absent, the
+   * range last followed stands.
+   *
+   * [LAW:effects-at-boundaries] What a frame drawing it resolves becomes the
+   * viewport's once that frame has been drawn whole, so it may be built and
+   * drawn inside a render — `ListView` draws its items to learn their lines
+   * and shows them this way.
    */
-  follow(start: number, end: number): void {
-    if (start === this._followed.start && end === this._followed.end) return;
-    this._followed = { start, end, rows: NaN };
-    this.ensureVisible(start, end);
+  showing(content: Renderable, follow?: Range): Renderable & Measurable & Composite {
+    const ask = (asked: Asked): Asked => (follow === undefined ? asked : following(asked, follow));
+    return {
+      render: (options) => this.draw(content, ask, options),
+      measure: (options) => this.measureOf(content, options),
+      contents: () => [content],
+    };
   }
 
   /**
@@ -196,24 +248,46 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
     yield this.content;
   }
 
-  *render(rawOptions: RenderOptions): Iterable<Segment> {
-    const { height, ...options } = withBoundedWidth(rawOptions, this);
+  render(options: RenderOptions): Iterable<Segment> {
+    // Shown as it stands: only what is queued against it moves it.
+    return this.draw(this.content, (asked) => asked, options);
+  }
+
+  /** The scroll, and the moves queued against it, as they stand. */
+  private asked(): Asked {
+    return { scroll: this._scroll.get(), moves: this._moves.get() };
+  }
+
+  /** `content` drawn from the scroll and the moves queued against it, as `ask` hands them on. */
+  private *draw(content: Renderable, ask: (asked: Asked) => Asked, rawOptions: RenderOptions): Iterable<Segment> {
+    const { height, ...options } = withBoundedWidth(rawOptions, { measure: (o) => this.measureOf(content, o) });
     const gutter = this.gutter;
     const contentWidth = this.contentWidth(options.maxWidth);
-    const lines = Segment.splitLines(render(this.content, { ...options, maxWidth: contentWidth }));
+    const lines = Segment.splitLines(render(content, { ...options, maxWidth: contentWidth }));
+    const asked = this.asked();
+    const { scroll, moves } = ask(asked);
     // [LAW:no-ambient-temporal-coupling] Content handed no column is held, not
     // drawn, so this render learns its budget but not the content's length. It
-    // commits nothing: the offset, the followed range and the queued moves wait
-    // for a render that draws, and this one draws the scrollbar against the
+    // keeps nothing: the offset, the followed range and the queued moves wait
+    // for a frame that draws, and this one draws the scrollbar against the
     // length the last one found.
     const held = drawsNothing({ maxWidth: contentWidth });
-    const length = held ? this._extent.lines : lines.length;
+    const length = held ? scroll.extent.lines : lines.length;
     const extent: Extent = { rows: viewRows(height, this.rows, length), lines: length };
-    const offset = held ? clampOffset(this._offset, extent) : this.commit(extent);
+    const kept = held
+      ? { scroll: asked.scroll, resolved: 0, offset: clampOffset(scroll.offset, extent) }
+      : { ...settle(scroll, moves, extent), resolved: asked.moves.length };
+    // [LAW:effects-at-boundaries] Kept once the frame is drawn, never while it
+    // is: the moves this frame resolved leave the queue, and any queued since stay.
+    afterPass(() => {
+      this._scroll.set(kept.scroll);
+      this._moves.set(this._moves.get().slice(kept.resolved));
+    });
+    const offset = kept.offset;
 
     const shown = fitHeight(lines.slice(offset, offset + extent.rows), { rows: extent.rows, exact: true });
-    // The thumb is drawn from the offset this render resolved, not from
-    // `offset` as it stood before it.
+    // The thumb is drawn from the offset this render resolved, not from the
+    // offset the last frame kept.
     const thumb = thumbRows(extent, offset);
     // The content's cells and the gutter's drawn cells sum to the offer: a
     // gutter wider than the whole offer is drawn cropped to it.
@@ -239,48 +313,63 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
     }
   }
 
-  /**
-   * What a render that drew the content found, made the viewport's: `extent`
-   * is the rows and length the next move is clamped against, a followed range
-   * that was in view is kept in view if the rows changed, and the queued moves
-   * resolve into the offset this returns.
-   */
-  private commit(extent: Extent): number {
-    const followed = this._followed;
-    const wasShown = followed.start >= this._offset && followed.end <= this._offset + this._extent.rows;
-    this._extent = extent;
-    if (!Number.isNaN(followed.rows) && followed.rows !== extent.rows && wasShown) {
-      this.ensureVisible(followed.start, followed.end);
-    }
-    if (!Number.isNaN(followed.start)) this._followed = { ...followed, rows: extent.rows };
-    this._offset = this.resolve(extent);
-    this._moves = [];
-    return this._offset;
+  measure(options: RenderOptions): { minimum: number; maximum: number } {
+    return this.measureOf(this.content, options);
   }
 
-  /**
-   * [LAW:one-source-of-truth] Where the queued moves leave the offset against
-   * `extent`: what a render commits, and what `canScrollBy` asks from.
-   * [LAW:dataflow-not-control-flow] The offset is re-clamped with or without
-   * queued moves: content that shrank since the last render pulls it back.
-   */
-  private resolve(extent: Extent): number {
-    return this._moves.reduce(
-      (offset, move) => clampOffset(move(offset, extent), extent),
-      clampOffset(this._offset, extent),
-    );
-  }
-
-  measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
+  private measureOf(content: Renderable, rawOptions: RenderOptions): { minimum: number; maximum: number } {
     // Its width is its content's and its gutter's. `withCellWidth` and not
     // `withBoundedWidth`: the bounded parse asks this very method for the
     // natural width.
     const options = withCellWidth(rawOptions);
     const gutter = this.gutter;
     const inner = { ...options, maxWidth: this.contentWidth(options.maxWidth) };
-    const content = Measurement.get(inner, this.content);
-    return new Measurement(content.minimum + gutter, content.maximum + gutter).withMaximum(options.maxWidth);
+    const measured = Measurement.get(inner, content);
+    return new Measurement(measured.minimum + gutter, measured.maximum + gutter).withMaximum(options.maxWidth);
   }
+}
+
+/** The move that scrolls the least distance showing `range`. */
+const ensureVisible =
+  ({ start, end }: Range): Move =>
+  (offset, { rows }) =>
+    Math.min(start, Math.max(offset, end - rows));
+
+/**
+ * `asked` with `range` followed: one that differs from the range last followed
+ * becomes the followed range, and a move brings it into view.
+ */
+function following(asked: Asked, range: Range): Asked {
+  const { followed } = asked.scroll;
+  if (range.start === followed.start && range.end === followed.end) return asked;
+  return {
+    scroll: { ...asked.scroll, followed: { start: range.start, end: range.end, rows: NaN } },
+    moves: [...asked.moves, ensureVisible(range)],
+  };
+}
+
+/**
+ * Where a frame that drew the content against `extent` leaves the scroll: a
+ * followed range that was in view is kept in view if the rows changed, and the
+ * moves resolve into the offset.
+ */
+function settle(scroll: Scroll, moves: readonly Move[], extent: Extent): { scroll: Scroll; offset: number } {
+  const { followed, offset } = scroll;
+  const wasShown = followed.start >= offset && followed.end <= offset + scroll.extent.rows;
+  const keepShown = !Number.isNaN(followed.rows) && followed.rows !== extent.rows && wasShown ? [ensureVisible(followed)] : [];
+  const settled = resolve(offset, [...moves, ...keepShown], extent);
+  const rows = Number.isNaN(followed.start) ? followed.rows : extent.rows;
+  return { scroll: { offset: settled, extent, followed: { ...followed, rows } }, offset: settled };
+}
+
+/**
+ * [LAW:one-source-of-truth] Where `moves` leave `offset` against `extent`: what
+ * a frame keeps, and what `canScrollBy` asks from.
+ * [LAW:dataflow-not-control-flow] The offset is re-clamped with or without
+ * queued moves: content that shrank since the last frame pulls it back.
+ */
+function resolve(offset: number, moves: readonly Move[], extent: Extent): number {
+  return moves.reduce((at, move) => clampOffset(move(at, extent), extent), clampOffset(offset, extent));
 }
 
 /**

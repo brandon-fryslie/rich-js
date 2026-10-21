@@ -3,8 +3,8 @@
  * declaration that holds it, and where each is going: into a `State` or a
  * `ListState` (`"state"`, state that changes after construction), or to a
  * readonly type (`"readonly"`, a value nothing writes once it is built). What
- * is left is the state a render still commits, which rich-protocol-9xcs.399
- * and .o76 move out of render.
+ * is left is the state a render still commits, which rich-protocol-9xcs.o76
+ * moves out of render.
  *
  * Shrink-only. `test/seam/render-purity.test.ts` fails on a location no row
  * names, and on a name that no longer reports — so a row is deleted, never
@@ -23,12 +23,6 @@ export interface DebtRow {
 }
 
 export const RENDER_PURITY_DEBT: readonly DebtRow[] = [
-  {
-    at: "src/renderables/viewport.ts Viewport",
-    names: ["_extent", "_followed", "_followed.end", "_followed.rows", "_followed.start", "_moves", "_offset", "content"],
-    becomes: "state",
-    why: "the scroll position, committed in render today; rich-protocol-9xcs.399 moves the commit between frames",
-  },
   {
     at: "src/widgets/text-input.ts TextInput",
     names: ["_drawn", "_killBuffer", "_preferredColumn", "_scrollStart", "_singleLineViewportStart", "_visualRows"],

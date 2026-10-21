@@ -53,15 +53,14 @@ if (!host.isTTY) {
 }
 
 let selected = 0;
-// Empty until the view hands it the list: the list is built in one place.
+// Shown the list by the view, which builds it in one place.
 const viewport = new Viewport(new RichText(""), { rows: ROWS, scrollbar: SCROLLBAR });
 const app = new WidgetApp({
   host,
   surface: "alternate",
   view: () => {
-    viewport.content = list(selected);
     return new Group(
-      new Panel(viewport, { title: `Viewport — line ${selected + 1} of ${ENTRIES.length}`, expand: false }),
+      new Panel(viewport.showing(list(selected)), { title: `Viewport — line ${selected + 1} of ${ENTRIES.length}`, expand: false }),
       new RichText("↑↓ or j k move · PgUp PgDn page · Home End jump · wheel scrolls · q quits", { style: "dim" }),
     );
   },
