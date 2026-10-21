@@ -4,15 +4,29 @@
     {
       "version": "pr-507",
       "ref": "refs/pull/507/merge",
-      "sha": "838c0c38201ae8096404df026706ddb4da11d624",
-      "timestamp": "2026-10-21T08:30:05.744Z",
+      "sha": "88793ace01a2fa95b60b7da74145889c28667c02",
+      "timestamp": "2026-10-21T09:06:14.186Z",
       "commits": [
         {
-          "sha": "838c0c38201ae8096404df026706ddb4da11d624",
+          "sha": "88793ace01a2fa95b60b7da74145889c28667c02",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T02:28:42-06:00",
-          "message": "Merge 6b1b03e28a949075fe2bfdede0b4208b2b015ece into 0d611fd63c5bae4dd370938698284332f73b405c\n"
+          "timestamp": "2026-10-21T09:04:11Z",
+          "message": "Merge 96aca1b861c79469785717867adaaac8132c12d9 into 0d611fd63c5bae4dd370938698284332f73b405c\n"
+        },
+        {
+          "sha": "96aca1b861c79469785717867adaaac8132c12d9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T03:04:05-06:00",
+          "message": "An onStyleError handler runs between passes (rich-protocol-9xcs.g0k)\n\nRefusing every Console write during a render broke docs/style.md's\nhandler, which prints its report to a second console: a callback a render\nmakes to user code is an event handler, and protocol's betweenPasses runs\nit as one.\n"
+        },
+        {
+          "sha": "67430dc7f02d16211b58c6da95c0739e5663c325",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T02:47:53-06:00",
+          "message": "Answer the high review of the render-purity drain (rich-protocol-9xcs.g0k)\n\n- ListState.push takes one item: a rest parameter let Console spread a\n  recording of any length into it and overflow the stack.\n- RichText.append reads the appended spans before writing, so a text\n  appended to itself ends.\n- A table row keeps its section end in a State and a Progress keeps each\n  task in one, so addSection and updateTask are O(1) again, not a copy of\n  every row or task. A task's id is its place in the list.\n- Every Console write is refused during a render it was not made in, so a\n  print there fails alike whether the console records, captures or neither.\n- markdown-parse reads an anchored pattern at an index from a slice instead\n  of building a sticky regex per call, which had doubled parse time.\n- nextUp is computed, not read through a buffer allocated per call.\n"
         },
         {
           "sha": "6b1b03e28a949075fe2bfdede0b4208b2b015ece",
