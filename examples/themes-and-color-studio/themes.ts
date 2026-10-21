@@ -406,7 +406,7 @@ export function section5ColorRefs(out: Console): void {
   out.print(bold("    Effected — a per-cell effect sampled at t = 0, 0.5, 1 s:"));
   for (const t of [0, 0.5, 1]) {
     out.print(
-      new Effected(new RichText(`${indent}${label}`), shimmer, { t, key: "studio-shimmer", theme: GRUVBOX }),
+      new Effected(new RichText(`${indent}${label}`), shimmer, { key: "studio-shimmer", theme: GRUVBOX }).at(t),
     );
   }
   out.print(blank());

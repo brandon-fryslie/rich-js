@@ -12,12 +12,13 @@ import { Effected, type Effect, type EffectFrame } from "../../src/renderables/e
 import { GlyphEffected, type GlyphCell, type GlyphEffect, type GlyphFrame } from "../../src/renderables/glyph-effect.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
+import { inFrame } from "./in-frame.js";
 
 const identity: GlyphEffect = () => Animation.constant<GlyphFrame>((cell) => cell.glyph);
 const blanked: GlyphEffect = () => Animation.constant<GlyphFrame>((cell) => " ".repeat(cellLen(cell.glyph)));
 
-function glyphed(child: Renderable, effect: GlyphEffect, t = 0, key = "k"): GlyphEffected {
-  return new GlyphEffected(child, effect, { t, key });
+function glyphed(child: Renderable, effect: GlyphEffect, t = 0, key = "k"): ReturnType<typeof inFrame> {
+  return inFrame(new GlyphEffected(child, effect, { key }), t);
 }
 
 /** A renderable yielding fixed segments, so nothing but the effect builds a segment. */
@@ -126,13 +127,13 @@ describe("GlyphEffected — what it may not change", () => {
 
   it("measures as its child does, and holds it as its contents", () => {
     const panel = new Panel("measured");
-    const wrapped = glyphed(panel, blanked);
+    const wrapped = new GlyphEffected(panel, blanked, { key: "k" });
     expect(Measurement.get({ maxWidth: 40 }, wrapped)).toEqual(Measurement.get({ maxWidth: 40 }, panel));
     expect([...wrapped.contents()]).toEqual([panel]);
   });
 
   it("needs a finite t", () => {
-    expect(() => glyphed(styled, identity, Number.NaN)).toThrow(RangeError);
+    expect(() => new GlyphEffected(styled, identity, { key: "k" }).at(Number.NaN)).toThrow(RangeError);
   });
 });
 
@@ -140,7 +141,7 @@ describe("GlyphEffected — under a colour effect", () => {
   it("has its changed glyphs drawn in the colours the colour effect moves them to", () => {
     const red: Effect = () => Animation.constant<EffectFrame>((colors) => ({ ...colors, fg: new ColorRgba(255, 0, 0) }));
     const upper: GlyphEffect = () => Animation.constant<GlyphFrame>((cell) => cell.glyph.toUpperCase());
-    const both = new Effected(glyphed(fixed(new Segment("ab")), upper), red, { t: 0, key: "k", theme: DEFAULT_TERMINAL_THEME });
+    const both = new Effected(glyphed(fixed(new Segment("ab")), upper), red, { key: "k", theme: DEFAULT_TERMINAL_THEME }).at(0);
     expect(renderToString(both, { colorSystem: "truecolor" })).toBe(renderToString(fixed(new Segment("AB", Style.parse("#ff0000"))), { colorSystem: "truecolor" }));
   });
 });

@@ -10,9 +10,9 @@
  * compose by nesting: `new Effected(new Frames(…), …)` lights whichever frame
  * is up.
  *
- * [LAW:no-ambient-temporal-coupling] `t` is an argument, as
- * `Effected`'s is, never a clock read: whoever draws frames hands each one
- * its time (`core/clock.ts`), so the same `t` draws the same bytes at one
+ * [LAW:no-ambient-temporal-coupling] `t` is the frame's time or an
+ * argument, never a clock read: whoever draws frames hands each one its time
+ * (`RenderOptions.frame`), so the same `t` draws the same bytes at one
  * redraw a second or sixty. The host's rate is the host's. At sixty a frame
  * shows for exactly its hold; at one a second a hold shorter than a second is
  * skipped and a period of whole seconds freezes on one frame, and nothing
@@ -29,24 +29,14 @@
  * sequence is a value the host keeps, not a memo here: nothing is looked up
  * by key.
  *
- * The frame drawn is drawn until the next begins, and its cells say so: they
- * are stamped with the sequence's `nextChange` (`Style.nextChange`), which
- * rides up through every container to whoever holds the composed frame
+ * The frame drawn is drawn until the next begins, and its cells say so: a
+ * placed sequence stamps them with its hold (`Style.nextChange`,
+ * `Style.lastChange`, `placedRender` in `core/animation.ts`), which rides up
+ * through every container to whoever holds the composed frame
  * (`Segment.nextChange`), so a host drawing at `t` knows when to draw again,
  * and one drawing slower than the frames turn can see that it is skipping
- * them.
- *
- * The rule this module owns, for every animation of a renderable: a stamp is
- * put on only by a renderable built for the time the host draws at, through
- * `stampFrame` — `frameAt`, a `Frames`, a spinner's `drawnAt`, an `Effected`,
- * a `GlyphEffected`, the template `frames` function. Nothing an animation's
- * `at` returns carries a stamp of its own — a sequence's frame, a scroll's,
- * a change's, a lifecycle's, a spinner's — because the time an animation is
- * asked for may be one a `Timeline`, an `Animation.sequence` or a lifecycle
- * mapped from the host's, and a stamp made there would be a moment on a
- * clock the host cannot read. What such a frame does over time is the
- * animation's `nextChange`, which every one of those maps carries back.
- * [LAW:single-enforcer]
+ * them. Nothing an animation's `at` returns carries a stamp of its own: the
+ * stamp is put on where the frame's time is known.
  *
  * Every frame is drawn at one width, the widest frame's, each padded on the
  * right to it, so whatever sits beside the frames never moves as they turn;
@@ -58,14 +48,13 @@
  * children do.
  */
 
-import { Animation } from "../core/animation.js";
+import { Animation, drawnAt, holdOf, placedMeasure, placedRender, shownAt, stamp, type Hold } from "../core/animation.js";
 import { beat, finiteTime, type Beat } from "../core/easing.js";
 import { Measurement } from "../core/measure.js";
 import type { Composite, Measurable, Motion, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
-import { shownAt } from "../core/view.js";
-import { Segment } from "../core/segment.js";
-import { Style, layerStyle } from "../core/style.js";
+import type { Segment } from "../core/segment.js";
+import { layerStyle } from "../core/style.js";
 import { RichText } from "../core/text.js";
 import { setIntoLine } from "./embed.js";
 
@@ -122,44 +111,44 @@ export class FrameSequence implements Animation<RichText> {
   reduced(): Animation<RichText> {
     return Animation.map(this.beat.reduced(), (i) => this._shown[i]!.copy());
   }
+
+  render(options: RenderOptions): Iterable<Segment> {
+    return placedRender(this, options);
+  }
+
+  measure(options: RenderOptions): { minimum: number; maximum: number } {
+    return placedMeasure(this, options);
+  }
+
+  /** Nothing it was handed: each frame it draws is a copy it set into a line itself, as a `Frames` draws. */
+  *contents(): Iterable<Renderable> {}
 }
 
 /**
- * The frame `animation` shows at host time `t`, its every cell — padding
- * included, so a blank frame among drawn ones still turns — stamped with when
- * it gives way to the next, `animation.nextChange(t)`. [LAW:one-source-of-truth]
- * The stamp is that one answer carried on the cells (`Segment.nextChange`),
- * so a container holding the frame passes it up without asking the
- * animation; and it is put on here, where the host's time is known, and not
- * in the animation's `at`, whose own time a `Timeline` or an
- * `Animation.sequence` may have mapped from the host's — a stamp made there
- * would be a moment on a clock the host cannot read. A copy is stamped, the
- * caller's to change: an animation may hand back the one `RichText` it
- * holds, as `Animation.constant` does, and a stamp on that would outlive
- * the draw it was true for.
- *
- * Any animation of a renderable is drawn here the same way — a `scroll`
- * drawn inside a function view — and only what is stamped differs by the
- * frame's type: a `RichText` is a stamped copy, so it
- * can still be appended into a line, and any other renderable is drawn with
- * its segments stamped, chosen when it is drawn, so under reduced motion it
- * draws the animation reduced (`shownAt`). A text frame cannot wait for the
- * render options — it is spliced into a line before any exist — so it is
- * the frame at `t`, the program's own sample, as `animation.at(t)` is, and
- * moves under reduced motion too; `Frames` and `textFrameAt` are the text
- * frames that know the preference.
+ * The frame `animation` shows at a time `t` it names itself, rather than the
+ * frame's: a placed animation drawn as if every frame were drawn for `t`, its
+ * every cell — padding included, so a blank frame among drawn ones still
+ * turns — stamped with the hold it is in there. A `RichText` is a stamped
+ * copy, so it can still be appended into a line, the caller's to change: an
+ * animation may hand back the one `RichText` it holds, as
+ * `Animation.constant` does, and a stamp on that would outlive the draw it
+ * was true for. A text frame cannot wait for the render options — it is
+ * spliced into a line before any exist — so it is the frame at `t`, as
+ * `animation.at(t)` is, and moves under reduced motion too; `Frames` and
+ * `textFrameAt` are the text frames that know the preference. Any other
+ * renderable is drawn as `placedRender` draws it, at `t`.
  */
 export function frameAt(animation: Animation<RichText>, t: number): RichText;
 export function frameAt(animation: Animation<Renderable>, t: number): Renderable;
 export function frameAt(animation: Animation<Renderable>, t: number): Renderable {
   const frame = animation.at(t);
-  return frame instanceof RichText ? stampedText(frame, animation.nextChange(t)) : new Stamped(animation, t);
+  return frame instanceof RichText ? stampedText(frame, { lastChange: animation.lastChange(t), nextChange: animation.nextChange(t) }) : new Stamped(animation, t);
 }
 
-/** `text` copied, its every cell saying it next changes at `nextChange`: on the base style, which an empty text still draws as its one piece of no width. */
-function stampedText(text: RichText, nextChange: number): RichText {
+/** `text` copied, its every cell saying it is in `hold`: on the base style, which an empty text still draws as its one piece of no width. */
+function stampedText(text: RichText, hold: Hold): RichText {
   const stamped = text.copy();
-  stamped.style = layerStyle(stamped.style, stamp(nextChange));
+  stamped.style = layerStyle(stamped.style, stamp(hold));
   return stamped;
 }
 
@@ -170,46 +159,19 @@ function stampedText(text: RichText, nextChange: number): RichText {
  * into a line.
  */
 export function textFrameAt(animation: Animation<RichText>, t: number, motion: Motion): RichText {
-  const { value, nextChange } = shownAt(animation, t, motion);
-  return stampedText(value, nextChange);
+  const shown = shownAt(animation, t, motion);
+  return stampedText(shown.value, holdOf(shown, t));
 }
 
-/**
- * The style saying a frame next changes at `nextChange`. [LAW:single-enforcer]
- * The one place a time is chosen for drawn cells, reached through `frameAt`
- * and `stampFrame`: whoever calls them was built for the draw site's `t` and
- * hands its own animation's answer at that `t`. Nothing an animation's `at`
- * returns calls them — a frame asked for at a time a `Timeline` or a
- * lifecycle mapped would say a moment on a clock the host cannot read — so
- * what an animation's frame does over time reaches the host through the
- * animation's own `nextChange`, which every clock map already carries.
- */
-function stamp(nextChange: number): Style {
-  return new Style({ nextChange });
-}
-
-/** `segments`, every one carrying `nextChange` under whatever it already said (the sooner wins), as `stamp` makes it. */
-export function stampFrame(segments: Iterable<Segment>, nextChange: number): Iterable<Segment> {
-  return Segment.applyStyle(segments, stamp(nextChange));
-}
-
-/**
- * An animation's frame drawn at the draw site's `t`, chosen where the render
- * options say whether the reader wants motion (`shownAt`), every segment
- * carrying when it next changes, led by a `Segment.carrier` of it, because
- * an animation's frame of no cells — an element not yet entered — may have
- * cells later, and must say when.
- */
+/** An animation drawn at `t` rather than the frame's time (`drawnAt`): `frameAt`'s renderable. */
 class Stamped implements Renderable, Measurable, Composite {
   constructor(
     readonly animation: Animation<Renderable>,
     readonly t: number,
   ) {}
 
-  *render(options: RenderOptions): Iterable<Segment> {
-    const { value, nextChange } = shownAt(this.animation, this.t, options);
-    yield Segment.carrier(stamp(nextChange));
-    yield* stampFrame(render(value, options), nextChange);
+  render(options: RenderOptions): Iterable<Segment> {
+    return drawnAt(this.animation, this.t, options);
   }
 
   *contents(options: RenderOptions): Iterable<Renderable> {

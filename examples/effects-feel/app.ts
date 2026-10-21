@@ -219,7 +219,7 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
     const rest = ratio(yield* worstContrast(subjects, (s) => s.renderable.render(s.options), [0], theme));
     for (const loop of LOOPS) {
       const under = (s: DrawnSubject, at: number) =>
-        new Effected(s.renderable, loops[loop](s), { t: at, key: seedKey(loop, s), theme }).render(s.options);
+        new Effected(s.renderable, loops[loop](s), { key: seedKey(loop, s), theme }).at(at).render(s.options);
       const worst = yield* worstContrast(subjects, under, sampled(curves[loop].seconds), theme);
       contrast[loop] = `worst contrast ${ratio(worst)} over ${CONTRAST.periods * curves[loop].seconds}s (at rest ${rest})`;
     }
@@ -343,7 +343,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
 
   const row = (t: number, name: EffectName, status: string, effect: (subject: DrawnSubject) => Effect): Renderable[] => [
     new RichText(`${describe(name, shown.curves[name])}   ${status}`, { style: shown.quiet, noWrap: true }),
-    ...shown.subjects.map((s) => new Effected(s.renderable, effect(s), { t, key: seedKey(name, s), theme: shown.theme })),
+    ...shown.subjects.map((s) => new Effected(s.renderable, effect(s), { key: seedKey(name, s), theme: shown.theme }).at(t)),
     new RichText(""),
   ];
 

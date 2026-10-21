@@ -31,10 +31,12 @@
  * against (`onColors`, `./effects.ts`), so no caller derives it a second time
  * from a render of its own.
  *
- * [LAW:no-ambient-temporal-coupling] `t` is a constructor argument, not a
- * clock read. Whoever draws frames builds the view for each frame's `t`, so
- * the same `t` always draws the same bytes, at 30 frames a second or one
- * every two seconds.
+ * An `Effected` is the element under its effect over time: an
+ * `Animation<Renderable>`, placed wherever a renderable goes and drawn at
+ * the time of the frame it is drawn in. Its value at `t` is the element
+ * through the effect at `t` (`Recolored`). [LAW:no-ambient-temporal-coupling]
+ * The time is the frame's, never a clock read, so the same time always draws
+ * the same bytes, at 30 frames a second or one every two seconds.
  *
  * What an effect may not do is the contract this module holds:
  *
@@ -63,7 +65,7 @@
  */
 
 import { drawnBy, shiftAnchor, type Anchor } from "../core/anchor.js";
-import { Animation } from "../core/animation.js";
+import { Animation, frameTimeOf, holdOf, shownAt, stampFrame, type Hold } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK, type ColorRgba, type TerminalTheme } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
@@ -73,8 +75,6 @@ import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { JOIN, colorsOwnedBy } from "../core/strip.js";
 import { ATTRIBUTE_NAMES, Style, type AttributeName, type Attributes } from "../core/style.js";
-import { stampFrame } from "./frames.js";
-import { shownAt } from "../core/view.js";
 import { finiteTime } from "../core/easing.js";
 
 /**
@@ -196,8 +196,6 @@ export type EffectFrame = (look: CellLook, cell: EffectCell) => CellLook;
 export type Effect = (drawn: Drawn) => Animation<EffectFrame>;
 
 export interface EffectedOptions {
-  /** The moment to draw, in seconds. */
-  readonly t: number;
   /**
    * Names the element for its seeds, so two elements showing the same text do
    * not twinkle in lockstep. The same key gives the same seeds on every frame.
@@ -211,19 +209,21 @@ export interface EffectedOptions {
   readonly theme: TerminalTheme;
 }
 
-/** A frame an effect drew at a moment, and when the effect says it next changes there. */
+/** A frame an effect drew at a moment, and the hold the effect says it is in there. */
 export interface Moved {
   readonly segments: Iterable<Segment>;
-  readonly nextChange: number;
+  readonly hold: Hold;
 }
 
+/** What drew nothing the effect can change: held forever, as far as the effect says. */
+const UNMOVED: Hold = { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.POSITIVE_INFINITY };
+
 /**
- * `renderable` with its cells' looks passed through `effect` at `t`, saying
- * nothing of when that changes: the frame an animation's `at` hands over,
- * whose `t` is a time the animation may have mapped — a lifecycle's time
- * since it entered — and whose change reaches the host through the
- * animation's own `nextChange`. [LAW:one-type-per-behavior] Drawn at a draw
- * site's `t` instead, it is an `Effected`.
+ * An `Effected` at `t`, or an element through an effect at a time an
+ * animation's `at` was handed — a lifecycle's time since it entered: `renderable`
+ * with its cells' looks passed through `effect` at `t`, saying nothing of
+ * when that changes, since whatever placed the animation stamps its hold.
+ * [LAW:one-type-per-behavior]
  */
 export class Recolored implements Renderable, Measurable, Composite {
   readonly t: number;
@@ -233,7 +233,7 @@ export class Recolored implements Renderable, Measurable, Composite {
   constructor(
     readonly renderable: Renderable,
     readonly effect: Effect,
-    options: EffectedOptions,
+    options: EffectedOptions & { readonly t: number },
   ) {
     this.t = finiteTime("Effected", options.t);
     this.key = options.key;
@@ -248,12 +248,12 @@ export class Recolored implements Renderable, Measurable, Composite {
     yield this.renderable;
   }
 
-  /** The frame the effect draws at `t`, and when it says that next changes. */
-  protected moved(options: RenderOptions): Moved {
+  /** The frame the effect draws at `t`, and the hold it says that is in. */
+  moved(options: RenderOptions): Moved {
     const segments = render(this.renderable, options);
     // With no colour output nothing the effect does is written, so the child
     // is what is shown, and it changes when the child says it does.
-    if (options.colorSystem === null) return { segments, nextChange: Number.POSITIVE_INFINITY };
+    if (options.colorSystem === null) return { segments, hold: UNMOVED };
     // No depth named is no downgrade, as `drawnColors` reads it.
     const depth = options.colorSystem ?? ColorDepth.TRUECOLOR;
     // [LAW:one-source-of-truth] The frame is measured before any cell is
@@ -262,8 +262,8 @@ export class Recolored implements Renderable, Measurable, Composite {
     const looked = looks(segments, depth, this.theme);
     const walked = walk(looked);
     const animation = this.effect(measured(looked, () => walked, depth, this.theme));
-    const { value: frame, nextChange } = shownAt(animation, this.t, options);
-    return { segments: this._recolored(walked, frame, depth), nextChange };
+    const shown = shownAt(animation, this.t, options);
+    return { segments: this._recolored(walked, shown.value, depth), hold: holdOf(shown, this.t) };
   }
 
   private *_recolored(walked: readonly Walked[], frame: EffectFrame, depth: ColorDepth): Iterable<Segment> {
@@ -315,19 +315,6 @@ export class Recolored implements Renderable, Measurable, Composite {
   }
 
   /**
-   * The colours the screen shows for `pair` once it is drawn moved to `to`,
-   * both as the screen shows them, at `depth` on `theme`: what an effect
-   * moving a pair's colours leaves its words reading in.
-   * [LAW:one-source-of-truth] Read through `movedSpecs`, the one writer a
-   * moved slot is written with.
-   */
-  static shows(pair: Pair, to: CellColors, depth: ColorDepth, theme: TerminalTheme): CellColors {
-    const from = onScreen(pair, pair.reverse);
-    const moved = movedSpecs(from, onScreen(to, pair.reverse), depth, theme);
-    return onScreen({ fg: moved.fg?.getTruecolor(theme, true) ?? from.fg, bg: moved.bg?.getTruecolor(theme, false) ?? from.bg }, pair.reverse);
-  }
-
-  /**
    * The specs that draw a cell's slot colours `to` where the segment drew
    * `from` with `wire`: each moved slot in the spec `movedSpecs` writes it
    * in, the rest as `wire` wrote them.
@@ -339,16 +326,73 @@ export class Recolored implements Renderable, Measurable, Composite {
 }
 
 /**
- * A `Recolored` drawn at the draw site's `t`, its cells saying when the
- * effect's frame next changes there (`stampFrame`), under whatever the child
- * already said: what a host drawing it for that `t` — a function view —
- * wakes on. The answer is made from what the element draws, so a loop that
- * holds still at the output's depth says it never changes there.
+ * `renderable` under `effect` over time: an `Animation<Renderable>` whose
+ * value at `t` is the element through the effect at `t`, placed wherever a
+ * renderable goes. Its own answer to when it changes is `t`, at every time:
+ * an `Effect` is made from what the element draws, so with nothing drawn
+ * nothing can say more — early, never false. Placed, it says exactly: its
+ * cells carry the effect's own hold at the frame's time and the output's
+ * depth (`stampFrame`), under whatever the element already said, so at a
+ * depth that shows no motion a loop says it never changes there and the
+ * host sleeps.
  */
-export class Effected extends Recolored {
-  override render(options: RenderOptions): Iterable<Segment> {
-    const { segments, nextChange } = this.moved(options);
-    return stampFrame(segments, nextChange);
+export class Effected implements Animation<Renderable> {
+  readonly key: string;
+  readonly theme: TerminalTheme;
+
+  constructor(
+    readonly renderable: Renderable,
+    readonly effect: Effect,
+    options: EffectedOptions,
+  ) {
+    this.key = options.key;
+    this.theme = options.theme;
+  }
+
+  /** The element through the effect at `t`, unstamped. */
+  at(t: number): Recolored {
+    return new Recolored(this.renderable, this.effect, { t, key: this.key, theme: this.theme });
+  }
+
+  nextChange(t: number): number {
+    return t;
+  }
+
+  lastChange(t: number): number {
+    return t;
+  }
+
+  /** The element under the effect with its motion taken out. */
+  reduced(): Effected {
+    const { effect } = this;
+    return new Effected(this.renderable, (drawn) => effect(drawn).reduced(), this);
+  }
+
+  /** Drawn at the frame's time, its cells stamped with the effect's exact hold there. */
+  render(options: RenderOptions): Iterable<Segment> {
+    const { segments, hold } = this.at(frameTimeOf(options)).moved(options);
+    return stampFrame(segments, hold);
+  }
+
+  measure(options: RenderOptions): { minimum: number; maximum: number } {
+    return Measurement.get(options, this.renderable);
+  }
+
+  *contents(): Iterable<Renderable> {
+    yield this.renderable;
+  }
+
+  /**
+   * The colours the screen shows for `pair` once it is drawn moved to `to`,
+   * both as the screen shows them, at `depth` on `theme`: what an effect
+   * moving a pair's colours leaves its words reading in.
+   * [LAW:one-source-of-truth] Read through `movedSpecs`, the one writer a
+   * moved slot is written with.
+   */
+  static shows(pair: Pair, to: CellColors, depth: ColorDepth, theme: TerminalTheme): CellColors {
+    const from = onScreen(pair, pair.reverse);
+    const moved = movedSpecs(from, onScreen(to, pair.reverse), depth, theme);
+    return onScreen({ fg: moved.fg?.getTruecolor(theme, true) ?? from.fg, bg: moved.bg?.getTruecolor(theme, false) ?? from.bg }, pair.reverse);
   }
 }
 

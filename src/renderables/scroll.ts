@@ -30,8 +30,8 @@
  * window.
  *
  * [LAW:no-ambient-temporal-coupling] Pure in `t`, nothing kept between
- * frames; `at` hands over the frame alone, and a frame drawn inside a
- * function view says when it changes through `frameAt` (`./frames.ts`).
+ * frames; `at` hands over the frame alone, and placed, the scroll stamps
+ * the hold it is in at the frame's time (`placedRender`).
  */
 
 import { Animation } from "../core/animation.js";
@@ -104,9 +104,10 @@ class ScrollFrame implements Renderable, Measurable, Composite {
     const blank = Math.min(width, Math.max(0, -this.col));
     const start = Math.max(0, this.col);
     // [LAW:one-source-of-truth] What the window shows is cut from the whole content, so it may change
-    // when anything in the content does — a row above the slot entering pushes every row down. That
-    // one answer rides a cell of no width on the first row, and the cut throws the rest away.
-    yield Segment.carrier(new Style({ nextChange: Segment.nextChange(drawn) }));
+    // when anything in the content does — a row above the slot entering pushes every row down, and run
+    // backwards, leaving it pulls them up. That hold rides a cell of no width on the first row, and the
+    // cut throws the rest away.
+    yield Segment.carrier(new Style({ lastChange: Segment.lastChange(drawn), nextChange: Segment.nextChange(drawn) }));
     for (let r = 0; r < this.height; r++) {
       const line = lines[this.row + r] ?? [];
       const shown = Segment.divide(line, [start, start + width - blank])[1] ?? [];

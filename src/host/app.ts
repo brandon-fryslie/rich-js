@@ -238,12 +238,12 @@ export class App implements FrameHost {
 
   /**
    * The time a frame drawn now is drawn for (`RenderOptions.frame`): the
-   * clock's now, through the timeline for a view on it. What a moment heard
+   * clock's now, through the timeline. What a moment heard
    * between frames — a key — is stamped with, so it is on the clock the
    * frame is.
    */
   get frameTime(): number {
-    return frameTime(this.view, this._time());
+    return frameTime(this._time());
   }
 
   private _time(): HostTime {

@@ -70,12 +70,13 @@ function arrived(n: number, p: number): number {
  */
 function stepped(seconds: number): <F>(frame: (step: number) => F, still: F) => Animation<F> {
   const pace = beat([seconds]);
-  return (frame, still) => ({
-    at: (t) => frame(Math.round(pace.lastChange(t) / seconds)),
-    nextChange: (t) => pace.nextChange(t),
-    lastChange: (t) => pace.lastChange(t),
-    reduced: () => Animation.constant(still),
-  });
+  return (frame, still) =>
+    Animation.of({
+      at: (t: number) => frame(Math.round(pace.lastChange(t) / seconds)),
+      nextChange: (t: number) => pace.nextChange(t),
+      lastChange: (t: number) => pace.lastChange(t),
+      reduced: () => Animation.constant(still),
+    });
 }
 
 /** Every cell its own glyph: a glyph loop with its motion taken out — the text as written, no wave, no rain. */

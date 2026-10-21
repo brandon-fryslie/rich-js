@@ -156,6 +156,19 @@ export class Segment {
   }
 
   /**
+   * Since when what `segments` show has been what it is, on the same
+   * timeline: the latest `Style.lastChange` among them, the other end of the
+   * hold `nextChange` reads — `t` for a frame something in moves every
+   * frame, `-Infinity` for one that always was. What a host running its
+   * timeline backwards asks before drawing again.
+   */
+  static lastChange(segments: Iterable<Segment>): number {
+    let latest = Number.NEGATIVE_INFINITY;
+    for (const segment of segments) latest = Math.max(latest, segment.style?.lastChange ?? Number.NEGATIVE_INFINITY);
+    return latest;
+  }
+
+  /**
    * The anchor of the cell at column `x` of row `y` in a composed frame, or
    * `undefined` when that cell was drawn by no owner or lies outside the frame.
    */

@@ -46,18 +46,15 @@ const ELEMENTS: readonly [string, Animation<ColorRamp>][] = [
   ["swaying, and settling a quarter turn round", hues.moving({ scroll: Animation.continuous(Phase.pingPong(6)), hue: tween(0, 0.25, { seconds: 3, ease: EASES["ease-out"] }) })],
 ];
 
-function view(t: number): Renderable {
-  return new Group(
-    ...ELEMENTS.flatMap(([title, ramp]) => [
-      new Effected(new Rule(title, { style: LINE }), gradient(ramp, [LINE]), { t, key: `rule ${title}`, theme: CATPPUCCIN_MOCHA }),
-      new Effected(new Panel(new RichText("the words keep their own colour", { style: "#cdd6f4" }), { borderStyle: LINE, width: 50 }), gradient(ramp, [LINE]), {
-        t,
-        key: `panel ${title}`,
-        theme: CATPPUCCIN_MOCHA,
-      }),
-    ]),
-  );
-}
+const view: Renderable = new Group(
+  ...ELEMENTS.flatMap(([title, ramp]) => [
+    new Effected(new Rule(title, { style: LINE }), gradient(ramp, [LINE]), { key: `rule ${title}`, theme: CATPPUCCIN_MOCHA }),
+    new Effected(new Panel(new RichText("the words keep their own colour", { style: "#cdd6f4" }), { borderStyle: LINE, width: 50 }), gradient(ramp, [LINE]), {
+      key: `panel ${title}`,
+      theme: CATPPUCCIN_MOCHA,
+    }),
+  ]),
+);
 
 const live = new Live(view, { refreshPerSecond: 30 });
 live.start();

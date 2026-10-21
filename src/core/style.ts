@@ -102,6 +102,7 @@ export interface StyleOptions {
   link?: string;
   meta?: Record<string, unknown>;
   anchor?: Anchor;
+  lastChange?: number;
   nextChange?: number;
 }
 
@@ -153,15 +154,29 @@ export class Style {
    * asking each container. Two styles laid together change at the sooner.
    */
   readonly nextChange: number;
+  /**
+   * The other end of the same hold: since when what this style's cells show
+   * has been what it is, on the same timeline — `t` itself while it moves,
+   * and `-Infinity`, the default, for a cell that always was. A cell is a
+   * sample of an animation, so it carries both its answers (`Animation`),
+   * and a host running its timeline backwards reads this one
+   * (`Segment.lastChange`). Two styles laid together began at the later.
+   */
+  readonly lastChange: number;
 
   constructor(options: StyleOptions = {}) {
     const nextChange = options.nextChange ?? Number.POSITIVE_INFINITY;
+    const lastChange = options.lastChange ?? Number.NEGATIVE_INFINITY;
     // [LAW:parse-dont-validate] A time or never, settled where the style is
-    // made: NaN and -Infinity fail here, so no reader of a frame meets one.
+    // made: NaN and the far infinity fail here, so no reader of a frame meets one.
     if (!(nextChange > Number.NEGATIVE_INFINITY)) {
       throw new RangeError(`Style nextChange must be a time in seconds or Infinity, got ${nextChange}`);
     }
+    if (!(lastChange < Number.POSITIVE_INFINITY)) {
+      throw new RangeError(`Style lastChange must be a time in seconds or -Infinity, got ${lastChange}`);
+    }
     this.nextChange = nextChange;
+    this.lastChange = lastChange;
     this.color = resolveColor(options.color);
     this.bgcolor = resolveBackground(options.bgcolor);
     this.bold = options.bold;
@@ -203,7 +218,8 @@ export class Style {
       this.link === undefined &&
       this.meta === undefined &&
       this.anchor === undefined &&
-      this.nextChange === Number.POSITIVE_INFINITY
+      this.nextChange === Number.POSITIVE_INFINITY &&
+      this.lastChange === Number.NEGATIVE_INFINITY
     );
   }
 
@@ -314,8 +330,10 @@ export class Style {
           ? { ...this.meta, ...other.meta }
           : other.meta ?? this.meta,
       anchor: other.anchor ?? this.anchor,
-      // Cells under both change when either does: the sooner.
+      // Cells under both change when either does: the sooner, and have been
+      // what they are since the later — the intersection of the two holds.
       nextChange: Math.min(this.nextChange, other.nextChange),
+      lastChange: Math.max(this.lastChange, other.lastChange),
     });
   }
 
@@ -339,7 +357,8 @@ export class Style {
       this.overline === other.overline &&
       this.link === other.link &&
       anchorsEqual(this.anchor, other.anchor) &&
-      this.nextChange === other.nextChange
+      this.nextChange === other.nextChange &&
+      this.lastChange === other.lastChange
     );
   }
 
@@ -397,7 +416,7 @@ export class Style {
   /**
    * The look as a canonical string that round-trips through `Style.parse()`:
    * colours, attributes and the link, which is all a style string can spell.
-   * What a style carries beyond its look — `meta`, `anchor`, `nextChange` —
+   * What a style carries beyond its look — `meta`, `anchor`, `lastChange`, `nextChange` —
    * has no spelling and is not here, so two styles that differ only there
    * read alike; `equals` tells them apart.
    */

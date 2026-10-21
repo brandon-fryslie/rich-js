@@ -195,14 +195,14 @@ describe("TextInput caret blink", () => {
     app.stop();
   });
 
-  it("blinks on the host's clock in a renderable view, which a pause does not hold", async () => {
+  it("blinks on the timeline in a renderable view too, so a pause holds it", async () => {
     const { app, clock, lit } = start({ view: "renderable" });
     clock.advance(0.6);
     expect(lit()).toBe(false);
     app.timeline = Timeline.pause(app.timeline, clock.now());
     await tick();
     clock.advance(0.5);
-    expect(lit()).toBe(true);
+    expect(lit()).toBe(false);
     app.stop();
   });
 

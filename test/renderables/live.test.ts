@@ -681,7 +681,7 @@ describe("Live on a timeline", () => {
     const recorded: View =
       typeof view === "function"
         ? (t) => record(t, view(t))
-        : { at: (t) => record(t, view.at(t)), nextChange: (t) => view.nextChange(t), lastChange: (t) => view.lastChange(t), reduced: () => view.reduced() };
+        : Animation.of({ at: (t: number) => record(t, view.at(t)), nextChange: (t: number) => view.nextChange(t), lastChange: (t: number) => view.lastChange(t), reduced: () => view.reduced() });
     return { display: new Live(recorded, { console: target, clock, refreshPerSecond: perSecond, timeline }), drawn };
   }
   const word = (text: string): Renderable => new RichText(text);
@@ -712,16 +712,17 @@ describe("Live on a timeline", () => {
     expect(drawn.slice(0, first).every(({ text }) => text === "A")).toBe(true);
   });
 
-  // An animation says everything it changes, so once it holds for good the
-  // auto-refresh waits on nothing: the frame that stop() draws is the next.
-  it("at 1 fps wakes for a switch between two frames, then waits on nothing once the view holds for good", () => {
+  // An animation is a renderable, and a renderable view may read state the
+  // Live cannot see, so the auto-refresh polls it at the rate; a switch
+  // between two ticks is still drawn when it falls due.
+  it("at 1 fps wakes for a switch between two frames, and polls at the rate once the view holds for good", () => {
     const clock = fakeClock();
     const { display, drawn } = playing(switching(), 1, clock, Timeline.play(0, 2));
     display.start();
     clock.advance(3);
-    expect(clock.timers()).toBe(0);
+    expect(clock.timers()).toBe(1);
     display.stop();
-    expect(drawn.map(({ t, text }) => `${text}@${t}`)).toEqual(["A@2", "B@3", "B@6"]);
+    expect(drawn.map(({ t, text }) => `${text}@${t}`)).toEqual(["A@2", "B@3", "B@5", "B@6"]);
   });
 
   // A function view may read state the Live cannot see, so the auto-refresh
@@ -753,17 +754,18 @@ describe("Live on a timeline", () => {
     display.stop();
   });
 
-  it.each([1, 60])("at %s fps, started on a paused timeline, draws an animation's frame once, by the rate", (perSecond) => {
+  it.each([1, 60])("at %s fps, started on a paused timeline, polls an animation at its rate, every frame at the held time", (perSecond) => {
     const clock = fakeClock();
     const { display, drawn } = playing(Animation.continuous((t) => word(`t=${t}`)), perSecond, clock, Timeline.pause(Timeline.play(0), 0));
     display.start();
     clock.advance(2);
-    expect(drawn.map(({ t }) => t)).toEqual([0]);
-    expect(clock.timers()).toBe(0);
+    // A frame a tick from the start on, none sooner.
+    expect(drawn).toHaveLength(2 * perSecond);
+    expect(drawn.every(({ t }) => t === 0)).toBe(true);
     display.stop();
   });
 
-  it.each([1, 60])("at %s fps, paused, draws an animation's held frame once and then nothing, with no timer left", (perSecond) => {
+  it.each([1, 60])("at %s fps, paused, draws an animation at its held time, at the rate and when a caller asks", (perSecond) => {
     const clock = fakeClock();
     const { display, drawn } = playing(Animation.continuous((t) => word(`t=${t}`)), perSecond, clock);
     display.start();
@@ -771,29 +773,27 @@ describe("Live on a timeline", () => {
     const before = drawn.length;
     display.timeline = Timeline.pause(display.timeline, clock.now());
     expect(drawn).toHaveLength(before + 1);
-    expect(drawn.at(-1)!.t).toBe(1);
-    expect(clock.timers()).toBe(0);
     clock.advance(5);
-    expect(drawn).toHaveLength(before + 1);
-    // A caller still draws a paused Live, at its held time.
+    expect(drawn).toHaveLength(before + 1 + 5 * perSecond);
     display.refresh();
-    expect(drawn.at(-1)!.t).toBe(1);
+    expect(drawn.slice(before).every(({ t }) => t === 1)).toBe(true);
     display.stop();
   });
 
-  it.each([1, 60])("at %s fps, a seek while paused draws the sought time once, and resuming plays on from it", (perSecond) => {
+  it.each([1, 60])("at %s fps, a seek while paused draws the sought time, and resuming plays on from it", (perSecond) => {
     const clock = fakeClock();
     const { display, drawn } = playing(Animation.continuous((t) => word(`t=${t}`)), perSecond, clock, Timeline.pause(Timeline.play(0), 0));
     display.start();
     display.timeline = Timeline.seek(display.timeline, clock.now(), 7);
     expect(drawn.map(({ t }) => t)).toEqual([7]);
     clock.advance(2);
-    expect(drawn).toHaveLength(1);
+    expect(drawn.every(({ t }) => t === 7)).toBe(true);
+    const held = drawn.length;
 
     display.timeline = Timeline.resume(display.timeline, clock.now());
     clock.advance(1);
     // The resumed frame, then a tick's worth for the second that followed.
-    expect(drawn).toHaveLength(2 + perSecond);
+    expect(drawn).toHaveLength(held + 1 + perSecond);
     expect(drawn.at(-1)!.t).toBeCloseTo(8, 9);
     display.stop();
   });
@@ -804,18 +804,18 @@ describe("Live on a timeline", () => {
     display.start();
     clock.advance(3);
     display.stop();
-    // The first frame at the rate, at 4.5, says B began at the switch; time 3
-    // is host 2.5, and A is drawn the first moment after it. A frame landing
-    // exactly on 3 would be drawn at the rate instead: there
-    // `lastChange(3) === 3`, which the Animation contract reads as moving.
+    // The frames at the rate, at 4.5 and 3.5, say B began at the switch; time 3
+    // is host 2.5, sooner than the next tick, and A is drawn the first moment
+    // after it. A frame landing exactly on 3 would be drawn at the rate
+    // instead: there `lastChange(3) === 3`, which the Animation contract reads as moving.
     const first = drawn.findIndex(({ text }) => text === "A");
-    expect(drawn.slice(0, first).map(({ t }) => t)).toEqual([4.5]);
+    expect(drawn.slice(0, first).map(({ t }) => t)).toEqual([4.5, 3.5]);
     expect(drawn[first]!.t).toBeLessThan(3);
     expect(drawn[first]!.t).toBeCloseTo(3, 9);
   });
 
-  // A renderable mutated in place is off the timeline: pausing the timeline
-  // holds what is drawn for a time, and a table's new row is not that.
+  // A renderable mutated in place may change without saying so: pausing the
+  // timeline holds the time it is drawn for, and a table's new row is not that.
   it.each([1, 60])("at %s fps, paused, still refreshes a renderable view at its rate", (perSecond) => {
     const clock = fakeClock();
     let renders = 0;

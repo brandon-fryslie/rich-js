@@ -4,9 +4,9 @@
  *
  * THIS IS A DEMO: the library's attribute effects
  * (`src/renderables/effects.ts`), for seeing them move. Each panel's content
- * is wrapped in an `Effected` drawn at the `Live`'s time, so what it shows at
- * a `t` is the same at any frame rate, and the `Live` wakes only when a beat
- * turns.
+ * is wrapped in an `Effected` placed in the view and drawn at the `Live`'s
+ * time, so what it shows at a `t` is the same at any frame rate, and a beat
+ * turns on the moment its cells say.
  */
 
 import {
@@ -31,13 +31,11 @@ const PANELS: readonly [string, Effect][] = [
   ["italic, as bold pulses", blink({ ...ATTRIBUTE_DEFAULTS.boldPulse, attribute: "italic" })],
 ];
 
-function view(t: number): Columns {
-  return new Columns(
-    PANELS.map(([title, effect]) =>
-      new Panel(new Effected(new RichText("ready when you are", { style: "#89b4fa" }), effect, { t, key: title, theme: CATPPUCCIN_MOCHA }), { title, width: WIDTH }),
-    ),
-  );
-}
+const view: Columns = new Columns(
+  PANELS.map(([title, effect]) =>
+    new Panel(new Effected(new RichText("ready when you are", { style: "#89b4fa" }), effect, { key: title, theme: CATPPUCCIN_MOCHA }), { title, width: WIDTH }),
+  ),
+);
 
 const live = new Live(view, { refreshPerSecond: 30 });
 live.start();

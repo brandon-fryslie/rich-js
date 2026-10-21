@@ -13,6 +13,7 @@ import type {
 } from "../core/protocol.js";
 import { drawable, getStyle, render } from "../core/protocol.js";
 import { Effected, type Effect } from "./effect.js";
+import { frameAt } from "./frames.js";
 import { EFFECT_CURVES, atShares, shimmer } from "./effects.js";
 
 const BAR = "━";
@@ -95,7 +96,7 @@ export class ProgressBar implements Renderable, Measurable {
     // [LAW:no-ambient-temporal-coupling] The moment is the caller's; the bar
     // only says what it looks like then. An empty track, lit by the shimmer.
     const track: Renderable = { render: (o) => this.track(o, width, 0, back) };
-    yield* render(new Effected(track, this.pulseEffect(options, back, depth, theme), { t: this.pulse.t, key: "progress-bar", theme }), options);
+    yield* render(frameAt(new Effected(track, this.pulseEffect(options, back, depth, theme), { key: "progress-bar", theme }), this.pulse.t), options);
   }
 
   /**

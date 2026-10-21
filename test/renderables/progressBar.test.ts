@@ -233,7 +233,9 @@ describe("ProgressBar", () => {
 
     it("draws nothing on an output with no colour, where the back and its light cannot be drawn", () => {
       const NO_COLOR: RenderOptions = { maxWidth: 80, colorSystem: null };
-      for (const t of [0, 3, 30]) expect(collectSegments(new ProgressBar({ width: 40, completed: 70, pulse: { t } }), NO_COLOR)).toEqual([]);
+      // A carrier draws no cell and writes no byte: it is the hold the pulse is in.
+      const drawn = (t: number) => collectSegments(new ProgressBar({ width: 40, completed: 70, pulse: { t } }), NO_COLOR).filter((s) => !s.isCarrier);
+      for (const t of [0, 3, 30]) expect(drawn(t)).toEqual([]);
     });
 
     it("is the empty bar, whatever it has completed, before the first pass enters", () => {

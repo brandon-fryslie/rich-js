@@ -23,7 +23,7 @@ const brighten: Effect = () =>
   });
 
 for (const t of [0, 0.5, 0.9]) {
-  console.print(new Effected(new RichText("brightening", { style: "#5f87d7" }), brighten, { t, key: "brighten", theme: CATPPUCCIN_MOCHA }));
+  console.print(new Effected(new RichText("brightening", { style: "#5f87d7" }), brighten, { key: "brighten", theme: CATPPUCCIN_MOCHA }).at(t));
 }
 ```
 
@@ -57,7 +57,7 @@ const line = new RichText(words, { style: Style.fromColor(ColorSpec.fromRgba(ink
 const lit = EFFECT_CATALOGUE.loops.shimmer({ z: 0 });
 
 for (const t of [0, 60, 100]) {
-  console.print(new Effected(line, lit, { t, key: "status", theme }));
+  console.print(new Effected(line, lit, { key: "status", theme }).at(t));
 }
 ```
 
@@ -100,7 +100,7 @@ const strip = new Strip(items, JOINERS.powerline);
 const breathing = confined(onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, 0)), items[1]!);
 
 for (const t of [0, 10, 20]) {
-  console.print(new Effected(strip, breathing, { t, key: "status", theme: CATPPUCCIN_MOCHA }));
+  console.print(new Effected(strip, breathing, { key: "status", theme: CATPPUCCIN_MOCHA }).at(t));
 }
 ```
 
@@ -143,7 +143,7 @@ const signal = steppedInk([
 ]);
 
 for (const t of [0, 1, 2, 3]) {
-  console.print(new Effected(new Frames(chevrons, { t }), signal, { t, key: "effort", theme }));
+  console.print(new Effected(new Frames(chevrons, { t }), signal, { key: "effort", theme }).at(t));
 }
 ```
 
@@ -165,7 +165,7 @@ const flowing = gradient(hues.moving({ scroll: Animation.continuous(Phase.loop(4
 const panel = new Panel(new RichText("the words keep their own colour", { style: "#cdd6f4" }), { borderStyle: "#a6e3a1", width: 40 });
 
 for (const t of [0, 1, 2]) {
-  console.print(new Effected(panel, flowing, { t, key: "status", theme: CATPPUCCIN_MOCHA }));
+  console.print(new Effected(panel, flowing, { key: "status", theme: CATPPUCCIN_MOCHA }).at(t));
 }
 ```
 
@@ -185,7 +185,7 @@ const label = new RichText(" rich-js ", { style: Style.parse("#1e1e2e on #89b4fa
 const walk = onBeat(EFFECT_CATALOGUE.loops.wheel({ z: 0 }, { seconds: 6, ease: EASES.linear, swing: 0 }), beat([1]));
 
 for (const t of [0, 0.5, 1, 2.5]) {
-  console.print(new Effected(label, walk, { t, key: "brand", theme }));
+  console.print(new Effected(label, walk, { key: "brand", theme }).at(t));
 }
 ```
 
@@ -204,7 +204,7 @@ const pulsing = EFFECT_CATALOGUE.attributes.boldPulse({ z: 0 });
 const word = new RichText("ready");
 
 for (const t of [0, 0.69, 0.7, 0.99, 1]) {
-  const drawn = renderToString(new Effected(word, pulsing, { t, key: "ready", theme: DEFAULT_TERMINAL_THEME }), { colorSystem: ColorDepth.TRUECOLOR });
+  const drawn = renderToString(new Effected(word, pulsing, { key: "ready", theme: DEFAULT_TERMINAL_THEME }).at(t), { colorSystem: ColorDepth.TRUECOLOR });
   console.print(`t=${t}s  ${drawn.includes("\x1b[1m") ? "bold" : "as drawn"}`);
 }
 ```
@@ -213,7 +213,7 @@ Under `confined`, a cell's attributes go with its ink: a seam cell between two i
 
 ## Writing an effect
 
-`Effected` wraps any renderable and draws it with its cells' looks — colours and attributes — passed through an effect at one moment:
+`Effected` is any renderable under an effect over time: an [animation](/animation#placing-one) whose value at `t` is the element with its cells' looks — colours and attributes — passed through the effect at that moment. Placed in a view, it draws at the frame's time and stamps its cells with exactly when the effect's frame next changes at the output's depth, so a loop that cannot move at sixteen colours lets the host sleep. Here it is drawn at one moment, `.at(t)`:
 
 ```typescript
 import { Animation, ColorRgba, ColorRamp, DEFAULT_TERMINAL_THEME, EASES, Effected, Phase, RichText, type Effect } from "@promptctl/rich-js";
@@ -236,7 +236,7 @@ const shimmer: Effect = () =>
   });
 
 for (const t of [0, 0.5, 1]) {
-  console.print(new Effected(new RichText(label), shimmer, { t, key: "thinking", theme: DEFAULT_TERMINAL_THEME }));
+  console.print(new Effected(new RichText(label), shimmer, { key: "thinking", theme: DEFAULT_TERMINAL_THEME }).at(t));
 }
 ```
 

@@ -82,7 +82,7 @@ The root renders at the terminal's width, with the terminal's rows as its [heigh
 
 `view` is handed the frame's time, `t`, in seconds since the app was made: the app's `clock` read through its [timeline](/animation#playing-in-a-live-or-an-app), which plays from then at the clock's pace unless the `timeline` option gives another. An app paints at its `rate` while something is animating: `animate()` starts that, and the function it returns ends it. Once nothing is animating the app stops ticking and paints only when asked again, and a stopped or suspended app never ticks.
 
-A view can also be a renderable, drawn as it is and never handed a `t`, or an [`Animation`](/animation) of one, which says when what it draws changes. Such a view needs no `animate()`. The app paints at its rate while the frame says it moves, wakes once when the frame says it holds until a moment — however soon that is, whatever the rate — and stops when it says it never changes. Setting `app.timeline` paints one frame for the new time. A paused timeline then leaves nothing ticking for a function or an animation until it plays again, `animate()` included, since what it moves is drawn at the held time. A renderable is off the timeline, so pausing holds none of it.
+A view can also be a renderable, drawn as it is — an [`Animation`](/animation#placing-one) of renderables placed in it, or the view itself, saying on its cells when what it draws changes. Such a view needs no `animate()`. The app paints at its rate while the frame says it moves, wakes once when the frame says it holds until a moment — however soon that is, whatever the rate — and stops when it says it never changes. Setting `app.timeline` paints one frame for the new time. A paused timeline then leaves nothing ticking until it plays again, `animate()` included, since every view is drawn at the held time.
 
 ```ts silent
 import { RichText, frameRate, systemClock } from "@promptctl/rich-js";
@@ -117,7 +117,7 @@ const stopAnimating = app.animate();
 
 ## Reduced motion
 
-`reducedMotion: true` paints every animation with its motion taken out, and wakes only when content changes: the view, if it is an animation, as its `reduced()` form, which also stops an `animate()` held from painting at the rate, and everything drawn for the time inside any view where it is drawn. A function view is still painted at the rate while `animate()` is held, because what it computes from the time is its own. It is the same switch as on a [`Console`](/console#reduced-motion); [Animation](/animation#reduced-motion) says what each kind is reduced to.
+`reducedMotion: true` paints every animation with its motion taken out, and wakes only when content changes: every animation placed in the view as its `reduced()` form, where it is drawn, and everything drawn for the time inside a function view the same way. A view is still painted at the rate while `animate()` is held — each frame the reduced one — because the app cannot tell what else it draws from state of its own. It is the same switch as on a [`Console`](/console#reduced-motion); [Animation](/animation#reduced-motion) says what each kind is reduced to.
 
 ## Style names and drawing options
 

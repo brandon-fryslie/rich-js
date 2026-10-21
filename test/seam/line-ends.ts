@@ -41,6 +41,7 @@ import { Effected, type EffectFrame } from "../../src/renderables/effect.js";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { GlyphEffected, type GlyphFrame } from "../../src/renderables/glyph-effect.js";
 import { FrameSequence, Frames } from "../../src/renderables/frames.js";
+import { Spinner } from "../../src/renderables/spinner.js";
 import { Group } from "../../src/renderables/group.js";
 import { Layout } from "../../src/renderables/layout.js";
 import { Markdown } from "../../src/renderables/markdown.js";
@@ -97,7 +98,6 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
     ends: "content",
     build: (content) =>
       new Effected(content, () => Animation.constant<EffectFrame>((c) => c), {
-        t: 0,
         key: "content",
         theme: DEFAULT_TERMINAL_THEME,
       }),
@@ -105,7 +105,7 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
   },
   GlyphEffected: {
     ends: "content",
-    build: (content) => new GlyphEffected(content, () => Animation.constant<GlyphFrame>((cell) => cell.glyph), { t: 0, key: "content" }),
+    build: (content) => new GlyphEffected(content, () => Animation.constant<GlyphFrame>((cell) => cell.glyph), { key: "content" }),
     why: "changes its content's glyphs and adds no cell, so its last line is its content's",
   },
   Dropdown: { ends: "own-line", build: () => new Dropdown({ options: ["a", "b"] }) },
@@ -119,6 +119,11 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
     ends: "open",
     build: () => new Frames(new FrameSequence([{ text: text("a"), seconds: 1 }]), { t: 0 }),
     why: "the frame in progress, set inside a line among other cells — a gauge after a model name in a status line — so it ends no line of its own",
+  },
+  FrameSequence: {
+    ends: "open",
+    build: () => new FrameSequence([{ text: text("a"), seconds: 1 }]),
+    why: "placed, the frame in progress at the frame's time, which is a line fragment as a `Frames` is",
   },
   Group: { ends: "content", build: (content) => new Group(text("a"), content), why: "renders its content and nothing after it, as the reference's does: its last line is its content's" },
   JSONRenderable: { ends: "own-line", build: () => JSONRenderable.fromData({ a: 1 }) },
@@ -142,6 +147,7 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
   },
   RichText: { ends: "own-line", build: () => text("x") },
   Rule: { ends: "own-line", build: () => new Rule("t") },
+  Spinner: { ends: "own-line", build: () => new Spinner("dots", "label") },
   Slider: { ends: "own-line", build: () => new Slider() },
   StaticItem: { ends: "own-line", build: () => new StaticItem({ id: "s", render: text("x") }) },
   Strip: { ends: "own-line", build: () => new Strip([text("a")], JOINERS.plain) },

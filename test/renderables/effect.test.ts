@@ -21,6 +21,7 @@ import { Button } from "../../src/widgets/button.js";
 import { WidgetApp } from "../../src/widgets/widget-app.js";
 import { CATPPUCCIN_MOCHA, DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 import { Oklch } from "../../src/core/oklch.js";
+import { inFrame } from "./in-frame.js";
 
 const THEME = DEFAULT_TERMINAL_THEME;
 /** The attributes of a cell whose style sets none. */
@@ -33,8 +34,8 @@ const identity: Effect = () => Animation.constant<EffectFrame>((colors) => color
 /** A different foreground on every column: the effect that splits most. */
 const perColumn: Effect = () => Animation.continuous(() => (colors, cell) => ({ ...colors, fg: new ColorRgba((cell.col * 37) % 256, 0, 0) }));
 
-function effected(child: Renderable, effect: Effect, t = 0, key = "k"): Effected {
-  return new Effected(child, effect, { t, key, theme: THEME });
+function effected(child: Renderable, effect: Effect, t = 0, key = "k"): ReturnType<typeof inFrame> {
+  return inFrame(new Effected(child, effect, { key, theme: THEME }), t);
 }
 
 /** A renderable yielding fixed segments, so nothing but the effect parses or builds a style. */
@@ -222,7 +223,7 @@ describe("Effected — positions and seeds", () => {
   });
 
   it("refuses a non-finite t", () => {
-    expect(() => effected(fixed(), identity, Number.NaN)).toThrow(/finite t/);
+    expect(() => new Effected(fixed(), identity, { key: "k", theme: THEME }).at(Number.NaN)).toThrow(/finite t/);
   });
 });
 
@@ -351,8 +352,8 @@ describe("Effected — below truecolor", () => {
   };
   const nudge: Effect = () => Animation.continuous(() => (c) => ({ ...c, fg: lighter(c.fg, 0.01), bg: lighter(c.bg, 0.01) }));
   const nudgeGround: Effect = () => Animation.continuous(() => (c) => ({ ...c, bg: lighter(c.bg, 0.01) }));
-  const onMocha = (child: Renderable, effect: Effect): Effected =>
-    new Effected(child, effect, { t: 0, key: "k", theme: CATPPUCCIN_MOCHA });
+  const onMocha = (child: Renderable, effect: Effect): ReturnType<typeof inFrame> =>
+    inFrame(new Effected(child, effect, { key: "k", theme: CATPPUCCIN_MOCHA }), 0);
   const ansi = { width: 10, colorSystem: "ansi" } as const;
 
   it("draws a slightly moved ANSI colour in the slot it came from", () => {

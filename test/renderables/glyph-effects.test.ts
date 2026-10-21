@@ -6,6 +6,7 @@ import type { Renderable } from "../../src/core/protocol.js";
 import { Segment } from "../../src/core/segment.js";
 import { GlyphEffected, type GlyphEffect, type GlyphFrame } from "../../src/renderables/glyph-effect.js";
 import { GLYPH_DEFAULTS, GLYPH_EFFECT_CATALOGUE, backspace, caseWave, particles, scramble, scrambleOut, typewriter } from "../../src/renderables/glyph-effects.js";
+import { inFrame } from "./in-frame.js";
 
 /** A renderable yielding `lines` as fixed segments. */
 function lines(...rows: string[]): Renderable {
@@ -19,7 +20,7 @@ const field = lines(" ".repeat(24), "     a few words        ", " ".repeat(24), 
 function draw(effect: GlyphEffect, child: Renderable, t: number): { text: string; next: number; animation: Animation<GlyphFrame> } {
   let animation: Animation<GlyphFrame> | undefined;
   const watched: GlyphEffect = (cells) => (animation = effect(cells));
-  const segments = [...new GlyphEffected(child, watched, { t, key: "k" }).render({ maxWidth: 80, colorSystem: null })];
+  const segments = [...inFrame(new GlyphEffected(child, watched, { key: "k" }), t).render({ maxWidth: 80, colorSystem: null })];
   return { text: segments.map((s) => s.text).join(""), next: Segment.nextChange(segments), animation: animation! };
 }
 
@@ -191,7 +192,7 @@ describe("particles", () => {
   it("draws its ASCII set on an output that draws ASCII alone", () => {
     const sky = lines(" ".repeat(40), " ".repeat(40));
     const dense = particles({ ...GLYPH_DEFAULTS.rain, density: 1 }, z);
-    const drawnOn = (asciiOnly: boolean) => [...new GlyphEffected(sky, dense, { t: 0, key: "k" }).render({ maxWidth: 80, asciiOnly })].map((s) => s.text).join("");
+    const drawnOn = (asciiOnly: boolean) => [...new GlyphEffected(sky, dense, { key: "k" }).at(0).render({ maxWidth: 80, asciiOnly })].map((s) => s.text).join("");
     expect(drawnOn(true)).toMatch(/^[|:\n]+$/);
     expect(drawnOn(false)).toMatch(/^[│╎\n]+$/);
   });

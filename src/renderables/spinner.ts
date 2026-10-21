@@ -37,9 +37,9 @@
  * frame at the time the timeline maps the host's to. [LAW:one-source-of-truth]
  * When the frame next changes (`Style.nextChange`) is a time on the host's
  * timeline, and the sequence answers on its own, so the timeline carries the
- * answer back. `at` hands over the frame alone, as every animation's does
- * (`./frames.ts`); `drawnAt`, drawn where the host's time is known, stamps
- * the cells with that answer for the frames the output draws. Backwards, the frames count down from the last at `t = 0`,
+ * answer back. `at` hands over the frame alone, as every animation's does;
+ * placed, a spinner draws at the frame's time and stamps its cells with that
+ * answer for the frames the output draws (`drawnAt`). Backwards, the frames count down from the last at `t = 0`,
  * a negative time landing in the last frame of the pass before, where Rich's
  * `int()` truncation holds frame 0 for a first interval and then counts
  * down: a departure, made so a negative speed is the one timeline run
@@ -48,7 +48,7 @@
  * timeline refuses it.
  */
 
-import { Animation } from "../core/animation.js";
+import { Animation, frameTimeOf, holdOf, shownAt, stampFrame, type Hold } from "../core/animation.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { RichText } from "../core/text.js";
@@ -62,8 +62,7 @@ import type {
 } from "../core/protocol.js";
 import { drawable, render } from "../core/protocol.js";
 import { EmbeddedText } from "./embed.js";
-import { FrameSequence, stampFrame } from "./frames.js";
-import { shownAt } from "../core/view.js";
+import { FrameSequence } from "./frames.js";
 import { finiteTime } from "../core/easing.js";
 
 /** A spinner's frames prepared to draw, each styled and held for the interval, run on the spinner's timeline, and the glyphs they spend. */
@@ -141,7 +140,7 @@ export class Spinner implements Animation<Renderable & Measurable> {
    * printed, stacked in a `Group`, or laid out in a `Progress` cell alike.
    * The frames this output can draw are chosen where the output is known.
    * The frame says nothing of when it turns — `t` may be a time a timeline
-   * mapped — so drawn at a host time it is `drawnAt`'s, or `frameAt`'s.
+   * mapped — so placed, the spinner itself stamps it (`drawnAt`).
    */
   at(t: number): Renderable & Measurable {
     finiteTime("Spinner.at", t);
@@ -154,28 +153,43 @@ export class Spinner implements Animation<Renderable & Measurable> {
   }
 
   /**
-   * The spinner drawn at host time `t`, its cells saying when it turns on the
-   * host's clock (`stampFrame`) — exactly, for the frames the output draws,
-   * where `nextChange` must answer for both and `frameAt` stamps that
-   * earlier answer. Under reduced motion it is the spinner reduced, which
-   * never turns (`shownAt`). What a host drawing a spinner for its own time
-   * — a `Status`, a `Progress` column — hands over.
+   * The spinner drawn at host time `t`, its cells saying the hold it is in on
+   * the host's clock (`stampFrame`) — exactly, for the frames the output
+   * draws, where `nextChange` must answer for both. Under reduced motion it
+   * is the spinner reduced, which never turns (`shownAt`). What it draws
+   * placed, at the frame's time, and what a host drawing a spinner for a
+   * time of its own — a `Status`, a `Progress` column — hands over.
    */
   drawnAt(t: number): Renderable & Measurable {
     finiteTime("Spinner.drawnAt", t);
-    return this._frame((played, options) => shownAt(played, t, options));
+    return this._frame((played, options) => {
+      const shown = shownAt(played, t, options);
+      return { value: shown.value, hold: holdOf(shown, t) };
+    });
   }
 
-  /** The frame `choose` picks from the frames the output can draw, and the label, saying when it turns if `choose` says. */
+  /** Placed: drawn at the frame's time, exactly (`drawnAt`). */
+  render(options: RenderOptions): Iterable<Segment> {
+    return render(this.drawnAt(frameTimeOf(options)), options);
+  }
+
+  measure(options: RenderOptions): { minimum: number; maximum: number } {
+    return this.drawnAt(frameTimeOf(options)).measure(options);
+  }
+
+  /** Nothing it is handed: the frame and the label are a line it builds. */
+  *contents(): Iterable<Renderable> {}
+
+  /** The frame `choose` picks from the frames the output can draw, and the label, saying the hold it is in if `choose` says. */
   private _frame(
-    choose: (played: Animation<RichText>, options: RenderOptions) => { readonly value: RichText; readonly nextChange?: number },
+    choose: (played: Animation<RichText>, options: RenderOptions) => { readonly value: RichText; readonly hold?: Hold },
   ): Renderable & Measurable {
     const drawn = (options: RenderOptions): Sequence => drawable(options, this._named, this._ascii, sequenceGlyphs);
     return {
       render: (options) => {
-        const { value, nextChange } = choose(drawn(options).played, options);
+        const { value, hold } = choose(drawn(options).played, options);
         const segments = this._render(value, options);
-        return nextChange === undefined ? segments : stampFrame(segments, nextChange);
+        return hold === undefined ? segments : stampFrame(segments, hold);
       },
       // Measured at the frames' one width, the widest frame's, so a column
       // holding it never narrows as it turns, and never offered less than

@@ -16,8 +16,8 @@
  * for one on a beat — so the transition's schedule, and `done` read off it,
  * stays the one rule for where a one-shot ends and when its frame changes,
  * and nothing here measures progress itself. The frames carry no word of
- * their own on when they change (`./frames.ts`): drawn at a host time, the
- * host reads the hold through `frameAt`. The exit veils whatever the
+ * their own on when they change: placed, the lifecycle stamps them with its
+ * hold at the frame's time (`placedRender`). The exit veils whatever the
  * arrival draws, so an element told to leave while it is still arriving leaves
  * from where it is, never shown whole first. [LAW:dataflow-not-control-flow]
  *
@@ -120,7 +120,7 @@ function life(element: Renderable, options: LifecycleOptions, entered: number, l
   const shown = (t: number): Renderable => (t < arrived ? enter.effect(element, t - entered, key) : element);
   const held = (schedule: Animation<unknown>, t: number) => ({ last: schedule.lastChange(t), next: schedule.nextChange(t) });
   // [LAW:one-source-of-truth] Each phase's frame and its hold, side by side, so the two cannot disagree.
-  // The frames say nothing of when they change — the hold does — so drawn at a host time (`frameAt`) the host reads the hold.
+  // The frames say nothing of when they change — the hold does, stamped where the lifecycle is placed.
   const phase = (t: number): { readonly frame: Renderable; readonly last: number; readonly next: number } => {
     if (t < entered) return { frame: NOTHING, last: Number.NEGATIVE_INFINITY, next: entered };
     if (t >= goneAt) return { frame: NOTHING, last: goneAt, next: Number.POSITIVE_INFINITY };
@@ -140,26 +140,26 @@ function life(element: Renderable, options: LifecycleOptions, entered: number, l
       : t < left
         ? { frame: element, last: entered, next: left }
         : { frame: NOTHING, last: left, next: t < goneAt ? goneAt : Number.POSITIVE_INFINITY };
-  const present: Animation<Renderable> = {
-    at: (t) => there(t).frame,
-    nextChange: (t) => there(t).next,
-    lastChange: (t) => there(t).last,
+  const present: Animation<Renderable> = Animation.of({
+    at: (t: number) => there(t).frame,
+    nextChange: (t: number) => there(t).next,
+    lastChange: (t: number) => there(t).last,
     reduced: () => present,
-  };
-  return {
+  });
+  return Animation.of({
     entered,
     left,
-    at: (t) => phase(t).frame,
-    nextChange: (t) => phase(t).next,
-    lastChange: (t) => phase(t).last,
+    at: (t: number) => phase(t).frame,
+    nextChange: (t: number) => phase(t).next,
+    lastChange: (t: number) => phase(t).last,
     // Reduced, the element is there from when it entered until it is told to leave: no arrival or exit to show, and the times kept.
     reduced: () => present,
     // [LAW:one-source-of-truth] The moment `phase` draws nothing from, so an element not yet told to leave is never asked its exit at -Infinity.
-    gone: (t) => t >= goneAt,
-    leave(at) {
+    gone: (t: number) => t >= goneAt,
+    leave(at: number): Lifecycle {
       if (Number.isFinite(left)) throw new RangeError(`lifecycle: already told to leave at ${left}, told again at ${at}`);
       if (!(Number.isFinite(at) && at >= entered)) throw new RangeError(`lifecycle: leave must be a finite time from entered (${entered}) on, got ${at}`);
       return life(element, options, entered, at);
     },
-  };
+  });
 }

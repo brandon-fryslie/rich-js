@@ -67,9 +67,7 @@ const SHOWN: readonly [string, string, Shown][] = [
 
 const PANELS = SHOWN.map(([title, text, shown]) => [title, new RichText(text), played(shown)] as const);
 
-function view(t: number): Columns {
-  return new Columns(PANELS.map(([title, text, effect]) => new Panel(new GlyphEffected(text, effect, { t, key: title }), { title, width: WIDTH })));
-}
+const view: Columns = new Columns(PANELS.map(([title, text, effect]) => new Panel(new GlyphEffected(text, effect, { key: title }), { title, width: WIDTH })));
 
 const live = new Live(view, { refreshPerSecond: 30 });
 live.start();

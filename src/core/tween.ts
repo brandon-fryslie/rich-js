@@ -30,7 +30,7 @@
  * OKLCH, and a colour tween is a two-stop ramp over its seconds, not a
  * second blender. [LAW:one-source-of-truth]
  *
- * Tier 2 of `src/core/`: `./easing.ts` and `./animation.ts`, nothing else.
+ * Tier 6 of `src/core/`: `./easing.ts` and `./animation.ts`, nothing else.
  * [LAW:one-way-deps]
  */
 
@@ -55,17 +55,17 @@ export function tween(from: number, to: number, timing: Timing): Animation<numbe
   const { ease, seconds } = timing;
   const phase = Phase.once(0, seconds);
   if (from === to) return Animation.constant(from);
-  return {
-    at(t) {
+  return Animation.of({
+    at(t: number) {
       const p = ease(phase(t));
       return (1 - p) * from + p * to;
     },
     // Before it begins the value is held until 0; while it moves, every
     // frame; from `seconds` on, never again — and it became what it is at
     // `seconds`, or always was before it began.
-    nextChange: (t) => (t < 0 ? 0 : t < seconds ? t : Number.POSITIVE_INFINITY),
-    lastChange: (t) => (t < 0 ? Number.NEGATIVE_INFINITY : t < seconds ? t : seconds),
+    nextChange: (t: number) => (t < 0 ? 0 : t < seconds ? t : Number.POSITIVE_INFINITY),
+    lastChange: (t: number) => (t < 0 ? Number.NEGATIVE_INFINITY : t < seconds ? t : seconds),
     // A one-shot, reduced, cuts from where it starts to where it arrives.
     reduced: () => Animation.cut(from, to),
-  };
+  });
 }

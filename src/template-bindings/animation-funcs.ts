@@ -60,19 +60,17 @@
  * (`textFrameAt`), and the stamp covers the fragment's own glyphs, not a
  * colour another function lays over them. A number or a colour carries no
  * cells to stamp, and a template evaluated every frame is a function view,
- * whose frame says it may change without saying so (`drawView`, `silent`):
- * a `Live` polls it at its rate, and an `App` paints it at its rate only
- * while the program holds `animate()`. Nothing here claims a moment it does
- * not know.
+ * whose frame may change without saying so: a `Live` polls it at its rate,
+ * and an `App` paints it at its rate only while the program holds
+ * `animate()`. Nothing here claims a moment it does not know.
  */
 
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
-import { Animation } from "../core/animation.js";
+import { Animation, shownAt } from "../core/animation.js";
 import { Phase, beat, finiteTime, parseEase } from "../core/easing.js";
 import type { RenderOptions } from "../core/protocol.js";
 import { Timeline } from "../core/timeline.js";
 import { tween } from "../core/tween.js";
-import { shownAt } from "../core/view.js";
 import { cellSeed } from "../renderables/effect.js";
 import type { EffectTarget } from "../renderables/effects.js";
 import { reglyphText, type GlyphEffect } from "../renderables/glyph-effect.js";
