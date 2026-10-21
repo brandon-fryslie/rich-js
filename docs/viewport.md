@@ -9,7 +9,7 @@ exampleContext: |
 
 # Viewport
 
-`Viewport` shows a fixed number of rows of a taller renderable, and scrolls through it. Its offset can never leave the content: it stops at the first line and at the last full view.
+`Viewport` is a scroll position: a fixed number of rows onto taller content. It holds where it is scrolled to, not the content. `viewport.showing(content)` is the content drawn through it, a renderable you place like any other. Its offset can never leave the content: it stops at the first line and at the last full view.
 
 ## Basic usage
 
@@ -20,9 +20,9 @@ const console = new Console({ width: 32 });
 const levels = ["[green]INFO[/]", "[green]INFO[/]", "[yellow]WARN[/]", "[green]INFO[/]", "[red]FAIL[/]"];
 const log = Array.from({ length: 50 }, (_, i) => `[dim]${String(i).padStart(2, "0")}[/] ${levels[i % 5]} line ${i}`).join("\n");
 
-const viewport = new Viewport(renderMarkup(log), { rows: 5 });
+const viewport = new Viewport({ rows: 5 });
 viewport.scrollTo(20);
-console.print(new Panel(viewport, { title: "log", borderStyle: "cyan" }));
+console.print(new Panel(viewport.showing(renderMarkup(log)), { title: "log", borderStyle: "cyan" }));
 ```
 
 ## How many rows it shows
@@ -40,7 +40,7 @@ viewport.scrollTo(0);     // the first line at the top
 viewport.scrollBy(3);     // three lines down
 viewport.scrollBy(-1);    // one line up
 
-console.print(new Panel(viewport, { title: "log", borderStyle: "cyan" }));
+console.print(new Panel(viewport.showing(renderMarkup(log)), { title: "log", borderStyle: "cyan" }));
 ```
 
 The panel shows lines 2 to 6: the three calls resolve in order when it renders.
@@ -55,13 +55,13 @@ In a [`WidgetApp`](/widgets), the mouse wheel scrolls a viewport with no code of
 
 ```typescript
 viewport.ensureVisible(selected, selected + 1);
-console.print(new Panel(viewport, { title: `line ${selected} in view`, borderStyle: "cyan" }));
+console.print(new Panel(viewport.showing(renderMarkup(log)), { title: `line ${selected} in view`, borderStyle: "cyan" }));
 ```
 
-The scroll position belongs to the viewport, not to its content. A view rebuilt every frame keeps one `Viewport` and draws the content it builds through it with `viewport.showing(content)`. It brings the selection into view when the selection moves, not in every frame — called in every frame, `ensureVisible` would undo each scroll the mouse wheel queues on the very render that applies it:
+Because the scroll position is the viewport's and not its content's, a view rebuilt every frame keeps one `Viewport` and shows the content it builds anew through it. It brings the selection into view when the selection moves, not in every frame — called in every frame, `ensureVisible` would undo each scroll the mouse wheel queues on the very render that applies it:
 
 ```typescript
-const viewport = new Viewport(new RichText(""), { rows: 8 });
+const viewport = new Viewport({ rows: 8 });
 
 function select(state: State, selected: number): State {
   viewport.ensureVisible(selected, selected + 1);
@@ -91,7 +91,7 @@ import { ListView, moveSelection } from "@promptctl/rich-js";
 const notes = Array.from({ length: 12 }, (_, i) =>
   renderMarkup(`[bold]note ${i}[/] ${"a longer body that wraps ".repeat(1 + (i % 3))}`),
 );
-const list = new Viewport(new RichText(""), { rows: 6, scrollbar: SCROLLBAR });
+const list = new Viewport({ rows: 6, scrollbar: SCROLLBAR });
 const cursor = moveSelection(0, 7, notes.length);
 
 console.print(new Panel(new ListView(list, notes, cursor, { gap: 1, context: 1 }), { title: `note ${cursor}` }));
@@ -114,9 +114,9 @@ Pass `scrollbar` to draw one down the right edge. The content renders narrower b
 ```typescript
 import { SCROLLBAR, Viewport } from "@promptctl/rich-js";
 
-const viewport = new Viewport(renderMarkup(log), { rows: 5, scrollbar: SCROLLBAR });
+const viewport = new Viewport({ rows: 5, scrollbar: SCROLLBAR });
 viewport.scrollTo(20);
-console.print(new Panel(viewport, { title: "log", borderStyle: "cyan" }));
+console.print(new Panel(viewport.showing(renderMarkup(log)), { title: "log", borderStyle: "cyan" }));
 ```
 
 The thumb's length is the share of the content in view, and its position is how far the view has scrolled. A gap above or below the thumb always means there is more content in that direction. Wherever the track has room, the thumb also stays off an end until the view reaches it. When all the content fits, the thumb fills the track. The thumb is drawn from the offset the render resolves, so moves queued since the last render are already reflected.
@@ -128,9 +128,9 @@ const blocks = {
   thumb: { glyph: "█", style: "cyan" },
   track: { glyph: "░", style: "grey37" },
 };
-const blocky = new Viewport(renderMarkup(log), { rows: 5, scrollbar: blocks });
+const blocky = new Viewport({ rows: 5, scrollbar: blocks });
 blocky.scrollTo(40);
-console.print(new Panel(blocky, { title: "log", borderStyle: "cyan" }));
+console.print(new Panel(blocky.showing(renderMarkup(log)), { title: "log", borderStyle: "cyan" }));
 ```
 
 `npm run viewport` is the selection example above in a `WidgetApp`, with a scrollbar, against a list of forty lines: the keys move the selection, and the wheel scrolls the window away from it until the next key brings it back. The [demo page](/demos/rich-viewport) runs the same program in the browser.

@@ -193,7 +193,7 @@ function controls() {
     fps: button("frame rate", "warning"),
     quit: button("quit", "danger"),
     input: new TextInput({ placeholder: "type here: the caret blinks" }),
-    gallery: new Viewport(new RichText(""), { scrollbar: SCROLLBAR }),
+    gallery: new Viewport({ scrollbar: SCROLLBAR }),
   };
 }
 type Controls = ReturnType<typeof controls>;

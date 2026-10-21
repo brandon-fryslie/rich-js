@@ -296,21 +296,22 @@ const configurations: readonly Configuration[] = [
   {
     name: "Viewport",
     shape: "rectangular",
-    make: () => new Viewport(new RichText("hello world\nsecond line"), { rows: 3 }),
+    make: () => new Viewport({ rows: 3 }).showing(new RichText("hello world\nsecond line")),
   },
   {
     name: "Viewport with a scrollbar",
     shape: "rectangular",
     make: () => {
-      const viewport = new Viewport(new RichText("hello world\nsecond line\nthird"), { rows: 2, scrollbar: SCROLLBAR });
-      viewport.scrollBy(1);
+      const scroll = new Viewport({ rows: 2, scrollbar: SCROLLBAR });
+      const viewport = scroll.showing(new RichText("hello world\nsecond line\nthird"));
+      scroll.scrollBy(1);
       return viewport;
     },
   },
   {
     name: "Viewport wrapping content that ignores its width",
     shape: "rectangular",
-    make: () => new Viewport(oversized, { scrollbar: SCROLLBAR }),
+    make: () => new Viewport({ scrollbar: SCROLLBAR }).showing(oversized),
   },
 ];
 
