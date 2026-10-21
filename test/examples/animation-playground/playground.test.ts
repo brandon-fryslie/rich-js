@@ -118,13 +118,16 @@ describe("animation playground", () => {
     // second and not 1,800 frames of the whole gallery the test never reads.
     // Sixty frames a second is pinned by the tests that read motion.
     await p.click("frame rate");
-    await p.advance(7);
+    expect((await p.screen()).join("\n")).toContain("1 fps");
+    await p.advance(7.5);
     await titled();
     await p.click("seek 999 990 s");
     expect(await p.time()).toBe(999_990);
     await titled();
+    // The seek fell half a second after a frame, so every frame after it is
+    // drawn half a second past a whole one, where a beat is mid-phase.
     await p.advance(25);
-    expect(await p.time()).toBe(1_000_015);
+    expect(await p.time()).toBe(1_000_014.5);
     await titled();
   });
 

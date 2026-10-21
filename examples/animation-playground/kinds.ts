@@ -90,13 +90,19 @@ function animated(name: string, frames: Animation<Renderable>): Kind {
 
 /**
  * A kind drawn by an effect at the time it is asked for (`frameAt`), set in
- * its panel — or, with `framed`, already around it. The effect is made once,
- * here, and not on every frame: what it settles of a frame — a ramp's legible
- * inks on each ground — it keeps for the next, so a frame drawing what an
- * earlier one drew redoes no search.
+ * its panel. It takes the effect already made, not a way to make one per
+ * frame: what an effect settles of a frame — a ramp's legible inks on each
+ * ground — it keeps for the next, so a frame drawing what an earlier one
+ * drew redoes no search.
  */
-function effected(name: string, moving: Animation<Renderable>, framed: (content: Renderable) => Renderable = panel(name)): Kind {
-  return { name, draw: (t) => framed(frameAt(moving, t)) };
+function effected(name: string, moving: Animation<Renderable>): Kind {
+  return { name, draw: (t) => panel(name)(frameAt(moving, t)) };
+}
+
+/** A kind whose effect is put on around its panel, so it is the panel's border that moves; made once, as `effected`'s is. */
+function aroundPanel(name: string, content: Renderable, effect: (framed: Panel) => Animation<Renderable>): Kind {
+  const moving = effect(panel(name)(content));
+  return { name, draw: (t) => frameAt(moving, t) };
 }
 
 /** The `n`th of `values`, wrapping both ways, so a turn before 0 — reversed past the start — has one too. */
@@ -312,9 +318,8 @@ export const KINDS: readonly Kind[] = [
   animated("tween · ProgressBar", Animation.map(filling, (v) => new ProgressBar({ total: 1204, completed: v, width: SLOT }))),
   animated("tween · a colour", Animation.map(fading, (v) => new RichText(`██████  ${fadeRamp.at(v).hex}`, { style: fadeRamp.at(v).hex }))),
   effected("moving ramp · Rule", new Effected(new Rule("scrolls and turns", { style: BORDER }), gradient(flowing, [BORDER]), { key: "rule", theme: THEME })),
-  // The two border kinds put their effect around the panel, so it is the panel's border that moves.
-  effected("moving ramp · border", new Effected(panel("moving ramp · border")(new RichText("the border is the ramp", { style: TEXT })), gradient(flowing, [BORDER]), { key: "border", theme: THEME }), (moved) => moved),
-  effected("marching border", new GlyphEffected(panel("marching border")(new RichText("the ants march round", { style: TEXT })), march, { key: "march" }), (moved) => moved),
+  aroundPanel("moving ramp · border", new RichText("the border is the ramp", { style: TEXT }), (framed) => new Effected(framed, gradient(flowing, [BORDER]), { key: "border", theme: THEME })),
+  aroundPanel("marching border", new RichText("the ants march round", { style: TEXT }), (framed) => new GlyphEffected(framed, march, { key: "march" })),
   animated("typewriter", Animation.map(typing, prompted)),
   animated("scramble", Animation.map(scrambling, prompted)),
   effected("case wave", new GlyphEffected(WAVED, caseWave({ step: 0.12, width: 3 }, 0), { key: "wave" })),

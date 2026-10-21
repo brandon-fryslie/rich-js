@@ -148,6 +148,12 @@ function inGamut(r: number, g: number, b: number): boolean {
   );
 }
 
+/** Polar (C, h°) → OKLab (a, b): the one spelling `deltaE` measures by and `toRgba` draws by. */
+function labOf(c: number, h: number): readonly [number, number] {
+  const hRad = h * (Math.PI / 180);
+  return [c * Math.cos(hRad), c * Math.sin(hRad)];
+}
+
 // ---------------------------------------------------------------------------
 // Oklch — the value type.
 // ---------------------------------------------------------------------------
@@ -354,10 +360,7 @@ export class Oklch {
    * paid once a colour rather than once a comparison.
    */
   #ab(): readonly [number, number] {
-    if (this.#lab === undefined) {
-      const h = (this.h * Math.PI) / 180;
-      this.#lab = [this.c * Math.cos(h), this.c * Math.sin(h)];
-    }
+    this.#lab ??= labOf(this.c, this.h);
     return this.#lab;
   }
 
@@ -366,9 +369,7 @@ export class Oklch {
   /** Linear-sRGB coordinates for an explicit (l, C, h). Pure; `toRgba` passes
    * already-normalized values so this never sees out-of-range inputs. */
   private toLinearRgb(l: number, C: number, h: number): { r: number; g: number; b: number } {
-    const hRad = h * (Math.PI / 180);
-    const aLab = C * Math.cos(hRad);
-    const bLab = C * Math.sin(hRad);
+    const [aLab, bLab] = labOf(C, h);
 
     const lCube = l + 0.3963377774 * aLab + 0.2158037573 * bLab;
     const mCube = l - 0.1055613458 * aLab - 0.0638541728 * bLab;
