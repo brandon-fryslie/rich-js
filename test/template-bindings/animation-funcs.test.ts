@@ -4,7 +4,8 @@ import { renderToString } from "../../src/core/render.js";
 import { Style, type Hold } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { FrameSequence, type Frame } from "../../src/renderables/frames.js";
-import { animationFuncs, paletteFuncs, richTextFuncs } from "../../src/template-bindings/index.js";
+import { animationFuncs, paletteFuncs, renderTemplate, richTextFuncs, templateFrame, type TemplateFrame } from "../../src/template-bindings/index.js";
+import { render, type Renderable } from "../../src/core/protocol.js";
 import { EASES, Phase } from "../../src/core/easing.js";
 import { Segment } from "../../src/core/segment.js";
 import { Timeline } from "../../src/core/timeline.js";
@@ -168,7 +169,7 @@ function toolboxAt(clock: { t: number; timeline?: Timeline; told?: Hold[] }, opt
     funcs: {
       ...richTextFuncs(),
       ...paletteFuncs(() => GRUVBOX.palette),
-      ...animationFuncs(() => ({ time: clock.t, onHold: (hold) => clock.told?.push(hold) }), { ...options, timeline: () => clock.timeline ?? Timeline.play(0) }),
+      ...animationFuncs(() => ({ ...options, time: clock.t, onHold: (hold) => clock.told?.push(hold) }), { timeline: () => clock.timeline ?? Timeline.play(0) }),
     },
   });
 }
@@ -365,5 +366,39 @@ describe("a value function tells the frame when it changes", () => {
 
   it("a stepped colour holds until its step ends", () => {
     expect(toldAt(`{{ stepped 0.5 "#ff0000" 0.5 "#00ff00" }}`, 0.2)).toEqual([{ lastChange: 0, nextChange: 0.5 }]);
+  });
+});
+
+// A template evaluated inside a frame is drawn as that frame says: its time,
+// the hold it tells and the reader's preference all come from the frame, so
+// a reduced-motion host never ticks for a template's loop.
+describe("a template drawn in a frame is drawn as the frame says", () => {
+  let drawnIn: TemplateFrame = { time: 0 };
+  const engine = createEngine<RichText>({
+    fromString: (s) => new RichText(s),
+    toString: (rt) => rt.plain,
+    funcs: { ...richTextFuncs(), ...animationFuncs(() => drawnIn) },
+  });
+  const looping: Renderable = {
+    render: (options) => {
+      drawnIn = templateFrame(options);
+      return renderTemplate(engine, `{{ loop 2 0 | printf "%.2f" }}`, {}, options);
+    },
+  };
+  /** What `looping` draws at `time`, and every hold it tells there. */
+  const drawnAt = (time: number, reducedMotion: boolean): { text: string; told: Hold[] } => {
+    const told: Hold[] = [];
+    const segments = [...render(looping, { maxWidth: 20, reducedMotion, frame: { time, host: { frameTime: time } }, onHold: (hold) => told.push(hold) })];
+    return { text: segments.map((s) => s.text).join(""), told };
+  };
+
+  it("draws at the frame's time and tells the frame's own listener", () => {
+    expect(drawnAt(0.5, false)).toEqual({ text: "0.25", told: [{ lastChange: 0.5, nextChange: 0.5 }] });
+  });
+
+  it("holds still under the frame's reduced motion", () => {
+    const { text, told } = drawnAt(0.5, true);
+    expect(text).toBe("0.00");
+    expect(told[0]!.nextChange).toBe(Number.POSITIVE_INFINITY);
   });
 });

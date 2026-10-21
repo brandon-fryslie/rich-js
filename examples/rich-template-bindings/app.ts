@@ -61,7 +61,7 @@ import type { TerminalHost } from "@promptctl/rich-js/host";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import {
   animationFuncs,
-  type AnimationFuncsOptions, type TemplateFrame,
+  templateFrame, type TemplateFrame,
   richTextFuncs,
   createRichTextEngine,
   paletteFuncs,
@@ -135,22 +135,23 @@ function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<Rich
   });
 }
 
-// The fourth shape: `animationFuncs(frame, options)` registers `frames`,
-// `stepped`, `tween`, `loop` and `glyphs`, which draw for a moment and say
-// when what they drew changes. The frame is the host's to hand in: a demo
-// row reads the frame it is drawn in off its render options and notes it
-// here, and every template it evaluates reads it — templates compile once,
-// so the frame is read when one is evaluated, never captured when it is built.
+// The fourth shape: `animationFuncs(frame)` registers `frames`, `stepped`,
+// `tween`, `loop` and `glyphs`, which draw for a moment and say when what
+// they drew changes. The frame is the host's to hand in: a demo row notes
+// here the frame it is drawn in (`templateFrame`), the time and the reader's
+// preferences both, and every template it evaluates reads it — templates
+// compile once, so the frame is read when one is evaluated, never captured
+// when it is built.
 let drawnIn: TemplateFrame = { time: 0 };
 
-function makeAnimatedEngine(theme: TerminalTheme, options: AnimationFuncsOptions = {}): Engine<RichText> {
+function makeAnimatedEngine(theme: TerminalTheme): Engine<RichText> {
   return createEngine<RichText>({
     fromString: (s) => new RichText(s),
     toString: (rt) => rt.plain,
     funcs: {
       ...richTextFuncs(),
       ...paletteFuncs(() => theme.palette),
-      ...animationFuncs(() => drawnIn, options),
+      ...animationFuncs(() => drawnIn),
     },
   });
 }
@@ -158,8 +159,6 @@ function makeAnimatedEngine(theme: TerminalTheme, options: AnimationFuncsOptions
 const gruvboxEngine    = makeEngine(GRUVBOX);
 const gruvbox256Engine = makeEngineDrawnAt(GRUVBOX, ColorDepth.EIGHT_BIT);
 const animatedEngine   = makeAnimatedEngine(TOKYO_NIGHT);
-// The same functions told the reader wants no motion: every animation drawn reduced.
-const reducedEngine    = makeAnimatedEngine(TOKYO_NIGHT, { reducedMotion: true });
 const tokyoEngine      = makeEngine(TOKYO_NIGHT);
 const gruvboxCalcEngine = makeCalculatorEngine(GRUVBOX);
 
@@ -357,7 +356,10 @@ interface DemoRow {
   spacer: StaticItem;
 }
 
-function makeDemoRow(label: string, template: string, engine: Engine<RichText>, scope: () => unknown = () => ({})): DemoRow {
+// A row `reduced` is drawn as for a reader who wants no motion, as any
+// container asks it of what it holds: its frame says `reducedMotion`, and
+// every template in it is drawn reduced.
+function makeDemoRow(label: string, template: string, engine: Engine<RichText>, scope: () => unknown = () => ({}), reduced = false): DemoRow {
   const input = new TextInput({
     value: template,
     id: uid("ti"),
@@ -370,8 +372,9 @@ function makeDemoRow(label: string, template: string, engine: Engine<RichText>, 
   const combinedItem = new StaticItem({
     id: uid("row"),
     render: (opts) => {
-      drawnIn = { time: opts.frame?.time ?? 0, onHold: opts.onHold };
-      return buildRowSegments(input, label, engine, scope, opts);
+      const drawn = reduced ? { ...opts, reducedMotion: true } : opts;
+      drawnIn = templateFrame(drawn);
+      return buildRowSegments(input, label, engine, scope, drawn);
     },
   });
 
@@ -674,8 +677,8 @@ const secMotion = makeSection("Motion — tween, loop and glyphs, from a moment 
   makeDemoRow("a tween, read through a ramp", TWEEN_TMPL, animatedEngine, cycle),
   makeDemoRow("a ramp scrolling", SCROLL_TMPL, animatedEngine, cycle),
   makeDemoRow("glyph effects on fragments", GLYPHS_TMPL, animatedEngine, cycle),
-  makeDemoRow("the tween, reduced motion", TWEEN_TMPL, reducedEngine, cycle),
-  makeDemoRow("the glyphs, reduced motion", GLYPHS_TMPL, reducedEngine, cycle),
+  makeDemoRow("the tween, reduced motion", TWEEN_TMPL, animatedEngine, cycle, true),
+  makeDemoRow("the glyphs, reduced motion", GLYPHS_TMPL, animatedEngine, cycle, true),
 ]);
 
 // ─── Section list ──────────────────────────────────────────────────────────

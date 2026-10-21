@@ -283,7 +283,7 @@ describe("a one-shot render under reduced motion", () => {
 
 describe("the template animation functions under reduced motion", () => {
   it("refuse a time that is not finite, as they do with motion", () => {
-    const funcs = animationFuncs(() => ({ time: Number.NaN }), { reducedMotion: true });
+    const funcs = animationFuncs(() => ({ time: Number.NaN, reducedMotion: true }));
     const engine = createEngine<RichText>({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: { ...richTextFuncs(), ...funcs } });
     expect(() => engine.compile(`{{ frames 0.25 "a" 0.25 "b" }}`)({})).toThrow(/frames needs a finite t, got NaN/);
     expect(() => engine.compile(`{{ stepped 0.5 "#ff0000" 0.5 "#00ff00" }}`)({})).toThrow(/stepped needs a finite t, got NaN/);
@@ -295,7 +295,7 @@ describe("the template animation functions under reduced motion", () => {
       createEngine<RichText>({
         fromString: (s) => new RichText(s),
         toString: (rt) => rt.plain,
-        funcs: { ...richTextFuncs(), ...animationFuncs(() => ({ time: frameTime }), { reducedMotion }) },
+        funcs: { ...richTextFuncs(), ...animationFuncs(() => ({ time: frameTime, reducedMotion })) },
       }).compile(`{{ frames 0.25 "a" 0.25 "b" }}{{ fg (stepped 0.5 "#ff0000" 0.5 "#00ff00") "x" }}`);
     const [reduced, full] = [compiled(true), compiled(false)];
     const evaluate = (reducedMotion: boolean): string =>

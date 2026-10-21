@@ -36,9 +36,12 @@ function appended(i: number, at: number): Lifecycle {
 }
 
 // The log at a time: every line due by then and not yet gone, so a frame
-// drawn for any time — an earlier one included — shows that time's log.
+// drawn for any time — an earlier one included — shows that time's log. A
+// line is gone once it has stayed and its exit has run, so only the lines
+// appended since then are made at all, and one that has left costs nothing.
 const view = Animation.map(Animation.time(), (t) => {
-  const log = Array.from({ length: Math.floor(t / EVERY) + 1 }, (_, i) => appended(i, i * EVERY)).filter((line) => !line.gone(t));
+  const first = Math.max(0, Math.floor((t - STAYS - EXIT.seconds) / EVERY));
+  const log = Array.from({ length: Math.max(0, Math.floor(t / EVERY) + 1 - first) }, (_, n) => appended(first + n, (first + n) * EVERY)).filter((line) => !line.gone(t));
   return new Panel(new Group(...log), { title: `build log · ${log.length} shown`, width: 44, borderStyle: "#585b70" });
 });
 

@@ -81,20 +81,22 @@ export function run(host: TerminalHost, caps: DashboardCapabilities): Running {
   // live readings of the system and a simulated build, not values of the
   // time — so the program steps them once a frame on the clock it is given,
   // puts what they show in their cells, and asks for a repaint; the view is
-  // the layout as it stands. The program holds the one stepping timer, stops
-  // it when it hands the terminal back, and starts it again on resume, so a
-  // suspended dashboard stands still.
+  // the layout as it stands. The program holds one stepping timer for as long
+  // as `run` lasts, and a step moves the widgets only while the app is
+  // running, so a suspended dashboard stands still and the app's phase is
+  // the one thing that says so.
   const app = new App({ host, surface: "alternate", view: layout, clock: caps.clock, rate: frameRate(FPS) });
   // The widgets are made for the app that draws them — the build pane's
   // Progress is timed on its frames — and the app draws nothing until `run`.
   const panes = bindPanes(layout, buildWidgets(caps, app));
   draw(panes);
   const step = (): void => {
+    if (app.phase !== "running") return;
     for (const pane of panes) pane.state = pane.widget.tick(pane.state);
     draw(panes);
     app.refresh();
   };
-  let stepping = caps.clock.every(frameRate(FPS), step);
+  const stepping = caps.clock.every(frameRate(FPS), step);
 
   app.onKey((press) => {
     switch (KEYS[keyName(press)]) {
@@ -102,15 +104,11 @@ export function run(host: TerminalHost, caps: DashboardCapabilities): Running {
         app.stop();
         return;
       case "suspend":
-        stepping();
-        // Resumed into a running app, not one stopped while away.
-        void app.suspend().then(() => {
-          if (app.phase === "running") stepping = caps.clock.every(frameRate(FPS), step);
-        });
+        void app.suspend();
         return;
     }
   });
 
   // The dashboard steps for as long as it runs, and stops on every way `run` settles.
-  return { done: app.run().finally(() => stepping()), stop: () => app.stop() };
+  return { done: app.run().finally(stepping), stop: () => app.stop() };
 }

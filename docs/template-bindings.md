@@ -246,7 +246,7 @@ Passing a palette name where a color belongs is the other common slip, and it na
 
 ## Animating a template
 
-`animationFuncs(frame)` registers the functions that draw for a moment in time. The host owns the clock: `frame()` is read each time a template is evaluated, and returns the frame's `time` and, if the host wants to hear when what the functions drew changes, an `onHold` listener. So a template compiled once shows each redraw's moment, and a host that redraws once a second sees the same thing at each of its frames as a host that redraws sixty times a second. Every duration is in seconds.
+`animationFuncs(frame)` registers the functions that draw for a moment in time. The host owns the clock: `frame()` is read each time a template is evaluated. It returns the frame's `time`, an `onHold` listener if the host wants to hear when what the functions drew changes, and the reader's preferences, `reducedMotion` and `asciiOnly`. So a template compiled once shows each redraw's moment, and a host that redraws once a second sees the same thing at each of its frames as a host that redraws sixty times a second. Every duration is in seconds.
 
 - `tween <seconds> <ease> <start> <from> <to>` is a number eased from `from` to `to` over `seconds`, starting at the moment `start`, and held at `to` afterwards. Every `start` is a moment on the timeline the functions are drawn on, which is the host's own clock unless you hand one in (below); with one handed in, record a change at `Timeline.at(timeline, host)`, not at the host time. The ease is any name in `EASES`, physics curves such as `"spring"` and `"back-out"` included. Pipe the target into it: `.pct | tween 0.4 "ease-out" .changedAt .was` eases from the old value to the new one, starting when your state says the value changed.
 - `loop <seconds> <start>` is the way through a period, rising from 0 towards 1 and starting again, measured from `start`. Give a row of cells starts a step apart and the same motion travels along the row.
@@ -281,12 +281,12 @@ for (frameTime of [10, 10.2, 10.4, 10.6, 11, 12]) {
 
 The tween changes with every frame and the typewriter stops changing once the text is typed. Every function says when what it drew will next change, so a host that schedules redraws knows when to look again. `frames` and `glyphs` mark each cell they draw with that moment, covering their own glyphs. A number or a colour has no cells to mark, so `tween`, `loop` and `stepped` tell the frame's `onHold` instead.
 
-A template evaluated inside a rich-js frame, by a renderable in an [`App`](/app#animating-at-a-frame-rate) or a `Live`, hands on the frame it is drawn in. That renderable's render options carry the same two fields: `frame.time` and `onHold`. The app then paints while a tween moves and stops once it lands:
+A template evaluated inside a rich-js frame, by a renderable in an [`App`](/app#animating-at-a-frame-rate) or a `Live`, hands on the frame it is drawn in. `templateFrame(options)` reads it off that renderable's render options. The app then paints while a tween moves, stops once it lands, and draws it reduced when the app's `reducedMotion` says so. The frame's time is already on the app's timeline, so register no `timeline` of your own here:
 
 ```ts silent
 import { createEngine } from "@promptctl/go-template-js";
 import { RichText, type Renderable } from "@promptctl/rich-js";
-import { animationFuncs, renderTemplate, richTextFuncs, type TemplateFrame } from "@promptctl/rich-js/template-bindings";
+import { animationFuncs, renderTemplate, richTextFuncs, templateFrame, type TemplateFrame } from "@promptctl/rich-js/template-bindings";
 
 let drawnIn: TemplateFrame = { time: 0 };
 const engine = createEngine<RichText>({
@@ -297,7 +297,7 @@ const engine = createEngine<RichText>({
 
 const gauge: Renderable = {
   render: (options) => {
-    drawnIn = { time: options.frame?.time ?? 0, onHold: options.onHold };
+    drawnIn = templateFrame(options);
     return renderTemplate(engine, `{{ printf "%3.0f%%" (tween 0.6 "ease-out" 0 20 85) }}`, {}, options);
   },
 };
@@ -305,7 +305,7 @@ const gauge: Renderable = {
 
 ### Pausing, reversing and reduced motion
 
-The second argument hands in what a template has no render options to tell it. `timeline` is a getter for the [timeline](/animation#playback-a-timeline) every function is drawn on. It defaults to the host's own clock. Return a paused timeline to freeze a session's animations, or a reversed one to run them backwards, with nothing recompiled; a frame drawn on a paused timeline says it will never change. `reducedMotion: true` draws every animation [reduced](/animation#reduced-motion): a tween jumps to its target when it starts, a loop holds at its start, and a typewriter shows its text whole. `asciiOnly: true` makes the glyphs an effect picks for itself, such as rain, ASCII:
+A host outside rich-js plays its own clock through a timeline. The second argument's `timeline` is a getter for the [timeline](/animation#playback-a-timeline) every function is drawn on, mapping the frame's `time`; it defaults to that time as it is. Return a paused timeline to freeze a session's animations, or a reversed one to run them backwards, with nothing recompiled; a frame drawn on a paused timeline says it will never change. A frame that says `reducedMotion: true` has every animation drawn [reduced](/animation#reduced-motion): a tween jumps to its target when it starts, a loop holds at its start, and a typewriter shows its text whole. A frame that says `asciiOnly: true` makes the glyphs an effect picks for itself, such as rain, ASCII:
 
 ```typescript
 import { createEngine } from "@promptctl/go-template-js";

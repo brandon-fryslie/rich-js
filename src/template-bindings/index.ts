@@ -48,7 +48,7 @@ import { colorFuncs, type DrawnAt } from "./color-funcs.js";
 
 export { paletteFuncs } from "./palette-funcs.js";
 export { colorFuncs, readableOnFunc, type DrawnAt } from "./color-funcs.js";
-export { animationFuncs, type AnimationFuncsOptions, type TemplateFrame } from "./animation-funcs.js";
+export { animationFuncs, templateFrame, type AnimationFuncsOptions, type TemplateFrame } from "./animation-funcs.js";
 
 /**
  * Funcs registered by the rich-js binding — the colour sinks, the palette-free
