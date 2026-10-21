@@ -7,7 +7,7 @@ import { divideLine, wordWidths } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js";
 import { stripOscTerminators } from "./osc8.js";
-import { drawable, getStyle, withBoundedWidth } from "./protocol.js";
+import { betweenPasses, drawable, getStyle, withBoundedWidth } from "./protocol.js";
 import type { Renderable, Measurable, OverflowMethod, RenderOptions } from "./protocol.js";
 import { pattern } from "./pattern.js";
 import { ListState, State } from "./state.js";
@@ -137,7 +137,7 @@ function resolveDefinition(options: RenderOptions, style: string): Style {
     return getStyle(options, style);
   } catch (err) {
     if (!(err instanceof StyleSyntaxError)) throw err;
-    options.onStyleError?.(err, style);
+    betweenPasses(() => options.onStyleError?.(err, style));
     return NULL_STYLE;
   }
 }

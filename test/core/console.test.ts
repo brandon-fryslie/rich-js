@@ -86,6 +86,15 @@ describe("Console output during a render", () => {
     expect(c.exportText()).toBe("");
     if (capturing) expect(c.endCapture()).toBe("");
   });
+
+  it("is an onStyleError handler's to make, as an event handler's is", () => {
+    const { console: report } = makeConsole({ record: true });
+    const { console: c } = makeConsole({
+      onStyleError: (_, style) => report.log(`style "${style}"`),
+    });
+    c.print("[bold rd]typo[/]");
+    expect(report.exportText()).toContain('style "bold rd"');
+  });
 });
 
 // --- Construction ---
