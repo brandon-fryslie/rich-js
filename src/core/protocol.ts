@@ -139,9 +139,9 @@ export interface RenderOptions {
    * not yet entered draws none — and one a container crops away is still
    * reported. It reaches whatever `frame` reaches, so a container that hands
    * its child the frame's time hands back the child's hold with no word about
-   * either. [LAW:composability] Absent, nobody is listening. A render made to
-   * measure is not drawing and does not tell (`measuring`), and nor does a
-   * held one (`holding`), whose output is dropped whole.
+   * either. [LAW:composability] Absent, nobody is listening. A measurement
+   * (`measuring`) and a held render (`holding`) tell too: what they find
+   * decides the frame's layout, so when it changes, the frame may.
    */
   onHold?: (hold: Hold) => void;
 }
@@ -511,9 +511,10 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
 
 /**
  * Where a held renderable is drawn, and the options it is drawn under: what
- * it draws is dropped, and with it any hold it would tell (`onHold`), and
- * everything it draws is reported held, whatever width it hands it. It
- * commits nothing, as a measurement commits nothing —
+ * it draws is dropped, and everything it draws is reported held, whatever
+ * width it hands it. What it tells of its hold (`onHold`) still reaches the
+ * frame: an element not yet entered is held at no width, and must say when it
+ * enters and takes some. It commits nothing, as a measurement commits nothing —
  * its effects (`afterPass`) are learned at a width nobody sees, so a
  * `Viewport` it shows content through keeps the scroll the last frame shown
  * left it.
@@ -527,7 +528,7 @@ function holding(options: RenderOptions): { phase: Phase; drawing: RenderOptions
   const { onPresent } = options;
   return {
     phase: { pass: phaseHere().pass, effects: [] },
-    drawing: { ...options, maxWidth: 0, onPresent: onPresent && ((content) => onPresent(content, "held")), onHold: undefined },
+    drawing: { ...options, maxWidth: 0, onPresent: onPresent && ((content) => onPresent(content, "held")) },
   };
 }
 
@@ -546,14 +547,15 @@ export function measure(measurable: Measurable, options: RenderOptions): { minim
 
 /**
  * `options` as a measurement is asked with. A `measure` that renders to learn
- * its shape draws nothing on the frame, so it reports nothing to `onPresent` or
- * `onHold` — one that did would put a widget in the view at the moment a
- * container measured it, and keep one the frame then cropped away.
+ * its shape draws nothing on the frame, so it reports nothing to `onPresent` —
+ * one that did would put a widget in the view at the moment a container
+ * measured it, and keep one the frame then cropped away. It still tells its
+ * hold (`onHold`): a layout decided by a measurement changes when it does.
  *
  * [LAW:single-enforcer] Every measurement starts here: `measure` asks with it.
  */
 function measuring(options: RenderOptions): RenderOptions {
-  return { ...options, onPresent: undefined, onHold: undefined };
+  return { ...options, onPresent: undefined };
 }
 
 /**

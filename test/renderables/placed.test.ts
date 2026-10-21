@@ -225,6 +225,15 @@ describe("an animation placed showing nothing", () => {
     ["Rows", (child) => new Rows(new RichText("above", { end: "" }), child, new RichText("below", { end: "" }))],
     ...CONTAINERS,
     ["Tree", (child) => new Tree("root").add(child)],
+    // Each sizes the child from what it measures, 0 before it enters, so draws it held at no width.
+    ["fitted Panel", (child) => Panel.fit(child)],
+    ["header-less Table", (child) => {
+      const table = new Table({ showHeader: false });
+      table.addColumn("a");
+      table.addColumn("b");
+      table.addRow(new RichText("left", { end: "" }), child);
+      return table;
+    }],
   ];
 
   it.each(rowsOf)("in a %s, takes the rows static nothing takes until it enters, and wakes the app when it does", (_, contain) => {

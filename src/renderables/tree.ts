@@ -78,12 +78,10 @@ interface Guide {
 }
 
 /** What a label drew, cut into its lines: a label that draws nothing — a lifecycle not yet entered — has none. */
-interface Drawn {
-  readonly lines: readonly (readonly Segment[])[];
-}
+type Drawn = readonly (readonly Segment[])[];
 
 /** A row a label is known to draw, unread. */
-const A_ROW: Drawn = { lines: [[]] };
+const A_ROW: Drawn = [[]];
 
 /**
  * A label drawn for its place in the tree: under `styles`, the stack its row
@@ -109,7 +107,8 @@ function drawLabel(options: RenderOptions, label: Renderable, width: number): It
 }
 
 /** One label, what it drew, and the guides that lead each of its lines. */
-interface TreeRow extends Drawn {
+interface TreeRow {
+  readonly lines: Drawn;
   readonly guides: readonly Guide[];
   readonly label: Renderable;
   /**
@@ -126,7 +125,7 @@ function labelWidth(options: RenderOptions, label: Renderable): number {
 }
 
 /** Whether a row is drawn: a subtree with one takes a place among its siblings. */
-const isDrawn = (row: Drawn): boolean => row.lines.length > 0;
+const isDrawn = (row: TreeRow): boolean => row.lines.length > 0;
 
 export class Tree implements Renderable, Measurable {
   readonly label: Renderable;
@@ -186,7 +185,7 @@ export class Tree implements Renderable, Measurable {
     // node's style sits under the label's own, as Rich's `Styled` puts it, so
     // markup in the label still wins.
     const draw: DrawLabel = (label, styles, columns) =>
-      ({ lines: Segment.splitLines(Segment.applyStyle(drawLabel(options, label, labelRoom(options, columns)), resolve(styles))) });
+      Segment.splitLines(Segment.applyStyle(drawLabel(options, label, labelRoom(options, columns)), resolve(styles)));
     for (const row of this._walk(draw)) {
       yield* this._renderRow(options, resolve, row);
     }
@@ -236,7 +235,7 @@ export class Tree implements Renderable, Measurable {
   ): TreeRow[] {
     const styles = [...inheritedStyles, this.style];
     const guideStyles = [...inheritedGuideStyles, this.guideStyle];
-    const own: TreeRow = { guides: [], label: this.label, styles, ...draw(this.label, styles, columns) };
+    const own: TreeRow = { guides: [], label: this.label, styles, lines: draw(this.label, styles, columns) };
     const subtrees = this._subtrees(columns + 1, draw, guideStyles, styles);
     const firsts = subtrees.map((rows) => rows.findIndex(isDrawn));
     const last = firsts.reduce((found, first, i) => (first >= 0 ? i : found), -1);
@@ -323,7 +322,7 @@ export class Tree implements Renderable, Measurable {
       return width;
     };
     const draw: DrawLabel = (label, _styles, columns) =>
-      widthOf(label) > 0 ? A_ROW : { lines: Segment.splitLines(drawLabel(parsed, label, Math.min(labelRoom(parsed, columns), 1))) };
+      widthOf(label) > 0 ? A_ROW : Segment.splitLines(drawLabel(parsed, label, Math.min(labelRoom(parsed, columns), 1)));
     let natural = 0;
     for (const row of this._walk(draw).filter(isDrawn)) {
       natural = Math.max(natural, row.guides.length * GUIDE_CELLS + Math.max(1, widthOf(row.label)));
