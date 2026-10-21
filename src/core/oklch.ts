@@ -148,6 +148,12 @@ function inGamut(r: number, g: number, b: number): boolean {
   );
 }
 
+/** Polar (C, h°) → OKLab (a, b): the one spelling `deltaE` measures by and `toRgba` draws by. */
+function labOf(c: number, h: number): readonly [number, number] {
+  const hRad = h * (Math.PI / 180);
+  return [c * Math.cos(hRad), c * Math.sin(hRad)];
+}
+
 // ---------------------------------------------------------------------------
 // Oklch — the value type.
 // ---------------------------------------------------------------------------
@@ -342,21 +348,28 @@ export class Oklch {
    * Symmetric and pure.
    */
   deltaE(other: Oklch): number {
-    const a = (this.h * Math.PI) / 180;
-    const b = (other.h * Math.PI) / 180;
-    return Math.hypot(
-      this.l - other.l,
-      this.c * Math.cos(a) - other.c * Math.cos(b),
-      this.c * Math.sin(a) - other.c * Math.sin(b),
-    );
+    const [a, b] = this.#ab();
+    const [otherA, otherB] = other.#ab();
+    return Math.hypot(this.l - other.l, a - otherA, b - otherB);
   }
+
+  /**
+   * This colour's OKLab a and b, worked out on first ask and kept: a colour
+   * matched against a palette is measured against every entry, and each
+   * entry against every colour it is matched with, so the trigonometry is
+   * paid once a colour rather than once a comparison.
+   */
+  #ab(): readonly [number, number] {
+    this.#lab ??= labOf(this.c, this.h);
+    return this.#lab;
+  }
+
+  #lab: readonly [number, number] | undefined;
 
   /** Linear-sRGB coordinates for an explicit (l, C, h). Pure; `toRgba` passes
    * already-normalized values so this never sees out-of-range inputs. */
   private toLinearRgb(l: number, C: number, h: number): { r: number; g: number; b: number } {
-    const hRad = h * (Math.PI / 180);
-    const aLab = C * Math.cos(hRad);
-    const bLab = C * Math.sin(hRad);
+    const [aLab, bLab] = labOf(C, h);
 
     const lCube = l + 0.3963377774 * aLab + 0.2158037573 * bLab;
     const mCube = l - 0.1055613458 * aLab - 0.0638541728 * bLab;
