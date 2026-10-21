@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-501",
-      "ref": "refs/pull/501/merge",
-      "sha": "a3f19dd4291e7f8a3c41228b2351361b4a3f8bcc",
-      "timestamp": "2026-10-21T04:07:37.688Z",
-      "commits": [
-        {
-          "sha": "a3f19dd4291e7f8a3c41228b2351361b4a3f8bcc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T04:05:42Z",
-          "message": "Merge b375c5cd1abd5a86a3fee01b08e6b1fe74641c4d into 6566773878043237201f7601dcd3f982e5766ea0\n"
-        },
-        {
-          "sha": "b375c5cd1abd5a86a3fee01b08e6b1fe74641c4d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T22:05:36-06:00",
-          "message": "Review fixes: frameAt is placement at a named time; a cell's hold is whole (rich-animation-27tq.50o)\n\n- frameAt's renderable draws the animation placed in a frame drawn for t,\n  so an Effected stamps its exact hold (a no-colour Progress pulse sleeps\n  again) and animations inside its value draw at t. drawnAt folded into\n  placedRender.\n- Animation.of copies every member, own and inherited, as own properties\n  (membersOf): a class instance keeps its methods, and a spread is whole.\n- Style carries one `hold` (both ends) instead of two optional fields: a\n  cell saying only nextChange claimed it always was, and a reversed\n  timeline never woke for it.\n- Timed and Hold exported from the main barrel.\n"
-        },
-        {
-          "sha": "74bdda26b46db1c85ee83e99b89331d5934b68ce",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T21:35:59-06:00",
-          "message": "Animations and effects are placed like any renderable (rich-animation-27tq.50o)\n\nAn Animation of renderables is a renderable: placed in any container — a\nPanel, a Table cell, a Group, a container written outside rich-js — it\ndraws at the frame's time (RenderOptions.frame; 0 when printed) and stamps\nits cells with its hold. The type carries the face exactly when the values\nare renderables, so Animation<number> is refused where a renderable goes.\n\n- core/animation: Timed<T> (the old interface) and the conditional\n  Animation<T>; Animation.of attaches the face (NoInfer on its return, so\n  an annotated `const a: Animation<Renderable> = Animation.of({...})`\n  infers from the literal). shownAt, stamp/stampFrame and the face\n  (placedRender/Measure/Contents, drawnAt) live here; tier 5.\n- A stamp is the whole hold: Style.lastChange beside nextChange, layered\n  as an intersection; Segment.lastChange reads it. Every stamper stamps\n  both ends (face, Effected/GlyphEffected, Spinner, textFrameAt, the\n  TextInput caret, ScrollFrame's carrier, frameAt).\n- Effected/GlyphEffected take no t: they are the animations, at(t) the\n  Recolored/Reglyphed value, with their exact face. Spinner and\n  FrameSequence are placed too.\n- Hosts: every view is on the timeline; HostView loses \"animation\",\n  FrameSays loses `silent` (every view is), held is a paused timeline.\n  A Live polls every view at its rate; a reduced view is no longer held.\n- Frame-clock rule: a placed animation inside another's value draws at\n  the frame's time (docs/animation.md, \"Placing one\").\n\ntest/renderables/placed.test.ts is the epic's proof: a user-declared Box\ncontainer holding a tween and an Effected gradient, drawn by an App, with\nPanel/Table/Columns/Layout/Group giving the same wakes.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "6566773878043237201f7601dcd3f982e5766ea0",
-      "timestamp": "2026-10-20T06:19:57.835Z",
+      "sha": "0a9235f3fff78186aae3f112960b8ac30fbb9a23",
+      "timestamp": "2026-10-21T04:17:14.189Z",
       "commits": [
         {
-          "sha": "6566773878043237201f7601dcd3f982e5766ea0",
+          "sha": "0a9235f3fff78186aae3f112960b8ac30fbb9a23",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T00:17:58-06:00",
-          "message": "The animation playground: every kind of motion on one timeline (rich-animation-42lg.bp9) (#500)\n\n* The animation playground: every kind of motion on one timeline, in the card and in Node (rich-animation-42lg.bp9)\n\nA demo under examples/animation-playground/: every kind the epic built, each\nin a titled panel, with buttons to pause, reverse, scrub, change speed, step\nand seek, and three preferences — reduced motion, colour depth, frame rate —\neach of which rebuilds the WidgetApp over the same host, clock and timeline.\n`npm run animation-playground` runs main.js in Node; the card runs the same.\n\nOne-shots replay through Animation.repeat, each turn built once; the demo's\nown `cycle` combinator is gone. Playback state is the app's timeline alone.\nColour depth is a delegating TerminalHost whose env says FORCE_COLOR/NO_COLOR.\n\ntest/examples/animation-playground drives it through clicks on an xterm model\nof the screen with a fake clock: every kind draws at 0, 7.3 s and near 10^6 s;\npaused paints nothing; reverse and speed move the readout; the scrub bar seeks\nto the cell pressed; reduced motion holds the gallery still where full motion\nmoves it; sixteen colours writes no 38/48;2/5 and no colour writes no colour\nSGR at all.\n\n* The playground keeps what the reader did across a rebuild; WidgetApp forwards rate (rich-animation-42lg.bp9)\n\n/code-review high on PR #500:\n- WidgetApp forwards App's rate setter, so frame rate changes live\n  instead of rebuilding the app.\n- Widgets and the gallery outlive a session, so typed text, scroll and\n  focus survive a reduced-motion or colour-depth rebuild.\n- The run starts at the terminal's own colour environment; forcing a\n  depth is a step in the cycle.\n- Controls take the rows they draw, so at 80 columns the readout stays.\n- The scrub track draws in the cells it is given and stamps the window\n  it showed on its anchor owner, so a press seeks into the window on\n  screen.\n- The narrow marquee holds in view under reduced motion; the marching\n  ants walk clockwise by their place along the border."
+          "timestamp": "2026-10-20T22:15:44-06:00",
+          "message": "Animations and effects are placed like any renderable (rich-animation-27tq.50o) (#501)\n\n* Animations and effects are placed like any renderable (rich-animation-27tq.50o)\n\nAn Animation of renderables is a renderable: placed in any container — a\nPanel, a Table cell, a Group, a container written outside rich-js — it\ndraws at the frame's time (RenderOptions.frame; 0 when printed) and stamps\nits cells with its hold. The type carries the face exactly when the values\nare renderables, so Animation<number> is refused where a renderable goes.\n\n- core/animation: Timed<T> (the old interface) and the conditional\n  Animation<T>; Animation.of attaches the face (NoInfer on its return, so\n  an annotated `const a: Animation<Renderable> = Animation.of({...})`\n  infers from the literal). shownAt, stamp/stampFrame and the face\n  (placedRender/Measure/Contents, drawnAt) live here; tier 5.\n- A stamp is the whole hold: Style.lastChange beside nextChange, layered\n  as an intersection; Segment.lastChange reads it. Every stamper stamps\n  both ends (face, Effected/GlyphEffected, Spinner, textFrameAt, the\n  TextInput caret, ScrollFrame's carrier, frameAt).\n- Effected/GlyphEffected take no t: they are the animations, at(t) the\n  Recolored/Reglyphed value, with their exact face. Spinner and\n  FrameSequence are placed too.\n- Hosts: every view is on the timeline; HostView loses \"animation\",\n  FrameSays loses `silent` (every view is), held is a paused timeline.\n  A Live polls every view at its rate; a reduced view is no longer held.\n- Frame-clock rule: a placed animation inside another's value draws at\n  the frame's time (docs/animation.md, \"Placing one\").\n\ntest/renderables/placed.test.ts is the epic's proof: a user-declared Box\ncontainer holding a tween and an Effected gradient, drawn by an App, with\nPanel/Table/Columns/Layout/Group giving the same wakes.\n\n* Review fixes: frameAt is placement at a named time; a cell's hold is whole (rich-animation-27tq.50o)\n\n- frameAt's renderable draws the animation placed in a frame drawn for t,\n  so an Effected stamps its exact hold (a no-colour Progress pulse sleeps\n  again) and animations inside its value draw at t. drawnAt folded into\n  placedRender.\n- Animation.of copies every member, own and inherited, as own properties\n  (membersOf): a class instance keeps its methods, and a spread is whole.\n- Style carries one `hold` (both ends) instead of two optional fields: a\n  cell saying only nextChange claimed it always was, and a reversed\n  timeline never woke for it.\n- Timed and Hold exported from the main barrel."
         }
       ]
     }
