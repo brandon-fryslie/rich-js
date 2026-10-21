@@ -64,7 +64,7 @@
  */
 
 import { action, runInAction } from "mobx";
-import { observable, observableRef } from "./observable.js";
+import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import {
@@ -324,13 +324,13 @@ export class TextInput extends ThemedWidget {
   readonly id: string;
   readonly focusable = true;
 
-  @observable private accessor _value: string;
-  @observable private accessor _cursor: CodePoint;
+  @observableRef private accessor _value: string;
+  @observableRef private accessor _cursor: CodePoint;
   // When the field last took focus, a click, or a key it handled, on the
   // frame's clock (each event's `time`): where the caret's blink restarts.
   // The blink itself is a function of this and the time a frame is drawn
   // for, so nothing about it is kept.
-  @observable private accessor _blinkFrom = 0;
+  @observableRef private accessor _blinkFrom = 0;
 
   // [LAW:single-enforcer] Every write to either half of the pair passes
   // `graphemeBoundary`, so the cursor is a cluster boundary inside `value`

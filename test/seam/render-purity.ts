@@ -33,7 +33,7 @@
  *     `WeakMemo`'s key, which nothing reads back out. A `State` anywhere in `V` is reported
  *     and no debt row can excuse it: a memo is "same key, same value", and a
  *     memo of states passes in the pass that fills it and throws from the next;
- *   - an `accessor` decorated by `observable` or `observableRef` from
+ *   - an `accessor` decorated by `observableRef` from
  *     `src/widgets/observable.ts`, the widgets' state carrier, which refuses a
  *     write during render as `State` does; its value is walked. An accessor
  *     decorated by mobx's own is a writable property like any other;

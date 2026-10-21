@@ -47,7 +47,7 @@ describe("the gate", () => {
       fixture,
       [
         `import { observable } from "mobx";`,
-        `import { observable as refusing, observableRef } from ${widgets("observable.js")};`,
+        `import { observableRef } from ${widgets("observable.js")};`,
         `import { State } from ${core("state.js")};`,
         `import { Memo, WeakMemo } from ${core("memo.js")};`,
         `export class Writes { private n = 0; render() { this.n += 1; return []; } }`,
@@ -60,7 +60,7 @@ describe("the gate", () => {
         `}`,
         `export class Observes { @observable accessor x = 0; render() { return []; } }`,
         `export class Refuses {`,
-        `  @refusing accessor x = 0;`,
+        `  @observableRef accessor x = 0;`,
         `  @observableRef accessor names: readonly string[] = [];`,
         `  @observableRef accessor items: number[] = [];`,
         `  render() { return []; }`,

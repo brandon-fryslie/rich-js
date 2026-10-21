@@ -9,7 +9,7 @@
  */
 
 import { action } from "mobx";
-import { observable } from "./observable.js";
+import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { NULL_STYLE, type Style } from "../core/style.js";
 import type { RenderOptions } from "../core/protocol.js";
@@ -25,10 +25,10 @@ export abstract class WidgetBase implements InteractiveWidget {
   abstract readonly id: string;
   abstract readonly focusable: boolean;
 
-  @observable accessor focused: boolean = false;
-  @observable accessor hovered: boolean = false;
-  @observable accessor active: boolean = false;
-  @observable accessor disabled: boolean = false;
+  @observableRef accessor focused: boolean = false;
+  @observableRef accessor hovered: boolean = false;
+  @observableRef accessor active: boolean = false;
+  @observableRef accessor disabled: boolean = false;
 
   private readonly changeHandlers = new Set<(w: InteractiveWidget) => void>();
   private readonly submitHandlers = new Set<(w: InteractiveWidget) => void>();

@@ -19,7 +19,7 @@
  */
 
 import { action } from "mobx";
-import { observable, observableRef } from "./observable.js";
+import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
@@ -45,7 +45,7 @@ export class Slider extends ThemedWidget {
   readonly id: string;
   readonly focusable = true;
 
-  @observable accessor value: number;
+  @observableRef accessor value: number;
   @observableRef accessor min: number;
   @observableRef accessor max: number;
   @observableRef accessor step: number;
