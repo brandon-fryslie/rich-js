@@ -153,7 +153,7 @@ try {
 
 ## A view drawn for a time
 
-Nothing a `Live` draws reads a clock. In place of a renderable, hand it a view — a function asked for the renderable once per frame with the frame's time `t`, in seconds on the `Live`'s clock — and whatever is drawn for a time — a [`Spinner`](/frames#spinners) drawn at it, [`Frames`](/frames) over a sequence the view holds, an [effect](/effects) built for it, or any [animation](/animation) drawn at it with `frameAt` — is drawn for that `t`, its cells saying when it next changes. The same `t` draws the same bytes at four frames a second or sixty, and a `Live` on a hand-moved `Clock` draws the frames for that clock's time:
+Nothing a `Live` draws reads a clock. In place of a renderable, hand it a view — a function asked for the renderable once per frame with the frame's time `t`, in seconds on the `Live`'s clock — and whatever is drawn for a time — a [`Spinner`](/frames#spinners) drawn at it, [`Frames`](/frames) over a sequence the view holds, an [effect](/effects) built for it, or any [animation](/animation) drawn at it with `frameAt` — is drawn for that `t`, as an animation placed in a renderable view is drawn for the frame's time, its cells saying when it next changes. The same `t` draws the same bytes at four frames a second or sixty, and a `Live` on a hand-moved `Clock` draws the frames for that clock's time:
 
 ```typescript live
 import { Live, Spinner } from "@promptctl/rich-js";
@@ -170,7 +170,7 @@ try {
 
 A renderable passed instead is drawn as it is at each frame, and is never handed a `t`. An [`Animation`](/animation) of a renderable is the third kind of view: it says itself when what it draws changes, so a frame held until a switch is drawn at the switch, between two of the rate's frames. A renderable or a function may also change with state the `Live` cannot see, so the auto-refresh polls them at its rate, as Rich's does. An animation says everything it changes, so a tween is drawn every frame while it moves and not after it arrives. `update()` takes any of the three.
 
-`t` is the time since the `Live` was made, read off its clock through its [timeline](/animation#playing-in-a-live-or-an-app), which plays from then at the clock's pace unless the `timeline` option gives another. Setting `live.timeline` to a paused, sought, reversed or faster one draws one frame for its new time. Paused, an animation's frame holds and the auto-refresh draws nothing until the timeline plays again, though `refresh()` still draws it. A function is still polled at the rate, each frame drawn at the held time, so the state it reads stays current. A renderable is off the timeline, so pausing holds none of it.
+`t` is the time since the `Live` was made, read off its clock through its [timeline](/animation#playing-in-a-live-or-an-app), which plays from then at the clock's pace unless the `timeline` option gives another. Setting `live.timeline` to a paused, sought, reversed or faster one draws one frame for its new time. Paused, every view is drawn at the held time. The auto-refresh still polls it at the rate, since a view may read state the `Live` cannot see, and the state it reads stays current; a placed animation draws its held frame each time.
 
 ## When a frame fails to render
 

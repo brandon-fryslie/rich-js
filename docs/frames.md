@@ -99,7 +99,7 @@ const frames = new FrameSequence(
 const lit = EFFECT_CATALOGUE.loops.pulse({ z: 3 });
 
 for (const t of [0, 0.5, 1]) {
-  console.print(new Effected(new Frames(frames, { t }), lit, { t, key: "loading", theme }));
+  console.print(new Effected(new Frames(frames, { t }), lit, { key: "loading", theme }).at(t));
 }
 ```
 

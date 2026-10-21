@@ -748,7 +748,7 @@ function order(z: number): (cell: Placed) => number {
  * `schedule` is when its frame next changes on that clock, whatever the
  * element draws: what a caller drawing the transition inside an animation —
  * a lifecycle — says its frame does, since the frame it hands over carries
- * no word of its own (`stampFrame`, `./frames.ts`). Until done it changes
+ * no word of its own (`stampFrame`, `../core/animation.ts`). Until done it changes
  * every frame, or on each hold of a beat (`onBeat`), and from then never.
  * [LAW:one-source-of-truth] `done` is that schedule read as a fact — done
  * from the first moment it never changes again — so no transition carries
@@ -777,14 +777,14 @@ export function transition<D, F>(seconds: number, effect: (drawn: D) => Animatio
   const ran: Transition<(drawn: D) => Animation<F>> = new Transition(
     (drawn) => {
       const moving = effect(drawn);
-      return {
-        at: (t) => moving.at(t),
-        nextChange: (t): number => (ran.done(t) ? Number.POSITIVE_INFINITY : moving.nextChange(t)),
+      return Animation.of({
+        at: (t: number) => moving.at(t),
+        nextChange: (t: number): number => (ran.done(t) ? Number.POSITIVE_INFINITY : moving.nextChange(t)),
         // Done, the frame settled when the transition did; until then it is the effect's.
-        lastChange: (t) => (ran.done(t) ? schedule.lastChange(t) : moving.lastChange(t)),
+        lastChange: (t: number) => (ran.done(t) ? schedule.lastChange(t) : moving.lastChange(t)),
         // A one-shot, reduced, cuts from its start to its end, whatever the effect it runs would hold as a loop.
         reduced: () => Animation.cut(moving.at(0), moving.at(seconds)),
-      };
+      });
     },
     schedule,
   );

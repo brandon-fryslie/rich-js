@@ -91,9 +91,9 @@ function sanitizeStyleLink(style: Style): Style {
  * lays its text out anew, so a stamp naming where a cell sat in the output it
  * came from would name the wrong cell once it wraps, slices or overlaps; the
  * owner that renders the RichText is the one that stamps its cells. A
- * `nextChange` stays: when a span's cells next change is true of them
- * wherever the text lays them, so a frame appended into a line still says
- * when it turns.
+ * hold stays — `lastChange` and `nextChange`: when a span's cells began and
+ * next change is true of them wherever the text lays them, so a frame
+ * appended into a line still says when it turns.
  */
 function admitStyle(style: TextStyle): TextStyle {
   if (typeof style === "string") return style;

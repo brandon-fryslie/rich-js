@@ -110,10 +110,10 @@ describe("an animation reduced", () => {
     expect(still(crossfade(curve).effect({ from: building, to: done, theme }))).toBe(done);
     // A fade-in reduced is the element as drawn; a dissolve-out reduced is the ground.
     const word = new RichText("[#ff8800 on #202020]word[/]", { end: "" });
-    expect(bytes(new Effected(word, fadeIn(curve, 0).effect, { t: 0, key: "w", theme }), REDUCED)).toBe(bytes(word, FULL));
-    expect(bytes(new Effected(word, dissolveOut(curve, 0).effect, { t: 0, key: "w", theme }), REDUCED)).not.toBe(bytes(word, FULL));
+    expect(bytes(new Effected(word, fadeIn(curve, 0).effect, { key: "w", theme }).at(0), REDUCED)).toBe(bytes(word, FULL));
+    expect(bytes(new Effected(word, dissolveOut(curve, 0).effect, { key: "w", theme }).at(0), REDUCED)).not.toBe(bytes(word, FULL));
     // A typewriter reduced has typed everything.
-    const typed = new GlyphEffected(new RichText("hello world", { end: "" }), typewriter({ seconds: 2, ease: EASES.linear }).effect, { t: 0, key: "t" });
+    const typed = new GlyphEffected(new RichText("hello world", { end: "" }), typewriter({ seconds: 2, ease: EASES.linear }).effect, { key: "t" }).at(0);
     expect(plain(typed, REDUCED)).toBe("hello world");
     expect(plain(typed, FULL)).not.toBe("hello world");
   });
@@ -121,7 +121,7 @@ describe("an animation reduced", () => {
   it("a glyph loop draws the text as written", () => {
     const text = new RichText("hello world", { end: "" });
     for (const effect of [caseWave({ step: 0.1, width: 3 }, 7), particles({ glyphs: "*", ascii: "*", density: 1, step: 0.2, drift: 1, life: Number.POSITIVE_INFINITY }, 3)]) {
-      expect(plain(new GlyphEffected(text, effect, { t: 0.7, key: "g" }), REDUCED)).toBe("hello world");
+      expect(plain(new GlyphEffected(text, effect, { key: "g" }).at(0.7), REDUCED)).toBe("hello world");
     }
   });
 
@@ -155,8 +155,8 @@ function everything(): Animation<Renderable> {
 function builtForTheTime(t: number): Renderable {
   const glow = new ColorRgba(255, 255, 255);
   return new Group(
-    new Effected(new RichText("[#5080ff]pulsing[/]", { end: "" }), onColors(pulse({ seconds: 2, ease: EASES.sine, swing: 1 }, glow, 0)), { t, key: "p", theme }),
-    new GlyphEffected(new RichText("typing out", { end: "" }), typewriter({ seconds: 2, ease: EASES.linear }).effect, { t, key: "g" }),
+    new Effected(new RichText("[#5080ff]pulsing[/]", { end: "" }), onColors(pulse({ seconds: 2, ease: EASES.sine, swing: 1 }, glow, 0)), { key: "p", theme }).at(t),
+    new GlyphEffected(new RichText("typing out", { end: "" }), typewriter({ seconds: 2, ease: EASES.linear }).effect, { key: "g" }).at(t),
     new Frames(frames("◐", "◓", "◑", "◒"), { t }),
     new Spinner("dots", "working").drawnAt(t),
     frameAt(lifecycle(new RichText("entering", { end: "" }), { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(dissolveOut(curve, 0), theme), key: "e" }, 0), t),
@@ -169,18 +169,18 @@ describe("a host under reduced motion", () => {
   const text = (drawn: { lines: Segment[][] }): string =>
     segmentsToString(drawn.lines.flat(), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
 
-  // An animation says itself every moment it changes, so reduced it is held; a
-  // function computes from the time what no animation says, so it is not.
+  // Reduced is not held: only a paused timeline holds a frame, and a host
+  // cannot tell an animation from any other renderable it is handed.
   it.each([
-    ["an animation", everything(), true],
-    ["a function of the time", builtForTheTime as View, false],
-  ])("draws %s the same at every time, sampled once a second or sixty, and is never told to look again", (_, view, held) => {
+    ["an animation", everything()],
+    ["a function of the time", builtForTheTime as View],
+  ])("draws %s the same at every time, sampled once a second or sixty, and is never told to look again", (_, view) => {
     const first = text(drawnAt(view, REDUCED, 0));
     for (const t of SAMPLES) {
       const drawn = drawnAt(view, REDUCED, t);
       expect(text(drawn)).toBe(first);
       expect(drawn.nextChange).toBe(Number.POSITIVE_INFINITY);
-      expect(drawn.held).toBe(held);
+      expect(drawn.held).toBe(false);
     }
     // The same view under full motion moves, so the sameness above is the preference's.
     expect(new Set(SAMPLES.map((t) => text(drawnAt(view, FULL, t)))).size).toBeGreaterThan(1);
@@ -220,28 +220,32 @@ describe("a host under reduced motion", () => {
   });
 
   it("a frame of no cells reduced says nothing, so a host holding it wakes for nothing", () => {
-    const empty: Animation<Renderable> = { at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) };
+    const empty: Animation<Renderable> = Animation.of({ at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) });
     expect(Segment.nextChange([...render(frameAt(empty, 0), REDUCED)])).toBe(Number.POSITIVE_INFINITY);
     expect(Segment.nextChange([...render(frameAt(empty, 0), FULL)])).toBe(3);
   });
 
-  it.each([1, 60])("an App told once paints an animation view reduced once at %s fps and arms nothing, an animate()d one included", (perSecond) => {
+  it.each([1, 60])("an App told once paints an animation view reduced, once and arming nothing, or at its rate while animate()d, every frame the reduced one at %s fps", (perSecond) => {
     const clock = fakeClock();
     const asked: string[] = [];
     const looping = Animation.continuous((t) => new RichText(`t=${t}`, { end: "" }));
-    const view: Animation<Renderable> = {
+    const view: Animation<Renderable> = Animation.of({
       at: (t) => (asked.push(`at ${t}`), looping.at(t)),
       nextChange: (t) => looping.nextChange(t),
       lastChange: (t) => looping.lastChange(t),
       reduced: () => (asked.push("reduced"), looping.reduced()),
-    };
+    });
     const target = new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(perSecond), view, reducedMotion: true });
     void target.run();
-    target.animate();
     clock.advance(5);
     expect(asked).toEqual(["reduced"]);
     expect(clock.timers()).toBe(0);
+    const stop = target.animate();
+    clock.advance(5);
+    expect(asked.length).toBeGreaterThan(5 * perSecond);
+    expect(asked.every((said) => said === "reduced")).toBe(true);
     expect(target.frame.map((line) => line.map((s) => s.text).join(""))[0]).toBe("t=0");
+    stop();
   });
 
   /** A Live of `view` on a reduced-motion console at sixty frames a second, run for six seconds, and every frame it painted. */
@@ -264,9 +268,10 @@ describe("a host under reduced motion", () => {
     expect(painted.at(-1)!.startsWith(painted[0]!)).toBe(true);
   });
 
-  it("a Live of an animation under reduced motion paints it reduced and waits on nothing", () => {
-    // The first frame and the one stop() draws.
-    expect(liveFrames(new Spinner("dots", "working"))).toHaveLength(2);
+  it("a Live of an animation under reduced motion polls it at its rate, and paints only the reduced frame", () => {
+    const painted = liveFrames(new Spinner("dots", "working"));
+    expect(painted.length).toBeGreaterThan(60);
+    expect(new Set(painted.slice(0, -1)).size).toBe(1);
   });
 });
 

@@ -50,6 +50,7 @@ import {
   ProgressBar,
   RichText,
   Rule,
+  Spinner,
   SpinnerColumn,
   Strip,
   Syntax,
@@ -103,18 +104,17 @@ const ROWS: Record<string, Row> = {
     // blank line is the glyphs the effect chooses itself.
     make: () =>
       new Group(
-        new GlyphEffected(panel(), () => Animation.constant<GlyphFrame>((cell) => cell.glyph), { t: 0, key: "panel" }),
-        new GlyphEffected(new RichText(" ".repeat(20)), particles({ ...GLYPH_DEFAULTS.rain, density: 1 }, 0), { t: 0, key: "sky" }),
+        new GlyphEffected(panel(), () => Animation.constant<GlyphFrame>((cell) => cell.glyph), { key: "panel" }).at(0),
+        new GlyphEffected(new RichText(" ".repeat(20)), particles({ ...GLYPH_DEFAULTS.rain, density: 1 }, 0), { key: "sky" }).at(0),
       ),
   },
   Effected: {
     draws: "glyphs",
     make: () =>
       new Effected(panel(), () => Animation.constant<EffectFrame>((c) => c), {
-        t: 0,
         key: "panel",
         theme: DEFAULT_TERMINAL_THEME,
-      }),
+      }).at(0),
   },
   Align: { draws: "glyphs", make: () => new Align(panel()) },
   Padding: { draws: "glyphs", make: () => new Padding(panel(), 1) },
@@ -125,6 +125,8 @@ const ROWS: Record<string, Row> = {
   Group: { draws: "glyphs", make: () => new Group(panel()) },
   ProgressBar: { draws: "glyphs", make: () => new ProgressBar({ total: 10, completed: 5 }) },
   Frames: { draws: "text", make: () => new Frames(new FrameSequence([{ text: new RichText("a"), seconds: 1 }]), { t: 0 }), why: "draws the frames it is handed, the caller's content" },
+  FrameSequence: { draws: "text", make: () => new FrameSequence([{ text: new RichText("a"), seconds: 1 }]), why: "placed, draws the frames it is handed, the caller's content" },
+  Spinner: { draws: "glyphs", make: () => new Spinner("dots", "label") },
   Table: { draws: "glyphs", make: () => new Table().addColumn("head").addRow("cell") },
   Tree: {
     draws: "glyphs",

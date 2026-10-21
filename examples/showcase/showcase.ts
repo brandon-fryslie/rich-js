@@ -231,8 +231,8 @@ function heading(t: number): Renderable {
   line.addColumn();
   line.addColumn();
   line.addRow(
-    new Effected(new RichText("rich-js ", { style: Style.parse("bold #1e1e2e on #cba6f7"), end: "" }), BRAND, { t, key: "brand", theme: THEME }),
-    new Effected(new Frames(CHEVRONS, { t }), SIGNAL, { t, key: "effort", theme: THEME }),
+    new Effected(new RichText("rich-js ", { style: Style.parse("bold #1e1e2e on #cba6f7"), end: "" }), BRAND, { key: "brand", theme: THEME }).at(t),
+    new Effected(new Frames(CHEVRONS, { t }), SIGNAL, { key: "effort", theme: THEME }).at(t),
     new RichText(" · beautiful terminal output for TypeScript ", { style: Style.parse("dim"), end: "" }).append(frameAt(CURSOR, t)),
   );
   return line;

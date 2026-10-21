@@ -220,7 +220,7 @@ describe("a strip under a pulse", () => {
       const share = shares(drawn, colors, loop.touch);
       const before = colorsByCell(strip.renderable, theme);
       // Two breaths, a frame each tenth of a second: a cell can be resting at any one moment.
-      const frames = Array.from({ length: 40 }, (_, i) => colorsByCell(new Effected(strip.renderable, lit, { t: i / 10, key: "strip", theme }), theme));
+      const frames = Array.from({ length: 40 }, (_, i) => colorsByCell(new Effected(strip.renderable, lit, { key: "strip", theme }).at(i / 10), theme));
       frames.forEach((after) => expect(after).toHaveLength(before.length));
 
       // Every colour the strip sets moves, but for one whose cells have no
@@ -250,7 +250,7 @@ describe("a strip under a pulse", () => {
       const oklch = (hex: string) => Oklch.fromRgba(ColorSpec.parse(hex).getTruecolor());
       const seen = (a: string, b: string) => (Math.max(oklch(a).l, oklch(b).l) < 0.2 ? 0 : oklch(a).deltaE(oklch(b)));
       for (let t = 0; t < pulseCurve.seconds; t += 0.5) {
-        const after = colorsByCell(new Effected(strip.renderable, lit, { t, key: "strip", theme }), theme);
+        const after = colorsByCell(new Effected(strip.renderable, lit, { key: "strip", theme }).at(t), theme);
         before.slice(1).forEach((pair, i) =>
           pair.forEach((was, slot) =>
             before[i]!.forEach((left, leftSlot) => {
@@ -283,7 +283,7 @@ describe("every loop keeps the words readable", () => {
       for (const subject of [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, at))) {
         const effect = EFFECT_CATALOGUE.loops[loop](subject, { ...curves[loop], swing: 1 });
         const contrasts = (t: number | undefined): number[] => {
-          const drawn = t === undefined ? subject.renderable.render(subject.options) : new Effected(subject.renderable, effect, { t, key: loop, theme }).render(subject.options);
+          const drawn = t === undefined ? subject.renderable.render(subject.options) : new Effected(subject.renderable, effect, { key: loop, theme }).at(t).render(subject.options);
           const out: number[] = [];
           for (const segment of drawn) {
             if (segment.isControl) continue;

@@ -564,7 +564,7 @@ describe("App on a timeline", () => {
   /** An app on `clock` at `perSecond` drawing `animation`, and every value it was drawn with, at the time it was drawn for. */
   function playing(animation: Animation<number>, perSecond: number, clock: FakeClock, timeline?: Timeline): { target: App; drawn: { t: number; value: number }[] } {
     const drawn: { t: number; value: number }[] = [];
-    const view: Animation<Renderable> = {
+    const view: Animation<Renderable> = Animation.of({
       at: (t) => {
         const value = animation.at(t);
         drawn.push({ t, value });
@@ -573,7 +573,7 @@ describe("App on a timeline", () => {
       nextChange: (t) => animation.nextChange(t),
       lastChange: (t) => animation.lastChange(t),
       reduced: () => Animation.map(animation.reduced(), (value) => text(`${value}`)),
-    };
+    });
     return { target: new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(perSecond), view, timeline }), drawn };
   }
   // 0 to 10 over a second.
@@ -661,44 +661,45 @@ describe("App on a timeline", () => {
     expect(drawn.length).toBeGreaterThanOrEqual(held + perSecond);
   });
 
-  // A renderable view is off the timeline: its frames are drawn for the
-  // app's own time, the seconds since it began, and its cells are stamped on it.
-  it("wakes a renderable view at the clock moment its cells say, whatever the timeline does", async () => {
+  // A renderable view is on the timeline: its frames are drawn for the time
+  // the timeline maps the clock to, and what its cells say is carried back.
+  it("wakes a renderable view at the clock moment its cells say, through the timeline, and a pause holds it", async () => {
     const clock = fakeClock(100);
     let draws = 0;
     const stamped: Renderable = {
       render: ({ frame }) => {
         draws += 1;
-        return [new Segment("x", new Style({ nextChange: Math.floor(frame!.time) + 1 }))];
+        const whole = Math.floor(frame!.time);
+        return [new Segment("x", new Style({ hold: { lastChange: whole, nextChange: whole + 1 } }))];
       },
     };
-    const target = new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(1), view: stamped, timeline: Timeline.play(0, -3) });
+    const target = new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(1), view: stamped, timeline: Timeline.play(100, 2) });
     void target.run();
     clock.advance(2.5);
-    // Drawn at 100, then at 101 and 102, as its cells said.
-    expect(draws).toBe(3);
+    // Drawn at 100, then each half second, where the timeline at twice the clock's pace reaches the next whole second.
+    expect(draws).toBe(6);
     target.timeline = Timeline.pause(target.timeline, clock.now());
     await tick();
     clock.advance(2);
-    // The frame the pause paints, then 103 and 104: pausing holds nothing off the timeline.
-    expect(draws).toBe(6);
+    // The frame the pause paints, and nothing after: paused, nothing on the timeline changes.
+    expect(draws).toBe(7);
   });
 
   // An animation's frame whose cells move — an effect over a tween that has
-  // arrived — cannot say since when, so backwards it is painted at the rate,
-  // not frozen until the tween's end comes round.
+  // arrived — began this moment, as its cells say, so backwards it is painted
+  // at the rate, not frozen until the tween's end comes round.
   it.each([1, 60])("at %s fps, run backwards, paints an animation's frame at its rate while its cells move", (perSecond) => {
     const clock = fakeClock();
     const times: number[] = [];
-    const settled: Animation<Renderable> = {
+    const settled: Animation<Renderable> = Animation.of({
       at: (t) => {
         times.push(t);
-        return { render: () => [new Segment("x", new Style({ nextChange: t }))] };
+        return { render: () => [new Segment("x", new Style({ hold: { lastChange: t, nextChange: t } }))] };
       },
       nextChange: () => Number.POSITIVE_INFINITY,
       lastChange: () => 2,
       reduced: () => Animation.constant<Renderable>({ render: () => [new Segment("x")] }),
-    };
+    });
     const timeline = Timeline.seek(Timeline.play(0, -1), 0, 10);
     const target = new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(perSecond), view: settled, timeline });
     void target.run();

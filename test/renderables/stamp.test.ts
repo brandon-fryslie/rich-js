@@ -43,11 +43,8 @@ describe("a frame hands what it draws the time it is drawn for", () => {
   };
   const probe = new RichText("x");
 
-  it("is the host's time for a renderable view, off the timeline", () => {
-    expect(handed(probe, Timeline.pause(Timeline.play(0), 1), 7)).toBe(7);
-  });
-
-  it("is the timeline's time for a function or an animation view, a paused one's held time included", () => {
+  it("is the timeline's time for every view, a paused one's held time included", () => {
+    expect(handed(probe, Timeline.pause(Timeline.play(0), 1), 7)).toBe(1);
     expect(handed(() => probe, Timeline.play(2), 7)).toBe(5);
     expect(handed(Animation.constant(probe), Timeline.play(2, 2), 7)).toBe(10);
     expect(handed(() => probe, Timeline.pause(Timeline.play(0), 1), 7)).toBe(1);
@@ -81,7 +78,7 @@ describe("a frame says when it changes on the host's clock", () => {
     expect(said).toBeLessThanOrEqual(2.625);
   });
 
-  it("nothing an animation's at returns says when it changes; the animation does, and frameAt carries it", () => {
+  it("nothing an animation's at returns says when it changes; placed, the animation does, and frameAt stamps what it stamps placed", () => {
     const life = lifecycle(new RichText("a line"), { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(dissolveOut(curve, 0), theme), key: "line" }, 1).leave(5);
     const moving = crossfade(curve).effect({ from: new RichText("building"), to: new RichText("done"), theme });
     const spinner = new Spinner("dots", "working");
@@ -89,7 +86,9 @@ describe("a frame says when it changes on the host's clock", () => {
     for (const animation of animations) {
       for (const t of [0.5, 1.5, 3, 5.5]) {
         expect(Segment.nextChange(draw(animation.at(t)))).toBe(Number.POSITIVE_INFINITY);
-        expect(Segment.nextChange(draw(frameAt(animation, t)))).toBe(animation.nextChange(t));
+        const placed = [...render(animation, { ...OPTIONS, frame: { time: t, host: { frameTime: t } } })];
+        expect(Segment.nextChange(draw(frameAt(animation, t)))).toBe(Segment.nextChange(placed));
+        expect(Segment.nextChange(placed)).toBeGreaterThanOrEqual(animation.nextChange(t));
       }
     }
   });
@@ -102,7 +101,7 @@ describe("a frame says when it changes on the host's clock", () => {
   });
 
   it("a frame with no cells takes no row of its own, and still says when it changes", () => {
-    const empty: Animation<Renderable> = { at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) };
+    const empty: Animation<Renderable> = Animation.of({ at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) });
     const drawn = lines(new Group(new RichText("a"), frameAt(empty, 0)));
     expect(drawn.length).toBe(lines(new Group(new RichText("a"))).length);
     expect(Segment.nextChange(drawn.flat())).toBe(3);
@@ -113,11 +112,11 @@ describe("a frame says when it changes on the host's clock", () => {
   });
 
   it("a frame with no cells still says when it changes after the row before it is cropped", () => {
-    const empty: Animation<Renderable> = { at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) };
+    const empty: Animation<Renderable> = Animation.of({ at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) });
     const wide = new RichText("x".repeat(30), { noWrap: true, overflow: "crop" });
     const cropped = Segment.splitAndCropLines(draw(new Group(wide, frameAt(empty, 0))), 5);
     expect(Segment.nextChange(cropped.flat())).toBe(3);
-    const emptyText = new Segment("", new Style({ nextChange: 2 }));
+    const emptyText = new Segment("", new Style({ hold: { lastChange: 0, nextChange: 2 } }));
     for (const line of [[new Segment("ab"), emptyText, new Segment("cd")], [new Segment("abcd"), emptyText]]) {
       expect(Segment.nextChange(Segment.adjustLineLength(line, 2))).toBe(2);
     }
@@ -141,7 +140,7 @@ describe("a frame says when it changes on the host's clock", () => {
   it("an empty text frame keeps its stamp and writes the bytes and rows an unstamped one does", () => {
     for (const end of ["\n", ""]) {
       const frame = new RichText("", { end });
-      const blink: Animation<RichText> = { at: () => frame, nextChange: () => 2, lastChange: () => 1, reduced: () => Animation.constant(frame) };
+      const blink: Animation<RichText> = Animation.of({ at: () => frame, nextChange: () => 2, lastChange: () => 1, reduced: () => Animation.constant(frame) });
       const stamped = new Group(new RichText("top"), frameAt(blink, 1.5));
       const plain = new Group(new RichText("top"), frame);
       expect(Segment.nextChange(draw(stamped))).toBe(2);

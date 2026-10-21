@@ -126,9 +126,9 @@ export class Live implements FrameHost {
     return this._timeline;
   }
 
-  /** The time a frame drawn now is drawn for: the clock's now, through the timeline for a view on it. */
+  /** The time a frame drawn now is drawn for: the clock's now, through the timeline. */
   get frameTime(): number {
-    return frameTime(this._view, this._time());
+    return frameTime(this._time());
   }
 
   private _time(): HostTime {
@@ -211,22 +211,20 @@ export class Live implements FrameHost {
   }
 
   // Arm the one wait for the next auto-refresh frame while `held`, from what
-  // the frame says: at the rate while it moves; at its `nextChange` when it
-  // holds until a moment, or at the rate if that is sooner and the frame is
-  // silent — drawn from state that may change without saying so, which the
-  // auto-refresh polls, as Rich's does. A frame from an animation that holds
-  // for good — arrived, or drawn for a paused timeline's held time — waits
-  // on nothing until a caller draws. Every moment is measured from the
+  // the frame says: at its `nextChange` when it holds until a moment sooner
+  // than the rate, and at the rate otherwise — every view is drawn from state
+  // that may change without saying so, which the auto-refresh polls, as
+  // Rich's does, a paused timeline's included. Every moment is measured from the
   // frame's own `t`, never from a second reading of the clock, so the rate
   // does not stretch by what a frame cost to draw, and a change that fell
   // due while it was drawn is drawn at once (`Clock.at` fires now for a time
   // already past).
-  private _wake(held: Unsubscribe, { t, nextChange, silent }: FrameSays): void {
+  private _wake(held: Unsubscribe, { t, nextChange }: FrameSays): void {
     this._waking?.stop();
     this._waking = undefined;
     const rate = t + this._rate.interval;
-    const at = nextChange <= t ? rate : Math.min(nextChange, silent ? rate : Number.POSITIVE_INFINITY);
-    if (!this._autoRefresh || at === Number.POSITIVE_INFINITY) return;
+    const at = nextChange <= t ? rate : Math.min(nextChange, rate);
+    if (!this._autoRefresh) return;
     // No caller is on the stack to run `stop()` for a frame that throws
     // here, and in Node the throw ends the process — so the terminal is
     // handed back first, and the error then goes on to wherever an uncaught

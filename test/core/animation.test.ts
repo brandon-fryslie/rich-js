@@ -323,7 +323,7 @@ describe("the instances already in the tree", () => {
       { text: new RichText("bb"), seconds: 0.5 },
     ]);
     const stampsOf = (shown: RichText): (number | undefined)[] =>
-      [...shown.render({ maxWidth: 10 })].filter((s) => s.text !== "").map((s) => s.style?.nextChange);
+      [...shown.render({ maxWidth: 10 })].filter((s) => s.text !== "").map((s) => s.style?.hold.nextChange);
     for (const t of [0, 0.7, 1, 1.2, 1e6 + 0.1]) {
       const shown = frames.at(t);
       for (const stamp of stampsOf(shown)) expect(stamp ?? Number.POSITIVE_INFINITY).toBe(Number.POSITIVE_INFINITY);

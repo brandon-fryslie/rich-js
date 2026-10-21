@@ -140,7 +140,7 @@ describe("scroll", () => {
 
   it("keeps a frame's word on when it changes when the frame has no cells at the window's left edge or before it", () => {
     const nothing: Renderable & Measurable = { render: () => [], measure: () => ({ minimum: 0, maximum: 0 }) };
-    const entering = frameAt({ at: () => nothing, nextChange: () => 5, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(nothing) }, 0);
+    const entering = frameAt(Animation.of({ at: () => nothing, nextChange: () => 5, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(nothing) }), 0);
     const content = new Group(entering, new RichText("hello"), new RichText("world"), entering);
     expect(Segment.nextChange(draw(content))).toBe(5);
     for (const [col, row] of [[0, 0], [3, 0], [9, 0], [0, 2], [0, 3], [-9, 9]] as const) {
@@ -165,7 +165,7 @@ describe("scroll", () => {
     const marquee = scroll(LINE, { width: 6, height: 2, col: Animation.continuous((t) => t) });
     const cells = draw(frameAt(marquee, 3)).filter((s) => !s.isControl && s.text !== "\n");
     expect(cells.length).toBeGreaterThan(1);
-    for (const segment of cells) expect(segment.style?.nextChange).toBe(3);
+    for (const segment of cells) expect(segment.style?.hold.nextChange).toBe(3);
     const empty = Animation.map(Animation.continuous((t) => t), (): Renderable => ({ render: () => [] }));
     expect(Segment.nextChange(draw(frameAt(empty, 2)))).toBe(2);
   });

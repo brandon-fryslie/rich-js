@@ -35,6 +35,7 @@ import {
 } from "../../src/index.js";
 import { animationFuncs, richTextFuncs } from "../../src/template-bindings/index.js";
 import { SPINNERS } from "../../src/core/spinnerData.js";
+import { inFrame } from "./in-frame.js";
 
 // [LAW:behavior-not-structure] What is asserted is the answer a host reads
 // off a rendered frame, never which object put it there.
@@ -43,7 +44,7 @@ const THEME = CATPPUCCIN_MOCHA;
 const OPTIONS = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR } as const;
 const frames = (holds: readonly number[]): FrameSequence => new FrameSequence(holds.map((seconds, i) => ({ text: new RichText("abcd"[i]!), seconds })));
 const nextChangeOf = (renderable: Renderable, options: Parameters<Renderable["render"]>[0] = OPTIONS): number => Segment.nextChange(renderable.render(options));
-const lit = (child: Renderable, effect: Effect, t: number): Effected => new Effected(child, effect, { t, key: "k", theme: THEME });
+const lit = (child: Renderable, effect: Effect, t: number): Renderable => inFrame(new Effected(child, effect, { key: "k", theme: THEME }), t);
 const label = new RichText(" rich-js ", { style: Style.parse("#1e1e2e on #89b4fa"), end: "", noWrap: true });
 /** A loop that moves every frame: a continuous function of t, promising no hold. */
 const drifting: Effect = () => Animation.continuous((t) => (colors) => ({ ...colors, fg: new ColorRgba(Math.floor(t * 50) % 256, 0, 0) }));
@@ -87,7 +88,7 @@ describe("what a host reads off a frame: when it next changes", () => {
   });
 
   it("a spinner's label keeps an earlier word of its own on when it changes", () => {
-    const label = new RichText("soon", { end: "" }).stylize(new Style({ nextChange: 0.001 }));
+    const label = new RichText("soon", { end: "" }).stylize(new Style({ hold: { lastChange: 0, nextChange: 0.001 } }));
     expect(nextChangeOf(new Spinner("dots", label).drawnAt(0))).toBe(0.001);
   });
 
@@ -163,7 +164,7 @@ describe("what a host reads off a frame: when it next changes", () => {
     };
     [...lit(label, watching, 1).render(OPTIONS)];
     expect(seen).toHaveLength(1);
-    expect([...asked].sort()).toEqual(["at 1", "nextChange 1"]);
+    expect([...asked].sort()).toEqual(["at 1", "lastChange 1", "nextChange 1"]);
   });
 
   it("the answer is made from the frame, so a composer may answer from what the inner effect says of it", () => {

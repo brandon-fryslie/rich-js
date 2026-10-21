@@ -51,7 +51,7 @@
  * sample a second or sixty.
  */
 
-import { Animation } from "./animation.js";
+import { Animation, type Timed } from "./animation.js";
 import { firstReaching } from "./easing.js";
 
 /**
@@ -103,7 +103,7 @@ function anchored(timeline: Timeline, host: number, time: number, rate: number):
 }
 
 /** `animation` asked at the time `playing` maps each host time to, saying on host time when it changes. */
-function played<T>(animation: Animation<T>, { origin, time, rate }: Timeline & { playing: true }): Animation<T> {
+function played<T>(animation: Timed<T>, { origin, time, rate }: Timeline & { playing: true }): Animation<T> {
   const mapped = (host: number): number => time + rate * (host - origin);
   const forward = rate > 0;
   // Forwards, the host next sees the animation's own next change, and the
@@ -122,22 +122,22 @@ function played<T>(animation: Animation<T>, { origin, time, rate }: Timeline & {
     const sum = origin + (edge - time) / rate;
     return Number.isFinite(sum) ? firstReaching(sum, (host) => past(mapped(host), edge)) : sum;
   };
-  return {
-    at: (host) => animation.at(mapped(hostTime(host))),
-    nextChange(host) {
+  return Animation.of({
+    at: (host: number) => animation.at(mapped(hostTime(host))),
+    nextChange(host: number) {
       const h = hostTime(host);
       const t = mapped(h);
       const edge = ahead(t);
       return edge === t ? h : Math.max(h, hostOf(edge));
     },
-    lastChange(host) {
+    lastChange(host: number) {
       const h = hostTime(host);
       const t = mapped(h);
       const edge = behind(t);
       return edge === t ? h : Math.min(h, hostOf(edge));
     },
     reduced: () => played(animation.reduced(), { playing: true, origin, time, rate }),
-  };
+  });
 }
 
 export const Timeline = {
@@ -177,20 +177,20 @@ export const Timeline = {
    * host time to, changing at the host moment the mapped time reaches the
    * animation's own answer — backwards, when it drops under where the value
    * began. Paused, the value never changes and never did. The value is the
-   * animation's own, on no clock: what a drawn value's cells say about when
-   * they change is stamped by whoever draws it at a host time
-   * (`../renderables/frames.ts`, `frameAt`), never carried in from here.
+   * animation's own, on no clock: placed, it is stamped at the frame's time
+   * (`placedRender`, `./animation.ts`) with this animation's answers, so a
+   * value's contents follow the frame's clock and not this map.
    * Reduced, it is the animation reduced on the same timeline: what shows
    * still follows the timeline, and only the motion is gone.
    */
-  run<T>(timeline: Timeline, animation: Animation<T>): Animation<T> {
+  run<T>(timeline: Timeline, animation: Timed<T>): Animation<T> {
     if (timeline.playing) return played(animation, timeline);
-    return {
-      at: (host) => animation.at(Timeline.at(timeline, host)),
-      nextChange: (host) => (hostTime(host), Number.POSITIVE_INFINITY),
-      lastChange: (host) => (hostTime(host), Number.NEGATIVE_INFINITY),
+    return Animation.of({
+      at: (host: number) => animation.at(Timeline.at(timeline, host)),
+      nextChange: (host: number) => (hostTime(host), Number.POSITIVE_INFINITY),
+      lastChange: (host: number) => (hostTime(host), Number.NEGATIVE_INFINITY),
       reduced: () => Timeline.run(timeline, animation.reduced()),
-    };
+    });
   },
 
   /**
@@ -202,13 +202,13 @@ export const Timeline = {
    * Reduced, the offsets are the cascade's choreography, which is motion: every
    * child reduced at once, so from 0 everyone has arrived.
    */
-  stagger<T>(animations: readonly Animation<T>[], delay: number): Animation<readonly T[]> {
+  stagger<T>(animations: readonly Timed<T>[], delay: number): Animation<readonly T[]> {
     finiteSeconds("Timeline.stagger delay", delay);
     const span = finiteSeconds("Timeline.stagger delay times the last index", Math.max(0, animations.length - 1) * delay);
     // [LAW:dataflow-not-control-flow] Whichever way the cascade runs, every
     // origin is shifted by the lowest of them, so the earliest child plays from 0.
     const earliest = Math.min(0, span);
     const cascade = Animation.all(animations.map((animation, i) => Timeline.run(Timeline.play(i * delay - earliest), animation)));
-    return { ...cascade, reduced: () => Animation.all(animations.map((animation) => animation.reduced())) };
+    return Animation.of({ ...cascade, reduced: () => Animation.all(animations.map((animation) => animation.reduced())) });
   },
 };

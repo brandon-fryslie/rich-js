@@ -367,32 +367,32 @@ describe("Style.toString", () => {
 // style, as the anchor does, and two styles laid together change at the sooner.
 describe("Style.nextChange", () => {
   it("is never, by default, and a style that is only a time is not null", () => {
-    expect(new Style().nextChange).toBe(Number.POSITIVE_INFINITY);
-    expect(new Style({ nextChange: Number.POSITIVE_INFINITY }).isNull).toBe(true);
-    expect(new Style({ nextChange: 2 }).isNull).toBe(false);
+    expect(new Style().hold.nextChange).toBe(Number.POSITIVE_INFINITY);
+    expect(new Style({ hold: { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.POSITIVE_INFINITY } }).isNull).toBe(true);
+    expect(new Style({ hold: { lastChange: 0, nextChange: 2 } }).isNull).toBe(false);
   });
 
   it("add keeps the sooner, whichever side it is on, under the other's look", () => {
-    const soon = new Style({ nextChange: 1.5 });
-    const later = new Style({ color: "red", nextChange: 4 });
-    expect(soon.add(later).nextChange).toBe(1.5);
-    expect(later.add(soon).nextChange).toBe(1.5);
+    const soon = new Style({ hold: { lastChange: 0, nextChange: 1.5 } });
+    const later = new Style({ color: "red", hold: { lastChange: 0, nextChange: 4 } });
+    expect(soon.add(later).hold.nextChange).toBe(1.5);
+    expect(later.add(soon).hold.nextChange).toBe(1.5);
     expect(later.add(soon).color?.name).toBe("red");
-    expect(new Style({ bold: true }).add(soon).nextChange).toBe(1.5);
+    expect(new Style({ bold: true }).add(soon).hold.nextChange).toBe(1.5);
   });
 
   it("makes two styles that draw alike unequal", () => {
-    expect(new Style({ bold: true, nextChange: 1 }).equals(new Style({ bold: true, nextChange: 2 }))).toBe(false);
-    expect(new Style({ bold: true, nextChange: 1 }).equals(new Style({ bold: true, nextChange: 1 }))).toBe(true);
+    expect(new Style({ bold: true, hold: { lastChange: 0, nextChange: 1 } }).equals(new Style({ bold: true, hold: { lastChange: 0, nextChange: 2 } }))).toBe(false);
+    expect(new Style({ bold: true, hold: { lastChange: 0, nextChange: 1 } }).equals(new Style({ bold: true, hold: { lastChange: 0, nextChange: 1 } }))).toBe(true);
   });
 
   it("writes no byte", () => {
-    expect(new Style({ color: "red", nextChange: 1 }).toString()).toBe(new Style({ color: "red" }).toString());
+    expect(new Style({ color: "red", hold: { lastChange: 0, nextChange: 1 } }).toString()).toBe(new Style({ color: "red" }).toString());
   });
 
   it("refuses a time that is not a time or never", () => {
-    expect(() => new Style({ nextChange: Number.NaN })).toThrow(RangeError);
-    expect(() => new Style({ nextChange: Number.NEGATIVE_INFINITY })).toThrow(RangeError);
+    expect(() => new Style({ hold: { lastChange: 0, nextChange: Number.NaN } })).toThrow(RangeError);
+    expect(() => new Style({ hold: { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.NEGATIVE_INFINITY } })).toThrow(RangeError);
   });
 });
 

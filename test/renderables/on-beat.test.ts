@@ -32,7 +32,7 @@ const quick = wheel({ seconds: 6, ease: EASES.linear, swing: 0 }, 0);
 
 /** The fill's hue at `t` under `effect`, in truecolor. */
 function fillAt(effect: Effect, t: number): number {
-  const segments = [...new Effected(label, effect, { t, key: "k", theme: CATPPUCCIN_MOCHA }).render({ maxWidth: 20, colorSystem: ColorDepth.TRUECOLOR })];
+  const segments = [...new Effected(label, effect, { key: "k", theme: CATPPUCCIN_MOCHA }).at(t).render({ maxWidth: 20, colorSystem: ColorDepth.TRUECOLOR })];
   const { pairs } = drawnOf(segments, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA);
   expect(pairs).toHaveLength(1);
   return Oklch.fromRgba(pairs[0]!.bg).h;

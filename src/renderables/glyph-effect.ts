@@ -25,8 +25,11 @@
  * colours of the glyphs the glyph effect left, since each wrapper measures
  * what its child drew.
  *
- * [LAW:no-ambient-temporal-coupling] `t` is a constructor argument, never a
- * clock read, so the same `t` draws the same bytes at any frame rate.
+ * A `GlyphEffected` is the element under its glyph effect over time, an
+ * `Animation<Renderable>` placed as an `Effected` is, its value at `t` the
+ * element through the effect at `t` (`Reglyphed`).
+ * [LAW:no-ambient-temporal-coupling] The time is the frame's, never a clock
+ * read, so the same time draws the same bytes at any frame rate.
  *
  * What a glyph effect may not do is the contract this module holds:
  *
@@ -41,21 +44,20 @@
  *   so the identity effect is byte-identical. A changed segment keeps its
  *   style whole, link, meta and anchor included; no cell has moved, so the
  *   anchor's offsets are still true and hit testing still finds the owner.
- * - Drawn as a `GlyphEffected`, every cell carries when the frame next changes (`Style.nextChange`),
- *   under whatever the child said, as under `Effected`; drawn as a `Reglyphed`, inside an animation's `at`, none.
+ * - Placed as a `GlyphEffected`, every cell carries the hold the frame is in
+ *   (`Style.hold`), under whatever the child said,
+ *   as under `Effected`; drawn as a `Reglyphed`, a value, none.
  *
  * Positions are the child's own: row and column count from the top-left of
  * what the child drew.
  */
 
-import { Animation } from "../core/animation.js";
+import { Animation, frameTimeOf, holdOf, shownAt, stampFrame } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { Measurement } from "../core/measure.js";
 import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
-import { stampFrame } from "./frames.js";
-import { shownAt } from "../core/view.js";
 import { finiteTime } from "../core/easing.js";
 import { stripControlChars, type RichText } from "../core/text.js";
 import { cellSeed, walkGlyphs, type Moved, type Placed } from "./effect.js";
@@ -97,17 +99,15 @@ export interface DrawnGlyphs {
 export type GlyphEffect = (drawn: DrawnGlyphs) => Animation<GlyphFrame>;
 
 export interface GlyphEffectedOptions {
-  /** The moment to draw, in seconds. */
-  readonly t: number;
   /** Names the element for its seeds, as `EffectedOptions.key` does; under both wrappers, one key gives one seed a cell. */
   readonly key: string;
 }
 
 /**
- * `renderable` with its cells' glyphs passed through `effect` at `t`, saying
- * nothing of when that changes: the frame an animation's `at` hands over, as
- * a `Recolored` is (`./effect.ts`). [LAW:one-type-per-behavior] Drawn at a
- * draw site's `t` instead, it is a `GlyphEffected`.
+ * A `GlyphEffected` at `t`, or an element through a glyph effect at a time an
+ * animation's `at` was handed: `renderable` with its cells' glyphs passed
+ * through `effect` at `t`, saying nothing of when that changes, as a
+ * `Recolored` is (`./effect.ts`). [LAW:one-type-per-behavior]
  */
 export class Reglyphed implements Renderable, Measurable, Composite {
   readonly t: number;
@@ -116,7 +116,7 @@ export class Reglyphed implements Renderable, Measurable, Composite {
   constructor(
     readonly renderable: Renderable,
     readonly effect: GlyphEffect,
-    options: GlyphEffectedOptions,
+    options: GlyphEffectedOptions & { readonly t: number },
   ) {
     this.t = finiteTime("GlyphEffected", options.t);
     this.key = options.key;
@@ -126,17 +126,17 @@ export class Reglyphed implements Renderable, Measurable, Composite {
     return this.moved(options).segments;
   }
 
-  /** The frame the effect draws at `t`, and when it says that next changes. */
-  protected moved(options: RenderOptions): Moved {
+  /** The frame the effect draws at `t`, and the hold it says that is in. */
+  moved(options: RenderOptions): Moved {
     const segments = [...render(this.renderable, options)];
     const { placed, cells } = placeGlyphs(segments, this.key);
     const animation = this.effect({ cells, asciiOnly: options.asciiOnly === true });
-    const { value: frame, nextChange } = shownAt(animation, this.t, options);
-    const shown = showGlyphs(placed, frame);
+    const frame = shownAt(animation, this.t, options);
+    const shown = showGlyphs(placed, frame.value);
     const changed = segments.map((segment, i) =>
       shown[i]!.every((text, j) => text === placed[i]![j]!.glyph) ? segment : new Segment(shown[i]!.join(""), segment.style),
     );
-    return { segments: changed, nextChange };
+    return { segments: changed, hold: holdOf(frame, this.t) };
   }
 
   *contents(): Iterable<Renderable> {
@@ -149,14 +149,53 @@ export class Reglyphed implements Renderable, Measurable, Composite {
 }
 
 /**
- * A `Reglyphed` drawn at the draw site's `t`, its cells saying when the glyph
- * effect's frame next changes there (`stampFrame`), under whatever the child
- * already said, as an `Effected`'s do.
+ * `renderable` under a glyph effect over time, an `Animation<Renderable>`
+ * as an `Effected` is (`./effect.ts`): its own answer is `t`, and placed,
+ * its cells carry the glyph effect's exact hold at the frame's time and the
+ * output's `asciiOnly`, under whatever the element already said.
  */
-export class GlyphEffected extends Reglyphed {
-  override render(options: RenderOptions): Iterable<Segment> {
-    const { segments, nextChange } = this.moved(options);
-    return stampFrame(segments, nextChange);
+export class GlyphEffected implements Animation<Renderable> {
+  readonly key: string;
+
+  constructor(
+    readonly renderable: Renderable,
+    readonly effect: GlyphEffect,
+    options: GlyphEffectedOptions,
+  ) {
+    this.key = options.key;
+  }
+
+  /** The element through the glyph effect at `t`, unstamped. */
+  at(t: number): Reglyphed {
+    return new Reglyphed(this.renderable, this.effect, { t, key: this.key });
+  }
+
+  nextChange(t: number): number {
+    return t;
+  }
+
+  lastChange(t: number): number {
+    return t;
+  }
+
+  /** The element under the glyph effect with its motion taken out. */
+  reduced(): GlyphEffected {
+    const { effect } = this;
+    return new GlyphEffected(this.renderable, (drawn) => effect(drawn).reduced(), this);
+  }
+
+  /** Drawn at the frame's time, its cells stamped with the glyph effect's exact hold there. */
+  render(options: RenderOptions): Iterable<Segment> {
+    const { segments, hold } = this.at(frameTimeOf(options)).moved(options);
+    return stampFrame(segments, hold);
+  }
+
+  measure(options: RenderOptions): { minimum: number; maximum: number } {
+    return Measurement.get(options, this.renderable);
+  }
+
+  *contents(): Iterable<Renderable> {
+    yield this.renderable;
   }
 }
 

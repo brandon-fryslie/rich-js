@@ -75,8 +75,8 @@ export class WidgetApp implements FrameSource, FrameHost {
     const { focusOnClick = true } = options;
     this.reaction = new Reaction("WidgetApp", () => this.app.refresh());
     // The view is drawn inside `compose`, where what it reads is tracked,
-    // whichever shape it was given; it stays on or off the timeline as it
-    // was, and when it changes is its own to say, as it would be to the App.
+    // whichever shape it was given; it stays the kind of view it was, and
+    // when it changes is its own to say, as it would be to the App.
     // Its frames are its own, drawn for its `frameTime`: what draws in them
     // is told this app is the host, not the App it paints through, so
     // `drawnBy: widgetApp` names the host its frames carry.

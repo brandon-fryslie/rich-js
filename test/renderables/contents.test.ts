@@ -46,6 +46,7 @@ import {
   ProgressBar,
   RichText,
   Rule,
+  Spinner,
   Strip,
   Syntax,
   Table,
@@ -98,11 +99,11 @@ const ROWS: Record<string, Row> = {
   Constrain: { holds: "probes", make: (p) => new Constrain(p("a"), 20) },
   Effected: {
     holds: "probes",
-    make: (p) => new Effected(p("a"), () => Animation.constant<EffectFrame>((c) => c), { t: 0, key: "probe", theme: DEFAULT_TERMINAL_THEME }),
+    make: (p) => new Effected(p("a"), () => Animation.constant<EffectFrame>((c) => c), { key: "probe", theme: DEFAULT_TERMINAL_THEME }).at(0),
   },
   GlyphEffected: {
     holds: "probes",
-    make: (p) => new GlyphEffected(p("a"), () => Animation.constant<GlyphFrame>((cell) => cell.glyph), { t: 0, key: "probe" }),
+    make: (p) => new GlyphEffected(p("a"), () => Animation.constant<GlyphFrame>((cell) => cell.glyph), { key: "probe" }).at(0),
   },
   Align: { holds: "probes", make: (p) => new Align(p("a")) },
   Padding: { holds: "probes", make: (p) => new Padding(p("a"), 1) },
@@ -117,6 +118,12 @@ const ROWS: Record<string, Row> = {
     make: () => new Frames(new FrameSequence([{ text: new RichText("a"), seconds: 1 }]), { t: 0 }),
     why: "draws the text of the frame in progress",
   },
+  FrameSequence: {
+    holds: "nothing",
+    make: () => new FrameSequence([{ text: new RichText("a"), seconds: 1 }]),
+    why: "placed, draws the text of the frame in progress",
+  },
+  Spinner: { holds: "nothing", make: () => new Spinner("dots", "label"), why: "draws the frame and the label as a line it builds" },
   Table: {
     holds: "probes",
     make: (p) => {

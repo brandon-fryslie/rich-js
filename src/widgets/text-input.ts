@@ -87,8 +87,8 @@ import { drawable, type RenderOptions } from "../core/protocol.js";
 import { Animation } from "../core/animation.js";
 import { beat } from "../core/easing.js";
 import { Timeline } from "../core/timeline.js";
-import { shownAt } from "../core/view.js";
-import { stampFrame } from "../renderables/frames.js";
+import { holdOf, shownAt, stampFrame } from "../core/animation.js";
+import type { Hold } from "../core/style.js";
 import type { TerminalTheme } from "../core/color.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
@@ -300,7 +300,7 @@ function isWhitespace(c: string | undefined): boolean {
 const CARET_BLINK: Animation<boolean> = Animation.map(beat([0.5, 0.5]), (hold) => hold === 0);
 
 /** The caret of a frame drawn for no moment — a `print` — which nothing moves: lit, and never changing. */
-const CARET_UNTIMED = { value: true, nextChange: Number.POSITIVE_INFINITY } as const;
+const CARET_UNTIMED: { readonly lit: boolean; readonly hold: Hold } = { lit: true, hold: { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.POSITIVE_INFINITY } };
 
 export class TextInput extends ThemedWidget {
   readonly id: string;
@@ -1087,14 +1087,12 @@ export class TextInput extends ThemedWidget {
   // it. The cell says when it next flips, which is when a host draws again.
   private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
     const { frame } = options;
-    const { value: lit, nextChange } = frame === undefined
-      ? CARET_UNTIMED
-      : shownAt(
-          Timeline.run(Timeline.play(this._blinkFrom, frame.time < this._blinkFrom ? -1 : 1), CARET_BLINK),
-          frame.time,
-          options,
-        );
-    return stampFrame([new Segment(at, lit ? cursorStyle : contentStyle)], nextChange);
+    const blink = (time: number) => {
+      const shown = shownAt(Timeline.run(Timeline.play(this._blinkFrom, time < this._blinkFrom ? -1 : 1), CARET_BLINK), time, options);
+      return { lit: shown.value, hold: holdOf(shown, time) };
+    };
+    const { lit, hold } = frame === undefined ? CARET_UNTIMED : blink(frame.time);
+    return stampFrame([new Segment(at, lit ? cursorStyle : contentStyle)], hold);
   }
 
   // Whether `rows` visual rows draw a scroll arrow in the last cell of a row.

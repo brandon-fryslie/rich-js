@@ -88,7 +88,7 @@ function animated(name: string, frames: Animation<Renderable>): Kind {
   return { name, draw: (t) => frameAt(framed, t) };
 }
 
-/** A kind drawn by an effect that is handed the time itself: the effect stamps its own cells. */
+/** A kind drawn by an effect at the time it is asked for (`frameAt`), set in its panel. */
 function effected(name: string, draw: (t: number) => Renderable): Kind {
   return { name, draw: (t) => panel(name)(draw(t)) };
 }
@@ -305,16 +305,16 @@ export const KINDS: readonly Kind[] = [
   animated("tween · a counter", Animation.map(counting, (v) => new RichText(`${Math.round(v).toLocaleString("en-US").padStart(6)} files`, { style: "bold #f9e2af" }))),
   animated("tween · ProgressBar", Animation.map(filling, (v) => new ProgressBar({ total: 1204, completed: v, width: SLOT }))),
   animated("tween · a colour", Animation.map(fading, (v) => new RichText(`██████  ${fadeRamp.at(v).hex}`, { style: fadeRamp.at(v).hex }))),
-  effected("moving ramp · Rule", (t) => new Effected(new Rule("scrolls and turns", { style: BORDER }), gradient(flowing, [BORDER]), { t, key: "rule", theme: THEME })),
+  effected("moving ramp · Rule", (t) => frameAt(new Effected(new Rule("scrolls and turns", { style: BORDER }), gradient(flowing, [BORDER]), { key: "rule", theme: THEME }), t)),
   // The two border kinds put their effect around the panel, so it is the panel's border that moves.
-  { name: "moving ramp · border", draw: (t) => new Effected(panel("moving ramp · border")(new RichText("the border is the ramp", { style: TEXT })), gradient(flowing, [BORDER]), { t, key: "border", theme: THEME }) },
-  { name: "marching border", draw: (t) => new GlyphEffected(panel("marching border")(new RichText("the ants march round", { style: TEXT })), march, { t, key: "march" }) },
+  { name: "moving ramp · border", draw: (t) => frameAt(new Effected(panel("moving ramp · border")(new RichText("the border is the ramp", { style: TEXT })), gradient(flowing, [BORDER]), { key: "border", theme: THEME }), t) },
+  { name: "marching border", draw: (t) => frameAt(new GlyphEffected(panel("marching border")(new RichText("the ants march round", { style: TEXT })), march, { key: "march" }), t) },
   animated("typewriter", Animation.map(typing, prompted)),
   animated("scramble", Animation.map(scrambling, prompted)),
-  effected("case wave", (t) => new GlyphEffected(WAVED, caseWave({ step: 0.12, width: 3 }, 0), { t, key: "wave" })),
-  effected("rain on a blank panel", (t) => new GlyphEffected(new RichText(" ".repeat(SLOT)), particles(GLYPH_DEFAULTS.rain, 1), { t, key: "rain" })),
-  effected("blink", (t) => new Effected(new RichText("● recording", { style: "#f38ba8" }), blink(ATTRIBUTE_DEFAULTS.blink), { t, key: "blink", theme: THEME })),
-  effected("bold pulse", (t) => new Effected(new RichText("♥ a bold heartbeat", { style: "#f38ba8" }), blink(ATTRIBUTE_DEFAULTS.boldPulse), { t, key: "pulse", theme: THEME })),
+  effected("case wave", (t) => frameAt(new GlyphEffected(WAVED, caseWave({ step: 0.12, width: 3 }, 0), { key: "wave" }), t)),
+  effected("rain on a blank panel", (t) => frameAt(new GlyphEffected(new RichText(" ".repeat(SLOT)), particles(GLYPH_DEFAULTS.rain, 1), { key: "rain" }), t)),
+  effected("blink", (t) => frameAt(new Effected(new RichText("● recording", { style: "#f38ba8" }), blink(ATTRIBUTE_DEFAULTS.blink), { key: "blink", theme: THEME }), t)),
+  effected("bold pulse", (t) => frameAt(new Effected(new RichText("♥ a bold heartbeat", { style: "#f38ba8" }), blink(ATTRIBUTE_DEFAULTS.boldPulse), { key: "pulse", theme: THEME }), t)),
   animated("crossfade", crossfading),
   animated("wipe", wiping),
   animated("marquee", marquee),

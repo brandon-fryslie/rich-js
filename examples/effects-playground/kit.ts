@@ -69,7 +69,7 @@ export function play(make: Make, pace: Pace): void {
   });
   const draw = (): void => {
     const heading = new RichText(`frame ${frame} · curve time ${t.toFixed(2)} · ${pace.fps} fps`, { style: dim, noWrap: true });
-    const drawn = subjects.map((s, n) => new Effected(s.renderable, effects[n]!, { t, key: s.name, theme: THEME }));
+    const drawn = subjects.map((s, n) => new Effected(s.renderable, effects[n]!, { key: s.name, theme: THEME }).at(t));
     live.update(new Padding(new Group(heading, new RichText(""), ...drawn), [1, 2], { style: paper }), { refresh: true });
     t += pace.step;
     frame += 1;
