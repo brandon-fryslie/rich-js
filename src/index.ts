@@ -113,6 +113,9 @@ export type { Beat, Ease, SpringOptions, StepPosition, Timing } from "./core/eas
 // A value for a time, and when it next changes: the one type every kind of
 // motion is an instance of — beats, frame sequences, spinners, effects.
 export { Animation } from "./core/animation.js";
+// What every animation answers whatever its values — the type a generic
+// animation implements, and what `Animation.of` and `map` take.
+export type { Timed } from "./core/animation.js";
 // A number eased from one value to another over seconds, then held: the
 // value animation a fill, a counter or a width moves by instead of jumping.
 export { tween } from "./core/tween.js";
@@ -135,7 +138,7 @@ export {
   NULL_STYLE,
   DEFAULT_STYLES,
 } from "./core/style.js";
-export type { Attributes, StyleOptions, TextStyle, LayeredStyle } from "./core/style.js";
+export type { Attributes, Hold, StyleOptions, TextStyle, LayeredStyle } from "./core/style.js";
 
 export {
   Segment,

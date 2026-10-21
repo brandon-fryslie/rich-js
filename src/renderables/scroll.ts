@@ -107,7 +107,7 @@ class ScrollFrame implements Renderable, Measurable, Composite {
     // when anything in the content does — a row above the slot entering pushes every row down, and run
     // backwards, leaving it pulls them up. That hold rides a cell of no width on the first row, and the
     // cut throws the rest away.
-    yield Segment.carrier(new Style({ lastChange: Segment.lastChange(drawn), nextChange: Segment.nextChange(drawn) }));
+    yield Segment.carrier(new Style({ hold: { lastChange: Segment.lastChange(drawn), nextChange: Segment.nextChange(drawn) } }));
     for (let r = 0; r < this.height; r++) {
       const line = lines[this.row + r] ?? [];
       const shown = Segment.divide(line, [start, start + width - blank])[1] ?? [];

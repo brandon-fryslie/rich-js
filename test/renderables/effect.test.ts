@@ -62,7 +62,7 @@ describe("Effected — the identity effect", () => {
     // Written as it was: no byte but the glyphs. What the segment gains is
     // when the frame next changes — now, for an effect that promises no hold.
     expect(renderToString(fixed(...segments), { colorSystem: ColorDepth.TRUECOLOR })).toBe("ab");
-    expect(segments[0]!.style?.nextChange).toBe(0);
+    expect(segments[0]!.style?.hold.nextChange).toBe(0);
   });
 
   it("hands a cell the colours on screen: an ANSI colour from the theme, swapped under reverse", () => {

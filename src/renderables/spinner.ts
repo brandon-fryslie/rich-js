@@ -35,7 +35,7 @@
  * that rate, as Rich scales the time, `t × speed` into the beat: the frames
  * are held for the interval the data gives, and the spinner is asked for the
  * frame at the time the timeline maps the host's to. [LAW:one-source-of-truth]
- * When the frame next changes (`Style.nextChange`) is a time on the host's
+ * When the frame next changes (`Style.hold`) is a time on the host's
  * timeline, and the sequence answers on its own, so the timeline carries the
  * answer back. `at` hands over the frame alone, as every animation's does;
  * placed, a spinner draws at the frame's time and stamps its cells with that
@@ -48,7 +48,8 @@
  * timeline refuses it.
  */
 
-import { Animation, frameTimeOf, holdOf, shownAt, stampFrame, type Hold } from "../core/animation.js";
+import { Animation, frameTimeOf, holdOf, shownAt, stampFrame } from "../core/animation.js";
+import type { Hold } from "../core/style.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { RichText } from "../core/text.js";

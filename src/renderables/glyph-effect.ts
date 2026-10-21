@@ -45,7 +45,7 @@
  *   style whole, link, meta and anchor included; no cell has moved, so the
  *   anchor's offsets are still true and hit testing still finds the owner.
  * - Placed as a `GlyphEffected`, every cell carries the hold the frame is in
- *   (`Style.nextChange`, `Style.lastChange`), under whatever the child said,
+ *   (`Style.hold`), under whatever the child said,
  *   as under `Effected`; drawn as a `Reglyphed`, a value, none.
  *
  * Positions are the child's own: row and column count from the top-left of

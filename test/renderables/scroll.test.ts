@@ -165,7 +165,7 @@ describe("scroll", () => {
     const marquee = scroll(LINE, { width: 6, height: 2, col: Animation.continuous((t) => t) });
     const cells = draw(frameAt(marquee, 3)).filter((s) => !s.isControl && s.text !== "\n");
     expect(cells.length).toBeGreaterThan(1);
-    for (const segment of cells) expect(segment.style?.nextChange).toBe(3);
+    for (const segment of cells) expect(segment.style?.hold.nextChange).toBe(3);
     const empty = Animation.map(Animation.continuous((t) => t), (): Renderable => ({ render: () => [] }));
     expect(Segment.nextChange(draw(frameAt(empty, 2)))).toBe(2);
   });

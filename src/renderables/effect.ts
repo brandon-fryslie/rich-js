@@ -49,7 +49,7 @@
  *   one whose attributes come back as its style set them keeps them, and a
  *   segment whose every cell is unchanged is yielded with its look as
  *   it was, so the identity effect is byte-identical; what an `Effected` gains is when
- *   the frame next changes (`Style.nextChange`), which writes no byte.
+ *   the frame next changes (`Style.hold`), which writes no byte.
  *   Neighbouring cells the output depth
  *   writes alike stay one segment: a segment is cut only where the written
  *   colours or the attributes change, so two colours that land on one index
@@ -65,7 +65,8 @@
  */
 
 import { drawnBy, shiftAnchor, type Anchor } from "../core/anchor.js";
-import { Animation, frameTimeOf, holdOf, shownAt, stampFrame, type Hold } from "../core/animation.js";
+import { Animation, frameTimeOf, holdOf, shownAt, stampFrame } from "../core/animation.js";
+import type { Hold } from "../core/style.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK, type ColorRgba, type TerminalTheme } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";

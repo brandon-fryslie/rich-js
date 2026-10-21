@@ -106,7 +106,7 @@ export class Segment {
   /**
    * A segment that draws no cell, writes no byte and opens no row, whose
    * `style` says something of the frame it rides in — when it next changes
-   * (`Style.nextChange`) — so a frame of no cells can still say it. A control
+   * (`Style.hold`) — so a frame of no cells can still say it. A control
    * of no codes: everything that reads cells or text passes it by as it
    * passes any control, and `splitLines` keeps it off a row of its own. Rich
    * has none; an empty piece of text is a row there and here.
@@ -142,7 +142,7 @@ export class Segment {
 
   /**
    * When what `segments` show next changes, in seconds on the timeline of
-   * whoever drew them: the soonest `Style.nextChange` among them, read off
+   * whoever drew them: the soonest `Style.hold` among them, read off
    * the composed frame the way `anchorAt` reads an owner — `t` itself for a
    * frame something in moves every frame, `Infinity` for one that never
    * changes. What a host that drew the frame at `t` asks before drawing
@@ -151,20 +151,20 @@ export class Segment {
    */
   static nextChange(segments: Iterable<Segment>): number {
     let soonest = Number.POSITIVE_INFINITY;
-    for (const segment of segments) soonest = Math.min(soonest, segment.style?.nextChange ?? Number.POSITIVE_INFINITY);
+    for (const segment of segments) soonest = Math.min(soonest, segment.style?.hold.nextChange ?? Number.POSITIVE_INFINITY);
     return soonest;
   }
 
   /**
    * Since when what `segments` show has been what it is, on the same
-   * timeline: the latest `Style.lastChange` among them, the other end of the
+   * timeline: the latest `Style.hold` among them, the other end of the
    * hold `nextChange` reads — `t` for a frame something in moves every
    * frame, `-Infinity` for one that always was. What a host running its
    * timeline backwards asks before drawing again.
    */
   static lastChange(segments: Iterable<Segment>): number {
     let latest = Number.NEGATIVE_INFINITY;
-    for (const segment of segments) latest = Math.max(latest, segment.style?.lastChange ?? Number.NEGATIVE_INFINITY);
+    for (const segment of segments) latest = Math.max(latest, segment.style?.hold.lastChange ?? Number.NEGATIVE_INFINITY);
     return latest;
   }
 
@@ -305,7 +305,7 @@ export class Segment {
 
     // Crop to width: the cells past it go, and every piece of no cells stays —
     // a control, or an empty piece of text, writes nothing there, and may be
-    // all that says when its frame changes (`Style.nextChange`). Not the
+    // all that says when its frame changes (`Style.hold`). Not the
     // reference, which stops at the cut.
     const result: Segment[] = [];
     let remaining = width;

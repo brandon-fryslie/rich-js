@@ -670,7 +670,7 @@ describe("App on a timeline", () => {
       render: ({ frame }) => {
         draws += 1;
         const whole = Math.floor(frame!.time);
-        return [new Segment("x", new Style({ lastChange: whole, nextChange: whole + 1 }))];
+        return [new Segment("x", new Style({ hold: { lastChange: whole, nextChange: whole + 1 } }))];
       },
     };
     const target = new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(1), view: stamped, timeline: Timeline.play(100, 2) });
@@ -694,7 +694,7 @@ describe("App on a timeline", () => {
     const settled: Animation<Renderable> = Animation.of({
       at: (t) => {
         times.push(t);
-        return { render: () => [new Segment("x", new Style({ lastChange: t, nextChange: t }))] };
+        return { render: () => [new Segment("x", new Style({ hold: { lastChange: t, nextChange: t } }))] };
       },
       nextChange: () => Number.POSITIVE_INFINITY,
       lastChange: () => 2,

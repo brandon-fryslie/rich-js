@@ -24,8 +24,9 @@ import { Animation } from "../../src/core/animation.js";
 import { EASES, Phase } from "../../src/core/easing.js";
 import { Timeline } from "../../src/core/timeline.js";
 import { tween } from "../../src/core/tween.js";
-import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import { render, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { Segment } from "../../src/core/segment.js";
+import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { ColorRgba } from "../../src/core/color.js";
 import { Console } from "../../src/core/console.js";
@@ -33,6 +34,7 @@ import { ColorRamp } from "../../src/themes/ramp.js";
 import { CATPPUCCIN_MOCHA } from "../../src/themes/terminalThemes.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { Effected } from "../../src/renderables/effect.js";
+import { frameAt } from "../../src/renderables/frames.js";
 import { gradient } from "../../src/renderables/effects.js";
 import { Group } from "../../src/renderables/group.js";
 import { Layout } from "../../src/renderables/layout.js";
@@ -247,5 +249,52 @@ describe("the type says which animations are placed", () => {
     const console = new Console({ width: 20, file: { write: (s: string) => void lines.push(s) } });
     console.print(counting());
     expect(lines.join("")).toContain("n=0.0");
+  });
+});
+
+describe("an animation drawn at a time it names (frameAt)", () => {
+  const NO_COLOR: RenderOptions = { maxWidth: 40, colorSystem: null };
+  const drawn = (renderable: Renderable, options: RenderOptions = NO_COLOR) => [...render(renderable, options)];
+
+  it("stamps what the animation placed stamps: an effect where its colours cannot move says it never changes", () => {
+    for (const t of [0, 3, 30]) expect(Segment.nextChange(drawn(frameAt(ramped(), t)))).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("draws every animation inside its value at the time it names, not the frame's", () => {
+    const framed = frameAt(Animation.constant<Renderable>(new Panel(counting())), 1.5);
+    const text = drawn(framed, { ...NO_COLOR, frame: { time: 0, host: { frameTime: 0 } } }).map((s) => s.text).join("");
+    expect(text).toContain("n=7.5");
+  });
+});
+
+describe("Animation.of keeps what it is handed", () => {
+  it("a class instance keeps the methods on its prototype", () => {
+    class Steps {
+      at(t: number): RichText {
+        return new RichText(`step ${Math.floor(t)}`, { end: "" });
+      }
+      nextChange(t: number): number {
+        return Math.floor(t) + 1;
+      }
+      lastChange(t: number): number {
+        return Math.floor(t);
+      }
+      reduced(): Animation<RichText> {
+        return Animation.constant(this.at(0));
+      }
+    }
+    const steps = Animation.of(new Steps());
+    const segments = [...render(steps, { maxWidth: 20, frame: { time: 2.5, host: { frameTime: 2.5 } } })];
+    expect(segments.map((s) => s.text).join("")).toBe("step 2");
+    expect(Segment.nextChange(segments)).toBe(3);
+    expect(Segment.lastChange(segments)).toBe(2);
+  });
+});
+
+describe("a cell's hold is both its ends or neither", () => {
+  it("refuses a style saying only when it next changes", () => {
+    // @ts-expect-error a hold with one end would claim the cell always was
+    void (() => new Style({ nextChange: 3 }));
+    expect(new Style({ hold: { lastChange: 1, nextChange: 3 } }).hold.lastChange).toBe(1);
   });
 });

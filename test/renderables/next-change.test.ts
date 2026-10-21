@@ -88,7 +88,7 @@ describe("what a host reads off a frame: when it next changes", () => {
   });
 
   it("a spinner's label keeps an earlier word of its own on when it changes", () => {
-    const label = new RichText("soon", { end: "" }).stylize(new Style({ nextChange: 0.001 }));
+    const label = new RichText("soon", { end: "" }).stylize(new Style({ hold: { lastChange: 0, nextChange: 0.001 } }));
     expect(nextChangeOf(new Spinner("dots", label).drawnAt(0))).toBe(0.001);
   });
 

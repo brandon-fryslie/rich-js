@@ -10,7 +10,7 @@
  * answer costs a host a frame that draws what the last one did; a late one
  * skips a change. So an animation that cannot say answers `t`, as
  * `continuous` does. A value drawn as cells carries this answer on every
- * cell (`Style.nextChange`, and `Style.lastChange` below), so a host holding
+ * cell (`Style.hold`, both ends of the hold below), so a host holding
  * the composed frame reads it there (`Segment.nextChange`); a value that is
  * not drawn — a number, a colour — has `nextChange` as its only way to say
  * when to look again.
@@ -77,7 +77,7 @@ import { beat, firstReaching, passAt, positiveSeconds, type Beat } from "./easin
 import { Measurement } from "./measure.js";
 import { isRenderable, render, type Composite, type Measurable, type Motion, type Renderable, type RenderOptions } from "./protocol.js";
 import { Segment } from "./segment.js";
-import { Style } from "./style.js";
+import { Style, type Hold } from "./style.js";
 
 /** A value of `T` at a time in seconds, and the hold it is in: what every animation answers, whatever its values. */
 export interface Timed<T> {
@@ -126,11 +126,6 @@ export function shownAt<T>(animation: Timed<T>, t: number, motion: Motion): Show
   return { value: drawn.at(t), nextChange: drawn.nextChange(t), drawn, reduced };
 }
 
-/** A hold: since when a sample has been what it is, and until when it stays so, on one clock. */
-export interface Hold {
-  readonly lastChange: number;
-  readonly nextChange: number;
-}
 
 /** The hold `shown`, drawn at `t`, is in: its animation's two answers there. */
 export function holdOf(shown: Shown<unknown>, t: number): Hold {
@@ -139,7 +134,7 @@ export function holdOf(shown: Shown<unknown>, t: number): Hold {
 
 /** The style saying a cell is in `hold`. */
 export function stamp(hold: Hold): Style {
-  return new Style({ lastChange: hold.lastChange, nextChange: hold.nextChange });
+  return new Style({ hold });
 }
 
 /**
@@ -172,27 +167,21 @@ function drawable(value: unknown): Renderable {
 }
 
 /**
- * `animation` drawn at `t` under `options`: the value `shownAt` picks, every
- * segment stamped with its hold at `t` under whatever its own cells say, led
- * by a `Segment.carrier` of it, because a frame of no cells — an element not
- * yet entered — may have cells later, and must say when.
+ * An animation's face, `render`: drawn at the time of the frame it is drawn
+ * in (`frameTimeOf`), the value `shownAt` picks, every segment stamped with
+ * its hold there under whatever its own cells say, led by a
+ * `Segment.carrier` of it, because a frame of no cells — an element not yet
+ * entered — may have cells later, and must say when. A container — the
+ * library's or a user's — that draws its children through `render` draws an
+ * animation among them with no word about time. [LAW:composability]
  */
-export function* drawnAt(animation: Timed<unknown>, t: number, options: RenderOptions): Iterable<Segment> {
+export function* placedRender(animation: Timed<unknown>, options: RenderOptions): Iterable<Segment> {
+  const t = frameTimeOf(options);
   const shown = shownAt(animation, t, options);
   const value = drawable(shown.value);
   const hold = holdOf(shown, t);
   yield Segment.carrier(stamp(hold));
   yield* stampFrame(render(value, options), hold);
-}
-
-/**
- * An animation's face, `render`: drawn at the time of the frame it is drawn
- * in (`frameTimeOf`). A container — the library's or a user's — that draws
- * its children through `render` draws an animation among them with no word
- * about time. [LAW:composability]
- */
-export function placedRender(animation: Timed<unknown>, options: RenderOptions): Iterable<Segment> {
-  return drawnAt(animation, frameTimeOf(options), options);
 }
 
 /** An animation's face, `measure`: what it shows at the frame's time, measured. */
@@ -208,23 +197,46 @@ export function* placedContents(animation: Timed<unknown>, options: RenderOption
 /** What `Animation.of` makes of `X`: `X`, with the face its values call for. */
 export type Faced<X extends Timed<unknown>> = X & Animation<X extends Timed<infer T> ? T : never>;
 
+/**
+ * Every member of `source`, its own and its class's, as own properties of a
+ * new object: a method bound to `source`, a getter read off it live, a field
+ * as it is. So a class instance keeps its methods, and a spread of the copy
+ * is whole.
+ */
+function membersOf(source: object): Record<PropertyKey, unknown> {
+  const copy: Record<PropertyKey, unknown> = {};
+  for (let layer: object | null = source; layer !== null && layer !== Object.prototype; layer = Object.getPrototypeOf(layer) as object | null) {
+    for (const key of Reflect.ownKeys(layer)) {
+      if (key === "constructor" || Object.hasOwn(copy, key)) continue;
+      const member = Object.getOwnPropertyDescriptor(layer, key)!;
+      Object.defineProperty(
+        copy,
+        key,
+        member.get !== undefined
+          ? { enumerable: true, configurable: true, get: () => Reflect.get(source, key) }
+          : { enumerable: true, configurable: true, writable: true, value: typeof member.value === "function" ? (member.value as (...args: unknown[]) => unknown).bind(source) : member.value },
+      );
+    }
+  }
+  return copy;
+}
+
 export const Animation = {
   /**
-   * `timed` as an animation: itself, every member it carries kept, with the
-   * face its values call for — `render`, `measure` and `contents`, drawing it
-   * at the frame's time. Every animation made from a literal is made here,
-   * the library's and a user's alike. [LAW:single-enforcer] The one cast in
-   * the type: a literal's `T` is not known at runtime, so every animation
-   * made here has the face, and one whose values are not renderables throws
-   * when it is drawn.
+   * `timed` as an animation: every member it carries kept (`membersOf`),
+   * with the face its values call for — `render`, `measure` and `contents`,
+   * drawing it at the frame's time. Every animation made from a literal is
+   * made here, the library's and a user's alike. [LAW:single-enforcer] The
+   * one cast in the type: a literal's `T` is not known at runtime, so every
+   * animation made here has the face, and one whose values are not
+   * renderables throws when it is drawn.
    */
   of<X extends Timed<unknown>>(timed: X): Faced<NoInfer<X>> {
-    const faced = {
-      ...timed,
-      render: (options: RenderOptions) => placedRender(faced, options),
-      measure: (options: RenderOptions) => placedMeasure(faced, options),
-      contents: (options: RenderOptions) => placedContents(faced, options),
-    };
+    const faced = Object.assign(membersOf(timed), {
+      render: (options: RenderOptions) => placedRender(faced as unknown as Timed<unknown>, options),
+      measure: (options: RenderOptions) => placedMeasure(faced as unknown as Timed<unknown>, options),
+      contents: (options: RenderOptions) => placedContents(faced as unknown as Timed<unknown>, options),
+    });
     return faced as unknown as Faced<NoInfer<X>>;
   },
 

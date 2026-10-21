@@ -475,7 +475,7 @@ describe("Live refresh rate", () => {
     const clock = fakeClock();
     const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
     const times: number[] = [];
-    const moving = (t: number): Renderable => ({ render: () => [new Segment("x", new Style({ nextChange: t }))] });
+    const moving = (t: number): Renderable => ({ render: () => [new Segment("x", new Style({ hold: { lastChange: t, nextChange: t } }))] });
     const display = new Live(
       (t) => {
         times.push(t);
@@ -520,7 +520,7 @@ describe("Live refresh rate", () => {
       (t) => {
         times.push(t);
         clock.advance(0.025);
-        return { render: () => [new Segment("x", new Style({ nextChange: t + 0.02 }))] };
+        return { render: () => [new Segment("x", new Style({ hold: { lastChange: t, nextChange: t + 0.02 } }))] };
       },
       { console: target, clock, refreshPerSecond: 4 },
     );
@@ -538,7 +538,7 @@ describe("Live refresh rate", () => {
     const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
     const times: number[] = [];
     // A frame that changes 0.3 s after it is drawn, then holds.
-    const settled = (t: number): Renderable => ({ render: () => [new Segment("x", new Style({ nextChange: t <= 1 ? 1.3 : Number.POSITIVE_INFINITY }))] });
+    const settled = (t: number): Renderable => ({ render: () => [new Segment("x", new Style({ hold: { lastChange: t <= 1 ? 0 : 1.3, nextChange: t <= 1 ? 1.3 : Number.POSITIVE_INFINITY } }))] });
     const display = new Live(
       (t) => {
         times.push(t);

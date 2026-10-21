@@ -309,7 +309,7 @@ describe("Segment.filterControl()", () => {
 // --- Segment.splitRows() ---
 
 describe("Segment.splitRows()", () => {
-  const carrier = Segment.carrier(new Style({ nextChange: 3 }));
+  const carrier = Segment.carrier(new Style({ hold: { lastChange: 0, nextChange: 3 } }));
 
   it("draws no row for output of nothing, or of nothing but carriers, and passes the carriers on", () => {
     expect(Segment.splitRows([])).toEqual({ lines: [], carriers: [] });
@@ -334,10 +334,10 @@ describe("Segment.splitLines()", () => {
   });
 
   it("counts an empty piece after the last break as a row, whatever its style, and a carrier as none", () => {
-    for (const style of [undefined, Style.null(), new Style({ nextChange: 3 })]) {
+    for (const style of [undefined, Style.null(), new Style({ hold: { lastChange: 0, nextChange: 3 } })]) {
       expect(Segment.splitLines([new Segment("a\n"), new Segment("", style)])).toHaveLength(2);
     }
-    const carrier = Segment.carrier(new Style({ nextChange: 3 }));
+    const carrier = Segment.carrier(new Style({ hold: { lastChange: 0, nextChange: 3 } }));
     const lines = Segment.splitLines([new Segment("a\n"), carrier]);
     expect(lines).toHaveLength(1);
     expect(lines[0]).toContain(carrier);

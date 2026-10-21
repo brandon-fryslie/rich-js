@@ -78,7 +78,7 @@ describe("a frame says when it changes on the host's clock", () => {
     expect(said).toBeLessThanOrEqual(2.625);
   });
 
-  it("nothing an animation's at returns says when it changes; the animation does, and frameAt carries it", () => {
+  it("nothing an animation's at returns says when it changes; placed, the animation does, and frameAt stamps what it stamps placed", () => {
     const life = lifecycle(new RichText("a line"), { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(dissolveOut(curve, 0), theme), key: "line" }, 1).leave(5);
     const moving = crossfade(curve).effect({ from: new RichText("building"), to: new RichText("done"), theme });
     const spinner = new Spinner("dots", "working");
@@ -86,7 +86,9 @@ describe("a frame says when it changes on the host's clock", () => {
     for (const animation of animations) {
       for (const t of [0.5, 1.5, 3, 5.5]) {
         expect(Segment.nextChange(draw(animation.at(t)))).toBe(Number.POSITIVE_INFINITY);
-        expect(Segment.nextChange(draw(frameAt(animation, t)))).toBe(animation.nextChange(t));
+        const placed = [...render(animation, { ...OPTIONS, frame: { time: t, host: { frameTime: t } } })];
+        expect(Segment.nextChange(draw(frameAt(animation, t)))).toBe(Segment.nextChange(placed));
+        expect(Segment.nextChange(placed)).toBeGreaterThanOrEqual(animation.nextChange(t));
       }
     }
   });
@@ -114,7 +116,7 @@ describe("a frame says when it changes on the host's clock", () => {
     const wide = new RichText("x".repeat(30), { noWrap: true, overflow: "crop" });
     const cropped = Segment.splitAndCropLines(draw(new Group(wide, frameAt(empty, 0))), 5);
     expect(Segment.nextChange(cropped.flat())).toBe(3);
-    const emptyText = new Segment("", new Style({ nextChange: 2 }));
+    const emptyText = new Segment("", new Style({ hold: { lastChange: 0, nextChange: 2 } }));
     for (const line of [[new Segment("ab"), emptyText, new Segment("cd")], [new Segment("abcd"), emptyText]]) {
       expect(Segment.nextChange(Segment.adjustLineLength(line, 2))).toBe(2);
     }

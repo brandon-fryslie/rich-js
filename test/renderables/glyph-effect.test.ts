@@ -120,9 +120,9 @@ describe("GlyphEffected — what it may not change", () => {
 
   it("stamps the frame's next change under the child's, the sooner winning", () => {
     const later: GlyphEffect = () => ({ at: () => (cell) => cell.glyph, nextChange: () => 5, lastChange: () => 0, reduced: () => Animation.constant((cell: GlyphCell) => cell.glyph) });
-    const child = fixed(new Segment("a", new Style({ nextChange: 3 })), new Segment("b"));
+    const child = fixed(new Segment("a", new Style({ hold: { lastChange: 0, nextChange: 3 } })), new Segment("b"));
     const out = [...glyphed(child, later).render({ maxWidth: 10 })];
-    expect(out.map((s) => s.style?.nextChange)).toEqual([3, 5]);
+    expect(out.map((s) => s.style?.hold.nextChange)).toEqual([3, 5]);
   });
 
   it("measures as its child does, and holds it as its contents", () => {

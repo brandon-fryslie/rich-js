@@ -30,8 +30,8 @@
  * by key.
  *
  * The frame drawn is drawn until the next begins, and its cells say so: a
- * placed sequence stamps them with its hold (`Style.nextChange`,
- * `Style.lastChange`, `placedRender` in `core/animation.ts`), which rides up
+ * placed sequence stamps them with its hold (`Style.hold`,
+ * `placedRender` in `core/animation.ts`), which rides up
  * through every container to whoever holds the composed frame
  * (`Segment.nextChange`), so a host drawing at `t` knows when to draw again,
  * and one drawing slower than the frames turn can see that it is skipping
@@ -48,7 +48,8 @@
  * children do.
  */
 
-import { Animation, drawnAt, holdOf, placedMeasure, placedRender, shownAt, stamp, type Hold } from "../core/animation.js";
+import { Animation, holdOf, placedMeasure, placedRender, shownAt, stamp } from "../core/animation.js";
+import type { Hold } from "../core/style.js";
 import { beat, finiteTime, type Beat } from "../core/easing.js";
 import { Measurement } from "../core/measure.js";
 import type { Composite, Measurable, Motion, Renderable, RenderOptions } from "../core/protocol.js";
@@ -136,7 +137,7 @@ export class FrameSequence implements Animation<RichText> {
  * spliced into a line before any exist — so it is the frame at `t`, as
  * `animation.at(t)` is, and moves under reduced motion too; `Frames` and
  * `textFrameAt` are the text frames that know the preference. Any other
- * renderable is drawn as `placedRender` draws it, at `t`.
+ * renderable is the animation placed in a frame drawn for `t` (`Stamped`).
  */
 export function frameAt(animation: Animation<RichText>, t: number): RichText;
 export function frameAt(animation: Animation<Renderable>, t: number): Renderable;
@@ -163,23 +164,34 @@ export function textFrameAt(animation: Animation<RichText>, t: number, motion: M
   return stampedText(shown.value, holdOf(shown, t));
 }
 
-/** An animation drawn at `t` rather than the frame's time (`drawnAt`): `frameAt`'s renderable. */
+/**
+ * An animation drawn as if its frame were drawn for `t`: `frameAt`'s
+ * renderable. [LAW:one-source-of-truth] It is the animation placed, with
+ * the frame's time named — so it stamps what its own face stamps (an
+ * `Effected` its effect's exact hold), and every animation inside its value
+ * draws at `t` too. The frame is drawn by no host but this: a renderable
+ * that refuses any frame but its own host's — a `Progress` — refuses it.
+ */
 class Stamped implements Renderable, Measurable, Composite {
   constructor(
     readonly animation: Animation<Renderable>,
     readonly t: number,
   ) {}
 
-  render(options: RenderOptions): Iterable<Segment> {
-    return drawnAt(this.animation, this.t, options);
+  private atT(options: RenderOptions): RenderOptions {
+    return { ...options, frame: { time: this.t, host: { frameTime: this.t } } };
   }
 
-  *contents(options: RenderOptions): Iterable<Renderable> {
-    yield shownAt(this.animation, this.t, options).value;
+  render(options: RenderOptions): Iterable<Segment> {
+    return render(this.animation, this.atT(options));
+  }
+
+  contents(options: RenderOptions): Iterable<Renderable> {
+    return this.animation.contents(this.atT(options));
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return Measurement.get(options, shownAt(this.animation, this.t, options).value);
+    return Measurement.get(this.atT(options), this.animation);
   }
 }
 
