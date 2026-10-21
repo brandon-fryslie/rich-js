@@ -8,7 +8,8 @@
  * makeObservable call and subclasses add observables the same way.
  */
 
-import { observable, action } from "mobx";
+import { action } from "mobx";
+import { observable } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { NULL_STYLE, type Style } from "../core/style.js";
 import type { RenderOptions } from "../core/protocol.js";

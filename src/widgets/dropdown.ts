@@ -23,7 +23,8 @@
  * than the header. See docs/widgets.md → Dropdown.
  */
 
-import { observable, action, observableShallow } from "mobx";
+import { action } from "mobx";
+import { observable, observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { cellLen, setCellSize, splitText, asCellCol } from "../core/cells.js";
@@ -51,7 +52,7 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
   readonly id: string;
   readonly focusable = true;
 
-  @observableShallow accessor options: string[];
+  @observableRef accessor options: readonly string[];
   @observable accessor selectedIndex: number;
   @observable accessor expanded: boolean = false;
   @observable accessor highlightedIndex: number;

@@ -8,7 +8,8 @@
  * every such widget, so they live here once.
  */
 
-import { observableRef, action } from "mobx";
+import { action } from "mobx";
+import { observableRef } from "./observable.js";
 import { Style } from "../core/style.js";
 import type { TerminalTheme } from "../core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";

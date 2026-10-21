@@ -63,7 +63,8 @@
  * or invoke them programmatically.
  */
 
-import { observable, action, observableRef, runInAction } from "mobx";
+import { action, runInAction } from "mobx";
+import { observable, observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import {

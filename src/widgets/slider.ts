@@ -18,7 +18,8 @@
  *   disabled — dim
  */
 
-import { observable, action, observableRef } from "mobx";
+import { action } from "mobx";
+import { observable, observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";

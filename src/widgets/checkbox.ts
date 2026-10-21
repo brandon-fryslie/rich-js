@@ -11,7 +11,8 @@
  *   disabled  — dimmed
  */
 
-import { observable, action } from "mobx";
+import { action } from "mobx";
+import { observable } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { cellLen } from "../core/cells.js";
