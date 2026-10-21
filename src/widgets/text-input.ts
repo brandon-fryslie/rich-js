@@ -87,9 +87,9 @@ import {
   type CodePoint,
   type CodeUnit,
 } from "../core/cells.js";
-import { afterPass, drawable, measure, render, type Measurable, type Renderable, type RenderOptions } from "../core/protocol.js";
+import { afterPass, drawable, render, type RenderOptions } from "../core/protocol.js";
 import { State } from "../core/state.js";
-import { EMPTY, Viewport } from "../renderables/viewport.js";
+import { EMPTY, Viewport, type Lines } from "../renderables/viewport.js";
 import { Animation } from "../core/animation.js";
 import { beat } from "../core/easing.js";
 import { Timeline } from "../core/timeline.js";
@@ -183,9 +183,10 @@ function shownRow(shown: readonly (readonly Segment[])[], owner: object): number
  * Where one frame laid a field's value out: on one line, the cell its window
  * starts at; on rows, the visual rows and the first of them it shows.
  */
-type Layout =
-  | { readonly kind: "line"; readonly startCell: CellCol }
-  | { readonly kind: "rows"; readonly rows: readonly VisualRow[]; readonly offset: number };
+type Layout = { readonly drawn: Drawn } & (
+  | { readonly kind: "line"; readonly value: string; readonly startCell: CellCol }
+  | { readonly kind: "rows"; readonly rows: readonly VisualRow[]; readonly offset: number }
+);
 
 /**
  * [LAW:one-source-of-truth] A frame's layout, as the owner of every cell the
@@ -619,13 +620,13 @@ export class TextInput extends ThemedWidget {
       // Continuation rows start after the marker; non-continuation rows start at column 0.
       const contentXOff = asCellCol(row.isContinuation ? this._markerWidth : 0);
       const relX = asCellCol(Math.max(0, event.x - contentXOff));
-      this.cursorPosition = asCodeUnit(row.valueStart + this._offsetAtShownCell(row.content, relX));
+      this.cursorPosition = asCodeUnit(row.valueStart + this._offsetAtShownCell(row.content, relX, layout.drawn));
     } else {
       // [LAW:types-are-the-program] relX is a cell-column offset into the full
       // display string: the click's column past the bracket, from where the
       // window the clicked frame showed begins.
       const relX = asCellCol(Math.max(0, event.x - 1) + layout.startCell);
-      this.cursorPosition = this._offsetAtShownCell(this.value, relX);
+      this.cursorPosition = this._offsetAtShownCell(layout.value, relX, layout.drawn);
     }
     this._preferredColumn.set(null);
   }
@@ -689,7 +690,7 @@ export class TextInput extends ThemedWidget {
     const capCells = nextIsContinuation
       ? asCellCol(Math.max(0, contentCellWidth - 1))
       : contentCellWidth;
-    return this._offsetAtShownCell(target.content, asCellCol(Math.min(col, capCells)));
+    return this._offsetAtShownCell(target.content, asCellCol(Math.min(col, capCells)), this._drawn.get());
   }
 
   @action moveLineStart(): void {
@@ -909,10 +910,11 @@ export class TextInput extends ThemedWidget {
     return asCellCol(cellLen(this._shown(text, this._drawn.get())));
   }
 
-  // The end of the glyphs of `text` whose cells in the last render lie wholly
-  // left of `col`, so a column inside a wide glyph lands before it.
-  private _offsetAtShownCell(text: string, col: CellCol): CodePoint {
-    const shownAs = this._shownAs(this._drawn.get());
+  // The end of the glyphs of `text` whose cells, as a frame drawn under `drawn`
+  // shows them, lie wholly left of `col`, so a column inside a wide glyph
+  // lands before it.
+  private _offsetAtShownCell(text: string, col: CellCol, drawn: Drawn): CodePoint {
+    const shownAs = this._shownAs(drawn);
     let at = 0;
     let cells = 0;
     for (const g of graphemes(text)) {
@@ -983,7 +985,7 @@ export class TextInput extends ThemedWidget {
     }
 
     segments.push(new Segment("]", bracketStyle));
-    return { lines: [segments], layout: { kind: "line", startCell } };
+    return { lines: [segments], layout: { drawn, kind: "line", value: this.value, startCell } };
   }
 
   private _renderMultiline(options: RenderOptions, drawn: Drawn): { lines: Segment[][]; layout: Layout } {
@@ -998,7 +1000,12 @@ export class TextInput extends ThemedWidget {
     const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "on-primary", "primary"));
     const showCursor = this.focused && !this.disabled;
 
-    const lines = visualRows.map((row, rowIdx) => {
+    // One visual row as drawn: its continuation marker, then its content, the
+    // caret on the cursor's row.
+    const rowAt = (rowIdx: number): Segment[] => {
+      const row = visualRows[rowIdx];
+      // A row past the value's last is `minRows` padding: blank.
+      if (row === undefined) return [];
       const line: Segment[] = [];
       if (row.isContinuation) {
         // An ASCII stand-in as wide as the marker, so the rows keep their geometry.
@@ -1006,37 +1013,46 @@ export class TextInput extends ThemedWidget {
       }
       this._emitRowContent(line, options, row, rowIdx === cursorRow && showCursor, contentStyle, cursorStyle);
       return line;
-    });
-    // The field is as wide as it measures held to the width offered — the
-    // whole offer when it draws arrows, which sit in its last cell — and wider
-    // where a row draws past that: a caret past the end of a full row.
-    const drawnWidth = lines.reduce((w, line) => Math.max(w, Segment.getLineLength(line)), 0);
+    };
+    // The window is drawn at the width offered, or wider where the cursor's
+    // row draws past it: a caret past the end of a full row.
     const offered = cellCount(options.maxWidth);
-    const width = Math.max(drawnWidth, arrows ? offered : Math.min(offered, measure(this, options).maximum));
+    const width = Math.max(offered, Segment.getLineLength(rowAt(cursorRow)));
     // Pad with empty rows when the value is shorter than `minRows`.
     const padRows = this._minRows !== undefined && this._maxRows === undefined ? Math.max(0, this._minRows - total) : 0;
-    // Every row is padded to the width, so each has cells to stamp — a blank
-    // row included — and the stamp names its row of the content.
+    // [LAW:dataflow-not-control-flow] Only the rows a frame shows are drawn,
+    // so a frame costs the rows in view and not the value's length. Every row
+    // is padded to the width, so each has cells to stamp — a blank row
+    // included — and the stamp names its row of the content.
     const owner = {};
-    const content = Segment.anchorLines(
-      [...lines, ...Array.from({ length: padRows }, (): Segment[] => [])].map((line) => Segment.adjustLineLength(line, width, contentStyle)),
-      owner,
-    );
-    const rowsRenderable: Renderable & Measurable = {
-      render: () => content.flatMap((line) => [...line, Segment.line()]),
+    const rowLines: Lines = {
+      layout: () => ({
+        length: total + padRows,
+        lines: (start, end) => Segment.anchorLines(
+          Array.from({ length: end - start }, (_, i) => Segment.adjustLineLength(rowAt(start + i), width, contentStyle)),
+          owner,
+          start,
+        ),
+      }),
       measure: () => ({ minimum: width, maximum: width }),
     };
 
     // The viewport picks the window, at most `maxRows` tall whatever region the
     // field is placed in, with the cursor's row followed.
     const shown = Segment.splitLines(render(
-      this._viewport.showing(rowsRenderable, { start: cursorRow, end: cursorRow + 1 }),
+      this._viewport.showingLines(rowLines, { start: cursorRow, end: cursorRow + 1 }),
       { ...options, maxWidth: width, height: this._maxRows === undefined ? undefined : { rows: this._maxRows, exact: false } },
     ));
 
     // The content row the window's first row shows: the offset this frame
     // drew, read off what the viewport drew.
     const offset = shownRow(shown, owner);
+    // The field is as wide as the widest row it shows, and never narrower than
+    // its least measure the offer allows, so a blank field has cells to click;
+    // a field with arrows is the whole offer, the arrows in its last cell. Read
+    // off the rows in view, so a frame never measures the whole value.
+    const widest = shown.reduce((w, _, i) => Math.max(w, Segment.getLineLength(rowAt(offset + i))), 0);
+    const fieldWidth = arrows ? width : Math.min(width, Math.max(widest, Math.min(offered, MIN_CONTENT_WIDTH + 2)));
     // Scroll-direction arrows appear in the rightmost cell of the first/last
     // visible row, *only* when scroll is actually possible in that direction.
     // Only emitted in `"arrows"` mode; other modes leave the content area
@@ -1054,12 +1070,12 @@ export class TextInput extends ThemedWidget {
     // wheel over it scrolls the field.
     const withArrows = shown.map((line, i) => {
       const arrow = arrowOn(i);
-      if (arrow === undefined) return line;
+      if (arrow === undefined) return Segment.adjustLineLength(line, fieldWidth, contentStyle);
       const at = offered - cellLen(arrow);
       const cell = indicatorStyle.withAnchor(Segment.anchorAt([line], at, 0));
-      return Segment.adjustLineLength([...Segment.adjustLineLength(line, at, contentStyle), new Segment(arrow, cell)], width, contentStyle);
+      return Segment.adjustLineLength([...Segment.adjustLineLength(line, at, contentStyle), new Segment(arrow, cell)], fieldWidth, contentStyle);
     });
-    return { lines: withArrows, layout: { kind: "rows", rows: visualRows, offset } };
+    return { lines: withArrows, layout: { drawn, kind: "rows", rows: visualRows, offset } };
   }
 
   // The caret's cell for the frame `options` draws: the blink restarted at the

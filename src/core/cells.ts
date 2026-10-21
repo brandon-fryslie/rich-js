@@ -293,6 +293,9 @@ export function splitAtCells(line: string, cuts: readonly CellCol[]): string[] {
  * between two of its code points leaves half a glyph.
  */
 export function graphemes(text: string): string[] {
+  // Printable ASCII joins nothing, so each character is a cluster of its own
+  // and no segmentation is needed — the same reach `measure` makes.
+  if (PRINTABLE_ASCII.test(text)) return text.split("");
   return Array.from(clustersFrom(text, asCodePoint(0)));
 }
 

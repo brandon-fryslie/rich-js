@@ -452,12 +452,10 @@ describe("Panel", () => {
       });
     }
 
-    // A `bottomRightAccessory` thunk reads state that the wrapped renderable
-    // populates during its own render, so it resolves after the content has
-    // rendered for the frame. Where the content is left no column it is not
-    // rendered at all — Rich's `Console.render` under one column — and the
-    // thunk reads the last frame that drew it.
-    it("resolves the accessory after the content renders, and renders no content left no column", () => {
+    // A `bottomRightAccessory` function is handed the rows the body drew this
+    // frame. Where the content is left no column it is not rendered at all —
+    // Rich's `Console.render` under one column.
+    it("hands the accessory the rows the body drew this frame, and renders no content left no column", () => {
       let frames = 0;
       const counting: Renderable = {
         *render(_options: RenderOptions) {
@@ -467,7 +465,7 @@ describe("Panel", () => {
         },
       };
       const panel = new Panel(counting, {
-        bottomRightAccessory: () => `#${frames}`,
+        bottomRightAccessory: (body) => (body.some((row) => row.some((s) => s.text.includes("content"))) ? "drawn" : "blank"),
       });
 
       for (let width = 1; width <= 8; width++) {
@@ -477,7 +475,7 @@ describe("Panel", () => {
       }
 
       const lines = collectLines(panel, { maxWidth: 30 });
-      expect(lines[lines.length - 1]).toContain(`#${frames}`);
+      expect(lines[lines.length - 1]).toContain("drawn");
     });
 
     // Negative padding used to reach the renderer, where it produced content

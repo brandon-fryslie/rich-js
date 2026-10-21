@@ -99,6 +99,29 @@ interface Asked {
   readonly moves: readonly Move[];
 }
 
+/**
+ * Content a viewport shows by the line: laid out at a width, it says how many
+ * lines it is and draws only the ones asked for. What a view too long to draw
+ * whole every frame — a textarea's rows — is shown as (`showingLines`).
+ */
+export interface Lines extends Measurable {
+  layout(options: RenderOptions): LaidLines;
+}
+
+/** Content laid out at one width: its length, and its lines `start` up to but not including `end`. */
+export interface LaidLines {
+  readonly length: number;
+  lines(start: number, end: number): Segment[][];
+}
+
+/** `content` drawn whole at the width `options` offers, as lines a viewport slices. */
+function drawnWhole(content: Renderable): (options: RenderOptions) => LaidLines {
+  return (options) => {
+    const all = Segment.splitLines(render(content, options));
+    return { length: all.length, lines: (start, end) => all.slice(start, end) };
+  };
+}
+
 /** How one part of a scrollbar draws each row it covers. */
 export interface ScrollbarPart {
   readonly glyph: string;
@@ -224,9 +247,21 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
    */
   showing(content: Renderable, follow?: Range): Renderable & Measurable & Composite {
     return {
-      render: (options) => this.draw(content, follow, options),
+      render: (options) => this.draw(content, drawnWhole(content), follow, options),
       measure: (options) => this.measureOf(content, options),
       contents: () => [content],
+    };
+  }
+
+  /**
+   * `content` shown through this viewport as `showing` shows a renderable,
+   * drawing only the lines the frame shows: a frame costs the rows in view,
+   * not the content's whole length.
+   */
+  showingLines(content: Lines, follow?: Range): Renderable & Measurable {
+    return {
+      render: (options) => this.draw(content, (o) => content.layout(o), follow, options),
+      measure: (options) => this.measureOf(content, options),
     };
   }
 
@@ -248,7 +283,7 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
   }
 
   render(options: RenderOptions): Iterable<Segment> {
-    return this.draw(this.content, undefined, options);
+    return this.draw(this.content, drawnWhole(this.content), undefined, options);
   }
 
   /** The scroll, and the moves queued against it, as they stand. */
@@ -274,12 +309,12 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
     return settled.offset;
   }
 
-  /** `content` drawn from the scroll and the moves queued against it, with `follow` followed. */
-  private *draw(content: Renderable, follow: Range | undefined, rawOptions: RenderOptions): Iterable<Segment> {
+  /** `content`, laid out by `layout`, drawn from the scroll and the moves queued against it, with `follow` followed. */
+  private *draw(content: Renderable | Measurable, layout: (options: RenderOptions) => LaidLines, follow: Range | undefined, rawOptions: RenderOptions): Iterable<Segment> {
     const { height, ...options } = withBoundedWidth(rawOptions, { measure: (o) => this.measureOf(content, o) });
     const gutter = this.gutter;
     const contentWidth = this.contentWidth(options.maxWidth);
-    const lines = Segment.splitLines(render(content, { ...options, maxWidth: contentWidth }));
+    const lines = layout({ ...options, maxWidth: contentWidth });
     const asked = this.asked();
     const { scroll, moves } = follow === undefined ? asked : following(asked, follow);
     // [LAW:no-ambient-temporal-coupling] Content handed no column is held, not
@@ -292,7 +327,7 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
     const extent: Extent = { rows: viewRows(height, this.rows, length), lines: length };
     const offset = held ? clampOffset(scroll.offset, extent) : this.keep(settle(scroll, moves, extent), asked.moves);
 
-    const shown = fitHeight(lines.slice(offset, offset + extent.rows), { rows: extent.rows, exact: true });
+    const shown = fitHeight(lines.lines(offset, offset + extent.rows), { rows: extent.rows, exact: true });
     // The thumb is drawn from the offset this render resolved, not from the
     // offset the last frame kept.
     const thumb = thumbRows(extent, offset);
@@ -324,7 +359,7 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
     return this.measureOf(this.content, options);
   }
 
-  private measureOf(content: Renderable, rawOptions: RenderOptions): { minimum: number; maximum: number } {
+  private measureOf(content: Renderable | Measurable, rawOptions: RenderOptions): { minimum: number; maximum: number } {
     // Its width is its content's and its gutter's. `withCellWidth` and not
     // `withBoundedWidth`: the bounded parse asks this very method for the
     // natural width.
