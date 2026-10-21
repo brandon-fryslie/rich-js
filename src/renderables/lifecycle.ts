@@ -19,7 +19,10 @@
  * their own on when they change: placed, the lifecycle stamps them with its
  * hold at the frame's time (`placedRender`). The exit veils whatever the
  * arrival draws, so an element told to leave while it is still arriving leaves
- * from where it is, never shown whole first. [LAW:dataflow-not-control-flow]
+ * from where it is, never shown whole first — though a colour exit is spread
+ * over the cells each frame shows, so a cell the arrival adds can move one
+ * already leaving back toward whole (`ownChange`, `./effects.ts`).
+ * [LAW:dataflow-not-control-flow]
  *
  * A half draws the element through a colour transition (`throughColors`, a
  * `fadeIn`) or a glyph one (`throughGlyphs`, a `typewriter`): each lift binds
@@ -70,9 +73,9 @@ function lift(transition: Transition<unknown>, veil: Veil): Transition<Veil> {
 
 /** How an element arrives and leaves, and what it is named for their seeds. */
 export interface LifecycleOptions {
-  /** The half it arrives through, made for this element alone — `throughColors(fadeIn(curve, z), theme)`. */
+  /** The half it arrives through — `throughColors(fadeIn(curve, z), theme)`. */
   readonly enter: Transition<Veil>;
-  /** The half it leaves through, made for this element alone — `throughGlyphs(scrambleOut(timing, z))`. */
+  /** The half it leaves through — `throughGlyphs(scrambleOut(timing, z))`. */
   readonly exit: Transition<Veil>;
   /** Names the element for both halves' seeds, as `Effected`'s and `GlyphEffected`'s key does. */
   readonly key: string;
