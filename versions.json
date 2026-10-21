@@ -4,15 +4,22 @@
     {
       "version": "pr-504",
       "ref": "refs/pull/504/merge",
-      "sha": "2c1ea571409475c10a73c284d6f6a338f3f7b28f",
-      "timestamp": "2026-10-21T06:06:25.964Z",
+      "sha": "42552558449cbb3a00d21b761dcf906a22e7dbf3",
+      "timestamp": "2026-10-21T06:15:16.349Z",
       "commits": [
         {
-          "sha": "2c1ea571409475c10a73c284d6f6a338f3f7b28f",
+          "sha": "42552558449cbb3a00d21b761dcf906a22e7dbf3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T00:04:26-06:00",
-          "message": "Merge 96b2b404601c0a3353b6070af4979d8f6efe9f53 into 0dcf5ac44f527aed4862a9e376cb6bca2a287dfb\n"
+          "timestamp": "2026-10-21T06:13:47Z",
+          "message": "Merge 05d3c3114b6207ddea3c109281b194d489601806 into 0dcf5ac44f527aed4862a9e376cb6bca2a287dfb\n"
+        },
+        {
+          "sha": "05d3c3114b6207ddea3c109281b194d489601806",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T00:13:41-06:00",
+          "message": "Review (high): a location keeps every reason, lib keys, a self-iterable pass iterator (rich-protocol-9xcs.94u)\n\n- render-purity reports every reason a location has, so a State in a Memo\n  held by a module let is refused even when a debt row owes the let.\n- TypeScript lib declarations are keyed `lib`, not by their node_modules path.\n- The mobx accessor sanction names rich-protocol-9xcs.sej and says the gap.\n- The pass-opening iterator sits on %IteratorPrototype%, iterable itself.\n- measuring is private to protocol; scroll measures through Measurement.get.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "96b2b404601c0a3353b6070af4979d8f6efe9f53",
