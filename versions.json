@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-514",
+      "ref": "refs/pull/514/merge",
+      "sha": "7084754b6418352ffa1c8478c6bbde2ec1d403e6",
+      "timestamp": "2026-10-21T14:52:20.597Z",
+      "commits": [
+        {
+          "sha": "7084754b6418352ffa1c8478c6bbde2ec1d403e6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T08:49:58-06:00",
+          "message": "Merge 3212f74fc06132190ee36a2fa3f383c323ec8739 into 5a1af8f1286902d1e6bac6dce34afb4d7c08f2b4\n"
+        },
+        {
+          "sha": "3212f74fc06132190ee36a2fa3f383c323ec8739",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T08:49:46-06:00",
+          "message": "A view that moves says so only through what it draws (rich-animation-27tq.wrw)\n\nA view is a renderable or a function asked for one each frame and handed no\ntime; a host holds one shape and draws it one way. App.animate(),\nWidgetApp.animate(), the animations set, FrameSays.held and Task.time are\ngone: the frame's holds alone decide whether a host ticks.\n\nAnimation.time() is the time itself, reduced to itself, so a clock or a\ncounter keeps the time under reduced motion. animationFuncs takes a\nTemplateFrame ({ time, onHold }) and tween, loop and stepped tell their\nhold, so a template in an App paints while a tween moves and sleeps after.\n\nrich-dash steps its widgets as program state on its own timer; effects-feel,\nlifecycle and the animation playground place their time-dependent parts.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "5a1af8f1286902d1e6bac6dce34afb4d7c08f2b4",
