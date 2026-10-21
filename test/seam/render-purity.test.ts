@@ -48,7 +48,7 @@ describe("the gate", () => {
       [
         `import { observable } from "mobx";`,
         `import { observableRef } from ${widgets("observable.js")};`,
-        `import { State } from ${core("state.js")};`,
+        `import { ListState, State } from ${core("state.js")};`,
         `import { Memo, WeakMemo } from ${core("memo.js")};`,
         `export class Writes { private n = 0; render() { this.n += 1; return []; } }`,
         `export class Holds {`,
@@ -56,6 +56,8 @@ describe("the gate", () => {
         `  readonly items: readonly number[] = [];`,
         `  readonly count = new State(0);`,
         `  readonly counts = new State<number[]>([]);`,
+        `  readonly rows = new ListState<number>();`,
+        `  readonly grids = new ListState<number[]>();`,
         `  render() { return []; }`,
         `}`,
         `export class Observes { @observable accessor x = 0; render() { return []; } }`,
@@ -68,6 +70,7 @@ describe("the gate", () => {
         `let frames = 0;`,
         `export const bump = (): number => (frames += 1);`,
         `export const memo = new Memo<State<number>>();`,
+        `export const lists = new Memo<ListState<number>>();`,
         `let states = new Memo<State<number>>();`,
         `export const weak = new WeakMemo<State<number>, { n: number }>();`,
         `export const byKey = new WeakMemo<readonly number[], { n: number }>();`,
@@ -80,7 +83,9 @@ describe("the gate", () => {
       .map((l) => [l.key.slice(fixtureFile.length + 1), l.reason]);
     expect(reported).toEqual([
       ["Holds.counts", "mutable array"],
+      ["Holds.grids", "mutable array"],
       ["module.frames", "module let"],
+      ["module.lists", "state in a Memo"],
       ["module.memo", "state in a Memo"],
       // Both: a debt row could excuse the first, and nothing excuses the second.
       ["module.states", "module let"],

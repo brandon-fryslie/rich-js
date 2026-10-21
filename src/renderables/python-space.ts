@@ -6,9 +6,11 @@
  * U+001C–U+001F and U+0085, which Python takes.
  */
 
+import { pattern } from "../core/pattern.js";
+
 /** The set as a regex character class, every member of it a single UTF-16 unit, for composing into a pattern where markdown-it-py's has `\s`. */
 export const PY_WHITESPACE = String.raw`[\t-\r\x1c-\x20\x85\xa0  -     　]`;
-const PY_SPACE = new RegExp(`^${PY_WHITESPACE}$`);
+const PY_SPACE = pattern(new RegExp(`^${PY_WHITESPACE}$`));
 
 /** Python's `str.strip`, a scan in from each end, so a run of interior whitespace costs one pass, as it does there. */
 export function pyStrip(text: string): string {

@@ -61,6 +61,7 @@ import { Segment } from "../core/segment.js";
 import { finiteTime } from "../core/easing.js";
 import { stripControlChars, type RichText } from "../core/text.js";
 import { cellSeed, walkGlyphs, type Moved, type Placed } from "./effect.js";
+import { pattern } from "../core/pattern.js";
 
 /**
  * A cell of the element a glyph effect wraps: the glyph it shows, where it
@@ -266,7 +267,7 @@ function rewritten(text: RichText, glyphs: readonly PlacedGlyph[], shown: readon
 }
 
 /** Line breaks and tabs, which `stripControlChars` leaves for a text's own lines and which no cell may hold. */
-const BREAKS = /[\n\t]/;
+const BREAKS = pattern(/[\n\t]/);
 
 /**
  * What `frame` shows in `cell`, held to the contract: as many cells wide as

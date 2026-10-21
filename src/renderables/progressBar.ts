@@ -15,6 +15,7 @@ import { drawable, getStyle, render } from "../core/protocol.js";
 import { Effected, type Effect } from "./effect.js";
 import { frameAt } from "./frames.js";
 import { EFFECT_CURVES, atShares, shimmer } from "./effects.js";
+import { State } from "../core/state.js";
 
 const BAR = "━";
 const ASCII_BAR = "-";
@@ -26,7 +27,7 @@ const HALF_BAR_LEFT = "╺";
  * the light along a bar at about Rich's pace, and a band reaching half Rich's
  * `PULSE_SIZE` of 20 cells either side of its centre.
  */
-const PULSE_CURVE = { ...EFFECT_CURVES.shimmer, seconds: 5 };
+const PULSE_CURVE = { ...EFFECT_CURVES.shimmer, seconds: 5 } as const;
 const PULSE_REACH = 10;
 /** Rich's pulse back where the back style names no colour. */
 const PULSE_BACK = ColorSpec.fromRgba(new ColorRgba(0, 0, 0));
@@ -54,25 +55,50 @@ export interface ProgressBarOptions {
 }
 
 export class ProgressBar implements Renderable, Measurable {
-  total: number;
-  completed: number;
+  // Rich's ProgressBar is updated after it is built: `bar.completed = n`.
+  private readonly _total: State<number>;
+  private readonly _completed: State<number>;
+  private readonly _finished: State<boolean | undefined>;
   readonly width: number | undefined;
   readonly pulse: { readonly t: number } | undefined;
-  /** Whether the work is done, as given; unset, `completed` reaching `total` at the moment the bar is drawn. */
-  finished: boolean | undefined;
   readonly style: string | Style;
   readonly completeStyle: string | Style;
   readonly finishedStyle: string | Style;
 
   constructor(options?: ProgressBarOptions) {
-    this.total = options?.total ?? 100;
-    this.completed = options?.completed ?? 0;
+    this._total = new State(options?.total ?? 100);
+    this._completed = new State(options?.completed ?? 0);
     this.width = options?.width;
     this.pulse = options?.pulse;
-    this.finished = options?.finished;
+    this._finished = new State(options?.finished);
     this.style = options?.style ?? "bar.back";
     this.completeStyle = options?.completeStyle ?? "bar.complete";
     this.finishedStyle = options?.finishedStyle ?? "bar.finished";
+  }
+
+  get total(): number {
+    return this._total.get();
+  }
+
+  set total(value: number) {
+    this._total.set(value);
+  }
+
+  get completed(): number {
+    return this._completed.get();
+  }
+
+  set completed(value: number) {
+    this._completed.set(value);
+  }
+
+  /** Whether the work is done, as given; unset, `completed` reaching `total` at the moment the bar is drawn. */
+  get finished(): boolean | undefined {
+    return this._finished.get();
+  }
+
+  set finished(value: boolean | undefined) {
+    this._finished.set(value);
   }
 
   *render(options: RenderOptions): Iterable<Segment> {

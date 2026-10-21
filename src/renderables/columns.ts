@@ -65,12 +65,12 @@ interface Layout {
 }
 
 export class Columns implements Renderable, Measurable, Composite {
-  renderables: (Renderable & Partial<Measurable>)[];
+  readonly renderables: readonly (Renderable & Partial<Measurable>)[];
   readonly expand: boolean;
   readonly equal: boolean;
   readonly colWidth: number | undefined;
   readonly columnFirst: boolean;
-  private readonly padding: [number, number, number, number];
+  private readonly padding: readonly [number, number, number, number];
 
   constructor(items?: Iterable<unknown>, options?: ColumnsOptions) {
     this.renderables = items ? [...items].map(embed) : [];

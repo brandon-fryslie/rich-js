@@ -21,6 +21,7 @@ import type {
 } from "../core/protocol.js";
 import { getStyle, render, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
+import { ListState, State } from "../core/state.js";
 
 // --- Width division ---
 
@@ -393,24 +394,24 @@ function layoutTable(
 
 export interface ColumnOptions {
   /** Anything a cell can hold, as Rich's `RenderableType` header is. */
-  header?: string | RichText | Renderable;
-  footer?: string | RichText | Renderable;
-  headerStyle?: string | Style;
-  footerStyle?: string | Style;
-  style?: string | Style;
-  justify?: "left" | "center" | "right" | "full";
-  width?: number;
-  minWidth?: number;
-  maxWidth?: number;
-  ratio?: number;
-  noWrap?: boolean;
-  overflow?: OverflowMethod;
+  readonly header?: string | RichText | Renderable;
+  readonly footer?: string | RichText | Renderable;
+  readonly headerStyle?: string | Style;
+  readonly footerStyle?: string | Style;
+  readonly style?: string | Style;
+  readonly justify?: "left" | "center" | "right" | "full";
+  readonly width?: number;
+  readonly minWidth?: number;
+  readonly maxWidth?: number;
+  readonly ratio?: number;
+  readonly noWrap?: boolean;
+  readonly overflow?: OverflowMethod;
   /**
    * Whether the column's string cells — its header and footer among them — are
    * drawn with the console's highlighter, as Rich's `Column(highlight=)`.
    * `false` for a `Column` built alone; `addColumn` takes the table's.
    */
-  highlight?: boolean;
+  readonly highlight?: boolean;
 }
 
 /**
@@ -428,25 +429,30 @@ export interface ColumnOptions {
 const columnShare = (col: Column): number =>
   col.ratio !== undefined && col.ratio > 0 ? Math.min(col.ratio, UNBOUNDED) : 0;
 
+/** A row as `addRow` stamped it: its cells, and whether a section ends under it. */
+interface TableRow {
+  readonly cells: readonly Renderable[];
+  readonly endSection: boolean;
+}
+
 export class Column {
-  private _header!: Renderable & Partial<Measurable>;
-  private _footer!: Renderable & Partial<Measurable>;
-  headerStyle: string | Style;
-  footerStyle: string | Style;
-  style: string | Style;
-  justify: "left" | "center" | "right" | "full";
-  width: number | undefined;
-  minWidth: number | undefined;
-  maxWidth: number | undefined;
-  ratio: number | undefined;
-  noWrap: boolean;
-  overflow: OverflowMethod;
-  highlight: boolean;
-  private _cells: Renderable[];
+  private readonly _header: State<Renderable & Partial<Measurable>>;
+  private readonly _footer: State<Renderable & Partial<Measurable>>;
+  readonly headerStyle: string | Style;
+  readonly footerStyle: string | Style;
+  readonly style: string | Style;
+  readonly justify: "left" | "center" | "right" | "full";
+  readonly width: number | undefined;
+  readonly minWidth: number | undefined;
+  readonly maxWidth: number | undefined;
+  readonly ratio: number | undefined;
+  readonly noWrap: boolean;
+  readonly overflow: OverflowMethod;
+  readonly highlight: boolean;
 
   constructor(options?: ColumnOptions) {
-    this.header = options?.header;
-    this.footer = options?.footer;
+    this._header = new State(embed(options?.header));
+    this._footer = new State(embed(options?.footer));
     this.headerStyle = options?.headerStyle ?? NULL_STYLE;
     this.footerStyle = options?.footerStyle ?? NULL_STYLE;
     this.style = options?.style ?? NULL_STYLE;
@@ -458,7 +464,6 @@ export class Column {
     this.noWrap = options?.noWrap ?? false;
     this.overflow = options?.overflow ?? "ellipsis";
     this.highlight = options?.highlight ?? false;
-    this._cells = [];
   }
 
   /**
@@ -479,37 +484,35 @@ export class Column {
    * which is why the setters take `undefined` rather than defaulting around it.
    */
   get header(): Renderable & Partial<Measurable> {
-    return this._header;
+    return this._header.get();
   }
 
   set header(content: ColumnOptions["header"]) {
-    this._header = embed(content);
+    this._header.set(embed(content));
   }
 
   get footer(): Renderable & Partial<Measurable> {
-    return this._footer;
+    return this._footer.get();
   }
 
   set footer(content: ColumnOptions["footer"]) {
-    this._footer = embed(content);
+    this._footer.set(embed(content));
   }
 
   get flexible(): boolean {
     return columnShare(this) > 0;
   }
 
-  /** @internal */
-  addCell(cell: Renderable): void {
-    this._cells.push(cell);
-  }
-
-  /** @internal */
-  getCells(): Renderable[] {
-    return this._cells;
-  }
-
   copy(): Column {
-    const col = new Column({
+    return new Column({
+      // Shared, not copied, as a row's cells are: `embed` already copied a
+      // caller's `RichText`, what it hands back is never changed, and `embed`
+      // passes a renderable through.
+      header: this.header,
+      footer: this.footer,
+      headerStyle: this.headerStyle,
+      footerStyle: this.footerStyle,
+      style: this.style,
       justify: this.justify,
       width: this.width,
       minWidth: this.minWidth,
@@ -519,14 +522,6 @@ export class Column {
       overflow: this.overflow,
       highlight: this.highlight,
     });
-    col.headerStyle = this.headerStyle;
-    col.footerStyle = this.footerStyle;
-    col.style = this.style;
-    // Shared, not copied, as a row's cells are: `embed` already copied a
-    // caller's `RichText`, and what it hands back is never changed.
-    col._header = this._header;
-    col._footer = this._footer;
-    return col;
   }
 }
 
@@ -554,7 +549,7 @@ export interface TableOptions {
   captionJustify?: "left" | "center" | "right" | "full";
   width?: number;
   minWidth?: number;
-  rowStyles?: string[];
+  rowStyles?: readonly string[];
   /** The `highlight` every column `addColumn` makes takes unless told otherwise (default: `false`). */
   highlight?: boolean;
 }
@@ -565,8 +560,9 @@ function cellAt(row: { readonly cells: readonly Renderable[] }, index: number): 
 }
 
 export class Table implements Renderable, Measurable, Composite {
-  private _columns: Column[];
-  private _rows: Array<{ cells: Renderable[]; endSection?: boolean }>;
+  // Rich's Table grows by addColumn and addRow after it is built.
+  private readonly _columns = new ListState<Column>();
+  private readonly _rows = new ListState<TableRow>();
   readonly box: Box | null;
   private readonly _title: EmbeddedText | undefined;
   private readonly _caption: EmbeddedText | undefined;
@@ -575,7 +571,7 @@ export class Table implements Renderable, Measurable, Composite {
   readonly showFooter: boolean;
   readonly showLines: boolean;
   readonly showEdge: boolean;
-  readonly padding: [number, number, number, number];
+  readonly padding: readonly [number, number, number, number];
   readonly collapsePadding: boolean;
   readonly padEdge: boolean;
   readonly style: string | Style;
@@ -588,7 +584,7 @@ export class Table implements Renderable, Measurable, Composite {
   readonly captionJustify: "left" | "center" | "right" | "full";
   readonly tableWidth: number | undefined;
   readonly minWidth: number | undefined;
-  readonly rowStyles: string[];
+  readonly rowStyles: readonly string[];
   readonly highlight: boolean;
 
   get title(): (Renderable & Measurable) | undefined {
@@ -600,8 +596,6 @@ export class Table implements Renderable, Measurable, Composite {
   }
 
   constructor(options?: TableOptions) {
-    this._columns = [];
-    this._rows = [];
     this.box = options?.box !== undefined ? options.box : HEAVY_HEAD;
     // An empty title draws no row, as the reference's `if self.title` draws
     // none; markup that styles nothing is a title, and draws a blank one.
@@ -634,12 +628,12 @@ export class Table implements Renderable, Measurable, Composite {
     this.highlight = options?.highlight ?? false;
   }
 
-  get columns(): Column[] {
-    return this._columns;
+  get columns(): readonly Column[] {
+    return this._columns.get();
   }
 
   get rowCount(): number {
-    return this._rows.length;
+    return this._rows.get().length;
   }
 
   addColumn(header?: ColumnOptions["header"], options?: ColumnOptions): this {
@@ -674,7 +668,7 @@ export class Table implements Renderable, Measurable, Composite {
     const resolved = cells.map(embed);
 
     // Auto-create columns if needed
-    while (this._columns.length < resolved.length) {
+    while (this._columns.get().length < resolved.length) {
       this.addColumn();
     }
 
@@ -683,14 +677,14 @@ export class Table implements Renderable, Measurable, Composite {
   }
 
   addSection(): this {
-    if (this._rows.length > 0) {
-      this._rows[this._rows.length - 1]!.endSection = true;
-    }
+    const rows = this._rows.get();
+    const last = rows.at(-1);
+    if (last !== undefined) this._rows.set([...rows.slice(0, -1), { ...last, endSection: true }]);
     return this;
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
-    if (this._columns.length === 0) {
+    if (this._columns.get().length === 0) {
       yield Segment.line();
       return;
     }
@@ -729,19 +723,19 @@ export class Table implements Renderable, Measurable, Composite {
     // once per cell, as the reference's `_get_cells` does per column.
     const headerStyle = getStyle(options, this.headerStyle);
     const footerStyle = getStyle(options, this.footerStyle);
-    const columnStyles = this._columns.map((c) => getStyle(options, c.style));
+    const columnStyles = this._columns.get().map((c) => getStyle(options, c.style));
     const stripes = this.rowStyles.map((s) => getStyle(options, s));
 
     // Each row's padding above and below, by where it stands among every row
     // the table draws, header and footer included, as the reference counts them.
     const firstBody = this.showHeader ? 1 : 0;
-    const lastRow = firstBody + this._rows.length + (this.showFooter ? 1 : 0) - 1;
+    const lastRow = firstBody + this._rows.get().length + (this.showFooter ? 1 : 0) - 1;
     const rowPadding = (position: number) => this._rowPadding(position === 0, position === lastRow);
 
     // Header row
     if (this.showHeader) {
-      const headerCells = this._columns.map((c) => c.header);
-      const headerStyles = this._columns.map((c) => headerStyle.add(getStyle(options, c.headerStyle)));
+      const headerCells = this._columns.get().map((c) => c.header);
+      const headerStyles = this._columns.get().map((c) => headerStyle.add(getStyle(options, c.headerStyle)));
       yield* this._renderRow(options, headerCells, headerStyles, NULL_STYLE, geometry, rowPadding(0), box, "head", border);
 
       // Header separator
@@ -751,8 +745,8 @@ export class Table implements Renderable, Measurable, Composite {
     }
 
     // Data rows
-    for (let rowIdx = 0; rowIdx < this._rows.length; rowIdx++) {
-      const row = this._rows[rowIdx]!;
+    for (let rowIdx = 0; rowIdx < this._rows.get().length; rowIdx++) {
+      const row = this._rows.get()[rowIdx]!;
       const rowCells = this._rowCells(row);
 
       const rowStyle = stripes[rowIdx % stripes.length] ?? NULL_STYLE;
@@ -762,7 +756,7 @@ export class Table implements Renderable, Measurable, Composite {
 
       // Row separator
       const showSep = this.showLines || row.endSection;
-      if (showSep && box && rowIdx < this._rows.length - 1) {
+      if (showSep && box && rowIdx < this._rows.get().length - 1) {
         yield* box.getRow(geometry.cellWidths, "row", border, edge);
       }
     }
@@ -772,8 +766,8 @@ export class Table implements Renderable, Measurable, Composite {
       if (box) {
         yield* box.getRow(geometry.cellWidths, "foot", border, edge);
       }
-      const footerCells = this._columns.map((c) => c.footer);
-      const footerStyles = this._columns.map((c) => footerStyle.add(getStyle(options, c.footerStyle)));
+      const footerCells = this._columns.get().map((c) => c.footer);
+      const footerStyles = this._columns.get().map((c) => footerStyle.add(getStyle(options, c.footerStyle)));
       yield* this._renderRow(options, footerCells, footerStyles, NULL_STYLE, geometry, rowPadding(lastRow), box, "foot", border);
     }
 
@@ -921,9 +915,9 @@ export class Table implements Renderable, Measurable, Composite {
     const frame = this._frame();
     const inner = {
       ...options,
-      maxWidth: Math.max(0, outerWidth - frame.edge * 2 - frame.divider * Math.max(0, this._columns.length - 1)),
+      maxWidth: Math.max(0, outerWidth - frame.edge * 2 - frame.divider * Math.max(0, this._columns.get().length - 1)),
     };
-    return this._columns.map((col, index) => {
+    return this._columns.get().map((col, index) => {
       const sizing = this._columnSizing(col, index, inner, this._columnPadding(index));
       const floor = sizing.want === 0 ? 1 : 0;
       return { ...sizing, minimum: sizing.minimum + floor, want: sizing.want + floor, floor };
@@ -1036,7 +1030,7 @@ export class Table implements Renderable, Measurable, Composite {
   private _columnPadding(index: number): readonly [left: number, right: number] {
     const [, right, , left] = this.padding;
     const first = index === 0;
-    const last = index === this._columns.length - 1;
+    const last = index === this._columns.get().length - 1;
     const collapsed = this.collapsePadding && !first ? Math.max(0, left - right) : left;
     return [!this.padEdge && first ? 0 : collapsed, !this.padEdge && last ? 0 : right];
   }
@@ -1050,13 +1044,13 @@ export class Table implements Renderable, Measurable, Composite {
   // Every cell `render` draws, in the order it draws them: row by row, the
   // header and footer when it shows them.
   *contents(): Iterable<Renderable> {
-    if (this.showHeader) yield* this._columns.map((c) => c.header);
-    for (const row of this._rows) yield* this._rowCells(row);
-    if (this.showFooter) yield* this._columns.map((c) => c.footer);
+    if (this.showHeader) yield* this._columns.get().map((c) => c.header);
+    for (const row of this._rows.get()) yield* this._rowCells(row);
+    if (this.showFooter) yield* this._columns.get().map((c) => c.footer);
   }
 
   private _rowCells(row: { readonly cells: readonly Renderable[] }): Renderable[] {
-    return this._columns.map((_, index) => cellAt(row, index));
+    return this._columns.get().map((_, index) => cellAt(row, index));
   }
 
   /**
@@ -1072,7 +1066,7 @@ export class Table implements Renderable, Measurable, Composite {
    */
   private *_columnCells(col: Column, index: number): Iterable<Renderable> {
     if (this.showHeader) yield col.header;
-    for (const row of this._rows) yield cellAt(row, index);
+    for (const row of this._rows.get()) yield cellAt(row, index);
     if (this.showFooter) yield col.footer;
   }
 
@@ -1156,7 +1150,7 @@ export class Table implements Renderable, Measurable, Composite {
     // width could not seat are absent from `cellWidths` and so are never
     // rendered at all.
     const cellLines: Segment[][][] = cellWidths.map((cellWidth, index) => {
-      const col = this._columns[index]!;
+      const col = this._columns.get()[index]!;
       const [left, right] = this._columnPadding(index);
       // [LAW:single-enforcer] The padding on every side is part of the cell,
       // drawn by `Padding` as the reference's `_get_cells` wraps each cell in

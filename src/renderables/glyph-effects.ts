@@ -104,7 +104,7 @@ export function typewriter(timing: Timing): GlyphTransition {
 }
 
 /** What a scrambled cell shows: one-cell glyphs, none that reads as a blank. */
-const SCRAMBLE_GLYPHS = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#$%&*+<=>?@"];
+const SCRAMBLE_GLYPHS: readonly string[] = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#$%&*+<=>?@"];
 
 /** How long a scrambled glyph holds before the next, in seconds. */
 const FLICKER = 1 / 15;

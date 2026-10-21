@@ -349,7 +349,7 @@ export { Spinner } from "./renderables/spinner.js";
 export type { SpinnerOptions } from "./renderables/spinner.js";
 export { FrameSequence, Frames, frameAt } from "./renderables/frames.js";
 export type { Frame, FramesOptions } from "./renderables/frames.js";
-export { Table, Column } from "./renderables/table.js";
+export { Table, type Column } from "./renderables/table.js";
 export type { TableOptions, ColumnOptions } from "./renderables/table.js";
 export { Tree } from "./renderables/tree.js";
 export type { TreeOptions } from "./renderables/tree.js";

@@ -22,12 +22,13 @@ import {
   type RenderOptions,
 } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
+import { pattern, type Pattern } from "../core/pattern.js";
 
 export interface SyntaxOptions {
   lineNumbers?: boolean;
   startLine?: number;
-  lineRange?: [number, number];
-  highlightLines?: Set<number>;
+  lineRange?: readonly [number, number];
+  highlightLines?: ReadonlySet<number>;
   wordWrap?: boolean;
   tabSize?: number;
 }
@@ -41,8 +42,8 @@ type Token = "comment" | "string" | "constant" | "keyword" | "number";
  * leftmost match wins, and among matches starting there the earliest rule.
  * `(?!)` never matches, so a grammar with no rules is still a regex.
  */
-function grammar(rules: readonly [Token, string][]): RegExp {
-  return new RegExp([...rules.map(([token, source]) => `(?<${token}>${source})`), "(?!)"].join("|"), "g");
+function grammar(rules: readonly (readonly [Token, string])[]): Pattern {
+  return pattern(new RegExp([...rules.map(([token, source]) => `(?<${token}>${source})`), "(?!)"].join("|")));
 }
 
 // Not after a `.`: `map.get` and `node.type` are properties, not keywords.
@@ -55,7 +56,7 @@ const JS_KEYWORDS =
   "finally import export from default async await yield of in typeof instanceof void delete this super extends static";
 const TS_KEYWORDS = "interface type enum implements private public protected readonly as declare namespace keyof satisfies abstract is infer";
 
-const JAVASCRIPT: readonly [Token, string][] = [
+const JAVASCRIPT: readonly (readonly [Token, string])[] = [
   ["comment", String.raw`\/\/[^\n]*|\/\*[\s\S]*?\*\/`],
   ["string", String.raw`${QUOTED}|` + "`(?:[^`\\\\]|\\\\.)*`"],
   ["constant", words("true false null undefined NaN Infinity")],
@@ -90,7 +91,7 @@ const GRAMMARS = {
     ["number", NUMBER],
   ]),
   text: grammar([]),
-} satisfies Record<string, RegExp>;
+} as const satisfies Record<string, Pattern>;
 
 export type SyntaxLanguage = keyof typeof GRAMMARS;
 
@@ -99,13 +100,13 @@ export class Syntax implements Renderable, Measurable {
   readonly language: SyntaxLanguage;
   readonly lineNumbers: boolean;
   readonly startLine: number;
-  readonly lineRange: [number, number] | undefined;
-  readonly highlightLines: Set<number>;
+  readonly lineRange: readonly [number, number] | undefined;
+  readonly highlightLines: ReadonlySet<number>;
   readonly wordWrap: boolean;
   readonly tabSize: number;
 
   /** The code with its tabs expanded, as lines — what both render and measure read. */
-  private readonly _lines: string[];
+  private readonly _lines: readonly string[];
 
   constructor(code: string, language: SyntaxLanguage = "text", options?: SyntaxOptions) {
     // A plain-JS caller, or one passing a language read at runtime, gets past
@@ -162,7 +163,7 @@ export class Syntax implements Renderable, Measurable {
     // Tokenized whole and then sliced, so a block comment or a triple-quoted
     // string that spans lines is one token even when the range starts inside it.
     const text = new RichText(this._lines.join("\n"), { end: "" });
-    for (const match of text.plain.matchAll(GRAMMARS[this.language])) {
+    for (const match of text.plain.matchAll(new RegExp(GRAMMARS[this.language].source, "g"))) {
       const [token] = Object.entries(match.groups!).find(([, value]) => value !== undefined)!;
       text.stylize(`syntax.${token}`, match.index, match.index + match[0].length);
     }

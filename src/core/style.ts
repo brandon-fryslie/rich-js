@@ -10,6 +10,7 @@ import {
 } from "./color.js";
 import { shiftAnchor, type Anchor } from "./anchor.js";
 import { Memo } from "./memo.js";
+import { pattern } from "./pattern.js";
 
 // [LAW:one-way-deps] `core/style` depends only on `core/color`. The substrate
 // a translucent colour is flattened over is `SURFACE_BLACK`, defined beside
@@ -70,7 +71,7 @@ export const ATTRIBUTE_SGR: Record<AttributeName, number> = {
  * bindings — adding an alias here makes it available everywhere.
  * [LAW:one-source-of-truth]
  */
-export const ATTRIBUTE_SHORT_ALIASES: Record<string, AttributeName> = {
+export const ATTRIBUTE_SHORT_ALIASES: Readonly<Record<string, AttributeName>> = {
   b: "bold",
   d: "dim",
   i: "italic",
@@ -149,7 +150,7 @@ export class Style {
   readonly encircle: boolean | undefined;
   readonly overline: boolean | undefined;
   readonly link: string | undefined;
-  readonly meta: Record<string, unknown> | undefined;
+  readonly meta: Readonly<Record<string, unknown>> | undefined;
   /**
    * Where this style's cells sat in the output of whatever drew them; see
    * `./anchor.ts`. It draws nothing, and it makes two styles that draw alike
@@ -525,7 +526,7 @@ export class StyleStack {
 
 // --- Theme ---
 
-const STYLE_NAME_RE = /^[a-z][a-z0-9._-]*$/;
+const STYLE_NAME_RE = pattern(/^[a-z][a-z0-9._-]*$/);
 
 /**
  * A `Style` added over a style name or definition a render has yet to
@@ -556,27 +557,22 @@ export function layerStyle(base: TextStyle, over: Style): TextStyle {
 }
 
 export class Theme {
-  private readonly styles: Map<string, Style>;
+  private readonly styles: ReadonlyMap<string, Style>;
 
   constructor(
     definitions: Record<string, string> = {},
     options?: { inherit?: boolean },
   ) {
-    this.styles = new Map();
-    const inherit = options?.inherit !== false;
-    if (inherit) {
-      for (const [name, style] of Object.entries(DEFAULT_STYLES)) {
-        this.styles.set(name, style);
-      }
-    }
-    for (const [name, def] of Object.entries(definitions)) {
+    const inherited = options?.inherit !== false ? Object.entries(DEFAULT_STYLES) : [];
+    const defined = Object.entries(definitions).map(([name, def]): [string, Style] => {
       if (!STYLE_NAME_RE.test(name)) {
         throw new Error(
           `Invalid style name: "${name}" (must be lowercase, start with letter, contain only letters, digits, ".", "-", "_")`,
         );
       }
-      this.styles.set(name, Style.parse(def));
-    }
+      return [name, Style.parse(def)];
+    });
+    this.styles = new Map([...inherited, ...defined]);
   }
 
   get(name: string): Style | undefined {
@@ -607,7 +603,7 @@ export class Theme {
 
 // --- Parse helpers ---
 
-const ATTRIBUTE_SET = new Set<string>(ATTRIBUTE_NAMES);
+const ATTRIBUTE_SET: ReadonlySet<string> = new Set<string>(ATTRIBUTE_NAMES);
 
 // The words each position of a definition can hold: a bare token is a keyword,
 // an attribute or a colour name; `on` takes a colour name; `not` an attribute.
@@ -615,7 +611,7 @@ const ATTRIBUTE_SET = new Set<string>(ATTRIBUTE_NAMES);
 // `bolt` and a one-letter name sits one edit from every other short word.
 // [LAW:one-source-of-truth] Derived from the lists the parser accepts from; the
 // keywords are the three `parseStyleDefinition` reads before anything else.
-const FOREGROUND_WORDS = ["not", "on", "link", ...ATTRIBUTE_NAMES, ...COLOR_NAMES];
+const FOREGROUND_WORDS: readonly string[] = ["not", "on", "link", ...ATTRIBUTE_NAMES, ...COLOR_NAMES];
 
 /**
  * Optimal string alignment distance: insertions, deletions, substitutions, and
@@ -773,7 +769,7 @@ function resolveBackground(c: string | ColorSpec | undefined): ColorSpec | undef
 // --- DEFAULT_STYLES ---
 // [LAW:one-source-of-truth] Single canonical mapping of semantic names to styles
 
-export const DEFAULT_STYLES: Record<string, Style> = {
+export const DEFAULT_STYLES: Readonly<Record<string, Style>> = {
   none: NULL_STYLE,
   reset: new Style({
     color: ColorSpec.default(),

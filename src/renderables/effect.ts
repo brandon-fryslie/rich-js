@@ -628,7 +628,7 @@ function returned(look: CellLook): CellLook {
 }
 
 /** The attributes a look carries: `ATTRIBUTE_NAMES` but `reverse`. */
-const MOVED = ATTRIBUTE_NAMES.filter((name): name is Exclude<AttributeName, "reverse"> => name !== "reverse");
+const MOVED: readonly Exclude<AttributeName, "reverse">[] = ATTRIBUTE_NAMES.filter((name): name is Exclude<AttributeName, "reverse"> => name !== "reverse");
 
 /**
  * The attributes a look carries, read off anything that sets them — a

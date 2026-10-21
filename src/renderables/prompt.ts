@@ -25,6 +25,7 @@
 import { Console } from "../core/console.js";
 import { renderMarkup } from "../core/markup.js";
 import { RichText } from "../core/text.js";
+import { pattern } from "../core/pattern.js";
 
 // --- Types ---
 
@@ -169,10 +170,10 @@ function responseKind<T>(
 }
 
 /** Python's `int()` over a string: a sign, then digits, any two of which may have one `_` between them. */
-const INTEGER = /^[+-]?\d(?:_?\d)*$/;
+const INTEGER = pattern(/^[+-]?\d(?:_?\d)*$/);
 const DIGITS = String.raw`\d(?:_?\d)*`;
 /** Python's `float()` over a string: a decimal with an optional exponent, or `inf`, `infinity` or `nan`, in any case. */
-const FLOAT = new RegExp(String.raw`^[+-]?(?:(?:${DIGITS}(?:\.(?:${DIGITS})?)?|\.${DIGITS})(?:e[+-]?${DIGITS})?|inf(?:inity)?|nan)$`, "i");
+const FLOAT = pattern(new RegExp(String.raw`^[+-]?(?:(?:${DIGITS}(?:\.(?:${DIGITS})?)?|\.${DIGITS})(?:e[+-]?${DIGITS})?|inf(?:inity)?|nan)$`, "i"));
 
 /**
  * The integer an answer spells, as Python's `int()` reads it, or none. One a

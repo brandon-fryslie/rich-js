@@ -30,7 +30,7 @@ function matchedTexts(text: RichText, styleName: string): string[] {
 describe("built-in highlighters under the default theme", () => {
   it.each([ReprHighlighter, JSONHighlighter, ISO8601Highlighter])("%o lays only names the theme defines", (ctor) => {
     const groups = ctor.highlights.flatMap((p) => [
-      ...(p instanceof RegExp ? p.source : p).matchAll(/\(\?<([A-Za-z_]\w*)>/g),
+      ...(typeof p === "string" ? p : p.source).matchAll(/\(\?<([A-Za-z_]\w*)>/g),
     ]);
     const missing = [...new Set(groups.map((m) => `${ctor.baseStyle}${m[1]}`))].filter((name) => !(name in DEFAULT_STYLES));
     expect(missing).toEqual([]);

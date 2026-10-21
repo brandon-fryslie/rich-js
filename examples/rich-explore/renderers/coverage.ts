@@ -16,7 +16,7 @@ import {
   Box,
   // Renderables
   Columns, ProgressBar, Progress, Status, Group, Panel, Rule, RichText, Align, Padding,
-  Table, Column, Spinner,
+  Table, Spinner,
   // Progress columns
   TextColumn, BarColumn, TaskProgressColumn, MofNCompleteColumn,
   SpinnerColumn, TimeElapsedColumn, TimeRemainingColumn,
@@ -364,14 +364,15 @@ export class CoverageRenderable implements Renderable {
     items.push(new Rule("[bold cyan]Spinner", { style: "bold cyan" }));
     items.push(new Spinner("dots", "the frame at t = 0.5 s, with no Live").at(0.5));
 
-    // ── 22. Table built from explicit Columns ────────────────────────
+    // ── 22. Table columns, and a footer set once the rows are in ─────
     items.push(new Rule("[bold cyan]Table + Column", { style: "bold cyan" }));
-    const table = new Table({ box: HEAVY_HEAD, title: "Columns configured directly" });
-    table.columns.push(new Column({ header: "left", justify: "left", minWidth: 10 }));
-    table.columns.push(new Column({ header: "centered", justify: "center", minWidth: 12 }));
-    table.columns.push(new Column({ header: "right", justify: "right", minWidth: 10 }));
+    const table = new Table({ box: HEAVY_HEAD, title: "Columns configured directly", showFooter: true });
+    table.addColumn("left", { justify: "left", minWidth: 10 });
+    table.addColumn("centered", { justify: "center", minWidth: 12 });
+    table.addColumn("right", { justify: "right", minWidth: 10 });
     table.addRow("alpha", "beta", "gamma");
     table.addRow("delta", "epsilon", "zeta");
+    table.columns[2]!.footer = `${table.rowCount} rows`;
     items.push(table);
 
     return items;

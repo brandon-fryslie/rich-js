@@ -12,7 +12,7 @@ export interface SpinnerData {
 export const LINE_SPINNER: SpinnerData = { frames: ["-", "\\", "|", "/"], interval: 130 };
 
 // [LAW:one-source-of-truth] Single authoritative collection of spinner definitions
-export const SPINNERS: Record<string, SpinnerData> = {
+export const SPINNERS: Readonly<Record<string, SpinnerData>> = {
   dots: { frames: ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"], interval: 80 },
   dots2: { frames: ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"], interval: 80 },
   dots3: { frames: ["⠋", "⠙", "⠚", "⠞", "⠖", "⠦", "⠴", "⠲", "⠳", "⠓"], interval: 80 },

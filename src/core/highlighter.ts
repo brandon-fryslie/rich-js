@@ -27,12 +27,13 @@ export class NullHighlighter extends Highlighter {
 // --- RegexHighlighter ---
 
 export class RegexHighlighter extends Highlighter {
-  static highlights: (string | RegExp)[] = [];
+  /** Each pattern's `source` and `flags`: a regex is compiled from them per call, so a held one keeps no cursor. */
+  static readonly highlights: readonly (string | Pick<RegExp, "source" | "flags">)[] = [];
   /** Style applied to matches. When ending with "." it acts as a namespace
    *  prefix: named groups become `baseStyle + groupName` (e.g. "repr." + "url"
    *  → "repr.url"). Otherwise it's used as a literal style for all matches
    *  (e.g. "bold red" applies "bold red" to every named group). */
-  static baseStyle = "";
+  static readonly baseStyle: string = "";
 
   highlight(text: RichText): void {
     const ctor = this.constructor as typeof RegexHighlighter;
@@ -45,8 +46,8 @@ export class RegexHighlighter extends Highlighter {
       // `d` reports where each group matched, as Python's `match.span(name)`
       // does; searching the match for the group's text finds the first copy
       // of it, which is not always the one the group captured.
-      const source = pattern instanceof RegExp ? pattern.source : pattern;
-      const flags = new Set([...(pattern instanceof RegExp ? pattern.flags : ""), "g", "d"]);
+      const source = typeof pattern === "string" ? pattern : pattern.source;
+      const flags = new Set([...(typeof pattern === "string" ? "" : pattern.flags), "g", "d"]);
       for (const match of text.plain.matchAll(new RegExp(source, [...flags].join("")))) {
         if (match.indices === undefined) throw new Error("a match of a `d`-flag pattern carries indices");
         // Group definition order, as Rich's `groupdict()`: a later group's span
@@ -86,8 +87,8 @@ const DECIMAL = String.raw`[0-9]+(?:\.[0-9]*)?`;
 // Rich 15.0.0's patterns.
 // [LAW:one-type-per-behavior] All repr patterns use the same RegexHighlighter mechanism
 export class ReprHighlighter extends RegexHighlighter {
-  static override baseStyle = "repr.";
-  static override highlights = [
+  static override readonly baseStyle = "repr.";
+  static override readonly highlights: typeof RegexHighlighter.highlights = [
     // `tag_contents` runs to the text's last `>`, so only the text's first `<`
     // can open a tag; the lookbehind starts the match there and nowhere else,
     // where Rich retries every later `<` and rescans to the end each time. The
@@ -134,11 +135,11 @@ export class ReprHighlighter extends RegexHighlighter {
 const JSON_STR = String.raw`(?<![\\${W}])(?<str>b?"[^\n]*?(?<!\\)")`;
 
 export class JSONHighlighter extends RegexHighlighter {
-  static override baseStyle = "json.";
+  static override readonly baseStyle = "json.";
   // [LAW:dataflow-not-control-flow] One alternation, scanned once, as Rich's
   // `_combine_regex` joins it. A token claims its characters where the scan
   // meets it, so the `true` and `12` inside `"true 12"` belong to the string.
-  static override highlights = [
+  static override readonly highlights: typeof RegexHighlighter.highlights = [
     new RegExp(
       [
         String.raw`(?<brace>[\{\[\(\)\]\}])`,
@@ -188,8 +189,8 @@ const TZ = String.raw`(?<timezone>Z|${TZ_HOUR}(?::?(?:[0-5][0-9]))?)`;
 const COMPACT_TIME = `(?<time>${HOUR}${MINUTE}${SECOND})`;
 
 export class ISO8601Highlighter extends RegexHighlighter {
-  static override baseStyle = "iso8601.";
-  static override highlights = [
+  static override readonly baseStyle = "iso8601.";
+  static override readonly highlights: typeof RegexHighlighter.highlights = [
     // Dates
     `^${YEAR}-${MONTH}${END}`,
     `^(?<date>${YEAR}${MONTH}${DAY})${END}`,

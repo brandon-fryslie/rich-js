@@ -33,6 +33,7 @@ import type {
 } from "./protocol.js";
 import { isRenderable, measure, render } from "./protocol.js";
 import type { Unsubscribe } from "./subscription.js";
+import { ListState, State } from "./state.js";
 
 // --- Types ---
 
@@ -370,36 +371,36 @@ export class Console {
   // `width`/`height` options collapse into a closure that returns them; a
   // caller-supplied `getSize` overrides. Every size read in this class goes
   // through `_getSize()` — no second path, no second source to drift.
-  private _getSize: () => { width: number; height: number };
+  private readonly _getSize: () => { width: number; height: number };
   private readonly _getDatetime: () => Date;
   // The stamp the last `log` row was given, which the next row's stamp is
   // compared with: the reference's `LogRender._last_time`, one per console.
   // [LAW:no-ambient-temporal-coupling] "same as the previous row" is a fact
   // about an earlier call, so it is state this console owns, not order luck.
-  private _lastLogTime: string | null = null;
-  private _style: Style;
-  private _isTerminal: boolean;
+  private readonly _lastLogTime = new State<string | null>(null);
+  private readonly _style: Style;
+  private readonly _isTerminal: boolean;
   private readonly _interactive: boolean;
-  private _file: ConsoleSink | undefined;
+  private readonly _file: ConsoleSink | undefined;
   // [LAW:one-source-of-truth] The resolved output stream, not the `stderr`
   // flag that selected it. Storing the answer instead of the question is what
   // stops `isTerminal`, `size`, and `file` from re-deriving it three ways.
-  private _stream: ConsoleStream | undefined;
-  private _record: boolean;
-  private _markup: boolean;
-  private _highlight: boolean;
-  private _theme: Theme;
-  private _onStyleError: StyleErrorHandler | undefined;
+  private readonly _stream: ConsoleStream | undefined;
+  private readonly _record: boolean;
+  private readonly _markup: boolean;
+  private readonly _highlight: boolean;
+  private readonly _theme: Theme;
+  private readonly _onStyleError: StyleErrorHandler | undefined;
   private readonly _asciiOnly: boolean;
-  private _highlighter: Highlighter;
-  private _recorded: Segment[];
+  private readonly _highlighter: Highlighter;
+  private readonly _recorded = new ListState<Segment>();
   // [LAW:types-are-the-program] The capture state is carried in the *type*
   // of this field, not in a sentinel value. `null` = not capturing; any
   // string (including "") = capturing, this is the buffer. A paired
   // boolean+string would admit the impossible state "not capturing, buffer
   // non-empty" — `string | null` makes that unrepresentable.
-  private _capture: string | null;
-  private _liveRegion: LiveRegion;
+  private readonly _capture = new State<string | null>(null);
+  private readonly _liveRegion = new State<LiveRegion>(NO_LIVE_REGION);
 
   constructor(options?: ConsoleOptions) {
     const environment = options?.environment ?? ambientEnvironment();
@@ -434,9 +435,6 @@ export class Console {
     this._highlighter = options?.highlighter ?? new ReprHighlighter();
     this._onStyleError = options?.onStyleError;
     this._asciiOnly = options?.asciiOnly ?? false;
-    this._recorded = [];
-    this._capture = null;
-    this._liveRegion = NO_LIVE_REGION;
   }
 
   // --- Properties ---
@@ -697,7 +695,7 @@ export class Console {
   log(...args: unknown[]): void {
     const options = this.options;
     const stamped = logTime(this._getDatetime());
-    const repeated = stamped === this._lastLogTime;
+    const repeated = stamped === this._lastLogTime.get();
     const time = new RichText(stamped, { end: "" });
     time.stylize("log.time");
     const width = Math.min(time.cellLength, options.maxWidth - 1);
@@ -715,7 +713,7 @@ export class Console {
     this._writeSegments(emit({ rows: grid, closed: true, cropWidth: cropWidth + width }));
     // Remembered only once the row is written: a log that threw printed no
     // stamp, so the next row's must show.
-    this._lastLogTime = stamped;
+    this._lastLogTime.set(stamped);
   }
 
   // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of
@@ -746,14 +744,14 @@ export class Console {
    * painted over by the first, so claiming one while another is held throws.
    */
   claimLiveRegion(region: LiveRegion): Unsubscribe {
-    if (this._liveRegion !== NO_LIVE_REGION) {
+    if (this._liveRegion.get() !== NO_LIVE_REGION) {
       throw new Error("A live display is already running on this console; stop it before starting another.");
     }
-    this._liveRegion = region;
+    this._liveRegion.set(region);
     // Letting go of a region no longer held — a second call, or after another
     // was claimed — leaves the one that is.
     return () => {
-      if (this._liveRegion === region) this._liveRegion = NO_LIVE_REGION;
+      if (this._liveRegion.get() === region) this._liveRegion.set(NO_LIVE_REGION);
     };
   }
 
@@ -765,35 +763,35 @@ export class Console {
   // the full text that would otherwise have been written. This is not a
   // tee — callers wanting both must compose explicitly.
   beginCapture(): void {
-    this._capture = "";
+    this._capture.set("");
   }
 
   endCapture(): string {
-    const result = this._capture ?? "";
-    this._capture = null;
+    const result = this._capture.get() ?? "";
+    this._capture.set(null);
     return result;
   }
 
   // --- Export (when record:true) ---
 
   exportText({ clear = true }: { clear?: boolean } = {}): string {
-    const text = this._recorded.map((s) => s.text).join("");
-    if (clear) this._recorded = [];
+    const text = this._recorded.get().map((s) => s.text).join("");
+    if (clear) this._recorded.set([]);
     return text;
   }
 
   // [LAW:single-enforcer] `encodeHtml` draws the picture `exportLines`
   // resolves; nothing here interprets a `Style`.
   exportHtml({ theme, clear = true }: { theme?: TerminalTheme; clear?: boolean } = {}): string {
-    const html = encodeHtml(this._recorded, theme);
-    if (clear) this._recorded = [];
+    const html = encodeHtml(this._recorded.get(), theme);
+    if (clear) this._recorded.set([]);
     return html;
   }
 
   // [LAW:single-enforcer] As `exportHtml`: `encodeSvg` draws, this clears.
   exportSvg({ theme, title = "Rich", clear = true }: { theme?: TerminalTheme; title?: string; clear?: boolean } = {}): string {
-    const svg = encodeSvg(this._recorded, { theme, title, width: this.width });
-    if (clear) this._recorded = [];
+    const svg = encodeSvg(this._recorded.get(), { theme, title, width: this.width });
+    if (clear) this._recorded.set([]);
     return svg;
   }
 
@@ -805,9 +803,7 @@ export class Console {
   private _writeSegments(segments: Segment[]): void {
     const shown = segments.map((segment) => shownOn(segment, this._destination));
     if (this._record) {
-      for (const segment of shown) {
-        if (!segment.isControl) this._recorded.push(segment);
-      }
+      this._recorded.push(...shown.filter((segment) => !segment.isControl));
     }
     const encoded = segmentsToString(shown, this._destination);
     if (encoded.length > 0) this._write(encoded);
@@ -818,12 +814,13 @@ export class Console {
     // narrow on `string | null`, not a sentinel comparison — the type
     // carries the active/inactive state. The early return is what makes
     // this a redirect (not a tee); see beginCapture for semantics.
-    if (this._capture !== null) {
-      this._capture += text;
+    const captured = this._capture.get();
+    if (captured !== null) {
+      this._capture.set(captured + text);
       return;
     }
     const target = this._file ?? defaultSink(this._stream);
-    target.write(this._liveRegion.around(text));
+    target.write(this._liveRegion.get().around(text));
   }
 }
 

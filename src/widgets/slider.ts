@@ -51,7 +51,7 @@ export class Slider extends ThemedWidget {
   @observableRef accessor step: number;
   @observableRef accessor width: number;
 
-  private _dragging = false;
+  @observableRef private accessor _dragging = false;
 
   constructor(options: SliderOptions = {}) {
     super(options.theme);

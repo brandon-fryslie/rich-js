@@ -497,12 +497,12 @@ export function passAt(what: string, t: number, period: number): { readonly pass
  */
 function nextUp(x: number): number {
   if (x === 0) return Number.MIN_VALUE;
-  DOUBLE[0] = x;
-  BITS[0] = BITS[0]! + (x > 0 ? 1n : -1n);
-  return DOUBLE[0];
+  // Its own buffer each call: a scratch buffer at module scope is state every caller shares.
+  const double = new Float64Array([x]);
+  const bits = new BigUint64Array(double.buffer);
+  bits[0] = bits[0]! + (x > 0 ? 1n : -1n);
+  return double[0]!;
 }
-const DOUBLE = new Float64Array(1);
-const BITS = new BigUint64Array(DOUBLE.buffer);
 /** How many ulps the roundings in a sum naming a boundary can put it under that boundary; a walk past this is a boundary finer than time resolves there. */
 const ULPS_OF_ROUNDING = 8;
 

@@ -32,10 +32,10 @@ import { drawable } from "./protocol.js";
 
 /** A rule spanning the table: the top and bottom borders, and every separator. */
 export interface EdgeChars {
-  left: string;
-  horizontal: string;
-  cross: string;
-  right: string;
+  readonly left: string;
+  readonly horizontal: string;
+  readonly cross: string;
+  readonly right: string;
 }
 
 /**
@@ -43,9 +43,9 @@ export interface EdgeChars {
  * horizontal of its own — its fill column is a placeholder the cells occupy.
  */
 export interface ContentChars {
-  left: string;
-  vertical: string;
-  right: string;
+  readonly left: string;
+  readonly vertical: string;
+  readonly right: string;
 }
 
 export type RowLevel = "head" | "row" | "foot" | "mid";
@@ -60,7 +60,7 @@ const GRID_COLUMNS = 4;
 
 
 /** Corners that a legacy Windows terminal cannot draw, and their square kin. */
-const SAFE_SUBSTITUTIONS: Record<string, string> = {
+const SAFE_SUBSTITUTIONS: Readonly<Record<string, string>> = {
   "╭": "┌",
   "╮": "┐",
   "╰": "└",

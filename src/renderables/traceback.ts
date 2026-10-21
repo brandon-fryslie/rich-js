@@ -21,9 +21,10 @@ import { RichText } from "../core/text.js";
 import { Pretty, UNSEEN_DATA_BOUNDS } from "../core/pretty.js";
 import { render, type Renderable, type RenderOptions } from "../core/protocol.js";
 import { paddedContentWidth } from "./padding.js";
+import { pattern, type Pattern } from "../core/pattern.js";
 
 export interface TracebackOptions {
-  suppress?: string[];
+  suppress?: readonly string[];
   maxFrames?: number;
 }
 
@@ -38,9 +39,9 @@ export interface TracebackOptions {
  * vanishing from the stack.
  */
 interface StackFrame {
-  function: string | undefined;
-  location: string;
-  line: number | undefined;
+  readonly function: string | undefined;
+  readonly location: string;
+  readonly line: number | undefined;
 }
 
 /**
@@ -48,13 +49,13 @@ interface StackFrame {
  * read frames from.
  */
 interface Caught {
-  name: string;
+  readonly name: string;
   /**
    * The program's message, or the thrown value itself when it is not an error,
    * laid out at the width left after the name.
    */
-  message: (options: RenderOptions) => RichText;
-  frames: StackFrame[];
+  readonly message: (options: RenderOptions) => RichText;
+  readonly frames: readonly StackFrame[];
 }
 
 /**
@@ -183,13 +184,13 @@ function parseStack(stack: string, name: string | undefined, message: string | u
  * any name, so it is read and dropped; the lookahead keeps `at async (…)` — a
  * function named `async` — a name.
  */
-const V8_FRAME = /^at\s+(?:async\s+(?!\())?(.*)$/;
+const V8_FRAME = pattern(/^at\s+(?:async\s+(?!\())?(.*)$/);
 /**
  * SpiderMonkey and JavaScriptCore write `[fn]@location`, Firefox prefixing an
  * awaited call's name with a cause up to a `*` (`async*`, `promise callback*`),
  * which is dropped as V8's `async` is.
  */
-const AT_SIGN_FRAME = /^(?:[^@]*\*)?([^@]*)@(.*)$/;
+const AT_SIGN_FRAME = pattern(/^(?:[^@]*\*)?([^@]*)@(.*)$/);
 
 function parseFrame(text: string): StackFrame {
   const v8 = V8_FRAME.exec(text);
@@ -228,10 +229,10 @@ function openingParen(body: string): number {
  * innermost first-parenthesised for an eval inside an eval), and Firefox appends
  * the code to it (`file line 8 > eval:1:1`).
  */
-const LOCATIONS: readonly RegExp[] = [
-  /^eval at [^]*?\(([^()]+):(\d+):\d+\)/,
-  /^(.*?) line (\d+) > (?:eval|Function)/,
-  /^(.*?):(\d+)(?::\d+)?$/,
+const LOCATIONS: readonly Pattern[] = [
+  pattern(/^eval at [^]*?\(([^()]+):(\d+):\d+\)/),
+  pattern(/^(.*?) line (\d+) > (?:eval|Function)/),
+  pattern(/^(.*?):(\d+)(?::\d+)?$/),
 ];
 
 function locate(fn: string | undefined, location: string): StackFrame {
@@ -246,7 +247,7 @@ export class Traceback implements Renderable {
   /** What was caught, as it was handed in. */
   readonly error: unknown;
   readonly maxFrames: number;
-  readonly suppress: string[];
+  readonly suppress: readonly string[];
   private readonly caught: Caught;
 
   constructor(error: unknown, options?: TracebackOptions) {

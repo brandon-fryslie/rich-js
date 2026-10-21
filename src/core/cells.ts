@@ -4,13 +4,14 @@
 
 import { codePointWidth, widensToEmoji } from "./cell-widths.js";
 import { Memo } from "./memo.js";
+import { pattern } from "./pattern.js";
 
 const cellLenMemo = new Memo<number>();
 
 const ZWJ = 0x200d;
 const VS16 = 0xfe0f;
-const JOINERS = /[\u200d\ufe0f]/;
-const PRINTABLE_ASCII = /^[ -~]*$/;
+const JOINERS = pattern(/[\u200d\ufe0f]/);
+const PRINTABLE_ASCII = pattern(/^[ -~]*$/);
 // Segmented afresh on every call: a cursor's step costs a few microseconds
 // even in 10k code units, and a cache of segmentations would hold native
 // memory for every string it kept.

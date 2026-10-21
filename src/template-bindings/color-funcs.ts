@@ -167,7 +167,7 @@ const lightenFunc = colorFunc(["string", "int"], ((hex: string, levels: number) 
 // function at all.
 
 const MIX_PCT_MAX = 100;
-const MIX_RANGE = { min: 0, max: MIX_PCT_MAX, note: "0 = from, 100 = toward" };
+const MIX_RANGE = { min: 0, max: MIX_PCT_MAX, note: "0 = from, 100 = toward" } as const;
 
 const mixFunc = colorFunc(["string", "string", "float"], ((
   fromHex: string,
@@ -202,7 +202,7 @@ const RATIO_RANGE = {
   min: 1,
   max: 21,
   note: "4.5 = AA body text, 3 = AA large text",
-};
+} as const;
 
 const contrastOnFunc = colorFunc(["string"], ((bgHex: string) =>
   contrastFor(asColor(bgHex, "contrastOn")).hex) as TemplateFunc["fn"]);
@@ -260,7 +260,7 @@ const OKLCH_AXIS_FUNCS = {
   chromaScale: "scaleChroma",
   lightnessScale: "scaleLightness",
   lightnessShift: "shiftLightness",
-} satisfies Record<keyof ThemeKey, string>;
+} as const satisfies Record<keyof ThemeKey, string>;
 
 function oklchAxisFuncs(): FuncMap {
   const out: FuncMap = {};

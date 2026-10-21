@@ -212,10 +212,9 @@ scores.addRow("Bob",   "[dark_goldenrod]87[/]");
 console.print(scores);
 ```
 
-Every column option is reachable that way. The exported `Column` class is the same
-object `addColumn` builds — its constructor takes one options object with the header
-inside it — and `table.columns` hands out the live columns, for adjusting one after
-the rows are in.
+Every column option is reachable that way. `table.columns` hands out the columns
+`addColumn` built, typed `Column`, and a column's `header` and `footer` can be set
+after the rows are in — a footer that counts them, say.
 
 ## Border styles
 

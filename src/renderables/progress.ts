@@ -19,6 +19,7 @@ import type { Timing } from "../core/easing.js";
 import { Timeline } from "../core/timeline.js";
 import { tween } from "../core/tween.js";
 import { frameAt } from "./frames.js";
+import { State } from "../core/state.js";
 
 // --- Task ---
 
@@ -37,36 +38,36 @@ export interface TaskUpdateOptions {
 }
 
 export interface Task {
-  id: number;
-  description: string;
-  total: number | undefined;
-  completed: number;
+  readonly id: number;
+  readonly description: string;
+  readonly total: number | undefined;
+  readonly completed: number;
   /**
    * The count a bar shows, over its `Progress`'s clock: `completed` itself,
    * or moving to it after each update when the `Progress` was given a `fill`
    * timing. `completed` stays the count; only the bar draws this.
    */
-  fill: Animation<number>;
-  visible: boolean;
+  readonly fill: Animation<number>;
+  readonly visible: boolean;
   /** When the task started, in seconds on its `Progress`'s host's time; undefined until it has, as of the frame being drawn. */
-  startTime: number | undefined;
+  readonly startTime: number | undefined;
   /**
    * Rich's `Task.get_time()`: the moment the frame being drawn is drawn at, in
    * seconds on its `Progress`'s host's time, so a column animates without reading a clock.
    */
-  time: number;
+  readonly time: number;
   /**
    * Rich's `Task.elapsed`: seconds since the task started, as of the frame
    * being drawn — `Progress` takes the time once a frame and hands columns
    * the result, so no column reads a clock. Undefined until the task starts.
    */
-  elapsed: number | undefined;
+  readonly elapsed: number | undefined;
   /**
    * Rich's `Task.finished_time`: the elapsed time the first time an update
    * finds a started task at its total, kept from then on, so a finished task
    * stays finished however its count moves after.
    */
-  finishedTime: number | undefined;
+  readonly finishedTime: number | undefined;
   /**
    * Rich's `Task.speed`: steps a second over the updates that moved the task
    * in the `SPEED_ESTIMATE_PERIOD` before its latest update — measured back from
@@ -74,7 +75,7 @@ export interface Task {
    * speed it had. Undefined until the task has started and two such updates lie
    * apart in time.
    */
-  speed: number | undefined;
+  readonly speed: number | undefined;
 }
 
 /** Rich's `ProgressSample`: how far one update moved a task, and when. */
@@ -98,21 +99,20 @@ const MAX_SAMPLES = 1000;
  * the samples.
  */
 type TaskState = Omit<Task, "time" | "elapsed" | "finishedTime" | "speed"> & {
-  finishedAt: number | undefined;
-  readonly samples: ProgressSample[];
+  readonly finishedAt: number | undefined;
+  readonly samples: readonly ProgressSample[];
 };
 
 /**
- * Rich's `Progress.update` bookkeeping on its sample deque, in place: drop the
- * samples older than the period as of `now`, then add this update's if it
- * moved the task forward, keeping the newest `MAX_SAMPLES`. The samples are in
+ * Rich's `Progress.update` bookkeeping on its sample deque, as the samples it
+ * leaves: drop the samples older than the period as of `now`, then add this
+ * update's if it moved the task forward, keeping the newest `MAX_SAMPLES`. The samples are in
  * the order the updates came, which is time order unless the host's timeline
  * ran back between them, so the stale ones are found by time, not position.
  */
-function recordSample(samples: ProgressSample[], now: number, moved: number): void {
+function recordSample(samples: readonly ProgressSample[], now: number, moved: number): readonly ProgressSample[] {
   const fresh = samples.filter((sample) => sample.timestamp >= now - SPEED_ESTIMATE_PERIOD);
-  if (moved > 0) fresh.push({ timestamp: now, completed: moved });
-  samples.splice(0, samples.length, ...fresh.slice(-MAX_SAMPLES));
+  return [...fresh, ...(moved > 0 ? [{ timestamp: now, completed: moved }] : [])].slice(-MAX_SAMPLES);
 }
 
 /**
@@ -337,7 +337,7 @@ export interface SpinnerColumnOptions {
 export class SpinnerColumn implements ProgressColumn {
   readonly tableColumn: ColumnOptions = {};
   private readonly _spinner: Spinner;
-  private _finishedText: RichText;
+  private readonly _finishedText: RichText;
 
   constructor(spinnerName?: string, options?: SpinnerColumnOptions) {
     this._spinner = new Spinner(spinnerName, "", {
@@ -454,9 +454,11 @@ interface DrawnByOptions {
 }
 
 export class Progress implements Renderable, Composite {
-  private _columns: ProgressColumn[];
-  private _tasks: Map<number, TaskState>;
-  private _nextId: number;
+  private readonly _columns: readonly ProgressColumn[];
+  // Rich's Progress adds and updates tasks between frames: each task is a
+  // record replaced whole on update, so a frame reads one task as it stood.
+  private readonly _tasks = new State<ReadonlyMap<number, TaskState>>(new Map());
+  private readonly _nextId = new State(1);
   // [LAW:types-are-the-program] Its own Live, or none: a Progress another
   // host draws has nothing of its own to start.
   private readonly _live: Live | undefined;
@@ -491,8 +493,6 @@ export class Progress implements Renderable, Composite {
     }
 
     this._columns = cols;
-    this._tasks = new Map();
-    this._nextId = 1;
     this.expand = opts.expand ?? false;
     // [LAW:dataflow-not-control-flow] The option picks the rule once; an
     // update always refills through it. Eased, the tween starts at the
@@ -524,7 +524,7 @@ export class Progress implements Renderable, Composite {
 
   /** Rich's `Progress.finished`: every task finished, and so true with none. */
   get finished(): boolean {
-    return [...this._tasks.values()].every((state) => finished(taskAt(state, this._host.frameTime)));
+    return [...this._tasks.get().values()].every((state) => finished(taskAt(state, this._host.frameTime)));
   }
 
   static getDefaultColumns(): ProgressColumn[] {
@@ -537,8 +537,9 @@ export class Progress implements Renderable, Composite {
   }
 
   addTask(description: string, options?: TaskOptions): number {
-    const id = this._nextId++;
-    const task: TaskState = {
+    const id = this._nextId.get();
+    this._nextId.set(id + 1);
+    this._putTask({
       id,
       description,
       total: options?.total === undefined ? undefined : finiteCount("total", options.total),
@@ -548,13 +549,16 @@ export class Progress implements Renderable, Composite {
       startTime: options?.start === false ? undefined : this._host.frameTime,
       finishedAt: undefined,
       samples: [],
-    };
-    this._tasks.set(id, task);
+    });
     return id;
   }
 
+  private _putTask(task: TaskState): void {
+    this._tasks.set(new Map(this._tasks.get()).set(task.id, task));
+  }
+
   updateTask(taskId: number, options: TaskUpdateOptions): void {
-    const task = this._tasks.get(taskId);
+    const task = this._tasks.get().get(taskId);
     if (!task) return;
 
     // Rich's order: `advance` is added, then a given `completed` overwrites it,
@@ -567,25 +571,27 @@ export class Progress implements Renderable, Composite {
         ? finiteCount("completed + advance", task.completed + advance)
         : finiteCount("completed", options.completed);
     const now = this._host.frameTime;
-    recordSample(task.samples, now, completed - task.completed);
-    // A retarget is a change of count: an update that leaves it alone leaves
-    // the ease running as it was, rather than restarting it from where it is.
-    if (completed !== task.completed) task.fill = this._refill(task.fill.at(now), completed, now);
-    task.completed = completed;
-    if (options.description !== undefined) task.description = options.description;
-    if (options.visible !== undefined) task.visible = options.visible;
-    // Rich's `finished_time`, kept as the moment it was reached, so a frame
-    // drawn before it — a timeline run back — finds the task not yet finished.
-    if (task.finishedAt === undefined && task.startTime !== undefined && task.total !== undefined && task.completed >= task.total) {
-      task.finishedAt = now;
-    }
+    const reached = task.startTime !== undefined && task.total !== undefined && completed >= task.total;
+    this._putTask({
+      ...task,
+      completed,
+      // A retarget is a change of count: an update that leaves it alone leaves
+      // the ease running as it was, rather than restarting it from where it is.
+      fill: completed === task.completed ? task.fill : this._refill(task.fill.at(now), completed, now),
+      description: options.description ?? task.description,
+      visible: options.visible ?? task.visible,
+      samples: recordSample(task.samples, now, completed - task.completed),
+      // Rich's `finished_time`, kept as the moment it was reached, so a frame
+      // drawn before it — a timeline run back — finds the task not yet finished.
+      finishedAt: task.finishedAt ?? (reached ? now : undefined),
+    });
     live?.refresh();
   }
 
   startTask(taskId: number): void {
-    const task = this._tasks.get(taskId);
+    const task = this._tasks.get().get(taskId);
     // Rich's `start_task`: a task already running keeps the time it started.
-    if (task) task.startTime ??= this._host.frameTime;
+    if (task) this._putTask({ ...task, startTime: task.startTime ?? this._host.frameTime });
   }
 
   start(): void {
@@ -598,7 +604,7 @@ export class Progress implements Renderable, Composite {
    * shows where the work got to, not a bar caught mid-ease.
    */
   stop(): void {
-    for (const task of this._tasks.values()) task.fill = Animation.constant(task.completed);
+    this._tasks.set(new Map([...this._tasks.get()].map(([id, task]) => [id, { ...task, fill: Animation.constant(task.completed) }])));
     this._live?.stop();
   }
 
@@ -648,7 +654,7 @@ export class Progress implements Renderable, Composite {
 
     // [LAW:effects-at-boundaries] One moment a frame, handed to every column
     // as the task's `time` and `elapsed`.
-    for (const state of this._tasks.values()) {
+    for (const state of this._tasks.get().values()) {
       if (!state.visible) continue;
       const task = taskAt(state, now);
       table.addRow(...this._columns.map((col) => col.render(task)));

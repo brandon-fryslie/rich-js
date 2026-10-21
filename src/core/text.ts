@@ -9,6 +9,8 @@ import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js"
 import { stripOscTerminators } from "./osc8.js";
 import { drawable, getStyle, withBoundedWidth } from "./protocol.js";
 import type { Renderable, Measurable, OverflowMethod, RenderOptions } from "./protocol.js";
+import { pattern } from "./pattern.js";
+import { ListState, State } from "./state.js";
 
 // Every C0 control and DEL except \t and \n. Rich's `Text` strips only
 // `STRIP_CONTROL_CODES` (BEL, BS, VT, FF, CR); the rest of the set is the
@@ -25,13 +27,11 @@ import type { Renderable, Measurable, OverflowMethod, RenderOptions } from "./pr
 // pass, since right-to-left text needs them.
 // [LAW:single-enforcer] Single place where control chars are sanitized: every
 // string that becomes part of a Text's characters passes here.
-const CONTROL_CHARS_RE = /[\x00-\x08\x0B-\x1F\x7F-\x9F\u202A-\u202E\u2066-\u206F]/g;
-
 export function stripControlChars(text: string): string {
-  return text.replace(CONTROL_CHARS_RE, "");
+  return text.replace(/[\x00-\x08\x0B-\x1F\x7F-\x9F\u202A-\u202E\u2066-\u206F]/g, "");
 }
 
-const TRAILING_WHITESPACE_RE = /\s+$/;
+const TRAILING_WHITESPACE_RE = pattern(/\s+$/);
 
 /**
  * The plain text of one line of segments, in the coordinate system
@@ -196,47 +196,61 @@ export interface RichTextOptions {
   noWrap?: boolean;
 }
 
+/** What a `RichText` says about how it is drawn, as Rich's `Text` lets a caller change it after construction. */
+interface TextFormat {
+  readonly style: TextStyle;
+  readonly justify: "left" | "center" | "right" | "full" | undefined;
+  readonly overflow: OverflowMethod | undefined;
+  readonly end: string;
+  readonly noWrap: boolean;
+}
+
 export class RichText implements Renderable, Measurable {
-  private _text: string;
-  private _spans: Span[];
-  private _style: TextStyle;
-  private _justify: "left" | "center" | "right" | "full" | undefined;
-  private _overflow: OverflowMethod | undefined;
-  private _end: string;
-  private _tabSize: TabSize;
-  private _noWrap: boolean;
+  // Rich's `Text` is changed in place — appended to, stylized, padded — so its
+  // characters, spans and format are state, and a write to one while
+  // something is drawn throws. Three holders rather than one per field: a
+  // `RichText` is the most-made object in the library.
+  private readonly _text: State<string>;
+  private readonly _spans = new ListState<Span>();
+  private readonly _format: State<TextFormat>;
+  private readonly _tabSize: TabSize;
 
   constructor(text?: string, options?: RichTextOptions) {
-    this._text = text ? stripControlChars(text) : "";
-    this._spans = [];
-    // [LAW:single-enforcer] `admitStyle` is the boundary that sanitizes
-    // any link URL crossing into a RichText; downstream trusts the invariant.
-    this._style = admitStyle(options?.style ?? NULL_STYLE);
-    this._justify = options?.justify;
-    this._overflow = options?.overflow;
-    this._end = options?.end ?? "\n";
+    this._text = new State(text ? stripControlChars(text) : "");
+    this._format = new State<TextFormat>({
+      // [LAW:single-enforcer] `admitStyle` is the boundary that sanitizes
+      // any link URL crossing into a RichText; downstream trusts the invariant.
+      style: admitStyle(options?.style ?? NULL_STYLE),
+      justify: options?.justify,
+      overflow: options?.overflow,
+      end: options?.end ?? "\n",
+      noWrap: options?.noWrap ?? false,
+    });
     this._tabSize = parseTabSize(options?.tabSize ?? 8);
-    this._noWrap = options?.noWrap ?? false;
+  }
+
+  private _reformat(change: Partial<TextFormat>): void {
+    this._format.set({ ...this._format.get(), ...change });
   }
 
   // --- Properties ---
 
   get plain(): string {
-    return this._text;
+    return this._text.get();
   }
 
   set plain(value: string) {
     const sanitized = stripControlChars(value);
-    this._text = sanitized;
+    this._text.set(sanitized);
     // Trim spans that extend beyond new length
     const len = sanitized.length;
-    this._spans = this._spans
+    this._spans.set(this._spans.get()
       .map((s) => (s.end > len ? new Span(s.start, Math.min(s.end, len), s.style) : s))
-      .filter((s) => s.start < len);
+      .filter((s) => s.start < len));
   }
 
   get length(): number {
-    return this._text.length;
+    return this._text.get().length;
   }
 
   /**
@@ -248,56 +262,56 @@ export class RichText implements Renderable, Measurable {
    * no render draws.
    */
   get cellLength(): number {
-    return cellLen(expandTabs(this._text, this._tabSize).text);
+    return cellLen(expandTabs(this._text.get(), this._tabSize).text);
   }
 
   get hasContent(): boolean {
-    return this._text.length > 0;
+    return this._text.get().length > 0;
   }
 
   /** The base style every span layers over, resolved at render unless it is a `Style`. */
   get style(): TextStyle {
-    return this._style;
+    return this._format.get().style;
   }
 
   set style(value: TextStyle) {
-    this._style = admitStyle(value);
+    this._reformat({ style: admitStyle(value) });
   }
 
   get justify(): "left" | "center" | "right" | "full" | undefined {
-    return this._justify;
+    return this._format.get().justify;
   }
 
   set justify(value: "left" | "center" | "right" | "full" | undefined) {
-    this._justify = value;
+    this._reformat({ justify: value });
   }
 
   get overflow(): OverflowMethod | undefined {
-    return this._overflow;
+    return this._format.get().overflow;
   }
 
   set overflow(value: OverflowMethod | undefined) {
-    this._overflow = value;
+    this._reformat({ overflow: value });
   }
 
   get end(): string {
-    return this._end;
+    return this._format.get().end;
   }
 
   set end(value: string) {
-    this._end = value;
+    this._reformat({ end: value });
   }
 
   get noWrap(): boolean {
-    return this._noWrap;
+    return this._format.get().noWrap;
   }
 
   set noWrap(value: boolean) {
-    this._noWrap = value;
+    this._reformat({ noWrap: value });
   }
 
   get spans(): readonly Span[] {
-    return this._spans;
+    return this._spans.get();
   }
 
   /**
@@ -306,7 +320,7 @@ export class RichText implements Renderable, Measurable {
    * text forgives a missing name.
    */
   resolvedStyle(options: RenderOptions): Style {
-    return resolveStyle(options, this._style);
+    return resolveStyle(options, this._format.get().style);
   }
 
   /**
@@ -331,10 +345,10 @@ export class RichText implements Renderable, Measurable {
    */
   edgeStyle(side: "left" | "right", options: RenderOptions): Style {
     const base = this.resolvedStyle(options);
-    if (this._text.length === 0) return base;
-    const pos = side === "left" ? 0 : this._text.length - 1;
+    if (this._text.get().length === 0) return base;
+    const pos = side === "left" ? 0 : this._text.get().length - 1;
     let result = base;
-    for (const span of this._spans) {
+    for (const span of this._spans.get()) {
       if (span.start <= pos && pos < span.end) {
         result = result.add(resolveStyle(options, span.style));
       }
@@ -349,38 +363,38 @@ export class RichText implements Renderable, Measurable {
       if (style !== undefined) {
         throw new Error("Style argument must not be provided when appending RichText");
       }
-      const offset = this._text.length;
-      this._text += content._text;
+      const offset = this._text.get().length;
+      this._text.set(this._text.get() + content._text.get());
       // Its base style becomes a span under its own spans, as the reference's
       // `append` does, so appended text looks as it did alone.
-      this._addSpan(offset, this._text.length, content._style);
-      for (const span of content._spans) {
+      this._addSpan(offset, this._text.get().length, content._format.get().style);
+      for (const span of content._spans.get()) {
         this._spans.push(span.move(offset));
       }
       return this;
     }
 
     const sanitized = stripControlChars(content);
-    const start = this._text.length;
-    this._text += sanitized;
-    this._addSpan(start, this._text.length, style ?? "");
+    const start = this._text.get().length;
+    this._text.set(this._text.get() + sanitized);
+    this._addSpan(start, this._text.get().length, style ?? "");
     return this;
   }
 
   contains(needle: string | RichText): boolean {
-    const searchText = needle instanceof RichText ? needle._text : needle;
-    return this._text.includes(searchText);
+    const searchText = needle instanceof RichText ? needle._text.get() : needle;
+    return this._text.get().includes(searchText);
   }
 
   at(index: number): RichText {
-    const resolved = index < 0 ? this._text.length + index : index;
-    const char = this._text[resolved];
+    const resolved = index < 0 ? this._text.get().length + index : index;
+    const char = this._text.get()[resolved];
     if (char === undefined) return new RichText("");
     return this.slice(resolved, resolved + 1);
   }
 
   slice(start?: number, end?: number): RichText {
-    const text = this._text;
+    const text = this._text.get();
     const len = text.length;
     const s = start ?? 0;
     const e = end ?? len;
@@ -394,7 +408,7 @@ export class RichText implements Renderable, Measurable {
     const slicedText = text.slice(resolvedStart, resolvedEnd);
     const result = this.blankCopy(slicedText);
 
-    for (const span of this._spans) {
+    for (const span of this._spans.get()) {
       const spanStart = Math.max(span.start, resolvedStart) - resolvedStart;
       const spanEnd = Math.min(span.end, resolvedEnd) - resolvedStart;
       if (spanStart < spanEnd) {
@@ -419,7 +433,7 @@ export class RichText implements Renderable, Measurable {
   }
 
   stylize(style: TextStyle, start?: number, end?: number): this {
-    const len = this._text.length;
+    const len = this._text.get().length;
     const s = start !== undefined ? (start < 0 ? len + start : start) : 0;
     const e = end !== undefined ? (end < 0 ? len + end : end) : len;
 
@@ -432,7 +446,7 @@ export class RichText implements Renderable, Measurable {
   }
 
   highlightRegex(pattern: RegExp, style?: TextStyle): number {
-    const text = this._text;
+    const text = this._text.get();
     let count = 0;
 
     // Ensure global flag
@@ -484,7 +498,7 @@ export class RichText implements Renderable, Measurable {
       const flags = caseSensitive ? "g" : "gi";
       const re = new RegExp(`\\b${escaped}\\b`, flags);
       let match: RegExpExecArray | null;
-      while ((match = re.exec(this._text)) !== null) {
+      while ((match = re.exec(this._text.get())) !== null) {
         this._addSpan(match.index, match.index + match[0].length, style);
         count++;
       }
@@ -496,34 +510,20 @@ export class RichText implements Renderable, Measurable {
   // --- Copy Operations ---
 
   copy(): RichText {
-    const result = new RichText(this._text, {
-      style: this._style,
-      justify: this._justify,
-      overflow: this._overflow,
-      end: this._end,
-      tabSize: this._tabSize,
-      noWrap: this._noWrap,
-    });
-    result._spans = this._spans.slice();
+    const result = this.blankCopy(this._text.get());
+    result._spans.set(this._spans.get());
     return result;
   }
 
   blankCopy(text?: string): RichText {
-    return new RichText(text ?? "", {
-      style: this._style,
-      justify: this._justify,
-      overflow: this._overflow,
-      end: this._end,
-      tabSize: this._tabSize,
-      noWrap: this._noWrap,
-    });
+    return new RichText(text ?? "", { ...this._format.get(), tabSize: this._tabSize });
   }
 
   // --- Splitting ---
 
   split(separator?: string): RichText[] {
     const sep = separator ?? "\n";
-    const text = this._text;
+    const text = this._text.get();
     const parts: RichText[] = [];
     let start = 0;
 
@@ -556,8 +556,8 @@ export class RichText implements Renderable, Measurable {
   // --- Whitespace Operations ---
 
   rstrip(): this {
-    const trimmed = this._text.replace(/\s+$/, "");
-    if (trimmed.length < this._text.length) {
+    const trimmed = this._text.get().replace(/\s+$/, "");
+    if (trimmed.length < this._text.get().length) {
       this.plain = trimmed;
     }
     return this;
@@ -566,8 +566,8 @@ export class RichText implements Renderable, Measurable {
   pad(count: number, char?: string): this {
     const padding = stripControlChars(char ?? " ").repeat(count);
     // Shift all spans right by what the left side gained.
-    this._spans = this._spans.map((s) => s.move(padding.length));
-    this._text = padding + this._text + padding;
+    this._spans.set(this._spans.get().map((s) => s.move(padding.length)));
+    this._text.set(padding + this._text.get() + padding);
     return this;
   }
 
@@ -577,42 +577,42 @@ export class RichText implements Renderable, Measurable {
    * the text measures what it will draw.
    */
   expandTabs(): this {
-    const expanded = expandTabs(this._text, this._tabSize);
-    this._spans = this._spans.map(
+    const expanded = expandTabs(this._text.get(), this._tabSize);
+    this._spans.set(this._spans.get().map(
       (s) => new Span(expanded.offsetOf(s.start), expanded.offsetOf(s.end), s.style),
-    );
-    this._text = expanded.text;
+    ));
+    this._text.set(expanded.text);
     return this;
   }
 
   padLeft(count: number, char?: string): this {
     const padding = stripControlChars(char ?? " ").repeat(count);
-    this._spans = this._spans.map((s) => s.move(padding.length));
-    this._text = padding + this._text;
+    this._spans.set(this._spans.get().map((s) => s.move(padding.length)));
+    this._text.set(padding + this._text.get());
     return this;
   }
 
   padRight(count: number, char?: string): this {
-    this._text += stripControlChars(char ?? " ").repeat(count);
+    this._text.set(this._text.get() + stripControlChars(char ?? " ").repeat(count));
     return this;
   }
 
   setLength(length: number): this {
-    if (this._text.length < length) {
-      this._text += " ".repeat(length - this._text.length);
-    } else if (this._text.length > length) {
-      this.plain = this._text.slice(0, length);
+    if (this._text.get().length < length) {
+      this._text.set(this._text.get() + " ".repeat(length - this._text.get().length));
+    } else if (this._text.get().length > length) {
+      this.plain = this._text.get().slice(0, length);
     }
     return this;
   }
 
   extendStyle(count: number): this {
-    const oldLen = this._text.length;
-    this._text += " ".repeat(count);
+    const oldLen = this._text.get().length;
+    this._text.set(this._text.get() + " ".repeat(count));
     // Extend existing spans to cover new spaces
-    this._spans = this._spans.map((s) =>
+    this._spans.set(this._spans.get().map((s) =>
       s.end === oldLen ? s.extend(count) : s,
-    );
+    ));
     return this;
   }
 
@@ -668,15 +668,15 @@ export class RichText implements Renderable, Measurable {
 
     if (mode === "right") {
       this._cropRightTo(budget);
-      if (marker) this._text += marker;
+      if (marker) this._text.set(this._text.get() + marker);
       return this;
     }
 
     if (mode === "left") {
       this._cropLeftTo(budget);
       if (marker) {
-        this._spans = this._spans.map((s) => s.move(marker.length));
-        this._text = marker + this._text;
+        this._spans.set(this._spans.get().map((s) => s.move(marker.length)));
+        this._text.set(marker + this._text.get());
       }
       return this;
     }
@@ -685,17 +685,17 @@ export class RichText implements Renderable, Measurable {
     const leftBudget = asCellCol(Math.floor(budget / 2));
     const rightBudget = asCellCol(budget - leftBudget);
     // Find the char-index ranges to keep from each side.
-    const leftEndCharIdx = cellFit(this._text, leftBudget).length;
-    const rightStartCharIdx = this._text.length - cellFitEnd(this._text, rightBudget).length;
-    const leftText = this._text.slice(0, leftEndCharIdx);
-    const rightText = this._text.slice(rightStartCharIdx);
+    const leftEndCharIdx = cellFit(this._text.get(), leftBudget).length;
+    const rightStartCharIdx = this._text.get().length - cellFitEnd(this._text.get(), rightBudget).length;
+    const leftText = this._text.get().slice(0, leftEndCharIdx);
+    const rightText = this._text.get().slice(rightStartCharIdx);
     const droppedStart = leftEndCharIdx;
     const droppedEnd = rightStartCharIdx;
     const shift = marker.length - (droppedEnd - droppedStart);
     // Spans falling entirely before the drop stay; entirely after shift by
     // (marker.length - dropped chars); spans crossing the drop are clipped.
     const newSpans: Span[] = [];
-    for (const s of this._spans) {
+    for (const s of this._spans.get()) {
       if (s.end <= droppedStart) {
         newSpans.push(s);
       } else if (s.start >= droppedEnd) {
@@ -710,28 +710,28 @@ export class RichText implements Renderable, Measurable {
         }
       }
     }
-    this._text = leftText + marker + rightText;
-    this._spans = newSpans;
+    this._text.set(leftText + marker + rightText);
+    this._spans.set(newSpans);
     return this;
   }
 
   private _cropRightTo(targetWidth: CellCol): void {
-    this.plain = cellFit(this._text, targetWidth);
+    this.plain = cellFit(this._text.get(), targetWidth);
   }
 
   private _cropLeftTo(targetWidth: CellCol): void {
-    const charIdx = this._text.length - cellFitEnd(this._text, targetWidth).length;
+    const charIdx = this._text.get().length - cellFitEnd(this._text.get(), targetWidth).length;
     // Shift spans left by charIdx; clip spans that started before.
     const shift = -charIdx;
-    this._spans = this._spans
+    this._spans.set(this._spans.get()
       .map((s) => {
         if (s.end <= charIdx) return undefined;
         const newStart = Math.max(0, s.start + shift);
         const newEnd = s.end + shift;
         return new Span(newStart, newEnd, s.style);
       })
-      .filter((s): s is Span => s !== undefined);
-    this._text = this._text.slice(charIdx);
+      .filter((s): s is Span => s !== undefined));
+    this._text.set(this._text.get().slice(charIdx));
   }
 
   // --- Alignment ---
@@ -766,8 +766,8 @@ export class RichText implements Renderable, Measurable {
   // --- Suffix Removal ---
 
   removeSuffix(suffix: string): this {
-    if (this._text.endsWith(suffix)) {
-      this.plain = this._text.slice(0, -suffix.length);
+    if (this._text.get().endsWith(suffix)) {
+      this.plain = this._text.get().slice(0, -suffix.length);
     }
     return this;
   }
@@ -835,7 +835,7 @@ export class RichText implements Renderable, Measurable {
   // --- Renderable ---
 
   *render(options: RenderOptions): Iterable<Segment> {
-    const expanded = expandTabs(this._text, this._tabSize);
+    const expanded = expandTabs(this._text.get(), this._tabSize);
     const base = this.resolvedStyle(options);
     const { segments: allSegments, covered } = this._buildSegments(expanded, base, options);
     const spanFree = spanFreeLines(allSegments, covered);
@@ -853,8 +853,8 @@ export class RichText implements Renderable, Measurable {
     // overflow arm a no-op, but passed an unbounded one through to `justify`,
     // which pads — and `" ".repeat(Infinity)` throws.
     const maxWidth = cellCount(withBoundedWidth(options, this).maxWidth);
-    const overflow = this._overflow ?? options.overflow ?? "fold";
-    const noWrap = this._noWrap || (options.noWrap ?? false);
+    const overflow = this._format.get().overflow ?? options.overflow ?? "fold";
+    const noWrap = this._format.get().noWrap || (options.noWrap ?? false);
 
     // Two widths, and they are the reference's `no_wrap` and `"ignore"` told
     // apart. `edge` is where a line is cut: gone under `"ignore"`, so the line
@@ -874,7 +874,7 @@ export class RichText implements Renderable, Measurable {
     // A line with no edge has no width to be justified in, so under `"ignore"`
     // it is not justified — the reference's `Text.wrap` returns that arm before
     // `justify`. `undefined` is the placement that leaves a line as it is.
-    const justify = overflow === "ignore" ? undefined : this._justify ?? options.justify;
+    const justify = overflow === "ignore" ? undefined : this._format.get().justify ?? options.justify;
     // One cell either way, so the marker's stand-in leaves the cut where it was.
     const ellipsis = drawable(options, "\u2026", ".");
 
@@ -911,15 +911,15 @@ export class RichText implements Renderable, Measurable {
     // (truthy) and again for non-empty text (truthy and not the default
     // "\n"), which gave `end` two meanings depending on whether the text was
     // empty (rich-text-5ai).
-    if (this._end) {
-      yield new Segment(this._end);
+    if (this._format.get().end) {
+      yield new Segment(this._format.get().end);
     }
   }
 
   // --- Measurable ---
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    const lines = expandTabs(this._text, this._tabSize).text.split("\n");
+    const lines = expandTabs(this._text.get(), this._tabSize).text.split("\n");
 
     const maxLineWidth = lines.reduce((widest, line) => Math.max(widest, cellLen(line)), 0);
     // [LAW:one-source-of-truth] The minimum is the widest piece the wrapper
@@ -985,7 +985,7 @@ export class RichText implements Renderable, Measurable {
     // and it is what makes empty text one line to everything that splits a
     // render into lines — a panel's body, a table cell — where Rich draws one.
     const inner = new Set<number>();
-    for (const span of this._spans) {
+    for (const span of this._spans.get()) {
       inner.add(clamp(span.start));
       inner.add(clamp(span.end));
     }
@@ -1003,7 +1003,7 @@ export class RichText implements Renderable, Measurable {
 
     const styles = boundaries.slice(0, -1).map(() => base);
     const covered = styles.map(() => false);
-    for (const span of this._spans) {
+    for (const span of this._spans.get()) {
       const end = clamp(span.end);
       const style = resolveStyle(options, span.style);
       const opensAt = pieceAt.get(clamp(span.start))!;

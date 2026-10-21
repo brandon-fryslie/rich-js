@@ -32,6 +32,7 @@
  */
 
 import { fnv1a } from "./fnv1a.js";
+import { pattern } from "./pattern.js";
 
 /**
  * The bytes that prematurely terminate an OSC 8 sequence: ESC (`\x1b`, which
@@ -39,11 +40,9 @@ import { fnv1a } from "./fnv1a.js";
  */
 const TERMINATORS = "\\x1b\\x07\\x9c";
 
-const TERMINATOR_RE = new RegExp(`[${TERMINATORS}]`, "g");
-
 /** Remove every byte that could break a URL out of its OSC 8 wrap. */
 export function stripOscTerminators(url: string): string {
-  return url.replace(TERMINATOR_RE, "");
+  return url.replace(new RegExp(`[${TERMINATORS}]`, "g"), "");
 }
 
 /**
@@ -69,9 +68,9 @@ export const OSC8_CLOSE = "\x1b]8;;\x1b\\";
  * on a close. To read bytes back use `osc8Sequences`; this pattern is exported
  * for composing into a larger one (a width measure's zero-width alternation).
  */
-export const OSC8 = new RegExp(
+export const OSC8 = pattern(new RegExp(
   `\\x1b\\]8;([^;${TERMINATORS}]*);([^${TERMINATORS}]*)(?:\\x1b\\\\|\\x07|\\x9c)`,
-);
+));
 
 /** One OSC 8 sequence found in rendered bytes. A close has `uri === ""`. */
 export interface Osc8Sequence {
@@ -85,14 +84,12 @@ export interface Osc8Sequence {
   readonly uri: string;
 }
 
-const OSC8_SCAN = new RegExp(OSC8.source, "g");
-
 /**
  * Every OSC 8 sequence in `text`, in order — the typed way to read rendered
  * bytes back.
  */
 export function osc8Sequences(text: string): Osc8Sequence[] {
-  return [...text.matchAll(OSC8_SCAN)].map((m) => ({
+  return [...text.matchAll(new RegExp(OSC8.source, "g"))].map((m) => ({
     index: m.index,
     length: m[0].length,
     params: m[1]!,

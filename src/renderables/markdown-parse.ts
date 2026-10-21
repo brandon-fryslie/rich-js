@@ -15,6 +15,7 @@
 import { linkHref, normalizeLinkText } from "./markdown-url.js";
 import { PY_WHITESPACE, pyStrip } from "./python-space.js";
 import { namedReference } from "./html-entities.js";
+import { pattern, type Pattern } from "../core/pattern.js";
 
 /** Where a table column's cells sit, from the colons on its delimiter cell. None is GFM's no alignment, which Rich leaves to its column: left. */
 export type CellAlign = "left" | "center" | "right" | undefined;
@@ -33,7 +34,7 @@ export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
  * `parseMarkdown` hands back. `Mark` is what the block pass keeps besides:
  * none, once the inline pass has dropped its marks.
  */
-export type MdToken<Text = readonly Inline[], Mark = never> =
+export type MdToken<Text = readonly Inline[], Mark = never> = Readonly<
   | { type: "heading"; level: HeadingLevel; text: Text }
   | { type: "paragraph"; text: Text }
   | { type: "code_block"; code: string }
@@ -45,7 +46,8 @@ export type MdToken<Text = readonly Inline[], Mark = never> =
   | { type: "table"; columns: readonly TableColumn<Text>[]; rows: readonly (readonly Text[])[] }
   /** Kept, though nothing draws it, as Rich exits it like any other block. */
   | { type: "html_block" }
-  | Mark;
+  | Mark
+>;
 
 /**
  * What the block pass keeps that markdown-it makes no token of; the inline
@@ -78,7 +80,7 @@ type EmphasisTag = "em" | "strong" | "s";
  * characters they stand for. Emphasis is named by the element markdown-it
  * makes of it, GFM's strikethrough `s` among them.
  */
-export type Inline =
+export type Inline = Readonly<
   | { kind: "text"; text: string }
   | { kind: "code"; code: string }
   | { kind: "emphasis"; tag: EmphasisTag; children: readonly Inline[] }
@@ -91,7 +93,8 @@ export type Inline =
   | { kind: "html"; content: string }
   /** markdown-it's `softbreak` and `hardbreak`: tokens of their own, never joined to the text beside them. */
   | { kind: "softbreak" }
-  | { kind: "hardbreak" };
+  | { kind: "hardbreak" }
+>;
 
 /**
  * A source line inside the container that holds it, in markdown-it's columns:
@@ -172,35 +175,35 @@ class Lines {
 }
 
 /** An ATX heading's opening: one to six `#`, then a space, a tab or the end of the line. */
-const HEADING = /^#{1,6}(?=[ \t]|$)/;
+const HEADING = pattern(/^#{1,6}(?=[ \t]|$)/);
 /**
  * An ATX heading's closing sequence, as markdown-it cuts one: a run of `#` at
  * the end of the line, spaces and tabs after it allowed, with a space or tab
  * before it — so `# x#` keeps its `#` and `# #` is an empty heading.
  */
-const HEADING_CLOSE = /(?<=[ \t])#+[ \t]*$/;
+const HEADING_CLOSE = pattern(/(?<=[ \t])#+[ \t]*$/);
 /** A thematic break: three or more of one of `*`, `-` or `_`, spaces and tabs between them allowed. */
-const RULE = /^(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/;
-const SETEXT = /^(=+|-+)[ \t]*$/;
+const RULE = pattern(/^(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/);
+const SETEXT = pattern(/^(=+|-+)[ \t]*$/);
 /**
  * A code fence's opening, as markdown-it's fence rule reads one: three or more
  * backticks, the info string after them holding no backtick, or three or more
  * tildes, the info string free to hold anything. The run is captured whole, so
  * its closing can be read off it.
  */
-const FENCE = /^(`{3,}(?=[^`]*$)|~{3,})/;
-const QUOTE = /^>/;
-const ITEM_MARKER = /^(?:[*+-]|(\d{1,9})[.)])/;
+const FENCE = pattern(/^(`{3,}(?=[^`]*$)|~{3,})/);
+const QUOTE = pattern(/^>/);
+const ITEM_MARKER = pattern(/^(?:[*+-]|(\d{1,9})[.)])/);
 /**
  * A line's leading space and tab: CommonMark's whitespace, and the only
  * whitespace markdown-it's block pass reads — what indents a line, what makes
  * one blank. A no-break space or any other Unicode space is text to it.
  */
-const LEAD = /^[ \t]*/;
-const BLOCK_STARTS = [HEADING, FENCE, QUOTE, RULE];
+const LEAD = pattern(/^[ \t]*/);
+const BLOCK_STARTS: readonly Pattern[] = [HEADING, FENCE, QUOTE, RULE];
 /** A line that may be a table's delimiter row, screened as markdown-it screens one: pipes, dashes, colons and space only, and not a dash then a space, which opens a list item. */
-const DELIMITER_ROW = /^(?!-[ \t])[-:|][-:| \t]+$/;
-const DELIMITER_CELL = /^:?-+:?$/;
+const DELIMITER_ROW = pattern(/^(?!-[ \t])[-:|][-:| \t]+$/);
+const DELIMITER_CELL = pattern(/^:?-+:?$/);
 /**
  * How many empty cells a table's short rows may be filled out with before the
  * table ends, as markdown-it caps them: a header of many columns over many
@@ -227,8 +230,8 @@ const MAX_NESTING = 20;
  * kept in the block; the last two at a blank line, left to what follows.
  */
 interface HtmlBlockKind {
-  readonly start: RegExp;
-  readonly end: RegExp | "blank";
+  readonly start: Pattern;
+  readonly end: Pattern | "blank";
   readonly interrupts: boolean;
 }
 
@@ -243,15 +246,15 @@ const HTML_ATTRIBUTE = String.raw`(?:${PY_WHITESPACE}+[a-zA-Z_:][a-zA-Z0-9:._-]*
 const HTML_OPEN_TAG = String.raw`<[A-Za-z][A-Za-z0-9-]*${HTML_ATTRIBUTE}*${PY_WHITESPACE}*\/?>`;
 const HTML_CLOSE_TAG = String.raw`<\/[A-Za-z][A-Za-z0-9-]*${PY_WHITESPACE}*>`;
 const HTML_BLOCKS: readonly HtmlBlockKind[] = [
-  { start: new RegExp(String.raw`^<(?:script|pre|style|textarea)(?=${PY_WHITESPACE}|>|$)`, "i"), end: /<\/(?:script|pre|style|textarea)>/i, interrupts: true },
-  { start: /^<!--/, end: /-->/, interrupts: true },
-  { start: /^<\?/, end: /\?>/, interrupts: true },
+  { start: pattern(new RegExp(String.raw`^<(?:script|pre|style|textarea)(?=${PY_WHITESPACE}|>|$)`, "i")), end: pattern(/<\/(?:script|pre|style|textarea)>/i), interrupts: true },
+  { start: pattern(/^<!--/), end: pattern(/-->/), interrupts: true },
+  { start: pattern(/^<\?/), end: pattern(/\?>/), interrupts: true },
   // Uppercase only, as markdown-it-py has it, where markdown-it in JS and CommonMark 0.31 take `<!doctype` too.
-  { start: /^<![A-Z]/, end: />/, interrupts: true },
-  { start: /^<!\[CDATA\[/, end: /\]\]>/, interrupts: true },
-  { start: new RegExp(String.raw`^<\/?(?:${HTML_BLOCK_NAMES})(?=${PY_WHITESPACE}|\/?>|$)`, "i"), end: "blank", interrupts: true },
+  { start: pattern(/^<![A-Z]/), end: pattern(/>/), interrupts: true },
+  { start: pattern(/^<!\[CDATA\[/), end: pattern(/\]\]>/), interrupts: true },
+  { start: pattern(new RegExp(String.raw`^<\/?(?:${HTML_BLOCK_NAMES})(?=${PY_WHITESPACE}|\/?>|$)`, "i")), end: "blank", interrupts: true },
   {
-    start: new RegExp(String.raw`^(?:${HTML_OPEN_TAG}|${HTML_CLOSE_TAG})${PY_WHITESPACE}*$`),
+    start: pattern(new RegExp(String.raw`^(?:${HTML_OPEN_TAG}|${HTML_CLOSE_TAG})${PY_WHITESPACE}*$`)),
     end: "blank",
     interrupts: false,
   },
@@ -278,7 +281,7 @@ function isBlank(line: Line): boolean {
 }
 
 /** Whether `line` sits less than a code indent into its container and its text matches `re`. */
-function startsWith(line: Line, re: RegExp): boolean {
+function startsWith(line: Line, re: Pattern): boolean {
   return indentOf(line) < CODE_INDENT && re.test(body(line));
 }
 
@@ -501,10 +504,8 @@ function continuation(lines: Lines, start: number): { text: string; next: number
  * `lower().upper()` folds it.
  */
 function normalizeReference(label: string): string {
-  return pyStrip(label).replace(WHITESPACE_RUN, " ").toLowerCase().toUpperCase();
+  return pyStrip(label).replace(new RegExp(`${PY_WHITESPACE}+`, "g"), " ").toLowerCase().toUpperCase();
 }
-
-const WHITESPACE_RUN = new RegExp(`${PY_WHITESPACE}+`, "g");
 
 /**
  * The link reference definition opening at `start`, if one does, as
@@ -692,8 +693,8 @@ function listItem(item: ItemStart, level: number, lines: Lines, start: number): 
  * The line that closes the fence opened by the run `open`: a run of the same
  * marker at least as long, then nothing but spaces and tabs.
  */
-function closingFence(open: string): RegExp {
-  return new RegExp(`^${open}${open[0]}*[ \\t]*$`);
+function closingFence(open: string): Pattern {
+  return pattern(new RegExp(`^${open}${open[0]}*[ \\t]*$`));
 }
 
 /**
@@ -931,58 +932,60 @@ interface Delimiter {
 }
 
 /** markdown-it's `isWhiteSpace`: Unicode's space separators, and tab, line feed, vertical tab, form feed and carriage return. */
-const WHITESPACE = /^[\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]$/;
+const WHITESPACE = pattern(/^[\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]$/);
 /** markdown-it's `isPunctChar`, which takes in all of ASCII's punctuation: Unicode's punctuation and symbols. */
-const PUNCTUATION = /^[\p{P}\p{S}]$/u;
+const PUNCTUATION = pattern(/^[\p{P}\p{S}]$/u);
 
-const TICKS = /`+/y;
-const TICK_RUNS = /`+/g;
-const LINE_INDENT = /[ \t]*/y;
+const TICKS = pattern(/`+/);
+const LINE_INDENT = pattern(/[ \t]*/);
 /** markdown-it's autolink: `<`, then text holding no `<` up to the first `>`. */
-const AUTOLINK = /<([^<>]*)>/y;
+const AUTOLINK = pattern(/<([^<>]*)>/);
 /** What an autolink's text must be: a URI, scheme first, or an email address. */
-const AUTOLINK_URI = /^[a-zA-Z][a-zA-Z0-9+.\-]{1,31}:[^<>\x00-\x20]*$/;
-const AUTOLINK_EMAIL =
-  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+const AUTOLINK_URI = pattern(/^[a-zA-Z][a-zA-Z0-9+.\-]{1,31}:[^<>\x00-\x20]*$/);
+const AUTOLINK_EMAIL = pattern(
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,
+);
 /** Space as markdown-it's link rule skips it around a destination and title: a space, tab or line ending, not Unicode's. */
-const LINK_SPACE = /[ \t\n]*/y;
+const LINK_SPACE = pattern(/[ \t\n]*/);
 /**
  * A link title, as markdown-it's `parseLinkTitle` reads one: in `"`, `'` or
  * `(…)`, a backslash taking the character after it, and a `(` refusing a
  * `(…)` title.
  */
-const LINK_TITLE = /"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|\((?:\\[\s\S]|[^()\\])*\)/y;
+const LINK_TITLE = pattern(/"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|\((?:\\[\s\S]|[^()\\])*\)/);
 /** How many parentheses markdown-it's `parseLinkDestination` lets a bare destination hold open: one more and it reads none. */
 const MAX_DESTINATION_NESTING = 32;
 /** A backslash escape, as markdown-it reads one: the ASCII punctuation character after it, standing for itself. */
-const ESCAPE = /\\([!-\/:-@[-`{-~])/y;
+const ESCAPE = pattern(/\\([!-\/:-@[-`{-~])/);
 /** A numeric character reference, as markdown-it reads one in text: up to seven decimal digits, or up to six hex. */
-const NUMERIC_REFERENCE = /&#([xX][0-9a-fA-F]{1,6}|[0-9]{1,7});/y;
+const NUMERIC_REFERENCE = pattern(/&#([xX][0-9a-fA-F]{1,6}|[0-9]{1,7});/);
 /** A named character reference, as markdown-it reads one in text: a letter, then one to 31 letters or digits. */
-const NAMED_REFERENCE = /&([A-Za-z][A-Za-z0-9]{1,31});/y;
+const NAMED_REFERENCE = pattern(/&([A-Za-z][A-Za-z0-9]{1,31});/);
 /**
  * A backslash escape or a character reference, as markdown-it's `unescapeAll`
  * reads them in a link's destination: the reference read more widely than in
  * text, a name or a `#` then one to 31 letters or digits.
  */
-const UNESCAPE_ALL = new RegExp(`${ESCAPE.source}|&[A-Za-z#][A-Za-z0-9]{1,31};`, "g");
+const unescapes = (): RegExp => new RegExp(`${ESCAPE.source}|&[A-Za-z#][A-Za-z0-9]{1,31};`, "g");
 /** A numeric reference as `unescapeAll` reads one: up to eight digits of either base. */
-const DESTINATION_NUMERIC = /^&#([xX][0-9a-fA-F]{1,8}|[0-9]{1,8});$/;
+const DESTINATION_NUMERIC = pattern(/^&#([xX][0-9a-fA-F]{1,8}|[0-9]{1,8});$/);
 /** Inline HTML, as markdown-it-py's HTML_TAG_RE reads it: a tag, a comment, a processing instruction, a declaration or a CDATA section. */
-const HTML_TAG = new RegExp(
-  [
-    HTML_OPEN_TAG,
-    HTML_CLOSE_TAG,
-    String.raw`<!---?>|<!--(?:[^-]|-[^-]|--[^>])*-->`,
-    String.raw`<[?][\s\S]*?[?]>`,
-    String.raw`<![A-Za-z][^>]*>`,
-    String.raw`<!\[CDATA\[[\s\S]*?\]\]>`,
-  ].join("|"),
-  "y",
+const HTML_TAG = pattern(
+  new RegExp(
+    [
+      HTML_OPEN_TAG,
+      HTML_CLOSE_TAG,
+      String.raw`<!---?>|<!--(?:[^-]|-[^-]|--[^>])*-->`,
+      String.raw`<[?][\s\S]*?[?]>`,
+      String.raw`<![A-Za-z][^>]*>`,
+      String.raw`<!\[CDATA\[[\s\S]*?\]\]>`,
+    ].join("|"),
+  ),
 );
 
-/** `re`, a sticky pattern, matched exactly at `i` in `text`. */
-function matchAt(re: RegExp, text: string, i: number): RegExpExecArray | null {
+/** `p` matched exactly at `i` in `text`, by a sticky regex this call owns. */
+function matchAt(p: Pattern, text: string, i: number): RegExpExecArray | null {
+  const re = new RegExp(p.source, `${p.flags}y`);
   re.lastIndex = i;
   return re.exec(text);
 }
@@ -1031,11 +1034,11 @@ function referenceAt(text: string, i: number): InlineMatch | undefined {
 /**
  * markdown-it's `unescapeAll`, which a link's destination is read through:
  * each backslash escape as the character it escapes, and each reference
- * `UNESCAPE_ALL` finds as the characters it names — a reference naming
+ * `unescapes` finds as the characters it names — a reference naming
  * nothing, or no character `isValidEntityCode` accepts, left as written.
  */
 function unescapeAll(text: string): string {
-  return text.replace(UNESCAPE_ALL, (whole: string, escaped: string | undefined) => {
+  return text.replace(unescapes(), (whole: string, escaped: string | undefined) => {
     if (escaped !== undefined) return escaped;
     const numeric = DESTINATION_NUMERIC.exec(whole);
     const chars = numeric ? referencedCharacter(referencedCode(numeric[1]!)) : namedReference(whole.slice(1, -1));
@@ -1117,7 +1120,7 @@ class BacktickRuns {
   private readonly starts = new Map<number, number[]>();
 
   constructor(text: string) {
-    for (const run of text.matchAll(TICK_RUNS)) {
+    for (const run of text.matchAll(new RegExp(TICKS.source, "g"))) {
       const starts = this.starts.get(run[0].length);
       if (starts) starts.push(run.index);
       else this.starts.set(run[0].length, [run.index]);
@@ -1138,7 +1141,7 @@ class BacktickRuns {
 }
 
 /** Every character `inlineAt` opens a construct at, and the `]` a link label ends at. */
-const STEP_STOPS = new Set(["`", "*", "_", "~", "&", "\n", "\\", "<", "!", "[", "]"]);
+const STEP_STOPS: ReadonlySet<string> = new Set(["`", "*", "_", "~", "&", "\n", "\\", "<", "!", "[", "]"]);
 
 /**
  * Where markdown-it's `text` rule leaves a step from `i` in `text` that opens

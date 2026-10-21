@@ -23,6 +23,8 @@ import { Style, StyleSyntaxError } from "./style.js";
 import { RichText, stripControlChars } from "./text.js";
 import { emojiReplace } from "./emoji.js";
 import type { RenderOptions as DrawOptions } from "./protocol.js";
+import { pattern } from "./pattern.js";
+import { State } from "./state.js";
 
 // --- Tag ---
 
@@ -184,7 +186,7 @@ function excerpt(text: string, index: number): string {
  */
 export function escape(text: string): string {
   return text
-    .replace(ESCAPE_RE, (_, run: string, live: string | undefined) =>
+    .replace(new RegExp(ESCAPE_RE.source, "g"), (_, run: string, live: string | undefined) =>
       live === undefined ? `${run}\\[` : `${run}${run}\\[`,
     )
     .replace(TRAILING_RUN_RE, "$&$&");
@@ -217,14 +219,14 @@ export function escape(text: string): string {
 // run, on exactly the untrusted text `escape` is for.
 const TAG_BODY = String.raw`[a-z#/@][^[]*?\]`;
 const RUN = String.raw`(?<!\\)(\\*)`;
-const TAG_RE = new RegExp(String.raw`${RUN}(\[${TAG_BODY})`, "g");
+const TAG_RE = pattern(new RegExp(String.raw`${RUN}(\[${TAG_BODY})`));
 /**
  * Every bracket and the run in front of it; the empty second group is set when
  * a tag starts there or could, once more text is joined after the end. It is an
  * alternation rather than `(…)?` because a quantified group may not match empty.
  */
-const ESCAPE_RE = new RegExp(String.raw`${RUN}\[(?:(?=${TAG_BODY}|(?:[a-z#/@][^[\]]*)?$)()|)`, "g");
-const TRAILING_RUN_RE = /(?<!\\)\\+$/;
+const ESCAPE_RE = pattern(new RegExp(String.raw`${RUN}\[(?:(?=${TAG_BODY}|(?:[a-z#/@][^[\]]*)?$)()|)`));
+const TRAILING_RUN_RE = pattern(/(?<!\\)\\+$/);
 
 /** Literal text, positioned where the reference's `_parse` positions it. */
 interface TextToken {
@@ -257,7 +259,7 @@ function tokenize(markup: string): MarkupToken[] {
   const tokens: MarkupToken[] = [];
   let position = 0;
 
-  for (const match of markup.matchAll(TAG_RE)) {
+  for (const match of markup.matchAll(new RegExp(TAG_RE.source, "g"))) {
     const run = match[1]!;
     const captured = match[2]!;
     let start = match.index;
@@ -382,10 +384,10 @@ export type MarkupTagHandler = (ctx: MarkupTagContext) => RichText;
 // could never fire. This tracked `[A-Za-z]` while `TAG_RE` wrongly admitted
 // uppercase, which is the same drift, one subset down (rich-markup-sec).
 const PLUGIN_TAG_NAME_SRC = "[a-z][A-Za-z0-9_-]*";
-const LEGAL_PLUGIN_TAG_NAME = new RegExp(`^${PLUGIN_TAG_NAME_SRC}$`);
+const LEGAL_PLUGIN_TAG_NAME = pattern(new RegExp(`^${PLUGIN_TAG_NAME_SRC}$`));
 
 export class MarkupRegistry {
-  private readonly _handlers = new Map<string, MarkupTagHandler>();
+  private readonly _handlers = new State<ReadonlyMap<string, MarkupTagHandler>>(new Map());
 
   register(name: string, handler: MarkupTagHandler): void {
     // [LAW:no-silent-failure] Registration used to accept any string, including
@@ -401,19 +403,21 @@ export class MarkupRegistry {
         `Cannot register markup tag "${name}": name is reserved by a built-in style.`,
       );
     }
-    this._handlers.set(name, handler);
+    this._handlers.set(new Map(this._handlers.get()).set(name, handler));
   }
 
   unregister(name: string): void {
-    this._handlers.delete(name);
+    const handlers = new Map(this._handlers.get());
+    handlers.delete(name);
+    this._handlers.set(handlers);
   }
 
   has(name: string): boolean {
-    return this._handlers.has(name);
+    return this._handlers.get().has(name);
   }
 
   get(name: string): MarkupTagHandler | undefined {
-    return this._handlers.get(name);
+    return this._handlers.get().get(name);
   }
 }
 
@@ -459,7 +463,7 @@ function isSpace(c: string): boolean {
 // continues with the whitespace that introduces attributes. Anything else —
 // `[table.header]`, `[table=x]` — is the built-in dialect's, and falls through
 // exactly as an unregistered name would.
-const PLUGIN_TAG_HEAD = new RegExp(`^(${PLUGIN_TAG_NAME_SRC})(?=$|[ \\t])`);
+const PLUGIN_TAG_HEAD = pattern(new RegExp(`^(${PLUGIN_TAG_NAME_SRC})(?=$|[ \\t])`));
 
 function parsePluginAttrs(after: string): Record<string, string> {
   // Hand-written tokenizer. Walks `key=value` pairs separated by whitespace;
