@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-510",
-      "ref": "refs/pull/510/merge",
-      "sha": "b6359c6bf6337df7789e7384ef0454ab65ce7f53",
-      "timestamp": "2026-10-21T12:31:58.237Z",
-      "commits": [
-        {
-          "sha": "b6359c6bf6337df7789e7384ef0454ab65ce7f53",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T12:29:54Z",
-          "message": "Merge 7b6b0cc6e71c08e127962795499dd0eeded2d528 into 7a51fda1c6562c9af4c7e98f540d1b1dc00d1d6d\n"
-        },
-        {
-          "sha": "7b6b0cc6e71c08e127962795499dd0eeded2d528",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T06:29:49-06:00",
-          "message": "A held renderable is drawn at no column, never a negative width (rich-protocol-9xcs.8te)\n\nReview: a container's arithmetic can hand a child a negative or NaN width;\ndrawsNothing reads it as no column, but the held draw passed it through, so\nRule threw RangeError inside narrow Markdown lists and Constrain.\n"
-        },
-        {
-          "sha": "1d678663b20a945c817ba851ed9ba8f6cd09aa59",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T06:21:10-06:00",
-          "message": "A held renderable is drawn and dropped; Composite.contents is gone (rich-protocol-9xcs.8te)\n\nUnder one column `render` used to walk `Composite.contents`, a second\ndescription of each container's traversal kept beside its `render`, because\ndrawing used to commit state. Renders no longer write, so a held renderable\nis now drawn in a phase whose effects are dropped (as a measurement's are),\nits segments discarded, and everything it draws reported held. What a held\ncontainer holds is what it draws, under the options it hands each child — a\ncontainer rewriting `frame` included, which `contents` could not see.\n\nComposite, isComposite and every contents method are deleted.\ntest/renderables/contents.test.ts becomes held.test.ts: every exported\nrenderable survives being drawn under one column and reports the probes it\nreports drawn. A Table seats one column at no width and drops the rest, as at\nany width too narrow for their dividers; contents had reported them all.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "7a51fda1c6562c9af4c7e98f540d1b1dc00d1d6d",
-      "timestamp": "2026-10-21T12:02:04.471Z",
+      "sha": "c3fc4bf64cba06ae4b5898b6815d91821d6918ff",
+      "timestamp": "2026-10-21T12:45:20.825Z",
       "commits": [
         {
-          "sha": "7a51fda1c6562c9af4c7e98f540d1b1dc00d1d6d",
+          "sha": "c3fc4bf64cba06ae4b5898b6815d91821d6918ff",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T06:00:00-06:00",
-          "message": "TextInput scrolls as a Viewport, layout kept once the frame is drawn (rich-protocol-9xcs.o76) (#509)\n\n* TextInput scrolls as a Viewport, and keeps its layout once the frame is drawn (rich-protocol-9xcs.o76)\n\nA TextInput's render wrote its visual rows, scroll window, single-line\nwindow and drawn options into plain fields. Now the one fact only a render\nlearns — the width and ASCII-ness it drew under — is a State kept through\nafterPass, and the rows and windows are derived from it and the current\nvalue. The multiline scroll is a Viewport, so the cursor row is followed,\nthe wheel scrolls the field, and a handled key brings the caret back.\n\nA Panel's bottomRightAccessory function is handed the rows its body drew,\nand scrollIndicatorText(frame) counts the rows that frame laid out, read\noff the field's own stamped cells: right on its first frame, on a resize,\nand at any depth. The render-purity debt list is empty and deleted.\n\n* TextInput reads each frame's layout off its cells; maxRows is a ceiling (rich-protocol-9xcs.o76)\n\nHigh review pass on PR #509:\n- A click maps through the layout stamped on the cell it lands on (WidgetMouseEvent.cell),\n  not one recomputed from the cursor and value since.\n- maxRows caps the viewport as a height ceiling instead of fixing its rows.\n- The field is at least as wide as it measures, held to the offer, so a blank field\n  keeps its minRows; with arrows it is exactly the offer.\n- levelOf in core/anchor is the one owner-chain walk; Viewport's EMPTY is shared.\n\n* TextInput keeps a caret past a full row under arrows, and an arrow keeps its cell's place (rich-protocol-9xcs.o76)\n\n* TextInput draws only the rows in view, and reads a click off its frame's settings (rich-protocol-9xcs.o76)\n\nEscalation high pass on PR #509:\n- Viewport.showingLines shows content of known length that draws only the lines a\n  frame shows; TextInput's frame costs O(maxRows) again (20k lines: ~175ms -> ~2ms).\n- The field's width comes from the rows in view, so a frame no longer measures the\n  whole value; graphemes() skips segmentation for printable ASCII, as cellLen does.\n- A frame's layout carries what it was drawn under and, single-line, the value it\n  showed, so a click maps through that frame alone.\n- Stale accessory-thunk test comment and WidgetBase stamping comment corrected."
+          "timestamp": "2026-10-21T06:43:15-06:00",
+          "message": "A held renderable is drawn and dropped; Composite.contents is gone (rich-protocol-9xcs.8te) (#510)\n\n* A held renderable is drawn and dropped; Composite.contents is gone (rich-protocol-9xcs.8te)\n\nUnder one column `render` used to walk `Composite.contents`, a second\ndescription of each container's traversal kept beside its `render`, because\ndrawing used to commit state. Renders no longer write, so a held renderable\nis now drawn in a phase whose effects are dropped (as a measurement's are),\nits segments discarded, and everything it draws reported held. What a held\ncontainer holds is what it draws, under the options it hands each child — a\ncontainer rewriting `frame` included, which `contents` could not see.\n\nComposite, isComposite and every contents method are deleted.\ntest/renderables/contents.test.ts becomes held.test.ts: every exported\nrenderable survives being drawn under one column and reports the probes it\nreports drawn. A Table seats one column at no width and drops the rest, as at\nany width too narrow for their dividers; contents had reported them all.\n\n* A held renderable is drawn at no column, never a negative width (rich-protocol-9xcs.8te)\n\nReview: a container's arithmetic can hand a child a negative or NaN width;\ndrawsNothing reads it as no column, but the held draw passed it through, so\nRule threw RangeError inside narrow Markdown lists and Constrain."
         }
       ]
     },
