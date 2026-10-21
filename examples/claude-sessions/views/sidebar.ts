@@ -57,15 +57,14 @@ export function buildSidebar(state: AppState, viewport: Viewport, focused: boole
   // labels end at the pane's edge rather than wrapping, so an entry's index
   // fixes its line.
   const selectedLine = 1 + (state.sidebarLevel === "project" ? state.selectedProjectIndex : state.selectedSessionIndex);
-  viewport.content = tree;
   // A line either side of the selection stays in view too: the entry next
   // to it, and above the first entry the root, which names what is listed.
-  viewport.follow(selectedLine - 1, selectedLine + 2);
+  const shown = viewport.showing(tree, { start: selectedLine - 1, end: selectedLine + 2 });
   const titlePrefix = focused ? "▸ " : "";
   const title = state.sidebarLevel === "project"
     ? `${titlePrefix}Projects (${state.projects.length})`
     : `${titlePrefix}Sessions (${project?.sessions.length ?? 0})`;
-  return new Panel(viewport, {
+  return new Panel(shown, {
     title,
     borderStyle: focused ? "bold cyan" : "dim cyan",
     padding: [0, 1],

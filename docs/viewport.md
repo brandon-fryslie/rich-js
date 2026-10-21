@@ -45,7 +45,7 @@ console.print(new Panel(viewport, { title: "log", borderStyle: "cyan" }));
 
 The panel shows lines 2 to 6: the three calls resolve in order when it renders.
 
-None of these moves anything straight away. The rows and the content's length are only known once the viewport renders, so each call is queued, and the next render resolves the calls in order, clamping after each one. `viewport.offset` is the first line the last render showed.
+None of these moves anything straight away. The rows and the content's length are only known once the viewport renders, so each call is queued, and the next render resolves the calls in order, clamping after each one. `viewport.offset` is the first line the last frame showed. A render changes nothing, so the viewport keeps what its render resolved only once the frame it was drawn in has been drawn whole; a measurement keeps nothing.
 
 In a [`WidgetApp`](/widgets), the mouse wheel scrolls a viewport with no code of yours. Each notch moves the innermost viewport under the pointer by one line, however deep in the view it sits and whatever widget it shows under the pointer, and the app paints the result. A viewport that cannot move that way — its content fits, or it is already at that end — passes the notch to the viewport around it, and the outermost one passes it out of the app: in the docs' cards, the page scrolls.
 
@@ -58,10 +58,10 @@ viewport.ensureVisible(selected, selected + 1);
 console.print(new Panel(viewport, { title: `line ${selected} in view`, borderStyle: "cyan" }));
 ```
 
-The scroll position belongs to the viewport, not to its content. A view rebuilt every frame keeps one `Viewport` and replaces `content`, and brings the selection into view when the selection moves, not in every frame — called in every frame, `ensureVisible` would undo each scroll the mouse wheel queues on the very render that applies it:
+The scroll position belongs to the viewport, not to its content. A view rebuilt every frame keeps one `Viewport` and draws the content it builds through it with `viewport.showing(content)`. It brings the selection into view when the selection moves, not in every frame — called in every frame, `ensureVisible` would undo each scroll the mouse wheel queues on the very render that applies it:
 
 ```typescript
-const viewport = new Viewport(renderList(state), { rows: 8 });
+const viewport = new Viewport(new RichText(""), { rows: 8 });
 
 function select(state: State, selected: number): State {
   viewport.ensureVisible(selected, selected + 1);
@@ -69,8 +69,7 @@ function select(state: State, selected: number): State {
 }
 
 function frame(state: State) {
-  viewport.content = renderList(state);
-  return new Panel(viewport);
+  return new Panel(viewport.showing(renderList(state)));
 }
 
 const next = select(state, state.selected + 1);
@@ -80,7 +79,7 @@ console.print(frame(next));
 
 ## A list kept in view
 
-`ListView` draws items stacked down a viewport you hand it, and keeps the selected one in view. An item may wrap to any number of lines: the list draws them at the viewport's content width, so it knows which lines the selection covers. `gap` puts blank lines between items, and `context` keeps that many lines above and below the selection in view too, so the next item shows before the cursor reaches it. It brings the selection into view with `follow(start, end)`, which calls `ensureVisible` only when the range differs from the last one followed — so the list can be rebuilt every frame, and the wheel still scrolls away from the selection until it moves. `follow` is the per-frame form of the pattern above, for any view rebuilt every frame: call it with the selection's lines each frame instead of `ensureVisible` on select. A followed range that was in view stays in view when the viewport's rows change; one the wheel scrolled away from stays where the wheel left it.
+`ListView` draws items stacked down a viewport you hand it, and keeps the selected one in view. An item may wrap to any number of lines: the list draws them at the viewport's content width, so it knows which lines the selection covers. `gap` puts blank lines between items, and `context` keeps that many lines above and below the selection in view too, so the next item shows before the cursor reaches it. It shows them with `viewport.showing(lines, { start, end })`, which follows the selection's lines: it calls `ensureVisible` only when the range differs from the one the last frame followed — so the list can be rebuilt every frame, and the wheel still scrolls away from the selection until it moves. A followed range is the per-frame form of the pattern above, for any view rebuilt every frame: pass the selection's lines to `showing` each frame instead of calling `ensureVisible` on select. A followed range that was in view stays in view when the viewport's rows change; one the wheel scrolled away from stays where the wheel left it.
 
 `moveSelection(index, delta, length)` is the cursor: `index + delta` held to the list's ends, with `-Infinity` and `Infinity` naming the first and the last item. When nothing moves it returns `index` itself, so `next === index` tells a reducer it has nothing to change.
 
@@ -102,10 +101,8 @@ A pane whose subject changes — the file a preview shows, the session a reader 
 import { ViewportPerKey } from "@promptctl/rich-js";
 
 const previews = new ViewportPerKey({ rows: 4 });
-const preview = previews.of("README.md");
-preview.content = renderMarkup(log);
-preview.scrollTo(10);
-console.print(new Panel(previews.of("README.md"), { title: "README.md" }));
+previews.of("README.md").scrollTo(10);
+console.print(new Panel(previews.of("README.md").showing(renderMarkup(log)), { title: "README.md" }));
 ```
 
 ## Scrollbar

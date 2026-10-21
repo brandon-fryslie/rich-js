@@ -5,8 +5,8 @@
  * An item can wrap, so the lines the selected one covers exist only at the
  * width it is drawn at, which a render is handed and whoever builds the frame
  * is not. So the items are drawn here, at the viewport's content width and
- * with no height — the lines the viewport scrolls — and the viewport is handed
- * those lines and the selected item's range.
+ * with no height — the lines the viewport scrolls — and shown through the
+ * viewport with the selected item's range followed.
  * [LAW:single-enforcer] Where the window sits is the viewport's call; this
  * only says which lines the selection is.
  *
@@ -18,7 +18,7 @@
 
 import { Segment } from "../core/segment.js";
 import { Measurement, measureRenderables } from "../core/measure.js";
-import { drawsNothing, render, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { render, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import type { Viewport } from "./viewport.js";
 
@@ -66,7 +66,7 @@ export class ListView implements Renderable, Measurable, Composite {
     const start = drawn.slice(0, this.selected).reduce((total, item) => total + item.length + this.gap, 0);
     const end = start + (drawn[this.selected]?.length ?? 0);
     const lines = drawn.flatMap((item, i) => (i === 0 ? item : [...gap, ...item]));
-    this.viewport.content = {
+    const content: Renderable = {
       *render(): Iterable<Segment> {
         for (const line of lines) {
           yield* line;
@@ -77,15 +77,15 @@ export class ListView implements Renderable, Measurable, Composite {
     // A range reaching past either end is clamped by the viewport, which holds
     // its offset to the lines that exist. Followed, not ensured: the wheel can
     // scroll away from the selection until the selection moves. Items handed
-    // no column are held, not drawn, and cover no lines, so they name no range
-    // and the one last followed stands; followed, it would read as a move.
-    if (!drawsNothing(options)) this.viewport.follow(start - this.context, end + this.context);
-    yield* render(this.viewport, bounded);
+    // no column are held, not drawn, and so is the viewport's content, which
+    // keeps nothing it is handed — the range last followed stands.
+    // [LAW:effects-at-boundaries] Shown through the viewport rather than
+    // handed to it: the viewport keeps the lines' range once the frame is drawn.
+    yield* render(this.viewport.showing(content, { start: start - this.context, end: end + this.context }), bounded);
   }
 
   *contents(): Iterable<Renderable> {
     yield* this.items;
-    yield this.viewport;
   }
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {

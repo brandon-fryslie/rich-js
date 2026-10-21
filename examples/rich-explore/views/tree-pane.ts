@@ -63,11 +63,10 @@ export function buildTreePane(
   // Every label ends at the pane's edge rather than wrapping, so each is one line.
   const idx = visible.findIndex((n) => n.entry.path === state.selectedPath);
   const selectedLine = 1 + (idx < 0 ? 0 : idx);
-  viewport.content = tree;
   // A line either side of the selection stays in view too: the entry next
   // to it, and above the first entry the root, which names what is listed.
-  viewport.follow(selectedLine - 1, selectedLine + 2);
-  return new Panel(viewport, {
+  const shown = viewport.showing(tree, { start: selectedLine - 1, end: selectedLine + 2 });
+  return new Panel(shown, {
     title: focused ? `▸ Tree (${visible.length})` : `Tree (${visible.length})`,
     borderStyle: focused ? "bold cyan" : "dim cyan",
     padding: [0, 1],

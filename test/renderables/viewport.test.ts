@@ -5,7 +5,7 @@ import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { Style, Theme } from "../../src/core/style.js";
 import { cellLen } from "../../src/core/cells.js";
-import type { Height, Renderable, RenderOptions } from "../../src/core/protocol.js";
+import { measure, render, type Height, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] What a viewport shows, under the `Height`
 // contract in src/core/protocol.ts, and how its operations move it.
@@ -16,13 +16,13 @@ function numbered(n: number): Renderable {
 }
 
 function shown(viewport: Renderable, height?: Height, maxWidth = 10): string[] {
-  const lines = Segment.splitLines(viewport.render({ maxWidth, height }));
+  const lines = Segment.splitLines(render(viewport, { maxWidth, height }));
   return lines.map((line) => line.map((s) => s.text).join("").trimEnd());
 }
 
 /** Every row exactly as emitted, trailing blanks and all. */
 function rows(viewport: Renderable, height?: Height, maxWidth = 10): string[] {
-  const lines = Segment.splitLines(viewport.render({ maxWidth, height }));
+  const lines = Segment.splitLines(render(viewport, { maxWidth, height }));
   return lines.map((line) => line.map((s) => s.text).join(""));
 }
 
@@ -149,16 +149,14 @@ describe("scrolling", () => {
     const viewport = new Viewport(numbered(10), { rows: 3 });
     viewport.scrollTo(7);
     shown(viewport);
-    viewport.content = numbered(5);
-    expect(shown(viewport)).toEqual(["2", "3", "4"]);
+    expect(shown(viewport.showing(numbered(5)))).toEqual(["2", "3", "4"]);
   });
 
   it("replaced content keeps the scroll position", () => {
     const viewport = new Viewport(numbered(10), { rows: 3 });
     viewport.scrollTo(4);
     shown(viewport);
-    viewport.content = numbered(12);
-    expect(shown(viewport)).toEqual(["4", "5", "6"]);
+    expect(shown(viewport.showing(numbered(12)))).toEqual(["4", "5", "6"]);
   });
 
   it("the extent is the content's lines at the width it renders at", () => {
@@ -350,8 +348,7 @@ describe("the scrollbar", () => {
       const viewport = new Viewport(numbered(20), { scrollbar: SCROLLBAR });
       viewport.scrollTo(10);
       shown(viewport, ceiling(5));
-      viewport.follow(12, 13);
-      shown(viewport, ceiling(5));
+      shown(viewport.showing(viewport.content, { start: 12, end: 13 }), ceiling(5));
       shown(viewport, ceiling(5), 1);
       expect(viewport.offset).toBe(10);
       expect(shown(viewport, ceiling(5))[0]).toMatch(/^10 /);
@@ -378,7 +375,7 @@ describe("the scrollbar", () => {
 
   it("resolves its styles against the theme it renders for", () => {
     const theme = new Theme({ "scrollbar.thumb": "red", "scrollbar.track": "blue" });
-    const segments = [...new Viewport(numbered(8), { rows: 4, scrollbar: SCROLLBAR }).render({ maxWidth: 4, theme })];
+    const segments = [...render(new Viewport(numbered(8), { rows: 4, scrollbar: SCROLLBAR }), { maxWidth: 4, theme })];
     // The look, not where the cell came from: every cell carries its anchor.
     const styleOf = (glyph: string): Style | undefined =>
       segments.find((s) => s.text === glyph)?.style?.withAnchor(undefined);
@@ -388,7 +385,7 @@ describe("the scrollbar", () => {
 
   it("fills the rest of a narrower glyph's cell in that part's style", () => {
     const blocks = { thumb: { glyph: "██", style: "" }, track: { glyph: "░", style: "on blue" } };
-    const segments = [...new Viewport(numbered(8), { rows: 2, scrollbar: blocks }).render({ maxWidth: 4 })];
+    const segments = [...render(new Viewport(numbered(8), { rows: 2, scrollbar: blocks }), { maxWidth: 4 })];
     const afterTrack = segments[segments.findIndex((s) => s.text === "░") + 1]!;
     expect(afterTrack.text).toBe(" ");
     expect(afterTrack.style?.withAnchor(undefined)).toEqual(Style.parse("on blue"));
@@ -416,30 +413,27 @@ describe("measure", () => {
   });
 });
 
-describe("follow", () => {
+describe("showing, with a range followed", () => {
+  /** `viewport`'s own content shown through it, following lines `start` up to `end`. */
+  const following = (viewport: Viewport, start: number, end: number) => viewport.showing(viewport.content, { start, end });
+
   it("brings a range into view only when it differs from the last one followed", () => {
     const viewport = new Viewport(numbered(10), { rows: 2 });
-    viewport.follow(5, 6);
-    expect(shown(viewport)).toEqual(["4", "5"]);
+    expect(shown(following(viewport, 5, 6))).toEqual(["4", "5"]);
     viewport.scrollTo(0);
-    viewport.follow(5, 6);
-    expect(shown(viewport)).toEqual(["0", "1"]);
-    viewport.follow(6, 7);
-    expect(shown(viewport)).toEqual(["5", "6"]);
+    expect(shown(following(viewport, 5, 6))).toEqual(["0", "1"]);
+    expect(shown(following(viewport, 6, 7))).toEqual(["5", "6"]);
   });
 
   it("brings the followed range in again when the viewport gets shorter", () => {
     const viewport = new Viewport(numbered(10));
-    viewport.follow(4, 5);
-    expect(shown(viewport, { rows: 5, exact: true })).toEqual(["0", "1", "2", "3", "4"]);
-    viewport.follow(4, 5);
-    expect(shown(viewport, { rows: 3, exact: true })).toEqual(["2", "3", "4"]);
+    expect(shown(following(viewport, 4, 5), { rows: 5, exact: true })).toEqual(["0", "1", "2", "3", "4"]);
+    expect(shown(following(viewport, 4, 5), { rows: 3, exact: true })).toEqual(["2", "3", "4"]);
   });
 
   it("leaves a range the wheel scrolled away from where the wheel left it, at any row count", () => {
     const viewport = new Viewport(numbered(10));
-    viewport.follow(0, 1);
-    shown(viewport, { rows: 3, exact: true });
+    shown(following(viewport, 0, 1), { rows: 3, exact: true });
     viewport.scrollBy(5);
     expect(shown(viewport, { rows: 3, exact: true })).toEqual(["5", "6", "7"]);
     expect(shown(viewport, { rows: 4, exact: true })).toEqual(["5", "6", "7", "8"]);
@@ -448,10 +442,112 @@ describe("follow", () => {
 
   it("leaves a wheel scroll alone while the rows stay the same", () => {
     const viewport = new Viewport(numbered(10));
-    viewport.follow(4, 5);
-    shown(viewport, { rows: 3, exact: true });
+    shown(following(viewport, 4, 5), { rows: 3, exact: true });
     viewport.scrollTo(0);
-    viewport.follow(4, 5);
-    expect(shown(viewport, { rows: 3, exact: true })).toEqual(["0", "1", "2"]);
+    expect(shown(following(viewport, 4, 5), { rows: 3, exact: true })).toEqual(["0", "1", "2"]);
   });
+
+  it("keeps nothing from a range followed in a frame that held it or measured it", () => {
+    const viewport = new Viewport(numbered(10), { rows: 2 });
+    [...render(following(viewport, 5, 6), { maxWidth: 0 })];
+    measure(following(viewport, 5, 6), { maxWidth: 10 });
+    expect(shown(viewport)).toEqual(["0", "1"]);
+  });
+});
+
+describe("a viewport keeps its scroll once the frame is drawn, never while", () => {
+  // [LAW:effects-at-boundaries] What a render resolved becomes the viewport's
+  // between passes, so a render draws it without writing anything.
+  it("reports the offset a frame resolved only after the frame is drawn whole", () => {
+    const viewport = new Viewport(numbered(10), { rows: 3 });
+    viewport.scrollTo(4);
+    const steps = render(viewport, { maxWidth: 10 })[Symbol.iterator]();
+    steps.next();
+    expect(viewport.offset).toBe(0);
+    while (steps.next().done !== true);
+    expect(viewport.offset).toBe(4);
+  });
+
+  it("keeps nothing from a frame its caller stopped drawing, and the next frame resolves the move", () => {
+    const viewport = new Viewport(numbered(10), { rows: 3 });
+    viewport.scrollTo(4);
+    const steps = render(viewport, { maxWidth: 10 })[Symbol.iterator]();
+    steps.next();
+    steps.return?.();
+    expect(viewport.offset).toBe(0);
+    expect(shown(viewport)).toEqual(["4", "5", "6"]);
+    expect(viewport.offset).toBe(4);
+  });
+
+  it("keeps nothing from a measurement that renders it", () => {
+    const viewport = new Viewport(numbered(10), { rows: 3 });
+    viewport.scrollTo(4);
+    const measuring = {
+      render: (): Segment[] => [],
+      measure: (options: RenderOptions) => {
+        Segment.splitLines(render(viewport, options));
+        return { minimum: 1, maximum: 1 };
+      },
+    };
+    measure(measuring, { maxWidth: 10 });
+    expect(viewport.offset).toBe(0);
+    expect(viewport.canScrollBy(-1)).toBe(false);
+  });
+
+  it("drops the moves its frame resolved and keeps one queued since", () => {
+    const viewport = new Viewport(numbered(10), { rows: 3 });
+    viewport.scrollTo(2);
+    const steps = render(viewport, { maxWidth: 10 })[Symbol.iterator]();
+    steps.next();
+    viewport.scrollBy(3);
+    while (steps.next().done !== true);
+    expect(viewport.offset).toBe(2);
+    expect(shown(viewport)).toEqual(["5", "6", "7"]);
+  });
+
+  it("keeps what a drawn frame resolved when the same pass also holds it", () => {
+    const viewport = new Viewport(numbered(20), { rows: 3, scrollbar: SCROLLBAR });
+    viewport.scrollTo(10);
+    const frame: Renderable = {
+      *render(options) {
+        yield* render(viewport, options);
+        // One column is all the gutter: the content is held.
+        yield* render(viewport, { ...options, maxWidth: 1 });
+      },
+    };
+    [...render(frame, { maxWidth: 10 })];
+    expect(viewport.offset).toBe(10);
+  });
+
+  it("keeps a move queued after two draws of it in one pass resolved the same queue", () => {
+    const viewport = new Viewport(numbered(10), { rows: 3 });
+    viewport.scrollTo(2);
+    const frame: Renderable = {
+      *render(options) {
+        yield* render(viewport, options);
+        yield* render(viewport, options);
+      },
+    };
+    const steps = render(frame, { maxWidth: 10 })[Symbol.iterator]();
+    // Both draws have resolved the queue once each has drawn its last line, "4".
+    for (let fours = 0; fours < 2; ) if ((steps.next().value as Segment).text === "4") fours++;
+    viewport.scrollBy(3);
+    while (steps.next().done !== true);
+    expect(viewport.offset).toBe(2);
+    expect(shown(viewport)).toEqual(["5", "6", "7"]);
+  });
+
+  it("keeps its scroll when a frame drawn ahead is iterated inside another render", () => {
+    const viewport = new Viewport(numbered(10), { rows: 3 });
+    viewport.scrollTo(4);
+    const ahead = render(viewport, { maxWidth: 10 });
+    const host: Renderable = {
+      *render() {
+        yield* ahead;
+      },
+    };
+    [...render(host, { maxWidth: 10 })];
+    expect(viewport.offset).toBe(4);
+  });
+
 });

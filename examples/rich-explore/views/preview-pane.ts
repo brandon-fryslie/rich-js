@@ -40,8 +40,7 @@ export function buildPreviewPane(
 
   const MAX_CONTENT_WIDTH = 120;
   const wrap = (inner: Renderable, title: string, color: string) => {
-    viewport.content = new Constrain(inner, MAX_CONTENT_WIDTH);
-    return new Panel(viewport, {
+    return new Panel(viewport.showing(new Constrain(inner, MAX_CONTENT_WIDTH)), {
       title: `${focusPrefix}${title}`,
       borderStyle: baseBorder + color,
       padding: [0, 1],

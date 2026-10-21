@@ -343,15 +343,25 @@ export interface Pass {
   readonly __pass: unique symbol;
 }
 
+/**
+ * A pass as it is being drawn: its identity, and the effects its renders handed
+ * it to run once it ends (`afterPass`). A measurement is a pass of the same
+ * identity with effects of its own, which nothing runs.
+ */
+interface Phase {
+  readonly pass: Pass;
+  readonly effects: (() => void)[];
+}
+
 // [LAW:no-shared-mutable-globals] The render phase, owned here and nowhere
 // else: only `render` and `measure` below open or enter a pass, and the rest of
-// the library reads it through `activePass`. Set and restored like a stack, so
-// "not rendering" is `undefined` and needs no counter.
-let active: Pass | undefined;
+// the library reads it through `activePass` and `afterPass`. Set and restored
+// like a stack, so "not rendering" is `undefined` and needs no counter.
+let active: Phase | undefined;
 
-function runIn<T>(pass: Pass | undefined, run: () => T): T {
+function runIn<T>(phase: Phase | undefined, run: () => T): T {
   const outer = active;
-  active = pass;
+  active = phase;
   try {
     return run();
   } finally {
@@ -371,17 +381,47 @@ export function betweenPasses<T>(handler: () => T): T {
 
 /** The pass a render or measure in progress belongs to, or `undefined` between passes. */
 export function activePass(): Pass | undefined {
-  return active;
+  return active?.pass;
+}
+
+/**
+ * `effect` run once the render pass in progress has drawn its last segment,
+ * between passes, where it may write what an event handler may: React's commit
+ * phase. A render that learns something only drawing can tell it — the lines a
+ * `Viewport`'s content runs to at the width it was handed — draws from what it
+ * learned and hands the commit here, rather than writing it as it draws.
+ *
+ * Effects run in the order they were handed over, which is document order. A
+ * measurement commits nothing, and neither does a pass that throws or whose
+ * caller stops iterating it early: nobody saw what it drew. Outside a pass — a
+ * renderable's `render` called directly — there is nothing to wait for, and
+ * `effect` runs now.
+ */
+export function afterPass(effect: () => void): void {
+  if (active === undefined) effect();
+  else active.effects.push(effect);
 }
 
 /** The pass in progress, or a new one when this call is the outermost. */
-const passHere = (): Pass => active ?? ({} as Pass);
+const phaseHere = (): Phase => active ?? { pass: {} as Pass, effects: [] };
 
 /**
- * `drawn` with every step of its iteration run in `pass`. A render is often a
- * generator, whose body runs as its caller iterates — after `render` has
- * returned — so the pass is re-entered on each `next()`, however many `yield`s
- * a write sits behind. An array has nothing left to run.
+ * Every effect `phase`'s renders handed it, run now that it has ended — between
+ * passes even when the iteration that ended it was stepped inside another.
+ */
+function commit(phase: Phase): void {
+  runIn(undefined, () => {
+    for (const effect of phase.effects.splice(0)) effect();
+  });
+}
+
+/**
+ * `drawn` with every step of its iteration run in `phase`, and its effects
+ * committed when the last step is done. A render is often a generator, whose
+ * body runs as its caller iterates — after `render` has returned — so the pass
+ * is re-entered on each `next()`, however many `yield`s a write sits behind,
+ * and ends only when the iteration does. An array has nothing left to run, so
+ * its pass has already ended.
  *
  * Only the call that opens the pass is wrapped. A nested render's steps run
  * inside its parent's, which are already in the pass; a nested iterable could
@@ -389,18 +429,25 @@ const passHere = (): Pass => active ?? ({} as Pass);
  * takes a writable location `test/seam/render-purity.test.ts` refuses. Wrapping
  * every level cost a third of the render time, once per segment per level.
  */
-function withinPass(pass: Pass, drawn: Iterable<Segment>): Iterable<Segment> {
-  if (Array.isArray(drawn)) return drawn;
+function withinPass(phase: Phase, drawn: Iterable<Segment>): Iterable<Segment> {
+  if (Array.isArray(drawn)) {
+    commit(phase);
+    return drawn;
+  }
   return {
     [Symbol.iterator]: () => {
-      const steps = runIn(pass, () => drawn[Symbol.iterator]());
+      const steps = runIn(phase, () => drawn[Symbol.iterator]());
       // On `%IteratorPrototype%`, as a generator's iterator is: iterable
       // itself, and carrying the iterator helpers where the engine has them.
       return Object.assign(Object.create(ITERATOR_PROTOTYPE) as Iterator<Segment>, {
-        next: () => runIn(pass, () => steps.next()),
-        return: (value?: unknown) => runIn(pass, () => steps.return?.(value) ?? { done: true as const, value: undefined }),
+        next: () => {
+          const step = runIn(phase, () => steps.next());
+          if (step.done === true) commit(phase);
+          return step;
+        },
+        return: (value?: unknown) => runIn(phase, () => steps.return?.(value) ?? { done: true as const, value: undefined }),
         throw: (error?: unknown) =>
-          runIn(pass, () => {
+          runIn(phase, () => {
             if (steps.throw) return steps.throw(error);
             throw error;
           }),
@@ -436,14 +483,15 @@ const ITERATOR_PROTOTYPE: object = Object.getPrototypeOf(Object.getPrototypeOf([
  */
 export function render(renderable: Renderable, options: RenderOptions): Iterable<Segment> {
   const opens = active === undefined;
-  const pass = passHere();
-  return runIn(pass, () => {
+  const phase = phaseHere();
+  const drawn = runIn(phase, () => {
     const presence: Presence = drawsNothing(options) ? "held" : "drawn";
     options.onPresent?.(renderable, presence);
-    if (presence === "drawn") return opens ? withinPass(pass, renderable.render(options)) : renderable.render(options);
+    if (presence === "drawn") return renderable.render(options);
     if (isComposite(renderable)) for (const content of renderable.contents(options)) render(content, options);
     return [];
   });
+  return opens ? withinPass(phase, drawn) : drawn;
 }
 
 /**
@@ -455,7 +503,8 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
  * `test/seam/render-calls.test.ts` holds both.
  */
 export function measure(measurable: Measurable, options: RenderOptions): { minimum: number; maximum: number } {
-  return runIn(passHere(), () => measurable.measure(measuring(options)));
+  // The pass's identity, with effects nothing runs: a measurement commits nothing.
+  return runIn({ pass: phaseHere().pass, effects: [] }, () => measurable.measure(measuring(options)));
 }
 
 /**

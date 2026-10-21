@@ -5,13 +5,13 @@ import { SCROLLBAR, Viewport, ViewportPerKey } from "../../src/renderables/viewp
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { Measurement } from "../../src/core/measure.js";
-import type { Renderable } from "../../src/core/protocol.js";
+import { render, type Renderable } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] What a list shows for a selection, and where a
 // selection moves to.
 
 function shown(list: Renderable, rows: number, maxWidth = 10): string[] {
-  const lines = Segment.splitLines(list.render({ maxWidth, height: { rows, exact: true } }));
+  const lines = Segment.splitLines(render(list, { maxWidth, height: { rows, exact: true } }));
   return lines.map((line) => line.map((s) => s.text).join("").trimEnd());
 }
 
@@ -92,7 +92,7 @@ describe("ListView's arguments", () => {
     expect(() => new ListView(new Viewport(new RichText("")), [], 0)).not.toThrow();
   });
   it("puts its gap between items, not under the last", () => {
-    const lines = Segment.splitLines(new ListView(new Viewport(new RichText("")), items, 0, { gap: 1 }).render({ maxWidth: 5 }));
+    const lines = Segment.splitLines(render(new ListView(new Viewport(new RichText("")), items, 0, { gap: 1 }), { maxWidth: 5 }));
     expect(lines.map((l) => l.map((s) => s.text).join("").trimEnd())).toEqual(["a", "", "b"]);
   });
   it("measures at an unbounded width", () => {
@@ -138,5 +138,13 @@ describe("a list rebuilt every frame", () => {
     expect(frame(10)[0]).toMatch(/^d0/);
     frame(1);
     expect(frame(10)[0]).toMatch(/^d0/);
+  });
+
+  it("scrolls the viewport it was handed without changing what that viewport shows", () => {
+    const own = new RichText("own");
+    const viewport = new Viewport(own);
+    expect(shown(new ListView(viewport, items(1, 1, 1, 1, 1), 4), 2)).toEqual(["d0", "e0"]);
+    expect(viewport.content).toBe(own);
+    expect(viewport.offset).toBe(3);
   });
 });
