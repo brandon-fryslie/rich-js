@@ -15,7 +15,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "./protocol.js";
-import { render } from "./protocol.js";
+import { measure, render } from "./protocol.js";
 
 export interface JSONOptions {
   indent?: number;
@@ -74,6 +74,6 @@ export class JSONRenderable implements Renderable, Measurable {
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return this.text.measure(options);
+    return measure(this.text, options);
   }
 }

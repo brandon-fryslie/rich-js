@@ -61,7 +61,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawable, render } from "../core/protocol.js";
+import { drawable, measure, render } from "../core/protocol.js";
 import { EmbeddedText } from "./embed.js";
 import { FrameSequence } from "./frames.js";
 import { finiteTime } from "../core/easing.js";
@@ -175,7 +175,7 @@ export class Spinner implements Animation<Renderable & Measurable> {
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return this.drawnAt(frameTimeOf(options)).measure(options);
+    return measure(this.drawnAt(frameTimeOf(options)), options);
   }
 
   /** Nothing it is handed: the frame and the label are a line it builds. */
@@ -198,7 +198,7 @@ export class Spinner implements Animation<Renderable & Measurable> {
       // measure would let wrap apart at its spaces.
       measure: (options) => {
         const { frames, played } = drawn(options);
-        const { minimum, maximum } = this._line(choose(played, options).value, options).measure(options);
+        const { minimum, maximum } = measure(this._line(choose(played, options).value, options), options);
         return { minimum: Math.max(minimum, Math.min(frames.width, maximum)), maximum };
       },
     };

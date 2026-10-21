@@ -2,7 +2,7 @@
  * Measurement — min/max cell width calculation for renderables.
  */
 
-import { drawsNothing, isMeasurable, measuring, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
+import { drawsNothing, isMeasurable, measure, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
 
 export class Measurement {
   readonly minimum: number;
@@ -62,7 +62,7 @@ export class Measurement {
   static get(options: RenderOptions, renderable: Renderable | Measurable): Measurement {
     if (drawsNothing(options)) return new Measurement(0, 0);
     if (!isMeasurable(renderable)) return new Measurement(0, options.maxWidth);
-    const { minimum, maximum } = renderable.measure(measuring(options));
+    const { minimum, maximum } = measure(renderable, options);
     return new Measurement(minimum, Math.min(maximum, options.maxWidth)).normalize();
   }
 }

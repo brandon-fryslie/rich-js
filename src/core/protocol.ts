@@ -334,6 +334,74 @@ export function drawsNothing(options: { readonly maxWidth: number }): boolean {
 }
 
 /**
+ * One render pass: the outermost `render` or `measure` call — a host's frame,
+ * a print — and every `next()` of what it returned, at any depth. Opaque: it
+ * is only an identity, which a `State` compares to say whether this pass made
+ * it.
+ */
+export interface Pass {
+  readonly __pass: unique symbol;
+}
+
+// [LAW:no-shared-mutable-globals] The render phase, owned here and nowhere
+// else: only `render` and `measure` below open or enter a pass, and the rest of
+// the library reads it through `activePass`. Set and restored like a stack, so
+// "not rendering" is `undefined` and needs no counter.
+let active: Pass | undefined;
+
+function runIn<T>(pass: Pass, run: () => T): T {
+  const outer = active;
+  active = pass;
+  try {
+    return run();
+  } finally {
+    active = outer;
+  }
+}
+
+/** The pass a render or measure in progress belongs to, or `undefined` between passes. */
+export function activePass(): Pass | undefined {
+  return active;
+}
+
+/** The pass in progress, or a new one when this call is the outermost. */
+const passHere = (): Pass => active ?? ({} as Pass);
+
+/**
+ * `drawn` with every step of its iteration run in `pass`. A render is often a
+ * generator, whose body runs as its caller iterates — after `render` has
+ * returned — so the pass is re-entered on each `next()`, however many `yield`s
+ * a write sits behind. An array has nothing left to run.
+ *
+ * Only the call that opens the pass is wrapped. A nested render's steps run
+ * inside its parent's, which are already in the pass; a nested iterable could
+ * only be stepped outside it by being kept somewhere past the render, which
+ * takes a writable location `test/seam/render-purity.test.ts` refuses. Wrapping
+ * every level cost a third of the render time, once per segment per level.
+ */
+function withinPass(pass: Pass, drawn: Iterable<Segment>): Iterable<Segment> {
+  if (Array.isArray(drawn)) return drawn;
+  return {
+    [Symbol.iterator]: () => {
+      const steps = runIn(pass, () => drawn[Symbol.iterator]());
+      // On `%IteratorPrototype%`, as a generator's iterator is: iterable
+      // itself, and carrying the iterator helpers where the engine has them.
+      return Object.assign(Object.create(ITERATOR_PROTOTYPE) as Iterator<Segment>, {
+        next: () => runIn(pass, () => steps.next()),
+        return: (value?: unknown) => runIn(pass, () => steps.return?.(value) ?? { done: true as const, value: undefined }),
+        throw: (error?: unknown) =>
+          runIn(pass, () => {
+            if (steps.throw) return steps.throw(error);
+            throw error;
+          }),
+      });
+    },
+  };
+}
+
+const ITERATOR_PROTOTYPE: object = Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]()));
+
+/**
  * `renderable` drawn under `options`: Rich's `Console.render`, which every
  * renderable there is drawn through, so under one column nothing is.
  *
@@ -344,6 +412,10 @@ export function drawsNothing(options: { readonly maxWidth: number }): boolean {
  * this, each container asked `drawsNothing` itself, and the ones that forgot
  * drew a child handed no column anyway.
  *
+ * It is where a render pass is entered (`Pass`), so it is the one place a
+ * write during render is refused at: a `State` set in a pass that did not make
+ * it throws (`./state.ts`).
+ *
  * It is also the one reporter of what the view holds (`onPresent`). Under one
  * column a renderable is held, not drawn: what it holds (`Composite`) is
  * walked and reported held in turn, and nothing renders, so no renderable
@@ -353,11 +425,27 @@ export function drawsNothing(options: { readonly maxWidth: number }): boolean {
  * instead, and dropping what it drew, did commit that state.
  */
 export function render(renderable: Renderable, options: RenderOptions): Iterable<Segment> {
-  const presence: Presence = drawsNothing(options) ? "held" : "drawn";
-  options.onPresent?.(renderable, presence);
-  if (presence === "drawn") return renderable.render(options);
-  if (isComposite(renderable)) for (const content of renderable.contents(options)) render(content, options);
-  return [];
+  const opens = active === undefined;
+  const pass = passHere();
+  return runIn(pass, () => {
+    const presence: Presence = drawsNothing(options) ? "held" : "drawn";
+    options.onPresent?.(renderable, presence);
+    if (presence === "drawn") return opens ? withinPass(pass, renderable.render(options)) : renderable.render(options);
+    if (isComposite(renderable)) for (const content of renderable.contents(options)) render(content, options);
+    return [];
+  });
+}
+
+/**
+ * What `measurable` reports under `options`: asked in a render pass, as
+ * `render` draws in one, with `measuring`'s options.
+ *
+ * [LAW:single-enforcer] Every call of a `Measurable`'s `measure` in `src/`
+ * goes through here, as every `render` goes through `render`;
+ * `test/seam/render-calls.test.ts` holds both.
+ */
+export function measure(measurable: Measurable, options: RenderOptions): { minimum: number; maximum: number } {
+  return runIn(passHere(), () => measurable.measure(measuring(options)));
 }
 
 /**
@@ -366,10 +454,9 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
  * one that did would put a widget in the view at the moment a container
  * measured it, and keep one the frame then cropped away.
  *
- * [LAW:single-enforcer] Every measurement starts here: `Measurement.get` and
- * `withBoundedWidth` ask through it, and each `measure` passes it on.
+ * [LAW:single-enforcer] Every measurement starts here: `measure` asks with it.
  */
-export function measuring(options: RenderOptions): RenderOptions {
+function measuring(options: RenderOptions): RenderOptions {
   return { ...options, onPresent: undefined };
 }
 
@@ -415,7 +502,7 @@ export function withBoundedWidth(
   const parsed = withCellWidth(options);
   if (Number.isFinite(parsed.maxWidth)) return parsed;
 
-  const natural = self.measure(measuring(parsed)).maximum;
+  const natural = measure(self, parsed).maximum;
   if (!Number.isFinite(natural)) {
     throw new RangeError(
       "maxWidth is unbounded and this renderable has no natural width to fall " +

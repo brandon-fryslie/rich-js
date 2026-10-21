@@ -37,7 +37,7 @@
 import { Animation } from "../core/animation.js";
 import { Measurement } from "../core/measure.js";
 import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
-import { measuring, render, withBoundedWidth } from "../core/protocol.js";
+import { render, withBoundedWidth } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 
@@ -77,7 +77,7 @@ function cells(name: string, offset: number): number {
  * an unbounded width it cannot fill.
  */
 function naturalWidth(content: Renderable, options: RenderOptions): number {
-  const natural = Measurement.get(measuring({ ...options, maxWidth: Number.POSITIVE_INFINITY }), content).maximum;
+  const natural = Measurement.get({ ...options, maxWidth: Number.POSITIVE_INFINITY }, content).maximum;
   if (!Number.isFinite(natural)) {
     throw new RangeError("scroll: the content has no natural width — it fills whatever width it is given; give it one with new Constrain(content, width)");
   }
