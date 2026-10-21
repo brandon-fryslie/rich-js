@@ -89,7 +89,7 @@ import {
 } from "../core/cells.js";
 import { afterPass, drawable, render, type RenderOptions } from "../core/protocol.js";
 import { State } from "../core/state.js";
-import { EMPTY, Viewport, type Lines } from "../renderables/viewport.js";
+import { Viewport, type Lines } from "../renderables/viewport.js";
 import { Animation } from "../core/animation.js";
 import { beat } from "../core/easing.js";
 import { Timeline } from "../core/timeline.js";
@@ -485,7 +485,7 @@ export class TextInput extends ThemedWidget {
     this.cursorStyleOverride = options.cursorStyle;
     this.contentStyleOverride = options.contentStyle;
     this.multiline = this._multiline;
-    this._viewport = new Viewport(EMPTY);
+    this._viewport = new Viewport();
   }
 
   // --- Event handlers ---

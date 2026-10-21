@@ -1,6 +1,10 @@
 /**
- * Viewport — a fixed number of rows onto a taller renderable, scrolled by an
- * offset that cannot leave the content.
+ * Viewport — a scroll position: a fixed number of rows onto taller content,
+ * scrolled by an offset that cannot leave it. It holds the position, not the
+ * content: content is drawn through it with `showing` (or `showingLines`), so
+ * a view rebuilt every frame keeps one viewport under content it builds anew.
+ * [LAW:one-source-of-truth] That is the one way to draw through it, so no
+ * viewport is built around content it never draws.
  *
  * Its rows, under the `Height` contract in `../core/protocol.ts`: the region's
  * when it is given one; otherwise its own configured rows, or the content's
@@ -160,7 +164,7 @@ export interface ViewportOptions {
   scrollbar?: Scrollbar;
 }
 
-export class Viewport implements Renderable, Measurable, Scrollable {
+export class Viewport implements Scrollable {
   readonly rows: number | undefined;
   readonly scrollbar: Scrollbar;
   private readonly _scroll = new State<Scroll>({
@@ -172,15 +176,7 @@ export class Viewport implements Renderable, Measurable, Scrollable {
   });
   private readonly _moves = new ListState<Move>();
 
-  /**
-   * @param content What the viewport shows when it is drawn itself. A view
-   * rebuilt every frame shows new content through one kept viewport with
-   * `showing` instead.
-   */
-  constructor(
-    readonly content: Renderable,
-    options: ViewportOptions = {},
-  ) {
+  constructor(options: ViewportOptions = {}) {
     this.rows = options.rows;
     this.scrollbar = options.scrollbar ?? NO_SCROLLBAR;
   }
@@ -225,10 +221,8 @@ export class Viewport implements Renderable, Measurable, Scrollable {
   }
 
   /**
-   * `content` shown through this viewport from its scroll position: how a view
-   * rebuilt every frame keeps one `Viewport`, and its scroll, under content it
-   * builds anew. What it draws is anchored to this viewport, so the wheel finds
-   * it.
+   * `content` shown through this viewport from its scroll position. What it
+   * draws is anchored to this viewport, so the wheel finds it.
    *
    * `follow` is the lines of `content` to keep in view — a selection's — and
    * is brought into view with `ensureVisible` when it differs from the range
@@ -274,10 +268,6 @@ export class Viewport implements Renderable, Measurable, Scrollable {
   /** The cells the scrollbar's gutter takes beside the content. */
   get gutter(): number {
     return gutterWidth(this.scrollbar);
-  }
-
-  render(options: RenderOptions): Iterable<Segment> {
-    return this.draw(this.content, drawnWhole(this.content), undefined, options);
   }
 
   /** The scroll, and the moves queued against it, as they stand. */
@@ -347,10 +337,6 @@ export class Viewport implements Renderable, Measurable, Scrollable {
       yield* line;
       yield Segment.line();
     }
-  }
-
-  measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return this.measureOf(this.content, options);
   }
 
   private measureOf(content: Renderable | Measurable, rawOptions: RenderOptions): { minimum: number; maximum: number } {
@@ -430,13 +416,9 @@ export class ViewportPerKey {
   }
 
   private fresh(): Viewport {
-    // Empty: a view shows the content it builds through it with `showing`.
-    return new Viewport(EMPTY, this.options);
+    return new Viewport(this.options);
   }
 }
-
-/** Content a viewport never draws, for one that shows content only through `showing`. */
-export const EMPTY: Renderable = { *render(): Iterable<Segment> {} };
 
 const scrollbarGlyphs = ({ thumb, track }: Scrollbar): string => thumb.glyph + track.glyph;
 

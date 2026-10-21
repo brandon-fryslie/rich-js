@@ -11,7 +11,7 @@ import { buildStatusBar } from "./status-bar.js";
  * would start from the top.
  */
 export class ExploreView {
-  readonly tree = new Viewport(new RichText(""));
+  readonly tree = new Viewport();
   private readonly preview = new ViewportPerKey();
 
   /** The preview's viewport for what `state` shows in it. */

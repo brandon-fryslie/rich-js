@@ -53,8 +53,8 @@ if (!host.isTTY) {
 }
 
 let selected = 0;
-// Shown the list by the view, which builds it in one place.
-const viewport = new Viewport(new RichText(""), { rows: ROWS, scrollbar: SCROLLBAR });
+// The list's scroll position; the view shows the list it builds through it.
+const viewport = new Viewport({ rows: ROWS, scrollbar: SCROLLBAR });
 const app = new WidgetApp({
   host,
   surface: "alternate",

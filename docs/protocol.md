@@ -61,7 +61,7 @@ class Labelled implements Renderable {
 console.print(new Labelled("Status", new RichText("all systems nominal")));
 ```
 
-Nothing a held renderable learns by drawing is kept: what it hands to `afterPass` is dropped, as a measurement's is. So a `Viewport` it holds keeps the scroll offset the last frame that showed it left.
+Nothing a held renderable learns by drawing is kept: what it hands to `afterPass` is dropped, as a measurement's is. So content it holds that is shown through a `Viewport` leaves that viewport at the scroll offset the last frame to draw it left.
 
 ## Low-level rendering
 

@@ -44,37 +44,37 @@ describe("moveSelection", () => {
 
 describe("ListView", () => {
   it("keeps a tall selected item in view, counting every line of the items above it", () => {
-    const list = new ListView(new Viewport(new RichText("")), items(3, 1, 2), 2);
+    const list = new ListView(new Viewport(), items(3, 1, 2), 2);
     expect(shown(list, 2)).toEqual(["c0", "c1"]);
   });
 
   it("counts lines an item wraps to at the viewport's width", () => {
     // "aaaaaaaaaa aaaaaaaaaa" wraps to two lines at 10 cells, so "b" is line 2.
-    const list = new ListView(new Viewport(new RichText("")), [new RichText("aaaaaaaaaa aaaaaaaaaa"), new RichText("b")], 1);
+    const list = new ListView(new Viewport(), [new RichText("aaaaaaaaaa aaaaaaaaaa"), new RichText("b")], 1);
     expect(shown(list, 1)).toEqual(["b"]);
   });
 
   it("puts gap blank lines between items, and the gap under the selection is not part of it", () => {
-    const list = new ListView(new Viewport(new RichText("")), items(1, 1, 1), 1, { gap: 1 });
+    const list = new ListView(new Viewport(), items(1, 1, 1), 1, { gap: 1 });
     expect(shown(list, 5)).toEqual(["a0", "", "b0", "", "c0"]);
-    const scrolled = new ListView(new Viewport(new RichText("")), items(1, 1, 1), 1, { gap: 1 });
+    const scrolled = new ListView(new Viewport(), items(1, 1, 1), 1, { gap: 1 });
     expect(shown(scrolled, 1)).toEqual(["b0"]);
   });
 
   it("keeps context lines either side of the selection in view, where the list has them", () => {
-    const viewport = new Viewport(new RichText(""));
+    const viewport = new Viewport();
     expect(shown(new ListView(viewport, items(1, 1, 1, 1, 1), 3, { context: 1 }), 3)).toEqual(["c0", "d0", "e0"]);
     expect(shown(new ListView(viewport, items(1, 1, 1, 1, 1), 0, { context: 1 }), 3)).toEqual(["a0", "b0", "c0"]);
   });
 
   it("keeps its scroll position in the viewport handed to it, across frames", () => {
-    const viewport = new Viewport(new RichText(""));
+    const viewport = new Viewport();
     shown(new ListView(viewport, items(1, 1, 1, 1), 3), 2);
     expect(shown(new ListView(viewport, items(1, 1, 1, 1), 2), 2)).toEqual(["c0", "d0"]);
   });
 
   it("measures as its widest item plus the viewport's scrollbar gutter", () => {
-    const list = new ListView(new Viewport(new RichText(""), { scrollbar: SCROLLBAR }), [new RichText("abc"), new RichText("abcdef")], 0);
+    const list = new ListView(new Viewport({ scrollbar: SCROLLBAR }), [new RichText("abc"), new RichText("abcdef")], 0);
     const { minimum, maximum } = Measurement.get({ maxWidth: 40 }, list);
     expect(maximum).toBe(7);
     expect(minimum).toBe(7);
@@ -84,24 +84,24 @@ describe("ListView", () => {
 describe("ListView's arguments", () => {
   const items = [new RichText("a"), new RichText("b")];
   it("refuses a selection that is not an item's index", () => {
-    expect(() => new ListView(new Viewport(new RichText("")), items, -1)).toThrow(RangeError);
-    expect(() => new ListView(new Viewport(new RichText("")), items, 2)).toThrow(RangeError);
-    expect(() => new ListView(new Viewport(new RichText("")), items, 0.5)).toThrow(RangeError);
+    expect(() => new ListView(new Viewport(), items, -1)).toThrow(RangeError);
+    expect(() => new ListView(new Viewport(), items, 2)).toThrow(RangeError);
+    expect(() => new ListView(new Viewport(), items, 0.5)).toThrow(RangeError);
   });
   it("takes 0 as the selection of an empty list", () => {
-    expect(() => new ListView(new Viewport(new RichText("")), [], 0)).not.toThrow();
+    expect(() => new ListView(new Viewport(), [], 0)).not.toThrow();
   });
   it("puts its gap between items, not under the last", () => {
-    const lines = Segment.splitLines(render(new ListView(new Viewport(new RichText("")), items, 0, { gap: 1 }), { maxWidth: 5 }));
+    const lines = Segment.splitLines(render(new ListView(new Viewport(), items, 0, { gap: 1 }), { maxWidth: 5 }));
     expect(lines.map((l) => l.map((s) => s.text).join("").trimEnd())).toEqual(["a", "", "b"]);
   });
   it("measures at an unbounded width", () => {
-    const list = new ListView(new Viewport(new RichText(""), { scrollbar: SCROLLBAR }), items, 0);
+    const list = new ListView(new Viewport({ scrollbar: SCROLLBAR }), items, 0);
     expect(list.measure({ maxWidth: Infinity })).toEqual({ minimum: 2, maximum: 2 });
   });
   it("refuses a gap or context that is not a whole number of lines", () => {
-    expect(() => new ListView(new Viewport(new RichText("")), items, 0, { gap: 1.5 })).toThrow(RangeError);
-    expect(() => new ListView(new Viewport(new RichText("")), items, 0, { context: -1 })).toThrow(RangeError);
+    expect(() => new ListView(new Viewport(), items, 0, { gap: 1.5 })).toThrow(RangeError);
+    expect(() => new ListView(new Viewport(), items, 0, { context: -1 })).toThrow(RangeError);
   });
 });
 
@@ -122,7 +122,7 @@ describe("ViewportPerKey", () => {
 
 describe("a list rebuilt every frame", () => {
   it("lets the wheel scroll away from the selection until the selection moves", () => {
-    const viewport = new Viewport(new RichText(""));
+    const viewport = new Viewport();
     const frame = (selected: number) => shown(new ListView(viewport, items(1, 1, 1, 1, 1), selected), 2);
     expect(frame(0)).toEqual(["a0", "b0"]);
     viewport.scrollBy(3);
@@ -131,7 +131,7 @@ describe("a list rebuilt every frame", () => {
   });
 
   it("keeps where the wheel left it across a frame that hands its items no column", () => {
-    const viewport = new Viewport(new RichText(""), { scrollbar: SCROLLBAR });
+    const viewport = new Viewport({ scrollbar: SCROLLBAR });
     const frame = (maxWidth: number) => shown(new ListView(viewport, items(1, 1, 1, 1, 1), 0), 2, maxWidth);
     frame(10);
     viewport.scrollBy(3);
@@ -140,11 +140,9 @@ describe("a list rebuilt every frame", () => {
     expect(frame(10)[0]).toMatch(/^d0/);
   });
 
-  it("scrolls the viewport it was handed without changing what that viewport shows", () => {
-    const own = new RichText("own");
-    const viewport = new Viewport(own);
+  it("scrolls the viewport it was handed", () => {
+    const viewport = new Viewport();
     expect(shown(new ListView(viewport, items(1, 1, 1, 1, 1), 4), 2)).toEqual(["d0", "e0"]);
-    expect(viewport.content).toBe(own);
     expect(viewport.offset).toBe(3);
   });
 });

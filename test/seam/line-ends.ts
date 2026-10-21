@@ -165,6 +165,5 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
   Toggle: { ends: "own-line", build: () => new Toggle({ label: "Sound", id: "tg" }) },
   Traceback: { ends: "own-line", build: () => new Traceback(new Error("boom")) },
   Tree: { ends: "own-line", build: () => new Tree("root") },
-  Viewport: { ends: "own-line", build: () => new Viewport(text("x")) },
-  ListView: { ends: "own-line", build: () => new ListView(new Viewport(text("")), [text("x")], 0) },
+  ListView: { ends: "own-line", build: () => new ListView(new Viewport(), [text("x")], 0) },
 };

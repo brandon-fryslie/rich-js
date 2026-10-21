@@ -526,7 +526,8 @@ describe("WidgetApp wheel", () => {
   it("scrolls a viewport in a layout pane, under a widget it shows as under its text", async () => {
     const host = scriptedHost({ cols: 40, rows: 6 });
     const box = new Checkbox({ label: "box", id: "box" });
-    const viewport = new Viewport(new Group(lines(0, 0), box, lines(2, 9)));
+    const scroll = new Viewport();
+    const viewport = scroll.showing(new Group(lines(0, 0), box, lines(2, 9)));
     const view = new Layout();
     view.splitRow(new Layout(text("left pane")), new Layout(new Panel(viewport)));
     const app = start(host, () => view);
@@ -536,50 +537,55 @@ describe("WidgetApp wheel", () => {
     const at = cellOf(app, "[ ] box");
     host.type(wheel("down", at.x + 1, at.y));
     await tick();
-    expect(viewport.offset).toBe(1);
+    expect(scroll.offset).toBe(1);
     expect(rows(app)[1]).toContain("[ ] box");
     expect(box.checked).toBe(false);
 
     const text2 = cellOf(app, "line 2");
     host.type(wheel("down", text2.x, text2.y) + wheel("down", text2.x, text2.y));
     await tick();
-    expect(viewport.offset).toBe(3);
+    expect(scroll.offset).toBe(3);
     expect(rows(app)[1]).toContain("line 3");
 
     host.type(wheel("up", text2.x, text2.y));
     await tick();
-    expect(viewport.offset).toBe(2);
+    expect(scroll.offset).toBe(2);
 
     // The wheel over the other pane has no viewport to scroll.
     const left = cellOf(app, "left pane");
     host.type(wheel("down", left.x, left.y));
     await tick();
-    expect(viewport.offset).toBe(2);
+    expect(scroll.offset).toBe(2);
   });
 
   it("scrolls the innermost viewport under the pointer, and only it", async () => {
     const host = scriptedHost({ cols: 30, rows: 6 });
-    const inner = new Viewport(lines(0, 9), { rows: 2 });
-    const outer = new Viewport(new Group(inner, lines(10, 29)));
+    const innerScroll = new Viewport({ rows: 2 });
+    const inner = innerScroll.showing(lines(0, 9));
+    const outerScroll = new Viewport();
+    const outer = outerScroll.showing(new Group(inner, lines(10, 29)));
     const app = start(host, () => outer);
     await tick();
 
     const inInner = cellOf(app, "line 1");
     host.type(wheel("down", inInner.x, inInner.y));
     await tick();
-    expect([inner.offset, outer.offset]).toEqual([1, 0]);
+    expect([innerScroll.offset, outerScroll.offset]).toEqual([1, 0]);
 
     const inOuter = cellOf(app, "line 10");
     host.type(wheel("down", inOuter.x, inOuter.y));
     await tick();
-    expect([inner.offset, outer.offset]).toEqual([1, 1]);
+    expect([innerScroll.offset, outerScroll.offset]).toEqual([1, 1]);
   });
 
   it("passes the wheel out past a viewport that cannot move that way", async () => {
     const host = scriptedHost({ cols: 30, rows: 6 });
-    const atEnd = new Viewport(lines(0, 3), { rows: 2 });
-    const fits = new Viewport(lines(4, 4));
-    const outer = new Viewport(new Group(atEnd, fits, lines(10, 29)));
+    const atEndScroll = new Viewport({ rows: 2 });
+    const atEnd = atEndScroll.showing(lines(0, 3));
+    const fitsScroll = new Viewport();
+    const fits = fitsScroll.showing(lines(4, 4));
+    const outerScroll = new Viewport();
+    const outer = outerScroll.showing(new Group(atEnd, fits, lines(10, 29)));
     const app = start(host, () => outer);
     await tick();
 
@@ -587,37 +593,39 @@ describe("WidgetApp wheel", () => {
     const top = cellOf(app, "line 0");
     host.type(wheel("up", top.x, top.y));
     await tick();
-    expect([atEnd.offset, outer.offset]).toEqual([0, 0]);
+    expect([atEndScroll.offset, outerScroll.offset]).toEqual([0, 0]);
 
     host.type(wheel("down", top.x, top.y));
     await tick();
     host.type(wheel("down", top.x, top.y));
     await tick();
-    expect([atEnd.offset, outer.offset]).toEqual([2, 0]);
+    expect([atEndScroll.offset, outerScroll.offset]).toEqual([2, 0]);
 
     // At its end, the next notch down goes to the outer.
     host.type(wheel("down", top.x, top.y));
     await tick();
-    expect([atEnd.offset, outer.offset]).toEqual([2, 1]);
+    expect([atEndScroll.offset, outerScroll.offset]).toEqual([2, 1]);
 
     // Content that fits never takes the wheel.
     const fit = cellOf(app, "line 4");
     host.type(wheel("down", fit.x, fit.y));
     await tick();
-    expect([fits.offset, outer.offset]).toEqual([0, 2]);
+    expect([fitsScroll.offset, outerScroll.offset]).toEqual([0, 2]);
   });
 
   it("passes out the notches of one burst that the inner viewport has no room for", async () => {
     const host = scriptedHost({ cols: 30, rows: 6 });
-    const inner = new Viewport(lines(0, 3), { rows: 2 });
-    const outer = new Viewport(new Group(inner, lines(10, 29)));
+    const innerScroll = new Viewport({ rows: 2 });
+    const inner = innerScroll.showing(lines(0, 3));
+    const outerScroll = new Viewport();
+    const outer = outerScroll.showing(new Group(inner, lines(10, 29)));
     const app = start(host, () => outer);
     await tick();
 
     const top = cellOf(app, "line 0");
     host.type(wheel("down", top.x, top.y).repeat(3));
     await tick();
-    expect([inner.offset, outer.offset]).toEqual([2, 1]);
+    expect([innerScroll.offset, outerScroll.offset]).toEqual([2, 1]);
   });
 });
 
@@ -792,21 +800,23 @@ describe("WidgetApp and the wheel", () => {
 
   it("scrolls the viewport under the pointer, and passes nothing outward", async () => {
     const host = scriptedHost({ cols: 10, rows: 4 });
-    const viewport = new Viewport(new RichText("0\n1\n2\n3\n4"), { rows: 2 });
+    const scroll = new Viewport({ rows: 2 });
+    const viewport = scroll.showing(new RichText("0\n1\n2\n3\n4"));
     let frames = 0;
     start(host, () => (frames++, viewport));
     await tick();
     const before = frames;
     host.type(DOWN);
     await tick();
-    expect(viewport.offset).toBe(1);
+    expect(scroll.offset).toBe(1);
     expect(frames - before).toBe(1);
     expect(host.passed()).toEqual([]);
   });
 
   it("passes outward a turn over a viewport at that end, and one over no viewport", async () => {
     const host = scriptedHost({ cols: 10, rows: 4 });
-    const viewport = new Viewport(new RichText("0\n1\n2\n3\n4"), { rows: 2 });
+    const scroll = new Viewport({ rows: 2 });
+    const viewport = scroll.showing(new RichText("0\n1\n2\n3\n4"));
     // A Group gives the viewport no region, so it shows its own two rows.
     let frames = 0;
     start(host, () => (frames++, new Group(viewport, text("\nbelow"))));
@@ -815,7 +825,7 @@ describe("WidgetApp and the wheel", () => {
     host.type(UP); // at the start already
     host.type(BELOW); // under the viewport
     await tick();
-    expect(viewport.offset).toBe(0);
+    expect(scroll.offset).toBe(0);
     expect(frames).toBe(before);
     expect(host.passed()).toEqual([-1, 1]);
   });
@@ -823,7 +833,8 @@ describe("WidgetApp and the wheel", () => {
   it("hovers the widget a turn scrolls under a pointer that has reported no motion", async () => {
     const host = scriptedHost({ cols: 10, rows: 4 });
     const boxes = ["a", "b", "c"].map((id) => new Checkbox({ label: id, id }));
-    const viewport = new Viewport(new Group(...boxes), { rows: 2 });
+    const scroll = new Viewport({ rows: 2 });
+    const viewport = scroll.showing(new Group(...boxes));
     // A Group gives the viewport no region, so it shows its own two rows.
     start(host, () => new Group(viewport, text("\nbelow")));
     await tick();
@@ -857,19 +868,20 @@ describe("WidgetApp across a pane squeezed to no column", () => {
   it("keeps a viewport's offset", async () => {
     const host = scriptedHost({ cols: 20, rows: 4 });
     const lines = Array.from({ length: 100 }, (_, i) => `line ${i}`).join("\n");
-    const viewport = new Viewport(new RichText(lines), { scrollbar: SCROLLBAR });
+    const scroll = new Viewport({ scrollbar: SCROLLBAR });
+    const viewport = scroll.showing(new RichText(lines));
     const app = start(host, () => squeezed(viewport));
     await tick();
-    viewport.scrollTo(40);
+    scroll.scrollTo(40);
     app.refresh();
     await tick();
-    expect(viewport.offset).toBe(40);
+    expect(scroll.offset).toBe(40);
 
     host.resize({ cols: 1, rows: 4 });
     await tick();
     host.resize({ cols: 20, rows: 4 });
     await tick();
-    expect(viewport.offset).toBe(40);
+    expect(scroll.offset).toBe(40);
   });
 
   it("paints no overlay for a held widget, and paints it again once the widget is back", async () => {

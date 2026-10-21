@@ -387,9 +387,10 @@ export function activePass(): Pass | undefined {
 /**
  * `effect` run once the render pass in progress has drawn its last segment,
  * between passes, where it may write what an event handler may: React's commit
- * phase. A render that learns something only drawing can tell it — the lines a
- * `Viewport`'s content runs to at the width it was handed — draws from what it
- * learned and hands the commit here, rather than writing it as it draws.
+ * phase. A render that learns something only drawing can tell it — the lines
+ * content shown through a `Viewport` runs to at the width it was handed —
+ * draws from what it learned and hands the commit here, rather than writing it
+ * as it draws.
  *
  * Effects run in the order they were handed over, which is document order. A
  * measurement commits nothing, and neither does a pass that throws or whose
@@ -502,7 +503,8 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
  * it draws is dropped, and so is everything it draws reported held, whatever
  * width it hands it. It commits nothing, as a measurement commits nothing —
  * its effects (`afterPass`) are learned at a width nobody sees, so a
- * `Viewport` it holds keeps the scroll the last frame shown left it.
+ * `Viewport` it shows content through keeps the scroll the last frame shown
+ * left it.
  *
  * [LAW:parse-dont-validate] It is drawn at no column, 0, whatever width under
  * one its container worked out: `drawsNothing` reads a negative or NaN width

@@ -7,10 +7,11 @@
  *
  * An abstract class is not in it: nothing can build one, and each concrete
  * subclass is in it on its own. Neither is a renderable a method returns
- * rather than a class builds — `Spinner.at(t)` — so what those gates ask of
- * every renderable, one of that kind answers only in its own tests
- * (test/renderables/spinner.test.ts holds the line it leaves and what it
- * draws ASCII-only).
+ * rather than a class builds — `Spinner.at(t)`, `Viewport.showing(content)` —
+ * so what those gates ask of every renderable, one of that kind answers only
+ * where a test names it (test/renderables/spinner.test.ts holds the line
+ * `Spinner.at` leaves and what it draws ASCII-only; the `VARIANTS` of
+ * test/renderables/held.test.ts hold `Viewport.showing` held).
  */
 
 import ts from "typescript";
