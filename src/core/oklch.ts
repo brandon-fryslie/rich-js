@@ -342,14 +342,26 @@ export class Oklch {
    * Symmetric and pure.
    */
   deltaE(other: Oklch): number {
-    const a = (this.h * Math.PI) / 180;
-    const b = (other.h * Math.PI) / 180;
-    return Math.hypot(
-      this.l - other.l,
-      this.c * Math.cos(a) - other.c * Math.cos(b),
-      this.c * Math.sin(a) - other.c * Math.sin(b),
-    );
+    const [a, b] = this.#ab();
+    const [otherA, otherB] = other.#ab();
+    return Math.hypot(this.l - other.l, a - otherA, b - otherB);
   }
+
+  /**
+   * This colour's OKLab a and b, worked out on first ask and kept: a colour
+   * matched against a palette is measured against every entry, and each
+   * entry against every colour it is matched with, so the trigonometry is
+   * paid once a colour rather than once a comparison.
+   */
+  #ab(): readonly [number, number] {
+    if (this.#lab === undefined) {
+      const h = (this.h * Math.PI) / 180;
+      this.#lab = [this.c * Math.cos(h), this.c * Math.sin(h)];
+    }
+    return this.#lab;
+  }
+
+  #lab: readonly [number, number] | undefined;
 
   /** Linear-sRGB coordinates for an explicit (l, C, h). Pure; `toRgba` passes
    * already-normalized values so this never sees out-of-range inputs. */
