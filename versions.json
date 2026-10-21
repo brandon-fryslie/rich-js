@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-501",
+      "ref": "refs/pull/501/merge",
+      "sha": "c7270160775b8b74d34b81ad42b5a8b6ec192c81",
+      "timestamp": "2026-10-21T03:44:01.363Z",
+      "commits": [
+        {
+          "sha": "c7270160775b8b74d34b81ad42b5a8b6ec192c81",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-20T21:42:16-06:00",
+          "message": "Merge 74bdda26b46db1c85ee83e99b89331d5934b68ce into 6566773878043237201f7601dcd3f982e5766ea0\n"
+        },
+        {
+          "sha": "74bdda26b46db1c85ee83e99b89331d5934b68ce",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-20T21:35:59-06:00",
+          "message": "Animations and effects are placed like any renderable (rich-animation-27tq.50o)\n\nAn Animation of renderables is a renderable: placed in any container — a\nPanel, a Table cell, a Group, a container written outside rich-js — it\ndraws at the frame's time (RenderOptions.frame; 0 when printed) and stamps\nits cells with its hold. The type carries the face exactly when the values\nare renderables, so Animation<number> is refused where a renderable goes.\n\n- core/animation: Timed<T> (the old interface) and the conditional\n  Animation<T>; Animation.of attaches the face (NoInfer on its return, so\n  an annotated `const a: Animation<Renderable> = Animation.of({...})`\n  infers from the literal). shownAt, stamp/stampFrame and the face\n  (placedRender/Measure/Contents, drawnAt) live here; tier 5.\n- A stamp is the whole hold: Style.lastChange beside nextChange, layered\n  as an intersection; Segment.lastChange reads it. Every stamper stamps\n  both ends (face, Effected/GlyphEffected, Spinner, textFrameAt, the\n  TextInput caret, ScrollFrame's carrier, frameAt).\n- Effected/GlyphEffected take no t: they are the animations, at(t) the\n  Recolored/Reglyphed value, with their exact face. Spinner and\n  FrameSequence are placed too.\n- Hosts: every view is on the timeline; HostView loses \"animation\",\n  FrameSays loses `silent` (every view is), held is a paused timeline.\n  A Live polls every view at its rate; a reduced view is no longer held.\n- Frame-clock rule: a placed animation inside another's value draws at\n  the frame's time (docs/animation.md, \"Placing one\").\n\ntest/renderables/placed.test.ts is the epic's proof: a user-declared Box\ncontainer holding a tween and an Effected gradient, drawn by an App, with\nPanel/Table/Columns/Layout/Group giving the same wakes.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "6566773878043237201f7601dcd3f982e5766ea0",
