@@ -17,19 +17,36 @@ export const MEMO_MAX = 4096;
  * be a pure function of `key`, so a value recomputed after a clear is the one
  * that was dropped.
  */
-export class Memo<V extends NonNullable<unknown>> {
-  private readonly entries = new Map<string, V>();
+export class Memo<V extends NonNullable<unknown>, K extends string = string> {
+  private readonly entries = new Map<K, V>();
 
   get size(): number {
     return this.entries.size;
   }
 
-  get(key: string, compute: (key: string) => V): V {
+  get(key: K, compute: (key: K) => V): V {
     const remembered = this.entries.get(key);
     if (remembered !== undefined) return remembered;
     // Computed before the clear, so a compute that throws costs no entries.
     const value = compute(key);
     if (this.entries.size >= MEMO_MAX) this.entries.clear();
+    this.entries.set(key, value);
+    return value;
+  }
+}
+
+/**
+ * `Memo`'s contract for a key that is an object rather than a string: a
+ * value computed once per key, for as long as the key lives. Held weakly, so
+ * it needs no bound — a key a host stops holding takes its entry with it.
+ */
+export class WeakMemo<V extends NonNullable<unknown>, K extends object> {
+  private readonly entries = new WeakMap<K, V>();
+
+  get(key: K, compute: (key: K) => V): V {
+    const remembered = this.entries.get(key);
+    if (remembered !== undefined) return remembered;
+    const value = compute(key);
     this.entries.set(key, value);
     return value;
   }

@@ -98,9 +98,9 @@ export class Segment {
 
   // --- Static factories ---
 
-  private static _line: Segment | undefined;
+  private static readonly _line = new Segment("\n");
   static line(): Segment {
-    return (Segment._line ??= new Segment("\n"));
+    return Segment._line;
   }
 
   /**

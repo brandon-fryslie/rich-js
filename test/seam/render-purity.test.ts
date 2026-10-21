@@ -47,7 +47,7 @@ describe("the gate", () => {
       [
         `import { observable } from "mobx";`,
         `import { State } from ${core("state.js")};`,
-        `import { Memo } from ${core("memo.js")};`,
+        `import { Memo, WeakMemo } from ${core("memo.js")};`,
         `export class Writes { private n = 0; render() { this.n += 1; return []; } }`,
         `export class Holds {`,
         `  readonly shape: Readonly<{ a: number }> = { a: 1 };`,
@@ -61,6 +61,8 @@ describe("the gate", () => {
         `export const bump = (): number => (frames += 1);`,
         `export const memo = new Memo<State<number>>();`,
         `let states = new Memo<State<number>>();`,
+        `export const weak = new WeakMemo<State<number>, { n: number }>();`,
+        `export const byKey = new WeakMemo<readonly number[], { n: number }>();`,
         `export const TABLE: Record<string, number> = {};`,
       ].join("\n"),
     );
@@ -76,6 +78,8 @@ describe("the gate", () => {
       ["module.states", "module let"],
       ["module.states", "state in a Memo"],
       ["module.TABLE", "mutable index signature"],
+      // A WeakMemo's key is never walked: its writable `n` is no location.
+      ["module.weak", "state in a Memo"],
       // A mobx accessor is the widgets' carrier only under src/widgets/.
       ["Observes.x", "writable property"],
       ["Writes.n", "writable property"],

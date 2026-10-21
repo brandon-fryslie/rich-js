@@ -2,16 +2,15 @@
  * Every writable location `./render-purity.ts` finds today, grouped by the
  * declaration that holds it, and where each is going: into a `State`
  * (`"state"`, state that changes after construction, often because Rich's API
- * mutates it — `Table.addRow`, `Tree.add`), into a `Memo` (`"memo"`, a cache
- * a render fills), or to a readonly type (`"readonly"`, a value nothing writes
- * once it is built). Draining it is rich-protocol-9xcs's work: caches first
- * (rich-protocol-9xcs.5ar), then the rest (rich-protocol-9xcs.g0k, .399,
- * .o76).
+ * mutates it — `Table.addRow`, `Tree.add`), or to a readonly type
+ * (`"readonly"`, a value nothing writes once it is built). Draining it is
+ * rich-protocol-9xcs's work (rich-protocol-9xcs.g0k, .399, .o76).
  *
  * Shrink-only. `test/seam/render-purity.test.ts` fails on a location no row
  * names, and on a name that no longer reports — so a row is deleted, never
  * left behind, when its location is fixed. A new location does not belong
- * here: write it as a `State`, a `Memo` or a readonly type instead.
+ * here: write it as a `State`, a `Memo` (`WeakMemo` for an object key) or a
+ * readonly type instead.
  */
 
 export interface DebtRow {
@@ -19,7 +18,7 @@ export interface DebtRow {
   readonly at: string;
   /** The locations under `at`, as the gate names them after `<Owner>.`. */
   readonly names: readonly string[];
-  readonly becomes: "state" | "memo" | "readonly";
+  readonly becomes: "state" | "readonly";
   readonly why: string;
 }
 
@@ -36,25 +35,6 @@ export const RENDER_PURITY_DEBT: readonly DebtRow[] = [
   { at: "src/core/box.ts ContentChars", names: ["left", "right", "vertical"], becomes: "readonly", why: "a box's glyphs are fixed when the box is built" },
   { at: "src/core/box.ts EdgeChars", names: ["cross", "horizontal", "left", "right"], becomes: "readonly", why: "a box's glyphs are fixed when the box is built" },
   { at: "src/core/box.ts module", names: ["SAFE_SUBSTITUTIONS"], becomes: "readonly", why: TABLE },
-  {
-    at: "src/core/cells.ts module",
-    names: ["lastSegmented", "lastSegmented.segments", "lastSegmented.text", "segmenter"],
-    becomes: "memo",
-    why: "the last string split into graphemes, and a lazily made Intl.Segmenter: caches a render fills",
-  },
-  { at: "src/core/color.ts ColorSpec", names: ["downgradeCache"], becomes: "memo", why: "each ColorSpec's downgrades, filled as renders encode it" },
-  {
-    at: "src/core/color.ts ColorTable",
-    names: ["colors", "luminanceCache"],
-    becomes: "memo",
-    why: "luminanceCache is filled on first use; colors is the table's palette, fixed at construction, and becomes readonly with it",
-  },
-  {
-    at: "src/core/color.ts module",
-    names: ["ANSI_COLOR_NAMES", "indexedMemo"],
-    becomes: "memo",
-    why: "indexedMemo caches nearest-colour matches; ANSI_COLOR_NAMES is a name table, and becomes readonly",
-  },
   {
     at: "src/core/console.ts Console",
     names: [
@@ -77,13 +57,11 @@ export const RENDER_PURITY_DEBT: readonly DebtRow[] = [
   { at: "src/core/highlighter.ts ReprHighlighter", names: ["baseStyle", "highlights"], becomes: "readonly", why: "a highlighter class's patterns are its definition, written once" },
   { at: "src/core/markup.ts MarkupRegistry", names: ["_handlers"], becomes: "state", why: "markup handlers are registered on the registry as it is configured, before anything is drawn" },
   { at: "src/core/noise.ts module", names: ["P"], becomes: "readonly", why: "Perlin's permutation table, built once" },
-  { at: "src/core/oklch.ts Oklch", names: ["#lab"], becomes: "memo", why: "the OKLab form, computed on first read" },
-  { at: "src/core/pretty.ts Pretty", names: ["cutStrings"], becomes: "memo", why: "a cache of cut strings a render fills" },
   {
     at: "src/core/segment.ts Segment",
-    names: ["_line", "control", "splitRows.carriers", "splitRows.lines"],
+    names: ["control", "splitRows.carriers", "splitRows.lines"],
     becomes: "readonly",
-    why: "a segment's control codes and splitRows' result are values; _line is a lazily made shared line, and becomes a memo",
+    why: "a segment's control codes and splitRows' result are values",
   },
   { at: "src/core/spinnerData.ts module", names: ["SPINNERS"], becomes: "readonly", why: TABLE },
   {
@@ -113,12 +91,11 @@ export const RENDER_PURITY_DEBT: readonly DebtRow[] = [
     at: "src/renderables/effects.ts module",
     names: [
       "DISSOLVE_SHAPE.depth", "DISSOLVE_SHAPE.from", "DISSOLVE_SHAPE.late", "DISSOLVE_SHAPE.maskFrom",
-      "DISSOLVE_SHAPE.maskTo", "DISSOLVE_SHAPE.to", "EFFECT_CURVES.ease", "EFFECT_CURVES.swing", "measuredMemo", "STRENGTHS",
+      "DISSOLVE_SHAPE.maskTo", "DISSOLVE_SHAPE.to", "EFFECT_CURVES.ease", "EFFECT_CURVES.swing", "STRENGTHS",
     ],
     becomes: "readonly",
-    why: "the effect catalogue's constants; measuredMemo is a cache a render fills, and becomes a memo",
+    why: "the effect catalogue's constants",
   },
-  { at: "src/renderables/embed.ts EmbeddedText", names: ["_readings"], becomes: "memo", why: "each reading of the embedded text, filled as it is drawn" },
   { at: "src/renderables/flexStrip.ts RenderedBlock", names: ["segments", "width"], becomes: "readonly", why: "a block drawn once and placed" },
   { at: "src/renderables/glyph-effects.ts module", names: ["SCRAMBLE_GLYPHS"], becomes: "readonly", why: TABLE },
   { at: "src/renderables/group.ts Group", names: ["renderables"], becomes: "readonly", why: "a Group's contents are fixed when it is built" },
@@ -208,7 +185,6 @@ export const RENDER_PURITY_DEBT: readonly DebtRow[] = [
     becomes: "readonly",
     why: TABLE,
   },
-  { at: "src/themes/registry.ts module", names: ["cache"], becomes: "memo", why: "themes built on first lookup" },
   { at: "src/widgets/slider.ts Slider", names: ["_dragging"], becomes: "state", why: "set by pointer events" },
   {
     at: "src/widgets/text-input.ts TextInput",

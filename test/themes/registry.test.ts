@@ -64,11 +64,11 @@ describe("getThemePalette", () => {
     }
   });
 
-  it("caches palettes — same name returns same instance", () => {
+  it("caches palettes — a name keeps one instance after every theme is loaded", () => {
     const a = getThemePalette("gruvbox");
-    const b = getThemePalette("gruvbox");
+    for (const name of listThemePalettes()) getThemePalette(name);
     expect(a).not.toBeNull();
-    expect(a).toBe(b);
+    expect(getThemePalette("gruvbox")).toBe(a);
   });
 
   it("each theme exposes a `primary` and `background` var", () => {

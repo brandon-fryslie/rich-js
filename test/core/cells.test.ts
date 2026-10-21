@@ -5,7 +5,7 @@ import {
   setCellSize,
   splitText,
   chopCells,
-  cellStepFrom,
+  cellRows,
   cellFit,
   cellFitEnd,
   graphemes,
@@ -274,33 +274,40 @@ describe("cellFit / cellFitEnd", () => {
   });
 });
 
-describe("cellStepFrom", () => {
-  it("advances past every offset inside the text, at any budget", () => {
-    // The guarantee both callers rely on to terminate. A budget narrower than
+describe("cellRows", () => {
+  const ends = (text: string, ...caps: number[]): number[] =>
+    Array.from(cellRows(text, (row) => asCellCol(caps[Math.min(row, caps.length - 1)]!)), (r) => r.end);
+
+  it("covers the text in rows that each move past the last, at any budget", () => {
+    // The guarantee every caller relies on to terminate. A budget narrower than
     // the widest glyph is the case that used to stall.
     for (const text of ["日本語", "a日b", "🎉x", "abc"]) {
       for (const cap of [0, 1, 2, 3]) {
-        for (let i = 0; i < text.length; i++) {
-          expect(cellStepFrom(text, asCodePoint(i), asCellCol(cap))).toBeGreaterThan(i);
-        }
+        const rows = [...cellRows(text, () => asCellCol(cap))];
+        expect(rows.map((r) => text.slice(r.start, r.end)).join("")).toBe(text);
+        for (const r of rows) expect(r.end).toBeGreaterThan(r.start);
       }
     }
   });
 
   it("takes as much as fits when the budget allows", () => {
-    expect(cellStepFrom("abcd", asCodePoint(0), asCellCol(3))).toBe(3);
-    expect(cellStepFrom("中文", asCodePoint(0), asCellCol(3))).toBe(1);
+    expect(ends("abcd", 3)).toEqual([3, 4]);
+    expect(ends("中文", 3)).toEqual([1, 2]);
   });
 
   it("force-takes a whole glyph too wide for the budget", () => {
-    // Overflows cap by the glyph's own width rather than returning startCU.
-    expect(cellStepFrom("中文", asCodePoint(0), asCellCol(1))).toBe(1);
-    // Surrogate pair: the step covers both code units, never half of one.
-    expect(cellStepFrom("🎉x", asCodePoint(0), asCellCol(1))).toBe(2);
+    // Overflows cap by the glyph's own width rather than stalling.
+    expect(ends("中文", 1)).toEqual([1, 2]);
+    // Surrogate pair: a row covers both code units, never half of one.
+    expect(ends("🎉x", 1)).toEqual([2, 3]);
   });
 
-  it("does not advance past the end of the text", () => {
-    expect(cellStepFrom("abc", asCodePoint(3), asCellCol(5))).toBe(3);
+  it("gives each row its own budget", () => {
+    expect(ends("abcdef", 2, 4)).toEqual([2, 6]);
+  });
+
+  it("cuts no rows from empty text", () => {
+    expect(ends("", 5)).toEqual([]);
   });
 });
 
@@ -470,10 +477,10 @@ describe("every width walk cuts between grapheme clusters", () => {
   });
 
   it("cellFitFrom's callers stop between clusters, over the cap only to force-take one", () => {
-    for (const [start, startCells] of cuts) {
-      for (const cap of caps) {
-        const end = cellStepFrom(text, asCodePoint(start), cap);
-        const taken = cellsBefore(end) - startCells;
+    for (const cap of caps) {
+      for (const { start, end } of cellRows(text, () => cap)) {
+        expect(cuts.has(end), `${start}..${end} at ${cap} ends inside a cluster`).toBe(true);
+        const taken = cellsBefore(end) - cellsBefore(start);
         const oneCluster = graphemes(text.slice(start, end)).length === 1;
         expect(taken <= cap || oneCluster, `${start}+${cap} took ${taken}`).toBe(true);
       }

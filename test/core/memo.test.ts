@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { MEMO_MAX, Memo } from "../../src/core/memo.js";
+import { MEMO_MAX, Memo, WeakMemo } from "../../src/core/memo.js";
 import { ColorSpec } from "../../src/core/color.js";
 import { Style } from "../../src/core/style.js";
 
@@ -38,6 +38,19 @@ describe("Memo", () => {
       }),
     ).toThrow("bad");
     expect(memo.size).toBe(MEMO_MAX);
+  });
+});
+
+describe("WeakMemo", () => {
+  it("computes once per key object, and apart for each", () => {
+    const memo = new WeakMemo<{ n: number }, object>();
+    let computed = 0;
+    const compute = () => ({ n: ++computed });
+    const key = {};
+    const first = memo.get(key, compute);
+    expect(memo.get(key, compute)).toBe(first);
+    expect(memo.get({}, compute)).not.toBe(first);
+    expect(computed).toBe(2);
   });
 });
 

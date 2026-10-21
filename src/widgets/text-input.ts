@@ -71,7 +71,9 @@ import {
   setCellSize,
   splitText,
   cellFitEnd,
-  cellStepFrom,
+  cellRows,
+  clustersBefore,
+  clustersFrom,
   asCellCol,
   asCodePoint,
   asCodeUnit,
@@ -153,20 +155,15 @@ interface VisualRow {
  *
  * Wide characters (CJK, emoji) are treated as atomic: a char that would
  * straddle the budget is moved to the next row rather than split, and one too
- * wide for the whole budget is force-taken — see `cellStepFrom`.
+ * wide for the whole budget is force-taken — see `cellRows`.
  */
 export const charGreedyWrap: WrapStrategy = (line, { firstWidth, continuationWidth }) => {
   if (line.length === 0) return [{ start: asCodePoint(0), end: asCodePoint(0) }];
+  const capOf = (row: number): CellCol => (row === 0 ? firstWidth : continuationWidth);
   const rows: WrapRow[] = [];
-  let pos: CodePoint = asCodePoint(0);
-  let isFirst = true;
-  while (pos < line.length) {
-    const cap = isFirst ? firstWidth : continuationWidth;
-    if (cap <= 0) break;
-    const end = cellStepFrom(line, pos, cap);
-    rows.push({ start: pos, end });
-    pos = end;
-    isFirst = false;
+  for (const row of cellRows(line, capOf)) {
+    if (capOf(rows.length) <= 0) break;
+    rows.push(row);
   }
   return rows;
 };
@@ -290,6 +287,26 @@ function isWordChar(c: string | undefined): boolean {
 
 function isWhitespace(c: string | undefined): boolean {
   return c !== undefined && WHITESPACE_RE.test(c);
+}
+
+const isNotWordChar = (c: string): boolean => !isWordChar(c);
+const isNotWhitespace = (c: string): boolean => !isWhitespace(c);
+
+/**
+ * How many code units a word motion crosses: every leading cluster `skipped`
+ * accepts, then every one after them `taken` accepts. `clusters` is one walk
+ * from the cursor (`clustersFrom` or `clustersBefore`), so a motion across a
+ * long word segments the value once, not once a cluster.
+ */
+function wordSpan(clusters: Iterable<string>, skipped: (c: string) => boolean, taken: (c: string) => boolean): number {
+  let span = 0;
+  let skipping = true;
+  for (const cluster of clusters) {
+    skipping &&= skipped(cluster);
+    if (!skipping && !taken(cluster)) break;
+    span += cluster.length;
+  }
+  return span;
 }
 
 /**
@@ -679,34 +696,14 @@ export class TextInput extends ThemedWidget {
   }
 
   @action moveWordLeft(): void {
-    let p: CodePoint = this.cursorPosition;
-    while (p > 0) {
-      const prev = prevGrapheme(this.value, p);
-      if (isWordChar(this.value.slice(prev, p))) break;
-      p = prev;
-    }
-    while (p > 0) {
-      const prev = prevGrapheme(this.value, p);
-      if (!isWordChar(this.value.slice(prev, p))) break;
-      p = prev;
-    }
-    this.cursorPosition = p;
+    const at = this.cursorPosition;
+    this.cursorPosition = asCodePoint(at - wordSpan(clustersBefore(this.value, at), isNotWordChar, isWordChar));
     this._preferredColumn = null;
   }
 
   @action moveWordRight(): void {
-    let p: CodePoint = this.cursorPosition;
-    while (p < this.value.length) {
-      const next = nextGrapheme(this.value, p);
-      if (isWordChar(this.value.slice(p, next))) break;
-      p = next;
-    }
-    while (p < this.value.length) {
-      const next = nextGrapheme(this.value, p);
-      if (!isWordChar(this.value.slice(p, next))) break;
-      p = next;
-    }
-    this.cursorPosition = p;
+    const at = this.cursorPosition;
+    this.cursorPosition = asCodePoint(at + wordSpan(clustersFrom(this.value, at), isNotWordChar, isWordChar));
     this._preferredColumn = null;
   }
 
@@ -733,17 +730,7 @@ export class TextInput extends ThemedWidget {
     // Readline `unix-word-rubout` semantics: delete back to nearest whitespace,
     // skipping trailing whitespace first so successive Ctrl+W at "foo bar |"
     // → "foo |" → "|" rather than getting stuck on the trailing space.
-    let p: CodePoint = this.cursorPosition;
-    while (p > 0) {
-      const prev = prevGrapheme(this.value, p);
-      if (!isWhitespace(this.value.slice(prev, p))) break;
-      p = prev;
-    }
-    while (p > 0) {
-      const prev = prevGrapheme(this.value, p);
-      if (isWhitespace(this.value.slice(prev, p))) break;
-      p = prev;
-    }
+    const p = asCodePoint(this.cursorPosition - wordSpan(clustersBefore(this.value, this.cursorPosition), isWhitespace, isNotWhitespace));
     if (p === this.cursorPosition) return;
     this._killBuffer = this.value.slice(p, this.cursorPosition);
     this.value = this.value.slice(0, p) + this.value.slice(this.cursorPosition);
@@ -753,17 +740,7 @@ export class TextInput extends ThemedWidget {
   }
 
   @action deleteWordForward(): void {
-    let p: CodePoint = this.cursorPosition;
-    while (p < this.value.length) {
-      const next = nextGrapheme(this.value, p);
-      if (isWordChar(this.value.slice(p, next))) break;
-      p = next;
-    }
-    while (p < this.value.length) {
-      const next = nextGrapheme(this.value, p);
-      if (!isWordChar(this.value.slice(p, next))) break;
-      p = next;
-    }
+    const p = this.cursorPosition + wordSpan(clustersFrom(this.value, this.cursorPosition), isNotWordChar, isWordChar);
     if (p === this.cursorPosition) return;
     this._killBuffer = this.value.slice(this.cursorPosition, p);
     this.value = this.value.slice(0, this.cursorPosition) + this.value.slice(p);
