@@ -9,8 +9,9 @@ export type { ThemeName };
 
 const THEME_NAMES = Object.freeze(Object.keys(THEMES).sort() as readonly ThemeName[]);
 
-// Fewer themes than a Memo holds, so it never clears and a name keeps one Palette.
-const cache = new Memo<Palette>();
+// Fewer themes than a Memo holds, so it never clears and a name keeps one
+// Palette — test/themes/registry.test.ts holds that.
+const cache = new Memo<Palette, ThemeName>();
 
 /**
  * Returns the static list of available theme names. Pure and synchronous.

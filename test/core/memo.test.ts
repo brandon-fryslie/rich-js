@@ -43,7 +43,7 @@ describe("Memo", () => {
 
 describe("WeakMemo", () => {
   it("computes once per key object, and apart for each", () => {
-    const memo = new WeakMemo<object, { n: number }>();
+    const memo = new WeakMemo<{ n: number }, object>();
     let computed = 0;
     const compute = () => ({ n: ++computed });
     const key = {};

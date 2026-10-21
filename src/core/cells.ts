@@ -333,7 +333,7 @@ export function cellFit(text: string, cap: CellCol): string {
 
 /** `cellFit` from the other end: the largest suffix of `text` within `cap` cells. */
 export function cellFitEnd(text: string, cap: CellCol): string {
-  return text.slice(text.length - fitLength(graphemes(text).reverse(), cap));
+  return text.slice(text.length - fitLength(clustersBefore(text, asCodePoint(text.length)), cap));
 }
 
 /** The code units of the leading `clusters` that fit within `cap` cells. */

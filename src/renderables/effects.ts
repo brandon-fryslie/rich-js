@@ -185,7 +185,7 @@ export function shares({ pairs, depth, theme }: Drawn, colors: ReadonlySet<strin
  * drawing what an earlier one drew costs no settling.
  */
 export function onColors(loop: Loop, colors?: ReadonlySet<string>): Effect {
-  const settled = new WeakMemo<TerminalTheme, Memo<ReadonlyMap<string, number>>>();
+  const settled = new WeakMemo<Memo<ReadonlyMap<string, number>>, TerminalTheme>();
   const settle = (drawn: Drawn): ReadonlyMap<string, number> => {
     const lit = colors ?? drawn.colors;
     const key = [drawnKey(drawn), "|", ...lit].join(" ");
@@ -986,7 +986,7 @@ export function wheel(curve: Curve, z: number): Effect {
     return (360 * t) / P + curve.swing * STRAY * ((stray(s, t) - stray(s, 0)) / 1.5);
   };
   // A turned colour's bounds rest on what a frame draws, never on `t`: settled once for each.
-  const settled = new WeakMemo<TerminalTheme, Memo<ReadonlyMap<string, Bounds>>>();
+  const settled = new WeakMemo<Memo<ReadonlyMap<string, Bounds>>, TerminalTheme>();
   return stillOnSlots((drawn) => {
     const { colors, fills, depth, theme } = drawn;
     // Whether a slot shows one of the element's colours: never the terminal's, whatever its hex.
@@ -1122,7 +1122,7 @@ interface Measured {
 const measured = (color: ColorRgba): Measured => ({ color, looks: Oklch.fromRgba(color), stop: stop(color) });
 
 /** `ColorSpec.indexed`'s colours, measured once for each theme and depth. */
-const measuredMemo = new WeakMemo<readonly (readonly [ColorSpec, ColorRgba])[], readonly Measured[]>();
+const measuredMemo = new WeakMemo<readonly Measured[], readonly (readonly [ColorSpec, ColorRgba])[]>();
 function measuredIndexed(depth: ColorDepth, theme: TerminalTheme): readonly Measured[] {
   return measuredMemo.get(ColorSpec.indexed(depth, theme), (indexed) => indexed.map(([, color]) => measured(color)));
 }
@@ -1206,7 +1206,7 @@ export function steppedInk(steps: readonly ColorStep[]): Effect {
  * palette.
  */
 function legibleInks(): (drawn: Drawn) => (ink: ColorRgba, look: CellLook, cell: EffectCell) => ColorRgba {
-  const settled = new WeakMemo<TerminalTheme, { readonly inks: Memo<ColorRgba>; readonly readable: Memo<readonly Measured[]> }>();
+  const settled = new WeakMemo<{ readonly inks: Memo<ColorRgba>; readonly readable: Memo<readonly Measured[]> }, TerminalTheme>();
   return ({ depth, theme }) => {
     const memo = settled.get(theme, () => ({ inks: new Memo(), readable: new Memo() }));
     return (ink, look, cell) => {

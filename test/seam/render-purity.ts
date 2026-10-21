@@ -29,7 +29,7 @@
  *
  *   - `State<T>`: its internals are its own, and its `T` is walked — a
  *     `State<number[]>` would hand out an array to push to;
- *   - `Memo<V>` and `WeakMemo<K, V>`: likewise, `V` walked — not a
+ *   - `Memo<V, K>` and `WeakMemo<V, K>`: likewise, `V` walked — not a
  *     `WeakMemo`'s key, which nothing reads back out. A `State` anywhere in `V` is reported
  *     and no debt row can excuse it: a memo is "same key, same value", and a
  *     memo of states passes in the pass that fills it and throws from the next;
@@ -187,8 +187,8 @@ export function writableLocations(program: ts.Program, files: readonly string[])
       if (inMemo) report(at, "state in a Memo");
       return args().forEach((t) => held(t, at, inMemo));
     }
-    // The value is a memo's last type argument; a WeakMemo's first is its key.
-    if (symbol && MEMOS.has(symbol.name) && declaredIn(symbol, HOLDERS.Memo)) return held(args().at(-1)!, at, true);
+    // The value is a memo's first type argument; the second is its key.
+    if (symbol && MEMOS.has(symbol.name) && declaredIn(symbol, HOLDERS.Memo)) return held(args()[0]!, at, true);
     if (checker.isTupleType(type)) {
       if (!(type as ts.TupleTypeReference).target.readonly) report(at, "mutable array");
       return args().forEach((t) => held(t, at, inMemo));

@@ -45,7 +45,7 @@ export class EmbeddedText implements Renderable, Measurable {
   // asked for. Parsing is the costly half of drawing a string, and a table
   // measures every cell more than once per print; read on every call, a
   // 500-row table of markup printed 75% slower.
-  private readonly _readings = new Memo<RichText>();
+  private readonly _readings = new Memo<RichText, "markup" | "plain">();
 
   constructor(content: unknown) {
     if (typeof content === "string") {

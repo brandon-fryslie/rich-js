@@ -527,8 +527,7 @@ export class ColorSpec {
   readonly number: number | undefined;
   readonly value: ColorRgba | undefined;
 
-  // Keyed by the depth's enum value.
-  private readonly downgrades = new Memo<ColorSpec>();
+  private readonly downgrades = new Memo<ColorSpec, `${ColorDepth}`>();
 
   constructor(
     name: string,
@@ -639,7 +638,7 @@ export class ColorSpec {
     if (this.type === ColorDepth.DEFAULT) return this;
     if (this.type === targetSystem || fidelity(this.type) < fidelity(targetSystem)) return this;
 
-    return this.downgrades.get(String(targetSystem), () => this.performDowngrade(targetSystem));
+    return this.downgrades.get(`${targetSystem}`, () => this.performDowngrade(targetSystem));
   }
 
   /**
@@ -753,7 +752,7 @@ export class ColorSpec {
    * `matchOn` rounds to, but for the default, read off the same two tables.
    */
   static indexed(depth: ColorDepth, theme: TerminalTheme): readonly (readonly [ColorSpec, ColorRgba])[] {
-    return indexedMemo.get(theme, () => new Memo()).get(String(depth), () => listIndexed(depth, theme));
+    return indexedMemo.get(theme, () => new Memo()).get(`${depth}`, () => listIndexed(depth, theme));
   }
 
   /**
@@ -809,7 +808,7 @@ function cubeCandidate(value: ColorRgba): [ColorSpec, ColorRgba] {
 }
 
 /** `ColorSpec.indexed`'s list, made once for each theme and depth. */
-const indexedMemo = new WeakMemo<TerminalTheme, Memo<readonly (readonly [ColorSpec, ColorRgba])[]>>();
+const indexedMemo = new WeakMemo<Memo<readonly (readonly [ColorSpec, ColorRgba])[], `${ColorDepth}`>, TerminalTheme>();
 
 function listIndexed(depth: ColorDepth, theme: TerminalTheme): readonly (readonly [ColorSpec, ColorRgba])[] {
   const slots = (): (readonly [ColorSpec, ColorRgba])[] =>

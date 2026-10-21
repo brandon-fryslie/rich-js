@@ -61,8 +61,8 @@ describe("the gate", () => {
         `export const bump = (): number => (frames += 1);`,
         `export const memo = new Memo<State<number>>();`,
         `let states = new Memo<State<number>>();`,
-        `export const weak = new WeakMemo<{ n: number }, State<number>>();`,
-        `export const byKey = new WeakMemo<{ n: number }, readonly number[]>();`,
+        `export const weak = new WeakMemo<State<number>, { n: number }>();`,
+        `export const byKey = new WeakMemo<readonly number[], { n: number }>();`,
         `export const TABLE: Record<string, number> = {};`,
       ].join("\n"),
     );
