@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-507",
+      "ref": "refs/pull/507/merge",
+      "sha": "838c0c38201ae8096404df026706ddb4da11d624",
+      "timestamp": "2026-10-21T08:30:05.744Z",
+      "commits": [
+        {
+          "sha": "838c0c38201ae8096404df026706ddb4da11d624",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T02:28:42-06:00",
+          "message": "Merge 6b1b03e28a949075fe2bfdede0b4208b2b015ece into 0d611fd63c5bae4dd370938698284332f73b405c\n"
+        },
+        {
+          "sha": "6b1b03e28a949075fe2bfdede0b4208b2b015ece",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T02:28:23-06:00",
+          "message": "Drain the render-purity allow-list (rich-protocol-9xcs.g0k)\n\nEvery RENDER_PURITY_DEBT row is gone but Viewport's and TextInput's, which\nrich-protocol-9xcs.399 and .o76 take.\n\n- Tables, glyph sets, tokens and records are readonly types.\n- No RegExp is held where the gate walks. `pattern` (src/core/pattern.ts)\n  makes a held regex only from one without g or y and exposes only what\n  never writes lastIndex; a scan builds its own g/y regex from the pattern's\n  source. RegexHighlighter.highlights holds source and flags, all it reads.\n- ListState joins State as a sanctioned holder: a list appended to in place,\n  so Table.addRow, RichText spans and Console recording stay linear.\n- Console, RichText, Layout, Live, Progress, Table, Column, Tree,\n  ProgressBar, Spinner, MarkupRegistry, widget handler sets and the node\n  traceback hook keep what changes after construction in a State; Rich's\n  setters (tree.expanded, bar.completed, spinner.text, layout.visible,\n  column.header/footer) stay, as accessors over it.\n- table.columns is read-only and Column is a type-only export: nothing can\n  push a hand-built column any more. Column's dead addCell/getCells go.\n- EmbeddedText memoizes a reading's characters and spans, not a RichText,\n  which a memo may not hold.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "0d611fd63c5bae4dd370938698284332f73b405c",
