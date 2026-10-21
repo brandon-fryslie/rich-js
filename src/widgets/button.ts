@@ -16,7 +16,8 @@
  * partner depends on luminance.
  */
 
-import { observable, action, observableRef } from "mobx";
+import { action } from "mobx";
+import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { cellLen } from "../core/cells.js";
@@ -54,7 +55,7 @@ export class Button extends ThemedWidget {
   readonly id: string;
   readonly focusable = true;
 
-  @observable accessor label: string;
+  @observableRef accessor label: string;
   @observableRef accessor variant: ButtonVariant;
 
   constructor(options: ButtonOptions) {

@@ -23,7 +23,8 @@
  * than the header. See docs/widgets.md → Dropdown.
  */
 
-import { observable, action, observableShallow } from "mobx";
+import { action } from "mobx";
+import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { cellLen, setCellSize, splitText, asCellCol } from "../core/cells.js";
@@ -51,11 +52,15 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
   readonly id: string;
   readonly focusable = true;
 
-  @observableShallow accessor options: string[];
-  @observable accessor selectedIndex: number;
-  @observable accessor expanded: boolean = false;
-  @observable accessor highlightedIndex: number;
-  @observable accessor filter: string = "";
+  @observableRef private accessor _options: readonly string[];
+  // A copy is held, so the caller changing the array it assigned changes
+  // nothing here: the labels change only by assignment, which repaints.
+  get options(): readonly string[] { return this._options; }
+  set options(options: readonly string[]) { this._options = [...options]; }
+  @observableRef accessor selectedIndex: number;
+  @observableRef accessor expanded: boolean = false;
+  @observableRef accessor highlightedIndex: number;
+  @observableRef accessor filter: string = "";
 
   // [LAW:dataflow-not-control-flow] Derived view; empty filter falls out
   // naturally because "".includes("") is true for every label — no
@@ -73,7 +78,7 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
   constructor(options: DropdownOptions) {
     super(options.theme);
     this.id = options.id ?? `dropdown-${Math.random().toString(36).slice(2, 8)}`;
-    this.options = [...options.options];
+    this._options = [...options.options];
     // [LAW:types-are-the-program] selectedIndex must point to a valid
     // option (or be 0 for the empty-options case). Clamp at the trust
     // boundary so headerText / render / commit logic can all assume

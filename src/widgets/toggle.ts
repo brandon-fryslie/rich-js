@@ -11,7 +11,8 @@
  *   disabled  — dimmed
  */
 
-import { observable, action, observableRef } from "mobx";
+import { action } from "mobx";
+import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { cellLen } from "../core/cells.js";
@@ -52,8 +53,8 @@ export class Toggle extends ThemedWidget {
   readonly id: string;
   readonly focusable = true;
 
-  @observable accessor label: string;
-  @observable accessor on: boolean;
+  @observableRef accessor label: string;
+  @observableRef accessor on: boolean;
   @observableRef accessor variant: ToggleVariant;
 
   constructor(options: ToggleOptions) {

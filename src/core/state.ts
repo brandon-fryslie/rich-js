@@ -12,17 +12,20 @@
  * it as it draws — a `Table` it adds rows to — changes nothing anyone held
  * before it began. Only a state that existed before the pass is refused.
  *
+ * `refuseRenderWrite` is that refusal, written once: a widget's observables
+ * refuse a write through it too (`src/widgets/observable.ts`).
+ *
  * `test/seam/render-purity.test.ts` is the static half: nothing else reachable
  * from a renderable, or from module scope, may be writable.
  */
 
 import { activePass, type Pass } from "./protocol.js";
 
-/** A `State` was set during a render or measure that did not make it. */
+/** State was written during a render or measure that did not make it. */
 export class RenderWriteError extends Error {
   constructor() {
     super(
-      "A State was set during a render or measure. A render changes nothing: " +
+      "State was written during a render or measure. A render changes nothing: " +
         "change state in an event handler, an update, or between frames.",
     );
     this.name = "RenderWriteError";
@@ -42,9 +45,17 @@ export class State<T> {
   }
 
   set(value: T): void {
-    const pass = activePass();
-    // [LAW:no-silent-failure] Refused loudly, as React refuses a setState in render.
-    if (pass !== undefined && pass !== this.#owner) throw new RenderWriteError();
+    refuseRenderWrite(this.#owner);
     this.#value = value;
   }
+}
+
+/**
+ * Throws unless state made in `owner` — the pass in progress when it was made,
+ * if any — may be written now: between passes, or in the pass that made it.
+ */
+export function refuseRenderWrite(owner: Pass | undefined): void {
+  const pass = activePass();
+  // [LAW:no-silent-failure] Refused loudly, as React refuses a setState in render.
+  if (pass !== undefined && pass !== owner) throw new RenderWriteError();
 }

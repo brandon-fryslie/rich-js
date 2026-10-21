@@ -11,7 +11,8 @@
  *   disabled  — dimmed
  */
 
-import { observable, action } from "mobx";
+import { action } from "mobx";
+import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { cellLen } from "../core/cells.js";
@@ -33,8 +34,8 @@ export class Checkbox extends ThemedWidget {
   readonly id: string;
   readonly focusable = true;
 
-  @observable accessor label: string;
-  @observable accessor checked: boolean;
+  @observableRef accessor label: string;
+  @observableRef accessor checked: boolean;
 
   constructor(options: CheckboxOptions) {
     super(options.theme);

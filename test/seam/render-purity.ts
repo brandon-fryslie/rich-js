@@ -33,10 +33,10 @@
  *     `WeakMemo`'s key, which nothing reads back out. A `State` anywhere in `V` is reported
  *     and no debt row can excuse it: a memo is "same key, same value", and a
  *     memo of states passes in the pass that fills it and throws from the next;
- *   - an `accessor` in `src/widgets/` decorated by mobx: the widgets' own
- *     state carrier. Refusing a write to one during render is
- *     rich-protocol-9xcs.sej's, against the same phase; until it lands, a
- *     widget render that writes its own accessor passes both halves;
+ *   - an `accessor` decorated by `observableRef` from
+ *     `src/widgets/observable.ts`, the widgets' state carrier, which refuses a
+ *     write during render as `State` does; its value is walked. An accessor
+ *     decorated by mobx's own is a writable property like any other;
  *   - the render phase itself, `active` in `src/core/protocol.ts`.
  *
  * WHAT THIS CANNOT SEE, said out loud because a blind spot read as coverage is
@@ -49,8 +49,7 @@
  */
 
 import ts from "typescript";
-import { REPO_ROOT, isPathInside, repoRelative } from "../../scripts/repo-facts.js";
-import path from "node:path";
+import { repoRelative } from "../../scripts/repo-facts.js";
 
 /** One place a value can be written without a `State`. */
 export interface WritableLocation {
@@ -74,10 +73,9 @@ export type Reason =
 const RENDER_METHODS = new Set(["render", "measure", "contents"]);
 const MUTABLE_COLLECTIONS = new Set(["Map", "Set", "WeakMap", "WeakSet"]);
 const READONLY_COLLECTIONS = new Set(["ReadonlyMap", "ReadonlySet", "ReadonlyArray"]);
-const HOLDERS = { State: "src/core/state.ts", Memo: "src/core/memo.ts" } as const;
+const HOLDERS = { State: "src/core/state.ts", Memo: "src/core/memo.ts", observable: "src/widgets/observable.ts" } as const;
 const MEMOS = new Set(["Memo", "WeakMemo"]);
 const PHASE = { file: "src/core/protocol.ts", name: "active" } as const;
-const WIDGETS = path.join(REPO_ROOT, "src/widgets");
 
 // TypeScript marks a property a mapped `Readonly<>` made readonly with this
 // check flag; it is not on the public API, and nothing public reports it.
@@ -145,17 +143,13 @@ function declaredIn(symbol: ts.Symbol | undefined, file: string): boolean {
   return (symbol?.declarations ?? []).some((d) => repoRelative(d.getSourceFile().fileName) === file);
 }
 
-/** Whether `decl` is a widget `accessor` decorated by something imported from mobx. */
-function isMobxAccessor(checker: ts.TypeChecker, decl: ts.Declaration): boolean {
+/** Whether `decl` is an `accessor` decorated by one of the widgets' observables, which refuse a write during render. */
+function isObservableAccessor(checker: ts.TypeChecker, decl: ts.Declaration): boolean {
   if (!ts.isPropertyDeclaration(decl) || !hasModifier(decl, ts.SyntaxKind.AccessorKeyword)) return false;
-  if (!isPathInside(WIDGETS, decl.getSourceFile().fileName)) return false;
   return (ts.getDecorators(decl) ?? []).some((decorator) => {
-    let root: ts.Expression = decorator.expression;
-    while (ts.isCallExpression(root) || ts.isPropertyAccessExpression(root)) root = ts.isCallExpression(root) ? root.expression : root.expression;
-    const symbol = ts.isIdentifier(root) ? checker.getSymbolAtLocation(root) : undefined;
-    const imported = symbol?.declarations?.find(ts.isImportSpecifier);
-    const from = imported?.parent.parent.parent.moduleSpecifier;
-    return from !== undefined && ts.isStringLiteral(from) && from.text === "mobx";
+    const symbol = ts.isIdentifier(decorator.expression) ? checker.getSymbolAtLocation(decorator.expression) : undefined;
+    const target = symbol && symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
+    return declaredIn(target, HOLDERS.observable);
   });
 }
 
@@ -217,9 +211,10 @@ export function writableLocations(program: ts.Program, files: readonly string[])
     walked.add(id);
     for (const property of type.getProperties()) {
       const decl = property.valueDeclaration ?? property.declarations?.[0];
-      if (!decl || isComputed(property) || isMobxAccessor(checker, decl)) continue;
+      if (!decl || isComputed(property)) continue;
       const key = keyOf(program, decl, property.name);
-      if (!isReadonlyProperty(property)) report(key, "writable property");
+      // An observable accessor is a holder, as a `State` is: its value is walked, the accessor is not a location.
+      if (!isObservableAccessor(checker, decl) && !isReadonlyProperty(property)) report(key, "writable property");
       held(checker.getTypeOfSymbol(property), key, inMemo);
     }
   };

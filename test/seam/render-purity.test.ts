@@ -42,10 +42,12 @@ describe("the gate", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "render-purity-"));
     const fixture = path.join(dir, "fixture.ts");
     const core = (module: string) => JSON.stringify(path.join(REPO_ROOT, "src/core", module));
+    const widgets = (module: string) => JSON.stringify(path.join(REPO_ROOT, "src/widgets", module));
     writeFileSync(
       fixture,
       [
         `import { observable } from "mobx";`,
+        `import { observableRef } from ${widgets("observable.js")};`,
         `import { State } from ${core("state.js")};`,
         `import { Memo, WeakMemo } from ${core("memo.js")};`,
         `export class Writes { private n = 0; render() { this.n += 1; return []; } }`,
@@ -57,6 +59,12 @@ describe("the gate", () => {
         `  render() { return []; }`,
         `}`,
         `export class Observes { @observable accessor x = 0; render() { return []; } }`,
+        `export class Refuses {`,
+        `  @observableRef accessor x = 0;`,
+        `  @observableRef accessor names: readonly string[] = [];`,
+        `  @observableRef accessor items: number[] = [];`,
+        `  render() { return []; }`,
+        `}`,
         `let frames = 0;`,
         `export const bump = (): number => (frames += 1);`,
         `export const memo = new Memo<State<number>>();`,
@@ -80,8 +88,9 @@ describe("the gate", () => {
       ["module.TABLE", "mutable index signature"],
       // A WeakMemo's key is never walked: its writable `n` is no location.
       ["module.weak", "state in a Memo"],
-      // A mobx accessor is the widgets' carrier only under src/widgets/.
+      // mobx's own decorator refuses nothing; the widgets' observables hold, and their value is walked.
       ["Observes.x", "writable property"],
+      ["Refuses.items", "mutable array"],
       ["Writes.n", "writable property"],
     ]);
   });
