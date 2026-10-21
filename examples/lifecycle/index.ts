@@ -30,7 +30,6 @@ const EXIT = { seconds: 1.2, ease: EASES["ease-in"], swing: 1 };
 function appended(i: number, at: number): Lifecycle {
   const [message, style] = MESSAGES[i % MESSAGES.length]!;
   const line = new RichText(`${String(i + 1).padStart(3)}  ${message}`, { style });
-  // Each line its own transitions: a transition is made for one element.
   const key = `line-${i}`;
   const exits = [throughColors(dissolveOut(EXIT, i), CATPPUCCIN_MOCHA), throughGlyphs(backspace(EXIT)), throughGlyphs(scrambleOut(EXIT, i))];
   return lifecycle(line, { enter: throughGlyphs(typewriter(ENTER)), exit: exits[i % exits.length]!, key }, at).leave(at + STAYS);

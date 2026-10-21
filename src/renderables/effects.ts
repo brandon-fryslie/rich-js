@@ -720,20 +720,12 @@ export function veiled(visibility: Visibility, swing: number): Effect {
  * Where each cell falls in a transition's order, in [0, 1]: smooth noise over
  * the element, so neighbouring cells arrive or leave together, in patches
  * with soft edges, as ink spreads or mist thins. `z` places the element in
- * the noise. A cell's place never changes, so it is worked out once.
+ * the noise.
  */
 function order(z: number): (cell: Placed) => number {
-  const places = new Map<string, number>();
-  return (cell) => {
-    const at = `${cell.row}:${cell.col}`;
-    // The noise is read through slower noise, so the patches reach out in
-    // curling tendrils rather than sitting as round blots.
-    const place =
-      places.get(at) ??
-      clamp01(0.5 + 1.1 * fbm(cell.col * 0.09 + 1.4 * noise(cell.col * 0.035, cell.row * 0.2 + 2.6, z + 0.5), cell.row * 0.45, z, 3));
-    places.set(at, place);
-    return place;
-  };
+  // The noise is read through slower noise, so the patches reach out in
+  // curling tendrils rather than sitting as round blots.
+  return (cell) => clamp01(0.5 + 1.1 * fbm(cell.col * 0.09 + 1.4 * noise(cell.col * 0.035, cell.row * 0.2 + 2.6, z + 0.5), cell.row * 0.45, z, 3));
 }
 
 /**
@@ -839,32 +831,24 @@ interface CellChange {
  * `seconds` alone. An element whose cells all share one place has no order to
  * stagger, and its change takes the whole of `seconds`.
  *
- * A cell's change is settled in the first frame that lists it and kept, as
- * its place is, so an element whose cells change while it moves — a label
- * that gains a column as it leaves — spreads only its new cells over the
- * order it has then, and never sends a cell that has gone back to a later
- * start. [LAW:no-ambient-temporal-coupling] The transition owns that record;
- * it is why a transition is made for one element.
+ * [LAW:no-ambient-temporal-coupling] Worked out from the frame alone, so
+ * the same `t` over the same cells draws the same bytes whatever was drawn
+ * before — after a seek, in reverse, at any rate — and one transition is
+ * safe on any number of elements. An element that gains cells as it moves is
+ * spread over the order it has in each frame, so a cell already moving may
+ * move its start.
  */
 function ownChange(curve: Curve, place: (cell: Placed) => number): (cells: readonly Placed[]) => (cell: Placed) => CellChange {
-  const changes = new Map<string, CellChange>();
-  const key = (cell: Placed): string => `${cell.row}:${cell.col}`;
   return (cells) => {
     const [first, last] = extent(cells.map(place));
     const stagger = (last > first ? 1 - OWN : 0) * curve.seconds;
     // One phase a frame, shifted per cell, so no cell builds its own.
     const change = Phase.once(0, curve.seconds - stagger);
     // A share of the way from the first place to the last, held to the order for a cell the frame does not list.
-    const settled = (cell: Placed): CellChange => {
+    return (cell) => {
       const along = last > first ? clamp01((place(cell) - first) / (last - first)) : 0;
       return { along, progress: (t) => change(t - along * stagger) };
     };
-    for (const cell of cells) {
-      const at = key(cell);
-      changes.set(at, changes.get(at) ?? settled(cell));
-    }
-    // A cell the frame hands but does not list shows nothing yet, so it is timed for this frame alone.
-    return (cell) => changes.get(key(cell)) ?? settled(cell);
   };
 }
 

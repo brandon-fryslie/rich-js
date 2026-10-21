@@ -591,17 +591,35 @@ describe("the transitions run start to end", () => {
     expect(glyph(seconds - 3)).not.toBe(glyph(seconds));
   });
 
-  it.each([0, 1, 2, 3, 4, 5, 6])("a cell a fade at z %d has moved never goes back when the element gains cells as it moves", (z) => {
-    const { effect } = fadeIn(curve(20, 1), z);
-    const placed = (n: number): EffectCell[] => Array.from({ length: n }, (_, col) => ({ row: 0, col, seed: 0, terminal: written, reverse: false, anchor: undefined }));
-    const [narrow, wide] = [placed(3), placed(12)];
-    // The element gains its other columns halfway through; its first three are read throughout.
-    const shown = (t: number): number[] => narrow.map((cell) => distance(effect({ ...NOTHING, cells: () => (t < 10 ? narrow : wide) }).at(t)(colors, cell).fg, terminalGround));
-    const series = Array.from({ length: 81 }, (_, i) => shown(i * 0.25));
-    for (const [i, now] of series.entries()) {
-      for (const [col, v] of now.entries()) if (i > 0) expect(v).toBeGreaterThanOrEqual(series[i - 1]![col]! - 1e-9);
-    }
-    expect(series.at(-1)!.every((v) => v > 0)).toBe(true);
+  describe.each([
+    ["fade-in", fadeIn],
+    ["dissolve-out", dissolveOut],
+  ])("a %s draws a time the same whatever was drawn before", (_, make) => {
+    const grid = (rows: number, cols: number): EffectCell[] =>
+      Array.from({ length: rows * cols }, (_, i) => ({ row: Math.floor(i / cols), col: i % cols, seed: 0, terminal: written, reverse: false, anchor: undefined }));
+    // Every cell of `cells` as `effect` draws it at `t`.
+    const frameOf = (effect: Effect, cells: EffectCell[], t: number): string[] => {
+      const drawnAt = effect({ ...NOTHING, cells: () => cells }).at(t);
+      return cells.map((cell) => drawnAt(colors, cell).fg.hex);
+    };
+
+    it("played, reversed, then scrubbed, each frame of an element that grows as it moves is the frame a fresh transition draws", () => {
+      // A label gaining columns: four until 10 seconds in, twelve after.
+      const cells = (t: number): EffectCell[] => grid(2, t < 10 ? 4 : 12);
+      const { effect } = make(curve(20, 1), 3);
+      const forward = Array.from({ length: 21 }, (_, i) => i);
+      for (const t of [...forward, ...[...forward].reverse(), 17, 2, 11, 0.5, 19, 6]) {
+        expect(frameOf(effect, cells(t), t)).toEqual(frameOf(make(curve(20, 1), 3).effect, cells(t), t));
+      }
+    });
+
+    it("one transition placed on two elements draws each as a transition of its own", () => {
+      const [narrow, wide] = [grid(1, 4), grid(3, 12)];
+      const { effect } = make(curve(20, 1), 3);
+      for (const t of [2, 8, 14]) {
+        expect([frameOf(effect, narrow, t), frameOf(effect, wide, t)]).toEqual([frameOf(make(curve(20, 1), 3).effect, narrow, t), frameOf(make(curve(20, 1), 3).effect, wide, t)]);
+      }
+    });
   });
 
   it.each([0, 1, 2, 3, 4, 5, 6])("a cell a fade at z %d hands before it shows is spread over the order the element has once it does", (z) => {

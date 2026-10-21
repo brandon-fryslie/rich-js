@@ -70,9 +70,9 @@ function lift(transition: Transition<unknown>, veil: Veil): Transition<Veil> {
 
 /** How an element arrives and leaves, and what it is named for their seeds. */
 export interface LifecycleOptions {
-  /** The half it arrives through, made for this element alone — `throughColors(fadeIn(curve, z), theme)`. */
+  /** The half it arrives through — `throughColors(fadeIn(curve, z), theme)`. */
   readonly enter: Transition<Veil>;
-  /** The half it leaves through, made for this element alone — `throughGlyphs(scrambleOut(timing, z))`. */
+  /** The half it leaves through — `throughGlyphs(scrambleOut(timing, z))`. */
   readonly exit: Transition<Veil>;
   /** Names the element for both halves' seeds, as `Effected`'s and `GlyphEffected`'s key does. */
   readonly key: string;
