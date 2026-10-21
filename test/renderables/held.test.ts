@@ -29,7 +29,6 @@ import {
   Emoji,
   FlexStrip,
   FrameSequence,
-  Frames,
   Group,
   JOINERS,
   JSONRenderable,
@@ -101,7 +100,6 @@ const ROWS: Record<string, Row> = {
   Panel: (p) => new Panel(p("a"), { title: "title", subtitle: "subtitle" }),
   Group: (p) => new Group(p("a"), p("b")),
   ProgressBar: () => new ProgressBar({ total: 10, completed: 5 }),
-  Frames: () => new Frames(new FrameSequence([{ text: new RichText("a"), seconds: 1 }]), { t: 0 }),
   FrameSequence: () => new FrameSequence([{ text: new RichText("a"), seconds: 1 }]),
   Spinner: () => new Spinner("dots", "label"),
   // One column: a table handed no column seats one, as below.
@@ -161,6 +159,7 @@ const ROWS: Record<string, Row> = {
  */
 const VARIANTS: Record<string, Row> = {
   "Viewport.showing": (p) => new Viewport({ rows: 2 }).showing(p("a")),
+  "ProgressBar pulsing": () => new ProgressBar({ pulse: true }),
   "Table without its header": (p) => {
     const table = new Table({ showHeader: false });
     table.addColumn(p("head-1"));

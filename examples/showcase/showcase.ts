@@ -23,7 +23,6 @@ import {
   EFFECT_CATALOGUE,
   Effected,
   FrameSequence,
-  Frames,
   Layout,
   Live,
   Panel,
@@ -37,7 +36,6 @@ import {
   TextColumn,
   Tree,
   beat,
-  frameAt,
   onBeat,
   regionRows,
   steppedInk,
@@ -182,9 +180,7 @@ const SIGNAL = steppedInk([
   { color: new ColorRgba(80, 250, 123), seconds: 1 },
 ]);
 const WALK = onBeat(EFFECT_CATALOGUE.loops.wheel({ z: 0 }, { seconds: 6, ease: EASES.linear, swing: 0 }), beat([1]));
-// A cursor blinking after the tagline: a frame drawn into a line assembled
-// from pieces, stamped where the host's time is known (`frameAt`), so the
-// line says when it turns as a `Frames` does.
+// A cursor blinking after the tagline, in a cell of its own.
 const CURSOR = new FrameSequence([
   { text: new RichText("▌", { style: Style.parse("dim") }), seconds: 0.5 },
   { text: new RichText(" "), seconds: 0.5 },
@@ -225,18 +221,18 @@ function flashing(effect: Effect): Effect {
 }
 const BRAND = flashing(WALK);
 
-function heading(t: number): Renderable {
-  const line = Table.grid({ padding: 0 });
-  line.addColumn();
-  line.addColumn();
-  line.addColumn();
-  line.addRow(
-    new Effected(new RichText("rich-js ", { style: Style.parse("bold #1e1e2e on #cba6f7"), end: "" }), BRAND, { key: "brand", theme: THEME }).at(t),
-    new Effected(new Frames(CHEVRONS, { t }), SIGNAL, { key: "effort", theme: THEME }).at(t),
-    new RichText(" · beautiful terminal output for TypeScript ", { style: Style.parse("dim"), end: "" }).append(frameAt(CURSOR, t)),
-  );
-  return line;
-}
+// Every animation in the heading is placed, so it draws at the time of the frame the Live draws.
+const heading = Table.grid({ padding: 0 });
+heading.addColumn();
+heading.addColumn();
+heading.addColumn();
+heading.addColumn();
+heading.addRow(
+  new Effected(new RichText("rich-js ", { style: Style.parse("bold #1e1e2e on #cba6f7"), end: "" }), BRAND, { key: "brand", theme: THEME }),
+  new Effected(CHEVRONS, SIGNAL, { key: "effort", theme: THEME }),
+  new RichText(" · beautiful terminal output for TypeScript ", { style: Style.parse("dim"), end: "" }),
+  CURSOR,
+);
 
 const root = new Layout(undefined, { name: "root" });
 root.splitColumn(
@@ -253,7 +249,7 @@ right.splitColumn(
 
 /** The dashboard as it stands `t` seconds in. */
 function dashboardAt(t: number): Layout {
-  root.getByName("heading")!.update(new Panel(heading(t), { expand: true, borderStyle: "magenta" }));
+  root.getByName("heading")!.update(new Panel(heading, { expand: true, borderStyle: "magenta" }));
   root.getByName("services")!.update(services(t));
   root.getByName("spectrum")!.update(new Panel(new Spectrum(t), { title: "Truecolor", borderStyle: "bright_black", expand: true, padding: 0 }));
   JOBS.forEach((job, i) => jobs.updateTask(tasks[i]!, { completed: Math.round(((t / job.seconds + job.offset) % 1) * STEPS) }));
@@ -264,8 +260,7 @@ function dashboardAt(t: number): Layout {
 // a still frame can be taken as soon as the body has run, and it has to show
 // the dashboard, not the empty screen Live starts on.
 const FRAMES_PER_SECOND = 12;
-const started = Date.now();
-const draw = (): void => live.update(dashboardAt((Date.now() - started) / 1000), { refresh: true });
+const draw = (): void => live.update(dashboardAt(live.frameTime), { refresh: true });
 live.start();
 draw();
 setInterval(draw, 1000 / FRAMES_PER_SECOND);

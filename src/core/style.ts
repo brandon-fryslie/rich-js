@@ -163,7 +163,7 @@ export class Style {
    * when it next changes (`nextChange`) — both `t` for a cell drawn by
    * something that moves every frame, and `-Infinity`/`Infinity` for one
    * that never changes. It draws nothing. Whatever draws for a handed time
-   * stamps its cells with it (`Frames`, `Effected`), the stamp rides up
+   * stamps its cells with it (`placedRender`, `Effected`), the stamp rides up
    * through every container as the anchor does (`./anchor.ts`), and whoever
    * holds the composed frame reads it off (`Segment.nextChange`, and
    * `Segment.lastChange` for a host running its timeline backwards), so a

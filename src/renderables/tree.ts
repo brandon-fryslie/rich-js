@@ -79,7 +79,7 @@ interface Guide {
 
 /**
  * What a label drew, as `Segment.splitRows` cuts it: a label that yields
- * nothing but carriers — a lifecycle not yet entered, under `frameAt` — draws
+ * nothing but carriers — a lifecycle not yet entered — draws
  * no row, and its carriers are kept so the tree still says when it changes.
  */
 type Drawn = Readonly<ReturnType<typeof Segment.splitRows>>;

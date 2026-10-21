@@ -10,7 +10,7 @@ import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
 import { dissolveOut, fadeIn, onBeat } from "../../src/renderables/effects.js";
-import { frameAt } from "../../src/renderables/frames.js";
+import { inFrame } from "./in-frame.js";
 import { Group } from "../../src/renderables/group.js";
 import { Live } from "../../src/renderables/live.js";
 import { backspace, scrambleOut, typewriter } from "../../src/renderables/glyph-effects.js";
@@ -46,19 +46,19 @@ describe("a lifecycle", () => {
   it("draws nothing before it entered, moves while it arrives, is the element while it stays, moves while it leaves, then draws nothing", () => {
     const life = made().leave(5);
     const said = (t: number) => [life.lastChange(t), life.nextChange(t)];
-    expect(text(draw(frameAt(life, 0.5)))).toBe("");
+    expect(text(draw(inFrame(life, 0.5)))).toBe("");
     expect(said(0.5)).toEqual([Number.NEGATIVE_INFINITY, 1]);
     for (const t of [1, 2, 2.9]) expect(said(t)).toEqual([t, t]);
     for (const t of [3, 4, 4.9]) {
       expect(said(t)).toEqual([3, 5]);
-      expect(bytes(draw(frameAt(life, t)))).toBe(bytes(draw(line)));
-      expect(Segment.nextChange(draw(frameAt(life, t)))).toBe(5);
+      expect(bytes(draw(inFrame(life, t)))).toBe(bytes(draw(line)));
+      expect(Segment.nextChange(draw(inFrame(life, t)))).toBe(5);
     }
     for (const t of [5, 6, 6.9]) expect(said(t)).toEqual([t, t]);
     for (const t of [7, 100]) {
       expect(said(t)).toEqual([7, Number.POSITIVE_INFINITY]);
-      expect(bytes(draw(frameAt(life, t)))).toBe("");
-      expect(Measurement.get(OPTIONS, frameAt(life, t))).toEqual(new Measurement(0, 0));
+      expect(bytes(draw(inFrame(life, t)))).toBe("");
+      expect(Measurement.get(OPTIONS, inFrame(life, t))).toEqual(new Measurement(0, 0));
     }
   });
 
@@ -95,8 +95,8 @@ describe("a lifecycle", () => {
       const goneAt = life.lastChange(left + 10);
       const before = below(goneAt);
       expect([life.gone(before), life.gone(goneAt)]).toEqual([false, true]);
-      expect(bytes(draw(frameAt(life, goneAt)))).toBe("");
-      expect(bytes(draw(frameAt(life, before)))).not.toBe("");
+      expect(bytes(draw(inFrame(life, goneAt)))).toBe("");
+      expect(bytes(draw(inFrame(life, before)))).not.toBe("");
       expect([life.nextChange(before), life.nextChange(goneAt)]).toEqual([before, Number.POSITIVE_INFINITY]);
     }
   });
@@ -112,16 +112,16 @@ describe("a lifecycle", () => {
 
   it("with no colour output, still says it moves while it leaves and that it is gone after", () => {
     const life = made().leave(5);
-    expect(text(draw(frameAt(life, 4), PLAIN))).toBe(`${line.plain}\n`);
-    for (const t of [5, 6, 6.9]) expect(Segment.nextChange(draw(frameAt(life, t), PLAIN))).toBe(t);
-    expect(text(draw(frameAt(life, 7), PLAIN))).toBe("");
-    expect(Segment.nextChange(draw(frameAt(life, 7), PLAIN))).toBe(Number.POSITIVE_INFINITY);
+    expect(text(draw(inFrame(life, 4), PLAIN))).toBe(`${line.plain}\n`);
+    for (const t of [5, 6, 6.9]) expect(Segment.nextChange(draw(inFrame(life, t), PLAIN))).toBe(t);
+    expect(text(draw(inFrame(life, 7), PLAIN))).toBe("");
+    expect(Segment.nextChange(draw(inFrame(life, 7), PLAIN))).toBe(Number.POSITIVE_INFINITY);
   });
 
   it("before it entered draws no byte, yet its frame says when it enters, so a function view wakes for it", () => {
     const life = made().leave(5);
     for (const options of [OPTIONS, PLAIN]) {
-      const drawn = draw(new Group(frameAt(life, 0.5)), options);
+      const drawn = draw(new Group(inFrame(life, 0.5)), options);
       expect(bytes(drawn)).toBe("");
       expect(Segment.nextChange(drawn)).toBe(1);
     }
@@ -162,7 +162,7 @@ describe("a lifecycle through glyph transitions", () => {
   const timing = { seconds: 2, ease: EASES.linear };
   /** The line typed in from 1 over 2 s, told to leave at 5 and scrambled away over 2 s: gone at 7. */
   const typed = (exit = throughGlyphs(scrambleOut(timing, 0))): Lifecycle => lifecycle(line, { enter: throughGlyphs(typewriter(timing)), exit, key: "line" }, 1).leave(5);
-  const shown = (life: Lifecycle, t: number, options = OPTIONS): string => text(draw(frameAt(life, t), options)).trimEnd();
+  const shown = (life: Lifecycle, t: number, options = OPTIONS): string => text(draw(inFrame(life, t), options)).trimEnd();
   /** How many of the line's inked cells still show their own glyph. */
   const intact = (drawn: string): number => [...line.plain].filter((c, i) => c !== " " && drawn[i] === c).length;
   /** How many of the line's inked cells are drawn blank. */
@@ -172,7 +172,7 @@ describe("a lifecycle through glyph transitions", () => {
     const life = typed();
     expect(shown(life, 1)).toBe("");
     expect(shown(life, 2)).toBe("a line append");
-    for (const t of [3, 4.9, 5]) expect(bytes(draw(frameAt(life, t)))).toBe(bytes(draw(line)));
+    for (const t of [3, 4.9, 5]) expect(bytes(draw(inFrame(life, t)))).toBe(bytes(draw(line)));
     // Leaving only ever takes the text away: its glyphs churn and then blank, never come back, all blank by the end.
     const leaving = [5.25, 5.5, 6, 6.5, 6.99].map((t) => shown(life, t));
     for (let i = 1; i < leaving.length; i++) {
@@ -207,7 +207,7 @@ describe("a lifecycle through glyph transitions", () => {
   it("types itself in with no colour output too, since a glyph is written at every depth", () => {
     const life = typed();
     expect(shown(life, 2, PLAIN)).toBe("a line append");
-    expect(Segment.nextChange(draw(frameAt(life, 2), PLAIN))).toBe(2);
+    expect(Segment.nextChange(draw(inFrame(life, 2), PLAIN))).toBe(2);
   });
 
   it("can type itself in and dissolve out: the exit's colours veil the glyphs the arrival left", () => {
@@ -216,9 +216,9 @@ describe("a lifecycle through glyph transitions", () => {
     // Told to leave mid-type, it goes on typing under the dissolve: the exit veils whatever the arrival draws.
     const early = lifecycle(line, { enter: throughGlyphs(typewriter(timing)), exit: throughColors(dissolveOut(curve, 0), theme), key: "line" }, 1).leave(2);
     expect(shown(early, 2.5)).toBe("a line appended to");
-    expect(bytes(draw(frameAt(early, 2.5)))).not.toBe(bytes(draw(frameAt(typed(), 2.5))));
+    expect(bytes(draw(inFrame(early, 2.5)))).not.toBe(bytes(draw(inFrame(typed(), 2.5))));
     expect(shown(life, 6)).toBe(line.plain);
-    expect(bytes(draw(frameAt(life, 6)))).not.toBe(bytes(draw(line)));
+    expect(bytes(draw(inFrame(life, 6)))).not.toBe(bytes(draw(line)));
     expect(life.gone(7)).toBe(true);
   });
 

@@ -10,7 +10,6 @@ import {
   DEFAULT_TERMINAL_THEME,
   Effected,
   FrameSequence,
-  Frames,
   Oklch,
   RichText,
   Style,
@@ -26,6 +25,7 @@ import {
   type Segment,
   type TerminalTheme,
 } from "../../src/index.js";
+import { inFrame } from "./in-frame.js";
 
 // [LAW:behavior-not-structure] What is asserted is what a terminal is sent:
 // which colour each cell's ink is written in, at which handed time, and how
@@ -135,10 +135,10 @@ describe("steppedInk — each step's ink reads on its ground, as drawn, at every
     slots.forEach((slot, i) => expect(apart(hue(slot), hue(BRIGHT[i]!))).toBeLessThan(30));
   });
 
-  it("composes with Frames by nesting: the glyphs turn and the ink steps, and no glyph changes", () => {
+  it("composes with a frame sequence by nesting: the glyphs turn and the ink steps, and no glyph changes", () => {
     const sequence = new FrameSequence(["›", "››", "›››"].map((glyphs) => ({ text: new RichText(glyphs, { style: Style.parse("bold on #1e1e2e") }), seconds: 1 })));
     for (const [t, glyphs] of [[0, "›"], [1, "››"], [2.5, "›››"], [3, "›"]] as const) {
-      const segments = lit(new Frames(sequence, { t }), t, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA);
+      const segments = render(inFrame(new Effected(sequence, signal, { key: "k", theme: CATPPUCCIN_MOCHA }), t), ColorDepth.TRUECOLOR);
       expect(segments.map((s) => s.text).join("").trimEnd()).toBe(glyphs);
       expect(pairOf(segments, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA).fg.hex).toBe(BRIGHT[Math.floor(t) % 3]!.hex);
     }

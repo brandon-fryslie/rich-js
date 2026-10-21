@@ -6,8 +6,9 @@
  * window moved three ways. The marquee's offset is a looping phase across the
  * line and the slot, so the line enters from the right and leaves on the
  * left; the log's is a phase stepping down its rows; the panel's is a tween
- * from outside the slot to 0, so it arrives and holds. Each is drawn through
- * `frameAt`, which stamps its cells with when it next changes.
+ * from outside the slot to 0, so it arrives and holds. Each is placed in the
+ * view as it stands, and draws at the frame's time, its cells saying when it
+ * next changes.
  */
 
 import {
@@ -20,10 +21,8 @@ import {
   beat,
   RichText,
   cellLen,
-  frameAt,
   scroll,
   tween,
-  type Renderable,
 } from "../../src/index.js";
 
 const WIDTH = 40;
@@ -48,11 +47,7 @@ const tail = scroll(new Group(...LOG), {
 const panel = new Panel(new RichText("slid in from the left, and holding", { style: "#a6e3a1" }), { width: WIDTH });
 const slide = scroll(panel, { width: WIDTH, height: 3, col: tween(WIDTH, 0, { seconds: 1.5, ease: EASES["ease-out"] }) });
 
-function view(t: number): Renderable {
-  return new Group(frameAt(marquee, t), new RichText(""), frameAt(tail, t), new RichText(""), frameAt(slide, t));
-}
-
-const live = new Live(view, { refreshPerSecond: 30 });
+const live = new Live(new Group(marquee, new RichText(""), tail, new RichText(""), slide), { refreshPerSecond: 30 });
 live.start();
 await new Promise((resolve) => setTimeout(resolve, 20_000));
 live.stop();

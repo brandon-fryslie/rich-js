@@ -11,7 +11,7 @@ import { Timeline } from "../../src/core/timeline.js";
 import { tween } from "../../src/core/tween.js";
 import { drawView, hostView } from "../../src/core/view.js";
 import { Constrain } from "../../src/renderables/constrain.js";
-import { frameAt } from "../../src/renderables/frames.js";
+import { inFrame } from "./in-frame.js";
 import { Group } from "../../src/renderables/group.js";
 import { Rule } from "../../src/renderables/rule.js";
 import { scroll } from "../../src/renderables/scroll.js";
@@ -140,7 +140,7 @@ describe("scroll", () => {
 
   it("keeps a frame's word on when it changes when the frame has no cells at the window's left edge or before it", () => {
     const nothing: Renderable & Measurable = { render: () => [], measure: () => ({ minimum: 0, maximum: 0 }) };
-    const entering = frameAt(Animation.of({ at: () => nothing, nextChange: () => 5, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(nothing) }), 0);
+    const entering = inFrame(Animation.of({ at: () => nothing, nextChange: () => 5, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(nothing) }), 0);
     const content = new Group(entering, new RichText("hello"), new RichText("world"), entering);
     expect(Segment.nextChange(draw(content))).toBe(5);
     for (const [col, row] of [[0, 0], [3, 0], [9, 0], [0, 2], [0, 3], [-9, 9]] as const) {
@@ -161,19 +161,19 @@ describe("scroll", () => {
     }
   });
 
-  it("drawn through frameAt, every cell carries when it next changes, and a frame of no cells still does", () => {
+  it("drawn in a frame, every cell carries when it next changes, and a frame of no cells still does", () => {
     const marquee = scroll(LINE, { width: 6, height: 2, col: Animation.continuous((t) => t) });
-    const cells = draw(frameAt(marquee, 3)).filter((s) => !s.isControl && s.text !== "\n");
+    const cells = draw(inFrame(marquee, 3)).filter((s) => !s.isControl && s.text !== "\n");
     expect(cells.length).toBeGreaterThan(1);
     for (const segment of cells) expect(segment.style?.hold.nextChange).toBe(3);
     const empty = Animation.map(Animation.continuous((t) => t), (): Renderable => ({ render: () => [] }));
-    expect(Segment.nextChange(draw(frameAt(empty, 2)))).toBe(2);
+    expect(Segment.nextChange(draw(inFrame(empty, 2)))).toBe(2);
   });
 
-  describe("drawn inside a function view through frameAt, on a nested timeline", () => {
+  describe("placed in a function view, on a nested timeline", () => {
     const host = Timeline.play(0);
     const drawn = (timeline: Timeline, animation: Animation<Renderable>, t: number) =>
-      drawView(hostView((time: number) => new Group(frameAt(Timeline.run(timeline, animation), time))), { now: t, epoch: 0, timeline: host }, { frameTime: t }, OPTIONS, (r) => Segment.splitLines(draw(r)));
+      drawView(hostView(() => new Group(Timeline.run(timeline, animation))), { now: t, epoch: 0, timeline: host }, { frameTime: t }, OPTIONS, (r, options) => Segment.splitLines(draw(r, options)));
     const slide = scroll(LINE, { width: 6, height: 1, col: tween(-6, 0, { seconds: 2, ease: EASES.linear }) });
 
     it("at twice the speed, a slide-in says it moves until the host moment it arrives, and never after", () => {

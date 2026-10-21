@@ -131,8 +131,8 @@ The loops are ambience, and nothing in them jumps. `steppedInk` is a signal, and
 
 The ground stays as the cell draws it, and the words stay readable on it. Each step's ink is written as the colour nearest the step's that the output's depth can draw and that reads on the cell's ground at the floor every loop here keeps: the cell's resting contrast, or WCAG AA if it rested above that, measured on the colours the terminal is sent. In truecolor that is the step itself, or its hue at the lightness nearest it that clears the floor. Below truecolor it is the nearest colour the depth has an index for, so on a sixteen-colour terminal the ink steps from slot to slot, where the loops hold still. The search runs once for each ink, ground and step, so every frame inside a step costs what any frame does, and the frame says it [next changes](/frames#when-the-frame-next-changes) when the step ends.
 
-```typescript
-import { CATPPUCCIN_MOCHA, ColorRgba, Effected, FrameSequence, Frames, RichText, Style, steppedInk } from "@promptctl/rich-js";
+```typescript live
+import { CATPPUCCIN_MOCHA, ColorRgba, Effected, FrameSequence, Live, RichText, Style, steppedInk } from "@promptctl/rich-js";
 
 const theme = CATPPUCCIN_MOCHA;
 const chevrons = new FrameSequence(["›", "››", "›››"].map((glyphs) => ({ text: new RichText(glyphs, { style: Style.parse("bold on #313244") }), seconds: 1 })));
@@ -142,8 +142,12 @@ const signal = steppedInk([
   { color: new ColorRgba(80, 250, 123), seconds: 1 },
 ]);
 
-for (const t of [0, 1, 2, 3]) {
-  console.print(new Effected(new Frames(chevrons, { t }), signal, { key: "effort", theme }).at(t));
+const live = new Live(new Effected(chevrons, signal, { key: "effort", theme }), { console });
+live.start();
+try {
+  await new Promise((resolve) => setTimeout(resolve, 6000));
+} finally {
+  live.stop();
 }
 ```
 

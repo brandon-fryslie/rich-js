@@ -5,7 +5,7 @@ import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
 import { Style } from "../../src/core/style.js";
 import type { Renderable } from "../../src/core/protocol.js";
-import { FrameSequence, Frames } from "../../src/renderables/frames.js";
+import { FrameSequence } from "../../src/renderables/frames.js";
 import { Live, type LiveOptions } from "../../src/renderables/live.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Progress } from "../../src/renderables/progress.js";
@@ -455,9 +455,8 @@ describe("Live refresh rate", () => {
     const drawn: { t: number; frame: string }[] = [];
     const display = new Live(
       (t) => {
-        const frame = new Frames(seq, { t });
         drawn.push({ t, frame: seq.at(t).plain });
-        return frame;
+        return seq;
       },
       { console: target, clock, refreshPerSecond: 4 },
     );

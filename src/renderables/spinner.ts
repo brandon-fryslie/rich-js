@@ -8,7 +8,7 @@
  * the interval; the beat, the width every frame draws at and which frame `t`
  * lands on are the frames primitive's, so a spinner is one more sequence on
  * it and not a second way of turning frames. Custom frames are a `FrameSequence`
- * drawn through `Frames` directly. [LAW:one-source-of-truth]
+ * placed directly. [LAW:one-source-of-truth]
  *
  * It is built once and asked for each frame, as Rich's `Spinner` is built
  * once and has `render(time)` called on it: the name is parsed and the
@@ -19,12 +19,11 @@
  * the beat, the width, each frame padded to it — is made there too, so a
  * drawn frame costs only finding which one `t` lands on.
  *
- * [LAW:no-ambient-temporal-coupling] A Spinner draws nothing on its own:
- * only `at(t)` is a renderable, so a spinner cannot be drawn without being
- * handed its time, and nothing here reads a clock. Whoever draws frames
- * hands each one its time (`core/clock.ts`) — `SpinnerColumn` the task's
- * `time`, a `Live` the frame's time on its clock — as Rich's `Spinner.render`
- * is handed `console.get_time()` or `task.get_time()`. `t` is the clock's
+ * [LAW:no-ambient-temporal-coupling] Placed, a spinner draws at the time of
+ * the frame it is drawn in, and nothing here reads a clock. Whoever draws
+ * frames hands each one its time (`core/clock.ts`) — a `Progress` the
+ * moment its tasks are drawn at, a `Live` the frame's time on its clock — as
+ * Rich's `Spinner.render` is handed `console.get_time()` or `task.get_time()`. `t` is the clock's
  * time, as `App` and `Task.time` hand it, where Rich's spinner counts from
  * its first draw: here nothing is kept between frames, so the same `t` draws
  * the same bytes at one redraw a second or sixty, two spinners on one clock
@@ -39,7 +38,7 @@
  * timeline, and the sequence answers on its own, so the timeline carries the
  * answer back. `at` hands over the frame alone, as every animation's does;
  * placed, a spinner draws at the frame's time and stamps its cells with that
- * answer for the frames the output draws (`drawnAt`). Backwards, the frames count down from the last at `t = 0`,
+ * answer for the frames the output draws. Backwards, the frames count down from the last at `t = 0`,
  * a negative time landing in the last frame of the pass before, where Rich's
  * `int()` truncation holds frame 0 for a first interval and then counts
  * down: a departure, made so a negative speed is the one timeline run
@@ -116,6 +115,13 @@ export class Spinner implements Animation<Renderable & Measurable> {
   // on an ASCII-only output: prepared once, which is drawn chosen at `at`.
   private readonly _named: Sequence;
   private readonly _ascii: Sequence;
+  /**
+   * The spinner drawn at the frame's time, its cells saying the hold it is in
+   * on the host's clock (`stampFrame`) — exactly, for the frames the output
+   * draws, where `nextChange` must answer for both. Under reduced motion it
+   * is the spinner reduced, which never turns (`shownAt`).
+   */
+  private readonly _placed: Renderable & Measurable;
 
   constructor(name?: string, text: string | RichText = "", options?: SpinnerOptions) {
     const spinnerName = name ?? DEFAULT_SPINNER;
@@ -134,6 +140,11 @@ export class Spinner implements Animation<Renderable & Measurable> {
     this._data = data;
     this._named = sequence(data, this.style, timeline);
     this._ascii = sequence(LINE_SPINNER, this.style, timeline);
+    this._placed = this._frame((played, options) => {
+      const t = frameTimeOf(options);
+      const shown = shownAt(played, t, options);
+      return { value: shown.value, hold: holdOf(shown, t) };
+    });
   }
 
   get frames(): readonly string[] {
@@ -151,7 +162,7 @@ export class Spinner implements Animation<Renderable & Measurable> {
    * printed, stacked in a `Group`, or laid out in a `Progress` cell alike.
    * The frames this output can draw are chosen where the output is known.
    * The frame says nothing of when it turns — `t` may be a time a timeline
-   * mapped — so placed, the spinner itself stamps it (`drawnAt`).
+   * mapped — so placed, the spinner itself stamps it.
    */
   at(t: number): Renderable & Measurable {
     finiteTime("Spinner.at", t);
@@ -163,29 +174,12 @@ export class Spinner implements Animation<Renderable & Measurable> {
     return Animation.constant(this._frame((played) => ({ value: played.reduced().at(0) })));
   }
 
-  /**
-   * The spinner drawn at host time `t`, its cells saying the hold it is in on
-   * the host's clock (`stampFrame`) — exactly, for the frames the output
-   * draws, where `nextChange` must answer for both. Under reduced motion it
-   * is the spinner reduced, which never turns (`shownAt`). What it draws
-   * placed, at the frame's time, and what a host drawing a spinner for a
-   * time of its own — a `Status`, a `Progress` column — hands over.
-   */
-  drawnAt(t: number): Renderable & Measurable {
-    finiteTime("Spinner.drawnAt", t);
-    return this._frame((played, options) => {
-      const shown = shownAt(played, t, options);
-      return { value: shown.value, hold: holdOf(shown, t) };
-    });
-  }
-
-  /** Placed: drawn at the frame's time, exactly (`drawnAt`). */
   render(options: RenderOptions): Iterable<Segment> {
-    return render(this.drawnAt(frameTimeOf(options)), options);
+    return render(this._placed, options);
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return measure(this.drawnAt(frameTimeOf(options)), options);
+    return measure(this._placed, options);
   }
 
   /** The frame `choose` picks from the frames the output can draw, and the label, saying the hold it is in if `choose` says. */
@@ -240,7 +234,7 @@ export class Spinner implements Animation<Renderable & Measurable> {
    * falsy there.
    */
   private _line(frame: RichText, options: RenderOptions): RichText {
-    // The frame alone, saying nothing of when it turns: `drawnAt` stamps it, for a spinner drawn at a host time.
+    // The frame alone, saying nothing of when it turns: placed, the spinner stamps it.
     const line = new RichText("", { end: "" }).append(frame);
     // Unhighlighted: Rich's label is a `Text` from the moment it is handed over, and a `Text` is never highlighted.
     const label = new EmbeddedText(this.text).text({ ...options, highlight: false });

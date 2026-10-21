@@ -14,7 +14,6 @@ import {
   beat,
   dissolveOut,
   fadeIn,
-  frameAt,
   lifecycle,
   throughColors,
   onBeat,
@@ -24,6 +23,7 @@ import {
   type Renderable,
   type RenderOptions,
 } from "../../src/index.js";
+import { inFrame } from "../renderables/in-frame.js";
 import { nextDown } from "./next-down.js";
 
 // [LAW:behavior-not-structure] What is asserted is what a host sees of a
@@ -147,10 +147,10 @@ describe("a stagger over any container, by composition", () => {
     it(`${name}: the drawn frame says when it changes as the stagger does, the same bytes at one sample a second and sixty`, () => {
       const shown = (steps?: number) => Animation.map(Timeline.stagger(rows(1, steps), 0.6), laidOut);
       for (const steps of [undefined, 0.25]) {
-        const slow = new Map(sampled(1, 0, 3).map((t) => [t, bytes(frameAt(shown(steps), t))]));
+        const slow = new Map(sampled(1, 0, 3).map((t) => [t, bytes(inFrame(shown(steps), t))]));
         const fast = shown(steps);
         for (const t of sampled(60, 0, 3)) {
-          const frame = frameAt(fast, t);
+          const frame = inFrame(fast, t);
           expect(Segment.nextChange(draw(frame))).toBe(fast.nextChange(t));
           if (slow.has(t)) expect(bytes(frame)).toBe(slow.get(t));
         }

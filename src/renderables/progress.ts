@@ -18,7 +18,6 @@ import { Animation } from "../core/animation.js";
 import type { Timing } from "../core/easing.js";
 import { Timeline } from "../core/timeline.js";
 import { tween } from "../core/tween.js";
-import { frameAt } from "./frames.js";
 import { ListState, State } from "../core/state.js";
 
 // --- Task ---
@@ -232,11 +231,10 @@ export class BarColumn implements ProgressColumn {
   render(task: Task): Renderable {
     const total = task.total ?? 100;
     if (task.startTime === undefined || task.total === undefined) {
-      return new ProgressBar({ total, completed: task.completed, width: this.barWidth, pulse: { t: task.time } });
+      return new ProgressBar({ total, completed: task.completed, width: this.barWidth, pulse: true });
     }
     const done = task.completed >= total;
-    const bars = Animation.map(task.fill, (completed) => new ProgressBar({ total, completed, width: this.barWidth, finished: done }));
-    return frameAt(bars, task.time);
+    return Animation.map(task.fill, (completed) => new ProgressBar({ total, completed, width: this.barWidth, finished: done }));
   }
 }
 
@@ -350,10 +348,10 @@ export class SpinnerColumn implements ProgressColumn {
     this._finishedText = typeof finishedText === "string" ? readStr(finishedText, true) : finishedText.copy();
   }
 
-  // Rich's `self.spinner.render(task.get_time())`: the frame for the time the
-  // task is drawn at, which `Progress` read off its clock once for the frame.
+  // Rich's `self.spinner.render(task.get_time())`: placed, the spinner draws
+  // at the frame's time, which is the time the task is drawn at.
   render(task: Task): Renderable {
-    return finished(task) ? this._finishedText : this._spinner.drawnAt(task.time);
+    return finished(task) ? this._finishedText : this._spinner;
   }
 }
 
@@ -621,7 +619,8 @@ export class Progress implements Renderable {
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield* render(this._drawn(options), options);
+    const framed = this._framed(options);
+    yield* render(this._table(framed.frame.time), framed);
   }
 
   // Inside a frame, the time its host read for it: a second read here would
@@ -629,14 +628,15 @@ export class Progress implements Renderable {
   // for one still to come. A frame is only ever this display's host's,
   // because the tasks were stamped on that host's time and a frame of any
   // other is drawn for a moment on a different clock. A print is drawn for no
-  // moment, so it is drawn for the one the program asks at, read as
-  // `updateTask` reads it.
-  private _drawn(options: RenderOptions): Table {
+  // moment, so it is drawn in a frame for the one the program asks at, read
+  // as `updateTask` reads it, and every bar and spinner placed in the table
+  // draws at that moment too. [LAW:one-source-of-truth]
+  private _framed(options: RenderOptions): RenderOptions & { frame: NonNullable<RenderOptions["frame"]> } {
     const { frame } = options;
     if (frame !== undefined && frame.host !== this._host) {
       throw new Error("a Progress was drawn in a frame of a host other than its own; give it that host as `drawnBy`");
     }
-    return this._table(frame?.time ?? this._host.frameTime);
+    return { ...options, frame: frame ?? { time: this._host.frameTime, host: this._host } };
   }
 
   // Rich's `make_tasks_table`: each column laid out as it says, at `now` on

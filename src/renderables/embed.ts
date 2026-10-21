@@ -148,7 +148,7 @@ export class InlineLabel {
  * measures it, so a cut to a border and the width a label asks for count
  * the cells it will draw. [LAW:single-enforcer] The one reading of "set into
  * a line", for a label read through the crossing above and for text a
- * caller hands over already read (`Frames`).
+ * caller hands over already read (`FrameSequence`).
  */
 export function setIntoLine(text: RichText): RichText {
   text.end = "";

@@ -16,7 +16,7 @@ import { Reglyphed, reglyphText } from "../../src/renderables/glyph-effect.js";
 import { GLYPH_EFFECT_CATALOGUE } from "../../src/renderables/glyph-effects.js";
 
 // [LAW:behavior-not-structure] The binding's contract: a template evaluated
-// at a time draws the bytes `Frames` draws for that time, and the time is
+// at a time draws the bytes a `FrameSequence` shows at that time, and the time is
 // the host's capability, read when the template is evaluated.
 
 const CHEVRONS = ["\u{F0143}", "\u{F013F}", "\u{F0DBC}"];
@@ -35,7 +35,7 @@ const TEMPLATE = `{{ frames 1 (fg "red" "${CHEVRONS[0]}") 1 (fg "green" "${CHEVR
 const chevrons: Frame[] = CHEVRONS.map((glyph, i) => ({ text: new RichText(glyph, { style: new Style({ color: COLORS[i]! }) }), seconds: 1 }));
 
 describe("frames in a template", () => {
-  it("draws the same bytes Frames draws for the same times", () => {
+  it("draws the same bytes a FrameSequence shows at the same times", () => {
     const clock = { t: 0 };
     const compiled = engineAt(clock).compile(TEMPLATE);
     for (const t of [0, 1.5, 2.2, 3.0, 1e6 + 0.5]) {

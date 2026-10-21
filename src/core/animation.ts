@@ -116,8 +116,8 @@ export interface Shown<T> {
  * What a frame drawn at `t` shows of `animation` under `motion`, and when
  * that changes: the animation's, or under reduced motion its reduced form's
  * (`reduced`). [LAW:single-enforcer] The one place the preference is read:
- * every placed animation (`placedRender`), every effect, a spinner, a
- * `Frames` and the template functions choose here, so a host told once
+ * every placed animation (`placedRender`), every effect, a spinner and
+ * the template functions choose here, so a host told once
  * reduces every one.
  */
 export function shownAt<T>(animation: Timed<T>, t: number, motion: Motion): Shown<T> {

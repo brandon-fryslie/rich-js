@@ -17,7 +17,7 @@ import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
 import { crossfade } from "../../src/renderables/change.js";
 import { Effected } from "../../src/renderables/effect.js";
 import { dissolveOut, fadeIn, onColors, pulse } from "../../src/renderables/effects.js";
-import { Frames, FrameSequence, frameAt } from "../../src/renderables/frames.js";
+import { FrameSequence } from "../../src/renderables/frames.js";
 import { GlyphEffected } from "../../src/renderables/glyph-effect.js";
 import { caseWave, particles, typewriter } from "../../src/renderables/glyph-effects.js";
 import { Group } from "../../src/renderables/group.js";
@@ -31,6 +31,7 @@ import { createEngine } from "@promptctl/go-template-js";
 import { renderToString } from "../../src/core/render.js";
 import { fakeClock } from "./fake-clock.js";
 import { scriptedHost } from "../host/scripted-host.js";
+import { inFrame } from "../renderables/in-frame.js";
 
 // [LAW:behavior-not-structure] What is asserted is what a reader sees and
 // what a host does: the bytes drawn, and whether it is told to look again.
@@ -157,9 +158,9 @@ function builtForTheTime(t: number): Renderable {
   return new Group(
     new Effected(new RichText("[#5080ff]pulsing[/]", { end: "" }), onColors(pulse({ seconds: 2, ease: EASES.sine, swing: 1 }, glow, 0)), { key: "p", theme }).at(t),
     new GlyphEffected(new RichText("typing out", { end: "" }), typewriter({ seconds: 2, ease: EASES.linear }).effect, { key: "g" }).at(t),
-    new Frames(frames("◐", "◓", "◑", "◒"), { t }),
-    new Spinner("dots", "working").drawnAt(t),
-    frameAt(lifecycle(new RichText("entering", { end: "" }), { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(dissolveOut(curve, 0), theme), key: "e" }, 0), t),
+    frames("◐", "◓", "◑", "◒"),
+    new Spinner("dots", "working"),
+    lifecycle(new RichText("entering", { end: "" }), { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(dissolveOut(curve, 0), theme), key: "e" }, 0),
   );
 }
 
@@ -206,12 +207,6 @@ describe("a host under reduced motion", () => {
     expect(text(drawnAt(elapsed, REDUCED, 3.5))).toBe("elapsed 3s");
   });
 
-  it("a text frame the program splices itself is its own sample, and tells the host when it really changes", () => {
-    // Not the host's time itself, which a host reads as moving every moment.
-    const spliced = (t: number): Renderable => frameAt(frames("a", "b"), t);
-    expect(drawnAt(spliced, REDUCED, 5).nextChange).toBe(5.25);
-  });
-
   it("a renderable drawn as it is reduces every animation drawn inside it for the host's time", () => {
     const view = builtForTheTime(1.3);
     const drawn = drawnAt(view, REDUCED, 1.3);
@@ -221,8 +216,8 @@ describe("a host under reduced motion", () => {
 
   it("a frame of no cells reduced says nothing, so a host holding it wakes for nothing", () => {
     const empty: Animation<Renderable> = Animation.of({ at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) });
-    expect(Segment.nextChange([...render(frameAt(empty, 0), REDUCED)])).toBe(Number.POSITIVE_INFINITY);
-    expect(Segment.nextChange([...render(frameAt(empty, 0), FULL)])).toBe(3);
+    expect(Segment.nextChange([...render(inFrame(empty, 0), REDUCED)])).toBe(Number.POSITIVE_INFINITY);
+    expect(Segment.nextChange([...render(inFrame(empty, 0), FULL)])).toBe(3);
   });
 
   it.each([1, 60])("an App told once paints an animation view reduced, once and arming nothing, or at its rate while animate()d, every frame the reduced one at %s fps", (perSecond) => {
@@ -261,7 +256,7 @@ describe("a host under reduced motion", () => {
   }
 
   it("a Live takes the preference from its console: a function view is still polled for its state, and shows only the reduced frame", () => {
-    const painted = liveFrames((t: number) => new Spinner("dots", "working").drawnAt(t));
+    const painted = liveFrames(() => new Spinner("dots", "working"));
     expect(painted.length).toBeGreaterThan(60);
     // Every frame but the last, which stop() ends by handing the cursor back, is one picture.
     expect(new Set(painted.slice(0, -1)).size).toBe(1);
@@ -277,7 +272,7 @@ describe("a host under reduced motion", () => {
 
 describe("a one-shot render under reduced motion", () => {
   it("draws a spinner's first frame at every moment", () => {
-    const at = (t: number, reducedMotion: boolean): string => renderToString(new Spinner("dots", "working").drawnAt(t), { width: 20, reducedMotion });
+    const at = (t: number, reducedMotion: boolean): string => renderToString(inFrame(new Spinner("dots", "working"), t), { width: 20, reducedMotion });
     expect(new Set(SAMPLES.map((t) => at(t, true))).size).toBe(1);
     expect(new Set(SAMPLES.map((t) => at(t, false))).size).toBeGreaterThan(1);
   });

@@ -13,12 +13,12 @@ import {
 } from "../../src/renderables/progress.js";
 import { Console } from "../../src/core/console.js";
 import { Animation } from "../../src/core/animation.js";
-import { EASES } from "../../src/core/easing.js";
+import { EASES, beat } from "../../src/core/easing.js";
 import { tween } from "../../src/core/tween.js";
 import { Theme } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
-import type { FrameHost, RenderOptions } from "../../src/core/protocol.js";
+import { render, type FrameHost, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { Timeline } from "../../src/core/timeline.js";
 import { App } from "../../src/host/app.js";
 import { Live } from "../../src/renderables/live.js";
@@ -29,6 +29,7 @@ import { renderToString, segmentsToString } from "../../src/core/render.js";
 import { fakeClock } from "../core/fake-clock.js";
 import { SPINNERS } from "../../src/core/spinnerData.js";
 import { ProgressBar } from "../../src/renderables/progressBar.js";
+import { inFrame } from "./in-frame.js";
 
 const OPTS: RenderOptions = {
   maxWidth: 80,
@@ -352,27 +353,18 @@ describe("BarColumn pulses (rich-effects-fxiy.3rg)", () => {
   // Python Rich 9d8f9a3: `BarColumn` pulses a task `not task.started`, and
   // `ProgressBar` one whose total is None, at the progress's `get_time()`.
   it("pulses a task not started or with no total, at the frame's moment on the progress's clock", () => {
-    const bars = new BarColumn(20);
-    // Each task's bar as drawn, beside the bar Rich draws for it with and without a pulse.
-    const pulses: ({ readonly t: number } | undefined)[] = [];
-    const recorder: ProgressColumn = {
-      tableColumn: {},
-      render: (task) => {
-        const drawn = renderToString(bars.render(task), { width: 20 });
-        const as = (pulse: { readonly t: number } | undefined): string =>
-          renderToString(new ProgressBar({ total: task.total ?? 100, completed: task.completed, width: 20, pulse }), { width: 20 });
-        pulses.push(drawn === as(undefined) ? undefined : drawn === as({ t: task.time }) ? { t: task.time } : { t: NaN });
-        return new RichText("");
-      },
-    };
     const clock = fakeClock();
-    const progress = new Progress(recorder, { console: new Console({ file: { write: () => {} } }), clock });
+    const progress = new Progress(new BarColumn(20), { console: new Console({ file: { write: () => {} } }), clock });
     progress.addTask("running", { total: 10 });
     progress.addTask("queued", { total: 10, start: false });
     progress.addTask("open-ended");
     clock.advance(7.5);
-    [...progress.render(OPTS)];
-    expect(pulses).toEqual([undefined, { t: 7.5 }, { t: 7.5 }]);
+    // The bar Rich draws for each task, drawn in a frame for `t`.
+    const bar = (total: number, pulse: boolean, t: number): string =>
+      renderToString(inFrame(new ProgressBar({ total, completed: 0, width: 20, pulse }), t), { width: 20 }).trimEnd();
+    // Printed, the progress draws its bars at 7.5s on its own clock: a pulse there is not the pulse at 0.
+    expect(bar(10, true, 7.5)).not.toBe(bar(10, true, 0));
+    expect(renderToString(progress, { width: 20 }).trimEnd().split("\n")).toEqual([bar(10, false, 7.5), bar(10, true, 7.5), bar(100, true, 7.5)]);
   });
 
   it("moves a task with no total along as the clock does", () => {
@@ -672,7 +664,7 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
     const clock = fakeClock(10);
     const progress = new Progress(new BarColumn(10), { console: quiet(), clock, fill: linear });
     progress.addTask("open-ended");
-    const pulse = new ProgressBar({ total: 100, width: 10, pulse: { t: 0 } });
+    const pulse = inFrame(new ProgressBar({ total: 100, width: 10, pulse: true }), 0);
     expect(renderToString(progress, { width: 10 }).trimEnd()).toBe(renderToString(pulse, { width: 10 }).trimEnd());
     const truecolor = { ...OPTS, maxWidth: 10, colorSystem: ColorDepth.TRUECOLOR };
     expect(Segment.nextChange([...progress.render(truecolor)])).toBe(Segment.nextChange([...pulse.render(truecolor)]));
@@ -803,6 +795,23 @@ describe("a Progress is timed on the host that draws it (rich-animation-42lg.1t6
     const first = elapsedOf(progress, { ...OPTS, frame });
     host.time = 50;
     expect(elapsedOf(progress, { ...OPTS, frame })).toBe(first);
+  });
+
+  // Inside a frame of its own host, the frame it draws its table in is the one it was handed, so the
+  // held walk, which hands its contents that frame too, reports what a drawn frame would.
+  it("in a frame of its own host, holds what it would draw", () => {
+    const host = settable(0);
+    const [a, b] = [new RichText("a"), new RichText("b")];
+    const progress = new Progress({ tableColumn: {}, render: () => Animation.map(beat([1, 1]), (i) => (i === 0 ? a : b)) }, { drawnBy: host });
+    progress.addTask("job");
+    const heard = (maxWidth: number): Renderable[] => {
+      const out: Renderable[] = [];
+      [...render(progress, { ...OPTS, maxWidth, frame: { time: 1.5, host }, onPresent: (r) => out.push(r) })];
+      return out;
+    };
+    expect(heard(40)).toContain(b);
+    expect(heard(0)).toContain(b);
+    expect(heard(0)).not.toContain(a);
   });
 
   it("printed, shows the time elapsed as it prints", () => {

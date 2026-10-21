@@ -7,11 +7,11 @@
  * through `Animation.repeat`, so it is moving wherever the timeline is
  * scrubbed to, and runs backwards when the timeline does.
  *
- * [LAW:one-type-per-behavior] A kind is a name and the titled panel it draws
- * at a time on the playground's timeline, so the view is one map over the
- * rows. Each panel draws through something that stamps its cells with when it
- * next changes — `frameAt` of an animation, an `Effected`, a `GlyphEffected` —
- * so the app wakes when a kind moves and sleeps while every kind holds.
+ * [LAW:one-type-per-behavior] A kind is a name and the titled panel it is
+ * shown in, its animation placed inside, so the view is one map over the
+ * rows. A placed animation draws at the frame's time and stamps its cells
+ * with when it next changes, so the app wakes when a kind moves and sleeps
+ * while every kind holds.
  */
 import {
   Animation,
@@ -39,7 +39,6 @@ import {
   cellLen,
   crossfade,
   fadeIn,
-  frameAt,
   gradient,
   lifecycle,
   particles,
@@ -58,10 +57,10 @@ import {
   type Renderable,
 } from "@promptctl/rich-js";
 
-/** One kind of motion: what it is called, and the titled panel it draws at time `t` on the playground's timeline. */
+/** One kind of motion: what it is called, and the titled panel it is shown in. */
 export interface Kind {
   readonly name: string;
-  readonly draw: (t: number) => Renderable;
+  readonly view: Renderable;
 }
 
 const THEME = CATPPUCCIN_MOCHA;
@@ -77,32 +76,14 @@ const panel =
   (content: Renderable): Panel =>
     new Panel(content, { title: name, titleStyle: MUTED, borderStyle: BORDER, width: SLOT + 4 });
 
-/**
- * A kind drawn from an animation of its content. The panel is put on inside
- * the animation, so the frame `frameAt` stamps is never a bare `RichText` —
- * a text frame is the program's own sample and would move under reduced
- * motion, where any other renderable is drawn reduced.
- */
-function animated(name: string, frames: Animation<Renderable>): Kind {
-  const framed = Animation.map(frames, panel(name));
-  return { name, draw: (t) => frameAt(framed, t) };
+/** A kind whose animation is placed in its panel. */
+function placed(name: string, moving: Animation<Renderable>): Kind {
+  return { name, view: panel(name)(moving) };
 }
 
-/**
- * A kind drawn by an effect at the time it is asked for (`frameAt`), set in
- * its panel. It takes the effect already made, not a way to make one per
- * frame: what an effect settles of a frame — a ramp's legible inks on each
- * ground — it keeps for the next, so a frame drawing what an earlier one
- * drew redoes no search.
- */
-function effected(name: string, moving: Animation<Renderable>): Kind {
-  return { name, draw: (t) => panel(name)(frameAt(moving, t)) };
-}
-
-/** A kind whose effect is put on around its panel, so it is the panel's border that moves; made once, as `effected`'s is. */
+/** A kind whose effect is put on around its panel, so it is the panel's border that moves. */
 function aroundPanel(name: string, content: Renderable, effect: (framed: Panel) => Animation<Renderable>): Kind {
-  const moving = effect(panel(name)(content));
-  return { name, draw: (t) => frameAt(moving, t) };
+  return { name, view: effect(panel(name)(content)) };
 }
 
 /** The `n`th of `values`, wrapping both ways, so a turn before 0 — reversed past the start — has one too. */
@@ -314,26 +295,26 @@ const edges = Animation.map(Animation.all([nobody, narrow, sameFade, early]), (c
  * it as itself.
  */
 export const KINDS: readonly Kind[] = [
-  animated("tween · a counter", Animation.map(counting, (v) => new RichText(`${Math.round(v).toLocaleString("en-US").padStart(6)} files`, { style: "bold #f9e2af" }))),
-  animated("tween · ProgressBar", Animation.map(filling, (v) => new ProgressBar({ total: 1204, completed: v, width: SLOT }))),
-  animated("tween · a colour", Animation.map(fading, (v) => new RichText(`██████  ${fadeRamp.at(v).hex}`, { style: fadeRamp.at(v).hex }))),
-  effected("moving ramp · Rule", new Effected(new Rule("scrolls and turns", { style: BORDER }), gradient(flowing, [BORDER]), { key: "rule", theme: THEME })),
+  placed("tween · a counter", Animation.map(counting, (v) => new RichText(`${Math.round(v).toLocaleString("en-US").padStart(6)} files`, { style: "bold #f9e2af" }))),
+  placed("tween · ProgressBar", Animation.map(filling, (v) => new ProgressBar({ total: 1204, completed: v, width: SLOT }))),
+  placed("tween · a colour", Animation.map(fading, (v) => new RichText(`██████  ${fadeRamp.at(v).hex}`, { style: fadeRamp.at(v).hex }))),
+  placed("moving ramp · Rule", new Effected(new Rule("scrolls and turns", { style: BORDER }), gradient(flowing, [BORDER]), { key: "rule", theme: THEME })),
   aroundPanel("moving ramp · border", new RichText("the border is the ramp", { style: TEXT }), (framed) => new Effected(framed, gradient(flowing, [BORDER]), { key: "border", theme: THEME })),
   aroundPanel("marching border", new RichText("the ants march round", { style: TEXT }), (framed) => new GlyphEffected(framed, march, { key: "march" })),
-  animated("typewriter", Animation.map(typing, prompted)),
-  animated("scramble", Animation.map(scrambling, prompted)),
-  effected("case wave", new GlyphEffected(WAVED, caseWave({ step: 0.12, width: 3 }, 0), { key: "wave" })),
-  effected("rain on a blank panel", new GlyphEffected(new RichText(" ".repeat(SLOT)), particles(GLYPH_DEFAULTS.rain, 1), { key: "rain" })),
-  effected("blink", new Effected(new RichText("● recording", { style: "#f38ba8" }), blink(ATTRIBUTE_DEFAULTS.blink), { key: "blink", theme: THEME })),
-  effected("bold pulse", new Effected(new RichText("♥ a bold heartbeat", { style: "#f38ba8" }), blink(ATTRIBUTE_DEFAULTS.boldPulse), { key: "pulse", theme: THEME })),
-  animated("crossfade", crossfading),
-  animated("wipe", wiping),
-  animated("marquee", marquee),
-  animated("slide-in", sliding),
-  animated("list · enter and leave", logging),
-  animated("stagger · Tree", treeing),
-  animated("stagger · Table", tabling),
-  animated("empty cases", edges),
+  placed("typewriter", Animation.map(typing, prompted)),
+  placed("scramble", Animation.map(scrambling, prompted)),
+  placed("case wave", new GlyphEffected(WAVED, caseWave({ step: 0.12, width: 3 }, 0), { key: "wave" })),
+  placed("rain on a blank panel", new GlyphEffected(new RichText(" ".repeat(SLOT)), particles(GLYPH_DEFAULTS.rain, 1), { key: "rain" })),
+  placed("blink", new Effected(new RichText("● recording", { style: "#f38ba8" }), blink(ATTRIBUTE_DEFAULTS.blink), { key: "blink", theme: THEME })),
+  placed("bold pulse", new Effected(new RichText("♥ a bold heartbeat", { style: "#f38ba8" }), blink(ATTRIBUTE_DEFAULTS.boldPulse), { key: "pulse", theme: THEME })),
+  placed("crossfade", crossfading),
+  placed("wipe", wiping),
+  placed("marquee", marquee),
+  placed("slide-in", sliding),
+  placed("list · enter and leave", logging),
+  placed("stagger · Tree", treeing),
+  placed("stagger · Table", tabling),
+  placed("empty cases", edges),
 ];
 
 export { BORDER, MUTED, SLOT, TEXT, THEME, panel };

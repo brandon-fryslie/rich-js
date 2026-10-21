@@ -178,7 +178,7 @@ describe("Effected — segments are cut only where colours change", () => {
     const repeated = /\x1b\[([\d;]+)m[^\x1b]*\x1b\[0m\x1b\[\1m/;
     for (const colorSystem of ["256", "ansi"] as const) {
       for (const t of [0, 1.5, 3, 7.25]) {
-        const drawn = renderToString(new ProgressBar({ width: 40, pulse: { t } }), { width: 80, colorSystem });
+        const drawn = renderToString(inFrame(new ProgressBar({ width: 40, pulse: true }), t), { width: 80, colorSystem });
         expect(drawn).not.toMatch(repeated);
       }
     }

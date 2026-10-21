@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { ProgressBar } from "../../src/renderables/progressBar.js";
+import { ProgressBar, type ProgressBarOptions } from "../../src/renderables/progressBar.js";
+import { inFrame } from "./in-frame.js";
 import { Segment } from "../../src/core/segment.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import { getStyle } from "../../src/core/protocol.js";
@@ -167,9 +168,11 @@ describe("ProgressBar", () => {
 
   describe("pulse", () => {
     const TRUECOLOR: RenderOptions = { maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR };
-    /** The columns drawn in a colour other than the empty bar's. */
-    const lit = (bar: ProgressBar, opts: RenderOptions): number[] => {
-      const back = getStyle(opts, bar.style).color?.name;
+    /** A pulsing bar 40 cells wide, drawn in a frame for `t`. */
+    const pulsing = (t: number, options: Omit<ProgressBarOptions, "pulse"> = {}): Renderable => inFrame(new ProgressBar({ width: 40, ...options, pulse: true }), t);
+    /** The columns of a bar whose back is `style` drawn in a colour other than the empty bar's. */
+    const lit = (bar: Renderable, opts: RenderOptions, style = "bar.back"): number[] => {
+      const back = getStyle(opts, style).color?.name;
       const cols: number[] = [];
       let col = 0;
       for (const s of collectSegments(bar, opts)) {
@@ -180,7 +183,7 @@ describe("ProgressBar", () => {
     const centre = (cols: number[]): number => cols.reduce((a, b) => a + b, 0) / cols.length;
 
     it("carries its band along the bar as t moves on", () => {
-      const at = (t: number) => lit(new ProgressBar({ width: 40, pulse: { t } }), TRUECOLOR);
+      const at = (t: number) => lit(pulsing(t), TRUECOLOR);
       const early = at(2.5);
       const later = at(4.5);
       expect(early.length).toBeGreaterThan(0);
@@ -189,27 +192,27 @@ describe("ProgressBar", () => {
     });
 
     it("draws the same bytes for the same t", () => {
-      const draw = () => collectSegments(new ProgressBar({ width: 40, pulse: { t: 3 } }), TRUECOLOR);
+      const draw = () => collectSegments(pulsing(3), TRUECOLOR);
       expect(draw()).toEqual(draw());
     });
 
     it("lights the line and never the ground, even a back the colour of the terminal's", () => {
-      const black = (t: number) => new ProgressBar({ width: 40, style: "#000000", pulse: { t } });
+      const black = (t: number) => pulsing(t, { style: "#000000" });
       const frames = Array.from({ length: 40 }, (_, i) => i * 0.5);
-      expect(frames.some((t) => lit(black(t), TRUECOLOR).length > 0)).toBe(true);
+      expect(frames.some((t) => lit(black(t), TRUECOLOR, "#000000").length > 0)).toBe(true);
       for (const t of frames) for (const s of collectSegments(black(t), TRUECOLOR)) expect(s.style?.bgcolor).toBeUndefined();
     });
 
     it("lights a reversed back, whose colour is the ground the screen shows", () => {
-      const reversed = (t: number) => new ProgressBar({ width: 40, style: "reverse #444444", pulse: { t } });
+      const reversed = (t: number) => pulsing(t, { style: "reverse #444444" });
       const frames = Array.from({ length: 40 }, (_, i) => i * 0.5);
-      expect(frames.some((t) => lit(reversed(t), TRUECOLOR).length > 0)).toBe(true);
+      expect(frames.some((t) => lit(reversed(t), TRUECOLOR, "reverse #444444").length > 0)).toBe(true);
       for (const t of frames) for (const s of collectSegments(reversed(t), TRUECOLOR)) expect(s.style?.bgcolor).toBeUndefined();
     });
 
     it.each(["bold", "reverse"])("pulses a back styled %s, which names no colour of its own, as Rich does", (style) => {
       const frames = Array.from({ length: 40 }, (_, i) => i * 0.5);
-      const segments = frames.flatMap((t) => collectSegments(new ProgressBar({ width: 40, style, pulse: { t } }), TRUECOLOR));
+      const segments = frames.flatMap((t) => collectSegments(pulsing(t, { style }), TRUECOLOR));
       expect(new Set(segments.map((s) => s.style?.color?.getTruecolor().hex)).size).toBeGreaterThan(1);
       for (const s of segments) expect(s.style?.bgcolor).toBeUndefined();
     });
@@ -217,7 +220,7 @@ describe("ProgressBar", () => {
     it("lights the track toward Rich's `bar.pulse`, rgb(249,38,114)", () => {
       const oklch = (color: ColorSpec) => Oklch.fromRgba(color.getTruecolor());
       const glows = Array.from({ length: 40 }, (_, i) => i * 0.5)
-        .flatMap((t) => collectSegments(new ProgressBar({ width: 40, pulse: { t } }), TRUECOLOR))
+        .flatMap((t) => collectSegments(pulsing(t), TRUECOLOR))
         .flatMap((s) => (s.style?.color ? [oklch(s.style.color)] : []));
       const brightest = glows.reduce((a, b) => (b.c > a.c ? b : a));
       expect(Math.abs(brightest.h - oklch(ColorSpec.parse("rgb(249,38,114)")).h)).toBeLessThan(15);
@@ -226,21 +229,21 @@ describe("ProgressBar", () => {
     it("lights the track in the 16-colour slot nearest the light, red", () => {
       const STANDARD: RenderOptions = { maxWidth: 80, colorSystem: ColorDepth.STANDARD };
       const names = Array.from({ length: 40 }, (_, i) => i * 0.5)
-        .flatMap((t) => collectSegments(new ProgressBar({ width: 40, pulse: { t } }), STANDARD))
+        .flatMap((t) => collectSegments(pulsing(t), STANDARD))
         .map((s) => s.style?.color?.name);
       expect(names).toContain("color(1)");
     });
 
     it("draws nothing on an output with no colour, where the back and its light cannot be drawn", () => {
       const NO_COLOR: RenderOptions = { maxWidth: 80, colorSystem: null };
-      for (const t of [0, 3, 30]) expect(collectSegments(new ProgressBar({ width: 40, completed: 70, pulse: { t } }), NO_COLOR)).toEqual([]);
+      for (const t of [0, 3, 30]) expect(collectSegments(pulsing(t, { completed: 70 }), NO_COLOR)).toEqual([]);
     });
 
     it("is the empty bar, whatever it has completed, before the first pass enters", () => {
-      const pulsing = new ProgressBar({ width: 40, completed: 70, pulse: { t: 0 } });
+      const first = pulsing(0, { completed: 70 });
       // The same bytes; what the pulsing bar adds is that it changes every frame (Style.nextChange), which writes none.
-      expect(renderToString(pulsing, { width: 40, colorSystem: ColorDepth.TRUECOLOR })).toBe(renderToString(new ProgressBar({ width: 40 }), { width: 40, colorSystem: ColorDepth.TRUECOLOR }));
-      expect(Segment.nextChange(pulsing.render(TRUECOLOR))).toBe(0);
+      expect(renderToString(first, { width: 40, colorSystem: ColorDepth.TRUECOLOR })).toBe(renderToString(new ProgressBar({ width: 40 }), { width: 40, colorSystem: ColorDepth.TRUECOLOR }));
+      expect(Segment.nextChange(first.render(TRUECOLOR))).toBe(0);
     });
   });
 
