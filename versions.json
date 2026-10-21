@@ -4,15 +4,22 @@
     {
       "version": "pr-505",
       "ref": "refs/pull/505/merge",
-      "sha": "10a773a3fae91700bddf3d23fd2b2912ae7882d2",
-      "timestamp": "2026-10-21T06:43:30.667Z",
+      "sha": "94feab0376d113dba659ff8fab97021d74472adf",
+      "timestamp": "2026-10-21T06:48:20.075Z",
       "commits": [
         {
-          "sha": "10a773a3fae91700bddf3d23fd2b2912ae7882d2",
+          "sha": "94feab0376d113dba659ff8fab97021d74472adf",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T00:41:31-06:00",
-          "message": "Merge 51ce13c8edfca39c6f8f1243fb9fddbf662297d5 into b5a15aea4b6266ef456ca6c5b40dc71dae635f5a\n"
+          "timestamp": "2026-10-21T06:46:09Z",
+          "message": "Merge 91c6ad6c1be1d98cb90c56f05156bb257fd613c6 into b5a15aea4b6266ef456ca6c5b40dc71dae635f5a\n"
+        },
+        {
+          "sha": "91c6ad6c1be1d98cb90c56f05156bb257fd613c6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T00:46:04-06:00",
+          "message": "A word motion walks the value once (rich-protocol-9xcs.5ar)\n\nWith no segmentation cache in cells.ts, TextInput's four word motions,\nstepping prevGrapheme/nextGrapheme a cluster at a time, went quadratic in\nthe word they cross. Each is now one walk (clustersFrom / clustersBefore)\nthrough wordSpan; a linear-time test per motion fails on the old loops.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "51ce13c8edfca39c6f8f1243fb9fddbf662297d5",
