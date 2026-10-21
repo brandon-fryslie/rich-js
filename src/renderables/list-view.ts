@@ -5,8 +5,8 @@
  * An item can wrap, so the lines the selected one covers exist only at the
  * width it is drawn at, which a render is handed and whoever builds the frame
  * is not. So the items are drawn here, at the viewport's content width and
- * with no height — the lines the viewport scrolls — and the viewport is handed
- * those lines and the selected item's range.
+ * with no height — the lines the viewport scrolls — and shown through the
+ * viewport with the selected item's range followed.
  * [LAW:single-enforcer] Where the window sits is the viewport's call; this
  * only says which lines the selection is.
  *

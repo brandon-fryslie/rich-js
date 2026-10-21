@@ -6,7 +6,6 @@ import { RichText } from "../../src/core/text.js";
 import { Style, Theme } from "../../src/core/style.js";
 import { cellLen } from "../../src/core/cells.js";
 import { measure, render, type Height, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
-import { RenderWriteError } from "../../src/core/state.js";
 
 // [LAW:behavior-not-structure] What a viewport shows, under the `Height`
 // contract in src/core/protocol.ts, and how its operations move it.
@@ -504,6 +503,51 @@ describe("a viewport keeps its scroll once the frame is drawn, never while", () 
     while (steps.next().done !== true);
     expect(viewport.offset).toBe(2);
     expect(shown(viewport)).toEqual(["5", "6", "7"]);
+  });
+
+  it("keeps what a drawn frame resolved when the same pass also holds it", () => {
+    const viewport = new Viewport(numbered(20), { rows: 3, scrollbar: SCROLLBAR });
+    viewport.scrollTo(10);
+    const frame: Renderable = {
+      *render(options) {
+        yield* render(viewport, options);
+        // One column is all the gutter: the content is held.
+        yield* render(viewport, { ...options, maxWidth: 1 });
+      },
+    };
+    [...render(frame, { maxWidth: 10 })];
+    expect(viewport.offset).toBe(10);
+  });
+
+  it("keeps a move queued after two draws of it in one pass resolved the same queue", () => {
+    const viewport = new Viewport(numbered(10), { rows: 3 });
+    viewport.scrollTo(2);
+    const frame: Renderable = {
+      *render(options) {
+        yield* render(viewport, options);
+        yield* render(viewport, options);
+      },
+    };
+    const steps = render(frame, { maxWidth: 10 })[Symbol.iterator]();
+    // Both draws have resolved the queue once each has drawn its last line, "4".
+    for (let fours = 0; fours < 2; ) if ((steps.next().value as Segment).text === "4") fours++;
+    viewport.scrollBy(3);
+    while (steps.next().done !== true);
+    expect(viewport.offset).toBe(2);
+    expect(shown(viewport)).toEqual(["5", "6", "7"]);
+  });
+
+  it("keeps its scroll when a frame drawn ahead is iterated inside another render", () => {
+    const viewport = new Viewport(numbered(10), { rows: 3 });
+    viewport.scrollTo(4);
+    const ahead = render(viewport, { maxWidth: 10 });
+    const host: Renderable = {
+      *render() {
+        yield* ahead;
+      },
+    };
+    [...render(host, { maxWidth: 10 })];
+    expect(viewport.offset).toBe(4);
   });
 
 });

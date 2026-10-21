@@ -199,7 +199,7 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
    * the viewport shows its first line at the top.
    */
   ensureVisible(start: number, end: number): void {
-    this._moves.push(ensureVisible({ start, end }));
+    this._moves.push(bringIntoView({ start, end }));
   }
 
   /**
@@ -223,9 +223,8 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
    * and shows them this way.
    */
   showing(content: Renderable, follow?: Range): Renderable & Measurable & Composite {
-    const ask = (asked: Asked): Asked => (follow === undefined ? asked : following(asked, follow));
     return {
-      render: (options) => this.draw(content, ask, options),
+      render: (options) => this.draw(content, follow, options),
       measure: (options) => this.measureOf(content, options),
       contents: () => [content],
     };
@@ -249,8 +248,7 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
   }
 
   render(options: RenderOptions): Iterable<Segment> {
-    // Shown as it stands: only what is queued against it moves it.
-    return this.draw(this.content, (asked) => asked, options);
+    return this.draw(this.content, undefined, options);
   }
 
   /** The scroll, and the moves queued against it, as they stand. */
@@ -258,14 +256,32 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
     return { scroll: this._scroll.get(), moves: this._moves.get() };
   }
 
-  /** `content` drawn from the scroll and the moves queued against it, as `ask` hands them on. */
-  private *draw(content: Renderable, ask: (asked: Asked) => Asked, rawOptions: RenderOptions): Iterable<Segment> {
+  /**
+   * The offset `settled` resolves, with the scroll it leaves kept once the frame
+   * is drawn and the `resolved` moves gone from the queue.
+   * [LAW:effects-at-boundaries] Kept once the frame is drawn, never while it is.
+   * The resolved moves leave by identity, not by count: another frame drawing
+   * this viewport in the same pass may already have taken them, and a move
+   * queued since stays.
+   */
+  private keep(settled: { scroll: Scroll; offset: number }, resolved: readonly Move[]): number {
+    // Taken now: the queue is appended to in place, so `resolved` grows with it.
+    const taken = new Set(resolved);
+    afterPass(() => {
+      this._scroll.set(settled.scroll);
+      this._moves.set(this._moves.get().filter((move) => !taken.has(move)));
+    });
+    return settled.offset;
+  }
+
+  /** `content` drawn from the scroll and the moves queued against it, with `follow` followed. */
+  private *draw(content: Renderable, follow: Range | undefined, rawOptions: RenderOptions): Iterable<Segment> {
     const { height, ...options } = withBoundedWidth(rawOptions, { measure: (o) => this.measureOf(content, o) });
     const gutter = this.gutter;
     const contentWidth = this.contentWidth(options.maxWidth);
     const lines = Segment.splitLines(render(content, { ...options, maxWidth: contentWidth }));
     const asked = this.asked();
-    const { scroll, moves } = ask(asked);
+    const { scroll, moves } = follow === undefined ? asked : following(asked, follow);
     // [LAW:no-ambient-temporal-coupling] Content handed no column is held, not
     // drawn, so this render learns its budget but not the content's length. It
     // keeps nothing: the offset, the followed range and the queued moves wait
@@ -274,16 +290,7 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
     const held = drawsNothing({ maxWidth: contentWidth });
     const length = held ? scroll.extent.lines : lines.length;
     const extent: Extent = { rows: viewRows(height, this.rows, length), lines: length };
-    const kept = held
-      ? { scroll: asked.scroll, resolved: 0, offset: clampOffset(scroll.offset, extent) }
-      : { ...settle(scroll, moves, extent), resolved: asked.moves.length };
-    // [LAW:effects-at-boundaries] Kept once the frame is drawn, never while it
-    // is: the moves this frame resolved leave the queue, and any queued since stay.
-    afterPass(() => {
-      this._scroll.set(kept.scroll);
-      this._moves.set(this._moves.get().slice(kept.resolved));
-    });
-    const offset = kept.offset;
+    const offset = held ? clampOffset(scroll.offset, extent) : this.keep(settle(scroll, moves, extent), asked.moves);
 
     const shown = fitHeight(lines.slice(offset, offset + extent.rows), { rows: extent.rows, exact: true });
     // The thumb is drawn from the offset this render resolved, not from the
@@ -330,7 +337,7 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
 }
 
 /** The move that scrolls the least distance showing `range`. */
-const ensureVisible =
+const bringIntoView =
   ({ start, end }: Range): Move =>
   (offset, { rows }) =>
     Math.min(start, Math.max(offset, end - rows));
@@ -344,7 +351,7 @@ function following(asked: Asked, range: Range): Asked {
   if (range.start === followed.start && range.end === followed.end) return asked;
   return {
     scroll: { ...asked.scroll, followed: { start: range.start, end: range.end, rows: NaN } },
-    moves: [...asked.moves, ensureVisible(range)],
+    moves: [...asked.moves, bringIntoView(range)],
   };
 }
 
@@ -356,7 +363,7 @@ function following(asked: Asked, range: Range): Asked {
 function settle(scroll: Scroll, moves: readonly Move[], extent: Extent): { scroll: Scroll; offset: number } {
   const { followed, offset } = scroll;
   const wasShown = followed.start >= offset && followed.end <= offset + scroll.extent.rows;
-  const keepShown = !Number.isNaN(followed.rows) && followed.rows !== extent.rows && wasShown ? [ensureVisible(followed)] : [];
+  const keepShown = !Number.isNaN(followed.rows) && followed.rows !== extent.rows && wasShown ? [bringIntoView(followed)] : [];
   const settled = resolve(offset, [...moves, ...keepShown], extent);
   const rows = Number.isNaN(followed.start) ? followed.rows : extent.rows;
   return { scroll: { offset: settled, extent, followed: { ...followed, rows } }, offset: settled };
@@ -394,7 +401,7 @@ export class ViewportPerKey {
   }
 
   private fresh(): Viewport {
-    // Empty until a view hands it content: the content is built where the frame is.
+    // Empty: a view shows the content it builds through it with `showing`.
     return new Viewport(EMPTY, this.options);
   }
 }

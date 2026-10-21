@@ -405,9 +405,14 @@ export function afterPass(effect: () => void): void {
 /** The pass in progress, or a new one when this call is the outermost. */
 const phaseHere = (): Phase => active ?? { pass: {} as Pass, effects: [] };
 
-/** Every effect `phase`'s renders handed it, run now that it has ended. */
+/**
+ * Every effect `phase`'s renders handed it, run now that it has ended — between
+ * passes even when the iteration that ended it was stepped inside another.
+ */
 function commit(phase: Phase): void {
-  for (const effect of phase.effects.splice(0)) effect();
+  runIn(undefined, () => {
+    for (const effect of phase.effects.splice(0)) effect();
+  });
 }
 
 /**
