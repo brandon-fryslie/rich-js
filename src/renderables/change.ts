@@ -24,7 +24,7 @@
 import { Animation } from "../core/animation.js";
 import type { TerminalTheme } from "../core/color.js";
 import { Measurement } from "../core/measure.js";
-import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { Recolored } from "./effect.js";
@@ -89,7 +89,7 @@ export function wipe(curve: Curve, edge = WIPE_EDGE): Transition<Change> {
 }
 
 /** One frame of a change at `t`: `from` and `to` spliced cell by cell, each veiled by how near the half its cell is. */
-class ChangeFrame implements Renderable, Measurable, Composite {
+class ChangeFrame implements Renderable, Measurable {
   constructor(
     readonly from: Renderable,
     readonly to: Renderable,
@@ -100,7 +100,6 @@ class ChangeFrame implements Renderable, Measurable, Composite {
   ) {}
 
   render(options: RenderOptions): Iterable<Segment> {
-    // Drawn in the order `contents` names them.
     const before = Segment.splitLines(render(this.from, options));
     const drawn = [...render(this.to, options)];
     const after = Segment.splitLines(drawn);
@@ -116,11 +115,6 @@ class ChangeFrame implements Renderable, Measurable, Composite {
     // The frame says nothing of when it changes: the change's own animation says it moves every frame.
     const veil = veiled(() => (cell) => shows(at(cell.row, cell.col)), this.swing);
     return render(new Recolored({ render: () => rows }, veil, { t: this.t, key: "change", theme: this.theme }), options);
-  }
-
-  *contents(): Iterable<Renderable> {
-    yield this.from;
-    yield this.to;
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {

@@ -13,7 +13,6 @@ import type { PaddingDimensions } from "./padding.js";
 import { Padding, normalizePadding } from "./padding.js";
 import { exactWeights, ratioDistribute, ratioReduce } from "./ratio.js";
 import type {
-  Composite,
   Renderable,
   Measurable,
   OverflowMethod,
@@ -559,7 +558,7 @@ function cellAt(row: { readonly cells: readonly Renderable[] }, index: number): 
   return row.cells[index] ?? new EmbeddedText(undefined);
 }
 
-export class Table implements Renderable, Measurable, Composite {
+export class Table implements Renderable, Measurable {
   // Rich's Table grows by addColumn and addRow after it is built.
   private readonly _columns = new ListState<Column>();
   private readonly _rows = new ListState<TableRow>();
@@ -1037,14 +1036,6 @@ export class Table implements Renderable, Measurable, Composite {
     const [top, , bottom] = this.padding;
     const collapsed = this.collapsePadding && !last ? Math.max(0, top - bottom) : bottom;
     return [!this.padEdge && first ? 0 : top, !this.padEdge && last ? 0 : collapsed];
-  }
-
-  // Every cell `render` draws, in the order it draws them: row by row, the
-  // header and footer when it shows them.
-  *contents(): Iterable<Renderable> {
-    if (this.showHeader) yield* this._columns.get().map((c) => c.header);
-    for (const row of this._rows.get()) yield* this._rowCells(row);
-    if (this.showFooter) yield* this._columns.get().map((c) => c.footer);
   }
 
   private _rowCells(row: { readonly cells: readonly Renderable[] }): Renderable[] {

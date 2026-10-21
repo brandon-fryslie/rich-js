@@ -75,7 +75,7 @@
 
 import { beat, firstReaching, passAt, positiveSeconds, type Beat } from "./easing.js";
 import { Measurement } from "./measure.js";
-import { isRenderable, render, type Composite, type Measurable, type Motion, type Renderable, type RenderOptions } from "./protocol.js";
+import { isRenderable, render, type Measurable, type Motion, type Renderable, type RenderOptions } from "./protocol.js";
 import { Segment } from "./segment.js";
 import { Style, type Hold } from "./style.js";
 
@@ -99,7 +99,7 @@ export interface Timed<T> {
  * number is no renderable and a `Panel` refuses it; a tween mapped to a
  * `RichText` is one, and a `Panel` holds it.
  */
-export type Animation<T> = Timed<T> & ([T] extends [Renderable] ? Renderable & Measurable & Composite : unknown);
+export type Animation<T> = Timed<T> & ([T] extends [Renderable] ? Renderable & Measurable : unknown);
 
 /** What a frame drawn at a time shows of an animation, and what that says. */
 export interface Shown<T> {
@@ -189,11 +189,6 @@ export function placedMeasure(animation: Timed<unknown>, options: RenderOptions)
   return Measurement.get(options, drawable(shownAt(animation, frameTimeOf(options), options).value));
 }
 
-/** An animation's face, `contents`: what it shows at the frame's time. */
-export function* placedContents(animation: Timed<unknown>, options: RenderOptions): Iterable<Renderable> {
-  yield drawable(shownAt(animation, frameTimeOf(options), options).value);
-}
-
 /** What `Animation.of` makes of `X`: `X`, with the face its values call for. */
 export type Faced<X extends Timed<unknown>> = X & Animation<X extends Timed<infer T> ? T : never>;
 
@@ -224,7 +219,7 @@ function membersOf(source: object): Record<PropertyKey, unknown> {
 export const Animation = {
   /**
    * `timed` as an animation: every member it carries kept (`membersOf`),
-   * with the face its values call for — `render`, `measure` and `contents`,
+   * with the face its values call for — `render` and `measure`,
    * drawing it at the frame's time. Every animation made from a literal is
    * made here, the library's and a user's alike. [LAW:single-enforcer] The
    * one cast in the type: a literal's `T` is not known at runtime, so every
@@ -235,7 +230,6 @@ export const Animation = {
     const faced = Object.assign(membersOf(timed), {
       render: (options: RenderOptions) => placedRender(faced as unknown as Timed<unknown>, options),
       measure: (options: RenderOptions) => placedMeasure(faced as unknown as Timed<unknown>, options),
-      contents: (options: RenderOptions) => placedContents(faced as unknown as Timed<unknown>, options),
     });
     return faced as unknown as Faced<NoInfer<X>>;
   },

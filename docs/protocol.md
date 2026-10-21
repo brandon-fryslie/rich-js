@@ -43,29 +43,25 @@ The `render` method:
 
 `render` reports every renderable it is asked for to `options.onPresent`, as it is asked, so whoever draws the frame learns what is in the view in document order: a container before what it holds, its children in the order it draws them. That is how a [`WidgetApp`](/widgets) finds its widgets. A renderable handed no column is reported `"held"` rather than `"drawn"`: it is in the view, and nothing is drawn for it.
 
-`render` cannot see inside a container without drawing it, so a container says what it holds by implementing `Composite`. Its `contents()` yields what its `render` draws through `render`, chosen the way `render` chooses it, and takes no options: under one column there is no width to choose by. Text the container builds for itself, like the label below, holds nothing and is not part of it. Every built-in container implements `Composite`. A container that does not reports nothing it holds while it has no column, so in a `WidgetApp` a widget inside it loses focus while it is squeezed to nothing.
+A held renderable is still drawn, and what it draws is dropped. So what a held container holds is what its `render` draws through `render`, under the options it hands each child, and each of those is reported held as well, whatever width it was handed. A container of your own needs nothing beyond its `render` for a widget inside it to keep its place in a `WidgetApp` while it is squeezed to nothing; it does need to draw without throwing under one column.
 
 ```typescript
-import type { Composite, Renderable, RenderOptions } from "@promptctl/rich-js";
+import type { Renderable, RenderOptions } from "@promptctl/rich-js";
 import { RichText, Segment, render } from "@promptctl/rich-js";
 
-class Labelled implements Renderable, Composite {
+class Labelled implements Renderable {
   constructor(private label: string, private body: Renderable) {}
 
   *render(options: RenderOptions): Iterable<Segment> {
     yield* render(new RichText(this.label, { style: "bold" }), options);
     yield* render(this.body, options);
   }
-
-  *contents(): Iterable<Renderable> {
-    yield this.body;
-  }
 }
 
 console.print(new Labelled("Status", new RichText("all systems nominal")));
 ```
 
-A held renderable is never rendered, and neither is anything it holds. So a renderable that keeps state as it renders, as a `Viewport` keeps its scroll offset, never has that state changed at a width that is not shown.
+Nothing a held renderable learns by drawing is kept: what it hands to `afterPass` is dropped, as a measurement's is. So a `Viewport` it holds keeps the scroll offset the last frame that showed it left.
 
 ## Low-level rendering
 

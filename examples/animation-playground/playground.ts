@@ -33,7 +33,6 @@ import {
   render,
   type Anchor,
   type Clock,
-  type Composite,
   type Env,
   type FrameRate,
   type Renderable,
@@ -167,9 +166,8 @@ const seconds = (t: number): string => `${t.toLocaleString("en-US", { minimumFra
  * gallery down rather than cutting the controls off, and the gallery takes the
  * rest. The controls are drawn once, and those rows are the pane.
  */
-function stacked(controls: Renderable, gallery: Renderable): Renderable & Composite {
+function stacked(controls: Renderable, gallery: Renderable): Renderable {
   return {
-    contents: () => [controls, gallery],
     render: (options: RenderOptions) => {
       const rows = Segment.splitLines(render(controls, { ...options, height: undefined }));
       const drawn: Renderable = { render: () => rows.flatMap((line) => [...line, Segment.line()]) };

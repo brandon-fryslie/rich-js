@@ -3,7 +3,7 @@
 Anything in rich-js that changes with time is an `Animation`: a value for a time `t` in seconds, the first moment that value may change, the last moment it may have become what it is, and the same animation with its motion taken out. A beat, a sequence of [frames](/frames), a spinner and an [effect](/effects) are all one, and every other kind of motion is built from the same few pieces, so a host can hold a list of them and ask each the same questions.
 
 ```typescript shape
-import type { Composite, Measurable, Renderable } from "@promptctl/rich-js";
+import type { Measurable, Renderable } from "@promptctl/rich-js";
 
 interface Timed<T> {
   at(t: number): T;
@@ -13,7 +13,7 @@ interface Timed<T> {
 }
 
 // An animation of renderables is a renderable too.
-type Animation<T> = Timed<T> & ([T] extends [Renderable] ? Renderable & Measurable & Composite : unknown);
+type Animation<T> = Timed<T> & ([T] extends [Renderable] ? Renderable & Measurable : unknown);
 ```
 
 Nothing here reads a clock. `t` is handed in by whoever draws, so the same `t` gives the same value at one redraw a second or sixty, nothing is kept from one call to the next, and a call costs the same a second in as a million seconds in.

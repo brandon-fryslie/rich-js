@@ -71,7 +71,7 @@ import { cellLen, graphemes } from "../core/cells.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK, type ColorRgba, type TerminalTheme } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
-import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { JOIN, colorsOwnedBy } from "../core/strip.js";
@@ -226,7 +226,7 @@ const UNMOVED: Hold = { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number
  * when that changes, since whatever placed the animation stamps its hold.
  * [LAW:one-type-per-behavior]
  */
-export class Recolored implements Renderable, Measurable, Composite {
+export class Recolored implements Renderable, Measurable {
   readonly t: number;
   readonly key: string;
   readonly theme: TerminalTheme;
@@ -243,10 +243,6 @@ export class Recolored implements Renderable, Measurable, Composite {
 
   render(options: RenderOptions): Iterable<Segment> {
     return this.moved(options).segments;
-  }
-
-  *contents(): Iterable<Renderable> {
-    yield this.renderable;
   }
 
   /** The frame the effect draws at `t`, and the hold it says that is in. */
@@ -377,10 +373,6 @@ export class Effected implements Animation<Renderable> {
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
     return Measurement.get(options, this.renderable);
-  }
-
-  *contents(): Iterable<Renderable> {
-    yield this.renderable;
   }
 
   /**

@@ -190,7 +190,6 @@ export type {
   Height,
   Renderable,
   Measurable,
-  Composite,
   Presence,
   StyleErrorHandler,
   FrameHost,

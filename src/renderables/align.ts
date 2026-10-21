@@ -5,7 +5,6 @@
 import { Segment } from "../core/segment.js";
 import { Measurement } from "../core/measure.js";
 import type {
-  Composite,
   Renderable,
   Measurable,
   RenderOptions,
@@ -13,7 +12,7 @@ import type {
 import { withBoundedWidth } from "../core/protocol.js";
 import { placeBlock, type Alignment } from "../core/place.js";
 
-export class Align implements Renderable, Measurable, Composite {
+export class Align implements Renderable, Measurable {
   readonly renderable: Renderable;
   readonly align: Alignment;
 
@@ -33,9 +32,5 @@ export class Align implements Renderable, Measurable, Composite {
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
     return Measurement.get(options, this.renderable);
-  }
-
-  *contents(): Iterable<Renderable> {
-    yield this.renderable;
   }
 }

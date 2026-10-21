@@ -52,7 +52,7 @@ import { Animation, holdOf, placedMeasure, placedRender, shownAt, stamp } from "
 import type { Hold } from "../core/style.js";
 import { beat, finiteTime, type Beat } from "../core/easing.js";
 import { Measurement } from "../core/measure.js";
-import type { Composite, Measurable, Motion, Renderable, RenderOptions } from "../core/protocol.js";
+import type { Measurable, Motion, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import type { Segment } from "../core/segment.js";
 import { layerStyle } from "../core/style.js";
@@ -120,9 +120,6 @@ export class FrameSequence implements Animation<RichText> {
   measure(options: RenderOptions): { minimum: number; maximum: number } {
     return placedMeasure(this, options);
   }
-
-  /** Nothing it was handed: each frame it draws is a copy it set into a line itself, as a `Frames` draws. */
-  *contents(): Iterable<Renderable> {}
 }
 
 /**
@@ -172,7 +169,7 @@ export function textFrameAt(animation: Animation<RichText>, t: number, motion: M
  * draws at `t` too. The frame is drawn by no host but this: a renderable
  * that refuses any frame but its own host's — a `Progress` — refuses it.
  */
-class Stamped implements Renderable, Measurable, Composite {
+class Stamped implements Renderable, Measurable {
   constructor(
     readonly animation: Animation<Renderable>,
     readonly t: number,
@@ -184,10 +181,6 @@ class Stamped implements Renderable, Measurable, Composite {
 
   render(options: RenderOptions): Iterable<Segment> {
     return render(this.animation, this.atT(options));
-  }
-
-  contents(options: RenderOptions): Iterable<Renderable> {
-    return this.animation.contents(this.atT(options));
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
