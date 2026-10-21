@@ -306,23 +306,6 @@ describe("Segment.filterControl()", () => {
   });
 });
 
-// --- Segment.splitRows() ---
-
-describe("Segment.splitRows()", () => {
-  const carrier = Segment.carrier(new Style({ hold: { lastChange: 0, nextChange: 3 } }));
-
-  it("draws no row for output of nothing, or of nothing but carriers, and passes the carriers on", () => {
-    expect(Segment.splitRows([])).toEqual({ lines: [], carriers: [] });
-    expect(Segment.splitRows([carrier, carrier])).toEqual({ lines: [], carriers: [carrier, carrier] });
-  });
-
-  it("cuts any other output as splitLines does, its carriers kept on the rows", () => {
-    const segments = [carrier, new Segment("a\nb")];
-    expect(Segment.splitRows(segments)).toEqual({ lines: Segment.splitLines(segments), carriers: [] });
-    expect(Segment.splitRows([new Segment("")]).lines).toHaveLength(1);
-  });
-});
-
 // --- Segment.splitLines() ---
 
 describe("Segment.splitLines()", () => {
@@ -333,15 +316,10 @@ describe("Segment.splitLines()", () => {
     expect(texts(lines[0]!)).toEqual(["hello", " world"]);
   });
 
-  it("counts an empty piece after the last break as a row, whatever its style, and a carrier as none", () => {
+  it("counts an empty piece after the last break as a row, whatever its style", () => {
     for (const style of [undefined, Style.null(), new Style({ hold: { lastChange: 0, nextChange: 3 } })]) {
       expect(Segment.splitLines([new Segment("a\n"), new Segment("", style)])).toHaveLength(2);
     }
-    const carrier = Segment.carrier(new Style({ hold: { lastChange: 0, nextChange: 3 } }));
-    const lines = Segment.splitLines([new Segment("a\n"), carrier]);
-    expect(lines).toHaveLength(1);
-    expect(lines[0]).toContain(carrier);
-    expect(Segment.splitLines([carrier])).toEqual([[carrier]]);
   });
 
   it("splits at newline within a single segment", () => {

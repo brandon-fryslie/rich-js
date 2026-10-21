@@ -39,7 +39,6 @@ import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render, withBoundedWidth } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
-import { Style } from "../core/style.js";
 
 /** The slot a scroll draws, and how far the content is moved in it. */
 export interface ScrollOptions {
@@ -98,16 +97,15 @@ class ScrollFrame implements Renderable, Measurable {
     const options = withBoundedWidth(rawOptions, this);
     // The slot is cropped to the room it is given, as a `Panel` of a declared width is.
     const width = Math.min(this.width, options.maxWidth);
-    // At least the one column a render draws at, so content of no width still draws its word on when it changes.
-    const drawn = [...render(this.content, { ...options, maxWidth: Math.max(1, naturalWidth(this.content, options)), height: undefined })];
+    const drawn = [...render(this.content, { ...options, maxWidth: naturalWidth(this.content, options), height: undefined })];
     const lines = Segment.splitLines(drawn);
     const blank = Math.min(width, Math.max(0, -this.col));
     const start = Math.max(0, this.col);
     // [LAW:one-source-of-truth] What the window shows is cut from the whole content, so it may change
     // when anything in the content does — a row above the slot entering pushes every row down, and run
-    // backwards, leaving it pulls them up. That hold rides a cell of no width on the first row, and the
-    // cut throws the rest away.
-    yield Segment.carrier(new Style({ hold: { lastChange: Segment.lastChange(drawn), nextChange: Segment.nextChange(drawn) } }));
+    // backwards, leaving it pulls them up. The cut throws away the cells that hold rode on, so it is
+    // told to the frame (`RenderOptions.onHold`).
+    options.onHold?.({ lastChange: Segment.lastChange(drawn), nextChange: Segment.nextChange(drawn) });
     for (let r = 0; r < this.height; r++) {
       const line = lines[this.row + r] ?? [];
       const shown = Segment.divide(line, [start, start + width - blank])[1] ?? [];

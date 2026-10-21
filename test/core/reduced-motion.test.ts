@@ -10,7 +10,7 @@ import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { Timeline } from "../../src/core/timeline.js";
 import { tween } from "../../src/core/tween.js";
-import { drawView, hostView, type View } from "../../src/core/view.js";
+import type { View } from "../../src/core/view.js";
 import { App } from "../../src/host/app.js";
 import { frameRate } from "../../src/core/clock.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
@@ -31,7 +31,7 @@ import { createEngine } from "@promptctl/go-template-js";
 import { renderToString } from "../../src/core/render.js";
 import { fakeClock } from "./fake-clock.js";
 import { scriptedHost } from "../host/scripted-host.js";
-import { inFrame } from "../renderables/in-frame.js";
+import { drawnAt, inFrame } from "../renderables/in-frame.js";
 
 // [LAW:behavior-not-structure] What is asserted is what a reader sees and
 // what a host does: the bytes drawn, and whether it is told to look again.
@@ -43,7 +43,6 @@ const REDUCED: RenderOptions = { ...FULL, reducedMotion: true };
 const bytes = (renderable: Renderable, options: RenderOptions): string =>
   segmentsToString([...render(renderable, options)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: options.reducedMotion ?? false });
 const plain = (renderable: Renderable, options: RenderOptions = FULL): string => [...render(renderable, options)].map((s) => s.text).join("");
-const lines = (renderable: Renderable, options: RenderOptions): Segment[][] => Segment.splitLines([...render(renderable, options)]);
 
 /** Host times sampled once a second and sixty times a second over ten seconds, and one far out. */
 const SAMPLES = [...Array.from({ length: 11 }, (_, i) => i), ...Array.from({ length: 601 }, (_, i) => i / 60), 1e6];
@@ -165,8 +164,6 @@ function builtForTheTime(t: number): Renderable {
 }
 
 describe("a host under reduced motion", () => {
-  const drawnAt = (view: View, options: RenderOptions, t: number, timeline = Timeline.play(0)) =>
-    drawView(hostView(view), { now: t, epoch: 0, timeline }, { frameTime: t }, options, (renderable, under) => lines(renderable, under));
   const text = (drawn: { lines: Segment[][] }): string =>
     segmentsToString(drawn.lines.flat(), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
 
@@ -176,48 +173,48 @@ describe("a host under reduced motion", () => {
     ["an animation", everything()],
     ["a function of the time", builtForTheTime as View],
   ])("draws %s the same at every time, sampled once a second or sixty, and is never told to look again", (_, view) => {
-    const first = text(drawnAt(view, REDUCED, 0));
+    const first = text(drawnAt(view, 0, REDUCED));
     for (const t of SAMPLES) {
-      const drawn = drawnAt(view, REDUCED, t);
+      const drawn = drawnAt(view, t, REDUCED);
       expect(text(drawn)).toBe(first);
       expect(drawn.nextChange).toBe(Number.POSITIVE_INFINITY);
       expect(drawn.held).toBe(false);
     }
     // The same view under full motion moves, so the sameness above is the preference's.
-    expect(new Set(SAMPLES.map((t) => text(drawnAt(view, FULL, t)))).size).toBeGreaterThan(1);
-    expect(drawnAt(view, FULL, 0.5).nextChange).toBe(0.5);
+    expect(new Set(SAMPLES.map((t) => text(drawnAt(view, t, FULL)))).size).toBeGreaterThan(1);
+    expect(drawnAt(view, 0.5, FULL).nextChange).toBe(0.5);
   });
 
   it("draws the reduced view at the time the timeline maps to, fast, reversed, paused or sought, and is never told to look again", () => {
     for (const timeline of [Timeline.play(0, 3), Timeline.play(0, -1), Timeline.pause(Timeline.play(0), 1.2), Timeline.seek(Timeline.play(0), 0, 7)]) {
-      const drawn = drawnAt(everything(), REDUCED, 4, timeline);
-      expect(text(drawn)).toBe(text(drawnAt(everything(), REDUCED, Timeline.at(timeline, 4))));
+      const drawn = drawnAt(everything(), 4, REDUCED, timeline);
+      expect(text(drawn)).toBe(text(drawnAt(everything(), Timeline.at(timeline, 4), REDUCED)));
       expect(drawn.nextChange).toBe(Number.POSITIVE_INFINITY);
     }
   });
 
   it("a view reduced still shows and drops content on time, and wakes for exactly that", () => {
     const life = lifecycle(new RichText("toast", { end: "" }), { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(dissolveOut(curve, 0), theme), key: "toast" }, 2).leave(5);
-    expect([1, 3, 6].map((t) => text(drawnAt(life, REDUCED, t)).trim())).toEqual(["", "toast", ""]);
-    expect([1, 3, 8].map((t) => drawnAt(life, REDUCED, t).nextChange)).toEqual([2, 5, Number.POSITIVE_INFINITY]);
+    expect([1, 3, 6].map((t) => text(drawnAt(life, t, REDUCED)).trim())).toEqual(["", "toast", ""]);
+    expect([1, 3, 8].map((t) => drawnAt(life, t, REDUCED).nextChange)).toEqual([2, 5, Number.POSITIVE_INFINITY]);
   });
 
   it("a function view is asked at the time, so what it computes from it stays on time", () => {
     const elapsed = (t: number): Renderable => new RichText(`elapsed ${Math.floor(t)}s`, { end: "" });
-    expect(text(drawnAt(elapsed, REDUCED, 3.5))).toBe("elapsed 3s");
+    expect(text(drawnAt(elapsed, 3.5, REDUCED))).toBe("elapsed 3s");
   });
 
   it("a renderable drawn as it is reduces every animation drawn inside it for the host's time", () => {
     const view = builtForTheTime(1.3);
-    const drawn = drawnAt(view, REDUCED, 1.3);
+    const drawn = drawnAt(view, 1.3, REDUCED);
     expect(drawn.nextChange).toBe(Number.POSITIVE_INFINITY);
-    expect(text(drawn)).toBe(text(drawnAt(builtForTheTime(8.9), REDUCED, 8.9)));
+    expect(text(drawn)).toBe(text(drawnAt(builtForTheTime(8.9), 8.9, REDUCED)));
   });
 
   it("a frame of no cells reduced says nothing, so a host holding it wakes for nothing", () => {
     const empty: Animation<Renderable> = Animation.of({ at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) });
-    expect(Segment.nextChange([...render(inFrame(empty, 0), REDUCED)])).toBe(Number.POSITIVE_INFINITY);
-    expect(Segment.nextChange([...render(inFrame(empty, 0), FULL)])).toBe(3);
+    expect(drawnAt(empty, 0, REDUCED).nextChange).toBe(Number.POSITIVE_INFINITY);
+    expect(drawnAt(empty, 0, FULL).nextChange).toBe(3);
   });
 
   it.each([1, 60])("an App told once paints an animation view reduced, once and arming nothing, or at its rate while animate()d, every frame the reduced one at %s fps", (perSecond) => {

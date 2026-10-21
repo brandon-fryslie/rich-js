@@ -10,7 +10,7 @@ import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
 import { dissolveOut, fadeIn, onBeat } from "../../src/renderables/effects.js";
-import { inFrame } from "./in-frame.js";
+import { drawnAt, inFrame } from "./in-frame.js";
 import { Group } from "../../src/renderables/group.js";
 import { Live } from "../../src/renderables/live.js";
 import { backspace, scrambleOut, typewriter } from "../../src/renderables/glyph-effects.js";
@@ -121,9 +121,9 @@ describe("a lifecycle", () => {
   it("before it entered draws no byte, yet its frame says when it enters, so a function view wakes for it", () => {
     const life = made().leave(5);
     for (const options of [OPTIONS, PLAIN]) {
-      const drawn = draw(new Group(inFrame(life, 0.5)), options);
-      expect(bytes(drawn)).toBe("");
-      expect(Segment.nextChange(drawn)).toBe(1);
+      const drawn = drawnAt(new Group(life), 0.5, options);
+      expect(bytes(drawn.lines.flat())).toBe("");
+      expect(drawn.nextChange).toBe(1);
     }
   });
 

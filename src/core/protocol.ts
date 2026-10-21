@@ -5,7 +5,7 @@
 
 import type { Segment } from "./segment.js";
 import { cellCount } from "./cells.js";
-import { DEFAULT_THEME, Style, type StyleSyntaxError, type Theme } from "./style.js";
+import { DEFAULT_THEME, Style, type Hold, type StyleSyntaxError, type Theme } from "./style.js";
 import { ColorDepth, type ColorSpec } from "./color.js";
 // [LAW:one-way-deps] exception: the one upward edge between core's tiers, and
 // type-only. A render option that highlights the text being rendered, when
@@ -133,6 +133,17 @@ export interface RenderOptions {
    * told (`measuring`).
    */
   onPresent?: (renderable: Renderable, presence: Presence) => void;
+  /**
+   * Told of a hold the frame is in that no cell of it may carry: an animation
+   * placed in the view reports its own, whether or not it drew a cell — one
+   * not yet entered draws none — and one a container crops away is still
+   * reported. It reaches whatever `frame` reaches, so a container that hands
+   * its child the frame's time hands back the child's hold with no word about
+   * either. [LAW:composability] Absent, nobody is listening. A measurement
+   * (`measuring`) and a held render (`holding`) tell too: what they find
+   * decides the frame's layout, so when it changes, the frame may.
+   */
+  onHold?: (hold: Hold) => void;
 }
 
 /** The one field of the render options that says whether the reader wants motion. */
@@ -500,8 +511,13 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
 
 /**
  * Where a held renderable is drawn, and the options it is drawn under: what
- * it draws is dropped, and so is everything it draws reported held, whatever
- * width it hands it. It commits nothing, as a measurement commits nothing —
+ * it draws is dropped, and everything it draws is reported held, whatever
+ * width it hands it. What it tells of its hold (`onHold`) still reaches the
+ * frame: an element not yet entered is held at no width, and must say when it
+ * enters and takes some. A motion held at no width therefore wakes its host
+ * for frames that look the same: when it next takes room is not a moment its
+ * hold can name, and an early answer costs a frame where a late one hides the
+ * element. It commits nothing, as a measurement commits nothing —
  * its effects (`afterPass`) are learned at a width nobody sees, so a
  * `Viewport` it shows content through keeps the scroll the last frame shown
  * left it.
@@ -536,7 +552,8 @@ export function measure(measurable: Measurable, options: RenderOptions): { minim
  * `options` as a measurement is asked with. A `measure` that renders to learn
  * its shape draws nothing on the frame, so it reports nothing to `onPresent` —
  * one that did would put a widget in the view at the moment a container
- * measured it, and keep one the frame then cropped away.
+ * measured it, and keep one the frame then cropped away. It still tells its
+ * hold (`onHold`): a layout decided by a measurement changes when it does.
  *
  * [LAW:single-enforcer] Every measurement starts here: `measure` asks with it.
  */
