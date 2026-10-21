@@ -155,10 +155,12 @@ const ROWS: Record<string, Row> = {
 };
 
 /**
- * Containers in a configuration that changes what their `render` draws, held
- * to the same rule as their `ROWS` entry.
+ * Containers in a configuration that changes what their `render` draws, and
+ * the renderables a method returns rather than a class builds, held to the
+ * same rule as a `ROWS` entry.
  */
 const VARIANTS: Record<string, Row> = {
+  "Viewport.showing": (p) => new Viewport({ rows: 2 }).showing(p("a")),
   "Table without its header": (p) => {
     const table = new Table({ showHeader: false });
     table.addColumn(p("head-1"));

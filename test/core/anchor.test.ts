@@ -134,27 +134,27 @@ describe("a cell's anchor names what its owner drew there, through every contain
 
   it("a Viewport shows the rows its offset selects, named by their rows in the content", () => {
     const owner = new Owner(["abc", "def", "ghi", "jkl"]);
-    const scroll = new Viewport({ rows: 2 });
-    const viewport = scroll.showing(owner);
-    scroll.scrollTo(1);
-    const found = placements(frameOf(viewport, { maxWidth: 10 }), owner);
+    const viewport = new Viewport({ rows: 2 });
+    const showing = viewport.showing(owner);
+    viewport.scrollTo(1);
+    const found = placements(frameOf(showing, { maxWidth: 10 }), owner);
     expect(new Set(found.map((p) => p.row))).toEqual(new Set([1, 2]));
     expect(found.find((p) => p.row === 1 && p.col === 0)!.y).toBe(0);
   });
 
   it("a Viewport names itself under every cell it shows, gutter included, around its content", () => {
     const owner = new Owner(["abc", "def", "ghi", "jkl"]);
-    const scroll = new Viewport({ rows: 2, scrollbar: SCROLLBAR });
-    const viewport = scroll.showing(owner);
-    scroll.scrollTo(1);
-    const frame = frameOf(new Panel(viewport), { maxWidth: 8 });
+    const viewport = new Viewport({ rows: 2, scrollbar: SCROLLBAR });
+    const showing = viewport.showing(owner);
+    viewport.scrollTo(1);
+    const frame = frameOf(new Panel(showing), { maxWidth: 8 });
 
     // Inside the panel's border and padding: three cells of content and one
     // of gutter, from (2, 1) to (5, 2).
     for (const y of [1, 2]) {
       for (let x = 2; x <= 5; x++) {
         const anchor = Segment.anchorAt(frame, x, y)!;
-        expect(anchor.owner).toBe(scroll);
+        expect(anchor.owner).toBe(viewport);
         expect([anchor.row, anchor.col]).toEqual([y - 1, x - 2]);
       }
     }

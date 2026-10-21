@@ -27,11 +27,11 @@ console.print(new Panel(viewport.showing(renderMarkup(log)), { title: "log", bor
 
 ## How many rows it shows
 
-A viewport given a region — a `Layout` pane, or a full-screen `Live` frame — fills it, and its `rows` option is ignored. Otherwise it shows its `rows`, or the content's full length when `rows` is absent, capped by the terminal's height. Content shorter than a viewport is padded with blank rows.
+Content shown through a viewport, given a region — a `Layout` pane, or a full-screen `Live` frame — fills it, and the viewport's `rows` option is ignored. Otherwise it shows the viewport's `rows`, or the content's full length when `rows` is absent, capped by the terminal's height. Content shorter than a viewport is padded with blank rows.
 
-The content always renders with no height limit, at the width the viewport was given. The number of lines it wraps to is how far the viewport can scroll.
+The content always renders with no height limit, at the width it was shown at. The number of lines it wraps to is how far the viewport can scroll.
 
-Every row is exactly that width: content that ignores its width is cropped at the viewport's edge, and shorter rows are padded out to it.
+Every row is exactly that width: content that ignores its width is cropped at that width, and shorter rows are padded out to it.
 
 ## Scrolling
 
@@ -45,7 +45,7 @@ console.print(new Panel(viewport.showing(renderMarkup(log)), { title: "log", bor
 
 The panel shows lines 2 to 6: the three calls resolve in order when it renders.
 
-None of these moves anything straight away. The rows and the content's length are only known once the viewport renders, so each call is queued, and the next render resolves the calls in order, clamping after each one. `viewport.offset` is the first line the last frame showed. A render changes nothing, so the viewport keeps what its render resolved only once the frame it was drawn in has been drawn whole; a measurement keeps nothing.
+None of these moves anything straight away. The rows and the content's length are only known once content is drawn through the viewport, so each call is queued, and the next frame that draws it resolves the calls in order, clamping after each one. `viewport.offset` is the first line the last frame showed. A render changes nothing, so the viewport keeps what that render resolved only once the frame it was drawn in has been drawn whole; a measurement keeps nothing.
 
 In a [`WidgetApp`](/widgets), the mouse wheel scrolls a viewport with no code of yours. Each notch moves the innermost viewport under the pointer by one line, however deep in the view it sits and whatever widget it shows under the pointer, and the app paints the result. A viewport that cannot move that way — its content fits, or it is already at that end — passes the notch to the viewport around it, and the outermost one passes it out of the app: in the docs' cards, the page scrolls.
 

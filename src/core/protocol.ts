@@ -388,8 +388,9 @@ export function activePass(): Pass | undefined {
  * `effect` run once the render pass in progress has drawn its last segment,
  * between passes, where it may write what an event handler may: React's commit
  * phase. A render that learns something only drawing can tell it — the lines
- * content shown through a `Viewport` runs to at the width it was handed — draws from what it
- * learned and hands the commit here, rather than writing it as it draws.
+ * content shown through a `Viewport` runs to at the width it was handed —
+ * draws from what it learned and hands the commit here, rather than writing it
+ * as it draws.
  *
  * Effects run in the order they were handed over, which is document order. A
  * measurement commits nothing, and neither does a pass that throws or whose
