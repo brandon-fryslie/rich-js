@@ -4,15 +4,22 @@
     {
       "version": "pr-511",
       "ref": "refs/pull/511/merge",
-      "sha": "e8b405b42dbdfcc2e06d789a8e1fc6504ba64472",
-      "timestamp": "2026-10-21T12:53:34.377Z",
+      "sha": "e8ebb3cff088d99414da81de4139e1956227ffe4",
+      "timestamp": "2026-10-21T13:01:21.751Z",
       "commits": [
         {
-          "sha": "e8b405b42dbdfcc2e06d789a8e1fc6504ba64472",
+          "sha": "e8ebb3cff088d99414da81de4139e1956227ffe4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T06:51:27-06:00",
-          "message": "Merge 2e4bb6be18b80b0bc094bd75c7db91ad247eb0ae into c3fc4bf64cba06ae4b5898b6815d91821d6918ff\n"
+          "timestamp": "2026-10-21T12:59:47Z",
+          "message": "Merge 65aa94a3109c3439f08e875c92d5e0699d98e530 into c3fc4bf64cba06ae4b5898b6815d91821d6918ff\n"
+        },
+        {
+          "sha": "65aa94a3109c3439f08e875c92d5e0699d98e530",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T06:59:40-06:00",
+          "message": "Review: docs and held check follow Viewport.showing; tests name the Viewport viewport (rich-protocol-9xcs.tcy)\n\n- docs/protocol.md, docs/viewport.md: a Viewport no longer renders or is\n  held; the content shown through it is.\n- held.test.ts: Viewport.showing joins VARIANTS, restoring the held/onPresent\n  check the removed Viewport row carried.\n- Rejected: a migration note for the (content, options) -> (options)\n  constructor. No changelog exists, the type rejects the old call, and the\n  repo keeps no back-compat shims.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "2e4bb6be18b80b0bc094bd75c7db91ad247eb0ae",
