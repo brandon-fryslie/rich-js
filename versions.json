@@ -4,15 +4,22 @@
     {
       "version": "pr-503",
       "ref": "refs/pull/503/merge",
-      "sha": "3919000fd709efbb56e41f102a7f60220d4b9270",
-      "timestamp": "2026-10-21T05:07:31.165Z",
+      "sha": "dde5fdad7964581b5e449e93a07c814145208965",
+      "timestamp": "2026-10-21T05:21:12.766Z",
       "commits": [
         {
-          "sha": "3919000fd709efbb56e41f102a7f60220d4b9270",
+          "sha": "dde5fdad7964581b5e449e93a07c814145208965",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T23:05:27-06:00",
-          "message": "Merge 151f2a4b16ed8de0c203d3c1b08157de2ee1a6f3 into 0dcf5ac44f527aed4862a9e376cb6bca2a287dfb\n"
+          "timestamp": "2026-10-21T05:19:15Z",
+          "message": "Merge 2c015f1bbfd67a2bd3b350eab8d106226296e07d into 0dcf5ac44f527aed4862a9e376cb6bca2a287dfb\n"
+        },
+        {
+          "sha": "2c015f1bbfd67a2bd3b350eab8d106226296e07d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-20T23:19:10-06:00",
+          "message": "Review: the pulse test reads what Progress draws; one clock in the showcase (rich-animation-27tq.0tc)\n\nThe BarColumn pulse test supplied its own frame and compared against a\nliteral 7.5; it now prints the Progress and compares each row to the bar\ndrawn in a frame for 7.5s. A test pins that, in a frame of its own host,\na Progress holds what it would draw. Spinner's placed renderable is built\nin the constructor after the sequences it closes over. The showcase draws\nthe dashboard at the Live's frame time, so the heading and the jobs share\none clock. Two doc sentences that described examples no longer present\nare corrected.\n"
         },
         {
           "sha": "151f2a4b16ed8de0c203d3c1b08157de2ee1a6f3",
