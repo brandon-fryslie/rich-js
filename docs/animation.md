@@ -275,7 +275,7 @@ Both times are handed in, never read, so a host that says "leave at 5" and asks 
 - before `entered`, nothing — a timeline run backwards asks for those times;
 - arriving, the element through `enter`, handed the time since it entered;
 - staying, the element itself, byte for byte, until it is told to leave;
-- leaving, through `exit`, handed the time since it was told, over whatever arriving would draw then, so an element told to leave before it has arrived leaves from where it is;
+- leaving, through `exit`, handed the time since it was told, over whatever arriving would draw then, so an element told to leave before it has arrived leaves from where it is — though a colour exit is spread over the cells each frame shows, so a cell the arrival adds can move one already leaving back toward whole;
 - once `exit` is done, nothing, for good: `gone(t)` is true, and the host drops it.
 
 While it arrives or leaves it changes when its transition does — every frame for a fade, once a hold for one on a beat (`onBeat(fadeIn(curve, 0), beat([0.25]))` arrives a quarter of a second at a time, and a host wakes on those quarters) — and it holds still while it stays and once it is gone, so a host still holding a gone element wakes for nothing. A transition says when its frame changes whatever the element draws, so this holds even with no colour output, where a colour half writes nothing. Placed, the lifecycle stamps its frame with that hold:

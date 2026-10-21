@@ -19,7 +19,10 @@
  * their own on when they change: placed, the lifecycle stamps them with its
  * hold at the frame's time (`placedRender`). The exit veils whatever the
  * arrival draws, so an element told to leave while it is still arriving leaves
- * from where it is, never shown whole first. [LAW:dataflow-not-control-flow]
+ * from where it is, never shown whole first — though a colour exit is spread
+ * over the cells each frame shows, so a cell the arrival adds can move one
+ * already leaving back toward whole (`ownChange`, `./effects.ts`).
+ * [LAW:dataflow-not-control-flow]
  *
  * A half draws the element through a colour transition (`throughColors`, a
  * `fadeIn`) or a glyph one (`throughGlyphs`, a `typewriter`): each lift binds

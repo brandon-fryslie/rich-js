@@ -597,10 +597,12 @@ describe("the transitions run start to end", () => {
   ])("a %s draws a time the same whatever was drawn before", (_, make) => {
     const grid = (rows: number, cols: number): EffectCell[] =>
       Array.from({ length: rows * cols }, (_, i) => ({ row: Math.floor(i / cols), col: i % cols, seed: 0, terminal: written, reverse: false, anchor: undefined }));
-    // Every cell of `cells` as `effect` draws it at `t`.
+    // A cell handed to the effect that no frame lists: a blank on the terminal's ground, past the element.
+    const blank: EffectCell = { row: 0, col: 40, seed: 0, terminal: written, reverse: false, anchor: undefined };
+    // Every cell of `cells`, and the blank, as `effect` draws it at `t`.
     const frameOf = (effect: Effect, cells: EffectCell[], t: number): string[] => {
       const drawnAt = effect({ ...NOTHING, cells: () => cells }).at(t);
-      return cells.map((cell) => drawnAt(colors, cell).fg.hex);
+      return [...cells, blank].map((cell) => drawnAt(colors, cell).fg.hex);
     };
 
     it("played, reversed, then scrubbed, each frame of an element that grows as it moves is the frame a fresh transition draws", () => {
@@ -622,15 +624,16 @@ describe("the transitions run start to end", () => {
     });
   });
 
-  it.each([0, 1, 2, 3, 4, 5, 6])("a cell a fade at z %d hands before it shows is spread over the order the element has once it does", (z) => {
-    const placed = (n: number): EffectCell[] => Array.from({ length: n }, (_, col) => ({ row: 0, col, seed: 0, terminal: written, reverse: false, anchor: undefined }));
-    const [narrow, grown] = [placed(3), placed(6)];
-    const late = grown[5]!;
+  it.each([0, 1, 2, 3, 4, 5, 6])("a cell a fade at z %d has moved never goes back while the element keeps its cells", (z) => {
+    const cells: EffectCell[] = Array.from({ length: 24 }, (_, i) => ({ row: Math.floor(i / 12), col: i % 12, seed: 0, terminal: written, reverse: false, anchor: undefined }));
     const { effect } = fadeIn(curve(20, 1), z);
-    // Handed while blank, listed by no frame yet.
-    effect({ ...NOTHING, cells: () => narrow }).at(2)(colors, late);
-    const fresh = fadeIn(curve(20, 1), z).effect;
-    expect(effect({ ...NOTHING, cells: () => grown }).at(8)(colors, late).fg.hex).toBe(fresh({ ...NOTHING, cells: () => grown }).at(8)(colors, late).fg.hex);
+    const shown = (t: number): number[] => {
+      const drawnAt = effect({ ...NOTHING, cells: () => cells }).at(t);
+      return cells.map((cell) => distance(drawnAt(colors, cell).fg, terminalGround));
+    };
+    const series = Array.from({ length: 81 }, (_, i) => shown(i * 0.25));
+    for (const [i, now] of series.entries()) for (const [cell, v] of now.entries()) if (i > 0) expect(v).toBeGreaterThanOrEqual(series[i - 1]![cell]! - 1e-9);
+    expect(series.at(-1)!.every((v) => v > 0)).toBe(true);
   });
 
   it("swing below 1 stops short of invisible", () => {

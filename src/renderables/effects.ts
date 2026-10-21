@@ -814,16 +814,17 @@ export function onBeat(stepped: Effect | Transition<(drawn: never) => Animation<
 const OWN = 0.45;
 
 /**
- * A cell's own change in a transition: how far along the element's order it
- * starts, in [0, 1], and how far through the change it is at `t`, in [0, 1].
+ * A cell's own change in a transition's frame: how far along the element's
+ * order it starts, in [0, 1], and how far through the change it is then, in
+ * [0, 1].
  */
 interface CellChange {
   readonly along: number;
-  progress(t: number): number;
+  readonly progress: number;
 }
 
 /**
- * Each cell's own change in a transition, in a frame listing `cells`: a cell
+ * Each cell's own change in a transition, in the frame at `t` listing `cells`: a cell
  * starts as far through the time the others leave it as its `place` falls
  * between the element's first and last, so on any element, however little of
  * the order its cells span, the first starts at 0 and the last settles at
@@ -836,10 +837,13 @@ interface CellChange {
  * before — after a seek, in reverse, at any rate — and one transition is
  * safe on any number of elements. An element that gains cells as it moves is
  * spread over the order it has in each frame, so a cell already moving may
- * move its start.
+ * move its start — back to unmoved, if a new cell comes first. Nothing
+ * steadier is there to spread over: the order's whole range would start a
+ * small element late and end it early, and the cells a frame hands reach
+ * across a wide frame's blank margin.
  */
-function ownChange(curve: Curve, place: (cell: Placed) => number): (cells: readonly Placed[]) => (cell: Placed) => CellChange {
-  return (cells) => {
+function ownChange(curve: Curve, place: (cell: Placed) => number): (t: number, cells: readonly Placed[]) => (cell: Placed) => CellChange {
+  return (t, cells) => {
     const [first, last] = extent(cells.map(place));
     const stagger = (last > first ? 1 - OWN : 0) * curve.seconds;
     // One phase a frame, shifted per cell, so no cell builds its own.
@@ -847,7 +851,7 @@ function ownChange(curve: Curve, place: (cell: Placed) => number): (cells: reado
     // A share of the way from the first place to the last, held to the order for a cell the frame does not list.
     return (cell) => {
       const along = last > first ? clamp01((place(cell) - first) / (last - first)) : 0;
-      return { along, progress: (t) => change(t - along * stagger) };
+      return { along, progress: change(t - along * stagger) };
     };
   };
 }
@@ -875,8 +879,8 @@ export function fadeIn(curve: Curve, z: number): Transition {
   return transition(
     curve.seconds,
     veiled((t, drawn) => {
-      const of = risen(drawn.cells());
-      return (cell) => curve.ease(of(cell).progress(t));
+      const of = risen(t, drawn.cells());
+      return (cell) => curve.ease(of(cell).progress);
     }, curve.swing),
   );
 }
@@ -909,10 +913,10 @@ export function dissolveOut(curve: Curve, z: number): Transition {
   return transition(
     curve.seconds,
     veiled((t, drawn) => {
-      const of = faded(drawn.cells());
+      const of = faded(t, drawn.cells());
       return (cell) => {
         const { along, progress } = of(cell);
-        const gone = curve.ease(progress(t));
+        const gone = curve.ease(progress);
         const q = clamp01((gone - from) / (to - from));
         const back = depth * smoothstep(maskFrom, maskTo, eddy(cell)) * (1 - late + late * along) * Math.sin(Math.PI * q) ** 2;
         return 1 - gone + back;
