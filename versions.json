@@ -4,15 +4,22 @@
     {
       "version": "pr-510",
       "ref": "refs/pull/510/merge",
-      "sha": "83ee6da1269f7fbc9feeda1b3930de07f9d32cbc",
-      "timestamp": "2026-10-21T12:23:22.375Z",
+      "sha": "b6359c6bf6337df7789e7384ef0454ab65ce7f53",
+      "timestamp": "2026-10-21T12:31:58.237Z",
       "commits": [
         {
-          "sha": "83ee6da1269f7fbc9feeda1b3930de07f9d32cbc",
+          "sha": "b6359c6bf6337df7789e7384ef0454ab65ce7f53",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T06:21:23-06:00",
-          "message": "Merge 1d678663b20a945c817ba851ed9ba8f6cd09aa59 into 7a51fda1c6562c9af4c7e98f540d1b1dc00d1d6d\n"
+          "timestamp": "2026-10-21T12:29:54Z",
+          "message": "Merge 7b6b0cc6e71c08e127962795499dd0eeded2d528 into 7a51fda1c6562c9af4c7e98f540d1b1dc00d1d6d\n"
+        },
+        {
+          "sha": "7b6b0cc6e71c08e127962795499dd0eeded2d528",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T06:29:49-06:00",
+          "message": "A held renderable is drawn at no column, never a negative width (rich-protocol-9xcs.8te)\n\nReview: a container's arithmetic can hand a child a negative or NaN width;\ndrawsNothing reads it as no column, but the held draw passed it through, so\nRule threw RangeError inside narrow Markdown lists and Constrain.\n"
         },
         {
           "sha": "1d678663b20a945c817ba851ed9ba8f6cd09aa59",
