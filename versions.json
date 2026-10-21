@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-505",
-      "ref": "refs/pull/505/merge",
-      "sha": "2c530f8cf64221c82081bf5171f600db43bf5fff",
-      "timestamp": "2026-10-21T07:00:17.875Z",
-      "commits": [
-        {
-          "sha": "2c530f8cf64221c82081bf5171f600db43bf5fff",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T06:58:52Z",
-          "message": "Merge 6bcb57320ce5c08f54a23cceccb9372b0fd8f64d into b5a15aea4b6266ef456ca6c5b40dc71dae635f5a\n"
-        },
-        {
-          "sha": "6bcb57320ce5c08f54a23cceccb9372b0fd8f64d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T00:58:47-06:00",
-          "message": "A memo's key has its type, and cellFitEnd walks only what fits (rich-protocol-9xcs.5ar)\n\nMemo<V, K extends string> and WeakMemo<V, K>: the value first in both, so\nthe render-purity gate reads it from one position. The registry keys on\nThemeName, EmbeddedText on \"markup\" | \"plain\", ColorSpec on `${ColorDepth}`.\nThe registry's one-Palette-per-name is now a test across every theme.\ncellFitEnd walks clustersBefore instead of reversing the whole string.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "91c6ad6c1be1d98cb90c56f05156bb257fd613c6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T00:46:04-06:00",
-          "message": "A word motion walks the value once (rich-protocol-9xcs.5ar)\n\nWith no segmentation cache in cells.ts, TextInput's four word motions,\nstepping prevGrapheme/nextGrapheme a cluster at a time, went quadratic in\nthe word they cross. Each is now one walk (clustersFrom / clustersBefore)\nthrough wordSpan; a linear-time test per motion fails on the old loops.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "51ce13c8edfca39c6f8f1243fb9fddbf662297d5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T00:41:16-06:00",
-          "message": "Every cache a render fills is a Memo (rich-protocol-9xcs.5ar)\n\nString-keyed caches move onto Memo, object-keyed ones onto WeakMemo (new,\nbeside it, sanctioned by the render-purity gate like Memo). Cheap lazy\nvalues become eager readonly fields. The cells.ts last-segmentation slot is\ngone: rows are cut in one walk (cellRows, replacing cellStepFrom), so no\ncaller re-segments a string per row. Their render-purity debt rows go.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "b5a15aea4b6266ef456ca6c5b40dc71dae635f5a",
-      "timestamp": "2026-10-21T06:18:52.043Z",
+      "sha": "e2df564cbf3927e63351f6111aba4d1f9729841d",
+      "timestamp": "2026-10-21T07:10:51.606Z",
       "commits": [
         {
-          "sha": "b5a15aea4b6266ef456ca6c5b40dc71dae635f5a",
+          "sha": "e2df564cbf3927e63351f6111aba4d1f9729841d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T00:17:22-06:00",
-          "message": "A render that writes state throws, and a field cannot be written (rich-protocol-9xcs.94u) (#504)\n\n* A render that writes state throws, and a field cannot be written (rich-protocol-9xcs.94u)\n\nThe refusal epic rich-protocol-9xcs asks for, built from the design on\nrich-protocol-9xcs.rsn.\n\n- src/core/protocol.ts owns the render phase: a pass is one outermost\n  `render` or `measure` call and every step of what it returned, read\n  elsewhere through `activePass()`. New `measure(measurable, options)` is\n  the measure enforcer; `withBoundedWidth`, `Measurement.get` and every\n  direct `.measure(` call go through it, and test/seam/render-calls gains\n  the measure half.\n- src/core/state.ts: `State<T>`, whose `set` throws `RenderWriteError`\n  in a pass that did not make it (React's ownership line). rsn called it\n  `Cell`; \"cell\" is this library's terminal character cell.\n- test/seam/render-purity: nothing writable is reachable from a\n  renderable's fields, a class's statics or module scope, but through\n  `State`, `Memo` (never of a `State`) or a mobx accessor in src/widgets/.\n  The 231 locations that exist today are seeded, shrink-only, in\n  render-purity-debt.ts, each with what it becomes and why.\n\nOnly the iterator of the call that opens a pass is wrapped: wrapping every\nlevel cost ~30% of render time (Table in two Panels, 11.8 vs 9.1 ms);\nopener-only measures 8.9 ms.\n\n* Review (high): a location keeps every reason, lib keys, a self-iterable pass iterator (rich-protocol-9xcs.94u)\n\n- render-purity reports every reason a location has, so a State in a Memo\n  held by a module let is refused even when a debt row owes the let.\n- TypeScript lib declarations are keyed `lib`, not by their node_modules path.\n- The mobx accessor sanction names rich-protocol-9xcs.sej and says the gap.\n- The pass-opening iterator sits on %IteratorPrototype%, iterable itself.\n- measuring is private to protocol; scroll measures through Measurement.get.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-10-21T01:09:25-06:00",
+          "message": "Every cache a render fills is a Memo (rich-protocol-9xcs.5ar) (#505)\n\n* Every cache a render fills is a Memo (rich-protocol-9xcs.5ar)\n\nString-keyed caches move onto Memo, object-keyed ones onto WeakMemo (new,\nbeside it, sanctioned by the render-purity gate like Memo). Cheap lazy\nvalues become eager readonly fields. The cells.ts last-segmentation slot is\ngone: rows are cut in one walk (cellRows, replacing cellStepFrom), so no\ncaller re-segments a string per row. Their render-purity debt rows go.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* A word motion walks the value once (rich-protocol-9xcs.5ar)\n\nWith no segmentation cache in cells.ts, TextInput's four word motions,\nstepping prevGrapheme/nextGrapheme a cluster at a time, went quadratic in\nthe word they cross. Each is now one walk (clustersFrom / clustersBefore)\nthrough wordSpan; a linear-time test per motion fails on the old loops.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* A memo's key has its type, and cellFitEnd walks only what fits (rich-protocol-9xcs.5ar)\n\nMemo<V, K extends string> and WeakMemo<V, K>: the value first in both, so\nthe render-purity gate reads it from one position. The registry keys on\nThemeName, EmbeddedText on \"markup\" | \"plain\", ColorSpec on `${ColorDepth}`.\nThe registry's one-Palette-per-name is now a test across every theme.\ncellFitEnd walks clustersBefore instead of reversing the whole string.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     },
