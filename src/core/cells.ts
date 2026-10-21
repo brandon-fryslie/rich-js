@@ -299,12 +299,22 @@ export function graphemes(text: string): string[] {
  * The clusters of `text` from code unit `start` on, lazily, so a walk that
  * stops early pays only for the clusters it reads.
  */
-function* clustersFrom(text: string, start: CodePoint): Generator<string> {
+export function* clustersFrom(text: string, start: CodePoint): Generator<string> {
   const segments = SEGMENTER.segment(text);
   for (let at = start, s = segments.containing(at); s; s = segments.containing(at)) {
     const end = s.index + s.segment.length;
     yield text.slice(at, end);
     at = asCodePoint(end);
+  }
+}
+
+/** `clustersFrom` backwards: the clusters of `text` before code unit `end`, nearest first. */
+export function* clustersBefore(text: string, end: CodePoint): Generator<string> {
+  const segments = SEGMENTER.segment(text);
+  for (let at = end; at > 0; ) {
+    const { index } = segments.containing(at - 1)!;
+    yield text.slice(index, at);
+    at = asCodePoint(index);
   }
 }
 
@@ -374,8 +384,8 @@ export function nextGrapheme(s: string, cu: CodePoint): CodePoint {
 
 /** `nextGrapheme` backwards: the start of the cluster ending at `cu`; 0 at the start. */
 export function prevGrapheme(s: string, cu: CodePoint): CodePoint {
-  if (cu <= 0) return asCodePoint(0);
-  return asCodePoint(SEGMENTER.segment(s).containing(cu - 1)!.index);
+  const [cluster = ""] = clustersBefore(s, cu);
+  return asCodePoint(cu - cluster.length);
 }
 
 /**

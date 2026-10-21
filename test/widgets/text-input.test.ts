@@ -1499,3 +1499,21 @@ describe("TextInput", () => {
   });
 
 });
+
+describe("a word motion takes time linear in the word it crosses", () => {
+  // Stepping a cluster at a time, each step segmenting the value again, a motion across one long word was quadratic.
+  const across = (motion: (t: TextInput) => void, from: "start" | "end") => (n: number) => {
+    const t = new TextInput({ value: "a".repeat(n) });
+    t.cursorPosition = asCodePoint(from === "start" ? 0 : n);
+    motion(t);
+  };
+
+  it.each([
+    ["moveWordLeft", (t: TextInput) => t.moveWordLeft(), "end"],
+    ["moveWordRight", (t: TextInput) => t.moveWordRight(), "start"],
+    ["deleteWordBack", (t: TextInput) => t.deleteWordBack(), "end"],
+    ["deleteWordForward", (t: TextInput) => t.deleteWordForward(), "start"],
+  ] as const)("%s", (_, motion, from) => {
+    expectLinearTime(across(motion, from), 4000);
+  });
+});
