@@ -4,15 +4,29 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "7cd4dc5968184802d1d64f6fde97e45227d743f6",
-      "timestamp": "2026-10-21T13:14:44.129Z",
+      "sha": "5a1af8f1286902d1e6bac6dce34afb4d7c08f2b4",
+      "timestamp": "2026-10-21T14:38:39.455Z",
       "commits": [
         {
-          "sha": "7cd4dc5968184802d1d64f6fde97e45227d743f6",
+          "sha": "5a1af8f1286902d1e6bac6dce34afb4d7c08f2b4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T07:12:38-06:00",
-          "message": "A Viewport is scroll state; content is drawn through it with showing (rich-protocol-9xcs.tcy) (#511)\n\n* A Viewport is scroll state; content is drawn through it with showing (rich-protocol-9xcs.tcy)\n\nViewport no longer takes content or renders itself: `new Viewport(options)`\nholds the scroll position, and `showing`/`showingLines` are the one way to\ndraw through it. The placeholder content half its callers built\n(`new RichText(\"\")`, `EMPTY`) is gone, and so is the content a ListView's\nviewport held and ignored.\n\nViewport drops out of the exported-renderable gates (held, ascii-only,\nline-ends); their ListView rows still draw through `showing`.\n\n* Review: docs and held check follow Viewport.showing; tests name the Viewport viewport (rich-protocol-9xcs.tcy)\n\n- docs/protocol.md, docs/viewport.md: a Viewport no longer renders or is\n  held; the content shown through it is.\n- held.test.ts: Viewport.showing joins VARIANTS, restoring the held/onPresent\n  check the removed Viewport row carried.\n- Rejected: a migration note for the (content, options) -> (options)\n  constructor. No changelog exists, the type rejects the old call, and the\n  repo keeps no back-compat shims.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-10-21T08:21:34-06:00",
+          "message": "A colour transition draws a time the same whatever was drawn before (rich-animation-27tq.ws0) (#513)\n\n* A colour transition's frame is worked out from its time and cells alone (rich-animation-27tq.ws0)\n\nownChange kept each cell's change in a closure Map, settled in the first\nframe that listed it, so a seek, reverse or scrub over an element whose\ncells changed drew a later frame's settlement for an earlier time, and one\ntransition on two elements shared one record keyed by row:col. The record\nand order()'s place cache are gone; each frame spreads its cells over the\norder it lists. Cost, kept on purpose: a cell of an element that grows mid\ntransition may move its start.\n\n* A cell's change is a value for its frame; the growing-element trade-off is said where it shows (rich-animation-27tq.ws0)"
+        },
+        {
+          "sha": "c4d7da03b7f1113e3b00388a67f81ba33461bfbf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T08:02:27-06:00",
+          "message": "A frame's hold no cell carries is told, not drawn (rich-animation-27tq.5j9) (#512)\n\n* A frame's hold no cell carries is told, not drawn (rich-animation-27tq.5j9)\n\nA placed animation showing nothing led its output with Segment.carrier, and\na container that cut it into rows grew a blank row for it. No segment rule\ncan fix that: a child of no cells is zero rows, with nothing left to carry\nthe hold through. RenderOptions.onHold carries it instead, back the way the\nframe's time came in, so any container that hands a child its options hands\nback its hold. Segment.carrier, isCarrier, splitRows and Tree's carriers go.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A held or measured animation still tells its hold (rich-animation-27tq.5j9)\n\nholding() and measuring() dropped onHold, so a toast not yet entered in a\nfitted Panel or a header-less Table column (sized to its 0-cell measure,\ndrawn held) told the host nothing and the frame never woke. onHold now\nreaches wherever the frame's time does; placedMeasure tells its hold too.\nScroll's one-column draw, kept only to carry a hold, goes. Review of PR #512.\n\n* Say what a hold told from no width costs (rich-animation-27tq.5j9)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+        },
+        {
+          "sha": "476e7da56fc8861a88619c422973dbd6ab671ec1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T07:23:52-06:00",
+          "message": "An animation is drawn one way: placed (rich-animation-27tq.0tc) (#503)\n\n* An animation is drawn one way: placed (rich-animation-27tq.0tc)\n\nRemoves every public way to draw an animation at a time the caller names:\nframeAt and its Stamped renderable, the Frames class, Spinner.drawnAt, and\nProgressBar's pulse: { t }, now pulse: true. A FrameSequence, a Spinner and a\npulse are placed and draw at the frame's time.\n\nProgress draws its table in a frame of its own host's time when printed with\nnone, so the bars and spinners placed in it draw at the moment its tasks are\ndrawn at. Examples and docs place their animations; docs that played an effect\nover frames at sampled moments now play it in a live fence.\n\n* Review: the pulse test reads what Progress draws; one clock in the showcase (rich-animation-27tq.0tc)\n\nThe BarColumn pulse test supplied its own frame and compared against a\nliteral 7.5; it now prints the Progress and compares each row to the bar\ndrawn in a frame for 7.5s. A test pins that, in a frame of its own host,\na Progress holds what it would draw. Spinner's placed renderable is built\nin the constructor after the sequences it closes over. The showcase draws\nthe dashboard at the Live's frame time, so the heading and the jobs share\none clock. Two doc sentences that described examples no longer present\nare corrected.\n\n* Review: the template frames test names FrameSequence, not the removed Frames (rich-animation-27tq.0tc)\n\n* Rebase onto the escape: Spinner measures through protocol, held covers a pulsing bar (rich-animation-27tq.0tc)\n\nA held renderable is now drawn through render (#510), so the frame a printed\nProgress makes reaches what it holds as it reaches what it draws; _framed\nstays as the one moment a print is drawn for."
         }
       ]
     }
