@@ -4,15 +4,22 @@
     {
       "version": "pr-503",
       "ref": "refs/pull/503/merge",
-      "sha": "dde5fdad7964581b5e449e93a07c814145208965",
-      "timestamp": "2026-10-21T05:21:12.766Z",
+      "sha": "3db94884306270211c6a920fc4263a363b3cd40c",
+      "timestamp": "2026-10-21T05:29:25.941Z",
       "commits": [
         {
-          "sha": "dde5fdad7964581b5e449e93a07c814145208965",
+          "sha": "3db94884306270211c6a920fc4263a363b3cd40c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T05:19:15Z",
-          "message": "Merge 2c015f1bbfd67a2bd3b350eab8d106226296e07d into 0dcf5ac44f527aed4862a9e376cb6bca2a287dfb\n"
+          "timestamp": "2026-10-21T05:27:24Z",
+          "message": "Merge fbdbb9d010b69beb9e6742d544ce406daa7c7514 into 0dcf5ac44f527aed4862a9e376cb6bca2a287dfb\n"
+        },
+        {
+          "sha": "fbdbb9d010b69beb9e6742d544ce406daa7c7514",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-20T23:27:20-06:00",
+          "message": "Review: the template frames test names FrameSequence, not the removed Frames (rich-animation-27tq.0tc)\n"
         },
         {
           "sha": "2c015f1bbfd67a2bd3b350eab8d106226296e07d",
