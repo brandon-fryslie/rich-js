@@ -491,18 +491,27 @@ export function passAt(what: string, t: number, period: number): { readonly pass
   return { pass: Math.round((t - into) / period) + 0, into };
 }
 
+/** The least normal double, 2^-1022: below it every double is a multiple of `Number.MIN_VALUE`. */
+const MIN_NORMAL = 2 ** -1022;
+
 /**
  * The float after `x`: one ulp up, away from zero for a positive `x` and
- * toward it for a negative one, read through the bits of the double.
+ * toward it for a negative one. Computed, not read through the bits of the
+ * double: a buffer per call costs an allocation on every boundary walked, and
+ * one at module scope is state every caller shares.
  */
 function nextUp(x: number): number {
   if (x === 0) return Number.MIN_VALUE;
-  DOUBLE[0] = x;
-  BITS[0] = BITS[0]! + (x > 0 ? 1n : -1n);
-  return DOUBLE[0];
+  const a = Math.abs(x);
+  if (a < MIN_NORMAL) return x + Number.MIN_VALUE;
+  // `log2` may round across a power of two; the two checks put `a` in [2^e, 2^(e+1)).
+  let e = Math.floor(Math.log2(a));
+  if (2 ** e > a) e -= 1;
+  else if (2 ** (e + 1) <= a) e += 1;
+  const ulp = 2 ** (e - 52);
+  // Toward zero from a power of two, the floats below it are half as far apart.
+  return x > 0 ? x + ulp : x + (a === 2 ** e && a > MIN_NORMAL ? ulp / 2 : ulp);
 }
-const DOUBLE = new Float64Array(1);
-const BITS = new BigUint64Array(DOUBLE.buffer);
 /** How many ulps the roundings in a sum naming a boundary can put it under that boundary; a walk past this is a boundary finer than time resolves there. */
 const ULPS_OF_ROUNDING = 8;
 

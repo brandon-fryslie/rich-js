@@ -349,7 +349,7 @@ export interface Pass {
 // "not rendering" is `undefined` and needs no counter.
 let active: Pass | undefined;
 
-function runIn<T>(pass: Pass, run: () => T): T {
+function runIn<T>(pass: Pass | undefined, run: () => T): T {
   const outer = active;
   active = pass;
   try {
@@ -357,6 +357,16 @@ function runIn<T>(pass: Pass, run: () => T): T {
   } finally {
     active = outer;
   }
+}
+
+/**
+ * `handler` run as if between passes: a callback a render makes to user code to
+ * report something it met, such as `onStyleError`, is an event handler, and may
+ * write what one may — print to a console, set a `State` — as React lets an
+ * event handler set state.
+ */
+export function betweenPasses<T>(handler: () => T): T {
+  return runIn(undefined, handler);
 }
 
 /** The pass a render or measure in progress belongs to, or `undefined` between passes. */

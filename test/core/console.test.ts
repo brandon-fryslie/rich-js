@@ -6,6 +6,7 @@ import {
   type ConsoleStream,
 } from "../../src/core/console.js";
 import { RichText } from "../../src/core/text.js";
+import { RenderWriteError } from "../../src/core/state.js";
 import { Style, StyleSyntaxError, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
 import type { Env } from "../../src/core/env.js";
@@ -64,6 +65,37 @@ function makeConsole(overrides: ConsoleOptions = {}): {
   const c = new Console({ file: stream, width: 80, colorSystem: null, ...overrides });
   return { console: c, chunks };
 }
+
+describe("Console output during a render", () => {
+  it.each<[string, ConsoleOptions, boolean, (c: Console) => void]>([
+    ["a print", {}, false, (c) => c.print("x")],
+    ["a recorded print", { record: true }, false, (c) => c.print("x")],
+    ["a captured print", {}, true, (c) => c.print("x")],
+    ["a log", {}, false, (c) => c.log("x")],
+  ])("is refused alike for %s, and writes nothing", (_, overrides, capturing, write) => {
+    const { console: c, chunks } = makeConsole(overrides);
+    if (capturing) c.beginCapture();
+    const writes: Renderable = {
+      render() {
+        write(c);
+        return [];
+      },
+    };
+    expect(() => new Console({ file: makeStream().stream }).print(writes)).toThrow(RenderWriteError);
+    expect(captured(chunks)).toBe("");
+    expect(c.exportText()).toBe("");
+    if (capturing) expect(c.endCapture()).toBe("");
+  });
+
+  it("is an onStyleError handler's to make, as an event handler's is", () => {
+    const { console: report } = makeConsole({ record: true });
+    const { console: c } = makeConsole({
+      onStyleError: (_, style) => report.log(`style "${style}"`),
+    });
+    c.print("[bold rd]typo[/]");
+    expect(report.exportText()).toContain('style "bold rd"');
+  });
+});
 
 // --- Construction ---
 

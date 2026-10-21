@@ -24,6 +24,7 @@ import {
   type ExportLook,
   type ExportRun,
 } from "./export-lines.js";
+import { pattern } from "./pattern.js";
 
 const BLINK_KEYFRAMES = "rich-blink";
 
@@ -89,7 +90,7 @@ const span = (css: readonly string[], content: string): string =>
   `<span style="${escapeAttribute(css.join(";"))}">${content}</span>`;
 
 /** Text of printable ASCII only: one cell a character, nothing to box. */
-const ONE_CELL = /^[\x20-\x7e]*$/;
+const ONE_CELL = pattern(/^[\x20-\x7e]*$/);
 
 /**
  * A box exactly `cells` of the monospace font wide (`ch` is one of its cells)

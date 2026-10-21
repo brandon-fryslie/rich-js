@@ -94,7 +94,7 @@ export interface InputSink {
 }
 
 // Single-byte → key name table for the trivial cases.
-const SINGLE_BYTE_KEYS: Record<number, string> = {
+const SINGLE_BYTE_KEYS: Readonly<Record<number, string>> = {
   0x09: "tab",
   0x0a: "enter",
   0x0d: "enter",
@@ -105,7 +105,7 @@ const SINGLE_BYTE_KEYS: Record<number, string> = {
 };
 
 // Final-byte → key name for the simple `ESC[<X>` arrow / nav forms.
-const CSI_LETTER_KEYS: Record<string, string> = {
+const CSI_LETTER_KEYS: Readonly<Record<string, string>> = {
   A: "up",
   B: "down",
   C: "right",
@@ -116,7 +116,7 @@ const CSI_LETTER_KEYS: Record<string, string> = {
 };
 
 // `ESC[<n>~` numeric forms for navigation / function keys.
-const CSI_TILDE_KEYS: Record<string, string> = {
+const CSI_TILDE_KEYS: Readonly<Record<string, string>> = {
   "1": "home",
   "2": "insert",
   "3": "delete",
@@ -140,7 +140,7 @@ const CSI_TILDE_KEYS: Record<string, string> = {
 };
 
 // SS3 form `ESC O X` for F1–F4 (and arrow keys on some terminals).
-const SS3_KEYS: Record<string, string> = {
+const SS3_KEYS: Readonly<Record<string, string>> = {
   P: "f1",
   Q: "f2",
   R: "f3",
@@ -202,8 +202,6 @@ const UTF8_ENCODER = new TextEncoder();
 const UTF8_DECODER = new TextDecoder("utf-8");
 const ASCII_DECODER = new TextDecoder("ascii");
 
-const EMPTY_BYTES = new Uint8Array(0);
-
 /**
  * How long a `"split"` host's parser waits for the rest of an unfinished
  * escape sequence before reading it as the keys it already holds. Textual's
@@ -260,7 +258,7 @@ export class InputParser {
   // `Buffer` — node's Buffer extends Uint8Array, so Buffer chunks from
   // process.stdin satisfy this type, while a browser host can emit native
   // Uint8Array without depending on a Buffer global polyfill.
-  private buffer: Uint8Array = EMPTY_BYTES;
+  private buffer: Uint8Array = new Uint8Array(0);
   // [LAW:types-are-the-program] `setTimeout`/`clearTimeout` are universal
   // across node and browser; `setImmediate` is node-only.
   private escTimer: ReturnType<typeof setTimeout> | undefined;
@@ -285,7 +283,7 @@ export class InputParser {
     this.cancelEscape();
     // The buffer is settled before the sink hears Escape, so a sink that
     // resets the parser on it (an app stopping) leaves nothing to drain.
-    this.buffer = concatBytes(escaped ? EMPTY_BYTES : this.buffer, next);
+    this.buffer = concatBytes(escaped ? new Uint8Array(0) : this.buffer, next);
     try {
       if (escaped) this.sink.key(ESCAPE);
     } finally {
@@ -357,7 +355,7 @@ export class InputParser {
   /** Drop what is buffered and any held escape sequence: the parser as constructed. */
   reset(): void {
     this.cancelEscape();
-    this.buffer = EMPTY_BYTES;
+    this.buffer = new Uint8Array(0);
   }
 
   /** A lone ESC, the one hold a next chunk can settle before its bytes are read. */

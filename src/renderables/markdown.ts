@@ -231,10 +231,11 @@ interface Image {
  * of whatever it draws next. That flag is the only source of blank rows
  * between blocks: Rich reads no blank line of the source.
  */
-type Step =
+type Step = Readonly<
   | { kind: "image"; image: Image }
   | { kind: "block"; token: MdToken }
-  | { kind: "exit"; newLine: boolean };
+  | { kind: "exit"; newLine: boolean }
+>;
 
 const EXIT: Step = { kind: "exit", newLine: true };
 

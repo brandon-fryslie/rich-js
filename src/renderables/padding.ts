@@ -18,8 +18,8 @@ import { embed } from "./embed.js";
 
 export type PaddingDimensions =
   | number
-  | [number, number]
-  | [number, number, number, number];
+  | readonly [number, number]
+  | readonly [number, number, number, number];
 
 /**
  * Parses the shapes a caller may write padding in — one number, a vertical/
@@ -35,7 +35,7 @@ export type PaddingDimensions =
  */
 export function normalizePadding(
   padding: PaddingDimensions,
-): [number, number, number, number] {
+): readonly [number, number, number, number] {
   // A padding side is a count of cells like any other, so it is parsed by the
   // same rule rather than by a second copy of it: a fractional side reaches
   // `" ".repeat`, which truncates, while the rows around it are measured

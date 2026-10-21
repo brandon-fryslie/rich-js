@@ -65,6 +65,7 @@ import { drawable, measure, render } from "../core/protocol.js";
 import { EmbeddedText } from "./embed.js";
 import { FrameSequence } from "./frames.js";
 import { finiteTime } from "../core/easing.js";
+import { State } from "../core/state.js";
 
 /** A spinner's frames prepared to draw, each styled and held for the interval, run on the spinner's timeline, and the glyphs they spend. */
 interface Sequence {
@@ -100,7 +101,16 @@ export class Spinner implements Animation<Renderable & Measurable> {
    * whatever the console says — and a `RichText` changed in place draws as
    * changed, as the `Text` Rich keeps does. [LAW:single-enforcer]
    */
-  text: string | RichText;
+  get text(): string | RichText {
+    return this._text.get();
+  }
+
+  set text(value: string | RichText) {
+    this._text.set(value);
+  }
+
+  // Rich's `Spinner.update` sets the text after it is built.
+  private readonly _text: State<string | RichText>;
   private readonly _data: SpinnerData;
   // The named data's frames, and the `line` spinner's that stand in for them
   // on an ASCII-only output: prepared once, which is drawn chosen at `at`.
@@ -118,7 +128,7 @@ export class Spinner implements Animation<Renderable & Measurable> {
     // refuses one that is not where it is built.
     const timeline = Timeline.play(0, speed);
     this.name = spinnerName;
-    this.text = text;
+    this._text = new State(text);
     this.speed = speed;
     this.style = options?.style ?? NULL_STYLE;
     this._data = data;

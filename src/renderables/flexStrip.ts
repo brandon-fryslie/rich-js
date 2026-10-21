@@ -38,8 +38,8 @@ export interface FlexStripOptions<T extends StyledRenderable> {
 }
 
 interface RenderedBlock {
-  segments: Segment[];
-  width: number;
+  readonly segments: readonly Segment[];
+  readonly width: number;
 }
 
 function renderToBlock(r: Renderable, options: RenderOptions): RenderedBlock {

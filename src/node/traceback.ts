@@ -31,6 +31,7 @@
 import { Console } from "../core/console.js";
 import { Traceback } from "../renderables/traceback.js";
 import type { TracebackOptions } from "../renderables/traceback.js";
+import { State } from "../core/state.js";
 
 /**
  * The handler currently registered, or a no-op standing in for "none yet".
@@ -44,7 +45,7 @@ import type { TracebackOptions } from "../renderables/traceback.js";
  * unregistered listener does nothing, so the first call needs no null check
  * and no "have we installed yet" branch. There is no absent case to handle.
  */
-let installed: (reason: unknown) => void = () => {};
+const installed = new State<(reason: unknown) => void>(() => {});
 
 /**
  * An unhandled rejection, raised as the uncaught exception it becomes when
@@ -98,10 +99,10 @@ export function installTraceback(options?: TracebackOptions): void {
     });
   };
 
-  process.off("uncaughtException", installed);
+  process.off("uncaughtException", installed.get());
   process.off("unhandledRejection", escalate);
 
   process.on("uncaughtException", report);
   process.on("unhandledRejection", escalate);
-  installed = report;
+  installed.set(report);
 }

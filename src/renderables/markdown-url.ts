@@ -10,6 +10,7 @@
  */
 
 import { pyStrip } from "./python-space.js";
+import { pattern } from "../core/pattern.js";
 
 /** A URL as mdurl's `parse` splits one; an absent part is empty. */
 interface Url {
@@ -24,16 +25,16 @@ interface Url {
 }
 
 /** mdurl's protocol, `[a-z0-9.+-]+:` under Python's IGNORECASE, which also folds İ, ı, ſ and K (Kelvin) into `[a-z]`. */
-const PROTOCOL = /^[a-z0-9.+\-\u0130\u0131\u017f\u212a]+:/i;
-const PORT = /:[0-9]*$/;
+const PROTOCOL = pattern(/^[a-z0-9.+\-\u0130\u0131\u017f\u212a]+:/i);
+const PORT = pattern(/:[0-9]*$/);
 const HOST_ENDING_CHARS = "/?#";
 const NON_HOST_CHARS = "%/?;#'{}|\\^`<>\" \r\n\t";
-const HOSTNAME_PART = /^[+a-z0-9A-Z_-]{0,63}$/;
-const HOSTNAME_PART_START = /^([+a-z0-9A-Z_-]{0,63})(.*)$/s;
+const HOSTNAME_PART = pattern(/^[+a-z0-9A-Z_-]{0,63}$/);
+const HOSTNAME_PART_START = pattern(/^([+a-z0-9A-Z_-]{0,63})(.*)$/s);
 const HOSTNAME_MAX_LEN = 255;
 /** Protocols whose hostname markdown-it recodes; anything else may not be a host at all, as `skype:name` is not. */
-const RECODE_HOSTNAME_FOR = ["http:", "https:", "mailto:"];
-const SLASHED_PROTOCOL = ["http:", "https:", "ftp:", "gopher:", "file:"];
+const RECODE_HOSTNAME_FOR: readonly string[] = ["http:", "https:", "mailto:"];
+const SLASHED_PROTOCOL: readonly string[] = ["http:", "https:", "ftp:", "gopher:", "file:"];
 
 /** The first index in `text` of any character of `chars`, or -1. */
 function firstOf(text: string, chars: string): number {
@@ -118,8 +119,8 @@ function format(url: Url): string {
 
 /** What mdurl's `encode` leaves as it is, besides ASCII letters and digits. */
 const ENCODE_KEEP = ";/?:@&=+$,-_.!~*'()#";
-const ALPHANUMERIC = /[A-Za-z0-9]/;
-const HEX_PAIR = /^[0-9a-fA-F]{2}$/;
+const ALPHANUMERIC = pattern(/[A-Za-z0-9]/);
+const HEX_PAIR = pattern(/^[0-9a-fA-F]{2}$/);
 
 /** mdurl's `encode`: every character it does not keep percent-encoded as UTF-8, a `%` already starting an escape kept. */
 function encode(text: string): string {
@@ -150,7 +151,6 @@ function encode(text: string): string {
 
 /** What `normalizeLinkText` leaves escaped: mdurl's default reserved set, and `%` (markdown-it issue 720). */
 const DECODE_KEEP = ";/?:@&=+$,#%";
-const ESCAPE_RUN = /(?:%[a-f0-9]{2})+/gi;
 
 /**
  * The code point of the UTF-8 sequence `bytes`, or undefined where Python's
@@ -169,7 +169,7 @@ function utf8(bytes: readonly number[]): string | undefined {
  * and an escape of a kept character left as an escape, its hex uppercased.
  */
 function decode(text: string): string {
-  return text.replace(ESCAPE_RUN, (run) => {
+  return text.replace(/(?:%[a-f0-9]{2})+/gi, (run) => {
     const bytes = run.split("%").slice(1).map((hex) => parseInt(hex, 16));
     let result = "";
     for (let i = 0; i < bytes.length; ) {
@@ -285,7 +285,7 @@ function punycodeDecode(label: string): string | undefined {
 }
 
 /** A host's labels, split at any of the four full stops IDNA reads as one, and joined back with the ASCII one. */
-const LABEL_SEPARATOR = /[.。．｡]/;
+const LABEL_SEPARATOR = pattern(/[.。．｡]/);
 
 /** markdown-it's `to_ascii`: each label carrying a non-ASCII character punycoded. A hostname carries no `@`, so the email half of its `map_domain` never applies. */
 function toAscii(hostname: string): string {
@@ -310,8 +310,8 @@ function recodeHostname(url: string, recode: (hostname: string) => string | unde
   return format(parsed);
 }
 
-const BAD_PROTOCOL = /^(?:vbscript|javascript|file|data):/;
-const GOOD_DATA = /^data:image\/(?:gif|png|jpeg|webp);/;
+const BAD_PROTOCOL = pattern(/^(?:vbscript|javascript|file|data):/);
+const GOOD_DATA = pattern(/^data:image\/(?:gif|png|jpeg|webp);/);
 
 /**
  * The href markdown-it gives a link to `destination`: its host punycoded and

@@ -7,7 +7,7 @@ import type { Style } from "./style.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 
 // [LAW:one-source-of-truth] Single emoji dictionary for all shortcode lookups
-export const EMOJI: Record<string, string> = {
+export const EMOJI: Readonly<Record<string, string>> = {
   // Faces
   smile: "😄",
   laugh: "😂",
@@ -343,8 +343,6 @@ export const EMOJI: Record<string, string> = {
   biohazard: "☣",
 };
 
-const EMOJI_PATTERN = /:([a-z0-9_]+(?:-(?:emoji|text))?):/g;
-
 /**
  * Replaces :shortcode: patterns in text with emoji characters.
  */
@@ -352,7 +350,7 @@ export function emojiReplace(
   text: string,
   defaultVariant?: "emoji" | "text",
 ): string {
-  return text.replace(EMOJI_PATTERN, (_match, code: string) => {
+  return text.replace(/:([a-z0-9_]+(?:-(?:emoji|text))?):/g, (_match, code: string) => {
     let variant = defaultVariant;
     let name = code;
 

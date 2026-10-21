@@ -20,6 +20,7 @@ import type {
   WidgetFocusEvent,
 } from "./types.js";
 import type { Unsubscribe } from "../core/subscription.js";
+import { State } from "../core/state.js";
 
 export abstract class WidgetBase implements InteractiveWidget {
   abstract readonly id: string;
@@ -30,8 +31,9 @@ export abstract class WidgetBase implements InteractiveWidget {
   @observableRef accessor active: boolean = false;
   @observableRef accessor disabled: boolean = false;
 
-  private readonly changeHandlers = new Set<(w: InteractiveWidget) => void>();
-  private readonly submitHandlers = new Set<(w: InteractiveWidget) => void>();
+  // Subscribed and let go between frames; each set is replaced whole.
+  private readonly changeHandlers = new State<ReadonlySet<(w: InteractiveWidget) => void>>(new Set());
+  private readonly submitHandlers = new State<ReadonlySet<(w: InteractiveWidget) => void>>(new Set());
 
   // --- Event handlers (override in subclass) ---
 
@@ -77,23 +79,21 @@ export abstract class WidgetBase implements InteractiveWidget {
   // --- Subscriptions ---
 
   onChange(handler: (widget: InteractiveWidget) => void): Unsubscribe {
-    this.changeHandlers.add(handler);
-    return () => this.changeHandlers.delete(handler);
+    return subscribe(this.changeHandlers, handler);
   }
 
   onSubmit(handler: (widget: InteractiveWidget) => void): Unsubscribe {
-    this.submitHandlers.add(handler);
-    return () => this.submitHandlers.delete(handler);
+    return subscribe(this.submitHandlers, handler);
   }
 
   protected emitChange(): void {
-    for (const handler of this.changeHandlers) {
+    for (const handler of this.changeHandlers.get()) {
       handler(this);
     }
   }
 
   protected emitSubmit(): void {
-    for (const handler of this.submitHandlers) {
+    for (const handler of this.submitHandlers.get()) {
       handler(this);
     }
   }
@@ -123,4 +123,14 @@ export abstract class WidgetBase implements InteractiveWidget {
 
   protected abstract draw(options: RenderOptions): Iterable<Segment>;
   abstract measure(options: RenderOptions): { minimum: number; maximum: number };
+}
+
+/** `handler` added to `handlers` until the returned call takes it out. */
+function subscribe<H>(handlers: State<ReadonlySet<H>>, handler: H): Unsubscribe {
+  handlers.set(new Set(handlers.get()).add(handler));
+  return () => {
+    const left = new Set(handlers.get());
+    left.delete(handler);
+    handlers.set(left);
+  };
 }

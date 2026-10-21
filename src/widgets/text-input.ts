@@ -96,6 +96,7 @@ import type { TerminalTheme } from "../core/color.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
 import type { KeyEvent, WidgetFocusEvent, WidgetMouseEvent } from "./types.js";
+import { pattern } from "../core/pattern.js";
 
 /**
  * A soft-wrap strategy. Given one logical line of text and cell-width budgets,
@@ -269,13 +270,13 @@ const ASCII_ZERO_CELL_GLYPH = "?";
 
 // Text a key may insert: anything but the C0 controls, DEL and the C1
 // controls, which a terminal reads as escape sequences (U+009B is CSI).
-const PRINTABLE = /^[^\x00-\x1f\x7f-\x9f]+$/u;
+const PRINTABLE = pattern(/^[^\x00-\x1f\x7f-\x9f]+$/u);
 
 // Word-character regex used by Alt+B/F and Ctrl+Left/Right. Matches the
 // readline default (alphanumeric + underscore), which is what users typing
 // shell commands or code identifiers expect.
-const WORD_CHAR_RE = /[A-Za-z0-9_]/;
-const WHITESPACE_RE = /\s/;
+const WORD_CHAR_RE = pattern(/[A-Za-z0-9_]/);
+const WHITESPACE_RE = pattern(/\s/);
 
 /** CRLF and lone CR as LF, the line break `value` holds. */
 function toLf(text: string): string {

@@ -15,6 +15,7 @@ import type {
 } from "../core/protocol.js";
 import { drawable, getStyle, render, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
+import { ListState, State } from "../core/state.js";
 
 /**
  * What one column of guide draws on one row: a branch to the child on this row
@@ -135,8 +136,9 @@ const isDrawn = (row: Drawn): boolean => row.lines.length > 0;
 
 export class Tree implements Renderable, Measurable, Composite {
   readonly label: Renderable;
-  readonly children: Tree[];
-  expanded: boolean;
+  // Rich's Tree grows by `add` and is expanded or collapsed after it is built.
+  private readonly _children = new ListState<Tree>();
+  private readonly _expanded: State<boolean>;
   readonly hideRoot: boolean;
   readonly guideStyle: string | Style;
   readonly style: string | Style;
@@ -146,8 +148,7 @@ export class Tree implements Renderable, Measurable, Composite {
     options?: TreeOptions,
   ) {
     this.label = embed(label);
-    this.children = [];
-    this.expanded = options?.expanded !== false;
+    this._expanded = new State(options?.expanded !== false);
     this.hideRoot = options?.hideRoot ?? false;
     this.guideStyle = options?.guide_style ?? NULL_STYLE;
     this.style = options?.style ?? NULL_STYLE;
@@ -159,8 +160,20 @@ export class Tree implements Renderable, Measurable, Composite {
       style: options?.style,
       expanded: options?.expanded,
     });
-    this.children.push(child);
+    this._children.push(child);
     return child;
+  }
+
+  get children(): readonly Tree[] {
+    return this._children.get();
+  }
+
+  get expanded(): boolean {
+    return this._expanded.get();
+  }
+
+  set expanded(value: boolean) {
+    this._expanded.set(value);
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {

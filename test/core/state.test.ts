@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { State, RenderWriteError } from "../../src/core/state.js";
+import { ListState, State, RenderWriteError } from "../../src/core/state.js";
 import { activePass, measure, render, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { Segment } from "../../src/core/segment.js";
 import { Table } from "../../src/renderables/table.js";
@@ -144,5 +144,49 @@ describe("between passes, state changes", () => {
     )[Symbol.iterator]();
     steps.next();
     expect([...(steps as IterableIterator<Segment>)].map((s) => s.text)).toEqual(["b", "c"]);
+  });
+});
+
+describe("a ListState", () => {
+  it("refuses an append or a replacement during a render it did not make, and keeps its items", () => {
+    const rows = new ListState([1]);
+    const appends: Renderable = {
+      render() {
+        rows.push(2);
+        return [];
+      },
+    };
+    const replaces: Renderable = {
+      render() {
+        rows.set([]);
+        return [];
+      },
+    };
+    expect(() => drain(appends)).toThrow(RenderWriteError);
+    expect(() => drain(replaces)).toThrow(RenderWriteError);
+    expect(rows.get()).toEqual([1]);
+  });
+
+  it("made in a render, is filled by it", () => {
+    const builds: Renderable = {
+      *render() {
+        const rows = new ListState<string>();
+        rows.push("a");
+        rows.push("b");
+        yield new Segment(rows.get().join(""));
+      },
+    };
+    expect(drain(builds).map((s) => s.text)).toEqual(["ab"]);
+  });
+
+  it("appends in place, and a replacement leaves a list already read as it was", () => {
+    const rows = new ListState<number>();
+    const read = rows.get();
+    rows.push(1);
+    rows.push(2);
+    expect(read).toEqual([1, 2]);
+    rows.set([3]);
+    expect(read).toEqual([1, 2]);
+    expect(rows.get()).toEqual([3]);
   });
 });

@@ -12,6 +12,9 @@
  * it as it draws — a `Table` it adds rows to — changes nothing anyone held
  * before it began. Only a state that existed before the pass is refused.
  *
+ * `ListState` is the same for a list a renderable appends to — a table's rows,
+ * a text's spans — which a `State<readonly T[]>` would copy on every append.
+ *
  * `refuseRenderWrite` is that refusal, written once: a widget's observables
  * refuse a write through it too (`src/widgets/observable.ts`).
  *
@@ -47,6 +50,37 @@ export class State<T> {
   set(value: T): void {
     refuseRenderWrite(this.#owner);
     this.#value = value;
+  }
+}
+
+/**
+ * A list kept as `State` keeps a value, appended to in place: a `State` of a
+ * readonly array copies it on every append, which makes filling a 10,000-row
+ * table quadratic. `get` hands out the list itself, typed readonly, so a
+ * reader that keeps it sees later appends; `set` replaces it, leaving a kept
+ * one as it was.
+ */
+export class ListState<T> {
+  #items: T[];
+  readonly #owner: Pass | undefined = activePass();
+
+  constructor(items: Iterable<T> = []) {
+    this.#items = [...items];
+  }
+
+  get(): readonly T[] {
+    return this.#items;
+  }
+
+  // One item, not a rest parameter: a caller spreading a long list into one overflows the call stack.
+  push(item: T): void {
+    refuseRenderWrite(this.#owner);
+    this.#items.push(item);
+  }
+
+  set(items: Iterable<T>): void {
+    refuseRenderWrite(this.#owner);
+    this.#items = [...items];
   }
 }
 

@@ -221,10 +221,10 @@ describe("decodeAnsi on a captured print", () => {
     const replay = new Console({ file: { write: () => undefined }, width: 40, colorSystem: "truecolor", record: true });
     replay.print(decodeAnsi(chunks.join("")));
 
-    const cells = (segments: Segment[]) =>
+    const cells = (segments: readonly Segment[]) =>
       exportLines(segments).map((row) => row.flatMap((run) => [...run.text].map((ch) => ({ ch, look: run.look }))));
-    const expected = cells(recording["_recorded"]);
+    const expected = cells(recording["_recorded"].get());
     expect(expected.length).toBeGreaterThan(4);
-    expect(cells(replay["_recorded"])).toEqual(expected);
+    expect(cells(replay["_recorded"].get())).toEqual(expected);
   });
 });

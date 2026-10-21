@@ -30,6 +30,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "./protocol.js";
+import { pattern } from "./pattern.js";
 
 export interface PrettyOptions {
   indent?: number;
@@ -728,7 +729,7 @@ const elided = (dropped: number): Slot[] =>
  * An index is at most 15 digits: every such literal is a safe integer and
  * names itself, where `99999999999999999999` would name `1e20`'s key.
  */
-const BARE_KEY = /^(?![^]*\p{Default_Ignorable_Code_Point})(?:[\p{ID_Start}$_][\p{ID_Continue}$]*|0|[1-9]\d{0,14})$/u;
+const BARE_KEY = pattern(/^(?![^]*\p{Default_Ignorable_Code_Point})(?:[\p{ID_Start}$_][\p{ID_Continue}$]*|0|[1-9]\d{0,14})$/u);
 
 /**
  * What Python's `str.isprintable` refuses \u2014 control, format, private-use,
@@ -737,11 +738,11 @@ const BARE_KEY = /^(?![^]*\p{Default_Ignorable_Code_Point})(?:[\p{ID_Start}$_][\
  * byte reaches the terminal as a control, and a format character hides or
  * reorders what is around it.
  */
-const UNPRINTABLE = /(?! )[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}\p{Zs}]/gu;
+const unprintable = (): RegExp => /(?! )[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}\p{Zs}]/gu;
 
 /** `value` in double quotes, every character that does not print escaped. */
 const quoted = (value: string): string =>
-  JSON.stringify(value).replace(UNPRINTABLE, (c) => {
+  JSON.stringify(value).replace(unprintable(), (c) => {
     const hex = c.codePointAt(0)!.toString(16).padStart(4, "0");
     return hex.length > 4 ? `\\u{${hex}}` : `\\u${hex}`;
   });

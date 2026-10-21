@@ -28,19 +28,19 @@ export enum ControlType {
   SET_WINDOW_TITLE = "set_window_title",
 }
 
-export type ControlCode = [ControlType, ...unknown[]];
+export type ControlCode = readonly [ControlType, ...unknown[]];
 
 // --- Segment ---
 
 export class Segment {
   readonly text: string;
   readonly style: Style | undefined;
-  readonly control: ControlCode[] | undefined;
+  readonly control: readonly ControlCode[] | undefined;
 
   constructor(
     text: string,
     style?: Style,
-    control?: ControlCode[],
+    control?: readonly ControlCode[],
   ) {
     this.text = text;
     this.style = style;
@@ -280,7 +280,7 @@ export class Segment {
    * beside the rows to be passed on. For a container whose child may take no place: a frame of no
    * cells still says when it changes, as a lifecycle not yet entered does.
    */
-  static splitRows(segments: Segment[]): { lines: Segment[][]; carriers: Segment[] } {
+  static splitRows(segments: Segment[]): { readonly lines: readonly (readonly Segment[])[]; readonly carriers: readonly Segment[] } {
     return segments.every((segment) => segment.isCarrier)
       ? { lines: [], carriers: segments }
       : { lines: Segment.splitLines(segments), carriers: [] };

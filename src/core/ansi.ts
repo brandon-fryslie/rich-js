@@ -65,12 +65,12 @@ type EraseMode = "0" | "1" | "2";
  * and one final byte (`\x1b(B`, `\x1b)0`, `\x1b#8`, `\x1bc`). Only the first
  * three become tokens.
  */
-const ESCAPE =
+const escapes = (): RegExp =>
   /\r|\x1b\[([0-9;:]*)m|\x1b\[([012]?)K|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[\]P_^X][\s\S]*?(?:\x07|\x1b\\|\x9c|$)|\x1b[ -/]*[0-~]/g;
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
-  for (const match of bytes.matchAll(ESCAPE)) {
+  for (const match of bytes.matchAll(escapes())) {
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
     if (match[0] === "\r") yield { kind: "return" };
     if (match[1] !== undefined) yield { kind: "sgr", params: match[1] };
@@ -177,10 +177,10 @@ function applySgr(style: Style, params: string): Style {
   return result;
 }
 
-const BLANK: [string, Style] = [" ", NULL_STYLE];
+const BLANK: readonly [string, Style] = [" ", NULL_STYLE];
 
 /** Erase in line: the cells before the cursor go blank, the ones from it on go. */
-function erase(cells: [string, Style][], column: number, mode: EraseMode): void {
+function erase(cells: (readonly [string, Style])[], column: number, mode: EraseMode): void {
   if (mode !== "0") cells.fill(BLANK, 0, Math.min(column + 1, cells.length));
   if (mode !== "1") cells.length = Math.min(column, cells.length);
 }
@@ -208,7 +208,7 @@ export class AnsiDecoder {
    * it: `\r` returns to the first column, and text overwrites from there.
    */
   decodeLine(line: string): RichText {
-    const cells: [string, Style][] = [];
+    const cells: (readonly [string, Style])[] = [];
     let column = 0;
     for (const token of tokens(line)) {
       switch (token.kind) {

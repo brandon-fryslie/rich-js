@@ -90,7 +90,7 @@ const LEGIBLE = 4.5;
  * a 48th of a swing, well under a just-noticeable difference.
  */
 const LEVELS = 48;
-const STRENGTHS = Array.from({ length: LEVELS }, (_, i) => (i + 1) / LEVELS);
+const STRENGTHS: readonly number[] = Array.from({ length: LEVELS }, (_, i) => (i + 1) / LEVELS);
 
 /** What 8-bit rounding of an OKLCH round trip can cost a contrast ratio. */
 const ROUNDING = 0.01;
@@ -906,7 +906,7 @@ export function fadeIn(curve: Curve, z: number): Transition {
  * all of them past `maskTo`) and `late` (how much likelier the later a cell
  * goes: 0 is no more likely, 1 is nothing for the first to go).
  */
-const DISSOLVE_SHAPE = { depth: 0.4, from: 0.5, to: 0.95, maskFrom: 0.35, maskTo: 0.75, late: 0.6 };
+const DISSOLVE_SHAPE = { depth: 0.4, from: 0.5, to: 0.95, maskFrom: 0.35, maskTo: 0.75, late: 0.6 } as const;
 
 /**
  * Dissolve-out, as mist lifting: the element thins in drifting patches, each

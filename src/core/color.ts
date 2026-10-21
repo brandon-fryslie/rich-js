@@ -862,11 +862,11 @@ class ColorBlend extends ColorSpec {
 
 // --- Parsing internals ---
 
-const RGB_RE = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/;
-const COLOR_NUMBER_RE = /^color\((\d+)\)$/;
-const BLEND_RE = /^blend\((.*)\)$/;
+const RGB_RE = pattern(/^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/);
+const COLOR_NUMBER_RE = pattern(/^color\((\d+)\)$/);
+const BLEND_RE = pattern(/^blend\((.*)\)$/);
 // A decimal as `String(number)` spells one, exponent included; `blend` owns its range.
-const FRACTION_RE = /^\s*(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?\s*$/;
+const FRACTION_RE = pattern(/^\s*(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?\s*$/);
 
 function parseSingle(key: string): ColorSpec {
   if (key === "default" || key === "") {
@@ -952,7 +952,7 @@ function parseByte(key: string, digits: string, field: "red" | "green" | "blue" 
 // reference, a template argument — becomes one through the three parsers below,
 // and each is this check at the lengths it admits. Each digit pair is a byte, so
 // the grammar holding is what keeps `ColorRgba`'s channels in range.
-const HEX_DIGITS_RE = /^[0-9a-fA-F]+$/;
+const HEX_DIGITS_RE = pattern(/^[0-9a-fA-F]+$/);
 
 // Each admitted digit count, by the grammar it spells: the message a failure
 // carries is read off the lengths a parser admits, so the two cannot disagree.
@@ -1127,6 +1127,7 @@ export const WINDOWS_TABLE = new ColorTable(buildWindowsTable());
 // only `import type`s from `core/color.ts`, so there is no runtime cycle.
 
 import { Palette } from "../themes/palette.js";
+import { pattern } from "./pattern.js";
 
 const INTERNAL_DEFAULT_THEME = new TerminalTheme(
   new ColorRgba(0, 0, 0),

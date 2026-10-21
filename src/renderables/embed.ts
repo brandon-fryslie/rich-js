@@ -29,7 +29,13 @@ import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js"
 import { measure, render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import type { Style, TextStyle } from "../core/style.js";
-import { RichText } from "../core/text.js";
+import { RichText, type Span } from "../core/text.js";
+
+/** A string as `readStr` reads it, which is a text of the default format: its characters and its spans. */
+interface Reading {
+  readonly plain: string;
+  readonly spans: readonly Span[];
+}
 
 /**
  * Caller content as text an embedding site lays out. A string is the only kind
@@ -44,8 +50,10 @@ export class EmbeddedText implements Renderable, Measurable {
   // A string's reading under each markup setting, made the first time one is
   // asked for. Parsing is the costly half of drawing a string, and a table
   // measures every cell more than once per print; read on every call, a
-  // 500-row table of markup printed 75% slower.
-  private readonly _readings = new Memo<RichText, "markup" | "plain">();
+  // 500-row table of markup printed 75% slower. Kept as characters and spans,
+  // not as the `RichText`, whose state a memo may not hold: a memo is "same
+  // key, same value", and each call builds a text of its own from it.
+  private readonly _readings = new Memo<Reading, "markup" | "plain">();
 
   constructor(content: unknown) {
     if (typeof content === "string") {
@@ -68,7 +76,12 @@ export class EmbeddedText implements Renderable, Measurable {
     if (typeof this._source !== "string") return this._source.copy();
     const source = this._source;
     const markup = options.markup !== false;
-    const text = this._readings.get(markup ? "markup" : "plain", () => readStr(source, markup)).copy();
+    const reading = this._readings.get(markup ? "markup" : "plain", () => {
+      const read = readStr(source, markup);
+      return { plain: read.plain, spans: [...read.spans] };
+    });
+    const text = new RichText(reading.plain);
+    for (const span of reading.spans) text.stylize(span.style, span.start, span.end);
     const highlighter = activeHighlighter(options);
     if (base !== undefined && highlighter === undefined) text.style = base;
     highlighter?.highlight(text);

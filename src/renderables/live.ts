@@ -33,6 +33,7 @@ import { fitHeight, render, type FrameHost, type Renderable } from "../core/prot
 import type { Unsubscribe } from "../core/subscription.js";
 import { Timeline } from "../core/timeline.js";
 import { drawView, frameTime, hostView, undrawn, type DrawnView, type FrameSays, type HostTime, type HostView, type View } from "../core/view.js";
+import { State } from "../core/state.js";
 
 // Nothing: what a Live made with no view draws until `update` gives it one.
 const NOTHING: Renderable = { render: () => [] };
@@ -66,35 +67,35 @@ export interface LiveOptions {
 }
 
 export class Live implements FrameHost {
-  private _view: HostView;
-  private _console: Console;
+  private readonly _view: State<HostView>;
+  private readonly _console: Console;
   private readonly _rate: FrameRate;
   private readonly _clock: Clock;
   // The clock moment this host began: what its default timeline plays from,
   // and what a renderable view is drawn for the time since (`HostTime`).
   private readonly _epoch: number;
-  private _timeline: Timeline;
-  private _autoRefresh: boolean;
-  private _transient: boolean;
-  private _verticalOverflow: "crop" | "ellipsis" | "visible";
+  private readonly _timeline: State<Timeline>;
+  private readonly _autoRefresh: boolean;
+  private readonly _transient: boolean;
+  private readonly _verticalOverflow: "crop" | "ellipsis" | "visible";
   private readonly _painter: Painter;
   // The one wait for the next auto-refresh frame, armed after each frame, and
   // the clock moment it is due at.
-  private _waking: { readonly at: number; readonly stop: Unsubscribe } | undefined;
+  private readonly _waking = new State<{ readonly at: number; readonly stop: Unsubscribe } | undefined>(undefined);
   // [LAW:one-source-of-truth] The console's live region, held from `start()`
   // to the hand-back — which is what "started" means, so there is no separate
   // flag to disagree with it.
-  private _held: Unsubscribe | null;
+  private readonly _held = new State<Unsubscribe | null>(null);
 
   constructor(view?: View, options?: LiveOptions) {
-    this._view = hostView(view ?? NOTHING);
+    this._view = new State(hostView(view ?? NOTHING));
     this._console = options?.console ?? new Console();
     // [LAW:parse-dont-validate] Parsed whether or not it auto-refreshes, so a
     // rate that could never tick is refused where it is given.
     this._rate = frameRate(options?.refreshPerSecond ?? 4);
     this._clock = options?.clock ?? systemClock();
     this._epoch = this._clock.now();
-    this._timeline = options?.timeline ?? Timeline.play(this._epoch);
+    this._timeline = new State(options?.timeline ?? Timeline.play(this._epoch));
     this._autoRefresh = options?.autoRefresh !== false;
     this._transient = options?.transient ?? false;
     this._verticalOverflow = options?.verticalOverflow ?? "ellipsis";
@@ -105,7 +106,6 @@ export class Live implements FrameHost {
     this._painter = this._console.isInteractive
       ? new SurfacePainter(options?.altScreen ? "alternate" : "inline", (bytes) => void this._console.file.write(bytes))
       : new FinalFramePainter((frame) => this._console.print(linesOf(frame)));
-    this._held = null;
   }
 
   /**
@@ -123,7 +123,7 @@ export class Live implements FrameHost {
 
   /** The map from the clock to the time the view is drawn for. */
   get timeline(): Timeline {
-    return this._timeline;
+    return this._timeline.get();
   }
 
   /** The time a frame drawn now is drawn for: the clock's now, through the timeline. */
@@ -132,7 +132,7 @@ export class Live implements FrameHost {
   }
 
   private _time(): HostTime {
-    return { now: this._clock.now(), epoch: this._epoch, timeline: this._timeline };
+    return { now: this._clock.now(), epoch: this._epoch, timeline: this._timeline.get() };
   }
 
   /**
@@ -142,16 +142,16 @@ export class Live implements FrameHost {
    * again — while `refresh()` and `update(…, { refresh: true })` still draw.
    */
   set timeline(timeline: Timeline) {
-    this._timeline = timeline;
+    this._timeline.set(timeline);
     this.refresh();
   }
 
   start(): void {
-    if (this._held !== null) return;
+    if (this._held.get() !== null) return;
     // Claimed before a byte is written, so a console another Live is running
     // on refuses this one with the terminal untouched.
     const held = this._console.claimLiveRegion({ around: (text) => this._stepAround(text) });
-    this._held = held;
+    this._held.set(held);
     this._painter.take();
     // Nothing is drawn yet, so nothing has said when it changes: the first
     // auto-refresh frame comes at the rate, from now.
@@ -159,7 +159,7 @@ export class Live implements FrameHost {
   }
 
   stop(): void {
-    const held = this._held;
+    const held = this._held.get();
     if (held === null) return;
     // [LAW:no-silent-failure] A final frame that throws still propagates, and
     // the terminal is handed back on the way out.
@@ -176,17 +176,21 @@ export class Live implements FrameHost {
 
   update(view?: View, options?: { refresh?: boolean }): void {
     if (view !== undefined) {
-      this._view = hostView(view);
+      this._view.set(hostView(view));
     }
     if (options?.refresh) {
       this.refresh();
-    } else if (view !== undefined && this._held !== null) {
+      return;
+    }
+    const held = this._held.get();
+    if (view !== undefined && held !== null) {
       // The last wake was armed for what the old view said; a new view has
       // said nothing yet, so the auto-refresh draws it by the rate's next
       // frame from now — sooner if the wake already armed is, and never
       // later, so updates faster than the rate do not put the frame off.
       const now = this._clock.now();
-      if (this._waking === undefined || this._waking.at > now + this._rate.interval) this._wake(this._held, undrawn(now));
+      const waking = this._waking.get();
+      if (waking === undefined || waking.at > now + this._rate.interval) this._wake(held, undrawn(now));
     }
   }
 
@@ -194,7 +198,7 @@ export class Live implements FrameHost {
     // A frame is drawn only while this Live holds the terminal, as in Rich:
     // before `start()` or after the hand-back it would land on a screen that
     // belongs to someone else — the main buffer, under the user's own output.
-    const held = this._held;
+    const held = this._held.get();
     if (held === null) return;
     // [LAW:no-ambient-temporal-coupling] The frame says when what it shows
     // next changes; the next auto-refresh frame is then, or at the rate,
@@ -220,8 +224,8 @@ export class Live implements FrameHost {
   // due while it was drawn is drawn at once (`Clock.at` fires now for a time
   // already past).
   private _wake(held: Unsubscribe, { t, nextChange }: FrameSays): void {
-    this._waking?.stop();
-    this._waking = undefined;
+    this._waking.get()?.stop();
+    this._waking.set(undefined);
     const rate = t + this._rate.interval;
     const at = nextChange <= t ? rate : Math.min(nextChange, rate);
     if (!this._autoRefresh) return;
@@ -237,7 +241,7 @@ export class Live implements FrameHost {
         throw error;
       }
     });
-    this._waking = { at, stop };
+    this._waking.set({ at, stop });
   }
 
   // The frame at the clock's now, drawn for the time the timeline maps it to,
@@ -252,7 +256,7 @@ export class Live implements FrameHost {
     // back — its overflow policy, then `fitHeight`, which pads only a region.
     const options = this._console.options;
     const height = this._painter.height(options.height.rows);
-    return drawView(this._view, this._time(), this, { ...options, height }, (renderable, drawn) => {
+    return drawView(this._view.get(), this._time(), this, { ...options, height }, (renderable, drawn) => {
       const lines = Segment.splitLines(render(renderable, drawn));
       return fitHeight(this._overflow(lines, height.rows), height);
     });
@@ -294,9 +298,9 @@ export class Live implements FrameHost {
   // ran or a frame threw with no caller to run it.
   private _release(held: Unsubscribe): void {
     held();
-    this._held = null;
-    this._waking?.stop();
-    this._waking = undefined;
+    this._held.set(null);
+    this._waking.get()?.stop();
+    this._waking.set(undefined);
     this._painter.handBack();
   }
 }

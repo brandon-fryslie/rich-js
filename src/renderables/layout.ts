@@ -23,6 +23,7 @@ import { cellCount } from "../core/cells.js";
 import type { CellCol } from "../core/cells.js";
 import { ratioBudget, ratioResolve, shareWeight } from "./ratio.js";
 import type { Weight } from "./ratio.js";
+import { State } from "../core/state.js";
 
 export interface LayoutOptions {
   name?: string;
@@ -50,27 +51,41 @@ function paneLines(
   return fitHeight(Segment.splitLines(render(pane, { ...options, height })), height);
 }
 
+/** Whether a layout is split, which way, and into what; a leaf has no children. */
+interface Split {
+  readonly direction: "column" | "row" | undefined;
+  readonly children: readonly Layout[];
+}
+
+/** A declared size as a cell count; absence stays absence, a flex pane, which `cellCount` would read as zero. */
+const sizeOf = (value: number | undefined): CellCol | undefined => (value === undefined ? undefined : cellCount(value));
+
 export class Layout implements Renderable, Measurable, Composite {
-  name: string | undefined;
-  visible: boolean;
-  private _ratio!: Weight;
-  private _size: CellCol | undefined;
-  private _minimumSize!: CellCol;
-  private _renderable: Renderable | undefined;
-  private _children: Layout[];
-  private _splitDirection: "column" | "row" | undefined;
+  readonly name: string | undefined;
+  // Rich's `Layout` is split, updated, resized and hidden after it is built,
+  // so each of these is state, and a write to one while it is drawn throws.
+  private readonly _visible: State<boolean>;
+  private readonly _ratio: State<Weight>;
+  private readonly _size: State<CellCol | undefined>;
+  private readonly _minimumSize: State<CellCol>;
+  private readonly _renderable: State<Renderable | undefined>;
+  private readonly _split = new State<Split>({ direction: undefined, children: [] });
 
   constructor(renderable?: Renderable | string, options?: LayoutOptions) {
-    if (renderable !== undefined) {
-      this._renderable = embed(renderable);
-    }
+    this._renderable = new State(renderable === undefined ? undefined : embed(renderable));
     this.name = options?.name;
-    this.ratio = options?.ratio ?? 1;
-    this.size = options?.size;
-    this.minimumSize = options?.minimumSize ?? 1;
-    this.visible = options?.visible !== false;
-    this._children = [];
-    this._splitDirection = undefined;
+    this._ratio = new State(shareWeight(options?.ratio ?? 1));
+    this._size = new State(sizeOf(options?.size));
+    this._minimumSize = new State(cellCount(options?.minimumSize ?? 1));
+    this._visible = new State(options?.visible !== false);
+  }
+
+  get visible(): boolean {
+    return this._visible.get();
+  }
+
+  set visible(value: boolean) {
+    this._visible.set(value);
   }
 
   /**
@@ -87,31 +102,31 @@ export class Layout implements Renderable, Measurable, Composite {
    * selects a flex pane, and `cellCount` would read it as a declared zero.
    */
   get ratio(): Weight {
-    return this._ratio;
+    return this._ratio.get();
   }
 
   set ratio(value: number) {
-    this._ratio = shareWeight(value);
+    this._ratio.set(shareWeight(value));
   }
 
   get size(): CellCol | undefined {
-    return this._size;
+    return this._size.get();
   }
 
   set size(value: number | undefined) {
-    this._size = value === undefined ? undefined : cellCount(value);
+    this._size.set(sizeOf(value));
   }
 
   get minimumSize(): CellCol {
-    return this._minimumSize;
+    return this._minimumSize.get();
   }
 
   set minimumSize(value: number) {
-    this._minimumSize = cellCount(value);
+    this._minimumSize.set(cellCount(value));
   }
 
-  get children(): Layout[] {
-    return this._children;
+  get children(): readonly Layout[] {
+    return this._split.get().children;
   }
 
   /**
@@ -124,26 +139,24 @@ export class Layout implements Renderable, Measurable, Composite {
    * fit-mode `Panel` framed twelve cells of air.
    */
   private get _isLeaf(): boolean {
-    return this._children.length === 0;
+    return this._split.get().children.length === 0;
   }
 
   splitColumn(...layouts: Layout[]): void {
-    this._children = layouts;
-    this._splitDirection = "column";
+    this._split.set({ direction: "column", children: layouts });
   }
 
   splitRow(...layouts: Layout[]): void {
-    this._children = layouts;
-    this._splitDirection = "row";
+    this._split.set({ direction: "row", children: layouts });
   }
 
   update(renderable: Renderable | string): void {
-    this._renderable = embed(renderable);
+    this._renderable.set(embed(renderable));
   }
 
   getByName(name: string): Layout | undefined {
     if (this.name === name) return this;
-    for (const child of this._children) {
+    for (const child of this._split.get().children) {
       const found = child.getByName(name);
       if (found) return found;
     }
@@ -170,8 +183,9 @@ export class Layout implements Renderable, Measurable, Composite {
       // ok\n")` is two lines, and a one-row region cuts the second. Every line
       // ended, as the split paths below end theirs: a leaf stacked in a
       // `Group` is still a region of lines.
-      if (this._renderable) {
-        const lines = fitHeight(Segment.splitLines(render(this._renderable, options)), options.height);
+      const renderable = this._renderable.get();
+      if (renderable) {
+        const lines = fitHeight(Segment.splitLines(render(renderable, options)), options.height);
         for (const line of lines) {
           yield* Segment.adjustLineLength(line, options.maxWidth);
           yield Segment.line();
@@ -180,10 +194,10 @@ export class Layout implements Renderable, Measurable, Composite {
       return;
     }
 
-    const visibleChildren = this._children.filter((c) => c.visible);
+    const visibleChildren = this._split.get().children.filter((c) => c.visible);
     if (visibleChildren.length === 0) return;
 
-    if (this._splitDirection === "row") {
+    if (this._split.get().direction === "row") {
       yield* this._renderRow(visibleChildren, options);
     } else {
       yield* this._renderColumn(visibleChildren, options);
@@ -195,10 +209,11 @@ export class Layout implements Renderable, Measurable, Composite {
   *contents(): Iterable<Renderable> {
     if (!this.visible) return;
     if (this._isLeaf) {
-      if (this._renderable) yield this._renderable;
+      const renderable = this._renderable.get();
+      if (renderable) yield renderable;
       return;
     }
-    yield* this._children.filter((c) => c.visible);
+    yield* this._split.get().children.filter((c) => c.visible);
   }
 
   private *_renderColumn(
@@ -251,15 +266,16 @@ export class Layout implements Renderable, Measurable, Composite {
     if (!this.visible) return 0;
 
     if (this._isLeaf) {
-      if (this._renderable === undefined) return 0;
-      return Measurement.get(options, this._renderable).maximum;
+      const renderable = this._renderable.get();
+      if (renderable === undefined) return 0;
+      return Measurement.get(options, renderable).maximum;
     }
 
-    const visible = this._children.filter((c) => c.visible);
+    const visible = this._split.get().children.filter((c) => c.visible);
     if (visible.length === 0) return 0;
 
     const widths = visible.map((c) => c._naturalWidth(options));
-    if (this._splitDirection === "row") return ratioBudget(visible, widths);
+    if (this._split.get().direction === "row") return ratioBudget(visible, widths);
 
     // Accumulated, not spread: a column split holds as many children as a caller
     // made, and `Math.max(...widths)` passes one argument per child, so a

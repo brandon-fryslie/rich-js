@@ -27,8 +27,9 @@
  *
  * The sanctioned holders, and they are the whole list:
  *
- *   - `State<T>`: its internals are its own, and its `T` is walked — a
- *     `State<number[]>` would hand out an array to push to;
+ *   - `State<T>` and `ListState<T>`: their internals are their own, and
+ *     their `T` is walked — a `State<number[]>` would hand out an array to
+ *     push to;
  *   - `Memo<V, K>` and `WeakMemo<V, K>`: likewise, `V` walked — not a
  *     `WeakMemo`'s key, which nothing reads back out. A `State` anywhere in `V` is reported
  *     and no debt row can excuse it: a memo is "same key, same value", and a
@@ -74,6 +75,7 @@ const RENDER_METHODS = new Set(["render", "measure", "contents"]);
 const MUTABLE_COLLECTIONS = new Set(["Map", "Set", "WeakMap", "WeakSet"]);
 const READONLY_COLLECTIONS = new Set(["ReadonlyMap", "ReadonlySet", "ReadonlyArray"]);
 const HOLDERS = { State: "src/core/state.ts", Memo: "src/core/memo.ts", observable: "src/widgets/observable.ts" } as const;
+const STATES = new Set(["State", "ListState"]);
 const MEMOS = new Set(["Memo", "WeakMemo"]);
 const PHASE = { file: "src/core/protocol.ts", name: "active" } as const;
 
@@ -177,7 +179,7 @@ export function writableLocations(program: ts.Program, files: readonly string[])
     if (type.isUnionOrIntersection()) return type.types.forEach((t) => held(t, at, inMemo));
     const symbol = type.getSymbol();
     const args = (): readonly ts.Type[] => checker.getTypeArguments(type as ts.TypeReference);
-    if (symbol?.name === "State" && declaredIn(symbol, HOLDERS.State)) {
+    if (symbol && STATES.has(symbol.name) && declaredIn(symbol, HOLDERS.State)) {
       if (inMemo) report(at, "state in a Memo");
       return args().forEach((t) => held(t, at, inMemo));
     }
