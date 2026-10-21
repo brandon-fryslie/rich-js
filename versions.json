@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-508",
-      "ref": "refs/pull/508/merge",
-      "sha": "6f160ee6a4ac9b55b6f0f01388a8ac0ccd2c3f9e",
-      "timestamp": "2026-10-21T10:29:06.166Z",
-      "commits": [
-        {
-          "sha": "6f160ee6a4ac9b55b6f0f01388a8ac0ccd2c3f9e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T10:27:18Z",
-          "message": "Merge 903cfc12dd08eb8635e0118486a7e17068b086e7 into a2b00949489b6a52adcc7fe2a33c1f8ad87c331e\n"
-        },
-        {
-          "sha": "903cfc12dd08eb8635e0118486a7e17068b086e7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T04:27:13-06:00",
-          "message": "A viewport's commit survives a second draw in its pass (rich-protocol-9xcs.399)\n\nReview fixes from /code-review high:\n- A held draw commits nothing, so it no longer undoes the commit of a\n  draw earlier in the same pass.\n- Resolved moves leave the queue by identity, taken at draw time, so a\n  move queued after two draws resolved the same queue is not dropped.\n- afterPass effects run between passes even when the iteration that ends\n  a pass is stepped inside another render.\n- The module's ensureVisible is renamed bringIntoView, and the stale\n  ListView and ViewportPerKey comments are fixed.\n"
-        },
-        {
-          "sha": "2cda365522d0560aaabba7f7fdebf502fbd7dd22",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T03:39:13-06:00",
-          "message": "A Viewport keeps its scroll once the frame is drawn, not in render (rich-protocol-9xcs.399)\n\nA render hands what it learned by drawing to its pass (afterPass in\nsrc/core/protocol.ts), which runs it once the outermost render is drawn\nwhole; a measurement, a thrown pass and an abandoned one commit nothing.\nViewport resolves its offset purely and keeps it that way, so its state is\nState and its render-purity debt row is gone. ListView and every per-frame\nview show content through viewport.showing(content, follow?) instead of\nassigning content and calling follow during the frame; follow() and the\ncontent setter are removed.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "a2b00949489b6a52adcc7fe2a33c1f8ad87c331e",
-      "timestamp": "2026-10-21T09:19:16.918Z",
+      "sha": "7f5d4617f245065a5ef0121e937424adc5446d15",
+      "timestamp": "2026-10-21T10:38:38.958Z",
       "commits": [
         {
-          "sha": "a2b00949489b6a52adcc7fe2a33c1f8ad87c331e",
+          "sha": "7f5d4617f245065a5ef0121e937424adc5446d15",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T03:17:07-06:00",
-          "message": "Drain the render-purity allow-list (rich-protocol-9xcs.g0k) (#507)\n\n* Drain the render-purity allow-list (rich-protocol-9xcs.g0k)\n\nEvery RENDER_PURITY_DEBT row is gone but Viewport's and TextInput's, which\nrich-protocol-9xcs.399 and .o76 take.\n\n- Tables, glyph sets, tokens and records are readonly types.\n- No RegExp is held where the gate walks. `pattern` (src/core/pattern.ts)\n  makes a held regex only from one without g or y and exposes only what\n  never writes lastIndex; a scan builds its own g/y regex from the pattern's\n  source. RegexHighlighter.highlights holds source and flags, all it reads.\n- ListState joins State as a sanctioned holder: a list appended to in place,\n  so Table.addRow, RichText spans and Console recording stay linear.\n- Console, RichText, Layout, Live, Progress, Table, Column, Tree,\n  ProgressBar, Spinner, MarkupRegistry, widget handler sets and the node\n  traceback hook keep what changes after construction in a State; Rich's\n  setters (tree.expanded, bar.completed, spinner.text, layout.visible,\n  column.header/footer) stay, as accessors over it.\n- table.columns is read-only and Column is a type-only export: nothing can\n  push a hand-built column any more. Column's dead addCell/getCells go.\n- EmbeddedText memoizes a reading's characters and spans, not a RichText,\n  which a memo may not hold.\n\n* Answer the high review of the render-purity drain (rich-protocol-9xcs.g0k)\n\n- ListState.push takes one item: a rest parameter let Console spread a\n  recording of any length into it and overflow the stack.\n- RichText.append reads the appended spans before writing, so a text\n  appended to itself ends.\n- A table row keeps its section end in a State and a Progress keeps each\n  task in one, so addSection and updateTask are O(1) again, not a copy of\n  every row or task. A task's id is its place in the list.\n- Every Console write is refused during a render it was not made in, so a\n  print there fails alike whether the console records, captures or neither.\n- markdown-parse reads an anchored pattern at an index from a slice instead\n  of building a sticky regex per call, which had doubled parse time.\n- nextUp is computed, not read through a buffer allocated per call.\n\n* An onStyleError handler runs between passes (rich-protocol-9xcs.g0k)\n\nRefusing every Console write during a render broke docs/style.md's\nhandler, which prints its report to a second console: a callback a render\nmakes to user code is an event handler, and protocol's betweenPasses runs\nit as one."
+          "timestamp": "2026-10-21T04:37:09-06:00",
+          "message": "A Viewport keeps its scroll once the frame is drawn, not in render (rich-protocol-9xcs.399) (#508)\n\n* A Viewport keeps its scroll once the frame is drawn, not in render (rich-protocol-9xcs.399)\n\nA render hands what it learned by drawing to its pass (afterPass in\nsrc/core/protocol.ts), which runs it once the outermost render is drawn\nwhole; a measurement, a thrown pass and an abandoned one commit nothing.\nViewport resolves its offset purely and keeps it that way, so its state is\nState and its render-purity debt row is gone. ListView and every per-frame\nview show content through viewport.showing(content, follow?) instead of\nassigning content and calling follow during the frame; follow() and the\ncontent setter are removed.\n\n* A viewport's commit survives a second draw in its pass (rich-protocol-9xcs.399)\n\nReview fixes from /code-review high:\n- A held draw commits nothing, so it no longer undoes the commit of a\n  draw earlier in the same pass.\n- Resolved moves leave the queue by identity, taken at draw time, so a\n  move queued after two draws resolved the same queue is not dropped.\n- afterPass effects run between passes even when the iteration that ends\n  a pass is stepped inside another render.\n- The module's ensureVisible is renamed bringIntoView, and the stale\n  ListView and ViewportPerKey comments are fixed."
         }
       ]
     },
