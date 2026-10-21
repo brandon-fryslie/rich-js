@@ -31,7 +31,7 @@ import type {
   RenderOptions,
   StyleErrorHandler,
 } from "./protocol.js";
-import { isRenderable, render } from "./protocol.js";
+import { isRenderable, measure, render } from "./protocol.js";
 import type { Unsubscribe } from "./subscription.js";
 
 // --- Types ---
@@ -247,7 +247,7 @@ class TextRun implements Renderable, Measurable {
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return this.text.measure(options);
+    return measure(this.text, options);
   }
 }
 

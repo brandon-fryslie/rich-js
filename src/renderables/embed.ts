@@ -25,7 +25,7 @@
 import { cellCount, cellLen, setCellSize } from "../core/cells.js";
 import { activeHighlighter, readStr } from "../core/markup.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
-import { render } from "../core/protocol.js";
+import { measure, render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import type { Style, TextStyle } from "../core/style.js";
 import { RichText } from "../core/text.js";
@@ -86,7 +86,7 @@ export class EmbeddedText implements Renderable, Measurable {
    * measures, and no highlighter runs just to be thrown away.
    */
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return this.text({ ...options, highlight: false }).measure(options);
+    return measure(this.text({ ...options, highlight: false }), options);
   }
 }
 

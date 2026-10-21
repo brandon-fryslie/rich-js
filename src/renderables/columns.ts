@@ -19,7 +19,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { render, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { measure, render, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { cellCount } from "../core/cells.js";
 import { EmbeddedText, embed } from "./embed.js";
 import { Constrain } from "./constrain.js";
@@ -121,7 +121,7 @@ export class Columns implements Renderable, Measurable, Composite {
     // ceiling, which the parent that asked cannot divide.
     const parsed = withCellWidth(rawOptions);
     if (this.renderables.length === 0) return { minimum: 0, maximum: 0 };
-    const { maximum } = this._grid(parsed).measure(parsed);
+    const { maximum } = measure(this._grid(parsed), parsed);
     return { minimum: Math.min(1, maximum), maximum };
   }
 
