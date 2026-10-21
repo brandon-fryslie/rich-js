@@ -47,7 +47,7 @@ A sequence does not adapt to the rate: the rate belongs to whoever draws the fra
 
 ## When the frame next changes
 
-A frame drawn at `t` is drawn until the next frame begins, and the sequence's `nextChange(t)` says when that is, the answer every [animation](/animation) gives. Still content never changes, so its answer is `Infinity`:
+A frame drawn at `t` is drawn until the next frame begins, and the sequence's `nextChange(t)` says when that is, the answer every [animation](/animation) gives:
 
 ```typescript
 import { FrameSequence, RichText } from "@promptctl/rich-js";

@@ -115,6 +115,13 @@ export class Spinner implements Animation<Renderable & Measurable> {
   // on an ASCII-only output: prepared once, which is drawn chosen at `at`.
   private readonly _named: Sequence;
   private readonly _ascii: Sequence;
+  /**
+   * The spinner drawn at the frame's time, its cells saying the hold it is in
+   * on the host's clock (`stampFrame`) — exactly, for the frames the output
+   * draws, where `nextChange` must answer for both. Under reduced motion it
+   * is the spinner reduced, which never turns (`shownAt`).
+   */
+  private readonly _placed: Renderable & Measurable;
 
   constructor(name?: string, text: string | RichText = "", options?: SpinnerOptions) {
     const spinnerName = name ?? DEFAULT_SPINNER;
@@ -133,6 +140,11 @@ export class Spinner implements Animation<Renderable & Measurable> {
     this._data = data;
     this._named = sequence(data, this.style, timeline);
     this._ascii = sequence(LINE_SPINNER, this.style, timeline);
+    this._placed = this._frame((played, options) => {
+      const t = frameTimeOf(options);
+      const shown = shownAt(played, t, options);
+      return { value: shown.value, hold: holdOf(shown, t) };
+    });
   }
 
   get frames(): readonly string[] {
@@ -161,18 +173,6 @@ export class Spinner implements Animation<Renderable & Measurable> {
   reduced(): Animation<Renderable & Measurable> {
     return Animation.constant(this._frame((played) => ({ value: played.reduced().at(0) })));
   }
-
-  /**
-   * The spinner drawn at the frame's time, its cells saying the hold it is in
-   * on the host's clock (`stampFrame`) — exactly, for the frames the output
-   * draws, where `nextChange` must answer for both. Under reduced motion it
-   * is the spinner reduced, which never turns (`shownAt`).
-   */
-  private readonly _placed = this._frame((played, options) => {
-    const t = frameTimeOf(options);
-    const shown = shownAt(played, t, options);
-    return { value: shown.value, hold: holdOf(shown, t) };
-  });
 
   render(options: RenderOptions): Iterable<Segment> {
     return render(this._placed, options);
