@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-505",
+      "ref": "refs/pull/505/merge",
+      "sha": "10a773a3fae91700bddf3d23fd2b2912ae7882d2",
+      "timestamp": "2026-10-21T06:43:30.667Z",
+      "commits": [
+        {
+          "sha": "10a773a3fae91700bddf3d23fd2b2912ae7882d2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T00:41:31-06:00",
+          "message": "Merge 51ce13c8edfca39c6f8f1243fb9fddbf662297d5 into b5a15aea4b6266ef456ca6c5b40dc71dae635f5a\n"
+        },
+        {
+          "sha": "51ce13c8edfca39c6f8f1243fb9fddbf662297d5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T00:41:16-06:00",
+          "message": "Every cache a render fills is a Memo (rich-protocol-9xcs.5ar)\n\nString-keyed caches move onto Memo, object-keyed ones onto WeakMemo (new,\nbeside it, sanctioned by the render-purity gate like Memo). Cheap lazy\nvalues become eager readonly fields. The cells.ts last-segmentation slot is\ngone: rows are cut in one walk (cellRows, replacing cellStepFrom), so no\ncaller re-segments a string per row. Their render-purity debt rows go.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b5a15aea4b6266ef456ca6c5b40dc71dae635f5a",
