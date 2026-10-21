@@ -6,11 +6,11 @@
  * THIS IS A DEMO: `lifecycle` (`src/renderables/lifecycle.ts`), for seeing an
  * element arrive, stay, leave, and be dropped. Each line is appended at a time
  * on the `Live`'s timeline and told to leave at another, both handed in; the
- * log keeps a line only until it is gone, so a line that has left costs
- * nothing from then on.
+ * log drawn for a time holds every line due by then and not yet gone, so a
+ * line that has left draws nothing, and a frame for an earlier time shows its log.
  */
 
-import { CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, backspace, dissolveOut, lifecycle, scrambleOut, throughColors, throughGlyphs, typewriter, type Lifecycle, type Renderable } from "../../src/index.js";
+import { Animation, CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, backspace, dissolveOut, lifecycle, scrambleOut, throughColors, throughGlyphs, typewriter, type Lifecycle } from "../../src/index.js";
 
 const EVERY = 1.2;
 const STAYS = 4;
@@ -35,15 +35,15 @@ function appended(i: number, at: number): Lifecycle {
   return lifecycle(line, { enter: throughGlyphs(typewriter(ENTER)), exit: exits[i % exits.length]!, key }, at).leave(at + STAYS);
 }
 
-let log: Lifecycle[] = [];
-let next = 0;
-
-function view(t: number): Renderable {
-  // Append every line due by `t`, and drop every line gone by it.
-  for (; next * EVERY <= t; next++) log.push(appended(next, next * EVERY));
-  log = log.filter((line) => !line.gone(t));
+// The log at a time: every line due by then and not yet gone, so a frame
+// drawn for any time — an earlier one included — shows that time's log. A
+// line is gone once it has stayed and its exit has run, so only the lines
+// appended since then are made at all, and one that has left costs nothing.
+const view = Animation.map(Animation.time(), (t) => {
+  const first = Math.max(0, Math.floor((t - STAYS - EXIT.seconds) / EVERY));
+  const log = Array.from({ length: Math.max(0, Math.floor(t / EVERY) + 1 - first) }, (_, n) => appended(first + n, (first + n) * EVERY)).filter((line) => !line.gone(t));
   return new Panel(new Group(...log), { title: `build log · ${log.length} shown`, width: 44, borderStyle: "#585b70" });
-}
+});
 
 const live = new Live(view, { refreshPerSecond: 30 });
 live.start();

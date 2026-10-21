@@ -230,7 +230,7 @@ describe("what a host reads off a frame: when it next changes", () => {
     const engine = createEngine<RichText>({
       fromString: (s) => new RichText(s),
       toString: (rt) => rt.plain,
-      funcs: { ...richTextFuncs(), ...animationFuncs(() => frameTime) },
+      funcs: { ...richTextFuncs(), ...animationFuncs(() => ({ time: frameTime })) },
     });
     const gauge = engine.compile(`{{ "effort " }}{{ frames 0.25 "›" 0.25 "››" 0.25 "›››" }}{{ " max" }}`);
     const still = engine.compile(`{{ "effort " }}{{ "›››" }}`);

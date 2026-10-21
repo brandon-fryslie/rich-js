@@ -1,7 +1,7 @@
 /**
- * Pins how the dashboard's widgets move: once a frame of its `App`'s timer, on
- * the clock it is given — so a fake clock drives it, a repaint between frames
- * does not move it, and a suspended dashboard stands still. Uptime is the
+ * Pins how the dashboard's widgets move: once a frame of the program's timer,
+ * on the clock it is given — so a fake clock drives it, a repaint between
+ * frames does not move it, and a suspended dashboard stands still. Uptime is the
  * vital that changes between any two snapshots, so the sysinfo widget reads it
  * once per tick, and counting the reads counts the ticks.
  */
@@ -82,9 +82,9 @@ describe("rich-dash", () => {
   });
 
   // The build pane's Progress is drawn by the app, so its tasks are timed on
-  // the app's frames: elapsed is seconds of playback, wherever the clock the
-  // dashboard is given starts.
-  it("shows the build's elapsed time in seconds of frames played", async () => {
+  // the app's time: elapsed is seconds since the dashboard began, wherever the
+  // clock it is given starts.
+  it("shows the build's elapsed time in seconds since the dashboard began", async () => {
     // The longest run, then the shortest advance: the first stage is still
     // running after three seconds, and it is the only one started.
     const random = vi.spyOn(Math, "random").mockReturnValue(0.999);

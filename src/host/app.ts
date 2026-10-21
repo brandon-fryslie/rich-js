@@ -35,10 +35,10 @@ import { frameRate, systemClock, type Clock, type FrameRate } from "../core/cloc
 import { Console, type ConsoleOptions } from "../core/console.js";
 import { Segment } from "../core/segment.js";
 import { SurfacePainter, type Surface } from "../core/paint.js";
-import { fitHeight, render, type FrameHost } from "../core/protocol.js";
+import { fitHeight, render, type FrameHost, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { Timeline } from "../core/timeline.js";
-import { drawView, frameTime, hostView, undrawn, type FrameSays, type HostTime, type HostView, type View } from "../core/view.js";
+import { drawView, frameTime, hostView, undrawn, type FrameSays, type HostTime, type View } from "../core/view.js";
 import { hostEnvironment } from "./host-environment.js";
 import { InputParser, keyName, parseKeyName, type KeyPress, type ScreenMouseEvent } from "./input.js";
 import type { TerminalHost } from "./terminal-host.js";
@@ -74,11 +74,11 @@ export interface AppOptions extends DrawOptions {
   readonly host: TerminalHost;
   readonly surface: Surface;
   /**
-   * What the app draws: a renderable, a function asked for one once per
+   * What the app draws: a renderable, or a function asked for one once per
    * frame — so a view of the app's state is drawn from the state as it is at
-   * that frame — or an `Animation` of one, which says when what it draws
-   * changes, so the app knows when to paint again. `t` is the frame's time in
-   * seconds on the app's `timeline`, which is what an effect is sampled at.
+   * that frame. What moves in it is an `Animation` placed there, drawn at the
+   * frame's time on the app's `timeline`, which says when it changes, so the
+   * app knows when to paint again.
    */
   readonly view: View;
   /** What the app reads the time from and ticks on. The platform's, unless given. */
@@ -91,8 +91,8 @@ export interface AppOptions extends DrawOptions {
    */
   readonly timeline?: Timeline;
   /**
-   * How often the app paints while what it shows moves every moment — an
-   * `animate()` held, or a frame that says it moves. A frame held until a
+   * How often the app paints while what it shows moves every moment — a
+   * frame that says it moves. A frame held until a
    * moment is painted at that moment, whatever the rate. 30 frames a second,
    * unless given.
    */
@@ -141,15 +141,13 @@ const isWheelTurn = (event: ScreenMouseEvent): event is WheelTurn => event.type 
 export class App implements FrameHost {
   private readonly host: TerminalHost;
   private readonly surface: Surface;
-  private readonly view: HostView;
+  private readonly view: Renderable;
   private readonly _clock: Clock;
   // The clock moment this app began: what its default timeline plays from,
   // and what a renderable view is drawn for the time since (`HostTime`).
   private readonly _epoch: number;
   private _timeline: Timeline;
   private _rate: FrameRate;
-  // What is animating now: one token per `animate()` not yet released.
-  private readonly animations = new Set<object>();
   // The timer painting frames, and the rate it was started at.
   private ticking: { readonly rate: FrameRate; readonly stop: Unsubscribe } | null = null;
   // What the frame on screen says about when it changes, on the clock.
@@ -314,29 +312,6 @@ export class App implements FrameHost {
   }
 
   /**
-   * Paint at the app's `rate` until the returned function is called: what a
-   * view that moves without saying so asks for — one computing from `t` what
-   * no animation stamps. A view that does say so needs none of this: the app
-   * ticks at its rate while the frame says it moves (`nextChange` at the
-   * frame's own time), wakes once when the frame says it holds until a
-   * moment, and paints only when asked once it says it never changes. The
-   * app ticks while anything is animating and it holds the terminal, and
-   * stops when nothing is. The animation's first frame does not wait out an
-   * interval: at one frame every two seconds, that would hold its start off
-   * screen for two.
-   */
-  animate(): Unsubscribe {
-    const animation = {};
-    this.animations.add(animation);
-    this.tick();
-    this.refresh();
-    return () => {
-      this.animations.delete(animation);
-      this.tick();
-    };
-  }
-
-  /**
    * Hand the terminal to whatever launched the program, and take it back and
    * repaint when that resumes it. What sends the app here is the app's own —
    * in raw mode Ctrl+Z arrives as a key.
@@ -484,16 +459,17 @@ export class App implements FrameHost {
 
   // [LAW:single-enforcer] Whether the clock is ticking, and at what rate,
   // and whether a wake is armed for the frame's next change, follow from the
-  // phase, what is animating, the rate and what the frame on screen says,
-  // and are brought in line with them here alone, after every change to any
-  // — so a timer runs exactly while a running app has something moving — a
-  // frame that says it moves, or an `animate()` its frame was not drawn for
-  // a paused timeline's held time under — at the rate the app has now, a wake is armed exactly while a running app
-  // shows a frame held until a moment, and none outlives the app.
+  // phase, the rate and what the frame on screen says, and are brought in
+  // line with them here alone, after every change to any — so a timer runs
+  // exactly while a running app shows a frame that says it moves, at the
+  // rate the app has now, a wake is armed exactly while a running app shows
+  // a frame held until a moment, and none outlives the app.
+  // [LAW:one-source-of-truth] What the frame draws is the only thing that
+  // says whether the view moves.
   private tick(): void {
     const running = this._phase === "running";
-    const { t, nextChange, held } = this.said;
-    const wanted = running && ((this.animations.size > 0 && !held) || nextChange === t);
+    const { t, nextChange } = this.said;
+    const wanted = running && nextChange === t;
     if (this.ticking !== null && (!wanted || this.ticking.rate.perSecond !== this._rate.perSecond)) {
       this.ticking.stop();
       this.ticking = null;

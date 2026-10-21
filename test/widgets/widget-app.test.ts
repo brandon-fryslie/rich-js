@@ -10,6 +10,7 @@
 import { describe, it, expect } from "vitest";
 import { runInAction, observable } from "mobx";
 
+import { Animation } from "../../src/core/animation.js";
 import { WidgetApp } from "../../src/widgets/widget-app.js";
 import { Checkbox } from "../../src/widgets/checkbox.js";
 import { Dropdown } from "../../src/widgets/dropdown.js";
@@ -935,13 +936,12 @@ describe("WidgetApp rate", () => {
       surface: "alternate",
       clock,
       rate: frameRate(1),
-      view: (t) => {
+      view: Animation.map(Animation.time(), (t) => {
         times.push(t);
         return new RichText(`t=${t}`);
-      },
+      }),
     });
     void app.run();
-    app.animate();
     clock.advance(2);
     expect(times).toEqual([0, 1, 2]);
 

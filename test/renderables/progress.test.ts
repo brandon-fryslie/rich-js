@@ -45,7 +45,6 @@ const fakeTask = (description: string): Task => ({
   fill: Animation.constant(0),
   visible: true,
   startTime: 0,
-  time: 0,
   elapsed: 0,
   finishedTime: undefined,
   speed: undefined,
@@ -392,13 +391,16 @@ describe("TimeElapsedColumn and TimeRemainingColumn (rich-progress-jj5r)", () =>
       new TimeRemainingColumn(),
       new TimeRemainingColumn({ elapsedWhenFinished: true }),
     ];
-    // Draws each cell as Progress hands it, keeping the text and its style.
+    // Draws each cell as Progress hands it, keeping the text and its style. A
+    // running clock is placed, an animation of its text, read at the 20s the
+    // frame is drawn for.
     const rows: string[][] = [];
     const recorder: ProgressColumn = {
       tableColumn: {},
       render: (task) => {
         rows.push(columns.map((column) => {
-          const text = column.render(task);
+          const cell = column.render(task);
+          const text = cell instanceof RichText ? cell : (cell as Animation<RichText>).at(20);
           return `${text.plain} ${String(text.style)}`;
         }));
         return new RichText("");
@@ -440,7 +442,8 @@ describe("the percentage and time columns' colours (rich-progress-rihd)", () => 
     ["TimeElapsedColumn", new TimeElapsedColumn(), "\x1b[33m-:--:--\x1b[0m"],
     ["TimeRemainingColumn", new TimeRemainingColumn(), "\x1b[36m-:--:--\x1b[0m"],
   ])("%s writes Rich's bytes", (_name, column, bytes) => {
-    const text = column.render(task);
+    // A task never started shows its cells as text, no clock placed in them.
+    const text = column.render(task) as RichText;
     text.end = "";
     expect(renderToString(text, { colorSystem: "truecolor" })).toBe(bytes);
   });
@@ -785,6 +788,20 @@ describe("a Progress is timed on the host that draws it (rich-animation-42lg.1t6
     host.reads = 0;
     expect(elapsedOf(progress, { ...OPTS, frame: { time: 15, host } })).toBe("job 0:00:05");
     expect(host.reads).toBe(0);
+  });
+
+  // A host that draws a Progress paints its elapsed clock because the frame
+  // says when the next second turns — nothing else tells it to.
+  it("says its running clock holds until the next whole second, reduced or not", () => {
+    const host = settable(10);
+    const progress = timed(host);
+    progress.addTask("job");
+    for (const reducedMotion of [false, true]) {
+      const segments = [...render(progress, { ...OPTS, maxWidth: 40, reducedMotion, frame: { time: 15.25, host } })];
+      expect(segments.map((segment) => segment.text).join("").trim()).toBe("job 0:00:05");
+      expect(Segment.lastChange(segments)).toBeCloseTo(15, 9);
+      expect(Segment.nextChange(segments)).toBeCloseTo(16, 9);
+    }
   });
 
   it("draws one time the same however its host's clock has moved since", () => {

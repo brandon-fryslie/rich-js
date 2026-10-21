@@ -153,13 +153,14 @@ try {
 
 ## A view drawn for a time
 
-Nothing a `Live` draws reads a clock. In place of a renderable, hand it a view — a function asked for the renderable once per frame with the frame's time `t`, in seconds on the `Live`'s clock — and every [animation](/animation) placed in what it returns, such as a [`Spinner`](/frames#spinners), a [`FrameSequence`](/frames) or an [effect](/effects), draws at that `t`, its cells saying when it next changes. `t` is for what the program computes itself, such as an elapsed time. The same `t` draws the same bytes at four frames a second or sixty, and a `Live` on a hand-moved `Clock` draws the frames for that clock's time:
+Nothing a `Live` draws reads a clock. Each frame is drawn for one time, in seconds on the `Live`'s clock, and every [animation](/animation) placed in the view, such as a [`Spinner`](/frames#spinners), a [`FrameSequence`](/frames) or an [effect](/effects), draws at that time, its cells saying when it next changes. To show the time itself, such as an elapsed time, map `Animation.time()` to what shows it. The same time draws the same bytes at four frames a second or sixty, and a `Live` on a hand-moved `Clock` draws the frames for that clock's time. A view can also be a function, asked for the renderable once per frame and handed nothing, which builds it from the program's state as it is then:
 
 ```typescript live
-import { Group, Live, RichText, Spinner } from "@promptctl/rich-js";
+import { Animation, Group, Live, RichText, Spinner } from "@promptctl/rich-js";
 
 const spinner = new Spinner("dots", "working");
-const live = new Live((t) => new Group(spinner, new RichText(`${t.toFixed(1)}s elapsed`)), { refreshPerSecond: 12.5, console });
+const elapsed = Animation.map(Animation.time(), (t) => new RichText(`${t.toFixed(1)}s elapsed`));
+const live = new Live(new Group(spinner, elapsed), { refreshPerSecond: 12.5, console });
 live.start();
 try {
   await sleep(3000);

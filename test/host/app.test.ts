@@ -381,27 +381,26 @@ describe("App paint listeners", () => {
 });
 
 describe("App frame clock", () => {
-  /** An app on `clock` at `perSecond`, and the time of every frame its view was asked for. */
-  function clocked(perSecond: number, clock: FakeClock): { target: App; times: number[] } {
+  /**
+   * An app on `clock` at `perSecond` whose view shows the time while `moves()`
+   * says so, and holds still otherwise, and the time of every frame the
+   * moving part was drawn for.
+   */
+  function clocked(perSecond: number, clock: FakeClock, moves: () => boolean = () => true): { target: App; times: number[]; host: ScriptedHost } {
     const times: number[] = [];
-    const target = new App({
-      host: scriptedHost(),
-      surface: "alternate",
-      clock,
-      rate: frameRate(perSecond),
-      view: (t) => {
-        times.push(t);
-        return text(`t=${t}`);
-      },
+    const host = scriptedHost();
+    const showing = Animation.map(Animation.time(), (t) => {
+      times.push(t);
+      return text(`t=${t}`);
     });
-    return { target, times };
+    const target = new App({ host, surface: "alternate", clock, rate: frameRate(perSecond), view: () => (moves() ? showing : text("still")) });
+    return { target, times, host };
   }
 
-  it("paints 30 frames a second at 30 fps while something animates", () => {
+  it("paints 30 frames a second at 30 fps while the frame says it moves", () => {
     const clock = fakeClock();
     const { target, times } = clocked(30, clock);
     void target.run();
-    target.animate();
 
     clock.advance(1);
 
@@ -409,11 +408,10 @@ describe("App frame clock", () => {
     expect(times).toHaveLength(1 + 30);
   });
 
-  it("paints one frame every two seconds at 0.5 fps, each handed the time since the app was made", () => {
+  it("paints one frame every two seconds at 0.5 fps, each drawn for the time since the app was made", () => {
     const clock = fakeClock(100);
     const { target, times } = clocked(0.5, clock);
     void target.run();
-    target.animate();
 
     clock.advance(1.9);
     expect(times).toEqual([0]);
@@ -425,7 +423,6 @@ describe("App frame clock", () => {
     const clock = fakeClock();
     const { target, times } = clocked(1, clock);
     void target.run();
-    target.animate();
     clock.advance(2);
     expect(times).toEqual([0, 1, 2]);
 
@@ -437,59 +434,73 @@ describe("App frame clock", () => {
     expect(clock.timers()).toBe(1);
   });
 
-  it("paints an animation's first frame without waiting out an interval", async () => {
+  it("paints the first frame of a view that starts moving without waiting out an interval", async () => {
     const clock = fakeClock();
-    const { target, times } = clocked(0.5, clock);
+    let moves = false;
+    const { target, times } = clocked(0.5, clock, () => moves);
     void target.run();
     clock.advance(1);
 
-    target.animate();
+    moves = true;
+    target.refresh();
     await tick();
 
-    expect(times).toEqual([0, 1]);
+    expect(times).toEqual([1]);
+    clock.advance(2);
+    expect(times).toEqual([1, 3]);
   });
 
   it("paints one frame, not two, for a refresh asked for before a tick", async () => {
     const clock = fakeClock();
     const { target, times } = clocked(10, clock);
     void target.run();
-    target.animate();
-    await tick();
 
     target.refresh();
     clock.advance(0.1);
     await tick();
 
-    // The first frame, the animation's first, then the tick that drew the refresh.
-    expect(times).toHaveLength(3);
+    // The first frame, then the tick that drew the refresh.
+    expect(times).toHaveLength(2);
   });
 
-  it("does not tick while nothing animates, and stops when the last animation ends", () => {
+  // [LAW:one-source-of-truth] Nothing beside what the frame draws decides
+  // whether the app ticks.
+  it("ticks exactly while the frame says it moves, and leaves no timer once it stops", async () => {
     const clock = fakeClock();
-    const { target, times } = clocked(10, clock);
+    let moves = false;
+    const { target, times } = clocked(10, clock, () => moves);
     void target.run();
 
     clock.advance(1);
-    expect(times).toHaveLength(1);
+    expect(times).toHaveLength(0);
     expect(clock.timers()).toBe(0);
 
-    const first = target.animate();
-    const second = target.animate();
-    first();
+    moves = true;
+    target.refresh();
+    await tick();
     clock.advance(1);
     expect(times).toHaveLength(1 + 10);
 
-    second();
-    second();
+    moves = false;
+    target.refresh();
+    await tick();
     clock.advance(1);
     expect(times).toHaveLength(1 + 10);
     expect(clock.timers()).toBe(0);
   });
 
-  it("starts ticking when it runs for an animation begun before, and leaves no timer once stopped", async () => {
+  it("does not tick a view that only says it is still, however long it runs", () => {
+    const clock = fakeClock();
+    const { target } = clocked(10, clock, () => false);
+    void target.run();
+    clock.advance(10);
+    expect(clock.timers()).toBe(0);
+    expect(rows(target)[0]).toBe("still");
+  });
+
+  it("starts ticking when it runs, and leaves no timer once stopped", async () => {
     const clock = fakeClock();
     const { target, times } = clocked(10, clock);
-    target.animate();
     expect(clock.timers()).toBe(0);
 
     const running = target.run();
@@ -505,20 +516,8 @@ describe("App frame clock", () => {
 
   it("does not tick while suspended, and ticks again on resume", async () => {
     const clock = fakeClock();
-    const host = scriptedHost();
-    const times: number[] = [];
-    const target = new App({
-      host,
-      surface: "alternate",
-      clock,
-      rate: frameRate(10),
-      view: (t) => {
-        times.push(t);
-        return text("x");
-      },
-    });
+    const { target, times, host } = clocked(10, clock);
     void target.run();
-    target.animate();
 
     const suspended = target.suspend();
     expect(clock.timers()).toBe(0);
@@ -540,14 +539,13 @@ describe("App frame clock", () => {
       surface: "alternate",
       clock,
       rate: frameRate(10),
-      view: () => {
+      view: Animation.map(Animation.time(), () => {
         frames += 1;
         if (frames > 2) throw new Error("frame broke");
         return text("x");
-      },
+      }),
     });
     const running = target.run();
-    target.animate();
 
     clock.advance(1);
 
@@ -555,11 +553,16 @@ describe("App frame clock", () => {
     expect(frames).toBe(3);
     expect(clock.timers()).toBe(0);
   });
+
+  it("takes no view of the time: a function view is handed nothing", () => {
+    // @ts-expect-error — a view asked for a renderable is handed no time; what moves is placed in it.
+    const view: AppOptions["view"] = (t: number) => text(`${t}`);
+    expect(typeof view).toBe("function");
+  });
 });
 
 // rich-animation-42lg.04v: an app draws its view at the time its timeline
-// maps the clock to, and paints when what it drew says it changes — so a
-// view built on a value animation needs no `animate()` to move.
+// maps the clock to, and paints when what it drew says it changes.
 describe("App on a timeline", () => {
   /** An app on `clock` at `perSecond` drawing `animation`, and every value it was drawn with, at the time it was drawn for. */
   function playing(animation: Animation<number>, perSecond: number, clock: FakeClock, timeline?: Timeline): { target: App; drawn: { t: number; value: number }[] } {
@@ -579,7 +582,7 @@ describe("App on a timeline", () => {
   // 0 to 10 over a second.
   const growing = (): Animation<number> => tween(0, 10, { ease: EASES.linear, seconds: 1 });
 
-  it.each([1, 60])("at %s fps, paints a tween at its rate while it moves and stops on arriving, with nothing animate()d", (perSecond) => {
+  it.each([1, 60])("at %s fps, paints a tween at its rate while it moves and stops on arriving", (perSecond) => {
     const clock = fakeClock();
     const { target, drawn } = playing(growing(), perSecond, clock);
     void target.run();
@@ -642,11 +645,10 @@ describe("App on a timeline", () => {
     expect(clock.timers()).toBe(0);
   });
 
-  it.each([1, 60])("at %s fps, paused, paints nothing for an animate() held until the timeline plays again", async (perSecond) => {
+  it.each([1, 60])("at %s fps, paused, paints nothing for a view moving at every moment until the timeline plays again", async (perSecond) => {
     const clock = fakeClock();
-    const { target, drawn } = playing(Animation.constant(1), perSecond, clock);
+    const { target, drawn } = playing(Animation.time(), perSecond, clock);
     void target.run();
-    target.animate();
     clock.advance(1);
     target.timeline = Timeline.pause(target.timeline, clock.now());
     await tick();

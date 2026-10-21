@@ -104,7 +104,7 @@ try {
 
 ## In a template
 
-A host that builds its text in templates registers `animationFuncs(frameTime)` from the [template bindings](/template-bindings), handing in the time the way `richTextFuncs` is handed the drawn depth. `frames <seconds> <frame> <seconds> <frame> …` is then the frame in progress at the moment the template is evaluated, and a frame is any fragment:
+A host that builds its text in templates registers `animationFuncs(frame)` from the [template bindings](/template-bindings), handing in the frame's time the way `richTextFuncs` is handed the drawn depth. `frames <seconds> <frame> <seconds> <frame> …` is then the frame in progress at the moment the template is evaluated, and a frame is any fragment:
 
 ```typescript
 import { createEngine } from "@promptctl/go-template-js";
@@ -115,7 +115,7 @@ let frameTime = 0;
 const engine = createEngine<RichText>({
   fromString: (s) => new RichText(s),
   toString: (rt) => rt.plain,
-  funcs: { ...richTextFuncs(), ...animationFuncs(() => frameTime) },
+  funcs: { ...richTextFuncs(), ...animationFuncs(() => ({ time: frameTime })) },
 });
 
 const gauge = engine.compile(`{{ "effort " | dim }}{{ frames 1 ("›" | fg "green") 1 ("››" | fg "yellow") 1 ("›››" | fg "red") }}{{ " max" | dim }}`);
@@ -138,7 +138,7 @@ let frameTime = 0;
 const engine = createEngine<RichText>({
   fromString: (s) => new RichText(s),
   toString: (rt) => rt.plain,
-  funcs: { ...richTextFuncs(), ...animationFuncs(() => frameTime) },
+  funcs: { ...richTextFuncs(), ...animationFuncs(() => ({ time: frameTime })) },
 });
 
 const gauge = engine.compile(`{{- $bg := "#313244" -}}

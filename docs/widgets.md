@@ -52,7 +52,7 @@ Ctrl+C stops the app, as it stops any [`App`](/app#keys-and-the-pointer), whatev
 
 ## What WidgetApp adds to an App
 
-`WidgetApp` is an [`App`](/app) whose view has widgets in it. It takes the same `host`, `surface` and `view`, runs the same way, and hands the terminal back on the same exits. What it adds is input: keys go to the focused widget, the pointer goes to the widget under it, and a change to anything a frame read paints the next frame. Its `view` is handed the frame's time and `app.animate()` paints at the app's rate, as an `App`'s do, and `app.timeline` and `app.rate` read and set as an `App`'s do — see [Animating at a frame rate](/app#animating-at-a-frame-rate).
+`WidgetApp` is an [`App`](/app) whose view has widgets in it. It takes the same `host`, `surface` and `view`, runs the same way, and hands the terminal back on the same exits. What it adds is input: keys go to the focused widget, the pointer goes to the widget under it, and a change to anything a frame read paints the next frame. What moves in its view is an animation placed there, painted at the app's rate while the frame says it moves, as in an `App`, and `app.timeline` and `app.rate` read and set as an `App`'s do — see [Animating at a frame rate](/app#animating-at-a-frame-rate).
 
 **Widgets go anywhere a renderable goes.** The form above puts three widgets in a `Group` in a `Panel`; they could as well sit in a [`Layout`](/layout) pane or a [`Table`](/tables) cell. Nothing registers them. Every cell a widget draws is marked as its own, the marks survive every container, and the app reads them off the painted frame to find which widget is where — so a widget nested three containers deep receives a click on the cell the user sees it in.
 

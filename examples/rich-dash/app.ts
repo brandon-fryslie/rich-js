@@ -2,9 +2,9 @@
  * rich-dash demo body — a dashboard of ticking widgets, in an `App` on the
  * alternate screen.
  *
- * Each frame advances every widget's state, then draws every widget's state,
- * in a Panel, into the Layout cell named for it. The app owns the terminal and
- * the frame timer.
+ * Once a frame the program advances every widget's state, and the app draws
+ * every widget's state, in a Panel, into the Layout cell named for it. The app
+ * owns the terminal.
  *
  * [LAW:effects-at-boundaries] `run` takes a `TerminalHost` and a
  * `DashboardCapabilities` bag — Clock, FileSystem, SystemInfo, and the README
@@ -12,9 +12,8 @@
  * the demo body has no environment-aware branches.
  */
 
-import { Layout, Panel, RichText, Style, Timeline, frameRate, type Renderable } from "@promptctl/rich-js";
+import { Layout, Panel, RichText, Style, frameRate, type Renderable } from "@promptctl/rich-js";
 import { App, keyName, type TerminalHost } from "@promptctl/rich-js/host";
-import { frameClock } from "../_capabilities/frame-clock.js";
 import { buildWidgets, LAYOUT, type DashboardCapabilities } from "./config.js";
 import { buildLayout } from "./layout.js";
 import type { Widget } from "./widget.js";
@@ -57,11 +56,10 @@ function bindPanes(layout: Layout, widgets: readonly Widget[]): Pane[] {
   });
 }
 
-function draw(layout: Layout, panes: readonly Pane[]): Layout {
+function draw(panes: readonly Pane[]): void {
   for (const { widget, cell, state } of panes) {
     cell.update(inPanel(widget, widget.render(state)));
   }
-  return layout;
 }
 
 function inPanel(widget: Widget, body: Renderable): Renderable {
@@ -79,21 +77,26 @@ export function run(host: TerminalHost, caps: DashboardCapabilities): Running {
   }
 
   const layout = buildLayout(LAYOUT);
-  // [LAW:no-ambient-temporal-coupling] The app owns the one frame timer. Its
-  // clock counts frames, and its timeline reads them as the seconds they take,
-  // so the view is handed the time of the frame and shows each widget as it
-  // stands after that many ticks. A repaint between frames — a resize, a
-  // resume — is handed the same time and shows the same state, and a
-  // suspended app's timer is stopped, so its frames stop with it.
-  let ticked = 0;
-  const view = (t: number): Layout => {
-    for (const frame = Math.round(t * FPS); ticked < frame; ticked++) for (const pane of panes) pane.state = pane.widget.tick(pane.state);
-    return draw(layout, panes);
-  };
-  const app = new App({ host, surface: "alternate", view, clock: frameClock(caps.clock), timeline: Timeline.play(0, 1 / FPS), rate: frameRate(FPS) });
+  // [LAW:no-ambient-temporal-coupling] The widgets are the program's state —
+  // live readings of the system and a simulated build, not values of the
+  // time — so the program steps them once a frame on the clock it is given,
+  // puts what they show in their cells, and asks for a repaint; the view is
+  // the layout as it stands. The program holds one stepping timer for as long
+  // as `run` lasts, and a step moves the widgets only while the app is
+  // running, so a suspended dashboard stands still and the app's phase is
+  // the one thing that says so.
+  const app = new App({ host, surface: "alternate", view: layout, clock: caps.clock, rate: frameRate(FPS) });
   // The widgets are made for the app that draws them — the build pane's
   // Progress is timed on its frames — and the app draws nothing until `run`.
   const panes = bindPanes(layout, buildWidgets(caps, app));
+  draw(panes);
+  const step = (): void => {
+    if (app.phase !== "running") return;
+    for (const pane of panes) pane.state = pane.widget.tick(pane.state);
+    draw(panes);
+    app.refresh();
+  };
+  const stepping = caps.clock.every(frameRate(FPS), step);
 
   app.onKey((press) => {
     switch (KEYS[keyName(press)]) {
@@ -106,8 +109,6 @@ export function run(host: TerminalHost, caps: DashboardCapabilities): Running {
     }
   });
 
-  // The dashboard moves for as long as it runs; the app releases the timer
-  // on every way `run` settles.
-  app.animate();
-  return { done: app.run(), stop: () => app.stop() };
+  // The dashboard steps for as long as it runs, and stops on every way `run` settles.
+  return { done: app.run().finally(stepping), stop: () => app.stop() };
 }

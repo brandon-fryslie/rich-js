@@ -273,6 +273,19 @@ export const Animation = {
   },
 
   /**
+   * The time itself, in seconds, moving at every moment: what a clock, a
+   * counter or anything else that reports the time is mapped from. It is
+   * information and not motion, so reduced it is itself, and a clock shown
+   * to a reader who wants no motion still keeps the time; motion computed
+   * from the time is `continuous`, which reduced holds still.
+   * [LAW:types-are-the-program]
+   */
+  time(): Animation<number> {
+    const time: Animation<number> = Animation.of({ at: (t: number) => t, nextChange: (t: number) => t, lastChange: (t: number) => t, reduced: () => time });
+    return time;
+  },
+
+  /**
    * `animation`'s value through `f`, changing when it does. Two values `f`
    * maps alike make an early answer, which the contract allows.
    */

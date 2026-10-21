@@ -1,10 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import { renderToString } from "../../src/core/render.js";
-import { Style } from "../../src/core/style.js";
+import { Style, type Hold } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { FrameSequence, type Frame } from "../../src/renderables/frames.js";
-import { animationFuncs, paletteFuncs, richTextFuncs } from "../../src/template-bindings/index.js";
+import { animationFuncs, paletteFuncs, renderTemplate, richTextFuncs, templateFrame, type TemplateFrame } from "../../src/template-bindings/index.js";
+import { render, type Renderable } from "../../src/core/protocol.js";
 import { EASES, Phase } from "../../src/core/easing.js";
 import { Segment } from "../../src/core/segment.js";
 import { Timeline } from "../../src/core/timeline.js";
@@ -27,7 +28,7 @@ function engineAt(clock: { t: number }): Engine<RichText> {
   return createEngine<RichText>({
     fromString: (s) => new RichText(s),
     toString: (rt) => rt.plain,
-    funcs: { ...richTextFuncs(), ...animationFuncs(() => clock.t) },
+    funcs: { ...richTextFuncs(), ...animationFuncs(() => ({ time: clock.t })) },
   });
 }
 
@@ -156,15 +157,19 @@ describe("stepped in a template", () => {
 /** The soonest moment any segment of `text`, drawn, says it changes. */
 const nextChangeOf = (text: RichText): number => Segment.nextChange(text.render({ maxWidth: 80 }));
 
-/** An engine drawing for `clock.t` on `clock.timeline` (the host's own clock when unset), with `color` and `ramp` over a real palette. */
-function toolboxAt(clock: { t: number; timeline?: Timeline }, options: { reducedMotion?: boolean; asciiOnly?: boolean } = {}): Engine<RichText> {
+/**
+ * An engine drawing for `clock.t` on `clock.timeline` (the host's own clock
+ * when unset), telling `clock.told` every hold a function tells the frame,
+ * with `color` and `ramp` over a real palette.
+ */
+function toolboxAt(clock: { t: number; timeline?: Timeline; told?: Hold[] }, options: { reducedMotion?: boolean; asciiOnly?: boolean } = {}): Engine<RichText> {
   return createEngine<RichText>({
     fromString: (s) => new RichText(s),
     toString: (rt) => rt.plain,
     funcs: {
       ...richTextFuncs(),
       ...paletteFuncs(() => GRUVBOX.palette),
-      ...animationFuncs(() => clock.t, { ...options, timeline: () => clock.timeline ?? Timeline.play(0) }),
+      ...animationFuncs(() => ({ ...options, time: clock.t, onHold: (hold) => clock.told?.push(hold) }), { timeline: () => clock.timeline ?? Timeline.play(0) }),
     },
   });
 }
@@ -335,5 +340,65 @@ describe("every function draws on the timeline the host hands in", () => {
   it("sought, a tween is where it was put", () => {
     const clock: { t: number; timeline?: Timeline } = { t: 0, timeline: Timeline.seek(Timeline.play(0), 100, 2) };
     expect(sample(toolboxAt(clock), clock, TWEEN, [100, 101])).toEqual(["5.000", "7.500"]);
+  });
+});
+
+// rich-animation-27tq.wrw: a number or a colour has no cells to stamp, so it
+// tells the frame it is evaluated for when it changes — what lets a host
+// paint a template while a tween moves and sleep once it lands.
+describe("a value function tells the frame when it changes", () => {
+  /** Every hold `source` tells, evaluated at `t`. */
+  function toldAt(source: string, t: number, options: { reducedMotion?: boolean } = {}): Hold[] {
+    const clock = { t, told: [] as Hold[] };
+    toolboxAt(clock, options).compile(source)({});
+    return clock.told;
+  }
+
+  it("a tween moves until it lands, then never changes", () => {
+    expect(toldAt(`{{ tween 1 "linear" 0 0 10 }}`, 0.5)).toEqual([{ lastChange: 0.5, nextChange: 0.5 }]);
+    expect(toldAt(`{{ tween 1 "linear" 0 0 10 }}`, 2)).toEqual([{ lastChange: 1, nextChange: Number.POSITIVE_INFINITY }]);
+  });
+
+  it("a loop moves at every moment, and reduced holds still", () => {
+    expect(toldAt(`{{ loop 2 0 }}`, 0.7)).toEqual([{ lastChange: 0.7, nextChange: 0.7 }]);
+    expect(toldAt(`{{ loop 2 0 }}`, 0.7, { reducedMotion: true })[0]!.nextChange).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("a stepped colour holds until its step ends", () => {
+    expect(toldAt(`{{ stepped 0.5 "#ff0000" 0.5 "#00ff00" }}`, 0.2)).toEqual([{ lastChange: 0, nextChange: 0.5 }]);
+  });
+});
+
+// A template evaluated inside a frame is drawn as that frame says: its time,
+// the hold it tells and the reader's preference all come from the frame, so
+// a reduced-motion host never ticks for a template's loop.
+describe("a template drawn in a frame is drawn as the frame says", () => {
+  let drawnIn: TemplateFrame = { time: 0 };
+  const engine = createEngine<RichText>({
+    fromString: (s) => new RichText(s),
+    toString: (rt) => rt.plain,
+    funcs: { ...richTextFuncs(), ...animationFuncs(() => drawnIn) },
+  });
+  const looping: Renderable = {
+    render: (options) => {
+      drawnIn = templateFrame(options);
+      return renderTemplate(engine, `{{ loop 2 0 | printf "%.2f" }}`, {}, options);
+    },
+  };
+  /** What `looping` draws at `time`, and every hold it tells there. */
+  const drawnAt = (time: number, reducedMotion: boolean): { text: string; told: Hold[] } => {
+    const told: Hold[] = [];
+    const segments = [...render(looping, { maxWidth: 20, reducedMotion, frame: { time, host: { frameTime: time } }, onHold: (hold) => told.push(hold) })];
+    return { text: segments.map((s) => s.text).join(""), told };
+  };
+
+  it("draws at the frame's time and tells the frame's own listener", () => {
+    expect(drawnAt(0.5, false)).toEqual({ text: "0.25", told: [{ lastChange: 0.5, nextChange: 0.5 }] });
+  });
+
+  it("holds still under the frame's reduced motion", () => {
+    const { text, told } = drawnAt(0.5, true);
+    expect(text).toBe("0.00");
+    expect(told[0]!.nextChange).toBe(Number.POSITIVE_INFINITY);
   });
 });

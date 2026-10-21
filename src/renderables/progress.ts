@@ -51,11 +51,6 @@ export interface Task {
   /** When the task started, in seconds on its `Progress`'s host's time; undefined until it has, as of the frame being drawn. */
   readonly startTime: number | undefined;
   /**
-   * Rich's `Task.get_time()`: the moment the frame being drawn is drawn at, in
-   * seconds on its `Progress`'s host's time, so a column animates without reading a clock.
-   */
-  readonly time: number;
-  /**
    * Rich's `Task.elapsed`: seconds since the task started, as of the frame
    * being drawn — `Progress` takes the time once a frame and hands columns
    * the result, so no column reads a clock. Undefined until the task starts.
@@ -97,7 +92,7 @@ const MAX_SAMPLES = 1000;
  * `finishedAt`, the host moment the task reached its total, and `speed` from
  * the samples.
  */
-type TaskState = Omit<Task, "time" | "elapsed" | "finishedTime" | "speed"> & {
+type TaskState = Omit<Task, "elapsed" | "finishedTime" | "speed"> & {
   readonly finishedAt: number | undefined;
   readonly samples: readonly ProgressSample[];
 };
@@ -156,7 +151,6 @@ function taskAt({ samples, finishedAt, ...state }: TaskState, now: number): Task
   return {
     ...state,
     startTime,
-    time: now,
     elapsed: started ? now - startTime : undefined,
     finishedTime,
     speed: started ? sampleSpeed(samples.filter((sample) => sample.timestamp <= now)) : undefined,
@@ -310,13 +304,25 @@ function timeRemaining(task: Task): number | undefined {
 export class TimeElapsedColumn implements ProgressColumn {
   readonly tableColumn: ColumnOptions = {};
 
-  render(task: Task): RichText {
+  render(task: Task): Renderable {
     // Rich's `finished_time if finished else elapsed`: a finished task's clock
-    // holds where it stopped, and one never started has no time to show.
-    const time = finished(task) ? task.finishedTime : task.elapsed;
-    return new RichText(clockFace(time), { style: "progress.elapsed" });
+    // holds where it stopped, and one never started has no time to show. A
+    // running one is a clock placed in the cell, so the frame says when its
+    // next second turns and a host paints it then. [LAW:one-source-of-truth]
+    if (finished(task)) return elapsedFace(task.finishedTime);
+    return task.startTime === undefined ? elapsedFace(undefined) : runningClock(task.startTime);
   }
 }
+
+const elapsedFace = (seconds: number | undefined): RichText => new RichText(clockFace(seconds), { style: "progress.elapsed" });
+
+/**
+ * The seconds since `startTime` at the frame's time, turning over on each
+ * whole one. A clock is information and not motion, so reduced it still
+ * keeps the time: `Animation.repeat` keeps its turns.
+ */
+const runningClock = (startTime: number): Animation<RichText> =>
+  Timeline.run(Timeline.play(startTime), Animation.repeat(1, (second) => Animation.constant(elapsedFace(second))));
 
 /** A time as the time columns draw it, `-:--:--` when there is none to draw. */
 function clockFace(seconds: number | undefined): string {
@@ -648,7 +654,8 @@ export class Progress implements Renderable {
     }
 
     // [LAW:effects-at-boundaries] One moment a frame, handed to every column
-    // as the task's `time` and `elapsed`.
+    // as the task's `elapsed`; a column that moves places an animation, which
+    // draws at that same moment, the frame's.
     for (const held of this._tasks.get()) {
       const state = held.get();
       if (!state.visible) continue;
