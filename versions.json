@@ -4,15 +4,22 @@
     {
       "version": "pr-501",
       "ref": "refs/pull/501/merge",
-      "sha": "c7270160775b8b74d34b81ad42b5a8b6ec192c81",
-      "timestamp": "2026-10-21T03:44:01.363Z",
+      "sha": "a3f19dd4291e7f8a3c41228b2351361b4a3f8bcc",
+      "timestamp": "2026-10-21T04:07:37.688Z",
       "commits": [
         {
-          "sha": "c7270160775b8b74d34b81ad42b5a8b6ec192c81",
+          "sha": "a3f19dd4291e7f8a3c41228b2351361b4a3f8bcc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T21:42:16-06:00",
-          "message": "Merge 74bdda26b46db1c85ee83e99b89331d5934b68ce into 6566773878043237201f7601dcd3f982e5766ea0\n"
+          "timestamp": "2026-10-21T04:05:42Z",
+          "message": "Merge b375c5cd1abd5a86a3fee01b08e6b1fe74641c4d into 6566773878043237201f7601dcd3f982e5766ea0\n"
+        },
+        {
+          "sha": "b375c5cd1abd5a86a3fee01b08e6b1fe74641c4d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-20T22:05:36-06:00",
+          "message": "Review fixes: frameAt is placement at a named time; a cell's hold is whole (rich-animation-27tq.50o)\n\n- frameAt's renderable draws the animation placed in a frame drawn for t,\n  so an Effected stamps its exact hold (a no-colour Progress pulse sleeps\n  again) and animations inside its value draw at t. drawnAt folded into\n  placedRender.\n- Animation.of copies every member, own and inherited, as own properties\n  (membersOf): a class instance keeps its methods, and a spread is whole.\n- Style carries one `hold` (both ends) instead of two optional fields: a\n  cell saying only nextChange claimed it always was, and a reversed\n  timeline never woke for it.\n- Timed and Hold exported from the main barrel.\n"
         },
         {
           "sha": "74bdda26b46db1c85ee83e99b89331d5934b68ce",
