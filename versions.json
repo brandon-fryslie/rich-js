@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-510",
+      "ref": "refs/pull/510/merge",
+      "sha": "83ee6da1269f7fbc9feeda1b3930de07f9d32cbc",
+      "timestamp": "2026-10-21T12:23:22.375Z",
+      "commits": [
+        {
+          "sha": "83ee6da1269f7fbc9feeda1b3930de07f9d32cbc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T06:21:23-06:00",
+          "message": "Merge 1d678663b20a945c817ba851ed9ba8f6cd09aa59 into 7a51fda1c6562c9af4c7e98f540d1b1dc00d1d6d\n"
+        },
+        {
+          "sha": "1d678663b20a945c817ba851ed9ba8f6cd09aa59",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T06:21:10-06:00",
+          "message": "A held renderable is drawn and dropped; Composite.contents is gone (rich-protocol-9xcs.8te)\n\nUnder one column `render` used to walk `Composite.contents`, a second\ndescription of each container's traversal kept beside its `render`, because\ndrawing used to commit state. Renders no longer write, so a held renderable\nis now drawn in a phase whose effects are dropped (as a measurement's are),\nits segments discarded, and everything it draws reported held. What a held\ncontainer holds is what it draws, under the options it hands each child — a\ncontainer rewriting `frame` included, which `contents` could not see.\n\nComposite, isComposite and every contents method are deleted.\ntest/renderables/contents.test.ts becomes held.test.ts: every exported\nrenderable survives being drawn under one column and reports the probes it\nreports drawn. A Table seats one column at no width and drops the rest, as at\nany width too narrow for their dividers; contents had reported them all.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "7a51fda1c6562c9af4c7e98f540d1b1dc00d1d6d",
