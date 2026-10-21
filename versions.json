@@ -4,15 +4,22 @@
     {
       "version": "pr-509",
       "ref": "refs/pull/509/merge",
-      "sha": "caaf6aedf85561bc80fb280a8bd14f2fce62bb3e",
-      "timestamp": "2026-10-21T11:06:56.042Z",
+      "sha": "71a6c7f17df7654f6fdf6afb376b3f68c773433c",
+      "timestamp": "2026-10-21T11:25:03.687Z",
       "commits": [
         {
-          "sha": "caaf6aedf85561bc80fb280a8bd14f2fce62bb3e",
+          "sha": "71a6c7f17df7654f6fdf6afb376b3f68c773433c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T05:05:06-06:00",
-          "message": "Merge 935b29e5e9efcf1af61a3f876595c78870bc20af into 7f5d4617f245065a5ef0121e937424adc5446d15\n"
+          "timestamp": "2026-10-21T11:23:01Z",
+          "message": "Merge 2603e2d40751662d3de288afeebe312134d1e5ae into 7f5d4617f245065a5ef0121e937424adc5446d15\n"
+        },
+        {
+          "sha": "2603e2d40751662d3de288afeebe312134d1e5ae",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T05:22:55-06:00",
+          "message": "TextInput reads each frame's layout off its cells; maxRows is a ceiling (rich-protocol-9xcs.o76)\n\nHigh review pass on PR #509:\n- A click maps through the layout stamped on the cell it lands on (WidgetMouseEvent.cell),\n  not one recomputed from the cursor and value since.\n- maxRows caps the viewport as a height ceiling instead of fixing its rows.\n- The field is at least as wide as it measures, held to the offer, so a blank field\n  keeps its minRows; with arrows it is exactly the offer.\n- levelOf in core/anchor is the one owner-chain walk; Viewport's EMPTY is shared.\n"
         },
         {
           "sha": "935b29e5e9efcf1af61a3f876595c78870bc20af",
