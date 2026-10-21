@@ -52,6 +52,13 @@ describe("render", () => {
       [drawsAnyway, "held"],
     ]);
   });
+
+  it("draws a held renderable at no column, whatever width under one it was handed", () => {
+    const handed: number[] = [];
+    const records: Renderable = { render: (options) => (handed.push(options.maxWidth), []) };
+    for (const maxWidth of [0, 0.5, -3, Number.NEGATIVE_INFINITY, Number.NaN]) [...render(records, { maxWidth })];
+    expect(handed).toEqual([0, 0, 0, 0, 0]);
+  });
 });
 
 describe("afterPass", () => {

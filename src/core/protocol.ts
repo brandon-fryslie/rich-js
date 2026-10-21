@@ -503,12 +503,17 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
  * width it hands it. It commits nothing, as a measurement commits nothing —
  * its effects (`afterPass`) are learned at a width nobody sees, so a
  * `Viewport` it holds keeps the scroll the last frame shown left it.
+ *
+ * [LAW:parse-dont-validate] It is drawn at no column, 0, whatever width under
+ * one its container worked out: `drawsNothing` reads a negative or NaN width
+ * as none, so none reaches a `render`, where it would be a count no string
+ * can repeat.
  */
 function holding(options: RenderOptions): { phase: Phase; drawing: RenderOptions } {
   const { onPresent } = options;
   return {
     phase: { pass: phaseHere().pass, effects: [] },
-    drawing: { ...options, onPresent: onPresent && ((content) => onPresent(content, "held")) },
+    drawing: { ...options, maxWidth: 0, onPresent: onPresent && ((content) => onPresent(content, "held")) },
   };
 }
 

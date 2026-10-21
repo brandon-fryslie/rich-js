@@ -213,10 +213,18 @@ describe("a renderable handed no column", () => {
       expect(atNone.every(([, presence]) => presence === "held")).toBe(true);
     });
 
-    it(`${name}, with nothing listening, draws nothing`, () => {
-      expect([...render(build(row).renderable, { maxWidth: 0 })]).toEqual([]);
+    it(`${name}, with nothing listening, draws nothing at any width under one`, () => {
+      for (const maxWidth of [0, -3, Number.NaN]) {
+        expect([...render(build(row).renderable, { maxWidth })], `maxWidth ${maxWidth}`).toEqual([]);
+      }
     });
   }
+
+  // A list item's gutter is paid before its body, so a narrow frame hands the
+  // body a negative width, and the rule inside it is held.
+  it("a Markdown list too narrow for its gutters draws, a rule in its innermost item held", () => {
+    expect(() => [...render(new Markdown("- a\n  - b\n\n    ---"), { maxWidth: 5 })]).not.toThrow();
+  });
 
   it("a Table holds its first column only: no divider fits, so the rest are dropped, as at any width too narrow for them", () => {
     const { renderable } = build((p) => {
