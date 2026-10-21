@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-508",
+      "ref": "refs/pull/508/merge",
+      "sha": "5e6448843d2825ae160d787f6c398203f0eaf5d4",
+      "timestamp": "2026-10-21T10:13:22.237Z",
+      "commits": [
+        {
+          "sha": "5e6448843d2825ae160d787f6c398203f0eaf5d4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T04:11:22-06:00",
+          "message": "Merge 2cda365522d0560aaabba7f7fdebf502fbd7dd22 into a2b00949489b6a52adcc7fe2a33c1f8ad87c331e\n"
+        },
+        {
+          "sha": "2cda365522d0560aaabba7f7fdebf502fbd7dd22",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T03:39:13-06:00",
+          "message": "A Viewport keeps its scroll once the frame is drawn, not in render (rich-protocol-9xcs.399)\n\nA render hands what it learned by drawing to its pass (afterPass in\nsrc/core/protocol.ts), which runs it once the outermost render is drawn\nwhole; a measurement, a thrown pass and an abandoned one commit nothing.\nViewport resolves its offset purely and keeps it that way, so its state is\nState and its render-purity debt row is gone. ListView and every per-frame\nview show content through viewport.showing(content, follow?) instead of\nassigning content and calling follow during the frame; follow() and the\ncontent setter are removed.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a2b00949489b6a52adcc7fe2a33c1f8ad87c331e",
