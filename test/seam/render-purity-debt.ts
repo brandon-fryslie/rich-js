@@ -27,7 +27,7 @@ const TABLE = "a lookup table built once at module scope and never written; type
 
 export const RENDER_PURITY_DEBT: readonly DebtRow[] = [
   {
-    at: "node_modules/typescript/lib/lib.es5.d.ts RegExp",
+    at: "lib RegExp",
     names: ["lastIndex"],
     becomes: "readonly",
     why: "a held RegExp carries lastIndex, which a global regex's exec writes; hold the pattern so no shared regex keeps a cursor",

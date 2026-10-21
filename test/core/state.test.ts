@@ -130,4 +130,19 @@ describe("between passes, state changes", () => {
     count.set(1);
     expect(steps.next().value?.text).toBe("b");
   });
+
+  it("a lazy render's iterator is iterable itself, as the generator it steps is", () => {
+    const steps = render(
+      {
+        *render() {
+          yield new Segment("a");
+          yield new Segment("b");
+          yield new Segment("c");
+        },
+      },
+      options,
+    )[Symbol.iterator]();
+    steps.next();
+    expect([...(steps as IterableIterator<Segment>)].map((s) => s.text)).toEqual(["b", "c"]);
+  });
 });

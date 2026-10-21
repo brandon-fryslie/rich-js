@@ -384,7 +384,9 @@ function withinPass(pass: Pass, drawn: Iterable<Segment>): Iterable<Segment> {
   return {
     [Symbol.iterator]: () => {
       const steps = runIn(pass, () => drawn[Symbol.iterator]());
-      return {
+      // On `%IteratorPrototype%`, as a generator's iterator is: iterable
+      // itself, and carrying the iterator helpers where the engine has them.
+      return Object.assign(Object.create(ITERATOR_PROTOTYPE) as Iterator<Segment>, {
         next: () => runIn(pass, () => steps.next()),
         return: (value?: unknown) => runIn(pass, () => steps.return?.(value) ?? { done: true as const, value: undefined }),
         throw: (error?: unknown) =>
@@ -392,10 +394,12 @@ function withinPass(pass: Pass, drawn: Iterable<Segment>): Iterable<Segment> {
             if (steps.throw) return steps.throw(error);
             throw error;
           }),
-      };
+      });
     },
   };
 }
+
+const ITERATOR_PROTOTYPE: object = Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]()));
 
 /**
  * `renderable` drawn under `options`: Rich's `Console.render`, which every
@@ -452,7 +456,7 @@ export function measure(measurable: Measurable, options: RenderOptions): { minim
  *
  * [LAW:single-enforcer] Every measurement starts here: `measure` asks with it.
  */
-export function measuring(options: RenderOptions): RenderOptions {
+function measuring(options: RenderOptions): RenderOptions {
   return { ...options, onPresent: undefined };
 }
 

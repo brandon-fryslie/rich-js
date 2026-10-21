@@ -60,6 +60,7 @@ describe("the gate", () => {
         `let frames = 0;`,
         `export const bump = (): number => (frames += 1);`,
         `export const memo = new Memo<State<number>>();`,
+        `let states = new Memo<State<number>>();`,
         `export const TABLE: Record<string, number> = {};`,
       ].join("\n"),
     );
@@ -71,6 +72,9 @@ describe("the gate", () => {
       ["Holds.counts", "mutable array"],
       ["module.frames", "module let"],
       ["module.memo", "state in a Memo"],
+      // Both: a debt row could excuse the first, and nothing excuses the second.
+      ["module.states", "module let"],
+      ["module.states", "state in a Memo"],
       ["module.TABLE", "mutable index signature"],
       // A mobx accessor is the widgets' carrier only under src/widgets/.
       ["Observes.x", "writable property"],

@@ -33,8 +33,9 @@
  *     and no debt row can excuse it: a memo is "same key, same value", and a
  *     memo of states passes in the pass that fills it and throws from the next;
  *   - an `accessor` in `src/widgets/` decorated by mobx: the widgets' own
- *     state carrier, refused during render against the same phase by the
- *     widget layer;
+ *     state carrier. Refusing a write to one during render is
+ *     rich-protocol-9xcs.sej's, against the same phase; until it lands, a
+ *     widget render that writes its own accessor passes both halves;
  *   - the render phase itself, `active` in `src/core/protocol.ts`.
  *
  * WHAT THIS CANNOT SEE, said out loud because a blind spot read as coverage is
@@ -127,8 +128,15 @@ function isNamedHolder(
   );
 }
 
-function keyOf(decl: ts.Node, name: string): string {
-  return `${repoRelative(decl.getSourceFile().fileName)} ${ownerOf(decl)}.${name}`;
+/**
+ * A declaration in one of TypeScript's own lib files is keyed `lib`, not by
+ * its path: where `node_modules` resolves from, and which lib file a member
+ * sits in, are facts about the install, not about `src/`.
+ */
+function keyOf(program: ts.Program, decl: ts.Node, name: string): string {
+  const source = decl.getSourceFile();
+  const file = program.isSourceFileDefaultLibrary(source) ? "lib" : repoRelative(source.fileName);
+  return `${file} ${ownerOf(decl)}.${name}`;
 }
 
 function declaredIn(symbol: ts.Symbol | undefined, file: string): boolean {
@@ -152,9 +160,11 @@ function isMobxAccessor(checker: ts.TypeChecker, decl: ts.Declaration): boolean 
 /** Every writable location reachable from the renderables, class statics and module bindings declared in `files`. */
 export function writableLocations(program: ts.Program, files: readonly string[]): WritableLocation[] {
   const checker = program.getTypeChecker();
-  const found = new Map<string, Reason>();
+  // Every reason a location has, not the first: a `State` in a `Memo` held by
+  // a module `let` is both, and only the second is beyond a debt row's reach.
+  const found = new Map<string, WritableLocation>();
   const report = (key: string, reason: Reason): void => {
-    if (!found.has(key)) found.set(key, reason);
+    found.set(`${key}\0${reason}`, { key, reason });
   };
   const walked = new Set<string>();
 
@@ -205,7 +215,7 @@ export function writableLocations(program: ts.Program, files: readonly string[])
     for (const property of type.getProperties()) {
       const decl = property.valueDeclaration ?? property.declarations?.[0];
       if (!decl || isComputed(property) || isMobxAccessor(checker, decl)) continue;
-      const key = keyOf(decl, property.name);
+      const key = keyOf(program, decl, property.name);
       if (!isReadonlyProperty(property)) report(key, "writable property");
       held(checker.getTypeOfSymbol(property), key, inMemo);
     }
@@ -235,14 +245,14 @@ export function writableLocations(program: ts.Program, files: readonly string[])
         for (const property of checker.getTypeOfSymbolAtLocation(symbol, statement.name).getProperties()) {
           const decl = property.valueDeclaration;
           if (!decl || !ts.isPropertyDeclaration(decl)) continue;
-          const key = keyOf(decl, property.name);
+          const key = keyOf(program, decl, property.name);
           if (!isReadonlyProperty(property)) report(key, "writable static");
           held(checker.getTypeOfSymbol(property), key, false);
         }
       }
     }
   }
-  return [...found].map(([key, reason]) => ({ key, reason })).sort((a, b) => a.key.localeCompare(b.key));
+  return [...found.values()].sort((a, b) => a.key.localeCompare(b.key) || a.reason.localeCompare(b.reason));
 }
 
 function bindingNames(name: ts.BindingName): ts.Identifier[] {
