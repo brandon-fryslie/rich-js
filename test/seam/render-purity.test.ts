@@ -1,7 +1,6 @@
 /*
- * The gate in `./render-purity.ts`, run over `src/` against the debt in
- * `./render-purity-debt.ts`, and over a fixture that pins what it reports
- * from both sides.
+ * The gate in `./render-purity.ts`, run over `src/`, and over a fixture that
+ * pins what it reports from both sides.
  */
 
 import { describe, it, expect } from "vitest";
@@ -11,7 +10,6 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { REPO_ROOT, listTypeScriptFiles, loadCompilerOptions, repoRelative } from "../../scripts/repo-facts.js";
 import { writableLocations } from "./render-purity.js";
-import { RENDER_PURITY_DEBT } from "./render-purity-debt.js";
 
 function locations(files: readonly string[]) {
   const program = ts.createProgram({ rootNames: [...files], options: loadCompilerOptions() });
@@ -19,21 +17,9 @@ function locations(files: readonly string[]) {
 }
 
 describe("nothing a render can reach is writable but a State", () => {
-  const found = locations(listTypeScriptFiles("src"));
-  const owed = new Set(RENDER_PURITY_DEBT.flatMap((row) => row.names.map((name) => `${row.at}.${name}`)));
-
-  it("every writable location in src/ is owed by a debt row", () => {
-    const unowed = found.filter((l) => l.reason === "state in a Memo" || !owed.has(l.key)).map((l) => `${l.key}  (${l.reason})`);
-    expect(unowed, "hold it in a State or a Memo, or type it readonly; the debt list only shrinks").toEqual([]);
-  });
-
-  it("every debt row still names a location the gate reports", () => {
-    const reported = new Set(found.map((l) => l.key));
-    expect([...owed].filter((key) => !reported.has(key)), "fixed: delete it from RENDER_PURITY_DEBT").toEqual([]);
-  });
-
-  it("every debt row says why", () => {
-    expect(RENDER_PURITY_DEBT.filter((row) => row.why.trim() === "").map((row) => row.at)).toEqual([]);
+  it("no writable location in src/", () => {
+    const found = locations(listTypeScriptFiles("src")).map((l) => `${l.key}  (${l.reason})`);
+    expect(found, "hold it in a State (a ListState for a list appended to) or a Memo, or type it readonly").toEqual([]);
   });
 });
 
@@ -87,7 +73,6 @@ describe("the gate", () => {
       ["module.frames", "module let"],
       ["module.lists", "state in a Memo"],
       ["module.memo", "state in a Memo"],
-      // Both: a debt row could excuse the first, and nothing excuses the second.
       ["module.states", "module let"],
       ["module.states", "state in a Memo"],
       ["module.TABLE", "mutable index signature"],

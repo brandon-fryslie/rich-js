@@ -102,7 +102,8 @@ export abstract class WidgetBase implements InteractiveWidget {
 
   // [LAW:single-enforcer] The one place a widget's cells get their anchor, so
   // a hit on any cell names this widget and the cell's place in its output
-  // (`widgetAt`). Subclasses draw; none stamps itself. A `RichText` admits no
+  // (`widgetAt`). Subclasses draw; none stamps itself — what a draw stamps
+  // inside this stamp is its own (`WidgetMouseEvent.cell`). A `RichText` admits no
   // anchor, so stamping has to follow every text layout `draw` does.
   // Every row is padded to the widest, so the widget owns its whole rectangle
   // and a click past the end of a short row still reaches it; every row ends

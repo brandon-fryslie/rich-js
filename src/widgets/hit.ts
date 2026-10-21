@@ -12,7 +12,8 @@
  * the user sees. Z-order is paint order — whoever painted a cell last owns it.
  */
 
-import { drawnBy } from "../core/anchor.js";
+import { drawnBy, levelOf } from "../core/anchor.js";
+import type { Anchor } from "../core/anchor.js";
 import { Segment } from "../core/segment.js";
 import { isScrollable } from "../core/protocol.js";
 import type { Scrollable } from "../core/protocol.js";
@@ -113,6 +114,19 @@ export function drew(
   y: number,
 ): boolean {
   return drawnBy(Segment.anchorAt(frame, x, y), widget);
+}
+
+/**
+ * What `widget`'s own draw stamped on the cell at column `x` of row `y` of
+ * `frame`, inside its stamp, or `undefined` when it drew none of it.
+ */
+export function cellOf(
+  frame: readonly (readonly Segment[])[],
+  widget: InteractiveWidget,
+  x: number,
+  y: number,
+): Anchor | undefined {
+  return levelOf(Segment.anchorAt(frame, x, y), widget)?.inner;
 }
 
 /**

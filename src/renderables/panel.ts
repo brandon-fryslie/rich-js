@@ -21,21 +21,21 @@ import type {
 import { drawable, fitHeight, getStyle, insetHeight, render, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 /**
- * A lazily-resolved border accessory. Strings render inline in the
- * border style; a `RichText` accessory lays ONLY its wrapping `style` over
- * the border's (per-range spans within the RichText are not preserved — the
- * accessory is a small status indicator, not an arbitrary span carrier).
- * A function form is evaluated at render time, *after* content has been
- * rendered for the current frame — use this when the accessory mirrors
- * state that the wrapped renderable populates during its own `render()`
- * (e.g. a widget's post-render scroll position). A width that leaves the
- * content no column does not render it, as Rich's does not, and the thunk
- * then reads the state of the last frame that did.
+ * A border accessory. Strings render inline in the border style; a
+ * `RichText` accessory lays ONLY its wrapping `style` over the border's
+ * (per-range spans within the RichText are not preserved — the accessory is a
+ * small status indicator, not an arbitrary span carrier).
+ *
+ * [LAW:no-ambient-temporal-coupling] A function form is handed the rows the
+ * body drew this frame, so an accessory that mirrors the content's layout (a
+ * widget's scroll position) reads it off the frame it labels, not off state
+ * the content kept from an earlier one. A width that leaves the content no column does not render it,
+ * as Rich's does not, and the rows it is handed are then blank.
  */
 export type BorderAccessory =
   | string
   | RichText
-  | (() => string | RichText | undefined);
+  | ((body: readonly (readonly Segment[])[]) => string | RichText | undefined);
 
 export interface PanelOptions {
   box?: Box;
@@ -246,7 +246,7 @@ export class Panel implements Renderable, Measurable, Composite {
       yield new Segment(frame.right.repeat(geometry.right), border);
       yield Segment.line();
     }
-    yield* this._renderBottomBorder(options, box, geometry, border);
+    yield* this._renderBottomBorder(options, box, geometry, border, bodyLines);
   }
 
   // The body is the one thing a panel draws through `render`: its title and
@@ -263,8 +263,7 @@ export class Panel implements Renderable, Measurable, Composite {
    * `Console.render` renders nothing under one column, so outside a region it
    * draws no rows, padding rows included, and inside one the frame stands
    * around empty rows. The render happens before either border is drawn,
-   * because a `bottomRightAccessory` thunk reads state the content's render
-   * populates.
+   * because a `bottomRightAccessory` function is handed the rows it drew.
    */
   private _renderBody(options: RenderOptions, spanWidth: number): Segment[][] {
     // Two border rows are the panel's own, and the vertical padding is the
@@ -356,10 +355,9 @@ export class Panel implements Renderable, Measurable, Composite {
     box: Box,
     geometry: PanelGeometry,
     border: Style | undefined,
+    body: readonly (readonly Segment[])[],
   ): Iterable<Segment> {
-    // Resolve the right accessory *now*, after the body has rendered —
-    // `BorderAccessory` owns what a thunk sees.
-    const accessory = this._resolveAccessory(this.bottomRightAccessory);
+    const accessory = this._resolveAccessory(this.bottomRightAccessory, body);
     const accessoryDisplay = accessory === undefined
       ? ""
       : typeof accessory === "string"
@@ -383,9 +381,10 @@ export class Panel implements Renderable, Measurable, Composite {
 
   private _resolveAccessory(
     a: BorderAccessory | undefined,
+    body: readonly (readonly Segment[])[],
   ): string | RichText | undefined {
     if (a === undefined) return undefined;
-    if (typeof a === "function") return a();
+    if (typeof a === "function") return a(body);
     return a;
   }
 

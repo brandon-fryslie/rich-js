@@ -6,7 +6,11 @@ import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 import { Segment } from "../../src/core/segment.js";
 import { Style } from "../../src/core/style.js";
-import type { RenderOptions } from "../../src/core/protocol.js";
+import { render, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
+import { Panel } from "../../src/renderables/panel.js";
+import { cellOf, scrollTargetAt } from "../../src/widgets/hit.js";
+import { Padding } from "../../src/renderables/padding.js";
+import { ASCII } from "../../src/core/box.js";
 import { ColorSpec } from "../../src/core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 import { expectLinearTime } from "../suite/linear-time.js";
@@ -41,13 +45,22 @@ const alt = (key: string): KeyEvent => new KeyEvent({
 
 // [LAW:behavior-not-structure] The wrap/cursor-motion suites below are white-box
 // regression pins for a specific boundary bug, not contract tests: they read
-// `TextInput["_visualRows"]` and `TextInput["_cursorVisualRow"]()` to construct
+// the rows `TextInput["_rows"]` lays out at the width last drawn to construct
 // an exact row layout and assert which row the cursor resolved to. Bracket
 // access is the one sanctioned mechanism for such a reach in this repo — it
 // keeps every deliberate reach greppable and refuses to spread, where widening
 // `TextInput`'s public surface (and exporting the internal `VisualRow`) would
 // have shipped permanent API to satisfy a disposable test. Contract-level
 // assertions in this file go through `render()`, `value`, and `cursorPosition`.
+
+const rowsOf = (t: TextInput) => t["_rows"](t["_drawn"].get());
+// The row the cursor is on: the last that starts at or before it.
+const cursorRowOf = (t: TextInput): number => {
+  const rows = rowsOf(t);
+  let row = rows.length - 1;
+  while (row > 0 && rows[row]!.valueStart > t.cursorPosition) row--;
+  return row;
+};
 
 const upEvent = () => makeKey("up");
 const downEvent = () => makeKey("down");
@@ -69,18 +82,25 @@ const rightEvent = () => makeKey("right");
 const homeEvent = () => makeKey("home");
 const endEvent = () => makeKey("end");
 
-const mouseDownAt = (x: number): WidgetMouseEvent => ({
+const RENDER = { maxWidth: 80 };
+
+// A press on the cell at column `x` of row `y` of `frame`, as the router
+// delivers it to `t`: with what `t` stamped on that cell.
+const pressIn = (frame: readonly (readonly Segment[])[], t: TextInput, x: number, y = 0): WidgetMouseEvent => ({
   type: "mouse_down",
   x,
-  y: 0,
+  y,
   button: 0,
   shift: false,
   ctrl: false,
   over: true,
+  cell: cellOf(frame, t, x, y),
   time: 0,
 });
 
-const RENDER = { maxWidth: 80 };
+// A press on the frame `t` draws now.
+const pressOn = (t: TextInput, x: number, y = 0, options: RenderOptions = RENDER): WidgetMouseEvent =>
+  pressIn(Segment.splitLines(render(t, options)), t, x, y);
 
 // The rows the input draws, one per line.
 const rowsText = (input: TextInput, options: RenderOptions): string =>
@@ -244,22 +264,35 @@ describe("TextInput", () => {
   });
 
   describe("click-to-position", () => {
+    it("lands on the window of the frame clicked, whatever the cursor did since", () => {
+      const t = new TextInput({ value: "abcdefghijklmnopqrstuvwxyz" });
+      t.focus(0);
+      // The cursor at the end scrolls the window to the value's tail.
+      const frame = Segment.splitLines(render(t, { maxWidth: 10 }));
+      const shownFirst = frame[0]!.map((s) => s.text).join("")[1]!;
+      // Home moves the window back before the next frame is drawn.
+      t.handleKey(homeEvent());
+      t.handleMouse(pressIn(frame, t, 1));
+      expect(t.value[t.cursorPosition]).toBe(shownFirst);
+    });
+
     it("mouse_down sets cursor based on x past the leading bracket", () => {
       const t = new TextInput({ value: "abcdef" });
       // Column 3 of the input is the third value cell: relX = 3 - 1 = 2
-      t.handleMouse(mouseDownAt(3));
+      t.handleMouse(pressOn(t, 3));
       expect(t.cursorPosition).toBe(2);
     });
 
     it("clamps to value.length when click is past the end", () => {
       const t = new TextInput({ value: "abc" });
-      t.handleMouse(mouseDownAt(50));
+      // The closing bracket of "[abc     ]".
+      t.handleMouse(pressOn(t, 9));
       expect(t.cursorPosition).toBe(3);
     });
 
     it("clamps to 0 when click is before the content", () => {
       const t = new TextInput({ value: "abc" });
-      t.handleMouse(mouseDownAt(0));
+      t.handleMouse(pressOn(t, 0));
       expect(t.cursorPosition).toBe(0);
     });
 
@@ -308,7 +341,7 @@ describe("TextInput", () => {
 
     it("blocks click-to-position", () => {
       const t = new TextInput({ value: "abcdef", disabled: true });
-      t.handleMouse(mouseDownAt(3));
+      t.handleMouse(pressOn(t, 3));
       expect(t.cursorPosition).toBe(6);
     });
   });
@@ -401,7 +434,7 @@ describe("TextInput", () => {
     it("pads a short multiline row in the caller's contentStyle", () => {
       const contentStyle = new Style({ bgcolor: "blue" });
       const t = new TextInput({ value: "ab\nlonger line", multiline: true, contentStyle });
-      const firstRow = Segment.splitLines(t.render(RENDER))[0]!;
+      const firstRow = Segment.splitLines(t.render(RENDER))[0]!.filter((s) => s.cellLength > 0);
       expect(firstRow.map((s) => s.style?.bgcolor)).toEqual(firstRow.map(() => contentStyle.bgcolor));
     });
 
@@ -724,7 +757,7 @@ describe("TextInput", () => {
       const t = new TextInput({ value: "a\nb\nc", multiline: true });
       const text = rowsText(t, RENDER_NARROW);
       // Three lines joined by \n; no continuation marker.
-      expect(text).toBe("a\nb\nc");
+      expect(text.split("\n").map((r) => r.trimEnd())).toEqual(["a", "b", "c"]);
     });
 
     it("renders the continuation marker for soft-wrapped rows", () => {
@@ -888,6 +921,65 @@ describe("TextInput", () => {
       expect(text).toContain("▼");
     });
 
+    it("an unfocused blank field still draws its minRows, with cells a click can land on", () => {
+      for (const value of ["", "\n\n"]) {
+        const t = new TextInput({ value, multiline: true, minRows: 5 });
+        const rows = rowsText(t, { maxWidth: 10 }).split("\n");
+        expect(rows).toHaveLength(5);
+        expect(rows.every((row) => row.length === 10)).toBe(true);
+      }
+    });
+
+    it("maxRows is a ceiling: a value with fewer rows draws only its own", () => {
+      const t = new TextInput({ value: "a", multiline: true, maxRows: 5 });
+      expect(rowsText(t, { maxWidth: 10 }).split("\n")).toHaveLength(1);
+    });
+
+    it("an arrow sits in the last cell of the width offered, however wide a line is", () => {
+      const t = new TextInput({ value: "0123456789abcdef\n1\n2\n3", multiline: true, maxRows: 2 });
+      t.focus(0);
+      const rows = rowsText(t, { maxWidth: 10 }).split("\n");
+      expect(cellLen(rows[1]!.slice(0, rows[1]!.indexOf("▼")))).toBe(9);
+    });
+
+    it("with arrows, a caret past the end of a full row is still drawn", () => {
+      const t = new TextInput({ value: "0123456789\n1\n2\n3", multiline: true, wrap: charGreedyWrap, maxRows: 2, cursorStyle: new Style({ reverse: true }) });
+      t.focus(0);
+      t.cursorPosition = asCodePoint(10);
+      const rows = Segment.splitLines(render(t, { maxWidth: 10 }));
+      expect(rows.some((row) => row.some((s) => s.style?.reverse))).toBe(true);
+    });
+
+    it("the wheel over a scroll arrow scrolls the field", () => {
+      const t = new TextInput({ value: "0\n1\n2\n3\n4\n5", multiline: true, maxRows: 2 });
+      const frame = Segment.splitLines(render(t, { maxWidth: 10 }));
+      expect(frame[1]!.map((s) => s.text).join("").endsWith("▼")).toBe(true);
+      expect(scrollTargetAt(frame, 9, 1, 1)).toBe(scrollTargetAt(frame, 0, 1, 1));
+      expect(scrollTargetAt(frame, 9, 1, 1)).toBeDefined();
+    });
+
+    it("the wheel scrolls a multi-line field, a click lands on the row it shows, and typing scrolls back to the caret", () => {
+      const t = new TextInput({ value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9", multiline: true, maxRows: 3, scrollIndicator: "none" });
+      t.focus(0);
+      const frame = (): Segment[][] => Segment.splitLines(t.render({ maxWidth: 20 }));
+      const shown = (): string[] => frame().map((row) => row.map((s) => s.text).join("").trimEnd());
+      expect(shown()).toEqual(["0", "1", "2"]);
+      // The wheel over the field finds its scroll, as it finds any viewport's.
+      const scroll = scrollTargetAt(frame(), 0, 0, 1)!;
+      expect(scroll).toBeDefined();
+      scroll.scrollBy(5);
+      expect(shown()).toEqual(["5", "6", "7"]);
+      // A click on the second row it shows lands on line 6.
+      t.handleMouse(pressIn(frame(), t, 0, 1));
+      expect(t.cursorPosition).toBe(t.value.indexOf("6"));
+      expect(shown()).toEqual(["5", "6", "7"]);
+      // Scrolled away from the caret, a key typed on its row brings it back.
+      scroll.scrollBy(-5);
+      expect(shown()).toEqual(["0", "1", "2"]);
+      t.handleKey(printable("x"));
+      expect(shown()).toEqual(["4", "5", "x6"]);
+    });
+
     it("scroll arrows: at bottom of scrollable content shows ▲ only (no ▼)", () => {
       const t = new TextInput({
         value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9",
@@ -932,6 +1024,27 @@ describe("TextInput", () => {
       expect(text).not.toContain("▼");
     });
 
+    // The indicator of the frame `t` draws at `options`, read off that frame.
+    const indicatorOf = (t: TextInput, options: RenderOptions): string | undefined =>
+      t.scrollIndicatorText(Segment.splitLines(t.render(options)));
+
+    it("scrollIndicator='indices': counts the rows of the frame it labels, inside a Panel at any depth", () => {
+      // "abcdef", "↳ ghij", "k" at the 6 cells a 10-cell panel leaves; at 20, two rows.
+      const t = new TextInput({ value: "abcdefghij\nk", multiline: true, wrap: charGreedyWrap, maxRows: 1, scrollIndicator: "indices" });
+      t.cursorPosition = asCodePoint(t.value.length);
+      const bottom = (width: number, content: Renderable): string => {
+        const panel = new Panel(content, { box: ASCII, bottomRightAccessory: (body) => t.scrollIndicatorText(body) });
+        const lines = Segment.splitLines(panel.render({ maxWidth: width }))
+          .map((row) => row.map((s) => s.text).join(""));
+        return lines[lines.length - 1]!;
+      };
+      // Its first frame, before anything is kept from one, and a frame whose
+      // width changed, each count their own rows.
+      expect(bottom(10, t)).toContain("[3/3]");
+      expect(bottom(24, t)).toContain("[2/2]");
+      expect(bottom(10, new Padding(t, [0, 0]))).toContain("[3/3]");
+    });
+
     it("scrollIndicator='indices': suppresses arrows, exposes [X/Y] text", () => {
       const t = new TextInput({
         value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9",
@@ -939,16 +1052,14 @@ describe("TextInput", () => {
         maxRows: 3,
         scrollIndicator: "indices",
       });
-      // First render populates the visual-row cache that the getter reads.
       const text = rowsText(t, { maxWidth: 20 });
       expect(text).not.toContain("▲");
       expect(text).not.toContain("▼");
       // Cursor defaults to 0 in multiline → row 1 of 10.
-      expect(t.scrollIndicatorText).toBe("[1/10]");
+      expect(indicatorOf(t, { maxWidth: 20 })).toBe("[1/10]");
       // Move cursor to end → row 10 of 10.
       t.cursorPosition = asCodePoint(t.value.length);
-      [...t.render({ maxWidth: 20 })];
-      expect(t.scrollIndicatorText).toBe("[10/10]");
+      expect(indicatorOf(t, { maxWidth: 20 })).toBe("[10/10]");
     });
 
     it("scrollIndicator='indices': returns undefined when nothing to scroll", () => {
@@ -958,8 +1069,7 @@ describe("TextInput", () => {
         maxRows: 5,
         scrollIndicator: "indices",
       });
-      [...t.render({ maxWidth: 20 })];
-      expect(t.scrollIndicatorText).toBeUndefined();
+      expect(indicatorOf(t, { maxWidth: 20 })).toBeUndefined();
     });
 
     it("scrollIndicator='none': no arrows, no text", () => {
@@ -972,7 +1082,7 @@ describe("TextInput", () => {
       const text = rowsText(t, { maxWidth: 20 });
       expect(text).not.toContain("▲");
       expect(text).not.toContain("▼");
-      expect(t.scrollIndicatorText).toBeUndefined();
+      expect(indicatorOf(t, { maxWidth: 20 })).toBeUndefined();
     });
 
     it("scrollIndicatorText is undefined in default 'arrows' mode", () => {
@@ -981,9 +1091,8 @@ describe("TextInput", () => {
         multiline: true,
         maxRows: 3,
       });
-      [...t.render({ maxWidth: 20 })];
       // Defaults to arrows; the indices text is only published in 'indices' mode.
-      expect(t.scrollIndicatorText).toBeUndefined();
+      expect(indicatorOf(t, { maxWidth: 20 })).toBeUndefined();
     });
 
     it("scroll arrows: full wrap budget — no column reserved when nothing to scroll", () => {
@@ -998,7 +1107,7 @@ describe("TextInput", () => {
         maxRows: 5,
       });
       [...t.render({ maxWidth: 20 })];
-      expect(t["_visualRows"]!.length).toBe(1);
+      expect(rowsOf(t).length).toBe(1);
     });
 
 
@@ -1067,7 +1176,7 @@ describe("TextInput", () => {
         wrap: tinyHeadWrap,
       });
       [...t.render({ maxWidth: 20 })];
-      const rows = t["_visualRows"]!;
+      const rows = rowsOf(t);
       // Expected shape: row 0 "a" (vs=0, len=1, cont=false),
       //                 row 1 long continuation (vs=1, ...).
       expect(rows[0]!.content).toBe("a");
@@ -1076,7 +1185,7 @@ describe("TextInput", () => {
 
       // Park cursor on the continuation row at col 5 (well past head.length=1).
       t.cursorPosition = asCodePoint(rows[1]!.valueStart + 5);
-      expect(t["_cursorVisualRow"]()).toBe(1);
+      expect(cursorRowOf(t)).toBe(1);
 
       t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }, 0));
 
@@ -1085,7 +1194,7 @@ describe("TextInput", () => {
       // would still report row 1. Post-fix: clamp to `length - 1 = 0`,
       // cursor lands at `rows[0].valueStart = 0`, unambiguously row 0.
       expect(t.cursorPosition).toBe(0);
-      expect(t["_cursorVisualRow"]()).toBe(0);
+      expect(cursorRowOf(t)).toBe(0);
     });
 
     it("repeated Up across the trap row makes progress every press (no stuck position)", () => {
@@ -1095,7 +1204,7 @@ describe("TextInput", () => {
         wrap: tinyHeadWrap,
       });
       [...t.render({ maxWidth: 20 })];
-      const rows = t["_visualRows"]!;
+      const rows = rowsOf(t);
       // rows: [row 0 "x"], [row 1 "a" head of line 1], [row 2 long cont], ...
       // Park cursor on row 2 (continuation) at col 5.
       t.cursorPosition = asCodePoint(rows[2]!.valueStart + 5);
@@ -1119,7 +1228,7 @@ describe("TextInput", () => {
         wrap: tinyHeadWrap,
       });
       [...t.render({ maxWidth: 20 })];
-      const rows = t["_visualRows"]!;
+      const rows = rowsOf(t);
       // From a row above the tinyHeadWrap line, Down at col 5 should land
       // unambiguously inside the head row (length 1), which means cursor
       // must clamp to col 0, not col 1 (the boundary).
@@ -1133,7 +1242,7 @@ describe("TextInput", () => {
 
       // Cursor should be on row `head` (valueStart), NOT at row `head+1`'s boundary.
       expect(t.cursorPosition).toBe(rows[head]!.valueStart);
-      expect(t["_cursorVisualRow"]()).toBe(head);
+      expect(cursorRowOf(t)).toBe(head);
     });
 
     it("preferred column survives motion through a short wrap row", () => {
@@ -1300,7 +1409,7 @@ describe("TextInput", () => {
       t.focus(0);
       const drawn = [...t.render(RENDER)].map((seg) => seg.text).join("");
       expect([...drawn].filter((c) => c === "•")).toHaveLength(3);
-      t.handleMouse(mouseDownAt(3));
+      t.handleMouse(pressOn(t, 3));
       expect(t.value.slice(t.cursorPosition)).toBe("b");
       t.handleKey(backspaceEvent());
       expect(t.value).toBe("ab");
@@ -1363,7 +1472,7 @@ describe("TextInput", () => {
           columns.push(column);
           // A click on the cell the cursor is drawn in puts it back there.
           const before = t.cursorPosition;
-          t.handleMouse(mouseDownAt(column));
+          t.handleMouse(pressOn(t, column));
           expect(t.cursorPosition).toBe(before);
           t.handleKey(rightEvent());
         }
@@ -1391,14 +1500,14 @@ describe("TextInput", () => {
         for (const glyph of ["​", " ", " ", "\t"]) {
           const t = new TextInput({ value: `a${glyph}b`, multiline: true, wrap, cursorStyle: CURSOR });
           t.focus(0);
-          expect(renderText(t)).toBe("a◌b");
+          expect(renderText(t).trimEnd()).toBe("a◌b");
           const columns: number[] = [];
           for (let stop = 0; stop <= 3; stop++) {
             const { row, column } = cursorCell(t, RENDER);
             expect(row).toBe(0);
             columns.push(column);
             const before = t.cursorPosition;
-            t.handleMouse({ ...mouseDownAt(column), y: row });
+            t.handleMouse(pressOn(t, column, row));
             expect(t.cursorPosition).toBe(before);
             t.handleKey(rightEvent());
           }

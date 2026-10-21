@@ -49,6 +49,7 @@ const mouseUpAt = (x: number, y: number, over = true): WidgetMouseEvent => ({
   shift: false,
   ctrl: false,
   over,
+  cell: undefined,
   time: 0,
 });
 

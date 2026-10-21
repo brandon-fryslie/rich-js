@@ -77,6 +77,8 @@ const next = select(state, state.selected + 1);
 console.print(frame(next));
 ```
 
+`showing` draws its content whole to learn how long it is. Content too long to draw whole every frame, such as a textarea's rows, can be shown as `Lines` with `viewport.showingLines(lines, follow)` instead. Laid out at a width, it reports its length and draws only the lines the frame shows, so a frame costs the rows in view rather than the content's length.
+
 ## A list kept in view
 
 `ListView` draws items stacked down a viewport you hand it, and keeps the selected one in view. An item may wrap to any number of lines: the list draws them at the viewport's content width, so it knows which lines the selection covers. `gap` puts blank lines between items, and `context` keeps that many lines above and below the selection in view too, so the next item shows before the cursor reaches it. It shows them with `viewport.showing(lines, { start, end })`, which follows the selection's lines: it calls `ensureVisible` only when the range differs from the one the last frame followed — so the list can be rebuilt every frame, and the wheel still scrolls away from the selection until it moves. A followed range is the per-frame form of the pattern above, for any view rebuilt every frame: pass the selection's lines to `showing` each frame instead of calling `ensureVisible` on select. A followed range that was in view stays in view when the viewport's rows change; one the wheel scrolled away from stays where the wheel left it.

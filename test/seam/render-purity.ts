@@ -8,8 +8,7 @@
  * throws. That refusal only sees a `State`. A plain field assigned in `render`
  * — `this._scrollStart = …` — or a module `let` a render writes, is invisible
  * to it, so this is the other half: every location that could be written
- * without a `State` is reported, and `RENDER_PURITY_DEBT` in
- * `./render-purity-debt.ts` lists the ones that exist today, to be drained.
+ * without a `State` is reported, and `src/` has none.
  *
  * [LAW:types-are-the-program] The theorem is one sentence: no writable
  * location is reachable from a renderable's fields, a class's statics, or a
@@ -32,7 +31,7 @@
  *     push to;
  *   - `Memo<V, K>` and `WeakMemo<V, K>`: likewise, `V` walked — not a
  *     `WeakMemo`'s key, which nothing reads back out. A `State` anywhere in `V` is reported
- *     and no debt row can excuse it: a memo is "same key, same value", and a
+ *     as a location of its own: a memo is "same key, same value", and a
  *     memo of states passes in the pass that fills it and throws from the next;
  *   - an `accessor` decorated by `observableRef` from
  *     `src/widgets/observable.ts`, the widgets' state carrier, which refuses a
@@ -159,7 +158,7 @@ function isObservableAccessor(checker: ts.TypeChecker, decl: ts.Declaration): bo
 export function writableLocations(program: ts.Program, files: readonly string[]): WritableLocation[] {
   const checker = program.getTypeChecker();
   // Every reason a location has, not the first: a `State` in a `Memo` held by
-  // a module `let` is both, and only the second is beyond a debt row's reach.
+  // a module `let` is both, and each is its own fix.
   const found = new Map<string, WritableLocation>();
   const report = (key: string, reason: Reason): void => {
     found.set(`${key}\0${reason}`, { key, reason });

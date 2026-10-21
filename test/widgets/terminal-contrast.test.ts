@@ -83,7 +83,8 @@ const disabledScenes: Scene[] = [
   ["Dropdown disabled", () => new Dropdown({ options: ["Red", "Green"], disabled: true }).render(RENDER)],
 ];
 
-const cells = (draw: Scene[1]): Segment[] => Segment.splitLines(draw()).flat();
+// The segments that cover a cell: one of no text covers none.
+const cells = (draw: Scene[1]): Segment[] => Segment.splitLines(draw()).flat().filter((segment) => segment.cellLength > 0);
 
 describe("a widget constructed without a theme", () => {
   describe.each(TERMINALS)("on a %s terminal", (_name, terminal) => {

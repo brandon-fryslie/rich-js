@@ -8,6 +8,7 @@
 
 import type { Renderable, Measurable, RenderOptions } from "../core/protocol.js";
 import type { Segment } from "../core/segment.js";
+import type { Anchor } from "../core/anchor.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import type { KeyPress, ScreenMouseEvent } from "../host/input.js";
 
@@ -62,11 +63,14 @@ export interface KeyHandlerOptions {
 // The same event as one widget receives it. `x`/`y` are in the widget's own
 // output: column and row of the cell it drew, or, for a drag it captured,
 // relative to where it is painted now — so they fall outside the widget once
-// the pointer leaves it. `over` is whether it drew the cell under the pointer.
+// the pointer leaves it. `over` is whether it drew the cell under the pointer,
+// and `cell` what its own draw stamped there, inside its stamp — so a widget
+// reads the layout of the frame the pointer is on, not of one drawn since.
 // The wheel is not a widget's: it scrolls the innermost `Scrollable` under the
 // pointer, whatever widget it shows there.
 export type WidgetMouseEvent = Extract<ScreenMouseEvent, { type: "mouse_down" | "mouse_up" | "mouse_move" }> & {
   readonly over: boolean;
+  readonly cell: Anchor | undefined;
   readonly time: number;
 };
 
