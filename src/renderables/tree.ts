@@ -77,15 +77,13 @@ interface Guide {
   readonly styles: ReadonlyArray<string | Style>;
 }
 
-/**
- * What a label drew, as `Segment.splitRows` cuts it: a label that yields
- * nothing but carriers — a lifecycle not yet entered — draws
- * no row, and its carriers are kept so the tree still says when it changes.
- */
-type Drawn = Readonly<ReturnType<typeof Segment.splitRows>>;
+/** What a label drew, cut into its lines: a label that draws nothing — a lifecycle not yet entered — has none. */
+interface Drawn {
+  readonly lines: readonly (readonly Segment[])[];
+}
 
 /** A row a label is known to draw, unread. */
-const A_ROW: Drawn = { lines: [[]], carriers: [] };
+const A_ROW: Drawn = { lines: [[]] };
 
 /**
  * A label drawn for its place in the tree: under `styles`, the stack its row
@@ -188,7 +186,7 @@ export class Tree implements Renderable, Measurable {
     // node's style sits under the label's own, as Rich's `Styled` puts it, so
     // markup in the label still wins.
     const draw: DrawLabel = (label, styles, columns) =>
-      Segment.splitRows([...Segment.applyStyle(drawLabel(options, label, labelRoom(options, columns)), resolve(styles))]);
+      ({ lines: Segment.splitLines(Segment.applyStyle(drawLabel(options, label, labelRoom(options, columns)), resolve(styles))) });
     for (const row of this._walk(draw)) {
       yield* this._renderRow(options, resolve, row);
     }
@@ -264,8 +262,7 @@ export class Tree implements Renderable, Measurable {
   }
 
   /**
-   * One row of the tree: each of the label's lines led by the guides, and the
-   * carriers of a label that drew no row passed on with no row around them.
+   * One row of the tree: each of the label's lines led by the guides.
    *
    * [LAW:single-enforcer] Tree owns its row boundaries here rather than
    * depending on label renderables to invent trailing newlines: the label's
@@ -290,7 +287,6 @@ export class Tree implements Renderable, Measurable {
         style: style.backgroundStyle.add(guideStyle).add(REMOVE_GUIDE_STYLES),
       };
     });
-    yield* row.carriers;
     const lines = row.lines;
     for (let i = 0; i < lines.length; i++) {
       let left: number = options.maxWidth;
@@ -327,7 +323,7 @@ export class Tree implements Renderable, Measurable {
       return width;
     };
     const draw: DrawLabel = (label, _styles, columns) =>
-      widthOf(label) > 0 ? A_ROW : Segment.splitRows([...drawLabel(parsed, label, Math.min(labelRoom(parsed, columns), 1))]);
+      widthOf(label) > 0 ? A_ROW : { lines: Segment.splitLines(drawLabel(parsed, label, Math.min(labelRoom(parsed, columns), 1))) };
     let natural = 0;
     for (const row of this._walk(draw).filter(isDrawn)) {
       natural = Math.max(natural, row.guides.length * GUIDE_CELLS + Math.max(1, widthOf(row.label)));

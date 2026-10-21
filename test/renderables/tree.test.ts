@@ -9,7 +9,7 @@ import { EASES } from "../../src/core/easing.js";
 import { cellLen } from "../../src/core/cells.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
 import { dissolveOut, fadeIn } from "../../src/renderables/effects.js";
-import { inFrame } from "./in-frame.js";
+import { drawnAt, inFrame } from "./in-frame.js";
 import { lifecycle, throughColors } from "../../src/renderables/lifecycle.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -381,9 +381,9 @@ describe("a child that draws no rows", () => {
 
   it("still says when it changes, though it draws no row", () => {
     const tree = new Tree("build");
-    tree.add(inFrame(elements.shown, t));
-    tree.add(inFrame(elements.before, t));
-    expect(Segment.nextChange(collectSegments(tree, { maxWidth: 40 }))).toBe(5);
+    tree.add(elements.shown);
+    tree.add(elements.before);
+    expect(drawnAt(tree, t, { maxWidth: 40 }).nextChange).toBe(5);
   });
 
   it("keeps its place while something beneath it draws", () => {

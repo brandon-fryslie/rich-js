@@ -11,7 +11,7 @@ import { Timeline } from "../../src/core/timeline.js";
 import { tween } from "../../src/core/tween.js";
 import { drawView, hostView } from "../../src/core/view.js";
 import { Constrain } from "../../src/renderables/constrain.js";
-import { inFrame } from "./in-frame.js";
+import { drawnAt, inFrame } from "./in-frame.js";
 import { Group } from "../../src/renderables/group.js";
 import { Rule } from "../../src/renderables/rule.js";
 import { scroll } from "../../src/renderables/scroll.js";
@@ -142,12 +142,12 @@ describe("scroll", () => {
     const nothing: Renderable & Measurable = { render: () => [], measure: () => ({ minimum: 0, maximum: 0 }) };
     const entering = inFrame(Animation.of({ at: () => nothing, nextChange: () => 5, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(nothing) }), 0);
     const content = new Group(entering, new RichText("hello"), new RichText("world"), entering);
-    expect(Segment.nextChange(draw(content))).toBe(5);
+    expect(drawnAt(content, 0, OPTIONS).nextChange).toBe(5);
     for (const [col, row] of [[0, 0], [3, 0], [9, 0], [0, 2], [0, 3], [-9, 9]] as const) {
       const frame = scroll(content, { width: 3, height: 1, col: Animation.constant(col), row: Animation.constant(row) }).at(0);
-      expect(Segment.nextChange(draw(frame))).toBe(5);
+      expect(drawnAt(frame, 0, OPTIONS).nextChange).toBe(5);
     }
-    expect(Segment.nextChange(draw(scroll(entering, { width: 6, height: 1 }).at(0)))).toBe(5);
+    expect(drawnAt(scroll(entering, { width: 6, height: 1 }).at(0), 0, OPTIONS).nextChange).toBe(5);
   });
 
   it("writes nothing of the content left of its window, a combining mark included", () => {
@@ -167,7 +167,7 @@ describe("scroll", () => {
     expect(cells.length).toBeGreaterThan(1);
     for (const segment of cells) expect(segment.style?.hold.nextChange).toBe(3);
     const empty = Animation.map(Animation.continuous((t) => t), (): Renderable => ({ render: () => [] }));
-    expect(Segment.nextChange(draw(inFrame(empty, 2)))).toBe(2);
+    expect(drawnAt(empty, 2, OPTIONS).nextChange).toBe(2);
   });
 
   describe("placed in a function view, on a nested timeline", () => {

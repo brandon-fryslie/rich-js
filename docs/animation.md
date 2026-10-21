@@ -52,7 +52,7 @@ live.stop();
 console.print(recording.exportText());
 ```
 
-No container knows that animations exist. A container draws an animation among its children by calling its `render`, as it draws any child, so a container written outside rich-js places one exactly as a `Panel` does. A program that wants the value instead — its own renderer, a template — reads `at(t)` and `nextChange(t)` with no container involved.
+No container knows that animations exist. A container draws an animation among its children by calling its `render` with the options it was handed, as it draws any child. Those options carry the frame's time in and carry back out when the animation next changes (`onHold`). That works even before it has a cell to draw — a toast not yet entered takes no row — so a container written outside rich-js places one exactly as a `Panel` does. A program that wants the value instead — its own renderer, a template — reads `at(t)` and `nextChange(t)` with no container involved.
 
 The type says which animations can be placed. An `Animation<number>` is no renderable, and a `Panel` refuses it at compile time: map it to what shows it first. `Animation.all` of renderables is a tuple, and is placed by mapping it to a `Group`, or by placing each one. An animation written as a literal goes through `Animation.of`, which keeps every member it has and gives it the face that draws it; every combinator below already returns one.
 

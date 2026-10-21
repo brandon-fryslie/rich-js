@@ -169,18 +169,19 @@ function drawable(value: unknown): Renderable {
 /**
  * An animation's face, `render`: drawn at the time of the frame it is drawn
  * in (`frameTimeOf`), the value `shownAt` picks, every segment stamped with
- * its hold there under whatever its own cells say, led by a
- * `Segment.carrier` of it, because a frame of no cells — an element not yet
- * entered — may have cells later, and must say when. A container — the
- * library's or a user's — that draws its children through `render` draws an
- * animation among them with no word about time. [LAW:composability]
+ * its hold there under whatever its own cells say, and the hold told to the
+ * frame (`RenderOptions.onHold`), because a frame of no cells — an element
+ * not yet entered — may have cells later, and must say when without taking a
+ * row to say it in. A container — the library's or a user's — that draws its
+ * children through `render` draws an animation among them with no word about
+ * time: the hold goes back the way the time came in. [LAW:composability]
  */
 export function* placedRender(animation: Timed<unknown>, options: RenderOptions): Iterable<Segment> {
   const t = frameTimeOf(options);
   const shown = shownAt(animation, t, options);
   const value = drawable(shown.value);
   const hold = holdOf(shown, t);
-  yield Segment.carrier(stamp(hold));
+  options.onHold?.(hold);
   yield* stampFrame(render(value, options), hold);
 }
 

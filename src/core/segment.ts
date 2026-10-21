@@ -59,11 +59,6 @@ export class Segment {
     return this.control !== undefined;
   }
 
-  /** Whether this is a `Segment.carrier`: a control of no codes. */
-  get isCarrier(): boolean {
-    return this.control?.length === 0;
-  }
-
   /**
    * Splits at a cell position. Returns [left, right]: the first `position`
    * cells and the rest, so the two halves are exactly as wide as this one —
@@ -101,18 +96,6 @@ export class Segment {
   private static readonly _line = new Segment("\n");
   static line(): Segment {
     return Segment._line;
-  }
-
-  /**
-   * A segment that draws no cell, writes no byte and opens no row, whose
-   * `style` says something of the frame it rides in — when it next changes
-   * (`Style.hold`) — so a frame of no cells can still say it. A control
-   * of no codes: everything that reads cells or text passes it by as it
-   * passes any control, and `splitLines` keeps it off a row of its own. Rich
-   * has none; an empty piece of text is a row there and here.
-   */
-  static carrier(style: Style): Segment {
-    return new Segment("", style, []);
   }
 
   // --- Static transformations ---
@@ -263,27 +246,9 @@ export class Segment {
       }
     }
 
-    // A run after the last break of nothing but carriers (`Segment.carrier`)
-    // is no row: it joins the line the break ended. A carrier cannot see the
-    // break drawn before it, so whether it opens a row is decided here, once.
-    const last = lines[lines.length - 1];
-    if (last !== undefined && currentLine.every((segment) => segment.isCarrier)) last.push(...currentLine);
-    else if (currentLine.length > 0) lines.push(currentLine);
+    if (currentLine.length > 0) lines.push(currentLine);
 
     return lines;
-  }
-
-  /**
-   * `segments` cut into the rows they draw, as `splitLines` cuts them — but
-   * output of nothing, or of nothing but carriers, which `splitLines` has no
-   * earlier row to join to, is no row at all, and its carriers come back
-   * beside the rows to be passed on. For a container whose child may take no place: a frame of no
-   * cells still says when it changes, as a lifecycle not yet entered does.
-   */
-  static splitRows(segments: Segment[]): { readonly lines: readonly (readonly Segment[])[]; readonly carriers: readonly Segment[] } {
-    return segments.every((segment) => segment.isCarrier)
-      ? { lines: [], carriers: segments }
-      : { lines: Segment.splitLines(segments), carriers: [] };
   }
 
   /**

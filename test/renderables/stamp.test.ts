@@ -12,7 +12,7 @@ import { drawView, hostView } from "../../src/core/view.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
 import { crossfade } from "../../src/renderables/change.js";
 import { dissolveOut, fadeIn, onBeat } from "../../src/renderables/effects.js";
-import { inFrame } from "./in-frame.js";
+import { drawnAt, inFrame } from "./in-frame.js";
 import { Group } from "../../src/renderables/group.js";
 import { lifecycle, throughColors } from "../../src/renderables/lifecycle.js";
 import { Spinner } from "../../src/renderables/spinner.js";
@@ -101,20 +101,22 @@ describe("a frame says when it changes on the host's clock", () => {
 
   it("a frame with no cells takes no row of its own, and still says when it changes", () => {
     const empty: Animation<Renderable> = Animation.of({ at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) });
-    const drawn = lines(new Group(new RichText("a"), inFrame(empty, 0)));
-    expect(drawn.length).toBe(lines(new Group(new RichText("a"))).length);
-    expect(Segment.nextChange(drawn.flat())).toBe(3);
-    // Drawn alone there is no row before it to join, so its stamp rides one of its own.
-    const alone = lines(inFrame(empty, 0));
-    expect(alone.length).toBe(1);
-    expect(Segment.nextChange(alone.flat())).toBe(3);
+    const drawn = drawnAt(new Group(new RichText("a"), empty), 0, OPTIONS);
+    expect(drawn.lines).toEqual(lines(new Group(new RichText("a"))));
+    expect(drawn.nextChange).toBe(3);
+    // Drawn alone there is no row before it, and it takes none of its own.
+    const alone = drawnAt(empty, 0, OPTIONS);
+    expect(alone.lines).toEqual([]);
+    expect(alone.nextChange).toBe(3);
   });
 
   it("a frame with no cells still says when it changes after the row before it is cropped", () => {
     const empty: Animation<Renderable> = Animation.of({ at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) });
     const wide = new RichText("x".repeat(30), { noWrap: true, overflow: "crop" });
-    const cropped = Segment.splitAndCropLines(draw(new Group(wide, inFrame(empty, 0))), 5);
-    expect(Segment.nextChange(cropped.flat())).toBe(3);
+    const cropped = drawView(hostView(new Group(wide, empty)), { now: 0, epoch: 0, timeline: Timeline.play(0) }, { frameTime: 0 }, OPTIONS, (r, under) =>
+      Segment.splitAndCropLines(render(r, under), 5),
+    );
+    expect(cropped.nextChange).toBe(3);
     const emptyText = new Segment("", new Style({ hold: { lastChange: 0, nextChange: 2 } }));
     for (const line of [[new Segment("ab"), emptyText, new Segment("cd")], [new Segment("abcd"), emptyText]]) {
       expect(Segment.nextChange(Segment.adjustLineLength(line, 2))).toBe(2);

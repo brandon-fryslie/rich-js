@@ -34,14 +34,17 @@ import { ColorRamp } from "../../src/themes/ramp.js";
 import { CATPPUCCIN_MOCHA } from "../../src/themes/terminalThemes.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { Effected } from "../../src/renderables/effect.js";
-import { inFrame } from "./in-frame.js";
-import { gradient } from "../../src/renderables/effects.js";
+import { drawnAt, inFrame } from "./in-frame.js";
+import { dissolveOut, fadeIn, gradient } from "../../src/renderables/effects.js";
 import { Group } from "../../src/renderables/group.js";
 import { Layout } from "../../src/renderables/layout.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Rule } from "../../src/renderables/rule.js";
 import { scroll } from "../../src/renderables/scroll.js";
 import { Table } from "../../src/renderables/table.js";
+import { Tree } from "../../src/renderables/tree.js";
+import { lifecycle, throughColors, type Lifecycle } from "../../src/renderables/lifecycle.js";
+import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 
 /** A container written by a user: each child drawn through its own `render`, a line after each. */
 class Box implements Renderable {
@@ -58,9 +61,29 @@ class Box implements Renderable {
   }
 }
 
+/** A container written by a user that cuts each child into its rows and frames every row, as a third-party list or border would. */
+class Rows implements Renderable {
+  readonly children: readonly Renderable[];
+  constructor(...children: Renderable[]) {
+    this.children = children;
+  }
+
+  *render(options: RenderOptions): Iterable<Segment> {
+    for (const child of this.children) {
+      for (const line of Segment.splitLines(child.render(options))) {
+        yield new Segment("|");
+        yield* line;
+        yield new Segment("|");
+        yield Segment.line();
+      }
+    }
+  }
+}
+
 const SYNC_START = "\x1b[?2026h";
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 const linear = (seconds: number) => ({ seconds, ease: EASES.linear });
+const curve = { seconds: 2, ease: EASES.linear, swing: 1 };
 
 /** A count from 0 to 10 over 2 s, drawn as its value. */
 const counting = (): Animation<RichText> => Animation.map(tween(0, 10, linear(2)), (v) => new RichText(`n=${v.toFixed(1)}`, { end: "" }));
@@ -191,6 +214,29 @@ describe("an animation placed in a container written by the user", () => {
     expect(contained.text()).toContain("n=10.0");
     const effected = run(contain(ramped()), { perSecond: 10, seconds: 1, env: SIXTEEN });
     expect(effected.paints).toEqual([0]);
+  });
+});
+
+describe("an animation placed showing nothing", () => {
+  /** A toast that enters at 1 s, fading in over 2: before 1 it shows nothing. */
+  const entering = (): Lifecycle =>
+    lifecycle(new RichText("toast", { end: "" }), { enter: throughColors(fadeIn(curve, 0), DEFAULT_TERMINAL_THEME), exit: throughColors(dissolveOut(curve, 0), DEFAULT_TERMINAL_THEME), key: "toast" }, 1);
+  const rowsOf: readonly [string, (child: Renderable) => Renderable][] = [
+    ["Rows", (child) => new Rows(new RichText("above", { end: "" }), child, new RichText("below", { end: "" }))],
+    ...CONTAINERS,
+    ["Tree", (child) => new Tree("root").add(child)],
+  ];
+
+  it.each(rowsOf)("in a %s, takes the rows static nothing takes until it enters, and wakes the app when it does", (_, contain) => {
+    // Drawn with no height to fill, so a row the container pads to a region cannot hide a row it was handed.
+    const rows = (child: Renderable): string[] => drawnAt(contain(child), 0.5, { maxWidth: 40 }).lines.map((line) => line.map((s) => s.text).join(""));
+    expect(rows(entering())).toEqual(rows(new Group()));
+    const placed = run(contain(entering()), { perSecond: 10, seconds: 0.5 });
+    expect(placed.paints).toEqual([0]);
+    placed.clock.advance(1);
+    expect(placed.paints[1]).toBeCloseTo(1, 9);
+    expect(placed.text()).toContain("toast");
+    placed.app.stop();
   });
 });
 

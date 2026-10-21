@@ -216,8 +216,8 @@ describe("a host under reduced motion", () => {
 
   it("a frame of no cells reduced says nothing, so a host holding it wakes for nothing", () => {
     const empty: Animation<Renderable> = Animation.of({ at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) });
-    expect(Segment.nextChange([...render(inFrame(empty, 0), REDUCED)])).toBe(Number.POSITIVE_INFINITY);
-    expect(Segment.nextChange([...render(inFrame(empty, 0), FULL)])).toBe(3);
+    expect(drawnAt(empty, REDUCED, 0).nextChange).toBe(Number.POSITIVE_INFINITY);
+    expect(drawnAt(empty, FULL, 0).nextChange).toBe(3);
   });
 
   it.each([1, 60])("an App told once paints an animation view reduced, once and arming nothing, or at its rate while animate()d, every frame the reduced one at %s fps", (perSecond) => {

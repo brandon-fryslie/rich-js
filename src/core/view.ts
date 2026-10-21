@@ -17,7 +17,8 @@
  * drawn frame says about when it changes is on the timeline's clock, and
  * `drawView` carries it back onto the host's by running the frame through
  * the same timeline: the frame is a sample held for the intersection of its
- * cells' holds (`Segment.lastChange`, `Segment.nextChange`), and
+ * cells' holds (`Segment.lastChange`, `Segment.nextChange`) and the holds it
+ * was told that no cell carries (`RenderOptions.onHold`), and
  * `Timeline.run` is the one place a hold is mapped onto host time, forwards,
  * backwards or paused. [LAW:one-source-of-truth]
  *
@@ -34,13 +35,14 @@
  * direction, and an early answer costs a frame where a late one skips a
  * change.
  *
- * Tier 7 of `src/core/`: `./animation.ts`, `./timeline.ts`, `./segment.ts`
- * and `./protocol.ts`, nothing else. [LAW:one-way-deps]
+ * Tier 7 of `src/core/`: `./animation.ts`, `./timeline.ts`, `./segment.ts`,
+ * `./protocol.ts` and `./style.ts`'s `Hold`, nothing else. [LAW:one-way-deps]
  */
 
 import { Animation, shownAt } from "./animation.js";
 import type { FrameHost, Renderable, RenderOptions } from "./protocol.js";
 import { Segment } from "./segment.js";
+import type { Hold } from "./style.js";
 import { Timeline } from "./timeline.js";
 
 /**
@@ -129,13 +131,19 @@ export interface DrawnView extends FrameSays {
 /** What a frame not yet drawn at host time `t` says: nothing. */
 export const undrawn = (t: number): FrameSays => ({ t, nextChange: Number.POSITIVE_INFINITY, held: false });
 
-/** The soonest moment any cell of `lines` says it changes, on whatever clock it was drawn at. */
-const cellsChange = (lines: Segment[][]): number =>
-  lines.reduce((soonest, row) => Math.min(soonest, Segment.nextChange(row)), Number.POSITIVE_INFINITY);
+/** The soonest moment any cell of `lines`, or any hold `told`, says it changes, on whatever clock it was drawn at. */
+const frameChange = (lines: Segment[][], told: readonly Hold[]): number =>
+  told.reduce(
+    (soonest, hold) => Math.min(soonest, hold.nextChange),
+    lines.reduce((soonest, row) => Math.min(soonest, Segment.nextChange(row)), Number.POSITIVE_INFINITY),
+  );
 
-/** The latest moment any cell of `lines` says it began, on the same clock. */
-const cellsBegan = (lines: Segment[][]): number =>
-  lines.reduce((latest, row) => Math.max(latest, Segment.lastChange(row)), Number.NEGATIVE_INFINITY);
+/** The latest moment any cell of `lines`, or any hold `told`, says it began, on the same clock. */
+const frameBegan = (lines: Segment[][], told: readonly Hold[]): number =>
+  told.reduce(
+    (latest, hold) => Math.max(latest, hold.lastChange),
+    lines.reduce((latest, row) => Math.max(latest, Segment.lastChange(row)), Number.NEGATIVE_INFINITY),
+  );
 
 /**
  * `view` drawn by `drawnBy` at `time` under `options`, its lines shaped by
@@ -155,13 +163,14 @@ export function drawView(
 ): DrawnView {
   const { now: host, timeline } = time;
   const t = frameTime(time);
-  const drawing: RenderOptions = { ...options, frame: { time: t, host: drawnBy } };
+  const told: Hold[] = [];
+  const drawing: RenderOptions = { ...options, frame: { time: t, host: drawnBy }, onHold: (hold) => told.push(hold) };
   const lines = draw(view.kind === "renderable" ? view.renderable : shownAt(view.animation, t, options).value, drawing);
-  const cells = cellsChange(lines);
+  const cells = frameChange(lines, told);
   // The frame as the sample of the view it is, on the timeline's clock; the
   // timeline says when the host's clock leaves its hold. A function view
   // says nothing since when, so it answers `t` there.
-  const began = view.kind === "renderable" ? cellsBegan(lines) : t;
+  const began = view.kind === "renderable" ? frameBegan(lines, told) : t;
   const sample: Animation<Segment[][]> = { at: () => lines, nextChange: () => cells, lastChange: () => began, reduced: () => sample };
   const nextChange = Timeline.run(timeline, sample).nextChange(host);
   return { t: host, lines, nextChange, held: !timeline.playing };

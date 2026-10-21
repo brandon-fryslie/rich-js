@@ -5,7 +5,7 @@
 
 import type { Segment } from "./segment.js";
 import { cellCount } from "./cells.js";
-import { DEFAULT_THEME, Style, type StyleSyntaxError, type Theme } from "./style.js";
+import { DEFAULT_THEME, Style, type Hold, type StyleSyntaxError, type Theme } from "./style.js";
 import { ColorDepth, type ColorSpec } from "./color.js";
 // [LAW:one-way-deps] exception: the one upward edge between core's tiers, and
 // type-only. A render option that highlights the text being rendered, when
@@ -133,6 +133,17 @@ export interface RenderOptions {
    * told (`measuring`).
    */
   onPresent?: (renderable: Renderable, presence: Presence) => void;
+  /**
+   * Told of a hold the frame is in that no cell of it may carry: an animation
+   * placed in the view reports its own, whether or not it drew a cell — one
+   * not yet entered draws none — and one a container crops away is still
+   * reported. It reaches whatever `frame` reaches, so a container that hands
+   * its child the frame's time hands back the child's hold with no word about
+   * either. [LAW:composability] Absent, nobody is listening. A render made to
+   * measure is not drawing and does not tell (`measuring`), and nor does a
+   * held one (`holding`), whose output is dropped whole.
+   */
+  onHold?: (hold: Hold) => void;
 }
 
 /** The one field of the render options that says whether the reader wants motion. */
@@ -500,8 +511,9 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
 
 /**
  * Where a held renderable is drawn, and the options it is drawn under: what
- * it draws is dropped, and so is everything it draws reported held, whatever
- * width it hands it. It commits nothing, as a measurement commits nothing —
+ * it draws is dropped, and with it any hold it would tell (`onHold`), and
+ * everything it draws is reported held, whatever width it hands it. It
+ * commits nothing, as a measurement commits nothing —
  * its effects (`afterPass`) are learned at a width nobody sees, so a
  * `Viewport` it shows content through keeps the scroll the last frame shown
  * left it.
@@ -515,7 +527,7 @@ function holding(options: RenderOptions): { phase: Phase; drawing: RenderOptions
   const { onPresent } = options;
   return {
     phase: { pass: phaseHere().pass, effects: [] },
-    drawing: { ...options, maxWidth: 0, onPresent: onPresent && ((content) => onPresent(content, "held")) },
+    drawing: { ...options, maxWidth: 0, onPresent: onPresent && ((content) => onPresent(content, "held")), onHold: undefined },
   };
 }
 
@@ -534,14 +546,14 @@ export function measure(measurable: Measurable, options: RenderOptions): { minim
 
 /**
  * `options` as a measurement is asked with. A `measure` that renders to learn
- * its shape draws nothing on the frame, so it reports nothing to `onPresent` —
- * one that did would put a widget in the view at the moment a container
- * measured it, and keep one the frame then cropped away.
+ * its shape draws nothing on the frame, so it reports nothing to `onPresent` or
+ * `onHold` — one that did would put a widget in the view at the moment a
+ * container measured it, and keep one the frame then cropped away.
  *
  * [LAW:single-enforcer] Every measurement starts here: `measure` asks with it.
  */
 function measuring(options: RenderOptions): RenderOptions {
-  return { ...options, onPresent: undefined };
+  return { ...options, onPresent: undefined, onHold: undefined };
 }
 
 /**
