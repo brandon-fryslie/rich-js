@@ -4,15 +4,22 @@
     {
       "version": "pr-514",
       "ref": "refs/pull/514/merge",
-      "sha": "7084754b6418352ffa1c8478c6bbde2ec1d403e6",
-      "timestamp": "2026-10-21T14:52:20.597Z",
+      "sha": "83a150d38f16d923e1eb206ca3bbf0dfc683006a",
+      "timestamp": "2026-10-21T15:12:23.221Z",
       "commits": [
         {
-          "sha": "7084754b6418352ffa1c8478c6bbde2ec1d403e6",
+          "sha": "83a150d38f16d923e1eb206ca3bbf0dfc683006a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T08:49:58-06:00",
-          "message": "Merge 3212f74fc06132190ee36a2fa3f383c323ec8739 into 5a1af8f1286902d1e6bac6dce34afb4d7c08f2b4\n"
+          "timestamp": "2026-10-21T15:10:15Z",
+          "message": "Merge aa39239e5366588bd3669942e20c44f1e982efc3 into 5a1af8f1286902d1e6bac6dce34afb4d7c08f2b4\n"
+        },
+        {
+          "sha": "aa39239e5366588bd3669942e20c44f1e982efc3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T09:04:01-06:00",
+          "message": "Review fixes: a template is drawn as its frame says; a running elapsed clock says when it turns (rich-animation-27tq.wrw)\n\nTemplateFrame carries reducedMotion and asciiOnly beside time and onHold,\nand templateFrame(options) reads one off render options; registration\nkeeps only the timeline. animationFuncs reads its frame once a call.\nTimeElapsedColumn places a per-second clock, so an App repaints it.\nrich-dash steps on one timer gated by the app's phase; the lifecycle demo\nmakes only the lines not yet gone.\n"
         },
         {
           "sha": "3212f74fc06132190ee36a2fa3f383c323ec8739",
