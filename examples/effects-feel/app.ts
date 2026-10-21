@@ -19,6 +19,7 @@
  */
 
 import {
+  Animation,
   ATOM_ONE_DARK,
   ATOM_ONE_LIGHT,
   CATPPUCCIN_FRAPPE,
@@ -335,8 +336,9 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   let rate = 1;
   let fps: FrameRate = frameRate(settings.fps);
   const pace = new Pace(frames.now(), STEP * rate, cycle);
-  let fadeStart = 0;
-  let dissolveStart = 0;
+  // When each transition was last replayed by its key.
+  let fadePressed = 0;
+  let dissolvePressed = 0;
 
   const describe = (name: EffectName, curve: NamedCurve): string =>
     `${name.padEnd(9)} ${curve.seconds}s · ${curve.easeName} · swing ${curve.swing}`;
@@ -357,11 +359,10 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     return row(t, name, status, (s) => made(s).effect);
   };
 
-  let replayed = 0;
-  const view = (frame: number): Renderable => {
+  // The frame number is the app's time: its clock counts frames. Each
+  // transition runs from the later of its cycle's start and its key.
+  const view = Animation.map(Animation.time(), (frame): Renderable => {
     const { t, cycle: nth, began } = pace.at(frame);
-    // A new cycle: both transitions run again from its start.
-    if (began > replayed) fadeStart = dissolveStart = replayed = began;
     const { theme, loops, contrast } = shown;
     return new Padding(
       new Group(
@@ -372,17 +373,15 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
         new RichText("f fade-in · d dissolve · n/p theme · </> fps · -/+ rate · space pauses · [/] magnitude · q quits", { style: shown.quiet, noWrap: true }),
         new RichText(""),
         ...LOOPS.flatMap((loop) => row(t, loop, contrast[loop], loops[loop])),
-        ...transitionRow(t - fadeStart, "fade", "f"),
-        ...transitionRow(t - dissolveStart, "dissolve", "d"),
+        ...transitionRow(t - Math.max(began, fadePressed), "fade", "f"),
+        ...transitionRow(t - Math.max(began, dissolvePressed), "dissolve", "d"),
       ),
       [1, 2],
       { style: Style.fromColor(shown.ink, shown.paper) },
     );
-  };
+  });
 
   const app = new App({ host, surface: "alternate", view, clock: frames, rate: fps });
-  // The loops never settle, so the demo animates for as long as it runs.
-  app.animate();
 
   // [LAW:dataflow-not-control-flow] Each key is a row in this table; a key
   // not in it does nothing.
@@ -421,8 +420,8 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     app.refresh();
   };
   const keys: Record<string, () => void> = {
-    f: () => (fadeStart = replay()),
-    d: () => (dissolveStart = replay()),
+    f: () => (fadePressed = replay()),
+    d: () => (dissolvePressed = replay()),
     n: () => theme(1),
     p: () => theme(-1),
     ">": () => stepFps(1),

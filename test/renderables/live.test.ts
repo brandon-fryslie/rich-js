@@ -4,7 +4,10 @@ import { Console } from "../../src/core/console.js";
 import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
 import { Style } from "../../src/core/style.js";
-import type { Renderable } from "../../src/core/protocol.js";
+import { render, type Renderable } from "../../src/core/protocol.js";
+
+/** A renderable drawing what `draw` makes for the time of the frame it is drawn in, read off its options as any renderable reads it. */
+const framed = (draw: (t: number) => Renderable): Renderable => ({ render: (options) => render(draw(options.frame!.time), options) });
 import { FrameSequence } from "../../src/renderables/frames.js";
 import { Live, type LiveOptions } from "../../src/renderables/live.js";
 import { Panel } from "../../src/renderables/panel.js";
@@ -430,15 +433,15 @@ describe("Live refresh rate", () => {
     const times: number[] = [];
     const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: (s: string) => void chunks.push(s) } });
     const display = new Live(
-      (t) => {
+      framed((t) => {
         times.push(t);
         return new RichText(`t=${t}`);
-      },
+      }),
       { console: target, clock, refreshPerSecond: 2 },
     );
     display.start();
     clock.advance(1);
-    display.update((t) => new RichText(`later t=${t}`), { refresh: true });
+    display.update(framed((t) => new RichText(`later t=${t}`)), { refresh: true });
     display.stop();
     expect(times).toEqual([0.5, 1]);
     expect(chunks.join("")).toContain("later t=1");
@@ -454,10 +457,10 @@ describe("Live refresh rate", () => {
     const seq = new FrameSequence(["a", "b", "c"].map((glyph) => ({ text: new RichText(glyph), seconds: 0.1 })));
     const drawn: { t: number; frame: string }[] = [];
     const display = new Live(
-      (t) => {
+      framed((t) => {
         drawn.push({ t, frame: seq.at(t).plain });
         return seq;
-      },
+      }),
       { console: target, clock, refreshPerSecond: 4 },
     );
     display.start();
@@ -476,10 +479,10 @@ describe("Live refresh rate", () => {
     const times: number[] = [];
     const moving = (t: number): Renderable => ({ render: () => [new Segment("x", new Style({ hold: { lastChange: t, nextChange: t } }))] });
     const display = new Live(
-      (t) => {
+      framed((t) => {
         times.push(t);
         return moving(t);
-      },
+      }),
       { console: target, clock, refreshPerSecond: 4 },
     );
     display.start();
@@ -497,11 +500,11 @@ describe("Live refresh rate", () => {
     const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
     const times: number[] = [];
     const display = new Live(
-      (t) => {
+      framed((t) => {
         times.push(t);
-        clock.advance(0.1);
+        clock.elapse(0.1);
         return new RichText("heavy");
-      },
+      }),
       { console: target, clock, refreshPerSecond: 4, autoRefresh: true },
     );
     display.start();
@@ -516,11 +519,11 @@ describe("Live refresh rate", () => {
     const times: number[] = [];
     // A frame that changes 0.02 s after it is drawn and costs 0.025 s to draw.
     const display = new Live(
-      (t) => {
+      framed((t) => {
         times.push(t);
-        clock.advance(0.025);
+        clock.elapse(0.025);
         return { render: () => [new Segment("x", new Style({ hold: { lastChange: t, nextChange: t + 0.02 } }))] };
-      },
+      }),
       { console: target, clock, refreshPerSecond: 4 },
     );
     display.start();
@@ -539,10 +542,10 @@ describe("Live refresh rate", () => {
     // A frame that changes 0.3 s after it is drawn, then holds.
     const settled = (t: number): Renderable => ({ render: () => [new Segment("x", new Style({ hold: { lastChange: t <= 1 ? 0 : 1.3, nextChange: t <= 1 ? 1.3 : Number.POSITIVE_INFINITY } }))] });
     const display = new Live(
-      (t) => {
+      framed((t) => {
         times.push(t);
         return settled(t);
-      },
+      }),
       { console: target, clock, refreshPerSecond: 1 },
     );
     display.start();
@@ -676,10 +679,10 @@ describe("Live on a timeline", () => {
       drawn.push({ t, text: renderable instanceof RichText ? renderable.plain : "?" });
       return renderable;
     };
-    // The view of the shape it was given, so a function stays a function.
+    // A function of the time is a renderable reading its frame's time, which says nothing of when it changes.
     const recorded: View =
       typeof view === "function"
-        ? (t) => record(t, view(t))
+        ? framed((t) => record(t, view(t)))
         : Animation.of({ at: (t: number) => record(t, view.at(t)), nextChange: (t: number) => view.nextChange(t), lastChange: (t: number) => view.lastChange(t), reduced: () => view.reduced() });
     return { display: new Live(recorded, { console: target, clock, refreshPerSecond: perSecond, timeline }), drawn };
   }
@@ -724,9 +727,9 @@ describe("Live on a timeline", () => {
     expect(drawn.map(({ t, text }) => `${text}@${t}`)).toEqual(["A@2", "B@3", "B@5", "B@6"]);
   });
 
-  // A function view may read state the Live cannot see, so the auto-refresh
-  // polls it at the rate even paused; each frame is drawn at the held time.
-  it.each([1, 60])("at %s fps, paused, still polls a function view at its rate, each frame at the held time", (perSecond) => {
+  // A view may read state the Live cannot see, so the auto-refresh polls it
+  // at the rate even paused; each frame is drawn at the held time.
+  it.each([1, 60])("at %s fps, paused, still polls a view at its rate, each frame at the held time", (perSecond) => {
     const clock = fakeClock();
     const { display, drawn } = playing((t) => word(`t=${t}`), perSecond, clock);
     display.start();

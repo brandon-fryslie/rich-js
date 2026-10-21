@@ -32,7 +32,7 @@ import { FinalFramePainter, SurfacePainter, type FrameSource, type Painter, type
 import { fitHeight, render, type FrameHost, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { Timeline } from "../core/timeline.js";
-import { drawView, frameTime, hostView, undrawn, type DrawnView, type FrameSays, type HostTime, type HostView, type View } from "../core/view.js";
+import { drawView, frameTime, hostView, undrawn, type DrawnView, type FrameSays, type HostTime, type View } from "../core/view.js";
 import { State } from "../core/state.js";
 
 // Nothing: what a Live made with no view draws until `update` gives it one.
@@ -67,7 +67,7 @@ export interface LiveOptions {
 }
 
 export class Live implements FrameHost {
-  private readonly _view: State<HostView>;
+  private readonly _view: State<Renderable>;
   private readonly _console: Console;
   private readonly _rate: FrameRate;
   private readonly _clock: Clock;

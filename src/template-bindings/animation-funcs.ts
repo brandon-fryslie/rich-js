@@ -4,9 +4,9 @@
  *
  * A host that builds its cells in templates — cc-candybar's statusline, say —
  * evaluates each template once per redraw and owns the clock that says when
- * that is. So the time is a capability the registration takes, the way
- * `richTextFuncs(drawnAt)` takes the drawn depth: `frameTime()` is read once
- * per call, when the template is evaluated, and nothing here reads a clock.
+ * that is. So the frame is a capability the registration takes, the way
+ * `richTextFuncs(drawnAt)` takes the drawn depth: `frame()` is read once per
+ * call, when the template is evaluated, and nothing here reads a clock.
  * [LAW:no-ambient-temporal-coupling] A host hands in the same `t` and gets
  * the same fragment back; a host that redraws once a second or sixty times
  * a second registers the same functions.
@@ -56,19 +56,20 @@
  * defaults, before any render (`reglyphText`). Every argument list is an
  * exact arity of typed slots, so a slot of the wrong kind fails at the gate.
  *
- * Only a fragment can say when it changes: `frames` and `glyphs` are stamped
- * (`textFrameAt`), and the stamp covers the fragment's own glyphs, not a
- * colour another function lays over them. A number or a colour carries no
- * cells to stamp, and a template evaluated every frame is a function view,
- * whose frame may change without saying so: a `Live` polls it at its rate,
- * and an `App` paints it at its rate only while the program holds
- * `animate()`. Nothing here claims a moment it does not know.
+ * Every function says when what it drew changes, so a host paints a
+ * template while it moves and not after. `frames` and `glyphs` stamp the
+ * fragment they draw (`textFrameAt`), covering its own glyphs. A number or a
+ * colour carries no cells to stamp, so `tween`, `loop` and `stepped` tell
+ * their hold to the frame instead (`TemplateFrame.onHold`), as a placed
+ * animation of no cells does (`RenderOptions.onHold`). Nothing here claims
+ * a moment it does not know.
  */
 
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
-import { Animation, shownAt } from "../core/animation.js";
+import { Animation, holdOf, shownAt } from "../core/animation.js";
 import { Phase, beat, finiteTime, parseEase } from "../core/easing.js";
 import type { RenderOptions } from "../core/protocol.js";
+import type { Hold } from "../core/style.js";
 import { Timeline } from "../core/timeline.js";
 import { tween } from "../core/tween.js";
 import { cellSeed } from "../renderables/effect.js";
@@ -88,6 +89,18 @@ import { asFragment } from "./helpers.js";
 export interface AnimationFuncsOptions extends Pick<RenderOptions, "reducedMotion" | "asciiOnly"> {
   /** The timeline to draw on, read once per call; the host's own clock when omitted. */
   readonly timeline?: () => Timeline;
+}
+
+/**
+ * The frame a template is evaluated for: `time`, in seconds on the host's
+ * clock, and `onHold`, told when what a function drew there changes on that
+ * clock — the two fields a render's options carry under those names
+ * (`RenderOptions.frame`, `RenderOptions.onHold`), so a renderable evaluating
+ * a template hands on the frame it is drawn in.
+ */
+export interface TemplateFrame {
+  readonly time: number;
+  readonly onHold?: (hold: Hold) => void;
 }
 
 /** The host's own clock as a timeline: host time 0 at animation time 0, at rate 1. */
@@ -144,20 +157,27 @@ function glyphEffect(name: string): (element: EffectTarget) => GlyphEffect {
 
 /**
  * Register `frames`, `stepped`, `tween`, `loop` and `glyphs`, each drawn for
- * the moment `frameTime` reports when the template is evaluated — seconds on
- * the host's own clock, from whatever zero it counts from — through
- * `options.timeline`. The functions exist whatever `frameTime` returns, so a
- * template compiles once and is evaluated at every moment the host draws.
+ * the frame `frame` reports when the template is evaluated — its time in
+ * seconds on the host's own clock, from whatever zero it counts from —
+ * through `options.timeline`, and each telling that frame when what it drew
+ * changes. The functions exist whatever `frame` returns, so a template
+ * compiles once and is evaluated at every moment the host draws.
  * Under `options.reducedMotion` each draws its animation reduced
  * (`Animation.reduced`): a loop at its start, a one-shot cut from where it
  * starts to where it arrives when it starts.
  */
-export function animationFuncs(frameTime: () => number, options: AnimationFuncsOptions = {}): FuncMap {
+export function animationFuncs(frame: () => TemplateFrame, options: AnimationFuncsOptions = {}): FuncMap {
   const timeline = options.timeline ?? (() => HOST_CLOCK);
   // `animation` on this call's timeline, and the host time it is drawn at.
-  const drawing = <T>(what: string, animation: Animation<T>): [Animation<T>, number] => [Timeline.run(timeline(), animation), finiteTime(what, frameTime())];
-  // What a value animation shows now, under the reader's preference.
-  const now = <T>(what: string, animation: Animation<T>): T => shownAt(...drawing(what, animation), options).value;
+  const drawing = <T>(what: string, animation: Animation<T>): [Animation<T>, number] => [Timeline.run(timeline(), animation), finiteTime(what, frame().time)];
+  // What a value animation shows now, under the reader's preference, its
+  // hold told to the frame: a value has no cells to carry it.
+  const now = <T>(what: string, animation: Animation<T>): T => {
+    const [drawn, t] = drawing(what, animation);
+    const shown = shownAt(drawn, t, options);
+    frame().onHold?.(holdOf(shown, t));
+    return shown.value;
+  };
   const startedAt = <T>(start: number, animation: Animation<T>): Animation<T> => Timeline.run(Timeline.play(start), animation);
 
   const framesFunc: TemplateFunc = {

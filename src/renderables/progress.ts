@@ -51,11 +51,6 @@ export interface Task {
   /** When the task started, in seconds on its `Progress`'s host's time; undefined until it has, as of the frame being drawn. */
   readonly startTime: number | undefined;
   /**
-   * Rich's `Task.get_time()`: the moment the frame being drawn is drawn at, in
-   * seconds on its `Progress`'s host's time, so a column animates without reading a clock.
-   */
-  readonly time: number;
-  /**
    * Rich's `Task.elapsed`: seconds since the task started, as of the frame
    * being drawn — `Progress` takes the time once a frame and hands columns
    * the result, so no column reads a clock. Undefined until the task starts.
@@ -97,7 +92,7 @@ const MAX_SAMPLES = 1000;
  * `finishedAt`, the host moment the task reached its total, and `speed` from
  * the samples.
  */
-type TaskState = Omit<Task, "time" | "elapsed" | "finishedTime" | "speed"> & {
+type TaskState = Omit<Task, "elapsed" | "finishedTime" | "speed"> & {
   readonly finishedAt: number | undefined;
   readonly samples: readonly ProgressSample[];
 };
@@ -156,7 +151,6 @@ function taskAt({ samples, finishedAt, ...state }: TaskState, now: number): Task
   return {
     ...state,
     startTime,
-    time: now,
     elapsed: started ? now - startTime : undefined,
     finishedTime,
     speed: started ? sampleSpeed(samples.filter((sample) => sample.timestamp <= now)) : undefined,

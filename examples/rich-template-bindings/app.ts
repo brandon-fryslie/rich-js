@@ -61,7 +61,7 @@ import type { TerminalHost } from "@promptctl/rich-js/host";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import {
   animationFuncs,
-  type AnimationFuncsOptions,
+  type AnimationFuncsOptions, type TemplateFrame,
   richTextFuncs,
   createRichTextEngine,
   paletteFuncs,
@@ -135,13 +135,13 @@ function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<Rich
   });
 }
 
-// The fourth shape: `animationFuncs(frameTime, options)` registers `frames`,
-// `stepped`, `tween`, `loop` and `glyphs`, which draw for a moment, and the
-// moment is the host's to hand in. The app hands
-// its view each frame's time; the view notes it here, and every template
-// evaluated in that frame reads it — templates compile once, so the time is
-// read when one is evaluated, never captured when it is built.
-let frameTime = 0;
+// The fourth shape: `animationFuncs(frame, options)` registers `frames`,
+// `stepped`, `tween`, `loop` and `glyphs`, which draw for a moment and say
+// when what they drew changes. The frame is the host's to hand in: a demo
+// row reads the frame it is drawn in off its render options and notes it
+// here, and every template it evaluates reads it — templates compile once,
+// so the frame is read when one is evaluated, never captured when it is built.
+let drawnIn: TemplateFrame = { time: 0 };
 
 function makeAnimatedEngine(theme: TerminalTheme, options: AnimationFuncsOptions = {}): Engine<RichText> {
   return createEngine<RichText>({
@@ -150,7 +150,7 @@ function makeAnimatedEngine(theme: TerminalTheme, options: AnimationFuncsOptions
     funcs: {
       ...richTextFuncs(),
       ...paletteFuncs(() => theme.palette),
-      ...animationFuncs(() => frameTime, options),
+      ...animationFuncs(() => drawnIn, options),
     },
   });
 }
@@ -369,7 +369,10 @@ function makeDemoRow(label: string, template: string, engine: Engine<RichText>, 
   });
   const combinedItem = new StaticItem({
     id: uid("row"),
-    render: (opts) => buildRowSegments(input, label, engine, scope, opts),
+    render: (opts) => {
+      drawnIn = { time: opts.frame?.time ?? 0, onHold: opts.onHold };
+      return buildRowSegments(input, label, engine, scope, opts);
+    },
   });
 
   return { combinedItem, input, spacer: makeSpacerItem() };
@@ -659,7 +662,13 @@ const GLYPHS_TMPL =
 `{{- $muted := "dim" -}}
 {{ "deploying " | glyphs "typewriter" .since | bold }}{{ "watching " | glyphs "wave" 0 | style $muted }}{{ "resolved" | glyphs "scramble" .since | style $muted }}`;
 
-const cycle = (): { since: number } => ({ since: Math.floor(frameTime / 4) * 4 });
+// Every four seconds the motion starts again: a moment computed from the
+// frame's time, so it says when it next changes, as the functions do.
+const cycle = (): { since: number } => {
+  const since = Math.floor(drawnIn.time / 4) * 4;
+  drawnIn.onHold?.({ lastChange: since, nextChange: since + 4 });
+  return { since };
+};
 
 const secMotion = makeSection("Motion — tween, loop and glyphs, from a moment the template names", [
   makeDemoRow("a tween, read through a ramp", TWEEN_TMPL, animatedEngine, cycle),
@@ -713,24 +722,11 @@ export function runDemo(host: TerminalHost): DemoHandle {
   const app = new WidgetApp({
     host,
     surface: "alternate",
-    view: (t) => {
-      frameTime = t;
-      return new Group(appTitleItem, navHintItem, headerSpacer, SECTIONS[state.sectionIdx]!.view);
-    },
+    // The frames and motion sections say when what they draw changes, so the
+    // app paints them while they move and every other section when a key
+    // changes it.
+    view: () => new Group(appTitleItem, navHintItem, headerSpacer, SECTIONS[state.sectionIdx]!.view),
   });
-
-  // The frames and motion sections move on their own, so the app ticks while
-  // one is on show and only then: every other section paints when a key changes it.
-  let animating: (() => void) | undefined;
-  const animateIf = (shown: Section): void => {
-    const wanted = shown === secFrames || shown === secMotion;
-    if (wanted && animating === undefined) animating = app.animate();
-    if (!wanted && animating !== undefined) {
-      animating();
-      animating = undefined;
-    }
-  };
-  animateIf(SECTIONS[state.sectionIdx]!);
 
   // Section nav uses PageUp / PageDown rather than Ctrl+P/Ctrl+N — the latter
   // are readline line-motion bindings that TextInput consumes for cursor
@@ -745,7 +741,6 @@ export function runDemo(host: TerminalHost): DemoHandle {
     const n = SECTIONS.length;
     if (event.key === "pageup")        { state.prev(n); event.stop(); }
     else if (event.key === "pagedown") { state.next(n); event.stop(); }
-    animateIf(SECTIONS[state.sectionIdx]!);
   }, { priority: "high" });
 
   return { stop: () => app.stop(), done: app.run() };

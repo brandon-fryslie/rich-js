@@ -9,6 +9,12 @@ import type { Clock, FrameRate } from "../../src/core/clock.js";
 
 export interface FakeClock extends Clock {
   advance(seconds: number): void;
+  /**
+   * Move the time on by `seconds` running nothing, as it passes while the
+   * program is busy — inside a frame that costs time to draw, where no timer
+   * can fire. What fell due runs on the next `advance`.
+   */
+  elapse(seconds: number): void;
   /** How many timers — `every` and `at` alike — are still running. */
   timers(): number;
 }
@@ -47,6 +53,9 @@ export function fakeClock(start = 0): FakeClock {
         timer.tick();
       }
       now = until;
+    },
+    elapse(seconds) {
+      now += seconds;
     },
     timers: () => running.size,
   };

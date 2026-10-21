@@ -151,7 +151,7 @@ function everything(): Animation<Renderable> {
   return Animation.map(Animation.all([bar, marquee, change, life, cascade]), (parts) => new Group(...parts));
 }
 
-/** Every renderable built for the host's time, as a function view draws them. */
+/** Every renderable built for a time, each sampled there. */
 function builtForTheTime(t: number): Renderable {
   const glow = new ColorRgba(255, 255, 255);
   return new Group(
@@ -171,14 +171,13 @@ describe("a host under reduced motion", () => {
   // cannot tell an animation from any other renderable it is handed.
   it.each([
     ["an animation", everything()],
-    ["a function of the time", builtForTheTime as View],
+    ["motion computed from the time", Animation.continuous(builtForTheTime)],
   ])("draws %s the same at every time, sampled once a second or sixty, and is never told to look again", (_, view) => {
     const first = text(drawnAt(view, 0, REDUCED));
     for (const t of SAMPLES) {
       const drawn = drawnAt(view, t, REDUCED);
       expect(text(drawn)).toBe(first);
       expect(drawn.nextChange).toBe(Number.POSITIVE_INFINITY);
-      expect(drawn.held).toBe(false);
     }
     // The same view under full motion moves, so the sameness above is the preference's.
     expect(new Set(SAMPLES.map((t) => text(drawnAt(view, t, FULL)))).size).toBeGreaterThan(1);
@@ -199,9 +198,10 @@ describe("a host under reduced motion", () => {
     expect([1, 3, 8].map((t) => drawnAt(life, t, REDUCED).nextChange)).toEqual([2, 5, Number.POSITIVE_INFINITY]);
   });
 
-  it("a function view is asked at the time, so what it computes from it stays on time", () => {
-    const elapsed = (t: number): Renderable => new RichText(`elapsed ${Math.floor(t)}s`, { end: "" });
+  it("the time itself reduced is still the time, so a clock mapped from it stays on time", () => {
+    const elapsed = Animation.map(Animation.time(), (t) => new RichText(`elapsed ${Math.floor(t)}s`, { end: "" }));
     expect(text(drawnAt(elapsed, 3.5, REDUCED))).toBe("elapsed 3s");
+    expect(drawnAt(elapsed, 3.5, REDUCED).nextChange).toBe(3.5);
   });
 
   it("a renderable drawn as it is reduces every animation drawn inside it for the host's time", () => {
@@ -217,8 +217,7 @@ describe("a host under reduced motion", () => {
     expect(drawnAt(empty, 0, FULL).nextChange).toBe(3);
   });
 
-  it.each([1, 60])("an App told once paints an animation view reduced, once and arming nothing, or at its rate while animate()d, every frame the reduced one at %s fps", (perSecond) => {
-    const clock = fakeClock();
+  it.each([1, 60])("an App told once paints an animation view reduced, once and arming nothing, or at its rate beside a clock, every frame the reduced one at %s fps", (perSecond) => {
     const asked: string[] = [];
     const looping = Animation.continuous((t) => new RichText(`t=${t}`, { end: "" }));
     const view: Animation<Renderable> = Animation.of({
@@ -227,17 +226,24 @@ describe("a host under reduced motion", () => {
       lastChange: (t) => looping.lastChange(t),
       reduced: () => (asked.push("reduced"), looping.reduced()),
     });
-    const target = new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(perSecond), view, reducedMotion: true });
-    void target.run();
-    clock.advance(5);
+    const alone = fakeClock();
+    void new App({ host: scriptedHost(), surface: "alternate", clock: alone, rate: frameRate(perSecond), view, reducedMotion: true }).run();
+    alone.advance(5);
     expect(asked).toEqual(["reduced"]);
-    expect(clock.timers()).toBe(0);
-    const stop = target.animate();
-    clock.advance(5);
+    expect(alone.timers()).toBe(0);
+
+    // Beside a clock, which is information and moves reduced, the app paints at its rate.
+    asked.length = 0;
+    const clocked = fakeClock();
+    const clock = Animation.map(Animation.time(), (t) => new RichText(`${Math.floor(t)}s`));
+    const target = new App({ host: scriptedHost(), surface: "alternate", clock: clocked, rate: frameRate(perSecond), view: new Group(clock, view), reducedMotion: true });
+    void target.run();
+    clocked.advance(5);
     expect(asked.length).toBeGreaterThan(5 * perSecond);
     expect(asked.every((said) => said === "reduced")).toBe(true);
-    expect(target.frame.map((line) => line.map((s) => s.text).join(""))[0]).toBe("t=0");
-    stop();
+    const [shown, reduced] = target.frame.map((line) => line.map((s) => s.text).join(""));
+    expect(shown).toMatch(/^[45]s$/);
+    expect(reduced).toBe("t=0");
   });
 
   /** A Live of `view` on a reduced-motion console at sixty frames a second, run for six seconds, and every frame it painted. */
@@ -277,7 +283,7 @@ describe("a one-shot render under reduced motion", () => {
 
 describe("the template animation functions under reduced motion", () => {
   it("refuse a time that is not finite, as they do with motion", () => {
-    const funcs = animationFuncs(() => Number.NaN, { reducedMotion: true });
+    const funcs = animationFuncs(() => ({ time: Number.NaN }), { reducedMotion: true });
     const engine = createEngine<RichText>({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: { ...richTextFuncs(), ...funcs } });
     expect(() => engine.compile(`{{ frames 0.25 "a" 0.25 "b" }}`)({})).toThrow(/frames needs a finite t, got NaN/);
     expect(() => engine.compile(`{{ stepped 0.5 "#ff0000" 0.5 "#00ff00" }}`)({})).toThrow(/stepped needs a finite t, got NaN/);
@@ -289,7 +295,7 @@ describe("the template animation functions under reduced motion", () => {
       createEngine<RichText>({
         fromString: (s) => new RichText(s),
         toString: (rt) => rt.plain,
-        funcs: { ...richTextFuncs(), ...animationFuncs(() => frameTime, { reducedMotion }) },
+        funcs: { ...richTextFuncs(), ...animationFuncs(() => ({ time: frameTime }), { reducedMotion }) },
       }).compile(`{{ frames 0.25 "a" 0.25 "b" }}{{ fg (stepped 0.5 "#ff0000" 0.5 "#00ff00") "x" }}`);
     const [reduced, full] = [compiled(true), compiled(false)];
     const evaluate = (reducedMotion: boolean): string =>

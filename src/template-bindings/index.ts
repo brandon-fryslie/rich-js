@@ -14,7 +14,7 @@
  * - `paletteFuncs(getPalette)` — `color` and `ramp`, the two functions that
  *   resolve a palette name. This is the *only* registration that knows a
  *   palette exists. [LAW:one-way-deps]
- * - `animationFuncs(frameTime)` — `frames`, `stepped`, `tween`, `loop` and
+ * - `animationFuncs(frame)` — `frames`, `stepped`, `tween`, `loop` and
  *   `glyphs`, drawn for a moment on a timeline. It is the only registration
  *   that knows the template is evaluated at a time, and the time and the
  *   timeline are the host's to hand in (`./animation-funcs.ts`).
@@ -48,7 +48,7 @@ import { colorFuncs, type DrawnAt } from "./color-funcs.js";
 
 export { paletteFuncs } from "./palette-funcs.js";
 export { colorFuncs, readableOnFunc, type DrawnAt } from "./color-funcs.js";
-export { animationFuncs, type AnimationFuncsOptions } from "./animation-funcs.js";
+export { animationFuncs, type AnimationFuncsOptions, type TemplateFrame } from "./animation-funcs.js";
 
 /**
  * Funcs registered by the rich-js binding — the colour sinks, the palette-free

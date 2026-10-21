@@ -210,29 +210,31 @@ const row = (...cells: Renderable[]): Table => {
 async function session(host: TerminalHost, clock: Clock, c: Controls, preferences: Preferences, from: Carried): Promise<Outcome> {
   let outcome: Outcome = { kind: "quit" };
 
-  const view = (t: number): Renderable => {
+  const view = (): Renderable => {
     const timeline = app.timeline;
-    const start = Math.floor(t / WINDOW) * WINDOW;
     const playback = `${timeline.playing ? "▶ playing" : "⏸ paused"} at ${Math.abs(timeline.rate)}×${timeline.rate < 0 ? " in reverse" : ""}`;
-    const said = [
-      `t = ${seconds(t)}`,
-      playback,
-      preferences.depth,
-      `${app.rate.perSecond} fps`,
-      preferences.reducedMotion ? "motion reduced" : "full motion",
-    ].join("  ·  ");
     const gallery = c.gallery.showing(new Columns([...KINDS.map((kind) => kind.view), caret(c.input)], { padding: [0, 1] }));
     return stacked(
       new Group(
         new RichText("animation playground — Tab moves between controls, Enter or a click presses, the wheel scrolls", { style: MUTED }),
         row(c.playPause, c.reverse, ...c.speeds.map(([, b]) => b), c.back, c.forward, c.far),
         row(c.motion, c.depth, c.fps, c.quit),
-        row(
-          new RichText(seconds(start), { style: MUTED }),
-          Animation.map(marker, (step) => track(start, step)),
-          new RichText(seconds(start + WINDOW), { style: MUTED }),
+        // The time is read off the frame, mapped to what shows it: the window
+        // the marker runs across, and the readout.
+        Animation.map(Animation.time(), (t) => {
+          const start = Math.floor(t / WINDOW) * WINDOW;
+          return row(
+            new RichText(seconds(start), { style: MUTED }),
+            Animation.map(marker, (step) => track(start, step)),
+            new RichText(seconds(start + WINDOW), { style: MUTED }),
+          );
+        }),
+        Animation.map(Animation.time(), (t) =>
+          new RichText(
+            [`t = ${seconds(t)}`, playback, preferences.depth, `${app.rate.perSecond} fps`, preferences.reducedMotion ? "motion reduced" : "full motion"].join("  ·  "),
+            { style: TEXT },
+          ),
         ),
-        new RichText(said, { style: TEXT }),
       ),
       gallery,
     );

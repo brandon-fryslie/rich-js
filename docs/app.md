@@ -59,7 +59,7 @@ A handler that throws ends the app with its error, as a frame that throws does.
 
 ## The view is asked for every frame
 
-`view` returns the app's root renderable, and `App` calls it once per frame. Keep your state in variables or a store, and build the view from it: the frame always shows the state as it was when the frame was painted.
+`view` returns the app's root renderable, and `App` calls it once per frame. Keep your state in variables or a store, and build the view from it: the frame always shows the state as it was when the frame was painted. The function is called while the frame is drawn, so it builds and changes nothing; change state in a handler, then ask for a frame. `view` can also be the renderable itself, such as a `Layout` whose cells you update.
 
 `refresh()` asks for a frame. It paints once, after the current task, so several changes made together land in one frame. A resize repaints on its own, so a view that reads the terminal's size shows the new one with no handler of yours:
 
@@ -80,28 +80,24 @@ The root renders at the terminal's width, with the terminal's rows as its [heigh
 
 ## Animating at a frame rate
 
-`view` is handed the frame's time, `t`, in seconds since the app was made: the app's `clock` read through its [timeline](/animation#playing-in-a-live-or-an-app), which plays from then at the clock's pace unless the `timeline` option gives another. An app paints at its `rate` while something is animating: `animate()` starts that, and the function it returns ends it. Once nothing is animating the app stops ticking and paints only when asked again, and a stopped or suspended app never ticks.
+What moves in a view is an [`Animation`](/animation#placing-one) placed in it, and the frame it draws says when it next changes. The app paints at its `rate` while the frame says it moves. It wakes once when the frame says it holds until a moment, however soon that is and whatever the rate. It stops ticking when the frame says it never changes, and paints again only when asked. A stopped or suspended app never ticks. Nothing else decides whether the app ticks, so the view is never handed a time.
 
-A view can also be a renderable, drawn as it is — an [`Animation`](/animation#placing-one) of renderables placed in it, or the view itself, saying on its cells when what it draws changes. Such a view needs no `animate()`. The app paints at its rate while the frame says it moves, wakes once when the frame says it holds until a moment — however soon that is, whatever the rate — and stops when it says it never changes. Setting `app.timeline` paints one frame for the new time. A paused timeline then leaves nothing ticking until it plays again, `animate()` included, since every view is drawn at the held time.
+Every animation is drawn at the frame's time: the app's `clock` read through its [timeline](/animation#playing-in-a-live-or-an-app), which plays from when the app was made at the clock's pace unless the `timeline` option gives another. Setting `app.timeline` paints one frame for the new time, and a paused timeline leaves nothing ticking until it plays again. To show the time itself, map `Animation.time()` to what shows it:
 
 ```ts silent
-import { RichText, frameRate, systemClock } from "@promptctl/rich-js";
+import { Animation, RichText, frameRate } from "@promptctl/rich-js";
 import { App } from "@promptctl/rich-js/host";
 import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
 
-const clock = systemClock();
-const start = clock.now();
 const app = new App({
   host: new NodeTerminalHost(),
   surface: "inline",
-  clock,
   rate: frameRate(0.5),
-  view: (t) => new RichText(`${Math.floor(t - start)} s since start`),
+  view: Animation.map(Animation.time(), (t) => new RichText(`${Math.floor(t)} s since start`)),
 });
-const stopAnimating = app.animate();
 ```
 
-`frameRate` takes any positive, finite number of frames a second, so `frameRate(0.5)` paints once every two seconds; anything else throws. The rate is 30 frames a second unless you give one, and `app.rate` reads it and sets it: an animation under way goes on at the new rate from its next frame. Nothing the view draws reads a clock: an [effect](/effects) is sampled at the `t` it is handed, so the same view runs at 30 frames a second and at one every two seconds.
+`frameRate` takes any positive, finite number of frames a second, so `frameRate(0.5)` paints once every two seconds; anything else throws. The rate is 30 frames a second unless you give one, and `app.rate` reads it and sets it: an animation under way goes on at the new rate from its next frame. Nothing the view draws reads a clock: an [effect](/effects) is drawn at the frame's time, so the same view runs at 30 frames a second and at one every two seconds.
 
 `clock` is what the app reads the time from and ticks on. `systemClock()` — the platform's monotonic clock and timers — is the default. Pass your own `Clock` in a test, with a `now()`, an `every(rate, tick)` and an `at(time, tick)` — one tick when the clock reads `time`, which a [`Live`](/live#auto-refresh) waits on until its frame next changes — whose time you move by hand, to count frames with no real timer.
 
@@ -117,7 +113,7 @@ const stopAnimating = app.animate();
 
 ## Reduced motion
 
-`reducedMotion: true` paints every animation with its motion taken out, and wakes only when content changes: every animation placed in the view as its `reduced()` form, where it is drawn, and everything drawn for the time inside a function view the same way. A view is still painted at the rate while `animate()` is held — each frame the reduced one — because the app cannot tell what else it draws from state of its own. It is the same switch as on a [`Console`](/console#reduced-motion); [Animation](/animation#reduced-motion) says what each kind is reduced to.
+`reducedMotion: true` paints every animation placed in the view as its `reduced()` form, with its motion taken out, and wakes only when content changes. The time itself is not motion: a clock mapped from `Animation.time()` keeps the time, and the app paints it at its rate. It is the same switch as on a [`Console`](/console#reduced-motion); [Animation](/animation#reduced-motion) says what each kind is reduced to.
 
 ## Style names and drawing options
 

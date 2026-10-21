@@ -24,7 +24,7 @@
  * frames hands each one its time (`core/clock.ts`) — a `Progress` the
  * moment its tasks are drawn at, a `Live` the frame's time on its clock — as
  * Rich's `Spinner.render` is handed `console.get_time()` or `task.get_time()`. `t` is the clock's
- * time, as `App` and `Task.time` hand it, where Rich's spinner counts from
+ * time, as a host writes it on the frame, where Rich's spinner counts from
  * its first draw: here nothing is kept between frames, so the same `t` draws
  * the same bytes at one redraw a second or sixty, two spinners on one clock
  * agree at every `t`, a `Progress` on a hand-moved clock turns its spinners

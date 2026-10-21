@@ -33,7 +33,7 @@ import { render } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import type { Clock, FrameRate } from "../core/clock.js";
 import type { Timeline } from "../core/timeline.js";
-import { mapView } from "../core/view.js";
+import { hostView } from "../core/view.js";
 import { App, type AppOptions, type AppPhase, type Wheel } from "../host/app.js";
 import { DefaultFocusManager } from "./focus-manager.js";
 import { EventRouter } from "./event-router.js";
@@ -73,19 +73,20 @@ export class WidgetApp implements FrameSource, FrameHost {
 
   constructor(options: WidgetAppOptions) {
     const { focusOnClick = true } = options;
+    const view = hostView(options.view);
     this.reaction = new Reaction("WidgetApp", () => this.app.refresh());
-    // The view is drawn inside `compose`, where what it reads is tracked,
-    // whichever shape it was given; it stays the kind of view it was, and
-    // when it changes is its own to say, as it would be to the App.
+    // The view is drawn inside `compose`, where what it reads is tracked —
+    // a function view asked there too — and when it changes is its own to
+    // say, as it would be to the App.
     // Its frames are its own, drawn for its `frameTime`: what draws in them
     // is told this app is the host, not the App it paints through, so
     // `drawnBy: widgetApp` names the host its frames carry.
     this.app = new App({
       ...options,
-      view: mapView(options.view, (view) => ({
+      view: {
         render: (renderOptions) =>
           this.compose(view, { ...renderOptions, frame: renderOptions.frame && { time: renderOptions.frame.time, host: this } }),
-      })),
+      },
     });
     this.focus = new DefaultFocusManager({
       present: () => this.widgets,
@@ -197,11 +198,6 @@ export class WidgetApp implements FrameSource, FrameHost {
     return this.app.suspend();
   }
 
-  /** Paint at the app's rate until the returned function is called, as `App.animate` does. */
-  animate(): Unsubscribe {
-    return this.app.animate();
-  }
-
   /**
    * Hear every key the app does not quit on. A `high` handler hears it before the focused widget, a
    * `normal` one after it — and after Tab has moved focus — and a handler
@@ -225,7 +221,7 @@ export class WidgetApp implements FrameSource, FrameHost {
     return this.app.onWheel(handler);
   }
 
-  private compose(view: () => Renderable, options: RenderOptions): Segment[] {
+  private compose(view: Renderable, options: RenderOptions): Segment[] {
     // Each widget once, where it was first reported; drawn anywhere, it is drawn.
     const present = new Map<WidgetBase, Presence>();
     // [LAW:parse-dont-validate] What the view reports is any renderable; only
@@ -241,7 +237,7 @@ export class WidgetApp implements FrameSource, FrameHost {
     // held widget has no footprint on the frame, and so paints none.
     const drawing = { ...options, onPresent };
     const lines = tracked(this.reaction, () => {
-      const base = Segment.splitLines(render(view(), drawing));
+      const base = Segment.splitLines(render(view, drawing));
       for (const widget of present.keys()) paintOverlay(base, widget, drawing);
       return base;
     });

@@ -45,7 +45,6 @@ const fakeTask = (description: string): Task => ({
   fill: Animation.constant(0),
   visible: true,
   startTime: 0,
-  time: 0,
   elapsed: 0,
   finishedTime: undefined,
   speed: undefined,

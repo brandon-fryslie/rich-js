@@ -28,8 +28,11 @@ const curve = { seconds: 2, ease: EASES.linear, swing: 1 };
 const draw = (renderable: Renderable): Segment[] => [...render(renderable, OPTIONS)];
 const lines = (renderable: Renderable): Segment[][] => Segment.splitLines(draw(renderable));
 const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
-/** What a function view of `view` drawn at host time `t` on a playing timeline says. */
-const wakes = (view: (t: number) => Renderable, t: number): number => drawView(hostView(view), { now: t, epoch: 0, timeline: Timeline.play(0) }, { frameTime: t }, OPTIONS, lines).nextChange;
+/** What a renderable drawing what `view` makes for its frame's time, drawn at host time `t` on a playing timeline, says. */
+const wakes = (view: (t: number) => Renderable, t: number): number =>
+  drawView({ render: (options) => render(view(options.frame!.time), options) }, { now: t, epoch: 0, timeline: Timeline.play(0) }, { frameTime: t }, OPTIONS, (renderable, options) =>
+    Segment.splitLines([...render(renderable, options)]),
+  ).nextChange;
 
 describe("a frame hands what it draws the time it is drawn for", () => {
   // What a renderable drawing at the frame's time would read, captured as it draws.
