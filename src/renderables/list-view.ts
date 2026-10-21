@@ -19,7 +19,7 @@
 import { Segment } from "../core/segment.js";
 import { Measurement, measureRenderables } from "../core/measure.js";
 import { render, withBoundedWidth, withCellWidth } from "../core/protocol.js";
-import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import type { Viewport } from "./viewport.js";
 
 export interface ListViewOptions {
@@ -37,7 +37,7 @@ function lineCount(name: string, value: number): number {
   return value;
 }
 
-export class ListView implements Renderable, Measurable, Composite {
+export class ListView implements Renderable, Measurable {
   readonly gap: number;
   readonly context: number;
 
@@ -82,10 +82,6 @@ export class ListView implements Renderable, Measurable, Composite {
     // [LAW:effects-at-boundaries] Shown through the viewport rather than
     // handed to it: the viewport keeps the lines' range once the frame is drawn.
     yield* render(this.viewport.showing(content, { start: start - this.context, end: end + this.context }), bounded);
-  }
-
-  *contents(): Iterable<Renderable> {
-    yield* this.items;
   }
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {

@@ -36,7 +36,7 @@
 
 import { Animation } from "../core/animation.js";
 import { Measurement } from "../core/measure.js";
-import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render, withBoundedWidth } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
@@ -85,7 +85,7 @@ function naturalWidth(content: Renderable, options: RenderOptions): number {
 }
 
 /** One frame of a scroll: `content`'s cells from column `col` and row `row`, `width` by `height` of them, blank where it has none. */
-class ScrollFrame implements Renderable, Measurable, Composite {
+class ScrollFrame implements Renderable, Measurable {
   constructor(
     readonly content: Renderable,
     readonly width: number,
@@ -114,10 +114,6 @@ class ScrollFrame implements Renderable, Measurable, Composite {
       yield* Segment.adjustLineLength([new Segment(" ".repeat(blank)), ...shown], width);
       yield Segment.line();
     }
-  }
-
-  *contents(): Iterable<Renderable> {
-    yield this.content;
   }
 
   measure(): { minimum: number; maximum: number } {

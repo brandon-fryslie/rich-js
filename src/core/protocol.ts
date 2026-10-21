@@ -125,8 +125,8 @@ export interface RenderOptions {
   frame?: { readonly time: number; readonly host: FrameHost };
   /**
    * Told of every renderable `render` is asked for, as it is asked, so the
-   * calls arrive in document order: a container before what it holds, its
-   * contents in the order it renders them. `"drawn"` is a renderable drawn at
+   * calls arrive in document order: a container before what it holds, what
+   * it holds in the order it renders it. `"drawn"` is a renderable drawn at
    * the width it was handed; `"held"` is one handed no column, which is still
    * in the view but has nothing drawn for it (`render`). A renderable rendered
    * twice is told twice. A render made to measure is not drawing and is not
@@ -474,24 +474,47 @@ const ITERATOR_PROTOTYPE: object = Object.getPrototypeOf(Object.getPrototypeOf([
  * it throws (`./state.ts`).
  *
  * It is also the one reporter of what the view holds (`onPresent`). Under one
- * column a renderable is held, not drawn: what it holds (`Composite`) is
- * walked and reported held in turn, and nothing renders, so no renderable
- * that keeps state while it renders — a `Viewport`'s offset, a `TextInput`'s
- * scroll window — ever commits it at a width that is not shown. The walk runs
- * whether or not anyone listens. Drawing the squeezed subtree at one column
- * instead, and dropping what it drew, did commit that state.
+ * column a renderable is held: in the view, with nothing of it on the frame.
+ * It is drawn all the same and what it drew dropped (`holding`), so what a held
+ * container is reported holding is what it draws, under the options it hands
+ * each child — one description of a container's traversal, not a second
+ * kept beside it.
  */
 export function render(renderable: Renderable, options: RenderOptions): Iterable<Segment> {
   const opens = active === undefined;
-  const phase = phaseHere();
+  const presence: Presence = drawsNothing(options) ? "held" : "drawn";
+  const { phase, drawing } = presence === "drawn" ? { phase: phaseHere(), drawing: options } : holding(options);
   const drawn = runIn(phase, () => {
-    const presence: Presence = drawsNothing(options) ? "held" : "drawn";
     options.onPresent?.(renderable, presence);
-    if (presence === "drawn") return renderable.render(options);
-    if (isComposite(renderable)) for (const content of renderable.contents(options)) render(content, options);
-    return [];
+    return renderable.render(drawing);
   });
+  if (presence === "held") {
+    runIn(phase, () => {
+      for (const _ of drawn);
+    });
+    return [];
+  }
   return opens ? withinPass(phase, drawn) : drawn;
+}
+
+/**
+ * Where a held renderable is drawn, and the options it is drawn under: what
+ * it draws is dropped, and so is everything it draws reported held, whatever
+ * width it hands it. It commits nothing, as a measurement commits nothing —
+ * its effects (`afterPass`) are learned at a width nobody sees, so a
+ * `Viewport` it holds keeps the scroll the last frame shown left it.
+ *
+ * [LAW:parse-dont-validate] It is drawn at no column, 0, whatever width under
+ * one its container worked out: `drawsNothing` reads a negative or NaN width
+ * as none, so none reaches a `render`, where it would be a count no string
+ * can repeat.
+ */
+function holding(options: RenderOptions): { phase: Phase; drawing: RenderOptions } {
+  const { onPresent } = options;
+  return {
+    phase: { pass: phaseHere().pass, effects: [] },
+    drawing: { ...options, maxWidth: 0, onPresent: onPresent && ((content) => onPresent(content, "held")) },
+  };
 }
 
 /**
@@ -582,28 +605,6 @@ export interface Measurable {
 }
 
 /**
- * A container: a renderable that draws other renderables. `contents` is what
- * its `render` hands to `render`, in that order where the order is not a
- * width's, decided as the render decides it — and so it is how a container
- * handed no column still reports what it holds (`render`). It takes no
- * options: what a container holds may depend on its state (a hidden `Layout`
- * holds nothing) but never on a width, because under one column there is none.
- * It commits no state, and yields only renderables: text a container builds
- * from a string it holds holds nothing.
- *
- * [LAW:one-source-of-truth] A second description of each container's
- * traversal, so `test/renderables/contents.test.ts` holds every exported
- * renderable's `contents` to what its `render` reports.
- *
- * A consumer's container that does not implement it reports nothing it holds
- * while it is handed no column.
- */
-export interface Composite {
-  /** What it holds as drawn under `options`: the one animation of a renderable drawn at a host time holds its reduced form's value under reduced motion. */
-  contents(options: RenderOptions): Iterable<Renderable>;
-}
-
-/**
  * What the wheel scrolls: an owner of anchors on the frame (`./anchor.ts`)
  * that moves by lines. `canScrollBy` says whether `scrollBy` with the same
  * `lines` would move it; one that would not passes the wheel outward.
@@ -638,8 +639,4 @@ export function isScrollable(obj: object): obj is Scrollable {
     "scrollBy" in obj &&
     typeof (obj as Scrollable).scrollBy === "function"
   );
-}
-
-export function isComposite(obj: object): obj is Composite {
-  return "contents" in obj && typeof (obj as Composite).contents === "function";
 }

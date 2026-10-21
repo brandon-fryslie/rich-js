@@ -5,7 +5,6 @@
 import { Segment } from "../core/segment.js";
 import { embed } from "./embed.js";
 import type {
-  Composite,
   Renderable,
   Measurable,
   RenderOptions,
@@ -60,7 +59,7 @@ interface Split {
 /** A declared size as a cell count; absence stays absence, a flex pane, which `cellCount` would read as zero. */
 const sizeOf = (value: number | undefined): CellCol | undefined => (value === undefined ? undefined : cellCount(value));
 
-export class Layout implements Renderable, Measurable, Composite {
+export class Layout implements Renderable, Measurable {
   readonly name: string | undefined;
   // Rich's `Layout` is split, updated, resized and hidden after it is built,
   // so each of these is state, and a write to one while it is drawn throws.
@@ -202,18 +201,6 @@ export class Layout implements Renderable, Measurable, Composite {
     } else {
       yield* this._renderColumn(visibleChildren, options);
     }
-  }
-
-  // What `render` draws, decided as it decides it: nothing when hidden, a
-  // leaf's content, or the visible panes of a split.
-  *contents(): Iterable<Renderable> {
-    if (!this.visible) return;
-    if (this._isLeaf) {
-      const renderable = this._renderable.get();
-      if (renderable) yield renderable;
-      return;
-    }
-    yield* this._split.get().children.filter((c) => c.visible);
   }
 
   private *_renderColumn(

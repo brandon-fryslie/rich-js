@@ -12,7 +12,7 @@ import { Spinner } from "./spinner.js";
 import { Live } from "./live.js";
 import type { Clock } from "../core/clock.js";
 import { Table, type ColumnOptions } from "./table.js";
-import type { Composite, FrameHost, Renderable, RenderOptions } from "../core/protocol.js";
+import type { FrameHost, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { Animation } from "../core/animation.js";
 import type { Timing } from "../core/easing.js";
@@ -453,7 +453,7 @@ interface DrawnByOptions {
   clock?: never;
 }
 
-export class Progress implements Renderable, Composite {
+export class Progress implements Renderable {
   private readonly _columns: readonly ProgressColumn[];
   // Rich's Progress adds and updates tasks between frames: each task is a
   // record replaced whole on update, so a frame reads one task as it stood.
@@ -622,12 +622,6 @@ export class Progress implements Renderable, Composite {
 
   *render(options: RenderOptions): Iterable<Segment> {
     yield* render(this._drawn(options), options);
-  }
-
-  // What each column renders for each task is what the table holds, and so is
-  // all a progress display holds.
-  *contents(options: RenderOptions): Iterable<Renderable> {
-    yield this._drawn(options);
   }
 
   // Inside a frame, the time its host read for it: a second read here would

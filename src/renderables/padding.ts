@@ -8,7 +8,6 @@ import { Style, NULL_STYLE } from "../core/style.js";
 import type { RichText } from "../core/text.js";
 import { Measurement } from "../core/measure.js";
 import type {
-  Composite,
   Renderable,
   Measurable,
   RenderOptions,
@@ -68,7 +67,7 @@ export function paddedContentWidth(outerWidth: number, left: number, right: numb
   return cellCount(cellCount(outerWidth) - left - right);
 }
 
-export class Padding implements Renderable, Measurable, Composite {
+export class Padding implements Renderable, Measurable {
   readonly renderable: Renderable;
   readonly top: number;
   readonly right: number;
@@ -90,10 +89,6 @@ export class Padding implements Renderable, Measurable, Composite {
     this.left = left;
     this.style = options?.style ?? NULL_STYLE;
     this.expand = options?.expand !== false;
-  }
-
-  *contents(): Iterable<Renderable> {
-    yield this.renderable;
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {

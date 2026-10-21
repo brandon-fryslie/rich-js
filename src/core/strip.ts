@@ -33,7 +33,7 @@ import { ColorDepth, ColorSpec, SURFACE_BLACK } from "./color.js";
 import { Oklch } from "./oklch.js";
 import { cellLen } from "./cells.js";
 import { fnv1a } from "./fnv1a.js";
-import { drawable, getStyle, isAscii, render, type Composite, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
+import { drawable, getStyle, isAscii, render, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
 
 // --- StyledRenderable ---
 
@@ -139,7 +139,7 @@ export function drawItem(item: StyledRenderable): Renderable {
 
 // --- Strip ---
 
-export class Strip<T extends StyledRenderable = StyledRenderable> implements Renderable, Measurable, Composite {
+export class Strip<T extends StyledRenderable = StyledRenderable> implements Renderable, Measurable {
   readonly items: readonly T[];
   readonly joiner: Joiner<T>;
 
@@ -180,11 +180,6 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
     // instead of below it. `LINE_ENDS` in test/seam/line-ends.ts is the list
     // of which renderables end their own line and which are fragments.
     yield Segment.line();
-  }
-
-  // The items; a join is drawn from what the joiner emits for it, not held.
-  contents(): Iterable<Renderable> {
-    return this.items;
   }
 
   /**

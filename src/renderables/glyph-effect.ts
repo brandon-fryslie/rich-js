@@ -55,7 +55,7 @@
 import { Animation, frameTimeOf, holdOf, shownAt, stampFrame } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { Measurement } from "../core/measure.js";
-import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { finiteTime } from "../core/easing.js";
@@ -110,7 +110,7 @@ export interface GlyphEffectedOptions {
  * through `effect` at `t`, saying nothing of when that changes, as a
  * `Recolored` is (`./effect.ts`). [LAW:one-type-per-behavior]
  */
-export class Reglyphed implements Renderable, Measurable, Composite {
+export class Reglyphed implements Renderable, Measurable {
   readonly t: number;
   readonly key: string;
 
@@ -138,10 +138,6 @@ export class Reglyphed implements Renderable, Measurable, Composite {
       shown[i]!.every((text, j) => text === placed[i]![j]!.glyph) ? segment : new Segment(shown[i]!.join(""), segment.style),
     );
     return { segments: changed, hold: holdOf(frame, this.t) };
-  }
-
-  *contents(): Iterable<Renderable> {
-    yield this.renderable;
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
@@ -193,10 +189,6 @@ export class GlyphEffected implements Animation<Renderable> {
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
     return Measurement.get(options, this.renderable);
-  }
-
-  *contents(): Iterable<Renderable> {
-    yield this.renderable;
   }
 }
 

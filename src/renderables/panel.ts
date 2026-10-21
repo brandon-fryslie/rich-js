@@ -13,7 +13,6 @@ import { cutLabel, drawLabel, embed, inlineLabel, type InlineLabel } from "./emb
 import type { PaddingDimensions } from "./padding.js";
 import { Padding } from "./padding.js";
 import type {
-  Composite,
   Renderable,
   Measurable,
   RenderOptions,
@@ -177,7 +176,7 @@ function borderRow(
   ];
 }
 
-export class Panel implements Renderable, Measurable, Composite {
+export class Panel implements Renderable, Measurable {
   readonly renderable: Renderable;
   readonly box: Box;
   readonly title: string | RichText | undefined;
@@ -247,12 +246,6 @@ export class Panel implements Renderable, Measurable, Composite {
       yield Segment.line();
     }
     yield* this._renderBottomBorder(options, box, geometry, border, bodyLines);
-  }
-
-  // The body is the one thing a panel draws through `render`: its title and
-  // subtitle are text it builds.
-  *contents(): Iterable<Renderable> {
-    yield this._body;
   }
 
   /**

@@ -47,6 +47,17 @@ describe("a render that sets a State it did not make throws", () => {
     expect(() => drain(parent)).toThrow(RenderWriteError);
   });
 
+  it("held, handed no column: it is drawn all the same", () => {
+    const count = new State(0);
+    const writes: Renderable = {
+      *render() {
+        count.set(1);
+      },
+    };
+    expect(() => [...render(writes, { maxWidth: 0 })]).toThrow(RenderWriteError);
+    expect(count.get()).toBe(0);
+  });
+
   it("in a measure", () => {
     const count = new State(0);
     const measured = {

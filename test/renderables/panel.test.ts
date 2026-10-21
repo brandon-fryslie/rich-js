@@ -453,25 +453,26 @@ describe("Panel", () => {
     }
 
     // A `bottomRightAccessory` function is handed the rows the body drew this
-    // frame. Where the content is left no column it is not rendered at all —
+    // frame. Where the content is left no column it is held, and draws none —
     // Rich's `Console.render` under one column.
-    it("hands the accessory the rows the body drew this frame, and renders no content left no column", () => {
-      let frames = 0;
-      const counting: Renderable = {
-        *render(_options: RenderOptions) {
-          frames += 1;
-          yield new Segment("content");
+    it("hands the accessory the rows the body drew this frame, and none where the content is left no column", () => {
+      const content: Renderable = {
+        *render() {
+          yield new Segment("x");
           yield Segment.line();
         },
       };
-      const panel = new Panel(counting, {
-        bottomRightAccessory: (body) => (body.some((row) => row.some((s) => s.text.includes("content"))) ? "drawn" : "blank"),
+      let handed = false;
+      const panel = new Panel(content, {
+        bottomRightAccessory: (body) => {
+          handed = body.some((row) => row.some((s) => s.text.includes("x")));
+          return handed ? "drawn" : "blank";
+        },
       });
 
       for (let width = 1; width <= 8; width++) {
-        const before = frames;
         collectLines(panel, { maxWidth: width });
-        expect(frames, `content render count at maxWidth ${width}`).toBe(width < 5 ? before : before + 1);
+        expect(handed, `content handed to the accessory at maxWidth ${width}`).toBe(width >= 5);
       }
 
       const lines = collectLines(panel, { maxWidth: 30 });

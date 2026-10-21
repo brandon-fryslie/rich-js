@@ -125,11 +125,10 @@ describe("GlyphEffected — what it may not change", () => {
     expect(out.map((s) => s.style?.hold.nextChange)).toEqual([3, 5]);
   });
 
-  it("measures as its child does, and holds it as its contents", () => {
+  it("measures as its child does", () => {
     const panel = new Panel("measured");
     const wrapped = new GlyphEffected(panel, blanked, { key: "k" });
     expect(Measurement.get({ maxWidth: 40 }, wrapped)).toEqual(Measurement.get({ maxWidth: 40 }, panel));
-    expect([...wrapped.contents()]).toEqual([panel]);
   });
 
   it("needs a finite t", () => {

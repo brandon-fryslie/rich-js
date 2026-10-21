@@ -12,7 +12,7 @@
  */
 
 import { Segment } from "../core/segment.js";
-import type { Composite, Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent } from "./types.js";
@@ -29,7 +29,7 @@ export interface StaticItemOptions {
   measure?: Measurable["measure"];
 }
 
-export class StaticItem extends WidgetBase implements Composite {
+export class StaticItem extends WidgetBase {
   readonly id: string;
   readonly focusable = false;
 
@@ -43,10 +43,6 @@ export class StaticItem extends WidgetBase implements Composite {
     const r = options.render;
     this.body = typeof r === "function" ? { render: r } : r;
     this.measureFn = options.measure;
-  }
-
-  *contents(): Iterable<Renderable> {
-    yield this.body;
   }
 
   // Static items don't respond to keys. WidgetBase.handleMouse / handleFocus

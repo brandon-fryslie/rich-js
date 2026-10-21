@@ -188,9 +188,6 @@ export class Spinner implements Animation<Renderable & Measurable> {
     return measure(this.drawnAt(frameTimeOf(options)), options);
   }
 
-  /** Nothing it is handed: the frame and the label are a line it builds. */
-  *contents(): Iterable<Renderable> {}
-
   /** The frame `choose` picks from the frames the output can draw, and the label, saying the hold it is in if `choose` says. */
   private _frame(
     choose: (played: Animation<RichText>, options: RenderOptions) => { readonly value: RichText; readonly hold?: Hold },

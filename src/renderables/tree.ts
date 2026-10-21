@@ -8,7 +8,6 @@ import { Style, NULL_STYLE } from "../core/style.js";
 import { RichText } from "../core/text.js";
 import { embed } from "./embed.js";
 import type {
-  Composite,
   Renderable,
   Measurable,
   RenderOptions,
@@ -85,9 +84,6 @@ interface Guide {
  */
 type Drawn = Readonly<ReturnType<typeof Segment.splitRows>>;
 
-/** What a label drew when nothing was drawn. */
-const NOTHING_DRAWN: Drawn = { lines: [], carriers: [] };
-
 /** A row a label is known to draw, unread. */
 const A_ROW: Drawn = { lines: [[]], carriers: [] };
 
@@ -134,7 +130,7 @@ function labelWidth(options: RenderOptions, label: Renderable): number {
 /** Whether a row is drawn: a subtree with one takes a place among its siblings. */
 const isDrawn = (row: Drawn): boolean => row.lines.length > 0;
 
-export class Tree implements Renderable, Measurable, Composite {
+export class Tree implements Renderable, Measurable {
   readonly label: Renderable;
   // Rich's Tree grows by `add` and is expanded or collapsed after it is built.
   private readonly _children = new ListState<Tree>();
@@ -196,13 +192,6 @@ export class Tree implements Renderable, Measurable, Composite {
     for (const row of this._walk(draw)) {
       yield* this._renderRow(options, resolve, row);
     }
-  }
-
-  // Every label `render` draws, from the same walk, handed a draw that yields
-  // nothing: which labels the walk holds does not depend on what they draw.
-  // Not `children`, which is the subtrees, as Rich names them.
-  *contents(): Iterable<Renderable> {
-    for (const row of this._walk(() => NOTHING_DRAWN)) yield row.label;
   }
 
   /**

@@ -54,7 +54,6 @@ import {
   withCellWidth,
 } from "../core/protocol.js";
 import type {
-  Composite,
   Height,
   Measurable,
   Renderable,
@@ -161,7 +160,7 @@ export interface ViewportOptions {
   scrollbar?: Scrollbar;
 }
 
-export class Viewport implements Renderable, Measurable, Scrollable, Composite {
+export class Viewport implements Renderable, Measurable, Scrollable {
   readonly rows: number | undefined;
   readonly scrollbar: Scrollbar;
   private readonly _scroll = new State<Scroll>({
@@ -245,11 +244,10 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
    * drawn inside a render — `ListView` draws its items to learn their lines
    * and shows them this way.
    */
-  showing(content: Renderable, follow?: Range): Renderable & Measurable & Composite {
+  showing(content: Renderable, follow?: Range): Renderable & Measurable {
     return {
       render: (options) => this.draw(content, drawnWhole(content), follow, options),
       measure: (options) => this.measureOf(content, options),
-      contents: () => [content],
     };
   }
 
@@ -276,10 +274,6 @@ export class Viewport implements Renderable, Measurable, Scrollable, Composite {
   /** The cells the scrollbar's gutter takes beside the content. */
   get gutter(): number {
     return gutterWidth(this.scrollbar);
-  }
-
-  *contents(): Iterable<Renderable> {
-    yield this.content;
   }
 
   render(options: RenderOptions): Iterable<Segment> {
