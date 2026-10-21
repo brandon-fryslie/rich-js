@@ -2,6 +2,49 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-503",
+      "ref": "refs/pull/503/merge",
+      "sha": "e0e71c099c9be6aa0faa6ec6ac4475bc1e895b85",
+      "timestamp": "2026-10-21T13:20:27.450Z",
+      "commits": [
+        {
+          "sha": "e0e71c099c9be6aa0faa6ec6ac4475bc1e895b85",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T13:18:46Z",
+          "message": "Merge 71a66974ee96973af3f1f92954ac4454a86b743a into 7cd4dc5968184802d1d64f6fde97e45227d743f6\n"
+        },
+        {
+          "sha": "71a66974ee96973af3f1f92954ac4454a86b743a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-21T07:18:41-06:00",
+          "message": "Rebase onto the escape: Spinner measures through protocol, held covers a pulsing bar (rich-animation-27tq.0tc)\n\nA held renderable is now drawn through render (#510), so the frame a printed\nProgress makes reaches what it holds as it reaches what it draws; _framed\nstays as the one moment a print is drawn for.\n"
+        },
+        {
+          "sha": "e52b69d7ab3dd71200dac21c2b8bd9b8e3974445",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-20T23:27:20-06:00",
+          "message": "Review: the template frames test names FrameSequence, not the removed Frames (rich-animation-27tq.0tc)\n"
+        },
+        {
+          "sha": "423bcbe2584ddc7207b9de754e86df2a30de59d8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-20T23:19:10-06:00",
+          "message": "Review: the pulse test reads what Progress draws; one clock in the showcase (rich-animation-27tq.0tc)\n\nThe BarColumn pulse test supplied its own frame and compared against a\nliteral 7.5; it now prints the Progress and compares each row to the bar\ndrawn in a frame for 7.5s. A test pins that, in a frame of its own host,\na Progress holds what it would draw. Spinner's placed renderable is built\nin the constructor after the sequences it closes over. The showcase draws\nthe dashboard at the Live's frame time, so the heading and the jobs share\none clock. Two doc sentences that described examples no longer present\nare corrected.\n"
+        },
+        {
+          "sha": "f69c3be52589f9463483f3bd090b903243da9fa6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-20T23:05:18-06:00",
+          "message": "An animation is drawn one way: placed (rich-animation-27tq.0tc)\n\nRemoves every public way to draw an animation at a time the caller names:\nframeAt and its Stamped renderable, the Frames class, Spinner.drawnAt, and\nProgressBar's pulse: { t }, now pulse: true. A FrameSequence, a Spinner and a\npulse are placed and draw at the frame's time.\n\nProgress draws its table in a frame of its own host's time when printed with\nnone, so the bars and spinners placed in it draw at the moment its tasks are\ndrawn at. Examples and docs place their animations; docs that played an effect\nover frames at sampled moments now play it in a live fence.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "7cd4dc5968184802d1d64f6fde97e45227d743f6",
@@ -13,42 +56,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-21T07:12:38-06:00",
           "message": "A Viewport is scroll state; content is drawn through it with showing (rich-protocol-9xcs.tcy) (#511)\n\n* A Viewport is scroll state; content is drawn through it with showing (rich-protocol-9xcs.tcy)\n\nViewport no longer takes content or renders itself: `new Viewport(options)`\nholds the scroll position, and `showing`/`showingLines` are the one way to\ndraw through it. The placeholder content half its callers built\n(`new RichText(\"\")`, `EMPTY`) is gone, and so is the content a ListView's\nviewport held and ignored.\n\nViewport drops out of the exported-renderable gates (held, ascii-only,\nline-ends); their ListView rows still draw through `showing`.\n\n* Review: docs and held check follow Viewport.showing; tests name the Viewport viewport (rich-protocol-9xcs.tcy)\n\n- docs/protocol.md, docs/viewport.md: a Viewport no longer renders or is\n  held; the content shown through it is.\n- held.test.ts: Viewport.showing joins VARIANTS, restoring the held/onPresent\n  check the removed Viewport row carried.\n- Rejected: a migration note for the (content, options) -> (options)\n  constructor. No changelog exists, the type rejects the old call, and the\n  repo keeps no back-compat shims.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
-        }
-      ]
-    },
-    {
-      "version": "pr-503",
-      "ref": "refs/pull/503/merge",
-      "sha": "3db94884306270211c6a920fc4263a363b3cd40c",
-      "timestamp": "2026-10-21T05:29:25.941Z",
-      "commits": [
-        {
-          "sha": "3db94884306270211c6a920fc4263a363b3cd40c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T05:27:24Z",
-          "message": "Merge fbdbb9d010b69beb9e6742d544ce406daa7c7514 into 0dcf5ac44f527aed4862a9e376cb6bca2a287dfb\n"
-        },
-        {
-          "sha": "fbdbb9d010b69beb9e6742d544ce406daa7c7514",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T23:27:20-06:00",
-          "message": "Review: the template frames test names FrameSequence, not the removed Frames (rich-animation-27tq.0tc)\n"
-        },
-        {
-          "sha": "2c015f1bbfd67a2bd3b350eab8d106226296e07d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T23:19:10-06:00",
-          "message": "Review: the pulse test reads what Progress draws; one clock in the showcase (rich-animation-27tq.0tc)\n\nThe BarColumn pulse test supplied its own frame and compared against a\nliteral 7.5; it now prints the Progress and compares each row to the bar\ndrawn in a frame for 7.5s. A test pins that, in a frame of its own host,\na Progress holds what it would draw. Spinner's placed renderable is built\nin the constructor after the sequences it closes over. The showcase draws\nthe dashboard at the Live's frame time, so the heading and the jobs share\none clock. Two doc sentences that described examples no longer present\nare corrected.\n"
-        },
-        {
-          "sha": "151f2a4b16ed8de0c203d3c1b08157de2ee1a6f3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-20T23:05:18-06:00",
-          "message": "An animation is drawn one way: placed (rich-animation-27tq.0tc)\n\nRemoves every public way to draw an animation at a time the caller names:\nframeAt and its Stamped renderable, the Frames class, Spinner.drawnAt, and\nProgressBar's pulse: { t }, now pulse: true. A FrameSequence, a Spinner and a\npulse are placed and draw at the frame's time.\n\nProgress draws its table in a frame of its own host's time when printed with\nnone, so the bars and spinners placed in it draw at the moment its tasks are\ndrawn at. Examples and docs place their animations; docs that played an effect\nover frames at sampled moments now play it in a live fence.\n"
         }
       ]
     }
