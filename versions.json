@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-518",
+      "ref": "refs/pull/518/merge",
+      "sha": "3f546fe13883ecb9cbf90544d835607dcb07c727",
+      "timestamp": "2026-10-30T22:49:37.585Z",
+      "commits": [
+        {
+          "sha": "3f546fe13883ecb9cbf90544d835607dcb07c727",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T16:47:33-06:00",
+          "message": "Merge 2c44ecc757f45b74e424953f908f8f89b1fc8520 into 8838ee88c4797c5aa7ebfb3ff16ab2bfa393eb4a\n"
+        },
+        {
+          "sha": "2c44ecc757f45b74e424953f908f8f89b1fc8520",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T16:47:03-06:00",
+          "message": "The wheel paces each segment by where it sits, not by its colour (rich-unfiled-791c.uy67)\n\nBrandon, via cc-candybar: the wheel should affect segments by their\nlocation, some turning faster than others. The wheel seeded each segment's\nstray from a hash of its fill hex, so two segments of one fill kept step\nwherever they sat. Now a segment is a run of adjacent cells in one row on\none own fill (on the terminal's ground, in one own ink), its place is the\nrun's row and centre column from the element's left edge, and the stray's\nnoise is sampled at that place over STRAY_SPREAD columns a unit: neighbours\npace a little apart, distant runs on their own, and a run that grows by a\ncolumn moves its hue a little. The shared turn keeps no place term, since a\nplace-scaled turn would jump a growing run by 360·t·Δ/P without bound.\n\nDrawn.cells() lists a ListedCell: the Placed cell with the columns its glyph\ntakes, its on-screen pair, and whether a joiner drew it, read off the one\nlook and walk the cell is handed with, so the wheel reads its runs from the\nframe's own measure. A cap's ink turns at the place of the adjacent run of\nits fill, so a powerline cap keeps its run's colour, hand-drawn or a custom\njoiner's; a strip's own seams are re-derived from their neighbours as\nbefore. Contrast bounds stay keyed by colour and fill.\n\n0.26.0: a public type gains fields.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "8838ee88c4797c5aa7ebfb3ff16ab2bfa393eb4a",
