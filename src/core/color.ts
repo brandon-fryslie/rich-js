@@ -4,6 +4,10 @@
 
 import type { Env } from "./env.js";
 import { Memo, WeakMemo } from "./memo.js";
+import { pattern } from "./pattern.js";
+// Runtime-importing `Palette` from `themes/palette.ts` is safe: that module
+// only `import type`s from `core/color.ts`, so there is no runtime cycle.
+import { Palette } from "../themes/palette.js";
 
 // --- ColorRgba ---
 
@@ -1122,12 +1126,6 @@ export const WINDOWS_TABLE = new ColorTable(buildWindowsTable());
 // terminal a colour's depth assumes, built from that depth's own sixteen with
 // an empty Palette — sufficient for the lookups it serves, which never read
 // `palette`.
-//
-// Runtime-importing `Palette` from `themes/palette.ts` is safe: that module
-// only `import type`s from `core/color.ts`, so there is no runtime cycle.
-
-import { Palette } from "../themes/palette.js";
-import { pattern } from "./pattern.js";
 
 const INTERNAL_DEFAULT_THEME = new TerminalTheme(
   new ColorRgba(0, 0, 0),
