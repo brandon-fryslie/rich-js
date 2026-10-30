@@ -4,15 +4,22 @@
     {
       "version": "pr-518",
       "ref": "refs/pull/518/merge",
-      "sha": "34e1215f0c1126994985f872c6d7022ec08d0369",
-      "timestamp": "2026-10-30T23:26:30.394Z",
+      "sha": "e24e6dd7c246075c0d8fcfa4c3ee6f21fd61306c",
+      "timestamp": "2026-10-30T23:37:17.558Z",
       "commits": [
         {
-          "sha": "34e1215f0c1126994985f872c6d7022ec08d0369",
+          "sha": "e24e6dd7c246075c0d8fcfa4c3ee6f21fd61306c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T23:24:30Z",
-          "message": "Merge e39f0cf6ec1aaedeb9e8b7b4ebbba3f425dff91d into 8838ee88c4797c5aa7ebfb3ff16ab2bfa393eb4a\n"
+          "timestamp": "2026-10-30T23:35:36Z",
+          "message": "Merge d076e63718865da496cd3641cedb20d8fd654939 into 8838ee88c4797c5aa7ebfb3ff16ab2bfa393eb4a\n"
+        },
+        {
+          "sha": "d076e63718865da496cd3641cedb20d8fd654939",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T17:35:22-06:00",
+          "message": "A seam's colours read past the seam, and a segment is one colour however a cell carries it (rich-unfiled-791c.uy67)\n\nReview (high, the second) on the region model. Four findings built:\n\nA seam cell's colours took the region in the column right beside it, so a\ntwo-cell rail's inner cell found only the rail's other cell and fell to a\nplace of its own, out of hue with the item it caps. Each colour now reads\npast every seam column to the region beside the seam.\n\nThe docs defined a segment as two kinds — on a fill, or in an ink on the\nterminal's ground — while the code keyed regions on the colour alone, so a\ncaption in a bar's colour touching the bar merged with it. The code is the\nright one: matching colours a designer placed touching stay matching. The\ndocs and comments now say a segment is one colour of the element's,\ncarried as a cell's ground or, on the terminal's ground, as its ink.\n\n`segmentOf` said it was the segment a colour turns with; since the first\nreview commit it only names the colour a colour's bounds are kept under,\nand `segmentsOf` decides where it turns. It is `boundWith` now, and says so.\n\n`segmentsOf` destructured `all` off a `Drawn` and called it detached, which\na class implementing the interface would throw on. It takes the `Drawn`.\n\nRejected: the per-frame cost for the third time, on the measurement in\nthe first review comment; a one-colour seam between two segments of its\ncolour, which can match one side only; and a zero-width glyph pacing with\nthe glyph at its column, which is the right answer for a cell that is not\non screen.\n"
         },
         {
           "sha": "e39f0cf6ec1aaedeb9e8b7b4ebbba3f425dff91d",
