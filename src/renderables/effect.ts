@@ -364,18 +364,26 @@ export class Recolored implements Renderable, Measurable {
     if (rederived === undefined) return segment;
     const { colors, style } = rederived;
     const { wire, slots } = look;
-    // [LAW:one-source-of-truth] A slot resolved again to the colour it was
-    // resolved to before keeps the spec it was written in, as a painted cell's
-    // unmoved slot does; only a slot that moved is written anew, by the one
-    // writer. Matched again on the effect's terminal, an unmoved side's colour
-    // could land on another slot than the item it continues, which the depth
-    // writes as it always did.
+    // [LAW:one-source-of-truth] Each slot is written as what it resolved to.
+    // A slot resolved to the colour it was resolved to before keeps the spec it
+    // was written in, as a painted cell's unmoved slot does: matched again on
+    // the effect's terminal it could land off the item it continues. A colour
+    // the depth writes as it stands, a slot or a table entry, is written as
+    // itself, so a lifted ink stands off its ground in the bytes as the lift
+    // measured it: read back through the terminal's RGB, a slot that terminal
+    // draws like another would be written as the other. Only a colour the
+    // depth must round is rounded, by the one writer, on the effect's
+    // terminal, which writes that terminal's own ground as `default`.
     const was = joined.style;
-    const to = {
-      fg: sameSpec(colors.color, was.color) ? slots.fg : (colors.color?.getTruecolor(theme, true) ?? slots.fg),
-      bg: sameSpec(colors.bgcolor, was.bgcolor) ? slots.bg : (colors.bgcolor?.getTruecolor(theme, false) ?? slots.bg),
+    const rounded = this.respec(wire, slots, { fg: colors.color?.getTruecolor(theme, true) ?? slots.fg, bg: colors.bgcolor?.getTruecolor(theme, false) ?? slots.bg }, depth);
+    const written = (now: ColorSpec | undefined, before: ColorSpec | undefined, wrote: ColorSpec | undefined, round: ColorSpec | undefined): ColorSpec | undefined => {
+      if (sameSpec(now, before)) return wrote;
+      // [LAW:no-silent-failure] Unreachable: a move only fills an edge in, so
+      // a slot that resolved to a colour when drawn resolves to one after.
+      if (now === undefined) throw new Error(`a seam cell resolved to ${before?.name ?? "nothing"} when drawn and to nothing after an effect moved its neighbours`);
+      return now.downgrade(depth) === now ? now : round;
     };
-    const writes = this.respec(wire, slots, to, depth);
+    const writes = { color: written(colors.color, was.color, wire.color, rounded.color), bgcolor: written(colors.bgcolor, was.bgcolor, wire.bgcolor, rounded.bgcolor) };
     return new Segment(segment.text, writesAlike(writes, wire) ? style : style.add(Style.fromColor(writes.color, writes.bgcolor)));
   }
 

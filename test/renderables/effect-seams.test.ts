@@ -112,6 +112,20 @@ describe("a seam under an effect drawn on a terminal of its own", () => {
     }
     expect(failures).toEqual([]);
   });
+
+  it.each(CASES)("under %s at %s, never writes a lifted ink in its ground's slot, though the terminal draws two slots alike", (_, depth, theme) => {
+    const colorSystem = DEPTHS[depth];
+    const failures: string[] = [];
+    for (let n = 0; n < 16; n++) {
+      const [a, b] = [item("a", "#e0e0e0 on #1d4ed8"), item("c", "#e0e0e0 on #b91c1c")];
+      const slot: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, bg: theme.ansiColors.get(n) }));
+      const frame = [...inFrame(new Effected(new Strip([a, b], JOINERS.powerline), confined(slot, a, b), { key: "slots", theme }), 0).render({ maxWidth: 80, colorSystem })];
+      const right = frame.find((s) => drawnBy(s.style?.anchor, b))!.style!.drawnColors(colorSystem).bgcolor;
+      const { color: ink, bgcolor: under } = seamOf(frame, a, b)[0]!.style!.drawnColors(colorSystem);
+      if (written(ink) === written(under) || written(under) !== written(right)) failures.push(`${n}: ${written(ink)} on ${written(under)} | ${written(right)}`);
+    }
+    expect(failures).toEqual([]);
+  });
 });
 
 describe("prism under an effect on one neighbour", () => {
