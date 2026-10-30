@@ -75,7 +75,7 @@ The shares keep the words readable. `Effected` measures every ink and ground pai
 
 `drawn` is the same for every cell of a frame.
 
-- `cells()` lists every cell the element shows something in, a glyph, a ground other than the terminal's or a line its style draws, each with its `row`, `col` and `anchor`, listed before any cell is handed. A blank cell on the terminal's ground that draws no line is still handed to the effect, but not listed. Under `confined` it is only the cells the owners drew. A transition uses it to spread its order over the cells that can be seen to move.
+- `cells()` lists every cell the element shows something in, a glyph, a ground other than the terminal's or a line its style draws, each with its `row`, `col` and `anchor`, listed before any cell is handed. A blank cell on the terminal's ground that draws no line is still handed to the effect, but not listed. A strip's seam is listed but never handed, since it follows the cells beside it ([One element of many](#one-element-of-many)). Under `confined` it is only the cells the owners drew. A transition uses it to spread its order over the cells that can be seen to move.
 
 The rest describes the cells the element draws words in: those whose glyph is not blank and that a strip's joiner did not draw, since a powerline seam's ink is the fill beside it, not words.
 
@@ -87,7 +87,9 @@ The rest describes the cells the element draws words in: those whose glyph is no
 
 ### One element of many
 
-`confined(effect, ...owners)` applies `effect` only to the colours any of `owners` drew, and leaves every other colour exactly as it was. It goes by who drew each cell, not by its colour, so it can single out one of several items that share a fill. An owner is whatever stamps the cells it draws (`Segment.anchorLines`): every widget, every `Viewport`, and every item of a `Strip` or `FlexStrip`, however the strip wraps. Confined to anything that draws without stamping, such as the `Strip` itself, an effect moves nothing. A seam cell can show two items at once — a powerline arrow is inked in the fill it points out of, over the fill it points into — so its ink moves with one item and its ground with the other:
+`confined(effect, ...owners)` applies `effect` only to the colours any of `owners` drew, and leaves every other colour exactly as it was. It goes by who drew each cell, not by its colour, so it can single out one of several items that share a fill. An owner is whatever stamps the cells it draws (`Segment.anchorLines`): every widget, every `Viewport`, and every item of a `Strip` or `FlexStrip`, however the strip wraps. Confined to anything that draws without stamping, such as the `Strip` itself, an effect moves nothing.
+
+A strip's seams follow its items. A cell a `CellJoiner` draws is no item's, so no effect is handed it; once the effect has painted the items, each seam cell is drawn again from the item cells beside it, the way its joiner drew it. A powerline arrow keeps the fill it points out of as its ink and the fill it points into as its ground, wherever the effect took them:
 
 ```typescript
 import { CATPPUCCIN_MOCHA, EFFECT_CURVES, EFFECT_LIGHTS, Effected, JOINERS, RichText, Strip, Style, confined, onColors, pulse } from "@promptctl/rich-js";
@@ -96,7 +98,7 @@ const fill = Style.parse("#1e1e2e on #89b4fa");
 const items = ["main", "ctx 61%", "ok"].map((label) => new RichText(` ${label} `, { style: fill, end: "", noWrap: true }));
 const strip = new Strip(items, JOINERS.powerline);
 
-// Only "ctx 61%" and the arrow after it breathe; the other two items keep their fill.
+// Only "ctx 61%" breathes, and the arrows either side of it follow; the other two items keep their fill.
 const breathing = confined(onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, 0)), items[1]!);
 
 for (const t of [0, 10, 20]) {
@@ -104,7 +106,7 @@ for (const t of [0, 10, 20]) {
 }
 ```
 
-A colour mixed from the two neighbours, such as the middle of a `prism` or a `gradientSeam` ramp, belongs to neither item, and `confined` leaves it alone.
+A colour mixed from the two neighbours, such as the middle of a `prism` or a `gradientSeam` ramp, is mixed again from where the effect left them, so it moves with either. An effect that paints two neighbours one colour leaves the seam between them lifted off that colour, as a joiner lifts any seam whose ink would vanish into its ground ([Every seam shows](/strip#every-seam-shows)). The same holds as a transition fades two neighbours into the terminal's ground: the seam between them is lifted off the colour the effect draws that ground in.
 
 To move every item but one, name all the others in one call: `confined(onColors(shimmer(…)), items[0]!, items[2]!)` moves the colours either of them drew. One confined effect per item does not add up to that. `confined` nested in `confined` moves only the colours both owners drew, none for two separate items, and an `Effected` wrapped around another measures the inner one's output, so `onColors` settles different shares. The effect is handed only the cells one of its owners drew, so it costs one call a cell however many owners it has.
 
@@ -213,7 +215,7 @@ for (const t of [0, 0.69, 0.7, 0.99, 1]) {
 }
 ```
 
-Under `confined`, a cell's attributes go with its ink: a seam cell between two items is bold when the item that drew its glyph is. To watch them blink, run `npm run attribute-effects` in a checkout of this repository.
+No effect is handed a strip's seam, so a seam keeps the attributes its joiner drew it with while the items either side of it blink: a joiner takes no attribute from a neighbour. To watch them blink, run `npm run attribute-effects` in a checkout of this repository.
 
 ## Writing an effect
 

@@ -8,7 +8,7 @@ import {
   gradientSeam,
   SEAMS,
   CAPS,
-  colorsOwnedBy,
+  joinedCell,
   type JoinCell,
   type JoinSeam,
   type JoinCaps,
@@ -104,41 +104,35 @@ describe("Strip render walk", () => {
   });
 });
 
-describe("whose each colour of a strip is", () => {
-  /** Each cell's ink and ground, as `ink/ground` by the owning item's name, or `-` for a colour no item's. */
-  const owners = (strip: Strip): string[] => {
+describe("what each cell of a strip is drawn from", () => {
+  /** Each cell as what drew it: an item's own, or a join cell's neighbours read, as `left/right` by name or `-` for a side it reads nothing of. */
+  const drawnFrom = (strip: Strip): string[] => {
     const frame = [render(strip)];
     const width = frame[0]!.reduce((cells, segment) => cells + segment.cellLength, 0);
+    const name = (owner: object | null): string => (owner === RED ? "red" : owner === BLUE ? "blue" : "-");
     return Array.from({ length: width }, (_, x) => {
-      const anchor = Segment.anchorAt(frame, x, 0);
-      const of = (side: "fg" | "bg"): string => (colorsOwnedBy(anchor, new Set([RED]))[side] ? "red" : colorsOwnedBy(anchor, new Set([BLUE]))[side] ? "blue" : "-");
-      return `${of("fg")}/${of("bg")}`;
+      const joined = joinedCell(Segment.anchorAt(frame, x, 0));
+      return joined === undefined ? "item" : `${name(joined.reads.left)}/${name(joined.reads.right)}`;
     });
   };
-  const of = (owner: string, cells: number): string[] => Array.from({ length: cells }, () => owner);
+  const of = (what: string, cells: number): string[] => Array.from({ length: cells }, () => what);
 
-  it("is the item that drew it, and a seam's arrow is inked by the item it points out of over the item it points into", () => {
-    // lead in reverse video over red, " red ", the arrow, " blue ", tail
-    expect(owners(new Strip([RED, BLUE], JOINERS.powerline))).toEqual(["-/red", ...of("red/red", 5), "red/blue", ...of("blue/blue", 6), "blue/-"]);
+  it("reads a seam's arrow off the item it points out of and the item it points into, and a cap off the one item it ends", () => {
+    // lead, " red ", the arrow, " blue ", tail
+    expect(drawnFrom(new Strip([RED, BLUE], JOINERS.powerline))).toEqual(["-/red", ...of("item", 5), "red/blue", ...of("item", 6), "blue/-"]);
   });
 
-  it("leaves the terminal's ground no item's", () => {
+  it("reads a cell on the terminal's ground off the one neighbour its ink names", () => {
     // lead, " red ", close, a blank in red's ink, open, " blue ", close
-    expect(owners(new Strip([RED, BLUE], JOINERS.capsule))).toEqual(["red/-", ...of("red/red", 5), ...of("red/-", 2), "blue/-", ...of("blue/blue", 6), "blue/-"]);
+    expect(drawnFrom(new Strip([RED, BLUE], JOINERS.capsule))).toEqual(["-/red", ...of("item", 5), ...of("red/-", 2), "-/blue", ...of("item", 6), "blue/-"]);
   });
 
-  it("leaves a colour mixed from the two grounds no item's", () => {
-    expect(owners(new Strip([RED, BLUE], JOINERS.prism))).toEqual(["-/red", ...of("red/red", 5), "red/-", "-/-", "-/blue", ...of("blue/blue", 6), "blue/-"]);
+  it("reads a colour mixed from the two grounds off both", () => {
+    expect(drawnFrom(new Strip([RED, BLUE], JOINERS.prism))).toEqual(["-/red", ...of("item", 5), ...of("red/blue", 3), ...of("item", 6), "blue/-"]);
   });
 
-  it("is one of a set of owners wherever it is any one of theirs, and none of the empty set's", () => {
-    const frame = [render(new Strip([RED, BLUE], JOINERS.powerline))];
-    const cells = Array.from({ length: frame[0]!.reduce((n, segment) => n + segment.cellLength, 0) }, (_, x) => Segment.anchorAt(frame, x, 0));
-    const owned = (owners: ReadonlySet<object>) => cells.map((anchor) => colorsOwnedBy(anchor, owners));
-    const red = owned(new Set([RED]));
-    const blue = owned(new Set([BLUE]));
-    expect(owned(new Set([RED, BLUE]))).toEqual(red.map((r, x) => ({ fg: r.fg || blue[x]!.fg, bg: r.bg || blue[x]!.bg })));
-    expect(owned(new Set()).some((side) => side.fg || side.bg)).toBe(false);
+  it("reads a role off neither neighbour", () => {
+    expect(drawnFrom(new Strip([RED, BLUE], JOINERS.plain))).toEqual([...of("item", 5), ...of("-/-", 3), ...of("item", 6)]);
   });
 });
 

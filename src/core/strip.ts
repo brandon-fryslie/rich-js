@@ -83,40 +83,11 @@ export interface Joiner<T extends StyledRenderable = StyledRenderable> {
  * not draw at all. An effect reads it to leave a seam out of the words it
  * keeps legible (`drawnOf`, `../renderables/effect.ts`).
  *
- * Inside it, every cell a `CellJoiner` draws names whose colour each of its
- * two sides shows (`colorsOwnedBy`). One seam cell can show two neighbours —
- * a powerline arrow is inked in the fill it points out of, over the fill it
- * points into — so a cell has no single owner; each side has one.
+ * Inside it, every cell a `CellJoiner` draws is stamped with what it was
+ * resolved from (`JoinedCell`), so a cell whose neighbours an effect moves is
+ * resolved again from where they moved to.
  */
 export const JOIN: object = Object.freeze({ name: "join" });
-
-/**
- * Whose colour each side of a join cell shows on screen, its ink and its
- * ground: the neighbour whose edge a `Paint` names, or `null` for a role, a
- * mix or the terminal's ground, which are no neighbour's.
- */
-class ColorOwners {
-  constructor(
-    readonly fg: object | null,
-    readonly bg: object | null,
-  ) {}
-}
-
-/**
- * Which of a cell's two colours on screen are one of `owners`': both, for a
- * cell one of them drew, itself or through an owner nested in its output; for
- * a cell a `CellJoiner` drew, the sides shown in one of their colours.
- */
-export function colorsOwnedBy(anchor: Anchor | undefined, owners: ReadonlySet<object>): { readonly fg: boolean; readonly bg: boolean } {
-  for (let level = anchor; level; level = level.inner) {
-    if (owners.has(level.owner)) return { fg: true, bg: true };
-    if (level.owner instanceof ColorOwners) {
-      const { fg, bg } = level.owner;
-      return { fg: fg !== null && owners.has(fg), bg: bg !== null && owners.has(bg) };
-    }
-  }
-  return { fg: false, bg: false };
-}
 
 /**
  * [LAW:single-enforcer] What `joiner` draws at one join, every cell stamped
@@ -553,6 +524,9 @@ function resolvePaint(paint: Paint, edges: Edges, options: RenderOptions): Color
   return a && b && ColorSpec.blend(a, b, t);
 }
 
+// [LAW:single-enforcer] The one resolution of a join cell's paints: at join
+// time, and again whenever an effect moves the neighbours it reads
+// (`JoinedCell`).
 function cellStyle(cell: JoinCell, edges: Edges, options: RenderOptions): Style {
   // [LAW:dataflow-not-control-flow] "ground" is the absence of a colour on its
   // side; as the fg it is reverse video over the bg colour, so the glyph's ink
@@ -562,6 +536,72 @@ function cellStyle(cell: JoinCell, edges: Edges, options: RenderOptions): Style 
   // [LAW:dataflow-not-control-flow] Every cell's ink is held off its ground;
   // the gap measured between them decides how far it moves, usually not at all.
   return new Style({ color: standOff(resolvePaint(cell.fg, edges, options), bgcolor, options.colorSystem ?? ColorDepth.TRUECOLOR), bgcolor });
+}
+
+// Whether `cell` paints with anything of `side`'s edge, its ground or its text.
+const readsEdge = (cell: JoinCell, side: "left" | "right"): boolean =>
+  [cell.fg, cell.bg].some((color) => color !== "ground" && [...paintsIn(color)].some((p) => "edge" in p && p.edge === side));
+
+/**
+ * Where an effect moved one slot or both of a neighbour's edge cell to, each
+ * the colour the screen shows once the slot is written: `color` for its text,
+ * `bgcolor` for its ground. A slot left unset did not move.
+ */
+export interface EdgeMove {
+  readonly color?: ColorSpec;
+  readonly bgcolor?: ColorSpec;
+}
+
+/**
+ * A cell a `CellJoiner` drew, as what it is: one function of its two
+ * neighbours' edges. It holds the cell's paints, the neighbour each side of
+ * them reads, and the edges and render it was resolved from, and it is stamped
+ * on the cell as the owner of its innermost anchor level.
+ *
+ * [LAW:one-source-of-truth] A seam's colours are its neighbours', so nothing
+ * paints them but this resolution. An effect paints a strip's items and never
+ * a join cell; once the items are painted, each join cell is handed what moved
+ * at the item cells beside it and resolved again through `cellStyle`, the path
+ * the join was drawn by, lift included (`../renderables/effect.ts`). A seam
+ * then follows its neighbours wherever an effect takes them, a mix of the two
+ * included, and an effect that paints both one colour leaves the seam's ink
+ * lifted off it.
+ */
+export class JoinedCell {
+  /** The neighbour whose edge the cell's paints read on each side, or `null` for a side they read nothing of. */
+  readonly reads: { readonly left: object | null; readonly right: object | null };
+  /** The cell as drawn from its edges: the one resolution, at join time and after an effect alike. */
+  readonly style: Style;
+
+  constructor(
+    private readonly cell: JoinCell,
+    neighbours: { readonly left: object | null; readonly right: object | null },
+    private readonly edges: Edges,
+    private readonly options: RenderOptions,
+  ) {
+    this.reads = { left: readsEdge(cell, "left") ? neighbours.left : null, right: readsEdge(cell, "right") ? neighbours.right : null };
+    this.style = cellStyle(cell, edges, options);
+  }
+
+  /**
+   * The cell resolved again once each side's edge has moved as `moves` says:
+   * its `colors`, as `cellStyle` draws them, and `style`, the cell's own, with
+   * the record of that stamped where this one was, so an effect drawn over
+   * this one moves on from these edges.
+   */
+  rederived(moves: { readonly left?: EdgeMove; readonly right?: EdgeMove }, style: Style): { readonly colors: Style; readonly style: Style } {
+    const moved = (edge: Style | undefined, move: EdgeMove | undefined): Style | undefined =>
+      move === undefined ? edge : new Style({ color: move.color ?? edge?.color, bgcolor: move.bgcolor ?? edge?.bgcolor });
+    const next = new JoinedCell(this.cell, this.reads, { left: moved(this.edges.left, moves.left), right: moved(this.edges.right, moves.right) }, this.options);
+    const restamp = (level: Anchor): Anchor => ({ ...level, owner: level.owner === this ? next : level.owner, inner: level.inner && restamp(level.inner) });
+    return { colors: next.style, style: style.withAnchor(style.anchor && restamp(style.anchor)) };
+  }
+}
+
+/** The record a `CellJoiner` stamped on the cell `anchor` names, or none for a cell no `CellJoiner` drew. */
+export function joinedCell(anchor: Anchor | undefined): JoinedCell | undefined {
+  for (let level = anchor; level; level = level.inner) if (level.owner instanceof JoinedCell) return level.owner;
+  return undefined;
 }
 
 const shapeGlyphs = (shape: JoinShape): string => PARTS.flatMap((part) => shape[part].flatMap(glyphsOf)).join("");
@@ -607,13 +647,10 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
         const leads = hasRight && (!reads.lead || rightBg !== undefined);
         const tails = hasLeft && (!reads.tail || leftBg !== undefined);
         const neighbours = { left, right };
-        // On screen a cell's ink is its `fg` paint and its ground its `bg`,
-        // reverse video or not (`cellStyle`).
-        const ownerOf = (color: CellColor): object | null => (color !== "ground" && "edge" in color ? neighbours[color.edge] : null);
         const styled = (part: Part) =>
           drawn[part].map((cell, at) => {
-            const owners = new ColorOwners(ownerOf(cell.fg), ownerOf(cell.bg));
-            return new Segment(pickGlyph(cell, part, index, at), cellStyle(cell, edges, options).withAnchor({ owner: owners, row: 0, col: 0, inner: undefined }));
+            const joined = new JoinedCell(cell, neighbours, edges, options);
+            return new Segment(pickGlyph(cell, part, index, at), joined.style.withAnchor({ owner: joined, row: 0, col: 0, inner: undefined }));
           });
         if (!hasLeft || !hasRight) {
           if (leads || tails) yield* styled(leads ? "lead" : "tail");

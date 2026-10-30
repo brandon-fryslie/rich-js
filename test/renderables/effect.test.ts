@@ -558,14 +558,17 @@ describe("confined — an effect on its owners' cells", () => {
     expect(movedSides(new Strip(items, JOINERS.powerline), items[1]!)).toEqual(["", "", "", "", "bg", "fgbg", "fgbg", "fgbg", "fg", "", "", "", ""]);
   });
 
-  it("gives a cell's attributes to whoever owns its ink", () => {
+  it("moves the attributes of its owner's cells, and leaves a seam's as the joiner drew them", () => {
     const items = trio();
     const bolden: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, attributes: { ...look.attributes, bold: true } }));
     const bold = [...effected(new Strip(items, JOINERS.powerline), confined(bolden, items[1]!)).render({ maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR })].flatMap((s) =>
       [...graphemes(s.text)].filter((glyph) => glyph !== "\n").map(() => s.style?.bold === true),
     );
-    // As `movedSides` above: the arrow into the item is drawn in the item's fill as its ground only, so it stays as it was.
-    expect(bold).toEqual([false, false, false, false, false, true, true, true, true, false, false, false, false]);
+    // A join cell is no item's, so no effect is handed it: its colours are
+    // resolved again from the item cells beside it, and its attributes, which
+    // a joiner never takes from a neighbour, stay as it drew them. Both arrows
+    // beside the item keep theirs.
+    expect(bold).toEqual([false, false, false, false, false, true, true, true, false, false, false, false, false]);
   });
 
   it("moves two owners' colours, the whole seam between them, and only their side of the seam beside a third", () => {
@@ -592,8 +595,9 @@ describe("confined — an effect on its owners' cells", () => {
     };
     sides(effected(new Strip(items, JOINERS.powerline), confined(counting, items[1]!, items[2]!)));
     expect(frames).toEqual([0]);
-    // the arrow into the second item, " x ", the arrow into the third, " x ", tail
-    expect(handed).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    // " x " and " x ": a seam or a cap is no item's, so it is neither handed
+    // nor listed, and follows the items beside it.
+    expect(handed).toEqual([5, 6, 7, 9, 10, 11]);
     // and lists them to the effect, before its frame is handed any
     expect(listed).toEqual(handed);
   });

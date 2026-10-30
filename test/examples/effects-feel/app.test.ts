@@ -25,7 +25,7 @@ import {
 import { cellLen, graphemes } from "../../../src/core/cells.js";
 import { runDemo } from "../../../examples/effects-feel/app.js";
 import { shares } from "../../../src/renderables/effects.js";
-import { JOIN } from "../../../src/core/strip.js";
+import { JOIN, SEAM_MIN_DELTA_E } from "../../../src/core/strip.js";
 import { drawnSubject, stripSubject, textSubject } from "../../../examples/effects-feel/subjects.js";
 import { parseSettings } from "../../../examples/effects-feel/settings.js";
 import { LOOPS, TRANSITIONS, envAtDepth } from "../../../examples/effects-feel/vocabulary.js";
@@ -234,14 +234,15 @@ describe("a strip under a pulse", () => {
       const rgba = new Map(pairs.flatMap(({ fg, bg }) => [fg, bg]).map((c) => [c.hex, c]));
       const still = new Set(["ground", ...[...share].filter(([hex, s]) => loop.touch(rgba.get(hex)!, s).hex === hex).map(([hex]) => hex)]);
       // A seam's ink lifted off a fill it would vanish into is a colour no
-      // lettering sets, and the pulse moves only the colours it measured, so
-      // that ink holds still while the fill beside it moves — until a join is
-      // re-derived from its effected edges (rich-joiners-er38.edp).
+      // lettering sets. The pulse never measures it: the seam is resolved
+      // again from the fills beside it, so the ink holds still only where both
+      // of them do.
       const lifted = (hex: string): boolean => hex !== "ground" && !rgba.has(hex);
       const joins = [...strip.renderable.render(options)].flatMap((segment) => graphemes(segment.text).map(() => joined(segment.style ?? Style.null())));
       before.forEach(([fg, bg], i) => expect([fg, bg, lifted(bg), lifted(fg) && !joins[i]]).toEqual([fg, bg, false, false]));
+      const holds = (i: number, was: string): boolean => (lifted(was) ? still.has(before[i - 1]![1]) && still.has(before[i]![1]) : still.has(was));
       before.forEach((pair, i) =>
-        pair.forEach((was, slot) => expect([was, frames.every((after) => after[i]![slot] === was)]).toEqual([was, still.has(was) || lifted(was)])),
+        pair.forEach((was, slot) => expect([was, frames.every((after) => after[i]![slot] === was)]).toEqual([was, holds(i, was)])),
       );
 
     },
@@ -255,19 +256,28 @@ describe("a strip under a pulse", () => {
       // of, lettering and its fill — still show one as far as the eye can
       // tell (dE_OK 0.02), on the inhale and the exhale where the breath is
       // steepest as well as at its top. Near black an 8-bit step is large in
-      // OKLab's lightness, and a display shows none of it.
+      // OKLab's lightness, and a display shows none of it. Where the breath
+      // brings an arrow's two fills within the seam's floor, its ink is
+      // lifted off its ground, and leaves the fill it points out of by as
+      // much as the floor needs.
       const pulseCurve = parseSettings([])!.curves.pulse;
       const strip = drawnSubject(stripSubject(theme), options);
       const lit = onColors(pulse(pulseCurve, EFFECT_LIGHTS.sun, strip.z));
       const before = colorsByCell(strip.renderable, theme);
+      const joins = [...strip.renderable.render(options)].flatMap((segment) => graphemes(segment.text).map(() => joined(segment.style ?? Style.null())));
       const oklch = (hex: string) => Oklch.fromRgba(ColorSpec.parse(hex).getTruecolor());
       const seen = (a: string, b: string) => (Math.max(oklch(a).l, oklch(b).l) < 0.2 ? 0 : oklch(a).deltaE(oklch(b)));
       for (let t = 0; t < pulseCurve.seconds; t += 0.5) {
         const after = colorsByCell(new Effected(strip.renderable, lit, { key: "strip", theme }).at(t), theme);
+        // A seam between two fills: a cap on the terminal's ground has nothing to be lifted off.
+        const lifted = (k: number): boolean =>
+          joins[k]! && ![after[k - 1]![1], after[k]![1]].includes("ground") && oklch(after[k - 1]![1]).deltaE(oklch(after[k]![1])) < SEAM_MIN_DELTA_E;
         before.slice(1).forEach((pair, i) =>
           pair.forEach((was, slot) =>
             before[i]!.forEach((left, leftSlot) => {
-              if (left === was && was !== "ground") expect(seen(after[i]![leftSlot]!, after[i + 1]![slot]!), `${was} at ${t}`).toBeLessThan(0.02);
+              if (left !== was || was === "ground") return;
+              if (slot === 0 && lifted(i + 1)) expect(oklch(after[i + 1]![0]).deltaE(oklch(after[i + 1]![1])), `${was} at ${t}`).toBeGreaterThanOrEqual(SEAM_MIN_DELTA_E);
+              else expect(seen(after[i]![leftSlot]!, after[i + 1]![slot]!), `${was} at ${t}`).toBeLessThan(0.02);
             }),
           ),
         );

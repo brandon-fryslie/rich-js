@@ -8,9 +8,13 @@
  * (`EffectFrame`), and it says when that next changes as every
  * animation does. Whatever holds for the whole frame is worked out once, in
  * the effect and its `at(t)`, and every cell of the frame is handed to the
- * function `at(t)` returns, but for those a wrapper keeps back: `confined`
+ * function `at(t)` returns, but for those a wrapper keeps back — `confined`
  * hands over only the cells its owners drew, so an effect never counts on
- * seeing them all. Shimmer, pulse, fade, dissolve and a blinking attribute
+ * seeing them all — and for a strip's join cells, which are no one's to paint:
+ * a seam's colours are its neighbours' edges, so once the effect has painted
+ * every other cell, each join cell is resolved again from the cells beside it
+ * as the effect left them (`JoinedCell`, `../core/strip.ts`), the way the
+ * joiner drew it. Shimmer, pulse, fade, dissolve and a blinking attribute
  * are all this one shape, differing by what the function does with its
  * inputs [LAW:one-type-per-behavior]; two effects stack by nesting one
  * wrapper in another, which is the same as calling one after the other but
@@ -74,7 +78,7 @@ import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
-import { JOIN, colorsOwnedBy } from "../core/strip.js";
+import { JOIN, joinedCell, type EdgeMove, type JoinedCell } from "../core/strip.js";
 import { ATTRIBUTE_NAMES, Style, type AttributeName, type Attributes } from "../core/style.js";
 import { finiteTime } from "../core/easing.js";
 
@@ -160,9 +164,10 @@ export interface Drawn {
    * sits and who drew it, listed before the effect is handed any: what
    * an effect spread over the element — a transition, which has its last cell
    * settle as it ends — is spread over. A blank cell on the terminal's ground
-   * that draws no line is handed but not listed, since nothing in it shows.
-   * `confined` narrows it to the cells its owners drew. A call, so a frame
-   * whose effect does not ask lists none.
+   * that draws no line is handed but not listed, since nothing in it shows,
+   * and a strip's join cell is listed but never handed, since it follows the
+   * cells beside it. `confined` narrows it to the cells its owners drew. A
+   * call, so a frame whose effect does not ask lists none.
    */
   cells(): readonly Placed[];
   /** Every distinct ink and ground of a word cell. */
@@ -264,47 +269,90 @@ export class Recolored implements Renderable, Measurable {
   }
 
   private *_recolored(walked: readonly Walked[], frame: EffectFrame, depth: ColorDepth): Iterable<Segment> {
-    for (const { segment, look, glyphs } of walked) {
-      if (look === undefined) {
-        yield segment;
-        continue;
-      }
-      const { style: base, wire, slots, pair, attributes } = look;
-      const { terminal } = pair;
-      const from: CellLook = { fg: pair.fg, bg: pair.bg, attributes };
-      // [LAW:one-source-of-truth] A run is cells the wire writes alike: each
-      // cell is drawn at the output depth first and merged on the colours that
-      // writes and on its attributes, so two truecolors landing on one index
-      // stay one run. A cell the effect gave its neighbour's look is drawn as
-      // that neighbour was.
-      const runs: { text: string; cells: number; colors: CellColors; attributes: CellAttributes; drawn: DrawnColors }[] = [];
-      for (const { glyph, cell } of glyphs) {
-        const moved = cell === undefined ? from : returned(frame(from, { ...cell, seed: cellSeed(this.key, cell.row, cell.col), terminal, reverse: pair.reverse }));
-        // Back from the screen to the style's slots: the same swap undoes itself.
-        const colors = onScreen(moved, pair.reverse);
-        const last = runs[runs.length - 1];
-        const writes = last !== undefined && sameColors(last.colors, colors) ? last.drawn : this.respec(wire, slots, colors, depth);
-        if (last !== undefined && writesAlike(last.drawn, writes) && sameAttributes(last.attributes, moved.attributes)) {
-          last.text += glyph;
-          last.cells += cellLen(glyph);
-          last.colors = colors;
-        } else {
-          runs.push({ text: glyph, cells: cellLen(glyph), colors, attributes: moved.attributes, drawn: writes });
-        }
-      }
-      if (runs.every((run) => writesAlike(run.drawn, wire) && sameAttributes(run.attributes, attributes))) {
-        yield segment;
-        continue;
-      }
-      let offset = 0;
-      for (const run of runs) {
-        const placed = base.shiftedBy(offset);
-        const shifted = sameAttributes(run.attributes, attributes) ? placed : placed.withAttributes(cellAttributes(run.attributes));
-        const style = writesAlike(run.drawn, wire) ? shifted : shifted.add(Style.fromColor(run.drawn.color, run.drawn.bgcolor));
-        yield new Segment(run.text, style);
-        offset += run.cells;
+    // [LAW:one-source-of-truth] Every cell but a join cell's is painted first,
+    // so a join cell is resolved from the cells beside it as the effect left
+    // them, wherever in the frame they fall.
+    const drawings = walked.map(({ look, glyphs }): Drawing | undefined => {
+      if (look === undefined) return undefined;
+      const joined = joinedCell(look.style.anchor);
+      if (joined !== undefined) return { joined };
+      const from: CellLook = { fg: look.pair.fg, bg: look.pair.bg, attributes: look.attributes };
+      const { terminal, reverse } = look.pair;
+      return { painted: glyphs.map(({ cell }) => (cell === undefined ? from : returned(frame(from, { ...cell, seed: cellSeed(this.key, cell.row, cell.col), terminal, reverse })))) };
+    });
+    const beside = edgesBeside(walked, drawings);
+    for (const [i, { segment, look, glyphs }] of walked.entries()) {
+      const drawing = drawings[i];
+      if (look === undefined || drawing === undefined) yield segment;
+      else if ("joined" in drawing) yield this._rejoined(segment, look, drawing.joined, glyphs, beside, depth);
+      else yield* this._repainted(segment, look, glyphs, drawing.painted, depth);
+    }
+  }
+
+  /** `segment`'s cells drawn in the looks the effect painted them. */
+  private *_repainted(segment: Segment, look: Look, glyphs: readonly WalkedGlyph[], moved: readonly CellLook[], depth: ColorDepth): Iterable<Segment> {
+    const { style: base, wire, slots, pair, attributes } = look;
+    // [LAW:one-source-of-truth] A run is cells the wire writes alike: each
+    // cell is drawn at the output depth first and merged on the colours that
+    // writes and on its attributes, so two truecolors landing on one index
+    // stay one run. A cell the effect gave its neighbour's look is drawn as
+    // that neighbour was.
+    const runs: { text: string; cells: number; colors: CellColors; attributes: CellAttributes; drawn: DrawnColors }[] = [];
+    for (const [k, { glyph }] of glyphs.entries()) {
+      const now = moved[k]!;
+      // Back from the screen to the style's slots: the same swap undoes itself.
+      const colors = onScreen(now, pair.reverse);
+      const last = runs[runs.length - 1];
+      const writes = last !== undefined && sameColors(last.colors, colors) ? last.drawn : this.respec(wire, slots, colors, depth);
+      if (last !== undefined && writesAlike(last.drawn, writes) && sameAttributes(last.attributes, now.attributes)) {
+        last.text += glyph;
+        last.cells += cellLen(glyph);
+        last.colors = colors;
+      } else {
+        runs.push({ text: glyph, cells: cellLen(glyph), colors, attributes: now.attributes, drawn: writes });
       }
     }
+    if (runs.every((run) => writesAlike(run.drawn, wire) && sameAttributes(run.attributes, attributes))) {
+      yield segment;
+      return;
+    }
+    let offset = 0;
+    for (const run of runs) {
+      const placed = base.shiftedBy(offset);
+      const shifted = sameAttributes(run.attributes, attributes) ? placed : placed.withAttributes(cellAttributes(run.attributes));
+      const style = writesAlike(run.drawn, wire) ? shifted : shifted.add(Style.fromColor(run.drawn.color, run.drawn.bgcolor));
+      yield new Segment(run.text, style);
+      offset += run.cells;
+    }
+  }
+
+  /**
+   * A join cell's `segment` resolved again from the edges beside it, as the
+   * effect left them: each neighbour's nearest cell to the join on its row,
+   * its slots written as the depth writes them, through the writer every
+   * painted cell is written by. A side whose neighbour the effect moved
+   * nothing of keeps the edge the cell was drawn from, so with neither moved
+   * the cell is as it was drawn.
+   */
+  private _rejoined(segment: Segment, look: Look, joined: JoinedCell, glyphs: readonly WalkedGlyph[], beside: EdgesBeside, depth: ColorDepth): Segment {
+    const cells = glyphs.flatMap(({ cell }) => (cell === undefined ? [] : [cell]));
+    const { theme } = this;
+    // The slots of the cell an effect painted, as the depth writes them on the
+    // terminal it is drawn on: what a seam beside it continues.
+    const moveOf = (edge: PaintedCell | undefined): EdgeMove | undefined => {
+      if (edge === undefined) return undefined;
+      const written = movedSpecs(edge.look.slots, onScreen(edge.moved, edge.look.pair.reverse), depth, theme);
+      return written.fg === undefined && written.bg === undefined
+        ? undefined
+        : { color: written.fg && ColorSpec.fromRgba(written.fg.getTruecolor(theme, true)), bgcolor: written.bg && ColorSpec.fromRgba(written.bg.getTruecolor(theme, false)) };
+    };
+    const moves = { left: moveOf(beside(cells, "left", joined.reads.left)), right: moveOf(beside(cells, "right", joined.reads.right)) };
+    if (moves.left === undefined && moves.right === undefined) return segment;
+    const { colors, style } = joined.rederived(moves, look.style);
+    const { wire, slots } = look;
+    const to = { fg: colors.color?.getTruecolor(theme, true) ?? slots.fg, bg: colors.bgcolor?.getTruecolor(theme, false) ?? slots.bg };
+    const writes = this.respec(wire, slots, to, depth);
+    return new Segment(segment.text, writesAlike(writes, wire) ? style : style.add(Style.fromColor(writes.color, writes.bgcolor)));
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
@@ -491,6 +539,65 @@ function walk(looked: readonly Looked[]): Walked[] {
   return looked.map((item, i) => ({ ...item, glyphs: placed[i]! }));
 }
 
+/**
+ * How a segment's cells are drawn in an effect's frame: `painted`, each in the
+ * look the effect left it in, or `joined`, a join cell resolved again from the
+ * painted cells beside it.
+ */
+type Drawing = { readonly painted: readonly CellLook[] } | { readonly joined: JoinedCell };
+
+/** A cell the effect painted: where it sits and who drew it, how its segment is drawn, and the look the effect left it in. */
+interface PaintedCell {
+  readonly col: number;
+  readonly anchor: Anchor | undefined;
+  readonly look: Look;
+  readonly moved: CellLook;
+}
+
+/**
+ * The cell `owner` drew nearest a join on the join's row, on `side` of the
+ * join's `cells` — or none, for no owner, or one that drew no cell there: a
+ * strip cut short by a narrower container, or an item that draws nothing.
+ */
+type EdgesBeside = (cells: readonly Placed[], side: "left" | "right", owner: object | null) => PaintedCell | undefined;
+
+/**
+ * Where to find the cells beside a join in `walked`, painted as `painted` says.
+ * Read by owner, never by column alone: a `FlexStrip` can set a gap or a
+ * justified fill between a seam and the items it joins.
+ */
+function edgesBeside(walked: readonly Walked[], drawings: readonly (Drawing | undefined)[]): EdgesBeside {
+  let rows: Map<number, PaintedCell[]> | undefined;
+  const index = (): Map<number, PaintedCell[]> => {
+    const byRow = new Map<number, PaintedCell[]>();
+    walked.forEach(({ look, glyphs }, i) => {
+      const drawing = drawings[i];
+      if (look === undefined || drawing === undefined || !("painted" in drawing)) return;
+      const moved = drawing.painted;
+      glyphs.forEach(({ cell }, k) => {
+        if (cell === undefined) return;
+        const row = byRow.get(cell.row) ?? [];
+        row.push({ col: cell.col, anchor: cell.anchor, look, moved: moved[k]! });
+        byRow.set(cell.row, row);
+      });
+    });
+    return byRow;
+  };
+  return (cells, side, owner) => {
+    if (owner === null || cells.length === 0) return undefined;
+    // Cells on a row are listed left to right, as the walk places them.
+    const row = (rows ??= index()).get(cells[0]!.row) ?? [];
+    const first = cells[0]!.col;
+    const last = cells[cells.length - 1]!.col;
+    if (side === "right") return row.find((cell) => cell.col > last && drawnBy(cell.anchor, owner));
+    for (let k = row.length - 1; k >= 0; k--) {
+      const cell = row[k]!;
+      if (cell.col < first && drawnBy(cell.anchor, owner)) return cell;
+    }
+    return undefined;
+  };
+}
+
 /** Whether `style` draws in its ink on a blank glyph: a line under, through or over it, or a frame round it. */
 function drawsLines(style: Style): boolean {
   return [style.underline, style.underline2, style.strike, style.overline, style.frame, style.encircle].some((on) => on === true);
@@ -527,32 +634,26 @@ function measured(looked: readonly Looked[], walked: () => readonly Walked[], de
 }
 
 /**
- * `effect` on the colours any of `owners` drew, itself or through an owner
- * nested in its output, and every other colour left as it is: one item of a
+ * `effect` on the cells any of `owners` drew, itself or through an owner
+ * nested in its output, and every other cell left as it is: one item of a
  * strip whose items share a fill, the items of a row one other item stands
- * apart from, one widget of a screen. A seam cell shows its two neighbours
- * side by side, a powerline arrow in the fill it points out of over the fill
- * it points into, so each side moves with its own item (`colorsOwnedBy`,
- * `../core/strip.ts`). A cell none of them drew is never handed to the
+ * apart from, one widget of a screen. A strip's join cell is no item's, so it
+ * is never handed; it follows the item cells beside it, the moved ones
+ * included (`Recolored`). A cell none of them drew is never handed to the
  * effect, so confining one effect to many owners costs one call a cell, not
  * one for each owner.
  */
 export function confined(effect: Effect, ...owners: readonly object[]): Effect {
   const confinedTo: ReadonlySet<object> = new Set(owners);
-  // [LAW:single-enforcer] One reading of which slots are owned, for the cells listed and the cells handed alike.
-  const ownedOf = (cell: Placed) => colorsOwnedBy(cell.anchor, confinedTo);
-  const any = ({ fg, bg }: { fg: boolean; bg: boolean }): boolean => fg || bg;
+  // [LAW:single-enforcer] One reading of whose a cell is, for the cells listed and the cells handed alike.
+  const owned = (cell: Placed): boolean => {
+    for (let level = cell.anchor; level; level = level.inner) if (confinedTo.has(level.owner)) return true;
+    return false;
+  };
   // The frame as the effect sees it: the owners' cells alone. [LAW:one-source-of-truth] One narrowing, handed to both stages.
-  const owned = (drawn: Drawn): Drawn => ({ ...drawn, cells: () => drawn.cells().filter((cell) => any(ownedOf(cell))) });
+  const narrowed = (drawn: Drawn): Drawn => ({ ...drawn, cells: () => drawn.cells().filter(owned) });
   // The owners' cells change when the effect's frame does.
-  return (drawn) =>
-    Animation.map(effect(owned(drawn)), (frame): EffectFrame => (look, cell) => {
-      const owns = ownedOf(cell);
-      if (!any(owns)) return look;
-      const moved = frame(look, cell);
-      // An attribute is drawn on the glyph, in its ink, so it moves with whoever owns the ink.
-      return { fg: owns.fg ? moved.fg : look.fg, bg: owns.bg ? moved.bg : look.bg, attributes: owns.fg ? moved.attributes : look.attributes };
-    });
+  return (drawn) => Animation.map(effect(narrowed(drawn)), (frame): EffectFrame => (look, cell) => (owned(cell) ? frame(look, cell) : look));
 }
 
 /**
