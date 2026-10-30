@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-515",
+      "ref": "refs/pull/515/merge",
+      "sha": "a9745f0ca4763394a1cf084fd5c9733a65171075",
+      "timestamp": "2026-10-30T11:40:56.834Z",
+      "commits": [
+        {
+          "sha": "a9745f0ca4763394a1cf084fd5c9733a65171075",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T05:39:12-06:00",
+          "message": "Merge 3a8f82697c84f0e76e3509e0bf10c584023e5dbb into f83b514b330b9df0e4e340842d32891fd4d9ca6f\n"
+        },
+        {
+          "sha": "3a8f82697c84f0e76e3509e0bf10c584023e5dbb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T05:38:14-06:00",
+          "message": "A joiner always draws its seam, lifting the fg off a bg it would vanish into (rich-joiners-er38.0jr)\n"
+        },
+        {
+          "sha": "21ce91970e47c4276d141af6f3902b52ff62f1f1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T05:17:20-06:00",
+          "message": "Pin 0.24.1's bytes for joins whose every seam cell already shows (rich-joiners-er38.0jr)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f83b514b330b9df0e4e340842d32891fd4d9ca6f",
