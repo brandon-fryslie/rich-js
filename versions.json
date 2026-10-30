@@ -4,15 +4,22 @@
     {
       "version": "pr-515",
       "ref": "refs/pull/515/merge",
-      "sha": "579eb7068dcd1195f3544409f18ea20b549fdccb",
-      "timestamp": "2026-10-30T11:55:33.443Z",
+      "sha": "26e7932e1e83fda75f5cfd9fa6365ceb59043228",
+      "timestamp": "2026-10-30T12:04:26.920Z",
       "commits": [
         {
-          "sha": "579eb7068dcd1195f3544409f18ea20b549fdccb",
+          "sha": "26e7932e1e83fda75f5cfd9fa6365ceb59043228",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T11:54:11Z",
-          "message": "Merge 70cd3dd25d67fa5ab87c26762f655e412075d0ba into f83b514b330b9df0e4e340842d32891fd4d9ca6f\n"
+          "timestamp": "2026-10-30T12:02:30Z",
+          "message": "Merge 8feaaacca4f319fc71be5da801390ba52c1e05ca into f83b514b330b9df0e4e340842d32891fd4d9ca6f\n"
+        },
+        {
+          "sha": "8feaaacca4f319fc71be5da801390ba52c1e05ca",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T06:02:20-06:00",
+          "message": "docs(strip): the seam floor holds as far as a render can see both colours (rich-joiners-er38.0jr)\n\nA cap on the terminal's own background, or a notch in reverse video over it,\nhas a side no render knows, and is drawn as it is. The page opened by\npromising every joiner cell stands off its ground.\n"
         },
         {
           "sha": "70cd3dd25d67fa5ab87c26762f655e412075d0ba",
