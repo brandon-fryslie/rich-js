@@ -37,7 +37,7 @@ import {
   type EffectCell,
   type EffectFrame,
   type Pair,
-  type Placed,
+  type ListedCell,
   type Renderable,
   type Segment,
   type TerminalTheme,
@@ -79,13 +79,26 @@ const PLAIN = cellAttributes(Style.null());
 const colors: CellLook = { fg: ink, bg: ground, attributes: PLAIN };
 /** Neither colour the terminal's: both are the subject's own. */
 const written = { fg: false, bg: false };
-const cells: EffectCell[] = Array.from({ length: 40 }, (_, col) => ({ row: 0, col, seed: (col * 0.6180339) % 1, terminal: written, reverse: false, anchor: undefined }));
+/** A cell a frame lists and hands alike: at `row`, `col`, one column wide, `colors` on it, no owner. */
+const cellAt = (row: number, col: number, seed = 0): EffectCell & ListedCell => ({
+  row,
+  col,
+  seed,
+  terminal: written,
+  reverse: false,
+  anchor: undefined,
+  width: 1,
+  pair: { fg: ink, bg: ground, terminal: written, reverse: false },
+  seam: false,
+});
+const cells = Array.from({ length: 40 }, (_, col) => cellAt(0, col, (col * 0.6180339) % 1));
 
 const sameColor = (a: ColorRgba, b: ColorRgba): boolean => a.red === b.red && a.green === b.green && a.blue === b.blue;
 const distance = (a: ColorRgba, b: ColorRgba): number => Oklch.fromRgba(a).deltaE(Oklch.fromRgba(b));
 const sun = EFFECT_LIGHTS.sun;
 /** A frame of `cells` whose element sets `own` colours, `fills` of them as grounds: what an effect handed it reads. */
 const frame = (own: ReadonlySet<string>, fills: ReadonlySet<string> = new Set(), pairs: readonly Pair[] = []): Drawn => ({
+  all: () => cells,
   cells: () => cells,
   pairs,
   colors: own,
@@ -96,7 +109,7 @@ const frame = (own: ReadonlySet<string>, fills: ReadonlySet<string> = new Set(),
 /** A frame of `cells` whose element sets no colours of its own: one a loop reads only the cells of. */
 const NOTHING = frame(new Set());
 /** `NOTHING`, listing `listed` instead: an element where those cells are. */
-const listing = (listed: readonly Placed[]): Drawn => ({ ...NOTHING, cells: () => listed });
+const listing = (listed: readonly ListedCell[]): Drawn => ({ ...NOTHING, all: () => listed, cells: () => listed });
 /** An effect's frames at each moment, every one drawing the same `Drawn`. */
 type On = (t: number) => EffectFrame;
 /** `effect` in frames that draw `drawn`. */
@@ -158,7 +171,7 @@ describe("the wheel", () => {
   const grounds = new Set(fills.map((c) => c.hex));
   const hue = (c: ColorRgba): number => Oklch.fromRgba(c).h;
   const turned = (from: ColorRgba, to: ColorRgba): number => (((hue(to) - hue(from)) % 360) + 360) % 360;
-  const cell: EffectCell = { row: 0, col: 3, seed: 0, terminal: written, reverse: false, anchor: undefined };
+  const cell: EffectCell = cellAt(0, 3);
 
   it("turns every hue the whole way round once a period, luminance and chroma kept", () => {
     const P = 907;
@@ -187,32 +200,132 @@ describe("the wheel", () => {
     expect(turned(ink, text.fg)).toBeGreaterThan(0);
   });
 
-  it("keeps a powerline cap the colour of the cell it caps: a fill turns at its own pace as ink too", () => {
-    const round = on(wheel(curve(907, 0.25), 0), frame(own, grounds));
+  /** A cell of a listed row at `col` showing `fg` on `bg`: a run's cell, or a cap drawn by hand; `seam` for one a joiner drew. */
+  const shownAt = (col: number, fg: ColorRgba, bg: ColorRgba, seam = false): EffectCell & ListedCell => ({ ...cellAt(0, col), pair: { fg, bg, terminal: written, reverse: false }, seam });
+  /** A run of `span` cells of `ink` on `fill` from column `from`. */
+  const run = (fill: ColorRgba, from: number, span: number): (EffectCell & ListedCell)[] => Array.from({ length: span }, (_, i) => shownAt(from + i, ink, fill));
+  /** The look of `cell` of the `listed` row at `t` under a wheel of `swing`: the frame lists the row and hands the cell. */
+  const lookAt = (listed: readonly ListedCell[], cell: EffectCell & ListedCell, t: number, swing = 1): CellColors =>
+    on(wheel(curve(907, swing), 0), { ...frame(own, grounds), all: () => listed, cells: () => listed })(t)({ fg: cell.pair.fg, bg: cell.pair.bg, attributes: PLAIN }, cell);
+  /** How far `cell`'s ground has turned at `t`, in degrees, as the signed stray from the shared turn. */
+  const strayOf = (listed: readonly ListedCell[], cell: EffectCell & ListedCell, t: number, swing: number): number => {
+    const got = turned(cell.pair.bg, lookAt(listed, cell, t, swing).bg);
+    return ((got - ((360 * t) / 907) % 360 + 540) % 360) - 180;
+  };
+
+  it("keeps a joiner's cap the colour of the run it caps: each colour of a seam turns with the run of that colour beside it", () => {
     const [a, b] = [fills[0]!, fills[1]!];
-    const shown = round(300);
-    const cellA = shown({ fg: ink, bg: a, attributes: PLAIN }, cell).bg;
-    const cellB = shown({ fg: ink, bg: b, attributes: PLAIN }, { ...cell, col: 12 }).bg;
-    const cap = shown({ fg: a, bg: b, attributes: PLAIN }, { ...cell, col: 11 });
-    expect(cap.fg.hex).toBe(cellA.hex);
-    expect(cap.bg.hex).toBe(cellB.hex);
-    // The last cap, onto the terminal's ground, keeps its cell's colour too.
-    expect(shown({ fg: b, bg: ground, attributes: PLAIN }, { ...cell, col: 20 }).fg.hex).toBe(cellB.hex);
+    // Eight cells of `a`, a joiner's cap of `a` on `b`, seven of `b`, and a tail of `b` on the terminal's ground.
+    const tail = { ...shownAt(16, b, ground, true), terminal: { fg: false, bg: true }, pair: { fg: b, bg: ground, terminal: { fg: false, bg: true }, reverse: false } };
+    const listed = [...run(a, 0, 8), shownAt(8, a, b, true), ...run(b, 9, 7), tail];
+    for (const t of [150, 300, 700]) {
+      const cellA = lookAt(listed, listed[3]!, t).bg;
+      const cellB = lookAt(listed, listed[12]!, t).bg;
+      const cap = lookAt(listed, listed[8]!, t);
+      expect(cap.fg.hex).toBe(cellA.hex);
+      expect(cap.bg.hex).toBe(cellB.hex);
+      expect(lookAt(listed, tail, t).fg.hex).toBe(cellB.hex);
+      expect(cellA.hex).not.toBe(a.hex);
+    }
   });
 
-  it("lets each segment stray from the shared turn by its own amount, within the swing", () => {
-    const P = 907;
+  it("a two-cell seam reads past its other cell: both cells keep the colours of the runs either side", () => {
+    const [a, b] = [fills[0]!, fills[1]!];
+    const listed = [...run(a, 0, 8), shownAt(8, a, b, true), shownAt(9, a, b, true), ...run(b, 10, 7)];
+    for (const t of [150, 300, 700]) {
+      const cellA = lookAt(listed, listed[3]!, t).bg.hex;
+      const cellB = lookAt(listed, listed[13]!, t).bg.hex;
+      for (const seam of [listed[8]!, listed[9]!]) {
+        const look = lookAt(listed, seam, t);
+        expect(look.fg.hex).toBe(cellA);
+        expect(look.bg.hex).toBe(cellB);
+      }
+    }
+  });
+
+  it("a caption in a bar's colour written under the bar turns with it: one colour is one segment however a cell carries it", () => {
+    const a = fills[0]!;
+    const t = 300;
+    const bar = Array.from({ length: 9 }, (_, col) => ({ ...cellAt(0, col), pair: { fg: ink, bg: a, terminal: written, reverse: false } }));
+    const inkOnGround = { fg: false, bg: true };
+    const caption = Array.from({ length: 5 }, (_, col) => ({ ...cellAt(1, 2 + col), terminal: inkOnGround, pair: { fg: a, bg: ground, terminal: inkOnGround, reverse: false } }));
+    const under = [...bar, ...caption];
+    expect(lookAt(under, caption[1]!, t).fg.hex).toBe(lookAt(under, bar[4]!, t).bg.hex);
+    const apart = [...bar, ...caption.map((cell) => ({ ...cell, row: 3 }))];
+    expect(lookAt(apart, apart[10]!, t).fg.hex).not.toBe(lookAt(apart, bar[4]!, t).bg.hex);
+  });
+
+  it("a word in a neighbour's fill colour is a word, not a cap: every letter turns with the ground it sits on", () => {
+    const [a, b] = [fills[0]!, fills[1]!];
+    // Eight cells of `a`, then a word of ink `a` on `b` from the very next column.
+    const listed = [...run(a, 0, 8), ...Array.from({ length: 8 }, (_, i) => shownAt(8 + i, a, b))];
+    for (const t of [150, 300, 700]) {
+      const first = lookAt(listed, listed[8]!, t).fg.hex;
+      expect(first).toBe(lookAt(listed, listed[12]!, t).fg.hex);
+      expect(first).not.toBe(lookAt(listed, listed[3]!, t).bg.hex);
+    }
+  });
+
+  it("a segment spans rows: a ground with words on it is one segment, and two rows apart are two", () => {
+    const a = fills[0]!;
+    const t = 300;
+    const fillAt = (row: number, col: number, bg: ColorRgba): EffectCell & ListedCell => ({ ...cellAt(row, col), pair: { fg: ink, bg, terminal: written, reverse: false } });
+    const hueAt = (listed: readonly (EffectCell & ListedCell)[], row: number, col: number): string =>
+      lookAt(listed, listed.find((cell) => cell.row === row && cell.col === col)!, t).bg.hex;
+    // Three rows of `a` nine wide, the middle row interrupted by a cell of another fill.
+    const block = [0, 1, 2].flatMap((row) => Array.from({ length: 9 }, (_, col) => fillAt(row, col, row === 1 && col === 4 ? fills[1]! : a)));
+    expect(new Set([hueAt(block, 0, 1), hueAt(block, 1, 0), hueAt(block, 1, 8), hueAt(block, 2, 7)]).size).toBe(1);
+    // The same rows with the middle one left out: two segments.
+    const apart = block.filter((cell) => cell.row !== 1);
+    expect(hueAt(apart, 0, 1)).not.toBe(hueAt(apart, 2, 1));
+  });
+
+  it("paces a segment by where it sits: three runs of one fill at three places stray apart, within the swing", () => {
+    const [a, b] = [fills[0]!, fills[1]!];
     const swing = 0.25;
-    const round = on(wheel(curve(P, swing), 0), frame(own, grounds));
-    const shown = round(P / 2);
-    const strays = fills.map((fill) => {
-      const got = turned(fill, shown({ fg: ink, bg: fill, attributes: PLAIN }, cell).bg);
-      return ((got - 180 + 540) % 360) - 180;
-    });
-    // Apart from one another, and none past half a turn times the swing.
-    expect(new Set(strays.map((s) => s.toFixed(0))).size).toBe(fills.length);
+    const listed = [...run(a, 0, 8), ...run(b, 8, 12), ...run(a, 20, 8), ...run(a, 60, 8)];
+    const strays = [3, 23, 63].map((col) => strayOf(listed, listed.find((cell) => cell.col === col)!, 907 / 2, swing));
+    expect(new Set(strays.map((s) => s.toFixed(0))).size).toBe(3);
     for (const stray of strays) expect(Math.abs(stray)).toBeLessThanOrEqual(180 * swing + 1);
     expect(Math.max(...strays.map(Math.abs))).toBeGreaterThan(3);
+  });
+
+  it("a run that grows by a column late in a session moves its hue a little, never a turn", () => {
+    const a = fills[0]!;
+    const [was, grown] = [run(a, 0, 10), run(a, 0, 11)];
+    for (const t of [1e5, 1e5 + 1]) {
+      const moved = Math.abs(strayOf(was, was[3]!, t, 1) - strayOf(grown, grown[3]!, t, 1));
+      expect(moved).toBeLessThan(12);
+    }
+  });
+
+  it("a gap of the terminal's ground or a joiner's seam splits a run; one run turns as one", () => {
+    const a = fills[0]!;
+    const t = 300;
+    const hueAt = (listed: readonly (EffectCell & ListedCell)[], col: number): string => lookAt(listed, listed.find((cell) => cell.col === col)!, t).bg.hex;
+    const whole = run(a, 0, 9);
+    expect(hueAt(whole, 1)).toBe(hueAt(whole, 6));
+    const gapped = [...run(a, 0, 4), ...run(a, 5, 4)];
+    expect(hueAt(gapped, 1)).not.toBe(hueAt(gapped, 6));
+    const seamed = [...run(a, 0, 4), shownAt(4, a, a, true), ...run(a, 5, 4)];
+    expect(hueAt(seamed, 1)).not.toBe(hueAt(seamed, 6));
+    expect(hueAt(seamed, 1)).toBe(hueAt(gapped, 1));
+  });
+
+  it("on the terminal's ground, a blank carrying the ink keeps a styled sentence one run; one in the terminal's ink splits it", () => {
+    const a = fills[0]!;
+    const t = 300;
+    /** A cell of ink `fg` on the terminal's ground at `col`: a word's, or a blank's, whose ink is the terminal's when `bare`. */
+    const onGround = (col: number, bare = false): EffectCell & ListedCell => {
+      const terminal = { fg: bare, bg: true };
+      return { ...shownAt(col, a, ground), terminal, pair: { fg: a, bg: ground, terminal, reverse: false } };
+    };
+    const inkAt = (listed: readonly (EffectCell & ListedCell)[], col: number): string => lookAt(listed, listed.find((cell) => cell.col === col)!, t).fg.hex;
+    const words = (blank: EffectCell & ListedCell): (EffectCell & ListedCell)[] => [...Array.from({ length: 5 }, (_, i) => onGround(i)), blank, ...Array.from({ length: 5 }, (_, i) => onGround(6 + i))];
+    const sentence = words(onGround(5));
+    expect(inkAt(sentence, 1)).toBe(inkAt(sentence, 8));
+    const broken = words(onGround(5, true));
+    expect(inkAt(broken, 1)).not.toBe(inkAt(broken, 8));
   });
 
   it("moves no cell more than the bar between frames at 1 fps, at every magnitude", () => {
@@ -351,7 +464,7 @@ describe("the loops move", () => {
     // Three rows of forty columns, a hundred columns in and three rows down:
     // a padded or confined element. A width the caller stated would have
     // the light cross columns 0 to 40 and never reach it.
-    const element = Array.from({ length: 120 }, (_, i): EffectCell => ({ row: 3 + (i % 3), col: 100 + Math.floor(i / 3), seed: 0, terminal: written, reverse: false, anchor: undefined }));
+    const element = Array.from({ length: 120 }, (_, i) => (cellAt(3 + (i % 3), 100 + Math.floor(i / 3))));
     const lit = new Set<number>();
     for (let t = 0; t < 400; t += 0.5) {
       const field = loop.field(t, listing(element));
@@ -361,8 +474,8 @@ describe("the loops move", () => {
   });
 
   /** An element `rows` deep and `columns` wide, drawn from row `top` and column `left`. */
-  const block = (rows: number, columns: number, top = 0, left = 0): EffectCell[] =>
-    Array.from({ length: rows * columns }, (_, i) => ({ row: top + Math.floor(i / columns), col: left + (i % columns), seed: 0, terminal: written, reverse: false, anchor: undefined }));
+  const block = (rows: number, columns: number, top = 0, left = 0): (EffectCell & ListedCell)[] =>
+    Array.from({ length: rows * columns }, (_, i) => (cellAt(top + Math.floor(i / columns), left + (i % columns))));
 
   it.each([
     ["a column", block(3, 28, 2, 50)],
@@ -395,8 +508,8 @@ describe("the loops move", () => {
     // 59, t 114.5, where a crest of 1 − hypot(noise, 0.12) went below zero and
     // its power was NaN.
     const glint = shimmer(curve(48, 1), 400, sun, 0);
-    const wide = listing([0, 399].map((col) => ({ row: 0, col, anchor: undefined })));
-    expect(Number.isFinite(glint.field(114.5, wide)({ row: 15, col: 59, seed: 0, terminal: written, reverse: false, anchor: undefined }))).toBe(true);
+    const wide = listing([0, 399].map((col) => cellAt(0, col)));
+    expect(Number.isFinite(glint.field(114.5, wide)(cellAt(15, 59)))).toBe(true);
   });
 
   it("onColors and the wheel treat the terminal's colour as one outside the set, whatever its hex", () => {
@@ -521,8 +634,8 @@ describe("the transitions run start to end", () => {
   it("a dissolve-out lets some of what is left come back before it goes, and ends gone", () => {
     const dissolve = curve(30, 1);
     const effect = dissolveOut(dissolve, 0).effect;
-    const wide: EffectCell[] = Array.from({ length: 120 }, (_, col) => ({ row: 0, col, seed: 0, terminal: written, reverse: false, anchor: undefined }));
-    const of = { ...NOTHING, cells: () => wide };
+    const wide = Array.from({ length: 120 }, (_, col) => cellAt(0, col));
+    const of = listing(wide);
     const shown = (cell: EffectCell, t: number): number => distance(effect(of).at(t)(colors, cell).fg, terminalGround);
     const risen = wide.filter((cell) => {
       const series = Array.from({ length: 600 }, (_, i) => shown(cell, i * 0.05));
@@ -595,19 +708,19 @@ describe("the transitions run start to end", () => {
     ["fade-in", fadeIn],
     ["dissolve-out", dissolveOut],
   ])("a %s draws a time the same whatever was drawn before", (_, make) => {
-    const grid = (rows: number, cols: number): EffectCell[] =>
-      Array.from({ length: rows * cols }, (_, i) => ({ row: Math.floor(i / cols), col: i % cols, seed: 0, terminal: written, reverse: false, anchor: undefined }));
+    const grid = (rows: number, cols: number): (EffectCell & ListedCell)[] =>
+      Array.from({ length: rows * cols }, (_, i) => (cellAt(Math.floor(i / cols), i % cols)));
     // A cell handed to the effect that no frame lists: a blank on the terminal's ground, past the element.
-    const blank: EffectCell = { row: 0, col: 40, seed: 0, terminal: written, reverse: false, anchor: undefined };
+    const blank: EffectCell = cellAt(0, 40);
     // Every cell of `cells`, and the blank, as `effect` draws it at `t`.
-    const frameOf = (effect: Effect, cells: EffectCell[], t: number): string[] => {
-      const drawnAt = effect({ ...NOTHING, cells: () => cells }).at(t);
+    const frameOf = (effect: Effect, cells: (EffectCell & ListedCell)[], t: number): string[] => {
+      const drawnAt = effect(listing(cells)).at(t);
       return [...cells, blank].map((cell) => drawnAt(colors, cell).fg.hex);
     };
 
     it("played, reversed, then scrubbed, each frame of an element that grows as it moves is the frame a fresh transition draws", () => {
       // A label gaining columns: four until 10 seconds in, twelve after.
-      const cells = (t: number): EffectCell[] => grid(2, t < 10 ? 4 : 12);
+      const cells = (t: number): (EffectCell & ListedCell)[] => grid(2, t < 10 ? 4 : 12);
       const { effect } = make(curve(20, 1), 3);
       const forward = Array.from({ length: 21 }, (_, i) => i);
       for (const t of [...forward, ...[...forward].reverse(), 17, 2, 11, 0.5, 19, 6]) {
@@ -625,10 +738,10 @@ describe("the transitions run start to end", () => {
   });
 
   it.each([0, 1, 2, 3, 4, 5, 6])("a cell a fade at z %d has moved never goes back while the element keeps its cells", (z) => {
-    const cells: EffectCell[] = Array.from({ length: 24 }, (_, i) => ({ row: Math.floor(i / 12), col: i % 12, seed: 0, terminal: written, reverse: false, anchor: undefined }));
+    const cells = Array.from({ length: 24 }, (_, i) => (cellAt(Math.floor(i / 12), i % 12)));
     const { effect } = fadeIn(curve(20, 1), z);
     const shown = (t: number): number[] => {
-      const drawnAt = effect({ ...NOTHING, cells: () => cells }).at(t);
+      const drawnAt = effect(listing(cells)).at(t);
       return cells.map((cell) => distance(drawnAt(colors, cell).fg, terminalGround));
     };
     const series = Array.from({ length: 81 }, (_, i) => shown(i * 0.25));
@@ -742,7 +855,7 @@ describe("the loops never jump", () => {
   it.each(Object.entries(loops))("%s moves no cell more than the bar between frames at 1 fps", (_, loop) => {
     let worst = 0;
     for (const { columns, z, offset } of ELEMENTS) {
-      const strip: EffectCell[] = Array.from({ length: 2 * columns }, (_, i) => ({ row: i % 2, col: Math.floor(i / 2), seed: 0, terminal: written, reverse: false, anchor: undefined }));
+      const strip = Array.from({ length: 2 * columns }, (_, i) => (cellAt(i % 2, Math.floor(i / 2))));
       for (const color of fills) {
         const move = loop(z);
         const element = listing(strip);
