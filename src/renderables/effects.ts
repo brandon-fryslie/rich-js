@@ -966,28 +966,34 @@ const ownPlace = (cell: Placed, width: number): Place => ({ row: cell.row, centr
 
 /**
  * The segments `drawn` draws, as where each colour of each cell turns: a
- * segment is a region of adjacent cells — beside or above one another —
- * with one own fill as ground, or on the terminal's ground one own ink,
- * read off `Drawn.all` once a frame. So a panel's ground is one segment
- * whatever words lie on it, a blank carrying the ink keeps a styled
- * paragraph one segment across its spaces and lines, and a blank in the
- * terminal's ink splits one. A seam a joiner drew is in none, since its
- * colours are its neighbours' edges: each colour of a seam cell turns with
- * the region of that colour beside it, so a powerline cap keeps the colour
- * of the cell it caps, a custom joiner's handed cap included, and with the
- * cell's own place where none is beside it — a neighbour's edge the frame
- * does not show, handed at the seam's cell. Any other cell's colours turn
- * with the region covering it: a letter in a neighbour's fill colour is a
- * word, not a cap. A cell the frame lists nowhere, which a hand-built
- * `Drawn` hands, is one column wide. The place is the region's centre
- * column from the element's left edge, with its centre row: a region that
- * grows by a column moves its centre by half of one, and those it pushes
- * along by a column theirs by one, where a share of the element's extent
- * would move every region's place with any region's growth.
+ * segment is a region of adjacent cells — beside or above one another — of
+ * one colour of the element's own, each cell carrying it as its ground or,
+ * on the terminal's ground, as its ink, read off `Drawn.all` once a frame.
+ * So a panel's ground is one segment whatever words lie on it, a blank
+ * carrying the ink keeps a styled paragraph one segment across its spaces
+ * and lines, a caption in a bar's colour written under the bar turns with
+ * it, and a blank in the terminal's ink splits a segment. A seam a joiner
+ * drew is in none, since its colours are its neighbours' edges: each colour
+ * of a seam cell turns with the region of that colour past the seam on
+ * either side — a two-cell rail reads past its other cell — so a powerline
+ * cap keeps the colour of the cell it caps, a custom joiner's handed cap
+ * included, and with the cell's own place where none is beside it — a
+ * neighbour's edge the frame does not show, handed at the seam's cell. Any
+ * other cell's colours turn with the region covering it: a letter in a
+ * neighbour's fill colour is a word, not a cap. A cell the frame lists
+ * nowhere, which a hand-built `Drawn` hands, is one column wide. The place
+ * is the region's centre column from the element's left edge, with its
+ * centre row: a region that grows by a column moves its centre by half of
+ * one, and those it pushes along by a column theirs by one, where a share
+ * of the element's extent would move every region's place with any
+ * region's growth.
  */
-function segmentsOf({ all, colors }: Drawn): (cell: Placed, hex: string) => Place {
+function segmentsOf(drawn: Drawn): (cell: Placed, hex: string) => Place {
+  const { colors } = drawn;
   const at = (row: number, col: number): string => `${row}:${col}`;
   const listed = new Map<string, ListedCell>();
+  // Every column a seam cell covers: what a seam's colours look past to the region beside the seam.
+  const seams = new Set<string>();
   // The colour a cell is a region of: its own ground, else on the terminal's ground its own ink, else none.
   const regionColour = (cell: ListedCell): string | undefined => {
     if (cell.seam) return undefined;
@@ -997,10 +1003,12 @@ function segmentsOf({ all, colors }: Drawn): (cell: Placed, hex: string) => Plac
   // Every column a region's cell covers, in walk order, indexed by where it is.
   const covered: { readonly row: number; readonly col: number; readonly hex: string }[] = [];
   const index = new Map<string, number>();
-  for (const cell of all()) {
+  for (const cell of drawn.all()) {
     listed.set(at(cell.row, cell.col), cell);
     const hex = regionColour(cell);
-    for (let col = cell.col; hex !== undefined && col < cell.col + cell.width; col++) {
+    for (let col = cell.col; col < cell.col + cell.width; col++) {
+      if (cell.seam) seams.add(at(cell.row, col));
+      if (hex === undefined) continue;
       index.set(at(cell.row, col), covered.length);
       covered.push({ row: cell.row, col, hex });
     }
@@ -1034,10 +1042,16 @@ function segmentsOf({ all, colors }: Drawn): (cell: Placed, hex: string) => Plac
     return i === undefined ? undefined : regions.get(find(i));
   };
   const placeOf = (region: Region): Place => ({ row: (region.top + region.bottom) / 2, centre: (region.left + region.right + 1) / 2 });
+  // The region past the seam from `col` in `step`'s direction: what a seam's colour turns with.
+  const pastSeam = (row: number, col: number, step: -1 | 1): Region | undefined => {
+    let past = col;
+    while (seams.has(at(row, past))) past += step;
+    return regionAt(row, past);
+  };
   return (cell, hex) => {
     const own = listed.get(at(cell.row, cell.col));
     const width = own?.width ?? 1;
-    const beside = (own?.seam === true ? [regionAt(cell.row, cell.col - 1), regionAt(cell.row, cell.col + width)] : []).find((region) => region?.hex === hex);
+    const beside = (own?.seam === true ? [pastSeam(cell.row, cell.col - 1, -1), pastSeam(cell.row, cell.col + width, 1)] : []).find((region) => region?.hex === hex);
     const region = beside ?? regionAt(cell.row, cell.col);
     return region === undefined ? ownPlace(cell, width) : placeOf(region);
   };
@@ -1049,9 +1063,9 @@ function segmentsOf({ all, colors }: Drawn): (cell: Placed, hex: string) => Plac
  * sees a steady palette and an hour's absence a different one — each
  * segment of the element at its own pace. Swing: how far the segments stray
  * from one another, 0–1, 1 being half a turn apart. A segment is a region
- * of adjacent cells on one fill of the element's own — one of `fills`, the
- * colours it draws as a ground — or, on the terminal's ground, in one own
- * ink (`segmentsOf`), and it paces by where it sits, not by its colour: two
+ * of adjacent cells of one colour of the element's own, carried as their
+ * ground or, on the terminal's ground, as their ink (`segmentsOf`), and it
+ * paces by where it sits, not by its colour: two
  * regions of one fill at two places turn apart, and each colour of the seam
  * a joiner drew between them turns with the region of that colour beside
  * it, so a powerline cap keeps the colour of the cell it caps. An ink that
@@ -1093,14 +1107,16 @@ export function wheel(curve: Curve, z: number): Effect {
     const { colors, fills, depth, theme } = drawn;
     // Whether a slot shows one of the element's colours: never the terminal's, whatever its hex.
     const own = (terminal: boolean, color: ColorRgba): boolean => !terminal && colors.has(color.hex);
-    // The segment an own colour turns with: itself if a fill or beside no own colour, else the one beside it.
-    const segmentOf = (color: ColorRgba, other: ColorRgba, theirs: boolean): string => (fills.has(color.hex) || !theirs ? color.hex : other.hex);
-    // The bounds a colour turns within, by the segment it turns with: one bound for every place a frame writes it at.
-    const keyOf = (color: ColorRgba, segment: string): string => `${color.hex} ${segment}`;
+    // The colour an own colour is bounded with, under which its bounds are
+    // kept: itself if a fill or beside no own colour, else the ground beside
+    // it. Where it turns is `segmentsOf`'s, not this.
+    const boundWith = (color: ColorRgba, other: ColorRgba, theirs: boolean): string => (fills.has(color.hex) || !theirs ? color.hex : other.hex);
+    // The bounds a colour turns within, by the colour it is bounded with: one bound for every place a frame writes it at.
+    const keyOf = (color: ColorRgba, bound: string): string => `${color.hex} ${bound}`;
     const bounds = settled.get(theme, () => new Memo()).get(drawnKey(drawn), () =>
       turnedBounds(drawn.pairs, depth, (pair, side) => {
         const other = side === "fg" ? "bg" : "fg";
-        return own(pair.terminal[side], pair[side]) ? keyOf(pair[side], segmentOf(pair[side], pair[other], own(pair.terminal[other], pair[other]))) : undefined;
+        return own(pair.terminal[side], pair[side]) ? keyOf(pair[side], boundWith(pair[side], pair[other], own(pair.terminal[other], pair[other]))) : undefined;
       }),
     );
     // 256 colours writes a turned colour as one it has an index for; truecolor
@@ -1114,20 +1130,20 @@ export function wheel(curve: Curve, z: number): Effect {
       // key is the bounds' key with the place, so one entry never serves
       // two bounds.
       const written = new Map<string, ColorRgba>();
-      const choose = (color: ColorRgba, segment: string, place: Place): ColorRgba => {
+      const choose = (color: ColorRgba, bound: string, place: Place): ColorRgba => {
         const turn = hueTurned(color, turned(place, t));
-        return nearestWithin(turn.looks, color, depth === ColorDepth.TRUECOLOR ? turn.either.map(measured) : indexed, bounds.get(keyOf(color, segment)) ?? UNBOUNDED);
+        return nearestWithin(turn.looks, color, depth === ColorDepth.TRUECOLOR ? turn.either.map(measured) : indexed, bounds.get(keyOf(color, bound)) ?? UNBOUNDED);
       };
-      const write = (color: ColorRgba, segment: string, place: Place): ColorRgba => {
-        const key = `${keyOf(color, segment)} ${place.row}:${place.centre}`;
-        const found = written.get(key) ?? choose(color, segment, place);
+      const write = (color: ColorRgba, bound: string, place: Place): ColorRgba => {
+        const key = `${keyOf(color, bound)} ${place.row}:${place.centre}`;
+        const found = written.get(key) ?? choose(color, bound, place);
         written.set(key, found);
         return found;
       };
       return (shown, cell) => {
         const mine = { fg: own(cell.terminal.fg, shown.fg), bg: own(cell.terminal.bg, shown.bg) };
         const turn = (color: ColorRgba, ours: boolean, other: ColorRgba, theirs: boolean): ColorRgba =>
-          ours ? write(color, segmentOf(color, other, theirs), placeOf(cell, color.hex)) : color;
+          ours ? write(color, boundWith(color, other, theirs), placeOf(cell, color.hex)) : color;
         return { ...shown, fg: turn(shown.fg, mine.fg, shown.bg, mine.bg), bg: turn(shown.bg, mine.bg, shown.fg, mine.fg) };
       };
     });

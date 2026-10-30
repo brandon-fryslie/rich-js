@@ -216,7 +216,7 @@ describe("the wheel", () => {
   it("keeps a joiner's cap the colour of the run it caps: each colour of a seam turns with the run of that colour beside it", () => {
     const [a, b] = [fills[0]!, fills[1]!];
     // Eight cells of `a`, a joiner's cap of `a` on `b`, seven of `b`, and a tail of `b` on the terminal's ground.
-    const tail = { ...shownAt(16, b, ground), terminal: { fg: false, bg: true }, pair: { fg: b, bg: ground, terminal: { fg: false, bg: true }, reverse: false } };
+    const tail = { ...shownAt(16, b, ground, true), terminal: { fg: false, bg: true }, pair: { fg: b, bg: ground, terminal: { fg: false, bg: true }, reverse: false } };
     const listed = [...run(a, 0, 8), shownAt(8, a, b, true), ...run(b, 9, 7), tail];
     for (const t of [150, 300, 700]) {
       const cellA = lookAt(listed, listed[3]!, t).bg;
@@ -227,6 +227,32 @@ describe("the wheel", () => {
       expect(lookAt(listed, tail, t).fg.hex).toBe(cellB.hex);
       expect(cellA.hex).not.toBe(a.hex);
     }
+  });
+
+  it("a two-cell seam reads past its other cell: both cells keep the colours of the runs either side", () => {
+    const [a, b] = [fills[0]!, fills[1]!];
+    const listed = [...run(a, 0, 8), shownAt(8, a, b, true), shownAt(9, a, b, true), ...run(b, 10, 7)];
+    for (const t of [150, 300, 700]) {
+      const cellA = lookAt(listed, listed[3]!, t).bg.hex;
+      const cellB = lookAt(listed, listed[13]!, t).bg.hex;
+      for (const seam of [listed[8]!, listed[9]!]) {
+        const look = lookAt(listed, seam, t);
+        expect(look.fg.hex).toBe(cellA);
+        expect(look.bg.hex).toBe(cellB);
+      }
+    }
+  });
+
+  it("a caption in a bar's colour written under the bar turns with it: one colour is one segment however a cell carries it", () => {
+    const a = fills[0]!;
+    const t = 300;
+    const bar = Array.from({ length: 9 }, (_, col) => ({ ...cellAt(0, col), pair: { fg: ink, bg: a, terminal: written, reverse: false } }));
+    const inkOnGround = { fg: false, bg: true };
+    const caption = Array.from({ length: 5 }, (_, col) => ({ ...cellAt(1, 2 + col), terminal: inkOnGround, pair: { fg: a, bg: ground, terminal: inkOnGround, reverse: false } }));
+    const under = [...bar, ...caption];
+    expect(lookAt(under, caption[1]!, t).fg.hex).toBe(lookAt(under, bar[4]!, t).bg.hex);
+    const apart = [...bar, ...caption.map((cell) => ({ ...cell, row: 3 }))];
+    expect(lookAt(apart, apart[10]!, t).fg.hex).not.toBe(lookAt(apart, bar[4]!, t).bg.hex);
   });
 
   it("a word in a neighbour's fill colour is a word, not a cap: every letter turns with the ground it sits on", () => {
