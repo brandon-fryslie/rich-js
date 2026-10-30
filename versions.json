@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-516",
+      "ref": "refs/pull/516/merge",
+      "sha": "c371b61a52fde75223fbeea04388629e5c396883",
+      "timestamp": "2026-10-30T13:19:41.865Z",
+      "commits": [
+        {
+          "sha": "c371b61a52fde75223fbeea04388629e5c396883",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T13:17:34Z",
+          "message": "Merge b0f4af4c8627e3ba959c6440b85bc3abd40635be into 7bfad71356d43a5a0849162eb1905cd9f612d80f\n"
+        },
+        {
+          "sha": "b0f4af4c8627e3ba959c6440b85bc3abd40635be",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T07:17:17-06:00",
+          "message": "A seam under an effect reads each neighbour as the depth writes it, a separator painted from a style name is painted as any cell, and an unread move re-derives nothing (rich-joiners-er38.edp)\n\nReview fixes from the high pass on #516.\n\nA moved edge was carried as its RGB on the effect's terminal, and the lift\nthen rounded that RGB through the palette a depth downgrades against. On\n21 of the 23 bundled terminal themes those disagree, so at 16 colours a\nseam between two neighbours painted one slot could keep the slot as its\nink (nord, gruvbox), and two distinct slots could lift for nothing\n(catppuccin). An edge is now the spec the depth writes it in, a slot as a\nslot; only the terminal's own colour is read off the effect's terminal. A\nslot the re-derivation leaves as it was keeps its written spec, so an\nunmoved side is never matched again on that terminal and pulled off the\nitem beside it. A test runs every bundled terminal at 256 and ansi.\n\nplain's separator and metro's rail are painted from a style name and read\nno neighbour, so they followed nobody and no effect could move them: a\ndissolve over the whole strip left them standing. A join cell that reads\nno neighbour is painted as any cell again, as it was in 0.25.0.\n\nA seam is resolved again only when a part of a neighbour it paints with\nmoved, so an effect moving only lettering no longer walks every lifted\nseam's lift each frame (about 0.5 ms a frame for eight lifted arrows at\ntruecolor).\n\nThe seam that finds no neighbour in the frame says why that is a partial\nframe and not a hidden fault, and a test pins that a whole strip's\nseams are listed to an effect and never handed.\n"
+        },
+        {
+          "sha": "8f5115b36596867303b451ab0f03a0664a4bc1c5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T07:06:30-06:00",
+          "message": "color.ts imports before it runs anything, so a CommonJS transpile of rich-js loads, and 0.25.1 carries the fix (rich-joiners-er38.edp)\n\n`pattern` was imported near the end of src/core/color.ts, beside `Palette`,\nand used at module top level earlier (RGB_RE and its siblings). Native ESM\nhoists the import, so this repository's own suite passed. A consumer that\ntranspiles the package to CommonJS (cc-candybar's jest, through ts-jest)\nemits each require where its import sits, and loading 0.25.0 there throws\n\"Cannot access 'pattern_js_1' before initialization\": 200 of its 296 suites\nfail to load. Both imports move to the top. They sat low for no cycle:\npalette.ts imports only types from color.ts.\n\ntest/seam/imports-first.test.ts fails on any import under src/ that follows\na top-level statement, since the failure shows only in a consumer's build.\n"
+        },
+        {
+          "sha": "7b4530889a5e6e327a938fea2b8207dffc40154d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T06:44:04-06:00",
+          "message": "A join cell is resolved again from the effected cells beside it, so a seam stays visible under an effect (rich-joiners-er38.edp)\n\nA join cell's colours were resolved once at join time, and an effect then\nmoved each side with whichever item owned it, leaving a mix (prism's inner\nthirds, torn's midpoint) where it was and painting a seam into a fill that\ncovered both neighbours, after the lift had already run.\n\nNow a cell a CellJoiner draws carries what it was resolved from (JoinedCell:\nits paints, the neighbour each side reads, its edges and render). An effect\npaints every cell but a join cell's; each join cell is then resolved again\nthrough cellStyle, the join-time path, lift included, from the nearest cell\neach neighbour drew beside it on its row, as the depth writes that cell. A\nside whose neighbour moved nothing keeps the edge it was drawn from, so with\nno edge moved the cell is byte for byte as drawn, and the restamped record\nlets an effect drawn over another move on from the inner one's edges.\nconfined narrows an effect to its owners' item cells only; ColorOwners and\ncolorsOwnedBy go.\n\nReleased as 0.25.1.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-517",
       "ref": "refs/pull/517/merge",
       "sha": "65410839106938d8b71b2a03647a512f03e9beb5",
@@ -27,28 +63,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-30T07:02:03-06:00",
           "message": "gradientSeam fills each cell with one colour, so the lift moves none and the ramp never turns back (rich-joiners-er38.a1h)\n\nEach cell was a half block carrying two ramp samples, ink over ground. The\nlift holds every seam cell's ink at least SEAM_MIN_DELTA_E off its ground,\nso wherever two neighbouring samples sat closer than that (near grounds, or\nfar grounds across many steps, as in rich-strip's full-width fill) every\nink sample was moved and the ramp zig-zagged.\n\nA ramp cell is now a space whose fg is \"ground\": one colour, its fill,\nsampled at the cell's middle. Ink in the terminal's ground is a side the\nlift cannot measure, so it moves none of them, by the rule every seam cell\npasses. The glyph and ASCII forms are the same ramp.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-516",
-      "ref": "refs/pull/516/merge",
-      "sha": "9d91e303c0f916806f8d380042791950e128c9a4",
-      "timestamp": "2026-10-30T12:49:06.888Z",
-      "commits": [
-        {
-          "sha": "9d91e303c0f916806f8d380042791950e128c9a4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T06:47:07-06:00",
-          "message": "Merge 7b4530889a5e6e327a938fea2b8207dffc40154d into 7bfad71356d43a5a0849162eb1905cd9f612d80f\n"
-        },
-        {
-          "sha": "7b4530889a5e6e327a938fea2b8207dffc40154d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T06:44:04-06:00",
-          "message": "A join cell is resolved again from the effected cells beside it, so a seam stays visible under an effect (rich-joiners-er38.edp)\n\nA join cell's colours were resolved once at join time, and an effect then\nmoved each side with whichever item owned it, leaving a mix (prism's inner\nthirds, torn's midpoint) where it was and painting a seam into a fill that\ncovered both neighbours, after the lift had already run.\n\nNow a cell a CellJoiner draws carries what it was resolved from (JoinedCell:\nits paints, the neighbour each side reads, its edges and render). An effect\npaints every cell but a join cell's; each join cell is then resolved again\nthrough cellStyle, the join-time path, lift included, from the nearest cell\neach neighbour drew beside it on its row, as the depth writes that cell. A\nside whose neighbour moved nothing keeps the edge it was drawn from, so with\nno edge moved the cell is byte for byte as drawn, and the restamped record\nlets an effect drawn over another move on from the inner one's edges.\nconfined narrows an effect to its owners' item cells only; ColorOwners and\ncolorsOwnedBy go.\n\nReleased as 0.25.1.\n"
         }
       ]
     },
