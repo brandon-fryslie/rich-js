@@ -2,74 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-517",
-      "ref": "refs/pull/517/merge",
-      "sha": "e6e0e1ec93b260e417ee717df3de798f2248388d",
-      "timestamp": "2026-10-30T14:14:19.627Z",
-      "commits": [
-        {
-          "sha": "e6e0e1ec93b260e417ee717df3de798f2248388d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T14:12:55Z",
-          "message": "Merge cfad66b39264a4244ac79705dcc8e7268736a4f6 into d24a8fc3e1980ed114c6d44dac710c5dadd3ac2e\n"
-        },
-        {
-          "sha": "cfad66b39264a4244ac79705dcc8e7268736a4f6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T07:38:05-06:00",
-          "message": "A gradientSeam ramp follows the grounds an effect leaves beside it, and becomes their one colour when an effect paints both alike (rich-joiners-er38.a1h)\n"
-        },
-        {
-          "sha": "eda97478a1144e1dd5a46b5d8defb0f8923b60a8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T07:36:05-06:00",
-          "message": "gradientSeam refuses 0 steps, which would join a colourless neighbour without its caps, and the ramp test holds a channel the grounds share still (rich-joiners-er38.a1h)\n"
-        },
-        {
-          "sha": "1545a84633f322e93711dcac11574e9b8044fcf2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T07:28:07-06:00",
-          "message": "gradientSeam draws no cells for 0 steps, where the items meet, and refuses only a count that is no whole number (rich-joiners-er38.a1h)\n"
-        },
-        {
-          "sha": "be2f673207e5da6524d99d45c1eef8efa1b07a9f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T07:21:35-06:00",
-          "message": "gradientSeam refuses a step count that is no whole number of cells, and says why a ramp between alike grounds shows no join (rich-joiners-er38.a1h)\n"
-        },
-        {
-          "sha": "d1ddaebd30c03a19109f299455e45215f6a21ba7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T07:02:03-06:00",
-          "message": "Version 0.25.2 (rich-joiners-er38.a1h)\n"
-        },
-        {
-          "sha": "6e038f63f959f9712473f477013ef4eb54fa324a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T07:02:03-06:00",
-          "message": "gradientSeam fills each cell with one colour, so the lift moves none and the ramp never turns back (rich-joiners-er38.a1h)\n\nEach cell was a half block carrying two ramp samples, ink over ground. The\nlift holds every seam cell's ink at least SEAM_MIN_DELTA_E off its ground,\nso wherever two neighbouring samples sat closer than that (near grounds, or\nfar grounds across many steps, as in rich-strip's full-width fill) every\nink sample was moved and the ramp zig-zagged.\n\nA ramp cell is now a space whose fg is \"ground\": one colour, its fill,\nsampled at the cell's middle. Ink in the terminal's ground is a side the\nlift cannot measure, so it moves none of them, by the rule every seam cell\npasses. The glyph and ASCII forms are the same ramp.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "d24a8fc3e1980ed114c6d44dac710c5dadd3ac2e",
-      "timestamp": "2026-10-30T14:10:50.390Z",
+      "sha": "8838ee88c4797c5aa7ebfb3ff16ab2bfa393eb4a",
+      "timestamp": "2026-10-30T14:27:51.421Z",
       "commits": [
         {
-          "sha": "d24a8fc3e1980ed114c6d44dac710c5dadd3ac2e",
+          "sha": "8838ee88c4797c5aa7ebfb3ff16ab2bfa393eb4a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T08:09:11-06:00",
-          "message": "Join cells are re-derived from effected edges, so seams stay visible under effects (rich-joiners-er38.edp) (#516)\n\n* A join cell is resolved again from the effected cells beside it, so a seam stays visible under an effect (rich-joiners-er38.edp)\n\nA join cell's colours were resolved once at join time, and an effect then\nmoved each side with whichever item owned it, leaving a mix (prism's inner\nthirds, torn's midpoint) where it was and painting a seam into a fill that\ncovered both neighbours, after the lift had already run.\n\nNow a cell a CellJoiner draws carries what it was resolved from (JoinedCell:\nits paints, the neighbour each side reads, its edges and render). An effect\npaints every cell but a join cell's; each join cell is then resolved again\nthrough cellStyle, the join-time path, lift included, from the nearest cell\neach neighbour drew beside it on its row, as the depth writes that cell. A\nside whose neighbour moved nothing keeps the edge it was drawn from, so with\nno edge moved the cell is byte for byte as drawn, and the restamped record\nlets an effect drawn over another move on from the inner one's edges.\nconfined narrows an effect to its owners' item cells only; ColorOwners and\ncolorsOwnedBy go.\n\nReleased as 0.25.1.\n\n* color.ts imports before it runs anything, so a CommonJS transpile of rich-js loads, and 0.25.1 carries the fix (rich-joiners-er38.edp)\n\n`pattern` was imported near the end of src/core/color.ts, beside `Palette`,\nand used at module top level earlier (RGB_RE and its siblings). Native ESM\nhoists the import, so this repository's own suite passed. A consumer that\ntranspiles the package to CommonJS (cc-candybar's jest, through ts-jest)\nemits each require where its import sits, and loading 0.25.0 there throws\n\"Cannot access 'pattern_js_1' before initialization\": 200 of its 296 suites\nfail to load. Both imports move to the top. They sat low for no cycle:\npalette.ts imports only types from color.ts.\n\ntest/seam/imports-first.test.ts fails on any import under src/ that follows\na top-level statement, since the failure shows only in a consumer's build.\n\n* A seam under an effect reads each neighbour as the depth writes it, a separator painted from a style name is painted as any cell, and an unread move re-derives nothing (rich-joiners-er38.edp)\n\nReview fixes from the high pass on #516.\n\nA moved edge was carried as its RGB on the effect's terminal, and the lift\nthen rounded that RGB through the palette a depth downgrades against. On\n21 of the 23 bundled terminal themes those disagree, so at 16 colours a\nseam between two neighbours painted one slot could keep the slot as its\nink (nord, gruvbox), and two distinct slots could lift for nothing\n(catppuccin). An edge is now the spec the depth writes it in, a slot as a\nslot; only the terminal's own colour is read off the effect's terminal. A\nslot the re-derivation leaves as it was keeps its written spec, so an\nunmoved side is never matched again on that terminal and pulled off the\nitem beside it. A test runs every bundled terminal at 256 and ansi.\n\nplain's separator and metro's rail are painted from a style name and read\nno neighbour, so they followed nobody and no effect could move them: a\ndissolve over the whole strip left them standing. A join cell that reads\nno neighbour is painted as any cell again, as it was in 0.25.0.\n\nA seam is resolved again only when a part of a neighbour it paints with\nmoved, so an effect moving only lettering no longer walks every lifted\nseam's lift each frame (about 0.5 ms a frame for eight lifted arrows at\ntruecolor).\n\nThe seam that finds no neighbour in the frame says why that is a partial\nframe and not a hidden fault, and a test pins that a whole strip's\nseams are listed to an effect and never handed.\n\n* A seam written under an effect keeps a lifted ink in the slot the lift chose, though the terminal draws two slots alike (rich-joiners-er38.edp)\n\nReview fix from the medium pass on #516.\n\nA re-derived seam's colours were written by reading each back as its RGB on\nthe effect's terminal and matching that RGB again. Where a terminal draws\ntwo slots alike (atom-one-dark and textual-light draw 7 and 15 the same),\nthe ink the lift had moved to slot 15 came back as slot 7, its ground's\nslot, and the seam vanished in the bytes. A colour the depth writes as it\nstands is now written as itself; only one the depth must round goes\nthrough the writer, which still writes the effect terminal's own ground as\n`default`. A slot resolved to what it was before keeps its written spec,\nand a slot that resolved to a colour when drawn and to nothing after now\nthrows rather than keeping the old one.\n\nA test runs every bundled terminal at 256 and ansi with both neighbours\npainted each of its sixteen colours.\n\n* A re-derived seam is written by the writer its lift measured with, at the depth the effect writes, and an effect paints a neighbour the frame cuts off where the seam shows it (rich-joiners-er38.edp)"
+          "timestamp": "2026-10-30T08:25:37-06:00",
+          "message": "gradientSeam draws a monotone ramp under the lift (rich-joiners-er38.a1h) (#517)\n\n* gradientSeam fills each cell with one colour, so the lift moves none and the ramp never turns back (rich-joiners-er38.a1h)\n\nEach cell was a half block carrying two ramp samples, ink over ground. The\nlift holds every seam cell's ink at least SEAM_MIN_DELTA_E off its ground,\nso wherever two neighbouring samples sat closer than that (near grounds, or\nfar grounds across many steps, as in rich-strip's full-width fill) every\nink sample was moved and the ramp zig-zagged.\n\nA ramp cell is now a space whose fg is \"ground\": one colour, its fill,\nsampled at the cell's middle. Ink in the terminal's ground is a side the\nlift cannot measure, so it moves none of them, by the rule every seam cell\npasses. The glyph and ASCII forms are the same ramp.\n\n* Version 0.25.2 (rich-joiners-er38.a1h)\n\n* gradientSeam refuses a step count that is no whole number of cells, and says why a ramp between alike grounds shows no join (rich-joiners-er38.a1h)\n\n* gradientSeam draws no cells for 0 steps, where the items meet, and refuses only a count that is no whole number (rich-joiners-er38.a1h)\n\n* gradientSeam refuses 0 steps, which would join a colourless neighbour without its caps, and the ramp test holds a channel the grounds share still (rich-joiners-er38.a1h)\n\n* A gradientSeam ramp follows the grounds an effect leaves beside it, and becomes their one colour when an effect paints both alike (rich-joiners-er38.a1h)"
         }
       ]
     }
