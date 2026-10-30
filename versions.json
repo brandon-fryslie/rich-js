@@ -4,15 +4,22 @@
     {
       "version": "pr-517",
       "ref": "refs/pull/517/merge",
-      "sha": "9dcac4d5b1db9e0eaf9ed09aa2ca46c931543dc8",
-      "timestamp": "2026-10-30T13:30:17.498Z",
+      "sha": "97bc7e82bc44c6681dc35143fb27e5607eac4991",
+      "timestamp": "2026-10-30T13:37:44.520Z",
       "commits": [
         {
-          "sha": "9dcac4d5b1db9e0eaf9ed09aa2ca46c931543dc8",
+          "sha": "97bc7e82bc44c6681dc35143fb27e5607eac4991",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T13:28:17Z",
-          "message": "Merge d0ac795174154472291885a2bcc41aeabc254efd into 7bfad71356d43a5a0849162eb1905cd9f612d80f\n"
+          "timestamp": "2026-10-30T13:36:15Z",
+          "message": "Merge 4b311462e6b5542634baf910d13cb13c7013e5ca into 7bfad71356d43a5a0849162eb1905cd9f612d80f\n"
+        },
+        {
+          "sha": "4b311462e6b5542634baf910d13cb13c7013e5ca",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T07:36:05-06:00",
+          "message": "gradientSeam refuses 0 steps, which would join a colourless neighbour without its caps, and the ramp test holds a channel the grounds share still (rich-joiners-er38.a1h)\n"
         },
         {
           "sha": "d0ac795174154472291885a2bcc41aeabc254efd",
