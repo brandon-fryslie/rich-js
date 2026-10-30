@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-516",
+      "ref": "refs/pull/516/merge",
+      "sha": "9d91e303c0f916806f8d380042791950e128c9a4",
+      "timestamp": "2026-10-30T12:49:06.888Z",
+      "commits": [
+        {
+          "sha": "9d91e303c0f916806f8d380042791950e128c9a4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T06:47:07-06:00",
+          "message": "Merge 7b4530889a5e6e327a938fea2b8207dffc40154d into 7bfad71356d43a5a0849162eb1905cd9f612d80f\n"
+        },
+        {
+          "sha": "7b4530889a5e6e327a938fea2b8207dffc40154d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T06:44:04-06:00",
+          "message": "A join cell is resolved again from the effected cells beside it, so a seam stays visible under an effect (rich-joiners-er38.edp)\n\nA join cell's colours were resolved once at join time, and an effect then\nmoved each side with whichever item owned it, leaving a mix (prism's inner\nthirds, torn's midpoint) where it was and painting a seam into a fill that\ncovered both neighbours, after the lift had already run.\n\nNow a cell a CellJoiner draws carries what it was resolved from (JoinedCell:\nits paints, the neighbour each side reads, its edges and render). An effect\npaints every cell but a join cell's; each join cell is then resolved again\nthrough cellStyle, the join-time path, lift included, from the nearest cell\neach neighbour drew beside it on its row, as the depth writes that cell. A\nside whose neighbour moved nothing keeps the edge it was drawn from, so with\nno edge moved the cell is byte for byte as drawn, and the restamped record\nlets an effect drawn over another move on from the inner one's edges.\nconfined narrows an effect to its owners' item cells only; ColorOwners and\ncolorsOwnedBy go.\n\nReleased as 0.25.1.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "7bfad71356d43a5a0849162eb1905cd9f612d80f",
