@@ -85,6 +85,17 @@ describe("a join between grounds too close to tell apart", () => {
     expect(failures).toEqual([]);
   });
 
+  // A mix of a slot and an RGB is the terminal theme's colour at truecolor but
+  // a cube entry at 256, so there it is lifted among fixed colours and measured
+  // by ΔE, never parted from its ground only by being a slot.
+  it("lifts a mix the depth draws as a fixed colour among fixed colours", () => {
+    for (const { style } of seam("prism", "blue", "#000080", ColorDepth.EIGHT_BIT).slice(1)) {
+      const { color, bgcolor } = style!.drawnColors(ColorDepth.EIGHT_BIT);
+      expect([color!.name, color!.fixedValue !== undefined, bgcolor!.fixedValue !== undefined]).toEqual([color!.name, true, true]);
+      expect(standsOffAsDrawn(style!, ColorDepth.EIGHT_BIT)).toBe(true);
+    }
+  });
+
   // Measured through the joiner itself: powerline's arrow between two cells of
   // one ground, drawn at each depth — truecolor and 256 by the colour the
   // terminal shows, sixteen colours by its slot.

@@ -514,12 +514,16 @@ function standOff(ink: ColorSpec | undefined, ground: ColorSpec | undefined, dep
   const { color: shown, bgcolor: under } = drawn(ink, depth);
   if (standsOff(shown!, under!)) return ink;
   // The ray starts from the ink as it is laid on its ground, before a depth
-  // rounds it. Ink the terminal's theme draws — a slot, or a mix reaching one —
-  // starts from the colour the default terminal theme gives it and steps
-  // between slots: an RGB set beside a colour only the terminal knows could be
-  // that very colour.
+  // rounds it; ink the terminal's theme draws starts from the colour the
+  // default terminal theme gives it. Ink that vanishes is drawn in the same
+  // kind as its ground — both fixed, or both the theme's — and every step is
+  // drawn in that kind too, so it is measured as the ink was. Ink the depth
+  // draws as the theme's (a slot, or a mix reaching one at truecolor) steps
+  // between slots: an RGB beside a colour only the terminal knows could be
+  // that very colour. Ink the depth fixes (that same mix is a cube entry at
+  // 256) steps between fixed colours, for the same reason turned round.
   const laid = drawn(ink).color!;
-  const kind = laid.fixedValue === undefined ? ColorDepth.STANDARD : ColorDepth.TRUECOLOR;
+  const kind = shown!.fixedValue === undefined ? ColorDepth.STANDARD : ColorDepth.TRUECOLOR;
   for (const step of lightnessRay(Oklch.fromRgba(laid.getTruecolor()))) {
     const candidate = drawn(ColorSpec.fromRgba(step.toRgba()).downgrade(kind), depth).color!;
     if (standsOff(candidate, under!)) return candidate;
