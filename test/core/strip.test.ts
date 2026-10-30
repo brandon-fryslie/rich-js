@@ -410,26 +410,27 @@ describe("gradientSeam", () => {
   const ramp = (steps?: number) => new CellJoiner(gradientSeam(steps), CAPS.flat);
   const FF0000 = cell(" a ", "on #ff0000");
   const BLUE00FF = cell(" b ", "on #0000ff");
+  // The colours ramp cells show on screen, as `depth` draws them, two to a
+  // cell, its left half and its right: a space shows its ground across the
+  // cell, a left half block its ink and then its ground. Under reverse video
+  // the ground is the style's `color`.
+  const shown = (segs: readonly Segment[], depth?: ColorDepth): ColorSpec[] =>
+    segs.flatMap(({ text, style }) => {
+      const drawn = style!.drawnColors(depth);
+      const [ink, ground] = style!.reverse ? [drawn.bgcolor, drawn.color] : [drawn.color, drawn.bgcolor];
+      const halves = new Map([[" ", [ground, ground]], ["▌", [ink, ground]]]).get(text);
+      if (halves === undefined) throw new Error(`no ramp cell is drawn as ${JSON.stringify(text)}`);
+      return halves.map((c) => c!);
+    });
 
-  it("emits half-block cells carrying two colour samples each", () => {
+  it("fills each cell with one colour, sampled at its middle of the way from the left ground to the right", () => {
     const strip = new Strip([FF0000, BLUE00FF], ramp(3));
     const segs = render(strip);
-    expect(segs.map((s) => s.text)).toEqual([" a ", "▌", "▌", "▌", " b "]);
-    const grad = segs.slice(1, 4);
-    for (const s of grad) {
-      expect(s.style!.color).toBeDefined();
-      expect(s.style!.bgcolor).toBeDefined();
-    }
-    const samples = grad.flatMap((s) => [
-      s.style!.color!.getTruecolor(),
-      s.style!.bgcolor!.getTruecolor(),
-    ]);
-    for (let i = 1; i < samples.length; i++) {
-      expect(samples[i]!.red).toBeLessThan(samples[i - 1]!.red);
-      expect(samples[i]!.blue).toBeGreaterThan(samples[i - 1]!.blue);
-    }
-    expect(samples[0]!.red).toBeLessThan(255);
-    expect(samples[samples.length - 1]!.blue).toBeLessThan(255);
+    expect(segs.map((s) => s.text)).toEqual([" a ", " ", " ", " ", " b "]);
+    expect(shown(segs.slice(1, 4)).map((c) => c.value!.hex)).toEqual(
+      [1, 1, 3, 3, 5, 5].map((k) => blendRgb(new ColorRgba(255, 0, 0), new ColorRgba(0, 0, 255), k / 6).hex),
+    );
+    expect(renderToString(strip, { asciiOnly: true })).toBe(renderToString(strip));
   });
 
   it("renders empty at endpoints", () => {
@@ -450,8 +451,7 @@ describe("gradientSeam", () => {
     const blue = ATOM_ONE_DARK.ansiColors.get(4);
     const red = ATOM_ONE_DARK.ansiColors.get(1);
     expect([grounds[0]!.hex, grounds.at(-1)!.hex]).toEqual(["#61afef", "#e06c75"]);
-    const samples = row!.slice(1, -1).flatMap((run) => [run.look.foreground, run.look.background as ColorRgba]);
-    expect(samples.map((c) => c.hex)).toEqual([1, 3, 5, 7].map((k) => blendRgb(blue, red, k / 8).hex));
+    expect(grounds.slice(1, -1).map((c) => c.hex)).toEqual([1, 3].map((k) => blendRgb(blue, red, k / 4).hex));
   });
 
   it("draws nothing beside a default ground, which is no colour to ramp from", () => {
@@ -462,23 +462,79 @@ describe("gradientSeam", () => {
   it("ramps between translucent grounds as their cells draw them", () => {
     const strip = new Strip([cell(" a ", "white on #ffffff80"), cell(" b ", "white on #ff0000")], ramp(1));
     const [, join] = render(strip);
-    const drawn = join!.style!.drawnColors();
     const seen = new ColorRgba(255, 255, 255, 128 / 255).compositeOver(new ColorRgba(0, 0, 0));
-    expect([drawn.color!.value!.hex, drawn.bgcolor!.value!.hex]).toEqual(
-      [0.25, 0.75].map((t) => blendRgb(seen, new ColorRgba(255, 0, 0), t).hex),
-    );
+    expect(shown([join!]).map((c) => c.value!.hex)).toEqual([0.5, 0.5].map((t) => blendRgb(seen, new ColorRgba(255, 0, 0), t).hex));
   });
 
   it("defaults to steps=4", () => {
     const strip = new Strip([FF0000, BLUE00FF], ramp());
     const segs = render(strip);
-    expect(segs.map((s) => s.text)).toEqual([" a ", "▌", "▌", "▌", "▌", " b "]);
+    expect(segs.map((s) => s.text)).toEqual([" a ", " ", " ", " ", " ", " b "]);
   });
 
-  it("lifts each sample's ink off its ground, as every seam cell's, where the ramp is too shallow to show", () => {
-    const segs = render(new Strip([cell(" a ", "on #303030"), cell(" b ", "on #303030")], ramp(3))).slice(1, -1);
-    expect(segs.map((s) => s.text)).toEqual(["▌", "▌", "▌"]);
-    expect(segs.map((s) => standsOffAsDrawn(s.style!))).toEqual([true, true, true]);
+  it("refuses a step count that is no positive whole number of cells", () => {
+    for (const steps of [0, -1, 2.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => gradientSeam(steps), String(steps)).toThrow(`gradientSeam steps must be a positive whole number of cells, got ${steps}`);
+    }
+  });
+
+  // A ground `gap` lighter than `base` along its own lightness: ΔE_OK `gap`
+  // apart but for the 8-bit rounding of the colour drawn.
+  const lighter = (base: string, gap: number): string => {
+    const from = Oklch.fromRgba(ColorSpec.parse(base).value!);
+    return new Oklch(from.l + gap, from.c, from.h).toRgba().hex;
+  };
+  const RAMPS = [
+    ["grey grounds ΔE 0.1 apart", "#303030", lighter("#303030", 0.1), 4],
+    ["blue grounds ΔE 0.1 apart", "#336699", lighter("#336699", 0.1), 4],
+    ["grounds ΔE 0.1 apart, across a 60-cell fill", "#336699", lighter("#336699", 0.1), 60],
+    ["far grounds", "#ff0066", "#00ccff", 4],
+    ["far grounds, across a 60-cell fill", "#ff0066", "#00ccff", 60],
+  ] as const;
+  const rampOf = (left: string, right: string, steps: number, colorSystem: ColorDepth): Segment[] =>
+    [...ramp(steps).join(cell(" a ", `#e0e0e0 on ${left}`), cell(" b ", `#e0e0e0 on ${right}`), { index: 1 }).render({ maxWidth: 200, colorSystem })];
+
+  // The ramp's order is asserted at truecolor, where it is drawn exactly. At
+  // 256 colours and at sixteen each cell is its sample's nearest entry (pinned
+  // below), and the table ranks entries by RGB distance, not by how far they
+  // look, so one band's entry can sit a hair nearer the left ground, as seen,
+  // than the band before it. The order there is the table's, not the ramp's.
+  it.each(RAMPS)("draws %s at truecolor as a ramp that never turns back", (_, left, right, steps) => {
+    const drawn = [ColorSpec.parse(left), ...shown(rampOf(left, right, steps, ColorDepth.TRUECOLOR), ColorDepth.TRUECOLOR), ColorSpec.parse(right)].map(
+      (c) => c.fixedValue!,
+    );
+    // Each channel moves one way only, from the left ground's to the right's:
+    // the path it travels is no longer than the gap between its ends, so a
+    // channel the two grounds share does not move at all.
+    for (const channel of ["red", "green", "blue"] as const) {
+      const path = drawn.slice(1).reduce((sum, c, i) => sum + Math.abs(c[channel] - drawn[i]![channel]), 0);
+      expect(path, channel).toBe(Math.abs(drawn.at(-1)![channel] - drawn[0]![channel]));
+    }
+    // And seen, each half cell is no nearer the left ground than the one before it, nor farther from the right.
+    const [from, to] = [Oklch.fromRgba(drawn[0]!), Oklch.fromRgba(drawn.at(-1)!)];
+    const seen = drawn.map((c) => Oklch.fromRgba(c));
+    for (let i = 1; i < seen.length; i++) {
+      expect(seen[i]!.deltaE(from), `from the left at ${i}`).toBeGreaterThanOrEqual(seen[i - 1]!.deltaE(from));
+      expect(seen[i]!.deltaE(to), `to the right at ${i}`).toBeLessThanOrEqual(seen[i - 1]!.deltaE(to));
+    }
+  });
+
+  // [LAW:dataflow-not-control-flow] The lift is the rule every seam cell
+  // passes, and a cell inked in the terminal's ground gives it nothing to move:
+  // each cell is its own sample as the depth rounds it, between grounds alike
+  // as much as between any others.
+  it.each([
+    ["truecolor", ColorDepth.TRUECOLOR],
+    ["256", ColorDepth.EIGHT_BIT],
+    ["ansi", ColorDepth.STANDARD],
+  ] as const)("draws every cell in its own sample at %s, lifted by nothing", (_, depth) => {
+    for (const [left, right, steps] of [["#303030", "#303030", 4], ...RAMPS.map(([, l, r, n]) => [l, r, n] as const)] as const) {
+      const samples = Array.from({ length: steps }, (_, i) => {
+        const sample = new Style({ bgcolor: ColorSpec.blend(ColorSpec.parse(left), ColorSpec.parse(right), (i + 1 / 2) / steps) }).drawnColors(depth).bgcolor!.name;
+        return [sample, sample];
+      }).flat();
+      expect(shown(rampOf(left, right, steps, depth), depth).map((c) => c.name), `${left} to ${right} in ${steps}`).toEqual(samples);
+    }
   });
 });
 
@@ -910,7 +966,7 @@ describe("a seam ends in any caps", () => {
 
   it("ends a gradient ramp in the caps it is given", () => {
     const segs = render(new Strip([cell(" a ", "on #ff0000"), cell(" b ", "on #0000ff")], new CellJoiner(gradientSeam(2), CAPS.capsule)));
-    expect(segs.map((s) => s.text)).toEqual(["\ue0b6", " a ", "▌", "▌", " b ", "\ue0b4"]);
+    expect(segs.map((s) => s.text)).toEqual(["\ue0b6", " a ", " ", " ", " b ", "\ue0b4"]);
   });
 
   it("refuses a cap that is neither the lead nor the tail, or that draws cells of its own", () => {

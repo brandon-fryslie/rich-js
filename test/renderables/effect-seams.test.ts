@@ -10,7 +10,7 @@ import { ColorDepth, ColorRgba, ColorSpec, TerminalTheme, blendRgb } from "../..
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import { renderToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
-import { JOIN, JOINERS, Strip, joinedCell } from "../../src/core/strip.js";
+import { CAPS, CellJoiner, JOIN, JOINERS, Strip, gradientSeam, joinedCell } from "../../src/core/strip.js";
 import type { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { Effected, confined, type Effect, type EffectFrame } from "../../src/renderables/effect.js";
@@ -176,6 +176,34 @@ describe("prism under an effect on one neighbour", () => {
     expect(at(1)).toEqual(thirds(1));
     // Every colour of the seam the moved ground reaches changes between the frames; the ink out of the still neighbour does not.
     expect(at(0).flat().map((hex, i) => hex !== at(1).flat()[i])).toEqual([false, true, true, true, true, true]);
+  });
+});
+
+describe("gradientSeam under an effect", () => {
+  const A = "#1e66f5";
+  const shade = (t: number): ColorRgba => new ColorRgba(40 + 100 * t, 160, 60);
+  const breathing: Effect = () => Animation.continuous((t) => (look) => ({ ...look, bg: shade(t) }));
+  const ramp = new CellJoiner(gradientSeam(4), CAPS.flat);
+  // A ramp cell is a space reversed out of the terminal's ground, so its one colour is its style's `color`.
+  const fills = (segments: readonly Segment[], left: object, right: object): string[] =>
+    seamOf(segments, left, right).map(({ style }) => {
+      expect(style!.reverse).toBe(true);
+      return style!.drawnColors(ColorDepth.TRUECOLOR).color!.getTruecolor(THEME, false).hex;
+    });
+
+  it("draws every cell as the blend of the grounds the effect left beside it, frame to frame", () => {
+    const [a, b] = [item("a", `#e0e0e0 on ${A}`), item("b", "#e0e0e0 on #d20f39")];
+    const at = (t: number): string[] => fills(drawn(effected(new Strip([a, b], ramp), confined(breathing, b), t)), a, b);
+    const blends = (t: number): string[] => [1, 3, 5, 7].map((k) => blendRgb(ColorSpec.parse(A).value!, shade(t), k / 8).hex);
+    expect(at(0)).toEqual(blends(0));
+    expect(at(1)).toEqual(blends(1));
+  });
+
+  it("is the one colour an effect paints both its neighbours, a fill with nothing to lift", () => {
+    const items = trio();
+    const ground = new ColorRgba(48, 48, 48);
+    const frame = drawn(effected(new Strip(items, ramp), confined(paint(ground, ColorSpec.parse("#e0e0e0").value!), items[0]!, items[1]!)));
+    expect(fills(frame, items[0]!, items[1]!)).toEqual(Array.from({ length: 4 }, () => ground.hex));
   });
 });
 
