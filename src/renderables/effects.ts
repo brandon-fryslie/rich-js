@@ -946,70 +946,100 @@ const STRAY = 180;
  */
 const STRAY_SPREAD = 24;
 
-/** Where a segment sits in the element: its row, and its centre column from the left edge. */
+/** Where a segment sits in the element: its centre row, and its centre column from the left edge. */
 interface Place {
   readonly row: number;
   readonly centre: number;
 }
 
-/** A run of cells the wheel turns as one segment: its row, the columns it covers, and the colour it is a run of. */
-interface Run {
-  readonly row: number;
-  readonly start: number;
-  end: number;
+/** A region of cells the wheel turns as one segment: the colour it is a region of, and the rows and columns it spans. */
+interface Region {
   readonly hex: string;
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
 }
 
-/** `cell` as a place of its own, as wide as its glyph: where no run covers it. */
+/** `cell` as a place of its own, as wide as its glyph: where no region covers it. */
 const ownPlace = (cell: Placed, width: number): Place => ({ row: cell.row, centre: cell.col + width / 2 });
 
 /**
  * The segments `drawn` draws, as where each colour of each cell turns: a
- * segment is a run of adjacent cells in one row with one own fill as ground
- * — on the terminal's ground, a run of one own ink — read off `Drawn.all`
- * once a frame, so a blank carrying the ink keeps a styled sentence one run
- * across its spaces and a blank in the terminal's ink splits one, and a seam
- * a joiner drew is in none, since its colours are its neighbours' edges. A
- * cell the frame lists nowhere — one a hand-built `Drawn` hands — is one
- * column wide. A cell's ground turns with the run covering the
- * cell. Its ink turns with that run too, unless the ink is a fill and a run
- * of that fill ends where the cell starts or starts where it ends: a cap
- * then keeps the colour of the run it caps, a custom joiner's handed cap
- * included. A cell no run covers — a neighbour's edge the frame does not
- * show, handed at a seam's own cell — is its own place. The place is the
- * run's centre column from the element's left edge, with its row: a run
- * that grows by a column moves its centre by half of one, and never another
- * segment's, where a share of the element's extent would move them all.
+ * segment is a region of adjacent cells — beside or above one another —
+ * with one own fill as ground, or on the terminal's ground one own ink,
+ * read off `Drawn.all` once a frame. So a panel's ground is one segment
+ * whatever words lie on it, a blank carrying the ink keeps a styled
+ * paragraph one segment across its spaces and lines, and a blank in the
+ * terminal's ink splits one. A seam a joiner drew is in none, since its
+ * colours are its neighbours' edges: each colour of a seam cell turns with
+ * the region of that colour beside it, so a powerline cap keeps the colour
+ * of the cell it caps, a custom joiner's handed cap included, and with the
+ * cell's own place where none is beside it — a neighbour's edge the frame
+ * does not show, handed at the seam's cell. Any other cell's colours turn
+ * with the region covering it: a letter in a neighbour's fill colour is a
+ * word, not a cap. A cell the frame lists nowhere, which a hand-built
+ * `Drawn` hands, is one column wide. The place is the region's centre
+ * column from the element's left edge, with its centre row: a region that
+ * grows by a column moves its centre by half of one, and those it pushes
+ * along by a column theirs by one, where a share of the element's extent
+ * would move every region's place with any region's growth.
  */
-function segmentsOf({ all, colors, fills }: Drawn): (cell: Placed, side: Side, hex: string) => Place {
+function segmentsOf({ all, colors }: Drawn): (cell: Placed, hex: string) => Place {
   const at = (row: number, col: number): string => `${row}:${col}`;
   const listed = new Map<string, ListedCell>();
-  const covering = new Map<string, Run>();
-  // The colour a cell is a run of: its own ground, else on the terminal's ground its own ink, else none.
-  const runOf = (cell: ListedCell): string | undefined => {
+  // The colour a cell is a region of: its own ground, else on the terminal's ground its own ink, else none.
+  const regionColour = (cell: ListedCell): string | undefined => {
     if (cell.seam) return undefined;
     const own = (terminal: boolean, hex: string): string | undefined => (!terminal && colors.has(hex) ? hex : undefined);
     return own(cell.pair.terminal.bg, cell.pair.bg.hex) ?? own(cell.pair.terminal.fg, cell.pair.fg.hex);
   };
-  let run: Run | undefined;
-  let last: ListedCell | undefined;
+  // Every column a region's cell covers, in walk order, indexed by where it is.
+  const covered: { readonly row: number; readonly col: number; readonly hex: string }[] = [];
+  const index = new Map<string, number>();
   for (const cell of all()) {
     listed.set(at(cell.row, cell.col), cell);
-    const hex = runOf(cell);
-    if (run !== undefined && last !== undefined && hex === run.hex && cell.row === run.row && cell.col === last.col + last.width) run.end = cell.col + cell.width;
-    else run = hex === undefined ? undefined : { row: cell.row, start: cell.col, end: cell.col + cell.width, hex };
-    for (let col = cell.col; run !== undefined && col < cell.col + cell.width; col++) covering.set(at(cell.row, col), run);
-    last = cell;
-  }
-  const placeOf = (run: Run): Place => ({ row: run.row, centre: (run.start + run.end) / 2 });
-  return (cell, side, hex) => {
-    const width = listed.get(at(cell.row, cell.col))?.width ?? 1;
-    if (side === "fg" && fills.has(hex)) {
-      const capped = [covering.get(at(cell.row, cell.col - 1)), covering.get(at(cell.row, cell.col + width))].find((run) => run?.hex === hex);
-      if (capped !== undefined) return placeOf(capped);
+    const hex = regionColour(cell);
+    for (let col = cell.col; hex !== undefined && col < cell.col + cell.width; col++) {
+      index.set(at(cell.row, col), covered.length);
+      covered.push({ row: cell.row, col, hex });
     }
-    const covered = covering.get(at(cell.row, cell.col));
-    return covered === undefined ? ownPlace(cell, width) : placeOf(covered);
+  }
+  // Union-find over the covered columns: two of one colour beside or above one another are one region.
+  const parent = covered.map((_, i) => i);
+  const find = (i: number): number => {
+    while (parent[i] !== i) {
+      parent[i] = parent[parent[i]!]!;
+      i = parent[i]!;
+    }
+    return i;
+  };
+  const joinWith = (i: number, row: number, col: number): void => {
+    const j = index.get(at(row, col));
+    if (j !== undefined && covered[j]!.hex === covered[i]!.hex) parent[find(i)] = find(j);
+  };
+  covered.forEach(({ row, col }, i) => {
+    joinWith(i, row, col - 1);
+    joinWith(i, row - 1, col);
+  });
+  const regions = new Map<number, Region>();
+  covered.forEach(({ row, col, hex }, i) => {
+    const root = find(i);
+    const region = regions.get(root);
+    if (region === undefined) regions.set(root, { hex, top: row, bottom: row, left: col, right: col });
+    else [region.top, region.bottom, region.left, region.right] = [Math.min(region.top, row), Math.max(region.bottom, row), Math.min(region.left, col), Math.max(region.right, col)];
+  });
+  const regionAt = (row: number, col: number): Region | undefined => {
+    const i = index.get(at(row, col));
+    return i === undefined ? undefined : regions.get(find(i));
+  };
+  const placeOf = (region: Region): Place => ({ row: (region.top + region.bottom) / 2, centre: (region.left + region.right + 1) / 2 });
+  return (cell, hex) => {
+    const own = listed.get(at(cell.row, cell.col));
+    const width = own?.width ?? 1;
+    const beside = (own?.seam === true ? [regionAt(cell.row, cell.col - 1), regionAt(cell.row, cell.col + width)] : []).find((region) => region?.hex === hex);
+    const region = beside ?? regionAt(cell.row, cell.col);
+    return region === undefined ? ownPlace(cell, width) : placeOf(region);
   };
 }
 
@@ -1018,18 +1048,19 @@ function segmentsOf({ all, colors, fills }: Drawn): (cell: Placed, side: Side, h
  * way round once a period — far too slowly to be seen moving, so a glance
  * sees a steady palette and an hour's absence a different one — each
  * segment of the element at its own pace. Swing: how far the segments stray
- * from one another, 0–1, 1 being half a turn apart. A segment is a run of
- * cells in one row on one fill of the element's own — one of `fills`, the
+ * from one another, 0–1, 1 being half a turn apart. A segment is a region
+ * of adjacent cells on one fill of the element's own — one of `fills`, the
  * colours it draws as a ground — or, on the terminal's ground, in one own
  * ink (`segmentsOf`), and it paces by where it sits, not by its colour: two
- * runs of one fill at two places turn apart, and the seam glyph pointing
- * out of a run into the next turns with the run it caps, so a powerline cap
- * keeps the colour of the cell it caps. An ink that is no fill turns with
- * the ground it sits on, so a cell's words and fill turn together. A
- * segment's stray is slow noise at its place, at `STRAY_PERIODS` in time
- * and `STRAY_SPREAD` across the element, so neighbours pace a little apart
- * and distant segments on their own, the row never shows one spread of hues
- * twice, and a run that grows by a column moves its hue a little. Only the
+ * regions of one fill at two places turn apart, and each colour of the seam
+ * a joiner drew between them turns with the region of that colour beside
+ * it, so a powerline cap keeps the colour of the cell it caps. An ink that
+ * is no fill turns with the ground it sits on, so a cell's words and fill
+ * turn together. A segment's stray is slow noise at its place, at
+ * `STRAY_PERIODS` in time and `STRAY_SPREAD` across the element, so
+ * neighbours pace a little apart and distant segments on their own, the
+ * row never shows one spread of hues twice, and a segment that grows by a
+ * column moves its hue a little, and those it pushes along as little. Only the
  * stray reads the place: a place in the shared turn would jump a growing
  * run by `360·t·Δ/P`, without bound in `t`.
  * A colour keeps its luminance as it turns (`hueTurned`), so every pair of
@@ -1095,9 +1126,9 @@ export function wheel(curve: Curve, z: number): Effect {
       };
       return (shown, cell) => {
         const mine = { fg: own(cell.terminal.fg, shown.fg), bg: own(cell.terminal.bg, shown.bg) };
-        const turn = (side: Side, color: ColorRgba, ours: boolean, other: ColorRgba, theirs: boolean): ColorRgba =>
-          ours ? write(color, segmentOf(color, other, theirs), placeOf(cell, side, color.hex)) : color;
-        return { ...shown, fg: turn("fg", shown.fg, mine.fg, shown.bg, mine.bg), bg: turn("bg", shown.bg, mine.bg, shown.fg, mine.fg) };
+        const turn = (color: ColorRgba, ours: boolean, other: ColorRgba, theirs: boolean): ColorRgba =>
+          ours ? write(color, segmentOf(color, other, theirs), placeOf(cell, color.hex)) : color;
+        return { ...shown, fg: turn(shown.fg, mine.fg, shown.bg, mine.bg), bg: turn(shown.bg, mine.bg, shown.fg, mine.fg) };
       };
     });
   });

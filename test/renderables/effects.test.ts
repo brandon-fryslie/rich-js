@@ -213,11 +213,11 @@ describe("the wheel", () => {
     return ((got - ((360 * t) / 907) % 360 + 540) % 360) - 180;
   };
 
-  it("keeps a cap the colour of the run it caps, hand-drawn or a joiner's: its ink turns at that run's place", () => {
+  it("keeps a joiner's cap the colour of the run it caps: each colour of a seam turns with the run of that colour beside it", () => {
     const [a, b] = [fills[0]!, fills[1]!];
-    // Eight cells of `a`, a cap of `a` on `b`, seven of `b`, and a tail of `b` on the terminal's ground.
+    // Eight cells of `a`, a joiner's cap of `a` on `b`, seven of `b`, and a tail of `b` on the terminal's ground.
     const tail = { ...shownAt(16, b, ground), terminal: { fg: false, bg: true }, pair: { fg: b, bg: ground, terminal: { fg: false, bg: true }, reverse: false } };
-    const listed = [...run(a, 0, 8), shownAt(8, a, b), ...run(b, 9, 7), tail];
+    const listed = [...run(a, 0, 8), shownAt(8, a, b, true), ...run(b, 9, 7), tail];
     for (const t of [150, 300, 700]) {
       const cellA = lookAt(listed, listed[3]!, t).bg;
       const cellB = lookAt(listed, listed[12]!, t).bg;
@@ -227,6 +227,31 @@ describe("the wheel", () => {
       expect(lookAt(listed, tail, t).fg.hex).toBe(cellB.hex);
       expect(cellA.hex).not.toBe(a.hex);
     }
+  });
+
+  it("a word in a neighbour's fill colour is a word, not a cap: every letter turns with the ground it sits on", () => {
+    const [a, b] = [fills[0]!, fills[1]!];
+    // Eight cells of `a`, then a word of ink `a` on `b` from the very next column.
+    const listed = [...run(a, 0, 8), ...Array.from({ length: 8 }, (_, i) => shownAt(8 + i, a, b))];
+    for (const t of [150, 300, 700]) {
+      const first = lookAt(listed, listed[8]!, t).fg.hex;
+      expect(first).toBe(lookAt(listed, listed[12]!, t).fg.hex);
+      expect(first).not.toBe(lookAt(listed, listed[3]!, t).bg.hex);
+    }
+  });
+
+  it("a segment spans rows: a ground with words on it is one segment, and two rows apart are two", () => {
+    const a = fills[0]!;
+    const t = 300;
+    const fillAt = (row: number, col: number, bg: ColorRgba): EffectCell & ListedCell => ({ ...cellAt(row, col), pair: { fg: ink, bg, terminal: written, reverse: false } });
+    const hueAt = (listed: readonly (EffectCell & ListedCell)[], row: number, col: number): string =>
+      lookAt(listed, listed.find((cell) => cell.row === row && cell.col === col)!, t).bg.hex;
+    // Three rows of `a` nine wide, the middle row interrupted by a cell of another fill.
+    const block = [0, 1, 2].flatMap((row) => Array.from({ length: 9 }, (_, col) => fillAt(row, col, row === 1 && col === 4 ? fills[1]! : a)));
+    expect(new Set([hueAt(block, 0, 1), hueAt(block, 1, 0), hueAt(block, 1, 8), hueAt(block, 2, 7)]).size).toBe(1);
+    // The same rows with the middle one left out: two segments.
+    const apart = block.filter((cell) => cell.row !== 1);
+    expect(hueAt(apart, 0, 1)).not.toBe(hueAt(apart, 2, 1));
   });
 
   it("paces a segment by where it sits: three runs of one fill at three places stray apart, within the swing", () => {

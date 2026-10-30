@@ -547,6 +547,12 @@ interface Look {
   readonly pair: Pair;
   /** The attributes an effect is handed, as the style sets them. */
   readonly attributes: CellAttributes;
+  /**
+   * Whether a strip's joiner drew the segment (`JOIN`): a seam, whose ink is
+   * the fill beside it, not words. [LAW:single-enforcer] Decided here once,
+   * for the cells listed and the words measured alike.
+   */
+  readonly seam: boolean;
 }
 
 /** Each of `segments` with how it is drawn at `depth` on `theme`; a control segment draws nothing. */
@@ -558,7 +564,7 @@ function looks(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalTh
     const slots = { fg: (wire.color ?? DEFAULT).getTruecolor(theme, true), bg: (wire.bgcolor ?? DEFAULT).getTruecolor(theme, false) };
     const reverse = style.reverse === true;
     const terminal = onScreen({ fg: wire.color?.isDefault ?? true, bg: wire.bgcolor?.isDefault ?? true }, reverse);
-    return { segment, look: { style, wire, slots, pair: { ...onScreen(slots, reverse), terminal, reverse }, attributes: cellAttributes(style) } };
+    return { segment, look: { style, wire, slots, pair: { ...onScreen(slots, reverse), terminal, reverse }, attributes: cellAttributes(style), seam: drawnBy(style.anchor, JOIN) } };
   });
 }
 
@@ -572,6 +578,8 @@ interface Looked {
 export interface WalkedGlyph {
   readonly glyph: string;
   readonly cell: Placed | undefined;
+  /** The columns the glyph takes: the one measure the walk steps by, so a listed cell's width is the walk's. [LAW:one-source-of-truth] */
+  readonly width: number;
 }
 
 /** A segment with how it is drawn and each of its glyphs, placed. */
@@ -598,9 +606,10 @@ export function walkGlyphs(segments: readonly Segment[]): (readonly WalkedGlyph[
     let into = 0;
     return [...graphemes(segment.text)].map((glyph) => {
       const cell = glyph === "\n" ? undefined : { row, col, anchor: anchor && shiftAnchor(anchor, into) };
-      [row, col] = glyph === "\n" ? [row + 1, 0] : [row, col + cellLen(glyph)];
-      into += cellLen(glyph);
-      return { glyph, cell };
+      const width = cellLen(glyph);
+      [row, col] = glyph === "\n" ? [row + 1, 0] : [row, col + width];
+      into += width;
+      return { glyph, cell, width };
     });
   });
 }
@@ -700,14 +709,12 @@ function measured(looked: readonly Looked[], walked: () => readonly Walked[], de
       if (look === undefined) return [];
       // A blank glyph shows its ground, and any line its style draws in its ink.
       const blankShows = look.pair.bg.hex !== ground || drawsLines(look.style);
-      // [LAW:single-enforcer] Whether a joiner drew the cell is decided here, where `words` decides it below.
-      const seam = drawnBy(look.style.anchor, JOIN);
-      return glyphs.flatMap(({ glyph, cell }) => (cell === undefined ? [] : [{ cell: { ...cell, width: cellLen(glyph), pair: look.pair, seam }, shows: inked(glyph) || blankShows }]));
+      return glyphs.flatMap(({ glyph, cell, width }) => (cell === undefined ? [] : [{ cell: { ...cell, width, pair: look.pair, seam: look.seam }, shows: inked(glyph) || blankShows }]));
     });
   const listed = (): readonly { readonly cell: ListedCell; readonly shows: boolean }[] => (everything ??= list());
   let all: readonly ListedCell[] | undefined;
   let shown: readonly ListedCell[] | undefined;
-  const words = looked.flatMap(({ segment, look }) => (look !== undefined && inked(segment.text) && !drawnBy(look.style.anchor, JOIN) ? [look.pair] : []));
+  const words = looked.flatMap(({ segment, look }) => (look !== undefined && inked(segment.text) && !look.seam ? [look.pair] : []));
   const pairs = [...new Map(words.map((pair): [string, Pair] => [`${pair.fg.hex}/${pair.bg.hex}/${pair.terminal.fg}/${pair.terminal.bg}/${pair.reverse}`, pair])).values()];
   // [LAW:one-source-of-truth] A slot the terminal fills is no colour of the element's, whatever its hex.
   const own = (slot: "fg" | "bg"): string[] => pairs.flatMap((pair) => (pair.terminal[slot] ? [] : [pair[slot].hex]));
