@@ -136,6 +136,21 @@ export interface EffectCell {
 export type Placed = Pick<EffectCell, "row" | "col" | "anchor">;
 
 /**
+ * A cell as `Drawn.cells` lists it: where it sits and who drew it, the
+ * columns its glyph takes, its ink and ground as the screen shows them, and
+ * whether a strip's joiner drew it — a seam, no item's, whose colours are its
+ * neighbours' edges. Each is read off the one look and the one walk the cell
+ * is later handed with, so an effect that groups cells into the runs they
+ * are drawn in — `wheel`'s segments — reads what the frame hands, never a
+ * second measure. [LAW:one-source-of-truth]
+ */
+export interface ListedCell extends Placed {
+  readonly width: number;
+  readonly pair: Pair;
+  readonly seam: boolean;
+}
+
+/**
  * A cell's ink and ground as the screen shows them, which of the two are the
  * terminal's, and whether its style swaps them (`reverse`): what an `Effect`
  * is handed for that cell.
@@ -162,17 +177,20 @@ export interface Drawn {
   /**
    * Every cell the element shows something in this frame — a glyph, a
    * ground that is not the terminal's, or a line its style draws — where it
-   * sits and who drew it, listed before the effect is handed any: what
-   * an effect spread over the element — a transition, which has its last cell
-   * settle as it ends — is spread over. A blank cell on the terminal's ground
-   * that draws no line is handed but not listed, since nothing in it shows,
-   * and a strip's join cell painted from the items beside it is listed but
-   * never handed its own look, since it follows them: it is handed only a
+   * sits and who drew it, what it shows and how wide it is (`ListedCell`),
+   * in the order the walk places them, listed before the effect is handed
+   * any: what an effect spread over the element — a transition, which has
+   * its last cell settle as it ends — is spread over, and what one that
+   * turns the element's runs each at their own pace — `wheel` — reads the
+   * runs off. A blank cell on the terminal's ground that draws no line is
+   * handed but not listed, since nothing in it shows, and a strip's join
+   * cell painted from the items beside it is listed, as a `seam`, but never
+   * handed its own look, since it follows them: it is handed only a
    * neighbour's edge the frame does not show, to be painted where the seam
    * shows it. `confined` narrows it to the cells its owners drew. A call, so a
    * frame whose effect does not ask lists none.
    */
-  cells(): readonly Placed[];
+  cells(): readonly ListedCell[];
   /** Every distinct ink and ground of a word cell. */
   readonly pairs: readonly Pair[];
   /** The colours the element sets itself in its word cells, by hex: never the terminal's, whatever its hex. */
@@ -668,13 +686,15 @@ function drawsLines(style: Style): boolean {
  */
 function measured(looked: readonly Looked[], walked: () => readonly Walked[], depth: ColorDepth, theme: TerminalTheme): Drawn {
   const ground = theme.backgroundColor.hex;
-  let listed: readonly Placed[] | undefined;
-  const list = (): readonly Placed[] =>
+  let listed: readonly ListedCell[] | undefined;
+  const list = (): readonly ListedCell[] =>
     walked().flatMap(({ look, glyphs }) => {
       if (look === undefined) return [];
       // A blank glyph shows its ground, and any line its style draws in its ink.
       const blankShows = look.pair.bg.hex !== ground || drawsLines(look.style);
-      return glyphs.flatMap(({ glyph, cell }) => (cell !== undefined && (inked(glyph) || blankShows) ? [cell] : []));
+      // [LAW:single-enforcer] Whether a joiner drew the cell is decided here, where `words` decides it below.
+      const seam = drawnBy(look.style.anchor, JOIN);
+      return glyphs.flatMap(({ glyph, cell }) => (cell !== undefined && (inked(glyph) || blankShows) ? [{ ...cell, width: cellLen(glyph), pair: look.pair, seam }] : []));
     });
   const words = looked.flatMap(({ segment, look }) => (look !== undefined && inked(segment.text) && !drawnBy(look.style.anchor, JOIN) ? [look.pair] : []));
   const pairs = [...new Map(words.map((pair): [string, Pair] => [`${pair.fg.hex}/${pair.bg.hex}/${pair.terminal.fg}/${pair.terminal.bg}/${pair.reverse}`, pair])).values()];

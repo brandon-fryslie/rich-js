@@ -60,7 +60,7 @@ import { Oklch } from "../core/oklch.js";
 import { Style } from "../core/style.js";
 import { ensureContrast } from "../themes/colorMath.js";
 import type { ColorRamp } from "../themes/ramp.js";
-import { Effected, type CellAttributes, type CellLook, type Drawn, type Effect, type EffectCell, type EffectFrame, type Pair, type Placed } from "./effect.js";
+import { Effected, type CellAttributes, type CellLook, type Drawn, type Effect, type EffectCell, type EffectFrame, type ListedCell, type Pair, type Placed } from "./effect.js";
 
 /** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
 export type Touch = (color: ColorRgba, w: number) => ColorRgba;
@@ -938,19 +938,97 @@ const STRAY_PERIODS = [211, 337] as const;
 const STRAY = 180;
 
 /**
+ * The columns between two places at which their strays no longer pace
+ * alike: the noise a stray rides on is sampled at the place over this many
+ * columns a unit, so a strip's items, a dozen columns apart, pace a little
+ * apart and segments a screen apart pace on their own. Rows are the same
+ * distance apart as columns.
+ */
+const STRAY_SPREAD = 24;
+
+/** Where a segment sits in the element: its row, and its centre column from the left edge. */
+interface Place {
+  readonly row: number;
+  readonly centre: number;
+}
+
+/** A run of cells the wheel turns as one segment: its row, the columns it covers, and the colour it is a run of. */
+interface Run {
+  readonly row: number;
+  readonly start: number;
+  end: number;
+  readonly hex: string;
+}
+
+/** `cell` as a place of its own, as wide as its glyph: where no run covers it. */
+const ownPlace = (cell: Placed, width: number): Place => ({ row: cell.row, centre: cell.col + width / 2 });
+
+/**
+ * The segments `drawn` shows, as where each colour of each cell turns: a
+ * segment is a run of adjacent cells in one row with one own fill as ground
+ * — on the terminal's ground, a run of one own ink — read off `Drawn.cells`
+ * once a frame, and a seam a joiner drew is in none, since its colours are
+ * its neighbours' edges. A cell's ground turns with the run covering the
+ * cell. Its ink turns with that run too, unless the ink is a fill and a run
+ * of that fill ends where the cell starts or starts where it ends: a cap
+ * then keeps the colour of the run it caps, a custom joiner's handed cap
+ * included. A cell no run covers — a neighbour's edge the frame does not
+ * show, handed at a seam's own cell — is its own place. The place is the
+ * run's centre column from the element's left edge, with its row: a run
+ * that grows by a column moves its centre by half of one, and never another
+ * segment's, where a share of the element's extent would move them all.
+ */
+function segmentsOf({ cells, colors, fills }: Drawn): (cell: Placed, side: Side, hex: string) => Place {
+  const at = (row: number, col: number): string => `${row}:${col}`;
+  const listed = new Map<string, ListedCell>();
+  const covering = new Map<string, Run>();
+  // The colour a cell is a run of: its own ground, else on the terminal's ground its own ink, else none.
+  const runOf = (cell: ListedCell): string | undefined => {
+    if (cell.seam) return undefined;
+    const own = (terminal: boolean, hex: string): string | undefined => (!terminal && colors.has(hex) ? hex : undefined);
+    return own(cell.pair.terminal.bg, cell.pair.bg.hex) ?? own(cell.pair.terminal.fg, cell.pair.fg.hex);
+  };
+  let run: Run | undefined;
+  let last: ListedCell | undefined;
+  for (const cell of cells()) {
+    listed.set(at(cell.row, cell.col), cell);
+    const hex = runOf(cell);
+    if (run !== undefined && last !== undefined && hex === run.hex && cell.row === run.row && cell.col === last.col + last.width) run.end = cell.col + cell.width;
+    else run = hex === undefined ? undefined : { row: cell.row, start: cell.col, end: cell.col + cell.width, hex };
+    for (let col = cell.col; run !== undefined && col < cell.col + cell.width; col++) covering.set(at(cell.row, col), run);
+    last = cell;
+  }
+  const placeOf = (run: Run): Place => ({ row: run.row, centre: (run.start + run.end) / 2 });
+  return (cell, side, hex) => {
+    const width = listed.get(at(cell.row, cell.col))?.width ?? 1;
+    if (side === "fg" && fills.has(hex)) {
+      const capped = [covering.get(at(cell.row, cell.col - 1)), covering.get(at(cell.row, cell.col + width))].find((run) => run?.hex === hex);
+      if (capped !== undefined) return placeOf(capped);
+    }
+    const covered = covering.get(at(cell.row, cell.col));
+    return covered === undefined ? ownPlace(cell, width) : placeOf(covered);
+  };
+}
+
+/**
  * Wheel, as the colour of daylight going round: every hue turning the whole
  * way round once a period — far too slowly to be seen moving, so a glance
  * sees a steady palette and an hour's absence a different one — each
  * segment of the element at its own pace. Swing: how far the segments stray
- * from one another, 0–1, 1 being half a turn apart. A segment is a fill of
- * the element's own — one of `fills`, the colours it draws as a ground — and
- * it turns at its own pace wherever it is drawn: as the ground of its cells,
- * and as the ink of the seam glyph pointing out of it into the next, so a
- * powerline cap keeps the colour of the cell it caps. An ink that is no fill
- * turns with the ground it sits on, so a cell's words and fill turn
- * together; on the terminal's ground, a run of text's ink is a segment of
- * its own. A segment's stray is slow noise of its own, at `STRAY_PERIODS`,
- * so no two keep step, and the row never shows one spread of hues twice.
+ * from one another, 0–1, 1 being half a turn apart. A segment is a run of
+ * cells in one row on one fill of the element's own — one of `fills`, the
+ * colours it draws as a ground — or, on the terminal's ground, in one own
+ * ink (`segmentsOf`), and it paces by where it sits, not by its colour: two
+ * runs of one fill at two places turn apart, and the seam glyph pointing
+ * out of a run into the next turns with the run it caps, so a powerline cap
+ * keeps the colour of the cell it caps. An ink that is no fill turns with
+ * the ground it sits on, so a cell's words and fill turn together. A
+ * segment's stray is slow noise at its place, at `STRAY_PERIODS` in time
+ * and `STRAY_SPREAD` across the element, so neighbours pace a little apart
+ * and distant segments on their own, the row never shows one spread of hues
+ * twice, and a run that grows by a column moves its hue a little. Only the
+ * stray reads the place: a place in the shared turn would jump a growing
+ * run by `360·t·Δ/P`, without bound in `t`.
  * A colour keeps its luminance as it turns (`hueTurned`), so every pair of
  * words reads at the contrast it rested at; at 256 colours a turned colour
  * lands on a colour the depth writes, one that keeps every pair of words it
@@ -963,16 +1041,13 @@ export function wheel(curve: Curve, z: number): Effect {
   requireCurve(curve);
   requireZ("wheel", z);
   const P = curve.seconds;
-  // A segment's seed, from the colour it is.
-  const seed = (hex: string): number => hash(Number.parseInt(hex.slice(1), 16) * 1e-4, 17.3 + z);
-  const stray = (s: number, t: number): number =>
-    noise(t / STRAY_PERIODS[0], 5.9 + 97 * s, z) + 0.5 * noise(t / STRAY_PERIODS[1], 2.3 + 89 * s, z + 7.1);
+  // A segment's stray at its place: the offsets keep a sample off the
+  // lattice, where the noise is zero whatever the place.
+  const stray = ({ row, centre }: Place, t: number): number =>
+    noise(t / STRAY_PERIODS[0], centre / STRAY_SPREAD + 5.9, z + row / STRAY_SPREAD + 2.3) + 0.5 * noise(t / STRAY_PERIODS[1], centre / STRAY_SPREAD + 97.3, z + row / STRAY_SPREAD + 7.1);
   // Measured from where it stood at the start, as pulse's wander is, so the
   // first frame turns nothing and the second has turned only a frame's worth.
-  const turned = (hex: string, t: number): number => {
-    const s = seed(hex);
-    return (360 * t) / P + curve.swing * STRAY * ((stray(s, t) - stray(s, 0)) / 1.5);
-  };
+  const turned = (place: Place, t: number): number => (360 * t) / P + curve.swing * STRAY * ((stray(place, t) - stray(place, 0)) / 1.5);
   // A turned colour's bounds rest on what a frame draws, never on `t`: settled once for each.
   const settled = new WeakMemo<Memo<ReadonlyMap<string, Bounds>>, TerminalTheme>();
   return stillOnSlots((drawn) => {
@@ -992,21 +1067,26 @@ export function wheel(curve: Curve, z: number): Effect {
     // 256 colours writes a turned colour as one it has an index for; truecolor
     // as one of the two either side of its luminance.
     const indexed = measuredIndexed(depth, theme);
+    // Where each cell's colours turn, read off the frame's listing once.
+    const placeOf = segmentsOf(drawn);
     return Animation.continuous((t): EffectFrame => {
+      // A colour turned at a place is written once a frame, wherever it falls.
       const written = new Map<string, ColorRgba>();
-      const choose = (color: ColorRgba, segment: string): ColorRgba => {
-        const turn = hueTurned(color, turned(segment, t));
+      const choose = (color: ColorRgba, segment: string, place: Place): ColorRgba => {
+        const turn = hueTurned(color, turned(place, t));
         return nearestWithin(turn.looks, color, depth === ColorDepth.TRUECOLOR ? turn.either.map(measured) : indexed, bounds.get(keyOf(color, segment)) ?? UNBOUNDED);
       };
-      const write = (color: ColorRgba, segment: string): ColorRgba => {
-        const found = written.get(keyOf(color, segment)) ?? choose(color, segment);
-        written.set(keyOf(color, segment), found);
+      const write = (color: ColorRgba, segment: string, place: Place): ColorRgba => {
+        const key = `${color.hex} ${place.row}:${place.centre}`;
+        const found = written.get(key) ?? choose(color, segment, place);
+        written.set(key, found);
         return found;
       };
       return (shown, cell) => {
         const mine = { fg: own(cell.terminal.fg, shown.fg), bg: own(cell.terminal.bg, shown.bg) };
-        const turn = (color: ColorRgba, ours: boolean, other: ColorRgba, theirs: boolean): ColorRgba => (ours ? write(color, segmentOf(color, other, theirs)) : color);
-        return { ...shown, fg: turn(shown.fg, mine.fg, shown.bg, mine.bg), bg: turn(shown.bg, mine.bg, shown.fg, mine.fg) };
+        const turn = (side: Side, color: ColorRgba, ours: boolean, other: ColorRgba, theirs: boolean): ColorRgba =>
+          ours ? write(color, segmentOf(color, other, theirs), placeOf(cell, side, color.hex)) : color;
+        return { ...shown, fg: turn("fg", shown.fg, mine.fg, shown.bg, mine.bg), bg: turn("bg", shown.bg, mine.bg, shown.fg, mine.fg) };
       };
     });
   });
