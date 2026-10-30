@@ -490,6 +490,18 @@ describe("Drawn.cells — the cells an effect is handed, listed before it is han
     expect(handed).toEqual(["0:0", "0:1", "0:2"]);
     expect(listed).toEqual(["0:0", "0:2"]);
   });
+  it("Drawn.all lists that blank cell too, with its ink and width, so a styled sentence is one run across its spaces", () => {
+    const all: string[] = [];
+    const listed: string[] = [];
+    const recording: Effect = (drawn) => {
+      all.push(...drawn.all().map(({ row, col, width, pair, seam }) => `${row}:${col} ${width} ${pair.fg.hex} ${pair.terminal.fg} ${seam}`));
+      listed.push(...drawn.cells().map(({ row, col }) => `${row}:${col}`));
+      return Animation.continuous(() => (colors) => colors);
+    };
+    renderToString(effected(fixed(new Segment("a 界", Style.parse("#ff0000"))), recording), { width: 10, colorSystem: "truecolor" });
+    expect(all).toEqual(["0:0 1 #ff0000 false false", "0:1 1 #ff0000 false false", "0:2 2 #ff0000 false false"]);
+    expect(listed).toEqual(["0:0", "0:2"]);
+  });
   it("lists a blank cell whose style draws a line in its ink", () => {
     const listed: string[] = [];
     const recording: Effect = (drawn) => {

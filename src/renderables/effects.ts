@@ -964,11 +964,14 @@ interface Run {
 const ownPlace = (cell: Placed, width: number): Place => ({ row: cell.row, centre: cell.col + width / 2 });
 
 /**
- * The segments `drawn` shows, as where each colour of each cell turns: a
+ * The segments `drawn` draws, as where each colour of each cell turns: a
  * segment is a run of adjacent cells in one row with one own fill as ground
- * — on the terminal's ground, a run of one own ink — read off `Drawn.cells`
- * once a frame, and a seam a joiner drew is in none, since its colours are
- * its neighbours' edges. A cell's ground turns with the run covering the
+ * — on the terminal's ground, a run of one own ink — read off `Drawn.all`
+ * once a frame, so a blank carrying the ink keeps a styled sentence one run
+ * across its spaces and a blank in the terminal's ink splits one, and a seam
+ * a joiner drew is in none, since its colours are its neighbours' edges. A
+ * cell the frame lists nowhere — one a hand-built `Drawn` hands — is one
+ * column wide. A cell's ground turns with the run covering the
  * cell. Its ink turns with that run too, unless the ink is a fill and a run
  * of that fill ends where the cell starts or starts where it ends: a cap
  * then keeps the colour of the run it caps, a custom joiner's handed cap
@@ -978,7 +981,7 @@ const ownPlace = (cell: Placed, width: number): Place => ({ row: cell.row, centr
  * that grows by a column moves its centre by half of one, and never another
  * segment's, where a share of the element's extent would move them all.
  */
-function segmentsOf({ cells, colors, fills }: Drawn): (cell: Placed, side: Side, hex: string) => Place {
+function segmentsOf({ all, colors, fills }: Drawn): (cell: Placed, side: Side, hex: string) => Place {
   const at = (row: number, col: number): string => `${row}:${col}`;
   const listed = new Map<string, ListedCell>();
   const covering = new Map<string, Run>();
@@ -990,7 +993,7 @@ function segmentsOf({ cells, colors, fills }: Drawn): (cell: Placed, side: Side,
   };
   let run: Run | undefined;
   let last: ListedCell | undefined;
-  for (const cell of cells()) {
+  for (const cell of all()) {
     listed.set(at(cell.row, cell.col), cell);
     const hex = runOf(cell);
     if (run !== undefined && last !== undefined && hex === run.hex && cell.row === run.row && cell.col === last.col + last.width) run.end = cell.col + cell.width;
@@ -1041,8 +1044,13 @@ export function wheel(curve: Curve, z: number): Effect {
   requireCurve(curve);
   requireZ("wheel", z);
   const P = curve.seconds;
-  // A segment's stray at its place: the offsets keep a sample off the
-  // lattice, where the noise is zero whatever the place.
+  // A segment's stray at its place. The fractions of the `y` offsets, .9
+  // and .3, are ones no centre — a half-integer over `STRAY_SPREAD` columns
+  // — reaches, so no sample's `y` is whole: a sample with a whole `y` and
+  // `z` sits on a lattice line along `t`, where the noise is zero at every
+  // multiple of the period and every segment on it would return to the
+  // shared turn together. `z` needs no such offset; its two differ so the
+  // two noises are read from different fields.
   const stray = ({ row, centre }: Place, t: number): number =>
     noise(t / STRAY_PERIODS[0], centre / STRAY_SPREAD + 5.9, z + row / STRAY_SPREAD + 2.3) + 0.5 * noise(t / STRAY_PERIODS[1], centre / STRAY_SPREAD + 97.3, z + row / STRAY_SPREAD + 7.1);
   // Measured from where it stood at the start, as pulse's wander is, so the
@@ -1056,7 +1064,7 @@ export function wheel(curve: Curve, z: number): Effect {
     const own = (terminal: boolean, color: ColorRgba): boolean => !terminal && colors.has(color.hex);
     // The segment an own colour turns with: itself if a fill or beside no own colour, else the one beside it.
     const segmentOf = (color: ColorRgba, other: ColorRgba, theirs: boolean): string => (fills.has(color.hex) || !theirs ? color.hex : other.hex);
-    // A colour as it turns with a segment: written one way wherever it is drawn in a frame.
+    // The bounds a colour turns within, by the segment it turns with: one bound for every place a frame writes it at.
     const keyOf = (color: ColorRgba, segment: string): string => `${color.hex} ${segment}`;
     const bounds = settled.get(theme, () => new Memo()).get(drawnKey(drawn), () =>
       turnedBounds(drawn.pairs, depth, (pair, side) => {
@@ -1070,14 +1078,17 @@ export function wheel(curve: Curve, z: number): Effect {
     // Where each cell's colours turn, read off the frame's listing once.
     const placeOf = segmentsOf(drawn);
     return Animation.continuous((t): EffectFrame => {
-      // A colour turned at a place is written once a frame, wherever it falls.
+      // [LAW:one-source-of-truth] A colour turned at a place within a
+      // segment's bounds is written once a frame, wherever it falls: the
+      // key is the bounds' key with the place, so one entry never serves
+      // two bounds.
       const written = new Map<string, ColorRgba>();
       const choose = (color: ColorRgba, segment: string, place: Place): ColorRgba => {
         const turn = hueTurned(color, turned(place, t));
         return nearestWithin(turn.looks, color, depth === ColorDepth.TRUECOLOR ? turn.either.map(measured) : indexed, bounds.get(keyOf(color, segment)) ?? UNBOUNDED);
       };
       const write = (color: ColorRgba, segment: string, place: Place): ColorRgba => {
-        const key = `${color.hex} ${place.row}:${place.centre}`;
+        const key = `${keyOf(color, segment)} ${place.row}:${place.centre}`;
         const found = written.get(key) ?? choose(color, segment, place);
         written.set(key, found);
         return found;
@@ -1161,9 +1172,10 @@ const ROUNDING_GAP = Math.log(1.031);
  * A pair's contrast to spare above its floor, as a gap between stops, is
  * shared out evenly between its sides that turn: the lighter may land that
  * much darker, the darker that much lighter, and never further. So a colour
- * written once for every pair it is drawn in is bounded by each of them at
- * once, and a frame writes it one way wherever it falls. A pair whose floor
- * is 1:1 holds however it is drawn, and bounds nothing.
+ * bounded once for every pair it is drawn in is bounded by each of them at
+ * once, and every way a frame writes it — the wheel turns it at each place
+ * it falls — lands within them. A pair whose floor is 1:1 holds however it
+ * is drawn, and bounds nothing.
  */
 function turnedBounds(pairs: readonly Pair[], depth: ColorDepth, turnedAs: (pair: Pair, side: Side) => string | undefined): ReadonlyMap<string, Bounds> {
   const bounds = new Map<string, Bounds>();

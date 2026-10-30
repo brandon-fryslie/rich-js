@@ -136,7 +136,7 @@ export interface EffectCell {
 export type Placed = Pick<EffectCell, "row" | "col" | "anchor">;
 
 /**
- * A cell as `Drawn.cells` lists it: where it sits and who drew it, the
+ * A cell as `Drawn.all` lists it: where it sits and who drew it, the
  * columns its glyph takes, its ink and ground as the screen shows them, and
  * whether a strip's joiner drew it — a seam, no item's, whose colours are its
  * neighbours' edges. Each is read off the one look and the one walk the cell
@@ -175,20 +175,26 @@ export interface Pair extends CellColors {
  */
 export interface Drawn {
   /**
-   * Every cell the element shows something in this frame — a glyph, a
-   * ground that is not the terminal's, or a line its style draws — where it
-   * sits and who drew it, what it shows and how wide it is (`ListedCell`),
-   * in the order the walk places them, listed before the effect is handed
-   * any: what an effect spread over the element — a transition, which has
-   * its last cell settle as it ends — is spread over, and what one that
-   * turns the element's runs each at their own pace — `wheel` — reads the
-   * runs off. A blank cell on the terminal's ground that draws no line is
-   * handed but not listed, since nothing in it shows, and a strip's join
-   * cell painted from the items beside it is listed, as a `seam`, but never
-   * handed its own look, since it follows them: it is handed only a
-   * neighbour's edge the frame does not show, to be painted where the seam
-   * shows it. `confined` narrows it to the cells its owners drew. A call, so a
-   * frame whose effect does not ask lists none.
+   * Every cell the element draws this frame, shown or not — where it sits
+   * and who drew it, what it shows and how wide it is (`ListedCell`) — in
+   * the order it draws them, listed before the effect is handed any. A blank
+   * cell on the terminal's ground that draws no line is here: the effect is
+   * handed it, and its ink, unseen, is the ink of the words beside it, so an
+   * effect that turns the element's runs each at their own pace — `wheel` —
+   * reads the runs off this and a styled sentence is one run across its
+   * spaces. A strip's join cell painted from the items beside it is here,
+   * as a `seam`, but never handed its own look, since it follows them: it is
+   * handed only a neighbour's edge the frame does not show, to be painted
+   * where the seam shows it. `confined` narrows it to the cells its owners
+   * drew. A call, so a frame whose effect does not ask lists none.
+   */
+  all(): readonly ListedCell[];
+  /**
+   * Of `all`, every cell the element shows something in — a glyph, a ground
+   * that is not the terminal's, or a line its style draws: what an effect
+   * spread over the element — a transition, which has its last cell settle
+   * as it ends — is spread over. A blank cell on the terminal's ground that
+   * draws no line is handed but not here, since nothing in it shows.
    */
   cells(): readonly ListedCell[];
   /** Every distinct ink and ground of a word cell. */
@@ -679,29 +685,35 @@ function drawsLines(style: Style): boolean {
 }
 
 /**
- * What `looked` draws: `Drawn`'s measure, taken once per frame. Its `cells`
- * are listed off `walked` the first time they are asked for, since only an
- * effect spread over the element asks, and a glyph walk is what measuring the
- * words alone, a segment at a time, is spared (`drawnOf`).
+ * What `looked` draws: `Drawn`'s measure, taken once per frame. Its `all`
+ * and `cells` are listed off `walked` the first time either is asked for,
+ * since only an effect spread over the element or turning its runs asks, and
+ * a glyph walk is what measuring the words alone, a segment at a time, is
+ * spared (`drawnOf`).
  */
 function measured(looked: readonly Looked[], walked: () => readonly Walked[], depth: ColorDepth, theme: TerminalTheme): Drawn {
   const ground = theme.backgroundColor.hex;
-  let listed: readonly ListedCell[] | undefined;
-  const list = (): readonly ListedCell[] =>
+  // [LAW:one-source-of-truth] One listing, each cell with whether it shows; `all` and `cells` are read off it.
+  let everything: readonly { readonly cell: ListedCell; readonly shows: boolean }[] | undefined;
+  const list = (): readonly { readonly cell: ListedCell; readonly shows: boolean }[] =>
     walked().flatMap(({ look, glyphs }) => {
       if (look === undefined) return [];
       // A blank glyph shows its ground, and any line its style draws in its ink.
       const blankShows = look.pair.bg.hex !== ground || drawsLines(look.style);
       // [LAW:single-enforcer] Whether a joiner drew the cell is decided here, where `words` decides it below.
       const seam = drawnBy(look.style.anchor, JOIN);
-      return glyphs.flatMap(({ glyph, cell }) => (cell !== undefined && (inked(glyph) || blankShows) ? [{ ...cell, width: cellLen(glyph), pair: look.pair, seam }] : []));
+      return glyphs.flatMap(({ glyph, cell }) => (cell === undefined ? [] : [{ cell: { ...cell, width: cellLen(glyph), pair: look.pair, seam }, shows: inked(glyph) || blankShows }]));
     });
+  const listed = (): readonly { readonly cell: ListedCell; readonly shows: boolean }[] => (everything ??= list());
+  let all: readonly ListedCell[] | undefined;
+  let shown: readonly ListedCell[] | undefined;
   const words = looked.flatMap(({ segment, look }) => (look !== undefined && inked(segment.text) && !drawnBy(look.style.anchor, JOIN) ? [look.pair] : []));
   const pairs = [...new Map(words.map((pair): [string, Pair] => [`${pair.fg.hex}/${pair.bg.hex}/${pair.terminal.fg}/${pair.terminal.bg}/${pair.reverse}`, pair])).values()];
   // [LAW:one-source-of-truth] A slot the terminal fills is no colour of the element's, whatever its hex.
   const own = (slot: "fg" | "bg"): string[] => pairs.flatMap((pair) => (pair.terminal[slot] ? [] : [pair[slot].hex]));
   return {
-    cells: () => (listed ??= list()),
+    all: () => (all ??= listed().map(({ cell }) => cell)),
+    cells: () => (shown ??= listed().flatMap(({ cell, shows }) => (shows ? [cell] : []))),
     pairs,
     colors: new Set([...own("fg"), ...own("bg")]),
     fills: new Set(own("bg")),
@@ -728,7 +740,7 @@ export function confined(effect: Effect, ...owners: readonly object[]): Effect {
     return false;
   };
   // The frame as the effect sees it: the owners' cells alone. [LAW:one-source-of-truth] One narrowing, handed to both stages.
-  const narrowed = (drawn: Drawn): Drawn => ({ ...drawn, cells: () => drawn.cells().filter(owned) });
+  const narrowed = (drawn: Drawn): Drawn => ({ ...drawn, all: () => drawn.all().filter(owned), cells: () => drawn.cells().filter(owned) });
   // The owners' cells change when the effect's frame does.
   return (drawn) => Animation.map(effect(narrowed(drawn)), (frame): EffectFrame => (look, cell) => (owned(cell) ? frame(look, cell) : look));
 }
