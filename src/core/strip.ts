@@ -538,14 +538,15 @@ function cellStyle(cell: JoinCell, edges: Edges, options: RenderOptions): Style 
   return new Style({ color: standOff(resolvePaint(cell.fg, edges, options), bgcolor, options.colorSystem ?? ColorDepth.TRUECOLOR), bgcolor });
 }
 
-// Whether `cell` paints with anything of `side`'s edge, its ground or its text.
-const readsEdge = (cell: JoinCell, side: "left" | "right"): boolean =>
-  [cell.fg, cell.bg].some((color) => color !== "ground" && [...paintsIn(color)].some((p) => "edge" in p && p.edge === side));
+// The parts of `side`'s edge `cell` paints with: its ground (`bg`), its text (`fg`).
+const partsRead = (cell: JoinCell, side: "left" | "right"): ReadonlySet<"fg" | "bg"> =>
+  new Set([cell.fg, cell.bg].flatMap((color) => (color === "ground" ? [] : [...paintsIn(color)].flatMap((p) => ("edge" in p && p.edge === side ? [p.part] : [])))));
 
 /**
  * Where an effect moved one slot or both of a neighbour's edge cell to, each
- * the colour the screen shows once the slot is written: `color` for its text,
- * `bgcolor` for its ground. A slot left unset did not move.
+ * the spec the depth writes the slot in, a palette slot as that slot:
+ * `color` for its text, `bgcolor` for its ground. A slot left unset did not
+ * move.
  */
 export interface EdgeMove {
   readonly color?: ColorSpec;
@@ -560,18 +561,23 @@ export interface EdgeMove {
  *
  * [LAW:one-source-of-truth] A seam's colours are its neighbours', so nothing
  * paints them but this resolution. An effect paints a strip's items and never
- * a join cell; once the items are painted, each join cell is handed what moved
- * at the item cells beside it and resolved again through `cellStyle`, the path
- * the join was drawn by, lift included (`../renderables/effect.ts`). A seam
- * then follows its neighbours wherever an effect takes them, a mix of the two
- * included, and an effect that paints both one colour leaves the seam's ink
- * lifted off it.
+ * a join cell that `follows` them; once the items are painted, each such cell
+ * is handed what moved at the item cells beside it and resolved again through
+ * `cellStyle`, the path the join was drawn by, lift included
+ * (`../renderables/effect.ts`). A seam then follows its neighbours wherever an
+ * effect takes them, a mix of the two included, and an effect that paints
+ * both one colour leaves the seam's ink lifted off it. A cell painted from
+ * roles and the terminal's ground alone, as `plain`'s separator is, follows
+ * nobody, and an effect paints it as it paints any cell.
  */
 export class JoinedCell {
   /** The neighbour whose edge the cell's paints read on each side, or `null` for a side they read nothing of. */
   readonly reads: { readonly left: object | null; readonly right: object | null };
+  /** Whether the cell's paints read either neighbour, so it follows them under an effect. */
+  readonly follows: boolean;
   /** The cell as drawn from its edges: the one resolution, at join time and after an effect alike. */
   readonly style: Style;
+  private readonly parts: { readonly left: ReadonlySet<"fg" | "bg">; readonly right: ReadonlySet<"fg" | "bg"> };
 
   constructor(
     private readonly cell: JoinCell,
@@ -579,7 +585,9 @@ export class JoinedCell {
     private readonly edges: Edges,
     private readonly options: RenderOptions,
   ) {
-    this.reads = { left: readsEdge(cell, "left") ? neighbours.left : null, right: readsEdge(cell, "right") ? neighbours.right : null };
+    this.parts = { left: partsRead(cell, "left"), right: partsRead(cell, "right") };
+    this.reads = { left: this.parts.left.size > 0 ? neighbours.left : null, right: this.parts.right.size > 0 ? neighbours.right : null };
+    this.follows = this.reads.left !== null || this.reads.right !== null;
     this.style = cellStyle(cell, edges, options);
   }
 
@@ -587,9 +595,15 @@ export class JoinedCell {
    * The cell resolved again once each side's edge has moved as `moves` says:
    * its `colors`, as `cellStyle` draws them, and `style`, the cell's own, with
    * the record of that stamped where this one was, so an effect drawn over
-   * this one moves on from these edges.
+   * this one moves on from these edges. None when nothing moved of what the
+   * cell paints with: a seam of arrows in two grounds is as it was drawn while
+   * an effect moves only the lettering beside it, and its lift is not walked
+   * again for a frame that cannot change it.
    */
-  rederived(moves: { readonly left?: EdgeMove; readonly right?: EdgeMove }, style: Style): { readonly colors: Style; readonly style: Style } {
+  rederived(moves: { readonly left?: EdgeMove; readonly right?: EdgeMove }, style: Style): { readonly colors: Style; readonly style: Style } | undefined {
+    const reaches = (side: "left" | "right"): boolean =>
+      (moves[side]?.color !== undefined && this.parts[side].has("fg")) || (moves[side]?.bgcolor !== undefined && this.parts[side].has("bg"));
+    if (!reaches("left") && !reaches("right")) return undefined;
     const moved = (edge: Style | undefined, move: EdgeMove | undefined): Style | undefined =>
       move === undefined ? edge : new Style({ color: move.color ?? edge?.color, bgcolor: move.bgcolor ?? edge?.bgcolor });
     const next = new JoinedCell(this.cell, this.reads, { left: moved(this.edges.left, moves.left), right: moved(this.edges.right, moves.right) }, this.options);

@@ -6,7 +6,7 @@
 import { describe, it, expect } from "vitest";
 import { Animation } from "../../src/core/animation.js";
 import { drawnBy } from "../../src/core/anchor.js";
-import { ColorDepth, ColorRgba, ColorSpec, blendRgb } from "../../src/core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec, TerminalTheme, blendRgb } from "../../src/core/color.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import { renderToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
@@ -15,6 +15,7 @@ import type { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { Effected, confined, type Effect, type EffectFrame } from "../../src/renderables/effect.js";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
+import * as TERMINAL_THEMES from "../../src/themes/terminalThemes.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 import { standsOffAsDrawn } from "../core/stands-off.js";
 import { inFrame } from "./in-frame.js";
@@ -82,6 +83,37 @@ describe("an effect that paints two neighbours one colour", () => {
   });
 });
 
+describe("a seam under an effect drawn on a terminal of its own", () => {
+  // Every bundled terminal but two draws its sixteen colours far from the
+  // ones a depth rounds a fixed colour against, so a slot read back as its RGB
+  // through either set lands on another slot.
+  const THEMES = Object.entries(TERMINAL_THEMES).filter((entry): entry is [string, TerminalTheme] => entry[1] instanceof TerminalTheme);
+  const CASES = THEMES.flatMap(([name, theme]) => (["256", "ansi"] as const).map((depth) => [name, depth, theme] as const));
+  /** A written colour as the identity the depth writes: a slot by its number, any other by its name. */
+  const written = (spec: ColorSpec | undefined): string => `${spec?.type}:${spec?.number ?? spec?.name}`;
+
+  it.each(CASES)("under %s at %s, draws each seam in the slots its neighbours are written in, lifted only where they share one", (_, depth, theme) => {
+    const colorSystem = DEPTHS[depth];
+    const failures: string[] = [];
+    for (let l = 1; l <= 6; l++) {
+      for (let r = 1; r <= 6; r++) {
+        const [a, b] = [item("a", "#e0e0e0 on #1d4ed8"), item("c", "#e0e0e0 on #b91c1c")];
+        const slots: Effect = () => Animation.constant<EffectFrame>((look, cell) => ({ ...look, bg: theme.ansiColors.get(drawnBy(cell.anchor, a) ? l : r) }));
+        const frame = [...inFrame(new Effected(new Strip([a, b], JOINERS.powerline), confined(slots, a, b), { key: "slots", theme }), 0).render({ maxWidth: 80, colorSystem })];
+        const ground = (owner: object): ColorSpec | undefined => frame.find((s) => drawnBy(s.style?.anchor, owner))!.style!.drawnColors(colorSystem).bgcolor;
+        const [arrow] = seamOf(frame, a, b);
+        const { color: ink, bgcolor: under } = arrow!.style!.drawnColors(colorSystem);
+        const [left, right] = [ground(a), ground(b)];
+        expect([left?.number, right?.number].every((n) => n !== undefined)).toBe(true);
+        const shared = written(left) === written(right);
+        const ok = written(under) === written(right) && (shared ? standsOffAsDrawn(arrow!.style!, colorSystem) : written(ink) === written(left));
+        if (!ok) failures.push(`${l}|${r}: ${written(left)} | ${written(ink)} on ${written(under)} | ${written(right)}`);
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+});
+
 describe("prism under an effect on one neighbour", () => {
   const A = "#1e66f5";
   const left = (): RichText => item("a", `#e0e0e0 on ${A}`);
@@ -134,6 +166,47 @@ describe("where a seam finds the cells beside it", () => {
     const inner = new Effected(new Strip([a, b], JOINERS.powerline), confined(repaint(BLUE), b), { key: "inner", theme: THEME });
     const [arrow] = seamOf(drawn(effected(inner, confined(repaint(RED), a))), a, b);
     expect(hexes(arrow!.style)).toEqual([RED.hex, BLUE.hex]);
+  });
+});
+
+describe("what an effect over a whole strip is shown and handed", () => {
+  it("lists every seam and cap in the strip's extent, and hands none of them: each follows the items beside it", () => {
+    const listed: number[] = [];
+    const handed: number[] = [];
+    const recording: Effect = (drawn) => {
+      listed.push(...drawn.cells().map((cell) => cell.col));
+      return Animation.constant<EffectFrame>((look, cell) => (handed.push(cell.col), look));
+    };
+    drawn(effected(new Strip(trio(), JOINERS.powerline), recording));
+    // lead, " a ", the arrow, " b ", the arrow, " c ", tail
+    expect(listed).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    expect(handed).toEqual([1, 2, 3, 5, 6, 7, 9, 10, 11]);
+  });
+
+  it("hands a separator painted from a style name as it hands any cell: it follows no item", () => {
+    const listed: number[] = [];
+    const handed: number[] = [];
+    const recording: Effect = (drawn) => {
+      listed.push(...drawn.cells().map((cell) => cell.col));
+      return Animation.constant<EffectFrame>((look, cell) => (handed.push(cell.col), look));
+    };
+    drawn(effected(new Strip(trio(), JOINERS.plain), recording));
+    // " a ", " | ", " b ", " | ", " c ": a blank of the separator, on the terminal's ground, is handed and not listed
+    expect(handed).toEqual(Array.from({ length: 15 }, (_, col) => col));
+    expect(listed).toEqual([0, 1, 2, 4, 6, 7, 8, 10, 12, 13, 14]);
+  });
+
+  it.each(["plain", "metro"] as const)("paints %s's separators under an effect over the whole strip, and leaves them under one confined to its items", (name) => {
+    const ink = new ColorRgba(255, 0, 0);
+    const fill = new ColorRgba(0, 0, 255);
+    const items = trio();
+    const strip = new Strip(items, JOINERS[name]);
+    const ownerless = (frame: Segment[]): Segment[] => frame.filter((s) => drawnBy(s.style?.anchor, JOIN) && joinedCell(s.style?.anchor)?.follows !== true);
+    const whole = ownerless(drawn(effected(strip, paint(fill, ink))));
+    expect(whole.length).toBeGreaterThan(0);
+    for (const separator of whole) expect(hexes(separator.style)).toEqual([ink.hex, fill.hex]);
+    const confinedTo = ownerless(drawn(effected(strip, confined(paint(fill, ink), ...items))));
+    expect(confinedTo.map((s) => s.style?.toString())).toEqual(ownerless(drawn(strip)).map((s) => s.style?.toString()));
   });
 });
 

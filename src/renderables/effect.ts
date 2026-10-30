@@ -10,13 +10,14 @@
  * the effect and its `at(t)`, and every cell of the frame is handed to the
  * function `at(t)` returns, but for those a wrapper keeps back — `confined`
  * hands over only the cells its owners drew, so an effect never counts on
- * seeing them all — and for a strip's join cells, which are no one's to paint:
- * a seam's colours are its neighbours' edges, so once the effect has painted
- * every other cell, each join cell is resolved again from the cells beside it
- * as the effect left them (`JoinedCell`, `../core/strip.ts`), the way the
- * joiner drew it. Shimmer, pulse, fade, dissolve and a blinking attribute
- * are all this one shape, differing by what the function does with its
- * inputs [LAW:one-type-per-behavior]; two effects stack by nesting one
+ * seeing them all — and for a strip's join cells painted from the items beside
+ * them, which are no one's to paint: a seam's colours are its neighbours'
+ * edges, so once the effect has painted every other cell, each such cell is
+ * resolved again from the cells beside it as the effect left them
+ * (`JoinedCell`, `../core/strip.ts`), the way the joiner drew it. Shimmer,
+ * pulse, fade, dissolve and a blinking attribute are all this one shape,
+ * differing by what the function does with its inputs
+ * [LAW:one-type-per-behavior]; two effects stack by nesting one
  * wrapper in another, which is the same as calling one after the other but
  * for what the outer one measures: the inner one's output.
  *
@@ -165,9 +166,9 @@ export interface Drawn {
    * an effect spread over the element — a transition, which has its last cell
    * settle as it ends — is spread over. A blank cell on the terminal's ground
    * that draws no line is handed but not listed, since nothing in it shows,
-   * and a strip's join cell is listed but never handed, since it follows the
-   * cells beside it. `confined` narrows it to the cells its owners drew. A
-   * call, so a frame whose effect does not ask lists none.
+   * and a strip's join cell painted from the items beside it is listed but
+   * never handed, since it follows them. `confined` narrows it to the cells
+   * its owners drew. A call, so a frame whose effect does not ask lists none.
    */
   cells(): readonly Placed[];
   /** Every distinct ink and ground of a word cell. */
@@ -269,13 +270,13 @@ export class Recolored implements Renderable, Measurable {
   }
 
   private *_recolored(walked: readonly Walked[], frame: EffectFrame, depth: ColorDepth): Iterable<Segment> {
-    // [LAW:one-source-of-truth] Every cell but a join cell's is painted first,
-    // so a join cell is resolved from the cells beside it as the effect left
-    // them, wherever in the frame they fall.
+    // [LAW:one-source-of-truth] Every cell but a join cell that follows its
+    // neighbours is painted first, so that cell is resolved from the cells
+    // beside it as the effect left them, wherever in the frame they fall.
     const drawings = walked.map(({ look, glyphs }): Drawing | undefined => {
       if (look === undefined) return undefined;
       const joined = joinedCell(look.style.anchor);
-      if (joined !== undefined) return { joined };
+      if (joined?.follows === true) return { joined };
       const from: CellLook = { fg: look.pair.fg, bg: look.pair.bg, attributes: look.attributes };
       const { terminal, reverse } = look.pair;
       return { painted: glyphs.map(({ cell }) => (cell === undefined ? from : returned(frame(from, { ...cell, seed: cellSeed(this.key, cell.row, cell.col), terminal, reverse })))) };
@@ -337,20 +338,43 @@ export class Recolored implements Renderable, Measurable {
   private _rejoined(segment: Segment, look: Look, joined: JoinedCell, glyphs: readonly WalkedGlyph[], beside: EdgesBeside, depth: ColorDepth): Segment {
     const cells = glyphs.flatMap(({ cell }) => (cell === undefined ? [] : [cell]));
     const { theme } = this;
-    // The slots of the cell an effect painted, as the depth writes them on the
-    // terminal it is drawn on: what a seam beside it continues.
+    // [LAW:one-source-of-truth] A moved edge is the spec the depth writes its
+    // slot in, the spec the joiner reads of an item drawn so: a palette slot
+    // stays that slot, which the lift tells apart by number, never an RGB read
+    // back through a palette the writer did not use. Only the terminal's own
+    // colour names none, and the terminal the effect draws on says what it is.
+    const edgeOf = (spec: ColorSpec | undefined, foreground: boolean): ColorSpec | undefined =>
+      spec?.isDefault ? ColorSpec.fromRgba(spec.getTruecolor(theme, foreground)) : spec;
     const moveOf = (edge: PaintedCell | undefined): EdgeMove | undefined => {
       if (edge === undefined) return undefined;
       const written = movedSpecs(edge.look.slots, onScreen(edge.moved, edge.look.pair.reverse), depth, theme);
-      return written.fg === undefined && written.bg === undefined
-        ? undefined
-        : { color: written.fg && ColorSpec.fromRgba(written.fg.getTruecolor(theme, true)), bgcolor: written.bg && ColorSpec.fromRgba(written.bg.getTruecolor(theme, false)) };
+      return written.fg === undefined && written.bg === undefined ? undefined : { color: edgeOf(written.fg, true), bgcolor: edgeOf(written.bg, false) };
     };
+    // [LAW:dataflow-not-control-flow] A neighbour with no cell beside the join
+    // in this frame (cut off by a narrower container, scrolled out of a
+    // `Viewport`, covered by an overlay, or an item that draws nothing) was
+    // handed to the effect nowhere, so nothing moved it: the same value as a
+    // neighbour the effect left be, and that side keeps the edge it was drawn
+    // from. Where the frame is whole and every item draws, each neighbour a
+    // seam reads has a cell on its row, so only a partial frame comes here: it
+    // reads what the frame shows, and no broken state hides behind it
+    // [LAW:no-silent-failure].
     const moves = { left: moveOf(beside(cells, "left", joined.reads.left)), right: moveOf(beside(cells, "right", joined.reads.right)) };
-    if (moves.left === undefined && moves.right === undefined) return segment;
-    const { colors, style } = joined.rederived(moves, look.style);
+    const rederived = joined.rederived(moves, look.style);
+    if (rederived === undefined) return segment;
+    const { colors, style } = rederived;
     const { wire, slots } = look;
-    const to = { fg: colors.color?.getTruecolor(theme, true) ?? slots.fg, bg: colors.bgcolor?.getTruecolor(theme, false) ?? slots.bg };
+    // [LAW:one-source-of-truth] A slot resolved again to the colour it was
+    // resolved to before keeps the spec it was written in, as a painted cell's
+    // unmoved slot does; only a slot that moved is written anew, by the one
+    // writer. Matched again on the effect's terminal, an unmoved side's colour
+    // could land on another slot than the item it continues, which the depth
+    // writes as it always did.
+    const was = joined.style;
+    const to = {
+      fg: sameSpec(colors.color, was.color) ? slots.fg : (colors.color?.getTruecolor(theme, true) ?? slots.fg),
+      bg: sameSpec(colors.bgcolor, was.bgcolor) ? slots.bg : (colors.bgcolor?.getTruecolor(theme, false) ?? slots.bg),
+    };
     const writes = this.respec(wire, slots, to, depth);
     return new Segment(segment.text, writesAlike(writes, wire) ? style : style.add(Style.fromColor(writes.color, writes.bgcolor)));
   }
@@ -638,8 +662,8 @@ function measured(looked: readonly Looked[], walked: () => readonly Walked[], de
  * nested in its output, and every other cell left as it is: one item of a
  * strip whose items share a fill, the items of a row one other item stands
  * apart from, one widget of a screen. A strip's join cell is no item's, so it
- * is never handed; it follows the item cells beside it, the moved ones
- * included (`Recolored`). A cell none of them drew is never handed to the
+ * is never handed; one painted from the items beside it follows them, the
+ * moved ones included (`Recolored`). A cell none of them drew is never handed to the
  * effect, so confining one effect to many owners costs one call a cell, not
  * one for each owner.
  */
@@ -734,6 +758,11 @@ export function cellAttributes(of: CellAttributes): CellAttributes {
 
 function sameAttributes(a: CellAttributes, b: CellAttributes): boolean {
   return a === b || MOVED.every((name) => a[name] === b[name]);
+}
+
+/** Whether two specs are one colour as written: the same kind, naming the same colour. */
+function sameSpec(a: ColorSpec | undefined, b: ColorSpec | undefined): boolean {
+  return a === b || (a !== undefined && b !== undefined && a.type === b.type && a.name === b.name);
 }
 
 function sameColors(a: CellColors, b: CellColors): boolean {
