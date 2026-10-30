@@ -4,15 +4,22 @@
     {
       "version": "pr-518",
       "ref": "refs/pull/518/merge",
-      "sha": "3f546fe13883ecb9cbf90544d835607dcb07c727",
-      "timestamp": "2026-10-30T22:49:37.585Z",
+      "sha": "e74b203f05671662d8655c098a23e8ff42973fd6",
+      "timestamp": "2026-10-30T23:13:42.117Z",
       "commits": [
         {
-          "sha": "3f546fe13883ecb9cbf90544d835607dcb07c727",
+          "sha": "e74b203f05671662d8655c098a23e8ff42973fd6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T16:47:33-06:00",
-          "message": "Merge 2c44ecc757f45b74e424953f908f8f89b1fc8520 into 8838ee88c4797c5aa7ebfb3ff16ab2bfa393eb4a\n"
+          "timestamp": "2026-10-30T23:11:40Z",
+          "message": "Merge d8eb0d837628c634b634d1bd2f106a492413d9e1 into 8838ee88c4797c5aa7ebfb3ff16ab2bfa393eb4a\n"
+        },
+        {
+          "sha": "d8eb0d837628c634b634d1bd2f106a492413d9e1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T17:11:27-06:00",
+          "message": "The wheel reads its runs off every cell the element draws, blanks included (rich-unfiled-791c.uy67)\n\nReview (high) found that a run was read off `Drawn.cells()`, the listing of\ncells that show something, so a styled sentence on the terminal's ground\nbroke into a run per word at every space: measured at the catalogue's\nswing, adjacent words of one red sentence differed by a median 19 degrees\nand up to 84. The same unlisted blanks each turned their unseen ink at a\nplace of their own, a full choose per blank per frame: 2000 of them cost\n15-23 ms a frame against 2 ms for one run.\n\n`Drawn` now lists every cell the element draws in `all()`, each with its\nwidth, pair and whether a joiner drew it; `cells()` is the shown subset of\nthat one listing, as before, for the transitions. The wheel reads its runs\noff `all()`, so a blank carrying the ink keeps the sentence one run and a\nblank in the terminal's ink splits it, and the blanks share their run's\none written colour.\n\nAlso from the review: the per-frame memo of written colours is keyed by\nthe bounds' key with the place, so one entry never serves two bounds; the\ncomment on the stray's noise offsets states the mechanism that holds (the\n`y` offsets' fractions are ones no half-integer centre reaches, so no\nsample sits on a lattice line along `t`), and the bounds' header no longer\nsays a frame writes a colour one way.\n"
         },
         {
           "sha": "2c44ecc757f45b74e424953f908f8f89b1fc8520",
