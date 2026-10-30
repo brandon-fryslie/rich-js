@@ -430,7 +430,7 @@ describe("gradientSeam", () => {
     expect(shown(segs.slice(1, 4)).map((c) => c.value!.hex)).toEqual(
       [1, 1, 3, 3, 5, 5].map((k) => blendRgb(new ColorRgba(255, 0, 0), new ColorRgba(0, 0, 255), k / 6).hex),
     );
-    expect(render(strip, { ...OPTIONS, asciiOnly: true })).toEqual(segs);
+    expect(renderToString(strip, { asciiOnly: true })).toBe(renderToString(strip));
   });
 
   it("renders empty at endpoints", () => {
