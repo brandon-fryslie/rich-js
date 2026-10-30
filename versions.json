@@ -4,15 +4,22 @@
     {
       "version": "pr-518",
       "ref": "refs/pull/518/merge",
-      "sha": "e74b203f05671662d8655c098a23e8ff42973fd6",
-      "timestamp": "2026-10-30T23:13:42.117Z",
+      "sha": "34e1215f0c1126994985f872c6d7022ec08d0369",
+      "timestamp": "2026-10-30T23:26:30.394Z",
       "commits": [
         {
-          "sha": "e74b203f05671662d8655c098a23e8ff42973fd6",
+          "sha": "34e1215f0c1126994985f872c6d7022ec08d0369",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T23:11:40Z",
-          "message": "Merge d8eb0d837628c634b634d1bd2f106a492413d9e1 into 8838ee88c4797c5aa7ebfb3ff16ab2bfa393eb4a\n"
+          "timestamp": "2026-10-30T23:24:30Z",
+          "message": "Merge e39f0cf6ec1aaedeb9e8b7b4ebbba3f425dff91d into 8838ee88c4797c5aa7ebfb3ff16ab2bfa393eb4a\n"
+        },
+        {
+          "sha": "e39f0cf6ec1aaedeb9e8b7b4ebbba3f425dff91d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T17:24:17-06:00",
+          "message": "A wheel segment is a region of one fill, and only a joiner's seam caps (rich-unfiled-791c.uy67)\n\nReview (medium) on the previous commit. Three findings built:\n\nA segment was a run of cells in one row, so a panel's solid ground was\ntwenty segments banding into a vertical rainbow at the catalogue's swing,\nand a row with one highlighted cell on it broke into two regions turning\napart from the rows beside them. A segment is now a region of adjacent\ncells, beside or above one another, of one own fill — on the terminal's\nground, one own ink — found by union-find over the covered columns; its\nplace is the region's centre row and centre column. Strips are the one-row\ncase and are unchanged: a seam still splits items.\n\nThe cap rule applied to any ink that was a fill, so the first letter of a\nlabel in a neighbour's fill colour, abutting that neighbour, turned with\nthe neighbour and the rest of the word with its own ground. A seam's\ncolours are its neighbours' edges, so the rule is now the seam's: each\ncolour of a cell a joiner drew turns with the region of that colour beside\nit; any other cell's colours turn with the region covering it.\n\nThe prose said a grown run moves \"nothing else's\" hue; in a strip it pushes\nevery run to its right along by a column, and each moves as little. The\ndocs and comments say that now.\n\nTwo one-source fixes from the same pass: `WalkedGlyph` carries the width\nthe walk stepped by, so a listed cell's width is the walk's and not a\nsecond `cellLen`; and `Look` carries `seam`, decided once in `looks`, where\nthe listing and the word measure both read it.\n"
         },
         {
           "sha": "d8eb0d837628c634b634d1bd2f106a492413d9e1",
