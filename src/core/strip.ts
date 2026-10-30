@@ -861,27 +861,25 @@ function named<V>(table: Readonly<Record<string, V>>, kind: string, kinds: strin
   return table[name]!;
 }
 
-function gradient(steps: number, glyph: string): SeamForm {
-  // Midpoint sampling across `2 * steps` half-cell positions: cell i takes
-  // samples 2i (its ink, the left half) and 2i+1 (its ground, the right half),
-  // so no sample equals either neighbour's ground.
-  const samples = 2 * steps;
-  return {
-    seam: Array.from({ length: steps }, (_, i): JoinCell => ({
-      glyph,
-      fg: { mix: [LEFT_BG, RIGHT_BG, (2 * i + 0.5) / samples] },
-      bg: { mix: [LEFT_BG, RIGHT_BG, (2 * i + 1.5) / samples] },
-    })),
-  };
-}
-
 /**
- * A ramp of `steps` cells from the left ground to the right. Each cell is the
- * half block U+258C, ink on its left half and ground on its right, so it
- * carries two samples; ASCII draws a space, keeping the grounds alone. Beside
- * a neighbour with no ground there is no colour to ramp toward, so that join
- * draws the caps the ramp is ended in.
+ * A ramp of `steps` cells from the left ground to the right, each cell filled
+ * with one colour: cell `i` is the colour `(i + 1/2) / steps` of the way
+ * across, so no cell is either neighbour's ground. A cell is a space whose ink
+ * is the terminal's ground, so its one colour is its fill, the same in ASCII.
+ * Beside a neighbour with no ground there is no colour to ramp toward, so that
+ * join draws the caps the ramp is ended in.
+ *
+ * [LAW:dataflow-not-control-flow] The ramp is drawn by the path every seam
+ * cell is (`cellStyle`), which lifts ink off its ground wherever a render can
+ * measure both. Ink in the terminal's ground cannot be measured, so no ramp
+ * cell moves and the ramp is the blend, monotone however close its grounds or
+ * however many its steps. Two samples to a cell, ink over ground, cannot be:
+ * the lift holds every cell's two the floor apart, so `steps` such cells rise
+ * without turning back only between grounds `steps` floors apart.
  */
 export function gradientSeam(steps = 4): JoinSeam {
-  return parseSeam(both(gradient(steps, "▌"), gradient(steps, " ")));
+  const ramp: SeamForm = {
+    seam: Array.from({ length: steps }, (_, i): JoinCell => ({ glyph: " ", fg: GROUND, bg: { mix: [LEFT_BG, RIGHT_BG, (i + 1 / 2) / steps] } })),
+  };
+  return parseSeam(both(ramp, ramp));
 }

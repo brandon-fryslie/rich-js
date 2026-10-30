@@ -285,12 +285,11 @@ console.print(
 );
 ```
 
-- The seam is `steps` cells (4 by default), each the half-block glyph `▌` (U+258C), so one cell carries **two** colour samples: `fg` for the left half and `bg` for the right. `steps` cells therefore produce `2 × steps` samples between the two anchors, doubling the perceived smoothness compared with one colour per cell at the same width. ASCII draws a space, keeping only the backgrounds.
-- Every sample is a `mix`, taken at a midpoint, so no sample ever equals either anchor.
-- Its cells are held to every seam's floor: where a cell's two samples stand closer than `SEAM_MIN_DELTA_E`, as between close backgrounds or across many steps, its ink sample is lifted off its ground, and the ramp shows its steps.
+- The seam is `steps` cells (4 by default), each filled with one colour: cell `i` is the colour `(i + ½) / steps` of the way from the left item's background to the right's, so no cell is either background. Each cell is a space with `"ground"` as its `fg`, so its one colour is its fill, and the ASCII form is the same ramp.
+- No cell has ink a render can measure, so the step that holds a seam's ink off its background ([Every seam shows](#every-seam-shows)) moves none of them, and the ramp is the blend itself. It never turns back, however close the two backgrounds are and however many steps there are. Between two backgrounds alike it is that background, and the join does not show.
 - A gradient needs two colours to ramp between, so beside an item whose `bgcolor` is absent or `default` the join is an endpoint, and draws the caps the ramp is ended in: nothing, with `CAPS.flat`.
 - A named background (`blue`, `color(4)`) is the terminal theme's own shade, so each sample is a `blend(…)` colour of the two anchors rather than a fixed RGB. An export under a theme draws the ramp from that theme's `blue` to its `red`, the shades the anchors themselves are drawn in. A live terminal is sent the standard-table RGB, because a render cannot know the terminal's palette.
-- Best on truecolor. On 256-colour terminals the colour-system downgrade still works, but adjacent samples quantize to the same palette index, so neighbouring half-cells collapse into one colour and the gradient visibly stripes.
+- Best on truecolor. At 256 colours each cell is drawn as its colour's nearest table entry, so neighbouring cells share an entry and the ramp draws in bands. At sixteen colours each is the nearest of the terminal's slots.
 
 ## Custom joiners
 
