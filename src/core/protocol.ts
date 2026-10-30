@@ -86,8 +86,8 @@ export interface RenderOptions {
   highlighter?: Highlighter;
   /**
    * The depth the output will be encoded at, `null` when it carries no colour.
-   * A renderable choosing between two ways of drawing something — the strip's
-   * arrow or its divider — decides on the colours the terminal will draw at
+   * A renderable that measures what it draws — the strip's joiner, holding a
+   * seam's ink off its ground — measures the colours the terminal will draw at
    * this depth, which at 256 colours or fewer are not the colours it was
    * handed. Absent means truecolor.
    */

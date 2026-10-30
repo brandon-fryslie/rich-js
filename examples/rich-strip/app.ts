@@ -53,12 +53,12 @@ export function runDemo(host: TerminalHost): void {
     consoleOut.print(new Strip([new RichText(` ${name.padEnd(width)} `, { end: "", noWrap: true }), ...cells], joinerNamed(name)));
   }
   // Neighbours whose backgrounds sit closer than SEAM_MIN_DELTA_E would hide the
-  // arrow in their shared colour, so the joiner draws the thin divider there.
+  // arrow in their shared colour, so the joiner lifts the arrow's ink off it.
   const shared = ["one", "two", "three"].map(
     (t) => new RichText(` ${t} `, { style: Style.parse("white on #3a3f58"), end: "", noWrap: true }),
   );
   showcase(
-    `JOINERS.powerline, shared background (divider below ΔE ${SEAM_MIN_DELTA_E})`,
+    `JOINERS.powerline, shared background (ink lifted to ΔE ${SEAM_MIN_DELTA_E})`,
     new Strip([...cells, ...shared], JOINERS.powerline),
   );
   // The middle and the ends are picked apart: any seam ends in any caps.
@@ -71,14 +71,9 @@ export function runDemo(host: TerminalHost): void {
         { glyph: "\ue0b2", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } },
         { glyph: "\ue0b0", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } },
       ],
-      divider: [
-        { glyph: "\ue0b3", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
-        { glyph: "\ue0b1", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
-      ],
     },
     ascii: {
       seam: [{ glyph: "<>", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } }],
-      divider: [{ glyph: "<>", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } }],
     },
   };
   showcase("arrows meeting + CAPS.powerline", new Strip([...cells, ...shared], new CellJoiner(meet, CAPS.powerline)));

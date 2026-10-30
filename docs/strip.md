@@ -76,12 +76,7 @@ console.print(
 );
 ```
 
-A seam names the cells of two parts:
-
-- `seam` — between two neighbours.
-- `divider` — in the seam's place where the seam would not be seen: where every one of its cells draws its glyph in a colour indistinct from the cell's own background (below). It has the width of the seam.
-
-The caps name two more:
+A seam names `seam`, the cells drawn between two neighbours. The caps name two more parts:
 
 - `lead` — where a run is entered from nothing.
 - `tail` — where a run leaves into nothing.
@@ -107,7 +102,6 @@ A joiner is checked once, when it is built, and the constructor throws on any of
 - a `lead` naming the `left` neighbour, or a `tail` naming the `right` one;
 - a `oneOf` glyph whose members differ in width;
 - a `cap` other than `lead` or `tail`, or a cell that names a cap and draws a glyph too;
-- a `divider` whose width differs from the `seam`'s under any caps: the two must name each cap as many times and their own cells must be as wide.
 - a non-ASCII glyph in an `ascii` form.
 
 ```typescript
@@ -121,14 +115,9 @@ const meet: JoinSeam = {
       { glyph: "\ue0b2", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } },
       { glyph: "\ue0b0", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } },
     ],
-    divider: [
-      { glyph: "\ue0b3", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
-      { glyph: "\ue0b1", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } },
-    ],
   },
   ascii: {
     seam: [{ glyph: "<>", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } }],
-    divider: [{ glyph: "<>", fg: { edge: "left", part: "fg" }, bg: { edge: "left", part: "bg" } }],
   },
 };
 
@@ -144,14 +133,18 @@ console.print(
 
 Each join looks at its two neighbours. A neighbour is missing at the strip's ends. It also counts as missing when the seam paints with its background anywhere and it has none to paint: no `bgcolor`, or `… on default`, which is the transparent terminal default.
 
-- Both present: the `seam`, or the `divider` where every seam cell's glyph is indistinct from its background.
+- Both present: the `seam`.
 - Only the right: the `lead`, if it has the background the `lead` paints with.
 - Only the left: the `tail`, if it has the background the `tail` paints with.
 - Neither: nothing.
 
 So a coloured run is capped the same way wherever it sits. A colourless item before a coloured one leads the coloured run in, exactly as the strip's start does. A coloured item before a colourless one tails out, and two colourless neighbours join with nothing. A seam that paints with neither neighbour's background, like `SEAMS.plain`, joins colourless items too, whatever caps end it.
 
-"Indistinct" is perceptual: two colours closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) are one. Each seam cell is measured, not the two neighbours' backgrounds, so `prism`, whose arrows each step a third of the way between them, divides where a one-cell arrow would still show. A cell drawn on the terminal's own background is always seen. Colours are measured as drawn. A glyph's translucent colour is flattened onto its cell's background, and a translucent background onto the render substrate, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`), so two colours that 256 colours or ANSI draw as one entry are indistinct, however far apart they were computed. Named or indexed colours have no RGB value to measure, so two of them are one only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
+### Every seam shows
+
+Every cell a joiner draws holds its glyph's colour off its own background, as far as a render can see the two (below). Where the two stand less than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) apart, the glyph's colour takes the least step along its own OKLCH lightness, hue and chroma held, toward white or toward black, that clears the floor; a colour that already clears it is drawn as it is. Both are measured as drawn: flattened onto what lies beneath, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`). So at 256 colours each step is measured on the table entry it draws as, and the colour a lifted glyph is given is that entry. Each cell is measured on its own, so every one of `prism`'s three arrows shows.
+
+A colour the terminal's theme draws, a named slot such as `red` or, at truecolor, a blend reaching one, has no RGB a render can measure: the terminal decides it. Two such colours stand apart unless they are the same slot or the same blend, so at ANSI, and for a slot-coloured glyph at any depth, the floor is a different slot and the step is to the nearest other slot. A slot beside a fixed colour is drawn as it is, however alike the two look in a given theme. So is a cell on the terminal's own background, or in reverse video over it, as a cap's notch is: the terminal's background is a colour no render knows.
 
 A neighbour's background is read as drawn too, flattened onto the render substrate, so a cell painted in it continues that neighbour rather than compositing a second time over whatever the cell sits on.
 
@@ -172,7 +165,7 @@ for (const spec of ["prism", { seam: "prism", caps: "capsule" }] as const) {
 
 ### `JOINERS.powerline`
 
-Powerline arrows: U+E0B0 in the left background over the right, and U+E0B1, the thin arrow, as the divider in the left item's text colour on its own background. The divider is the vim-airline convention, and it reads exactly as well as that item's text does. The lead is U+E0B0 with `"ground"` as its `fg`, a notch whose base is the cell's left edge. Its ink is the terminal's background colour, drawn opaque, so a terminal with a translucent background shows the notch as a solid patch of that colour. The tail is the arrow over the terminal's background. ASCII draws `>` and opens each run flat.
+Powerline arrows: U+E0B0 in the left background over the right. The lead is U+E0B0 with `"ground"` as its `fg`, a notch whose base is the cell's left edge. Its ink is the terminal's background colour, drawn opaque, so a terminal with a translucent background shows the notch as a solid patch of that colour. The tail is the arrow over the terminal's background. ASCII draws `>` and opens each run flat.
 
 ```typescript
 console.print(
@@ -188,7 +181,7 @@ console.print(
 );
 ```
 
-The first two cells above share a background, so the seam between them is the divider. The other two seams are arrows.
+The first two cells above share a background, so the arrow between them is drawn in that blue a step darker, the least step that shows.
 
 ```typescript
 console.print(
@@ -240,7 +233,7 @@ console.print(
 - `wrapper` — the caps touching, ended in `CAPS.wrapper`: each run opened by U+E0B2 and closed by U+E0B0.
 - `metro` — the caps with a two-cell rail between them, in the theme's `strip.rail` colour; ended in `CAPS.capsule`.
 - `stitch` — a dotted rule in the left item's text colour over the midpoint of the two backgrounds; ended in `CAPS.flat`.
-- `torn` — a ragged quadrant pair in the left background over that midpoint; which pair is picked per seam. Its divider is the same tear in the left item's text colour. Ended in `CAPS.flat`.
+- `torn` — a ragged quadrant pair in the left background over that midpoint; which pair is picked per seam. Ended in `CAPS.flat`.
 
 ```typescript
 for (const name of ["prism", "bubble", "metro", "torn"] as const) {
@@ -294,6 +287,7 @@ console.print(
 
 - The seam is `steps` cells (4 by default), each the half-block glyph `▌` (U+258C), so one cell carries **two** colour samples: `fg` for the left half and `bg` for the right. `steps` cells therefore produce `2 × steps` samples between the two anchors, doubling the perceived smoothness compared with one colour per cell at the same width. ASCII draws a space, keeping only the backgrounds.
 - Every sample is a `mix`, taken at a midpoint, so no sample ever equals either anchor.
+- Its cells are held to every seam's floor: where a cell's two samples stand closer than `SEAM_MIN_DELTA_E`, as between close backgrounds or across many steps, its ink sample is lifted off its ground, and the ramp shows its steps.
 - A gradient needs two colours to ramp between, so beside an item whose `bgcolor` is absent or `default` the join is an endpoint, and draws the caps the ramp is ended in: nothing, with `CAPS.flat`.
 - A named background (`blue`, `color(4)`) is the terminal theme's own shade, so each sample is a `blend(…)` colour of the two anchors rather than a fixed RGB. An export under a theme draws the ramp from that theme's `blue` to its `red`, the shades the anchors themselves are drawn in. A live terminal is sent the standard-table RGB, because a render cannot know the terminal's palette.
 - Best on truecolor. On 256-colour terminals the colour-system downgrade still works, but adjacent samples quantize to the same palette index, so neighbouring half-cells collapse into one colour and the gradient visibly stripes.
@@ -339,7 +333,7 @@ Joiners read only the two edge columns. `JOINERS.powerline` between items `L` an
 - `fg = L.edgeStyle("right", options).bgcolor`
 - `bg = R.edgeStyle("left", options).bgcolor`
 
-and, where those two backgrounds are within `SEAM_MIN_DELTA_E`, draws its divider with `fg = L.edgeStyle("right", options).color` instead.
+and, where those two are drawn within `SEAM_MIN_DELTA_E` of each other, lifts the `fg` off the `bg` ([Every seam shows](#every-seam-shows)).
 
 The interior of each item is invisible to the joiner. That means a cell can vary `bgcolor`, `fgcolor`, or text attributes per column without breaking the join — only the column the joiner actually meets matters.
 
