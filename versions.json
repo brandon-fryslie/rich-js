@@ -4,15 +4,22 @@
     {
       "version": "pr-515",
       "ref": "refs/pull/515/merge",
-      "sha": "a9745f0ca4763394a1cf084fd5c9733a65171075",
-      "timestamp": "2026-10-30T11:40:56.834Z",
+      "sha": "579eb7068dcd1195f3544409f18ea20b549fdccb",
+      "timestamp": "2026-10-30T11:55:33.443Z",
       "commits": [
         {
-          "sha": "a9745f0ca4763394a1cf084fd5c9733a65171075",
+          "sha": "579eb7068dcd1195f3544409f18ea20b549fdccb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T05:39:12-06:00",
-          "message": "Merge 3a8f82697c84f0e76e3509e0bf10c584023e5dbb into f83b514b330b9df0e4e340842d32891fd4d9ca6f\n"
+          "timestamp": "2026-10-30T11:54:11Z",
+          "message": "Merge 70cd3dd25d67fa5ab87c26762f655e412075d0ba into f83b514b330b9df0e4e340842d32891fd4d9ca6f\n"
+        },
+        {
+          "sha": "70cd3dd25d67fa5ab87c26762f655e412075d0ba",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T05:54:01-06:00",
+          "message": "A lifted seam ink is the entry the depth draws, and the docs say where the floor is blind (rich-joiners-er38.0jr)\n\nThe lift measured each step as the depth draws it but returned the\nunrounded step, so below truecolor a cell carried a colour one 8-bit unit\noff its ground that only cleared the floor after rounding. An export reads\na recording in truecolor and drew that seam invisible. The lift now returns\nthe colour it measured; the bytes at the render's own depth are unchanged.\n\ndocs/strip.md promised a seam shows \"whatever the neighbours' colours\". A\ntheme slot beside a fixed colour has no RGB the render can measure, so it is\ndrawn as it is; the page now says so.\n"
         },
         {
           "sha": "3a8f82697c84f0e76e3509e0bf10c584023e5dbb",
