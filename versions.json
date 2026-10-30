@@ -2,67 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-515",
-      "ref": "refs/pull/515/merge",
-      "sha": "6a294438668f459a86eb3d0f7c817c9ba8fdb769",
-      "timestamp": "2026-10-30T12:17:47.934Z",
-      "commits": [
-        {
-          "sha": "6a294438668f459a86eb3d0f7c817c9ba8fdb769",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T12:15:46Z",
-          "message": "Merge 2982e2ade152c619605e9974eed75aa6598a4de1 into f83b514b330b9df0e4e340842d32891fd4d9ca6f\n"
-        },
-        {
-          "sha": "2982e2ade152c619605e9974eed75aa6598a4de1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T06:15:36-06:00",
-          "message": "A vanishing seam ink steps in the kind the depth draws it, so a cube entry is never parted from its ground by a slot (rich-joiners-er38.0jr)\n\nThe lift chose slot or RGB candidates from the ink as authored. A mix of a\nslot and an RGB is the theme's colour at truecolor but a cube entry at 256,\nso at 256 prism between `blue` and `#000080` measured its vanishing thirds\nas cube entries and then lifted them into slots, which the floor passes\nagainst any cube entry on the index alone: color(4) on color(18), the same\nnavy. Ink that vanishes is always drawn in the same kind as its ground, so\nthe steps are now drawn in that kind and measured the way the ink was.\n"
-        },
-        {
-          "sha": "8feaaacca4f319fc71be5da801390ba52c1e05ca",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T06:02:20-06:00",
-          "message": "docs(strip): the seam floor holds as far as a render can see both colours (rich-joiners-er38.0jr)\n\nA cap on the terminal's own background, or a notch in reverse video over it,\nhas a side no render knows, and is drawn as it is. The page opened by\npromising every joiner cell stands off its ground.\n"
-        },
-        {
-          "sha": "70cd3dd25d67fa5ab87c26762f655e412075d0ba",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T05:54:01-06:00",
-          "message": "A lifted seam ink is the entry the depth draws, and the docs say where the floor is blind (rich-joiners-er38.0jr)\n\nThe lift measured each step as the depth draws it but returned the\nunrounded step, so below truecolor a cell carried a colour one 8-bit unit\noff its ground that only cleared the floor after rounding. An export reads\na recording in truecolor and drew that seam invisible. The lift now returns\nthe colour it measured; the bytes at the render's own depth are unchanged.\n\ndocs/strip.md promised a seam shows \"whatever the neighbours' colours\". A\ntheme slot beside a fixed colour has no RGB the render can measure, so it is\ndrawn as it is; the page now says so.\n"
-        },
-        {
-          "sha": "3a8f82697c84f0e76e3509e0bf10c584023e5dbb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T05:38:14-06:00",
-          "message": "A joiner always draws its seam, lifting the fg off a bg it would vanish into (rich-joiners-er38.0jr)\n"
-        },
-        {
-          "sha": "21ce91970e47c4276d141af6f3902b52ff62f1f1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T05:17:20-06:00",
-          "message": "Pin 0.24.1's bytes for joins whose every seam cell already shows (rich-joiners-er38.0jr)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "f83b514b330b9df0e4e340842d32891fd4d9ca6f",
-      "timestamp": "2026-10-21T15:24:36.998Z",
+      "sha": "7bfad71356d43a5a0849162eb1905cd9f612d80f",
+      "timestamp": "2026-10-30T12:36:57.680Z",
       "commits": [
         {
-          "sha": "f83b514b330b9df0e4e340842d32891fd4d9ca6f",
+          "sha": "7bfad71356d43a5a0849162eb1905cd9f612d80f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-21T09:22:06-06:00",
-          "message": "A view that moves says so only through what it draws (rich-animation-27tq.wrw) (#514)\n\n* A view that moves says so only through what it draws (rich-animation-27tq.wrw)\n\nA view is a renderable or a function asked for one each frame and handed no\ntime; a host holds one shape and draws it one way. App.animate(),\nWidgetApp.animate(), the animations set, FrameSays.held and Task.time are\ngone: the frame's holds alone decide whether a host ticks.\n\nAnimation.time() is the time itself, reduced to itself, so a clock or a\ncounter keeps the time under reduced motion. animationFuncs takes a\nTemplateFrame ({ time, onHold }) and tween, loop and stepped tell their\nhold, so a template in an App paints while a tween moves and sleeps after.\n\nrich-dash steps its widgets as program state on its own timer; effects-feel,\nlifecycle and the animation playground place their time-dependent parts.\n\n* Review fixes: a template is drawn as its frame says; a running elapsed clock says when it turns (rich-animation-27tq.wrw)\n\nTemplateFrame carries reducedMotion and asciiOnly beside time and onHold,\nand templateFrame(options) reads one off render options; registration\nkeeps only the timeline. animationFuncs reads its frame once a call.\nTimeElapsedColumn places a per-second clock, so an App repaints it.\nrich-dash steps on one timer gated by the app's phase; the lifecycle demo\nmakes only the lines not yet gone."
+          "timestamp": "2026-10-30T06:35:29-06:00",
+          "message": "A joiner always draws its seam, lifting the fg off a bg it would vanish into (rich-joiners-er38.0jr) (#515)\n\n* Pin 0.24.1's bytes for joins whose every seam cell already shows (rich-joiners-er38.0jr)\n\n* A joiner always draws its seam, lifting the fg off a bg it would vanish into (rich-joiners-er38.0jr)\n\n* A lifted seam ink is the entry the depth draws, and the docs say where the floor is blind (rich-joiners-er38.0jr)\n\nThe lift measured each step as the depth draws it but returned the\nunrounded step, so below truecolor a cell carried a colour one 8-bit unit\noff its ground that only cleared the floor after rounding. An export reads\na recording in truecolor and drew that seam invisible. The lift now returns\nthe colour it measured; the bytes at the render's own depth are unchanged.\n\ndocs/strip.md promised a seam shows \"whatever the neighbours' colours\". A\ntheme slot beside a fixed colour has no RGB the render can measure, so it is\ndrawn as it is; the page now says so.\n\n* docs(strip): the seam floor holds as far as a render can see both colours (rich-joiners-er38.0jr)\n\nA cap on the terminal's own background, or a notch in reverse video over it,\nhas a side no render knows, and is drawn as it is. The page opened by\npromising every joiner cell stands off its ground.\n\n* A vanishing seam ink steps in the kind the depth draws it, so a cube entry is never parted from its ground by a slot (rich-joiners-er38.0jr)\n\nThe lift chose slot or RGB candidates from the ink as authored. A mix of a\nslot and an RGB is the theme's colour at truecolor but a cube entry at 256,\nso at 256 prism between `blue` and `#000080` measured its vanishing thirds\nas cube entries and then lifted them into slots, which the floor passes\nagainst any cube entry on the index alone: color(4) on color(18), the same\nnavy. Ink that vanishes is always drawn in the same kind as its ground, so\nthe steps are now drawn in that kind and measured the way the ink was."
         }
       ]
     }
