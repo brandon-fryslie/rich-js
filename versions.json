@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-517",
+      "ref": "refs/pull/517/merge",
+      "sha": "65410839106938d8b71b2a03647a512f03e9beb5",
+      "timestamp": "2026-10-30T13:04:56.887Z",
+      "commits": [
+        {
+          "sha": "65410839106938d8b71b2a03647a512f03e9beb5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T07:02:47-06:00",
+          "message": "Merge 7e6ca97778c44144f81def9836f852dd49cdee5f into 7bfad71356d43a5a0849162eb1905cd9f612d80f\n"
+        },
+        {
+          "sha": "7e6ca97778c44144f81def9836f852dd49cdee5f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T07:02:03-06:00",
+          "message": "Version 0.25.2 (rich-joiners-er38.a1h)\n"
+        },
+        {
+          "sha": "b0ac2a39e7e8857ab83a5e187f95917e35277111",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T07:02:03-06:00",
+          "message": "gradientSeam fills each cell with one colour, so the lift moves none and the ramp never turns back (rich-joiners-er38.a1h)\n\nEach cell was a half block carrying two ramp samples, ink over ground. The\nlift holds every seam cell's ink at least SEAM_MIN_DELTA_E off its ground,\nso wherever two neighbouring samples sat closer than that (near grounds, or\nfar grounds across many steps, as in rich-strip's full-width fill) every\nink sample was moved and the ramp zig-zagged.\n\nA ramp cell is now a space whose fg is \"ground\": one colour, its fill,\nsampled at the cell's middle. Ink in the terminal's ground is a side the\nlift cannot measure, so it moves none of them, by the rule every seam cell\npasses. The glyph and ASCII forms are the same ramp.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-516",
       "ref": "refs/pull/516/merge",
       "sha": "9d91e303c0f916806f8d380042791950e128c9a4",
