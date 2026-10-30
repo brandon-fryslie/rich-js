@@ -472,6 +472,10 @@ describe("gradientSeam", () => {
     expect(segs.map((s) => s.text)).toEqual([" a ", " ", " ", " ", " ", " b "]);
   });
 
+  it("refuses a step count that is no whole number of cells", () => {
+    for (const steps of [0, -1, 2.5, Number.NaN]) expect(() => gradientSeam(steps), String(steps)).toThrow(RangeError);
+  });
+
   // A ground `gap` lighter than `base` along its own lightness: ΔE_OK `gap`
   // apart but for the 8-bit rounding of the colour drawn.
   const lighter = (base: string, gap: number): string => {
@@ -488,6 +492,11 @@ describe("gradientSeam", () => {
   const rampOf = (left: string, right: string, steps: number, colorSystem: ColorDepth): Segment[] =>
     [...ramp(steps).join(cell(" a ", `#e0e0e0 on ${left}`), cell(" b ", `#e0e0e0 on ${right}`), { index: 1 }).render({ maxWidth: 200, colorSystem })];
 
+  // The ramp's order is asserted at truecolor, where it is drawn exactly. At
+  // 256 colours and at sixteen each cell is its sample's nearest entry (pinned
+  // below), and the table ranks entries by RGB distance, not by how far they
+  // look, so one band's entry can sit a hair nearer the left ground, as seen,
+  // than the band before it. The order there is the table's, not the ramp's.
   it.each(RAMPS)("draws %s at truecolor as a ramp that never turns back", (_, left, right, steps) => {
     const drawn = [ColorSpec.parse(left), ...shown(rampOf(left, right, steps, ColorDepth.TRUECOLOR), ColorDepth.TRUECOLOR), ColorSpec.parse(right)].map(
       (c) => c.fixedValue!,

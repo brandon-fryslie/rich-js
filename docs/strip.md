@@ -146,6 +146,8 @@ Every cell a joiner draws holds its glyph's colour off its own background, as fa
 
 A colour the terminal's theme draws, a named slot such as `red` or, at truecolor, a blend reaching one, has no RGB a render can measure: the terminal decides it. Two such colours stand apart unless they are the same slot or the same blend, so at ANSI, and for a slot-coloured glyph at any depth, the floor is a different slot and the step is to the nearest other slot. A slot beside a fixed colour is drawn as it is, however alike the two look in a given theme. So is a cell on the terminal's own background, or in reverse video over it, as a cap's notch is: the terminal's background is a colour no render knows.
 
+A cell whose glyph is a space has no glyph colour to hold off anything: it shows its background alone. So a seam made only of such cells, [`gradientSeam`](#gradientseam-steps)'s ramp, shows only where its backgrounds differ from the ones beside it.
+
 A neighbour's background is read as drawn too, flattened onto the render substrate, so a cell painted in it continues that neighbour rather than compositing a second time over whatever the cell sits on.
 
 ## Built-in joiners
@@ -285,8 +287,9 @@ console.print(
 );
 ```
 
-- The seam is `steps` cells (4 by default), each filled with one colour: cell `i` is the colour `(i + ½) / steps` of the way from the left item's background to the right's, so no cell is either background. Each cell is a space with `"ground"` as its `fg`, so its one colour is its fill, and the ASCII form is the same ramp.
-- No cell has ink a render can measure, so the step that holds a seam's ink off its background ([Every seam shows](#every-seam-shows)) moves none of them, and the ramp is the blend itself. It never turns back, however close the two backgrounds are and however many steps there are. Between two backgrounds alike it is that background, and the join does not show.
+- The seam is `steps` cells, a positive whole number (4 by default), each filled with one colour: cell `i` is the colour `(i + ½) / steps` of the way from the left item's background to the right's, so no cell is either background. Each cell is a space with `"ground"` as its `fg`, so its one colour is its fill, and the ASCII form is the same ramp.
+- A space has no ink, so the step that holds a seam's ink off its background ([Every seam shows](#every-seam-shows)) has nothing to move, and the ramp is the blend itself. It never turns back, however close the two backgrounds are and however many steps there are.
+- Between two backgrounds alike the ramp is that background, and the join does not show. A gradient is a fill, the blend of the backgrounds beside it and nothing else, and the blend of one colour is that colour. A join that must show between two alike is a named joiner's, whose glyph has ink to lift.
 - A gradient needs two colours to ramp between, so beside an item whose `bgcolor` is absent or `default` the join is an endpoint, and draws the caps the ramp is ended in: nothing, with `CAPS.flat`.
 - A named background (`blue`, `color(4)`) is the terminal theme's own shade, so each sample is a `blend(…)` colour of the two anchors rather than a fixed RGB. An export under a theme draws the ramp from that theme's `blue` to its `red`, the shades the anchors themselves are drawn in. A live terminal is sent the standard-table RGB, because a render cannot know the terminal's palette.
 - Best on truecolor. At 256 colours each cell is drawn as its colour's nearest table entry, so neighbouring cells share an entry and the ramp draws in bands. At sixteen colours each is the nearest of the terminal's slots.

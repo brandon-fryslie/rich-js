@@ -869,15 +869,19 @@ function named<V>(table: Readonly<Record<string, V>>, kind: string, kinds: strin
  * Beside a neighbour with no ground there is no colour to ramp toward, so that
  * join draws the caps the ramp is ended in.
  *
- * [LAW:dataflow-not-control-flow] The ramp is drawn by the path every seam
- * cell is (`cellStyle`), which lifts ink off its ground wherever a render can
- * measure both. Ink in the terminal's ground cannot be measured, so no ramp
- * cell moves and the ramp is the blend, monotone however close its grounds or
- * however many its steps. Two samples to a cell, ink over ground, cannot be:
- * the lift holds every cell's two the floor apart, so `steps` such cells rise
- * without turning back only between grounds `steps` floors apart.
+ * [LAW:dataflow-not-control-flow] A ramp cell is fill alone: a space has no
+ * ink, and `"ground"` as its `fg` is the absence of a colour on that side
+ * (`cellStyle`). So the lift, the path every seam cell is drawn by, has no ink
+ * to hold off its ground, and the ramp is the blend, monotone however close
+ * its grounds or however many its steps. Two samples to a cell, ink over
+ * ground, cannot be: the lift holds every cell's two the floor apart, so
+ * `steps` such cells rise without turning back only between grounds `steps`
+ * floors apart.
  */
 export function gradientSeam(steps = 4): JoinSeam {
+  // [LAW:no-silent-failure] A count that is no whole number of cells would draw
+  // an empty or lopsided ramp without a word.
+  if (!(Number.isInteger(steps) && steps > 0)) throw new RangeError(`gradientSeam steps must be a positive whole number of cells, got ${steps}`);
   const ramp: SeamForm = {
     seam: Array.from({ length: steps }, (_, i): JoinCell => ({ glyph: " ", fg: GROUND, bg: { mix: [LEFT_BG, RIGHT_BG, (i + 1 / 2) / steps] } })),
   };
