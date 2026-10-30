@@ -110,8 +110,8 @@ export function textSubject(theme: TerminalTheme, depth: ColorDepth): Subject {
 }
 
 /**
- * A pulse breathing each of `subject`'s pulsed elements, and its side of the
- * arrows either side of it, with a `pulseAt(z)` of its own at a `z` of its
+ * A pulse breathing each of `subject`'s pulsed elements, which the arrows
+ * either side of it follow, with a `pulseAt(z)` of its own at a `z` of its
  * own, so each keeps a time of its own; a subject with none is left be.
  */
 export function pulsedOn(subject: DrawnSubject, pulseAt: (z: number) => Loop): Effect {
