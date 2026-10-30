@@ -287,7 +287,7 @@ console.print(
 );
 ```
 
-- The seam is `steps` cells, a positive whole number (4 by default), each filled with one colour: cell `i` is the colour `(i + ½) / steps` of the way from the left item's background to the right's, so no cell is either background. Each cell is a space with `"ground"` as its `fg`, so its one colour is its fill, and the ASCII form is the same ramp.
+- The seam is `steps` cells, a whole number (4 by default; 0 and the items meet), each filled with one colour: cell `i` is the colour `(i + ½) / steps` of the way from the left item's background to the right's, so no cell is either background. Each cell is a space with `"ground"` as its `fg`, so its one colour is its fill, and the ASCII form is the same ramp.
 - A space has no ink, so the step that holds a seam's ink off its background ([Every seam shows](#every-seam-shows)) has nothing to move, and the ramp is the blend itself. It never turns back, however close the two backgrounds are and however many steps there are.
 - Between two backgrounds alike the ramp is that background, and the join does not show. A gradient is a fill, the blend of the backgrounds beside it and nothing else, and the blend of one colour is that colour. A join that must show between two alike is a named joiner's, whose glyph has ink to lift.
 - A gradient needs two colours to ramp between, so beside an item whose `bgcolor` is absent or `default` the join is an endpoint, and draws the caps the ramp is ended in: nothing, with `CAPS.flat`.

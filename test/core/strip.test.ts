@@ -472,8 +472,11 @@ describe("gradientSeam", () => {
     expect(segs.map((s) => s.text)).toEqual([" a ", " ", " ", " ", " ", " b "]);
   });
 
-  it("refuses a step count that is no whole number of cells", () => {
-    for (const steps of [0, -1, 2.5, Number.NaN]) expect(() => gradientSeam(steps), String(steps)).toThrow(RangeError);
+  it("refuses a step count that is no whole number of cells, and draws none for 0, where the items meet", () => {
+    for (const steps of [-1, 2.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => gradientSeam(steps), String(steps)).toThrow(`gradientSeam steps must be a whole number of cells, got ${steps}`);
+    }
+    expect(render(new Strip([FF0000, BLUE00FF], ramp(0))).map((s) => s.text)).toEqual([" a ", " b "]);
   });
 
   // A ground `gap` lighter than `base` along its own lightness: ΔE_OK `gap`
