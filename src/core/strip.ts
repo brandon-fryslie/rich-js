@@ -880,8 +880,9 @@ function named<V>(table: Readonly<Record<string, V>>, kind: string, kinds: strin
  */
 export function gradientSeam(steps = 4): JoinSeam {
   // [LAW:no-silent-failure] A count that is no whole number of cells would draw
-  // a lopsided ramp, or none, without a word. No cells is a ramp: the items meet.
-  if (!(Number.isInteger(steps) && steps >= 0)) throw new RangeError(`gradientSeam steps must be a whole number of cells, got ${steps}`);
+  // a lopsided ramp without a word, and no cells is no ramp: a seam that reads
+  // neither ground, joining a colourless neighbour where a ramp draws the caps.
+  if (!(Number.isInteger(steps) && steps > 0)) throw new RangeError(`gradientSeam steps must be a positive whole number of cells, got ${steps}`);
   const ramp: SeamForm = {
     seam: Array.from({ length: steps }, (_, i): JoinCell => ({ glyph: " ", fg: GROUND, bg: { mix: [LEFT_BG, RIGHT_BG, (i + 1 / 2) / steps] } })),
   };

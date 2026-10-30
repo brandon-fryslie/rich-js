@@ -472,11 +472,10 @@ describe("gradientSeam", () => {
     expect(segs.map((s) => s.text)).toEqual([" a ", " ", " ", " ", " ", " b "]);
   });
 
-  it("refuses a step count that is no whole number of cells, and draws none for 0, where the items meet", () => {
-    for (const steps of [-1, 2.5, Number.NaN, Number.POSITIVE_INFINITY]) {
-      expect(() => gradientSeam(steps), String(steps)).toThrow(`gradientSeam steps must be a whole number of cells, got ${steps}`);
+  it("refuses a step count that is no positive whole number of cells", () => {
+    for (const steps of [0, -1, 2.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => gradientSeam(steps), String(steps)).toThrow(`gradientSeam steps must be a positive whole number of cells, got ${steps}`);
     }
-    expect(render(new Strip([FF0000, BLUE00FF], ramp(0))).map((s) => s.text)).toEqual([" a ", " b "]);
   });
 
   // A ground `gap` lighter than `base` along its own lightness: ΔE_OK `gap`
@@ -504,10 +503,12 @@ describe("gradientSeam", () => {
     const drawn = [ColorSpec.parse(left), ...shown(rampOf(left, right, steps, ColorDepth.TRUECOLOR), ColorDepth.TRUECOLOR), ColorSpec.parse(right)].map(
       (c) => c.fixedValue!,
     );
-    // Each channel moves one way only, from the left ground's to the right's.
+    // Each channel moves one way only, from the left ground's to the right's:
+    // the path it travels is no longer than the gap between its ends, so a
+    // channel the two grounds share does not move at all.
     for (const channel of ["red", "green", "blue"] as const) {
-      const way = Math.sign(drawn.at(-1)![channel] - drawn[0]![channel]);
-      for (let i = 1; i < drawn.length; i++) expect((drawn[i]![channel] - drawn[i - 1]![channel]) * way, `${channel} at ${i}`).toBeGreaterThanOrEqual(0);
+      const path = drawn.slice(1).reduce((sum, c, i) => sum + Math.abs(c[channel] - drawn[i]![channel]), 0);
+      expect(path, channel).toBe(Math.abs(drawn.at(-1)![channel] - drawn[0]![channel]));
     }
     // And seen, each half cell is no nearer the left ground than the one before it, nor farther from the right.
     const [from, to] = [Oklch.fromRgba(drawn[0]!), Oklch.fromRgba(drawn.at(-1)!)];
