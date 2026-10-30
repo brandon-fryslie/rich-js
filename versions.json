@@ -2,6 +2,49 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-517",
+      "ref": "refs/pull/517/merge",
+      "sha": "9dcac4d5b1db9e0eaf9ed09aa2ca46c931543dc8",
+      "timestamp": "2026-10-30T13:30:17.498Z",
+      "commits": [
+        {
+          "sha": "9dcac4d5b1db9e0eaf9ed09aa2ca46c931543dc8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T13:28:17Z",
+          "message": "Merge d0ac795174154472291885a2bcc41aeabc254efd into 7bfad71356d43a5a0849162eb1905cd9f612d80f\n"
+        },
+        {
+          "sha": "d0ac795174154472291885a2bcc41aeabc254efd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T07:28:07-06:00",
+          "message": "gradientSeam draws no cells for 0 steps, where the items meet, and refuses only a count that is no whole number (rich-joiners-er38.a1h)\n"
+        },
+        {
+          "sha": "fccac49f1e716795d3d2255818baf9fa9b13f593",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T07:21:35-06:00",
+          "message": "gradientSeam refuses a step count that is no whole number of cells, and says why a ramp between alike grounds shows no join (rich-joiners-er38.a1h)\n"
+        },
+        {
+          "sha": "7e6ca97778c44144f81def9836f852dd49cdee5f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T07:02:03-06:00",
+          "message": "Version 0.25.2 (rich-joiners-er38.a1h)\n"
+        },
+        {
+          "sha": "b0ac2a39e7e8857ab83a5e187f95917e35277111",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T07:02:03-06:00",
+          "message": "gradientSeam fills each cell with one colour, so the lift moves none and the ramp never turns back (rich-joiners-er38.a1h)\n\nEach cell was a half block carrying two ramp samples, ink over ground. The\nlift holds every seam cell's ink at least SEAM_MIN_DELTA_E off its ground,\nso wherever two neighbouring samples sat closer than that (near grounds, or\nfar grounds across many steps, as in rich-strip's full-width fill) every\nink sample was moved and the ramp zig-zagged.\n\nA ramp cell is now a space whose fg is \"ground\": one colour, its fill,\nsampled at the cell's middle. Ink in the terminal's ground is a side the\nlift cannot measure, so it moves none of them, by the rule every seam cell\npasses. The glyph and ASCII forms are the same ramp.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-516",
       "ref": "refs/pull/516/merge",
       "sha": "db69c7b068bb4b18d067b995e4532f661959d20a",
@@ -41,42 +84,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-10-30T06:44:04-06:00",
           "message": "A join cell is resolved again from the effected cells beside it, so a seam stays visible under an effect (rich-joiners-er38.edp)\n\nA join cell's colours were resolved once at join time, and an effect then\nmoved each side with whichever item owned it, leaving a mix (prism's inner\nthirds, torn's midpoint) where it was and painting a seam into a fill that\ncovered both neighbours, after the lift had already run.\n\nNow a cell a CellJoiner draws carries what it was resolved from (JoinedCell:\nits paints, the neighbour each side reads, its edges and render). An effect\npaints every cell but a join cell's; each join cell is then resolved again\nthrough cellStyle, the join-time path, lift included, from the nearest cell\neach neighbour drew beside it on its row, as the depth writes that cell. A\nside whose neighbour moved nothing keeps the edge it was drawn from, so with\nno edge moved the cell is byte for byte as drawn, and the restamped record\nlets an effect drawn over another move on from the inner one's edges.\nconfined narrows an effect to its owners' item cells only; ColorOwners and\ncolorsOwnedBy go.\n\nReleased as 0.25.1.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-517",
-      "ref": "refs/pull/517/merge",
-      "sha": "b1558becba1a5bfd0497199868c333f42ac26c93",
-      "timestamp": "2026-10-30T13:23:53.688Z",
-      "commits": [
-        {
-          "sha": "b1558becba1a5bfd0497199868c333f42ac26c93",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T13:21:44Z",
-          "message": "Merge fccac49f1e716795d3d2255818baf9fa9b13f593 into 7bfad71356d43a5a0849162eb1905cd9f612d80f\n"
-        },
-        {
-          "sha": "fccac49f1e716795d3d2255818baf9fa9b13f593",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T07:21:35-06:00",
-          "message": "gradientSeam refuses a step count that is no whole number of cells, and says why a ramp between alike grounds shows no join (rich-joiners-er38.a1h)\n"
-        },
-        {
-          "sha": "7e6ca97778c44144f81def9836f852dd49cdee5f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T07:02:03-06:00",
-          "message": "Version 0.25.2 (rich-joiners-er38.a1h)\n"
-        },
-        {
-          "sha": "b0ac2a39e7e8857ab83a5e187f95917e35277111",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T07:02:03-06:00",
-          "message": "gradientSeam fills each cell with one colour, so the lift moves none and the ramp never turns back (rich-joiners-er38.a1h)\n\nEach cell was a half block carrying two ramp samples, ink over ground. The\nlift holds every seam cell's ink at least SEAM_MIN_DELTA_E off its ground,\nso wherever two neighbouring samples sat closer than that (near grounds, or\nfar grounds across many steps, as in rich-strip's full-width fill) every\nink sample was moved and the ramp zig-zagged.\n\nA ramp cell is now a space whose fg is \"ground\": one colour, its fill,\nsampled at the cell's middle. Ink in the terminal's ground is a side the\nlift cannot measure, so it moves none of them, by the rule every seam cell\npasses. The glyph and ASCII forms are the same ramp.\n"
         }
       ]
     },
