@@ -13,12 +13,13 @@
  * for a change that means to redraw a join that already shows.
  */
 import { describe, it, expect } from "vitest";
-import { JOINERS } from "../../src/core/strip.js";
-import { Strip } from "../../src/core/strip.js";
+import { JOINERS, Strip } from "../../src/core/strip.js";
 import { RichText } from "../../src/core/text.js";
 import { Style } from "../../src/core/style.js";
-import { ColorDepth } from "../../src/core/color.js";
+import { ColorDepth, ColorSpec } from "../../src/core/color.js";
+import { Oklch } from "../../src/core/oklch.js";
 import { renderToString } from "../../src/core/render.js";
+import { standsOffAsDrawn } from "./stands-off.js";
 
 const cell = (text: string, style: string): RichText => new RichText(text, { style: Style.parse(style), end: "" });
 
@@ -45,5 +46,61 @@ describe("a join whose every cell already stands off its ground", () => {
       }
     }
     await expect(`${JSON.stringify(drawn, null, 1)}\n`).toMatchFileSnapshot("./strip-seams.golden.json");
+  });
+});
+
+describe("a join between grounds too close to tell apart", () => {
+  // Each base and a ground `gap` lighter along its own lightness, which is the
+  // ΔE_OK between them but for the 8-bit rounding of the colour drawn.
+  const BASES = { grey: "#303030", blue: "#336699" } as const;
+  const GAPS = [0, 0.01, 0.03, 0.2] as const;
+  const FAR = 0.2;
+  const partner = (base: string, gap: number): string => {
+    const from = Oklch.fromRgba(ColorSpec.parse(base).value!);
+    return new Oklch(from.l + gap, from.c, from.h).toRgba().hex;
+  };
+  // The cells a join draws between `left` and `right`, and of those, the ones
+  // with a colour on both sides to measure: a cell on the terminal's ground, or
+  // reversed out of it, has a side nobody knows.
+  const seam = (name: keyof typeof JOINERS, left: string, right: string, colorSystem: ColorDepth) =>
+    [...JOINERS[name].join(cell(" a ", `#e0e0e0 on ${left}`), cell(" b ", `#e0e0e0 on ${right}`), { index: 1 }).render({ maxWidth: 80, colorSystem })];
+  const CASES = (Object.keys(JOINERS) as (keyof typeof JOINERS)[]).flatMap((name) =>
+    Object.entries(DEPTHS).map(([depth, colorSystem]) => [name, depth, colorSystem] as const),
+  );
+
+  it.each(CASES)("%s at %s draws its seam, every cell's ink standing off its ground", (name, _, colorSystem) => {
+    const failures: string[] = [];
+    for (const [hue, base] of Object.entries(BASES)) {
+      const far = seam(name, base, partner(base, FAR), colorSystem);
+      for (const gap of GAPS) {
+        const cells = seam(name, base, partner(base, gap), colorSystem);
+        // The seam's own glyphs at every gap: nothing stands in for it.
+        if (cells.map((s) => s.text).join("") !== far.map((s) => s.text).join("")) failures.push(`${hue} ${gap}: drew ${cells.map((s) => s.text).join("")}`);
+        for (const [at, { style }] of cells.entries()) {
+          const measured = style !== undefined && !style.reverse && style.color !== undefined && style.bgcolor !== undefined;
+          if (measured && !standsOffAsDrawn(style, colorSystem)) failures.push(`${hue} ${gap}: cell ${at} ${style.toString()}`);
+        }
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+
+  // Measured through the joiner itself: powerline's arrow between two cells of
+  // one ground, drawn at each depth — truecolor and 256 by the colour the
+  // terminal shows, sixteen colours by its slot.
+  it.each([
+    ["#303030", "#262626", "#262626", 8],
+    ["#336699", "#3f72a6", "#5f5faf", 8],
+    ["#fafafa", "#ececec", "#eeeeee", 7],
+    ["#c0392b", "#ce4737", "#d75f00", 1],
+    ["#1e1e2e", "#282838", "#1c1c1c", 4],
+  ] as const)("lifts %s's arrow to %s in truecolor, %s at 256 and slot %i at sixteen", (ground, truecolor, eightBit, slot) => {
+    const drawn = (colorSystem: ColorDepth) => {
+      const [arrow] = seam("powerline", ground, ground, colorSystem);
+      return arrow!.style!.drawnColors(colorSystem).color!;
+    };
+    expect(drawn(ColorDepth.TRUECOLOR).fixedValue?.hex).toBe(truecolor);
+    expect(drawn(ColorDepth.EIGHT_BIT).fixedValue?.hex).toBe(eightBit);
+    expect(drawn(ColorDepth.STANDARD).number).toBe(slot);
   });
 });

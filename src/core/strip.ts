@@ -246,15 +246,12 @@ export interface JoinCell {
 export type SeamCell = JoinCell | { readonly cap: "lead" | "tail" };
 
 /**
- * What a joiner draws between two neighbours, in one form:
- *   • `seam` — the cells between them;
- *   • `divider` — in the seam's place where every seam cell's ink is drawn
- *     indistinct from its own ground (see `SEAM_MIN_DELTA_E`), so the seam
- *     would vanish; the same width as `seam`.
+ * What a joiner draws between two neighbours, in one form: `seam`, the cells
+ * between them. Each is drawn with its ink held off its own ground
+ * (`SEAM_MIN_DELTA_E`), so whatever the two neighbours' colours, the seam shows.
  */
 export interface SeamForm {
   readonly seam: readonly SeamCell[];
-  readonly divider: readonly SeamCell[];
 }
 
 /**
@@ -287,20 +284,19 @@ export interface JoinCaps {
 // the one shape a render reads.
 interface JoinShape {
   readonly seam: readonly JoinCell[];
-  readonly divider: readonly JoinCell[];
   readonly lead: readonly JoinCell[];
   readonly tail: readonly JoinCell[];
 }
 
 type Part = keyof JoinShape;
 type FormName = keyof JoinSeam;
-const PARTS: readonly Part[] = ["seam", "divider", "lead", "tail"];
+const PARTS: readonly Part[] = ["seam", "lead", "tail"];
 
 /**
- * The least ΔE_OK a seam cell's ink must differ from its own ground by for the
- * seam to be seen. Below it the eye cannot tell the ink from the ground,
- * so the joiner draws the divider instead. Twice the ~.02 threshold of a visible difference, because a seam is
- * one cell wide.
+ * The least ΔE_OK a join cell's ink must stand off its own ground by to be
+ * seen. Below it the eye cannot tell the ink from the ground, so the joiner
+ * lifts the ink to it (`standOff`). Twice the ~.02 threshold of a visible
+ * difference, because a seam is one cell wide.
  */
 export const SEAM_MIN_DELTA_E = 0.04;
 
@@ -322,7 +318,6 @@ const pickGlyph = (cell: JoinCell, part: Part, index: number, at: number): strin
   return glyphs[Math.floor((parseInt(fnv1a(`${part}:${index}:${at}`), 16) / 2 ** 32) * glyphs.length)]!;
 };
 const cellWidth = (cell: JoinCell): number => cellLen(glyphsOf(cell)[0] ?? "");
-const partWidth = (cells: readonly JoinCell[]): number => cells.reduce((width, cell) => width + cellWidth(cell), 0);
 
 type Refuse = (why: string) => never;
 
@@ -347,9 +342,9 @@ function parsePaint(raw: unknown, absent: "left" | "right" | undefined, refuse: 
 const parseColor = (raw: CellColor, absent: "left" | "right" | undefined, refuse: Refuse): CellColor =>
   raw === "ground" ? raw : parsePaint(raw, absent, refuse);
 
-const ABSENT: Readonly<Record<Part, "left" | "right" | undefined>> = { seam: undefined, divider: undefined, lead: "left", tail: "right" };
+const ABSENT: Readonly<Record<Part, "left" | "right" | undefined>> = { seam: undefined, lead: "left", tail: "right" };
 // Which argument of a joiner a part is authored in, so a refusal names it.
-const AUTHORED_IN: Readonly<Record<Part, "seam" | "caps">> = { seam: "seam", divider: "seam", lead: "caps", tail: "caps" };
+const AUTHORED_IN: Readonly<Record<Part, "seam" | "caps">> = { seam: "seam", lead: "caps", tail: "caps" };
 
 function parseCell(cell: JoinCell, form: FormName, part: Part, refuse: Refuse): JoinCell {
   const glyph: unknown = cell.glyph;
@@ -396,15 +391,6 @@ const asSeamCell = (form: FormName, part: Part) => (cell: object, refuse: Refuse
   return cap === "lead" || cap === "tail" ? Object.freeze({ cap }) : refuse(`names a cap that is neither lead nor tail: ${JSON.stringify(cap)}`);
 };
 
-// A seam's width as a sum over whatever caps stand in it: its own cells', and
-// how many times it names each cap. Two parts equal in all three are the same
-// width under every caps.
-const seamWidth = (cells: readonly SeamCell[]): readonly [number, number, number] => [
-  partWidth(cells.filter((cell): cell is JoinCell => !("cap" in cell))),
-  cells.filter((cell) => "cap" in cell && cell.cap === "lead").length,
-  cells.filter((cell) => "cap" in cell && cell.cap === "tail").length,
-];
-
 /**
  * [LAW:parse-dont-validate] The one place a seam is checked, so every rule
  * the cell model states is refused at construction and the render reads cells
@@ -413,15 +399,7 @@ const seamWidth = (cells: readonly SeamCell[]): readonly [number, number, number
  * back is a frozen copy the caller can no longer change.
  */
 function parseSeam(raw: JoinSeam): JoinSeam {
-  const parseForm = (form: FormName): SeamForm => {
-    const seam = parseCells(raw, form, "seam", asSeamCell(form, "seam"));
-    // A divider authored as the seam itself stays the seam, so a render can see
-    // it has no choice to make.
-    const divider = raw[form].divider === raw[form].seam ? seam : parseCells(raw, form, "divider", asSeamCell(form, "divider"));
-    const [seamAt, dividerAt] = [seamWidth(seam), seamWidth(divider)];
-    if (seamAt.some((n, i) => n !== dividerAt[i])) throw new Error(`seam: ${form} divider is not the width of the seam under every caps`);
-    return Object.freeze({ seam, divider });
-  };
+  const parseForm = (form: FormName): SeamForm => Object.freeze({ seam: parseCells(raw, form, "seam", asSeamCell(form, "seam")) });
   return Object.freeze({ glyph: parseForm("glyph"), ascii: parseForm("ascii") });
 }
 
@@ -434,9 +412,7 @@ function parseCaps(raw: JoinCaps): JoinCaps {
 
 // One form of the seam joined with that form of the caps.
 function joinForms(seam: SeamForm, caps: CapsForm): JoinShape {
-  const splice = (cells: readonly SeamCell[]): readonly JoinCell[] => cells.flatMap((cell) => ("cap" in cell ? caps[cell.cap] : [cell]));
-  const seamCells = splice(seam.seam);
-  return { seam: seamCells, divider: seam.divider === seam.seam ? seamCells : splice(seam.divider), lead: caps.lead, tail: caps.tail };
+  return { seam: seam.seam.flatMap((cell) => ("cap" in cell ? caps[cell.cap] : [cell])), lead: caps.lead, tail: caps.tail };
 }
 
 // Whether any of `cells` paints with `side`'s ground.
@@ -448,19 +424,18 @@ const readsGround = (cells: readonly JoinCell[], side: "left" | "right"): boolea
 // One form of a joiner — its shape and what is read off the shape once, so a
 // render does not re-derive it. Which neighbours the form needs a ground from
 // belongs to the form drawn, never to the other one, and to the part drawn,
-// never to the others: the seam with its divider from either neighbour, the
-// lead from the right and the tail from the left, the only one each may name.
+// never to the others: the seam from either neighbour, the lead from the right
+// and the tail from the left, the only one each may name.
 interface Form {
   readonly shape: JoinShape;
   readonly reads: { readonly seam: { readonly left: boolean; readonly right: boolean }; readonly lead: boolean; readonly tail: boolean };
 }
 
 function formOf(shape: JoinShape): Form {
-  const between = [...shape.seam, ...shape.divider];
   return {
     shape,
     reads: {
-      seam: { left: readsGround(between, "left"), right: readsGround(between, "right") },
+      seam: { left: readsGround(shape.seam, "left"), right: readsGround(shape.seam, "right") },
       lead: readsGround(shape.lead, "right"),
       tail: readsGround(shape.tail, "left"),
     },
@@ -482,27 +457,71 @@ function drawnGround(bg: ColorSpec): ColorSpec {
   return bg.flattenAlpha(SURFACE_BLACK);
 }
 
-// A cell whose ink the eye cannot tell from its ground, read off the style it
-// is drawn in. What is measured is what is drawn — `Style.drawnColors`, the
-// colours the writer encodes: the ink flattened onto the cell's own ground and
-// the ground onto the terminal's black, both downgraded to the depth the
-// render encodes at, so two colours that depth rounds to one entry are the one
-// entry they render as. A colour whose RGB is the terminal theme's own (ANSI
-// 0–15, a blend reaching one) has no value here, so two of them are the same
-// only when they are one expression: the same palette slot — its `number`,
-// never the name or the depth that spells it ("red", "color(1)", an EIGHT_BIT
-// spec on 0–15 are one slot) — or the same blend, whose name spells each end
-// by its slot for the same reason. A cell on the terminal's ground, or in
-// reverse video over it, has a colour nobody knows on one side, and is seen.
-function vanishes(style: Style, colorSystem: ColorDepth | null | undefined): boolean {
-  if (style.reverse) return false;
-  const { color, bgcolor } = style.drawnColors(colorSystem ?? ColorDepth.TRUECOLOR);
-  if (color === undefined || bgcolor === undefined) return false;
-  const av = color.fixedValue;
-  const bv = bgcolor.fixedValue;
-  return av !== undefined && bv !== undefined
-    ? Oklch.fromRgba(av).deltaE(Oklch.fromRgba(bv)) < SEAM_MIN_DELTA_E
-    : color.number !== undefined ? color.number === bgcolor.number : color.name === bgcolor.name;
+// Whether ink stands off its ground, both as a depth draws them, by the floor a
+// seam is seen at. A colour whose RGB is the terminal theme's own (ANSI 0–15, a
+// blend reaching one) has no value here, so two of them stand apart unless they
+// are one expression: the same palette slot — its `number`, never the name or
+// the depth that spells it ("red", "color(1)", an EIGHT_BIT spec on 0–15 are
+// one slot) — or the same blend, whose name spells each end by its slot for the
+// same reason. At sixteen colours, then, the floor is a different slot. The
+// terminal's default colour is nobody's to measure, and stands apart.
+function standsOff(ink: ColorSpec, ground: ColorSpec): boolean {
+  if (ink.isDefault || ground.isDefault) return true;
+  const [a, b] = [ink.fixedValue, ground.fixedValue];
+  return a !== undefined && b !== undefined
+    ? Oklch.fromRgba(a).deltaE(Oklch.fromRgba(b)) >= SEAM_MIN_DELTA_E
+    : ink.number !== undefined ? ink.number !== ground.number : ink.name !== ground.name;
+}
+
+// A step along a lightness ray: finer than the steps between the colours a
+// truecolor writer draws, so the walk passes over none of them.
+const LIFT_STEP = 0.001;
+
+// The steps along `origin`'s lightness ray, its chroma and hue held, in the
+// order the lift tries them: the smaller move first, and at an equal move the
+// lighter, out to black and to white.
+function* lightnessRay(origin: Oklch): Iterable<Oklch> {
+  for (let k = 1; k * LIFT_STEP <= 1; k++) {
+    for (const l of [origin.l + k * LIFT_STEP, origin.l - k * LIFT_STEP]) {
+      if (l >= 0 && l <= 1) yield new Oklch(l, origin.c, origin.h);
+    }
+  }
+}
+
+/**
+ * `ink`, a glyph's colour on `ground`, held at least `SEAM_MIN_DELTA_E` off it
+ * as `depth` draws both (`Style.drawnColors`). Ink that already stands off is
+ * returned as it is. Ink that does not becomes the nearest colour along its own
+ * OKLCH lightness ray, chroma and hue held, whose drawn form stands off: the
+ * smaller step, toward white or toward black. Every step is measured as the
+ * depth draws it, so at 256 colours and at sixteen the candidates are the
+ * entries the depth draws, and the side the ink moves to can differ between
+ * depths. A floor measured on rounded colours is not monotone along a ray, so
+ * the walk enumerates and never bisects. A side with no colour to measure is
+ * left alone.
+ *
+ * [LAW:single-enforcer] The one place a join cell's visibility is decided:
+ * nothing outside the joiner predicts whether a seam will show.
+ */
+function standOff(ink: ColorSpec | undefined, ground: ColorSpec | undefined, depth: ColorDepth): ColorSpec | undefined {
+  if (ink === undefined || ground === undefined) return ink;
+  const drawn = (color: ColorSpec, at?: ColorDepth) => new Style({ color, bgcolor: ground }).drawnColors(at);
+  const { color: shown, bgcolor: under } = drawn(ink, depth);
+  if (standsOff(shown!, under!)) return ink;
+  // The ray starts from the ink as it is laid on its ground, before a depth
+  // rounds it. Ink the terminal's theme draws — a slot, or a mix reaching one —
+  // starts from the colour the default terminal theme gives it and steps
+  // between slots: an RGB set beside a colour only the terminal knows could be
+  // that very colour.
+  const laid = drawn(ink).color!;
+  const kind = laid.fixedValue === undefined ? ColorDepth.STANDARD : ColorDepth.TRUECOLOR;
+  for (const step of lightnessRay(Oklch.fromRgba(laid.getTruecolor()))) {
+    const candidate = ColorSpec.fromRgba(step.toRgba()).downgrade(kind);
+    if (standsOff(drawn(candidate, depth).color!, under!)) return candidate;
+  }
+  // [LAW:no-silent-failure] Unreachable: the ray runs out to black and to
+  // white, and no ground lies within the floor of both, nor is one slot both.
+  throw new Error(`no colour on the lightness ray of ${ink.name} stands off ${ground.name} at depth ${ColorDepth[depth]}`);
 }
 
 interface Edges {
@@ -530,8 +549,10 @@ function cellStyle(cell: JoinCell, edges: Edges, options: RenderOptions): Style 
   // side; as the fg it is reverse video over the bg colour, so the glyph's ink
   // is the terminal's own background.
   if (cell.fg === "ground") return new Style({ color: cell.bg === "ground" ? undefined : resolvePaint(cell.bg, edges, options), reverse: true });
-  const color = resolvePaint(cell.fg, edges, options);
-  return new Style({ color, bgcolor: cell.bg === "ground" ? undefined : resolvePaint(cell.bg, edges, options) });
+  const bgcolor = cell.bg === "ground" ? undefined : resolvePaint(cell.bg, edges, options);
+  // [LAW:dataflow-not-control-flow] Every cell's ink is held off its ground;
+  // the gap measured between them decides how far it moves, usually not at all.
+  return new Style({ color: standOff(resolvePaint(cell.fg, edges, options), bgcolor, options.colorSystem ?? ColorDepth.TRUECOLOR), bgcolor });
 }
 
 const shapeGlyphs = (shape: JoinShape): string => PARTS.flatMap((part) => shape[part].flatMap(glyphsOf)).join("");
@@ -544,9 +565,10 @@ const shapeGlyphs = (shape: JoinShape): string => PARTS.flatMap((part) => shape[
  * Which part a join draws is read off its two neighbours. A neighbour is
  * missing at the strip's ends, and counts as missing — an endpoint — when the
  * seam paints with its ground anywhere and it has none to paint. With both
- * present the join is the seam, or the divider where every seam cell's ink is
- * drawn indistinct from its ground at `options.colorSystem`; with only the
- * right, the lead; with only the left, the tail; with neither, nothing. A cap
+ * present the join is the seam; with only the right, the lead; with only the
+ * left, the tail; with neither, nothing. Every cell is drawn with its ink held
+ * off its ground at `options.colorSystem` (`standOff`), measured per cell, so a
+ * seam stepping in thirds shows every step however close its grounds. A cap
  * that paints with its neighbour's ground is drawn only beside a neighbour
  * with one, so caps that need grounds never stop a seam that needs none.
  *
@@ -588,13 +610,7 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
           if (leads || tails) yield* styled(leads ? "lead" : "tail");
           return;
         }
-        // A seam is lost only when every cell of it is: one cell rounded into
-        // its ground at a shallow depth still leaves the others to show the
-        // step, and measuring per cell, not across the two grounds, divides a
-        // seam stepping in thirds where each third would not be seen.
-        const seam = styled("seam");
-        const lost = drawn.divider !== drawn.seam && seam.every((segment) => segment.style !== undefined && vanishes(segment.style, options.colorSystem));
-        yield* lost ? styled("divider") : seam;
+        yield* styled("seam");
       },
     };
   }
@@ -613,66 +629,47 @@ const TAIL: SeamCell = { cap: "tail" };
 
 const both = <F>(glyph: F, ascii: F): { readonly glyph: F; readonly ascii: F } => ({ glyph, ascii });
 
-// A powerline glyph family: the glyph, its thin form, and their ASCII stand-ins.
+// A powerline glyph family: the glyph and its ASCII stand-in.
 interface Family {
   readonly glyph: string;
-  readonly thin: string;
   readonly ascii: string;
-  readonly asciiThin: string;
 }
 
-const POWERLINE: Family = { glyph: "\ue0b0", thin: "\ue0b1", ascii: ">", asciiThin: ">" };
-const SLANT: Family = { glyph: "\ue0bc", thin: "\ue0bd", ascii: "/", asciiThin: "/" };
-const BACKSLANT: Family = { glyph: "\ue0b8", thin: "\ue0b9", ascii: "\\", asciiThin: "\\" };
-const FLAME: Family = { glyph: "\ue0c0", thin: "\ue0c1", ascii: "}", asciiThin: "}" };
-const PIXEL: Family = { glyph: "\ue0c4", thin: "\ue0b1", ascii: "#", asciiThin: ">" };
-const ICE: Family = { glyph: "\ue0c8", thin: "\ue0b1", ascii: "]", asciiThin: ">" };
-const BUBBLE: Family = { glyph: "\ue0b4", thin: "\ue0b5", ascii: ")", asciiThin: ")" };
+const POWERLINE: Family = { glyph: "\ue0b0", ascii: ">" };
+const SLANT: Family = { glyph: "\ue0bc", ascii: "/" };
+const BACKSLANT: Family = { glyph: "\ue0b8", ascii: "\\" };
+const FLAME: Family = { glyph: "\ue0c0", ascii: "}" };
+const PIXEL: Family = { glyph: "\ue0c4", ascii: "#" };
+const ICE: Family = { glyph: "\ue0c8", ascii: "]" };
+const BUBBLE: Family = { glyph: "\ue0b4", ascii: ")" };
 
-// `glyph` in the left ground over the right; divided by `thin` in the left
-// item's text.
-const arrow = (glyph: string, thin: string): SeamForm => ({
-  seam: [{ glyph, fg: LEFT_BG, bg: RIGHT_BG }],
-  divider: [{ glyph: thin, fg: LEFT_FG, bg: LEFT_BG }],
-});
-const arrowSeam = (f: Family): JoinSeam => both(arrow(f.glyph, f.thin), arrow(f.ascii, f.asciiThin));
+// `glyph` in the left ground over the right.
+const arrow = (glyph: string): SeamForm => ({ seam: [{ glyph, fg: LEFT_BG, bg: RIGHT_BG }] });
+const arrowSeam = (f: Family): JoinSeam => both(arrow(f.glyph), arrow(f.ascii));
 
 // Three arrows stepping through the two thirds between the grounds.
-function prism(glyph: string, thin: string): SeamForm {
+function prism(glyph: string): SeamForm {
   const third = (t: number): Paint => ({ mix: [LEFT_BG, RIGHT_BG, t] });
-  const pad: JoinCell = { glyph: " ", fg: LEFT_FG, bg: LEFT_BG };
   return {
     seam: [
       { glyph, fg: LEFT_BG, bg: third(1 / 3) },
       { glyph, fg: third(1 / 3), bg: third(2 / 3) },
       { glyph, fg: third(2 / 3), bg: RIGHT_BG },
     ],
-    divider: [pad, { glyph: thin, fg: LEFT_FG, bg: LEFT_BG }, pad],
   };
 }
 
 // The runs parted: the caps close the one and open the other, `between` —
 // cells on the terminal's ground — set between them.
-function parted(between: readonly JoinCell[]): SeamForm {
-  const seam = [TAIL, ...between, LEAD];
-  return { seam, divider: seam };
-}
+const parted = (between: readonly JoinCell[]): SeamForm => ({ seam: [TAIL, ...between, LEAD] });
 
 // One cell drawn over the two grounds' midpoint, so it reads as neither item's.
-function midpoint(glyph: JoinCell["glyph"], fg: Paint): SeamForm {
-  const seam: JoinCell[] = [{ glyph, fg, bg: HALF }];
-  return { seam, divider: seam };
-}
+const midpoint = (glyph: JoinCell["glyph"], fg: Paint): SeamForm => ({ seam: [{ glyph, fg, bg: HALF }] });
 
-// A ragged tear in the left ground over the midpoint; where that ink would
-// vanish into the midpoint — grounds a few steps apart, or one ground — the
-// same tear in the left item's text.
-function torn(glyphs: readonly string[]): SeamForm {
-  return { seam: midpoint({ oneOf: glyphs }, LEFT_BG).seam, divider: [{ glyph: { oneOf: glyphs }, fg: LEFT_FG, bg: HALF }] };
-}
+// A ragged tear in the left ground over the midpoint.
+const torn = (glyphs: readonly string[]): SeamForm => midpoint({ oneOf: glyphs }, LEFT_BG);
 
-const PLAIN_SEAM: readonly JoinCell[] = [{ glyph: " | ", fg: { role: "strip.separator" }, bg: GROUND }];
-const PLAIN: SeamForm = { seam: PLAIN_SEAM, divider: PLAIN_SEAM };
+const PLAIN: SeamForm = { seam: [{ glyph: " | ", fg: { role: "strip.separator" }, bg: GROUND }] };
 const SPACE: JoinCell = { glyph: " ", fg: LEFT_FG, bg: GROUND };
 const rail = (glyph: string): JoinCell => ({ glyph, fg: { role: "strip.rail" }, bg: GROUND });
 
@@ -683,7 +680,7 @@ const rail = (glyph: string): JoinCell => ({ glyph, fg: { role: "strip.rail" }, 
  */
 export const SEAMS = Object.freeze({
   powerline: parseSeam(arrowSeam(POWERLINE)),
-  prism: parseSeam(both(prism(POWERLINE.glyph, POWERLINE.thin), prism(POWERLINE.ascii, POWERLINE.asciiThin))),
+  prism: parseSeam(both(prism(POWERLINE.glyph), prism(POWERLINE.ascii))),
   slant: parseSeam(arrowSeam(SLANT)),
   backslant: parseSeam(arrowSeam(BACKSLANT)),
   flame: parseSeam(arrowSeam(FLAME)),
@@ -783,12 +780,13 @@ function gradient(steps: number, glyph: string): SeamForm {
   // samples 2i (its ink, the left half) and 2i+1 (its ground, the right half),
   // so no sample equals either neighbour's ground.
   const samples = 2 * steps;
-  const seam = Array.from({ length: steps }, (_, i): JoinCell => ({
-    glyph,
-    fg: { mix: [LEFT_BG, RIGHT_BG, (2 * i + 0.5) / samples] },
-    bg: { mix: [LEFT_BG, RIGHT_BG, (2 * i + 1.5) / samples] },
-  }));
-  return { seam, divider: seam };
+  return {
+    seam: Array.from({ length: steps }, (_, i): JoinCell => ({
+      glyph,
+      fg: { mix: [LEFT_BG, RIGHT_BG, (2 * i + 0.5) / samples] },
+      bg: { mix: [LEFT_BG, RIGHT_BG, (2 * i + 1.5) / samples] },
+    })),
+  };
 }
 
 /**

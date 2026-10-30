@@ -521,13 +521,14 @@ describe("confined — an effect on its owners' cells", () => {
   };
   const run = (on: boolean, n: number): boolean[] => Array.from({ length: n }, () => on);
 
-  it("moves one item of a strip and the seams it points out of, and no other cell", () => {
+  it("moves one item of a strip and its side of each seam beside it, and no other cell", () => {
     const items = twins();
     const strip = new Strip(items, JOINERS.powerline);
-    // lead, " one ", the divider one fill draws in the seam's place, " two ", tail
-    expect(drawn(strip, 80)[0]![6]).toContain("");
+    // lead, " one ", the arrow between the one fill — one's ink, lifted off
+    // two's ground — " two ", tail
+    expect(drawn(strip, 80)[0]![6]).toContain("\ue0b0");
     expect(moved(strip, items[0]!, 80)).toEqual([[...run(true, 7), ...run(false, 6)]]);
-    expect(moved(strip, items[1]!, 80)).toEqual([[...run(false, 7), ...run(true, 6)]]);
+    expect(moved(strip, items[1]!, 80)).toEqual([[...run(false, 6), ...run(true, 7)]]);
   });
 
   it("still moves only that item and its seams when a FlexStrip wraps it onto a line of its own", () => {

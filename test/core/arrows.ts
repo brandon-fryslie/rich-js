@@ -5,13 +5,10 @@ const RIGHT_BG: Paint = { edge: "right", part: "bg" };
 
 /**
  * A powerline joiner drawn in ASCII glyphs the tests can read back: the arrow,
- * the divider, a lead in reverse video and a tail, `""` leaving an end flat.
+ * a lead in reverse video and a tail, `""` leaving an end flat.
  */
-export function arrows({ seam = ">", divider = "|", lead = "<", tail = ">" } = {}): CellJoiner {
-  const between: SeamForm = {
-    seam: [{ glyph: seam, fg: LEFT_BG, bg: RIGHT_BG }],
-    divider: [{ glyph: divider, fg: { edge: "left", part: "fg" }, bg: LEFT_BG }],
-  };
+export function arrows({ seam = ">", lead = "<", tail = ">" } = {}): CellJoiner {
+  const between: SeamForm = { seam: [{ glyph: seam, fg: LEFT_BG, bg: RIGHT_BG }] };
   const ends: CapsForm = {
     lead: lead === "" ? [] : [{ glyph: lead, fg: "ground", bg: RIGHT_BG }],
     tail: tail === "" ? [] : [{ glyph: tail, fg: LEFT_BG, bg: "ground" }],

@@ -33,6 +33,12 @@ import { scriptedHost } from "../../host/scripted-host.js";
 
 const HAND_BACK = "\x1b[?1049l";
 
+/** Whether a strip's joiner drew the cell. */
+const joined = (style: Style): boolean => {
+  for (let anchor = style.anchor; anchor; anchor = anchor.inner) if (anchor.owner === JOIN) return true;
+  return false;
+};
+
 function started(argv: string[] = []) {
   const settings = parseSettings(["--fps", "30", ...argv])!;
   const base = scriptedHost({ cols: 110, rows: 40 });
@@ -227,8 +233,15 @@ describe("a strip under a pulse", () => {
       // contrast to spare; the terminal's own ground does not.
       const rgba = new Map(pairs.flatMap(({ fg, bg }) => [fg, bg]).map((c) => [c.hex, c]));
       const still = new Set(["ground", ...[...share].filter(([hex, s]) => loop.touch(rgba.get(hex)!, s).hex === hex).map(([hex]) => hex)]);
+      // A seam's ink lifted off a fill it would vanish into is a colour no
+      // lettering sets, and the pulse moves only the colours it measured, so
+      // that ink holds still while the fill beside it moves — until a join is
+      // re-derived from its effected edges (rich-joiners-er38.edp).
+      const lifted = (hex: string): boolean => hex !== "ground" && !rgba.has(hex);
+      const joins = [...strip.renderable.render(options)].flatMap((segment) => graphemes(segment.text).map(() => joined(segment.style ?? Style.null())));
+      before.forEach(([fg, bg], i) => expect([fg, bg, lifted(bg), lifted(fg) && !joins[i]]).toEqual([fg, bg, false, false]));
       before.forEach((pair, i) =>
-        pair.forEach((was, slot) => expect([was, frames.every((after) => after[i]![slot] === was)]).toEqual([was, still.has(was)])),
+        pair.forEach((was, slot) => expect([was, frames.every((after) => after[i]![slot] === was)]).toEqual([was, still.has(was) || lifted(was)])),
       );
 
     },
@@ -270,11 +283,6 @@ describe("every loop keeps the words readable", () => {
   const lights = ["shimmer", "pulse", "sparkle"] as const;
   const grounds = [["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const;
   const depths = [["truecolor", ColorDepth.TRUECOLOR, "truecolor"], ["256", ColorDepth.EIGHT_BIT, "256"], ["16", ColorDepth.STANDARD, "ansi"]] as const;
-  /** Whether a strip's joiner drew the cell. */
-  const joined = (style: Style): boolean => {
-    for (let anchor = style.anchor; anchor; anchor = anchor.inner) if (anchor.owner === JOIN) return true;
-    return false;
-  };
 
   it.each(grounds.flatMap(([g, theme]) => depths.flatMap(([d, depth, system]) => lights.map((loop) => [loop, g, d, theme, depth, system] as const))))(
     "%s on a %s ground at %s colours: no lettered cell falls below its resting contrast or AA",

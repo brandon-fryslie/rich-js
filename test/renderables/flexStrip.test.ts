@@ -123,7 +123,7 @@ describe("FlexStrip", () => {
 describe("FlexStrip seam index", () => {
   it("gives each surviving seam the glyph it has unwrapped", () => {
     const pick: JoinCell = { glyph: { oneOf: ["a", "b", "c", "d"] }, fg: { role: "strip.separator" }, bg: "ground" };
-    const seam: SeamForm = { seam: [pick], divider: [pick] };
+    const seam: SeamForm = { seam: [pick] };
     const items = Array.from({ length: 12 }, (_, i) => cell(String.fromCharCode(65 + i)));
     const strip = new FlexStrip(items, { joiner: new CellJoiner({ glyph: seam, ascii: seam }, CAPS.flat) });
     const [wide] = renderLines(strip, OPTS(200));
