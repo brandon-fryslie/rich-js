@@ -4,15 +4,22 @@
     {
       "version": "pr-515",
       "ref": "refs/pull/515/merge",
-      "sha": "26e7932e1e83fda75f5cfd9fa6365ceb59043228",
-      "timestamp": "2026-10-30T12:04:26.920Z",
+      "sha": "6a294438668f459a86eb3d0f7c817c9ba8fdb769",
+      "timestamp": "2026-10-30T12:17:47.934Z",
       "commits": [
         {
-          "sha": "26e7932e1e83fda75f5cfd9fa6365ceb59043228",
+          "sha": "6a294438668f459a86eb3d0f7c817c9ba8fdb769",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T12:02:30Z",
-          "message": "Merge 8feaaacca4f319fc71be5da801390ba52c1e05ca into f83b514b330b9df0e4e340842d32891fd4d9ca6f\n"
+          "timestamp": "2026-10-30T12:15:46Z",
+          "message": "Merge 2982e2ade152c619605e9974eed75aa6598a4de1 into f83b514b330b9df0e4e340842d32891fd4d9ca6f\n"
+        },
+        {
+          "sha": "2982e2ade152c619605e9974eed75aa6598a4de1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T06:15:36-06:00",
+          "message": "A vanishing seam ink steps in the kind the depth draws it, so a cube entry is never parted from its ground by a slot (rich-joiners-er38.0jr)\n\nThe lift chose slot or RGB candidates from the ink as authored. A mix of a\nslot and an RGB is the theme's colour at truecolor but a cube entry at 256,\nso at 256 prism between `blue` and `#000080` measured its vanishing thirds\nas cube entries and then lifted them into slots, which the floor passes\nagainst any cube entry on the index alone: color(4) on color(18), the same\nnavy. Ink that vanishes is always drawn in the same kind as its ground, so\nthe steps are now drawn in that kind and measured the way the ink was.\n"
         },
         {
           "sha": "8feaaacca4f319fc71be5da801390ba52c1e05ca",
