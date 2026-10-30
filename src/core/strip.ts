@@ -248,7 +248,7 @@ export type SeamCell = JoinCell | { readonly cap: "lead" | "tail" };
 /**
  * What a joiner draws between two neighbours, in one form: `seam`, the cells
  * between them. Each is drawn with its ink held off its own ground
- * (`SEAM_MIN_DELTA_E`), so whatever the two neighbours' colours, the seam shows.
+ * (`SEAM_MIN_DELTA_E`, `standOff`).
  */
 export interface SeamForm {
   readonly seam: readonly SeamCell[];
@@ -491,14 +491,19 @@ function* lightnessRay(origin: Oklch): Iterable<Oklch> {
 /**
  * `ink`, a glyph's colour on `ground`, held at least `SEAM_MIN_DELTA_E` off it
  * as `depth` draws both (`Style.drawnColors`). Ink that already stands off is
- * returned as it is. Ink that does not becomes the nearest colour along its own
- * OKLCH lightness ray, chroma and hue held, whose drawn form stands off: the
- * smaller step, toward white or toward black. Every step is measured as the
+ * returned as it is. Ink that does not becomes the drawn form of the nearest
+ * step along its own OKLCH lightness ray, chroma and hue held, that stands off:
+ * the smaller step, toward white or toward black. Every step is measured as the
  * depth draws it, so at 256 colours and at sixteen the candidates are the
  * entries the depth draws, and the side the ink moves to can differ between
  * depths. A floor measured on rounded colours is not monotone along a ray, so
  * the walk enumerates and never bisects. A side with no colour to measure is
  * left alone.
+ *
+ * [LAW:one-source-of-truth] The colour returned is the one measured — the
+ * entry the depth draws, not the step that rounds to it — so a reader of the
+ * cell at another depth (an export reads a recording in truecolor) sees the
+ * colour that cleared the floor, never a step one unit off its ground.
  *
  * [LAW:single-enforcer] The one place a join cell's visibility is decided:
  * nothing outside the joiner predicts whether a seam will show.
@@ -516,8 +521,8 @@ function standOff(ink: ColorSpec | undefined, ground: ColorSpec | undefined, dep
   const laid = drawn(ink).color!;
   const kind = laid.fixedValue === undefined ? ColorDepth.STANDARD : ColorDepth.TRUECOLOR;
   for (const step of lightnessRay(Oklch.fromRgba(laid.getTruecolor()))) {
-    const candidate = ColorSpec.fromRgba(step.toRgba()).downgrade(kind);
-    if (standsOff(drawn(candidate, depth).color!, under!)) return candidate;
+    const candidate = drawn(ColorSpec.fromRgba(step.toRgba()).downgrade(kind), depth).color!;
+    if (standsOff(candidate, under!)) return candidate;
   }
   // [LAW:no-silent-failure] Unreachable: the ray runs out to black and to
   // white, and no ground lies within the floor of both, nor is one slot both.

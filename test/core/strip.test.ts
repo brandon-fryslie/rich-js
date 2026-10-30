@@ -266,8 +266,11 @@ describe("powerline same-bg structural join", () => {
     const arrow = (colorSystem: ColorDepth) => render(strip, { maxWidth: 80, colorSystem })[2]!;
     expect(arrow(ColorDepth.TRUECOLOR).style?.color?.value?.hex).toBe(a);
     const lifted = arrow(depth);
-    expect(lifted.style?.color?.value?.hex).not.toBe(a);
     expect(standsOffAsDrawn(lifted.style!, depth)).toBe(true);
+    // The ink is the entry the depth draws, the colour that was measured, so a
+    // reader at another depth — an export of the recording — sees it too.
+    expect(lifted.style!.color!.name).toBe(lifted.style!.drawnColors(depth).color!.name);
+    expect(lifted.style!.color!.name).not.toBe(ca.downgrade(depth).name);
     // renderToString hands its own depth to the renderables it encodes.
     expect(renderToString(strip, { colorSystem: depth, width: 80 })).toContain(`\x1b[${lifted.style!.toSgrCodes(depth)}m>`);
   });
