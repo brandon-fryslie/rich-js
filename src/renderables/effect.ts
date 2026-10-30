@@ -167,8 +167,10 @@ export interface Drawn {
    * settle as it ends — is spread over. A blank cell on the terminal's ground
    * that draws no line is handed but not listed, since nothing in it shows,
    * and a strip's join cell painted from the items beside it is listed but
-   * never handed, since it follows them. `confined` narrows it to the cells
-   * its owners drew. A call, so a frame whose effect does not ask lists none.
+   * never handed its own look, since it follows them: it is handed only a
+   * neighbour's edge the frame does not show, to be painted where the seam
+   * shows it. `confined` narrows it to the cells its owners drew. A call, so a
+   * frame whose effect does not ask lists none.
    */
   cells(): readonly Placed[];
   /** Every distinct ink and ground of a word cell. */
@@ -285,7 +287,7 @@ export class Recolored implements Renderable, Measurable {
     for (const [i, { segment, look, glyphs }] of walked.entries()) {
       const drawing = drawings[i];
       if (look === undefined || drawing === undefined) yield segment;
-      else if ("joined" in drawing) yield this._rejoined(segment, look, drawing.joined, glyphs, beside, depth);
+      else if ("joined" in drawing) yield this._rejoined(segment, look, drawing.joined, glyphs, beside, frame, depth);
       else yield* this._repainted(segment, look, glyphs, drawing.painted, depth);
     }
   }
@@ -330,60 +332,83 @@ export class Recolored implements Renderable, Measurable {
   /**
    * A join cell's `segment` resolved again from the edges beside it, as the
    * effect left them: each neighbour's nearest cell to the join on its row,
-   * its slots written as the depth writes them, through the writer every
-   * painted cell is written by. A side whose neighbour the effect moved
+   * its slots as the depth writes them. A side whose neighbour the effect moved
    * nothing of keeps the edge the cell was drawn from, so with neither moved
    * the cell is as it was drawn.
    */
-  private _rejoined(segment: Segment, look: Look, joined: JoinedCell, glyphs: readonly WalkedGlyph[], beside: EdgesBeside, depth: ColorDepth): Segment {
+  private _rejoined(segment: Segment, look: Look, joined: JoinedCell, glyphs: readonly WalkedGlyph[], beside: EdgesBeside, frame: EffectFrame, depth: ColorDepth): Segment {
     const cells = glyphs.flatMap(({ cell }) => (cell === undefined ? [] : [cell]));
+    // A join cell that draws no cell shows nothing an effect could move.
+    const [at] = cells;
+    if (at === undefined) return segment;
     const { theme } = this;
     // [LAW:one-source-of-truth] A moved edge is the spec the depth writes its
     // slot in, the spec the joiner reads of an item drawn so: a palette slot
     // stays that slot, which the lift tells apart by number, never an RGB read
     // back through a palette the writer did not use. Only the terminal's own
     // colour names none, and the terminal the effect draws on says what it is.
-    const edgeOf = (spec: ColorSpec | undefined, foreground: boolean): ColorSpec | undefined =>
-      spec?.isDefault ? ColorSpec.fromRgba(spec.getTruecolor(theme, foreground)) : spec;
-    const moveOf = (edge: PaintedCell | undefined): EdgeMove | undefined => {
-      if (edge === undefined) return undefined;
-      const written = movedSpecs(edge.look.slots, onScreen(edge.moved, edge.look.pair.reverse), depth, theme);
-      return written.fg === undefined && written.bg === undefined ? undefined : { color: edgeOf(written.fg, true), bgcolor: edgeOf(written.bg, false) };
+    // Each such spec is kept, so the writer below knows it by identity: an
+    // RGB a blend or another colour lands on is not the terminal's own.
+    const terminals = new Set<ColorSpec>();
+    const edgeOf = (spec: ColorSpec | undefined, foreground: boolean): ColorSpec | undefined => {
+      if (!spec?.isDefault) return spec;
+      const own = ColorSpec.fromRgba(spec.getTruecolor(theme, foreground));
+      terminals.add(own);
+      return own;
     };
-    // [LAW:dataflow-not-control-flow] A neighbour with no cell beside the join
-    // in this frame (cut off by a narrower container, scrolled out of a
-    // `Viewport`, covered by an overlay, or an item that draws nothing) was
-    // handed to the effect nowhere, so nothing moved it: the same value as a
-    // neighbour the effect left be, and that side keeps the edge it was drawn
-    // from. Where the frame is whole and every item draws, each neighbour a
-    // seam reads has a cell on its row, so only a partial frame comes here: it
-    // reads what the frame shows, and no broken state hides behind it
-    // [LAW:no-silent-failure].
-    const moves = { left: moveOf(beside(cells, "left", joined.reads.left)), right: moveOf(beside(cells, "right", joined.reads.right)) };
-    const rederived = joined.rederived(moves, look.style);
+    const moved = (from: CellColors, to: CellColors): EdgeMove | undefined => {
+      const specs = movedSpecs(from, to, depth, theme);
+      return specs.fg === undefined && specs.bg === undefined ? undefined : { color: edgeOf(specs.fg, true), bgcolor: edgeOf(specs.bg, false) };
+    };
+    // [LAW:one-source-of-truth] A neighbour the frame shows no cell of beside
+    // the join (cut off by a narrower container, scrolled out of a `Viewport`,
+    // covered, or an item that draws nothing) is painted by the effect where
+    // the seam shows it: its edge, as the seam drew it, handed to the frame at
+    // the seam's own cell. An effect over the whole element moves it as it
+    // moves everything there; one confined to some owners leaves it, since no
+    // owner drew the seam. Where the frame is whole and every item draws, each
+    // neighbour a seam reads has a cell on its row, so only a partial frame
+    // comes here [LAW:no-silent-failure].
+    const unseen = (edge: Style): EdgeMove | undefined => {
+      const wire = edge.drawnColors(depth);
+      const slots = { fg: (wire.color ?? DEFAULT).getTruecolor(theme, true), bg: (wire.bgcolor ?? DEFAULT).getTruecolor(theme, false) };
+      const terminal = { fg: wire.color?.isDefault ?? true, bg: wire.bgcolor?.isDefault ?? true };
+      return moved(slots, returned(frame({ ...slots, attributes: cellAttributes(edge) }, { ...at, seed: cellSeed(this.key, at.row, at.col), terminal, reverse: false })));
+    };
+    const moveOf = (side: "left" | "right"): EdgeMove | undefined => {
+      const read = joined.reads[side];
+      if (read === null) return undefined;
+      const cell = beside(cells, side, read.owner);
+      return cell === undefined ? unseen(read.edge) : moved(cell.look.slots, onScreen(cell.moved, cell.look.pair.reverse));
+    };
+    const rederived = joined.rederived({ left: moveOf("left"), right: moveOf("right") }, look.style, depth);
     if (rederived === undefined) return segment;
     const { colors, style } = rederived;
-    const { wire, slots } = look;
-    // [LAW:one-source-of-truth] Each slot is written as what it resolved to.
-    // A slot resolved to the colour it was resolved to before keeps the spec it
-    // was written in, as a painted cell's unmoved slot does: matched again on
-    // the effect's terminal it could land off the item it continues. A colour
-    // the depth writes as it stands, a slot or a table entry, is written as
-    // itself, so a lifted ink stands off its ground in the bytes as the lift
-    // measured it: read back through the terminal's RGB, a slot that terminal
-    // draws like another would be written as the other. Only a colour the
-    // depth must round is rounded, by the one writer, on the effect's
-    // terminal, which writes that terminal's own ground as `default`.
+    // [LAW:one-source-of-truth] Each slot is written as the depth writes what
+    // it resolved to, by the writer the lift measured it with
+    // (`Style.drawnColors`), so a lifted ink stands off its ground in the bytes
+    // as it did when measured. A slot resolved to the colour it was before
+    // keeps the spec it was written in, as a painted cell's unmoved slot does.
+    // The terminal's own colours, which stand in a moved edge as the spec of
+    // the RGB the effect's terminal gives them and reach a slot unchanged or
+    // not at all, are written by the writer that wrote them on the item
+    // beside, on that terminal, which writes its own ground below truecolor as
+    // `default`.
     const was = joined.style;
+    const drawn = colors.drawnColors(depth);
+    const { wire, slots } = look;
     const rounded = this.respec(wire, slots, { fg: colors.color?.getTruecolor(theme, true) ?? slots.fg, bg: colors.bgcolor?.getTruecolor(theme, false) ?? slots.bg }, depth);
-    const written = (now: ColorSpec | undefined, before: ColorSpec | undefined, wrote: ColorSpec | undefined, round: ColorSpec | undefined): ColorSpec | undefined => {
+    const written = (now: ColorSpec | undefined, before: ColorSpec | undefined, wrote: ColorSpec | undefined, drew: ColorSpec | undefined, round: ColorSpec | undefined): ColorSpec | undefined => {
       if (sameSpec(now, before)) return wrote;
       // [LAW:no-silent-failure] Unreachable: a move only fills an edge in, so
       // a slot that resolved to a colour when drawn resolves to one after.
       if (now === undefined) throw new Error(`a seam cell resolved to ${before?.name ?? "nothing"} when drawn and to nothing after an effect moved its neighbours`);
-      return now.downgrade(depth) === now ? now : round;
+      return terminals.has(now) ? round : drew;
     };
-    const writes = { color: written(colors.color, was.color, wire.color, rounded.color), bgcolor: written(colors.bgcolor, was.bgcolor, wire.bgcolor, rounded.bgcolor) };
+    const writes = {
+      color: written(colors.color, was.color, wire.color, drawn.color, rounded.color),
+      bgcolor: written(colors.bgcolor, was.bgcolor, wire.bgcolor, drawn.bgcolor, rounded.bgcolor),
+    };
     return new Segment(segment.text, writesAlike(writes, wire) ? style : style.add(Style.fromColor(writes.color, writes.bgcolor)));
   }
 
@@ -588,10 +613,11 @@ interface PaintedCell {
 
 /**
  * The cell `owner` drew nearest a join on the join's row, on `side` of the
- * join's `cells` — or none, for no owner, or one that drew no cell there: a
- * strip cut short by a narrower container, or an item that draws nothing.
+ * join's `cells`, which are at least one — or none, for an owner that drew no
+ * cell there: a strip cut short by a narrower container, or an item that
+ * draws nothing.
  */
-type EdgesBeside = (cells: readonly Placed[], side: "left" | "right", owner: object | null) => PaintedCell | undefined;
+type EdgesBeside = (cells: readonly Placed[], side: "left" | "right", owner: object) => PaintedCell | undefined;
 
 /**
  * Where to find the cells beside a join in `walked`, painted as `painted` says.
@@ -616,7 +642,6 @@ function edgesBeside(walked: readonly Walked[], drawings: readonly (Drawing | un
     return byRow;
   };
   return (cells, side, owner) => {
-    if (owner === null || cells.length === 0) return undefined;
     // Cells on a row are listed left to right, as the walk places them.
     const row = (rows ??= index()).get(cells[0]!.row) ?? [];
     const first = cells[0]!.col;

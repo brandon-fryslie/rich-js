@@ -112,7 +112,7 @@ describe("what each cell of a strip is drawn from", () => {
     const name = (owner: object | null): string => (owner === RED ? "red" : owner === BLUE ? "blue" : "-");
     return Array.from({ length: width }, (_, x) => {
       const joined = joinedCell(Segment.anchorAt(frame, x, 0));
-      return joined === undefined ? "item" : `${name(joined.reads.left)}/${name(joined.reads.right)}`;
+      return joined === undefined ? "item" : `${name(joined.reads.left?.owner ?? null)}/${name(joined.reads.right?.owner ?? null)}`;
     });
   };
   const of = (what: string, cells: number): string[] => Array.from({ length: cells }, () => what);

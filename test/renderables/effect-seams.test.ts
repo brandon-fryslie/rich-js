@@ -46,7 +46,7 @@ const hexes = (style: Style | undefined): [string, string] => {
 const seamOf = (segments: readonly Segment[], left: object, right: object): Segment[] =>
   segments.filter((s) => {
     const joined = joinedCell(s.style?.anchor);
-    return joined !== undefined && joined.reads.left === left && joined.reads.right === right;
+    return joined !== undefined && joined.reads.left?.owner === left && joined.reads.right?.owner === right;
   });
 
 describe("an effect that paints two neighbours one colour", () => {
@@ -126,6 +126,31 @@ describe("a seam under an effect drawn on a terminal of its own", () => {
     }
     expect(failures).toEqual([]);
   });
+
+  // Terminals whose sixteen sit far from the ones a depth rounds against, or
+  // that draw two slots alike, or whose own text is a blend of two of them,
+  // beside the default one.
+  const SOME = ["DEFAULT_TERMINAL_THEME", "NORD", "GRUVBOX", "ATOM_ONE_DARK", "CATPPUCCIN_MOCHA", "TEXTUAL_DARK"].map((name) => [name, THEMES.find(([n]) => n === name)![1]] as const);
+  const JOINER_CASES = (Object.keys(JOINERS) as (keyof typeof JOINERS)[]).flatMap((name) => (["256", "ansi"] as const).map((depth) => [name, depth] as const));
+
+  it.each(JOINER_CASES)("writes every cell %s draws at %s with its ink standing off its ground, between any two of a terminal's colours", (name, depth) => {
+    const colorSystem = DEPTHS[depth];
+    const failures: string[] = [];
+    for (const [themeName, theme] of SOME) {
+      for (let l = 0; l < 16; l++) {
+        for (let r = 0; r < 16; r++) {
+          const [a, b] = [item("a", "#e0e0e0 on #1d4ed8"), item("c", "#e0e0e0 on #b91c1c")];
+          const slots: Effect = () => Animation.constant<EffectFrame>((look, cell) => ({ ...look, bg: theme.ansiColors.get(drawnBy(cell.anchor, a) ? l : r) }));
+          for (const { style } of inFrame(new Effected(new Strip([a, b], JOINERS[name]), confined(slots, a, b), { key: "slots", theme }), 0).render({ maxWidth: 80, colorSystem })) {
+            // A cell on the terminal's ground, or reversed out of it, has a side nobody knows.
+            const measured = joinedCell(style?.anchor)?.follows === true && style !== undefined && !style.reverse && style.color !== undefined && style.bgcolor !== undefined;
+            if (measured && !standsOffAsDrawn(style, colorSystem)) failures.push(`${themeName} ${l}|${r}: ${style.toString()}`);
+          }
+        }
+      }
+    }
+    expect(failures).toEqual([]);
+  });
 });
 
 describe("prism under an effect on one neighbour", () => {
@@ -166,13 +191,27 @@ describe("where a seam finds the cells beside it", () => {
     expect(hexes(arrow!.style)).toEqual(["#1d4ed8", BLUE.hex]);
   });
 
-  it("keeps the colour it was drawn from on a side whose neighbour the frame does not draw", () => {
+  it("has the effect paint a neighbour the frame does not draw where the seam shows it", () => {
     const [a, b] = [trio()[0]!, trio()[2]!];
     // lead, " a ", the arrow — and " c " and the tail cut off by a narrower container
     const cut: Renderable = { render: (options: RenderOptions) => Segment.adjustLineLength(Segment.splitLines(new Strip([a, b], JOINERS.powerline).render(options))[0]!, 5, undefined, false) };
     const arrowOf = (frame: Segment[]) => seamOf(frame, a, b)[0]!.style;
+    // Confined to the items, the seam is no owner's, so the side the frame cuts off stays as drawn.
     expect(hexes(arrowOf(drawn(effected(cut, confined(repaint(BLUE), a)))))).toEqual([BLUE.hex, "#b91c1c"]);
     expect(renderToString(effected(cut, confined(repaint(BLUE), b)), { colorSystem: "truecolor" })).toBe(renderToString(cut, { colorSystem: "truecolor" }));
+    // Over the whole element, it is painted as the effect paints everything there, and the seam's ink is lifted off the one fill.
+    const whole = arrowOf(drawn(effected(cut, repaint(BLUE))));
+    expect(hexes(whole)[1]).toBe(BLUE.hex);
+    expect(standsOffAsDrawn(whole!)).toBe(true);
+  });
+
+  it("lifts a seam at the depth the effect writes, whatever depth its strip was drawn at", () => {
+    const items = trio();
+    // Drawn once at truecolor, then held and drawn again under an effect at 256 colours.
+    const held = [...new Strip(items, JOINERS.powerline).render({ maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR })];
+    const replay: Renderable = { render: () => held };
+    const frame = drawn(effected(replay, confined(paint(new ColorRgba(60, 60, 60), new ColorRgba(224, 224, 224)), items[0]!, items[1]!)), ColorDepth.EIGHT_BIT);
+    expect(standsOffAsDrawn(seamOf(frame, items[0]!, items[1]!)[0]!.style!, ColorDepth.EIGHT_BIT)).toBe(true);
   });
 
   it("moves on from the edges an effect inside another left it at", () => {

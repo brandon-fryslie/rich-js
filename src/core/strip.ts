@@ -386,6 +386,16 @@ function joinForms(seam: SeamForm, caps: CapsForm): JoinShape {
   return { seam: seam.seam.flatMap((cell) => ("cap" in cell ? caps[cell.cap] : [cell])), lead: caps.lead, tail: caps.tail };
 }
 
+// The parts of `side`'s edge `cell` paints with: its ground (`bg`), its text (`fg`).
+const partsRead = (cell: JoinCell, side: "left" | "right"): ReadonlySet<"fg" | "bg"> =>
+  new Set([cell.fg, cell.bg].flatMap((color) => (color === "ground" ? [] : [...paintsIn(color)].flatMap((p) => ("edge" in p && p.edge === side ? [p.part] : [])))));
+
+/** The parts of each neighbour's edge a join cell paints with. */
+interface CellParts {
+  readonly left: ReadonlySet<"fg" | "bg">;
+  readonly right: ReadonlySet<"fg" | "bg">;
+}
+
 // Whether any of `cells` paints with `side`'s ground.
 const readsGround = (cells: readonly JoinCell[], side: "left" | "right"): boolean =>
   cells.some((cell) =>
@@ -400,9 +410,12 @@ const readsGround = (cells: readonly JoinCell[], side: "left" | "right"): boolea
 interface Form {
   readonly shape: JoinShape;
   readonly reads: { readonly seam: { readonly left: boolean; readonly right: boolean }; readonly lead: boolean; readonly tail: boolean };
+  /** Each part's cells, with the parts of each neighbour's edge each paints with. */
+  readonly cells: Readonly<Record<Part, readonly { readonly cell: JoinCell; readonly parts: CellParts }[]>>;
 }
 
 function formOf(shape: JoinShape): Form {
+  const cells = (part: Part) => shape[part].map((cell) => ({ cell, parts: { left: partsRead(cell, "left"), right: partsRead(cell, "right") } }));
   return {
     shape,
     reads: {
@@ -410,6 +423,7 @@ function formOf(shape: JoinShape): Form {
       lead: readsGround(shape.lead, "right"),
       tail: readsGround(shape.tail, "left"),
     },
+    cells: { seam: cells("seam"), lead: cells("lead"), tail: cells("tail") },
   };
 }
 
@@ -504,6 +518,12 @@ function standOff(ink: ColorSpec | undefined, ground: ColorSpec | undefined, dep
   throw new Error(`no colour on the lightness ray of ${ink.name} stands off ${ground.name} at depth ${ColorDepth[depth]}`);
 }
 
+/** A neighbour a join cell paints with, and its edge as the cell was resolved from it. */
+export interface JoinSide {
+  readonly owner: object;
+  readonly edge: Style;
+}
+
 interface Edges {
   readonly left: Style | undefined;
   readonly right: Style | undefined;
@@ -538,10 +558,6 @@ function cellStyle(cell: JoinCell, edges: Edges, options: RenderOptions): Style 
   return new Style({ color: standOff(resolvePaint(cell.fg, edges, options), bgcolor, options.colorSystem ?? ColorDepth.TRUECOLOR), bgcolor });
 }
 
-// The parts of `side`'s edge `cell` paints with: its ground (`bg`), its text (`fg`).
-const partsRead = (cell: JoinCell, side: "left" | "right"): ReadonlySet<"fg" | "bg"> =>
-  new Set([cell.fg, cell.bg].flatMap((color) => (color === "ground" ? [] : [...paintsIn(color)].flatMap((p) => ("edge" in p && p.edge === side ? [p.part] : [])))));
-
 /**
  * Where an effect moved one slot or both of a neighbour's edge cell to, each
  * the spec the depth writes the slot in, a palette slot as that slot:
@@ -571,22 +587,30 @@ export interface EdgeMove {
  * nobody, and an effect paints it as it paints any cell.
  */
 export class JoinedCell {
-  /** The neighbour whose edge the cell's paints read on each side, or `null` for a side they read nothing of. */
-  readonly reads: { readonly left: object | null; readonly right: object | null };
+  /** What the cell's paints read on each side: that neighbour and its edge as the cell was resolved from it, or `null` for a side they read nothing of. */
+  readonly reads: { readonly left: JoinSide | null; readonly right: JoinSide | null };
   /** Whether the cell's paints read either neighbour, so it follows them under an effect. */
   readonly follows: boolean;
   /** The cell as drawn from its edges: the one resolution, at join time and after an effect alike. */
   readonly style: Style;
-  private readonly parts: { readonly left: ReadonlySet<"fg" | "bg">; readonly right: ReadonlySet<"fg" | "bg"> };
 
   constructor(
     private readonly cell: JoinCell,
-    neighbours: { readonly left: object | null; readonly right: object | null },
+    private readonly parts: CellParts,
+    private readonly neighbours: { readonly left: object | null; readonly right: object | null },
     private readonly edges: Edges,
     private readonly options: RenderOptions,
   ) {
-    this.parts = { left: partsRead(cell, "left"), right: partsRead(cell, "right") };
-    this.reads = { left: this.parts.left.size > 0 ? neighbours.left : null, right: this.parts.right.size > 0 ? neighbours.right : null };
+    const read = (side: "left" | "right"): JoinSide | null => {
+      if (parts[side].size === 0) return null;
+      const [owner, edge] = [neighbours[side], edges[side]];
+      // [LAW:no-silent-failure] Unreachable: a join draws a part only beside
+      // the neighbours its cells may name: a cap naming the one it is drawn
+      // without is refused when parsed (`parsePaint`).
+      if (owner === null || edge === undefined) throw new Error(`a join cell paints with its ${side} neighbour's edge, and the join has no ${side} neighbour`);
+      return { owner, edge };
+    };
+    this.reads = { left: read("left"), right: read("right") };
     this.follows = this.reads.left !== null || this.reads.right !== null;
     this.style = cellStyle(cell, edges, options);
   }
@@ -595,18 +619,20 @@ export class JoinedCell {
    * The cell resolved again once each side's edge has moved as `moves` says:
    * its `colors`, as `cellStyle` draws them, and `style`, the cell's own, with
    * the record of that stamped where this one was, so an effect drawn over
-   * this one moves on from these edges. None when nothing moved of what the
-   * cell paints with: a seam of arrows in two grounds is as it was drawn while
-   * an effect moves only the lettering beside it, and its lift is not walked
-   * again for a frame that cannot change it.
+   * this one moves on from these edges. Resolved, lift included, at `depth`,
+   * the depth the effect writes the frame at. None when nothing moved of what
+   * the cell paints with: a seam of arrows in two grounds is as it was drawn
+   * while an effect moves only the lettering beside it, and its lift is not
+   * walked again for a frame that cannot change it.
    */
-  rederived(moves: { readonly left?: EdgeMove; readonly right?: EdgeMove }, style: Style): { readonly colors: Style; readonly style: Style } | undefined {
+  rederived(moves: { readonly left?: EdgeMove; readonly right?: EdgeMove }, style: Style, depth: ColorDepth): { readonly colors: Style; readonly style: Style } | undefined {
     const reaches = (side: "left" | "right"): boolean =>
       (moves[side]?.color !== undefined && this.parts[side].has("fg")) || (moves[side]?.bgcolor !== undefined && this.parts[side].has("bg"));
     if (!reaches("left") && !reaches("right")) return undefined;
     const moved = (edge: Style | undefined, move: EdgeMove | undefined): Style | undefined =>
       move === undefined ? edge : new Style({ color: move.color ?? edge?.color, bgcolor: move.bgcolor ?? edge?.bgcolor });
-    const next = new JoinedCell(this.cell, this.reads, { left: moved(this.edges.left, moves.left), right: moved(this.edges.right, moves.right) }, this.options);
+    const edges = { left: moved(this.edges.left, moves.left), right: moved(this.edges.right, moves.right) };
+    const next = new JoinedCell(this.cell, this.parts, this.neighbours, edges, { ...this.options, colorSystem: depth });
     const restamp = (level: Anchor): Anchor => ({ ...level, owner: level.owner === this ? next : level.owner, inner: level.inner && restamp(level.inner) });
     return { colors: next.style, style: style.withAnchor(style.anchor && restamp(style.anchor)) };
   }
@@ -652,7 +678,7 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
     const forms = this._forms;
     return {
       *render(options: RenderOptions): Iterable<Segment> {
-        const { shape: drawn, reads } = drawable(options, forms.glyph, forms.ascii, (form) => shapeGlyphs(form.shape));
+        const { cells, reads } = drawable(options, forms.glyph, forms.ascii, (form) => shapeGlyphs(form.shape));
         const edges: Edges = { left: left?.edgeStyle("right", options), right: right?.edgeStyle("left", options) };
         const leftBg = paintableBg(edges.left?.bgcolor);
         const rightBg = paintableBg(edges.right?.bgcolor);
@@ -662,8 +688,8 @@ export class CellJoiner<T extends StyledRenderable = StyledRenderable> implement
         const tails = hasLeft && (!reads.tail || leftBg !== undefined);
         const neighbours = { left, right };
         const styled = (part: Part) =>
-          drawn[part].map((cell, at) => {
-            const joined = new JoinedCell(cell, neighbours, edges, options);
+          cells[part].map(({ cell, parts }, at) => {
+            const joined = new JoinedCell(cell, parts, neighbours, edges, options);
             return new Segment(pickGlyph(cell, part, index, at), joined.style.withAnchor({ owner: joined, row: 0, col: 0, inner: undefined }));
           });
         if (!hasLeft || !hasRight) {
