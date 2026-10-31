@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-525",
-      "ref": "refs/pull/525/merge",
-      "sha": "e4cfa06eeea398923dfa3261182c955dbf631e78",
-      "timestamp": "2026-10-31T13:59:24.708Z",
-      "commits": [
-        {
-          "sha": "e4cfa06eeea398923dfa3261182c955dbf631e78",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T13:58:00Z",
-          "message": "Merge c27b84222bb12336c17f2d10fa6ebf80581c64c8 into 188acc5bffc6981b8837b2c06336e835fba9085e\n"
-        },
-        {
-          "sha": "c27b84222bb12336c17f2d10fa6ebf80581c64c8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T07:57:49-06:00",
-          "message": "The sleep gate reads the sides a loop moves and the cells that show (rich-unfiled-791c.75gd)\n\nStep 12 review of #525. A moving gradient whose colour lay only on a ground, or\nunder a blank that shows nothing, still woke the host, since the gate read both\nsides of every listed cell. Each loop now names its sides, and the gate reads\n`cells`. `confined` holds its narrowed lists for the frame, as `measured` does,\nso the gate adds no second filter. Two comments that described the listing and\na still loop are brought up to it.\n"
-        },
-        {
-          "sha": "f3c961bc167dbe1cca3465231638db6f334c7f6a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T07:40:10-06:00",
-          "message": "A loop sleeps when no cell it is handed shows what it lights (rich-unfiled-791c.75gd)\n\nStep 11 review of #525. The hold-still gate tested whether the lit set was\nempty, so a named colour no cell draws, a confined effect with no owner in the\nframe, and a name matching only the terminal's ink all woke the host for\nnothing. It now reads the cells it is handed, which confined has narrowed, and\nhands the loop the set it read so gradient resolves its names once. The docs\nsay a painter covers what is beneath it. ruleFrame listed cells in a pair its\n`colors` did not name, which no real Drawn can do.\n"
-        },
-        {
-          "sha": "47fbac21075c44aaaa924dc9970b63022d7a882a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T07:24:40-06:00",
-          "message": "A loop with nothing it lights lets the host sleep at every depth (rich-unfiled-791c.75gd)\n\nStep 10 review of #525. Each loop now hands the hold-still gate what it\nlights, because `drawn.colors` lists word cells only and a colour named for\n`onColors` under blanks has to keep moving. A translucent ink is laid on the\nground as it landed. layered's docstring no longer claims a swap draws as it\nwould alone, and a test pins that it lands at the floor. The side-keeping test\ndrops the six compositions it skipped without asserting.\n"
-        },
-        {
-          "sha": "de292ea5bbe9fb091391dc398a4b840bf0ab5a62",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T06:42:41-06:00",
-          "message": "Several effects run on one element at once, as one Effect (rich-unfiled-791c.75gd)\n\nA frame was handed one look and read it for two facts: which of the\nelement's colours a cell is, and what is there now. Alone those are one\nvalue. Folded, a second layer found no colour it knew, or took a turned\ncolour for another of the element's and turned it twice.\n\nEffectCell.pair replaces terminal and reverse and carries what the element\ndrew, so a frame recognises a cell by its pair and moves its look. layered\nfolds effects over that. Each loop's proof of the contrast floor is about\ncolours as drawn, which another layer voids, so layered holds the floor\nitself once the layers have moved a cell: the ground lands where its inks\nkeep room, and an ink that does not read lands on the side it stands on,\nboth measured as written. pulsedOn in effects-feel was this fold by hand.\n\nBreaking: a frame reading cell.terminal or cell.reverse reads cell.pair.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "188acc5bffc6981b8837b2c06336e835fba9085e",
-      "timestamp": "2026-10-31T09:05:40.717Z",
+      "sha": "d2fb7b70bfc5060a3b94fefc9ec99d4db82c3a1d",
+      "timestamp": "2026-10-31T14:13:43.472Z",
       "commits": [
         {
-          "sha": "188acc5bffc6981b8837b2c06336e835fba9085e",
+          "sha": "d2fb7b70bfc5060a3b94fefc9ec99d4db82c3a1d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T03:03:36-06:00",
-          "message": "A transposed text-<role> turns as far as its role does, and a test says so (rich-unfiled-791c.0ny5) (#524)\n\n* A transposed text-<role> turns as far as its role does, and a test says so (rich-unfiled-791c.0ny5)\n\n#522 made rootOf read past a drawn-on prefix, which fixed the reported\nbug, but pinned only isAnchored. Nothing asserted what transposePalette\ndraws, so the behaviour a consumer sees could break with the suite green.\n\nThe new test covers every accent role and goes red for text-success,\ntext-warning and text-error when the prefix handling is removed.\ndocs/transpose.md still called the classification a hyphen-prefix rule.\n\n* What is drawn on an accent turns by a stated amount, for every accent and both forms (rich-unfiled-791c.0ny5)\n\nReview of the first commit: its test was relational, so losing the lock\neverywhere left it green; it named six accents by hand; it read text- only;\nand gruvbox's near-grey on-* could not have shown on- at all. TURN is keyed by\nAccentRole and states the hue, on a palette whose text- and on- forms are\nchromatic.\n\nA role anchors exactly when it names an anchored root, checked over\nPALETTE_ROLES: a new drawn-on family would otherwise compile and rotate, which\nis this ticket's bug. That replaces the two hand-written isAnchored lists.\n\nDocs: the number of bundled themes was wrong and is gone, and the rule is\nstated once as what it is, name syntax.\n\n* Each drawn role is measured against its own hue, and the rule is stated where it lives (rich-unfiled-791c.0ny5)\n\nMedium review: text- was overwritten with the accent, so no real derived value\nwent through the transposition. Only on- is near grey, so only on- is painted\nand each form is compared with its own colour before.\n\nThe no-error case pinned a name no role has and read as a second rule beside\nthe PALETTE_ROLES check, so it is gone. The docs sentence spelling out the\nmechanism was a third copy of it; the page already states the family rule by\nbehaviour, and the transpose.ts header owns the mechanism.\n\n* What is drawn on an accent is measured on a colour with a hue (rich-unfiled-791c.0ny5)\n\nSecond high review: gruvbox's text-secondary has chroma near 0.02, so it held\nits 2 degree tolerance by 0.18 degrees at a 60 degree key and missed it at 48\nother shifts. Both forms now take one chromatic colour stated in the fixture,\nunlike any accent; its worst drift over every whole-degree shift is 0.64.\n\nRestores the no-error pin dropped in the previous commit, which was the only\ntest telling rootOf from a rule that accepts a root in any segment. The\nPALETTE_ROLES check speaks for roles and this one for every other name, so\nthe two do not disagree."
+          "timestamp": "2026-10-31T08:12:18-06:00",
+          "message": "Several effects run on one element at once, as one Effect (rich-unfiled-791c.75gd) (#525)\n\n* Several effects run on one element at once, as one Effect (rich-unfiled-791c.75gd)\n\nA frame was handed one look and read it for two facts: which of the\nelement's colours a cell is, and what is there now. Alone those are one\nvalue. Folded, a second layer found no colour it knew, or took a turned\ncolour for another of the element's and turned it twice.\n\nEffectCell.pair replaces terminal and reverse and carries what the element\ndrew, so a frame recognises a cell by its pair and moves its look. layered\nfolds effects over that. Each loop's proof of the contrast floor is about\ncolours as drawn, which another layer voids, so layered holds the floor\nitself once the layers have moved a cell: the ground lands where its inks\nkeep room, and an ink that does not read lands on the side it stands on,\nboth measured as written. pulsedOn in effects-feel was this fold by hand.\n\nBreaking: a frame reading cell.terminal or cell.reverse reads cell.pair.\n\n* A loop with nothing it lights lets the host sleep at every depth (rich-unfiled-791c.75gd)\n\nStep 10 review of #525. Each loop now hands the hold-still gate what it\nlights, because `drawn.colors` lists word cells only and a colour named for\n`onColors` under blanks has to keep moving. A translucent ink is laid on the\nground as it landed. layered's docstring no longer claims a swap draws as it\nwould alone, and a test pins that it lands at the floor. The side-keeping test\ndrops the six compositions it skipped without asserting.\n\n* A loop sleeps when no cell it is handed shows what it lights (rich-unfiled-791c.75gd)\n\nStep 11 review of #525. The hold-still gate tested whether the lit set was\nempty, so a named colour no cell draws, a confined effect with no owner in the\nframe, and a name matching only the terminal's ink all woke the host for\nnothing. It now reads the cells it is handed, which confined has narrowed, and\nhands the loop the set it read so gradient resolves its names once. The docs\nsay a painter covers what is beneath it. ruleFrame listed cells in a pair its\n`colors` did not name, which no real Drawn can do.\n\n* The sleep gate reads the sides a loop moves and the cells that show (rich-unfiled-791c.75gd)\n\nStep 12 review of #525. A moving gradient whose colour lay only on a ground, or\nunder a blank that shows nothing, still woke the host, since the gate read both\nsides of every listed cell. Each loop now names its sides, and the gate reads\n`cells`. `confined` holds its narrowed lists for the frame, as `measured` does,\nso the gate adds no second filter. Two comments that described the listing and\na still loop are brought up to it."
         }
       ]
     }
