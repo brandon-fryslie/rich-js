@@ -137,22 +137,28 @@ function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<Rich
 
 // The fourth shape: `animationFuncs(frame)` registers `frames`, `stepped`,
 // `tween`, `loop` and `glyphs`, which draw for a moment and say when what
-// they drew changes. The frame is the host's to hand in: a demo row notes
-// here the frame it is drawn in (`templateFrame`), the time and the reader's
+// they drew changes — through the two engine hooks returned beside them:
+// `emitted` stamps the cells that depend on an animated value with its
+// hold, and `decided` tells the frame of one a decision read but drew no
+// cell for. The frame is the host's to hand in: a demo row notes here the
+// frame it is drawn in (`templateFrame`), the time and the reader's
 // preferences both, and every template it evaluates reads it — templates
 // compile once, so the frame is read when one is evaluated, never captured
 // when it is built.
 let drawnIn: TemplateFrame = { time: 0 };
 
 function makeAnimatedEngine(theme: TerminalTheme): Engine<RichText> {
+  const animation = animationFuncs(() => drawnIn);
   return createEngine<RichText>({
     fromString: (s) => new RichText(s),
     toString: (rt) => rt.plain,
     funcs: {
       ...richTextFuncs(),
       ...paletteFuncs(() => theme.palette),
-      ...animationFuncs(() => drawnIn),
+      ...animation.funcs,
     },
+    emitted: animation.emitted,
+    decided: animation.decided,
   });
 }
 

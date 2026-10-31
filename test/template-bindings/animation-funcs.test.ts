@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createEngine, type Engine } from "@promptctl/go-template-js";
+import { createEngine, marked, sprigConversions, sprigLists, sprigMath, type Engine } from "@promptctl/go-template-js";
 import { renderToString } from "../../src/core/render.js";
 import { Style, type Hold } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
@@ -25,10 +25,13 @@ const COLORS = ["red", "green", "blue"];
 
 /** An engine whose templates draw for `clock.t`, which a test moves by hand. */
 function engineAt(clock: { t: number }): Engine<RichText> {
+  const animation = animationFuncs(() => ({ time: clock.t }));
   return createEngine<RichText>({
     fromString: (s) => new RichText(s),
     toString: (rt) => rt.plain,
-    funcs: { ...richTextFuncs(), ...animationFuncs(() => ({ time: clock.t })) },
+    funcs: { ...richTextFuncs(), ...animation.funcs },
+    emitted: animation.emitted,
+    decided: animation.decided,
   });
 }
 
@@ -159,18 +162,26 @@ const nextChangeOf = (text: RichText): number => Segment.nextChange(text.render(
 
 /**
  * An engine drawing for `clock.t` on `clock.timeline` (the host's own clock
- * when unset), telling `clock.told` every hold a function tells the frame,
- * with `color` and `ramp` over a real palette.
+ * when unset), telling `clock.told` every hold the binding tells the frame,
+ * with `color` and `ramp` over a real palette, sprig's maths and lists, and
+ * `pulse`, a consumer's own marking function whose mark is not the binding's.
  */
 function toolboxAt(clock: { t: number; timeline?: Timeline; told?: Hold[] }, options: { reducedMotion?: boolean; asciiOnly?: boolean } = {}): Engine<RichText> {
+  const animation = animationFuncs(() => ({ ...options, time: clock.t, onHold: (hold) => clock.told?.push(hold) }), { timeline: () => clock.timeline ?? Timeline.play(0) });
   return createEngine<RichText>({
     fromString: (s) => new RichText(s),
     toString: (rt) => rt.plain,
     funcs: {
+      ...sprigMath(),
+      ...sprigLists(),
+      ...sprigConversions(),
       ...richTextFuncs(),
       ...paletteFuncs(() => GRUVBOX.palette),
-      ...animationFuncs(() => ({ ...options, time: clock.t, onHold: (hold) => clock.told?.push(hold) }), { timeline: () => clock.timeline ?? Timeline.play(0) }),
+      ...animation.funcs,
+      pulse: { fn: () => marked("p", "a mark of the consumer's own"), argTypes: [], arity: { kind: "exact" }, returnType: "string" },
     },
+    emitted: animation.emitted,
+    decided: animation.decided,
   });
 }
 
@@ -343,62 +354,122 @@ describe("every function draws on the timeline the host hands in", () => {
   });
 });
 
-// rich-animation-27tq.wrw: a number or a colour has no cells to stamp, so it
-// tells the frame it is evaluated for when it changes — what lets a host
-// paint a template while a tween moves and sleep once it lands.
-describe("a value function tells the frame when it changes", () => {
-  /** Every hold `source` tells, evaluated at `t`. */
-  function toldAt(source: string, t: number, options: { reducedMotion?: boolean } = {}): Hold[] {
+// rich-animation-27tq.0gd: a hold reaches the frame only through what the
+// output depends on. The engine carries each function's mark beside its value
+// into every variable, dot and function it passes through; `emitted` puts the
+// hold on the cells of an emission that read it, `decided` tells the frame of
+// one an `if`/`with`/`range` read, and a value bound where nobody reads it
+// tells nothing. Early, never late.
+describe("a hold reaches the frame only through what is drawn or decided", () => {
+  const NEVER: Hold = { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.POSITIVE_INFINITY };
+  const STEPPED = `stepped 1 "#ff0000" 1 "#0000ff"`;
+  const TWEEN = `tween 2 "linear" 0 0 1`;
+
+  /** `source` evaluated at `t`: the hold its emitted cells are in, and every hold told to the frame. */
+  function heldAt(source: string, t: number, options: { reducedMotion?: boolean } = {}): { cells: Hold; told: Hold[] } {
     const clock = { t, told: [] as Hold[] };
-    toolboxAt(clock, options).compile(source)({});
-    return clock.told;
+    const segments = [...RichText.fromFragments(toolboxAt(clock, options).compile(source)({})).render({ maxWidth: 80 })];
+    return { cells: { lastChange: Segment.lastChange(segments), nextChange: Segment.nextChange(segments) }, told: clock.told };
   }
 
+  describe("a value computed and never drawn or decided on tells nothing, at t = 0.25", () => {
+    it.each([
+      `{{ $c := ${STEPPED} }}{{ if false }}{{ fg $c "x" }}{{ end }}still`,
+      `{{ $t := ${TWEEN} }}still`,
+      `{{ $l := loop 2 0 }}still`,
+    ])("%s", (source) => {
+      expect(heldAt(source, 0.25)).toEqual({ cells: NEVER, told: [] });
+    });
+  });
+
+  describe("a stepped colour drawn carries its step, [0, 1), on the cells, through whatever it passed", () => {
+    it.each([
+      [`a colour sink`, `{{ fg (${STEPPED}) "x" }}`],
+      [`a variable`, `{{ $c := ${STEPPED} }}{{ fg $c "x" }}`],
+      [`printf, a function rich-js does not own`, `{{ $c := ${STEPPED} }}{{ printf "%s" $c }}`],
+      [`an emission of the bare value`, `{{ $c := ${STEPPED} }}{{ $c }}`],
+      [`a comparison`, `{{ $c := ${STEPPED} }}{{ eq $c "#ff0000" }}`],
+      [`the dot of a template invocation`, `{{ define "paint" }}{{ fg . "x" }}{{ end }}{{ $c := ${STEPPED} }}{{ template "paint" $c }}`],
+      [`a frame flattened by printf`, `{{ printf "%s" (frames 1 "a" 1 "b") }}`],
+    ])("%s", (_, source) => {
+      expect(heldAt(source, 0.25)).toEqual({ cells: { lastChange: 0, nextChange: 1 }, told: [] });
+    });
+  });
+
+  it("a tween through sprig maths moves every frame on the cells it reaches", () => {
+    expect(heldAt(`{{ printf "%.0f" (add 1 (${TWEEN})) }}`, 0.25)).toEqual({ cells: { lastChange: 0.25, nextChange: 0.25 }, told: [] });
+  });
+
   it("a tween moves until it lands, then never changes", () => {
-    expect(toldAt(`{{ tween 1 "linear" 0 0 10 }}`, 0.5)).toEqual([{ lastChange: 0.5, nextChange: 0.5 }]);
-    expect(toldAt(`{{ tween 1 "linear" 0 0 10 }}`, 2)).toEqual([{ lastChange: 1, nextChange: Number.POSITIVE_INFINITY }]);
+    expect(heldAt(`{{ tween 1 "linear" 0 0 10 }}`, 0.5).cells).toEqual({ lastChange: 0.5, nextChange: 0.5 });
+    expect(heldAt(`{{ tween 1 "linear" 0 0 10 }}`, 2).cells).toEqual({ lastChange: 1, nextChange: Number.POSITIVE_INFINITY });
   });
 
   it("a loop moves at every moment, and reduced holds still", () => {
-    expect(toldAt(`{{ loop 2 0 }}`, 0.7)).toEqual([{ lastChange: 0.7, nextChange: 0.7 }]);
-    expect(toldAt(`{{ loop 2 0 }}`, 0.7, { reducedMotion: true })[0]!.nextChange).toBe(Number.POSITIVE_INFINITY);
+    expect(heldAt(`{{ loop 2 0 }}`, 0.7).cells).toEqual({ lastChange: 0.7, nextChange: 0.7 });
+    expect(heldAt(`{{ loop 2 0 }}`, 0.7, { reducedMotion: true }).cells.nextChange).toBe(Number.POSITIVE_INFINITY);
   });
 
-  it("a stepped colour holds until its step ends", () => {
-    expect(toldAt(`{{ stepped 0.5 "#ff0000" 0.5 "#00ff00" }}`, 0.2)).toEqual([{ lastChange: 0, nextChange: 0.5 }]);
+  it("cells that read two animated values are in the intersection of their holds", () => {
+    expect(heldAt(`{{ fg (${STEPPED}) (printf "%.1f" (${TWEEN})) }}`, 0.25).cells).toEqual({ lastChange: 0.25, nextChange: 0.25 });
+  });
+
+  describe("a decision on an animated value tells the frame, whichever arm it takes, at t = 0.25", () => {
+    it.each([
+      [`an if whose arm is not taken`, `{{ if gt (loop 2 0) 0.5 }}x{{ end }}still`],
+      [`a range over an empty list from an animated count`, `{{ range $i := until (int (${TWEEN})) }}x{{ end }}still`],
+      [`a variable decided on later`, `{{ $t := ${TWEEN} }}{{ if gt $t 0.5 }}on{{ end }}still`],
+    ])("%s", (_, source) => {
+      expect(heldAt(source, 0.25)).toEqual({ cells: NEVER, told: [{ lastChange: 0.25, nextChange: 0.25 }] });
+    });
+
+    it("and the arm it takes carries the hold on its cells too", () => {
+      expect(heldAt(`{{ if lt (loop 2 0) 0.5 }}on{{ end }}`, 0.25)).toEqual({ cells: { lastChange: 0.25, nextChange: 0.25 }, told: [{ lastChange: 0.25, nextChange: 0.25 }] });
+    });
+  });
+
+  it("a consumer's own mark is not a hold, and passes through both hooks untouched", () => {
+    expect(heldAt(`{{ if eq pulse "p" }}{{ pulse }}{{ end }}`, 0.25)).toEqual({ cells: NEVER, told: [] });
   });
 });
 
 // A template evaluated inside a frame is drawn as that frame says: its time,
-// the hold it tells and the reader's preference all come from the frame, so
+// the holds it tells and the reader's preference all come from the frame, so
 // a reduced-motion host never ticks for a template's loop.
 describe("a template drawn in a frame is drawn as the frame says", () => {
   let drawnIn: TemplateFrame = { time: 0 };
+  const animation = animationFuncs(() => drawnIn);
   const engine = createEngine<RichText>({
     fromString: (s) => new RichText(s),
     toString: (rt) => rt.plain,
-    funcs: { ...richTextFuncs(), ...animationFuncs(() => drawnIn) },
+    funcs: { ...richTextFuncs(), ...animation.funcs },
+    emitted: animation.emitted,
+    decided: animation.decided,
   });
-  const looping: Renderable = {
+  const templated = (source: string): Renderable => ({
     render: (options) => {
       drawnIn = templateFrame(options);
-      return renderTemplate(engine, `{{ loop 2 0 | printf "%.2f" }}`, {}, options);
+      return renderTemplate(engine, source, {}, options);
     },
-  };
-  /** What `looping` draws at `time`, and every hold it tells there. */
-  const drawnAt = (time: number, reducedMotion: boolean): { text: string; told: Hold[] } => {
+  });
+  /** What `source` draws at `time` in a frame: its text, when its cells say they change, and every hold told to the frame. */
+  const drawnAt = (source: string, time: number, reducedMotion: boolean): { text: string; nextChange: number; told: Hold[] } => {
     const told: Hold[] = [];
-    const segments = [...render(looping, { maxWidth: 20, reducedMotion, frame: { time, host: {} }, onHold: (hold) => told.push(hold) })];
-    return { text: segments.map((s) => s.text).join(""), told };
+    const segments = [...render(templated(source), { maxWidth: 20, reducedMotion, frame: { time, host: {} }, onHold: (hold) => told.push(hold) })];
+    return { text: segments.map((s) => s.text).join(""), nextChange: Segment.nextChange(segments), told };
   };
 
-  it("draws at the frame's time and tells the frame's own listener", () => {
-    expect(drawnAt(0.5, false)).toEqual({ text: "0.25", told: [{ lastChange: 0.5, nextChange: 0.5 }] });
+  it("draws at the frame's time and stamps the frame's cells", () => {
+    expect(drawnAt(`{{ loop 2 0 | printf "%.2f" }}`, 0.5, false)).toEqual({ text: "0.25", nextChange: 0.5, told: [] });
+  });
+
+  it("tells the frame's own listener of a decision that drew nothing", () => {
+    expect(drawnAt(`{{ if gt (loop 2 0) 0.9 }}late{{ end }}`, 0.5, false)).toEqual({ text: "", nextChange: Number.POSITIVE_INFINITY, told: [{ lastChange: 0.5, nextChange: 0.5 }] });
   });
 
   it("holds still under the frame's reduced motion", () => {
-    const { text, told } = drawnAt(0.5, true);
+    const { text, nextChange } = drawnAt(`{{ loop 2 0 | printf "%.2f" }}`, 0.5, true);
     expect(text).toBe("0.00");
-    expect(told[0]!.nextChange).toBe(Number.POSITIVE_INFINITY);
+    expect(nextChange).toBe(Number.POSITIVE_INFINITY);
   });
 });

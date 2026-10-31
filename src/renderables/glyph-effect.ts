@@ -227,7 +227,7 @@ function showGlyphs(placed: readonly (readonly PlacedGlyph[])[], frame: GlyphFra
  * its every style and span, each moved to where its glyphs now sit, and a
  * frame that changes nothing hands the text back as it was. What it says of
  * when it changes is the effect's, unstamped: whoever draws it at a time
- * stamps it (`textFrameAt`).
+ * stamps it (`placed`), or marks it for the engine to (the template `glyphs`).
  */
 export function reglyphText(text: RichText, effect: GlyphEffect, options: { readonly key: string; readonly asciiOnly: boolean }): Animation<RichText> {
   const { placed, cells } = placeGlyphs([new Segment(text.plain)], options.key);

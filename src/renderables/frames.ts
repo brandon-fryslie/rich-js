@@ -45,11 +45,10 @@
  * children do.
  */
 
-import { Animation, holdOf, placedRender, shownAt, stamp } from "../core/animation.js";
+import { Animation, placedRender } from "../core/animation.js";
 import { beat, type Beat } from "../core/easing.js";
-import type { Motion, RenderOptions } from "../core/protocol.js";
+import type { RenderOptions } from "../core/protocol.js";
 import type { Segment } from "../core/segment.js";
-import { layerStyle } from "../core/style.js";
 import { RichText } from "../core/text.js";
 import { setIntoLine } from "./embed.js";
 
@@ -119,19 +118,4 @@ export class FrameSequence implements Animation<RichText> {
   measure(): { minimum: number; maximum: number } {
     return { minimum: this.width, maximum: this.width };
   }
-}
-
-/**
- * The text frame `animation` shows at host time `t` under `motion`
- * (`shownAt`), copied and stamped with the hold it is in there: what the
- * template `frames` and `glyphs` functions, which know the reader's
- * preference before any render, splice into a line. The stamp is on the
- * base style, which an empty text still draws as its one piece of no width,
- * and on a copy, since an animation may hand back the one `RichText` it holds.
- */
-export function textFrameAt(animation: Animation<RichText>, t: number, motion: Motion): RichText {
-  const shown = shownAt(animation, t, motion);
-  const stamped = shown.value.copy();
-  stamped.style = layerStyle(stamped.style, stamp(holdOf(shown, t)));
-  return stamped;
 }

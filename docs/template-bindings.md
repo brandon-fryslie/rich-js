@@ -246,7 +246,9 @@ Passing a palette name where a color belongs is the other common slip, and it na
 
 ## Animating a template
 
-`animationFuncs(frame)` registers the functions that draw for a moment in time. The host owns the clock: `frame()` is read each time a template is evaluated. It returns the frame's `time`, an `onHold` listener if the host wants to hear when what the functions drew changes, and the reader's preferences, `reducedMotion` and `asciiOnly`. So a template compiled once shows each redraw's moment, and a host that redraws once a second sees the same thing at each of its frames as a host that redraws sixty times a second. Every duration is in seconds.
+`animationFuncs(frame)` registers the functions that draw for a moment in time. The host owns the clock: `frame()` is read each time a template is evaluated. It returns the frame's `time`, an `onHold` listener if the host wants to hear when a decision the template made on an animated value changes, and the reader's preferences, `reducedMotion` and `asciiOnly`. So a template compiled once shows each redraw's moment, and a host that redraws once a second sees the same thing at each of its frames as a host that redraws sixty times a second. Every duration is in seconds.
+
+What it returns is the functions and two engine hooks beside them, and the hooks are how the engine reports back which output depended on an animated value: `funcs` merges into the engine's `funcs`, and `emitted` and `decided` go into the engine's config under those names.
 
 - `tween <seconds> <ease> <start> <from> <to>` is a number eased from `from` to `to` over `seconds`, starting at the moment `start`, and held at `to` afterwards. Every `start` is a moment on the timeline the functions are drawn on, which is the host's own clock unless you hand one in (below); with one handed in, record a change at `Timeline.at(timeline, host)`, not at the host time. The ease is any name in `EASES`, physics curves such as `"spring"` and `"back-out"` included. Pipe the target into it: `.pct | tween 0.4 "ease-out" .changedAt .was` eases from the old value to the new one, starting when your state says the value changed.
 - `loop <seconds> <start>` is the way through a period, rising from 0 towards 1 and starting again, measured from `start`. Give a row of cells starts a step apart and the same motion travels along the row.
@@ -262,10 +264,13 @@ import { animationFuncs, paletteFuncs, richTextFuncs } from "@promptctl/rich-js/
 
 const console = new Console();
 let frameTime = 0;
+const animation = animationFuncs(() => ({ time: frameTime }));
 const engine = createEngine<RichText>({
   fromString: (s) => new RichText(s),
   toString: (rt) => rt.plain,
-  funcs: { ...richTextFuncs(), ...paletteFuncs(() => GRUVBOX.palette), ...animationFuncs(() => ({ time: frameTime })) },
+  funcs: { ...richTextFuncs(), ...paletteFuncs(() => GRUVBOX.palette), ...animation.funcs },
+  emitted: animation.emitted,
+  decided: animation.decided,
 });
 
 const gauge = engine.compile(`{{- $muted := "dim" -}}
@@ -279,7 +284,7 @@ for (frameTime of [10, 10.2, 10.4, 10.6, 11, 12]) {
 }
 ```
 
-The tween changes with every frame and the typewriter stops changing once the text is typed. Every function says when what it drew will next change, so a host that schedules redraws knows when to look again. `frames` and `glyphs` mark each cell they draw with that moment, covering their own glyphs. A number or a colour has no cells to mark, so `tween`, `loop` and `stepped` tell the frame's `onHold` instead.
+The tween changes with every frame and the typewriter stops changing once the text is typed. Every function says when what it drew will next change, so a host that schedules redraws knows when to look again, and it says so only for output that depends on it. A number or a colour has no cells to carry that moment, so each function marks its value instead, and the engine carries the mark beside the value through every variable, `printf`, comparison and `template` invocation it passes. `emitted` then stamps the cells of every fragment whose action read a marked value with the hold it is in, the way a placed [frame sequence](/frames) stamps its own cells, and `decided` tells the frame's `onHold` of a mark an `if`, `with` or `range` decided on, whichever arm it took, because the output may show that value later with no cell to say so yet. A value a template computes and never draws or decides on, <code v-pre>{{ $t := tween 2 "linear" 0 0 1 }}still</code>, reports nothing, so a still bar never claims to move.
 
 A template evaluated inside a rich-js frame, by a renderable in an [`App`](/app#animating-at-a-frame-rate) or a `Live`, hands on the frame it is drawn in. `templateFrame(options)` reads it off that renderable's render options. The app then paints while a tween moves, stops once it lands, and draws it reduced when the app's `reducedMotion` says so. The frame's time is already on the app's timeline, so register no `timeline` of your own here:
 
@@ -289,10 +294,13 @@ import { RichText, type Renderable } from "@promptctl/rich-js";
 import { animationFuncs, renderTemplate, richTextFuncs, templateFrame, type TemplateFrame } from "@promptctl/rich-js/template-bindings";
 
 let drawnIn: TemplateFrame = { time: 0 };
+const animation = animationFuncs(() => drawnIn);
 const engine = createEngine<RichText>({
   fromString: (s) => new RichText(s),
   toString: (rt) => rt.plain,
-  funcs: { ...richTextFuncs(), ...animationFuncs(() => drawnIn) },
+  funcs: { ...richTextFuncs(), ...animation.funcs },
+  emitted: animation.emitted,
+  decided: animation.decided,
 });
 
 const gauge: Renderable = {
@@ -315,10 +323,13 @@ import { animationFuncs, richTextFuncs } from "@promptctl/rich-js/template-bindi
 const console = new Console();
 let host = 0;
 let timeline = Timeline.play(0);
+const animation = animationFuncs(() => ({ time: host }), { timeline: () => timeline });
 const engine = createEngine<RichText>({
   fromString: (s) => new RichText(s),
   toString: (rt) => rt.plain,
-  funcs: { ...richTextFuncs(), ...animationFuncs(() => ({ time: host }), { timeline: () => timeline }) },
+  funcs: { ...richTextFuncs(), ...animation.funcs },
+  emitted: animation.emitted,
+  decided: animation.decided,
 });
 
 const spinner = engine.compile(`{{- $beat := 0.25 -}}
