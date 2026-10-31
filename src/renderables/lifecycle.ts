@@ -60,10 +60,9 @@ import type { GlyphTransition } from "./glyph-effects.js";
  * half's own, whatever element it is handed, and it is done from the first
  * moment it says it never changes again (`Animation.done`): an arrival is
  * the element from then, and an exit is gone. A half that never ends is
- * refused, the arrival when the lifecycle is made and the exit when it is
- * told to leave: an `Effected` or `GlyphEffected` handed in bare is one,
- * since its own word is "now" at every time; `throughColors` and
- * `throughGlyphs` lend one the transition's schedule.
+ * refused when the lifecycle is made: an `Effected` or `GlyphEffected`
+ * handed in bare is one, since its own word is "now" at every time;
+ * `throughColors` and `throughGlyphs` lend one the transition's schedule.
  */
 export type Half = (element: Renderable, key: string) => Animation<Renderable>;
 
@@ -82,9 +81,8 @@ export function throughGlyphs(transition: GlyphTransition): Half {
  * `schedule`, the transition's own, says: its frames with the one word on
  * when they change that the transition has and the wrapper lacks, whose own
  * answer is "now" until it is drawn. [LAW:one-source-of-truth] Reduced,
- * both are reduced together, as `onBeat` steps both; a one-shot's effect
- * reduced cuts at 0 and its schedule may say a change later, an early answer
- * the contract allows.
+ * both are reduced together, as `onBeat` steps both: a one-shot's effect
+ * and its schedule each reduce to a cut at 0 (`transition`, `./effects.ts`).
  */
 function scheduled(placed: Animation<Renderable>, schedule: Animation<unknown>): Animation<Renderable> {
   return Animation.of({
@@ -113,17 +111,31 @@ export interface Lifecycle extends Animation<Renderable> {
   readonly left: number;
   /** Whether it has finished leaving by `t`, so a host drops it. */
   gone(t: number): boolean;
-  /** This element told to leave at host time `at`. Throws if it was already told, `at` is before it entered, or its exit never ends. */
+  /** This element told to leave at host time `at`. Throws if it was already told, or `at` is before it entered. */
   leave(at: number): Lifecycle;
 }
 
 /** What an element draws before it entered and once it is gone: no cells, and no width. */
 const NOTHING: Renderable & Measurable = { render: () => [], measure: () => ({ minimum: 0, maximum: 0 }) };
 
+/**
+ * The two halves over the element, and where the arrival ends on the host's
+ * clock: found once, when the lifecycle is made, and carried into every
+ * `leave`, which changes none of them.
+ */
+interface Halves {
+  readonly arrival: Animation<Renderable>;
+  readonly arrived: number;
+  readonly departure: Animation<Renderable>;
+}
+
 /** `element` entering at host time `entered`, through `options.enter`, and staying until it is told to `leave`. */
 export function lifecycle(element: Renderable, options: LifecycleOptions, entered: number): Lifecycle {
   if (!Number.isFinite(entered)) throw new RangeError(`lifecycle: entered must be a finite time, got ${entered}`);
-  return life(element, options, entered, Number.POSITIVE_INFINITY);
+  const { enter, exit, key } = options;
+  const arrival = ending(enter(element, key), "enter", key);
+  const departure = ending(exit(element, key), "exit", key);
+  return life(element, options, { arrival, arrived: doneAt(arrival, entered), departure }, entered, Number.POSITIVE_INFINITY);
 }
 
 /**
@@ -131,31 +143,39 @@ export function lifecycle(element: Renderable, options: LifecycleOptions, entere
  * answer read on host time, never a sum `start + seconds`, which can round
  * to either side of it, as `Animation.sequence` carries its switch.
  * [LAW:single-enforcer] Since `x - start` never falls as `x` rises, a host
- * time is at or past this moment exactly when `done` holds there.
- * [LAW:no-silent-failure] A half begun that is never done is refused by its
- * `role`: kept, the element would never arrive, or never be gone, and wake
- * the host every frame for good, and only a bare `Effected`'s doc would say why.
+ * time is at or past this moment exactly when `done` holds there. Done is
+ * for good, so a half done as it begins — the element at once — is done at
+ * `start`, and from a start it is not done at the walk is upward only: no
+ * half is asked about a time before it began.
  */
-function doneAt(half: Animation<Renderable>, start: number, role: "enter" | "exit"): number {
-  if (!Number.isFinite(start)) return start;
-  // A half done at every time — the element at once — is done as it begins: `firstReaching`'s -Infinity is `start`.
-  const at = Math.max(start, firstReaching(start, (x) => Animation.done(half, x - start)));
-  if (at === Number.POSITIVE_INFINITY) {
-    throw new RangeError(
-      `lifecycle: the ${role} half never ends: its animation never says it has stopped changing (Animation.done). An Effected or GlyphEffected on its own does not; throughColors(transition, theme) and throughGlyphs(transition) lend one the transition's schedule`,
-    );
-  }
-  return at;
+function doneAt(half: Animation<Renderable>, start: number): number {
+  if (!Number.isFinite(start) || Animation.done(half, 0)) return start;
+  return firstReaching(start, (x) => Animation.done(half, x - start));
 }
 
-function life(element: Renderable, options: LifecycleOptions, entered: number, left: number): Lifecycle {
-  const { enter, exit, key } = options;
-  // Each half over the element. Where the arrival ends, where the exit is gone and the exit's hold are read
-  // off these; the frame while leaving is the exit over what is shown, whose holds are these by `Half`'s contract.
-  const arrival = enter(element, key);
-  const departure = exit(element, key);
-  const arrived = doneAt(arrival, entered, "enter");
-  const goneAt = doneAt(departure, left, "exit");
+/**
+ * `half` over the element, asked where it ends on its own clock, or refused
+ * by its `role` and the element's `key` when it never does. [LAW:no-silent-failure]
+ * Kept, it would never arrive, or never be gone, and wake the host every frame
+ * for good; asked here, the refusal lands where the options were written and
+ * not at the first `leave`. A half on a beat that never ends is refused by the
+ * beat instead, where the walk asks it past what its holds resolve.
+ */
+function ending(half: Animation<Renderable>, role: "enter" | "exit", key: string): Animation<Renderable> {
+  if (doneAt(half, 0) === Number.POSITIVE_INFINITY) {
+    throw new RangeError(
+      `lifecycle "${key}": the ${role} half never ends: its animation never says it has stopped changing (Animation.done). An Effected or GlyphEffected on its own does not; throughColors(transition, theme) and throughGlyphs(transition) lend one the transition's schedule`,
+    );
+  }
+  return half;
+}
+
+function life(element: Renderable, options: LifecycleOptions, halves: Halves, entered: number, left: number): Lifecycle {
+  const { exit, key } = options;
+  const { arrival, arrived, departure } = halves;
+  // Where the exit is gone, and the exit's hold, are read off the exit over the element; the frame while
+  // leaving is the exit over what is shown, whose holds are the same by `Half`'s contract.
+  const goneAt = doneAt(departure, left);
   // The arrival on the host's clock: when its frame next changes, and since when it has been what it is.
   const arriving = Timeline.run(Timeline.play(entered), arrival);
   // What the element draws by `t` if it is not leaving: arriving through `enter`, then itself.
@@ -201,7 +221,7 @@ function life(element: Renderable, options: LifecycleOptions, entered: number, l
     leave(at: number): Lifecycle {
       if (Number.isFinite(left)) throw new RangeError(`lifecycle: already told to leave at ${left}, told again at ${at}`);
       if (!(Number.isFinite(at) && at >= entered)) throw new RangeError(`lifecycle: leave must be a finite time from entered (${entered}) on, got ${at}`);
-      return life(element, options, entered, at);
+      return life(element, options, halves, entered, at);
     },
   });
 }

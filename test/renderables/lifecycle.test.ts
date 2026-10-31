@@ -308,14 +308,25 @@ describe("a lifecycle through halves written by hand", () => {
     expect([life.lastChange(1), life.nextChange(1)]).toEqual([1, 5]);
     expect([life.gone(4.99), life.gone(5)]).toEqual([false, true]);
     expect([life.lastChange(5), life.nextChange(5)]).toEqual([5, Number.POSITIVE_INFINITY]);
+    // Stepped on a beat, the same: no beat is asked about a time before the half began.
+    const steppedAtOnce: Half = (element) => Animation.onBeat(Animation.constant(element), beat([0.25]));
+    const stepped = lifecycle(line, { enter: steppedAtOnce, exit: vanish, key: "hand" }, 1);
+    expect(bytes(draw(stepped.at(1)))).toBe(bytes(draw(line)));
+    expect([stepped.lastChange(1), stepped.nextChange(1)]).toEqual([1, Number.POSITIVE_INFINITY]);
   });
 
-  it("refuses a half that never ends by name: a bare Effected as the arrival when made, as the exit when told to leave", () => {
+  it("refuses a half that never ends when made, by the element's key and the half's role: a bare Effected as either half", () => {
     // [LAW:no-silent-failure] An Effected's own word on when it changes is "now" at every time, so it is never done.
     const bare: Half = (element, key) => new Effected(element, fadeIn(curve, 0).effect, { key, theme });
-    expect(() => lifecycle(line, { enter: bare, exit: slidOut(4), key: "hand" }, 1)).toThrow(/the enter half never ends/);
-    const made = lifecycle(line, { enter: slidIn(4), exit: bare, key: "hand" }, 1);
-    expect(made.gone(1e6)).toBe(false);
-    expect(() => made.leave(5)).toThrow(/the exit half never ends/);
+    expect(() => lifecycle(line, { enter: bare, exit: slidOut(4), key: "hand" }, 1)).toThrow(/lifecycle "hand": the enter half never ends/);
+    expect(() => lifecycle(line, { enter: slidIn(4), exit: bare, key: "hand" }, 1)).toThrow(/lifecycle "hand": the exit half never ends/);
+  });
+});
+
+describe("a half reduced", () => {
+  it("cuts to the transition's end at 0, frames and hold alike, so there is nothing to wake for after", () => {
+    const half = throughColors(fadeIn(curve, 0), theme)(line, "k").reduced();
+    expect(bytes(draw(half.at(0)))).toBe(bytes(draw(half.at(5))));
+    expect([half.lastChange(0), half.nextChange(0), half.nextChange(-1)]).toEqual([0, Number.POSITIVE_INFINITY, 0]);
   });
 });
