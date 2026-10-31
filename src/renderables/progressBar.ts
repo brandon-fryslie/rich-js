@@ -3,7 +3,7 @@
  */
 
 import { cellCount } from "../core/cells.js";
-import { ColorDepth, ColorRgba, ColorSpec, resolveTerminal, type TerminalTheme } from "../core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec, resolveTerminal, type TerminalColors } from "../core/color.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import type {
@@ -129,7 +129,7 @@ export class ProgressBar implements Renderable, Measurable {
    * `depth`, toward `bar.pulse`. A bar has no words to keep legible, so its
    * back takes the whole of the light.
    */
-  private pulseEffect(options: RenderOptions, back: Style, depth: ColorDepth, theme: TerminalTheme): Effect {
+  private pulseEffect(options: RenderOptions, back: Style, depth: ColorDepth, theme: TerminalColors): Effect {
     const ink = back.drawnColors(depth).color ?? ColorSpec.default();
     const glow = getStyle(options, "bar.pulse").drawnColors(depth).color ?? ColorSpec.default();
     const loop = shimmer(PULSE_CURVE, PULSE_REACH, glow.getTruecolor(theme, true), 0);

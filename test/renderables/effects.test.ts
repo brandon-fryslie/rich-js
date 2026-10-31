@@ -40,7 +40,7 @@ import {
   type ListedCell,
   type Renderable,
   type Segment,
-  type TerminalTheme,
+  TerminalTheme,
 } from "../../src/index.js";
 import { CATPPUCCIN_LATTE, CATPPUCCIN_MOCHA } from "../../src/index.js";
 import { drawnBy } from "../../src/core/anchor.js";
@@ -651,7 +651,7 @@ describe("the transitions run start to end", () => {
 
   /** Draws a frame on a terminal whose ground a transition leaves to or arrives from. */
   const onGround = (ground: string) => {
-    const theme = { ...CATPPUCCIN_MOCHA, backgroundColor: ColorSpec.parse(ground).getTruecolor() };
+    const theme = new TerminalTheme(ColorSpec.parse(ground).getTruecolor(), CATPPUCCIN_MOCHA.foregroundColor, CATPPUCCIN_MOCHA.ansiColors, CATPPUCCIN_MOCHA.palette);
     return (renderable: Renderable, effect: Effect, t: number): string =>
       renderToString(new Effected(renderable, effect, { key: "p", theme }).at(t), { width: 40, colorSystem: ColorDepth.TRUECOLOR });
   };

@@ -5,9 +5,8 @@
 import type { Env } from "./env.js";
 import { Memo, WeakMemo } from "./memo.js";
 import { pattern } from "./pattern.js";
-// Runtime-importing `Palette` from `themes/palette.ts` is safe: that module
-// only `import type`s from `core/color.ts`, so there is no runtime cycle.
-import { Palette } from "../themes/palette.js";
+// A `TerminalTheme` carries a `Palette`; `test/seam/layering.ts` owns why this upward edge stands.
+import type { Palette } from "../themes/palette.js";
 
 // --- ColorRgba ---
 
@@ -648,7 +647,7 @@ export class ColorSpec {
   /**
    * Resolves to an actual RGB(A) value for any color type.
    */
-  getTruecolor(theme?: TerminalTheme, foreground = true): ColorRgba {
+  getTruecolor(theme?: TerminalColors, foreground = true): ColorRgba {
     switch (this.type) {
       case ColorDepth.TRUECOLOR:
         return this.value!;
@@ -729,7 +728,7 @@ export class ColorSpec {
    * `value` is opaque: a translucent colour has no one look until it is laid
    * on a ground (`flattenAlpha`).
    */
-  static matchOn(value: ColorRgba, depth: ColorDepth, theme: TerminalTheme, foreground: boolean): ColorSpec {
+  static matchOn(value: ColorRgba, depth: ColorDepth, theme: TerminalColors, foreground: boolean): ColorSpec {
     if (value.alpha < 1) throw new RangeError(`matchOn rounds an opaque colour; got alpha ${value.alpha}`);
     if (depth === ColorDepth.TRUECOLOR) return ColorSpec.fromRgba(value);
     if (depth === ColorDepth.DEFAULT) return ColorSpec.default();
@@ -755,7 +754,7 @@ export class ColorSpec {
    * depth only the default, so neither writes any by index. The colours
    * `matchOn` rounds to, but for the default, read off the same two tables.
    */
-  static indexed(depth: ColorDepth, theme: TerminalTheme): readonly (readonly [ColorSpec, ColorRgba])[] {
+  static indexed(depth: ColorDepth, theme: TerminalColors): readonly (readonly [ColorSpec, ColorRgba])[] {
     return indexedMemo.get(theme, () => new Memo()).get(`${depth}`, () => listIndexed(depth, theme));
   }
 
@@ -767,7 +766,7 @@ export class ColorSpec {
    * off any colour the depth can write — a theme slot, the default colour,
    * the cube — keeps the spec it was written in.
    */
-  static matchMove(was: ColorRgba, now: ColorRgba, depth: ColorDepth, theme: TerminalTheme, foreground: boolean): ColorSpec | undefined {
+  static matchMove(was: ColorRgba, now: ColorRgba, depth: ColorDepth, theme: TerminalColors, foreground: boolean): ColorSpec | undefined {
     const match = ColorSpec.matchOn(now, depth, theme, foreground);
     return rgbDistance(was, now) <= rgbDistance(match.getTruecolor(theme, foreground), now) ? undefined : match;
   }
@@ -812,9 +811,9 @@ function cubeCandidate(value: ColorRgba): [ColorSpec, ColorRgba] {
 }
 
 /** `ColorSpec.indexed`'s list, made once for each theme and depth. */
-const indexedMemo = new WeakMemo<Memo<readonly (readonly [ColorSpec, ColorRgba])[], `${ColorDepth}`>, TerminalTheme>();
+const indexedMemo = new WeakMemo<Memo<readonly (readonly [ColorSpec, ColorRgba])[], `${ColorDepth}`>, TerminalColors>();
 
-function listIndexed(depth: ColorDepth, theme: TerminalTheme): readonly (readonly [ColorSpec, ColorRgba])[] {
+function listIndexed(depth: ColorDepth, theme: TerminalColors): readonly (readonly [ColorSpec, ColorRgba])[] {
   const slots = (): (readonly [ColorSpec, ColorRgba])[] =>
     Array.from({ length: 16 }, (_, slot) => [new ColorSpec(`color(${slot})`, depth === ColorDepth.WINDOWS ? depth : ColorDepth.STANDARD, slot), theme.ansiColors.get(slot)] as const);
   switch (depth) {
@@ -831,7 +830,7 @@ function listIndexed(depth: ColorDepth, theme: TerminalTheme): readonly (readonl
   }
 }
 
-function mix(from: ColorSpec, to: ColorSpec, t: number, theme?: TerminalTheme): ColorRgba {
+function mix(from: ColorSpec, to: ColorSpec, t: number, theme?: TerminalColors): ColorRgba {
   return blendRgb(from.getTruecolor(theme), to.getTruecolor(theme), t);
 }
 
@@ -859,7 +858,7 @@ class ColorBlend extends ColorSpec {
     return undefined;
   }
 
-  override getTruecolor(theme?: TerminalTheme): ColorRgba {
+  override getTruecolor(theme?: TerminalColors): ColorRgba {
     return mix(this.from, this.to, this.t, theme);
   }
 }
@@ -1005,20 +1004,18 @@ export function blendRgb(
 // --- TerminalTheme ---
 
 /**
- * A terminal theme — surface/foreground baseline, the sixteen ANSI colours,
- * and a semantic palette.
- *
- * **`ansiColors` is the theme's own sixteen colours**, the shades a terminal
- * showing this theme draws `red`, `blue` and the rest in. `ColorSpec.parse("red")`
- * is ANSI colour 1 under every theme; which red that is, is the theme's to say,
- * as it is in Rich, where each `TerminalTheme` carries its own table.
+ * What a terminal draws with: the part of a `TerminalTheme` a colour resolves
+ * against.
  */
-export class TerminalTheme {
+export class TerminalColors {
+  // Private, so nothing but this constructor makes one: an object of the same
+  // shape has not been through the check below.
+  private declare readonly checked: true;
+
   constructor(
     readonly backgroundColor: ColorRgba,
     readonly foregroundColor: ColorRgba,
     readonly ansiColors: ColorTable,
-    readonly palette: import("../themes/palette.js").Palette,
   ) {
     // [LAW:parse-dont-validate] Every reader indexes `ansiColors` 0–15 as the
     // terminal's sixteen, so a theme is the proof it holds exactly those.
@@ -1027,6 +1024,26 @@ export class TerminalTheme {
         `a TerminalTheme's ansiColors are the sixteen ANSI colours, indices 0–15; got ${ansiColors.size} from index ${ansiColors.firstIndex}`,
       );
     }
+  }
+}
+
+/**
+ * A terminal theme — surface/foreground baseline, the sixteen ANSI colours,
+ * and a semantic palette.
+ *
+ * **`ansiColors` is the theme's own sixteen colours**, the shades a terminal
+ * showing this theme draws `red`, `blue` and the rest in. `ColorSpec.parse("red")`
+ * is ANSI colour 1 under every theme; which red that is, is the theme's to say,
+ * as it is in Rich, where each `TerminalTheme` carries its own table.
+ */
+export class TerminalTheme extends TerminalColors {
+  constructor(
+    backgroundColor: ColorRgba,
+    foregroundColor: ColorRgba,
+    ansiColors: ColorTable,
+    readonly palette: Palette,
+  ) {
+    super(backgroundColor, foregroundColor, ansiColors);
   }
 }
 
@@ -1115,7 +1132,7 @@ export const EIGHT_BIT_DOWNGRADE_TABLE = new ColorTable(
 );
 export const WINDOWS_TABLE = new ColorTable(buildWindowsTable());
 
-// --- Internal fallback theme ---
+// --- Internal fallback terminals ---
 //
 // [LAW:one-way-deps] Preset themes (DEFAULT_TERMINAL_THEME, MONOKAI, NORD, ...)
 // live in `src/themes/terminalThemes.ts` because they need `buildPalette` from
@@ -1123,24 +1140,13 @@ export const WINDOWS_TABLE = new ColorTable(buildWindowsTable());
 // `themes/* -> core/color`, with no runtime back-edge.
 //
 // `getTruecolor()` retains a fallback for callers that omit `theme`: the
-// terminal a colour's depth assumes, built from that depth's own sixteen with
-// an empty Palette — sufficient for the lookups it serves, which never read
-// `palette`.
+// terminal a colour's depth assumes, its own sixteen and no palette, which the
+// lookups it serves never read.
 
-const INTERNAL_DEFAULT_THEME = new TerminalTheme(
-  new ColorRgba(0, 0, 0),
-  new ColorRgba(255, 255, 255),
-  STANDARD_TABLE,
-  new Palette("default", true, new Map()),
-);
+const INTERNAL_DEFAULT_TERMINAL = new TerminalColors(new ColorRgba(0, 0, 0), new ColorRgba(255, 255, 255), STANDARD_TABLE);
 
 /** The Windows console in its default Campbell scheme: a WINDOWS colour's terminal. */
-const WINDOWS_CONSOLE_THEME = new TerminalTheme(
-  WINDOWS_TABLE.get(0),
-  WINDOWS_TABLE.get(7),
-  WINDOWS_TABLE,
-  new Palette("windows", true, new Map()),
-);
+const WINDOWS_CONSOLE_TERMINAL = new TerminalColors(WINDOWS_TABLE.get(0), WINDOWS_TABLE.get(7), WINDOWS_TABLE);
 
 /**
  * The terminal a colour at `depth` is drawn by: `theme`, or when a caller names
@@ -1149,8 +1155,8 @@ const WINDOWS_CONSOLE_THEME = new TerminalTheme(
  * that reads it. (Widgets fall back to `DEFAULT_TERMINAL_THEME`, which carries a
  * palette this does not.)
  */
-export function resolveTerminal(theme: TerminalTheme | undefined, depth: ColorDepth): TerminalTheme {
-  return theme ?? (depth === ColorDepth.WINDOWS ? WINDOWS_CONSOLE_THEME : INTERNAL_DEFAULT_THEME);
+export function resolveTerminal(theme: TerminalColors | undefined, depth: ColorDepth): TerminalColors {
+  return theme ?? (depth === ColorDepth.WINDOWS ? WINDOWS_CONSOLE_TERMINAL : INTERNAL_DEFAULT_TERMINAL);
 }
 
 /**

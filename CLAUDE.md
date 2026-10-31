@@ -73,7 +73,7 @@ non-interactive program needs from the terminal without any of the above
 - **`src/renderables/`** — composed renderables (Table, Panel, Tree, Layout, Progress, Live, …) built on core. Each implements the `Renderable` interface.
 - **`src/host/`** — the terminal seam: the `TerminalHost` interface, `BrowserTerminalHost`, `hostEnvironment`, and `App`, the runtime that takes the terminal, paints a renderable on it and hands it back on every exit path. Depends on `core/` and on nothing else in `src/`; `widgets/` and `node/` both depend on it. It was carved out of `src/widgets/` because it is what a *non*-interactive program wants — writing bytes through a host should not cost the widget set or `mobx`.
 - **`src/widgets/`** — interactive layer: `WidgetApp` (an `App` whose view has widgets in it — focus in document order, key and pointer routing read off the painted frame, overlays), and the widget set (Button, Checkbox, Toggle, TextInput, Dropdown, Slider). Reached through the `./widgets` subpath, never the main barrel — this and `./template-bindings` are the two subsystems that carry a third-party runtime dependency of their own (`mobx`, `@promptctl/go-template-js`), and the subpath is what keeps it off a consumer who only wanted a Table. The header comment at the end of `src/index.ts` owns that argument. See `docs/widgets.md`.
-- **`src/themes/`** — semantic palettes (`Palette`, `buildPalette`, colour refs), the bundled theme registry, OKLCH colour math, and light↔dark transposition. Distinct from `core/color`: a `ColorTable` is a quantization LUT, a `Palette` carries aesthetic intent.
+- **`src/themes/`** — semantic palettes (`Palette`, `buildPalette`, colour refs), the bundled theme registry, OKLCH colour math, and light↔dark transposition. Distinct from `core/color`: a `ColorTable` is a quantization LUT, a `Palette` carries aesthetic intent. Every palette holds every `PaletteRole`: `buildPalette` is the one road, an authored theme is it with most roles stated, and its rules are total over the type (`test/themes/role-set.test.ts`).
 - **`src/template-bindings/`** — the styling vocabulary exposed as `@promptctl/go-template-js` template functions. See `docs/template-bindings.md`.
 - **`src/node/`** — the Node-only capability seam. One file per package subpath, and `package.json#exports` is the list: `node/save` (fs-backed export of recorded output), `node/prompt` (`nodeAsk`, readline-backed input for `Prompt`), `node/traceback` (`installTraceback`, the `process.on` crash handler), and `node/terminal-host` (`NodeTerminalHost`, the `TerminalHost` over `process.stdin`/`process.stdout`).
 
@@ -94,7 +94,7 @@ Build order within `src/core/`. Each tier imports only from tiers above it, but 
 
 Two edges leave `src/core/` and point *up* into higher subsystems. Both are deliberate, both are annotated where they sit, and they are the whole list:
 
-- `color.ts` → `themes/palette.js`, for the internal default theme.
+- `color.ts` → `themes/palette.js`, the type of `TerminalTheme.palette`.
 - `console.ts` → `renderables/rule.js`, the orchestrator reaching down for `Rule`.
 
 Both are safe for the same reason — each points up without closing a runtime cycle back to the module it left. *Why* that holds differs per edge, and it is written in exactly one place: the required `why` field on each entry of `CORE_LAYER.sanctioned` in `test/seam/layering.ts`. Read it there rather than restating it here; a per-edge argument kept in two files is one argument and one thing that will quietly disagree with it.

@@ -84,6 +84,33 @@ console.print(`[on ${surface.hex}]      [/] surface  [on ${tint.hex}]      [/] t
 
 `a.deltaE(b)` is the perceptual distance between two colours, ΔE_OK: Euclidean distance in OKLab. Around 0.02 is the smallest difference the eye resolves.
 
+## Every palette has every role
+
+A palette holds the same roles whichever way it was made: a bundled theme from `getThemePalette`, the palette of a terminal theme, a `buildPalette` of your own, or a transposition of any of them. `PaletteRole` is the type naming them, and `get` on one is a colour, never `undefined`. Any other string, a misspelt role or one only known at run time, reads `ColorRgba | undefined`, so the compiler refuses it where a colour is required.
+
+`buildPalette` needs the eight base colours and derives the rest with Textual's formulas. Any other role you state keeps its colour, and what is derived from it follows. A stated `text-*` is the exception: it is moved as far as it must go to read on its `*-muted`.
+
+```ts silent
+import { buildPalette, parseRgbHex } from "@promptctl/rich-js";
+
+const palette = buildPalette("indigo-night", true, {
+  primary: parseRgbHex("4f46e5"),
+  secondary: parseRgbHex("0ea5e9"),
+  accent: parseRgbHex("eab308"),
+  success: parseRgbHex("16a34a"),
+  warning: parseRgbHex("d97706"),
+  error: parseRgbHex("dc2626"),
+  background: parseRgbHex("0f172a"),
+  foreground: parseRgbHex("e2e8f0"),
+  panel: parseRgbHex("1e293b"),
+});
+
+palette.get("footer-background"); // the stated panel
+palette.get("surface-lighten-2"); // derived
+```
+
+`new Palette(name, dark, roles)` takes a colour for every role, so a palette with one missing does not compile; `palette.mapRoles` makes such a record from an existing palette.
+
 ## transposePalette — a whole theme at once
 
 `transposePalette(palette, key, name?)` returns a new `Palette` with every color transposed. It is pure, and `IDENTITY` is byte-exact (no lossy round-trip):
@@ -110,11 +137,11 @@ for (const palette of [gruvbox, shifted, light]) {
 }
 ```
 
-The resulting palette's `dark` flag is derived from the **actual lightness of the transposed background** (`background` var's OKLCH `L < 0.5`), not from the key — so it is honest under any transform. A palette with no `background` var throws on the transposing path (the identity fast-path is exempt, since it preserves the source flag verbatim).
+The resulting palette's `dark` flag is derived from the **actual lightness of the transposed background** (`background` var's OKLCH `L < 0.5`), not from the key — so it is honest under any transform.
 
 ## Semantic anchors — meaning that survives transposition
 
-Rotating *every* hue would make a UI lie: an error message must look red, success green, warning amber, no matter the key. Those roles are **anchored** — their hue is held while lightness and chroma still transform (so they still invert correctly and respond to chroma scaling).
+Rotating *every* hue would make a UI lie: an error message must look red, success green, warning amber, no matter the key. Those roles are **anchored** — their hue is held while lightness and chroma still transform (so they still invert correctly and respond to chroma scaling). The family goes with them: `error-muted`, and the `text-error` and `on-error` drawn on it.
 
 ```typescript
 import { isAnchored, ANCHORED_ROOTS } from "@promptctl/rich-js";

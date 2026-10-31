@@ -52,7 +52,7 @@
  */
 
 import { Animation } from "../core/animation.js";
-import { ColorDepth, ColorRgba, ColorSpec, contrastRatio, relativeLuminance, type TerminalTheme } from "../core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec, contrastRatio, relativeLuminance, type TerminalColors } from "../core/color.js";
 import { EASES, Phase, beat, type Beat, type Timing } from "../core/easing.js";
 import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo, WeakMemo } from "../core/memo.js";
@@ -185,7 +185,7 @@ export function shares({ pairs, depth, theme }: Drawn, colors: ReadonlySet<strin
  * drawing what an earlier one drew costs no settling.
  */
 export function onColors(loop: Loop, colors?: ReadonlySet<string>): Effect {
-  const settled = new WeakMemo<Memo<ReadonlyMap<string, number>>, TerminalTheme>();
+  const settled = new WeakMemo<Memo<ReadonlyMap<string, number>>, TerminalColors>();
   const settle = (drawn: Drawn): ReadonlyMap<string, number> => {
     const lit = colors ?? drawn.colors;
     const key = [drawnKey(drawn), "|", ...lit].join(" ");
@@ -1107,7 +1107,7 @@ export function wheel(curve: Curve, z: number): Effect {
   // first frame turns nothing and the second has turned only a frame's worth.
   const turned = (place: Place, t: number): number => (360 * t) / P + curve.swing * STRAY * ((stray(place, t) - stray(place, 0)) / 1.5);
   // A turned colour's bounds rest on what a frame draws, never on `t`: settled once for each.
-  const settled = new WeakMemo<Memo<ReadonlyMap<string, Bounds>>, TerminalTheme>();
+  const settled = new WeakMemo<Memo<ReadonlyMap<string, Bounds>>, TerminalColors>();
   return stillOnSlots((drawn) => {
     const { colors, fills, depth, theme } = drawn;
     // Whether a slot shows one of the element's colours: never the terminal's, whatever its hex.
@@ -1255,7 +1255,7 @@ const measured = (color: ColorRgba): Measured => ({ color, looks: Oklch.fromRgba
 
 /** `ColorSpec.indexed`'s colours, measured once for each theme and depth. */
 const measuredMemo = new WeakMemo<readonly Measured[], readonly (readonly [ColorSpec, ColorRgba])[]>();
-function measuredIndexed(depth: ColorDepth, theme: TerminalTheme): readonly Measured[] {
+function measuredIndexed(depth: ColorDepth, theme: TerminalColors): readonly Measured[] {
   return measuredMemo.get(ColorSpec.indexed(depth, theme), (indexed) => indexed.map(([, color]) => measured(color)));
 }
 
@@ -1338,7 +1338,7 @@ export function steppedInk(steps: readonly ColorStep[]): Effect {
  * palette.
  */
 function legibleInks(): (drawn: Drawn) => (ink: ColorRgba, look: CellLook, cell: EffectCell) => ColorRgba {
-  const settled = new WeakMemo<{ readonly inks: Memo<ColorRgba>; readonly readable: Memo<readonly Measured[]> }, TerminalTheme>();
+  const settled = new WeakMemo<{ readonly inks: Memo<ColorRgba>; readonly readable: Memo<readonly Measured[]> }, TerminalColors>();
   return ({ depth, theme }) => {
     const memo = settled.get(theme, () => ({ inks: new Memo(), readable: new Memo() }));
     return (ink, look, cell) => {
@@ -1362,7 +1362,7 @@ function legibleInks(): (drawn: Drawn) => (ink: ColorRgba, look: CellLook, cell:
  * way `shares` and `wheel` measure: the written colours, at the catalogue's
  * floor. An ink none of them is nearest stays `pair`'s own.
  */
-function legibleAmong(pair: Pair, offered: readonly Measured[], depth: ColorDepth, theme: TerminalTheme): readonly Measured[] {
+function legibleAmong(pair: Pair, offered: readonly Measured[], depth: ColorDepth, theme: TerminalColors): readonly Measured[] {
   const floor = floorOf(pair, depth);
   return offered.filter(({ color }) => {
     const shown = Effected.shows(pair, { fg: color, bg: pair.bg }, depth, theme);

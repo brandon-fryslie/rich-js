@@ -1,7 +1,67 @@
 import type { ColorRgba } from "../core/color.js";
 
+export type AccentRole = "primary" | "secondary" | "accent" | "success" | "warning" | "error";
+export type BaseRole = AccentRole | "background" | "foreground";
+export type ShadedRole = BaseRole | "panel" | "boost" | "surface" | "primary-background" | "secondary-background";
+export type Shade = `-${"darken" | "lighten"}-${1 | 2 | 3}`;
+
 /**
- * A semantic palette: a named map from variable name → ColorRgba.
+ * Every role every palette has. [LAW:one-source-of-truth] This type is the one
+ * statement of the set: `buildPalette`'s rules are a total map over it, so a
+ * role added here does not compile until it can be derived, and the runtime
+ * list is read off those rules.
+ */
+export type PaletteRole =
+  | ShadedRole
+  | `${ShadedRole}${Shade}`
+  | `${AccentRole}-muted`
+  | `text-${AccentRole}`
+  | `on-${AccentRole}`
+  | "background-muted"
+  | "foreground-muted"
+  | "foreground-disabled"
+  | "surface-active"
+  | "text"
+  | "text-muted"
+  | "text-disabled"
+  | "border"
+  | "border-blurred"
+  | "block-cursor-background"
+  | "block-cursor-foreground"
+  | "block-cursor-blurred-background"
+  | "block-cursor-blurred-foreground"
+  | "block-hover-background"
+  | "button-foreground"
+  | "button-color-foreground"
+  | "footer-background"
+  | "footer-foreground"
+  | "footer-description-background"
+  | "footer-description-foreground"
+  | "footer-item-background"
+  | "footer-key-background"
+  | "footer-key-foreground"
+  | "input-cursor-background"
+  | "input-cursor-foreground"
+  | "input-selection-background"
+  | "link-background"
+  | "link-background-hover"
+  | "link-color"
+  | "link-color-hover"
+  | `markdown-h${1 | 2 | 3 | 4 | 5 | 6}-${"background" | "color"}`
+  | "scrollbar"
+  | "scrollbar-active"
+  | "scrollbar-hover"
+  | "scrollbar-background"
+  | "scrollbar-background-active"
+  | "scrollbar-background-hover"
+  | "scrollbar-corner-color";
+
+/** A colour for each role: what proves a palette complete. */
+export type PaletteRoles = Readonly<Record<PaletteRole, ColorRgba>>;
+
+/**
+ * A semantic palette: a named map from role → ColorRgba, holding every
+ * `PaletteRole`.
  *
  * Distinct from `ColorTable` (the integer-indexed quantization LUT used by
  * the downgrade pipeline). Palettes carry aesthetic intent — `primary`,
@@ -26,33 +86,33 @@ import type { ColorRgba } from "../core/color.js";
  * draws nothing on any surface, so it needs none and is handed out as it is,
  * and a `Style` reads it as no background at all.
  *
- * @throws RangeError when `background` is translucent, or when a colour is
- * partly transparent and there is no `background` to draw it on.
+ * @throws RangeError when `background` is translucent.
  */
 export class Palette {
   readonly name: string;
   readonly dark: boolean;
-  readonly vars: ReadonlyMap<string, ColorRgba>;
+  readonly vars: ReadonlyMap<PaletteRole, ColorRgba>;
 
-  constructor(
-    name: string,
-    dark: boolean,
-    vars: ReadonlyMap<string, ColorRgba>,
-  ) {
+  constructor(name: string, dark: boolean, roles: PaletteRoles) {
     this.name = name;
     this.dark = dark;
     // [LAW:single-enforcer] Every palette is built through here, so this is
-    // where "a palette colour is opaque or draws nothing" holds. The fresh map is also the
-    // defensive copy: ReadonlyMap is a compile-time aliasing constraint, not a
-    // runtime one.
-    const background = vars.get("background");
-    const draw: (colour: ColorRgba, key: string) => ColorRgba =
-      background === undefined ? opaqueOnly(name) : drawnOn(name, background);
-    this.vars = new Map([...vars].map(([key, colour]) => [key, draw(colour, key)]));
+    // where "a palette colour is opaque or draws nothing" holds.
+    const draw = drawnOn(name, roles.background);
+    this.vars = new Map(
+      (Object.entries(roles) as [PaletteRole, ColorRgba][]).map(([role, colour]) => [role, draw(colour)]),
+    );
   }
 
-  get(key: string): ColorRgba | undefined {
-    return this.vars.get(key);
+  get(role: PaletteRole): ColorRgba;
+  get(role: string): ColorRgba | undefined;
+  get(role: string): ColorRgba | undefined {
+    return this.vars.get(role as PaletteRole);
+  }
+
+  /** This palette's roles, each put through `colour`: what a new palette is built from. */
+  mapRoles(colour: (colour: ColorRgba, role: PaletteRole) => ColorRgba): PaletteRoles {
+    return Object.fromEntries([...this.vars].map(([role, was]) => [role, colour(was, role)])) as PaletteRoles;
   }
 }
 
@@ -71,16 +131,4 @@ export function drawnOn(name: string, background: ColorRgba): (colour: ColorRgba
   }
   // A fully transparent colour is not a tint: it draws nothing on any surface.
   return (colour) => (colour.alpha === 0 ? colour : colour.compositeOver(background));
-}
-
-// A palette with no background has nothing to draw a translucent colour on.
-function opaqueOnly(name: string): (colour: ColorRgba, key: string) => ColorRgba {
-  return (colour, key) => {
-    if (colour.alpha !== 1 && colour.alpha !== 0) {
-      throw new RangeError(
-        `palette ${JSON.stringify(name)}: ${key} is translucent (${colour.hex}) but the palette has no "background" to draw it on`,
-      );
-    }
-    return colour;
-  };
 }

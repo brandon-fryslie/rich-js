@@ -70,9 +70,8 @@ export const CORE_LAYER: Layer = {
       from: "src/core/color.ts",
       to: "src/themes/palette.ts",
       why:
-        "The internal default theme needs a Palette instance. themes/palette.ts " +
-        "only `import type`s back, so nothing it loads at runtime returns to " +
-        "core/color.ts. Annotated at the import site.",
+        "A TerminalTheme carries a Palette, and the edge is erased: nothing " +
+        "crosses it at runtime, so there is no cycle to close.",
     },
     {
       from: "src/core/console.ts",

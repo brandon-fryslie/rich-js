@@ -18,6 +18,7 @@ export {
   ColorSpec,
   ColorParseError,
   TerminalTheme,
+  type TerminalColors,
   parseRgbHex,
   parseRgbaHex,
   parseHexColor,
@@ -43,11 +44,12 @@ export type { ThemeKey, OklchWeights } from "./core/oklch.js";
 
 // Themes — semantic palettes (distinct from ColorTable quantization LUTs)
 export { Palette } from "./themes/palette.js";
+export type { AccentRole, BaseRole, PaletteRole, PaletteRoles, ShadedRole } from "./themes/palette.js";
 // The one checkpoint turning an author-written colour string — a palette
 // variable name or a `#RRGGBB` literal — into a colour. [LAW:parse-dont-validate]
 export { resolveColorRef, ColorRefError } from "./themes/colorRef.js";
 export { buildPalette } from "./themes/buildPalette.js";
-export type { BaseColors } from "./themes/buildPalette.js";
+export type { BaseColors, StatedRoles } from "./themes/buildPalette.js";
 export {
   DEFAULT_TERMINAL_THEME,
   MONOKAI,

@@ -1,3 +1,5 @@
+import type { BaseRole, PaletteRole } from "../palette.js";
+
 /**
  * Static shape of a theme palette as authored. Each `data/<name>.ts` file
  * exports one of these as its default export. The barrel (`./index.ts`)
@@ -17,7 +19,8 @@ export interface ThemePaletteData {
    * them in the VGA defaults (`blue` as #000080), which belong to no theme.
    */
   readonly ansi: AnsiColorsData;
-  readonly vars: Readonly<Record<string, string>>;
+  /** The base roles and any other role this theme states; the rest are derived. */
+  readonly vars: Readonly<Record<BaseRole, string> & Partial<Record<PaletteRole, string>>>;
 }
 
 /**

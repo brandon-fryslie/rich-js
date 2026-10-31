@@ -24,7 +24,6 @@ import {
   SVG_EXPORT_THEME,
 } from "../../src/themes/terminalThemes.js";
 import { buildPalette } from "../../src/themes/buildPalette.js";
-import { Palette } from "../../src/themes/palette.js";
 import { Style } from "../../src/core/style.js";
 
 // ---------------------------------------------------------------------------
@@ -911,7 +910,7 @@ describe("TerminalTheme", () => {
   });
 
   it("refuses ansiColors that are not the sixteen ANSI colours", () => {
-    const palette = new Palette("probe", true, new Map());
+    const palette = DEFAULT_TERMINAL_THEME.palette;
     const black = new ColorRgba(0, 0, 0);
     const theme = (table: ColorTable) => () => new TerminalTheme(black, black, table, palette);
     expect(theme(new ColorTable([black, black]))).toThrow(RangeError);

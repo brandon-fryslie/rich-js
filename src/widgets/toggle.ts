@@ -18,6 +18,7 @@ import { Style } from "../core/style.js";
 import { cellLen } from "../core/cells.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
+import type { PaletteRole } from "../themes/palette.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
@@ -40,7 +41,7 @@ export interface ToggleOptions {
 // offBg is mostly-bg-tinted and the contrast holds.
 const VARIANT_KEYS: Record<
   ToggleVariant,
-  { onBg: string; onFg: string; offBg: string; offFg: string }
+  { onBg: PaletteRole; onFg: PaletteRole; offBg: PaletteRole; offFg: PaletteRole }
 > = {
   default: { onBg: "primary", onFg: "on-primary", offBg: "surface",       offFg: "foreground" },
   primary: { onBg: "primary", onFg: "on-primary", offBg: "primary-muted", offFg: "text-primary" },
