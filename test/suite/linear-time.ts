@@ -27,14 +27,14 @@
  * sixteen when it is quadratic; the bar sits between them, at eight. A size
  * small enough that fixed costs swamp the work reads as no growth at all and
  * would pass quadratic work silently, so a smaller run that finishes under a
- * floor is not a measurement. Load only lengthens a run, so it cannot trip
- * the floor; a faster machine can, and the fix is a larger size — which the
- * helper takes itself, four times larger each time, rather than leaving a
- * size picked on one runner to fail on the next one that is faster. It
- * returns the size it measured at, so a test whose premise is that size can
- * say so. Work still under the floor after that many tries fails as
- * unmeasurable: either it does not grow with its size, or the size it was
- * given is too small even for that, and the fix is again a larger size.
+ * floor is not a measurement. A faster machine can trip the floor, and the
+ * fix is a larger size — which the helper takes itself, four times larger each
+ * time, rather than leaving a size picked on one runner to fail on the next
+ * one that is faster. It returns the size it measured at, so a test whose
+ * premise is that size can say so. Work still under the floor after that many
+ * tries fails as unmeasurable: either it does not grow with its size, or the
+ * size it was given is too small even for that, and the fix is again a larger
+ * size.
  */
 import { expect } from "vitest";
 
@@ -50,7 +50,7 @@ const FLOOR_MS = 5;
 const GROWTHS = 3;
 
 /** How many milliseconds `work` takes. */
-export type Stopwatch = (work: () => void) => number;
+type Stopwatch =(work: () => void) => number;
 
 /**
  * The milliseconds of CPU time this thread spends on `work`. Node has had

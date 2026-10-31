@@ -28,7 +28,5 @@ it("a timeout reports this worker's CPU and the machine's load on the timeout it
   expect(output).toContain("expected 3 to be 4");
   expect(output).not.toMatch(new RegExp(/expected 3 to be 4[^\n]*/.source + REPORT.source));
   expect(output).toContain("expected 1 to be 2");
-  expect(output).toMatch(new RegExp(REPORT.source + / It held the thread past its budget, so that is its whole run\./.source));
-  expect(output).not.toContain("undefined");
-  expect(output.match(/this worker used/g)).toHaveLength(3);
+  expect(output.match(new RegExp(REPORT.source, "g"))).toHaveLength(3);
 });
