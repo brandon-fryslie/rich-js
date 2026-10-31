@@ -4,15 +4,22 @@
     {
       "version": "pr-525",
       "ref": "refs/pull/525/merge",
-      "sha": "5f5ebe47122646603847117b9a27e89b960c82b0",
-      "timestamp": "2026-10-31T13:42:34.084Z",
+      "sha": "e4cfa06eeea398923dfa3261182c955dbf631e78",
+      "timestamp": "2026-10-31T13:59:24.708Z",
       "commits": [
         {
-          "sha": "5f5ebe47122646603847117b9a27e89b960c82b0",
+          "sha": "e4cfa06eeea398923dfa3261182c955dbf631e78",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T13:40:20Z",
-          "message": "Merge f3c961bc167dbe1cca3465231638db6f334c7f6a into 188acc5bffc6981b8837b2c06336e835fba9085e\n"
+          "timestamp": "2026-10-31T13:58:00Z",
+          "message": "Merge c27b84222bb12336c17f2d10fa6ebf80581c64c8 into 188acc5bffc6981b8837b2c06336e835fba9085e\n"
+        },
+        {
+          "sha": "c27b84222bb12336c17f2d10fa6ebf80581c64c8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T07:57:49-06:00",
+          "message": "The sleep gate reads the sides a loop moves and the cells that show (rich-unfiled-791c.75gd)\n\nStep 12 review of #525. A moving gradient whose colour lay only on a ground, or\nunder a blank that shows nothing, still woke the host, since the gate read both\nsides of every listed cell. Each loop now names its sides, and the gate reads\n`cells`. `confined` holds its narrowed lists for the frame, as `measured` does,\nso the gate adds no second filter. Two comments that described the listing and\na still loop are brought up to it.\n"
         },
         {
           "sha": "f3c961bc167dbe1cca3465231638db6f334c7f6a",
