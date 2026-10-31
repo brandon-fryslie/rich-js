@@ -4,15 +4,22 @@
     {
       "version": "pr-526",
       "ref": "refs/pull/526/merge",
-      "sha": "ecae5954cbdff9499e73d8b748f7d8e8a522b01c",
-      "timestamp": "2026-10-31T14:33:38.431Z",
+      "sha": "ba6afe0d3d00be687a776c3cb47e0234277d01ac",
+      "timestamp": "2026-10-31T14:40:12.981Z",
       "commits": [
         {
-          "sha": "ecae5954cbdff9499e73d8b748f7d8e8a522b01c",
+          "sha": "ba6afe0d3d00be687a776c3cb47e0234277d01ac",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T14:31:39Z",
-          "message": "Merge 686c4285f7098c9780a2515c174686de6873b3bd into d2fb7b70bfc5060a3b94fefc9ec99d4db82c3a1d\n"
+          "timestamp": "2026-10-31T08:38:21-06:00",
+          "message": "Merge ab32fe97aaef4510b9195501ec6253c5fb72ee61 into d2fb7b70bfc5060a3b94fefc9ec99d4db82c3a1d\n"
+        },
+        {
+          "sha": "ab32fe97aaef4510b9195501ec6253c5fb72ee61",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T08:38:12-06:00",
+          "message": "A peer's devDependencies pin is the floor too, and the gate checks it (rich-unfiled-791c.25dh)\n\nnpm writes a caret back on any plain install -D, so the pin the last commit\nadded could not be assumed, and a file: spec holding the right version would\nhave passed while the range named nothing the registry serves. The failure\nmessage names no version to install, since a range's floor may be unpublished.\n"
         },
         {
           "sha": "686c4285f7098c9780a2515c174686de6873b3bd",
