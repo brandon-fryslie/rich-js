@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-524",
+      "ref": "refs/pull/524/merge",
+      "sha": "1fb6626e32945684e3d7a932f556694de0d616c1",
+      "timestamp": "2026-10-31T08:28:11.278Z",
+      "commits": [
+        {
+          "sha": "1fb6626e32945684e3d7a932f556694de0d616c1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T02:26:24-06:00",
+          "message": "Merge 78c1449b9d7d28ff7c57d601d5a1dac533031c94 into 423d72599198f78ede16b93d0b858d75e71aabb4\n"
+        },
+        {
+          "sha": "78c1449b9d7d28ff7c57d601d5a1dac533031c94",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T02:26:07-06:00",
+          "message": "A transposed text-<role> turns as far as its role does, and a test says so (rich-unfiled-791c.0ny5)\n\n#522 made rootOf read past a drawn-on prefix, which fixed the reported\nbug, but pinned only isAnchored. Nothing asserted what transposePalette\ndraws, so the behaviour a consumer sees could break with the suite green.\n\nThe new test covers every accent role and goes red for text-success,\ntext-warning and text-error when the prefix handling is removed.\ndocs/transpose.md still called the classification a hyphen-prefix rule.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "423d72599198f78ede16b93d0b858d75e71aabb4",
