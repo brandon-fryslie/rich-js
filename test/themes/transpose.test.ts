@@ -7,7 +7,7 @@ import {
   type ThemeKey,
 } from "../../src/core/oklch.js";
 import { PALETTE_ROLES } from "../../src/themes/buildPalette.js";
-import { Palette, type AccentRole } from "../../src/themes/palette.js";
+import { Palette, type AccentRole, type PaletteRoles } from "../../src/themes/palette.js";
 import { getThemePalette } from "../../src/themes/registry.js";
 import {
   ANCHORED_ROOTS,
@@ -34,7 +34,10 @@ describe("ANCHORED_ROOTS / isAnchored", () => {
     }
   });
 
-  it("does not anchor a word that merely begins with a root", () => {
+  it("does not anchor a name outside a root's family", () => {
+    // `no-` draws nothing, so this name's root is `no`.
+    expect(isAnchored("no-error")).toBe(false);
+    // Defensive: an "errors" plural would not match the strict root set.
     expect(isAnchored("errors")).toBe(false);
   });
 });
@@ -74,7 +77,7 @@ describe("transposePalette — anchor hue is locked", () => {
   // Build a synthetic palette so we can assert hue exactly without
   // entangling the test with theme-data values. A `background` is required
   // — `transposePalette` reads it to derive the resulting `dark` flag.
-  function syntheticPalette(): Palette {
+  function syntheticPalette(stated: Partial<PaletteRoles> = {}): Palette {
     return new Palette("synth", true, {
       ...getThemePalette("gruvbox").mapRoles((colour) => colour),
       background: new ColorRgba(30, 30, 30),   // a dark gray
@@ -84,6 +87,7 @@ describe("transposePalette — anchor hue is locked", () => {
       "error-darken-1": new ColorRgba(180, 30, 30),
       success: new ColorRgba(60, 180, 80),     // a green
       warning: new ColorRgba(230, 160, 30),    // an amber
+      ...stated,
     });
   }
 
@@ -141,13 +145,14 @@ describe("transposePalette — anchor hue is locked", () => {
   };
 
   it.each(Object.entries(TURN) as [AccentRole, number][])("what is drawn on %s turns %d°", (role, turn) => {
-    // Bundled themes draw `on-*` near grey, where hue says nothing, so it takes
-    // the accent's colour; `text-*` is the theme's own.
-    const gruv = getThemePalette("gruvbox");
-    const before = new Palette("drawn-on", true, { ...gruv.mapRoles((c) => c), [`on-${role}`]: gruv.get(role) });
-    const after = transposePalette(before, ROTATE_60);
+    // Unlike any accent, and far enough from grey that its hue survives the round trip.
+    const magenta = new ColorRgba(200, 60, 160);
+    const after = transposePalette(
+      syntheticPalette({ [`text-${role}`]: magenta, [`on-${role}`]: magenta }),
+      ROTATE_60,
+    );
     for (const drawn of [`text-${role}`, `on-${role}`] as const) {
-      expect(hueDelta(Oklch.fromRgba(after.get(drawn)).h, Oklch.fromRgba(before.get(drawn)).h + turn)).toBeLessThan(2);
+      expect(hueDelta(Oklch.fromRgba(after.get(drawn)).h, Oklch.fromRgba(magenta).h + turn)).toBeLessThan(2);
     }
   });
 });
