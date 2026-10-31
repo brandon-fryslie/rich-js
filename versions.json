@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-523",
+      "ref": "refs/pull/523/merge",
+      "sha": "5632c8c1f0cb0370b1c1a44eabb1e8306d4dacce",
+      "timestamp": "2026-10-31T07:44:21.919Z",
+      "commits": [
+        {
+          "sha": "5632c8c1f0cb0370b1c1a44eabb1e8306d4dacce",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T01:42:08-06:00",
+          "message": "Merge 9f91ad8c077d0ccaa3e0d2f54cbece504dcfda51 into e3c9f1837d6fcbfbcc6ebcbee6ab6c5ec54b5714\n"
+        },
+        {
+          "sha": "9f91ad8c077d0ccaa3e0d2f54cbece504dcfda51",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T01:41:59-06:00",
+          "message": "expectLinearTime's own tests read the verdict off simulated time, so no runner can stall them (rich-unfiled-791c.6uvr)\n\nThe stalled-quadratic test failed five CI runs at 30 s with the file at about\n121 s against 8 s, with its timings lost to the timeout. expectLinearTime takes\nits stopwatch as an argument, and six of the seven tests spend stated\nmilliseconds, so a verdict is arithmetic and each states exact sizes. The test\nthat the clock counts CPU and not wall time keeps the real one, and no longer\nasserts the size it settled on.\n"
+        },
+        {
+          "sha": "b3c80259801777e8b86ad8fbd6797b192ca51480",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T01:41:59-06:00",
+          "message": "A synchronous test that runs out its time reports its CPU and load, not undefined (rich-unfiled-791c.6uvr)\n\nThe budget's timer cannot fire while a synchronous test holds the thread, so\nthe report printed the literal word `undefined` on every such failure. It now\nreads the CPU and load when the failure is reported and says the reading covers\nthe whole run.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e3c9f1837d6fcbfbcc6ebcbee6ab6c5ec54b5714",
