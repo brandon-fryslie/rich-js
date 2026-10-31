@@ -7,7 +7,7 @@ exampleContext: |
 
 # Theme Transposition
 
-Treat a color theme like a piece of music. A melody can be **transposed** to a different key — every note shifts by the same interval, so the tune is preserved but its tonal center moves. rich-js can do the same to a palette: rotate every color by a fixed amount in a perceptually-uniform space and you get the *same theme* in a different key. Transpose all 22 built-in themes and you have effectively unlimited themes that still feel coherent.
+Treat a color theme like a piece of music. A melody can be **transposed** to a different key — every note shifts by the same interval, so the tune is preserved but its tonal center moves. rich-js can do the same to a palette: rotate every color by a fixed amount in a perceptually-uniform space and you get the *same theme* in a different key. Transpose the built-in themes and you have effectively unlimited themes that still feel coherent.
 
 The machinery has three layers: the **OKLCH** color space (the substrate), the **`ThemeKey`** transform (the "key signature"), and **`transposePalette`** (applying a key to a whole palette). A musical helper, **`themeKeyForRoot`**, lets you pick a destination color instead of an interval.
 
@@ -149,10 +149,11 @@ import { isAnchored, ANCHORED_ROOTS } from "@promptctl/rich-js";
 console.print(ANCHORED_ROOTS);                // a ReadonlySet
 console.print(isAnchored("error"));
 console.print(isAnchored("error-darken-1")); // variants of an anchored root anchor too
+console.print(isAnchored("text-error"));     // so does what is drawn on one
 console.print(isAnchored("primary"));        // decorative, free to rotate
 ```
 
-The classification is by hyphen-prefix, so the whole `error-*` / `success-*` / `warning-*` family is covered by the three roots. This is what lets you spin the decorative palette through every key while the status colors stay meaningful.
+This is what lets you spin the decorative palette through every key while the status colors stay meaningful.
 
 ## themeKeyForRoot — choose a destination, not an interval
 
