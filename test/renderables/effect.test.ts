@@ -10,7 +10,7 @@ import { Segment } from "../../src/core/segment.js";
 import { JOINERS, Strip } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
-import { Effected, cellAttributes, confined, drawnOf, type CellLook, type Effect, type EffectCell, type EffectFrame } from "../../src/renderables/effect.js";
+import { Effected, cellAttributes, confined, drawnOf, type CellLook, type Effect, type EffectCell, type EffectFrame, type Pair } from "../../src/renderables/effect.js";
 import { blink } from "../../src/renderables/effects.js";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { Group } from "../../src/renderables/group.js";
@@ -93,8 +93,8 @@ describe("Effected — the identity effect", () => {
   });
 
   it("tells a cell which colours on screen are the terminal's: unset or `default`, swapped under reverse", () => {
-    const seen: EffectCell["terminal"][] = [];
-    const record: Effect = () => Animation.continuous(() => (c, cell) => (seen.push(cell.terminal), c));
+    const seen: Pair["terminal"][] = [];
+    const record: Effect = () => Animation.continuous(() => (c, cell) => (seen.push(cell.pair.terminal), c));
     const black = "#000000";
     const segments = [
       new Segment("a"),

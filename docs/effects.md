@@ -111,6 +111,30 @@ A colour mixed from the two neighbours, such as the middle of a `prism` or a `gr
 
 To move every item but one, name all the others in one call: `confined(onColors(shimmer(…)), items[0]!, items[2]!)` moves the colours either of them drew. One confined effect per item does not add up to that. `confined` nested in `confined` moves only the colours both owners drew, none for two separate items, and an `Effected` wrapped around another measures the inner one's output, so `onColors` settles different shares. The effect is handed only the cells one of its owners drew, so it costs one call a cell however many owners it has.
 
+### Several at once
+
+`layered(...effects)` is one effect built from several, placed wherever an `Effect` goes, so `Effected` and `confined` take it unchanged. Each layer moves what the last one left, later layers on top, and when the frame next changes is when the soonest layer's does, so a composition of loops that hold still lets the host sleep.
+
+```typescript
+import { CATPPUCCIN_MOCHA, EFFECT_CATALOGUE, Effected, RichText, Style, layered } from "@promptctl/rich-js";
+
+const element = { z: 3 };
+const bar = new RichText(" main  +3 ~2  opus ", { style: Style.parse("#1e1e2e on #89b4fa"), end: "", noWrap: true });
+
+// Its hues turn, and a band of light crosses what the turn left.
+const both = layered(EFFECT_CATALOGUE.loops.wheel(element), EFFECT_CATALOGUE.loops.shimmer(element));
+
+for (const t of [0, 40, 80]) {
+  console.print(new Effected(bar, both, { key: "bar", theme: CATPPUCCIN_MOCHA }).at(t));
+}
+```
+
+Handing a list is the same call: `layered(...chosen.map((name) => EFFECT_CATALOGUE.loops[name](element)))` draws what one effect draws for a list of one and leaves the element as it is for none.
+
+Every word reads at its floor, its resting contrast or WCAG AA whichever is lower, whatever the layers do and in whatever order. Each loop keeps that for the colours the element drew, and a colour another layer moved is not one of those, so once the layers have moved a cell, its ground lands where the inks on it can still read and an ink that does not read slides to the luminance that does, on the side of the ground it stands on while that side has room. An ink a layer carries across its ground jumps the crossing, since nothing reads there: a light lifting a `gradient`'s dark ink past a pale ground flips that word, and the same two effects on most palettes never come near it. A fill stays one fill whichever words are on it, and the floor outranks a colour being the terminal's: a terminal ink is moved where its ground left it unreadable. None of this changes a byte for the catalogue's loops and attribute effects, or for a `gradient` or a `steppedInk`: one beside an effect that does nothing draws what it draws alone.
+
+The floor holds for every layer, so `veiled` or a transition's `effect` stops at it inside `layered`, while `done(t)` says the transition has finished. Put a transition in an `Effected` around the one wearing the layers, which is where a lifecycle places it.
+
 ### A transition says when it is done
 
 `fadeIn` and `dissolveOut` return a `Transition`: the `effect` to draw, its `schedule` — an [animation](/animation) of when its frame next changes, whatever the element draws — and `done(t)`, read off that schedule: true from the moment it never changes again, when every cell has arrived or gone, its curve's `seconds` after it began. The order is spread over the cells the element shows something in, so on any element, and under `confined` on one item of many, the first cell starts at 0 and the last settles at `seconds`. Each frame is worked out from the time and the cells it lists alone, so a seek, a reverse or a scrub draws a time exactly as playing up to it does, and one transition can be placed on any number of elements. An element that gains cells as it moves is spread over the order it has in each frame, so a new cell can move one already moving back toward where it began. A caller stops drawing an element that has dissolved, or drops the effect from one that has faded in, when `done` says so:
@@ -256,8 +280,7 @@ Nothing in an effect reads a clock. Whoever draws frames builds the view for eac
 - `row` and `col` count from the top-left of what the wrapped renderable drew, so a sweep crosses the element, not the screen. A wide glyph is one cell to the effect, at the column of its first half, and is never cut.
 - `seed` is a number in `[0, 1)` that stays the same for that cell on every frame, for effects that vary cell by cell. It is derived from the `key` option and the cell's position, so two elements showing the same text under different keys do not move in lockstep.
 - The look's `fg` and `bg` are what the screen shows: the glyph's colour and the colour behind it, so under `reverse` they are the style's two colours swapped. A cell that sets no colour of its own, or names one of the sixteen ANSI colours, is handed that colour from the `theme` option, a `TerminalTheme`. The terminal's real palette is never queried, so the caller supplies it.
-- `terminal` says, for `fg` and `bg` as the screen shows them, whether that colour is the terminal's own: one the style leaves unset or sets to `default`. Resolved through the theme, it can have the same hex as a colour the element wrote; `terminal` is what tells the two apart. `onColors` and `wheel` never move a colour the terminal supplies.
-- `reverse` says whether the cell's style swaps its two slots, so the ink is written in the ground's slot. With the look's colours and `terminal` it is the cell's `Pair`, the shape `drawn.pairs` lists.
+- `pair` is the ink and ground the element drew the cell in, the shape `drawn.pairs` lists: what the cell is, where the look beside it is what is there now. Under one effect they are the same colours; under [`layered`](#several-at-once) the look is what the layers beneath left, so a frame recognises a cell by its `pair` and moves its look. `pair.terminal` says, for each of the two as the screen shows them, whether that colour is the terminal's own: one the style leaves unset or sets to `default`. Resolved through the theme, it can have the same hex as a colour the element wrote; `terminal` is what tells the two apart. `onColors` and `wheel` never move a colour the terminal supplies. `pair.reverse` says whether the cell's style swaps its two slots, so the ink is written in the ground's slot.
 - The look's `attributes` are the cell's text attributes as its style sets them: each `true`, `false` or `undefined`, and an unset one lets a style laid beneath show through, as it does with no effect. `reverse` is not among them: whether the two colours are swapped is what decides which one the screen shows as ink, so an effect swaps them by moving the colours.
 - `anchor` is who drew the cell, and where it sits in their output, as `Segment.anchorAt` reads it off a frame, or `undefined` for a cell no owner stamped. `confined` reads it.
 
@@ -269,4 +292,4 @@ With no colour output at all, an effect has nothing to change, and the wrapped r
 
 A colour an effect moves is written as the nearest colour the output's depth can draw on the `theme` terminal: the RGB value itself in truecolor; otherwise the nearest of the terminal's default colour, the theme's sixteen and, at 256 colours, the cube and grey ramp. A translucent colour is laid on what is beneath it first, as every translucent colour the library writes is: the ground on black, since a terminal cannot say what lies under its cells, and the glyph on that ground. So below truecolor a colour moved a little off an ANSI slot or the default colour is still drawn as that one. On a sixteen-colour terminal a move that does show is a jump to another slot, so there a loop — `wheel`, and any lit by `onColors`, every one in the catalogue among them — holds every cell still rather than flickering between slots. A transition still runs, from slot to slot, since it moves once and is done, and so does `steppedInk`, since stepping is what a signal is for.
 
-Effects stack by nesting: `new Effected(new Effected(child, a, options), b, options)` draws each cell in the colours that applying `a` and then `b` gives it. The bytes can differ from one effect that calls `a` then `b`: the outer layer sees the inner layer's output as written, so a colour the inner layer changed reaches the outer one already rounded to the output's depth, and stays written as that even where the outer one moves it back. The outer layer's `drawn` is measured on the inner layer's output too, so a loop lit by `onColors` on the outside settles its shares against colours that move every frame.
+[`layered`](#several-at-once) is the way to run several effects on one element. Nesting is the other: `new Effected(new Effected(child, a, options), b, options)` draws each cell in the colours that applying `a` and then `b` gives it. The bytes can differ from one effect that calls `a` then `b`: the outer layer sees the inner layer's output as written, so a colour the inner layer changed reaches the outer one already rounded to the output's depth, and stays written as that even where the outer one moves it back. The outer layer's `drawn` is measured on the inner layer's output too, so a loop lit by `onColors` on the outside settles its shares against colours that move every frame.

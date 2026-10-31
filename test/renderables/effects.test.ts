@@ -84,8 +84,6 @@ const cellAt = (row: number, col: number, seed = 0): EffectCell & ListedCell => 
   row,
   col,
   seed,
-  terminal: written,
-  reverse: false,
   anchor: undefined,
   width: 1,
   pair: { fg: ink, bg: ground, terminal: written, reverse: false },
@@ -177,7 +175,7 @@ describe("the wheel", () => {
     const P = 907;
     const round = on(wheel(curve(P, 0), 0), frame(own, grounds));
     for (const fill of fills) {
-      const at = (t: number) => round(t)({ fg: ink, bg: fill, attributes: PLAIN }, cell).bg;
+      const at = (t: number) => round(t)({ fg: ink, bg: fill, attributes: PLAIN }, { ...cell, pair: { ...cell.pair, fg: ink, bg: fill } }).bg;
       // A quarter of the way round, a quarter turn; at the end, back.
       // To a degree or so: the sRGB round trip lands a step off.
       expect(Math.abs(turned(fill, at(P / 4)) - 90)).toBeLessThan(2);
@@ -192,10 +190,10 @@ describe("the wheel", () => {
   it("turns a cell's ink and fill together, and leaves the terminal's colour alone", () => {
     const round = on(wheel(curve(907, 0.25), 0), frame(own, grounds));
     const shown = round(300);
-    const { fg, bg } = shown({ fg: ink, bg: fills[0]!, attributes: PLAIN }, cell);
+    const { fg, bg } = shown({ fg: ink, bg: fills[0]!, attributes: PLAIN }, { ...cell, pair: { ...cell.pair, fg: ink, bg: fills[0]! } });
     // The same turn, to a degree or so: the sRGB round trip lands a step off.
     expect(Math.abs(turned(ink, fg) - turned(fills[0]!, bg))).toBeLessThan(2);
-    const text = shown({ fg: ink, bg: ground, attributes: PLAIN }, cell);
+    const text = shown({ fg: ink, bg: ground, attributes: PLAIN }, { ...cell, pair: { ...cell.pair, fg: ink, bg: ground } });
     expect(text.bg).toBe(ground);
     expect(turned(ink, text.fg)).toBeGreaterThan(0);
   });
@@ -318,7 +316,7 @@ describe("the wheel", () => {
     /** A cell of ink `fg` on the terminal's ground at `col`: a word's, or a blank's, whose ink is the terminal's when `bare`. */
     const onGround = (col: number, bare = false): EffectCell & ListedCell => {
       const terminal = { fg: bare, bg: true };
-      return { ...shownAt(col, a, ground), terminal, pair: { fg: a, bg: ground, terminal, reverse: false } };
+      return { ...shownAt(col, a, ground), pair: { fg: a, bg: ground, terminal, reverse: false } };
     };
     const inkAt = (listed: readonly (EffectCell & ListedCell)[], col: number): string => lookAt(listed, listed.find((cell) => cell.col === col)!, t).fg.hex;
     const words = (blank: EffectCell & ListedCell): (EffectCell & ListedCell)[] => [...Array.from({ length: 5 }, (_, i) => onGround(i)), blank, ...Array.from({ length: 5 }, (_, i) => onGround(6 + i))];
@@ -525,7 +523,7 @@ describe("the loops move", () => {
       const moments = Array.from({ length: 30 }, (_, i) => 100 + i / 10);
       const moved = moments.flatMap((t) => {
         const shown = effect(t);
-        return cells.map((cell) => shown(colors, { ...cell, terminal: onTerminal }));
+        return cells.map((cell) => shown(colors, { ...cell, pair: { ...colors, terminal: onTerminal, reverse: false } }));
       });
       expect(moved).toEqual(moments.flatMap((t) => {
         const shown = withoutGround(t);
@@ -933,7 +931,7 @@ describe("a cell under light still reads", () => {
     for (const { fg, bg, terminal } of pairs) {
       const floor = Math.min(contrastRatio(fg, bg), AA);
       for (let w = 0; w <= 1; w += 0.05) {
-        const lit = effect(drawn).at(w)({ fg, bg, attributes: PLAIN }, { ...cells[0]!, terminal });
+        const lit = effect(drawn).at(w)({ fg, bg, attributes: PLAIN }, { ...cells[0]!, pair: { fg, bg, terminal, reverse: false } });
         expect(contrastRatio(lit.fg, lit.bg)).toBeGreaterThanOrEqual(floor - 0.02);
       }
     }
@@ -1178,7 +1176,7 @@ describe("gradient: a ramp laid across an element", () => {
   // A line on the terminal's ground across every cell, as a rule draws it.
   const ruleFrame = (depth: ColorDepth): Drawn => ({ ...frame(new Set([line.hex])), depth });
   const lineLook: CellLook = { fg: line, bg: CATPPUCCIN_MOCHA.backgroundColor, attributes: PLAIN };
-  const lineCell = (col: number): EffectCell => ({ ...cells[col]!, terminal: onTerminalGround });
+  const lineCell = (col: number): EffectCell => ({ ...cells[col]!, pair: { ...lineLook, terminal: onTerminalGround, reverse: false } });
   const along = (ramp: ColorRamp, col: number): ColorRgba => ramp.at((col + 0.5) / cells.length);
 
   it("paints each lit cell the ramp's colour at its column, first stop at the left and last at the right", () => {
@@ -1194,8 +1192,8 @@ describe("gradient: a ramp laid across an element", () => {
   it("leaves a cell whose ink is not lit, or is the terminal's, as it was", () => {
     const shown = gradient(still)(ruleFrame(ColorDepth.TRUECOLOR)).at(0);
     const title: CellLook = { ...lineLook, fg: ink };
-    expect(shown(title, lineCell(5))).toBe(title);
-    expect(shown(lineLook, { ...lineCell(5), terminal: { fg: true, bg: true } })).toBe(lineLook);
+    expect(shown(title, { ...lineCell(5), pair: { ...lineCell(5).pair, fg: ink } })).toBe(title);
+    expect(shown(lineLook, { ...lineCell(5), pair: { ...lineLook, terminal: { fg: true, bg: true }, reverse: false } })).toBe(lineLook);
   });
 
   it("writes a stop that would not read on the cell's ground as the nearest colour that does", () => {

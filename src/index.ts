@@ -313,6 +313,7 @@ export {
   fadeIn,
   gradient,
   onBeat,
+  layered,
   onColors,
   pulse,
   shimmer,
