@@ -4,15 +4,22 @@
     {
       "version": "pr-524",
       "ref": "refs/pull/524/merge",
-      "sha": "6cd9f1d6636ce700371c765ab9c858b0975f77d7",
-      "timestamp": "2026-10-31T08:43:25.112Z",
+      "sha": "7d04170d5a78cdb3db36389636f4582515891c3b",
+      "timestamp": "2026-10-31T08:52:02.336Z",
       "commits": [
         {
-          "sha": "6cd9f1d6636ce700371c765ab9c858b0975f77d7",
+          "sha": "7d04170d5a78cdb3db36389636f4582515891c3b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T08:42:01Z",
-          "message": "Merge f75ae662e48d4aad56cc6bbd7542adaf3e129992 into 423d72599198f78ede16b93d0b858d75e71aabb4\n"
+          "timestamp": "2026-10-31T02:50:05-06:00",
+          "message": "Merge 040fdd63b4dda1d97e32faf45ca5246493924b03 into 423d72599198f78ede16b93d0b858d75e71aabb4\n"
+        },
+        {
+          "sha": "040fdd63b4dda1d97e32faf45ca5246493924b03",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T02:49:53-06:00",
+          "message": "What is drawn on an accent is measured on a colour with a hue (rich-unfiled-791c.0ny5)\n\nSecond high review: gruvbox's text-secondary has chroma near 0.02, so it held\nits 2 degree tolerance by 0.18 degrees at a 60 degree key and missed it at 48\nother shifts. Both forms now take one chromatic colour stated in the fixture,\nunlike any accent; its worst drift over every whole-degree shift is 0.64.\n\nRestores the no-error pin dropped in the previous commit, which was the only\ntest telling rootOf from a rule that accepts a root in any segment. The\nPALETTE_ROLES check speaks for roles and this one for every other name, so\nthe two do not disagree.\n"
         },
         {
           "sha": "f75ae662e48d4aad56cc6bbd7542adaf3e129992",
