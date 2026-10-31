@@ -174,7 +174,7 @@ export function shares({ pairs, depth, theme }: Drawn, colors: ReadonlySet<strin
  * (`Drawn`), touched as `Effected` writes them at the frame's depth — at 256
  * colours a touched colour lands on a colour the slot can write, and the
  * contrast it spends is that colour's; on a sixteen-colour terminal nothing
- * moves (`stillOnSlots`). `colors` are the ones lit, by default every colour the element
+ * moves (`stillWhereNothingMoves`). `colors` are the ones lit, by default every colour the element
  * sets itself. A powerline strip's fill is the ground of its cells and the
  * ink of the seam glyphs between them, so the arrow moves with the cell it
  * points out of. A colour the terminal supplies (`Pair.terminal`) is
@@ -186,12 +186,13 @@ export function shares({ pairs, depth, theme }: Drawn, colors: ReadonlySet<strin
  */
 export function onColors(loop: Loop, colors?: ReadonlySet<string>): Effect {
   const settled = new WeakMemo<Memo<ReadonlyMap<string, number>>, TerminalColors>();
+  const litIn = (drawn: Drawn): ReadonlySet<string> => colors ?? drawn.colors;
   const settle = (drawn: Drawn): ReadonlyMap<string, number> => {
-    const lit = colors ?? drawn.colors;
+    const lit = litIn(drawn);
     const key = [drawnKey(drawn), "|", ...lit].join(" ");
     return settled.get(drawn.theme, () => new Memo()).get(key, () => shares(drawn, lit, loop.touch));
   };
-  return stillOnSlots(atShares(loop, settle));
+  return stillWhereNothingMoves(litIn, atShares(loop, settle));
 }
 
 /** What a frame draws, as a key: its depth and its pairs, which its `colors` and `fills` are read off. */
@@ -229,7 +230,7 @@ function pairKey({ fg, bg, terminal, reverse }: Pair): string {
  * body. The element is where its frame lists
  * cells, as the fireflies read it, so a padded or confined element has the
  * ramp across what it shows. On a sixteen-colour terminal nothing moves
- * (`stillOnSlots`): a gradient there is jumps between slots, and the cells
+ * (`stillWhereNothingMoves`): a gradient there is jumps between slots, and the cells
  * hold as drawn.
  */
 export function gradient(ramp: Animation<ColorRamp>, colors?: readonly string[]): Effect {
@@ -242,8 +243,9 @@ export function gradient(ramp: Animation<ColorRamp>, colors?: readonly string[])
   // cell's ink: drawn at the frame's depth, then read on its terminal.
   const shown = (spec: ColorSpec, { depth, theme }: Drawn): string =>
     (Style.fromColor(spec).drawnColors(depth).color ?? ColorSpec.default()).getTruecolor(theme, true).hex;
-  return stillOnSlots((drawn) => {
-    const lit = named === undefined ? drawn.colors : new Set(named.map((spec) => shown(spec, drawn)));
+  const litIn = (drawn: Drawn): ReadonlySet<string> => (named === undefined ? drawn.colors : new Set(named.map((spec) => shown(spec, drawn))));
+  return stillWhereNothingMoves(litIn, (drawn) => {
+    const lit = litIn(drawn);
     const inkOn = legible(drawn);
     const [left, right] = extent(drawn.cells().map((cell) => cell.col));
     return Animation.map(ramp, (now): EffectFrame => {
@@ -287,10 +289,12 @@ export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string
 }
 
 /**
- * `loop` as drawn at the frame's depth: where the depth writes only the
+ * `loop` as drawn at the frame's depth and on the colours it lights
+ * (`lit`): where the depth writes only the
  * sixteen ANSI slots, or no colour, a move that shows at all is a jump to
  * another slot, and a light on an element never jumps — so there it
- * holds every cell still, and anywhere else it moves. [LAW:single-enforcer]
+ * holds every cell still, as it does where the element shows none of what it
+ * lights, and anywhere else it moves. [LAW:single-enforcer]
  * `onColors`, `wheel` and `gradient` draw through this, so every loop in the catalogue
  * meets the sixteen-colour terminal here. `atShares` does not: a progress
  * bar's pulse is the news that work is going on, and flashes a slot as
@@ -298,8 +302,8 @@ export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string
  * A frame held still never changes, and says so, so a host drawing the
  * loop on such a terminal draws it once.
  */
-function stillOnSlots(loop: Effect): Effect {
-  return (drawn) => (onlySlots(drawn.depth) ? Animation.constant<EffectFrame>((look) => look) : loop(drawn));
+function stillWhereNothingMoves(lit: (drawn: Drawn) => ReadonlySet<string>, loop: Effect): Effect {
+  return (drawn) => (onlySlots(drawn.depth) || lit(drawn).size === 0 ? Animation.constant<EffectFrame>((look) => look) : loop(drawn));
 }
 
 /** Whether `depth` writes nothing between the slots it has: the sixteen, at either sixteen-colour depth, or none. */
@@ -1088,7 +1092,7 @@ function segmentsOf(drawn: Drawn): (cell: Placed, hex: string) => Place {
  * is drawn in at its floor (`floorOf`) — its resting contrast or WCAG AA,
  * whichever is lower — as `shares` keeps the light's (`turnedBounds`). The
  * turn only happens to the element's own colours (`Drawn.colors`), never the
- * terminal's. On a sixteen-colour terminal nothing turns (`stillOnSlots`).
+ * terminal's. On a sixteen-colour terminal nothing turns (`stillWhereNothingMoves`).
  */
 export function wheel(curve: Curve, z: number): Effect {
   requireCurve(curve);
@@ -1108,7 +1112,7 @@ export function wheel(curve: Curve, z: number): Effect {
   const turned = (place: Place, t: number): number => (360 * t) / P + curve.swing * STRAY * ((stray(place, t) - stray(place, 0)) / 1.5);
   // A turned colour's bounds rest on what a frame draws, never on `t`: settled once for each.
   const settled = new WeakMemo<Memo<ReadonlyMap<string, Bounds>>, TerminalColors>();
-  return stillOnSlots((drawn) => {
+  return stillWhereNothingMoves(({ colors }) => colors, (drawn) => {
     const { colors, fills, depth, theme } = drawn;
     // Whether a slot shows one of the element's colours: never the terminal's, whatever its hex.
     const own = (terminal: boolean, color: ColorRgba): boolean => !terminal && colors.has(color.hex);
@@ -1346,7 +1350,10 @@ function groundBounds(pairs: readonly Pair[], depth: ColorDepth, theme: Terminal
  * nothing reads at the crossing, so the word jumps it. [LAW:single-enforcer]
  * Both are measured as `Effected` writes them, and both hand back what they were
  * given where it already holds, so a layer that proved its own floor is drawn as
- * it would be alone. The floor outranks a colour being the terminal's: a terminal
+ * it would be alone. A frame that takes a ground past its bounds is the one
+ * exception, whatever its ink reads: a swap of ink and ground lands at the floor,
+ * since a bound cannot ask what one cell's ink does without splitting a fill.
+ * The floor outranks a colour being the terminal's: a terminal
  * ink is moved here where a ground under it left it unreadable. The rule is the
  * same for one layer as for five: a veil (`veiled`, or a transition's `effect`)
  * stops at the floor here, so a transition goes in an `Effected` around this
@@ -1381,8 +1388,8 @@ export function layered(...effects: readonly Effect[]): Effect {
       // [LAW:single-enforcer] Every measure below reads the colours as `Effected`
       // writes them: rounded to the depth, and a translucent one laid on what is
       // beneath it, so a colour that passes here cannot draw as one that fails.
-      const { fg, bg } = Effected.shows(pair, moved, depth, theme);
-      const ground = landing(bg, pair.bg, grounds.get(pair.bg.hex) ?? UNBOUNDED);
+      const ground = landing(Effected.shows(pair, moved, depth, theme).bg, pair.bg, grounds.get(pair.bg.hex) ?? UNBOUNDED);
+      const { fg } = Effected.shows(pair, { fg: moved.fg, bg: ground }, depth, theme);
       const floor = floorOf(pair, depth);
       if (!words.has(pairKey(pair)) || contrastRatio(fg, ground) >= floor) return { fg, bg: ground };
       const gap = Math.log(floor);
@@ -1426,7 +1433,7 @@ export interface ColorStep {
  * (`ensureContrast`, the one slide a template's `readableOn` makes too);
  * below truecolor, the nearest of the colours the depth has an index for, so on a
  * sixteen-colour terminal it steps from slot to slot, the one effect here
- * that does (`stillOnSlots`). A cell whose ground no offered colour reads
+ * that does (`stillWhereNothingMoves`). A cell whose ground no offered colour reads
  * on keeps the ink it rested in.
  *
  * The search is settled once for each ground and step — below truecolor,

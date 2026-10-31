@@ -125,14 +125,12 @@ describe("layered", () => {
       }
     });
 
-    it.each(compositions)("%s leaves a word with contrast to spare on the side of its ground it rested on", (_c, effects) => {
+    it.each(compositions.filter(([, effects]) => !effects.includes(ramp) && !effects.includes(stepped)))("%s leaves a word with contrast to spare on the side of its ground it rested on", (_c, effects) => {
       const luminous = (c: ColorRgba): number => contrastRatio(c, new ColorRgba(0, 0, 0));
       for (const [, theme] of themes) {
         const subject = element(words(5, 19));
         const rests = cellsOf(drawn(subject, identity, 0, depth, theme), depth, theme);
         for (const t of times) {
-          const composed = effects.some((effect) => effect === ramp || effect === stepped);
-          if (composed) continue;
           cellsOf(drawn(subject, layered(...effects), t, depth, theme), depth, theme).forEach(({ pair, word }, i) => {
             const rest = rests[i]!.pair;
             if (word && contrastRatio(rest.fg, rest.bg) > 1.2) expect(luminous(pair.fg) >= luminous(pair.bg)).toBe(luminous(rest.fg) >= luminous(rest.bg));
@@ -285,6 +283,50 @@ describe("layered", () => {
     const animation = composed(drawnOf(drawn(element(words(2, 5)), identity, 0, ColorDepth.STANDARD, CATPPUCCIN_MOCHA), ColorDepth.STANDARD, CATPPUCCIN_MOCHA));
     expect(animation.nextChange(40)).toBe(Number.POSITIVE_INFINITY);
     expect(composed(drawnOf(drawn(element(words(2, 5)), identity, 0, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA)).nextChange(40)).toBe(40);
+  });
+
+  it("sleeps at every depth on an element with none of the colours its loops light", () => {
+    const plain = element([new Style({})]);
+    for (const depth of [ColorDepth.TRUECOLOR, ColorDepth.EIGHT_BIT]) {
+      const listed = drawnOf(drawn(plain, identity, 0, depth, CATPPUCCIN_MOCHA), depth, CATPPUCCIN_MOCHA);
+      expect(layered(turning, shimmering, ramp)(listed).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
+    }
+  });
+
+  it("keeps moving a colour named for its light that lies only under blanks, which no word cell lists", () => {
+    const fill = new ColorRgba(40, 90, 200);
+    const blanks = element([new Style({ bgcolor: ColorSpec.fromRgba(fill) })], "   ");
+    const depth = ColorDepth.TRUECOLOR;
+    const listed = drawnOf(drawn(blanks, identity, 0, depth, CATPPUCCIN_MOCHA), depth, CATPPUCCIN_MOCHA);
+    expect(listed.colors.size).toBe(0);
+    const named = onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, z), new Set([fill.hex]));
+    expect(layered(named)(listed).nextChange(40)).toBe(40);
+  });
+
+  it("holds a ground a swap takes past its bounds at the floor, though its ink read better there", () => {
+    const [ink, ground] = [new ColorRgba(205, 214, 244), new ColorRgba(30, 30, 46)];
+    const subject = element([new Style({ color: ColorSpec.fromRgba(ink), bgcolor: ColorSpec.fromRgba(ground) })]);
+    const swap: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, fg: look.bg, bg: look.fg }));
+    const depth = ColorDepth.TRUECOLOR;
+    const contrastOf = (effect: Effect): number => {
+      const { pair } = cellsOf(drawn(subject, effect, 0, depth, CATPPUCCIN_MOCHA), depth, CATPPUCCIN_MOCHA)[0]!;
+      return contrastRatio(pair.fg, pair.bg);
+    };
+    expect(contrastOf(swap)).toBeGreaterThan(11);
+    expect(contrastOf(layered(swap))).toBeCloseTo(4.5, 1);
+  });
+
+  it("lays a translucent ink on the ground as it landed, not as it was handed", () => {
+    const fill = ColorSpec.fromRgba(new ColorRgba(30, 30, 46));
+    // White at its floor bounds the fill; the tight grey on it reads wherever the fill lands.
+    const subject = element([new Style({ color: ColorSpec.fromRgba(new ColorRgba(255, 255, 255)), bgcolor: fill }), new Style({ color: ColorSpec.fromRgba(new ColorRgba(70, 70, 80)), bgcolor: fill })]);
+    const lifted: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, fg: new ColorRgba(255, 255, 255, 0.5), bg: new ColorRgba(176, 176, 176) }));
+    const depth = ColorDepth.TRUECOLOR;
+    const cell = cellsOf(drawn(subject, layered(lifted), 0, depth, CATPPUCCIN_MOCHA), depth, CATPPUCCIN_MOCHA).at(-1)!;
+    const mix = (under: number): number => Math.round(0.5 * 255 + 0.5 * under);
+    expect(cell.pair.bg.red).toBeLessThan(176);
+    expect(cell.pair.fg.red).toBeCloseTo(mix(cell.pair.bg.red), -1);
+    expect(cell.pair.fg.red).toBeLessThan(mix(176) - 8);
   });
 
   it("at sixteen colours a layer that moves a ground leaves its words on the theme's slots at their floor", () => {
