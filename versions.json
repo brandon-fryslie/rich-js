@@ -4,15 +4,22 @@
     {
       "version": "pr-523",
       "ref": "refs/pull/523/merge",
-      "sha": "5632c8c1f0cb0370b1c1a44eabb1e8306d4dacce",
-      "timestamp": "2026-10-31T07:44:21.919Z",
+      "sha": "7fab14264048e741d4608ab5c1204f954cb5454b",
+      "timestamp": "2026-10-31T07:53:02.916Z",
       "commits": [
         {
-          "sha": "5632c8c1f0cb0370b1c1a44eabb1e8306d4dacce",
+          "sha": "7fab14264048e741d4608ab5c1204f954cb5454b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T01:42:08-06:00",
-          "message": "Merge 9f91ad8c077d0ccaa3e0d2f54cbece504dcfda51 into e3c9f1837d6fcbfbcc6ebcbee6ab6c5ec54b5714\n"
+          "timestamp": "2026-10-31T01:50:41-06:00",
+          "message": "Merge 26423db44beb60cbb2d4b2f2855f23964e11c307 into e3c9f1837d6fcbfbcc6ebcbee6ab6c5ec54b5714\n"
+        },
+        {
+          "sha": "26423db44beb60cbb2d4b2f2855f23964e11c307",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T01:50:32-06:00",
+          "message": "expectLinearTime's real tests spend stated CPU time, and a timeout report stops guessing why no timer fired (rich-unfiled-791c.6uvr)\n\nThe test left on the real clock cost steps, so a floor trip took about 27 s of\nits 30 s budget and silently dropped what it proved. Its cost is now CPU time,\nwhich cannot fall under the floor or grow, and a second real test fails\nquadratic work through the default stopwatch, the one false pass nothing else\nwould see: a cumulative clock read every ratio as 1 and passed every guard.\n\ntimeout-report said a test held the thread whenever its timer had not fired, but\na hook running out a shorter budget has not fired it either. The guidance beside\nit already tells the two apart from the CPU reading, so the sentence goes.\n\nThe header's 'load cannot trip the floor' goes too: the five failures this ticket\nis about are the only evidence, and they put it in doubt.\n"
         },
         {
           "sha": "9f91ad8c077d0ccaa3e0d2f54cbece504dcfda51",
