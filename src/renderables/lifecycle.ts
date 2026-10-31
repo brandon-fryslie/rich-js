@@ -61,9 +61,9 @@ import type { GlyphTransition } from "./glyph-effects.js";
  * moment it says it never changes again (`Animation.done`): an arrival is
  * the element from then, and an exit is gone. A half that never ends is
  * refused, the arrival when the lifecycle is made and the exit when it is
- * told to leave: an `Effected` handed in bare is one, since its own word is
- * "now" at every time; a colour half is `throughColors`, which lends the
- * transition's schedule.
+ * told to leave: an `Effected` or `GlyphEffected` handed in bare is one,
+ * since its own word is "now" at every time; `throughColors` and
+ * `throughGlyphs` lend one the transition's schedule.
  */
 export type Half = (element: Renderable, key: string) => Animation<Renderable>;
 
@@ -138,10 +138,11 @@ export function lifecycle(element: Renderable, options: LifecycleOptions, entere
  */
 function doneAt(half: Animation<Renderable>, start: number, role: "enter" | "exit"): number {
   if (!Number.isFinite(start)) return start;
-  const at = firstReaching(start, (x) => Animation.done(half, x - start));
-  if (!Number.isFinite(at)) {
+  // A half done at every time — the element at once — is done as it begins: `firstReaching`'s -Infinity is `start`.
+  const at = Math.max(start, firstReaching(start, (x) => Animation.done(half, x - start)));
+  if (at === Number.POSITIVE_INFINITY) {
     throw new RangeError(
-      `lifecycle: the ${role} half never ends: its animation never says it has stopped changing (Animation.done). An Effected on its own does not; throughColors(transition, theme) and throughGlyphs(transition) lend it the transition's schedule`,
+      `lifecycle: the ${role} half never ends: its animation never says it has stopped changing (Animation.done). An Effected or GlyphEffected on its own does not; throughColors(transition, theme) and throughGlyphs(transition) lend one the transition's schedule`,
     );
   }
   return at;

@@ -300,6 +300,16 @@ describe("a lifecycle through halves written by hand", () => {
     expect(bytes(draw(life.at(2)))).toBe(bytes(draw(line)));
   });
 
+  it("a half done at every time is done as it begins: the element at once, there from entered and gone from left", () => {
+    const atOnce: Half = (element) => Animation.constant(element);
+    const vanish: Half = () => Animation.constant({ render: () => [] });
+    const life = lifecycle(line, { enter: atOnce, exit: vanish, key: "hand" }, 1).leave(5);
+    expect(bytes(draw(life.at(1)))).toBe(bytes(draw(line)));
+    expect([life.lastChange(1), life.nextChange(1)]).toEqual([1, 5]);
+    expect([life.gone(4.99), life.gone(5)]).toEqual([false, true]);
+    expect([life.lastChange(5), life.nextChange(5)]).toEqual([5, Number.POSITIVE_INFINITY]);
+  });
+
   it("refuses a half that never ends by name: a bare Effected as the arrival when made, as the exit when told to leave", () => {
     // [LAW:no-silent-failure] An Effected's own word on when it changes is "now" at every time, so it is never done.
     const bare: Half = (element, key) => new Effected(element, fadeIn(curve, 0).effect, { key, theme });
