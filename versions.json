@@ -4,15 +4,22 @@
     {
       "version": "pr-520",
       "ref": "refs/pull/520/merge",
-      "sha": "fa9af3a5f98bff397e9bf3152d33b3b6bfe8bf5e",
-      "timestamp": "2026-10-31T01:40:21.872Z",
+      "sha": "752899bb3c9f9c7df70321ab6f41945d9cc93851",
+      "timestamp": "2026-10-31T01:54:25.990Z",
       "commits": [
         {
-          "sha": "fa9af3a5f98bff397e9bf3152d33b3b6bfe8bf5e",
+          "sha": "752899bb3c9f9c7df70321ab6f41945d9cc93851",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T01:38:23Z",
-          "message": "Merge a38bf9fa046d2afb430bec3706b40d6dc236da48 into 8b1c56055c946a1f2ce3f582cbdbf804ee18c8b7\n"
+          "timestamp": "2026-10-31T01:52:25Z",
+          "message": "Merge 86a7e662adfe4441ad938a57e3161cacd5bd32bf into 8b1c56055c946a1f2ce3f582cbdbf804ee18c8b7\n"
+        },
+        {
+          "sha": "86a7e662adfe4441ad938a57e3161cacd5bd32bf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T19:52:12-06:00",
+          "message": "Both halves are asked where they end when the lifecycle is made, and no half is asked about a time before it began (rich-animation-27tq.3kk)\n\nSecond high review pass (step 12). doneAt walked firstReaching down to the float minimum for a half done at every time, and a beat asked there overflowed its pass and refused the time as infinite. Done is for good, so a half done at its own 0 is done at its start, and from a start it is not done at the walk is upward only. The exit half is now asked where it ends when the lifecycle is made, by the element's key and the half's role, not at the first leave; both halves and the arrival's end are carried into every leave instead of being rebuilt and re-walked there.\n\nA beat's passAt refuses a t past where a pass is a float as a period finer than time resolves there, the same refusal a boundary walked there gives, instead of refusing the infinite sum it would have built.\n\nA transition's schedule reduces to a cut at 0, as its effect does, so a half that lends the schedule to its frames tells the same hold reduced. Tests for each.\n"
         },
         {
           "sha": "a38bf9fa046d2afb430bec3706b40d6dc236da48",
