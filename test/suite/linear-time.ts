@@ -49,28 +49,31 @@ const FLOOR_MS = 5;
 /** How many times a size under the floor is made `FACTOR` times larger before the work fails as unmeasurable. */
 const GROWTHS = 3;
 
+/** How many milliseconds `work` takes. */
+export type Stopwatch = (work: () => void) => number;
+
 /**
  * The milliseconds of CPU time this thread spends on `work`. Node has had
  * `process.threadCpuUsage` since 22.19 and 23.9, which is why
  * `package.json#devEngines` asks for those.
  */
-function timed(work: () => void): number {
+const threadCpuTime: Stopwatch = (work) => {
   const started = process.threadCpuUsage();
   work();
   const { user, system } = process.threadCpuUsage(started);
   return (user + system) / 1000;
-}
+};
 
 /**
  * Fails unless `run(FACTOR * size)` takes less than `BAR` times as long as `run(size)`,
  * at the first of `size`, `FACTOR * size`, … whose smaller run clears the floor, and
  * returns that size.
  */
-export function expectLinearTime(run: (size: number) => void, size: number): number {
+export function expectLinearTime(run: (size: number) => void, size: number, stopwatch: Stopwatch = threadCpuTime): number {
   for (let growths = 0; ; growths++, size *= FACTOR) {
     const pairs = Array.from({ length: PAIRS }, () => {
-      const small = timed(() => run(size));
-      return { small, large: timed(() => run(FACTOR * size)) };
+      const small = stopwatch(() => run(size));
+      return { small, large: stopwatch(() => run(FACTOR * size)) };
     });
     const timings = `${size} vs ${FACTOR * size}: ${pairs.map((p) => `${p.small.toFixed(1)}/${p.large.toFixed(1)} ms`).join(", ")}`;
     if (Math.min(...pairs.map((p) => p.small)) < FLOOR_MS) {
