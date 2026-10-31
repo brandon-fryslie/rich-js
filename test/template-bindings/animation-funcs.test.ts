@@ -4,7 +4,7 @@ import { renderToString } from "../../src/core/render.js";
 import { Style, type Hold } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { FrameSequence, type Frame } from "../../src/renderables/frames.js";
-import { animationFuncs, paletteFuncs, renderTemplate, richTextFuncs, templateFrame, type TemplateFrame } from "../../src/template-bindings/index.js";
+import { paletteFuncs, renderTemplate, richTextFuncs, templateFrame, withAnimation, type TemplateFrame } from "../../src/template-bindings/index.js";
 import { render, type Renderable } from "../../src/core/protocol.js";
 import { EASES, Phase } from "../../src/core/easing.js";
 import { Segment } from "../../src/core/segment.js";
@@ -25,14 +25,7 @@ const COLORS = ["red", "green", "blue"];
 
 /** An engine whose templates draw for `clock.t`, which a test moves by hand. */
 function engineAt(clock: { t: number }): Engine<RichText> {
-  const animation = animationFuncs(() => ({ time: clock.t }));
-  return createEngine<RichText>({
-    fromString: (s) => new RichText(s),
-    toString: (rt) => rt.plain,
-    funcs: { ...richTextFuncs(), ...animation.funcs },
-    emitted: animation.emitted,
-    decided: animation.decided,
-  });
+  return createEngine<RichText>(withAnimation({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: clock.t })));
 }
 
 const TEMPLATE = `{{ frames 1 (fg "red" "${CHEVRONS[0]}") 1 (fg "green" "${CHEVRONS[1]}") 1 (fg "blue" "${CHEVRONS[2]}") }}`;
@@ -167,22 +160,24 @@ const nextChangeOf = (text: RichText): number => Segment.nextChange(text.render(
  * `pulse`, a consumer's own marking function whose mark is not the binding's.
  */
 function toolboxAt(clock: { t: number; timeline?: Timeline; told?: Hold[] }, options: { reducedMotion?: boolean; asciiOnly?: boolean } = {}): Engine<RichText> {
-  const animation = animationFuncs(() => ({ ...options, time: clock.t, onHold: (hold) => clock.told?.push(hold) }), { timeline: () => clock.timeline ?? Timeline.play(0) });
-  return createEngine<RichText>({
-    fromString: (s) => new RichText(s),
-    toString: (rt) => rt.plain,
-    funcs: {
-      ...sprigMath(),
-      ...sprigLists(),
-      ...sprigConversions(),
-      ...richTextFuncs(),
-      ...paletteFuncs(() => GRUVBOX.palette),
-      ...animation.funcs,
-      pulse: { fn: () => marked("p", "a mark of the consumer's own"), argTypes: [], arity: { kind: "exact" }, returnType: "string" },
-    },
-    emitted: animation.emitted,
-    decided: animation.decided,
-  });
+  return createEngine<RichText>(
+    withAnimation(
+      {
+        fromString: (s) => new RichText(s),
+        toString: (rt) => rt.plain,
+        funcs: {
+          ...sprigMath(),
+          ...sprigLists(),
+          ...sprigConversions(),
+          ...richTextFuncs(),
+          ...paletteFuncs(() => GRUVBOX.palette),
+          pulse: { fn: () => marked("p", "a mark of the consumer's own"), argTypes: [], arity: { kind: "exact" }, returnType: "string" },
+        },
+      },
+      () => ({ ...options, time: clock.t, onHold: (hold) => clock.told?.push(hold) }),
+      { timeline: () => clock.timeline ?? Timeline.play(0) },
+    ),
+  );
 }
 
 /** `source` evaluated at each of `times`, its fragments' plain text. */
@@ -431,6 +426,31 @@ describe("a hold reaches the frame only through what is drawn or decided", () =>
   it("a consumer's own mark is not a hold, and passes through both hooks untouched", () => {
     expect(heldAt(`{{ if eq pulse "p" }}{{ pulse }}{{ end }}`, 0.25)).toEqual({ cells: NEVER, told: [] });
   });
+
+  it("the hooks a config brought still hear every emission and decision, and what they emit is what gets stamped", () => {
+    const heard: { emitted: string[]; decided: number } = { emitted: [], decided: 0 };
+    const engine = createEngine<RichText>(
+      withAnimation(
+        {
+          fromString: (s) => new RichText(s),
+          toString: (rt) => rt.plain,
+          funcs: richTextFuncs(),
+          emitted: (fragment) => {
+            heard.emitted.push(fragment.plain);
+            return new RichText(`[${fragment.plain}]`);
+          },
+          decided: () => {
+            heard.decided += 1;
+          },
+        },
+        () => ({ time: 0.5 }),
+      ),
+    );
+    const segments = [...RichText.fromFragments(engine.compile(`{{ if gt (loop 2 0) 0.5 }}x{{ end }}{{ printf "%.2f" (tween 2 "linear" 0 0 1) }}`)({})).render({ maxWidth: 80 })];
+    expect(segments.map((s) => s.text).join("")).toBe("[0.25]");
+    expect(Segment.nextChange(segments)).toBe(0.5);
+    expect(heard).toEqual({ emitted: ["0.25"], decided: 1 });
+  });
 });
 
 // A template evaluated inside a frame is drawn as that frame says: its time,
@@ -438,14 +458,7 @@ describe("a hold reaches the frame only through what is drawn or decided", () =>
 // a reduced-motion host never ticks for a template's loop.
 describe("a template drawn in a frame is drawn as the frame says", () => {
   let drawnIn: TemplateFrame = { time: 0 };
-  const animation = animationFuncs(() => drawnIn);
-  const engine = createEngine<RichText>({
-    fromString: (s) => new RichText(s),
-    toString: (rt) => rt.plain,
-    funcs: { ...richTextFuncs(), ...animation.funcs },
-    emitted: animation.emitted,
-    decided: animation.decided,
-  });
+  const engine = createEngine<RichText>(withAnimation({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => drawnIn));
   const templated = (source: string): Renderable => ({
     render: (options) => {
       drawnIn = templateFrame(options);
