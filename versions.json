@@ -4,15 +4,22 @@
     {
       "version": "pr-519",
       "ref": "refs/pull/519/merge",
-      "sha": "2ff9cfe7cb750cf0d53bda47206c5abf24e4d5c3",
-      "timestamp": "2026-10-31T00:32:17.606Z",
+      "sha": "c41c05240607eb614697b3f342ea5eec27340f8f",
+      "timestamp": "2026-10-31T00:46:14.489Z",
       "commits": [
         {
-          "sha": "2ff9cfe7cb750cf0d53bda47206c5abf24e4d5c3",
+          "sha": "c41c05240607eb614697b3f342ea5eec27340f8f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T18:30:14-06:00",
-          "message": "Merge b292ec51edc955ee3f5862a498d5a5fff2aeed86 into 61e02f63433698143769038827c5c057820d5aab\n"
+          "timestamp": "2026-10-31T00:44:39Z",
+          "message": "Merge 228a1156adf1883daee9e1fd5bf0418eed1a7da0 into 61e02f63433698143769038827c5c057820d5aab\n"
+        },
+        {
+          "sha": "228a1156adf1883daee9e1fd5bf0418eed1a7da0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T18:44:27-06:00",
+          "message": "Review fixes: one moment per `finished`, the blink kept as an animation, a still drawn for its terminal (rich-animation-27tq.bpd)\n\n- docs/progress.md: drop the sentence describing the deleted frame-less print.\n- Progress.finished reads its host's frame once and judges every task at it.\n- TextInput keeps the caret's blink animation, built at the event that restarts it, instead of rebuilding it from a number every frame.\n- The coverage example's Progress still is rendered with the outer frame's asciiOnly, theme, reducedMotion and colorSystem.\n"
         },
         {
           "sha": "b292ec51edc955ee3f5862a498d5a5fff2aeed86",
