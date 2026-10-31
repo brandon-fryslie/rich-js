@@ -1176,7 +1176,7 @@ describe("RichText.render() wraps a long line in time linear in its length", () 
   });
 
   it("wraps words", () => {
-    expectLinearTime((n) => collect(new RichText("text " + "x1, ".repeat(n)).render({ maxWidth: 80 })), 8000);
+    expectLinearTime((n) => collect(new RichText("text " + "x1, ".repeat(n)).render({ maxWidth: 80 })), 32_000);
   });
 });
 

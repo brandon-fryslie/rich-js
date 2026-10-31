@@ -29,4 +29,5 @@ it("a timeout reports this worker's CPU and the machine's load on the timeout it
   expect(output).not.toMatch(new RegExp(/expected 3 to be 4[^\n]*/.source + REPORT.source));
   expect(output).toContain("expected 1 to be 2");
   expect(output.match(new RegExp(REPORT.source, "g"))).toHaveLength(3);
+  expect(output.match(/Read as the failure was reported/g)).toHaveLength(1);
 });

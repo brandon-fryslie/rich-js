@@ -44,7 +44,7 @@ beforeEach(({ task, onTestFailed }) => {
     const timeout = task.result!.errors!.filter((error) => VITEST_TIMEOUT.test(error.message)).at(-1);
     if (timeout === undefined) return;
     timeout.message +=
-      `\n${reading ?? read()} ` +
+      `\n${reading ?? `${read()} Read as the failure was reported, so after-hooks are in it.`} ` +
       `CPU near the elapsed time: it was computing the whole time. A load above the cores: the machine was too busy to run it. ` +
       `Neither: it was waiting, on an event, a child process or I/O.`;
   });

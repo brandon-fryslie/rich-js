@@ -523,7 +523,7 @@ describe("Markdown", () => {
     // A tail splitting the space after a destination every way it could took 14 times as long. Drawing is
     // timed at a smaller size: it is linear too, but slow enough that the reader's size would take seconds.
     expectLinearTime((spaces) => new Markdown(`[a](b${" ".repeat(spaces)}x`), 1_000_000);
-    expectLinearTime((spaces) => rows(`[a](b${" ".repeat(spaces)}x`, 80), 50_000);
+    expectLinearTime((spaces) => rows(`[a](b${" ".repeat(spaces)}x`, 80), 200_000);
   });
 
   // --- Lists hold blocks, as CommonMark reads them ---

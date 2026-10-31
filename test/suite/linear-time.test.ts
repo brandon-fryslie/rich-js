@@ -88,23 +88,28 @@ describe("expectLinearTime", () => {
     expect([...sizes]).toEqual([10, 40, 160, 640, 2560]);
   });
 
-  // Two tests on the real stopwatch, for what a simulated one cannot say: it
-  // counts CPU time and not wall time, and each run's alone. Every other caller
-  // of the helper trusts it to fail quadratic work and to pass linear work on a
-  // busy machine.
+  // Three tests on the real stopwatch, for what a simulated one cannot say: it
+  // counts CPU time and not wall time, each run's alone, in milliseconds. Every
+  // other caller of the helper trusts it to fail quadratic work, to pass linear
+  // work on a busy machine, and to know a measurement from fixed costs.
   it("fails work on the real stopwatch that spends the square of its input in CPU time", () => {
     expect(() => expectLinearTime((n) => burn(n * n), 3)).toThrow(/^3 vs 12: /);
   });
 
   it("passes linear work on the real stopwatch when every run at the larger size waits off the CPU", () => {
     const blocked = new Int32Array(new SharedArrayBuffer(4));
+    const size = 6;
     const measured = expectLinearTime((n) => {
       const started = performance.now();
       burn(n);
       // Each larger run then waits twice its own length without running, as a thread preempted on a busy machine does;
       // in wall time every pair reads twelve, and the work would fail.
-      if (n > 6) Atomics.wait(blocked, 0, 0, 2 * (performance.now() - started));
-    }, 6);
-    expect(measured).toBe(6);
+      if (n > size) Atomics.wait(blocked, 0, 0, 2 * (performance.now() - started));
+    }, size);
+    expect(measured).toBe(size);
+  });
+
+  it("reads a run of 2 ms on the real stopwatch as under the floor, and one of 8 ms as over it", () => {
+    expect(expectLinearTime(burn, 2)).toBe(8);
   });
 });

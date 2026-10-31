@@ -79,7 +79,7 @@ export function expectLinearTime(run: (size: number) => void, size: number, stop
     if (Math.min(...pairs.map((p) => p.small)) < FLOOR_MS) {
       if (growths < GROWTHS) {
         // [LAW:nothing-unseen] Growth costs at least four times as much and no verdict
-        // says it happened, so a run that overruns its budget has only this to say why.
+        // says it happened; a size that clears the floor keeps this line rare enough to mean something.
         console.warn(`expectLinearTime: under the ${FLOOR_MS} ms floor, growing; ${timings}`);
         continue;
       }
