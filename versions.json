@@ -4,15 +4,22 @@
     {
       "version": "pr-522",
       "ref": "refs/pull/522/merge",
-      "sha": "30912051d2f40442850d264fd9f3b907797cb4f0",
-      "timestamp": "2026-10-31T06:28:50.390Z",
+      "sha": "8dd3bc350d49718282f0ac0b197ab8b1422c7a72",
+      "timestamp": "2026-10-31T06:42:42.482Z",
       "commits": [
         {
-          "sha": "30912051d2f40442850d264fd9f3b907797cb4f0",
+          "sha": "8dd3bc350d49718282f0ac0b197ab8b1422c7a72",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T00:26:51-06:00",
-          "message": "Merge 3cee933363cd245b4f7952986c3ffc0071b6f42f into b7d62e39232f05d870e3036d154fa3af754a26ea\n"
+          "timestamp": "2026-10-31T06:40:32Z",
+          "message": "Merge 60fcc8b8210a927787578d9f8b8580a000c35472 into b7d62e39232f05d870e3036d154fa3af754a26ea\n"
+        },
+        {
+          "sha": "60fcc8b8210a927787578d9f8b8580a000c35472",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T00:40:20-06:00",
+          "message": "A role is derived from what its ground draws, and a widget names roles (rich-unfiled-791c.32i2)\n\nReview of the role set. A translucent stated role is drawn before a rule reads\nit, so `text-*` is measured on the ground it stands on; `boost` stays a layer\nbecause `panel` composites it. `panel` takes `boost` only on a dark palette, as\nTextual's `design.py` does. The cursor and hover foregrounds sit on `primary`,\nso they read `on-primary`. `text-error` and `on-success` keep their hue under\ntransposition with the rest of their family. `ink` and the variant tables take\n`PaletteRole`, which removes the missing-key branch.\n\nSix cyberpunk `text-*` values move 1-3 levels: their tint is now composited on\nthe drawn `*-muted`. The other 3,612 baseline values are unchanged.\n"
         },
         {
           "sha": "3cee933363cd245b4f7952986c3ffc0071b6f42f",
