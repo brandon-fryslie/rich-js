@@ -321,6 +321,11 @@ describe("Phase — seconds in, progress out, no clock read", () => {
 });
 
 describe("beat — holds in seconds, the hold in progress out, no clock read", () => {
+  it("refuses a t past where a pass is a float as a period finer than time resolves there, never as an infinite t", () => {
+    expect(() => beat([0.25]).lastChange(Number.MAX_VALUE)).toThrow(/Beat.lastChange: a period of 0.25 s is finer than time resolves near t = 1.79/);
+    expect(() => beat([0.25]).nextChange(-Number.MAX_VALUE)).toThrow(/Beat.nextChange: a period of 0.25 s is finer than time resolves/);
+  });
+
   it("counts holds from t = 0 and wraps every period, before zero too", () => {
     const b = beat([1, 1, 1]);
     expect(b.period).toBe(3);

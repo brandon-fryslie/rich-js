@@ -751,7 +751,7 @@ export class Transition<E = Effect> {
   ) {}
 
   done(t: number): boolean {
-    return this.schedule.nextChange(t) === Number.POSITIVE_INFINITY;
+    return Animation.done(this.schedule, t);
   }
 }
 
@@ -762,8 +762,13 @@ export class Transition<E = Effect> {
  * glyph effect (`./glyph-effects.ts`) alike.
  */
 export function transition<D, F>(seconds: number, effect: (drawn: D) => Animation<F>): Transition<(drawn: D) => Animation<F>> {
-  // Moving every frame until `seconds`, then never: the sequence carries the switch.
-  const schedule = Animation.sequence(Animation.continuous(() => undefined), seconds, Animation.constant(undefined));
+  // Moving every frame until `seconds`, then never: the sequence carries the switch. [LAW:one-source-of-truth]
+  // Reduced, a one-shot cuts from its start to its end at 0, and its schedule says so too, the one word on
+  // when the reduced frames change, so a half that lends this schedule to its frames tells the same hold.
+  const schedule: Animation<undefined> = Animation.of({
+    ...Animation.sequence(Animation.continuous(() => undefined), seconds, Animation.constant(undefined)),
+    reduced: () => Animation.cut(undefined, undefined),
+  });
   const ran: Transition<(drawn: D) => Animation<F>> = new Transition(
     (drawn) => {
       const moving = effect(drawn);

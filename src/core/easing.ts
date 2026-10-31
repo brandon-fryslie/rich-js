@@ -488,7 +488,11 @@ export function passAt(what: string, t: number, period: number): { readonly pass
   // takes off; carrying a pass's start out of `t` itself would leave each
   // sample its own rounding. `+ 0` turns the `-0` a small negative `t` rounds
   // to into pass 0, so the pass is a plain integer whoever reads it.
-  return { pass: Math.round((t - into) / period) + 0, into };
+  const pass = Math.round((t - into) / period) + 0;
+  // [LAW:no-silent-failure] Past where a pass is a float, `period` is finer than time resolves: the refusal a
+  // boundary walked there gives, said of `t` and not of the infinite sum a pass that overflowed would build.
+  if (!Number.isFinite(pass)) throw new RangeError(`${what}: a period of ${period} s is finer than time resolves near t = ${t}`);
+  return { pass, into };
 }
 
 /** The least normal double, 2^-1022: below it every double is a multiple of `Number.MIN_VALUE`. */

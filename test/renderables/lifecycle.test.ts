@@ -9,12 +9,14 @@ import { segmentsToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
+import { Effected } from "../../src/renderables/effect.js";
 import { dissolveOut, fadeIn, onBeat } from "../../src/renderables/effects.js";
 import { drawnAt, inFrame } from "./in-frame.js";
 import { Group } from "../../src/renderables/group.js";
 import { Live } from "../../src/renderables/live.js";
 import { backspace, scrambleOut, typewriter } from "../../src/renderables/glyph-effects.js";
-import { lifecycle, throughColors, throughGlyphs, type Lifecycle } from "../../src/renderables/lifecycle.js";
+import { lifecycle, throughColors, throughGlyphs, type Half, type Lifecycle } from "../../src/renderables/lifecycle.js";
+import { Padding } from "../../src/renderables/padding.js";
 import { fakeClock } from "../core/fake-clock.js";
 
 const theme = DEFAULT_TERMINAL_THEME;
@@ -233,5 +235,98 @@ describe("a lifecycle through glyph transitions", () => {
     expect(text(draw(still.at(0.5)))).toBe("");
     for (const t of [1, 2, 4.9]) expect(bytes(draw(still.at(t)))).toBe(bytes(draw(line)));
     expect(text(draw(still.at(5.5)))).toBe("");
+  });
+});
+
+describe("a lifecycle through halves written by hand", () => {
+  // [LAW:composability] A half is any function from the element to an animation of it; these use no effect of the library's.
+  /** The element slid in from `cols` columns to the right over a second, then itself. */
+  const slidIn =
+    (cols: number): Half =>
+    (element) =>
+      Animation.sequence<Renderable>(
+        Animation.continuous((t) => new Padding(element, [0, 0, 0, Math.round(cols * (1 - t))])),
+        1,
+        Animation.constant(element),
+      );
+  /** The element slid out `cols` columns to the right over a second, then nothing. */
+  const slidOut =
+    (cols: number): Half =>
+    (element) =>
+      Animation.sequence<Renderable>(
+        Animation.continuous((t) => new Padding(element, [0, 0, 0, Math.round(cols * t)])),
+        1,
+        Animation.constant({ render: () => [] }),
+      );
+  const padded = (cols: number, element: Renderable = line): string => bytes(draw(new Padding(element, [0, 0, 0, cols])));
+
+  it("arrives through the half's frames and is the element from the moment the half says it never changes again", () => {
+    const life = lifecycle(line, { enter: slidIn(4), exit: slidOut(4), key: "hand" }, 1).leave(5);
+    const said = (t: number) => [life.lastChange(t), life.nextChange(t)];
+    expect(bytes(draw(life.at(1)))).toBe(padded(4));
+    expect(bytes(draw(life.at(1.5)))).toBe(padded(2));
+    for (const t of [1, 1.5, 1.9]) expect(said(t)).toEqual([t, t]);
+    for (const t of [2, 3, 4.9]) {
+      expect(bytes(draw(life.at(t)))).toBe(bytes(draw(line)));
+      expect(said(t)).toEqual([2, 5]);
+    }
+  });
+
+  it("leaves through the half's frames over the element, and is gone from the moment the half says it never changes again", () => {
+    const life = lifecycle(line, { enter: slidIn(4), exit: slidOut(4), key: "hand" }, 1).leave(5);
+    expect(bytes(draw(life.at(5)))).toBe(padded(0));
+    expect(bytes(draw(life.at(5.5)))).toBe(padded(2));
+    for (const t of [5, 5.5, 5.9]) expect(life.nextChange(t)).toBe(t);
+    expect([life.gone(5.99), life.gone(6)]).toEqual([false, true]);
+    expect(text(draw(life.at(6)))).toBe("");
+    expect(life.nextChange(6)).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("told to leave while still arriving, draws the exit over the arrival's frame", () => {
+    const life = lifecycle(line, { enter: slidIn(4), exit: slidOut(4), key: "hand" }, 1).leave(1.5);
+    // A quarter into the exit, the arrival is three quarters in: one column from each.
+    expect(bytes(draw(life.at(1.75)))).toBe(padded(1, new Padding(line, [0, 0, 0, 1])));
+    expect(life.gone(2.5)).toBe(true);
+  });
+
+  it("tells the holds the half carries: an arrival stepped on a beat wakes the host on the beats", () => {
+    const stepped: Half = (element, key) => Animation.onBeat(slidIn(4)(element, key), beat([0.25]));
+    const life = lifecycle(line, { enter: stepped, exit: slidOut(4), key: "hand" }, 1);
+    expect(life.nextChange(1.1)).toBe(1.25);
+    expect(life.nextChange(1.3)).toBe(1.5);
+    expect(bytes(draw(life.at(1.3)))).toBe(bytes(draw(life.at(1.25))));
+    // Done at the first hold that starts once the slide is: the element from then.
+    expect(life.nextChange(2)).toBe(Number.POSITIVE_INFINITY);
+    expect(bytes(draw(life.at(2)))).toBe(bytes(draw(line)));
+  });
+
+  it("a half done at every time is done as it begins: the element at once, there from entered and gone from left", () => {
+    const atOnce: Half = (element) => Animation.constant(element);
+    const vanish: Half = () => Animation.constant({ render: () => [] });
+    const life = lifecycle(line, { enter: atOnce, exit: vanish, key: "hand" }, 1).leave(5);
+    expect(bytes(draw(life.at(1)))).toBe(bytes(draw(line)));
+    expect([life.lastChange(1), life.nextChange(1)]).toEqual([1, 5]);
+    expect([life.gone(4.99), life.gone(5)]).toEqual([false, true]);
+    expect([life.lastChange(5), life.nextChange(5)]).toEqual([5, Number.POSITIVE_INFINITY]);
+    // Stepped on a beat, the same: no beat is asked about a time before the half began.
+    const steppedAtOnce: Half = (element) => Animation.onBeat(Animation.constant(element), beat([0.25]));
+    const stepped = lifecycle(line, { enter: steppedAtOnce, exit: vanish, key: "hand" }, 1);
+    expect(bytes(draw(stepped.at(1)))).toBe(bytes(draw(line)));
+    expect([stepped.lastChange(1), stepped.nextChange(1)]).toEqual([1, Number.POSITIVE_INFINITY]);
+  });
+
+  it("refuses a half that never ends when made, by the element's key and the half's role: a bare Effected as either half", () => {
+    // [LAW:no-silent-failure] An Effected's own word on when it changes is "now" at every time, so it is never done.
+    const bare: Half = (element, key) => new Effected(element, fadeIn(curve, 0).effect, { key, theme });
+    expect(() => lifecycle(line, { enter: bare, exit: slidOut(4), key: "hand" }, 1)).toThrow(/lifecycle "hand": the enter half never ends/);
+    expect(() => lifecycle(line, { enter: slidIn(4), exit: bare, key: "hand" }, 1)).toThrow(/lifecycle "hand": the exit half never ends/);
+  });
+});
+
+describe("a half reduced", () => {
+  it("cuts to the transition's end at 0, frames and hold alike, so there is nothing to wake for after", () => {
+    const half = throughColors(fadeIn(curve, 0), theme)(line, "k").reduced();
+    expect(bytes(draw(half.at(0)))).toBe(bytes(draw(half.at(5))));
+    expect([half.lastChange(0), half.nextChange(0), half.nextChange(-1)]).toEqual([0, Number.POSITIVE_INFINITY, 0]);
   });
 });
