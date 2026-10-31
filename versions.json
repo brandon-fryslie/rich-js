@@ -4,15 +4,22 @@
     {
       "version": "pr-522",
       "ref": "refs/pull/522/merge",
-      "sha": "8dd3bc350d49718282f0ac0b197ab8b1422c7a72",
-      "timestamp": "2026-10-31T06:42:42.482Z",
+      "sha": "5c5d703ff4790e90bead5d5a75af42d569595418",
+      "timestamp": "2026-10-31T06:50:42.579Z",
       "commits": [
         {
-          "sha": "8dd3bc350d49718282f0ac0b197ab8b1422c7a72",
+          "sha": "5c5d703ff4790e90bead5d5a75af42d569595418",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T06:40:32Z",
-          "message": "Merge 60fcc8b8210a927787578d9f8b8580a000c35472 into b7d62e39232f05d870e3036d154fa3af754a26ea\n"
+          "timestamp": "2026-10-31T00:48:37-06:00",
+          "message": "Merge eb62e662f2768997230ccc5bd139a4a391327b8b into b7d62e39232f05d870e3036d154fa3af754a26ea\n"
+        },
+        {
+          "sha": "eb62e662f2768997230ccc5bd139a4a391327b8b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T00:48:28-06:00",
+          "message": "buildPalette parses what it is given, and the button label reads its ground (rich-unfiled-791c.32i2)\n\nA key naming no role is refused and one holding `undefined` states nothing, in\none unit rather than a crash on `.alpha` and a silent drop. A `*-muted` that\ndraws nothing leaves its `text-*` on `background`. `button-color-foreground`\nsits on an accent, so it reads `on-primary`.\n\nThe page claimed a misspelt literal is a compile error; `get(string)` admits it.\nThat overload stays because a role read from configuration is a string, and\nremoving it would cost 18 sites here and 10 in cc-candybar, so the page now says\nwhat happens.\n"
         },
         {
           "sha": "60fcc8b8210a927787578d9f8b8580a000c35472",
