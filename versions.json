@@ -4,15 +4,22 @@
     {
       "version": "pr-526",
       "ref": "refs/pull/526/merge",
-      "sha": "17de998c0e6e81cd7bd91e475df7769497e80e84",
-      "timestamp": "2026-10-31T14:25:37.095Z",
+      "sha": "ecae5954cbdff9499e73d8b748f7d8e8a522b01c",
+      "timestamp": "2026-10-31T14:33:38.431Z",
       "commits": [
         {
-          "sha": "17de998c0e6e81cd7bd91e475df7769497e80e84",
+          "sha": "ecae5954cbdff9499e73d8b748f7d8e8a522b01c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T08:23:28-06:00",
-          "message": "Merge 32e0e13e1579b3fe1d7f17c1a9b83032e5d6d6bb into d2fb7b70bfc5060a3b94fefc9ec99d4db82c3a1d\n"
+          "timestamp": "2026-10-31T14:31:39Z",
+          "message": "Merge 686c4285f7098c9780a2515c174686de6873b3bd into d2fb7b70bfc5060a3b94fefc9ec99d4db82c3a1d\n"
+        },
+        {
+          "sha": "686c4285f7098c9780a2515c174686de6873b3bd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T08:31:30-06:00",
+          "message": "The manifest pins each peer at its floor, and the gate covers every peer (rich-unfiled-791c.25dh)\n\ndevDependencies held caret ranges that admitted the very trees the gate\nrefuses, so a routine npm update went red on a change nobody meant as a floor\ndecision. Exact pins leave only a deliberate edit able to move the tree.\n\nThe gate now reads every peer, not only optional ones; a dropped\npeerDependenciesMeta row would have taken a peer out of it silently. A\nnon-semver range is refused with the peer's name, versions compare through\nsemver, and the failure message no longer offers raising the range to a version\nthe registry may not have.\n"
         },
         {
           "sha": "32e0e13e1579b3fe1d7f17c1a9b83032e5d6d6bb",
