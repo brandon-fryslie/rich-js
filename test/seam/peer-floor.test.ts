@@ -1,14 +1,13 @@
 /*
- * The optional peers on disk are the lowest versions their ranges admit, which
- * is what makes `npm run lint` a compile at the floor. `peer-floor.ts` owns the
- * argument and what this cannot see.
+ * The peers on disk are the lowest versions their ranges admit, which is what
+ * makes `npm run lint` a compile at the floor. `peer-floor.ts` owns the argument
+ * and what this cannot see.
  */
 
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { PACKAGE_MANIFEST, REPO_ROOT } from "../../scripts/repo-facts.js";
-import { optionalPeers } from "./optional-peers.js";
 import {
   describePeerFloorViolation,
   peerFloorViolations,
@@ -25,13 +24,10 @@ function peer(range: string, installed: string): InstalledPeer {
   return { name: "engine", range, installed };
 }
 
-describe("the optional peers on disk", () => {
+describe("the peers on disk", () => {
   it("are the lowest versions their ranges admit", () => {
-    const peers = [...optionalPeers(PACKAGE_MANIFEST)].map((name) => ({
-      name,
-      range: PACKAGE_MANIFEST.peerDependencies![name]!,
-      installed: installedVersion(name),
-    }));
+    const declared = Object.entries(PACKAGE_MANIFEST.peerDependencies ?? {});
+    const peers = declared.map(([name, range]) => ({ name, range, installed: installedVersion(name) }));
 
     expect(peerFloorViolations(peers).map(describePeerFloorViolation).join("\n")).toBe("");
   });
@@ -60,8 +56,12 @@ describe("peerFloorViolations", () => {
     expect(peerFloorViolations([peer("^0.12.0 || ^0.10.0", "0.10.0")])).toEqual([]);
   });
 
-  it("refuses a range nothing satisfies, naming the peer", () => {
-    expect(() => peerFloorViolations([peer(">2 <1", "1.0.0")])).toThrow(/engine: >2 <1/);
+  it("reads a build tag as the same version", () => {
+    expect(peerFloorViolations([peer("^7.0.3", "7.0.3+build.1")])).toEqual([]);
+  });
+
+  it.each([">2 <1", "latest"])("refuses %s, which admits no version, naming the peer", (range) => {
+    expect(() => peerFloorViolations([peer(range, "1.0.0")])).toThrow(`engine: ${range}`);
   });
 });
 
