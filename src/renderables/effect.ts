@@ -73,7 +73,7 @@ import { drawnBy, shiftAnchor, type Anchor } from "../core/anchor.js";
 import { Animation, frameTimeOf, holdOf, shownAt, stampFrame } from "../core/animation.js";
 import type { Hold } from "../core/style.js";
 import { cellLen, graphemes } from "../core/cells.js";
-import { ColorDepth, ColorSpec, SURFACE_BLACK, type ColorRgba, type TerminalTheme } from "../core/color.js";
+import { ColorDepth, ColorSpec, SURFACE_BLACK, type ColorRgba, type TerminalColors } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
@@ -206,7 +206,7 @@ export interface Drawn {
   /** The depth the frame is written at: below truecolor a moved colour lands on a palette colour. */
   readonly depth: ColorDepth;
   /** The terminal the frame is drawn on. */
-  readonly theme: TerminalTheme;
+  readonly theme: TerminalColors;
 }
 
 /** What an effect does to the cells of one frame: each cell's look and where it is in, its look out. Return `look` to leave a cell be. */
@@ -239,7 +239,7 @@ export interface EffectedOptions {
    * drawn in, and the sixteen an ANSI colour names. The terminal's own palette
    * is never queried, so the caller says what it is.
    */
-  readonly theme: TerminalTheme;
+  readonly theme: TerminalColors;
 }
 
 /** A frame an effect drew at a moment, and the hold the effect says it is in there. */
@@ -261,7 +261,7 @@ const UNMOVED: Hold = { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number
 export class Recolored implements Renderable, Measurable {
   readonly t: number;
   readonly key: string;
-  readonly theme: TerminalTheme;
+  readonly theme: TerminalColors;
 
   constructor(
     readonly renderable: Renderable,
@@ -464,7 +464,7 @@ export class Recolored implements Renderable, Measurable {
  */
 export class Effected implements Animation<Renderable> {
   readonly key: string;
-  readonly theme: TerminalTheme;
+  readonly theme: TerminalColors;
 
   constructor(
     readonly renderable: Renderable,
@@ -511,7 +511,7 @@ export class Effected implements Animation<Renderable> {
    * [LAW:one-source-of-truth] Read through `movedSpecs`, the one writer a
    * moved slot is written with.
    */
-  static shows(pair: Pair, to: CellColors, depth: ColorDepth, theme: TerminalTheme): CellColors {
+  static shows(pair: Pair, to: CellColors, depth: ColorDepth, theme: TerminalColors): CellColors {
     const from = onScreen(pair, pair.reverse);
     const moved = movedSpecs(from, onScreen(to, pair.reverse), depth, theme);
     return onScreen({ fg: moved.fg?.getTruecolor(theme, true) ?? from.fg, bg: moved.bg?.getTruecolor(theme, false) ?? from.bg }, pair.reverse);
@@ -556,7 +556,7 @@ interface Look {
 }
 
 /** Each of `segments` with how it is drawn at `depth` on `theme`; a control segment draws nothing. */
-function looks(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalTheme): Looked[] {
+function looks(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalColors): Looked[] {
   return [...segments].map((segment) => {
     if (segment.isControl) return { segment, look: undefined };
     const style = segment.style ?? Style.null();
@@ -700,7 +700,7 @@ function drawsLines(style: Style): boolean {
  * a glyph walk is what measuring the words alone, a segment at a time, is
  * spared (`drawnOf`).
  */
-function measured(looked: readonly Looked[], walked: () => readonly Walked[], depth: ColorDepth, theme: TerminalTheme): Drawn {
+function measured(looked: readonly Looked[], walked: () => readonly Walked[], depth: ColorDepth, theme: TerminalColors): Drawn {
   const ground = theme.backgroundColor.hex;
   // [LAW:one-source-of-truth] One listing, each cell with whether it shows; `all` and `cells` are read off it.
   let everything: readonly { readonly cell: ListedCell; readonly shows: boolean }[] | undefined;
@@ -757,7 +757,7 @@ export function confined(effect: Effect, ...owners: readonly object[]): Effect {
  * as `Effected` measures its child for every frame. Measure an element's
  * output under an effect to read the contrast its words are left at.
  */
-export function drawnOf(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalTheme): Drawn {
+export function drawnOf(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalColors): Drawn {
   const looked = looks(segments, depth, theme);
   return measured(looked, () => walk(looked), depth, theme);
 }
@@ -778,7 +778,7 @@ function onScreen<T>(slots: { readonly fg: T; readonly bg: T }, reverse: boolean
  * (`ColorSpec.matchMove`). A slot the depth shows no move in has none, and
  * keeps the spec it was written in.
  */
-function movedSpecs(from: CellColors, to: CellColors, depth: ColorDepth, theme: TerminalTheme): { readonly fg?: ColorSpec; readonly bg?: ColorSpec } {
+function movedSpecs(from: CellColors, to: CellColors, depth: ColorDepth, theme: TerminalColors): { readonly fg?: ColorSpec; readonly bg?: ColorSpec } {
   // [LAW:one-source-of-truth] The writer's surface, so one translucent colour draws one way in a frame.
   const ground = to.bg.compositeOver(SURFACE_BLACK);
   const glyph = to.fg.compositeOver(ground);

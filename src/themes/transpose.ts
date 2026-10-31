@@ -26,7 +26,6 @@
  * nothing in core/ depends back on this file.
  */
 
-import type { ColorRgba } from "../core/color.js";
 import { Oklch, isIdentityKey, type ThemeKey } from "../core/oklch.js";
 import { Palette } from "./palette.js";
 
@@ -74,12 +73,7 @@ export function isAnchored(varName: string): boolean {
  * lightness shifts, mirror-inversions, hue rotations that don't touch L,
  * and combinations of all three. [LAW:types-are-the-program]
  *
- * The transposing path throws if the palette has no `background` var (the
- * `dark`-flag derivation has nothing to read). Failing loudly is preferred
- * over a silent fallback because the alternative — trusting the source
- * `palette.dark` after an arbitrary L-transform — produces flags that lie.
- * The identity fast-path is exempt: it preserves the source `dark` flag
- * verbatim (no derivation), so it needs no `background` and never throws.
+ * The identity fast-path preserves the source `dark` flag verbatim.
  *
  * @param name Optional override for the resulting palette name. Defaults
  *   to the source palette's name. Callers building a family of transposed
@@ -91,25 +85,16 @@ export function transposePalette(
   name?: string,
 ): Palette {
   if (isIdentityKey(key)) {
-    return new Palette(name ?? palette.name, palette.dark, palette.vars);
+    return new Palette(name ?? palette.name, palette.dark, palette.mapRoles((colour) => colour));
   }
   // Anchors share *everything except* hue with the user's key. They still
   // lightness-invert in a dark↔light flip; they still chroma-scale in a
   // saturation sweep — only their hue is held.
   const anchorKey: ThemeKey = { ...key, hueShift: 0 };
-  const next = new Map<string, ColorRgba>();
-  for (const [varName, color] of palette.vars) {
-    const effective = isAnchored(varName) ? anchorKey : key;
-    next.set(varName, Oklch.fromRgba(color).applyKey(effective).toRgba());
-  }
-  const newBackground = next.get("background");
-  if (newBackground === undefined) {
-    throw new Error(
-      `transposePalette: palette "${palette.name}" has no "background" ` +
-        `var; cannot derive the dark flag without a background color.`,
-    );
-  }
-  const newDark = Oklch.fromRgba(newBackground).l < 0.5;
+  const next = palette.mapRoles((colour, role) =>
+    Oklch.fromRgba(colour).applyKey(isAnchored(role) ? anchorKey : key).toRgba(),
+  );
+  const newDark = Oklch.fromRgba(next.background).l < 0.5;
   return new Palette(name ?? palette.name, newDark, next);
 }
 

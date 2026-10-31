@@ -9,7 +9,7 @@ import {
   relativeLuminance,
   resolveTerminal,
   SURFACE_BLACK,
-  type TerminalTheme,
+  type TerminalColors,
 } from "../core/color.js";
 import { Oklch } from "../core/oklch.js";
 
@@ -96,6 +96,44 @@ export function lighten(color: ColorRgba, levels: number): ColorRgba {
   return darken(color, -levels);
 }
 
+/** sRGB → CIE L*a*b* (D65, 2°): the space `shiftLightness` moves a colour in. */
+function rgbToLab(c: ColorRgba): readonly [number, number, number] {
+  const [r, g, b] = [c.red, c.green, c.blue].map((v) => {
+    const channel = v / 255;
+    return channel > 0.04045 ? ((channel + 0.055) / 1.055) ** 2.4 : channel / 12.92;
+  }) as [number, number, number];
+  const [x, y, z] = [
+    (r * 41.24 + g * 35.76 + b * 18.05) / 95.047,
+    (r * 21.26 + g * 71.52 + b * 7.22) / 100,
+    (r * 1.93 + g * 11.92 + b * 95.05) / 108.883,
+  ].map((v) => (v > 0.008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116)) as [number, number, number];
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
+
+function labToRgb(l: number, a: number, b: number, alpha: number): ColorRgba {
+  const cube = (v: number): number => (v > 0.2068930344 ? v ** 3 : (v - 16 / 116) / 7.787);
+  const fy = (l + 16) / 116;
+  const y = cube(fy);
+  const x = 0.95047 * cube(a / 500 + fy);
+  const z = 1.08883 * cube(fy - b / 200);
+  const [red, green, blue] = [
+    x * 3.2406 + y * -1.5372 + z * -0.4986,
+    x * -0.9689 + y * 1.8758 + z * 0.0415,
+    x * 0.0557 + y * -0.204 + z * 1.057,
+  ].map((v) => clampChannel(255 * (v > 0.0031308 ? 1.055 * v ** (1 / 2.4) - 0.055 : 12.92 * v))) as [number, number, number];
+  return new ColorRgba(red, green, blue, alpha);
+}
+
+/**
+ * Move a colour's CIE L* by `amount` (0..1 of the L* scale), keeping its alpha.
+ * Textual's `Color.lighten`, which drew every shade ladder in the bundled
+ * themes, so a ladder derived here continues the ones authored there.
+ */
+export function shiftLightness(color: ColorRgba, amount: number): ColorRgba {
+  const [l, a, b] = rgbToLab(color);
+  return labToRgb(l + amount * 100, a, b, color.alpha);
+}
+
 /**
  * Composite `fg` over `bg` with the given alpha (0..1). At alpha=0 returns bg;
  * at alpha=1 returns fg.
@@ -174,7 +212,7 @@ export function ensureContrast(
   minRatio = 4.5, // WCAG AA for normal text
   drawnAt: ColorDepth = ColorDepth.TRUECOLOR,
   substrate: ColorRgba = SURFACE_BLACK,
-  terminal?: TerminalTheme,
+  terminal?: TerminalColors,
 ): ColorRgba {
   const ground = drawnBackground(bg, substrate);
   const chosen = ensureContrastToward(fg, ground, minRatio, contrastFor(ground));
@@ -207,7 +245,7 @@ export function ensureDrawn(
   drawnAt: ColorDepth,
   accept: (candidate: ColorRgba, drawn: (c: ColorRgba) => ColorRgba) => boolean,
   substrate: ColorRgba = SURFACE_BLACK,
-  terminal?: TerminalTheme,
+  terminal?: TerminalColors,
 ): ColorRgba | undefined {
   // The floor was measured on `chosen` composited over `substrate`, so that
   // opaque colour is what is returned — never a translucent one a different
@@ -233,7 +271,7 @@ export function drawnColour(
   colour: ColorRgba,
   drawnAt: ColorDepth,
   substrate: ColorRgba = SURFACE_BLACK,
-  terminal?: TerminalTheme,
+  terminal?: TerminalColors,
 ): ColorRgba {
   return shownAs(drawnTable(drawnAt, terminal), drawnBackground(colour, substrate));
 }
@@ -280,7 +318,7 @@ function drawnBackground(bg: ColorRgba, substrate: ColorRgba): ColorRgba {
  */
 interface DrawnTable {
   readonly depth: ColorDepth;
-  readonly terminal: TerminalTheme;
+  readonly terminal: TerminalColors;
   readonly written: ColorTable;
   readonly shown: ColorTable;
 }
@@ -294,7 +332,7 @@ interface DrawnTable {
  * Truecolor draws the chosen colour itself, as do the depths no table stands
  * behind.
  */
-function drawnTable(drawnAt: ColorDepth, terminal: TerminalTheme | undefined): DrawnTable | undefined {
+function drawnTable(drawnAt: ColorDepth, terminal: TerminalColors | undefined): DrawnTable | undefined {
   const drawnBy = resolveTerminal(terminal, drawnAt);
   switch (drawnAt) {
     case ColorDepth.EIGHT_BIT:

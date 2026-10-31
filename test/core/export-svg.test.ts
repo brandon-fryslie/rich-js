@@ -6,8 +6,8 @@ import { ColorRgba, STANDARD_TABLE, TerminalTheme } from "../../src/core/color.j
 import { Console } from "../../src/core/console.js";
 import { Style } from "../../src/core/style.js";
 import { Segment } from "../../src/core/segment.js";
-import { Palette } from "../../src/themes/palette.js";
 import { SOLARIZED_LIGHT } from "../../src/themes/terminalThemes.js";
+import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 
 // [LAW:behavior-not-structure] What a viewer of the exported image gets: where
 // each glyph sits, what is painted under and over it, which colours and links
@@ -17,7 +17,7 @@ import { SOLARIZED_LIGHT } from "../../src/themes/terminalThemes.js";
 const CELL = 12.2;
 const PAPER = new ColorRgba(16, 32, 48);
 const INK = new ColorRgba(200, 210, 220);
-const THEME = new TerminalTheme(PAPER, INK, STANDARD_TABLE, new Palette("probe", true, new Map()));
+const THEME = new TerminalTheme(PAPER, INK, STANDARD_TABLE, DEFAULT_TERMINAL_THEME.palette);
 
 const svg = (segments: Segment[], width = 10) => encodeSvg(segments, { theme: THEME, title: "t", width });
 const styled = (style: string, text = "x") => svg([new Segment(text, Style.parse(style))]);

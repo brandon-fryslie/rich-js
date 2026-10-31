@@ -87,15 +87,16 @@ describe("transposePalette — anchor hue is locked", () => {
   // entangling the test with theme-data values. A `background` is required
   // — `transposePalette` reads it to derive the resulting `dark` flag.
   function syntheticPalette(): Palette {
-    return new Palette("synth", true, new Map<string, ColorRgba>([
-      ["background", new ColorRgba(30, 30, 30)],   // a dark gray
-      ["primary",  new ColorRgba(80, 140, 200)],   // a blue
-      ["accent",   new ColorRgba(220, 180, 60)],   // a yellow
-      ["error",    new ColorRgba(220, 60, 60)],    // a red
-      ["error-darken-1",  new ColorRgba(180, 30, 30)],
-      ["success",  new ColorRgba(60, 180, 80)],    // a green
-      ["warning",  new ColorRgba(230, 160, 30)],   // an amber
-    ]));
+    return new Palette("synth", true, {
+      ...getThemePalette("gruvbox").mapRoles((colour) => colour),
+      background: new ColorRgba(30, 30, 30),   // a dark gray
+      primary: new ColorRgba(80, 140, 200),    // a blue
+      accent: new ColorRgba(220, 180, 60),     // a yellow
+      error: new ColorRgba(220, 60, 60),       // a red
+      "error-darken-1": new ColorRgba(180, 30, 30),
+      success: new ColorRgba(60, 180, 80),     // a green
+      warning: new ColorRgba(230, 160, 30),    // an amber
+    });
   }
 
   const ROTATE_60: ThemeKey = {
@@ -198,21 +199,6 @@ describe("transposePalette — INVERT_LIGHTNESS", () => {
     });
     expect(crushed.dark).toBe(true);
   });
-
-  it("throws if the palette has no background var (loud failure)", () => {
-    const noBg = new Palette("no-bg", true, new Map<string, ColorRgba>([
-      ["primary", new ColorRgba(80, 140, 200)],
-      ["foreground", new ColorRgba(220, 220, 220)],
-    ]));
-    expect(() =>
-      transposePalette(noBg, {
-        hueShift: 30,
-        chromaScale: 1,
-        lightnessScale: 1,
-        lightnessShift: 0,
-      }),
-    ).toThrow(/no "background" var/);
-  });
 });
 
 describe("themeKeyForRoot", () => {
@@ -265,11 +251,7 @@ describe("themeKeyForRoot", () => {
   });
 
   it("throws when the tonic var is missing (loud failure)", () => {
-    const noTonic = new Palette("no-tonic", true, new Map<string, ColorRgba>([
-      ["background", new ColorRgba(30, 30, 30)],
-      ["foreground", new ColorRgba(220, 220, 220)],
-    ]));
-    expect(() => themeKeyForRoot(noTonic, "primary", 120)).toThrow(/no "primary" var/);
+    expect(() => themeKeyForRoot(getThemePalette("gruvbox"), "no-such-role", 120)).toThrow(/no "no-such-role" var/);
   });
 
   it("throws on a non-finite target hue at the boundary, not downstream", () => {

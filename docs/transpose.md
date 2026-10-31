@@ -84,6 +84,33 @@ console.print(`[on ${surface.hex}]      [/] surface  [on ${tint.hex}]      [/] t
 
 `a.deltaE(b)` is the perceptual distance between two colours, ΔE_OK: Euclidean distance in OKLab. Around 0.02 is the smallest difference the eye resolves.
 
+## Every palette has every role
+
+A palette holds the same roles whichever way it was made: a bundled theme from `getThemePalette`, the palette of a terminal theme, a `buildPalette` of your own, or a transposition of any of them. `get` on a role is a colour, never `undefined`, and `PaletteRole` is the type naming them, so a misspelt role is a compile error where the name is a literal. A string only known at run time reads `ColorRgba | undefined`.
+
+`buildPalette` needs the eight base colours and derives the rest with Textual's formulas. Any other role you state keeps its colour, and what is derived from it follows:
+
+```ts silent
+import { buildPalette, parseRgbHex } from "@promptctl/rich-js";
+
+const palette = buildPalette("indigo-night", true, {
+  primary: parseRgbHex("4f46e5"),
+  secondary: parseRgbHex("0ea5e9"),
+  accent: parseRgbHex("eab308"),
+  success: parseRgbHex("16a34a"),
+  warning: parseRgbHex("d97706"),
+  error: parseRgbHex("dc2626"),
+  background: parseRgbHex("0f172a"),
+  foreground: parseRgbHex("e2e8f0"),
+  panel: parseRgbHex("1e293b"),
+});
+
+palette.get("footer-background"); // the stated panel
+palette.get("surface-lighten-2"); // derived
+```
+
+`new Palette(name, dark, roles)` takes a colour for every role, so a palette with one missing does not compile; `palette.mapRoles` makes such a record from an existing palette.
+
 ## transposePalette — a whole theme at once
 
 `transposePalette(palette, key, name?)` returns a new `Palette` with every color transposed. It is pure, and `IDENTITY` is byte-exact (no lossy round-trip):

@@ -8,7 +8,7 @@ import { Style } from "../../src/core/style.js";
 import { RichText, resolveStyle } from "../../src/core/text.js";
 import type { Segment } from "../../src/core/segment.js";
 import { Table } from "../../src/renderables/table.js";
-import { Palette } from "../../src/themes/palette.js";
+import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 
 // [LAW:behavior-not-structure] Bytes in, what the text looks like out: its
 // plain string and the style at each character, never how the spans are cut.
@@ -71,7 +71,7 @@ describe("decodeAnsi colours", () => {
         new ColorRgba(0, 0, 0),
         new ColorRgba(255, 255, 255),
         new ColorTable([STANDARD_TABLE.get(0), red, ...Array.from({ length: 14 }, (_, i) => STANDARD_TABLE.get(i + 2))]),
-        new Palette("probe", true, new Map()),
+        DEFAULT_TERMINAL_THEME.palette,
       );
     const segments = [...decodeAnsi("\x1b[31mred").render({ maxWidth: 80, isTerminal: false, asciiOnly: false })];
     const ink = (t: TerminalTheme) => exportLines(segments, t)[0]![0]!.look.foreground;

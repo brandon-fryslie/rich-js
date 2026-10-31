@@ -3,7 +3,7 @@ import { exportCanvas, exportLines, parseHref, resolveLook } from "../../src/cor
 import { ColorDepth, ColorRgba, ColorTable, STANDARD_TABLE, TerminalTheme } from "../../src/core/color.js";
 import { Style } from "../../src/core/style.js";
 import { Segment } from "../../src/core/segment.js";
-import { Palette } from "../../src/themes/palette.js";
+import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 
 // [LAW:behavior-not-structure] These pin what a styled run looks like under a
 // theme — the contract both exporters draw — not how the resolution is written.
@@ -17,7 +17,7 @@ const THEME = new TerminalTheme(
   PAPER,
   INK,
   new ColorTable([STANDARD_TABLE.get(0), RETINTED_RED, ...Array.from({ length: 14 }, (_, i) => STANDARD_TABLE.get(i + 2))]),
-  new Palette("probe", true, new Map()),
+  DEFAULT_TERMINAL_THEME.palette,
 );
 
 const look = (markup: string) => resolveLook(Style.parse(markup), THEME);
