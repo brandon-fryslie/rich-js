@@ -119,6 +119,10 @@ describe("what a role is drawn on decides it", () => {
       expect(contrastRatio(palette.get(role), ground), role).toBeGreaterThanOrEqual(3);
     }
   });
+
+  it.each(derived.map((palette) => [palette.name, palette] as const))("%s: the smallest heading reads", (_name, palette) => {
+    expect(contrastRatio(palette.get("markdown-h6-color"), palette.get("background"))).toBeGreaterThanOrEqual(3);
+  });
 });
 
 describe("a derived ladder continues the authored ones", () => {

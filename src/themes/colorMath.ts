@@ -11,7 +11,7 @@ import {
   SURFACE_BLACK,
   type TerminalColors,
 } from "../core/color.js";
-import { Oklch } from "../core/oklch.js";
+import { Oklch, linearToSrgb, srgbToLinear } from "../core/oklch.js";
 
 const LEVEL_STEP = 0.1;
 
@@ -98,10 +98,7 @@ export function lighten(color: ColorRgba, levels: number): ColorRgba {
 
 /** sRGB → CIE L*a*b* (D65, 2°): the space `shiftLightness` moves a colour in. */
 function rgbToLab(c: ColorRgba): readonly [number, number, number] {
-  const [r, g, b] = [c.red, c.green, c.blue].map((v) => {
-    const channel = v / 255;
-    return channel > 0.04045 ? ((channel + 0.055) / 1.055) ** 2.4 : channel / 12.92;
-  }) as [number, number, number];
+  const [r, g, b] = [c.red, c.green, c.blue].map((v) => srgbToLinear(v / 255)) as [number, number, number];
   const [x, y, z] = [
     (r * 41.24 + g * 35.76 + b * 18.05) / 95.047,
     (r * 21.26 + g * 71.52 + b * 7.22) / 100,
@@ -120,7 +117,7 @@ function labToRgb(l: number, a: number, b: number, alpha: number): ColorRgba {
     x * 3.2406 + y * -1.5372 + z * -0.4986,
     x * -0.9689 + y * 1.8758 + z * 0.0415,
     x * 0.0557 + y * -0.204 + z * 1.057,
-  ].map((v) => clampChannel(255 * (v > 0.0031308 ? 1.055 * v ** (1 / 2.4) - 0.055 : 12.92 * v))) as [number, number, number];
+  ].map((v) => clampChannel(255 * linearToSrgb(v))) as [number, number, number];
   return new ColorRgba(red, green, blue, alpha);
 }
 

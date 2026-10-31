@@ -97,14 +97,14 @@ export function isIdentityKey(k: ThemeKey): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Pure conversion helpers (private).
+// Pure conversion helpers.
 // ---------------------------------------------------------------------------
 
-function srgbToLinear(v: number): number {
+export function srgbToLinear(v: number): number {
   return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
 }
 
-function linearToSrgb(v: number): number {
+export function linearToSrgb(v: number): number {
   return v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
 }
 

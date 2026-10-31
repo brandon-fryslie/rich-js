@@ -191,11 +191,11 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
   "markdown-h5-background": none,
   "markdown-h5-color": same("foreground"),
   "markdown-h6-background": none,
-  "markdown-h6-color": same("foreground-muted"),
+  "markdown-h6-color": same("text-muted"),
 
-  scrollbar: (at) => withAlpha(at("primary"), SCROLLBAR_ALPHA).compositeOver(at("background-darken-1")),
+  scrollbar: (at) => alphaBlend(at("primary"), at("background-darken-1"), SCROLLBAR_ALPHA),
   "scrollbar-active": same("primary"),
-  "scrollbar-hover": (at) => withAlpha(at("primary"), SCROLLBAR_HOVER_ALPHA).compositeOver(at("background-darken-1")),
+  "scrollbar-hover": (at) => alphaBlend(at("primary"), at("background-darken-1"), SCROLLBAR_HOVER_ALPHA),
   "scrollbar-background": same("background-darken-1"),
   "scrollbar-background-active": same("scrollbar-background"),
   "scrollbar-background-hover": same("scrollbar-background"),
@@ -206,6 +206,7 @@ const BASE_KEYS: readonly BaseRole[] = [...ACCENT_KEYS, "background", "foregroun
 
 /** Every role of every palette, read off the rules. */
 export const PALETTE_ROLES: readonly PaletteRole[] = [...BASE_KEYS, ...(Object.keys(RULES) as PaletteRole[])];
+const ROLE_NAMES: ReadonlySet<string> = new Set(PALETTE_ROLES);
 
 /**
  * Build a full semantic palette from its base colors and any other role it
@@ -219,22 +220,7 @@ export const PALETTE_ROLES: readonly PaletteRole[] = [...BASE_KEYS, ...(Object.k
  * `boost` alone stays a layer: it is what `panel` composites.
  */
 export function buildPalette(name: string, dark: boolean, given: StatedRoles): Palette {
-  const drawn = drawnOn(name, given.background);
-  // Every base colour is derived from, and a fully transparent one draws no
-  // colour of its own to derive a muted shade or a contrast from.
-  // [LAW:no-silent-failure]
-  const draw = (key: keyof BaseColors): ColorRgba => {
-    const colour = given[key];
-    if (colour.alpha === 0) {
-      throw new RangeError(
-        `palette ${JSON.stringify(name)}: ${key} is fully transparent (${colour.hex}), so there is no colour to derive the palette from`,
-      );
-    }
-    return drawn(colour);
-  };
   const known = statedRoles(name, given);
-  for (const key of ACCENT_KEYS) known.set(key, draw(key));
-  known.set("foreground", draw("foreground"));
 
   // [LAW:no-ambient-temporal-coupling] A rule asks for the roles it reads, so
   // no order among the rules matters. The eight base roles are always known.
@@ -262,13 +248,25 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
  */
 function statedRoles(name: string, given: StatedRoles): Map<PaletteRole, ColorRgba> {
   const drawn = drawnOn(name, given.background);
-  const roles = new Set<string>(PALETTE_ROLES);
   const stated = Object.entries(given).flatMap(([role, colour]: [string, ColorRgba | undefined]): [PaletteRole, ColorRgba][] => {
-    if (!roles.has(role)) throw new RangeError(`palette ${JSON.stringify(name)}: ${JSON.stringify(role)} is not a role`);
+    if (!ROLE_NAMES.has(role)) throw new RangeError(`palette ${JSON.stringify(name)}: ${JSON.stringify(role)} is not a role`);
     if (colour === undefined) return [];
     return [[role as PaletteRole, role === "boost" ? colour : drawn(colour)]];
   });
-  return new Map(stated);
+  const known = new Map(stated);
+  // Every base colour is derived from, and a fully transparent one draws no
+  // colour of its own to derive a muted shade or a contrast from.
+  // [LAW:no-silent-failure]
+  for (const key of BASE_KEYS) {
+    const colour = given[key];
+    if (colour.alpha === 0) {
+      throw new RangeError(
+        `palette ${JSON.stringify(name)}: ${key} is fully transparent (${colour.hex}), so there is no colour to derive the palette from`,
+      );
+    }
+    known.set(key, drawn(colour));
+  }
+  return known;
 }
 
 /**

@@ -1004,20 +1004,18 @@ export function blendRgb(
 // --- TerminalTheme ---
 
 /**
- * A terminal theme — surface/foreground baseline, the sixteen ANSI colours,
- * and a semantic palette.
- *
- * **`ansiColors` is the theme's own sixteen colours**, the shades a terminal
- * showing this theme draws `red`, `blue` and the rest in. `ColorSpec.parse("red")`
- * is ANSI colour 1 under every theme; which red that is, is the theme's to say,
- * as it is in Rich, where each `TerminalTheme` carries its own table.
+ * What a terminal draws with: the part of a `TerminalTheme` a colour resolves
+ * against.
  */
-export class TerminalTheme {
+export class TerminalColors {
+  // Private, so nothing but this constructor makes one: an object of the same
+  // shape has not been through the check below.
+  private declare readonly checked: true;
+
   constructor(
     readonly backgroundColor: ColorRgba,
     readonly foregroundColor: ColorRgba,
     readonly ansiColors: ColorTable,
-    readonly palette: Palette,
   ) {
     // [LAW:parse-dont-validate] Every reader indexes `ansiColors` 0–15 as the
     // terminal's sixteen, so a theme is the proof it holds exactly those.
@@ -1029,8 +1027,25 @@ export class TerminalTheme {
   }
 }
 
-/** What a terminal draws with: the part of a `TerminalTheme` a colour resolves against. */
-export type TerminalColors = Pick<TerminalTheme, "backgroundColor" | "foregroundColor" | "ansiColors">;
+/**
+ * A terminal theme — surface/foreground baseline, the sixteen ANSI colours,
+ * and a semantic palette.
+ *
+ * **`ansiColors` is the theme's own sixteen colours**, the shades a terminal
+ * showing this theme draws `red`, `blue` and the rest in. `ColorSpec.parse("red")`
+ * is ANSI colour 1 under every theme; which red that is, is the theme's to say,
+ * as it is in Rich, where each `TerminalTheme` carries its own table.
+ */
+export class TerminalTheme extends TerminalColors {
+  constructor(
+    backgroundColor: ColorRgba,
+    foregroundColor: ColorRgba,
+    ansiColors: ColorTable,
+    readonly palette: Palette,
+  ) {
+    super(backgroundColor, foregroundColor, ansiColors);
+  }
+}
 
 // --- ColorTable data ---
 
@@ -1128,18 +1143,10 @@ export const WINDOWS_TABLE = new ColorTable(buildWindowsTable());
 // terminal a colour's depth assumes, its own sixteen and no palette, which the
 // lookups it serves never read.
 
-const INTERNAL_DEFAULT_TERMINAL: TerminalColors = {
-  backgroundColor: new ColorRgba(0, 0, 0),
-  foregroundColor: new ColorRgba(255, 255, 255),
-  ansiColors: STANDARD_TABLE,
-};
+const INTERNAL_DEFAULT_TERMINAL = new TerminalColors(new ColorRgba(0, 0, 0), new ColorRgba(255, 255, 255), STANDARD_TABLE);
 
 /** The Windows console in its default Campbell scheme: a WINDOWS colour's terminal. */
-const WINDOWS_CONSOLE_TERMINAL: TerminalColors = {
-  backgroundColor: WINDOWS_TABLE.get(0),
-  foregroundColor: WINDOWS_TABLE.get(7),
-  ansiColors: WINDOWS_TABLE,
-};
+const WINDOWS_CONSOLE_TERMINAL = new TerminalColors(WINDOWS_TABLE.get(0), WINDOWS_TABLE.get(7), WINDOWS_TABLE);
 
 /**
  * The terminal a colour at `depth` is drawn by: `theme`, or when a caller names
