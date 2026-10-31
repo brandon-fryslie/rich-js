@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-522",
+      "ref": "refs/pull/522/merge",
+      "sha": "30912051d2f40442850d264fd9f3b907797cb4f0",
+      "timestamp": "2026-10-31T06:28:50.390Z",
+      "commits": [
+        {
+          "sha": "30912051d2f40442850d264fd9f3b907797cb4f0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T00:26:51-06:00",
+          "message": "Merge 3cee933363cd245b4f7952986c3ffc0071b6f42f into b7d62e39232f05d870e3036d154fa3af754a26ea\n"
+        },
+        {
+          "sha": "3cee933363cd245b4f7952986c3ffc0071b6f42f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T00:26:41-06:00",
+          "message": "Every palette holds every role, and one incomplete cannot be built (rich-unfiled-791c.32i2)\n\nThe 23 authored themes shared 151 roles, buildPalette produced 29, and seven\nof those 29 were on no authored theme, so `palette.get(\"background-muted\")` on\ntokyo-night was undefined. core/color.ts also built two empty palettes.\n\nPaletteRole is now the one statement of the set. buildPalette's rules are total\nover it, so a role does not compile until it can be derived, and an authored\ntheme is buildPalette with most roles stated. The constructor takes a colour\nfor every role, which is what lets the two no-background branches go.\n\nThe fallback terminals carried an empty Palette nothing read, so colour\nresolution now asks for TerminalColors, and core/color's edge to palette.ts is\ntype-only.\n\nBreaking: `new Palette(name, dark, map)` is now `new Palette(name, dark, roles)`.\nEvery existing colour is unchanged: 3,618 values compared across the 23 authored\npalettes and five derived ones. Version 0.27.0.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b7d62e39232f05d870e3036d154fa3af754a26ea",
