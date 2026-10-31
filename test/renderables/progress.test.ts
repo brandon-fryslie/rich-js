@@ -99,7 +99,7 @@ describe("Progress expand (rich-justify-0cr.3)", () => {
     );
     const id = progress.addTask("compiling", { total: 100 });
     progress.updateTask(id, { completed: 42 });
-    const lines = Segment.splitLines([...progress.render({ ...OPTS, maxWidth })]);
+    const lines = Segment.splitLines([...progress.render({ ...OPTS, frame: progress.frameNow(), maxWidth })]);
     expect(lines).toHaveLength(1);
     return lines[0]!.map((segment) => segment.text).join("");
   };
@@ -136,7 +136,7 @@ describe("A squeezed row narrows its bar before its description (rich-table-frxv
   it("keeps the description whole and draws the bar 21 cells wide", () => {
     const progress = new Progress(new TextColumn("{task.description}"), new BarColumn(40));
     progress.addTask("download", { total: 10 });
-    const line = Segment.splitLines([...progress.render({ ...OPTS, maxWidth: 30 })])[0]!
+    const line = Segment.splitLines([...progress.render({ ...OPTS, frame: progress.frameNow(), maxWidth: 30 })])[0]!
       .map((segment) => segment.text)
       .join("");
     expect(line).toBe(`download ${"━".repeat(21)}`);
@@ -152,7 +152,7 @@ describe("ProgressColumn.tableColumn (rich-progress-j4lb)", () => {
     const console = new Console({ width: 14, colorSystem: null, record: true, file: { write: () => {} } });
     const progress = new Progress(new TextColumn("task"), message, { console });
     progress.addTask("a", { total: 10 });
-    console.print(progress);
+    console.print(progress, { frame: progress.frameNow() });
     expect(console.exportText()).toBe("task alpha    \n     beta     \n     gamma    \n");
   });
 });
@@ -166,7 +166,7 @@ describe("A task description keeps its own end (rich-embed-1r2m)", () => {
     const progress = new Progress(new TextColumn("{task.description}"), new TextColumn("end"), { console });
     progress.addTask("foo\n", { total: 10 });
     progress.addTask("bar", { total: 10 });
-    console.print(progress);
+    console.print(progress, { frame: progress.frameNow() });
     expect(console.exportText()).toBe("foo end\n       \nbar end\n");
   });
 });
@@ -181,7 +181,7 @@ describe("TaskProgressColumn (rich-progress-sy9s)", () => {
     );
     const id = progress.addTask("compiling", { total });
     progress.updateTask(id, { completed });
-    const lines = Segment.splitLines([...progress.render({ ...OPTS, maxWidth: 30 })]);
+    const lines = Segment.splitLines([...progress.render({ ...OPTS, frame: progress.frameNow(), maxWidth: 30 })]);
     return lines[0]!.map((segment) => segment.text).join("");
   };
 
@@ -232,7 +232,7 @@ describe("SpinnerColumn (rich-progress-sy9s)", () => {
     const progress = new Progress(column, new TextColumn("end"), { console, clock: fakeClock() });
     const id = progress.addTask("x", task);
     for (const completed of updates) progress.updateTask(id, { completed });
-    console.print(progress);
+    console.print(progress, { frame: progress.frameNow() });
     return { output: chunks.join(""), finished: progress.finished };
   };
 
@@ -288,7 +288,7 @@ describe("SpinnerColumn (rich-progress-sy9s)", () => {
     const progress = new Progress(column, new TextColumn("end"), { console, clock: fakeClock() });
     progress.addTask("a", { total: 10 });
     progress.updateTask(progress.addTask("b", { total: 10 }), { completed: 10 });
-    console.print(progress);
+    console.print(progress, { frame: progress.frameNow() });
     expect(chunks.join("")).toBe(expected);
   });
 
@@ -299,7 +299,7 @@ describe("SpinnerColumn (rich-progress-sy9s)", () => {
     const clock = fakeClock();
     const progress = new Progress(new SpinnerColumn("dots", { style: "none" }), { console: new Console({ file: { write: () => {} } }), clock });
     progress.addTask("x", { total: 10 });
-    const frame = (): string => renderToString(progress, { width: 10 }).trim();
+    const frame = (): string => renderToString(progress, { width: 10, frame: progress.frameNow() }).trim();
     const samples: string[] = [];
     for (let i = 0; i < 240; i++) {
       samples.push(frame());
@@ -325,7 +325,7 @@ describe("SpinnerColumn (rich-progress-sy9s)", () => {
     const progress = new Progress(new SpinnerColumn("dots", { style: "none" }), { console: new Console({ file: { write: () => {} } }), clock });
     clock.advance(0.5);
     progress.addTask("x", { total: 10 });
-    const frame = (): string => renderToString(progress, { width: 10 }).trim();
+    const frame = (): string => renderToString(progress, { width: 10, frame: progress.frameNow() }).trim();
     // 80 ms frames, an 800 ms period: half-seconds land 0.5, 0.7 and 0.1 s into a pass.
     expect(frame()).toBe(dots[6]);
     clock.advance(1);
@@ -363,14 +363,14 @@ describe("BarColumn pulses (rich-effects-fxiy.3rg)", () => {
       renderToString(inFrame(new ProgressBar({ total, completed: 0, width: 20, pulse }), t), { width: 20 }).trimEnd();
     // Printed, the progress draws its bars at 7.5s on its own clock: a pulse there is not the pulse at 0.
     expect(bar(10, true, 7.5)).not.toBe(bar(10, true, 0));
-    expect(renderToString(progress, { width: 20 }).trimEnd().split("\n")).toEqual([bar(10, false, 7.5), bar(10, true, 7.5), bar(100, true, 7.5)]);
+    expect(renderToString(progress, { width: 20, frame: progress.frameNow() }).trimEnd().split("\n")).toEqual([bar(10, false, 7.5), bar(10, true, 7.5), bar(100, true, 7.5)]);
   });
 
   it("moves a task with no total along as the clock does", () => {
     const clock = fakeClock();
     const progress = new Progress(new BarColumn(40), { console: new Console({ file: { write: () => {} } }), clock });
     progress.addTask("open-ended");
-    const frame = (): Segment[] => [...progress.render({ ...OPTS, colorSystem: ColorDepth.TRUECOLOR })];
+    const frame = (): Segment[] => [...progress.render({ ...OPTS, frame: progress.frameNow(), colorSystem: ColorDepth.TRUECOLOR })];
     clock.advance(2.5);
     const early = frame();
     clock.advance(2);
@@ -421,7 +421,7 @@ describe("TimeElapsedColumn and TimeRemainingColumn (rich-progress-jj5r)", () =>
     clock.advance(10);
     progress.updateTask(r, { completed: 6 });
     progress.updateTask(progress.addTask("z", { total: 10 }), { completed: 5 });
-    [...progress.render(OPTS)];
+    [...progress.render({ ...OPTS, frame: progress.frameNow() })];
 
     expect(rows).toEqual([
       ["0:00:05 progress.elapsed", "0:00:00 progress.remaining", "0:00:05 progress.elapsed"],
@@ -482,7 +482,7 @@ describe("TimeRemainingColumn's speed (rich-progress-jj5r.ef9)", () => {
       clock.advance(at - clock.now());
       update();
       frame = [];
-      [...progress.render(OPTS)];
+      [...progress.render({ ...OPTS, frame: progress.frameNow() })];
       return frame;
     });
 
@@ -513,7 +513,7 @@ describe("TimeRemainingColumn's speed (rich-progress-jj5r.ef9)", () => {
     const clock = fakeClock();
     const progress = new Progress(recorder, { console: new Console({ file: { write: () => {} } }), clock });
     scenario(progress, clock);
-    [...progress.render(OPTS)];
+    [...progress.render({ ...OPTS, frame: progress.frameNow() })];
     return text;
   }
 
@@ -584,7 +584,7 @@ describe("Progress counts", () => {
     const id = progress.addTask("x", { total: 10 });
     progress.updateTask(id, { completed: 3 });
     expect(() => progress.updateTask(id, { completed: 5, advance: NaN, description: "y" })).toThrow(/advance/);
-    const line = () => Segment.splitLines([...progress.render(OPTS)])[0]!.map((segment) => segment.text).join("").trimEnd();
+    const line = () => Segment.splitLines([...progress.render({ ...OPTS, frame: progress.frameNow() })])[0]!.map((segment) => segment.text).join("").trimEnd();
     expect(line()).toBe("x  3/10");
     progress.updateTask(id, { completed: 1e308 });
     const before = line();
@@ -596,7 +596,7 @@ describe("Progress counts", () => {
     const progress = new Progress(new TextColumn("{task.description}"), new MofNCompleteColumn());
     const id = progress.addTask("x", { total: 100 });
     progress.updateTask(id, { completed: 10, advance: 5 });
-    const line = Segment.splitLines([...progress.render(OPTS)])[0]!.map((segment) => segment.text).join("");
+    const line = Segment.splitLines([...progress.render({ ...OPTS, frame: progress.frameNow() })])[0]!.map((segment) => segment.text).join("");
     expect(line.trimEnd()).toBe("x  10/100");
   });
 });
@@ -607,7 +607,7 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
   // One bar, 10 cells, as Progress draws it at the clock's now: with no
   // colour, so the back is blank and every bar glyph drawn is the fill.
   const bar = (progress: Progress, options: Partial<RenderOptions> = {}): Segment[] =>
-    [...progress.render({ ...OPTS, maxWidth: 10, colorSystem: null, ...options })];
+    [...progress.render({ ...OPTS, frame: progress.frameNow(), maxWidth: 10, colorSystem: null, ...options })];
   const filled = (segments: Segment[]): number => cellsOf(segments, "━");
   function cellsOf(segments: Segment[], glyph: string): number {
     return [...segments.map((segment) => segment.text).join("")].filter((c) => c === glyph).length;
@@ -668,9 +668,9 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
     const progress = new Progress(new BarColumn(10), { console: quiet(), clock, fill: linear });
     progress.addTask("open-ended");
     const pulse = inFrame(new ProgressBar({ total: 100, width: 10, pulse: true }), 0);
-    expect(renderToString(progress, { width: 10 }).trimEnd()).toBe(renderToString(pulse, { width: 10 }).trimEnd());
+    expect(renderToString(progress, { width: 10, frame: progress.frameNow() }).trimEnd()).toBe(renderToString(pulse, { width: 10 }).trimEnd());
     const truecolor = { ...OPTS, maxWidth: 10, colorSystem: ColorDepth.TRUECOLOR };
-    expect(Segment.nextChange([...progress.render(truecolor)])).toBe(Segment.nextChange([...pulse.render(truecolor)]));
+    expect(Segment.nextChange([...progress.render({ ...truecolor, frame: progress.frameNow() })])).toBe(Segment.nextChange([...pulse.render(truecolor)]));
   });
 
   // A back-out ease toward 95 passes 100 on its way: the bar is drawn full,
@@ -686,7 +686,7 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
     expect(eased.at(peak)).toBeGreaterThan(100);
     clock.advance(peak);
     const drawn = (finished: boolean): string => renderToString(new ProgressBar({ total: 100, completed: eased.at(peak), width: 10, finished }), { width: 10 }).trimEnd();
-    expect(renderToString(progress, { width: 10 }).trimEnd()).toBe(drawn(false));
+    expect(renderToString(progress, { width: 10, frame: progress.frameNow() }).trimEnd()).toBe(drawn(false));
     expect(drawn(false)).not.toBe(drawn(true));
   });
 
@@ -703,7 +703,7 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
       for (let tick = 600; tick <= 780; tick++, clock.advance(1 / 60)) {
         const to = updates.get(tick);
         if (to !== undefined) progress.updateTask(id, { completed: to });
-        if (tick % (60 / fps) === 0) frames.set(tick, renderToString(progress, { width: 10 }).trimEnd());
+        if (tick % (60 / fps) === 0) frames.set(tick, renderToString(progress, { width: 10, frame: progress.frameNow() }).trimEnd());
       }
       return frames;
     };
@@ -751,7 +751,7 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
     const id = progress.addTask("job", { total, start });
     for (const step of steps) step === "start" ? progress.startTask(id) : progress.updateTask(id, { completed: step });
     const expected = new ProgressBar({ total, completed, width: 10, finished: done });
-    expect(renderToString(progress, { width: 10 }).trimEnd()).toBe(renderToString(expected, { width: 10 }).trimEnd());
+    expect(renderToString(progress, { width: 10, frame: progress.frameNow() }).trimEnd()).toBe(renderToString(expected, { width: 10 }).trimEnd());
   });
 
   it("keeps the ease running through an update that leaves the count alone", () => {
@@ -771,11 +771,11 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
 // from one host: its own Live, or the host it is drawn by.
 describe("a Progress is timed on the host that draws it (rich-animation-42lg.1t6)", () => {
   const quiet = (): Console => new Console({ file: { write: () => {} } });
-  const elapsedOf = (progress: Progress, options: RenderOptions = OPTS): string => [...progress.render({ ...options, maxWidth: 40 })].map((segment) => segment.text).join("").trim();
+  const elapsedOf = (progress: Progress, options: RenderOptions = { ...OPTS, frame: progress.frameNow() }): string => [...progress.render({ ...options, maxWidth: 40 })].map((segment) => segment.text).join("").trim();
   const timed = (host: FrameHost): Progress => new Progress(new TextColumn("{task.description}"), new TimeElapsedColumn(), { drawnBy: host });
   /** A host whose time the test sets, counting the reads of it. */
   const settable = (frameTime: number) => {
-    const host = { reads: 0, time: frameTime, get frameTime() { host.reads++; return host.time; } };
+    const host = { reads: 0, time: frameTime, frameNow() { host.reads++; return { time: host.time, host }; } };
     return host;
   };
   const later = () => new Promise((resolve) => setTimeout(resolve));
@@ -956,7 +956,7 @@ describe("a Progress is timed on the host that draws it (rich-animation-42lg.1t6
     progress.addTask("job");
     clock.advance(3);
     live.update(() => progress);
-    expect(elapsedOf(progress, { ...OPTS, frame: { time: live.frameTime, host: live } })).toBe("job 0:00:03");
+    expect(elapsedOf(progress, { ...OPTS, frame: live.frameNow() })).toBe("job 0:00:03");
   });
 
   it("is drawn by a WidgetApp it was made for", async () => {

@@ -333,7 +333,7 @@ describe("Animation.of keeps what it is handed", () => {
       }
     }
     const steps = Animation.of(new Steps());
-    const segments = [...render(steps, { maxWidth: 20, frame: { time: 2.5, host: { frameTime: 2.5 } } })];
+    const segments = [...render(steps, { maxWidth: 20, frame: { time: 2.5, host: {} } })];
     expect(segments.map((s) => s.text).join("")).toBe("step 2");
     expect(Segment.nextChange(segments)).toBe(3);
     expect(Segment.lastChange(segments)).toBe(2);

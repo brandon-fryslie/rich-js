@@ -27,6 +27,7 @@
 
 import { Animation } from "../../src/core/animation.js";
 import type { Renderable } from "../../src/core/protocol.js";
+import { STILL } from "../renderables/in-frame.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { Emoji } from "../../src/core/emoji.js";
@@ -76,7 +77,7 @@ export type LineEnd =
  * text and move no cursor to a new line, so they are passed over.
  */
 export function endsOwnLine(renderable: Renderable, maxWidth: number): boolean {
-  const texts = [...renderable.render({ maxWidth })]
+  const texts = [...renderable.render({ maxWidth, frame: STILL.frameNow() })]
     .filter((segment: Segment) => segment.control === undefined && segment.text !== "")
     .map((segment) => segment.text);
   const last = texts.at(-1);
@@ -130,7 +131,7 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
   Progress: {
     ends: "own-line",
     build: () => {
-      const progress = new Progress();
+      const progress = new Progress({ drawnBy: STILL });
       progress.addTask("t");
       return progress;
     },

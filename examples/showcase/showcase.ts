@@ -260,7 +260,7 @@ function dashboardAt(t: number): Layout {
 // a still frame can be taken as soon as the body has run, and it has to show
 // the dashboard, not the empty screen Live starts on.
 const FRAMES_PER_SECOND = 12;
-const draw = (): void => live.update(dashboardAt(live.frameTime), { refresh: true });
+const draw = (): void => live.update(dashboardAt(live.frameNow().time), { refresh: true });
 live.start();
 draw();
 setInterval(draw, 1000 / FRAMES_PER_SECOND);

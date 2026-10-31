@@ -103,7 +103,7 @@ function makeHarness(initial: StubWidget[] = []): Harness {
     get frame() {
       return paint(widgets);
     },
-    frameTime: 0,
+    frameNow: () => ({ time: 0, host: source }),
     refresh: () => {},
   };
 

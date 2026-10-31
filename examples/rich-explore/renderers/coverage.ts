@@ -57,7 +57,7 @@ import {
   // Protocol
   render,
 } from "@promptctl/rich-js";
-import type { Renderable, RenderOptions } from "@promptctl/rich-js";
+import type { FrameHost, Renderable, RenderOptions } from "@promptctl/rich-js";
 
 export class CoverageRenderable implements Renderable {
   *render(options: RenderOptions): Iterable<Segment> {
@@ -254,9 +254,13 @@ export class CoverageRenderable implements Renderable {
 
     // ── 15. Progress (rendered as a static snapshot) ───────────────
     items.push(new Rule("[bold cyan]Progress (static render)", { style: "bold cyan" }));
-    // Exercise Progress + all column types by rendering its table output
-    // directly (without start/stop which use Live for animation). It is
-    // drawn in this frame, so it is made for the host drawing the frame.
+    // Exercise Progress + all column types as a still. A Progress is timed
+    // on the host that draws it and a render reads no clock, so it is made
+    // for a host standing still at 0 — any object with a `frameNow()` is one —
+    // drawn once in that host's frame, for the terminal this frame is drawn
+    // for, and decoded back to text: a still, so no hold from that host's
+    // clock enters this app's frame.
+    const still: FrameHost = { frameNow: () => ({ time: 0, host: still }) };
     const progress = new Progress(
       new TextColumn("[progress.description]{task.description}"),
       new BarColumn(30),
@@ -265,14 +269,24 @@ export class CoverageRenderable implements Renderable {
       new SpinnerColumn(),
       new TimeElapsedColumn(),
       new TimeRemainingColumn(),
-      options.frame === undefined ? {} : { drawnBy: options.frame.host },
+      { drawnBy: still },
     );
     const t1 = progress.addTask("Downloading", { total: 100 });
     progress.updateTask(t1, { completed: 42 });
     const t2 = progress.addTask("Processing", { total: 200 });
     progress.updateTask(t2, { completed: 200 });
-    // Progress implements Renderable — render its table snapshot
-    items.push(progress);
+    items.push(
+      decodeAnsi(
+        renderToString(progress, {
+          width: options.maxWidth,
+          frame: still.frameNow(),
+          asciiOnly: options.asciiOnly,
+          theme: options.theme,
+          reducedMotion: options.reducedMotion,
+          colorSystem: options.colorSystem,
+        }),
+      ),
+    );
 
     // ── 16. Status (construction + renderable output) ────────────────
     items.push(new Rule("[bold cyan]Status (construction)", { style: "bold cyan" }));

@@ -14,10 +14,12 @@ afterEach(() => vi.restoreAllMocks());
 describe("job widget log", () => {
   it("logs every item a stage works through, however far a tick advances", () => {
     const random = vi.spyOn(Math, "random").mockReturnValue(0); // the shortest run: three ticks an item
-    const job = jobWidget({ frameTime: 0 });
+    // The dashboard's App stands in for: a host whose frames are drawn for 0, and whose frame the still is printed in.
+    const host = { frameNow: () => ({ time: 0, host }) };
+    const job = jobWidget(host);
     let state = job.init();
     random.mockReturnValue(0.999); // the longest advance a tick makes
-    const text = () => renderToString(job.render(state), { width: 200, colorSystem: null });
+    const text = () => renderToString(job.render(state), { width: 200, colorSystem: null, frame: host.frameNow() });
     for (let i = 0; i < 500 && !text().includes("test:demos ok"); i++) state = job.tick(state);
 
     const lines = text().split("\n").map((line) => line.trim());

@@ -167,22 +167,33 @@ function drawable(value: unknown): Renderable {
 }
 
 /**
- * An animation's face, `render`: drawn at the time of the frame it is drawn
- * in (`frameTimeOf`), the value `shownAt` picks, every segment stamped with
- * its hold there under whatever its own cells say, and the hold told to the
- * frame (`RenderOptions.onHold`), because a frame of no cells — an element
- * not yet entered — may have cells later, and must say when without taking a
- * row to say it in. A container — the library's or a user's — that draws its
- * children through `render` draws an animation among them with no word about
- * time: the hold goes back the way the time came in. [LAW:composability]
+ * An animation placed in the frame `options` draws: its value at the frame's
+ * time (`frameTimeOf`, `shownAt`), drawn by `draw`, every segment stamped
+ * with its hold there under whatever its own cells say, and the hold told to
+ * the frame (`RenderOptions.onHold`), because a frame of no cells — an
+ * element not yet entered — may have cells later, and must say when without
+ * taking a row to say it in. [LAW:single-enforcer] The one placement: an
+ * animation of renderables (`placedRender`) and a widget drawing one cell
+ * from an animation of its own (a caret's blink) place through it, so how a
+ * time reaches an animation and how its hold reaches the frame is written
+ * once.
  */
-export function* placedRender(animation: Timed<unknown>, options: RenderOptions): Iterable<Segment> {
+export function* placed<T>(animation: Timed<T>, options: RenderOptions, draw: (value: T) => Iterable<Segment>): Iterable<Segment> {
   const t = frameTimeOf(options);
   const shown = shownAt(animation, t, options);
-  const value = drawable(shown.value);
   const hold = holdOf(shown, t);
   options.onHold?.(hold);
-  yield* stampFrame(render(value, options), hold);
+  yield* stampFrame(draw(shown.value), hold);
+}
+
+/**
+ * An animation's face, `render`: `placed`, its value drawn as the renderable
+ * it is. A container — the library's or a user's — that draws its children
+ * through `render` draws an animation among them with no word about time:
+ * the hold goes back the way the time came in. [LAW:composability]
+ */
+export function placedRender(animation: Timed<unknown>, options: RenderOptions): Iterable<Segment> {
+  return placed(animation, options, (value) => render(drawable(value), options));
 }
 
 /**

@@ -28,7 +28,7 @@
 
 import { Reaction } from "mobx";
 import { Segment } from "../core/segment.js";
-import type { FrameHost, Presence, Renderable, RenderOptions } from "../core/protocol.js";
+import type { HostFrame, FrameHost, Presence, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import type { Clock, FrameRate } from "../core/clock.js";
@@ -78,7 +78,7 @@ export class WidgetApp implements FrameSource, FrameHost {
     // The view is drawn inside `compose`, where what it reads is tracked —
     // a function view asked there too — and when it changes is its own to
     // say, as it would be to the App.
-    // Its frames are its own, drawn for its `frameTime`: what draws in them
+    // Its frames are its own, drawn for its `frameNow()`: what draws in them
     // is told this app is the host, not the App it paints through, so
     // `drawnBy: widgetApp` names the host its frames carry.
     this.app = new App({
@@ -94,7 +94,7 @@ export class WidgetApp implements FrameSource, FrameHost {
         const owners = ownersOn(this.app.frame);
         return this.widgets.filter((widget) => owners.has(widget));
       },
-      frameTime: () => this.frameTime,
+      frameTime: () => this.frameNow().time,
     });
     this.focusManager = this.focus;
     this.router = new EventRouter({ source: this, focusOnClick });
@@ -157,9 +157,9 @@ export class WidgetApp implements FrameSource, FrameHost {
     return this.app.frame;
   }
 
-  /** The time a frame drawn now is drawn for, as `App.frameTime` reads it. */
-  get frameTime(): number {
-    return this.app.frameTime;
+  /** The frame this app draws now (`FrameHost`): the App's time, on a frame this app is the host of, as its frames say. */
+  frameNow(): HostFrame {
+    return { time: this.app.frameNow().time, host: this };
   }
 
   /**

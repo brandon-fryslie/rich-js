@@ -21,6 +21,7 @@ import { describe, expect, it } from "vitest";
 import { exportedRenderables } from "../seam/exported-renderables.js";
 import { renderToString } from "../../src/core/render.js";
 import type { Renderable } from "../../src/core/protocol.js";
+import { STILL } from "./in-frame.js";
 import {
   Align,
   Animation,
@@ -139,7 +140,7 @@ const ROWS: Record<string, Row> = {
   Progress: {
     draws: "glyphs",
     make: () => {
-      const progress = new Progress(new SpinnerColumn(), new BarColumn(), { autoRefresh: false });
+      const progress = new Progress(new SpinnerColumn(), new BarColumn(), { drawnBy: STILL });
       progress.addTask("task", { total: 10 });
       return progress;
     },
@@ -178,7 +179,7 @@ const ROWS: Record<string, Row> = {
 
 const NON_ASCII = /[^\x00-\x7F]/;
 const draw = (make: () => Renderable, asciiOnly: boolean): string =>
-  renderToString(make(), { width: 40, colorSystem: null, asciiOnly });
+  renderToString(make(), { width: 40, colorSystem: null, asciiOnly, frame: STILL.frameNow() });
 
 describe("asciiOnly", () => {
   it("has a row for every exported renderable, and none for a name no entry exports", () => {

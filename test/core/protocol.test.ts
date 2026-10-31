@@ -37,7 +37,7 @@ describe("render", () => {
     const b: Renderable = { render: () => [] };
     const child = Animation.map(beat([1, 1]), (i) => (i === 0 ? a : b));
     const framed: Renderable = {
-      render: (options) => render(child, { ...options, frame: { time: 1.5, host: { frameTime: 1.5 } } }),
+      render: (options) => render(child, { ...options, frame: { time: 1.5, host: {} } }),
     };
     const shown = (maxWidth: number): Renderable[] =>
       reports(framed, { maxWidth }).flatMap(([reported]) => (reported === a || reported === b ? [reported] : []));

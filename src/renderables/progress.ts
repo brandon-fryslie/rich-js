@@ -12,7 +12,7 @@ import { Spinner } from "./spinner.js";
 import { Live } from "./live.js";
 import type { Clock } from "../core/clock.js";
 import { Table, type ColumnOptions } from "./table.js";
-import type { FrameHost, Renderable, RenderOptions } from "../core/protocol.js";
+import type { HostFrame, FrameHost, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { Animation } from "../core/animation.js";
 import type { Timing } from "../core/easing.js";
@@ -413,7 +413,7 @@ function formatTime(seconds: number): string {
 
 /**
  * How a `Progress` is set up. It is drawn by one host, and every time it
- * keeps or draws at is that host's `frameTime`: by its own `Live`, which the
+ * keeps or draws at is that host's `frameNow()`: by its own `Live`, which the
  * options for that `Live` configure, or, given `drawnBy`, by another host —
  * which then does all the drawing, so none of them apply.
  */
@@ -445,7 +445,7 @@ interface OwnLiveOptions {
 interface DrawnByOptions {
   /**
    * The host — a `Live`, an `App` — whose frames this `Progress` is drawn in:
-   * tasks are timed by its `frameTime`, so they hold while its timeline is
+   * tasks are timed by its `frameNow()`, so they hold while its timeline is
    * paused and run back while it is reversed. Drawn in any other host's
    * frame, the `Progress` throws.
    */
@@ -527,9 +527,21 @@ export class Progress implements Renderable {
     return this._ownLive("console").console;
   }
 
+  /**
+   * The frame its host draws now (`FrameHost.frameNow`): what a print of
+   * this display is drawn in — `console.print(progress, { frame:
+   * progress.frameNow() })` — so a still of it is drawn for a moment on the
+   * clock its tasks are timed on, the one the program asked at.
+   */
+  frameNow(): HostFrame {
+    return this._host.frameNow();
+  }
+
   /** Rich's `Progress.finished`: every task finished, and so true with none. */
   get finished(): boolean {
-    return this._tasks.get().every((task) => finished(taskAt(task.get(), this._host.frameTime)));
+    // [LAW:one-source-of-truth] One moment, so every task is judged at it.
+    const now = this._host.frameNow().time;
+    return this._tasks.get().every((task) => finished(taskAt(task.get(), now)));
   }
 
   static getDefaultColumns(): ProgressColumn[] {
@@ -550,7 +562,7 @@ export class Progress implements Renderable {
       completed: 0,
       fill: Animation.constant(0),
       visible: options?.visible !== false,
-      startTime: options?.start === false ? undefined : this._host.frameTime,
+      startTime: options?.start === false ? undefined : this._host.frameNow().time,
       finishedAt: undefined,
       samples: [],
     }));
@@ -575,7 +587,7 @@ export class Progress implements Renderable {
       options.completed === undefined
         ? finiteCount("completed + advance", task.completed + advance)
         : finiteCount("completed", options.completed);
-    const now = this._host.frameTime;
+    const now = this._host.frameNow().time;
     const reached = task.startTime !== undefined && task.total !== undefined && completed >= task.total;
     held.set({
       ...task,
@@ -596,7 +608,7 @@ export class Progress implements Renderable {
   startTask(taskId: number): void {
     const held = this._task(taskId);
     // Rich's `start_task`: a task already running keeps the time it started.
-    if (held) held.set({ ...held.get(), startTime: held.get().startTime ?? this._host.frameTime });
+    if (held) held.set({ ...held.get(), startTime: held.get().startTime ?? this._host.frameNow().time });
   }
 
   start(): void {
@@ -625,24 +637,25 @@ export class Progress implements Renderable {
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    const framed = this._framed(options);
-    yield* render(this._table(framed.frame.time), framed);
+    yield* render(this._table(this._ownFrame(options).time), options);
   }
 
-  // Inside a frame, the time its host read for it: a second read here would
-  // land a moving bar's stamp a hair after the frame, a moment the host takes
-  // for one still to come. A frame is only ever this display's host's,
-  // because the tasks were stamped on that host's time and a frame of any
-  // other is drawn for a moment on a different clock. A print is drawn for no
-  // moment, so it is drawn in a frame for the one the program asks at, read
-  // as `updateTask` reads it, and every bar and spinner placed in the table
-  // draws at that moment too. [LAW:one-source-of-truth]
-  private _framed(options: RenderOptions): RenderOptions & { frame: NonNullable<RenderOptions["frame"]> } {
+  // The frame this display is drawn in, which is only ever its host's: the
+  // tasks were stamped on that host's time, and a frame of any other host is
+  // drawn for a moment on a different clock. A render reads no clock, so a
+  // print names its frame (`frameNow`, `PrintOptions.frame`): drawn for no
+  // moment — 0, as everything else is — every task would read as not yet
+  // started, so that print is refused with the call that draws it right.
+  // [LAW:parse-dont-validate] [LAW:no-silent-failure]
+  private _ownFrame(options: RenderOptions): HostFrame {
     const { frame } = options;
-    if (frame !== undefined && frame.host !== this._host) {
+    if (frame === undefined) {
+      throw new Error("a Progress is drawn for a moment on its host's clock, and this print named none; print it in its frame: console.print(progress, { frame: progress.frameNow() })");
+    }
+    if (frame.host !== this._host) {
       throw new Error("a Progress was drawn in a frame of a host other than its own; give it that host as `drawnBy`");
     }
-    return { ...options, frame: frame ?? { time: this._host.frameTime, host: this._host } };
+    return frame;
   }
 
   // Rich's `make_tasks_table`: each column laid out as it says, at `now` on

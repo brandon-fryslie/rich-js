@@ -15,6 +15,7 @@
 import { describe, expect, it } from "vitest";
 import { exportedRenderables } from "../seam/exported-renderables.js";
 import { render, type Presence, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
+import { STILL } from "./in-frame.js";
 import { Segment } from "../../src/core/segment.js";
 import { NULL_STYLE, type Style } from "../../src/core/style.js";
 import type { StyledRenderable } from "../../src/core/strip.js";
@@ -123,7 +124,7 @@ const ROWS: Record<string, Row> = {
     const cells = new Map<number, Probe>();
     const progress = new Progress(
       { tableColumn: {}, render: (task) => cells.get(task.id) ?? cells.set(task.id, p(`task-${task.id}`)).get(task.id)! },
-      { autoRefresh: false },
+      { drawnBy: STILL },
     );
     progress.addTask("one", { total: 10 });
     progress.addTask("two", { total: 10 });
@@ -176,7 +177,7 @@ const VARIANTS: Record<string, Row> = {
 /** Every report `render` makes for `renderable` at `maxWidth`. */
 function reports(renderable: Renderable, maxWidth: number): [Renderable, Presence][] {
   const heard: [Renderable, Presence][] = [];
-  const options: RenderOptions = { maxWidth, onPresent: (reported, presence) => heard.push([reported, presence]) };
+  const options: RenderOptions = { maxWidth, frame: STILL.frameNow(), onPresent: (reported, presence) => heard.push([reported, presence]) };
   [...render(renderable, options)];
   return heard;
 }
@@ -215,7 +216,7 @@ describe("a renderable handed no column", () => {
 
     it(`${name}, with nothing listening, draws nothing at any width under one`, () => {
       for (const maxWidth of [0, -3, Number.NaN]) {
-        expect([...render(build(row).renderable, { maxWidth })], `maxWidth ${maxWidth}`).toEqual([]);
+        expect([...render(build(row).renderable, { maxWidth, frame: STILL.frameNow() })], `maxWidth ${maxWidth}`).toEqual([]);
       }
     });
   }

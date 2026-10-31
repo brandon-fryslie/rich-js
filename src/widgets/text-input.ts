@@ -93,8 +93,7 @@ import { Viewport, type Lines } from "../renderables/viewport.js";
 import { Animation } from "../core/animation.js";
 import { beat } from "../core/easing.js";
 import { Timeline } from "../core/timeline.js";
-import { holdOf, shownAt, stampFrame } from "../core/animation.js";
-import type { Hold } from "../core/style.js";
+import { placed } from "../core/animation.js";
 import { levelOf, type Anchor } from "../core/anchor.js";
 import type { TerminalTheme } from "../core/color.js";
 import { ThemedWidget } from "./themed-widget.js";
@@ -385,8 +384,24 @@ function wordSpan(clusters: Iterable<string>, skipped: (c: string) => boolean, t
  */
 const CARET_BLINK: Animation<boolean> = Animation.map(beat([0.5, 0.5]), (hold) => hold === 0);
 
-/** The caret of a frame drawn for no moment — a `print` — which nothing moves: lit, and never changing. */
-const CARET_UNTIMED: { readonly lit: boolean; readonly hold: Hold } = { lit: true, hold: { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.POSITIVE_INFINITY } };
+/**
+ * The caret's blink restarted at `from`, as one animation of the frame's
+ * time: `CARET_BLINK` run forward from `from` at and after it, and backward
+ * from it before, so a timeline played backwards also finds the caret lit
+ * just after a key. Each answer is the run the time falls in, bounded at
+ * `from` where the runs meet — early where it must guess, never late. A
+ * function of `from` alone, so the frame hands it its time (`placed`).
+ */
+function caretBlink(from: number): Animation<boolean> {
+  const forward = Timeline.run(Timeline.play(from, 1), CARET_BLINK);
+  const backward = Timeline.run(Timeline.play(from, -1), CARET_BLINK);
+  return Animation.of({
+    at: (t: number) => (t >= from ? forward : backward).at(t),
+    nextChange: (t: number) => (t >= from ? forward.nextChange(t) : Math.min(backward.nextChange(t), from)),
+    lastChange: (t: number) => (t >= from ? Math.max(forward.lastChange(t), from) : backward.lastChange(t)),
+    reduced: () => CARET_BLINK.reduced(),
+  });
+}
 
 export class TextInput extends ThemedWidget {
   readonly id: string;
@@ -394,11 +409,10 @@ export class TextInput extends ThemedWidget {
 
   @observableRef private accessor _value: string;
   @observableRef private accessor _cursor: CodePoint;
-  // When the field last took focus, a click, or a key it handled, on the
-  // frame's clock (each event's `time`): where the caret's blink restarts.
-  // The blink itself is a function of this and the time a frame is drawn
-  // for, so nothing about it is kept.
-  @observableRef private accessor _blinkFrom = 0;
+  // The caret's blink, restarted (`caretBlink`) when the field last took
+  // focus, a click, or a key it handled, at that event's `time` on the
+  // frame's clock. Built at the event, so a frame only reads it.
+  @observableRef private accessor _blink: Animation<boolean> = caretBlink(0);
 
   // [LAW:single-enforcer] Every write to either half of the pair passes
   // `graphemeBoundary`, so the cursor is a cluster boundary inside `value`
@@ -496,7 +510,7 @@ export class TextInput extends ThemedWidget {
   handleKey(event: KeyEvent): void {
     this._edit(event);
     if (!event.stopped) return;
-    this._blinkFrom = event.time;
+    this._blink = caretBlink(event.time);
     // An edit on the cursor's row moves no followed range, so the row is
     // brought into view here too: typing after the wheel scrolled away scrolls
     // back. The rows are the edited value's, at the width last drawn.
@@ -509,7 +523,7 @@ export class TextInput extends ThemedWidget {
   @action
   override handleFocus(event: WidgetFocusEvent): void {
     super.handleFocus(event);
-    this._blinkFrom = event.time;
+    this._blink = caretBlink(event.time);
   }
 
   private _edit(event: KeyEvent): void {
@@ -599,7 +613,7 @@ export class TextInput extends ThemedWidget {
   override handleMouse(event: WidgetMouseEvent): void {
     if (this.disabled) return;
     if (event.type !== "mouse_down") return;
-    this._blinkFrom = event.time;
+    this._blink = caretBlink(event.time);
 
     // [LAW:no-silent-failure] Every cell the field draws carries its frame's
     // layout, so a press without one did not come off a frame it drew.
@@ -1079,20 +1093,14 @@ export class TextInput extends ThemedWidget {
   }
 
   // The caret's cell for the frame `options` draws: the blink restarted at the
-  // last touch, sampled at the frame's time (`shownAt`, so under reduced
-  // motion it holds lit). It runs away from the restart in either direction
-  // of time, so a timeline played backwards also finds it lit just after a
-  // key. Lit, the cell is the cursor's; dark, it is drawn as the
-  // text around it, since the cursor is a colour pair and no attribute hides
-  // it. The cell says when it next flips, which is when a host draws again.
+  // last touch, placed as every animation is (`placed`), so it draws at the
+  // frame's time, holds lit under reduced motion, and the cell says when it
+  // next flips, which is when a host draws again. A print, drawn for no
+  // moment, draws it at 0 like any placed animation. Lit, the cell is the
+  // cursor's; dark, it is drawn as the text around it, since the cursor is a
+  // colour pair and no attribute hides it.
   private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
-    const { frame } = options;
-    const blink = (time: number) => {
-      const shown = shownAt(Timeline.run(Timeline.play(this._blinkFrom, time < this._blinkFrom ? -1 : 1), CARET_BLINK), time, options);
-      return { lit: shown.value, hold: holdOf(shown, time) };
-    };
-    const { lit, hold } = frame === undefined ? CARET_UNTIMED : blink(frame.time);
-    return stampFrame([new Segment(at, lit ? cursorStyle : contentStyle)], hold);
+    return placed(this._blink, options, (lit) => [new Segment(at, lit ? cursorStyle : contentStyle)]);
   }
 
   // Whether `rows` visual rows draw a scroll arrow in the last cell of a row.
