@@ -4,15 +4,22 @@
     {
       "version": "pr-525",
       "ref": "refs/pull/525/merge",
-      "sha": "0f511c353266d861b3202534c14a972b363d9a59",
-      "timestamp": "2026-10-31T12:45:21.517Z",
+      "sha": "1395163449190f4a239bf16765b5888cffaffe35",
+      "timestamp": "2026-10-31T13:26:52.620Z",
       "commits": [
         {
-          "sha": "0f511c353266d861b3202534c14a972b363d9a59",
+          "sha": "1395163449190f4a239bf16765b5888cffaffe35",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T06:43:16-06:00",
-          "message": "Merge de292ea5bbe9fb091391dc398a4b840bf0ab5a62 into 188acc5bffc6981b8837b2c06336e835fba9085e\n"
+          "timestamp": "2026-10-31T13:24:50Z",
+          "message": "Merge 47fbac21075c44aaaa924dc9970b63022d7a882a into 188acc5bffc6981b8837b2c06336e835fba9085e\n"
+        },
+        {
+          "sha": "47fbac21075c44aaaa924dc9970b63022d7a882a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T07:24:40-06:00",
+          "message": "A loop with nothing it lights lets the host sleep at every depth (rich-unfiled-791c.75gd)\n\nStep 10 review of #525. Each loop now hands the hold-still gate what it\nlights, because `drawn.colors` lists word cells only and a colour named for\n`onColors` under blanks has to keep moving. A translucent ink is laid on the\nground as it landed. layered's docstring no longer claims a swap draws as it\nwould alone, and a test pins that it lands at the floor. The side-keeping test\ndrops the six compositions it skipped without asserting.\n"
         },
         {
           "sha": "de292ea5bbe9fb091391dc398a4b840bf0ab5a62",
