@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-526",
+      "ref": "refs/pull/526/merge",
+      "sha": "17de998c0e6e81cd7bd91e475df7769497e80e84",
+      "timestamp": "2026-10-31T14:25:37.095Z",
+      "commits": [
+        {
+          "sha": "17de998c0e6e81cd7bd91e475df7769497e80e84",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T08:23:28-06:00",
+          "message": "Merge 32e0e13e1579b3fe1d7f17c1a9b83032e5d6d6bb into d2fb7b70bfc5060a3b94fefc9ec99d4db82c3a1d\n"
+        },
+        {
+          "sha": "32e0e13e1579b3fe1d7f17c1a9b83032e5d6d6bb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T08:23:17-06:00",
+          "message": "Each optional peer on disk is the lowest version its range admits (rich-unfiled-791c.25dh)\n\nNothing tied the peer ranges to what src/ compiles against: on\nrich-animation-27tq.0gd src/ imported a 0.11.0 export under a ^0.10.0 range and\nonly a code review saw it. With the peers held at their floors, lint is the\ncompile at the floor and the suite runs there too, so the gate needs no registry,\ntemp tree or second tsc. It reads the version on disk rather than the lockfile,\nbecause that incident was a --no-save tarball the lockfile never saw.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d2fb7b70bfc5060a3b94fefc9ec99d4db82c3a1d",
