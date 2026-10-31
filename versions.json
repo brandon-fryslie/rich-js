@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-520",
+      "ref": "refs/pull/520/merge",
+      "sha": "12cc9d27e8ac2faec681c0f78d9383b5cc94d496",
+      "timestamp": "2026-10-31T01:20:20.925Z",
+      "commits": [
+        {
+          "sha": "12cc9d27e8ac2faec681c0f78d9383b5cc94d496",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T19:18:22-06:00",
+          "message": "Merge b375bca05b3d2aeb13b5064ab880fc8fa08935a8 into 8b1c56055c946a1f2ce3f582cbdbf804ee18c8b7\n"
+        },
+        {
+          "sha": "b375bca05b3d2aeb13b5064ab880fc8fa08935a8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T19:18:08-06:00",
+          "message": "A lifecycle half is an animation, not a Veil of t (rich-animation-27tq.3kk)\n\nA half of an element's lifecycle was a `Veil`, `(element, t, key) => Renderable`,\nbeside the schedule of the transition it was made from, paired by `lift` with\nnothing tying them: the frames said nothing of when they change and the\nschedule nothing of what is drawn, and a user writing a half threaded `t` by\nhand. It is now a `Half`, `(element, key) => Animation<Renderable>`: one value\ncarrying its frames and its holds, in the shape of `Change`, the library's\nother one-shot from renderables to an animation. It is done from the first\nmoment it says it never changes again, which is where an arrival ends and an\nelement is gone.\n\n`throughColors` and `throughGlyphs` keep their names and signatures and return\na `Half`: an `Effected` or `GlyphEffected` lent the transition's schedule as\nits word on when it changes, the one fact the wrapper lacks until it is\ndrawn. The lifecycle reads frames and holds off the half's animation, the\nexit drawn over whatever the arrival shows, and `gone` and the exit's hold\noff the exit over the element. `Animation.done` is the one reading of \"never\nchanges again\": `Transition.done` and the lifecycle's arrived and gone moments\nread it. `Veil` and `lift` are gone.\n\nA half written by hand needs no effect of the library's: the tests slide an\nelement in and out with `Padding` under `Animation.sequence`, step one on a\nbeat and read the beats off the lifecycle, and `docs/animation.md` describes\nthe shape and says why an `Effected` handed in bare is never done.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "8b1c56055c946a1f2ce3f582cbdbf804ee18c8b7",
