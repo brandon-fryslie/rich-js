@@ -10,27 +10,32 @@
  * part of the drawing asks whether it is leaving. Telling it is a new value
  * (`leave`), as every `Timeline` operation is. [LAW:no-ambient-temporal-coupling]
  *
- * Each half is a `Transition` of a `Veil` on its own clock from 0, handed the time since
- * its moment, and its schedule carried onto the host's clock by
- * `Timeline.run` is that half's hold — every frame for a fade, once a hold
- * for one on a beat — so the transition's schedule, and `done` read off it,
- * stays the one rule for where a one-shot ends and when its frame changes,
- * and nothing here measures progress itself. The frames carry no word of
- * their own on when they change: placed, the lifecycle stamps them with its
- * hold at the frame's time (`placedRender`). The exit veils whatever the
- * arrival draws, so an element told to leave while it is still arriving leaves
- * from where it is, never shown whole first — though a colour exit is spread
- * over the cells each frame shows, so a cell the arrival adds can move one
- * already leaving back toward whole (`ownChange`, `./effects.ts`).
- * [LAW:dataflow-not-control-flow]
+ * Each half is a `Half`: handed the element, an `Animation<Renderable>` of
+ * it on the half's own clock from 0, in the shape of the library's other
+ * one-shot from renderables to an animation (`Change`, `./change.ts`). One
+ * value carries the half's frames and its holds, so neither is kept in
+ * agreement with the other by hand, and nothing here measures progress
+ * itself: a half's schedule carried onto the host's clock by `Timeline.run`
+ * is that half's hold — every frame for a fade, once a hold for one on a
+ * beat — and the moment it says it never changes again (`Animation.done`)
+ * is where the arrival ends and where the element is gone. The frames carry
+ * no word of their own on when they change: placed, the lifecycle stamps
+ * them with its hold at the frame's time (`placedRender`). The exit is
+ * drawn over whatever the arrival draws, so an element told to leave while
+ * it is still arriving leaves from where it is, never shown whole first —
+ * though a colour exit is spread over the cells each frame shows, so a cell
+ * the arrival adds can move one already leaving back toward whole
+ * (`ownChange`, `./effects.ts`). [LAW:dataflow-not-control-flow]
  *
  * A half draws the element through a colour transition (`throughColors`, a
- * `fadeIn`) or a glyph one (`throughGlyphs`, a `typewriter`): each lift binds
- * its transition to the one wrapper that draws it, and to what that wrapper
+ * `fadeIn`) or a glyph one (`throughGlyphs`, a `typewriter`): each binds its
+ * transition to the one wrapper that draws it, and to what that wrapper
  * needs — a theme for colours, nothing for glyphs — so nothing here asks which
- * kind a half is, and a line can type itself in and dissolve out. An exit is
- * a transition that ends with nothing drawn — `dissolveOut`, `backspace`,
- * `scrambleOut` — so the element has already gone from sight when it is gone.
+ * kind a half is, and a line can type itself in and dissolve out. A half
+ * written by hand is any function of that shape — an arrival that slides the
+ * element in, which no effect draws. An exit is a half that ends with nothing
+ * drawn — `dissolveOut`, `backspace`, `scrambleOut` — so the element has
+ * already gone from sight when it is gone.
  *
  * Gone is a fact the host reads (`gone(t)`) to drop the element, and from then
  * the lifecycle draws nothing and never changes, so a host still holding it
@@ -43,40 +48,57 @@ import type { TerminalTheme } from "../core/color.js";
 import { firstReaching } from "../core/easing.js";
 import type { Measurable, Renderable } from "../core/protocol.js";
 import { Timeline } from "../core/timeline.js";
-import { Recolored } from "./effect.js";
-import { Transition } from "./effects.js";
-import { Reglyphed } from "./glyph-effect.js";
+import { Effected } from "./effect.js";
+import type { Transition } from "./effects.js";
+import { GlyphEffected } from "./glyph-effect.js";
 import type { GlyphTransition } from "./glyph-effects.js";
 
 /**
- * An element drawn through one half of its lifecycle at `t`, the seconds since
- * that half began, its effect's seeds named by `key`, saying nothing of when
- * that changes — the half's schedule does, as a `Recolored`'s and a
- * `Reglyphed`'s frame say nothing.
+ * One half of an element's lifecycle: handed the element and `key`, which
+ * names it for the half's seeds, the element as the half draws it from
+ * `t = 0`, the moment the half began, on its own clock. Its holds are the
+ * half's own, whatever element it is handed, and it is done from the first
+ * moment it says it never changes again (`Animation.done`): an arrival is
+ * the element from then, and an exit is gone. An `Effected` handed in bare
+ * is never done, since its own word is "now" at every time; a colour half
+ * is `throughColors`, which lends the transition's schedule.
  */
-export type Veil = (element: Renderable, t: number, key: string) => Renderable;
+export type Half = (element: Renderable, key: string) => Animation<Renderable>;
 
 /** `transition`'s colours drawn over an element on `theme`, whose ground it arrives from and leaves to. */
-export function throughColors(transition: Transition, theme: TerminalTheme): Transition<Veil> {
-  return lift(transition, (element, t, key) => new Recolored(element, transition.effect, { t, key, theme }));
+export function throughColors(transition: Transition, theme: TerminalTheme): Half {
+  return (element, key) => scheduled(new Effected(element, transition.effect, { key, theme }), transition.schedule);
 }
 
 /** `transition`'s glyphs drawn over an element, at every depth, with no colour too. */
-export function throughGlyphs(transition: GlyphTransition): Transition<Veil> {
-  return lift(transition, (element, t, key) => new Reglyphed(element, transition.effect, { t, key }));
+export function throughGlyphs(transition: GlyphTransition): Half {
+  return (element, key) => scheduled(new GlyphEffected(element, transition.effect, { key }), transition.schedule);
 }
 
-/** [LAW:one-source-of-truth] A lifted half keeps its transition's schedule, so `done` and every hold are the transition's own. */
-function lift(transition: Transition<unknown>, veil: Veil): Transition<Veil> {
-  return new Transition(veil, transition.schedule);
+/**
+ * `placed` — an element under a transition's effect — changing when
+ * `schedule`, the transition's own, says: its frames with the one word on
+ * when they change that the transition has and the wrapper lacks, whose own
+ * answer is "now" until it is drawn. [LAW:one-source-of-truth] Reduced,
+ * both are reduced together, as `onBeat` steps both; a one-shot's effect
+ * reduced cuts at 0 and its schedule may say a change later, an early answer
+ * the contract allows.
+ */
+function scheduled(placed: Animation<Renderable>, schedule: Animation<unknown>): Animation<Renderable> {
+  return Animation.of({
+    at: (t: number) => placed.at(t),
+    nextChange: (t: number) => schedule.nextChange(t),
+    lastChange: (t: number) => schedule.lastChange(t),
+    reduced: () => scheduled(placed.reduced(), schedule.reduced()),
+  });
 }
 
 /** How an element arrives and leaves, and what it is named for their seeds. */
 export interface LifecycleOptions {
   /** The half it arrives through — `throughColors(fadeIn(curve, z), theme)`. */
-  readonly enter: Transition<Veil>;
+  readonly enter: Half;
   /** The half it leaves through — `throughGlyphs(scrambleOut(timing, z))`. */
-  readonly exit: Transition<Veil>;
+  readonly exit: Half;
   /** Names the element for both halves' seeds, as `Effected`'s and `GlyphEffected`'s key does. */
   readonly key: string;
 }
@@ -103,34 +125,38 @@ export function lifecycle(element: Renderable, options: LifecycleOptions, entere
 }
 
 /**
- * The first host moment `transition`, begun at host time `start`, is done:
- * its own `done` read on host time, never a sum `start + seconds`, which can
- * round to either side of it, as `Animation.sequence` carries its switch.
- * [LAW:single-enforcer] Since `x - start` never falls as `x` rises, a host time
- * is at or past this moment exactly when `done` holds there.
+ * The first host moment `half`, begun at host time `start`, is done: its own
+ * answer read on host time, never a sum `start + seconds`, which can round
+ * to either side of it, as `Animation.sequence` carries its switch.
+ * [LAW:single-enforcer] Since `x - start` never falls as `x` rises, a host
+ * time is at or past this moment exactly when `done` holds there.
  */
-function doneAt(transition: Transition<Veil>, start: number): number {
-  return Number.isFinite(start) ? firstReaching(start, (x) => transition.done(x - start)) : start;
+function doneAt(half: Animation<Renderable>, start: number): number {
+  return Number.isFinite(start) ? firstReaching(start, (x) => Animation.done(half, x - start)) : start;
 }
 
 function life(element: Renderable, options: LifecycleOptions, entered: number, left: number): Lifecycle {
   const { enter, exit, key } = options;
-  const arrived = doneAt(enter, entered);
-  const goneAt = doneAt(exit, left);
-  // The arrival's schedule on the host's clock: when its frame next changes, and since when it has been what it is.
-  const arriving = Timeline.run(Timeline.play(entered), enter.schedule);
+  // Each half over the element: where the arrival ends and where the exit is gone are read off these,
+  // and so is the exit's hold, so `gone` and what the frame says never come from two halves.
+  const arrival = enter(element, key);
+  const departure = exit(element, key);
+  const arrived = doneAt(arrival, entered);
+  const goneAt = doneAt(departure, left);
+  // The arrival on the host's clock: when its frame next changes, and since when it has been what it is.
+  const arriving = Timeline.run(Timeline.play(entered), arrival);
   // What the element draws by `t` if it is not leaving: arriving through `enter`, then itself.
-  const shown = (t: number): Renderable => (t < arrived ? enter.effect(element, t - entered, key) : element);
+  const shown = (t: number): Renderable => (t < arrived ? arrival.at(t - entered) : element);
   const held = (schedule: Animation<unknown>, t: number) => ({ last: schedule.lastChange(t), next: schedule.nextChange(t) });
   // [LAW:one-source-of-truth] Each phase's frame and its hold, side by side, so the two cannot disagree.
   // The frames say nothing of when they change — the hold does, stamped where the lifecycle is placed.
   const phase = (t: number): { readonly frame: Renderable; readonly last: number; readonly next: number } => {
     if (t < entered) return { frame: NOTHING, last: Number.NEGATIVE_INFINITY, next: entered };
     if (t >= goneAt) return { frame: NOTHING, last: goneAt, next: Number.POSITIVE_INFINITY };
-    // Leaving veils whatever arriving draws, so both schedules count; once arrived, the arrival's never changes again.
+    // Leaving is drawn over whatever arriving draws, so both schedules count; once arrived, the arrival's never changes again.
     if (t >= left) {
-      const leaving = Animation.all([arriving, Timeline.run(Timeline.play(left), exit.schedule)]);
-      return { frame: exit.effect(shown(t), t - left, key), ...held(leaving, t) };
+      const leaving = Animation.all([arriving, Timeline.run(Timeline.play(left), departure)]);
+      return { frame: exit(shown(t), key).at(t - left), ...held(leaving, t) };
     }
     if (t < arrived) return { frame: shown(t), ...held(arriving, t) };
     return { frame: element, last: arrived, next: left };

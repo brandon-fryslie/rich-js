@@ -253,6 +253,18 @@ export const Animation = {
     return faced as unknown as Faced<NoInfer<X>>;
   },
 
+  /**
+   * Whether `animation` never changes again from `t`: a one-shot that has
+   * run, a loop at a depth that shows no motion. [LAW:single-enforcer] The
+   * one reading of "never": a `Transition`'s `done` and a lifecycle's
+   * arrived and gone moments are this, so what ends a one-shot is written
+   * once. An early answer the contract allows is a finite one, so `Infinity`
+   * is only ever a true never.
+   */
+  done(animation: Timed<unknown>, t: number): boolean {
+    return animation.nextChange(t) === Number.POSITIVE_INFINITY;
+  },
+
   /** `value` at every time, never changing. */
   constant<T>(value: T): Animation<T> {
     const still: Animation<T> = Animation.of({ at: () => value, nextChange: () => Number.POSITIVE_INFINITY, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => still });

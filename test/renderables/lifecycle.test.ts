@@ -14,7 +14,8 @@ import { drawnAt, inFrame } from "./in-frame.js";
 import { Group } from "../../src/renderables/group.js";
 import { Live } from "../../src/renderables/live.js";
 import { backspace, scrambleOut, typewriter } from "../../src/renderables/glyph-effects.js";
-import { lifecycle, throughColors, throughGlyphs, type Lifecycle } from "../../src/renderables/lifecycle.js";
+import { lifecycle, throughColors, throughGlyphs, type Half, type Lifecycle } from "../../src/renderables/lifecycle.js";
+import { Padding } from "../../src/renderables/padding.js";
 import { fakeClock } from "../core/fake-clock.js";
 
 const theme = DEFAULT_TERMINAL_THEME;
@@ -233,5 +234,68 @@ describe("a lifecycle through glyph transitions", () => {
     expect(text(draw(still.at(0.5)))).toBe("");
     for (const t of [1, 2, 4.9]) expect(bytes(draw(still.at(t)))).toBe(bytes(draw(line)));
     expect(text(draw(still.at(5.5)))).toBe("");
+  });
+});
+
+describe("a lifecycle through halves written by hand", () => {
+  // [LAW:composability] A half is any function from the element to an animation of it; these use no effect of the library's.
+  /** The element slid in from `cols` columns to the right over a second, then itself. */
+  const slidIn =
+    (cols: number): Half =>
+    (element) =>
+      Animation.sequence<Renderable>(
+        Animation.continuous((t) => new Padding(element, [0, 0, 0, Math.round(cols * (1 - t))])),
+        1,
+        Animation.constant(element),
+      );
+  /** The element slid out `cols` columns to the right over a second, then nothing. */
+  const slidOut =
+    (cols: number): Half =>
+    (element) =>
+      Animation.sequence<Renderable>(
+        Animation.continuous((t) => new Padding(element, [0, 0, 0, Math.round(cols * t)])),
+        1,
+        Animation.constant({ render: () => [] }),
+      );
+  const padded = (cols: number, element: Renderable = line): string => bytes(draw(new Padding(element, [0, 0, 0, cols])));
+
+  it("arrives through the half's frames and is the element from the moment the half says it never changes again", () => {
+    const life = lifecycle(line, { enter: slidIn(4), exit: slidOut(4), key: "hand" }, 1).leave(5);
+    const said = (t: number) => [life.lastChange(t), life.nextChange(t)];
+    expect(bytes(draw(life.at(1)))).toBe(padded(4));
+    expect(bytes(draw(life.at(1.5)))).toBe(padded(2));
+    for (const t of [1, 1.5, 1.9]) expect(said(t)).toEqual([t, t]);
+    for (const t of [2, 3, 4.9]) {
+      expect(bytes(draw(life.at(t)))).toBe(bytes(draw(line)));
+      expect(said(t)).toEqual([2, 5]);
+    }
+  });
+
+  it("leaves through the half's frames over the element, and is gone from the moment the half says it never changes again", () => {
+    const life = lifecycle(line, { enter: slidIn(4), exit: slidOut(4), key: "hand" }, 1).leave(5);
+    expect(bytes(draw(life.at(5)))).toBe(padded(0));
+    expect(bytes(draw(life.at(5.5)))).toBe(padded(2));
+    for (const t of [5, 5.5, 5.9]) expect(life.nextChange(t)).toBe(t);
+    expect([life.gone(5.99), life.gone(6)]).toEqual([false, true]);
+    expect(text(draw(life.at(6)))).toBe("");
+    expect(life.nextChange(6)).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("told to leave while still arriving, draws the exit over the arrival's frame", () => {
+    const life = lifecycle(line, { enter: slidIn(4), exit: slidOut(4), key: "hand" }, 1).leave(1.5);
+    // A quarter into the exit, the arrival is three quarters in: one column from each.
+    expect(bytes(draw(life.at(1.75)))).toBe(padded(1, new Padding(line, [0, 0, 0, 1])));
+    expect(life.gone(2.5)).toBe(true);
+  });
+
+  it("tells the holds the half carries: an arrival stepped on a beat wakes the host on the beats", () => {
+    const stepped: Half = (element, key) => Animation.onBeat(slidIn(4)(element, key), beat([0.25]));
+    const life = lifecycle(line, { enter: stepped, exit: slidOut(4), key: "hand" }, 1);
+    expect(life.nextChange(1.1)).toBe(1.25);
+    expect(life.nextChange(1.3)).toBe(1.5);
+    expect(bytes(draw(life.at(1.3)))).toBe(bytes(draw(life.at(1.25))));
+    // Done at the first hold that starts once the slide is: the element from then.
+    expect(life.nextChange(2)).toBe(Number.POSITIVE_INFINITY);
+    expect(bytes(draw(life.at(2)))).toBe(bytes(draw(line)));
   });
 });

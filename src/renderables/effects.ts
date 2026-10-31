@@ -751,7 +751,7 @@ export class Transition<E = Effect> {
   ) {}
 
   done(t: number): boolean {
-    return this.schedule.nextChange(t) === Number.POSITIVE_INFINITY;
+    return Animation.done(this.schedule, t);
   }
 }
 

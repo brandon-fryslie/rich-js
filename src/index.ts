@@ -322,7 +322,7 @@ export type { AttributeLoopName, Blink, ColorStep, Curve, EffectTarget, Field, L
 export { crossfade, wipe } from "./renderables/change.js";
 export type { Between, Change } from "./renderables/change.js";
 export { lifecycle, throughColors, throughGlyphs } from "./renderables/lifecycle.js";
-export type { Lifecycle, LifecycleOptions, Veil } from "./renderables/lifecycle.js";
+export type { Half, Lifecycle, LifecycleOptions } from "./renderables/lifecycle.js";
 export { scroll } from "./renderables/scroll.js";
 export type { ScrollOptions } from "./renderables/scroll.js";
 export { GlyphEffected } from "./renderables/glyph-effect.js";

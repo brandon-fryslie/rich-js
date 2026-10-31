@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Animation, ColorDepth, EASES, FrameSequence, Phase, RichText, Segment, Spinner, Timeline, beat, render, tween, type Beat, type Renderable } from "../../src/index.js";
+import { Animation, ColorDepth, EASES, FrameSequence, Phase, RichText, Segment, Spinner, Timeline, beat, fadeIn, render, tween, type Beat, type Renderable } from "../../src/index.js";
 import { inFrame } from "../renderables/in-frame.js";
 import { nextDown } from "./next-down.js";
 
@@ -26,6 +26,20 @@ function heldSinceLast<T>(animation: Animation<T>, t: number, samples = 16): boo
   const span = Number.isFinite(last) ? t - last : 10;
   return Array.from({ length: samples }, (_, i) => t - (span * i) / samples).every((u) => animation.at(u) === animation.at(t));
 }
+
+describe("Animation.done", () => {
+  it("is whether the animation never changes again from t: a constant always, a continuous never, a one-shot from its end", () => {
+    expect(Animation.done(Animation.constant(1), -1e9)).toBe(true);
+    expect(Animation.done(Animation.continuous(() => 1), 1e9)).toBe(false);
+    const ran = Animation.sequence(Animation.continuous(() => 1), 2, Animation.constant(1));
+    expect([1.99, 2].map((t) => Animation.done(ran, t))).toEqual([false, true]);
+  });
+
+  it("is what a transition's done reads off its schedule", () => {
+    const fade = fadeIn({ seconds: 2, ease: EASES.linear, swing: 1 }, 0);
+    for (const t of [0, 1.99, 2, 1e6]) expect(fade.done(t)).toBe(Animation.done(fade.schedule, t));
+  });
+});
 
 describe("Animation.constant", () => {
   it("is its value at every time, never changes and always was", () => {
