@@ -227,11 +227,12 @@ export type EffectFrame = (look: CellLook, cell: EffectCell) => CellLook;
  *
  * Its `nextChange` is when the frame next changes: a stepped effect its next
  * step's start, a transition `t` until it is done and `Infinity` after, a
- * loop that holds every cell still at the frame's depth `Infinity` there, and
- * a loop that moves `t` (`Animation.continuous`). [LAW:types-are-the-program]
- * The answer is a fact about the frame, so the animation is made from
- * everything the frame is drawn from; one made from `t` alone could not say
- * that a frame is still because of its depth.
+ * loop that holds every cell still, at the frame's depth or with nothing in
+ * it to move, `Infinity` there, and a loop that moves `t`
+ * (`Animation.continuous`). [LAW:types-are-the-program] The answer is a fact
+ * about the frame, so the animation is made from everything the frame is drawn
+ * from; one made from `t` alone could not say that a frame is still because of
+ * its depth.
  */
 export type Effect = (drawn: Drawn) => Animation<EffectFrame>;
 
@@ -702,7 +703,7 @@ function drawsLines(style: Style): boolean {
 /**
  * What `looked` draws: `Drawn`'s measure, taken once per frame. Its `all`
  * and `cells` are listed off `walked` the first time either is asked for,
- * since only an effect spread over the element or turning its runs asks, and
+ * since an effect on attributes alone never asks, and
  * a glyph walk is what measuring the words alone, a segment at a time, is
  * spared (`drawnOf`).
  */
@@ -753,7 +754,11 @@ export function confined(effect: Effect, ...owners: readonly object[]): Effect {
     return false;
   };
   // The frame as the effect sees it: the owners' cells alone. [LAW:one-source-of-truth] One narrowing, handed to both stages.
-  const narrowed = (drawn: Drawn): Drawn => ({ ...drawn, all: () => drawn.all().filter(owned), cells: () => drawn.cells().filter(owned) });
+  const narrowed = (drawn: Drawn): Drawn => {
+    let all: readonly ListedCell[] | undefined;
+    let cells: readonly ListedCell[] | undefined;
+    return { ...drawn, all: () => (all ??= drawn.all().filter(owned)), cells: () => (cells ??= drawn.cells().filter(owned)) };
+  };
   // The owners' cells change when the effect's frame does.
   return (drawn) => Animation.map(effect(narrowed(drawn)), (frame): EffectFrame => (look, cell) => (owned(cell) ? frame(look, cell) : look));
 }

@@ -304,6 +304,11 @@ describe("layered", () => {
     expect(layered(onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, z), elsewhere))(listed).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
     expect(gradient(moving, [...elsewhere])(listed).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
     expect(confined(shimmering, {})(listed).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
+    const fill = "#123456";
+    const inked = (subject: Renderable): ReturnType<typeof drawnOf> => drawnOf(drawn(subject, identity, 0, depth, CATPPUCCIN_MOCHA), depth, CATPPUCCIN_MOCHA);
+    // A gradient paints inks, so a colour it names as a ground, or under a blank that shows nothing, is nothing to it.
+    expect(gradient(moving, [fill])(inked(element([new Style({ color: ColorSpec.parse("#ffffff"), bgcolor: ColorSpec.parse(fill) })]))).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
+    expect(gradient(moving, [fill])(inked(element([new Style({ color: ColorSpec.parse(fill) }), new Style({ color: ColorSpec.parse("#ffffff") })], "   "))).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
     const unstyled = drawnOf(drawn(element([new Style({})]), identity, 0, depth, CATPPUCCIN_MOCHA), depth, CATPPUCCIN_MOCHA);
     expect(onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, z), new Set([unstyled.pairs[0]!.fg.hex]))(unstyled).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
   });

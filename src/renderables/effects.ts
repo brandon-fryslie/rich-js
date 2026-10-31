@@ -192,7 +192,7 @@ export function onColors(loop: Loop, colors?: ReadonlySet<string>): Effect {
     const key = [drawnKey(drawn), "|", ...lit].join(" ");
     return settled.get(drawn.theme, () => new Memo()).get(key, () => shares(drawn, lit, loop.touch));
   };
-  return stillWhereNothingMoves(litIn, atShares(loop, settle));
+  return stillWhereNothingMoves(SIDES, litIn, atShares(loop, settle));
 }
 
 /** What a frame draws, as a key: its depth and its pairs, which its `colors` and `fills` are read off. */
@@ -244,7 +244,7 @@ export function gradient(ramp: Animation<ColorRamp>, colors?: readonly string[])
   const shown = (spec: ColorSpec, { depth, theme }: Drawn): string =>
     (Style.fromColor(spec).drawnColors(depth).color ?? ColorSpec.default()).getTruecolor(theme, true).hex;
   const litIn = (drawn: Drawn): ReadonlySet<string> => (named === undefined ? drawn.colors : new Set(named.map((spec) => shown(spec, drawn))));
-  return stillWhereNothingMoves(litIn, (drawn, lit) => {
+  return stillWhereNothingMoves(["fg"], litIn, (drawn, lit) => {
     const inkOn = legible(drawn);
     const [left, right] = extent(drawn.cells().map((cell) => cell.col));
     return Animation.map(ramp, (now): EffectFrame => {
@@ -288,12 +288,12 @@ export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string
 }
 
 /**
- * `loop` as drawn at the frame's depth and on the colours it lights
- * (`lit`): where the depth writes only the
+ * `loop` as drawn at the frame's depth and on the colours it moves on `sides`
+ * (`litIn`): where the depth writes only the
  * sixteen ANSI slots, or no colour, a move that shows at all is a jump to
  * another slot, and a light on an element never jumps — so there it
- * holds every cell still, as it does where no cell it is handed has a colour
- * of its own among what it lights, and anywhere else it moves. [LAW:single-enforcer]
+ * holds every cell still, as it does where no cell that shows anything has
+ * one of those colours of its own there, and anywhere else it moves. [LAW:single-enforcer]
  * `onColors`, `wheel` and `gradient` draw through this, so every loop in the catalogue
  * meets the sixteen-colour terminal here. `atShares` does not: a progress
  * bar's pulse is the news that work is going on, and flashes a slot as
@@ -301,11 +301,11 @@ export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string
  * A frame held still never changes, and says so, so a host drawing the
  * loop on such a terminal draws it once.
  */
-function stillWhereNothingMoves(litIn: (drawn: Drawn) => ReadonlySet<string>, loop: (drawn: Drawn, lit: ReadonlySet<string>) => Animation<EffectFrame>): Effect {
+function stillWhereNothingMoves(sides: readonly Side[], litIn: (drawn: Drawn) => ReadonlySet<string>, loop: (drawn: Drawn, lit: ReadonlySet<string>) => Animation<EffectFrame>): Effect {
   return (drawn) => {
     const lit = litIn(drawn);
-    const shows = ({ pair }: ListedCell): boolean => SIDES.some((side) => !pair.terminal[side] && lit.has(pair[side].hex));
-    return onlySlots(drawn.depth) || !drawn.all().some(shows) ? Animation.constant<EffectFrame>((look) => look) : loop(drawn, lit);
+    const shows = ({ pair }: ListedCell): boolean => sides.some((side) => !pair.terminal[side] && lit.has(pair[side].hex));
+    return onlySlots(drawn.depth) || !drawn.cells().some(shows) ? Animation.constant<EffectFrame>((look) => look) : loop(drawn, lit);
   };
 }
 
@@ -1115,7 +1115,7 @@ export function wheel(curve: Curve, z: number): Effect {
   const turned = (place: Place, t: number): number => (360 * t) / P + curve.swing * STRAY * ((stray(place, t) - stray(place, 0)) / 1.5);
   // A turned colour's bounds rest on what a frame draws, never on `t`: settled once for each.
   const settled = new WeakMemo<Memo<ReadonlyMap<string, Bounds>>, TerminalColors>();
-  return stillWhereNothingMoves(({ colors }) => colors, (drawn) => {
+  return stillWhereNothingMoves(SIDES, ({ colors }) => colors, (drawn) => {
     const { colors, fills, depth, theme } = drawn;
     // Whether a slot shows one of the element's colours: never the terminal's, whatever its hex.
     const own = (terminal: boolean, color: ColorRgba): boolean => !terminal && colors.has(color.hex);
