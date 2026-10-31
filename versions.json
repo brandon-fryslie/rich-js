@@ -4,15 +4,22 @@
     {
       "version": "pr-524",
       "ref": "refs/pull/524/merge",
-      "sha": "7544050a8712c749fe01f4703d0b1135aad9428c",
-      "timestamp": "2026-10-31T08:36:50.673Z",
+      "sha": "6cd9f1d6636ce700371c765ab9c858b0975f77d7",
+      "timestamp": "2026-10-31T08:43:25.112Z",
       "commits": [
         {
-          "sha": "7544050a8712c749fe01f4703d0b1135aad9428c",
+          "sha": "6cd9f1d6636ce700371c765ab9c858b0975f77d7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T02:35:19-06:00",
-          "message": "Merge f405918a57728899fd8e0d0ab2970cd11b14c680 into 423d72599198f78ede16b93d0b858d75e71aabb4\n"
+          "timestamp": "2026-10-31T08:42:01Z",
+          "message": "Merge f75ae662e48d4aad56cc6bbd7542adaf3e129992 into 423d72599198f78ede16b93d0b858d75e71aabb4\n"
+        },
+        {
+          "sha": "f75ae662e48d4aad56cc6bbd7542adaf3e129992",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T02:41:48-06:00",
+          "message": "Each drawn role is measured against its own hue, and the rule is stated where it lives (rich-unfiled-791c.0ny5)\n\nMedium review: text- was overwritten with the accent, so no real derived value\nwent through the transposition. Only on- is near grey, so only on- is painted\nand each form is compared with its own colour before.\n\nThe no-error case pinned a name no role has and read as a second rule beside\nthe PALETTE_ROLES check, so it is gone. The docs sentence spelling out the\nmechanism was a third copy of it; the page already states the family rule by\nbehaviour, and the transpose.ts header owns the mechanism.\n"
         },
         {
           "sha": "f405918a57728899fd8e0d0ab2970cd11b14c680",
