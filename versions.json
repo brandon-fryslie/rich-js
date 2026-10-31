@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-522",
-      "ref": "refs/pull/522/merge",
-      "sha": "bfeac8835a4621e89040b8aa07eb0a1a9dbb6f9f",
-      "timestamp": "2026-10-31T07:01:00.352Z",
-      "commits": [
-        {
-          "sha": "bfeac8835a4621e89040b8aa07eb0a1a9dbb6f9f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T06:58:54Z",
-          "message": "Merge d5520b2d7dd7d3816a69062ea4191c3e6184edba into b7d62e39232f05d870e3036d154fa3af754a26ea\n"
-        },
-        {
-          "sha": "d5520b2d7dd7d3816a69062ea4191c3e6184edba",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T00:58:45-06:00",
-          "message": "TerminalColors is proved, and the base roles are read once (rich-unfiled-791c.32i2)\n\n`TerminalColors` was a `Pick`, so an object literal with a short ANSI table\npassed where a `TerminalTheme` had been required. It is now the class that does\nthe check, branded so an object of the same shape is not one, and exported as a\ntype so a consumer still reaches it through `TerminalTheme`.\n\n`statedRoles` is now the one reader of the base colours, which also makes\n\"the eight base roles are always known\" true of `background`. `markdown-h6-color`\nreads `text-muted`: Textual's translucent `foreground-muted` is that, and this\nlibrary's opaque one is 2.2:1. `rgbToLab` uses `core/oklch`'s sRGB curves.\n"
-        },
-        {
-          "sha": "eb62e662f2768997230ccc5bd139a4a391327b8b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T00:48:28-06:00",
-          "message": "buildPalette parses what it is given, and the button label reads its ground (rich-unfiled-791c.32i2)\n\nA key naming no role is refused and one holding `undefined` states nothing, in\none unit rather than a crash on `.alpha` and a silent drop. A `*-muted` that\ndraws nothing leaves its `text-*` on `background`. `button-color-foreground`\nsits on an accent, so it reads `on-primary`.\n\nThe page claimed a misspelt literal is a compile error; `get(string)` admits it.\nThat overload stays because a role read from configuration is a string, and\nremoving it would cost 18 sites here and 10 in cc-candybar, so the page now says\nwhat happens.\n"
-        },
-        {
-          "sha": "60fcc8b8210a927787578d9f8b8580a000c35472",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T00:40:20-06:00",
-          "message": "A role is derived from what its ground draws, and a widget names roles (rich-unfiled-791c.32i2)\n\nReview of the role set. A translucent stated role is drawn before a rule reads\nit, so `text-*` is measured on the ground it stands on; `boost` stays a layer\nbecause `panel` composites it. `panel` takes `boost` only on a dark palette, as\nTextual's `design.py` does. The cursor and hover foregrounds sit on `primary`,\nso they read `on-primary`. `text-error` and `on-success` keep their hue under\ntransposition with the rest of their family. `ink` and the variant tables take\n`PaletteRole`, which removes the missing-key branch.\n\nSix cyberpunk `text-*` values move 1-3 levels: their tint is now composited on\nthe drawn `*-muted`. The other 3,612 baseline values are unchanged.\n"
-        },
-        {
-          "sha": "3cee933363cd245b4f7952986c3ffc0071b6f42f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T00:26:41-06:00",
-          "message": "Every palette holds every role, and one incomplete cannot be built (rich-unfiled-791c.32i2)\n\nThe 23 authored themes shared 151 roles, buildPalette produced 29, and seven\nof those 29 were on no authored theme, so `palette.get(\"background-muted\")` on\ntokyo-night was undefined. core/color.ts also built two empty palettes.\n\nPaletteRole is now the one statement of the set. buildPalette's rules are total\nover it, so a role does not compile until it can be derived, and an authored\ntheme is buildPalette with most roles stated. The constructor takes a colour\nfor every role, which is what lets the two no-background branches go.\n\nThe fallback terminals carried an empty Palette nothing read, so colour\nresolution now asks for TerminalColors, and core/color's edge to palette.ts is\ntype-only.\n\nBreaking: `new Palette(name, dark, map)` is now `new Palette(name, dark, roles)`.\nEvery existing colour is unchanged: 3,618 values compared across the 23 authored\npalettes and five derived ones. Version 0.27.0.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "b7d62e39232f05d870e3036d154fa3af754a26ea",
-      "timestamp": "2026-10-31T02:06:27.047Z",
+      "sha": "e3c9f1837d6fcbfbcc6ebcbee6ab6c5ec54b5714",
+      "timestamp": "2026-10-31T07:14:09.085Z",
       "commits": [
         {
-          "sha": "b7d62e39232f05d870e3036d154fa3af754a26ea",
+          "sha": "e3c9f1837d6fcbfbcc6ebcbee6ab6c5ec54b5714",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T20:04:43-06:00",
-          "message": "A lifecycle half is an animation, not a Veil of t (rich-animation-27tq.3kk) (#520)\n\n* A lifecycle half is an animation, not a Veil of t (rich-animation-27tq.3kk)\n\nA half of an element's lifecycle was a `Veil`, `(element, t, key) => Renderable`,\nbeside the schedule of the transition it was made from, paired by `lift` with\nnothing tying them: the frames said nothing of when they change and the\nschedule nothing of what is drawn, and a user writing a half threaded `t` by\nhand. It is now a `Half`, `(element, key) => Animation<Renderable>`: one value\ncarrying its frames and its holds, in the shape of `Change`, the library's\nother one-shot from renderables to an animation. It is done from the first\nmoment it says it never changes again, which is where an arrival ends and an\nelement is gone.\n\n`throughColors` and `throughGlyphs` keep their names and signatures and return\na `Half`: an `Effected` or `GlyphEffected` lent the transition's schedule as\nits word on when it changes, the one fact the wrapper lacks until it is\ndrawn. The lifecycle reads frames and holds off the half's animation, the\nexit drawn over whatever the arrival shows, and `gone` and the exit's hold\noff the exit over the element. `Animation.done` is the one reading of \"never\nchanges again\": `Transition.done` and the lifecycle's arrived and gone moments\nread it. `Veil` and `lift` are gone.\n\nA half written by hand needs no effect of the library's: the tests slide an\nelement in and out with `Padding` under `Animation.sequence`, step one on a\nbeat and read the beats off the lifecycle, and `docs/animation.md` describes\nthe shape and says why an `Effected` handed in bare is never done.\n\n* A half that never ends is refused by name, not left to wake the host for good (rich-animation-27tq.3kk)\n\nHigh review pass. A bare Effected as a half type-checked and gave a lifecycle that never arrived, was never gone and woke the host every frame, with one doc sentence as the warning. doneAt, the one place a half's end is read, now throws a RangeError naming the half: the enter when the lifecycle is made, the exit when it is told to leave, since Timeline.play has no host origin for an exit before then.\n\nThe Animation.done test on a transition's schedule is pinned against booleans instead of against Transition.done, which it is the body of. The life() comment on the two halves now says what each is read off, since it was read as claiming the leaving frame comes from the departure over the element.\n\n* A half done at every time is done as it begins, and the refusal names both wrappers (rich-animation-27tq.3kk)\n\nMedium review pass. firstReaching answers -Infinity for a half that is done from the start, an element arriving at once, and the new refusal read that as never ending. The done moment is now the later of the start and what firstReaching finds, so such a half arrives at entered and is gone at left, and its lastChange is that moment rather than -Infinity. Test added.\n\nA bare GlyphEffected is refused by the same path as a bare Effected, so the message and the prose that say why name both.\n\n* Both halves are asked where they end when the lifecycle is made, and no half is asked about a time before it began (rich-animation-27tq.3kk)\n\nSecond high review pass (step 12). doneAt walked firstReaching down to the float minimum for a half done at every time, and a beat asked there overflowed its pass and refused the time as infinite. Done is for good, so a half done at its own 0 is done at its start, and from a start it is not done at the walk is upward only. The exit half is now asked where it ends when the lifecycle is made, by the element's key and the half's role, not at the first leave; both halves and the arrival's end are carried into every leave instead of being rebuilt and re-walked there.\n\nA beat's passAt refuses a t past where a pass is a float as a period finer than time resolves there, the same refusal a boundary walked there gives, instead of refusing the infinite sum it would have built.\n\nA transition's schedule reduces to a cut at 0, as its effect does, so a half that lends the schedule to its frames tells the same hold reduced. Tests for each."
+          "timestamp": "2026-10-31T01:12:02-06:00",
+          "message": "Every palette holds every role, and one incomplete cannot be built (rich-unfiled-791c.32i2) (#522)\n\n* Every palette holds every role, and one incomplete cannot be built (rich-unfiled-791c.32i2)\n\nThe 23 authored themes shared 151 roles, buildPalette produced 29, and seven\nof those 29 were on no authored theme, so `palette.get(\"background-muted\")` on\ntokyo-night was undefined. core/color.ts also built two empty palettes.\n\nPaletteRole is now the one statement of the set. buildPalette's rules are total\nover it, so a role does not compile until it can be derived, and an authored\ntheme is buildPalette with most roles stated. The constructor takes a colour\nfor every role, which is what lets the two no-background branches go.\n\nThe fallback terminals carried an empty Palette nothing read, so colour\nresolution now asks for TerminalColors, and core/color's edge to palette.ts is\ntype-only.\n\nBreaking: `new Palette(name, dark, map)` is now `new Palette(name, dark, roles)`.\nEvery existing colour is unchanged: 3,618 values compared across the 23 authored\npalettes and five derived ones. Version 0.27.0.\n\n* A role is derived from what its ground draws, and a widget names roles (rich-unfiled-791c.32i2)\n\nReview of the role set. A translucent stated role is drawn before a rule reads\nit, so `text-*` is measured on the ground it stands on; `boost` stays a layer\nbecause `panel` composites it. `panel` takes `boost` only on a dark palette, as\nTextual's `design.py` does. The cursor and hover foregrounds sit on `primary`,\nso they read `on-primary`. `text-error` and `on-success` keep their hue under\ntransposition with the rest of their family. `ink` and the variant tables take\n`PaletteRole`, which removes the missing-key branch.\n\nSix cyberpunk `text-*` values move 1-3 levels: their tint is now composited on\nthe drawn `*-muted`. The other 3,612 baseline values are unchanged.\n\n* buildPalette parses what it is given, and the button label reads its ground (rich-unfiled-791c.32i2)\n\nA key naming no role is refused and one holding `undefined` states nothing, in\none unit rather than a crash on `.alpha` and a silent drop. A `*-muted` that\ndraws nothing leaves its `text-*` on `background`. `button-color-foreground`\nsits on an accent, so it reads `on-primary`.\n\nThe page claimed a misspelt literal is a compile error; `get(string)` admits it.\nThat overload stays because a role read from configuration is a string, and\nremoving it would cost 18 sites here and 10 in cc-candybar, so the page now says\nwhat happens.\n\n* TerminalColors is proved, and the base roles are read once (rich-unfiled-791c.32i2)\n\n`TerminalColors` was a `Pick`, so an object literal with a short ANSI table\npassed where a `TerminalTheme` had been required. It is now the class that does\nthe check, branded so an object of the same shape is not one, and exported as a\ntype so a consumer still reaches it through `TerminalTheme`.\n\n`statedRoles` is now the one reader of the base colours, which also makes\n\"the eight base roles are always known\" true of `background`. `markdown-h6-color`\nreads `text-muted`: Textual's translucent `foreground-muted` is that, and this\nlibrary's opaque one is 2.2:1. `rgbToLab` uses `core/oklch`'s sRGB curves."
         }
       ]
     }
