@@ -9,6 +9,7 @@ import { segmentsToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
+import { Effected } from "../../src/renderables/effect.js";
 import { dissolveOut, fadeIn, onBeat } from "../../src/renderables/effects.js";
 import { drawnAt, inFrame } from "./in-frame.js";
 import { Group } from "../../src/renderables/group.js";
@@ -297,5 +298,14 @@ describe("a lifecycle through halves written by hand", () => {
     // Done at the first hold that starts once the slide is: the element from then.
     expect(life.nextChange(2)).toBe(Number.POSITIVE_INFINITY);
     expect(bytes(draw(life.at(2)))).toBe(bytes(draw(line)));
+  });
+
+  it("refuses a half that never ends by name: a bare Effected as the arrival when made, as the exit when told to leave", () => {
+    // [LAW:no-silent-failure] An Effected's own word on when it changes is "now" at every time, so it is never done.
+    const bare: Half = (element, key) => new Effected(element, fadeIn(curve, 0).effect, { key, theme });
+    expect(() => lifecycle(line, { enter: bare, exit: slidOut(4), key: "hand" }, 1)).toThrow(/the enter half never ends/);
+    const made = lifecycle(line, { enter: slidIn(4), exit: bare, key: "hand" }, 1);
+    expect(made.gone(1e6)).toBe(false);
+    expect(() => made.leave(5)).toThrow(/the exit half never ends/);
   });
 });

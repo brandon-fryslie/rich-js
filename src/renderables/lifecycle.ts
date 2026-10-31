@@ -59,9 +59,11 @@ import type { GlyphTransition } from "./glyph-effects.js";
  * `t = 0`, the moment the half began, on its own clock. Its holds are the
  * half's own, whatever element it is handed, and it is done from the first
  * moment it says it never changes again (`Animation.done`): an arrival is
- * the element from then, and an exit is gone. An `Effected` handed in bare
- * is never done, since its own word is "now" at every time; a colour half
- * is `throughColors`, which lends the transition's schedule.
+ * the element from then, and an exit is gone. A half that never ends is
+ * refused, the arrival when the lifecycle is made and the exit when it is
+ * told to leave: an `Effected` handed in bare is one, since its own word is
+ * "now" at every time; a colour half is `throughColors`, which lends the
+ * transition's schedule.
  */
 export type Half = (element: Renderable, key: string) => Animation<Renderable>;
 
@@ -111,7 +113,7 @@ export interface Lifecycle extends Animation<Renderable> {
   readonly left: number;
   /** Whether it has finished leaving by `t`, so a host drops it. */
   gone(t: number): boolean;
-  /** This element told to leave at host time `at`. Throws if it was already told, or `at` is before it entered. */
+  /** This element told to leave at host time `at`. Throws if it was already told, `at` is before it entered, or its exit never ends. */
   leave(at: number): Lifecycle;
 }
 
@@ -130,19 +132,29 @@ export function lifecycle(element: Renderable, options: LifecycleOptions, entere
  * to either side of it, as `Animation.sequence` carries its switch.
  * [LAW:single-enforcer] Since `x - start` never falls as `x` rises, a host
  * time is at or past this moment exactly when `done` holds there.
+ * [LAW:no-silent-failure] A half begun that is never done is refused by its
+ * `role`: kept, the element would never arrive, or never be gone, and wake
+ * the host every frame for good, and only a bare `Effected`'s doc would say why.
  */
-function doneAt(half: Animation<Renderable>, start: number): number {
-  return Number.isFinite(start) ? firstReaching(start, (x) => Animation.done(half, x - start)) : start;
+function doneAt(half: Animation<Renderable>, start: number, role: "enter" | "exit"): number {
+  if (!Number.isFinite(start)) return start;
+  const at = firstReaching(start, (x) => Animation.done(half, x - start));
+  if (!Number.isFinite(at)) {
+    throw new RangeError(
+      `lifecycle: the ${role} half never ends: its animation never says it has stopped changing (Animation.done). An Effected on its own does not; throughColors(transition, theme) and throughGlyphs(transition) lend it the transition's schedule`,
+    );
+  }
+  return at;
 }
 
 function life(element: Renderable, options: LifecycleOptions, entered: number, left: number): Lifecycle {
   const { enter, exit, key } = options;
-  // Each half over the element: where the arrival ends and where the exit is gone are read off these,
-  // and so is the exit's hold, so `gone` and what the frame says never come from two halves.
+  // Each half over the element. Where the arrival ends, where the exit is gone and the exit's hold are read
+  // off these; the frame while leaving is the exit over what is shown, whose holds are these by `Half`'s contract.
   const arrival = enter(element, key);
   const departure = exit(element, key);
-  const arrived = doneAt(arrival, entered);
-  const goneAt = doneAt(departure, left);
+  const arrived = doneAt(arrival, entered, "enter");
+  const goneAt = doneAt(departure, left, "exit");
   // The arrival on the host's clock: when its frame next changes, and since when it has been what it is.
   const arriving = Timeline.run(Timeline.play(entered), arrival);
   // What the element draws by `t` if it is not leaving: arriving through `enter`, then itself.

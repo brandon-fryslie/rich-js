@@ -35,9 +35,9 @@ describe("Animation.done", () => {
     expect([1.99, 2].map((t) => Animation.done(ran, t))).toEqual([false, true]);
   });
 
-  it("is what a transition's done reads off its schedule", () => {
+  it("reads a transition's end off its schedule, the one-shot its done reports", () => {
     const fade = fadeIn({ seconds: 2, ease: EASES.linear, swing: 1 }, 0);
-    for (const t of [0, 1.99, 2, 1e6]) expect(fade.done(t)).toBe(Animation.done(fade.schedule, t));
+    expect([0, 1.99, 2, 1e6].map((t) => Animation.done(fade.schedule, t))).toEqual([false, false, true, true]);
   });
 });
 
