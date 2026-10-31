@@ -161,7 +161,7 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
   "block-hover-background": (at) => withAlpha(at("boost"), HOVER_ALPHA),
 
   "button-foreground": same("foreground"),
-  "button-color-foreground": same("text"),
+  "button-color-foreground": same("on-primary"),
 
   "footer-background": same("panel"),
   "footer-foreground": same("foreground"),
@@ -232,9 +232,7 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
     }
     return drawn(colour);
   };
-  const known = new Map(
-    (Object.entries(given) as [PaletteRole, ColorRgba][]).map(([role, colour]) => [role, role === "boost" ? colour : drawn(colour)]),
-  );
+  const known = statedRoles(name, given);
   for (const key of ACCENT_KEYS) known.set(key, draw(key));
   known.set("foreground", draw("foreground"));
 
@@ -247,11 +245,30 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
   };
 
   // [LAW:single-enforcer] Stated and derived `text-*` alike: the tint is the
-  // palette's, whether it reads is decided here.
+  // palette's, whether it reads is decided here. A stated tint stays translucent
+  // because it composites on its `*-muted`, and a `*-muted` that draws nothing
+  // leaves it on `background`.
   for (const key of ACCENT_KEYS) {
-    known.set(`text-${key}`, accentText(given[`text-${key}`] ?? at(`text-${key}`), at(`${key}-muted`), at("background")));
+    const ground = at(`${key}-muted`).compositeOver(at("background"));
+    known.set(`text-${key}`, accentText(given[`text-${key}`] ?? at(`text-${key}`), ground, at("background")));
   }
   return new Palette(name, dark, Object.fromEntries(PALETTE_ROLES.map((role) => [role, at(role)])) as PaletteRoles);
+}
+
+/**
+ * The roles `given` states, drawn on `background`. The one place a caller's
+ * roles are read: a key that names no role is refused, and one holding
+ * `undefined` states nothing. [LAW:parse-dont-validate]
+ */
+function statedRoles(name: string, given: StatedRoles): Map<PaletteRole, ColorRgba> {
+  const drawn = drawnOn(name, given.background);
+  const roles = new Set<string>(PALETTE_ROLES);
+  const stated = Object.entries(given).flatMap(([role, colour]: [string, ColorRgba | undefined]): [PaletteRole, ColorRgba][] => {
+    if (!roles.has(role)) throw new RangeError(`palette ${JSON.stringify(name)}: ${JSON.stringify(role)} is not a role`);
+    if (colour === undefined) return [];
+    return [[role as PaletteRole, role === "boost" ? colour : drawn(colour)]];
+  });
+  return new Map(stated);
 }
 
 /**

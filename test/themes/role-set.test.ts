@@ -65,6 +65,17 @@ describe("a stated role", () => {
   });
 });
 
+describe("what buildPalette is given", () => {
+  it("a role holding undefined is not stated", () => {
+    expect(buildPalette("t", true, { ...base, panel: undefined }).get("panel")).toEqual(built.get("panel"));
+  });
+
+  it("a key that names no role is refused by name", () => {
+    const overrides = { "scrollbar-colour": new ColorRgba(1, 2, 3) };
+    expect(() => buildPalette("t", true, { ...base, ...overrides })).toThrow(/"t": "scrollbar-colour" is not a role/);
+  });
+});
+
 describe("a stated role is read as it is drawn", () => {
   const light = { ...base, background: new ColorRgba(240, 240, 235), foreground: new ColorRgba(30, 30, 30) };
 
@@ -85,6 +96,11 @@ describe("a stated role is read as it is drawn", () => {
     expect(palette.get("panel")).toEqual(boost.compositeOver(blendRgb(palette.get("surface"), palette.get("primary"), 0.1)));
   });
 
+  it("a muted that draws nothing leaves its text on background", () => {
+    const palette = buildPalette("t", false, { ...light, "primary-muted": new ColorRgba(0, 0, 0, 0) });
+    expect(contrastRatio(palette.get("text-primary"), palette.get("background"))).toBeGreaterThanOrEqual(4.5);
+  });
+
   it("a stated text-* is held to read on its muted", () => {
     const palette = buildPalette("t", true, { ...base, "text-primary": new ColorRgba(40, 40, 40) });
     expect(contrastRatio(palette.get("text-primary"), palette.get("primary-muted"))).toBeGreaterThanOrEqual(4.5);
@@ -99,7 +115,7 @@ describe("what a role is drawn on decides it", () => {
 
   it.each(derived.map((palette) => [palette.name, palette] as const))("%s: the pairs on primary read", (_name, palette) => {
     const ground = palette.get("primary");
-    for (const role of ["block-cursor-foreground", "link-color-hover"] as const) {
+    for (const role of ["block-cursor-foreground", "link-color-hover", "button-color-foreground"] as const) {
       expect(contrastRatio(palette.get(role), ground), role).toBeGreaterThanOrEqual(3);
     }
   });

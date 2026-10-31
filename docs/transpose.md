@@ -86,7 +86,7 @@ console.print(`[on ${surface.hex}]      [/] surface  [on ${tint.hex}]      [/] t
 
 ## Every palette has every role
 
-A palette holds the same roles whichever way it was made: a bundled theme from `getThemePalette`, the palette of a terminal theme, a `buildPalette` of your own, or a transposition of any of them. `get` on a role is a colour, never `undefined`, and `PaletteRole` is the type naming them, so a misspelt role is a compile error where the name is a literal. A string only known at run time reads `ColorRgba | undefined`.
+A palette holds the same roles whichever way it was made: a bundled theme from `getThemePalette`, the palette of a terminal theme, a `buildPalette` of your own, or a transposition of any of them. `PaletteRole` is the type naming them, and `get` on one is a colour, never `undefined`. Any other string, a misspelt role or one only known at run time, reads `ColorRgba | undefined`, so the compiler refuses it where a colour is required.
 
 `buildPalette` needs the eight base colours and derives the rest with Textual's formulas. Any other role you state keeps its colour, and what is derived from it follows. A stated `text-*` is the exception: it is moved as far as it must go to read on its `*-muted`.
 
@@ -141,7 +141,7 @@ The resulting palette's `dark` flag is derived from the **actual lightness of th
 
 ## Semantic anchors — meaning that survives transposition
 
-Rotating *every* hue would make a UI lie: an error message must look red, success green, warning amber, no matter the key. Those roles are **anchored** — their hue is held while lightness and chroma still transform (so they still invert correctly and respond to chroma scaling).
+Rotating *every* hue would make a UI lie: an error message must look red, success green, warning amber, no matter the key. Those roles are **anchored** — their hue is held while lightness and chroma still transform (so they still invert correctly and respond to chroma scaling). The family goes with them: `error-muted`, and the `text-error` and `on-error` drawn on it.
 
 ```typescript
 import { isAnchored, ANCHORED_ROOTS } from "@promptctl/rich-js";
