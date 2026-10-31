@@ -4,15 +4,22 @@
     {
       "version": "pr-520",
       "ref": "refs/pull/520/merge",
-      "sha": "12cc9d27e8ac2faec681c0f78d9383b5cc94d496",
-      "timestamp": "2026-10-31T01:20:20.925Z",
+      "sha": "f50df5fc567853b8970fbc111648b9807c7f7f52",
+      "timestamp": "2026-10-31T01:32:33.753Z",
       "commits": [
         {
-          "sha": "12cc9d27e8ac2faec681c0f78d9383b5cc94d496",
+          "sha": "f50df5fc567853b8970fbc111648b9807c7f7f52",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T19:18:22-06:00",
-          "message": "Merge b375bca05b3d2aeb13b5064ab880fc8fa08935a8 into 8b1c56055c946a1f2ce3f582cbdbf804ee18c8b7\n"
+          "timestamp": "2026-10-31T01:30:54Z",
+          "message": "Merge da02118d60474142f7f6be8032269644dced7a4e into 8b1c56055c946a1f2ce3f582cbdbf804ee18c8b7\n"
+        },
+        {
+          "sha": "da02118d60474142f7f6be8032269644dced7a4e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T19:30:42-06:00",
+          "message": "A half that never ends is refused by name, not left to wake the host for good (rich-animation-27tq.3kk)\n\nHigh review pass. A bare Effected as a half type-checked and gave a lifecycle that never arrived, was never gone and woke the host every frame, with one doc sentence as the warning. doneAt, the one place a half's end is read, now throws a RangeError naming the half: the enter when the lifecycle is made, the exit when it is told to leave, since Timeline.play has no host origin for an exit before then.\n\nThe Animation.done test on a transition's schedule is pinned against booleans instead of against Transition.done, which it is the body of. The life() comment on the two halves now says what each is read off, since it was read as claiming the leaving frame comes from the departure over the element.\n"
         },
         {
           "sha": "b375bca05b3d2aeb13b5064ab880fc8fa08935a8",
