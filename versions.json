@@ -4,15 +4,22 @@
     {
       "version": "pr-520",
       "ref": "refs/pull/520/merge",
-      "sha": "f50df5fc567853b8970fbc111648b9807c7f7f52",
-      "timestamp": "2026-10-31T01:32:33.753Z",
+      "sha": "fa9af3a5f98bff397e9bf3152d33b3b6bfe8bf5e",
+      "timestamp": "2026-10-31T01:40:21.872Z",
       "commits": [
         {
-          "sha": "f50df5fc567853b8970fbc111648b9807c7f7f52",
+          "sha": "fa9af3a5f98bff397e9bf3152d33b3b6bfe8bf5e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T01:30:54Z",
-          "message": "Merge da02118d60474142f7f6be8032269644dced7a4e into 8b1c56055c946a1f2ce3f582cbdbf804ee18c8b7\n"
+          "timestamp": "2026-10-31T01:38:23Z",
+          "message": "Merge a38bf9fa046d2afb430bec3706b40d6dc236da48 into 8b1c56055c946a1f2ce3f582cbdbf804ee18c8b7\n"
+        },
+        {
+          "sha": "a38bf9fa046d2afb430bec3706b40d6dc236da48",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T19:38:07-06:00",
+          "message": "A half done at every time is done as it begins, and the refusal names both wrappers (rich-animation-27tq.3kk)\n\nMedium review pass. firstReaching answers -Infinity for a half that is done from the start, an element arriving at once, and the new refusal read that as never ending. The done moment is now the later of the start and what firstReaching finds, so such a half arrives at entered and is gone at left, and its lastChange is that moment rather than -Infinity. Test added.\n\nA bare GlyphEffected is refused by the same path as a bare Effected, so the message and the prose that say why name both.\n"
         },
         {
           "sha": "da02118d60474142f7f6be8032269644dced7a4e",
