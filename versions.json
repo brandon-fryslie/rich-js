@@ -4,15 +4,22 @@
     {
       "version": "pr-524",
       "ref": "refs/pull/524/merge",
-      "sha": "1fb6626e32945684e3d7a932f556694de0d616c1",
-      "timestamp": "2026-10-31T08:28:11.278Z",
+      "sha": "7544050a8712c749fe01f4703d0b1135aad9428c",
+      "timestamp": "2026-10-31T08:36:50.673Z",
       "commits": [
         {
-          "sha": "1fb6626e32945684e3d7a932f556694de0d616c1",
+          "sha": "7544050a8712c749fe01f4703d0b1135aad9428c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T02:26:24-06:00",
-          "message": "Merge 78c1449b9d7d28ff7c57d601d5a1dac533031c94 into 423d72599198f78ede16b93d0b858d75e71aabb4\n"
+          "timestamp": "2026-10-31T02:35:19-06:00",
+          "message": "Merge f405918a57728899fd8e0d0ab2970cd11b14c680 into 423d72599198f78ede16b93d0b858d75e71aabb4\n"
+        },
+        {
+          "sha": "f405918a57728899fd8e0d0ab2970cd11b14c680",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T02:35:09-06:00",
+          "message": "What is drawn on an accent turns by a stated amount, for every accent and both forms (rich-unfiled-791c.0ny5)\n\nReview of the first commit: its test was relational, so losing the lock\neverywhere left it green; it named six accents by hand; it read text- only;\nand gruvbox's near-grey on-* could not have shown on- at all. TURN is keyed by\nAccentRole and states the hue, on a palette whose text- and on- forms are\nchromatic.\n\nA role anchors exactly when it names an anchored root, checked over\nPALETTE_ROLES: a new drawn-on family would otherwise compile and rotate, which\nis this ticket's bug. That replaces the two hand-written isAnchored lists.\n\nDocs: the number of bundled themes was wrong and is gone, and the rule is\nstated once as what it is, name syntax.\n"
         },
         {
           "sha": "78c1449b9d7d28ff7c57d601d5a1dac533031c94",
