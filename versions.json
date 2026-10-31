@@ -4,15 +4,22 @@
     {
       "version": "pr-525",
       "ref": "refs/pull/525/merge",
-      "sha": "1395163449190f4a239bf16765b5888cffaffe35",
-      "timestamp": "2026-10-31T13:26:52.620Z",
+      "sha": "5f5ebe47122646603847117b9a27e89b960c82b0",
+      "timestamp": "2026-10-31T13:42:34.084Z",
       "commits": [
         {
-          "sha": "1395163449190f4a239bf16765b5888cffaffe35",
+          "sha": "5f5ebe47122646603847117b9a27e89b960c82b0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T13:24:50Z",
-          "message": "Merge 47fbac21075c44aaaa924dc9970b63022d7a882a into 188acc5bffc6981b8837b2c06336e835fba9085e\n"
+          "timestamp": "2026-10-31T13:40:20Z",
+          "message": "Merge f3c961bc167dbe1cca3465231638db6f334c7f6a into 188acc5bffc6981b8837b2c06336e835fba9085e\n"
+        },
+        {
+          "sha": "f3c961bc167dbe1cca3465231638db6f334c7f6a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T07:40:10-06:00",
+          "message": "A loop sleeps when no cell it is handed shows what it lights (rich-unfiled-791c.75gd)\n\nStep 11 review of #525. The hold-still gate tested whether the lit set was\nempty, so a named colour no cell draws, a confined effect with no owner in the\nframe, and a name matching only the terminal's ink all woke the host for\nnothing. It now reads the cells it is handed, which confined has narrowed, and\nhands the loop the set it read so gradient resolves its names once. The docs\nsay a painter covers what is beneath it. ruleFrame listed cells in a pair its\n`colors` did not name, which no real Drawn can do.\n"
         },
         {
           "sha": "47fbac21075c44aaaa924dc9970b63022d7a882a",
