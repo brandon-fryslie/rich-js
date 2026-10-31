@@ -72,6 +72,9 @@ function words(count: number, seed: number): Style[] {
   });
 }
 
+/** The layers folded with nothing held at a floor: what `layered` is measured against. */
+const fold = (...effects: readonly Effect[]): Effect => (at) => Animation.map(Animation.all(effects.map((effect) => effect(at))), (frames): EffectFrame => (look, cell) => frames.reduce((under, frame) => frame(under, cell), look));
+
 const z = 1.7;
 const shimmering = onColors(shimmer(EFFECT_CURVES.shimmer, SHIMMER_WIDTH, EFFECT_LIGHTS.sun, z));
 const pulsing = onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, z));
@@ -264,9 +267,8 @@ describe("layered", () => {
     const own = (segment: Segment, owner: object): Renderable => ({ render: () => Segment.anchorLines([[segment]], owner).flat() });
     const subject: Renderable = { *render(options) { yield* render(own(a, left), options); yield* render(own(b, right), options); } };
     const effects = [confined(pulsing, left), confined(onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, 9)), right)];
-    const fold: Effect = (at) => Animation.map(Animation.all(effects.map((effect) => effect(at))), (frames): EffectFrame => (look, cell) => frames.reduce((under, frame) => frame(under, cell), look));
     for (const depth of [ColorDepth.TRUECOLOR, ColorDepth.EIGHT_BIT]) {
-      for (const t of times) expect(bytes(drawn(subject, layered(...effects), t, depth, CATPPUCCIN_MOCHA), depth)).toEqual(bytes(drawn(subject, fold, t, depth, CATPPUCCIN_MOCHA), depth));
+      for (const t of times) expect(bytes(drawn(subject, layered(...effects), t, depth, CATPPUCCIN_MOCHA), depth)).toEqual(bytes(drawn(subject, fold(...effects), t, depth, CATPPUCCIN_MOCHA), depth));
     }
   });
 
@@ -291,6 +293,19 @@ describe("layered", () => {
       const listed = drawnOf(drawn(plain, identity, 0, depth, CATPPUCCIN_MOCHA), depth, CATPPUCCIN_MOCHA);
       expect(layered(turning, shimmering, ramp)(listed).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
     }
+  });
+
+  it("sleeps where a loop names a colour no cell it is handed shows", () => {
+    const words = element([new Style({ color: ColorSpec.parse("#a0c0e0") })]);
+    const elsewhere = new Set(["#123456"]);
+    const depth = ColorDepth.TRUECOLOR;
+    const listed = drawnOf(drawn(words, identity, 0, depth, CATPPUCCIN_MOCHA), depth, CATPPUCCIN_MOCHA);
+    const moving = Animation.continuous(() => new ColorRamp(EASES.linear, [{ at: 0, color: new ColorRgba(255, 30, 20) }, { at: 1, color: new ColorRgba(255, 200, 40) }]));
+    expect(layered(onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, z), elsewhere))(listed).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
+    expect(gradient(moving, [...elsewhere])(listed).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
+    expect(confined(shimmering, {})(listed).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
+    const unstyled = drawnOf(drawn(element([new Style({})]), identity, 0, depth, CATPPUCCIN_MOCHA), depth, CATPPUCCIN_MOCHA);
+    expect(onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, z), new Set([unstyled.pairs[0]!.fg.hex]))(unstyled).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
   });
 
   it("keeps moving a colour named for its light that lies only under blanks, which no word cell lists", () => {
@@ -563,7 +578,6 @@ describe("layered", () => {
   });
 
   it.each([["random words", () => element(words(5, 19))], ["more words", () => element(words(5, 101))], ["the demo's strip", (theme: TerminalTheme) => stripSubject(theme).renderable]] as const)("over %s, a colour steps about as far between frames as the unfloored fold's", (_n, bodyOn) => {
-    const fold = (...effects: readonly Effect[]): Effect => (at) => Animation.map(Animation.all(effects.map((effect) => effect(at))), (frames): EffectFrame => (look, cell) => frames.reduce((under, frame) => frame(under, cell), look));
     const step = (effect: Effect, depth: ColorDepth, theme: TerminalTheme): number => {
       const subject = bodyOn(theme);
       let largest = 0;

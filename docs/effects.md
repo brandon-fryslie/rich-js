@@ -129,6 +129,8 @@ for (const t of [0, 40, 80]) {
 }
 ```
 
+A `gradient` or a `steppedInk` paints its ink over whatever is beneath it, so a light that should reach the letters goes after one.
+
 Handing a list is the same call: `layered(...chosen.map((name) => EFFECT_CATALOGUE.loops[name](element)))` draws what one effect draws for a list of one and leaves the element as it is for none.
 
 Every word reads at its floor, its resting contrast or WCAG AA whichever is lower, whatever the layers do and in whatever order. Each loop keeps that for the colours the element drew, and a colour another layer moved is not one of those, so once the layers have moved a cell, its ground lands where the inks on it can still read and an ink that does not read slides to the luminance that does, on the side of the ground it stands on while that side has room. An ink a layer carries across its ground jumps the crossing, since nothing reads there: a light lifting a `gradient`'s dark ink past a pale ground flips that word, and the same two effects on most palettes never come near it. A fill stays one fill whichever words are on it, and the floor outranks a colour being the terminal's: a terminal ink is moved where its ground left it unreadable. None of this changes a byte for the catalogue's loops and attribute effects, or for a `gradient` or a `steppedInk`: one beside an effect that does nothing draws what it draws alone.

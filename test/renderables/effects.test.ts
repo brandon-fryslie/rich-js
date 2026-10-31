@@ -1174,7 +1174,10 @@ describe("gradient: a ramp laid across an element", () => {
   const onTerminalGround = { fg: false, bg: true };
   const line = new ColorRgba(166, 227, 161);
   // A line on the terminal's ground across every cell, as a rule draws it.
-  const ruleFrame = (depth: ColorDepth): Drawn => ({ ...frame(new Set([line.hex])), depth });
+  const ruleFrame = (depth: ColorDepth): Drawn => {
+    const lined = cells.map((cell) => ({ ...cell, pair: lineCell(cell.col).pair }));
+    return { ...frame(new Set([line.hex])), all: () => lined, cells: () => lined, depth };
+  };
   const lineLook: CellLook = { fg: line, bg: CATPPUCCIN_MOCHA.backgroundColor, attributes: PLAIN };
   const lineCell = (col: number): EffectCell => ({ ...cells[col]!, pair: { ...lineLook, terminal: onTerminalGround, reverse: false } });
   const along = (ramp: ColorRamp, col: number): ColorRgba => ramp.at((col + 0.5) / cells.length);
