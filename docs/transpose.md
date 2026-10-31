@@ -152,7 +152,7 @@ console.print(isAnchored("error-darken-1")); // variants of an anchored root anc
 console.print(isAnchored("primary"));        // decorative, free to rotate
 ```
 
-The classification is by hyphen-prefix, so the whole `error-*` / `success-*` / `warning-*` family is covered by the three roots. This is what lets you spin the decorative palette through every key while the status colors stay meaningful.
+The classification reads the role a name draws on, so the three roots cover their whole family: `error-*`, and the `text-error` and `on-error` drawn on it, and likewise for `success` and `warning`. This is what lets you spin the decorative palette through every key while the status colors stay meaningful.
 
 ## themeKeyForRoot — choose a destination, not an interval
 

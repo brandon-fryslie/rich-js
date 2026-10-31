@@ -6,7 +6,7 @@ import {
   Oklch,
   type ThemeKey,
 } from "../../src/core/oklch.js";
-import { Palette } from "../../src/themes/palette.js";
+import { Palette, type AccentRole } from "../../src/themes/palette.js";
 import { getThemePalette } from "../../src/themes/registry.js";
 import {
   ANCHORED_ROOTS,
@@ -145,6 +145,20 @@ describe("transposePalette — anchor hue is locked", () => {
       expect(hueDelta(errorAfter.h, errorBefore.h)).toBeLessThan(2);
     }
   });
+
+  it.each<AccentRole>(["primary", "secondary", "accent", "success", "warning", "error"])(
+    "text-%s turns as far as its role does",
+    (role) => {
+      const gruv = getThemePalette("gruvbox");
+      const after = transposePalette(gruv, { ...IDENTITY, hueShift: 120 });
+      const turned = (name: "text-" | "") => {
+        const drawn = `${name}${role}` as const;
+        return Oklch.fromRgba(after.get(drawn)).h - Oklch.fromRgba(gruv.get(drawn)).h;
+      };
+      // Within the round-trip quantization the tests above allow.
+      expect(hueDelta(turned("text-"), turned(""))).toBeLessThan(2);
+    },
+  );
 });
 
 describe("transposePalette — INVERT_LIGHTNESS", () => {
