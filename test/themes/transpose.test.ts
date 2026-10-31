@@ -33,6 +33,10 @@ describe("ANCHORED_ROOTS / isAnchored", () => {
     expect(isAnchored("error-lighten-3")).toBe(true);
     expect(isAnchored("success")).toBe(true);
     expect(isAnchored("warning-darken-2")).toBe(true);
+    expect(isAnchored("error-muted")).toBe(true);
+    expect(isAnchored("text-error")).toBe(true);
+    expect(isAnchored("on-success")).toBe(true);
+    expect(isAnchored("text-warning")).toBe(true);
   });
 
   it("leaves decorative roles unlocked", () => {

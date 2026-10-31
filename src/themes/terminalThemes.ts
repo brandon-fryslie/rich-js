@@ -3,11 +3,12 @@
  * matching `<NAME>` export here. There is no inline-only theme; the data
  * file is the single source of truth for every theme's hex values.
  *
- * Editing `data/<name>.ts` updates both the registry's full ~150-var
- * palette (via `getThemePalette(name)`) AND the matching `TerminalTheme`
- * constant exported below (via `getThemeBaseColors(name)`, which pulls
- * just the 8 substrate keys). The two views never drift because both
- * derive from the same authored data.
+ * Editing `data/<name>.ts` updates both the registry's palette (via
+ * `getThemePalette(name)`) AND the matching `TerminalTheme` constant exported
+ * below (via `getThemeBaseColors(name)`, which pulls just the 8 substrate
+ * keys). The two views agree on those eight. Every other role of a
+ * `TerminalTheme`'s palette is derived from them, so it is not the colour the
+ * theme authored: read `getThemePalette` for that.
  *
  * [LAW:one-source-of-truth] Hex values live in `data/<name>.ts`. This
  * module is a derived view that builds a `TerminalTheme` from each

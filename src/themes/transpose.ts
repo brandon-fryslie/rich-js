@@ -17,16 +17,17 @@
  * `ThemeKey` to apply (data), not *whether* to apply one (branch).
  *
  * [LAW:one-source-of-truth] Anchor classification lives only in
- * `ANCHORED_ROOTS` below. The buildPalette derivation guarantees every
- * variant of a semantic root shares the root as its hyphen prefix
- * (`error`, `error-darken-1`, `error-lighten-2`, ...), so one set covers
- * the whole family.
+ * `ANCHORED_ROOTS` below. Every variant of a semantic root carries the root
+ * as its first hyphen segment (`error`, `error-darken-1`, `error-muted`, ...)
+ * or after a `text-` or `on-` that draws on it (`text-error`, `on-error`), so
+ * one set covers the whole family.
  *
  * [LAW:one-way-deps] Imports flow `core/oklch → themes/transpose`;
  * nothing in core/ depends back on this file.
  */
 
 import { Oklch, isIdentityKey, type ThemeKey } from "../core/oklch.js";
+import { pattern } from "../core/pattern.js";
 import { Palette } from "./palette.js";
 
 /**
@@ -46,9 +47,12 @@ export const ANCHORED_ROOTS: ReadonlySet<string> = new Set([
   "warning",
 ]);
 
+const DRAWN_ON = pattern(/^(?:text|on)-/);
+
 function rootOf(varName: string): string {
-  const dash = varName.indexOf("-");
-  return dash === -1 ? varName : varName.slice(0, dash);
+  const role = varName.replace(DRAWN_ON, "");
+  const dash = role.indexOf("-");
+  return dash === -1 ? role : role.slice(0, dash);
 }
 
 /**

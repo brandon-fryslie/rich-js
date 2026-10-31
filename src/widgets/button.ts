@@ -23,6 +23,7 @@ import { Style } from "../core/style.js";
 import { cellLen } from "../core/cells.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
+import type { PaletteRole } from "../themes/palette.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
@@ -43,7 +44,7 @@ export interface ButtonOptions {
 //                 text-* keys are mostly-accent and would clash on a full
 //                 accent bg.
 //   hoverFg     — WCAG-correct contrast colour (on-${accent}) for full bg.
-const VARIANT_KEYS: Record<ButtonVariant, { bg: string; fg: string; hover: string; hoverFg: string }> = {
+const VARIANT_KEYS: Record<ButtonVariant, { bg: PaletteRole; fg: PaletteRole; hover: PaletteRole; hoverFg: PaletteRole }> = {
   default:  { bg: "surface",       fg: "foreground",   hover: "primary", hoverFg: "on-primary" },
   primary:  { bg: "primary-muted", fg: "text-primary", hover: "primary", hoverFg: "on-primary" },
   success:  { bg: "success-muted", fg: "text-success", hover: "success", hoverFg: "on-success" },

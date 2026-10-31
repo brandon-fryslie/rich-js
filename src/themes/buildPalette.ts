@@ -1,6 +1,6 @@
 import { ColorRgba, blendRgb } from "../core/color.js";
 import { alphaBlend, contrastFor, ensureContrastToward, shiftLightness } from "./colorMath.js";
-import { Palette, drawnOn, type AccentRole, type BaseRole, type PaletteRole, type PaletteRoles, type ShadedRole } from "./palette.js";
+import { Palette, drawnOn, type AccentRole, type BaseRole, type PaletteRole, type PaletteRoles, type Shade, type ShadedRole } from "./palette.js";
 
 /**
  * Base colors required to build a full semantic palette.
@@ -16,8 +16,6 @@ export interface BaseColors {
   background: ColorRgba;
   foreground: ColorRgba;
 }
-
-type Shade = `-${"darken" | "lighten"}-${1 | 2 | 3}`;
 
 const MUTED_BLEND = 0.7;
 const TEXT_ALPHA = 0.66;
@@ -40,7 +38,7 @@ const SCROLLBAR_HOVER_ALPHA = 0.5;
 // WCAG AA for body text: `text-*` is the label drawn on `*-muted`.
 const TEXT_ON_MUTED = 4.5;
 
-export const ACCENT_KEYS: readonly AccentRole[] = ["primary", "secondary", "accent", "success", "warning", "error"];
+const ACCENT_KEYS: readonly AccentRole[] = ["primary", "secondary", "accent", "success", "warning", "error"];
 
 /** The eight roles every palette is given, and every role it may also state. */
 export type StatedRoles = BaseColors & Partial<PaletteRoles>;
@@ -62,23 +60,23 @@ const same = (role: PaletteRole): Rule => (at) => at(role);
 const none: Rule = () => TRANSPARENT;
 
 /** The six rungs around `root`, each `-darken-3`…`-lighten-3` one `LADDER_STEP` apart. */
-function ladder<R extends ShadedRole>(root: R, rung: (at: At, dark: boolean, step: number) => ColorRgba): Record<`${R}${Shade}`, Rule> {
+function ladder<R extends ShadedRole>(root: R, rung: (step: number) => Rule): Record<`${R}${Shade}`, Rule> {
   const rungs = (["darken", "lighten"] as const).flatMap((direction) =>
     ([1, 2, 3] as const).map((n) => {
-      const step = (direction === "darken" ? -n : n) * LADDER_STEP;
-      return [`${root}-${direction}-${n}`, (at: At, dark: boolean) => rung(at, dark, step)];
+      return [`${root}-${direction}-${n}`, rung((direction === "darken" ? -n : n) * LADDER_STEP)];
     }),
   );
   return Object.fromEntries(rungs) as Record<`${R}${Shade}`, Rule>;
 }
 
 const lightness = <R extends ShadedRole>(root: R): Record<`${R}${Shade}`, Rule> =>
-  ladder(root, (at, _dark, step) => shiftLightness(at(root), step));
+  ladder(root, (step) => (at) => shiftLightness(at(root), step));
 
 /**
  * `primary-background` at `step` from its root: on a dark palette a tint of the
  * background lifted toward white and floored at the tint, so the bottom rungs
- * meet rather than fall below it; on a light one the accent's own ladder.
+ * meet rather than fall below it; on a light one the accent's own ladder. Every
+ * rung reads the accent, as Textual's do, so a stated root does not move them.
  */
 const accentBackground = (accent: "primary" | "secondary", step: number): Rule => (at, dark) =>
   dark
@@ -132,8 +130,8 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
   ...lightness("panel"),
   ...lightness("boost"),
   ...lightness("surface"),
-  ...ladder("primary-background", (at, dark, step) => accentBackground("primary", step)(at, dark)),
-  ...ladder("secondary-background", (at, dark, step) => accentBackground("secondary", step)(at, dark)),
+  ...ladder("primary-background", (step) => accentBackground("primary", step)),
+  ...ladder("secondary-background", (step) => accentBackground("secondary", step)),
 
   "background-muted": (at) => blendRgb(at("background"), at("foreground"), MUTED_BLEND),
   "foreground-muted": (at) => blendRgb(at("foreground"), at("background"), MUTED_BLEND),
@@ -142,7 +140,10 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
   surface: (at) => blendRgb(at("background"), at("foreground"), SURFACE_LIFT),
   "surface-active": (at) => shiftLightness(at("surface"), SURFACE_ACTIVE_LIFT),
   boost: textOn(BOOST_ALPHA),
-  panel: (at) => at("boost").compositeOver(blendRgb(at("surface"), at("primary"), PANEL_TINT)),
+  panel: (at, dark) => {
+    const tinted = blendRgb(at("surface"), at("primary"), PANEL_TINT);
+    return dark ? at("boost").compositeOver(tinted) : tinted;
+  },
   "primary-background": accentBackground("primary", 0),
   "secondary-background": accentBackground("secondary", 0),
 
@@ -154,7 +155,7 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
   "border-blurred": (at) => shiftLightness(at("surface"), -BORDER_BLUR_DROP),
 
   "block-cursor-background": same("primary"),
-  "block-cursor-foreground": same("text"),
+  "block-cursor-foreground": same("on-primary"),
   "block-cursor-blurred-background": (at) => withAlpha(at("primary"), BLURRED_CURSOR_ALPHA),
   "block-cursor-blurred-foreground": same("foreground"),
   "block-hover-background": (at) => withAlpha(at("boost"), HOVER_ALPHA),
@@ -177,7 +178,7 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
   "link-background": none,
   "link-background-hover": same("primary"),
   "link-color": same("text"),
-  "link-color-hover": same("text"),
+  "link-color-hover": same("on-primary"),
 
   "markdown-h1-background": none,
   "markdown-h1-color": same("primary"),
@@ -209,12 +210,13 @@ export const PALETTE_ROLES: readonly PaletteRole[] = [...BASE_KEYS, ...(Object.k
 /**
  * Build a full semantic palette from its base colors and any other role it
  * states: a stated role keeps its colour, and everything derived from it
- * follows it. An authored theme is this with most roles stated; see `RULES`
- * for what a role not stated becomes.
+ * follows it, but for `text-*`, which is held to read on its `*-muted`. An
+ * authored theme is this with most roles stated; see `RULES` for what a role
+ * not stated becomes.
  *
- * A translucent base colour is drawn onto `background` before anything is
- * derived from it, so `on-*` is chosen against the colour the accent is drawn
- * as.
+ * A translucent colour is drawn onto `background` before anything is derived
+ * from it, so `on-*` is chosen against the colour the accent is drawn as.
+ * `boost` alone stays a layer: it is what `panel` composites.
  */
 export function buildPalette(name: string, dark: boolean, given: StatedRoles): Palette {
   const drawn = drawnOn(name, given.background);
@@ -230,7 +232,9 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
     }
     return drawn(colour);
   };
-  const known = new Map(Object.entries(given) as [PaletteRole, ColorRgba][]);
+  const known = new Map(
+    (Object.entries(given) as [PaletteRole, ColorRgba][]).map(([role, colour]) => [role, role === "boost" ? colour : drawn(colour)]),
+  );
   for (const key of ACCENT_KEYS) known.set(key, draw(key));
   known.set("foreground", draw("foreground"));
 
@@ -245,7 +249,7 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
   // [LAW:single-enforcer] Stated and derived `text-*` alike: the tint is the
   // palette's, whether it reads is decided here.
   for (const key of ACCENT_KEYS) {
-    known.set(`text-${key}`, accentText(at(`text-${key}`), at(`${key}-muted`), at("background")));
+    known.set(`text-${key}`, accentText(given[`text-${key}`] ?? at(`text-${key}`), at(`${key}-muted`), at("background")));
   }
   return new Palette(name, dark, Object.fromEntries(PALETTE_ROLES.map((role) => [role, at(role)])) as PaletteRoles);
 }

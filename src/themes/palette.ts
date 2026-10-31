@@ -3,7 +3,7 @@ import type { ColorRgba } from "../core/color.js";
 export type AccentRole = "primary" | "secondary" | "accent" | "success" | "warning" | "error";
 export type BaseRole = AccentRole | "background" | "foreground";
 export type ShadedRole = BaseRole | "panel" | "boost" | "surface" | "primary-background" | "secondary-background";
-type Shade = `-${"darken" | "lighten"}-${1 | 2 | 3}`;
+export type Shade = `-${"darken" | "lighten"}-${1 | 2 | 3}`;
 
 /**
  * Every role every palette has. [LAW:one-source-of-truth] This type is the one

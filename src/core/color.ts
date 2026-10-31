@@ -5,6 +5,7 @@
 import type { Env } from "./env.js";
 import { Memo, WeakMemo } from "./memo.js";
 import { pattern } from "./pattern.js";
+// A `TerminalTheme` carries a `Palette`; `test/seam/layering.ts` owns why this upward edge stands.
 import type { Palette } from "../themes/palette.js";
 
 // --- ColorRgba ---

@@ -88,7 +88,7 @@ console.print(`[on ${surface.hex}]      [/] surface  [on ${tint.hex}]      [/] t
 
 A palette holds the same roles whichever way it was made: a bundled theme from `getThemePalette`, the palette of a terminal theme, a `buildPalette` of your own, or a transposition of any of them. `get` on a role is a colour, never `undefined`, and `PaletteRole` is the type naming them, so a misspelt role is a compile error where the name is a literal. A string only known at run time reads `ColorRgba | undefined`.
 
-`buildPalette` needs the eight base colours and derives the rest with Textual's formulas. Any other role you state keeps its colour, and what is derived from it follows:
+`buildPalette` needs the eight base colours and derives the rest with Textual's formulas. Any other role you state keeps its colour, and what is derived from it follows. A stated `text-*` is the exception: it is moved as far as it must go to read on its `*-muted`.
 
 ```ts silent
 import { buildPalette, parseRgbHex } from "@promptctl/rich-js";
@@ -137,7 +137,7 @@ for (const palette of [gruvbox, shifted, light]) {
 }
 ```
 
-The resulting palette's `dark` flag is derived from the **actual lightness of the transposed background** (`background` var's OKLCH `L < 0.5`), not from the key — so it is honest under any transform. A palette with no `background` var throws on the transposing path (the identity fast-path is exempt, since it preserves the source flag verbatim).
+The resulting palette's `dark` flag is derived from the **actual lightness of the transposed background** (`background` var's OKLCH `L < 0.5`), not from the key — so it is honest under any transform.
 
 ## Semantic anchors — meaning that survives transposition
 
