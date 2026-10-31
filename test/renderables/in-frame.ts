@@ -7,13 +7,21 @@
  */
 
 import { Measurement } from "../../src/core/measure.js";
-import { render, type Measurable, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
+import { render, type FrameHost, type Measurable, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { Segment } from "../../src/core/segment.js";
 import { Timeline } from "../../src/core/timeline.js";
 import { drawView, hostView, type DrawnView, type View } from "../../src/core/view.js";
 
+/**
+ * A host standing still at 0: what a fixture that is timed on its host — a
+ * `Progress` — is made for (`drawnBy: STILL`), and the frame a gate that draws
+ * every renderable draws them in, `STILL.frameNow()`, which draws each as a
+ * frame-less print does, at 0, and a `Progress` in a frame of its own host.
+ */
+export const STILL: FrameHost = { frameNow: () => ({ time: 0, host: STILL }) };
+
 export function inFrame(renderable: Renderable, t: number): Renderable & Measurable {
-  const host = { frameTime: t };
+  const host = {};
   const at = (options: RenderOptions): RenderOptions => ({ ...options, frame: { time: t, host } });
   return { render: (options) => render(renderable, at(options)), measure: (options) => Measurement.get(at(options), renderable) };
 }
@@ -25,5 +33,5 @@ export function inFrame(renderable: Renderable, t: number): Renderable & Measura
  * read by `drawView`, the one place a host reads it.
  */
 export function drawnAt(view: View, t: number, options: RenderOptions, timeline: Timeline = Timeline.play(0)): DrawnView {
-  return drawView(hostView(view), { now: t, epoch: 0, timeline }, { frameTime: t }, options, (r, under) => Segment.splitLines(render(r, under)));
+  return drawView(hostView(view), { now: t, epoch: 0, timeline }, {}, options, (r, under) => Segment.splitLines(render(r, under)));
 }

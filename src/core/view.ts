@@ -38,7 +38,7 @@
  */
 
 import type { Animation } from "./animation.js";
-import { render, type FrameHost, type Renderable, type RenderOptions } from "./protocol.js";
+import { activePass, render, type HostFrame, type Renderable, type RenderOptions } from "./protocol.js";
 import { Segment } from "./segment.js";
 import type { Hold } from "./style.js";
 import { Timeline } from "./timeline.js";
@@ -70,13 +70,38 @@ export interface HostTime {
 /**
  * The time a frame drawn at `time` is drawn for, on the clock its cells are
  * stamped on: the time the timeline maps `now` to. [LAW:single-enforcer]
- * `drawView` draws at it and hands it to the frame as
- * `RenderOptions.frame`, and a host reads it here for anything heard between
- * frames — a key — so a moment a widget keeps and the frame it is compared
- * against are on one clock.
+ * `frameNow` puts it on the frame `drawView` draws and on the one a host
+ * hands out between frames (`frameNow`) — what a key is stamped with — so a
+ * moment a widget keeps and the frame it is compared against are on one
+ * clock.
  */
 export function frameTime(time: HostTime): number {
   return Timeline.at(time.timeline, time.now);
+}
+
+/** A host's frame was asked for during a render or measure. */
+export class RenderClockError extends Error {
+  constructor() {
+    super(
+      "a host's frame was asked for during a render or measure. A frame has one time, the one it is drawn for: " +
+        "read it from the render options' `frame`, or ask the host between frames.",
+    );
+    this.name = "RenderClockError";
+  }
+}
+
+/**
+ * The frame `host` draws now, at `time`: what every host hands out as
+ * `frameNow()`, and what `drawView` draws. [LAW:single-enforcer] The one
+ * place a host's time is read for a frame, so the one place it is refused
+ * inside a render or measure (`RenderClockError`): a renderable drawing in a
+ * frame has that frame's time and asks nothing else, as `State.set` is
+ * refused there (`./state.ts`). A frame is a value with no clock on it, so a
+ * renderable handed one cannot read a second, moving time mid-render.
+ */
+export function frameNow(host: object, time: HostTime): HostFrame {
+  if (activePass() !== undefined) throw new RenderClockError();
+  return { time: frameTime(time), host };
 }
 
 /** What a frame drawn at host time `t` says about when it changes. */
@@ -108,13 +133,13 @@ const frameHold = (lines: Segment[][], told: Hold): Hold =>
  * overflow — and when the frame changes on the host's clock: the hold its
  * cells say, carried back through the timeline. [LAW:one-source-of-truth]
  * `options` is the one place the frame reads the reader's preference for
- * motion, handed on to `draw` with the frame: the time it is drawn for
- * (`frameTime`) and `drawnBy`, the host whose time that is.
+ * motion, handed on to `draw` with the frame (`frameNow`): the time it is
+ * drawn for and `drawnBy`, the host whose time that is.
  */
 export function drawView(
   view: Renderable,
   time: HostTime,
-  drawnBy: FrameHost,
+  drawnBy: object,
   options: RenderOptions,
   draw: (renderable: Renderable, options: RenderOptions) => Segment[][],
 ): DrawnView {
@@ -123,7 +148,9 @@ export function drawView(
   const onHold = (hold: Hold): void => {
     told = { lastChange: Math.max(told.lastChange, hold.lastChange), nextChange: Math.min(told.nextChange, hold.nextChange) };
   };
-  const lines = draw(view, { ...options, frame: { time: frameTime(time), host: drawnBy }, onHold });
+  // Made before the render opens: the one time the frame has.
+  const frame = frameNow(drawnBy, time);
+  const lines = draw(view, { ...options, frame, onHold });
   const hold = frameHold(lines, told);
   // The frame as the sample of the view it is, on the timeline's clock; the
   // timeline says when the host's clock leaves its hold.

@@ -241,8 +241,10 @@ const status: ProgressColumn = {
 
 const progress = new Progress(new TextColumn(), status, { console });
 progress.addTask("a long task description that leaves the status little room", { total: 10 });
-console.print(progress);
+console.print(progress, { frame: progress.frameNow() });
 ```
+
+A `Progress` printed as a still is printed in the frame its host would draw now, `progress.frameNow()`: its tasks are timed on that host's clock, and a print names no moment of its own, so one that names no frame throws rather than draw every task as not yet started.
 
 ## Print and log during progress
 
@@ -335,6 +337,6 @@ See [Live Display](./live) for details.
 
 ### Drawn by another host
 
-A `Progress` keeps the time of every task: when it started, when each update came, when it finished. It reads all of them, and the time each frame is drawn for, from one host. With no `drawnBy`, that host is the `Live` it builds for itself, on `clock`, so its times are the clock's. Given `drawnBy` — a `Live`, an `App` or a `WidgetApp` — it builds no `Live`, takes none of `console`, `clock`, `refreshPerSecond`, `autoRefresh` or `transient` — print through the host — and is timed on that host's frames: in a view on the host's [timeline](./animation#playback-a-timeline), a pause holds every bar, elapsed time and spinner, and a change of rate changes how fast elapsed time runs. Run backwards, a frame is drawn as the task stood at its moment: before its start it has not started, before it reached its total it has not finished, and its speed is taken over the updates that had come by then. `stop()` settles every bar at its count for the host's next frame; `start()`, `refresh()` and `console` belong to the host, and asking a `Progress` for them throws, as does an update with `refresh: true`. A `Progress` drawn in a frame of any host but its own throws, saying to give it that host.
+A `Progress` keeps the time of every task: when it started, when each update came, when it finished. It reads all of them, and the time each frame is drawn for, from one host. With no `drawnBy`, that host is the `Live` it builds for itself, on `clock`, so its times are the clock's. Given `drawnBy` — a `Live`, an `App` or a `WidgetApp` — it builds no `Live`, takes none of `console`, `clock`, `refreshPerSecond`, `autoRefresh` or `transient` — print through the host — and is timed on that host's frames: in a view on the host's [timeline](./animation#playback-a-timeline), a pause holds every bar, elapsed time and spinner, and a change of rate changes how fast elapsed time runs. Run backwards, a frame is drawn as the task stood at its moment: before its start it has not started, before it reached its total it has not finished, and its speed is taken over the updates that had come by then. `stop()` settles every bar at its count for the host's next frame; `start()`, `refresh()` and `console` belong to the host, and asking a `Progress` for them throws, as does an update with `refresh: true`. A `Progress` drawn in a frame of any host but its own throws, saying to give it that host, and so does one printed with no frame: `console.print(progress, { frame: progress.frameNow() })` draws it for the moment the program asked at, on the host's clock.
 
 Printed, a `Progress` is drawn for no frame, so it is drawn for its host's time now: elapsed time is correct the moment it prints.

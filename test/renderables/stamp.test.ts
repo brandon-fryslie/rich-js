@@ -30,7 +30,7 @@ const lines = (renderable: Renderable): Segment[][] => Segment.splitLines(draw(r
 const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
 /** What a renderable drawing what `view` makes for its frame's time, drawn at host time `t` on a playing timeline, says. */
 const wakes = (view: (t: number) => Renderable, t: number): number =>
-  drawView({ render: (options) => render(view(options.frame!.time), options) }, { now: t, epoch: 0, timeline: Timeline.play(0) }, { frameTime: t }, OPTIONS, (renderable, options) =>
+  drawView({ render: (options) => render(view(options.frame!.time), options) }, { now: t, epoch: 0, timeline: Timeline.play(0) }, {}, OPTIONS, (renderable, options) =>
     Segment.splitLines([...render(renderable, options)]),
   ).nextChange;
 
@@ -38,7 +38,7 @@ describe("a frame hands what it draws the time it is drawn for", () => {
   // What a renderable drawing at the frame's time would read, captured as it draws.
   const handed = (view: Parameters<typeof hostView>[0], timeline: Timeline, host: number): number | undefined => {
     let seen: number | undefined;
-    drawView(hostView(view), { now: host, epoch: 0, timeline }, { frameTime: host }, OPTIONS, (renderable, options) => {
+    drawView(hostView(view), { now: host, epoch: 0, timeline }, {}, OPTIONS, (renderable, options) => {
       seen = options.frame?.time;
       return lines(renderable);
     });
@@ -89,7 +89,7 @@ describe("a frame says when it changes on the host's clock", () => {
     for (const animation of animations) {
       for (const t of [0.5, 1.5, 3, 5.5]) {
         expect(Segment.nextChange(draw(animation.at(t)))).toBe(Number.POSITIVE_INFINITY);
-        const placed = [...render(animation, { ...OPTIONS, frame: { time: t, host: { frameTime: t } } })];
+        const placed = [...render(animation, { ...OPTIONS, frame: { time: t, host: {} } })];
         expect(Segment.nextChange(placed)).toBeGreaterThanOrEqual(animation.nextChange(t));
       }
     }
@@ -116,7 +116,7 @@ describe("a frame says when it changes on the host's clock", () => {
   it("a frame with no cells still says when it changes after the row before it is cropped", () => {
     const empty: Animation<Renderable> = Animation.of({ at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) });
     const wide = new RichText("x".repeat(30), { noWrap: true, overflow: "crop" });
-    const cropped = drawView(hostView(new Group(wide, empty)), { now: 0, epoch: 0, timeline: Timeline.play(0) }, { frameTime: 0 }, OPTIONS, (r, under) =>
+    const cropped = drawView(hostView(new Group(wide, empty)), { now: 0, epoch: 0, timeline: Timeline.play(0) }, {}, OPTIONS, (r, under) =>
       Segment.splitAndCropLines(render(r, under), 5),
     );
     expect(cropped.nextChange).toBe(3);

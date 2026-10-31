@@ -26,13 +26,28 @@ import type { Highlighter } from "./highlighter.js";
 export type OverflowMethod = "fold" | "crop" | "ellipsis" | "ignore";
 
 /**
- * What draws frames — a `Live`, an `App` — as what draws in them sees it:
- * the time a frame drawn now is drawn for, the host's clock read through its
- * timeline for a view on it (`frameTime`, `./view.ts`). Not a `Clock`: under
- * a paused timeline it holds, and under a reversed one it runs backwards.
+ * The frame being drawn, as a value: `time`, the moment it is drawn for, in
+ * seconds, on the clock its cells' `nextChange` stamps are read on, and
+ * `host`, the identity of what drew it — nothing to read, so what draws in
+ * the frame has one time, this one, and cannot ask the host for another.
+ * [LAW:types-are-the-program] A `Progress` keeps the identity to refuse a
+ * frame of a host other than the one its tasks are timed on.
+ */
+export interface HostFrame {
+  readonly time: number;
+  readonly host: object;
+}
+
+/**
+ * What draws frames — a `Live`, an `App` — as what runs between them sees
+ * it: the frame it would draw now, its time the host's clock read through
+ * its timeline (`frameNow`, `./view.ts`). Not a `Clock`: under a paused
+ * timeline it holds, and under a reversed one it runs backwards. Asked
+ * inside a render it throws (`RenderClockError`): a frame has the time it was
+ * drawn for, and a renderable reads that one.
  */
 export interface FrameHost {
-  readonly frameTime: number;
+  frameNow(): HostFrame;
 }
 
 export interface RenderOptions {
@@ -114,15 +129,14 @@ export interface RenderOptions {
    */
   reducedMotion?: boolean;
   /**
-   * The frame being drawn: `time`, the moment it is drawn for, in seconds, on
-   * the clock its cells' `nextChange` stamps are read on, and `host`, the
-   * host drawing it, whose `frameTime` that moment was. It is how a
-   * renderable that lives across frames — a widget, a `Progress` — draws for
-   * the time without being rebuilt each frame with one, and without reading
-   * a clock. Absent, the frame is drawn for no moment — a `print` — and
-   * nothing drawn from it moves.
+   * The frame being drawn (`HostFrame`): how a renderable that lives across
+   * frames — a widget, a `Progress` — draws for the time without being
+   * rebuilt each frame with one, and without reading a clock. A host writes
+   * it once a frame, and a print writes the one its caller named
+   * (`PrintOptions.frame`). Absent, the frame is drawn for no moment, 0
+   * (`frameTimeOf`, `./animation.ts`), and nothing drawn from it moves.
    */
-  frame?: { readonly time: number; readonly host: FrameHost };
+  frame?: HostFrame;
   /**
    * Told of every renderable `render` is asked for, as it is asked, so the
    * calls arrive in document order: a container before what it holds, what

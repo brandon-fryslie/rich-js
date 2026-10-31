@@ -206,11 +206,13 @@ describe("TextInput caret blink", () => {
     app.stop();
   });
 
-  it("is solid and says nothing in a frame drawn for no moment", () => {
+  // A print names no moment, so it is drawn for 0, as every placed animation is.
+  it("in a frame drawn for no moment, is drawn at 0: the blink from a touch at 0, lit, flipping at the half second", () => {
     const input = new TextInput({ value: "hi", cursorStyle: CARET });
     input.focus(0);
     const segments = [...render(input, { maxWidth: 10 })];
     expect(segments.some((s) => s.style?.reverse === true)).toBe(true);
-    expect(Segment.nextChange(segments)).toBe(Number.POSITIVE_INFINITY);
+    expect(Segment.nextChange(segments)).toBe(0.5);
+    expect(segments).toEqual([...render(input, { maxWidth: 10, frame: { time: 0, host: {} } })]);
   });
 });

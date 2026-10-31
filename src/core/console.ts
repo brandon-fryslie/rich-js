@@ -31,7 +31,7 @@ import type {
   RenderOptions,
   StyleErrorHandler,
 } from "./protocol.js";
-import { activePass, isRenderable, measure, render, type Pass } from "./protocol.js";
+import { activePass, isRenderable, measure, render, type HostFrame, type Pass } from "./protocol.js";
 import type { Unsubscribe } from "./subscription.js";
 import { ListState, State, refuseRenderWrite } from "./state.js";
 
@@ -169,6 +169,13 @@ export interface ConsoleOptions {
 
 export interface PrintOptions {
   style?: string | Style;
+  /**
+   * The frame this print is drawn in (`RenderOptions.frame`): the moment
+   * everything in it that moves is drawn for, named by the caller — a host's
+   * `frameNow()`. [LAW:single-enforcer] The one place a print's time is
+   * decided; absent, the print is drawn for no moment, 0 (`frameTimeOf`).
+   */
+  frame?: HostFrame;
   justify?: "default" | "left" | "center" | "right" | "full";
   overflow?: OverflowMethod;
   highlight?: boolean;
@@ -536,7 +543,7 @@ export class Console {
       !isRenderable(lastArg) &&
       ("style" in lastArg || "justify" in lastArg || "markup" in lastArg ||
        "highlight" in lastArg || "overflow" in lastArg || "end" in lastArg ||
-       "softWrap" in lastArg || "crop" in lastArg || "sep" in lastArg)
+       "softWrap" in lastArg || "crop" in lastArg || "sep" in lastArg || "frame" in lastArg)
     ) {
       opts = lastArg as PrintOptions;
       items = args.slice(0, -1);
@@ -624,6 +631,7 @@ export class Console {
     const renderOpts: RenderOptions = {
       ...options,
       ...strings,
+      frame: opts.frame,
       justify: opts.justify === "default" ? undefined : opts.justify,
       overflow: opts.overflow ?? (softWrap ? "ignore" : undefined),
       noWrap: softWrap,

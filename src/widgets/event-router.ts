@@ -119,7 +119,7 @@ export class EventRouter {
 
   /** Route a key the app heard. */
   key(press: KeyPress): void {
-    this.dispatchKey(new KeyEvent(press, this.source.frameTime));
+    this.dispatchKey(new KeyEvent(press, this.source.frameNow().time));
   }
 
   /** Route a pointer event the app heard. */
@@ -219,7 +219,7 @@ export class EventRouter {
       y: event.y - target.originY,
       over: drew(frame, target.widget, event.x, event.y),
       cell: cellOf(frame, target.widget, event.x, event.y),
-      time: this.source.frameTime,
+      time: this.source.frameNow().time,
     });
 
     if (event.type === "mouse_down") this.captured = target;

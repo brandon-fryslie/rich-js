@@ -388,7 +388,7 @@ describe("a template drawn in a frame is drawn as the frame says", () => {
   /** What `looping` draws at `time`, and every hold it tells there. */
   const drawnAt = (time: number, reducedMotion: boolean): { text: string; told: Hold[] } => {
     const told: Hold[] = [];
-    const segments = [...render(looping, { maxWidth: 20, reducedMotion, frame: { time, host: { frameTime: time } }, onHold: (hold) => told.push(hold) })];
+    const segments = [...render(looping, { maxWidth: 20, reducedMotion, frame: { time, host: {} }, onHold: (hold) => told.push(hold) })];
     return { text: segments.map((s) => s.text).join(""), told };
   };
 

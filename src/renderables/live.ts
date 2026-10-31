@@ -29,10 +29,10 @@ import { frameRate, systemClock, type Clock, type FrameRate } from "../core/cloc
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
 import { FinalFramePainter, SurfacePainter, type FrameSource, type Painter, type Screen } from "../core/paint.js";
-import { fitHeight, render, type FrameHost, type Renderable } from "../core/protocol.js";
+import { fitHeight, render, type HostFrame, type FrameHost, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { Timeline } from "../core/timeline.js";
-import { drawView, frameTime, hostView, undrawn, type DrawnView, type FrameSays, type HostTime, type View } from "../core/view.js";
+import { drawView, frameNow, hostView, undrawn, type DrawnView, type FrameSays, type HostTime, type View } from "../core/view.js";
 import { State } from "../core/state.js";
 
 // Nothing: what a Live made with no view draws until `update` gives it one.
@@ -126,9 +126,9 @@ export class Live implements FrameHost {
     return this._timeline.get();
   }
 
-  /** The time a frame drawn now is drawn for: the clock's now, through the timeline. */
-  get frameTime(): number {
-    return frameTime(this._time());
+  /** The frame this Live draws now (`FrameHost`): the clock's now, through the timeline, on a frame it is the host of. */
+  frameNow(): HostFrame {
+    return frameNow(this, this._time());
   }
 
   private _time(): HostTime {

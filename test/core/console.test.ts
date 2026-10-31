@@ -17,6 +17,7 @@ import { Segment } from "../../src/core/segment.js";
 import { cellLen } from "../../src/core/cells.js";
 import { osc8Sequences, type Osc8Sequence } from "../../src/core/osc8.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import { STILL } from "../renderables/in-frame.js";
 import { getStyle } from "../../src/index.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Table, type TableOptions } from "../../src/renderables/table.js";
@@ -1621,9 +1622,10 @@ describe("Console and Live hyperlinks", () => {
 });
 
 describe("Console style error reporting", () => {
+  // Printed in a still host's frame: drawn at 0, as a frame-less print is, and a `Progress` made for that host in a frame of its own.
   function printed(item: unknown, options: ConsoleOptions = {}): string {
     const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", ...options });
-    c.print(item);
+    c.print(item, { frame: STILL.frameNow() });
     return captured(chunks);
   }
 
@@ -1694,9 +1696,10 @@ describe("Console style error reporting", () => {
 // 9d8f9a3 resolves every one of these through `console.get_style`.
 describe("Console theme resolution", () => {
   /** The bytes one print writes, with colour on. */
+  // Printed in a still host's frame: drawn at 0, as a frame-less print is, and a `Progress` made for that host in a frame of its own.
   function printed(item: unknown, options: ConsoleOptions = {}): string {
     const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", ...options });
-    c.print(item);
+    c.print(item, { frame: STILL.frameNow() });
     return captured(chunks);
   }
 
@@ -1776,7 +1779,7 @@ describe("Console theme resolution", () => {
 
   /** A progress display with one task, drawn by `column`. */
   function progressOf(column: ProgressColumn): Progress {
-    const progress = new Progress(column);
+    const progress = new Progress(column, { drawnBy: STILL });
     progress.addTask("task", { total: 100 });
     return progress;
   }

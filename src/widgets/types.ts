@@ -6,7 +6,7 @@
  * terminal escape sequences, or their host environment.
  */
 
-import type { Renderable, Measurable, RenderOptions } from "../core/protocol.js";
+import type { HostFrame, Renderable, Measurable, RenderOptions } from "../core/protocol.js";
 import type { Segment } from "../core/segment.js";
 import type { Anchor } from "../core/anchor.js";
 import type { Unsubscribe } from "../core/subscription.js";
@@ -163,13 +163,13 @@ export interface FocusManager {
 }
 
 // What EventRouter routes against: focus for keys, and the frame most
-// recently painted for the pointer (`widgetAt`). `frameTime` is the time a
-// frame drawn now would be drawn for, which a key is stamped with. `refresh`
+// recently painted for the pointer (`widgetAt`). `frameNow` is the frame it
+// would draw now (`FrameHost`), whose time a key is stamped with. `refresh`
 // paints the next frame after a change no observable carries — a `Viewport`
 // the wheel moved.
 export interface FrameSource {
   readonly focusManager: FocusManager;
   readonly frame: readonly (readonly Segment[])[];
-  readonly frameTime: number;
+  frameNow(): HostFrame;
   refresh(): void;
 }
