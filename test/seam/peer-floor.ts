@@ -24,13 +24,14 @@
  * The version read is the one on disk and not the lockfile's, because disk is
  * what lint compiled. The incident above was a tarball installed by hand with
  * `--no-save`: the lockfile went on saying 0.10.0 while tsc read 0.11.0. In CI
- * `npm ci` makes the two equal, and an `npm ci` tree is also the only place this
- * rule says the floor is published: a version there came from the registry, while
- * a hand-installed one came from wherever the hand got it.
+ * `npm ci` makes the two equal.
  *
- * [LAW:types-are-the-program] `devDependencies` pins each peer exactly, so the
- * manifest admits only the tree this rule wants: `npm update` cannot walk it off
- * the floor, and moving it takes an edit someone meant.
+ * [LAW:types-are-the-program] The `devDependencies` spec must be the floor too,
+ * written exactly. A caret there admits the trees this rule refuses, so `npm
+ * update` would walk off the floor, and npm writes that caret back on any plain
+ * `npm install -D`, so the pin is checked rather than assumed. It is also what
+ * makes an `npm ci` tree say the floor is published: an exact version resolves
+ * from the registry, where a `file:` spec holding the same version would not.
  *
  * [LAW:effects-at-boundaries] Nothing in this module reads a file. The versions
  * arrive as data from the test next door, so the fixtures can hand it states this
@@ -45,11 +46,13 @@
 
 import semver from "semver";
 
-/** One peer: what the manifest promises, and what is on disk. */
+/** One peer: what the manifest promises, what it pins here, and what is on disk. */
 export interface InstalledPeer {
   readonly name: string;
   /** As `package.json#peerDependencies` writes it. */
   readonly range: string;
+  /** As `package.json#devDependencies` writes it. */
+  readonly pin: string | undefined;
   /** `node_modules/<name>/package.json#version`. */
   readonly installed: string;
 }
@@ -76,24 +79,28 @@ function floorOf(peer: InstalledPeer): string {
 }
 
 /**
- * Every peer not installed at its floor.
+ * Every peer whose pin or install is not its floor.
  *
  * One rule, not two directions: above or below, the same statement is false,
- * that what lint compiled is the oldest thing a consumer may hold.
+ * that what lint compiled is the oldest thing a consumer may hold. The pin is
+ * compared as a string because `^7.0.3` is the wrong spec for the right version.
  */
 export function peerFloorViolations(peers: readonly InstalledPeer[]): PeerFloorViolation[] {
   return peers
     .map((peer) => ({ ...peer, floor: floorOf(peer) }))
-    .filter((peer) => semver.neq(peer.installed, peer.floor));
+    .filter((peer) => peer.pin !== peer.floor || semver.neq(peer.installed, peer.floor));
 }
 
-/** One violation, as the line a reader of a red run sees. */
+/**
+ * One violation, as the line a reader of a red run sees. It names no version to
+ * install, because the floor of a range may never have been published.
+ */
 export function describePeerFloorViolation(violation: PeerFloorViolation): string {
-  const { name, range, installed, floor } = violation;
+  const { name, range, pin, installed, floor } = violation;
   return (
-    `  ${name}: src/ is compiled against ${installed}, but package.json#peerDependencies ` +
-    `reads ${range}, whose lowest version is ${floor}. Install ${floor} here, or, to change ` +
-    `what a consumer must hold, move the range and the devDependencies pin together to a ` +
-    `version published on npm.`
+    `  ${name}: src/ is compiled against ${installed} and devDependencies reads ${pin}, but ` +
+    `peerDependencies reads ${range}, whose lowest version is ${floor}. Make them one version ` +
+    `published on npm: the range's lower bound, installed with ` +
+    `\`npm install -D -E ${name}@<version>\`.`
   );
 }
