@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-525",
+      "ref": "refs/pull/525/merge",
+      "sha": "0f511c353266d861b3202534c14a972b363d9a59",
+      "timestamp": "2026-10-31T12:45:21.517Z",
+      "commits": [
+        {
+          "sha": "0f511c353266d861b3202534c14a972b363d9a59",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T06:43:16-06:00",
+          "message": "Merge de292ea5bbe9fb091391dc398a4b840bf0ab5a62 into 188acc5bffc6981b8837b2c06336e835fba9085e\n"
+        },
+        {
+          "sha": "de292ea5bbe9fb091391dc398a4b840bf0ab5a62",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T06:42:41-06:00",
+          "message": "Several effects run on one element at once, as one Effect (rich-unfiled-791c.75gd)\n\nA frame was handed one look and read it for two facts: which of the\nelement's colours a cell is, and what is there now. Alone those are one\nvalue. Folded, a second layer found no colour it knew, or took a turned\ncolour for another of the element's and turned it twice.\n\nEffectCell.pair replaces terminal and reverse and carries what the element\ndrew, so a frame recognises a cell by its pair and moves its look. layered\nfolds effects over that. Each loop's proof of the contrast floor is about\ncolours as drawn, which another layer voids, so layered holds the floor\nitself once the layers have moved a cell: the ground lands where its inks\nkeep room, and an ink that does not read lands on the side it stands on,\nboth measured as written. pulsedOn in effects-feel was this fold by hand.\n\nBreaking: a frame reading cell.terminal or cell.reverse reads cell.pair.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "188acc5bffc6981b8837b2c06336e835fba9085e",
