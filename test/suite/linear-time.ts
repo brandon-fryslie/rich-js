@@ -50,7 +50,7 @@ const FLOOR_MS = 5;
 const GROWTHS = 3;
 
 /** How many milliseconds `work` takes. */
-type Stopwatch =(work: () => void) => number;
+type Stopwatch = (work: () => void) => number;
 
 /**
  * The milliseconds of CPU time this thread spends on `work`. Node has had
@@ -77,7 +77,12 @@ export function expectLinearTime(run: (size: number) => void, size: number, stop
     });
     const timings = `${size} vs ${FACTOR * size}: ${pairs.map((p) => `${p.small.toFixed(1)}/${p.large.toFixed(1)} ms`).join(", ")}`;
     if (Math.min(...pairs.map((p) => p.small)) < FLOOR_MS) {
-      if (growths < GROWTHS) continue;
+      if (growths < GROWTHS) {
+        // [LAW:nothing-unseen] Growth costs at least four times as much and no verdict
+        // says it happened, so a run that overruns its budget has only this to say why.
+        console.warn(`expectLinearTime: under the ${FLOOR_MS} ms floor, growing; ${timings}`);
+        continue;
+      }
       expect.fail(`too fast to measure growth even ${FACTOR ** GROWTHS} times larger, pass a larger size; ${timings}`);
     }
     const ratios = pairs.map((p) => p.large / p.small).sort((a, b) => a - b);

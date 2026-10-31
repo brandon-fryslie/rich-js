@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { expectLinearTime } from "./linear-time.js";
 
 /**
@@ -42,6 +42,11 @@ const quadratic = (n: number): number => (n * n) / 1_000_000;
 const linear = (n: number): number => n / 100;
 
 describe("expectLinearTime", () => {
+  beforeEach(() => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    return () => warn.mockRestore();
+  });
+
   it("fails work that grows with the square of its input", () => {
     expect(() => judge(quadratic, 8_000)).toThrow(/^8000 vs 32000: /);
   });
@@ -70,6 +75,7 @@ describe("expectLinearTime", () => {
     };
     expect(() => judge(cost, 500)).toThrow(/^8000 vs 32000: /);
     expect([...sizes]).toEqual([500, 2_000, 8_000, 32_000]);
+    expect(vi.mocked(console.warn).mock.calls.map(([line]) => /(\d+) vs/.exec(String(line))?.[1])).toEqual(["500", "2000"]);
   });
 
   it("fails work that does not grow with its size as unmeasurable, after three sizes each four times larger", () => {
@@ -82,10 +88,10 @@ describe("expectLinearTime", () => {
     expect([...sizes]).toEqual([10, 40, 160, 640, 2560]);
   });
 
-  // The two tests on the real stopwatch, because that it counts this thread's
-  // CPU time, each run's alone, is what a simulated one cannot say: every other
-  // caller of the helper trusts it to fail quadratic work, and to pass linear
-  // work on a busy machine.
+  // Two tests on the real stopwatch, for what a simulated one cannot say: it
+  // counts CPU time and not wall time, and each run's alone. Every other caller
+  // of the helper trusts it to fail quadratic work and to pass linear work on a
+  // busy machine.
   it("fails work on the real stopwatch that spends the square of its input in CPU time", () => {
     expect(() => expectLinearTime((n) => burn(n * n), 3)).toThrow(/^3 vs 12: /);
   });
@@ -93,10 +99,11 @@ describe("expectLinearTime", () => {
   it("passes linear work on the real stopwatch when every run at the larger size waits off the CPU", () => {
     const blocked = new Int32Array(new SharedArrayBuffer(4));
     const measured = expectLinearTime((n) => {
+      const started = performance.now();
       burn(n);
       // Each larger run then waits twice its own length without running, as a thread preempted on a busy machine does;
       // in wall time every pair reads twelve, and the work would fail.
-      if (n > 6) Atomics.wait(blocked, 0, 0, 2 * n);
+      if (n > 6) Atomics.wait(blocked, 0, 0, 2 * (performance.now() - started));
     }, 6);
     expect(measured).toBe(6);
   });
