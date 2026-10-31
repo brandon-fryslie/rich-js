@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-524",
-      "ref": "refs/pull/524/merge",
-      "sha": "7d04170d5a78cdb3db36389636f4582515891c3b",
-      "timestamp": "2026-10-31T08:52:02.336Z",
-      "commits": [
-        {
-          "sha": "7d04170d5a78cdb3db36389636f4582515891c3b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T02:50:05-06:00",
-          "message": "Merge 040fdd63b4dda1d97e32faf45ca5246493924b03 into 423d72599198f78ede16b93d0b858d75e71aabb4\n"
-        },
-        {
-          "sha": "040fdd63b4dda1d97e32faf45ca5246493924b03",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T02:49:53-06:00",
-          "message": "What is drawn on an accent is measured on a colour with a hue (rich-unfiled-791c.0ny5)\n\nSecond high review: gruvbox's text-secondary has chroma near 0.02, so it held\nits 2 degree tolerance by 0.18 degrees at a 60 degree key and missed it at 48\nother shifts. Both forms now take one chromatic colour stated in the fixture,\nunlike any accent; its worst drift over every whole-degree shift is 0.64.\n\nRestores the no-error pin dropped in the previous commit, which was the only\ntest telling rootOf from a rule that accepts a root in any segment. The\nPALETTE_ROLES check speaks for roles and this one for every other name, so\nthe two do not disagree.\n"
-        },
-        {
-          "sha": "f75ae662e48d4aad56cc6bbd7542adaf3e129992",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T02:41:48-06:00",
-          "message": "Each drawn role is measured against its own hue, and the rule is stated where it lives (rich-unfiled-791c.0ny5)\n\nMedium review: text- was overwritten with the accent, so no real derived value\nwent through the transposition. Only on- is near grey, so only on- is painted\nand each form is compared with its own colour before.\n\nThe no-error case pinned a name no role has and read as a second rule beside\nthe PALETTE_ROLES check, so it is gone. The docs sentence spelling out the\nmechanism was a third copy of it; the page already states the family rule by\nbehaviour, and the transpose.ts header owns the mechanism.\n"
-        },
-        {
-          "sha": "f405918a57728899fd8e0d0ab2970cd11b14c680",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T02:35:09-06:00",
-          "message": "What is drawn on an accent turns by a stated amount, for every accent and both forms (rich-unfiled-791c.0ny5)\n\nReview of the first commit: its test was relational, so losing the lock\neverywhere left it green; it named six accents by hand; it read text- only;\nand gruvbox's near-grey on-* could not have shown on- at all. TURN is keyed by\nAccentRole and states the hue, on a palette whose text- and on- forms are\nchromatic.\n\nA role anchors exactly when it names an anchored root, checked over\nPALETTE_ROLES: a new drawn-on family would otherwise compile and rotate, which\nis this ticket's bug. That replaces the two hand-written isAnchored lists.\n\nDocs: the number of bundled themes was wrong and is gone, and the rule is\nstated once as what it is, name syntax.\n"
-        },
-        {
-          "sha": "78c1449b9d7d28ff7c57d601d5a1dac533031c94",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T02:26:07-06:00",
-          "message": "A transposed text-<role> turns as far as its role does, and a test says so (rich-unfiled-791c.0ny5)\n\n#522 made rootOf read past a drawn-on prefix, which fixed the reported\nbug, but pinned only isAnchored. Nothing asserted what transposePalette\ndraws, so the behaviour a consumer sees could break with the suite green.\n\nThe new test covers every accent role and goes red for text-success,\ntext-warning and text-error when the prefix handling is removed.\ndocs/transpose.md still called the classification a hyphen-prefix rule.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "423d72599198f78ede16b93d0b858d75e71aabb4",
-      "timestamp": "2026-10-31T08:22:06.953Z",
+      "sha": "188acc5bffc6981b8837b2c06336e835fba9085e",
+      "timestamp": "2026-10-31T09:05:40.717Z",
       "commits": [
         {
-          "sha": "423d72599198f78ede16b93d0b858d75e71aabb4",
+          "sha": "188acc5bffc6981b8837b2c06336e835fba9085e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T02:20:05-06:00",
-          "message": "expectLinearTime's own tests read a verdict off simulated time, and its real ones spend stated CPU time (rich-unfiled-791c.6uvr) (#523)\n\n* A synchronous test that runs out its time reports its CPU and load, not undefined (rich-unfiled-791c.6uvr)\n\nThe budget's timer cannot fire while a synchronous test holds the thread, so\nthe report printed the literal word `undefined` on every such failure. It now\nreads the CPU and load when the failure is reported and says the reading covers\nthe whole run.\n\n* expectLinearTime's own tests read the verdict off simulated time, so no runner can stall them (rich-unfiled-791c.6uvr)\n\nThe stalled-quadratic test failed five CI runs at 30 s with the file at about\n121 s against 8 s, with its timings lost to the timeout. expectLinearTime takes\nits stopwatch as an argument, and six of the seven tests spend stated\nmilliseconds, so a verdict is arithmetic and each states exact sizes. The test\nthat the clock counts CPU and not wall time keeps the real one, and no longer\nasserts the size it settled on.\n\n* expectLinearTime's real tests spend stated CPU time, and a timeout report stops guessing why no timer fired (rich-unfiled-791c.6uvr)\n\nThe test left on the real clock cost steps, so a floor trip took about 27 s of\nits 30 s budget and silently dropped what it proved. Its cost is now CPU time,\nwhich cannot fall under the floor or grow, and a second real test fails\nquadratic work through the default stopwatch, the one false pass nothing else\nwould see: a cumulative clock read every ratio as 1 and passed every guard.\n\ntimeout-report said a test held the thread whenever its timer had not fired, but\na hook running out a shorter budget has not fired it either. The guidance beside\nit already tells the two apart from the CPU reading, so the sentence goes.\n\nThe header's 'load cannot trip the floor' goes too: the five failures this ticket\nis about are the only evidence, and they put it in doubt.\n\n* expectLinearTime says when it grows, and its off-CPU test waits on a measured burn (rich-unfiled-791c.6uvr)\n\nA floor trip left no trace: its timings were dropped by the continue, which is\nwhy this ticket's cause could not be established. It now warns with them, and\nthat reaches a CI log on a pass and on a timeout alike.\n\nThe off-CPU test's fixed wait read under the bar in wall time once a loaded\nthread got less than half a core, so the guard was weakest on the machine it\nmodels. The wait is twice the measured burn again, and a wall clock fails it\nbeside 48 spinners.\n\n* The real stopwatch's unit is pinned, and no caller grows on an ordinary run (rich-unfiled-791c.6uvr)\n\nNothing tested the floor against the real clock, so a stopwatch reading\nmicroseconds passed every test and let every real caller measure fixed costs.\nA run of 2 ms must now read under the floor and one of 8 ms over it.\n\nFive callers tripped the floor every run, so the new warning fired on green.\nTheir sizes are now about what they grew to, and a warning is news.\n\nA reading taken as the failure is reported now says so, since after-hooks are\nin it."
+          "timestamp": "2026-10-31T03:03:36-06:00",
+          "message": "A transposed text-<role> turns as far as its role does, and a test says so (rich-unfiled-791c.0ny5) (#524)\n\n* A transposed text-<role> turns as far as its role does, and a test says so (rich-unfiled-791c.0ny5)\n\n#522 made rootOf read past a drawn-on prefix, which fixed the reported\nbug, but pinned only isAnchored. Nothing asserted what transposePalette\ndraws, so the behaviour a consumer sees could break with the suite green.\n\nThe new test covers every accent role and goes red for text-success,\ntext-warning and text-error when the prefix handling is removed.\ndocs/transpose.md still called the classification a hyphen-prefix rule.\n\n* What is drawn on an accent turns by a stated amount, for every accent and both forms (rich-unfiled-791c.0ny5)\n\nReview of the first commit: its test was relational, so losing the lock\neverywhere left it green; it named six accents by hand; it read text- only;\nand gruvbox's near-grey on-* could not have shown on- at all. TURN is keyed by\nAccentRole and states the hue, on a palette whose text- and on- forms are\nchromatic.\n\nA role anchors exactly when it names an anchored root, checked over\nPALETTE_ROLES: a new drawn-on family would otherwise compile and rotate, which\nis this ticket's bug. That replaces the two hand-written isAnchored lists.\n\nDocs: the number of bundled themes was wrong and is gone, and the rule is\nstated once as what it is, name syntax.\n\n* Each drawn role is measured against its own hue, and the rule is stated where it lives (rich-unfiled-791c.0ny5)\n\nMedium review: text- was overwritten with the accent, so no real derived value\nwent through the transposition. Only on- is near grey, so only on- is painted\nand each form is compared with its own colour before.\n\nThe no-error case pinned a name no role has and read as a second rule beside\nthe PALETTE_ROLES check, so it is gone. The docs sentence spelling out the\nmechanism was a third copy of it; the page already states the family rule by\nbehaviour, and the transpose.ts header owns the mechanism.\n\n* What is drawn on an accent is measured on a colour with a hue (rich-unfiled-791c.0ny5)\n\nSecond high review: gruvbox's text-secondary has chroma near 0.02, so it held\nits 2 degree tolerance by 0.18 degrees at a 60 degree key and missed it at 48\nother shifts. Both forms now take one chromatic colour stated in the fixture,\nunlike any accent; its worst drift over every whole-degree shift is 0.64.\n\nRestores the no-error pin dropped in the previous commit, which was the only\ntest telling rootOf from a rule that accepts a root in any segment. The\nPALETTE_ROLES check speaks for roles and this one for every other name, so\nthe two do not disagree."
         }
       ]
     }
