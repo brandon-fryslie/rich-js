@@ -4,15 +4,22 @@
     {
       "version": "pr-523",
       "ref": "refs/pull/523/merge",
-      "sha": "7fab14264048e741d4608ab5c1204f954cb5454b",
-      "timestamp": "2026-10-31T07:53:02.916Z",
+      "sha": "d7cd34dffc674c89879b712d28bf00e967678c45",
+      "timestamp": "2026-10-31T07:59:03.630Z",
       "commits": [
         {
-          "sha": "7fab14264048e741d4608ab5c1204f954cb5454b",
+          "sha": "d7cd34dffc674c89879b712d28bf00e967678c45",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T01:50:41-06:00",
-          "message": "Merge 26423db44beb60cbb2d4b2f2855f23964e11c307 into e3c9f1837d6fcbfbcc6ebcbee6ab6c5ec54b5714\n"
+          "timestamp": "2026-10-31T01:57:33-06:00",
+          "message": "Merge 7325c5212143f3573b171a93961271dc583d7a2a into e3c9f1837d6fcbfbcc6ebcbee6ab6c5ec54b5714\n"
+        },
+        {
+          "sha": "7325c5212143f3573b171a93961271dc583d7a2a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T01:57:24-06:00",
+          "message": "expectLinearTime says when it grows, and its off-CPU test waits on a measured burn (rich-unfiled-791c.6uvr)\n\nA floor trip left no trace: its timings were dropped by the continue, which is\nwhy this ticket's cause could not be established. It now warns with them, and\nthat reaches a CI log on a pass and on a timeout alike.\n\nThe off-CPU test's fixed wait read under the bar in wall time once a loaded\nthread got less than half a core, so the guard was weakest on the machine it\nmodels. The wait is twice the measured burn again, and a wall clock fails it\nbeside 48 spinners.\n"
         },
         {
           "sha": "26423db44beb60cbb2d4b2f2855f23964e11c307",
