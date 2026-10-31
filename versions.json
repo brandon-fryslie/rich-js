@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-519",
+      "ref": "refs/pull/519/merge",
+      "sha": "2ff9cfe7cb750cf0d53bda47206c5abf24e4d5c3",
+      "timestamp": "2026-10-31T00:32:17.606Z",
+      "commits": [
+        {
+          "sha": "2ff9cfe7cb750cf0d53bda47206c5abf24e4d5c3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T18:30:14-06:00",
+          "message": "Merge b292ec51edc955ee3f5862a498d5a5fff2aeed86 into 61e02f63433698143769038827c5c057820d5aab\n"
+        },
+        {
+          "sha": "b292ec51edc955ee3f5862a498d5a5fff2aeed86",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T18:29:54-06:00",
+          "message": "A frame carries one time, and no renderable reads a clock in render (rich-animation-27tq.bpd)\n\nThe frame on the render options is a value, `HostFrame`: the time it is drawn\nfor and the identity of the host that drew it, with nothing on it to read, so\na renderable drawing in a frame cannot ask the host for a second, moving time.\n`FrameHost.frameTime` becomes `frameNow(): HostFrame`, produced in one place\n(`frameNow` in core/view.ts) that refuses inside a render or measure with\n`RenderClockError`, as `State.set` refuses a write there; `drawView` makes its\nframe through it before the pass opens.\n\nThe print call is the one boundary that decides a print's time:\n`PrintOptions.frame` and `RenderToStringOptions.frame`. Absent, every\nframe-less draw is 0, as `frameTimeOf` always said. `Progress` never mints a\nframe: drawn with no frame it throws, naming the call that draws it right,\n`console.print(progress, { frame: progress.frameNow() })`, since 0 is a moment\nbefore any of its tasks began. `_framed` and its clock read are gone.\n\nOne placement: `placed(animation, options, draw)` is what `placedRender` and\nthe caret both go through. The caret's blink is one animation of the frame's\ntime, `caretBlink(from)`, so `CARET_UNTIMED` and the hand-built placement are\ndeleted; a frame-less print draws it at 0 like every placed animation.\n\nThe explore app's coverage renderer reads no clock in render: its Progress is\nmade for a host standing still at 0 and shown as a decoded still. Tests that\ndraw every exported renderable generically draw them in such a host's frame\n(`STILL`, test/renderables/in-frame.ts), which draws each as a frame-less\nprint does and a Progress in a frame of its own host.\n\nPlan v3 passed its law review; two names differ from it: the value type is\n`HostFrame` because `Frame` is already `FrameSequence`'s public type, and the\nproducer is `frameNow`, the host method's own name, rather than `hostFrame`.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "61e02f63433698143769038827c5c057820d5aab",
