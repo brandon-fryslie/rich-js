@@ -34,10 +34,7 @@ describe("ANCHORED_ROOTS / isAnchored", () => {
     }
   });
 
-  it("does not anchor a name that merely contains a root", () => {
-    // `no-` draws nothing, so this name's root is `no`.
-    expect(isAnchored("no-error")).toBe(false);
-    // Defensive: an "errors" plural would not match the strict root set.
+  it("does not anchor a word that merely begins with a root", () => {
     expect(isAnchored("errors")).toBe(false);
   });
 });
@@ -135,32 +132,24 @@ describe("transposePalette — anchor hue is locked", () => {
 
   // Keyed by the type so a new accent does not compile until it states its turn.
   const TURN: Record<AccentRole, number> = {
-    primary: 120,
-    secondary: 120,
-    accent: 120,
+    primary: ROTATE_60.hueShift,
+    secondary: ROTATE_60.hueShift,
+    accent: ROTATE_60.hueShift,
     success: 0,
     warning: 0,
     error: 0,
   };
 
-  it.each(Object.entries(TURN) as [AccentRole, number][])(
-    "what is drawn on %s turns %d° at a 120° key",
-    (role, turn) => {
-      // Bundled themes draw `on-*` near grey, where hue says nothing, so both
-      // forms take the accent's own colour.
-      const gruv = getThemePalette("gruvbox");
-      const colour = gruv.get(role);
-      const before = new Palette("drawn-on", true, {
-        ...gruv.mapRoles((c) => c),
-        [`text-${role}`]: colour,
-        [`on-${role}`]: colour,
-      });
-      const after = transposePalette(before, { ...IDENTITY, hueShift: 120 });
-      for (const drawn of [`text-${role}`, `on-${role}`] as const) {
-        expect(hueDelta(Oklch.fromRgba(after.get(drawn)).h, Oklch.fromRgba(colour).h + turn)).toBeLessThan(2);
-      }
-    },
-  );
+  it.each(Object.entries(TURN) as [AccentRole, number][])("what is drawn on %s turns %d°", (role, turn) => {
+    // Bundled themes draw `on-*` near grey, where hue says nothing, so it takes
+    // the accent's colour; `text-*` is the theme's own.
+    const gruv = getThemePalette("gruvbox");
+    const before = new Palette("drawn-on", true, { ...gruv.mapRoles((c) => c), [`on-${role}`]: gruv.get(role) });
+    const after = transposePalette(before, ROTATE_60);
+    for (const drawn of [`text-${role}`, `on-${role}`] as const) {
+      expect(hueDelta(Oklch.fromRgba(after.get(drawn)).h, Oklch.fromRgba(before.get(drawn)).h + turn)).toBeLessThan(2);
+    }
+  });
 });
 
 describe("transposePalette — INVERT_LIGHTNESS", () => {

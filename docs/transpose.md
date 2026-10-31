@@ -153,7 +153,7 @@ console.print(isAnchored("text-error"));     // so does what is drawn on one
 console.print(isAnchored("primary"));        // decorative, free to rotate
 ```
 
-The classification drops a leading `text-` or `on-` and takes the first hyphen segment as the root, which is how three roots cover their whole family. This is what lets you spin the decorative palette through every key while the status colors stay meaningful.
+This is what lets you spin the decorative palette through every key while the status colors stay meaningful.
 
 ## themeKeyForRoot — choose a destination, not an interval
 
