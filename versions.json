@@ -4,15 +4,22 @@
     {
       "version": "pr-523",
       "ref": "refs/pull/523/merge",
-      "sha": "d7cd34dffc674c89879b712d28bf00e967678c45",
-      "timestamp": "2026-10-31T07:59:03.630Z",
+      "sha": "6580ee382db98aa3d5914a5ec6d2d9b53ae418fb",
+      "timestamp": "2026-10-31T08:08:18.710Z",
       "commits": [
         {
-          "sha": "d7cd34dffc674c89879b712d28bf00e967678c45",
+          "sha": "6580ee382db98aa3d5914a5ec6d2d9b53ae418fb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T01:57:33-06:00",
-          "message": "Merge 7325c5212143f3573b171a93961271dc583d7a2a into e3c9f1837d6fcbfbcc6ebcbee6ab6c5ec54b5714\n"
+          "timestamp": "2026-10-31T02:06:43-06:00",
+          "message": "Merge 29523c09cd35a05d2bbe9e51ff2367684729b1b0 into e3c9f1837d6fcbfbcc6ebcbee6ab6c5ec54b5714\n"
+        },
+        {
+          "sha": "29523c09cd35a05d2bbe9e51ff2367684729b1b0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T02:06:35-06:00",
+          "message": "The real stopwatch's unit is pinned, and no caller grows on an ordinary run (rich-unfiled-791c.6uvr)\n\nNothing tested the floor against the real clock, so a stopwatch reading\nmicroseconds passed every test and let every real caller measure fixed costs.\nA run of 2 ms must now read under the floor and one of 8 ms over it.\n\nFive callers tripped the floor every run, so the new warning fired on green.\nTheir sizes are now about what they grew to, and a warning is news.\n\nA reading taken as the failure is reported now says so, since after-hooks are\nin it.\n"
         },
         {
           "sha": "7325c5212143f3573b171a93961271dc583d7a2a",
