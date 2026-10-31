@@ -26,7 +26,7 @@ import { Live } from "../../src/renderables/live.js";
 import { scroll } from "../../src/renderables/scroll.js";
 import { Spinner } from "../../src/renderables/spinner.js";
 import { ColorRamp } from "../../src/themes/ramp.js";
-import { animationFuncs, richTextFuncs } from "../../src/template-bindings/index.js";
+import { richTextFuncs, withAnimation } from "../../src/template-bindings/index.js";
 import { createEngine } from "@promptctl/go-template-js";
 import { renderToString } from "../../src/core/render.js";
 import { fakeClock } from "./fake-clock.js";
@@ -283,8 +283,9 @@ describe("a one-shot render under reduced motion", () => {
 
 describe("the template animation functions under reduced motion", () => {
   it("refuse a time that is not finite, as they do with motion", () => {
-    const funcs = animationFuncs(() => ({ time: Number.NaN, reducedMotion: true }));
-    const engine = createEngine<RichText>({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: { ...richTextFuncs(), ...funcs } });
+    const engine = createEngine<RichText>(
+      withAnimation({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: Number.NaN, reducedMotion: true })),
+    );
     expect(() => engine.compile(`{{ frames 0.25 "a" 0.25 "b" }}`)({})).toThrow(/frames needs a finite t, got NaN/);
     expect(() => engine.compile(`{{ stepped 0.5 "#ff0000" 0.5 "#00ff00" }}`)({})).toThrow(/stepped needs a finite t, got NaN/);
   });
@@ -292,11 +293,9 @@ describe("the template animation functions under reduced motion", () => {
   it("draw the first frame and the first colour at every moment", () => {
     let frameTime = 0;
     const compiled = (reducedMotion: boolean) =>
-      createEngine<RichText>({
-        fromString: (s) => new RichText(s),
-        toString: (rt) => rt.plain,
-        funcs: { ...richTextFuncs(), ...animationFuncs(() => ({ time: frameTime, reducedMotion })) },
-      }).compile(`{{ frames 0.25 "a" 0.25 "b" }}{{ fg (stepped 0.5 "#ff0000" 0.5 "#00ff00") "x" }}`);
+      createEngine<RichText>(
+        withAnimation({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: frameTime, reducedMotion })),
+      ).compile(`{{ frames 0.25 "a" 0.25 "b" }}{{ fg (stepped 0.5 "#ff0000" 0.5 "#00ff00") "x" }}`);
     const [reduced, full] = [compiled(true), compiled(false)];
     const evaluate = (reducedMotion: boolean): string =>
       renderToString(RichText.fromFragments((reducedMotion ? reduced : full)({})), { width: 10, colorSystem: "truecolor" });

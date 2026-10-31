@@ -104,19 +104,17 @@ try {
 
 ## In a template
 
-A host that builds its text in templates registers `animationFuncs(frame)` from the [template bindings](/template-bindings), handing in the frame's time the way `richTextFuncs` is handed the drawn depth. `frames <seconds> <frame> <seconds> <frame> …` is then the frame in progress at the moment the template is evaluated, and a frame is any fragment:
+A host that builds its text in templates passes its engine config through `withAnimation(config, frame)` from the [template bindings](/template-bindings), handing in the frame's time the way `richTextFuncs` is handed the drawn depth. `frames <seconds> <frame> <seconds> <frame> …` is then the frame in progress at the moment the template is evaluated, and a frame is any fragment:
 
 ```typescript
 import { createEngine } from "@promptctl/go-template-js";
 import { RichText } from "@promptctl/rich-js";
-import { animationFuncs, richTextFuncs } from "@promptctl/rich-js/template-bindings";
+import { richTextFuncs, withAnimation } from "@promptctl/rich-js/template-bindings";
 
 let frameTime = 0;
-const engine = createEngine<RichText>({
-  fromString: (s) => new RichText(s),
-  toString: (rt) => rt.plain,
-  funcs: { ...richTextFuncs(), ...animationFuncs(() => ({ time: frameTime })) },
-});
+const engine = createEngine<RichText>(
+  withAnimation({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: frameTime })),
+);
 
 const gauge = engine.compile(`{{ "effort " | dim }}{{ frames 1 ("›" | fg "green") 1 ("››" | fg "yellow") 1 ("›››" | fg "red") }}{{ " max" | dim }}`);
 
@@ -132,14 +130,12 @@ The template is compiled once and reads the time each time it is evaluated, so a
 ```typescript
 import { createEngine } from "@promptctl/go-template-js";
 import { RichText } from "@promptctl/rich-js";
-import { animationFuncs, richTextFuncs } from "@promptctl/rich-js/template-bindings";
+import { richTextFuncs, withAnimation } from "@promptctl/rich-js/template-bindings";
 
 let frameTime = 0;
-const engine = createEngine<RichText>({
-  fromString: (s) => new RichText(s),
-  toString: (rt) => rt.plain,
-  funcs: { ...richTextFuncs(), ...animationFuncs(() => ({ time: frameTime })) },
-});
+const engine = createEngine<RichText>(
+  withAnimation({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: frameTime })),
+);
 
 const gauge = engine.compile(`{{- $bg := "#313244" -}}
 {{- $ink := readableOn (stepped 1 "#ff5555" 1 "#f1fa8c" 1 "#50fa7b") $bg 4.5 -}}

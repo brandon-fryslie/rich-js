@@ -14,10 +14,12 @@
  * - `paletteFuncs(getPalette)` — `color` and `ramp`, the two functions that
  *   resolve a palette name. This is the *only* registration that knows a
  *   palette exists. [LAW:one-way-deps]
- * - `animationFuncs(frame)` — `frames`, `stepped`, `tween`, `loop` and
- *   `glyphs`, drawn for a moment on a timeline. It is the only registration
- *   that knows the template is evaluated at a time, and the time and the
- *   timeline are the host's to hand in (`./animation-funcs.ts`).
+ * - `withAnimation(config, frame)` — the engine config with `frames`,
+ *   `stepped`, `tween`, `loop` and `glyphs` registered, drawn for a moment on
+ *   a timeline, and the two engine hooks their holds reach the frame through
+ *   installed beside them. It is the only registration that knows the
+ *   template is evaluated at a time, and the time and the timeline are the
+ *   host's to hand in (`./animation-funcs.ts`).
  *
  * `createRichTextEngine()` wires up `richTextFuncs()` only — it cannot supply a
  * palette. Consumers that name theme colours call `paletteFuncs(getPalette)`
@@ -48,7 +50,7 @@ import { colorFuncs, type DrawnAt } from "./color-funcs.js";
 
 export { paletteFuncs } from "./palette-funcs.js";
 export { colorFuncs, readableOnFunc, type DrawnAt } from "./color-funcs.js";
-export { animationFuncs, templateFrame, type AnimationFuncsOptions, type TemplateFrame } from "./animation-funcs.js";
+export { withAnimation, templateFrame, type AnimationOptions, type TemplateFrame } from "./animation-funcs.js";
 
 /**
  * Funcs registered by the rich-js binding — the colour sinks, the palette-free

@@ -20,7 +20,7 @@
  * number the time is turned into first: a frame's stamp says when it changes
  * on the host's clock, which only `Timeline.run` can carry it back onto —
  * paused, never; backwards, at the hold it is about to drop under.
- * [LAW:single-enforcer] `drawing` is the one place the time, the timeline
+ * [LAW:single-enforcer] `drawn` is the one place the time, the timeline
  * and the reader's preference for motion are read, for every function.
  *
  * `frames <seconds> <frame> <seconds> <frame> …` is a `FrameSequence`
@@ -57,44 +57,66 @@
  * exact arity of typed slots, so a slot of the wrong kind fails at the gate.
  *
  * Every function says when what it drew changes, so a host paints a
- * template while it moves and not after. `frames` and `glyphs` stamp the
- * fragment they draw (`textFrameAt`), covering its own glyphs. A number or a
- * colour carries no cells to stamp, so `tween`, `loop` and `stepped` tell
- * their hold to the frame instead (`TemplateFrame.onHold`), as a placed
- * animation of no cells does (`RenderOptions.onHold`). Nothing here claims
- * a moment it does not know.
+ * template while it moves and not after — and says it only for what the
+ * output depends on. A number or a colour has no cells to carry a hold, and
+ * a fragment's cells lose theirs the moment it is flattened (`printf "%s"`),
+ * so no function stamps cells or tells the frame itself. Each marks its
+ * return with the hold its value is in (`marked`, the engine's evaluation
+ * provenance), and the engine carries the mark beside the value into every
+ * variable, dot and function the value passes through, reporting it where
+ * the output depends on it. `emitted` is where a template's cells take a
+ * hold: every fragment the template emits, stamped with the holds of the
+ * marked values its action read. `decided` is the route for a hold no cell
+ * can carry, told to the frame (`TemplateFrame.onHold`): a mark an
+ * `if`/`with`/`range` consumed, whichever arm it took, because the frame may
+ * show cells for it later and must say when without a cell to say it on, as
+ * a placed animation of no cells does (`placed`) — and, by the same rule, a
+ * mark a writing function or a throwing action read; `EngineConfig.decided`
+ * is the authority on when it is called. A mark bound somewhere nobody reads
+ * is reported nowhere, so a value a template computes and never draws or
+ * decides on tells the frame nothing (rich-animation-27tq.0gd). Early, never
+ * late: an emission may carry a hold it did not strictly need, and a hold
+ * the output depends on is never dropped. [LAW:single-enforcer]
+ *
+ * The functions and the two hooks go into the host's engine config together,
+ * by `withAnimation`: the functions wired without the hooks would compile,
+ * draw and never say they move. [LAW:no-silent-failure]
  */
 
-import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
-import { Animation, frameTimeOf, holdOf, shownAt } from "../core/animation.js";
+import { marked, type EngineConfig, type Marked, type TemplateFunc } from "@promptctl/go-template-js";
+import { Animation, frameTimeOf, holdOf, shownAt, stamp } from "../core/animation.js";
 import { Phase, beat, finiteTime, parseEase } from "../core/easing.js";
 import type { RenderOptions } from "../core/protocol.js";
+import { layerStyle, type Hold, type TextStyle } from "../core/style.js";
+import type { RichText } from "../core/text.js";
 import { Timeline } from "../core/timeline.js";
 import { tween } from "../core/tween.js";
 import { cellSeed } from "../renderables/effect.js";
 import type { EffectTarget } from "../renderables/effects.js";
 import { reglyphText, type GlyphEffect } from "../renderables/glyph-effect.js";
 import { GLYPH_EFFECT_CATALOGUE, type GlyphLoopName, type GlyphTransitionName } from "../renderables/glyph-effects.js";
-import { FrameSequence, textFrameAt, type Frame } from "../renderables/frames.js";
+import { FrameSequence, type Frame } from "../renderables/frames.js";
 import { asColor } from "./color-funcs.js";
 import { asFragment } from "./helpers.js";
 
-/** What a registration is drawn on, beside the frame each evaluation is handed. */
-export interface AnimationFuncsOptions {
+/** What the animation functions are drawn on, beside the frame each evaluation is handed. */
+export interface AnimationOptions {
   /** The timeline to draw on, read once per call; the frame's own time when omitted. */
   readonly timeline?: () => Timeline;
 }
 
 /**
  * The frame a template is evaluated for, in the fields a render's options
- * carry under the same names: `time` in seconds, `onHold`, told when what a
- * function drew there changes, and the reader's preferences —
+ * carry under the same names: `time` in seconds, `onHold`, told the hold of
+ * an animated value the output may depend on with no cell to carry it — one
+ * a decision read, whichever arm it took, a writing function's input, a
+ * throwing action's (the engine's `decided`) — and the reader's preferences,
  * `reducedMotion`, and `asciiOnly`, which the glyphs an effect picks for
  * itself go through. They arrive with every frame and nowhere else, so a
  * template drawn in an `App` is drawn as the app's preferences say.
  * [LAW:one-source-of-truth]
  *
- * `time` is on the clock `AnimationFuncsOptions.timeline` maps from, and
+ * `time` is on the clock `AnimationOptions.timeline` maps from, and
  * `onHold` hears on that clock. A host outside rich-js hands its own clock's
  * time. Inside a rich-js frame the time is the frame's, which its host's
  * timeline has already mapped, so a template drawn there registers no
@@ -107,6 +129,20 @@ export interface TemplateFrame extends Pick<RenderOptions, "onHold" | "reducedMo
 /** The frame a renderable is drawn in, as the frame a template it evaluates there is drawn for. */
 export function templateFrame(options: RenderOptions): TemplateFrame {
   return { time: frameTimeOf(options), onHold: options.onHold, reducedMotion: options.reducedMotion, asciiOnly: options.asciiOnly };
+}
+
+/**
+ * The mark a function puts on its return: the hold its value is in, and the
+ * frame it was drawn for, which is the one `decided` tells. Only the two
+ * hooks here read one; a consumer's own marks pass through them untouched,
+ * and a foreign token shaped like a `Hold` is not one.
+ * [LAW:types-are-the-program]
+ */
+class HoldMark {
+  constructor(
+    readonly hold: Hold,
+    readonly frame: TemplateFrame,
+  ) {}
 }
 
 /** The host's own clock as a timeline: host time 0 at animation time 0, at rate 1. */
@@ -162,37 +198,39 @@ function glyphEffect(name: string): (element: EffectTarget) => GlyphEffect {
 }
 
 /**
- * Register `frames`, `stepped`, `tween`, `loop` and `glyphs`, each drawn for
- * the frame `frame` reports when the template is evaluated — its time in
- * seconds, from whatever zero the host counts from — through
- * `options.timeline`, and each telling that frame when what it drew changes.
+ * `config` with `frames`, `stepped`, `tween`, `loop` and `glyphs` registered
+ * beside its own functions, each drawn for the frame `frame` reports when
+ * the template is evaluated — its time in seconds, from whatever zero the
+ * host counts from — through `options.timeline`, and each marking its
+ * return with the hold it is in there; and with the two hooks that carry
+ * those holds to the cells (`emitted`) and the frame (`decided`) installed
+ * over any `config` already has, which still hear everything they did. One
+ * call, so the functions and the hooks that report for them cannot be wired
+ * apart: the functions alone would compile, draw, and never say they move.
+ * [LAW:types-are-the-program] [LAW:no-silent-failure] [LAW:composability]
+ *
  * The functions exist whatever `frame` returns, so a template compiles once
  * and is evaluated at every moment the host draws. In a frame that says
  * `reducedMotion` each draws its animation reduced (`Animation.reduced`): a
  * loop at its start, a one-shot cut from where it starts to where it arrives
  * when it starts.
  */
-export function animationFuncs(frame: () => TemplateFrame, options: AnimationFuncsOptions = {}): FuncMap {
+export function withAnimation(config: EngineConfig<RichText>, frame: () => TemplateFrame, options: AnimationOptions = {}): EngineConfig<RichText> {
   const timeline = options.timeline ?? (() => HOST_CLOCK);
-  // `animation` on this call's timeline, and the time of `at`, the frame it
-  // is drawn in, read once a call so a value and its hold are one frame's.
-  const drawing = <T>(what: string, animation: Animation<T>, at: TemplateFrame): [Animation<T>, number] => [Timeline.run(timeline(), animation), finiteTime(what, at.time)];
-  // What a value animation shows now, under the reader's preference, its
-  // hold told to the frame: a value has no cells to carry it.
-  const now = <T>(what: string, animation: Animation<T>): T => {
-    const at = frame();
-    const [drawn, t] = drawing(what, animation, at);
-    const shown = shownAt(drawn, t, at);
-    at.onHold?.(holdOf(shown, t));
-    return shown.value;
+  // What `animation`, on this call's timeline, shows in the frame `at`,
+  // under the reader's preference, marked with how long for: the time is
+  // read once a call so a value and its hold are one frame's.
+  const drawn = <T>(what: string, animation: Animation<T>, at: TemplateFrame): Marked => {
+    const t = finiteTime(what, at.time);
+    const shown = shownAt(Timeline.run(timeline(), animation), t, at);
+    return marked(shown.value, new HoldMark(holdOf(shown, t), at));
   };
   const startedAt = <T>(start: number, animation: Animation<T>): Animation<T> => Timeline.run(Timeline.play(start), animation);
 
   const framesFunc: TemplateFunc = {
     fn: ((...tail: unknown[]) => {
       const frames: Frame[] = pairs("frame", tail, asFragment).map(({ seconds, value }) => ({ seconds, text: value }));
-      const at = frame();
-      return textFrameAt(...drawing("frames", new FrameSequence(frames), at), at);
+      return drawn("frames", new FrameSequence(frames), frame());
     }) as TemplateFunc["fn"],
     argTypes: ["float", "liftable"],
     arity: { kind: "alternating", minimum: 2 },
@@ -201,7 +239,7 @@ export function animationFuncs(frame: () => TemplateFrame, options: AnimationFun
   const steppedFunc: TemplateFunc = {
     fn: ((...tail: unknown[]) => {
       const steps = pairs("color", tail, (v) => asColor(v as string, "stepped"));
-      return steps[now("stepped", beat(steps.map((step) => step.seconds)))]!.value.hex;
+      return drawn("stepped", Animation.map(beat(steps.map((s) => s.seconds)), (step) => steps[step]!.value.hex), frame());
     }) as TemplateFunc["fn"],
     argTypes: ["float", "string"],
     arity: { kind: "alternating", minimum: 2 },
@@ -209,13 +247,13 @@ export function animationFuncs(frame: () => TemplateFrame, options: AnimationFun
   };
   const tweenFunc: TemplateFunc = {
     fn: ((seconds: number, ease: string, start: number, from: number, to: number) =>
-      now("tween", startedAt(start, tween(from, to, { seconds, ease: parseEase(ease) })))) as TemplateFunc["fn"],
+      drawn("tween", startedAt(start, tween(from, to, { seconds, ease: parseEase(ease) })), frame())) as TemplateFunc["fn"],
     argTypes: ["float", "string", "float", "float", "float"],
     arity: { kind: "exact" },
     returnType: "float",
   };
   const loopFunc: TemplateFunc = {
-    fn: ((seconds: number, start: number) => now("loop", startedAt(start, Animation.continuous(Phase.loop(seconds))))) as TemplateFunc["fn"],
+    fn: ((seconds: number, start: number) => drawn("loop", startedAt(start, Animation.continuous(Phase.loop(seconds))), frame())) as TemplateFunc["fn"],
     argTypes: ["float", "float"],
     arity: { kind: "exact" },
     returnType: "float",
@@ -228,11 +266,43 @@ export function animationFuncs(frame: () => TemplateFrame, options: AnimationFun
       const key = fragment.plain;
       const at = frame();
       const reglyphed = reglyphText(fragment, make({ z: cellSeed(key, 0, 0) }), { key, asciiOnly: at.asciiOnly === true });
-      return textFrameAt(...drawing("glyphs", startedAt(start, reglyphed), at), at);
+      return drawn("glyphs", startedAt(start, reglyphed), at);
     }) as TemplateFunc["fn"],
     argTypes: ["string", "float", "liftable"],
     arity: { kind: "exact" },
     returnType: "T",
   };
-  return { frames: framesFunc, stepped: steppedFunc, tween: tweenFunc, loop: loopFunc, glyphs: glyphsFunc };
+
+  const holdMarks = (marks: ReadonlySet<unknown>): HoldMark[] => [...marks].filter((mark): mark is HoldMark => mark instanceof HoldMark);
+  // The holds among `marks` layered onto the fragment's base style, which an
+  // empty text still draws as its one piece of no width: `Style.add` keeps
+  // the later `lastChange` and the sooner `nextChange`, so cells that read
+  // two animated values are in the intersection of their holds, as two
+  // styles laid together are anywhere. A fragment no hold reaches is handed
+  // back as it came — the engine calls this for every emission — and one a
+  // hold reaches is a copy, since the engine may hand the one fragment a
+  // scope holds to more than one emission.
+  const held = (fragment: RichText, marks: ReadonlySet<unknown>): RichText => {
+    const holds = holdMarks(marks);
+    if (holds.length === 0) return fragment;
+    const result = fragment.copy();
+    result.style = holds.reduce<TextStyle>((style, mark) => layerStyle(style, stamp(mark.hold)), fragment.style);
+    return result;
+  };
+  const told = (marks: ReadonlySet<unknown>): void => {
+    for (const mark of holdMarks(marks)) mark.frame.onHold?.(mark.hold);
+  };
+  // The hooks `config` brought run first and hear everything they did; a
+  // consumer that stamps or listens on its own loses nothing to this binding.
+  const emitted = config.emitted ?? ((fragment) => fragment);
+  const decided = config.decided ?? (() => {});
+  return {
+    ...config,
+    funcs: { ...config.funcs, frames: framesFunc, stepped: steppedFunc, tween: tweenFunc, loop: loopFunc, glyphs: glyphsFunc },
+    emitted: (fragment, marks) => held(emitted(fragment, marks), marks),
+    decided: (marks) => {
+      decided(marks);
+      told(marks);
+    },
+  };
 }

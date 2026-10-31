@@ -31,7 +31,7 @@ import {
   type Effect,
   type Renderable,
 } from "../../src/index.js";
-import { animationFuncs, richTextFuncs } from "../../src/template-bindings/index.js";
+import { richTextFuncs, withAnimation } from "../../src/template-bindings/index.js";
 import { SPINNERS } from "../../src/core/spinnerData.js";
 import { inFrame } from "./in-frame.js";
 
@@ -227,11 +227,9 @@ describe("what a host reads off a frame: when it next changes", () => {
 
   it("a template's frames say when they turn, read off what was drawn", () => {
     let frameTime = 0;
-    const engine = createEngine<RichText>({
-      fromString: (s) => new RichText(s),
-      toString: (rt) => rt.plain,
-      funcs: { ...richTextFuncs(), ...animationFuncs(() => ({ time: frameTime })) },
-    });
+    const engine = createEngine<RichText>(
+      withAnimation({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: frameTime })),
+    );
     const gauge = engine.compile(`{{ "effort " }}{{ frames 0.25 "›" 0.25 "››" 0.25 "›››" }}{{ " max" }}`);
     const still = engine.compile(`{{ "effort " }}{{ "›››" }}`);
     frameTime = 1;

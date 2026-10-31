@@ -41,7 +41,7 @@ The functions ship in two groups, split by exactly one question — does it need
 
 `paletteFuncs(getPalette)` is the two that do: `color`, which turns a palette variable name into a color, and `ramp`, whose stops are palette names. It is the only registration that knows a palette exists.
 
-A third, `animationFuncs(frame)`, answers a different question: what moment is the template drawn for? A host that redraws on its own clock hands that clock's time in, and `tween`, `loop`, `glyphs`, `frames` and `stepped` draw for it. [Animating a template](#animating-a-template) covers them.
+A third, `withAnimation(config, frame)`, answers a different question: what moment is the template drawn for? A host that redraws on its own clock hands that clock's time in, and `tween`, `loop`, `glyphs`, `frames` and `stepped` draw for it. [Animating a template](#animating-a-template) covers them.
 
 `createRichTextEngine()` wires up `richTextFuncs()` alone — it cannot supply a palette. Once you want theme colors, build the engine yourself and merge both maps:
 
@@ -246,7 +246,7 @@ Passing a palette name where a color belongs is the other common slip, and it na
 
 ## Animating a template
 
-`animationFuncs(frame)` registers the functions that draw for a moment in time. The host owns the clock: `frame()` is read each time a template is evaluated. It returns the frame's `time`, an `onHold` listener if the host wants to hear when what the functions drew changes, and the reader's preferences, `reducedMotion` and `asciiOnly`. So a template compiled once shows each redraw's moment, and a host that redraws once a second sees the same thing at each of its frames as a host that redraws sixty times a second. Every duration is in seconds.
+`withAnimation(config, frame)` is your engine config with the functions that draw for a moment in time registered beside your own, and the two engine hooks that report which output depended on an animated value, `emitted` and `decided`, installed over any the config already had. It is one call because the functions without the hooks would draw and never say they move. The host owns the clock: `frame()` is read each time a template is evaluated. It returns the frame's `time`, an `onHold` listener if the host wants to hear the hold of an animated value the output may depend on with no cell to carry it, and the reader's preferences, `reducedMotion` and `asciiOnly`. So a template compiled once shows each redraw's moment, and a host that redraws once a second sees the same thing at each of its frames as a host that redraws sixty times a second. Every duration is in seconds.
 
 - `tween <seconds> <ease> <start> <from> <to>` is a number eased from `from` to `to` over `seconds`, starting at the moment `start`, and held at `to` afterwards. Every `start` is a moment on the timeline the functions are drawn on, which is the host's own clock unless you hand one in (below); with one handed in, record a change at `Timeline.at(timeline, host)`, not at the host time. The ease is any name in `EASES`, physics curves such as `"spring"` and `"back-out"` included. Pipe the target into it: `.pct | tween 0.4 "ease-out" .changedAt .was` eases from the old value to the new one, starting when your state says the value changed.
 - `loop <seconds> <start>` is the way through a period, rising from 0 towards 1 and starting again, measured from `start`. Give a row of cells starts a step apart and the same motion travels along the row.
@@ -258,15 +258,20 @@ Passing a palette name where a color belongs is the other common slip, and it na
 ```typescript
 import { createEngine } from "@promptctl/go-template-js";
 import { Console, RichText, GRUVBOX } from "@promptctl/rich-js";
-import { animationFuncs, paletteFuncs, richTextFuncs } from "@promptctl/rich-js/template-bindings";
+import { paletteFuncs, richTextFuncs, withAnimation } from "@promptctl/rich-js/template-bindings";
 
 const console = new Console();
 let frameTime = 0;
-const engine = createEngine<RichText>({
-  fromString: (s) => new RichText(s),
-  toString: (rt) => rt.plain,
-  funcs: { ...richTextFuncs(), ...paletteFuncs(() => GRUVBOX.palette), ...animationFuncs(() => ({ time: frameTime })) },
-});
+const engine = createEngine<RichText>(
+  withAnimation(
+    {
+      fromString: (s) => new RichText(s),
+      toString: (rt) => rt.plain,
+      funcs: { ...richTextFuncs(), ...paletteFuncs(() => GRUVBOX.palette) },
+    },
+    () => ({ time: frameTime }),
+  ),
+);
 
 const gauge = engine.compile(`{{- $muted := "dim" -}}
 {{- $pct := .pct | tween 0.6 "ease-out" .changedAt .was -}}
@@ -279,21 +284,19 @@ for (frameTime of [10, 10.2, 10.4, 10.6, 11, 12]) {
 }
 ```
 
-The tween changes with every frame and the typewriter stops changing once the text is typed. Every function says when what it drew will next change, so a host that schedules redraws knows when to look again. `frames` and `glyphs` mark each cell they draw with that moment, covering their own glyphs. A number or a colour has no cells to mark, so `tween`, `loop` and `stepped` tell the frame's `onHold` instead.
+The tween changes with every frame and the typewriter stops changing once the text is typed. Every function says when what it drew will next change, so a host that schedules redraws knows when to look again, and it says so only for output that depends on it. A number or a colour has no cells to carry that moment, so each function marks its value instead, and the engine carries the mark beside the value through every variable, `printf`, comparison and `template` invocation it passes. `emitted` then stamps the cells of every fragment whose action read a marked value with the hold it is in, the way a placed [frame sequence](/frames) stamps its own cells, and `decided` tells the frame's `onHold` of a mark the output may depend on with no cell to say so yet: one an `if`, `with` or `range` decided on, whichever arm it took, and by the same rule one a writing function or a throwing action read; the engine's `decided` is the authority on when it is called. A value a template computes and never draws or decides on, <code v-pre>{{ $t := tween 2 "linear" 0 0 1 }}still</code>, reports nothing, so a still bar never claims to move.
 
 A template evaluated inside a rich-js frame, by a renderable in an [`App`](/app#animating-at-a-frame-rate) or a `Live`, hands on the frame it is drawn in. `templateFrame(options)` reads it off that renderable's render options. The app then paints while a tween moves, stops once it lands, and draws it reduced when the app's `reducedMotion` says so. The frame's time is already on the app's timeline, so register no `timeline` of your own here:
 
 ```ts silent
 import { createEngine } from "@promptctl/go-template-js";
 import { RichText, type Renderable } from "@promptctl/rich-js";
-import { animationFuncs, renderTemplate, richTextFuncs, templateFrame, type TemplateFrame } from "@promptctl/rich-js/template-bindings";
+import { renderTemplate, richTextFuncs, templateFrame, withAnimation, type TemplateFrame } from "@promptctl/rich-js/template-bindings";
 
 let drawnIn: TemplateFrame = { time: 0 };
-const engine = createEngine<RichText>({
-  fromString: (s) => new RichText(s),
-  toString: (rt) => rt.plain,
-  funcs: { ...richTextFuncs(), ...animationFuncs(() => drawnIn) },
-});
+const engine = createEngine<RichText>(
+  withAnimation({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => drawnIn),
+);
 
 const gauge: Renderable = {
   render: (options) => {
@@ -310,16 +313,14 @@ A host outside rich-js plays its own clock through a timeline. The second argume
 ```typescript
 import { createEngine } from "@promptctl/go-template-js";
 import { Console, RichText, Timeline } from "@promptctl/rich-js";
-import { animationFuncs, richTextFuncs } from "@promptctl/rich-js/template-bindings";
+import { richTextFuncs, withAnimation } from "@promptctl/rich-js/template-bindings";
 
 const console = new Console();
 let host = 0;
 let timeline = Timeline.play(0);
-const engine = createEngine<RichText>({
-  fromString: (s) => new RichText(s),
-  toString: (rt) => rt.plain,
-  funcs: { ...richTextFuncs(), ...animationFuncs(() => ({ time: host }), { timeline: () => timeline }) },
-});
+const engine = createEngine<RichText>(
+  withAnimation({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: host }), { timeline: () => timeline }),
+);
 
 const spinner = engine.compile(`{{- $beat := 0.25 -}}
 {{ frames $beat "◐" $beat "◓" $beat "◑" $beat "◒" }} syncing`);
